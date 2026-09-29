@@ -49,7 +49,11 @@
     "pink/700": "#be185d",
     "orange/50": "#fff7ed",
     "orange/500": "#f97316",
-    "orange/700": "#c2410c"
+    "orange/700": "#c2410c",
+    "night/900": "#0b1024",
+    "night/800": "#121a36",
+    "night/700": "#1b2540",
+    "night/line": "#e3e8ff"
   },
   "semanticos": {
     "bg/canvas": { "light": "#f8faff", "dark": "#0f172a" },
@@ -97,7 +101,16 @@
     "badge/solid-info": { "light": "#0369a1", "dark": "#0369a1" },
     "badge/solid-neutral": { "light": "#475569", "dark": "#64748b" },
     "badge/on-solid": { "light": "#ffffff", "dark": "#ffffff" },
-    "badge/on-solid-warning": { "light": "#0f172a", "dark": "#0f172a" }
+    "badge/on-solid-warning": { "light": "#0f172a", "dark": "#0f172a" },
+    "auth/cielo-alto": { "light": "#3651d4", "dark": "#0b1024" },
+    "auth/cielo-medio": { "light": "#4361ee", "dark": "#121a36" },
+    "auth/cielo-bajo": { "light": "#6a82f1", "dark": "#1f2e7d" },
+    "auth/ilus-linea": { "light": "#0f172a", "dark": "#e3e8ff" },
+    "auth/ilus-relleno": { "light": "#ffffff", "dark": "#1b2540" },
+    "auth/ilus-acento": { "light": "#2a3ea8", "dark": "#4361ee" },
+    "auth/ilus-acento-suave": { "light": "#eef1fe", "dark": "#2a3ea8" },
+    "auth/ilus-rubor": { "light": "#b9c5f9", "dark": "#6a82f1" },
+    "auth/estrella": { "light": "#ffffff", "dark": "#ffffff" }
   },
   "espaciado": { "2": 2, "4": 4, "6": 6, "8": 8, "12": 12, "16": 16, "20": 20, "24": 24, "32": 32, "40": 40, "48": 48 },
   "radios": { "sm": 6, "md": 8, "lg": 12, "xl": 16, "full": 999 },

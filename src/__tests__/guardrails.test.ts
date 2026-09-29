@@ -1681,9 +1681,18 @@ describe('23. stock_movements.source: CHECK, lista de TS y código coinciden', (
     const escritos = origenesDelCodigo();
 
     // Que el rastreo siga encontrando algo: si un cambio de formato lo deja a
-    // cero, este guardarraíl pasaría sin comprobar nada.
-    expect(escritos.size).toBeGreaterThanOrEqual(10);
-    expect([...escritos.keys()]).toEqual(expect.arrayContaining(['purchase_order', 'transfer_in']));
+    // cero, este guardarraíl pasaría sin comprobar nada. El piso baja a medida
+    // que los escritores TS pasan a RPC (§3.2): B3 (2026-09-29) retiró
+    // TransferenciasService, el último que escribía transfer_out/transfer_in
+    // desde TS (ahora fn_traslado_* por fn_inv_int_mover), así que transfer_in
+    // ya no se exige aquí. B8 (2026-09-29) retiró la recepción de OC del
+    // navegador (purchase_order ahora solo lo escribe fn_oc_recepcionar por
+    // fn_kardex_entrada_compra_int): se exige purchase_invoice, que sigue en TS.
+    // B9 (2026-09-29) retiró el reembolso web (web_refund ahora por
+    // fn_stock_entrada_al_costo) y la confirmación web por servidor
+    // (fn_pedido_web_confirmar_stock): el piso baja de 5 a 4.
+    expect(escritos.size).toBeGreaterThanOrEqual(4);
+    expect([...escritos.keys()]).toEqual(expect.arrayContaining(['purchase_invoice']));
 
     const rechazados = [...escritos.entries()]
       .filter(([valor]) => !admitidos.has(valor))
@@ -1859,7 +1868,11 @@ describe('26. Compras: un solo asiento por hecho, con la factura (ADR-CC-009)', 
   );
 
   test('el disparador de ajustes de inventario no contabiliza compras ni traslados', () => {
-    const ultima = ultimaQueMenciona(/function\s+public\.fn_auto_journal_stock_movement\s*\(/i);
+    // La última que la DEFINE (`create or replace`). Inventario B0 (P4,
+    // 20260929020600_inv_b0_7_asiento_unico_ajuste) la parchea sobre la
+    // definición viva con md5 comprobado y un solo marcador, sin tocar esta
+    // exclusión: esa migración solo la nombra y no cuenta como definición.
+    const ultima = ultimaQueMenciona(/create\s+or\s+replace\s+function\s+public\.fn_auto_journal_stock_movement\s*\(/i);
     expect(ultima).toBeDefined();
     const cuerpo = ultima!.sql.slice(ultima!.sql.search(/function\s+public\.fn_auto_journal_stock_movement\s*\(/i));
     const exclusion = cuerpo.match(/IF\s+NEW\.source\s+IN\s*\(([^)]*)\)\s*THEN\s*RETURN\s+NEW/i);
@@ -1959,9 +1972,18 @@ describe('26b. Compras y CxP: una sola RPC para registrar la compra y nada escri
   });
 
   test('el generador desde OC llama a la RPC única y no arma la factura a mano', () => {
+    // Inventario B8 (2026-09-29): la factura de una OC recibida ya no la pide el
+    // navegador después de recibir (clienteCompras.desdeOrden, que podía fallar
+    // en silencio con la OC ya «recibida»). La genera fn_oc_recepcionar al
+    // completar la orden, en la misma transacción, con fn_fc_int_desde_oc: el
+    // mismo cuerpo que fn_factura_compra_desde_oc (que ahora solo exige permiso y
+    // la llama). purchaseOrderService solo recibe por esa RPC.
     const src = readFile(path.join(SRC_ROOT, 'lib/services/purchaseOrderService.ts'));
-    expect(src).toMatch(/clienteCompras\.desdeOrden\(/);
+    expect(src).toMatch(/recepcionarOrdenCompra\(/);
     expect(src).not.toMatch(escritura('invoice_items'));
+    const migracion = readFile(path.join(SRC_ROOT, '..', 'supabase', 'migrations', '20260929170100_inv_b8_2_recepcionar.sql'));
+    expect(migracion).toMatch(/v_factura\s*:=\s*public\.fn_fc_int_desde_oc\(/);
+    expect(migracion).toMatch(/function public\.fn_factura_compra_desde_oc[\s\S]*?return public\.fn_fc_int_desde_oc\(p_po_uuid\)/);
   });
 
   test('las páginas de compras y CxP montan las pantallas nuevas (las URL no cambian)', () => {
@@ -2706,7 +2728,12 @@ describe('30. Cola de facturación electrónica: nada fuera del servidor la escr
 describe('31. Toda ruta de src/app/api pasa por una puerta del servidor', () => {
   const API = path.join(SRC_ROOT, 'app', 'api');
   const INTEGRACIONES = path.join(API, 'integrations');
-  const PUERTA_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|contextoDeFacturacion|requireSessionUser|withWhatsAppRoute|withPlatformAdmin|requirePlatformAdmin|withCron|verifyCronSecret|verifyWebOrdersSecret|constructEvent|constructWebhookEvent|verifyTwilioWebhook|verifyTwilioRequest|verifyTwilioUrlSignature|verifyMetaSignature|verifyResendWebhook|safeEqual|authenticateDisplayRequest|resolveDisplayActor|requireDisplayToken|validateFeedToken)\s*\(/;
+  // `resolverObjetivoModulos` (F-76, src/lib/security/modulosObjetivo.ts) es una
+  // puerta, no una excepción: resuelve la sesión con `getServerOrgContext` y la
+  // plataforma con `isPlatformAdmin` (fn_is_platform_admin). Que no se pueda
+  // vaciar por dentro lo vigila src/app/api/modules/__tests__/
+  // guardarrailServiceRoleModulos.test.ts («el resolutor: sesión primero…»).
+  const PUERTA_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|contextoDeFacturacion|requireSessionUser|withWhatsAppRoute|withPlatformAdmin|requirePlatformAdmin|resolverObjetivoModulos|withCron|verifyCronSecret|verifyWebOrdersSecret|constructEvent|constructWebhookEvent|verifyTwilioWebhook|verifyTwilioRequest|verifyTwilioUrlSignature|verifyMetaSignature|verifyResendWebhook|safeEqual|authenticateDisplayRequest|resolveDisplayActor|requireDisplayToken|validateFeedToken)\s*\(/;
   const SESION_USUARIO_RE = /\bgetServerUserClient\s*\(\s*\)[\s\S]*?\.auth\.getUser\s*\(/;
   const CERRADO_SIN_ENTRADA_RE = /^export\s+(?:async\s+)?function\s+(?:GET|POST|PUT|PATCH|DELETE)\s*\(\s*\)[\s\S]*status:\s*401\b/;
   const HANDLER_RE = /^export\s+(?:const|async\s+function|function)\s+(GET|POST|PUT|PATCH|DELETE)\b/;
@@ -2715,8 +2742,11 @@ describe('31. Toda ruta de src/app/api pasa por una puerta del servidor', () => 
 
   /** `ruta MÉTODO` (o `ruta REEXPORT`) → por qué no necesita puerta en el handler. */
   const SIN_PUERTA = new Map<string, string>([
-    ['app/api/auth/accept-invitation/route.ts POST', 'pública: crea la cuenta del invitado; valida el código con validate_invitation_by_code y solo cuentas nuevas/huérfanas (estadoCuentaInvitacion)'],
-    ['app/api/auth/check-email/route.ts POST', 'pública para el registro (aún no hay cuenta); límite por IP'],
+    ['app/api/auth/acceso/route.ts POST', 'pública: es el inicio de sesión (aún no hay sesión); mensaje único de credenciales, bloqueo 15 min tras 5 fallos por cuenta+IP o 20 por IP (fn_acceso_*), límite general por IP (acceso v3, fase 5)'],
+    ['app/api/auth/accept-invitation/route.ts POST','pública: crea la cuenta del invitado; valida el código con validate_invitation_by_code y solo cuentas nuevas/huérfanas (estadoCuentaInvitacion)'],
+    ['app/api/auth/registro/route.ts POST', 'pública: paso 1 del registro (aún no hay cuenta); respuesta uniforme exista o no el correo; política de contraseña y límite por IP y por correo (acceso v3, v2-6/v2-8)'],
+    ['app/api/auth/reenviar-confirmacion/route.ts POST', 'pública: reenvía el correo de confirmación; respuesta uniforme exista o no la cuenta; límite por IP y por correo (acceso v3, R1/v2-6)'],
+    ['app/api/auth/reenviar-confirmacion/route.ts POST', 'pública: reenvía el correo de confirmación; respuesta uniforme exista o no la cuenta; límite por IP y por correo (acceso v3, R1/v2-6)'],
     ['app/api/auth/invite/context/route.ts GET', 'pública: se abre desde el correo con el código; límite por IP'],
     ['app/api/auth/invite/resend/route.ts POST', 'pública: reenvía el enlace validando contra invitations; límite por IP y por correo'],
     ['app/api/auth/native-callback/route.ts GET', 'puente OAuth de la app móvil: solo redirige al esquema de la app, no lee ni escribe datos'],
@@ -2945,5 +2975,226 @@ describe('32. Tasas de cambio: clave de servidor y catálogo solo de plataforma'
     for (const f of ['update_global_exchange_rates', 'insert_fallback_rates', 'fill_missing_currency_dates', 'save_global_exchange_rates', 'update_exchange_rates(integer)']) {
       expect(sql).toContain(f);
     }
+  });
+});
+
+/**
+ * 34. Invitaciones: el código no sale del servidor (GO-sec, auditoría de
+ * acceso 2026-09-28, docs/design/AUTH-ACCESO-V2.md §4.1).
+ *
+ * `invitations.code` es la credencial que mete a quien la tenga en una
+ * organización. `/auth/verify` la entregaba a quien solo conociera el correo
+ * invitado; el navegador del admin la generaba con Math.random() y la leía de
+ * la tabla; la clave anónima podía listarlas todas por RLS.
+ *
+ * Reglas:
+ *  - Solo el servidor (`src/app/api/**`, `src/app/auth/verify/route.ts`,
+ *    `src/lib/auth/invitaciones.ts`) consulta `invitations` pidiendo `code`,
+ *    usa `*`, inserta, o llama `validate_invitation_by_code`.
+ *  - En `/auth/verify` la invitación solo se busca con el correo que PROBÓ
+ *    `verifyOtp` (`user.email`), nunca con el de la URL, y no hay consultas
+ *    directas a `invitations`.
+ *  - Ninguna respuesta de `/api/auth/invite*` devuelve el código ni `inviteUrl`.
+ */
+describe('34. Invitaciones: el código de invitación no sale del servidor', () => {
+  const SERVIDOR = [
+    /^app\/api\//,
+    /^app\/auth\/verify\/route\.ts$/,
+    /^lib\/auth\/invitaciones\.ts$/,
+  ];
+  const esServidor = (r: string) => SERVIDOR.some((re) => re.test(r));
+  const CONSULTA_RE = /from\(\s*['"]invitations['"]\s*\)([\s\S]{0,400}?);/g;
+
+  const archivos = walkDir(SRC_ROOT).filter((f) => !isExcluded(f));
+
+  it('fuera del servidor nadie pide invitations.code, usa select(*) ni inserta invitaciones', () => {
+    const infractores: string[] = [];
+    for (const f of archivos) {
+      const r = rel(f);
+      if (esServidor(r)) continue;
+      const contenido = stripAllComments(readFile(f));
+      for (const m of contenido.matchAll(CONSULTA_RE)) {
+        const cadena = m[1];
+        const selects = [...cadena.matchAll(/\.select\(\s*(['"`])([\s\S]*?)\1/g)].map((s) => s[2]);
+        const pideCodigo = selects.some((s) => s.split(',').some((c) => /^\s*(code|\*)\s*$/.test(c)));
+        const inserta = /\.(insert|upsert)\(/.test(cadena);
+        const sinColumnas = /\.select\(\s*\)/.test(cadena);
+        if (pideCodigo || inserta || sinColumnas) infractores.push(r);
+      }
+      if (/validate_invitation_by_code/.test(contenido)) infractores.push(`${r} (validate_invitation_by_code)`);
+    }
+    expect(infractores).toEqual([]);
+  });
+
+  it('/auth/verify solo busca la invitación con el correo que probó verifyOtp', () => {
+    const contenido = stripAllComments(readFile(path.join(SRC_ROOT, 'app', 'auth', 'verify', 'route.ts')));
+    expect(contenido).not.toMatch(/from\(\s*['"]invitations['"]\s*\)\s*\.select/);
+    const llamadas = [...contenido.matchAll(/codigoInvitacionDelCorreoVerificado\(([^)]*)\)/g)]
+      .map((m) => m[1].trim())
+      .filter((arg) => !arg.includes(':')); // la definición lleva tipos
+    expect(llamadas.length).toBeGreaterThan(0);
+    expect(llamadas.every((arg) => arg === 'user.email')).toBe(true);
+    // El helper por correo solo vive dentro de la función de arriba.
+    expect((contenido.match(/buscarInvitacionVigentePorCorreo\(/g) ?? []).length).toBe(1);
+  });
+
+  it('las respuestas de /api/auth/invite* no llevan el código ni inviteUrl', () => {
+    const dir = path.join(SRC_ROOT, 'app', 'api', 'auth');
+    const infractores: string[] = [];
+    for (const f of walkDir(dir).filter((x) => !isExcluded(x))) {
+      const contenido = stripAllComments(readFile(f));
+      for (const m of contenido.matchAll(/NextResponse\.json\(\s*\{([\s\S]*?)\}\s*[,)]/g)) {
+        // `code: err.code` (código de error) sí vale; `code: invitacion.code` no.
+        if (/\binviteUrl\b|\bcode:\s*\w*(invit|fila|row|pending)\w*\.code\b|\binvite_code\b/i.test(m[1])) infractores.push(rel(f));
+      }
+    }
+    expect(infractores).toEqual([]);
+  });
+});
+
+/**
+ * 33. Existencias: nada fuera del núcleo escribe stock_levels, stock_movements ni
+ * stock_reservations (INVENTARIO-PLAN.md §3.2 y §5.1, bloque B0, 2026-09-28).
+ *
+ * Todo movimiento de stock pasa por la primitiva SQL `fn_inv_int_mover`
+ * (bloqueo, una sola regla de costo promedio, lote, FEFO, seriales, kardex con
+ * autor). Antes 15 funciones SQL y más de 10 servicios TS escribían estas
+ * tablas con cuatro reglas de costo distintas y sin transacción.
+ *
+ * `PENDIENTES_POR_BLOQUE` es la deuda que queda al cerrar B0, cada archivo con el
+ * bloque que lo pasa a una RPC. Solo puede ACHICARSE: un archivo nuevo que
+ * escriba estas tablas rompe el primer test; uno de la lista que deje de
+ * escribirlas rompe el segundo (quítalo de la lista en el mismo commit). B10
+ * cierra la RLS en solo lectura cuando la lista quede vacía.
+ */
+describe('33. Existencias: nada fuera del núcleo escribe las tablas de stock', () => {
+  const ESCRITURA_STOCK_RE = /from\(\s*['"](stock_levels|stock_movements|stock_reservations)['"]\s*\)[\s\S]{0,300}?\.(insert|upsert|update|delete)\(/;
+  // Filtro propio (ver el caso 32): sin el helper común.
+  const esPrueba33 = (f: string) => /[\\/]__tests__[\\/]|\.test\.|\.spec\./.test(f);
+  const PENDIENTES_POR_BLOQUE: Record<string, string> = {
+    'lib/ai/assistant/undoService.ts': 'B9 · deshacer por fn_producto_int_ajustar_stock',
+    'lib/services/aiActionsService.ts': 'B9 · actualizar stock por fn_producto_int_ajustar_stock',
+  };
+  const escritores = () =>
+    walkDir(SRC_ROOT)
+      .filter((f) => !esPrueba33(f))
+      .filter((f) => ESCRITURA_STOCK_RE.test(stripAllComments(readFile(f))))
+      .map(rel)
+      .sort();
+
+  test('ningún archivo nuevo escribe stock_levels / stock_movements / stock_reservations', () => {
+    const nuevos = escritores().filter((r) => !(r in PENDIENTES_POR_BLOQUE));
+    // Si esto falla: llama a una RPC que pase por fn_inv_int_mover (ver
+    // src/lib/inventario/nucleo/tipos.ts); no escribas las tablas desde src/.
+    expect(nuevos).toEqual([]);
+  });
+
+  test('la deuda solo se achica: cada pendiente sigue escribiendo (si no, quítalo de la lista)', () => {
+    const actuales = new Set(escritores());
+    const yaResueltos = Object.keys(PENDIENTES_POR_BLOQUE).filter((r) => !actuales.has(r));
+    expect(yaResueltos).toEqual([]);
+  });
+
+  test('stockMovementService es una fachada de RPC: no toca las tablas', () => {
+    const src = stripAllComments(readFile(path.join(SRC_ROOT, 'lib', 'services', 'stockMovementService.ts')));
+    expect(src).not.toMatch(/\.from\(/);
+    for (const rpc of ['decrement_stock_with_recipe', 'fn_stock_reservar', 'fn_stock_liberar_reserva', 'fn_kardex_entrada_compra', 'fn_inv_reversion_entrada']) {
+      expect(src).toContain(`'${rpc}'`);
+    }
+  });
+
+  test('B8: la recepción de una OC solo va por fn_oc_recepcionar (sin copia en TS)', () => {
+    // Antes purchaseOrderService.receiveItems/receiveItemsWithSerials calculaban en
+    // el navegador lo recibido, escribían received_quantity línea por línea, el
+    // stock en otra llamada que «no bloqueaba la recepción» y los seriales uno a
+    // uno con los errores en la consola. Hoy todo es una RPC transaccional.
+    const oc = stripAllComments(readFile(path.join(SRC_ROOT, 'lib', 'services', 'purchaseOrderService.ts')));
+    expect(oc).not.toMatch(/incrementOnPurchase|serialTrackingService|receiveItems(WithSerials)?\s*\(/);
+    expect(oc).not.toMatch(/from\(\s*['"]purchase_order_items['"]\s*\)[\s\S]{0,200}?\.update\(\s*\{[\s\S]{0,80}received_quantity/);
+    const fachada = stripAllComments(readFile(path.join(SRC_ROOT, 'lib', 'services', 'stockMovementService.ts')));
+    expect(fachada).toMatch(/ORIGENES_COMPRA = new Set\(\['purchase', 'purchase_invoice'\]\)/);
+    const llamanConOC = walkDir(SRC_ROOT)
+      .filter((f) => !esPrueba33(f))
+      .filter((f) => /incrementOnPurchase\([\s\S]{0,400}?['"]purchase_order['"]/.test(stripAllComments(readFile(f))))
+      .map(rel);
+    expect(llamanConOC).toEqual([]);
+    const ruta = readFile(path.join(SRC_ROOT, 'app', 'api', 'inventario', 'ordenes-compra', '[id]', 'recepcionar', 'route.ts'));
+    expect(ruta).toMatch(/withOrg\(/);
+    expect(ruta).toMatch(/'fn_oc_recepcionar'/);
+    expect(ruta).toMatch(/p_org:\s*ctx\.organizationId/);
+  });
+
+  test('nadie llama a la primitiva ni a sus internas desde src/', () => {
+    const llaman = walkDir(SRC_ROOT)
+      .filter((f) => !esPrueba33(f))
+      .filter((f) => /rpc\(\s*['"]fn_inv_int_/.test(readFile(f)))
+      .map(rel);
+    expect(llaman).toEqual([]);
+  });
+});
+
+// ── Búsqueda única de clientes (2026-09-29) ─────────────────────────────────
+// Cada pantalla buscaba clientes con su propio `.or(full_name.ilike.%${texto}%…)`:
+// sin tildes, frase completa, 20 primeros por orden alfabético y una coma o un
+// paréntesis rompían el filtro (la lista salía vacía). Ahora todas pasan por
+// `buscarClientes` (RPC fn_clientes_buscar) y el POS sin red por el espejo
+// `buscarClientesEnLista` (src/lib/clientes/busqueda.ts).
+describe('Búsqueda única de clientes', () => {
+  const esPruebaCli = (f: string) => /[\/]__tests__[\/]|\.test\.tsx?$/.test(f);
+
+  test('ningún archivo interpola texto en un .or() sobre columnas de clientes', () => {
+    const RE = /\.or\(\s*`[^`]*\b(full_name|first_name|last_name|identification_number|doc_number|company_name|trade_name)\.ilike[^`]*\$\{/;
+    const ofensores = walkDir(SRC_ROOT)
+      .filter((f) => !esPruebaCli(f))
+      .filter((f) => RE.test(stripAllComments(readFile(f))))
+      .map(rel);
+    expect(ofensores).toEqual([]);
+  });
+
+  test('la RPC fn_clientes_buscar solo se llama desde el servicio único', () => {
+    const llaman = walkDir(SRC_ROOT)
+      .filter((f) => !esPruebaCli(f))
+      .filter((f) => /rpc\(\s*['"]fn_clientes_buscar['"]/.test(readFile(f)))
+      .map(rel);
+    expect(llaman).toEqual(['lib/services/customers/busquedaClientesService.ts']);
+  });
+
+  test('el POS (en línea y sin red) usa la búsqueda única', () => {
+    const pos = stripAllComments(readFile(path.join(SRC_ROOT, 'lib', 'services', 'posService.ts')));
+    expect(pos).toMatch(/buscarClientes\(supabase,/);
+    expect(pos).not.toMatch(/from\(\s*['"]customers['"]\s*\)[\s\S]{0,300}?\.or\(/);
+    const offline = stripAllComments(readFile(path.join(SRC_ROOT, 'lib', 'offline', 'posOfflineReads.ts')));
+    expect(offline).toMatch(/buscarClientesEnLista\(/);
+  });
+});
+
+// Acceso v3, fase 5 (docs/design/AUTH-ACCESO-V2.md §13.4 y §13.5): el rol, la
+// organización, el cargo y el estado de OTROS miembros solo cambian por las RPC
+// fn_miembro_* (lib/services/miembrosService.ts). Escribirlos desde el
+// navegador no hace nada (RLS lo filtra en silencio) y, sobre la propia fila,
+// el disparador lo rechaza. Único cambio directo permitido: salir uno mismo
+// (is_active = false en ManageOrganizationsTab).
+describe('35. Miembros: rol, cargo, estado y retiro solo por las RPC fn_miembro_*', () => {
+  const esPrueba = (f: string) => /[\/]__tests__[\/]|\.test\.tsx?$/.test(f);
+  const DE_NAVEGADOR = /from\s+['"]@\/lib\/supabase\/config['"]/;
+  const ESCRITURA = /from\(\s*['"]organization_members['"]\s*\)\s*\.(?:update\(\s*\{[^}]*\b(?:role_id|is_super_admin|organization_id|job_position_id|user_id)\b|delete\()/;
+
+  test('ningún archivo con el cliente del navegador escribe rol, cargo u organización de un miembro, ni lo borra', () => {
+    const ofensores = walkDir(SRC_ROOT)
+      .filter((f) => !esPrueba(f))
+      .filter((f) => {
+        const s = stripAllComments(readFile(f));
+        return DE_NAVEGADOR.test(s) && ESCRITURA.test(s);
+      })
+      .map(rel);
+    expect(ofensores).toEqual([]);
+  });
+
+  test('las RPC de gestión de miembros solo se llaman desde el servicio único', () => {
+    const llaman = walkDir(SRC_ROOT)
+      .filter((f) => !esPrueba(f))
+      .filter((f) => /rpc\(\s*fn\b|rpc\(\s*['"]fn_miembro_/.test(readFile(f)) && /fn_miembro_/.test(readFile(f)))
+      .map(rel);
+    expect(llaman).toEqual(['lib/services/miembrosService.ts']);
   });
 });

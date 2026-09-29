@@ -182,7 +182,7 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
   const [verCuenta, setVerCuenta] = useState(false);
 
   const recargar = useCallback(() => setRecarga((n) => n + 1), []);
-  const { accionesDe, aEliminar, setAEliminar } = useAccionesProveedor({ onCambio: recargar, conVer: false });
+  const { accionesDe, aEliminar, setAEliminar, permisos } = useAccionesProveedor({ onCambio: recargar, conVer: false });
 
   useEffect(() => {
     let cancelado = false;
@@ -606,9 +606,11 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
               <Tarjeta
                 titulo={t('datos.titulo')}
                 accion={
-                  <Link href={`${RUTA_PROVEEDORES}/${supplier.uuid}/editar`} className="text-sm font-medium text-link hover:underline">
-                    {tc('editar')}
-                  </Link>
+                  permisos.editar ? (
+                    <Link href={`${RUTA_PROVEEDORES}/${supplier.uuid}/editar`} className="text-sm font-medium text-link hover:underline">
+                      {tc('editar')}
+                    </Link>
+                  ) : undefined
                 }
               >
                 <dl>
@@ -865,7 +867,7 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
       {panel(
         'facturas',
         <>
-          {recientes(resumen?.facturas, facturas.length, '/app/finanzas/facturas-compra', 'facturas')}
+          {recientes(resumen?.facturas, facturas.length, `/app/finanzas/facturas-compra?proveedor=${supplier.id}`, 'facturas')}
           <DataTable
             etiqueta={t('pestanas.facturas')}
             columnas={colFacturas}
@@ -880,7 +882,13 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
 
       {panel(
         'cuentas',
-        <DataTable
+        <>
+          <p className="text-[13px] text-fg-secondary">
+            <Link href={`/app/finanzas/cuentas-por-pagar?proveedor=${supplier.id}`} className="font-medium text-link hover:underline">
+              {t('recientes.verCuentas')}
+            </Link>
+          </p>
+          <DataTable
           etiqueta={t('pestanas.cuentas')}
           columnas={colCuentas}
           filas={cuentas}
@@ -889,7 +897,8 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
           etiquetaFila={(c) => c.invoice_number || `CxP-${c.id.slice(0, 8)}`}
           tonoFila={(c) => (estadoCxp(c, t).estado === 'vencida' ? 'peligro' : undefined)}
           vacio={{ titulo: t('vacios.cuentas'), icono: WalletCards }}
-        />,
+          />
+        </>,
       )}
 
       {panel(

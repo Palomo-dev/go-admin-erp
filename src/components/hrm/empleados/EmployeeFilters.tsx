@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Input } from '@/components/ui/input';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -17,10 +16,11 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Card, CardContent } from '@/components/ui/card';
-import { Search, X, CalendarIcon, Filter } from 'lucide-react';
+import { X, CalendarIcon, Filter } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 export interface EmployeeFilters {
   search: string;
@@ -80,21 +80,14 @@ export function EmployeeFiltersComponent({
   departments,
   positions,
 }: EmployeeFiltersProps) {
-  const [localSearch, setLocalSearch] = useState(filters.search);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  // Debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (localSearch !== filters.search) {
-        onFiltersChange({ ...filters, search: localSearch });
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [localSearch, filters, onFiltersChange]);
+  // El debounce (300 ms, el de siempre) lo pone `SearchInput`.
+  const handleSearchChange = (texto: string) => {
+    if (texto !== filters.search) onFiltersChange({ ...filters, search: texto });
+  };
 
   const handleClearFilters = () => {
-    setLocalSearch('');
     onFiltersChange({
       search: '',
       status: 'all',
@@ -124,15 +117,13 @@ export function EmployeeFiltersComponent({
         {/* Fila principal de filtros */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {/* Búsqueda */}
-          <div className="relative flex-1 min-w-[150px] sm:min-w-[200px]">
-            <Search className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400 dark:text-gray-500" />
-            <Input
-              value={localSearch}
-              onChange={(e) => setLocalSearch(e.target.value)}
-              placeholder="Buscar..."
-              className="pl-8 sm:pl-10 h-9 text-xs sm:text-sm bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
-            />
-          </div>
+          <SearchInput
+            value={filters.search}
+            onChange={handleSearchChange}
+            debounceMs={300}
+            placeholder="Buscar..."
+            className="flex-1 min-w-[150px] sm:min-w-[200px]"
+          />
 
           {/* Estado */}
           <Select

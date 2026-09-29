@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { buscarClientes } from '@/lib/services/customers/busquedaClientesService';
 
 export interface Customer {
   id: string;
@@ -84,21 +85,20 @@ class NewConversationService {
   async searchCustomers(search: string): Promise<Customer[]> {
     if (!search || search.length < 2) return [];
 
-    const searchLower = `%${search.toLowerCase()}%`;
-
-    const { data, error } = await supabase
-      .from('customers')
-      .select('id, organization_id, full_name, first_name, last_name, email, phone, identification_number, doc_number, avatar_url')
-      .eq('organization_id', this.organizationId)
-      .or(`full_name.ilike.${searchLower},email.ilike.${searchLower},phone.ilike.${searchLower},identification_number.ilike.${searchLower},doc_number.ilike.${searchLower},company_name.ilike.${searchLower},trade_name.ilike.${searchLower}`)
-      .limit(10);
-
-    if (error) {
-      console.error('Error buscando clientes:', error);
-      throw error;
-    }
-
-    return data || [];
+    // Búsqueda única de clientes (RPC): sin tildes, todas las palabras, dígitos.
+    const { filas } = await buscarClientes(supabase, { organizationId: this.organizationId, texto: search, limite: 10 });
+    return filas.map((c) => ({
+      id: c.id,
+      organization_id: c.organization_id,
+      full_name: c.full_name,
+      first_name: c.first_name,
+      last_name: c.last_name,
+      email: c.email,
+      phone: c.phone,
+      identification_number: c.identification_number,
+      doc_number: c.doc_number,
+      avatar_url: c.avatar_url,
+    })) as Customer[];
   }
 
   async getConversationTags(): Promise<ConversationTag[]> {

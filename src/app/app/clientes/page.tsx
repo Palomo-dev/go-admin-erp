@@ -436,7 +436,6 @@ function ListadoClientes() {
         movil={{
           titulo: t('cabecera.clientes'),
           subtitulo: subtituloMovil,
-          ocultarBarra: seleccion.size > 0,
           accion: (
             <div className="flex items-center gap-1">
               <Link

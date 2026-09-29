@@ -24,7 +24,7 @@ export function SettingsHeader({
   return (
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div className="flex flex-wrap items-center gap-3">
-        <Link href="/app/gym">
+        <Link href="/app/membresias">
           <Button variant="ghost" size="icon">
             <ArrowLeft className="h-5 w-5" />
           </Button>

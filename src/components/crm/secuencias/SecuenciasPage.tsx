@@ -11,10 +11,8 @@
  */
 
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { Plus, RefreshCw, Search } from 'lucide-react';
+import { Plus, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -27,6 +25,7 @@ import { EnrollDialog } from './EnrollDialog';
 import { EnrollmentsSheet } from './EnrollmentsSheet';
 import { useSequences, type SequenceView } from './useSequences';
 import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 type StatusFilter = 'all' | 'active' | 'inactive';
 
@@ -99,11 +98,15 @@ export function SecuenciasPage() {
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative sm:max-w-xs sm:flex-1">
-            <Label htmlFor="seq-search" className="sr-only">Buscar secuencia por nombre</Label>
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
-            <Input id="seq-search" className="pl-8" placeholder="Buscar por nombre" value={query} onChange={(e) => setQuery(e.target.value)} />
-          </div>
+          <SearchInput
+            value={query}
+            onChange={setQuery}
+            onValueChange={setQuery}
+            placeholder="Buscar por nombre"
+            id="seq-search"
+            className="sm:max-w-xs sm:flex-1"
+            etiqueta="Buscar secuencia por nombre"
+          />
           <div role="group" aria-label="Filtrar por estado" className="flex gap-1.5">
             {FILTERS.map((f) => {
               const selected = status === f.value;

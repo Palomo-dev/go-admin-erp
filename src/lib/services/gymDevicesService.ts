@@ -1,7 +1,8 @@
 'use client';
 
 import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { tokenSeguro } from '@/lib/services/membresias/operacion';
 
 // ==================== TIPOS ====================
 
@@ -30,6 +31,7 @@ export interface GymAccessDevice {
   branches?: {
     id: number;
     name: string;
+    organization_id?: number;
   };
 }
 
@@ -89,12 +91,14 @@ export class GymDevicesService {
   async getDevices(branchId?: number): Promise<GymAccessDevice[]> {
     if (!this.organizationId) return [];
 
+    // gym_access_devices no tiene organization_id: se filtra por la sede (y el RLS).
     let query = supabase
       .from('gym_access_devices')
       .select(`
         *,
-        branches (id, name)
+        branches!inner (id, name, organization_id)
       `)
+      .eq('branches.organization_id', this.organizationId)
       .order('device_name');
 
     if (branchId) {
@@ -105,7 +109,7 @@ export class GymDevicesService {
 
     if (error) {
       console.error('Error fetching devices:', error.message);
-      return [];
+      throw new Error(error.message);
     }
 
     return (data || []) as unknown as GymAccessDevice[];
@@ -116,10 +120,10 @@ export class GymDevicesService {
       .from('gym_access_devices')
       .select(`
         *,
-        branches (id, name)
+        branches (id, name, organization_id)
       `)
       .eq('id', deviceId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error fetching device:', error.message);
@@ -175,7 +179,7 @@ export class GymDevicesService {
 
     if (error) {
       console.error('Error deleting device:', error.message);
-      return false;
+      throw new Error(error.message);
     }
 
     return true;
@@ -189,7 +193,7 @@ export class GymDevicesService {
 
     if (error) {
       console.error('Error toggling device status:', error.message);
-      return false;
+      throw new Error(error.message);
     }
 
     return true;
@@ -218,13 +222,9 @@ export class GymDevicesService {
     return { token, expires_at: expiresAt };
   }
 
+  /** Con crypto.getRandomValues (antes Math.random, predecible). */
   private generateSecureToken(): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let token = '';
-    for (let i = 0; i < 32; i++) {
-      token += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return token;
+    return tokenSeguro(32);
   }
 
   // ==================== BIOMETRÍA ====================

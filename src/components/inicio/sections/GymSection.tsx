@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Dumbbell } from 'lucide-react';
+import { UserCheck } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { formatMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
@@ -170,9 +170,9 @@ export default function GymSection() {
 
   return (
     <ModuloSection
-      moduleCode="gym"
+      moduleCode="memberships"
       moduleName="Gym"
-      icon={Dumbbell}
+      icon={UserCheck}
       accentColor="text-orange-600 dark:text-orange-400"
       accentBg="bg-orange-100 dark:bg-orange-900/30"
       hasReportes={false}

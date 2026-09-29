@@ -43,7 +43,8 @@ describe('isCustomerDisplayPath', () => {
 describe('el layout raíz retira su UI en la pantalla del cliente', () => {
   const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), 'src', 'components', rel), 'utf8');
 
-  it.each(['PWAInstallPrompt.tsx', 'PushNotificationManager.tsx'])('%s consulta isCustomerDisplayPath(usePathname()) y cita PLAN §4.1.4', (file) => {
+  // PWAInstallPrompt.tsx se retiró (2026-09-29): ya no hay banner de instalación.
+  it.each(['PushNotificationManager.tsx'])('%s consulta isCustomerDisplayPath(usePathname()) y cita PLAN §4.1.4', (file) => {
     const src = read(file);
     expect(src).toContain('isCustomerDisplayPath');
     expect(src).toContain('usePathname');

@@ -42,9 +42,9 @@ export { RowActionsMenu, type RowActionsMenuProps } from './RowActionsMenu';
 export { ActionSheet, type ActionSheetProps } from './ActionSheet';
 export { BulkActionBar, aplanarMenuMasivo, type BulkActionBarProps, type AccionMasiva, type GrupoMenuMasivo } from './BulkActionBar';
 export { ListCard, type ListCardProps } from './ListCard';
-export { AccionRapida, type AccionRapidaProps } from './AccionRapida';
 export { AvatarIniciales, inicialesDe, type AvatarInicialesProps } from './AvatarIniciales';
 export { TabBar, idPestana, idPanel, type TabBarProps, type PestanaTab } from './TabBar';
+export { AccionRapida, type AccionRapidaProps } from './AccionRapida';
 export { prepararMenu, MAX_ENTRADAS_MENU, type AccionFila, type EntradaMenu } from './acciones';
 
 // Estados y paginación
@@ -159,7 +159,7 @@ export * from './documento';
 export { SeccionPlegable, type SeccionPlegableProps } from './SeccionPlegable';
 export { ViewToggle, otraVista, type ViewToggleProps, type OpcionVista } from './ViewToggle';
 export { ResultadoOperacion, type ResultadoOperacionProps, type AccionResultado, type TonoResultado } from './ResultadoOperacion';
-export { SelectorEntidad, type SelectorEntidadProps, type TextosSelectorEntidad } from './SelectorEntidad';
+export { SelectorEntidad, type SelectorEntidadProps, type TextosSelectorEntidad, type FiltroEntidad, type ContextoCrearEntidad } from './SelectorEntidad';
 export { CustomerPicker, type CustomerPickerProps } from './CustomerPicker';
 export { SupplierPicker, type SupplierPickerProps } from './SupplierPicker';
 export {
@@ -207,3 +207,27 @@ export {
 export { CategoryBar, type CategoryBarProps } from './CategoryBar';
 export { opcionesBarra, esTopCategoria, type CategoriaBarra, type ValorCategoria, type IdCategoria } from './categoryBarLogica';
 // ── POS: piezas de venta (fin)
+
+// ── Selector de variantes (Figma `VariantModifierDialog` 155:7980) y enlace relacionado
+export {
+  SelectorVariantes,
+  type SelectorVariantesProps,
+  type AtributoSelector,
+  type ValorAtributoSelector,
+  type VarianteListaSelector,
+  type StockVarianteSelector,
+  type ResumenVarianteSelector,
+  type GrupoSelector,
+  type OpcionGrupoSelector,
+  type ReglaGrupoSelector,
+  type BloqueoSelector,
+} from './SelectorVariantes';
+export {
+  CANTIDAD_MAXIMA_SELECTOR,
+  nombreEnFrase,
+  atributosEnFrase,
+  etiquetaResumenVariante,
+  acotarCantidad,
+  totalSelector,
+} from './selectorVariantesLogica';
+export { RelatedLinkCard, type RelatedLinkCardProps, type TonoRelatedLink } from './RelatedLinkCard';

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { BookOpen, Plus, Loader2, Edit, Trash2, Copy, ChevronRight, ChevronDown, Search, ArrowLeft, Download } from 'lucide-react';
+import { BookOpen, Plus, Loader2, Edit, Trash2, ChevronRight, ChevronDown, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,7 @@ import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { ContabilidadService, ChartAccount } from '../ContabilidadService';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 const ACCOUNT_TYPES = [
   { value: 'asset', label: 'Activo', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
@@ -53,6 +54,8 @@ export function PlanCuentasPage() {
 
   useEffect(() => {
     buildTree();
+    // `buildTree` se recrea en cada render y solo lee estas tres entradas.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cuentas, searchTerm, filterType]);
 
   const loadCuentas = async () => {
@@ -199,7 +202,7 @@ export function PlanCuentasPage() {
       await ContabilidadService.eliminarCuenta(code);
       toast.success('Cuenta eliminada exitosamente');
       loadCuentas();
-    } catch (error) {
+    } catch {
       toast.error('Error al eliminar. Puede tener cuentas hijas o movimientos.');
     }
   };
@@ -319,15 +322,13 @@ export function PlanCuentasPage() {
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardContent className="py-4">
           <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Buscar por código o nombre..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 dark:bg-gray-900 dark:border-gray-600"
-              />
-            </div>
+            <SearchInput
+              value={searchTerm}
+              onChange={setSearchTerm}
+              onValueChange={setSearchTerm}
+              placeholder="Buscar por código o nombre..."
+              className="flex-1"
+            />
             <Select value={filterType || 'all'} onValueChange={(v) => setFilterType(v === 'all' ? null : v)}>
               <SelectTrigger className="w-[180px] dark:bg-gray-900 dark:border-gray-600">
                 <SelectValue placeholder="Tipo de cuenta" />

@@ -57,12 +57,16 @@ export interface TrackingStats {
 
 class TrackingService {
   async getTrackingEvents(organizationId: number, filters: TrackingFilters = {}): Promise<TrackingEvent[]> {
+    // `transport_events` SI tiene `organization_id` (verificado por MCP). La
+    // RLS acota por pertenencia, asi que no habia fuga entre inquilinos, pero
+    // quien pertenece a dos organizaciones veia las dos mezcladas.
     let query = supabase
       .from('transport_events')
       .select(`
         *,
         transport_stops(id, name, city)
       `)
+      .eq('organization_id', organizationId)
       .order('event_time', { ascending: false })
       .order('sequence', { ascending: false })
       .limit(200);
@@ -147,28 +151,43 @@ class TrackingService {
   }
 
   async getTrackingStats(organizationId: number): Promise<TrackingStats> {
-    // `transport_events.event_time` es **timestamptz** y la tabla NO tiene
-    // `branch_id` (verificado en information_schema): la zona es la de la
-    // organizacion. El filtro era `gte('event_time', 'AAAA-MM-DD')` con el dia
-    // UTC — una cadena de dia contra un instante, sin offset y sin cerrar por
-    // arriba: los eventos de la tarde caian en el dia siguiente y el conteo
+    // `transport_events.event_time` es **timestamptz**, la tabla NO tiene
+    // `branch_id` pero SI `organization_id` (verificado en information_schema):
+    // la zona es la de la organizacion, y las cuatro consultas se acotan por
+    // ella. Sin ese filtro, quien pertenece a dos organizaciones veia la suma.
+    //
+    // (Tanda 7) El filtro de «hoy» era `gte('event_time', 'AAAA-MM-DD')` con el
+    // dia UTC — una cadena de dia contra un instante, sin offset y sin cerrar
+    // por arriba: los eventos de la tarde caian en el dia siguiente y el conteo
     // «de hoy» incluia tambien los del futuro.
     const zona = await resolveTimezone(organizationId);
     const { start, end } = getDayRange(todayInTz(zona), zona);
 
     const [allEventsResult, todayEventsResult, stoppedTripsResult, stoppedShipmentsResult] = await Promise.all([
-      supabase.from('transport_events').select('reference_type', { count: 'exact', head: true }),
+      supabase
+        .from('transport_events')
+        .select('reference_type', { count: 'exact', head: true })
+        .eq('organization_id', organizationId),
       supabase
         .from('transport_events')
         .select('id', { count: 'exact', head: true })
+        .eq('organization_id', organizationId)
         .gte('event_time', start)
         .lte('event_time', end),
       supabase.from('trips').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId).in('status', ['delayed', 'incident']),
       supabase.from('shipments').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId).in('status', ['pending', 'received']),
     ]);
 
-    const tripEventsResult = await supabase.from('transport_events').select('id', { count: 'exact', head: true }).eq('reference_type', 'trip');
-    const shipmentEventsResult = await supabase.from('transport_events').select('id', { count: 'exact', head: true }).eq('reference_type', 'shipment');
+    const tripEventsResult = await supabase
+      .from('transport_events')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', organizationId)
+      .eq('reference_type', 'trip');
+    const shipmentEventsResult = await supabase
+      .from('transport_events')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', organizationId)
+      .eq('reference_type', 'shipment');
 
     return {
       totalEvents: allEventsResult.count || 0,
@@ -194,9 +213,12 @@ class TrackingService {
     source?: string;
   }): Promise<TrackingEvent> {
     if (event.external_event_id) {
+      // El antiduplicado es por organizacion: dos inquilinos distintos pueden
+      // recibir del proveedor el mismo `external_event_id`.
       const { data: existing } = await supabase
         .from('transport_events')
         .select('id')
+        .eq('organization_id', event.organization_id)
         .eq('external_event_id', event.external_event_id)
         .maybeSingle();
 
@@ -208,6 +230,7 @@ class TrackingService {
     const { data: lastEvent } = await supabase
       .from('transport_events')
       .select('sequence')
+      .eq('organization_id', event.organization_id)
       .eq('reference_type', event.reference_type)
       .eq('reference_id', event.reference_id)
       .order('sequence', { ascending: false })
@@ -232,13 +255,18 @@ class TrackingService {
     return data;
   }
 
-  async getEventsByReference(referenceType: 'trip' | 'shipment', referenceId: string): Promise<TrackingEvent[]> {
+  async getEventsByReference(
+    organizationId: number,
+    referenceType: 'trip' | 'shipment',
+    referenceId: string,
+  ): Promise<TrackingEvent[]> {
     const { data, error } = await supabase
       .from('transport_events')
       .select(`
         *,
         transport_stops(id, name, city)
       `)
+      .eq('organization_id', organizationId)
       .eq('reference_type', referenceType)
       .eq('reference_id', referenceId)
       .order('event_time', { ascending: true })

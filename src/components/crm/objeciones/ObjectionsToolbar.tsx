@@ -6,12 +6,12 @@
  * estado; el contador de resultados es `aria-live`.
  */
 
-import { Search, X } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/utils/Utils';
 import { EMPTY_FILTERS, OBJECTION_CATEGORIES, countActiveFilters, type ObjectionFilters } from '@/lib/services/crm/objectionModel';
 import { CategoryIcon } from './categoryMeta';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 interface Props {
   filters: ObjectionFilters;
@@ -48,18 +48,15 @@ export function ObjectionsToolbar({ filters, onChange, total, shown, categories 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[220px] flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-400" aria-hidden="true" />
-          <label htmlFor="objections-search" className="sr-only">Buscar objeciones</label>
-          <Input
-            id="objections-search"
-            type="search"
-            placeholder="Buscar por título, señal o respuesta…"
-            className="pl-9"
-            value={filters.query}
-            onChange={(e) => onChange({ ...filters, query: e.target.value })}
-          />
-        </div>
+        <SearchInput
+          id="objections-search"
+          value={filters.query}
+          onChange={(v) => onChange({ ...filters, query: v })}
+          onValueChange={(v) => onChange({ ...filters, query: v })}
+          placeholder="Buscar por título, señal o respuesta…"
+          etiqueta="Buscar objeciones"
+          className="min-w-[220px] flex-1"
+        />
         <div role="group" aria-label="Filtrar por estado" className="flex flex-wrap gap-1.5">
           {STATUS.map((s) => (
             <button key={s.value} type="button" aria-pressed={filters.status === s.value} className={chipClass(filters.status === s.value)} onClick={() => onChange({ ...filters, status: s.value })}>

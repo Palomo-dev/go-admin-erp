@@ -10,8 +10,43 @@ import type { ReportesClient } from '../types';
 // del usuario; en el servidor (asistente de reportes) el route handler pasa el
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
-import { getOrgDateRange } from '@/lib/utils/timezone';
+import { getOrgDateRange, toPlainDate } from '@/lib/utils/timezone';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+
+/** Filas que devuelven las consultas de los informes (los embebidos llegan como objeto). */
+interface FilaSerialInforme {
+  serial: string;
+  status: string;
+  cost_at_purchase: number | string | null;
+  received_date: string | null;
+  warranty_end: string | null;
+  products: { name?: string | null; sku?: string | null; brand?: string | null } | null;
+  suppliers: { name?: string | null } | null;
+  branches: { name?: string | null } | null;
+  current_branch: { name?: string | null } | null;
+}
+
+interface FilaVentaSerialInforme {
+  serial: string;
+  sale_date: string | null;
+  sale_channel: string | null;
+  price_at_sale: number | string | null;
+  sold_by_user_id: string | null;
+  products: { name?: string | null; sku?: string | null } | null;
+  customers: { full_name?: string | null } | null;
+}
+
+interface FilaReclamoInforme {
+  id: string;
+  claim_date: string;
+  status: string;
+  resolution_type: string | null;
+  resolution_date: string | null;
+  refund_amount: number | string | null;
+  supplier_rma_number: string | null;
+  serial_numbers: { serial?: string | null; products?: { name?: string | null } | null } | null;
+  customers: { full_name?: string | null } | null;
+}
 
 function buildReportData(
   id: string,
@@ -70,7 +105,7 @@ export const serialTrackingReports: ReportDefinition[] = [
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end, timezone } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
       const { data, error } = await db
         .from('serial_numbers')
         .select(`
@@ -78,8 +113,8 @@ export const serialTrackingReports: ReportDefinition[] = [
           warranty_start, warranty_end,
           products!inner ( id, name, sku, brand ),
           suppliers ( name ),
-          branches!serial_numbers_branch_id_fkey ( name ),
-          current_branch:branches!serial_numbers_current_branch_id_fkey ( name )
+          branches!fk_serial_branch ( name ),
+          current_branch:branches!fk_serial_current_branch ( name )
         `)
         .eq('organization_id', orgId)
         .gte('created_at', start)
@@ -89,7 +124,7 @@ export const serialTrackingReports: ReportDefinition[] = [
 
       if (error) throw error;
 
-      const filas = (data ?? []).map((s: any) => ({
+      const filas = ((data ?? []) as unknown as FilaSerialInforme[]).map((s) => ({
         serial: s.serial,
         producto: s.products?.name ?? '—',
         sku: s.products?.sku ?? '—',
@@ -99,8 +134,9 @@ export const serialTrackingReports: ReportDefinition[] = [
         estado: STATUS_LABELS[s.status] ?? s.status,
         sucursal_actual: s.current_branch?.name ?? '—',
         sucursal_recepcion: s.branches?.name ?? '—',
-        fecha_recepcion: s.received_date ? s.received_date.split('T')[0] : '—',
-        garantia_fin: s.warranty_end ? s.warranty_end.split('T')[0] : '—',
+        fecha_recepcion: s.received_date ? toPlainDate(new Date(s.received_date), timezone) : '—',
+        // `warranty_end` es una columna `date`: ya es el día, sin zona.
+        garantia_fin: s.warranty_end ?? '—',
       }));
 
       const totalSeriales = filas.length;
@@ -149,7 +185,7 @@ export const serialTrackingReports: ReportDefinition[] = [
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end, timezone } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
       // `serial_numbers.sold_by_user_id` NO tiene clave foránea a `profiles`
       // (la restricción `serial_numbers_sold_by_user_id_fkey` ni siquiera
       // existe), así que el embebido devolvía PGRST200 y el informe entero
@@ -171,7 +207,7 @@ export const serialTrackingReports: ReportDefinition[] = [
       if (error) throw error;
 
       const vendedorIds = Array.from(
-        new Set((data ?? []).map((s: any) => s.sold_by_user_id).filter(Boolean))
+        new Set(((data ?? []) as unknown as FilaVentaSerialInforme[]).map((s) => s.sold_by_user_id).filter(Boolean))
       ) as string[];
       const emailPorUsuario = new Map<string, string>();
       if (vendedorIds.length > 0) {
@@ -196,15 +232,15 @@ export const serialTrackingReports: ReportDefinition[] = [
         manual: 'Manual',
       };
 
-      const filas = (data ?? []).map((s: any) => ({
+      const filas = ((data ?? []) as unknown as FilaVentaSerialInforme[]).map((s) => ({
         serial: s.serial,
         producto: s.products?.name ?? '—',
         sku: s.products?.sku ?? '—',
         cliente: s.customers?.full_name ?? '—',
-        vendedor: emailPorUsuario.get(s.sold_by_user_id) || '—',
-        canal: CHANNEL_LABELS[s.sale_channel] ?? s.sale_channel ?? '—',
+        vendedor: (s.sold_by_user_id && emailPorUsuario.get(s.sold_by_user_id)) || '—',
+        canal: (s.sale_channel && CHANNEL_LABELS[s.sale_channel]) || s.sale_channel || '—',
         precio: Number(s.price_at_sale ?? 0),
-        fecha_venta: s.sale_date ? s.sale_date.split('T')[0] : '—',
+        fecha_venta: s.sale_date ? toPlainDate(new Date(s.sale_date), timezone) : '—',
       }));
 
       const totalVentas = filas.length;
@@ -251,7 +287,7 @@ export const serialTrackingReports: ReportDefinition[] = [
       const overrideHours = (periodo.horaInicio && periodo.horaFin)
         ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
         : null;
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end, timezone } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
       const { data, error } = await db
         .from('warranty_claims')
         .select(`
@@ -271,7 +307,7 @@ export const serialTrackingReports: ReportDefinition[] = [
 
       if (error) throw error;
 
-      const filas = (data ?? []).map((c: any) => {
+      const filas = ((data ?? []) as unknown as FilaReclamoInforme[]).map((c) => {
         const claimDate = new Date(c.claim_date);
         const resolutionDate = c.resolution_date ? new Date(c.resolution_date) : null;
         const diasResolucion = resolutionDate
@@ -283,7 +319,7 @@ export const serialTrackingReports: ReportDefinition[] = [
           serial: c.serial_numbers?.serial ?? '—',
           producto: c.serial_numbers?.products?.name ?? '—',
           cliente: c.customers?.full_name ?? '—',
-          fecha_reclamo: c.claim_date ? c.claim_date.split('T')[0] : '—',
+          fecha_reclamo: c.claim_date ? toPlainDate(new Date(c.claim_date), timezone) : '—',
           estado: CLAIM_STATUS_LABELS[c.status] ?? c.status,
           resolucion: c.resolution_type ? (RESOLUTION_LABELS[c.resolution_type] ?? c.resolution_type) : '—',
           monto: Number(c.refund_amount ?? 0),
@@ -371,7 +407,7 @@ export const serialTrackingReports: ReportDefinition[] = [
       }>();
 
       for (const s of data ?? []) {
-        const supplier = s.suppliers as any;
+        const supplier = s.suppliers as unknown as { name?: string | null } | null;
         const nombre = supplier?.name ?? 'Sin proveedor';
         const existente = porProveedor.get(nombre);
         const costo = Number(s.cost_at_purchase ?? 0);

@@ -535,6 +535,9 @@ export class PrintService {
     items: Array<{
       productName: string;
       quantity: number;
+      /** Solo en líneas por peso o medida («kg») y sus decimales. */
+      unit?: string | null;
+      qtyDecimals?: number | null;
       notes?: string | null;
       station?: string | null;
       variantData?: Record<string, string> | null;
@@ -559,6 +562,7 @@ export class PrintService {
         .map((i) => ({
           productName: i.productName,
           quantity: i.quantity,
+          ...(i.unit ? { unit: i.unit, qtyDecimals: i.qtyDecimals } : {}),
           notes: i.notes,
           variantData: i.variantData,
           modifiers: i.modifiers,

@@ -1,4 +1,3 @@
-export { AjustesHeader } from './AjustesHeader';
-export { AjustesStats } from './AjustesStats';
-export { AjustesFilters } from './AjustesFilters';
-export { AjustesTable } from './AjustesTable';
+export { AjustesPage } from './AjustesPage';
+export { AjusteDetalle } from './AjusteDetalle';
+export { FormularioAjuste } from './FormularioAjuste';

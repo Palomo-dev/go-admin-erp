@@ -19,8 +19,9 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Download, FileText, FileSpreadsheet, ChevronDown } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/utils/Utils';
+import { BranchBadgeActiva, EmptyState, RowActionsMenu, TabBar, idPanel, idPestana, type PestanaTab } from '@/components/kit';
 import {
   dashboardSectionExport,
   type SectionExportData,
@@ -28,7 +29,6 @@ import {
 } from '@/lib/services/inicio/dashboardSectionExport';
 import { toastError, toastSuccess } from '@/components/ui/use-toast';
 import { ModoCompactoContext } from './DashboardModulos';
-import { BranchBadge } from '@/components/inventario/BranchBadge';
 
 export interface ModuloSectionProps {
   /** Código del módulo (ej: 'crm', 'finance') */
@@ -57,7 +57,11 @@ export interface ModuloSectionProps {
   isLoading?: boolean;
   /** Modo compacto: muestra solo header inline sin contenido expandido */
   compacto?: boolean;
-  /** Mostrar badge de sucursal activa (default: true) */
+  /**
+   * Mostrar badge de sucursal activa (default: false). La sucursal ya la dice
+   * el chip de la cabecera del inicio; repetirlo en cada una de las 15
+   * secciones era ruido (Figma lo omite a propósito, patrón 9).
+   */
   showBranchBadge?: boolean;
 }
 
@@ -65,8 +69,8 @@ export default function ModuloSection({
   moduleCode,
   moduleName,
   icon: Icon,
-  accentColor = 'text-blue-600 dark:text-blue-400',
-  accentBg = 'bg-blue-100 dark:bg-blue-900/30',
+  accentColor = 'text-brand',
+  accentBg = 'bg-brand-tint',
   hasReportes = false,
   exportData,
   orgInfo,
@@ -75,7 +79,7 @@ export default function ModuloSection({
   metricasContent,
   isLoading = false,
   compacto: compactoProp = false,
-  showBranchBadge = true,
+  showBranchBadge = false,
 }: ModuloSectionProps) {
   // Consumir modo compacto del context si no se pasa explícitamente
   const compactoContext = React.useContext(ModoCompactoContext);
@@ -153,6 +157,16 @@ export default function ModuloSection({
     }
   }, [exportData, orgInfo, moduleName, t]);
 
+  type TabSeccion = 'dashboard' | 'reportes' | 'metricas';
+  const idTabs = `${moduleCode}-tabs`;
+  const pestanas: PestanaTab<TabSeccion>[] = [
+    { valor: 'dashboard', etiqueta: t('section.dashboard') },
+    { valor: 'reportes', etiqueta: t('section.reports') },
+    ...(metricasContent ? [{ valor: 'metricas' as const, etiqueta: t('section.metrics') }] : []),
+  ];
+  const exportBloqueado = !exportData || isExporting !== null;
+  const motivoExport = !exportData ? t('section.noDataExport') : undefined;
+
   return (
     <section
       id={moduleCode}
@@ -162,12 +176,12 @@ export default function ModuloSection({
       {/* Header de la sección */}
       <div className={cn(
         'flex items-center justify-between gap-3',
-        compacto ? 'p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700' : 'flex-col sm:flex-row sm:items-center sm:justify-between mb-4',
+        compacto ? 'rounded-xl border border-line bg-surface p-3' : 'mb-4 flex-col sm:flex-row sm:items-center sm:justify-between',
       )}>
         <button
           type="button"
           onClick={toggleCollapse}
-          className="flex items-center gap-3 text-left hover:opacity-80 transition-opacity"
+          className="flex items-center gap-3 rounded-lg text-left transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           aria-expanded={!isCollapsed}
           aria-controls={`${moduleCode}-content`}
         >
@@ -175,110 +189,80 @@ export default function ModuloSection({
             <Icon className={cn(compacto ? 'h-4 w-4' : 'h-5 w-5', accentColor)} />
           </div>
           <div className="flex items-center gap-2">
-            <h2 className={cn('font-semibold text-gray-900 dark:text-white', compacto ? 'text-sm' : 'text-lg')}>
+            <h2 className={cn('font-semibold text-fg', compacto ? 'text-sm' : 'text-lg')}>
               {moduleName}
             </h2>
             <ChevronDown
               className={cn(
-                'h-4 w-4 text-gray-400 transition-transform',
+                'h-4 w-4 text-fg-muted transition-transform',
                 isCollapsed && '-rotate-90'
               )}
             />
           </div>
         </button>
 
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleExportCSV}
-            disabled={!exportData || isExporting !== null}
-            className="border-gray-300 dark:border-gray-700"
-          >
-            <FileSpreadsheet className="h-4 w-4 mr-1.5" />
-            CSV
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleExportPDF}
-            disabled={!exportData || isExporting !== null}
-            className="border-gray-300 dark:border-gray-700"
-          >
-            <FileText className="h-4 w-4 mr-1.5" />
-            PDF
-          </Button>
-        </div>
+        {/* Exportar en «⋯» (Figma `FilaModulo` F.5): el motivo se lee cuando no hay datos */}
+        <RowActionsMenu
+          orientacion="horizontal"
+          titulo={moduleName}
+          acciones={[
+            {
+              id: 'csv',
+              etiqueta: 'CSV',
+              icono: FileSpreadsheet,
+              onSelect: handleExportCSV,
+              deshabilitada: exportBloqueado,
+              motivo: motivoExport,
+            },
+            {
+              id: 'pdf',
+              etiqueta: 'PDF',
+              icono: FileText,
+              onSelect: handleExportPDF,
+              deshabilitada: exportBloqueado,
+              motivo: motivoExport,
+            },
+          ]}
+        />
       </div>
 
       {/* Contenido colapsable */}
       {!isCollapsed && (
         <>
-      {/* Sub-tabs Dashboard | Reportes (si aplica) */}
+      {/* Sub-tabs Dashboard | Reportes | Métricas (si aplica), con el TabBar del kit */}
       {hasReportes && (
-        <div className="flex items-center gap-1 mb-4 border-b border-gray-200 dark:border-gray-700">
-          <button
-            type="button"
-            onClick={() => setActiveTab('dashboard')}
-            className={cn(
-              'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
-              activeTab === 'dashboard'
-                ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
-            )}
-          >
-            {t('section.dashboard')}
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('reportes')}
-            className={cn(
-              'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
-              activeTab === 'reportes'
-                ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
-            )}
-          >
-            {t('section.reports')}
-          </button>
-          {metricasContent && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('metricas')}
-              className={cn(
-                'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
-                activeTab === 'metricas'
-                  ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
-              )}
-            >
-              {t('section.metrics')}
-            </button>
-          )}
-        </div>
+        <TabBar
+          id={idTabs}
+          etiqueta={moduleName}
+          tamano="sm"
+          pestanas={pestanas}
+          valor={activeTab}
+          onValorChange={setActiveTab}
+          className="mb-4"
+        />
       )}
 
       {/* Contenido */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
+      <div
+        className="rounded-xl border border-line bg-surface p-4 sm:p-5"
+        {...(hasReportes
+          ? { role: 'tabpanel', id: idPanel(idTabs, activeTab), 'aria-labelledby': idPestana(idTabs, activeTab) }
+          : {})}
+      >
         {showBranchBadge && (
           <div className="mb-4">
-            <BranchBadge />
+            <BranchBadgeActiva />
           </div>
         )}
         {isLoading ? (
           <div className="space-y-3">
-            <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3 animate-pulse" />
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Skeleton className="h-6 w-1/3" />
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-20 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"
-                />
+                <Skeleton key={i} className="h-20 rounded-lg" />
               ))}
             </div>
-            <div className="h-40 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+            <Skeleton className="h-40 rounded-lg" />
           </div>
         ) : children ? (
           activeTab === 'dashboard' ? (
@@ -312,17 +296,12 @@ function NotMigratedPlaceholder({
   t: ReturnType<typeof useTranslations>;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center py-10 text-center">
-      <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-full mb-3">
-        <Download className="h-6 w-6 text-gray-400 dark:text-gray-500" />
-      </div>
-      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-        {t('section.notMigratedTitle', { name: moduleName })}
-      </h3>
-      <p className="text-xs text-gray-500 dark:text-gray-400 max-w-sm">
-        {t('section.notMigratedDesc', { code: moduleCode })}
-      </p>
-    </div>
+    <EmptyState
+      compacto
+      icono={Download}
+      titulo={t('section.notMigratedTitle', { name: moduleName })}
+      descripcion={t('section.notMigratedDesc', { code: moduleCode })}
+    />
   );
 }
 
@@ -334,16 +313,11 @@ function ReportesPlaceholder({
   t: ReturnType<typeof useTranslations>;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center py-10 text-center">
-      <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-full mb-3">
-        <FileText className="h-6 w-6 text-gray-400 dark:text-gray-500" />
-      </div>
-      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-        {t('section.reportsMigratingTitle', { name: moduleName })}
-      </h3>
-      <p className="text-xs text-gray-500 dark:text-gray-400 max-w-sm">
-        {t('section.reportsMigratingDesc')}
-      </p>
-    </div>
+    <EmptyState
+      compacto
+      icono={FileText}
+      titulo={t('section.reportsMigratingTitle', { name: moduleName })}
+      descripcion={t('section.reportsMigratingDesc')}
+    />
   );
 }

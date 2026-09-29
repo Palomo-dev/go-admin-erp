@@ -6,6 +6,8 @@
  * (POS-PLAN L25; la semántica de «Excluir impuesto» e «Incluido» no se toca).
  */
 
+import { cantidadDesdeTexto as cantidadDesdeTextoPeso } from '@/lib/pos/peso/modoVenta';
+
 /**
  * Cómo entra el impuesto en la línea:
  * - `encima`: se suma al precio («+$X impuestos»).
@@ -97,13 +99,21 @@ export function mostrarAgregarDescuento({
 }
 
 /**
- * Cantidad escrita en el campo: entero mayor que 0 o `null` (el campo no acepta
- * ≤ 0 ni vacío; como hoy, `parseInt`). Bajar a 0 solo se hace con «−», y la
- * pantalla decide si confirma.
+ * Cantidad escrita en el campo: mayor que 0 o `null` (el campo no acepta ≤ 0
+ * ni vacío). Por unidad (`decimales = 0`) solo enteros, como siempre; una
+ * línea por peso o medida acepta coma o punto y hasta sus decimales
+ * («0,735»), sin truncar en silencio (`@/lib/pos/peso`). Bajar a 0 solo se
+ * hace con «−», y la pantalla decide si confirma.
  */
-export function cantidadDesdeTexto(texto: string): number | null {
-  const n = Number.parseInt(texto.trim(), 10);
-  return Number.isFinite(n) && n > 0 ? n : null;
+export function cantidadDesdeTexto(texto: string, decimales = 0): number | null {
+  return cantidadDesdeTextoPeso(texto, decimales);
+}
+
+/** ¿El texto parcial puede llegar a ser una cantidad válida («0,», «1.5»)? Filtra las teclas del campo. */
+export function textoCantidadParcialValido(texto: string, decimales = 0): boolean {
+  if (texto === '') return true;
+  const d = Math.max(0, Math.min(3, Math.trunc(decimales)));
+  return d === 0 ? /^\d+$/.test(texto) : new RegExp(`^\\d*(?:[.,]\\d{0,${d}})?$`).test(texto);
 }
 
 /** En móvil, ¿hace falta el tercer renglón? Solo si hay etiquetas, el enlace de descuento o un editor. */

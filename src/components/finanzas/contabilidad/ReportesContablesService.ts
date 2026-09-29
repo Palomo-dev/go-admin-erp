@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
 import { resolveTimezone } from '@/lib/services/timezoneResolver';
 import { getDateRange, getDayRange, todayInTz } from '@/lib/utils/timezone';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 
 // ============================================================
 // `journal_entries.entry_date` es **timestamptz**, no `date` (verificado en
@@ -199,7 +200,8 @@ export class ReportesContablesService {
       .select('code')
       .order('code');
 
-    if (error || !data) return ['COP'];
+    // Sin catálogo: al menos la moneda base de la organización (nunca COP supuesto).
+    if (error || !data) return [(await resolveOrgCurrency(supabase, this.getOrganizationId())).code];
 
     const unique = [...new Set(data.map((d: { code: string }) => d.code))];
     return unique;

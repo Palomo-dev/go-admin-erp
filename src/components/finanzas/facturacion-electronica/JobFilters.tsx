@@ -3,7 +3,6 @@
 import React from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -11,7 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, Filter, X } from 'lucide-react';
+import { Filter, X } from 'lucide-react';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 interface JobFiltersProps {
   statusFilter: string;
@@ -37,15 +37,13 @@ export function JobFilters({
   return (
     <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
       {/* Búsqueda */}
-      <div className="relative flex-1 w-full sm:max-w-xs">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-        <Input
-          placeholder={t('filtros.buscar')}
-          value={searchTerm}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="pl-9 bg-white dark:bg-gray-800"
-        />
-      </div>
+      <SearchInput
+        value={searchTerm}
+        onChange={onSearchChange}
+        onValueChange={onSearchChange}
+        placeholder={t('filtros.buscar')}
+        className="flex-1 w-full sm:max-w-xs"
+      />
 
       {/* Filtro de estado */}
       <div className="flex items-center gap-2">

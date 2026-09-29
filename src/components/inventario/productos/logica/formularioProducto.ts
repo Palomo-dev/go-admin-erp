@@ -3,6 +3,7 @@ import type {
   DatosFormularioProducto,
   ModoFormularioProducto,
   PayloadGuardarProducto,
+  ProductoCampos,
 } from '@/lib/services/productoService';
 import {
   payloadRecetaProducto,
@@ -10,8 +11,28 @@ import {
   validarRecetaForm,
   type RecetaForm,
 } from '@/components/kit/receta/recetaLogica';
+import {
+  esTipoServicio,
+  membresiaDesdeServidor,
+  membresiaFormInicial,
+  payloadMembresia,
+  validarMembresia,
+  type CampoMembresia,
+  type CodigoValidacionMembresia,
+  type MembresiaForm,
+  type TipoServicio,
+} from './membresiaProducto';
 import { validarPatron } from './seriales';
 import { claveAtributos, nombreVariante, type Atributos } from './variantes';
+import {
+  decimalesCantidad,
+  modoVenta,
+  redondearCantidadProducto,
+  UNIDADES_MEDIDA,
+  UNIDADES_PESO,
+  type ModoVenta,
+} from '@/lib/pos/peso/modoVenta';
+import { referenciaValida, type ReferenciaPrecio } from '@/lib/pos/peso/precioReferencia';
 
 /**
  * Estado, validación y payload del formulario único de producto
@@ -25,6 +46,7 @@ export type SeccionFormulario =
   | 'informacion'
   | 'precios'
   | 'impuestos'
+  | 'membresia'
   | 'inventario'
   | 'variantes'
   | 'modificadores'
@@ -37,6 +59,7 @@ export const SECCIONES_FORMULARIO: readonly SeccionFormulario[] = [
   'informacion',
   'precios',
   'impuestos',
+  'membresia',
   'inventario',
   'variantes',
   'modificadores',
@@ -64,7 +87,11 @@ export type CampoFormulario =
   | 'barcode'
   | 'proveedor'
   | 'dimensiones'
-  | 'receta';
+  | 'receta'
+  | 'service_type'
+  | 'modo_venta'
+  | 'scale_plu'
+  | CampoMembresia;
 
 /** Sección donde vive cada campo (índice lateral y paso del stepper móvil). */
 export const SECCION_DE_CAMPO: Record<CampoFormulario, SeccionFormulario> = {
@@ -86,6 +113,17 @@ export const SECCION_DE_CAMPO: Record<CampoFormulario, SeccionFormulario> = {
   proveedor: 'organizacion',
   dimensiones: 'avanzado',
   receta: 'avanzado',
+  service_type: 'informacion',
+  modo_venta: 'precios',
+  scale_plu: 'codigos',
+  membresia_duracion: 'membresia',
+  membresia_cobro: 'membresia',
+  membresia_gracia: 'membresia',
+  membresia_activacion: 'membresia',
+  membresia_congelamiento: 'membresia',
+  membresia_sedes: 'membresia',
+  membresia_horario: 'membresia',
+  membresia_entradas: 'membresia',
 };
 
 /** Códigos de validación: son claves i18n en `productoForm.errores.*`. */
@@ -118,7 +156,17 @@ export type CodigoValidacion =
   | 'variantes_activas'
   | 'receta_sin_ingredientes'
   | 'receta_con_errores'
-  | 'receta_al_producir_sin_inventario';
+  | 'receta_al_producir_sin_inventario'
+  | 'membresia_con_variantes'
+  | 'modo_venta_servicio'
+  | 'modo_venta_con_variantes'
+  | 'unidad_peso_invalida'
+  | 'unidad_medida_invalida'
+  | 'referencia_precio_invalida'
+  | 'minimo_invalido'
+  | 'plu_invalido'
+  | 'plu_duplicado'
+  | CodigoValidacionMembresia;
 
 export type ErroresFormulario = Partial<Record<CampoFormulario, CodigoValidacion>>;
 
@@ -133,6 +181,10 @@ export interface FilaStockForm {
   unit_cost: number | null;
   /** Existencia actual (solo lectura en editar). */
   qty_actual: number;
+  /** Con lotes: código del lote de la entrada inicial (vacío = el servidor propone L-AAAAMMDD). */
+  lot_code: string;
+  /** Con lotes: vencimiento del lote (día calendario `yyyy-MM-dd`), opcional. */
+  expiry_date: string | null;
 }
 
 export interface StockVarianteForm {
@@ -208,6 +260,8 @@ export interface EstadoFormularioProducto {
   sku: string;
   name: string;
   product_type: 'product' | 'service';
+  /** «¿Qué tipo de servicio es?» (products.service_type); solo cuenta si es servicio. */
+  service_type: TipoServicio;
   status: 'active' | 'inactive' | 'discontinued';
   category_id: number | null;
   categorias_adicionales: number[];
@@ -227,6 +281,8 @@ export interface EstadoFormularioProducto {
   auto_generate_serial: boolean;
   serial_pattern: string;
   warranty_months: number | null;
+  /** Maneja lotes (products.track_lots): la venta descuenta por FEFO y cada entrada lleva lote. */
+  track_lots: boolean;
   // Variantes
   tiene_variantes: boolean;
   variantes: VarianteForm[];
@@ -240,6 +296,23 @@ export interface EstadoFormularioProducto {
   brand: string;
   reference: string;
   unit_code: string;
+  /**
+   * Cómo se vende (PRODUCTOS-POR-PESO-BASCULA.md §2.1): por unidad, por peso
+   * (kg o lb) o por medida (metro o litro). `price` y `cost` son SIEMPRE por
+   * `unit_code` (por kg); «cada 100 g» es solo cómo se escribe el precio.
+   */
+  sale_mode: ModoVenta;
+  /** Referencia del precio escrito: '' (por la unidad de venta) o «500GR», «250GR», «100GR», «50GR». */
+  precio_referencia: string;
+  /** Venta mínima de una línea, en `unit_code`. */
+  min_sale_qty: number | null;
+  /** «Exigir báscula»: nunca se vende con el peso escrito a mano. */
+  require_scale: boolean;
+  /**
+   * PLU de balanza (1–99.999, único por organización): el número que la
+   * balanza etiquetadora imprime en la etiqueta de peso variable (sección Códigos).
+   */
+  scale_plu: number | null;
   station: string | null;
   proveedor: ProveedorForm;
   /** Otros proveedores del producto (editar/duplicar): se conservan tal cual. */
@@ -264,6 +337,8 @@ export interface EstadoFormularioProducto {
    * variante exista (docs/design/PRODUCTO-RECETAS-Y-SUBSECCIONES.md §2.2).
    */
   receta: RecetaForm;
+  /** «Configuración de membresía»: solo se envía si es servicio de tipo membresía. */
+  membresia: MembresiaForm;
 }
 
 export interface SucursalBasica {
@@ -327,6 +402,8 @@ export function filasStockIniciales(sucursales: readonly SucursalBasica[]): Fila
     min_level: null,
     unit_cost: null,
     qty_actual: 0,
+    lot_code: '',
+    expiry_date: null,
   }));
 }
 
@@ -335,6 +412,7 @@ export function estadoInicial(sucursales: readonly SucursalBasica[] = []): Estad
     sku: '',
     name: '',
     product_type: 'product',
+    service_type: 'standard',
     status: 'active',
     category_id: null,
     categorias_adicionales: [],
@@ -350,6 +428,7 @@ export function estadoInicial(sucursales: readonly SucursalBasica[] = []): Estad
     auto_generate_serial: false,
     serial_pattern: '',
     warranty_months: null,
+    track_lots: false,
     tiene_variantes: false,
     variantes: [],
     modificadores: [],
@@ -358,6 +437,11 @@ export function estadoInicial(sucursales: readonly SucursalBasica[] = []): Estad
     brand: '',
     reference: '',
     unit_code: 'UN',
+    sale_mode: 'unit',
+    precio_referencia: '',
+    min_sale_qty: null,
+    require_scale: false,
+    scale_plu: null,
     station: null,
     proveedor: { ...PROVEEDOR_VACIO },
     otros_proveedores: [],
@@ -368,6 +452,7 @@ export function estadoInicial(sucursales: readonly SucursalBasica[] = []): Estad
     height_cm: null,
     nota: '',
     receta: recetaFormInicial(),
+    membresia: membresiaFormInicial(),
   };
 }
 
@@ -400,6 +485,7 @@ export function estadoDesdeDatos(
     sku: dup ? `${s(p.sku)}${sufijos.sku}` : s(p.sku),
     name: dup ? `${s(p.name)}${sufijos.nombre}` : s(p.name),
     product_type: p.product_type === 'service' ? 'service' : 'product',
+    service_type: esTipoServicio(p.service_type) ? p.service_type : 'standard',
     status: (['active', 'inactive', 'discontinued'].includes(s(p.status)) ? s(p.status) : 'active') as EstadoFormularioProducto['status'],
     category_id: n(p.category_id),
     categorias_adicionales: dup && !copiar.categorias ? [] : [...datos.categorias_adicionales],
@@ -418,11 +504,14 @@ export function estadoDesdeDatos(
       min_level: f.min_level ? Number(f.min_level) : null,
       unit_cost: null,
       qty_actual: dup ? 0 : Number(f.qty_on_hand) || 0,
+      lot_code: '',
+      expiry_date: null,
     })),
     track_serial: Boolean(p.track_serial),
     auto_generate_serial: Boolean(p.auto_generate_serial),
     serial_pattern: s(p.serial_pattern),
     warranty_months: n(p.warranty_months),
+    track_lots: Boolean(p.track_lots),
     tiene_variantes: (dup ? copiar.variantes : true) && (Boolean(p.is_parent) || datos.variantes.length > 0),
     variantes:
       dup && !copiar.variantes
@@ -483,7 +572,13 @@ export function estadoDesdeDatos(
     barcode: dup ? '' : s(p.barcode),
     brand: s(p.brand),
     reference: s(p.reference),
-    unit_code: s(p.unit_code) || 'UN',
+    unit_code: s(p.unit_code).trim() || 'UN',
+    sale_mode: modoVenta(p as { sale_mode?: string | null }),
+    precio_referencia: referenciaComoTexto(p as { price_ref_qty?: unknown; price_ref_unit_code?: unknown }),
+    min_sale_qty: n((p as { min_sale_qty?: unknown }).min_sale_qty),
+    require_scale: (p as { require_scale?: unknown }).require_scale === true,
+    // Único por organización: una copia no lo hereda.
+    scale_plu: dup ? null : n((p as { scale_plu?: unknown }).scale_plu),
     station: p.station ? s(p.station) : null,
     proveedor:
       preferido && (!dup || copiar.proveedores)
@@ -517,6 +612,8 @@ export function estadoDesdeDatos(
     nota: '',
     // Las recetas llegan aparte (fn_producto_recetas_para_formulario): ver recetaFormDesdeServidor.
     receta: { ...recetaFormInicial(), activa: Boolean(p.is_composite), modo: p.production_type === 'preparation' ? 'al_producir' : 'al_vender' },
+    // El plan viaja con el producto (también al duplicar: la copia es otro plan con las mismas reglas).
+    membresia: membresiaDesdeServidor(datos.membresia),
   };
   // Duplicar con imágenes y sin principal marcada: la primera.
   if (estado.imagenes.length > 0 && !estado.imagenes.some((i) => i.is_primary)) {
@@ -627,7 +724,88 @@ export function validarFormulario(
     excluirIds: idsPropios(e, contexto.productId),
   });
   if (errReceta) err.receta = errReceta;
+  const errModo = validarModoVenta(e);
+  if (errModo) err.modo_venta = errModo;
+  const errPlu = validarPlu(e);
+  if (errPlu) err.scale_plu = errPlu;
+  if (esMembresia(e)) {
+    // Cada plan es un producto: una membresía no lleva variantes (la base también lo rechaza).
+    if (e.tiene_variantes) err.service_type = 'membresia_con_variantes';
+    Object.assign(err, validarMembresia(e.membresia));
+  }
   return err;
+}
+
+// ── Cómo se vende (productos por peso o medida) ────────────────────────────
+
+/** «100GR» desde `price_ref_qty` + `price_ref_unit_code`; '' si el precio es por la unidad de venta. */
+export function referenciaComoTexto(p: { price_ref_qty?: unknown; price_ref_unit_code?: unknown }): string {
+  const q = Number(p.price_ref_qty);
+  const u = String(p.price_ref_unit_code ?? '').trim().toUpperCase();
+  return Number.isFinite(q) && q > 0 && u ? `${q}${u}` : '';
+}
+
+/** Referencia del texto del formulario («100GR» → 100 g); `null` = por la unidad de venta. */
+export function referenciaDesdeTexto(texto: string): ReferenciaPrecio | null {
+  const m = /^(\d+(?:\.\d+)?)([A-Z]{1,4})$/.exec((texto ?? '').trim().toUpperCase());
+  return m ? { cantidad: Number(m[1]), unidad: m[2] } : null;
+}
+
+/** Unidad por defecto al cambiar cómo se vende (kg por peso, metro por medida, unidad por unidad). */
+export function unidadParaModo(modo: ModoVenta, actual: string): string {
+  const u = (actual ?? '').trim().toUpperCase();
+  if (modo === 'weight') return (UNIDADES_PESO as readonly string[]).includes(u) ? u : 'KG';
+  if (modo === 'measure') return (UNIDADES_MEDIDA as readonly string[]).includes(u) ? u : 'MT';
+  return (UNIDADES_PESO as readonly string[]).includes(u) || (UNIDADES_MEDIDA as readonly string[]).includes(u) ? 'UN' : u || 'UN';
+}
+
+/** Validación de «Cómo se vende» (la misma de fn_producto_int_modo_venta). */
+export function validarModoVenta(e: EstadoFormularioProducto): CodigoValidacion | null {
+  if (e.sale_mode === 'unit') return null;
+  if (e.product_type === 'service') return 'modo_venta_servicio';
+  if (e.tiene_variantes) return 'modo_venta_con_variantes';
+  const u = (e.unit_code ?? '').trim().toUpperCase();
+  if (e.sale_mode === 'weight' && !(UNIDADES_PESO as readonly string[]).includes(u)) return 'unidad_peso_invalida';
+  if (e.sale_mode === 'measure' && !(UNIDADES_MEDIDA as readonly string[]).includes(u)) return 'unidad_medida_invalida';
+  const ref = referenciaDesdeTexto(e.precio_referencia);
+  if (e.sale_mode === 'weight' && ref && !referenciaValida(ref, u)) return 'referencia_precio_invalida';
+  if (e.min_sale_qty !== null) {
+    const dec = decimalesCantidad({ sale_mode: e.sale_mode });
+    if (!(e.min_sale_qty > 0) || redondearCantidadProducto(e.min_sale_qty, dec) !== e.min_sale_qty) return 'minimo_invalido';
+  }
+  return null;
+}
+
+/** PLU de balanza: entero de 1 a 99.999, solo en productos por peso o medida (fn_producto_int_plu). */
+export const PLU_MAXIMO = 99999;
+
+export function validarPlu(e: Pick<EstadoFormularioProducto, 'sale_mode' | 'scale_plu'>): CodigoValidacion | null {
+  if (e.sale_mode === 'unit' || e.scale_plu === null) return null;
+  return Number.isInteger(e.scale_plu) && e.scale_plu >= 1 && e.scale_plu <= PLU_MAXIMO ? null : 'plu_invalido';
+}
+
+/** Campos de «Cómo se vende» para `payload.producto` (siempre viajan: 'unit' deja todo por defecto). */
+export function camposModoVenta(e: EstadoFormularioProducto): Pick<
+  ProductoCampos,
+  'sale_mode' | 'price_ref_qty' | 'price_ref_unit_code' | 'min_sale_qty' | 'require_scale' | 'scale_plu'
+> {
+  if (e.sale_mode === 'unit' || e.product_type === 'service') {
+    return { sale_mode: 'unit', price_ref_qty: null, price_ref_unit_code: null, min_sale_qty: null, require_scale: false, scale_plu: null };
+  }
+  const ref = e.sale_mode === 'weight' ? referenciaDesdeTexto(e.precio_referencia) : null;
+  return {
+    sale_mode: e.sale_mode,
+    price_ref_qty: ref ? ref.cantidad : null,
+    price_ref_unit_code: ref ? ref.unidad : null,
+    min_sale_qty: e.min_sale_qty,
+    require_scale: e.sale_mode === 'weight' && e.require_scale,
+    scale_plu: e.scale_plu,
+  };
+}
+
+/** Servicio de tipo membresía: muestra «Configuración de membresía» y envía `payload.membresia`. */
+export function esMembresia(e: Pick<EstadoFormularioProducto, 'product_type' | 'service_type'>): boolean {
+  return e.product_type === 'service' && e.service_type === 'membership';
 }
 
 /** El producto y sus variantes: no pueden ser ingredientes de su propia receta. */
@@ -705,6 +883,33 @@ export function campoDeErrorRpc(codigo: CodigoErrorProducto): CampoFormulario | 
     case 'receta_destino_repetido':
     case 'receta_al_producir_sin_inventario':
       return 'receta';
+    case 'tipo_servicio_invalido':
+    case 'membresia_con_variantes':
+    case 'membresia_con_contratos':
+    case 'plan_producto_invalido':
+      return 'service_type';
+    case 'membresia_unidad_invalida':
+    case 'membresia_duracion_invalida':
+      return 'membresia_duracion';
+    case 'modo_venta_invalido':
+    case 'modo_venta_servicio':
+    case 'modo_venta_con_variantes':
+    case 'unidad_peso_invalida':
+    case 'unidad_medida_invalida':
+    case 'referencia_precio_invalida':
+    case 'decimales_invalidos':
+    case 'minimo_invalido':
+    case 'tara_invalida':
+      return 'modo_venta';
+    case 'plu_invalido':
+    case 'plu_duplicado':
+      return 'scale_plu';
+    case 'membresia_cobro_invalido':
+      return 'membresia_cobro';
+    case 'membresia_gracia_invalida':
+      return 'membresia_gracia';
+    case 'membresia_sede_invalida':
+      return 'membresia_sedes';
     default:
       return null;
   }
@@ -721,7 +926,15 @@ const limpio = (t: string): string | null => (t.trim() === '' ? null : t.trim())
 export function construirPayload(
   e: EstadoFormularioProducto,
   modo: ModoFormularioProducto,
-  opciones: { productId?: number; rutas?: Record<string, string> } = {},
+  opciones: {
+    productId?: number;
+    rutas?: Record<string, string>;
+    /**
+     * Enviar la configuración de la membresía (exige memberships.plans.manage). Sin permiso
+     * no se envía: un producto nuevo recibe el plan por defecto y uno existente conserva el suyo.
+     */
+    conMembresia?: boolean;
+  } = {},
 ): PayloadGuardarProducto {
   const rastrea = e.track_stock && e.product_type !== 'service';
   const rutas = opciones.rutas ?? {};
@@ -737,6 +950,7 @@ export function construirPayload(
       unit_code: e.unit_code || 'UN',
       station: e.station,
       product_type: e.product_type,
+      service_type: e.product_type === 'service' ? e.service_type : null,
       status: e.status,
       brand: limpio(e.brand),
       reference: limpio(e.reference),
@@ -745,11 +959,13 @@ export function construirPayload(
       serial_pattern: limpio(e.serial_pattern),
       auto_generate_serial: e.track_serial && e.auto_generate_serial,
       warranty_months: e.track_serial ? e.warranty_months : null,
+      track_lots: rastrea && e.track_lots,
       weight_kg: e.product_type === 'service' ? null : e.weight_kg,
       length_cm: e.product_type === 'service' ? null : e.length_cm,
       width_cm: e.product_type === 'service' ? null : e.width_cm,
       height_cm: e.product_type === 'service' ? null : e.height_cm,
       is_composite: e.receta.activa,
+      ...camposModoVenta(e),
     },
     impuestos: [...e.impuestos],
     categorias_adicionales: e.categorias_adicionales.filter((c) => c !== e.category_id),
@@ -811,6 +1027,9 @@ export function construirPayload(
     payload.stock = e.stock.map((f) => ({
       branch_id: f.branch_id,
       ...(modo !== 'editar' && (f.qty ?? 0) > 0 ? { qty: f.qty ?? 0, unit_cost: f.unit_cost ?? e.cost ?? 0 } : {}),
+      ...(modo !== 'editar' && (f.qty ?? 0) > 0 && e.track_lots
+        ? { lot_code: f.lot_code.trim(), expiry_date: f.expiry_date || null }
+        : {}),
       min_level: f.min_level ?? 0,
     }));
   }
@@ -847,6 +1066,8 @@ export function construirPayload(
     e.tiene_variantes,
     e.tiene_variantes ? e.variantes.map((v) => v.clave) : [],
   );
+
+  if (esMembresia(e) && opciones.conMembresia !== false) payload.membresia = payloadMembresia(e.membresia);
 
   if (e.nota.trim()) payload.nota = e.nota;
   return payload;

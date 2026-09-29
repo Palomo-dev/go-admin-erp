@@ -13,10 +13,19 @@ import type { GateResult } from '@/lib/services/crm/stageGateService';
  */
 export interface StageOption { id: string; name: string; color?: string | null; is_won?: boolean | null; is_lost?: boolean | null }
 
+/**
+ * Cada variante lleva UN literal en `reason`, no una unión de dos: con
+ * `reason: 'needs_won' | 'needs_lost'` en el mismo miembro, un `switch` que
+ * cubra ambos casos no puede descartar la variante en su `default`, y ahí
+ * TypeScript sigue viendo `{stage}` sin `message`. Eso dejaba `next build` en
+ * rojo desde `opportunitiesService.markAsWon` (el `tsc` del editor no lo
+ * cazaba). Partirlo es neutro: el valor devuelto no cambia.
+ */
 export type StageChangeResult =
   | { ok: true; opportunity: Record<string, unknown> }
   | { ok: false; reason: 'gate'; gate: GateResult; stage: StageOption }
-  | { ok: false; reason: 'needs_won' | 'needs_lost'; stage: StageOption }
+  | { ok: false; reason: 'needs_won'; stage: StageOption }
+  | { ok: false; reason: 'needs_lost'; stage: StageOption }
   | { ok: false; reason: 'error'; message: string };
 
 export async function requestStageChange(

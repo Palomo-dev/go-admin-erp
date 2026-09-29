@@ -48,11 +48,23 @@ export function Isotipo({
   );
 }
 
-export function Firma({ invertido = false, className }: { invertido?: boolean; className?: string }) {
+/**
+ * `tamano` 32 es la Firma `Size=32` del acceso (Figma `EscenaAcceso`, 1129:36409):
+ * isotipo de 32 y texto de 18. Por defecto 24 (shell, drawer).
+ */
+export function Firma({
+  invertido = false,
+  tamano = 24,
+  className,
+}: {
+  invertido?: boolean;
+  tamano?: 24 | 32;
+  className?: string;
+}) {
   return (
-    <span className={cn('inline-flex items-center gap-2', className)}>
-      <Isotipo tamano={24} invertido={invertido} />
-      <span className={cn('text-sm tracking-[-0.01em]', invertido ? 'text-white' : 'text-fg')}>
+    <span className={cn('inline-flex items-center', tamano === 32 ? 'gap-2.5' : 'gap-2', className)}>
+      <Isotipo tamano={tamano} invertido={invertido} />
+      <span className={cn(tamano === 32 ? 'text-lg' : 'text-sm', 'tracking-[-0.01em]', invertido ? 'text-white' : 'text-fg')}>
         <span className="font-bold">GO </span>
         <span className="font-medium">Admin</span>
       </span>

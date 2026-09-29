@@ -71,7 +71,7 @@ interface OpenFinanceAccountRow {
   id: string;
   link_id: string;
   organization_id: number;
-  bank_account_id: string | null;
+  bank_account_id: number | null; // integer en la BD, no uuid (verificado por MCP)
   external_account_id: string | null;
   account_number: string | null;
   currency: string | null;
@@ -134,7 +134,7 @@ export class BalanceService {
       const { data: ofAccount, error: ofError } = await supabase
         .from('open_finance_accounts')
         .select('id, link_id, organization_id, external_account_id, currency, last_balance, last_balance_at')
-        .eq('bank_account_id', String(bankAccountId))
+        .eq('bank_account_id', bankAccountId)
         .eq('is_active', true)
         .maybeSingle();
 
@@ -408,20 +408,43 @@ export class BalanceService {
       const dateFromStr = addPlainDays(dateToStr, -days);
       const ventana = getDateRange(dateFromStr, dateToStr, timezone);
 
-      // Consultar transacciones de Open Finance de la cuenta
-      const { data: transactions, error: txError } = await supabase
-        .from('open_finance_transactions')
-        .select('id, transaction_date, amount')
-        .eq('account_id', String(bankAccountId))
-        .gte('transaction_date', ventana.start)
-        .lte('transaction_date', ventana.end)
-        .order('transaction_date', { ascending: true });
+      // `open_finance_transactions.account_id` es **uuid** y apunta a
+      // `open_finance_accounts.id`; lo que llega aqui es un entero de
+      // `bank_accounts.id`. Filtrar el uuid con el entero no casaba nunca, asi
+      // que el historial salia siempre plano sin que nadie lo notara. El puente
+      // es `open_finance_accounts.bank_account_id` (integer, verificado por
+      // MCP). Ese puente NO es unico: una cuenta bancaria puede tener cero
+      // vinculaciones (historial plano: no hay movimientos que proyectar) o
+      // varias (un link por banco, o una relectura del mismo). El historial de
+      // la cuenta bancaria es el de TODO lo que cuelga de ella, asi que se
+      // consultan todas sus cuentas de open finance, no la primera.
+      const { data: ofAccounts, error: ofAccountsError } = await supabase
+        .from('open_finance_accounts')
+        .select('id')
+        .eq('bank_account_id', bankAccountId);
 
-      if (txError) {
-        throw new Error(`Error al obtener transacciones: ${txError.message}`);
+      if (ofAccountsError) {
+        throw new Error(`Error al obtener cuentas vinculadas: ${ofAccountsError.message}`);
       }
 
-      const txList = (transactions || []) as OpenFinanceTransactionRow[];
+      const accountIds = ((ofAccounts || []) as Array<{ id: string }>).map((c) => c.id);
+
+      let txList: OpenFinanceTransactionRow[] = [];
+      if (accountIds.length > 0) {
+        const { data: transactions, error: txError } = await supabase
+          .from('open_finance_transactions')
+          .select('id, transaction_date, amount')
+          .in('account_id', accountIds)
+          .gte('transaction_date', ventana.start)
+          .lte('transaction_date', ventana.end)
+          .order('transaction_date', { ascending: true });
+
+        if (txError) {
+          throw new Error(`Error al obtener transacciones: ${txError.message}`);
+        }
+
+        txList = (transactions || []) as OpenFinanceTransactionRow[];
+      }
 
       // Agrupar transacciones por dia y calcular saldo proyectado
       const dailyChanges = new Map<string, number>();

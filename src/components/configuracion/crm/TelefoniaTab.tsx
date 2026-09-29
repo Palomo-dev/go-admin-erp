@@ -16,6 +16,8 @@ import { useTelephonySettings } from './telefonia/useTelephonySettings';
 import { PhoneNumbersSection } from './telefonia/PhoneNumbersSection';
 import { RecordingConsentSection } from './telefonia/RecordingConsentSection';
 import { MyMobileSection } from './telefonia/MyMobileSection';
+import { VoiceAgentSwitchSection } from './telefonia/VoiceAgentSwitchSection';
+import { DataPolicySection } from './telefonia/DataPolicySection';
 
 export function TelefoniaTab() {
   const t = useTelephonySettings();
@@ -91,6 +93,17 @@ export function TelefoniaTab() {
             canEdit={t.canEdit}
             onImport={t.importNumbers}
             onPatchNumber={t.patchNumber}
+            onPatchSettings={t.patchSettings}
+          />
+          <Separator />
+          {/* F6: sin este interruptor el agente IA no marca nunca (la columna es DEFAULT false). */}
+          <VoiceAgentSwitchSection settings={t.settings} canEdit={t.canEdit} onPatchSettings={t.patchSettings} />
+          <Separator />
+          {/* Ley 1581: sin política de tratamiento de datos las campañas del agente no llaman. */}
+          <DataPolicySection
+            key={`politica-${t.settings.organization_id}`}
+            settings={t.settings}
+            canEdit={t.canEdit}
             onPatchSettings={t.patchSettings}
           />
           <Separator />

@@ -60,6 +60,15 @@ import { SCHEDULED_TASKS, isScheduledTask, splitScheduledKinds } from '@/lib/job
 import { JOBS_RUN_PATH, JOBS_RUN_SCHEDULES, VERCEL_SCHEDULE_KINDS } from '@/lib/jobs/schedule';
 import { SCHEDULED_KINDS, hasScheduledKinds, runScheduledKinds } from '@/lib/jobs/scheduler';
 
+/**
+ * Compuertas legales (2026-09-30): la cola exige la URL de la política de
+ * tratamiento de datos y una verificación RNE vigente por campaña. Los
+ * escenarios de despacho las traen cumplidas; sus casos propios viven en
+ * `src/__tests__/voz/` y `voiceAgent/__tests__/`.
+ */
+const POLITICA_DATOS = 'https://example.com/politica-de-datos';
+const RNE_VIGENTE = { id: 'rne-1', checked_at: '2026-09-01T00:00:00Z', valid_until: '2999-01-01T00:00:00Z' };
+
 const ROOT = process.cwd();
 const SRC = (rel: string) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
 
@@ -181,6 +190,7 @@ function escenario(o: EscenarioOpts = {}) {
   const claimedRows = o.claimed ?? [pendingRow()];
   const resolver: Resolver = (op) => {
     if (op.table === 'voice_agent_campaigns' && op.verb === 'select') return { data: o.campaigns ?? [campaignRow()] };
+    if (op.table === 'voice_campaign_rne_checks') return { data: [RNE_VIGENTE] };
     if (op.table === 'comm_settings') {
       if (o.commSettings === null) return { data: null };
       return {
@@ -188,7 +198,7 @@ function escenario(o: EscenarioOpts = {}) {
           voice_caller_id: '+573001234567',
           voice_recording_enabled: true,
           voice_consent_message: 'Esta llamada será grabada.',
-          voice_agent_enabled: true,
+          voice_agent_enabled: true, data_policy_url: POLITICA_DATOS,
           is_active: true,
           voice_minutes_remaining: 100,
           voice_max_concurrent_calls: o.maxConcurrentOrg ?? 3,
@@ -409,8 +419,9 @@ describe('3. Diagnóstico de bloqueos', () => {
   test('V17 · una campaña activa con el agente inactivo señala al agente', async () => {
     const resolver: Resolver = (op) => {
       if (op.table === 'voice_agent_campaigns' && op.verb === 'select') return { data: [campaignRow()] };
+      if (op.table === 'voice_campaign_rne_checks') return { data: [RNE_VIGENTE] };
       if (op.table === 'comm_settings') {
-        return { data: { voice_caller_id: '+573001234567', voice_agent_enabled: true, is_active: true, voice_minutes_remaining: 10 } };
+        return { data: { voice_caller_id: '+573001234567', voice_agent_enabled: true, data_policy_url: POLITICA_DATOS, is_active: true, voice_minutes_remaining: 10 } };
       }
       if (op.table === 'voice_agents') return { data: { is_active: false, max_calls_per_day: 50, max_calls_per_hour: 20 } };
       if (op.table === 'voice_agent_call_attempts' && op.head) return { count: 0 };

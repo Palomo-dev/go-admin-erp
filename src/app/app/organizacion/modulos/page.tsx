@@ -74,6 +74,7 @@ const moduleIcons: Record<string, React.ComponentType<{ className?: string }>> =
   'operations': Activity,
   'chat': MessageSquare,
   'gym': Dumbbell,
+  'memberships': UserCheck,
   'pm': FolderKanban
 };
 

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Percent } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { CartTag, PanelAdaptable, SegmentedControl } from '@/components/kit';
+import { CampoNumero, CartTag, KbdButton, PanelAdaptable, SegmentedControl } from '@/components/kit';
 import type { CartItem } from '@/components/pos/types';
 
 /**
@@ -76,13 +76,9 @@ export function DialogoDescuento({ abierto, onAbiertoChange, items, formatear, f
         </div>
       }
       pie={
-        <button
-          type="button"
-          onClick={() => onAbiertoChange(false)}
-          className="flex h-10 items-center justify-center rounded-lg border border-line-strong bg-surface px-4 text-sm font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-        >
+        <KbdButton variante="secundario" onClick={() => onAbiertoChange(false)}>
           {t('listo')}
-        </button>
+        </KbdButton>
       }
     >
       <ul className="flex flex-col divide-y divide-line" aria-label={t('lineas')}>
@@ -107,13 +103,12 @@ export function DialogoDescuento({ abierto, onAbiertoChange, items, formatear, f
                 ) : null}
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  inputMode="decimal"
-                  value={texto}
-                  onChange={(e) => setValores((v) => ({ ...v, [item.id]: e.target.value }))}
+                {/* Figma `290:35435`: NumberInput (sin tope: si excede, se avisa abajo). */}
+                <CampoNumero
+                  tamano="sm"
+                  valor={texto === '' ? null : parseFloat(texto) || 0}
+                  onValorChange={(n) => setValores((v) => ({ ...v, [item.id]: n == null ? '' : String(n) }))}
+                  minimo={0}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
@@ -123,25 +118,15 @@ export function DialogoDescuento({ abierto, onAbiertoChange, items, formatear, f
                   aria-label={t('montoDe', { nombre: item.product.name })}
                   aria-invalid={excede || undefined}
                   placeholder={t('monto')}
-                  className="h-9 w-32 rounded-lg border border-line-strong bg-surface px-3 text-sm tabular-nums text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand aria-[invalid=true]:border-danger"
+                  className="w-32"
                 />
-                <button
-                  type="button"
-                  disabled={aplicando === item.id}
-                  onClick={() => void aplicar(item, monto)}
-                  className="flex h-9 items-center rounded-lg bg-brand-action px-3 text-sm font-medium text-fg-on-brand hover:bg-brand-action-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50"
-                >
+                <KbdButton variante="primario" tamano="sm" cargando={aplicando === item.id} onClick={() => void aplicar(item, monto)}>
                   {t('aplicar')}
-                </button>
+                </KbdButton>
                 {item.discount_amount ? (
-                  <button
-                    type="button"
-                    disabled={aplicando === item.id}
-                    onClick={() => void aplicar(item, 0)}
-                    className="flex h-9 items-center rounded-lg px-3 text-sm font-medium text-fg-secondary hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50"
-                  >
+                  <KbdButton variante="fantasma" tamano="sm" disabled={aplicando === item.id} onClick={() => void aplicar(item, 0)}>
                     {t('quitar')}
-                  </button>
+                  </KbdButton>
                 ) : null}
                 {(frecuentes[item.product_id] ?? []).map((f) => (
                   <CartTag key={f} origen="manual" icono={null} onClick={() => void aplicar(item, f)} etiquetaAccesible={t('frecuente', { monto: formatear(f) })}>

@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useRef, useCallback } from 'react';
-import { Card } from '@/components/ui/card';
+import React from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Receipt, Send, Clock, Split, DollarSign, UserCircle, CheckCircle2, AlertCircle, LogOut } from 'lucide-react';
+import { Receipt, Send, Clock, Split, DollarSign, UserCircle, AlertTriangle, LogOut } from 'lucide-react';
+import { BotonImporte, FilaDato, ListaDatos, Tarjeta } from '@/components/kit';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { CustomerSelector, type OccupiedSpace } from '@/components/pos/CustomerSelector';
 import type { Customer } from '@/components/pos/types';
@@ -42,8 +43,6 @@ interface MesaActionsSidebarProps {
   cashSessionActive?: boolean;
 }
 
-type PrintBadge = { type: 'success' | 'error'; message: string } | null;
-
 export function MesaActionsSidebar({
   selectedCustomer,
   selectedRoom,
@@ -67,75 +66,40 @@ export function MesaActionsSidebar({
   onLiberarMesa,
   cashSessionActive = true,
 }: MesaActionsSidebarProps) {
+  const t = useTranslations('posMesas.cuenta');
   const { formatear } = useMonedaOrganizacion();
-  const [comandaBadge, setComandaBadge] = useState<PrintBadge>(null);
-  const [preCuentaBadge, setPreCuentaBadge] = useState<PrintBadge>(null);
-  const comandaTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const preCuentaTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const showBadge = useCallback(
-    (which: 'comanda' | 'preCuenta', badge: PrintBadge) => {
-      const setter = which === 'comanda' ? setComandaBadge : setPreCuentaBadge;
-      const timerRef = which === 'comanda' ? comandaTimerRef : preCuentaTimerRef;
-      setter(badge);
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => setter(null), 4000);
-    },
-    [],
-  );
-
-  const handleEnviarComandaClick = async () => {
-    try {
-      await onEnviarComanda();
-      showBadge('comanda', { type: 'success', message: 'Enviado correctamente' });
-    } catch {
-      showBadge('comanda', { type: 'error', message: 'Error al enviar' });
-    }
+  // El aviso (éxito o error) lo da la página con un toast: aquí solo se evita
+  // la promesa rechazada sin manejar. Antes había además un chip flotante de 4 s.
+  const handleEnviarComandaClick = () => {
+    onEnviarComanda().catch(() => undefined);
   };
 
-  const handleGenerarPreCuentaClick = async () => {
-    try {
-      await onGenerarPreCuenta();
-      showBadge('preCuenta', { type: 'success', message: 'Impresión exitosa' });
-    } catch {
-      showBadge('preCuenta', { type: 'error', message: 'Error de impresión' });
-    }
+  const handleGenerarPreCuentaClick = () => {
+    onGenerarPreCuenta().catch(() => undefined);
   };
+
+  const partes = billSplits?.filter((s) => s.total > 0) ?? [];
+  const bloqueadoPorDivision = !!billSplits && unassignedItemsCount > 0;
 
   return (
     <div className="lg:col-span-1 space-y-4">
       {/* Cliente */}
-      <Card className="overflow-hidden">
-        <div className="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 px-4 py-3 border-b border-purple-200 dark:border-purple-800">
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <UserCircle className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-            Cliente
-          </h3>
-        </div>
-        <div className="p-2 sm:p-3 pt-0">
-          <CustomerSelector
-            onCustomerSelect={onCustomerSelect}
-            selectedCustomer={selectedCustomer}
-            selectedRoom={selectedRoom}
-          />
-        </div>
-      </Card>
+      <Tarjeta titulo={t('cliente')} icono={UserCircle}>
+        <CustomerSelector
+          onCustomerSelect={onCustomerSelect}
+          selectedCustomer={selectedCustomer}
+          selectedRoom={selectedRoom}
+        />
+      </Tarjeta>
 
-      {/* Resumen de Cuenta */}
-      <Card className="overflow-hidden lg:sticky lg:top-24">
-        <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 px-4 py-3 border-b border-blue-200 dark:border-blue-800">
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <Receipt className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            Resumen de Cuenta
-          </h3>
-        </div>
-        <div className="p-4 space-y-4">
+      {/* Resumen de cuenta */}
+      <Tarjeta titulo={t('resumen')} icono={Receipt} className="lg:sticky lg:top-24">
+        <div className="space-y-4">
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600 dark:text-gray-400">Subtotal</span>
-              <span className="font-medium text-gray-900 dark:text-gray-100">
-                {formatear(subtotal)}
-              </span>
+              <span className="text-fg-secondary">{t('subtotal')}</span>
+              <span className="font-medium text-fg tabular-nums">{formatear(subtotal)}</span>
             </div>
             <MesaTaxBreakdown
               items={taxItems}
@@ -143,10 +107,8 @@ export function MesaActionsSidebar({
             />
             <Separator />
             <div className="flex justify-between text-lg font-bold">
-              <span className="text-gray-900 dark:text-gray-100">Total</span>
-              <span className="text-blue-600 dark:text-blue-400">
-                {formatear(total)}
-              </span>
+              <span className="text-fg">{t('total')}</span>
+              <span className="text-brand-deep tabular-nums">{formatear(total)}</span>
             </div>
           </div>
 
@@ -154,57 +116,25 @@ export function MesaActionsSidebar({
 
           {/* Acciones */}
           <div className="space-y-2">
-            <div className="relative">
-              <Button
-                variant="outline"
-                className="w-full justify-start"
-                onClick={handleEnviarComandaClick}
-                disabled={!itemsCount}
-              >
-                <Send className="h-4 w-4 mr-2" />
-                Enviar a Cocina
-              </Button>
-              {comandaBadge && (
-                <span
-                  className={`absolute -top-2 -right-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium shadow-md animate-in fade-in zoom-in duration-200 ${
-                    comandaBadge.type === 'success'
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
-                      : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
-                  }`}
-                >
-                  {comandaBadge.type === 'success'
-                    ? <CheckCircle2 className="h-3 w-3" />
-                    : <AlertCircle className="h-3 w-3" />}
-                  {comandaBadge.message}
-                </span>
-              )}
-            </div>
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={handleEnviarComandaClick}
+              disabled={!itemsCount}
+            >
+              <Send aria-hidden="true" className="h-4 w-4 mr-2" />
+              {t('enviarCocina')}
+            </Button>
 
-            <div className="relative">
-              <Button
-                variant="outline"
-                className="w-full justify-start"
-                onClick={handleGenerarPreCuentaClick}
-                disabled={!itemsCount}
-              >
-                <Receipt className="h-4 w-4 mr-2" />
-                Ver Pre-Cuenta
-              </Button>
-              {preCuentaBadge && (
-                <span
-                  className={`absolute -top-2 -right-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium shadow-md animate-in fade-in zoom-in duration-200 ${
-                    preCuentaBadge.type === 'success'
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
-                      : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
-                  }`}
-                >
-                  {preCuentaBadge.type === 'success'
-                    ? <CheckCircle2 className="h-3 w-3" />
-                    : <AlertCircle className="h-3 w-3" />}
-                  {preCuentaBadge.message}
-                </span>
-              )}
-            </div>
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={handleGenerarPreCuentaClick}
+              disabled={!itemsCount}
+            >
+              <Receipt aria-hidden="true" className="h-4 w-4 mr-2" />
+              {t('verPreCuenta')}
+            </Button>
 
             <Button
               variant="outline"
@@ -212,117 +142,97 @@ export function MesaActionsSidebar({
               onClick={onSolicitarCuenta}
               disabled={sessionStatus === 'bill_requested' || !itemsCount}
             >
-              <Clock className="h-4 w-4 mr-2" />
-              Solicitar Cuenta
+              <Clock aria-hidden="true" className="h-4 w-4 mr-2" />
+              {t('solicitarCuenta')}
             </Button>
 
             <Separator />
 
-            {/* Dividir Cuenta */}
+            {/* Dividir cuenta */}
             {!billSplits ? (
               <Button
                 variant="outline"
-                className="w-full justify-start border-blue-300 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
+                className="w-full justify-start"
                 onClick={onOpenSplitBill}
                 disabled={!itemsCount || customers < 2}
               >
-                <Split className="h-4 w-4 mr-2" />
-                Dividir Cuenta ({customers} comensales)
+                <Split aria-hidden="true" className="h-4 w-4 mr-2" />
+                {t('dividir', { n: customers })}
               </Button>
             ) : (
               <div className="space-y-2">
-                <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                      ✓ Cuenta dividida en {billSplits.filter((s) => s.total > 0).length} partes
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={onCancelSplit}
-                      className="h-7 text-xs"
-                    >
-                      Cancelar división
+                <Tarjeta
+                  titulo={t('divididaEn', { n: partes.length })}
+                  icono={Split}
+                  accion={
+                    <Button size="sm" variant="ghost" onClick={onCancelSplit} className="h-7 text-xs">
+                      {t('cancelarDivision')}
                     </Button>
-                  </div>
-                  {billSplits
-                    .filter((split) => split.total > 0)
-                    .map((split) => (
-                      <div key={split.id} className="flex justify-between text-sm py-1">
-                        <span className="text-gray-700 dark:text-gray-300">{split.name}:</span>
-                        <span className="font-semibold text-blue-600">{formatear(split.total)}</span>
-                      </div>
+                  }
+                >
+                  <ListaDatos>
+                    {partes.map((split) => (
+                      <FilaDato key={split.id} etiqueta={split.name} valor={formatear(split.total)} />
                     ))}
-                </div>
+                  </ListaDatos>
+                </Tarjeta>
 
-                {/* Alerta de items sin asignar */}
+                {/* Productos agregados después de dividir */}
                 {unassignedItemsCount > 0 && (
-                  <div className="p-3 bg-orange-50 dark:bg-orange-950/30 border border-orange-300 dark:border-orange-800 rounded-lg">
-                    <div className="flex items-start gap-2">
-                      <div className="text-orange-600 dark:text-orange-400 mt-0.5">⚠️</div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-orange-900 dark:text-orange-100">
-                          {unassignedItemsCount} producto(s) sin asignar
-                        </p>
-                        <p className="text-xs text-orange-700 dark:text-orange-300 mt-1">
-                          Total: {formatear(unassignedItemsTotal)}
-                        </p>
-                        <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-                          Divide la cuenta nuevamente para incluirlos
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                  <Tarjeta
+                    tono="advertencia"
+                    icono={AlertTriangle}
+                    titulo={t('sinAsignar', { n: unassignedItemsCount })}
+                    descripcion={t('sinAsignarDescripcion', { total: formatear(unassignedItemsTotal) })}
+                  />
                 )}
 
                 <Button
                   variant={unassignedItemsCount > 0 ? 'default' : 'outline'}
                   size="sm"
                   onClick={onOpenSplitBill}
-                  className={`w-full text-xs ${unassignedItemsCount > 0 ? 'bg-orange-600 hover:bg-orange-700 text-white animate-pulse' : ''}`}
+                  className="w-full text-xs"
                 >
-                  {unassignedItemsCount > 0
-                    ? '⚠️ Dividir de Nuevo (REQUERIDO)'
-                    : 'Modificar división'}
+                  {unassignedItemsCount > 0 ? t('dividirDeNuevo') : t('modificarDivision')}
                 </Button>
               </div>
             )}
 
             <Separator />
 
-            <Button
+            {/* Cobrar: sin caja queda deshabilitado con el motivo (como antes); el
+                estado `sinCaja` del kit abre la caja y esta pantalla no tiene ese flujo. */}
+            <BotonImporte
+              etiqueta={
+                billSplits
+                  ? unassignedItemsCount > 0
+                    ? t('cobrar.divideDeNuevo')
+                    : t('cobrar.pagosDivididos')
+                  : t('cobrar.procesar')
+              }
+              importe={formatear(total)}
+              icono={DollarSign}
+              anchoCompleto
+              tamano="lg"
+              estado={!cashSessionActive || !itemsCount || bloqueadoPorDivision ? 'deshabilitado' : 'listo'}
+              motivo={!cashSessionActive ? t('cobrar.sinCaja') : undefined}
               onClick={onCheckout}
-              disabled={!itemsCount || (!!billSplits && unassignedItemsCount > 0) || !cashSessionActive}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold text-base py-6 disabled:opacity-50"
-              size="lg"
-            >
-              <DollarSign className="h-5 w-5 mr-2" />
-              {billSplits
-                ? unassignedItemsCount > 0
-                  ? 'Divide de Nuevo para Continuar'
-                  : 'Procesar Pagos Divididos'
-                : 'Procesar Pago'}
-            </Button>
-            {!cashSessionActive && (
-              <p className="text-xs text-red-600 dark:text-red-400 text-center mt-1">
-                Debe abrir una caja antes de procesar el pago
-              </p>
-            )}
+            />
 
             <Separator />
 
-            {/* Liberar Mesa */}
+            {/* Liberar mesa */}
             <Button
               variant="outline"
-              className="w-full justify-start border-orange-300 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/30"
+              className="w-full justify-start border-line-warning text-warning-text hover:bg-warning-subtle"
               onClick={onLiberarMesa}
             >
-              <LogOut className="h-4 w-4 mr-2" />
-              Liberar Mesa
+              <LogOut aria-hidden="true" className="h-4 w-4 mr-2" />
+              {t('liberarMesa')}
             </Button>
           </div>
         </div>
-      </Card>
+      </Tarjeta>
     </div>
   );
 }

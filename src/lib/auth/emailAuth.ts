@@ -1,324 +1,111 @@
 import { supabase, signInWithEmail } from '@/lib/supabase/config';
-import type { AuthError, Session, User } from '@supabase/supabase-js';
+import { codigoDeErrorAuth, type CodigoErrorLogin } from '@/lib/auth/codigosAcceso';
 
-// Interfaces para tipos de datos
-interface OrganizationType {
-  name: string;
-}
+/**
+ * Inicio de sesión con correo y contraseña (acceso v3, docs/design/AUTH-ACCESO-V2.md
+ * §12 y §13).
+ *
+ * Devuelve CÓDIGOS, no textos: la pantalla los traduce (namespace
+ * `acceso.login`). Un único código para credenciales malas — no se distingue
+ * «el usuario no existe» de «la contraseña no es» (enumeración, §4.2) — y la
+ * pantalla ya no ofrece «Crear cuenta» cuando solo falla la contraseña.
+ */
 
-interface Plan {
+export { codigoDeErrorAuth, type CodigoErrorLogin };
+
+export interface OrganizacionDeUsuario {
   id: number;
   name: string;
-}
-
-interface Organization {
-  id: number;
-  name: string;
-  type_id: {
-    name: string;
-  };
+  type_id: { name: string };
   role_id?: number;
-  plan_id: Plan;
+  plan_id: { id: number; name: string };
   status?: string;
   logo_url?: string;
 }
 
-interface LoginResult {
-  success: boolean;
-  error?: string;
-  requiresEmailVerification?: boolean;
+export interface ErrorLogin {
+  codigo: CodigoErrorLogin;
+  /** ISO: hasta cuándo dura el bloqueo por intentos (solo con `bloqueado`). */
+  bloqueadoHasta?: string;
 }
 
-export interface EmailLoginParams {
-  email: string;
-  password: string;
-  rememberMe: boolean;
-  setLoading: (loading: boolean) => void;
-  setError: (error: string | null) => void;
-  setUserOrganizations: (orgs: Organization[]) => void;
-  setShowOrgPopup: (show: boolean) => void;
-  proceedWithLogin: (rememberMe: boolean, email: string) => void;
-  setEmailNotConfirmed?: (confirmed: boolean) => void;
-  setResendingEmail?: (resending: boolean) => void;
-}
+export type ResultadoLogin =
+  | { ok: true; userId: string; email: string }
+  | { ok: false; error: ErrorLogin };
 
 /**
- * Maneja el proceso de login con email y contraseña
- * Incluye validación de errores, reenvío de emails y obtención de organizaciones
+ * Abre la sesión con correo y contraseña y la deja en el cliente (cookie de
+ * siempre). No decide a dónde ir: eso es `destinoTrasLogin`.
  */
-export const handleEmailLogin = async (params: EmailLoginParams): Promise<void> => {
-  const {
-    email,
-    password,
-    rememberMe,
-    setLoading,
-    setError,
-    setUserOrganizations,
-    setShowOrgPopup,
-    proceedWithLogin,
-    setEmailNotConfirmed,
-    setResendingEmail
-  } = params;
-
-  setLoading(true);
-  setError(null);
-
+export async function iniciarSesionConCorreo(email: string, password: string): Promise<ResultadoLogin> {
   try {
-    // Intentar login
-    const loginResult = await performLogin(email, password);
-    
-    if (!loginResult.success) {
-      if (loginResult.requiresEmailVerification) {
-        await handleEmailVerification(email, setEmailNotConfirmed, setResendingEmail);
-      }
-      throw new Error(loginResult.error || 'Error en el login');
-    }
-
-    // Obtener usuario actual
-    console.log('🔍 [EMAIL AUTH] Obteniendo datos del usuario...');
-    
-    // Primero verificar la sesión actual
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-    console.log('🔍 [EMAIL AUTH] Sesión actual:', {
-      hasSession: !!sessionData.session,
-      hasUser: !!sessionData.session?.user,
-      userId: sessionData.session?.user?.id,
-      sessionError
-    });
-    
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    console.log('🔍 [EMAIL AUTH] getUser resultado:', {
-      hasUser: !!user,
-      userId: user?.id,
-      userEmail: user?.email,
-      userError
-    });
-    
-    if (userError || !user) {
-      console.error('❌ [EMAIL AUTH] Error obteniendo usuario:', { userError, user });
-      
-      // Si getUser falla pero tenemos sesión, usar el usuario de la sesión
-      if (sessionData.session?.user) {
-        console.log('✅ [EMAIL AUTH] Usando usuario de sesión como fallback');
-        const sessionUser = sessionData.session.user;
-        // Continuar con el usuario de la sesión
-        
-        // Obtener organizaciones del usuario
-        console.log('📈 [EMAIL AUTH] Obteniendo organizaciones para usuario:', sessionUser.id);
-        const organizations = await getUserOrganizations(sessionUser.id);
-        
-        console.log('🏢 [EMAIL AUTH] Organizaciones encontradas:', {
-          count: organizations.length,
-          organizations: organizations.map(org => ({ id: org.id, name: org.name }))
-        });
-
-        // Mostrar selector de organización si hay múltiples
-        if (organizations.length >= 1) {
-          console.log('📱 [EMAIL AUTH] Mostrando popup de selección de organización');
-          setUserOrganizations(organizations);
-          setShowOrgPopup(true);
-        } else {
-          // 0 organizaciones: verificar si tiene invitación pendiente
-          console.log('� [EMAIL AUTH] Sin organizaciones, verificando invitaciones pendientes...');
-          const { data: pendingInvite } = await supabase
-            .from('invitations')
-            .select('code, organization_id, role_id, organizations(name), roles(name)')
-            .eq('email', sessionUser.email || email)
-            .eq('status', 'pending')
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          if (pendingInvite?.code) {
-            console.log('📧 [EMAIL AUTH] Invitación pendiente encontrada, redirigiendo a invite wizard:', pendingInvite.code);
-            await supabase.auth.signOut();
-            window.location.replace(`/auth/invite?invite_code=${pendingInvite.code}`);
-            return;
-          }
-
-          console.log('🚀 [EMAIL AUTH] Login directo - no hay organizaciones ni invitaciones');
-          proceedWithLogin(rememberMe, email);
-        }
-        return;
-      }
-      
-      throw new Error('No se pudo obtener la información del usuario');
-    }
-
-    // Obtener organizaciones del usuario
-    console.log('📈 [EMAIL AUTH] Obteniendo organizaciones para usuario:', user.id);
-    const organizations = await getUserOrganizations(user.id);
-    
-    console.log('🏢 [EMAIL AUTH] Organizaciones encontradas:', {
-      count: organizations.length,
-      organizations: organizations.map(org => ({ id: org.id, name: org.name }))
-    });
-
-    // Mostrar selector de organización si hay múltiples
-    if (organizations.length >= 1) {
-      console.log('📱 [EMAIL AUTH] Mostrando popup de selección de organización');
-      setUserOrganizations(organizations);
-      setShowOrgPopup(true);
-    } else {
-      // 0 organizaciones: verificar si tiene invitación pendiente
-      console.log('� [EMAIL AUTH] Sin organizaciones, verificando invitaciones pendientes...');
-      const { data: pendingInvite } = await supabase
-        .from('invitations')
-        .select('code, organization_id, role_id, organizations(name), roles(name)')
-        .eq('email', user.email || email)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (pendingInvite?.code) {
-        console.log('📧 [EMAIL AUTH] Invitación pendiente encontrada, redirigiendo a invite wizard:', pendingInvite.code);
-        await supabase.auth.signOut();
-        window.location.replace(`/auth/invite?invite_code=${pendingInvite.code}`);
-        return;
-      }
-
-      console.log('🚀 [EMAIL AUTH] Login directo - no hay organizaciones ni invitaciones');
-      proceedWithLogin(rememberMe, email);
-    }
-    
-  } catch (error: any) {
-    setError(error.message || 'Error al iniciar sesión');
-  } finally {
-    setLoading(false);
-  }
-};
-
-/**
- * Realiza el login con email y contraseña
- */
-async function performLogin(email: string, password: string): Promise<LoginResult> {
-  try {
-    console.log('🚀 [PERFORM LOGIN] Iniciando login para:', email);
-    const { data, error } = await signInWithEmail(email, password);
-    
-    console.log('🔍 [PERFORM LOGIN] Resultado signInWithEmail:', {
-      hasData: !!data,
-      hasSession: !!data?.session,
-      hasUser: !!data?.user,
-      userId: data?.user?.id,
-      userEmail: data?.user?.email,
-      error: error?.message
-    });
-
+    const { data, error } = await signInWithEmail(email.trim(), password);
     if (error) {
-      // 429 Too Many Requests — Supabase rate limiting
-      if (error.message.includes('Too Many Requests') || error.message.includes('rate limit') || error.status === 429) {
-        return {
-          success: false,
-          error: 'Demasiados intentos. Espera unos minutos antes de volver a intentar.'
-        };
-      }
-
-      if (error.message.includes('Invalid login credentials')) {
-        return {
-          success: false,
-          error: 'El usuario no existe o las credenciales son incorrectas. Por favor verifica tu email y contraseña.'
-        };
-      }
-      
-      if (error.message.includes('Email not confirmed')) {
-        return {
-          success: false,
-          error: 'Tu cuenta aún no ha sido verificada.',
-          requiresEmailVerification: true
-        };
-      }
-      
-      if (error.message.includes('User not found')) {
-        return {
-          success: false,
-          error: 'El usuario no existe. ¿Quieres crear una cuenta nueva?'
-        };
-      }
-      
+      const codigo = (error as { codigoAcceso?: CodigoErrorLogin }).codigoAcceso ?? codigoDeErrorAuth(error);
       return {
-        success: false,
-        error: error.message
+        ok: false,
+        error: { codigo, bloqueadoHasta: (error as { bloqueadoHasta?: string }).bloqueadoHasta },
       };
     }
-
-    if (!data?.user || !data?.session) {
-      console.error('❌ [PERFORM LOGIN] Datos incompletos:', { hasUser: !!data?.user, hasSession: !!data?.session });
-      return {
-        success: false,
-        error: 'La sesión no se pudo establecer correctamente.'
-      };
-    }
-
-    // Establecer sesión en el cliente
-    console.log('🔄 [PERFORM LOGIN] Estableciendo sesión en cliente...');
-    const { data: setSessionData, error: setSessionError } = await supabase.auth.setSession({
+    if (!data?.session || !data.user) return { ok: false, error: { codigo: 'inesperado' } };
+    const { error: setError } = await supabase.auth.setSession({
       access_token: data.session.access_token,
-      refresh_token: data.session.refresh_token
+      refresh_token: data.session.refresh_token,
     });
-    
-    if (setSessionError) {
-      console.error('❌ [PERFORM LOGIN] Error estableciendo sesión:', setSessionError);
-      return {
-        success: false,
-        error: 'Error estableciendo la sesión: ' + setSessionError.message
-      };
-    }
-    
-    console.log('✅ [PERFORM LOGIN] Sesión establecida exitosamente:', {
-      hasSession: !!setSessionData.session,
-      userId: setSessionData.session?.user?.id
-    });
-
-    return { success: true };
-    
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.message || 'Error inesperado durante el login'
-    };
+    if (setError) return { ok: false, error: { codigo: 'inesperado' } };
+    return { ok: true, userId: data.user.id, email: data.user.email || email };
+  } catch (err) {
+    console.error('[acceso] Error inesperado al iniciar sesión:', err);
+    return { ok: false, error: { codigo: 'inesperado' } };
   }
 }
 
 /**
- * Maneja la verificación de email y reenvío
+ * Qué hacer según cuántas organizaciones tiene la persona (decisión v2-9, R4):
+ *  - 0 → selección en estado vacío (crear o unirse con código; R12);
+ *  - 1 → se activa esa y se entra sin preguntar;
+ *  - 2 o más → el selector único `/auth/select-organization`.
  */
-async function handleEmailVerification(
-  email: string,
-  setEmailNotConfirmed?: (confirmed: boolean) => void,
-  setResendingEmail?: (resending: boolean) => void
-): Promise<void> {
-  if (setEmailNotConfirmed) setEmailNotConfirmed(true);
+export type DecisionOrganizacion =
+  | { tipo: 'ninguna' }
+  | { tipo: 'una'; organizacion: OrganizacionDeUsuario }
+  | { tipo: 'varias' };
 
+export function decidirOrganizacion(organizaciones: OrganizacionDeUsuario[]): DecisionOrganizacion {
+  if (organizaciones.length === 0) return { tipo: 'ninguna' };
+  if (organizaciones.length === 1) return { tipo: 'una', organizacion: organizaciones[0] };
+  return { tipo: 'varias' };
+}
+
+/**
+ * Usuario sin organizaciones: si tiene una invitación pendiente, el servidor
+ * le manda el enlace a su correo (el código nunca llega al navegador por esta
+ * vía: una sesión no prueba el buzón). Devuelve true si ya se redirigió a la
+ * pantalla de «revisa tu correo».
+ */
+export async function enlaceDeInvitacionEnviado(email: string): Promise<boolean> {
   try {
-    if (setResendingEmail) setResendingEmail(true);
-
-    const { error: resendError } = await supabase.auth.resend({
-      type: 'signup',
-      email: email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=/app/inicio`
-      }
-    });
-
-    if (setResendingEmail) setResendingEmail(false);
-
-    if (!resendError) {
-      throw new Error('Tu cuenta aún no ha sido verificada. Hemos reenviado el correo de verificación a tu bandeja de entrada. Por favor revisa tu email y haz clic en el enlace de verificación.');
-    } else {
-      throw new Error('Tu cuenta aún no ha sido verificada. Por favor revisa tu correo electrónico y haz clic en el enlace de verificación.');
-    }
-  } catch (error: any) {
-    if (setResendingEmail) setResendingEmail(false);
-    throw new Error('Tu cuenta aún no ha sido verificada. Por favor revisa tu correo electrónico y haz clic en el enlace de verificación.');
+    // Viene del asistente con su enlace (redirectTo=/auth/invite?invite_code=…):
+    // proceedWithLogin lo devuelve allí, no hace falta otro correo.
+    if (sessionStorage.getItem('redirectTo')?.startsWith('/auth/invite')) return false;
+    const res = await fetch('/api/auth/invite/pendiente', { method: 'POST', cache: 'no-store' });
+    if (!res.ok) return false;
+    const { enlaceEnviado } = (await res.json()) as { enlaceEnviado?: boolean };
+    if (!enlaceEnviado) return false;
+    await supabase.auth.signOut();
+    window.location.replace(`/auth/verify/failed?estado=reenviado&email=${encodeURIComponent(email)}`);
+    return true;
+  } catch (err) {
+    console.error('[acceso] No se pudo consultar la invitación pendiente:', err);
+    return false;
   }
 }
 
 /**
- * Obtiene las organizaciones del usuario
+ * Organizaciones activas de la persona (membresías activas). La principal
+ * (`profiles.last_org_id`) la ordena la pantalla de selección.
  */
-async function getUserOrganizations(userId: string): Promise<Organization[]> {
+export async function getUserOrganizations(userId: string): Promise<OrganizacionDeUsuario[]> {
   const { data: ownedOrgs, error: ownedError } = await supabase
     .from('organization_members')
     .select(`
@@ -350,57 +137,55 @@ async function getUserOrganizations(userId: string): Promise<Organization[]> {
 
   if (ownedError) {
     console.error('Error obteniendo organizaciones:', ownedError);
-    throw new Error('Error al obtener las organizaciones del usuario');
+    throw new Error('organizaciones');
   }
 
-  return (ownedOrgs || []).map((member: any) => {
-    // Obtener la suscripción activa
+  type Suscripcion = { plan_id?: number | null; status?: string | null; plans?: { id?: number; name?: string } | null };
+  type Miembro = {
+    organization_id: number;
+    role_id?: number;
+    organizations?: {
+      id?: number;
+      name?: string;
+      status?: string;
+      logo_url?: string | null;
+      organization_types?: { name?: string } | null;
+      subscriptions?: Suscripcion[] | null;
+    } | null;
+  };
+
+  return ((ownedOrgs || []) as unknown as Miembro[]).map((member) => {
     const subscriptions = member.organizations?.subscriptions || [];
-    const activeSub = subscriptions.find((s: any) => s.status === 'active') || subscriptions[0];
-    
+    const activeSub = subscriptions.find((s) => s.status === 'active') || subscriptions[0];
     return {
       id: member.organizations?.id || member.organization_id,
-      name: member.organizations?.name || 'Unknown',
-      type_id: { name: member.organizations?.organization_types?.name || 'Unknown' },
+      name: member.organizations?.name || '—',
+      type_id: { name: member.organizations?.organization_types?.name || '' },
       role_id: member.role_id,
       plan_id: {
         id: activeSub?.plans?.id || activeSub?.plan_id || 0,
-        name: activeSub?.plans?.name || 'Free'
+        name: activeSub?.plans?.name || 'Free',
       },
       status: member.organizations?.status || 'active',
-      logo_url: member.organizations?.logo_url || undefined
+      logo_url: member.organizations?.logo_url || undefined,
     };
   });
 }
 
-// Función para reenviar email de verificación manualmente
-export const resendVerificationEmail = async (email: string): Promise<{ success: boolean; message: string }> => {
+/**
+ * Reenvía el correo de confirmación de la cuenta. La respuesta es la misma
+ * exista o no la cuenta (el servidor limita por IP y por correo).
+ */
+export async function reenviarConfirmacion(email: string): Promise<{ ok: boolean; espera?: boolean }> {
   try {
-    const { error } = await supabase.auth.resend({
-      type: 'signup',
-      email: email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=/app/inicio`
-      }
+    const res = await fetch('/api/auth/reenviar-confirmacion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
     });
-    
-    if (error) {
-      console.error('Error al reenviar email:', error);
-      return {
-        success: false,
-        message: 'Error al reenviar el correo de verificación. Por favor intenta más tarde.'
-      };
-    }
-    
-    return {
-      success: true,
-      message: 'Correo de verificación reenviado correctamente. Revisa tu bandeja de entrada.'
-    };
-  } catch (err: any) {
-    console.error('Error inesperado al reenviar email:', err);
-    return {
-      success: false,
-      message: 'Error inesperado. Por favor intenta más tarde.'
-    };
+    if (res.status === 429) return { ok: false, espera: true };
+    return { ok: res.ok };
+  } catch {
+    return { ok: false };
   }
-};
+}

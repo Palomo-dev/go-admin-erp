@@ -3,4 +3,3 @@ export * from './emailAuth';
 export * from './googleAuth';
 export * from './microsoftAuth';
 export * from './organizationAuth';
-export * from './checkProvider';

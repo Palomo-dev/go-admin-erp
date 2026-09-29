@@ -12,8 +12,8 @@
  * y la lupa; página con «←», título y acción; POS con «←», la sucursal y el
  * estado de la caja.
  * La navegación baja a la barra inferior: Inicio · Ventas · GO Asistente ·
- * Alertas · Menú, que se oculta en formularios, en el POS al cobrar y con el
- * teclado abierto.
+ * Alertas · Menú. Solo se ve en Inicio y en las páginas principales del menú;
+ * la regla única vive en cabeceraMovil.tsx (`barraInferiorVisible`).
  *
  * Los avisos de prueba y de correo sin verificar van debajo, como antes.
  */
@@ -38,15 +38,28 @@ import { DetalleNotificacion, NotificationsBell, PanelNotificaciones, textoConta
 import { VistaRapidaTarea } from './VistaRapidaTarea';
 import { useNotificacionesHeader, type NotificacionHeader } from './useNotificacionesHeader';
 import {
-  esFormularioPorRuta,
+  ALTO_BARRA_APP,
+  barraInferiorVisible,
+  espacioInferior,
   modoPorRuta,
   rutaPadre,
+  useBarrasInferioresPropias,
   useCabeceraMovilActual,
   useTecladoAbierto,
   type CabeceraMovilPagina,
 } from './cabeceraMovil';
 
 const abrirBuscador = () => window.dispatchEvent(new Event(ABRIR_BUSCADOR_EVENT));
+
+/** «⌘K» en Mac y iPad, «Ctrl+K» en el resto (tras montar: el servidor no sabe el sistema). */
+function useAtajoBuscador(): string {
+  const [atajo, setAtajo] = useState('Ctrl+K');
+  useEffect(() => {
+    const plataforma = typeof navigator !== 'undefined' ? navigator.platform || navigator.userAgent : '';
+    if (/Mac|iPhone|iPad/i.test(plataforma)) setAtajo('Meta+K');
+  }, []);
+  return atajo;
+}
 
 interface AppHeaderProps {
   organizacionId: string | null;
@@ -76,7 +89,22 @@ export function AppHeader({
   const orgNum = organizacionId ? parseInt(organizacionId, 10) : null;
   const pagina = useCabeceraMovilActual();
   const teclado = useTecladoAbierto();
-  const ocultarBarra = (pagina?.ocultarBarra ?? esFormularioPorRuta(pathname)) || teclado;
+  const barrasPropias = useBarrasInferioresPropias();
+  const barraVisible = barraInferiorVisible({ pathname, pagina, barrasPropias: barrasPropias.cantidad, teclado });
+  const espacio = espacioInferior(barraVisible, barrasPropias.alto);
+  const atajoBuscador = useAtajoBuscador();
+
+  // El contenido (AppLayout) y los avisos flotantes dejan abajo el sitio de la
+  // barra que se vea: la de la app o la propia de la pieza (BulkActionBar…).
+  useEffect(() => {
+    document.documentElement.style.setProperty('--shell-barra-inferior', espacio);
+  }, [espacio]);
+  useEffect(
+    () => () => {
+      document.documentElement.style.removeProperty('--shell-barra-inferior');
+    },
+    []
+  );
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -85,14 +113,17 @@ export function AppHeader({
         <div className="hidden h-16 items-center gap-2 px-6 lg:flex">
           <OrgSwitcher variante="escritorio" organizacionId={orgNum} organizacionNombre={organizacionNombre} />
           <div className="flex-1" />
+          {/* SearchTrigger Variant=button (Figma 54:2970): abre la paleta; también Ctrl K / ⌘ K y «/». */}
           <button
             type="button"
             onClick={abrirBuscador}
+            aria-haspopup="dialog"
+            aria-keyshortcuts="Control+K Meta+K /"
             className="flex h-10 items-center gap-2 rounded-lg border border-line bg-surface pl-3 pr-2 text-sm font-medium text-fg-secondary outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-brand"
           >
-            <Search className="h-4 w-4" aria-hidden="true" />
+            <Search className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
             {t('search')}
-            <Kbd tecla="Ctrl+K" tamano="md" />
+            <Kbd tecla={atajoBuscador} tamano="md" />
           </button>
           <FeedbackButton />
           <NotificationsBell datos={notificaciones} />
@@ -124,10 +155,10 @@ export function AppHeader({
         <EmailVerificationBanner />
       </header>
 
-      <GlobalSearch sinDisparador paginas={paginasBuscables} />
+      <GlobalSearch paginas={paginasBuscables} organizacionId={organizacionId} />
       <ReportarProblemaDialog organizacionId={orgNum} organizacionNombre={organizacionNombre} correo={correo} />
       <MobileTabBar
-        visible={!ocultarBarra}
+        visible={barraVisible}
         pathname={pathname}
         secciones={secciones}
         pendientes={notificaciones.pendientes}
@@ -174,14 +205,16 @@ function MobileHeader({
     </button>
   );
 
+  // SearchTrigger Variant=icon-outline (Figma 54:2978) → SearchCommand móvil a pantalla completa.
   const buscar = (
     <button
       type="button"
       onClick={abrirBuscador}
       aria-label={t('search')}
-      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-line bg-surface text-fg-secondary hover:bg-hover"
+      aria-haspopup="dialog"
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-line bg-surface text-fg-secondary outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-brand"
     >
-      <Search className="h-5 w-5" aria-hidden="true" />
+      <Search className="h-5 w-5" strokeWidth={1.5} aria-hidden="true" />
     </button>
   );
 
@@ -266,14 +299,6 @@ function MobileTabBar({
   const [detalle, setDetalle] = useState<NotificacionHeader | null>(null);
   const [tareaId, setTareaId] = useState<string | null>(null);
 
-  // El contenido y los avisos flotantes dejan sitio a la barra solo cuando se ve.
-  useEffect(() => {
-    document.documentElement.style.setProperty('--shell-barra-inferior', visible ? 'calc(4rem + env(safe-area-inset-bottom))' : '0px');
-    return () => {
-      document.documentElement.style.removeProperty('--shell-barra-inferior');
-    };
-  }, [visible]);
-
   // «Ventas» lleva al primer módulo visible de la sección Ventas (POS, PMS,
   // gimnasio…): el plan de la organización decide cuál existe.
   const ventas = useMemo(() => secciones.find((s) => s.codigo === 'ventas')?.modulos[0] ?? null, [secciones]);
@@ -293,7 +318,7 @@ function MobileTabBar({
       <nav
         aria-label={t('mobileNavigation')}
         className="fixed inset-x-0 bottom-0 z-40 flex h-16 items-stretch border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden"
-        style={{ height: 'calc(4rem + env(safe-area-inset-bottom))' }}
+        style={{ height: ALTO_BARRA_APP }}
       >
         <Link href="/app/inicio" className={item(enInicio)} aria-current={enInicio ? 'page' : undefined}>
           {enInicio && indicador}

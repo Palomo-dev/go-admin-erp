@@ -1,294 +1,531 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { AlertTriangle, ArrowDown, Calculator, ChefHat, ChevronDown, ChevronRight, Download, Package, RefreshCw, TrendingUp } from 'lucide-react';
 import {
-  Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  } from '@/components/ui/table';
-import {
-  DollarSign,
-  Download,
-  RefreshCw,
-  Search,
-  ChevronDown,
-  ChevronRight,
-  ChefHat,
-  TrendingUp
-} from 'lucide-react';
-import { CostoRecetasService, type RecetaCostoEntry } from './CostoRecetasService';
+  BranchBadgeActiva,
+  EmptyState,
+  FilterChips,
+  FilterPanel,
+  FormField,
+  KpiStrip,
+  ListToolbar,
+  PageHeader,
+  Pagination,
+  RowActionsMenu,
+  SearchInput,
+  StatCard,
+  useListadoServidor,
+  type ChipFiltro,
+} from '@/components/kit';
+import { DialogoConversion } from '@/components/kit/receta';
+import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
+import { useBranch } from '@/lib/context/BranchContext';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
-import { Skeleton } from '@/components/ui/skeleton';
+import { getOrganizationId, getOrganizationName } from '@/lib/hooks/useOrganization';
+import { filasACsv } from '@/lib/utils/csv';
+import { recipeService, type CostoReceta, type FilaReceta, type FiltrosRecetas, type KpisRecetas } from '@/lib/services/recipeService';
+import { cn } from '@/utils/Utils';
+import { useFormatoCantidad, useFormatoPorcentaje } from '../../produccion/piezas';
+import { BadgeFuenteCosto, rutaEditarReceta } from '../../recetas/piezas';
+import { cargarUnidades } from '../../recetas/datosEditor';
+import type { UnidadReceta } from '@/components/kit/receta';
 
+const ESTADOS = ['activas', 'inactivas', 'todas'] as const;
+
+/**
+ * Costo de recetas (Figma «Costo de recetas» 601:148806): una fila por receta
+ * con costo de la tanda, costo por unidad, precio, margen y fuente del costo en
+ * la sucursal del encabezado; al desplegarla, cada ingrediente con su cantidad
+ * en la unidad de la receta y en la suya, costo unitario, subtotal y peso en el
+ * costo. TODO sale del servidor (`fn_recetas_listado` → `fn_receta_costo`), el
+ * mismo cálculo con que la venta descuenta: ya no hay un cálculo propio en
+ * TypeScript (el anterior tomaba el promedio más alto entre sucursales y no
+ * encontraba conversiones).
+ */
 export function CostoRecetasPage() {
+  const router = useRouter();
   const { toast } = useToast();
-  // Dia de la organizacion para el nombre de descarga: el reporte se mira
-  // completo (todas las sucursales), asi que no hay sucursal que pasar.
+  const t = useTranslations('inventarioRecetas.costo');
+  const tc = useTranslations('inventarioRecetas');
+  const entero = useFormatoEntero();
+  const cantidad = useFormatoCantidad();
+  const porcentaje = useFormatoPorcentaje();
+  const { formatear: moneda } = useMonedaOrganizacion();
   const { getToday } = useFormatDate();
-  const { formatear } = useMonedaOrganizacion();
-  const [data, setData] = useState<RecetaCostoEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [busqueda, setBusqueda] = useState('');
-  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+  const { branchFilter, branches, isLoading: cargandoSucursales } = useBranch();
 
-  useEffect(() => {
-    cargarDatos();
+  const l = useListadoServidor({
+    filtros: ['estado', 'costo', 'margen'],
+    camposOrden: ['producto', 'costo', 'margen'],
+    ordenPorDefecto: { campo: 'producto', direccion: 'asc' },
+    tamanoPorDefecto: 25,
+  });
+
+  const [filas, setFilas] = useState<FilaReceta[]>([]);
+  const [total, setTotal] = useState(0);
+  const [kpis, setKpis] = useState<KpisRecetas | null>(null);
+  const [cargando, setCargando] = useState(true);
+  const [estadoError, setEstadoError] = useState<'error' | 'sinPermiso' | null>(null);
+  const [permitido, setPermitido] = useState(true);
+  const [recarga, setRecarga] = useState(0);
+  const [abiertas, setAbiertas] = useState<Set<number>>(new Set());
+  const [lineas, setLineas] = useState<Record<number, CostoReceta | 'cargando' | 'error'>>({});
+  const [unidades, setUnidades] = useState<UnidadReceta[]>([]);
+  const [conversion, setConversion] = useState<{ de: string; a: string; ingrediente: string } | null>(null);
+
+  const estado = (ESTADOS as readonly string[]).includes(l.filtros.estado ?? '') ? (l.filtros.estado as FiltrosRecetas['estado']) : 'activas';
+  const incompleto = l.filtros.costo === 'incompleto';
+  const margenBajo = l.filtros.margen === 'bajo';
+  const sucursal = branchFilter ?? branches[0]?.id ?? null;
+  const sucursalNombre = branches.find((b) => b.id === sucursal)?.name ?? '';
+  const sinSucursal = !cargandoSucursales && branches.length === 0;
+  const recargar = useCallback(() => {
+    setLineas({});
+    setRecarga((n) => n + 1);
   }, []);
 
-  const cargarDatos = async () => {
-    try {
-      setLoading(true);
-      const result = await CostoRecetasService.obtenerCostoRecetas();
-      setData(result);
-    } catch (error) {
-      console.error('Error:', error);
-      toast({ title: 'Error', description: 'No se pudieron cargar los costos', variant: 'destructive' });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const filtros = useMemo<FiltrosRecetas>(
+    () => ({
+      sucursal,
+      busqueda: l.busqueda || undefined,
+      estado,
+      costo: incompleto ? 'incompleto' : undefined,
+      margen_bajo: margenBajo || undefined,
+      orden: (['producto', 'costo', 'margen'] as const).includes(l.orden?.campo as 'producto') ? (l.orden!.campo as FiltrosRecetas['orden']) : 'producto',
+      direccion: l.orden?.direccion ?? 'asc',
+    }),
+    [sucursal, l.busqueda, estado, incompleto, margenBajo, l.orden],
+  );
+  const clave = JSON.stringify({ ...filtros, d: l.rango.desde, n: l.tamano });
 
-  const handleExportCSV = async () => {
-    try {
-      const csv = await CostoRecetasService.exportarCSV(data);
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `costo_recetas_${getToday()}.csv`;
-      link.click();
-      URL.revokeObjectURL(url);
-      toast({ title: 'CSV exportado', description: `${data.length} recetas exportadas` });
-    } catch {
-      toast({ title: 'Error', description: 'No se pudo exportar', variant: 'destructive' });
-    }
-  };
+  useEffect(() => {
+    if (sinSucursal || cargandoSucursales) return;
+    const control = new AbortController();
+    setCargando(true);
+    recipeService
+      .listar(getOrganizationId(), { ...filtros, desde_fila: l.rango.desde, limite: l.tamano }, control.signal)
+      .then((r) => {
+        setFilas(r.filas);
+        setTotal(r.total);
+        setKpis(r.kpis);
+        setPermitido(r.permisos.costos !== false);
+        setEstadoError(null);
+        setLineas({});
+      })
+      .catch((e: { code?: string }) => {
+        if (control.signal.aborted) return;
+        setEstadoError(e?.code === '42501' ? 'sinPermiso' : 'error');
+      })
+      .finally(() => {
+        if (!control.signal.aborted) setCargando(false);
+      });
+    return () => control.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clave, recarga, sinSucursal, cargandoSucursales]);
 
-  const toggleRow = (id: number) => {
-    setExpandedRows((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
+  useEffect(() => {
+    cargarUnidades().then(setUnidades).catch(() => setUnidades([]));
+  }, []);
+
+  const pedirLineas = useCallback(
+    (id: number) => {
+      setLineas((prev) => {
+        if (prev[id] && prev[id] !== 'error') return prev;
+        recipeService
+          .costo(getOrganizationId(), sucursal, { recipe_id: id })
+          .then((c) => setLineas((p) => ({ ...p, [id]: c })))
+          .catch(() => setLineas((p) => ({ ...p, [id]: 'error' })));
+        return { ...prev, [id]: 'cargando' };
+      });
+    },
+    [sucursal],
+  );
+
+  const alternar = (id: number) => {
+    setAbiertas((prev) => {
+      const s = new Set(prev);
+      if (s.has(id)) s.delete(id);
+      else {
+        s.add(id);
+        pedirLineas(id);
+      }
+      return s;
     });
   };
 
-  const filteredData = data.filter(
-    (r) =>
-      r.recipe_name.toLowerCase().includes(busqueda.toLowerCase()) ||
-      r.product_name.toLowerCase().includes(busqueda.toLowerCase()) ||
-      r.product_sku.toLowerCase().includes(busqueda.toLowerCase())
+  const exportar = async () => {
+    try {
+      const r = await recipeService.listar(getOrganizationId(), { ...filtros, desde_fila: 0, limite: 500 });
+      if (r.filas.length === 0) {
+        toast({ title: t('exportar.sinDatos') });
+        return;
+      }
+      const csv = filasACsv(
+        [t('csv.producto'), t('csv.sku'), t('csv.version'), t('csv.rinde'), t('csv.tanda'), t('csv.unidad'), t('csv.precio'), t('csv.margen'), t('csv.fuente'), t('csv.sucursal')],
+        r.filas.map((f) => [f.producto.nombre, f.producto.sku, `v${f.version}`, `${f.rinde} ${f.unidad_rinde}`, f.costo_tanda, f.costo_unidad, f.precio, f.margen, tc(`fuentes.${f.fuente}`), sucursalNombre]),
+      );
+      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `costo_recetas_${getToday()}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast({ title: t('exportar.listo', { count: r.filas.length }) });
+    } catch {
+      toast({ variant: 'destructive', title: t('exportar.error') });
+    }
+  };
+
+  const chips: ChipFiltro[] = [
+    ...(estado !== 'activas' ? [{ clave: 'estado', etiqueta: t('chips.estado', { estado: tc(`listado.filtros.estados.${estado}`) }) }] : []),
+    ...(incompleto ? [{ clave: 'costo', etiqueta: tc('listado.chips.incompleto') }] : []),
+    ...(margenBajo ? [{ clave: 'margen', etiqueta: tc('listado.chips.margenBajo') }] : []),
+  ];
+
+  const tonoMargen = (m: number | null) =>
+    m === null ? 'bg-subtle text-fg-muted' : m < (kpis?.umbral_margen ?? 0.3) ? 'bg-warning-subtle text-warning-text' : 'bg-success-subtle text-success-text';
+
+  const cabecera = (
+    <PageHeader
+      titulo={t('titulo')}
+      subtitulo={kpis ? t('subtitulo', { organizacion: getOrganizationName() ?? '', count: kpis.activas, n: entero(kpis.activas), sucursal: sucursalNombre }) : sucursalNombre}
+      icono={Calculator}
+      cargando={cargando && !sinSucursal}
+      migas={[{ etiqueta: tc('inventario'), href: '/app/inventario' }, { etiqueta: t('reportes'), href: '/app/inventario/reportes' }, { etiqueta: t('titulo') }]}
+      debajo={
+        <div className="flex flex-wrap items-center gap-2">
+          <BranchBadgeActiva />
+          <span className="text-xs text-fg-secondary">{t('lemaFuente')}</span>
+        </div>
+      }
+      acciones={
+        sinSucursal ? undefined : (
+          <>
+            <Button variant="outline" size="icon" className="size-10" onClick={recargar} aria-label={t('recalcular')} title={t('recalcular')}>
+              <RefreshCw aria-hidden="true" className="size-4" strokeWidth={1.5} />
+            </Button>
+            <Button variant="outline" className="h-10 gap-2" onClick={() => router.push('/app/inventario/recetas')}>
+              <ChefHat aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('irRecetas')}
+            </Button>
+            <Button className="h-10 gap-2" onClick={exportar} disabled={estadoError !== null}>
+              <Download aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('exportar.boton')}
+            </Button>
+          </>
+        )
+      }
+    />
   );
 
-  const totalCostoPromedio = data.length > 0
-    ? data.reduce((sum, r) => sum + r.cost_per_unit, 0) / data.length
-    : 0;
+  if (sinSucursal) {
+    return (
+      <div className="flex flex-col gap-4 lg:gap-5">
+        {cabecera}
+        <EmptyState variante="sinSucursal" />
+      </div>
+    );
+  }
 
-  const recetasActivas = data.filter((r) => r.is_active).length;
+  const detalle = (f: FilaReceta) => {
+    const c = lineas[f.recipe_id];
+    if (c === 'cargando' || c === undefined) return <p className="px-4 py-3 text-sm text-fg-secondary">{t('cargandoLineas')}</p>;
+    if (c === 'error') return <p className="px-4 py-3 text-sm text-danger-text">{t('errorLineas')}</p>;
+    const tanda = c.costo_tanda ?? 0;
+    const faltan = c.lineas.filter((x) => !x.opcional && (x.error || x.costo_unitario === null)).map((x) => x.nombre ?? `#${x.ingredient_product_id}`);
+    return (
+      <div className="flex flex-col gap-2 p-3">
+        <div className="overflow-x-auto rounded-lg border border-line bg-surface">
+          <table className="w-full min-w-[640px] text-sm">
+            <caption className="sr-only">{t('ingredientesDe', { producto: f.producto.nombre })}</caption>
+            <thead className="bg-subtle text-left text-xs font-medium text-fg-secondary">
+              <tr>
+                <th scope="col" className="px-4 py-2">{t('col.ingrediente')}</th>
+                <th scope="col" className="px-3 py-2 text-right">{t('col.cantidad')}</th>
+                <th scope="col" className="px-3 py-2 text-right">{t('col.enSuUnidad')}</th>
+                <th scope="col" className="px-3 py-2">{t('col.costoUnitario')}</th>
+                <th scope="col" className="px-3 py-2 text-right">{t('col.subtotal')}</th>
+                <th scope="col" className="px-4 py-2 text-right">{t('col.peso')}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {c.lineas.map((x) => (
+                <tr key={x.orden}>
+                  <td className="px-4 py-2 text-fg">
+                    {x.nombre ?? `#${x.ingredient_product_id}`}
+                    {x.merma_pct > 0 && <span className="text-xs text-fg-secondary"> · {t('merma', { pct: x.merma_pct })}</span>}
+                    {x.opcional && <span className="text-xs text-fg-secondary"> · {t('opcional')}</span>}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-fg">{cantidad(x.cantidad_bruta, x.unidad_receta)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {x.error === 'conversion_faltante' ? (
+                      <span className="rounded-full border border-line-danger bg-danger-subtle px-2 py-0.5 text-xs text-danger-text">{t('sinConversion')}</span>
+                    ) : (
+                      <span className="text-fg">{cantidad(x.cantidad, x.unidad_ingrediente)}</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2">
+                    {x.error === 'conversion_faltante' ? (
+                      <button type="button" className="text-sm text-brand hover:underline" onClick={() => setConversion({ de: x.unidad_receta, a: x.unidad_ingrediente, ingrediente: x.nombre ?? '' })}>
+                        {t('crearConversion')}
+                      </button>
+                    ) : x.costo_unitario !== null ? (
+                      <span className="tabular-nums text-fg">
+                        {moneda(x.costo_unitario)} / {x.unidad_ingrediente}
+                        <span className="block text-xs text-fg-secondary">{tc(`fuentes.${x.fuente}`)}</span>
+                      </span>
+                    ) : permitido ? (
+                      <Link href={`/app/inventario/productos/${x.ingredient_product_id}?tab=precios`} className="text-sm text-brand hover:underline">
+                        {t('registrarCosto')}
+                      </Link>
+                    ) : (
+                      <span className="text-fg-muted">—</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-fg">{x.costo_linea !== null ? moneda(x.costo_linea) : '—'}</td>
+                  <td className="px-4 py-2 text-right tabular-nums text-fg-secondary">
+                    {x.costo_linea !== null && tanda > 0 && !x.opcional ? porcentaje(x.costo_linea / tanda) : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {permitido && (
+          <p className={cn('text-[13px]', faltan.length > 0 ? 'text-warning-text' : 'text-fg-secondary')}>
+            {faltan.length > 0
+              ? t('totalIncompleto', { total: moneda(tanda), faltan: faltan.join(', ') })
+              : t('totalCompleto', { total: moneda(tanda) })}
+          </p>
+        )}
+      </div>
+    );
+  };
+
+  const ordenar = (campo: 'producto' | 'costo' | 'margen') => l.ordenarPor(campo);
+  const encabezadoOrdenable = (campo: 'producto' | 'costo' | 'margen', texto: string, clase = '') => (
+    <th scope="col" className={cn('px-3 py-3', clase)} aria-sort={l.orden?.campo === campo ? (l.orden.direccion === 'asc' ? 'ascending' : 'descending') : 'none'}>
+      <button type="button" className="inline-flex items-center gap-1 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand" onClick={() => ordenar(campo)}>
+        {texto}
+      </button>
+    </th>
+  );
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-            <DollarSign className="w-5 h-5 text-green-600 dark:text-green-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Costo de Recetas</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Análisis de costos de producción por receta
-            </p>
-          </div>
-        </div>
+    <div className="flex flex-col gap-4 lg:gap-5">
+      {cabecera}
 
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={cargarDatos}
-            disabled={loading}
-            className="dark:border-gray-600 dark:text-gray-300"
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Actualizar
-          </Button>
-          <Button
-            onClick={handleExportCSV}
-            disabled={loading || data.length === 0}
-            className="bg-green-600 hover:bg-green-700 text-white"
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Exportar CSV
-          </Button>
-        </div>
-      </div>
+      {estadoError !== 'sinPermiso' && (
+        <KpiStrip etiqueta={t('kpis.etiqueta')} className="hidden sm:grid">
+          <StatCard
+            etiqueta={t('kpis.completas')}
+            cargando={!kpis}
+            valor={kpis ? t('kpis.deN', { completas: entero(kpis.completas), total: entero(kpis.activas) }) : '—'}
+            tono={kpis && kpis.costo_incompleto > 0 ? 'advertencia' : 'exito'}
+            iconoDetalle={kpis && kpis.costo_incompleto > 0 ? AlertTriangle : undefined}
+            detalle={kpis ? t('kpis.incompletas', { count: kpis.costo_incompleto }) : undefined}
+            onClick={() => l.setFiltro('costo', 'incompleto')}
+          />
+          <StatCard
+            etiqueta={t('kpis.margenPonderado')}
+            cargando={!kpis}
+            valor={kpis ? porcentaje(kpis.margen_ponderado) : '—'}
+            iconoDetalle={TrendingUp}
+            detalle={t('kpis.porVentas')}
+          />
+          <StatCard
+            etiqueta={t('kpis.margenBajo', { umbral: porcentaje(kpis?.umbral_margen ?? 0.3) })}
+            cargando={!kpis}
+            valor={kpis ? t('kpis.nRecetas', { count: kpis.margen_bajo, n: entero(kpis.margen_bajo) }) : '—'}
+            tono={kpis && kpis.margen_bajo > 0 ? 'peligro' : 'neutro'}
+            iconoDetalle={kpis && kpis.margen_bajo > 0 ? ArrowDown : undefined}
+            detalle={t('kpis.revisar')}
+            onClick={() => l.setFiltro('margen', 'bajo')}
+          />
+          <StatCard
+            etiqueta={t('kpis.sinCosto')}
+            cargando={!kpis}
+            valor={kpis ? entero(kpis.ingredientes_sin_costo) : '—'}
+            tono={kpis && kpis.ingredientes_sin_costo > 0 ? 'advertencia' : 'neutro'}
+            iconoDetalle={kpis && kpis.ingredientes_sin_costo > 0 ? Package : undefined}
+            detalle={t('kpis.registrar')}
+          />
+        </KpiStrip>
+      )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-4 dark:bg-gray-800 dark:border-gray-700">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-blue-100 dark:bg-blue-900/30">
-              <ChefHat className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{data.length}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Total Recetas</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-4 dark:bg-gray-800 dark:border-gray-700">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-green-100 dark:bg-green-900/30">
-              <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{recetasActivas}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Recetas Activas</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-4 dark:bg-gray-800 dark:border-gray-700">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-amber-100 dark:bg-amber-900/30">
-              <DollarSign className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {formatear(totalCostoPromedio)}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Costo Promedio/Unidad</p>
-            </div>
-          </div>
-        </Card>
-      </div>
+      {!permitido && (
+        <p role="status" className="rounded-xl border border-line bg-subtle px-4 py-3 text-sm text-fg-secondary">
+          {t('sinPermisoCostos')}
+        </p>
+      )}
 
-      <Card className="p-6 dark:bg-gray-800/50 dark:border-gray-700 bg-white border-gray-200">
-        <div className="flex flex-col sm:flex-row gap-3 mb-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder="Buscar por receta, producto o SKU..."
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              className="pl-10 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+      <ListToolbar
+        busqueda={<SearchInput value={l.busqueda} onChange={l.setBusqueda} cargando={cargando} placeholder={t('buscar.placeholder')} etiqueta={t('buscar.etiqueta')} />}
+        filtros={
+          <FilterPanel conteo={l.filtrosActivos} onLimpiar={l.limpiarFiltros} textoVerResultados={tc('listado.filtros.verN', { count: total, n: entero(total) })}>
+            <FormField etiqueta={tc('listado.filtros.estado')}>
+              {(c) => (
+                <Select value={estado} onValueChange={(v) => l.setFiltro('estado', v === 'activas' ? null : v)}>
+                  <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} className="h-10 border-line-strong bg-surface">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ESTADOS.map((e) => (
+                      <SelectItem key={e} value={e}>
+                        {tc(`listado.filtros.estados.${e}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </FormField>
+            <label className="flex items-center gap-2 text-sm text-fg">
+              <Checkbox checked={incompleto} onCheckedChange={(v) => l.setFiltro('costo', v === true ? 'incompleto' : null)} className="size-[18px] rounded" />
+              {tc('listado.filtros.incompleto')}
+            </label>
+            <label className="flex items-center gap-2 text-sm text-fg">
+              <Checkbox checked={margenBajo} onCheckedChange={(v) => l.setFiltro('margen', v === true ? 'bajo' : null)} className="size-[18px] rounded" />
+              {tc('listado.filtros.margenBajo')}
+            </label>
+          </FilterPanel>
+        }
+        chips={<FilterChips chips={chips} onQuitar={(c) => l.setFiltro(c, null)} onLimpiarTodo={l.limpiarFiltros} />}
+      />
+
+      {estadoError || (!cargando && filas.length === 0) ? (
+        <EmptyState
+          variante={estadoError === 'sinPermiso' ? 'forbidden' : estadoError === 'error' ? 'error' : l.hayCriterios ? 'search' : 'empty'}
+          icono={Calculator}
+          termino={l.busqueda}
+          titulo={estadoError ? undefined : l.hayCriterios ? undefined : t('vacio.titulo')}
+          descripcion={estadoError ? undefined : l.hayCriterios ? t('sinResultados') : t('vacio.descripcion')}
+          accion={estadoError === 'error' ? { etiqueta: t('reintentar'), onClick: recargar } : l.hayCriterios ? { etiqueta: t('limpiar'), onClick: l.limpiarTodo } : undefined}
+        />
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-line bg-surface">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[880px] text-sm">
+              <caption className="sr-only">{t('titulo')}</caption>
+              <thead className="bg-subtle text-left text-xs font-medium text-fg-secondary">
+                <tr>
+                  <th scope="col" className="w-12 px-3 py-3">
+                    <span className="sr-only">{t('col.expandir')}</span>
+                  </th>
+                  {encabezadoOrdenable('producto', t('col.receta'))}
+                  <th scope="col" className="px-3 py-3">{t('col.rinde')}</th>
+                  <th scope="col" className="px-3 py-3 text-right">{t('col.tanda')}</th>
+                  {encabezadoOrdenable('costo', t('col.unidad'), 'text-right')}
+                  <th scope="col" className="px-3 py-3 text-right">{t('col.precio')}</th>
+                  {encabezadoOrdenable('margen', t('col.margen'), 'text-center')}
+                  <th scope="col" className="px-3 py-3">{t('col.fuente')}</th>
+                  <th scope="col" className="w-12 px-3 py-3">
+                    <span className="sr-only">{t('col.acciones')}</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {cargando && filas.length === 0
+                  ? Array.from({ length: 5 }, (_, i) => (
+                      <tr key={i}>
+                        <td colSpan={9} className="px-4 py-4">
+                          <div className="h-4 w-2/3 animate-pulse rounded bg-subtle" />
+                        </td>
+                      </tr>
+                    ))
+                  : filas.map((f) => {
+                      const abierta = abiertas.has(f.recipe_id);
+                      const idDetalle = `costo-detalle-${f.recipe_id}`;
+                      return (
+                        <Fragment key={f.recipe_id}>
+                          <tr className={cn(abierta && 'bg-brand-tint/40')}>
+                            <td className="px-3 py-3">
+                              <button
+                                type="button"
+                                aria-expanded={abierta}
+                                aria-controls={idDetalle}
+                                aria-label={t(abierta ? 'contraer' : 'expandir', { producto: f.producto.nombre })}
+                                onClick={() => alternar(f.recipe_id)}
+                                className="flex size-8 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                              >
+                                {abierta ? <ChevronDown aria-hidden="true" className="size-4" /> : <ChevronRight aria-hidden="true" className="size-4" />}
+                              </button>
+                            </td>
+                            <td className="px-3 py-3">
+                              <Link href={rutaEditarReceta(f.product_id)} className="font-medium text-brand hover:underline">
+                                {f.producto.nombre}
+                              </Link>
+                              <span className="block text-xs text-fg-secondary">{[f.producto.sku, `v${f.version}`].filter(Boolean).join(' · ')}</span>
+                            </td>
+                            <td className="px-3 py-3 text-fg">{cantidad(f.rinde, f.unidad_rinde)}</td>
+                            <td className="px-3 py-3 text-right tabular-nums text-fg">{f.costo_tanda !== null ? moneda(f.costo_tanda) : '—'}</td>
+                            <td className="px-3 py-3 text-right tabular-nums text-fg">{f.costo_unidad !== null ? moneda(f.costo_unidad) : '—'}</td>
+                            <td className="px-3 py-3 text-right tabular-nums text-fg">{f.precio !== null ? moneda(f.precio) : '—'}</td>
+                            <td className="px-3 py-3 text-center">
+                              <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium tabular-nums ${tonoMargen(f.margen)}`}>{porcentaje(f.margen)}</span>
+                            </td>
+                            <td className="px-3 py-3">
+                              <BadgeFuenteCosto fuente={f.fuente} sinCosto={f.lineas_sin_costo} />
+                            </td>
+                            <td className="px-3 py-3">
+                              <RowActionsMenu
+                                titulo={f.producto.nombre}
+                                acciones={[
+                                  { id: 'editar', etiqueta: t('editarReceta'), icono: ChefHat, onSelect: () => router.push(rutaEditarReceta(f.product_id)) },
+                                  { id: 'producto', etiqueta: t('verProducto'), icono: Package, onSelect: () => router.push(`/app/inventario/productos/${f.product_id}`) },
+                                ]}
+                              />
+                            </td>
+                          </tr>
+                          {abierta && (
+                            <tr id={idDetalle} className="bg-subtle/60">
+                              <td colSpan={9}>{detalle(f)}</td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      );
+                    })}
+              </tbody>
+            </table>
+          </div>
+          <div className="border-t border-line px-3 py-2">
+            <Pagination
+              pagina={l.pagina}
+              tamano={l.tamano}
+              total={total}
+              onPaginaChange={l.setPagina}
+              onTamanoChange={l.setTamano}
+              sustantivo={{ singular: tc('sustantivo.singular'), plural: tc('sustantivo.plural') }}
+              cargando={cargando}
             />
           </div>
         </div>
+      )}
 
-        {loading ? (
-          <div className="flex justify-center items-center py-12">
-            <Skeleton className="h-8 w-8 mx-auto" /></div>
-        ) : filteredData.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400">
-            <ChefHat className="h-12 w-12 mb-3 opacity-50" />
-            <p className="text-sm">No hay recetas para mostrar</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="dark:border-gray-700">
-                  <TableHead className="dark:text-gray-300 w-10"></TableHead>
-                  <TableHead className="dark:text-gray-300">Receta</TableHead>
-                  <TableHead className="dark:text-gray-300">Producto</TableHead>
-                  <TableHead className="dark:text-gray-300">SKU</TableHead>
-                  <TableHead className="dark:text-gray-300">Rendimiento</TableHead>
-                  <TableHead className="dark:text-gray-300">Estado</TableHead>
-                  <TableHead className="text-right dark:text-gray-300">Costo Total</TableHead>
-                  <TableHead className="text-right dark:text-gray-300">Costo/Unidad</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredData.map((receta) => (
-                  <React.Fragment key={receta.recipe_id}>
-                    <TableRow
-                      className="dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer"
-                      onClick={() => toggleRow(receta.recipe_id)}
-                    >
-                      <TableCell className="dark:text-gray-300">
-                        {receta.ingredients.length > 0 ? (
-                          expandedRows.has(receta.recipe_id) ? (
-                            <ChevronDown className="h-4 w-4" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4" />
-                          )
-                        ) : null}
-                      </TableCell>
-                      <TableCell className="font-medium dark:text-white">{receta.recipe_name}</TableCell>
-                      <TableCell className="dark:text-gray-300">{receta.product_name}</TableCell>
-                      <TableCell className="text-sm dark:text-gray-300">{receta.product_sku}</TableCell>
-                      <TableCell className="text-sm dark:text-gray-300">
-                        {receta.yield_qty} {receta.yield_unit_code}
-                      </TableCell>
-                      <TableCell>
-                        {receta.is_active ? (
-                          <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                            Activa
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary" className="bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-                            Inactiva
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right font-medium dark:text-white">
-                        {formatear(receta.total_cost)}
-                      </TableCell>
-                      <TableCell className="text-right font-medium dark:text-white">
-                        {formatear(receta.cost_per_unit)}
-                      </TableCell>
-                    </TableRow>
-                    {expandedRows.has(receta.recipe_id) && receta.ingredients.length > 0 && (
-                      <TableRow className="dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30">
-                        <TableCell colSpan={8} className="p-4">
-                          <div className="rounded-lg border dark:border-gray-700 overflow-hidden">
-                            <Table>
-                              <TableHeader>
-                                <TableRow className="dark:border-gray-700">
-                                  <TableHead className="dark:text-gray-300">Ingrediente</TableHead>
-                                  <TableHead className="dark:text-gray-300">SKU</TableHead>
-                                  <TableHead className="dark:text-gray-300">Cantidad</TableHead>
-                                  <TableHead className="dark:text-gray-300">Unidad</TableHead>
-                                  <TableHead className="text-right dark:text-gray-300">Costo Unit.</TableHead>
-                                  <TableHead className="text-right dark:text-gray-300">Costo Linea</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {receta.ingredients.map((ing) => (
-                                  <TableRow key={ing.ingredient_product_id} className="dark:border-gray-700">
-                                    <TableCell className="dark:text-gray-300">{ing.ingredient_name}</TableCell>
-                                    <TableCell className="text-sm dark:text-gray-300">{ing.ingredient_sku}</TableCell>
-                                    <TableCell className="dark:text-gray-300">{ing.quantity}</TableCell>
-                                    <TableCell className="dark:text-gray-300">{ing.unit_code}</TableCell>
-                                    <TableCell className="text-right dark:text-gray-300">
-                                      {formatear(ing.avg_cost)}
-                                    </TableCell>
-                                    <TableCell className="text-right font-medium dark:text-white">
-                                      {formatear(ing.line_cost)}
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </React.Fragment>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </Card>
+      {conversion && (
+        <DialogoConversion
+          abierto
+          onAbiertoChange={(a) => !a && setConversion(null)}
+          organizacionId={getOrganizationId()}
+          de={conversion.de}
+          a={conversion.a}
+          ingrediente={conversion.ingrediente}
+          unidades={unidades}
+          onCreada={recargar}
+        />
+      )}
     </div>
   );
 }
+
+export default CostoRecetasPage;

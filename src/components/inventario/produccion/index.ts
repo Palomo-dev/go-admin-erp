@@ -1,8 +1,6 @@
 export { ProduccionPage } from './ProduccionPage';
-export { ProductionOrderDialog } from './ProductionOrderDialog';
-export { ProductionOrderStatusBadge } from './ProductionOrderStatusBadge';
-export { ProductionOrderHeader } from './ProductionOrderHeader';
-export { ProductionOrderStats } from './ProductionOrderStats';
-export { ProductionOrderTable } from './ProductionOrderTable';
-export { ProductionOrderDetailDialog } from './ProductionOrderDetailDialog';
-export { ProductionOrderFilters } from './ProductionOrderFilters';
+export { OrdenProduccionDetalle } from './OrdenProduccionDetalle';
+export { DialogoNuevaOrden, type ProductoAProducir } from './DialogoNuevaOrden';
+export { DialogoCompletarOrden } from './DialogoCompletarOrden';
+export { useAccionesProduccion } from './useAccionesProduccion';
+export { BadgeEstadoProduccion } from './piezas';

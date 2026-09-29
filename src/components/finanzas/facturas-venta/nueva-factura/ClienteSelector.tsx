@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
+import { buscarClientes as buscarClientesServidor } from '@/lib/services/customers/busquedaClientesService';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { toastError } from '@/components/ui/use-toast';
 import {
@@ -81,18 +82,9 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
       setIsLoading(true);
       
       try {
-        const termino = `%${searchTerm.toLowerCase()}%`;
-        
-        const { data, error } = await supabase
-          .from('customers')
-          .select('id, full_name, email, phone, organization_id, customer_type, first_name, last_name, avatar_url')
-          .eq('organization_id', organizationId)
-          .or(`full_name.ilike.${termino},email.ilike.${termino},phone.ilike.${termino},company_name.ilike.${termino},trade_name.ilike.${termino},identification_number.ilike.${termino}`)
-          .order('full_name', { ascending: true })
-          .limit(50);
-        
-        if (error) throw error;
-        
+        // Búsqueda única de clientes (RPC): sin tildes, todas las palabras, dígitos.
+        const { filas: data } = await buscarClientesServidor(supabase, { organizationId, texto: searchTerm, limite: 50 });
+
         // Obtener contactos principales para empresas
         const companyResults = (data || []).filter((c: { customer_type?: string | null }) => c.customer_type === 'company');
         const contactMap = new Map<string, { name: string; position: string | null }>();
@@ -129,11 +121,11 @@ export function ClienteSelector({ selectedCustomerId, onCustomerChange }: Client
           const contact = contactMap.get(cliente.id);
           return {
             id: cliente.id,
-            full_name: cliente.full_name,
-            email: cliente.email,
-            phone: cliente.phone,
+            full_name: cliente.full_name ?? '',
+            email: cliente.email ?? undefined,
+            phone: cliente.phone ?? undefined,
             organization_id: cliente.organization_id || organizationId,
-            customer_type: cliente.customer_type,
+            customer_type: cliente.customer_type ?? undefined,
             avatar_url: cliente.avatar_url,
             primary_contact_name: contact?.name || null,
             primary_contact_position: contact?.position || null,

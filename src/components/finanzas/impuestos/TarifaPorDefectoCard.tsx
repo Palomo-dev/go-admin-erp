@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useId, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Percent } from 'lucide-react';
+import { Tarjeta } from '@/components/kit';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import {
@@ -80,20 +81,22 @@ export default function TarifaPorDefectoCard({ organizationId, taxes, onSaved }:
     }
   };
 
-  return (
-    <section
-      aria-labelledby={`${selectId}-titulo`}
-      className="rounded-lg border border-line bg-surface p-4 sm:p-5"
-    >
-      <h2 id={`${selectId}-titulo`} className="text-base font-semibold text-fg">
-        Tarifa por defecto para productos sin impuesto asignado
-      </h2>
-      <p id={ayudaId} className="mt-1 text-sm text-fg-secondary">
-        Se aplica en facturas, cotizaciones y POS a los productos que no tienen un impuesto propio.
-        Si eliges «Ninguna», esas ventas salen sin IVA y verás una advertencia antes de emitir.
-      </p>
+  // Sin tarifa por defecto, la tarjeta va en tono advertencia (esas ventas salen sin IVA).
+  const sinDefecto = actual === SIN_TARIFA_POR_DEFECTO;
 
-      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+  return (
+    <Tarjeta
+      titulo="Tarifa por defecto para productos sin impuesto asignado"
+      icono={Percent}
+      tono={sinDefecto ? 'advertencia' : 'neutro'}
+      descripcion={
+        <span id={ayudaId}>
+          Se aplica en facturas, cotizaciones y POS a los productos que no tienen un impuesto propio.
+          Si eliges «Ninguna», esas ventas salen sin IVA y verás una advertencia antes de emitir.
+        </span>
+      }
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="flex-1 space-y-1.5">
           <Label htmlFor={selectId} className="text-sm text-fg">
             Tarifa por defecto
@@ -119,6 +122,6 @@ export default function TarifaPorDefectoCard({ organizationId, taxes, onSaved }:
           {guardando ? 'Guardando...' : 'Guardar tarifa'}
         </Button>
       </div>
-    </section>
+    </Tarjeta>
   );
 }

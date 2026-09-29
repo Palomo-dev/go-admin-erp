@@ -102,4 +102,11 @@ export interface PropsSeccionFormulario {
   hoy: string;
   /** Editar: órdenes de producción abiertas con la receta activa (no cambian al guardar). */
   ordenesAbiertasReceta?: number;
+  /**
+   * memberships.plans.manage (resuelto en el servidor): sin él la configuración de la
+   * membresía se ve pero no se edita ni se envía. `null` mientras se consulta.
+   */
+  puedeConfigurarMembresia?: boolean | null;
+  /** Editar: membresías vivas del plan del producto (no se puede dejar de ser membresía). */
+  membresiasVivas?: number;
 }

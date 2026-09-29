@@ -32,6 +32,8 @@ import {
 } from './catalogStore';
 import { precioVigente } from '@/lib/pos/precioVigente';
 import { sinRetenciones } from '@/lib/services/taxResolverCore';
+import { agotadoPorStock } from '@/lib/pos/stockDisponible';
+import { buscarClientesEnLista, type PaginaClientes } from '@/lib/clientes/busqueda';
 
 /** Mensaje único para «no hay catálogo local todavía». */
 export const CATALOG_NOT_REPLICATED_MESSAGE = 'Catálogo local aún no replicado: conecta a internet una vez';
@@ -230,7 +232,7 @@ export async function getProductsPaginated(params: OfflineProductsPaginatedParam
       track_stock: product.track_stock,
       stock_quantity: stockQty,
       qty_reserved: reservedQty,
-      is_out_of_stock: product.track_stock === true && stockQty <= 0,
+      is_out_of_stock: agotadoPorStock(product.track_stock, stockQty),
       is_favorite: product.is_favorite,
       sales_count_90d: 0,
       has_recipe: recipe !== undefined,
@@ -243,18 +245,26 @@ export async function getProductsPaginated(params: OfflineProductsPaginatedParam
   return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
 }
 
-/** Equivalente offline de `POSService.getProductVariants`. */
-export async function getProductVariants(organizationId: number, parentProductId: number, imageUrl: ImageUrlResolver) {
+/** Equivalente offline de `POSService.getProductVariants` (con `opciones.branchFilter`, también el stock por variante). */
+export async function getProductVariants(
+  organizationId: number,
+  parentProductId: number,
+  imageUrl: ImageUrlResolver,
+  opciones?: { branchFilter?: number | null },
+) {
   await requireCatalog(organizationId);
   const variants = (await getCatalogRowsByIndex('products', 'by_org_parent', [organizationId, parentProductId]))
     .filter((v) => v.status === 'active')
     .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
   const ids = variants.map((v) => v.id);
-  const [images, prices, parentImages] = await Promise.all([
+  const conStock = opciones !== undefined && opciones.branchFilter !== undefined;
+  const [images, prices, parentImages, stockRows] = await Promise.all([
     getCatalogRowsByProducts('product_images', ids),
     getCatalogRowsByProducts('product_prices', ids),
     getCatalogRowsByProducts('product_images', [parentProductId]),
+    conStock ? getCatalogRowsByProducts('stock_levels', ids) : Promise.resolve([] as CatalogStockLevel[]),
   ]);
+  const stockByProduct = groupBy(stockRows, (s) => s.product_id);
   const imagesByProduct = groupBy(images, (i) => i.product_id);
   const pricesByProduct = groupBy(prices, (p) => p.product_id);
   const parentImage: CatalogProductImage | undefined = parentImages.find((i) => i.is_primary) ?? parentImages[0];
@@ -276,14 +286,31 @@ export async function getProductVariants(organizationId: number, parentProductId
       price: price ? num(price.price) : null,
       product_images: own.length > 0 ? own : parentImages,
       image: primary?.storage_path ? imageUrl(primary.storage_path) : parentImage?.storage_path ? imageUrl(parentImage.storage_path) : null,
+      ...(conStock ? stockDeVariante(variant.track_stock, stockByProduct.get(variant.id) ?? [], opciones?.branchFilter ?? null) : {}),
     };
   });
+}
+
+function stockDeVariante(trackStock: boolean, filas: CatalogStockLevel[], branchId: number | null) {
+  const stock = sumStock(filas, branchId);
+  return {
+    stock_quantity: stock.qty_on_hand,
+    qty_reserved: stock.qty_reserved,
+    is_out_of_stock: agotadoPorStock(trackStock, stock.qty_on_hand),
+  };
 }
 
 /** Equivalente offline de `POSService.getProductByBarcode` (fila cruda de `products`). */
 export async function getProductByBarcode(organizationId: number, barcode: string): Promise<CatalogProduct | null> {
   await requireCatalog(organizationId);
   const rows = await getCatalogRowsByIndex('products', 'by_org_barcode', [organizationId, barcode]);
+  return rows.find((p) => p.status === 'active') ?? null;
+}
+
+/** Equivalente offline de `POSService.getProductByScalePlu` (etiqueta de peso variable). */
+export async function getProductByScalePlu(organizationId: number, plu: number): Promise<CatalogProduct | null> {
+  await requireCatalog(organizationId);
+  const rows = await getCatalogRowsByIndex('products', 'by_org_scale_plu', [organizationId, plu]);
   return rows.find((p) => p.status === 'active') ?? null;
 }
 
@@ -340,19 +367,24 @@ export async function getCategoryRanking(organizationId: number): Promise<Record
 
 // ── Clientes ──
 
-const CUSTOMER_SEARCH_FIELDS: Array<keyof CatalogCustomer> = ['full_name', 'email', 'phone', 'doc_number', 'company_name', 'trade_name', 'identification_number'];
-
-/** Equivalente offline de `POSService.searchCustomers` (mismos campos y límites). */
-export async function searchCustomers(organizationId: number, search: string | undefined): Promise<CatalogCustomer[]> {
+/**
+ * Equivalente offline de `POSService.buscarClientesPagina`: la MISMA búsqueda
+ * que la RPC `fn_clientes_buscar` (reglas compartidas en
+ * `src/lib/clientes/busqueda.ts`) sobre el catálogo local.
+ */
+export async function buscarClientesPagina(
+  organizationId: number,
+  search: string | undefined,
+  opciones: { limite?: number; desde?: number } = {},
+): Promise<PaginaClientes<CatalogCustomer & { relevancia: number }>> {
   await requireCatalog(organizationId);
   const rows = await getCatalogRowsByOrg('customers', organizationId);
-  const term = norm(search?.trim());
-  const filtered = term
-    ? rows.filter((c) => CUSTOMER_SEARCH_FIELDS.some((f) => norm(c[f] as string | null).includes(term)))
-    : rows;
-  return filtered
-    .sort((a, b) => norm(a.full_name).localeCompare(norm(b.full_name), 'es'))
-    .slice(0, term ? 20 : 50);
+  return buscarClientesEnLista(rows, search, opciones);
+}
+
+/** Primera página de `buscarClientesPagina` (equivalente de `POSService.searchCustomers`). */
+export async function searchCustomers(organizationId: number, search: string | undefined): Promise<CatalogCustomer[]> {
+  return (await buscarClientesPagina(organizationId, search)).filas;
 }
 
 /** Mensaje único para «ese cliente no está en el catálogo local». */
@@ -408,11 +440,13 @@ export const posOfflineReads = {
   getProductsPaginated,
   getProductVariants,
   getProductByBarcode,
+  getProductByScalePlu,
   getProductById,
   getProductPriceRows,
   getCategories,
   getCategoryRanking,
   searchCustomers,
+  buscarClientesPagina,
   getCustomerById,
   getPaymentMethodRows,
   getCurrencyRows,

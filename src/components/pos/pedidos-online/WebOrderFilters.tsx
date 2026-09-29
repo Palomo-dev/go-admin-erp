@@ -1,18 +1,9 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { 
-  Search, 
   Filter, 
   X,
   Clock,
@@ -28,6 +19,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import type { WebOrderStatus, DeliveryType, PaymentStatus, OrderSource } from '@/lib/services/webOrdersService';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 interface WebOrderFiltersProps {
   onFilterChange: (filters: {
@@ -76,29 +68,6 @@ const DELIVERY_TYPE_OPTIONS: { value: DeliveryType | 'all'; label: string; icon:
 export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFiltersProps) {
   const [search, setSearch] = useState(activeFilters.search || '');
 
-  // Refs estables para el debounce (evita recrear el timer en cada render)
-  const activeFiltersRef = useRef(activeFilters);
-  const onFilterChangeRef = useRef(onFilterChange);
-  useEffect(() => { activeFiltersRef.current = activeFilters; }, [activeFilters]);
-  useEffect(() => { onFilterChangeRef.current = onFilterChange; }, [onFilterChange]);
-
-  // Debounce para búsqueda instantánea: aplica el filtro 400ms después de
-  // dejar de escribir, sin requerir Enter ni click en "Buscar".
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const debouncedApplySearch = useCallback((value: string) => {
-    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    debounceTimerRef.current = setTimeout(() => {
-      onFilterChangeRef.current({ ...activeFiltersRef.current, search: value || undefined });
-    }, 400);
-  }, []);
-
-  // Limpiar timer al desmontar
-  useEffect(() => {
-    return () => {
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    };
-  }, []);
-
   // Sincronizar search cuando activeFilters.search cambia externamente (Limpiar)
   useEffect(() => {
     setSearch(activeFilters.search || '');
@@ -128,16 +97,15 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
     });
   };
 
-  // Búsqueda instantánea: actualiza el input al instante y aplica con debounce
-  const handleSearchChange = (value: string) => {
-    setSearch(value);
-    debouncedApplySearch(value);
+  // El buscador del kit aplica con debounce (400 ms) y Enter aplica ya. Si el
+  // texto ya está aplicado (p. ej. tras pulsar «Buscar»), no se vuelve a pedir.
+  const applySearch = (value: string) => {
+    if ((value || undefined) === activeFilters.search) return;
+    onFilterChange({ ...activeFilters, search: value || undefined });
   };
 
-  // Enter aplica inmediatamente (sin esperar el debounce)
   const handleSearchSubmit = () => {
-    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    onFilterChange({ ...activeFilters, search: search || undefined });
+    applySearch(search);
   };
 
   const clearFilters = () => {
@@ -162,16 +130,13 @@ export function WebOrderFilters({ onFilterChange, activeFilters }: WebOrderFilte
     <div className="space-y-4">
       {/* Barra de búsqueda */}
       <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground dark:text-gray-400" />
-          <Input
-            placeholder="Buscar por # pedido, nombre, teléfono, correo, dirección o producto..."
-            value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit()}
-            className="pl-9"
-          />
-        </div>
+        <SearchInput
+          value={search}
+          onChange={applySearch}
+          onValueChange={setSearch}
+          placeholder="Buscar por # pedido, nombre, teléfono, correo, dirección o producto..."
+          className="flex-1"
+        />
         <Button onClick={handleSearchSubmit} className="dark:text-white">
           Buscar
         </Button>

@@ -68,7 +68,7 @@ export function VehicleStatusDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Cambiar Estado - {vehicle.plate_number}</DialogTitle>
+          <DialogTitle>Cambiar Estado - {vehicle.plate}</DialogTitle>
           <DialogDescription>
             Selecciona el nuevo estado del vehículo
           </DialogDescription>

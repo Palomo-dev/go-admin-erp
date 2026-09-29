@@ -61,12 +61,17 @@ export interface KitchenTicketItem {
   sale_items?: {
     quantity: number;
     product_id: number;
-    notes: any;
+    /** jsonb de la línea (modificadores, comensal, pesaje) o texto de filas viejas. */
+    notes: { modifiers?: Array<{ name: string; extraPrice: number }> | null; [clave: string]: unknown } | string | null;
     products?: {
       id: number;
       name: string;
       category_id: number | null;
       variant_data?: Record<string, string> | null;
+      /** «Cómo se vende»: la comanda muestra «0,500 kg» en productos por peso. */
+      sale_mode?: string | null;
+      qty_decimals?: number | null;
+      unit_code?: string | null;
       categories?: {
         name: string;
       };
@@ -77,6 +82,12 @@ export interface KitchenTicketItem {
 export type ZoneFilter = 'all' | string; // Puede ser cualquier zona
 export type StatusFilter = 'all' | 'new' | 'preparing' | 'ready' | 'delivered';
 export type StationFilter = 'all' | 'hot_kitchen' | 'cold_kitchen' | 'bar';
+
+/** Fila de `kitchen_tickets` tal como llega de la consulta, antes de tiparla como KitchenTicket. */
+interface RegistroTicket {
+  table_sessions?: { server_id?: string | null; restaurant_tables?: { zone?: string | null } | null; [clave: string]: unknown } | null;
+  [clave: string]: unknown;
+}
 
 class KitchenService {
   /**
@@ -113,6 +124,9 @@ class KitchenService {
                 name,
                 category_id,
                 variant_data,
+                sale_mode,
+                qty_decimals,
+                unit_code,
                 categories (
                   name,
                   station,
@@ -143,7 +157,7 @@ class KitchenService {
       // Filtrar por zona de mesa si se especifica
       let tickets = data || [];
       if (filters?.zone && filters.zone !== 'all') {
-        tickets = tickets.filter((ticket: any) => 
+        tickets = tickets.filter((ticket: RegistroTicket) =>
           ticket.table_sessions?.restaurant_tables?.zone === filters.zone
         );
       }
@@ -153,7 +167,7 @@ class KitchenService {
       const serverIds = Array.from(
         new Set(
           tickets
-            .map((t: any) => t.table_sessions?.server_id)
+            .map((t: RegistroTicket) => t.table_sessions?.server_id)
             .filter(Boolean)
         )
       );
@@ -169,7 +183,7 @@ class KitchenService {
           serverNames[p.id] = `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Mesero';
         });
 
-        tickets = tickets.map((t: any) => {
+        tickets = tickets.map((t: RegistroTicket) => {
           if (t.table_sessions?.server_id) {
             return {
               ...t,
@@ -196,7 +210,7 @@ class KitchenService {
   async updateTicketStatus(ticketId: number, status: KitchenTicket['status']) {
     try {
       const now = new Date().toISOString();
-      const updateData: Record<string, any> = {
+      const updateData: Record<string, unknown> = {
         status,
         updated_at: now,
       };

@@ -1,32 +1,89 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { Search } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import { CommandDialog, CommandEmpty, CommandInput, CommandList } from '@/components/ui/command';
-import { formatPlainDate } from '@/lib/utils/dateDisplay';
-import { DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Kbd } from '@/components/kit/Kbd';
-import { useDebounce } from '../../../lib/hooks/useDebounce';
-import { getOrganizationId } from '../../../lib/hooks/useOrganization';
-
-// Componentes modulares
-import { SearchResultGroup } from './GlobalSearch/SearchResultGroup';
-import { searchData } from './GlobalSearch/searchService';
-import { SearchResult, SearchResultType } from './GlobalSearch/types';
-
-// Formas mínimas de las filas que devuelve `searchData` (lo que aquí se pinta).
-interface FilaFactura { id: string; number?: string | null; total?: number | null; status?: string | null; customers?: { full_name?: string | null } | null }
-interface FilaPedido { id: string; order_number?: string | null; customer_name?: string | null; total?: number | null; status?: string | null }
-interface FilaReserva { id: string; checkin?: string | null; checkout?: string | null; status?: string | null; spaces?: { label?: string | null } | null; customers?: { full_name?: string | null } | null }
-interface FilaEspacio { id: string; label?: string | null; floor_zone?: string | null; status?: string | null; space_types?: { name?: string | null } | null }
-interface FilaMembresia { id: string; status?: string | null; start_date?: string | null; end_date?: string | null; membership_plans?: { name?: string | null } | null; customers?: { full_name?: string | null } | null }
-interface FilaVehiculo { id: string; plate?: string | null; brand?: string | null; model?: string | null; color?: string | null; vehicle_type?: string | null }
-
 /**
- * Componente de búsqueda global que permite buscar organizaciones, sucursales, 
- * usuarios, clientes, productos, etc.
+ * Buscador global — paleta Ctrl K / ⌘ K (Figma `02 Componentes` › Header ›
+ * SearchCommand 46:2493, CommandRow 46:2156; disparadores SearchTrigger
+ * 45:2042 y MobileHeader 48:2550).
+ *
+ * Escritorio (≥ 1024 px): diálogo de 640 px anclado arriba, con el campo, los
+ * grupos y el pie de atajos (↑↓ navegar · Enter abrir · Esc cerrar).
+ * Móvil: pantalla completa con el campo y «×» arriba; se abre con la lupa del
+ * MobileHeader.
+ *
+ * Qué se busca y de dónde sale:
+ *  - Recientes: lo último abierto desde aquí, por usuario y organización
+ *    (`lib/busquedaGlobal/recientes.ts`), filtrado por las páginas que la
+ *    persona ve hoy.
+ *  - Acciones: «Reportar un problema» (siempre) y las acciones rápidas que el
+ *    SERVIDOR concede (página visible + permiso de rol o cargo).
+ *  - Páginas: las del menú ya filtrado (`paginas`, de `filtrarNavegacion`),
+ *    filtradas aquí mismo sin tildes.
+ *  - Datos (clientes, productos, facturas…): `GET /api/busqueda-global`, solo
+ *    de los módulos activos y las páginas que el cargo ve.
+ *
+ * Accesibilidad: cmdk da el combobox (`role="combobox"`, `aria-controls`,
+ * `aria-activedescendant`) y la lista (`role="listbox"` / `option`); Radix
+ * atrapa el foco y cierra con Esc; una región `aria-live` anuncia cuántos
+ * resultados hay.
  */
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type RefObject } from 'react';
+import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
+import { Command } from 'cmdk';
+import {
+  AlertTriangle,
+  BedDouble,
+  BookOpen,
+  Bug,
+  CalendarPlus,
+  Car,
+  Clock,
+  CreditCard,
+  FilePlus2,
+  FileText,
+  FileQuestion,
+  Package,
+  PackagePlus,
+  Plus,
+  Search,
+  ShoppingBag,
+  ShoppingCart,
+  Tags,
+  Truck,
+  User,
+  UserPlus,
+  Warehouse,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
+import { cn } from '@/utils/Utils';
+import { Kbd } from '@/components/kit/Kbd';
+import { Skeleton } from '@/components/ui/skeleton';
+import { supabase } from '@/lib/supabase/config';
+import { abrirReportarProblema } from '@/components/shell/header/ReportarProblema';
+import type { IdAccion, ResultadoEntidad, TipoEntidad } from '@/lib/busquedaGlobal/definiciones';
+import {
+  accionAtajo,
+  coincideCampos,
+  estadoBusqueda,
+  filtrarPaginas,
+  MIN_CARACTERES_ENTIDADES,
+  PAGINAS_INICIALES,
+  palabrasBusqueda,
+} from '@/lib/busquedaGlobal/logica';
+import {
+  agregarReciente,
+  almacenLocal,
+  claveRecientes,
+  filtrarRecientes,
+  guardarRecientes,
+  leerRecientes,
+  type Reciente,
+} from '@/lib/busquedaGlobal/recientes';
+import { useBusquedaServidor } from './GlobalSearch/useBusquedaServidor';
+import { useDescribirResultado } from './GlobalSearch/useDescribirResultado';
+
 /** Evento con el que el shell abre el buscador desde cualquier disparador. */
 export const ABRIR_BUSCADOR_EVENT = 'shell:abrir-buscador';
 
@@ -35,477 +92,522 @@ export interface PaginaBuscable {
   name: string;
   url: string;
   description?: string;
+  /** Icono de la página en el catálogo de navegación. */
+  icono?: LucideIcon;
 }
 
 interface GlobalSearchProps {
-  forceFullBar?: boolean;
   /**
    * Páginas que la persona puede abrir, sacadas del menú ya filtrado
-   * (`filtrarNavegacion`). Sustituyen a las listas fijas de `types.ts`, que
-   * ofrecían páginas de módulos inactivos y rutas que no existen.
+   * (`filtrarNavegacion`). Son también la referencia para descartar recientes
+   * de módulos que ya no ve.
    */
   paginas?: PaginaBuscable[];
-  /** El disparador lo pinta el header nuevo (`SearchTrigger`). */
+  /** Organización activa (clave de recientes y de las acciones cacheadas). */
+  organizacionId?: string | null;
+  /** @deprecated El disparador lo pinta el header (`AppHeader`); se ignora. */
   sinDisparador?: boolean;
+  /** @deprecated Sin uso desde que el header pinta su propio disparador. */
+  forceFullBar?: boolean;
 }
 
-const GlobalSearch = ({ forceFullBar = false, paginas, sinDisparador = false }: GlobalSearchProps) => {
+const ICONO_ENTIDAD: Record<TipoEntidad, LucideIcon> = {
+  customer: User,
+  product: Package,
+  branch: Warehouse,
+  supplier: Truck,
+  category: Tags,
+  invoice: FileText,
+  web_order: ShoppingBag,
+  reservation: BookOpen,
+  space: BedDouble,
+  membership: CreditCard,
+  parking_vehicle: Car,
+};
+
+const GRUPO_I18N: Record<TipoEntidad, string> = {
+  customer: 'customers',
+  product: 'products',
+  branch: 'branches',
+  supplier: 'suppliers',
+  category: 'categories',
+  invoice: 'invoices',
+  web_order: 'webOrders',
+  reservation: 'reservations',
+  space: 'spaces',
+  membership: 'memberships',
+  parking_vehicle: 'parking',
+};
+
+const ICONO_ACCION: Record<IdAccion | 'reportar', LucideIcon> = {
+  reportar: Bug,
+  nuevaVenta: ShoppingCart,
+  nuevaFactura: FilePlus2,
+  nuevoCliente: UserPlus,
+  nuevoProducto: PackagePlus,
+  nuevaReserva: CalendarPlus,
+};
+
+/** Acción que se ofrece en «Sin resultados», por preferencia (Figma: «Crear producto»). */
+const CREAR_SIN_RESULTADOS: IdAccion[] = ['nuevoProducto', 'nuevoCliente'];
+
+function esCampoEditable(el: EventTarget | null): boolean {
+  if (!(el instanceof HTMLElement)) return false;
+  return el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName);
+}
+
+interface AccionFila {
+  id: IdAccion | 'reportar';
+  etiqueta: string;
+  ayuda: string;
+  href: string | null;
+}
+
+const GlobalSearch = ({ paginas, organizacionId = null }: GlobalSearchProps) => {
   const t = useTranslations('header.globalSearch');
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+  const describir = useDescribirResultado();
+  const [abierto, setAbierto] = useState(false);
+  const [consulta, setConsulta] = useState('');
+  const [usuarioId, setUsuarioId] = useState<string | null>(null);
+  const [recientes, setRecientes] = useState<Reciente[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
-  const debouncedQuery = useDebounce(query, query.trim().length <= 1 ? 400 : 200);
-  const isMountedRef = useRef(true);
-  const abortControllerRef = useRef<AbortController | null>(null);
-  
-  // Función para abrir el diálogo de búsqueda
-  const openSearchDialog = () => {
-    setOpen(true);
-    // Enfocar el input cuando se abre el diálogo
-    setTimeout(() => {
-      inputRef.current?.focus();
-    }, 100);
-  };
+  // Estado y no ref: la lista monta dentro del portal de Radix un render después de abrir.
+  const [lista, setLista] = useState<HTMLDivElement | null>(null);
+  const abiertoRef = useRef(false);
+  abiertoRef.current = abierto;
+  const idAnuncio = useId();
 
-  const paginasRef = useRef<PaginaBuscable[] | undefined>(paginas);
-  paginasRef.current = paginas;
-  // Sin `paginas` no se ofrece ninguna: las listas fijas de `types.ts` estaban
-  // solo en español y ofrecían páginas de módulos inactivos.
-  const paginasIniciales = (): SearchResult[] =>
-    (paginasRef.current ?? []).slice(0, 6).map((page) => ({ ...page, type: 'page' as SearchResultType }));
-  const paginasTodas = (): SearchResult[] =>
-    (paginasRef.current ?? []).map((page) => ({ ...page, type: 'page' as SearchResultType }));
+  const servidor = useBusquedaServidor(consulta, abierto, organizacionId);
+  const clave = claveRecientes(usuarioId, organizacionId);
+  const listaPaginas = useMemo(() => paginas ?? [], [paginas]);
+  const hrefsVisibles = useMemo(() => listaPaginas.map((p) => p.url), [listaPaginas]);
 
-  // Efecto para realizar la búsqueda cuando cambia el query debounceado
+  // Usuario de la sesión para la clave de recientes (lectura local, sin red).
   useEffect(() => {
-    // No realizar búsqueda si el query está vacío
-    if (!debouncedQuery || debouncedQuery.trim().length < 1) {
-      setResults(paginasIniciales());
-      setIsLoading(false);
-      return;
-    }
-
-    // Cancelar requests anteriores para liberar conexiones
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    const abortController = new AbortController();
-    abortControllerRef.current = abortController;
-
-    // Watchdog: si por cualquier motivo la búsqueda no resuelve, forzar fin de carga
-    const watchdog = setTimeout(() => {
-      if (isMountedRef.current && !abortController.signal.aborted) {
-        console.warn('[GlobalSearch] Watchdog: la búsqueda no completó a tiempo, forzando fin de carga.');
-        setIsLoading(false);
-      }
-    }, 7000);
-
-    const fetchData = async () => {
-      setIsLoading(true);
-      console.log('[GlobalSearch] Buscando:', debouncedQuery, '| organizationId:', getOrganizationId());
-
-      try {
-        // Usar el servicio modular para buscar datos
-        const data = await searchData(debouncedQuery, 5, abortController.signal);
-        console.log('[GlobalSearch] Resultado clientes:', data.clientes);
-
-        // Solo actualizar si esta petición no fue cancelada por una búsqueda más reciente
-        if (isMountedRef.current && !abortController.signal.aborted) {
-          // Convertir los resultados de la API a formato de resultado de búsqueda
-          // Usamos una declaración de tipo más explícita
-          const searchResults = [
-            // Primero mostrar páginas que coincidan con la búsqueda
-            ...paginasTodas().filter(page =>
-              page.name.toLowerCase().includes(debouncedQuery.toLowerCase())
-            ),
-
-            // Organizaciones
-            ...(data.organizaciones || []).map(org => ({
-              id: org.id,
-              name: org.name,
-              description: t('organization'),
-              type: 'organization' as const,
-              url: `/app/organizacion/${org.id}`
-            })),
-
-            // Sucursales
-            ...(data.sucursales || []).map(branch => ({
-              id: branch.id,
-              name: branch.name,
-              description: t('branch'),
-              type: 'branch' as const,
-              url: `/app/organizacion/sucursales/${branch.id}`
-            })),
-
-            // Clientes - Mejoramos la construcción del nombre y añadimos avatar_url
-            ...(data.clientes || []).map(cliente => {
-              // Usamos el nombre completo si está disponible, de lo contrario combinamos first_name y last_name
-              const nombreCompleto = cliente.full_name || `${cliente.first_name || ''} ${cliente.last_name || ''}`.trim();
-              return {
-                id: cliente.id,
-                name: nombreCompleto || t('unnamedCustomer'),
-                description: cliente.email || cliente.identification_number || t('noExtraInfo'),
-                type: 'customer' as const,
-                url: `/app/clientes/${cliente.id}`,
-                avatarUrl: cliente.avatar_url
-              };
-            }),
-
-            // Productos
-            ...(data.productos || []).map(producto => ({
-              id: producto.id,
-              name: producto.name,
-              description: producto.sku || producto.description,
-              type: 'product' as const,
-              url: `/app/inventario/productos/${producto.id}`
-            })),
-
-            // Proveedores
-            ...(data.proveedores || []).map(proveedor => ({
-              id: proveedor.id,
-              name: proveedor.name,
-              description: proveedor.nit || proveedor.email,
-              type: 'supplier' as const,
-              url: `/app/proveedores/${proveedor.id}`
-            })),
-
-            // Categorías
-            ...(data.categorias || []).map(categoria => ({
-              id: categoria.id,
-              name: categoria.name,
-              description: categoria.slug,
-              type: 'category' as const,
-              url: `/app/inventario/categorias/${categoria.uuid}`
-            })),
-
-            // Facturas de venta
-            ...(data.facturas || []).map((f: FilaFactura) => ({
-              id: f.id,
-              name: t('invoice', { number: f.number || t('noNumber') }),
-              description: `${f.customers?.full_name || ''} - $${Number(f.total || 0).toLocaleString()} - ${f.status || ''}`,
-              type: 'invoice' as const,
-              url: `/app/finanzas/facturas-venta/${f.id}`
-            })),
-
-            // Pedidos online
-            ...(data.pedidosOnline || []).map((p: FilaPedido) => ({
-              id: p.id,
-              name: t('order', { number: p.order_number || '' }).trim(),
-              description: `${p.customer_name || ''} - $${Number(p.total || 0).toLocaleString()} - ${p.status || ''}`,
-              type: 'web_order' as const,
-              url: `/app/pos/pedidos-online/${p.id}`
-            })),
-
-            // Reservas
-            ...(data.reservas || []).map((r: FilaReserva) => ({
-              id: r.id,
-              name: t('reservation', { space: r.spaces?.label || '' }).trim(),
-              description: `${r.customers?.full_name || ''} - ${r.checkin || ''} → ${r.checkout || ''} - ${r.status || ''}`,
-              type: 'reservation' as const,
-              url: `/app/pms/reservas/${r.id}`
-            })),
-
-            // Espacios
-            ...(data.espacios || []).map((e: FilaEspacio) => ({
-              id: e.id,
-              name: e.label || t('unnamed'),
-              description: `${e.space_types?.name || ''} ${e.floor_zone ? '- ' + e.floor_zone : ''} - ${e.status || ''}`,
-              type: 'space' as const,
-              url: `/app/pms/espacios/${e.id}`
-            })),
-
-            // Membresías
-            ...(data.membresias || []).map((m: FilaMembresia) => ({
-              id: m.id,
-              name: `${m.membership_plans?.name || t('membership')} - ${m.customers?.full_name || ''}`,
-              description: `${m.status || ''} - ${formatPlainDate(m.start_date)} → ${formatPlainDate(m.end_date)}`,
-              type: 'membership' as const,
-              url: `/app/gym/membresias/${m.id}`
-            })),
-
-            // Vehículos de parqueadero
-            ...(data.vehiculosParking || []).map((v: FilaVehiculo) => ({
-              id: v.id,
-              name: `${v.plate || t('noPlate')}`,
-              description: `${v.brand || ''} ${v.model || ''} ${v.color ? '- ' + v.color : ''} (${v.vehicle_type || ''})`,
-              type: 'parking_vehicle' as const,
-              url: `/app/pms/parking`
-            }))
-          ];
-
-          // Aseguramos que el array completo cumpla con el tipo SearchResult[]
-          setResults(searchResults as SearchResult[]);
-          setIsLoading(false);
-        }
-      } catch (err) {
-        const error = err as { name?: string; message?: string };
-        // Ignorar errores de abort (request cancelada)
-        if (error?.name === 'AbortError' || error?.message?.includes('abort')) {
-          return;
-        }
-        console.error('[GlobalSearch] Error al buscar:', error);
-        if (isMountedRef.current && !abortController.signal.aborted) {
-          setIsLoading(false);
-          // En caso de error, mostrar solo las páginas predefinidas
-          setResults(paginasTodas());
-        }
-      } finally {
-        clearTimeout(watchdog);
-        // Asegurar que isLoading se resete incluso si esta petición fue cancelada
-        if (isMountedRef.current && !abortController.signal.aborted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    // Iniciar la búsqueda
-    fetchData();
-    // Las páginas se leen por ref y `t` solo cambia con el idioma: ninguno de
-    // los dos debe relanzar la búsqueda.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedQuery]);
-
-  // Limpiar al desmontar
-  useEffect(() => {
-    // Re-asignar en el cuerpo del efecto: en React 18 StrictMode el ciclo
-    // mount -> cleanup -> mount dejaría el ref en false permanentemente
-    // si solo se confía en el valor inicial de useRef(true).
-    isMountedRef.current = true;
+    let vivo = true;
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (vivo) setUsuarioId(data.session?.user?.id ?? null);
+      })
+      .catch(() => undefined);
     return () => {
-      isMountedRef.current = false;
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
+      vivo = false;
     };
   }, []);
 
-  // Función para actualizar el estado del query al escribir
-  const handleInputChange = (value: string) => {
-    // Evitar reactivar el spinner si el valor no cambió realmente (ej. re-emisión
-    // redundante de onValueChange de cmdk), ya que en ese caso el efecto de
-    // búsqueda no se re-ejecutaría (depende de debouncedQuery) y el spinner
-    // quedaría colgado para siempre.
-    const valueChanged = value !== query;
-    setQuery(value);
-    if (valueChanged && value.trim().length >= 1) {
-      setIsLoading(true);
-    } else if (value.trim() === '') {
-      setResults(paginasIniciales());
-      setIsLoading(false);
-    }
+  useEffect(() => {
+    if (abierto) setRecientes(leerRecientes(almacenLocal(), clave));
+  }, [abierto, clave]);
+
+  const abrir = useCallback(() => setAbierto(true), []);
+  useDescendienteActivo(lista, inputRef);
+
+  useEffect(() => {
+    const alPulsar = (e: KeyboardEvent) => {
+      const accion = accionAtajo(e, esCampoEditable(e.target), abiertoRef.current);
+      if (!accion) return;
+      e.preventDefault();
+      if (accion === 'alternar') setAbierto((v) => !v);
+      else setAbierto(true);
+    };
+    // En `window` y en burbuja: corre DESPUÉS del «/» de kit/SearchInput
+    // (que escucha en `document`), así el buscador de la página tiene
+    // prioridad. Ver `accionAtajo`.
+    window.addEventListener('keydown', alPulsar);
+    window.addEventListener(ABRIR_BUSCADOR_EVENT, abrir);
+    return () => {
+      window.removeEventListener('keydown', alPulsar);
+      window.removeEventListener(ABRIR_BUSCADOR_EVENT, abrir);
+    };
+  }, [abrir]);
+
+  const cambiarAbierto = (v: boolean) => {
+    setAbierto(v);
+    if (!v) setConsulta('');
   };
 
-  // Manejar la selección de un resultado
-  const handleSelect = (item: SearchResult) => {
-    console.log('handleSelect llamado con:', item);
-    if (!item || !item.url) {
-      console.error('Error: Intento de navegar a un resultado sin URL');
+  // ─── Qué se pinta ─────────────────────────────────────────────────────────
+
+  const texto = consulta.trim();
+  const palabras = useMemo(() => palabrasBusqueda(texto), [texto]);
+
+  const acciones: AccionFila[] = useMemo(() => {
+    const todas: AccionFila[] = [
+      { id: 'reportar', etiqueta: t('actions.reportProblem'), ayuda: t('actions.reportProblemHint'), href: null },
+      ...servidor.acciones.map((a) => ({
+        id: a.id,
+        etiqueta: t(`actions.${a.id}`),
+        ayuda: t(`actions.${a.id}Hint`),
+        href: a.href,
+      })),
+    ];
+    return texto ? todas.filter((a) => coincideCampos([a.etiqueta, a.ayuda], palabras)) : todas;
+  }, [servidor.acciones, t, texto, palabras]);
+
+  const paginasMostradas = useMemo(
+    () => (texto ? filtrarPaginas(listaPaginas, texto).slice(0, 8) : listaPaginas.slice(0, PAGINAS_INICIALES)),
+    [listaPaginas, texto],
+  );
+
+  const recientesMostrados = useMemo(() => (texto ? [] : filtrarRecientes(recientes, hrefsVisibles)), [texto, recientes, hrefsVisibles]);
+
+  const totalLocal = paginasMostradas.length + (texto ? acciones.length : 0);
+  const totalServidor = servidor.grupos.reduce((n, g) => n + g.items.length, 0);
+  const estado = estadoBusqueda({
+    consulta: texto,
+    cargando: servidor.cargando,
+    error: servidor.error,
+    totalLocal,
+    totalServidor,
+  });
+
+  const crear = CREAR_SIN_RESULTADOS.map((id) => servidor.acciones.find((a) => a.id === id)).find(Boolean) ?? null;
+
+  const anuncio = !texto
+    ? ''
+    : estado === 'cargando'
+      ? t('searching')
+      : estado === 'error'
+        ? t('error.title')
+        : estado === 'sin-resultados'
+          ? t('noResults', { query: texto })
+          : t('resultsCount', { n: totalLocal + totalServidor });
+
+  // ─── Selección ────────────────────────────────────────────────────────────
+
+  const recordar = (r: Reciente) => {
+    const nueva = agregarReciente(recientes, r);
+    setRecientes(nueva);
+    guardarRecientes(almacenLocal(), clave, nueva);
+  };
+
+  const ir = (url: string) => {
+    cambiarAbierto(false);
+    router.push(url);
+  };
+
+  const elegirAccion = (a: AccionFila) => {
+    if (a.id === 'reportar') {
+      cambiarAbierto(false);
+      // Tras cerrar: dos diálogos de Radix abiertos a la vez se pelean el foco.
+      setTimeout(abrirReportarProblema, 0);
       return;
     }
-    
-    // Cerrar el diálogo inmediatamente 
-    setOpen(false);
-    
-    // Navegación directa usando un elemento <a>
-    const navigateToUrl = () => {
-      // Método más fiable para navegación entre páginas
-      const link = document.createElement('a');
-      link.href = item.url || '/';
-      link.setAttribute('data-from-search', 'true');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      console.log('Navegación iniciada a:', item.url);
-    };
-    
-    // Pequeño retraso para garantizar que la UI responde correctamente
-    setTimeout(navigateToUrl, 10);
+    if (a.href) ir(a.href);
   };
 
-  // Efecto para abrir el diálogo con atajo de teclado (Ctrl+K)
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        openSearchDialog();
-      }
-    };
-    
-    document.addEventListener('keydown', down);
-    window.addEventListener(ABRIR_BUSCADOR_EVENT, openSearchDialog);
-    return () => {
-      document.removeEventListener('keydown', down);
-      window.removeEventListener(ABRIR_BUSCADOR_EVENT, openSearchDialog);
-    };
-    // openSearchDialog solo usa setters y refs estables.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const elegirEntidad = (r: ResultadoEntidad) => {
+    const { titulo, subtitulo } = describir(r);
+    recordar({ tipo: r.tipo, id: r.id, titulo, subtitulo: subtitulo || undefined, url: r.url });
+    ir(r.url);
+  };
+
+  const elegirPagina = (p: PaginaBuscable) => {
+    recordar({ tipo: 'page', id: p.url, titulo: p.name, subtitulo: p.url, url: p.url });
+    ir(p.url);
+  };
+
+  // ─── Render ───────────────────────────────────────────────────────────────
+
+  const encabezado =
+    '[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:leading-4 [&_[cmdk-group-heading]]:text-fg-secondary';
 
   return (
-    <>
-      {/* Campo de búsqueda en el header - Versión responsive */}
-      {!sinDisparador && (
-      <div className="flex items-center justify-center">
-        {/* Versión móvil - Solo icono (oculto si forceFullBar) */}
-        {!forceFullBar && (
-          <button
-            onClick={openSearchDialog} 
-            className="md:hidden p-2 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
-            aria-label={t('search')}
-          >
-            <Search className="h-5 w-5" />
-          </button>
-        )}
-        
-        {/* Versión escritorio o forzada - Campo completo */}
-        <div 
-          onClick={openSearchDialog}
-          className={`${forceFullBar ? 'flex w-full' : 'hidden md:flex w-60 lg:w-96'} items-center h-10 px-3 border rounded-md bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 cursor-pointer focus-within:ring-1 focus-within:ring-blue-500 hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-sm`}
+    <DialogPrimitive.Root open={abierto} onOpenChange={cambiarAbierto}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 hidden bg-fg/40 data-[state=open]:animate-in data-[state=open]:fade-in-0 lg:block" />
+        <DialogPrimitive.Content
+          aria-describedby={`${idAnuncio}-desc`}
+          onOpenAutoFocus={(e) => {
+            e.preventDefault();
+            inputRef.current?.focus();
+          }}
+          className={cn(
+            'fixed inset-0 z-50 flex flex-col bg-surface outline-none',
+            'lg:inset-auto lg:left-1/2 lg:top-[12vh] lg:max-h-[76vh] lg:w-[640px] lg:max-w-[calc(100vw-2rem)] lg:-translate-x-1/2',
+            'lg:overflow-hidden lg:rounded-xl lg:border lg:border-line',
+            'lg:shadow-[0_2px_6px_rgba(15,23,42,0.06),0_12px_32px_-4px_rgba(15,23,42,0.14)]',
+          )}
         >
-          <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-          <div className="flex-grow truncate text-sm text-gray-500 dark:text-gray-400">
-            {t('triggerPlaceholder')}
-          </div>
-          <Kbd tecla="Ctrl+K" className="ml-auto hidden lg:inline-flex" />
-        </div>
-      </div>
-      )}
+          <DialogPrimitive.Title className="sr-only">{t('title')}</DialogPrimitive.Title>
+          <DialogPrimitive.Description id={`${idAnuncio}-desc`} className="sr-only">
+            {t('description')}
+          </DialogPrimitive.Description>
 
-      {/* Diálogo de búsqueda con estructura revisada */}
-      <CommandDialog 
-        open={open} 
-        onOpenChange={setOpen}
-      >
-        {/* Título requerido para accesibilidad */}
-        <DialogTitle className="sr-only">{t('title')}</DialogTitle>
-        <DialogDescription className="sr-only">
-          {t('description')}
-        </DialogDescription>
-        
-        <CommandInput
-          ref={inputRef}
-          value={query}
-          onValueChange={handleInputChange}
-          placeholder={t('placeholder')}
-          className="flex-1 py-3 text-base outline-none placeholder:text-gray-500 h-12 px-3 border-b"
-          autoFocus
-        />
-
-        <CommandList className="max-h-[500px] overflow-y-auto py-2">
-          {results.length === 0 && !isLoading && query.length > 0 && (
-            <div className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-              {t('noResults', { query })}
-              <p className="mt-2 text-xs">{t('noResultsHint')}</p>
-            </div>
-          )}
-
-          {/* Estado de carga */}
-          {isLoading && (
-            <div className="py-6 text-center">
-              <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-solid border-current border-r-transparent" />
-              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{t('searching')}</p>
-            </div>
-          )}
-
-          {/* Estado de resultados vacíos */}
-          {!isLoading && results.length === 0 && query.length === 0 && (
-            <CommandEmpty>
-              <div className="py-6 text-center">
-                <p className="text-sm text-gray-500 dark:text-gray-400">{t('typeToSearch')}</p>
+          {/* vimBindings: sin Ctrl J/K/N/P de cmdk; Ctrl K es el atajo que cierra la paleta. */}
+          <Command label={t('title')} shouldFilter={false} loop vimBindings={false} className="flex min-h-0 flex-1 flex-col">
+            {/* Buscador (Figma «Buscador»: 12 px arriba, 8 abajo, divisor) */}
+            <div className="flex shrink-0 items-center gap-2 border-b border-line px-3 pb-2 pt-[max(12px,env(safe-area-inset-top))] lg:pt-3">
+              <div className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-line bg-surface px-3 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20">
+                <Search className="size-4 shrink-0 text-fg-muted" strokeWidth={1.5} aria-hidden="true" />
+                <Command.Input
+                  ref={inputRef}
+                  value={consulta}
+                  onValueChange={setConsulta}
+                  placeholder={t('placeholder')}
+                  aria-label={t('placeholder')}
+                  enterKeyHint="search"
+                  className="h-full min-w-0 flex-1 bg-transparent text-sm text-fg outline-none placeholder:text-fg-muted"
+                />
+                <Kbd tecla="Esc" className="hidden lg:inline-flex" />
               </div>
-            </CommandEmpty>
-          )}
+              <DialogPrimitive.Close
+                aria-label={t('close')}
+                className="flex size-10 shrink-0 items-center justify-center rounded-lg text-fg-secondary outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-brand lg:hidden"
+              >
+                <X className="size-5" strokeWidth={1.5} aria-hidden="true" />
+              </DialogPrimitive.Close>
+            </div>
 
-          {/* Resultados agrupados por tipo - usando componentes modulares */}
-          <SearchResultGroup 
-            heading={t('groups.pages')} 
-            resultType="page" 
-            results={results} 
-            onSelect={handleSelect} 
-          />
+            <Command.List
+              ref={setLista}
+              label={t('title')}
+              className={cn(
+                'min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-[max(12px,env(safe-area-inset-bottom))] lg:pb-3',
+                encabezado,
+              )}
+            >
+              {recientesMostrados.length > 0 && (
+                <Command.Group heading={t('groups.recent')}>
+                  {recientesMostrados.map((r) => (
+                    <Fila
+                      key={`r:${r.url}`}
+                      valor={`reciente:${r.url}`}
+                      icono={Clock}
+                      titulo={r.titulo}
+                      subtitulo={r.subtitulo}
+                      onSelect={() => {
+                        recordar(r);
+                        ir(r.url);
+                      }}
+                    />
+                  ))}
+                </Command.Group>
+              )}
 
-          <SearchResultGroup 
-            heading={t('groups.branches')} 
-            resultType="branch" 
-            results={results} 
-            onSelect={handleSelect} 
-          />
+              {acciones.length > 0 && (
+                <Command.Group heading={t('groups.actions')}>
+                  {acciones.map((a) => (
+                    <Fila
+                      key={`a:${a.id}`}
+                      valor={`accion:${a.id}`}
+                      icono={ICONO_ACCION[a.id]}
+                      titulo={a.etiqueta}
+                      subtitulo={a.ayuda}
+                      onSelect={() => elegirAccion(a)}
+                    />
+                  ))}
+                </Command.Group>
+              )}
 
-          <SearchResultGroup 
-            heading={t('groups.customers')} 
-            resultType="customer" 
-            results={results} 
-            onSelect={handleSelect} 
-          />
+              {paginasMostradas.length > 0 && (
+                <Command.Group heading={t('groups.pages')}>
+                  {paginasMostradas.map((p) => (
+                    <Fila
+                      key={`p:${p.url}`}
+                      valor={`pagina:${p.url}`}
+                      icono={p.icono ?? FileQuestion}
+                      titulo={p.name}
+                      subtitulo={p.url}
+                      onSelect={() => elegirPagina(p)}
+                    />
+                  ))}
+                </Command.Group>
+              )}
 
-          <SearchResultGroup 
-            heading={t('groups.products')} 
-            resultType="product" 
-            results={results} 
-            onSelect={handleSelect} 
-          />
+              {servidor.grupos.map((g) => (
+                <Command.Group key={g.tipo} heading={t(`groups.${GRUPO_I18N[g.tipo]}`)}>
+                  {g.items.map((r) => {
+                    const { titulo, subtitulo } = describir(r);
+                    return (
+                      <Fila
+                        key={`${g.tipo}:${r.id}`}
+                        valor={`${g.tipo}:${r.id}`}
+                        icono={ICONO_ENTIDAD[g.tipo]}
+                        titulo={titulo}
+                        subtitulo={subtitulo}
+                        onSelect={() => elegirEntidad(r)}
+                      />
+                    );
+                  })}
+                </Command.Group>
+              ))}
 
-          <SearchResultGroup 
-            heading={t('groups.suppliers')} 
-            resultType="supplier" 
-            results={results} 
-            onSelect={handleSelect} 
-          />
+              {estado === 'cargando' && <Cargando etiqueta={t('searching')} />}
 
-          <SearchResultGroup 
-            heading={t('groups.categories')} 
-            resultType="category" 
-            results={results} 
-            onSelect={handleSelect} 
-          />
+              {estado === 'sin-resultados' && (
+                <SinResultados
+                  titulo={t('noResults', { query: texto })}
+                  ayuda={texto.length < MIN_CARACTERES_ENTIDADES ? t('typeMore', { n: MIN_CARACTERES_ENTIDADES }) : t('noResultsHint')}
+                  accion={
+                    crear && texto.length >= MIN_CARACTERES_ENTIDADES
+                      ? { etiqueta: t(`create.${crear.id as 'nuevoProducto' | 'nuevoCliente'}`), onClick: () => ir(crear.href) }
+                      : null
+                  }
+                />
+              )}
 
-          <SearchResultGroup 
-            heading={t('groups.invoices')} 
-            resultType="invoice" 
-            results={results} 
-            onSelect={handleSelect} 
-          />
+              {estado === 'error' && <ErrorBusqueda titulo={t('error.title')} ayuda={t('error.hint')} reintentar={t('error.retry')} onReintentar={servidor.reintentar} />}
 
-          <SearchResultGroup 
-            heading={t('groups.webOrders')} 
-            resultType="web_order" 
-            results={results} 
-            onSelect={handleSelect} 
-          />
+              {/* Datos del servidor caídos con páginas a la vista, o grupos que no respondieron. */}
+              {estado === 'resultados' && (servidor.error || servidor.fallidos.length > 0) && (
+                <div role="status" className="mt-2 flex items-center gap-2 rounded-lg bg-warning-subtle px-3 py-2 text-[13px] leading-[18px] text-warning-text">
+                  <AlertTriangle className="size-4 shrink-0" strokeWidth={1.5} aria-hidden="true" />
+                  <span className="min-w-0 flex-1">{servidor.error ? t('error.title') : t('error.partial')}</span>
+                  <button
+                    type="button"
+                    onClick={servidor.reintentar}
+                    className="shrink-0 rounded-md px-2 py-1 font-medium underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-brand"
+                  >
+                    {t('error.retry')}
+                  </button>
+                </div>
+              )}
+            </Command.List>
 
-          <SearchResultGroup 
-            heading={t('groups.reservations')} 
-            resultType="reservation" 
-            results={results} 
-            onSelect={handleSelect} 
-          />
+            {/* Pie de atajos (Figma «Pie»). En móvil no hay teclado físico que explicar. */}
+            <div className="hidden shrink-0 items-center gap-3 px-6 pb-3 pt-2 text-xs font-medium leading-4 text-fg-secondary lg:flex" aria-hidden="true">
+              <Kbd tecla="↑↓" />
+              <span>{t('footer.navigate')}</span>
+              <Kbd tecla="Enter" />
+              <span>{t('footer.open')}</span>
+              <Kbd tecla="Esc" />
+              <span>{t('footer.close')}</span>
+            </div>
+          </Command>
 
-          <SearchResultGroup 
-            heading={t('groups.spaces')} 
-            resultType="space" 
-            results={results} 
-            onSelect={handleSelect} 
-          />
-
-          <SearchResultGroup 
-            heading={t('groups.memberships')} 
-            resultType="membership" 
-            results={results} 
-            onSelect={handleSelect} 
-          />
-
-          <SearchResultGroup 
-            heading={t('groups.parking')} 
-            resultType="parking_vehicle" 
-            results={results} 
-            onSelect={handleSelect} 
-          />
-        </CommandList>
-      </CommandDialog>
-    </>
+          <div id={idAnuncio} aria-live="polite" aria-atomic="true" className="sr-only">
+            {anuncio}
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 };
+
+/**
+ * cmdk (1.1) selecciona la primera fila al montar la lista pero no publica su
+ * id en `aria-activedescendant` hasta que se pulsa una flecha: el lector de
+ * pantalla no anunciaba la opción activa. Se sincroniza observando
+ * `aria-selected` en la lista; en cuanto cmdk lo publique él, coincide.
+ */
+function useDescendienteActivo(lista: HTMLDivElement | null, inputRef: RefObject<HTMLInputElement | null>) {
+  useEffect(() => {
+    if (!lista || typeof MutationObserver === 'undefined') return;
+    const sincronizar = () => {
+      const input = inputRef.current;
+      if (!input) return;
+      const activa = lista.querySelector('[cmdk-item][aria-selected="true"]');
+      if (activa?.id) {
+        input.setAttribute('aria-activedescendant', activa.id);
+        lista.setAttribute('aria-activedescendant', activa.id);
+      } else {
+        input.removeAttribute('aria-activedescendant');
+        lista.removeAttribute('aria-activedescendant');
+      }
+    };
+    sincronizar();
+    const observador = new MutationObserver(sincronizar);
+    observador.observe(lista, { subtree: true, childList: true, attributes: true, attributeFilter: ['aria-selected'] });
+    return () => observador.disconnect();
+  }, [lista, inputRef]);
+}
+
+/** Fila del buscador (Figma CommandRow 46:2156: 44 px, icono 18, etiqueta y subtítulo; ↵ en la activa). */
+function Fila({
+  valor,
+  icono: Icono,
+  titulo,
+  subtitulo,
+  onSelect,
+}: {
+  valor: string;
+  icono: LucideIcon;
+  titulo: string;
+  subtitulo?: string;
+  onSelect: () => void;
+}) {
+  return (
+    <Command.Item
+      value={valor}
+      onSelect={onSelect}
+      className="group flex h-11 cursor-pointer select-none items-center gap-3 rounded-lg px-3 outline-none data-[selected=true]:bg-hover"
+    >
+      <Icono className="size-[18px] shrink-0 text-fg-secondary" strokeWidth={1.5} aria-hidden="true" />
+      <span className="flex min-w-0 flex-1 items-baseline gap-2 overflow-hidden whitespace-nowrap">
+        <span className="max-w-[70%] shrink-0 truncate text-sm leading-5 text-fg">{titulo}</span>
+        {subtitulo && <span className="min-w-0 truncate text-[13px] leading-[18px] text-fg-secondary">{subtitulo}</span>}
+      </span>
+      <Kbd tecla="Enter" className="hidden lg:group-data-[selected=true]:inline-flex" />
+    </Command.Item>
+  );
+}
+
+function Cargando({ etiqueta }: { etiqueta: string }) {
+  return (
+    <Command.Loading label={etiqueta}>
+      <div className="px-3 pb-1 pt-2.5 text-xs font-medium leading-4 text-fg-secondary">{etiqueta}</div>
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="flex h-11 items-center gap-3 px-3" aria-hidden="true">
+          <Skeleton className="size-[18px] rounded-md" />
+          <Skeleton className={cn('h-3.5 rounded', i === 1 ? 'w-40' : 'w-56')} />
+          <Skeleton className="hidden h-3 w-24 rounded xs:block" />
+        </div>
+      ))}
+    </Command.Loading>
+  );
+}
+
+/** Figma SearchCommand State=empty (46:2286 · móvil 46:2456). */
+function SinResultados({
+  titulo,
+  ayuda,
+  accion,
+}: {
+  titulo: string;
+  ayuda: string;
+  accion: { etiqueta: string; onClick: () => void } | null;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
+      <span className="flex size-12 items-center justify-center rounded-full bg-subtle" aria-hidden="true">
+        <Search className="size-[22px] text-fg-muted" strokeWidth={1.5} />
+      </span>
+      <p className="text-sm font-medium leading-5 text-fg">{titulo}</p>
+      <p className="text-[13px] leading-[18px] text-fg-secondary">{ayuda}</p>
+      {accion && (
+        <button
+          type="button"
+          onClick={accion.onClick}
+          className="mt-1 inline-flex h-8 items-center gap-2 rounded-lg bg-brand-tint px-3 text-xs font-medium text-brand-deep outline-none hover:bg-brand-tint-hover focus-visible:ring-2 focus-visible:ring-brand"
+        >
+          <Plus className="size-4" strokeWidth={1.5} aria-hidden="true" />
+          {accion.etiqueta}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function ErrorBusqueda({ titulo, ayuda, reintentar, onReintentar }: { titulo: string; ayuda: string; reintentar: string; onReintentar: () => void }) {
+  return (
+    <div role="alert" className="flex flex-col items-center gap-2 px-4 py-10 text-center">
+      <span className="flex size-12 items-center justify-center rounded-full bg-danger-subtle" aria-hidden="true">
+        <AlertTriangle className="size-[22px] text-danger" strokeWidth={1.5} />
+      </span>
+      <p className="text-sm font-medium leading-5 text-fg">{titulo}</p>
+      <p className="text-[13px] leading-[18px] text-fg-secondary">{ayuda}</p>
+      <button
+        type="button"
+        onClick={onReintentar}
+        className="mt-1 inline-flex h-8 items-center gap-2 rounded-lg border border-line bg-surface px-3 text-xs font-medium text-fg outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-brand"
+      >
+        {reintentar}
+      </button>
+    </div>
+  );
+}
 
 export default GlobalSearch;

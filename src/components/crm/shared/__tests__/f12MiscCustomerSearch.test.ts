@@ -2,7 +2,8 @@
 /**
  * F12-misc — `useCustomerSearch` (picker de referidor) rompía con comas en la
  * búsqueda: el `.or(...)` de PostgREST llevaba el término sin entrecomillar
- * (PGRST100). Ahora compone el filtro con el helper único `ilikeAnyOf`.
+ * (PGRST100). Ahora busca con la búsqueda única de clientes (RPC
+ * `fn_clientes_buscar`): el texto viaja como parámetro, nunca dentro de un `.or`.
  *
  * Sin @testing-library (jest en node): el hook se ejecuta con el despachador
  * mínimo de React 19 (`__CLIENT_INTERNALS…H`), como en `f0RegTesterR4`:
@@ -24,7 +25,15 @@ function chain(): Record<string, unknown> {
   return self;
 }
 
-jest.mock('@/lib/supabase/config', () => ({ supabase: { from: (...args: unknown[]) => { calls.push({ method: 'from', args }); return chain(); } } }));
+jest.mock('@/lib/supabase/config', () => ({
+  supabase: {
+    from: (...args: unknown[]) => { calls.push({ method: 'from', args }); return chain(); },
+    rpc: async (...args: unknown[]) => {
+      calls.push({ method: 'rpc', args });
+      return { data: { total: 1, filas: result.data ?? [] }, error: result.error };
+    },
+  },
+}));
 let orgId = 120;
 jest.mock('@/lib/hooks/useOrganization', () => ({ getOrganizationId: () => orgId }));
 
@@ -58,23 +67,22 @@ beforeEach(() => {
 });
 afterEach(() => jest.useRealTimers());
 
-describe('useCustomerSearch — filtro `or` de PostgREST', () => {
-  it('coma, paréntesis y comillas del usuario viajan entrecomillados (helper único) y acotados a la organización', async () => {
+describe('useCustomerSearch — búsqueda única de clientes', () => {
+  it('coma, paréntesis y comillas del usuario viajan como parámetro de la RPC, acotados a la organización', async () => {
     runHook('Pérez, Juan ("hijo")', true);
     await jest.advanceTimersByTimeAsync(260);
-    const or = calls.find((c) => c.method === 'or');
-    expect(or?.args[0]).toBe('full_name.ilike."%Pérez, Juan (\\"hijo\\")%",email.ilike."%Pérez, Juan (\\"hijo\\")%"');
-    expect(calls.find((c) => c.method === 'from')?.args[0]).toBe('customers');
-    expect(calls.find((c) => c.method === 'eq')?.args).toEqual(['organization_id', 120]);
-    expect(calls.find((c) => c.method === 'limit')?.args).toEqual([8]);
+    const rpc = calls.find((c) => c.method === 'rpc');
+    expect(rpc?.args[0]).toBe('fn_clientes_buscar');
+    expect(rpc?.args[1]).toMatchObject({ p_organization_id: 120, p_q: 'Pérez, Juan ("hijo")', p_limit: 8 });
+    expect(calls.some((c) => c.method === 'or')).toBe(false);
+    expect(calls.some((c) => c.method === 'from')).toBe(false);
   });
 
-  it('el término no se mutila: «Pérez, Juan» se busca con su coma (no con un espacio)', async () => {
+  it('el término no se mutila: «Pérez, Juan» llega con su coma', async () => {
     runHook('Pérez, Juan', true);
     await jest.advanceTimersByTimeAsync(260);
-    const or = calls.find((c) => c.method === 'or');
-    expect(String(or?.args[0])).toContain('"%Pérez, Juan%"');
-    expect(String(or?.args[0])).not.toContain('Pérez  Juan');
+    const rpc = calls.find((c) => c.method === 'rpc');
+    expect((rpc?.args[1] as { p_q: string }).p_q).toBe('Pérez, Juan');
   });
 
   it('búsqueda vacía o solo espacios: sin `.or` (lista reciente de la organización)', async () => {

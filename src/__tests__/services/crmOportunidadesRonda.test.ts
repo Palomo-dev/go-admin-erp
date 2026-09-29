@@ -27,7 +27,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 // ── Mock de Supabase: registra cada llamada y deja guionizar la respuesta ────
-type Operacion = 'select' | 'insert' | 'update' | 'delete';
+type Operacion = 'select' | 'insert' | 'update' | 'delete' | 'rpc';
 interface Llamada {
   tabla: string;
   op: Operacion;
@@ -115,6 +115,10 @@ jest.mock('@/lib/supabase/config', () => {
   return {
     supabase: {
       from: (tabla: string) => crearChain(tabla),
+      rpc: async (fn: string, args: unknown) => {
+        registro.push({ tabla: fn, op: 'rpc', payload: args });
+        return { data: { total: 0, filas: [] }, error: null };
+      },
       auth: { getUser: async () => ({ data: { user: { id: 'usuario-1' } } }) },
     },
   };
@@ -385,11 +389,11 @@ describe('5 · permisos de etapa (regla dura 6)', () => {
 
 // ── 6 · Selector de clientes contra el servidor ────────────────────────────
 describe('6 · selector de clientes', () => {
-  it('searchCustomers entrecomilla el término y limita el número de filas', async () => {
-    guionSelect.customers = { data: [], error: null };
+  it('searchCustomers usa la búsqueda única (RPC): el término viaja como parámetro y con límite', async () => {
     await opportunitiesService.searchCustomers('Pérez, Juan');
-    const sel = registro.find((l) => l.tabla === 'customers' && l.op === 'select');
-    expect(sel).toBeTruthy();
+    const rpc = registro.find((l) => l.tabla === 'fn_clientes_buscar' && l.op === 'rpc');
+    expect(rpc?.payload).toMatchObject({ p_organization_id: 120, p_q: 'Pérez, Juan', p_limit: 20 });
+    expect(registro.some((l) => l.tabla === 'customers')).toBe(false);
   });
 
   it('OpportunityForm busca contra el servidor con debounce, no trae la organización entera', () => {

@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import {
   CategoryBar,
   EmptyState,
+  KbdButton,
   MarcadorSinFoto,
   ProductCard,
   SearchInput,
@@ -18,10 +19,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { CachedProductImage } from '@/components/pos/CachedProductImage';
 import { LocalCatalogNotice } from '@/components/pos/LocalCatalogNotice';
 import type { PosGridProduct } from '@/lib/pos/venta/catalogo';
+import { pareceCodigoDeBarras } from '@/lib/pos/venta/escaneo';
 import { aProductoTarjeta, columnasDeGrilla, moverFocoGrilla, type VistaCatalogo } from '@/lib/pos/venta/catalogoGrilla';
 import type { CatalogoGrilla } from './catalogo/useCatalogoGrilla';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { cn } from '@/utils/Utils';
+import { esMedido, esPorPeso } from '@/lib/pos/peso/modoVenta';
 
 /**
  * Buscador y grilla del POS (Figma `PosProductSearch` 155:7745 y grid v2
@@ -59,6 +62,12 @@ export interface GrillaProductosProps {
   favoritosEnCurso: ReadonlySet<number>;
   onReceta: (producto: PosGridProduct) => void;
   onEscanerCamara: () => void;
+  /**
+   * Código de barras escrito en el buscador + Enter (solo dígitos, 6 a 14):
+   * se resuelve como un escaneo y va directo al carrito. Sin la prop, Enter
+   * busca como siempre.
+   */
+  onCodigo?: (codigo: string) => void;
   onLimpiarFiltros: () => void;
   /** Mensaje del error de carga (el de Desktop sin catálogo, o el genérico). */
   mensajeError?: string | null;
@@ -88,10 +97,12 @@ export function GrillaProductos({
   favoritosEnCurso,
   onReceta,
   onEscanerCamara,
+  onCodigo,
   onLimpiarFiltros,
   mensajeError,
 }: GrillaProductosProps) {
   const t = useTranslations('posVenta.catalogo');
+  const tPeso = useTranslations('posPeso.tarjeta');
   const escritorio = useMediaQuery('(min-width: 1024px)');
   const [foco, setFoco] = useState(0);
   const grillaRef = useRef<HTMLDivElement | null>(null);
@@ -189,6 +200,8 @@ export function GrillaProductos({
               moneda,
               imagen,
               elegibleSinPrecio: elegibleSinPrecio(p),
+              // Por peso: «Pesar» abre el diálogo de la pesada; por medida, «Cantidad».
+              ...(esMedido(p) ? { etiquetaElegir: tPeso(esPorPeso(p) ? 'pesar' : 'cantidad') } : {}),
               onElegir: () => onElegir(p),
               onNoDisponible: (m: 'agotado' | 'sinPrecio') => onNoDisponible(p, m),
               onFavorito: () => onFavorito(p),
@@ -218,9 +231,9 @@ export function GrillaProductos({
                 {t('cargandoMas')}
               </>
             ) : (
-              <button type="button" onClick={() => void cargarMas()} className="rounded-lg border border-line-strong px-3 py-1.5 text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+              <KbdButton variante="secundario" tamano="sm" onClick={() => void cargarMas()}>
                 {t('reintentarMas')}
-              </button>
+              </KbdButton>
             )}
           </div>
         )}
@@ -237,6 +250,11 @@ export function GrillaProductos({
           onChange={onBusqueda}
           onValueChange={onBusqueda}
           debounceMs={0}
+          onEnter={(texto) => {
+            if (!onCodigo || !pareceCodigoDeBarras(texto)) return false;
+            onCodigo(texto.trim());
+            return true;
+          }}
           placeholder={t('buscarPlaceholder')}
           etiqueta={t('buscarEtiqueta')}
           cargando={recargando}
@@ -269,11 +287,14 @@ export function GrillaProductos({
           onFavorita={onFavoritaCategoria ? (id) => onFavoritaCategoria(Number(id)) : undefined}
           className="min-w-0 flex-1"
         />
-        {!cargando && !error && (
-          <span className="hidden shrink-0 text-xs tabular-nums text-fg-secondary md:inline">{t('total', { n: total })}</span>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto pb-24 lg:pb-2">
+        {contenido}
+        {/* POS-UX-V2 §7.5: en escritorio el conteo va al pie del grid; en móvil no se muestra. */}
+        {!cargando && !error && productos.length > 0 && (
+          <p className="hidden pt-3 text-center text-xs tabular-nums text-fg-secondary md:block">{t('total', { n: total })}</p>
         )}
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto pb-24 lg:pb-2">{contenido}</div>
     </section>
   );
 }

@@ -31,8 +31,10 @@ interface ImportVehiclesDialogProps {
 
 type VehicleType = 'motorcycle' | 'car' | 'van' | 'truck' | 'minibus' | 'bus';
 
+// Cada campo de esta fila acaba siendo una clave del insert en `vehicles`:
+// solo columnas reales (verificadas por MCP en `information_schema.columns`).
 interface ParsedRow {
-  plate_number: string;
+  plate: string;
   vehicle_type: VehicleType;
   brand?: string;
   model?: string;
@@ -40,12 +42,12 @@ interface ParsedRow {
   color?: string;
   capacity_kg?: number;
   capacity_m3?: number;
-  capacity_seats?: number;
-  fuel_type?: string;
+  passenger_capacity?: number;
   vin?: string;
   soat_expiry?: string;
-  tech_review_expiry?: string;
+  techno_expiry?: string;
   insurance_expiry?: string;
+  operating_card_expiry?: string;
   status: 'available' | 'in_use' | 'maintenance' | 'inactive';
   is_active: boolean;
 }
@@ -80,7 +82,7 @@ export function ImportVehiclesDialog({
     }
 
     const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-    const requiredHeaders = ['plate_number', 'vehicle_type'];
+    const requiredHeaders = ['plate', 'vehicle_type'];
     const missing = requiredHeaders.filter(h => !headers.includes(h));
     
     if (missing.length > 0) {
@@ -99,7 +101,7 @@ export function ImportVehiclesDialog({
         row[header] = values[index] || '';
       });
 
-      if (!row.plate_number || !row.vehicle_type) {
+      if (!row.plate || !row.vehicle_type) {
         errors.push(`Fila ${i + 1}: placa y tipo son requeridos`);
         continue;
       }
@@ -111,7 +113,7 @@ export function ImportVehiclesDialog({
       }
 
       rows.push({
-        plate_number: row.plate_number,
+        plate: row.plate,
         vehicle_type: row.vehicle_type as VehicleType,
         brand: row.brand || undefined,
         model: row.model || undefined,
@@ -119,12 +121,14 @@ export function ImportVehiclesDialog({
         color: row.color || undefined,
         capacity_kg: row.capacity_kg ? parseFloat(row.capacity_kg) : undefined,
         capacity_m3: row.capacity_m3 ? parseFloat(row.capacity_m3) : undefined,
-        capacity_seats: row.capacity_seats ? parseInt(row.capacity_seats, 10) : undefined,
-        fuel_type: row.fuel_type || undefined,
+        passenger_capacity: row.passenger_capacity
+          ? parseInt(row.passenger_capacity, 10)
+          : undefined,
         vin: row.vin || undefined,
         soat_expiry: row.soat_expiry || undefined,
-        tech_review_expiry: row.tech_review_expiry || undefined,
+        techno_expiry: row.techno_expiry || undefined,
         insurance_expiry: row.insurance_expiry || undefined,
+        operating_card_expiry: row.operating_card_expiry || undefined,
         status: (row.status || 'available') as 'available' | 'in_use' | 'maintenance' | 'inactive',
         is_active: row.is_active?.toLowerCase() !== 'false',
       });
@@ -150,7 +154,7 @@ export function ImportVehiclesDialog({
 
   const handleDownloadTemplate = () => {
     const headers = [
-      'plate_number',
+      'plate',
       'vehicle_type',
       'brand',
       'model',
@@ -158,12 +162,12 @@ export function ImportVehiclesDialog({
       'color',
       'capacity_kg',
       'capacity_m3',
-      'capacity_seats',
-      'fuel_type',
+      'passenger_capacity',
       'vin',
       'soat_expiry',
-      'tech_review_expiry',
+      'techno_expiry',
       'insurance_expiry',
+      'operating_card_expiry',
       'status',
       'is_active'
     ];
@@ -177,10 +181,10 @@ export function ImportVehiclesDialog({
       '1000',
       '10',
       '',
-      'Diesel',
       '1HGBH41JXMN109186',
       '2025-12-31',
       '2025-06-30',
+      '2025-12-31',
       '2025-12-31',
       'available',
       'true'
@@ -287,7 +291,7 @@ export function ImportVehiclesDialog({
                     <tbody>
                       {parsedData.slice(0, 10).map((row, i) => (
                         <tr key={i} className="border-t">
-                          <td className="px-3 py-2 font-medium">{row.plate_number}</td>
+                          <td className="px-3 py-2 font-medium">{row.plate}</td>
                           <td className="px-3 py-2">{vehicleTypeLabels[row.vehicle_type] || row.vehicle_type}</td>
                           <td className="px-3 py-2">{row.brand || '-'}</td>
                           <td className="px-3 py-2">{row.model || '-'}</td>

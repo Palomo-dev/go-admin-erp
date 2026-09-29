@@ -11,7 +11,6 @@ import {
   Activity,
   Shield,
   Landmark,
-  Dumbbell,
   Bell,
   Globe,
   HardDrive,
@@ -126,10 +125,11 @@ export const CONFIG_MODULES: ConfigModule[] = [
   },
   {
     id: 'gym',
-    moduleCode: 'gym',
-    title: 'Gym',
+    // Membresías (antes gym): el código de módulo es «memberships»; «gym» es alias.
+    moduleCode: 'memberships',
+    title: 'Membresías',
     description: 'Acceso, tolerancias, check-in, clases y notificaciones',
-    icon: Dumbbell,
+    icon: UserCheck,
   },
   {
     id: 'notificaciones',

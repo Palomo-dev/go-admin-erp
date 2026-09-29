@@ -1,12 +1,12 @@
 'use client';
 
 import React from 'react';
-import { Input } from '@/components/ui/input';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Search } from 'lucide-react';
+
 import { SERVICE_CATEGORIES } from '@/lib/services/spaceServicesService';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 interface ServiciosFiltersProps {
   search: string;
@@ -22,15 +22,13 @@ export function ServiciosFilters({
 }: ServiciosFiltersProps) {
   return (
     <div className="flex flex-col sm:flex-row gap-3">
-      <div className="relative flex-1">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
-        <Input
-          placeholder="Buscar servicio..."
-          value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="pl-9 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700"
-        />
-      </div>
+      <SearchInput
+        value={search}
+        onChange={onSearchChange}
+        onValueChange={onSearchChange}
+        placeholder="Buscar servicio..."
+        className="flex-1"
+      />
       <Select value={categoryFilter} onValueChange={onCategoryChange}>
         <SelectTrigger className="w-full sm:w-[180px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700">
           <SelectValue placeholder="Categoría" />

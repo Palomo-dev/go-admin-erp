@@ -95,12 +95,7 @@ export const REMINDER_OPTIONS: { value: number; label: string }[] = [
   { value: 1440, label: '1 día antes' },
 ];
 
-export const TIMEZONE_OPTIONS: { value: string; label: string }[] = [
-  { value: 'America/Bogota', label: 'Bogotá (GMT-5)' },
-  { value: 'America/Mexico_City', label: 'Ciudad de México (GMT-6)' },
-  { value: 'America/Lima', label: 'Lima (GMT-5)' },
-  { value: 'America/Buenos_Aires', label: 'Buenos Aires (GMT-3)' },
-  { value: 'America/Santiago', label: 'Santiago (GMT-4)' },
-  { value: 'America/New_York', label: 'Nueva York (GMT-5)' },
-  { value: 'Europe/Madrid', label: 'Madrid (GMT+1)' },
-];
+// El catálogo canónico vive en `@/lib/utils/timezoneCatalog`, fuera de la
+// carpeta de un módulo: la ficha de sucursal y la pantalla General son de
+// núcleo y no deben importar de aquí. Se reexporta para no romper llamadores.
+export { TIMEZONE_OPTIONS } from '@/lib/utils/timezoneCatalog';

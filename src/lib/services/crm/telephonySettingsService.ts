@@ -33,6 +33,18 @@ export const telephonyPatchSchema = z
      * true, así que el agente no podía llegar a llamar nunca.
      */
     voice_agent_enabled: z.boolean().optional(),
+    /**
+     * Política de tratamiento de datos (Ley 1581 de 2012). Sin ella la cola de
+     * campañas del agente no marca. Solo https (mismo criterio que el CHECK
+     * `comm_settings_data_policy_url_https`); cadena vacía = quitarla.
+     */
+    data_policy_url: z
+      .union([
+        z.literal(''),
+        z.string().trim().max(500).regex(/^https:\/\/\S+$/, 'La URL debe empezar por https:// y no llevar espacios'),
+      ])
+      .nullable()
+      .optional(),
   })
   .strict();
 export type TelephonyPatch = z.infer<typeof telephonyPatchSchema>;
@@ -80,6 +92,7 @@ export async function updateTelephonySettings(orgId: number, patch: TelephonyPat
 
   const row: Record<string, unknown> = { ...patch };
   if (patch.voice_consent_message !== undefined) row.voice_consent_message = consent;
+  if (patch.data_policy_url !== undefined) row.data_policy_url = patch.data_policy_url ? patch.data_policy_url.trim() : null;
   const { data: existing } = await sb.from('comm_settings').select('id').eq('organization_id', orgId).limit(1).maybeSingle();
   if (existing) {
     const { error } = await sb.from('comm_settings').update(row).eq('organization_id', orgId);

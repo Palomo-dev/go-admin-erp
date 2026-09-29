@@ -9,6 +9,9 @@ import { useLocaleIntl } from '@/components/kit/useIdiomaKit';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { addPlainDays } from '@/lib/utils/dateDisplay';
 import { calcularMargen, costoDesdeMargen, descuentoComparacion, tonoMargen } from '../../logica/margen';
+import { referenciaDesdeTexto, unidadParaModo } from '../../logica/formularioProducto';
+import { decimalesCantidad, simboloUnidad, type ModoVenta } from '@/lib/pos/peso/modoVenta';
+import { precioEnReferencia, precioPorUnidadDesdeReferencia, referenciasPermitidas } from '@/lib/pos/peso/precioReferencia';
 import type { PropsSeccionFormulario } from '../tipos';
 
 /**
@@ -18,6 +21,11 @@ import type { PropsSeccionFormulario } from '../tipos';
  *
  * `partes` para el stepper móvil: «venta» (paso 1: solo precio de venta) y
  * «costos» (paso 2: comparación, costo, margen, vigencia).
+ *
+ * «Cómo se vende» (PRODUCTOS-POR-PESO-BASCULA.md, Figma P1/P3/P6): por unidad,
+ * por peso (kg o lb) o por medida (metro o litro). Por peso, el precio se
+ * puede escribir «cada 500/250/100/50 g», pero se guarda siempre por kg
+ * (`estado.price`), así que el margen y el costo siguen siendo por kg.
  */
 export interface SeccionPreciosProps extends PropsSeccionFormulario {
   partes?: 'todo' | 'venta' | 'costos';
@@ -37,7 +45,7 @@ function diaLegible(dia: string, locale: string): string {
   return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(Date.UTC(a, m - 1, d, 12)));
 }
 
-export function SeccionPrecios({ estado, cambiar, errores, modo, moneda, hoy, productUuid, partes = 'todo' }: SeccionPreciosProps) {
+export function SeccionPrecios({ estado, cambiar, actualizar, errores, modo, moneda, hoy, productUuid, partes = 'todo' }: SeccionPreciosProps) {
   const t = useTranslations('productoForm.precios');
   const tErr = useTranslations('productoForm.errores');
   const fechas = useFormatDate();
@@ -53,26 +61,154 @@ export function SeccionPrecios({ estado, cambiar, errores, modo, moneda, hoy, pr
   const diaProgramado = estado.precio_desde ? fechas.toDate(new Date(estado.precio_desde)) : null;
   const porcentaje = (n: number) => new Intl.NumberFormat(localeIntl, { maximumFractionDigits: 1 }).format(n);
 
+  // Cómo se vende: el precio se escribe en la referencia y se guarda por la unidad de venta.
+  const modoVenta = estado.sale_mode;
+  const medido = modoVenta !== 'unit' && estado.product_type !== 'service';
+  const unidadVenta = (estado.unit_code ?? '').trim().toUpperCase();
+  const simbolo = simboloUnidad(unidadVenta) || unidadVenta.toLowerCase();
+  const referencia = modoVenta === 'weight' ? referenciaDesdeTexto(estado.precio_referencia) : null;
+  const precioMostrado = referencia && estado.price !== null ? precioEnReferencia(estado.price, referencia, unidadVenta, moneda.decimales) : estado.price;
+  const etiquetaReferencia = (cantidad: number, unidad: string) =>
+    unidad === unidadVenta && cantidad === 1 ? t('porUnidadVenta', { unidad: simbolo }) : t('cadaCantidad', { cantidad, unidad: simboloUnidad(unidad) });
+  const decimalesMinimo = decimalesCantidad({ sale_mode: modoVenta });
+  const cambiarModo = (valor: ModoVenta) =>
+    actualizar({
+      sale_mode: valor,
+      unit_code: unidadParaModo(valor, estado.unit_code),
+      precio_referencia: '',
+      require_scale: valor === 'weight' ? estado.require_scale : false,
+      min_sale_qty: valor === modoVenta ? estado.min_sale_qty : null,
+    });
+
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      {verVenta && estado.product_type !== 'service' && (
+        <FormField
+          etiqueta={t('comoSeVende')}
+          error={error(errores.modo_venta)}
+          ayuda={t(modoVenta === 'weight' ? 'comoSeVendeAyudaPeso' : modoVenta === 'measure' ? 'comoSeVendeAyudaMedida' : 'comoSeVendeAyuda')}
+          className="md:col-span-2"
+        >
+          {(campo) => (
+            <SegmentedControl
+              aria-labelledby={campo.idEtiqueta}
+              opciones={[
+                { valor: 'unit', etiqueta: t('porUnidad') },
+                { valor: 'weight', etiqueta: t('porPeso') },
+                { valor: 'measure', etiqueta: t('porMedida') },
+              ]}
+              valor={modoVenta}
+              onValorChange={(v) => cambiarModo(v as ModoVenta)}
+            />
+          )}
+        </FormField>
+      )}
+
+      {verVenta && medido && (
+        <FormField etiqueta={t(modoVenta === 'weight' ? 'unidadPeso' : 'unidadMedida')}>
+          {(campo) => (
+            <SegmentedControl
+              aria-labelledby={campo.idEtiqueta}
+              tamano="sm"
+              opciones={
+                modoVenta === 'weight'
+                  ? [
+                      { valor: 'KG', etiqueta: t('kilogramo') },
+                      { valor: 'LB', etiqueta: t('libra') },
+                    ]
+                  : [
+                      { valor: 'MT', etiqueta: t('metro') },
+                      { valor: 'LT', etiqueta: t('litro') },
+                    ]
+              }
+              valor={unidadVenta}
+              onValorChange={(v) => actualizar({ unit_code: v, precio_referencia: '' })}
+            />
+          )}
+        </FormField>
+      )}
+
+      {verVenta && modoVenta === 'weight' && medido && referenciasPermitidas(unidadVenta).length > 1 && (
+        <FormField etiqueta={t('precioEscrito')} ayuda={t('precioEscritoAyuda')}>
+          {(campo) => (
+            <SegmentedControl
+              aria-labelledby={campo.idEtiqueta}
+              tamano="sm"
+              opciones={referenciasPermitidas(unidadVenta).map((r) => ({
+                valor: r.unidad === unidadVenta && r.cantidad === 1 ? '' : `${r.cantidad}${r.unidad}`,
+                etiqueta: etiquetaReferencia(r.cantidad, r.unidad),
+              }))}
+              valor={estado.precio_referencia}
+              onValorChange={(v) => cambiar('precio_referencia', v)}
+            />
+          )}
+        </FormField>
+      )}
+
       {verVenta && (
         <FormField
-          etiqueta={t('precioVenta')}
+          etiqueta={
+            medido
+              ? referencia
+                ? t('precioVentaCada', { referencia: etiquetaReferencia(referencia.cantidad, referencia.unidad) })
+                : t('precioVentaPor', { unidad: simbolo })
+              : t('precioVenta')
+          }
           obligatorio
           error={error(errores.price)}
-          ayuda={estado.price !== null && estado.price > 0 ? moneda.formatear(estado.price) : t('precioVentaAyuda')}
+          ayuda={
+            medido && referencia && estado.price !== null && estado.price > 0
+              ? t('seGuardaComo', { precio: moneda.formatear(estado.price), unidad: simbolo })
+              : estado.price !== null && estado.price > 0
+                ? moneda.formatear(estado.price)
+                : t('precioVentaAyuda')
+          }
           className={partes === 'venta' ? 'md:col-span-2' : undefined}
         >
           <CampoNumero
             id="producto-precio"
-            valor={estado.price}
-            onValorChange={(v) => cambiar('price', v)}
+            valor={precioMostrado}
+            onValorChange={(v) =>
+              cambiar(
+                'price',
+                v !== null && referencia ? precioPorUnidadDesdeReferencia(v, referencia, unidadVenta, moneda.decimales) : v,
+              )
+            }
             prefijo={moneda.simbolo}
+            sufijo={medido ? (referencia ? etiquetaReferencia(referencia.cantidad, referencia.unidad) : `/ ${simbolo}`) : undefined}
             decimales={moneda.decimales}
             minimo={0}
             placeholder="0"
           />
         </FormField>
+      )}
+
+      {verVenta && medido && (
+        <FormField etiqueta={t('ventaMinima', { unidad: simbolo })} ayuda={t('ventaMinimaAyuda')}>
+          <CampoNumero
+            id="producto-venta-minima"
+            valor={estado.min_sale_qty}
+            onValorChange={(v) => cambiar('min_sale_qty', v)}
+            sufijo={simbolo}
+            decimales={decimalesMinimo}
+            minimo={0}
+          />
+        </FormField>
+      )}
+
+      {verVenta && medido && modoVenta === 'weight' && (
+        <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-line px-3 py-2.5 md:col-span-2">
+          <input
+            type="checkbox"
+            checked={estado.require_scale}
+            onChange={(e) => cambiar('require_scale', e.target.checked)}
+            className="mt-0.5 size-4 cursor-pointer rounded accent-brand-action"
+          />
+          <span className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium text-fg">{t('exigirBascula')}</span>
+            <span className="text-xs text-fg-secondary">{t('exigirBasculaAyuda')}</span>
+          </span>
+        </label>
       )}
 
       {verCostos && (
@@ -92,7 +228,7 @@ export function SeccionPrecios({ estado, cambiar, errores, modo, moneda, hoy, pr
             />
           </FormField>
 
-          <FormField etiqueta={t('costo')} error={error(errores.cost)} ayuda={t('costoAyuda')}>
+          <FormField etiqueta={medido ? t('costoPor', { unidad: simbolo }) : t('costo')} error={error(errores.cost)} ayuda={t('costoAyuda')}>
             <CampoNumero
               id="producto-costo"
               valor={estado.cost}

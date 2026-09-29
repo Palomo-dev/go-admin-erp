@@ -1,14 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useTranslations } from 'next-intl';
-import { ArrowLeft, Package, CreditCard, DollarSign, Calculator, AlertTriangle, Camera } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
+import { ArrowLeft, Package, CreditCard, DollarSign, Calculator, AlertTriangle, Camera, Receipt } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { CampoNumero, FilaDato, ListaDatos, Tarjeta } from '@/components/kit';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -21,6 +20,7 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { claveErrorDevolucion, codigoErrorDevolucion } from '@/lib/pos/devoluciones/procesarDevolucion';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { toast } from 'sonner';
+import { decimalesCantidad, esMedido, esPorPeso, redondearCantidadProducto, unidadVisible } from '@/lib/pos/peso/modoVenta';
 
 interface ReturnFormProps {
   sale: SaleForReturn;
@@ -42,6 +42,12 @@ interface ReturnItemData {
   track_serial: boolean;
   available_serials: SoldSerialInfo[];
   selected_serial_ids: number[];
+  /** Decimales de la cantidad (0 por unidad; 3 en kg) y unidad visible («kg»). */
+  decimales: number;
+  unidad: string | null;
+  /** Producto por peso: «Reingresa» al inventario (por defecto no). */
+  por_peso: boolean;
+  restock: boolean;
 }
 
 export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
@@ -50,6 +56,9 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
   const t = useTranslations('posDevoluciones.formulario');
   const tComun = useTranslations('posDevoluciones.comun');
   const { formatDate } = useFormatDate();
+  const localeIntl = useLocale();
+  const formatoDecimal = (n: number, item: { decimales: number }) =>
+    new Intl.NumberFormat(localeIntl, { minimumFractionDigits: item.decimales, maximumFractionDigits: item.decimales }).format(n);
   // Métodos de pago conocidos se traducen; uno desconocido se muestra tal cual (es un dato).
   const nombreMetodoPago = (metodo: string): string =>
     t.has(`metodosPago.${metodo}`) ? t(`metodosPago.${metodo}`) : metodo;
@@ -95,7 +104,11 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
       max_returnable: item.quantity - (item.returned_quantity || 0),
       track_serial: item.product.track_serial || false,
       available_serials: item.serials || [],
-      selected_serial_ids: [] as number[]
+      selected_serial_ids: [] as number[],
+      decimales: esMedido(item.product) ? decimalesCantidad(item.product) : 0,
+      unidad: unidadVisible(item.product),
+      por_peso: esPorPeso(item.product),
+      restock: false,
     })).filter(item => item.max_returnable > 0); // Solo items que se pueden devolver
 
     setReturnItems(items);
@@ -115,8 +128,9 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
         return {
           ...item,
           selected,
-          return_quantity: selected ? Math.min(1, item.max_returnable) : 0,
-          refund_amount: selected ? item.unit_price * Math.min(1, item.max_returnable) : 0
+          // Por peso o medida se propone devolver todo lo disponible (0,735 kg), no «1».
+          return_quantity: selected ? (item.decimales > 0 ? item.max_returnable : Math.min(1, item.max_returnable)) : 0,
+          refund_amount: selected ? item.unit_price * (item.decimales > 0 ? item.max_returnable : Math.min(1, item.max_returnable)) : 0
         };
       }
       return item;
@@ -126,7 +140,7 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
   const handleQuantityChange = (itemId: string, quantity: number) => {
     setReturnItems(prev => prev.map(item => {
       if (item.sale_item_id === itemId) {
-        const validQuantity = Math.max(0, Math.min(quantity, item.max_returnable));
+        const validQuantity = Math.max(0, Math.min(redondearCantidadProducto(quantity, item.decimales), item.max_returnable));
         return {
           ...item,
           return_quantity: validQuantity,
@@ -136,6 +150,11 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
       }
       return item;
     }));
+  };
+
+  // Producto por peso: «Reingresa» (por defecto no vuelve al inventario).
+  const handleRestock = (itemId: string, restock: boolean) => {
+    setReturnItems(prev => prev.map(item => (item.sale_item_id === itemId ? { ...item, restock } : item)));
   };
 
   const handleReasonChange = (itemId: string, itemReason: string) => {
@@ -223,7 +242,8 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
           return_quantity: item.return_quantity,
           refund_amount: item.refund_amount,
           reason: item.reason,
-          serial_number_ids: item.track_serial ? item.selected_serial_ids : undefined
+          serial_number_ids: item.track_serial ? item.selected_serial_ids : undefined,
+          ...(item.por_peso ? { restock: item.restock } : {}),
         })),
         refund_method: refundMethod,
         total_refund: totalRefund,
@@ -292,35 +312,14 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
       {hasReturnableItems && (
         <>
           {/* Información de la venta */}
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg dark:text-white">{t('infoVenta')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <Label className="text-sm text-gray-600 dark:text-gray-400">{tComun('cliente')}</Label>
-                  <div className="dark:text-gray-200">{sale.customer?.full_name || tComun('clienteGeneral')}</div>
-                </div>
-                <div>
-                  <Label className="text-sm text-gray-600 dark:text-gray-400">{tComun('fecha')}</Label>
-                  <div className="dark:text-gray-200">{formatDate(sale.sale_date)}</div>
-                </div>
-                <div>
-                  <Label className="text-sm text-gray-600 dark:text-gray-400">{t('totalOriginal')}</Label>
-                  <div className="text-lg font-bold text-green-600 dark:text-green-400">
-                    {formatear(sale.total)}
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-sm text-gray-600 dark:text-gray-400">{t('metodoPago')}</Label>
-                  <div className="dark:text-gray-200">
-                    {sale.payment_method ? nombreMetodoPago(sale.payment_method) : t('noEspecificado')}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <Tarjeta titulo={t('infoVenta')} icono={Receipt}>
+            <ListaDatos etiqueta={t('infoVenta')}>
+              <FilaDato etiqueta={tComun('cliente')} valor={sale.customer?.full_name || tComun('clienteGeneral')} />
+              <FilaDato etiqueta={tComun('fecha')} valor={formatDate(sale.sale_date)} />
+              <FilaDato etiqueta={t('totalOriginal')} valor={formatear(sale.total)} tono="fuerte" />
+              <FilaDato etiqueta={t('metodoPago')} valor={sale.payment_method ? nombreMetodoPago(sale.payment_method) : t('noEspecificado')} />
+            </ListaDatos>
+          </Tarjeta>
 
           {/* Selección de items */}
           <Card className="dark:bg-gray-800 dark:border-gray-700">
@@ -360,8 +359,21 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                         <div>
                           <div className="font-medium">{item.product_name || tComun('productoNoEncontrado')}</div>
                           <div className="text-sm text-gray-500 dark:text-gray-400">
-                            {t('cantidadOriginal', { n: item.original_quantity })}
+                            {item.unidad
+                              ? t('cantidadOriginalUnidad', { cantidad: formatoDecimal(item.original_quantity, item), unidad: item.unidad })
+                              : t('cantidadOriginal', { n: item.original_quantity })}
                           </div>
+                          {item.por_peso && (
+                            <label className="mt-1 inline-flex cursor-pointer items-center gap-2 text-xs text-fg-secondary">
+                              <Checkbox
+                                checked={item.restock}
+                                disabled={!item.selected}
+                                onCheckedChange={(checked) => handleRestock(item.sale_item_id, checked === true)}
+                                aria-label={t('reingresaDe', { producto: item.product_name })}
+                              />
+                              {t('reingresa')}
+                            </label>
+                          )}
                           {item.track_serial && item.available_serials.length > 0 && (
                             <Badge variant="secondary" className="mt-1 text-xs">
                               {t('serializado')}
@@ -374,7 +386,7 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                       </TableCell>
                       <TableCell className="dark:text-gray-300">
                         <Badge variant="outline" className="dark:border-blue-500 dark:text-blue-400">
-                          {item.max_returnable}
+                          {item.unidad ? `${formatoDecimal(item.max_returnable, item)} ${item.unidad}` : item.max_returnable}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -394,14 +406,17 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                             ))}
                           </div>
                         ) : (
-                          <Input
-                            type="number"
-                            min={0}
-                            max={item.max_returnable}
-                            value={item.return_quantity}
-                            onChange={(e) => handleQuantityChange(item.sale_item_id, parseInt(e.target.value) || 0)}
+                          <CampoNumero
+                            valor={item.return_quantity}
+                            onValorChange={(v) => handleQuantityChange(item.sale_item_id, v ?? 0)}
+                            minimo={0}
+                            maximo={item.max_returnable}
+                            decimales={item.decimales}
+                            sufijo={item.unidad ?? undefined}
                             disabled={!item.selected}
-                            className="w-20 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                            tamano="sm"
+                            className="w-20"
+                            aria-label={t('aDevolver')}
                           />
                         )}
                       </TableCell>
@@ -514,30 +529,16 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
                 </div>
 
                 <div className="space-y-4">
-                  <Card className="dark:bg-gray-900 dark:border-gray-600">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg dark:text-white">{t('resumen')}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex justify-between">
-                        <span className="dark:text-gray-300">{t('itemsSeleccionados')}</span>
-                        <span className="font-medium dark:text-white">{selectedItemsCount}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="dark:text-gray-300">{t('cantidadTotal')}</span>
-                        <span className="font-medium dark:text-white">
-                          {returnItems.filter(item => item.selected).reduce((sum, item) => sum + item.return_quantity, 0)}
-                        </span>
-                      </div>
-                      <Separator className="dark:bg-gray-700" />
-                      <div className="flex justify-between text-lg">
-                        <span className="font-medium dark:text-white">{t('totalReembolso')}</span>
-                        <span className="font-bold text-red-600 dark:text-red-400">
-                          {formatear(totalRefund)}
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <Tarjeta titulo={t('resumen')}>
+                    <ListaDatos etiqueta={t('resumen')}>
+                      <FilaDato etiqueta={t('itemsSeleccionados')} valor={selectedItemsCount} />
+                      <FilaDato
+                        etiqueta={t('cantidadTotal')}
+                        valor={returnItems.filter(item => item.selected).reduce((sum, item) => sum + item.return_quantity, 0)}
+                      />
+                      <FilaDato etiqueta={t('totalReembolso')} valor={formatear(totalRefund)} tono="fuerte" tamano="lg" separadorAntes />
+                    </ListaDatos>
+                  </Tarjeta>
 
                   <div className="flex space-x-3">
                     <Button

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { buscarClientes } from '@/lib/services/customers/busquedaClientesService';
 import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 import ReservationExtrasService from './reservationExtrasService';
 
@@ -80,17 +81,8 @@ class ReservationsService {
    */
   async searchCustomers(organizationId: number, searchTerm: string): Promise<Customer[]> {
     try {
-      const { data: customers, error } = await supabase
-        .from('customers')
-        .select('*')
-        .eq('organization_id', organizationId)
-        .or(`full_name.ilike.%${searchTerm}%,first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%,trade_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%,identification_number.ilike.%${searchTerm}%`)
-        .limit(10);
-
-      if (error) {
-        console.error('Error en búsqueda de clientes:', error);
-        throw error;
-      }
+      // Búsqueda única de clientes (RPC): sin tildes, todas las palabras, dígitos.
+      const { filas: customers } = await buscarClientes(supabase, { organizationId, texto: searchTerm, limite: 10 });
 
       if (!customers || customers.length === 0) {
         return [];

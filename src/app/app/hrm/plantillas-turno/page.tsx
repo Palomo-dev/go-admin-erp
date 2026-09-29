@@ -4,11 +4,10 @@ import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/component
 import { useState, useEffect, useCallback } from 'react';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import ShiftTemplatesService from '@/lib/services/shiftTemplatesService';
-import type { ShiftTemplate } from '@/lib/services/shiftTemplatesService';
+import type { CreateShiftTemplateDTO, ShiftTemplate } from '@/lib/services/shiftTemplatesService';
 import { TemplateTable, TemplateForm } from '@/components/hrm/plantillas-turno';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,12 +22,10 @@ import { useToast } from '@/components/ui/use-toast';
 import {
   Plus,
   RefreshCw,
-  Search,
   Clock,
   CheckCircle,
   XCircle,
   Moon,
-  Filter,
 } from 'lucide-react';
 import {
   Select,
@@ -38,6 +35,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import Link from 'next/link';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 export default function PlantillasTurnoPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
@@ -135,10 +133,10 @@ export default function PlantillasTurnoPage() {
         description: 'Se creó una copia de la plantilla',
       });
       await loadData();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
-        description: error.message || 'No se pudo duplicar',
+        description: (error as { message?: string } | null)?.message || 'No se pudo duplicar',
         variant: 'destructive',
       });
     }
@@ -154,10 +152,10 @@ export default function PlantillasTurnoPage() {
         title: updated.is_active ? 'Plantilla activada' : 'Plantilla desactivada',
       });
       await loadData();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
-        description: error.message || 'No se pudo cambiar el estado',
+        description: (error as { message?: string } | null)?.message || 'No se pudo cambiar el estado',
         variant: 'destructive',
       });
     }
@@ -176,16 +174,16 @@ export default function PlantillasTurnoPage() {
       });
       setDeleteId(null);
       await loadData();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Error',
-        description: error.message || 'No se pudo eliminar',
+        description: (error as { message?: string } | null)?.message || 'No se pudo eliminar',
         variant: 'destructive',
       });
     }
   };
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: CreateShiftTemplateDTO) => {
     const service = getService();
     if (!service) return;
 
@@ -308,15 +306,13 @@ export default function PlantillasTurnoPage() {
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardContent className="pt-4">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Buscar por nombre o código..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 bg-white dark:bg-gray-900"
-              />
-            </div>
+            <SearchInput
+              value={searchTerm}
+              onChange={setSearchTerm}
+              onValueChange={setSearchTerm}
+              placeholder="Buscar por nombre o código..."
+              className="flex-1 min-w-[200px]"
+            />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[150px] bg-white dark:bg-gray-900">
                 <SelectValue placeholder="Estado" />

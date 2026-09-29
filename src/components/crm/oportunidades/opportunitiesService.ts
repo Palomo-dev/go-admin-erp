@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId as getOrgId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { applyBranchFilterInclusive } from '@/lib/services/branchFilterHelper';
 import { DEFAULT_TIMEZONE, toPlainDate } from '@/lib/utils/timezone';
-import { ilikeAnyOf } from '@/lib/utils/postgrestFilters';
+import { buscarClientes } from '@/lib/services/customers/busquedaClientesService';
 import {
   Opportunity,
   OpportunityFilters,
@@ -136,24 +136,14 @@ class OpportunitiesService {
     if (!orgId) return [];
 
     try {
-      let query = supabase
-        .from('customers')
-        .select('id, full_name, email, phone, avatar_url, organization_id')
-        .eq('organization_id', orgId);
-
-      if (branchId != null) {
-        query = query.eq('branch_id', branchId);
-      }
-
-      // `or` de PostgREST: el helper único entrecomilla el término, así que
-      // comas, paréntesis o comillas no rompen el filtro y el texto no se mutila.
-      const filter = ilikeAnyOf(['full_name', 'email', 'phone'], term);
-      if (filter) query = query.or(filter);
-
-      const { data, error } = await query.order('full_name').limit(limit);
-
-      if (error) throw error;
-      return data || [];
+      // Búsqueda única de clientes (RPC): sin tildes, todas las palabras, dígitos,
+      // por relevancia. Con sucursal se piden 100 y se filtra aquí (la RPC no
+      // filtra por sucursal).
+      const { filas } = await buscarClientes(supabase, { organizationId: orgId, texto: term, limite: branchId != null ? 100 : limit });
+      return filas
+        .filter((c) => branchId == null || c.branch_id === branchId)
+        .slice(0, limit)
+        .map((c) => ({ id: c.id, full_name: c.full_name, email: c.email, phone: c.phone, avatar_url: c.avatar_url, organization_id: c.organization_id })) as Customer[];
     } catch (err) {
       // El llamador decide qué enseñar: aquí solo se propaga.
       throw err instanceof Error ? err : new Error('No se pudieron buscar clientes');

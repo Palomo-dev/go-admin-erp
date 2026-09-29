@@ -1,465 +1,334 @@
 'use client';
 
-// Forzar renderizado dinámico para evitar errores de useSearchParams
-export const dynamic = 'force-dynamic';
-
-import { useState, useEffect, useMemo, useCallback, type MouseEvent as ReactMouseEvent, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+/**
+ * Selección de organización — el selector ÚNICO (R4, decisión v2-9; Figma
+ * sección 18, filas 2, 8 y 8b; docs/design/AUTH-ACCESO-V2.md §11 y §13).
+ *
+ * - Mientras carga, «Entrando…» (es también la pantalla que se ve tras el
+ *   callback de Google, fila 2).
+ * - Con una sola organización se entra sin preguntar.
+ * - Con varias: la principal (`profiles.last_org_id`) y las favoritas primero,
+ *   buscador desde 4, filas con teclado.
+ * - Sin organizaciones (R12): crear una o unirse con el enlace/código (R6).
+ *
+ * Conserva la hidratación de la sesión de Google desde la cookie
+ * `go-admin-oauth-session` (se borra siempre: si se queda, HTTP 431). El
+ * parámetro `?_oauth=` (tokens por URL) ya no se lee: nadie lo generaba.
+ * `dest` se valida (antes `router.push(dest)` sin validar, y competía con la
+ * redirección de `proceedWithLogin`).
+ */
+import { useCallback, useEffect, useMemo, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { useLocale, useTranslations } from 'next-intl';
+import type { Session } from '@supabase/supabase-js';
+import { Building2, KeyRound, Loader2, Plus } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
-import { proceedWithLogin } from '@/lib/auth';
-import { guardarOrganizacionActiva } from '@/lib/hooks/useOrganization';
-import { useTranslations, useLocale } from 'next-intl';
+import { proceedWithLogin, activarOrganizacion } from '@/lib/auth';
 import { getOrgTypeLabel } from '@/lib/utils/organizationTypes';
+import { destinoTrasLogin } from '@/lib/auth/recuperacionSesion';
+import {
+  CLAVE_FAVORITAS,
+  estadoOrganizacion,
+  extraerCodigoInvitacion,
+  leerFavoritas,
+  ordenarOrganizaciones,
+} from '@/lib/auth/seleccionOrganizacion';
+import { SearchInput } from '@/components/kit/SearchInput';
+import { FormField } from '@/components/kit/FormField';
+import { clasesBoton } from '@/components/kit/botonClases';
+import { Input } from '@/components/ui/input';
+import { EscenaAcceso, TarjetaAcceso, AvisoAcceso, IconoDestacado, DividerTexto, Enlace } from '@/components/kit/acceso';
+import { TarjetaOrganizacion } from '@/components/kit/acceso/TarjetaOrganizacion';
 
-interface Organization {
-  id: string;
+interface OrgFila {
+  id: number;
   name: string;
-  type_name?: string;
-  plan_name?: string;
+  type_name: string;
+  plan_name: string;
   status: string;
   logo_url?: string;
 }
 
-function SelectOrganizationContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const t = useTranslations('auth.selectOrganization');
-  const tc = useTranslations('common');
-  const locale = useLocale();
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selecting, setSelecting] = useState(false);
-  const [favoriteOrgs, setFavoriteOrgs] = useState<number[]>([]);
-
-  // Cargar favoritos de localStorage al montar
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('favoriteOrgIds');
-      if (stored) {
-        setFavoriteOrgs(JSON.parse(stored));
-      }
-    } catch {
-      // Si el JSON está corrupto, ignorar
-    }
-  }, []);
-
-  // Toggle favorito
-  const toggleFavoriteOrg = useCallback((e: ReactMouseEvent, orgId: number) => {
-    e.stopPropagation();
-    e.preventDefault();
-    setFavoriteOrgs((prev) => {
-      const next = prev.includes(orgId)
-        ? prev.filter((id) => id !== orgId)
-        : [...prev, orgId];
-      localStorage.setItem('favoriteOrgIds', JSON.stringify(next));
-      return next;
-    });
-  }, []);
-
-  // Badge de estado
-  const getOrgStatusBadge = useCallback((status: string) => {
-    if (!status || status === 'active') {
-      return { label: 'Activa', className: 'bg-green-100 text-green-700' };
-    }
-    if (status === 'suspended' || status === 'frozen' || status === 'trial_expired') {
-      return { label: 'Congelada', className: 'bg-red-100 text-red-700' };
-    }
-    if (status === 'deleted') {
-      return { label: 'Eliminada', className: 'bg-gray-200 text-gray-600' };
-    }
-    return { label: 'Inactiva', className: 'bg-amber-100 text-amber-700' };
-  }, []);
-
-  // Organizaciones ordenadas: favoritas primero
-  const sortedOrganizations = useMemo(() => {
-    return [...organizations].sort((a, b) => {
-      const aFav = favoriteOrgs.includes(Number(a.id)) ? 0 : 1;
-      const bFav = favoriteOrgs.includes(Number(b.id)) ? 0 : 1;
-      return aFav - bFav;
-    });
-  }, [organizations, favoriteOrgs]);
-
-  useEffect(() => {
-    loadUserOrganizations();
-  }, []);
-
-  // Intentar obtener sesión o hidratar desde URL params / cookie OAuth (flujo Google)
-  const getActiveSession = async () => {
-    // 1. Hidratar desde URL query param _oauth (más confiable que cookies)
-    const oauthParam = searchParams?.get('_oauth') ?? null;
-    if (oauthParam) {
+/** Sesión activa, o la de Google recién llegada del callback (cookie). */
+async function sesionActiva(): Promise<Session | null> {
+  if (typeof document !== 'undefined') {
+    const cookie = document.cookie
+      .split(';')
+      .map((c) => c.trim())
+      .find((c) => c.startsWith('go-admin-oauth-session='));
+    if (cookie) {
       try {
-        const { at, rt } = JSON.parse(oauthParam);
-        if (at && rt) {
-          const { data, error } = await supabase.auth.setSession({ access_token: at, refresh_token: rt });
-          // Limpiar tokens de la URL
-          if (typeof window !== 'undefined') {
-            const dest = searchParams?.get('dest') ?? null;
-            const cleanUrl = dest ? `/auth/select-organization?dest=${encodeURIComponent(dest)}` : '/auth/select-organization';
-            window.history.replaceState(null, '', cleanUrl);
-          }
+        let valor = cookie.substring(cookie.indexOf('=') + 1);
+        // Puede venir codificada una, dos o tres veces (%257B → %7B → {).
+        for (let i = 0; i < 3 && /^%(25|7B|5B)/.test(valor); i++) valor = decodeURIComponent(valor);
+        const { access_token, refresh_token } = JSON.parse(valor);
+        if (access_token && refresh_token) {
+          const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
           if (!error && data.session) return data.session;
         }
       } catch (e) {
-        console.error('Error hydrating OAuth session from URL:', e);
+        console.error('[select-organization] No se pudo hidratar la sesión de Google:', e);
+      } finally {
+        document.cookie = 'go-admin-oauth-session=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT';
       }
     }
+  }
+  const { data } = await supabase.auth.getSession();
+  return data.session;
+}
 
-    // 2. Fallback: cookie OAuth
-    if (typeof document !== 'undefined') {
-      const oauthCookie = document.cookie
-        .split(';')
-        .map(c => c.trim())
-        .find(c => c.startsWith('go-admin-oauth-session='));
-      if (oauthCookie) {
-        try {
-          const eqIndex = oauthCookie.indexOf('=');
-          let value = oauthCookie.substring(eqIndex + 1);
-          // Decodificar URL-encoding repetidamente hasta que no quede.
-          // La cookie puede estar doble o triple encoded (%257B%2522 = %7B%22 = {").
-          for (let i = 0; i < 3; i++) {
-            if (value.startsWith('%25') || value.startsWith('%7B') || value.startsWith('%5B')) {
-              try {
-                value = decodeURIComponent(value);
-              } catch {
-                break;
-              }
-            } else {
-              break;
-            }
-          }
-          const parsed = JSON.parse(value);
-          const { access_token, refresh_token } = parsed;
-          if (access_token && refresh_token) {
-            const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
-            if (!error && data.session) return data.session;
-          }
-        } catch (e) {
-          console.error('Error hydrating OAuth session from cookie:', e);
-        } finally {
-          // SIEMPRE borrar la cookie OAuth, exito o error.
-          // Si no se borra, causa HTTP 431 (headers too large) en todas las paginas siguientes.
-          document.cookie = 'go-admin-oauth-session=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+function SelectOrganizationContent() {
+  const t = useTranslations('acceso.seleccion');
+  const tc = useTranslations('acceso.comun');
+  const locale = useLocale();
+  const searchParams = useSearchParams();
+  const [orgs, setOrgs] = useState<OrgFila[] | null>(null);
+  const [principalId, setPrincipalId] = useState<number | null>(null);
+  const [favoritas, setFavoritas] = useState<number[]>([]);
+  const [texto, setTexto] = useState('');
+  const [error, setError] = useState(false);
+  const [entrando, setEntrando] = useState(false);
+  const [sesion, setSesion] = useState<Session | null>(null);
+  const [codigo, setCodigo] = useState('');
+  const [errorCodigo, setErrorCodigo] = useState<string | null>(null);
+  const [verCodigo, setVerCodigo] = useState(false);
+
+  const destino = useMemo(() => destinoTrasLogin(searchParams?.get('dest') || searchParams?.get('next')), [searchParams]);
+
+  const entrar = useCallback(
+    async (org: OrgFila, s: Session) => {
+      setEntrando(true);
+      try {
+        activarOrganizacion({ id: org.id, name: org.name, logo_url: org.logo_url });
+        // proceedWithLogin guarda last_org_id, registra el dispositivo y hace
+        // UNA sola redirección (al destino validado).
+        await proceedWithLogin(false, s.user.email || '', { destino });
+      } catch (err) {
+        console.error('[select-organization] No se pudo entrar:', err);
+        setEntrando(false);
+        setError(true);
+      }
+    },
+    [destino],
+  );
+
+  useEffect(() => {
+    setFavoritas(leerFavoritas(typeof window !== 'undefined' ? localStorage : null));
+    let vivo = true;
+    (async () => {
+      try {
+        const s = await sesionActiva();
+        if (!vivo) return;
+        if (!s) {
+          window.location.replace('/auth/login');
+          return;
         }
-      }
-    }
-
-    // 3. Fallback: sesión existente (login normal o ya hidratada)
-    const { data: { session } } = await supabase.auth.getSession();
-    return session;
-  };
-
-  const loadUserOrganizations = async () => {
-    try {
-      setLoading(true);
-      
-      // Verificar sesión activa (o hidratar desde cookie OAuth)
-      const session = await getActiveSession();
-      
-      if (!session) {
-        router.push('/auth/login');
-        return;
-      }
-
-      // Obtener organizaciones del usuario con plan via subscriptions
-      const { data: memberData, error: memberError } = await supabase
-        .from('organization_members')
-        .select(`
-          organization_id,
-          organizations!inner(
-            id,
-            name,
-            status,
-            logo_url,
-            organization_types(name),
-            subscriptions(
-              plan_id,
-              status,
-              plans(name)
+        setSesion(s);
+        const [{ data: miembros, error: errMiembros }, { data: perfil }] = await Promise.all([
+          supabase
+            .from('organization_members')
+            .select(
+              'organization_id, organizations!inner(id, name, status, logo_url, organization_types(name), subscriptions(plan_id, status, plans(name)))',
             )
-          )
-        `)
-        .eq('user_id', session.user.id)
-        .eq('is_active', true)
-        .in('organizations.status', ['active', 'suspended', 'frozen', 'trial_expired']);
-
-      if (memberError) {
-        throw memberError;
-      }
-
-      if (!memberData || memberData.length === 0) {
-        // No tiene organizaciones, redirigir a signup
-        router.push('/auth/signup?step=organization&google=true');
-        return;
-      }
-
-      // Transformar datos para la UI
-      const orgs: Organization[] = memberData.map((member: any) => {
-        // Obtener la suscripción activa (puede haber varias, tomamos la última activa)
-        const subscriptions = member.organizations.subscriptions || [];
-        const activeSub = subscriptions.find((s: any) => s.status === 'active') || subscriptions[0];
-        const planName = activeSub?.plans?.name || 'Free';
-        
-        return {
-          id: member.organizations.id,
-          name: member.organizations.name,
-          type_name: getOrgTypeLabel(member.organizations.organization_types?.name || '', locale),
-          plan_name: planName,
-          status: member.organizations.status,
-          logo_url: member.organizations.logo_url
+            .eq('user_id', s.user.id)
+            .eq('is_active', true)
+            .in('organizations.status', ['active', 'suspended', 'frozen', 'trial_expired']),
+          supabase.from('profiles').select('last_org_id').eq('id', s.user.id).maybeSingle(),
+        ]);
+        if (errMiembros) throw errMiembros;
+        type Fila = {
+          organizations: {
+            id: number;
+            name: string;
+            status: string;
+            logo_url: string | null;
+            organization_types?: { name?: string } | null;
+            subscriptions?: { status?: string; plans?: { name?: string } | null }[] | null;
+          };
         };
-      });
+        const filas: OrgFila[] = ((miembros ?? []) as unknown as Fila[]).map((m) => {
+          const subs = m.organizations.subscriptions ?? [];
+          const activa = subs.find((x) => x.status === 'active') ?? subs[0];
+          return {
+            id: Number(m.organizations.id),
+            name: m.organizations.name,
+            type_name: getOrgTypeLabel(m.organizations.organization_types?.name || '', locale),
+            plan_name: activa?.plans?.name || 'Free',
+            status: m.organizations.status,
+            logo_url: m.organizations.logo_url ?? undefined,
+          };
+        });
+        if (!vivo) return;
+        setPrincipalId(perfil?.last_org_id ? Number(perfil.last_org_id) : null);
+        setOrgs(filas);
+        // Con una sola organización no se pregunta (decisión v2-9).
+        if (filas.length === 1) await entrar(filas[0], s);
+      } catch (err) {
+        console.error('[select-organization] Error cargando organizaciones:', err);
+        if (vivo) setError(true);
+      }
+    })();
+    return () => {
+      vivo = false;
+    };
+    // Se carga una vez; `entrar` y `locale` no deben relanzar la carga.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-      setOrganizations(orgs);
-      
-    } catch (err: any) {
-      console.error('Error loading organizations:', err);
-      setError(err.message || 'Error al cargar organizaciones');
-    } finally {
-      setLoading(false);
-    }
+  const toggleFavorita = (id: number) => {
+    setFavoritas((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      try {
+        localStorage.setItem(CLAVE_FAVORITAS, JSON.stringify(next));
+      } catch {
+        /* sin almacenamiento: solo en memoria */
+      }
+      return next;
+    });
   };
 
-  const handleSelectOrganization = async (org: Organization) => {
+  const usarCodigo = (e: React.FormEvent) => {
+    e.preventDefault();
+    const extraido = extraerCodigoInvitacion(codigo);
+    if (!extraido) {
+      setErrorCodigo(t('codigoInvalido'));
+      return;
+    }
+    window.location.assign(`/auth/invite?invite_code=${encodeURIComponent(extraido)}`);
+  };
+
+  const otraCuenta = async () => {
     try {
-      setSelecting(true);
-      setError(null);
-
-      // Verificar sesión activa (usa hidratación OAuth si es necesario)
-      const session = await getActiveSession();
-      
-      if (!session) {
-        router.push('/auth/login');
-        return;
-      }
-
-      // Actualizar last_org_id en el perfil del usuario
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ last_org_id: parseInt(org.id) })
-        .eq('id', session.user.id);
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      // Sincronizar storage ANTES de proceedWithLogin para evitar lectura de
-      // valor viejo. guardarOrganizacionActiva escribe TODAS las claves
-      // (`organizacionActiva` incluida) y las cookies de organización: escribir
-      // solo las claves legacy dejaba `organizacionActiva` con la organización
-      // de la sesión anterior y la app se partía en dos.
-      guardarOrganizacionActiva({ id: parseInt(org.id), name: org.name });
-
-      // Proceder con el login usando la función existente
-      const next = searchParams?.get('dest') || searchParams?.get('next') || '/app/inicio';
-      await proceedWithLogin(false, session.user.email || '');
-      
-      // Redirigir al destino final
-      router.push(next);
-      
-    } catch (err: any) {
-      console.error('Error selecting organization:', err);
-      setError(err.message || 'Error al seleccionar organización');
+      await supabase.auth.signOut({ scope: 'local' });
     } finally {
-      setSelecting(false);
+      window.location.replace('/auth/login');
     }
   };
 
-  const handleCreateOrganization = () => {
-    router.push('/auth/signup?step=organization&google=true');
-  };
+  const lista = useMemo(
+    () => ordenarOrganizaciones(orgs ?? [], { principalId, favoritas, texto }),
+    [orgs, principalId, favoritas, texto],
+  );
 
-  if (loading) {
+  if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8">
-          {/* Header skeleton */}
-          <div>
-            <div className="mx-auto h-12 w-12 rounded-full bg-gray-200 animate-pulse" />
-            <div className="mt-6 mx-auto h-8 w-64 bg-gray-200 rounded animate-pulse" />
-            <div className="mt-2 mx-auto h-4 w-80 bg-gray-100 rounded animate-pulse" />
-          </div>
-          {/* Org cards skeleton */}
-          <div className="space-y-3">
-            {[1, 2].map((i) => (
-              <div key={i} className="w-full flex items-center p-4 border border-gray-200 rounded-lg">
-                <div className="flex-shrink-0 mr-4">
-                  <div className="w-12 h-12 rounded-full bg-gray-200 animate-pulse" />
-                </div>
-                <div className="flex-grow space-y-2">
-                  <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
-                  <div className="h-3 w-20 bg-gray-100 rounded animate-pulse" />
-                </div>
-                <div className="flex-shrink-0">
-                  <div className="h-5 w-16 bg-gray-200 rounded-full animate-pulse" />
-                </div>
-              </div>
-            ))}
-          </div>
-          {/* Divider + button skeleton */}
-          <div className="mt-6">
-            <div className="w-full border-t border-gray-200" />
-            <div className="mt-6 h-10 w-full bg-gray-100 rounded-md animate-pulse" />
-          </div>
-        </div>
-      </div>
+      <EscenaAcceso>
+        <TarjetaAcceso
+          titulo={t('titulo')}
+          aviso={<AvisoAcceso tono="error">{t('error')}</AvisoAcceso>}
+          pie={<p className="text-center"><Enlace href="/auth/login">{tc('volverAlLogin')}</Enlace></p>}
+        >
+          <button type="button" className={clasesBoton({ anchoCompleto: true })} onClick={() => window.location.reload()}>
+            {tc('reintentar')}
+          </button>
+        </TarjetaAcceso>
+      </EscenaAcceso>
+    );
+  }
+
+  if (entrando || orgs === null || (orgs.length === 1 && !error)) {
+    return (
+      <EscenaAcceso>
+        <TarjetaAcceso
+          titulo={tc('entrando')}
+          descripcion={tc('entrandoDescripcion')}
+          centrado
+          icono={<Loader2 className="size-8 animate-spin text-brand" aria-hidden="true" />}
+        />
+      </EscenaAcceso>
+    );
+  }
+
+  const formularioCodigo = (
+    <form onSubmit={usarCodigo} className="flex flex-col gap-3">
+      <FormField etiqueta={t('codigo')} ayuda={t('codigoAyuda')} error={errorCodigo}>
+        <Input value={codigo} onChange={(e) => { setCodigo(e.target.value); setErrorCodigo(null); }} className="h-10 rounded-lg" autoComplete="off" />
+      </FormField>
+      <button type="submit" className={clasesBoton({ variante: 'secundario', anchoCompleto: true })}>
+        {t('usarCodigo')}
+      </button>
+    </form>
+  );
+
+  if (orgs.length === 0) {
+    return (
+      <EscenaAcceso>
+        <TarjetaAcceso
+          titulo={t('vacioTitulo')}
+          descripcion={t('vacioDescripcion')}
+          icono={<IconoDestacado icono={Building2} />}
+          centrado
+          pie={
+            <p className="text-center">
+              <button type="button" onClick={otraCuenta} className="text-[13px] font-medium text-link underline-offset-4 hover:underline">
+                {t('cerrarSesion')}
+              </button>
+            </p>
+          }
+        >
+          <Link href="/auth/signup/organizacion" className={clasesBoton({ anchoCompleto: true })}>
+            <Plus className="size-4" aria-hidden="true" />
+            {t('crear')}
+          </Link>
+          <DividerTexto />
+          {formularioCodigo}
+        </TarjetaAcceso>
+      </EscenaAcceso>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-blue-100">
-            <svg className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-2m-2 0H7m5 0v-5a2 2 0 00-2-2H8a2 2 0 00-2 2v5m5 0V9a2 2 0 012-2h2a2 2 0 012 2v12" />
-            </svg>
-          </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            {t('title')}
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            {t('subtitle')}
-          </p>
-        </div>
-
-        {error && (
-          <div className="rounded-md bg-red-50 p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-red-800">{error}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-3">
-          {sortedOrganizations.map((org) => {
-            const isFav = favoriteOrgs.includes(Number(org.id));
-            const statusBadge = getOrgStatusBadge(org.status);
-            return (
-              <div
-                key={org.id}
-                onClick={() => !selecting && handleSelectOrganization(org)}
-                className={`w-full flex items-center p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer ${
-                  isFav
-                    ? 'border-amber-300 dark:border-amber-600 bg-amber-50/50 dark:bg-amber-900/10'
-                    : 'border-gray-200 dark:border-gray-700'
-                } ${selecting ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                {/* Botón de favorito */}
-                <button
-                  type="button"
-                  onClick={(e) => toggleFavoriteOrg(e, Number(org.id))}
-                  className="flex-shrink-0 mr-3 flex items-center justify-center w-8 h-8 rounded-full transition-colors hover:bg-amber-100 dark:hover:bg-amber-900/30"
-                  title={isFav ? 'Quitar de favoritas' : 'Marcar como favorita'}
-                  aria-label={isFav ? 'Quitar de favoritas' : 'Marcar como favorita'}
-                >
-                  <svg
-                    className={`w-5 h-5 transition-all ${isFav ? 'text-amber-500 fill-amber-400' : 'text-gray-300 dark:text-gray-600 hover:text-amber-400'}`}
-                    fill={isFav ? 'currentColor' : 'none'}
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                  </svg>
-                </button>
-
-                {/* Organization logo or placeholder */}
-                <div className="flex-shrink-0 mr-4">
-                  {org.logo_url ? (
-                    <img
-                      src={org.logo_url}
-                      alt={`${org.name} logo`}
-                      className="w-12 h-12 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-medium text-lg shadow-sm">
-                      {org.name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                </div>
-
-                {/* Organization details */}
-                <div className="flex-grow text-left min-w-0">
-                  <div className="font-medium text-gray-900 dark:text-gray-100 truncate">{org.name}</div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400 truncate">{org.type_name}</div>
-                </div>
-
-                {/* Badges */}
-                <div className="flex-shrink-0 flex flex-col items-end gap-1">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
-                    {org.plan_name}
-                  </span>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusBadge.className}`}>
-                    {statusBadge.label}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="mt-6">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-gray-50 text-gray-500">{tc('or')}</span>
-            </div>
-          </div>
-
-          <div className="mt-6">
-            <button
-              onClick={handleCreateOrganization}
-              disabled={selecting}
-              className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              {t('createNew')}
+    <EscenaAcceso>
+      <TarjetaAcceso
+        ancho="ancha"
+        titulo={t('titulo')}
+        descripcion={t('descripcion')}
+        pie={
+          <div className="flex flex-col items-center gap-2 text-center">
+            <p className="text-xs text-fg-muted">{t('favoritasPrimero')}</p>
+            <button type="button" onClick={otraCuenta} className="text-[13px] font-medium text-link underline-offset-4 hover:underline">
+              {t('cerrarSesion')}
             </button>
           </div>
-        </div>
-      </div>
-    </div>
+        }
+      >
+        {orgs.length > 3 && (
+          <SearchInput value={texto} onChange={setTexto} onValueChange={setTexto} placeholder={t('buscar')} etiqueta={t('buscar')} />
+        )}
+        <ul className="flex max-h-[420px] flex-col gap-2 overflow-y-auto" aria-label={t('titulo')}>
+          {lista.length === 0 && <li className="py-6 text-center text-sm text-fg-secondary">{t('sinResultados', { texto })}</li>}
+          {lista.map((org) => (
+            <li key={org.id}>
+              <TarjetaOrganizacion
+                nombre={org.name}
+                detalle={org.type_name}
+                logoUrl={org.logo_url}
+                plan={org.plan_name}
+                estado={estadoOrganizacion(org.status)}
+                principal={org.id === principalId}
+                favorita={favoritas.includes(org.id)}
+                onFavorita={() => toggleFavorita(org.id)}
+                onElegir={() => sesion && entrar(org, sesion)}
+              />
+            </li>
+          ))}
+        </ul>
+        <details open={verCodigo} onToggle={(e) => setVerCodigo((e.target as HTMLDetailsElement).open)} className="group">
+          <summary className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-link">
+            <KeyRound className="size-3.5" aria-hidden="true" />
+            {t('unirse')}
+          </summary>
+          <div className="mt-3">{formularioCodigo}</div>
+        </details>
+      </TarjetaAcceso>
+    </EscenaAcceso>
   );
 }
 
 export default function SelectOrganizationPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8">
-          <div>
-            <div className="mx-auto h-12 w-12 rounded-full bg-gray-200 animate-pulse" />
-            <div className="mt-6 mx-auto h-8 w-64 bg-gray-200 rounded animate-pulse" />
-            <div className="mt-2 mx-auto h-4 w-80 bg-gray-100 rounded animate-pulse" />
-          </div>
-          <div className="space-y-3">
-            {[1, 2].map((i) => (
-              <div key={i} className="w-full flex items-center p-4 border border-gray-200 rounded-lg">
-                <div className="flex-shrink-0 mr-4"><div className="w-12 h-12 rounded-full bg-gray-200 animate-pulse" /></div>
-                <div className="flex-grow space-y-2">
-                  <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
-                  <div className="h-3 w-20 bg-gray-100 rounded animate-pulse" />
-                </div>
-                <div className="flex-shrink-0"><div className="h-5 w-16 bg-gray-200 rounded-full animate-pulse" /></div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    }>
+    <Suspense fallback={null}>
       <SelectOrganizationContent />
     </Suspense>
   );

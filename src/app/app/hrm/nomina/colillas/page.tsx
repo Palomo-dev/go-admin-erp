@@ -10,7 +10,6 @@ import { SlipsListTable } from '@/components/hrm/nomina/colillas';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -32,12 +31,12 @@ import { useToast } from '@/components/ui/use-toast';
 import {
   RefreshCw,
   FileText,
-  Search,
   CheckCircle,
   DollarSign,
   ArrowLeft,
   Download,
 } from 'lucide-react';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 export default function ColillasPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
@@ -291,15 +290,12 @@ export default function ColillasPage() {
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardContent className="pt-4">
           <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Buscar por empleado o periodo..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600"
-              />
-            </div>
+            <SearchInput
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder="Buscar por empleado o periodo..."
+              className="flex-1"
+            />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-full md:w-40 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600">
                 <SelectValue placeholder="Estado" />

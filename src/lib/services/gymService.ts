@@ -1,7 +1,9 @@
 import { supabase } from '@/lib/supabase/config';
+import { buscarClientes } from '@/lib/services/customers/busquedaClientesService';
 import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { resolveTimezone } from '@/lib/services/timezoneResolver';
 import { todayInTz, toPlainDate, plainDateToInstant } from '@/lib/utils/dateCore';
+import { horarioDuplicado } from '@/lib/services/membresias/operacion';
 import { getDayRange } from '@/lib/utils/dateRanges';
 import { sumarDiasAlDia, diasEntreDias } from '@/lib/services/fiscalCalendar';
 
@@ -64,7 +66,9 @@ export interface GymClass {
   branch_id: number;
   title: string;
   description?: string;
-  class_type: 'spinning' | 'yoga' | 'pilates' | 'crossfit' | 'zumba' | 'boxing' | 'functional' | 'stretching' | 'aerobics' | 'swimming' | 'other';
+  /** Texto libre en la base; la interfaz sugiere tipos (membresias/operacion/logica.ts). */
+  class_type: string;
+  /** NOT NULL en la base (FK a auth.users). */
   instructor_id?: string;
   capacity: number;
   duration_minutes: number;
@@ -75,7 +79,8 @@ export interface GymClass {
     days?: number[];
     until?: string;
   };
-  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+  /** `gym_classes_status_check`: active (programada) | completed | cancelled. */
+  status: 'active' | 'completed' | 'cancelled';
   cancellation_reason?: string;
   notify_on_cancel?: boolean;
   room?: string;
@@ -99,12 +104,15 @@ export interface ClassReservation {
   gym_class_id: number;
   customer_id: string;
   membership_id?: number;
-  status: 'booked' | 'attended' | 'no_show' | 'cancelled';
+  /** `class_reservations_status_check`: «asistió» es checked_in. */
+  status: 'booked' | 'checked_in' | 'no_show' | 'cancelled';
   booked_at: string;
   checkin_time?: string;
   cancelled_at?: string;
   cancellation_reason?: string;
-  reservation_source?: string;
+  /** `class_reservations_reservation_source_check`. */
+  reservation_source?: 'app' | 'web' | 'staff' | 'kiosk';
+  branch_id?: number | null;
   notes?: string;
   created_at: string;
   updated_at: string;
@@ -114,6 +122,7 @@ export interface ClassReservation {
     last_name: string;
     email?: string;
     phone?: string;
+    identification_number?: string;
   };
   gym_classes?: GymClass;
   memberships?: Membership;
@@ -160,31 +169,12 @@ export interface Instructor {
   avg_attendance?: number;
 }
 
-export interface GymReportStats {
-  totalMemberships: number;
-  activeMemberships: number;
-  renewedThisMonth: number;
-  cancelledThisMonth: number;
-  churnRate: number;
-  retentionRate: number;
-  revenueByPlan: { plan_name: string; revenue: number; count: number }[];
-  peakHours: { hour: number; checkins: number }[];
-  classAttendance: { class_type: string; total: number; attended: number; rate: number }[];
-}
-
-export interface GymReportFilters {
-  dateFrom: Date;
-  dateTo: Date;
-  branchId?: number | 'all';
-}
-
 export interface MembershipPlan {
   id: number;
   organization_id: number;
   name: string;
   description?: string;
   duration_days: number;
-  price: number;
   access_rules?: {
     branches?: number[];
     schedule?: { start: string; end: string }[];
@@ -205,7 +195,7 @@ export interface Membership {
   end_date: string;
   status: 'active' | 'frozen' | 'expired' | 'cancelled';
   sale_id?: string;
-  freeze_history?: any[];
+  freeze_history?: unknown[];
   access_code?: string;
   notes?: string;
   created_at: string;
@@ -228,7 +218,8 @@ export interface MemberCheckin {
   branch_id: number;
   membership_id?: number;
   checkin_at: string;
-  method?: 'manual' | 'qr' | 'card' | 'biometric' | 'nfc';
+  /** `member_checkins_method_check`. */
+  method?: 'manual' | 'qr' | 'rfid' | 'fingerprint' | 'facial';
   denied_reason?: string;
   staff_id?: string;
   class_reservation_id?: number;
@@ -261,12 +252,12 @@ export interface MembershipEvent {
   membership_id: number;
   event_type: string;
   description?: string;
-  old_value?: any;
-  new_value?: any;
+  old_value?: unknown;
+  new_value?: unknown;
   performed_by?: string;
   ip_address?: string;
   user_agent?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   created_at: string;
 }
 
@@ -280,7 +271,7 @@ export interface GymAccessDevice {
   ip_address?: string;
   is_active: boolean;
   last_sync_at?: string;
-  configuration?: any;
+  configuration?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
@@ -296,12 +287,20 @@ export interface GymStats {
 
 // ==================== PLANES ====================
 
+/**
+ * Columnas del plan que lee el ERP. Sin `price`: el precio de una membresía es el de su producto
+ * (`product_prices` vigente, P9); `membership_plans.price` es una copia para master y goadmin-websites
+ * que se retira (docs/design/MEMBRESIAS-FASE-1-2.md §11.1).
+ */
+const COLUMNAS_PLAN =
+  'id, organization_id, name, description, duration_days, access_rules, frequency, is_active, created_at, updated_at';
+
 export async function getPlans(organizationId?: number): Promise<MembershipPlan[]> {
   const orgId = organizationId || getOrganizationId();
   
   const { data, error } = await supabase
     .from('membership_plans')
-    .select('*')
+    .select(COLUMNAS_PLAN)
     .eq('organization_id', orgId)
     .order('name');
 
@@ -316,7 +315,7 @@ export async function getPlans(organizationId?: number): Promise<MembershipPlan[
 export async function getPlanById(planId: number): Promise<MembershipPlan | null> {
   const { data, error } = await supabase
     .from('membership_plans')
-    .select('*')
+    .select(COLUMNAS_PLAN)
     .eq('id', planId)
     .single();
 
@@ -328,57 +327,8 @@ export async function getPlanById(planId: number): Promise<MembershipPlan | null
   return data;
 }
 
-export async function createPlan(plan: Partial<MembershipPlan>): Promise<MembershipPlan> {
-  const orgId = getOrganizationId();
-  
-  const { data, error } = await supabase
-    .from('membership_plans')
-    .insert({
-      ...plan,
-      organization_id: orgId,
-      is_active: plan.is_active ?? true
-    })
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Error creando plan:', error);
-    throw error;
-  }
-
-  return data;
-}
-
-export async function updatePlan(planId: number, updates: Partial<MembershipPlan>): Promise<MembershipPlan> {
-  const { data, error } = await supabase
-    .from('membership_plans')
-    .update({
-      ...updates,
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', planId)
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Error actualizando plan:', error);
-    throw error;
-  }
-
-  return data;
-}
-
-export async function togglePlanStatus(planId: number, isActive: boolean): Promise<void> {
-  const { error } = await supabase
-    .from('membership_plans')
-    .update({ is_active: isActive, updated_at: new Date().toISOString() })
-    .eq('id', planId);
-
-  if (error) {
-    console.error('Error cambiando estado del plan:', error);
-    throw error;
-  }
-}
+// Los planes se crean y editan desde el producto (fn_producto_guardar, «Configuración de membresía»):
+// aquí ya no hay alta ni edición desde el navegador.
 
 // ==================== MEMBRESÍAS ====================
 
@@ -397,7 +347,7 @@ export async function getMemberships(
     .select(`
       *,
       customers (id, first_name, last_name, email, phone, identification_number),
-      membership_plans (id, name, duration_days, price)
+      membership_plans (id, name, duration_days)
     `)
     .eq('organization_id', orgId)
     .order('end_date', { ascending: true });
@@ -444,7 +394,7 @@ export async function getMembershipById(membershipId: number): Promise<Membershi
     .select(`
       *,
       customers (id, first_name, last_name, email, phone, identification_number),
-      membership_plans (*)
+      membership_plans (id, name, duration_days, frequency, is_active)
     `)
     .eq('id', membershipId)
     .single();
@@ -483,7 +433,7 @@ export async function createMembership(membership: Partial<Membership>): Promise
     .select(`
       *,
       customers (id, first_name, last_name, email, phone),
-      membership_plans (id, name, duration_days, price)
+      membership_plans (id, name, duration_days)
     `)
     .single();
 
@@ -510,7 +460,7 @@ export async function updateMembership(membershipId: number, updates: Partial<Me
     .select(`
       *,
       customers (id, first_name, last_name, email, phone),
-      membership_plans (id, name, duration_days, price)
+      membership_plans (id, name, duration_days)
     `)
     .single();
 
@@ -666,7 +616,7 @@ export async function renewMembership(membershipId: number, planId?: number): Pr
     .select(`
       *,
       customers (id, first_name, last_name, email, phone),
-      membership_plans (id, name, duration_days, price)
+      membership_plans (id, name, duration_days)
     `)
     .single();
 
@@ -683,168 +633,8 @@ export async function renewMembership(membershipId: number, planId?: number): Pr
 
 // ==================== CHECK-IN ====================
 
-export async function searchMemberForCheckin(
-  query: string,
-  organizationId?: number
-): Promise<Membership[]> {
-  const orgId = organizationId || getOrganizationId();
-  const search = query.toLowerCase().trim();
-
-  const { data: byCode } = await supabase
-    .from('memberships')
-    .select(`
-      *,
-      customers (id, first_name, last_name, email, phone, identification_number),
-      membership_plans (id, name, duration_days, price, access_rules)
-    `)
-    .eq('organization_id', orgId)
-    .ilike('access_code', `%${search}%`);
-
-  if (byCode && byCode.length > 0) return byCode;
-
-  const { data: byCustomer } = await supabase
-    .from('memberships')
-    .select(`
-      *,
-      customers!inner (id, first_name, last_name, email, phone, identification_number),
-      membership_plans (id, name, duration_days, price, access_rules)
-    `)
-    .eq('organization_id', orgId)
-    .or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%,identification_number.ilike.%${search}%`, { foreignTable: 'customers' });
-
-  return byCustomer || [];
-}
-
-export async function validateCheckin(
-  membershipId: number,
-  branchId?: number
-): Promise<{ valid: boolean; reason?: string; membership?: Membership }> {
-  const membership = await getMembershipById(membershipId);
-  if (!membership) {
-    return { valid: false, reason: 'Membresía no encontrada' };
-  }
-
-  if (membership.status === 'cancelled') {
-    return { valid: false, reason: 'Membresía cancelada', membership };
-  }
-
-  if (membership.status === 'frozen') {
-    return { valid: false, reason: 'Membresía congelada', membership };
-  }
-
-  const now = new Date();
-  const endDate = new Date(membership.end_date);
-  if (now > endDate) {
-    return { valid: false, reason: 'Membresía vencida', membership };
-  }
-
-  const plan = membership.membership_plans;
-  if (plan?.access_rules?.branches && branchId) {
-    if (!plan.access_rules.branches.includes(branchId)) {
-      return { valid: false, reason: 'Acceso no permitido en esta sede', membership };
-    }
-  }
-
-  if (plan?.access_rules?.schedule) {
-    const currentHour = now.getHours();
-    const currentMinutes = now.getMinutes();
-    const currentTime = currentHour * 60 + currentMinutes;
-    
-    const inSchedule = plan.access_rules.schedule.some((slot: { start: string; end: string }) => {
-      const [startH, startM] = slot.start.split(':').map(Number);
-      const [endH, endM] = slot.end.split(':').map(Number);
-      const startTime = startH * 60 + startM;
-      const endTime = endH * 60 + endM;
-      return currentTime >= startTime && currentTime <= endTime;
-    });
-
-    if (!inSchedule) {
-      return { valid: false, reason: 'Fuera del horario permitido', membership };
-    }
-  }
-
-  return { valid: true, membership };
-}
-
-export async function registerCheckin(
-  membershipId: number,
-  method: 'manual' | 'qr' | 'card' | 'biometric' | 'nfc' = 'manual',
-  branchId?: number
-): Promise<MemberCheckin> {
-  const orgId = getOrganizationId();
-  const branch = branchId || getCurrentBranchId();
-  
-  const membership = await getMembershipById(membershipId);
-  if (!membership) throw new Error('Membresía no encontrada');
-
-  const { data, error } = await supabase
-    .from('member_checkins')
-    .insert({
-      organization_id: orgId,
-      customer_id: membership.customer_id,
-      branch_id: branch,
-      membership_id: membershipId,
-      checkin_at: new Date().toISOString(),
-      method
-    })
-    .select(`
-      *,
-      customers (id, first_name, last_name)
-    `)
-    .single();
-
-  if (error) {
-    console.error('Error registrando check-in:', error);
-    throw error;
-  }
-
-  await logMembershipEvent(membershipId, 'access_granted', 'Check-in registrado', null, { 
-    checkin_id: data.id, 
-    method,
-    branch_id: branch 
-  });
-
-  return data;
-}
-
-export async function registerDeniedCheckin(
-  membershipId: number,
-  reason: string,
-  branchId?: number
-): Promise<MemberCheckin> {
-  const orgId = getOrganizationId();
-  const branch = branchId || getCurrentBranchId();
-  
-  const membership = await getMembershipById(membershipId);
-  if (!membership) throw new Error('Membresía no encontrada');
-
-  const { data, error } = await supabase
-    .from('member_checkins')
-    .insert({
-      organization_id: orgId,
-      customer_id: membership.customer_id,
-      branch_id: branch,
-      membership_id: membershipId,
-      checkin_at: new Date().toISOString(),
-      method: 'manual',
-      denied_reason: reason
-    })
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Error registrando denegación:', error);
-    throw error;
-  }
-
-  await logMembershipEvent(membershipId, 'access_denied', `Acceso denegado: ${reason}`, null, { 
-    checkin_id: data.id, 
-    reason,
-    branch_id: branch 
-  });
-
-  return data;
-}
+// El check-in se registra con fn_membresia_registrar_checkin (apiMembresias.registrarEntrada):
+// la base valida vigencia, gracia, sede, horario y tope diario. Aquí solo queda la lectura.
 
 export async function getTodayCheckins(
   organizationId?: number,
@@ -964,8 +754,8 @@ export async function logMembershipEvent(
   membershipId: number,
   eventType: string,
   description?: string,
-  oldValue?: any,
-  newValue?: any
+  oldValue?: unknown,
+  newValue?: unknown
 ): Promise<void> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -1105,6 +895,15 @@ export function getMembershipStatusLabel(status: string): string {
 }
 
 // ==================== CLASES ====================
+//
+// Escrituras desde el navegador con RLS por pertenencia a la organización. La
+// organización llega del llamador (useOrganization en la página); los estados
+// son los que acepta la CHECK de la base: active | completed | cancelled.
+
+const SELECT_CLASE = `
+      *,
+      branches (id, name)
+    `;
 
 export async function getClasses(
   organizationId?: number,
@@ -1118,138 +917,187 @@ export async function getClasses(
   }
 ): Promise<GymClass[]> {
   const orgId = organizationId || getOrganizationId();
-  
+
   let query = supabase
     .from('gym_classes')
-    .select(`
-      *,
-      branches (id, name)
-    `)
+    .select(SELECT_CLASE)
     .eq('organization_id', orgId)
     .order('start_at', { ascending: true });
 
-  if (filters?.branchId) {
-    query = query.eq('branch_id', filters.branchId);
-  }
-
-  if (filters?.status && filters.status !== 'all') {
-    query = query.eq('status', filters.status);
-  }
-
-  if (filters?.classType && filters.classType !== 'all') {
-    query = query.eq('class_type', filters.classType);
-  }
-
-  if (filters?.instructorId) {
-    query = query.eq('instructor_id', filters.instructorId);
-  }
-
-  if (filters?.dateFrom) {
-    query = query.gte('start_at', filters.dateFrom);
-  }
-
-  if (filters?.dateTo) {
-    query = query.lte('start_at', filters.dateTo);
-  }
+  if (filters?.branchId) query = query.eq('branch_id', filters.branchId);
+  if (filters?.status && filters.status !== 'all') query = query.eq('status', filters.status);
+  if (filters?.classType && filters.classType !== 'all') query = query.eq('class_type', filters.classType);
+  if (filters?.instructorId) query = query.eq('instructor_id', filters.instructorId);
+  if (filters?.dateFrom) query = query.gte('start_at', filters.dateFrom);
+  if (filters?.dateTo) query = query.lt('start_at', filters.dateTo);
 
   const { data, error } = await query;
-
   if (error) {
     console.error('Error obteniendo clases:', error);
     throw error;
   }
-
-  return data || [];
+  return (data || []) as GymClass[];
 }
 
-export async function getClassById(classId: number): Promise<GymClass | null> {
+export async function getClassById(classId: number, organizationId?: number): Promise<GymClass | null> {
+  const orgId = organizationId || getOrganizationId();
   const { data, error } = await supabase
     .from('gym_classes')
-    .select(`
-      *,
-      branches (id, name)
-    `)
+    .select(SELECT_CLASE)
     .eq('id', classId)
-    .single();
+    .eq('organization_id', orgId)
+    .maybeSingle();
 
   if (error) {
     console.error('Error obteniendo clase:', error);
     return null;
   }
-
-  return data;
+  return (data as GymClass | null) ?? null;
 }
 
-export async function createClass(gymClass: Partial<GymClass>): Promise<GymClass> {
-  const orgId = getOrganizationId();
+/** Campos que se escriben en `gym_classes` (sin relaciones ni contadores). */
+type DatosClase = Pick<
+  GymClass,
+  | 'title'
+  | 'description'
+  | 'class_type'
+  | 'instructor_id'
+  | 'capacity'
+  | 'duration_minutes'
+  | 'start_at'
+  | 'end_at'
+  | 'recurrence'
+  | 'status'
+  | 'room'
+  | 'location'
+  | 'equipment_needed'
+  | 'difficulty_level'
+  | 'branch_id'
+  | 'cancellation_reason'
+  | 'notify_on_cancel'
+>;
+
+function soloCampos(datos: Partial<GymClass>): Partial<DatosClase> {
+  const {
+    title,
+    description,
+    class_type,
+    instructor_id,
+    capacity,
+    duration_minutes,
+    start_at,
+    end_at,
+    recurrence,
+    status,
+    room,
+    location,
+    equipment_needed,
+    difficulty_level,
+    branch_id,
+    cancellation_reason,
+    notify_on_cancel,
+  } = datos;
+  const limpio: Partial<DatosClase> = {
+    title,
+    description,
+    class_type,
+    instructor_id,
+    capacity,
+    duration_minutes,
+    start_at,
+    end_at,
+    recurrence,
+    status,
+    room,
+    location,
+    equipment_needed,
+    difficulty_level,
+    branch_id,
+    cancellation_reason,
+    notify_on_cancel,
+  };
+  for (const k of Object.keys(limpio) as (keyof DatosClase)[]) {
+    if (limpio[k] === undefined) delete limpio[k];
+  }
+  return limpio;
+}
+
+export async function createClass(gymClass: Partial<GymClass>, organizationId?: number): Promise<GymClass> {
+  const orgId = organizationId || getOrganizationId();
   const branchId = gymClass.branch_id || getCurrentBranchId();
-  
+
   const { data, error } = await supabase
     .from('gym_classes')
     .insert({
-      ...gymClass,
+      ...soloCampos(gymClass),
       organization_id: orgId,
       branch_id: branchId,
-      status: gymClass.status || 'scheduled'
+      status: gymClass.status || 'active',
     })
-    .select(`
-      *,
-      branches (id, name)
-    `)
+    .select(SELECT_CLASE)
     .single();
 
   if (error) {
     console.error('Error creando clase:', error);
     throw error;
   }
-
-  return data;
+  return data as GymClass;
 }
 
-export async function updateClass(classId: number, updates: Partial<GymClass>): Promise<GymClass> {
+export async function updateClass(classId: number, updates: Partial<GymClass>, organizationId?: number): Promise<GymClass> {
+  const orgId = organizationId || getOrganizationId();
   const { data, error } = await supabase
     .from('gym_classes')
     .update({
-      ...updates,
-      updated_at: new Date().toISOString()
+      ...soloCampos(updates),
+      updated_at: new Date().toISOString(),
     })
     .eq('id', classId)
-    .select(`
-      *,
-      branches (id, name)
-    `)
+    .eq('organization_id', orgId)
+    .select(SELECT_CLASE)
     .single();
 
   if (error) {
     console.error('Error actualizando clase:', error);
     throw error;
   }
-
-  return data;
+  return data as GymClass;
 }
 
-export async function deleteClass(classId: number): Promise<void> {
-  const { error } = await supabase
-    .from('gym_classes')
-    .delete()
-    .eq('id', classId);
+/** Solo clases sin reservas: con reservas se cancela (conserva el historial). */
+export async function deleteClass(classId: number, organizationId?: number): Promise<void> {
+  const orgId = organizationId || getOrganizationId();
+  const { count } = await supabase
+    .from('class_reservations')
+    .select('id', { count: 'exact', head: true })
+    .eq('gym_class_id', classId)
+    .eq('organization_id', orgId);
+  if ((count ?? 0) > 0) throw new Error('clase_con_reservas');
 
+  const { error } = await supabase.from('gym_classes').delete().eq('id', classId).eq('organization_id', orgId);
   if (error) {
     console.error('Error eliminando clase:', error);
     throw error;
   }
 }
 
-export async function cancelClass(classId: number, reason: string, notifyMembers: boolean = false): Promise<void> {
+export async function cancelClass(
+  classId: number,
+  reason: string,
+  notifyMembers: boolean = false,
+  organizationId?: number
+): Promise<void> {
+  const orgId = organizationId || getOrganizationId();
   const { error } = await supabase
     .from('gym_classes')
-    .update({ 
+    .update({
       status: 'cancelled',
       cancellation_reason: reason,
       notify_on_cancel: notifyMembers,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     })
-    .eq('id', classId);
+    .eq('id', classId)
+    .eq('organization_id', orgId);
 
   if (error) {
     console.error('Error cancelando clase:', error);
@@ -1257,28 +1105,64 @@ export async function cancelClass(classId: number, reason: string, notifyMembers
   }
 }
 
-export async function duplicateClass(classId: number, newDate: string): Promise<GymClass> {
-  const original = await getClassById(classId);
-  if (!original) throw new Error('Clase no encontrada');
+/**
+ * Copia la clase en `newDate` (día `YYYY-MM-DD`) con la misma hora de pared y
+ * duración, en la zona de la organización. Antes se hacía con `new Date(dia)`
+ * (medianoche UTC) + `setHours` del navegador: en América la copia caía un día
+ * antes.
+ */
+export async function duplicateClass(classId: number, newDate: string, organizationId?: number): Promise<GymClass> {
+  const orgId = organizationId || getOrganizationId();
+  const original = await getClassById(classId, orgId);
+  if (!original) throw new Error('clase_no_encontrada');
 
-  const startAt = new Date(newDate);
-  const originalStart = new Date(original.start_at);
-  startAt.setHours(originalStart.getHours(), originalStart.getMinutes());
+  const zona = await resolveTimezone(orgId, original.branch_id);
+  const { inicio, fin } = horarioDuplicado(original, newDate, zona);
 
-  const endAt = new Date(startAt);
-  endAt.setMinutes(endAt.getMinutes() + (original.duration_minutes || 60));
+  return createClass(
+    {
+      ...soloCampos(original),
+      branch_id: original.branch_id,
+      start_at: inicio,
+      end_at: fin,
+      status: 'active',
+      cancellation_reason: undefined,
+      notify_on_cancel: false,
+    },
+    orgId
+  );
+}
 
-  const { id, created_at, updated_at, branches, instructor, reservations_count, ...classData } = original;
-  
-  return createClass({
-    ...classData,
-    start_at: startAt.toISOString(),
-    end_at: endAt.toISOString(),
-    status: 'scheduled'
-  });
+/** Reservas que ocupan cupo (todas menos canceladas) por clase. */
+export async function getOccupancyByClass(classIds: number[], organizationId?: number): Promise<Map<number, number>> {
+  const orgId = organizationId || getOrganizationId();
+  const mapa = new Map<number, number>();
+  // En tandas: una lista `in.(...)` muy larga no cabe en la URL de PostgREST.
+  for (let i = 0; i < classIds.length; i += 150) {
+    const { data, error } = await supabase
+      .from('class_reservations')
+      .select('gym_class_id')
+      .eq('organization_id', orgId)
+      .in('gym_class_id', classIds.slice(i, i + 150))
+      .neq('status', 'cancelled');
+    if (error) {
+      console.error('Error obteniendo ocupación:', error);
+      throw error;
+    }
+    for (const r of (data || []) as { gym_class_id: number }[]) {
+      mapa.set(r.gym_class_id, (mapa.get(r.gym_class_id) ?? 0) + 1);
+    }
+  }
+  return mapa;
 }
 
 // ==================== RESERVACIONES ====================
+
+const SELECT_RESERVA = `
+      *,
+      customers (id, first_name, last_name, email, phone, identification_number),
+      gym_classes!inner (id, title, class_type, start_at, end_at, capacity, branch_id, status, branches (name))
+    `;
 
 export async function getReservations(
   organizationId?: number,
@@ -1286,130 +1170,113 @@ export async function getReservations(
     classId?: number;
     customerId?: string;
     status?: string;
-    dateFrom?: string;
-    dateTo?: string;
+    /** Rango por la fecha de la CLASE (no por `booked_at`). */
+    classFrom?: string;
+    classTo?: string;
+    limit?: number;
   }
 ): Promise<ClassReservation[]> {
   const orgId = organizationId || getOrganizationId();
-  
+
   let query = supabase
     .from('class_reservations')
-    .select(`
-      *,
-      customers (id, first_name, last_name, email, phone),
-      gym_classes (id, title, class_type, start_at, end_at, capacity, branch_id, branches (name))
-    `)
+    .select(SELECT_RESERVA)
     .eq('organization_id', orgId)
-    .order('booked_at', { ascending: false });
+    .order('booked_at', { ascending: false })
+    .limit(filters?.limit ?? 1000);
 
-  if (filters?.classId) {
-    query = query.eq('gym_class_id', filters.classId);
-  }
-
-  if (filters?.customerId) {
-    query = query.eq('customer_id', filters.customerId);
-  }
-
-  if (filters?.status && filters.status !== 'all') {
-    query = query.eq('status', filters.status);
-  }
-
-  if (filters?.dateFrom) {
-    query = query.gte('booked_at', filters.dateFrom);
-  }
-
-  if (filters?.dateTo) {
-    query = query.lte('booked_at', filters.dateTo);
-  }
+  if (filters?.classId) query = query.eq('gym_class_id', filters.classId);
+  if (filters?.customerId) query = query.eq('customer_id', filters.customerId);
+  if (filters?.status && filters.status !== 'all') query = query.eq('status', filters.status);
+  if (filters?.classFrom) query = query.gte('gym_classes.start_at', filters.classFrom);
+  if (filters?.classTo) query = query.lt('gym_classes.start_at', filters.classTo);
 
   const { data, error } = await query;
-
   if (error) {
     console.error('Error obteniendo reservaciones:', error);
     throw error;
   }
-
-  return data || [];
+  return (data || []) as unknown as ClassReservation[];
 }
 
-export async function getReservationsByClass(classId: number): Promise<ClassReservation[]> {
-  const { data, error } = await supabase
-    .from('class_reservations')
-    .select(`
-      *,
-      customers (id, first_name, last_name, email, phone)
-    `)
-    .eq('gym_class_id', classId)
-    .neq('status', 'cancelled')
-    .order('booked_at', { ascending: true });
+/**
+ * Crea la reserva si la clase está programada y le queda cupo. El cupo se
+ * valida aquí porque no hay RPC; la UNIQUE(clase, cliente) de la base evita
+ * la reserva doble.
+ */
+export async function createReservation(
+  reservation: Pick<ClassReservation, 'gym_class_id' | 'customer_id'> &
+    Partial<Pick<ClassReservation, 'notes' | 'reservation_source' | 'membership_id'>>,
+  organizationId?: number
+): Promise<ClassReservation> {
+  const orgId = organizationId || getOrganizationId();
+  const clase = await getClassById(reservation.gym_class_id, orgId);
+  if (!clase) throw new Error('clase_no_encontrada');
+  if (clase.status !== 'active') throw new Error('clase_no_programada');
+  const ocupacion = await getOccupancyByClass([clase.id], orgId);
+  if ((ocupacion.get(clase.id) ?? 0) >= clase.capacity) throw new Error('clase_sin_cupo');
 
-  if (error) {
-    console.error('Error obteniendo reservaciones de clase:', error);
-    throw error;
-  }
-
-  return data || [];
-}
-
-export async function createReservation(reservation: Partial<ClassReservation>): Promise<ClassReservation> {
-  const orgId = getOrganizationId();
-  
   const { data, error } = await supabase
     .from('class_reservations')
     .insert({
-      ...reservation,
       organization_id: orgId,
-      status: reservation.status || 'booked',
-      booked_at: new Date().toISOString()
+      gym_class_id: reservation.gym_class_id,
+      customer_id: reservation.customer_id,
+      notes: reservation.notes ?? null,
+      membership_id: reservation.membership_id ?? null,
+      reservation_source: reservation.reservation_source ?? 'staff',
+      branch_id: clase.branch_id,
+      status: 'booked',
+      booked_at: new Date().toISOString(),
     })
-    .select(`
-      *,
-      customers (id, first_name, last_name, email, phone),
-      gym_classes (id, title, class_type, start_at, end_at)
-    `)
+    .select(SELECT_RESERVA)
     .single();
 
   if (error) {
     console.error('Error creando reservación:', error);
+    if (error.code === '23505') throw new Error('reserva_duplicada');
     throw error;
   }
-
-  return data;
+  return data as unknown as ClassReservation;
 }
 
-export async function updateReservation(reservationId: number, updates: Partial<ClassReservation>): Promise<ClassReservation> {
+export async function updateReservation(
+  reservationId: number,
+  updates: Partial<Pick<ClassReservation, 'notes' | 'reservation_source'>>,
+  organizationId?: number
+): Promise<ClassReservation> {
+  const orgId = organizationId || getOrganizationId();
   const { data, error } = await supabase
     .from('class_reservations')
     .update({
-      ...updates,
-      updated_at: new Date().toISOString()
+      ...(updates.notes !== undefined ? { notes: updates.notes } : {}),
+      ...(updates.reservation_source ? { reservation_source: updates.reservation_source } : {}),
+      updated_at: new Date().toISOString(),
     })
     .eq('id', reservationId)
-    .select(`
-      *,
-      customers (id, first_name, last_name, email, phone),
-      gym_classes (id, title, class_type, start_at, end_at)
-    `)
+    .eq('organization_id', orgId)
+    .select(SELECT_RESERVA)
     .single();
 
   if (error) {
     console.error('Error actualizando reservación:', error);
     throw error;
   }
-
-  return data;
+  return data as unknown as ClassReservation;
 }
 
-export async function cancelReservation(reservationId: number, reason?: string): Promise<void> {
+export async function cancelReservation(reservationId: number, reason?: string, organizationId?: number): Promise<void> {
+  const orgId = organizationId || getOrganizationId();
   const { error } = await supabase
     .from('class_reservations')
-    .update({ 
+    .update({
       status: 'cancelled',
       cancelled_at: new Date().toISOString(),
       cancellation_reason: reason,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     })
-    .eq('id', reservationId);
+    .eq('id', reservationId)
+    .eq('organization_id', orgId);
 
   if (error) {
     console.error('Error cancelando reservación:', error);
@@ -1417,15 +1284,18 @@ export async function cancelReservation(reservationId: number, reason?: string):
   }
 }
 
-export async function markAttendance(reservationId: number, attended: boolean): Promise<void> {
+/** Asistencia: `checked_in` (asistió) o `no_show`. La CHECK rechaza `attended`. */
+export async function markAttendance(reservationId: number, attended: boolean, organizationId?: number): Promise<void> {
+  const orgId = organizationId || getOrganizationId();
   const { error } = await supabase
     .from('class_reservations')
-    .update({ 
-      status: attended ? 'attended' : 'no_show',
+    .update({
+      status: attended ? 'checked_in' : 'no_show',
       checkin_time: attended ? new Date().toISOString() : null,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     })
-    .eq('id', reservationId);
+    .eq('id', reservationId)
+    .eq('organization_id', orgId);
 
   if (error) {
     console.error('Error marcando asistencia:', error);
@@ -1433,49 +1303,56 @@ export async function markAttendance(reservationId: number, attended: boolean): 
   }
 }
 
-export async function getClassOccupancy(classId: number): Promise<{ reserved: number; capacity: number; available: number }> {
-  const gymClass = await getClassById(classId);
-  if (!gymClass) throw new Error('Clase no encontrada');
-
-  const { count, error } = await supabase
-    .from('class_reservations')
-    .select('id', { count: 'exact' })
-    .eq('gym_class_id', classId)
-    .neq('status', 'cancelled');
-
-  if (error) {
-    console.error('Error obteniendo ocupación:', error);
-    throw error;
-  }
-
-  const reserved = count || 0;
-  return {
-    reserved,
-    capacity: gymClass.capacity,
-    available: gymClass.capacity - reserved
-  };
+/** Clientes de la organización para el selector de la reserva (RLS + filtro explícito). */
+export async function searchCustomersForReservation(
+  term: string,
+  organizationId?: number
+): Promise<Array<{ id: string; nombre: string; documento: string | null; correo: string | null; telefono: string | null }>> {
+  const orgId = organizationId || getOrganizationId();
+  if (term.trim().length < 2) return [];
+  // Búsqueda única de clientes (RPC): el texto nunca va dentro de un `.or()`.
+  const { filas: data } = await buscarClientes(supabase, { organizationId: orgId, texto: term, limite: 20 });
+  return ((data || []) as Array<{
+    id: string;
+    full_name: string | null;
+    first_name: string | null;
+    last_name: string | null;
+    identification_number: string | null;
+    email: string | null;
+    phone: string | null;
+  }>).map((c) => ({
+    id: c.id,
+    nombre: c.full_name || [c.first_name, c.last_name].filter(Boolean).join(' ') || c.email || c.id,
+    documento: c.identification_number,
+    correo: c.email,
+    telefono: c.phone,
+  }));
 }
 
 // ==================== INSTRUCTORES ====================
 
+interface FilaEmpleo {
+  id: string;
+  employee_code: string | null;
+  status: string | null;
+  base_salary: number | null;
+  salary_period: Instructor['salary_period'] | null;
+  department_id: string | null;
+  organization_members: { id: number; user_id: string; organization_id: number; is_active: boolean | null } | null;
+  job_positions: { id: string; code: string | null; name: string; requirements: { specialties?: string[]; certifications?: string[]; hourly_rate_suggested?: number } | null } | null;
+  departments: { id: string; code: string | null; name: string } | null;
+}
+
 /**
- * Obtiene instructores del gimnasio usando HRM.
- * Filtra empleados que pertenecen al departamento GYM o tienen posición de instructor (INST-*).
- * Incluye datos de perfil, posición, departamento y configuración de pago.
+ * Instructores desde HRM: empleos activos de la organización en el
+ * departamento GYM o con cargo INST-*. Filtra por organización en la consulta
+ * (antes traía empleos de todas) y trae perfiles y conteo de clases en dos
+ * consultas en lugar de dos por instructor.
  */
 export async function getInstructors(organizationId?: number): Promise<Instructor[]> {
   const orgId = organizationId || getOrganizationId();
-  
-  // 1. Obtener el departamento GYM (puede no existir)
-  const { data: gymDept } = await supabase
-    .from('departments')
-    .select('id')
-    .eq('organization_id', orgId)
-    .eq('code', 'GYM')
-    .maybeSingle();
 
-  // 2. Obtener todos los empleados activos con sus relaciones
-  // Nota: Usamos !employments_department_id_fkey porque hay múltiples FKs entre employments y departments
+  // Hay dos FK entre employments y departments: se nombra la del departamento del empleo.
   const { data: employments, error } = await supabase
     .from('employments')
     .select(`
@@ -1484,10 +1361,7 @@ export async function getInstructors(organizationId?: number): Promise<Instructo
       status,
       base_salary,
       salary_period,
-      work_hours_per_week,
-      metadata,
       department_id,
-      position_id,
       organization_members!inner (
         id,
         user_id,
@@ -1506,128 +1380,74 @@ export async function getInstructors(organizationId?: number): Promise<Instructo
         name
       )
     `)
-    .eq('status', 'active');
+    .eq('status', 'active')
+    .eq('organization_members.organization_id', orgId);
 
   if (error) {
     console.error('Error obteniendo empleados desde HRM:', error);
     throw error;
   }
 
-  // 3. Filtrar en código: departamento GYM o posición INST-*
-  const filteredEmployments = (employments || []).filter(emp => {
-    const position = emp.job_positions as any;
-    const department = emp.departments as any;
-    
-    // Es instructor si: está en departamento GYM O tiene código de posición INST-*
-    const isInGymDept = gymDept?.id && emp.department_id === gymDept.id;
-    const isInstructorPosition = position?.code?.startsWith('INST-');
-    const isInGymDeptByCode = department?.code === 'GYM';
-    
-    return isInGymDept || isInstructorPosition || isInGymDeptByCode;
+  const filas = ((employments || []) as unknown as FilaEmpleo[]).filter((emp) => {
+    const miembro = emp.organization_members;
+    if (!miembro || miembro.organization_id !== orgId) return false;
+    return emp.departments?.code === 'GYM' || (emp.job_positions?.code ?? '').startsWith('INST-');
   });
+  if (filas.length === 0) return [];
 
-  const instructors: Instructor[] = [];
-  
-  for (const emp of filteredEmployments) {
-    const member = emp.organization_members as any;
-    if (!member || !member.is_active) continue;
+  const userIds = Array.from(new Set(filas.map((f) => f.organization_members!.user_id)));
+  const [{ data: perfiles }, { data: clases }] = await Promise.all([
+    supabase.from('profiles').select('id, first_name, last_name, email, phone, avatar_url').in('id', userIds),
+    supabase.from('gym_classes').select('instructor_id').eq('organization_id', orgId).in('instructor_id', userIds),
+  ]);
+  const perfilPorId = new Map(
+    ((perfiles || []) as Array<{ id: string; first_name: string | null; last_name: string | null; email: string | null; phone: string | null; avatar_url: string | null }>).map(
+      (p) => [p.id, p]
+    )
+  );
+  const clasesPorInstructor = new Map<string, number>();
+  for (const c of (clases || []) as { instructor_id: string }[]) {
+    clasesPorInstructor.set(c.instructor_id, (clasesPorInstructor.get(c.instructor_id) ?? 0) + 1);
+  }
 
-    // Verificar que pertenece a la organización correcta
-    if (member.organization_id !== orgId) continue;
-
-    // Obtener perfil del usuario
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('first_name, last_name, email, phone, avatar_url')
-      .eq('id', member.user_id)
-      .single();
-
-    // Contar clases asignadas
-    const { count: classesCount } = await supabase
-      .from('gym_classes')
-      .select('id', { count: 'exact' })
-      .eq('instructor_id', member.user_id)
-      .eq('organization_id', orgId);
-
-    // Calcular tarifa por hora
-    const position = emp.job_positions as any;
-    const hourlyRateSuggested = position?.requirements?.hourly_rate_suggested;
-    let hourlyRate: number | undefined;
-    
-    if (emp.salary_period === 'hourly') {
-      hourlyRate = emp.base_salary || hourlyRateSuggested;
-    } else if (hourlyRateSuggested) {
-      hourlyRate = hourlyRateSuggested;
-    }
-
-    instructors.push({
-      id: member.id,
-      user_id: member.user_id,
-      organization_id: member.organization_id,
+  return filas.map((emp) => {
+    const miembro = emp.organization_members!;
+    const perfil = perfilPorId.get(miembro.user_id);
+    const sugerida = emp.job_positions?.requirements?.hourly_rate_suggested;
+    const hourlyRate = emp.salary_period === 'hourly' ? emp.base_salary || sugerida : sugerida;
+    return {
+      id: String(miembro.id),
+      user_id: miembro.user_id,
+      organization_id: miembro.organization_id,
       employment_id: emp.id,
       employee_code: emp.employee_code || undefined,
-      is_active: member.is_active,
-      profiles: profileData || undefined,
-      position: position ? {
-        id: position.id,
-        code: position.code,
-        name: position.name,
-        requirements: position.requirements
-      } : undefined,
-      department: emp.departments ? {
-        id: (emp.departments as any).id,
-        code: (emp.departments as any).code,
-        name: (emp.departments as any).name
-      } : undefined,
-      salary_period: emp.salary_period as any,
-      base_salary: emp.base_salary || undefined,
-      hourly_rate: hourlyRate,
-      classes_count: classesCount || 0
-    });
-  }
-
-  return instructors;
-}
-
-/**
- * Obtiene todos los cargos de instructor disponibles para asignar.
- */
-export async function getInstructorPositions(organizationId?: number) {
-  const orgId = organizationId || getOrganizationId();
-  
-  // Obtener todas las posiciones activas con sus departamentos
-  const { data, error } = await supabase
-    .from('job_positions')
-    .select(`
-      id,
-      code,
-      name,
-      description,
-      min_salary,
-      max_salary,
-      requirements,
-      departments (
-        id,
-        code,
-        name
-      )
-    `)
-    .eq('organization_id', orgId)
-    .eq('is_active', true)
-    .order('name');
-
-  if (error) {
-    console.error('Error obteniendo posiciones de instructor:', error);
-    throw error;
-  }
-
-  // Filtrar en código: posiciones INST-* o del departamento GYM
-  const filtered = (data || []).filter(pos => {
-    const dept = pos.departments as any;
-    return pos.code?.startsWith('INST-') || dept?.code === 'GYM';
+      is_active: miembro.is_active !== false,
+      profiles: perfil
+        ? {
+            first_name: perfil.first_name ?? '',
+            last_name: perfil.last_name ?? '',
+            email: perfil.email ?? undefined,
+            phone: perfil.phone ?? undefined,
+            avatar_url: perfil.avatar_url ?? undefined,
+          }
+        : undefined,
+      position: emp.job_positions
+        ? {
+            id: emp.job_positions.id,
+            code: emp.job_positions.code ?? '',
+            name: emp.job_positions.name,
+            requirements: emp.job_positions.requirements ?? undefined,
+          }
+        : undefined,
+      department: emp.departments
+        ? { id: emp.departments.id, code: emp.departments.code ?? '', name: emp.departments.name }
+        : undefined,
+      salary_period: emp.salary_period ?? undefined,
+      base_salary: emp.base_salary ?? undefined,
+      hourly_rate: hourlyRate ?? undefined,
+      classes_count: clasesPorInstructor.get(miembro.user_id) ?? 0,
+    };
   });
-
-  return filtered;
 }
 
 export async function getInstructorStats(instructorId: string, organizationId?: number): Promise<{
@@ -1646,244 +1466,139 @@ export async function getInstructorStats(instructorId: string, organizationId?: 
     .eq('instructor_id', instructorId)
     .eq('organization_id', orgId);
 
-  const classIds = classes?.map(c => c.id) || [];
-  
+  const classIds = (classes || []).map((c) => c.id);
   let totalReservations = 0;
   let totalAttendance = 0;
 
   if (classIds.length > 0) {
-    const { count: reservationsCount } = await supabase
+    const { data: reservas } = await supabase
       .from('class_reservations')
-      .select('id', { count: 'exact' })
-      .in('gym_class_id', classIds);
-
-    const { count: attendanceCount } = await supabase
-      .from('class_reservations')
-      .select('id', { count: 'exact' })
+      .select('status')
+      .eq('organization_id', orgId)
       .in('gym_class_id', classIds)
-      .eq('status', 'attended');
-
-    totalReservations = reservationsCount || 0;
-    totalAttendance = attendanceCount || 0;
+      .neq('status', 'cancelled');
+    totalReservations = (reservas || []).length;
+    totalAttendance = (reservas || []).filter((r) => r.status === 'checked_in').length;
   }
 
   return {
     totalClasses: classes?.length || 0,
-    completedClasses: classes?.filter(c => c.status === 'completed').length || 0,
-    cancelledClasses: classes?.filter(c => c.status === 'cancelled').length || 0,
+    completedClasses: classes?.filter((c) => c.status === 'completed').length || 0,
+    cancelledClasses: classes?.filter((c) => c.status === 'cancelled').length || 0,
     totalReservations,
     totalAttendance,
-    avgAttendanceRate: totalReservations > 0 ? (totalAttendance / totalReservations) * 100 : 0
+    avgAttendanceRate: totalReservations > 0 ? (totalAttendance / totalReservations) * 100 : 0,
   };
 }
 
-// ==================== REPORTES ====================
-
-export async function getGymReportStats(organizationId?: number, filters?: GymReportFilters): Promise<GymReportStats> {
+/**
+ * Asistencia real por instructor (reservas que asistieron / reservas no
+ * canceladas) en las clases ya empezadas. Sustituye el 75 % fijo.
+ */
+export async function getAttendanceByInstructor(organizationId?: number): Promise<Map<string, { reservas: number; asistencias: number }>> {
   const orgId = organizationId || getOrganizationId();
-  const now = new Date();
-  
-  // Usar filtros de fecha o defaults
-  const dateFrom = filters?.dateFrom || new Date(now.getFullYear(), now.getMonth(), 1);
-  const dateTo = filters?.dateTo || now;
-  const branchId = filters?.branchId;
-
-  const { data: allMemberships } = await supabase
-    .from('memberships')
-    .select('id, status, created_at, updated_at, membership_plan_id')
-    .eq('organization_id', orgId);
-
-  const { data: activeMemberships } = await supabase
-    .from('memberships')
-    .select('id')
+  const mapa = new Map<string, { reservas: number; asistencias: number }>();
+  const { data, error } = await supabase
+    .from('class_reservations')
+    .select('status, gym_classes!inner (instructor_id, start_at)')
     .eq('organization_id', orgId)
-    .eq('status', 'active')
-    .gte('end_date', now.toISOString());
-
-  const { data: renewedInPeriod } = await supabase
-    .from('membership_events')
-    .select('id')
-    .eq('event_type', 'renewed')
-    .gte('created_at', dateFrom.toISOString())
-    .lte('created_at', dateTo.toISOString());
-
-  const { data: cancelledInPeriod } = await supabase
-    .from('memberships')
-    .select('id')
-    .eq('organization_id', orgId)
-    .eq('status', 'cancelled')
-    .gte('updated_at', dateFrom.toISOString())
-    .lte('updated_at', dateTo.toISOString());
-
-  const { data: plans } = await supabase
-    .from('membership_plans')
-    .select('id, name, price')
-    .eq('organization_id', orgId);
-
-  const revenueByPlan: { plan_name: string; revenue: number; count: number }[] = [];
-  for (const plan of plans || []) {
-    const { count } = await supabase
-      .from('memberships')
-      .select('id', { count: 'exact' })
-      .eq('membership_plan_id', plan.id)
-      .eq('status', 'active');
-
-    revenueByPlan.push({
-      plan_name: plan.name,
-      revenue: (count || 0) * plan.price,
-      count: count || 0
-    });
+    .neq('status', 'cancelled')
+    .lt('gym_classes.start_at', new Date().toISOString())
+    .limit(5000);
+  if (error) {
+    console.error('Error obteniendo asistencia:', error);
+    throw error;
   }
-
-  let checkinsQuery = supabase
-    .from('member_checkins')
-    .select('checkin_at, branch_id')
-    .eq('organization_id', orgId)
-    .is('denied_reason', null)
-    .gte('checkin_at', dateFrom.toISOString())
-    .lte('checkin_at', dateTo.toISOString());
-
-  if (branchId && branchId !== 'all') {
-    checkinsQuery = checkinsQuery.eq('branch_id', branchId);
+  for (const r of (data || []) as unknown as Array<{ status: string; gym_classes: { instructor_id: string } | null }>) {
+    const id = r.gym_classes?.instructor_id;
+    if (!id) continue;
+    const v = mapa.get(id) ?? { reservas: 0, asistencias: 0 };
+    v.reservas += 1;
+    if (r.status === 'checked_in') v.asistencias += 1;
+    mapa.set(id, v);
   }
+  return mapa;
+}
 
-  const { data: checkins } = await checkinsQuery;
+/** Disponibilidad semanal del instructor (`settings`, clave `instructor_availability_<user>`). */
+export interface FranjaDisponible {
+  desde: string;
+  hasta: string;
+}
+export type DisponibilidadSemanal = Record<1 | 2 | 3 | 4 | 5 | 6 | 7, FranjaDisponible[]>;
 
-  const peakHours: { hour: number; checkins: number }[] = [];
-  for (let h = 5; h <= 22; h++) {
-    const count = checkins?.filter(c => new Date(c.checkin_at).getHours() === h).length || 0;
-    peakHours.push({ hour: h, checkins: count });
-  }
+const DIAS_INGLES = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 
-  const { data: classTypes } = await supabase
-    .from('gym_classes')
-    .select('class_type')
-    .eq('organization_id', orgId);
+export function disponibilidadPorDefecto(): DisponibilidadSemanal {
+  const laboral = [{ desde: '06:00', hasta: '22:00' }];
+  return { 1: laboral, 2: laboral, 3: laboral, 4: laboral, 5: laboral, 6: [], 7: [] };
+}
 
-  const uniqueTypes = Array.from(new Set(classTypes?.map(c => c.class_type) || []));
-  const classAttendance: { class_type: string; total: number; attended: number; rate: number }[] = [];
-
-  for (const type of uniqueTypes) {
-    const { data: classesOfType } = await supabase
-      .from('gym_classes')
-      .select('id')
-      .eq('organization_id', orgId)
-      .eq('class_type', type);
-
-    const classIds = classesOfType?.map(c => c.id) || [];
-    
-    if (classIds.length > 0) {
-      const { count: totalRes } = await supabase
-        .from('class_reservations')
-        .select('id', { count: 'exact' })
-        .in('gym_class_id', classIds);
-
-      const { count: attendedRes } = await supabase
-        .from('class_reservations')
-        .select('id', { count: 'exact' })
-        .in('gym_class_id', classIds)
-        .eq('status', 'attended');
-
-      classAttendance.push({
-        class_type: type,
-        total: totalRes || 0,
-        attended: attendedRes || 0,
-        rate: (totalRes || 0) > 0 ? ((attendedRes || 0) / (totalRes || 1)) * 100 : 0
-      });
+/** Lee el formato guardado por la pantalla anterior ({monday: {enabled, slots:[{start,end}]}}) o el nuevo. */
+function leerDisponibilidad(valor: unknown): DisponibilidadSemanal {
+  const base = disponibilidadPorDefecto();
+  if (!valor || typeof valor !== 'object') return base;
+  const v = valor as Record<string, unknown>;
+  const salida = { ...base };
+  DIAS_INGLES.forEach((nombre, i) => {
+    const dia = (i + 1) as keyof DisponibilidadSemanal;
+    const crudo = (v[String(dia)] ?? v[nombre]) as unknown;
+    if (Array.isArray(crudo)) {
+      salida[dia] = crudo
+        .map((f) => f as { desde?: string; hasta?: string })
+        .filter((f) => typeof f.desde === 'string' && typeof f.hasta === 'string')
+        .map((f) => ({ desde: f.desde as string, hasta: f.hasta as string }));
+    } else if (crudo && typeof crudo === 'object') {
+      const d = crudo as { enabled?: boolean; slots?: Array<{ start?: string; end?: string }> };
+      salida[dia] = d.enabled
+        ? (d.slots ?? [])
+            .filter((s) => typeof s.start === 'string' && typeof s.end === 'string')
+            .map((s) => ({ desde: s.start as string, hasta: s.end as string }))
+        : [];
     }
-  }
-
-  const total = allMemberships?.length || 1;
-  const cancelled = cancelledInPeriod?.length || 0;
-
-  return {
-    totalMemberships: allMemberships?.length || 0,
-    activeMemberships: activeMemberships?.length || 0,
-    renewedThisMonth: renewedInPeriod?.length || 0,
-    cancelledThisMonth: cancelled,
-    churnRate: (cancelled / total) * 100,
-    retentionRate: 100 - (cancelled / total) * 100,
-    revenueByPlan,
-    peakHours,
-    classAttendance
-  };
+  });
+  return salida;
 }
 
-// ==================== UTILIDADES CLASES ====================
-
-export function getClassTypeLabel(type: string): string {
-  const labels: Record<string, string> = {
-    spinning: 'Spinning',
-    yoga: 'Yoga',
-    pilates: 'Pilates',
-    crossfit: 'CrossFit',
-    zumba: 'Zumba',
-    boxing: 'Boxeo',
-    functional: 'Funcional',
-    stretching: 'Estiramiento',
-    aerobics: 'Aeróbicos',
-    swimming: 'Natación',
-    other: 'Otro'
-  };
-  return labels[type] || type;
+export async function getInstructorAvailability(userId: string, organizationId?: number): Promise<DisponibilidadSemanal> {
+  const orgId = organizationId || getOrganizationId();
+  const { data, error } = await supabase
+    .from('settings')
+    .select('settings')
+    .eq('organization_id', orgId)
+    .eq('key', `instructor_availability_${userId}`)
+    .maybeSingle();
+  if (error) throw error;
+  return leerDisponibilidad(data?.settings);
 }
 
-export function getClassStatusColor(status: string): string {
-  switch (status) {
-    case 'scheduled': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
-    case 'in_progress': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
-    case 'completed': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
-    case 'cancelled': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
-    default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
-  }
+export async function saveInstructorAvailability(
+  userId: string,
+  disponibilidad: DisponibilidadSemanal,
+  organizationId?: number
+): Promise<void> {
+  const orgId = organizationId || getOrganizationId();
+  const key = `instructor_availability_${userId}`;
+  const { data: existente, error: errorLectura } = await supabase
+    .from('settings')
+    .select('id')
+    .eq('organization_id', orgId)
+    .eq('key', key)
+    .maybeSingle();
+  if (errorLectura) throw errorLectura;
+  const { error } = existente
+    ? await supabase
+        .from('settings')
+        .update({ settings: disponibilidad, updated_at: new Date().toISOString() })
+        .eq('organization_id', orgId)
+        .eq('key', key)
+    : await supabase.from('settings').insert({ organization_id: orgId, key, settings: disponibilidad });
+  if (error) throw error;
 }
 
-export function getClassStatusLabel(status: string): string {
-  switch (status) {
-    case 'scheduled': return 'Programada';
-    case 'in_progress': return 'En Progreso';
-    case 'completed': return 'Completada';
-    case 'cancelled': return 'Cancelada';
-    default: return status;
-  }
-}
-
-export function getReservationStatusColor(status: string): string {
-  switch (status) {
-    case 'booked': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
-    case 'attended': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
-    case 'no_show': return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400';
-    case 'cancelled': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
-    default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
-  }
-}
-
-export function getReservationStatusLabel(status: string): string {
-  switch (status) {
-    case 'booked': return 'Reservado';
-    case 'attended': return 'Asistió';
-    case 'no_show': return 'No Asistió';
-    case 'cancelled': return 'Cancelado';
-    default: return status;
-  }
-}
-
-export function getDifficultyLabel(level: string): string {
-  switch (level) {
-    case 'beginner': return 'Principiante';
-    case 'intermediate': return 'Intermedio';
-    case 'advanced': return 'Avanzado';
-    case 'all_levels': return 'Todos los niveles';
-    default: return level;
-  }
-}
-
-export default {
+const gymService = {
   getPlans,
   getPlanById,
-  createPlan,
-  updatePlan,
-  togglePlanStatus,
   getMemberships,
   getMembershipById,
   createMembership,
@@ -1892,10 +1607,6 @@ export default {
   unfreezeMembership,
   cancelMembership,
   renewMembership,
-  searchMemberForCheckin,
-  validateCheckin,
-  registerCheckin,
-  registerDeniedCheckin,
   getTodayCheckins,
   getGymStats,
   logMembershipEvent,
@@ -1913,21 +1624,18 @@ export default {
   deleteClass,
   cancelClass,
   duplicateClass,
+  getOccupancyByClass,
   getReservations,
-  getReservationsByClass,
   createReservation,
   updateReservation,
   cancelReservation,
   markAttendance,
-  getClassOccupancy,
+  searchCustomersForReservation,
   getInstructors,
-  getInstructorPositions,
   getInstructorStats,
-  getGymReportStats,
-  getClassTypeLabel,
-  getClassStatusColor,
-  getClassStatusLabel,
-  getReservationStatusColor,
-  getReservationStatusLabel,
-  getDifficultyLabel
+  getAttendanceByInstructor,
+  getInstructorAvailability,
+  saveInstructorAvailability,
 };
+
+export default gymService;

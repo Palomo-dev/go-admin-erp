@@ -18,6 +18,7 @@ import { getOrganizationTimezone } from './organizationTimezoneService';
 import type { ProductLabelsPrintPayload } from '@printing/labels';
 import { resolverContextoMoneda } from './monedaOrganizacion';
 import type { MoneyFormat } from '@printing';
+import { camposCantidadImpresa, type ProductoModoVenta } from '@/lib/pos/peso/modoVenta';
 
 /** Campos de cabecera que comparten el ticket de venta y la pre-cuenta. */
 interface BusinessHeader {
@@ -403,7 +404,7 @@ export class PrintJobsService {
       tableName?: string;
       serverName?: string;
       createdAt: string;
-      items: Array<{ productName: string; quantity: number; notes?: string | null; station?: string | null; variantData?: Record<string, string> | null; modifiers?: Array<{ name: string; extraPrice: number }> | null }>;
+      items: Array<{ productName: string; quantity: number; unit?: string | null; qtyDecimals?: number | null; notes?: string | null; station?: string | null; variantData?: Record<string, string> | null; modifiers?: Array<{ name: string; extraPrice: number }> | null }>;
       businessName?: string;
       branchName?: string;
     }
@@ -440,7 +441,8 @@ export class PrintJobsService {
         station,
         createdAt: ticket.createdAt,
         timezone: await resolveTimezone(),
-        items: items.map((i) => ({ productName: i.productName, quantity: i.quantity, notes: i.notes, variantData: i.variantData, modifiers: i.modifiers })),
+        // `unit`/`qtyDecimals` solo en líneas por peso o medida: «0,500 kg Carne».
+        items: items.map((i) => ({ productName: i.productName, quantity: i.quantity, ...(i.unit ? { unit: i.unit, qtyDecimals: i.qtyDecimals } : {}), notes: i.notes, variantData: i.variantData, modifiers: i.modifiers })),
         businessName: ticket.businessName,
         branchName: ticket.branchName,
       };
@@ -484,7 +486,11 @@ export class PrintJobsService {
     kitchen_ticket_items?: Array<{
       station: string | null;
       notes: string | null;
-      sale_items?: { quantity: number; notes?: any; products?: { name: string; variant_data?: Record<string, string> | null } | null } | null;
+      sale_items?: {
+        quantity: number;
+        notes?: { modifiers?: Array<{ name: string; extraPrice: number }> | null; [clave: string]: unknown } | string | null;
+        products?: ({ name: string; variant_data?: Record<string, string> | null } & ProductoModoVenta) | null;
+      } | null;
     }>;
   }): Promise<EnqueueResult & { skippedStations: string[] }> {
     return this.enqueueKitchenTicket(ticket.branch_id, {
@@ -498,6 +504,8 @@ export class PrintJobsService {
         return {
           productName: item.sale_items?.products?.name || 'Producto',
           quantity: item.sale_items?.quantity || 1,
+          // Producto por peso o medida: «0,500 kg» en la comanda reimpresa.
+          ...camposCantidadImpresa(item.sale_items?.products ?? null),
           notes: item.notes,
           station: item.station,
           variantData: item.sale_items?.products?.variant_data || null,
@@ -1047,6 +1055,7 @@ export class PrintJobsService {
 
     return dispatchPrintJobs(rows, printers);
   }
+
   /**
    * Impresoras de la estación de caja de la sucursal (o «todas»): las que
    * reciben las etiquetas de producto. Vacío = no hay estación y el diálogo

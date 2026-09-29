@@ -1,29 +1,42 @@
 import { supabase } from '@/lib/supabase/config';
-import { recipeService } from './recipeService';
+import type {
+  LineaEntradaCompra,
+  MotivoLineaSaltada,
+  ResultadoEntradaCompra,
+  ResultadoLiberacion,
+  ResultadoReserva,
+} from '@/lib/inventario/nucleo/tipos';
+
+/**
+ * Fachada TypeScript del núcleo de existencias (INVENTARIO-PLAN.md §5.1, B0).
+ *
+ * Desde B0 este servicio NO lee ni escribe `stock_levels` / `stock_movements`:
+ * cada método llama a una RPC que pasa por la primitiva `fn_inv_int_mover`
+ * (bloqueo de la fila, una sola regla de costo promedio, kardex con autor).
+ * Sus llamadores (POS offline, CRM, pedidos web, PMS, compras) no cambian.
+ *
+ *   decrementOnSale          → decrement_stock_with_recipe (receta + primitiva)
+ *   reserveStock             → fn_stock_reservar (receta expandida, registrada por documento)
+ *   releaseStockReservation  → fn_stock_liberar_reserva (libera EXACTAMENTE lo reservado)
+ *   incrementOnPurchase      → fn_kardex_entrada_compra (orígenes de compra; permiso
+ *                              inventory.create/finance.create en el servidor, P6)
+ *                              o, para `folio_item_reversal`, fn_inv_reversion_entrada
+ *                              (al costo con que salió, no al precio de venta)
+ *
+ * Antes: la reserva y la recepción se hacían desde el navegador leyendo y
+ * escribiendo sin bloqueo, con una copia en TS del promedio ponderado y sin
+ * `product_costs`; la reversión del folio metía el precio de venta como costo.
+ */
 
 export interface SaleItemForStock {
   product_id: number | null;
   quantity: number;
+  /**
+   * Ventas: precio de venta, solo como último recurso de costo si el producto
+   * no tiene ni promedio ni costo vigente (regla de fn_costo_unitario_producto).
+   * Compras: costo unitario de la línea.
+   */
   unit_price?: number;
-}
-
-interface RecipeItemForStock {
-  product_id: number;
-  quantity: number;
-  track_stock: boolean;
-}
-
-/**
- * Productos cuyo stock se reserva o libera por un ítem vendido. Lo resuelve el
- * servidor (`fn_receta_expandir`) con el mismo resolutor y el mismo cálculo que
- * descuenta la venta: receta propia o la compartida del padre, rinde, merma,
- * conversión de unidades, sin opcionales y sin el propio producto (F-68); más el
- * compuesto si lleva inventario. Sin receta, o «al producir», el producto mismo.
- * Antes esta lógica se repetía aquí con consultas desde el navegador.
- */
-async function getRecipeItemsForStock(productId: number, qty: number): Promise<RecipeItemForStock[]> {
-  const items = await recipeService.expandir(productId, qty);
-  return items.map((i) => ({ product_id: i.product_id, quantity: i.quantity, track_stock: i.track_stock }));
 }
 
 /**
@@ -32,11 +45,7 @@ async function getRecipeItemsForStock(productId: number, qty: number): Promise<R
  * que una recepcion podia "funcionar" sin mover una sola unidad de stock y el
  * usuario no tenia forma de enterarse.
  */
-export type StockSkipReason =
-  | 'no_product'
-  | 'invalid_qty'
-  | 'product_not_found'
-  | 'not_tracked';
+export type StockSkipReason = MotivoLineaSaltada;
 
 export interface StockSkippedItem {
   productId: number | null;
@@ -72,23 +81,54 @@ export interface StockDecrementResult {
 }
 
 /**
- * Servicio reutilizable para descontar stock al realizar ventas.
- * Maneja la lógica de llamar a la RPC decrement_stock_with_recipe por cada item.
+ * Orígenes de compra que entran por aquí (`fn_kardex_entrada_compra`). La
+ * recepción de una orden de compra (`purchase_order`) ya no: va entera por
+ * `fn_oc_recepcionar` (inventario B8: cantidades, lotes, seriales, estado de la
+ * OC y factura en una transacción; `lib/services/inventario/recepcionOrdenCompra.ts`).
  */
+const ORIGENES_COMPRA = new Set(['purchase', 'purchase_invoice']);
+
+/** Separa los ítems sin producto o sin cantidad (motivo) de los válidos. */
+function clasificar(items: SaleItemForStock[]): {
+  validos: { product_id: number; quantity: number; unit_price?: number }[];
+  saltados: StockSkippedItem[];
+} {
+  const validos: { product_id: number; quantity: number; unit_price?: number }[] = [];
+  const saltados: StockSkippedItem[] = [];
+  for (const item of items) {
+    if (!item.product_id) {
+      saltados.push({ productId: null, reason: 'no_product' });
+      continue;
+    }
+    const qty = Number(item.quantity) || 0;
+    if (qty <= 0) {
+      saltados.push({ productId: item.product_id, reason: 'invalid_qty' });
+      continue;
+    }
+    validos.push({ product_id: item.product_id, quantity: qty, unit_price: item.unit_price });
+  }
+  return { validos, saltados };
+}
+
+function resultado(saltados: StockSkippedItem[], errors: string[]): StockDecrementResult {
+  return { success: errors.length === 0, skipped: saltados.length, skippedItems: saltados, errors };
+}
+
+function saltadosDelServidor(saltadas: ResultadoEntradaCompra['saltadas'] | undefined): StockSkippedItem[] {
+  return (saltadas ?? []).map((s) => ({
+    productId: s.product_id ?? null,
+    productName: s.product_name,
+    reason: s.reason,
+  }));
+}
+
 export const stockMovementService = {
   /**
-   * Descuenta stock por cada item de una venta.
-   * Usa el RPC decrement_stock_with_recipe que:
-   * - Si el producto tiene receta activa → descuenta cada ingrediente
-   * - Si no tiene receta → comporta como decrement_stock_on_sale (backward compatible)
-   * Omite items sin product_id o cantidad <= 0.
+   * Descuenta stock por cada item de una venta con `decrement_stock_with_recipe`
+   * (receta propia o heredada; sin receta, el producto). Omite items sin
+   * product_id o cantidad <= 0.
    *
-   * @param organizationId - ID de la organización
-   * @param branchId - ID de la sucursal
-   * @param saleId - ID de la venta (para source_id)
-   * @param items - Items de la venta
-   * @param source - Origen del movimiento ('sale', 'web_sale', 'mesa_sale', 'invoice_sale')
-   * @param updatedBy - UUID del usuario (opcional)
+   * @param source - Origen ('sale', 'web_sale', 'mesa_sale', 'invoice_sale', 'folio_item', 'room_consumption')
    */
   async decrementOnSale(
     organizationId: number,
@@ -98,27 +138,15 @@ export const stockMovementService = {
     source: string = 'sale',
     updatedBy?: string
   ): Promise<StockDecrementResult> {
+    const { validos, saltados } = clasificar(items);
     const errors: string[] = [];
-    const skippedItems: StockSkippedItem[] = [];
 
-    for (const item of items) {
-      // Saltar items sin product_id (ej: propinas, cargos personalizados)
-      if (!item.product_id) {
-        skippedItems.push({ productId: null, reason: 'no_product' });
-        continue;
-      }
-
-      const qty = Number(item.quantity) || 0;
-      if (qty <= 0) {
-        skippedItems.push({ productId: item.product_id, reason: 'invalid_qty' });
-        continue;
-      }
-
+    for (const item of validos) {
       const { error: rpcError } = await supabase.rpc('decrement_stock_with_recipe', {
         p_organization_id: organizationId,
         p_branch_id: branchId,
         p_product_id: item.product_id,
-        p_qty: qty,
+        p_qty: item.quantity,
         p_source: source,
         p_source_id: String(saleId),
         p_unit_cost: item.unit_price ?? null,
@@ -126,25 +154,19 @@ export const stockMovementService = {
       });
 
       if (rpcError) {
-        console.warn(
-          `[stockMovementService] Error descontando stock producto ${item.product_id}:`,
-          rpcError.message
-        );
+        console.warn(`[stockMovementService] Error descontando stock producto ${item.product_id}:`, rpcError.message);
         errors.push(`Producto ${item.product_id}: ${rpcError.message}`);
       }
     }
 
-    return {
-      success: errors.length === 0,
-      skipped: skippedItems.length,
-      skippedItems,
-      errors,
-    };
+    return resultado(saltados, errors);
   },
 
   /**
-   * Reserva stock al crear un pedido web.
-   * Incrementa qty_reserved en stock_levels.
+   * Reserva stock para un documento (pedido web del panel, oportunidad de CRM)
+   * con `fn_stock_reservar`: el servidor expande la receta, bloquea las filas y
+   * registra lo reservado en `stock_reservations`. Reservar dos veces el mismo
+   * documento no duplica. Como antes, reserva aunque no haya disponible (P5).
    */
   async reserveStock(
     organizationId: number,
@@ -153,253 +175,100 @@ export const stockMovementService = {
     items: SaleItemForStock[],
     _updatedBy?: string
   ): Promise<StockDecrementResult> {
-    void _updatedBy; // reservado para uso futuro (auditoría de reservas)
-    // La organización la resuelve el servidor desde el producto (fn_receta_expandir
-    // verifica la pertenencia); se conserva el parámetro por compatibilidad.
-    void organizationId;
-    const errors: string[] = [];
-    const skippedItems: StockSkippedItem[] = [];
+    void _updatedBy; // el servidor registra auth.uid() en stock_reservations.created_by
+    const { validos, saltados } = clasificar(items);
+    if (validos.length === 0) return resultado(saltados, []);
 
-    for (const item of items) {
-      if (!item.product_id) {
-        skippedItems.push({ productId: null, reason: 'no_product' });
-        continue;
-      }
-
-      const qty = Number(item.quantity) || 0;
-      if (qty <= 0) {
-        skippedItems.push({ productId: item.product_id, reason: 'invalid_qty' });
-        continue;
-      }
-
-      // Expandir receta: obtener lista de productos a reservar
-      // (ingredientes + compuesto si track_stock=true, o solo el producto si no tiene receta)
-      const recipeItems = await getRecipeItemsForStock(item.product_id, qty);
-
-      for (const ri of recipeItems) {
-        if (!ri.track_stock) continue;
-
-        // Incrementar qty_reserved
-        const { data: existing } = await supabase
-          .from('stock_levels')
-          .select('id, qty_reserved')
-          .eq('product_id', ri.product_id)
-          .eq('branch_id', branchId)
-          .is('lot_id', null)
-          .limit(1)
-          .maybeSingle();
-
-        if (existing) {
-          const { error } = await supabase
-            .from('stock_levels')
-            .update({
-              qty_reserved: (Number(existing.qty_reserved) || 0) + ri.quantity,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', existing.id);
-
-          if (error) errors.push(`Producto ${ri.product_id}: ${error.message}`);
-        } else {
-          const { error } = await supabase
-            .from('stock_levels')
-            .insert({
-              product_id: ri.product_id,
-              branch_id: branchId,
-              lot_id: null,
-              qty_on_hand: 0,
-              qty_reserved: ri.quantity,
-              avg_cost: 0,
-              min_level: 0,
-            });
-
-          if (error) errors.push(`Producto ${ri.product_id}: ${error.message}`);
-        }
-      }
-    }
-
-    return { success: errors.length === 0, skipped: skippedItems.length, skippedItems, errors };
+    const { data, error } = await supabase.rpc('fn_stock_reservar', {
+      p_org: organizationId,
+      p_branch: branchId,
+      p_ref_id: String(orderId),
+      p_items: validos.map((i) => ({ product_id: i.product_id, quantity: i.quantity })),
+    });
+    const r = data as ResultadoReserva | null;
+    if (error) return resultado(saltados, [`Reserva ${orderId}: ${error.message}`]);
+    if (!r?.ok) return resultado(saltados, [`Reserva ${orderId}: no se pudo reservar`]);
+    return resultado(saltados, []);
   },
 
   /**
-   * Libera la reserva de stock al cancelar un pedido web.
+   * Libera la reserva de un documento con `fn_stock_liberar_reserva`: devuelve
+   * exactamente lo que se reservó. Los ítems solo se usan para reservas hechas
+   * antes del registro (se liberan como antes, expandiendo la receta).
    */
   async releaseStockReservation(
     branchId: number,
     orderId: string | number,
     items: SaleItemForStock[]
   ): Promise<StockDecrementResult> {
-    const errors: string[] = [];
-    const skippedItems: StockSkippedItem[] = [];
-
-    for (const item of items) {
-      if (!item.product_id) {
-        skippedItems.push({ productId: null, reason: 'no_product' });
-        continue;
-      }
-
-      const qty = Number(item.quantity) || 0;
-      if (qty <= 0) {
-        skippedItems.push({ productId: item.product_id, reason: 'invalid_qty' });
-        continue;
-      }
-
-      // Expandir receta para liberar reservas de ingredientes también
-      const recipeItems = await getRecipeItemsForStock(item.product_id, qty);
-
-      for (const ri of recipeItems) {
-        if (!ri.track_stock) continue;
-
-        const { data: existing } = await supabase
-          .from('stock_levels')
-          .select('id, qty_reserved')
-          .eq('product_id', ri.product_id)
-          .eq('branch_id', branchId)
-          .is('lot_id', null)
-          .limit(1)
-          .maybeSingle();
-
-        if (existing) {
-          const newReserved = Math.max(0, (Number(existing.qty_reserved) || 0) - ri.quantity);
-          const { error } = await supabase
-            .from('stock_levels')
-            .update({
-              qty_reserved: newReserved,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', existing.id);
-
-          if (error) errors.push(`Producto ${ri.product_id}: ${error.message}`);
-        }
-      }
-    }
-
-    return { success: errors.length === 0, skipped: skippedItems.length, skippedItems, errors };
+    const { validos, saltados } = clasificar(items);
+    const { data, error } = await supabase.rpc('fn_stock_liberar_reserva', {
+      p_branch: branchId,
+      p_ref_id: String(orderId),
+      p_items: validos.map((i) => ({ product_id: i.product_id, quantity: i.quantity })),
+    });
+    const r = data as ResultadoLiberacion | null;
+    if (error) return resultado(saltados, [`Liberar reserva ${orderId}: ${error.message}`]);
+    if (r && r.ok === false) return resultado(saltados, [`Liberar reserva ${orderId}: ${r.error ?? 'error'}`]);
+    return resultado(saltados, []);
   },
 
   /**
-   * Incrementa stock al recibir items de una orden de compra.
-   * Suma a qty_on_hand y crea stock_movements con direction='in'.
+   * Entrada de mercancía por factura de compra con `fn_kardex_entrada_compra`:
+   * una sola transacción, bloqueo, promedio ponderado y costo con vigencia en
+   * `product_costs`. La recepción de una OC NO pasa por aquí: es
+   * `fn_oc_recepcionar` (B8), con lotes, seriales y estado de la orden.
    *
-   * @param organizationId - ID de la organización
-   * @param branchId - ID de la sucursal
-   * @param orderId - ID de la orden de compra (para source_id)
-   * @param items - Items recibidos con product_id, quantity (delta) y unit_cost
-   * @param source - Origen ('purchase_order', 'purchase_invoice')
-   * @param updatedBy - UUID del usuario (opcional)
+   * `folio_item_reversal` (borrar un consumo del folio del PMS) entra por
+   * `fn_inv_reversion_entrada` al costo con que salió. B9 lo moverá al PMS.
+   *
+   * @param source - 'purchase_invoice' | 'purchase' | 'folio_item_reversal'
    */
   async incrementOnPurchase(
     organizationId: number,
     branchId: number,
     orderId: string | number,
     items: SaleItemForStock[],
-    source: string = 'purchase_order',
+    source: string = 'purchase_invoice',
     updatedBy?: string
   ): Promise<StockDecrementResult> {
-    const errors: string[] = [];
-    const skippedItems: StockSkippedItem[] = [];
+    const { validos, saltados } = clasificar(items);
+    if (validos.length === 0) return resultado(saltados, []);
 
-    for (const item of items) {
-      if (!item.product_id) {
-        skippedItems.push({ productId: null, reason: 'no_product' });
-        continue;
-      }
-
-      const qty = Number(item.quantity) || 0;
-      if (qty <= 0) {
-        skippedItems.push({ productId: item.product_id, reason: 'invalid_qty' });
-        continue;
-      }
-
-      // Verificar track_stock del producto
-      const { data: product } = await supabase
-        .from('products')
-        .select('track_stock, name')
-        .eq('id', item.product_id)
-        .maybeSingle();
-
-      if (!product) {
-        skippedItems.push({ productId: item.product_id, reason: 'product_not_found' });
-        continue;
-      }
-
-      if (product.track_stock === false) {
-        skippedItems.push({ productId: item.product_id, productName: product.name, reason: 'not_tracked' });
-        continue;
-      }
-
-      // Buscar stock_level existente
-      const { data: existing } = await supabase
-        .from('stock_levels')
-        .select('id, qty_on_hand, avg_cost')
-        .eq('product_id', item.product_id)
-        .eq('branch_id', branchId)
-        .is('lot_id', null)
-        .limit(1)
-        .maybeSingle();
-
-      const unitCost = Number(item.unit_price) || 0;
-
-      if (existing) {
-        const currentQty = Number(existing.qty_on_hand) || 0;
-        const currentAvgCost = Number(existing.avg_cost) || 0;
-        // Recalcular costo promedio ponderado
-        const newAvgCost = currentQty > 0
-          ? (currentQty * currentAvgCost + qty * unitCost) / (currentQty + qty)
-          : unitCost;
-
-        const { error } = await supabase
-          .from('stock_levels')
-          .update({
-            qty_on_hand: currentQty + qty,
-            avg_cost: newAvgCost,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existing.id);
-
-        if (error) {
-          errors.push(`Producto ${item.product_id}: ${error.message}`);
-          continue;
-        }
-      } else {
-        const { error } = await supabase
-          .from('stock_levels')
-          .insert({
-            product_id: item.product_id,
-            branch_id: branchId,
-            lot_id: null,
-            qty_on_hand: qty,
-            qty_reserved: 0,
-            avg_cost: unitCost,
-            min_level: 0,
-          });
-
-        if (error) {
-          errors.push(`Producto ${item.product_id}: ${error.message}`);
-          continue;
-        }
-      }
-
-      // Crear movimiento de stock
-      const { error: movementError } = await supabase
-        .from('stock_movements')
-        .insert({
-          organization_id: organizationId,
-          branch_id: branchId,
-          product_id: item.product_id,
-          lot_id: null,
-          direction: 'in',
-          qty: qty,
-          unit_cost: unitCost,
-          source: source,
-          source_id: String(orderId),
-          updated_by: updatedBy ?? null,
-        });
-
-      if (movementError) {
-        errors.push(`Movimiento producto ${item.product_id}: ${movementError.message}`);
-      }
+    if (source === 'folio_item_reversal') {
+      const { data, error } = await supabase.rpc('fn_inv_reversion_entrada', {
+        p_org: organizationId,
+        p_branch: branchId,
+        p_source: source,
+        p_source_id: String(orderId),
+        p_lineas: validos.map((i) => ({ product_id: i.product_id, quantity: i.quantity })),
+      });
+      if (error) return resultado(saltados, [`Reversión ${orderId}: ${error.message}`]);
+      const r = data as Pick<ResultadoEntradaCompra, 'saltadas'> | null;
+      return resultado([...saltados, ...saltadosDelServidor(r?.saltadas)], []);
     }
 
-    return { success: errors.length === 0, skipped: skippedItems.length, skippedItems, errors };
+    if (!ORIGENES_COMPRA.has(source)) {
+      return resultado(saltados, [`Origen no admitido para una entrada de compra: ${source}`]);
+    }
+
+    const lineas: LineaEntradaCompra[] = validos.map((i) => ({
+      product_id: i.product_id,
+      qty: i.quantity,
+      unit_cost: Number(i.unit_price) || 0,
+    }));
+    const { data, error } = await supabase.rpc('fn_kardex_entrada_compra', {
+      p_org: organizationId,
+      p_branch: branchId,
+      p_source: source,
+      p_source_id: String(orderId),
+      p_lineas: lineas,
+      p_user: updatedBy ?? null,
+      p_supplier_id: null,
+      p_idempotente: false,
+    });
+    if (error) return resultado(saltados, [`Entrada ${orderId}: ${error.message}`]);
+    const r = data as ResultadoEntradaCompra | null;
+    return resultado([...saltados, ...saltadosDelServidor(r?.saltadas)], []);
   },
 };

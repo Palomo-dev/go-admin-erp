@@ -1,13 +1,12 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Bot, Sparkles, Trash2, PanelRightClose, X, Wrench, Undo2, History, Volume2, VolumeX, Loader2 } from 'lucide-react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Bot, Sparkles, SquarePen, PanelRightClose, X, Wrench, Undo2, History, Volume2, VolumeX, Loader2, Copy, Check } from 'lucide-react';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { cn } from '@/utils/Utils';
 import type { AssistantMessage, AssistantContext } from '@/lib/services/aiAssistantService';
-import type { PendingAction, PendingQuestion } from '@/lib/ai/assistant/clientTypes';
+import type { ActionOutcome, PendingAction, PendingQuestion } from '@/lib/ai/assistant/clientTypes';
 import { uploadAssistantAttachments } from '@/lib/ai/assistant/attachments';
 import Link from 'next/link';
 import { streamAssistant, type ToolStep } from '@/lib/ai/assistant/streamClient';
@@ -41,10 +40,14 @@ function AssistantSession({
   const [answeringModel, setAnsweringModel] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  /** Saldo de créditos de IA, visible al pie del composer. */
+  const [credits, setCredits] = useState<{ credits: number; level: 'ok' | 'low' | 'empty' } | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   /** Pregunta con opciones esperando respuesta (se responde como mensaje). */
   const [pendingQuestion, setPendingQuestion] = useState<PendingQuestion | null>(null);
   const [restoredActions, setRestoredActions] = useState<PendingAction[]>([]);
+  /** Desenlace de la propuesta que se acaba de confirmar (la tarjeta lo muestra). */
+  const [actionOutcome, setActionOutcome] = useState<ActionOutcome | null>(null);
   /** Texto que se va escribiendo mientras el modelo responde. */
   const [streamingText, setStreamingText] = useState('');
   /** Pasos de herramienta del turno en curso: "Buscando en el catálogo… → 6". */
@@ -83,6 +86,8 @@ function AssistantSession({
   const [speakReplies, setSpeakReplies] = useState(false);
   const [ttsUnavailable, setTtsUnavailable] = useState<string | null>(null);
   const [speakingId, setSpeakingId] = useState<string | null>(null);
+  /** Último mensaje copiado, para el "Copiado" efímero. */
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -142,6 +147,17 @@ function AssistantSession({
     [stopSpeaking]
   );
 
+  /** Copiar una respuesta. `navigator.clipboard` no existe fuera de HTTPS. */
+  const copyMessage = useCallback(async (id: string, text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      window.setTimeout(() => setCopiedId((actual) => (actual === id ? null : actual)), 1500);
+    } catch {
+      /* sin portapapeles disponible: el usuario puede seleccionar el texto */
+    }
+  }, []);
+
   const toggleSpeakReplies = () => {
     const next = !speakReplies;
     setSpeakReplies(next);
@@ -167,11 +183,26 @@ function AssistantSession({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
+  /** El saldo se lee al abrir y se refresca al terminar cada turno. */
+  const loadCredits = useCallback(async () => {
+    try {
+      const res = await fetch('/api/ai-assistant/credits');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (typeof data.credits === 'number') {
+        setCredits({ credits: data.credits, level: data.level === 'empty' || data.level === 'low' ? data.level : 'ok' });
+      }
+    } catch {
+      /* sin saldo visible; el turno igual avisa si falta */
+    }
+  }, []);
+
   useEffect(() => {
     if (isOpen) {
       loadSuggestions();
+      void loadCredits();
     }
-  }, [isOpen]);
+  }, [isOpen, loadCredits]);
 
   useEffect(() => {
     scrollToBottom();
@@ -182,7 +213,9 @@ function AssistantSession({
       const response = await fetch('/api/ai-assistant/suggestions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        // Las sugerencias dependen de la pantalla: en Facturas de venta,
+        // "crea una factura"; en Inventario, "sube este listado".
+        body: JSON.stringify({ currentPath: typeof window !== 'undefined' ? window.location.pathname : undefined }),
       });
       if (response.ok) {
         const data = await response.json();
@@ -247,6 +280,12 @@ function AssistantSession({
   );
 
   const sendMessage = async (content: string) => {
+    // Una tarjeta ya resuelta no se queda estorbando el turno siguiente.
+    if (actionOutcome) {
+      setActionOutcome(null);
+      setPendingAction(restoredActions[0] ?? null);
+      setRestoredActions((previous) => previous.slice(1));
+    }
     // Con adjunto y sin texto se manda igual: "aquí tienes la factura" está
     // implícito. El modelo recibe los ids y sabe qué hacer.
     const texto = content.trim() || (attachments.length > 0 ? 'Lee este documento.' : '');
@@ -332,6 +371,11 @@ function AssistantSession({
         return;
       }
 
+      // El saldo se refresca solo si el turno llegó a consumir créditos. Tras un
+      // stream abortado o fallido no se hace NINGUNA llamada: ese es el
+      // invariante que protege `assistantHistory.test.ts`.
+      if (!captured.error && !controller.signal.aborted) void loadCredits();
+
       if (!captured.error && !controller.signal.aborted) {
         for (const item of uploaded.items) if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
         setAttachments((current) => current.filter((item) => !uploaded.items.some((sent) => sent.id === item.id)));
@@ -403,18 +447,14 @@ function AssistantSession({
         result.error ||
         'No se pudo ejecutar la acción. Vuelve a intentarlo.';
 
-      const resultMessage: AssistantMessage = {
-        id: `result-${pendingAction.id}`,
-        role: 'assistant',
-        content: result.success
-          ? `✅ **Acción completada:** ${detalle}`
-          : `❌ **Error:** ${detalle}`,
-        timestamp: new Date(),
-      };
-
-      setMessages(prev => prev.some(message => message.id === resultMessage.id) ? prev : [...prev, resultMessage]);
-      setPendingAction(restoredActions[0] ?? null);
-      setRestoredActions(previous => previous.slice(1));
+      // El desenlace se queda EN la tarjeta, no como un mensaje suelto con
+      // ✅/❌ tres burbujas más abajo, desligado de lo que se confirmó.
+      setActionOutcome({
+        ok: Boolean(result.success),
+        message: detalle,
+        entity: result.entity ?? null,
+        undoAvailable: Boolean(result.undoAvailable),
+      });
 
       // El servidor decide si algo es reversible (guardó o no `undo_payload`).
       // El cliente solo pregunta; si no lo es, el endpoint responde que no y el
@@ -424,13 +464,10 @@ function AssistantSession({
       }
     } catch (error) {
       console.error('Error ejecutando acción:', error);
-      const errorMessage: AssistantMessage = {
-        id: `error-${Date.now()}`,
-        role: 'assistant',
-        content: '❌ **Error:** No se pudo ejecutar la acción. Por favor, intenta de nuevo.',
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      setActionOutcome({
+        ok: false,
+        message: 'No se pudo ejecutar la acción. Revisa su estado antes de intentarlo otra vez.',
+      });
     } finally {
       setIsExecutingAction(false);
     }
@@ -543,6 +580,10 @@ function AssistantSession({
       // deshacer; si no se pudo, insistir no va a cambiar el resultado y el
       // mensaje ya explica por qué.
       setUndoable(null);
+      // Si la tarjeta seguía visible con su desenlace, refleja lo ocurrido.
+      setActionOutcome((previo) =>
+        previo ? { ...previo, ok: previo.ok && Boolean(result.success), message: detalle, undoAvailable: false } : previo
+      );
     } catch (error) {
       console.error('Error deshaciendo:', error);
       setUndoable(null);
@@ -694,9 +735,10 @@ function AssistantSession({
             <button
               onClick={clearConversation}
               className="flex items-center justify-center h-8 w-8 rounded-full bg-blue-700 text-white hover:bg-blue-800 transition-colors"
-              title="Limpiar conversación"
+              title="Nueva conversación"
+              aria-label="Nueva conversación"
             >
-              <Trash2 size={14} />
+              <SquarePen size={14} />
             </button>
           )}
           <button
@@ -743,31 +785,22 @@ function AssistantSession({
           </div>
         ) : (
           <>
+            {/*
+              Sin avatares y sin el degradado morado: el turno se distingue por
+              la forma (el usuario en una burbuja azul a la derecha, el
+              asistente a todo el ancho), que es como se lee un chat de verdad
+              y deja sitio para tablas y tarjetas.
+            */}
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={cn(
-                  'flex gap-3',
-                  message.role === 'user' ? 'flex-row-reverse' : 'flex-row'
-                )}
+                className={cn('flex', message.role === 'user' ? 'justify-end' : 'flex-col')}
               >
-                <Avatar className="h-8 w-8 flex-shrink-0">
-                  <AvatarFallback
-                    className={cn(
-                      message.role === 'user'
-                        ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
-                        : 'bg-gradient-to-br from-blue-500 to-purple-500 text-white'
-                    )}
-                  >
-                    {message.role === 'user' ? context.userName.charAt(0).toUpperCase() : <Bot size={16} />}
-                  </AvatarFallback>
-                </Avatar>
                 <div
                   className={cn(
-                    'max-w-[80%] rounded-2xl px-4 py-2.5',
                     message.role === 'user'
-                      ? 'bg-blue-600 text-white rounded-tr-sm'
-                      : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-tl-sm'
+                      ? 'max-w-[85%] rounded-2xl rounded-tr-sm bg-blue-600 px-4 py-2.5 text-white'
+                      : 'w-full text-gray-900 dark:text-white'
                   )}
                 >
                   {message.role === 'assistant' ? (
@@ -775,23 +808,43 @@ function AssistantSession({
                   ) : (
                     <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                   )}
-                  {message.role === 'assistant' && !ttsUnavailable && message.content.trim() && (
-                    <button
-                      type="button"
-                      onClick={() => (speakingId === message.id ? stopSpeaking() : void speak(message.id, message.content))}
-                      className="mt-1.5 flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
-                      aria-label={speakingId === message.id ? 'Detener lectura' : 'Escuchar respuesta'}
-                    >
-                      {speakingId === message.id ? (
-                        <>
-                          <Loader2 size={11} className="animate-spin" aria-hidden="true" /> Leyendo… (tocar para parar)
-                        </>
-                      ) : (
-                        <>
-                          <Volume2 size={11} aria-hidden="true" /> Escuchar
-                        </>
+                  {message.role === 'assistant' && message.content.trim() && (
+                    <div className="mt-1.5 flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => void copyMessage(message.id, message.content)}
+                        className="flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                        aria-label="Copiar respuesta"
+                      >
+                        {copiedId === message.id ? (
+                          <>
+                            <Check size={11} aria-hidden="true" /> Copiado
+                          </>
+                        ) : (
+                          <>
+                            <Copy size={11} aria-hidden="true" /> Copiar
+                          </>
+                        )}
+                      </button>
+                      {!ttsUnavailable && (
+                        <button
+                          type="button"
+                          onClick={() => (speakingId === message.id ? stopSpeaking() : void speak(message.id, message.content))}
+                          className="flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                          aria-label={speakingId === message.id ? 'Detener lectura' : 'Escuchar respuesta'}
+                        >
+                          {speakingId === message.id ? (
+                            <>
+                              <Loader2 size={11} className="animate-spin" aria-hidden="true" /> Leyendo…
+                            </>
+                          ) : (
+                            <>
+                              <Volume2 size={11} aria-hidden="true" /> Escuchar
+                            </>
+                          )}
+                        </button>
                       )}
-                    </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -818,29 +871,45 @@ function AssistantSession({
               nada todavía.
             */}
             {isLoading && (
-              <div className="flex gap-3">
-                <Avatar className="h-8 w-8 flex-shrink-0">
-                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white">
-                    <Bot size={16} />
-                  </AvatarFallback>
-                </Avatar>
-                <div className="max-w-[80%] bg-gray-100 dark:bg-gray-800 rounded-2xl rounded-tl-sm px-4 py-2.5 space-y-2">
-                  {toolSteps.length > 0 && (
-                    <ul className="space-y-1" aria-label="Pasos en curso">
-                      {toolSteps.map((step, index) => (
-                        <li
-                          key={`${step.name}-${index}`}
-                          className="flex items-start gap-1.5 text-xs text-gray-500 dark:text-gray-400"
-                        >
-                          <Wrench size={12} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
-                          <span>
-                            {step.label || step.name}
-                            {step.summary ? ` → ${step.summary}` : ''}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+              <div className="flex">
+                <div className="w-full rounded-2xl bg-gray-100 px-4 py-2.5 space-y-2 dark:bg-gray-800">
+                  {/*
+                    Mientras se trabaja, los pasos mandan. En cuanto llega el
+                    primer token la respuesta es lo importante, así que los
+                    pasos se pliegan a una línea que se puede desplegar.
+                  */}
+                  {toolSteps.length > 0 &&
+                    (streamingText ? (
+                      <details className="text-xs text-gray-500 dark:text-gray-400">
+                        <summary className="flex cursor-pointer items-center gap-1.5">
+                          <Wrench size={12} className="flex-shrink-0" aria-hidden="true" />
+                          {toolSteps.length} {toolSteps.length === 1 ? 'paso' : 'pasos'}
+                        </summary>
+                        <ul className="mt-1 space-y-1 pl-5">
+                          {toolSteps.map((step, index) => (
+                            <li key={`${step.name}-${index}`}>
+                              {step.label || step.name}
+                              {step.summary ? ` → ${step.summary}` : ''}
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                    ) : (
+                      <ul className="space-y-1" aria-label="Pasos en curso">
+                        {toolSteps.map((step, index) => (
+                          <li
+                            key={`${step.name}-${index}`}
+                            className="flex items-start gap-1.5 text-xs text-gray-500 dark:text-gray-400"
+                          >
+                            <Wrench size={12} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
+                            <span>
+                              {step.label || step.name}
+                              {step.summary ? ` → ${step.summary}` : ''}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ))}
 
                   {streamingText ? (
                     <div className="text-gray-900 dark:text-white">
@@ -861,13 +930,8 @@ function AssistantSession({
             
             {/* Formulario de Confirmación de Acción - Dentro del chat */}
             {pendingQuestion && !pendingAction && !isLoading && (
-              <div className="flex gap-3">
-                <Avatar className="h-8 w-8 flex-shrink-0">
-                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white">
-                    <Bot size={16} />
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 max-w-[90%]">
+              <div className="flex">
+                <div className="w-full">
                   <QuestionCard
                     question={pendingQuestion}
                     onAnswer={(texto) => {
@@ -883,15 +947,13 @@ function AssistantSession({
               </div>
             )}
             {pendingAction && (
-              <div className="flex gap-3">
-                <Avatar className="h-8 w-8 flex-shrink-0">
-                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white">
-                    <Bot size={16} />
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 max-w-[90%]">
+              <div className="flex">
+                <div className="w-full">
                   <ActionConfirmationForm
                     action={pendingAction}
+                    outcome={actionOutcome}
+                    onUndo={() => void handleUndo()}
+                    isUndoing={isUndoing}
                     onConfirm={() => void handleConfirmAction()}
                     onReject={() => void handleRejectAction()}
                     onCorrect={() => void handleRejectAction(true)}
@@ -929,6 +991,7 @@ function AssistantSession({
         onAttach={handleAttach}
         onRemoveAttachment={handleRemoveAttachment}
         attachmentsEnabled={true}
+        credits={credits}
       />
 
       <div className="px-4 pb-2 bg-white dark:bg-gray-900 flex-shrink-0">

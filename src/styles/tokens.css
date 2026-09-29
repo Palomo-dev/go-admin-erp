@@ -56,6 +56,15 @@
   --badge-solid-neutral: 71 85 105;
   --badge-on-solid: 255 255 255;
   --badge-on-solid-warning: 15 23 42;
+  --auth-cielo-alto: 54 81 212;
+  --auth-cielo-medio: 67 97 238;
+  --auth-cielo-bajo: 106 130 241;
+  --auth-ilus-linea: 15 23 42;
+  --auth-ilus-relleno: 255 255 255;
+  --auth-ilus-acento: 42 62 168;
+  --auth-ilus-acento-suave: 238 241 254;
+  --auth-ilus-rubor: 185 197 249;
+  --auth-estrella: 255 255 255;
 
   --radius-sm: 6px;
   --radius-md: 8px;
@@ -121,4 +130,13 @@
   --badge-solid-neutral: 100 116 139;
   --badge-on-solid: 255 255 255;
   --badge-on-solid-warning: 15 23 42;
+  --auth-cielo-alto: 11 16 36;
+  --auth-cielo-medio: 18 26 54;
+  --auth-cielo-bajo: 31 46 125;
+  --auth-ilus-linea: 227 232 255;
+  --auth-ilus-relleno: 27 37 64;
+  --auth-ilus-acento: 67 97 238;
+  --auth-ilus-acento-suave: 42 62 168;
+  --auth-ilus-rubor: 106 130 241;
+  --auth-estrella: 255 255 255;
 }

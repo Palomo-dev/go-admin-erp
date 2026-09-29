@@ -30,6 +30,13 @@ export const FILTROS_PANTALLA_FACTURAS = [...FILTROS_FACTURAS, 'periodo'] as con
 
 export const CAMPOS_ORDEN_FACTURAS = ['emision', 'numero', 'cliente', 'total', 'saldo', 'vencimiento'] as const;
 
+/**
+ * Tamaños de página del listado (25 por defecto, como el Figma B.1). Se pasan a
+ * `useListadoServidor` como `tamanosPermitidos`: sin ellos el kit valida contra
+ * `TAMANOS_PAGINA` (10, 20, 50, 100), no encuentra el 25 y lo baja a 10 en silencio.
+ */
+export const TAMANOS_PAGINA_FACTURAS = [25, 50, 100] as const;
+
 const ORDENES_RPC = new Set([
   'emision_desc',
   'emision_asc',

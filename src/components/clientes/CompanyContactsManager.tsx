@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
+import { buscarClientes } from '@/lib/services/customers/busquedaClientesService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -173,19 +174,17 @@ export function CompanyContactsManager({ companyId, organizationId, branchId, on
       return;
     }
     setSearching(true);
-    const { data, error } = await supabase
-      .from('customers')
-      .select('id, first_name, last_name, email, phone, avatar_url')
-      .eq('organization_id', organizationId)
-      .eq('customer_type', 'person')
-      .or(`first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%`)
-      .limit(10);
-
-    if (error) {
-      console.error(error);
-    } else {
+    try {
+      // Búsqueda única de clientes (solo personas): sin tildes, todas las palabras.
+      const { filas } = await buscarClientes(supabase, { organizationId, texto: term, limite: 10, tipo: 'person' });
       const existingIds = new Set(contacts.map((c) => c.person_id));
-      setSearchResults((data || []).filter((r) => !existingIds.has(r.id)));
+      setSearchResults(
+        filas
+          .filter((r) => !existingIds.has(r.id))
+          .map((r) => ({ id: r.id, first_name: r.first_name ?? '', last_name: r.last_name ?? '', email: r.email, phone: r.phone, avatar_url: r.avatar_url })),
+      );
+    } catch (error) {
+      console.error(error);
     }
     setSearching(false);
   };

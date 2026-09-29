@@ -441,10 +441,16 @@ describe('los dos import prohibidos de @/utils/Utils están fuera', () => {
 });
 
 describe('cada call-site usa el helper que le toca, en su sitio', () => {
+  // La extension dejo de ser `.csv` fija el 2026-09-24: el rastro de
+  // `bank_files` registra ahora el archivo REALMENTE descargado (Bancolombia
+  // TXT bajaba un .txt y se anotaba como .csv). Lo que este guardarrail
+  // defiende —el DIA sale de `todayInTz(zona)` y no de UTC— sigue exigido
+  // igual de fuerte, incluida la ausencia de cualquier lectura UTC del dia.
   it('bank_files.file_name se compone con todayInTz(zona resuelta)', () => {
     const texto = leer('src/components/finanzas/cuentas-por-pagar/CuentasPorPagarService.ts');
     expect(texto).toContain('const zona = await resolveTimezone(organizationId);');
-    expect(texto).toContain('file_name: `pagos_${todayInTz(zona)}.csv`');
+    expect(texto).toContain('file_name: `pagos_${todayInTz(zona)}${extension}`');
+    expect(texto).not.toMatch(/file_name:.*toISOString/);
   });
 
   it('ExportarBancaModal toma el día del contexto de la organización', () => {

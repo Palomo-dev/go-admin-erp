@@ -54,6 +54,8 @@ interface FilaFacturaVenta {
   status: string;
   xml_uuid: string | null;
   notes: string | null;
+  /** Términos y condiciones (formulario v2, migración 20260929010000). */
+  terms_conditions: string | null;
   description: string | null;
   payment_method: string | null;
   payment_form: string | null;
@@ -66,7 +68,7 @@ interface FilaFacturaVenta {
 }
 
 const SELECT_FACTURA = `id, organization_id, branch_id, sale_id, number, issue_date, due_date, currency, subtotal, tax_total,
-  total, balance, status, xml_uuid, notes, description, payment_method, payment_form, tax_included,
+  total, balance, status, xml_uuid, notes, terms_conditions, description, payment_method, payment_form, tax_included,
   related_invoice_id, document_type, created_at,
   customer:customers(${SELECT_CLIENTE}),
   items:invoice_items(${SELECT_ITEM})`;
@@ -290,7 +292,7 @@ export async function cargarVenta(
     secciones,
     totales,
     notas: esNota ? null : notasPresentables(factura.notes, t),
-    terminos: null,
+    terminos: esNota ? null : texto(factura.terms_conditions),
     firma: esNota ? null : 'recibido',
     pieLegal: {
       textos: textoLegal(base, tipo, t),

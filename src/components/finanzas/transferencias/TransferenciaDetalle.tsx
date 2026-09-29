@@ -20,6 +20,7 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from '@/components/ui/use-toast';
 import { ToastAction } from '@/components/ui/toast';
 import { useTranslations } from 'next-intl';
+import { DialogoMotivo } from '@/components/kit';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { transferenciasService, BankTransfer } from '@/lib/services/transferenciasService';
@@ -51,6 +52,9 @@ export function TransferenciaDetalle({ id }: TransferenciaDetalleProps) {
   const { formatDate } = useFormatDate();
   const [transfer, setTransfer] = useState<BankTransfer | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // Anular con motivo (DialogoMotivo del kit), no con confirm() + prompt() del navegador.
+  const [anulando, setAnulando] = useState(false);
+  const [anulandoOcupado, setAnulandoOcupado] = useState(false);
 
   const loadTransfer = useCallback(async () => {
     setIsLoading(true);
@@ -78,13 +82,16 @@ export function TransferenciaDetalle({ id }: TransferenciaDetalleProps) {
     loadTransfer();
   }, [loadTransfer]);
 
-  const handleCancel = async () => {
+  const handleCancel = () => {
     if (!transfer) return;
-    if (!confirm('¿Está seguro de anular esta transferencia? Se revertirán los saldos.')) return;
+    setAnulando(true);
+  };
 
-    const reason = prompt('Motivo de la anulación:');
+  const confirmarAnulacion = async (reason: string) => {
+    if (!transfer) return;
+    setAnulandoOcupado(true);
     try {
-      const result = await transferenciasService.cancelTransfer(transfer.id, reason || undefined);
+      const result = await transferenciasService.cancelTransfer(transfer.id, reason);
       if (result.success) {
         toast({
           title: 'Éxito',
@@ -96,6 +103,9 @@ export function TransferenciaDetalle({ id }: TransferenciaDetalleProps) {
       }
     } catch {
       toast({ title: 'Error', description: 'Error al anular', variant: 'destructive' });
+    } finally {
+      setAnulandoOcupado(false);
+      setAnulando(false);
     }
   };
 
@@ -336,6 +346,16 @@ Notas: ${transfer.notes || 'N/A'}
           </Card>
         </div>
       </div>
+      <DialogoMotivo
+        abierto={anulando}
+        onAbiertoChange={(v) => !v && !anulandoOcupado && setAnulando(false)}
+        titulo={t('anular.transferencia.titulo')}
+        descripcion={t('anular.descripcion')}
+        textoConfirmar={t('anular.transferencia.boton')}
+        consecuencias={[t('anular.transferencia.consecuencia')]}
+        cargando={anulandoOcupado}
+        onConfirmar={(motivo) => void confirmarAnulacion(motivo)}
+      />
     </div>
   );
 }

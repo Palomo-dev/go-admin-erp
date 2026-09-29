@@ -164,16 +164,15 @@ describe('descartes del body y producto (tester r1 §3/§4)', () => {
 });
 
 describe('GET /api/crm/customers/search — ruta del CallLinkPanel (tester F12-misc §4)', () => {
-  it('q con coma y paréntesis: el `.or` va entrecomillado y acotado a la organización de la sesión', async () => {
-    const calls: Array<{ m: string; args: unknown[] }> = [];
-    const self: Record<string, unknown> = {};
-    for (const m of ['from', 'select', 'eq', 'in', 'order', 'limit', 'or']) self[m] = (...args: unknown[]) => { calls.push({ m, args }); return self; };
-    self.then = (ok: (v: unknown) => unknown) => Promise.resolve({ data: [{ id: 'c1' }], error: null }).then(ok);
-    session.supabase = self as unknown as SupabaseClient;
+  it('q con coma y paréntesis: viaja como parámetro de la búsqueda única (RPC) con la organización de la sesión', async () => {
+    const rpc = jest.fn(async () => ({ data: { total: 1, filas: [{ id: 'c1', first_name: 'Juan', last_name: 'Pérez', phone: null, email: null, relevancia: 2 }] }, error: null }));
+    const from = jest.fn();
+    session.supabase = { rpc, from } as unknown as SupabaseClient;
     const res = await customersSearch(new NextRequest('http://localhost/api/crm/customers/search?q=' + encodeURIComponent('Pérez, Juan (hijo)')));
     expect(res.status).toBe(200);
-    expect(calls.find((c) => c.m === 'or')?.args[0]).toBe('first_name.ilike."%Pérez, Juan (hijo)%",last_name.ilike."%Pérez, Juan (hijo)%",phone.ilike."%Pérez, Juan (hijo)%"');
-    expect(calls.find((c) => c.m === 'eq')?.args).toEqual(['organization_id', ORG]);
+    expect(rpc).toHaveBeenCalledWith('fn_clientes_buscar', expect.objectContaining({ p_organization_id: ORG, p_q: 'Pérez, Juan (hijo)', p_limit: 10 }));
+    expect(from).not.toHaveBeenCalled();
+    expect(((await res.json()) as { data: unknown[] }).data).toEqual([{ id: 'c1', first_name: 'Juan', last_name: 'Pérez', phone: null, email: null }]);
   });
 });
 

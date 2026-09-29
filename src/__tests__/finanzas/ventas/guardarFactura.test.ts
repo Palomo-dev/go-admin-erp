@@ -113,16 +113,35 @@ describe('POST /api/facturas-venta y PUT /api/facturas-venta/[id]', () => {
 });
 
 describe('el formulario ya no escribe desde el navegador (L12)', () => {
+  // El formulario v2 (2026-09-28) sustituyó a NuevaFacturaForm + EditarFacturaVenta:
+  // una sola pantalla para nueva y editar que guarda y emite por las rutas del servidor.
   const archivos = [
-    'src/components/finanzas/facturas-venta/nueva-factura/NuevaFacturaForm.tsx',
-    'src/components/finanzas/facturas-venta/editar/EditarFacturaVenta.tsx',
+    'src/components/finanzas/facturas-venta/formulario/FormularioFacturaVenta.tsx',
+    'src/components/finanzas/documento/terceros.tsx',
+    'src/components/finanzas/documento/productos.tsx',
   ];
   test.each(archivos)('%s', (rel) => {
     const codigo = leer(rel).replace(/\s+/g, ' ');
     for (const tabla of ['sales', 'sale_items', 'invoice_sales', 'invoice_items', 'invoice_applied_taxes', 'commissions']) {
       expect(codigo).not.toMatch(new RegExp(`from\\('${tabla}'\\) ?\\.(insert|update|upsert|delete)\\(`));
     }
+    expect(codigo).not.toMatch(/\.(insert|update|upsert|delete)\(/);
+  });
+
+  test('guarda con guardarFacturaVenta y emite con emitirFacturaVenta; la DIAN recibe la factura después de emitir (H1)', () => {
+    const codigo = leer('src/components/finanzas/facturas-venta/formulario/FormularioFacturaVenta.tsx');
     expect(codigo).toMatch(/guardarFacturaVenta\(/);
+    const emitir = codigo.indexOf('await emitirFacturaVenta(');
+    const dian = codigo.indexOf('sendToFactus(');
+    expect(emitir).toBeGreaterThan(0);
+    expect(dian).toBeGreaterThan(emitir);
+    // Ya no genera el número en el navegador (H8): lo asigna la emisión.
+    expect(codigo).not.toMatch(/generateInvoiceNumber/);
+  });
+
+  test('las rutas nueva y editar montan el mismo formulario', () => {
+    expect(leer('src/app/app/finanzas/facturas-venta/nuevo/page.tsx')).toMatch(/facturas-venta\/formulario\/FormularioFacturaVenta/);
+    expect(leer('src/app/app/finanzas/facturas-venta/[id]/editar/page.tsx')).toMatch(/facturas-venta\/formulario\/FormularioFacturaVenta/);
   });
 });
 

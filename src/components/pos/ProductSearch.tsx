@@ -13,7 +13,6 @@ import {
   conFavorito,
   decidirAccionProducto,
   enriquecerVariante,
-  resolverCodigo,
   type PosGridProduct,
   type SelectedVariant,
 } from '@/lib/pos/venta/catalogo';
@@ -38,6 +37,10 @@ import { teclaAtajo } from '@/lib/pos/venta/atajos';
 import { GrillaProductos } from './venta/GrillaProductos';
 import { RecetaDialogo } from './venta/catalogo/RecetaDialogo';
 import { useCatalogoGrilla, type ErrorCatalogo } from './venta/catalogo/useCatalogoGrilla';
+import type { PesajeEtiqueta } from '@/lib/pos/etiquetaPeso';
+import { resolverEscaneo, type ResultadoEscaneo } from '@/lib/pos/venta/escaneo';
+import { useFormatoEtiquetaPeso } from '@/lib/pos/useFormatoEtiquetaPeso';
+import { formatoCantidad } from '@/lib/pos/peso/modoVenta';
 
 interface ProductSearchProps {
   /**
@@ -53,6 +56,12 @@ interface ProductSearchProps {
    * `PanelAdaptable` el lector ya lo descarta solo (`onDescartado`).
    */
   bloqueado?: boolean;
+  /**
+   * Etiqueta de peso variable leída con el lector (PRODUCTOS-POR-PESO-BASCULA.md
+   * §2.7): la línea va directo al carrito con su cantidad y `notes.pesaje`, sin
+   * abrir «Pesar». Sin esta prop el lector se comporta como antes.
+   */
+  onEtiquetaPeso?: (product: Product, cantidad: number, pesaje: PesajeEtiqueta) => void | Promise<void>;
 }
 
 // `PosGridProduct`, `SelectedVariant` y las decisiones del catálogo (tarjeta,
@@ -69,14 +78,19 @@ function almacenLocal(): Storage | null {
   }
 }
 
-export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSearchProps) {
+export function ProductSearch({ onProductSelect, bloqueado = false, onEtiquetaPeso }: ProductSearchProps) {
   const t = useTranslations('posVenta.catalogo');
-  const { branchFilter } = useBranch();
+  const tEtiqueta = useTranslations('posPeso.etiqueta');
+  const formatoEtiqueta = useFormatoEtiquetaPeso();
+  const { branchFilter, branches } = useBranch();
   const moneda = useMonedaOrganizacion();
 
   // Estado para selector de variantes
   const [showVariantDialog, setShowVariantDialog] = useState(false);
   const [selectedParentProduct, setSelectedParentProduct] = useState<Product | null>(null);
+  // Variante que leyó el lector cuando el producto lleva modificadores: el
+  // selector abre con ella elegida (antes se perdía, B-06).
+  const [varianteEscaneada, setVarianteEscaneada] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -169,10 +183,12 @@ export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSea
     setSelectedCategory(null);
   };
 
-  // Entrega al carrito con la cantidad rápida (si la hay) y la consume.
-  const entregar = (product: Product, modifiers?: SelectedModifier[]) => {
-    if (cantidadRapida && cantidadRapida > 1) {
-      onProductSelect(product, modifiers, cantidadRapida);
+  // Entrega al carrito con la cantidad rápida (si la hay) y la consume. El
+  // selector de variantes trae su propia cantidad (`− n +`, que abre con la rápida).
+  const entregar = (product: Product, modifiers?: SelectedModifier[], cantidadElegida?: number) => {
+    const cantidad = cantidadElegida ?? cantidadRapida;
+    if (cantidad && cantidad > 1) {
+      onProductSelect(product, modifiers, cantidad);
     } else if (modifiers !== undefined) {
       onProductSelect(product, modifiers);
     } else {
@@ -182,10 +198,11 @@ export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSea
   };
 
   // Función para manejar el escaneo de código de barras (cámara)
+  // Cámara: el código leído va directo al carrito, igual que con el lector
+  // USB (antes solo quedaba escrito en el buscador).
   const handleBarcodeScan = (barcode: string) => {
-    setSearchTerm(barcode);
     setShowScanner(false);
-    toast.info(t('codigoEscaneado'), { description: t('buscandoCodigo', { codigo: barcode }), duration: 2000 });
+    void handleHardwareScan(barcode);
   };
 
   // Función para cerrar el scanner
@@ -203,6 +220,7 @@ export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSea
     }
     // Si el producto tiene variantes o modificadores configurados, abrir el selector
     if (accion === 'dialogo') {
+      setVarianteEscaneada(null);
       setSelectedParentProduct(product);
       setShowVariantDialog(true);
     } else {
@@ -218,11 +236,11 @@ export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSea
   };
 
   // Manejar selección de variante (y sus modificadores) desde el diálogo
-  const handleVariantSelect = (variant: SelectedVariant, modifiers: SelectedModifier[] = []) => {
+  const handleVariantSelect = (variant: SelectedVariant, modifiers: SelectedModifier[] = [], cantidad = 1) => {
     // Hereda categoría y estación del padre y toma su nombre legible (L17).
     const enrichedVariant = enriquecerVariante(variant, selectedParentProduct as PosGridProduct | null);
     // La variante lleva la fila completa del producto (ver SelectedVariant).
-    entregar(enrichedVariant as unknown as Product, modifiers);
+    entregar(enrichedVariant as unknown as Product, modifiers, cantidad);
     setShowVariantDialog(false);
     setSelectedParentProduct(null);
   };
@@ -235,6 +253,48 @@ export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSea
   // modificadores ya calculados (la RPC empareja `barcode` exacto, también
   // el de las variantes). Así la decisión —agregar, pedir variante o avisar
   // de agotado— es la misma que al tocar la tarjeta.
+  // Etiqueta de peso variable (§2.7): solo cuando el código EXACTO no existe.
+  // Devuelve true si el código era una etiqueta (agregada o con su aviso de
+  // error: nada se agrega); false si no encaja en el formato de la organización.
+  // La lectura (código exacto primero, formato de la organización, PLU y
+  // precio vigente) vive en src/lib/pos/venta/escaneo.ts (`resolverEscaneo`),
+  // compartida con «Agregar productos» de la mesa; aquí solo los avisos.
+  const aplicarEtiquetaPeso = async (code: string, r: Extract<ResultadoEscaneo, { tipo: 'etiqueta' | 'etiqueta_invalida' }>) => {
+    if (r.tipo === 'etiqueta_invalida') {
+      toast.error(tEtiqueta('invalida'), { description: tEtiqueta(r.motivo === 'digito_valor' ? 'invalidaValor' : 'invalidaDescripcion', { codigo: code }), duration: 3500 });
+      return;
+    }
+    const { etiqueta, producto, linea } = r;
+    if (!linea.ok) {
+      const nombre = producto?.name ?? '';
+      const claves = {
+        digito_control: 'invalida',
+        digito_valor: 'invalida',
+        plu_inexistente: 'pluInexistente',
+        producto_por_unidad: 'productoPorUnidad',
+        sin_precio: 'sinPrecio',
+        peso_invalido: 'pesoInvalido',
+        bajo_minimo: 'bajoMinimo',
+      } as const;
+      const minimo = linea.minimo !== undefined && producto ? formatoCantidad(linea.minimo, producto) : '';
+      toast.error(tEtiqueta(claves[linea.error], { plu: etiqueta.plu, producto: nombre, minimo }), {
+        description: tEtiqueta('codigoLeido', { codigo: code }),
+        duration: 3500,
+      });
+      return;
+    }
+    await onEtiquetaPeso?.(producto as Product, linea.cantidad, linea.pesaje);
+    if (linea.aviso) {
+      toast.warning(tEtiqueta('importeDifiere'), {
+        description: tEtiqueta('importeDifiereDescripcion', {
+          etiqueta: moneda.formatear(linea.aviso.importeEtiqueta),
+          calculado: moneda.formatear(linea.aviso.importeCalculado),
+        }),
+        duration: 5000,
+      });
+    }
+  };
+
   const handleHardwareScan = useCallback(async (code: string) => {
     // Con el cobro abierto el escaneo no va al carrito de fondo (D10).
     if (bloqueado) {
@@ -242,19 +302,24 @@ export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSea
       return;
     }
     try {
-      const [row, page] = await Promise.all([
-        POSService.getProductByBarcode(code).catch(() => null),
-        POSService.getProductsPaginated({
-          page: 1,
-          limit: 5,
-          search: code,
-          category_id: null,
-          status: 'active',
-          branchFilter,
-        }),
-      ]);
+      // Código exacto primero, luego etiqueta de peso variable y la decisión
+      // de la tarjeta: src/lib/pos/venta/escaneo.ts (igual en la mesa).
+      const r = await resolverEscaneo(code, {
+        porCodigo: (c) => POSService.getProductByBarcode(c),
+        grilla: async (termino, limite) =>
+          (await POSService.getProductsPaginated({ page: 1, limit: limite, search: termino, category_id: null, status: 'active', branchFilter }))
+            .data as PosGridProduct[],
+        porPlu: onEtiquetaPeso ? (plu) => POSService.getProductByScalePlu(plu) : undefined,
+        precioVigente: (p) => POSService.precioVigenteProducto(p.id, p.name),
+        formatoEtiqueta,
+        decimalesMoneda: moneda.decimals,
+      });
+      if (r.tipo !== 'producto') {
+        await aplicarEtiquetaPeso(code, r);
+        return;
+      }
       // L18: la decisión vive en src/lib/pos/venta/catalogo.ts (resolverCodigo).
-      const decision = resolverCodigo(row, page.data as PosGridProduct[]);
+      const decision = r.decision;
       if (decision.tipo === 'no_encontrado') {
         toast.error(t('codigoNoEncontrado'), { description: t('codigoNoEncontradoDescripcion', { codigo: code }), duration: 3000 });
         return;
@@ -265,7 +330,8 @@ export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSea
       }
       if (decision.tipo === 'dialogo_padre') {
         // El código identifica una variante concreta, pero el producto lleva
-        // modificadores: se elige en el diálogo del padre.
+        // modificadores: se eligen en el diálogo del padre con esa variante ya elegida.
+        setVarianteEscaneada(decision.varianteId ?? null);
         setSelectedParentProduct(decision.padre);
         setShowVariantDialog(true);
         return;
@@ -281,7 +347,7 @@ export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSea
       toast.error(t('errorEscaneo'));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [branchFilter, onProductSelect, bloqueado, t]);
+  }, [branchFilter, onProductSelect, bloqueado, t, formatoEtiqueta, onEtiquetaPeso, moneda]);
 
   useHardwareBarcodeScanner({
     onScan: handleHardwareScan,
@@ -367,6 +433,8 @@ export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSea
     }
   };
 
+  const nombreSucursal = branchFilter === null ? null : branches?.find((b) => b.id === branchFilter)?.name ?? undefined;
+
   const mensajeError = catalogo.error?.sinCatalogo ? (catalogo.error.error as Error)?.message ?? null : null;
 
   return (
@@ -390,6 +458,11 @@ export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSea
         favoritosEnCurso={togglingFavorites}
         onReceta={(p) => void handleViewRecipe(p)}
         onEscanerCamara={() => setShowScanner(true)}
+        onCodigo={(codigo) => {
+          // Código escrito a mano + Enter: como un escaneo (directo al carrito).
+          setSearchTerm('');
+          void handleHardwareScan(codigo);
+        }}
         onLimpiarFiltros={clearFilters}
         mensajeError={mensajeError}
       />
@@ -409,6 +482,10 @@ export function ProductSearch({ onProductSelect, bloqueado = false }: ProductSea
           onOpenChange={setShowVariantDialog}
           product={selectedParentProduct}
           onSelectVariant={handleVariantSelect}
+          sucursal={{ filtro: branchFilter, nombre: nombreSucursal }}
+          conCantidad
+          cantidadInicial={cantidadRapida ?? 1}
+          varianteInicialId={varianteEscaneada}
         />
       )}
 

@@ -14,6 +14,7 @@ import { AltaRapidaCategoria } from '../../nuevo/AltaRapidaCategoria';
 import type { EstadoFormularioProducto } from '../../logica/formularioProducto';
 import { generarSkuSugerido } from '../cargarCatalogos';
 import type { PropsSeccionFormulario } from '../tipos';
+import { SelectorTipoServicio } from './SelectorTipoServicio';
 
 /**
  * Información del producto: nombre, SKU, tipo, estado, categoría principal y
@@ -28,16 +29,8 @@ export interface SeccionInformacionProps extends PropsSeccionFormulario {
 
 const ESTADOS: readonly EstadoFormularioProducto['status'][] = ['active', 'inactive', 'discontinued'];
 
-export function SeccionInformacion({
-  estado,
-  cambiar,
-  actualizar,
-  errores,
-  catalogos,
-  agregarACatalogo,
-  organizacionId,
-  partes = 'todo',
-}: SeccionInformacionProps) {
+export function SeccionInformacion(props: SeccionInformacionProps) {
+  const { estado, cambiar, actualizar, errores, catalogos, agregarACatalogo, organizacionId, partes = 'todo' } = props;
   const t = useTranslations('productoForm.informacion');
   const tErr = useTranslations('productoForm.errores');
   const [nuevaCategoria, setNuevaCategoria] = useState<string | null>(null);
@@ -195,6 +188,9 @@ export function SeccionInformacion({
           </FormField>
 
           {partes === 'todo' && <CampoEstado valor={estado.status} onCambio={(v) => cambiar('status', v)} />}
+
+          {/* «¿Qué tipo de servicio es?» (Membresías, fase 1): solo si es servicio. */}
+          {estado.product_type === 'service' && <SelectorTipoServicio {...props} />}
 
           <FormField etiqueta={t('categoria')} error={error(errores.category_id)} ayuda={t('categoriaAyuda')}>
             {(campo) => (

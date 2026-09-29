@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/lib/supabase/config';
+import { buscarClientes } from '@/lib/services/customers/busquedaClientesService';
 
 export interface Customer {
   id: string;
@@ -50,17 +51,18 @@ export function CustomerSearchInput({
     const timer = setTimeout(async () => {
       setIsLoading(true);
       try {
-        const { data, error } = await supabase
-          .from('customers')
-          .select('id, full_name, email, phone, doc_type, doc_number')
-          .eq('organization_id', organizationId)
-          .or(`full_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%,doc_number.ilike.%${searchTerm}%`)
-          .order('full_name')
-          .limit(10);
-
-        if (!error && data) {
-          setCustomers(data);
-        }
+        // Búsqueda única de clientes (RPC): sin tildes, todas las palabras, dígitos.
+        const { filas } = await buscarClientes(supabase, { organizationId, texto: searchTerm, limite: 10 });
+        setCustomers(
+          filas.map((c) => ({
+            id: c.id,
+            full_name: c.full_name ?? '',
+            email: c.email ?? undefined,
+            phone: c.phone ?? undefined,
+            doc_type: c.doc_type ?? undefined,
+            doc_number: c.doc_number ?? undefined,
+          })),
+        );
       } catch (error) {
         console.error('Error searching customers:', error);
       } finally {

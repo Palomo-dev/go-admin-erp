@@ -136,6 +136,53 @@ export interface DesktopPosDisplayBridge {
   setEnabled?: (enabled: boolean, displayId?: number | null) => Promise<void>;
 }
 
+/**
+ * Báscula del POS (docs/design/PRODUCTOS-POR-PESO-BASCULA.md §4). El proceso
+ * principal abre el puerto serie con `serialport` y entrega bytes crudos: el
+ * protocolo lo interpreta la web (src/lib/pos/bascula). Solo existe en Desktop
+ * con el módulo `main/scale`; se comprueba con `desktopScaleBridge()`.
+ */
+export interface DesktopSerialPortInfo {
+  /** 'COM3', '/dev/ttyUSB0' */
+  path: string;
+  manufacturer?: string;
+  vendorId?: string;
+  productId?: string;
+  serialNumber?: string;
+}
+
+export interface DesktopScaleOpenConfig {
+  /** pos_scales.id */
+  scaleId: string;
+  path: string;
+  baudRate: number;
+  dataBits: 7 | 8;
+  parity: 'none' | 'even' | 'odd';
+  stopBits: 1 | 2;
+}
+
+export interface DesktopScaleState {
+  scaleId: string | null;
+  status: 'closed' | 'opening' | 'open' | 'error';
+  /** `unavailable`: el binario de serialport no cargó en este equipo. */
+  error?: 'port_not_found' | 'port_busy' | 'permission' | 'io' | 'unavailable';
+  detail?: string;
+  path?: string;
+  bytesPerSecond?: number;
+}
+
+export interface DesktopScaleBridge {
+  listPorts(): Promise<DesktopSerialPortInfo[]>;
+  open(config: DesktopScaleOpenConfig): Promise<DesktopScaleState>;
+  close(): Promise<DesktopScaleState>;
+  status(): Promise<DesktopScaleState>;
+  /** Comandos de protocolos por petición (Toledo 'W', SICS 'SI', CAS ENQ…). Máximo 64 bytes. */
+  write(bytes: Uint8Array): Promise<void>;
+  /** Bytes crudos; el intérprete vive en la web. Devuelve la baja. */
+  onData(handler: (chunk: Uint8Array) => void): () => void;
+  onState(handler: (state: DesktopScaleState) => void): () => void;
+}
+
 export interface GoAdminDesktopBridge {
   // Agente
   startAgent?: (
@@ -222,6 +269,9 @@ export interface GoAdminDesktopBridge {
    *   si existe. Solo existe en Desktop >= 0.2.1.
    */
   posDisplay?: DesktopPosDisplayBridge;
+
+  /** Báscula del POS por puerto serie/USB (`scale:*`). Opcional: los .exe anteriores no lo traen. */
+  scale?: DesktopScaleBridge;
 
   // Versión y actualizaciones
   version?: () => Promise<string>;
@@ -342,5 +392,20 @@ export function desktopReportsConnectivity(): boolean {
  */
 export function desktopSupports(method: keyof GoAdminDesktopBridge): boolean {
   const bridge = getDesktopBridge();
-  return typeof bridge?.[method] === 'function';
+  const valor = bridge?.[method];
+  if (typeof valor === 'function') return true;
+  // Subsistemas (objetos con métodos): hoy solo `scale` se comprueba así.
+  if (method === 'scale') return desktopScaleBridge() !== null;
+  return false;
+}
+
+/**
+ * El puente de la báscula si este Desktop lo trae completo, o null (navegador,
+ * SSR o un .exe anterior a la fase 3 de productos por peso).
+ */
+export function desktopScaleBridge(): DesktopScaleBridge | null {
+  const scale = getDesktopBridge()?.scale;
+  if (!scale || typeof scale !== 'object') return null;
+  const metodos: (keyof DesktopScaleBridge)[] = ['listPorts', 'open', 'close', 'status', 'write', 'onData', 'onState'];
+  return metodos.every((m) => typeof scale[m] === 'function') ? scale : null;
 }

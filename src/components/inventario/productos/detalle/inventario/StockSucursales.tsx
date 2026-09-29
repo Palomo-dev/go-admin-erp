@@ -46,7 +46,7 @@ export function StockSucursales() {
   const tc = useTranslations('productoDetalle.comun');
   const { producto, resumen, cargandoResumen, errorResumen, recargarResumen, permisos, moneda, fechas, sucursalActiva, irA } =
     useProductoDetalle();
-  const cantidad = useCantidad();
+  const cantidad = useCantidad(producto);
   const localeIntl = useLocaleIntl();
 
   const esServicio = producto.product_type === 'service';

@@ -8,6 +8,8 @@
 import {
   mapearLinea,
   mapearLineas,
+  cantidadFactus,
+  unidadFactus,
   mapearCliente,
   elegirRango,
   construirFactura,
@@ -198,5 +200,34 @@ describe('construirDocumentoSoporte', () => {
     });
     expect(p).toMatchObject({ reference_code: 'DS-1', numbering_range_id: 2058, provider: { identification: '123', identification_document_code: '31' } });
     expect(p.payment_details[0].amount).toBe('1000.00');
+  });
+});
+
+describe('venta por peso (PRODUCTOS-POR-PESO-BASCULA.md, fase 1)', () => {
+  test('la cantidad viaja con 3 decimales: 0,735 kg no se redondea a 0,74', () => {
+    const { item, total } = mapearLinea({ qty: '0.735', unit_price: 18900, tax_rate: 0, unit_measure_id: 71, unit_measure_code: 'KGM' }, 0);
+    expect(item.quantity).toBe('0.735');
+    expect(item.unit_measure_code).toBe('KGM');
+    expect(total).toBe(13891.5);
+  });
+
+  test('cantidades con 2 decimales o enteras conservan el formato de siempre', () => {
+    expect(cantidadFactus(1)).toBe('1.00');
+    expect(cantidadFactus(2.5)).toBe('2.50');
+    expect(cantidadFactus(1.25)).toBe('1.25');
+    expect(cantidadFactus(0.7354)).toBe('0.735');
+    expect(cantidadFactus(-0.375)).toBe('0.375');
+  });
+
+  test('la unidad sale del código DIAN cargado; sin código, respaldo «94» Unidad', () => {
+    expect(unidadFactus({ unit_measure_id: 71, unit_measure_code: ' KGM ' })).toBe('KGM');
+    expect(unidadFactus({ unit_measure_id: 70, unit_measure_code: null })).toBe('94');
+    expect(unidadFactus({ unit_measure_id: null })).toBe('94');
+  });
+
+  test('IVA incluido por peso: base con 3 decimales de cantidad', () => {
+    const { item } = mapearLinea({ qty: 1.25, unit_price: 11900, tax_rate: 19, tax_included: true }, 0);
+    expect(item.quantity).toBe('1.25');
+    expect(item.price).toBe('10000.00');
   });
 });

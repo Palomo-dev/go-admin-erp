@@ -15,6 +15,7 @@ import { hrmReports } from './modulos/hrmReports';
 import { pmsReports } from './modulos/pmsReports';
 import { parkingReports } from './modulos/parkingReports';
 import { gymReports } from './modulos/gymReports';
+import { moduleCodeVariants } from '@/lib/config/moduleAliases';
 import { transporteReports } from './modulos/transporteReports';
 import { chatReports } from './modulos/chatReports';
 import { integracionesReports } from './modulos/integracionesReports';
@@ -38,7 +39,7 @@ const MODULO_META: Record<string, { nombre: string; icono: string }> = {
   hrm: { nombre: 'Recursos Humanos', icono: 'UserCog' },
   pms_hotel: { nombre: 'Hotelería (PMS)', icono: 'BedDouble' },
   parking: { nombre: 'Parking', icono: 'ParkingCircle' },
-  gym: { nombre: 'Gimnasio', icono: 'Dumbbell' },
+  gym: { nombre: 'Membresías', icono: 'Dumbbell' },
   transport: { nombre: 'Transporte', icono: 'Truck' },
   chat: { nombre: 'Chat Omnicanal', icono: 'MessageCircle' },
   integrations: { nombre: 'Integraciones', icono: 'Link2' },
@@ -85,7 +86,8 @@ const CATALOGO: Record<string, ReportDefinition[]> = {
  * por los módulos activos. Los módulos core siempre se incluyen.
  */
 export function getReportesVisibles(activeModuleCodes: string[]): ModuloReportes[] {
-  const visibles = new Set<string>([...activeModuleCodes, ...MODULOS_CORE]);
+  // «memberships» (antes gym) sigue mostrando los reportes del catálogo «gym» (alias).
+  const visibles = new Set<string>([...activeModuleCodes.flatMap(moduleCodeVariants), ...MODULOS_CORE]);
 
   const resultado: ModuloReportes[] = [];
 

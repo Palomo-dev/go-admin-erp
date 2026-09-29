@@ -1,61 +1,71 @@
 /**
- * /api/modules/pages — páginas apagadas a propósito, por módulo, de LA
- * organización de la sesión.
+ * /api/modules/pages — páginas apagadas a propósito, por módulo, de una
+ * organización.
  *
- * Antes (F-77 §«Pendiente»): mismo defecto que F-76 un nivel más abajo. El
- * `GET` tomaba `organizationId` del query string y el `POST` del body, los dos
+ * F-77 §«Pendiente»: mismo defecto que F-76 un nivel más abajo. El `GET`
+ * tomaba `organizationId` del query string y el `POST` del body, los dos
  * consultaban con `service_role` y ninguno comprobaba sesión, pertenencia ni
  * permiso: cualquier sesión válida podía leer y cambiar las páginas de módulo
  * de OTRA organización.
  *
- * Ahora, igual que `/api/modules`:
- * - La organización sale de la sesión (`withOrg`); otra en body o query → 403
- *   `FOREIGN_ORGANIZATION` y registro, en el punto único `readOrgBody`.
- * - `GET`: basta **pertenencia** (la RLS de `organization_module_pages` ya deja
- *   leer sus filas a cualquier miembro activo, y el menú lateral las lee así
- *   desde el navegador en cada carga).
- * - `POST`: exige **administrador de la organización** (`{ admin: true }`).
- *   Apagar una página cambia el menú de todo el mundo en esa organización.
- * - Sin `service_role`: el cliente de la sesión (`ctx.supabase`) basta, porque
- *   la política `org_module_pages_org_isolation` es `FOR ALL` sobre las filas de
- *   las organizaciones del usuario.
+ * Ahora comparte con `/api/modules` el resolutor `resolverObjetivoModulos`
+ * (src/lib/security/modulosObjetivo.ts), porque la pantalla de módulos llama a
+ * las dos y tienen que decidir igual:
+ * - **Miembro**: su organización; otra en body o query → 403
+ *   `FOREIGN_ORGANIZATION` registrado. `GET` basta con pertenencia (el menú
+ *   lateral ya lee estas filas desde el navegador); `POST` exige administrador,
+ *   porque apagar una página cambia el menú de toda la organización.
+ * - **Plataforma**: administrador activo de GO Admin sobre una organización
+ *   cliente, nombrada en la petición, que exista; el acceso se registra.
+ *
+ * `service_role` llega al servicio solo con la organización ya validada.
  */
 
 import { NextResponse } from 'next/server';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
-import { withOrg } from '@/lib/utils/orgContext';
-import { readOrgBody } from '@/lib/security/organizationBody';
+import { resolverObjetivoModulos, respuestaDeErrorOrg } from '@/lib/security/modulosObjetivo';
 
 const RUTA = '/api/modules/pages';
 
-// GET /api/modules/pages — filas de páginas de la organización de la sesión.
-export const GET = withOrg(async (ctx, request) => {
-  await readOrgBody(ctx, request, { route: RUTA });
+interface CuerpoPost {
+  moduleCode?: string;
+  pageHref?: string;
+  pageName?: string;
+  isActive?: boolean;
+}
+
+// GET /api/modules/pages — filas de páginas de la organización validada.
+export async function GET(request: Request) {
+  let objetivo;
+  try {
+    objetivo = await resolverObjetivoModulos(request, { route: RUTA, escritura: false });
+  } catch (err) {
+    return respuestaDeErrorOrg(err);
+  }
 
   try {
     const pages = await moduleManagementService.getActiveModulePages(
-      ctx.organizationId,
-      ctx.supabase
+      objetivo.organizationId,
+      objetivo.service
     );
-
     return NextResponse.json({ success: true, data: pages });
   } catch (error) {
     console.error('Error fetching module pages:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-});
+}
 
-// POST /api/modules/pages — encender o apagar una página (solo administradores).
-export const POST = withOrg(async (ctx, request) => {
-  const body = await readOrgBody<{
-    moduleCode?: string;
-    pageHref?: string;
-    pageName?: string;
-    isActive?: boolean;
-  }>(ctx, request, { route: RUTA });
+// POST /api/modules/pages — encender o apagar una página (administrador o plataforma).
+export async function POST(request: Request) {
+  let objetivo;
+  try {
+    objetivo = await resolverObjetivoModulos(request, { route: RUTA, escritura: true });
+  } catch (err) {
+    return respuestaDeErrorOrg(err);
+  }
 
   try {
-    const { moduleCode, pageHref, pageName, isActive } = body ?? {};
+    const { moduleCode, pageHref, pageName, isActive } = (objetivo.body ?? {}) as CuerpoPost;
 
     if (!moduleCode || !pageHref || !pageName) {
       return NextResponse.json(
@@ -65,13 +75,23 @@ export const POST = withOrg(async (ctx, request) => {
     }
 
     const result = await moduleManagementService.toggleModulePage(
-      ctx.organizationId,
+      objetivo.organizationId,
       moduleCode,
       pageHref,
       pageName,
       isActive as boolean,
-      ctx.supabase
+      objetivo.service
     );
+
+    if (objetivo.via === 'plataforma') {
+      console.info(`[${RUTA}] página ${isActive ? 'encendida' : 'apagada'} por la plataforma`, {
+        adminUserId: objetivo.userId,
+        organizacion: objetivo.organizationId,
+        moduleCode,
+        pageHref,
+        ok: result.success,
+      });
+    }
 
     return NextResponse.json({
       success: result.success,
@@ -83,4 +103,4 @@ export const POST = withOrg(async (ctx, request) => {
     console.error('Error toggling module page:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}, { admin: true });
+}

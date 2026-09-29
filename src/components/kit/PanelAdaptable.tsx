@@ -24,6 +24,12 @@ export interface PanelAdaptableProps {
   titulo: string;
   descripcion?: ReactNode;
   icono?: LucideIcon;
+  /**
+   * Miniatura de 56 × 56 en lugar del icono (foto del producto o su marcador
+   * sin foto). Cabecera de producto de `VariantModifierDialog` (155:7980):
+   * con miniatura el título baja a H3 (16/22) y la descripción a Small (13/18).
+   */
+  miniatura?: ReactNode;
   /** Pestañas u otra fila fija bajo la cabecera. */
   debajoCabecera?: ReactNode;
   children: ReactNode;
@@ -54,20 +60,28 @@ const ANCHO: Record<NonNullable<PanelAdaptableProps['ancho']>, string> = {
   1120: 'sm:max-w-[1120px]',
 };
 
-function Cabecera({ titulo, descripcion, icono: Icono, onCerrar, ocupado, escritorio }: { titulo: string; descripcion?: ReactNode; icono?: LucideIcon; onCerrar: () => void; ocupado?: boolean; escritorio: boolean }) {
+function Cabecera({ titulo, descripcion, icono: Icono, miniatura, onCerrar, ocupado, escritorio }: { titulo: string; descripcion?: ReactNode; icono?: LucideIcon; miniatura?: ReactNode; onCerrar: () => void; ocupado?: boolean; escritorio: boolean }) {
   const t = useKitT();
   const Titulo = escritorio ? DialogTitle : SheetTitle;
   const Descripcion = escritorio ? DialogDescription : SheetDescription;
   return (
     <div className="flex items-start gap-3 px-5 pb-3 pt-4">
-      {Icono && (
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-tint text-brand" aria-hidden="true">
-          <Icono className="size-5" strokeWidth={1.75} />
-        </span>
+      {miniatura ? (
+        <span className="relative flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-subtle text-fg-muted">{miniatura}</span>
+      ) : (
+        Icono && (
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-tint text-brand" aria-hidden="true">
+            <Icono className="size-5" strokeWidth={1.75} />
+          </span>
+        )
       )}
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <Titulo className="text-lg font-semibold leading-6 text-fg">{titulo}</Titulo>
-        {descripcion ? <Descripcion className="text-sm leading-5 text-fg-secondary">{descripcion}</Descripcion> : <Descripcion className="sr-only">{titulo}</Descripcion>}
+      <div className={cn('flex min-w-0 flex-1 flex-col gap-0.5', miniatura && 'self-center')}>
+        <Titulo className={cn('font-semibold text-fg', miniatura ? 'text-base leading-[22px]' : 'text-lg leading-6')}>{titulo}</Titulo>
+        {descripcion ? (
+          <Descripcion className={cn('text-fg-secondary', miniatura ? 'text-[13px] leading-[18px]' : 'text-sm leading-5')}>{descripcion}</Descripcion>
+        ) : (
+          <Descripcion className="sr-only">{titulo}</Descripcion>
+        )}
       </div>
       <button
         type="button"
@@ -82,7 +96,7 @@ function Cabecera({ titulo, descripcion, icono: Icono, onCerrar, ocupado, escrit
   );
 }
 
-export function PanelAdaptable({ abierto, onAbiertoChange, titulo, descripcion, icono, debajoCabecera, children, pie, ancho = 672, ocupado, bloquearClicFuera, onFocoAlAbrir, className }: PanelAdaptableProps) {
+export function PanelAdaptable({ abierto, onAbiertoChange, titulo, descripcion, icono, miniatura, debajoCabecera, children, pie, ancho = 672, ocupado, bloquearClicFuera, onFocoAlAbrir, className }: PanelAdaptableProps) {
   const escritorio = useEsEscritorio();
   const cambiar = (v: boolean) => {
     if (ocupado && !v) return;
@@ -94,7 +108,7 @@ export function PanelAdaptable({ abierto, onAbiertoChange, titulo, descripcion, 
   };
   const cuerpo = (
     <>
-      <Cabecera titulo={titulo} descripcion={descripcion} icono={icono} onCerrar={() => cambiar(false)} ocupado={ocupado} escritorio={escritorio} />
+      <Cabecera titulo={titulo} descripcion={descripcion} icono={icono} miniatura={miniatura} onCerrar={() => cambiar(false)} ocupado={ocupado} escritorio={escritorio} />
       {debajoCabecera && <div className="border-b border-line px-5">{debajoCabecera}</div>}
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4">{children}</div>
       {pie && <div className="flex flex-col-reverse gap-2 border-t border-line px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-end">{pie}</div>}

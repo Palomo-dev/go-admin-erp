@@ -22,7 +22,7 @@ import { Ban, CircleDollarSign, Copy, FileText, Printer, Receipt, RefreshCw, Und
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toastError, toastSuccess } from '@/components/ui/use-toast';
-import { BranchBadge, EmptyState, PageHeader, RowActionsMenu, StatusBadge, type AccionFila } from '@/components/kit';
+import { BranchBadge, EmptyState, PageHeader, RowActionsMenu, StatusBadge, Tarjeta, type AccionFila } from '@/components/kit';
 import { CadenaDocumento, type EslabonDocumento } from '@/components/kit/documento';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { abrirDocumento, imprimirDocumento } from '@/lib/documents/cliente';
@@ -174,6 +174,7 @@ export function VentaDetallePage({ ventaId }: { ventaId: string }) {
         items: venta.lineas.map((l) => ({
           productName: l.nombre ?? t('detalle.productos.sinNombre'),
           quantity: l.cantidad,
+          ...(l.unidad ? { unit: l.unidad, qtyDecimals: l.decimales ?? 3 } : {}),
           unitPrice: l.precio,
           total: l.total,
           taxAmount: l.impuesto,
@@ -332,9 +333,14 @@ export function VentaDetallePage({ ventaId }: { ventaId: string }) {
       />
 
       {anulada && (
-        <p role="status" className="rounded-lg border border-line-danger bg-danger-subtle px-3 py-2 text-sm text-danger-text">
-          {venta.notas_credito.length > 0 ? t('detalle.avisoAnuladaNc', { numero: venta.notas_credito[0].numero ?? '' }) : t('detalle.avisoAnulada')}
-        </p>
+        <div role="status">
+          <Tarjeta
+            tono="peligro"
+            icono={Ban}
+            titulo={t('detalle.anuladaTitulo')}
+            descripcion={venta.notas_credito.length > 0 ? t('detalle.avisoAnuladaNc', { numero: venta.notas_credito[0].numero ?? '' }) : t('detalle.avisoAnulada')}
+          />
+        </div>
       )}
       {venta.estado === 'pendiente_sincronizar' && (
         <p role="status" className="rounded-lg border border-line-warning bg-warning-subtle px-3 py-2 text-sm text-warning-text">
@@ -348,14 +354,14 @@ export function VentaDetallePage({ ventaId }: { ventaId: string }) {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
-          <TarjetaProductos venta={venta} formatear={formatear} />
+          <TarjetaProductos venta={venta} moneda={moneda} formatear={formatear} />
           <TarjetaPagos venta={venta} formatear={formatear} />
           <TarjetaDevoluciones venta={venta} formatear={formatear} />
           <TarjetaHistorial venta={venta} formatear={formatear} />
           <TarjetaNotas venta={venta} />
         </div>
         <div className="flex min-w-0 flex-col gap-4">
-          <TarjetaResumen venta={venta} formatear={formatear} />
+          <TarjetaResumen venta={venta} moneda={moneda} formatear={formatear} />
           <TarjetaCliente venta={venta} />
           <TarjetaMesa venta={venta} />
           <TarjetaPedido venta={venta} />

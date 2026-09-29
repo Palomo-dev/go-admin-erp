@@ -7,7 +7,9 @@ import type { ProductTag } from './types';
  * borrado van por RPC (migración 20260924031000): una sola consulta con los
  * productos de cada etiqueta —relaciones y la columna heredada
  * `products.tag_id`— y su uso en reglas de categoría, en lugar de una
- * petición por etiqueta.
+ * petición por etiqueta. Crear y renombrar van por `fn_etiqueta_guardar`
+ * (migración 20260929021000): todas las escrituras exigen el permiso de
+ * catálogo en el servidor.
  */
 export class EtiquetasService {
   static async obtenerEtiquetas(): Promise<ProductTag[]> {
@@ -45,26 +47,29 @@ export class EtiquetasService {
     return data;
   }
 
-  static async crearEtiqueta(datos: { name: string; color: string }): Promise<ProductTag> {
-    const { data, error } = await supabase
-      .from('product_tags')
-      .insert({ organization_id: getOrganizationId(), name: datos.name.trim(), color: datos.color })
-      .select()
-      .single();
+  /**
+   * Crear o renombrar por `fn_etiqueta_guardar`: permiso de catálogo en el
+   * servidor y nombre único sin distinguir mayúsculas (23505 si ya existe).
+   */
+  static async guardarEtiqueta(id: number | null, datos: { name: string; color: string }): Promise<ProductTag> {
+    const organizationId = getOrganizationId();
+    const { data, error } = await supabase.rpc('fn_etiqueta_guardar', {
+      p_org: organizationId,
+      p_id: id,
+      p_nombre: datos.name.trim(),
+      p_color: datos.color,
+    });
     if (error) throw error;
-    return data;
+    const r = (data ?? {}) as { id: number; name: string; color: string; created_at?: string };
+    return { id: Number(r.id), organization_id: organizationId, name: r.name, color: r.color, created_at: r.created_at };
+  }
+
+  static async crearEtiqueta(datos: { name: string; color: string }): Promise<ProductTag> {
+    return this.guardarEtiqueta(null, datos);
   }
 
   static async actualizarEtiqueta(id: number, datos: { name: string; color: string }): Promise<ProductTag> {
-    const { data, error } = await supabase
-      .from('product_tags')
-      .update({ name: datos.name.trim(), color: datos.color })
-      .eq('id', id)
-      .eq('organization_id', getOrganizationId())
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+    return this.guardarEtiqueta(id, datos);
   }
 
   /** Borra etiquetas (sus productos las pierden). Falla si alguna está en una regla de categoría. */

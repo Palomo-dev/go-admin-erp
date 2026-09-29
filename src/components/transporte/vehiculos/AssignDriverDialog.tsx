@@ -74,7 +74,7 @@ export function AssignDriverDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Asignar Conductor - {vehicle.plate_number}</DialogTitle>
+          <DialogTitle>Asignar Conductor - {vehicle.plate}</DialogTitle>
           <DialogDescription>
             Selecciona un conductor para asignar a este vehículo
           </DialogDescription>

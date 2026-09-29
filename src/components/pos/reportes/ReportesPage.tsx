@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -27,6 +28,7 @@ import {
   Wallet,
   FileText,
   Smile,
+  Scale,
 } from 'lucide-react';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
@@ -61,6 +63,7 @@ interface CashReportView {
 }
 
 export function ReportesPage() {
+  const tPesos = useTranslations('posPesosManuales');
   const { formatear } = useMonedaOrganizacion();
   const { toast } = useToast();
   const { branchFilter, setSelectedBranch: setGlobalBranch } = useBranch();
@@ -210,6 +213,13 @@ export function ReportesPage() {
             <Button variant="outline">
               <Smile className="h-4 w-4 mr-2" />
               Satisfacción en caja
+            </Button>
+          </Link>
+          {/* Productos por peso: auditoría de los pesos escritos a mano (PRODUCTOS-POR-PESO-BASCULA.md §2.9). */}
+          <Link href="/app/pos/reportes/pesos-manuales">
+            <Button variant="outline">
+              <Scale className="h-4 w-4 mr-2" />
+              {tPesos('enlace')}
             </Button>
           </Link>
           <Button variant="outline" size="icon" onClick={() => loadData(true)} disabled={isRefreshing}>

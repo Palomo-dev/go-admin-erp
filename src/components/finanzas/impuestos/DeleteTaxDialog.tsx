@@ -1,19 +1,9 @@
 "use client";
 
 import React, { useState } from 'react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { Dialogo } from '@/components/kit';
 import { supabase } from '@/lib/supabase/config';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2 } from 'lucide-react';
 import { formatPercent } from '@/utils/Utils';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 
@@ -33,23 +23,6 @@ interface DeleteTaxDialogProps {
 const DeleteTaxDialog: React.FC<DeleteTaxDialogProps> = ({ open, onClose, tax }) => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-
-  // Verificar si el impuesto está siendo utilizado
-  const checkTaxUsage = async () => {
-    try {
-      // Verificar relaciones con productos
-      const { count, error } = await supabase
-        .from('product_tax_relations')
-        .select('*', { count: 'exact' })
-        .eq('tax_id', tax.id);
-
-      if (error) throw error;
-      return count || 0;
-    } catch (error) {
-      console.error('Error al verificar uso del impuesto:', error);
-      return 0;
-    }
-  };
 
   const handleDelete = async () => {
     setLoading(true);
@@ -109,46 +82,21 @@ const DeleteTaxDialog: React.FC<DeleteTaxDialogProps> = ({ open, onClose, tax })
     }
   };
 
+  // Diálogo del manual (PATRONES §8) con el primario destructivo; los textos no cambian.
   return (
-    <AlertDialog open={open} onOpenChange={() => !loading && onClose()}>
-      <AlertDialogContent className="bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700 max-w-[90vw] sm:max-w-md">
-        <AlertDialogHeader className="px-4 sm:px-6">
-          <AlertDialogTitle className="text-lg sm:text-xl text-red-600 dark:text-red-400">
-            Eliminar Impuesto
-          </AlertDialogTitle>
-          <AlertDialogDescription className="text-sm sm:text-base dark:text-gray-300 leading-relaxed">
-            ¿Está seguro de que desea eliminar el impuesto <strong className="text-gray-900 dark:text-gray-100">{tax.name}</strong> ({formatPercent(tax.rate)})?
-            <br /><br />
-            Esta acción no se puede deshacer. El impuesto será eliminado permanentemente.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter className="px-4 sm:px-6 flex-col sm:flex-row gap-2">
-          <AlertDialogCancel 
-            disabled={loading} 
-            className="w-full sm:w-auto dark:border-gray-700 dark:hover:bg-gray-700 dark:text-gray-300"
-          >
-            Cancelar
-          </AlertDialogCancel>
-          <AlertDialogAction 
-            onClick={(e) => {
-              e.preventDefault();
-              handleDelete();
-            }}
-            disabled={loading}
-            className="w-full sm:w-auto bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                <span className="text-sm sm:text-base">Eliminando...</span>
-              </>
-            ) : (
-              <span className="text-sm sm:text-base">Eliminar</span>
-            )}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <Dialogo
+      abierto={open}
+      onAbiertoChange={(v) => !v && !loading && onClose()}
+      titulo="Eliminar impuesto"
+      descripcion={
+        <>
+          ¿Está seguro de que desea eliminar el impuesto <strong className="font-semibold text-fg">{tax.name}</strong> ({formatPercent(tax.rate)})? Esta
+          acción no se puede deshacer. El impuesto será eliminado permanentemente.
+        </>
+      }
+      ancho={440}
+      primario={{ etiqueta: 'Eliminar', onClick: () => void handleDelete(), destructiva: true, cargando: loading }}
+    />
   );
 };
 

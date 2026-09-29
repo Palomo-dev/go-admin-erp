@@ -1,4 +1,4 @@
-import { app, BrowserWindow, session, systemPreferences } from 'electron';
+import { app, session, systemPreferences } from 'electron';
 import {
   createMainWindow,
   getLoadUrl,
@@ -16,6 +16,7 @@ import { initUpdater, stopUpdater } from './updater';
 import { registerIpcHandlers } from './ipc';
 import { registerToolbarIpc } from './toolbarIpc';
 import { registerPosDisplayIpc } from './posDisplayIpc';
+import { registerScaleIpc, shutdownScale } from './scale/scaleIpc';
 import { initPosDisplay, shutdownPosDisplay } from './windows/posDisplayWindow';
 import { installAppMenu } from './menu';
 import { initDevCapture } from './devCapture';
@@ -90,6 +91,8 @@ if (!gotLock) {
     registerToolbarIpc();
     // Pantalla del cliente del POS: relé de mensajes + ventana secundaria.
     registerPosDisplayIpc();
+    // Báscula del POS (serialport): bytes crudos a la web, que interpreta el protocolo.
+    registerScaleIpc();
     // Menú en español (aceleradores + popup del botón «⋯» de la barra).
     installAppMenu();
 
@@ -152,6 +155,7 @@ if (!gotLock) {
       // Electron cancela la secuencia de quit: la app nunca se cierra.
       prepareQuit();
       shutdownPosDisplay();
+      await shutdownScale();
       stopUpdater();
       stopConnectivity();
       await markOffline();

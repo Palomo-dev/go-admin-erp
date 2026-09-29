@@ -12,6 +12,7 @@
  */
 
 import type { Cart, CartItem } from '@/components/pos/types';
+import { camposCantidadImpresa, type ProductoModoVenta } from '@/lib/pos/peso/modoVenta';
 
 /** Largo máximo de una nota (texto plano). */
 export const NOTA_MAX = 140;
@@ -107,6 +108,9 @@ export interface ItemRonda {
   station: string | null;
   variant_data: Record<string, string> | null;
   modifiers: Array<{ name: string; extraPrice?: number }> | null;
+  /** Solo en líneas por peso o medida: símbolo de la unidad («kg») y decimales («0,500 kg»). */
+  unit?: string;
+  qtyDecimals?: number;
 }
 
 export interface TicketRonda {
@@ -180,7 +184,7 @@ export interface RegistroComanda {
     sale_items?: {
       quantity?: number | string | null;
       notes?: unknown;
-      products?: { name?: string | null; variant_data?: Record<string, string> | null } | null;
+      products?: ({ name?: string | null; variant_data?: Record<string, string> | null } & ProductoModoVenta) | null;
     } | null;
   }> | null;
 }
@@ -210,6 +214,8 @@ export function ticketRondaDesdeRegistro(registro: RegistroComanda): TicketRonda
         station: it.station ?? null,
         variant_data: it.variant_data || venta?.products?.variant_data || null,
         modifiers: it.modifiers || notasVenta?.modifiers || null,
+        // Producto por peso o medida: la comanda dice «0,500 kg Carne», no «0.5x».
+        ...camposCantidadImpresa(venta?.products ?? null),
       };
     });
   return {
@@ -240,6 +246,9 @@ export interface ItemImpreso {
   notes: string | null;
   variantData: Record<string, string> | null;
   modifiers: Array<{ name: string; extraPrice: number }> | null;
+  /** Solo en líneas por peso o medida (ver `@printing/quantity`). */
+  unit?: string;
+  qtyDecimals?: number;
 }
 
 /**
@@ -270,6 +279,7 @@ export function itemsParaImprimir(ticket: TicketRonda, textos: TextosAjusteImpre
       notes: partesNota.length > 0 ? partesNota.join(' · ') : null,
       variantData: it.variant_data,
       modifiers: (it.modifiers || []).map((m) => ({ name: m.name, extraPrice: Number(m.extraPrice) || 0 })),
+      ...(it.unit ? { unit: it.unit, qtyDecimals: it.qtyDecimals } : {}),
     };
   });
 }

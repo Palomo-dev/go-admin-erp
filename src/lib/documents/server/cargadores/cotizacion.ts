@@ -8,6 +8,7 @@
  */
 
 import { resolverContextoMoneda } from '@/lib/services/monedaOrganizacion';
+import { COLUMNAS_CANTIDAD_PRODUCTO } from '@/lib/services/documentos/cantidadLinea';
 import type { Traductor } from '../../textos';
 import type { Banda, Campo, DocumentoPayload, FilaTotal } from '../../tipos';
 import {
@@ -67,7 +68,7 @@ export async function cargarCotizacion(
     .select(`id, organization_id, branch_id, number, issue_date, valid_until, currency, subtotal, tax_total, discount_total,
       total, status, payment_terms, payment_method, terms_conditions, payment_link_url,
       customer:customers(${SELECT_CLIENTE}),
-      items:quotation_items(description, qty, unit_price, discount_amount, tax_code, tax_rate, tax_included, total_line, created_at, producto:products(sku))`)
+      items:quotation_items(description, qty, unit_price, discount_amount, tax_code, tax_rate, tax_included, total_line, created_at, producto:products(sku, ${COLUMNAS_CANTIDAD_PRODUCTO}))`)
     .eq('id', id)
     .eq('organization_id', sesion.organizationId)
     .maybeSingle();

@@ -10,6 +10,7 @@
  */
 
 import type { ToolContext, ToolDefinition, ToolPreview, ToolResult } from '../types';
+import { buscarClientes as buscarClientesUnica } from '@/lib/services/customers/busquedaClientesService';
 
 /** El preview de una herramienta de lectura nunca se enseña: se ejecuta directo. */
 const READ_PREVIEW: ToolPreview = {
@@ -378,18 +379,16 @@ export const buscarClientes: ToolDefinition<BuscarClientesArgs> = {
   },
 
   async execute(ctx: ToolContext, args: BuscarClientesArgs): Promise<ToolResult> {
-    const safe = args.consulta.replace(/[%_\\]/g, (c) => `\\${c}`);
-    const { data, error } = await ctx.supabase
-      .from('customers')
-      .select('id, full_name, company_name, customer_type, doc_type, doc_number, phone, email')
-      .eq('organization_id', ctx.organizationId)
-      .or(`full_name.ilike.%${safe}%,company_name.ilike.%${safe}%,doc_number.ilike.%${safe}%,phone.ilike.%${safe}%,email.ilike.%${safe}%`)
-      .order('full_name', { ascending: true })
-      .limit(8);
-    if (error) {
-      return { ok: false, errorCode: 'query_error', message: `No pude buscar clientes: ${error.message}` };
+    // Búsqueda única de clientes (RPC fn_clientes_buscar): sin tildes, todas las
+    // palabras, teléfono/documento por dígitos, por relevancia.
+    let data: unknown[];
+    try {
+      data = (await buscarClientesUnica(ctx.supabase, { organizationId: ctx.organizationId, texto: args.consulta, limite: 8 })).filas;
+    } catch (error) {
+      const detalle = error && typeof error === 'object' && 'message' in error ? String((error as { message: unknown }).message) : String(error);
+      return { ok: false, errorCode: 'query_error', message: `No pude buscar clientes: ${detalle}` };
     }
-    const rows = (data ?? []) as Array<{
+    const rows = data as Array<{
       id: string;
       full_name: string | null;
       company_name: string | null;

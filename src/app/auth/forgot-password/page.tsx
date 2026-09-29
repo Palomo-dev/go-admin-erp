@@ -1,234 +1,145 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { resetPassword } from '@/lib/supabase/config';
-import { checkAuthProvider, getProviderLabel } from '@/lib/auth';
+/**
+ * Olvidé mi contraseña — acceso v3 (Figma sección 18, filas 4 y 4b;
+ * docs/design/AUTH-ACCESO-V2.md §11 y §13).
+ *
+ * Respuesta NEUTRA (decisión v2-6): siempre «si existe una cuenta con ese
+ * correo, te enviamos un enlace», también para cuentas de Google o sin
+ * confirmar. Antes se revelaba «esta cuenta está registrada con Google» (RPC
+ * `get_auth_provider_by_email`, abierta a anon) y «cuenta no verificada». La
+ * única respuesta distinta es la espera por demasiados envíos, que no depende
+ * de la cuenta.
+ *
+ * Se sigue pidiendo desde el navegador (`resetPasswordForEmail`, flujo PKCE:
+ * el verificador vive en este navegador) con reenvío a los 60 s.
+ */
+import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import AuthSceneBackground from '@/components/auth/AuthSceneBackground';
+import { Loader2, MailCheck } from 'lucide-react';
+import { resetPassword } from '@/lib/supabase/config';
+import { FormField } from '@/components/kit/FormField';
+import { clasesBoton } from '@/components/kit/botonClases';
+import { Input } from '@/components/ui/input';
+import { EscenaAcceso, TarjetaAcceso, AvisoAcceso, IconoDestacado, PieEnlace, Enlace } from '@/components/kit/acceso';
+
+const CORREO_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ESPERA_REENVIO_S = 60;
+
+/** ¿El error es solo de límite de envíos? (lo único que se distingue). */
+function esLimite(error: unknown): boolean {
+  const m = String((error as { message?: string } | null)?.message ?? '').toLowerCase();
+  const status = (error as { status?: number } | null)?.status;
+  return status === 429 || m.includes('rate limit') || m.includes('demasiados');
+}
 
 export default function ForgotPasswordPage() {
-  const t = useTranslations('auth.forgotPassword');
-  const tErr = useTranslations('auth.errors');
+  const t = useTranslations('acceso.recuperar');
+  const tc = useTranslations('acceso.comun');
   const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
-  const [emailSent, setEmailSent] = useState(false);
-  const [canResend, setCanResend] = useState(true);
-  const [resendTimer, setResendTimer] = useState(0);
+  const [errorCorreo, setErrorCorreo] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
+  const [enviado, setEnviado] = useState(false);
+  const [espera, setEspera] = useState(false);
+  const [segundos, setSegundos] = useState(0);
+  const temporizador = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
+  useEffect(() => () => {
+    if (temporizador.current) clearInterval(temporizador.current);
+  }, []);
 
-  const startResendTimer = () => {
-    setCanResend(false);
-    setResendTimer(60); // 60 segundos
-    
-    const timer = setInterval(() => {
-      setResendTimer((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          setCanResend(true);
-          return 0;
-        }
-        return prev - 1;
+  const contar = () => {
+    setSegundos(ESPERA_REENVIO_S);
+    if (temporizador.current) clearInterval(temporizador.current);
+    temporizador.current = setInterval(() => {
+      setSegundos((s) => {
+        if (s <= 1 && temporizador.current) clearInterval(temporizador.current);
+        return Math.max(0, s - 1);
       });
     }, 1000);
   };
 
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!email.trim()) {
-      setMessage({
-        type: 'error',
-        text: 'Por favor ingresa tu correo electrónico'
-      });
+  const enviar = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const correo = email.trim();
+    if (!CORREO_RE.test(correo)) {
+      setErrorCorreo(tc('correoInvalido'));
       return;
     }
-    
-    if (!validateEmail(email)) {
-      setMessage({
-        type: 'error',
-        text: 'Por favor ingresa un correo electrónico válido'
-      });
-      return;
-    }
-    
-    setLoading(true);
-    setMessage(null);
-
+    setErrorCorreo(null);
+    setEspera(false);
+    setEnviando(true);
     try {
-      // Verificar si el usuario está registrado con OAuth
-      const provider = await checkAuthProvider(email);
-      if (provider) {
-        setMessage({
-          type: 'error',
-          text: `Esta cuenta está registrada con ${getProviderLabel(provider)}. No puedes restablecer la contraseña. Por favor, inicia sesión con ${getProviderLabel(provider)}.`
-        });
-        setLoading(false);
+      const { error } = await resetPassword(correo);
+      if (error && esLimite(error)) {
+        setEspera(true);
         return;
       }
-
-      const { error } = await resetPassword(email);
-      
-      if (error) {
-        throw error;
-      }
-
-      setEmailSent(true);
-      setMessage({
-        type: 'success',
-        text: 'Se ha enviado un correo con instrucciones para restablecer tu contraseña. Revisa tu bandeja de entrada y la carpeta de spam.'
-      });
-      
-      // Iniciar timer para reenvío
-      startResendTimer();
-      
-    } catch (err: any) {
-      setMessage({
-        type: 'error',
-        text: err.message || 'Error al enviar el correo de recuperación'
-      });
+      // Cualquier otro caso (cuenta inexistente, de Google, sin confirmar…) se
+      // responde igual: no se revela nada de la cuenta.
+      setEnviado(true);
+      contar();
+    } catch {
+      setEnviado(true);
+      contar();
     } finally {
-      setLoading(false);
+      setEnviando(false);
     }
   };
-  
-  const handleResendEmail = async () => {
-    if (!canResend) return;
-    
-    setLoading(true);
-    setMessage(null);
-    
-    try {
-      const { error } = await resetPassword(email);
-      
-      if (error) {
-        throw error;
-      }
-      
-      setMessage({
-        type: 'success',
-        text: 'Correo de recuperación reenviado exitosamente.'
-      });
-      
-      startResendTimer();
-      
-    } catch (err: any) {
-      setMessage({
-        type: 'error',
-        text: err.message || 'Error al reenviar el correo'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+
+  if (enviado) {
+    return (
+      <EscenaAcceso>
+        <TarjetaAcceso
+          titulo={t('enviadoTitulo')}
+          descripcion={t('enviado', { correo: email.trim() })}
+          centrado
+          icono={<IconoDestacado icono={MailCheck} />}
+          aviso={espera ? <AvisoAcceso tono="advertencia">{t('espera')}</AvisoAcceso> : <AvisoAcceso tono="info">{t('google')}</AvisoAcceso>}
+          pie={<p className="text-center"><Enlace href="/auth/login">{tc('volverAlLogin')}</Enlace></p>}
+        >
+          <button
+            type="button"
+            onClick={() => enviar()}
+            disabled={segundos > 0 || enviando}
+            className={clasesBoton({ variante: 'secundario', anchoCompleto: true })}
+          >
+            {enviando && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+            {segundos > 0 ? t('reenviarEn', { segundos }) : t('reenviar')}
+          </button>
+        </TarjetaAcceso>
+      </EscenaAcceso>
+    );
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-800 dark:from-gray-800 dark:via-gray-900 dark:to-black py-4 sm:py-8 md:py-12 px-3 sm:px-4 md:px-6 lg:px-8 relative overflow-hidden">
-      <AuthSceneBackground />
-      <div className="max-w-md w-full space-y-4 sm:space-y-6 md:space-y-8 bg-white dark:bg-gray-800 p-4 sm:p-6 md:p-8 rounded-lg sm:rounded-xl shadow-xl sm:shadow-2xl relative border border-gray-100 dark:border-gray-700 z-10">
-        <div>
-          <h2 className="mt-2 sm:mt-4 md:mt-6 text-center text-xl sm:text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 dark:from-gray-100 dark:to-gray-300 bg-clip-text text-transparent">
-            {t('title')}
-          </h2>
-          <p className="mt-1 sm:mt-2 text-center text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-            {t('subtitle')}
-          </p>
-        </div>
-        
-        {message && (
-          <div className={`${message.type === 'success' ? 'bg-green-100 border-green-400 text-green-700 dark:bg-green-900/30 dark:border-green-500 dark:text-green-300' : 'bg-red-100 border-red-400 text-red-700 dark:bg-red-900/30 dark:border-red-500 dark:text-red-300'} px-3 py-2 sm:px-4 sm:py-3 rounded text-sm sm:text-base relative border`} role="alert">
-            <span className="block sm:inline">{message.text}</span>
-          </div>
-        )}
-        
-        <form className="mt-4 sm:mt-6 md:mt-8 space-y-4 sm:space-y-6" onSubmit={handleResetPassword}>
-          <div>
-            <label htmlFor="email-address" className="sr-only">Correo electrónico</label>
-            <div className="flex items-center border border-blue-300 dark:border-gray-600 rounded-md">
-              <span className="pl-2 sm:pl-3 pr-1 sm:pr-2 text-blue-500">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
-                  <path d="M1.5 8.67v8.58a3 3 0 003 3h15a3 3 0 003-3V8.67l-8.928 5.493a3 3 0 01-3.144 0L1.5 8.67z" />
-                  <path d="M22.5 6.908V6.75a3 3 0 00-3-3h-15a3 3 0 00-3 3v.158l9.714 5.978a1.5 1.5 0 001.572 0L22.5 6.908z" />
-                </svg>
-              </span>
-              <input
-                id="email-address"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                className="w-full px-2 py-2 sm:py-3 text-sm sm:text-base bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none"
-                placeholder={t('email')}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex justify-center py-2 sm:py-3 px-4 border border-transparent text-sm sm:text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-            >
-              {loading ? t('submitting') : t('submit')}
-            </button>
-          </div>
-          
-          <div className="text-center">
-            <Link href="/auth/login" className="text-xs sm:text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300">
-              {t('backToLogin')}
-            </Link>
-          </div>
+    <EscenaAcceso>
+      <TarjetaAcceso
+        titulo={t('titulo')}
+        descripcion={t('descripcion')}
+        aviso={espera ? <AvisoAcceso tono="advertencia">{t('espera')}</AvisoAcceso> : undefined}
+        pie={<PieEnlace enlace={tc('volverAlLogin')} href="/auth/login" />}
+      >
+        <form className="flex flex-col gap-4" onSubmit={enviar} noValidate>
+          <FormField etiqueta={tc('correo')} obligatorio error={errorCorreo}>
+            <Input
+              type="email"
+              name="email"
+              autoComplete="email"
+              inputMode="email"
+              autoFocus
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="h-10 rounded-lg"
+              placeholder="nombre@empresa.com"
+            />
+          </FormField>
+          <button type="submit" disabled={enviando} className={clasesBoton({ anchoCompleto: true })}>
+            {enviando && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+            {enviando ? t('enviando') : t('enviar')}
+          </button>
         </form>
-        
-        {/* Sección de reenvío de email */}
-        {emailSent && (
-          <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border">
-            <div className="text-center">
-              <div className="mb-2 sm:mb-3">
-                <svg className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-gray-100 mb-1 sm:mb-2">
-                {t('successTitle')}
-              </h3>
-              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 sm:mb-4">
-                Hemos enviado las instrucciones a <strong>{email}</strong>
-              </p>
-              
-              <div className="space-y-2 sm:space-y-3">
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  ¿No recibiste el correo? Revisa tu carpeta de spam o correo no deseado.
-                </p>
-                
-                <button
-                  onClick={handleResendEmail}
-                  disabled={!canResend || loading}
-                  className={`w-full py-2 px-3 sm:px-4 text-xs sm:text-sm font-medium rounded-md transition-colors ${
-                    canResend && !loading
-                      ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 dark:border-gray-500'
-                      : 'bg-gray-50 text-gray-400 cursor-not-allowed border border-gray-200 dark:bg-gray-700 dark:text-gray-500 dark:border-gray-600'
-                  }`}
-                >
-                  {loading
-                    ? 'Reenviando...'
-                    : canResend
-                    ? 'Reenviar correo'
-                    : `Reenviar en ${resendTimer}s`
-                  }
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+      </TarjetaAcceso>
+    </EscenaAcceso>
   );
 }

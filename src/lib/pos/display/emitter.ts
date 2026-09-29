@@ -191,10 +191,12 @@ import type {
   DisplayPayment,
   DisplayPresentationSettings,
   DisplayState,
+  DisplayWeighing,
   TipSelectedMessage,
   UpMessage,
 } from './protocol';
 import { projectCartForDisplay, type DisplayTotalsOverride } from './projection';
+import { sameWeighing } from './weighing';
 import { isAcceptableTipChoice, porcentajesPropinaOfrecidos, resolveTipSelection, type DisplayTipBlock, type TipSelection } from './tip';
 import type { DisplayCapabilitiesByOrigin, DisplaySeenByOrigin, DisplayTransport, HelloDraft } from './transport';
 
@@ -460,6 +462,8 @@ export class DisplayEmitter {
   private totalsOverride: TotalsOverrideForCart | null = null;
 
   private payment: DisplayPayment | null = null;
+  /** Pesada en curso («Pesar» abierto en la caja); null sin pesada. Ver setWeighing. */
+  private weighing: DisplayWeighing | null = null;
   /**
    * Propina en pantalla (F2-B): `pending` mientras se pregunta, `done` cuando
    * el cliente eligió o el cajero omitió, null fuera de la fase. Los presets
@@ -567,6 +571,7 @@ export class DisplayEmitter {
       this.cancelPending();
       this.clearThanks();
       this.payment = null;
+      this.weighing = null;
       this.resetTip();
       this.tipBase = null; // la base es de una venta concreta: no sobrevive a la parada (QA-1, ronda 2)
       this.closed = false;
@@ -866,6 +871,25 @@ export class DisplayEmitter {
       if (this.tipState === 'pending') this.requestFlush();
     } catch (err) {
       warn('setTipBase', err);
+    }
+  }
+
+  /**
+   * Pesada en curso (docs/design/PRODUCTOS-POR-PESO-BASCULA.md §2.6): la
+   * caja la fija mientras «Pesar» está abierto y la regla de la organización
+   * `pos_pesaje.peso_en_pantalla_cliente` lo permite; `null` la retira. Solo
+   * viaja en los modos Pedido y Reposo (nunca encima de un cobro, una
+   * propina o «Gracias»). Se ignora con la caja sin arrancar.
+   */
+  setWeighing(weighing: DisplayWeighing | null): void {
+    try {
+      if (!this.started) return;
+      const next = weighing ?? null;
+      if (sameWeighing(this.weighing, next)) return;
+      this.weighing = next;
+      this.requestFlush();
+    } catch (err) {
+      warn('setWeighing', err);
     }
   }
 
@@ -1188,6 +1212,7 @@ export class DisplayEmitter {
     this.totalsOverride = null;
     this.lastChangedLineId = null;
     this.payment = null;
+    this.weighing = null;
     this.resetTip();
     this.tipBase = null; // la base de la organización anterior no viaja en el primer «tip» de la nueva (QA-1, ronda 2)
     this.closed = false;
@@ -1345,8 +1370,13 @@ export class DisplayEmitter {
     if (this.payment) {
       return { ...IDLE_STATE, mode: 'payment', cart: this.withHighlight(cart), payment: this.payment };
     }
-    if (hasLines(cart)) return { ...IDLE_STATE, mode: 'order', cart: this.withHighlight(cart) };
-    return { ...IDLE_STATE };
+    if (hasLines(cart)) return this.withWeighing({ ...IDLE_STATE, mode: 'order', cart: this.withHighlight(cart) });
+    return this.withWeighing({ ...IDLE_STATE });
+  }
+
+  /** La clave `weighing` solo existe mientras hay pesada: los estados de siempre no cambian de forma. */
+  private withWeighing(state: DisplayState): DisplayState {
+    return this.weighing ? { ...state, weighing: this.weighing } : state;
   }
 
   private withHighlight(cart: DisplayCart | null): DisplayCart | null {

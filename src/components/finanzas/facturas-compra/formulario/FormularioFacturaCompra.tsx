@@ -1,54 +1,86 @@
 'use client';
 
 /**
- * Nueva / editar factura de compra (plan F6; Figma «Nueva factura de compra —
- * listo · vacía · desde orden de compra · editar cargando · no editable»).
+ * Nueva / editar factura de compra — MISMA ESTRUCTURA que la factura de venta
+ * v2 (docs/design/FACTURA-VENTA-FORMULARIO-V2.md §7; Figma `1066:105465`):
+ * cabecera, datos del documento y tercero arriba, líneas a todo el ancho,
+ * notas y retenciones abajo, resumen fijo a la derecha. Compone las mismas
+ * piezas del kit (`FormularioDocumentoLayout`, `DocumentoLineas` con estados e
+ * impuestos por línea, `DocumentoTotales`, «Elegir proveedor», «Agregar
+ * productos», ítem manual, salir con cambios) con SUS campos y botones.
+ *
+ * Por qué dos formularios y no uno parametrizado: venta y compra comparten la
+ * estructura y las piezas, no el flujo ni el contrato (emitir con resolución,
+ * FE, comisión y arqueo frente a número del proveedor, plazo, recepción,
+ * retenciones y documento soporte; `fn_factura_venta_*` frente a
+ * `fn_factura_compra_*`). Un solo componente con variante llenaría la pantalla
+ * de condiciones por tipo; dos formularios delgados sobre las mismas piezas
+ * mantienen la estructura igual sin mezclar reglas.
  *
  * - Guarda por `POST /api/facturas-compra` → `fn_factura_compra_guardar`: UNA
- *   transacción con cabecera, líneas con `total_line` BRUTO (el IVA ya no se
- *   pierde), retenciones y seriales. El formulario, el GO Assistant y la OC usan
- *   la misma RPC (regla 7).
- * - «Guardar borrador» deja el borrador; «Confirmar factura» guarda y confirma
- *   (CxP por el neto, asiento, recepción por kardex si se pide, D2).
- * - El número pide el del PROVEEDOR; el consecutivo interno solo con el botón
- *   (D11). Un número repetido para el proveedor lo rechaza la base (D10).
- * - `?orden=<uuid>`: precarga lo recibido de la orden de compra y escribe `po_id`.
- * - Salir con cambios pide confirmación.
+ *   transacción con cabecera, líneas con `total_line` BRUTO, retenciones y
+ *   seriales. «Confirmar factura» guarda y abre la confirmación (recepción y
+ *   documento soporte, D2).
+ * - El número es el del PROVEEDOR; «#» pone el consecutivo interno solo si la
+ *   factura del proveedor no trae número (D11). Un repetido lo rechaza la base.
+ * - `?orden=<uuid>`: precarga lo recibido de la orden, fija la sucursal y
+ *   avisa las diferencias con lo pedido.
+ * - Retenciones: se eligen de las configuradas (clase `withholding`) o se
+ *   escriben a mano; viajan con su `tax_code`.
+ * - Atajos F2, F3, Alt+M, Ctrl+S y Ctrl+Enter (confirmar), como en venta: la
+ *   captura es la misma. Sin autoguardado: una compra se registra de una vez
+ *   contra la factura física del proveedor.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Hash, ListPlus, Percent, Plus, ReceiptText, Save, CheckCircle2, StickyNote, Trash2, Barcode } from 'lucide-react';
-import {
-  Dialogo,
-  EmptyState,
-  FormField,
-  FormSection,
-  SupplierPicker,
-  type AccionFila,
-  type ProveedorPicker,
-} from '@/components/kit';
-// El índice del kit aún no reexporta CampoNumero (pedido al agente del kit).
+import { Barcode, CheckCircle2, FileText, Hash, ListPlus, Percent, Plus, ReceiptText, Save, Search, StickyNote, Trash2, Truck, Wallet } from 'lucide-react';
+import { FormField, FormSection, KbdButton, Tarjeta, useAtajos, type AccionFila } from '@/components/kit';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 import { CampoNumero } from '@/components/kit/CampoNumero';
-import { DocumentoCabecera, DocumentoLineas, DocumentoTotales, simboloMoneda, type LineaDocumento } from '@/components/kit/documento';
-import { ProductSearchDialog, type UnifiedProduct } from '@/components/shared/product-search';
+import {
+  DialogoItemManual,
+  DialogoTextoLinea,
+  DocumentoCabecera,
+  DocumentoLineas,
+  DocumentoTotales,
+  idsDesdeCodigo,
+  simboloMoneda,
+  type InsigniaLinea,
+  type LineaDocumento,
+  type OpcionImpuesto,
+} from '@/components/kit/documento';
+import { DialogoSalirConCambios, FormularioDocumentoLayout, ResumenErrores, TarjetaAtajos, useAvisoSalida, type ErrorFormulario } from '@/components/kit/documento/FormularioDocumento';
+import { useEtiquetaEstado } from '@/components/kit/useIdiomaKit';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toastError, toastSuccess } from '@/components/ui/use-toast';
+import { ElegirProveedor, documentoTexto, type ProveedorDocumento } from '@/components/finanzas/documento/terceros';
+import { AgregarProductosDocumento } from '@/components/finanzas/documento/productos';
 import { useBranch } from '@/lib/context/BranchContext';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
 import { addPlainDays } from '@/lib/utils/dateDisplay';
-import { calcularTotalesCompra, valorRetencion } from '@/lib/services/compras/logica';
+import { calcularLineaCompra, calcularTotalesCompra, valorRetencion } from '@/lib/services/compras/logica';
 import { clienteCompras, ErrorPeticionCompra } from '@/lib/services/compras/clienteCompras';
-import { buscarProveedores, leerDetalleFacturaCompra } from '@/lib/services/compras/lecturasCompras';
+import { leerDetalleFacturaCompra, type DetalleFacturaCompra } from '@/lib/services/compras/lecturasCompras';
 import type { GuardarFacturaCompra } from '@/lib/services/compras/contrato';
+import { impuestosOrganizacion, type ImpuestoDocumento, type ProductoParaDocumento } from '@/lib/services/documentos/edicionDocumento';
+import {
+  COLUMNAS_CANTIDAD_PRODUCTO,
+  cantidadInicialLinea,
+  cantidadLineaDeProducto,
+  redondearCantidadLinea,
+} from '@/lib/services/documentos/cantidadLinea';
+import type { ProductoModoVenta } from '@/lib/pos/peso/modoVenta';
+import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { useBaseCompras } from '../rutasCompras';
-import { DialogoConfirmarCompra } from '../detalle/DialogosCompra';
-import { CampoFecha } from '@/components/kit/CampoFecha';
+import { DialogoConfirmarCompra, type RecepcionConLotes } from '../detalle/DialogosCompra';
+import { useProductosConLote, useTextoErrorRecepcion } from '@/components/inventario/recepcion/LotesRecepcion';
 
 interface LineaForm {
   key: string;
@@ -63,6 +95,13 @@ interface LineaForm {
   serial_numbers: string[];
   note: string | null;
   track_serial: boolean;
+  /** Ítem manual: la descripción se escribe en la línea. */
+  manual?: boolean;
+  /** Desde una orden: lo pedido, para avisar la diferencia con lo recibido. */
+  pedido?: number | null;
+  /** Producto por peso o medida: símbolo de la unidad («kg») y decimales de la cantidad (`cantidadLinea.ts`). */
+  unidad?: string | null;
+  decimalesCantidad?: number | null;
 }
 
 interface RetencionForm {
@@ -70,9 +109,9 @@ interface RetencionForm {
   concept: string;
   base: number;
   rate: number;
+  /** Retención configurada (`organization_taxes`, clase `withholding`); null = escrita a mano. */
+  tax_code: string | null;
 }
-
-const TARIFAS = [0, 5, 19] as const;
 
 /** Props de accesibilidad de `FormField` para un control (sin `idEtiqueta`, que no es atributo del DOM). */
 function aria(c: { id: string; 'aria-describedby'?: string; 'aria-invalid'?: boolean; 'aria-required'?: boolean }) {
@@ -80,6 +119,12 @@ function aria(c: { id: string; 'aria-describedby'?: string; 'aria-invalid'?: boo
 }
 let secuencia = 0;
 const nuevaClave = () => `l${Date.now().toString(36)}${(secuencia++).toString(36)}`;
+const OTRA = '__otra__';
+
+const campoClases =
+  'h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-sm text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-60';
+const botonSecundario =
+  'inline-flex h-10 items-center gap-2 rounded-lg border border-line-strong bg-surface px-4 text-sm font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50';
 
 export default function FormularioFacturaCompra({ id }: { id?: string }) {
   const router = useRouter();
@@ -87,13 +132,15 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
   const base = useBaseCompras();
   const t = useTranslations('facturasCompra');
   const tf = useTranslations('facturasCompra.formulario');
+  const tk = useTranslations('kit.documentoEdicion');
   const moneda = useMonedaOrganizacion();
   const { branches, selectedBranchId } = useBranch();
   const ordenUuid = !id ? params?.get('orden') ?? null : null;
 
   const [cargando, setCargando] = useState(!!id || !!ordenUuid);
   const [noEditable, setNoEditable] = useState<string | null>(null);
-  const [proveedor, setProveedor] = useState<ProveedorPicker | null>(null);
+  const [soloLectura, setSoloLectura] = useState<DetalleFacturaCompra | null>(null);
+  const [proveedor, setProveedor] = useState<ProveedorDocumento | null>(null);
   const [numero, setNumero] = useState('');
   const [sucursal, setSucursal] = useState<number | null>(selectedBranchId ?? null);
   const { getToday, toDate, formatPlain } = useFormatDate(sucursal);
@@ -107,6 +154,8 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
   const [poId, setPoId] = useState<number | null>(null);
   const [lineas, setLineas] = useState<LineaForm[]>([]);
   const [retenciones, setRetenciones] = useState<RetencionForm[]>([]);
+  const [impuestos, setImpuestos] = useState<ImpuestoDocumento[]>([]);
+  const [configuradas, setConfiguradas] = useState<ImpuestoDocumento[]>([]);
   const [comision, setComision] = useState<{ salesperson_id: string | null; rate: number; type: string; method: string; amount: number }>({
     salesperson_id: null,
     rate: 0,
@@ -115,22 +164,36 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
     amount: 0,
   });
   const [errores, setErrores] = useState<Record<string, string>>({});
-  const [guardando, setGuardando] = useState<'borrador' | 'confirmar' | null>(null);
+  const [guardando, setGuardando] = useState<'borrador' | 'confirmar' | 'salir' | null>(null);
   const [errorGeneral, setErrorGeneral] = useState<string | null>(null);
   const [confirmarId, setConfirmarId] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState(false);
   const [errorConfirmar, setErrorConfirmar] = useState<string | null>(null);
   const [manual, setManual] = useState(false);
+  const [dlgProductos, setDlgProductos] = useState(false);
+  const [dlgProveedor, setDlgProveedor] = useState(false);
   const [lineaSeriales, setLineaSeriales] = useState<LineaForm | null>(null);
   const [lineaNota, setLineaNota] = useState<LineaForm | null>(null);
-  const sucio = useRef(false);
-  const marcar = () => {
-    sucio.current = true;
-  };
+  const [salir, setSalir] = useState<string | null>(null);
+  const [sucio, setSucio] = useState(false);
+  const marcar = () => setSucio(true);
+  useAvisoSalida(sucio);
 
   const ctxMoneda = moneda.paraDocumento(codigoMoneda || null);
+  const formatear = useMemo(() => crearFormateadorMoneda(ctxMoneda), [ctxMoneda]);
+  const nombreSucursal = branches.find((b) => b.id === sucursal)?.name ?? null;
+  const opcionesImpuesto: OpcionImpuesto[] = useMemo(() => {
+    const lista: OpcionImpuesto[] = impuestos.map((i) => ({ id: i.id, codigo: i.codigo, nombre: i.nombre, tarifa: i.tarifa, predeterminado: i.predeterminado }));
+    // Tarifas de líneas guardadas o de la orden que no están en la lista: se conservan (nada se pierde al editar).
+    for (const l of lineas) {
+      if (l.tax_rate > 0 && idsDesdeCodigo(lista, l.tax_code, l.tax_rate).length === 0) {
+        lista.push({ id: `tx:${l.tax_code ?? l.tax_rate}`, codigo: l.tax_code, nombre: l.tax_code ?? `${tf('iva')} ${l.tax_rate} %`, tarifa: l.tax_rate });
+      }
+    }
+    return lista;
+  }, [impuestos, lineas, tf]);
 
-  // ── Monedas de la organización ────────────────────────────────────────────
+  // ── Monedas e impuestos de la organización ────────────────────────────
   useEffect(() => {
     let cancelado = false;
     supabase
@@ -141,6 +204,13 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
       .then(({ data }) => {
         if (!cancelado) setMonedas(((data ?? []) as Array<{ currency_code: string }>).map((m) => m.currency_code.trim().toUpperCase()));
       });
+    impuestosOrganizacion(getOrganizationId())
+      .then((r) => {
+        if (cancelado) return;
+        setImpuestos(r.impuestos);
+        setConfiguradas(r.retenciones);
+      })
+      .catch(() => undefined);
     return () => {
       cancelado = true;
     };
@@ -158,10 +228,10 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
           return;
         }
         if (f.status !== 'draft') {
-          setNoEditable(tf('noEditable', { numero: f.number_ext }));
+          setSoloLectura(f);
           return;
         }
-        setProveedor(f.proveedor ? { id: String(f.proveedor.id), nombre: f.proveedor.name, nit: f.proveedor.nit, telefono: f.proveedor.phone } : null);
+        setProveedor(f.proveedor ? { id: String(f.proveedor.id), nombre: f.proveedor.name, nit: documentoTexto('nit', f.proveedor.nit, f.proveedor.dv), telefono: f.proveedor.phone } : null);
         setNumero(f.number_ext);
         setSucursal(f.branch_id);
         if (f.issue_date) setEmision(toDate(new Date(f.issue_date)));
@@ -185,9 +255,12 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
             serial_numbers: l.serial_numbers,
             note: l.note,
             track_serial: l.serial_numbers.length > 0,
+            manual: !l.product_id,
+            unidad: l.unidad,
+            decimalesCantidad: l.decimalesCantidad,
           })),
         );
-        setRetenciones(f.retenciones.map((r) => ({ key: r.id, concept: r.concept, base: r.base, rate: r.rate })));
+        setRetenciones(f.retenciones.map((r) => ({ key: r.id, concept: r.concept, base: r.base, rate: r.rate, tax_code: r.tax_code })));
         setComision({
           salesperson_id: f.salesperson_id,
           rate: f.commission_rate,
@@ -211,7 +284,7 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
     (async () => {
       const { data: oc } = await supabase
         .from('purchase_orders')
-        .select('id, branch_id, supplier:suppliers(id, name, nit, phone, credit_days), items:purchase_order_items(product_id, received_quantity, unit_cost, product:products(name, sku, track_serial), serials_received)')
+        .select(`id, branch_id, supplier:suppliers(id, name, nit, phone, credit_days), items:purchase_order_items(product_id, quantity, received_quantity, unit_cost, product:products(name, sku, track_serial, ${COLUMNAS_CANTIDAD_PRODUCTO}), serials_received)`)
         .eq('uuid', ordenUuid)
         .eq('organization_id', getOrganizationId())
         .maybeSingle();
@@ -220,7 +293,14 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
         id: number;
         branch_id: number;
         supplier: { id: number; name: string; nit: string | null; phone: string | null; credit_days: number | null } | null;
-        items: Array<{ product_id: number; received_quantity: number; unit_cost: number; serials_received: string[] | null; product: { name: string; sku: string | null; track_serial: boolean | null } | null }>;
+        items: Array<{
+          product_id: number;
+          quantity: number | null;
+          received_quantity: number;
+          unit_cost: number;
+          serials_received: string[] | null;
+          product: ({ name: string; sku: string | null; track_serial: boolean | null } & ProductoModoVenta) | null;
+        }>;
       };
       setPoId(o.id);
       setSucursal(o.branch_id);
@@ -245,6 +325,8 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
             serial_numbers: [],
             note: null,
             track_serial: false,
+            pedido: i.quantity === null || i.quantity === undefined ? null : Number(i.quantity),
+            ...cantidadLineaDeProducto(i.product),
           })),
       );
     })()
@@ -261,17 +343,6 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
     if (plazo !== null && emision) setVence(addPlainDays(emision, plazo));
   }, [plazo, emision]);
 
-  // Salir con cambios: el navegador pregunta.
-  useEffect(() => {
-    const aviso = (e: BeforeUnloadEvent) => {
-      if (!sucio.current) return;
-      e.preventDefault();
-      e.returnValue = '';
-    };
-    window.addEventListener('beforeunload', aviso);
-    return () => window.removeEventListener('beforeunload', aviso);
-  }, []);
-
   const totales = useMemo(
     () =>
       calcularTotalesCompra(
@@ -282,38 +353,31 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
     [lineas, ivaIncluido, retenciones],
   );
 
-  const buscar = useCallback(
-    async (texto: string, senal: AbortSignal) =>
-      (await buscarProveedores(getOrganizationId(), texto, senal)).map((p) => ({
-        id: String(p.id),
-        nombre: p.name,
-        nit: p.nit ? `${p.nit}${p.dv ? `-${p.dv}` : ''}` : null,
-        contacto: p.contact,
-        telefono: p.phone,
-        creditDays: p.credit_days,
-      })),
-    [],
-  );
-
-  const agregarProducto = (p: UnifiedProduct) => {
+  const agregarProducto = (p: ProductoParaDocumento) => {
     marcar();
+    // Una tarifa por línea en compra (la RPC guarda una): la del producto, como antes.
+    const imp = p.impuestos[0] ?? null;
     setLineas((prev) => [
       ...prev,
       {
         key: nuevaClave(),
         product_id: p.id,
-        description: p.name,
+        description: p.nombre,
         sku: p.sku ?? null,
-        qty: 1,
-        unit_price: Number(p.cost) || 0,
+        // Por peso o medida nace vacía (0) para escribir el peso: ver `cantidadInicialLinea`.
+        qty: cantidadInicialLinea(p),
+        unit_price: Number(p.precio) || 0,
         discount_amount: 0,
-        tax_rate: Number(p.tax_rate) || 0,
-        tax_code: p.tax_code ?? null,
+        tax_rate: imp ? Number(imp.tarifa) || 0 : 0,
+        tax_code: imp?.codigo ?? null,
         serial_numbers: [],
         note: null,
-        track_serial: p.track_serial === true,
+        track_serial: p.serial === true,
+        unidad: p.unidadVenta,
+        decimalesCantidad: p.decimalesCantidad,
       },
     ]);
+    setErrores((e) => ({ ...e, lineas: '' }));
   };
 
   const cambiarLinea = (key: string, cambio: Partial<LineaForm>) => {
@@ -321,34 +385,39 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
     setLineas((prev) => prev.map((l) => (l.key === key ? { ...l, ...cambio } : l)));
   };
 
-  const lineasKit: LineaDocumento[] = lineas.map((l) => ({
-    id: l.key,
-    descripcion: l.description,
-    sku: l.sku,
-    nota: l.note,
-    seriales: l.serial_numbers,
-    cantidad: l.qty,
-    precioUnitario: l.unit_price,
-    descuento: l.discount_amount || null,
-    impuestos: l.tax_rate > 0 ? [{ nombre: tf('iva'), tarifa: l.tax_rate, incluido: ivaIncluido }] : [],
-    total: Math.round((ivaIncluido ? l.qty * l.unit_price - l.discount_amount : (l.qty * l.unit_price - l.discount_amount) * (1 + l.tax_rate / 100)) * 100) / 100,
-    error: errores[`linea.${l.key}`] ?? null,
-  }));
+  const lineasKit: LineaDocumento[] = lineas.map((l) => {
+    const insignias: InsigniaLinea[] = [];
+    if (l.manual) insignias.push({ texto: tk('lineas.itemManual') });
+    if (l.serial_numbers.length > 0) insignias.push({ texto: tf('v2.seriales', { n: l.serial_numbers.length, total: l.qty }), tono: l.serial_numbers.length === l.qty ? 'exito' : 'advertencia' });
+    const diferencia = l.pedido !== null && l.pedido !== undefined && l.pedido !== l.qty;
+    if (diferencia) insignias.push({ texto: tf('v2.diferenciaOrden'), tono: 'advertencia' });
+    const k = calcularLineaCompra(l, ivaIncluido);
+    return {
+      id: l.key,
+      descripcion: l.description,
+      sku: l.sku,
+      nota: l.note,
+      seriales: l.serial_numbers,
+      cantidad: l.qty,
+      unidad: l.unidad ?? null,
+      decimalesCantidad: l.decimalesCantidad ?? null,
+      precioUnitario: l.unit_price,
+      descuento: l.discount_amount || null,
+      total: k.total_line,
+      impuestosSeleccion: { ids: idsDesdeCodigo(opcionesImpuesto, l.tax_code, l.tax_rate), incluido: ivaIncluido },
+      descripcionEditable: l.manual,
+      error: errores[`linea.${l.key}`] || null,
+      aviso: diferencia ? tf('v2.avisoOrden', { pedido: l.pedido as number, recibido: l.qty }) : null,
+      insignias,
+      detalleTotal: k.impuesto > 0 ? tf('v2.detalleIva', { importe: formatear(k.impuesto) }) : null,
+    };
+  });
 
   const accionesLinea = (linea: LineaDocumento): AccionFila[] => {
     const l = lineas.find((x) => x.key === linea.id);
     if (!l) return [];
     return [
-      ...TARIFAS.map((tarifa, i) => ({
-        id: `iva-${tarifa}`,
-        etiqueta: tarifa === 0 ? tf('lineas.sinIva') : tf('lineas.iva', { tarifa }),
-        icono: Percent,
-        onSelect: () => cambiarLinea(l.key, { tax_rate: tarifa, tax_code: null }),
-        separadorAntes: i === 0,
-        deshabilitada: l.tax_rate === tarifa,
-        motivo: tf('lineas.actual'),
-      })),
-      { id: 'nota', etiqueta: tf('lineas.nota'), icono: StickyNote, onSelect: () => setLineaNota(l), separadorAntes: true },
+      { id: 'nota', etiqueta: tf('lineas.nota'), icono: StickyNote, onSelect: () => setLineaNota(l) },
       { id: 'seriales', etiqueta: tf('lineas.seriales'), icono: Barcode, onSelect: () => setLineaSeriales(l), oculta: !l.product_id },
     ];
   };
@@ -391,7 +460,8 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
     lines: lineas.map((l) => ({
       product_id: l.product_id,
       description: l.description.trim(),
-      qty: l.qty,
+      // Peso o medida: a los decimales del producto (`invoice_items.qty` es numeric(12,3)).
+      qty: redondearCantidadLinea(l.qty, { decimalesCantidad: l.decimalesCantidad ?? null }),
       unit_price: l.unit_price,
       discount_amount: l.discount_amount,
       tax_rate: l.tax_rate,
@@ -399,30 +469,47 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
       serial_numbers: l.serial_numbers,
       note: l.note,
     })),
-    withholdings: retenciones.map((r) => ({ concept: r.concept.trim(), base: r.base, rate: r.rate })),
+    withholdings: retenciones.map((r) => ({ concept: r.concept.trim(), base: r.base, rate: r.rate, ...(r.tax_code ? { tax_code: r.tax_code } : {}) })),
   });
+
+  // Inventario B8: lote y vencimiento de los productos con lotes al recibir
+  // (la factura aún no tiene ids de línea en pantalla: se identifican por producto).
+  const conLote = useProductosConLote(lineas.map((l) => l.product_id), !!confirmarId);
+  const recepcionLotes: RecepcionConLotes | undefined =
+    sucursal !== null
+      ? {
+          organizacionId: getOrganizationId(),
+          sucursalId: sucursal,
+          hoy: getToday(),
+          lineas: lineas
+            .filter((l) => l.product_id !== null && conLote.has(l.product_id) && l.qty > 0)
+            .map((l) => ({ clave: l.key, product_id: l.product_id as number, nombre: l.description, qty: l.qty })),
+        }
+      : undefined;
+  const textoErrorRecepcion = useTextoErrorRecepcion();
 
   const mensajeError = (e: unknown): string => {
     const codigo = e instanceof ErrorPeticionCompra ? e.codigo : 'error_desconocido';
-    return t.has(`errores.${codigo}`) ? t(`errores.${codigo}` as never) : t('errores.error_desconocido');
+    return t.has(`errores.${codigo}`) ? t(`errores.${codigo}` as never) : textoErrorRecepcion(codigo) ?? t('errores.error_desconocido');
   };
 
-  const guardar = async (modo: 'borrador' | 'confirmar') => {
+  const guardar = async (modo: 'borrador' | 'confirmar' | 'salir', destino?: string) => {
     if (!validar()) {
-      setErrorGeneral(tf('errores.revisar'));
+      setErrorGeneral(null);
       return;
     }
     setGuardando(modo);
     setErrorGeneral(null);
     try {
       const r = await clienteCompras.guardar(payload());
-      sucio.current = false;
+      setSucio(false);
       if (r.seriales_omitidos.length > 0) toastError(tf('serialesOmitidos', { n: r.seriales_omitidos.length }));
       if (modo === 'confirmar') {
         setConfirmarId(r.id);
       } else {
         toastSuccess(tf('guardado', { numero: r.number_ext }));
-        router.replace(`${base}/${r.id}`);
+        if (modo === 'salir' && destino) router.push(destino);
+        else router.replace(`${base}/${r.id}`);
       }
     } catch (e) {
       const texto = mensajeError(e);
@@ -433,260 +520,315 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
     }
   };
 
-  const cancelar = () => {
-    if (sucio.current && !window.confirm(tf('salirSinGuardar'))) return;
-    sucio.current = false;
-    router.push(id ? `${base}/${id}` : base);
+  const volver = id ? `${base}/${id}` : base;
+  const cancelar = (destino: string = volver) => {
+    if (sucio) setSalir(destino);
+    else router.push(destino);
   };
+
+  const listaErrores: ErrorFormulario[] = Object.entries(errores)
+    .filter(([, v]) => !!v)
+    .map(([campo, mensaje]) => ({ campo, mensaje, idControl: campo.startsWith('linea') ? 'lineas-compra' : `fc-${campo}` }));
+
+  useAtajos(
+    [
+      { tecla: 'F2', descripcion: tf('v2.atajos.proveedor'), accion: () => setDlgProveedor(true), permitirEnCampo: true },
+      { tecla: 'F3', descripcion: tf('v2.atajos.productos'), accion: () => setDlgProductos(true), permitirEnCampo: true },
+      { tecla: 'Alt+M', descripcion: tf('v2.atajos.manual'), accion: () => setManual(true), permitirEnCampo: true },
+      { tecla: 'Ctrl+S', descripcion: tf('v2.atajos.guardar'), accion: () => void guardar('borrador'), permitirEnCampo: true, cuando: () => !guardando },
+      { tecla: 'Ctrl+Enter', descripcion: tf('v2.atajos.confirmar'), accion: () => void guardar('confirmar'), permitirEnCampo: true, cuando: () => !guardando },
+    ],
+    { activo: !cargando && !noEditable && !soloLectura && !dlgProductos && !manual && !lineaNota && !lineaSeriales && !confirmarId && !salir },
+  );
+
+  const siguienteNumero = useCallback(() => {
+    void clienteCompras
+      .siguienteNumero()
+      .then((n) => {
+        marcar();
+        setNumero(n);
+      })
+      .catch((e) => toastError(mensajeError(e)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (noEditable) {
     return (
-      <EmptyState
-        titulo={noEditable}
-        descripcion={tf('noEditableDescripcion')}
-        icono={ReceiptText}
-        accion={{ etiqueta: tf('volver'), href: id ? `${base}/${id}` : base }}
-      />
+      <div className="flex flex-col gap-4">
+        <DocumentoCabecera variante="formulario" tipo="facturaCompra" titulo={tf('tituloNueva')} volverA={base} migas={[{ etiqueta: t('titulo'), href: base }]} />
+        <p role="alert" className="rounded-lg border border-line-danger bg-danger-subtle px-4 py-3 text-sm text-danger-text">
+          {noEditable}
+        </p>
+        <Link href={base} className={`${botonSecundario} self-start`}>
+          {tf('volver')}
+        </Link>
+      </div>
     );
   }
+  if (soloLectura) return <VistaCompraNoEditable factura={soloLectura} base={base} />;
 
-  const campoClases = 'h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-sm text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand';
-  const botonClase =
-    'inline-flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50';
+  const retencionConfigurada = (r: RetencionForm) => (r.tax_code && configuradas.some((c) => c.codigo === r.tax_code) ? r.tax_code : OTRA);
 
   return (
-    <div className="flex flex-col gap-4 pb-24 lg:gap-5">
-      <DocumentoCabecera
-        variante="formulario"
-        tipo="facturaCompra"
-        titulo={id ? tf('tituloEditar', { numero }) : tf('tituloNueva')}
-        subtitulo={poId ? tf('desdeOrden', { orden: `OC-${poId}` }) : tf('subtitulo')}
-        volverA={id ? `${base}/${id}` : base}
-        cargando={cargando}
-        migas={[{ etiqueta: t('titulo'), href: base }, { etiqueta: id ? numero : tf('tituloNueva') }]}
-        acciones={
-          <>
-            <button type="button" onClick={cancelar} className={`${botonClase} border border-line-strong bg-surface text-fg hover:bg-hover`}>
-              {tf('cancelar')}
-            </button>
-            <button type="button" disabled={!!guardando || cargando} onClick={() => void guardar('borrador')} className={`${botonClase} border border-line-strong bg-surface text-fg hover:bg-hover`}>
-              <Save aria-hidden="true" className="size-4" strokeWidth={1.5} />
-              {guardando === 'borrador' ? tf('guardando') : tf('guardarBorrador')}
-            </button>
-            <button type="button" disabled={!!guardando || cargando} onClick={() => void guardar('confirmar')} className={`${botonClase} bg-brand-action text-fg-on-brand hover:bg-brand-action-hover`}>
-              <CheckCircle2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
-              {tf('confirmar')}
-            </button>
-          </>
-        }
-      />
-
-      {errorGeneral && (
-        <p role="alert" className="rounded-lg border border-line-danger bg-danger-subtle px-4 py-3 text-sm text-danger-text">
-          {errorGeneral}
-        </p>
-      )}
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
-        <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
-          <FormSection titulo={tf('secciones.documento')} icono={ReceiptText} columnas={2}>
-            <div className="md:col-span-2">
-              <SupplierPicker
-                proveedor={proveedor}
-                buscar={buscar}
-                onCambiar={(p) => {
-                  marcar();
-                  setProveedor(p);
-                  const dias = (p as ProveedorPicker & { creditDays?: number | null }).creditDays;
-                  if (dias && dias > 0) setPlazo(dias);
-                }}
-                onQuitar={() => {
-                  marcar();
-                  setProveedor(null);
-                }}
-                aria-invalid={!!errores.proveedor}
-              />
-              {errores.proveedor && <p className="mt-1 text-sm text-danger-text">{errores.proveedor}</p>}
-            </div>
-            <FormField etiqueta={tf('campos.numero')} ayuda={tf('campos.numeroAyuda')} error={errores.numero} obligatorio>
-              {(c) => (
-                <div className="flex gap-2">
-                  <Input
-                    {...aria(c)}
-                    value={numero}
-                    maxLength={60}
-                    onChange={(e) => {
-                      marcar();
-                      setNumero(e.target.value);
-                    }}
-                    className="h-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void clienteCompras
-                        .siguienteNumero()
-                        .then((n) => {
-                          marcar();
-                          setNumero(n);
-                        })
-                        .catch((e) => toastError(mensajeError(e)))
-                    }
-                    title={tf('campos.consecutivo')}
-                    aria-label={tf('campos.consecutivo')}
-                    className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-line-strong bg-surface text-fg-secondary hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                  >
-                    <Hash aria-hidden="true" className="size-4" strokeWidth={1.5} />
-                  </button>
-                </div>
-              )}
-            </FormField>
-            <FormField etiqueta={tf('campos.sucursal')} error={errores.sucursal} obligatorio>
-              {(c) => (
-                <select
+    <FormularioDocumentoLayout
+      cabecera={
+        <DocumentoCabecera
+          variante="formulario"
+          tipo="facturaCompra"
+          titulo={id ? tf('tituloEditar', { numero }) : tf('tituloNueva')}
+          subtitulo={[poId ? tf('desdeOrden', { orden: `OC-${poId}` }) : tf('subtitulo'), nombreSucursal, ctxMoneda.code].filter(Boolean).join(' · ')}
+          volverA={volver}
+          onVolver={() => cancelar()}
+          cargando={cargando}
+          migas={[{ etiqueta: t('titulo'), href: base }, { etiqueta: id ? numero : tf('tituloNueva') }]}
+          movil={{ titulo: id ? tf('tituloEditar', { numero }) : tf('tituloNueva') }}
+          acciones={
+            <>
+              <button type="button" onClick={() => cancelar()} className={botonSecundario}>
+                {tf('cancelar')}
+              </button>
+              <KbdButton variante="secundario" atajo="Ctrl+S" icono={Save} cargando={guardando === 'borrador'} disabled={!!guardando || cargando} onClick={() => void guardar('borrador')}>
+                {tf('guardarBorrador')}
+              </KbdButton>
+              <KbdButton atajo="Ctrl+Enter" icono={CheckCircle2} cargando={guardando === 'confirmar'} disabled={!!guardando || cargando} onClick={() => void guardar('confirmar')}>
+                {tf('confirmar')}
+              </KbdButton>
+            </>
+          }
+        />
+      }
+      avisos={
+        <>
+          {poId && (
+            <p role="status" className="rounded-lg border border-line-brand bg-brand-tint px-4 py-3 text-sm text-brand-deep">
+              {tf('v2.bandaOrden', { orden: `OC-${poId}` })}
+            </p>
+          )}
+          <ResumenErrores errores={listaErrores} />
+          {errorGeneral && (
+            <p role="alert" className="rounded-lg border border-line-danger bg-danger-subtle px-4 py-3 text-sm text-danger-text">
+              {errorGeneral}
+            </p>
+          )}
+        </>
+      }
+      datos={
+        <FormSection titulo={tf('v2.secciones.documento')} icono={ReceiptText} columnas={2}>
+          <FormField id="fc-numero" etiqueta={tf('campos.numero')} ayuda={tf('v2.numeroAyuda')} error={errores.numero} obligatorio>
+            {(c) => (
+              <div className="flex gap-2">
+                <Input
                   {...aria(c)}
-                  value={sucursal ?? ''}
-                  disabled={!!poId}
+                  value={numero}
+                  maxLength={60}
                   onChange={(e) => {
                     marcar();
-                    setSucursal(e.target.value ? Number(e.target.value) : null);
+                    setNumero(e.target.value);
                   }}
-                  className={campoClases}
+                  className="h-10"
+                />
+                <button
+                  type="button"
+                  onClick={siguienteNumero}
+                  title={tf('v2.consecutivoInterno')}
+                  aria-label={tf('v2.consecutivoInterno')}
+                  className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-line-strong bg-surface text-fg-secondary hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
-                  <option value="">{tf('campos.elegir')}</option>
-                  {branches.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name}
+                  <Hash aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                </button>
+              </div>
+            )}
+          </FormField>
+          <FormField id="fc-sucursal" etiqueta={tf('v2.sucursalRecibe')} ayuda={poId ? tf('v2.sucursalFija') : undefined} error={errores.sucursal} obligatorio>
+            {(c) => (
+              <select
+                {...aria(c)}
+                value={sucursal ?? ''}
+                disabled={!!poId}
+                onChange={(e) => {
+                  marcar();
+                  setSucursal(e.target.value ? Number(e.target.value) : null);
+                }}
+                className={campoClases}
+              >
+                <option value="">{tf('campos.elegir')}</option>
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </FormField>
+          <FormField id="fc-emision" etiqueta={tf('campos.emision')} error={errores.emision} obligatorio>
+            {(c) => (
+              <CampoFecha
+                {...aria(c)}
+                valor={emision}
+                max={getToday()}
+                hoy={getToday()}
+                onValorChange={(dia) => {
+                  marcar();
+                  setEmision(dia);
+                }}
+              />
+            )}
+          </FormField>
+          <FormField etiqueta={tf('campos.plazo')} ayuda={vence ? tf('campos.venceEl', { fecha: formatPlain(vence) }) : undefined}>
+            {(c) => (
+              <CampoNumero
+                {...aria(c)}
+                valor={plazo}
+                decimales={0}
+                minimo={0}
+                sufijo={tf('campos.dias')}
+                onValorChange={(v) => {
+                  marcar();
+                  setPlazo(v);
+                }}
+              />
+            )}
+          </FormField>
+          <FormField id="fc-vence" etiqueta={tf('campos.vence')} ayuda={tf('v2.venceAyuda')} error={errores.vence}>
+            {(c) => (
+              <CampoFecha
+                {...aria(c)}
+                valor={vence}
+                min={emision}
+                hoy={getToday()}
+                onValorChange={(dia) => {
+                  marcar();
+                  setPlazo(null);
+                  setVence(dia);
+                }}
+              />
+            )}
+          </FormField>
+          <FormField etiqueta={tf('campos.moneda')} ayuda={tf('campos.monedaAyuda', { base: moneda.code })}>
+            {(c) => (
+              <select
+                {...aria(c)}
+                value={codigoMoneda}
+                onChange={(e) => {
+                  marcar();
+                  setCodigoMoneda(e.target.value);
+                }}
+                className={campoClases}
+              >
+                <option value="">{tf('campos.monedaBase', { base: moneda.code })}</option>
+                {monedas
+                  .filter((m) => m !== moneda.code)
+                  .map((m) => (
+                    <option key={m} value={m}>
+                      {m}
                     </option>
                   ))}
-                </select>
-              )}
-            </FormField>
-            <FormField etiqueta={tf('campos.emision')} error={errores.emision} obligatorio>
-              {(c) => (
-                <CampoFecha
-                  {...aria(c)}
-                  valor={emision}
-                  max={getToday()}
-                  hoy={getToday()}
-                  onValorChange={(dia) => {
+              </select>
+            )}
+          </FormField>
+          <label className="flex items-center gap-2 text-sm text-fg md:col-span-2">
+            <Checkbox
+              checked={ivaIncluido}
+              onCheckedChange={(v) => {
+                marcar();
+                setIvaIncluido(v === true);
+              }}
+              className="size-[18px] rounded"
+            />
+            {tf('campos.ivaIncluido')}
+          </label>
+          <p className="rounded-md border border-line bg-subtle px-3 py-2 text-[13px] text-fg-secondary md:col-span-2">{tf('v2.recepcionAlConfirmar')}</p>
+        </FormSection>
+      }
+      tercero={
+        <FormSection titulo={tf('v2.secciones.proveedor')} icono={Truck}>
+          <ElegirProveedor
+            proveedor={proveedor}
+            abierto={dlgProveedor}
+            onAbiertoChange={setDlgProveedor}
+            deshabilitado={!!poId}
+            onCambiar={(p) => {
+              marcar();
+              setProveedor(p);
+              setErrores((e) => ({ ...e, proveedor: '' }));
+              if (p.creditDays && p.creditDays > 0) setPlazo(p.creditDays);
+            }}
+            onQuitar={
+              poId
+                ? undefined
+                : () => {
                     marcar();
-                    setEmision(dia);
-                  }}
-                />
-              )}
-            </FormField>
-            <FormField etiqueta={tf('campos.plazo')} ayuda={vence ? tf('campos.venceEl', { fecha: formatPlain(vence) }) : undefined}>
-              {(c) => (
-                <CampoNumero
-                  {...aria(c)}
-                  valor={plazo}
-                  decimales={0}
-                  minimo={0}
-                  sufijo={tf('campos.dias')}
-                  onValorChange={(v) => {
-                    marcar();
-                    setPlazo(v);
-                  }}
-                />
-              )}
-            </FormField>
-            <FormField etiqueta={tf('campos.vence')} error={errores.vence}>
-              {(c) => (
-                <CampoFecha
-                  {...aria(c)}
-                  valor={vence}
-                  min={emision}
-                  hoy={getToday()}
-                  onValorChange={(dia) => {
-                    marcar();
-                    setPlazo(null);
-                    setVence(dia);
-                  }}
-                />
-              )}
-            </FormField>
-            <FormField etiqueta={tf('campos.moneda')} ayuda={tf('campos.monedaAyuda', { base: moneda.code })}>
-              {(c) => (
-                <select
-                  {...aria(c)}
-                  value={codigoMoneda}
-                  onChange={(e) => {
-                    marcar();
-                    setCodigoMoneda(e.target.value);
-                  }}
-                  className={campoClases}
-                >
-                  <option value="">{tf('campos.monedaBase', { base: moneda.code })}</option>
-                  {monedas
-                    .filter((m) => m !== moneda.code)
-                    .map((m) => (
-                      <option key={m} value={m}>
-                        {m}
-                      </option>
-                    ))}
-                </select>
-              )}
-            </FormField>
-            <label className="flex items-center gap-2 self-end pb-2 text-sm text-fg">
-              <Checkbox
-                checked={ivaIncluido}
-                onCheckedChange={(v) => {
-                  marcar();
-                  setIvaIncluido(v === true);
-                }}
-                className="size-[18px] rounded"
-              />
-              {tf('campos.ivaIncluido')}
-            </label>
-          </FormSection>
-
-          <FormSection
-            titulo={tf('secciones.lineas')}
-            icono={ListPlus}
-            descripcion={errores.lineas ? <span className="text-danger-text">{errores.lineas}</span> : undefined}
-          >
+                    setProveedor(null);
+                  }
+            }
+            id="fc-proveedor"
+            aria-invalid={!!errores.proveedor}
+          />
+          {errores.proveedor && <p className="text-sm text-danger-text">{errores.proveedor}</p>}
+        </FormSection>
+      }
+      lineas={
+        <FormSection titulo={tf('v2.secciones.lineas', { n: lineas.length })} icono={ListPlus}>
+          <div id="lineas-compra" tabIndex={-1} className="outline-none">
             <DocumentoLineas
               lineas={lineasKit}
               modo="edicion"
               moneda={ctxMoneda}
               etiqueta={tf('secciones.lineas')}
-              onCambiar={(key, cambio) =>
+              estado={cargando ? 'cargando' : 'listo'}
+              impuestosDisponibles={opcionesImpuesto}
+              impuestosMultiples={false}
+              sinIncluidoPorLinea
+              avisoSinImpuesto={tk('impuestos.seCompraCero')}
+              onCambiar={(key, cambio) => {
+                const imp = cambio.impuestos ? opcionesImpuesto.find((o) => o.id === cambio.impuestos?.ids[0]) : undefined;
                 cambiarLinea(key, {
                   ...(cambio.cantidad !== undefined ? { qty: cambio.cantidad } : {}),
                   ...(cambio.precioUnitario !== undefined ? { unit_price: cambio.precioUnitario } : {}),
                   ...(cambio.descuento !== undefined ? { discount_amount: cambio.descuento ?? 0 } : {}),
-                })
-              }
+                  ...(cambio.descripcion !== undefined ? { description: cambio.descripcion } : {}),
+                  ...(cambio.impuestos ? { tax_rate: imp ? Number(imp.tarifa) || 0 : 0, tax_code: imp?.codigo ?? null } : {}),
+                });
+              }}
               onQuitar={(key) => {
                 marcar();
                 setLineas((prev) => prev.filter((l) => l.key !== key));
               }}
               accionesLinea={accionesLinea}
-              vacio={{ titulo: tf('lineas.vacio'), descripcion: tf('lineas.vacioDescripcion') }}
+              vacio={{ titulo: tf('lineas.vacio'), descripcion: tf('v2.vacioDescripcion') }}
               pie={
                 <div className="flex flex-wrap items-center gap-2 p-3">
-                  <ProductSearchDialog
-                    mode="purchase"
-                    currency={ctxMoneda.code}
-                    onProductSelect={agregarProducto}
-                    selectedProductIds={lineas.map((l) => l.product_id).filter((x): x is number => x !== null)}
-                    branchId={sucursal ?? undefined}
-                    supplierId={proveedor ? Number(proveedor.id) : null}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setManual(true)}
-                    className="inline-flex h-9 items-center gap-2 rounded-lg border border-line-strong bg-surface px-3 text-sm text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                  >
-                    <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
-                    {tf('lineas.manual')}
-                  </button>
+                  <KbdButton variante="secundario" tamano="sm" atajo="F3" icono={Search} onClick={() => setDlgProductos(true)} disabled={cargando}>
+                    {tf('v2.buscarProducto')}
+                  </KbdButton>
+                  <KbdButton variante="secundario" tamano="sm" atajo="Alt+M" icono={Plus} onClick={() => setManual(true)} disabled={cargando}>
+                    {tf('v2.itemManual')}
+                  </KbdButton>
                 </div>
               }
             />
+          </div>
+          {errores.lineas && <p className="text-sm text-danger-text">{errores.lineas}</p>}
+        </FormSection>
+      }
+      complementos={
+        <>
+          <FormSection titulo={tf('secciones.notas')} icono={StickyNote}>
+            <FormField etiqueta={tf('campos.notas')} etiquetaOculta>
+              {(c) => (
+                <Textarea
+                  {...aria(c)}
+                  value={notas}
+                  maxLength={2000}
+                  rows={3}
+                  onChange={(e) => {
+                    marcar();
+                    setNotas(e.target.value);
+                  }}
+                />
+              )}
+            </FormField>
           </FormSection>
-
           <FormSection
             titulo={tf('secciones.retenciones')}
             icono={Percent}
@@ -696,7 +838,13 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
                 type="button"
                 onClick={() => {
                   marcar();
-                  setRetenciones((prev) => [...prev, { key: nuevaClave(), concept: tf('retenciones.retefuente'), base: totales.subtotal, rate: 2.5 }]);
+                  const c = configuradas[0];
+                  setRetenciones((prev) => [
+                    ...prev,
+                    c
+                      ? { key: nuevaClave(), concept: c.nombre, base: totales.subtotal, rate: c.tarifa, tax_code: c.codigo }
+                      : { key: nuevaClave(), concept: tf('retenciones.retefuente'), base: totales.subtotal, rate: 2.5, tax_code: null },
+                  ]);
                 }}
                 className="inline-flex h-9 items-center gap-2 rounded-lg border border-line-strong bg-surface px-3 text-sm text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
@@ -708,23 +856,54 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
             {retenciones.length === 0 ? (
               <p className="text-sm text-fg-secondary">{tf('retenciones.vacio')}</p>
             ) : (
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-3" id="fc-retenciones">
                 {retenciones.map((r) => (
                   <div key={r.key} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_140px_100px_120px_40px] sm:items-end">
-                    <FormField etiqueta={tf('retenciones.concepto')}>
-                      {(c) => (
-                        <Input
-                          {...aria(c)}
-                          value={r.concept}
-                          maxLength={200}
-                          onChange={(e) => {
-                            marcar();
-                            setRetenciones((prev) => prev.map((x) => (x.key === r.key ? { ...x, concept: e.target.value } : x)));
-                          }}
-                          className="h-10"
-                        />
+                    <div className="flex flex-col gap-2">
+                      {configuradas.length > 0 && (
+                        <FormField etiqueta={tf('v2.retencionConfigurada')}>
+                          {(c) => (
+                            <select
+                              {...aria(c)}
+                              value={retencionConfigurada(r)}
+                              onChange={(e) => {
+                                marcar();
+                                const elegida = configuradas.find((x) => x.codigo === e.target.value);
+                                setRetenciones((prev) =>
+                                  prev.map((x) =>
+                                    x.key === r.key ? (elegida ? { ...x, concept: elegida.nombre, rate: elegida.tarifa, tax_code: elegida.codigo } : { ...x, tax_code: null }) : x,
+                                  ),
+                                );
+                              }}
+                              className={campoClases}
+                            >
+                              {configuradas.map((c2) => (
+                                <option key={c2.id} value={c2.codigo ?? c2.id}>
+                                  {c2.nombre}
+                                </option>
+                              ))}
+                              <option value={OTRA}>{tf('v2.retencionOtra')}</option>
+                            </select>
+                          )}
+                        </FormField>
                       )}
-                    </FormField>
+                      {retencionConfigurada(r) === OTRA && (
+                        <FormField etiqueta={tf('retenciones.concepto')}>
+                          {(c) => (
+                            <Input
+                              {...aria(c)}
+                              value={r.concept}
+                              maxLength={200}
+                              onChange={(e) => {
+                                marcar();
+                                setRetenciones((prev) => prev.map((x) => (x.key === r.key ? { ...x, concept: e.target.value } : x)));
+                              }}
+                              className="h-10"
+                            />
+                          )}
+                        </FormField>
+                      )}
+                    </div>
                     <FormField etiqueta={tf('retenciones.base')}>
                       {(c) => (
                         <CampoNumero
@@ -755,9 +934,7 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
                         />
                       )}
                     </FormField>
-                    <div className="flex h-10 items-center justify-end text-sm tabular-nums text-fg">
-                      {simboloMoneda(ctxMoneda)} {valorRetencion({ concepto: r.concept, base: r.base, tarifa: r.rate }).toLocaleString()}
-                    </div>
+                    <div className="flex h-10 items-center justify-end text-sm tabular-nums text-fg">{formatear(valorRetencion({ concepto: r.concept, base: r.base, tarifa: r.rate }))}</div>
                     <button
                       type="button"
                       onClick={() => {
@@ -775,26 +952,10 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
               </div>
             )}
           </FormSection>
-
-          <FormSection titulo={tf('secciones.notas')} icono={StickyNote}>
-            <FormField etiqueta={tf('campos.notas')} etiquetaOculta>
-              {(c) => (
-                <Textarea
-                  {...aria(c)}
-                  value={notas}
-                  maxLength={2000}
-                  rows={3}
-                  onChange={(e) => {
-                    marcar();
-                    setNotas(e.target.value);
-                  }}
-                />
-              )}
-            </FormField>
-          </FormSection>
-        </div>
-
-        <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-4 lg:self-start">
+        </>
+      }
+      resumen={
+        <>
           <DocumentoTotales
             variante="compra"
             moneda={ctxMoneda}
@@ -804,177 +965,228 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
             retenciones={retenciones.map((r) => ({ nombre: r.concept, tarifa: r.rate, base: r.base, importe: valorRetencion({ concepto: r.concept, base: r.base, tarifa: r.rate }) }))}
             total={totales.total}
             neto={retenciones.length > 0 ? totales.netoAPagar : null}
+            cargando={cargando}
           />
-          {proveedor && vence && (
-            <p className="text-sm text-fg-secondary">{tf('resumenPago', { proveedor: proveedor.nombre, fecha: formatPlain(vence) })}</p>
+          <Tarjeta titulo={tf('v2.pagoProveedor')} icono={Wallet}>
+            <p className="text-sm text-fg-secondary">
+              {proveedor && vence ? tf('resumenPago', { proveedor: proveedor.nombre, fecha: formatPlain(vence) }) : tf('v2.pagoSinProveedor')}
+            </p>
+            <p className="text-xs text-fg-muted">{tf('v2.pagoCxp')}</p>
+          </Tarjeta>
+          <TarjetaAtajos
+            atajos={[
+              { tecla: 'F2', descripcion: tf('v2.atajos.proveedor') },
+              { tecla: 'F3', descripcion: tf('v2.atajos.productos') },
+              { tecla: 'Alt+M', descripcion: tf('v2.atajos.manual') },
+              { tecla: 'Ctrl+S', descripcion: tf('v2.atajos.guardar') },
+              { tecla: 'Ctrl+Enter', descripcion: tf('v2.atajos.confirmar') },
+            ]}
+          />
+        </>
+      }
+      pieMovil={
+        <>
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="text-xs text-fg-secondary">{retenciones.length > 0 ? tf('v2.netoPagar') : tf('v2.total')}</span>
+            <span className="truncate text-base font-semibold tabular-nums text-fg">{formatear(retenciones.length > 0 ? totales.netoAPagar : totales.total)}</span>
+          </span>
+          <KbdButton icono={CheckCircle2} cargando={guardando === 'confirmar'} disabled={!!guardando || cargando} onClick={() => void guardar('confirmar')}>
+            {tf('confirmar')}
+          </KbdButton>
+        </>
+      }
+      dialogos={
+        <>
+          <AgregarProductosDocumento
+            abierto={dlgProductos}
+            onAbiertoChange={setDlgProductos}
+            variante="compra"
+            sucursal={sucursal}
+            nombreSucursal={nombreSucursal}
+            proveedor={proveedor ? { id: Number(proveedor.id), nombre: proveedor.nombre } : null}
+            moneda={ctxMoneda}
+            impuestos={opcionesImpuesto}
+            onAgregar={agregarProducto}
+          />
+          <DialogoItemManual
+            abierto={manual}
+            onAbiertoChange={setManual}
+            variante="compra"
+            moneda={ctxMoneda}
+            impuestos={opcionesImpuesto}
+            impuestosMultiples={false}
+            sinIncluido
+            incluidoInicial={ivaIncluido}
+            calcularTotal={(i) => {
+              const imp = opcionesImpuesto.find((o) => o.id === i.impuestos[0]);
+              return calcularLineaCompra({ qty: i.cantidad, unit_price: i.precio, tax_rate: imp ? imp.tarifa : 0 }, ivaIncluido).total_line;
+            }}
+            onAgregar={(i) => {
+              marcar();
+              const imp = opcionesImpuesto.find((o) => o.id === i.impuestos[0]);
+              setLineas((prev) => [
+                ...prev,
+                {
+                  key: nuevaClave(),
+                  product_id: null,
+                  description: i.descripcion,
+                  sku: null,
+                  qty: i.cantidad,
+                  unit_price: i.precio,
+                  discount_amount: 0,
+                  tax_rate: imp ? Number(imp.tarifa) || 0 : 0,
+                  tax_code: imp?.codigo ?? null,
+                  serial_numbers: [],
+                  note: i.nota,
+                  track_serial: false,
+                  manual: true,
+                },
+              ]);
+              setErrores((e) => ({ ...e, lineas: '' }));
+            }}
+          />
+          <DialogoTextoLinea
+            titulo={tf('lineas.seriales')}
+            ayuda={tf('lineas.serialesAyuda')}
+            abierto={!!lineaSeriales}
+            valorInicial={lineaSeriales?.serial_numbers.join('\n') ?? ''}
+            onAbiertoChange={(v) => !v && setLineaSeriales(null)}
+            onGuardar={(texto) => {
+              if (!lineaSeriales) return;
+              const seriales = Array.from(new Set(texto.split(/[\n,;]+/).map((s) => s.trim()).filter(Boolean)));
+              cambiarLinea(lineaSeriales.key, { serial_numbers: seriales, qty: seriales.length > 0 ? Math.max(lineaSeriales.qty, seriales.length) : lineaSeriales.qty });
+              setLineaSeriales(null);
+            }}
+          />
+          <DialogoTextoLinea
+            titulo={tf('lineas.nota')}
+            abierto={!!lineaNota}
+            valorInicial={lineaNota?.note ?? ''}
+            onAbiertoChange={(v) => !v && setLineaNota(null)}
+            onGuardar={(texto) => {
+              if (!lineaNota) return;
+              cambiarLinea(lineaNota.key, { note: texto.trim() || null });
+              setLineaNota(null);
+            }}
+          />
+          {confirmarId && (
+            <DialogoConfirmarCompra
+              abierto
+              onAbiertoChange={(v) => {
+                if (v || confirmando) return;
+                // Cerrar sin confirmar deja el borrador guardado.
+                router.replace(`${base}/${confirmarId}`);
+              }}
+              numero={numero}
+              total={totales.total}
+              moneda={ctxMoneda}
+              hayProductos={lineas.some((l) => l.product_id !== null)}
+              puedeRecepcionar
+              recepcion={recepcionLotes}
+              cargando={confirmando}
+              error={errorConfirmar}
+              onConfirmar={async (opciones) => {
+                setConfirmando(true);
+                setErrorConfirmar(null);
+                try {
+                  await clienteCompras.confirmar(confirmarId, opciones);
+                  toastSuccess(tf('confirmada', { numero }));
+                  router.replace(`${base}/${confirmarId}`);
+                } catch (e) {
+                  setErrorConfirmar(mensajeError(e));
+                } finally {
+                  setConfirmando(false);
+                }
+              }}
+            />
           )}
-        </div>
-      </div>
+          <DialogoSalirConCambios
+            abierto={!!salir}
+            onAbiertoChange={(v) => !v && setSalir(null)}
+            guardando={guardando === 'salir'}
+            onSalir={() => {
+              const destino = salir ?? volver;
+              setSucio(false);
+              setSalir(null);
+              router.push(destino);
+            }}
+            onGuardarYSalir={() => {
+              const destino = salir ?? volver;
+              setSalir(null);
+              void guardar('salir', destino);
+            }}
+          />
+        </>
+      }
+    />
+  );
+}
 
-      <DialogoItemManual
-        abierto={manual}
-        onAbiertoChange={setManual}
-        onAgregar={(item) => {
-          marcar();
-          setLineas((prev) => [...prev, { key: nuevaClave(), product_id: null, sku: null, serial_numbers: [], note: null, track_serial: false, tax_code: null, discount_amount: 0, ...item }]);
-        }}
+// ─── Solo lectura: confirmada, pagada o anulada ─────────────────────────
+
+function VistaCompraNoEditable({ factura, base }: { factura: DetalleFacturaCompra; base: string }) {
+  const tf = useTranslations('facturasCompra.formulario');
+  const t = useTranslations('facturasCompra');
+  const moneda = useMonedaOrganizacion();
+  const etiquetaEstado = useEtiquetaEstado();
+  const ctx = moneda.paraDocumento(factura.currency);
+  const anulada = factura.status === 'void';
+  const detalle = `${base}/${factura.id}`;
+  const retenciones = factura.retenciones.reduce((s, r) => s + r.amount, 0);
+  const totales = calcularTotalesCompra(factura.lineas, factura.tax_included, factura.retenciones.map((r) => ({ concepto: r.concept, base: r.base, tarifa: r.rate, valor: r.amount })));
+  return (
+    <div className="flex flex-col gap-4 pb-8 lg:gap-5">
+      <DocumentoCabecera
+        variante="formulario"
+        tipo="facturaCompra"
+        titulo={tf('v2.tituloFactura', { numero: factura.number_ext })}
+        subtitulo={factura.proveedor?.name}
+        estado={factura.status}
+        volverA={detalle}
+        migas={[{ etiqueta: t('titulo'), href: base }, { etiqueta: factura.number_ext }]}
+        acciones={
+          <Link
+            href={detalle}
+            className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-action px-4 text-sm font-medium text-fg-on-brand hover:bg-brand-action-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+          >
+            <FileText aria-hidden="true" className="size-4" strokeWidth={1.5} />
+            {anulada ? tf('v2.verFactura') : tf('v2.verYPagar')}
+          </Link>
+        }
       />
-      <DialogoTextoLinea
-        titulo={tf('lineas.seriales')}
-        ayuda={tf('lineas.serialesAyuda')}
-        abierto={!!lineaSeriales}
-        valorInicial={lineaSeriales?.serial_numbers.join('\n') ?? ''}
-        onAbiertoChange={(v) => !v && setLineaSeriales(null)}
-        onGuardar={(texto) => {
-          if (!lineaSeriales) return;
-          const seriales = Array.from(new Set(texto.split(/[\n,;]+/).map((s) => s.trim()).filter(Boolean)));
-          cambiarLinea(lineaSeriales.key, { serial_numbers: seriales, qty: seriales.length > 0 ? Math.max(lineaSeriales.qty, seriales.length) : lineaSeriales.qty });
-          setLineaSeriales(null);
-        }}
-      />
-      <DialogoTextoLinea
-        titulo={tf('lineas.nota')}
-        abierto={!!lineaNota}
-        valorInicial={lineaNota?.note ?? ''}
-        onAbiertoChange={(v) => !v && setLineaNota(null)}
-        onGuardar={(texto) => {
-          if (!lineaNota) return;
-          cambiarLinea(lineaNota.key, { note: texto.trim() || null });
-          setLineaNota(null);
-        }}
-      />
-      {confirmarId && (
-        <DialogoConfirmarCompra
-          abierto
-          onAbiertoChange={(v) => {
-            if (v || confirmando) return;
-            // Cerrar sin confirmar deja el borrador guardado.
-            router.replace(`${base}/${confirmarId}`);
-          }}
-          numero={numero}
-          total={totales.total}
-          moneda={ctxMoneda}
-          hayProductos={lineas.some((l) => l.product_id !== null)}
-          puedeRecepcionar
-          cargando={confirmando}
-          error={errorConfirmar}
-          onConfirmar={async (opciones) => {
-            setConfirmando(true);
-            setErrorConfirmar(null);
-            try {
-              await clienteCompras.confirmar(confirmarId, opciones);
-              toastSuccess(tf('confirmada', { numero }));
-              router.replace(`${base}/${confirmarId}`);
-            } catch (e) {
-              setErrorConfirmar(mensajeError(e));
-            } finally {
-              setConfirmando(false);
-            }
-          }}
+      <p role="status" className="rounded-lg border border-line-warning bg-warning-subtle px-4 py-3 text-sm text-warning-text">
+        {anulada ? tf('v2.motivoAnulada') : tf('v2.motivoConfirmada', { estado: etiquetaEstado(factura.status) })}
+      </p>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-5">
+        <DocumentoLineas
+          modo="lectura"
+          moneda={ctx}
+          lineas={factura.lineas.map((l) => ({
+            id: l.id,
+            descripcion: l.description,
+            sku: l.sku,
+            nota: l.note,
+            seriales: l.serial_numbers,
+            cantidad: l.qty,
+            unidad: l.unidad,
+            decimalesCantidad: l.decimalesCantidad,
+            precioUnitario: l.unit_price,
+            descuento: l.discount_amount || null,
+            impuestos: l.tax_rate > 0 ? [{ nombre: tf('iva'), tarifa: l.tax_rate, incluido: factura.tax_included }] : [],
+            total: l.total_line,
+          }))}
         />
-      )}
-    </div>
-  );
-}
-
-function DialogoItemManual({
-  abierto,
-  onAbiertoChange,
-  onAgregar,
-}: {
-  abierto: boolean;
-  onAbiertoChange: (v: boolean) => void;
-  onAgregar: (item: { description: string; qty: number; unit_price: number; tax_rate: number }) => void;
-}) {
-  const tf = useTranslations('facturasCompra.formulario');
-  const [descripcion, setDescripcion] = useState('');
-  const [cantidad, setCantidad] = useState<number | null>(1);
-  const [precio, setPrecio] = useState<number | null>(0);
-  const [tarifa, setTarifa] = useState(0);
-  useEffect(() => {
-    if (abierto) {
-      setDescripcion('');
-      setCantidad(1);
-      setPrecio(0);
-      setTarifa(0);
-    }
-  }, [abierto]);
-  const valido = descripcion.trim().length > 0 && (cantidad ?? 0) > 0 && (precio ?? -1) >= 0;
-  return (
-    <Dialogo
-      abierto={abierto}
-      onAbiertoChange={onAbiertoChange}
-      titulo={tf('manual.titulo')}
-      descripcion={tf('manual.descripcion')}
-      icono={Plus}
-      primario={{
-        etiqueta: tf('manual.agregar'),
-        deshabilitada: !valido,
-        motivo: tf('manual.invalido'),
-        onClick: () => {
-          onAgregar({ description: descripcion.trim(), qty: cantidad ?? 1, unit_price: precio ?? 0, tax_rate: tarifa });
-          onAbiertoChange(false);
-        },
-      }}
-    >
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="sm:col-span-3">
-          <FormField etiqueta={tf('manual.concepto')} obligatorio>
-            {(c) => <Input {...aria(c)} value={descripcion} maxLength={500} onChange={(e) => setDescripcion(e.target.value)} className="h-10" />}
-          </FormField>
-        </div>
-        <FormField etiqueta={tf('manual.cantidad')}>
-          {(c) => <CampoNumero {...aria(c)} valor={cantidad} decimales={3} minimo={0} onValorChange={setCantidad} />}
-        </FormField>
-        <FormField etiqueta={tf('manual.precio')}>
-          {(c) => <CampoNumero {...aria(c)} valor={precio} minimo={0} onValorChange={setPrecio} />}
-        </FormField>
-        <FormField etiqueta={tf('manual.iva')}>
-          {(c) => (
-            <select
-              {...aria(c)}
-              value={tarifa}
-              onChange={(e) => setTarifa(Number(e.target.value))}
-              className="h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-sm text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            >
-              {TARIFAS.map((x) => (
-                <option key={x} value={x}>
-                  {x} %
-                </option>
-              ))}
-            </select>
-          )}
-        </FormField>
+        <DocumentoTotales
+          variante="compra"
+          moneda={ctx}
+          subtotal={factura.subtotal}
+          impuestos={totales.porTarifa.filter((x) => x.tarifa > 0).map((x) => ({ nombre: tf('iva'), tarifa: x.tarifa, base: x.base, importe: x.impuesto }))}
+          impuestosIncluidos={factura.tax_included}
+          retenciones={factura.retenciones.map((r) => ({ nombre: r.concept, tarifa: r.rate, base: r.base, importe: r.amount }))}
+          total={factura.total}
+          neto={retenciones > 0 ? factura.total - retenciones : null}
+        />
       </div>
-    </Dialogo>
-  );
-}
-
-function DialogoTextoLinea({
-  titulo,
-  ayuda,
-  abierto,
-  valorInicial,
-  onAbiertoChange,
-  onGuardar,
-}: {
-  titulo: string;
-  ayuda?: string;
-  abierto: boolean;
-  valorInicial: string;
-  onAbiertoChange: (v: boolean) => void;
-  onGuardar: (texto: string) => void;
-}) {
-  const tf = useTranslations('facturasCompra.formulario');
-  const [texto, setTexto] = useState(valorInicial);
-  useEffect(() => {
-    if (abierto) setTexto(valorInicial);
-  }, [abierto, valorInicial]);
-  return (
-    <Dialogo abierto={abierto} onAbiertoChange={onAbiertoChange} titulo={titulo} primario={{ etiqueta: tf('aplicar'), onClick: () => onGuardar(texto) }}>
-      <FormField etiqueta={titulo} etiquetaOculta ayuda={ayuda}>
-        {(c) => <Textarea {...aria(c)} value={texto} rows={5} onChange={(e) => setTexto(e.target.value)} />}
-      </FormField>
-    </Dialogo>
+    </div>
   );
 }

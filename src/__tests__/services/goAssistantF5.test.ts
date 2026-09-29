@@ -57,9 +57,31 @@ describe('F5 — contratos de las rutas (por lectura del código)', () => {
     expect(src).toMatch(/\^\[A-Za-z0-9_-\]\{1,64\}\$/);
   });
 
-  it('el archivo de ruta del TTS no exporta nada que Next no admita', () => {
-    const src = leer('app/api/ai-assistant/tts/route.ts');
-    const exports = Array.from(src.matchAll(/^export (?:const|async function|function) (\w+)/gm)).map((m) => m[1]);
-    for (const e of exports) expect(['POST', 'runtime', 'dynamic']).toContain(e);
+  it('NINGUNA ruta de ai-assistant exporta algo que Next no admita', () => {
+    // Un `route.ts` del App Router solo puede exportar sus handlers y
+    // runtime/dynamic/revalidate/config: cualquier otro export rompe la
+    // comprobación de tipos de `.next/types` y tumba el despliegue (Vercel ya
+    // no ignora errores de tipos). Pasó con `LOW_CREDITS` en `credits/route.ts`.
+    const PERMITIDOS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'runtime', 'dynamic', 'revalidate', 'fetchCache', 'maxDuration', 'config']);
+    const base = path.join(SRC, 'app', 'api', 'ai-assistant');
+    const rutas: string[] = [];
+    const recorrer = (dir: string) => {
+      for (const entrada of fs.readdirSync(dir, { withFileTypes: true })) {
+        const completo = path.join(dir, entrada.name);
+        if (entrada.isDirectory()) recorrer(completo);
+        else if (entrada.name === 'route.ts') rutas.push(completo);
+      }
+    };
+    recorrer(base);
+    expect(rutas.length).toBeGreaterThan(5);
+
+    const infractores: string[] = [];
+    for (const ruta of rutas) {
+      const src = fs.readFileSync(ruta, 'utf8');
+      for (const m of src.matchAll(/^export (?:const|async function|function|type|interface) (\w+)/gm)) {
+        if (!PERMITIDOS.has(m[1])) infractores.push(`${path.relative(SRC, ruta)} → ${m[1]}`);
+      }
+    }
+    expect(infractores).toEqual([]);
   });
 });

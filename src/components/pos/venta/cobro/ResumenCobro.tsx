@@ -4,7 +4,7 @@ import { useId, useMemo, useState } from 'react';
 import { ChevronDown, ShoppingCart } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/utils/Utils';
-import { ResumenTotales, type ImpuestoResumen } from '@/components/kit';
+import { FilaDato, ListaDatos, ResumenTotales, type ImpuestoResumen } from '@/components/kit';
 import { crearFormateadorMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 
 /**
@@ -84,22 +84,23 @@ export function ResumenCobro({
           <ChevronDown aria-hidden="true" className={cn('size-4 transition-transform', detalle && 'rotate-180')} strokeWidth={1.5} />
         </button>
         <div id={idDetalle} className={detalle ? 'mt-2' : 'hidden'}>
-          <ul aria-label={t('detalle')} className="flex max-h-56 flex-col gap-1 overflow-y-auto rounded-lg border border-line bg-surface p-2">
+          <ListaDatos etiqueta={t('detalle')} className="max-h-56 overflow-y-auto rounded-lg border border-line bg-surface px-2 py-1">
             {lineas.map((l) => (
-              <li key={l.id} className="flex items-start justify-between gap-2 text-[13px]">
-                <span className="min-w-0 break-words text-fg">
-                  {l.nombre} <span className="text-fg-muted">{t('cantidad', { cantidad: l.cantidad })}</span>
-                </span>
-                <span className="shrink-0 tabular-nums text-fg">{formatear(l.total)}</span>
-              </li>
+              <FilaDato
+                key={l.id}
+                tamano="sm"
+                etiqueta={
+                  <span className="text-fg">
+                    {l.nombre} <span className="text-fg-muted">{t('cantidad', { cantidad: l.cantidad })}</span>
+                  </span>
+                }
+                valor={formatear(l.total)}
+              />
             ))}
             {descuentos > 0 && (
-              <li className="flex items-start justify-between gap-2 border-t border-line pt-1 text-[13px]">
-                <span className="text-fg-secondary">{t('descuentos')}</span>
-                <span className="shrink-0 tabular-nums text-success-text">−{formatear(descuentos)}</span>
-              </li>
+              <FilaDato tamano="sm" tono="exito" separadorAntes etiqueta={t('descuentos')} valor={`−${formatear(descuentos)}`} />
             )}
-          </ul>
+          </ListaDatos>
         </div>
       </div>
 

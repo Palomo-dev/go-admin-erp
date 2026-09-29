@@ -1,0 +1,19 @@
+{
+  "name": "go-admin-ws-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dependencias de ejecución del servidor de voz (ws-server.ts, Twilio ConversationRelay) desplegado en Railway. Separadas de las de la web: ver ws-server.Dockerfile.",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.50.5",
+    "dotenv": "17.4.2",
+    "openai": "6.15.0",
+    "svix": "2.2.0",
+    "tsx": "4.23.15",
+    "twilio": "6.1.0",
+    "ws": "8.21.3"
+  }
+}

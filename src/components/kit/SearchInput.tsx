@@ -15,6 +15,13 @@ import { useKitT } from './useIdiomaKit';
  * `onChange` llega con debounce (400 ms por defecto); Enter lo dispara ya y
  * Escape borra. El atajo «/» enfoca el buscador desde cualquier parte de la
  * página salvo que se esté escribiendo en otro campo.
+ *
+ * Prioridad de «/» con el buscador global del header (Ctrl K): este listener
+ * va en `document` y hace `preventDefault()`; el global escucha en `window`
+ * (después, en burbuja) y respeta `defaultPrevented`. Con un buscador de
+ * página montado, «/» es suyo; sin él, abre la paleta. No lo muevas a
+ * `window` ni quites el `preventDefault()`: ver `accionAtajo` en
+ * `src/lib/busquedaGlobal/logica.ts`.
  */
 export interface SearchInputProps {
   /** Valor confirmado (normalmente el de la URL). Si cambia desde fuera, el campo se sincroniza. */
@@ -31,13 +38,20 @@ export interface SearchInputProps {
   atajo?: string | false;
   /**
    * Pinta la pista del atajo («/») dentro del campo. `false` la oculta sin
-   * desactivar la tecla: donde el Figma aprobado no la dibuja (facturas de venta).
+   * desactivar la tecla. El Figma la dibuja en todo buscador de página: no se
+   * apaga en listados; solo tiene sentido en un campo que no es de página.
    */
   pistaAtajo?: boolean;
   /** Puntito de actividad mientras el servidor responde (no esqueleto). */
   cargando?: boolean;
   /** Ranura a la derecha (lector de códigos en POS). */
   accesorio?: React.ReactNode;
+  /**
+   * Enter con el texto escrito. Si devuelve `true` la pantalla lo resolvió
+   * (p. ej. un código de barras escrito a mano que va directo al carrito del
+   * POS) y no se lanza la búsqueda; si no, Enter busca ya, como siempre.
+   */
+  onEnter?: (texto: string) => boolean | void;
   tamano?: 'sm' | 'md';
   id?: string;
   autoFocus?: boolean;
@@ -61,6 +75,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
     pistaAtajo = true,
     cargando,
     accesorio,
+    onEnter,
     tamano = 'md',
     id,
     autoFocus,
@@ -158,6 +173,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
             e.preventDefault();
+            if (onEnter?.(texto) === true) return;
             debounced.ejecutarYa();
           } else if (e.key === 'Escape' && texto) {
             e.preventDefault();

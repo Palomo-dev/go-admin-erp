@@ -9,6 +9,11 @@ import { OrganizationInfoSkeleton } from '@/components/organization/Organization
 const OrganizationInfoTab = dynamic(() => import('@/components/organization/OrganizationInfoTab'), {
   loading: () => <OrganizationInfoSkeleton />
 });
+// Fase A: la zona de la organizacion, en una pantalla de nucleo.
+const OrganizationTimezoneCard = dynamic(
+  () => import('@/components/organization/OrganizationTimezoneCard'),
+  { loading: () => <div className="h-40 animate-pulse rounded-xl bg-gray-100 dark:bg-gray-800" /> }
+);
 
 export default function InformacionPage() {
   const t = useTranslations('org');
@@ -58,6 +63,8 @@ export default function InformacionPage() {
       <Suspense fallback={<OrganizationInfoSkeleton />}>
         <OrganizationInfoTab orgData={orgId!} />
       </Suspense>
+
+      <OrganizationTimezoneCard />
     </div>
   );
 }

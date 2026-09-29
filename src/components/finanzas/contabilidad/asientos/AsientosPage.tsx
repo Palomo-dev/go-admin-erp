@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { FileText, Plus, Loader2, Trash2, Copy, Check, ArrowLeft, Search, Eye } from 'lucide-react';
+import { FileText, Plus, Loader2, Trash2, Copy, Check, ArrowLeft, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,12 +15,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ContabilidadService, JournalEntry, ChartAccount, mapaDeReversiones, mensajeErrorAsiento } from '../ContabilidadService';
 import { Switch } from '@/components/ui/switch';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { CopyableId } from '@/components/common/CopyableId';
 import { useBranch } from '@/lib/context/BranchContext';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 interface JournalLineInput {
   account_code: string;
@@ -31,6 +32,8 @@ interface JournalLineInput {
 
 export function AsientosPage() {
   const router = useRouter();
+  // Los importes contables se llevan en la moneda base de la organizacion.
+  const { formatear } = useMonedaOrganizacion();
   const searchParams = useSearchParams();
   const { branchFilter, selectedBranchId } = useBranch();
   // `journal_entries.entry_date` es **timestamptz** (verificado en
@@ -74,6 +77,8 @@ export function AsientosPage() {
     if (searchParams?.get('action') === 'new') {
       setShowDialog(true);
     }
+    // Solo se recarga al cambiar de sucursal; `?action=new` se mira una vez al entrar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [branchFilter]);
 
   const loadData = async () => {
@@ -299,15 +304,13 @@ export function AsientosPage() {
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardContent className="py-4">
           <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Buscar por ID o memo..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 dark:bg-gray-900 dark:border-gray-600"
-              />
-            </div>
+            <SearchInput
+              value={searchTerm}
+              onChange={setSearchTerm}
+              onValueChange={setSearchTerm}
+              placeholder="Buscar por ID o memo..."
+              className="flex-1"
+            />
             <Select value={filterPosted} onValueChange={setFilterPosted}>
               <SelectTrigger className="w-[150px] dark:bg-gray-900 dark:border-gray-600">
                 <SelectValue placeholder="Estado" />
@@ -546,19 +549,19 @@ export function AsientosPage() {
                 <div>
                   <span className="text-sm text-gray-600 dark:text-gray-400">Total Débitos:</span>
                   <span className="ml-2 font-bold text-gray-900 dark:text-white">
-                    {formatCurrency(getTotalDebits())}
+                    {formatear(getTotalDebits())}
                   </span>
                 </div>
                 <div>
                   <span className="text-sm text-gray-600 dark:text-gray-400">Total Créditos:</span>
                   <span className="ml-2 font-bold text-gray-900 dark:text-white">
-                    {formatCurrency(getTotalCredits())}
+                    {formatear(getTotalCredits())}
                   </span>
                 </div>
                 <div>
                   <span className="text-sm text-gray-600 dark:text-gray-400">Diferencia:</span>
                   <span className={`ml-2 font-bold ${isBalanced() ? 'text-green-600' : 'text-red-600'}`}>
-                    {formatCurrency(Math.abs(getTotalDebits() - getTotalCredits()))}
+                    {formatear(Math.abs(getTotalDebits() - getTotalCredits()))}
                   </span>
                 </div>
               </div>

@@ -43,6 +43,13 @@ export interface ProductoTarjeta {
   favorito?: boolean;
   /** Tiene receta de producción: botón «Ver receta» si la pantalla da `onReceta`. */
   receta?: boolean;
+  /**
+   * Producto por peso o medida (PRODUCTOS-POR-PESO-BASCULA.md): símbolo de la
+   * unidad de venta («kg»). La tarjeta dice «Por kg», el precio «/ kg» y el
+   * stock «12,400 kg» con `decimalesCantidad`.
+   */
+  unidadVenta?: string | null;
+  decimalesCantidad?: number | null;
 }
 
 export type VarianteTarjeta = 'pos' | 'movil-tarjeta' | 'movil-lista';

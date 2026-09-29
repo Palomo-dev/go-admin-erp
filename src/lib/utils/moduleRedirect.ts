@@ -8,6 +8,7 @@
 
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
 import { MODULE_PAGES, getModulePages, type ModulePage } from '@/lib/config/modulePages';
+import { filtrarPaginasActivas } from '@/lib/navigation/paginaActiva';
 
 /**
  * Páginas que no deben usarse como destino de redirect (dashboards raíz que
@@ -32,37 +33,36 @@ const EXCLUDED_REDIRECT_HREFS = new Set<string>([
 ]);
 
 /**
- * Obtiene las páginas activas de un módulo para una organización,
- * consultando `organization_module_pages` y filtrando por las páginas
- * estáticas definidas en `MODULE_PAGES`.
+ * Páginas del módulo que esta organización ve, en el orden del catálogo.
  *
- * Si la organización no tiene páginas activas registradas en DB (caso de
- * módulos core o configuración legacy), cae al fallback estático de
- * `MODULE_PAGES` para ese código.
+ * La regla de activación es la de `paginaActiva()` y solo la de ahí: una página
+ * sin fila en `organization_module_pages` está activa, y solo la esconde una
+ * fila con `is_active = false`. Aquí llega ya resuelto quién decide; lo único
+ * propio de la redirección es no apuntar a los dashboards raíz.
+ *
+ * Si la consulta falla se cae a todo el catálogo del módulo: es un redirect, y
+ * dejar a la persona en `/app/inicio` por un fallo de red es peor que llevarla
+ * a una pantalla que la RLS ya protege.
  */
 async function resolveActivePages(
   moduleCode: string,
   organizationId: number,
 ): Promise<ModulePage[]> {
-  // 1. Intentar páginas activas desde DB
-  const activePagesMap = await moduleManagementService
-    .getActiveModulePages(organizationId)
-    .catch(() => null);
-
   const staticPages = getModulePages(moduleCode);
   if (!staticPages.length) return [];
 
-  // 2. Si hay páginas activas en DB, filtrar las estáticas por las activas
-  if (activePagesMap && activePagesMap[moduleCode]?.length) {
-    const activeHrefs = new Set(activePagesMap[moduleCode]);
-    const filtered = staticPages.filter(
-      (p) => activeHrefs.has(p.href) && !EXCLUDED_REDIRECT_HREFS.has(p.href),
-    );
-    if (filtered.length) return filtered;
-  }
+  const paginasOcultas = await moduleManagementService
+    .getHiddenModulePages(organizationId)
+    .catch(() => ({}) as Record<string, string[]>);
 
-  // 3. Fallback: páginas estáticas excluyendo las raíces de dashboard
-  return staticPages.filter((p) => !EXCLUDED_REDIRECT_HREFS.has(p.href));
+  // El módulo ya está activo: a esta función solo se llega desde su raíz, que
+  // el middleware corta antes si la organización no lo tiene contratado.
+  const visibles = filtrarPaginasActivas(moduleCode, staticPages, {
+    modulosActivos: [moduleCode],
+    paginasOcultas,
+  });
+
+  return visibles.filter((p) => !EXCLUDED_REDIRECT_HREFS.has(p.href));
 }
 
 /**

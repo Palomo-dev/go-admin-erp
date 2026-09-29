@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
 import { useKitT } from '@/components/kit/useIdiomaKit';
 import { useFechasFicha } from './useFechasFicha';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { TableSkeleton } from '@/components/common/PageSkeletons';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Receipt, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -76,6 +76,8 @@ const DIA_MES: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
 
 export default function CuentasTab({ clienteId, organizationId }: CuentasTabProps) {
   const t = useTranslations('clientes.ficha');
+  // Ventas, folios y cartera no traen moneda propia: la base de la organización.
+  const { formatear } = useMonedaOrganizacion();
   const tKit = useKitT();
   const { instante, plana } = useFechasFicha();
   const [loading, setLoading] = useState(true);
@@ -361,7 +363,7 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
               <Receipt className="h-5 w-5 text-amber-500" />
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{t('cuentas.foliosTitulo')}</h3>
               <span className="ml-auto text-sm font-bold text-amber-600 dark:text-amber-400">
-                {formatCurrency(folios.reduce((sum, f) => sum + f.balance, 0))}
+                {formatear(folios.reduce((sum, f) => sum + f.balance, 0))}
               </span>
             </div>
           </div>
@@ -395,7 +397,7 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
                   </div>
                   <div className="flex flex-col items-end gap-1">
                     <span className="text-lg font-bold text-amber-600 dark:text-amber-400">
-                      {formatCurrency(folio.balance)}
+                      {formatear(folio.balance)}
                     </span>
                     <a
                       href={`/app/pms/folios?reservation=${folio.reservation_id}`}
@@ -417,21 +419,21 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
         <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
           <div className="text-sm text-gray-500 dark:text-gray-400">{t('cuentas.totalDeuda')}</div>
           <div className="mt-1 text-xl font-semibold text-gray-900 dark:text-white">
-            {formatCurrency(resumen.totalDeuda)}
+            {formatear(resumen.totalDeuda)}
           </div>
         </div>
 
         <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
           <div className="text-sm text-gray-500 dark:text-gray-400">{t('cuentas.montoVencido')}</div>
           <div className="mt-1 text-xl font-semibold text-red-600 dark:text-red-400">
-            {formatCurrency(resumen.totalVencido)}
+            {formatear(resumen.totalVencido)}
           </div>
         </div>
 
         <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
           <div className="text-sm text-gray-500 dark:text-gray-400">{t('cuentas.pendientePago')}</div>
           <div className="mt-1 text-xl font-semibold text-blue-600 dark:text-blue-400">
-            {formatCurrency(resumen.totalPendiente)}
+            {formatear(resumen.totalPendiente)}
           </div>
         </div>
       </div>
@@ -468,10 +470,10 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
                     {cuenta.sale_id || '-'}
                   </td>
                   <td className="px-3 sm:px-6 py-4 text-sm text-gray-900 dark:text-white">
-                    {formatCurrency(cuenta.amount)}
+                    {formatear(cuenta.amount)}
                   </td>
                   <td className="px-3 sm:px-6 py-4 text-sm text-gray-900 dark:text-white">
-                    {formatCurrency(cuenta.balance)}
+                    {formatear(cuenta.balance)}
                   </td>
                   <td className="px-3 sm:px-6 py-4 text-sm text-gray-900 dark:text-white">
                     {instante(cuenta.due_date)}

@@ -7,7 +7,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import ModuleAccessDenied from '@/components/modules/ModuleAccessDenied';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
 import { Home, RefreshCw, QrCode } from 'lucide-react';
@@ -30,12 +30,33 @@ import { useDashboardRealtime } from '@/components/inicio/useDashboardRealtime';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
 import { supabase } from '@/lib/supabase/config';
 import { WebCommerceObservability } from '@/components/pos/pedidos-online/WebCommerceObservability';
-import { BranchBadge } from '@/components/inventario/BranchBadge';
+import { PageHeader, BranchBadgeActiva, EmptyState, clasesBoton } from '@/components/kit';
 import { useBranch } from '@/lib/context/BranchContext';
 import { usePermissionContext } from '@/hooks/usePermissionContext';
 import { veePanelCompleto } from '@/lib/dashboard/accesoPanel';
 import { EmployeeDashboard } from '@/components/inicio/EmployeeDashboard';
+import { TarjetaDatosEmpresa } from '@/components/inicio/TarjetaDatosEmpresa';
 import { useDesktopCatalog } from '@/lib/offline/useDesktopCatalog';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz } from '@/lib/utils/dateDisplay';
+
+/**
+ * Esqueleto de la primera carga (antes de montar o de tener organización) y
+ * del `Suspense`: cabecera y tres tarjetas. Un solo componente para los dos
+ * sitios, con `Skeleton` y el fondo `bg-canvas` del kit.
+ */
+function EsqueletoInicio() {
+  return (
+    <div className="min-h-screen space-y-4 bg-canvas p-4 sm:p-6">
+      <Skeleton className="h-10 w-48" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-24 rounded-xl" />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function InicioContent() {
   const searchParams = useSearchParams() ?? new URLSearchParams();
@@ -43,6 +64,8 @@ function InicioContent() {
   const moduleCode = searchParams.get('module');
   const { organization } = useOrganization();
   const { branchFilter, isLoading: branchLoading } = useBranch();
+  const { branches, canSelectAll } = useBranch();
+  const { timezone } = useFormatDate();
   const { toast } = useToast();
   const t = useTranslations('home');
   const locale = useLocale();
@@ -55,7 +78,7 @@ function InicioContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const [fechaHoy, setFechaHoy] = useState('');
+  const [errorCarga, setErrorCarga] = useState(false);
   const [activeModuleCodes, setActiveModuleCodes] = useState<string[] | undefined>(undefined);
   const [periodo, setPeriodo] = useState<PeriodoDashboard>('hoy');
   const [horas, setHoras] = useState<HorasDashboard | null>(null);
@@ -86,16 +109,26 @@ function InicioContent() {
   // se queda en skeleton hasta que el layout redirija a login.
   const rolResuelto = !!organization && resolvedOrganizationId === organization.id;
 
-  useEffect(() => {
-    setMounted(true);
-    setFechaHoy(
-      new Date().toLocaleDateString(locale, {
+  // «Hoy» en la zona de la organización (no en la del navegador): a las 8 p. m.
+  // en Bogotá el navegador de un usuario en Madrid ya dice «mañana». Solo tras
+  // montar, para no desalinear el HTML del servidor con el del cliente.
+  const fechaHoy = mounted
+    ? formatDateInTz(new Date(), timezone, {
+        locale,
         weekday: 'long',
         year: 'numeric',
         month: 'long',
         day: 'numeric',
       })
-    );
+    : '';
+
+  // Sin ninguna sucursal accesible el panel financiero se pintaría en ceros:
+  // se dice por qué (Figma D-sinsuc). El panel del empleado no depende de la
+  // sucursal (turno, tareas, notificaciones) y se sigue mostrando.
+  const sinSucursal = !branchLoading && branches.length === 0;
+
+  useEffect(() => {
+    setMounted(true);
     // Nombre del usuario desde cache de AppLayout (appLayout_userData_cache)
     // con fallback a Supabase auth si el cache aún no se ha poblado
     try {
@@ -162,9 +195,13 @@ function InicioContent() {
     try {
       const data = await inicioService.getDashboardData(organization.id, periodo, horas, fechasCustom, branchFilter);
       setDashboardData(data);
+      setErrorCarga(false);
     } catch (err) {
       console.error('Error cargando dashboard:', err);
       if (!silent) {
+        // La recarga silenciosa (realtime) conserva los últimos datos; la
+        // carga visible que falla muestra el estado de error con «Reintentar».
+        setErrorCarga(true);
         toast({
           title: t('common.error'),
           description: t('errorLoadingDashboard'),
@@ -206,22 +243,11 @@ function InicioContent() {
   }
 
   if (!mounted || !organization) {
-    return (
-      <div className="p-4 sm:p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <div className="animate-pulse space-y-4">
-          <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-48" />
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-24 bg-gray-200 dark:bg-gray-700 rounded-xl" />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+    return <EsqueletoInicio />;
   }
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="min-h-screen space-y-6 bg-canvas p-4 sm:p-6">
       {/* Alertas de error */}
       {error && (
         <Alert className="max-w-2xl mx-auto">
@@ -234,60 +260,53 @@ function InicioContent() {
         </Alert>
       )}
 
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-            <Home className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {greeting || t('welcome', { userName: '' })}
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">
-              {fechaHoy}
-            </p>
-            <BranchBadge className="mt-1.5" />
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {canSeeFinancialDashboard && (
-            <PeriodoSelector
-              value={periodo}
-              onChange={setPeriodo}
-              horas={horas}
-              onHorasChange={setHoras}
-              fechasCustom={fechasCustom}
-              onFechasCustomChange={setFechasCustom}
-            />
-          )}
-
-          <Link href="/marcar">
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-            >
-              <QrCode className="h-4 w-4 mr-2" />
+      {/* Cabecera del kit. `movil={false}`: el inicio es pantalla raíz y en
+          móvil conserva el MobileHeader de organización/sucursal; la cabecera
+          se dibuja también allí, como antes, en vez de publicar un modo página
+          con «← Volver». */}
+      <PageHeader
+        titulo={greeting || t('welcome', { userName: '' })}
+        subtitulo={<span className="inline-block first-letter:uppercase">{fechaHoy}</span>}
+        icono={Home}
+        movil={false}
+        acciones={
+          <>
+            <Link href="/marcar" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
+              <QrCode aria-hidden="true" className="size-4" strokeWidth={1.5} />
               {t('markShift')}
-            </Button>
-          </Link>
+            </Link>
+            {canSeeFinancialDashboard && (
+              <button
+                type="button"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}
+              >
+                <RefreshCw aria-hidden="true" className={cn('size-4', isRefreshing && 'animate-spin')} strokeWidth={1.5} />
+                {t('refresh')}
+              </button>
+            )}
+          </>
+        }
+        debajo={
+          <>
+            <BranchBadgeActiva />
+            {canSeeFinancialDashboard && (
+              <PeriodoSelector
+                value={periodo}
+                onChange={setPeriodo}
+                horas={horas}
+                onHorasChange={setHoras}
+                fechasCustom={fechasCustom}
+                onFechasCustomChange={setFechasCustom}
+              />
+            )}
+          </>
+        }
+      />
 
-          {canSeeFinancialDashboard && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="border-gray-300 dark:border-gray-700"
-            >
-              <RefreshCw className={cn('h-4 w-4 mr-2', isRefreshing && 'animate-spin')} />
-              {t('refresh')}
-            </Button>
-          )}
-        </div>
-      </div>
+      {/* Datos mínimos de la empresa (acceso v3, fase 7): solo a quien administra. */}
+      {rolResuelto && <TarjetaDatosEmpresa organizationId={organization?.id} permContext={permContext} />}
 
       {/* Onboarding para organizaciones nuevas */}
       <OnboardingBanner
@@ -305,13 +324,23 @@ function InicioContent() {
         // Rol aún sin resolver: un único skeleton neutro. No se elige panel
         // todavía para no pintar el de empleado a un administrador.
         <>
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3 animate-pulse">
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 sm:gap-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-[74px] sm:h-[86px] bg-gray-200 dark:bg-gray-700 rounded-xl" />
+              <Skeleton key={i} className="h-[74px] rounded-xl sm:h-[86px]" />
             ))}
           </div>
           <DashboardKPIs data={null} isLoading periodo={periodo} organizationId={organization?.id} horas={horas} fechasCustom={fechasCustom} branchFilter={branchFilter} />
         </>
+      ) : canSeeFinancialDashboard && sinSucursal ? (
+        <EmptyState
+          variante="sinSucursal"
+          accion={
+            canSelectAll
+              ? { etiqueta: t('panel.gestionarSucursales'), href: '/app/organizacion/sucursales' }
+              : undefined
+          }
+          className="rounded-xl border border-line bg-surface"
+        />
       ) : canSeeFinancialDashboard ? (
         <>
           {/* KPIs y Actividad dependen de `dashboardData`: son los únicos que
@@ -319,7 +348,15 @@ function InicioContent() {
               carga por su cuenta y se monta desde el principio, en paralelo,
               en vez de esperar a que termine la carga principal (antes eran
               dos oleadas de loaders: primero KPIs, después todo lo demás). */}
-          <DashboardKPIs data={isLoading ? null : (dashboardData?.kpis ?? null)} isLoading={isLoading} periodo={periodo} organizationId={organization?.id} horas={horas} fechasCustom={fechasCustom} branchFilter={branchFilter} />
+          {errorCarga && !isLoading ? (
+            <EmptyState
+              variante="error"
+              onReintentar={() => loadData()}
+              className="rounded-xl border border-line bg-surface"
+            />
+          ) : (
+            <DashboardKPIs data={isLoading ? null : (dashboardData?.kpis ?? null)} isLoading={isLoading} periodo={periodo} organizationId={organization?.id} horas={horas} fechasCustom={fechasCustom} branchFilter={branchFilter} />
+          )}
 
           {/* Alertas consolidadas de módulos */}
           <DashboardAlertas
@@ -370,18 +407,7 @@ function InicioContent() {
 export default function InicioPage() {
   return (
     <Suspense
-      fallback={
-        <div className="p-4 sm:p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-          <div className="animate-pulse space-y-4">
-            <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-48" />
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-24 bg-gray-200 dark:bg-gray-700 rounded-xl" />
-              ))}
-            </div>
-          </div>
-        </div>
-      }
+      fallback={<EsqueletoInicio />}
     >
       <InicioContent />
     </Suspense>

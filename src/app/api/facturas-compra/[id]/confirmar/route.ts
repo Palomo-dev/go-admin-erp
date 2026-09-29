@@ -4,7 +4,8 @@
  * nace por el neto a pagar (D2, D4), y si se pide la mercancía entra por kardex
  * con su costo (F1.3) y se crea el borrador del documento soporte.
  *
- * Body `{ recepcionar?: boolean = true, generar_ds?: boolean = false }`.
+ * Body `{ recepcionar?: boolean = true, generar_ds?: boolean = false, lotes? }`
+ * (`lotes`: lote y vencimiento por línea al recepcionar, inventario B8).
  * Permisos: `finance.create`, y además `inventory.create` si recepciona.
  */
 import { NextResponse } from 'next/server';
@@ -22,7 +23,7 @@ export const POST = withOrg(async (ctx, req, routeParams) => {
     const id = await idDeRuta(routeParams);
     await exigirPermisos(ctx, cuerpo.recepcionar ? ['finance.create', 'inventory.create'] : ['finance.create'], RUTA);
     await exigirDeLaOrg(ctx, 'invoice_purchase', id);
-    const resultado = await confirmarFacturaCompra(ctx, id, cuerpo.recepcionar, cuerpo.generar_ds);
+    const resultado = await confirmarFacturaCompra(ctx, id, cuerpo.recepcionar, cuerpo.generar_ds, cuerpo.lotes);
     return NextResponse.json({ resultado }, { headers: SIN_CACHE });
   } catch (err) {
     return respuestaError(RUTA, err);

@@ -18,12 +18,14 @@ import {
   type CreateReservationInput,
   type UpdateReservationInput,
 } from '@/components/pos/reservas-mesas';
-import { BranchBadge } from '@/components/inventario/BranchBadge';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { todayInTz } from '@/lib/utils/dateDisplay';
 
 export default function ReservasMesasPage() {
   const { organization } = useOrganization();
   const { branchFilter } = useBranch();
   const { toast } = useToast();
+  const { timezone } = useOrgTimezone();
 
   // Estado principal
   const [reservations, setReservations] = useState<RestaurantReservation[]>([]);
@@ -34,7 +36,8 @@ export default function ReservasMesasPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sourceFilter, setSourceFilter] = useState('all');
-  const today = new Date().toISOString().split('T')[0];
+  // Día calendario de la organización, no el día UTC (regla de fechas).
+  const today = todayInTz(timezone);
   const [dateFrom, setDateFrom] = useState(today);
   const [dateTo, setDateTo] = useState(today);
 
@@ -170,7 +173,7 @@ export default function ReservasMesasPage() {
 
   if (!organization) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-[calc(100vh-4rem)]">
+      <div className="min-h-[calc(100vh-4rem)] space-y-4 bg-canvas p-4 sm:space-y-6 sm:p-6 lg:p-8">
         <PageHeaderSkeleton />
         <StatsSkeleton count={4} />
         <CardListSkeleton cards={4} columns="1" />
@@ -181,10 +184,8 @@ export default function ReservasMesasPage() {
   // ── Render ─────────────────────────────────────────────────────────────
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <BranchBadge className="mb-3" />
-
-      {/* Header + filtros */}
+    <div className="min-h-screen space-y-6 bg-canvas p-4 sm:p-6">
+      {/* Header + filtros (la sucursal activa va en la cabecera: BranchBadgeActiva) */}
       <ReservasHeader
         search={search}
         onSearchChange={setSearch}

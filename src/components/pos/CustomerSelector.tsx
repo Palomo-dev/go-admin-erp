@@ -4,23 +4,26 @@ import { useCallback, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { BedDouble, UserPlus } from 'lucide-react';
 import { CustomerPicker, lineaSecundaria, type ClientePicker } from '@/components/kit';
+import type { PaginaEntidad } from '@/components/kit/selectorEntidadLogica';
 import { POSService } from '@/lib/services/posService';
 import { useOrganization, getCurrentBranchIdWithFallback } from '@/lib/hooks/useOrganization';
 import { ClienteFormDialog } from '@/components/shared/form-dialogs';
 import { OfflineCustomerDialog } from './OfflineCustomerDialog';
-import { Customer, CustomerFilter } from './types';
+import { Customer } from './types';
 import { supabase } from '@/lib/supabase/config';
 import { clienteDesdeHabitacion } from '@/lib/pos/venta/cliente';
+import { normalizarBusqueda, palabrasBusqueda } from '@/lib/clientes/busqueda';
 
 /**
  * Selector de cliente con la API de siempre (lo usan el POS, mesas, PMS y
  * nueva venta), dibujado con `CustomerPicker` del kit (paso 8 de POS-PLAN;
  * patrón `inventario/BranchBadge` → `kit/BranchBadgeActiva`).
  *
- * La búsqueda es la de antes, en el servicio y con la organización de la
- * sesión: clientes por nombre, correo, teléfono o documento (empresas con su
- * contacto principal) y huéspedes con la reserva en `checked_in` («Espacios
- * ocupados»). Crear abre el formulario completo (`ClienteFormDialog`) o, sin
+ * La búsqueda es la única de clientes (`POSService.buscarClientesPagina`: RPC
+ * `fn_clientes_buscar`, o el catálogo local sin red): sin tildes, todas las
+ * palabras, teléfono y documento por dígitos, por relevancia y con el total
+ * para «Mostrando 20 de N · Ver más» (empresas con su contacto principal).
+ * Además, huéspedes con la reserva en `checked_in` («Espacios ocupados»). Crear abre el formulario completo (`ClienteFormDialog`) o, sin
  * red en Desktop, el registro rápido local (`OfflineCustomerDialog`).
  */
 export interface OccupiedSpace {
@@ -51,6 +54,12 @@ interface CustomerSelectorProps {
   onOpenChange?: (open: boolean) => void;
   /** Atajo que se muestra en «Cambiar» (el POS pasa «F2» y lo registra). */
   atajo?: string;
+  /**
+   * Muestra «Ver» y «Editar» del cliente elegido (Figma `906:115573`,
+   * `906:115574`) y abre su ficha en una pestaña nueva, para no interrumpir la
+   * venta en curso. Solo lo activa el POS de venta; PMS y mesas no cambian.
+   */
+  accionesFichaEnPestanaNueva?: boolean;
 }
 
 type ClienteBusqueda = Customer & {
@@ -60,17 +69,28 @@ type ClienteBusqueda = Customer & {
 };
 
 /**
- * Clientes y espacios ocupados que coinciden con `term` (la búsqueda de
- * siempre, movida tal cual de este componente).
+ * Clientes (una página de la búsqueda única) y espacios ocupados que
+ * coinciden con `term`. Los espacios solo en la primera página.
  */
-async function buscarClientesYEspacios(term: string, organizationId: number): Promise<{ customers: ClienteBusqueda[]; spaces: OccupiedSpace[] }> {
+async function buscarClientesYEspacios(
+  term: string,
+  organizationId: number,
+  desde: number,
+): Promise<{ customers: ClienteBusqueda[]; total: number; spaces: OccupiedSpace[] }> {
   // Fase 4D: sin red en Desktop solo hay catálogo local (sin reservas ni
   // contactos de empresa, que necesitan Supabase).
   if (POSService.usesLocalCatalog()) {
-    return { customers: await POSService.searchCustomers({ search: term.trim() || undefined, status: 'active' }), spaces: [] };
+    const { filas, total } = await POSService.buscarClientesPagina(term.trim() || undefined, { desde });
+    return { customers: filas, total, spaces: [] };
+  }
+  const pagina = POSService.buscarClientesPagina(term.trim() || undefined, { desde });
+  if (desde > 0) {
+    const { filas, total } = await pagina;
+    return { customers: await conContactoPrincipal(filas as ClienteBusqueda[]), total, spaces: [] };
   }
 
   const spaces: OccupiedSpace[] = [];
+  const palabras = palabrasBusqueda(term);
   const { data: reservations, error: roomsError } = await supabase
     .from('reservations')
     .select(`
@@ -115,8 +135,8 @@ async function buscarClientesYEspacios(term: string, organizationId: number): Pr
       reservationSpaces.forEach((rs) => {
         const space = rs.spaces;
         const customerName = customer.full_name || '';
-        // Filtrar por término de búsqueda
-        if (term && !space.label.toLowerCase().includes(term.toLowerCase()) && !customerName.toLowerCase().includes(term.toLowerCase())) {
+        // Mismas reglas que la búsqueda única: sin tildes, todas las palabras.
+        if (palabras.length > 0 && !palabras.every((w) => normalizarBusqueda(`${space.label} ${customerName}`).includes(w))) {
           return;
         }
         spaces.push({
@@ -136,10 +156,12 @@ async function buscarClientesYEspacios(term: string, organizationId: number): Pr
   }
 
   // Clientes (siempre, incluso sin término de búsqueda)
-  const filter: CustomerFilter = { search: term.trim() || undefined, status: 'active' };
-  const results = (await POSService.searchCustomers(filter)) as ClienteBusqueda[];
+  const { filas, total } = await pagina;
+  return { customers: await conContactoPrincipal(filas as ClienteBusqueda[]), total, spaces };
+}
 
-  // Contactos principales de las empresas
+/** Contactos principales de las empresas de la página. */
+async function conContactoPrincipal(results: ClienteBusqueda[]): Promise<ClienteBusqueda[]> {
   const companyResults = results.filter((c) => c.customer_type === 'company');
   if (companyResults.length > 0) {
     const companyIds = companyResults.map((c) => c.id);
@@ -176,10 +198,23 @@ async function buscarClientesYEspacios(term: string, organizationId: number): Pr
       });
     }
   }
-  return { customers: results, spaces };
+  return results;
 }
 
-export function CustomerSelector({ selectedCustomer, onCustomerSelect, className, open, onOpenChange, atajo }: CustomerSelectorProps) {
+/** Abre una ruta de la app en una pestaña nueva, sin dar acceso a esta ventana. */
+function abrirEnPestanaNueva(ruta: string) {
+  window.open(ruta, '_blank', 'noopener');
+}
+
+export function CustomerSelector({
+  selectedCustomer,
+  onCustomerSelect,
+  className,
+  open,
+  onOpenChange,
+  atajo,
+  accionesFichaEnPestanaNueva,
+}: CustomerSelectorProps) {
   const t = useTranslations('posVenta.cliente');
   const { organization } = useOrganization();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -210,13 +245,17 @@ export function CustomerSelector({ selectedCustomer, onCustomerSelect, className
   });
 
   const buscar = useCallback(
-    async (texto: string, senal: AbortSignal): Promise<ClientePicker[]> => {
-      if (!organization?.id) return [];
-      const { customers, spaces } = await buscarClientesYEspacios(texto, organization.id);
-      if (senal.aborted) return [];
-      porId.current = new Map(customers.map((c) => [c.id, c]));
-      setEspacios(spaces);
-      return customers.map(aPicker);
+    async (texto: string, senal: AbortSignal, _filtros: readonly string[], desde: number): Promise<PaginaEntidad<ClientePicker>> => {
+      if (!organization?.id) return { items: [], total: 0 };
+      const { customers, total, spaces } = await buscarClientesYEspacios(texto, organization.id, desde);
+      if (senal.aborted) return { items: [], total: 0 };
+      if (desde === 0) {
+        porId.current = new Map(customers.map((c) => [c.id, c]));
+        setEspacios(spaces);
+      } else {
+        for (const c of customers) porId.current.set(c.id, c);
+      }
+      return { items: customers.map(aPicker), total };
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [organization?.id, t],
@@ -271,6 +310,10 @@ export function CustomerSelector({ selectedCustomer, onCustomerSelect, className
     </div>
   );
 
+  // Un cliente creado sin conexión todavía no tiene ficha en el servidor.
+  const idFicha = accionesFichaEnPestanaNueva && selectedCustomer && !selectedCustomer.pending_sync ? selectedCustomer.id : null;
+  const rutaFicha = idFicha ? `/app/clientes/${encodeURIComponent(idFicha)}` : null;
+
   return (
     <div className={className}>
       <CustomerPicker
@@ -282,6 +325,8 @@ export function CustomerSelector({ selectedCustomer, onCustomerSelect, className
           cambiarAbierto(false);
         }}
         onQuitar={() => onCustomerSelect(undefined, undefined)}
+        onVer={rutaFicha ? () => abrirEnPestanaNueva(rutaFicha) : undefined}
+        onEditar={rutaFicha ? () => abrirEnPestanaNueva(`${rutaFicha}/editar`) : undefined}
         onCrear={crear}
         abierto={abierto}
         onAbiertoChange={cambiarAbierto}

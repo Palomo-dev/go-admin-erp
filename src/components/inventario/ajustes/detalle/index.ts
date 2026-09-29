@@ -1,1 +1,0 @@
-export { AjusteDetalle } from './AjusteDetalle';

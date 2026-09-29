@@ -53,5 +53,8 @@ export {
 
 export { buildRasterImageCommand, isValidRaster, writeRasterImage } from './escposImage';
 
+export type { QuantityLine } from './quantity';
+export { formatQuantity, isMeasuredLine, itemsSummary, lineNamePrefix, linePriceDetail } from './quantity';
+
 export type { MoneyFormat } from './money';
 export { moneyFormatter } from './money';

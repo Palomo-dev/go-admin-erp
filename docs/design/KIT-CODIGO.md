@@ -83,6 +83,7 @@ dibuja: publica título, subtítulo y acción en el `MobileHeader Mode=page` del
 | `variante` | `'list' \| 'detail' \| 'form'` | `form` pinta «← Volver» con `volverA` |
 | `badge`, `miniatura` | `ReactNode` | solo `detail` |
 | `cargando` | `boolean` | la cabecera **no** se esqueletiza |
+| `progreso` | `{ actual, total, etiqueta? } \| null` | barra fina de avance bajo el subtítulo (carga por lotes del catálogo); se oculta al llegar al total |
 | `debajo` | `ReactNode` | fila bajo la cabecera (BranchBadge, pestañas); se ve también en móvil |
 | `movil` | `{ accion?, titulo?, subtitulo?, ocultarBarra? } \| false` | `false` fuera del shell |
 
@@ -226,14 +227,17 @@ const l = useListadoServidor({ filtros: ['estado', 'tipo'], camposOrden: ['nombr
 
 ### `RowActionsMenu` · `ActionSheet` · Figma `MenuItem 10:239`
 
-`AccionFila = { id, etiqueta, icono: LucideIcon, onSelect, destructiva?, separadorAntes?,
-deshabilitada?, motivo?, oculta? }`. El kit ordena: primero las normales, luego divisor y
+`AccionFila = { id, etiqueta, icono: LucideIcon, onSelect, descripcion?, destructiva?, separadorAntes?,
+deshabilitada?, motivo?, oculta? }`. `descripcion` es una segunda línea atenuada, solo para menús de
+cabecera («Importar ▾ › Desde un archivo · CSV o Excel»). El kit ordena: primero las normales, luego divisor y
 las destructivas en rojo (`prepararMenu`). Tope de 8 entradas. Una acción deshabilitada
 **muestra su motivo**; si no hay motivo, se oculta.
 
 - `RowActionsMenu`: `acciones`, `titulo` (registro), `orientacion` (`vertical` ⋮ en filas ·
   `horizontal` ⋯ en cabeceras), `tamano` (`sm` 32 · `md` 40), `lado` (`top` desde la barra
   masiva). Escritorio: menú alineado al borde derecho, 4 px. Móvil: abre `ActionSheet`.
+  Con `etiquetaBoton` (+ `iconoBoton`) el disparador es un botón secundario de 40 px con texto
+  y chevron («Importar ▾» del catálogo de productos) en lugar de «⋯».
 - `ActionSheet`: `abierto`, `onAbiertoChange`, `titulo`, `descripcion?`, `acciones`.
   Filas de 52 px con icono de 20.
 
@@ -271,7 +275,9 @@ subtítulo 13/18 (hasta 2 líneas), meta 12/16 atenuada, valor y badge a la dere
 Toda la tarjeta abre el detalle; en modo selección gana casilla y borde de marca de 2 px.
 
 Props: `icono`, `titulo`, `subtitulo?`, `meta?`, `valor?`, `estado?`, `onClick?`,
-`acciones?`, `seleccionable?`, `seleccionado?`, `onSeleccionChange?`.
+`acciones?`, `seleccionable?`, `seleccionado?`, `onSeleccionChange?`. `miniatura?` sustituye al
+icono por la foto o el avatar del registro (productos; `icono` pasa a ser opcional) e `insignias?` añade una
+fila de badges que envuelve bajo el texto (stock por sucursal, «3 var.»).
 
 Clientes móvil pasa su avatar de iniciales por `miniatura` (`<AvatarIniciales tamano="md" />`) y
 conserva su información (nombre, Persona/Empresa, documento, contacto, correo, teléfono), un dato
@@ -308,6 +314,8 @@ tarjeta.
 `StatusBadge estado="paid"` → «Pagada», éxito · suave. El tono sale de
 `kit/estadoTono.ts` (la tabla de SISTEMA-BADGES §4): acepta español o el valor en inglés de
 la BD, sin tildes ni mayúsculas, y los días de mora dentro de la etiqueta («Vencida 12 d»).
+`deleted` / «Eliminado» (baja lógica, p. ej. `products.status`) se pinta como «Anulada»:
+peligro · contorno.
 Props: `estado`, `etiqueta?`, `tamano` (`sm` 20 · `md` 24), `icono?`; `tono`/`apariencia`
 solo para excepciones documentadas en SISTEMA-BADGES.
 
@@ -485,6 +493,20 @@ numeración espejo de `fn_codigo_barras_construir`) y `src/lib/utils/etiquetasIm
 (plantillas, reparto en hojas, casilla de inicio, cantidad según stock). Tests en
 `src/lib/utils/__tests__/codigoBarras.test.ts` y `etiquetasImpresion.test.ts`.
 
+## Adenda 2026-09-24 — detalle y formulario de producto
+
+Pedidos por el detalle de producto (sub-pestañas) y el formulario único (impuestos,
+categorías adicionales, etiquetas y cifras con moneda). Aditivo: ningún contrato cambió.
+
+| Figma | Código | Qué hace |
+|---|---|---|
+| `MultiSelect` / `TaxMultiSelect` (`02 Componentes › Impuestos`) | `kit/MultiSelect.tsx` + `kit/multiSelectLogica.ts` | Chips con «×» en el disparador, panel con buscador sin tildes, casillas, «Crear “…”» opcional (`onCrear`), punto de color por opción. Teclado: ↑/↓, Enter, Escape, Retroceso quita el último chip. Textos por props (`placeholder`, `placeholderBusqueda`, `textoVacio`, `textoCrear`, `etiquetaQuitar`). Import directo: `@/components/kit/MultiSelect` |
+| `NumberInput` (prefijo `$` / sufijo `%`) | `kit/CampoNumero.tsx` + `kit/campoNumeroLogica.ts` | `valor` / `onValorChange(number \| null)` (vacío ≠ 0), coma o punto decimal, `decimales`, `minimo`, `maximo`, `prefijo` (símbolo de la moneda de la organización), `sufijo` («%», «días»), `tamano` sm 32 · md 40. Con `FormField` recibe `id` y `aria-*` |
+| `TabItem` en sub-pestañas | `kit/TabBar.tsx` | + `tamano="sm"` (32 px, texto 13) para las sub-pestañas dentro de una pestaña (Inventario › Stock · Lotes · Kardex · Seriales) |
+
+Pruebas: `src/components/inventario/productos/__tests__/productoLogica.test.ts` (filtro y
+alternancia del `MultiSelect`, conversión del `CampoNumero`).
+
 ## Adenda 2026-09-24 — asistente por pasos y diálogo adaptable (Importar productos · Meta)
 
 Pedidos por el rediseño de «Importar productos» (Figma `09-importar`) y «Meta y canales»
@@ -502,20 +524,6 @@ Pedidos por el rediseño de «Importar productos» (Figma `09-importar`) y «Met
 <PanelAdaptable abierto={abierto} onAbiertoChange={setAbierto} titulo="Meta y canales" icono={Share2}
   debajoCabecera={<TabBar id="meta" … />} pie={<Button variant="outline">Cerrar</Button>}>…</PanelAdaptable>
 ```
-
-## Adenda 2026-09-24 — detalle y formulario de producto
-
-Pedidos por el detalle de producto (sub-pestañas) y el formulario único (impuestos,
-categorías adicionales, etiquetas y cifras con moneda). Aditivo: ningún contrato cambió.
-
-| Figma | Código | Qué hace |
-|---|---|---|
-| `MultiSelect` / `TaxMultiSelect` (`02 Componentes › Impuestos`) | `kit/MultiSelect.tsx` + `kit/multiSelectLogica.ts` | Chips con «×» en el disparador, panel con buscador sin tildes, casillas, «Crear “…”» opcional (`onCrear`), punto de color por opción. Teclado: ↑/↓, Enter, Escape, Retroceso quita el último chip. Textos por props (`placeholder`, `placeholderBusqueda`, `textoVacio`, `textoCrear`, `etiquetaQuitar`). Import directo: `@/components/kit/MultiSelect` |
-| `NumberInput` (prefijo `$` / sufijo `%`) | `kit/CampoNumero.tsx` + `kit/campoNumeroLogica.ts` | `valor` / `onValorChange(number \| null)` (vacío ≠ 0), coma o punto decimal, `decimales`, `minimo`, `maximo`, `prefijo` (símbolo de la moneda de la organización), `sufijo` («%», «días»), `tamano` sm 32 · md 40. Con `FormField` recibe `id` y `aria-*` |
-| `TabItem` en sub-pestañas | `kit/TabBar.tsx` | + `tamano="sm"` (32 px, texto 13) para las sub-pestañas dentro de una pestaña (Inventario › Stock · Lotes · Kardex · Seriales) |
-
-Pruebas: `src/components/inventario/productos/__tests__/productoLogica.test.ts` (filtro y
-alternancia del `MultiSelect`, conversión del `CampoNumero`).
 
 ## Adenda 2026-09-24 — kit compartido de POS, cajas, ventas, facturas, CxC y CxP
 
@@ -610,6 +618,7 @@ El repo corre jest en `node` y no tiene `@testing-library/react` ni `jest-enviro
 pruebas cubren la lógica de presentación (archivos `*Logica.ts` y afines, sin React). La
 recomendación D9 de POS-PLAN (añadirlas solo para los archivos que lo pidan con docblock) sigue
 pendiente de la decisión del dueño; no se instaló nada.
+
 ## Adenda POS: CartTag, CartLine, ProductCard, CategoryBar (2026-09-24)
 
 Las cuatro piezas de venta del POS que `KIT-COMPARTIDO.md` dejaba pendientes (contrato de POS-PLAN
@@ -704,3 +713,133 @@ configuración 3, organización 2, inicio 2, chat 2, admin 2, shell 1.
   de `CampoFecha` con la misma estética; ninguna pantalla del pedido la necesitó.
 - `components/ui/date-picker.tsx` y `components/ui/calendar.tsx` siguen existiendo para esos
   módulos; cuando se rediseñen, se cambian por `CampoFecha` / `DateRangeButton`.
+
+## Selector de variantes y modificadores (2026-09-28)
+
+Figma `02 Componentes` › `VariantModifierDialog` **155:7980** (`Layout=desktop` 155:7746 · `Layout=sheet`
+155:7862). Frames de uso en `05 POS y ventas`: escritorio `158:27344` (instancia `158:28008`), hoja móvil
+`159:31608` (instancia `159:31735`), validación `198:14706` y lista sin atributos `198:14715`. Su descripción en
+Figma lo dice: «Sustituye a VariantSelectorDialog. Sheet en móvil».
+
+| Figma | Código | Contrato |
+|---|---|---|
+| `VariantModifierDialog` (desktop y sheet) | `kit/SelectorVariantes.tsx` + `selectorVariantesLogica.ts` | Controlado y de presentación. `producto: { nombre, imagen? }` (miniatura 56; sin foto, `MarcadorSinFoto`), `subtitulo?` (por defecto «Elige talla y color · 6 variantes» con `Intl.ListFormat`), `cargando`, `errorCarga: { mensaje, onReintentar }`, `atributos: { nombre, valores: { valor, elegido, existe, agotado? }[] }[]` + `onAtributo(nombre, valor)`, `lista?` (variantes sin atributos: filas radio con precio, «Sin precio» o «Agotado») + `onElegirVariante`, `resumen: { etiqueta, precio, stock?: disponible · agotado · sinControl }`, `grupos: { id, nombre, regla: uno · hasta N · varias, obligatorio, minimo?, opciones: { id, nombre, extra, elegida }[] }[]` + `onOpcion(grupo, opcion)`, `errorGrupo: { grupoId, mensaje }`, `cantidad` + `onCantidad` (sin `onCantidad` no hay `− n +`), `precioUnitario` (con extras; `null` = sin precio), `bloqueo: 'agotado' · 'sinPrecio' · 'sinVariante' · null`, `onAgregar`, `moneda` |
+| Botones por atributo (`brand-tint` + borde `brand` + `brand-deep` el elegido; `border-strong` el resto; opacidad 45 % la combinación que no existe) | idem | `radiogroup` por atributo, `radio` + `aria-checked` por valor. La combinación inexistente se ve atenuada como en Figma **pero se puede tocar**: salta a la variante que tiene ese valor (si se deshabilitara, con 40-Negro y 43-Azul la 43-Azul quedaría inalcanzable). Valor agotado: tachado y «· Agotado» para el lector de pantalla |
+| Resumen `bg-subtle` (SKU, punto de stock, precio H3) | idem | «4 disponibles en {sucursal}» (verde), «Agotado en {sucursal}» (rojo), «Solo hay 4 disponibles y pides 6» (ámbar, no bloquea: el cobro valida el stock), «Sin control de stock» |
+| Grupos de modificadores: insignia `Badge` advertencia «Obligatorio · elige 1» / neutra «Hasta 2»; filas con `Checkbox` 18 px | idem (`ui/checkbox`, `ui/badge` con `tono`) | Cada fila es un `label`: toda la fila marca. El aviso de 198:14706 es un `role="alert"` sobre el pie; el grupo queda `aria-invalid` y el foco va a su primera casilla |
+| Pie: cantidad 40 · 48 · 40 y `Button` primario «Agregar N · $ total» con `ShoppingCart` | idem (`clasesBoton`) | ↑/↓ en el campo de cantidad; Enter agrega. Al terminar de cargar el foco va a «Agregar» (Enter agrega sin buscar el botón). Deshabilitado con el motivo en `aria-describedby` |
+| Cabecera con miniatura | `kit/PanelAdaptable.tsx` prop **`miniatura`** (nueva, aditiva) | 56 × 56 `bg-subtle` en lugar del icono; con miniatura el título es H3 16/22 y la descripción Small 13/18 |
+
+La lógica no vive en el kit. `pos/VariantSelectorDialog.tsx` (mismo nombre y contrato de siempre, para mesas,
+PMS, envíos y «Agregar productos») carga variantes y modificadores y decide con `lib/pos/venta/modificadores.ts`:
+`estadoAtributos`, `varianteAlElegirValor`, `varianteInicial` y `bloqueoVariante` (nuevas) más las de L20. Props
+nuevas, opcionales: `sucursal: { filtro, nombre }` (stock por variante vía
+`POSService.getProductVariants(padre, { branchFilter })`, también sin conexión), `conCantidad` +
+`cantidadInicial` (la cantidad llega como tercer argumento de `onSelectVariant`) y `varianteInicialId` (el
+escáner leyó una variante de un producto con modificadores: abre con ella, B-06). Agotado = regla única
+`lib/pos/stockDisponible.ts` (`agotadoPorStock`), la misma de la tarjeta del catálogo.
+«Mesas: Plano |
+## Anexo de la auditoría de componentes faltantes (2026-09-28)«Mesas: Plano |
+«Mesas: Plano |
+Detalle y estado por página: `docs/design/AUDITORIA-COMPONENTES-FALTANTES-2026-09-28.md`.«Mesas: Plano |
+«Mesas: Plano |
+### Kit de receta — `src/components/kit/receta/`«Mesas: Plano |
+«Mesas: Plano |
+Figma «Componentes — Recetas y subsecciones» (`957:583020`); diseño en«Mesas: Plano |
+`docs/design/PRODUCTO-RECETAS-Y-SUBSECCIONES.md` §4. Se importa de `@/components/kit/receta` (tiene su propio«Mesas: Plano |
+`index.ts`; no pasa por `kit/index.ts`). Textos en el namespace `receta`. Hoy solo lo usa el formulario de«Mesas: Plano |
+producto (`inventario/productos/formulario/secciones/SeccionReceta.tsx`); el detalle del producto, la pantalla«Mesas: Plano |
+Recetas y Costos lo adoptan en los bloques de inventario (B5, B7).«Mesas: Plano |
+«Mesas: Plano |
+| Pieza | Contrato |«Mesas: Plano |
+|---|---|«Mesas: Plano |
+| `EditorReceta` | `valor: RecetaBorrador` + `onCambio`, `organizacionId`, `sucursal: { id, nombre }` (costo y existencias de esa sucursal), `unidades`, `excluirIds` (el producto y sus variantes no son ingredientes de sí mismos), `precioVenta` (margen), `formatearMoneda`, `tituloIngredientes`, `onCrearIngrediente(texto, agregar)` (alta rápida), `lateral` (a la derecha del costo), `soloLectura`, `idBase` |«Mesas: Plano |
+| `FilaIngrediente` | `ingrediente` + `onCambio` / `onQuitar`, `linea` (costo, conversión y existencia calculados en el servidor), `error`, `unidades`, `sucursalNombre`, `permitidoCostos`, formateadores, `layout: 'fila' \| 'tarjeta'` (tarjeta en móvil), `onFusionar`, `onCrearConversion(de, a)`, `onMover(±1)` (↑/↓ en el asa) y `arrastre` (ratón), `soloLectura`, `idBase` |«Mesas: Plano |
+| `ResumenCostoReceta` | `costo`, `cargando`, `error`, `sucursalNombre`, `unidadRinde`, `precioVenta` (margen), formateadores |«Mesas: Plano |
+| `SelectorAlcanceReceta` | `alcance: 'compartida' \| 'por_variante'` + `onAlcanceChange` (`SegmentedControl`), `variantes: { clave, nombre, estado }[]` (chips de estado por variante), `deshabilitado` |«Mesas: Plano |
+| `DialogoConversion` | `abierto` / `onAbiertoChange`, `organizacionId`, `de`, `a`, `unidades`, `ingrediente`, `onCreada`. Crea la conversión (y su inversa, opcional) con `unitConversionService`; no deja guardar entre tipos de unidad distintos |«Mesas: Plano |
+| `useCostoReceta(org, sucursal, borrador, ms = 400)` | `{ costo, cargando, error, recalcular }`: costo en el servidor (`recipeService.costo`) con espera y descarte de respuestas viejas |«Mesas: Plano |
+| `recetaLogica.ts` | tipos (`RecetaBorrador`, `IngredienteBorrador`, `CostoReceta`, `AlcanceReceta`…) y reglas puras (`recetaAPayload`, `unidadLimpia`…) |«Mesas: Plano |
+«Mesas: Plano |
+### Exportaciones nuevas en `kit/index.ts`«Mesas: Plano |
+«Mesas: Plano |
+- `RelatedLinkCard` (+ `RelatedLinkCardProps`, `TonoRelatedLink`): existía y lo importaban por ruta directa el«Mesas: Plano |
+  detalle de categoría y el de proveedor; ahora también sale del índice.«Mesas: Plano |
+- `SelectorVariantes` y su lógica (`selectorVariantesLogica`).«Mesas: Plano |
+«Mesas: Plano |
+### Corrección a una fila de arriba«Mesas: Plano |
+«Mesas: Plano |
+La fila de `ViewToggle` (sección «Cobro y post-venta, vista y selectores de tercero») dice «Mesas: Plano |
+Cuadrícula con las mismas props». Ya no es así: el dueño fijó el 2026-09-24 `SelectorVista` con texto (`868:31799`) + `SelectorDensidad` (`868:31832`) para Mesas«Mesas: Plano |
+(POS-UX-V2 §7.5; frame `870:98618`, instancias `917:116263` y `917:116278`). `SelectorDensidad` aún no existe en«Mesas: Plano |
+el kit (pendiente P2 de la auditoría).«Mesas: Plano |
+
+## Adenda 2026-09-28 — formulario de documento: venta, compra y orden de compra
+
+Piezas del formulario v2 de factura de venta (docs/design/FACTURA-VENTA-FORMULARIO-V2.md, §8) que
+comparten la factura de venta, la factura de compra y la orden de compra. Una sola implementación con
+variante `venta` · `compra`; se extendió lo que existía antes de crear nada. Textos en `kit.documentoEdicion`
+(4 idiomas). Ninguna pieza consulta Supabase ni calcula el negocio: los datos llegan por props y las
+funciones del dominio (`calcularTotal`, `buscar`, `onCrear`) las pasa la pantalla.
+
+| Figma | Código | Contrato |
+|---|---|---|
+| `LineaDocumentoEdicion` `1032:33591` (estados de la tabla, decisión 1) | `documento/DocumentoLineas.tsx` (extendido) + `documentoLineasLogica.ts` | Línea: `aviso` (fila en advertencia), `insignias: { texto, tono }[]`, `descripcionEditable` (ítem manual), `impuestosSeleccion: { ids, incluido }`, `detalleTotal`. Props: `impuestosDisponibles`, `impuestosMultiples`, `sinIncluidoPorLinea`, `avisoSinImpuesto`. `CambioLinea` suma `descripcion` e `impuestos`. `tonoLinea()` (el error manda sobre el aviso) |
+| `ImpuestosLinea` `1032:32779` | `documento/ImpuestosLinea.tsx` | `opciones` (impuestos de la organización, sin retenciones), `valor: { ids, incluido }`, `multiple` (venta sí, compra no: la RPC de compra guarda una tarifa), `sinIncluido`, `avisoSinImpuesto`. Popover con casillas o radios, «Incluido en el precio» y «Sin impuesto (excluir esta línea)»; ↑/↓ y Espacio |
+| `Diálogo · Agregar productos` `1042:34652` | `documento/AgregarProductosDialog.tsx` | `variante`, `destino` (`factura` · `orden`), `buscar(texto, { conStock, soloProveedor }, señal)`, `onAgregar`, `hayProveedor`, `formularioCrear({ texto, onCreado, onCancelar })`. Escáner (coincidencia exacta de SKU o código de barras), Enter agrega el primero, ↑/↓, lista o cuadrícula, «Listo (n agregados)», hoja en móvil (`PanelAdaptable`) con el nombre en su propio renglón. Descripciones en texto plano (`textoSinHtml`, `lib/utils/textoPlano.ts`) |
+| `Diálogo · Agregar ítem manual` `1042:134761` | `documento/DialogoItemManual.tsx` | `variante`, `moneda`, `impuestos`, `impuestosMultiples`, `sinIncluido`, `calcularTotal(item)` (vista previa con la regla del documento), `onAgregar({ descripcion, cantidad, precio, impuestos, incluido, nota })`. Foco en «Descripción», Enter en la nota agrega |
+| `QuickCustomerForm` · «Crear proveedor — formulario rápido» | `documento/FormularioRapidoTercero.tsx` | `variante` (`cliente` · `proveedor`), `texto` (lo escrito en el buscador), `onCrear(datos)` (el alta de la app), `onCreado`, `onMasDatos`, `mensajeError`. DV del NIT calculado con `nitCheckDigit` |
+| «Crear producto» (venta `1045:105410` · compra `1045:105970`) | `documento/FormularioRapidoProducto.tsx` | `variante`, `texto`, `moneda`, `impuestos`, `onCrear(datos)` (`fn_producto_guardar` en la pantalla), `onCreado` |
+| — | `documento/DialogoTextoLinea.tsx` | Subido de compras: nota de línea y seriales (uno por renglón) |
+| Chip de filtro que se prende | `documento/ChipAlternable.tsx` | `etiqueta`, `activo`, `onAlternar` (`aria-pressed`) |
+| `CustomerPicker` / `SupplierPicker` Layout=dialog (`1041:33841`) | `SelectorEntidad.tsx` + `selectorEntidadLogica.ts` (extendidos) | `filtros: { id, etiqueta, activoPorDefecto? }[]` (llegan a `buscar` como tercer argumento), `formularioCrear` (alta dentro de la misma capa, vuelve con el tercero elegido), `textoCrearNuevo`. `OpcionEntidad` suma `etiqueta` (Persona/Empresa) e `insignia` («Por cobrar $…» advertencia · «Al día» éxito). `ClientePicker` suma `tipo`, `contacto`, `saldoPorCobrar`, `alDia`, `plazoDias`; `ProveedorPicker` suma `tipo`, `alDia`, `creditDays`. Sin esas props, los selectores de siempre no cambian |
+| `DocumentHeader formulario` | `PageHeader` / `DocumentoCabecera` (extendidos) | `onVolver`: «←» pasa por la pantalla (salir con cambios) |
+| Estructura v2 (venta `1034:97025`, compra `1066:105465`) | `documento/FormularioDocumento.tsx` | `FormularioDocumentoLayout` (`cabecera`, `avisos`, `datos`, `tercero`, `lineas`, `complementos`, `resumen`, `pieMovil`, `dialogos`), `ResumenErrores` («Revisa n campos» con enlace a cada campo), `DialogoSalirConCambios` (Seguir editando · Salir sin guardar · Guardar borrador y salir), `useAvisoSalida`, `useAutoguardado({ activo, sucio, guardar, intervaloMs })`, `TarjetaAtajos` |
+
+Conectadas a sus datos (fuera del kit, `components/finanzas/documento/`): `ElegirCliente`, `ElegirProveedor`,
+`AgregarProductosDocumento`, `useImpuestosOrganizacion`, sobre `lib/services/documentos/edicionDocumento.ts`
+(búsqueda de productos con precio o costo vigente y stock de la sucursal, terceros sobre las RPC de los
+listados, altas rápidas con los servicios de siempre, formas de pago en una consulta).
+
+Pruebas: `kit/__tests__/edicionDocumento.test.ts` (lógica), `kit/__tests__/renderEdicionDocumento.test.tsx`
+(render), `src/__tests__/finanzas/documentos/edicionDocumentoServicio.test.ts` (servicio).
+
+## Adenda 2026-09-29 — barra inferior móvil (MobileTabBar): una sola regla
+
+Decisión aprobada por el dueño el 2026-09-29. Figma: nota de uso junto a `MobileTabBar` `57:3101`
+(`02 Componentes` › Navegación, nodo `1153:36194`) y 83 frames de 390 sin la barra.
+
+**Regla.** La barra inferior (Inicio · Ventas · Asistente · Alertas · Menú) se ve SOLO en Inicio y en
+las páginas principales del menú (las raíces del catálogo `CATALOGO_NAV`, sin cablear rutas). No se ve en:
+
+- detalles: manda la flecha «←» del `MobileHeader Mode=page`;
+- formularios (`…/nuevo`, `…/[id]/editar`);
+- flujos de pantalla completa: el POS (y el cobro, «Pesar» y demás, que viven dentro) y las páginas del
+  catálogo con `pantallaCompleta: true` (hoy Mesas y Check-in de membresías);
+- mientras una pieza pone su propia barra inferior fija: `BulkActionBar` en móvil, el pie del
+  `FormularioDocumentoLayout` (total y primario), `BarraCobroMovil` del POS («Cobrar»);
+- con el teclado abierto.
+
+| Pieza | Dónde | Contrato |
+|---|---|---|
+| Regla | `shell/header/cabeceraMovil.tsx` | `barraInferiorVisible({ pathname, pagina, barrasPropias, teclado })`: teclado o barra propia → oculta; `pagina.ocultarBarra` definido → manda (override explícito, `true` oculta y `false` muestra); `pagina.modo === 'pos'` → oculta; si no, `esRaizConBarra(pathname)` |
+| Raíces | `esRaizConBarra` + `PaginaNav.pantallaCompleta` (`lib/navigation/catalog.ts`) | Inicio y toda página del catálogo en modo raíz, menos los formularios y las marcadas `pantallaCompleta` |
+| Barras propias | `useBarraInferiorPropia(activa)` | Devuelve la ref del elemento fijo; mientras `activa`, cuenta como barra propia y registra su alto medido (ResizeObserver). Fuera del shell no hace nada |
+| Shell | `AppHeader.tsx` | Lee `useBarrasInferioresPropias()` y fija `--shell-barra-inferior` con `espacioInferior()`: la barra de la app (`calc(4rem + env(safe-area-inset-bottom))`), si no la propia más alta en px, si no `0px` |
+
+**Paginación tapada en móvil — causa y arreglo (una vez, en el shell).** El contenedor con scroll de
+`AppLayout` tenía `max-lg:pb-[var(--shell-barra-inferior)]`, pero las páginas iban dentro de un envoltorio
+`h-full`: el contenido que lo desborda no recibe el padding del contenedor, así que el final del listado
+(la `Pagination`) quedaba debajo de la barra fija. Ahora las páginas son hijas directas del contenedor con
+scroll; una página `h-full` mide el alto visible ya sin la barra. Con la `BulkActionBar` abierta el espacio
+inferior es el alto de esa barra, no el de la de la app. Vale para todos los listados (productos, facturas
+de venta y compra, clientes, cajas, ventas del POS, CxC, CxP, stock, movimientos, ajustes, traslados).
+
+**Qué no hacer.** No volver a poner `ocultarBarra` a mano en formularios, detalles ni selección múltiple:
+lo resuelve la regla. Una pieza nueva con barra fija abajo usa `useBarraInferiorPropia` y `bottom-0`, no
+`bottom-[var(--shell-barra-inferior)]`. Los flotantes que deben quedar por encima de cualquier barra
+(toasts, softphone, botón de acción de un detalle) sí usan `--shell-barra-inferior`.
+
+Pruebas: `src/components/shell/header/__tests__/barraInferior.test.tsx` (inicio y raíz visibles; detalle,
+formulario, POS, flujos, BulkActionBar abierta y teclado ocultan; override; espacio inferior; AppLayout sin
+envoltorio `h-full`).

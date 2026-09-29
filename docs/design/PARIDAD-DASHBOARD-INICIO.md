@@ -319,3 +319,328 @@ Capturas: `docs/design/figma/25-inicio-01-seccion.png`,
 `25-inicio-04-movil.png`, `25-inicio-05-panel-empleado.png`,
 `25-inicio-06-componentes.png`, `25-inicio-07-analitica-web-seccion.png`,
 `25-inicio-08-analitica-web-escritorio.png`.
+
+---
+
+## Tarjeta Ventas de hoy — 2026-09-24
+
+**Pedido del dueño.** La primera casilla del bloque «Hoy» (`TarjetaHoy · Caja`: «$ 1.284.500 ·
+Abierta · Abierta por Ana G. a las 8:05 · Ver caja») no escala: según Configuración › POS puede
+haber una caja por sucursal o una por cajero, y con 20 asesores habría 20 cajas. En su lugar va
+**lo vendido hoy, venga de donde venga** (POS, tienda web, facturas hechas a mano).
+
+Todo lo de abajo se verificó el 2026-09-23 contra la base (`jgmgphmzusbluqhuqihj`, solo
+`SELECT`, conteos y agregados) y contra el código. Sin nombres de organizaciones: se usan ids.
+
+### V.1 Lo que hay hoy en el código
+
+| Pieza | Dónde | Qué hace | Problema |
+|---|---|---|---|
+| KPI «Ventas Hoy» | `components/inicio/inicioService.ts:463-465, 553-554, 612-613, 817` | suma `get_sales_by_hour/day` + `get_web_orders_revenue_by_hour/day` | `get_sales_by_*` solo cuenta `status IN ('paid','completed')`: **deja fuera las ventas a crédito y todas las facturas hechas a mano** (nacen `pending`). `'completed'` ni siquiera es un estado válido (`sales_status_check` admite `draft, paid, partial, pending, void`) |
+| KPI «Facturas Hoy» | `inicioService.ts:465, 821` | `get_invoice_sales_by_*` | es un **conteo** de documentos (`COUNT(*)`), no un importe; mezcla facturas de POS y manuales |
+| Web no duplicada | RPC `get_web_orders_revenue_by_*` | filtra `sale_id IS NULL` | correcto: el pedido web pagado ya vive en `sales` (`source='web'`, `web_order_id`) y solo se suma aparte si no tiene venta |
+| Tendencia «Ventas del periodo» | `inicioService.ts:1020-1085`, montada en `app/app/inicio/page.tsx:339` | lee `sales` + `web_orders` **en el navegador** | ignora la sucursal del header (no recibe `branchFilter`) mientras los KPIs sí la aplican; trae filas (tope de 1.000 del cliente) en vez de agregar en la base |
+| Alertas («Por cobrar vencido», «Stock bajo») | `inicioService.ts:1089-1162`, `DashboardAlertas.tsx:67` | cartera `overdue`, stock ≤ mínimo | tampoco reciben la sucursal; umbral `> 1000` sin moneda |
+| Reporte de ventas | RPC `fn_reporte_ventas_resumen` (SECURITY DEFINER) | `status NOT IN ('cancelled','void')` y `DATE(sale_date)` | **otra regla** (cuenta las pendientes) y agrupa por el **día UTC**, prohibido por `docs/reglas-fechas-timezone.md`. El inicio y el reporte dan cifras distintas para el mismo día |
+| Moneda | `utils/Utils.ts:71` (`formatCurrency(value, currency = "COP")`), usado por `DashboardKPIs.tsx:233,818`, `DashboardTendencia.tsx:110,128,165`, `DashboardAlertas.tsx:160`, `KpiDetailDialog.tsx:270,329` | formatea siempre en COP | ya existe la fuente única: `useMonedaOrganizacion()` (`lib/hooks/useOrgCurrency.ts:53`) → `resolveOrgCurrency` (`lib/services/monedaOrganizacion.ts:110`); `FinanzasSection.tsx:104` y `CrmSection.tsx:96` ya la usan |
+| Quién ve el panel | `lib/dashboard/accesoPanel.ts:26` (roles 1, 2, 5) | decide en el **cliente** | el permiso `sales_management` lo tienen exactamente los roles 1, 2 y 5 (y 3 cargos): sirve para resolverlo en el servidor |
+
+No hay ninguna RPC ni vista que dé «ventas de hoy por canal» con una regla única (buscado en
+`pg_proc` y `information_schema.views`).
+
+### V.2 Cajas: los dos modos y los datos reales
+
+- **Dónde vive el modo:** `organization_settings` con `key = 'pos_cash_session_mode'`,
+  `settings->>'mode'` ∈ `branch` (default: una caja compartida por sucursal) | `user` (cada
+  cajero la suya). Código: `pos/configuracion/configuracionService.ts:131-139, 443-462`;
+  consumo en `pos/cajas/CajasService.ts:96-115` (caché de 30 s) y `:156-226`.
+- **Tabla:** `cash_sessions` (`organization_id`, `branch_id`, `opened_by`, `opened_at`,
+  `initial_amount`, `closed_at`, `final_amount`, `difference`, `status`). `pos_terminals` existe
+  (terminales por sucursal) pero la sesión de caja **no** apunta a una terminal.
+- **Configuración:** solo **2** organizaciones tienen la fila; las dos en `user`. Las demás caen
+  al default `branch`.
+
+| Dato (2026-09-23) | Valor |
+|---|---|
+| Organizaciones que han abierto caja alguna vez | 14 (99 sesiones) |
+| Cajas abiertas ahora | **14**, en 10 organizaciones |
+| Abiertas por organización | p50 = 1 · p90 = 2,2 · máx. = **4** |
+| Abiertas por sucursal | máx. 1 en modo `branch`; **3** en la única organización en modo `user` con cajas abiertas |
+| Simultáneas históricas (180 días) | p50 = 1 · p90 = 1,8 · máx. = 10 |
+| **Abiertas desde antes de hoy** | **13 de 14** — antigüedad en días: 462, 427, 77, 39, 23, 21, 13, 12, 12, 11, 11, 7, 6, 1 |
+| Cierres de los últimos 30 días con diferencia de arqueo ≠ 0 | 20 de 50 (todas por encima del 1 % del contado; mediana 100.250) |
+| Duración de una sesión cerrada | p50 = 7,2 h · p90 = 113 h |
+
+Conclusión: la casilla «Caja» mostraba **una** caja y hoy el caso real no es «muchas cajas del
+día» sino **cajas olvidadas abiertas** durante semanas (13 de 14) y **arqueos con diferencia**
+(40 %). Eso es lo accionable; el saldo de una caja concreta no lo es desde el inicio.
+
+### V.3 Canales de venta y cómo no contar doble
+
+| Canal | De dónde sale | Cuándo es «venta» | Evidencia |
+|---|---|---|---|
+| **POS** (incluye mesas) | `sales` `source='pos'` | al cobrarse (`paid`) o al registrarse a crédito (`pending` con cartera; `posService.ts:1411-1426` «Venta con deuda») | 1.970 `paid` + 271 `pending`; 212 de esas pendientes tienen factura y cartera; 52 ventas con `table_session_id` |
+| **Tienda web** | `sales` `source='web'` con `web_order_id` | cuando el pedido se paga y se convierte en venta | 642 pedidos `confirmed/paid` con `sale_id` = 644 ventas con `web_order_id` (índice único `uq_sales_web_order_viva`). Los 4.779 `expired` y 887 `cancelled` no son venta |
+| **Facturas hechas a mano** | `sales` `source='invoice'` (`NuevaFacturaForm.tsx:850-866`) + su `invoice_sales` | al emitirse; nacen `pending` aunque se vayan a pagar después | 673 `pending` + 2 `paid`. **Hoy el inicio no cuenta ninguna** |
+| **Facturas sin venta** (antiguas o cotización convertida) | `invoice_sales` con `sale_id IS NULL`, `document_type <> 'credit_note'`, `status NOT IN ('void','draft')` | al emitirse | 36 en total, 5 en los últimos 30 días; 3 de las 4 cotizaciones convertidas generaron factura **sin** venta |
+| **Hotel (PMS), CRM** | `sales` con `reservation_id` / `opportunity_id` | igual que POS | 2 con reserva. **Llegan con `source='pos'`** porque es el default de la columna (`posCrmLink.ts:121-137` no lo fija): el canal se deduce de la FK, no de `source` |
+| Gimnasio, parqueadero, transporte | `payments` (`membership_payments`, `parking_payments`) y `trip_tickets.sale_id` | hoy **no crean venta** | 0 pagos de membresía, 1 de parqueadero, 5 tiquetes sin `sale_id`. Fuera de la v1; entran solos el día que esos módulos creen `sales` |
+
+**La factura de una venta de POS o web no es otra venta.** `invoice_sales.sale_id` apunta a la
+venta: 3.400+ facturas con venta se descartan para el total y solo se suman las de `sale_id IS NULL`.
+
+Mezcla real de los últimos 30 días (todas las organizaciones):
+
+| Canal | Regla actual del inicio | Regla propuesta |
+|---|---:|---:|
+| POS | 25.289.730 (1.639) | 29.986.330 (1.851) |
+| Web | 27.757.370 (414) | 27.757.370 (414) |
+| Facturas (venta `source='invoice'`) | **0** | 56.640.700 (129) |
+| Facturas sin venta | — | 4.323.000 (5) |
+| **Bruto** | **53.047.100** | **118.707.400** |
+| Notas crédito | — | −1.407.100 (5) |
+| **Neto** | — | **117.300.300** |
+
+**El inicio muestra hoy el 45 % de lo vendido.** Las facturas manuales son el canal más grande
+del mes y no aparecen. Solo 3 organizaciones venden por más de un canal, así que el desglose es
+útil para pocas; por eso va compacto.
+
+### V.4 Regla canónica de «venta registrada»
+
+1. **Qué entra:** `sales` con `status IN ('paid','partial','pending')` —fuera `void` y `draft`—
+   más `invoice_sales` sin venta (`sale_id IS NULL`, no nota crédito, fuera `void`/`draft`), más
+   (red de seguridad) `web_orders` pagados o entregados **sin** venta y no cancelados/expirados.
+2. **Fecha:** `sales.sale_date` / `invoice_sales.issue_date`, recortada con el **día de la
+   organización** (`organizations.timezone`; hoy las 85 están en `America/Bogota`). Nunca
+   `DATE(ts)` ni `current_date`. Nadie usa horario operativo (`organization_settings.operating_hours`:
+   0 filas), así que «hoy» = día calendario en la zona de la organización; la RPC lo respeta si
+   algún día existe.
+3. **Sucursal:** la del header. `NULL` = «Todas». La web se atribuye a `web_orders.branch_id`
+   (NOT NULL), que pasa a la venta.
+4. **Bruto y neto:** bruto = suma de lo anterior. Devoluciones = notas crédito emitidas hoy
+   (`invoice_sales.document_type='credit_note'`, se guardan en negativo). La tarjeta muestra el
+   **neto** y, si hubo devoluciones, «incluye −$ X en devoluciones».
+5. **Número de ventas y ticket promedio:** n = filas que entran; ticket = bruto / n.
+6. **Comparación:** contra **el mismo momento** —misma hora local— de ayer y del mismo día de la
+   semana pasada. La RPC devuelve las dos; la tarjeta muestra una (pregunta 3).
+7. **Canal:** `web` si `web_order_id` o `source='web'`; `facturas` si `source='invoice'` o factura
+   sin venta; `hotel` si `reservation_id`; si no, `pos`. Solo se pintan los canales de módulos
+   activos (`organization_modules` vía `moduleManagementService`), nunca una lista fija.
+
+La **misma regla** se aplica a «Ventas del periodo» (tendencia), al diálogo de detalle, y debería
+aplicarse a `fn_reporte_ventas_resumen`. Si no, la tarjeta y la tendencia dirán cifras distintas
+con el periodo «Hoy».
+
+### V.5 Propuesta — la tarjeta
+
+`TarjetaVentasHoy` sustituye a `TarjetaHoy · Caja` en la primera posición del bloque «Hoy»:
+
+```
+Ventas de hoy                                  ↑ 12,4 % vs. ayer a esta hora
+$ 3.842.600
+86 ventas · ticket promedio $ 44.681
+POS $ 2.410.000 · Web $ 1.012.600 · Facturas $ 420.000
+                                                              Ver ventas →
+```
+
+- **Cifra:** neto del día en la moneda de la organización (código y decimales de
+  `useMonedaOrganizacion`), nunca «COP» escrito.
+- **Variación:** badge éxito/peligro con flecha; si la referencia es 0, «Primer día con ventas»
+  en neutro (sin «∞ %»).
+- **Desglose:** una línea, ordenada por importe, máximo 3 canales + «otros». Con un solo canal
+  activo no se pinta.
+- **Acción:** `Ver ventas` → listado de ventas filtrado por hoy y la sucursal activa.
+- **Ámbito:** subtítulo «Sucursal Norte» o «Todas las sucursales»; con «Todas» el desglose puede
+  ser por sucursal en vez de por canal (pregunta 4).
+- **Tono:** neutro siempre. Vender poco no es una alerta; el color lo lleva la variación.
+
+**Estados** (variantes del componente):
+
+| Estado | Qué se ve |
+|---|---|
+| `listo` | lo de arriba |
+| `cargando` | `Skeleton` con la forma de la tarjeta; cabecera intacta |
+| `sin ventas` | «$ 0 · Aún no hay ventas hoy» + «Ayer a esta hora: $ X» + `Ir al POS` si POS está activo, `Nueva factura` si no |
+| `error` | «No pudimos cargar las ventas» + `Reintentar`; el resto del bloque sigue |
+| `sin permiso` | **no se renderiza**: la RPC responde 403 y la casilla se omite, sin hueco |
+| `Todas` vs. una sucursal | mismo layout; cambia el subtítulo y, opcionalmente, el desglose |
+
+**Relación con «Ventas del periodo».** La tarjeta es siempre *hoy* y no obedece al selector de
+periodo; la tendencia sí. Con el periodo en «Hoy» ambas deben dar la **misma cifra** (misma RPC).
+En móvil ya existe una tarjeta de tendencia titulada «Ventas de hoy» (fila C.1): pasa a llamarse
+«Ventas del periodo» para no duplicar el nombre.
+
+### V.6 Qué pasa con la caja
+
+La información de cajas sale de la cifra principal y queda **como aviso**, solo cuando hay algo
+que hacer, con el mismo texto en los dos modos:
+
+| Condición | Casilla en «cosas por atender» | Tono | Acción |
+|---|---|---|---|
+| Cajas abiertas desde un día anterior (en la sucursal activa o en todas) | «3 cajas abiertas desde días anteriores · la más vieja, hace 12 días» | advertencia | `Revisar cajas` → `/app/pos/cajas` filtrado por abiertas |
+| Cierres de hoy/ayer con diferencia de arqueo por encima del umbral | «2 cierres con diferencia · −$ 100.250» | peligro | `Ver arqueos` |
+| Nada de lo anterior | no aparece | — | — |
+
+- En modo `user` el conteo es de cajas (una por cajero); en modo `branch`, de sucursales con caja
+  abierta. El texto dice «cajas» en ambos: no hace falta que el dueño sepa en qué modo está.
+- El umbral de diferencia se propone como **porcentaje** del contado (1 %) o valor configurable,
+  nunca un importe fijo sin moneda.
+- La fila de módulo «Ventas» conserva su badge «Caja abierta» → pasa a «N cajas abiertas».
+- A quien opera una caja (el cajero) su estado ya lo tiene en la cabecera del POS
+  (`MobileHeader` «Caja abierta · 8:02»); no se repite en el inicio.
+
+### V.7 Permisos
+
+La RPC exige `fn_assert_acceso_org(org)` **y** `fn_tiene_permiso(org, 'sales_management')`
+(roles 1, 2, 5 y 3 cargos lo tienen hoy, igual que `ROLES_PANEL_COMPLETO`). Sin permiso responde
+`42501` y la tarjeta no se pinta. Esto adelanta el «PASO 2» de `accesoPanel.ts`: el permiso se
+resuelve en el servidor, no en la lista de roles del cliente.
+
+### V.8 Cambios de backend necesarios (propuestos, **no aplicados**)
+
+1. **RPC nueva** `fn_inicio_ventas_hoy(p_organization_id int, p_branch_id int default null) returns jsonb`,
+   SECURITY DEFINER, `search_path = public, pg_temp`, `revoke all … from public, anon`,
+   `grant execute … to authenticated`. Devuelve
+   `{dia, zona, moneda, neto, bruto, devoluciones, num_ventas, ticket_promedio,
+   ref_ayer, ref_semana, por_canal: [{canal, total, n}], cajas: {abiertas_antes_de_hoy,
+   la_mas_vieja_dias, cierres_con_diferencia, diferencia_total}, calculado_en}`.
+   Una sola lectura de 8 días de `sales` con `FILTER` para hoy / ayer-misma-hora /
+   semana-misma-hora. Núcleo medido con `EXPLAIN (ANALYZE, BUFFERS)` en la organización con más
+   ventas (org 144, 1.250 ventas): **6,3 ms, 207 buffers, todo en caché**.
+2. **Índices** (aditivos): hoy `sales` no tiene índice por fecha (usa `idx_sales_cash_register` y
+   filtra todas las ventas de la organización) y `invoice_sales` tampoco:
+   `sales (organization_id, sale_date)` e
+   `invoice_sales (organization_id, issue_date) where sale_id is null`. Con 3.569 ventas en total
+   no urge; con una organización de 20 cajeros sí.
+3. **Unificar la regla** en `get_sales_by_hour/day` (quitar `'completed'`, sumar `partial` y
+   `pending`) o, mejor, que la tendencia y el diálogo llamen a una sola función por rango
+   (`fn_inicio_ventas_rango`) con la misma regla. Corregir `fn_reporte_ventas_resumen`
+   (`DATE(sale_date)` → día de la organización).
+4. **`source` correcto** al crear ventas desde el CRM y el PMS (`posCrmLink.ts:121-137`), o
+   deducir el canal por FK como en V.4.7.
+5. **Frontend:** `formatCurrency` sin default `"COP"` en el inicio → `useMonedaOrganizacion`;
+   pasar `branchFilter` a la tendencia y a las alertas.
+
+Borrador del núcleo (para la migración; no ejecutado como DDL):
+
+```sql
+-- dentro de fn_inicio_ventas_hoy, tras fn_assert_acceso_org y fn_tiene_permiso
+with p as (
+  select now() as ahora,
+         ((now() at time zone o.timezone)::date)::timestamp at time zone o.timezone as ini_hoy
+  from organizations o where o.id = p_organization_id
+), v as (
+  select case when s.web_order_id is not null or s.source = 'web' then 'web'
+              when s.source = 'invoice' then 'facturas'
+              when s.reservation_id is not null then 'hotel'
+              else 'pos' end as canal,
+         s.total, s.sale_date as ts
+  from sales s, p
+  where s.organization_id = p_organization_id
+    and (p_branch_id is null or s.branch_id = p_branch_id)
+    and s.status in ('paid','partial','pending')
+    and s.sale_date >= p.ini_hoy - interval '7 days' and s.sale_date < p.ahora
+  union all
+  select 'facturas', i.total, i.issue_date
+  from invoice_sales i, p
+  where i.organization_id = p_organization_id
+    and (p_branch_id is null or i.branch_id = p_branch_id)
+    and i.sale_id is null
+    and coalesce(i.document_type, 'invoice') <> 'credit_note'
+    and i.status not in ('void','draft')
+    and i.issue_date >= p.ini_hoy - interval '7 days' and i.issue_date < p.ahora
+)
+select sum(total) filter (where ts >= p.ini_hoy)                                   as bruto,
+       count(*)   filter (where ts >= p.ini_hoy)                                   as num_ventas,
+       sum(total) filter (where ts >= p.ini_hoy - interval '1 day'
+                            and ts <  p.ahora   - interval '1 day')                as ref_ayer,
+       sum(total) filter (where ts >= p.ini_hoy - interval '7 days'
+                            and ts <  p.ahora   - interval '7 days')               as ref_semana
+from v, p group by p.ini_hoy, p.ahora;
+```
+
+### V.9 Figma — pendiente por cupo
+
+El cupo de llamadas del MCP de Figma se agotó en la tercera llamada (dos de lectura), antes de
+escribir nada. **No se modificó el archivo.** Lo verificado para quien lo retome:
+
+- `TarjetaHoy` es `COMPONENT_SET 445:195385` (`Componentes — Inicio (Nuevo)`), propiedad `Tono`;
+  la casilla de caja es la variante `Tono=éxito` (`445:195325`), 212 × 152, con `Etiqueta`,
+  `Estado` (Badge), `Valor`, `Detalle`, `Acción` (Button ghost sm).
+- Instancias de `TarjetaHoy · Caja` a sustituir: escritorio listo `445:137185` (bloque `Hoy`
+  `447:72950`, instancia `447:72960`), móvil listo `448:205216` (`Hoy` `448:205300`, instancia
+  `448:205337`) y los frames de la sección «Inicio — Marcar turno (propuesta)» (`631:21838`,
+  `631:22016`, `631:22201`, `631:22386`, `631:22561`, `631:23131`, `631:23523`, `631:23929`).
+- **No hay frame de tablet** del inicio en la página `03 Navegación y shell`: hay que crearlo.
+- Textos con «COP» fijo: `447:73045`, `631:23143`, `631:23535` («POS + tienda web · frente a los
+  30 días anteriores · COP» → «Todas las ventas registradas · frente a los 30 días anteriores»),
+  `448:196684` y `448:205834` («Hoy · Sucursal Principal · COP»). El subtítulo de la tendencia
+  además debe dejar de decir «POS + tienda web».
+- Falta: componente `TarjetaVentasHoy` (variantes `listo`, `cargando`, `sin ventas`, `error`,
+  `todas las sucursales`), casilla de aviso de cajas (`TarjetaHoy Tono=advertencia` con
+  «3 cajas abiertas desde días anteriores»), reemplazo en escritorio/tablet/móvil, chequeo por
+  script y capturas `docs/design/figma/62-inicio-ventas-hoy-*.png`.
+
+### V.9b Decisión del dueño (2026-09-24): la tarjeta sigue el selector de periodo
+
+«No debería ser una tarjeta de ventas de *hoy*: que se base en el filtro de arriba (Hoy, Ayer,
+7 días…), que sea dinámica». Esto **reemplaza** el párrafo «Relación con Ventas del periodo»
+de V.5 y cambia la propuesta así:
+
+- **Nombre y alcance:** `TarjetaVentas` («Ventas» + etiqueta del periodo activo: «Hoy»,
+  «Ayer», «Últimos 7 días», «01/09 – 22/09»…). Obedece a `PeriodoSelector` (incluido
+  «Personalizado» y el filtro de horas) y a la sucursal del header, como los KPIs.
+- **Comparación:** contra el **periodo anterior equivalente** (Hoy → ayer a la misma hora;
+  7 días → los 7 anteriores; rango personalizado → el rango de igual duración inmediatamente
+  anterior). Es la misma lógica que ya usa «Ventas del periodo» («frente a los 30 días
+  anteriores»).
+- **Ubicación:** el bloque «Hoy · N cosas por atender» es estado *actual* (pendientes que no
+  dependen del periodo); una cifra que cambia con el filtro no pertenece ahí. La tarjeta pasa a
+  **encabezar la sección «Ventas del periodo»** (cifra, n.º de ventas, ticket promedio,
+  variación y desglose por canal encima de la gráfica), y el bloque «Hoy» queda solo con avisos:
+  cajas abiertas desde días anteriores, cierres con diferencia, por cobrar vencido, etc.
+- **Backend:** en vez de `fn_inicio_ventas_hoy`, una sola `fn_inicio_ventas_rango(p_org,
+  p_desde, p_hasta, p_branch, p_horas)` con la regla de V.4 que alimenta tarjeta, gráfica y
+  diálogo de detalle (así nunca dan cifras distintas). La parte de cajas se separa en una
+  función de avisos que no depende del periodo.
+- La pregunta 3 de V.10 queda resuelta por esta decisión.
+
+### V.9c Respuestas del dueño (2026-09-24) — reemplazan la regla de V.4
+
+1. **Solo cuenta lo pagado (criterio de caja).** Las ventas a crédito y las facturas sin pagar
+   **no** entran. La cifra es lo que efectivamente se cobró, en la **fecha del pago**: un abono
+   de hoy a una factura del mes pasado entra hoy, como corte del día. Fuente: `payments`
+   (`payment_date` en el día de la organización, `status` válido), atribuido al canal y a la
+   sucursal de la venta o factura que paga; menos los reintegros de devoluciones del periodo.
+   «Número de ventas» y «ticket promedio» se calculan sobre las ventas **pagadas por completo**
+   en el periodo (o se reemplazan por «n.º de cobros»; decidir al diseñar la tarjeta).
+2. **Comparación:** periodo anterior de igual duración (Hoy → ayer; Ayer → antier; 7 días → los
+   7 anteriores; y así). Ver V.9b.
+3. **«Todas las sucursales»:** desglose **por sucursal**. El desglose por canal (POS, tienda
+   web, facturas) se deja solo cuando hay una sucursal elegida y la organización vende por más
+   de un canal.
+4. **Las 62 ventas `pending` sin factura ni cartera** (revisadas: hoy son 59, 7 organizaciones,
+   la mayoría de org 120 entre julio y agosto): ninguna tiene pago, movimiento de stock ni
+   factura; casi todas sin cliente. Son cobros que no terminaron (flujo anterior a
+   `pos_checkout_v1`), no ventas. Con el criterio de caja **no cuentan**. Hay una del
+   2026-09-16 (org 140): verificar que el flujo actual ya no deja huérfanas.
+5. **Cajas de prueba:** las dos abiertas desde 2025 (org 2, sesiones 2 y 5) se cerraron el
+   2026-09-24 con `difference = 0` (sin asiento) y nota de cierre administrativo.
+6. **`fn_reporte_ventas_resumen` no se cambia** por ahora.
+
+### V.10 Preguntas para el dueño
+
+1. **Ventas a crédito y facturas pendientes de pago:** ¿cuentan como «venta de hoy»? La propuesta
+   dice sí (se vendió aunque no se haya cobrado); lo cobrado es otra cifra (caja / recaudo).
+2. **Fecha:** ¿la de la venta (`sale_date`, que en una factura manual puede ser anterior) o la
+   de registro (`created_at`)? Se propone la de la venta, como el reporte y la DIAN.
+3. **Referencia:** ¿«vs. ayer a esta hora» (lo que usa hoy el inicio) o «vs. el mismo día de la
+   semana pasada» (mejor para negocios con fin de semana fuerte)?
+4. **«Todas las sucursales»:** ¿desglose por canal o por sucursal?
+5. **62 ventas de POS en `pending` sin factura ni cartera** (7 organizaciones, 2,9 M en total, la
+   mayoría de julio-agosto de 2026): ¿son ventas reales o restos de un flujo que falló a mitad?
+   Con la regla propuesta cuentan.
+6. **Cajas abiertas hace más de un año** (2 sesiones, 462 y 427 días): ¿se cierran de oficio o se
+   dejan para que el aviso las haga visibles?
+7. ¿Se unifica ya `fn_reporte_ventas_resumen` con la misma regla, aunque cambie cifras que los
+   clientes han visto en el reporte?

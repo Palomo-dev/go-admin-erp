@@ -12,7 +12,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   AlertTriangle,
@@ -100,6 +100,22 @@ export function DetalleFacturaVenta({ id }: { id: string }) {
     void cargar();
   }, [cargar]);
 
+  // «Crear nota crédito» desde la vista de solo lectura del formulario v2
+  // (`?accion=nota-credito`): abre el diálogo una vez, si la regla lo permite.
+  const parametros = useSearchParams();
+  const pideNota = parametros?.get('accion') === 'nota-credito';
+  const [notaPedida, setNotaPedida] = useState(false);
+  useEffect(() => {
+    const fa = datos?.factura;
+    if (!pideNota || notaPedida || !fa) return;
+    setNotaPedida(true);
+    const permitidas = accionesFactura(
+      { status: fa.estado, total: fa.total, balance: fa.saldo, document_type: fa.tipoDocumento, sale_id: fa.saleId, einvoice_status: fa.fe.estado },
+      { ver: permisos.ver, crear: permisos.crear, anular: permisos.anular, aprobar: permisos.aprobar },
+    );
+    if (permitidas.has('nota_credito')) setNotaAbierta(true);
+  }, [pideNota, notaPedida, datos, permisos]);
+
   const f = datos?.factura;
   // Fechas en la zona de la sucursal de la factura (timestamptz → formatDateInTz).
   const { formatDate, formatDateTime, getToday, toDate } = useFormatDate(f?.branchId ?? null);
@@ -155,6 +171,8 @@ export function DetalleFacturaVenta({ id }: { id: string }) {
     nota: l.nota,
     seriales: l.seriales,
     cantidad: l.cantidad,
+    unidad: l.unidad ?? null,
+    decimalesCantidad: l.decimalesCantidad ?? null,
     precioUnitario: l.precioUnitario,
     descuento: l.descuento || null,
     impuestos: l.tarifa > 0 ? [{ nombre: l.nombreImpuesto ?? t('detalle.impuesto'), tarifa: l.tarifa, incluido: factura?.impuestosIncluidos ?? l.incluido }] : [],

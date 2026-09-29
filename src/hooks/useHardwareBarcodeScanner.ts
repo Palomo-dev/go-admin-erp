@@ -52,11 +52,22 @@ function stripFromActiveInput(code: string): void {
 }
 
 /**
+ * Clase de un diálogo que SÍ recibe escaneos: «Pesar» del POS (venta por peso
+ * en un paso, PRODUCTOS-POR-PESO-BASCULA.md §11). Escanear otro producto con
+ * «Pesar» esperando cancela la pesada pendiente y sigue con el nuevo
+ * (`decidirEscaneoConPesarAbierto`); antes el escaneo se perdía.
+ */
+export const CLASE_DIALOGO_ACEPTA_ESCANEO = 'pos-acepta-escaneo';
+
+/**
  * Con un diálogo abierto (variantes, cobro, caja) el escaneo no debe colarse en el carrito.
  * Exportada (L19 de docs/implementacion/POS-PLAN.md) para probarla con un documento simulado.
  */
 export function dialogOpen(doc: Pick<Document, 'querySelector'> = document): boolean {
-  return !!doc.querySelector('[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]');
+  const noAcepta = `:not(.${CLASE_DIALOGO_ACEPTA_ESCANEO})`;
+  return !!doc.querySelector(
+    `[role="dialog"][data-state="open"]${noAcepta}, [role="alertdialog"][data-state="open"]${noAcepta}`,
+  );
 }
 
 /**

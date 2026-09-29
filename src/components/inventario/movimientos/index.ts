@@ -1,4 +1,2 @@
-export { MovimientosHeader } from './MovimientosHeader';
-export { MovimientosStats } from './MovimientosStats';
-export { MovimientosFilters } from './MovimientosFilters';
-export { MovimientosTable } from './MovimientosTable';
+export { MovimientosPage } from './MovimientosPage';
+export { CeldaCantidad, CeldaDocumento, CeldaFecha, useAccionesMovimiento } from './piezas';

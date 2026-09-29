@@ -18,6 +18,7 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from '@/components/ui/use-toast';
 import { ToastAction } from '@/components/ui/toast';
 import { useTranslations } from 'next-intl';
+import { DialogoMotivo } from '@/components/kit';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { movimientosService, UnifiedMovement } from '@/lib/services/movimientosService';
@@ -37,6 +38,9 @@ export function EgresoDetalle({ id }: EgresoDetalleProps) {
   const { formatDate } = useFormatDate();
   const [movement, setMovement] = useState<UnifiedMovement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // Anular con motivo (DialogoMotivo del kit), no con confirm() + prompt() del navegador.
+  const [anulando, setAnulando] = useState(false);
+  const [anulandoOcupado, setAnulandoOcupado] = useState(false);
 
   const loadMovement = useCallback(async () => {
     setIsLoading(true);
@@ -65,16 +69,19 @@ export function EgresoDetalle({ id }: EgresoDetalleProps) {
     loadMovement();
   }, [loadMovement]);
 
-  const handleCancel = async () => {
+  const handleCancel = () => {
     if (!movement) return;
-    if (!confirm('¿Está seguro de anular este egreso?')) return;
+    setAnulando(true);
+  };
 
-    const reason = prompt('Motivo de la anulación:');
+  const confirmarAnulacion = async (reason: string) => {
+    if (!movement) return;
+    setAnulandoOcupado(true);
     try {
       // Id + fuente: un movimiento de banco se anula por su vía y nunca toca la caja.
       const result = await movimientosService.cancelMovement(
         { id: movement.id, source: movement.source },
-        reason || undefined,
+        reason,
       );
       if (result.success) {
         toast({ title: 'Éxito', description: 'Egreso anulado correctamente' });
@@ -84,6 +91,9 @@ export function EgresoDetalle({ id }: EgresoDetalleProps) {
       }
     } catch {
       toast({ title: 'Error', description: 'Error al anular', variant: 'destructive' });
+    } finally {
+      setAnulandoOcupado(false);
+      setAnulando(false);
     }
   };
 
@@ -311,6 +321,15 @@ Notas: ${movement.notes || 'N/A'}
           </Card>
         </div>
       </div>
+      <DialogoMotivo
+        abierto={anulando}
+        onAbiertoChange={(v) => !v && !anulandoOcupado && setAnulando(false)}
+        titulo={t('anular.egreso.titulo')}
+        descripcion={t('anular.descripcion')}
+        textoConfirmar={t('anular.egreso.boton')}
+        cargando={anulandoOcupado}
+        onConfirmar={(motivo) => void confirmarAnulacion(motivo)}
+      />
     </div>
   );
 }

@@ -17,6 +17,8 @@
  * fuente; son la misma cuenta que devuelve `cuentasDelCobro`.
  */
 
+import { totalACobrar } from '@/lib/pos/peso/cobroRedondeo';
+
 /** Totales con impuestos que calcula el diálogo (`calculateCartTotals`). */
 export interface TotalesCalculadosCobro {
   subtotal: number;
@@ -36,6 +38,12 @@ export interface EntradaCuentasCobro {
   tipAmount: number;
   shippingFee: number;
   totalPaid: number;
+  /**
+   * Carrito con líneas por peso o medida: el total a cobrar se redondea a los
+   * decimales de la moneda (la línea guarda el importe exacto; decisión 3 del
+   * dueño, `@/lib/pos/peso/cobroRedondeo`). Sin él, todo igual que antes.
+   */
+  decimalesRedondeo?: number | null;
 }
 
 export interface CuentasCobro {
@@ -55,9 +63,10 @@ export function baseDelCobro(calculatedTotals: TotalesCalculadosCobro, cart: Car
     : (calculatedTotals.finalTotal > 0 ? calculatedTotals.finalTotal : cart.total);
 }
 
-export function cuentasDelCobro({ calculatedTotals, cart, tipAmount, shippingFee, totalPaid }: EntradaCuentasCobro): CuentasCobro {
+export function cuentasDelCobro({ calculatedTotals, cart, tipAmount, shippingFee, totalPaid, decimalesRedondeo }: EntradaCuentasCobro): CuentasCobro {
   const baseTotal = baseDelCobro(calculatedTotals, cart);
-  const cartTotal = baseTotal + tipAmount + shippingFee;
+  const exacto = baseTotal + tipAmount + shippingFee;
+  const cartTotal = decimalesRedondeo === null || decimalesRedondeo === undefined ? exacto : totalACobrar(exacto, decimalesRedondeo);
   const remaining = Math.max(0, cartTotal - totalPaid);
   const change = Math.max(0, totalPaid - cartTotal);
   const canComplete = totalPaid >= cartTotal;

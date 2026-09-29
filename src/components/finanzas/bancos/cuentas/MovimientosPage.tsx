@@ -4,9 +4,16 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { 
-  ArrowLeft, ArrowRightLeft, Plus, RefreshCw, Upload, 
-  Download, Filter, Search, DollarSign, Calendar 
+import {
+  ArrowLeft,
+  ArrowRightLeft,
+  Plus,
+  RefreshCw,
+  Upload,
+  Download,
+  Filter,
+  DollarSign,
+  Calendar,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,6 +29,7 @@ import { formatMoneda } from '@/lib/utils/moneda';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { esEntradaBancaria, estaConciliado } from '@/lib/finanzas/movimientoBancario';
 import { useTranslations } from 'next-intl';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 interface MovimientosPageProps {
   accountId: string;
@@ -291,15 +299,13 @@ export function MovimientosPage({ accountId }: MovimientosPageProps) {
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardContent className="p-4">
           <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Buscar por descripción o referencia..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 dark:bg-gray-900 dark:border-gray-600"
-              />
-            </div>
+            <SearchInput
+              value={searchTerm}
+              onChange={setSearchTerm}
+              onValueChange={setSearchTerm}
+              placeholder="Buscar por descripción o referencia..."
+              className="flex-1"
+            />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-full md:w-48 dark:bg-gray-900 dark:border-gray-600">
                 <Filter className="h-4 w-4 mr-2" />

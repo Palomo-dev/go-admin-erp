@@ -31,6 +31,19 @@ export interface PendingAction {
   preview?: ActionPreview;
 }
 
+/**
+ * Cómo acabó una propuesta confirmada. La tarjeta se queda en su sitio y
+ * cambia de estado; antes desaparecía y el desenlace llegaba como un mensaje
+ * con ✅ o ❌ suelto en el hilo, desligado de lo que se confirmó.
+ */
+export interface ActionOutcome {
+  ok: boolean;
+  message: string;
+  /** Para "Ver <entidad>" cuando el servidor devuelve a dónde ir. */
+  entity?: { type: string; id: string | number; url?: string } | null;
+  undoAvailable?: boolean;
+}
+
 /** Pregunta con opciones del asistente (estilo A/B/C/Otro). */
 export interface PendingQuestion {
   question: string;

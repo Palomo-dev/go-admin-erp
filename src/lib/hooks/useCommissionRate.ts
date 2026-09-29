@@ -17,7 +17,7 @@ import { resolverTasaComision } from '@/lib/services/comisiones/tasaComision';
  * 2. Tasa general de la organización vigente hoy (salesperson_id IS NULL)
  * 3. 0 (sin comisión)
  *
- * Lo usan: NuevaFacturaForm, CheckoutDialog (POS), pedidosService,
+ * Lo usan: FormularioFacturaVenta, CheckoutDialog (POS), pedidosService,
  * FacturasCompraService y commissionService (CRM).
  */
 export function useCommissionRate() {

@@ -31,7 +31,8 @@ import categoryService, {
   type ConexionesCategoria,
   type ProductoDeCategoria,
 } from '@/lib/services/categoryService';
-import { accionesDeCategoria, mensajeErrorCategoria } from './accionesCategoria';
+import { accionesDeCategoria, mensajeErrorCategoria, segunPermisos } from './accionesCategoria';
+import { usePermisosCatalogo } from './usePermisosCatalogo';
 import CategoryRulesCard from './CategoryRulesCard';
 import { EliminarCategoriaDialog } from './EliminarCategoriaDialog';
 import { MoverCategoriaDialog } from './MoverCategoriaDialog';
@@ -67,6 +68,7 @@ export function DetalleCategoria({ uuid }: { uuid: string }) {
   const n = useFormatoEntero();
   const localeIntl = useLocaleIntl();
   const router = useRouter();
+  const permisos = usePermisosCatalogo();
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id ?? null;
@@ -272,7 +274,7 @@ export function DetalleCategoria({ uuid }: { uuid: string }) {
   }
 
   // ── Listo ────────────────────────────────────────────────────────────────
-  const acciones = accionesDeCategoria(categoria, {
+  const acciones = segunPermisos(accionesDeCategoria(categoria, {
     agregarSubcategoria: () => router.push(RUTAS_CATEGORIAS.nueva(categoria.id)),
     mover: () => setMoverAbierto(true),
     moverARaiz: () => void mover(null).catch(() => undefined),
@@ -281,9 +283,15 @@ export function DetalleCategoria({ uuid }: { uuid: string }) {
     alternarActiva: () => void alternarActiva(),
     copiarId: () => void copiarId(),
     eliminar: () => setEliminarAbierto(true),
-  }, t);
+  }, t), permisos);
   const accionesMovil = [
-    { id: 'editar', etiqueta: t('acciones.editar'), icono: Pencil, onSelect: () => router.push(RUTAS_CATEGORIAS.editar(categoria.uuid)) },
+    {
+      id: 'editar',
+      etiqueta: t('acciones.editar'),
+      icono: Pencil,
+      onSelect: () => router.push(RUTAS_CATEGORIAS.editar(categoria.uuid)),
+      oculta: !permisos.editar,
+    },
     ...acciones.filter((a) => a.id !== 'copiar-id'),
   ];
 
@@ -336,13 +344,15 @@ export function DetalleCategoria({ uuid }: { uuid: string }) {
               <Package aria-hidden="true" className="size-4" strokeWidth={1.5} />
               {t('detalle.verNProductos', { count: categoria.productos, n: n(categoria.productos) })}
             </Link>
-            <Link
-              href={RUTAS_CATEGORIAS.editar(categoria.uuid)}
-              className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-action px-4 text-sm font-medium text-fg-on-brand hover:bg-brand-action-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
-            >
-              <Pencil aria-hidden="true" className="size-4" strokeWidth={1.5} />
-              {t('acciones.editar')}
-            </Link>
+            {permisos.editar && (
+              <Link
+                href={RUTAS_CATEGORIAS.editar(categoria.uuid)}
+                className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-action px-4 text-sm font-medium text-fg-on-brand hover:bg-brand-action-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+              >
+                <Pencil aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                {t('acciones.editar')}
+              </Link>
+            )}
             <RowActionsMenu orientacion="horizontal" tamano="md" titulo={categoria.name} acciones={acciones} />
           </>
         }

@@ -17,6 +17,9 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { zonaHorariaOrganizacion } from '@/lib/services/crm/voiceAgent/cumplimiento';
+import { wallTimeToInstant } from '@/lib/utils/dateCore';
+import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -317,15 +320,59 @@ export async function createTask(ctx: ToolContext, data: CreateTaskInput): Promi
 
 // ─── Tool: book_meeting ──────────────────────────────────────────────────────
 
+/**
+ * Inicio de la reunión tal como lo manda el modelo → instante.
+ *
+ * Con desfase o `Z` (`2026-10-02T10:00:00-05:00`) se respeta tal cual. Sin
+ * desfase (`2026-10-02T10:00`, `2026-10-02 10:00`) es la hora de pared de la
+ * ORGANIZACIÓN, no la del servidor: el ws-server corre en UTC y `Date.parse`
+ * de una hora sin zona la leía como UTC, con lo que «las 10» quedaban a las
+ * 5 de la mañana en Colombia. Devuelve `null` si no se entiende.
+ */
+export function resolverInicioReunion(valor: string | null | undefined, zona: string): Date | null {
+  const texto = (valor ?? '').trim();
+  if (!texto) return null;
+  const conZona = /(Z|[+-]\d{2}:?\d{2})$/i.test(texto);
+  if (conZona) {
+    const t = Date.parse(texto);
+    return Number.isFinite(t) ? new Date(t) : null;
+  }
+  const m = texto.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{1,2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?$/);
+  if (!m) return null;
+  const hora = Number(m[2]);
+  const minuto = Number(m[3]);
+  if (hora > 23 || minuto > 59) return null;
+  const inst = wallTimeToInstant(m[1], `${String(hora).padStart(2, '0')}:${m[3]}:${m[4] ?? '00'}`, zona);
+  return Number.isFinite(inst.getTime()) ? inst : null;
+}
+
+/**
+ * Agenda la reunión en `calendar_events`.
+ *
+ * Causa raíz de «agendar falla» (2026-09-29, reproducido en la base en una
+ * transacción revertida): el INSERT mandaba `status: 'scheduled'` y el CHECK
+ * real `calendar_events_status_check` solo admite `confirmed`, `tentative` y
+ * `cancelled` → 23514 en TODAS las llamadas; el agente recibía el error y no
+ * podía agendar nunca. `meetingsService.createMeeting` (ficha 360) ya usaba
+ * `confirmed`. Además: la zona salía cableada a Bogotá y una hora sin desfase
+ * se interpretaba en UTC (ver `resolverInicioReunion`).
+ */
 export async function bookMeeting(
   ctx: ToolContext,
   args: { start_at: string; duration_minutes?: number; title?: string; notes?: string }
 ): Promise<ToolResult> {
-  const start = Date.parse(args.start_at);
-  if (!Number.isFinite(start)) return { success: false, error: 'Fecha de inicio inválida' };
+  const zona = await zonaHorariaOrganizacion(ctx.supabase, ctx.orgId);
+  const inicio = resolverInicioReunion(args.start_at, zona);
+  if (!inicio) {
+    return {
+      success: false,
+      error: 'Fecha de inicio inválida: usa ISO 8601 con desfase, por ejemplo 2026-10-02T10:00:00-05:00',
+    };
+  }
+  const start = inicio.getTime();
   if (start < Date.now()) return { success: false, error: 'La reunión no puede ser en el pasado' };
 
-  const minutes = Math.min(Math.max(args.duration_minutes ?? 30, 15), 180);
+  const minutes = Math.min(Math.max(Number(args.duration_minutes) || 30, 15), 180);
   const endIso = new Date(start + minutes * 60 * 1000).toISOString();
 
   let assignedTo: string | null = null;
@@ -351,22 +398,29 @@ export async function bookMeeting(
       start_at: new Date(start).toISOString(),
       end_at: endIso,
       all_day: false,
-      timezone: 'America/Bogota',
+      timezone: zona,
       assigned_to: assignedTo,
       customer_id: customerId,
       event_type: 'meeting',
-      status: 'scheduled',
-      metadata: { source: 'voice_agent', voice_agent_call_id: ctx.voiceAgentCallId ?? null },
+      // CHECK real: confirmed | tentative | cancelled (verificado por MCP).
+      status: 'confirmed',
+      metadata: {
+        source: 'voice_agent',
+        voice_agent_call_id: ctx.voiceAgentCallId ?? null,
+        opportunity_id: ctx.opportunityId ?? null,
+      },
     })
     .select('id, start_at, end_at')
     .single();
   if (evError) return { success: false, error: evError.message };
 
-  if (ctx.opportunityId) {
+  const cuando = formatDateTimeInTz(new Date(start), zona, { locale: 'es-CO' });
+  const relatedId = ctx.opportunityId ?? customerId;
+  if (relatedId) {
     await logActivity(ctx, {
-      relatedType: 'opportunity',
-      relatedId: ctx.opportunityId,
-      notes: `Reunión agendada por el agente IA para ${new Date(start).toISOString()}.`,
+      relatedType: ctx.opportunityId ? 'opportunity' : 'customer',
+      relatedId,
+      notes: `Reunión agendada por el agente IA para el ${cuando} (${zona}).`,
       outcome: 'meeting_booked',
       metadata: { calendar_event_id: (event as { id: string }).id },
     });
@@ -374,8 +428,8 @@ export async function bookMeeting(
 
   return {
     success: true,
-    data: event,
-    say: 'Listo, la reunión quedó agendada. Le llegará la confirmación.',
+    data: { ...(event as Record<string, unknown>), local: cuando, timezone: zona },
+    say: `Listo, la reunión quedó agendada para el ${cuando}.`,
   };
 }
 
@@ -615,10 +669,14 @@ export const VOICE_AGENT_TOOL_DEFINITIONS: ChatToolDefinition[] = [
     },
     required: ['title'],
   }),
-  fn('book_meeting', 'Agenda una reunión con el vendedor en la fecha y hora acordadas.', {
+  fn('book_meeting', 'Agenda una reunión (demo) con el vendedor en la fecha y hora que el cliente aceptó. Confirma antes el día y la hora en voz alta.', {
     type: 'object',
     properties: {
-      start_at: { type: 'string', description: 'Inicio en ISO 8601 con zona horaria' },
+      start_at: {
+        type: 'string',
+        description:
+          'Inicio en ISO 8601 CON el desfase de la zona horaria indicada en las instrucciones, p. ej. 2026-10-02T10:00:00-05:00. Calcúlalo a partir de la fecha y hora actuales que te dieron, nunca de tu conocimiento.',
+      },
       duration_minutes: { type: 'number' },
       title: { type: 'string' },
       notes: { type: 'string' },

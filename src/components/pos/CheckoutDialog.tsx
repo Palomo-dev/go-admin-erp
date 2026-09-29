@@ -1,21 +1,14 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { FileCheck2, CheckCircle, Banknote, User, Wallet, Plus, Trash2, X, Percent, Truck, QrCode, Loader2 } from 'lucide-react';
+import { FileCheck2, CheckCircle, Banknote, User, Wallet, Plus, Trash2, X, Percent, Truck, QrCode, Loader2, TriangleAlert } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogFooter,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogAction,
-  AlertDialogCancel,
-} from '@/components/ui/alert-dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { clasesBadgeTono } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { POSService } from '@/lib/services/posService';
 import { supabase } from '@/lib/supabase/config';
+import { ilikeAnyOf } from '@/lib/utils/postgrestFilters';
 import { useCommissionRate } from '@/lib/hooks/useCommissionRate';
 import { PrintService, BusinessInfo, CashierInfo } from '@/lib/services/printService';
 import { PrintJobsService } from '@/lib/services/printJobsService';
@@ -47,10 +40,12 @@ import { isDesktop } from '@/lib/utils/desktop';
 import { newSaleId, ticketSaleNumber } from '@/lib/offline/salesOutbox';
 import { useTranslations } from 'next-intl';
 import { codigoErrorCobro, detalleErrorCobro } from '@/lib/pos/erroresCobro';
+import { esErrorMembresiaSinCliente } from '@/lib/pos/venta/membresias';
 import { useLineasSinImpuesto } from '@/hooks/useLineasSinImpuesto';
 import { AvisoSinImpuesto } from '@/components/shared/AvisoSinImpuesto';
 // Lógica pura del cobro extraída LITERAL (POS-PLAN §2.6 L41–L52, paso 1):
 import { cuentasDelCobro } from '@/lib/pos/venta/cobro/cuentasCobro';
+import { camposCantidadImpresa, esMedido } from '@/lib/pos/peso/modoVenta';
 import { actualizarEntradaPago, entradaDePagoNueva, pagosDelSobre, pagosParaImpresion, puedeQuitarPagos, quitarEntradaPago } from '@/lib/pos/venta/cobro/pagosCobro';
 import { faltaParaEntrada, montosDeEntrada, muestraMontosRapidos } from '@/lib/pos/venta/cobro/montosRapidos';
 import { PORCENTAJES_PROPINA, baseDePropina, meserosDesdeMiembros, propinaTopada, topePropina } from '@/lib/pos/venta/cobro/propinaCobro';
@@ -61,7 +56,7 @@ import { comprobarStockReceta, debeConfirmarStock } from '@/lib/pos/venta/cobro/
 import { AVISO_SIN_IMPRESORA_CAJA, AVISO_VENTA_SIN_SUCURSAL, PREFIJO_ERROR_TICKET, lanzarTicketYCajon, planPostVenta } from '@/lib/pos/venta/cobro/postVentaCobro';
 import { PostVenta, type EstadoRecibo } from '@/components/pos/venta/PostVenta';
 // Presentación del cobro (paso 11): contenedor, zona de totales y monto del pago.
-import { BotonImporte, KbdButton, SeccionPlegable, SegmentedControl, SelectorMetodoPago, clasesBoton, repartirMetodos, useAtajos, type Atajo } from '@/components/kit';
+import { BotonImporte, CampoNumero, Dialogo, FilaDato, FormField, KbdButton, ListaDatos, SeccionPlegable, SegmentedControl, SelectorMetodoPago, Tarjeta, clasesBoton, repartirMetodos, useAtajos, type Atajo } from '@/components/kit';
 import { Switch } from '@/components/ui/switch';
 import { EntregaCobro } from '@/components/pos/venta/cobro/EntregaCobro';
 import { leerEstadoFacturaElectronica, type ClienteConfigFactura, type EstadoFacturaElectronica } from '@/lib/pos/venta/cobro/facturaElectronicaCobro';
@@ -106,6 +101,11 @@ interface CheckoutDialogProps {
     city?: string;
     phone?: string;
   };
+  /**
+   * La base rechazó el cobro con `membresia_sin_cliente` (P1): la pantalla
+   * cierra el cobro y abre el selector del titular. Sin él solo se avisa.
+   */
+  onPedirCliente?: () => void;
 }
 
 interface PaymentEntry {
@@ -114,7 +114,8 @@ interface PaymentEntry {
   amount: number;
 }
 
-export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, onProcessPayment, organization, currentUser, branch }: CheckoutDialogProps) {
+export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, onProcessPayment, organization, currentUser, branch, onPedirCliente }: CheckoutDialogProps) {
+  const tMembresias = useTranslations('membresias');
   const { timezone } = useOrgTimezone();
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [currency, setCurrency] = useState<Currency | null>(null);
@@ -262,7 +263,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   // src/lib/pos/venta/cobro/cuentasCobro.ts). `totalPaid` y `remaining` siguen
   // escritos aquí porque las pruebas de __tests__/pos-display leen esas dos
   // líneas del fuente; son la misma cuenta que devuelve cuentasDelCobro.
-  const cuentasCobro = cuentasDelCobro({ calculatedTotals, cart, tipAmount, shippingFee, totalPaid });
+  // Con líneas por peso o medida el total a cobrar se redondea a la moneda (la línea guarda el importe exacto).
+  const redondeoPeso = currency && cart.items.some((i) => esMedido(i.product)) ? currency.decimals : null;
+  const cuentasCobro = cuentasDelCobro({ calculatedTotals, cart, tipAmount, shippingFee, totalPaid, decimalesRedondeo: redondeoPeso });
   const baseTotal = cuentasCobro.baseTotal;
   const cartTotal = cuentasCobro.cartTotal;
   const remaining = Math.max(0, cartTotal - totalPaid);
@@ -696,7 +699,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         `)
         .eq('organization_id', cart.organization_id)
         .not('address', 'is', null)
-        .or(`address.ilike.%${query}%,first_name.ilike.%${query}%,last_name.ilike.%${query}%,phone.ilike.%${query}%`)
+        // Entrecomillado (helper único): una coma o un paréntesis no rompen el `or`.
+        .or(ilikeAnyOf(['address', 'first_name', 'last_name', 'phone'], query))
         .limit(8);
       if (error) throw error;
       const results = (data || []).map((c: any) => ({
@@ -1119,7 +1123,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           { validar: validateCompositeStock, esDesktop: isDesktop },
         );
         if (debeConfirmarStock(stockCheck)) {
-          // Reemplazo de window.confirm por AlertDialog controlado.
+          // Reemplazo de window.confirm por un diálogo controlado (`Dialogo` del kit).
           // Se pausa el flujo con una promesa que se resuelve al confirmar/cancelar.
           const proceed = await new Promise<boolean>((resolve) => {
             setStockConfirm({ message: stockCheck.message, resolve });
@@ -1251,6 +1255,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           items: updatedCart.items.map((item) => ({
             productName: (item as any).name || item.product?.name || 'Producto',
             quantity: item.quantity,
+            ...camposCantidadImpresa(item.product),
             unitPrice: item.unit_price,
             total: item.total,
             taxAmount: item.tax_amount,
@@ -1445,6 +1450,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                       items: updatedCart.items.map((item) => ({
                         productName: (item as any).name || item.product?.name || 'Producto',
                         quantity: item.quantity,
+                        ...camposCantidadImpresa(item.product),
                         unitPrice: item.unit_price,
                         total: item.total,
                         taxAmount: item.tax_amount,
@@ -1508,6 +1514,12 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       // Haptic feedback de error (no-op en web)
       hapticNotification('error');
       hapticImpact('heavy');
+      // P1: una membresía sin cliente titular; la base no guardó nada.
+      if (esErrorMembresiaSinCliente(error)) {
+        toast.error(tMembresias('errores.membresia_sin_cliente'));
+        onPedirCliente?.();
+        return;
+      }
       // Rechazos del servidor con código estable (precio, descuento, línea…)
       // se muestran traducidos; el resto, como llegan.
       const codigo = codigoErrorCobro(error);
@@ -1815,6 +1827,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                       items: cart.items.map((item) => ({
                         productName: (item as any).name || item.product?.name || 'Producto',
                         quantity: item.quantity,
+                        ...camposCantidadImpresa(item.product),
                         unitPrice: item.unit_price,
                         total: item.total,
                         taxAmount: item.tax_amount,
@@ -1966,6 +1979,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
             onFactura={handleImprimirFactura}
             onCerrar={handleCloseReceipt}
             activo={open && !showQrDialog && !showSerialSelector && !stockConfirm}
+            membresias={completedSale.membresias}
+            titular={cart.customer?.full_name ?? null}
           />
         ) : (
           <>
@@ -1973,17 +1988,18 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
             <AvisoSinImpuesto lineas={lineasSinImpuesto} accion="cobrar" />
 
             {/* Pagos: siempre abierto (POS-UX-V2 D4) */}
-            <section aria-labelledby="cobro-pagos-titulo" className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4">
-              <div className="flex items-center justify-between gap-2">
-                <h3 id="cobro-pagos-titulo" className="flex items-center gap-2 text-sm font-semibold text-fg">
-                  <Wallet aria-hidden="true" className="size-4 text-fg-secondary" strokeWidth={1.5} />
-                  {tPos('pagos.titulo')}
-                </h3>
+            <Tarjeta
+              id="cobro-pagos"
+              titulo={tPos('pagos.titulo')}
+              icono={Wallet}
+              accion={
                 <KbdButton variante="secundario" tamano="sm" icono={Plus} onClick={agregarPago} disabled={isProcessing}>
                   {tPos('pagos.agregar')}
                 </KbdButton>
-              </div>
-
+              }
+            >
+              {/* Mismo espaciado de siempre entre los bloques de pagos (sin reindentar: hay pruebas que leen este tramo). */}
+              <div className="flex flex-col gap-3">
               <SelectorMetodoPago
                 metodos={metodosCobro}
                 valor={pagoActivo?.method ?? null}
@@ -2016,7 +2032,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                         onClick={() => setPagoActivoId(payment.id)}
                         className="flex min-w-0 flex-1 items-center gap-3 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                       >
-                        <span className="shrink-0 text-xs text-fg-secondary">{tPos('pagos.pago', { n: index + 1 })}</span>
+                        <span className={clasesBadgeTono('neutro', 'suave', 'sm')}>{tPos('pagos.pago', { n: index + 1 })}</span>
                         <span className="min-w-0 truncate text-sm font-medium text-fg">{nombreMetodo(payment.method)}</span>
                         <span className="shrink-0 text-sm font-semibold tabular-nums text-fg">{formatearCobro(payment.amount)}</span>
                       </button>
@@ -2061,18 +2077,16 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                 })}
               </ul>
 
-              {/* C4 «Impuestos incluidos en precios»: misma semántica de siempre */}
-              <label className="flex w-fit cursor-pointer items-center gap-2 rounded-lg px-1 py-1 text-sm text-fg-secondary hover:text-fg">
-                <input
-                  type="checkbox"
-                  checked={taxIncluded}
-                  onChange={(e) => setTaxIncluded(e.target.checked)}
-                  className="size-4 rounded accent-brand"
-                />
-                <Percent aria-hidden="true" className="size-3.5" strokeWidth={1.5} />
-                {tPos('pagos.impuestosIncluidos')}
-              </label>
-            </section>
+              {/* C4 «Impuestos incluidos en precios»: misma semántica de siempre (Figma `247:70185`). */}
+              <div className="flex w-fit items-center gap-2 px-1 py-1 text-sm text-fg-secondary">
+                <Checkbox id="cobro-impuestos-incluidos" checked={taxIncluded} onCheckedChange={(v) => setTaxIncluded(v === true)} />
+                <label htmlFor="cobro-impuestos-incluidos" className="flex cursor-pointer items-center gap-2 hover:text-fg">
+                  <Percent aria-hidden="true" className="size-3.5" strokeWidth={1.5} />
+                  {tPos('pagos.impuestosIncluidos')}
+                </label>
+              </div>
+              </div>
+            </Tarjeta>
 
             {/* Secciones plegables (paso 12): cerradas, con resumen y atajo */}
             <SeccionPlegable
@@ -2157,23 +2171,24 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                           type="button"
                           aria-pressed={tipPercentage === pct}
                           onClick={() => handleTipPercentage(pct)}
-                          className={cn(
-                            'flex h-12 flex-col items-center justify-center rounded-lg border text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
-                            tipPercentage === pct ? 'border-line-brand bg-brand-tint text-brand-deep ring-1 ring-brand' : 'border-line-strong bg-surface text-fg hover:bg-hover',
-                          )}
+                          className={clasesBoton({
+                            variante: tipPercentage === pct ? 'tinte' : 'secundario',
+                            tamano: 'lg',
+                            anchoCompleto: true,
+                            className: cn('flex-col gap-0 text-sm font-semibold', tipPercentage === pct && 'ring-1 ring-brand'),
+                          })}
                         >
                           {tPos('propina.pct', { pct })}
                           <span className="text-xs font-normal tabular-nums text-fg-secondary">{formatearCobro(computeTipAmount(baseTip, pct))}</span>
                         </button>
                       ))}
                     </div>
-                    <p className="text-xs text-fg-muted">{tPos('propina.base', { monto: formatearCobro(baseTip) })}</p>
 
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <div className="flex flex-col gap-1">
-                        <label htmlFor="cobro-propina-otro" className="text-xs font-medium text-fg-secondary">
-                          {tPos('propina.otroValor')}
-                        </label>
+                      {/* Figma `247:71734`. El campo sigue siendo `Input`: «otro valor» se topa al
+                          escribir y `CampoNumero` no refleja un valor corregido desde fuera mientras
+                          tiene el foco. */}
+                      <FormField etiqueta={tPos('propina.otroValor')} ayuda={tPos('propina.tope', { monto: formatearCobro(topePropina(baseTip)) })}>
                         <Input
                           id="cobro-propina-otro"
                           type="number"
@@ -2184,31 +2199,36 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                           value={tipAmount || ''}
                           onChange={(e) => handleTipAmountChange(Number(e.target.value) || 0)}
                           placeholder="0"
-                          aria-describedby="cobro-propina-tope"
                         />
-                        <span id="cobro-propina-tope" className="text-xs text-fg-muted">
-                          {tPos('propina.tope', { monto: formatearCobro(topePropina(baseTip)) })}
-                        </span>
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label htmlFor="cobro-propina-mesero" className="text-xs font-medium text-fg-secondary">
-                          {tPos('propina.mesero')}
-                        </label>
-                        <Select value={serverId} onValueChange={setServerId}>
-                          <SelectTrigger id="cobro-propina-mesero">
-                            <SelectValue placeholder={tPos('propina.meseroPlaceholder')} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__none__">{tPos('sinAsignar')}</SelectItem>
-                            {servers.map((server) => (
-                              <SelectItem key={server.id} value={server.id}>
-                                {server.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      </FormField>
+                      <FormField etiqueta={tPos('propina.mesero')} id="cobro-propina-mesero">
+                        {(campo) => (
+                          <Select value={serverId} onValueChange={setServerId}>
+                            <SelectTrigger id={campo.id} aria-describedby={campo['aria-describedby']}>
+                              <SelectValue placeholder={tPos('propina.meseroPlaceholder')} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">{tPos('sinAsignar')}</SelectItem>
+                              {servers.map((server) => (
+                                <SelectItem key={server.id} value={server.id}>
+                                  {server.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </FormField>
                     </div>
+
+                    {/* Figma `247:71750`: fila «Propina» al pie de la sección, con la base debajo. */}
+                    <ListaDatos etiqueta={tPos('propina.titulo')}>
+                      <FilaDato
+                        etiqueta={tPos('resumen.propina')}
+                        valor={formatearCobro(tipAmount)}
+                        tono="fuerte"
+                        descripcion={tPos('propina.base', { monto: formatearCobro(baseTip) })}
+                      />
+                    </ListaDatos>
               </div>
             </SeccionPlegable>
 
@@ -2221,26 +2241,25 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
               onAbiertaChange={(v) => abrirSeccion('comision', v)}
             >
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <FormField etiqueta={tPos('comision.vendedor')} id="cobro-comision-vendedor">
+                  {(campo) => (
+                    <Select value={salespersonId} onValueChange={handleSalespersonChange}>
+                      <SelectTrigger id={campo.id} aria-describedby={campo['aria-describedby']}>
+                        <SelectValue placeholder={tPos('comision.placeholder')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">{tPos('sinAsignar')}</SelectItem>
+                        {servers.map((server) => (
+                          <SelectItem key={server.id} value={server.id}>
+                            {server.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </FormField>
                 <div className="flex flex-col gap-1">
-                  <label htmlFor="cobro-comision-vendedor" className="text-xs font-medium text-fg-secondary">
-                    {tPos('comision.vendedor')}
-                  </label>
-                  <Select value={salespersonId} onValueChange={handleSalespersonChange}>
-                    <SelectTrigger id="cobro-comision-vendedor">
-                      <SelectValue placeholder={tPos('comision.placeholder')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">{tPos('sinAsignar')}</SelectItem>
-                      {servers.map((server) => (
-                        <SelectItem key={server.id} value={server.id}>
-                          {server.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span id="cobro-comision-tipo" className="text-xs font-medium text-fg-secondary">
+                  <span id="cobro-comision-tipo" className="text-sm font-medium text-fg">
                     {tPos('comision.valor')}
                   </span>
                   <div className="flex gap-2">
@@ -2254,14 +2273,12 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                         { valor: 'fixed_amount' as const, etiqueta: tPos('comision.monto') },
                       ]}
                     />
-                    <Input
-                      type="number"
-                      inputMode="decimal"
-                      min="0"
-                      max={commissionMethod === 'percentage' ? "100" : undefined}
-                      step={commissionMethod === 'percentage' ? "0.5" : "100"}
-                      value={commissionRate || ''}
-                      onChange={(e) => setCommissionRate(Number(e.target.value) || 0)}
+                    <CampoNumero
+                      valor={commissionRate || null}
+                      onValorChange={(n) => setCommissionRate(n ?? 0)}
+                      minimo={0}
+                      maximo={commissionMethod === 'percentage' ? 100 : undefined}
+                      sufijo={commissionMethod === 'percentage' ? '%' : undefined}
                       placeholder="0"
                       aria-labelledby="cobro-comision-tipo"
                       className="min-w-0 flex-1"
@@ -2312,16 +2329,13 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         onTerminal={() => setQrDead(true)}
         extraControl={
           displayPresence.emitting ? (
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-fg">
-              <input
-                type="checkbox"
-                className="size-4 rounded accent-brand"
-                checked={showQrOnDisplay}
-                onChange={(e) => setShowQrOnDisplay(e.target.checked)}
-              />
-              <span>{tPos('qr.mostrarEnPantalla')}</span>
+            <div className="flex items-center gap-2 text-sm text-fg">
+              <Checkbox id="cobro-qr-en-pantalla" checked={showQrOnDisplay} onCheckedChange={(v) => setShowQrOnDisplay(v === true)} />
+              <label htmlFor="cobro-qr-en-pantalla" className="cursor-pointer">
+                {tPos('qr.mostrarEnPantalla')}
+              </label>
               {!displayPresence.connected && <span className="text-xs text-fg-muted">{tPos('qr.sinPantalla')}</span>}
-            </label>
+            </div>
           ) : null
         }
         onPaid={() => {
@@ -2384,45 +2398,33 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           }}
         />
       )}
-      <AlertDialog
-        open={!!stockConfirm}
-        onOpenChange={(open) => {
-          // Si se cierra sin acción explícita (Escape / click fuera), se cancela.
-          if (!open && stockConfirm) {
+      {/* Figma `183:2712`: stock insuficiente de ingredientes. Cerrar sin elegir (Esc, «×», clic fuera) cancela. */}
+      <Dialogo
+        abierto={!!stockConfirm}
+        onAbiertoChange={(abierto) => {
+          if (!abierto && stockConfirm) {
             stockConfirm.resolve(false);
             setStockConfirm(null);
           }
         }}
+        titulo={tPos('stock.titulo')}
+        icono={TriangleAlert}
+        ancho={440}
+        textoCancelar={tPos('stock.cancelar')}
+        primario={{
+          etiqueta: tPos('stock.continuar'),
+          onClick: () => {
+            stockConfirm?.resolve(true);
+            setStockConfirm(null);
+          },
+        }}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{tPos('stock.titulo')}</AlertDialogTitle>
-            <AlertDialogDescription className="whitespace-pre-line">
-              {stockConfirm?.message}
-              {'\n\n'}
-              {tPos('stock.pregunta')}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => {
-                stockConfirm?.resolve(false);
-                setStockConfirm(null);
-              }}
-            >
-              {tPos('stock.cancelar')}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                stockConfirm?.resolve(true);
-                setStockConfirm(null);
-              }}
-            >
-              {tPos('stock.continuar')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        <p className="whitespace-pre-line text-sm text-fg">
+          {stockConfirm?.message}
+          {'\n\n'}
+          {tPos('stock.pregunta')}
+        </p>
+      </Dialogo>
     </>
   );
 }

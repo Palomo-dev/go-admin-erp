@@ -521,7 +521,6 @@ export function ProveedorForm({ modo, supplierUuid, onSuccess, onCancel, embedde
         </>
       }
       movil={{
-        ocultarBarra: true,
         accion: (
           <button
             type="submit"

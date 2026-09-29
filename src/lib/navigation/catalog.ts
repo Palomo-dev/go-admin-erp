@@ -48,7 +48,6 @@ import {
   Coins,
   CreditCard,
   DollarSign,
-  Dumbbell,
   Factory,
   FileBarChart,
   FileCheck2,
@@ -135,6 +134,12 @@ export interface PaginaNav {
    * cargo, pero que no sale en el menú (se llega desde otra página).
    */
   enMenu?: boolean;
+  /**
+   * Flujo a pantalla completa (POS, mesas, check-in): aunque sale en el menú,
+   * en móvil no lleva la barra inferior de la app (regla del 2026-09-29,
+   * `shell/header/cabeceraMovil.tsx`).
+   */
+  pantallaCompleta?: boolean;
 }
 
 export interface ModuloNav {
@@ -189,13 +194,13 @@ export const CATALOGO_NAV: ModuloNav[] = [
     seccion: 'ventas',
     rutas: ['/app/pos'],
     paginas: [
-      { href: '/app/pos', nombre: 'POS', icono: ShoppingCart, grupo: 'Venta' },
+      { href: '/app/pos', nombre: 'POS', icono: ShoppingCart, grupo: 'Venta', pantallaCompleta: true },
       { href: '/app/pos/pedidos-online', nombre: 'Pedidos online', icono: ShoppingBag, grupo: 'Venta' },
       { href: '/app/pos/ventas', nombre: 'Ventas', icono: Receipt, grupo: 'Venta' },
       { href: '/app/pos/cajas', nombre: 'Cajas', icono: Banknote, grupo: 'Venta' },
       { href: '/app/pos/devoluciones', nombre: 'Devoluciones', icono: Undo2, grupo: 'Venta' },
       { href: '/app/pos/cuentas-por-cobrar', nombre: 'Cuentas por cobrar', icono: Wallet, grupo: 'Venta' },
-      { href: '/app/pos/mesas', nombre: 'Mesas', icono: UtensilsCrossed, grupo: 'Restaurante' },
+      { href: '/app/pos/mesas', nombre: 'Mesas', icono: UtensilsCrossed, grupo: 'Restaurante', pantallaCompleta: true },
       { href: '/app/pos/reservas-mesas', nombre: 'Reservas de mesas', icono: CalendarClock, grupo: 'Restaurante' },
       { href: '/app/pos/comandas', nombre: 'Comandas', icono: ChefHat, grupo: 'Restaurante' },
       { href: '/app/pos/propinas', nombre: 'Propinas', icono: Gift, grupo: 'Restaurante' },
@@ -272,20 +277,26 @@ export const CATALOGO_NAV: ModuloNav[] = [
     ],
   },
   {
-    codigo: 'gym',
-    id: 'gym',
-    etiqueta: 'gym',
-    icono: Dumbbell,
+    // Membresías (antes «Gimnasio», código gym): gimnasios, academias, clubes, coworking, spa.
+    // docs/design/MEMBRESIAS-FASE-1-2.md §2. /app/gym/* redirige aquí (next.config.js) y el
+    // código viejo «gym» es alias de «memberships» (moduleManagementService, middleware).
+    codigo: 'memberships',
+    id: 'membresias',
+    etiqueta: 'membresias',
+    icono: UserCheck,
     seccion: 'ventas',
-    rutas: ['/app/gym'],
+    rutas: ['/app/membresias'],
     paginas: [
-      { href: '/app/gym/checkin', nombre: 'Check-in', icono: LogIn },
-      { href: '/app/gym/membresias', nombre: 'Membresías', icono: Users },
-      { href: '/app/gym/planes', nombre: 'Planes', icono: CreditCard },
-      { href: '/app/gym/clases', nombre: 'Clases', icono: Calendar },
-      { href: '/app/gym/horarios', nombre: 'Horarios', icono: Clock },
-      { href: '/app/gym/reservaciones', nombre: 'Reservaciones', icono: CalendarCheck },
-      { href: '/app/gym/instructores', nombre: 'Instructores', icono: User },
+      { href: '/app/membresias', nombre: 'Resumen', icono: LayoutGrid },
+      { href: '/app/membresias/miembros', nombre: 'Miembros', icono: Users },
+      { href: '/app/membresias/membresias', nombre: 'Membresías', icono: CreditCard },
+      { href: '/app/membresias/planes', nombre: 'Planes', icono: Layers },
+      { href: '/app/membresias/clases', nombre: 'Clases', icono: Calendar },
+      { href: '/app/membresias/reservas', nombre: 'Reservas', icono: CalendarCheck },
+      { href: '/app/membresias/check-in', nombre: 'Check-in', icono: LogIn, pantallaCompleta: true },
+      { href: '/app/membresias/instructores', nombre: 'Instructores', icono: User },
+      { href: '/app/membresias/control-de-acceso', nombre: 'Control de acceso', icono: QrCode },
+      { href: '/app/membresias/pagos', nombre: 'Pagos', icono: Wallet },
     ],
   },
   {

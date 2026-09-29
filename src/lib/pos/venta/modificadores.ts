@@ -6,6 +6,7 @@
  * variante que coincide con los atributos y cuándo se puede confirmar.
  */
 import type { ProductModifierGroup } from '@/lib/services/productModifiersService';
+import { ordenarAtributosSegunCatalogo, type CatalogoOrden } from '@/components/inventario/variantes/logicaVariantes';
 
 export interface ModificadorElegido {
   groupId: number;
@@ -143,4 +144,106 @@ export function agruparAtributos(variants: Array<{ variant_data: Record<string, 
 /** «Agregar al carrito» solo con una variante elegida que tenga precio («Sin precio» no entra). */
 export function puedeConfirmarVariante(selectedVariant: { price: number | null } | null): boolean {
   return !!selectedVariant && !!selectedVariant.price;
+}
+
+// ---------------------------------------------------------------------------
+// Selector de variantes v2 (Figma `VariantModifierDialog` 155:7980): estado de
+// cada botón de atributo, variante al tocar un valor, variante con la que abre
+// y por qué no se puede agregar. `is_out_of_stock` llega por variante desde
+// `POSService.getProductVariants(padre, { branchFilter })` (regla única en
+// `src/lib/pos/stockDisponible.ts`).
+// ---------------------------------------------------------------------------
+
+type VarianteConStock = {
+  id: number;
+  price: number | null;
+  variant_data: Record<string, string> | null | undefined;
+  is_out_of_stock?: boolean;
+};
+
+export interface EstadoValorAtributo {
+  valor: string;
+  elegido: boolean;
+  /** Hay una variante con este valor y el resto de lo elegido. */
+  existe: boolean;
+  /** La variante que resultaría (o todas las que tienen el valor) está agotada. */
+  agotado: boolean;
+}
+
+/** Botones de cada atributo: elegido, si la combinación existe y si está agotada. */
+export function estadoAtributos<V extends VarianteConStock>(
+  variants: V[],
+  elegidos: Record<string, string>,
+  /**
+   * Orden del catálogo de variantes (tipos y valores por `display_order`). Sin
+   * él, orden alfabético («L, M, S, XL, XS»), como antes.
+   */
+  catalogo?: CatalogoOrden | null,
+): Array<{ nombre: string; valores: EstadoValorAtributo[] }> {
+  const grupos = agruparAtributos(variants);
+  const ordenados: Array<[string, string[]]> = catalogo
+    ? ordenarAtributosSegunCatalogo(grupos, catalogo).map((a) => [a.nombre, a.valores.map((v) => v.valor)])
+    : Object.entries(grupos);
+  return ordenados.map(([nombre, valores]) => ({
+    nombre,
+    valores: valores.map((valor) => {
+      const exacta = buscarVariante(variants, { ...elegidos, [nombre]: valor });
+      const conValor = variants.filter((v) => v.variant_data?.[nombre] === valor);
+      return {
+        valor,
+        elegido: elegidos[nombre] === valor,
+        existe: !!exacta,
+        agotado: exacta ? !!exacta.is_out_of_stock : conValor.length > 0 && conValor.every((v) => !!v.is_out_of_stock),
+      };
+    }),
+  }));
+}
+
+/**
+ * Variante al tocar el valor `valor` del atributo `nombre`: la que coincide
+ * con todo lo elegido; si esa combinación no existe, la que conserva más
+ * atributos de lo elegido con ese valor (disponible antes que agotada). Así
+ * ninguna combinación queda inalcanzable por los botones atenuados.
+ */
+export function varianteAlElegirValor<V extends VarianteConStock>(
+  variants: V[],
+  elegidos: Record<string, string>,
+  nombre: string,
+  valor: string,
+): V | undefined {
+  const exacta = buscarVariante(variants, { ...elegidos, [nombre]: valor });
+  if (exacta) return exacta;
+  const candidatas = variants.filter((v) => v.variant_data?.[nombre] === valor);
+  const coincidencias = (v: V) => Object.entries(elegidos).filter(([k, val]) => k !== nombre && v.variant_data?.[k] === val).length;
+  return [...candidatas].sort((a, b) => {
+    const porCoincidencia = coincidencias(b) - coincidencias(a);
+    if (porCoincidencia !== 0) return porCoincidencia;
+    return Number(!!a.is_out_of_stock) - Number(!!b.is_out_of_stock);
+  })[0];
+}
+
+/**
+ * Variante con la que abre el selector: la que pidió el escáner (si llega y
+ * existe); si no, la primera disponible con precio; si no, la primera.
+ */
+export function varianteInicial<V extends VarianteConStock>(variants: V[], preferidaId?: number | null): V | undefined {
+  if (preferidaId !== undefined && preferidaId !== null) {
+    const pedida = variants.find((v) => v.id === preferidaId);
+    if (pedida) return pedida;
+  }
+  return variants.find((v) => !v.is_out_of_stock && !!v.price) ?? variants.find((v) => !v.is_out_of_stock) ?? variants[0];
+}
+
+export type BloqueoVariante = 'agotado' | 'sinPrecio' | 'sinVariante' | null;
+
+/**
+ * Por qué no se puede agregar: sin variante elegida, agotada en la sucursal
+ * (la misma regla de la tarjeta: con control de stock y sin unidades no se
+ * vende) o sin precio vigente (`puedeConfirmarVariante`).
+ */
+export function bloqueoVariante(variante: { price: number | null; is_out_of_stock?: boolean } | null | undefined): BloqueoVariante {
+  if (!variante) return 'sinVariante';
+  if (variante.is_out_of_stock) return 'agotado';
+  if (!puedeConfirmarVariante(variante)) return 'sinPrecio';
+  return null;
 }

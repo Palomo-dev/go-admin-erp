@@ -3,10 +3,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {Plus,
+import {
+  Plus,
   Download,
   Upload,
-  Search,
   RefreshCw,
   ArrowLeft,
   TrendingUp,
@@ -14,9 +14,9 @@ import {Plus,
   Eye,
   Edit,
   Copy,
-  XCircle} from 'lucide-react';
+  XCircle,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -36,6 +36,7 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { ToastAction } from '@/components/ui/toast';
 import { useTranslations } from 'next-intl';
+import { DialogoMotivo, SearchInput } from '@/components/kit';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { movimientosService, UnifiedMovement, type MovementRef } from '@/lib/services/movimientosService';
@@ -54,6 +55,9 @@ export function IngresosPage() {
   const t = useTranslations('tesoreria');
   const [movements, setMovements] = useState<UnifiedMovement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // Anular con motivo (DialogoMotivo del kit), no con confirm() + prompt() del navegador.
+  const [anulando, setAnulando] = useState<MovementRef | null>(null);
+  const [anulandoOcupado, setAnulandoOcupado] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [stats, setStats] = useState({
@@ -108,12 +112,14 @@ export function IngresosPage() {
     }
   };
 
-  const handleCancel = async (ref: MovementRef) => {
-    if (!confirm('¿Está seguro de anular este ingreso?')) return;
-    
-    const reason = prompt('Motivo de la anulación:');
+  const handleCancel = (ref: MovementRef) => setAnulando(ref);
+
+  const confirmarAnulacion = async (reason: string) => {
+    const ref = anulando;
+    if (!ref) return;
+    setAnulandoOcupado(true);
     try {
-      const result = await movimientosService.cancelMovement(ref, reason || undefined);
+      const result = await movimientosService.cancelMovement(ref, reason);
       if (result.success) {
         toast({ title: 'Éxito', description: 'Ingreso anulado correctamente' });
         loadData();
@@ -122,6 +128,9 @@ export function IngresosPage() {
       }
     } catch {
       toast({ title: 'Error', description: 'Error al anular', variant: 'destructive' });
+    } finally {
+      setAnulandoOcupado(false);
+      setAnulando(null);
     }
   };
 
@@ -250,15 +259,13 @@ export function IngresosPage() {
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Buscar por concepto..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
-          />
-        </div>
+        <SearchInput
+          value={searchTerm}
+          onChange={setSearchTerm}
+          onValueChange={setSearchTerm}
+          placeholder="Buscar por concepto..."
+          className="flex-1"
+        />
         <Button variant="outline" onClick={loadData} className="dark:border-gray-700">
           <RefreshCw className="h-4 w-4 mr-2" />
           Actualizar
@@ -379,6 +386,15 @@ export function IngresosPage() {
           setShowNewDialog(false);
           loadData();
         }}
+      />
+      <DialogoMotivo
+        abierto={!!anulando}
+        onAbiertoChange={(v) => !v && !anulandoOcupado && setAnulando(null)}
+        titulo={t('anular.ingreso.titulo')}
+        descripcion={t('anular.descripcion')}
+        textoConfirmar={t('anular.ingreso.boton')}
+        cargando={anulandoOcupado}
+        onConfirmar={(motivo) => void confirmarAnulacion(motivo)}
       />
     </div>
   );

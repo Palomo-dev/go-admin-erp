@@ -24,7 +24,8 @@ export interface Formateador {
   instanteHora(valor: string | Date | null | undefined): string;
   /** Columna `date` (`YYYY-MM-DD`): sin conversión de zona. */
   fecha(valor: string | null | undefined): string;
-  numero(valor: number | string | null | undefined, decimales?: number): string;
+  /** `minimo`: decimales fijos (una cantidad por peso sale «2,500», no «2,5»). */
+  numero(valor: number | string | null | undefined, decimales?: number, minimo?: number): string;
   locale: string;
 }
 
@@ -67,11 +68,11 @@ export function crearFormateador(opciones: {
       const mediodia = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0));
       return formatDateInTz(mediodia, 'UTC', { locale, ...opcionesDia });
     },
-    numero: (valor, decimales) => {
+    numero: (valor, decimales, minimo) => {
       const n = typeof valor === 'number' ? valor : Number(valor);
       if (!Number.isFinite(n)) return '';
       return new Intl.NumberFormat(moneda.locale, {
-        minimumFractionDigits: 0,
+        minimumFractionDigits: Math.min(minimo ?? 0, decimales ?? 4),
         maximumFractionDigits: decimales ?? 4,
       })
         .format(n)

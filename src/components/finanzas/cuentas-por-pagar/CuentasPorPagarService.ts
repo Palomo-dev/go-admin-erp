@@ -16,7 +16,7 @@ import { DEFAULT_TIMEZONE, getToday, todayInTz } from '@/lib/utils/timezone';
 import { resolveTimezone } from '@/lib/services/timezoneResolver';
 import { sumarMesesAlDia } from '@/lib/services/fiscalCalendar';
 import { plainDateToInstant, toPlainDate } from '@/lib/utils/dateDisplay';
-import { logError } from '@/lib/utils/errorMessage';
+import { describeError, logError } from '@/lib/utils/errorMessage';
 import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 import { normalizarCodigoMoneda } from '@/lib/utils/moneda';
 
@@ -34,6 +34,19 @@ export interface CuentaBancariaPago {
 
 /** Datos del creador de un pago, resueltos aparte del propio pago. */
 type CreadorPago = { id: string; email: string; first_name?: string; last_name?: string };
+
+/**
+ * Resultado de dejar rastro de un lote exportado a banca online.
+ *
+ * `registrado: false` NO significa que la exportación fracasara: el archivo ya
+ * está en el disco de quien lo pidió cuando esto se resuelve. Significa que no
+ * quedó anotado quién lo generó, y eso hay que decirlo en pantalla.
+ */
+export interface RegistroLoteBanca {
+  registrado: boolean;
+  archivo: BankFileRecord | null;
+  error: string | null;
+}
 
 export class CuentasPorPagarService {
 
@@ -860,15 +873,28 @@ export class CuentasPorPagarService {
   }
 
   /**
-   * Exporta cuentas por pagar para archivo de banca online
+   * Deja rastro del lote de cuentas por pagar que se acaba de exportar a banca
+   * online, en `public.bank_files`.
+   *
+   * **No lanza nunca, y se llama DESPUÉS de la descarga.** El archivo es lo que
+   * la persona vino a buscar; la auditoría no puede quitárselo. Hasta el
+   * 2026-09-24 era al revés: `bank_files` no existía, el insert reventaba, el
+   * método lanzaba y el modal lo llamaba *antes* de generar el blob, así que la
+   * exportación no descargaba nada y solo se veía «Error al exportar».
+   *
+   * Que no lance no significa que falle en silencio: devuelve `registrado:
+   * false` con el motivo para que la pantalla lo diga, y lo deja en el log.
    */
-  static async exportarParaBancaOnline(cuentasIds: string[]): Promise<BankFileRecord> {
+  static async exportarParaBancaOnline(
+    cuentasIds: string[],
+    formato?: { extension?: string; tipo?: BankFileRecord['file_type'] },
+  ): Promise<RegistroLoteBanca> {
     try {
       const organizationId = getOrganizationId();
       const userId = await getCurrentUserId();
-      
+
       if (!organizationId || !userId) {
-        throw new Error('Organization ID o User ID no disponibles');
+        return { registrado: false, archivo: null, error: 'Organization ID o User ID no disponibles' };
       }
 
       // Obtener las cuentas seleccionadas
@@ -883,7 +909,12 @@ export class CuentasPorPagarService {
         .eq('organization_id', organizationId);
 
       if (cuentasError || !cuentas) {
-        throw new Error('Error obteniendo cuentas para exportar');
+        logError('[CuentasPorPagar] leer cuentas del lote exportado', cuentasError);
+        return {
+          registrado: false,
+          archivo: null,
+          error: describeError(cuentasError ?? 'Error obteniendo cuentas para exportar'),
+        };
       }
 
       // El dia que va en el nombre del archivo es el de la ORGANIZACION, no el
@@ -893,11 +924,16 @@ export class CuentasPorPagarService {
       // siguiente y el lote de la noche quedaba archivado con fecha de mañana.
       const zona = await resolveTimezone(organizationId);
 
+      // La extension y el tipo son los del archivo REALMENTE descargado. Antes
+      // se escribia `.csv` y `'csv'` fijos aunque el usuario hubiera elegido
+      // Bancolombia TXT: el rastro describia un archivo que nadie tuvo nunca.
+      const extension = formato?.extension ?? '.csv';
+
       // Crear registro del archivo
       const nuevoArchivo = {
         organization_id: organizationId,
-        file_name: `pagos_${todayInTz(zona)}.csv`,
-        file_type: 'csv' as const,
+        file_name: `pagos_${todayInTz(zona)}${extension}`,
+        file_type: formato?.tipo ?? ('csv' as const),
         records_count: cuentas.length,
         processed_count: 0,
         status: 'pending' as const,
@@ -912,15 +948,14 @@ export class CuentasPorPagarService {
         .single();
 
       if (archivoError) {
-        console.error('Error creando archivo bancario:', archivoError);
-        throw archivoError;
+        logError('[CuentasPorPagar] registrar lote de banca online', archivoError);
+        return { registrado: false, archivo: null, error: describeError(archivoError) };
       }
 
-      console.log(`Archivo de banca online generado: ${archivo.id}`);
-      return archivo;
+      return { registrado: true, archivo: (archivo as BankFileRecord) ?? null, error: null };
     } catch (error) {
-      console.error('Error en exportarParaBancaOnline:', error);
-      throw error;
+      logError('[CuentasPorPagar] registrar lote de banca online', error);
+      return { registrado: false, archivo: null, error: describeError(error) };
     }
   }
 

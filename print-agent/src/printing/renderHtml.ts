@@ -1,5 +1,6 @@
 ﻿import type { KitchenTicketPrintPayload, SaleTicketPrintPayload, ShipmentGuidePrintPayload, ElectronicInvoicePrintPayload } from './types';
 import { moneyFormatter } from './money';
+import { formatQuantity, isMeasuredLine, itemsSummary, lineNamePrefix, linePriceDetail } from './quantity';
 import type { PaperSpec } from './paper';
 
 
@@ -273,7 +274,7 @@ export function buildSaleTicketHTML(payload: SaleTicketPrintPayload, paper: Pape
   const dateObj = new Date(payload.createdAt);
   const dateStr = dateObj.toLocaleDateString('es-CO', payload.timezone ? { timeZone: payload.timezone } : {});
   const timeStr = dateObj.toLocaleTimeString('es-CO', { ...(payload.timezone ? { timeZone: payload.timezone } : {}), hour: '2-digit', minute: '2-digit', hour12: false });
-  const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
+  const itemsText = itemsSummary(payload.items, payload.locale);
 
   const businessFiscal = payload.businessFiscalResponsibilities?.map(translateFiscal).join(', ') || '';
   const customerFiscal = payload.customerFiscalResponsibilities?.map(translateFiscal).join(', ') || '';
@@ -303,10 +304,10 @@ export function buildSaleTicketHTML(payload: SaleTicketPrintPayload, paper: Pape
     return `
     <div class="item">
       <div class="item-line">
-        <span class="item-name">${item.quantity}x ${item.productName}</span>
+        <span class="item-name">${lineNamePrefix(item, payload.locale)}${item.productName}</span>
         <span class="item-total">${formatMoney(item.total)}</span>
       </div>
-      <div class="item-detail">${formatMoney(item.unitPrice)} c/u</div>
+      <div class="item-detail">${linePriceDetail(item, formatMoney, payload.locale)}</div>
       ${variantLine}
       ${modifierLine}
       ${noteLine}
@@ -407,7 +408,7 @@ export function buildSaleTicketHTML(payload: SaleTicketPrintPayload, paper: Pape
     ${payload.saleNumber ? `<div class="meta-row"><span class="meta-label">Venta:</span><span class="meta-value">#${payload.saleNumber}</span></div>` : ''}
     ${payload.tableName ? `<div class="meta-row"><span class="meta-label">Mesa:</span><span class="meta-value">${payload.tableName}</span></div>` : ''}
     <div class="meta-row"><span class="meta-label">Fecha:</span><span class="meta-value">${dateStr} ${timeStr}</span></div>
-    <div class="meta-row"><span class="meta-label">Items:</span><span class="meta-value">${payload.items.length} (${itemCount} unidades)</span></div>
+    <div class="meta-row"><span class="meta-label">Items:</span><span class="meta-value">${itemsText}</span></div>
     ${payload.cashierName ? `<div class="meta-row"><span class="meta-label">Cajero:</span><span class="meta-value">${payload.cashierName}</span></div>` : ''}
     ${payload.serverName ? `<div class="meta-row"><span class="meta-label">Mesero:</span><span class="meta-value">${payload.serverName}</span></div>` : ''}
   </div>
@@ -450,7 +451,7 @@ function buildKitchenTicketBody(payload: KitchenTicketPrintPayload): string {
   const dateObj = new Date(payload.createdAt);
   const dateStr = dateObj.toLocaleDateString('es-CO', payload.timezone ? { timeZone: payload.timezone } : {});
   const timeStr = dateObj.toLocaleTimeString('es-CO', { ...(payload.timezone ? { timeZone: payload.timezone } : {}), hour: '2-digit', minute: '2-digit', hour12: false });
-  const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
+  const itemsText = itemsSummary(payload.items);
 
   const itemsHTML = payload.items.map(item => {
     const variantEntries = item.variantData ? Object.entries(item.variantData).filter(([, v]) => !!v) : [];
@@ -470,7 +471,7 @@ function buildKitchenTicketBody(payload: KitchenTicketPrintPayload): string {
     return `
     <div class="item">
       <div class="item-line">
-        <span class="item-name">${item.quantity}x ${item.productName}</span>
+        <span class="item-name">${isMeasuredLine(item) ? `${formatQuantity(item)} ` : `${formatQuantity(item)}x `}${item.productName}</span>
       </div>
       ${variantLine}
       ${modifierLine}
@@ -491,7 +492,7 @@ function buildKitchenTicketBody(payload: KitchenTicketPrintPayload): string {
     <div class="meta-row"><span class="meta-label">Ticket:</span><span class="meta-value">#${payload.ticketId}</span></div>
     <div class="meta-row"><span class="meta-label">Mesa:</span><span class="meta-value">${payload.tableName || '-'}</span></div>
     <div class="meta-row"><span class="meta-label">Fecha:</span><span class="meta-value">${dateStr} ${timeStr}</span></div>
-    <div class="meta-row"><span class="meta-label">Items:</span><span class="meta-value">${payload.items.length} (${itemCount} unidades)</span></div>
+    <div class="meta-row"><span class="meta-label">Items:</span><span class="meta-value">${itemsText}</span></div>
     ${payload.serverName ? `<div class="meta-row"><span class="meta-label">Mesero:</span><span class="meta-value">${payload.serverName}</span></div>` : ''}
   </div>
 
@@ -646,7 +647,7 @@ function buildElectronicInvoiceBody(payload: ElectronicInvoicePrintPayload): str
   const dateObj = new Date(payload.createdAt);
   const dateStr = dateObj.toLocaleDateString('es-CO', payload.timezone ? { timeZone: payload.timezone } : {});
   const timeStr = dateObj.toLocaleTimeString('es-CO', { ...(payload.timezone ? { timeZone: payload.timezone } : {}), hour: '2-digit', minute: '2-digit', hour12: false });
-  const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
+  const itemsText = itemsSummary(payload.items, payload.locale);
 
   const businessFiscal = payload.businessFiscalResponsibilities?.map(translateFiscal).join(', ') || '';
   const customerFiscal = payload.customerFiscalResponsibilities?.map(translateFiscal).join(', ') || '';
@@ -678,10 +679,10 @@ function buildElectronicInvoiceBody(payload: ElectronicInvoicePrintPayload): str
     return `
     <div class="item">
       <div class="item-line">
-        <span class="item-name">${item.quantity}x ${item.productName}</span>
+        <span class="item-name">${lineNamePrefix(item, payload.locale)}${item.productName}</span>
         <span class="item-total">${formatMoney(item.total)}</span>
       </div>
-      <div class="item-detail">${formatMoney(item.unitPrice)} c/u</div>
+      <div class="item-detail">${linePriceDetail(item, formatMoney, payload.locale)}</div>
       ${variantLine}
       ${modifierLine}
       ${noteLine}
@@ -749,7 +750,7 @@ function buildElectronicInvoiceBody(payload: ElectronicInvoicePrintPayload): str
   <div class="meta">
     <div class="meta-row"><span class="meta-label">Factura No:</span><span class="meta-value">${payload.invoiceNumber}</span></div>
     <div class="meta-row"><span class="meta-label">Fecha:</span><span class="meta-value">${dateStr} ${timeStr}</span></div>
-    <div class="meta-row"><span class="meta-label">Items:</span><span class="meta-value">${payload.items.length} (${itemCount} unidades)</span></div>
+    <div class="meta-row"><span class="meta-label">Items:</span><span class="meta-value">${itemsText}</span></div>
     ${payload.cashierName ? `<div class="meta-row"><span class="meta-label">Cajero:</span><span class="meta-value">${payload.cashierName}</span></div>` : ''}
     ${validationDateStr ? `<div class="meta-row"><span class="meta-label">Validacion DIAN:</span><span class="meta-value">${validationDateStr}</span></div>` : ''}
   </div>

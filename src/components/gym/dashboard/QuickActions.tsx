@@ -12,7 +12,7 @@ export function QuickActions() {
       title: 'Check-in Rápido',
       description: 'Control de acceso',
       icon: LogIn,
-      href: '/app/gym/checkin',
+      href: '/app/membresias/check-in',
       color: 'text-green-600 dark:text-green-400',
       bgColor: 'bg-green-100 dark:bg-green-900/30',
       primary: true
@@ -21,7 +21,7 @@ export function QuickActions() {
       title: 'Membresías',
       description: 'Gestión de miembros',
       icon: Users,
-      href: '/app/gym/membresias',
+      href: '/app/membresias/membresias',
       color: 'text-blue-600 dark:text-blue-400',
       bgColor: 'bg-blue-100 dark:bg-blue-900/30'
     },
@@ -29,7 +29,7 @@ export function QuickActions() {
       title: 'Planes',
       description: 'Configurar planes',
       icon: CreditCard,
-      href: '/app/gym/planes',
+      href: '/app/membresias/planes',
       color: 'text-purple-600 dark:text-purple-400',
       bgColor: 'bg-purple-100 dark:bg-purple-900/30'
     },
@@ -37,7 +37,7 @@ export function QuickActions() {
       title: 'Clases',
       description: 'Horarios y reservas',
       icon: Calendar,
-      href: '/app/gym/clases',
+      href: '/app/membresias/clases',
       color: 'text-orange-600 dark:text-orange-400',
       bgColor: 'bg-orange-100 dark:bg-orange-900/30'
     },
@@ -45,7 +45,7 @@ export function QuickActions() {
       title: 'Reportes',
       description: 'Análisis y métricas',
       icon: FileText,
-      href: '/app/gym/reportes',
+      href: '/app/membresias',
       color: 'text-teal-600 dark:text-teal-400',
       bgColor: 'bg-teal-100 dark:bg-teal-900/30'
     },
@@ -53,7 +53,7 @@ export function QuickActions() {
       title: 'Configuración',
       description: 'Ajustes del módulo',
       icon: Settings,
-      href: '/app/gym/ajustes',
+      href: '/app/configuracion?modulo=gym',
       color: 'text-gray-600 dark:text-gray-400',
       bgColor: 'bg-gray-100 dark:bg-gray-700'
     }

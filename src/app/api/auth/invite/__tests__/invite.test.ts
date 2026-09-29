@@ -1,20 +1,18 @@
 /// <reference types="jest" />
 /**
- * /api/auth/invite manda correo con la service role. Lo único que la protegía
- * era el middleware, que solo exige que haya cookie de sesión, así que:
+ * /api/auth/invite crea o reenvía invitaciones y manda correo con la service
+ * role. Historia de agujeros que este archivo impide reabrir:
  *
  * 1. `organizationId`, `roleId` e `invitedBy` venían del body y se creían tal
- *    cual: cualquier usuario logueado de cualquier organización podía invitar
- *    a cualquier correo a cualquier organización, con el rol que quisiera.
- * 2. `invitationCode` tampoco se contrastaba contra `invitations`, así que el
- *    correo destino lo elegía el atacante.
- * 3. La rama de "usuario huérfano" llamaba a `auth.admin.deleteUser()` sobre
- *    un usuario de auth.users cuyo único filtro era `is_invitation` en la
- *    metadata: un borrado de usuarios al alcance de cualquier sesión, y que
- *    además cruzaba tenants.
- *
- * Ahora la organización, el destinatario y el rol salen de la fila de
- * `invitations`, y quien llama tiene que ser admin activo de ESA organización.
+ *    cual: cualquier usuario logueado podía invitar a cualquier correo a
+ *    cualquier organización, con el rol que quisiera.
+ * 2. La rama de "usuario huérfano" llamaba a `auth.admin.deleteUser()` sobre
+ *    un usuario cuyo único filtro era `is_invitation`: un borrado de usuarios
+ *    al alcance de cualquier sesión, y que además cruzaba tenants.
+ * 3. (GO-sec 2026-09-28) El navegador del admin generaba el código con
+ *    `Math.random()`, lo insertaba él mismo y la ruta devolvía `inviteUrl`
+ *    con el código. Ahora el código lo genera el servidor, rota al reenviar y
+ *    nunca vuelve en la respuesta: solo viaja en el correo al destinatario.
  *
  * El doble de Supabase valida el `select()` contra el esquema real de
  * `invitations` (12 columnas, verificadas en information_schema) para que el
@@ -50,29 +48,39 @@ function splitTopLevel(select: string): string[] {
   return parts.map((p) => p.trim()).filter(Boolean);
 }
 
+const HEX64 = /^[0-9a-f]{64}$/;
+
 // --- Estado que cada test ajusta -------------------------------------------
 let inviteRow: Row | null;
+let pendingDuplicate: Row | null;
 let profileRow: Row | null;
 let membershipRow: Row | null;
+let roleRow: Row | null;
+let branchRow: Row | null;
+let jobPositionRow: Row | null;
 let existsInAuth: boolean;
 let authUsers: Array<{ id: string; email: string; user_metadata: Row }>;
 let selectSpy: jest.Mock;
+const insertSpy = jest.fn();
+const updateSpy = jest.fn();
 
 const deleteUser = jest.fn(async () => ({ error: null }));
 
 type InviteArgs = { redirectTo: string; data: Record<string, unknown> };
-const inviteUserByEmail = jest.fn(async () => ({ data: {}, error: null }));
+let inviteUserByEmailError: { message: string } | null;
+const inviteUserByEmail = jest.fn(async () => ({ data: {}, error: inviteUserByEmailError }));
 const signInWithOtp = jest.fn(async () => ({ error: null }));
 
 /** Encadenamiento mínimo de PostgREST. */
 interface Builder {
-  // Métodos (no propiedades) para que el doble pueda declarar firmas más
-  // estrechas que `unknown[]` sin pelearse con strictFunctionTypes.
   select(...args: unknown[]): Builder;
   eq(...args: unknown[]): Builder;
   order(...args: unknown[]): Builder;
   limit(...args: unknown[]): Builder;
+  insert(...args: unknown[]): Builder;
+  update(...args: unknown[]): Builder;
   maybeSingle(): Promise<{ data: Row | null; error: PostgrestError | null }>;
+  single(): Promise<{ data: Row | null; error: PostgrestError | null }>;
 }
 
 /** Doble mínimo de PostgREST: valida columnas de `invitations` y aplica los `.eq()`. */
@@ -89,11 +97,38 @@ function makeAdmin() {
     from(table: string) {
       let error: PostgrestError | null = null;
       const predicates: Array<(row: Row) => boolean> = [];
-      const rowOf = (): Row | null =>
-        table === 'invitations' ? inviteRow
-          : table === 'profiles' ? profileRow
-            : table === 'organization_members' ? membershipRow
-              : null;
+      const filtros: Row = {};
+      let insertado: Row | null = null;
+      let actualizado: Row | null = null;
+
+      const rowOf = (): Row | null => {
+        if (table === 'invitations') {
+          // La búsqueda de duplicados filtra por correo + organización.
+          if ('email' in filtros && !('id' in filtros)) return pendingDuplicate;
+          return inviteRow;
+        }
+        if (table === 'profiles') return profileRow;
+        if (table === 'organization_members') return membershipRow;
+        if (table === 'roles') return roleRow;
+        if (table === 'branches') return branchRow;
+        if (table === 'job_positions') return jobPositionRow;
+        return null;
+      };
+
+      const resolver = async () => {
+        if (error) return { data: null, error };
+        if (insertado) {
+          return { data: { id: 500, ...insertado, organizations: { name: 'Organización Demo' } }, error: null };
+        }
+        const row = rowOf();
+        const match = row && predicates.every((p) => p(row));
+        if (actualizado) {
+          if (!match || !row) return { data: null, error: null };
+          Object.assign(row, actualizado);
+          return { data: { id: row.id }, error: null };
+        }
+        return { data: match ? row : null, error: null };
+      };
 
       const builder: Builder = {
         select(select: string) {
@@ -109,17 +144,24 @@ function makeAdmin() {
           return builder;
         },
         eq(col: string, val: unknown) {
+          filtros[col] = val;
           predicates.push((row) => String(row[col]) === String(val));
           return builder;
         },
         order: () => builder,
         limit: () => builder,
-        maybeSingle: async () => {
-          if (error) return { data: null, error };
-          const row = rowOf();
-          const match = row && predicates.every((p) => p(row));
-          return { data: match ? row : null, error: null };
+        insert(payload: Row) {
+          insertSpy(table, payload);
+          insertado = payload;
+          return builder;
         },
+        update(payload: Row) {
+          updateSpy(table, payload);
+          actualizado = payload;
+          return builder;
+        },
+        maybeSingle: resolver,
+        single: resolver,
       };
       return builder;
     },
@@ -162,6 +204,7 @@ type Ctx = typeof ADMIN_CTX;
 /** Lo que devuelve (o lanza) la resolución de sesión + membresía. */
 let contextoDeSesion: () => Ctx;
 const getServerOrgContextFor = jest.fn(async () => contextoDeSesion());
+const getServerOrgContext = jest.fn(async () => contextoDeSesion());
 
 jest.mock('@/lib/utils/orgContext', () => {
   // La regla de admin se toma de verdad del módulo hoja, para no reimplantarla
@@ -171,6 +214,7 @@ jest.mock('@/lib/utils/orgContext', () => {
   return {
     OrgContextError: FakeOrgContextError,
     getServerOrgContextFor,
+    getServerOrgContext,
     requireOrgAdmin: (ctx: Ctx) => {
       if (!isOrgAdminLike(ctx)) {
         throw new FakeOrgContextError(
@@ -185,8 +229,7 @@ import { POST } from '../route';
 import { _resetRateLimits } from '@/lib/security/rateLimit';
 
 const ORIGIN = 'https://app.goadmin.io';
-const EN_UNA_SEMANA = new Date(Date.now() + 7 * 24 * 3600_000).toISOString();
-const HACE_UN_DIA = new Date(Date.now() - 24 * 3600_000).toISOString();
+const CODIGO_VIEJO = 'c0d160v1ej0000000000000000000000000000000000000000000000000000ab';
 
 let ipSeq = 0;
 /** IP nueva por petición para que las cubetas del rate limit no se solapen. */
@@ -208,14 +251,15 @@ function req(body: unknown, headers: Record<string, string> = {}) {
   } as unknown as Request;
 }
 
-/** Body tal y como lo manda InvitationsTab. */
-const BODY = {
+/** Reenvío, tal y como lo manda InvitationsTab. */
+const REENVIO = { invitationId: 1, organizationId: ORG_ID, origin: ORIGIN };
+/** Alta, tal y como la manda InvitationsTab. */
+const ALTA = {
   email: 'Persona@Ejemplo.COM',
-  organizationId: ORG_ID,
-  organizationName: 'Organización Demo',
   roleId: 4,
-  invitationCode: 'abc123',
-  invitedBy: 'u-admin',
+  branchId: 10,
+  jobPositionId: null,
+  organizationId: ORG_ID,
   origin: ORIGIN,
 };
 
@@ -225,27 +269,43 @@ function noSeMandoNingunCorreo() {
   expect(signInWithOtp).not.toHaveBeenCalled();
 }
 
+/** La respuesta nunca lleva el código ni un enlace con él. */
+async function sinCodigoEnLaRespuesta(res: Response) {
+  const texto = JSON.stringify(await res.clone().json());
+  expect(texto).not.toMatch(/invite_code|inviteUrl/);
+  expect(texto).not.toContain(CODIGO_VIEJO);
+  expect(texto).not.toMatch(/[0-9a-f]{64}/);
+}
+
 beforeEach(() => {
   _resetRateLimits();
   deleteUser.mockClear();
   inviteUserByEmail.mockClear();
   signInWithOtp.mockClear();
   getServerOrgContextFor.mockClear();
+  getServerOrgContext.mockClear();
+  insertSpy.mockClear();
+  updateSpy.mockClear();
   selectSpy = jest.fn();
+  inviteUserByEmailError = null;
 
   inviteRow = {
     id: 1,
-    code: 'abc123',
+    code: CODIGO_VIEJO,
     email: 'persona@ejemplo.com',
     organization_id: ORG_ID,
     role_id: 7,
     status: 'pending',
-    expires_at: EN_UNA_SEMANA,
+    expires_at: new Date(Date.now() - 24 * 3600_000).toISOString(), // vencida: el reenvío la renueva
     created_at: new Date().toISOString(),
     organizations: { name: 'Organización Demo' },
   };
+  pendingDuplicate = null;
   profileRow = null;
   membershipRow = null;
+  roleRow = { id: 4 };
+  branchRow = { id: 10, organization_id: ORG_ID, is_active: true };
+  jobPositionRow = null;
   existsInAuth = false;
   authUsers = [];
   contextoDeSesion = () => ADMIN_CTX;
@@ -254,125 +314,120 @@ beforeEach(() => {
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-de-prueba';
 });
 
-// --- Autorización ----------------------------------------------------------
-describe('POST /api/auth/invite · autorización', () => {
+// --- Reenvío: autorización -------------------------------------------------
+describe('POST /api/auth/invite · reenvío · autorización', () => {
   it('sin sesión no manda invitación', async () => {
     contextoDeSesion = () => { throw new FakeOrgContextError('No hay sesión activa', 401, 'UNAUTHENTICATED'); };
 
-    const res = await POST(req(BODY));
+    const res = await POST(req(REENVIO));
 
     expect(res.status).toBe(401);
     noSeMandoNingunCorreo();
+    expect(updateSpy).not.toHaveBeenCalled();
   });
 
-  it('un usuario de otra organización no puede invitar a esta (era el agujero)', async () => {
+  it('un usuario de otra organización recibe la respuesta genérica', async () => {
     contextoDeSesion = () => { throw new FakeOrgContextError('No perteneces a esa organización', 403, 'ORG_FORBIDDEN'); };
 
-    const res = await POST(req(BODY));
+    const res = await POST(req(REENVIO));
 
-    // Respuesta genérica: no se le confirma que el código de invitación existe.
     expect(res.status).toBe(404);
     await expect(res.json()).resolves.toEqual({ error: 'Invitación no válida o vencida' });
     noSeMandoNingunCorreo();
+    expect(updateSpy).not.toHaveBeenCalled();
   });
 
   it('un miembro sin rol de admin recibe 403 y no manda correo', async () => {
     contextoDeSesion = () => ({ ...ADMIN_CTX, roleId: 7, roleName: 'Vendedor', isSuperAdmin: false });
 
-    const res = await POST(req(BODY));
+    const res = await POST(req(REENVIO));
 
     expect(res.status).toBe(403);
     await expect(res.json()).resolves.toMatchObject({ code: 'ADMIN_REQUIRED' });
     noSeMandoNingunCorreo();
   });
 
-  it('el admin de la organización de la invitación sí invita', async () => {
-    const res = await POST(req(BODY));
+  it('el admin reenvía: rota el código, renueva la vigencia y no devuelve el código', async () => {
+    const res = await POST(req(REENVIO));
 
     expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual({
-      success: true,
-      inviteUrl: 'https://app.goadmin.io/auth/invite?invite_code=abc123',
-    });
-    expect(inviteUserByEmail).toHaveBeenCalledTimes(1);
+    await sinCodigoEnLaRespuesta(res);
+    await expect(res.json()).resolves.toEqual({ success: true, invitationId: 1 });
+
+    const [, cambios] = llamada<[string, Row]>(updateSpy);
+    expect(cambios.code).toMatch(HEX64);
+    expect(cambios.code).not.toBe(CODIGO_VIEJO);
+    expect(new Date(String(cambios.expires_at)).getTime()).toBeGreaterThan(Date.now() + 29 * 24 * 3600_000);
+
+    const [, args] = llamada<[string, InviteArgs]>(inviteUserByEmail);
+    expect(args.redirectTo).toBe(`https://app.goadmin.io/auth/invite?invite_code=${cambios.code}`);
   });
 
   it('la membresía se comprueba contra la organización de la invitación, no la del body', async () => {
     inviteRow!.organization_id = 999;
 
-    await POST(req({ ...BODY, organizationId: 999 }));
+    await POST(req({ invitationId: 1, origin: ORIGIN }));
 
     expect(llamada<[number]>(getServerOrgContextFor)[0]).toBe(999);
   });
 
   it('un organizationId del body distinto al de la invitación es 403', async () => {
-    const res = await POST(req({ ...BODY, organizationId: 777 }));
+    const res = await POST(req({ ...REENVIO, organizationId: 777 }));
 
     expect(res.status).toBe(403);
-    await expect(res.json()).resolves.toEqual({
-      error: 'La organización no coincide con la invitación',
-    });
+    await expect(res.json()).resolves.toEqual({ error: 'La organización no coincide con la invitación' });
     noSeMandoNingunCorreo();
   });
 });
 
-// --- La invitación es la fuente de verdad ----------------------------------
-describe('POST /api/auth/invite · la invitación manda sobre el body', () => {
-  it('un código que no existe no manda correo', async () => {
+// --- Reenvío: la fila manda -------------------------------------------------
+describe('POST /api/auth/invite · reenvío · la invitación manda sobre el body', () => {
+  it('una invitación que no existe no manda correo', async () => {
     inviteRow = null;
 
-    const res = await POST(req(BODY));
+    const res = await POST(req(REENVIO));
 
     expect(res.status).toBe(404);
     noSeMandoNingunCorreo();
     expect(getServerOrgContextFor).not.toHaveBeenCalled();
   });
 
-  it('una invitación vencida no se revive (status pending no basta)', async () => {
-    inviteRow!.expires_at = HACE_UN_DIA;
+  it.each(['revoked', 'used'])('una invitación %s no se revive', async (status) => {
+    inviteRow!.status = status;
 
-    const res = await POST(req(BODY));
-
-    expect(res.status).toBe(404);
-    noSeMandoNingunCorreo();
-  });
-
-  it('una invitación revocada no manda correo', async () => {
-    inviteRow!.status = 'revoked';
-
-    const res = await POST(req(BODY));
+    const res = await POST(req(REENVIO));
 
     expect(res.status).toBe(404);
     noSeMandoNingunCorreo();
+    expect(updateSpy).not.toHaveBeenCalled();
   });
 
-  it('no se puede invitar a un correo distinto al de la invitación', async () => {
-    const res = await POST(req({ ...BODY, email: 'victima@otra-empresa.com' }));
+  it('un invitationId que no es un entero positivo es 400', async () => {
+    const res = await POST(req({ invitationId: 'abc', origin: ORIGIN }));
 
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(400);
     noSeMandoNingunCorreo();
   });
 
-  it('el rol, la organización y el invitador salen de la invitación y la sesión', async () => {
-    // El body pide rol 1 (Super Admin), otro nombre de org y otro invitador.
-    await POST(req({ ...BODY, roleId: 1, organizationName: 'Org Falsa', invitedBy: 'u-suplantado' }));
+  it('el rol, la organización y el invitador salen de la invitación y la sesión; sin código en metadata', async () => {
+    await POST(req({ ...REENVIO, roleId: 1, organizationName: 'Org Falsa', invitedBy: 'u-suplantado' }));
 
     expect(llamada<[string, InviteArgs]>(inviteUserByEmail)[1].data).toEqual({
       organization_id: ORG_ID,
       organization_name: 'Organización Demo',
       role_id: 7,
-      invitation_code: 'abc123',
       is_invitation: true,
       invited_by: 'u-admin',
     });
   });
 
   it('no pide columnas que no existen en invitations (regresión 42703)', async () => {
-    await POST(req(BODY));
+    await POST(req(REENVIO));
 
-    const columnas = splitTopLevel(selectSpy.mock.calls[0][0] as string)
-      .filter((f) => !f.includes('('));
-    expect(columnas.every((c) => INVITATIONS_COLUMNS.includes(c))).toBe(true);
+    for (const [select] of selectSpy.mock.calls as Array<[string]>) {
+      const columnas = splitTopLevel(select).filter((f) => !f.includes('('));
+      expect(columnas.every((c) => INVITATIONS_COLUMNS.includes(c))).toBe(true);
+    }
   });
 
   it('un body sin JSON válido es 400 y no consulta nada', async () => {
@@ -385,6 +440,97 @@ describe('POST /api/auth/invite · la invitación manda sobre el body', () => {
 
     expect(res.status).toBe(400);
     noSeMandoNingunCorreo();
+  });
+});
+
+// --- Alta ---------------------------------------------------------------------
+describe('POST /api/auth/invite · alta', () => {
+  it('el admin crea la invitación: organización de la sesión, código del servidor, sin código en la respuesta', async () => {
+    const res = await POST(req(ALTA));
+
+    expect(res.status).toBe(200);
+    await sinCodigoEnLaRespuesta(res);
+    await expect(res.json()).resolves.toEqual({ success: true, invitationId: 500 });
+
+    const [tabla, fila] = llamada<[string, Row]>(insertSpy);
+    expect(tabla).toBe('invitations');
+    expect(fila).toMatchObject({
+      email: 'persona@ejemplo.com',
+      role_id: 4,
+      organization_id: ORG_ID,
+      branch_id: 10,
+      created_by: 'u-admin',
+      status: 'pending',
+    });
+    expect(String(fila.code)).toMatch(HEX64);
+    expect(inviteUserByEmail).toHaveBeenCalledTimes(1);
+    expect(getServerOrgContext).toHaveBeenCalledTimes(1);
+  });
+
+  it('un organizationId del body distinto al de la sesión es 403 y no crea nada', async () => {
+    const res = await POST(req({ ...ALTA, organizationId: 777 }));
+
+    expect(res.status).toBe(403);
+    expect(insertSpy).not.toHaveBeenCalled();
+    noSeMandoNingunCorreo();
+  });
+
+  it('sin sesión es 401 y un miembro sin rol de admin 403', async () => {
+    contextoDeSesion = () => { throw new FakeOrgContextError('No hay sesión activa', 401, 'UNAUTHENTICATED'); };
+    expect((await POST(req(ALTA))).status).toBe(401);
+
+    contextoDeSesion = () => ({ ...ADMIN_CTX, roleId: 7, isSuperAdmin: false });
+    expect((await POST(req(ALTA))).status).toBe(403);
+
+    expect(insertSpy).not.toHaveBeenCalled();
+    noSeMandoNingunCorreo();
+  });
+
+  it('no se invita como Super Admin (rol 1)', async () => {
+    const res = await POST(req({ ...ALTA, roleId: 1 }));
+
+    expect(res.status).toBe(400);
+    expect(insertSpy).not.toHaveBeenCalled();
+  });
+
+  it('una sucursal que no es de la organización es 400', async () => {
+    branchRow = { id: 10, organization_id: 999 };
+
+    const res = await POST(req(ALTA));
+
+    expect(res.status).toBe(400);
+    expect(insertSpy).not.toHaveBeenCalled();
+  });
+
+  it('una invitación pendiente para el mismo correo es 409 YA_INVITADO', async () => {
+    pendingDuplicate = { id: 3, email: 'persona@ejemplo.com', organization_id: ORG_ID, status: 'pending' };
+
+    const res = await POST(req(ALTA));
+
+    expect(res.status).toBe(409);
+    await expect(res.json()).resolves.toMatchObject({ code: 'YA_INVITADO' });
+    expect(insertSpy).not.toHaveBeenCalled();
+  });
+
+  it('un miembro activo de la organización es 409 YA_MIEMBRO', async () => {
+    profileRow = { id: 'u-x', email: 'persona@ejemplo.com' };
+    membershipRow = { id: 8, user_id: 'u-x', organization_id: ORG_ID, is_active: true };
+
+    const res = await POST(req(ALTA));
+
+    expect(res.status).toBe(409);
+    await expect(res.json()).resolves.toMatchObject({ code: 'YA_MIEMBRO' });
+    expect(insertSpy).not.toHaveBeenCalled();
+  });
+
+  it('si el correo no sale: 502 con el id para reenviar, sin código', async () => {
+    inviteUserByEmailError = { message: 'SMTP caído' };
+
+    const res = await POST(req(ALTA));
+
+    expect(res.status).toBe(502);
+    await sinCodigoEnLaRespuesta(res);
+    await expect(res.json()).resolves.toMatchObject({ code: 'CORREO_NO_ENVIADO', invitationId: 500 });
   });
 });
 
@@ -403,7 +549,7 @@ describe('POST /api/auth/invite · borrado de usuario huérfano', () => {
   it('borra y re-invita al huérfano de la propia organización', async () => {
     authUsers = [huerfano(ORG_ID)];
 
-    const res = await POST(req(BODY));
+    const res = await POST(req(REENVIO));
 
     expect(llamada<[string]>(deleteUser)[0]).toBe('u-huerfano');
     expect(inviteUserByEmail).toHaveBeenCalledTimes(1);
@@ -413,7 +559,7 @@ describe('POST /api/auth/invite · borrado de usuario huérfano', () => {
   it('NO borra un huérfano de otra organización: cae al magic link', async () => {
     authUsers = [huerfano(999)];
 
-    const res = await POST(req(BODY));
+    const res = await POST(req(REENVIO));
 
     expect(deleteUser).not.toHaveBeenCalled();
     expect(signInWithOtp).toHaveBeenCalledTimes(1);
@@ -424,7 +570,7 @@ describe('POST /api/auth/invite · borrado de usuario huérfano', () => {
     authUsers = [huerfano(ORG_ID)];
     profileRow = { id: 'u-huerfano' };
 
-    await POST(req(BODY));
+    await POST(req(REENVIO));
 
     expect(deleteUser).not.toHaveBeenCalled();
     expect(signInWithOtp).toHaveBeenCalledTimes(1);
@@ -434,7 +580,7 @@ describe('POST /api/auth/invite · borrado de usuario huérfano', () => {
     authUsers = [huerfano(ORG_ID)];
     membershipRow = { id: 5, user_id: 'u-huerfano' };
 
-    await POST(req(BODY));
+    await POST(req(REENVIO));
 
     expect(deleteUser).not.toHaveBeenCalled();
   });
@@ -443,21 +589,22 @@ describe('POST /api/auth/invite · borrado de usuario huérfano', () => {
     authUsers = [huerfano(ORG_ID)];
     contextoDeSesion = () => { throw new FakeOrgContextError('No perteneces a esa organización', 403, 'ORG_FORBIDDEN'); };
 
-    await POST(req(BODY));
+    await POST(req(REENVIO));
 
     expect(deleteUser).not.toHaveBeenCalled();
   });
 });
 
-// --- Rate limit (no se deshace lo de b403a98e) -----------------------------
+// --- Rate limit ----------------------------------------------------------------
 describe('POST /api/auth/invite · rate limit', () => {
   it('corta al 4º correo al mismo destinatario', async () => {
     for (let i = 0; i < 3; i++) {
-      expect((await POST(req(BODY))).status).toBe(200);
+      inviteRow!.status = 'pending';
+      expect((await POST(req(REENVIO))).status).toBe(200);
     }
     expect(inviteUserByEmail).toHaveBeenCalledTimes(3);
 
-    const bloqueado = await POST(req(BODY));
+    const bloqueado = await POST(req(REENVIO));
 
     expect(bloqueado.status).toBe(429);
     expect(Number(bloqueado.headers.get('Retry-After'))).toBeGreaterThan(0);
@@ -466,25 +613,22 @@ describe('POST /api/auth/invite · rate limit', () => {
 
   it('corta a la 31ª petición desde la misma IP', async () => {
     const ip = '198.51.100.250';
-    // Códigos inexistentes: no mandan correo, pero sí gastan cubeta de IP.
     inviteRow = null;
     for (let i = 0; i < 30; i++) {
-      expect((await POST(req(BODY, { 'x-forwarded-for': ip }))).status).toBe(404);
+      expect((await POST(req(REENVIO, { 'x-forwarded-for': ip }))).status).toBe(404);
     }
 
-    const bloqueado = await POST(req(BODY, { 'x-forwarded-for': ip }));
+    const bloqueado = await POST(req(REENVIO, { 'x-forwarded-for': ip }));
 
     expect(bloqueado.status).toBe(429);
   });
 
   it('una sesión no autorizada no gasta la cubeta del destinatario', async () => {
-    // Si el límite por correo se aplicara antes de autorizar, cualquiera podría
-    // dejar sin invitaciones a una dirección legítima.
     contextoDeSesion = () => { throw new FakeOrgContextError('No perteneces a esa organización', 403, 'ORG_FORBIDDEN'); };
-    for (let i = 0; i < 5; i++) await POST(req(BODY));
+    for (let i = 0; i < 5; i++) await POST(req(REENVIO));
 
     contextoDeSesion = () => ADMIN_CTX;
-    const res = await POST(req(BODY));
+    const res = await POST(req(REENVIO));
 
     expect(res.status).toBe(200);
     expect(inviteUserByEmail).toHaveBeenCalledTimes(1);
@@ -494,10 +638,10 @@ describe('POST /api/auth/invite · rate limit', () => {
 // --- Destino del enlace ----------------------------------------------------
 describe('POST /api/auth/invite · origin', () => {
   it('ignora un origin ajeno y usa el de la petición', async () => {
-    await POST(req({ ...BODY, origin: 'https://phishing.example' }, { origin: ORIGIN }));
+    await POST(req({ ...REENVIO, origin: 'https://phishing.example' }, { origin: ORIGIN }));
 
-    expect(llamada<[string, InviteArgs]>(inviteUserByEmail)[1].redirectTo).toBe(
-      'https://app.goadmin.io/auth/invite?invite_code=abc123'
+    expect(llamada<[string, InviteArgs]>(inviteUserByEmail)[1].redirectTo).toMatch(
+      /^https:\/\/app\.goadmin\.io\/auth\/invite\?invite_code=[0-9a-f]{64}$/
     );
   });
 });

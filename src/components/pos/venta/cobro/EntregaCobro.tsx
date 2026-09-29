@@ -4,6 +4,7 @@ import { useId } from 'react';
 import { CheckCircle, Clock, MapPin, Navigation, Truck } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/utils/Utils';
+import { FormField } from '@/components/kit';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -62,7 +63,8 @@ const OPCIONES: readonly { valor: TipoEntrega; icono: typeof Truck; clave: 'reco
   { valor: 'delivery_third_party', icono: Navigation, clave: 'tercero' },
 ];
 
-const CLASE_ETIQUETA = 'flex items-center gap-1 text-xs font-medium text-fg-secondary';
+/** Etiqueta del grupo «Pago del envío» con la misma tipografía que `FormField`. */
+const CLASE_ETIQUETA = 'text-sm font-medium text-fg';
 
 function botonOpcion(activo: boolean): string {
   return cn(
@@ -88,24 +90,23 @@ export function EntregaCobro(p: EntregaCobroProps) {
       {p.tipo !== 'pickup' && (
         <div className="flex flex-col gap-3 border-t border-line pt-3">
           {p.tipo === 'delivery_own' && p.conductores.length > 0 && (
-            <div className="flex flex-col gap-1">
-              <label htmlFor={`${id}-conductor`} className={CLASE_ETIQUETA}>
-                {t('conductor')}
-              </label>
-              <Select value={p.conductorId} onValueChange={p.onConductor}>
-                <SelectTrigger id={`${id}-conductor`}>
-                  <SelectValue placeholder={t('conductorPlaceholder')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {p.conductores.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                      {c.phone ? ` · ${c.phone}` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <FormField etiqueta={t('conductor')} id={`${id}-conductor`}>
+              {(campo) => (
+                <Select value={p.conductorId} onValueChange={p.onConductor}>
+                  <SelectTrigger id={campo.id} aria-describedby={campo['aria-describedby']}>
+                    <SelectValue placeholder={t('conductorPlaceholder')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {p.conductores.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                        {c.phone ? ` · ${c.phone}` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </FormField>
           )}
           {p.tipo === 'delivery_own' && p.direccionDelCliente && (
             <p className="flex items-center gap-1.5 rounded-lg bg-info-subtle p-2 text-xs text-info-text">
@@ -113,23 +114,21 @@ export function EntregaCobro(p: EntregaCobroProps) {
               {t('direccionCliente')}
             </p>
           )}
-          <div className="relative flex flex-col gap-1">
-            <label htmlFor={`${id}-direccion`} className={CLASE_ETIQUETA}>
-              <MapPin aria-hidden="true" className="size-3" strokeWidth={1.5} />
-              {t('direccion')}
-            </label>
-            <Input
-              id={`${id}-direccion`}
-              value={p.direccion}
-              required
-              aria-autocomplete="list"
-              aria-expanded={p.mostrarResultados && p.resultados.length > 0}
-              aria-controls={`${id}-resultados`}
-              onChange={(e) => p.onDireccion(e.target.value)}
-              onFocus={p.onFocoDireccion}
-              onBlur={p.onSalirDireccion}
-              placeholder={t('direccionPlaceholder')}
-            />
+          <div className="relative">
+            <FormField etiqueta={t('direccion')}>
+              <Input
+                id={`${id}-direccion`}
+                value={p.direccion}
+                required
+                aria-autocomplete="list"
+                aria-expanded={p.mostrarResultados && p.resultados.length > 0}
+                aria-controls={`${id}-resultados`}
+                onChange={(e) => p.onDireccion(e.target.value)}
+                onFocus={p.onFocoDireccion}
+                onBlur={p.onSalirDireccion}
+                placeholder={t('direccionPlaceholder')}
+              />
+            </FormField>
             {p.mostrarResultados && p.resultados.length > 0 && (
               <ul id={`${id}-resultados`} role="listbox" className="absolute top-full z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-line bg-surface shadow-lg">
                 {p.resultados.map((d) => (
@@ -152,50 +151,36 @@ export function EntregaCobro(p: EntregaCobroProps) {
             )}
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <div className="flex flex-col gap-1">
-              <label htmlFor={`${id}-ciudad`} className={CLASE_ETIQUETA}>
-                {t('ciudad')}
-              </label>
+            <FormField etiqueta={t('ciudad')}>
               <Input id={`${id}-ciudad`} value={p.ciudad} onChange={(e) => p.onCiudad(e.target.value)} />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label htmlFor={`${id}-telefono`} className={CLASE_ETIQUETA}>
-                {t('telefono')}
-              </label>
+            </FormField>
+            <FormField etiqueta={t('telefono')}>
               <Input id={`${id}-telefono`} type="tel" inputMode="tel" value={p.telefono} onChange={(e) => p.onTelefono(e.target.value)} />
-            </div>
+            </FormField>
           </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor={`${id}-contacto`} className={CLASE_ETIQUETA}>
-              {t('contacto')}
-            </label>
+          <FormField etiqueta={t('contacto')}>
             <Input id={`${id}-contacto`} value={p.contacto} onChange={(e) => p.onContacto(e.target.value)} placeholder={t('contactoPlaceholder')} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor={`${id}-instrucciones`} className={CLASE_ETIQUETA}>
-              {t('instrucciones')}
-            </label>
+          </FormField>
+          <FormField etiqueta={t('instrucciones')}>
             <Input id={`${id}-instrucciones`} value={p.instrucciones} onChange={(e) => p.onInstrucciones(e.target.value)} placeholder={t('instruccionesPlaceholder')} />
-          </div>
+          </FormField>
           {p.tarifas.length > 0 && (
-            <div className="flex flex-col gap-1 border-t border-line pt-3">
-              <label htmlFor={`${id}-tarifa`} className={CLASE_ETIQUETA}>
-                <Truck aria-hidden="true" className="size-3" strokeWidth={1.5} />
-                {t('tarifa')}
-              </label>
-              <Select value={p.tarifaId} onValueChange={p.onTarifa}>
-                <SelectTrigger id={`${id}-tarifa`}>
-                  <SelectValue placeholder={t('tarifaPlaceholder')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {p.tarifas.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>
-                      {t('tarifaOpcion', { nombre: r.rate_name, costo: p.formatear(r.total_cost) })}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <FormField etiqueta={t('tarifa')} id={`${id}-tarifa`} className="border-t border-line pt-3">
+              {(campo) => (
+                <Select value={p.tarifaId} onValueChange={p.onTarifa}>
+                  <SelectTrigger id={campo.id} aria-describedby={campo['aria-describedby']}>
+                    <SelectValue placeholder={t('tarifaPlaceholder')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {p.tarifas.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {t('tarifaOpcion', { nombre: r.rate_name, costo: p.formatear(r.total_cost) })}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </FormField>
           )}
           <div className="flex flex-col gap-1 border-t border-line pt-3">
             <span id={`${id}-pago`} className={CLASE_ETIQUETA}>

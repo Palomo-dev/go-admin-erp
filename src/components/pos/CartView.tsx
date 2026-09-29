@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Check, CheckCircle, ChefHat, FileText, Pause, Send, ShoppingCart } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CartTag, Dialogo, DialogoMotivo, EmptyState, FilaDato, FormField, ListaDatos, PanelAdaptable, useAtajos } from '@/components/kit';
+import { CampoNumero, CartTag, Dialogo, DialogoMotivo, EmptyState, FilaDato, FormField, ListaDatos, PanelAdaptable, useAtajos } from '@/components/kit';
+import { Textarea } from '@/components/ui/textarea';
 import { AccionesCarrito } from '@/components/pos/venta/AccionesCarrito';
 import { DialogoDescuento } from '@/components/pos/venta/DialogoDescuento';
 import { hayRafagaDelLector } from '@/hooks/useHardwareBarcodeScanner';
@@ -108,9 +109,13 @@ interface CartViewProps {
   requiereCaja?: boolean;
   /** «Abrir caja para cobrar · F9»: abre el diálogo de apertura (lo monta la página). */
   onAbrirCaja?: () => void;
+  /** F4 con una membresía sin cliente (`sin-cliente`, P1): abre el selector del titular. */
+  onPedirCliente?: () => void;
+  /** Línea por peso o medida: el chip «⚖ 0,735 kg» (o P) reabre «Pesar» para cambiar el peso. */
+  onCambiarPeso?: (item: CartItem) => void;
 }
 
-export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda, className, cashSessionActive = true, atajosActivos = true, requiereCaja = true, onAbrirCaja }: CartViewProps) {
+export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda, className, cashSessionActive = true, atajosActivos = true, requiereCaja = true, onAbrirCaja, onPedirCliente, onCambiarPeso }: CartViewProps) {
   const { timezone } = useOrgTimezone();
   // «Descuento · D» (paso 10): diálogo con la pestaña «A un producto».
   const [showDiscountDialog, setShowDiscountDialog] = useState(false);
@@ -672,6 +677,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
   const cobrar = () => {
     if (estadoCobrar === 'listo') onCheckout(cart);
     else if (estadoCobrar === 'sin-caja') onAbrirCaja?.();
+    else if (estadoCobrar === 'sin-cliente') onPedirCliente?.();
   };
 
   // Atajos del carrito (POS-UX-V2 §3): F4 cobrar, F6 espera/reactivar, F7
@@ -722,6 +728,13 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
       <header className="flex flex-wrap items-center gap-2">
         <ShoppingCart aria-hidden="true" className="size-4 text-fg-secondary" strokeWidth={1.5} />
         <h2 className="text-sm font-semibold text-fg">{tCarrito('titulo')}</h2>
+        {/* Figma `906:115576-80`: «Carrito · N productos» y, a la derecha, «Cliente: X». */}
+        {!isEmpty && (
+          <span className="text-sm text-fg-secondary" data-carrito-conteo="">
+            <span aria-hidden="true">· </span>
+            {tCarrito('nProductos', { n: cart.items.length })}
+          </span>
+        )}
         {isOnHold && (
           <CartTag tono="advertencia" icono={Pause}>
             {tCarrito('estadoEspera')}
@@ -743,6 +756,11 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
             </CartTag>
           );
         })()}
+        {cart.customer?.full_name && (
+          <span className="ml-auto min-w-0 max-w-full truncate text-xs text-fg-secondary">
+            {tCarrito('clienteDe', { nombre: cart.customer.full_name })}
+          </span>
+        )}
       </header>
       {isOnHoldWithDebt && <p className="-mt-1 text-xs text-warning-text">{tCarrito('deudaRegistradaAviso')}</p>}
 
@@ -764,6 +782,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
             descuentosFrecuentes={frequentDiscountsMap}
             atajosActivos={atajosActivos}
             onCantidad={handleQuantityChange}
+            onCambiarPeso={onCambiarPeso}
             onQuitar={handleRemoveItem}
             onExcluirImpuesto={handleToggleTax}
             onIncluido={handleToggleItemTaxIncluded}
@@ -841,13 +860,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
         primario={{ etiqueta: tCarrito('esperaConfirmar'), onClick: () => void handleHold() }}
       >
         <FormField etiqueta={tCarrito('esperaMotivo')} ayuda={tCarrito('opcional')}>
-            <textarea
-              value={holdReason}
-              onChange={(e) => setHoldReason(e.target.value)}
-              placeholder={tCarrito('esperaPlaceholder')}
-              rows={3}
-              className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            />
+            <Textarea value={holdReason} onChange={(e) => setHoldReason(e.target.value)} placeholder={tCarrito('esperaPlaceholder')} rows={3} />
         </FormField>
       </Dialogo>
 
@@ -879,22 +892,22 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
           <FilaDato etiqueta={tCarrito('totalAdeudar')} valor={formatear(cart.total)} tono="fuerte" tamano="lg" />
         </ListaDatos>
         <FormField etiqueta={tCarrito('deudaMotivo')} obligatorio>
-            <textarea
+            <Textarea
               value={holdWithDebtReason}
               onChange={(e) => setHoldWithDebtReason(e.target.value)}
               placeholder={tCarrito('deudaPlaceholder')}
               rows={3}
-              className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             />
         </FormField>
         <FormField etiqueta={tCarrito('deudaDias')} ayuda={tCarrito('deudaVence', { fecha: vencimiento })}>
-            <input
-              type="number"
-              min={1}
-              max={365}
-              value={paymentTerms}
-              onChange={(e) => setPaymentTerms(Number(e.target.value))}
-              className="h-10 w-24 rounded-lg border border-line-strong bg-surface px-3 text-sm tabular-nums text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            <CampoNumero
+              valor={paymentTerms}
+              onValorChange={(n) => setPaymentTerms(n ?? 0)}
+              decimales={0}
+              minimo={1}
+              maximo={365}
+              sufijo={tCarrito('dias')}
+              className="w-40"
             />
         </FormField>
         <div className="rounded-lg border border-line bg-subtle p-3 text-xs text-fg-secondary">
@@ -931,7 +944,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
         ) : invoiceData ? (
           <DetalleFacturaVenta id={String(invoiceData.invoice.id)} />
         ) : (
-          <p className="p-8 text-center text-fg-secondary">{tCarrito('errorFacturaDescripcion')}</p>
+          <EmptyState variante="error" compacto titulo={tCarrito('errorFactura')} descripcion={tCarrito('errorFacturaDescripcion')} />
         )}
       </PanelAdaptable>
     </section>

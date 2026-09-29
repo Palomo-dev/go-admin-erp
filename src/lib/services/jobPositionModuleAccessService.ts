@@ -1,5 +1,5 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/config';
-import { MODULE_PAGES, MODULE_HREF_TO_CODE } from '@/lib/config/modulePages';
 
 export interface ModuleAccess {
   module_code: string;
@@ -44,10 +44,11 @@ export const jobPositionModuleAccessService = {
   /**
    * Obtener los códigos de módulos visibles para un cargo
    * Si no hay registros, retorna null (significa que no hay restricciones)
+   * `db`: el cliente de quien llama (el de sesión en un route handler).
    */
-  async getVisibleModuleCodes(jobPositionId: string): Promise<string[] | null> {
+  async getVisibleModuleCodes(jobPositionId: string, db: SupabaseClient = supabase): Promise<string[] | null> {
     // Primero verificar si existen registros para este cargo
-    const { data: allRecords, error: countError } = await supabase
+    const { data: allRecords, error: countError } = await db
       .from('job_position_module_access')
       .select('module_code')
       .eq('job_position_id', jobPositionId);
@@ -61,7 +62,7 @@ export const jobPositionModuleAccessService = {
     if (!allRecords || allRecords.length === 0) return null;
 
     // Si hay registros, filtrar por can_view = true
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('job_position_module_access')
       .select('module_code')
       .eq('job_position_id', jobPositionId)
@@ -79,9 +80,9 @@ export const jobPositionModuleAccessService = {
    * Obtener los hrefs de páginas visibles para un cargo
    * Si no hay registros, retorna null (significa que no hay restricciones)
    */
-  async getVisiblePageHrefs(jobPositionId: string): Promise<string[] | null> {
+  async getVisiblePageHrefs(jobPositionId: string, db: SupabaseClient = supabase): Promise<string[] | null> {
     // Primero verificar si existen registros para este cargo
-    const { data: allRecords, error: countError } = await supabase
+    const { data: allRecords, error: countError } = await db
       .from('job_position_page_access')
       .select('page_href')
       .eq('job_position_id', jobPositionId);
@@ -95,7 +96,7 @@ export const jobPositionModuleAccessService = {
     if (!allRecords || allRecords.length === 0) return null;
 
     // Si hay registros, filtrar por can_view = true
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('job_position_page_access')
       .select('page_href')
       .eq('job_position_id', jobPositionId)
@@ -175,12 +176,12 @@ export const jobPositionModuleAccessService = {
    * Retorna: { visibleModules: string[] | null, visiblePages: string[] | null }
    * null significa sin restricciones (admin o sin configuración)
    */
-  async getUserAccess(userId: string, organizationId: number): Promise<{
+  async getUserAccess(userId: string, organizationId: number, db: SupabaseClient = supabase): Promise<{
     visibleModules: string[] | null;
     visiblePages: string[] | null;
   }> {
     // Verificar si es super admin
-    const { data: memberData } = await supabase
+    const { data: memberData } = await db
       .from('organization_members')
       .select('is_super_admin, job_position_id, id')
       .eq('user_id', userId)
@@ -196,7 +197,7 @@ export const jobPositionModuleAccessService = {
     // Fallback: si no hay job_position_id en organization_members,
     // buscar el cargo asignado via employments.position_id
     if (!jobPositionId && memberData?.id) {
-      const { data: employmentData } = await supabase
+      const { data: employmentData } = await db
         .from('employments')
         .select('position_id')
         .eq('organization_member_id', memberData.id)
@@ -213,8 +214,8 @@ export const jobPositionModuleAccessService = {
     }
 
     const [visibleModules, visiblePages] = await Promise.all([
-      this.getVisibleModuleCodes(jobPositionId),
-      this.getVisiblePageHrefs(jobPositionId),
+      this.getVisibleModuleCodes(jobPositionId, db),
+      this.getVisiblePageHrefs(jobPositionId, db),
     ]);
 
     return { visibleModules, visiblePages };

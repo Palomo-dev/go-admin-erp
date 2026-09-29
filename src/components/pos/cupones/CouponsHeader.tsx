@@ -2,16 +2,13 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { 
-  Plus, 
-  Upload, 
-  Search, 
+import {
+  Plus,
   Ticket,
   RefreshCw,
-  Sparkles
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
@@ -20,15 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
 import { CouponFilters, DISCOUNT_TYPE_LABELS } from './types';
 import { CouponForm } from './CouponForm';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 interface CouponsHeaderProps {
   filters: CouponFilters;
@@ -63,7 +54,7 @@ export function CouponsHeader({
   const handleTypeChange = (value: string) => {
     const newFilter = value === 'all'
       ? { ...filters, discount_type: undefined }
-      : { ...filters, discount_type: value as any };
+      : { ...filters, discount_type: value as CouponFilters['discount_type'] };
     onFiltersChange(newFilter);
   };
 
@@ -148,15 +139,12 @@ export function CouponsHeader({
           <Card className="md:col-span-2 dark:bg-gray-800 dark:border-gray-700">
             <CardContent className="p-4">
               <div className="grid grid-cols-1 sm:flex sm:flex-wrap sm:items-center gap-2">
-                <div className="relative flex-1 sm:min-w-[180px]">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    value={filters.search || ''}
-                    onChange={(e) => handleSearchChange(e.target.value)}
-                    placeholder="Buscar por código o nombre..."
-                    className="pl-10 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  />
-                </div>
+                <SearchInput
+                  value={filters.search || ''}
+                  onChange={handleSearchChange}
+                  placeholder="Buscar por código o nombre..."
+                  className="flex-1 sm:min-w-[180px]"
+                />
                 <Select 
                   value={filters.is_active === undefined ? 'all' : filters.is_active ? 'active' : 'inactive'}
                   onValueChange={handleStatusChange}

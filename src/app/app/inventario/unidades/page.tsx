@@ -1,8 +1,13 @@
-'use client';
+import { Suspense } from 'react';
+import { UnidadesPage } from '@/components/inventario/unidades';
 
-import React from 'react';
-import { UnidadesPage } from '@/components/inventario/unidades/UnidadesPage';
-
+/** «Unidades de medida» (pestaña Unidades de «Unidades y conversiones»). */
 export default function InventarioUnidadesPage() {
-  return <UnidadesPage />;
+  return (
+    <div className="min-h-full bg-canvas">
+      <Suspense fallback={null}>
+        <UnidadesPage pestana="unidades" />
+      </Suspense>
+    </div>
+  );
 }

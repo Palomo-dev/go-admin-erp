@@ -6,13 +6,14 @@ import { Barcode, Copy, Eye, Pencil, Plus, Printer, Trash } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import { Producto } from './types';
-import { cargarCatalogo, pedirLote, type ParametrosCatalogo } from './catalogoLotes';
+import { cargarCatalogo, pedirLote, resolverFiltroRelacion, type FiltroRelacion, type ParametrosCatalogo } from './catalogoLotes';
 import {
   CAMPOS_ORDEN,
   CLAVES_FILTRO,
   categoriaParaRpc,
   estadoParaRpc,
   filtrarCatalogo,
+  idRelacionParaRpc,
   idsNumericos,
   ordenarCatalogo,
   resumenStock,
@@ -29,7 +30,7 @@ import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
 import { textosExportacion } from './importar/exportarCatalogoCsv';
 
 import ProductosPageHeader from './ProductosPageHeader';
-import FiltrosProductosComponent from './FiltrosProductos';
+import FiltrosProductosComponent, { type VistaCatalogo } from './FiltrosProductos';
 import ProductosTable from './ProductosTable';
 import AccionesMasivas from './bulk/AccionesMasivas';
 import { FacebookFeedDialog, type PestanaMeta } from './FacebookFeedDialog';
@@ -41,6 +42,16 @@ import type { CodigoAsignado } from '@/lib/services/codigosBarrasService';
 type ModoCarga = 'normal' | 'suave' | 'silencioso';
 
 const TAMANOS_CATALOGO = [25, 50, 100] as const;
+
+/** Preferencia de vista (tabla o tarjetas) de este dispositivo. */
+const CLAVE_VISTA = 'go-admin:inventario:productos:vista';
+function leerVista(): VistaCatalogo {
+  try {
+    return window.localStorage.getItem(CLAVE_VISTA) === 'tarjetas' ? 'tarjetas' : 'lista';
+  } catch {
+    return 'lista';
+  }
+}
 
 /** Lo que interesa de una fila que llega por tiempo real. */
 type FilaCambio = { id?: unknown; product_id?: unknown };
@@ -94,6 +105,11 @@ const CatalogoProductos: React.FC = () => {
   const busquedaServidor = listado.busqueda;
   const categoriaRpc = categoriaParaRpc(listado.filtros.categoria);
   const estadoRpc = estadoParaRpc(listado.filtros.estado);
+  // `?etiqueta=` y `?proveedor=` (enlaces de Etiquetas y Proveedores): se
+  // resuelven a ids de producto antes de pedir el catálogo. `null` = resolviendo.
+  const etiquetaId = idRelacionParaRpc(listado.filtros.etiqueta);
+  const proveedorId = idRelacionParaRpc(listado.filtros.proveedor);
+  const [relacion, setRelacion] = useState<FiltroRelacion | null>(() => (etiquetaId || proveedorId ? null : { ids: null }));
 
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -104,6 +120,16 @@ const CatalogoProductos: React.FC = () => {
   const [isFacebookFeedOpen, setIsFacebookFeedOpen] = useState<boolean>(false);
   const [pestanaMeta, setPestanaMeta] = useState<PestanaMeta>('feed');
   const [refreshKey, setRefreshKey] = useState<number>(0);
+  const [vista, setVista] = useState<VistaCatalogo>('lista');
+  useEffect(() => setVista(leerVista()), []);
+  const cambiarVista = useCallback((v: VistaCatalogo) => {
+    setVista(v);
+    try {
+      window.localStorage.setItem(CLAVE_VISTA, v);
+    } catch {
+      // Sin almacenamiento (modo privado): la vista vale solo para esta visita.
+    }
+  }, []);
   // Diálogos «Imprimir etiquetas» y «Códigos de barras»: los productos elegidos.
   const [idsEtiquetas, setIdsEtiquetas] = useState<number[] | null>(null);
   const [idsCodigos, setIdsCodigos] = useState<number[] | null>(null);
@@ -136,6 +162,31 @@ const CatalogoProductos: React.FC = () => {
   const productosRef = useRef<Producto[]>([]);
   productosRef.current = productos;
 
+  useEffect(() => {
+    if (!organization?.id || (!etiquetaId && !proveedorId)) {
+      // Mismo objeto si ya estaba sin filtro: no dispara otra carga del catálogo.
+      setRelacion((prev) => (prev && prev.ids === null ? prev : { ids: null }));
+      return;
+    }
+    let vigente = true;
+    setRelacion(null);
+    resolverFiltroRelacion(organization.id, etiquetaId, proveedorId)
+      .then((r) => vigente && setRelacion(r))
+      .catch((e: unknown) => {
+        console.error('Error al resolver el filtro de etiqueta o proveedor:', mensajeDe(e) ?? e);
+        // Sin poder resolverlo no se muestra el catálogo entero como si estuviera filtrado.
+        if (vigente) setRelacion({ ids: [] });
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [organization?.id, etiquetaId, proveedorId]);
+
+  const nombresRelacion = useMemo(
+    () => (relacion ? { etiqueta: relacion.etiqueta, proveedor: relacion.proveedor } : undefined),
+    [relacion],
+  );
+
   // Si la búsqueda confirmada cambia desde fuera («Limpiar todo», atrás), el
   // filtro rápido se alinea con ella.
   useEffect(() => {
@@ -147,20 +198,22 @@ const CatalogoProductos: React.FC = () => {
   // sucursal no recarga el catálogo. El orden tampoco: se ordena en el
   // navegador sobre lo cargado.
   const parametros = useCallback((): ParametrosCatalogo | null => {
-    if (!organization?.id) return null;
+    if (!organization?.id || !relacion) return null;
     return {
       organizationId: organization.id,
       busqueda: busquedaServidor,
       categoria: categoriaRpc,
       estado: estadoRpc,
       ordenarPor: 'name',
+      productIds: relacion.ids,
     };
-  }, [organization?.id, busquedaServidor, categoriaRpc, estadoRpc]);
+  }, [organization?.id, busquedaServidor, categoriaRpc, estadoRpc, relacion]);
 
   const fetchProductos = useCallback(async (modo: ModoCarga = 'normal') => {
     const p = parametros();
     if (!p) {
-      setLoading(false);
+      // Resolviendo `?etiqueta=` / `?proveedor=`: el esqueleto sigue hasta tenerlo.
+      if (!(organization?.id && !relacion)) setLoading(false);
       return;
     }
 
@@ -211,7 +264,7 @@ const CatalogoProductos: React.FC = () => {
       }
       resolveDone(); // liberar a handleExportar si está esperando
     }
-  }, [parametros, t]);
+  }, [parametros, t, organization?.id, relacion]);
 
   // Refs para el canal de tiempo real (se suscribe una vez por organización).
   const fetchProductosRef = useRef(fetchProductos);
@@ -229,7 +282,7 @@ const CatalogoProductos: React.FC = () => {
   // tabla se quedaba en el esqueleto (bug del 2026-09-28). En desarrollo salen
   // dos pedidos del primer lote y el primero se descarta.
   useEffect(() => {
-    const resto = JSON.stringify([organization?.id, categoriaRpc, estadoRpc, refreshKey]);
+    const resto = JSON.stringify([organization?.id, categoriaRpc, estadoRpc, refreshKey, relacion?.ids ?? null]);
     // Si solo cambió la búsqueda y ya hay lista, se conserva (con el filtro
     // rápido encima) hasta que llegue el primer lote: sin parpadeo de esqueleto.
     const soloBusqueda = ultimaCarga.current === resto && productosRef.current.length > 0;
@@ -242,7 +295,7 @@ const CatalogoProductos: React.FC = () => {
         enCurso.resolveDone?.();
       }
     };
-  }, [organization?.id, categoriaRpc, estadoRpc, busquedaServidor, refreshKey, fetchProductos]);
+  }, [organization?.id, categoriaRpc, estadoRpc, busquedaServidor, refreshKey, relacion, fetchProductos]);
 
   // Tiempo real: cambios en products, stock_levels, product_prices y
   // product_costs. Antes cualquier cambio (p. ej. cada venta del POS) recargaba
@@ -277,9 +330,13 @@ const CatalogoProductos: React.FC = () => {
         for (const h of prod.children ?? []) padreDe.set(Number(h.id), Number(prod.id));
       }
       const padres = new Set(ids.map((id) => padreDe.get(id) ?? id));
+      // Con filtro de etiqueta o proveedor, solo se refresca lo que pertenece a él.
+      const permitidos = p.productIds ? new Set(p.productIds.flatMap((id) => [id, padreDe.get(id) ?? id])) : null;
+      const aPedir = permitidos ? ids.filter((id) => permitidos.has(id) || permitidos.has(padreDe.get(id) ?? id)) : ids;
+      if (aPedir.length === 0) return;
 
       try {
-        const { productos: frescos } = await pedirLote(p, 0, MAX_FILAS_EN_VIVO, ids);
+        const { productos: frescos } = await pedirLote(p, 0, MAX_FILAS_EN_VIVO, aPedir);
         const porId = new Map(frescos.map((f) => [Number(f.id), f]));
         setProductos((prev) => {
           const vistos = new Set<number>();
@@ -656,6 +713,9 @@ const CatalogoProductos: React.FC = () => {
       <FiltrosProductosComponent
         listado={listado}
         onBusquedaRapida={setBusquedaRapida}
+        nombresRelacion={nombresRelacion}
+        vista={vista}
+        onVistaChange={cambiarVista}
         buscando={backgroundLoading && !loading && busquedaServidor !== ''}
         totalResultados={ordenados.length}
       />
@@ -666,6 +726,7 @@ const CatalogoProductos: React.FC = () => {
       </div>
 
       <ProductosTable
+        vista={vista}
         productos={paginaVisible}
         estado={estadoTabla}
         orden={listado.orden}

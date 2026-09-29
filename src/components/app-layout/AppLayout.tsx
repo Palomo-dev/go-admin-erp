@@ -280,6 +280,8 @@ export const AppLayout = ({
     };
 
     checkSubscriptionStatus();
+    // `pathname` fuera a propósito: la comprobación va por organización, no por navegación.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, router]);
 
   // Función para cargar cache
@@ -896,7 +898,7 @@ export const AppLayout = ({
         s.modulos.flatMap((m) =>
           m.paginas
             .filter((p) => p.enMenu !== false)
-            .map((p) => ({ id: p.href, name: nombresNav.pagina(p), url: p.href, description: tNav(m.modulo.etiqueta) }))
+            .map((p) => ({ id: p.href, name: nombresNav.pagina(p), url: p.href, description: tNav(m.modulo.etiqueta), icono: p.icono }))
         )
       ),
     [seccionesNav, tNav, nombresNav]
@@ -957,19 +959,23 @@ export const AppLayout = ({
         />
         
         {/* Contenido principal con scroll */}
-        {/* En móvil deja sitio a la barra inferior cuando se ve (MobileTabBar fija --shell-barra-inferior). */}
+        {/* En móvil deja abajo el sitio de la barra que se vea (AppHeader fija
+            --shell-barra-inferior: la MobileTabBar o la barra propia de la
+            pieza, p. ej. la BulkActionBar). Las páginas son hijas DIRECTAS
+            del contenedor con scroll: con un envoltorio `h-full` en medio, el
+            contenido que lo desborda no recibe ese padding y la paginación
+            del final quedaba tapada por la barra. Una página `h-full` sigue
+            midiendo el alto visible (ya sin la barra). */}
         <div className="flex-1 overflow-y-auto bg-canvas overscroll-contain min-w-0 max-lg:pb-[var(--shell-barra-inferior,0px)]">
-          <div className="h-full min-w-0 w-full">
-            {/* Desktop sin red (fase 4C): «Estás viendo datos locales del hh:mm» en todos los módulos. */}
-            <LocalDataNotice className="mx-4 mt-3 sm:mx-6 lg:mx-8" />
-            {subscriptionChecked ? children : (
-              <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-full">
-                <PageHeaderSkeleton />
-                <StatsSkeleton count={4} />
-                <CardListSkeleton cards={3} columns="1" />
-              </div>
-            )}
-          </div>
+          {/* Desktop sin red (fase 4C): «Estás viendo datos locales del hh:mm» en todos los módulos. */}
+          <LocalDataNotice className="mx-4 mt-3 sm:mx-6 lg:mx-8" />
+          {subscriptionChecked ? children : (
+            <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-full">
+              <PageHeaderSkeleton />
+              <StatsSkeleton count={4} />
+              <CardListSkeleton cards={3} columns="1" />
+            </div>
+          )}
         </div>
       </div>
       

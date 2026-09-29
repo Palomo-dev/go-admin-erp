@@ -5,6 +5,7 @@
  * saldos ni cartera: los disparadores mandan.
  */
 import type { ServerOrgContext } from '@/lib/utils/orgContext';
+import { COLUMNAS_CANTIDAD_PRODUCTO, cantidadLineaDeProducto } from '@/lib/services/documentos/cantidadLinea';
 import {
   codigoErrorFactura,
   type DatosFactura,
@@ -177,7 +178,7 @@ export async function detalleFactura(ctx: Ctx, id: string): Promise<DetalleFactu
       .from('invoice_items')
       .select(
         'id, product_id, description, qty, unit_price, discount_amount, tax_rate, tax_code, tax_included, total_line, serial_numbers, note, code_reference, ' +
-          'products:product_id (name, sku), tax_templates:tax_code (name)',
+          `products:product_id (name, sku, ${COLUMNAS_CANTIDAD_PRODUCTO}), tax_templates:tax_code (name)`,
       )
       // Líneas antiguas guardan la factura en `invoice_id` con `invoice_type = 'sale'`.
       .or(`invoice_sales_id.eq.${id},and(invoice_id.eq.${id},invoice_type.eq.sale)`)
@@ -245,7 +246,7 @@ export async function detalleFactura(ctx: Ctx, id: string): Promise<DetalleFactu
     serial_numbers: string[] | null;
     note: string | null;
     code_reference: string | null;
-    products: { name: string | null; sku: string | null } | null;
+    products: { name: string | null; sku: string | null; sale_mode?: string | null; qty_decimals?: number | null; unit_code?: string | null } | null;
     tax_templates: { name: string | null } | null;
   };
   type FilaPago = {
@@ -326,6 +327,8 @@ export async function detalleFactura(ctx: Ctx, id: string): Promise<DetalleFactu
       descripcion: l.description || l.products?.name || '',
       sku: l.products?.sku ?? l.code_reference ?? null,
       cantidad: num(l.qty),
+      // Peso o medida: «0,735 kg» y «$ 18.900 / kg» en el detalle.
+      ...cantidadLineaDeProducto(l.products),
       precioUnitario: num(l.unit_price),
       descuento: num(l.discount_amount),
       tarifa: num(l.tax_rate),

@@ -7,6 +7,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { tipoDeNegocio } from './voiceAgentPrompts';
 
 /** Cliente con service_role para bypasear RLS en el WS server */
 function getServiceSupabase() {
@@ -281,7 +282,8 @@ async function lookupReservation(
   orgId: number,
   args: Record<string, unknown>
 ): Promise<string> {
-  const { code, customer_name, customer_phone } = args as {
+  // `customer_name` llega en los argumentos pero no filtra: la búsqueda es por código o teléfono.
+  const { code, customer_phone } = args as {
     code?: string;
     customer_name?: string;
     customer_phone?: string;
@@ -361,7 +363,9 @@ async function getBusinessInfo(
   // `conversationRelayHandler`. Ahora el error se registra con su mensaje real.
   const { data: org, error } = await supabase
     .from('organizations')
-    .select('name, business_type, address, phone, email, website')
+    // El tipo de negocio es `organization_types.name` (por `type_id`); `business_type`
+    // no existe en `organizations` y hacía fallar la consulta entera.
+    .select('name, address, phone, email, website, organization_types(name)')
     .eq('id', orgId)
     .single();
 
@@ -377,7 +381,7 @@ async function getBusinessInfo(
     case 'address':
       return JSON.stringify({ address: org.address || 'No disponible', message: `Nuestra dirección es: ${org.address || 'No disponible'}` });
     case 'general':
-      return JSON.stringify({ name: org.name, type: org.business_type, phone: org.phone, email: org.email, website: org.website });
+      return JSON.stringify({ name: org.name, type: tipoDeNegocio(org), phone: org.phone, email: org.email, website: org.website });
     default:
       return JSON.stringify({ name: org.name, message: `${org.name} está a su servicio. ¿En qué podemos ayudarle?` });
   }

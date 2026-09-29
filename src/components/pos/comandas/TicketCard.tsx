@@ -1,14 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useTranslations } from 'next-intl';
-import { Clock, CheckCircle, ChefHat, AlertCircle, User, Check, Hash, Printer, Loader2, AlertTriangle, RefreshCcw } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
+import { Clock, CheckCircle, ChefHat, AlertCircle, User, Check, Hash, Printer, Loader2, AlertTriangle, RefreshCcw, Flame, StickyNote } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { formatTimeInTz } from '@/lib/utils/dateDisplay';
 import type { KitchenTicket, KitchenTicketItem, StationFilter } from '@/lib/services/kitchenService';
+import { esMedido, formatoCantidad, type ProductoModoVenta } from '@/lib/pos/peso/modoVenta';
 
 interface TicketCardProps {
   ticket: KitchenTicket;
@@ -34,6 +35,22 @@ export function alergiaPendiente(ticket: Pick<KitchenTicket, 'has_allergy' | 'al
 export function cantidadComanda(item: Pick<KitchenTicketItem, 'product_name' | 'quantity' | 'sale_items'>): number {
   if (item.product_name) return Number(item.quantity ?? 1);
   return Number(item.sale_items?.quantity ?? item.quantity ?? 1);
+}
+
+/**
+ * Texto de la cantidad en la comanda: «0,500 kg» en un producto por peso o
+ * medida (docs/design/PRODUCTOS-POR-PESO-BASCULA.md §2.6: «Las comandas
+ * muestran 0,500 kg») y «2x» en los demás, como siempre. La unidad sale del
+ * producto de la línea de la venta (mesas); una comanda del mostrador no la
+ * trae y se muestra con los decimales que tenga, en el idioma de la cocina.
+ */
+export function textoCantidadComanda(
+  cantidad: number,
+  producto: ProductoModoVenta | null | undefined,
+  locale = 'es-CO',
+): string {
+  if (esMedido(producto)) return formatoCantidad(cantidad, producto, locale);
+  return `${formatoCantidad(cantidad, null, locale)}x`;
 }
 
 // `label` es la clave en `posComandas.estados`, `estaciones` o `estadosItem`.
@@ -102,6 +119,7 @@ const getItemStatusInfo = (status: string | undefined) => {
 
 export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onReprint, onConfirmAllergy, stationFilter = 'all' }: TicketCardProps) {
   const t = useTranslations('posComandas');
+  const locale = useLocale();
   const { timezone } = useOrgTimezone();
   const [updatingItems, setUpdatingItems] = useState<Set<number>>(new Set());
   const [isReprinting, setIsReprinting] = useState(false);
@@ -161,7 +179,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
   const timeUrgencyClasses: Record<typeof timeUrgency, string> = {
     ok: 'text-gray-600 dark:text-gray-400',
     warning: 'text-orange-600 dark:text-orange-400 font-semibold',
-    critical: 'text-red-600 dark:text-red-400 font-bold animate-pulse',
+    critical: 'text-red-600 dark:text-red-400 font-bold',
   };
 
   const cardUrgencyBorder: Record<typeof timeUrgency, string> = {
@@ -213,7 +231,12 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
               <div className={`flex items-center gap-1 ${timeUrgencyClasses[timeUrgency]}`}>
                 <Clock className="h-4 w-4" />
                 <span>{t('tarjeta.minutos', { n: timeElapsed })}</span>
-                {timeUrgency === 'critical' && <span title={t('tarjeta.esperaElevada')}>🔥</span>}
+                {timeUrgency === 'critical' && (
+                  <span title={t('tarjeta.esperaElevada')} className="inline-flex">
+                    <Flame aria-hidden="true" className="h-4 w-4 shrink-0" />
+                    <span className="sr-only">{t('tarjeta.esperaElevada')}</span>
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-1">
                 <Hash className="h-4 w-4" />
@@ -346,7 +369,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
                       <Check className="h-3 w-3 text-white" />
                     </div>
                   ) : item.status === 'in_progress' ? (
-                    <div className="h-5 w-5 rounded-full bg-orange-500 flex items-center justify-center animate-pulse">
+                    <div className="h-5 w-5 rounded-full bg-orange-500 flex items-center justify-center">
                       <ChefHat className="h-3 w-3 text-white" />
                     </div>
                   ) : (
@@ -362,7 +385,7 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
                       </Badge>
                     )}
                     <span className={`font-semibold ${isCancelled ? 'text-red-700 dark:text-red-400 line-through' : isItemReady ? 'text-green-700 dark:text-green-400 line-through' : 'text-gray-900 dark:text-gray-100'}`}>
-                      {itemQuantity}x
+                      {textoCantidadComanda(itemQuantity, product as ProductoModoVenta | undefined, locale)}
                     </span>
                     <span className={`${isCancelled ? 'text-red-700 dark:text-red-400 line-through' : isItemReady ? 'text-green-700 dark:text-green-400 line-through' : 'text-gray-900 dark:text-gray-100'} break-words`}>
                       {productName}
@@ -424,7 +447,11 @@ export function TicketCard({ ticket, onStatusChange, onItemStatusChange, onRepri
                     <p className={item.is_allergy
                       ? 'mt-2 text-sm font-bold text-red-700 dark:text-red-400 flex items-start gap-1'
                       : 'mt-2 text-sm text-gray-600 dark:text-gray-400 italic'}>
-                      {item.is_allergy ? <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" /> : '📝 '}
+                      {item.is_allergy ? (
+                        <AlertTriangle aria-hidden="true" className="h-4 w-4 shrink-0 mt-0.5" />
+                      ) : (
+                        <StickyNote aria-hidden="true" className="mr-1 inline h-4 w-4 align-text-bottom" />
+                      )}
                       {item.is_allergy && <span className="uppercase">{t('alergia')}:</span>}
                       {typeof item.notes === 'object' ? (item.notes as { extra?: string } | null)?.extra : item.notes}
                     </p>

@@ -24,7 +24,7 @@ import { ClienteSelector } from '@/components/finanzas/facturas-venta/nueva-fact
 import { ItemsFactura } from '@/components/finanzas/facturas-venta/nueva-factura/ItemsFactura';
 import { ImpuestosFactura } from '@/components/finanzas/facturas-venta/nueva-factura/ImpuestosFactura';
 import { FormaPagoSelector } from '@/components/finanzas/facturas-venta/nueva-factura/FormaPagoSelector';
-import type { InvoiceItem } from '@/components/finanzas/facturas-venta/nueva-factura/NuevaFacturaForm';
+import type { InvoiceItem } from '@/components/finanzas/facturas-venta/nueva-factura/tipos';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 import { PageBackHeader } from './PageBackHeader';

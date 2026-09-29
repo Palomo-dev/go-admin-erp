@@ -16,6 +16,7 @@ import type {
   ResultadoConfirmar,
   ResultadoGuardar,
   ResultadoRecepcion,
+  LotesRecepcionFactura,
 } from './contrato';
 
 export class ErrorPeticionCompra extends Error {
@@ -62,9 +63,10 @@ const resultado = <T>(p: Promise<{ resultado: T }>) => p.then((x) => x.resultado
 
 export const clienteCompras = {
   guardar: (datos: GuardarFacturaCompra) => resultado(pedir<{ resultado: ResultadoGuardar }>('/api/facturas-compra', { method: 'POST', body: datos })),
-  confirmar: (id: string, opciones: { recepcionar: boolean; generar_ds: boolean }) =>
+  confirmar: (id: string, opciones: { recepcionar: boolean; generar_ds: boolean; lotes?: LotesRecepcionFactura }) =>
     resultado(pedir<{ resultado: ResultadoConfirmar }>(`/api/facturas-compra/${id}/confirmar`, { method: 'POST', body: opciones })),
-  recepcionar: (id: string) => resultado(pedir<{ resultado: ResultadoRecepcion }>(`/api/facturas-compra/${id}/recepcionar`, { method: 'POST', body: {} })),
+  recepcionar: (id: string, lotes?: LotesRecepcionFactura) =>
+    resultado(pedir<{ resultado: ResultadoRecepcion }>(`/api/facturas-compra/${id}/recepcionar`, { method: 'POST', body: lotes && lotes.length > 0 ? { lotes } : {} })),
   anular: (id: string, motivo: string) => pedir<{ ok: true }>(`/api/facturas-compra/${id}/anular`, { method: 'POST', body: { motivo } }),
   eliminarBorrador: (id: string) => pedir<{ ok: true }>(`/api/facturas-compra/${id}`, { method: 'DELETE' }),
   siguienteNumero: () => pedir<{ numero: string }>('/api/facturas-compra/siguiente-numero').then((x) => x.numero),

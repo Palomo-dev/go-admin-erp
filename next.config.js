@@ -64,6 +64,28 @@ const nextConfig = {
     }
     return config;
   },
+  // Membresías (docs/design/MEMBRESIAS-FASE-1-2.md §2): el módulo «Gimnasio» pasó a
+  // /app/membresias. Redirección PERMANENTE (308) aquí y no en el middleware, para que los
+  // marcadores viejos sigan funcionando. /app/gym es ahora el Resumen; horarios se fundió con
+  // clases; «ajustes» (nunca existió) va a la configuración del módulo.
+  async redirects() {
+    return [
+      { source: '/app/gym', destination: '/app/membresias', permanent: true },
+      { source: '/app/gym/membresias', destination: '/app/membresias/membresias', permanent: true },
+      { source: '/app/gym/membresias/:id', destination: '/app/membresias/membresias/:id', permanent: true },
+      { source: '/app/gym/planes', destination: '/app/membresias/planes', permanent: true },
+      { source: '/app/gym/clases', destination: '/app/membresias/clases', permanent: true },
+      { source: '/app/gym/horarios', destination: '/app/membresias/clases?vista=calendario', permanent: true },
+      { source: '/app/gym/reservaciones', destination: '/app/membresias/reservas', permanent: true },
+      { source: '/app/gym/checkin', destination: '/app/membresias/check-in', permanent: true },
+      { source: '/app/gym/instructores', destination: '/app/membresias/instructores', permanent: true },
+      { source: '/app/gym/dispositivos', destination: '/app/membresias/control-de-acceso', permanent: true },
+      { source: '/app/gym/reportes', destination: '/app/membresias', permanent: true },
+      { source: '/app/gym/ajustes', destination: '/app/configuracion?modulo=gym', permanent: true },
+      { source: '/app/gym/:path*', destination: '/app/membresias', permanent: true },
+      { source: '/gym-display/:deviceId', destination: '/membresias-kiosco/:deviceId', permanent: true },
+    ];
+  },
   // Permitir que Evolution API (en Docker) envie webhooks al ERP local
   allowedDevOrigins: ['http://host.docker.internal:61592', 'http://localhost:8080'],
   images: {

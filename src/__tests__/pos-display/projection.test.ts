@@ -708,17 +708,22 @@ describe('proyección · carritos corruptos de localStorage', () => {
     expect(projectCartForDisplay(cart({ items: [nombreRoto] }), { currency: 'COP' }).lines[0].name).toBe('');
   });
 
-  it('cantidad y precio como string (CartView hace parseFloat) se proyectan como número; coma decimal ("1,5") → 0 como en la caja', () => {
+  it('cantidad y precio como string (CartView hace parseFloat) se proyectan como número; coma decimal ("1,5") → 1,5', () => {
     const c = cart({ items: [item({ id: 'l1', product_id: 1, quantity: '2' as unknown as number, unit_price: '1500.5' as unknown as number })] });
     const line = projectCartForDisplay(c, { currency: 'COP' }).lines[0];
     expect(line.qty).toBe(2);
     expect(line.unitPrice).toBe(1500.5);
     expect(line.total).toBe(3001);
-    const coma = cart({ items: [item({ id: 'l1', product_id: 1, quantity: '1,5' as unknown as number })] });
+    // Antes «1,5» se proyectaba como 0 (NaN). Con productos por peso la
+    // cantidad escrita con coma es legítima: se lee como decimal
+    // (PRODUCTOS-POR-PESO-BASCULA.md §10). Un texto ambiguo sigue dando 0.
+    const coma = cart({ items: [item({ id: 'l1', product_id: 1, quantity: '1,5' as unknown as number, unit_price: 1000 })] });
     const out = projectCartForDisplay(coma, { currency: 'COP' });
-    expect(out.lines[0].qty).toBe(0);
-    expect(out.lines[0].total).toBe(0);
-    expect(out.subtotal).toBe(0);
+    expect(out.lines[0].qty).toBe(1.5);
+    expect(out.lines[0].total).toBe(1500);
+    expect(out.subtotal).toBe(1500);
+    const ambiguo = cart({ items: [item({ id: 'l1', product_id: 1, quantity: '1.500,5' as unknown as number })] });
+    expect(projectCartForDisplay(ambiguo, { currency: 'COP' }).lines[0].qty).toBe(0);
   });
 
   it('ítem sin id → id derivado estable (linea:<product_id>:<posición entre las proyectadas>); sin product_id → "x"', () => {

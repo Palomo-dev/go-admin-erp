@@ -2,6 +2,8 @@
 
 Estado: propuesta inicial basada en navegación y análisis del 2026-09-19. Todos los desarrollos de esta matriz están **pendientes**. Los IDs remiten al [catálogo](CATALOGO-COMPOSICIONES.md); las fases al [plan maestro](PLAN-MAESTRO.md).
 
+Revisión del 2026-09-22: [auditoría de diseño escritorio/móvil y operación](AUDITORIA-DISENO-ESCRITORIO-MOVIL.md). Contrasta las referencias con el manual GO Admin, la UI actual, el código y la BD; establece pares responsive, controles con efecto real y límites de la cobertura antes de continuar Figma.
+
 Ampliación de F00: [fichas de las 32 referencias](F00-FICHAS-REFERENCIAS.md), con rutas, observaciones de móvil e interacciones concretas. Las fichas declaran límites y pendientes; no convierten la cobertura parcial de todas las rutas/menús/footers en una auditoría exhaustiva ni en plantillas implementadas.
 
 La ampliación B2 añade 244 capturas incluidas de las 32 referencias: [15 referencias generales y comerciales](F00-COBERTURA-VISUAL-AMPLIADA.md), [14 de hotel/restaurante y servicios](F00-B2-HOTEL-Y-RESTAURANTE.md), y [All Natural, Ecom y Leafore](F00-B2-COMERCIO-ADICIONAL.md). Son muestras en 390 y 1440 px con estados y límites explícitos. La columna siguiente conserva la cobertura inicial; los expedientes B2 y el [reporte independiente](F00-REPORTE-TESTER.md) contienen su ampliación. No implica todas las rutas o controles inspeccionados.

@@ -34,9 +34,9 @@ import { todayInTz } from '@/lib/utils/timezone';
 
 interface Vehicle {
   id: string;
-  plate_number: string;
+  plate: string;
   model?: string;
-  capacity_passengers?: number;
+  passenger_capacity?: number;
 }
 
 interface Driver {
@@ -293,7 +293,7 @@ export function ScheduleDialog({
                   <SelectItem value="__none__">Sin asignar</SelectItem>
                   {vehicles.map((vehicle) => (
                     <SelectItem key={vehicle.id} value={vehicle.id}>
-                      {vehicle.plate_number} {vehicle.model && `- ${vehicle.model}`}
+                      {vehicle.plate} {vehicle.model && `- ${vehicle.model}`}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -11,7 +11,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Printer, Receipt, Split, Truck } from 'lucide-react';
+import { Printer, Receipt, Split, Truck, User } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { PreCuenta, SaleItem } from './types';
 import { ElectronicInvoiceToggle } from '@/components/finanzas/facturacion-electronica';
@@ -48,6 +49,7 @@ export function PreCuentaDialog({
   deliveryInfo,
 }: PreCuentaDialogProps) {
   const { formatear } = useMonedaOrganizacion();
+  const tAvisos = useTranslations('posMesas.avisos');
   const [sendToFactus, setSendToFactus] = React.useState(false);
   const { alwaysEnabled: eInvoiceAlwaysEnabled } = useElectronicInvoicePreference();
 
@@ -114,8 +116,9 @@ export function PreCuentaDialog({
                       </div>
                     )}
                     {notasObjeto(item.notes)?.guest_number && (
-                      <p className="text-xs text-purple-700 dark:text-purple-400 mt-1">
-                        👤 Comensal {notasObjeto(item.notes)?.guest_number}
+                      <p className="mt-1 flex items-center gap-1 text-xs text-fg-secondary">
+                        <User aria-hidden="true" className="size-3 shrink-0" strokeWidth={1.5} />
+                        {tAvisos('comensal', { n: notasObjeto(item.notes)?.guest_number ?? 0 })}
                       </p>
                     )}
                     {/* Solo la nota PARA EL CLIENTE. La de cocina («sin cebolla»,

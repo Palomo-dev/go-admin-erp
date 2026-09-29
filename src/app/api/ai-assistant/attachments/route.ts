@@ -32,7 +32,9 @@ import type { ServerOrgContext } from '@/lib/utils/orgContext';
 /** 20 MB, el mismo tope que declara el bucket. */
 const MAX_BYTES = 20 * 1024 * 1024;
 
-export type AttachmentKind = 'image' | 'pdf' | 'spreadsheet';
+// Sin `export`: un `route.ts` del App Router solo puede exportar sus handlers
+// y runtime/dynamic/config. No lo usa nadie fuera de este archivo.
+type AttachmentKind = 'image' | 'pdf' | 'spreadsheet';
 
 /**
  * Tipos permitidos → extensión y clasificación.

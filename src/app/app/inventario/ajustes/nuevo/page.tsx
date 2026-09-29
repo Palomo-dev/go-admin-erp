@@ -1,14 +1,16 @@
-'use client';
+import { Suspense } from 'react';
+import { FormularioAjuste } from '@/components/inventario/ajustes';
 
-import React from 'react';
-
-import { NuevoAjusteForm } from '@/components/inventario/ajustes/nuevo';
-
-export default function NuevoAjustePage() {
-
+/**
+ * Nuevo ajuste o ajuste por conteo. Lee `?producto_id`, `?modo` (o `?type`),
+ * `?branchId` y `?desde` con `useSearchParams`, de ahí el `Suspense`.
+ */
+export default function InventarioNuevoAjustePage() {
   return (
-    <div className="p-4 sm:p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <NuevoAjusteForm />
+    <div className="min-h-full bg-canvas p-4 sm:p-6">
+      <Suspense fallback={null}>
+        <FormularioAjuste />
+      </Suspense>
     </div>
   );
 }

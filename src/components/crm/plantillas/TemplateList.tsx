@@ -8,12 +8,11 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Copy, FileText, MoreHorizontal, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { Copy, FileText, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
@@ -22,6 +21,7 @@ import { toast } from '@/components/ui/use-toast';
 import type { TemplateKind, TemplateSummary } from '@/lib/services/crm/email/types';
 import { deleteTemplate, duplicateTemplate, listTemplates, updateTemplate } from '@/components/crm/email/emailApi';
 import { TEMPLATE_KIND_LABELS } from '@/components/crm/email/TemplatePicker';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 const KIND_FILTERS: Array<{ value: 'all' | TemplateKind; label: string }> = [
   { value: 'all', label: 'Todos los tipos' },
@@ -101,10 +101,14 @@ export function TemplateList() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[220px] flex-1">
-          <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-gray-400" aria-hidden="true" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nombre o asunto" aria-label="Buscar plantillas" className="pl-8 dark:bg-gray-900" />
-        </div>
+        <SearchInput
+          value={q}
+          onChange={setQ}
+          onValueChange={setQ}
+          placeholder="Buscar por nombre o asunto"
+          etiqueta="Buscar plantillas"
+          className="min-w-[220px] flex-1"
+        />
         <Select value={kind} onValueChange={(v) => setKind(v as 'all' | TemplateKind)}>
           <SelectTrigger className="w-48 dark:bg-gray-900" aria-label="Filtrar por tipo"><SelectValue /></SelectTrigger>
           <SelectContent>{KIND_FILTERS.map((k) => <SelectItem key={k.value} value={k.value}>{k.label}</SelectItem>)}</SelectContent>

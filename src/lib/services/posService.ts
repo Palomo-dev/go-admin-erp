@@ -9,6 +9,8 @@ import { enqueueOfflineSale, shouldCheckoutOffline, newLocalUuid, newSaleId } fr
 import { buildCheckoutEnvelope, callCheckoutRpc, type LineaMesaSinCobrar } from '@/lib/offline/checkoutRpc';
 import { enqueueOfflineCustomer, findLocalCustomerDuplicate, type OfflineCustomerPayload } from '@/lib/offline/customersOutbox';
 import { posOfflineReads } from '@/lib/offline/posOfflineReads';
+import { buscarClientes } from '@/lib/services/customers/busquedaClientesService';
+import type { PaginaClientes } from '@/lib/clientes/busqueda';
 import { isDesktop } from '@/lib/utils/desktop';
 import { isAppOnline } from '@/lib/utils/offlineCache';
 import {
@@ -34,6 +36,7 @@ import { getStorageImageUrl } from '@/lib/utils/storageImageUrl';
 import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 import { nombreVisibleMetodo, ordenarMetodosDeLaOrganizacion } from '@/lib/finanzas/metodosPagoOrganizacion';
 import { precioVigente, importePrecioVigente, ProductoSinPrecioError } from '@/lib/pos/precioVigente';
+import { agotadoPorStock } from '@/lib/pos/stockDisponible';
 import { calcularLineaVenta, totalesDeLineas } from '@/lib/pos/lineaVenta';
 import { anularVentaEnServidor } from '@/lib/pos/anularVenta';
 import { formatDateInTz } from '@/lib/utils/dateDisplay';
@@ -44,6 +47,8 @@ import {
   type CambioNotaLinea,
   type RespuestaRonda,
 } from '@/lib/pos/cocina/lineasCarrito';
+import { decimalesCantidad, esMedido, redondearCantidadProducto } from '@/lib/pos/peso/modoVenta';
+import type { Pesaje } from '@/lib/pos/peso/pesada';
 
 export class POSService {
   /**
@@ -487,7 +492,7 @@ export class POSService {
         // el producto está agotado, aunque no exista registro en stock_levels para
         // la branch actual. Antes se requería hasStockData, pero eso hacía que
         // productos sin registro de stock aparecieran como disponibles.
-        const isOutOfStock = product.track_stock === true && stockQty <= 0;
+        const isOutOfStock = agotadoPorStock(product.track_stock, stockQty);
         // Precio vigente (effective_from <= ahora < effective_to), no el último
         // registrado: un precio vencido o programado a futuro no se muestra.
         const vigente = precioVigente(pricesMap[product.id] || []);
@@ -532,10 +537,18 @@ export class POSService {
     }
   }
 
-  // Obtener variantes de un producto padre
-  static async getProductVariants(parentProductId: number) {
+  /**
+   * Variantes (productos hijos) de un producto padre, con su precio vigente.
+   *
+   * Con `opciones.branchFilter` (el mismo filtro de la grilla: número =
+   * sucursal concreta, `null` = todas) cada variante trae además su stock
+   * (`stock_quantity`, `qty_reserved`) y `is_out_of_stock` con la misma regla
+   * que la tarjeta del catálogo (`agotadoPorStock`). Sin opciones la salida
+   * es la de siempre (PMS, envíos, «Agregar productos»).
+   */
+  static async getProductVariants(parentProductId: number, opciones?: { branchFilter?: number | null }) {
     if (this.usesLocalCatalog()) {
-      return posOfflineReads.getProductVariants(this.organizationId, parentProductId, getStorageImageUrl);
+      return posOfflineReads.getProductVariants(this.organizationId, parentProductId, getStorageImageUrl, opciones);
     }
     try {
       const { data, error } = await supabase
@@ -583,6 +596,29 @@ export class POSService {
         .select('id, product_id, storage_path, is_primary')
         .eq('product_id', parentProductId);
 
+      // Stock por variante en la sucursal que vende (solo si se pidió). Misma
+      // consulta que la grilla: filas sin lote; sin sucursal, suma todas.
+      const conStock = opciones !== undefined && opciones.branchFilter !== undefined;
+      const stockPorVariante: Record<number, { qty_on_hand: number; qty_reserved: number }> = {};
+      if (conStock && variantIds.length > 0) {
+        let consultaStock = supabase
+          .from('stock_levels')
+          .select('product_id, qty_on_hand, qty_reserved')
+          .in('product_id', variantIds)
+          .is('lot_id', null);
+        if (opciones.branchFilter !== null && opciones.branchFilter !== undefined) {
+          consultaStock = consultaStock.eq('branch_id', opciones.branchFilter);
+        }
+        const { data: filasStock, error: errorStock } = await consultaStock;
+        if (errorStock) throw errorStock;
+        (filasStock || []).forEach((s: { product_id: number; qty_on_hand: number | string | null; qty_reserved: number | string | null }) => {
+          const previo = stockPorVariante[s.product_id] ?? { qty_on_hand: 0, qty_reserved: 0 };
+          previo.qty_on_hand += Number(s.qty_on_hand) || 0;
+          previo.qty_reserved += Number(s.qty_reserved) || 0;
+          stockPorVariante[s.product_id] = previo;
+        });
+      }
+
       const parentImage = parentImages?.find((img: any) => img.is_primary) || parentImages?.[0];
 
       return data?.map((variant: any) => {
@@ -594,11 +630,19 @@ export class POSService {
             ? getStorageImageUrl(parentImage.storage_path)
             : null;
 
+        const stock = stockPorVariante[variant.id] ?? { qty_on_hand: 0, qty_reserved: 0 };
         return {
           ...variant,
           price: precioVigente(variant.product_prices || [])?.price || null,
           product_images: ownImages.length > 0 ? ownImages : (parentImages || []),
-          image: resolvedImage
+          image: resolvedImage,
+          ...(conStock
+            ? {
+                stock_quantity: stock.qty_on_hand,
+                qty_reserved: stock.qty_reserved,
+                is_out_of_stock: agotadoPorStock(variant.track_stock, stock.qty_on_hand),
+              }
+            : {}),
         };
       }) || [];
     } catch (error) {
@@ -699,6 +743,28 @@ export class POSService {
     }
   }
 
+  /**
+   * Producto activo por su PLU de balanza (`products.scale_plu`, único por
+   * organización): lo usa la etiqueta de peso variable cuando el código exacto
+   * no existe (PRODUCTOS-POR-PESO-BASCULA.md §2.7). Sin red en el escritorio,
+   * el índice local `by_org_scale_plu` de la réplica.
+   */
+  static async getProductByScalePlu(plu: number): Promise<Product | null> {
+    if (!Number.isInteger(plu) || plu < 1) return null;
+    if (this.usesLocalCatalog()) {
+      return (await posOfflineReads.getProductByScalePlu(this.organizationId, plu)) as unknown as Product | null;
+    }
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('organization_id', this.organizationId)
+      .eq('scale_plu', plu)
+      .eq('status', 'active')
+      .maybeSingle();
+    if (error) throw error;
+    return (data as Product | null) ?? null;
+  }
+
   // getProductById is implemented later with proper price and tax integration
 
   // ===============================
@@ -744,32 +810,26 @@ export class POSService {
   // ===============================
   // CLIENTES
   // ===============================
-  static async searchCustomers(filter: CustomerFilter): Promise<Customer[]> {
+  /**
+   * Búsqueda única de clientes (RPC `fn_clientes_buscar`; sin red, la misma
+   * búsqueda sobre el catálogo local): sin tildes, todas las palabras en
+   * cualquier campo, teléfono y documento por dígitos, por relevancia, con el
+   * total de coincidencias para «Mostrando 20 de N · Ver más».
+   */
+  static async buscarClientesPagina(
+    texto: string | undefined,
+    opciones: { limite?: number; desde?: number } = {},
+  ): Promise<PaginaClientes<Customer>> {
     if (this.usesLocalCatalog()) {
-      return (await posOfflineReads.searchCustomers(this.organizationId, filter.search)) as unknown as Customer[];
+      return (await posOfflineReads.buscarClientesPagina(this.organizationId, texto, opciones)) as unknown as PaginaClientes<Customer>;
     }
-    try {
-      let query = supabase
-        .from('customers')
-        .select('*')
-        .eq('organization_id', this.organizationId);
+    const r = await buscarClientes(supabase, { organizationId: this.organizationId, texto, limite: opciones.limite, desde: opciones.desde });
+    return r as unknown as PaginaClientes<Customer>;
+  }
 
-      if (filter.search) {
-        query = query.or(
-          `full_name.ilike.%${filter.search}%,email.ilike.%${filter.search}%,phone.ilike.%${filter.search}%,doc_number.ilike.%${filter.search}%,company_name.ilike.%${filter.search}%,trade_name.ilike.%${filter.search}%,identification_number.ilike.%${filter.search}%`
-        );
-      }
-
-      const { data, error } = await query
-        .order('full_name')
-        .limit(filter.search ? 20 : 50);
-
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.error('Error searching customers:', error);
-      throw error;
-    }
+  /** Primera página de `buscarClientesPagina` (20 filas). */
+  static async searchCustomers(filter: CustomerFilter): Promise<Customer[]> {
+    return (await this.buscarClientesPagina(filter.search)).filas;
   }
 
   static async createCustomer(customerData: Partial<Customer>): Promise<Customer> {
@@ -959,11 +1019,18 @@ export class POSService {
     return carts.findIndex((c) => c.id === cartId && (c.status === 'active' || c.status === 'hold'));
   }
 
+  /**
+   * Agrega el producto al carrito. Una línea por peso o medida
+   * (PRODUCTOS-POR-PESO-BASCULA.md) nunca se funde con otra del mismo
+   * producto: cada pesada es su propia línea, con su `pesaje`
+   * (`notes.pesaje` en el cobro) y la cantidad redondeada a sus decimales.
+   */
   static async addItemToCart(
     cartId: string,
     product: Product,
     quantity: number = 1,
-    modifiers?: CartItemModifier[]
+    modifiers?: CartItemModifier[],
+    opciones?: { pesaje?: Pesaje }
   ): Promise<Cart> {
     try {
       const carts = this.readAllCarts();
@@ -976,7 +1043,9 @@ export class POSService {
         (mods || []).map((m) => m.modifierId).sort().join(',');
       // Una línea con nota (cocina, cliente o alergia) no absorbe unidades sin
       // nota: «2 hamburguesas, una sin cebolla» son dos líneas (N4).
-      const existingItemIndex = cart.items.findIndex(
+      const medido = esMedido(product);
+      const cantidad = medido ? redondearCantidadProducto(quantity, decimalesCantidad(product)) : quantity;
+      const existingItemIndex = medido ? -1 : cart.items.findIndex(
         item => item.product_id === product.id && modifiersKey(item.modifiers) === modifiersKey(modifiers)
           && !item.notes && !item.customer_note && !item.is_allergy
       );
@@ -994,13 +1063,14 @@ export class POSService {
           cart_id: cartId,
           product_id: product.id,
           product,
-          quantity,
+          quantity: cantidad,
           unit_price: basePrice + extraTotal,
           total: 0,
           discount_amount: 0,
           tax_amount: 0,
           tax_rate: 0,
           modifiers: modifiers && modifiers.length > 0 ? modifiers : undefined,
+          ...(opciones?.pesaje ? { pesaje: opciones.pesaje } : {}),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
@@ -1081,6 +1151,32 @@ export class POSService {
       console.error('Error updating cart item quantity:', error);
       throw error;
     }
+  }
+
+  /**
+   * «Cambiar peso» de una línea por peso o medida: nueva cantidad (redondeada a
+   * los decimales del producto) y su pesada. Notas, modificadores y precio se
+   * conservan; el descuento se topa en cantidad × precio, como siempre.
+   */
+  static async updateCartItemPesaje(cartId: string, itemId: string, quantity: number, pesaje?: Pesaje): Promise<Cart> {
+    const carts = this.readAllCarts();
+    const cartIndex = this.indexOfLiveCart(carts, cartId);
+    if (cartIndex === -1) throw new Error('Carrito no encontrado');
+    const cart = carts[cartIndex];
+    const item = cart.items.find((i) => i.id === itemId);
+    if (!item) throw new Error('Item no encontrado');
+    const cantidad = redondearCantidadProducto(quantity, decimalesCantidad(item.product));
+    if (!(cantidad > 0)) return this.removeItemFromCart(cartId, itemId);
+    item.quantity = cantidad;
+    item.total = cantidad * item.unit_price;
+    if (pesaje) item.pesaje = pesaje;
+    if (item.discount_amount && item.discount_amount > item.total) item.discount_amount = item.total;
+    item.updated_at = new Date().toISOString();
+    await this.calculateCartTotals(cart);
+    cart.updated_at = new Date().toISOString();
+    carts[cartIndex] = cart;
+    this.saveCartsToStorage(carts);
+    return cart;
   }
 
   static async updateCartItemDiscount(cartId: string, itemId: string, discountAmount: number): Promise<Cart> {
@@ -1225,6 +1321,25 @@ export class POSService {
       console.error('Error getting frequent discounts:', error);
       return [];
     }
+  }
+
+  /**
+   * El cliente existe en la organización ACTIVA (enlace del POS
+   * `?cliente=<id>`, renovación de membresías). Filtra por organización
+   * además del RLS: un id de otra organización del mismo usuario no pasa.
+   */
+  static async existeClienteEnOrganizacion(customerId: string): Promise<boolean> {
+    if (this.usesLocalCatalog()) {
+      return !!(await posOfflineReads.getCustomerById(this.organizationId, customerId));
+    }
+    const { data, error } = await supabase
+      .from('customers')
+      .select('id')
+      .eq('organization_id', this.organizationId)
+      .eq('id', customerId)
+      .maybeSingle();
+    if (error) throw error;
+    return !!data;
   }
 
   static async setCartCustomer(cartId: string, customerId?: string): Promise<Cart> {
@@ -1549,6 +1664,8 @@ export class POSService {
             category_id: i.product?.category_id,
             quantity: i.quantity,
             unit_price: i.unit_price,
+            // «Lleve X pague Y» no aplica a productos por peso o medida.
+            sale_mode: i.product?.sale_mode,
           })),
           organization_id: cart.organization_id,
           branch_id: cart.branch_id,
@@ -1556,9 +1673,15 @@ export class POSService {
         });
 
         if (promoResult.discountTotal > 0) {
-          for (const item of cart.items) {
+          for (let idx = 0; idx < cart.items.length; idx += 1) {
+            const item = cart.items[idx];
             if (!item.discount_amount || item.discount_amount === 0) {
-              const promoDiscount = promoResult.itemDiscounts[item.product_id] || 0;
+              // Líneas por peso o medida: el descuento de ESA línea (cada pesada
+              // es una línea del mismo producto; el reparto por producto le
+              // daba a cada una el de todas). Las demás, como siempre.
+              const promoDiscount = (esMedido(item.product)
+                ? promoResult.lineDiscounts?.[idx]
+                : promoResult.itemDiscounts[item.product_id]) || 0;
               if (promoDiscount > 0) {
                 item.discount_amount = promoDiscount;
               }
@@ -1741,7 +1864,13 @@ export class POSService {
         // Mismo cierre de carrito que el camino de siempre (y misma emisión a
         // la pantalla del cliente desde saveCartsToStorage).
         await this.removeCart(cart.id);
-        return { ...rpcResult.sale, replayed: rpcResult.replayed };
+        // Membresías creadas/activadas por el cobro (misma transacción): las
+        // pinta el post-venta (frame D2). Solo se agregan si las hay.
+        return {
+          ...rpcResult.sale,
+          replayed: rpcResult.replayed,
+          ...(rpcResult.membresias.length > 0 ? { membresias: rpcResult.membresias } : {}),
+        };
       }
       throw new Error(
         'No se pudo registrar la venta: el servicio de cobro no está disponible. '
@@ -1992,7 +2121,9 @@ export class POSService {
         created_at: data.created_at,
         updated_at: data.updated_at,
         tag_id: data.tag_id,
-        parent_product_id: data.parent_product_id
+        parent_product_id: data.parent_product_id,
+        // Membresía (P1): el carrito exige cliente titular para esta línea.
+        service_type: data.service_type ?? null
       };
     } catch (error) {
       console.error('Error getting product by id:', error);
@@ -2007,6 +2138,11 @@ export class POSService {
    * la vigencia real (`effective_from <= ahora < effective_to`); sin red en el
    * escritorio lee el catálogo local con la misma regla.
    */
+  /** Precio vigente por unidad de venta (por kg) para mostrarlo en «Pesar»; misma regla que el carrito. */
+  static async precioVigenteProducto(productId: number, productName?: string | null): Promise<number> {
+    return this.getProductPrice(productId, productName);
+  }
+
   private static async getProductPrice(productId: number, productName?: string | null): Promise<number> {
     let precio: number | null;
     try {
@@ -2082,6 +2218,8 @@ export class POSService {
           category_id: i.product?.category_id,
           quantity: i.quantity,
           unit_price: i.unit_price,
+          // «Lleve X pague Y» no aplica a productos por peso o medida.
+          sale_mode: i.product?.sale_mode,
         })),
         organization_id: cart.organization_id,
         branch_id: cart.branch_id,
@@ -2089,9 +2227,13 @@ export class POSService {
       });
 
       if (promoResult.discountTotal > 0) {
-        for (const item of cart.items) {
+        for (let idx = 0; idx < cart.items.length; idx += 1) {
+          const item = cart.items[idx];
           if (!item.discount_amount || item.discount_amount === 0) {
-            const promoDiscount = promoResult.itemDiscounts[item.product_id] || 0;
+            // Líneas por peso o medida: el descuento de ESA línea (ver checkout).
+            const promoDiscount = (esMedido(item.product)
+              ? promoResult.lineDiscounts?.[idx]
+              : promoResult.itemDiscounts[item.product_id]) || 0;
             if (promoDiscount > 0) {
               item.discount_amount = promoDiscount;
             }

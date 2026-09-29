@@ -69,6 +69,29 @@ export const CODIGOS_ERROR_PRODUCTO = [
   'receta_destino_repetido',
   'receta_al_producir_sin_inventario',
   'guardado_en_curso',
+  // Tipo de servicio y membresía (fn_producto_guardar · 20260929000400)
+  'tipo_servicio_invalido',
+  'membresia_con_variantes',
+  'membresia_con_contratos',
+  'membresia_unidad_invalida',
+  'membresia_duracion_invalida',
+  'membresia_cobro_invalido',
+  'membresia_gracia_invalida',
+  'membresia_sede_invalida',
+  'plan_producto_invalido',
+  // Cómo se vende (fn_producto_int_modo_venta · 20260929120200)
+  'modo_venta_invalido',
+  'modo_venta_servicio',
+  'modo_venta_con_variantes',
+  'unidad_peso_invalida',
+  'unidad_medida_invalida',
+  'referencia_precio_invalida',
+  'decimales_invalidos',
+  'minimo_invalido',
+  'tara_invalida',
+  // PLU de balanza (fn_producto_int_plu · 20260929230300)
+  'plu_invalido',
+  'plu_duplicado',
 ] as const;
 
 export type CodigoErrorProducto = (typeof CODIGOS_ERROR_PRODUCTO)[number] | 'desconocido';
@@ -583,6 +606,8 @@ export interface ProductoCampos {
   unit_code?: string | null;
   station?: string | null;
   product_type: 'product' | 'service';
+  /** Solo si `product_type = 'service'`; en editar, sin la clave se conserva el que tenga. */
+  service_type?: TipoServicioProducto | null;
   status: 'active' | 'inactive' | 'discontinued';
   brand?: string | null;
   reference?: string | null;
@@ -591,11 +616,28 @@ export interface ProductoCampos {
   serial_pattern?: string | null;
   auto_generate_serial: boolean;
   warranty_months?: number | null;
+  /**
+   * Maneja lotes (FEFO en la venta, lote en cada entrada). Sin la clave se conserva
+   * el valor guardado; sin control de existencias queda en false (inv_b7_3/4).
+   */
+  track_lots?: boolean;
   weight_kg?: number | null;
   length_cm?: number | null;
   width_cm?: number | null;
   height_cm?: number | null;
   is_composite?: boolean;
+  /**
+   * Cómo se vende (PRODUCTOS-POR-PESO-BASCULA.md): 'unit' | 'weight' | 'measure'.
+   * El precio de `precio.price` es SIEMPRE por `unit_code` (por kg).
+   */
+  sale_mode?: 'unit' | 'weight' | 'measure';
+  /** Presentación del precio («cada 100 g» = 100 + 'GR'); sin valor, por la unidad de venta. */
+  price_ref_qty?: number | null;
+  price_ref_unit_code?: string | null;
+  min_sale_qty?: number | null;
+  require_scale?: boolean;
+  /** PLU de balanza (1–99.999, único por organización); solo por peso o medida. */
+  scale_plu?: number | null;
 }
 
 export interface ProveedorEntrada {
@@ -644,7 +686,8 @@ export interface PayloadGuardarProducto {
   etiquetas?: number[];
   proveedores?: ProveedorEntrada[];
   proveedores_quitar_preferido?: boolean;
-  stock?: { branch_id: number; qty?: number; min_level?: number; unit_cost?: number }[];
+  /** Con `track_lots`, la entrada inicial va al lote `lot_code` (se crea si no existe; vacío = L-AAAAMMDD). */
+  stock?: { branch_id: number; qty?: number; min_level?: number; unit_cost?: number; lot_code?: string; expiry_date?: string | null }[];
   tiene_variantes: boolean;
   variantes?: VarianteEntrada[];
   modificadores?: GrupoModificadorEntrada[];
@@ -654,6 +697,56 @@ export interface PayloadGuardarProducto {
   clave_idempotencia?: string;
   /** Sin esta clave las recetas no se tocan. */
   receta?: PayloadRecetaProducto;
+  /**
+   * Plan del producto membresía (exige memberships.plans.manage). Sin la clave, un producto
+   * membresía nuevo recibe el plan por defecto (1 mes, por adelantado) y uno existente lo conserva.
+   */
+  membresia?: MembresiaEntrada;
+}
+
+export type TipoServicioProducto = 'standard' | 'membership' | 'session_pack' | 'class' | 'course' | 'appointment';
+
+/** `payload.membresia` de fn_producto_guardar (se guarda en membership_plans, 1:1 con el producto). */
+export interface MembresiaEntrada {
+  duration_unit: 'day' | 'week' | 'month' | 'year';
+  duration_value: number;
+  billing_mode: 'prepaid' | 'on_credit';
+  /**
+   * `automatic`: la tarea horaria deja la renovación pendiente 7 días antes del vencimiento; nunca
+   * cobra ni factura sola (docs/design/MEMBRESIAS-FASE-1-2.md §12).
+   */
+  renewal_mode: 'manual' | 'automatic';
+  grace_days: number;
+  requires_activation: boolean;
+  activation_window_days: number | null;
+  freeze_allowed: boolean;
+  freeze_max_times: number | null;
+  freeze_max_days: number | null;
+  /** Vacío = todas las sedes. */
+  allowed_branch_ids: number[];
+  /** null = sin restricción. Días ISO (1 = lunes); horas HH:mm, ambas o ninguna. */
+  access_schedule: { dias: number[]; desde?: string; hasta?: string } | null;
+  daily_checkin_limit: number | null;
+}
+
+/** Clave `membresia` de fn_producto_para_formulario (null si el producto no tiene plan). */
+export interface MembresiaFormularioServidor {
+  plan_id: number;
+  duration_unit: string | null;
+  duration_value: number | null;
+  billing_mode: string | null;
+  renewal_mode: string | null;
+  grace_days: number | null;
+  requires_activation: boolean | null;
+  activation_window_days: number | null;
+  freeze_allowed: boolean | null;
+  freeze_max_times: number | null;
+  freeze_max_days: number | null;
+  allowed_branch_ids: number[] | null;
+  access_schedule: { dias?: unknown; desde?: unknown; hasta?: unknown } | null;
+  daily_checkin_limit: number | null;
+  /** Membresías no canceladas ni vencidas del plan. */
+  membresias_vivas: number | null;
 }
 
 export interface ResultadoGuardarProducto {
@@ -668,6 +761,9 @@ export interface ResultadoGuardarProducto {
   recetas?: { destino: 'producto' | { variante: string }; product_id: number; recipe_id: number; version: number; cambio: boolean }[];
   /** La clave de idempotencia ya se había guardado: es el resultado de entonces. */
   repetido?: boolean;
+  service_type?: TipoServicioProducto | null;
+  /** Plan creado o actualizado cuando el producto es membresía. */
+  membership_plan_id?: number | null;
 }
 
 export interface DatosFormularioProducto {
@@ -735,4 +831,6 @@ export interface DatosFormularioProducto {
     display_order: number;
     shared_image_id: number | null;
   }[];
+  /** Configuración del plan si el producto es (o fue) membresía. */
+  membresia?: MembresiaFormularioServidor | null;
 }

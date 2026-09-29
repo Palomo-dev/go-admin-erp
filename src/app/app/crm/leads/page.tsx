@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import {
   Table,
   TableBody,
@@ -13,7 +15,6 @@ import {
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LoadErrorState } from '@/components/common/LoadErrorState';
 import { describeError, logError } from '@/lib/utils/errorMessage';
@@ -39,7 +40,9 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
+  Upload,
 } from 'lucide-react';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -123,6 +126,7 @@ function getTemperatureIcon(temperature: string | null) {
 
 export default function LeadsPage() {
   const router = useRouter();
+  const tImportar = useTranslations('leadsImportar');
   const { branchFilter } = useBranch();
 
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -220,7 +224,7 @@ export default function LeadsPage() {
       if (gate && !gate.ok) {
         toast({
           title: 'Lead convertido (con advertencias)',
-          description: `"${convertTarget.name}" ahora es un deal. Faltan: ${gate.missing?.map((m: any) => m.label).join(', ') || 'criterios'}.${lifecycleNote}`,
+          description: `"${convertTarget.name}" ahora es un deal. Faltan: ${gate.missing?.map((m: { label: string }) => m.label).join(', ') || 'criterios'}.${lifecycleNote}`,
           variant: 'default',
         });
       } else {
@@ -271,6 +275,12 @@ export default function LeadsPage() {
             )}
             Actualizar
           </Button>
+          <Button variant="outline" size="sm" asChild className="h-8">
+            <Link href="/app/crm/leads/importar">
+              <Upload className="h-3.5 w-3.5 mr-1" aria-hidden="true" />
+              {tImportar('boton')}
+            </Link>
+          </Button>
           <Button
             size="sm"
             onClick={() => setIsNewLeadOpen(true)}
@@ -283,15 +293,13 @@ export default function LeadsPage() {
       </div>
 
       {/* Buscador */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar por nombre o cliente..."
-          className="pl-9 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
-        />
-      </div>
+      <SearchInput
+        value={search}
+        onChange={setSearch}
+        onValueChange={setSearch}
+        placeholder="Buscar por nombre o cliente..."
+        className="w-full max-w-sm"
+      />
 
       {/* Tabla */}
       <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 overflow-hidden">

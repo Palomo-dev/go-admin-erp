@@ -74,7 +74,7 @@ export function FilterBar({
             variant={zoneFilter === zone ? 'default' : 'outline'}
             size="sm"
             onClick={() => onZoneChange(zone)}
-            className={cn('shrink-0', zoneFilter === zone ? 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800' : '')}
+            className="shrink-0"
           >
             <MapPin className="h-4 w-4 mr-2" />
             {zone}
@@ -98,7 +98,7 @@ export function FilterBar({
             variant={stationFilter === key ? 'default' : 'outline'}
             size="sm"
             onClick={() => onStationChange(key)}
-            className={cn('shrink-0', stationFilter === key ? 'bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-800' : '')}
+            className="shrink-0"
           >
             <Icon className="h-4 w-4 mr-2" />
             {t(`estaciones.${key}`)}
@@ -159,7 +159,7 @@ export function FilterBar({
           variant={statusFilter === 'delivered' ? 'default' : 'outline'}
           size="sm"
           onClick={() => onStatusChange('delivered')}
-          className={cn('shrink-0', statusFilter === 'delivered' ? 'bg-gray-600 hover:bg-gray-700 dark:bg-gray-500 dark:hover:bg-gray-600' : '')}
+          className="shrink-0"
         >
           {t('filtros.entregados')}
           {statusCounts.delivered > 0 && (

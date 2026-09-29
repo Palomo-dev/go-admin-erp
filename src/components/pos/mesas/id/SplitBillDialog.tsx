@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,8 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useLocale, useTranslations } from 'next-intl';
+import { SegmentedControl } from '@/components/kit';
 import { 
   Users, 
   Split, 
@@ -24,6 +25,8 @@ import {
 } from 'lucide-react';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { SaleItem } from './types';
+import { repartirPartesIguales } from '@/lib/pos/mesas/cuentaDividida';
+import { asignacionParte, decimalesLinea, formatoCantidadLinea, leerCantidadLinea, sumarCantidades } from './cantidadMesa';
 
 interface SplitBillDialogProps {
   open: boolean;
@@ -47,16 +50,31 @@ export interface BillSplit {
 export function SplitBillDialog({
   open,
   onOpenChange,
-  items,
+  items: lineasDeLaCuenta,
   total,
   comensales,
   onConfirmSplit
 }: SplitBillDialogProps) {
-  const { formatear } = useMonedaOrganizacion();
+  const { formatear, decimals } = useMonedaOrganizacion();
+  const locale = useLocale();
+  // Solo se reparte lo que sigue sin pagar (E6): una línea ya pagada no se
+  // vuelve a asignar. Memorizada: el efecto de totales depende de la lista.
+  const items = useMemo(() => lineasDeLaCuenta.filter((l) => !l.paid_at), [lineasDeLaCuenta]);
   const [splitMode, setSplitMode] = useState<'items' | 'equal' | 'custom'>('items');
+  const tDividir = useTranslations('posMesas.dividir');
   const [splits, setSplits] = useState<BillSplit[]>([]);
   const [currentSplit, setCurrentSplit] = useState(0);
   const [selectedItems, setSelectedItems] = useState<{[key: string]: {[splitId: string]: number}}>({});
+  // «Partes iguales» y «montos» se cobran por MONTO, sin platos: el servidor
+  // abona cada pago a las líneas pendientes (pos_checkout_v1, 20260929060000).
+  // Antes se repartían los platos por turnos y el servidor daba por pagada la
+  // línea entera de cada plato de la parte: la mesa quedaba con saldo 0 (E1).
+  const partesIguales = useMemo(
+    () => repartirPartesIguales(total, Math.max(1, splits.length), decimals),
+    [total, splits.length, decimals],
+  );
+  // Tolerancia de redondeo: la unidad mínima de la moneda (COP 1, USD 0,01).
+  const unidadMoneda = 10 ** -Math.max(0, decimals);
 
   // Inicializar splits basado en comensales
   useEffect(() => {
@@ -73,9 +91,11 @@ export function SplitBillDialog({
     }
   }, [open, comensales]);
 
-  // Calcular totales de cada split
+  // Calcular totales de cada split (solo «por ítems»: en los modos por monto
+  // el importe de cada parte lo pone el cajero o el reparto en partes iguales).
   useEffect(() => {
-    const updatedSplits = splits.map(split => ({
+    if (splitMode !== 'items') return;
+    setSplits((actuales) => actuales.map(split => ({
       ...split,
       items: Object.entries(selectedItems)
         .filter(([, splitQty]) => splitQty[split.id] > 0)
@@ -95,21 +115,22 @@ export function SplitBillDialog({
           const pricePerUnit = Number(item.total) / Number(item.quantity);
           return sum + (pricePerUnit * splitQty[split.id]);
         }, 0)
-    }));
-    setSplits(updatedSplits);
-  }, [selectedItems, items]);
+    })));
+  }, [selectedItems, items, splitMode]);
 
   const handleAssignItem = (itemId: string, quantity: number) => {
     const item = items.find(i => i.id === itemId);
     if (!item) return;
 
     const currentSplitId = splits[currentSplit].id;
-    const totalAssigned = Object.values(selectedItems[itemId] || {}).reduce((sum, qty) => sum + qty, 0);
-    const available = Number(item.quantity) - totalAssigned;
-
-    if (quantity > available) {
-      quantity = available;
-    }
+    // Con los decimales de la línea: una pesada de 0,735 kg se reparte en gramos, sin 0,23499….
+    const dec = decimalesLinea(item);
+    // Lo asignado a las OTRAS partes: la de esta parte se reemplaza, no se suma.
+    const totalAssigned = sumarCantidades(
+      Object.entries(selectedItems[itemId] || {}).filter(([parte]) => parte !== currentSplitId).map(([, qty]) => qty),
+      dec,
+    );
+    quantity = asignacionParte(quantity, Number(item.quantity) - totalAssigned, dec);
 
     setSelectedItems(prev => ({
       ...prev,
@@ -120,39 +141,13 @@ export function SplitBillDialog({
     }));
   };
 
-  const autoAssignItemsRoundRobin = (currentSplits: BillSplit[], allItems: SaleItem[]): BillSplit[] => {
-    const result = currentSplits.map(s => ({
-      ...s,
-      items: [] as Array<{ item: SaleItem; quantity: number }>,
-    }));
-    let splitIdx = 0;
-
-    for (const item of allItems) {
-      const qty = Number(item.quantity);
-      for (let i = 0; i < qty; i++) {
-        const target = result[splitIdx % result.length];
-        const existing = target.items.find(si => si.item.id === item.id);
-        if (existing) {
-          existing.quantity += 1;
-        } else {
-          target.items.push({ item, quantity: 1 });
-        }
-        splitIdx++;
-      }
-    }
-
-    return result;
-  };
+  // Partes por monto: sin platos. La última parte absorbe el residuo del
+  // redondeo, así la suma es exactamente el total.
+  const partesPorMonto = (importes: number[]): BillSplit[] =>
+    splits.map((split, i) => ({ ...split, items: [], total: importes[i] ?? 0 }));
 
   const handleSplitEqually = () => {
-    const perPerson = total / splits.length;
-    const equalSplits: BillSplit[] = splits.map((split) => ({
-      ...split,
-      items: [],
-      total: perPerson
-    }));
-    const withItems = autoAssignItemsRoundRobin(equalSplits, items);
-    setSplits(withItems);
+    setSplits(partesPorMonto(partesIguales));
     setSplitMode('equal');
   };
 
@@ -161,7 +156,8 @@ export function SplitBillDialog({
   };
 
   const getItemAssigned = (itemId: string) => {
-    return Object.values(selectedItems[itemId] || {}).reduce((sum, qty) => sum + qty, 0);
+    const item = items.find((i) => i.id === itemId);
+    return sumarCantidades(Object.values(selectedItems[itemId] || {}), decimalesLinea(item));
   };
 
   const canConfirm = () => {
@@ -171,9 +167,9 @@ export function SplitBillDialog({
       return items.every(item => getItemAssigned(item.id) === Number(item.quantity));
     }
     if (splitMode === 'custom') {
-      // La suma de montos debe igualar el total (tolerancia $1)
+      // La suma de montos debe igualar el total (tolerancia: la unidad de la moneda)
       const sumCustom = splits.reduce((s, sp) => s + sp.total, 0);
-      return Math.abs(sumCustom - total) < 1 && splits.every(s => s.total > 0);
+      return Math.abs(sumCustom - total) <= unidadMoneda + 1e-9 && splits.every(s => s.total > 0);
     }
     return true;
   };
@@ -181,8 +177,10 @@ export function SplitBillDialog({
   const handleConfirm = () => {
     let finalSplits = splits;
 
-    if (splitMode === 'equal' || splitMode === 'custom') {
-      finalSplits = autoAssignItemsRoundRobin(splits, items);
+    if (splitMode === 'equal') {
+      finalSplits = partesPorMonto(partesIguales);
+    } else if (splitMode === 'custom') {
+      finalSplits = splits.map((s) => ({ ...s, items: [] }));
     }
 
     onConfirmSplit(finalSplits);
@@ -206,24 +204,22 @@ export function SplitBillDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs value={splitMode} onValueChange={(v) => setSplitMode(v as 'items' | 'equal' | 'custom')}>
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="items">
-              <Split className="h-4 w-4 mr-2" />
-              Por Items
-            </TabsTrigger>
-            <TabsTrigger value="equal">
-              <Users className="h-4 w-4 mr-2" />
-              Equitativo
-            </TabsTrigger>
-            <TabsTrigger value="custom">
-              <Calculator className="h-4 w-4 mr-2" />
-              Personalizado
-            </TabsTrigger>
-          </TabsList>
+        <div className="space-y-4">
+          <SegmentedControl
+            anchoCompleto
+            etiqueta={tDividir('modo')}
+            valor={splitMode}
+            onValorChange={setSplitMode}
+            opciones={[
+              { valor: 'items', etiqueta: tDividir('porItems'), icono: Split },
+              { valor: 'equal', etiqueta: tDividir('equitativo'), icono: Users },
+              { valor: 'custom', etiqueta: tDividir('personalizado'), icono: Calculator },
+            ]}
+          />
 
           {/* MODO: Por Items */}
-          <TabsContent value="items" className="space-y-4">
+          {splitMode === 'items' && (
+          <div className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               {/* Lista de Items */}
               <div className="lg:col-span-2 space-y-3">
@@ -240,7 +236,9 @@ export function SplitBillDialog({
                 <div className="space-y-2 max-h-96 overflow-y-auto">
                   {items.map((item) => {
                     const assigned = getItemAssigned(item.id);
-                    const remaining = Number(item.quantity) - assigned;
+                    const dec = decimalesLinea(item);
+                    const remaining = sumarCantidades([Number(item.quantity), -assigned], dec);
+                    const cant = (n: number) => formatoCantidadLinea(n, item, locale);
 
                     return (
                       <Card key={item.id} className="p-4">
@@ -248,7 +246,7 @@ export function SplitBillDialog({
                           <div className="flex-1">
                             <h4 className="font-medium">{item.product?.name || 'Producto'}</h4>
                             <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
-                              <span>Cantidad: {item.quantity}</span>
+                              <span>Cantidad: {cant(Number(item.quantity))}</span>
                               <span>•</span>
                               <span>{formatear(Number(item.total))}</span>
                             </div>
@@ -258,7 +256,7 @@ export function SplitBillDialog({
                                   variant={remaining === 0 ? "default" : "secondary"}
                                   className="text-xs"
                                 >
-                                  Asignado: {assigned}/{item.quantity}
+                                  Asignado: {cant(assigned)}/{cant(Number(item.quantity))}
                                 </Badge>
                                 {remaining === 0 && (
                                   <CheckCircle className="h-4 w-4 text-green-600" />
@@ -269,14 +267,14 @@ export function SplitBillDialog({
 
                           <div className="flex items-center gap-2">
                             <Input
-                              type="number"
-                              min="0"
-                              max={remaining}
+                              type="text"
+                              inputMode={dec > 0 ? 'decimal' : 'numeric'}
+                              autoComplete="off"
                               className="w-20"
                               placeholder="0"
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
-                                  const value = parseInt((e.target as HTMLInputElement).value) || 0;
+                                  const value = leerCantidadLinea((e.target as HTMLInputElement).value, dec) ?? 0;
                                   handleAssignItem(item.id, value);
                                   (e.target as HTMLInputElement).value = '';
                                 }
@@ -289,7 +287,7 @@ export function SplitBillDialog({
                               onClick={(e) => {
                                 const input = e.currentTarget.parentElement?.querySelector('input');
                                 if (input) {
-                                  const value = parseInt(input.value) || 0;
+                                  const value = leerCantidadLinea(input.value, dec) ?? 0;
                                   handleAssignItem(item.id, value);
                                   input.value = '';
                                 }
@@ -364,10 +362,12 @@ export function SplitBillDialog({
                 </Card>
               </div>
             </div>
-          </TabsContent>
+          </div>
+          )}
 
           {/* MODO: Equitativo */}
-          <TabsContent value="equal" className="space-y-4">
+          {splitMode === 'equal' && (
+          <div className="space-y-4">
             <div className="text-center py-8">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 mb-4">
                 <Users className="h-8 w-8 text-blue-600" />
@@ -378,7 +378,7 @@ export function SplitBillDialog({
               </p>
 
               <div className="max-w-md mx-auto space-y-3">
-                {splits.map((split) => (
+                {splits.map((split, index) => (
                   <Card key={split.id} className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -388,7 +388,7 @@ export function SplitBillDialog({
                         <span className="font-medium">{split.name}</span>
                       </div>
                       <span className="text-xl font-bold text-blue-600">
-                        {formatear(total / splits.length)}
+                        {formatear(partesIguales[index] ?? 0)}
                       </span>
                     </div>
                   </Card>
@@ -404,10 +404,12 @@ export function SplitBillDialog({
                 Aplicar División Equitativa
               </Button>
             </div>
-          </TabsContent>
+          </div>
+          )}
 
           {/* MODO: Personalizado */}
-          <TabsContent value="custom" className="space-y-4">
+          {splitMode === 'custom' && (
+          <div className="space-y-4">
             <div className="text-center pt-4 pb-2">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-100 dark:bg-purple-900/30 mb-4">
                 <Calculator className="h-8 w-8 text-purple-600" />
@@ -476,25 +478,15 @@ export function SplitBillDialog({
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => {
-                  const remaining = splits.length;
-                  const perPerson = Math.floor(total / remaining);
-                  const lastPerson = total - perPerson * (remaining - 1);
-                  const baseSplits = splits.map((s, i) => ({
-                    ...s,
-                    total: i === remaining - 1 ? lastPerson : perPerson,
-                    items: [] as Array<{ item: SaleItem; quantity: number }>,
-                  }));
-                  const withItems = autoAssignItemsRoundRobin(baseSplits, items);
-                  setSplits(withItems);
-                }}
+                onClick={() => setSplits(partesPorMonto(partesIguales))}
               >
                 <Calculator className="h-4 w-4 mr-2" />
                 Distribuir equitativamente como base
               </Button>
             </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+          )}
+        </div>
 
         <Separator />
 

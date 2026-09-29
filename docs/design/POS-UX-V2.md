@@ -442,6 +442,81 @@ marcado «Nuevo».
 El componente nuevo **sustituye a `ProductCard Variant=pos, Size=sm` en las pantallas móviles del POS**. El
 `ProductCard` original no se tocó: sus instancias de escritorio y de catálogo siguen intactas.
 
+#### Decisión del dueño 2026-09-24 — un solo botón de vista con menú (sustituye al selector de densidad)
+
+- **Qué cambia.** Se retira la fila «Tarjeta · Lista · Compacta» (`DensidadSelector`) de los frames móviles y, en
+  escritorio, el `ViewToggle` y el selector «24 por página» del `PosProductSearch`. En su lugar va **un solo botón de
+  icono** a la derecha del buscador, igual en escritorio, tablet y móvil: el componente nuevo `SelectorVistaMenu`
+  (`02 Componentes › POS — Selector de vista (Nuevo 2026-09-24)`, set `874:32008`; variantes Estado
+  cerrado/abierto × Vista tarjetas/lista/compacta × Opciones 3/2). El botón (IconButton outline md, 40 px) muestra
+  el icono de la **vista activa**; al tocarlo abre un DropdownMenu anclado al borde derecho con «Vista», las opciones
+  con icono y check en la activa, y el pie «Se recuerda en este dispositivo». Escritorio y tablet ofrecen
+  Tarjetas · Lista · Compacta; móvil, Tarjetas · Lista (Compacta no aporta en 390 px). La preferencia se guarda por
+  dispositivo (hoy `gridSize` no se persiste: `ProductSearch.tsx:103`).
+- **Conteo de productos.** En móvil desaparece «128 ítems»: el código ya oculta «{total} prod.» por debajo de `md`
+  (`ProductSearch.tsx:596`), así que quitarlo es paridad, no pérdida. En escritorio sigue en el pie del grid.
+- **«Mostrar N ▲▼» / «N por página».** Recomendación: **scroll infinito** con tamaño de página automático por vista
+  (tarjetas 16, lista 20, compacta 24). Razones: el control existe solo por encima de `sm`
+  (`ProductSearch.tsx:525-573`), gira en ciclo sin que el cajero sepa el siguiente valor y depende de la densidad; la
+  RPC `pos_product_ranking` ya recibe `p_page` y `p_limit`, así que «cargar más» es un cambio solo de código, sin
+  backend; y el móvil ya usa scroll infinito. Mientras el dueño decide, la paginación inferior del kit se conserva con
+  el tamaño fijo por vista y el menú no lleva sección «Por página».
+- **Frames.** Móvil: `250:81342` (Tarjetas) y `275:33959` (Lista) con el botón; `874:582518` menú abierto; el frame
+  de densidad `275:34511` se eliminó por repetido. Escritorio: el cambio va en el componente `PosProductSearch`
+  (sus 5 estados), así que se propaga a todos los frames v2; `874:582587` dibuja el menú abierto.
+- **Pendiente por cupo de Figma** (se agotó en esta tanda): en `874:582518` y `874:582587` el menú abierto queda
+  **debajo** de la barra de categorías y del grid (orden de capas del auto-layout); hay que pasar una instancia
+  `Estado=abierto` como hija absoluta al final del frame, encima del botón, y dejar la del buscador en cerrado.
+  En `PosProductSearch` quedó a la derecha un `IconButton` outline (`155:6642`) cuyo icono parece de lista: si es otro
+  control de vista, se quita. `Móvil / Ventas — nueva` (`334:124281`) conserva su `DensidadSelector` (zona del
+  agente de Ventas).
+- Capturas: `docs/design/figma/60-pos-paridad-vista-*.png` (antes: `…-movil-antes-{tarjeta,lista,densidad}`,
+  `…-escritorio-antes`; después: `…-componente`, `…-movil-tarjetas-despues`, `…-movil-menu-abierto`,
+  `…-escritorio-menu-abierto`).
+
+#### Decisión final del dueño 2026-09-24 — ViewToggle Tarjetas | Lista (sustituye a la anterior)
+
+- **Escritorio y tablet:** el `ViewToggle` del kit (`103:3095`, dos iconos pegados con el activo resaltado; el mismo
+  patrón del catálogo de Productos): cuadritos = Tarjetas, rayitas = Lista. **Sin «Compacta»**: la Lista cubre la
+  necesidad de ver más productos.
+- **Celular:** un solo botón junto al buscador que alterna. En Tarjetas muestra rayitas («Ver como lista») y en
+  Lista muestra cuadritos («Ver como tarjetas»), como en `docs/design/figma/11-pos-v2-movil-pos.png`.
+- **Sin menú:** se retiran el `SelectorVistaMenu` (`874:32008`) y sus frames de menú abierto (`874:582587`,
+  `874:582518`). Tampoco vuelve «24 por página»: la carga es con scroll infinito. La preferencia se recuerda por
+  dispositivo.
+- **Mesas** (`870:98618`): «Cuadrícula / Plano» + `SelectorDensidad` pasan a un `ViewToggle` con los iconos de
+  cuadrícula y plano. En celular también queda un solo botón que alterna.
+- **Aplicado en Figma el mismo día.**
+  - En `PosProductSearch` (`155:7745`, 5 estados), el `SelectorVistaMenu` y el `IconButton` de rayitas
+    (`155:6642`), que eran la mitad de Lista del conmutador viejo, se sustituyeron por un solo `ViewToggle`
+    Value=grid. El buscador queda en 918 px. Esto se propaga a las 44 instancias del POS y de Ventas — nueva.
+  - En móvil, `250:81342` y `275:33959` llevan el botón que alterna. En `334:124281` se quitó el
+    `DensidadSelector` junto con el conteo «128 ítems».
+  - En Mesas (`870:98618`), 6 frames de escritorio y 2 de tablet pasan a `ViewToggle` MapPin | LayoutGrid, y 3 de
+    celular al botón que alterna.
+  - Para que el icono de cada vista sea el mismo en todo el POS: en todos los `ViewToggle` de la página la ranura
+    de lista usa rayitas (`Icon/Rows`), y en los frames viejos de Mesas (`445:194860`) el plano usa `Icon/MapPin`.
+  - Se borraron el set `SelectorVistaMenu`, su sección `874:31665` y los frames `874:582587` y `874:582518`.
+- **Carrito aprobado en los frames que tenían el viejo.** En 9 frames de escritorio el panel viejo se cambió por
+  «Carrito v2 (D3)»: `184:31722`, `184:31793` (sin caja: `CobrarButton State=sin-caja`, sin cliente y sin el aviso
+  flotante), `184:31864`, `184:31935` (al 60 %), `184:32077`, `158:27344`, `158:28152` (skeleton), `158:28687` y
+  `158:29703` (vacío).
+- **Tooltips.** En `249:80171` queda solo el de foco de teclado. Los otros tres pasaron a la anotación
+  `906:116168`, a la derecha del frame.
+- Capturas: `docs/design/figma/65-pos-coherencia-{antes,despues}-*.png`.
+
+#### Ajustes del dueño 2026-09-24 (tarde) — reemplazan el punto «Mesas» de arriba
+
+- **Mesas vuelve al selector del diseño nuevo** («A»): `SelectorVista` con texto «Cuadrícula / Plano» (`868:31799`)
+  + `SelectorDensidad` (`868:31832`) en escritorio y tablet, y el selector de iconos en móvil, idéntico a las
+  capturas `58-pos-mesas-*`. El `ViewToggle` de solo iconos queda **solo** en el POS de productos. La sección vieja
+  de Mesas (`445:194860`) lleva el aviso «Versión anterior».
+- **Grilla del POS sin hueco:** `PosProductSearch` mide 776 px; la grilla son 3 columnas que se estiran (248 px con
+  16 px entre tarjetas) y el borde de la última tarjeta queda alineado con el buscador y la barra de categorías. El
+  espacio hasta el carrito es de 16 px, el mismo que entre tarjetas, en las 43 instancias de escritorio.
+- **Contadores de la cabecera** «N Activos / N En Espera» coinciden con las pestañas del carrito en todos los frames.
+- Capturas: `docs/design/figma/66-*.png`.
+
 ### 7.6 Filas de paridad nuevas
 
 | # auditoría | Control | Frame Figma | Estado |

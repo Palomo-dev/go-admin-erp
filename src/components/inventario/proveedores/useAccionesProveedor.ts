@@ -8,6 +8,7 @@ import type { AccionFila } from '@/components/kit';
 import { useToast } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { supplierService } from '@/lib/services/supplierService';
+import { usePermisosCatalogo } from '@/components/inventario/categorias/usePermisosCatalogo';
 import type { ProveedorAEliminar } from './DialogoEliminarProveedor';
 
 export const RUTA_PROVEEDORES = '/app/inventario/proveedores';
@@ -26,7 +27,8 @@ interface Opciones {
 /**
  * Acciones de un proveedor, las mismas en la fila, en la tarjeta móvil y en
  * el «⋯» del detalle: ver, editar, nueva orden de compra, duplicar, copiar el
- * ID, activar/desactivar y eliminar (con su diálogo).
+ * ID, activar/desactivar y eliminar (con su diálogo). Lo que el usuario no
+ * puede hacer según `fn_productos_permisos` no se ofrece.
  */
 export function useAccionesProveedor({ onCambio, conVer = true, conEditar = true }: Opciones) {
   const router = useRouter();
@@ -34,6 +36,7 @@ export function useAccionesProveedor({ onCambio, conVer = true, conEditar = true
   const t = useTranslations('proveedores.acciones');
   const [aEliminar, setAEliminar] = useState<ProveedorAEliminar | null>(null);
   const [duplicando, setDuplicando] = useState(false);
+  const permisos = usePermisosCatalogo();
 
   const duplicar = useCallback(
     async (uuid: string) => {
@@ -96,7 +99,7 @@ export function useAccionesProveedor({ onCambio, conVer = true, conEditar = true
         etiqueta: t('editar'),
         icono: Pencil,
         onSelect: () => router.push(`${RUTA_PROVEEDORES}/${p.uuid}/editar`),
-        oculta: !conEditar,
+        oculta: !conEditar || !permisos.editar,
       },
       {
         id: 'orden',
@@ -106,15 +109,37 @@ export function useAccionesProveedor({ onCambio, conVer = true, conEditar = true
         deshabilitada: !p.is_active,
         motivo: t('activaloParaComprar'),
       },
-      { id: 'duplicar', etiqueta: t('duplicar'), icono: Copy, onSelect: () => duplicar(p.uuid), deshabilitada: duplicando, motivo: t('duplicando') },
+      {
+        id: 'duplicar',
+        etiqueta: t('duplicar'),
+        icono: Copy,
+        onSelect: () => duplicar(p.uuid),
+        deshabilitada: duplicando,
+        motivo: t('duplicando'),
+        oculta: !permisos.crear,
+      },
       { id: 'copiar-id', etiqueta: t('copiarId'), icono: Fingerprint, onSelect: () => copiarId(p.uuid) },
       p.is_active
-        ? { id: 'desactivar', etiqueta: t('desactivar'), icono: PowerOff, onSelect: () => cambiarEstado([p.id], false), separadorAntes: true }
-        : { id: 'activar', etiqueta: t('activar'), icono: Power, onSelect: () => cambiarEstado([p.id], true), separadorAntes: true },
-      { id: 'eliminar', etiqueta: t('eliminar'), icono: Trash2, destructiva: true, onSelect: () => setAEliminar(p) },
+        ? {
+            id: 'desactivar',
+            etiqueta: t('desactivar'),
+            icono: PowerOff,
+            onSelect: () => cambiarEstado([p.id], false),
+            separadorAntes: true,
+            oculta: !permisos.editar,
+          }
+        : {
+            id: 'activar',
+            etiqueta: t('activar'),
+            icono: Power,
+            onSelect: () => cambiarEstado([p.id], true),
+            separadorAntes: true,
+            oculta: !permisos.editar,
+          },
+      { id: 'eliminar', etiqueta: t('eliminar'), icono: Trash2, destructiva: true, onSelect: () => setAEliminar(p), oculta: !permisos.eliminar },
     ],
-    [cambiarEstado, conEditar, conVer, copiarId, duplicar, duplicando, router, t],
+    [cambiarEstado, conEditar, conVer, copiarId, duplicar, duplicando, permisos, router, t],
   );
 
-  return { accionesDe, cambiarEstado, aEliminar, setAEliminar, duplicando };
+  return { accionesDe, cambiarEstado, aEliminar, setAEliminar, duplicando, permisos };
 }

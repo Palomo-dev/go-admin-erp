@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useId, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronDown, Check } from 'lucide-react';
 import { ResumenTotales } from '@/components/kit/ResumenTotales';
+import { clasesBadgeTono } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { POSService } from '@/lib/services/posService';
 import { cartLinesSignature } from '@/lib/pos/display/emitter';
 import { Cart } from './types';
@@ -68,6 +70,7 @@ export function TaxSummary({
 }: TaxSummaryProps) {
   const moneda = useMonedaOrganizacion();
   const t = useTranslations('posVenta.resumen');
+  const idSwitch = useId();
   const [organizationTaxes, setOrganizationTaxes] = useState<OrganizationTax[]>([]);
   const [taxBreakdown, setTaxBreakdown] = useState<TaxBreakdown[]>([]);
   const [appliedTaxes, setAppliedTaxes] = useState<{[key: string]: boolean}>({});
@@ -312,9 +315,7 @@ export function TaxSummary({
                   {appliedTaxes[tax.id] && <Check className="size-3 text-brand" />}
                 </span>
                 <span className="flex-1">{t('unImpuesto', { nombre: tax.name, tasa: tax.rate })}</span>
-                {tax.is_default && (
-                  <span className="inline-flex h-4 items-center rounded-full bg-subtle px-1.5 text-[10px] text-fg-secondary">{t('predeterminado')}</span>
-                )}
+                {tax.is_default && <span className={clasesBadgeTono('neutro', 'suave', 'sm')}>{t('predeterminado')}</span>}
               </button>
             </li>
           ))}
@@ -323,22 +324,18 @@ export function TaxSummary({
     </Popover>
   );
 
+  // Figma `906:115587`: una sola fila con el Switch «Impuestos incluidos»,
+  // «Impuestos disponibles» y el selector (se parte en dos si no cabe).
   const cabecera = (
-    <div className="flex flex-col gap-2">
-      <label className="flex cursor-pointer items-center justify-between gap-2 text-xs text-fg-secondary">
-        <span>{t('impuestosIncluidos')}</span>
-        <span className="relative inline-flex items-center">
-          <input
-            type="checkbox"
-            role="switch"
-            checked={taxIncluded}
-            onChange={(e) => onTaxIncludedChange(e.target.checked)}
-            className="peer sr-only"
-          />
-          <span aria-hidden="true" className="h-4 w-8 rounded-full bg-line-strong transition-colors after:absolute after:left-0.5 after:top-0.5 after:size-3 after:rounded-full after:bg-surface after:transition-transform peer-checked:bg-brand-action peer-checked:after:translate-x-4 peer-focus-visible:ring-2 peer-focus-visible:ring-brand" />
-        </span>
+    <div className="flex flex-wrap items-center gap-2 text-xs text-fg-secondary">
+      <Switch id={idSwitch} checked={taxIncluded} onCheckedChange={onTaxIncludedChange} />
+      <label htmlFor={idSwitch} className="cursor-pointer">
+        {t('impuestosIncluidos')}
       </label>
-      {selectorImpuestos}
+      <span aria-hidden="true" className="ml-auto">
+        {t('impuestosDisponibles')}
+      </span>
+      <div className="min-w-[8rem] flex-1">{selectorImpuestos}</div>
     </div>
   );
 

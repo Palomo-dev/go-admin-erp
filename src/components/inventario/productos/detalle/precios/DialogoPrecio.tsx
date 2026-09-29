@@ -12,6 +12,8 @@ import { productoService } from '@/lib/services/productoService';
 import { calcularMargen, descuentoComparacion, tonoMargen } from '../../logica/margen';
 import { useProductoDetalle } from '../ContextoProducto';
 import { CampoVigencia, errorVigencia, type ValorVigencia } from './CampoVigencia';
+import { simboloUnidad, unidadVisible, type ProductoModoVenta } from '@/lib/pos/peso/modoVenta';
+import { esReferenciaUnidad, precioEnReferencia, precioPorUnidadDesdeReferencia, referenciaDelProducto } from '@/lib/pos/peso/precioReferencia';
 
 /**
  * «Actualizar precio» (A.9 #5-#10): precio vigente real, nuevo precio,
@@ -57,6 +59,17 @@ export function DialogoPrecio({
   const codigoVigencia = errorVigencia(vigencia, hoy);
   const errVigencia = codigoVigencia ? tv(codigoVigencia) : null;
   const valido = !errPrecio && !errComparacion && !errVigencia;
+
+  // Por peso: el precio se escribe en la referencia del producto («cada 100 g») y
+  // se guarda SIEMPRE por la unidad de venta (por kg), con la misma vigencia.
+  const unidadVenta = (producto.unit_code ?? '').trim().toUpperCase();
+  const simbolo = unidadVisible(producto as ProductoModoVenta);
+  const referencia = simbolo && producto.sale_mode === 'weight' ? referenciaDelProducto(producto) : null;
+  const conReferencia = !!referencia && !esReferenciaUnidad(referencia, unidadVenta);
+  const enReferencia = (v: number | null) => (v !== null && conReferencia && referencia ? precioEnReferencia(v, referencia, unidadVenta, moneda.decimales) : v);
+  const desdeReferencia = (v: number | null) =>
+    v !== null && conReferencia && referencia ? precioPorUnidadDesdeReferencia(v, referencia, unidadVenta, moneda.decimales) : v;
+  const textoReferencia = conReferencia && referencia ? t('cadaReferencia', { cantidad: referencia.cantidad, unidad: simboloUnidad(referencia.unidad) }) : null;
 
   const margen = calcularMargen(precio, resumen?.costo ?? null);
   const descuento = descuentoComparacion(precio, comparacion);
@@ -105,14 +118,28 @@ export function DialogoPrecio({
         <span className="text-fg-secondary">{t('precioActual')}</span>
         <span className="text-right font-semibold tabular-nums text-fg">
           {resumen?.precio !== null && resumen?.precio !== undefined ? moneda.formatear(resumen.precio) : tm('sinPrecio')}
+          {simbolo && resumen?.precio !== null && resumen?.precio !== undefined ? ` / ${simbolo}` : null}
           {resumen?.precio_comparacion ? (
             <span className="ml-2 font-normal text-fg-muted line-through">{moneda.formatear(resumen.precio_comparacion)}</span>
           ) : null}
         </span>
       </div>
 
-      <FormField etiqueta={t('nuevoPrecio')} obligatorio error={intentado ? errPrecio : null}>
-        <CampoNumero valor={precio} onValorChange={setPrecio} prefijo={moneda.simbolo} decimales={moneda.decimales} minimo={0} autoFocus />
+      <FormField
+        etiqueta={textoReferencia ? t('nuevoPrecioReferencia', { referencia: textoReferencia }) : simbolo ? t('nuevoPrecioPor', { unidad: simbolo }) : t('nuevoPrecio')}
+        obligatorio
+        error={intentado ? errPrecio : null}
+        ayuda={textoReferencia && precio !== null && simbolo ? t('seGuardaComo', { precio: moneda.formatear(precio), unidad: simbolo }) : undefined}
+      >
+        <CampoNumero
+          valor={enReferencia(precio)}
+          onValorChange={(v) => setPrecio(desdeReferencia(v))}
+          prefijo={moneda.simbolo}
+          sufijo={textoReferencia ?? (simbolo ? `/ ${simbolo}` : undefined)}
+          decimales={moneda.decimales}
+          minimo={0}
+          autoFocus
+        />
       </FormField>
 
       <FormField
@@ -120,7 +147,14 @@ export function DialogoPrecio({
         ayuda={descuento !== null ? t('comparacionDescuento', { descuento }) : t('comparacionAyuda')}
         error={errComparacion}
       >
-        <CampoNumero valor={comparacion} onValorChange={setComparacion} prefijo={moneda.simbolo} decimales={moneda.decimales} minimo={0} />
+        <CampoNumero
+          valor={enReferencia(comparacion)}
+          onValorChange={(v) => setComparacion(desdeReferencia(v))}
+          prefijo={moneda.simbolo}
+          sufijo={textoReferencia ?? (simbolo ? `/ ${simbolo}` : undefined)}
+          decimales={moneda.decimales}
+          minimo={0}
+        />
       </FormField>
 
       <CampoVigencia valor={vigencia} onChange={setVigencia} hoy={hoy} error={intentado ? errVigencia : null} deshabilitado={guardando} />

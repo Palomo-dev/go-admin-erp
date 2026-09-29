@@ -1,28 +1,60 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Minus, Search, X, ShoppingCart, Package, Image as ImageIcon, Check, Star, Flame, ChefHat } from 'lucide-react';
+import { Plus, Minus, X, ShoppingCart, Package, Image as ImageIcon, Check, Star, Flame, ChefHat, Scale } from 'lucide-react';
+import { SearchInput, EmptyState } from '@/components/kit';
+import { useBranch } from '@/lib/context/BranchContext';
 import { formatCurrency, cn } from '@/utils/Utils';
 import { getPublicUrl } from '@/lib/supabase/imageUtils';
 import type { Product, ProductToAdd, SelectedProductModifier } from './types';
 import { POSService } from '@/lib/services/posService';
 import { estacionEfectiva } from '@/lib/pos/estacionEfectiva';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { VariantSelectorDialog } from '@/components/pos/VariantSelectorDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CategoryFilterBar } from '@/components/pos/CategoryFilterBar';
 import { ConfiguracionService, PosCategoriesDisplayConfig, defaultCategoriesDisplayConfig } from '@/components/pos/configuracion/configuracionService';
 import { useToast } from '@/components/ui/use-toast';
 import { recipeService, type ProductRecipe } from '@/lib/services/recipeService';
+import { usePesarConBascula } from '@/components/pos/venta/peso/usePesarConBascula';
+import type { Product as ProductoPos } from '@/components/pos/types';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { esMedido, formatoCantidad, simboloUnidad, type Pesaje } from '@/lib/pos/peso';
+import { useHardwareBarcodeScanner } from '@/hooks/useHardwareBarcodeScanner';
+import { useFormatoEtiquetaPeso } from '@/lib/pos/useFormatoEtiquetaPeso';
+import { decidirEscaneoConPesarAbierto } from '@/lib/pos/bascula/flujoPesada';
+import { pareceCodigoDeBarras, resolverEscaneo, type ResultadoEscaneo } from '@/lib/pos/venta/escaneo';
+import type { PosGridProduct } from '@/lib/pos/venta/catalogo';
+import {
+  agregarLinea,
+  claveUnidad,
+  clavePesada,
+  formatoCantidadCarrito,
+  lineaMedida,
+  productoEnCarrito,
+  resumenProductoEnCarrito,
+  type CarritoMesa,
+} from './cantidadMesa';
+
+/** Producto del catálogo tal como lo hidrata `POSService.getProductsPaginated`. */
+type ProductoCatalogo = Product & {
+  station?: string | null;
+  categories?: { id?: number; station?: string | null; requires_preparation?: boolean } | null;
+};
+
+/** Variante elegida en `VariantSelectorDialog` (trae además lo que el servicio hidrata). */
+type VarianteCatalogo = Partial<ProductoCatalogo> & {
+  id: number;
+  name: string;
+  price: number | null;
+  variant_data: Record<string, string> | null;
+};
 
 interface Category {
   id: number;
@@ -59,19 +91,60 @@ export function AddProductDialog({
   includedProductIds,
 }: AddProductDialogProps) {
   const tNotas = useTranslations('posNotasLinea');
+  const tAgregar = useTranslations('posMesas.agregar');
+  const { branchFilter, branches } = useBranch();
+  const nombreSucursal = branchFilter === null ? null : branches?.find((b) => b.id === branchFilter)?.name ?? undefined;
   const [searchTerm, setSearchTerm] = useState('');
   const [chargeType, setChargeType] = useState<'room_charge' | 'direct_payment'>('room_charge');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ProductoCatalogo[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [categoriesDisplay, setCategoriesDisplay] = useState<PosCategoriesDisplayConfig>(defaultCategoriesDisplayConfig);
-  const [cart, setCart] = useState<Map<number, ProductToAdd>>(new Map());
+  // Clave de línea → línea: por unidad una por producto (como antes); por peso, una por pesada.
+  const [cart, setCart] = useState<CarritoMesa>(new Map());
+  const secuenciaPesada = useRef(0);
+  const moneda = useMonedaOrganizacion();
+  // «Pesar» con la báscula del equipo y la venta por peso en un paso: la misma
+  // lógica del POS (`usePesarConBascula`, §11); aquí solo el destino, las
+  // líneas de la mesa. Cada pesada es su propia línea (clave por secuencia).
+  const pesar = usePesarConBascula<SelectedProductModifier>({
+    agregar: ({ producto, precio, cantidad, pesaje, modifiers }) => {
+      secuenciaPesada.current += 1;
+      const clave = clavePesada(producto.id, secuenciaPesada.current);
+      const linea = lineaDesdeProducto(producto as unknown as ProductoCatalogo, modifiers ?? [], precio, cantidad, pesaje);
+      setCart((actual) => agregarLinea(actual, linea, clave));
+      return clave;
+    },
+    deshacer: (clave) => {
+      setCart((actual) => {
+        const nuevo = new Map(actual);
+        nuevo.delete(clave);
+        return nuevo;
+      });
+    },
+    cambiar: (clave, cantidad, pesaje) => {
+      setCart((actual) => {
+        const nuevo = new Map(actual);
+        const linea = nuevo.get(clave);
+        if (linea) nuevo.set(clave, { ...linea, quantity: cantidad, ...(pesaje ? { pesaje } : {}) });
+        return nuevo;
+      });
+    },
+  });
+  const tPeso = useTranslations('posPeso.mesa');
+  const tCatalogo = useTranslations('posVenta.catalogo');
+  const tEtiqueta = useTranslations('posPeso.etiqueta');
+  const tBascula = useTranslations('posBascula.venta');
+  const locale = useLocale();
+  const formatoEtiqueta = useFormatoEtiquetaPeso();
+  // Variante leída con el lector cuando el producto lleva modificadores: el diálogo abre con ella elegida.
+  const [varianteEscaneada, setVarianteEscaneada] = useState<number | null>(null);
   
   // Estado para selector de variantes
   const [showVariantDialog, setShowVariantDialog] = useState(false);
-  const [selectedParentProduct, setSelectedParentProduct] = useState<any>(null);
+  const [selectedParentProduct, setSelectedParentProduct] = useState<ProductoCatalogo | null>(null);
   // Ref sincrónico para prevenir cierre del diálogo cuando se abre el selector de variantes
   const variantDialogOpeningRef = useRef(false);
   // Productos cuyo toggle de favorito está en curso (para deshabilitar el botón)
@@ -143,13 +216,13 @@ export function AddProductDialog({
   const filteredProducts = products;
 
   // Agregar producto al carrito (manejar variantes)
-  const handleProductClick = (product: any) => {
+  const handleProductClick = (product: ProductoCatalogo) => {
     // Bloquear si el producto está agotado
     if (product.is_out_of_stock) {
       return;
     }
     // Si el producto tiene variantes o modificadores configurados, abrir el selector
-    if ((product.has_variants && product.variant_count > 0) || product.has_modifiers) {
+    if ((product.has_variants && (product.variant_count ?? 0) > 0) || product.has_modifiers) {
       variantDialogOpeningRef.current = true;
       setSelectedParentProduct(product);
       setShowVariantDialog(true);
@@ -159,8 +232,151 @@ export function AddProductDialog({
     }
   };
 
+  // ── Lector de códigos (USB, o escrito + Enter en el buscador) ─────────────
+  // Igual que en el POS (src/lib/pos/venta/escaneo.ts, `resolverEscaneo`):
+  // código exacto primero; etiqueta de balanza → directo con su peso; variante
+  // exacta → directo; simple → como tocar la tarjeta (un producto por peso:
+  // con báscula estable entra de una; si no, «Pesar», §11).
+  const avisar = (titulo: string, descripcion?: string) => toast({ title: titulo, description: descripcion, variant: 'destructive' });
+
+  const conPrecio = async (p: ProductoCatalogo): Promise<ProductoCatalogo | null> => {
+    if (Number(p.price) > 0) return p;
+    try {
+      const precio = await POSService.precioVigenteProducto(p.id, p.name);
+      return Number(precio) > 0 ? { ...p, price: Number(precio) } : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const aplicarEtiqueta = async (code: string, r: Extract<ResultadoEscaneo, { tipo: 'etiqueta' | 'etiqueta_invalida' }>) => {
+    if (r.tipo === 'etiqueta_invalida') {
+      avisar(tEtiqueta('invalida'), tEtiqueta(r.motivo === 'digito_valor' ? 'invalidaValor' : 'invalidaDescripcion', { codigo: code }));
+      return;
+    }
+    const { etiqueta, linea } = r;
+    const producto = r.producto as ProductoCatalogo | null;
+    if (!linea.ok) {
+      const claves = {
+        digito_control: 'invalida',
+        digito_valor: 'invalida',
+        plu_inexistente: 'pluInexistente',
+        producto_por_unidad: 'productoPorUnidad',
+        sin_precio: 'sinPrecio',
+        peso_invalido: 'pesoInvalido',
+        bajo_minimo: 'bajoMinimo',
+      } as const;
+      const minimo = linea.minimo !== undefined && producto ? formatoCantidad(linea.minimo, producto, locale) : '';
+      avisar(tEtiqueta(claves[linea.error], { plu: etiqueta.plu, producto: producto?.name ?? '', minimo }), tEtiqueta('codigoLeido', { codigo: code }));
+      return;
+    }
+    const conPrecioVigente = producto ? await conPrecio(producto) : null;
+    if (!conPrecioVigente) {
+      avisar(tCatalogo('sinPrecioTitulo'), tCatalogo('sinPrecioDescripcion', { producto: producto?.name ?? '' }));
+      return;
+    }
+    // Cada etiqueta es su propia línea, con su peso y `notes.pesaje` de origen «etiqueta».
+    secuenciaPesada.current += 1;
+    const nueva = lineaDesdeProducto(conPrecioVigente, [], Number(conPrecioVigente.price), linea.cantidad, linea.pesaje);
+    setCart((actual) => agregarLinea(actual, nueva, clavePesada(conPrecioVigente.id, secuenciaPesada.current)));
+    if (linea.aviso) {
+      toast({
+        title: tEtiqueta('importeDifiere'),
+        description: tEtiqueta('importeDifiereDescripcion', {
+          etiqueta: moneda.formatear(linea.aviso.importeEtiqueta),
+          calculado: moneda.formatear(linea.aviso.importeCalculado),
+        }),
+      });
+    }
+  };
+
+  /**
+   * Otro código con «Pesar» abierto (el diálogo acepta escaneos): la pesada
+   * pendiente nunca se confirma de forma implícita; el mismo producto se
+   * ignora (doble lectura) y otro la cancela y sigue. Misma regla que el POS
+   * (`decidirEscaneoConPesarAbierto`). Devuelve si hay que seguir.
+   */
+  const seguirTrasPesarAbierto = (productoNuevoId: number): boolean => {
+    const pendiente = pesar.pendiente;
+    if (!pendiente) return true;
+    const decision = decidirEscaneoConPesarAbierto({
+      productoAbiertoId: pendiente.producto.id,
+      productoNuevoId,
+      modo: pendiente.modo,
+    });
+    if (decision === 'ignorar') return false;
+    toast({ title: tBascula('pesadaCancelada', { producto: pendiente.producto.name }) });
+    pesar.cancelar();
+    return true;
+  };
+
+  const manejarCodigo = async (code: string) => {
+    try {
+      const r = await resolverEscaneo(code, {
+        porCodigo: (c) => POSService.getProductByBarcode(c),
+        grilla: async (termino, limite) =>
+          (await POSService.getProductsPaginated({ page: 1, limit: limite, search: termino, status: 'active' })).data as PosGridProduct[],
+        porPlu: (plu) => POSService.getProductByScalePlu(plu),
+        precioVigente: (p) => POSService.precioVigenteProducto(p.id, p.name),
+        formatoEtiqueta,
+        decimalesMoneda: moneda.decimals ?? 0,
+      });
+      const idNuevo =
+        r.tipo === 'etiqueta'
+          ? r.producto?.id ?? null
+          : r.tipo === 'producto' && r.decision.tipo !== 'no_encontrado'
+            ? r.decision.tipo === 'dialogo_padre'
+              ? r.decision.padre.id
+              : r.decision.producto.id
+            : null;
+      // Un código que no da producto (no encontrado, etiqueta ilegible) no toca la pesada pendiente.
+      if (idNuevo !== null && !seguirTrasPesarAbierto(idNuevo)) return;
+      if (r.tipo !== 'producto') {
+        await aplicarEtiqueta(code, r);
+        return;
+      }
+      const decision = r.decision;
+      if (decision.tipo === 'no_encontrado') {
+        avisar(tCatalogo('codigoNoEncontrado'), tCatalogo('codigoNoEncontradoDescripcion', { codigo: code }));
+        return;
+      }
+      if (decision.tipo === 'agotado') {
+        avisar(tCatalogo('agotadoTitulo'), tCatalogo('agotadoDescripcion', { producto: decision.producto.name }));
+        return;
+      }
+      if (decision.tipo === 'dialogo_padre') {
+        setVarianteEscaneada(decision.varianteId);
+        variantDialogOpeningRef.current = true;
+        setSelectedParentProduct(decision.padre as unknown as ProductoCatalogo);
+        setShowVariantDialog(true);
+        return;
+      }
+      if (decision.tipo === 'agregar_variante') {
+        // La variante exacta va directo a la mesa (ya enriquecida con categoría y estación del padre).
+        const variante = await conPrecio(decision.producto as unknown as ProductoCatalogo);
+        if (!variante) {
+          avisar(tCatalogo('sinPrecioTitulo'), tCatalogo('sinPrecioDescripcion', { producto: decision.producto.name }));
+          return;
+        }
+        addToCart(variante);
+        return;
+      }
+      handleProductClick(decision.producto as unknown as ProductoCatalogo);
+    } catch (error) {
+      console.error('Error al resolver el código escaneado en la mesa:', error);
+      avisar(tCatalogo('errorEscaneo'));
+    }
+  };
+
+  useHardwareBarcodeScanner({
+    onScan: (code) => void manejarCodigo(code),
+    // «Pesar» acepta escaneos (ver `seguirTrasPesarAbierto`); con el selector de
+    // variantes abierto el lector no agrega de fondo.
+    enabled: open && !showVariantDialog,
+  });
+
   // Manejar selección de variante (y sus modificadores) desde el diálogo
-  const handleVariantSelect = (variant: any, modifiers: SelectedProductModifier[] = []) => {
+  const handleVariantSelect = (variant: VarianteCatalogo, modifiers: SelectedProductModifier[] = []) => {
     // Propia de la variante → propia del padre → la de la categoría (fn_estacion_efectiva).
     const inheritedStation = estacionEfectiva({
       propia: variant.station,
@@ -177,7 +393,7 @@ export function AddProductDialog({
       category_id: variant.category_id ?? selectedParentProduct?.category_id ?? null,
       parent_product_id: variant.parent_product_id
         ?? (selectedParentProduct && selectedParentProduct.id !== variant.id ? selectedParentProduct.id : null),
-    }, modifiers);
+    } as ProductoCatalogo, modifiers);
     setShowVariantDialog(false);
     setSelectedParentProduct(null);
     // Retrasar reset del ref para prevenir race condition en móvil
@@ -188,7 +404,7 @@ export function AddProductDialog({
 
   // Ver la receta vinculada a un producto (abre un diálogo con ingredientes y rendimiento).
   // No agrega el producto al carrito: es solo consulta desde el grid de productos.
-  const handleViewRecipe = async (product: any, e: React.MouseEvent) => {
+  const handleViewRecipe = async (product: ProductoCatalogo, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!product.recipe_id) return;
     try {
@@ -216,16 +432,16 @@ export function AddProductDialog({
     if (togglingFavorites.has(productId)) return;
 
     const prevProducts = products;
-    const product = prevProducts.find((p: any) => p.id === productId);
+    const product = prevProducts.find((p) => p.id === productId);
     const wasFavorite = product?.is_favorite ?? false;
-    setProducts(prev => prev.map((p: any) =>
+    setProducts(prev => prev.map((p) =>
       p.id === productId ? { ...p, is_favorite: !wasFavorite } : p
     ));
     setTogglingFavorites(prev => new Set(prev).add(productId));
 
     try {
       const isNowFavorite = await POSService.toggleProductFavorite(productId);
-      setProducts(prev => prev.map((p: any) =>
+      setProducts(prev => prev.map((p) =>
         p.id === productId ? { ...p, is_favorite: isNowFavorite } : p
       ));
       toast({
@@ -235,8 +451,8 @@ export function AddProductDialog({
           : 'El producto ya no se priorizará.',
         duration: 1800,
       });
-    } catch (error) {
-      setProducts(prev => prev.map((p: any) =>
+    } catch {
+      setProducts(prev => prev.map((p) =>
         p.id === productId ? { ...p, is_favorite: wasFavorite } : p
       ));
       toast({
@@ -254,7 +470,7 @@ export function AddProductDialog({
   };
 
   // Agregar producto al carrito
-  const addToCart = (product: any, modifiers: SelectedProductModifier[] = []) => {
+  const addToCart = (product: ProductoCatalogo, modifiers: SelectedProductModifier[] = []) => {
     const basePrice = product.price || 0;
     if (basePrice === 0) {
       toast({
@@ -267,82 +483,108 @@ export function AddProductDialog({
     const extraTotal = modifiers.reduce((sum, m) => sum + (m.extraPrice || 0), 0);
     const unitPrice = basePrice + extraTotal;
 
-    const newCart = new Map(cart);
-    const existing = newCart.get(product.id);
-
-    if (existing) {
-      existing.quantity += 1;
-    } else {
-      // En variantes `station` ya llega resuelta (handleVariantSelect).
-      const station = estacionEfectiva({ propia: product.station, categoria: product.categories?.station }) ?? '';
-      const requires_preparation = product.categories?.requires_preparation ?? false;
-      newCart.set(product.id, {
-        product_id: product.id,
-        product_name: product.name,
-        quantity: 1,
-        unit_price: Number(unitPrice),
-        notes: '',
-        station,
-        requires_preparation,
-        guest_number: comensales > 1 ? 1 : undefined,
-        variant_data: product.variant_data || null,
-        modifiers: modifiers.length > 0 ? modifiers : undefined,
-        category_id: product.category_id ?? product.categories?.id ?? null,
-        parent_product_id: product.parent_product_id ?? null,
-      });
+    // Por peso o medida: con báscula estable entra de una (venta en un paso);
+    // si no, «Pesar» (se agrega al estabilizar o con Enter). Una línea por pesada.
+    if (esMedido(product)) {
+      void pesar.abrirAgregar(product as unknown as ProductoPos, { modifiers, precio: Number(unitPrice) });
+      return;
     }
 
-    setCart(newCart);
+    setCart((actual) => agregarLinea(actual, lineaDesdeProducto(product, modifiers, Number(unitPrice), 1), claveUnidad(product.id)));
+  };
+
+  // Línea nueva del carrito a partir del producto (por unidad o una pesada).
+  const lineaDesdeProducto = (
+    product: ProductoCatalogo,
+    modifiers: SelectedProductModifier[],
+    unitPrice: number,
+    quantity: number,
+    pesaje?: Pesaje,
+  ): ProductToAdd => {
+    // En variantes `station` ya llega resuelta (handleVariantSelect).
+    const station = estacionEfectiva({ propia: product.station, categoria: product.categories?.station }) ?? '';
+    const requires_preparation = product.categories?.requires_preparation ?? false;
+    return {
+      product_id: product.id,
+      product_name: product.name,
+      quantity,
+      unit_price: unitPrice,
+      notes: '',
+      station,
+      requires_preparation,
+      guest_number: comensales > 1 ? 1 : undefined,
+      variant_data: product.variant_data || null,
+      modifiers: modifiers.length > 0 ? modifiers : undefined,
+      category_id: product.category_id ?? product.categories?.id ?? null,
+      parent_product_id: product.parent_product_id ?? null,
+      ...(esMedido(product)
+        ? { sale_mode: product.sale_mode, qty_decimals: product.qty_decimals ?? null, unit_code: product.unit_code ?? null }
+        : {}),
+      ...(pesaje ? { pesaje } : {}),
+    };
+  };
+
+  // Reabrir «Pesar» para cambiar el peso de una línea ya pesada.
+  const cambiarPeso = (clave: string, item: ProductToAdd) => {
+    // Fuera de la página actual del catálogo: basta con lo que guarda la línea.
+    const producto = products.find((p) => p.id === item.product_id) ?? ({
+      id: item.product_id,
+      name: item.product_name,
+      sale_mode: item.sale_mode,
+      qty_decimals: item.qty_decimals,
+      unit_code: item.unit_code,
+    } as unknown as ProductoCatalogo);
+    pesar.abrirCambiar({ id: clave, producto: producto as unknown as ProductoPos, precio: item.unit_price, cantidad: item.quantity });
   };
 
   // Actualizar cantidad en carrito
-  const updateCartQuantity = (productId: number, quantity: number) => {
+  const updateCartQuantity = (clave: string, quantity: number) => {
     if (quantity < 1) {
-      removeFromCart(productId);
+      removeFromCart(clave);
       return;
     }
 
     const newCart = new Map(cart);
-    const item = newCart.get(productId);
+    const item = newCart.get(clave);
     if (item) {
-      item.quantity = quantity;
+      newCart.set(clave, { ...item, quantity });
       setCart(newCart);
     }
   };
 
   // Eliminar del carrito
-  const removeFromCart = (productId: number) => {
+  const removeFromCart = (clave: string) => {
     const newCart = new Map(cart);
-    newCart.delete(productId);
+    newCart.delete(clave);
     setCart(newCart);
   };
 
   // Actualizar notas de un item
-  const updateCartNotes = (productId: number, notes: string) => {
+  const updateCartNotes = (clave: string, notes: string) => {
     const newCart = new Map(cart);
-    const item = newCart.get(productId);
+    const item = newCart.get(clave);
     if (item) {
-      item.notes = notes;
+      newCart.set(clave, { ...item, notes });
       setCart(newCart);
     }
   };
 
   // Marcar la nota del item como alergia (la cocina debe confirmarla antes de empezar)
-  const updateCartAllergy = (productId: number, isAllergy: boolean) => {
+  const updateCartAllergy = (clave: string, isAllergy: boolean) => {
     const newCart = new Map(cart);
-    const item = newCart.get(productId);
+    const item = newCart.get(clave);
     if (item) {
-      item.is_allergy = isAllergy;
+      newCart.set(clave, { ...item, is_allergy: isAllergy });
       setCart(newCart);
     }
   };
 
   // Actualizar comensal asignado a un item
-  const updateCartGuestNumber = (productId: number, guestNumber: number | undefined) => {
+  const updateCartGuestNumber = (clave: string, guestNumber: number | undefined) => {
     const newCart = new Map(cart);
-    const item = newCart.get(productId);
+    const item = newCart.get(clave);
     if (item) {
-      item.guest_number = guestNumber;
+      newCart.set(clave, { ...item, guest_number: guestNumber });
       setCart(newCart);
     }
   };
@@ -384,7 +626,7 @@ export function AddProductDialog({
     // Evitar que Radix cierre este diálogo cuando se abre el VariantSelectorDialog
     // (conflicto de diálogos anidados en móvil). Usar ref además del state para
     // evitar race conditions (el state puede no haberse actualizado aún).
-    if (!open && (showVariantDialog || variantDialogOpeningRef.current)) return;
+    if (!open && (showVariantDialog || variantDialogOpeningRef.current || pesar.pendiente)) return;
     if (!open) {
       setCart(new Map());
       setSearchTerm('');
@@ -394,7 +636,7 @@ export function AddProductDialog({
   };
 
   // Obtener imagen del producto
-  const getProductImage = (product: any) => {
+  const getProductImage = (product: ProductoCatalogo) => {
     const images = product.product_images;
     
     if (!images || images.length === 0) {
@@ -402,7 +644,7 @@ export function AddProductDialog({
       return null;
     }
     
-    const primaryImage = images.find((img: any) => img.is_primary) || images[0];
+    const primaryImage = images.find((img) => img.is_primary) || images[0];
     
     if (!primaryImage?.storage_path) {
       console.log('🖼️ No storage_path for product:', product.name);
@@ -418,13 +660,15 @@ export function AddProductDialog({
   useEffect(() => {
     if (!open) return;
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !showVariantDialog && !variantDialogOpeningRef.current) {
+      // `defaultPrevented`: el buscador ya usó el Esc para borrar el texto.
+      // Con «Pesar» abierto, Esc cierra solo «Pesar».
+      if (e.key === 'Escape' && !e.defaultPrevented && !showVariantDialog && !variantDialogOpeningRef.current && !pesar.pendiente) {
         handleClose(false);
       }
     };
     document.addEventListener('keydown', handleEsc);
     return () => document.removeEventListener('keydown', handleEsc);
-  }, [open, showVariantDialog]);
+  }, [open, showVariantDialog, pesar.pendiente]);
 
   if (!open || typeof document === 'undefined') return null;
 
@@ -437,23 +681,33 @@ export function AddProductDialog({
             {/* Panel izquierdo - Productos */}
             <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
               <div className="px-3 sm:px-6 py-3 border-b shrink-0 space-y-3 relative">
-                <button className="absolute top-2 right-2 p-2 hover:bg-gray-100 rounded-lg transition-colors dark:hover:bg-gray-700 z-10" onClick={() => handleClose(false)}>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                <button
+                  type="button"
+                  aria-label={tAgregar('cerrar')}
+                  className="absolute right-2 top-2 z-10 flex size-9 items-center justify-center rounded-lg text-fg-secondary transition-colors hover:bg-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  onClick={() => handleClose(false)}
+                >
+                  <X aria-hidden="true" className="size-5" strokeWidth={1.5} />
                 </button>
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-base sm:text-xl shrink-0 font-semibold text-gray-900 dark:text-gray-50">{title}</h2>
+                <div className="flex items-center justify-between gap-2 pr-10">
+                  <h2 className="text-base sm:text-xl shrink-0 font-semibold text-fg">{title}</h2>
                   {subtitle && (
-                    <p className="text-sm text-gray-500 hidden sm:block dark:text-gray-400">{subtitle}</p>
+                    <p className="hidden text-sm text-fg-secondary sm:block">{subtitle}</p>
                   )}
-                <div className="relative w-full sm:w-80">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Buscar por nombre, SKU, código de barras, variantes o modificadores..."
+                <div className="w-full sm:w-80">
+                  <SearchInput
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 h-10"
+                    onChange={setSearchTerm}
+                    onValueChange={setSearchTerm}
+                    onEnter={(texto) => {
+                      // Código escrito a mano + Enter: como un escaneo (directo a la mesa).
+                      if (!pareceCodigoDeBarras(texto)) return false;
+                      setSearchTerm('');
+                      void manejarCodigo(texto.trim());
+                      return true;
+                    }}
+                    placeholder={tAgregar('buscar')}
+                    atajo={false}
                   />
                 </div>
               </div>
@@ -488,20 +742,29 @@ export function AddProductDialog({
                   ))}
                 </div>
               ) : filteredProducts.length === 0 ? (
-                <div className="flex items-center justify-center py-20">
-                  <div className="text-center">
-                    <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">No se encontraron productos</p>
-                  </div>
-                </div>
+                searchTerm.trim() || selectedCategory !== 'all' ? (
+                  <EmptyState
+                    compacto
+                    variante="search"
+                    termino={searchTerm.trim() || undefined}
+                    icono={Package}
+                    onLimpiarFiltros={() => {
+                      setSearchTerm('');
+                      setSelectedCategory('all');
+                    }}
+                  />
+                ) : (
+                  <EmptyState compacto variante="empty" icono={Package} titulo={tAgregar('vacioTitulo')} descripcion={tAgregar('vacioDescripcion')} />
+                )
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
-                  {filteredProducts.map((product: any) => {
+                  {filteredProducts.map((product) => {
                     const productImage = getProductImage(product);
                     const price = product.price || 0;
                     const comparePrice = product.compare_price || 0;
-                    const inCart = cart.has(product.id);
-                    const hasVariants = product.has_variants && product.variant_count > 0;
+                    const inCart = productoEnCarrito(cart, product.id);
+                    const porPeso = esMedido(product);
+                    const hasVariants = product.has_variants && (product.variant_count ?? 0) > 0;
                     const hasModifiersOnly = !hasVariants && product.has_modifiers;
                     const isIncluded = includedProductIds?.has(product.id) ?? false;
 
@@ -569,8 +832,8 @@ export function AddProductDialog({
                             </div>
                           )}
                           {inCart && (
-                            <div className="absolute top-2 right-2 bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold z-10">
-                              {cart.get(product.id)?.quantity}
+                            <div className="absolute top-2 right-2 bg-blue-600 text-white rounded-full min-w-6 h-6 px-1.5 flex items-center justify-center text-sm font-bold z-10 tabular-nums">
+                              {resumenProductoEnCarrito(cart, product.id, locale)}
                             </div>
                           )}
                           {isIncluded && !inCart && (
@@ -629,7 +892,14 @@ export function AddProductDialog({
                                 : 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30'
                             )}>
                               {hasVariants ? 'Desde ' : ''}{formatCurrency(price || 0)}
+                              {porPeso && simboloUnidad(product.unit_code) ? ` / ${simboloUnidad(product.unit_code)}` : ''}
                             </span>
+                            {porPeso && (
+                              <span className="inline-flex items-center gap-0.5 rounded bg-subtle px-1 py-0.5 text-[0.6rem] font-medium text-fg-secondary">
+                                <Scale aria-hidden="true" className="h-2.5 w-2.5" strokeWidth={1.5} />
+                                {tPeso('porUnidad', { unidad: simboloUnidad(product.unit_code) || (product.unit_code ?? '').trim() })}
+                              </span>
+                            )}
                           </div>
                           {product.sku && (
                             <div className="flex items-center justify-between gap-1">
@@ -681,9 +951,9 @@ export function AddProductDialog({
                 </div>
               ) : (
                 <div className="p-3 space-y-2">
-                  {Array.from(cart.values()).map((item) => (
+                  {Array.from(cart.entries()).map(([clave, item]) => (
                     <div
-                      key={item.product_id}
+                      key={clave}
                       className="bg-white dark:bg-gray-800 rounded-lg p-3 border"
                     >
                       <div className="flex items-start justify-between mb-1">
@@ -693,7 +963,7 @@ export function AddProductDialog({
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => removeFromCart(item.product_id)}
+                          onClick={() => removeFromCart(clave)}
                           className="h-5 w-5 p-0"
                         >
                           <X className="h-3 w-3" />
@@ -721,11 +991,24 @@ export function AddProductDialog({
                       )}
 
                       <div className="flex items-center gap-1 mb-2">
+                        {lineaMedida(item) ? (
+                          // Por peso o medida: el chip reabre «Pesar» (sin ±1).
+                          <button
+                            type="button"
+                            onClick={() => cambiarPeso(clave, item)}
+                            aria-label={tPeso('cambiarPeso', { producto: item.product_name })}
+                            className="inline-flex h-7 items-center gap-1 rounded-md border border-line-strong bg-surface px-2 text-sm font-medium tabular-nums text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                          >
+                            <Scale aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={1.5} />
+                            {formatoCantidadCarrito(item, locale)}
+                          </button>
+                        ) : (
+                        <>
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() =>
-                            updateCartQuantity(item.product_id, item.quantity - 1)
+                            updateCartQuantity(clave, item.quantity - 1)
                           }
                           className="h-7 w-7 p-0"
                         >
@@ -737,7 +1020,7 @@ export function AddProductDialog({
                           value={item.quantity}
                           onChange={(e) =>
                             updateCartQuantity(
-                              item.product_id,
+                              clave,
                               parseInt(e.target.value) || 1
                             )
                           }
@@ -747,12 +1030,14 @@ export function AddProductDialog({
                           size="sm"
                           variant="outline"
                           onClick={() =>
-                            updateCartQuantity(item.product_id, item.quantity + 1)
+                            updateCartQuantity(clave, item.quantity + 1)
                           }
                           className="h-7 w-7 p-0"
                         >
                           <Plus className="h-3 w-3" />
                         </Button>
+                        </>
+                        )}
                         <span className="ml-auto font-bold text-blue-600 text-sm">
                           {formatCurrency(item.quantity * item.unit_price)}
                         </span>
@@ -767,7 +1052,7 @@ export function AddProductDialog({
                             <button
                               key={num}
                               type="button"
-                              onClick={() => updateCartGuestNumber(item.product_id, num)}
+                              onClick={() => updateCartGuestNumber(clave, num)}
                               className={cn(
                                 'h-6 w-6 rounded-full text-[0.65rem] font-semibold transition-colors shrink-0',
                                 item.guest_number === num
@@ -780,7 +1065,7 @@ export function AddProductDialog({
                           ))}
                           <button
                             type="button"
-                            onClick={() => updateCartGuestNumber(item.product_id, undefined)}
+                            onClick={() => updateCartGuestNumber(clave, undefined)}
                             className={cn(
                               'h-6 px-2 rounded-full text-[0.6rem] font-medium transition-colors shrink-0',
                               !item.guest_number
@@ -797,7 +1082,7 @@ export function AddProductDialog({
                         placeholder="Notas..."
                         value={item.notes}
                         onChange={(html) =>
-                          updateCartNotes(item.product_id, html)
+                          updateCartNotes(clave, html)
                         }
                         minHeight={60}
                         className="text-xs"
@@ -806,7 +1091,7 @@ export function AddProductDialog({
                         <input
                           type="checkbox"
                           checked={item.is_allergy === true}
-                          onChange={(e) => updateCartAllergy(item.product_id, e.target.checked)}
+                          onChange={(e) => updateCartAllergy(clave, e.target.checked)}
                           className="h-3 w-3 rounded border-gray-300 dark:border-gray-600"
                         />
                         {tNotas('alergiaMesa')}
@@ -909,6 +1194,7 @@ export function AddProductDialog({
           setShowVariantDialog(open);
           if (!open) {
             setSelectedParentProduct(null);
+            setVarianteEscaneada(null);
             // Retrasar el reset del ref para que el handleClose del padre
             // aún vea variantDialogOpeningRef=true y no se cierre en móvil
             setTimeout(() => {
@@ -918,8 +1204,15 @@ export function AddProductDialog({
         }}
         product={selectedParentProduct}
         onSelectVariant={handleVariantSelect}
+        // Stock por variante en la sucursal que vende (misma regla que la tarjeta del POS).
+        // Sin `conCantidad`: `addToCart` suma de a una unidad y la cantidad se ajusta en el carrito.
+        sucursal={{ filtro: branchFilter, nombre: nombreSucursal }}
+        varianteInicialId={varianteEscaneada}
       />
     )}
+
+    {/* «Pesar»: el mismo diálogo del POS (PRODUCTOS-POR-PESO-BASCULA.md §2.6, mesas) */}
+    {pesar.dialogo}
 
     {/* Diálogo de detalle de receta vinculada */}
     {(!!recipeView || recipeViewLoading) && (

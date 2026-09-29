@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { contactState } from '@/lib/services/crm/whatsapp/types';
@@ -14,6 +13,7 @@ import { CampanasService } from '../CampanasService';
 import { CONTACT_STATE_LABEL, type CampaignContact, type ContactState } from '../types';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { formatTimeInTz } from '@/lib/utils/dateDisplay';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 const PAGE = 50;
 const VARIANT: Partial<Record<ContactState, 'success' | 'warning' | 'destructive' | 'secondary' | 'outline'>> = { sent: 'secondary', delivered: 'success', read: 'success', replied: 'success', failed: 'destructive', skipped: 'outline', pending: 'warning', queued: 'warning' };
@@ -45,7 +45,14 @@ export function CampaignContactsTable({ campaignId, refreshKey }: { campaignId: 
       <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <CardTitle className="text-base">Contactos ({total})</CardTitle>
         <div className="flex gap-2">
-          <Input aria-label="Buscar contacto" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} placeholder="Buscar nombre, teléfono…" className="h-8 w-48 text-xs bg-gray-50 dark:bg-gray-900" />
+          <SearchInput
+            value={q}
+            onChange={(v) => { setQ(v); setPage(1); }}
+            placeholder="Buscar nombre, teléfono…"
+            etiqueta="Buscar contacto"
+            tamano="sm"
+            className="w-48"
+          />
           <Select value={state} onValueChange={(v) => { setState(v); setPage(1); }}>
             <SelectTrigger className="h-8 w-36 text-xs bg-gray-50 dark:bg-gray-900" aria-label="Filtrar por estado"><SelectValue /></SelectTrigger>
             <SelectContent><SelectItem value="all">Todos</SelectItem>{(Object.keys(CONTACT_STATE_LABEL) as ContactState[]).map((s) => <SelectItem key={s} value={s}>{CONTACT_STATE_LABEL[s]}</SelectItem>)}</SelectContent>

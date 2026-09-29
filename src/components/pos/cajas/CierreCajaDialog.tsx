@@ -22,7 +22,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Calculator, Lock, ReceiptText } from 'lucide-react';
 import { toast } from 'sonner';
-import { FormField, PanelAdaptable, Tarjeta } from '@/components/kit';
+import { EmptyState, FormField, PanelAdaptable, Tarjeta } from '@/components/kit';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
@@ -188,12 +188,7 @@ export function CierreCajaDialog({ session, onSessionClosed, open: controlledOpe
             <Skeleton className="h-56 rounded-xl" />
           </div>
         ) : error || !resumen ? (
-          <div className="flex flex-col items-start gap-3 rounded-lg border border-line-danger bg-danger-subtle p-4 text-sm text-danger-text" role="alert">
-            <p>{mensajeError(error)}</p>
-            <Button variant="outline" size="sm" onClick={() => void recargar()}>
-              {t('reintentar')}
-            </Button>
-          </div>
+          <EmptyState variante="error" compacto descripcion={mensajeError(error)} onReintentar={() => void recargar()} />
         ) : (
           <form
             className="flex flex-col gap-4"

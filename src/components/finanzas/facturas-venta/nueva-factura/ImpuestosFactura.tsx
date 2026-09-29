@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase/config';
 import { sinRetenciones } from '@/lib/services/taxResolverCore';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { crearFormateadorMoneda } from '@/lib/utils/moneda';
-import { InvoiceItem } from './NuevaFacturaForm';
+import type { InvoiceItem } from './tipos';
 
 // Tipo para un impuesto de la organización
 type OrganizationTax = {
@@ -75,9 +75,6 @@ export function ImpuestosFactura({
   const appliedTaxTotals: {[key: string]: TaxInfo} = {};
   
   // Log detallado para verificar estado de impuestos
-  console.log(`========== CÁLCULO DE TOTALES ==========`);
-  console.log(`Estado de impuestos incluidos: ${taxIncluded ? 'INCLUIDOS' : 'NO INCLUIDOS'}`);
-  console.log(`=======================================`);
   
   // Variable para rastrear ítems con impuestos no incluidos
   let noIncluidos = 0;
@@ -88,24 +85,17 @@ export function ImpuestosFactura({
   calculatedTotal = 0;
   
   // Procesar cada ítem para calcular subtotal, impuestos y total
-  items.forEach((item, index) => {
+  items.forEach((item) => {
     const lineTotal = item.unit_price * item.qty - (item.discount_amount || 0);
     let baseImponible = lineTotal;
     let itemTaxAmount = 0;
     let itemTotal = lineTotal;
-    let impuestosAplicados = false;
     // Usar tax_included del item si está definido, sino usar el global
     const itemTaxIncluded = item.tax_included ?? taxIncluded;
     // Usar tax_rate del item si existe; si no, buscar en impuestos de organización aplicados
     const itemTaxRate = Number(item.tax_rate) || 0;
     const itemTaxCode = item.tax_code || null;
     
-    console.log(`
-========== ÍTEM #${index+1} (${item.product_name || 'Sin nombre'}) ==========`);
-    console.log(`• Precio unitario: ${item.unit_price.toFixed(2)}`);
-    console.log(`• Cantidad: ${item.qty}`);
-    console.log(`• Total línea (bruto): ${lineTotal.toFixed(2)}`);
-    console.log(`• Impuesto del item: ${itemTaxRate}% (código: ${itemTaxCode || 'N/A'}, incluido: ${itemTaxIncluded})`);
 
     // Si el item tiene su propio tax_rate, usarlo directamente
     if (itemTaxRate > 0) {
@@ -113,21 +103,17 @@ export function ImpuestosFactura({
         // Impuesto incluido: ajustar la base imponible
         baseImponible = lineTotal / (1 + (itemTaxRate / 100));
         baseImponible = Math.round(baseImponible * 100) / 100;
-        console.log(`• Base imponible ajustada (con factor ${(1 + (itemTaxRate / 100)).toFixed(4)}): ${baseImponible.toFixed(2)}`);
       }
 
       const taxBase = baseImponible;
       const taxAmount = Math.round(taxBase * (itemTaxRate / 100) * 100) / 100;
 
       if (itemTaxIncluded) {
-        console.log(`• Impuesto (${itemTaxRate}%): ${taxAmount.toFixed(2)} (incluido en el precio)`);
       } else {
-        console.log(`• Impuesto (${itemTaxRate}%): ${taxAmount.toFixed(2)} (añadido al precio)`);
         itemTotal += taxAmount;
         noIncluidos++;
       }
 
-      impuestosAplicados = true;
       itemTaxAmount = taxAmount;
 
       // Agregar al desglose de impuestos aplicados
@@ -161,7 +147,6 @@ export function ImpuestosFactura({
         if (sumaTasasIncluidas > 0) {
           baseImponible = lineTotal / (1 + (sumaTasasIncluidas / 100));
           baseImponible = Math.round(baseImponible * 100) / 100;
-          console.log(`• Base imponible ajustada (con factor ${(1 + (sumaTasasIncluidas / 100)).toFixed(4)}): ${baseImponible.toFixed(2)}`);
         }
       }
 
@@ -174,14 +159,11 @@ export function ImpuestosFactura({
           const taxAmount = Math.round(taxBase * (tax.rate / 100) * 100) / 100;
           
           if (itemTaxIncluded) {
-            console.log(`• Impuesto ${tax.name} (${tax.rate}%): ${taxAmount.toFixed(2)} (incluido en el precio)`);
           } else {
-            console.log(`• Impuesto ${tax.name} (${tax.rate}%): ${taxAmount.toFixed(2)} (añadido al precio)`);
             itemTotal += taxAmount;
             noIncluidos++;
           }
           
-          impuestosAplicados = true;
           
           if (!appliedTaxTotals[taxKey]) {
             appliedTaxTotals[taxKey] = {
@@ -207,41 +189,14 @@ export function ImpuestosFactura({
     if (itemTaxIncluded) {
       // Si los impuestos están incluidos, el total es el precio original menos descuento
       calculatedTotal += lineTotal;
-      console.log(`• Total ítem (con impuestos incluidos): ${lineTotal.toFixed(2)}`);
     } else {
       // Si los impuestos no están incluidos, el total es base + impuestos
       calculatedTotal += itemTotal;
-      console.log(`• Total ítem (con impuestos añadidos): ${itemTotal.toFixed(2)}`);
     }
     
-    // Si no se aplicaron impuestos, mostrar mensaje
-    if (!impuestosAplicados) {
-      console.log(`• Sin impuestos aplicados para este ítem`);
-    }
-    
-    console.log(`==================================================`);
   });
   
-  // Mostrar resumen de cálculos
-  console.log(`\n======== RESUMEN DE CÁLCULOS =========`);
-  console.log(`• Modo impuestos: ${taxIncluded ? 'INCLUIDOS EN PRECIO' : 'AÑADIDOS AL PRECIO'}`);
-  console.log(`• Subtotal calculado: ${calculatedSubtotal.toFixed(2)}`);
-  console.log(`• Total impuestos: ${calculatedTaxTotal.toFixed(2)}`);
-  console.log(`• Total factura: ${calculatedTotal.toFixed(2)}`);
-  console.log(`• Verificación: ${taxIncluded ? 'El total debe ser igual a la suma de precios originales' : 'El total debe ser subtotal + impuestos'}`);
-  console.log(`=====================================\n`);
-  
-  // Los impuestos ya se procesaron a nivel de ítems, no necesitamos procesarlos como generales
-  // Mostramos resumen de impuestos aplicados
-  console.log(`\n======== RESUMEN DE IMPUESTOS APLICADOS ========`);
-  Object.keys(appliedTaxTotals).forEach(taxKey => {
-    const tax = appliedTaxTotals[taxKey];
-    console.log(`• ${tax.name} (${tax.rate}%): Base: ${tax.base.toFixed(2)}, Monto: ${tax.amount.toFixed(2)}, ${tax.included ? 'Incluido' : 'No incluido'}`);
-  });
-  
-  // Verificar el cálculo total
-  console.log(`Verificando impuestos aplicados:`, appliedTaxTotals);
-  
+  // H5 (2026-09-28): aquí había 32 console.log por render y por línea; se quitaron.
   // Actualizamos estados calculados para componentes
   const subtotal = calculatedSubtotal;
   const taxTotal = calculatedTaxTotal;
@@ -286,7 +241,6 @@ export function ImpuestosFactura({
 
   // Efecto específico para cuando cambia taxIncluded
   useEffect(() => {
-    console.log(`Estado de impuestos incluidos cambió a: ${taxIncluded ? 'INCLUIDOS' : 'NO INCLUIDOS'}`);
     
     // Al cambiar el estado de taxIncluded, forzamos una actualización inmediata
     // para asegurar que los cálculos reflejen el nuevo estado
@@ -299,9 +253,7 @@ export function ImpuestosFactura({
     
     // Mostramos el detalle del cambio para depuración
     if (taxIncluded) {
-      console.log('Modo impuestos incluidos: El subtotal mostrará el precio base sin impuestos');
     } else {
-      console.log('Modo impuestos no incluidos: El subtotal es el precio bruto y se suman impuestos al total');
     }
     
     // La próxima vez que se ejecute el efecto principal, detectará el cambio
@@ -344,11 +296,6 @@ export function ImpuestosFactura({
       };
       
       // Notificamos al padre
-      console.log(`Actualizando valores en el padre (impuestos ${taxIncluded ? 'incluidos en el precio original' : 'añadidos al precio base'})`, { 
-        subtotal, 
-        taxTotal, 
-        total 
-      });
       
       onSubtotalCalculated(subtotal);
       onTaxTotalCalculated(taxTotal);

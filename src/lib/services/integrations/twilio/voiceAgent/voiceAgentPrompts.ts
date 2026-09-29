@@ -15,6 +15,19 @@ export interface VoiceAgentContext {
 }
 
 /**
+ * Tipo de negocio de una fila de `organizations` leída con `organization_types(name)`.
+ * PostgREST devuelve el embebido muchos-a-uno como objeto; se acepta también arreglo
+ * por si el cliente lo tipa así. `null` si la organización no tiene tipo.
+ */
+export function tipoDeNegocio(
+  org: { organization_types?: { name?: string | null } | { name?: string | null }[] | null } | null | undefined
+): string | null {
+  const t = org?.organization_types;
+  const fila = Array.isArray(t) ? t[0] : t;
+  return fila?.name || null;
+}
+
+/**
  * Genera el system prompt base para el Voice Agent.
  */
 export function buildVoiceAgentPrompt(context: VoiceAgentContext): string {

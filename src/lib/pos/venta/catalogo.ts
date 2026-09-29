@@ -137,8 +137,11 @@ export function enriquecerVariante<V extends {
 export type DecisionEscaneo =
   | { tipo: 'no_encontrado' }
   | { tipo: 'agotado'; producto: PosGridProduct }
-  /** Variante exacta pero el producto lleva modificadores: diálogo del PADRE (se pierde la variante, B-06). */
-  | { tipo: 'dialogo_padre'; padre: PosGridProduct }
+  /**
+   * Variante exacta pero el producto lleva modificadores: diálogo del PADRE,
+   * que abre con esa variante elegida (`varianteId`; antes se perdía, B-06).
+   */
+  | { tipo: 'dialogo_padre'; padre: PosGridProduct; varianteId: number }
   /** Variante exacta sin modificadores: directo al carrito, ya enriquecida. */
   | { tipo: 'agregar_variante'; producto: Product }
   /** Padre o simple: la misma decisión que al tocar la tarjeta. */
@@ -157,7 +160,7 @@ export function resolverCodigo(row: Product | null, grid: PosGridProduct[]): Dec
   if (row.parent_product_id) {
     // El código identifica una variante concreta: no hay nada que elegir,
     // salvo que el producto lleve modificadores.
-    if (parent.has_modifiers) return { tipo: 'dialogo_padre', padre: parent };
+    if (parent.has_modifiers) return { tipo: 'dialogo_padre', padre: parent, varianteId: row.id };
     const variant = row as PosGridProduct;
     return { tipo: 'agregar_variante', producto: enriquecerVariante(variant, parent) as Product };
   }

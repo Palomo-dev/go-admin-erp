@@ -782,101 +782,25 @@ class SupplierService {
   }
 
   /**
-   * Importar proveedores desde CSV
+   * Importar proveedores (Figma `973:185225`) por `fn_proveedores_importar`:
+   * con `aplicar = false` revisa cada fila (crear, actualizar el existente con
+   * el mismo documento, o error con su motivo) sin escribir; con `true` aplica
+   * en UNA transacción las filas elegidas. Permiso de catálogo en el servidor.
    */
-  async importSuppliers(
+  async importarProveedores(
     organizationId: number,
-    suppliers: SupplierInput[]
-  ): Promise<{ success: number; errors: { row: number; error: string }[] }> {
-    const results = {
-      success: 0,
-      errors: [] as { row: number; error: string }[]
-    };
-
-    for (let i = 0; i < suppliers.length; i++) {
-      try {
-        const supplier = suppliers[i];
-        
-        if (!supplier.name) {
-          results.errors.push({ row: i + 1, error: 'Nombre es requerido' });
-          continue;
-        }
-
-        if (supplier.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(supplier.email)) {
-          results.errors.push({ row: i + 1, error: 'Email inválido' });
-          continue;
-        }
-
-        if (supplier.supplier_type && supplier.supplier_type !== 'person' && supplier.supplier_type !== 'company') {
-          results.errors.push({ row: i + 1, error: 'Tipo debe ser "person" o "company"' });
-          continue;
-        }
-
-        let creditDays: number | null = null;
-        if (supplier.credit_days !== undefined && supplier.credit_days !== null) {
-          const parsed = typeof supplier.credit_days === 'number'
-            ? supplier.credit_days
-            : Number(String(supplier.credit_days).trim());
-          if (isNaN(parsed)) {
-            results.errors.push({ row: i + 1, error: 'Días Crédito debe ser numérico' });
-            continue;
-          }
-          creditDays = parsed;
-        }
-
-        let fiscalResponsibilities: string[] | null = null;
-        if (supplier.fiscal_responsibilities) {
-          fiscalResponsibilities = Array.isArray(supplier.fiscal_responsibilities)
-            ? supplier.fiscal_responsibilities
-            : String(supplier.fiscal_responsibilities).split(';').map(r => r.trim()).filter(Boolean);
-        }
-
-        const { error } = await supabase
-          .from('suppliers')
-          .insert({
-            organization_id: organizationId,
-            name: supplier.name,
-            supplier_type: supplier.supplier_type || 'company',
-            doc_type: supplier.doc_type || null,
-            nit: supplier.nit || null,
-            contact: supplier.contact || null,
-            phone: supplier.phone || null,
-            email: supplier.email || null,
-            notes: supplier.notes || null,
-            description: supplier.description || null,
-            address: supplier.address || null,
-            city: supplier.city || null,
-            state: supplier.state || null,
-            country: supplier.country || 'Colombia',
-            postal_code: supplier.postal_code || null,
-            tax_id: supplier.tax_id || null,
-            tax_regime: supplier.tax_regime || null,
-            fiscal_responsibilities: fiscalResponsibilities,
-            payment_terms: supplier.payment_terms || null,
-            credit_days: creditDays,
-            website: supplier.website || null,
-            bank_name: supplier.bank_name || null,
-            bank_account: supplier.bank_account || null,
-            account_type: supplier.account_type || null,
-            dv: supplier.dv || null,
-            municipality_code: supplier.municipality_code || null,
-            identification_document_code: supplier.identification_document_code || null,
-            country_code: supplier.country_code || 'CO',
-            legal_organization_code: supplier.legal_organization_code || null,
-            trade_name: supplier.trade_name || null,
-          });
-
-        if (error) {
-          results.errors.push({ row: i + 1, error: error.message });
-        } else {
-          results.success++;
-        }
-      } catch (error: unknown) {
-        results.errors.push({ row: i + 1, error: (error instanceof Error && error.message) || 'Error desconocido' });
-      }
-    }
-
-    return results;
+    filas: readonly Record<string, unknown>[],
+    aplicar: boolean,
+    elegidas?: readonly number[],
+  ): Promise<unknown> {
+    const { data, error } = await supabase.rpc('fn_proveedores_importar', {
+      p_org: organizationId,
+      p_filas: filas,
+      p_aplicar: aplicar,
+      p_filas_elegidas: elegidas ? [...elegidas] : null,
+    });
+    if (error) throw error;
+    return data;
   }
 
   /**

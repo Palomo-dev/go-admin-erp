@@ -40,52 +40,42 @@ export function FormaPagoSelector({ formaPago, onChange }: FormaPagoSelectorProp
     try {
       setIsLoading(true);
       
-      // Consultar métodos de pago activos para la organización junto con sus detalles
+      // Métodos activos de la organización con su nombre en UNA consulta
+      // (antes, una consulta a payment_methods por método: hallazgo H6).
       const { data, error } = await supabase
         .from('organization_payment_methods')
-        .select(`
-          id,
-          organization_id,
-          payment_method_code,
-          is_active,
-          settings
-        `)
+        .select('id, organization_id, payment_method_code, is_active, settings, payment_methods(name, requires_reference)')
         .eq('organization_id', organizationId)
         .eq('is_active', true)
         .order('id');
-      
+
       if (error) throw error;
-      
-      // Obtener detalles de los métodos de pago
-      const metodosFormateados: OrganizationPaymentMethod[] = [];
-      
-      if (data && data.length > 0) {
-        // Para cada método de pago de la organización, obtener los detalles del método
-        for (const item of data) {
-          // Obtener datos del método de pago base
-          const { data: paymentMethodData } = await supabase
-            .from('payment_methods')
-            .select('name, requires_reference')
-            .eq('code', item.payment_method_code)
-            .single();
-          
-          metodosFormateados.push({
-            id: item.id,
-            organization_id: organizationId,
-            payment_method_code: item.payment_method_code,
-            is_active: item.is_active,
-            settings: item.settings,
-            payment_method: {
-              code: item.payment_method_code,
-              name: paymentMethodData?.name || item.payment_method_code,
-              requires_reference: paymentMethodData?.requires_reference || false,
-              is_active: true,
-              is_system: true
-            }
-          });
-        }
-      }
-      
+
+      type Fila = {
+        id: number;
+        payment_method_code: string;
+        is_active: boolean;
+        settings: OrganizationPaymentMethod['settings'];
+        payment_methods: { name: string | null; requires_reference: boolean | null } | { name: string | null; requires_reference: boolean | null }[] | null;
+      };
+      const metodosFormateados: OrganizationPaymentMethod[] = ((data ?? []) as unknown as Fila[]).map((item) => {
+        const pm = Array.isArray(item.payment_methods) ? item.payment_methods[0] : item.payment_methods;
+        return {
+          id: item.id,
+          organization_id: organizationId,
+          payment_method_code: item.payment_method_code,
+          is_active: item.is_active,
+          settings: item.settings,
+          payment_method: {
+            code: item.payment_method_code,
+            name: pm?.name || item.payment_method_code,
+            requires_reference: pm?.requires_reference || false,
+            is_active: true,
+            is_system: true,
+          },
+        };
+      });
+
       setMetodosPago(metodosFormateados);
       
       // Si no hay un método seleccionado y hay métodos disponibles, seleccionar el primero

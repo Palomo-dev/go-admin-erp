@@ -150,7 +150,7 @@ export function ImportarProductosAsistente() {
             </Button>
           </>
         }
-        movil={{ accion: <RowActionsMenu orientacion="horizontal" tamano="md" acciones={masAcciones} titulo={t('titulo')} />, ocultarBarra: true }}
+        movil={{ accion: <RowActionsMenu orientacion="horizontal" tamano="md" acciones={masAcciones} titulo={t('titulo')} /> }}
       />
 
       <Stepper

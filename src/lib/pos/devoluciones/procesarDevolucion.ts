@@ -24,12 +24,18 @@ export interface LineaDevolucionPantalla {
   /** Código del motivo del catálogo (`return_reasons.code`). */
   reason: string;
   serial_number_ids?: number[];
+  /**
+   * Producto por peso: la cantidad devuelta vuelve al inventario solo si se
+   * marca «Reingresa» (por defecto no: producto fresco). Por unidad o por
+   * medida lo decide el motivo, como siempre.
+   */
+  restock?: boolean;
 }
 
 export interface ParametrosProcesarDevolucion {
   p_organization_id: number;
   p_sale_id: string;
-  p_items: Array<{ sale_item_id: string; quantity: number; reason_code: string; serial_ids: number[] }>;
+  p_items: Array<{ sale_item_id: string; quantity: number; reason_code: string; serial_ids: number[]; restock?: boolean }>;
   p_refund_method: 'cash' | 'store_credit';
   p_reason: string;
   p_notes: string | null;
@@ -79,6 +85,7 @@ export function parametrosProcesarDevolucion(
       quantity: item.return_quantity,
       reason_code: item.reason.trim(),
       serial_ids: item.serial_number_ids ?? [],
+      ...(item.restock !== undefined ? { restock: item.restock } : {}),
     }));
   if (items.length === 0) throw new Error('Sin líneas para devolver');
   return {
@@ -104,6 +111,8 @@ export const CODIGOS_ERROR_DEVOLUCION = [
   'serial_invalido',
   'linea_no_pertenece_a_la_venta',
   'sin_acceso_sucursal',
+  // Producto por peso o medida con más decimales de los suyos (20260929120300).
+  'cantidad_decimales',
 ] as const;
 
 export type CodigoErrorDevolucion = (typeof CODIGOS_ERROR_DEVOLUCION)[number] | 'generico';

@@ -1,0 +1,1893 @@
+# Inventario — análisis completo y plan de implementación del módulo
+
+Fecha: 2026-09-28. Encargo del dueño: «analiza primero todo y, con base en el contexto de UI, BD,
+backend y flujo, aplica todo el módulo de inventario; deja el flujo completo, todo conectado y
+todo funcionando». Este documento es **solo análisis y plan**: no se cambió código ni se aplicó
+ninguna migración. La base se leyó con `SELECT` por el MCP de Supabase (proyecto
+`jgmgphmzusbluqhuqihj`); Figma, con lecturas de estructura (archivo `EAvjINVRnlzFM70GVoWXgl`,
+página `04 Inventario`, `264:98912`). Las organizaciones se nombran por id.
+
+Documentos previos que este plan **consolida y verifica contra el estado de hoy** (muchos de sus
+hallazgos ya se corrigieron entre el 24 y el 28 de septiembre; aquí solo queda lo que sigue
+abierto, con evidencia de hoy):
+
+- `docs/design/INVENTARIO-PARIDAD-FIGMA.md` (paridad por pantalla y variantes, 09-28)
+- `docs/design/PRODUCTO-RECETAS-Y-SUBSECCIONES.md` (recetas en el formulario: **hecho** el 09-28;
+  pestaña «Producción» del detalle: pendiente)
+- `docs/design/AUDITORIA-EXISTENCIAS.md` y `PARIDAD-EXISTENCIAS.md` (09-23)
+- `docs/design/AUDITORIA-KARDEX-LOTES.md` y `PARIDAD-KARDEX-LOTES.md` (09-22/23)
+- `docs/design/AUDITORIA-CATALOGO-PRODUCCION.md` y `PARIDAD-CATALOGO-PRODUCCION.md` (09-23)
+- `docs/design/AUDITORIA-CARTERA-ORDENES-COMPRA.md` (§C.3 y §I, recepción de OC, 09-22/23)
+- `docs/implementacion/FACTURAS-COMPRA-CXP-PLAN.md` y `KIT-COMPARTIDO.md`
+- Hallazgos F-36, F-37, F-38, F-41, F-61, F-67, F-72, F-73
+
+Contenido:
+
+0. Resumen ejecutivo
+1. Mapa pantalla por pantalla (Figma → código → BD → backend → estado → brechas)
+2. Flujos de extremo a extremo
+3. Lógica duplicada y fuente única de stock y costo
+4. Datos: conteos e inconsistencias
+5. Plan de implementación en bloques paralelos
+6. Preguntas para el dueño
+
+---
+
+## 0. Resumen ejecutivo
+
+**Estado general.** El inventario tiene dos mitades muy distintas:
+
+- **Catálogo de producto: bien.** Formulario, detalle, catálogo, importación (CSV y web),
+  códigos de barras, etiquetas impresas, categorías, proveedores y etiquetas de producto están en
+  Figma y en código, en 4 idiomas, con guardado por RPC transaccional (`fn_producto_guardar`,
+  que ya crea variantes, precio y costo con vigencia, stock inicial con kardex y recetas).
+- **Existencias y operación: rota o desconectada.** Stock, movimientos, kardex, lotes, ajustes,
+  traslados, seriales, garantías, trazabilidad, producción, distribución, variantes (catálogo) y
+  unidades tienen Figma completo, pero en código son pantallas viejas, en español cableado
+  (0 `useTranslations` en 13 carpetas), sin permisos, sin móvil, y **escriben stock desde el
+  navegador en N llamadas sin transacción**.
+
+**Los cinco problemas más graves (con evidencia en §2 y §4):**
+
+1. **Los traslados no mueven existencias.** `TransferenciasService.ts:260,352` llama a la RPC
+   `update_stock_level`, que no existe; el respaldo filtra `stock_levels` por una columna
+   `organization_id` que la tabla no tiene (`:274,369`) y escribe estados `complete`/`partial` que
+   el `CHECK` rechaza (`:330,417`). Distribución usa el mismo servicio y además toma la
+   organización de `localStorage` (`CrearTransferenciaDialog.tsx:72`).
+2. **No hay una sola fuente de verdad del stock.** Hay **quince** funciones SQL (siete del
+   núcleo, dos de reserva web y seis del GO Assistant) y **más de diez** servicios o route
+   handlers TypeScript que escriben
+   `stock_levels`/`stock_movements`, con **cuatro** reglas distintas de costo promedio (ponderado,
+   «último costo», «no cambia» y «el precio de venta» en la reversión del folio del PMS). La RLS
+   deja a cualquier miembro activo insertar, cambiar y **borrar** filas del kardex desde el
+   navegador. Resultado medido: 4.899 pares producto-sucursal donde el kardex no cuadra con el
+   saldo, 45.219 filas de stock sin ningún movimiento que las explique, y los consumos de
+   habitación del PMS que descuentan dos veces.
+3. **Ajustes no atómicos y contabilizados dos veces.** `adjustmentService.applyAdjustment`
+   (`:398-580`) mezcla RPC y escrituras directas desde el navegador; 81 ajustes tienen **dos
+   asientos** (el de `inventory_adjustments` y uno por cada `stock_movements` de origen
+   `adjustment`).
+4. **Recepción de órdenes de compra en el navegador.** `purchaseOrderService.receiveItems`
+   (`:552-670`) hace ≈4+5N llamadas, suma stock con una copia en TypeScript del kardex de compra
+   (`stockMovementService.incrementOnPurchase:290-404`), crea seriales uno a uno tragándose los
+   errores, no captura lotes y «el stock no bloquea la recepción» (`:629-639`).
+5. **Lotes, seriales y garantías a medias.** `lots` no tiene `organization_id`, sucursal ni
+   unicidad; la venta solo descuenta la fila sin lote (`decrement_stock_on_sale`), no hay selector
+   de lote en el POS; `serial_numbers.serial` es único **en todo el sistema**; el detalle de
+   garantía no carga porque pide relaciones con nombres que no existen
+   (`warrantyClaimsService.ts:175`) y hay 0 reclamos.
+
+**Lo que sí está bien y se reutiliza:** la entrada por compra (`fn_kardex_entrada_compra_int`:
+bloqueo, promedio ponderado, `product_costs` con vigencia, idempotencia), la factura de compra
+(`fn_factura_compra_*`), el descuento por venta con receta (`decrement_stock_with_recipe` y el
+resolutor único de recetas del 09-28), las devoluciones y anulaciones (`fn_stock_entrada*`), la
+reserva web en SQL (`reserve_stock_for_web_order`), el stock inicial y masivo del producto
+(`fn_producto_int_stock_inicial`, `fn_productos_ajuste_masivo_stock`), el kit (`DataTable`,
+`FilterPanel`, `BulkActionBar`, `Dialogo`, `DialogoMotivo`, `SupplierPicker`,
+`kit/documento/*`, `kit/receta/*`, `CodigoBarras`, `HojaEtiquetas`).
+
+**El plan (§5)**: un bloque 0 de núcleo (una primitiva SQL única de movimiento de stock y los
+contratos compartidos), siete bloques paralelos con propiedad de archivos disjunta y un bloque
+final de cierre (RLS de solo lectura sobre el kardex, datos y verificación integral).
+
+---
+
+## 1. Mapa pantalla por pantalla
+
+Convenciones de estado: **Igual** = hecho igual a Figma y funcionando · **Parcial** = existe y
+funciona pero con brechas · **Viejo** = pantalla anterior al rediseño (sin kit, sin i18n) ·
+**Roto** = la acción principal falla · **No existe**.
+
+Brechas transversales que aplican a **todas** las filas marcadas Viejo (no se repiten en cada
+fila):
+
+- **i18n**: 0 archivos con `useTranslations` en `ajustes`, `dashboard`, `distribucion`,
+  `imagenes`, `kardex`, `lotes`, `movimientos`, `produccion`, `recetas`, `reportes`, `seriales`,
+  `stock`, `transferencias`, `unidades`, `variantes` (y `ordenes-compra`, de otro agente).
+  Namespaces que ya existen: `productos`, `productoForm`, `productoDetalle`, `productosImportar`,
+  `productosFacebook`, `categorias`, `proveedores`, `inventarioEtiquetas`, `receta`, `kit`.
+- **Permisos**: ninguna ruta de Existencias ni de Producción los comprueba (Figma dibuja «sin
+  permiso» en todas). Solo Categorías (`useArbolCategorias.ts:107`) y el producto
+  (`fn_productos_permisos`). La RLS de `stock_levels`, `stock_movements`, `lots`,
+  `inventory_adjustments`, `inventory_transfers`, `transfer_items`, `production_orders`,
+  `warranty_claims` y `serial_tracking_events` es `FOR ALL` por pertenencia: cualquier miembro
+  activo escribe.
+- **Móvil**: sin vista de tarjetas (`ListCard`) ni hojas; Figma tiene móvil de todo.
+- **Tableta**: sin frames en Figma salvo Variantes y recetas (MEDIA, no bloquea).
+- **Confirmaciones nativas**: `window.confirm`/`prompt` en traslados, distribución, producción y
+  conversiones.
+- **Fechas**: filtros `yyyy-MM-dd`/`T23:59:59` evaluados en UTC; `formatDate` sobre columnas
+  `date`; moneda `COP` cableada (`formatCurrency`).
+
+### 1.1 Productos — catálogo, formulario, detalle, importación, códigos y etiquetas
+
+| Pantalla / diálogo | Figma | Ruta y componentes | BD / backend | Estado | Brechas |
+|---|---|---|---|---|---|
+| Catálogo (lista, cuadrícula, filtros, selección, menús) | sección `166:38188` (`117:8746` listo … `120:14472`), menús `200:20850`, móvil `166:38196` | `/app/inventario/productos` → `productos/CatalogoProductos.tsx`, `ProductosTable`, `FiltrosProductos`, `bulk/AccionesMasivas.tsx` | `get_catalogo_productos`, `catalogo_productos_lote`, `buscar_productos`; masivo por `fn_productos_ajuste_masivo_stock`, `fn_producto_cambiar_estado` | Igual | Estado y Categoría masivos no expanden a variantes; `bulkDelete` es N RPC en bucle (AUDITORIA-CONTROLES C.16; sin verificar hoy) |
+| Nuevo / editar / duplicar | `126:16063`, `130:20628`, `130:22941`; móvil `133:22262…22911`; recetas `957:583021` (F1–F9) | `productos/nuevo`, `[id]/editar`, `[id]/duplicar` → `productos/formulario/**` | `fn_producto_guardar` (precio y costo con vigencia, impuestos, variantes, stock inicial, recetas, idempotencia `product_save_requests`) | Igual | `SeccionPrecios.tsx` y `detalle/precios/CampoVigencia.tsx` tienen cambios sin commit de otra sesión: **no tocar** |
+| Detalle — cabecera, resumen, precios, variantes, imágenes, proveedores, notas, historial | `188:53240`, `191:9368`, `199:16901`, `180:742`, `194:10370`, `196:13752` | `productos/[id]` → `productos/detalle/DetalleProducto.tsx` y subcarpetas | `fn_producto_resumen`, `fn_producto_historial`, `fn_producto_fijar_precio/costo`, `fn_producto_variante_*`, `fn_producto_imagenes_ordenar` | Igual | Pestaña **Producción** (`968:175070…180119`) no existe (ver 1.6) |
+| Detalle › Inventario › Stock | `199:16902…19740` | `detalle/inventario/StockSucursales.tsx`, `stock/**` | `fn_producto_resumen`; enlaces a `/ajustes/nuevo?producto_id&type&branchId` y `/transferencias/nuevo?producto_id&origen` (los dos formularios ya leen esos parámetros; el comentario de `logicaInventario.ts:32` que dice lo contrario está desactualizado) | Parcial | El traslado al que lleva «Transferir» no mueve stock (1.4). `DesgloseVariantes.tsx:57` lee `stock_levels` directo |
+| Detalle › Inventario › Kardex y Lotes | `525:64176`, `525:65157`, móvil `525:65718/65947` | `detalle/inventario/KardexProducto.tsx`, `LotesProducto.tsx` | `fn_producto_kardex`, `fn_producto_lotes` | Parcial | Sin saldo corrido paginado en servidor; lotes sin sucursal ni cantidad propia (depende de §5 B1) |
+| Detalle › Inventario › Seriales | `187:49748` (generar `187:51058`, reclamo `187:51217…51424`) | `detalle/inventario/SerialesProducto.tsx`, `seriales/**` | `fn_producto_generar_seriales`, `fn_producto_serial_cambiar_estado` | Parcial | «Nuevo reclamo» usa el servicio de garantías roto (1.5) |
+| Importar CSV / lote | `158:30771`, `158:31580` | `productos/importar` → `importar/ImportarProductosAsistente.tsx` y pasos | `POST /api/inventario/productos/importar/lote` → `fn_importar_productos_lote` → `fn_register_stock_entry` | Igual | Recuento D5 (importados/omitidos/fallidos/no intentados) sin verificar |
+| Importar desde la web (IA) | sección `415:163965` (`426:193034…196066`, móvil `427:43933…44178`) | mismo asistente, `?origen=web`, `PasoSeleccionWeb.tsx` | `POST /api/inventario/productos/importar-web` → Edge Function `product-scraper` + `chargeAiCredits` | Parcial | Sucursal destino, impuesto y costo explícitos (PARIDAD-ORGANIZACION-COMPRAS-IMPORT D4/D5) |
+| Generar códigos de barras | sección `518:273568` (`517:269277…269621`, móvil `518:273348`) | `productos/etiquetas/GenerarCodigosDialog.tsx` (catálogo `:721`, detalle `:388`) | `organization_barcode_settings` (7 filas) vía `codigosBarrasService.ts:48` | Igual | — |
+| Imprimir etiquetas | sección `516:274675` (`513:262688…268063`); entradas `516:268810` | `productos/etiquetas/ImprimirEtiquetasDialog.tsx` → `window.open('/app/imprimir/etiquetas')` → `kit/HojaEtiquetas` → `EtiquetaProducto` → `CodigoBarras` | `print_jobs` (0 trabajos de etiqueta hasta hoy) | Igual | Etiquetas de lote y de lo recibido (§5 B8) |
+| Alta rápida de producto | `QuickCreateDialog` del kit de Figma (`590:107156`, `592:117624`) | dentro de inventario **no existe**: `productos/nuevo/QuickCreateDialog.tsx` es un modal genérico (solo lo usa la OC para dar de alta un proveedor); «Crear ingrediente» abre el formulario completo en diálogo. El alta rápida real está en `kit/documento/FormularioRapidoProducto.tsx` (documentos de finanzas y `AgregarProductosDialog`) | `crearProductoRapido` → `fn_producto_guardar` | Parcial | Reutilizar `FormularioRapidoProducto` donde inventario necesite crear un producto al vuelo (ajuste, traslado, receta); no crear otro |
+| Escáner de cámara (POS) | — | `components/ui/barcode-scanner.tsx:50-58` **simula** un código fijo a los 3 s; lo usa `pos/ProductSearch.tsx:9`, montado en `app/app/pos/page.tsx:9` | — | Roto | Fuera de inventario: se avisa al agente del POS (§5 B9) |
+
+### 1.2 Existencias — Stock, Movimientos, Kardex, Lotes
+
+| Pantalla / diálogo | Figma | Código | BD / backend | Estado | Brechas |
+|---|---|---|---|---|---|
+| Stock (listo, estados, filtros, ⋯, «Nuevo movimiento», selección) | sección `581:276750`: `582:277572` … `584:282661`, móvil `585:284626…285835` | `/app/inventario/stock` → `stock/page.tsx` (258), `StockTable` (500), `StockFilters`, `StockHeader`, `StockStats`; `lib/services/stockService.ts` | lectura directa de `stock_levels` + `products` | Viejo | «Crear transferencia» no hace nada (`StockTable.tsx:381`, la página no pasa `onCreateTransfer`); «Disponible» = `qty_on_hand` sin restar reservado (`StockTable.tsx:333`); variantes sin agrupar por padre; lote invisible; KPI cuentan filas; select de sucursal propio que duplica el del header; exportar con `toISOString` |
+| Diálogos «Registrar entrada», «Registrar salida», «Definir stock mínimo» | `586:73716`, `586:73820`, `586:73911` | **No existen** | `update_product_min_stock` existe (DEFINER); entrada/salida no tienen RPC propia | No existe | Necesitan las RPC de §5 B0/B1 |
+| Movimientos (bitácora) | sección `586:286574`: `586:286575` … `586:296753` | `/movimientos` → `movimientos/page.tsx` (333), `MovimientosTable` (263), `MovimientosFilters` | `stock_movements` directo | Viejo | Filtro «Origen» ofrece `waste`/`recipe_consumption` que la BD no acepta y omite 15 de 22 (`stockService.ts:506-507`, `MovimientosTable.tsx:50`); «Ver documento» con rutas 404 (`MovimientosTable.tsx:69-81`); «solo ingredientes» nunca coincide; sin lote, autor ni enlace legible |
+| Kardex | sección `516:270497`: `516:270498` … `597:352293` (export `522:71579`, descuadre `522:71624`) | `/kardex` → `kardex/page.tsx` exige `?producto=` (`:33`); `kardex/*`; `lib/services/kardexService.ts` | `stock_movements` sin `.range()` (el saldo miente pasadas 1.000 filas); saldo calculado en el navegador | Viejo | No está en el menú (`lib/navigation/catalog.ts:355-361`); `waste` en `KardexTable.tsx:37`; falta `fn_kardex_saldo_corrido` y `fn_kardex_descuadres` |
+| Lotes | sección `518:59165`: `518:59166` … `597:352129`; nuevo lote `522:62899`; ajustar cantidad `522:63102` | `/lotes` → `lotes/LotesPage.tsx` (909 líneas en total), `LotesService.ts` | `lots` (3 filas, org 2) | Viejo | `stock_quantity: 0` cableado (`LotesService.ts:60`); `lots` sin `organization_id`, sucursal ni UNIQUE `(product_id, lot_code)`; alta sin cantidad, sucursal ni costo |
+| POS — elegir lote al vender | sección `530:65098` (`530:65099`, móvil `530:65161`, avisos `530:65210`, vencido `530:68427`) | **No existe** (ningún `lot_id` en `components/pos/**` ni `lib/pos/**`) | `decrement_stock_on_sale` solo descuenta `lot_id IS NULL` | No existe | FEFO en SQL (§5 B0) y selector en el POS (§5 B9, coordinado con el POS) |
+
+### 1.3 Existencias — Ajustes y conteo físico
+
+| Pantalla / diálogo | Figma | Código | BD / backend | Estado | Brechas |
+|---|---|---|---|---|---|
+| Ajustes (lista, ⋯, selección, confirmar aplicar/descartar) | sección `586:303290`: `586:303291`, `586:306452`, `586:306911`, `586:310249`, `586:310283`; móvil `587:305001…306460` | `/ajustes` → `ajustes/page.tsx` (402), `AjustesTable` (254) | `inventory_adjustments` (140), `adjustment_items` | Viejo | Paginación sin efecto (`page.tsx:141-153`); «Cancelar» **borra** (`adjustmentService.ts:604-608`); «Editar» a `/ajustes/[id]/editar`, **ruta inexistente** (`AjustesTable.tsx:205`, `AjusteDetalle.tsx:304`) |
+| Nuevo ajuste (escritorio y móvil con escáner) | `586:312944`; móvil conteo `975:186644`; `SerialCapture` `580:276137` | `/ajustes/nuevo` → `ajustes/nuevo/NuevoAjusteForm.tsx` (955); lee `?producto_id&type&branchId` (`:87-89`) | lee `stock_levels` directo (`:422`) | Viejo | Sin lote por renglón; mismo producto dos veces; costo de solo lectura (si es 0, aplicar falla sin salida) |
+| Detalle borrador / aplicado | `586:308354`, `586:309538`, móvil `587:305277` | `/ajustes/[id]` → `ajustes/detalle/AjusteDetalle.tsx` (633) | — | Viejo | «Sistema» se recalcula contra el stock actual (en un aplicado las diferencias salen 0); notas en HTML crudo |
+| Aplicar | — | `adjustmentService.applyAdjustment:398-580` | entradas por `fn_register_stock_entry` (`:437`, que **sobrescribe** `avg_cost`), salidas con INSERT/UPDATE directos (`:456-491`), seriales a `defective` (`:529-544`) | Roto (no atómico) | Un fallo a mitad deja stock parcial y reaplicar duplica; doble asiento (§4) |
+| Conteo físico / cíclico | solo como «ajuste por conteo» (`975:186644`) | **No existe** | `cycle_counts` y `cycle_count_lines` existen con RLS y **0 filas** | No existe | Ver pregunta P3 |
+
+### 1.4 Existencias — Traslados y Distribución
+
+| Pantalla / diálogo | Figma | Código | BD / backend | Estado | Brechas |
+|---|---|---|---|---|---|
+| Traslados (lista, ⋯ por estado, selección, confirmar despachar/cancelar/devolver) | sección `589:304083`: `589:304084` … `589:320707`; móvil `589:325777…327256` | `/transferencias` → `transferencias/TransferenciasPage.tsx` (186), `TransferenciasTable` | `inventory_transfers` (5, todos de julio de 2025, org 2) | Roto | `confirm()` (`TransferenciasPage.tsx:68,90`); estados `partial`/`complete` que la BD rechaza (`types.ts:41,54`) |
+| Nuevo traslado (escritorio y móvil) | `589:322911`, móvil `975:186790` | `/transferencias/nuevo` → `nuevo/NuevaTransferenciaForm.tsx` (499); lee `?producto_id&origen` (`:63-65`) | «disponible» consulta `stock_levels` filtrando por `organization_id`, que no existe: siempre 0 | Roto | «Agotado» y «Stock insuficiente» que no bloquean; sin lote ni seriales; si fallan los ítems borra la cabecera (`TransferenciasService.ts:182`) |
+| Detalle y «Recibir» | `831:535830`, `831:536248`, `589:320397`, móvil `589:326053` | `/transferencias/[id]` → `id/TransferenciaDetalle.tsx` (556) | `TransferenciasService.ts:189-430` | Roto | `update_stock_level` inexistente (`:260,352`); respaldo con `organization_id` inexistente (`:274,369`) y `Math.max(0,…)`; movimientos sin `unit_cost` ni lote; «Recibir» siempre disponible; «Creado por» muestra el UUID |
+| Distribución (lista, asistente 3 pasos, recibir) | sección `606:159579`: `606:159582`, `607:163577/163711/163905`, `607:164032`, móvil `608:163816…164971` | `/distribucion` → `distribucion/DistribucionPage.tsx`, `CrearTransferenciaDialog.tsx` (288) | mismo servicio de traslados | Roto | `localStorage('currentOrgId')` (`CrearTransferenciaDialog.tsx:72`); `confirm()` (`DistribucionPage.tsx:65,77`); KPI con estados inexistentes (`DistribucionStats.tsx:17-18`); sin vínculo con la orden de producción |
+| Contabilidad del traslado | — | — | `fn_auto_journal_inventory_transfer` busca `source='transfer'` (hoy se escribe `transfer_out`/`transfer_in`) y toma `avg_cost` de cualquier producto de la sucursal | Roto | Nunca asienta; `fn_notify_transfer_status` notifica estados que no existen |
+
+### 1.5 Existencias — Seriales, Garantías, Trazabilidad
+
+| Pantalla / diálogo | Figma | Código | BD / backend | Estado | Brechas |
+|---|---|---|---|---|---|
+| Seriales (lista, ⋯ vendido/en stock, selección, detalle) | sección `590:319444`: `590:319445` … `591:113637`, móvil `831:533562/535144` | `/seriales`, `/seriales/[id]` → `seriales/SerialesPage.tsx` (387), `SerialDetailPage.tsx` (541); `lib/services/serialTrackingService.ts` (1.200) | `serial_numbers` (102), `serial_tracking_events`; `CHECK` de estado ya ampliado a 11 valores | Viejo | Garantía fijada **al recibir** (`serialTrackingService.ts:190-192`): 98 unidades en bodega con garantía corriendo; `formatDate` sobre `date`; «Sucursal venta» muestra la actual; sin enlaces; diálogos «Transferir serial» y «Cambiar estado» sin frame (MEDIA) |
+| Garantías (lista, ⋯, nuevo reclamo, resolver, RMA) | sección `592:329722`: `592:329723`, `592:332573`, `592:332635`, `593:121183`, RMA `973:186133`, móvil `593:122134/122402` | `/garantias`, `/garantias/[id]` → `garantias/GarantiasPage.tsx` (395), `GarantiaDetailPage.tsx` (660), `CreateClaimDialog.tsx` (441); `lib/services/warrantyClaimsService.ts` | `warranty_claims` (**0 filas**, sin `CHECK` de estado) | Roto | Relaciones `serial_numbers_current_branch_id_fkey`/`…sold_to_customer_id_fkey` **no existen** (las reales: `fk_serial_current_branch`, `fk_serial_customer`) en `warrantyClaimsService.ts:175` y `reportes/modulos/serialTrackingReports.ts:82`: el detalle no carga; RMA y respuesta del proveedor solo se guardan al resolver; el serial de reemplazo sigue `in_stock` |
+| Trazabilidad (lote, serial, inicial) | sección `594:126324`: `594:126325`, `594:127772`, `594:128377`, móvil `595:133576/133838` | `/reportes/trazabilidad` → `reportes/trazabilidad/TrazabilidadPage.tsx` (396), `TrazabilidadService.ts` | lista plana de `stock_movements` | Viejo | No encadena lote → ventas → clientes ni serial → venta → garantía; busca solo en `note`/`source_id` sin escapar; CSV cortado a 1.000; depende de que haya lotes (1 movimiento con lote en toda la base) |
+
+### 1.6 Producción — Recetas, Costo de recetas, Producción, pestaña Producción del producto
+
+| Pantalla / diálogo | Figma | Código | BD / backend | Estado | Brechas |
+|---|---|---|---|---|---|
+| Recetas (lista, ⋯, filtros, selección, editar versión) | sección `598:142703`: `598:142706` … `600:149001`, editar `599:147018` | `/recetas` → `recetas/RecetasPage.tsx`, `RecipeDialog.tsx` (interfaz vieja; guarda ya por `fn_receta_guardar`) | `product_recipes` (57, 55 activas, 3 orgs), `recipe_ingredients` | Parcial | Sustituir `RecipeDialog` por `kit/receta/EditorReceta`; desactivar sin confirmación (`:138`); versiones y «Reactivar» |
+| Costo de recetas | sección `601:148806`: `601:148809`, `601:152291`, `601:153198`, móvil `602:152547/153410` | `/reportes/costo-recetas` → `reportes/costo-recetas/CostoRecetasPage.tsx`, `CostoRecetasService.ts` | cálculo propio en TS (máximo `avg_cost` entre sucursales, no encuentra conversiones) | Parcial | Pasar a `fn_receta_costo` por sucursal (duplicado de lógica, §3) |
+| Producción (lista, ⋯, filtros, selección, detalle, nueva, completar) | sección `603:153432`: `603:153435` … `605:159913`; nueva `604:158714`; completar `604:158843` | `/produccion` → `produccion/ProduccionPage.tsx` (8 archivos, 1.081 líneas); `lib/services/productionOrderService.ts` | `production_orders` (1, org 142, `completed` sin consumos), `production_order_consumptions` (0); `complete_production_order` | Roto | `prompt()` para la cantidad (`ProduccionPage.tsx:93`); si la RPC falla, el servicio marca `completed` sin mover stock (`productionOrderService.ts:213-221`); crear/confirmar/iniciar/cancelar son `UPDATE` directos; el terminado entra a costo 0 y sin bloqueo (`complete_production_order`) |
+| Detalle de producto › Producción (Receta · Costo · Órdenes · Distribución · Unidades) | `968:175070`, `968:176149`, `968:177163`, `968:178151`, `968:179187`, `968:180119`; diálogos `970:177054…177494`; móvil `972:178990…179875`; tableta `972:180183` | **No existe** | `fn_receta_efectiva`, `fn_receta_costo`, `fn_receta_necesidades`, `fn_receta_guardar` (ya aplicadas) | No existe | Componentes `TablaSubseccion` y `HojaDetalle` (Figma `959:168129`, `959:168240`, `959:168241`) no existen en código |
+
+### 1.7 Catálogo maestro — Categorías, Proveedores, Etiquetas, Unidades, Imágenes, Variantes
+
+| Pantalla / diálogo | Figma | Código | BD / backend | Estado | Brechas |
+|---|---|---|---|---|---|
+| Categorías (árbol, detalle, formulario, mover, eliminar, importar) | sección `586:290667` (`586:290670` … `586:313786`); importar `973:186211` | `/categorias/**` → `categorias/ArbolCategorias.tsx`, `CategoryForm`, `DetalleCategoria`, `ImportCategoriesDialog` | `categorias_listado`, `categoria_conexiones`, `mover_categorias`, `eliminar_categoria`; 1.351 categorías en 28 orgs | Igual | Eliminar con selector de destino no dibujado (`586:312189`); detalle y formulario móvil (MEDIA) |
+| Proveedores (lista, detalle, formulario, importar) | sección `589:311642` (`589:311645` … `590:108940`); importar `973:185225`, móvil `975:185874` | `/proveedores/**` → `proveedores/CatalogoProveedores.tsx`, `ProveedorForm`, `detalle/ProveedorDetalle.tsx`, `importar/ImportarProveedores.tsx` | `proveedores_listado`, `proveedores_resumen`, `proveedor_resumen`; 1.679 proveedores | Igual | Pestañas Órdenes, Facturas, CxP y Pagos del detalle solo con rótulo (MEDIA); código muerto `DetalleProveedor.tsx`, `FormularioProveedor.tsx` |
+| Etiquetas de producto | sección `591:325136` | `/etiquetas` → `etiquetas/EtiquetasPage.tsx` | `etiquetas_producto_*`; 783 etiquetas | Igual | UNIQUE sobre `lower(name)` pendiente |
+| Unidades | sección `593:333686` (`593:333689` … `595:346267`) | `/unidades` → `unidades/UnidadesPage.tsx` (solo lectura) | `units` (13 globales, RLS solo lectura) | Viejo | Figma va por delante (alta, edición, filtros); `units.organization_id` no existe (pregunta abierta en AUDITORIA-CATALOGO §13) |
+| Conversiones | `594:339276`, `595:345330`, `595:345423`, `595:345517`, móvil `595:346655` | `/conversiones` → `unidades/ConversionesPage.tsx` (usa `confirm()` `:279`) | `unit_conversions` (10 globales, 0 por organización, sin UNIQUE ni `product_id`) | Viejo | `kit/receta/DialogoConversion` ya existe y debe reemplazar el diálogo propio; conversión por producto (B2 de recetas) |
+| Imágenes | sección `596:345914` | `/imagenes` → `imagenes/ImagenesPage.tsx` (945) | `shared_images` (92), `product_images` (220.180) | Viejo | Ids falsos `+100000`; sin paginar; filtros que se anulan (AUDITORIA-CATALOGO; sin verificar hoy) |
+| Variantes: tipos y valores | sección `969:595070` (`969:595073` … `972:610426`) | `/variantes/tipos`, `/variantes/valores` → `variantes/tipos/VariantTypesPage.tsx`, `valores/VariantValuesPage.tsx` y sus servicios | `variant_types` (129 en 21 orgs), `variant_values`, `products.variant_data`, `product_variant_relations` | Roto | 12 defectos en `INVENTARIO-PARIDAD-FIGMA.md` §2.4 (ids inventados, 5 de 8 acciones fallan o fingen éxito); `crear_tipo_variante` escribe en la org 0 |
+
+### 1.8 Tablero, reportes y navegación
+
+| Pantalla | Figma | Código | BD / backend | Estado | Brechas |
+|---|---|---|---|---|---|
+| `/app/inventario` | «Índice» `264:98918` | `app/app/inventario/page.tsx` solo redirige (`ModuleRootRedirect`); el tablero está en `inicio/sections/InventarioSection.tsx:102` | `inventoryDashboardService.ts:105-655`: 10 tablas leídas desde el navegador | Parcial | Sin RPC de resumen; `dashboard/AccesosRapidos.tsx` sin uso |
+| `/reportes` | — | `reportes/ReportesPage.tsx` (tercer kardex, `:294-497`) | `ReportesService.ts` | Viejo | Kardex duplicado |
+| Menú | «Cómo se conecta» `597:141264`, `609:164810` | `lib/navigation/catalog.ts:341-368` (22 entradas, todas existen) | — | Parcial | Faltan `/kardex`, `/reportes` y `/facturas-compra`; iconos de AUDITORIA-EXISTENCIAS §J (`Boxes`, `History`, `ClipboardCheck`, `Layers`, `ScanBarcode`, `GitBranch`, `CookingPot`, `Route`, `Ruler`, `Calculator`) |
+
+**Enlaces rotos** (comprobados contra los `page.tsx`): `/ajustes/[id]/editar`
+(`AjusteDetalle.tsx:304`, `AjustesTable.tsx:205`); `/inventario/compras/[id]` y
+`/pos/devoluciones/[id]` (`MovimientosTable.tsx:74,77`); `/ordenes-compra/importar`
+(`OrdenesCompraHeader.tsx:24`, de otro agente); `/ordenes-compra/nuevo?supplier=` existe pero
+ignora el parámetro (`useAccionesProveedor.ts:15`, de otro agente).
+
+**Código muerto** (nadie lo importa): `components/inventario/{FiltrosInventario,KPICard,RotacionProductosChart,TopSKUTable}.tsx`,
+`productos/NuevoProductoForm.tsx`, `productos/facebookCatalogExport.ts` (625 líneas),
+`productos/scraping/` (vacía), `proveedores/{DetalleProveedor,FormularioProveedor}.tsx`,
+`dashboard/AccesosRapidos.tsx`, y los métodos vacíos `VariantValuesService.eliminarValor`,
+`duplicarValor`, `reordenarValores`.
+
+**Route handlers**: solo existen para productos (`api/inventario/productos/importar/{contexto,lote}`,
+`importar-web`, `facebook`) y compras (`api/facturas-compra/**`). No hay ninguno para stock,
+lotes, seriales, traslados, ajustes, producción ni garantías: todo va del navegador a las tablas.
+
+### 1.9 Órdenes y facturas de compra (de otro agente; solo los puntos de contacto)
+
+| Pieza | Figma | Código | Nota |
+|---|---|---|---|
+| Órdenes de compra: listado, detalle, nueva/editar, selectores | `445:195319`, `445:195320`, `445:195321`, `586:293332` | `app/app/inventario/ordenes-compra/**`, `components/inventario/ordenes-compra/**`, `lib/services/purchaseOrderService.ts` | **No se tocan.** El agente de compras está migrando a los diálogos del kit (Elegir proveedor, Agregar productos, ítem manual) |
+| Recepción completa (variantes, seriales, lotes, confirmar) | sección `583:67712` (`583:67713` … `586:286443`) | recepción actual en `purchaseOrderService.ts:552-818` | Inventario aporta la **RPC** `fn_oc_recepcionar` (§5 B8); la UI la cablea el dueño de esos archivos |
+| Facturas de compra | página 07 | `app/app/inventario/facturas-compra/**`, `components/finanzas/facturas-compra/**` | La recepción ya va por `fn_factura_compra_recepcionar` → `fn_kardex_entrada_compra_int`. `FacturasCompraService.ts` aún llama a `incrementOnPurchase` |
+
+---
+
+## 2. Flujos de extremo a extremo
+
+Cada paso con su evidencia. ✔ conectado y en una transacción · ◐ funciona con defectos ·
+✖ roto o no existe.
+
+### F1. Alta de producto (con variantes, precio/costo con vigencia, stock inicial y receta)
+
+1. ✔ Formulario → `fn_producto_guardar(p_organization_id, p_payload)` (DEFINER, permiso en
+   servidor con `fn_productos_exigir_permiso`, idempotente con `product_save_requests`).
+2. ✔ Precio y costo con vigencia: `fn_producto_int_fijar_precio`, `fn_producto_int_fijar_costo`.
+3. ✔ Variantes: `fn_producto_int_variante_guardar` → `fn_producto_int_asegurar_atributos`.
+4. ◐ Stock inicial: `fn_producto_int_stock_inicial` → `fn_register_stock_entry` (kardex
+   `initial`). Defecto: `fn_register_stock_entry` **no bloquea la fila** (`SELECT … LIMIT 1` sin
+   `FOR UPDATE`) y **sobrescribe `avg_cost` con el último costo** en vez de promediar. En el alta no
+   importa (no hay saldo previo); en ajustes y en la importación sobre productos existentes, sí.
+5. ✔ Receta (compartida o por variante) en la misma transacción (`fn_receta_int_guardar_version`).
+6. ◐ Consumidores: POS, tienda y Facebook leen `variant_data`; el catálogo de tipos y valores no
+   se administra (1.7).
+
+**Importación** (CSV, lote, web): `fn_importar_productos_lote` → `fn_register_stock_entry`
+(misma regla de costo). Histórico: 45.219 filas de stock con cantidad y sin ningún movimiento.
+
+### F2. Compra: orden de compra → recepción → factura de compra → kardex y costo
+
+1. ◐ OC: `purchaseOrderService.createPurchaseOrder` (navegador; de otro agente).
+2. ✖ **Recepción de OC**: `purchaseOrderService.receiveItems:552-670` y
+   `receiveItemsWithSerials:675-818`.
+   - `received_quantity` por `UPDATE` directo, una llamada por línea, sin transacción.
+   - Stock por `stockMovementService.incrementOnPurchase:290-404`: **copia en TypeScript** de
+     `fn_kardex_entrada_compra_int` (lee, calcula el promedio en el cliente y escribe), sin
+     bloqueo, sin `product_costs`, sin lote.
+   - Errores de stock en `console.warn`: «no bloquea la recepción» (`:629-639`).
+   - Seriales uno a uno con `serialTrackingService.createSerial`, errores solo en consola
+     (`:774-787`); captura muerta si `track_serial` no se mapea (AUDITORIA-CARTERA C4/C5).
+   - Sin lote ni vencimiento en ninguna parte del flujo.
+3. ✔ Factura desde la OC recibida: `fn_factura_compra_desde_oc` (una RPC, idempotente, sin
+   kardex porque ya entró con la OC).
+4. ✔ **Factura de compra directa**: `fn_factura_compra_confirmar(p_id, p_recepcionar, …)` /
+   `fn_factura_compra_recepcionar` → `fn_fc_recepcionar_int` → `fn_kardex_entrada_compra_int`
+   (bloqueo por `pg_advisory_xact_lock`, `FOR UPDATE`, promedio ponderado, cierra y abre
+   vigencia en `product_costs`, costo neto de descuento e IVA según responsabilidad fiscal).
+   Este es el **modelo** para toda entrada.
+5. ◐ Seriales de la factura: se crean al **guardar** la factura (`fn_fc_guardar_int`), no al
+   recibir; quedan `in_stock` antes de que la mercancía entre.
+6. ◐ Anular factura de compra: `fn_void_purchase_invoice` revierte las cantidades con su lote,
+   pero no el `avg_cost` ni la vigencia de `product_costs`, ni lo que entró por la OC.
+   `assistant_void_purchase_invoice` lo hace a mano con el origen `return` (que el disparador
+   contabiliza como ajuste).
+7. Datos: de 93 facturas de compra, **0** tienen `stock_received_at`; hay 54 movimientos
+   `purchase` en 4 orgs (132, 134, 144, 2). El código viejo `FacturasCompraService.recepcionarInventario`
+   y `actualizarEstadoFactura` sigue en el repositorio sin que ninguna página lo importe.
+
+### F3. Venta (POS, factura, pedido web, mesa, folio) → descuento de stock y de receta
+
+1. ✔ POS: `pos_checkout_v1` → `decrement_stock_with_recipe` → `fn_receta_int_expandir` +
+   `decrement_stock_on_sale`; seriales en la misma RPC.
+2. ✔ Factura de venta: `fn_factura_venta_emitir` → `decrement_stock_with_recipe` +
+   `fn_seriales_vender`.
+3. ◐ Pedido web: reserva con `stockMovementService.reserveStock:149-221` (**navegador**,
+   leer-sumar-escribir sin bloqueo, sin kardex) aunque existe la RPC `reserve_stock_for_web_order`;
+   confirmación → `decrementOnSale` → RPC; liberación `releaseStockReservation:226-277`
+   (navegador). Resultado: 619 de 622 filas con `qty_reserved > 0` no tienen un pedido web
+   pendiente que las explique (1.690 unidades; orgs 113, 135, 137, 145).
+4. ◐ `decrement_stock_on_sale`: sin `FOR UPDATE` (dos ventas simultáneas pierden una resta),
+   permite negativo (28 filas negativas hoy), solo la fila sin lote, costo desde
+   `fn_costo_unitario_producto`.
+5. ✖ PMS: `spaceConsumptionService.addConsumptions` llama a `FoliosService.addFolioItem` (que ya
+   descuenta como `folio_item`) **y** después a `decrementOnSale('room_consumption')`
+   (`spaceConsumptionService.ts:227-255`): cada consumo de habitación sale dos veces. Borrar el
+   ítem del folio lo devuelve con `incrementOnPurchase` al precio de venta (`foliosService.ts:373`).
+6. ◐ Reembolso web: `api/web-orders/[id]/refund/route.ts:244-280` escribe stock y kardex a mano
+   (0 casos hasta hoy).
+7. ✔ Devolución (`procesar_devolucion`), anulación POS (`pos_anular_venta_v1`) →
+   `fn_stock_entrada_devolucion`; nota crédito → `fn_stock_entrada`; anular factura →
+   `fn_stock_entrada`. Estas entradas **no recalculan** `avg_cost` (correcto para devoluciones
+   al mismo costo; no hay una regla explícita).
+8. ✖ Lote al vender: no existe (ni FEFO en SQL ni selector en el POS).
+
+### F4. Ajuste de inventario (y conteo físico)
+
+1. ◐ Crear borrador: `adjustmentService.createAdjustment` (navegador, dos inserts).
+2. ✖ Aplicar: `applyAdjustment:398-580`, no atómico ni idempotente (ver 1.3).
+3. ✖ Contabilidad: doble asiento. `fn_auto_journal_inventory_adjustment` (al pasar a `posted`)
+   **y** `fn_auto_journal_stock_movement` (por cada movimiento `adjustment`, que no está en su
+   lista de exclusión). 81 ajustes en 7 orgs (115, 129, 132, 134, 143, 144, 199) tienen los dos.
+4. ✖ Conteo físico: `cycle_counts`/`cycle_count_lines` sin interfaz (0 filas).
+5. ◐ `assistant_create_adjustment` (GO Assistant) es una **cuarta** implementación: guarda la
+   diferencia con estado `posted`, invocador, ejecutable por `anon`.
+
+### F5. Traslado entre sucursales
+
+✖ Roto de punta a punta (1.4). Datos: 5 traslados de julio de 2025 (org 2): 2 `pending`,
+1 `in_transit`, 2 `received` con `received_qty = 0`; 8 salidas `transfer` y 2 entradas.
+`assistant_create_transfer` escribe `stock_levels` **sin kardex**.
+
+### F6. Lotes y vencimientos
+
+✖ Solo existen como tabla: 3 lotes (org 2), 0 filas de stock con lote, 1 movimiento con lote.
+Ninguna entrada captura lote (OC, factura, ajuste en el formulario, traslado), la venta no lo
+descuenta y el POS no lo elige. La factura de compra ya propaga `lot_id` si viene en la línea
+(`fn_kardex_entrada_compra_int`), pero ninguna interfaz lo envía.
+
+### F7. Seriales y garantías
+
+1. ◐ Alta: OC (navegador, errores tragados), factura de compra (RPC al guardar), generar desde el
+   producto (`fn_producto_generar_seriales`), ajuste (navegador).
+2. ✔ Venta: POS y factura marcan `sold` (`fn_seriales_vender`, `pos_checkout_v1`).
+3. ✖ Garantía: arranca al recibir, no al vender (93 de 93 seriales en stock de la org 133 y 5 de
+   la 143 ya tienen `warranty_end`).
+4. ✖ Reclamos: el detalle no carga (relaciones con nombre equivocado); 0 reclamos.
+5. ◐ Unicidad: `serial_numbers_serial_key UNIQUE (serial)` global entre organizaciones.
+6. ◐ Cuadre serial ↔ stock: producto 78 (org 2) con stock 30 y 1 serial en stock; producto
+   62772 (org 143) con stock 0 y 5 seriales en stock.
+
+### F8. Producción: orden → consumo de ingredientes → producto terminado y costo
+
+1. ✖ Crear, confirmar, iniciar, cancelar: `UPDATE` directos desde el navegador
+   (`productionOrderService.ts:135-200`), sin permiso.
+2. ◐ Completar: `complete_production_order` (invocador, sin `anon`) con el resolutor único de
+   recetas. Defectos: sin `FOR UPDATE` en las filas de stock, el terminado entra a costo 0 y no
+   actualiza `avg_cost`, sin comprobar pertenencia (depende de la RLS). Si la RPC falla, el
+   servicio igual marca `completed` (`:213-221`).
+3. ✖ `prompt()` para la cantidad producida.
+4. Datos: 1 orden en toda la base (org 142), `completed` y **sin consumos**: entró por el
+   respaldo que no mueve stock.
+
+### F9. Distribución (producción → sucursales)
+
+✖ Usa el servicio de traslados (roto) y toma la organización de `localStorage`. No hay
+`inventory_transfers.production_order_id`.
+
+### F10. Etiquetas y códigos de barras
+
+✔ Generar códigos (`GenerarCodigosDialog` + `organization_barcode_settings`), imprimir etiquetas
+(`ImprimirEtiquetasDialog` → `/app/imprimir/etiquetas` → `HojaEtiquetas`), campo de código en
+producto y variante. ◐ El escáner de cámara del POS es simulado.
+
+### F11. Contabilidad del inventario (lo que sale de cada movimiento)
+
+| Origen | Asiento | Estado |
+|---|---|---|
+| `initial`, `purchase*`, `purchase_void` | excluidos en `fn_auto_journal_stock_movement`; la compra la asienta la factura | ✔ |
+| `sale`, `web_sale`, `invoice_sale`, `mesa_sale`, `folio_item`, `room_consumption` | `fn_auto_journal_stock_movement` con la regla `inventory/adjusted` (costo de venta) | ◐ 801 salidas `sale` sin `unit_cost` no asientan |
+| `adjustment` | **dos** asientos (movimiento + documento de ajuste) | ✖ |
+| `transfer_out`/`transfer_in` | excluidos del movimiento; `fn_auto_journal_inventory_transfer` busca `transfer` | ✖ nunca asienta |
+| `production` | asiento de «ajuste» por cada consumo y por el terminado (a costo 0) | ✖ |
+
+### F12. Cómo se conectan las pantallas (lo que el usuario debe poder recorrer)
+
+Producto → Stock por sucursal → Kardex del producto → documento de cada movimiento (venta,
+factura, OC, ajuste, traslado, orden de producción) y de vuelta; Stock → Registrar entrada /
+salida / trasladar / ajuste por conteo con el producto y la sucursal ya elegidos; Lote → ventas y
+clientes (trazabilidad); Serial → venta → cliente → reclamo; Receta → orden de producción →
+distribución → recepción. Hoy **ninguna venta, factura ni compra enlaza a sus movimientos**,
+`getSourceRoute` tiene rutas 404, y el kardex solo se abre desde el producto.
+
+---
+
+## 3. Lógica duplicada y fuente única de stock y costo (regla dura 7)
+
+### 3.1 Quién escribe `stock_levels` / `stock_movements` hoy
+
+| # | Escritor | Dónde | Bloqueo | Kardex | Regla de `avg_cost` | Lote |
+|---|---|---|---|---|---|---|
+| 1 | `fn_kardex_entrada_compra_int` | SQL (compras) | advisory + `FOR UPDATE` | sí | **ponderado** + `product_costs` | sí |
+| 2 | `fn_register_stock_entry` | SQL (alta, importación, ajustes +) | no | sí | **último costo** | no |
+| 3 | `fn_stock_entrada` / `fn_stock_entrada_devolucion` | SQL (NC, anulaciones, devoluciones) | `FOR UPDATE` | sí | **no cambia** | no |
+| 4 | `decrement_stock_on_sale` (vía `decrement_stock_with_recipe`) | SQL (todas las ventas) | no | sí | — (costo de `fn_costo_unitario_producto`) | solo sin lote |
+| 5 | `fn_producto_int_ajustar_stock` | SQL (stock masivo, variantes) | `FOR UPDATE` | sí | no cambia | no |
+| 6 | `complete_production_order` | SQL | no | sí | terminado a costo 0 | no |
+| 7 | `reserve_stock_for_web_order` / `release_stock_for_order` | SQL | — | no (solo reserva) | — | no |
+| 8 | `assistant_create_adjustment`, `assistant_create_transfer`, `assistant_register_sale`, `assistant_bulk_load_products`, `assistant_create_product` (+ `assistant_void_purchase_invoice`, DEFINER, que revierte con origen `return`) | SQL (GO Assistant), los cinco primeros **invocador, 4 de 5 ejecutables por `anon`** | no | 2 de 5 | propia | no |
+| 9 | `stockMovementService.incrementOnPurchase` | TS navegador (OC, `FacturasCompraService`, `foliosService`) | no | sí | ponderado **en TS** | no |
+| 10 | `stockMovementService.reserveStock` / `releaseStockReservation` | TS navegador (web, CRM) | no | no | — | no |
+| 11 | `adjustmentService.applyAdjustment` | TS navegador | no | sí | mixto | parcial |
+| 12 | `TransferenciasService` (traslados y distribución) | TS navegador | no | sí (sin costo) | — | no |
+| 13 | `productionOrderService` (estados) | TS navegador | no | no | — | — |
+| 14 | `webOrderServerConfirmation.ts:478-522, 547, 671` (service role) y `webOrderConfirmationService.ts:98-116` (navegador): la misma confirmación copiada dos veces (una tercera, `webOrdersService.convertToSale`, sin uso) | TS | no | vía RPC de venta | — | no; libera la reserva **sin** expandir receta en la versión de servidor |
+| 15 | `app/api/web-orders/[id]/refund/route.ts:244-280` | TS servidor (service role) | no | sí (`web_refund`, `unit_cost` 0) | — | no |
+| 16 | `foliosService.ts:314, 373` y `spaceConsumptionService.ts:227+250` (PMS) | TS navegador | no | sí | la reversión del folio entra con el **precio de venta** como costo (corrompe `avg_cost`) | no; los consumos de habitación **descuentan dos veces** (`folio_item` + `room_consumption`) |
+| 17 | `aiActionsService.ts:578-585` y `ai/assistant/undoService.ts:261-264, 334` | TS servidor (sesión) | no | **no** | — | fija la existencia a un valor absoluto sin kardex; el «deshacer» borra `stock_levels`, `product_costs` y `product_prices` |
+| 18 | `productos/bulk/bulkService.ts:291-330, 391-406, 637-653, 786-800, 869-883` | TS navegador | no | — | escribe `product_costs`/`product_prices` y fija `stock_levels.avg_cost = costo` en todas las sucursales | — |
+
+Además, la RLS `FOR ALL` deja que cualquier código del navegador haga lo mismo. Y en sentido
+contrario: `product_costs` y `product_prices` solo tienen políticas de `INSERT` y `SELECT`, así que
+el `UPDATE effective_to` que hacen `bulkService` y otros desde el navegador **no cierra la
+vigencia anterior** (afecta 0 filas sin error): hoy hay 59 productos con más de un costo vigente y
+**16.359 productos con más de un precio vigente** (§4, D19–D20). Las RPC `fn_producto_fijar_costo`
+y `fn_producto_fijar_precio` ya hacen esto bien y deben ser el único camino.
+
+### 3.2 Unificación propuesta
+
+**Una primitiva interna** (no invocable desde el navegador) por la que pasa todo:
+
+```text
+fn_inv_int_mover(p_org, p_branch, p_product, p_lot, p_direction, p_qty, p_unit_cost,
+                 p_source, p_source_id, p_note, p_user, p_opciones jsonb) → movement_id
+```
+
+- Valida producto y sucursal de la organización; salta `track_stock = false` con motivo.
+- `SELECT … FOR UPDATE` de la fila `(product, branch, lot)`; la crea si no existe (sin
+  `onConflict`, por la trampa del UNIQUE con `lot_id` NULL).
+- Entradas: promedio ponderado cuando `p_opciones.recalcular_costo` (compra, producción, entrada
+  manual); costo del origen en `transfer_in`; sin recalcular en devoluciones.
+- Salidas: `unit_cost` = `avg_cost` de la fila si no llega; FEFO cuando el producto lleva lotes y
+  no se indica uno; política de negativos (hoy se permiten; ver P5).
+- Escribe `stock_movements` con `created_by` y `avg_cost_after` (columnas nuevas, `NULL`-ables).
+
+Se **conservan las firmas** de las funciones públicas y se reescriben por dentro para llamar a la
+primitiva: `decrement_stock_on_sale`, `fn_stock_entrada`, `fn_stock_entrada_devolucion`,
+`fn_register_stock_entry`, `fn_kardex_entrada_compra_int`, `fn_producto_int_ajustar_stock`,
+`complete_production_order`. Así POS, facturas, pedidos web, PMS y compras no cambian de código.
+
+**RPC públicas nuevas** (DEFINER, `fn_assert_acceso_org` + permiso en servidor, `REVOKE … FROM
+anon, public`), cada una dueña de un documento:
+
+| RPC | Sustituye a | Bloque |
+|---|---|---|
+| `fn_stock_registrar_movimiento(org, branch, product, lot, direccion, qty, costo, motivo)` | diálogos «Registrar entrada/salida» (no existen) | B1 |
+| `fn_lote_guardar`, `fn_lote_ajustar` | `LotesService` | B1 |
+| `fn_ajuste_guardar`, `fn_ajuste_aplicar` (idempotente), `fn_ajuste_descartar` | #11 y `assistant_create_adjustment` | B2 |
+| `fn_traslado_guardar`, `fn_traslado_despachar`, `fn_traslado_recibir`, `fn_traslado_cancelar` | #12, `update_stock_level` inexistente y `assistant_create_transfer` | B3 |
+| `fn_produccion_guardar`, `fn_produccion_cambiar_estado`, `complete_production_order` v2 | #13 y el respaldo silencioso | B5 |
+| `fn_oc_recepcionar(po_uuid, lineas jsonb, clave_idempotencia)` | #9 en la OC | B8 |
+| `reserve_stock_for_web_order` / `release_stock_for_order` (ya existen; se les añade la expansión de receta con `fn_receta_int_expandir`) | #10 | B0 |
+| `fn_pedido_web_confirmar_stock(p_order_id)` | #14 | B9 |
+| `fn_stock_entrada` / `fn_stock_entrada_devolucion` (ya existen) | #15 y la reversión del folio de #16 | B9 |
+| `fn_producto_fijar_costo` / `fn_producto_fijar_precio` (ya existen) | #18 | B7 |
+| `fn_producto_int_ajustar_stock` (ya existe) | #17 | B9 |
+
+**Costo**: `fn_receta_costo` es la única fuente de costo de receta (el reporte
+`CostoRecetasService.ts` deja de calcular). `fn_costo_unitario_producto` es la única fuente del
+costo de una salida.
+
+**Cierre**: cuando todos los escritores pasen por RPC, la RLS de `stock_levels`,
+`stock_movements`, `lots`, `serial_numbers`, `serial_tracking_events`, `inventory_adjustments`,
+`adjustment_items`, `inventory_transfers`, `transfer_items`, `production_orders` y
+`production_order_consumptions` queda en **solo lectura** para `authenticated` (§5 B10), y un
+guardarraíl en `src/__tests__/guardrails.test.ts` impide volver a escribir esas tablas desde
+`src/**`.
+
+### 3.3 Otros duplicados
+
+- Tres kardex: `/kardex`, `/movimientos` y la pestaña de `ReportesPage.tsx:294-497` (más
+  `fn_producto_kardex` en el detalle, que es el bueno).
+- Dos mapas de orígenes: `lib/inventario/origenesMovimientoStock.ts` (el que vigila el
+  guardarraíl 23) y los mapas locales de `KardexTable.tsx:37` y `MovimientosTable.tsx:50`.
+- Receta leída en cinco sitios: ya unificado el 09-28 salvo `CostoRecetasService.ts`.
+- Variantes: `variant_data`, `variant_types/values` y `product_variant_relations` (tres fuentes;
+  ver `INVENTARIO-PARIDAD-FIGMA.md` §2).
+- Tablero: `inventoryDashboardService.ts` calcula en el navegador lo que deberían ser agregados
+  SQL.
+
+---
+
+## 4. Datos (2026-09-28, solo lectura)
+
+### 4.1 Volumen por organización (las que tienen ≥ 20 productos o movimientos)
+
+| Org | Productos | Variantes | Filas de stock | Negativas | Movimientos | Ajustes | Traslados | Seriales | Lotes | Órd. prod. | OC | FC |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 137 | 2.636 | 21.142 | 23.644 | 0 | 7.413 | — | — | — | — | — | — | — |
+| 197 | 2.122 | 11.646 | 8.186 | 0 | — | — | — | — | — | — | — | — |
+| 135 | 4.368 | 1.607 | 6.088 | 0 | 542 | — | — | — | — | — | — | — |
+| 145 | 4.368 | 1.607 | 6.088 | 0 | 230 | — | — | — | — | — | — | — |
+| 198 | 542 | 2.198 | 2.288 | 0 | — | — | — | — | — | — | — | — |
+| 139 | 349 | 2.254 | 1.697 | 0 | — | — | — | — | — | — | — | — |
+| 132 | 1.359 | 1.033 | 3.252 | 11 | 585 | 24 | — | — | — | — | — | 2 |
+| 134 | 958 | 34 | 983 | 1 | 152 | 5 | — | — | — | — | — | 6 |
+| 144 | 290 | 490 | 498 | 11 | 3.299 | 57 | — | — | — | — | — | 62 |
+| 128 | 423 | 303 | 688 | 0 | — | — | — | — | — | — | — | — |
+| 199 | 439 | 0 | 442 | 0 | 441 | 1 | — | — | — | — | — | — |
+| 129 | 359 | 40 | 386 | 2 | 433 | 14 | — | — | — | — | — | — |
+| 113 | 257 | 0 | 258 | 0 | 564 | 7 | — | — | — | — | — | 7 |
+| 142 | 62 | 16 | 152 | 2 | 837 | 21 | — | — | — | 1 | — | — |
+| 133 | 88 | 80 | 12 | 0 | 9 | 1 | — | 95 | — | — | — | — |
+| 2 | 22 | 14 | 78 | 0 | 50 | — | 5 | 2 | 3 | — | 30 | 5 |
+| 143 | 2 | 1 | 2 | 0 | 3 | 1 | — | 5 | — | — | — | — |
+
+Productos con receta: orgs 134 (6 compuestos), 144 (26), 142 (27); 55 recetas activas. Ninguna
+organización usa conteos (`cycle_counts` = 0) ni reclamos de garantía (0).
+
+**Prioridad que sugieren los datos:** el grueso es catálogo y stock por variantes (orgs 137, 197,
+135, 145, 198, 139); la operación diaria de ajustes y ventas con receta está en 144, 142, 132,
+129; traslados, lotes y OC solo en la org 2 (pruebas). Arreglar la **fuente única** y el
+**listado de stock paginado y agrupado por padre** beneficia a todos; traslados, lotes y
+producción son funcionalidad que hoy nadie puede usar.
+
+### 4.2 Inconsistencias (solo reportadas; nada se corrigió)
+
+| # | Qué | Cuántas | Orgs | Consulta |
+|---|---|---|---|---|
+| D1 | Filas de stock con `qty_on_hand < 0` | 28 | 132, 144, 142, 129, 134, 112… | `stock_levels where qty_on_hand < 0` |
+| D2 | Pares producto-sucursal cuyo saldo no coincide con la suma del kardex | 4.899 | 16 orgs | `stock_levels` vs `sum(in − out)` por `(product, branch)` sin lote |
+| D3 | Filas con cantidad y **ningún** movimiento | 45.219 | 19 orgs | importaciones y escrituras sin kardex anteriores a F-38 |
+| D4 | **Padres con variantes que tienen stock propio** (≠ 0) | 8.630 | 17 orgs | en 137, 197, 198, 139 casi nunca coincide con la suma de sus hijos (2.546 de 2.590 en la 137); en 135/145 coincide en ≈ 95 % |
+| D5 | Filas con stock > 0 y `avg_cost = 0` y sin costo vigente en `product_costs` | 50.000+ (137: 21.544; 197: 8.186; 135/145: 6.050 c/u; 198: 2.288; 139: 1.697) | 20 orgs | F-36 |
+| D6 | Stock de productos `deleted` con cantidad | 2.047 | — | `products.status = 'deleted'` |
+| D7 | Stock de productos con `track_stock = false` con cantidad | 47 | — | — |
+| D8 | Reservas sin pedido web pendiente | 619 filas / 1.690 uds | 113, 135, 137, 145 | `qty_reserved > 0` sin `web_orders.status = 'pending'` (la 113 puede ser reserva de CRM) |
+| D9 | Ajustes con doble asiento | 81 | 115, 129, 132, 134, 143, 144, 199 | `journal_entries` `inventory_adjustment` + `stock_movements` del mismo ajuste |
+| D10 | Ajustes `posted` sin movimientos | 3 | 120 | — |
+| D11 | Movimientos `adjustment` sin `source_id` | 39 | 115, 120, 132, 137, 144 | — |
+| D12 | Salidas de venta sin costo | 801 (`sale`) | 9 orgs | `unit_cost` 0 o nulo |
+| D13 | Traslados abiertos desde julio de 2025 y recibidos sin cantidad | 3 abiertos, 2 `received` con `received_qty = 0` | 2 | — |
+| D14 | Seriales en stock con garantía ya corriendo | 98 | 133, 143 | `status = 'in_stock' and warranty_end is not null` |
+| D15 | Seriales que no cuadran con el stock | 2 productos | 2, 143 | producto 78 (30 vs 1), 62772 (0 vs 5) |
+| D16 | Orden de producción completada sin consumos | 1 | 142 | — |
+| D17 | Facturas de compra sin `stock_received_at` | 93 de 93 | 8 orgs | incluidas 60 en estado `received` |
+| D18 | OC recibidas sin factura ni CxP | 7 `received`, 1 `partial` | 2, 120, 130 | FACTURAS-COMPRA-CXP-PLAN §5.2 |
+| D19 | Productos con **más de un costo vigente** (`product_costs.effective_to is null`) | 59 | — | el `UPDATE` de cierre desde el navegador no tiene política RLS |
+| D20 | Productos con **más de un precio vigente** (`product_prices.effective_to is null`) | 16.359 | — | ídem; cada lector elige «el último» por su cuenta |
+
+Sin duplicados en `stock_levels` sin lote (el índice parcial lo impide), sin seriales repetidos
+por organización y sin stock en sucursales de otra organización.
+
+---
+
+## 5. Plan de implementación en bloques paralelos
+
+### 5.0 Reglas para todos los bloques
+
+- Todo sobre `main`, sin ramas; `git status -sb` y `git diff --cached` antes de cada commit; commit
+  con índice privado solo de los archivos del bloque (el árbol es compartido).
+- Migraciones solo por el MCP, cada una con su `.sql` en `supabase/migrations/` y su rollback en
+  `supabase/rollbacks/` en el mismo commit; aditivas; DEFINER con `fn_assert_acceso_org`, permiso
+  en servidor y `REVOKE … FROM anon, public` en la misma migración. Prefijo de nombre por bloque:
+  `…_inv_b<N>_<tema>.sql`.
+- Verificar tablas y columnas con el MCP **antes** de cada consulta.
+- UI nueva en es/en/fr/pt con next-intl, **namespace propio por bloque** (tabla 5.9); editar
+  `messages/*.json` solo añadiendo tu namespace.
+- Kit primero: `DataTable`, `ListCard`, `FilterPanel`, `FilterChips`, `BulkActionBar`,
+  `RowActionsMenu`, `ActionSheet`, `PanelAdaptable`, `Dialogo`, `DialogoMotivo`, `EmptyState`,
+  `StatusBadge`, `KpiStrip`, `PageHeader`, `TabBar`, `CampoNumero`, `CampoFecha`,
+  `SupplierPicker`, `kit/documento/*`, `kit/receta/*`. **No** crear un segundo buscador de
+  productos ni un segundo alta rápida: se reutilizan `kit/documento/AgregarProductosDialog.tsx`
+  («Agregar productos», con filtros; Figma `586:293333…293829`) y
+  `kit/documento/FormularioRapidoProducto.tsx` (alta rápida por `fn_producto_guardar`), que son
+  del agente de compras y facturas: se **importan**, no se editan. Si a inventario le falta una
+  prop (p. ej. mostrar existencias de una sucursal o filtrar por `track_lots`), se pide a ese
+  agente o se añade en B10 cuando haya terminado.
+- Fechas por `useFormatDate`/`formatDateInTz`/`formatPlainDate`; día por `todayInTz`; moneda por
+  `useMonedaOrganizacion`.
+- Permisos: la UI oculta o deshabilita con `fn_inventario_permisos`; la RPC vuelve a exigir.
+- Verificación de cierre de cada bloque: `npx jest`, `npx tsc --noEmit -p tsconfig.json` (con más
+  memoria: un OOM da un falso «0 errores»), `npx next build`, y la prueba de aceptación del bloque.
+
+**No se tocan** (de otros agentes): `app/app/inventario/ordenes-compra/**`,
+`components/inventario/ordenes-compra/**`, `lib/services/purchaseOrderService.ts`,
+`app/app/inventario/facturas-compra/**`, `components/finanzas/facturas-compra/**`,
+`components/kit/documento/**`, `components/pos/**`, `lib/pos/**`, `app/app/pos/**`,
+`productos/formulario/secciones/SeccionPrecios.tsx`, `productos/detalle/precios/CampoVigencia.tsx`.
+
+### 5.1 Bloque 0 — Núcleo de existencias (primero, secuencial)
+
+**Objetivo:** una sola forma de mover stock y los contratos que usan los demás bloques.
+
+Propiedad:
+- `supabase/migrations/*_inv_b0_*.sql` y sus rollbacks.
+- `src/lib/inventario/**` (salvo `importacion/**`): `nucleo/tipos.ts` (contratos TS de las RPC de
+  §3.2), `permisos.ts` + `usePermisosInventario.ts`, `origenesMovimientoStock.ts` (ya existe; pasa
+  a ser el único mapa, con etiqueta y tono), `documentoMovimiento.ts`.
+- `src/lib/services/stockMovementService.ts` (queda como fachada de RPC; sus llamadores externos
+  no cambian).
+- `src/components/kit/inventario/**` (nuevo): `BadgeOrigenMovimiento` (22 orígenes; Figma
+  `530:65022`), `EnlaceDocumento`, `LotPicker` (popover · hoja · en línea), `BadgeVencimiento`,
+  `SaldoCorridoCell`, `EstadoSinPermiso` si el `EmptyState` del kit no lo cubre.
+- `messages/*.json` → namespace `inventario` (común: orígenes, estados, permisos, errores de RPC).
+- `src/__tests__/db/inventarioNucleo.test.ts` y el guardarraíl nuevo en
+  `src/__tests__/guardrails.test.ts` (solo este bloque y B10 editan ese archivo).
+
+Migraciones:
+1. `stock_movements`: `created_by uuid default auth.uid()`, `avg_cost_after numeric`, índice
+   `(organization_id, product_id, branch_id, created_at, id)` `concurrently`.
+2. `lots`: `organization_id` (NULL-able + backfill desde el producto), `branch_id`,
+   `notes`, `created_by`; UNIQUE `(organization_id, product_id, lot_code)` (0 choques hoy).
+   `products.track_lots boolean not null default false`.
+3. `fn_inv_int_mover` (§3.2) y reescritura por dentro, con la misma firma, de
+   `decrement_stock_on_sale` (con `FOR UPDATE` y FEFO si `track_lots`), `fn_stock_entrada`,
+   `fn_stock_entrada_devolucion`, `fn_register_stock_entry` (promedio ponderado), 
+   `fn_kardex_entrada_compra_int` y `fn_producto_int_ajustar_stock`.
+4. `fn_inventario_permisos(p_org)` → `{ ver, ajustar, trasladar, recibir, producir, garantias,
+   costos, editar_catalogo }` y `fn_inventario_exigir_permiso(p_org, p_codigos text[])`, sobre
+   los permisos que ya existen (`inventory.view/create/edit/delete/adjust/transfer`,
+   `inventory.costs.view`, `inventory_management`, `product_management`) + dueño de la
+   organización. Sin permisos nuevos salvo que el dueño lo pida (P6).
+5. `fn_documento_de_movimiento(p_source, p_source_id)` (número legible, tipo y ruta) para
+   `EnlaceDocumento`.
+6. `fn_auto_journal_stock_movement`: excluir `adjustment` (el asiento lo hace el documento) — solo
+   si el dueño aprueba P4.
+7. `reserve_stock_for_web_order` / `release_stock_for_order` expanden la receta (hoy no; la
+   versión TS sí) y registran la reserva por pedido para poder liberarla exacta;
+   `stockMovementService.reserveStock/releaseStockReservation` pasan a llamarlas.
+   `incrementOnPurchase` pasa a `fn_kardex_entrada_compra`, que solo admite orígenes de compra: la
+   reversión del folio (`folio_item_reversal`) tiene que haber pasado antes a
+   `fn_stock_entrada_devolucion` (B9) o esa ruta empieza a fallar. Orden: B9-PMS antes que este
+   punto, o este punto deja un camino temporal para `folio_item_reversal`.
+
+Aceptación (en la base, dentro de `begin … rollback`, y como prueba de contrato en jest):
+- Dos `decrement_stock_on_sale` concurrentes sobre la misma fila dejan el saldo exacto.
+- Una entrada de 10 a 1.000 sobre 10 a 500 deja `avg_cost` 750 y `avg_cost_after` 750.
+- Venta de un producto con 2 lotes descuenta primero el que vence antes.
+- Las mismas ventas, devoluciones, NC y recepciones de factura dan el mismo saldo y costo que
+  antes (se reutiliza `recepcionKardex.test.ts` contra la RPC).
+- `fn_inventario_permisos` de un cajero sin `inventory.adjust` devuelve `ajustar = false`.
+
+Tamaño: **L** (3–4 días-agente). Dependencias: ninguna. Bloquea el backend de B1, B2, B3, B5, B8,
+B9 (la UI de esos bloques puede empezar en paralelo contra los tipos de `nucleo/tipos.ts`).
+
+### 5.2 Bloque 1 — Stock, Movimientos, Kardex y Lotes
+
+Propiedad:
+- `app/app/inventario/{stock,movimientos,kardex,lotes}/**`
+- `components/inventario/{stock,movimientos,kardex,lotes}/**`
+- `components/inventario/productos/detalle/inventario/{StockSucursales.tsx,KardexProducto.tsx,LotesProducto.tsx,stock/**}`
+- `lib/services/{stockService,kardexService}.ts`
+- `components/inventario/reportes/ReportesPage.tsx`, `ReportesService.ts`, `ReportesPagination.tsx`
+  (se retira el tercer kardex)
+- namespaces `inventarioStock`, `inventarioMovimientos`, `inventarioKardex`, `inventarioLotes`
+
+Migraciones: `fn_stock_listado` (paginado en servidor, agrupado por padre, «Disponible» =
+existencia − reservado, lote, filtros, KPI reales), `fn_movimientos_listado`,
+`fn_kardex_saldo_corrido`, `fn_kardex_descuadres`, `fn_stock_registrar_movimiento`,
+`fn_lote_guardar`, `fn_lote_ajustar`, `fn_lote_eliminar` (solo sin stock ni movimientos);
+reutiliza `update_product_min_stock`.
+
+Pantallas: Stock `581:276750` completo (incluidos «Registrar entrada/salida/mínimo» y «Nuevo
+movimiento»), Movimientos `586:286574`, Kardex `516:270497` (listado con buscador de producto,
+sin exigir `?producto=`), Lotes `518:59165`, sub-pestañas Kardex y Lotes del producto
+(`525:64175`). Escritorio y móvil, estados vacío/sin resultados/error/sin permiso/sin sucursal.
+
+Aceptación: desde Stock, «Registrar entrada» de 5 uds a costo X → aparece en Movimientos con
+`BadgeOrigenMovimiento` y en el Kardex con el saldo corrido y el nuevo costo promedio; «Crear
+transferencia» abre B3 con producto y sucursal elegidos; un lote nuevo con 12 uds aparece en
+Stock y en el detalle del producto; `fn_kardex_descuadres` devuelve los 4.899 pares de D2 (la
+pantalla los muestra, no los corrige).
+
+Tamaño: **XL** (5 días-agente). Dependencias: B0.
+
+### 5.3 Bloque 2 — Ajustes y ajuste por conteo
+
+Propiedad: `app/app/inventario/ajustes/**` (incluida la ruta nueva `[id]/editar`),
+`components/inventario/ajustes/**`, `lib/services/adjustmentService.ts`, namespace
+`inventarioAjustes`.
+
+Migraciones: `inventory_adjustments.code`, `posted_at`, `posted_by`; `adjustment_items.system_qty`,
+`difference`; `fn_ajuste_guardar`, `fn_ajuste_aplicar` (idempotente, congela «sistema al
+contar», entradas y salidas por `fn_inv_int_mover`, seriales por
+`fn_producto_serial_cambiar_estado`), `fn_ajuste_descartar`; disparador que impide `UPDATE` y
+`DELETE` de ajustes `posted`. `assistant_create_adjustment` delega en `fn_ajuste_*` (coordinado
+con B9).
+
+Pantallas: `586:303290` completa, nuevo ajuste escritorio `586:312944` y móvil con escáner
+`975:186644` (con `LotPicker` y `SerialCapture`), detalle borrador y aplicado, editar borrador.
+Conteo físico = ajuste de tipo «conteo» (P3).
+
+Aceptación: ajuste de 3 renglones (uno con lote, uno con 2 seriales) → aplicar dos veces seguidas
+genera **un** juego de movimientos; el detalle aplicado muestra «sistema al contar» congelado y
+enlaza a los movimientos; un solo asiento por ajuste (si P4 se aprueba).
+
+Tamaño: **L**. Dependencias: B0.
+
+### 5.4 Bloque 3 — Traslados y distribución
+
+Propiedad: `app/app/inventario/{transferencias,distribucion}/**`,
+`components/inventario/{transferencias,distribucion}/**`, namespaces `inventarioTraslados`,
+`inventarioDistribucion`.
+
+Migraciones: `inventory_transfers.code`, `shipped_at`, `shipped_by`, `received_at`,
+`received_by`, `production_order_id` (FK NULL-able); `transfer_items.unit_cost`,
+`difference_reason`; `fn_traslado_guardar`, `fn_traslado_despachar` (sale del origen con
+`transfer_out` al costo promedio del origen, lote y seriales a `in_transit`),
+`fn_traslado_recibir` (entra con `transfer_in` al mismo costo, recibido ≤ enviado, diferencia con
+motivo), `fn_traslado_cancelar`, `fn_traslado_devolver`; `fn_auto_journal_inventory_transfer` con
+los orígenes reales y el costo del producto; `fn_notify_transfer_status` con los estados reales;
+`assistant_create_transfer` delega (coordinado con B9). Distribución = varios traslados desde un
+origen con `production_order_id` opcional.
+
+Pantallas: `589:304083` completa (con «Recibir» `589:320397` y los tres `ConfirmDialog`), nuevo
+traslado escritorio y móvil (`975:186790`) conservando la lectura de `?producto_id&origen`,
+detalle con seguimiento, Distribución `606:159579` con su asistente de 3 pasos.
+
+Aceptación: traslado de 10 uds de A a B → despachar baja A en 10 y deja 10 en tránsito; recibir 8
+con «faltante en el transporte» sube B en 8, deja la diferencia registrada, el kardex de A y B
+enlaza al traslado y hay **un** asiento entre sucursales (si tienen subcuentas distintas).
+Recibir dos veces no duplica. Los 5 traslados viejos de la org 2 se muestran con su aviso (no se
+tocan sin P7).
+
+Tamaño: **L**. Dependencias: B0.
+
+### 5.5 Bloque 4 — Seriales, garantías y trazabilidad
+
+Propiedad: `app/app/inventario/{seriales,garantias,reportes/trazabilidad}/**`,
+`components/inventario/{seriales,garantias}/**`,
+`components/inventario/reportes/trazabilidad/**`,
+`components/inventario/productos/detalle/inventario/{SerialesProducto.tsx,seriales/**}`,
+`lib/services/{serialTrackingService,warrantyClaimsService}.ts`,
+`lib/services/reportes/modulos/serialTrackingReports.ts`, namespaces `inventarioSeriales`,
+`inventarioGarantias`, `inventarioTrazabilidad`.
+
+Migraciones: índice único `(organization_id, serial)` `concurrently` (fase 1; el global se retira
+en B10 tras P8); `warranty_claims` `CHECK` de estado y `code`; `fn_garantia_crear`,
+`fn_garantia_cambiar_estado`, `fn_garantia_enviar_rma`, `fn_garantia_resolver` (mueve el serial de
+reemplazo y deja evento); `fn_seriales_vender` fija la garantía desde la venta; `fn_trazabilidad
+(p_codigo)` (lote, serial o documento).
+
+Pantallas: `590:319444`, `592:329722` (con RMA `973:186133`), `594:126324`, y la sub-pestaña
+Seriales del producto.
+
+Aceptación: serial comprado → vendido en el POS → reclamo → RMA → resuelto con reemplazo: el
+detalle carga, el reemplazo queda `sold` al cliente, la garantía arranca en la fecha de venta, y la
+trazabilidad del serial muestra los 5 eventos con enlaces.
+
+Tamaño: **L**. Dependencias: B0 (solo para `fn_seriales_vender` si toca stock; el resto puede ir
+en paralelo desde el día 1).
+
+### 5.6 Bloque 5 — Recetas, costo de recetas, producción y pestaña Producción del producto
+
+Propiedad: `app/app/inventario/{recetas,produccion,reportes/costo-recetas}/**`,
+`components/inventario/{recetas,produccion}/**`, `components/inventario/reportes/costo-recetas/**`,
+`components/inventario/productos/detalle/produccion/**` (nuevo), `components/kit/receta/**`,
+`components/kit/{TablaSubseccion,HojaDetalle}.tsx` (nuevos), `components/inventario/dashboard/ProduccionKPIs.tsx`,
+`lib/services/{productionOrderService,recipeService}.ts`, namespaces `receta` (existe),
+`subseccion`, `inventarioProduccion`, `inventarioRecetas`.
+
+Migraciones: `complete_production_order` v2 por `fn_inv_int_mover` (costo real del terminado =
+Σ consumos ÷ producido, `FOR UPDATE`, pertenencia, sin `anon`), `fn_produccion_guardar`,
+`fn_produccion_cambiar_estado` (confirmar, iniciar, cancelar con motivo). La distribución desde la
+orden llama a `fn_traslado_guardar` de B3.
+
+Pantallas: Recetas `598:142703` con `EditorReceta` en lugar de `RecipeDialog`; Costo `601:148806`
+sobre `fn_receta_costo`; Producción `603:153432` (sin `prompt()`, «Completar» `604:158843`); pestaña
+Producción del producto D1–D6, G1–G6, M1–M3 (`957:583021`). El montaje de la pestaña en
+`DetalleProducto.tsx` lo hace B7 con el contrato
+`<PestanaProduccion producto={…} permisos={…} />` exportado desde `detalle/produccion/index.ts`.
+
+Aceptación: receta de 2 ingredientes con merma → orden de 10 → completar 10 → los ingredientes
+bajan lo calculado por `fn_receta_int_calcular`, el terminado sube 10 con costo = consumos ÷ 10,
+hay 2 consumos enlazados al kardex; «Distribuir» crea un traslado con `production_order_id`; si la
+RPC falla, la orden **no** queda completada.
+
+Tamaño: **XL**. Dependencias: B0; B3 para «Distribuir»; B6 para conversiones por producto.
+
+### 5.7 Bloque 6 — Catálogo maestro: variantes, unidades y conversiones, imágenes, categorías, proveedores, etiquetas
+
+Se puede partir en dos agentes (6a variantes + unidades/conversiones; 6b el resto).
+
+Propiedad: `app/app/inventario/{variantes,unidades,conversiones,imagenes,categorias,proveedores,etiquetas}/**`,
+`components/inventario/{variantes,unidades,imagenes,categorias,proveedores,etiquetas}/**` y sus
+servicios; namespaces `inventarioVariantes`, `inventarioUnidades`, `inventarioImagenes` (los de
+categorías, proveedores y etiquetas ya existen).
+
+Migraciones: las de `INVENTARIO-PARIDAD-FIGMA.md` §3.2–3.3 (columnas de `variant_types` y
+`variant_values`, `variantes_resumen`, renombrar, fusionar, reordenar, desactivar, eliminar;
+`REVOKE` de `crear_tipo_variante`); `unit_conversions.product_id` + UNIQUE + validación de
+`unit_type` (B2 de recetas) y `fn_conversion_guardar`; imágenes paginadas en servidor.
+
+Pantallas: Variantes `969:595070` (una página con pestañas Tipos · Valores; las rutas viejas
+redirigen), Unidades y Conversiones `593:333686` con `kit/receta/DialogoConversion`, Imágenes
+`596:345914`, faltantes de Categorías (eliminar con destino, móvil, importar `973:186211`) y
+Proveedores (importar `973:185225`, pestañas del detalle), borrar el código muerto de proveedores.
+
+Aceptación: renombrar «talla» → «Talla» en la org 132 actualiza las variantes en una sola RPC y
+el POS las ordena por `display_order`; una conversión «solo este producto» PAQ = 6 UN la usa la
+receta y la recepción de ese producto y no otras.
+
+Tamaño: **XL** (6a L, 6b M). Dependencias: ninguna para 6b; 6a usa B0 solo para permisos.
+
+### 5.8 Bloque 7 — Productos (catálogo, detalle, formulario, importación, códigos)
+
+Propiedad: `app/app/inventario/productos/**`, `components/inventario/productos/**` **excepto**
+lo asignado a B1, B4 y B5 y los dos archivos con cambios de otra sesión; `messages` → namespaces
+`productos*` y `productoDetalle` (existen).
+
+Trabajo: montar la pestaña Producción (contrato de B5); «Transferir» y «Crear ajuste» con
+preselección (contrato de B2/B3); cabecera sin precio; impuestos N:M en la interfaz; expandir a
+variantes Estado y Categoría masivos; `bulkDelete` en una RPC; **costo y precio masivos por
+`fn_producto_fijar_costo`/`fn_producto_fijar_precio`** en lugar de las escrituras directas de
+`bulk/bulkService.ts:291-330, 391-406, 637-653, 786-800, 869-883` (que dejan vigencias abiertas y
+pisan `avg_cost` en todas las sucursales); recuento D5 de la importación y sucursal/impuesto/costo
+explícitos en la importación web; `LotPicker` en «Stock inicial» cuando `track_lots`; borrar
+`NuevoProductoForm.tsx`, `facebookCatalogExport.ts` y la carpeta vacía `scraping/`.
+
+Aceptación: desde el detalle de un producto compuesto se recorre Producción › Receta → Órdenes →
+Nueva orden → Completar → Distribución, y desde Inventario › Stock → Transferir llega al traslado
+con todo elegido.
+
+Tamaño: **M**. Dependencias: contratos de B2, B3 y B5 (se pueden montar tras sus primeros commits).
+
+### 5.9 Bloque 8 — Compras ↔ inventario (backend de recepción) · después del agente de compras
+
+Propiedad: `supabase/migrations/*_inv_b8_*`, `src/lib/services/inventario/recepcionOrdenCompra.ts`
+(nuevo), `src/app/api/inventario/ordenes-compra/[id]/recepcionar/route.ts` (nuevo, con
+`getServerOrgContext`). **La UI de la recepción** (Figma `583:67712`) vive en
+`components/inventario/ordenes-compra/**`: la hace el agente de compras, o este bloque cuando ese
+agente libere la carpeta.
+
+Migraciones: `purchase_receipts` y `purchase_receipt_items` (RLS por pertenencia, lectura),
+`fn_oc_recepcionar(p_po_uuid, p_lineas, p_clave_idempotencia)` (cantidades con guarda de
+sobre-recepción, variantes, lotes con vencimiento, seriales con unicidad por organización, todo por
+`fn_inv_int_mover` / `fn_kardex_entrada_compra_int`, estado de la OC y factura con
+`fn_factura_compra_desde_oc` en la misma transacción); lotes y seriales en la recepción de la
+factura de compra (`fn_fc_recepcionar_int` con `lot_code`/`expiry_date`/seriales por línea, y los
+seriales de la factura pasan a crearse al **recibir**).
+
+Aceptación: recepción parcial de 3 líneas (una con 2 lotes, una con 4 seriales) → un solo
+documento de recepción, kardex con lote, `product_costs` con vigencia, seriales `in_stock`; la
+segunda recepción no reutiliza seriales; recibir de más falla con un error legible; al completar,
+factura y CxP en la misma transacción.
+
+Tamaño: **L**. Dependencias: B0; que el agente de compras cierre su trabajo en la OC.
+
+### 5.10 Bloque 9 — Consumidores externos del stock (coordinado)
+
+- **POS** (con su agente): selector de lote `530:65098` usando `kit/inventario/LotPicker`; cambiar
+  el escáner simulado (`ui/barcode-scanner.tsx`) por uno real; `pos_checkout_v1` pasa `lot_id` si
+  la línea lo trae.
+- **GO Assistant** (con su dueño): `assistant_create_adjustment`, `assistant_create_transfer`,
+  `assistant_register_sale`, `assistant_bulk_load_products`, `assistant_create_product` delegan en
+  las RPC de B0/B2/B3 y se revoca `anon` (4 de 5 hoy lo permiten).
+- **Pedidos web**: `webOrderServerConfirmation.ts` y `webOrderConfirmationService.ts` (la misma
+  confirmación copiada; la de servidor libera la reserva sin expandir la receta y vende seriales a
+  mano) pasan a **una** RPC `fn_pedido_web_confirmar_stock(p_order_id)` que descuenta con receta,
+  libera la reserva expandida y vende los seriales; `webOrdersService.convertToSale` (sin uso) se
+  borra; el reembolso `api/web-orders/[id]/refund/route.ts:244-280` pasa a `fn_stock_entrada`.
+- **PMS**: quitar el segundo descuento de `spaceConsumptionService.ts:250` (el folio ya
+  descuenta) y que la reversión del folio (`foliosService.ts:373`) use `fn_stock_entrada_devolucion`
+  al costo de la salida, no `incrementOnPurchase` al precio de venta.
+- **Acciones de IA fuera de las RPC**: `aiActionsService.ts:578-585` («actualizar stock») y
+  `ai/assistant/undoService.ts:261-264, 334` pasan por `fn_producto_int_ajustar_stock` (con kardex).
+- **CRM**: `crm/inventoryCrmLink.ts` y `crm/posCrmLink.ts` solo exportan; sin cambios.
+
+Propiedad (en coordinación con el dueño de cada área): los archivos nombrados arriba y las
+migraciones `*_inv_b9_*`.
+
+Tamaño: **L**. Dependencias: B0, B2, B3.
+
+### 5.11 Bloque 10 — Cierre: navegación, tablero, RLS, datos y verificación integral (último)
+
+Propiedad: `lib/navigation/catalog.ts` (entradas de inventario: Kardex, Reportes, iconos),
+`components/inicio/sections/InventarioSection.tsx`, `lib/services/inventoryDashboardService.ts`,
+`components/inventario/dashboard/{AccesosRapidos,AlertasInventario,MovimientosRecientes,ResumenSucursales}.tsx`,
+`components/inventario/{FiltrosInventario,KPICard,RotacionProductosChart,TopSKUTable}.tsx` (a
+borrar), `src/__tests__/guardrails.test.ts` (guardarraíl de escritura), migraciones `*_inv_b10_*`.
+
+Trabajo:
+1. `fn_inventario_resumen(p_org, p_branch)` para el tablero; borrar `AccesosRapidos.tsx` y los
+   cuatro componentes muertos de la raíz de `components/inventario`.
+2. **RLS de solo lectura** en las tablas de §3.2 (cierre) y guardarraíl que prohíbe
+   `from('<tabla>').insert/update/delete/upsert` sobre ellas en `src/**`.
+3. Retirar el índice global de seriales (P8).
+4. Reparación de datos **solo con aprobación** (P1, P2, P7, P9, P10, P11): reservas huérfanas
+   (D8), stock de padres (D4), traslados de 2025 (D13), garantías corriendo en bodega (D14), costo
+   cero (D5), vigencias duplicadas de costo y precio (D19, D20).
+5. Prueba integral (abajo) en el navegador con una organización de prueba y en la base con
+   `begin … rollback`.
+
+**Prueba de aceptación integral** (todo el módulo conectado):
+
+1. Crear producto con 2 variantes, costo, stock inicial en la sucursal A y receta compartida.
+2. OC de 20 uds de una variante → recepción parcial de 12 con un lote → factura y CxP.
+3. Vender 3 en el POS (FEFO del lote) y 1 por factura de venta.
+4. Ajuste por conteo: −1 por merma.
+5. Traslado de 5 de A a B → despachar → recibir 5.
+6. Orden de producción del compuesto → completar → distribuir a B.
+7. Kardex de la variante en A y en B: cada fila enlaza a su documento; `fn_kardex_descuadres` = 0
+   para esos productos; costo promedio esperado; asientos: uno por documento, ninguno duplicado.
+8. Trazabilidad del lote: recibido 12, vendido 3, en existencias el resto, con el cliente de la
+   venta.
+9. Con un usuario sin `inventory.adjust` ni `inventory.transfer`: botones ocultos y la RPC
+   responde 42501.
+10. Las 10 pantallas principales en móvil (390) sin desbordes y en los 4 idiomas.
+
+Tamaño: **L**. Dependencias: todos.
+
+### 5.12 Orden y paralelismo
+
+```text
+Día 1–3   B0 (núcleo)                      │ B6b (categorías, proveedores, etiquetas, imágenes)
+                                           │ B4 (UI y garantías; sin tocar stock)
+Día 3–8   B1   B2   B3   B5   B6a   B7     │ (en paralelo, archivos disjuntos)
+Día 6–9   B8 (cuando el agente de compras libere la OC)   B9 (con POS y GO Assistant)
+Día 9–11  B10 (cierre y verificación integral)
+```
+
+Capacidad sugerida: 6 agentes a la vez como máximo (B1, B2, B3, B5, B6a, B7 tras B0).
+
+### 5.13 Namespaces de i18n por bloque
+
+| Bloque | Namespaces |
+|---|---|
+| B0 | `inventario` |
+| B1 | `inventarioStock`, `inventarioMovimientos`, `inventarioKardex`, `inventarioLotes` |
+| B2 | `inventarioAjustes` |
+| B3 | `inventarioTraslados`, `inventarioDistribucion` |
+| B4 | `inventarioSeriales`, `inventarioGarantias`, `inventarioTrazabilidad` |
+| B5 | `receta`, `subseccion`, `inventarioRecetas`, `inventarioProduccion` |
+| B6 | `inventarioVariantes`, `inventarioUnidades`, `inventarioImagenes` (+ los existentes) |
+| B7 | `productos`, `productoForm`, `productoDetalle`, `productosImportar` (existentes) |
+| B10 | `inventarioTablero` |
+
+---
+
+## 6. Preguntas para el dueño (solo las que bloquean)
+
+| # | Pregunta | Bloquea | Recomendación |
+|---|---|---|---|
+| P1 | **Stock propio de los productos padre** (8.630 filas en 17 orgs; en la 137 casi nunca coincide con la suma de las variantes). ¿El stock vive solo en las variantes? | B1 (listado agrupado), B10 | Sí: el padre muestra la suma de sus hijos y su fila propia se muestra aparte como «sin asignar a variante» hasta que cada organización la reparta; no se borra nada sin tu visto bueno |
+| P2 | **Kardex que no cuadra** (4.899 pares) y **stock sin historia** (45.219 filas). ¿Se crea un movimiento de apertura que explique el saldo actual? | B10 | Sí: un movimiento `initial` de «saldo de apertura al 2026-09-30» por la diferencia, sin tocar cantidades; el asiento de apertura (F-36) queda para el contador |
+| P3 | **Conteo físico**: ¿pantalla propia sobre `cycle_counts` o «ajuste por conteo»? | B2 | Ajuste por conteo (es lo que dibuja Figma `975:186644`); `cycle_counts` queda sin usar |
+| P4 | **Doble asiento de los ajustes** (81 ajustes). ¿Queda solo el asiento del documento de ajuste? | B0, B2 | Sí, hacia adelante; los 81 históricos se listan para que el contador los reverse |
+| P5 | **Stock negativo**: ¿se sigue permitiendo vender sin existencias? | B0 | Permitir por defecto (como hoy) con un ajuste por organización «bloquear venta sin stock»; el traslado y el ajuste de salida sí bloquean |
+| P6 | **Permiso de recepción**: ¿`inventory.create` (como hoy en compras) o uno nuevo `inventory.receive`? | B8 | Reusar `inventory.create`; no crear permisos nuevos |
+| P7 | **Traslados abiertos de julio de 2025** (org 2) y diferencias al recibir. ¿Despachar descuenta el origen y quien recibe decide la diferencia («faltante en el transporte» o «sigue en camino»)? | B3 | Sí; los 3 abiertos de 2025 se cancelan con motivo, sin mover stock |
+| P8 | **Seriales únicos por organización** en lugar de en todo el sistema (0 choques hoy). | B4, B10 | Sí, en dos fases |
+| P9 | **98 garantías corriendo en bodega** (orgs 133, 143). ¿Se reinician para que arranquen al vender? | B4 | Sí: se borra `warranty_start/end` de los seriales `in_stock`; los vendidos no se tocan |
+| P10 | **Reservas huérfanas** (1.690 uds en 4 orgs). ¿Se liberan? | B10 | Sí, las que no tengan pedido web pendiente ni oportunidad de CRM abierta |
+| P11 | **Precios y costos con varias vigencias abiertas** (16.359 productos con más de un precio vigente, 59 con más de un costo). ¿Se cierran las viejas? | B7, B10 | Sí: por producto queda abierta la de `effective_from` más reciente que ya empezó; las anteriores se cierran en el `effective_from` de la siguiente. Antes se comprueba que el POS, la tienda y la factura ya leen esa misma (si alguno lee otra, el precio que ve el cliente cambiaría) |
+
+---
+
+## Anexo B0 — Núcleo de existencias: estado al 2026-09-29 (hecho)
+
+Bloque 0 aplicado con las decisiones del dueño del 2026-09-28 (P1–P11 con la recomendación de §6).
+Todo por el MCP, cada migración con su rollback y probada antes con `begin … rollback` / `DO … RAISE`.
+
+### B0.1 Migraciones (`supabase/migrations/` + `supabase/rollbacks/`)
+
+| Archivo | Qué hace |
+|---|---|
+| `20260929020000_inv_b0_1_esquema` | `stock_movements.created_by` (default `auth.uid()`) y `avg_cost_after`; índice de kardex `(organization_id, product_id, branch_id, created_at, id)`; `lots.organization_id` (relleno: 3 lotes, 0 choques), `branch_id`, `notes`, `created_by`, UNIQUE `(organization_id, product_id, lot_code)` y disparador que completa la organización; `products.track_lots` (default false) |
+| `20260929020100_inv_b0_2_permisos` | `fn_inventario_permisos(org)` → `{ver, crear, editar_catalogo, eliminar, ajustar, trasladar, recibir, producir, garantias, costos, configurar}`; `fn_inventario_exigir_permiso(org, acciones[])` (42501 `sin_permiso`); `fn_inventario_config` / `fn_inventario_config_guardar` con `bloquear_venta_sin_stock` (P5, false por defecto) en `organization_settings` key `inventario` |
+| `20260929020200_inv_b0_3_primitiva` | `fn_inv_int_mover` (la primitiva), `fn_inv_int_mover_fila`, `fn_inv_int_fila`, `fn_inv_int_costo_promedio` (la regla única). Sin EXECUTE para `anon` ni `authenticated` |
+| `20260929020300_inv_b0_4_escritores_por_la_primitiva` | Misma firma, por dentro la primitiva: `decrement_stock_on_sale`, `fn_stock_entrada`, `fn_stock_entrada_devolucion`, `fn_register_stock_entry`, `fn_producto_int_ajustar_stock` (reescritas) y `fn_kardex_entrada_compra_int`, `fn_void_purchase_invoice` (parche sobre la definición viva, md5 comprobado y marcador único). Respaldo exacto en `private.respaldo_funciones` |
+| `20260929020400_inv_b0_5_reservas` | `stock_reservations` (RLS solo lectura) + `fn_inv_int_reservar` / `fn_inv_int_liberar` (receta expandida con el resolutor único, bloqueo en orden de producto, liberación exacta); `reserve_stock_for_web_order` y `release_stock_for_order` con la misma firma (la segunda ahora exige pertenencia y fija `search_path`); `fn_stock_reservar`, `fn_stock_liberar_reserva` (fachada TS); `fn_inv_reversion_entrada` (camino temporal de `folio_item_reversal`) |
+| `20260929020500_inv_b0_6_documento_de_movimiento` | `fn_inv_documentos(org, refs[])` en lote (máx. 500) y `fn_documento_de_movimiento`: tipo, número legible y ruta para los 24 orígenes, solo documentos de la organización |
+| `20260929020600_inv_b0_7_asiento_unico_ajuste` | P4: el movimiento de un documento de ajuste `gain`/`loss` ya no asienta (lo hace el documento). Los `adjustment` sin documento siguen asentando |
+| `20260929020700_inv_b0_8_primitiva_escala` | La primitiva redondea la cantidad a 3 decimales antes de mover y guarda en `avg_cost_after` el promedio tal como queda en la fila (numeric(12,2)): kardex y saldo no se separan en milésimas |
+
+`get_advisors` (security): ningún aviso nuevo en `anon_security_definer_function_executable`,
+`function_search_path_mutable` ni `rls_*` por objetos de B0 (`release_stock_for_order` sale de
+`function_search_path_mutable`). Las RPC públicas nuevas aparecen, como todas las del repositorio,
+en `authenticated_security_definer_function_executable`: es su diseño (validan organización y
+permiso dentro).
+
+### B0.2 Qué pasa ya por la primitiva
+
+| Flujo | Función (misma firma) | Cambio observable |
+|---|---|---|
+| POS, mesa, pedido web, folio PMS | `decrement_stock_with_recipe` → `decrement_stock_on_sale` | Bloqueo de la fila (dos ventas simultáneas ya no pierden una resta); FEFO si `track_lots` (hoy 0 productos); rechaza producto o sucursal de otra organización (0 casos históricos); cantidad 0 se omite |
+| Factura de venta, anulación, nota crédito | `decrement_stock_with_recipe`, `fn_stock_entrada` | `fn_stock_entrada` salta productos con `track_stock = false` (antes les creaba fila; 0 movimientos históricos de NC/anulación sobre ellos) |
+| Devolución, anulación POS | `fn_stock_entrada_devolucion` | Ninguno (entra al costo de la salida, sin mover el promedio) |
+| Alta de producto, importación, entrada de ajuste | `fn_register_stock_entry` | **Promedio ponderado** en vez de «último costo» (§2 F1.4); exige permiso de inventario (`crear`, `editar_catalogo` o `ajustar`), no solo pertenencia; bloqueo de la fila. En 90 días hubo entradas de ajuste en las orgs 142 (103), 144 (29), 132 (21), 129 (10), 120 (5), 115 y 134 (2), 130, 143 y 199 (1): esas son las que desde hoy promedian |
+| Stock masivo, variantes | `fn_producto_int_ajustar_stock` | Bloqueo antes de calcular la diferencia; mismo costo |
+| Compra (factura y recepción) | `fn_kardex_entrada_compra_int` | El lote de la línea debe ser del producto y de la organización |
+| Anulación de factura de compra | `fn_void_purchase_invoice` | Si no había fila, se crea (en negativo) en vez de dejar un movimiento que el saldo no refleja |
+| Reservas web (tienda y panel) y CRM | `reserve_stock_for_web_order`, `release_stock_for_order`, `fn_stock_reservar`, `fn_stock_liberar_reserva` | Receta expandida en SQL; lo reservado queda registrado por documento y se libera exacto; reservar dos veces no duplica; liberar un pedido ajeno → 42501 |
+| Borrar consumo del folio (PMS) | `fn_inv_reversion_entrada` | Entra al costo con que salió, ya no al **precio de venta** |
+
+Escenario comparado en la base (org 2, producto de prueba, `begin … rollback`) antes y después:
+apertura 10×500, compra 10×1.000, venta 4, NC 1, devolución 2, stock masivo a 25, entrada de ajuste
+5×1.250, venta 40 y variante nueva 7×900 → mismas cantidades y mismos costos en todos los pasos
+salvo la entrada de ajuste (antes 1.250 «último costo», ahora 833,33 ponderado) y la venta siguiente
+(sale a 833,33). Venta con receta como cajero de la org 142 y anulación real de una factura de compra
+de la org 132: correctas; el cajero (solo `inventory.view`) ya no puede llamar
+`fn_register_stock_entry` (42501).
+
+### B0.3 Qué NO pasa todavía por la primitiva (dueño y bloque)
+
+SQL: `complete_production_order` (B5, v2 con costo real; hoy es invocador y la primitiva no se
+le expone), `assistant_create_adjustment`, `assistant_register_sale`,
+`assistant_void_purchase_invoice` (B9). `fn_importar_productos_lote`,
+`fn_producto_int_stock_inicial`, `fn_producto_int_variante_guardar` y `update_product_min_stock`
+solo escriben `min_level` o filas en 0 (no mueven stock).
+
+TS (guardarraíl 33 de `src/__tests__/guardrails.test.ts`, la lista solo puede achicarse):
+`app/api/web-orders/[id]/refund/route.ts` (B9), `components/inventario/lotes/LotesService.ts` (B1),
+`components/inventario/productos/bulk/bulkService.ts` (B7),
+`components/inventario/transferencias/TransferenciasService.ts` (B3), `lib/ai/assistant/undoService.ts`
+(B9), `lib/services/adjustmentService.ts` (B2), `lib/services/aiActionsService.ts` (B9),
+`lib/services/webOrderServerConfirmation.ts` (B9). `stockMovementService.ts` ya salió: es fachada de RPC.
+
+### B0.4 Contratos para B1–B10
+
+- **Tipos**: `src/lib/inventario/nucleo/tipos.ts` (primitiva, opciones, errores, permisos, config,
+  documentos, reservas, entrada de compra, lotes y las firmas acordadas de `fn_stock_registrar_movimiento`,
+  `fn_lote_guardar`, `fn_ajuste_aplicar`, `fn_traslado_recibir`, `complete_production_order` v2,
+  `fn_oc_recepcionar`, `fn_pedido_web_confirmar_stock`). Punto de entrada `@/lib/inventario/nucleo`.
+- **Regla para toda RPC nueva que mueva stock**: SECURITY DEFINER, `fn_inventario_exigir_permiso(org,
+  array['<acción>'])` (o `fn_assert_acceso_org` + permiso de su dominio), el movimiento SOLO con
+  `public.fn_inv_int_mover(...)`, `REVOKE … FROM anon, public` en la misma migración. Opciones de la
+  primitiva: `recalcular_costo`, `costo_fijo`, `permitir_negativo`, `fefo`, `incluir_vencidos`,
+  `forzar`, `seriales`, `estado_serial`. Traslado (B3): salida `transfer_out` con
+  `estado_serial: 'in_transit'` y entrada `transfer_in` con `unit_cost` = costo de la salida (recalcula
+  en destino). Ajuste (B2): el movimiento con `source_id` = id del ajuste; el asiento lo hace el
+  documento (P4). Producción (B5): consumos `out` y terminado `in` con `recalcular_costo` y costo =
+  Σ consumos ÷ producido.
+- **Permisos en la UI**: `usePermisosInventario()` (`@/lib/inventario/usePermisosInventario`);
+  pantalla sin permiso = `EmptyState variante="forbidden"` con `inventario.permisos.*`.
+  `components/inventario/categorias/usePermisosCatalogo.ts` (B6b) puede pasar a leer
+  `editar_catalogo` de aquí.
+- **Errores**: `claveErrorInventario(error)` → `inventario.errores.<clave>`;
+  `detalleStockInsuficiente(error)` para «disponible X, solicitado Y».
+- **Kit** (`@/components/kit/inventario`): `BadgeOrigenMovimiento` (Figma 530:65022, 24 orígenes, el
+  ÚNICO mapa está en `lib/inventario/origenesMovimientoStock.ts` → `META_ORIGEN`),
+  `EnlaceDocumento` + `useDocumentosMovimiento(org, filas)` (una llamada por página),
+  `LotPicker` en línea y `DialogoLotes` (diálogo en escritorio, hoja en móvil; Figma 530:65092,
+  530:65099, 530:65161), `BadgeVencimiento` + `useTextoVencimiento`, `SaldoCorridoCell`.
+  `hoy` siempre `todayInTz(zonaDeLaOrganizacion)`.
+- **i18n**: namespace `inventario` (orígenes, documentos, vencimiento, lotes, saldo, errores,
+  permisos) en es/en/fr/pt; los bloques usan su propio namespace (§5.13).
+- **Costo en pantalla**: `costoPromedioTrasEntrada` (`nucleo/costo.ts`) es el espejo de la regla SQL,
+  solo para mostrar; nunca se escribe `avg_cost` desde el navegador.
+
+### B0.5 Avisos para otros bloques
+
+- **B9 / POS**: `pos_checkout_v1` captura cualquier error de stock y lo deja como advertencia. Si una
+  organización activa `bloquear_venta_sin_stock`, la factura de venta sí falla con
+  `stock_insuficiente`, pero el POS vendería sin descontar: B9 tiene que hacer que el POS respete
+  ese error antes de ofrecer el ajuste en la interfaz (hoy ninguna organización lo tiene activo).
+- **B9 / PMS**: el doble descuento de los consumos de habitación sigue (`spaceConsumptionService.ts:250`);
+  la reversión del folio ya no corrompe el costo. Cuando B9 pase la reversión a
+  `fn_stock_entrada_devolucion`, `fn_inv_reversion_entrada` puede retirarse.
+- **B1**: `fn_inv_documentos` resuelve el número; cuando B2/B3/B5 añadan `code`, se actualiza allí
+  (hoy `AJ-<id>`, `TR-<id>`, `OP-<id>`). Hay 620 filas con `qty_reserved > 0` (orgs 113: 139,
+  135: 228, 137: 14, 145: 240) sin registro en `stock_reservations`: se liberan con la regla
+  anterior hasta que B10 las limpie (P10).
+- **B10**: 28 filas negativas (orgs 132 y 144: 11 cada una; 129 y 142: 2; 112 y 134: 1). Las filas de
+  `private.respaldo_funciones` sirven para los rollbacks de B0: no borrarlas.
+
+### B0.6 Ajustes con doble asiento (P4) — para el contador
+
+Hacia adelante hay un solo asiento por ajuste. Los históricos (documento `inventory_adjustment` +
+asiento por movimiento `stock_movements`), por organización y id de ajuste:
+
+| Org | Ajustes | Ids |
+|---|---|---|
+| 115 | 2 | 34, 35 |
+| 129 | 12 | 20, 21, 22, 23, 25, 26, 27, 28, 31, 32, 33, 45 |
+| 132 | 23 | 29, 36–44, 46–58 |
+| 134 | 3 | 60, 61, 63 |
+| 143 | 1 | 77 |
+| 144 | 39 | 80–89, 91, 92, 98, 99, 101, 102, 104–111, 113, 114, 115, 120–123, 126, 127, 130–135 |
+| 199 | 1 | 147 |
+
+(81 ajustes; el contador reversa el asiento por movimiento o el del documento, no ambos.)
+
+---
+
+## Anexo B6b — Catálogo maestro: imágenes, categorías, proveedores y etiquetas (2026-09-29)
+
+Commits: `77d0a418` imágenes · `7eb020d0` etiquetas · `7c48ec91` categorías · `17d3e786`
+proveedores. Solo archivos de B6b (§5.7) y los namespaces `inventarioImagenes`, `categorias`,
+`proveedores` e `inventarioEtiquetas` en es/en/fr/pt.
+
+**Migraciones** (aplicadas por el MCP, `.sql` y rollback en el repo):
+
+| Archivo | Qué hace |
+|---|---|
+| `20260929020000_inv_b6_imagenes` | `shared_images.alt_text` y `created_by`, índices; retira `trigger_update_image_url` (asignaba `image_url`, columna inexistente: «Hacer pública» fallaba siempre con 42703); RPC `fn_imagenes_resumen`, `fn_imagenes_listado` (paginado, dos orígenes), `fn_imagen_detalle`, `fn_imagen_registrar`, `fn_imagen_actualizar`, `fn_imagenes_visibilidad`, `fn_imagen_asignar_productos`, `fn_imagenes_eliminar` (reasigna la principal) |
+| `20260929021000_inv_b6_catalogo_permisos` | `mover_categorias`, `eliminar_categoria`, `etiquetas_producto_eliminar/fusionar` exigen permiso de catálogo (antes solo pertenencia); `fn_etiqueta_guardar`; disparador de nombre de etiqueta único sin mayúsculas hacia adelante (los 4 grupos repetidos de hoy no se tocan) |
+| `20260929022000_inv_b6_importar_catalogo` | `fn_categorias_importar` y `fn_proveedores_importar`: revisar y aplicar con la misma función, una transacción, tope 2.000 filas (aplicada en dos pasos; el segundo, `…_duplicados`) |
+
+Todas DEFINER con `fn_assert_acceso_org` o `fn_productos_exigir_permiso` y `REVOKE … FROM
+public, anon`. Probado en la base con `DO … RAISE`: usuario sin permisos de catálogo → 42501 al
+escribir, otra organización → 42501, anon → 42501; nombre de etiqueta repetido → 23505.
+
+**Pantallas**: Imágenes `596:345914` rehecha (galería, pestañas, KPI, filtros, selección, panel
+«Usada en», subir con avance, asignar a productos, eliminar); Importar categorías `973:186211`;
+Importar proveedores `973:185225` / `975:185874` (4 pasos, crear o actualizar por documento);
+permisos en la interfaz y estado «sin permiso» en categorías, proveedores, etiquetas e imágenes;
+el detalle del proveedor enlaza Facturas y CxP filtradas por el proveedor; borrado el código
+muerto `DetalleProveedor.tsx` y `FormularioProveedor.tsx`.
+
+**Permisos**: la interfaz usa `fn_productos_permisos` (hook `categorias/usePermisosCatalogo.ts`,
+en lugar de duplicar lo de B0); cuando B0 publique `fn_inventario_permisos.editar_catalogo`, se
+cambia solo ese hook.
+
+**Pendiente** (fuera de B6b o con dueño):
+- Alta y edición de categorías, proveedores y el alta directa de etiquetas desde el producto
+  siguen escribiendo tablas por RLS de pertenencia: el permiso de servidor completo llega con la
+  RLS por permiso de B10.
+- Storage: las políticas de `organization_images` y `product-images` no filtran por organización
+  (B10 / seguridad).
+- El catálogo de productos (B7) aún no lee `?etiqueta=` ni `?proveedor=`; Órdenes de compra no
+  filtra por `?proveedor=` (agente de compras).
+- Tableta sin frames en Figma; categorías móviles de detalle y formulario sin frame (se usan los
+  responsivos actuales).
+
+---
+
+## Anexo B4 — Seriales, garantías y trazabilidad (2026-09-29)
+
+Commits: `01edc4bd` servidor (migraciones, RPC y rutas) · `00d31ba3` garantías · `83d8f4a3`
+seriales · `a0c96cb5` trazabilidad. Parte de B4 que no mueve stock (§5.12), con P8 (fase 1) y P9
+aprobados. Solo archivos de B4
+(§5.5) y los namespaces `inventarioSeriales`, `inventarioGarantias` e `inventarioTrazabilidad`
+en es/en/fr/pt.
+
+**Migraciones** (aplicadas por el MCP, `.sql` y rollback en el repo, probadas antes con
+`begin … rollback` / `DO … RAISE`):
+
+| Archivo | Qué hace |
+|---|---|
+| `20260929040000_inv_b4_seriales_unicos_por_organizacion` | P8 fase 1: índice único `(organization_id, serial)` (0 choques en 102 seriales). La unicidad global `serial_numbers_serial_key` sigue: la retira B10 (fase 2) |
+| `20260929040100_inv_b4_garantias_reinicio_en_bodega` | P9, datos: 98 seriales `in_stock` con garantía corriendo → sin `warranty_start/end` (org 133: ids 15–107, 93 filas; org 143: ids 108–112, 5 filas). Antes 98, después 0; los vendidos no se tocan. Rastro por serial: evento `warranty_reset` con las fechas anteriores en `metadata` (de ahí restaura el rollback) |
+| `20260929040200_inv_b4_garantia_desde_la_venta` | Disparador `trg_serial_garantia_desde_venta`: en bodega no corre garantía; al pasar a `sold` arranca el día de la venta en la zona de la sucursal/organización con `warranty_months` (o el plazo del producto). Cubre a todos los escritores (recepción, «Generar seriales», POS, factura, pedido web, reemplazo) sin reescribir sus funciones |
+| `20260929040300_inv_b4_garantias_esquema` | `warranty_claims`: `code` (GAR-0001 por organización), proveedor y datos del envío (RMA, transportadora, guía, notas), aprobación; CHECK de estado y de resolución; un solo reclamo abierto por serial; RLS de solo lectura para miembros activos y sin GRANT de escritura (antes FOR ALL y anon con escritura) |
+| `20260929040400_inv_b4_seriales_listado_detalle` | `fn_seriales_listado` (paginado, filtros, KPI), `fn_serial_detalle`, `fn_seriales_permisos` |
+| `20260929040500_inv_b4_garantias_funciones` | `fn_garantias_listado`, `fn_garantia_detalle`, `fn_garantia_serial_para_reclamo`, `fn_garantia_crear`, `fn_garantia_cambiar_estado` (aprobar · rechazar con motivo), `fn_garantia_enviar_rma`, `fn_garantia_reemplazos`, `fn_garantia_resolver` (reparación · reemplazo · reembolso; guarda quién resolvió) |
+| `20260929040600_inv_b4_trazabilidad` | `fn_trazabilidad(org, código, sucursal, desde, límite)`: serial, lote o documento (OC-, TR-, AJ-, GAR-, factura, pedido, factura de compra) |
+| `20260929040700_inv_b4_permisos_y_documentos_del_nucleo` | Sin lógica duplicada: permisos por `fn_inventario_exigir_permiso` (`ver`, `garantias`) y documentos por `fn_documento_de_movimiento` de B0; solo el reclamo de garantía se resuelve en B4 |
+| `20260929040710_inv_b4_documento_compra_legado` | Los movimientos `purchase` viejos con id numérico de OC encuentran su orden |
+| `20260929040720_inv_b4_trigger_reclamos_search_path` | `fn_update_warranty_claims_updated_at` fija `search_path` (aviso de `get_advisors`) |
+
+Todas DEFINER con `search_path`, organización y permiso antes de leer o escribir y `REVOKE …
+FROM public, anon`; los ayudantes `*_int_*` sin EXECUTE para `authenticated`. Probado en la base:
+usuario de otra organización → 42501 en listado, detalle, crear reclamo y trazabilidad; serial de
+otra organización pedido desde la propia → P0002 (404); anon → 42501; INSERT directo en
+`warranty_claims` → 42501. Ciclo completo en `begin … rollback` (org 133): crear GAR-0001 →
+segundo reclamo rechazado (`reclamo_abierto`) → aprobar → RMA → resolver con reemplazo: la unidad
+nueva vendida al cliente con garantía desde hoy, la reclamada en RMA, 5 eventos.
+
+**Rutas** (`withOrg`, organización de la sesión, permiso en el servidor, `codigo` estable):
+`GET /api/inventario/seriales`, `GET …/seriales/[id]`, `POST …/seriales/estado`,
+`GET|POST /api/inventario/garantias`, `GET …/garantias/serial`, `GET …/garantias/[id]`,
+`POST …/garantias/[id]/{estado,rma,resolver}`, `GET …/garantias/[id]/reemplazos`,
+`GET /api/inventario/trazabilidad`. Sin sesión 401; organización ajena en body o query 403 sin
+RPC; recurso de otra organización 404.
+
+**Pantallas** (escritorio y móvil, estados cargando · vacío · sin resultados · error · sin
+permiso · sin sucursal):
+- Seriales `590:319444`: KPI, aviso de garantías corriendo en bodega (hoy 0 tras P9), filtros de
+  estado y garantía, columnas Serial · Estado · Dónde está · Venta · Cliente · Garantía, menú por
+  estado, selección (Trasladar · Imprimir etiquetas · Exportar · Marcar dañados), detalle con
+  Origen · Venta (sucursal de la VENTA) · Garantía · Historial enlazado.
+- Garantías `592:329722` + RMA `973:186133`: listado con KPI, nuevo reclamo que valida vendido,
+  garantía vigente y sin reclamo abierto, aprobar, rechazar con motivo, enviar al proveedor
+  (el número de RMA ya se guarda), resolver; el detalle carga (antes pedía relaciones que no
+  existen).
+- Trazabilidad `594:126324`: inicial con recientes, serial (recorrido + documentos), lote (KPI,
+  recorrido, a quién se vendió paginado, exportar clientes), documento (movimientos y seriales).
+- Sub-pestaña Seriales del producto: «Nuevo reclamo» usa el diálogo nuevo (mismas props).
+- `serialTrackingReports.ts`: relaciones con sus nombres reales y días en la zona de la
+  organización; `serialTrackingService.createSerial` ya no fija garantía al recibir.
+
+**Contratos que B4 deja anotados (no mueve stock):**
+- **B0 / B9 · reemplazo de garantía**: `fn_garantia_resolver` con `replacement` deja la unidad
+  nueva `sold` al cliente, pero no descuenta su existencia. El evento `sold` de esa unidad lleva
+  `metadata.stock_pendiente = { producto, sucursal, cantidad: -1, origen: 'warranty_replacement',
+  reclamo }`. Cumplirlo = dentro de la misma función, `fn_inv_int_mover(org, sucursal, producto,
+  null, 'out', 1, null, 'warranty_replacement', reclamo_id, …, '{"seriales":[id]}')` (el origen
+  hay que añadirlo al CHECK y a `origenesMovimientoStock.ts`), y B10 concilia los pendientes que
+  existan de antes. La unidad reclamada queda `damaged`/`rma` sin volver a entrar al stock.
+- **B8 · recepción**: crear los seriales solo con `warranty_months`; el disparador pone las fechas
+  al vender. Con P8 fase 1 la validación de repetidos debe ser por organización.
+- **B10 · P8 fase 2**: retirar `serial_numbers_serial_key` cuando B8 valide por organización
+  (`serialTrackingService.validateSerialExists` ya filtra por organización).
+- **B3 · traslados**: «Trasladar a otra sucursal» abre `/app/inventario/transferencias/nuevo?producto_id&origen`.
+- **B1 · lotes**: «Ver el lote» abre `/app/inventario/lotes?busqueda=<código>` (hoy la pantalla
+  no lee el parámetro).
+- **POS**: «Registrar devolución del cliente» del detalle del serial lleva a `/app/pos/devoluciones`.
+
+**Verificación**: en una copia limpia de HEAD, `tsc` sin errores en archivos de B4 (los 6 que quedan
+son de membresías) y 28 suites de jest en verde (rutas, contrato de migraciones, lógica,
+guardarraíles, zona horaria, seriales de compras y del POS). `traduccionesModulos` falla en
+`kit.estados` por `sin_fe` (estado añadido por finanzas sin su etiqueta), no por B4; los
+namespaces de B4 pasan.
+
+**Pendiente o distinto de Figma**: «Solicitar acceso al administrador» del estado sin sucursal no
+existe en la app (se muestra el estado sin botón); los enlaces a documentos usan
+`kit/inventario/EnlaceDocumento` («Venta FACT-0019 ↗») en lugar de icono + número; tableta sin
+frames. Los 2 seriales vendidos de la org 133 conservan la garantía fijada al recibir (P9: los
+vendidos no se tocan).
+
+---
+
+## Anexo B2 — Ajustes y ajuste por conteo (2026-09-29)
+
+Bloque B2 aplicado con las decisiones P3 (el conteo físico es «ajuste por conteo»; `cycle_counts`
+queda sin usar), P4 (un solo asiento por ajuste) y P5 (el ajuste de salida bloquea si deja stock
+negativo). Solo archivos de B2 (§5.3) y el namespace `inventarioAjustes` en es/en/fr/pt.
+
+### B2.1 Migraciones (`supabase/migrations/` + `supabase/rollbacks/`)
+
+| Archivo | Qué hace |
+|---|---|
+| `20260929130000_inv_b2_1_esquema` | `inventory_adjustments`: `code` (AJ-0001, único por organización), `mode` (`conteo` · `entrada` · `salida`), `counted_at`, `posted_at`/`posted_by`, `cancelled_at`/`cancelled_by`/`cancel_reason`, `apply_key`; `status` admite `cancelled` (descartar ya no borra). `adjustment_items`: `system_qty` («sistema al contar»), `difference`, `applied_cost`. Relleno de los 137 aplicados desde su kardex; los 140 históricos quedan en modo `conteo` (la pantalla vieja guardaba lo contado). Disparadores: código y modo por defecto; un ajuste aplicado o descartado (y sus renglones) no se modifica ni se borra (salvo cascada de organización o sucursal). Índices del listado y de los movimientos de un ajuste |
+| `20260929130100_inv_b2_2_guardar_aplicar_descartar` | `fn_ajuste_guardar` (borrador, no mueve stock), `fn_ajuste_aplicar` (una transacción: bloquea el documento y cada fila en orden, congela «sistema al contar», recalcula la diferencia del conteo y avisa qué cambió, mueve SOLO por `fn_inv_int_mover` con `source = 'adjustment'` y `source_id` = id, seriales de salida a `damaged` y de entrada creados o reingresados, costo de la entrada = el del renglón → promedio → costo vigente o `costo_requerido`; idempotente: el segundo intento responde `ya_aplicado`), `fn_ajuste_descartar` (con motivo). `fn_auto_journal_inventory_adjustment` reescrita: un asiento por el neto real Σ(± qty × costo del movimiento), sin el respaldo que tomaba el costo de cualquier producto de la sucursal; la anterior queda en `private.respaldo_funciones` |
+| `20260929130200_inv_b2_3_lectura` | `fn_ajustes_listado` (paginado en el servidor, filtros, KPI del mes en la zona de la organización, permisos), `fn_ajuste_detalle` (renglones, movimientos del kardex con saldo tras el ajuste, asiento), `fn_ajuste_productos` (existencia por lote en la sucursal, lotes, seriales en stock, costo vigente). Importes solo con el permiso `costos`. `fn_inv_documentos` numera el ajuste con su `code` (parche por marcador; B4 ya la había parcheado) |
+| `20260929130300_inv_b2_4_borradores_heredados` | Los 3 borradores heredados reciben «sistema» y diferencia estimados con la existencia de hoy (se recalculan al aplicar) |
+
+Todas SECURITY DEFINER con `fn_assert_acceso_org` + `fn_inventario_exigir_permiso` (`ajustar`
+para escribir, `ver` para leer) y `REVOKE … FROM public, anon`. `get_advisors`: ningún aviso nuevo
+en `anon_security_definer_function_executable` ni en `function_search_path_mutable` (la función de
+asiento de ajustes sale de esa lista); las 6 RPC nuevas aparecen en
+`authenticated_security_definer_function_executable`, como todas las del repositorio.
+
+### B2.2 Verificación en la base (transacción deshecha, org 2, dueño)
+
+- Conteo de 4 renglones (uno con lote, uno con 2 seriales): 3 movimientos, promedio ponderado en la
+  entrada (4 × 1.000 + 2 × 1.300 → 1.100), seriales a `damaged`, 1 asiento del documento y 0 por
+  movimiento; `fn_inv_documentos` → `AJ-0150`. Aplicar otra vez → `ya_aplicado`, siguen 3.
+- Salida de 100 sobre 7 → `stock_insuficiente` (23514), nada se mueve, sigue en borrador (P5).
+- Entrada 5 × 800 sobre 7 × 500 → 12 × 625.
+- Conteo guardado con sistema 12; se venden 2; al aplicar la diferencia se recalcula contra 10 y la
+  respuesta lo informa en `recalculados`.
+- Descartar sin motivo → `motivo_requerido`; con motivo → `cancelled`; aplicar un descartado →
+  `ajuste_descartado`; editarlo por SQL → `ajuste_cerrado`; descartar un aplicado → `ajuste_aplicado`.
+- Otra organización → 42501 al guardar y al aplicar; producto de otra organización → 42501;
+  renglón repetido → `renglon_repetido`; producto con seriales sin seriales → `seriales_no_cuadran`.
+
+### B2.3 Pantallas (Figma `586:303290`, `586:312944`, `975:186644`)
+
+- Listado `/app/inventario/ajustes`: KPI (del mes, borradores, aplicados, impacto neto), aviso de
+  borradores antiguos, búsqueda por número, producto o nota, filtros (estado, tipo, razón, fechas),
+  orden, paginación real, menú ⋯ por estado, selección (aplicar, exportar, imprimir, descartar),
+  CSV, móvil con tarjetas, estados cargando/vacío/sin resultados/error/sin permiso/sin sucursal.
+- Detalle `/app/inventario/ajustes/[id]`: borrador (avisa si la existencia cambió desde el conteo),
+  aplicado («sistema al contar» congelado, movimientos del kardex con saldo tras el ajuste y enlace
+  al kardex, enlace al asiento contable), descartado (quién, cuándo y motivo), imprimir, duplicar
+  como nuevo conteo, móvil con acciones al pie.
+- Nuevo `/app/inventario/ajustes/nuevo` y editar `/app/inventario/ajustes/[id]/editar` (ruta nueva):
+  Entrada · Salida · Conteo, sucursal, razón, fecha del conteo en la zona de la organización, nota,
+  productos con «Agregar productos» del kit (`kit/documento`, escáner incluido), lote por renglón,
+  seriales (salida: de los que están en la sucursal; entrada: nuevos), costo obligatorio solo en
+  sobrantes sin costo, validación P5 en pantalla, resumen al pie, «Guardar borrador» y «Guardar y
+  aplicar» (guarda y aplica con clave de idempotencia; si falla, el borrador queda y el reintento lo
+  actualiza, no crea otro). Acepta `?producto_id`, `?type`/`?modo`, `?branchId` y `?desde`.
+- `adjustmentService.ts` es fachada de RPC (sale de la lista del guardarraíl 33).
+
+### B2.4 Pendiente (fuera de B2 o con dueño)
+
+- **B9 · `assistant_create_adjustment`** sigue escribiendo `stock_movements`/`stock_levels` sin la
+  primitiva (invocador, sin costo en el movimiento). Sus ajustes nacen aplicados y, desde B0-7, ni el
+  movimiento ni el documento los asientan (el documento se crea antes que sus movimientos). Debe
+  delegar en `fn_ajuste_guardar` + `fn_ajuste_aplicar`. Los disparadores de B2 le dejan insertar sus
+  renglones en la misma transacción.
+- **B10 · RLS**: `inventory_adjustments` y `adjustment_items` siguen `FOR ALL` por pertenencia; se
+  pueden cerrar a solo lectura cuando B9 cambie el GO Assistant (la pantalla ya no escribe tablas).
+- Un conteo con sobrantes y faltantes asienta el **neto** (una regla `gain` o `loss`), como pide P4;
+  si el contador prefiere separar ganancia y pérdida, hace falta un asiento de varias líneas.
+- Tableta sin frames en Figma (se usa la vista de escritorio desde 640 px).
+
+---
+
+## Anexo B1 — Stock, Movimientos, Kardex y Lotes (2026-09-29)
+
+Commits: `193d3aa9` servidor (migraciones, rollbacks y contrato) · `21e36d6d` Stock, Movimientos y
+Lotes · `1069dc7d` Kardex · `88d54485` kardex y lotes del producto, tercer kardex retirado. Solo
+archivos de B1 (§5.2) y los namespaces `inventarioStock`, `inventarioMovimientos`,
+`inventarioKardex` e `inventarioLotes` en es/en/fr/pt.
+
+**Migraciones** (MCP; `.sql` y rollback en el repo; todas DEFINER con
+`fn_inventario_exigir_permiso` —que pasa por `fn_assert_acceso_org`— y `REVOKE … FROM anon, public`):
+
+| Archivo | Qué hace |
+|---|---|
+| `20260929100000_inv_b1_1_stock_listado` | `fn_stock_listado`: paginado en el servidor, una fila por producto, variantes bajo su padre (P1: la fila propia del padre no se suma, sale en `sin_asignar`; con `agrupar=false`, aparte como «sin asignar a variante»), disponible = existencia − reservado, mínimo por (producto, sucursal), estados `negativo/agotado/bajo_minimo/disponible`, filtros (búsqueda por nombre, SKU, código de barras o lote; estado, categoría, seguimiento, proveedor, producto) y KPI reales. 0,31 s en la org más grande (137) |
+| `20260929100100_inv_b1_2_movimientos_kardex` | `fn_movimientos_listado`, `fn_kardex_saldo_corrido` (saldo corrido por producto sobre toda la historia del alcance; el período se aplica después) y `fn_kardex_descuadres` (pares producto-sucursal cuyo kardex no cuadra + filas sin historia). Días en la zona de la organización. Internas `fn_inv_int_filtro_movimientos` y `fn_inv_int_fila_movimiento` sin EXECUTE para `authenticated` |
+| `20260929100200_inv_b1_3_registrar_movimiento` | Primera versión de `fn_stock_registrar_movimiento` y `update_product_min_stock` endurecida con la misma firma (misma organización, permiso `ajustar` o `editar_catalogo`, `search_path`, mínimo ≥ 0; antes bastaba ser miembro, incluso inactivo) |
+| `20260929100300_inv_b1_4_lotes` | `fn_lotes_listado` (una fila por lote y sucursal, estado por vencimiento en el día de la organización, umbral 15/30/60/90), `fn_lotes_de_producto` (LotPicker), `fn_lote_guardar` (código único por producto → 23505 `lote_repetido`; sin código propone `L-AAAAMMDD`; la cantidad inicial entra por el ajuste), `fn_lote_ajustar`, `fn_lote_eliminar` (solo sin existencias, reservas ni historia) |
+| `20260929100400_inv_b1_5_registrar_por_el_ajuste` | Regla dura 7: `fn_stock_registrar_movimiento` pasa a **fachada de `fn_ajuste_guardar` + `fn_ajuste_aplicar` de B2** (un ajuste `entrada`/`salida` aplicado de una línea, `AJ-0001`, el movimiento solo por `fn_inv_int_mover` y un solo asiento del documento, P4). Rechaza padre con variantes (P1), exige lote si el producto maneja lotes y manda los productos con seriales a Ajustes |
+
+Pruebas en la base (DO … RAISE, sin dejar datos): entrada de 5 a 1.000 sobre 24 a 0 → `AJ-0161`
+aplicado, un asiento `inventory_adjustment`, kardex con origen `adjustment` y `avg_cost_after`
+172,41; salida mayor que la existencia → 23514 `stock_insuficiente`; lote nuevo con 12 uds →
+aparece en Lotes (por vencer), en Stock (existencia y conteo de lotes) y en el LotPicker; ajustar
+el lote a 10 → salida de 2 (`AJ-0164`); código repetido → 23505; eliminar un lote con existencias
+→ 23514. Un usuario con solo `inventory.view` (org 142) lista, pero registrar y fijar mínimos dan
+42501; otra organización y `anon` → 42501. **`fn_kardex_descuadres` sumado en todas las
+organizaciones = 4.899 pares, igual que D2.** `get_advisors` (security): ningún aviso nuevo de
+`anon_security_definer_function_executable` ni `function_search_path_mutable` por objetos de B1; las 11 RPC públicas aparecen, como todas, en `authenticated_security_definer_function_executable` (validan organización y permiso dentro) y las dos internas no.
+
+**Pantallas** (escritorio y móvil, estados vacío / cargando / sin resultados / error / sin
+permiso / sin sucursal, permisos de `usePermisosInventario`, fechas por `useFormatDate`, moneda por
+`useMonedaOrganizacion`, cantidades con 3 decimales):
+
+- Stock `581:276750`: KPI, aviso de negativos, aviso P1, filtros en la URL, menú ⋯ (kardex, lotes,
+  producto, registrar entrada/salida, trasladar → B3 con producto y sucursal, mínimo), selección
+  (trasladar, ajuste por conteo → B2, mínimo, exportar), «Nuevo movimiento» (entrada, salida,
+  conteo, traslado, recibir OC). Diálogos «Registrar entrada/salida» y «Definir stock mínimo».
+- Movimientos `586:286574`: `BadgeOrigenMovimiento` (el único mapa) y `EnlaceDocumento` resuelto
+  en una llamada por página; período del mes por defecto; tipos, dirección, ingredientes, «sin
+  documento», «solo los de <persona>»; aviso de los orígenes que la base rechazaba antes del 23/09.
+- Kardex `516:270497`: sin exigir `?producto=`; saldo del servidor; cuadre verde/rojo y diálogo de
+  descuadres; exportar filtros / página / histórico del producto.
+- Lotes `518:59165`: nuevo, editar, ajustar cantidad, dar de baja por merma, eliminar, rastrear
+  (Trazabilidad de B4); acepta `?busqueda=` (el enlace de Trazabilidad).
+- Detalle del producto › Inventario › Kardex y Lotes `525:64175`: mismas RPC y diálogos.
+- Reportes: el tercer kardex se retiró; la pestaña enlaza al kardex único.
+
+**Código retirado**: `StockTable/Filters/Header/Stats`, `MovimientosTable/Filters/Header/Stats`,
+`KardexTable/Filters/Header/Stats`, la pestaña de kardex de Reportes y los mapas duplicados de
+orígenes y rutas de `logicaInventario.ts`. `stockService`, `kardexService` y `LotesService` son
+fachadas de RPC; `LotesService` sale del guardarraíl 33.
+
+**Pendiente** (fuera de B1 o con dueño):
+- Menú lateral: «Kardex» sigue sin entrada en `lib/navigation/catalog.ts` (B10).
+- Figma dibuja y no se hizo: exportar a Excel (solo CSV), «Marcar vencidos», «Imprimir etiquetas de
+  lote» (B8), «bloquear la venta de vencidos» como ajuste de la organización (POS, B9) y el filtro
+  «Quién lo registró» como lista (se filtra desde el menú ⋯ de la fila). Tableta sin frames.
+- Ningún producto tiene `track_lots = true` y ningún formulario lo activa (B7): los lotes se crean y
+  se mueven, pero la venta no los descuenta por FEFO hasta que el producto lo active.
+- P2 (movimiento de apertura por la diferencia de D2/D3) queda para B10: la pantalla solo informa.
+- El commit `193d3aa9` llevó también el namespace `inventarioAjustes` de B2 (carrera con una
+  enmienda de otra sesión sobre `messages/*.json`); su contenido es el de B2, sin cambios.
+- Verificación en el navegador: no se hizo (sin sesión en el servidor de desarrollo del dueño).
+
+---
+
+## Anexo B3 — Traslados y distribución (2026-09-29)
+
+Commits: `6c37c9a3` servidor (migraciones, RPC y datos de 2025) · `d9640aca` lista de traslados,
+diálogos, guías y API · `481acde1` nuevo traslado · `8965740e` detalle · `31d75c2f` distribución
+(y retiro de `TransferenciasService`) · `1b573128` guardia de integridad. Solo archivos de B3
+(§5.4: `transferencias/**`, `distribucion/**`, más `src/lib/inventario/transferencias/**` y
+`src/app/api/inventario/{transferencias,distribucion}/**`) y los namespaces `inventarioTraslados`
+e `inventarioDistribucion` en es/en/fr/pt. Decisiones aplicadas: P7 (despachar descuenta el
+origen; quien recibe decide la diferencia), P5 (el traslado no deja el origen en negativo), lotes
+y seriales viajan con el traslado.
+
+**Migraciones** (aplicadas por el MCP, `.sql` y rollback en el repo, probadas antes con
+`begin … rollback` / `DO … RAISE`):
+
+| Archivo | Qué hace |
+|---|---|
+| `20260929073000_inv_b3_1_esquema` | `inventory_transfers`: `code` (TR-0001 por organización; disparador que lo pone también a lo que crea el GO Assistant), `shipped_at/by`, `received_at/by`, `cancelled_at/by`, `cancel_reason`, `production_order_id` (FK NULL-able), `client_key` (idempotencia al crear). `transfer_items`: `unit_cost`, `missing_qty`, `returned_qty`, `difference_reason`, `serial_ids`; CHECK recibido + faltante + devuelto ≤ enviado. Tabla `inventory_transfer_events` (seguimiento y claves de idempotencia; RLS de solo lectura para miembros activos, sin GRANT de escritura) |
+| `20260929073100_inv_b3_2_funciones` | `fn_traslado_guardar` (crear o editar un pendiente; valida sucursales —el origen, de las del usuario—, productos con control de stock, lote, renglón repetido y disponible), `fn_traslado_despachar` (sale con `transfer_out` al costo promedio del origen por `fn_inv_int_mover`; FEFO parte el renglón por lote; seriales a `in_transit`; bloquea si deja el origen en negativo; idempotente), `fn_traslado_recibir` (entra con `transfer_in` al mismo costo; diferencia «faltante» con motivo = entra y sale como `loss` en el destino, o «en camino»; idempotente por clave; asiento entre sucursales por recepción), `fn_traslado_cancelar` (solo pendientes), `fn_traslado_devolver` (lo que sigue en tránsito vuelve al origen) |
+| `20260929073200_inv_b3_3_consultas_y_distribucion` | `fn_traslados_listado` (paginado, KPI, atascados > 30 días), `fn_traslado_detalle` (costo solo con permiso de costos), `fn_traslado_productos`, `fn_distribucion_ordenes`, `fn_distribucion_crear` (varios traslados en una transacción, tope por disponible y por lo que falta distribuir de la orden, idempotente). `fn_inv_documentos` (parche con marcadores únicos sobre la definición viva): número = código del traslado y la merma `loss` con `source_id = 'traslado:<id>'` enlaza al traslado. `fn_auto_journal_inventory_transfer` sin efecto (el asiento lo hace la recepción). `fn_notify_transfer_*` con estados reales y `search_path` fijo |
+| `20260929073300_inv_b3_4_datos_traslados_2025` | P7, datos (org 2): TR-0001 (id 1) y TR-0002 (id 2) `pending` y TR-0004 (id 4) `in_transit` → `cancelled` con motivo, **sin mover stock**. Abiertos antes 3, después 0. Comprobado: movimientos de la org 2 50 → 50, suma de existencias 30.709 → 30.709, asientos 481 → 481. TR-0003 y TR-0005 (`received` con `received_qty = 0`) no se tocan |
+| `20260929073400_inv_b3_5_integridad` | Guardia (revisión de seguridad): con la RLS aún FOR ALL, desde `authenticated`/`anon` directo solo se crea un pendiente, se cancela un pendiente sin tocar nada más (deshacer del GO Assistant) o se editan renglones de un pendiente; subir cantidades o insertar renglones de algo en tránsito responde 42501 `traslado_solo_por_rpc`. Las RPC DEFINER no cambian |
+
+Todas las RPC públicas: SECURITY DEFINER, `fn_inventario_exigir_permiso` (`trasladar`; recibir:
+`trasladar` o `recibir`; lecturas: `ver`), acceso a la sucursal con `app_branch_access`, `REVOKE …
+FROM public, anon`; las internas `fn_traslado_int_*` sin EXECUTE para `authenticated`.
+`get_advisors` (security): nada nuevo en `anon_security_definer_function_executable`,
+`function_search_path_mutable` ni `rls_*`; las RPC nuevas aparecen, como todas, en
+`authenticated_security_definer_function_executable` (validan organización y permiso dentro).
+
+**Prueba en la base** (org 2, dueño, `begin … rollback`): crear (y repetir con la misma clave →
+el mismo traslado); despachar sin seriales de un producto serializado → `seriales_requeridos`;
+despachar 10 + 7 (FEFO: 5 del lote 2 y 2 del lote 3, dos renglones) + 1 serial → origen 25 → 15,
+serial `in_transit`; despachar otra vez → `ya_despachado`; recibir sin decidir → `decision_requerida`;
+recibir de más → `recibido_invalido`; recibir 8 con «faltante» (caja rota) + lote 2 completo + lote
+3 «en camino» + serial → destino +8 (entran 10, sale 2 como `loss`), serial `in_stock` en destino,
+traslado sigue en tránsito; repetir con la misma clave → `repetido`; recibir el resto → `received`;
+otra vez → `ya_recibido`; dos asientos `inventory_transfer` (subcuentas 1405-01 → 1405-02);
+guardar más de lo disponible → `stock_insuficiente`; despachar dejando el origen en negativo →
+`stock_insuficiente` sin mover nada; cancelar pendiente y despacharlo → `estado_invalido`;
+devolver al origen → origen 10 → 15 y `cancelled`; otra organización → 42501; guardia: subir la
+cantidad de un renglón en tránsito, insertar uno, marcar `received` a mano o borrar → 42501, y
+`assistant_create_transfer` + su deshacer siguen funcionando.
+
+**Pantallas** (Figma `EAvjINVRnlzFM70GVoWXgl`): Traslados `589:304083` (lista, cargando, vacío,
+error, sin permiso, sin sucursal, menús ⋯ por estado, selección masiva, móvil), «Recibir»
+`589:320397`, confirmaciones despachar/cancelar/devolver, nuevo traslado `589:322911` y móvil
+`975:186790` (conserva `?producto_id&origen`; edición de pendientes en `/transferencias/[id]/editar`),
+detalle `831:535830`/`831:536248` y móvil `589:326053` (seguimiento, `?despachar=1`,
+`?recibir=1`, `?imprimir=1`), guías imprimibles, Distribución `606:159579` con su asistente de 3
+pasos. El buscador de productos es el diálogo `kit/documento/AgregarProductosDialog` (§5.0).
+Organización siempre de la sesión: API `/api/inventario/{transferencias,distribucion}/**` con
+`withOrg` (403 si el cuerpo o la query traen otra); Distribución ya no lee `localStorage`.
+
+**Verificación**: `src/__tests__/inventario/traslados/` (lógica y contrato de rutas: 401, 403 por
+organización ajena, `p_org` de la sesión, 207 al crear sin poder despachar, códigos estables);
+guardarraíles (33: B3 sale de la deuda; 23: baja su piso porque `transfer_in` ya no se escribe desde
+TS); eslint limpio. En una copia limpia de HEAD (`git archive`): `tsc` con 8 GB sin errores; guardarraíles,
+`timezone` e inventario con UTC y America/Bogota en verde (909 pruebas); los fallos de `jest` completo son ajenos a B3 (pos-display por tiempo, CRM,
+navegación, zona horaria, `sin_fe` en `kit.estados`, sitio web conocido).
+
+**Diferencias con Figma y decisiones**:
+- Un traslado pendiente no reserva existencias (Figma de Distribución dice «stock reservado en
+  origen»): lo disponible se valida al crear y otra vez al despachar, que es cuando sale (P7).
+- La diferencia al recibir se registra como merma en el **destino** (como dice el diálogo de
+  Traslados); el diálogo de Distribución de Figma decía «pérdida en origen»: se unificó.
+- Los ConfirmDialog de Figma traen los textos de ejemplo del componente («Regenerar», «Eliminar»);
+  se usan los de la acción (Despachar, Cancelar traslado, Devolver al origen).
+
+**Pendiente** (fuera de B3 o con dueño):
+- B9: `assistant_create_transfer` sigue siendo invocador y ejecutable por `anon`; debería delegar
+  en `fn_traslado_guardar`. Hoy crea pendientes que ya reciben código y respetan la guardia.
+- B10: RLS de `inventory_transfers` y `transfer_items` en solo lectura (la guardia de B3 cubre lo
+  que movería stock mientras tanto).
+- B5: el vínculo con la orden usa `OP-<id>` y `/app/inventario/produccion?orden=<id>`; si B5 añade
+  `code`, actualizar `fn_traslados_listado`, `fn_traslado_detalle` y `fn_distribucion_ordenes`.
+- Revisión visual en el navegador pendiente (no se arrancó el servidor de desarrollo del dueño).
+
+---
+
+## Anexo B5 — Recetas, costo de recetas, producción y pestaña Producción (2026-09-29)
+
+Commits: `6cc775f6` servidor + Producción + Recetas + Costo de recetas + kit (`HojaDetalle`,
+`TablaSubseccion`) · `d55e49ee` pestaña Producción del producto · `bacabfcf` nombre de la descarga del costo de recetas (guardarraíl 16). Solo archivos de B5 (§5.6) y los
+namespaces `inventarioProduccion`, `inventarioRecetas` y `subseccion` en es/en/fr/pt. Decisiones
+P1–P11 con la recomendación del §6.
+
+### B5.1 Migraciones (`supabase/migrations/` + `supabase/rollbacks/`, aplicadas por el MCP)
+
+| Archivo | Qué hace |
+|---|---|
+| `20260929150000_inv_b5_1_esquema` | `production_orders`: `confirmed_at/by`, `started_by`, `completed_by`, `cancelled_at/by`, `cancel_reason`, `total_cost`, `unit_cost`, `client_key`, `complete_key` (todas NULL-ables) e índices; `production_order_consumptions`: `unit_cost`, `total_cost`, `lot_id`; `product_recipes.created_by` (default `auth.uid()`). **Guardia** `fn_produccion_int_guardia`: `authenticated`/`anon` directo ya no escriben `production_orders`, sus consumos, `product_recipes` ni `recipe_ingredients` (`produccion_solo_por_rpc` / `receta_solo_por_rpc`, 42501); las RPC DEFINER sí |
+| `20260929150100_inv_b5_2_produccion` | `complete_production_order` **v2** (misma firma de 3 argumentos + `p_confirmar_faltante`, `p_clave` con default; DEFINER, `fn_inventario_exigir_permiso(org de la orden, 'producir')`): valida todo antes de mover (ingrediente, conversión, 150 %, decimales del producto, faltantes), consumos **solo por `fn_inv_int_mover`** (bloqueo de la fila, FEFO si el ingrediente lleva lotes, una fila de consumo por movimiento con su costo y lote), ingredientes sin inventario se costean con el costo vigente sin mover stock, opcionales fuera; terminado por `fn_inv_int_mover` con `recalcular_costo` y **costo = Σ consumos ÷ producido**; idempotente por clave. Nuevas: `fn_produccion_guardar` (borrador o confirmada, idempotente), `fn_produccion_cambiar_estado` (confirmar · iniciar · cancelar con motivo · eliminar borrador), `fn_produccion_necesidades` (+ interna `fn_produccion_int_necesidades`: líneas de `fn_receta_costo` escaladas a N ÷ rinde). Reversión: devuelve la v1 |
+| `20260929150150_inv_b5_2b_produccion_lectura` | `fn_produccion_listado` (paginado, filtros, KPI del mes en la zona de la organización; costo estimado y primer faltante de las abiertas) y `fn_produccion_detalle` (necesidades o consumos reales con movimiento, lote y costo, terminado con el promedio después, traslados de distribución). Importes solo con `costos` |
+| `20260929150200_inv_b5_3_recetas` | `fn_recetas_listado` (una fila por producto con su versión activa o la última; costo, margen, fuente y KPI en la sucursal elegida, **todo con `fn_receta_costo`**; margen ponderado por ventas pagadas de 30 días), `fn_receta_versiones`, `fn_receta_desactivar` (sin recetas activas el producto deja de ser compuesto), `fn_receta_reactivar` (copia una versión como N+1 por `fn_receta_guardar`). `fn_recetas_listado` se re-aplicó el mismo día (decimales e inventario del producto; margen nulo si no hay ningún costo); el archivo trae la definición viva |
+| `20260929150250_inv_b5_3b_producto_produccion` | `fn_producto_produccion_resumen` (receta efectiva o heredada, versiones, variantes con receta, usado como ingrediente, órdenes, traslados, movimientos de producción, conversiones, permisos) y `fn_producto_distribucion` (traslados que llevan el producto) |
+
+Todas las públicas: SECURITY DEFINER, `search_path` fijo, pertenencia por `fn_assert_acceso_org`
+(dentro de `fn_inventario_exigir_permiso` o `fn_productos_exigir_permiso`) y `REVOKE … FROM public,
+anon`; las internas sin EXECUTE para `authenticated`. `get_advisors` (security): ningún aviso nuevo
+en `anon_security_definer_function_executable`, `function_search_path_mutable` ni `rls_*`; las 11
+RPC públicas aparecen, como todas, en `authenticated_security_definer_function_executable`.
+
+### B5.2 Verificación en la base (transacción deshecha, `DO … RAISE`, org 2, dueño)
+
+- Receta «Pan» rinde 12 UN: harina 1.500 **GR** con merma 10 % (el ingrediente se lleva en **KG**) y
+  huevo 6 UN. Orden de 24, confirmada: necesidades 3,333 KG y 12 UN, costo estimado 12.666,67.
+- Completar 24 → 2 consumos enlazados a su movimiento del kardex (`production`, `OP-2`): harina
+  3,333 KG × 2.000, huevo 12 × 500; el pan entra 24 a **527,75** c/u (antes entraba a 0) y la fila
+  queda en ese promedio. Repetir con la misma clave → `ya_completada`, no mueve nada.
+- **Fallo tardío** (un disparador de prueba rechaza la entrada del terminado, después de los
+  consumos): la orden sigue `confirmed`, 0 consumos y la harina sigue en 10. Sin respaldo: el
+  servicio ya no marca `completed` cuando la RPC falla.
+- 40 sobre 24 → `excede_lo_planeado` (máx. 36). Ingrediente que no alcanza sin confirmar →
+  `faltante_sin_confirmar` (23514) con la lista; confirmando queda en negativo y se completa.
+- **Por peso**: masa en KG (`sale_mode = weight`), 2,5555 → `cantidad_decimales` (3); 2,5
+  confirmada, iniciada y completada en 2,4 kg: consumos con 3 decimales, terminado 2,400 a 3.936,79.
+- **Costo de receta vs. venta** (misma sucursal): `fn_receta_costo` 1.383,33 por unidad; vender 1
+  con `decrement_stock_with_recipe` descuenta 1.384,10. La diferencia (0,77) es el redondeo del
+  kardex a 3 decimales (0,166667 KG → 0,167 KG); la regla de costo es la misma (promedio de la fila
+  sin lote → costo vigente).
+- UPDATE directo a `production_orders`, `product_recipes` o `recipe_ingredients` como
+  `authenticated` → 42501. Otra organización (142) al listar, guardar o completar → 42501; `anon`
+  → sin EXECUTE. Cancelar sin motivo → `motivo_requerido`; eliminar solo borradores.
+- Versiones: guardar v2, reactivar v1 → v3 igual a v1; desactivar → sin receta efectiva y el
+  producto deja de ser compuesto.
+
+### B5.3 Pantallas y código
+
+- **Producción** `/app/inventario/produccion` (Figma `603:153432`): KPI (por confirmar, en proceso,
+  completadas del mes con costo real, diferencia planeado vs. producido), búsqueda por OP o
+  producto, filtros en la URL, costo estimado/real y primer faltante por fila, acción rápida y menú
+  por estado, selección (exportar, confirmar borradores), móvil con tarjetas. `?orden=<id>` (enlace
+  del kardex y de los traslados) abre el detalle.
+- **Detalle** `/app/inventario/produccion/[id]`: paso a paso, necesidades con lo disponible en la
+  sucursal (pedir traslado / crear OC) o consumos reales con lote, costo y enlace al kardex,
+  producto terminado con costo real y promedio después, resumen y «Cómo se conecta».
+- **Nueva orden** (G1 `970:177054`): producto con receta activa, sucursal, cantidad con los
+  decimales del producto, versión que guarda la orden, necesidades y costo estimado en vivo;
+  «Guardar borrador» o «Crear y confirmar». **Completar** (G2 `604:158843`; sustituye al
+  `prompt()`): > 0, ≤ 150 %, decimales, qué entra y qué sale, costo real y casilla si algo queda en
+  negativo. Cancelar con motivo (`DialogoMotivo`).
+- **Recetas** `/app/inventario/recetas` (`598:142703`): KPI (activas, costo incompleto, margen bajo,
+  órdenes del mes), filtros, costo por unidad y margen en la sucursal del encabezado, menú
+  (editar, versiones, crear orden, costo, producto, reactivar, desactivar **con confirmación**).
+  **Editar** `/app/inventario/recetas/editar?producto=` usa el **mismo `EditorReceta`** del
+  formulario (no un segundo editor): modo «al producir / al vender», costo en vivo, versiones y
+  «Cómo se conecta»; guardar crea la versión N+1. `RecipeDialog.tsx` retirado.
+- **Costo de recetas** `/app/inventario/reportes/costo-recetas` (`601:148806`): sobre
+  `fn_recetas_listado` + `fn_receta_costo` por fila desplegada (cantidad en la unidad de la receta
+  y en la suya, costo unitario y fuente, subtotal y % del costo, «Crear conversión» con
+  `DialogoConversion` del kit, «Registrar costo»). `CostoRecetasService.ts` (máximo `avg_cost`
+  entre sucursales, sin conversiones) retirado.
+- **Pestaña Producción del producto** (D1–D6): `components/inventario/productos/detalle/produccion`
+  exporta `<PestanaProduccion producto={…} permisos={…} />` (sub-pestaña en `?psub=`) y
+  `debeMostrarPestanaProduccion`. Receta (solo lectura + costo con `ResumenCostoReceta`, «Receta
+  de:», usado como ingrediente, menú), Costo (sucursal y versión, costo por versión), Órdenes
+  (hoja de la orden con `HojaDetalle`, nueva orden y completar), Distribución (traslados de B3) y
+  Unidades (conversiones que aplican; la gestión es de B6a).
+- Kit: `kit/HojaDetalle.tsx` (panel derecho en escritorio, hoja inferior en móvil) y
+  `kit/TablaSubseccion.tsx` (título con contador, «Nuevo …», menú ⋯, `DataTable`), importados por
+  ruta (no se tocó `kit/index.ts`, que tenía cambios ajenos).
+- `productionOrderService` y `recipeService` son fachadas de RPC (ya no escriben tablas).
+- Pruebas: `src/__tests__/db/inventarioB5Produccion.test.ts` (contrato de las migraciones),
+  `produccion/__tests__/produccion.test.ts`, `produccion/__tests__/traducciones.test.ts` (paridad de
+  los 3 namespaces en 4 idiomas), `productos/detalle/produccion/__tests__/pestanaProduccion.test.tsx`
+  (render en 4 idiomas y «Completar» con faltante).
+
+### B5.4 Pendiente (fuera de B5 o con dueño)
+
+- **B7**: montar `<PestanaProduccion producto={producto} permisos={permisos} />` en
+  `DetalleProducto.tsx` (pestaña `produccion`; mostrarla con `debeMostrarPestanaProduccion` o con
+  `mostrar` del resumen, que además cuenta «usado como ingrediente»).
+- **B3**: el asistente de Distribución no preselecciona la orden al llegar con `?orden=<id>` (hoy
+  filtra los traslados de esa orden; la orden se elige en el paso 1).
+- **B6a**: la pestaña Unidades enlaza a Conversiones; el alcance «Solo este producto» y
+  `DialogoConversion` con esa opción son de B6a.
+- **B0** (`nucleo/tipos.ts`): `ParamsCompletarProduccion` no lista `p_confirmar_faltante` ni
+  `p_clave`; el servicio usa su propio tipo.
+- **Dato heredado**: la única orden anterior (org 142, `OP-1`) sigue `completed` sin consumos (entró
+  por el respaldo que no movía stock); el detalle lo avisa. No se corrigió sin tu visto bueno.
+- **Contabilidad**: los consumos (salida) y el terminado (entrada) asientan por la regla
+  «inventory · adjusted» de cada movimiento, como antes; ahora el terminado entra con costo, así que
+  los dos asientos se compensan. Un asiento de producción propio (materias primas → producto en
+  proceso → terminado) queda para el contador.
+- `fn_recetas_listado` calcula el costo de todas las recetas de la organización en cada llamada
+  (0,95 s en la org con más recetas, 27). Si crece, conviene cachear el costo por sucursal.
+- B3 (su anexo): el vínculo con la orden sigue siendo `OP-<id>` y `/app/inventario/produccion?orden=<id>`; B5 no añadió `code`, así que no hay que tocar sus funciones. La ruta vieja redirige al detalle nuevo.
+- Figma dibuja y no se hizo: comparar versiones, «Duplicar a otras variantes», tableta con frames
+  propios, móvil del reporte de costo con tarjetas (hoy la tabla se desplaza).
+- Verificación en el navegador: no se hizo (sin sesión en el servidor de desarrollo del dueño).
+
+---
+
+## Anexo B6a — Variantes (tipos y valores) y unidades y conversiones (2026-09-29)
+
+Commits: `aedeb27d` variantes · `8ed4b997` corrección (el commit de variantes se armó sobre un HEAD
+que avanzó y dejó sin `dc783fec` de B7; se repusieron sus 3 archivos y 11 líneas de `messages`) ·
+`4810bff7` unidades y conversiones · `2c9c0d89` orden del catálogo para el POS. Solo archivos de B6a
+(§5.7), el diálogo compartido `kit/receta/DialogoConversion` (ampliación compatible) y los
+namespaces `inventarioVariantes` e `inventarioUnidades` en es/en/fr/pt.
+
+### B6a.1 Migraciones (MCP; `.sql` y rollback en el repo)
+
+| Archivo | Qué hace |
+|---|---|
+| `20260929160000_inv_b6a_1_variantes_esquema` | `variant_types`: `display_order`, `is_active`, `display_style` (texto/color/imagen), `meta_attribute` (Facebook), `translations`, `updated_at`, `created_by`. `variant_values`: `hex_color`, `image_url`, `sku_code` (único por tipo), `is_active`, `translations`. RLS: leer por pertenencia; insertar y editar exige `editar_catalogo` y borrar `eliminar` (`fn_inventario_puede`, booleano seguro para políticas). Sin índice único sin mayúsculas: chocaría con los repetidos de hoy |
+| `…160100_inv_b6a_2_variantes_lectura` + `…160150_…2b_resumen_sin_bucles` (dos pasos) | Regla única clave ↔ tipo y valor ↔ valor (igual sin espacios; si no, sin mayúsculas). `fn_variantes_resumen`: tipos y valores con su uso real, escrituras distintas («talla» en 349 variantes para «Talla»), atributos fuera del catálogo y sugeridos de la org 0. 0,02 s (org 132), 0,26 s (137, 21.142 variantes), 0,55 s (197, 1.932 valores) |
+| `…160200_inv_b6a_3_variantes_escritura` | `fn_variante_tipo_guardar` y `fn_variante_valor_guardar` (crear; renombrar reescribe `variant_data` de hijos y padres en la misma transacción; `unificar`), `fn_variantes_fusionar_tipos/valores` (gana el destino si una variante tiene los dos; los valores iguales se unen; relaciones por id reapuntadas) |
+| `…160300_inv_b6a_4_variantes_orden_y_borrado` | `fn_variantes_reordenar`, `fn_variantes_cambiar` (activo, estilo), `fn_variantes_eliminar` (solo sin uso ni relaciones), `fn_variantes_completar_catalogo`, `fn_variantes_usar_sugeridos`; `crear_tipo_variante` sin EXECUTE para public, anon ni authenticated |
+| `…160400_inv_b6a_5_variantes_desde_servidor` | `fn_variantes_como_actor` (solo `service_role`): la ruta `POST /api/inventario/variantes` ejecuta las RPC como el usuario de la sesión. Renombrar «Talla» en la org 137 son 11.551 filas más su historial (~8 s) y PostgREST corta a `authenticated` a los 8 s |
+| `…160500_inv_b6a_6_variantes_datos_iniciales` (dos pasos) | 5 tipos y 133 valores en uso que faltaban en el catálogo; orden de tipos por uso (109); orden de valores sin orden elegido (números, luego XS…5XL, luego texto; 3.264); 12 tipos de color con `display_style = color`. Todo en `private.inv_b6a_datos_iniciales` para un rollback exacto |
+| `20260929161000_inv_b6a_7_unidades_esquema` | `units.organization_id` (unidades propias; las 14 del sistema no cambian), `is_active`; lectura sistema + propias. `unit_conversions.product_id`, UNIQUE por alcance, disparador de validación (factor > 0, de ≠ a, unidad y producto de la organización, mismo tipo salvo por producto). La escritura de conversiones pasa solo por RPC |
+| `…161100_inv_b6a_8_conversion_regla_unica` | `fn_unidad_factor(org, de, a, producto)`: la regla única (producto > organización > sistema; directa antes que inversa). `fn_receta_int_factor(org, de, a)` conserva su contrato; sobrecarga con producto; `fn_receta_int_calcular` pasa el ingrediente (parche por marcador con respaldo). `fn_producto_produccion_resumen` (B5) ya no lista conversiones de otros productos (alcance `producto`) |
+| `…161200_inv_b6a_9_unidades_rpc` (dos pasos) | `fn_unidades_resumen`, `fn_unidad_guardar` (código de hasta 3: `unit_conversions` usa character(3); unidad DIAN para la factura electrónica), `fn_unidades_eliminar` (solo propias sin uso), `fn_conversion_guardar` (con la inversa en la misma transacción), `fn_conversiones_eliminar` (no borra una que una receta activa necesita), `fn_unidad_convertir` |
+
+Todas DEFINER con `search_path`, `fn_inventario_exigir_permiso` (`ver`, `editar_catalogo`,
+`eliminar`; valida antes la pertenencia) y `REVOKE … FROM public, anon`; los `*_int_*` sin EXECUTE
+para `authenticated` (salvo `fn_receta_int_factor`, invocadora, que ya lo tenía). `get_advisors`:
+ningún aviso nuevo fuera de `authenticated_security_definer_function_executable` (su diseño).
+
+### B6a.2 Verificación en la base (transacciones deshechas)
+
+- **Aceptación 1**: org 132, «Talla» con `unificar` → 349 variantes «talla» pasan a «Talla» en una
+  RPC, 0 padres con la escritura vieja; renombrar «Tallas» a « TALLA » → 23505; fusionar «Tallas» y
+  «talla.» en «Talla» → 56 variantes, quedan 6 tipos; eliminar un tipo en uso → 23503; sin uso → 1.
+  El POS ordena por `display_order` en cuanto adopte `ordenarAtributosSegunCatalogo` (B6a.4).
+- **Aceptación 2**: org 142, PAQ = 6 UN «solo este producto» → la receta de ese ingrediente convierte
+  con 6 y la de otro ingrediente con el 10 del sistema; `fn_unidad_convertir` 2 PAQ → 12 (producto) y
+  20 (organización). Repetida → 23505; UN → KG sin producto → 23514 `tipos_distintos`; BUL = 25 KG por
+  producto → correcto.
+- Otra organización, usuario sin permiso de catálogo, `anon` e INSERT directo en
+  `variant_types`/`unit_conversions` → 42501. El usuario sin permiso sí lee.
+
+### B6a.3 Pantallas
+
+- **Variantes** `/app/inventario/variantes` (Figma `969:595070`): pestañas Tipos · Valores; KPI
+  (activos, valores y sin orden, nombres repetidos → fusionar, sin usar); tabla ↔ tarjetas; filtros
+  (estado, cómo se muestra, tipo); menú ⋯ (editar, ver valores, ordenar, unificar escritura, cómo se
+  muestra, fusionar, copiar ID, desactivar, eliminar con motivo); selección (fusionar, estilo,
+  exportar, desactivar o activar, eliminar sin uso); diálogos Nuevo tipo `972:607461`, Nuevo valor
+  `972:607554` (hex, código SKU sugerido, traducciones, «Guardar y crear otro»), Fusionar
+  `972:607660`, Renombrar con impacto `972:607716`, Eliminar `972:607750`; Ordenar (arrastrar ⠿,
+  ↑ ↓ y Alt+↑/↓ con anuncio para lector de pantalla); aviso de atributos fuera del catálogo con
+  «Agregar al catálogo». Las rutas `/variantes/tipos` y `/variantes/valores?tipo=` redirigen.
+- **Unidades y conversiones** `/app/inventario/unidades` y `/conversiones` (Figma `593:333686`):
+  KPI, filtros (tipo, ámbito, en uso, sin conversión), menú ⋯ y selección; Nueva o editar unidad
+  `595:345266` (más la unidad DIAN, que Figma no dibuja y la factura electrónica necesita);
+  conversiones del sistema agrupadas con su inversa, «Revisar» en PAQ/CAJ, «Crear versión para mi
+  empresa», «Definir por producto…», eliminar con bloqueo por recetas; Nueva conversión `595:345330`
+  y error `595:345423` con `kit/receta/DialogoConversion` (De ⇆ A, «Aplica a · Toda la organización /
+  Un producto», inversa, «Al recibir 2 BUL entran 50 KG al kardex»).
+- Escritorio y móvil (tarjetas y hoja de acciones del kit), estados cargando · vacío · sin
+  resultados · error · sin permiso, permisos de `usePermisosInventario`.
+
+### B6a.4 Contratos para otros bloques (no se tocaron sus archivos)
+
+- **POS y tienda**: `variantesService.catalogoOrden(org)` (una consulta, tipos y valores activos) +
+  `ordenarAtributosSegunCatalogo(grupos, catalogo)` (`@/components/inventario/variantes`). Hoy
+  `agruparAtributos` (`lib/pos/venta/modificadores.ts`) ordena alfabético: el agente del POS debe
+  usarlos y pintar la muestra hex cuando `estilo = color`.
+- **B7 · formulario y detalle del producto**: `cargarCatalogos.ts` ya ordena por `display_order`;
+  falta no ofrecer tipos y valores con `is_active = false` y usar `sku_code` en `skuVariante`.
+  «Guardar este valor en el catálogo» (`catalogoAtributos.ts`) sigue escribiendo por RLS: ahora exige
+  `editar_catalogo`. El catálogo debe leer `?unidad=` (enlace «Ver sus N productos» de Unidades).
+- **B5 · recetas**: `DialogoConversion` mantiene sus props; puede pasar `producto={{ id, nombre }}`
+  para ofrecer «Solo este producto». El texto `receta.conversion.alcanceOrganizacion` quedó
+  desactualizado (la conversión por producto ya existe). `SubUnidadesProducto` recibe el alcance
+  `producto` (su servicio hoy lo muestra como «organización»).
+- **B8 · recepción**: convertir con `fn_unidad_factor(org, de, a, producto)` o `fn_unidad_convertir`;
+  no otra regla.
+- **B10**: el menú (`catalog.ts`) puede apuntar a `/app/inventario/variantes`.
+
+### B6a.5 Pendiente
+
+- Verificación en el navegador: no se hizo (sin sesión en el servidor de desarrollo del dueño).
+- Sin frame en Figma: detalle de un valor con imagen (hay columna, sin subida), aviso de choque al
+  fusionar valores, estados móviles de conversiones; se usaron los patrones del kit.
+- El código de una unidad propia es único en todo el sistema (clave primaria de `units`).
+- `npm run lint` del repo sigue con su deuda previa; los archivos de B6a pasan eslint.
+
+---
+
+## Anexo B8 — Compras ↔ inventario: recepción de OC y de factura de compra (2026-09-29)
+
+Commits: `33382c6a` recepción de OC (esquema, RPC, ruta, pantallas de la OC) · `e109b120` factura de
+compra con lote y vencimiento, seriales al recibir y ayudantes únicos · `341b54ff` devuelve lo de B7
+que `33382c6a` pisó (su índice privado se leyó de HEAD antes de que entrara `5eebf51d`: lotes desde
+el formulario del producto; se restauraron los mismos blobs, nada de B8 cambió). P6 aplicado: el permiso de
+recibir es `recibir` de `fn_inventario_permisos` (= `inventory.create` o `inventory_management`), sin
+permisos nuevos. Namespace `inventarioRecepcionOC` en es/en/fr/pt.
+
+**Migraciones** (MCP; `.sql` y rollback en el repo; probadas antes en `begin … rollback`):
+
+| Archivo | Qué hace |
+|---|---|
+| `20260929170000_inv_b8_1_recepciones_esquema` | `purchase_receipts` (una por entrega, `REC-0001` por organización, clave de idempotencia única por organización, resultado guardado, factura generada) y `purchase_receipt_items` (por línea y lote: cantidad, costo del proveedor, lote, seriales, movimiento de kardex, pedido y recibido antes = diferencia con la orden). RLS de solo lectura para miembros activos; sin escritura para `authenticated` ni `anon` |
+| `20260929170100_inv_b8_2_recepcionar` | `fn_oc_recepcionar(p_org, p_po_uuid, p_lineas, p_clave_idempotencia, p_notas)` (DEFINER, `recibir`, OC de la organización con `FOR UPDATE`, acceso a la sucursal, `REVOKE anon`). `fn_kardex_entrada_compra_int` acepta `serial_ids` por línea y los pasa a la primitiva (parche con md5 y respaldo). `fn_factura_compra_desde_oc` → cuerpo en `fn_fc_int_desde_oc` (interna) y la pública solo exige su permiso: la recepción genera la factura sin copiar su lógica |
+| `20260929170200_inv_b8_3_factura_lotes_seriales` | Ayudantes internos únicos `fn_inv_int_lote_de_recepcion` y `fn_inv_int_seriales_de_recepcion` (OC y factura). `fn_fc_recepcionar_int(p_id, p_lotes)` con lote y vencimiento por línea y seriales creados AL RECIBIR; sobrecargas `fn_factura_compra_confirmar(…, p_lotes)` y `fn_factura_compra_recepcionar(p_id, p_lotes)` con los mismos permisos (las firmas de siempre siguen). `fn_fc_guardar_int` ya no crea seriales `in_stock` al guardar el borrador: solo avisa en `seriales_omitidos` si alguno ya existe |
+
+**Qué hace la recepción de una OC (una transacción: todo o nada)**
+- `qty` = lo que llega ahora; guarda de sobre-recepción (`sobre_recepcion`, 23514, con producto,
+  pendiente y solicitado). Estado de la OC por las cantidades: `partial` o `received`; solo desde
+  `sent`/`partial` (`orden_no_recibible`). Un padre con variantes no se recibe (P1).
+- Lotes: existentes (`lot_id` o código) o nuevos (`lot_code` + `expiry_date`; sin código propone
+  `L-AAAAMMDD` en el día de la organización); el reparto debe sumar la cantidad; obligatorios si
+  `products.track_lots`; el mismo lote con otro vencimiento → `lote_vencimiento_distinto`.
+- Seriales: sin repetir en la petición ni en la organización (P8 fase 1; el repetido global sale como
+  `serial_repetido` sin decir de quién es); obligatorios y en unidades enteras si el producto los
+  controla; se crean «en tránsito» y la primitiva los deja `in_stock` con su evento `received` y su
+  lote. Solo guardan `warranty_months`: la garantía arranca al vender (disparador de B4).
+- Kardex solo por `fn_kardex_entrada_compra_int` → `fn_inv_int_mover` (origen `purchase_order`,
+  costo del proveedor = el de la línea de la OC → promedio ponderado, vigencia en `product_costs`).
+- Al completar la OC: factura de compra confirmada sin kardex y su CxP (`fn_fc_int_desde_oc`), en la
+  misma transacción. Si cualquier paso falla no queda nada recibido.
+- Idempotente: la misma clave devuelve la misma respuesta (`ya_procesada`), sin mover stock; una
+  clave de otra OC → `clave_reutilizada`.
+
+**Ruta**: `POST /api/inventario/ordenes-compra/[id]/recepcionar` (`withOrg` → `getServerOrgContext`;
+`[id]` = uuid). Sin sesión 401; organización ajena en cuerpo o query 403 sin RPC; permiso `recibir`
+resuelto en el servidor con `fn_inventario_permisos` (un error de lectura = sin permiso) y exigido
+otra vez por la RPC; OC de otra organización 404; errores con `codigo` estable y `detalle`.
+Contrato, lógica y cliente: `src/lib/services/inventario/recepcionOrdenCompra.ts`.
+
+**Pantallas (sin rediseñar)**: detalle de la OC — el diálogo de siempre llama a la ruta (el
+acumulado «Recibido» se convierte en lo que llega ahora; solo seriales nuevos), captura lote y
+vencimiento de los productos con lotes (`components/inventario/recepcion/LotesRecepcion.tsx`:
+filas código · vence · cantidad y «Elegir lote existente» con `DialogoLotes` del kit), no se cierra si
+hay error y lo dice traducido; «Marcar recibida» del listado recibe todo lo pendiente por la misma
+RPC. `getPurchaseOrderByUuid` ya trae `track_serial`/`track_lots` (la captura de seriales dependía de
+un campo que no se leía). Factura de compra — «Confirmar factura» con «Recepcionar al confirmar» y
+«Recepcionar a inventario» piden lote y vencimiento de las líneas con lotes (por línea en el
+detalle; por producto en el formulario, que aún no tiene ids de línea).
+
+**Retirado**: `purchaseOrderService.receiveItems`/`receiveItemsWithSerials` y el generador de
+factura en el navegador (la copia en TS de la recepción); `stockMovementService.incrementOnPurchase`
+ya no admite `purchase_order`. Guardarraíl 33 nuevo («la recepción de una OC solo va por
+fn_oc_recepcionar»); 23 y 26b ajustados con su porqué. La lista de pendientes del 33 no tenía la OC
+(la escritura ya iba por la fachada de B0): lo que se retiró es el cálculo en el navegador.
+
+**Verificación en la base** (org 2, productos y OC de prueba, `begin … rollback`):
+- Parcial en dos veces: 1.ª (A 4 · B 3 en dos lotes con vencimiento · C 2 seriales) → `partial`,
+  `REC-0001`, A 10→14 con promedio 500→642,86, lotes con su existencia, seriales `in_stock` sin
+  garantía corriendo y 2 eventos `received`, `product_costs` de A abierto en 1.000, 4 filas de
+  documento, 4 movimientos. 2.ª (A 6 · B 2 al lote existente · C 2) → `received`, A 20 a 750,
+  factura confirmada con CxP y seriales enlazados (4/4).
+- Idempotencia: misma clave → `ya_procesada`, A sigue en 14.
+- Serial repetido (en la organización y dentro de la petición) → 23505; seriales que no cuadran,
+  lote requerido, lote de otro producto, otro vencimiento → 22023; sobre-recepción → 23514 con
+  detalle. Fallo de stock (lote de otro producto) con una línea buena antes: nada recibido (A 14,
+  `partial`, 1 recepción).
+- OC ya recibida → `orden_no_recibible`. Otra organización en `p_org` → P0002; usuario de otra
+  organización → 42501; cajero sin `inventory.create` → 42501 `sin_permiso`; administrador de otra
+  organización con el uuid ajeno → P0002; `anon` → sin EXECUTE; INSERT directo en
+  `purchase_receipts` → 42501; `fn_fc_int_desde_oc` desde `authenticated` → 42501.
+- Factura directa: guardar con seriales no crea ninguno; confirmar recibiendo sin lote → error y
+  la factura sigue en borrador; con serial repetido → rechazo; lotes de una línea inexistente →
+  `lotes_sin_linea`; con lotes por producto → lotes con existencia, seriales `in_stock` al recibir,
+  5 movimientos; recepcionar otra vez → `ya_recepcionado`; la firma de siempre sin lotes sigue igual.
+- `get_advisors` (security): nada nuevo en `anon_security_definer_function_executable`,
+  `function_search_path_mutable` ni `rls_*`; las públicas (`fn_oc_recepcionar` y las sobrecargas de
+  la factura) aparecen, como todas, en `authenticated_security_definer_function_executable`
+  (validan organización y permiso dentro); internas y ayudantes, no.
+- jest en una copia limpia de HEAD (`git archive`): `src/__tests__/inventario` (incluye
+  `recepcionOC`, 33 pruebas: ruta 401/403/404/400, contrato, lógica, traducciones, migraciones),
+  `guardrails.test.ts`, `finanzas/compras` y `kit/inventario`: 30 suites, 511 pruebas en verde
+  (copia de `2c9c0d89`). `test:tz` con `TZ=UTC` y `TZ=America/Bogota`: 21 suites, 692 pruebas en
+  verde cada una. ESLint limpio en los archivos tocados (incluidos los `any` previos del listado de
+  OC). `tsc` (8 GB) en el árbol de trabajo: 0 errores en los archivos de B8; en la copia limpia no
+  terminó antes de parar (máquina cargada): repetirlo al retomar.
+
+**Pendiente o distinto**:
+- La factura de una OC recibida sale con el costo de la línea de la OC y `tax_rate` 0 (regla
+  anterior de `fn_factura_compra_desde_oc`, sin cambios); el costo real del proveedor distinto al de
+  la orden se corrige editando la OC antes de recibir.
+- El formulario de factura identifica los lotes por producto: si el mismo producto con lotes está
+  en dos líneas, la base pide el lote (`lote_requerido`); recibir desde el detalle (por línea).
+- RLS de `purchase_order_items` sigue `FOR ALL` (el navegador aún podría escribir
+  `received_quantity`): B10 la cierra junto con las demás.
+- P8 fase 2 (retirar `serial_numbers_serial_key`): B10, ya validado por organización aquí.
+- Imprimir etiquetas de lote al recibir (Figma) y la pantalla completa de recepción
+  (`583:67712`, variantes y confirmar) quedan para quien rehaga la OC.
+- Revisión visual en el navegador pendiente (no se arrancó el servidor de desarrollo del dueño).
+
+**Estado al parar (2026-09-29)**: todo lo de B8 está en HEAD (`33382c6a`, `e109b120`, `341b54ff`);
+las 3 migraciones aplicadas tienen su `.sql` y su rollback; sin archivos de B8 por commitear.
+Falta: `tsc` en copia limpia de HEAD y la revisión visual en el navegador.
+
+---
+
+## Anexo B7 — Productos: catálogo, detalle, formulario, importación y códigos (2026-09-29)
+
+Commits: `8f3f0234` P11 vigencias · `200812b5` acciones masivas por RPC · `5eebf51d` lotes desde el
+formulario · `906e2f7b` catálogo (Tarjetas, `?etiqueta=`/`?proveedor=`, código muerto) · `aa8bdf3b`
+detalle sobre el kit · `c0a51e59` «Crear ingrediente» con el alta rápida · `dc783fec` recuento de la
+importación · `477c71c0` pestaña Producción montada y «Crear ingrediente» repuesto (el commit `6cc775f6` de B5 dejó fuera del árbol lo de `c0a51e59`; B8 `341b54ff` y B6a `8ed4b997` repusieron otras piezas de B7 que sus commits habían pisado; se comprobó archivo por archivo que todo B7 está en HEAD). Solo archivos de B7 (§5.8) y los namespaces `productos`, `productoForm` y
+`productosImportar` en es/en/fr/pt (más `productoService.ts` por el contrato del formulario, la línea de
+`bulkService` en el guardarraíl 33 y el mock muerto de `facebookFeedService.test.ts`).
+
+### B7.1 Migraciones (`supabase/migrations/` + `supabase/rollbacks/`)
+
+| Archivo | Qué hace |
+|---|---|
+| `20260929160000_inv_b7_1_vigencias_duplicadas` | **P11 (datos)**. Por producto queda abierta la fila ya iniciada de `effective_from` más reciente (desempate: id mayor) y cada fila abierta anterior se cierra en el `effective_from` de la siguiente. Rastro fila por fila en `private.inv_b7_vigencias_cerradas` (sin acceso para `anon`/`authenticated`); el rollback reabre solo lo que sigue con la fecha que puso la migración. Comprobación dentro de la migración: 0 productos con dos vigencias abiertas iniciadas |
+| `20260929160100_inv_b7_2_acciones_masivas` | `fn_productos_masivo_alcance` (una expansión padre ↔ variantes para toda la selección), `fn_productos_precio_masivo` (venta, comparación y costo: ajustar fijo/valor/porcentaje, redondear múltiplo/dígitos, copiar a comparación; cada producto por `fn_producto_int_fijar_precio/costo`; **no toca `avg_cost`**), `fn_productos_estado_masivo` (activar, desactivar, descontinuar, **eliminar**; arrastra las variantes y nunca revive una eliminada) y `fn_productos_categoria_masiva` (categoría de la organización, con variantes). Permisos como el detalle: editar = `inventory.edit`/`product_management`/`inventory_management`; eliminar = `inventory.delete`/… (antes el borrado masivo solo pedía pertenencia) |
+| `20260929160200_inv_b7_3_lotes_desde_el_producto` | `fn_producto_guardar` acepta `producto.track_lots` en editar (parche sobre la definición viva con ancla única y marcador: la función la tocan recetas, membresías y venta por peso); disparadores para que las variantes hereden `track_lots` del padre; `fn_producto_int_stock_inicial` con lotes: la entrada inicial va al lote `lot_code` (existente o creado con `fn_lote_guardar` de B1, vencimiento opcional, `L-AAAAMMDD` si viene vacío) y el movimiento por `fn_inv_int_mover` con origen `initial` |
+| `20260929160300_inv_b7_4_lotes_al_crear` | Complemento: crear y duplicar hacen un INSERT aparte, así que `track_lots` también se fija tras el INSERT y antes del stock inicial (se vio en la base: el producto nacía sin lotes) |
+
+Todas DEFINER con `search_path` fijo, permiso resuelto en el servidor (`fn_productos_exigir_permiso` →
+`fn_assert_acceso_org`; `fn_inventario_exigir_permiso` en el stock inicial con lote) y `REVOKE … FROM
+public, anon`; las internas sin EXECUTE para `authenticated`. `get_advisors` (security): ningún aviso
+nuevo de `anon_security_definer_function_executable`, `function_search_path_mutable` ni `rls_*`; las 4
+RPC públicas aparecen, como todas, en `authenticated_security_definer_function_executable`.
+
+### B7.2 P11 — vigencias cerradas y qué precio lee cada canal
+
+**Cerradas** (antes → después: 16.359 → 0 productos con más de un precio abierto; 59 → 0 con más de
+un costo abierto; migración en 3,7 s):
+
+| Tabla | Org | Productos | Filas cerradas |
+|---|---|---|---|
+| `product_prices` | 137 | 15.953 | 33.427 |
+| `product_prices` | 138 | 208 | 208 |
+| `product_prices` | 199 | 186 | 275 |
+| `product_prices` | 142 | 8 | 9 |
+| `product_prices` | 144 | 2 | 2 |
+| `product_prices` | 128 | 2 | 2 |
+| `product_costs` | 199 | 58 | 89 |
+| `product_costs` | 144 | 1 | 1 |
+
+Total: 33.923 filas de precio y 90 de costo. No había filas abiertas a futuro ni sin
+`effective_from`, ni empates de `effective_from` entre filas abiertas.
+
+**Qué fila lee cada canal** (verificado antes de aplicar):
+
+| Canal | Lector | Regla | ¿Cambia lo que ve el cliente? |
+|---|---|---|---|
+| POS (servidor, cobro) | `fn_pos_precio_base_vigente` / `pos_checkout_v1` | vigente ahora, `effective_from desc, id desc` | No: es la fila que queda abierta. Probado con 3.000 productos: mismo precio antes y después |
+| POS (navegador, carrito, catálogo local del escritorio) | `lib/pos/precioVigente.ts` | la misma, desempate por orden de llegada | No (no hay empates) |
+| Factura de venta y de compra | `lib/services/documentos/vigencia.ts` | la misma | No |
+| Catálogo de inventario | `get_catalogo_productos` / `catalogo_productos_lote` | vigente, `effective_from desc` | No |
+| Tienda web, listados y ficha | `goadmin-websites` `normalizeProductPrices` / `getCurrentPrice` | la abierta de **id mayor**, sin mirar `effective_from` | No: coincidía con la vigente en los 16.359 productos (0 diferencias) |
+| Tienda web, componentes que leen `product_prices[0]` sin normalizar (carrito, categoría, menú) | orden del embebido de PostgREST (en la práctica la fila más vieja) | **Sí, se corrige**: con varias abiertas podían mostrar un precio viejo (la fila más antigua difería de la vigente en todos los productos duplicados); ahora solo queda la vigente |
+| GO Assistant, herramienta `buscar_productos` | RPC `buscar_productos` | el **menor** precio entre las abiertas | **Sí, se corrige**: 860 productos (137: 490, 138: 208, 199: 153, 142: 8, 144: 1) mostraban un precio menor al vigente |
+
+Avisos para la tienda (repositorio `goadmin-websites`, fuera de B7): `getCurrentPrice` ignora
+`effective_from` (un precio programado se vería antes de tiempo) y `api/orders` toma el precio que
+manda el navegador (`item.price`) en lugar de recalcularlo en el servidor.
+
+### B7.3 Pantallas
+
+- **Catálogo** (`/app/inventario/productos`): vista **Tarjetas** de Figma (`120:13625`, `ViewToggle`
+  Tabla | Tarjetas en escritorio, orden en la barra, tarjeta con casilla, menú ⋮, estado sobre la
+  imagen, código · categoría, precio con la comparación tachada, existencias por sucursal y
+  variantes; en móvil sigue la lista, Figma no dibuja cuadrícula móvil; la preferencia queda en el
+  dispositivo). Lee `?etiqueta=` y `?proveedor=` dentro de la organización (intersección si vienen
+  los dos) y los muestra como chips; el tiempo real respeta el filtro.
+- **Acciones masivas**: precio, costo, comparación, redondeo, estado, categoría y eliminar por las
+  RPC de B7.1 (`bulkService.ts` ya no escribe tablas: sale del guardarraíl 33).
+- **Formulario**: «Maneja lotes y vencimientos» en Trazabilidad (deshabilitado sin control de
+  existencias); en crear/duplicar, **Lote** y **Vence** por sucursal en el stock inicial. «Cómo se
+  vende» (peso), recetas y membresías se conservaron.
+- **Crear ingrediente** (receta del formulario): `kit/documento/FormularioRapidoProducto` (variante
+  compra) en lugar del formulario completo en diálogo. El `QuickCreateDialog` de productos no tenía
+  usos y se borró: hay un solo alta rápida.
+- **Detalle**: los bloques del Resumen usan el `FormSection` del kit (Figma usa instancias de
+  `FormSection`); las tarjetas de Precios y costos, la `Tarjeta` del kit. «Transferir» lleva
+  `producto_id` y, si hay sucursal en la cabecera, `origen`. Monta la pestaña **Producción** de B5 con su contrato
+  (`<PestanaProduccion producto permisos />`), visible si `debeMostrarPestanaProduccion` lo dice
+  (compuesto o preparación; el detalle ahora carga `production_type` y `track_lots`) o si se llega por
+  enlace directo (`?tab=produccion`).
+- **Importar**: resultado según D5 — Importados · Omitidos (gris) · Fallidos · Sin intentar, con la
+  línea «N seleccionados · … » que prueba la suma. Sucursal destino, costo e impuesto ya eran
+  explícitos en el asistente.
+- **Código retirado**: `NuevoProductoForm.tsx`, `facebookCatalogExport.ts` (y su mock en
+  `facebookFeedService.test.ts`), `nuevo/QuickCreateDialog.tsx`, carpeta vacía `scraping/`.
+
+### B7.4 Verificación
+
+- En la base (transacciones deshechas, `DO … RAISE`): P11 completo con el precio del POS igual
+  antes y después; precio +10 % y redondeo a 100 (16.500 → 18.150 → 18.200), costo +50 sin tocar
+  `avg_cost`, copia a comparación, producto de otra organización ignorado (`no_encontrados`); estado
+  masivo sobre un padre con 7 variantes (arrastra 7, la eliminada sigue eliminada); categoría de otra
+  organización → 22023; otra organización → 42501; miembro sin permiso de edición (org 142) → 42501
+  al eliminar; `anon` → 42501. Producto nuevo con lotes: `track_lots` guardado, lote `LT-001` con
+  vencimiento, movimiento `initial` al lote con su costo, sin código → `L-20260929`; editar sin la
+  clave conserva, con `false` apaga; una variante nueva hereda y se apaga con el padre.
+- Pruebas nuevas: `bulk/__tests__/accionesMasivasRpc.test.ts`, `__tests__/formularioLotes.test.ts`,
+  `__tests__/catalogoEtiquetaProveedorCuadricula.test.tsx`, `__tests__/altaRapidaIngrediente.test.ts`,
+  `__tests__/recuentoImportacion.test.ts`.
+- Copia limpia de HEAD (`git archive` de `2c9c0d89` con `node_modules` enlazado): jest de
+  `components/inventario/productos` y `facebookFeedService` 20 suites / 245 pruebas en verde;
+  `src/__tests__/timezone` + `guardrails.test.ts` con `TZ=UTC` y con `TZ=America/Bogota` 21 suites /
+  692 pruebas en verde cada una; `tsc` (8 GB) en el árbol de trabajo sin errores en archivos de B7 (los que quedan son de trabajos en curso de B5/B6a/compras); en la copia limpia no terminó antes de parar (máquina cargada con los `tsc` de otros bloques): repetirlo al retomar. eslint limpio en todos los archivos de B7.
+
+### B7.5 Pendiente (fuera de B7 o con dueño)
+
+- **Resumen con `FilaDato`**: la auditoría pedía `FilaDato`/`ListaDatos`, pero Figma dibuja el Resumen
+  con los datos apilados (etiqueta sobre valor, dos columnas) dentro de `FormSection`; `FilaDato` es
+  etiqueta a la izquierda y valor a la derecha. Se dejó igual a Figma; si se quiere `FilaDato`, primero
+  en Figma.
+- **Tarjeta de producto del kit**: la cuadrícula usa una tarjeta propia del catálogo (el `ProductCard`
+  del kit es la del POS, con «Elegir»); si se quiere una variante `catalogo` en el kit, la añade quien
+  mantiene el kit.
+- **D4 del importador web** (casilla «Crear proveedor y categorías que no existan» y «Qué se creó»):
+  necesita cambiar `fn_importar_productos_lote`; no se tocó.
+- **B10**: `product_prices`/`product_costs` siguen escribibles desde el navegador por RLS; el único
+  escritor TS que quedaba era `bulkService` (ya por RPC) y `ai/assistant/undoService.ts` (B9). Con
+  eso, cerrar la RLS a solo lectura evitaría que vuelvan las vigencias duplicadas.
+- Revisión visual en el navegador pendiente (no se arrancó el servidor de desarrollo del dueño).
+
+**Estado al parar (orden del dueño)**: todo B7 está commiteado; no quedan archivos de B7 sin commit en el árbol (`detalle/precios/CampoVigencia.tsx` sigue con cambios de otra sesión, no tocados). Falta: lo de B7.5 y repetir `tsc` en copia limpia de HEAD.
+
+### B6a.6 Estado al corte (2026-09-29, relevo a otro chat)
+
+- Hecho y en HEAD: `aedeb27d`, `8ed4b997`, `4810bff7`, `2c9c0d89`, `a8cc773d` (este anexo). Las 10
+  migraciones `20260929160000…161200_inv_b6a_*` están aplicadas y con su `.sql` y rollback en el repo
+  (los pasos `…_ajuste` de 2b, 6 y 9 están dentro de su archivo).
+- Archivos de B6a sin commit en el árbol: ninguno.
+- Verificado en una copia limpia de HEAD (`2c9c0d89`): jest de B6a (variantes, unidades, kit de
+  receta), `guardrails.test.ts`, `guardrail-rutas-sin-cliente-navegador` y `test:tz-all` en verde;
+  `traduccionesModulos` solo falla por `kit.estados.sin_fe` (previo, de finanzas). eslint limpio en
+  los archivos de B6a.
+- Falta: el `tsc` completo sobre la copia limpia no terminó antes del corte (la máquina corría tres
+  a la vez); el `tsc` de los archivos de B6a y sus dependencias pasó sin errores en el árbol. Lo
+  demás pendiente está en B6a.4 (contratos para POS, B5, B7, B8, B10) y B6a.5.
+
+---
+
+## Anexo B9 — Consumidores externos: PMS y pedidos web (2026-09-29, parcial)
+
+Migraciones (MCP, con reversión): `20260929216000_inv_b9_folio_item_eliminar`,
+`20260929217000_inv_b9_pedido_web_confirmar_stock`, `20260929218000_inv_b9_entrada_al_costo`.
+
+- **PMS:** el consumo de habitación ya no descuenta dos veces (`spaceConsumptionService` solo crea el
+  cargo; `addFolioItem` descuenta). Borrar un cargo del folio va por `fn_folio_item_eliminar`: borra
+  y devuelve el stock en una transacción, con receta expandida, origen `folio_item_reversal`, al costo
+  vigente y sin recalcular el promedio (antes entraba como compra al precio de venta).
+- **Pedidos web:** una sola RPC `fn_pedido_web_confirmar_stock(pedido, venta, usuario)` para las dos
+  confirmaciones (servidor y botón): descuenta con receta (idempotente por venta), libera exactamente
+  lo reservado (`fn_inv_int_liberar`) y marca `stock_released_at`, y vende los seriales con su evento
+  (antes el evento usaba `serial_id`, columna inexistente, y nunca se guardó). Borrado
+  `webOrdersService.convertToSale` (sin uso). En producción había pedidos confirmados con la reserva
+  sin liberar; se liberan cuando la función vuelva a correr sobre ellos (no se hizo reparación masiva).
+- **Reembolso web:** `fn_stock_entrada_al_costo` (origen `web_refund`, costo vigente en vez de 0),
+  solo service role.
+- Guardarraíl 33: salen de la deuda el reembolso y la confirmación de servidor.
+
+Pendiente de B9 (zonas de otras sesiones, sin tocar): GO Assistant (`assistant_*`, `undoService`,
+`aiActionsService`) y POS (selector de lote, escáner real, `pos_checkout_v1` con `lot_id` y errores de
+stock como aviso). B10 depende de que B9 cierre.

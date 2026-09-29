@@ -1,11 +1,10 @@
 'use client';
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { RefreshCw, GitMerge, Plus, History, UtensilsCrossed } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, RefreshCw, GitMerge, Plus, History } from 'lucide-react';
+import { PageHeader, RowActionsMenu, StatusBadge, type AccionFila } from '@/components/kit';
 
 interface MesaDetailHeaderProps {
   mesaNombre: string;
@@ -17,6 +16,11 @@ interface MesaDetailHeaderProps {
   getEstadoBadge: () => React.ReactNode;
 }
 
+/**
+ * Cabecera del detalle de mesa: `PageHeader` del kit en variante `detail`
+ * (migas a Mesas, badge de estado, ⋯ con Historial y Combinar, primaria
+ * «Agregar producto»). En móvil la barra del shell lleva «←» y el mismo menú.
+ */
 export function MesaDetailHeader({
   mesaNombre,
   session,
@@ -26,78 +30,57 @@ export function MesaDetailHeader({
   onVerHistorial,
   getEstadoBadge,
 }: MesaDetailHeaderProps) {
-  const router = useRouter();
+  const t = useTranslations('posMesas');
+
+  const accionesMas: AccionFila[] = [
+    { id: 'historial', etiqueta: t('acciones.historial'), icono: History, onSelect: onVerHistorial },
+    { id: 'combinar', etiqueta: t('detalle.combinarMesa'), icono: GitMerge, onSelect: onCombinar },
+  ];
+
+  const badge = session ? getEstadoBadge() : <StatusBadge estado="free" etiqueta={t('detalle.disponible')} tono="exito" tamano="md" />;
 
   return (
-    <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10 shadow-sm">
-      <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-2 sm:gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push('/app/pos/mesas')}
-              className="hover:bg-gray-100 dark:hover:bg-gray-700 flex-shrink-0"
-            >
-              <ArrowLeft className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Volver</span>
-            </Button>
-            <Separator orientation="vertical" className="h-8 hidden sm:block" />
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-gray-100 break-words whitespace-normal">
-                  {mesaNombre}
-                </h1>
-                {session ? getEstadoBadge() : <Badge variant="secondary">Disponible</Badge>}
-              </div>
-              {session?.restaurant_tables?.zone && (
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {session.restaurant_tables.zone}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onRefresh}
-              className="hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onVerHistorial}
-              className="hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              <History className="h-4 w-4 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">Historial</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onCombinar}
-              className="hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              <GitMerge className="h-4 w-4 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">Combinar Mesa</span>
-              <span className="sm:hidden">Combinar</span>
-            </Button>
-            <Button
-              size="sm"
-              onClick={onAddProduct}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              <Plus className="h-4 w-4 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">Agregar Producto</span>
-              <span className="sm:hidden">Agregar</span>
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <PageHeader
+      variante="detail"
+      titulo={mesaNombre}
+      subtitulo={session?.restaurant_tables?.zone || undefined}
+      icono={UtensilsCrossed}
+      migas={[{ etiqueta: t('titulo'), href: '/app/pos/mesas' }, { etiqueta: mesaNombre }]}
+      volverA="/app/pos/mesas"
+      badge={badge}
+      acciones={
+        <>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-10 w-10"
+            onClick={onRefresh}
+            aria-label={t('acciones.actualizar')}
+            title={t('acciones.actualizar')}
+          >
+            <RefreshCw aria-hidden="true" className="size-4" strokeWidth={1.5} />
+          </Button>
+          <RowActionsMenu orientacion="horizontal" tamano="md" acciones={accionesMas} />
+          <Button className="h-10 gap-2" onClick={onAddProduct}>
+            <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+            {t('detalle.agregarProducto')}
+          </Button>
+        </>
+      }
+      movil={{
+        accion: (
+          <RowActionsMenu
+            orientacion="horizontal"
+            tamano="md"
+            titulo={mesaNombre}
+            acciones={[
+              { id: 'agregar', etiqueta: t('detalle.agregarProducto'), icono: Plus, onSelect: onAddProduct },
+              { id: 'actualizar', etiqueta: t('acciones.actualizar'), icono: RefreshCw, onSelect: onRefresh },
+              ...accionesMas.map((a, i) => (i === 0 ? { ...a, separadorAntes: true } : a)),
+            ]}
+          />
+        ),
+      }}
+    />
   );
 }

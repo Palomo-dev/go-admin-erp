@@ -18,6 +18,7 @@ import type { ServerOrgContext } from '@/lib/utils/orgContext';
 import { resolverPermisosVentas, type PermisosVentas } from './permisosVentas';
 import { estadoVenta, origenVenta, type EstadoVenta, type OrigenVenta } from './estadoVenta';
 import { facturaDeVenta, notasCreditoDeVenta, numeroVenta, pagosDeVenta, totalPagado, type NumeroVenta } from './documentosVenta';
+import { decimalesCantidad, esMedido, unidadVisible } from '@/lib/pos/peso/modoVenta';
 
 type Ctx = Pick<ServerOrgContext, 'organizationId' | 'supabase' | 'userId' | 'roleId' | 'isSuperAdmin'>;
 
@@ -40,6 +41,9 @@ export interface LineaDetalle {
   nombre: string | null;
   sku: string | null;
   cantidad: number;
+  /** Productos por peso o medida: símbolo de la unidad («kg») y decimales; `null` por unidad. */
+  unidad: string | null;
+  decimales: number | null;
   precio: number;
   descuento: number;
   impuesto: number;
@@ -164,7 +168,7 @@ export async function detalleVenta(ctx: Ctx, id: string): Promise<DetalleVenta> 
   const [itemsRes, docsRes, devRes, mesaRes, pedidoRes, comRes, clienteRes, ramaRes, permisos] = await Promise.all([
     ctx.supabase
       .from('sale_items')
-      .select('id, product_id, quantity, unit_price, total, tax_amount, tax_rate, discount_amount, notes, products(name, sku)')
+      .select('id, product_id, quantity, unit_price, total, tax_amount, tax_rate, discount_amount, notes, products(name, sku, unit_code, sale_mode, qty_decimals)')
       .eq('sale_id', id),
     ctx.supabase
       .from('invoice_sales')
@@ -276,7 +280,9 @@ export async function detalleVenta(ctx: Ctx, id: string): Promise<DetalleVenta> 
     cajero: { id: s.user_id, nombre: gente.get(s.user_id) ?? null },
     vendedor: s.salesperson_id ? { id: s.salesperson_id as string, nombre: gente.get(s.salesperson_id as string) ?? null } : null,
     lineas: ((itemsRes.data ?? []) as Array<Record<string, unknown>>).map((l) => {
-      const prod = (Array.isArray(l.products) ? l.products[0] : l.products) as { name?: string; sku?: string } | null;
+      const prod = (Array.isArray(l.products) ? l.products[0] : l.products) as
+        | { name?: string; sku?: string; unit_code?: string | null; sale_mode?: string | null; qty_decimals?: number | null }
+        | null;
       const notas = l.notes as Record<string, unknown> | null;
       return {
         id: l.id as string,
@@ -284,6 +290,8 @@ export async function detalleVenta(ctx: Ctx, id: string): Promise<DetalleVenta> 
         nombre: prod?.name ?? (typeof notas?.product_name === 'string' ? notas.product_name : null),
         sku: prod?.sku ?? null,
         cantidad: n(l.quantity),
+        unidad: unidadVisible(prod),
+        decimales: esMedido(prod) ? decimalesCantidad(prod) : null,
         precio: n(l.unit_price),
         descuento: n(l.discount_amount),
         impuesto: n(l.tax_amount),

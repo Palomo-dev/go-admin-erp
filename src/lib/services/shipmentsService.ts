@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { buscarClientes } from '@/lib/services/customers/busquedaClientesService';
 import { resolveTimezone } from '@/lib/services/timezoneResolver';
 import { todayInTz } from '@/lib/utils/dateDisplay';
 import { getDayRange } from '@/lib/utils/dateRanges';
@@ -613,21 +614,17 @@ class ShipmentsService {
   }
 
   async searchCustomers(organizationId: number, query: string) {
-    let q = supabase
-      .from('customers')
-      .select('id, full_name, email, phone, identification_number, address, city')
-      .eq('organization_id', organizationId)
-      .order('full_name', { ascending: true })
-      .limit(20);
-
-    if (query && query.trim()) {
-      q = q.or(`full_name.ilike.%${query}%,email.ilike.%${query}%,identification_number.ilike.%${query}%,phone.ilike.%${query}%,company_name.ilike.%${query}%,trade_name.ilike.%${query}%`);
-    }
-
-    const { data, error } = await q;
-
-    if (error) throw error;
-    return data || [];
+    // Búsqueda única de clientes (RPC): sin tildes, todas las palabras, dígitos.
+    const { filas } = await buscarClientes(supabase, { organizationId, texto: query, limite: 20 });
+    return filas.map((c) => ({
+      id: c.id,
+      full_name: c.full_name ?? '',
+      email: c.email ?? undefined,
+      phone: c.phone ?? undefined,
+      identification_number: c.identification_number ?? undefined,
+      address: c.address ?? undefined,
+      city: c.city ?? undefined,
+    }));
   }
 
   async duplicateShipment(id: string, organizationId: number): Promise<ShipmentWithDetails> {

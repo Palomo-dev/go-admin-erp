@@ -19,7 +19,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,9 +38,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/use-toast";
-import { ArrowUpDown, MoreHorizontal, Search, Filter } from "lucide-react";
+import { ArrowUpDown, MoreHorizontal, Filter } from "lucide-react";
 import { getOrganizationId as getOrganizationIdFromContext } from "@/lib/hooks/useOrganization";
 import { CopyableId } from "@/components/common/CopyableId";
+import { SearchInput } from "@/components/kit/SearchInput";
 
 interface Stage {
   id: string;
@@ -332,15 +332,13 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
     <div className="space-y-4 p-3 sm:p-4">
       {/* Filtros y búsqueda */}
       <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4">
-        <div className="relative flex-grow">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-500 dark:text-gray-400" />
-          <Input
-            placeholder="Buscar oportunidades..."
-            className="pl-9 sm:pl-10 h-11 sm:h-12 text-sm sm:text-base bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
+        <SearchInput
+          value={searchQuery}
+          onChange={setSearchQuery}
+          onValueChange={setSearchQuery}
+          placeholder="Buscar oportunidades..."
+          className="flex-grow"
+        />
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { checkRateLimits, getClientIp } from '@/lib/security/rateLimit';
 import { getRateLimitStore } from '@/lib/security/rateLimitStore';
 import { resolveSelfOrigin } from '@/lib/security/requestOrigin';
+import { reenviarEnlaceInvitacion } from '@/lib/auth/invitaciones';
 
 /**
  * Reenvía un magic link a un usuario con invitación pendiente.
@@ -94,70 +95,10 @@ export async function POST(request: Request) {
 
     const safeOrigin = resolveSelfOrigin(request, origin, 'Reenvío');
 
-    const admin = getSupabaseAdmin();
-
-    // Buscar invitación pendiente para este email
-    // NOTA: la tabla invitations NO tiene organization_name, hay que traerlo
-    // via join con organizations. Si se incluye organization_name en el select
-    // directo, Postgres retorna 42703 (column does not exist) y el reenvío
-    // falla con 500 → el usuario nunca recibe el magic link.
-    // `status = 'pending'` NO implica vigente: una invitación caducada conserva
-    // ese estado. Sin filtrar por expires_at, pedir el reenvío revivía una
-    // invitación vencida con un magic link nuevo y válido.
-    // `expires_at IS NULL` se trata como "no vence" (hoy no hay ninguna así).
-    const { data: pendingInvite, error: inviteError } = await admin
-      .from('invitations')
-      .select('code, organization_id, role_id, organizations!inner(name)')
-      .eq('email', normalizedEmail)
-      .eq('status', 'pending')
-      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (inviteError) {
-      console.error('Error buscando invitación pendiente:', inviteError);
-      return genericOk();
-    }
-
-    if (!pendingInvite) {
-      console.log('Reenvío: no hay invitación pendiente vigente para', normalizedEmail);
-      return genericOk();
-    }
-
-    const inviteUrl = `${safeOrigin}/auth/invite?invite_code=${pendingInvite.code}`;
-    // PostgREST devuelve el embed to-one como objeto, pero se contempla el array
-    // por si el join se convierte en to-many. El fallback cubre ambas ramas.
-    const orgRel = pendingInvite.organizations as { name?: string } | { name?: string }[] | null;
-    const organizationName =
-      (Array.isArray(orgRel) ? orgRel[0]?.name : orgRel?.name) || 'la organización';
-
-    // Reenviar magic link (mismo flujo que invite/route.ts para usuarios existentes)
-    const { createClient } = await import('@supabase/supabase-js');
-    const anonClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
-
-    const { error: otpError } = await anonClient.auth.signInWithOtp({
-      email: normalizedEmail,
-      options: {
-        emailRedirectTo: inviteUrl,
-        data: {
-          invitation_code: pendingInvite.code,
-          organization_id: pendingInvite.organization_id,
-          organization_name: organizationName,
-        },
-      },
-    });
-
-    if (otpError) {
-      console.error('Error reenviando Magic Link:', otpError);
-      return genericOk();
-    }
-
-    console.log('📧 Magic Link reenviado a:', normalizedEmail, 'para invitación:', pendingInvite.code);
+    // Búsqueda (solo vigentes) y envío en el servicio compartido con
+    // /auth/verify: el enlace va al buzón, nunca a quien hace la petición.
+    const { enviado } = await reenviarEnlaceInvitacion(getSupabaseAdmin(), normalizedEmail, safeOrigin);
+    console.log('Reenvío de invitación:', enviado ? 'enviado' : 'sin invitación vigente o fallido');
     return genericOk();
   } catch (error: unknown) {
     console.error('Error en /api/auth/invite/resend:', error);

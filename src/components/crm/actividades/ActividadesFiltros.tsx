@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { Search, Calendar, X } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { useState } from 'react';
+import { Calendar, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -20,6 +19,7 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ActivityFilters, ActivityType, ACTIVITY_TYPE_CONFIG } from './types';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 interface ActividadesFiltrosProps {
   filters: ActivityFilters;
@@ -41,26 +41,13 @@ export function ActividadesFiltros({
 
   /**
    * La búsqueda es de servidor: sin retardo, cada tecla lanzaría una consulta
-   * de página más los siete conteos de las tarjetas.
+   * de página más los siete conteos de las tarjetas. El debounce (400 ms) lo
+   * pone `SearchInput`, que además sigue al padre si el filtro se limpia fuera.
    */
-  const [searchDraft, setSearchDraft] = useState(filters.search ?? '');
-  const filtersRef = useRef(filters);
-  filtersRef.current = filters;
-
-  // Si el filtro se limpia desde fuera (botón «Quitar filtros»), sigue al padre.
-  useEffect(() => {
-    setSearchDraft(filters.search ?? '');
-  }, [filters.search]);
-
-  useEffect(() => {
-    const current = filtersRef.current.search ?? '';
-    if (searchDraft === current) return;
-    const timer = setTimeout(() => {
-      onFiltersChange({ ...filtersRef.current, search: searchDraft || undefined });
-    }, 400);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchDraft]);
+  const handleSearchChange = (texto: string) => {
+    if ((texto || undefined) === filters.search) return;
+    onFiltersChange({ ...filters, search: texto || undefined });
+  };
 
   const handleTypeChange = (value: string) => {
     onFiltersChange({
@@ -109,18 +96,13 @@ export function ActividadesFiltros({
     <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
       <div className="flex flex-col lg:flex-row gap-4">
         {/* Búsqueda */}
-        <div className="flex-1">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Buscar en notas..."
-              aria-label="Buscar en notas"
-              value={searchDraft}
-              onChange={(e) => setSearchDraft(e.target.value)}
-              className="pl-10 bg-gray-50 dark:bg-gray-900 dark:text-gray-200 border-gray-200 dark:border-gray-700"
-            />
-          </div>
-        </div>
+        <SearchInput
+          value={filters.search ?? ''}
+          onChange={handleSearchChange}
+          placeholder="Buscar en notas..."
+          etiqueta="Buscar en notas"
+          className="flex-1"
+        />
 
         {/* Tipo de actividad */}
         <div className="w-full lg:w-48">

@@ -27,6 +27,12 @@ export interface ParametrosCatalogo {
   /** `null` = todo menos eliminados · `'todos'` = incluye eliminados · o un estado concreto. */
   estado: string | null;
   ordenarPor: string;
+  /**
+   * Solo estos productos (y los padres de las variantes que haya en la lista):
+   * el filtro por etiqueta o proveedor ya resuelto. `null`/ausente = sin filtro;
+   * lista vacía = ningún producto.
+   */
+  productIds?: number[] | null;
 }
 
 export interface RespuestaLote {
@@ -181,7 +187,7 @@ export async function pedirLote(
       p_category_id: p.categoria || null,
       p_status: p.estado,
       p_sort_by: p.ordenarPor || 'name',
-      p_product_ids: productIds ?? null,
+      p_product_ids: productIds ?? p.productIds ?? null,
     });
     if (!error) {
       const respuesta = (data ?? {}) as { items?: FilaCruda[]; total?: number | string };
@@ -242,4 +248,72 @@ export async function cargarCatalogo(
   await Promise.all(Array.from({ length: Math.min(LOTES_EN_PARALELO, offsets.length) }, trabajador));
   if (opciones.cancelado()) return null;
   return acumulado;
+}
+
+/** Filtro por etiqueta o proveedor resuelto a ids de producto, con los nombres para los chips. */
+export interface FiltroRelacion {
+  /** `null` = sin filtro. Con los dos filtros, la intersección. */
+  ids: number[] | null;
+  etiqueta?: string | null;
+  proveedor?: string | null;
+}
+
+/**
+ * `?etiqueta=<id>` y `?proveedor=<id>` del catálogo (enlaces de Etiquetas y
+ * Proveedores, B6b). La etiqueta y el proveedor se buscan dentro de la
+ * organización de la sesión: uno de otra organización no devuelve productos.
+ */
+export async function resolverFiltroRelacion(
+  organizationId: number,
+  etiquetaId: number | null,
+  proveedorId: number | null,
+): Promise<FiltroRelacion> {
+  if (!etiquetaId && !proveedorId) return { ids: null };
+  const conjuntos: number[][] = [];
+  const salida: FiltroRelacion = { ids: null };
+
+  if (etiquetaId) {
+    const { data, error } = await supabase
+      .from('product_tags')
+      .select('id, name, product_tag_relations(product_id)')
+      .eq('organization_id', organizationId)
+      .eq('id', etiquetaId)
+      .maybeSingle();
+    if (error) throw error;
+    const fila = data as { name?: string | null; product_tag_relations?: { product_id: number }[] | null } | null;
+    salida.etiqueta = fila?.name ?? null;
+    conjuntos.push((fila?.product_tag_relations ?? []).map((r) => Number(r.product_id)));
+  }
+
+  if (proveedorId) {
+    const { data: proveedor, error } = await supabase
+      .from('suppliers')
+      .select('id, name')
+      .eq('organization_id', organizationId)
+      .eq('id', proveedorId)
+      .maybeSingle();
+    if (error) throw error;
+    salida.proveedor = (proveedor as { name?: string | null } | null)?.name ?? null;
+    if (!proveedor) {
+      conjuntos.push([]);
+    } else {
+      const { data: rel, error: errRel } = await supabase.from('product_suppliers').select('product_id').eq('supplier_id', proveedorId);
+      if (errRel) throw errRel;
+      conjuntos.push(((rel ?? []) as { product_id: number }[]).map((r) => Number(r.product_id)));
+    }
+  }
+
+  salida.ids = interseccionIds(conjuntos);
+  return salida;
+}
+
+/** Intersección de listas de ids (sin repetir, ordenada). */
+export function interseccionIds(conjuntos: readonly (readonly number[])[]): number[] {
+  if (conjuntos.length === 0) return [];
+  let actual = new Set(conjuntos[0].filter((n) => Number.isInteger(n) && n > 0));
+  for (const otro of conjuntos.slice(1)) {
+    const b = new Set(otro);
+    actual = new Set([...actual].filter((n) => b.has(n)));
+  }
+  return [...actual].sort((a, b) => a - b);
 }

@@ -59,6 +59,13 @@
  * que NO se graba (ni acta ni `<Start><Recording>`) y el agente atiende igual.
  * Nunca grabar sin acta; no grabar sin consentimiento.
  *
+ * Contestadora (2026-09-30): la llamada se crea con AMD síncrono
+ * (`voiceAgent/amd.ts`), así que Twilio manda `AnsweredBy` en ESTA petición. Si
+ * contestó una máquina (o un fax) se cuelga sin aviso, sin grabar y sin abrir el
+ * ConversationRelay: el ws-server no arranca sesión, no hay conversación que
+ * cobrar y la reserva de minutos se devuelve. La fila queda `voicemail` con
+ * desenlace `buzon`, que no cuenta como contacto efectivo (Ley 2300).
+ *
  * Query params: agentId, callId, ct (token de consentimiento, 2ª pasada)
  */
 
@@ -72,6 +79,8 @@ import { escapeXml, buildCallbackUrl, CONSENT_LANGUAGE, CONSENT_VOICE, RECORDING
 import { isBridgeSigningConfigured, signConsentToken, verifyConsentToken } from '@/lib/services/crm/bridgeTokens';
 import { recordConsent, recordingEnabledForCall, voidConsentWithoutRecording } from '@/lib/services/crm/consentService';
 import { updateCall } from '@/lib/services/crm/callManagementService';
+import { cierrePorAmd } from '@/lib/services/crm/voiceAgent/amd';
+import { devolverReservaSinConversacion } from '@/lib/services/crm/voiceAgent/reservaCreditos';
 
 export const runtime = 'nodejs';
 
@@ -160,12 +169,14 @@ export async function POST(request: Request) {
     provider_call_sid: string | null;
     call_id: string | null;
     customer_id: string | null;
+    credits_reserved: number | null;
+    credits_settled_at: string | null;
   };
   let row: VacRow | null = null;
   if (callId) {
     const { data: existing, error: readError } = await supabase
       .from('voice_agent_calls')
-      .select('id, started_at, provider_call_sid, call_id, customer_id')
+      .select('id, started_at, provider_call_sid, call_id, customer_id, credits_reserved, credits_settled_at')
       .eq('id', callId)
       .eq('organization_id', agentOrgId)
       .eq('voice_agent_id', agentId)
@@ -178,6 +189,52 @@ export async function POST(request: Request) {
   }
   /** Fila `calls` donde colgar el acta. Sin ella no hay acta posible (V-2). */
   const consentCallId = row?.call_id ?? null;
+
+  // AMD: contestó una máquina → colgar sin conversación (ver cabecera).
+  const cierreAmd = cierrePorAmd(params.AnsweredBy);
+  if (cierreAmd) {
+    try {
+      if (callId && row && (!row.provider_call_sid || !callSid || row.provider_call_sid === callSid)) {
+        const ahora = new Date().toISOString();
+        const patch: Record<string, unknown> = {
+          status: cierreAmd.status,
+          outcome: cierreAmd.outcome,
+          completed_at: ahora,
+          locked_by: null,
+          updated_at: ahora,
+        };
+        if (callSid && !row.provider_call_sid) patch.provider_call_sid = callSid;
+        const devolucion = await devolverReservaSinConversacion(supabase, {
+          organization_id: agentOrgId,
+          credits_reserved: row.credits_reserved,
+          credits_settled_at: row.credits_settled_at,
+        });
+        if (devolucion) Object.assign(patch, devolucion);
+        const { error: amdError } = await supabase
+          .from('voice_agent_calls')
+          .update(patch)
+          .eq('id', callId)
+          .eq('organization_id', agentOrgId)
+          .eq('voice_agent_id', agentId);
+        if (amdError) throw amdError;
+        if (consentCallId) {
+          await updateCall(
+            consentCallId,
+            agentOrgId,
+            { status: 'voicemail', answered_by: cierreAmd.outcome === 'fax' ? 'fax' : 'machine', ended_at: ahora },
+            supabase
+          );
+        }
+      }
+    } catch (err) {
+      // Se cuelga igual: registrar mal no puede dejar al agente hablándole a un buzón.
+      console.error('[AI Agent TwiML] no se pudo registrar el buzón:', err instanceof Error ? err.message : err, { org: agentOrgId });
+    }
+    return new NextResponse('<?xml version="1.0" encoding="UTF-8"?>\n<Response>\n  <Hangup/>\n</Response>', {
+      status: 200,
+      headers: XML_HEADERS,
+    });
+  }
 
   // Sin secreto de firma no hay acta posible → no se graba (ver cabecera).
   // Sin `CallSid` el token no se puede ligar a nada (`verifyConsentToken` daría

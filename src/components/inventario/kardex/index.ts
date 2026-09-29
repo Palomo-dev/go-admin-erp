@@ -1,4 +1,2 @@
-export { KardexHeader } from './KardexHeader';
-export { KardexStats } from './KardexStats';
-export { KardexFilters } from './KardexFilters';
-export { KardexTable } from './KardexTable';
+export { KardexPage } from './KardexPage';
+export { DialogoDescuadres } from './DialogoDescuadres';

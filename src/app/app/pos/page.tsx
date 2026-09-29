@@ -6,6 +6,7 @@ import { Settings, ArrowLeft, MoreHorizontal } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/kit/EmptyState';
 import { useAtajos } from '@/components/kit/useAtajos';
+import { KbdButton } from '@/components/kit/KbdButton';
 import { ProductSearch } from '@/components/pos/ProductSearch';
 import { CheckoutDialog } from '@/components/pos/CheckoutDialog';
 import { PanelCarrito } from '@/components/pos/venta/PanelCarrito';
@@ -57,6 +58,12 @@ import {
   inicializarCarritos,
 } from '@/lib/pos/venta/carritos';
 import { enviarACocina } from '@/lib/pos/venta/enviarCocina';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { DialogoClienteMembresia } from '@/components/pos/venta/DialogoClienteMembresia';
+import { usePesarPos } from '@/components/pos/venta/peso/usePesarPos';
+import type { PesajeEtiqueta } from '@/lib/pos/etiquetaPeso';
+import { esMedido } from '@/lib/pos/peso/modoVenta';
+import { claveEnlacePos, debePedirCliente, leerEnlacePos, lineaParaQuitar, type EnlacePos } from '@/lib/pos/venta/membresias';
 
 /**
  * Clave de localStorage con el ancho elegido para el panel del carrito. «-v2»
@@ -90,6 +97,14 @@ export default function POSPage() {
   const [requiereCaja, setRequiereCaja] = useState(true);
   // F2: lista de clientes del carrito activo (CustomerPicker del kit).
   const [clienteAbierto, setClienteAbierto] = useState(false);
+  // Membresías (docs/design/MEMBRESIAS-FASE-1-2.md, frame D1): se agregó una
+  // membresía a un carrito sin cliente → diálogo que pide el titular.
+  const [pideCliente, setPideCliente] = useState<{ cartId: string; producto: string; productId: number; cantidad: number } | null>(null);
+  // Enlace `?cliente=&producto=` (renovar): se aplica una sola vez por enlace.
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const enlaceAplicadoRef = useRef<string | null>(null);
+  const tMembresias = useTranslations('membresias.pos');
   const [, setDailySummary] = useState<DailySummary | null>(null);
   const [cashSession, setCashSession] = useState<CashSession | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -118,7 +133,8 @@ export default function POSPage() {
   };
   // Shell móvil (Figma MobileHeader Mode=pos y MobileTabBar): la cabecera
   // muestra el estado de la caja y «⋯ Caja y dispositivo». La barra inferior
-  // de la app NO se muestra en el POS (Figma B.12 · D3c móvil): abajo mandan el
+  // de la app NO se muestra en el POS (Figma B.12 · D3c móvil; regla central en
+  // cabeceraMovil.tsx: el POS es un flujo a pantalla completa): abajo mandan el
   // total y «Cobrar» fijos, y para salir está la flecha «←» de la cabecera.
   useCabeceraMovil({
     modo: 'pos',
@@ -134,7 +150,6 @@ export default function POSPage() {
         <MoreHorizontal aria-hidden="true" className="size-5" strokeWidth={1.5} />
       </button>
     ),
-    ocultarBarra: true,
   });
   // Atajos de la pantalla (mapa canónico, src/lib/pos/venta/atajos.ts). Con el
   // cobro abierto manda el cobro. El resto de atajos los registra cada pieza.
@@ -155,10 +170,11 @@ export default function POSPage() {
           const estado = estadoBotonCobrar({ caja: !!cashSession, config: { requiereCaja }, carrito: activeCart });
           if (estado === 'listo') handleCheckout(activeCart);
           else if (estado === 'sin-caja') abrirDialogoCaja();
+          else if (estado === 'sin-cliente') setClienteAbierto(true);
         },
       },
     ],
-    { activo: !showCheckout, hayRafaga: hayRafagaDelLector },
+    { activo: !showCheckout && !pideCliente, hayRafaga: hayRafagaDelLector },
   );
   // Escritorio (≥ lg): productos y carrito en paneles redimensionables. El
   // ancho elegido se recuerda por navegador; doble clic en el divisor lo
@@ -408,9 +424,19 @@ export default function POSPage() {
       return;
     }
 
+    // Por peso o medida: se pesa (o se escribe la cantidad) antes de agregar; la cantidad rápida «3*» no aplica.
+    if (esMedido(product)) {
+      await pesar.abrirAgregar(product, modifiers);
+      return;
+    }
+
     try {
       const updatedCart = await POSService.addItemToCart(activeCartId, product, cantidad, modifiers);
       updateCartInState(updatedCart);
+      // D1 (P1): una membresía necesita el cliente titular; la línea ya quedó en el carrito.
+      if (debePedirCliente(product, updatedCart)) {
+        setPideCliente({ cartId: updatedCart.id, producto: product.name ?? String(product.id), productId: product.id, cantidad });
+      }
     } catch (error) {
       console.error('Error adding product to cart:', error);
       // Sin precio vigente el producto ya no entra gratis: se dice por qué.
@@ -433,6 +459,87 @@ export default function POSPage() {
       avisarError: () => toast.error(tPagina('errorAsignarCliente')),
     });
 
+  // D1 «Asignar y agregar»: el cliente elegido pasa a ser el del carrito (titular).
+  const asignarTitular = (cliente: Customer) =>
+    asignarClienteAlCarrito({
+      servicio: POSService,
+      activeCartId: pideCliente?.cartId ?? activeCartId,
+      customer: cliente,
+      actualizar: (updatedCart) => {
+        updateCartInState(updatedCart);
+        setSelectedCustomer(cliente);
+        setPideCliente(null);
+      },
+      avisarError: () => toast.error(tPagina('errorAsignarCliente')),
+    });
+
+  // D1 «Quitar la membresía»: deshace solo las unidades recién agregadas.
+  const quitarMembresia = async () => {
+    if (!pideCliente) return;
+    const carrito = carts.find((c) => c.id === pideCliente.cartId);
+    const quitar = carrito ? lineaParaQuitar(carrito.items, pideCliente.productId, pideCliente.cantidad) : null;
+    try {
+      if (quitar) {
+        const updatedCart = quitar.nuevaCantidad > 0
+          ? await POSService.updateCartItemQuantity(pideCliente.cartId, quitar.itemId, quitar.nuevaCantidad)
+          : await POSService.removeItemFromCart(pideCliente.cartId, quitar.itemId);
+        updateCartInState(updatedCart);
+      }
+      setPideCliente(null);
+    } catch (error) {
+      console.error('Error quitando la membresía del carrito:', error);
+      toast.error(tMembresias('dialogo.errorQuitar'));
+    }
+  };
+
+  // Enlace de renovación `/app/pos?cliente=<uuid>&producto=<id>` (o solo
+  // `?producto=`): el cliente se valida en la organización activa y el
+  // producto se agrega una vez; después se limpia la URL.
+  const aplicarEnlace = async (enlace: EnlacePos, cartId: string) => {
+    if (enlace.clienteId) {
+      let existe = false;
+      try {
+        existe = await POSService.existeClienteEnOrganizacion(enlace.clienteId);
+      } catch (error) {
+        console.error('Error validando el cliente del enlace:', error);
+      }
+      if (existe) {
+        try {
+          updateCartInState(await POSService.setCartCustomer(cartId, enlace.clienteId));
+        } catch (error) {
+          console.error('Error asignando el cliente del enlace:', error);
+          toast.error(tPagina('errorAsignarCliente'));
+        }
+      } else {
+        toast.error(tMembresias('enlace.clienteNoEncontrado'));
+      }
+    }
+    if (enlace.productoId !== null) {
+      const producto = await POSService.getProductById(enlace.productoId);
+      if (!producto || producto.status !== 'active') {
+        toast.error(tMembresias('enlace.productoNoEncontrado'));
+        return;
+      }
+      await handleProductSelect(producto);
+    }
+  };
+
+  useEffect(() => {
+    const enlace = leerEnlacePos(searchParams);
+    if (!enlace) {
+      enlaceAplicadoRef.current = null;
+      return;
+    }
+    if (!organization?.id || isLoading || !activeCartId) return;
+    const clave = claveEnlacePos(enlace);
+    if (enlaceAplicadoRef.current === clave) return;
+    enlaceAplicadoRef.current = clave;
+    router.replace('/app/pos', { scroll: false });
+    void aplicarEnlace(enlace, activeCartId);
+    // Solo el enlace y la disponibilidad del carrito disparan el efecto.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, organization?.id, isLoading, activeCartId]);
+
   const updateCartInState = (updatedCart: Cart) => {
     setCarts(prevCarts => 
       prevCarts.map(cart => 
@@ -444,6 +551,25 @@ export default function POSPage() {
 
   const handleCartUpdate = (updatedCart: Cart) => {
     updateCartInState(updatedCart);
+  };
+
+  // Productos por peso o medida: «Pesar» (agregar una pesada o cambiar el peso de una línea).
+  const pesar = usePesarPos({ cartId: activeCartId, actualizar: updateCartInState });
+
+  // Etiqueta de peso variable (PRODUCTOS-POR-PESO-BASCULA.md §2.7): la línea entra con su peso, sin «Pesar».
+  const agregarEtiquetaPeso = async (product: Product, cantidad: number, pesaje: PesajeEtiqueta) => {
+    if (!activeCartId) {
+      toast.error(tPagina('sinCarritoActivo'));
+      return;
+    }
+    try {
+      updateCartInState(await POSService.addItemToCart(activeCartId, product, cantidad, undefined, { pesaje }));
+    } catch (error) {
+      console.error('Error agregando la etiqueta de peso:', error);
+      toast.error(error instanceof ProductoSinPrecioError
+        ? tCobro(error.causa === 'sin_precio' ? 'productoSinPrecio' : 'precioNoConsultado', { producto: product.name ?? String(product.id) })
+        : tPagina('errorAgregar'));
+    }
   };
 
   const handleCheckout = (cart: Cart) => {
@@ -581,6 +707,7 @@ export default function POSPage() {
                 handleProductSelect(product, modifiers, cantidad);
               }}
               bloqueado={showCheckout}
+              onEtiquetaPeso={agregarEtiquetaPeso}
             />
           );
 
@@ -596,8 +723,9 @@ export default function POSPage() {
               onClienteSelect={handleCustomerSelect}
               clienteAbierto={clienteAbierto}
               onClienteAbiertoChange={setClienteAbierto}
-              atajosActivos={!showCheckout}
+              atajosActivos={!showCheckout && !pideCliente}
               carrito={{
+                onPedirCliente: () => setClienteAbierto(true),
                 onCartUpdate: handleCartUpdate,
                 onCheckout: handleCheckout,
                 onHold: handleHoldCart,
@@ -605,6 +733,7 @@ export default function POSPage() {
                 cashSessionActive: !!cashSession,
                 requiereCaja,
                 onAbrirCaja: abrirDialogoCaja,
+                onCambiarPeso: pesar.abrirCambiar,
               }}
             />
           );
@@ -647,14 +776,9 @@ export default function POSPage() {
                   <div className="flex shrink-0 items-center justify-between gap-2">
                     <SheetTitle className="text-base font-semibold text-fg">{tBarra('hojaCarrito')}</SheetTitle>
                     <SheetDescription className="sr-only">{tBarra('etiqueta')}</SheetDescription>
-                    <button
-                      type="button"
-                      onClick={() => setMobileView('products')}
-                      className="flex h-9 items-center gap-1 rounded-lg px-2 text-sm font-medium text-fg-secondary hover:bg-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                    >
-                      <ArrowLeft aria-hidden="true" className="size-4" />
+                    <KbdButton variante="fantasma" tamano="sm" icono={ArrowLeft} onClick={() => setMobileView('products')}>
                       {tBarra('seguirComprando')}
-                    </button>
+                    </KbdButton>
                   </div>
                   {cartPane}
                 </SheetContent>
@@ -681,8 +805,26 @@ export default function POSPage() {
             open={showCheckout}
             onOpenChange={setShowCheckout}
             onCheckoutComplete={handleCheckoutComplete}
+            onPedirCliente={() => {
+              setShowCheckout(false);
+              setClienteAbierto(true);
+            }}
           />
         )}
+
+        {/* Productos por peso o medida: «Pesar». */}
+        {pesar.dialogo}
+
+        {/* D1: la membresía recién agregada pide su cliente titular. */}
+        <DialogoClienteMembresia
+          abierto={!!pideCliente}
+          onAbiertoChange={(abierto) => {
+            if (!abierto) setPideCliente(null);
+          }}
+          producto={pideCliente?.producto ?? ''}
+          onAsignar={asignarTitular}
+          onQuitar={quitarMembresia}
+        />
       </div>
     </div>
   );

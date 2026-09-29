@@ -23,6 +23,7 @@ import { DetailSkeleton } from '@/components/common/PageSkeletons';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { DialogoMotivo, StatusBadge } from '@/components/kit';
 import { Separator } from '@/components/ui/separator';
 import { ItemsDetalle } from '@/components/finanzas/facturas-venta/id/ItemsDetalle';
 import { toast } from '@/components/ui/use-toast';
@@ -45,16 +46,6 @@ type NotaConMoneda = NotaCredito & { currency?: string | null };
 interface NotaCreditoDetalleProps {
   id: string;
 }
-
-const statusColors: Record<string, string> = {
-  draft: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-  pending: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-  sent: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  accepted: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-  rejected: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-  void: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-  paid: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-};
 
 /** Estados con etiqueta en `notasCredito.estados`. */
 const ESTADOS_CONOCIDOS = new Set(['draft', 'pending', 'sent', 'accepted', 'rejected', 'void', 'paid']);
@@ -80,6 +71,9 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
   const [isRetrying, setIsRetrying] = useState(false);
   const [isSendingDian, setIsSendingDian] = useState(false);
   const [isDescargando, setIsDescargando] = useState(false);
+  const [anularAbierto, setAnularAbierto] = useState(false);
+  const [anulando, setAnulando] = useState(false);
+  const [errorAnular, setErrorAnular] = useState<string | null>(null);
   const [organizationTaxes, setOrganizationTaxes] = useState<{ id: string; name: string; rate: number; is_default?: boolean }[]>([]);
   // Importes en la moneda de la nota (la de su factura); sin ella, la base de la organización.
   const { paraDocumento } = useMonedaOrganizacion();
@@ -132,21 +126,25 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
     loadData();
   }, [loadData]);
 
-  const handleAnular = async () => {
+  // Anular: motivo obligatorio en un diálogo (antes `confirm()` + `prompt()`,
+  // que dejaba mandar un motivo vacío y el servidor lo rechazaba).
+  const handleAnular = async (motivo: string) => {
     if (!nota) return;
-    if (!confirm(t('anular.confirmar'))) return;
-
-    const reason = prompt(t('anular.motivo'));
+    setAnulando(true);
+    setErrorAnular(null);
     try {
-      const result = await notasCreditoService.anularNotaCredito(nota.id, reason || undefined);
+      const result = await notasCreditoService.anularNotaCredito(nota.id, motivo);
       if (result.success) {
         toast({ title: t('comun.exito'), description: t('anular.hecho') });
+        setAnularAbierto(false);
         router.push('/app/finanzas/notas-credito');
       } else {
-        toast({ title: t('comun.error'), description: result.error, variant: 'destructive' });
+        setErrorAnular(result.error || t('anular.error'));
       }
     } catch {
-      toast({ title: t('comun.error'), description: t('anular.error'), variant: 'destructive' });
+      setErrorAnular(t('anular.error'));
+    } finally {
+      setAnulando(false);
     }
   };
 
@@ -249,9 +247,7 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                 {t('detalle.titulo', { numero: nota.number })}
               </h1>
-              <Badge className={statusColors[nota.status]}>
-                {ESTADOS_CONOCIDOS.has(nota.status) ? t(`estados.${nota.status}`) : nota.status}
-              </Badge>
+              <StatusBadge estado={nota.status} etiqueta={ESTADOS_CONOCIDOS.has(nota.status) ? t(`estados.${nota.status}`) : nota.status} tamano="md" />
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400">
               {t('detalle.emitidaEl', { fecha: formatDate(nota.issue_date) })}
@@ -300,7 +296,13 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
             </Button>
           )}
           {nota.status !== 'void' && nota.status !== 'accepted' && (
-            <Button variant="destructive" onClick={handleAnular}>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setErrorAnular(null);
+                setAnularAbierto(true);
+              }}
+            >
               <XCircle className="h-4 w-4 mr-2" />
               {t('detalle.anular')}
             </Button>
@@ -546,21 +548,24 @@ export function NotaCreditoDetalle({ id }: NotaCreditoDetalleProps) {
               )}
             </CardContent>
           </Card>
-
-          {/* Total Card */}
-          <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white">
-            <CardContent className="pt-6">
-              <p className="text-red-100 text-sm">{t('detalle.totalNota')}</p>
-              <p className="text-3xl font-bold mt-1">
-                {formatCurrency(Number(nota.total))}
-              </p>
-              <p className="text-red-100 text-sm mt-2">
-                {formatDate(nota.issue_date)}
-              </p>
-            </CardContent>
-          </Card>
         </div>
       </div>
+
+      <DialogoMotivo
+        abierto={anularAbierto}
+        onAbiertoChange={(v) => {
+          if (!anulando) {
+            setErrorAnular(null);
+            setAnularAbierto(v);
+          }
+        }}
+        titulo={t('anular.titulo', { numero: nota.number })}
+        descripcion={t('anular.confirmar')}
+        textoConfirmar={t('anular.confirmarBoton')}
+        onConfirmar={handleAnular}
+        cargando={anulando}
+        error={errorAnular}
+      />
     </div>
   );
 }

@@ -1,7 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
 import FoliosService from './foliosService';
-import { stockMovementService } from './stockMovementService';
-import { getOrganizationId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { CajasService } from '@/components/pos/cajas/CajasService';
 import { ConfiguracionService } from '@/components/pos/configuracion/configuracionService';
 
@@ -239,29 +237,9 @@ class SpaceConsumptionService {
         });
       }
 
-      // Descontar stock por cada consumo con product_id
-      try {
-        const orgId = getOrganizationId();
-        const branchId = getCurrentBranchId();
-        if (!branchId) {
-          console.warn('⚠️ No se pudo obtener branch_id para descontar stock del consumo');
-          return;
-        }
-        const stockResult = await stockMovementService.decrementOnSale(
-          orgId,
-          branchId,
-          folioId,
-          consumptions.map(c => ({ product_id: c.product_id, quantity: c.quantity, unit_price: c.unit_price })),
-          'room_consumption',
-          userId
-        );
-        if (stockResult.errors.length > 0) {
-          console.warn('⚠️ Algunos consumos no descontaron stock:', stockResult.errors);
-        }
-        console.log(`📦 Stock descontado (consumo habitación): ${consumptions.length - stockResult.skipped} items`);
-      } catch (stockError) {
-        console.warn('⚠️ Error descontando stock (no bloquea el consumo):', stockError);
-      }
+      // El stock lo descuenta FoliosService.addFolioItem al crear cada cargo (con receta y
+      // kardex). Aquí se descontaba otra vez con origen 'room_consumption': cada consumo de
+      // habitación restaba el doble (inventario B9).
     } catch (error) {
       console.error('Error agregando consumos:', error);
       throw error;

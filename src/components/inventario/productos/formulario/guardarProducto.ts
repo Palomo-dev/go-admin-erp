@@ -46,6 +46,11 @@ export interface EntradaGuardado {
   revisarCodigos: RevisionCodigos;
   /** Misma clave mientras el formulario no cambie (doble clic, reintento tras un corte de red). */
   claveIdempotencia?: string;
+  /**
+   * Enviar la configuración de la membresía (solo con memberships.plans.manage, resuelto en
+   * el servidor). Sin permiso el producto se guarda y el plan queda por defecto o como estaba.
+   */
+  conMembresia?: boolean;
 }
 
 export type ResultadoGuardado =
@@ -104,6 +109,7 @@ export async function guardarProducto({
   productId,
   revisarCodigos,
   claveIdempotencia,
+  conMembresia,
 }: EntradaGuardado): Promise<ResultadoGuardado> {
   // 1. Códigos de barras: formato, repetidos en el formulario y en la organización.
   const excluir =
@@ -149,7 +155,7 @@ export async function guardarProducto({
   // 3. Una sola transacción.
   let resultado: ResultadoGuardarProducto;
   try {
-    const payload = construirPayload(estado, modo, { productId, rutas });
+    const payload = construirPayload(estado, modo, { productId, rutas, conMembresia });
     if (claveIdempotencia) payload.clave_idempotencia = claveIdempotencia;
     resultado = await productoService.guardar(organizacionId, payload);
   } catch (e) {

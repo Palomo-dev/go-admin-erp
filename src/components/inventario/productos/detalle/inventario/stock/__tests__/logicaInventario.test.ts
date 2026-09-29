@@ -3,14 +3,13 @@ import {
   armarCsv,
   celdaCsv,
   claveVarianteSucursal,
-  estadoVencimiento,
-  idsOrdenesCompra,
   nombreArchivoKardex,
   rutaAjuste,
-  rutaDocumento,
+  rutaAjustePorConteo,
+  rutaKardexCompleto,
+  rutaKardexLote,
+  rutaLotesProducto,
   rutaTransferencia,
-  tonoOrigen,
-  ORIGENES_KARDEX,
 } from '../logicaInventario';
 
 describe('rutas de inventario', () => {
@@ -43,46 +42,18 @@ describe('agregarStockLevels', () => {
   });
 });
 
-describe('lotes', () => {
-  it('clasifica el vencimiento', () => {
-    expect(estadoVencimiento(null)).toBe('sin_vencimiento');
-    expect(estadoVencimiento(-1)).toBe('vencido');
-    expect(estadoVencimiento(0)).toBe('por_vencer');
-    expect(estadoVencimiento(30)).toBe('por_vencer');
-    expect(estadoVencimiento(31)).toBe('vigente');
+describe('rutas de B1', () => {
+  it('kardex, lote, lotes del producto y ajuste por conteo', () => {
+    expect(rutaKardexCompleto(7)).toBe('/app/inventario/kardex?producto=7');
+    expect(rutaKardexLote(7, 12)).toBe('/app/inventario/kardex?producto=7&lote=12');
+    expect(rutaLotesProducto(7)).toBe('/app/inventario/lotes?producto=7');
+    expect(rutaAjustePorConteo([], 3)).toBe('/app/inventario/ajustes/nuevo?modo=conteo&branchId=3');
+    expect(rutaAjustePorConteo([7], null)).toBe('/app/inventario/ajustes/nuevo?modo=conteo&producto_id=7');
+    expect(rutaAjustePorConteo([7, 8], 3)).toBe('/app/inventario/ajustes/nuevo?modo=conteo&productos=7%2C8&branchId=3');
   });
 });
 
 describe('kardex', () => {
-  it('cubre los orígenes del kardex (22 + credit_note_void de la anulación de notas crédito)', () => {
-    expect(ORIGENES_KARDEX).toHaveLength(23);
-    expect(new Set(ORIGENES_KARDEX).size).toBe(23);
-    expect(tonoOrigen('sale')).toBe('peligro');
-    expect(tonoOrigen('otro')).toBe('neutro');
-    expect(tonoOrigen('credit_note_void')).toBe('peligro');
-  });
-
-  it('enlaza el documento según el origen', () => {
-    expect(rutaDocumento('invoice_sale', 'abc')).toBe('/app/finanzas/facturas-venta/abc');
-    expect(rutaDocumento('purchase_invoice', 'u-1')).toBe('/app/inventario/facturas-compra/u-1');
-    expect(rutaDocumento('adjustment', '15')).toBe('/app/inventario/ajustes/15');
-    expect(rutaDocumento('transfer_in', '9')).toBe('/app/inventario/transferencias/9');
-    expect(rutaDocumento('purchase_order', '4')).toBeNull();
-    expect(rutaDocumento('purchase_order', '4', new Map([[4, 'uuid-4']]))).toBe('/app/inventario/ordenes-compra/uuid-4');
-    expect(rutaDocumento('sale', '1')).toBeNull();
-    expect(rutaDocumento('adjustment', null)).toBeNull();
-  });
-
-  it('solo pide los uuid de órdenes de compra con id numérico', () => {
-    expect(
-      idsOrdenesCompra([
-        { origen: 'purchase_order', origen_id: '4' },
-        { origen: 'purchase', origen_id: '4' },
-        { origen: 'purchase', origen_id: 'x' },
-        { origen: 'sale', origen_id: '5' },
-      ]),
-    ).toEqual([4]);
-  });
 
   it('arma un CSV con BOM, ; y comillas cuando hace falta', () => {
     expect(celdaCsv('a;b')).toBe('"a;b"');

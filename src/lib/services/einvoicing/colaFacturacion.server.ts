@@ -269,6 +269,21 @@ function sinGuiones(id: string): string {
   return id.replace(/-/g, '');
 }
 
+/**
+ * Agrega a cada línea el código DIAN de su unidad (`dian_unit_measures.code`,
+ * el único mapa de unidades de la factura electrónica: ver `unidadFactus`).
+ * Si el catálogo no se puede leer, la línea queda sin código y `unidadFactus`
+ * usa el respaldo de `mapUnitMeasure` («94» Unidad).
+ */
+async function conCodigosUnidad(db: SupabaseClient, lineas: LineaDocumento[] | null): Promise<LineaDocumento[]> {
+  const filas = lineas ?? [];
+  const ids = Array.from(new Set(filas.map((l) => l.unit_measure_id).filter((id): id is number => typeof id === 'number')));
+  if (ids.length === 0) return filas;
+  const { data } = await db.from('dian_unit_measures').select('id, code').in('id', ids);
+  const codigos = new Map(((data as Array<{ id: number; code: string | null }> | null) ?? []).map((u) => [u.id, u.code]));
+  return filas.map((l) => ({ ...l, unit_measure_code: l.unit_measure_id != null ? codigos.get(l.unit_measure_id) ?? null : null }));
+}
+
 async function construirEnvioFactura(db: SupabaseClient, job: JobCola): Promise<Envio> {
   const { data: factura, error } = await db
     .from('invoice_sales')
@@ -303,7 +318,7 @@ async function construirEnvioFactura(db: SupabaseClient, job: JobCola): Promise<
 
   const { payload, total } = construirFactura({
     factura: f as never,
-    lineas: (lineas as LineaDocumento[] | null) ?? [],
+    lineas: await conCodigosUnidad(db, lineas as LineaDocumento[] | null),
     cliente: mapearCliente((f.customer as ClienteDocumento | null) ?? null, municipioCliente as string),
     referencia,
     numberingRangeId: eleccion.rango!.factus_numbering_range_id as number,
@@ -364,7 +379,7 @@ async function construirEnvioNotaCredito(db: SupabaseClient, job: JobCola): Prom
   if (!municipioCliente) throw new DatosIncompletosError(['ni el cliente, ni la sucursal, ni la organización tienen municipio']);
 
   const { data: lineas } = await db.from('invoice_items').select('*').eq('invoice_sales_id', n.id as string);
-  const lineasNota = (lineas as LineaDocumento[] | null) ?? [];
+  const lineasNota = await conCodigosUnidad(db, lineas as LineaDocumento[] | null);
   const eleccion = elegirRango(await rangosDe(db, job.organization_id, 'credit_note'), {
     branchId: ((n.branch_id ?? o.branch_id) as number | null) ?? null,
     documentType: 'credit_note',
@@ -437,7 +452,7 @@ async function construirEnvioDocumentoSoporte(db: SupabaseClient, job: JobCola):
   const municipioSucursal = (await codigoMunicipio(db, d.branch?.municipality_id)) ?? ctx.municipioOrg;
   const payload = construirDocumentoSoporte({
     documento: d as never,
-    lineas: (lineas as LineaDocumento[] | null) ?? [],
+    lineas: await conCodigosUnidad(db, lineas as LineaDocumento[] | null),
     numberingRangeId: rangoId,
     establecimiento: establecimiento(d.branch ?? null, ctx, municipioSucursal),
   });

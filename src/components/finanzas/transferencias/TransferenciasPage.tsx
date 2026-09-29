@@ -3,9 +3,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {Plus,
+import {
+  Plus,
   Download,
-  Search,
   RefreshCw,
   ArrowLeft,
   ArrowLeftRight,
@@ -13,9 +13,9 @@ import {Plus,
   Eye,
   XCircle,
   Building2,
-  ArrowRight} from 'lucide-react';
+  ArrowRight,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -36,6 +36,7 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { ToastAction } from '@/components/ui/toast';
 import { useTranslations } from 'next-intl';
+import { DialogoMotivo, SearchInput } from '@/components/kit';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { transferenciasService, BankTransfer } from '@/lib/services/transferenciasService';
@@ -66,6 +67,9 @@ export function TransferenciasPage() {
   const t = useTranslations('tesoreria');
   const [transfers, setTransfers] = useState<BankTransfer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // Anular con motivo (DialogoMotivo del kit), no con confirm() + prompt() del navegador.
+  const [anulando, setAnulando] = useState<string | null>(null);
+  const [anulandoOcupado, setAnulandoOcupado] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [stats, setStats] = useState({
@@ -106,12 +110,14 @@ export function TransferenciasPage() {
     loadData();
   }, [loadData]);
 
-  const handleCancel = async (id: string) => {
-    if (!confirm('¿Está seguro de anular esta transferencia? Se revertirán los saldos.')) return;
-    
-    const reason = prompt('Motivo de la anulación:');
+  const handleCancel = (id: string) => setAnulando(id);
+
+  const confirmarAnulacion = async (reason: string) => {
+    const id = anulando;
+    if (!id) return;
+    setAnulandoOcupado(true);
     try {
-      const result = await transferenciasService.cancelTransfer(id, reason || undefined);
+      const result = await transferenciasService.cancelTransfer(id, reason);
       if (result.success) {
         toast({
           title: 'Éxito',
@@ -123,6 +129,9 @@ export function TransferenciasPage() {
       }
     } catch {
       toast({ title: 'Error', description: 'Error al anular', variant: 'destructive' });
+    } finally {
+      setAnulandoOcupado(false);
+      setAnulando(null);
     }
   };
 
@@ -256,15 +265,13 @@ export function TransferenciasPage() {
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Buscar por cuenta o referencia..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
-          />
-        </div>
+        <SearchInput
+          value={searchTerm}
+          onChange={setSearchTerm}
+          onValueChange={setSearchTerm}
+          placeholder="Buscar por cuenta o referencia..."
+          className="flex-1"
+        />
         <Button variant="outline" onClick={loadData} className="dark:border-gray-700">
           <RefreshCw className="h-4 w-4 mr-2" />
           Actualizar
@@ -395,6 +402,16 @@ export function TransferenciasPage() {
           setShowNewDialog(false);
           loadData();
         }}
+      />
+      <DialogoMotivo
+        abierto={!!anulando}
+        onAbiertoChange={(v) => !v && !anulandoOcupado && setAnulando(null)}
+        titulo={t('anular.transferencia.titulo')}
+        descripcion={t('anular.descripcion')}
+        textoConfirmar={t('anular.transferencia.boton')}
+        consecuencias={[t('anular.transferencia.consecuencia')]}
+        cargando={anulandoOcupado}
+        onConfirmar={(motivo) => void confirmarAnulacion(motivo)}
       />
     </div>
   );

@@ -10,7 +10,6 @@ import { LoansTable } from '@/components/hrm/prestamos';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -35,13 +34,13 @@ import {
   RefreshCw,
   Banknote,
   Plus,
-  Search,
   CheckCircle,
   Clock,
   AlertTriangle,
   ArrowLeft,
   DollarSign,
 } from 'lucide-react';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 export default function PrestamosPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
@@ -358,15 +357,12 @@ export default function PrestamosPage() {
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardContent className="pt-4">
           <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Buscar por empleado o número..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600"
-              />
-            </div>
+            <SearchInput
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder="Buscar por empleado o número..."
+              className="flex-1"
+            />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-full md:w-48 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600">
                 <SelectValue placeholder="Estado" />

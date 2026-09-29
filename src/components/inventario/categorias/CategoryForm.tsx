@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { ChefHat, Globe, Info, Layers, Loader2, Lock, Save, Sparkles, Tags, TriangleAlert, Wand2 } from 'lucide-react';
-import { FormField, FormSection, PageHeader } from '@/components/kit';
+import { EmptyState, FormField, FormSection, PageHeader } from '@/components/kit';
 import { TreeCell } from '@/components/kit/TreeCell';
 import { TreeSelect, type OpcionArbol } from '@/components/kit/TreePicker';
 import { ancestrosDe, descendientesDe } from '@/components/kit/arbol';
@@ -30,6 +30,7 @@ import type { PrinterStation } from '@/components/pos/configuracion/printersServ
 import { cn } from '@/utils/Utils';
 import { etiquetaEstacion, iconoCategoria, OPCIONES_ESTACION, RUTAS_CATEGORIAS } from './iconoCategoria';
 import { mensajeErrorCategoria } from './accionesCategoria';
+import { usePermisosCatalogo } from './usePermisosCatalogo';
 
 /**
  * Formulario completo de categoría, uno solo para crear y editar (Figma
@@ -71,6 +72,7 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
   const { organization } = useOrganization();
   const organizationId = organization?.id ?? null;
   const esEdicion = !!categoryUuid;
+  const permisos = usePermisosCatalogo();
 
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -347,9 +349,21 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
           {botonGuardar()}
         </>
       }
-      movil={{ subtitulo: datos.name || undefined, accion: botonGuardar(true), ocultarBarra: true }}
+      movil={{ subtitulo: datos.name || undefined, accion: botonGuardar(true) }}
     />
   );
+
+  // Sin permiso de catálogo: el servidor rechazaría el guardado (o lo hará cuando la RLS lo exija).
+  if (permisos.resueltos && !(esEdicion ? permisos.editar : permisos.crear)) {
+    return (
+      <EmptyState
+        variante="forbidden"
+        titulo={t('formulario.sinPermiso.titulo')}
+        descripcion={t('formulario.sinPermiso.descripcion')}
+        accion={{ etiqueta: t('comun.categorias'), href: RUTAS_CATEGORIAS.listado }}
+      />
+    );
+  }
 
   if (noEncontrada) {
     return (

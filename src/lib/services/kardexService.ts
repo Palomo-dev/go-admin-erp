@@ -1,314 +1,154 @@
+/**
+ * Kardex (bloque B1, INVENTARIO-PLAN.md §5.2): fachada de RPC.
+ *
+ * Antes el kardex leía `stock_movements` sin `.range()` (el saldo mentía pasadas
+ * 1.000 filas) y calculaba el saldo en el navegador. Ahora:
+ *
+ *   fn_kardex_saldo_corrido → listarKardex   saldo corrido por producto sobre TODA la
+ *                                            historia del alcance, paginado, con KPI
+ *                                            y el cuadre contra existencias.
+ *   fn_kardex_descuadres    → descuadres     pares (producto, sucursal) cuyo kardex
+ *                                            no cuadra (D2) y filas sin historia (D3).
+ *
+ * Permiso `ver`; costos solo con `costos`.
+ */
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/config';
+import {
+  aKpisMovimientos,
+  aMovimientoFila,
+  type FiltrosMovimientos,
+  type KpisMovimientos,
+  type MovimientoFila,
+} from './stockService';
 
-// Entrada del kardex con balance acumulado
-export interface KardexEntry {
-  id: number;
-  date: string;
-  direction: 'in' | 'out';
-  source: string;
-  source_id?: string;
-  qty: number;
-  unit_cost: number;
-  total_cost: number;
-  balance: number;
-  branch_name: string;
-  note?: string;
+type ClienteRpc = Pick<SupabaseClient, 'rpc'>;
+
+export type FiltrosKardex = FiltrosMovimientos;
+
+export interface ParDescuadre {
+  product_id: number;
+  nombre: string;
+  sku: string | null;
+  branch_id: number;
+  sucursal: string;
+  saldo_kardex: number;
+  existencia: number;
+  /** existencia − saldo del kardex: positivo = faltan movimientos de entrada. */
+  diferencia: number;
+  ultimo_movimiento: string | null;
 }
 
-// Estadísticas del kardex
-export interface KardexStats {
-  totalIn: number;
-  totalOut: number;
-  balance: number;
-  valueIn: number;
-  valueOut: number;
-  totalMovements: number;
+export interface Descuadres {
+  total: number;
+  diferencia_total: number;
+  saldo_kardex: number;
+  existencias: number;
+  sin_historia: number;
+  pares: ParDescuadre[];
 }
 
-// Filtros del kardex
-export interface KardexFilters {
-  branchId?: number;
-  source?: string;
-  direction?: 'in' | 'out';
-  dateFrom?: string;
-  dateTo?: string;
+export interface KpisKardex extends KpisMovimientos {
+  saldo_cierre: number;
+  existencias: number;
+  valor: number | null;
+  costo_promedio: number | null;
 }
 
-// Info básica del producto
-export interface ProductInfo {
-  id: number;
-  uuid: string;
-  name: string;
-  sku: string;
-  track_stock: boolean;
+export interface RespuestaKardex {
+  filas: MovimientoFila[];
+  total: number;
+  kpis: KpisKardex;
+  cuadre: Descuadres;
+  costos: boolean;
 }
 
-type StockMovementRow = {
-  id: number;
-  created_at: string;
-  direction: 'in' | 'out';
-  source: string;
-  source_id?: string | null;
-  qty: number;
-  unit_cost: number;
-  note?: string | null;
-  branches?: { id: number; name: string } | null;
+const num = (v: unknown): number => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
 };
+const numONull = (v: unknown): number | null => (v === null || v === undefined ? null : num(v));
 
-const SOURCE_LABELS: Record<string, string> = {
-  sale: 'Venta',
-  purchase: 'Compra',
-  transfer: 'Transferencia',
-  adjustment: 'Ajuste',
-  initial: 'Inventario Inicial',
-  invoice_sale: 'Venta (Factura)',
-  folio_item: 'Folio',
-  room_consumption: 'Consumo Habitación',
-  mesa_sale: 'Venta Mesa',
-};
-
-function getSourceLabel(source: string): string {
-  return SOURCE_LABELS[source] || source;
+export function aDescuadres(data: unknown): Descuadres {
+  const d = (data ?? {}) as Record<string, unknown>;
+  return {
+    total: num(d.total),
+    diferencia_total: num(d.diferencia_total),
+    saldo_kardex: num(d.saldo_kardex),
+    existencias: num(d.existencias),
+    sin_historia: num(d.sin_historia),
+    pares: (Array.isArray(d.pares) ? (d.pares as Record<string, unknown>[]) : []).map((p) => ({
+      product_id: num(p.product_id),
+      nombre: String(p.nombre ?? ''),
+      sku: (p.sku as string | null) ?? null,
+      branch_id: num(p.branch_id),
+      sucursal: String(p.sucursal ?? ''),
+      saldo_kardex: num(p.saldo_kardex),
+      existencia: num(p.existencia),
+      diferencia: num(p.diferencia),
+      ultimo_movimiento: (p.ultimo_movimiento as string | null) ?? null,
+    })),
+  };
 }
 
-class KardexServiceClass {
-  async getKardex(
-    organizationId: number,
-    productId: number,
-    filters?: KardexFilters,
-    page: number = 1,
-    pageSize: number = 50
-  ): Promise<{ data: KardexEntry[]; count: number }> {
-    try {
-      let query = supabase
-        .from('stock_movements')
-        .select('*, branches(id, name)')
-        .eq('organization_id', organizationId)
-        .eq('product_id', productId);
-
-      if (filters?.branchId) {
-        query = query.eq('branch_id', filters.branchId);
-      }
-      if (filters?.source) {
-        query = query.eq('source', filters.source);
-      }
-      if (filters?.direction) {
-        query = query.eq('direction', filters.direction);
-      }
-      if (filters?.dateFrom) {
-        query = query.gte('created_at', filters.dateFrom);
-      }
-      if (filters?.dateTo) {
-        query = query.lte('created_at', `${filters.dateTo}T23:59:59`);
-      }
-
-      const { data, error } = await query.order('created_at', { ascending: true });
-
-      if (error) {
-        console.error('Error en getKardex:', error);
-        return { data: [], count: 0 };
-      }
-
-      const movements = (data || []) as unknown as StockMovementRow[];
-      let balance = 0;
-
-      const entries: KardexEntry[] = movements.map((mov) => {
-        const absQty = Math.abs(mov.qty);
-        const quantityIn = mov.direction === 'in' ? absQty : 0;
-        const quantityOut = mov.direction === 'out' ? absQty : 0;
-        balance += quantityIn - quantityOut;
-
-        return {
-          id: mov.id,
-          date: mov.created_at,
-          direction: mov.direction,
-          source: mov.source,
-          source_id: mov.source_id ?? undefined,
-          qty: absQty,
-          unit_cost: mov.unit_cost,
-          total_cost: mov.unit_cost * absQty,
-          balance,
-          branch_name: mov.branches?.name || '-',
-          note: mov.note ?? undefined,
-        };
-      });
-
-      entries.reverse();
-
-      const total = entries.length;
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize;
-      const paginated = entries.slice(from, to);
-
-      return { data: paginated, count: total };
-    } catch (err) {
-      console.error('Error en getKardex:', err);
-      return { data: [], count: 0 };
-    }
-  }
-
-  async getKardexStats(
-    organizationId: number,
-    productId: number,
-    filters?: KardexFilters
-  ): Promise<KardexStats> {
-    try {
-      let query = supabase
-        .from('stock_movements')
-        .select('direction, qty, unit_cost')
-        .eq('organization_id', organizationId)
-        .eq('product_id', productId);
-
-      if (filters?.branchId) {
-        query = query.eq('branch_id', filters.branchId);
-      }
-      if (filters?.source) {
-        query = query.eq('source', filters.source);
-      }
-      if (filters?.direction) {
-        query = query.eq('direction', filters.direction);
-      }
-      if (filters?.dateFrom) {
-        query = query.gte('created_at', filters.dateFrom);
-      }
-      if (filters?.dateTo) {
-        query = query.lte('created_at', `${filters.dateTo}T23:59:59`);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error en getKardexStats:', error);
-        return {
-          totalIn: 0,
-          totalOut: 0,
-          balance: 0,
-          valueIn: 0,
-          valueOut: 0,
-          totalMovements: 0,
-        };
-      }
-
-      const movements = (data || []) as unknown as {
-        direction: 'in' | 'out';
-        qty: number;
-        unit_cost: number;
-      }[];
-
-      let totalIn = 0;
-      let totalOut = 0;
-      let valueIn = 0;
-      let valueOut = 0;
-
-      movements.forEach((mov) => {
-        const absQty = Math.abs(mov.qty);
-        if (mov.direction === 'in') {
-          totalIn += absQty;
-          valueIn += absQty * mov.unit_cost;
-        } else {
-          totalOut += absQty;
-          valueOut += absQty * mov.unit_cost;
-        }
-      });
-
-      return {
-        totalIn,
-        totalOut,
-        balance: totalIn - totalOut,
-        valueIn,
-        valueOut,
-        totalMovements: movements.length,
-      };
-    } catch (err) {
-      console.error('Error en getKardexStats:', err);
-      return {
-        totalIn: 0,
-        totalOut: 0,
-        balance: 0,
-        valueIn: 0,
-        valueOut: 0,
-        totalMovements: 0,
-      };
-    }
-  }
-
-  async getProductInfo(productId: number): Promise<ProductInfo | null> {
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('id, uuid, name, sku, track_stock')
-        .eq('id', productId)
-        .single();
-
-      if (error) {
-        console.error('Error en getProductInfo:', error);
-        return null;
-      }
-
-      return data as ProductInfo;
-    } catch (err) {
-      console.error('Error en getProductInfo:', err);
-      return null;
-    }
-  }
-
-  async getBranches(
-    organizationId: number
-  ): Promise<{ id: number; name: string }[]> {
-    try {
-      const { data, error } = await supabase
-        .from('branches')
-        .select('id, name')
-        .eq('organization_id', organizationId)
-        .eq('is_active', true)
-        .order('name');
-
-      if (error) {
-        console.error('Error en getBranches:', error);
-        return [];
-      }
-
-      return (data || []) as { id: number; name: string }[];
-    } catch (err) {
-      console.error('Error en getBranches:', err);
-      return [];
-    }
-  }
-
-  exportKardexToCSV(entries: KardexEntry[], productName: string): string {
-    const headers = [
-      'Fecha',
-      'Dirección',
-      'Origen',
-      'Documento',
-      'Cantidad',
-      'Costo Unit.',
-      'Valor Total',
-      'Saldo',
-      'Sucursal',
-      'Nota',
-    ];
-
-    const rows = entries.map((e) => [
-      e.date,
-      e.direction === 'in' ? 'Entrada' : 'Salida',
-      getSourceLabel(e.source),
-      e.source_id || '',
-      String(e.qty),
-      String(e.unit_cost),
-      String(e.total_cost),
-      String(e.balance),
-      e.branch_name,
-      (e.note || '').replace(/[\n\r;]/g, ' '),
-    ]);
-
-    const csvLines = [[`Kardex: ${productName}`], headers, ...rows]
-      .map((row) => row.join(';'))
-      .join('\n');
-
-    return '\uFEFF' + csvLines;
-  }
+export function aRespuestaKardex(data: unknown): RespuestaKardex {
+  const d = (data ?? {}) as Record<string, unknown>;
+  const k = (d.kpis ?? {}) as Record<string, unknown>;
+  return {
+    total: num(d.total),
+    costos: d.costos === true,
+    kpis: {
+      ...aKpisMovimientos(k),
+      saldo_cierre: num(k.saldo_cierre),
+      existencias: num(k.existencias),
+      valor: numONull(k.valor),
+      costo_promedio: numONull(k.costo_promedio),
+    },
+    cuadre: aDescuadres(d.cuadre),
+    filas: (Array.isArray(d.filas) ? (d.filas as Record<string, unknown>[]) : []).map(aMovimientoFila),
+  };
 }
 
-export const kardexService = new KardexServiceClass();
-export default kardexService;
+function filtrosJson(filtros: FiltrosKardex): Record<string, unknown> {
+  const salida: Record<string, unknown> = {};
+  for (const [clave, valor] of Object.entries(filtros)) {
+    if (valor === undefined || valor === null || valor === '') continue;
+    if (Array.isArray(valor) && valor.length === 0) continue;
+    salida[clave] = valor;
+  }
+  return salida;
+}
+
+export async function listarKardex(
+  organizacionId: number,
+  filtros: FiltrosKardex,
+  desde = 0,
+  limite = 25,
+  cliente: ClienteRpc = supabase,
+): Promise<RespuestaKardex> {
+  const { data, error } = await cliente.rpc('fn_kardex_saldo_corrido', {
+    p_org: organizacionId,
+    p_filtros: filtrosJson(filtros),
+    p_desde: desde,
+    p_limite: limite,
+  });
+  if (error) throw error;
+  return aRespuestaKardex(data);
+}
+
+export async function descuadres(
+  organizacionId: number,
+  filtros: Pick<FiltrosKardex, 'sucursales' | 'producto'>,
+  limite = 100,
+  cliente: ClienteRpc = supabase,
+): Promise<Descuadres> {
+  const { data, error } = await cliente.rpc('fn_kardex_descuadres', {
+    p_org: organizacionId,
+    p_filtros: filtrosJson(filtros),
+    p_limite: limite,
+  });
+  if (error) throw error;
+  return aDescuadres(data);
+}
+
+export const kardexService = { listarKardex, descuadres };

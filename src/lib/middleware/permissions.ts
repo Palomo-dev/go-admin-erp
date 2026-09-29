@@ -317,6 +317,14 @@ export const PERMISSIONS = {
   FINANCE_MANAGE: 'finance.manage',
   REPORTS_ACCESS: 'reports.access',
   REPORTS_MANAGE: 'reports.manage',
+  // Membresías (tabla permissions, module = 'memberships'; migración 20260929000200)
+  MEMBERSHIPS_VIEW: 'memberships.view',
+  MEMBERSHIPS_PLANS_MANAGE: 'memberships.plans.manage',
+  MEMBERSHIPS_FREEZE: 'memberships.freeze',
+  MEMBERSHIPS_CANCEL: 'memberships.cancel',
+  MEMBERSHIPS_CHECKIN: 'memberships.checkin',
+  MEMBERSHIPS_CLASSES_MANAGE: 'memberships.classes.manage',
+  MEMBERSHIPS_DEVICES_MANAGE: 'memberships.devices.manage',
   
   // Operaciones comunes
   CREATE: 'create',
@@ -342,5 +350,6 @@ export const MODULES = {
   CALENDAR: 'calendario',
   TIMELINE: 'timeline',
   PMS: 'pms',
+  MEMBERSHIPS: 'membresias',
   ORGANIZATION: 'app-organ'
 } as const;

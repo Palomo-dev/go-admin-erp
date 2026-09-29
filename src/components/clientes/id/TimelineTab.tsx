@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
-import { formatCurrency } from '@/utils/Utils';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import { ShoppingBag } from 'lucide-react';
@@ -92,6 +92,8 @@ const DIA_MES_ANIO: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short
 
 export default function TimelineTab({ clienteId, organizationId }: TimelineTabProps) {
   const t = useTranslations('clientes.ficha');
+  // Ventas, folios y cartera no traen moneda propia: la base de la organización.
+  const { formatear } = useMonedaOrganizacion();
   const { instante, plana } = useFechasFicha();
   const formatDate = (date: Date | string) => instante(date, FECHA_HORA);
 
@@ -457,7 +459,7 @@ export default function TimelineTab({ clienteId, organizationId }: TimelineTabPr
                     {item.amount !== undefined && (
                       <div className="mt-2">
                         <span className="text-sm font-medium text-gray-900 dark:text-white">
-                          {t('actividad.monto', { monto: formatCurrency(item.amount) })}
+                          {t('actividad.monto', { monto: formatear(item.amount) })}
                         </span>
                       </div>
                     )}
@@ -532,7 +534,7 @@ export default function TimelineTab({ clienteId, organizationId }: TimelineTabPr
                               <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-medium">
                                 {t('actividad.folioPendientes', {
                                   count: item.folioPendingItems ?? 0,
-                                  monto: formatCurrency(item.folioPendingAmount || 0),
+                                  monto: formatear(item.folioPendingAmount || 0),
                                 })}
                               </span>
                             ) : (
@@ -542,7 +544,7 @@ export default function TimelineTab({ clienteId, organizationId }: TimelineTabPr
                             )}
                             {item.folioBalance !== undefined && item.folioBalance > 0 && (
                               <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-medium">
-                                {t('actividad.saldo', { monto: formatCurrency(item.folioBalance) })}
+                                {t('actividad.saldo', { monto: formatear(item.folioBalance) })}
                               </span>
                             )}
                             <a

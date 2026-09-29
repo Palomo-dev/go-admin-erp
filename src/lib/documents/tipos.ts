@@ -146,6 +146,13 @@ export interface LineaDocumento {
   nota: string | null;
   seriales: string[];
   cantidad: number;
+  /**
+   * Símbolo de la unidad de venta («kg», «lb», «m», «L») solo en productos por
+   * peso o medida; `null` en productos por unidad (la columna dice «und»).
+   */
+  unidad?: string | null;
+  /** Decimales de la cantidad del producto (3 en kg). */
+  decimalesCantidad?: number | null;
   precioUnitario: number;
   descuento: number;
   impuesto: ImpuestoLinea | null;

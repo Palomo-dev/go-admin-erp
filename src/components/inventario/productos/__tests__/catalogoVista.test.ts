@@ -182,7 +182,7 @@ describe('URL → RPC y chips', () => {
   });
 
   it('las listas blancas cubren los filtros y columnas del catálogo', () => {
-    expect(CLAVES_FILTRO).toEqual(['categoria', 'estado', 'imagen', 'tipo', 'stock', 'variantes', 'modificadores']);
+    expect(CLAVES_FILTRO).toEqual(['categoria', 'estado', 'imagen', 'tipo', 'stock', 'variantes', 'modificadores', 'etiqueta', 'proveedor']);
     expect(CAMPOS_ORDEN).toContain('stock');
     expect(CAMPOS_ORDEN).toContain('margen');
   });

@@ -36,6 +36,16 @@ export function PWARegister() {
     }
   }, []);
 
+  // Sin invitación a instalar (decisión del dueño, 2026-09-29): se retiró el
+  // banner propio y se detiene el evento para que Chrome tampoco muestre su
+  // mini-barra. La app sigue instalable desde el menú del navegador.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const sinInvitacion = (e: Event) => e.preventDefault();
+    window.addEventListener('beforeinstallprompt', sinInvitacion);
+    return () => window.removeEventListener('beforeinstallprompt', sinInvitacion);
+  }, []);
+
   // iOS standalone: interceptar enlaces target="_blank" del mismo origen
   useEffect(() => {
     if (typeof window === 'undefined') return;

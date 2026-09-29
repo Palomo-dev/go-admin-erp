@@ -108,26 +108,55 @@ describe('Guardarraíl /api/modules: sin service role sin justificación', () =>
     expect(problemas).toEqual([]);
   });
 
-  test('/api/modules y /api/modules/pages: organización por sesión, readOrgBody y escrituras solo de administrador', () => {
+  test('/api/modules y /api/modules/pages: cada handler pasa por el resolutor, y la organización solo sale de él', () => {
     const problemas: string[] = [];
     for (const rel of ['route.ts', 'pages/route.ts']) {
       const codigo = sinComentarios(fs.readFileSync(path.join(RAIZ, rel), 'utf8'));
-      if (!/\bwithOrg\s*\(/.test(codigo)) problemas.push(`${rel}: no resuelve la organización con withOrg`);
-      if (!/\breadOrgBody\s*[<(]/.test(codigo)) problemas.push(`${rel}: no pasa por readOrgBody`);
-      if (!/\{\s*admin:\s*true\s*\}/.test(codigo)) problemas.push(`${rel}: su escritura no exige administrador`);
+      // Cada handler exportado, por su texto: desde su `export async function`
+      // hasta el siguiente `export` (o el final del archivo).
+      const trozos = codigo.split(/(?=export\s+async\s+function\s+)/);
+      for (const metodo of ['GET', 'POST']) {
+        const cuerpo = trozos.find((t) => new RegExp('^export\\s+async\\s+function\\s+' + metodo + '\\b').test(t));
+        if (!cuerpo) { problemas.push(`${rel}: no exporta ${metodo}`); continue; }
+        if (!/\bresolverObjetivoModulos\s*[<(]/.test(cuerpo)) problemas.push(`${rel} ${metodo}: no pasa por resolverObjetivoModulos`);
+        const esperado = metodo === 'POST' ? /escritura:\s*true\b/ : /escritura:\s*false\b/;
+        if (!esperado.test(cuerpo)) problemas.push(`${rel} ${metodo}: debería declarar escritura: ${metodo === 'POST'}`);
+      }
       // La organización nunca se toma del body ni del query: la ÚNICA forma de
-      // nombrarla en estas dos rutas es `ctx.organizationId`. La regla se
-      // escribe así —y no como una lista de patrones de lectura— porque un
-      // `Number((body as …).organizationId) || ctx.organizationId` esquivaba
-      // cualquier patrón basado en desestructuración (mutación M2).
+      // nombrarla en estas rutas es `objetivo.organizationId`, que el resolutor
+      // valida. Se escribe así —y no como una lista de patrones de lectura—
+      // porque un `Number(body.organizationId) || objetivo.organizationId`
+      // esquivaría cualquier patrón basado en desestructuración (mutación M2).
       for (const m of codigo.matchAll(/\borganizationId\b/g)) {
         const indice = m.index ?? 0;
-        if (codigo.slice(Math.max(0, indice - 4), indice) !== 'ctx.') {
+        if (codigo.slice(Math.max(0, indice - 9), indice) !== 'objetivo.') {
           const contexto = codigo.slice(Math.max(0, indice - 40), indice + 20).replace(/\s+/g, ' ').trim();
-          problemas.push(`${rel}: nombra organizationId fuera de ctx.organizationId → «…${contexto}…»`);
+          problemas.push(`${rel}: nombra organizationId fuera de objetivo.organizationId → «…${contexto}…»`);
         }
       }
-      if (/\bsearchParams\.get\s*\(/.test(codigo)) problemas.push(`${rel}: lee la organización (o cualquier otra cosa) del query string`);
+      if (/\bsearchParams\b/.test(codigo)) problemas.push(`${rel}: lee el query string por su cuenta`);
+      // El cliente de servicio solo existe como `objetivo.service`, entregado
+      // por el resolutor DESPUÉS de validar la organización.
+      if (/\bgetServiceClient\s*\(/.test(codigo)) problemas.push(`${rel}: pide el cliente de servicio por su cuenta, sin pasar por el resolutor`);
+      if (/\bctx\.supabase\b/.test(codigo)) problemas.push(`${rel}: vuelve al cliente de la sesión (la regresión del plan null)`);
+    }
+    expect(problemas).toEqual([]);
+  });
+
+  test('el resolutor: sesión primero, plataforma por la RPC, 403 por el punto único y service role al final', () => {
+    const codigo = sinComentarios(fs.readFileSync(path.join(RAIZ, '..', '..', '..', 'lib', 'security', 'modulosObjetivo.ts'), 'utf8'));
+    const problemas: string[] = [];
+    if (!/\bgetServerOrgContext\s*\(/.test(codigo)) problemas.push('no resuelve la sesión con getServerOrgContext');
+    if (!/\brequireOrgAdminOrPermission\s*\(/.test(codigo)) problemas.push('la escritura del miembro no exige administrador por el catálogo');
+    if (!/\bisPlatformAdmin\s*\(/.test(codigo)) problemas.push('la plataforma no se decide con isPlatformAdmin (fn_is_platform_admin)');
+    if (/platform_admins/.test(codigo)) problemas.push('consulta platform_admins directamente: la única puerta es fn_is_platform_admin');
+    if (!/\breadOrgBody\s*\(/.test(codigo)) problemas.push('el 403 por organización ajena no pasa por readOrgBody');
+    if (/\bcreateClient\s*\(|SUPABASE_SERVICE_ROLE_KEY/.test(codigo)) problemas.push('construye su propio cliente de servicio');
+    if (/roleName|role_name|nombreRol|\.name\s*===\s*['"]/.test(codigo)) problemas.push('decide algo por el nombre de un rol');
+    // Cada entrega del cliente de servicio va después de la resolución de la sesión.
+    const sesion = codigo.search(/\bgetServerOrgContext\s*\(/);
+    for (const m of codigo.matchAll(/\bgetServiceClient\s*\(/g)) {
+      if ((m.index ?? 0) < sesion) problemas.push('entrega el cliente de servicio antes de resolver la sesión');
     }
     expect(problemas).toEqual([]);
   });

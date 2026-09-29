@@ -197,6 +197,25 @@ describe.each([
     await waitFor(() => expect(posService.POSService.getProductByBarcode).toHaveBeenCalledWith('7701234567890'));
   });
 
+  test('código escrito en el buscador + Enter va directo al carrito (PRODUCTOS-POR-PESO-BASCULA.md §10)', async () => {
+    const posService = jest.requireMock('@/lib/services/posService') as { POSService: { getProductByBarcode: jest.Mock } };
+    getProductsPaginated.mockResolvedValue(pagina(productos(1, 1), 1, 1));
+    posService.POSService.getProductByBarcode.mockResolvedValueOnce({ id: 1, name: 'Producto 1', parent_product_id: null });
+    const onSelect = jest.fn();
+    renderizar(<ProductSearch onProductSelect={onSelect} />);
+    await screen.findByRole('button', { name: 'Elegir Producto 1' });
+    const buscador = screen.getByRole('searchbox');
+    fireEvent.change(buscador, { target: { value: '7701234567890' } });
+    fireEvent.keyDown(buscador, { key: 'Enter' });
+    await waitFor(() => expect(onSelect).toHaveBeenCalledTimes(1));
+    expect(onSelect.mock.calls[0][0]).toMatchObject({ id: 1 });
+    expect((buscador as HTMLInputElement).value).toBe('');
+    // Un nombre + Enter sigue siendo una búsqueda.
+    fireEvent.change(buscador, { target: { value: 'coca' } });
+    fireEvent.keyDown(buscador, { key: 'Enter' });
+    expect(posService.POSService.getProductByBarcode).toHaveBeenCalledTimes(1);
+  });
+
   test('con el cobro abierto un escaneo avisa y no agrega', async () => {
     getProductsPaginated.mockResolvedValue(pagina(productos(1, 1), 1, 1));
     const onSelect = jest.fn();

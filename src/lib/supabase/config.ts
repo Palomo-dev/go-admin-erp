@@ -1,5 +1,5 @@
-import { createClient, type Provider } from '@supabase/supabase-js'
-import { isAppOnline, getCachedForRequest, cacheFreshResponse, isCacheableRequest, resolveOfflineDataRequest, setOnline } from '@/lib/utils/offlineCache'
+import { createClient, type AuthError, type Session, type User } from '@supabase/supabase-js'
+import { isAppOnline, getCachedForRequest, cacheFreshResponse, isCacheableRequest, resolveOfflineDataRequest } from '@/lib/utils/offlineCache'
 
 // Extrae la referencia del proyecto de la URL de Supabase
 export const getProjectRef = () => {
@@ -22,20 +22,6 @@ const getCookieDomain = (): string => {
   if (typeof window === 'undefined') return '; domain=.goadmin.io';
   const host = window.location.hostname;
   return host === 'goadmin.io' || host.endsWith('.goadmin.io') ? '; domain=.goadmin.io' : '';
-}
-
-// Función para obtener el valor de una cookie
-const getCookie = (name: string): string | null => {
-  if (typeof document === 'undefined') return null;
-  
-  const cookies = document.cookie.split(';');
-  for (const cookie of cookies) {
-    const [cookieName, cookieValue] = cookie.trim().split('=');
-    if (cookieName === name) {
-      return decodeURIComponent(cookieValue);
-    }
-  }
-  return null;
 }
 
 // Función para establecer una cookie (con soporte de chunks para cookies grandes)
@@ -80,22 +66,6 @@ const setCookie = (name: string, value: string, maxAge: number = 604800) => {
       chunkIndex++;
     }
     console.log(`🍪 [SETCOOKIE] Cookie chunked: ${name} (${chunkIndex} chunks, ${encodedValue.length} bytes)`);
-  }
-}
-
-// Función para eliminar una cookie
-const removeCookie = (name: string) => {
-  if (typeof document === 'undefined') return;
-  
-  const isAuthCookie = name.includes('-auth-token');
-  const isProduction = process.env.NODE_ENV === 'production';
-  const cookieDomain = getCookieDomain();
-  const secureFlag = isProduction ? ';Secure' : '';
-  
-  document.cookie = `${name}=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT;SameSite=Lax${!isAuthCookie ? ';HttpOnly' : ''}${secureFlag}${cookieDomain}`;
-  // Limpiar chunks .0, .1, .2... (incluir Secure para que el navegador acepte el borrado)
-  for (let i = 0; i < 20; i++) {
-    document.cookie = `${name}.${i}=;path=/;expires=Thu, 01 Jan 1970 00:00:01 GMT;SameSite=Lax${secureFlag}${cookieDomain}`;
   }
 }
 
@@ -187,9 +157,6 @@ export const createSupabaseClient = () => {
       throw new Error('Credenciales de Supabase no configuradas en producción')
     }
   }
-  
-  const projectRef = getProjectRef();
-  const storageKey = projectRef ? `sb-${projectRef}-auth-token` : 'sb-auth-token';
   
   return createClient(supabaseUrl, supabaseKey, {
     auth: {
@@ -496,7 +463,7 @@ export const createSupabaseClient = () => {
                     for (let i = 0; i < 20; i++) {
                       document.cookie = `${storageKey}.${i}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax${secure}${domain}`;
                     }
-                  } catch (e) { /* ignore */ }
+                  } catch { /* ignore */ }
                 }
               }
 
@@ -547,11 +514,11 @@ export const createSupabaseClient = () => {
               }
 
               resolve(response);
-            } catch (error: any) {
+            } catch (error) {
               if (timeoutId) clearTimeout(timeoutId);
 
               const isTimeout = controller?.signal?.aborted && !options?.signal?.aborted;
-              const isAborted = error?.name === 'AbortError' || options?.signal?.aborted;
+              const isAborted = (error as { name?: unknown } | null | undefined)?.name === 'AbortError' || options?.signal?.aborted;
 
               // Timeout en desktop app offline: usar cache como fallback
               if (isTimeout && useOfflineLogic) {
@@ -603,7 +570,9 @@ export const createSupabaseClient = () => {
 }
 
 // Creación del cliente de Supabase para el servidor (middleware)
-export const createSupabaseServerClient = (request?: any) => {
+// `request` no se usa; se conserva para no romper la firma exportada.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const createSupabaseServerClient = (request?: unknown) => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
   
@@ -632,12 +601,12 @@ export const supabase = createSupabaseClient()
 // el cooldown y no haga la petición HTTP si estamos bloqueados.
 if (typeof window !== 'undefined') {
   const originalRefreshSession = supabase.auth.refreshSession.bind(supabase.auth);
-  supabase.auth.refreshSession = async (...args: any[]) => {
+  supabase.auth.refreshSession = async (...args: Parameters<typeof originalRefreshSession>) => {
     if (isRefreshBlocked()) {
       console.warn('🚫 [AUTH] refreshSession() bloqueado por cooldown anti-bucle');
       return {
         data: { session: null, user: null },
-        error: { message: 'Invalid Refresh Token: Refresh Token Not Found' } as any,
+        error: { message: 'Invalid Refresh Token: Refresh Token Not Found' } as AuthError,
       };
     }
     return originalRefreshSession(...args);
@@ -739,7 +708,44 @@ let lastLoginAttempt = 0;
 const LOGIN_THROTTLE_MS = 3_000; // mínimo 3s entre intentos de login
 let lastLoginEmail = '';
 
-export const signInWithEmail = async (email: string, password: string) => {
+type ResultadoAccesoServidor = {
+  data: { session: Session | null; user: User | null };
+  error: { message: string; status: number; codigoAcceso: string; bloqueadoHasta?: string } | null;
+};
+
+async function iniciarSesionPorServidor(email: string, password: string): Promise<ResultadoAccesoServidor> {
+  let res: Response;
+  try {
+    res = await fetch('/api/auth/acceso', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+      cache: 'no-store',
+    });
+  } catch {
+    return { data: { session: null, user: null }, error: { message: 'red', status: 0, codigoAcceso: 'inesperado' } };
+  }
+  const cuerpo = (await res.json().catch(() => ({}))) as {
+    ok?: boolean;
+    session?: Session;
+    codigo?: string;
+    bloqueadoHasta?: string;
+  };
+  if (res.ok && cuerpo.ok && cuerpo.session) {
+    return { data: { session: cuerpo.session, user: cuerpo.session.user }, error: null };
+  }
+  return {
+    data: { session: null, user: null },
+    error: {
+      message: cuerpo.codigo || 'inesperado',
+      status: res.status,
+      codigoAcceso: cuerpo.codigo || 'inesperado',
+      bloqueadoHasta: cuerpo.bloqueadoHasta,
+    },
+  };
+}
+
+export const signInWithEmail = async (email: string, password: string): Promise<ResultadoAccesoServidor> => {
   const now = Date.now();
   const timeSinceLast = now - lastLoginAttempt;
 
@@ -752,7 +758,8 @@ export const signInWithEmail = async (email: string, password: string) => {
       error: {
         message: 'Demasiados intentos. Espera unos segundos antes de volver a intentar.',
         status: 429,
-      } as any,
+        codigoAcceso: 'demasiadas',
+      },
     };
   }
 
@@ -762,12 +769,10 @@ export const signInWithEmail = async (email: string, password: string) => {
   // Un login explícito invalida cualquier bloqueo previo por refresh token muerto.
   unblockRefresh('inicio de login con email');
 
-  const result = await supabase.auth.signInWithPassword({ email, password });
-  
-  // Si el login es exitoso, forzar sincronización
-  if (result.data.session && !result.error) {
-    console.log('✅ [AUTH] Login exitoso, sincronizando sesión...');
-  }
+  // Acceso v3, fase 5: el servidor cuenta los fallos y bloquea tras 5 por
+  // cuenta + IP (POST /api/auth/acceso). El error lleva `codigoAcceso` (y
+  // `bloqueadoHasta`), que `iniciarSesionConCorreo` usa tal cual.
+  const result = await iniciarSesionPorServidor(email, password);
 
   if (result.data.session) {
     const { access_token, refresh_token, expires_at, user } = result.data.session;
@@ -1049,7 +1054,7 @@ export const getUserOrganization = async (userId: string, requestedOrgId?: strin
     if (branchesData.length > 0) {
       // Preferir la sucursal marcada como principal (is_main=true);
       // si ninguna lo está, usar la primera disponible.
-      defaultBranchId = branchesData.find((b: any) => b.is_main === true)?.id ?? branchesData[0].id;
+      defaultBranchId = branchesData.find((b) => b.is_main === true)?.id ?? branchesData[0].id;
     } else {
       console.log(`La organización ${orgData.id} no tiene sucursales activas`);
     }
@@ -1115,7 +1120,7 @@ export const resetPassword = async (email: string) => {
     }
     
     return { data, error: null };
-  } catch (err: any) {
+  } catch (err) {
     return { data: null, error: err };
   }
 }
@@ -1166,428 +1171,7 @@ export const getOrganizations = async () => {
 };
 
 // Función específica para registro con manejo mejorado de verificación
-export const signUpWithEmail = async (email: string, password: string, userData: any, redirectUrl: string) => {
-  // Check if email already exists
-  console.log('Verificando correo electrónico...');
-  console.log('Email:', email); 
-  const { data: existingUsers } = await supabase
-    .from('users')
-    .select('id')
-    .eq('email', email)
-    .maybeSingle();
-
-  console.log('Usuario existente:', existingUsers);
-
-  if (existingUsers) {
-    return {
-      data: { user: null },
-      error: { message: 'Este correo electrónico ya está registrado' }
-    };
-  }
-  console.log('Usuario no existente, procediendo a crear...');
-  console.log('Datos del usuario:', email, password, userData, redirectUrl);
-
-  try {
-    console.log('Intentando crear usuario con Supabase Auth...');
-    const { data, error } = await supabase.auth.signUp({
-      email: 'example@email.com',
-      password: 'example-password',
-    })
-    
-    return { data: { user: null, session: null }, error: null };
-  } catch (error: any) {
-    console.error('Error crítico en signUpWithEmail:', error);
-    
-    return {
-      data: { user: null, session: null },
-      error: {
-        message: 'Error interno del servidor. Por favor, intenta nuevamente o contacta al administrador.'
-      }
-    };
-  }
-}
-
-
-// Definir tipos para los datos de invitación
-type InviteData = {
-  id: string;
-  email: string;
-  organization_id: string;
-  organizations: { name: string } | null;
-  branch_id: string;
-  role_id: string;
-  roles: { name: string } | null;
-  created_at: string;
-  expires_at: string | null;
-  used: boolean;
-};
-
-// Función para validar invitaciones
-export const validateInvitation = async (inviteCode: string) => {
-  const { data, error } = await supabase
-    .from('invitations')
-    .select(`
-      id,
-      email,
-      code,
-      role_id,
-      organization_id,
-      job_position_id,
-      branch_id,
-      created_at,
-      expires_at,
-      used_at,
-      status,
-      roles(name),
-      organizations(name)
-    `)
-    .eq('code', inviteCode)
-    .single();
-
-  if (error) return { data: null, error };
-
-  // Check if invitation is already used, revoked, or expired
-  if (data.status === 'used') {
-    return { data: null, error: { message: 'La invitación ya ha sido utilizada' } };
-  }
-
-  if (data.status === 'revoked') {
-    return { data: null, error: { message: 'La invitación ha sido revocada' } };
-  }
-
-  const expired = data.expires_at ? new Date(data.expires_at) < new Date() : false;
-  if (expired) {
-    return { data: null, error: { message: 'La invitación ha expirado' } };
-  }
-
-  // Extract data safely from potentially nested objects or arrays
-  let organizationName = '';
-  let roleName = '';
-
-  // Handle organization data safely
-  if (data.organizations) {
-    // Supabase returns this as an object with name property
-    const org = data.organizations as unknown;
-    if (org && typeof org === 'object' && 'name' in org) {
-      organizationName = (org as {name: string}).name || '';
-    }
-  }
-
-  // Handle roles data safely
-  if (data.roles) {
-    // Supabase returns this as an object with name property
-    const role = data.roles as unknown;
-    if (role && typeof role === 'object' && 'name' in role) {
-      roleName = (role as {name: string}).name || '';
-    }
-  }
-
-  // Format the data for response
-  const formattedData = {
-    id: data.id,
-    code: data.code,
-    email: data.email,
-    organization_id: data.organization_id,
-    organization_name: organizationName,
-    role_id: data.role_id,
-    role_name: roleName,
-    job_position_id: data.job_position_id,
-    branch_id: data.branch_id,
-    created_at: data.created_at,
-    expires_at: data.expires_at
-  };
-
-  return { data: formattedData, error: null };
-}
-
-// Función para aceptar invitaciones
-export const acceptInvitation = async ({ 
-  inviteCode, 
-  password, 
-  userData 
-}: { 
-  inviteCode: string; 
-  password: string; 
-  userData: any 
-}) => {
-  // Validamos la invitación
-  const { data: inviteData, error: validateError } = 
-    await validateInvitation(inviteCode);
-  
-  if (validateError) {
-    return { error: validateError };
-  }
-
-  try {
-    let userId = null;
-    
-    // First, check if user is already signed in (from email confirmation)
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
-    if (session && session.user && session.user.email?.toLowerCase() === inviteData.email.toLowerCase()) {
-      // User is already authenticated via email confirmation
-      console.log('User already authenticated via email confirmation:', session.user.id);
-      userId = session.user.id;
-    } else {
-      // Try to create the user (this might fail if user already exists)
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: inviteData.email,
-        password,
-        options: {
-          data: userData
-        }
-      });
-      
-      if (signUpError) {
-        // Check if error is due to user already existing
-        if (signUpError.message?.includes('already registered') || signUpError.message?.includes('already exists')) {
-          // User exists, try to sign them in to get their ID
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email: inviteData.email,
-            password
-          });
-          
-          if (signInError || !signInData.user) {
-            return { error: { message: 'Usuario ya existe pero la contraseña no coincide. Por favor, usa la contraseña que estableciste anteriormente.' } };
-          }
-          
-          userId = signInData.user.id;
-          console.log('User already existed, signed in successfully:', userId);
-        } else {
-          return { error: signUpError };
-        }
-      } else if (authData && authData.user) {
-        userId = authData.user.id;
-        console.log('New user created successfully:', userId);
-      } else {
-        return { error: { message: 'No se pudo crear o autenticar el usuario' } };
-      }
-    }
-
-    // Obtenemos información de la sucursal principal
-    const { data: branchData } = await supabase
-      .from('branches')
-      .select('id')
-      .eq('organization_id', inviteData.organization_id)
-      .eq('is_main', true)
-      .single();
-
-    // Usar branch_id de la invitacion si existe, si no la sucursal principal
-    const branchId = inviteData.branch_id || branchData?.id || null;
-
-    // Agregamos el usuario a la tabla profiles
-    // (profiles no tiene branch_id/organization_id/role_id; esos viven en
-    // organization_members y member_branches. Se usa last_org_id como referencia.)
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .upsert({
-        id: userId,
-        email: inviteData.email,
-        first_name: userData.firstName || userData.first_name,
-        last_name: userData.lastName || userData.last_name,
-        phone: userData.phoneNumber || userData.phone,
-        last_org_id: inviteData.organization_id,
-        status: 'active',
-        preferred_language: 'es',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      });
-    
-    if (profileError) {
-      console.error('Error al crear perfil:', profileError);
-      return { error: profileError };
-    }
-
-    // Marcamos la invitación como utilizada
-    const { error: updateInviteError } = await supabase
-      .from('invitations')
-      .update({ 
-        status: 'used', 
-        used_at: new Date().toISOString() 
-      })
-      .eq('code', inviteCode);
-    
-    if (updateInviteError) {
-      console.error('Error al actualizar invitación:', updateInviteError);
-      return { error: updateInviteError };
-    }
-    
-    return { data: { user: { id: userId } }, error: null };
-  } catch (error: any) {
-    console.error('Error en acceptInvitation:', error);
-    return { 
-      data: null, 
-      error: { 
-        message: error.message || 'Error al aceptar la invitación' 
-      } 
-    };
-  }
-};
-
-// Función auxiliar para completar perfil de invitación
-export const createProfileFromInvitation = async ({
-  inviteCode,
-  userData,
-  authUserId,
-  password
-}: {
-  inviteCode: string;
-  userData: any;
-  authUserId: string;
-  password?: string;
-}) => {
-  // Validar la invitación
-  const { data: inviteData, error: validateError } = await validateInvitation(inviteCode);
-  
-  if (validateError) {
-    return { error: validateError };
-  }
-
-  try {
-    // Obtener información de la sucursal principal
-    const { data: branchData } = await supabase
-      .from('branches')
-      .select('id')
-      .eq('organization_id', inviteData.organization_id)
-      .eq('is_main', true)
-      .single();
-
-    // Usar branch_id de la invitacion si existe, si no la sucursal principal
-    const branchId = inviteData.branch_id || branchData?.id || null;
-
-    // Actualizar contraseña si se proporciona
-    if (password) {
-      const { error: passwordError } = await supabase.auth.updateUser({
-        password: password
-      });
-      
-      if (passwordError) {
-        console.error('Error al actualizar contraseña:', passwordError);
-        return { error: { message: 'Error al actualizar la contraseña: ' + passwordError.message } };
-      }
-      console.log('Contraseña actualizada exitosamente');
-    }
-
-    // Actualizar perfil (profiles no tiene branch_id; se guarda last_org_id)
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({
-        first_name: userData.firstName || userData.first_name,
-        last_name: userData.lastName || userData.last_name,
-        phone: userData.phoneNumber || userData.phone,
-        last_org_id: inviteData.organization_id,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', authUserId);
-    
-    if (profileError) {
-      console.error('Error al actualizar perfil:', profileError);
-      return { error: profileError };
-    }
-    console.log('Perfil actualizado exitosamente');
-
-    // Verificar si ya existe la membresía en la organización
-    const { data: existingMembership } = await supabase
-      .from('organization_members')
-      .select('id')
-      .eq('user_id', authUserId)
-      .eq('organization_id', inviteData.organization_id)
-      .single();
-
-    if (!existingMembership) {
-      // Crear membresía en la organización
-      const { data: newMembership, error: membershipError } = await supabase
-        .from('organization_members')
-        .insert({
-          user_id: authUserId,
-          organization_id: inviteData.organization_id,
-          role_id: inviteData.role_id,
-          job_position_id: inviteData.job_position_id || null,
-          is_active: true
-        })
-        .select('id')
-        .single();
-
-      if (membershipError) {
-        console.error('Error al crear membresía:', membershipError);
-        return { error: { message: 'Error al crear la membresía en la organización: ' + membershipError.message } };
-      }
-      console.log('Membresía en organización creada exitosamente');
-
-      // Asignar sucursal en member_branches y actualizar employment
-      if (branchId && newMembership?.id) {
-        await supabase
-          .from('member_branches')
-          .insert({ organization_member_id: newMembership.id, branch_id: branchId });
-        await supabase
-          .from('employments')
-          .update({ branch_id: branchId, updated_at: new Date().toISOString() })
-          .eq('organization_member_id', newMembership.id)
-          .is('branch_id', null);
-      }
-    } else {
-      // Actualizar membresía existente
-      const { error: updateMembershipError } = await supabase
-        .from('organization_members')
-        .update({
-          role_id: inviteData.role_id,
-          job_position_id: inviteData.job_position_id || undefined,
-          is_active: true
-        })
-        .eq('user_id', authUserId)
-        .eq('organization_id', inviteData.organization_id);
-
-      if (updateMembershipError) {
-        console.error('Error al actualizar membresía:', updateMembershipError);
-        return { error: { message: 'Error al actualizar la membresía: ' + updateMembershipError.message } };
-      }
-      console.log('Membresía en organización actualizada exitosamente');
-
-      // Asignar sucursal en member_branches y actualizar employment
-      if (branchId && existingMembership.id) {
-        const { data: existingMB } = await supabase
-          .from('member_branches')
-          .select('id')
-          .eq('organization_member_id', existingMembership.id)
-          .eq('branch_id', branchId)
-          .maybeSingle();
-        if (!existingMB) {
-          await supabase
-            .from('member_branches')
-            .insert({ organization_member_id: existingMembership.id, branch_id: branchId });
-        }
-        await supabase
-          .from('employments')
-          .update({ branch_id: branchId, updated_at: new Date().toISOString() })
-          .eq('organization_member_id', existingMembership.id)
-          .is('branch_id', null);
-      }
-    }
-
-    // Marcar la invitación como utilizada
-    const { error: updateInviteError } = await supabase
-      .from('invitations')
-      .update({ 
-        status: 'used', 
-        used_at: new Date().toISOString() 
-      })
-      .eq('code', inviteCode);
-    
-    if (updateInviteError) {
-      console.error('Error al actualizar invitación:', updateInviteError);
-      return { error: updateInviteError };
-    }
-    console.log('Invitación marcada como utilizada');
-    
-    console.log('Proceso de invitación completado exitosamente para usuario:', authUserId);
-    return { data: { user: { id: authUserId } }, error: null };
-
-  } catch (error: any) {
-    console.error('Error en createProfileFromInvitation:', error);
-    return { 
-      error: { 
-        message: error.message || 'Error al crear el perfil' 
-      } 
-    };
-  }
-};
+// Invitaciones: validateInvitation / acceptInvitation / createProfileFromInvitation
+// se retiraron (GO-sec 2026-09-28). Leían invitations.code desde el navegador y
+// nadie las importaba. El flujo vive en /api/auth/invite*, /api/auth/accept-invitation
+// y src/lib/auth/invitaciones.ts (servidor).

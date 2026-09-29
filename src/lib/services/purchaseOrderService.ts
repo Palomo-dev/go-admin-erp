@@ -1,7 +1,11 @@
 import { supabase } from '@/lib/supabase/config';
-import { stockMovementService, type StockDecrementResult } from '@/lib/services/stockMovementService';
-import { serialTrackingService } from '@/lib/services/serialTrackingService';
-import { clienteCompras } from '@/lib/services/compras/clienteCompras';
+import {
+  ErrorRecepcionOrdenCompra,
+  lineasPendientes,
+  nuevaClaveRecepcion,
+  recepcionarOrdenCompra,
+  type ResultadoRecepcionOC,
+} from '@/lib/services/inventario/recepcionOrdenCompra';
 
 // Tipos para Órdenes de Compra
 export interface PurchaseOrder {
@@ -53,6 +57,11 @@ export interface PurchaseOrderItem {
     sku: string;
     name: string;
     unit_code?: string;
+    /** Cómo se vende (peso o medida: la cantidad lleva decimales y unidad). */
+    sale_mode?: string | null;
+    qty_decimals?: number | null;
+    track_serial?: boolean | null;
+    track_lots?: boolean | null;
   };
 }
 
@@ -212,7 +221,7 @@ class PurchaseOrderService {
         .from('purchase_order_items')
         .select(`
           *,
-          products:product_id (id, uuid, sku, name, unit_code)
+          products:product_id (id, uuid, sku, name, unit_code, sale_mode, qty_decimals, track_serial, track_lots)
         `)
         .eq('purchase_order_id', order.id)
         .order('id', { ascending: true });
@@ -368,9 +377,9 @@ class PurchaseOrderService {
   /**
    * Escribe el estado tal cual, sin validar. Uso interno.
    *
-   * Solo `receiveItems` puede dejar una orden en 'partial' o 'received', porque
-   * esos dos estados significan "esta mercancia ya entro al inventario" y se
-   * derivan de las cantidades realmente recibidas.
+   * Solo la recepción (`fn_oc_recepcionar`, inventario B8) deja una orden en
+   * 'partial' o 'received', porque esos dos estados significan "esta mercancia
+   * ya entro al inventario" y se derivan de las cantidades realmente recibidas.
    */
   private async setStatus(
     orderUuid: string,
@@ -401,8 +410,8 @@ class PurchaseOrderService {
    *
    * No acepta 'received' ni 'partial': antes si los aceptaba, y marcar una orden
    * como recibida desde el listado solo cambiaba el status sin sumar una sola
-   * unidad al inventario. Para recibir hay que pasar por `receiveItems` o
-   * `receiveAllPending`, que son los unicos que mueven stock.
+   * unidad al inventario. Para recibir hay que pasar por la recepción
+   * (`recepcionarOrdenCompra` o `receiveAllPending` → `fn_oc_recepcionar`).
    */
   async updateStatus(
     orderUuid: string,
@@ -415,7 +424,7 @@ class PurchaseOrderService {
     if (['received', 'partial'].includes(newStatus)) {
       return {
         success: false,
-        error: new Error('Para recibir una orden usa receiveItems/receiveAllPending, que si registran el stock'),
+        error: new Error('Para recibir una orden usa la recepción (fn_oc_recepcionar), que sí registra el stock'),
       };
     }
 
@@ -423,16 +432,17 @@ class PurchaseOrderService {
   }
 
   /**
-   * Recibe de golpe todo lo que quede pendiente de la orden y suma el stock.
-   *
-   * Es lo que necesita el boton "marcar como recibida" del listado: completar
-   * cada linea hasta su cantidad pedida pasando por el mismo camino que la
-   * recepcion manual, en vez de tocar el status por su cuenta.
+   * Recibe de golpe todo lo que quede pendiente de la orden («Marcar recibida»
+   * del listado) por la misma RPC que la recepción del detalle
+   * (`fn_oc_recepcionar`, inventario B8): una transacción con kardex, estado y
+   * factura al completar. Si una línea exige lote o seriales, la RPC lo rechaza
+   * con un código legible (`lote_requerido`, `seriales_no_cuadran`) y no recibe
+   * nada: esa orden se recibe desde el detalle.
    */
   async receiveAllPending(
     orderUuid: string,
     organizationId: number
-  ): Promise<{ success: boolean; error: Error | null; stock?: StockDecrementResult }> {
+  ): Promise<{ success: boolean; error: Error | null; resultado?: ResultadoRecepcionOC }> {
     try {
       const { data: order } = await supabase
         .from('purchase_orders')
@@ -442,29 +452,22 @@ class PurchaseOrderService {
         .single();
 
       if (!order) {
-        return { success: false, error: new Error('Orden no encontrada') };
+        return { success: false, error: new ErrorRecepcionOrdenCompra('orden_no_encontrada') };
       }
 
       const { data: items } = await supabase
         .from('purchase_order_items')
-        .select('id, quantity, received_quantity')
+        .select('id, product_id, quantity, received_quantity')
         .eq('purchase_order_id', order.id);
 
-      if (!items || items.length === 0) {
-        return { success: false, error: new Error('La orden no tiene items para recibir') };
+      const lineas = lineasPendientes(items ?? []);
+      if (lineas.length === 0) {
+        return { success: false, error: new ErrorRecepcionOrdenCompra('orden_no_recibible') };
       }
 
-      const pending = items
-        .filter((item) => Number(item.received_quantity) < Number(item.quantity))
-        .map((item) => ({ itemId: item.id, quantity: Number(item.quantity) }));
-
-      if (pending.length === 0) {
-        return { success: false, error: new Error('La orden ya fue recibida por completo') };
-      }
-
-      return this.receiveItems(orderUuid, organizationId, pending);
+      const resultado = await recepcionarOrdenCompra(orderUuid, { lineas, clave: nuevaClaveRecepcion() });
+      return { success: true, error: null, resultado };
     } catch (error) {
-      console.error('Error recibiendo orden completa:', (error as { message?: string } | null)?.message || error);
       return { success: false, error: error as Error };
     }
   }
@@ -544,294 +547,6 @@ class PurchaseOrderService {
       console.error('Error duplicando orden:', (error as { message?: string } | null)?.message || error);
       return { data: null, error: error as Error };
     }
-  }
-
-  /**
-   * Recibir items (parcial o total) por UUID
-   */
-  async receiveItems(
-    orderUuid: string,
-    organizationId: number,
-    itemsReceived: { itemId: number; quantity: number }[]
-  ): Promise<{ success: boolean; error: Error | null; stock?: StockDecrementResult }> {
-    try {
-      // Obtener el ID numérico de la orden y branch_id
-      const { data: order } = await supabase
-        .from('purchase_orders')
-        .select('id, branch_id')
-        .eq('uuid', orderUuid)
-        .eq('organization_id', organizationId)
-        .single();
-
-      if (!order) {
-        return { success: false, error: new Error('Orden no encontrada') };
-      }
-
-      const orderId = order.id;
-      const branchId = order.branch_id;
-
-      // Obtener received_quantity actual para calcular delta
-      const itemIds = itemsReceived.map(i => i.itemId);
-      const { data: currentItems } = await supabase
-        .from('purchase_order_items')
-        .select('id, product_id, unit_cost, received_quantity')
-        .in('id', itemIds)
-        .eq('purchase_order_id', orderId);
-
-      const currentMap = new Map((currentItems || []).map(i => [i.id, i]));
-
-      // Actualizar cantidad recibida de cada item
-      for (const item of itemsReceived) {
-        const { error } = await supabase
-          .from('purchase_order_items')
-          .update({
-            received_quantity: item.quantity,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', item.itemId)
-          .eq('purchase_order_id', orderId);
-
-        if (error) throw error;
-      }
-
-      // Sumar stock por el delta recibido (nuevo - anterior)
-      let stockResult: StockDecrementResult | undefined;
-      try {
-        const stockItems = itemsReceived
-          .map(item => {
-            const current = currentMap.get(item.itemId);
-            if (!current || !current.product_id) return null;
-            const prevQty = Number(current.received_quantity) || 0;
-            const newQty = Number(item.quantity) || 0;
-            const delta = newQty - prevQty;
-            if (delta <= 0) return null;
-            return {
-              product_id: current.product_id,
-              quantity: delta,
-              unit_price: Number(current.unit_cost) || 0,
-            };
-          })
-          .filter((item): item is { product_id: number; quantity: number; unit_price: number } => item !== null);
-
-        if (stockItems.length > 0) {
-          stockResult = await stockMovementService.incrementOnPurchase(
-            organizationId,
-            branchId,
-            orderId,
-            stockItems,
-            'purchase_order'
-          );
-          if (stockResult.errors.length > 0) {
-            console.warn('⚠️ Algunos items no sumaron stock:', stockResult.errors);
-          }
-          console.log(`📦 Stock incrementado (OC ${orderId}): ${stockItems.length - stockResult.skipped} items`);
-        }
-      } catch (stockError) {
-        // El stock no bloquea la recepcion, pero el fallo se devuelve para que la
-        // UI pueda avisar en vez de dejarlo enterrado en la consola.
-        console.warn('⚠️ Error sumando stock (no bloquea recepción):', stockError);
-        stockResult = {
-          success: false,
-          skipped: 0,
-          skippedItems: [],
-          errors: [(stockError as { message?: string } | null)?.message || 'Error desconocido sumando stock'],
-        };
-      }
-
-      // Verificar si es recepción total o parcial
-      const { data: allItems } = await supabase
-        .from('purchase_order_items')
-        .select('quantity, received_quantity')
-        .eq('purchase_order_id', orderId);
-
-      if (allItems) {
-        const isComplete = allItems.every((item: { quantity: number; received_quantity: number }) => item.received_quantity >= item.quantity);
-        const isPartial = allItems.some((item: { quantity: number; received_quantity: number }) => item.received_quantity > 0);
-
-        const newStatus = isComplete ? 'received' : (isPartial ? 'partial' : 'sent');
-
-        await this.setStatus(orderUuid, organizationId, newStatus);
-
-        // Si la recepción es completa, generar factura de compra y cuenta por pagar automáticamente
-        if (isComplete) {
-          try {
-            await this.generateInvoiceFromPurchaseOrder(orderUuid);
-          } catch (invError) {
-            console.warn('⚠️ Error generando factura automática (no bloquea recepción):', invError);
-          }
-        }
-      }
-
-      return { success: true, error: null, stock: stockResult };
-    } catch (error) {
-      console.error('Error recibiendo items:', (error as { message?: string } | null)?.message || error);
-      return { success: false, error: error as Error };
-    }
-  }
-
-  /**
-   * Recibir items con seriales (para productos que requieren tracking individual)
-   */
-  async receiveItemsWithSerials(
-    orderUuid: string,
-    organizationId: number,
-    itemsReceived: Array<{
-      itemId: number;
-      quantity: number;
-      serials?: string[];
-    }>
-  ): Promise<{ success: boolean; error: Error | null; stock?: StockDecrementResult }> {
-    try {
-      const { data: order } = await supabase
-        .from('purchase_orders')
-        .select('id, branch_id, supplier_id')
-        .eq('uuid', orderUuid)
-        .eq('organization_id', organizationId)
-        .single();
-
-      if (!order) {
-        return { success: false, error: new Error('Orden no encontrada') };
-      }
-
-      const orderId = order.id;
-      const branchId = order.branch_id;
-      const supplierId = order.supplier_id;
-
-      const itemIds = itemsReceived.map(i => i.itemId);
-      const { data: currentItems } = await supabase
-        .from('purchase_order_items')
-        .select('id, product_id, unit_cost, received_quantity')
-        .in('id', itemIds)
-        .eq('purchase_order_id', orderId);
-
-      const currentMap = new Map((currentItems || []).map(i => [i.id, i]));
-
-      for (const item of itemsReceived) {
-        const { error } = await supabase
-          .from('purchase_order_items')
-          .update({
-            received_quantity: item.quantity,
-            serials_received: item.serials || [],
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', item.itemId)
-          .eq('purchase_order_id', orderId);
-
-        if (error) throw error;
-      }
-
-      let stockResult: StockDecrementResult | undefined;
-      try {
-        const stockItems = itemsReceived
-          .map(item => {
-            const current = currentMap.get(item.itemId);
-            if (!current || !current.product_id) return null;
-            const prevQty = Number(current.received_quantity) || 0;
-            const newQty = Number(item.quantity) || 0;
-            const delta = newQty - prevQty;
-            if (delta <= 0) return null;
-            return {
-              product_id: current.product_id,
-              quantity: delta,
-              unit_price: Number(current.unit_cost) || 0,
-            };
-          })
-          .filter((item): item is { product_id: number; quantity: number; unit_price: number } => item !== null);
-
-        if (stockItems.length > 0) {
-          stockResult = await stockMovementService.incrementOnPurchase(
-            organizationId,
-            branchId,
-            orderId,
-            stockItems,
-            'purchase_order'
-          );
-        }
-      } catch (stockError) {
-        console.warn('⚠️ Error sumando stock (no bloquea recepción):', stockError);
-        stockResult = {
-          success: false,
-          skipped: 0,
-          skippedItems: [],
-          errors: [(stockError as { message?: string } | null)?.message || 'Error desconocido sumando stock'],
-        };
-      }
-
-      // Crear seriales en la base de datos
-      for (const item of itemsReceived) {
-        if (!item.serials || item.serials.length === 0) continue;
-
-        const current = currentMap.get(item.itemId);
-        if (!current || !current.product_id) continue;
-
-        const prevQty = Number(current.received_quantity) || 0;
-        const newQty = Number(item.quantity) || 0;
-        const delta = newQty - prevQty;
-
-        // Solo crear seriales por la cantidad nueva recibida (delta)
-        const serialsToCreate = item.serials.slice(0, delta);
-
-        for (const serialText of serialsToCreate) {
-          const { error: serialError } = await serialTrackingService.createSerial({
-            product_id: current.product_id,
-            organization_id: organizationId,
-            branch_id: branchId,
-            serial: serialText,
-            supplier_id: supplierId,
-            purchase_order_id: orderId,
-            cost_at_purchase: Number(current.unit_cost) || 0,
-          });
-
-          if (serialError) {
-            console.warn(`⚠️ Error creando serial ${serialText}:`, serialError.message);
-          }
-        }
-      }
-
-      // Verificar recepcion total/parcial
-      const { data: allItems } = await supabase
-        .from('purchase_order_items')
-        .select('quantity, received_quantity')
-        .eq('purchase_order_id', orderId);
-
-      if (allItems) {
-        const isComplete = allItems.every((item: { quantity: number; received_quantity: number }) => item.received_quantity >= item.quantity);
-        const isPartial = allItems.some((item: { quantity: number; received_quantity: number }) => item.received_quantity > 0);
-
-        const newStatus = isComplete ? 'received' : (isPartial ? 'partial' : 'sent');
-        await this.setStatus(orderUuid, organizationId, newStatus);
-
-        if (isComplete) {
-          try {
-            await this.generateInvoiceFromPurchaseOrder(orderUuid);
-          } catch (invError) {
-            console.warn('⚠️ Error generando factura automática (no bloquea recepción):', invError);
-          }
-        }
-      }
-
-      return { success: true, error: null, stock: stockResult };
-    } catch (error) {
-      console.error('Error recibiendo items con seriales:', (error as { message?: string } | null)?.message || error);
-      return { success: false, error: error as Error };
-    }
-  }
-
-  /**
-   * Factura de compra desde una OC recibida por completo. Es UNA sola RPC
-   * (`fn_factura_compra_desde_oc`, vía `POST /api/facturas-compra/desde-orden`)
-   * la que la arma, la confirma sin kardex (la mercancía ya entró con la
-   * recepción de la OC), deja `po_id`, crea la CxP por el neto con su
-   * disparador y enlaza los seriales. Es idempotente: si la OC ya tiene
-   * factura, devuelve la existente.
-   *
-   * Antes esta función insertaba la factura, las líneas y la CxP a mano, con el
-   * día UTC, un consecutivo leído del último registro y sin `po_id` (plan de
-   * compras y CxP, F1/F7): la tercera implementación de «registrar una compra».
-   */
-  private async generateInvoiceFromPurchaseOrder(orderUuid: string): Promise<void> {
-    const r = await clienteCompras.desdeOrden(orderUuid);
-    console.log(r.ya_existia ? 'ℹ️ La OC ya tenía factura de compra' : '✅ Factura de compra generada desde la OC');
   }
 
   /**

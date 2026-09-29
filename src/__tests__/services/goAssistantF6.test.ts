@@ -23,6 +23,21 @@ import {
   NAVEGACION_TOOLS,
 } from '@/lib/ai/agent/tools/navegacion';
 import type { ToolContext } from '@/lib/ai/agent/types';
+import { MODULE_PAGES } from '@/lib/config/modulePages';
+
+/**
+ * Páginas que una organización ve de un módulo: TODO el catálogo menos lo que
+ * esté apagado a propósito. Desde el 2026-09-23 la ausencia de fila en
+ * `organization_module_pages` significa «activa» (ver
+ * `src/lib/navigation/paginaActiva.ts`), así que estas pruebas ya no pueden
+ * suponer que la lista de la organización es la lista de lo que existe.
+ */
+function visibles(codigo: string, apagadas: string[] = []): Array<{ nombre: string; ruta: string }> {
+  return (MODULE_PAGES[codigo] ?? [])
+    .filter((p) => !apagadas.includes(p.href))
+    .map((p) => ({ nombre: p.name, ruta: p.href }))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+}
 
 // ---------------------------------------------------------------------------
 // Doble del cliente de Supabase
@@ -112,10 +127,14 @@ const MODULOS_DE_GIMNASIO = {
   error: null,
 };
 
-const PAGINAS_DE_GIMNASIO = {
+/**
+ * Filas de `organization_module_pages` del gimnasio: son las páginas APAGADAS
+ * a propósito, porque la consulta las pide con `is_active = false`.
+ */
+const APAGADAS_DEL_GIMNASIO = {
   data: [
-    { module_code: 'gym', page_name: 'Membresías', page_href: '/app/gym/membresias' },
-    { module_code: 'configuracion', page_name: 'Configuración', page_href: '/app/configuracion' },
+    { module_code: 'gym', page_href: '/app/gym/clases' },
+    { module_code: 'gym', page_href: '/app/gym/horarios' },
   ],
   error: null,
 };
@@ -211,7 +230,7 @@ describe('F6 — listar_modulos_activos', () => {
     const db = fakeSupabase(
       {
         organization_modules: MODULOS_DE_GIMNASIO,
-        organization_module_pages: PAGINAS_DE_GIMNASIO,
+        organization_module_pages: APAGADAS_DEL_GIMNASIO,
       },
       espia
     );
@@ -224,7 +243,16 @@ describe('F6 — listar_modulos_activos', () => {
     expect(data.total).toBe(2);
     // Ordenados por `rank`: el gimnasio (10) antes que configuración (150).
     expect(data.modulos.map((m) => m.codigo)).toEqual(['gym', 'configuracion']);
-    expect(data.modulos[0].paginas).toEqual([{ nombre: 'Membresías', ruta: '/app/gym/membresias' }]);
+    // Todas las del catálogo menos las dos apagadas: una página que nadie
+    // apagó se ve, aunque la organización no tenga fila para ella.
+    expect(data.modulos[0].paginas).toEqual(
+      visibles('gym', ['/app/gym/clases', '/app/gym/horarios'])
+    );
+    expect(data.modulos[0].paginas).toContainEqual({
+      nombre: 'Membresías',
+      ruta: '/app/gym/membresias',
+    });
+    expect(data.modulos[0].paginas).not.toContainEqual({ nombre: 'Clases', ruta: '/app/gym/clases' });
   });
 
   it('siempre acota por la organización del contexto', async () => {
@@ -251,13 +279,17 @@ describe('F6 — estado_configuracion', () => {
     const espia = espiaNuevo();
     const db = fakeSupabase(
       {
-        organization_module_pages: {
+        organization_modules: {
           data: [
-            { module_code: 'finance', page_name: 'Impuestos', page_href: '/app/finanzas/impuestos' },
-            { module_code: 'finance', page_name: 'Métodos de pago', page_href: '/app/finanzas/metodos-pago' },
+            {
+              module_code: 'finance',
+              modules: { name: 'Finanzas', description: null, is_core: false, rank: 400 },
+            },
           ],
           error: null,
         },
+        // Nada apagado: el catálogo de finanzas entero está a la vista.
+        organization_module_pages: { data: [], error: null },
         branches: { count: 2, error: null },
         organization_currencies: { count: 1, error: null },
         organization_payment_methods: { count: 3, error: null },
@@ -288,8 +320,10 @@ describe('F6 — estado_configuracion', () => {
     // La ruta sale de las páginas de ESTA organización.
     expect(porClave.impuestos.ruta).toBe('/app/finanzas/impuestos');
     expect(porClave.metodos_pago.ruta).toBe('/app/finanzas/metodos-pago');
-    // Sin página que encaje, la ruta va nula: no se inventa una URL.
-    expect(porClave.facturacion_electronica.ruta).toBeNull();
+    // Antes esta prueba daba por hecho que sin fila no hay pantalla; hoy
+    // `facturacion_electronica` SÍ es una página del catálogo de finanzas y
+    // nadie la apagó, así que la ruta existe.
+    expect(porClave.facturacion_electronica.ruta).toBe('/app/finanzas/facturacion-electronica');
 
     expect(res.message).toContain('Faltan 3 de 6');
   });
@@ -364,7 +398,7 @@ describe('F6 — explicar_configuracion', () => {
     const db = fakeSupabase(
       {
         organization_modules: MODULOS_DE_GIMNASIO,
-        organization_module_pages: PAGINAS_DE_GIMNASIO,
+        organization_module_pages: APAGADAS_DEL_GIMNASIO,
       },
       espia
     );
@@ -388,11 +422,11 @@ describe('F6 — explicar_configuracion', () => {
           ],
           error: null,
         },
+        // Apagadas a propósito: dos pantallas de trazabilidad.
         organization_module_pages: {
           data: [
-            { module_code: 'inventory', page_name: 'Productos', page_href: '/app/inventario/productos' },
-            { module_code: 'inventory', page_name: 'Categorias', page_href: '/app/inventario/categorias' },
-            { module_code: 'inventory', page_name: 'Proveedores', page_href: '/app/inventario/proveedores' },
+            { module_code: 'inventory', page_href: '/app/inventario/lotes' },
+            { module_code: 'inventory', page_href: '/app/inventario/seriales' },
           ],
           error: null,
         },
@@ -409,7 +443,14 @@ describe('F6 — explicar_configuracion', () => {
       puntos: Array<{ titulo: string; estado: string; ruta: string | null }>;
     };
 
-    expect(data.pantallas).toHaveLength(3);
+    // El catálogo de inventario menos las dos apagadas. Antes esta prueba
+    // esperaba 3 —las filas de la organización— y con eso se colaba el defecto:
+    // una pantalla sin fila desaparecía del asistente.
+    expect(data.pantallas).toEqual(
+      visibles('inventory', ['/app/inventario/lotes', '/app/inventario/seriales'])
+    );
+    expect(data.pantallas.map((p) => p.ruta)).toContain('/app/inventario/productos');
+    expect(data.pantallas.map((p) => p.ruta)).not.toContain('/app/inventario/lotes');
     const categorias = data.puntos.find((p) => p.titulo === 'Categorías');
     expect(categorias?.estado).toBe('pendiente');
     expect(categorias?.ruta).toBe('/app/inventario/categorias');
@@ -422,7 +463,7 @@ describe('F6 — explicar_configuracion', () => {
     const db = fakeSupabase(
       {
         organization_modules: MODULOS_DE_GIMNASIO,
-        organization_module_pages: PAGINAS_DE_GIMNASIO,
+        organization_module_pages: APAGADAS_DEL_GIMNASIO,
       },
       espia
     );
@@ -430,7 +471,7 @@ describe('F6 — explicar_configuracion', () => {
     const res = await explicarConfiguracion.execute(ctx(db), { modulo: 'gym' });
     const data = res.data as { encontrado: boolean; pantallas: unknown[]; puntos: unknown[] };
     expect(data.encontrado).toBe(true);
-    expect(data.pantallas).toHaveLength(1);
+    expect(data.pantallas).toEqual(visibles('gym', ['/app/gym/clases', '/app/gym/horarios']));
     // Sin extras declarados no se inventa ninguno.
     expect(data.puntos).toEqual([]);
     expect(res.ok).toBe(true);

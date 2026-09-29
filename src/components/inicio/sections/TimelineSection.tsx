@@ -5,6 +5,8 @@ import { Activity } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { toastError } from '@/components/ui/use-toast';
+import { useLocale, useTranslations } from 'next-intl';
+import { KpiStrip, StatCard } from '@/components/kit';
 import ModuloSection from '../ModuloSection';
 import type {
   SectionExportData,
@@ -142,6 +144,8 @@ function buildExportData(
 // ─── Componente ──────────────────────────────────────────────────────────────
 
 export default function TimelineSection() {
+  const t = useTranslations('home.panel.timeline');
+  const locale = useLocale();
   const [isLoading, setIsLoading] = useState(true);
   const [kpis, setKpis] = useState<TimelineKPIs | null>(null);
   const [eventos, setEventos] = useState<OpsAuditEvent[]>([]);
@@ -294,12 +298,12 @@ export default function TimelineSection() {
     >
       <div className="space-y-6">
         {/* KPIs */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <KPICard label="Eventos hoy" value={kpis?.eventosHoy ?? 0} isLoading={isLoading} />
-          <KPICard label="Eventos totales" value={kpis?.eventosTotal ?? 0} isLoading={isLoading} />
-          <KPICard label="Usuarios activos" value={kpis?.usuariosActivos ?? 0} isLoading={isLoading} />
-          <KPICard label="Módulos activos" value={kpis?.modulosMasActivos ?? 0} isLoading={isLoading} />
-        </div>
+        <KpiStrip>
+          <StatCard etiqueta={t('eventosHoy')} valor={(kpis?.eventosHoy ?? 0).toLocaleString(locale)} cargando={isLoading} />
+          <StatCard etiqueta={t('eventosTotales')} valor={(kpis?.eventosTotal ?? 0).toLocaleString(locale)} cargando={isLoading} />
+          <StatCard etiqueta={t('usuariosActivos')} valor={(kpis?.usuariosActivos ?? 0).toLocaleString(locale)} cargando={isLoading} />
+          <StatCard etiqueta={t('modulosActivos')} valor={(kpis?.modulosMasActivos ?? 0).toLocaleString(locale)} cargando={isLoading} />
+        </KpiStrip>
 
         {/* Eventos recientes */}
         <div>
@@ -343,32 +347,5 @@ export default function TimelineSection() {
         </div>
       </div>
     </ModuloSection>
-  );
-}
-
-// ─── Sub-componentes ─────────────────────────────────────────────────────────
-
-function KPICard({
-  label,
-  value,
-  isLoading,
-}: {
-  label: string;
-  value: number;
-  isLoading: boolean;
-}) {
-  return (
-    <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30">
-      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-        {label}
-      </p>
-      {isLoading ? (
-        <div className="h-6 mt-1 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-16" />
-      ) : (
-        <p className="text-xl font-semibold text-gray-900 dark:text-white mt-1">
-          {value.toLocaleString('es-CO')}
-        </p>
-      )}
-    </div>
   );
 }

@@ -9,6 +9,7 @@
  * y a su estado HTTP.
  */
 import { z } from 'zod';
+import { loteRecepcionSchema } from '@/lib/services/inventario/recepcionOrdenCompra';
 
 const DIA = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 /** Día `YYYY-MM-DD` (se combina con la hora de la sucursal en la base) o instante ISO. */
@@ -69,9 +70,36 @@ export const guardarFacturaSchema = z
 
 export type GuardarFacturaCompra = z.infer<typeof guardarFacturaSchema>;
 
+/**
+ * Inventario B8: lotes de la recepción por línea de la factura (por
+ * `invoice_item_id`, o por `product_id` si el producto está en una sola línea).
+ * Obligatorios para los productos que manejan lotes; los valida y crea la base
+ * (`fn_fc_recepcionar_int`).
+ */
+export const lotesRecepcionFacturaSchema = z
+  .array(
+    z
+      .object({
+        invoice_item_id: UUID.optional(),
+        product_id: z.coerce.number().int().positive().optional(),
+        lotes: z.array(loteRecepcionSchema).min(1).max(50),
+      })
+      .strict()
+      .refine((e) => Boolean(e.invoice_item_id) || Boolean(e.product_id), { message: 'linea_requerida' }),
+  )
+  .max(500);
+
 export const confirmarFacturaSchema = z
-  .object({ recepcionar: z.boolean().default(true), generar_ds: z.boolean().default(false) })
+  .object({
+    recepcionar: z.boolean().default(true),
+    generar_ds: z.boolean().default(false),
+    lotes: lotesRecepcionFacturaSchema.optional(),
+  })
   .strict();
+
+export const recepcionarFacturaSchema = z.object({ lotes: lotesRecepcionFacturaSchema.optional() }).strict();
+
+export type LotesRecepcionFactura = z.infer<typeof lotesRecepcionFacturaSchema>;
 
 export const anularFacturaSchema = z.object({ motivo: z.string().trim().min(3).max(500) }).strict();
 
@@ -160,7 +188,25 @@ export const ERRORES_COMPRA = [
   'error_desconocido',
 ] as const;
 
-export type ErrorCompra = (typeof ERRORES_COMPRA)[number];
+/**
+ * Inventario B8: errores de la recepción con lotes y seriales. Su texto vive en
+ * `inventarioRecepcionOC.errores` (el mismo de la recepción de la OC); las
+ * pantallas de compras lo usan cuando `facturasCompra.errores` no lo tiene.
+ */
+export const ERRORES_RECEPCION_COMPRA = [
+  'lote_requerido',
+  'lotes_no_cuadran',
+  'lotes_sin_linea',
+  'lote_invalido',
+  'lote_repetido',
+  'lote_vencimiento_distinto',
+  'seriales_no_cuadran',
+  'serial_repetido',
+  'cantidad_serial_entera',
+  'fecha_invalida',
+] as const;
+
+export type ErrorCompra = (typeof ERRORES_COMPRA)[number] | (typeof ERRORES_RECEPCION_COMPRA)[number];
 
 /** Código estable para el mensaje de error de una RPC de compras o CxP. */
 export function codigoErrorCompra(mensaje: string | null | undefined): ErrorCompra {
@@ -207,6 +253,16 @@ export function codigoErrorCompra(mensaje: string | null | undefined): ErrorComp
     [/^PLAN_NO_CUADRA/, 'plan_no_cuadra'],
     [/^CUOTAS_INVALIDAS/, 'cuotas_invalidas'],
     [/^RANGO_INVALIDO/, 'rango_invalido'],
+    [/^lote_requerido$/, 'lote_requerido'],
+    [/^lotes_no_cuadran$/, 'lotes_no_cuadran'],
+    [/^lotes_sin_linea$/, 'lotes_sin_linea'],
+    [/^lote_invalido$/, 'lote_invalido'],
+    [/^lote_repetido$/, 'lote_repetido'],
+    [/^lote_vencimiento_distinto$/, 'lote_vencimiento_distinto'],
+    [/^seriales_no_cuadran$/, 'seriales_no_cuadran'],
+    [/^serial_repetido$/, 'serial_repetido'],
+    [/^cantidad_serial_entera$/, 'cantidad_serial_entera'],
+    [/^fecha_invalida$/, 'fecha_invalida'],
   ];
   for (const [re, codigo] of pares) if (re.test(m)) return codigo;
   return 'error_desconocido';

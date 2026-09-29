@@ -1,6 +1,7 @@
 'use client';
 
 import { supabase } from '@/lib/supabase/config';
+import { buscarClientes } from '@/lib/services/customers/busquedaClientesService';
 
 export interface CustomerAddress {
   id: string;
@@ -233,17 +234,20 @@ export const customerAddressesService = {
   },
 
   async searchCustomers(organizationId: number, searchTerm: string) {
-    const { data, error } = await supabase
-      .from('customers')
-      .select('id, first_name, last_name, full_name, email, phone')
-      .eq('organization_id', organizationId)
-      .or(`full_name.ilike.%${searchTerm}%,first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%,trade_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
-      .limit(20);
-
-    if (error) {
-      console.warn('Error searching customers:', error.message);
+    // Búsqueda única de clientes (RPC): sin tildes, todas las palabras, dígitos.
+    try {
+      const { filas } = await buscarClientes(supabase, { organizationId, texto: searchTerm, limite: 20 });
+      return filas.map((c) => ({
+        id: c.id,
+        first_name: c.first_name ?? '',
+        last_name: c.last_name ?? '',
+        full_name: c.full_name ?? '',
+        email: c.email ?? undefined,
+        phone: c.phone ?? undefined,
+      }));
+    } catch (error) {
+      console.warn('Error searching customers:', error instanceof Error ? error.message : error);
       return [];
     }
-    return data || [];
   },
 };

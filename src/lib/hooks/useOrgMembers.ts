@@ -2,7 +2,7 @@
 
 /**
  * Miembros activos de la organización activa con su nombre, para selectores
- * de vendedor (F13). Patrón canónico de `NuevaFacturaForm.tsx`:
+ * de vendedor (F13). Patrón canónico del formulario de factura de venta:
  * `organization_members` (RLS por pertenencia) + `profiles` por `user_id`.
  */
 

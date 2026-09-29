@@ -5,7 +5,17 @@ import Link from 'next/link';
 import { Layers, Package, SlidersHorizontal, Wrench } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
-import { DataTable, ListCard, StatusBadge, type AccionFila, type ColumnaTabla, type DataTableProps } from '@/components/kit';
+import {
+  DataTable,
+  ListCard,
+  MarcadorSinFoto,
+  RowActionsMenu,
+  StatusBadge,
+  type AccionFila,
+  type ColumnaTabla,
+  type DataTableProps,
+} from '@/components/kit';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase/config';
 import { useOrgCurrency, formatMonedaSinDecimales } from '@/lib/hooks/useOrgCurrency';
@@ -21,6 +31,13 @@ import type { Producto } from './types';
  * En móvil (< lg) cada producto es una `ListCard` Inicio=imagen (foto de 48
  * o marcador), «código · categoría», existencias por sucursal, precio y estado.
  *
+ * Vista «Tarjetas» (Figma «Escritorio / Catálogo · cuadrícula» `120:13625`,
+ * `ViewToggle` + `ProductCard` del catálogo): desde `lg`, una cuadrícula de
+ * tarjetas con selección, menú ⋮, estado sobre la imagen, «código ·
+ * categoría», precio con la comparación tachada y existencias por sucursal. En
+ * móvil sigue la lista de `ListCard` (Figma no dibuja cuadrícula móvil). Los
+ * estados cargando / vacío / error los pinta siempre el `DataTable`.
+ *
  * No carga nada: recibe la página ya filtrada y ordenada de `CatalogoProductos`.
  */
 export interface ProductosTableProps
@@ -35,6 +52,8 @@ export interface ProductosTableProps
   branches: ReadonlyArray<{ id?: number; name: string }>;
   /** La imagen principal no cargó (URL rota): cuenta como «sin imagen» en el filtro. */
   onImagenFallida: (productoId: string) => void;
+  /** `tarjetas` = cuadrícula en escritorio. Por defecto la tabla. */
+  vista?: 'tarjetas' | 'lista';
 }
 
 /** URL pública de la imagen principal (misma regla de buckets que antes). */
@@ -197,6 +216,110 @@ function Margen({ producto }: { producto: Producto }) {
   );
 }
 
+/** Imagen de la tarjeta de la cuadrícula: foto o marcador (nunca un recuadro vacío). */
+function ImagenTarjeta({ producto, onFallo }: { producto: Producto; onFallo: (id: string) => void }) {
+  const url = React.useMemo(() => urlImagen(rutaImagenPrincipal(producto)), [producto]);
+  const [fallo, setFallo] = React.useState(false);
+  React.useEffect(() => setFallo(false), [url]);
+  if (!url || fallo) return <MarcadorSinFoto nombre={producto.name} conInicial={false} className="size-full" />;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- imágenes de Storage con dominios variables
+    <img
+      src={url}
+      alt=""
+      loading="lazy"
+      className="size-full object-cover"
+      onError={() => {
+        setFallo(true);
+        onFallo(String(producto.id));
+      }}
+    />
+  );
+}
+
+interface TarjetaCatalogoProps {
+  producto: Producto;
+  acciones: readonly AccionFila[];
+  seleccionado: boolean;
+  onSeleccionar?: (marcado: boolean) => void;
+  onVer: () => void;
+  precio: (v: number) => string;
+  branchFilter: number | null;
+  branches: ReadonlyArray<{ id?: number; name: string }>;
+  onImagenFallida: (id: string) => void;
+}
+
+/** Tarjeta de la cuadrícula del catálogo (Figma `ProductCard` del catálogo, 264 × 328). */
+function TarjetaCatalogo({
+  producto: p,
+  acciones,
+  seleccionado,
+  onSeleccionar,
+  onVer,
+  precio,
+  branchFilter,
+  branches,
+  onImagenFallida,
+}: TarjetaCatalogoProps) {
+  const t = useTranslations('productos.tabla');
+  const comparacion =
+    typeof p.compare_price === 'number' && typeof p.price === 'number' && p.compare_price > p.price ? p.compare_price : null;
+  const n = nivelStock(p, branchFilter);
+  const borde = seleccionado ? 'border-line-brand ring-2 ring-brand/30' : n === 'sin' ? 'border-line-danger' : 'border-line';
+  return (
+    <li className={`group relative flex flex-col overflow-hidden rounded-xl border bg-surface transition-shadow hover:shadow-md ${borde}`}>
+      <div className="relative h-36 bg-subtle">
+        <ImagenTarjeta producto={p} onFallo={onImagenFallida} />
+        {onSeleccionar && (
+          <span className="absolute left-2 top-2 z-10 flex rounded bg-surface/90">
+            <Checkbox
+              checked={seleccionado}
+              onCheckedChange={(v) => onSeleccionar(v === true)}
+              aria-label={t('seleccionar', { nombre: p.name })}
+              className="size-[18px] rounded"
+            />
+          </span>
+        )}
+        {acciones.length > 0 && (
+          <span className="absolute right-2 top-2 z-10 rounded-md bg-surface/90">
+            <RowActionsMenu acciones={acciones} titulo={p.name} />
+          </span>
+        )}
+        <span className="absolute bottom-2 left-2">
+          <StatusBadge estado={p.status} />
+        </span>
+      </div>
+      <div className="flex flex-1 flex-col gap-1 p-3">
+        {/* El enlace cubre toda la tarjeta (after:inset-0); casilla, menú y chips van por encima. */}
+        <Link
+          href={hrefDetalle(p)}
+          onClick={(e) => {
+            e.preventDefault();
+            onVer();
+          }}
+          title={p.name}
+          className="truncate font-medium text-fg after:absolute after:inset-0 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        >
+          {p.name}
+        </Link>
+        <p className="truncate text-xs text-fg-secondary">{[p.sku, p.category?.name].filter(Boolean).join(' · ') || '—'}</p>
+        <p className="flex items-baseline gap-2">
+          {typeof p.price === 'number' && p.price > 0 ? (
+            <span className="text-base font-semibold tabular-nums text-fg">{precio(p.price)}</span>
+          ) : (
+            <span className="text-sm text-fg-muted">{t('sinPrecio')}</span>
+          )}
+          {comparacion !== null && <span className="text-xs tabular-nums text-fg-muted line-through">{precio(comparacion)}</span>}
+        </p>
+        <div className="relative z-10 mt-auto flex flex-wrap items-center gap-1 pt-1">
+          <StockSucursales producto={p} branchFilter={branchFilter} branches={branches} suelto />
+          <Atributos producto={p} />
+        </div>
+      </div>
+    </li>
+  );
+}
+
 const ProductosTable: React.FC<ProductosTableProps> = ({
   productos,
   acciones,
@@ -204,6 +327,7 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
   branchFilter,
   branches,
   onImagenFallida,
+  vista = 'lista',
   ...tabla
 }) => {
   const t = useTranslations('productos.tabla');
@@ -295,7 +419,7 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
     [celdaPrecio, branchFilter, branches, onImagenFallida, precio, t],
   );
 
-  return (
+  const tablaCompleta = (
     <DataTable<Producto>
       etiqueta={t('etiqueta')}
       columnas={columnas}
@@ -333,6 +457,47 @@ const ProductosTable: React.FC<ProductosTableProps> = ({
       error={{ titulo: t('error.titulo'), descripcion: t('error.descripcion') }}
       {...tabla}
     />
+  );
+
+  // Cuadrícula solo con datos: cargando, vacío, sin resultados y error los pinta el DataTable.
+  if (vista !== 'tarjetas' || (tabla.estado ?? 'listo') !== 'listo' || productos.length === 0) return tablaCompleta;
+
+  const seleccion = tabla.seleccion;
+  const onSeleccionChange = tabla.onSeleccionChange;
+  const alternar = (id: string, marcado: boolean) => {
+    if (!onSeleccionChange) return;
+    const siguiente = new Set(seleccion ?? []);
+    if (marcado) siguiente.add(id);
+    else siguiente.delete(id);
+    onSeleccionChange(siguiente);
+  };
+
+  return (
+    <>
+      <div className="lg:hidden">{tablaCompleta}</div>
+      <div className="hidden flex-col gap-4 lg:flex">
+        <ul aria-label={t('etiqueta')} className="grid grid-cols-3 gap-4 xl:grid-cols-4">
+          {productos.map((p) => {
+            const id = String(p.id);
+            return (
+              <TarjetaCatalogo
+                key={id}
+                producto={p}
+                acciones={acciones(p)}
+                seleccionado={!!seleccion?.has(id)}
+                onSeleccionar={onSeleccionChange ? (marcado) => alternar(id, marcado) : undefined}
+                onVer={() => onVer(p)}
+                precio={precio}
+                branchFilter={branchFilter}
+                branches={branches}
+                onImagenFallida={onImagenFallida}
+              />
+            );
+          })}
+        </ul>
+        {tabla.pie}
+      </div>
+    </>
   );
 };
 

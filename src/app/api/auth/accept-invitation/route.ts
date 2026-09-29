@@ -1,12 +1,20 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { estadoCuentaInvitacion } from '@/lib/auth/cuentaInvitacion';
+import { buscarInvitacionVigentePorCodigo, normalizarCorreo, referenciaCodigo } from '@/lib/auth/invitaciones';
+import { checkRateLimits, getClientIp } from '@/lib/security/rateLimit';
+import { getRateLimitStore } from '@/lib/security/rateLimitStore';
+import { LONGITUD_MINIMA_CONTRASENA } from '@/lib/auth/politicaContrasena';
+import { validarContrasenaServidor } from '@/lib/auth/servidorAcceso';
 
 /**
  * Acepta una invitación SIN sesión previa: crea la cuenta del invitado con la
  * contraseña que eligió. Existe porque Gmail/Outlook consumen el token del
- * correo por prefetch y el enlace también puede abrirse copiado desde la
- * tabla de invitaciones.
+ * correo por prefetch.
+ *
+ * El código de la invitación es la credencial: solo llega al navegador en el
+ * enlace del correo del invitado o tras un `verifyOtp` correcto (GO-sec
+ * 2026-09-28; antes `/auth/verify` lo entregaba a quien conociera el correo).
  *
  * SOLO para cuentas nuevas o huérfanas (ver `estadoCuentaInvitacion`). Si el
  * correo ya tiene una cuenta real, responde 409 y el asistente manda al
@@ -14,57 +22,78 @@ import { estadoCuentaInvitacion } from '@/lib/auth/cuentaInvitacion';
  * sesión vía `accept_invitation_atomic` (que comprueba que el correo de la
  * sesión sea el de la invitación).
  *
- * Antes esta ruta aceptaba `isExistingUser` del cliente y, si el usuario ya
- * existía, LE CAMBIABA LA CONTRASEÑA con solo tener el código de invitación.
- * Cualquier administrador de cualquier organización podía invitar un correo
- * ajeno, copiar el enlace y quedarse con esa cuenta y todas sus
- * organizaciones. El estado lo decide ahora el servidor.
+ * La cuenta se crea SIEMPRE con el correo de la invitación, nunca con uno del
+ * body; si el body trae otro, se rechaza igual que un código inválido.
  */
-export async function POST(request: Request) {
-  try {
-    const { inviteCode, email, password, firstName, lastName, phone } = await request.json();
 
-    if (!inviteCode || !email || !password) {
+/** Pública y crea cuentas: freno por IP antes de tocar la BD. */
+const ACCEPT_IP_LIMIT = { limit: 10, windowMs: 15 * 60 * 1000 };
+
+function invitacionNoValida() {
+  return NextResponse.json({ error: 'Invitación no válida o vencida' }, { status: 404 });
+}
+
+export async function POST(request: Request) {
+  let body: Record<string, unknown>;
+  try {
+    body = (await request.json()) as Record<string, unknown>;
+  } catch {
+    return NextResponse.json({ error: 'Body inválido (se espera JSON)' }, { status: 400 });
+  }
+
+  try {
+    const inviteCode = body.inviteCode;
+    const password = body.password;
+    const email = typeof body.email === 'string' ? body.email : '';
+    const firstName = typeof body.firstName === 'string' ? body.firstName : null;
+    const lastName = typeof body.lastName === 'string' ? body.lastName : null;
+    const phone = typeof body.phone === 'string' ? body.phone : null;
+
+    // Política única (acceso v3, decisión v2-5): aquí solo el tipo y la
+    // longitud, antes de tocar la base; el resto (distinta del correo, no
+    // filtrada) cuando ya se sabe el correo invitado.
+    if (typeof password !== 'string' || password.length < LONGITUD_MINIMA_CONTRASENA) {
       return NextResponse.json(
-        { error: 'Faltan datos requeridos (inviteCode, email, password)' },
+        { error: 'La contraseña no cumple la política', codigo: 'longitud' },
         { status: 400 }
       );
     }
-    if (typeof password !== 'string' || password.length < 8) {
+
+    const ip = getClientIp(request);
+    const rl = await checkRateLimits(
+      [{ key: `invite:accept:ip:${ip}`, opts: ACCEPT_IP_LIMIT }],
+      { store: getRateLimitStore() },
+    );
+    if (!rl.allowed) {
+      const retryAfter = Math.max(1, Math.ceil((rl.resetAt.getTime() - Date.now()) / 1000));
       return NextResponse.json(
-        { error: 'La contraseña debe tener al menos 8 caracteres' },
-        { status: 400 }
+        { error: 'Demasiados intentos. Intenta de nuevo en unos minutos.' },
+        { status: 429, headers: { 'Retry-After': String(retryAfter) } }
       );
     }
 
     const admin = getSupabaseAdmin();
-    const normalizedEmail = String(email).toLowerCase().trim();
 
-    // 1. Validar la invitación
-    const { data: inviteData, error: inviteError } = await admin.rpc(
-      'validate_invitation_by_code',
-      { invitation_code: inviteCode }
-    );
-
-    if (inviteError || !inviteData || inviteData.length === 0) {
-      console.error('Error validando invitación:', inviteError);
-      return NextResponse.json(
-        { error: 'Código de invitación inválido o expirado' },
-        { status: 400 }
-      );
+    // 1. Validar la invitación (vigente, código exacto en tiempo constante).
+    const invitation = await buscarInvitacionVigentePorCodigo(admin, inviteCode);
+    if (!invitation) {
+      console.warn('accept-invitation: código no válido', referenciaCodigo(String(inviteCode ?? '')), 'ip:', ip);
+      return invitacionNoValida();
     }
 
-    const invitation = inviteData[0];
+    const correoInvitado = normalizarCorreo(invitation.email);
+    if (email && normalizarCorreo(email) !== correoInvitado) {
+      console.warn('accept-invitation: el correo del body no es el invitado, invitación', invitation.id, 'ip:', ip);
+      return invitacionNoValida();
+    }
 
-    if (String(invitation.email).toLowerCase().trim() !== normalizedEmail) {
-      return NextResponse.json(
-        { error: 'El email no coincide con la invitación' },
-        { status: 400 }
-      );
+    const motivo = await validarContrasenaServidor(password, correoInvitado, 'accept-invitation');
+    if (motivo) {
+      return NextResponse.json({ error: 'La contraseña no cumple la política', codigo: motivo }, { status: 400 });
     }
 
     // 2. Estado de la cuenta: lo decide el servidor, nunca el cliente.
-    const { estado, usuario } = await estadoCuentaInvitacion(admin, normalizedEmail, {
+    const { estado, usuario } = await estadoCuentaInvitacion(admin, correoInvitado, {
       code: invitation.code,
       organization_id: invitation.organization_id,
     });
@@ -86,11 +115,13 @@ export async function POST(request: Request) {
       // nadie la reclamó (sin perfil ni membresías), se le fija la contraseña.
       console.log('Cuenta huérfana de invitación, fijando contraseña:', usuario.id);
       userId = usuario.id;
+      const metaAnterior = { ...(usuario.user_metadata ?? {}) } as Record<string, unknown>;
+      delete metaAnterior.invitation_code;
       const { error: updateError } = await admin.auth.admin.updateUserById(usuario.id, {
         password,
         email_confirm: true,
         user_metadata: {
-          ...(usuario.user_metadata ?? {}),
+          ...metaAnterior,
           first_name: firstName,
           last_name: lastName,
           phone,
@@ -98,12 +129,11 @@ export async function POST(request: Request) {
       });
       if (updateError) {
         console.error('Error fijando contraseña de cuenta huérfana:', updateError);
-        return NextResponse.json({ error: updateError.message }, { status: 500 });
+        return NextResponse.json({ error: 'No se pudo completar el registro' }, { status: 500 });
       }
     } else {
-      console.log('Creando nuevo usuario:', normalizedEmail);
       const { data: newUser, error: createError } = await admin.auth.admin.createUser({
-        email: normalizedEmail,
+        email: correoInvitado,
         password,
         email_confirm: true,
         user_metadata: {
@@ -111,13 +141,12 @@ export async function POST(request: Request) {
           last_name: lastName,
           phone,
           is_invitation: true,
-          invitation_code: inviteCode,
           organization_id: invitation.organization_id,
         },
       });
       if (createError) {
         console.error('Error creando usuario:', createError);
-        return NextResponse.json({ error: createError.message }, { status: 500 });
+        return NextResponse.json({ error: 'No se pudo completar el registro' }, { status: 500 });
       }
       userId = newUser.user?.id;
       console.log('✅ Usuario creado:', userId);
@@ -130,28 +159,26 @@ export async function POST(request: Request) {
       );
     }
 
-    // 3. Perfil + membresía + marcar invitación como usada (transacción atómica).
-    // p_user_id porque va con la clave de servicio (auth.uid() sería NULL).
-    const { data: acceptResult, error: acceptError } = await admin.rpc(
-      'accept_invitation_atomic',
-      {
-        p_invite_code: inviteCode,
-        p_first_name: firstName,
-        p_last_name: lastName,
-        p_phone: phone,
-        p_user_id: userId,
-      }
-    );
+    // 3. Perfil + membresía + marcar invitación como usada (transacción
+    // atómica, FOR UPDATE: un solo uso). p_user_id porque va con la clave de
+    // servicio (auth.uid() sería NULL); la función solo lo admite de ella.
+    const { error: acceptError } = await admin.rpc('accept_invitation_atomic', {
+      p_invite_code: invitation.code,
+      p_first_name: firstName,
+      p_last_name: lastName,
+      p_phone: phone,
+      p_user_id: userId,
+    });
 
     if (acceptError) {
       console.error('Error en accept_invitation_atomic:', acceptError);
       return NextResponse.json(
-        { error: acceptError.message || 'No se pudo completar el registro' },
+        { error: 'No se pudo completar el registro' },
         { status: 500 }
       );
     }
 
-    console.log('✅ Invitación aceptada exitosamente:', acceptResult);
+    console.log('✅ Invitación aceptada:', invitation.id);
 
     return NextResponse.json({
       success: true,
@@ -160,9 +187,6 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error('Error en /api/auth/accept-invitation:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Error inesperado' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Error inesperado' }, { status: 500 });
   }
 }

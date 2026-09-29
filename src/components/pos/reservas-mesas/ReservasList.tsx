@@ -1,28 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { EmptyState, RowActionsMenu, type AccionFila } from '@/components/kit';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import {
-  MoreVertical,
   Users,
   Clock,
   Phone,
@@ -90,15 +75,18 @@ export function ReservasList({
   onChangeStatus,
   onDelete,
 }: ReservasListProps) {
+  const t = useTranslations('posReservasMesas');
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   if (isLoading) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-3" aria-hidden="true">
         {[1, 2, 3].map((i) => (
-          <Card key={i} className="animate-pulse bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <div className="p-4 h-24" />
-          </Card>
+          <div key={i} className="flex flex-col gap-2 rounded-xl border border-line bg-surface p-4">
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-3 w-1/3" />
+          </div>
         ))}
       </div>
     );
@@ -106,19 +94,66 @@ export function ReservasList({
 
   if (reservations.length === 0) {
     return (
-      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-        <div className="p-12 text-center">
-          <CalendarRange className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-          <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">
-            No hay reservas para mostrar
-          </p>
-          <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">
-            Crea una nueva reserva o ajusta los filtros
-          </p>
-        </div>
-      </Card>
+      <div className="rounded-xl border border-line bg-surface">
+        <EmptyState variante="empty" icono={CalendarRange} titulo={t('vacio.titulo')} descripcion={t('vacio.descripcion')} />
+      </div>
     );
   }
+
+  // Menú ⋯ de cada reserva: mismas acciones y condiciones que el DropdownMenu anterior.
+  const accionesDe = (r: RestaurantReservation): AccionFila[] => {
+    const abierta = !['completed', 'cancelled', 'no_show'].includes(r.status);
+    const cambiosDeEstado: AccionFila[] = [
+      {
+        id: 'confirmar',
+        etiqueta: t('acciones.confirmar'),
+        icono: CheckCircle,
+        onSelect: () => onChangeStatus(r.id, 'confirmed'),
+        oculta: r.status !== 'pending',
+      },
+      {
+        id: 'sentar',
+        etiqueta: t('acciones.sentar'),
+        icono: UserCheck,
+        onSelect: () => onChangeStatus(r.id, 'seated'),
+        oculta: !['pending', 'confirmed'].includes(r.status),
+      },
+      {
+        id: 'completar',
+        etiqueta: t('acciones.completar'),
+        icono: CheckCircle,
+        onSelect: () => onChangeStatus(r.id, 'completed'),
+        oculta: r.status !== 'seated',
+      },
+      {
+        id: 'cancelar',
+        etiqueta: t('acciones.cancelar'),
+        icono: XCircle,
+        onSelect: () => onChangeStatus(r.id, 'cancelled'),
+        oculta: !abierta,
+      },
+      {
+        id: 'noShow',
+        etiqueta: t('acciones.noShow'),
+        icono: AlertTriangle,
+        onSelect: () => onChangeStatus(r.id, 'no_show'),
+        oculta: !abierta,
+      },
+    ].filter((a) => !a.oculta);
+    // Divisor entre «Editar» y los cambios de estado, como antes.
+    if (cambiosDeEstado.length) cambiosDeEstado[0] = { ...cambiosDeEstado[0], separadorAntes: true };
+    return [
+      { id: 'editar', etiqueta: t('acciones.editar'), icono: Edit, onSelect: () => onEdit(r) },
+      ...cambiosDeEstado,
+      {
+        id: 'eliminar',
+        etiqueta: t('acciones.eliminar'),
+        icono: Trash2,
+        onSelect: () => setDeleteId(r.id),
+        destructiva: true,
+      },
+    ];
+  };
 
   return (
     <>
@@ -182,113 +217,27 @@ export function ReservasList({
                 </div>
 
                 {/* Acciones */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="dark:bg-gray-800 dark:border-gray-700">
-                    <DropdownMenuItem onClick={() => onEdit(r)} className="dark:hover:bg-gray-700">
-                      <Edit className="h-4 w-4 mr-2" />
-                      Editar
-                    </DropdownMenuItem>
-
-                    <DropdownMenuSeparator className="dark:border-gray-700" />
-
-                    {r.status === 'pending' && (
-                      <DropdownMenuItem
-                        onClick={() => onChangeStatus(r.id, 'confirmed')}
-                        className="dark:hover:bg-gray-700"
-                      >
-                        <CheckCircle className="h-4 w-4 mr-2 text-blue-500" />
-                        Confirmar
-                      </DropdownMenuItem>
-                    )}
-
-                    {['pending', 'confirmed'].includes(r.status) && (
-                      <DropdownMenuItem
-                        onClick={() => onChangeStatus(r.id, 'seated')}
-                        className="dark:hover:bg-gray-700"
-                      >
-                        <UserCheck className="h-4 w-4 mr-2 text-indigo-500" />
-                        Marcar como sentada
-                      </DropdownMenuItem>
-                    )}
-
-                    {r.status === 'seated' && (
-                      <DropdownMenuItem
-                        onClick={() => onChangeStatus(r.id, 'completed')}
-                        className="dark:hover:bg-gray-700"
-                      >
-                        <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
-                        Completar
-                      </DropdownMenuItem>
-                    )}
-
-                    {!['completed', 'cancelled', 'no_show'].includes(r.status) && (
-                      <>
-                        <DropdownMenuItem
-                          onClick={() => onChangeStatus(r.id, 'cancelled')}
-                          className="dark:hover:bg-gray-700"
-                        >
-                          <XCircle className="h-4 w-4 mr-2 text-red-500" />
-                          Cancelar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => onChangeStatus(r.id, 'no_show')}
-                          className="dark:hover:bg-gray-700"
-                        >
-                          <AlertTriangle className="h-4 w-4 mr-2 text-orange-500" />
-                          No se presentó
-                        </DropdownMenuItem>
-                      </>
-                    )}
-
-                    <DropdownMenuSeparator className="dark:border-gray-700" />
-
-                    <DropdownMenuItem
-                      onClick={() => setDeleteId(r.id)}
-                      className="text-red-600 dark:text-red-400 dark:hover:bg-gray-700"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Eliminar
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <RowActionsMenu orientacion="vertical" tamano="sm" titulo={r.customer_name} acciones={accionesDe(r)} />
               </div>
             </div>
           </Card>
         ))}
       </div>
 
-      {/* Diálogo de confirmación de eliminación */}
-      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-        <AlertDialogContent className="dark:bg-gray-800 dark:border-gray-700">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="dark:text-gray-100">
-              ¿Eliminar reserva?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="dark:text-gray-400">
-              Esta acción no se puede deshacer. La reserva será eliminada permanentemente.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
-              Cancelar
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (deleteId) onDelete(deleteId);
-                setDeleteId(null);
-              }}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Confirmación de eliminación */}
+      <ConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(o) => !o && setDeleteId(null)}
+        title={t('eliminar.titulo')}
+        description={t('eliminar.descripcion')}
+        confirmLabel={t('eliminar.confirmar')}
+        cancelLabel={t('eliminar.cancelar')}
+        variant="destructive"
+        onConfirm={() => {
+          if (deleteId) onDelete(deleteId);
+          setDeleteId(null);
+        }}
+      />
     </>
   );
 }

@@ -11,8 +11,11 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AlertTriangle, Bell, CircleDollarSign, Clock, Download, Eye, RefreshCw, User, WalletCards } from 'lucide-react';
 import {
+  AccionRapida,
   BranchBadgeActiva,
   BulkActionBar,
+  ChipDocumento,
+  CustomerPicker,
   DataTable,
   FilterChips,
   FilterPanel,
@@ -26,16 +29,21 @@ import {
   SearchInput,
   StatCard,
   StatusBadge,
+  clasesBoton,
   useListadoServidor,
   type AccionFila,
   type ChipFiltro,
+  type ClientePicker,
+  type TonoBadge,
   type ColumnaTabla,
 } from '@/components/kit';
 import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
+import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toastError, toastSuccess } from '@/components/ui/use-toast';
 import { useBranch } from '@/lib/context/BranchContext';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { getOrganizationId, useOrganization } from '@/lib/hooks/useOrganization';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { crearFormateadorMoneda, formatNumeroMoneda } from '@/lib/utils/moneda';
 import { usePermisosFinanzas } from '@/lib/finanzas/usePermisosFinanzas';
@@ -44,14 +52,25 @@ import {
   CAMPOS_ORDEN_CARTERA,
   ESTADOS_CARTERA,
   FILTROS_CARTERA,
+  TAMANOS_PAGINA_CARTERA,
   ordenCarteraRpc,
   type FilaCartera,
   type RespuestaListadoCartera,
 } from '@/lib/finanzas/cartera/listadoCartera';
 import { enviarRecordatorio, pedirListadoCartera } from '@/lib/finanzas/cartera/clienteCartera';
+import { listarClientes } from '@/lib/services/clientesListadoService';
 import { aCsv, descargarCsv } from '@/lib/finanzas/csv';
 import { RegistrarPagoConectado } from '@/components/finanzas/pagos/RegistrarPagoConectado';
 import { BandaAntiguedad } from '@/components/kit';
+
+/** Tono de la insignia de antigüedad por tramo (mismos colores que `BandaAntiguedad`). */
+const TONO_TRAMO: Record<TramoAntiguedad, TonoBadge> = {
+  al_dia: 'exito',
+  d1_30: 'advertencia',
+  d31_60: 'advertencia',
+  d61_90: 'peligro',
+  d90_mas: 'peligro',
+};
 
 export interface ListadoCarteraProps {
   origen: 'finanzas' | 'pos';
@@ -72,7 +91,8 @@ export function ListadoCartera({ origen }: ListadoCarteraProps) {
   const entero = useFormatoEntero();
   const permisos = usePermisosFinanzas();
   const moneda = useMonedaOrganizacion();
-  const { branchFilter } = useBranch();
+  const { organization } = useOrganization();
+  const { branchFilter, branches } = useBranch();
   const { formatDate, getToday } = useFormatDate();
   const rutas = rutasCartera(origen);
   const enPos = origen === 'pos';
@@ -83,6 +103,7 @@ export function ListadoCartera({ origen }: ListadoCarteraProps) {
     camposOrden: [...CAMPOS_ORDEN_CARTERA],
     ordenPorDefecto: { campo: 'vencimiento', direccion: 'asc' },
     tamanoPorDefecto: 25,
+    tamanosPermitidos: TAMANOS_PAGINA_CARTERA,
   });
 
   const [datos, setDatos] = useState<RespuestaListadoCartera | null>(null);
@@ -93,6 +114,7 @@ export function ListadoCartera({ origen }: ListadoCarteraProps) {
   const [cobrarId, setCobrarId] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [exportando, setExportando] = useState(false);
+  const [clienteElegido, setClienteElegido] = useState<ClientePicker | null>(null);
 
   const consulta = useMemo(() => {
     const q = new URLSearchParams();
@@ -211,11 +233,47 @@ export function ListadoCartera({ origen }: ListadoCarteraProps) {
     }
   };
 
+  // ── Subtítulo: «organización · sucursal · N cuentas con saldo» ────────────
+  const nombreSucursal =
+    branchFilter === null || branchFilter === undefined
+      ? t('listado.todasLasSucursales')
+      : branches.find((b) => b.id === branchFilter)?.name ?? null;
+  const subtitulo = [
+    organization?.name,
+    nombreSucursal,
+    t('listado.subtitulo', { count: resumen?.cuentas_abiertas ?? 0, n: entero(resumen?.cuentas_abiertas ?? 0) }),
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  // ── Filtro «Cliente» (mismo buscador que el listado de facturas de venta) ──
+  const buscarClientes = useCallback(async (texto: string, _senal: AbortSignal, _filtros: readonly string[], desde: number) => {
+    const r = await listarClientes({
+      organizationId: getOrganizationId(),
+      branchId: null,
+      criterios: { busqueda: texto },
+      orden: null,
+      desde,
+      tamano: 10,
+    });
+    const items: ClientePicker[] = r.filas.map((c) => ({ id: c.id, nombre: c.full_name ?? c.company_name ?? '', documento: c.identification_number, correo: c.email, telefono: c.phone }));
+    return { items, total: r.total };
+  }, []);
+
+  const nombreClienteFiltro =
+    !l.filtros.cliente
+      ? null
+      : clienteElegido?.id === l.filtros.cliente
+        ? clienteElegido.nombre
+        : filas.find((f) => f.cliente_id === l.filtros.cliente)?.cliente ?? null;
+
   const chips: ChipFiltro[] = [
     l.filtros.estado && l.filtros.estado !== 'abiertas' ? { clave: 'estado', etiqueta: t(`listado.filtros.estados.${l.filtros.estado}` as never) } : null,
     tramoActivo ? { clave: 'tramo', etiqueta: t(`antiguedad.tramos.${tramoActivo}`) } : null,
     l.filtros.sin_recordatorio_dias ? { clave: 'sin_recordatorio_dias', etiqueta: t('listado.filtros.sinRecordatorioChip', { dias: l.filtros.sin_recordatorio_dias }) } : null,
-    l.filtros.cliente ? { clave: 'cliente', etiqueta: t('listado.filtros.clienteChip') } : null,
+    l.filtros.cliente
+      ? { clave: 'cliente', etiqueta: nombreClienteFiltro ? t('listado.filtros.clienteChipNombre', { nombre: nombreClienteFiltro }) : t('listado.filtros.clienteChip') }
+      : null,
   ].filter((c): c is ChipFiltro => c !== null);
 
   const columnas: ColumnaTabla<FilaCartera>[] = [
@@ -235,8 +293,16 @@ export function ListadoCartera({ origen }: ListadoCarteraProps) {
       encabezado: t('listado.columnas.documento'),
       ocultarDebajo: 'md',
       celda: (f) => (
-        <div className="flex min-w-0 flex-col">
-          <span className="truncate tabular-nums text-fg">{f.numero ?? t(`listado.origen.${f.origen}`)}</span>
+        <div className="flex min-w-0 flex-col items-start gap-0.5">
+          {f.numero ? (
+            <ChipDocumento
+              tipo={f.origen === 'factura' ? 'factura' : 'venta'}
+              numero={f.numero}
+              href={enPos || !f.invoice_id ? undefined : `/app/finanzas/facturas-venta/${f.invoice_id}`}
+            />
+          ) : (
+            <span className="truncate text-fg">{t(`listado.origen.${f.origen}`)}</span>
+          )}
           <span className="text-xs text-fg-muted">{t(`listado.origen.${f.origen}`)}</span>
         </div>
       ),
@@ -266,7 +332,15 @@ export function ListadoCartera({ origen }: ListadoCarteraProps) {
       encabezado: t('listado.columnas.antiguedad'),
       ordenable: true,
       ocultarDebajo: 'lg',
-      celda: (f) => (f.saldo > 0 ? t(`antiguedad.tramos.${tramoAntiguedad(f.dias)}`) : <span className="text-fg-muted">—</span>),
+      celda: (f) => {
+        if (f.saldo <= 0) return <span className="text-fg-muted">—</span>;
+        const tramo = tramoAntiguedad(f.dias);
+        return (
+          <Badge tono={TONO_TRAMO[tramo]} tamano="sm">
+            {t(`antiguedad.tramos.${tramo}`)}
+          </Badge>
+        );
+      },
     },
     { id: 'estado', encabezado: t('listado.columnas.estado'), celda: badge },
   ];
@@ -280,7 +354,7 @@ export function ListadoCartera({ origen }: ListadoCarteraProps) {
     <div className="flex flex-col gap-4 p-4 sm:p-6 lg:gap-5">
       <PageHeader
         titulo={t('titulo')}
-        subtitulo={t('listado.subtitulo', { count: resumen?.cuentas_abiertas ?? 0, n: entero(resumen?.cuentas_abiertas ?? 0) })}
+        subtitulo={subtitulo}
         icono={WalletCards}
         cargando={cargando}
         migas={
@@ -291,11 +365,7 @@ export function ListadoCartera({ origen }: ListadoCarteraProps) {
         debajo={<BranchBadgeActiva />}
         acciones={
           <>
-            <button
-              type="button"
-              onClick={recargar}
-              className="inline-flex h-10 items-center gap-2 rounded-lg border border-line-strong bg-surface px-4 text-sm font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            >
+            <button type="button" onClick={recargar} className={clasesBoton({ variante: 'secundario' })}>
               <RefreshCw aria-hidden="true" className="size-4" strokeWidth={1.5} />
               {t('listado.actualizar')}
             </button>
@@ -375,6 +445,26 @@ export function ListadoCartera({ origen }: ListadoCarteraProps) {
                 </Select>
               )}
             </FormField>
+            <CustomerPicker
+              layout="campo"
+              cliente={
+                l.filtros.cliente
+                  ? clienteElegido?.id === l.filtros.cliente
+                    ? clienteElegido
+                    : { id: l.filtros.cliente, nombre: nombreClienteFiltro ?? t('listado.filtros.clienteChip') }
+                  : null
+              }
+              etiqueta={t('listado.filtros.cliente')}
+              buscar={buscarClientes}
+              onCambiar={(c) => {
+                setClienteElegido(c);
+                l.setFiltro('cliente', c.id);
+              }}
+              onQuitar={() => {
+                setClienteElegido(null);
+                l.setFiltro('cliente', null);
+              }}
+            />
           </FilterPanel>
         }
         chips={<FilterChips chips={chips} onQuitar={(c) => l.setFiltro(c, null)} onLimpiarTodo={l.limpiarFiltros} />}
@@ -393,37 +483,20 @@ export function ListadoCartera({ origen }: ListadoCarteraProps) {
         onFilaClick={(f) => router.push(rutas.detalle(f.id))}
         etiquetaFila={(f) => `${f.cliente ?? ''} ${f.numero ?? ''}`.trim()}
         acciones={accionesDe}
-        tonoFila={(f) => (f.dias > 0 && f.saldo > 0 ? 'peligro' : undefined)}
         accionesRapidas={(f) =>
           f.saldo > 0 ? (
             <div className="flex items-center">
               {puedeCobrar && (
-                <button
-                  type="button"
-                  title={t('listado.acciones.registrarAbono')}
-                  aria-label={t('listado.cobrarA', { cliente: f.cliente ?? '' })}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setCobrarId(f.id);
-                  }}
-                  className="flex size-8 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                >
-                  <CircleDollarSign aria-hidden="true" className="size-4" strokeWidth={1.5} />
-                </button>
+                <AccionRapida soloIcono icono={CircleDollarSign} etiqueta={t('listado.cobrarA', { cliente: f.cliente ?? '' })} onClick={() => setCobrarId(f.id)} />
               )}
-              <button
-                type="button"
-                title={t('listado.acciones.recordatorio')}
-                aria-label={t('listado.recordarA', { cliente: f.cliente ?? '' })}
-                disabled={!f.cliente_email || enviando}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void recordar([f]);
-                }}
-                className="flex size-8 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-40"
-              >
-                <Bell aria-hidden="true" className="size-4" strokeWidth={1.5} />
-              </button>
+              <AccionRapida
+                soloIcono
+                icono={Bell}
+                etiqueta={t('listado.recordarA', { cliente: f.cliente ?? '' })}
+                onClick={() => void recordar([f])}
+                deshabilitada={!f.cliente_email || enviando}
+                motivo={!f.cliente_email ? t('recordatorio.clienteSinCorreo') : undefined}
+              />
             </div>
           ) : null
         }
@@ -449,7 +522,7 @@ export function ListadoCartera({ origen }: ListadoCarteraProps) {
         onLimpiarFiltros={l.limpiarTodo}
         onReintentar={recargar}
         termino={l.busqueda}
-        pie={<Pagination pagina={l.pagina} tamano={l.tamano} total={total} onPaginaChange={l.setPagina} onTamanoChange={l.setTamano} sustantivo={sustantivo} cargando={cargando} />}
+        pie={<Pagination pagina={l.pagina} tamano={l.tamano} total={total} onPaginaChange={l.setPagina} onTamanoChange={l.setTamano} opcionesTamano={TAMANOS_PAGINA_CARTERA} sustantivo={sustantivo} cargando={cargando} />}
       />
 
       <BulkActionBar

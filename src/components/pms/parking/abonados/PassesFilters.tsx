@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -9,7 +8,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, Filter, Clock } from 'lucide-react';
+import { Filter, Clock } from 'lucide-react';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 export interface PassFiltersState {
   search: string;
@@ -29,15 +29,13 @@ export function PassesFilters({ filters, onFiltersChange }: PassesFiltersProps) 
 
   return (
     <div className="flex flex-col sm:flex-row gap-3">
-      <div className="relative flex-1">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
-        <Input
-          placeholder="Buscar por cliente, placa o plan..."
-          value={filters.search}
-          onChange={(e) => handleChange('search', e.target.value)}
-          className="pl-10 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-        />
-      </div>
+      <SearchInput
+        value={filters.search}
+        onChange={(v) => handleChange('search', v)}
+        onValueChange={(v) => handleChange('search', v)}
+        placeholder="Buscar por cliente, placa o plan..."
+        className="flex-1"
+      />
 
       <Select
         value={filters.status}

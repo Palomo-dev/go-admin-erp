@@ -60,3 +60,54 @@ export {
   type ErrorPago,
   type ReglasPago,
 } from './pago';
+
+// Edición del documento (formulario de venta, compra y orden de compra).
+export { ImpuestosLinea, type ImpuestosLineaProps } from './ImpuestosLinea';
+export { AgregarProductosDialog, type AgregarProductosDialogProps, type FiltrosProductos } from './AgregarProductosDialog';
+export { DialogoItemManual, type DialogoItemManualProps } from './DialogoItemManual';
+export { DialogoTextoLinea, type DialogoTextoLineaProps } from './DialogoTextoLinea';
+export { FormularioRapidoTercero, type FormularioRapidoTerceroProps } from './FormularioRapidoTercero';
+export { FormularioRapidoProducto, type FormularioRapidoProductoProps } from './FormularioRapidoProducto';
+export { ChipAlternable, type ChipAlternableProps } from './ChipAlternable';
+export { tonoLinea, type InsigniaLinea } from './documentoLineasLogica';
+export {
+  alternarImpuesto,
+  impuestosElegidos,
+  tarifaSeleccion,
+  textoSeleccionImpuestos,
+  seleccionInicial,
+  idsDesdeCodigo,
+  estadoStock,
+  coincidenciaExacta,
+  textoSinHtml,
+  contarAgregados,
+  terceroRapidoInicial,
+  cambiarTipoPersona,
+  validarTerceroRapido,
+  nombreTerceroRapido,
+  validarItemManual,
+  productoRapidoInicial,
+  validarProductoRapido,
+  TIPOS_DOCUMENTO_TERCERO,
+  type OpcionImpuesto,
+  type SeleccionImpuestos,
+  type ProductoDocumento,
+  type VarianteDocumento,
+  type EstadoStock,
+  type DatosTerceroRapido,
+  type VarianteTercero,
+  type TipoPersona,
+  type ErrorTercero,
+  type ItemManual,
+  type DatosProductoRapido,
+} from './edicionDocumentoLogica';
+export {
+  FormularioDocumentoLayout,
+  ResumenErrores,
+  DialogoSalirConCambios,
+  TarjetaAtajos,
+  useAvisoSalida,
+  useAutoguardado,
+  type FormularioDocumentoLayoutProps,
+  type ErrorFormulario,
+} from './FormularioDocumento';

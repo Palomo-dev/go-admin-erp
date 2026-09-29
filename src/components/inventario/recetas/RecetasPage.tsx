@@ -1,549 +1,447 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { AlertTriangle, ArrowDown, Calculator, ChefHat, Download, Factory, Plus, RefreshCw } from 'lucide-react';
 import {
-  Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card,
-  CardContent,
-  CardHeader } from '@/components/ui/card';
-import { DataTablePagination } from '@/components/ui/DataTablePagination';
-import { Badge } from '@/components/ui/badge';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  } from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  } from '@/components/ui/dialog';
-import Link from 'next/link';
-import {
-  ChefHat,
-  Plus,
-  Search,
-  Edit,
-  Trash2,
-  Eye,
-  RefreshCw,
-  ArrowLeft,
-  Package,
-  AlertCircle
-} from 'lucide-react';
-import { recipeService, type ProductRecipe } from '@/lib/services/recipeService';
-import { useOrganization } from '@/lib/hooks/useOrganization';
+  BranchBadgeActiva,
+  BulkActionBar,
+  DataTable,
+  EmptyState,
+  FilterChips,
+  FilterPanel,
+  FormField,
+  KpiStrip,
+  ListCard,
+  ListToolbar,
+  PageHeader,
+  Pagination,
+  SearchInput,
+  StatCard,
+  useListadoServidor,
+  type ChipFiltro,
+  type ColumnaTabla,
+  type EstadoTabla,
+} from '@/components/kit';
+import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { RecipeDialog } from './RecipeDialog';
-import { Skeleton } from '@/components/ui/skeleton';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useBranch } from '@/lib/context/BranchContext';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { getOrganizationId, getOrganizationName } from '@/lib/hooks/useOrganization';
+import { aPermisosInventario, SIN_PERMISOS_INVENTARIO } from '@/lib/inventario/permisos';
+import type { PermisosInventario } from '@/lib/inventario/nucleo/tipos';
+import { filasACsv } from '@/lib/utils/csv';
+import { recipeService, type FilaReceta, type FiltrosRecetas, type KpisRecetas } from '@/lib/services/recipeService';
+import { useFormatoCantidad, useFormatoPorcentaje } from '../produccion/piezas';
+import { BadgeEstadoReceta, BadgeModoReceta, rutaCostoRecetas, rutaEditarReceta, rutaNuevaReceta } from './piezas';
+import { useAccionesReceta } from './useAccionesReceta';
 
+const CAMPOS_ORDEN = ['producto', 'costo', 'margen', 'fecha'] as const;
+const ESTADOS = ['activas', 'inactivas', 'todas'] as const;
+const MODOS = ['al_producir', 'al_vender'] as const;
+
+/**
+ * Recetas (Figma «Recetas — listado, editor y diálogos» 598:142703): una fila
+ * por producto con su versión activa (o la última), rinde, ingredientes, costo
+ * por unidad en la sucursal del encabezado (`fn_receta_costo`, el mismo que
+ * descuenta la venta), margen, cómo descuenta y estado. Editar abre el MISMO
+ * `EditorReceta` del formulario de producto; desactivar pide confirmación.
+ */
 export function RecetasPage() {
-  const { organization } = useOrganization();
-  const organizationId = organization?.id;
+  const router = useRouter();
   const { toast } = useToast();
-  const [recetas, setRecetas] = useState<ProductRecipe[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [busqueda, setBusqueda] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
-  const [showDialog, setShowDialog] = useState(false);
-  const [editingRecipe, setEditingRecipe] = useState<ProductRecipe | null>(null);
-  const [viewRecipe, setViewRecipe] = useState<ProductRecipe | null>(null);
-  const [viewLoading, setViewLoading] = useState(false);
-  const [recipeToDelete, setRecipeToDelete] = useState<ProductRecipe | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const t = useTranslations('inventarioRecetas.listado');
+  const tc = useTranslations('inventarioRecetas');
+  const entero = useFormatoEntero();
+  const cantidad = useFormatoCantidad();
+  const porcentaje = useFormatoPorcentaje();
+  const { formatear: moneda } = useMonedaOrganizacion();
+  const { getToday } = useFormatDate();
+  const { branchFilter, branches, isLoading: cargandoSucursales } = useBranch();
+
+  const l = useListadoServidor({
+    filtros: ['estado', 'modo', 'costo', 'margen'],
+    camposOrden: [...CAMPOS_ORDEN],
+    ordenPorDefecto: { campo: 'producto', direccion: 'asc' },
+    tamanoPorDefecto: 25,
+  });
+
+  const [filas, setFilas] = useState<FilaReceta[]>([]);
+  const [total, setTotal] = useState(0);
+  const [kpis, setKpis] = useState<KpisRecetas | null>(null);
+  const [permisos, setPermisos] = useState<PermisosInventario>(SIN_PERMISOS_INVENTARIO);
+  const [cargando, setCargando] = useState(true);
+  const [estadoError, setEstadoError] = useState<'error' | 'sinPermiso' | null>(null);
+  const [recarga, setRecarga] = useState(0);
+  const [seleccion, setSeleccion] = useState<Set<string>>(new Set());
+
+  const recargar = useCallback(() => setRecarga((n) => n + 1), []);
+  const acciones = useAccionesReceta({ permisos, onCambio: recargar });
+
+  const estado = (ESTADOS as readonly string[]).includes(l.filtros.estado ?? '') ? (l.filtros.estado as FiltrosRecetas['estado']) : 'todas';
+  const modo = (MODOS as readonly string[]).includes(l.filtros.modo ?? '') ? (l.filtros.modo as FiltrosRecetas['modo']) : undefined;
+  const incompleto = l.filtros.costo === 'incompleto';
+  const margenBajo = l.filtros.margen === 'bajo';
+  const sucursal = branchFilter ?? branches[0]?.id ?? null;
+  const sinSucursal = !cargandoSucursales && branches.length === 0;
+
+  const filtrosServidor = useMemo<FiltrosRecetas>(
+    () => ({
+      sucursal,
+      busqueda: l.busqueda || undefined,
+      estado,
+      modo,
+      costo: incompleto ? 'incompleto' : undefined,
+      margen_bajo: margenBajo || undefined,
+      orden: (CAMPOS_ORDEN as readonly string[]).includes(l.orden?.campo ?? '') ? (l.orden!.campo as FiltrosRecetas['orden']) : 'producto',
+      direccion: l.orden?.direccion ?? 'asc',
+    }),
+    [sucursal, l.busqueda, estado, modo, incompleto, margenBajo, l.orden],
+  );
+  const clave = JSON.stringify({ ...filtrosServidor, d: l.rango.desde, n: l.tamano });
 
   useEffect(() => {
-    if (organizationId) {
-      cargarRecetas();
-    }
-  }, [organizationId]);
-
-  const cargarRecetas = async () => {
-    if (!organizationId) return;
-    try {
-      setLoading(true);
-      const data = await recipeService.getRecipes(organizationId);
-      setRecetas(data);
-    } catch (error) {
-      console.error('Error cargando recetas:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar las recetas',
-        variant: 'destructive',
+    if (sinSucursal || cargandoSucursales) return;
+    const control = new AbortController();
+    setCargando(true);
+    recipeService
+      .listar(getOrganizationId(), { ...filtrosServidor, desde_fila: l.rango.desde, limite: l.tamano }, control.signal)
+      .then((r) => {
+        setFilas(r.filas);
+        setTotal(r.total);
+        setKpis(r.kpis);
+        setPermisos(aPermisosInventario(r.permisos));
+        setEstadoError(null);
+      })
+      .catch((e: { code?: string }) => {
+        if (control.signal.aborted) return;
+        if (e?.code === '42501') setEstadoError('sinPermiso');
+        else {
+          console.error('Error cargando recetas:', e);
+          setEstadoError('error');
+        }
+      })
+      .finally(() => {
+        if (!control.signal.aborted) setCargando(false);
       });
-    } finally {
-      setLoading(false);
+    return () => control.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clave, recarga, sinSucursal, cargandoSucursales]);
+
+  useEffect(() => setSeleccion(new Set()), [l.busqueda, l.filtros, branchFilter]);
+
+  const exportar = (lista: readonly FilaReceta[]) => {
+    if (lista.length === 0) {
+      toast({ title: t('exportar.sinDatos') });
+      return;
     }
+    const csv = filasACsv(
+      [t('csv.producto'), t('csv.sku'), t('csv.version'), t('csv.rinde'), t('csv.ingredientes'), t('csv.costoUnidad'), t('csv.precio'), t('csv.margen'), t('csv.modo'), t('csv.estado')],
+      lista.map((f) => [f.producto.nombre, f.producto.sku, `v${f.version}`, `${f.rinde} ${f.unidad_rinde}`, f.ingredientes, f.costo_unidad, f.precio, f.margen, tc(`modo.${f.modo}`), f.activa ? tc('estados.activa') : tc('estados.inactiva')]),
+    );
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `recetas_${getToday()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast({ title: t('exportar.listo', { count: lista.length }) });
   };
 
-  const handleNuevo = () => {
-    setEditingRecipe(null);
-    setShowDialog(true);
-  };
+  const detalleCosto = (f: FilaReceta) =>
+    f.lineas_con_error > 0
+      ? { texto: t('nSinConversion', { count: f.lineas_con_error }), clase: 'text-danger-text' }
+      : f.lineas_sin_costo > 0
+        ? { texto: t('nSinCosto', { count: f.lineas_sin_costo }), clase: 'text-warning-text' }
+        : { texto: t('costoCompleto'), clase: 'text-fg-secondary' };
 
-  const handleEditar = (recipe: ProductRecipe) => {
-    setEditingRecipe(recipe);
-    setShowDialog(true);
-  };
+  const tonoMargen = (m: number | null) =>
+    m === null ? 'bg-subtle text-fg-muted' : m < (kpis?.umbral_margen ?? 0.3) ? 'bg-warning-subtle text-warning-text' : 'bg-success-subtle text-success-text';
 
-  const handleVer = async (recipe: ProductRecipe) => {
-    try {
-      setViewLoading(true);
-      const fullRecipe = await recipeService.getRecipeById(recipe.id);
-      setViewRecipe(fullRecipe);
-    } catch (error) {
-      console.error('Error cargando detalle:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo cargar el detalle de la receta',
-        variant: 'destructive',
-      });
-    } finally {
-      setViewLoading(false);
-    }
-  };
+  const columnas: ColumnaTabla<FilaReceta>[] = [
+    {
+      id: 'producto',
+      encabezado: t('columnas.producto'),
+      ordenable: true,
+      campoOrden: 'producto',
+      celda: (f) => (
+        <div className="flex min-w-0 flex-col">
+          <span className="truncate font-medium text-fg">{f.producto.nombre}</span>
+          <span className="truncate text-xs text-fg-secondary">{t('recetaNombre', { nombre: f.nombre ?? f.producto.nombre, version: f.version })}</span>
+        </div>
+      ),
+    },
+    { id: 'rinde', encabezado: t('columnas.rinde'), ocultarDebajo: 'md', celda: (f) => cantidad(f.rinde, f.unidad_rinde) },
+    { id: 'ingredientes', encabezado: t('columnas.ingredientes'), variante: 'importe', ocultarDebajo: 'lg', celda: (f) => entero(f.ingredientes) },
+    {
+      id: 'costo',
+      encabezado: t('columnas.costo'),
+      variante: 'importe',
+      ordenable: true,
+      campoOrden: 'costo',
+      celda: (f) => {
+        const d = detalleCosto(f);
+        return (
+          <div className="flex flex-col items-end">
+            <span className="text-fg">{f.costo_unidad !== null ? moneda(f.costo_unidad) : '—'}</span>
+            <span className={`text-xs ${d.clase}`}>{d.texto}</span>
+          </div>
+        );
+      },
+    },
+    {
+      id: 'margen',
+      encabezado: t('columnas.margen'),
+      ordenable: true,
+      campoOrden: 'margen',
+      alinear: 'centro',
+      celda: (f) => <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium tabular-nums ${tonoMargen(f.margen)}`}>{porcentaje(f.margen)}</span>,
+    },
+    { id: 'modo', encabezado: t('columnas.descuenta'), ocultarDebajo: 'md', celda: (f) => <BadgeModoReceta modo={f.modo} /> },
+    { id: 'estado', encabezado: t('columnas.estado'), celda: (f) => <BadgeEstadoReceta activa={f.activa} /> },
+  ];
 
-  const handleEliminar = (recipe: ProductRecipe) => {
-    setRecipeToDelete(recipe);
-  };
+  const estadoTabla: EstadoTabla = cargando ? 'cargando' : estadoError === 'sinPermiso' ? 'sinPermiso' : estadoError ? 'error' : filas.length === 0 && l.hayCriterios ? 'sinResultados' : 'listo';
+  const sustantivo = { singular: tc('sustantivo.singular'), plural: tc('sustantivo.plural') };
+  const subtitulo = kpis
+    ? t('subtitulo', { organizacion: getOrganizationName() ?? '', count: kpis.activas + kpis.inactivas, n: entero(kpis.activas + kpis.inactivas), activas: entero(kpis.activas) })
+    : getOrganizationName() ?? undefined;
 
-  const confirmEliminar = async () => {
-    if (!recipeToDelete) return;
-    try {
-      setDeleting(true);
-      await recipeService.deleteRecipe(recipeToDelete.id);
-      toast({ title: 'Receta eliminada' });
-      cargarRecetas();
-    } catch (error) {
-      console.error('Error eliminando receta:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo eliminar la receta',
-        variant: 'destructive',
-      });
-    } finally {
-      setDeleting(false);
-      setRecipeToDelete(null);
-    }
-  };
+  const chips: ChipFiltro[] = [
+    ...(estado !== 'todas' ? [{ clave: 'estado', etiqueta: t('chips.estado', { estado: t(`filtros.estados.${estado}`) }) }] : []),
+    ...(modo ? [{ clave: 'modo', etiqueta: tc(`modo.${modo}`) }] : []),
+    ...(incompleto ? [{ clave: 'costo', etiqueta: t('chips.incompleto') }] : []),
+    ...(margenBajo ? [{ clave: 'margen', etiqueta: t('chips.margenBajo') }] : []),
+  ];
 
-  const handleDesactivar = async (recipe: ProductRecipe) => {
-    try {
-      await recipeService.deactivateRecipe(recipe.id);
-      toast({ title: 'Receta desactivada' });
-      cargarRecetas();
-    } catch (error) {
-      console.error('Error desactivando receta:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo desactivar la receta',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const recetasFiltradas = recetas.filter(
-    (r) =>
-      r.product?.name?.toLowerCase().includes(busqueda.toLowerCase()) ||
-      r.name?.toLowerCase().includes(busqueda.toLowerCase()) ||
-      r.product?.sku?.toLowerCase().includes(busqueda.toLowerCase())
+  const cabecera = (
+    <PageHeader
+      titulo={t('titulo')}
+      subtitulo={subtitulo}
+      icono={ChefHat}
+      cargando={cargando && !sinSucursal}
+      migas={[{ etiqueta: tc('inventario'), href: '/app/inventario' }, { etiqueta: t('titulo') }]}
+      debajo={<BranchBadgeActiva />}
+      acciones={
+        sinSucursal ? undefined : (
+          <>
+            <Button variant="outline" size="icon" className="size-10" onClick={recargar} aria-label={t('actualizar')} title={t('actualizar')}>
+              <RefreshCw aria-hidden="true" className="size-4" strokeWidth={1.5} />
+            </Button>
+            <Button variant="outline" className="h-10 gap-2" onClick={() => router.push(rutaCostoRecetas())}>
+              <Calculator aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('costoRecetas')}
+            </Button>
+            <Button variant="outline" className="h-10 gap-2" onClick={() => router.push('/app/inventario/produccion')}>
+              <Factory aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('produccion')}
+            </Button>
+            {acciones.puedeEditar && (
+              <Button className="h-10 gap-2" onClick={() => router.push(rutaNuevaReceta())}>
+                <Plus aria-hidden="true" className="size-4" strokeWidth={1.75} />
+                {t('nueva')}
+              </Button>
+            )}
+          </>
+        )
+      }
+      movil={{
+        titulo: t('titulo'),
+        subtitulo: kpis ? t('subtituloMovil', { activas: entero(kpis.activas) }) : undefined,
+        accion:
+          sinSucursal || !acciones.puedeEditar ? undefined : (
+            <Button variant="ghost" size="icon" className="size-10" onClick={() => router.push(rutaNuevaReceta())} aria-label={t('nueva')}>
+              <Plus aria-hidden="true" className="size-5" strokeWidth={1.75} />
+            </Button>
+          ),
+      }}
+    />
   );
 
-  const totalPages = Math.ceil(recetasFiltradas.length / pageSize);
-  const startIndex = (currentPage - 1) * pageSize;
-  const recetasPaginadas = useMemo(
-    () => recetasFiltradas.slice(startIndex, startIndex + pageSize),
-    [recetasFiltradas, startIndex, pageSize]
-  );
-
-  const handlePageSizeChange = (newPageSize: number) => {
-    setPageSize(newPageSize);
-    setCurrentPage(1);
-  };
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [busqueda]);
+  if (sinSucursal) {
+    return (
+      <div className="flex flex-col gap-4 lg:gap-5">
+        {cabecera}
+        <EmptyState variante="sinSucursal" />
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link href="/app/inventario">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                <ChefHat className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-              </div>
-              Recetas de Producción
-            </h1>
-            <p className="text-gray-500 dark:text-gray-400">
-              Inventario / Recetas
-            </p>
-          </div>
-        </div>
+    <div className="flex flex-col gap-4 lg:gap-5">
+      {cabecera}
 
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={cargarRecetas}
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-          <Button
-            onClick={handleNuevo}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Nueva Receta
-          </Button>
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Total recetas</p>
-                <p className="text-2xl font-bold dark:text-white">{recetas.length}</p>
-              </div>
-              <ChefHat className="h-8 w-8 text-blue-500 opacity-50" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Activas</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {recetas.filter((r) => r.is_active).length}
-                </p>
-              </div>
-              <div className="w-3 h-3 rounded-full bg-green-500" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Inactivas</p>
-                <p className="text-2xl font-bold text-gray-400">
-                  {recetas.filter((r) => !r.is_active).length}
-                </p>
-              </div>
-              <div className="w-3 h-3 rounded-full bg-gray-400" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Productos compuestos</p>
-                <p className="text-2xl font-bold text-blue-600">
-                  {new Set(recetas.map((r) => r.product_id)).size}
-                </p>
-              </div>
-              <Package className="h-8 w-8 text-blue-500 opacity-50" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Tabla */}
-      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-        <CardHeader className="pb-4">
-          <div className="relative max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Buscar por producto, nombre o SKU..."
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              className="pl-10 dark:bg-gray-900 dark:border-gray-600"
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="space-y-3">
-              {[1, 2, 3, 4].map((i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg animate-pulse"
-                >
-                  <div className="w-12 h-12 bg-gray-200 dark:bg-gray-600 rounded" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-48" />
-                    <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-24" />
-                  </div>
-                  <div className="h-6 bg-gray-200 dark:bg-gray-600 rounded w-20" />
-                </div>
-              ))}
-            </div>
-          ) : recetasFiltradas.length === 0 ? (
-            <div className="text-center py-10 text-gray-500 dark:text-gray-400">
-              <ChefHat className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>No hay recetas de producción</p>
-              <p className="text-sm mt-1">
-                Crea una receta para definir los ingredientes de un producto compuesto
-              </p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="dark:border-gray-700">
-                  <TableHead className="dark:text-gray-300">Producto</TableHead>
-                  <TableHead className="dark:text-gray-300">SKU</TableHead>
-                  <TableHead className="dark:text-gray-300">Nombre receta</TableHead>
-                  <TableHead className="dark:text-gray-300 text-center">Rendimiento</TableHead>
-                  <TableHead className="dark:text-gray-300 text-center">Estado</TableHead>
-                  <TableHead className="dark:text-gray-300 text-center">Versión</TableHead>
-                  <TableHead className="dark:text-gray-300 text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recetasPaginadas.map((recipe) => (
-                  <TableRow
-                    key={recipe.id}
-                    className="dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                  >
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                          <Package className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <span className="font-medium dark:text-white">
-                          {recipe.product?.name ?? `Producto #${recipe.product_id}`}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm text-gray-500 dark:text-gray-400 font-mono">
-                      {recipe.product?.sku ?? '-'}
-                    </TableCell>
-                    <TableCell className="dark:text-gray-300">
-                      {recipe.name ?? '-'}
-                    </TableCell>
-                    <TableCell className="text-center dark:text-gray-300">
-                      <span className="font-mono text-sm">
-                        {recipe.yield_qty} {recipe.yield_unit_code ?? ''}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {recipe.is_active ? (
-                        <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 hover:bg-green-100">
-                          Activa
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">Inactiva</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center dark:text-gray-300">
-                      <span className="font-mono text-sm">v{recipe.version}</span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleVer(recipe)}
-                          className="h-8 w-8 p-0"
-                          title="Ver detalle"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditar(recipe)}
-                          className="h-8 w-8 p-0"
-                          title="Editar"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        {recipe.is_active && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDesactivar(recipe)}
-                            className="h-8 w-8 p-0 text-yellow-600"
-                            title="Desactivar"
-                          >
-                            <AlertCircle className="h-4 w-4" />
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEliminar(recipe)}
-                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-
-          <DataTablePagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            pageSize={pageSize}
-            totalItems={recetasFiltradas.length}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={handlePageSizeChange}
-            pageSizeOptions={[10, 25, 50, 100]}
+      {estadoError !== 'sinPermiso' && (
+        <KpiStrip etiqueta={t('kpis.etiqueta')} className="hidden sm:grid">
+          <StatCard
+            etiqueta={t('kpis.activas')}
+            cargando={!kpis}
+            valor={kpis ? entero(kpis.activas) : '—'}
+            detalle={kpis ? t('kpis.inactivas', { count: kpis.inactivas, n: entero(kpis.inactivas) }) : undefined}
+            onClick={() => l.setFiltro('estado', 'activas')}
           />
-        </CardContent>
-      </Card>
+          <StatCard
+            etiqueta={t('kpis.incompleto')}
+            cargando={!kpis}
+            valor={kpis ? entero(kpis.costo_incompleto) : '—'}
+            tono={kpis && kpis.costo_incompleto > 0 ? 'advertencia' : 'neutro'}
+            iconoDetalle={kpis && kpis.costo_incompleto > 0 ? AlertTriangle : undefined}
+            detalle={t('kpis.incompletoDetalle')}
+            onClick={() => l.setFiltro('costo', 'incompleto')}
+          />
+          <StatCard
+            etiqueta={t('kpis.margenBajo', { umbral: porcentaje(kpis?.umbral_margen ?? 0.3) })}
+            cargando={!kpis}
+            valor={kpis ? entero(kpis.margen_bajo) : '—'}
+            tono={kpis && kpis.margen_bajo > 0 ? 'peligro' : 'neutro'}
+            iconoDetalle={kpis && kpis.margen_bajo > 0 ? ArrowDown : undefined}
+            detalle={t('kpis.margenDetalle')}
+            onClick={() => l.setFiltro('margen', 'bajo')}
+          />
+          <StatCard
+            etiqueta={t('kpis.ordenes')}
+            cargando={!kpis}
+            valor={kpis ? entero(kpis.ordenes_mes) : '—'}
+            detalle={t('kpis.verProduccion')}
+            onClick={() => router.push('/app/inventario/produccion')}
+          />
+        </KpiStrip>
+      )}
 
-      {/* Dialog de creación/edición */}
-      <RecipeDialog
-        open={showDialog}
-        onOpenChange={setShowDialog}
-        organizationId={organizationId ?? 0}
-        recipe={editingRecipe}
-        onSaved={cargarRecetas}
-      />
-
-      {/* Dialog de detalle */}
-      <Dialog open={!!viewRecipe} onOpenChange={(open) => !open && setViewRecipe(null)}>
-        <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto dark:bg-gray-800 dark:border-gray-700">
-          <DialogHeader>
-            <DialogTitle className="dark:text-white flex items-center gap-2">
-              <ChefHat className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              Detalle de Receta
-            </DialogTitle>
-            <DialogDescription className="dark:text-gray-400">
-              {viewRecipe?.product?.name ?? ''}
-            </DialogDescription>
-          </DialogHeader>
-
-          {viewLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Skeleton className="h-6 w-8 mx-auto" /></div>
-          ) : viewRecipe ? (
-            <div className="space-y-4">
-              {/* Info general */}
-              <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Producto</p>
-                  <p className="font-medium dark:text-white">
-                    {viewRecipe.product?.name ?? `#${viewRecipe.product_id}`}
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">
-                    SKU: {viewRecipe.product?.sku ?? 'N/A'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Rendimiento</p>
-                  <p className="font-medium dark:text-white font-mono">
-                    {viewRecipe.yield_qty} {viewRecipe.yield_unit_code ?? ''}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Estado</p>
-                  <Badge
-                    className={
-                      viewRecipe.is_active
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                        : ''
-                    }
-                    variant={viewRecipe.is_active ? 'default' : 'secondary'}
-                  >
-                    {viewRecipe.is_active ? 'Activa' : 'Inactiva'}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Versión</p>
-                  <p className="font-medium dark:text-white font-mono">v{viewRecipe.version}</p>
-                </div>
-              </div>
-
-              {/* Notas */}
-              {viewRecipe.notes && (
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Notas</p>
-                  <p className="text-sm dark:text-gray-300 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
-                    {viewRecipe.notes}
-                  </p>
-                </div>
+      <ListToolbar
+        busqueda={<SearchInput value={l.busqueda} onChange={l.setBusqueda} cargando={cargando} placeholder={t('buscar.placeholder')} etiqueta={t('buscar.etiqueta')} />}
+        filtros={
+          <FilterPanel conteo={l.filtrosActivos} onLimpiar={l.limpiarFiltros} textoVerResultados={t('filtros.verN', { count: total, n: entero(total) })}>
+            <FormField etiqueta={t('filtros.estado')}>
+              {(c) => (
+                <Select value={estado} onValueChange={(v) => l.setFiltro('estado', v === 'todas' ? null : v)}>
+                  <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} className="h-10 border-line-strong bg-surface">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ESTADOS.map((e) => (
+                      <SelectItem key={e} value={e}>
+                        {t(`filtros.estados.${e}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
-
-              {/* Ingredientes */}
-              <div>
-                <p className="text-sm font-medium dark:text-gray-300 mb-2">
-                  Ingredientes ({viewRecipe.ingredients?.length ?? 0})
-                </p>
-                <div className="space-y-2">
-                  {viewRecipe.ingredients?.map((ing, i) => (
-                    <div
-                      key={ing.id}
-                      className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-600 rounded-lg"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs text-gray-400 font-mono w-6">#{i + 1}</span>
-                        <div>
-                          <p className="font-medium text-sm dark:text-white">
-                            {ing.ingredient_product?.name ?? `#${ing.ingredient_product_id}`}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-                            {ing.ingredient_product?.sku ?? 'N/A'}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {ing.is_optional && (
-                          <Badge variant="outline" className="text-xs">
-                            Opcional
-                          </Badge>
-                        )}
-                        <span className="font-mono text-sm dark:text-white">
-                          {ing.quantity} {ing.unit_code}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : null}
-        </DialogContent>
-      </Dialog>
-
-      {/* Confirmación de eliminación (reemplaza confirm nativo) */}
-      <ConfirmDialog
-        open={recipeToDelete !== null}
-        onOpenChange={(open) => !open && setRecipeToDelete(null)}
-        title="Eliminar receta"
-        description={`¿Eliminar la receta de "${recipeToDelete?.product?.name ?? 'producto'}"?`}
-        confirmLabel="Eliminar"
-        variant="destructive"
-        loading={deleting}
-        onConfirm={confirmEliminar}
+            </FormField>
+            <FormField etiqueta={t('filtros.modo')}>
+              {(c) => (
+                <Select value={modo ?? 'todos'} onValueChange={(v) => l.setFiltro('modo', v === 'todos' ? null : v)}>
+                  <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} className="h-10 border-line-strong bg-surface">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">{t('filtros.todos')}</SelectItem>
+                    {MODOS.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {tc(`modo.${m}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </FormField>
+            <label className="flex items-center gap-2 text-sm text-fg">
+              <Checkbox checked={incompleto} onCheckedChange={(v) => l.setFiltro('costo', v === true ? 'incompleto' : null)} className="size-[18px] rounded" />
+              {t('filtros.incompleto')}
+            </label>
+            <label className="flex items-center gap-2 text-sm text-fg">
+              <Checkbox checked={margenBajo} onCheckedChange={(v) => l.setFiltro('margen', v === true ? 'bajo' : null)} className="size-[18px] rounded" />
+              {t('filtros.margenBajo')}
+            </label>
+          </FilterPanel>
+        }
+        chips={<FilterChips chips={chips} onQuitar={(c) => l.setFiltro(c, null)} onLimpiarTodo={l.limpiarFiltros} />}
       />
+
+      <DataTable
+        etiqueta={t('titulo')}
+        columnas={columnas}
+        filas={filas}
+        obtenerId={(f) => String(f.recipe_id)}
+        estado={estadoTabla}
+        orden={l.orden}
+        onOrdenar={l.ordenarPor}
+        seleccion={seleccion}
+        onSeleccionChange={setSeleccion}
+        onFilaClick={(f) => router.push(rutaEditarReceta(f.product_id))}
+        etiquetaFila={(f) => t('etiquetaFila', { producto: f.producto.nombre, version: f.version })}
+        acciones={acciones.accionesDe}
+        accionesRapidas={(f) =>
+          f.activa && acciones.puedeProducir && f.producto.track_stock ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8"
+              aria-label={t('crearOrdenDe', { producto: f.producto.nombre })}
+              title={t('crearOrden')}
+              onClick={(e) => {
+                e.stopPropagation();
+                acciones.pedirProducir(f);
+              }}
+            >
+              <Factory aria-hidden="true" className="size-4" strokeWidth={1.75} />
+            </Button>
+          ) : null
+        }
+        tarjetaMovil={(f, ctx) => (
+          <ListCard
+            icono={ChefHat}
+            titulo={f.producto.nombre}
+            subtitulo={[t('recetaNombre', { nombre: f.nombre ?? f.producto.nombre, version: f.version }), cantidad(f.rinde, f.unidad_rinde)].join(' · ')}
+            meta={[tc(`modo.${f.modo}`), detalleCosto(f).texto].join(' · ')}
+            valor={
+              <span className="flex flex-col items-end gap-0.5">
+                <span className="text-sm font-medium text-fg">{f.costo_unidad !== null ? moneda(f.costo_unidad) : '—'}</span>
+                <span className="text-xs text-fg-secondary">{porcentaje(f.margen)}</span>
+              </span>
+            }
+            estado={<BadgeEstadoReceta activa={f.activa} />}
+            acciones={acciones.accionesDe(f)}
+            onClick={() => router.push(rutaEditarReceta(f.product_id))}
+            seleccionable={ctx.modoSeleccion}
+            seleccionado={ctx.seleccionado}
+            onSeleccionChange={ctx.alternar}
+            onMantenerPulsado={() => ctx.alternar(true)}
+          />
+        )}
+        vacio={{
+          titulo: t('vacio.titulo'),
+          descripcion: t('vacio.descripcion'),
+          icono: ChefHat,
+          accion: acciones.puedeEditar ? { etiqueta: t('nueva'), onClick: () => router.push(rutaNuevaReceta()) } : undefined,
+        }}
+        sinResultados={{ descripcion: t('sinResultados') }}
+        error={{ titulo: t('errorCarga') }}
+        sinPermiso={{ titulo: t('sinPermiso.titulo'), descripcion: t('sinPermiso.descripcion') }}
+        onLimpiarFiltros={l.limpiarTodo}
+        onReintentar={recargar}
+        termino={l.busqueda}
+        pie={<Pagination pagina={l.pagina} tamano={l.tamano} total={total} onPaginaChange={l.setPagina} onTamanoChange={l.setTamano} sustantivo={sustantivo} cargando={cargando} />}
+      />
+
+      <BulkActionBar
+        seleccionados={seleccion.size}
+        total={total}
+        sustantivo={sustantivo}
+        acciones={[{ id: 'exportar', etiqueta: t('masivas.exportar'), icono: Download, onClick: () => exportar(filas.filter((f) => seleccion.has(String(f.recipe_id)))) }]}
+        onLimpiar={() => setSeleccion(new Set())}
+      />
+
+      {acciones.dialogos}
     </div>
   );
 }
+
+export default RecetasPage;

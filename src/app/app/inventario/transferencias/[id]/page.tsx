@@ -11,5 +11,5 @@ interface PageProps {
 
 export default function TransferenciaDetallePage({ params }: PageProps) {
   const { id } = React.use(params);
-  return <TransferenciaDetalle transferenciaId={parseInt(id)} />;
+  return <TransferenciaDetalle transferenciaId={/^\d{1,9}$/.test(id) ? Number(id) : 0} />;
 }

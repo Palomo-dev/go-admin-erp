@@ -19,8 +19,10 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Ban, CircleDollarSign, Copy, Download, Eye, FileText, HandCoins, Plus, Printer, Receipt, RefreshCw, Undo2, Wallet } from 'lucide-react';
 import {
+  AccionRapida,
   BranchBadgeActiva,
   BulkActionBar,
+  CampoNumero,
   CustomerPicker,
   DataTable,
   DateRangeButton,
@@ -46,7 +48,10 @@ import {
   type ColumnaTabla,
 } from '@/components/kit';
 import { ChipDocumento } from '@/components/kit/documento';
+import { simboloMoneda } from '@/components/kit/documento/documentoLineasLogica';
 import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toastError } from '@/components/ui/use-toast';
 import { useBranch } from '@/lib/context/BranchContext';
@@ -75,10 +80,6 @@ import { AnularVentaDialog } from './AnularVentaDialog';
 
 const RUTA = '/app/pos/ventas';
 const FILTROS = ['origen', 'estado', 'metodo', 'cliente', 'cajero', 'desde', 'hasta', 'min', 'max'] as const;
-const CLASE_CAMPO =
-  'h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-sm text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand';
-const CLASE_ICONO =
-  'flex size-8 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50';
 
 function variacion(actual: number, anterior: number): number | null {
   if (!anterior) return null;
@@ -184,6 +185,7 @@ export function VentasPage() {
   const total = datos?.total ?? 0;
   const sinRed = datos?.sinRed === true;
   const formatear = useCallback((v: number) => moneda.formatear(v), [moneda]);
+  const simbolo = useMemo(() => simboloMoneda(moneda), [moneda]);
   const sustantivo = { singular: t('listado.sustantivo.singular'), plural: t('listado.sustantivo.plural') };
 
   const numeroDe = (f: FilaVenta) => f.numero ?? t('listado.sinNumero');
@@ -294,16 +296,17 @@ export function VentasPage() {
     }
   };
 
-  const buscarClientes = useCallback(async (texto: string): Promise<ClientePicker[]> => {
+  const buscarClientes = useCallback(async (texto: string, _senal: AbortSignal, _filtros: readonly string[], desde: number) => {
     const r = await listarClientes({
       organizationId: getOrganizationId(),
       branchId: null,
       criterios: { busqueda: texto },
       orden: null,
-      desde: 0,
+      desde,
       tamano: 10,
     });
-    return r.filas.map((c) => ({ id: c.id, nombre: c.full_name ?? c.company_name ?? '', documento: c.identification_number, correo: c.email, telefono: c.phone }));
+    const items: ClientePicker[] = r.filas.map((c) => ({ id: c.id, nombre: c.full_name ?? c.company_name ?? '', documento: c.identification_number, correo: c.email, telefono: c.phone }));
+    return { items, total: r.total };
   }, []);
 
   // Sin filtro de cliente no hay nombre que buscar: con `clienteElegido` nulo y
@@ -326,9 +329,9 @@ export function VentasPage() {
 
   const badgeEstado = (f: FilaVenta) => <StatusBadge estado={BADGE_ESTADO_VENTA[f.estado]} etiqueta={t(`estados.${f.estado}`)} />;
   const badgeOrigen = (f: FilaVenta) => (
-    <span className="inline-flex h-6 items-center rounded-md border border-line bg-surface-subtle px-1.5 text-xs font-medium text-fg-secondary">
+    <Badge tono="neutro" apariencia="contorno" tamano="sm">
       {t(`listado.origenes.${f.origen}`)}
-    </span>
+    </Badge>
   );
   const documentos = (f: FilaVenta) => (
     <div className="flex flex-wrap items-center gap-1">
@@ -414,17 +417,16 @@ export function VentasPage() {
         debajo={<BranchBadgeActiva />}
         acciones={
           <>
-            <button type="button" onClick={recargar} aria-label={t('listado.actualizar')} title={t('listado.actualizar')} className={`${CLASE_ICONO} size-10 border border-line-strong bg-surface`}>
+            <Button variant="outline" size="icon" className="size-10" onClick={recargar} aria-label={t('listado.actualizar')} title={t('listado.actualizar')}>
               <RefreshCw aria-hidden="true" className={`size-4 ${cargando ? 'animate-spin' : ''}`} strokeWidth={1.5} />
-            </button>
+            </Button>
             {permisos.vender && (
-              <Link
-                href="/app/pos"
-                className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-action px-4 text-sm font-medium text-fg-on-brand hover:bg-brand-action-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
-              >
-                <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
-                {t('listado.nueva')}
-              </Link>
+              <Button asChild className="h-10 gap-2">
+                <Link href="/app/pos">
+                  <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                  {t('listado.nueva')}
+                </Link>
+              </Button>
             )}
             <RowActionsMenu orientacion="horizontal" tamano="md" titulo={t('listado.titulo')} acciones={[botonExportar]} />
           </>
@@ -432,13 +434,11 @@ export function VentasPage() {
         movil={{
           subtitulo: t('listado.subtitulo', { n: entero(total), count: total }),
           accion: permisos.vender ? (
-            <Link
-              href="/app/pos"
-              aria-label={t('listado.nueva')}
-              className="flex size-10 items-center justify-center rounded-lg text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            >
-              <Plus aria-hidden="true" className="size-5" strokeWidth={1.5} />
-            </Link>
+            <Button asChild variant="ghost" size="icon" className="size-10">
+              <Link href="/app/pos" aria-label={t('listado.nueva')}>
+                <Plus aria-hidden="true" className="size-5" strokeWidth={1.5} />
+              </Link>
+            </Button>
           ) : undefined,
         }}
       />
@@ -574,12 +574,26 @@ export function VentasPage() {
             <div className="grid grid-cols-2 gap-3">
               <FormField etiqueta={t('listado.filtros.min')}>
                 {(c) => (
-                  <input id={c.id} type="number" min={0} inputMode="decimal" value={l.filtros.min ?? ''} onChange={(e) => l.setFiltro('min', e.target.value || null)} className={CLASE_CAMPO} />
+                  <CampoNumero
+                    id={c.id}
+                    aria-describedby={c['aria-describedby']}
+                    valor={l.filtros.min ? Number(l.filtros.min) : null}
+                    onValorChange={(v) => l.setFiltro('min', v === null ? null : String(v))}
+                    minimo={0}
+                    prefijo={simbolo}
+                  />
                 )}
               </FormField>
               <FormField etiqueta={t('listado.filtros.max')}>
                 {(c) => (
-                  <input id={c.id} type="number" min={0} inputMode="decimal" value={l.filtros.max ?? ''} onChange={(e) => l.setFiltro('max', e.target.value || null)} className={CLASE_CAMPO} />
+                  <CampoNumero
+                    id={c.id}
+                    aria-describedby={c['aria-describedby']}
+                    valor={l.filtros.max ? Number(l.filtros.max) : null}
+                    onValorChange={(v) => l.setFiltro('max', v === null ? null : String(v))}
+                    minimo={0}
+                    prefijo={simbolo}
+                  />
                 )}
               </FormField>
             </div>
@@ -605,19 +619,16 @@ export function VentasPage() {
         accionesRapidas={(f) => {
           const imprimible = accionesDeVenta(f, permisos).imprimir;
           return (
-            <button
-              type="button"
-              disabled={!imprimible.habilitada}
-              title={imprimible.habilitada ? t('listado.acciones.imprimir') : motivo(imprimible)}
-              aria-label={t('listado.imprimirVenta', { numero: numeroDe(f) })}
-              onClick={(e) => {
-                e.stopPropagation();
+            <AccionRapida
+              soloIcono
+              etiqueta={t('listado.imprimirVenta', { numero: numeroDe(f) })}
+              icono={Printer}
+              deshabilitada={!imprimible.habilitada}
+              motivo={motivo(imprimible)}
+              onClick={() => {
                 if (f.factura_id) imprimirDocumento('factura-venta', f.factura_id, { papel: '80mm' });
               }}
-              className={CLASE_ICONO}
-            >
-              <Printer aria-hidden="true" className="size-4" strokeWidth={1.5} />
-            </button>
+            />
           );
         }}
         tarjetaMovil={(f, ctx) => (

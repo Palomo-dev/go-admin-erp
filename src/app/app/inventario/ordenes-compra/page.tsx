@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { toastSuccess, toastError } from '@/components/ui/use-toast';
+import { toastSuccess, toastError, toastWarning } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { purchaseOrderService, type PurchaseOrder, type PurchaseOrderStats } from '@/lib/services/purchaseOrderService';
-import { describeSkippedItems } from '@/lib/services/stockMovementService';
+import { useTranslations } from 'next-intl';
+import { useMensajeErrorRecepcionOC } from '@/components/inventario/recepcion/LotesRecepcion';
 
 import {
   AlertDialog,
@@ -30,6 +31,8 @@ import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkel
 
 export default function OrdenesCompraPage() {
   const router = useRouter();
+  const tRec = useTranslations('inventarioRecepcionOC');
+  const mensajeErrorRecepcion = useMensajeErrorRecepcionOC();
   const { branchFilter: globalBranchFilter, selectedBranchId } = useBranch();
 
   // Estados
@@ -81,9 +84,9 @@ export default function OrdenesCompraPage() {
       setStats(statsResult);
       setSuppliers(suppliersData);
       setBranches(branchesData);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error cargando datos:', error);
-      toastError('Error', error?.message || 'No se pudieron cargar las órdenes de compra');
+      toastError('Error', (error as { message?: string } | null)?.message || 'No se pudieron cargar las órdenes de compra');
     } finally {
       setIsLoading(false);
     }
@@ -117,8 +120,8 @@ export default function OrdenesCompraPage() {
       if (data) {
         router.push(`/app/inventario/ordenes-compra/${data.uuid}/editar`);
       }
-    } catch (error: any) {
-      toastError('Error', error?.message || 'No se pudo duplicar la orden');
+    } catch (error: unknown) {
+      toastError('Error', (error as { message?: string } | null)?.message || 'No se pudo duplicar la orden');
     }
   };
 
@@ -132,7 +135,7 @@ export default function OrdenesCompraPage() {
 
     try {
       const organizationId = getOrganizationId();
-      const { success, error } = await purchaseOrderService.deletePurchaseOrder(orderToDelete, organizationId);
+      const { error } = await purchaseOrderService.deletePurchaseOrder(orderToDelete, organizationId);
 
       if (error) throw error;
 
@@ -141,8 +144,8 @@ export default function OrdenesCompraPage() {
       setOrders(orders.filter(o => o.uuid !== orderToDelete));
       setDeleteDialogOpen(false);
       setOrderToDelete(null);
-    } catch (error: any) {
-      toastError('Error', error?.message || 'No se pudo eliminar la orden');
+    } catch (error: unknown) {
+      toastError('Error', (error as { message?: string } | null)?.message || 'No se pudo eliminar la orden');
     }
   };
 
@@ -154,21 +157,25 @@ export default function OrdenesCompraPage() {
       // inventario. Antes esto llamaba a updateStatus y la orden quedaba en
       // 'received' sin un solo movimiento de stock asociado.
       if (newStatus === 'received') {
-        const { error, stock } = await purchaseOrderService.receiveAllPending(orderUuid, organizationId);
+        // B8: todo lo pendiente por fn_oc_recepcionar (una transacción). Si una
+        // línea exige lote o seriales, no se recibe nada y se dice por qué.
+        const { error, resultado } = await purchaseOrderService.receiveAllPending(orderUuid, organizationId);
 
-        if (error) throw error;
-
-        toastSuccess('Orden recibida', 'Se recibio el pendiente y se sumo al stock de la sucursal');
-
-        if (stock?.skippedItems.length) {
-          toastError(
-            `${stock.skippedItems.length} item(s) no afectaron el inventario`,
-            describeSkippedItems(stock.skippedItems)
-          );
+        if (error || !resultado) {
+          toastError(tRec('falloTitulo'), error ? mensajeErrorRecepcion(error) : tRec('nada'));
+          return;
         }
 
-        if (stock?.errors.length) {
-          toastError('Errores al sumar stock', stock.errors.join('; '));
+        toastSuccess(
+          tRec('exitoCompleta', { codigo: resultado.codigo, orden: resultado.orden.codigo }),
+          resultado.factura?.number_ext ? tRec('facturaCreada', { factura: resultado.factura.number_ext }) : undefined,
+        );
+
+        if (resultado.saltadas.length > 0) {
+          toastWarning(
+            tRec('saltadasTitulo', { n: resultado.saltadas.length }),
+            resultado.saltadas.map((x) => x.product_name ?? `#${x.product_id}`).join(', '),
+          );
         }
 
         loadData();
@@ -187,8 +194,8 @@ export default function OrdenesCompraPage() {
       toastSuccess('Estado actualizado', `La orden ha sido ${statusLabels[newStatus]}`);
 
       loadData();
-    } catch (error: any) {
-      toastError('Error', error?.message || 'No se pudo actualizar el estado');
+    } catch (error: unknown) {
+      toastError('Error', (error as { message?: string } | null)?.message || 'No se pudo actualizar el estado');
     }
   };
 

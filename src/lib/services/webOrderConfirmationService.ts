@@ -1,8 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
-import { getCurrentUserId } from '@/lib/hooks/useOrganization';
+import { getCurrentUserId, getOrganizationId } from '@/lib/hooks/useOrganization';
 import { PropinasService } from '@/components/pos/propinas/propinasService';
 import { deliveryIntegrationService } from './deliveryIntegrationService';
-import { stockMovementService } from './stockMovementService';
 import { generateInvoiceNumber } from '@/lib/utils/invoiceUtils';
 import type { WebOrder } from './webOrdersService';
 import {
@@ -93,34 +92,23 @@ class WebOrderConfirmationService {
     // 2. Crear sale_items y obtener los IDs insertados
     const insertedSaleItems = await this.createSaleItems(order, saleId);
 
-    // 2b. Descontar stock definitivamente y liberar reserva
-    try {
-      const stockResult = await stockMovementService.decrementOnSale(
-        order.organization_id,
-        order.branch_id,
-        saleId,
-        (order.items || []).map(item => ({
-          product_id: item.product_id,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-        })),
-        'web_sale',
-        userId
-      );
-      if (stockResult.errors.length > 0) {
-        console.warn('⚠️ Algunos items no descontaron stock:', stockResult.errors);
-      }
-      console.log(`📦 Stock descontado (web order confirm): ${(order.items || []).length - stockResult.skipped} items`);
+    // 2a. Membresías (docs/design/MEMBRESIAS-FASE-1-2.md §4, «Tienda web»): las crea y activa la
+    //     base, en el servidor (la RPC no está abierta al navegador). No bloquea la confirmación:
+    //     si falla (p. ej. pedido sin cliente) queda en el log y se puede reintentar (idempotente).
+    await this.activarMembresias(order.id);
 
-      // Liberar reserva (qty_reserved) ya que el stock fue descontado definitivamente
-      await stockMovementService.releaseStockReservation(
-        order.branch_id,
-        order.id,
-        (order.items || []).map(item => ({
-          product_id: item.product_id,
-          quantity: item.quantity,
-        }))
-      );
+    // 2b. Stock: descuento con receta, liberar la reserva y vender seriales en una sola RPC
+    //     (inventario B9, fn_pedido_web_confirmar_stock), la misma que usa la confirmación del
+    //     servidor. Antes esta copia no vendía los seriales reservados. No bloquea la confirmación.
+    try {
+      const { data: stockRes, error: stockRpcError } = await supabase.rpc('fn_pedido_web_confirmar_stock', {
+        p_order_id: order.id,
+        p_sale_id: saleId,
+        p_user_id: userId,
+      });
+      if (stockRpcError) throw stockRpcError;
+      const errores = ((stockRes ?? {}) as { errores?: string[] }).errores ?? [];
+      if (errores.length > 0) console.warn('⚠️ Algunos items no descontaron stock:', errores);
     } catch (stockError) {
       console.warn('⚠️ Error descontando stock (no bloquea la confirmación):', stockError);
     }
@@ -230,6 +218,22 @@ class WebOrderConfirmationService {
     const { sale_id: saleId, creada } = (data ?? {}) as { sale_id?: string; creada?: boolean };
     if (!saleId) throw new Error(`El pedido ${order.order_number} no devolvió venta`);
     return { saleId, creada: creada === true };
+  }
+
+  /** Activa las membresías de las líneas del pedido vía `POST /api/web-orders/[id]/membresias`. */
+  private async activarMembresias(orderId: string): Promise<void> {
+    try {
+      const org = getOrganizationId();
+      const r = await fetch(`/api/web-orders/${encodeURIComponent(orderId)}/membresias`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', ...(org > 0 ? { 'x-organization-id': String(org) } : {}) },
+        body: '{}',
+      });
+      if (!r.ok) console.error('[webOrderConfirmation] membresías del pedido sin activar', { orderId, estado: r.status });
+    } catch (err) {
+      console.error('[webOrderConfirmation] membresías del pedido sin activar', { orderId, err });
+    }
   }
 
   /**

@@ -3,21 +3,20 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
-import { ArrowLeftRight, Package, History, RotateCcw, Tag } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowLeftRight, Package, History, Tag, Undo } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
-import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
+import { Skeleton } from '@/components/ui/skeleton';
+import { BranchBadgeActiva, EmptyState, PageHeader } from '@/components/kit';
 import { TicketSearch } from '@/components/pos/devoluciones/TicketSearch';
 import { ReturnForm } from '@/components/pos/devoluciones/ReturnForm';
 import { ReturnsHistory } from '@/components/pos/devoluciones/ReturnsHistory';
 import { SaleForReturn } from '@/components/pos/devoluciones/types';
 import { toast } from 'sonner';
-import { BranchBadge } from '@/components/inventario/BranchBadge';
-import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
 type ViewState = 'search' | 'process' | 'history';
 
@@ -26,7 +25,6 @@ export default function DevolucionesPage() {
   const { branchFilter } = useBranch();
   const t = useTranslations('posDevoluciones.pagina');
   const tComun = useTranslations('posDevoluciones.comun');
-  const { formatDate } = useFormatDate();
   const [activeView, setActiveView] = useState<ViewState>('search');
   const [selectedSale, setSelectedSale] = useState<SaleForReturn | null>(null);
   const [refreshHistoryTrigger, setRefreshHistoryTrigger] = useState(0);
@@ -55,62 +53,36 @@ export default function DevolucionesPage() {
     }
   };
 
+  const migas = [{ etiqueta: t('migas.pos'), href: '/app/pos' }, { etiqueta: t('migas.devoluciones') }];
+
   if (orgLoading) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <PageHeaderSkeleton />
-        <CardListSkeleton cards={5} columns="1" />
+      <div className="flex min-h-screen flex-col gap-4 bg-canvas p-4 sm:p-6" aria-busy="true">
+        <PageHeader titulo={t('migas.devoluciones')} icono={Undo} migas={migas} cargando />
+        <Skeleton className="h-64 w-full rounded-xl" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 lg:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <BranchBadge className="mb-3" />
-
-        {/* Header */}
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardHeader className="pb-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-center space-x-4">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                  <ArrowLeftRight className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div>
-                  <CardTitle className="text-base sm:text-lg dark:text-white text-gray-900">
-                    {t('titulo', { organizacion: organization?.name || t('organizacionRespaldo') })}
-                  </CardTitle>
-                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                    {t('subtitulo')}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Link href="/app/pos/devoluciones/motivos">
-                  <Button variant="outline" size="sm" className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:bg-gray-600">
-                    <Tag className="h-4 w-4 mr-2" />
-                    {t('motivos')}
-                  </Button>
-                </Link>
-                <div className="text-right">
-                  <div className="flex items-center space-x-2">
-                    <Package className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
-                      {formatDate(new Date())}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2 mt-1">
-                    <Badge variant="outline" className="dark:border-blue-500 dark:text-blue-400 border-blue-500 text-blue-600">
-                      <RotateCcw className="h-3 w-3 mr-1" />
-                      {t('sistemaActivo')}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardHeader>
-        </Card>
+    <div className="flex min-h-screen flex-col gap-4 bg-canvas p-4 sm:p-6">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
+        {/* Cabecera del kit (Figma `873:573998`). La fecha suelta y el badge «Sistema activo» no están en Figma. */}
+        <PageHeader
+          titulo={t('titulo', { organizacion: organization?.name || t('organizacionRespaldo') })}
+          subtitulo={t('subtitulo')}
+          icono={Undo}
+          migas={migas}
+          acciones={
+            <Button asChild variant="outline" className="h-10 gap-2">
+              <Link href="/app/pos/devoluciones/motivos">
+                <Tag aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                {t('motivos')}
+              </Link>
+            </Button>
+          }
+          debajo={<BranchBadgeActiva />}
+        />
 
         {/* Navegación por pestañas */}
         <Card className="dark:bg-gray-800 dark:border-gray-700">
@@ -178,22 +150,12 @@ export default function DevolucionesPage() {
                       />
                     </div>
                   ) : (
-                    <div className="text-center py-12">
-                      <Package className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                      <h3 className="text-lg font-medium text-gray-600 dark:text-gray-400 mb-2">
-                        {t('sinTicketTitulo')}
-                      </h3>
-                      <p className="text-gray-500 dark:text-gray-500 mb-4">
-                        {t('sinTicketDescripcion')}
-                      </p>
-                      <Button 
-                        onClick={() => setActiveView('search')}
-                        className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
-                      >
-                        <Package className="h-4 w-4 mr-2" />
-                        {tComun('buscarTicket')}
-                      </Button>
-                    </div>
+                    <EmptyState
+                      icono={Package}
+                      titulo={t('sinTicketTitulo')}
+                      descripcion={t('sinTicketDescripcion')}
+                      accion={{ etiqueta: tComun('buscarTicket'), icono: Package, onClick: () => setActiveView('search') }}
+                    />
                   )}
                 </TabsContent>
 

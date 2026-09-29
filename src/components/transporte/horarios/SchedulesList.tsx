@@ -227,7 +227,7 @@ export function SchedulesList({
                       <div className="flex items-center gap-2">
                         <Bus className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                         <span className="text-gray-600 dark:text-gray-300">
-                          {schedule.vehicles.plate_number}
+                          {schedule.vehicles.plate}
                         </span>
                       </div>
                     )}

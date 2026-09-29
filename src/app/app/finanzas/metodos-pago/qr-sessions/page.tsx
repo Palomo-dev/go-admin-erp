@@ -11,7 +11,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/utils/Utils';
 import {
@@ -19,9 +18,9 @@ import {
   CheckCircle2,
   Clock,
   XCircle,
-  Search,
   RefreshCw,
 } from 'lucide-react';
+import { SearchInput } from '@/components/kit/SearchInput';
 
 // Tipo de estado de sesion QR
 type SessionStatus = 'pending' | 'paid' | 'rejected' | 'expired' | 'cancelled';
@@ -215,15 +214,13 @@ export default function QrSessionsPage() {
             </Button>
           ))}
         </div>
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Buscar por referencia..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
+        <SearchInput
+          value={searchQuery}
+          onChange={setSearchQuery}
+          onValueChange={setSearchQuery}
+          placeholder="Buscar por referencia..."
+          className="w-full sm:w-72"
+        />
       </div>
 
       {/* Card con tabla de sesiones */}

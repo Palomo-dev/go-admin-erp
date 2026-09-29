@@ -36,6 +36,20 @@ export const CODIGOS_ERROR_COBRO = [
   // Punto 1: la mesa cobra con pos_checkout_v1.
   'sesion_mesa_invalida',
   'no_es_venta_de_mesa',
+  // Cuenta dividida (20260929060000): un cobro de mesa no abona más que el saldo.
+  'pago_excede_saldo',
+  // Productos por peso o medida (fn_pos_validar_pesaje, 20260929120100).
+  'cantidad_decimales',
+  'cantidad_bajo_minimo',
+  'origen_peso_invalido',
+  'origen_peso_no_disponible',
+  'peso_exige_bascula',
+  'sin_permiso_peso_manual',
+  // Báscula y etiqueta de balanza (fn_pos_validar_pesaje, 20260929220200).
+  'bascula_invalida',
+  'peso_inestable',
+  'pesaje_no_coincide',
+  'etiqueta_invalida',
 ] as const;
 
 export type CodigoErrorCobro = (typeof CODIGOS_ERROR_COBRO)[number];

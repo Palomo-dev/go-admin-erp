@@ -24,6 +24,18 @@ export interface DesktopConfig {
    * splash. Ausente = seguir al sistema.
    */
   theme?: ThemePreference;
+  /**
+   * Báscula de este equipo (main/scale, fase 3 de productos por peso): la
+   * última que abrió el POS (`pos_scales.id`) y su puerto. Solo informativo
+   * para `scale:status` y soporte; el puerto se vuelve a abrir cuando la web
+   * lo pide, nunca solo.
+   */
+  scale?: ScaleConfig;
+}
+
+export interface ScaleConfig {
+  scaleId: string;
+  path: string;
 }
 
 export interface PosDisplayConfig {

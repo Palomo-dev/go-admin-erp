@@ -3,8 +3,9 @@
  *
  * Pestañas (Figma `04 Inventario › Producto — …`, PARIDAD-DETALLE-PRODUCTO):
  * Resumen · Inventario (Stock · Lotes · Kardex · Seriales) · Precios y costos ·
- * Variantes y modificadores · Imágenes · Proveedores y etiquetas · Notas ·
- * Historial. Van en la URL (`?tab=inventario&sub=seriales`).
+ * Variantes y modificadores · Producción (B5, solo si tiene contenido) ·
+ * Imágenes · Proveedores y etiquetas · Notas · Historial. Van en la URL
+ * (`?tab=inventario&sub=seriales`; Producción guarda la suya en `?psub=`).
  */
 
 export type PestanaDetalle =
@@ -12,6 +13,7 @@ export type PestanaDetalle =
   | 'inventario'
   | 'precios'
   | 'variantes'
+  | 'produccion'
   | 'imagenes'
   | 'proveedores'
   | 'notas'
@@ -22,6 +24,7 @@ export const PESTANAS_DETALLE: readonly PestanaDetalle[] = [
   'inventario',
   'precios',
   'variantes',
+  'produccion',
   'imagenes',
   'proveedores',
   'notas',
@@ -98,6 +101,9 @@ export interface ProductoDetalle {
   warranty_months: number | null;
   is_parent: boolean | null;
   is_composite: boolean | null;
+  /** Producción (B5): `preparation` · `composite` · … (decide si se ve la pestaña Producción). */
+  production_type?: string | null;
+  track_lots?: boolean | null;
   parent_product_id: number | null;
   variant_data: Record<string, string> | null;
   weight_kg: number | string | null;
@@ -110,4 +116,11 @@ export interface ProductoDetalle {
   product_suppliers?: ProveedorDeProducto[];
   product_tax_relations?: { tax_id: string; organization_taxes: { id: string; name: string; rate: number | string } | null }[];
   units?: { code: string; name: string } | null;
+  /** Cómo se vende (PRODUCTOS-POR-PESO-BASCULA.md): el precio es por `unit_code` (por kg). */
+  sale_mode?: 'unit' | 'weight' | 'measure' | string | null;
+  qty_decimals?: number | null;
+  price_ref_qty?: number | string | null;
+  price_ref_unit_code?: string | null;
+  min_sale_qty?: number | string | null;
+  require_scale?: boolean | null;
 }

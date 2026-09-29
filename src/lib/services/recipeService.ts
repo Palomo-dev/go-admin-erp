@@ -278,6 +278,137 @@ export function normalizarCosto(data: unknown): CostoReceta {
   };
 }
 
+// ── Listado de recetas y costo de recetas (fn_recetas_listado, B5) ─────────
+
+export type ModoRecetaListado = 'al_producir' | 'al_vender';
+export type FuenteCostoReceta = 'promedio_sucursal' | 'costo_vigente' | 'sin_costo' | 'sin_conversion';
+
+export interface FiltrosRecetas {
+  sucursal?: number | null;
+  busqueda?: string;
+  estado?: 'activas' | 'inactivas' | 'todas';
+  modo?: ModoRecetaListado;
+  costo?: 'incompleto';
+  margen_bajo?: boolean;
+  producto?: number;
+  orden?: 'producto' | 'costo' | 'margen' | 'fecha';
+  direccion?: 'asc' | 'desc';
+  desde_fila?: number;
+  limite?: number;
+}
+
+export interface FilaReceta {
+  recipe_id: number;
+  product_id: number;
+  nombre: string | null;
+  version: number;
+  activa: boolean;
+  rinde: number;
+  unidad_rinde: string;
+  creada_en: string | null;
+  producto: { id: number; nombre: string; sku: string | null; unidad: string; variante: boolean; decimales: number; track_stock: boolean };
+  modo: ModoRecetaListado;
+  ingredientes: number;
+  costo_tanda: number | null;
+  costo_unidad: number | null;
+  completo: boolean;
+  lineas_sin_costo: number;
+  lineas_con_error: number;
+  fuente: FuenteCostoReceta;
+  precio: number | null;
+  /** (precio − costo) ÷ precio; null sin precio o sin permiso de costos. */
+  margen: number | null;
+  ordenes_abiertas: number;
+}
+
+export interface KpisRecetas {
+  activas: number;
+  inactivas: number;
+  completas: number;
+  costo_incompleto: number;
+  margen_bajo: number;
+  umbral_margen: number;
+  ingredientes_sin_costo: number;
+  margen_ponderado: number | null;
+  ordenes_mes: number;
+}
+
+export interface ListadoRecetas {
+  filas: FilaReceta[];
+  total: number;
+  kpis: KpisRecetas;
+  /** Permisos de inventario (fn_inventario_permisos). */
+  permisos: Record<string, boolean>;
+}
+
+export interface VersionReceta {
+  recipe_id: number;
+  version: number;
+  nombre: string | null;
+  activa: boolean;
+  creada_en: string | null;
+  autor: string | null;
+  rinde: number;
+  ingredientes: number;
+  costo_unidad: number | null;
+  ordenes: number;
+  ordenes_abiertas: number;
+}
+
+export function normalizarListadoRecetas(data: unknown): ListadoRecetas {
+  const d = (data ?? {}) as Record<string, unknown>;
+  const k = (d.kpi ?? {}) as Record<string, unknown>;
+  const filas = Array.isArray(d.filas) ? (d.filas as Record<string, unknown>[]) : [];
+  return {
+    total: Number(d.total) || 0,
+    permisos: (d.permisos ?? {}) as Record<string, boolean>,
+    kpis: {
+      activas: Number(k.activas) || 0,
+      inactivas: Number(k.inactivas) || 0,
+      completas: Number(k.completas) || 0,
+      costo_incompleto: Number(k.costo_incompleto) || 0,
+      margen_bajo: Number(k.margen_bajo) || 0,
+      umbral_margen: Number(k.umbral_margen) || 0.3,
+      ingredientes_sin_costo: Number(k.ingredientes_sin_costo) || 0,
+      margen_ponderado: numOrNull(k.margen_ponderado),
+      ordenes_mes: Number(k.ordenes_mes) || 0,
+    },
+    filas: filas.map((f) => {
+      const p = (f.producto ?? {}) as Record<string, unknown>;
+      return {
+        recipe_id: Number(f.recipe_id),
+        product_id: Number(f.product_id),
+        nombre: (f.nombre as string | null) ?? null,
+        version: Number(f.version) || 1,
+        activa: f.activa === true,
+        rinde: Number(f.rinde) || 1,
+        unidad_rinde: String(f.unidad_rinde ?? 'UN').trim() || 'UN',
+        creada_en: (f.creada_en as string | null) ?? null,
+        producto: {
+          id: Number(p.id),
+          nombre: String(p.nombre ?? ''),
+          sku: (p.sku as string | null) ?? null,
+          unidad: String(p.unidad ?? 'UN').trim() || 'UN',
+          variante: p.variante === true,
+          decimales: Number(p.decimales) || 0,
+          track_stock: p.track_stock !== false,
+        },
+        modo: f.modo === 'al_producir' ? 'al_producir' : 'al_vender',
+        ingredientes: Number(f.ingredientes) || 0,
+        costo_tanda: numOrNull(f.costo_tanda),
+        costo_unidad: numOrNull(f.costo_unidad),
+        completo: f.completo === true,
+        lineas_sin_costo: Number(f.lineas_sin_costo) || 0,
+        lineas_con_error: Number(f.lineas_con_error) || 0,
+        fuente: (f.fuente as FuenteCostoReceta) ?? 'sin_costo',
+        precio: numOrNull(f.precio),
+        margen: numOrNull(f.margen),
+        ordenes_abiertas: Number(f.ordenes_abiertas) || 0,
+      };
+    }),
+  };
+}
+
 class RecipeService {
   async getRecipes(organizationId: number): Promise<ProductRecipe[]> {
     try {
@@ -540,32 +671,62 @@ class RecipeService {
     return data ? aIngredienteOpcion(data as FilaIngredienteBd) : null;
   }
 
-  async deleteRecipe(recipeId: number): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('product_recipes')
-        .delete()
-        .eq('id', recipeId);
-
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error eliminando receta:', error);
-      throw error;
-    }
+  /**
+   * Desactiva la versión activa (deja de descontar ingredientes al vender; las
+   * órdenes abiertas siguen con su versión). RPC con el mismo permiso que
+   * guardar; la base rechaza el UPDATE directo (`receta_solo_por_rpc`).
+   */
+  async desactivar(organizationId: number, recipeId: number): Promise<{ recipe_id: number; ordenes_abiertas: number }> {
+    const { data, error } = await supabase.rpc('fn_receta_desactivar', { p_org: organizationId, p_recipe_id: recipeId });
+    if (error) throw error;
+    const d = (data ?? {}) as { recipe_id?: number; ordenes_abiertas?: number };
+    return { recipe_id: Number(d.recipe_id), ordenes_abiertas: Number(d.ordenes_abiertas) || 0 };
   }
 
-  async deactivateRecipe(recipeId: number): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('product_recipes')
-        .update({ is_active: false, updated_at: new Date().toISOString() })
-        .eq('id', recipeId);
+  /** Copia una versión anterior como versión nueva (las versiones no se editan ni se borran). */
+  async reactivar(organizationId: number, recipeId: number): Promise<ResultadoGuardarReceta> {
+    const { data, error } = await supabase.rpc('fn_receta_reactivar', { p_org: organizationId, p_recipe_id: recipeId });
+    if (error) throw error;
+    return data as ResultadoGuardarReceta;
+  }
 
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error desactivando receta:', error);
-      throw error;
-    }
+  /** @deprecated Usa `desactivar(org, id)`: la organización sale de la sesión y el permiso del servidor. */
+  async deactivateRecipe(recipeId: number, organizationId?: number): Promise<void> {
+    const org = organizationId ?? (await this.getRecipeById(recipeId))?.organization_id;
+    if (!org) throw new Error('receta_no_encontrada');
+    await this.desactivar(org, recipeId);
+  }
+
+  /** Recetas de la organización (una por producto) con costo y margen en la sucursal. */
+  async listar(organizationId: number, filtros: FiltrosRecetas = {}, senal?: AbortSignal): Promise<ListadoRecetas> {
+    let q = supabase.rpc('fn_recetas_listado', { p_org: organizationId, p_filtros: filtros });
+    if (senal) q = q.abortSignal(senal);
+    const { data, error } = await q;
+    if (error) throw error;
+    return normalizarListadoRecetas(data);
+  }
+
+  /** Versiones de la receta de un producto (la más nueva primero). */
+  async versiones(organizationId: number, productId: number, branchId: number | null): Promise<VersionReceta[]> {
+    const { data, error } = await supabase.rpc('fn_receta_versiones', {
+      p_org: organizationId,
+      p_product: productId,
+      p_branch: branchId,
+    });
+    if (error) throw error;
+    return ((data ?? []) as Record<string, unknown>[]).map((v) => ({
+      recipe_id: Number(v.recipe_id),
+      version: Number(v.version) || 1,
+      nombre: (v.nombre as string | null) ?? null,
+      activa: v.activa === true,
+      creada_en: (v.creada_en as string | null) ?? null,
+      autor: (v.autor as string | null) ?? null,
+      rinde: Number(v.rinde) || 1,
+      ingredientes: Number(v.ingredientes) || 0,
+      costo_unidad: numOrNull(v.costo_unidad),
+      ordenes: Number(v.ordenes) || 0,
+      ordenes_abiertas: Number(v.ordenes_abiertas) || 0,
+    }));
   }
 }
 

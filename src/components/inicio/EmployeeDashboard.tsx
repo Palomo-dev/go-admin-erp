@@ -35,13 +35,13 @@ import {
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { EmptyState, StatusBadge, Tarjeta, type TonoBadge } from '@/components/kit';
 import { cn } from '@/utils/Utils';
 import { supabase } from '@/lib/supabase/config';
 import type { UserPermissionContext } from '@/lib/middleware/permissions';
-import { MODULE_PAGES, MODULE_HREF_TO_CODE } from '@/lib/config/modulePages';
 import { NotificationService } from '@/components/app-layout/Header/Notifications/NotificationService';
 import type { Notification } from '@/components/app-layout/Header/Notifications/types';
 
@@ -76,12 +76,17 @@ const MODULE_ACCESS_CATALOG: Array<{
   { moduleCode: 'notifications', href: '/app/notificaciones', icon: Bell, color: 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400' },
 ];
 
-const TASK_STATUS_CONFIG: Record<string, { labelKey: string; badge: string; icon: LucideIcon }> = {
-  todo: { labelKey: 'home.taskStatus.todo', badge: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300', icon: Circle },
-  in_progress: { labelKey: 'home.taskStatus.inProgress', badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300', icon: Clock },
-  done: { labelKey: 'home.taskStatus.done', badge: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300', icon: CheckCircle2 },
-  completed: { labelKey: 'home.taskStatus.done', badge: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300', icon: CheckCircle2 },
+// Estado de la tarea con `StatusBadge` y tono explícito: la tabla única del kit
+// no conoce `todo` / `in_progress` / `done` (son estados del módulo PM).
+const TASK_STATUS_CONFIG: Record<string, { labelKey: string; tono: TonoBadge; icon: LucideIcon }> = {
+  todo: { labelKey: 'home.taskStatus.todo', tono: 'neutro', icon: Circle },
+  in_progress: { labelKey: 'home.taskStatus.inProgress', tono: 'informacion', icon: Clock },
+  done: { labelKey: 'home.taskStatus.done', tono: 'exito', icon: CheckCircle2 },
+  completed: { labelKey: 'home.taskStatus.done', tono: 'exito', icon: CheckCircle2 },
 };
+
+const CLASE_VER_TODAS =
+  'flex items-center gap-1 rounded-md text-sm font-medium text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand';
 
 export function EmployeeDashboard({ organizationId, userId, permContext }: EmployeeDashboardProps) {
   const t = useTranslations('home');
@@ -204,133 +209,114 @@ export function EmployeeDashboard({ organizationId, userId, permContext }: Emplo
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Mis tareas */}
-        <Card className="dark:bg-gray-800/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-indigo-500" />
-              {t('myTasks')}
-            </CardTitle>
-            <Link
-              href="/app/pm"
-              className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
-            >
+        <Tarjeta
+          titulo={t('myTasks')}
+          icono={CheckCircle2}
+          accion={
+            <Link href="/app/pm" className={CLASE_VER_TODAS}>
               {t('viewAll')}
-              <ChevronRight className="h-3.5 w-3.5" />
+              <ChevronRight aria-hidden="true" className="size-3.5" strokeWidth={1.5} />
             </Link>
-          </CardHeader>
-          <CardContent>
-            {tasksLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-14 rounded-lg" />
-                ))}
-              </div>
-            ) : tasks.length === 0 ? (
-              <div className="text-center py-8">
-                <Inbox className="mx-auto h-10 w-10 text-gray-300 dark:text-gray-600" />
-                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                  {t('noTasks')}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {tasks.map((task) => {
-                  const statusConfig = TASK_STATUS_CONFIG[task.status] || TASK_STATUS_CONFIG.todo;
-                  const StatusIcon = statusConfig.icon;
-                  return (
-                    <Link
-                      key={task.id}
-                      href="/app/pm"
-                      className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                    >
-                      <StatusIcon className="h-4 w-4 text-gray-400 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                          {task.title}
+          }
+        >
+          {tasksLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-14 rounded-lg" />
+              ))}
+            </div>
+          ) : tasks.length === 0 ? (
+            <EmptyState compacto icono={Inbox} titulo={t('noTasks')} descripcion={t('panel.sinTareasDesc')} />
+          ) : (
+            <div className="space-y-2">
+              {tasks.map((task) => {
+                const statusConfig = TASK_STATUS_CONFIG[task.status] || TASK_STATUS_CONFIG.todo;
+                const StatusIcon = statusConfig.icon;
+                return (
+                  <Link
+                    key={task.id}
+                    href="/app/pm"
+                    className="flex items-center gap-3 rounded-lg border border-line p-3 transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  >
+                    <StatusIcon aria-hidden="true" className="size-4 shrink-0 text-fg-muted" strokeWidth={1.5} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-fg">
+                        {task.title}
+                      </p>
+                      {task.due_date && (
+                        <p className="mt-0.5 text-xs text-fg-secondary">
+                          {t('dueDate')}: {task.due_date}
                         </p>
-                        {task.due_date && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                            {t('dueDate')}: {task.due_date}
-                          </p>
-                        )}
-                      </div>
-                      <Badge variant="secondary" className={cn('text-xs shrink-0', statusConfig.badge)}>
-                        {tRoot(statusConfig.labelKey)}
-                      </Badge>
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                      )}
+                    </div>
+                    <StatusBadge
+                      estado={task.status}
+                      etiqueta={tRoot(statusConfig.labelKey)}
+                      tono={statusConfig.tono}
+                      apariencia="suave"
+                    />
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </Tarjeta>
 
         {/* Mis notificaciones */}
-        <Card className="dark:bg-gray-800/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <Bell className="h-5 w-5 text-blue-500" />
-              {t('myNotifications')}
+        <Tarjeta
+          titulo={t('myNotifications')}
+          icono={Bell}
+          accion={
+            <>
               {unreadCount > 0 && (
-                <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 text-xs">
+                <Badge tono="peligro" tamano="sm">
                   {unreadCount} {t('unread')}
                 </Badge>
               )}
-            </CardTitle>
-            <Link
-              href="/app/notificaciones"
-              className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
-            >
-              {t('viewAll')}
-              <ChevronRight className="h-3.5 w-3.5" />
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {notifLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-14 rounded-lg" />
-                ))}
-              </div>
-            ) : notifications.length === 0 ? (
-              <div className="text-center py-8">
-                <Bell className="mx-auto h-10 w-10 text-gray-300 dark:text-gray-600" />
-                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                  {t('noNotifications')}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {notifications.map((notif) => (
-                  <div
-                    key={notif.id}
-                    className={cn(
-                      'flex items-start gap-3 p-3 rounded-lg border transition-colors',
-                      notif.is_read_by_me
-                        ? 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
-                        : 'border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-900/10',
+              <Link href="/app/notificaciones" className={CLASE_VER_TODAS}>
+                {t('viewAll')}
+                <ChevronRight aria-hidden="true" className="size-3.5" strokeWidth={1.5} />
+              </Link>
+            </>
+          }
+        >
+          {notifLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-14 rounded-lg" />
+              ))}
+            </div>
+          ) : notifications.length === 0 ? (
+            <EmptyState compacto icono={Bell} titulo={t('noNotifications')} descripcion={t('panel.sinNotificacionesDesc')} />
+          ) : (
+            <div className="space-y-2">
+              {notifications.map((notif) => (
+                <div
+                  key={notif.id}
+                  className={cn(
+                    'flex items-start gap-3 rounded-lg border p-3 transition-colors',
+                    notif.is_read_by_me ? 'border-line bg-surface' : 'border-line-brand bg-brand-tint',
+                  )}
+                >
+                  <div className={cn('mt-1 size-2 shrink-0 rounded-full', notif.is_read_by_me ? 'bg-fg-muted' : 'bg-brand')} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-fg">
+                      {notif.payload?.title || t('notification')}
+                    </p>
+                    {notif.payload?.content && (
+                      <p className="mt-0.5 line-clamp-2 text-xs text-fg-secondary">
+                        {notif.payload.content}
+                      </p>
                     )}
-                  >
-                    <div className={cn('mt-1 h-2 w-2 rounded-full shrink-0', notif.is_read_by_me ? 'bg-gray-300 dark:bg-gray-600' : 'bg-blue-500')} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">
-                        {notif.payload?.title || t('notification')}
-                      </p>
-                      {notif.payload?.content && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">
-                          {notif.payload.content}
-                        </p>
-                      )}
-                      <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
-                        {new Date(notif.created_at).toLocaleString()}
-                      </p>
-                    </div>
+                    <p className="mt-1 text-[11px] text-fg-muted">
+                      {new Date(notif.created_at).toLocaleString()}
+                    </p>
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                </div>
+              ))}
+            </div>
+          )}
+        </Tarjeta>
       </div>
     </div>
   );

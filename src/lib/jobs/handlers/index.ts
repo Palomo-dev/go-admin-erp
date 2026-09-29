@@ -53,17 +53,40 @@ registerJobHandler('campaign_batch', campaignBatchHandler); // F16 (reemplaza el
 // campañas sí funcionan, porque no pasan por la cola). La importación es
 // perezosa para no arrastrar el servicio de voz al arranque del runner.
 registerJobHandler('ai_call', async ({ job }) => {
-  const { dispatchAgentCall } = await import('@/lib/services/crm/voiceAgentService');
+  const { dispatchAgentCall, VoiceDispatchBlocked } = await import('@/lib/services/crm/voiceAgentService');
   const { getServiceClient } = await import('@/lib/supabase/server-service');
   const p = job.payload as { voice_agent_id: string; opportunity_id?: string; customer_id?: string };
-  const result = await dispatchAgentCall(job.organization_id, getServiceClient(), {
-    voiceAgentId: p.voice_agent_id,
-    opportunityId: p.opportunity_id ?? null,
-    customerId: p.customer_id ?? null,
-  });
-  // `JobHandlerResult` es un registro plano; el resultado del despacho es una
-  // interfaz sin firma de índice, así que se envuelve en vez de forzar el tipo.
-  return { ...result };
+  const sb = getServiceClient();
+  try {
+    const result = await dispatchAgentCall(job.organization_id, sb, {
+      voiceAgentId: p.voice_agent_id,
+      opportunityId: p.opportunity_id ?? null,
+      customerId: p.customer_id ?? null,
+    });
+    // `JobHandlerResult` es un registro plano; el resultado del despacho es una
+    // interfaz sin firma de índice, así que se envuelve en vez de forzar el tipo.
+    return { ...result };
+  } catch (err) {
+    // Ley 2300 de 2023: fuera de horario (o semana ya llena) no es un fallo, es
+    // «ahora no». Se encola el mismo trabajo para la siguiente ventana legal en
+    // vez de reintentar con backoff (que volvería a chocar de madrugada y
+    // acabaría en `dead`). La clave incluye la fecha: un reintento del evento
+    // original no duplica la llamada reprogramada.
+    if (err instanceof VoiceDispatchBlocked && err.reason === 'ley2300' && err.retryAt) {
+      const { enqueueJob } = await import('../enqueue');
+      const objetivo = p.opportunity_id ?? p.customer_id ?? 'sin-objetivo';
+      const jobId = await enqueueJob({
+        organizationId: job.organization_id,
+        kind: 'ai_call',
+        payload: { ...(job.payload as Record<string, unknown>), rescheduled_from: job.id, rescheduled_reason: err.message },
+        runAt: err.retryAt,
+        dedupeKey: `ai_call:ley2300:${p.voice_agent_id}:${objetivo}:${err.retryAt}`,
+        supabase: sb,
+      });
+      return { rescheduled: true, run_at: err.retryAt, job_id: jobId, reason: err.message };
+    }
+    throw err;
+  }
 });
 for (const kind of PLACEHOLDER_KINDS) registerJobHandler(kind, placeholderHandler, { placeholder: true });
 

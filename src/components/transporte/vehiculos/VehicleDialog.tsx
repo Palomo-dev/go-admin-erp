@@ -27,8 +27,11 @@ import { Vehicle, TransportCarrier } from '@/lib/services/transportService';
 import { useBranch } from '@/lib/context/BranchContext';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 
+// `onSubmit` hace `{...data}`: CADA clave de este esquema viaja tal cual a
+// PostgREST. Por eso aqui solo puede haber columnas reales de `vehicles`
+// (verificadas por MCP en `information_schema.columns`).
 const vehicleSchema = z.object({
-  plate_number: z.string().min(1, 'La placa es requerida'),
+  plate: z.string().min(1, 'La placa es requerida'),
   vehicle_type: z.enum(['motorcycle', 'car', 'van', 'truck', 'minibus', 'bus']),
   brand: z.string().optional(),
   model: z.string().optional(),
@@ -36,13 +39,12 @@ const vehicleSchema = z.object({
   color: z.string().optional(),
   capacity_kg: z.coerce.number().optional(),
   capacity_m3: z.coerce.number().optional(),
-  capacity_seats: z.coerce.number().optional(),
-  fuel_type: z.string().optional(),
+  passenger_capacity: z.coerce.number().optional(),
   vin: z.string().optional(),
   soat_expiry: z.string().optional(),
-  tech_review_expiry: z.string().optional(),
+  techno_expiry: z.string().optional(),
   insurance_expiry: z.string().optional(),
-  insurance_policy: z.string().optional(),
+  operating_card_expiry: z.string().optional(),
   carrier_id: z.string().optional(),
   branch_id: z.coerce.number().optional(),
   status: z.enum(['available', 'in_use', 'maintenance', 'inactive']),
@@ -85,7 +87,7 @@ export function VehicleDialog({
   } = useForm<VehicleFormData>({
     resolver: zodResolver(vehicleSchema),
     defaultValues: {
-      plate_number: '',
+      plate: '',
       vehicle_type: 'car',
       brand: '',
       model: '',
@@ -93,13 +95,12 @@ export function VehicleDialog({
       color: '',
       capacity_kg: undefined,
       capacity_m3: undefined,
-      capacity_seats: undefined,
-      fuel_type: '',
+      passenger_capacity: undefined,
       vin: '',
       soat_expiry: '',
-      tech_review_expiry: '',
+      techno_expiry: '',
       insurance_expiry: '',
-      insurance_policy: '',
+      operating_card_expiry: '',
       carrier_id: '',
       branch_id: undefined,
       status: 'available',
@@ -110,7 +111,7 @@ export function VehicleDialog({
   useEffect(() => {
     if (vehicle) {
       reset({
-        plate_number: vehicle.plate_number,
+        plate: vehicle.plate,
         vehicle_type: vehicle.vehicle_type,
         brand: vehicle.brand || '',
         model: vehicle.model || '',
@@ -118,13 +119,12 @@ export function VehicleDialog({
         color: vehicle.color || '',
         capacity_kg: vehicle.capacity_kg,
         capacity_m3: vehicle.capacity_m3,
-        capacity_seats: vehicle.capacity_seats,
-        fuel_type: vehicle.fuel_type || '',
+        passenger_capacity: vehicle.passenger_capacity,
         vin: vehicle.vin || '',
         soat_expiry: vehicle.soat_expiry || '',
-        tech_review_expiry: vehicle.tech_review_expiry || '',
+        techno_expiry: vehicle.techno_expiry || '',
         insurance_expiry: vehicle.insurance_expiry || '',
-        insurance_policy: vehicle.insurance_policy || '',
+        operating_card_expiry: vehicle.operating_card_expiry || '',
         carrier_id: vehicle.carrier_id || '',
         branch_id: vehicle.branch_id,
         status: vehicle.status,
@@ -133,7 +133,7 @@ export function VehicleDialog({
       setBranchId(vehicle.branch_id ?? null);
     } else {
       reset({
-        plate_number: '',
+        plate: '',
         vehicle_type: 'car',
         brand: '',
         model: '',
@@ -141,13 +141,12 @@ export function VehicleDialog({
         color: '',
         capacity_kg: undefined,
         capacity_m3: undefined,
-        capacity_seats: undefined,
-        fuel_type: '',
+        passenger_capacity: undefined,
         vin: '',
         soat_expiry: '',
-        tech_review_expiry: '',
+        techno_expiry: '',
         insurance_expiry: '',
-        insurance_policy: '',
+        operating_card_expiry: '',
         carrier_id: '',
         branch_id: undefined,
         status: 'available',
@@ -190,14 +189,14 @@ export function VehicleDialog({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4">
             <div className="space-y-2">
-              <Label htmlFor="plate_number">Placa *</Label>
+              <Label htmlFor="plate">Placa *</Label>
               <Input
-                id="plate_number"
-                {...register('plate_number')}
+                id="plate"
+                {...register('plate')}
                 placeholder="ABC-123"
               />
-              {errors.plate_number && (
-                <p className="text-sm text-red-500 dark:text-red-400">{errors.plate_number.message}</p>
+              {errors.plate && (
+                <p className="text-sm text-red-500 dark:text-red-400">{errors.plate.message}</p>
               )}
             </div>
 
@@ -259,10 +258,6 @@ export function VehicleDialog({
               <Input id="color" {...register('color')} placeholder="Blanco" />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="fuel_type">Combustible</Label>
-              <Input id="fuel_type" {...register('fuel_type')} placeholder="Gasolina" />
-            </div>
 
             <div className="space-y-2">
               <Label htmlFor="vin">VIN / Chasis</Label>
@@ -282,8 +277,8 @@ export function VehicleDialog({
                 <Input id="capacity_m3" type="number" step="0.1" {...register('capacity_m3')} placeholder="10" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="capacity_seats">Pasajeros</Label>
-                <Input id="capacity_seats" type="number" {...register('capacity_seats')} placeholder="40" />
+                <Label htmlFor="passenger_capacity">Pasajeros</Label>
+                <Input id="passenger_capacity" type="number" {...register('passenger_capacity')} placeholder="40" />
               </div>
             </div>
           </div>
@@ -296,16 +291,16 @@ export function VehicleDialog({
                 <Input id="soat_expiry" type="date" {...register('soat_expiry')} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="tech_review_expiry">Venc. Revisión Técnica</Label>
-                <Input id="tech_review_expiry" type="date" {...register('tech_review_expiry')} />
+                <Label htmlFor="techno_expiry">Venc. Revisión Técnico-Mecánica</Label>
+                <Input id="techno_expiry" type="date" {...register('techno_expiry')} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="insurance_expiry">Vencimiento Seguro</Label>
                 <Input id="insurance_expiry" type="date" {...register('insurance_expiry')} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="insurance_policy">Póliza de Seguro</Label>
-                <Input id="insurance_policy" {...register('insurance_policy')} placeholder="POL-123456" />
+                <Label htmlFor="operating_card_expiry">Venc. Tarjeta de Operación</Label>
+                <Input id="operating_card_expiry" type="date" {...register('operating_card_expiry')} />
               </div>
             </div>
           </div>

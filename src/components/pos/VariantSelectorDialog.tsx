@@ -1,34 +1,45 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Package, Check, AlertCircle } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { POSService } from '@/lib/services/posService';
-import { cn } from '@/lib/utils';
 import { ProductModifiersService, type ProductModifierGroup } from '@/lib/services/productModifiersService';
-import { resolveVariantDisplayName } from '@/utils/variantUtils';
+import { SelectorVariantes, type GrupoSelector, type StockVarianteSelector } from '@/components/kit/SelectorVariantes';
+import { MarcadorSinFoto } from '@/components/kit/ProductCard';
+import { acotarCantidad, etiquetaResumenVariante } from '@/components/kit/selectorVariantesLogica';
+import { CachedProductImage } from './CachedProductImage';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { variantesService } from '@/components/inventario/variantes/variantesService';
+import type { CatalogoOrden } from '@/components/inventario/variantes/logicaVariantes';
 import {
   agruparAtributos,
   alternarModificador,
-  buscarVariante,
+  bloqueoVariante,
+  estadoAtributos,
   extraDeModificadores,
-  modificadoresElegidos,
-  puedeConfirmarVariante,
-  reglaDeSeleccion,
   faltanteModificadores,
+  modificadoresElegidos,
+  reglaDeSeleccion,
+  varianteAlElegirValor,
+  varianteInicial,
+  type SeleccionModificadores,
 } from '@/lib/pos/venta/modificadores';
+
+/**
+ * Selector de variante y modificadores del POS (Figma `VariantModifierDialog`
+ * 155:7980; frames `158:27344` escritorio, `159:31608` hoja móvil, `198:14706`
+ * validación y `198:14715` lista sin atributos). Carga las variantes (con su
+ * precio vigente y, si llega `sucursal`, su stock en la sucursal que vende) y
+ * los modificadores, aplica las reglas de `src/lib/pos/venta/modificadores.ts`
+ * y dibuja con `SelectorVariantes` del kit.
+ *
+ * El contrato de siempre se conserva (`onSelectVariant(variante, modificadores)`)
+ * para mesas, PMS, envíos y «Agregar productos»; lo nuevo es opcional:
+ * `sucursal` (stock y agotado por variante), `conCantidad` + `cantidadInicial`
+ * (`− n +`; la cantidad llega como tercer argumento) y `varianteInicialId`
+ * (el escáner leyó una variante concreta de un producto con modificadores).
+ */
 
 interface Variant {
   id: number;
@@ -37,6 +48,9 @@ interface Variant {
   price: number | null;
   variant_data: Record<string, string>;
   image?: string | null;
+  track_stock?: boolean;
+  stock_quantity?: number;
+  is_out_of_stock?: boolean;
 }
 
 export interface SelectedModifier {
@@ -56,8 +70,22 @@ interface VariantSelectorDialogProps {
     sku: string;
     price?: number | null;
     image?: string | null;
+    track_stock?: boolean;
+    stock_quantity?: number;
+    is_out_of_stock?: boolean;
   };
-  onSelectVariant: (variant: Variant, modifiers: SelectedModifier[]) => void;
+  onSelectVariant: (variant: Variant, modifiers: SelectedModifier[], cantidad: number) => void;
+  /**
+   * Sucursal que vende (el filtro de la grilla: número = sucursal, `null` =
+   * todas). Con ella cada variante muestra su stock y se marca agotada con la
+   * regla de la tarjeta. `nombre` alimenta «4 disponibles en {sucursal}».
+   */
+  sucursal?: { filtro: number | null; nombre?: string | null };
+  /** Muestra `− n +` en el pie (el POS); sin él se agrega una unidad. */
+  conCantidad?: boolean;
+  cantidadInicial?: number;
+  /** Variante que se abre elegida (código de barras de una variante). */
+  varianteInicialId?: number | null;
 }
 
 export function VariantSelectorDialog({
@@ -65,338 +93,228 @@ export function VariantSelectorDialog({
   onOpenChange,
   product,
   onSelectVariant,
+  sucursal,
+  conCantidad = false,
+  cantidadInicial = 1,
+  varianteInicialId = null,
 }: VariantSelectorDialogProps) {
-  const { formatear } = useMonedaOrganizacion();
+  const moneda = useMonedaOrganizacion();
   const t = useTranslations('posVenta.variantes');
+  const tKit = useTranslations('kit.selectorVariantes');
   const [variants, setVariants] = useState<Variant[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [cargando, setCargando] = useState(false);
+  const [errorCarga, setErrorCarga] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
-  
-  // Agrupar variantes por atributos para mejor visualización
-  const [attributeGroups, setAttributeGroups] = useState<Record<string, string[]>>({});
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
-
-  // Modificadores (ej. salsas, extras) - no cambian el SKU, se suman al pedido
   const [modifierGroups, setModifierGroups] = useState<ProductModifierGroup[]>([]);
-  const [selectedModifierIds, setSelectedModifierIds] = useState<Record<number, Set<number>>>({});
-  const [modifierError, setModifierError] = useState<string | null>(null);
+  const [selectedModifierIds, setSelectedModifierIds] = useState<SeleccionModificadores>({});
+  const [errorGrupo, setErrorGrupo] = useState<{ grupoId: number; mensaje: string } | null>(null);
+  const [cantidad, setCantidad] = useState(acotarCantidad(cantidadInicial));
+  // Solo la última carga escribe el estado (cambiar de producto con una carga en vuelo).
+  const cargaActual = useRef(0);
 
-  useEffect(() => {
-    if (open && product?.id) {
-      loadVariants();
-      loadModifiers();
-    }
-  }, [open, product?.id]);
+  const filtroSucursal = sucursal?.filtro;
+  const conStock = sucursal !== undefined;
 
-  const loadVariants = async () => {
-    setIsLoading(true);
+  const cargar = useCallback(async () => {
+    const turno = ++cargaActual.current;
+    setCargando(true);
+    setErrorCarga(false);
+    setSelectedModifierIds({});
+    setErrorGrupo(null);
     try {
-      const data = await POSService.getProductVariants(product.id);
+      const [data, groups] = await Promise.all([
+        POSService.getProductVariants(product.id, conStock ? { branchFilter: filtroSucursal ?? null } : undefined) as Promise<Variant[]>,
+        ProductModifiersService.getGroupsByProduct(product.id).catch((error) => {
+          console.error('Error cargando modificadores:', error);
+          return [] as ProductModifierGroup[];
+        }),
+      ]);
+      if (turno !== cargaActual.current) return;
       setVariants(data);
-      
-      // Extraer atributos únicos de todas las variantes (src/lib/pos/venta/modificadores.ts)
-      setAttributeGroups(agruparAtributos(data as Variant[]));
-      
-      // Pre-seleccionar primera variante si existe
-      if (data.length > 0) {
-        setSelectedVariant(data[0]);
-        setSelectedAttributes(data[0].variant_data || {});
+      setModifierGroups(groups);
+      const inicial = varianteInicial(data, varianteInicialId);
+      if (inicial) {
+        setSelectedVariant(inicial);
+        setSelectedAttributes(inicial.variant_data || {});
       } else {
-        // Producto simple sin variantes: se usa a sí mismo como "variante" para
-        // permitir elegir únicamente sus modificadores (ej. salsas, extras).
-        // Se preservan todos los campos originales del producto (station, categories, etc.)
+        // Producto simple sin variantes: se usa a sí mismo como «variante» para
+        // elegir solo sus modificadores (salsas, extras). Se preservan todos los
+        // campos originales del producto (station, categories, stock…).
         setSelectedVariant({ ...product, variant_data: {} } as Variant);
+        setSelectedAttributes({});
       }
     } catch (error) {
+      if (turno !== cargaActual.current) return;
       console.error('Error cargando variantes:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadModifiers = async () => {
-    try {
-      const groups = await ProductModifiersService.getGroupsByProduct(product.id);
-      setModifierGroups(groups);
-      setSelectedModifierIds({});
-      setModifierError(null);
-    } catch (error) {
-      console.error('Error cargando modificadores:', error);
+      setVariants([]);
       setModifierGroups([]);
+      setSelectedVariant(null);
+      setErrorCarga(true);
+    } finally {
+      if (turno === cargaActual.current) setCargando(false);
     }
+    // `product` completo entra en la variante sintética; la carga se dispara por id.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.id, conStock, filtroSucursal, varianteInicialId]);
+
+  useEffect(() => {
+    if (!open || !product?.id) return;
+    setCantidad(acotarCantidad(cantidadInicial));
+    void cargar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, cargar]);
+
+  // Orden del catálogo de variantes (tallas «XS, S, M, L, XL», colores en su orden), no alfabético.
+  // Se lee una vez por organización; si falla, se queda el orden alfabético de antes.
+  const [catalogo, setCatalogo] = useState<CatalogoOrden | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const org = getOrganizationId();
+    if (!org) return;
+    let vivo = true;
+    variantesService
+      .catalogoOrden(Number(org))
+      .then((c) => vivo && setCatalogo(c))
+      .catch((error) => console.warn('No se pudo leer el orden del catálogo de variantes:', error));
+    return () => {
+      vivo = false;
+    };
+  }, [open]);
+
+  const hayAtributos = useMemo(() => Object.keys(agruparAtributos(variants)).length > 0, [variants]);
+  const atributos = useMemo(
+    () => (hayAtributos ? estadoAtributos(variants, selectedAttributes, catalogo) : []),
+    [hayAtributos, variants, selectedAttributes, catalogo],
+  );
+
+  const selectedModifiers: SelectedModifier[] = modificadoresElegidos(modifierGroups, selectedModifierIds);
+  const extras = extraDeModificadores(selectedModifiers);
+  const bloqueo = cargando || errorCarga ? null : bloqueoVariante(selectedVariant);
+  const precioUnitario = selectedVariant?.price ? selectedVariant.price + extras : null;
+
+  const grupos: GrupoSelector[] = modifierGroups.map((g) => {
+    const elegidas = selectedModifierIds[g.id] || new Set<number>();
+    return {
+      id: g.id,
+      nombre: g.name,
+      regla: reglaDeSeleccion(g),
+      obligatorio: !!g.required,
+      minimo: g.min_selections,
+      opciones: (g.product_modifiers || []).map((m) => ({ id: m.id, nombre: m.name, extra: m.extra_price, elegida: elegidas.has(m.id) })),
+    };
+  });
+
+  const stockDe = (v: Variant | null): StockVarianteSelector | null => {
+    if (!conStock || !v) return null;
+    if (v.track_stock !== true) return { tipo: 'sinControl' };
+    // `null` = todas las sucursales; `undefined` = sucursal sin nombre conocido.
+    const nombre = filtroSucursal === null ? null : sucursal?.nombre ?? undefined;
+    if (v.is_out_of_stock) return { tipo: 'agotado', sucursal: nombre };
+    return { tipo: 'disponible', cantidad: Number(v.stock_quantity ?? 0), sucursal: nombre };
   };
 
-  const toggleModifier = (group: ProductModifierGroup, modifierId: number) => {
-    setModifierError(null);
-    // Reglas de selección (única/múltiple, obligatoria, máximo): src/lib/pos/venta/modificadores.ts (L20).
+  const resumen =
+    selectedVariant && (variants.length > 0 || conStock)
+      ? {
+          etiqueta:
+            variants.length > 0
+              ? etiquetaResumenVariante(Object.values(selectedVariant.variant_data || {}), selectedVariant.sku)
+              : tKit('sku', { sku: selectedVariant.sku }),
+          precio: selectedVariant.price,
+          stock: stockDe(selectedVariant),
+        }
+      : null;
+
+  const handleAttributeSelect = (nombre: string, valor: string) => {
+    const siguiente = varianteAlElegirValor(variants, selectedAttributes, nombre, valor);
+    if (!siguiente) return;
+    setSelectedVariant(siguiente);
+    setSelectedAttributes(siguiente.variant_data || { ...selectedAttributes, [nombre]: valor });
+  };
+
+  const toggleModifier = (grupoId: number, modifierId: number) => {
+    const group = modifierGroups.find((g) => g.id === grupoId);
+    if (!group) return;
+    setErrorGrupo(null);
+    // Reglas de selección (única/múltiple, obligatoria, máximo): L20.
     setSelectedModifierIds((prev) => alternarModificador(prev, group, modifierId));
   };
 
-  const selectedModifiers: SelectedModifier[] = modificadoresElegidos(modifierGroups, selectedModifierIds);
-
-  const modifiersExtraTotal = extraDeModificadores(selectedModifiers);
-
-  const validateModifiers = (): boolean => {
-    // Misma regla que validarModificadores (L20), con el texto en el idioma activo.
-    const falta = faltanteModificadores(modifierGroups, selectedModifierIds);
-    if (falta) {
-      setModifierError(falta.minimo > 1 ? t('faltanVarias', { n: falta.minimo, grupo: falta.grupo }) : t('faltaUna', { grupo: falta.grupo }));
-      return false;
-    }
-    return true;
-  };
-
-  // Encontrar variante que coincida con los atributos seleccionados
-  const findMatchingVariant = (attrs: Record<string, string>) => buscarVariante(variants, attrs);
-
-  const handleAttributeSelect = (attrName: string, value: string) => {
-    const newAttrs = { ...selectedAttributes, [attrName]: value };
-    setSelectedAttributes(newAttrs);
-    
-    const matching = findMatchingVariant(newAttrs);
-    if (matching) {
-      setSelectedVariant(matching);
-    }
-  };
-
-  const handleConfirm = () => {
-    if (!selectedVariant) return;
-    if (!validateModifiers()) return;
-    onSelectVariant(selectedVariant, selectedModifiers);
-    onOpenChange(false);
-  };
-
-  const resetAndClose = () => {
+  const cerrar = () => {
+    cargaActual.current++;
     setSelectedVariant(null);
     setSelectedAttributes({});
     setSelectedModifierIds({});
-    setModifierError(null);
+    setErrorGrupo(null);
     onOpenChange(false);
   };
 
+  const handleConfirm = () => {
+    if (!selectedVariant || bloqueoVariante(selectedVariant) !== null) return;
+    // Misma regla que validarModificadores (L20), con el texto en el idioma activo.
+    const falta = faltanteModificadores(modifierGroups, selectedModifierIds);
+    if (falta) {
+      const grupo = modifierGroups.find((g) => g.name === falta.grupo);
+      setErrorGrupo({
+        grupoId: grupo?.id ?? -1,
+        mensaje: falta.minimo > 1 ? t('faltanVarias', { n: falta.minimo, grupo: falta.grupo }) : t('faltaUna', { grupo: falta.grupo }),
+      });
+      return;
+    }
+    onSelectVariant(selectedVariant, selectedModifiers, conCantidad ? cantidad : 1);
+    onOpenChange(false);
+  };
+
+  const imagen = selectedVariant?.image ?? product.image ?? null;
+
   return (
-    <Dialog open={open} onOpenChange={resetAndClose}>
-      <DialogContent 
-        className="max-w-lg w-[95vw] max-h-[90vh] sm:max-h-[85vh] overflow-hidden flex flex-col p-0"
-        onInteractOutside={(e) => {
-          // Prevenir cierre accidental en móvil cuando se abre desde otro dialog
-          e.preventDefault();
-        }}
-      >
-        <DialogHeader className="px-6 py-4 border-b shrink-0">
-          <DialogTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5 text-blue-600" />
-            {variants.length > 0 ? t('tituloVariante') : t('tituloPersonalizar')}
-          </DialogTitle>
-          {/* Radix exige una descripción (o aria-describedby) en cada
-              DialogContent; sin ella avisa por consola y el lector de pantalla
-              anuncia el diálogo sin contexto. */}
-          <DialogDescription className="sr-only">
-            {variants.length > 0 ? t('descripcionVariante') : t('descripcionPersonalizar')}
-          </DialogDescription>
-        </DialogHeader>
-
-        {isLoading ? (
-          <div className="px-6 py-8 space-y-3">
-            <Skeleton className="h-5 w-1/2 mx-auto" />
-            <Skeleton className="h-4 w-3/4 mx-auto" />
-            <div className="grid grid-cols-2 gap-2 pt-2">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-          </div>
-        ) : (
-          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-            {/* Nombre del producto */}
-            <div className="text-center pb-2 border-b">
-              <h3 className="font-semibold text-lg">{product.name}</h3>
-              <p className="text-sm text-muted-foreground">{t('sku', { sku: product.sku })}</p>
-              {variants.length === 0 && (
-                <p className="text-lg font-bold text-blue-600 mt-1">
-                  {formatear((selectedVariant?.price || 0) + modifiersExtraTotal)}
-                  {modifiersExtraTotal > 0 && (
-                    <span className="text-xs font-normal text-muted-foreground ml-1">
-                      ({formatear(selectedVariant?.price || 0)} + {formatear(modifiersExtraTotal)})
-                    </span>
-                  )}
-                </p>
-              )}
-            </div>
-
-            {/* Selectores de atributos */}
-            {Object.entries(attributeGroups).map(([attrName, values]) => (
-              <div key={attrName} className="space-y-2">
-                <label className="text-sm font-medium capitalize">
-                  {attrName}:
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {values.map((value) => {
-                    const isSelected = selectedAttributes[attrName] === value;
-                    // Verificar si esta combinación tiene variante disponible
-                    const testAttrs = { ...selectedAttributes, [attrName]: value };
-                    const hasMatch = findMatchingVariant(testAttrs);
-                    
-                    return (
-                      <Button
-                        key={value}
-                        variant={isSelected ? "default" : "outline"}
-                        size="sm"
-                        disabled={!hasMatch && !isSelected}
-                        className={cn(
-                          "min-w-[60px]",
-                          isSelected && "bg-blue-600 hover:bg-blue-700",
-                          !hasMatch && !isSelected && "opacity-50"
-                        )}
-                        onClick={() => handleAttributeSelect(attrName, value)}
-                      >
-                        {value}
-                        {isSelected && <Check className="ml-1 h-3 w-3" />}
-                      </Button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-
-            {/* Variante seleccionada */}
-            {selectedVariant && variants.length > 0 && (
-              <div className="mt-4 p-4 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="font-medium">{resolveVariantDisplayName(selectedVariant.name, selectedVariant.variant_data, product.name)}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {t('sku', { sku: selectedVariant.sku })}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    {selectedVariant.price ? (
-                      <>
-                        <p className="text-lg font-bold text-blue-600">
-                          {formatear(selectedVariant.price + modifiersExtraTotal)}
-                        </p>
-                        {modifiersExtraTotal > 0 && (
-                          <p className="text-xs text-muted-foreground">
-                            {t('masExtras', { precio: formatear(selectedVariant.price), extras: formatear(modifiersExtraTotal) })}
-                          </p>
-                        )}
-                      </>
-                    ) : (
-                      <Badge variant="destructive">{t('sinPrecio')}</Badge>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Grupos de modificadores (ej. Salsas, Extras) */}
-            {modifierGroups.length > 0 && (
-              <div className="space-y-4 pt-2 border-t">
-                {modifierGroups.map((group) => {
-                  const selectedIds = selectedModifierIds[group.id] || new Set();
-                  return (
-                    <div key={group.id} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label className="text-sm font-medium">
-                          {group.name}
-                          {group.required && <span className="text-red-500 ml-1">*</span>}
-                        </label>
-                        <span className="text-xs text-muted-foreground">
-                          {(() => {
-                            const regla = reglaDeSeleccion(group);
-                            return regla.tipo === 'uno' ? t('eligeUna') : regla.tipo === 'hasta' ? t('hasta', { n: regla.maximo }) : t('eligeVarias');
-                          })()}
-                        </span>
-                      </div>
-                      <div className="space-y-1.5">
-                        {(group.product_modifiers || []).map((modifier) => {
-                          const isChecked = selectedIds.has(modifier.id);
-                          return (
-                            <div
-                              key={modifier.id}
-                              className={cn(
-                                "flex items-center justify-between gap-2 p-2 rounded-md border cursor-pointer transition-colors",
-                                isChecked
-                                  ? "border-blue-500 bg-blue-50 dark:bg-blue-950"
-                                  : "border-gray-200 hover:border-gray-300 dark:border-gray-700"
-                              )}
-                              onClick={() => toggleModifier(group, modifier.id)}
-                            >
-                              <div className="flex items-center gap-2">
-                                <Checkbox checked={isChecked} className="pointer-events-none" />
-                                <span className="text-sm">{modifier.name}</span>
-                              </div>
-                              {modifier.extra_price > 0 && (
-                                <span className="text-xs text-muted-foreground">
-                                  +{formatear(modifier.extra_price)}
-                                </span>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {modifierError && (
-                  <div className="flex items-center gap-1.5 text-sm text-red-600">
-                    <AlertCircle className="h-4 w-4" />
-                    {modifierError}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Lista alternativa si no hay atributos agrupables */}
-            {Object.keys(attributeGroups).length === 0 && variants.length > 0 && (
-              <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                {variants.map((variant) => (
-                  <div
-                    key={variant.id}
-                    className={cn(
-                      "p-3 rounded-lg border cursor-pointer transition-colors",
-                      selectedVariant?.id === variant.id
-                        ? "border-blue-500 bg-blue-50 dark:bg-blue-950"
-                        : "border-gray-200 hover:border-gray-300 dark:border-gray-700"
-                    )}
-                    onClick={() => setSelectedVariant(variant)}
-                  >
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-medium">{resolveVariantDisplayName(variant.name, variant.variant_data, product.name)}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {t('sku', { sku: variant.sku })}
-                        </p>
-                      </div>
-                      <p className="font-bold">
-                        {variant.price ? formatear(variant.price) : '-'}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-          </div>
-        )}
-            {/* Botones de acción fijos al final */}
-            <div className="flex gap-2 px-6 py-4 border-t bg-white dark:bg-gray-900 shrink-0">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={resetAndClose}
-              >
-                {t('cancelar')}
-              </Button>
-              <Button
-                className="flex-1 bg-blue-600 hover:bg-blue-700"
-                disabled={!puedeConfirmarVariante(selectedVariant)}
-                onClick={handleConfirm}
-              >
-                {t('agregar')}
-              </Button>
-            </div>
-      </DialogContent>
-    </Dialog>
+    <SelectorVariantes
+      abierto={open}
+      onAbiertoChange={(v) => (v ? onOpenChange(true) : cerrar())}
+      producto={{
+        nombre: product.name,
+        imagen: (
+          <CachedProductImage
+            src={imagen}
+            alt=""
+            mode="thumb"
+            className="size-full object-cover"
+            fallback={<MarcadorSinFoto conInicial={false} />}
+          />
+        ),
+      }}
+      cargando={cargando}
+      errorCarga={errorCarga ? { mensaje: tKit('errorCarga'), onReintentar: () => void cargar() } : null}
+      totalVariantes={variants.length}
+      atributos={atributos}
+      onAtributo={handleAttributeSelect}
+      lista={
+        !hayAtributos && variants.length > 0
+          ? variants.map((v) => ({
+              id: v.id,
+              nombre: v.name,
+              sku: v.sku,
+              precio: v.price,
+              agotado: conStock && !!v.is_out_of_stock,
+              elegida: selectedVariant?.id === v.id,
+            }))
+          : undefined
+      }
+      onElegirVariante={(id) => {
+        const v = variants.find((x) => x.id === id);
+        if (v) setSelectedVariant(v);
+      }}
+      resumen={resumen}
+      grupos={grupos}
+      onOpcion={toggleModifier}
+      errorGrupo={errorGrupo}
+      cantidad={cantidad}
+      onCantidad={conCantidad ? setCantidad : undefined}
+      precioUnitario={precioUnitario}
+      bloqueo={bloqueo}
+      onAgregar={handleConfirm}
+      moneda={moneda}
+    />
   );
 }

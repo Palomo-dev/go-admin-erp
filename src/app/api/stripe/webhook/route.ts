@@ -16,6 +16,7 @@ import { createClient } from '@supabase/supabase-js'
 import { getServiceClient } from '@/lib/supabase/server-service'
 import { aplicarCheckoutDePlan } from '@/lib/stripe/aplicarCheckoutDePlan'
 import type Stripe from 'stripe'
+import { sendConversionEvent } from '@/lib/marketing/conversionTracking'
 
 /** Campos de la factura de Stripe que se leen (en las versiones nuevas de la API ya no están todos tipados). */
 type FacturaStripe = {
@@ -175,6 +176,10 @@ export async function POST(request: NextRequest) {
         if (invoice.subscription) {
           console.log('   Para suscripción:', invoice.subscription)
           await processSellerCommission(invoice, event.id)
+          
+          // E8: Enviar evento Purchase a Meta CAPI y GA4 MP
+          // Solo para el primer cobro real (monto > 0) de una suscripción SaaS
+          await sendPurchaseEvent(invoice, event.id)
         }
         break
       }
@@ -728,6 +733,108 @@ async function handleAddonSubscriptionCompleted(checkoutSession: Stripe.Checkout
     }
   } catch (error: unknown) {
     console.error('❌ Error en handleAddonSubscriptionCompleted:', error);
+  }
+}
+
+/**
+ * Enviar evento Purchase a Meta CAPI y GA4 MP
+ * E8: Solo para el primer cobro real (monto > 0) de una suscripción SaaS
+ */
+async function sendPurchaseEvent(invoice: FacturaStripe, eventId: string) {
+  try {
+    // 1. Verificar que el monto sea > 0
+    const invoiceTotal = invoice.total_paid_amount || invoice.amount_paid || invoice.total || 0
+    const paymentAmount = invoiceTotal / 100 // convertir de centavos a dólares
+
+    if (paymentAmount <= 0) {
+      console.log('[Purchase] Invoice con monto 0, saltando evento')
+      return
+    }
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    })
+
+    // 2. Buscar la suscripción y organización
+    const stripeSubscriptionId = invoice.subscription as string
+    const { data: sub } = await supabase
+      .from('subscriptions')
+      .select('organization_id, plan_id')
+      .eq('stripe_subscription_id', stripeSubscriptionId)
+      .single()
+
+    if (!sub?.organization_id) {
+      console.log('[Purchase] No se encontró organización para suscripción:', stripeSubscriptionId)
+      return
+    }
+
+    // 3. Obtener el owner de la organización (para external_id)
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('owner_user_id')
+      .eq('id', sub.organization_id)
+      .single()
+
+    if (!org?.owner_user_id) {
+      console.log('[Purchase] No se encontró owner_user_id para org:', sub.organization_id)
+      return
+    }
+
+    // 4. Verificar si es el primer pago real (idempotencia a nivel de invoice)
+    // Usamos una tabla de control para no enviar el mismo invoice dos veces
+    const { data: existing } = await supabase
+      .from('conversion_events_sent')
+      .select('id')
+      .eq('event_type', 'Purchase')
+      .eq('event_id', invoice.id)
+      .maybeSingle()
+
+    if (existing) {
+      console.log('[Purchase] Evento Purchase ya enviado para invoice:', invoice.id)
+      return
+    }
+
+    // 5. Enviar evento Purchase
+    console.log('[Purchase] Enviando evento Purchase para invoice:', invoice.id)
+    
+    const result = await sendConversionEvent(
+      {
+        eventName: 'Purchase',
+        eventId: invoice.id,
+        eventSourceUrl: 'https://app.goadmin.io',
+        actionSource: 'system_generated', // Webhook del servidor, no del navegador
+        userData: {
+          externalId: org.owner_user_id,
+        },
+        customData: {
+          value: paymentAmount,
+          currency: 'USD',
+          contentName: 'Subscription Payment',
+        },
+      },
+      supabase
+    )
+
+    // 6. Registrar que el evento fue enviado (idempotencia)
+    if (result.meta || result.ga4) {
+      await supabase.from('conversion_events_sent').insert({
+        event_type: 'Purchase',
+        event_id: invoice.id,
+        stripe_event_id: eventId,
+        organization_id: sub.organization_id,
+        user_id: org.owner_user_id,
+        sent_to_meta: result.meta,
+        sent_to_ga4: result.ga4,
+        created_at: new Date().toISOString(),
+      })
+      console.log('[Purchase] Evento Purchase enviado exitosamente')
+    }
+  } catch (err) {
+    console.error('[Purchase] Error enviando evento Purchase (no crítico):', err)
+    // No lanzar error - el webhook debe seguir procesando
   }
 }
 

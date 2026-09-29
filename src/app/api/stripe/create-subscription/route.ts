@@ -45,6 +45,8 @@ import { contextoDeFacturacion } from '@/lib/stripe/contextoFacturacion'
 import { clienteDeAltaReclamable } from '@/lib/stripe/clienteDeAlta'
 import { routeErrorResponse } from '@/lib/security/orgGuards'
 import { OrgContextError } from '@/lib/utils/orgContext'
+import { getServiceClient } from '@/lib/supabase/server-service'
+import { sendConversionEvent } from '@/lib/marketing/conversionTracking'
 
 const RUTA = 'stripe/create-subscription'
 
@@ -126,6 +128,47 @@ export async function POST(request: Request) {
       userId: ctx.userId,
       subscriptionId: result.subscriptionId,
     })
+
+    // E7: Enviar evento StartTrial a Meta CAPI y GA4 MP
+    // Solo se envía si marketing_consent = true y useTrial = true
+    if (useTrial && result.subscriptionId) {
+      try {
+        // Obtener el valor mensual del plan
+        const supabase = getServiceClient()
+        const { data: plan } = await supabase
+          .from('plans')
+          .select('monthly_price_usd')
+          .eq('code', planCode)
+          .single()
+
+        const monthlyValue = plan?.monthly_price_usd || 0
+
+        if (monthlyValue > 0) {
+          console.log('[stripe/create-subscription] Enviando evento StartTrial...')
+          await sendConversionEvent(
+            {
+              eventName: 'StartTrial',
+              eventId: result.subscriptionId,
+              eventSourceUrl: 'https://app.goadmin.io/auth/signup',
+              actionSource: 'website',
+              userData: {
+                email: customerEmail,
+                externalId: ctx.userId,
+              },
+              customData: {
+                value: monthlyValue,
+                currency: 'USD',
+                predictedLtv: monthlyValue * 12,
+              },
+            },
+            supabase
+          )
+          console.log('[stripe/create-subscription] Evento StartTrial enviado')
+        }
+      } catch (err) {
+        console.warn('[stripe/create-subscription] Error enviando StartTrial (no crítico):', err)
+      }
+    }
 
     return NextResponse.json({
       success: true,

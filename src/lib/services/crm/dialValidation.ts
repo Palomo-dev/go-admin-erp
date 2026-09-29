@@ -28,6 +28,7 @@ export type DialValidationCode =
   | 'RNE_EXCLUDED'
   | 'RNE_STALE'
   | 'LOCKED_TO_HUMAN'
+  | 'CHANNEL_WINDOW'
   | 'FREQUENCY_LIMIT'
   | 'BUDGET_EXCEEDED'
   | 'DAILY_BUDGET'
@@ -98,8 +99,9 @@ const ALERT_THRESHOLDS = [80, 108]; // US$ 80 y US$ 108
  * - V1: Horario legal (Ley 2300): L-V 7-19, Sáb 8-15, nunca domingos ni festivos
  * - V2: Horario interno del piloto: L-V 8-12 y 14-18, sin sábados
  * - V3: Lista interna de no llamar
- * - V4: Registro de Números Excluidos (RNE) de la CRC
+ * - V4: Registro de Números Excluidos (RNE) de la CRC (mismo día)
  * - V5: Bloqueo del lead al canal humano
+ * - V5b: Un solo canal por ventana de 7 días (WhatsApp, email, llamada humana)
  * - V6: Frecuencia (1/día, 3 en 14 días, 7 días después de conversación, 2/mes)
  * - V7: Tope de gasto (US$120 piloto, US$8 diario, alertas)
  * - V8: Concurrencia (máx 2 simultáneas) y ritmo (20s entre marcaciones)
@@ -143,6 +145,10 @@ export async function canDial(
       const channelLock = await checkChannelLock(context, supabase);
       if (!channelLock.allowed) return channelLock;
     }
+
+    // ─── V5b: Un solo canal por ventana de 7 días ─────────────────────────
+    const channelWindow = await checkChannelWindow(context, supabase, now);
+    if (!channelWindow.allowed) return channelWindow;
 
     // ─── V6: Frecuencia ────────────────────────────────────────────────────
     const frequency = await checkFrequency(context, supabase, now, tz);
@@ -396,9 +402,10 @@ async function checkDoNotCall(
  * 
  * El número debe tener:
  * - rne_status = 'no_excluido'
- * - rne_checked_at de 30 días o menos
+ * - rne_checked_at del MISMO DÍA CALENDARIO en America/Bogota
  * 
- * Si no hay consulta o está vencida, NO se llama (fail-closed)
+ * Regla legal: El RNE debe consultarse el mismo día del lote de marcación.
+ * Si no hay consulta del día, NO se llama (fail-closed)
  */
 async function checkRNE(
   context: DialContext,
@@ -441,15 +448,18 @@ async function checkRNE(
     };
   }
 
-  // Verificar que la consulta no tenga más de 30 días
+  // Verificar que la consulta sea del MISMO DÍA CALENDARIO en America/Bogota
+  // Regla legal: el RNE debe ser consultado el mismo día del lote de marcación
+  const tz = context.timezone || DEFAULT_TIMEZONE;
+  const todayInTz = toDateStringInTz(now, tz);
   const checkedAt = new Date(metadata.rne_checked_at);
-  const daysSinceCheck = (now.getTime() - checkedAt.getTime()) / (1000 * 60 * 60 * 24);
+  const checkedDateInTz = toDateStringInTz(checkedAt, tz);
   
-  if (daysSinceCheck > 30) {
+  if (checkedDateInTz !== todayInTz) {
     return {
       allowed: false,
       code: 'RNE_STALE',
-      reason: `Consulta del RNE vencida (${Math.floor(daysSinceCheck)} días). Se requiere consulta de los últimos 30 días.`,
+      reason: `Consulta del RNE no es del día de hoy (última consulta: ${checkedDateInTz}). Se requiere consulta del mismo día calendario en ${tz}.`,
     };
   }
 
@@ -517,6 +527,133 @@ async function checkChannelLock(
         allowed: false,
         code: 'LOCKED_TO_HUMAN',
         reason: 'Lead bloqueado al canal humano',
+      };
+    }
+  }
+
+  return { allowed: true, code: 'ALLOWED' };
+}
+
+/**
+ * V5b: Verifica la regla de un solo canal por ventana móvil de 7 días
+ * 
+ * Si el cliente fue contactado por WhatsApp, email o llamada humana en los últimos
+ * 7 días, el agente de voz NO puede llamar.
+ * 
+ * Fail-closed: Si no se puede verificar, deniega.
+ */
+async function checkChannelWindow(
+  context: DialContext,
+  supabase: SupabaseClient,
+  now: Date
+): Promise<DialValidationResult> {
+  const sevenDaysAgo = new Date(now);
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  // Verificar actividades en los últimos 7 días (llamadas humanas, WhatsApp, email)
+  // activity_type puede ser: 'call', 'email', 'whatsapp', 'sms', etc.
+  const { data: recentActivities, error: activityError } = await supabase
+    .from('activities')
+    .select('activity_type, occurred_at, channel')
+    .eq('organization_id', context.organizationId)
+    .eq('related_type', 'customer')
+    .eq('related_id', context.customerId)
+    .gte('occurred_at', sevenDaysAgo.toISOString())
+    .in('activity_type', ['call', 'email', 'whatsapp', 'sms']);
+
+  if (activityError) {
+    return {
+      allowed: false,
+      code: 'CHANNEL_WINDOW',
+      reason: 'Error al verificar actividades recientes (fail-closed)',
+    };
+  }
+
+  if (recentActivities && recentActivities.length > 0) {
+    // Filtrar solo actividades que NO sean del agente de voz IA
+    const nonVoiceAgentActivities = recentActivities.filter(act => {
+      // Las actividades del agente de voz tienen activity_type 'ai_call'
+      // Las llamadas humanas son 'call', WhatsApp 'whatsapp', email 'email'
+      return ['call', 'email', 'whatsapp', 'sms'].includes(act.activity_type);
+    });
+
+    if (nonVoiceAgentActivities.length > 0) {
+      const lastActivity = nonVoiceAgentActivities[0];
+      return {
+        allowed: false,
+        code: 'CHANNEL_WINDOW',
+        reason: `Cliente contactado por ${lastActivity.activity_type} en los últimos 7 días. Un solo canal por semana.`,
+      };
+    }
+  }
+
+  // Verificar mensajes salientes (WhatsApp, etc.) en los últimos 7 días
+  const { data: recentMessages, error: messageError } = await supabase
+    .from('messages')
+    .select('created_at, content_type')
+    .eq('organization_id', context.organizationId)
+    .eq('sender_customer_id', context.customerId)
+    .eq('direction', 'outbound')
+    .gte('created_at', sevenDaysAgo.toISOString())
+    .limit(1);
+
+  if (messageError) {
+    return {
+      allowed: false,
+      code: 'CHANNEL_WINDOW',
+      reason: 'Error al verificar mensajes recientes (fail-closed)',
+    };
+  }
+
+  if (recentMessages && recentMessages.length > 0) {
+    return {
+      allowed: false,
+      code: 'CHANNEL_WINDOW',
+      reason: 'Cliente contactado por mensajería en los últimos 7 días. Un solo canal por semana.',
+    };
+  }
+
+  // Verificar llamadas humanas recientes (tabla calls, excluir las del voice_agent)
+  const { data: recentCalls, error: callError } = await supabase
+    .from('calls')
+    .select('created_at, call_type')
+    .eq('organization_id', context.organizationId)
+    .eq('customer_id', context.customerId)
+    .gte('created_at', sevenDaysAgo.toISOString())
+    .neq('direction', 'inbound')  // Solo salientes
+    .limit(1);
+
+  if (callError) {
+    return {
+      allowed: false,
+      code: 'CHANNEL_WINDOW',
+      reason: 'Error al verificar llamadas recientes (fail-closed)',
+    };
+  }
+
+  if (recentCalls && recentCalls.length > 0) {
+    // Verificar si es una llamada del voice_agent o humana
+    // Si tiene voice_agent_id, es del agente; si no, es humana
+    const { data: callDetail, error: detailError } = await supabase
+      .from('calls')
+      .select('voice_agent_id')
+      .eq('id', recentCalls[0])
+      .maybeSingle();
+
+    if (detailError) {
+      return {
+        allowed: false,
+        code: 'CHANNEL_WINDOW',
+        reason: 'Error al verificar origen de llamada (fail-closed)',
+      };
+    }
+
+    if (callDetail && !callDetail.voice_agent_id) {
+      // Es una llamada humana
+      return {
+        allowed: false,
+        code: 'CHANNEL_WINDOW',
+        reason: 'Cliente contactado por llamada humana en los últimos 7 días. Un solo canal por semana.',
       };
     }
   }

@@ -20,6 +20,8 @@ const createMockSupabase = (mockData: Record<string, any> = {}): SupabaseClient 
     opportunities: null,
     voice_agent_call_attempts: [],
     calls: [],
+    activities: [],
+    messages: [],
     ...mockData,
   };
 
@@ -247,42 +249,45 @@ describe('canDial - CA-31: Registro de Números Excluidos (RNE)', () => {
     expect(result.reason).toContain('No hay consulta del RNE');
   });
 
-  test('Rechaza número con consulta RNE vencida (31 días)', async () => {
+  test('Rechaza número con consulta RNE del día anterior', async () => {
     const context = createContext();
-    const oldDate = new Date();
-    oldDate.setDate(oldDate.getDate() - 31);
+    // Ayer en America/Bogota
+    const yesterday = new Date('2026-10-12T20:00:00Z'); // 15:00 en Bogotá del día 12
     
     const supabase = createMockSupabase({
       customers: {
         metadata: {
           rne_status: 'no_excluido',
-          rne_checked_at: oldDate.toISOString(),
+          rne_checked_at: yesterday.toISOString(),
         },
       },
     });
     
+    // Hoy 13 de octubre a las 13:05 UTC (08:05 en Bogotá)
     const validTime = new Date('2026-10-13T13:05:00Z');
     const result = await canDial(context, supabase, validTime);
     
     expect(result.allowed).toBe(false);
     expect(result.code).toBe('RNE_STALE');
-    expect(result.reason).toContain('vencida');
+    expect(result.reason).toContain('no es del día de hoy');
   });
 
-  test('Permite número con RNE válido (no_excluido, <30 días)', async () => {
+  test('Permite número con RNE consultado el MISMO DÍA', async () => {
     const context = createContext();
-    const recentDate = new Date();
-    recentDate.setDate(recentDate.getDate() - 15);
+    // Hoy 13 de octubre temprano (03:00 UTC = 22:00 del 12 en Bogotá)
+    // Espera, esto sería el día 12 en Bogotá. Voy a usar una hora del día 13 en Bogotá.
+    const todayMorning = new Date('2026-10-13T12:00:00Z'); // 07:00 en Bogotá del día 13
     
     const supabase = createMockSupabase({
       customers: {
         metadata: {
           rne_status: 'no_excluido',
-          rne_checked_at: recentDate.toISOString(),
+          rne_checked_at: todayMorning.toISOString(),
         },
       },
     });
     
+    // Hoy 13 de octubre a las 13:05 UTC (08:05 en Bogotá) - MISMO DÍA
     const validTime = new Date('2026-10-13T13:05:00Z');
     const result = await canDial(context, supabase, validTime);
     
@@ -333,6 +338,142 @@ describe('canDial - CA-32: Bloqueo de lead al canal humano', () => {
     const context = createContext({ voiceAgentId: 'agent-123' });
     const supabase = createMockSupabase({
       opportunities: null,
+    });
+    
+    const validTime = new Date('2026-10-13T13:05:00Z');
+    const result = await canDial(context, supabase, validTime);
+    
+    expect(result.allowed).toBe(true);
+    expect(result.code).toBe('ALLOWED');
+  });
+});
+
+// ─── Tests: CA-32b Un solo canal por ventana de 7 días ──────────────────────
+
+describe('canDial - CA-32b: Un solo canal por ventana de 7 días', () => {
+  test('Rechaza si hubo llamada humana en los últimos 7 días', async () => {
+    const context = createContext();
+    const threeDaysAgo = new Date('2026-10-10T13:00:00Z');
+    
+    const supabase = createMockSupabase({
+      activities: [
+        {
+          activity_type: 'call',
+          occurred_at: threeDaysAgo.toISOString(),
+          channel: 'phone',
+        },
+      ],
+    });
+    
+    const validTime = new Date('2026-10-13T13:05:00Z');
+    const result = await canDial(context, supabase, validTime);
+    
+    expect(result.allowed).toBe(false);
+    expect(result.code).toBe('CHANNEL_WINDOW');
+    expect(result.reason).toContain('call');
+    expect(result.reason).toContain('7 días');
+  });
+
+  test('Rechaza si hubo WhatsApp en los últimos 7 días', async () => {
+    const context = createContext();
+    const fiveDaysAgo = new Date('2026-10-08T13:00:00Z');
+    
+    const supabase = createMockSupabase({
+      activities: [
+        {
+          activity_type: 'whatsapp',
+          occurred_at: fiveDaysAgo.toISOString(),
+          channel: 'whatsapp',
+        },
+      ],
+    });
+    
+    const validTime = new Date('2026-10-13T13:05:00Z');
+    const result = await canDial(context, supabase, validTime);
+    
+    expect(result.allowed).toBe(false);
+    expect(result.code).toBe('CHANNEL_WINDOW');
+    expect(result.reason).toContain('whatsapp');
+  });
+
+  test('Rechaza si hubo email en los últimos 7 días', async () => {
+    const context = createContext();
+    const twoDaysAgo = new Date('2026-10-11T13:00:00Z');
+    
+    const supabase = createMockSupabase({
+      activities: [
+        {
+          activity_type: 'email',
+          occurred_at: twoDaysAgo.toISOString(),
+          channel: 'email',
+        },
+      ],
+    });
+    
+    const validTime = new Date('2026-10-13T13:05:00Z');
+    const result = await canDial(context, supabase, validTime);
+    
+    expect(result.allowed).toBe(false);
+    expect(result.code).toBe('CHANNEL_WINDOW');
+    expect(result.reason).toContain('email');
+  });
+
+  test('Rechaza si hubo mensaje saliente en los últimos 7 días', async () => {
+    const context = createContext();
+    const fourDaysAgo = new Date('2026-10-09T13:00:00Z');
+    
+    const supabase = createMockSupabase({
+      activities: [],
+      messages: [
+        {
+          created_at: fourDaysAgo.toISOString(),
+          direction: 'outbound',
+          content_type: 'text',
+        },
+      ],
+    });
+    
+    const validTime = new Date('2026-10-13T13:05:00Z');
+    const result = await canDial(context, supabase, validTime);
+    
+    expect(result.allowed).toBe(false);
+    expect(result.code).toBe('CHANNEL_WINDOW');
+    expect(result.reason).toContain('mensajería');
+  });
+
+  test('Permite si no hubo contacto en los últimos 7 días', async () => {
+    const context = createContext();
+    const eightDaysAgo = new Date('2026-10-05T13:00:00Z');
+    
+    const supabase = createMockSupabase({
+      activities: [
+        {
+          activity_type: 'call',
+          occurred_at: eightDaysAgo.toISOString(),
+          channel: 'phone',
+        },
+      ],
+    });
+    
+    const validTime = new Date('2026-10-13T13:05:00Z');
+    const result = await canDial(context, supabase, validTime);
+    
+    expect(result.allowed).toBe(true);
+    expect(result.code).toBe('ALLOWED');
+  });
+
+  test('Permite si solo hay actividades del voice agent (ai_call)', async () => {
+    const context = createContext();
+    const threeDaysAgo = new Date('2026-10-10T13:00:00Z');
+    
+    const supabase = createMockSupabase({
+      activities: [
+        {
+          activity_type: 'ai_call',
+          occurred_at: threeDaysAgo.toISOString(),
+          channel: 'voice_agent',
+        },
+      ],
     });
     
     const validTime = new Date('2026-10-13T13:05:00Z');

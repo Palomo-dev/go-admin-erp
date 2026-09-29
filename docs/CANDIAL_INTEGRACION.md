@@ -14,8 +14,9 @@ La función `canDial` implementa las validaciones V0-V10 requeridas antes de mar
 - **V1**: Horario legal (L-V 7-19, Sáb 8-15, nunca domingos ni festivos)
 - **V2**: Horario interno del piloto (L-V 8-12 y 14-18, sin sábados)
 - **V3**: Lista interna de no llamar (do_not_call)
-- **V4**: Registro de Números Excluidos (RNE) de la CRC
+- **V4**: Registro de Números Excluidos (RNE) de la CRC (mismo día calendario)
 - **V5**: Bloqueo del lead al canal humano
+- **V5b**: Un solo canal por ventana de 7 días (WhatsApp, email, llamada humana)
 - **V6**: Frecuencia (1/día, 3 en 14 días, 7 días después de conversación, 2/mes)
 - **V7**: Tope de gasto (US$120 piloto, US$8 diario)
 - **V8**: Concurrencia (máx 2 simultáneas, 20s entre marcaciones)
@@ -81,14 +82,18 @@ La migración crea:
 
 ### Paso 2: Configurar metadata legal (V0)
 
-En `comm_settings.metadata` de la org 125:
+⚠️ **IMPORTANTE**: Las fechas y números a continuación son **placeholders**. NO llenarlos hasta que:
+- La política de privacidad esté publicada oficialmente
+- Twilio confirme el registro ante la CRC del número 8308
+
+En `comm_settings.metadata` de la organización piloto:
 
 ```json
 {
-  "privacy_policy_published_at": "2026-10-15T00:00:00Z",
-  "crc_rne_registered_at": "2026-10-16T00:00:00Z",
-  "crc_8308_number_registered_at": "2026-10-17T00:00:00Z",
-  "internal_test_numbers": ["+573001234567", "+18501234567"]
+  "privacy_policy_published_at": "<FECHA_REAL_DE_PUBLICACION>",
+  "crc_rne_registered_at": "<FECHA_CONFIRMADA_POR_TWILIO>",
+  "crc_8308_number_registered_at": "<FECHA_CONFIRMADA_POR_TWILIO>",
+  "internal_test_numbers": ["<NUMERO_DE_PRUEBA_1>", "<NUMERO_DE_PRUEBA_2>"]
 }
 ```
 
@@ -96,16 +101,23 @@ Mientras falte alguna fecha, solo se permite llamar a números de `internal_test
 
 ### Paso 3: Cargar consulta del RNE (V4)
 
+⚠️ **Requisito legal**: El Registro de Números Excluidos debe consultarse **el mismo día calendario** del lote de marcación (en timezone America/Bogota).
+
 Para cada cliente que se vaya a llamar, agregar en `customers.metadata`:
 
 ```json
 {
   "rne_status": "no_excluido",
-  "rne_checked_at": "2026-10-18T00:00:00Z"
+  "rne_checked_at": "<TIMESTAMP_DEL_DIA_ACTUAL>"
 }
 ```
 
-Las consultas vencen a los 30 días. Usar el CSV de respuesta de la CRC.
+**Flujo diario**:
+1. Antes de cada lote, consultar el RNE de la CRC para todos los números
+2. Actualizar `rne_checked_at` al timestamp actual (mismo día)
+3. Solo entonces ejecutar el lote de marcación
+
+Si `rne_checked_at` no es del día de hoy, `canDial` **deniega** la llamada (fail-closed).
 
 ### Paso 4: Integrar en el despacho manual
 
@@ -242,9 +254,15 @@ JOIN opportunities o ON c.opportunity_id = o.id
 WHERE c.mode = 'ai_agent'
   AND c.started_at >= CURRENT_DATE
   AND o.tags @> ARRAY['canal_humano'];
+
+-- Clientes con RNE no consultado HOY (para el próximo lote)
+SELECT cu.id, cu.phone, cu.metadata->>'rne_checked_at' as ultima_consulta
+FROM customers cu
+WHERE cu.metadata->>'rne_status' = 'no_excluido'
+  AND (cu.metadata->>'rne_checked_at')::date < CURRENT_DATE AT TIME ZONE 'America/Bogota';
 ```
 
-**Criterio de aceptación CA-37**: En todo el piloto, las 3 consultas deben devolver **0**.
+**Criterio de aceptación CA-37**: En todo el piloto, las 3 primeras consultas deben devolver **0**. La cuarta muestra los clientes que requieren consulta RNE antes del próximo lote.
 
 ## 🧪 Tests
 
@@ -261,8 +279,9 @@ TZ=America/Bogota npm test dialValidation.test.ts
 
 Los tests cubren todos los criterios CA-30 a CA-37:
 - CA-30: Horarios legales (L-V, sábado, domingos, festivos, márgenes)
-- CA-31: RNE (excluido, sin consulta, vencida)
+- CA-31: RNE (excluido, sin consulta, no es del mismo día)
 - CA-32: Bloqueo al canal humano
+- CA-32b: Un solo canal por ventana de 7 días
 - CA-33: Frecuencia (1/día, 3 en 14 días, 7 días después de conversación)
 - CA-34: Topes de gasto y créditos
 - CA-35: Barrera legal (V0)
@@ -351,10 +370,10 @@ También actualizar `src/lib/services/crm/holidays/colombia2026_2027.ts` y renom
    ```json
    {
      "rne_status": "no_excluido",
-     "rne_checked_at": "2026-10-18T00:00:00Z"
+     "rne_checked_at": "<TIMESTAMP_DEL_DIA_ACTUAL>"
    }
    ```
-2. La consulta vence a los 30 días
+2. La consulta debe ser del **mismo día calendario** (en America/Bogota)
 
 ### "Rechaza por FREQUENCY_LIMIT"
 

@@ -760,3 +760,92 @@ este documento).
 | 11 | ¿Imprimir etiquetas de peso desde Go Admin (sin balanza etiquetadora)? | Sí, fase 4, con la variante «peso-variable» de la etiqueta |
 | 12 | Devolución de producto por peso: ¿vuelve al inventario? | No por defecto (perecedero); casilla «reingresa» en la devolución |
 | 13 | ¿Mostrar el peso en la pantalla del cliente? | Sí por defecto; es lo que exige la buena práctica metrológica de que el cliente vea la pesada (confirmar con la regulación de la SIC para balanzas comerciales) |
+
+---
+
+## 8. Estado de implementación — fases 1 y 2 (2026-09-29)
+
+Aprobado por el dueño el 2026-09-29 con todas las recomendaciones de la sección 7 (kg por defecto y libra
+por producto; precio por kg con «cada 100 g» como opción; importe exacto y redondeo solo al mostrar y al
+cobrar; peso a mano solo con permiso y «exigir báscula» por producto; bandeja a precio fijo = otro producto
+con receta; devoluciones por peso sin reingreso por defecto). Las fases 3 (básculas) y 4 (etiquetas) **no**
+se tocaron.
+
+### 8.1 Migraciones aplicadas (MCP, con su reversión en `supabase/rollbacks/`)
+
+| Migración | Qué hace |
+|---|---|
+| `20260929120000_peso_f1_unidades_dian` | M1: unidad LB con sus conversiones (LB↔KG, LB↔GR), `dian_unit_measures` 80 = LBR, `units.dian_unit_measure_id` (UN 70, KG 71, LT 72, MT 73, LB 80) y trigger `trg_invoice_items_unidad_dian`: la línea de factura toma la unidad DIAN del producto cuando llega con el 70 por defecto. Cubre `pos_checkout_v1`, mesas, pedidos web y notas crédito sin tocar esas funciones |
+| `20260929120100_peso_f2_producto_permisos_validacion` | M2 + M5 + M6: las 9 columnas de «Cómo se vende» en `products` (70.319 productos quedan `unit`), permisos `pos.peso_manual` y `pos.basculas.configurar` (Admin de organización y Manager), `fn_producto_decimales_cantidad`, `fn_pos_puede_pesar_a_mano`, `fn_pos_validar_pesaje` (llamada desde `fn_pos_validar_linea_venta`, parche sobre la definición viva) y `pos_pesaje_contexto(org)` para el POS |
+| `20260929120200_peso_f2_producto_guardar_modo_venta` | `fn_producto_int_modo_venta` y un bloque en `fn_producto_guardar` (definición viva; se conservan recetas y membresías) |
+| `20260929120300_peso_f2_devolucion_reingresa` | `procesar_devolucion`: decimales de la cantidad devuelta y casilla «Reingresa» para productos por peso |
+
+`pos_checkout_v1` **no se modificó**: su contrato ya admitía la cantidad decimal y `notes` como objeto. La
+decisión de redondeo (B) quedó en el cliente (ver 8.3). Tras aplicar se comprobó que los parches de hoy de
+membresías y de la cuenta dividida siguen en las definiciones vivas.
+
+### 8.2 Qué puede hacer ya el dueño
+
+- En **Inventario › Productos › Nuevo / Editar › Precios y costos**: «Cómo se vende: Por unidad · Por peso ·
+  Por medida». Por peso: kg o lb, precio escrito por kg o «cada 500/250/100/50 g» (se guarda por kg; la
+  vista dice «Se guarda como $ 18.900 / kg»), venta mínima y «Exigir báscula». Por medida: metro o litro.
+  Un producto por peso no lleva variantes (cada presentación es otro producto) ni puede ser servicio.
+- En el **detalle del producto**: «Actualizar precio» en la referencia del producto con la vigencia de
+  siempre; precio, costo e historial con «/ kg»; existencias, lotes y kardex del detalle con 3 decimales y
+  la unidad («12,400 kg»).
+- En el **POS**: la tarjeta dice «Por kg» y «/ kg», con stock en kg y botón «Pesar». Tocarla, buscarla o
+  escanearla abre «Pesar» con el peso a mano («Sin báscula · peso a mano»), el cálculo en vivo
+  «0,735 kg × $ 18.900 / kg» y «Agregar $ 13.892 · Enter». Sin el permiso «Pesar a mano en el POS» el
+  diálogo lo dice y no agrega; un producto que exige báscula dice que en este equipo aún no se puede vender.
+  Cada pesada es una línea; el chip «⚖ 0,735 kg» (o **P** con la línea enfocada — F2 ya era «Cliente»)
+  reabre «Pesar» para cambiar el peso. Un producto por medida abre «Cantidad».
+- **Cobro**: se cobra el total redondeado a la moneda ($ 13.892) y la venta guarda el exacto ($ 13.891,50).
+  Si lo recibido queda por debajo del exacto por el redondeo ($ 9.185 de $ 9.185,40), el sobre registra el
+  pago por el exacto: sin esto la venta, la factura y la cartera quedaban pendientes por $ 0,40 (medido con
+  `pos_checkout_v1` en una transacción deshecha).
+- **Tiquete 80 mm, texto plano, móvil y factura electrónica impresa**: «Queso campesino» y debajo
+  «0,735 kg x $ 18.900/kg», importe a la derecha; resumen «2 líneas · 3 unidades · 0,735 kg»; comanda
+  «0,500 kg Carne». **Factura carta**: columna «Unidad» (kg / und), «0,735» y «2,500».
+- **Factura electrónica (Factus)**: cantidad con 3 decimales («0.735», antes «0.74») y la unidad del
+  producto (KGM) en vez de «94 Unidad».
+- **Devoluciones**: cantidad decimal (antes `parseInt`: 0,375 → 0) y casilla «Reingresa al inventario» en
+  productos por peso (por defecto no reingresan).
+- **Sin conexión**: la réplica del catálogo trae las columnas de «Cómo se vende»; el permiso de peso a mano
+  se guarda en el navegador y el servidor lo revalida al sincronizar.
+
+### 8.3 Verificación
+
+- SQL en transacciones deshechas (organizaciones 142 y 144): venta de 0,735 kg (pagada, `invoice_items.qty`
+  0,735 con unidad 71, stock 5 → 4,265, `notes.pesaje` guardado); reintento del mismo sobre
+  (`replayed`, un solo pago, una sola línea); 0,7354 kg → `cantidad_decimales`; «exige báscula» a mano →
+  `peso_exige_bascula`; origen «bascula» → `origen_peso_no_disponible`; empleado sin permiso →
+  `sin_permiso_peso_manual` (`pos_pesaje_contexto`: false para el empleado, true para el dueño);
+  devolución de 0,375 kg sin reingreso (reintegro $ 7.087,50, stock igual) y de 0,2 kg con «Reingresa»
+  (stock 4,465); 0,0005 kg → `cantidad_decimales`; más de lo vendido → `cantidad_excede_disponible`; nota
+  crédito con `qty` −0,375 y unidad 71. `fn_producto_guardar`: por peso con «cada 100 g» guarda el precio
+  18.900 por kg; «cada 300 g» → `referencia_precio_invalida`; unidad UN → `unidad_peso_invalida`.
+- Jest (`TZ=UTC` y `TZ=America/Bogota`): `src/__tests__/pos/peso/` (lógica, impresión, documentos, venta y
+  devolución), `src/__tests__/einvoicing/payloadsFactus.test.ts`, suites del POS y `pos-display`.
+- `get_advisors`: el único aviso nuevo es el de siempre para una RPC `SECURITY DEFINER` ejecutable por
+  `authenticated` (`pos_pesaje_contexto`, con `fn_assert_acceso_org`); ninguna función nueva queda para `anon`.
+
+### 8.4 Datos afectados
+
+- Ningún producto cambió: los 70.319 quedan `sale_mode = 'unit'`. Las facturas **nuevas** de productos en
+  KG, LB, LT o MT salen con su unidad DIAN (hoy 0 productos en KG y 3 en LT); las líneas existentes no se
+  tocaron.
+
+### 8.5 Pendientes
+
+- **Verificación con Factus (pregunta 7)**: que la API v2 acepte `KGM` y `LBR` en `unit_measure_code`. El
+  mapa vive en un solo lugar configurable, `dian_unit_measures.code` (y `units.dian_unit_measure_id`); si
+  Factus pide otro código se corrige la fila, sin tocar código.
+- **No incluidos en esta entrega** (siguen la sección 2): «Pesar» en `AddProductDialog` de mesas y la unidad
+  en sus comandas; pantalla del cliente «Pesando…» y el NaN de `projection.ts`; reporte de pesos manuales;
+  «Lleve X pague Y» excluyendo productos por peso (`promotionEngine`); unidad y decimales en las páginas
+  generales de Stock y Kardex, que la sesión B1 del núcleo reescribió hoy.
+- **Fase 3**: `pos_scales`, intérprete de protocolos, Web Serial y puente `scale:*` del Desktop; al llegar,
+  `fn_pos_validar_pesaje` debe aceptar el origen `bascula` con `bascula_id` válido.
+- **Fase 4**: formato de etiqueta (prefijo 27), `decodificarEtiquetaPeso`, PLU en el formulario, exportar PLU
+  y la etiqueta «peso-variable»; `fn_pos_validar_pesaje` debe aceptar el origen `etiqueta`. El lector ya
+  busca primero el código exacto (y, si no viene en la primera página, en una más amplia).

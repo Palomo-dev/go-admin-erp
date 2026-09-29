@@ -1338,3 +1338,82 @@ fachadas de RPC; `LotesService` sale del guardarraíl 33.
 - El commit `193d3aa9` llevó también el namespace `inventarioAjustes` de B2 (carrera con una
   enmienda de otra sesión sobre `messages/*.json`); su contenido es el de B2, sin cambios.
 - Verificación en el navegador: no se hizo (sin sesión en el servidor de desarrollo del dueño).
+
+---
+
+## Anexo B3 — Traslados y distribución (2026-09-29)
+
+Commits: `6c37c9a3` servidor (migraciones, RPC y datos de 2025) · `d9640aca` lista de traslados,
+diálogos, guías y API · `481acde1` nuevo traslado · `8965740e` detalle · `31d75c2f` distribución
+(y retiro de `TransferenciasService`) · `1b573128` guardia de integridad. Solo archivos de B3
+(§5.4: `transferencias/**`, `distribucion/**`, más `src/lib/inventario/transferencias/**` y
+`src/app/api/inventario/{transferencias,distribucion}/**`) y los namespaces `inventarioTraslados`
+e `inventarioDistribucion` en es/en/fr/pt. Decisiones aplicadas: P7 (despachar descuenta el
+origen; quien recibe decide la diferencia), P5 (el traslado no deja el origen en negativo), lotes
+y seriales viajan con el traslado.
+
+**Migraciones** (aplicadas por el MCP, `.sql` y rollback en el repo, probadas antes con
+`begin … rollback` / `DO … RAISE`):
+
+| Archivo | Qué hace |
+|---|---|
+| `20260929073000_inv_b3_1_esquema` | `inventory_transfers`: `code` (TR-0001 por organización; disparador que lo pone también a lo que crea el GO Assistant), `shipped_at/by`, `received_at/by`, `cancelled_at/by`, `cancel_reason`, `production_order_id` (FK NULL-able), `client_key` (idempotencia al crear). `transfer_items`: `unit_cost`, `missing_qty`, `returned_qty`, `difference_reason`, `serial_ids`; CHECK recibido + faltante + devuelto ≤ enviado. Tabla `inventory_transfer_events` (seguimiento y claves de idempotencia; RLS de solo lectura para miembros activos, sin GRANT de escritura) |
+| `20260929073100_inv_b3_2_funciones` | `fn_traslado_guardar` (crear o editar un pendiente; valida sucursales —el origen, de las del usuario—, productos con control de stock, lote, renglón repetido y disponible), `fn_traslado_despachar` (sale con `transfer_out` al costo promedio del origen por `fn_inv_int_mover`; FEFO parte el renglón por lote; seriales a `in_transit`; bloquea si deja el origen en negativo; idempotente), `fn_traslado_recibir` (entra con `transfer_in` al mismo costo; diferencia «faltante» con motivo = entra y sale como `loss` en el destino, o «en camino»; idempotente por clave; asiento entre sucursales por recepción), `fn_traslado_cancelar` (solo pendientes), `fn_traslado_devolver` (lo que sigue en tránsito vuelve al origen) |
+| `20260929073200_inv_b3_3_consultas_y_distribucion` | `fn_traslados_listado` (paginado, KPI, atascados > 30 días), `fn_traslado_detalle` (costo solo con permiso de costos), `fn_traslado_productos`, `fn_distribucion_ordenes`, `fn_distribucion_crear` (varios traslados en una transacción, tope por disponible y por lo que falta distribuir de la orden, idempotente). `fn_inv_documentos` (parche con marcadores únicos sobre la definición viva): número = código del traslado y la merma `loss` con `source_id = 'traslado:<id>'` enlaza al traslado. `fn_auto_journal_inventory_transfer` sin efecto (el asiento lo hace la recepción). `fn_notify_transfer_*` con estados reales y `search_path` fijo |
+| `20260929073300_inv_b3_4_datos_traslados_2025` | P7, datos (org 2): TR-0001 (id 1) y TR-0002 (id 2) `pending` y TR-0004 (id 4) `in_transit` → `cancelled` con motivo, **sin mover stock**. Abiertos antes 3, después 0. Comprobado: movimientos de la org 2 50 → 50, suma de existencias 30.709 → 30.709, asientos 481 → 481. TR-0003 y TR-0005 (`received` con `received_qty = 0`) no se tocan |
+| `20260929073400_inv_b3_5_integridad` | Guardia (revisión de seguridad): con la RLS aún FOR ALL, desde `authenticated`/`anon` directo solo se crea un pendiente, se cancela un pendiente sin tocar nada más (deshacer del GO Assistant) o se editan renglones de un pendiente; subir cantidades o insertar renglones de algo en tránsito responde 42501 `traslado_solo_por_rpc`. Las RPC DEFINER no cambian |
+
+Todas las RPC públicas: SECURITY DEFINER, `fn_inventario_exigir_permiso` (`trasladar`; recibir:
+`trasladar` o `recibir`; lecturas: `ver`), acceso a la sucursal con `app_branch_access`, `REVOKE …
+FROM public, anon`; las internas `fn_traslado_int_*` sin EXECUTE para `authenticated`.
+`get_advisors` (security): nada nuevo en `anon_security_definer_function_executable`,
+`function_search_path_mutable` ni `rls_*`; las RPC nuevas aparecen, como todas, en
+`authenticated_security_definer_function_executable` (validan organización y permiso dentro).
+
+**Prueba en la base** (org 2, dueño, `begin … rollback`): crear (y repetir con la misma clave →
+el mismo traslado); despachar sin seriales de un producto serializado → `seriales_requeridos`;
+despachar 10 + 7 (FEFO: 5 del lote 2 y 2 del lote 3, dos renglones) + 1 serial → origen 25 → 15,
+serial `in_transit`; despachar otra vez → `ya_despachado`; recibir sin decidir → `decision_requerida`;
+recibir de más → `recibido_invalido`; recibir 8 con «faltante» (caja rota) + lote 2 completo + lote
+3 «en camino» + serial → destino +8 (entran 10, sale 2 como `loss`), serial `in_stock` en destino,
+traslado sigue en tránsito; repetir con la misma clave → `repetido`; recibir el resto → `received`;
+otra vez → `ya_recibido`; dos asientos `inventory_transfer` (subcuentas 1405-01 → 1405-02);
+guardar más de lo disponible → `stock_insuficiente`; despachar dejando el origen en negativo →
+`stock_insuficiente` sin mover nada; cancelar pendiente y despacharlo → `estado_invalido`;
+devolver al origen → origen 10 → 15 y `cancelled`; otra organización → 42501; guardia: subir la
+cantidad de un renglón en tránsito, insertar uno, marcar `received` a mano o borrar → 42501, y
+`assistant_create_transfer` + su deshacer siguen funcionando.
+
+**Pantallas** (Figma `EAvjINVRnlzFM70GVoWXgl`): Traslados `589:304083` (lista, cargando, vacío,
+error, sin permiso, sin sucursal, menús ⋯ por estado, selección masiva, móvil), «Recibir»
+`589:320397`, confirmaciones despachar/cancelar/devolver, nuevo traslado `589:322911` y móvil
+`975:186790` (conserva `?producto_id&origen`; edición de pendientes en `/transferencias/[id]/editar`),
+detalle `831:535830`/`831:536248` y móvil `589:326053` (seguimiento, `?despachar=1`,
+`?recibir=1`, `?imprimir=1`), guías imprimibles, Distribución `606:159579` con su asistente de 3
+pasos. El buscador de productos es el diálogo `kit/documento/AgregarProductosDialog` (§5.0).
+Organización siempre de la sesión: API `/api/inventario/{transferencias,distribucion}/**` con
+`withOrg` (403 si el cuerpo o la query traen otra); Distribución ya no lee `localStorage`.
+
+**Verificación**: `src/__tests__/inventario/traslados/` (lógica y contrato de rutas: 401, 403 por
+organización ajena, `p_org` de la sesión, 207 al crear sin poder despachar, códigos estables);
+guardarraíles (33: B3 sale de la deuda; 23: baja su piso porque `transfer_in` ya no se escribe desde
+TS); eslint limpio. En una copia limpia de HEAD (`git archive`): `tsc` con 8 GB sin errores; guardarraíles,
+`timezone` e inventario con UTC y America/Bogota en verde (909 pruebas); los fallos de `jest` completo son ajenos a B3 (pos-display por tiempo, CRM,
+navegación, zona horaria, `sin_fe` en `kit.estados`, sitio web conocido).
+
+**Diferencias con Figma y decisiones**:
+- Un traslado pendiente no reserva existencias (Figma de Distribución dice «stock reservado en
+  origen»): lo disponible se valida al crear y otra vez al despachar, que es cuando sale (P7).
+- La diferencia al recibir se registra como merma en el **destino** (como dice el diálogo de
+  Traslados); el diálogo de Distribución de Figma decía «pérdida en origen»: se unificó.
+- Los ConfirmDialog de Figma traen los textos de ejemplo del componente («Regenerar», «Eliminar»);
+  se usan los de la acción (Despachar, Cancelar traslado, Devolver al origen).
+
+**Pendiente** (fuera de B3 o con dueño):
+- B9: `assistant_create_transfer` sigue siendo invocador y ejecutable por `anon`; debería delegar
+  en `fn_traslado_guardar`. Hoy crea pendientes que ya reciben código y respetan la guardia.
+- B10: RLS de `inventory_transfers` y `transfer_items` en solo lectura (la guardia de B3 cubre lo
+  que movería stock mientras tanto).
+- B5: el vínculo con la orden usa `OP-<id>` y `/app/inventario/produccion?orden=<id>`; si B5 añade
+  `code`, actualizar `fn_traslados_listado`, `fn_traslado_detalle` y `fn_distribucion_ordenes`.
+- Revisión visual en el navegador pendiente (no se arrancó el servidor de desarrollo del dueño).

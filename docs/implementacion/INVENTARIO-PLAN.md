@@ -1531,3 +1531,92 @@ RPC públicas aparecen, como todas, en `authenticated_security_definer_function_
 - Figma dibuja y no se hizo: comparar versiones, «Duplicar a otras variantes», tableta con frames
   propios, móvil del reporte de costo con tarjetas (hoy la tabla se desplaza).
 - Verificación en el navegador: no se hizo (sin sesión en el servidor de desarrollo del dueño).
+
+---
+
+## Anexo B6a — Variantes (tipos y valores) y unidades y conversiones (2026-09-29)
+
+Commits: `aedeb27d` variantes · `8ed4b997` corrección (el commit de variantes se armó sobre un HEAD
+que avanzó y dejó sin `dc783fec` de B7; se repusieron sus 3 archivos y 11 líneas de `messages`) ·
+`4810bff7` unidades y conversiones · `2c9c0d89` orden del catálogo para el POS. Solo archivos de B6a
+(§5.7), el diálogo compartido `kit/receta/DialogoConversion` (ampliación compatible) y los
+namespaces `inventarioVariantes` e `inventarioUnidades` en es/en/fr/pt.
+
+### B6a.1 Migraciones (MCP; `.sql` y rollback en el repo)
+
+| Archivo | Qué hace |
+|---|---|
+| `20260929160000_inv_b6a_1_variantes_esquema` | `variant_types`: `display_order`, `is_active`, `display_style` (texto/color/imagen), `meta_attribute` (Facebook), `translations`, `updated_at`, `created_by`. `variant_values`: `hex_color`, `image_url`, `sku_code` (único por tipo), `is_active`, `translations`. RLS: leer por pertenencia; insertar y editar exige `editar_catalogo` y borrar `eliminar` (`fn_inventario_puede`, booleano seguro para políticas). Sin índice único sin mayúsculas: chocaría con los repetidos de hoy |
+| `…160100_inv_b6a_2_variantes_lectura` + `…160150_…2b_resumen_sin_bucles` (dos pasos) | Regla única clave ↔ tipo y valor ↔ valor (igual sin espacios; si no, sin mayúsculas). `fn_variantes_resumen`: tipos y valores con su uso real, escrituras distintas («talla» en 349 variantes para «Talla»), atributos fuera del catálogo y sugeridos de la org 0. 0,02 s (org 132), 0,26 s (137, 21.142 variantes), 0,55 s (197, 1.932 valores) |
+| `…160200_inv_b6a_3_variantes_escritura` | `fn_variante_tipo_guardar` y `fn_variante_valor_guardar` (crear; renombrar reescribe `variant_data` de hijos y padres en la misma transacción; `unificar`), `fn_variantes_fusionar_tipos/valores` (gana el destino si una variante tiene los dos; los valores iguales se unen; relaciones por id reapuntadas) |
+| `…160300_inv_b6a_4_variantes_orden_y_borrado` | `fn_variantes_reordenar`, `fn_variantes_cambiar` (activo, estilo), `fn_variantes_eliminar` (solo sin uso ni relaciones), `fn_variantes_completar_catalogo`, `fn_variantes_usar_sugeridos`; `crear_tipo_variante` sin EXECUTE para public, anon ni authenticated |
+| `…160400_inv_b6a_5_variantes_desde_servidor` | `fn_variantes_como_actor` (solo `service_role`): la ruta `POST /api/inventario/variantes` ejecuta las RPC como el usuario de la sesión. Renombrar «Talla» en la org 137 son 11.551 filas más su historial (~8 s) y PostgREST corta a `authenticated` a los 8 s |
+| `…160500_inv_b6a_6_variantes_datos_iniciales` (dos pasos) | 5 tipos y 133 valores en uso que faltaban en el catálogo; orden de tipos por uso (109); orden de valores sin orden elegido (números, luego XS…5XL, luego texto; 3.264); 12 tipos de color con `display_style = color`. Todo en `private.inv_b6a_datos_iniciales` para un rollback exacto |
+| `20260929161000_inv_b6a_7_unidades_esquema` | `units.organization_id` (unidades propias; las 14 del sistema no cambian), `is_active`; lectura sistema + propias. `unit_conversions.product_id`, UNIQUE por alcance, disparador de validación (factor > 0, de ≠ a, unidad y producto de la organización, mismo tipo salvo por producto). La escritura de conversiones pasa solo por RPC |
+| `…161100_inv_b6a_8_conversion_regla_unica` | `fn_unidad_factor(org, de, a, producto)`: la regla única (producto > organización > sistema; directa antes que inversa). `fn_receta_int_factor(org, de, a)` conserva su contrato; sobrecarga con producto; `fn_receta_int_calcular` pasa el ingrediente (parche por marcador con respaldo). `fn_producto_produccion_resumen` (B5) ya no lista conversiones de otros productos (alcance `producto`) |
+| `…161200_inv_b6a_9_unidades_rpc` (dos pasos) | `fn_unidades_resumen`, `fn_unidad_guardar` (código de hasta 3: `unit_conversions` usa character(3); unidad DIAN para la factura electrónica), `fn_unidades_eliminar` (solo propias sin uso), `fn_conversion_guardar` (con la inversa en la misma transacción), `fn_conversiones_eliminar` (no borra una que una receta activa necesita), `fn_unidad_convertir` |
+
+Todas DEFINER con `search_path`, `fn_inventario_exigir_permiso` (`ver`, `editar_catalogo`,
+`eliminar`; valida antes la pertenencia) y `REVOKE … FROM public, anon`; los `*_int_*` sin EXECUTE
+para `authenticated` (salvo `fn_receta_int_factor`, invocadora, que ya lo tenía). `get_advisors`:
+ningún aviso nuevo fuera de `authenticated_security_definer_function_executable` (su diseño).
+
+### B6a.2 Verificación en la base (transacciones deshechas)
+
+- **Aceptación 1**: org 132, «Talla» con `unificar` → 349 variantes «talla» pasan a «Talla» en una
+  RPC, 0 padres con la escritura vieja; renombrar «Tallas» a « TALLA » → 23505; fusionar «Tallas» y
+  «talla.» en «Talla» → 56 variantes, quedan 6 tipos; eliminar un tipo en uso → 23503; sin uso → 1.
+  El POS ordena por `display_order` en cuanto adopte `ordenarAtributosSegunCatalogo` (B6a.4).
+- **Aceptación 2**: org 142, PAQ = 6 UN «solo este producto» → la receta de ese ingrediente convierte
+  con 6 y la de otro ingrediente con el 10 del sistema; `fn_unidad_convertir` 2 PAQ → 12 (producto) y
+  20 (organización). Repetida → 23505; UN → KG sin producto → 23514 `tipos_distintos`; BUL = 25 KG por
+  producto → correcto.
+- Otra organización, usuario sin permiso de catálogo, `anon` e INSERT directo en
+  `variant_types`/`unit_conversions` → 42501. El usuario sin permiso sí lee.
+
+### B6a.3 Pantallas
+
+- **Variantes** `/app/inventario/variantes` (Figma `969:595070`): pestañas Tipos · Valores; KPI
+  (activos, valores y sin orden, nombres repetidos → fusionar, sin usar); tabla ↔ tarjetas; filtros
+  (estado, cómo se muestra, tipo); menú ⋯ (editar, ver valores, ordenar, unificar escritura, cómo se
+  muestra, fusionar, copiar ID, desactivar, eliminar con motivo); selección (fusionar, estilo,
+  exportar, desactivar o activar, eliminar sin uso); diálogos Nuevo tipo `972:607461`, Nuevo valor
+  `972:607554` (hex, código SKU sugerido, traducciones, «Guardar y crear otro»), Fusionar
+  `972:607660`, Renombrar con impacto `972:607716`, Eliminar `972:607750`; Ordenar (arrastrar ⠿,
+  ↑ ↓ y Alt+↑/↓ con anuncio para lector de pantalla); aviso de atributos fuera del catálogo con
+  «Agregar al catálogo». Las rutas `/variantes/tipos` y `/variantes/valores?tipo=` redirigen.
+- **Unidades y conversiones** `/app/inventario/unidades` y `/conversiones` (Figma `593:333686`):
+  KPI, filtros (tipo, ámbito, en uso, sin conversión), menú ⋯ y selección; Nueva o editar unidad
+  `595:345266` (más la unidad DIAN, que Figma no dibuja y la factura electrónica necesita);
+  conversiones del sistema agrupadas con su inversa, «Revisar» en PAQ/CAJ, «Crear versión para mi
+  empresa», «Definir por producto…», eliminar con bloqueo por recetas; Nueva conversión `595:345330`
+  y error `595:345423` con `kit/receta/DialogoConversion` (De ⇆ A, «Aplica a · Toda la organización /
+  Un producto», inversa, «Al recibir 2 BUL entran 50 KG al kardex»).
+- Escritorio y móvil (tarjetas y hoja de acciones del kit), estados cargando · vacío · sin
+  resultados · error · sin permiso, permisos de `usePermisosInventario`.
+
+### B6a.4 Contratos para otros bloques (no se tocaron sus archivos)
+
+- **POS y tienda**: `variantesService.catalogoOrden(org)` (una consulta, tipos y valores activos) +
+  `ordenarAtributosSegunCatalogo(grupos, catalogo)` (`@/components/inventario/variantes`). Hoy
+  `agruparAtributos` (`lib/pos/venta/modificadores.ts`) ordena alfabético: el agente del POS debe
+  usarlos y pintar la muestra hex cuando `estilo = color`.
+- **B7 · formulario y detalle del producto**: `cargarCatalogos.ts` ya ordena por `display_order`;
+  falta no ofrecer tipos y valores con `is_active = false` y usar `sku_code` en `skuVariante`.
+  «Guardar este valor en el catálogo» (`catalogoAtributos.ts`) sigue escribiendo por RLS: ahora exige
+  `editar_catalogo`. El catálogo debe leer `?unidad=` (enlace «Ver sus N productos» de Unidades).
+- **B5 · recetas**: `DialogoConversion` mantiene sus props; puede pasar `producto={{ id, nombre }}`
+  para ofrecer «Solo este producto». El texto `receta.conversion.alcanceOrganizacion` quedó
+  desactualizado (la conversión por producto ya existe). `SubUnidadesProducto` recibe el alcance
+  `producto` (su servicio hoy lo muestra como «organización»).
+- **B8 · recepción**: convertir con `fn_unidad_factor(org, de, a, producto)` o `fn_unidad_convertir`;
+  no otra regla.
+- **B10**: el menú (`catalog.ts`) puede apuntar a `/app/inventario/variantes`.
+
+### B6a.5 Pendiente
+
+- Verificación en el navegador: no se hizo (sin sesión en el servidor de desarrollo del dueño).
+- Sin frame en Figma: detalle de un valor con imagen (hay columna, sin subida), aviso de choque al
+  fusionar valores, estados móviles de conversiones; se usaron los patrones del kit.
+- El código de una unidad propia es único en todo el sistema (clave primaria de `units`).
+- `npm run lint` del repo sigue con su deuda previa; los archivos de B6a pasan eslint.

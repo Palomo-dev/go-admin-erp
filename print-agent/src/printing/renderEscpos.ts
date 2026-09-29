@@ -1,5 +1,6 @@
-﻿import type { KitchenTicketPrintPayload, SaleTicketPrintPayload, SaleTicketPayment, ShipmentGuidePrintPayload, ElectronicInvoicePrintPayload } from './types';
+﻿import type { KitchenTicketPrintPayload, SaleTicketPrintPayload, ShipmentGuidePrintPayload, ElectronicInvoicePrintPayload } from './types';
 import { moneyFormatter } from './money';
+import { formatQuantity, isMeasuredLine, itemsSummary, linePriceDetail } from './quantity';
 import type { PaperSpec } from './paper';
 import { writeRasterImage } from './escposImage';
 
@@ -78,6 +79,22 @@ const SIZE_TALL: readonly [number, number] = [0, 1];
 const SIZE_DOUBLE: readonly [number, number] = [1, 1];
 
 /** Linea separadora fuerte al ancho exacto del papel. */
+/**
+ * Lo que estas plantillas usan de `escpos.Printer` (API encadenable). Antes
+ * era `any`; el agente y el ERP pasan su `Printer` tal cual.
+ */
+export interface EscposDevice {
+  text(content: string): EscposDevice;
+  style(type: string): EscposDevice;
+  size(width: number, height: number): EscposDevice;
+  align(align: string): EscposDevice;
+  font(family: string): EscposDevice;
+  feed(lines?: number): EscposDevice;
+  cut(partial?: boolean, feed?: number): EscposDevice;
+  qrimage(content: string, options?: { cellSize?: number }): unknown;
+  code128(content: string, options?: { width?: number; height?: number }): unknown;
+}
+
 function sep(chars: number): string {
   return '='.repeat(chars);
 }
@@ -138,7 +155,7 @@ function wrapText(text: string, width: number): string[] {
  * linea con el importe alineado a la derecha; si no, el nombre se envuelve en
  * varias lineas y el importe cierra alineado a la derecha.
  */
-function writeItemLine(device: any, label: string, value: string, chars: number): void {
+function writeItemLine(device: EscposDevice, label: string, value: string, chars: number): void {
   if (label.length + value.length + 1 <= chars) {
     device.style('b').text(padRight(label, value, chars)).style('normal');
     return;
@@ -147,6 +164,16 @@ function writeItemLine(device: any, label: string, value: string, chars: number)
   device.style('b');
   for (const line of wrapText(label, chars)) device.text(line);
   device.style('normal').text(padRight('', value, chars));
+}
+
+/** Etiqueta de la línea de venta: «3x  Producto» por unidad; solo el nombre por peso (la cantidad va en el detalle). */
+function saleLabel(item: { quantity: number; unit?: string | null; qtyDecimals?: number | null; productName: string }, locale?: string): string {
+  return isMeasuredLine(item) ? item.productName : `${formatQuantity(item, locale)}x  ${item.productName}`;
+}
+
+/** Etiqueta de la comanda: «2x  Plato» o «0,500 kg  Carne». */
+function kitchenLabel(item: { quantity: number; unit?: string | null; qtyDecimals?: number | null; productName: string }): string {
+  return isMeasuredLine(item) ? `${formatQuantity(item)}  ${item.productName}` : `${formatQuantity(item)}x  ${item.productName}`;
 }
 
 function formatDateParts(iso: string, timezone?: string): { date: string; time: string } {
@@ -166,11 +193,11 @@ function formatDateParts(iso: string, timezone?: string): { date: string; time: 
  * comanda de cocina. `device` es una instancia de `escpos.Printer` ya
  * conectada a un `escpos.<Interface>` (network/usb/bluetooth).
  */
-export function printKitchenTicket(device: any, payload: KitchenTicketPrintPayload, paper: PaperSpec): void {
+export function printKitchenTicket(device: EscposDevice, payload: KitchenTicketPrintPayload, paper: PaperSpec): void {
   const chars = paper.charsPerLine;
   const stationLabel = STATION_LABELS[payload.station] || payload.station.toUpperCase();
   const { date, time } = formatDateParts(payload.createdAt, payload.timezone);
-  const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
+  const itemsText = itemsSummary(payload.items, (payload as { locale?: string }).locale);
 
   // --- Header: datos del negocio ---
   // Doble alto (no doble ancho) para que un nombre largo no se parta de linea.
@@ -203,7 +230,7 @@ export function printKitchenTicket(device: any, payload: KitchenTicketPrintPaylo
   device.text(`Mesa: ${payload.tableName || '-'}`);
   if (payload.serverName) device.text(`Mesero: ${payload.serverName}`);
   device.text(`Fecha: ${date}  Hora: ${time}`);
-  device.text(`Items: ${payload.items.length} (${itemCount} unidades)`);
+  device.text(`Items: ${itemsText}`);
   device.text(sepLight(chars));
 
   // --- Items ---
@@ -211,7 +238,7 @@ export function printKitchenTicket(device: any, payload: KitchenTicketPrintPaylo
     // Doble alto para que el cocinero lo lea de lejos, ancho normal para
     // aprovechar las columnas completas en nombres largos.
     device.style('b').size(...SIZE_TALL);
-    for (const line of wrapText(`${item.quantity}x  ${item.productName}`, chars)) {
+    for (const line of wrapText(kitchenLabel(item), chars)) {
       device.text(line);
     }
     device.style('normal').size(...SIZE_NORMAL);
@@ -257,7 +284,7 @@ export function buildPlainTextTicket(payload: KitchenTicketPrintPayload, paper: 
   const chars = paper.charsPerLine;
   const stationLabel = STATION_LABELS[payload.station] || payload.station.toUpperCase();
   const { date, time } = formatDateParts(payload.createdAt, payload.timezone);
-  const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
+  const itemsText = itemsSummary(payload.items, (payload as { locale?: string }).locale);
   const lines: string[] = [];
 
   // --- Header ---
@@ -273,11 +300,11 @@ export function buildPlainTextTicket(payload: KitchenTicketPrintPayload, paper: 
   lines.push(`Mesa: ${payload.tableName || '-'}`);
   if (payload.serverName) lines.push(`Mesero: ${payload.serverName}`);
   lines.push(`Fecha: ${date}  Hora: ${time}`);
-  lines.push(`Items: ${payload.items.length} (${itemCount} unidades)`);
+  lines.push(`Items: ${itemsText}`);
   lines.push(sepLight(chars));
 
   for (const item of payload.items) {
-    lines.push(...wrapText(`${item.quantity}x  ${item.productName}`, chars));
+    lines.push(...wrapText(kitchenLabel(item), chars));
 
     const variantEntries = item.variantData ? Object.entries(item.variantData).filter(([, v]) => !!v) : [];
     if (variantEntries.length > 0) {
@@ -306,14 +333,14 @@ export function buildPlainTextTicket(payload: KitchenTicketPrintPayload, paper: 
 /**
  * Imprime el ticket de venta (recibo de caja) en un dispositivo escpos.
  */
-export function printSaleTicket(device: any, payload: SaleTicketPrintPayload, paper: PaperSpec): void {
+export function printSaleTicket(device: EscposDevice, payload: SaleTicketPrintPayload, paper: PaperSpec): void {
   const formatMoney = moneyFormatter(payload, { symbol: false });
   const chars = paper.charsPerLine;
   // Una linea en doble ancho dispone de la mitad de columnas.
   const doubleChars = Math.floor(chars / 2);
   const { date, time } = formatDateParts(payload.createdAt, payload.timezone);
   const isPreCuenta = (payload.title || '').toUpperCase().includes('PRE-CUENTA') || (payload.title || '').toUpperCase().includes('PRE CUENTA');
-  const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
+  const itemsText = itemsSummary(payload.items, (payload as { locale?: string }).locale);
 
   // --- Header: datos del negocio ---
   device.font('a').align('ct');
@@ -359,7 +386,7 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload, pa
   if (payload.cashierName) device.text(`Cajero: ${payload.cashierName}`);
   if (payload.serverName) device.text(`Mesero: ${payload.serverName}`);
   device.text(`Fecha: ${date}  Hora: ${time}`);
-  device.text(`Items: ${payload.items.length} (${itemCount} unidades)`);
+  device.text(`Items: ${itemsText}`);
 
   // --- Info del cliente ---
   if (payload.customerName || payload.customerDocNumber) {
@@ -406,8 +433,8 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload, pa
   for (const item of payload.items) {
     // Nombre e importe en la misma linea; si no caben, el nombre se envuelve y
     // el importe cierra alineado a la derecha.
-    writeItemLine(device, `${item.quantity}x  ${item.productName}`, formatMoney(item.total), chars);
-    device.text(`  ${formatMoney(item.unitPrice)} c/u`);
+    writeItemLine(device, saleLabel(item, payload.locale), formatMoney(item.total), chars);
+    device.text(`  ${linePriceDetail(item, formatMoney, payload.locale)}`);
 
     const variantEntries = item.variantData ? Object.entries(item.variantData).filter(([, v]) => !!v) : [];
     if (variantEntries.length > 0) {
@@ -524,7 +551,7 @@ export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload, paper:
   const chars = paper.charsPerLine;
   const { date, time } = formatDateParts(payload.createdAt, payload.timezone);
   const isPreCuenta = (payload.title || '').toUpperCase().includes('PRE-CUENTA') || (payload.title || '').toUpperCase().includes('PRE CUENTA');
-  const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
+  const itemsText = itemsSummary(payload.items, (payload as { locale?: string }).locale);
   const lines: string[] = [];
 
   // --- Header: datos del negocio ---
@@ -555,7 +582,7 @@ export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload, paper:
   if (payload.cashierName) lines.push(`Cajero: ${payload.cashierName}`);
   if (payload.serverName) lines.push(`Mesero: ${payload.serverName}`);
   lines.push(`Fecha: ${date}  Hora: ${time}`);
-  lines.push(`Items: ${payload.items.length} (${itemCount} unidades)`);
+  lines.push(`Items: ${itemsText}`);
 
   // --- Info del cliente ---
   if (payload.customerName || payload.customerDocNumber) {
@@ -594,7 +621,7 @@ export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload, paper:
 
   // --- Items ---
   for (const item of payload.items) {
-    const label = `${item.quantity}x  ${item.productName}`;
+    const label = saleLabel(item, payload.locale);
     const money = formatMoney(item.total);
     if (label.length + money.length + 1 <= chars) {
       lines.push(padRight(label, money, chars));
@@ -602,7 +629,7 @@ export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload, paper:
       lines.push(...wrapText(label, chars));
       lines.push(padRight('', money, chars));
     }
-    lines.push(`  ${formatMoney(item.unitPrice)} c/u`);
+    lines.push(`  ${linePriceDetail(item, formatMoney, payload.locale)}`);
 
     const variantEntries = item.variantData ? Object.entries(item.variantData).filter(([, v]) => !!v) : [];
     if (variantEntries.length > 0) {
@@ -666,7 +693,7 @@ export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload, paper:
 /**
  * Imprime la guia de envio en un dispositivo ESC/POS con corte automatico.
  */
-export function printShipmentGuide(device: any, payload: ShipmentGuidePrintPayload, paper: PaperSpec): void {
+export function printShipmentGuide(device: EscposDevice, payload: ShipmentGuidePrintPayload, paper: PaperSpec): void {
   const formatMoney = moneyFormatter(payload, { symbol: false });
   const chars = paper.charsPerLine;
   const { date, time } = formatDateParts(payload.createdAt, payload.timezone);
@@ -915,12 +942,12 @@ export function buildPlainTextShipmentGuide(payload: ShipmentGuidePrintPayload, 
  * Imprime una factura electronica validada por DIAN en una impresora ESC/POS.
  * Incluye CUFE, QR de validacion y entorno (produccion/pruebas).
  */
-export function printElectronicInvoice(device: any, payload: ElectronicInvoicePrintPayload, paper: PaperSpec): void {
+export function printElectronicInvoice(device: EscposDevice, payload: ElectronicInvoicePrintPayload, paper: PaperSpec): void {
   const formatMoney = moneyFormatter(payload, { symbol: false });
   const chars = paper.charsPerLine;
   const doubleChars = Math.floor(chars / 2);
   const { date, time } = formatDateParts(payload.createdAt, payload.timezone);
-  const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
+  const itemsText = itemsSummary(payload.items, (payload as { locale?: string }).locale);
   const envLabel = payload.environment === 'production' ? 'PRODUCCION' : 'PRUEBAS';
 
   // --- Header: datos del negocio ---
@@ -960,7 +987,7 @@ export function printElectronicInvoice(device: any, payload: ElectronicInvoicePr
   // --- Info del documento ---
   device.text(`Factura No: ${payload.invoiceNumber}`);
   device.text(`Fecha: ${date}  Hora: ${time}`);
-  device.text(`Items: ${payload.items.length} (${itemCount} unidades)`);
+  device.text(`Items: ${itemsText}`);
   if (payload.cashierName) device.text(`Cajero: ${payload.cashierName}`);
   if (payload.validationDate) {
     const vd = new Date(payload.validationDate);
@@ -993,8 +1020,8 @@ export function printElectronicInvoice(device: any, payload: ElectronicInvoicePr
 
   // --- Items ---
   for (const item of payload.items) {
-    writeItemLine(device, `${item.quantity}x  ${item.productName}`, formatMoney(item.total), chars);
-    device.text(`  ${formatMoney(item.unitPrice)} c/u`);
+    writeItemLine(device, saleLabel(item, payload.locale), formatMoney(item.total), chars);
+    device.text(`  ${linePriceDetail(item, formatMoney, payload.locale)}`);
 
     const variantEntries = item.variantData ? Object.entries(item.variantData).filter(([, v]) => !!v) : [];
     if (variantEntries.length > 0) {
@@ -1106,7 +1133,7 @@ export function buildPlainTextElectronicInvoice(payload: ElectronicInvoicePrintP
   const formatMoney = moneyFormatter(payload, { symbol: false });
   const chars = paper.charsPerLine;
   const { date, time } = formatDateParts(payload.createdAt, payload.timezone);
-  const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
+  const itemsText = itemsSummary(payload.items, (payload as { locale?: string }).locale);
   const envLabel = payload.environment === 'production' ? 'PRODUCCION' : 'PRUEBAS';
 
   const lines: string[] = [];
@@ -1134,7 +1161,7 @@ export function buildPlainTextElectronicInvoice(payload: ElectronicInvoicePrintP
   // --- Info ---
   lines.push(`Factura No: ${payload.invoiceNumber}`);
   lines.push(`Fecha: ${date}  Hora: ${time}`);
-  lines.push(`Items: ${payload.items.length} (${itemCount} unidades)`);
+  lines.push(`Items: ${itemsText}`);
   if (payload.cashierName) lines.push(`Cajero: ${payload.cashierName}`);
   if (payload.validationDate) {
     const vd = new Date(payload.validationDate);
@@ -1163,8 +1190,8 @@ export function buildPlainTextElectronicInvoice(payload: ElectronicInvoicePrintP
   lines.push(sepLight(chars));
 
   for (const item of payload.items) {
-    lines.push(padRight(`${item.quantity}x ${item.productName}`, formatMoney(item.total), chars));
-    lines.push(`  ${formatMoney(item.unitPrice)} c/u`);
+    lines.push(padRight(saleLabel(item, payload.locale), formatMoney(item.total), chars));
+    lines.push(`  ${linePriceDetail(item, formatMoney, payload.locale)}`);
     if (item.taxAmount && item.taxAmount > 0) lines.push(`  Imp: ${formatMoney(item.taxAmount)}`);
     if (item.discountAmount && item.discountAmount > 0) lines.push(`  Desc: -${formatMoney(item.discountAmount)}`);
     lines.push(sepLight(chars));

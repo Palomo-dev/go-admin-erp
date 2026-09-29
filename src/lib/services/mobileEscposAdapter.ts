@@ -21,6 +21,7 @@
 import type { PaperWidth } from '@printing/paper';
 import { getPaperSpec } from '@printing/paper';
 import { moneyFormatter, type MoneyFormat } from '@printing/money';
+import { formatQuantity, isMeasuredLine, linePriceDetail } from '@printing/quantity';
 import type {
   SaleTicketPrintPayload,
   KitchenTicketPrintPayload,
@@ -314,9 +315,10 @@ export function buildSaleTicket(
 
   // Items
   for (const item of payload.items) {
-    const qty = item.quantity.toString();
     const name = truncate(item.productName, 28);
-    b.text(`${qty}x ${name}`).newline();
+    // Por peso: el nombre solo y debajo «0,735 kg x $ 18.900/kg» (@printing/quantity).
+    b.text(isMeasuredLine(item) ? name : `${formatQuantity(item, payload.locale)}x ${name}`).newline();
+    if (isMeasuredLine(item)) b.text(`  ${linePriceDetail(item, formatMoney, payload.locale)}`).newline();
 
     if (item.variantData) {
       const variant = Object.entries(item.variantData)
@@ -436,7 +438,7 @@ export function buildKitchenTicket(
 
   // Items
   for (const item of payload.items) {
-    b.bold(true).text(`${item.quantity}x ${item.productName}`).newline().bold(false);
+    b.bold(true).text(`${formatQuantity(item)}${isMeasuredLine(item) ? ' ' : 'x '}${item.productName}`).newline().bold(false);
 
     if (item.variantData) {
       const variant = Object.entries(item.variantData)
@@ -496,9 +498,8 @@ export function buildPreCuenta(
 
   // Items sin precios detallados (pre-cuenta simple)
   for (const item of payload.items) {
-    const qty = item.quantity.toString();
     const name = truncate(item.productName, 28);
-    b.row2cols(`${qty}x ${name}`, formatMoney(item.total));
+    b.row2cols(`${formatQuantity(item, payload.locale)}${isMeasuredLine(item) ? ' ' : 'x '}${name}`, formatMoney(item.total));
   }
 
   b.separator();

@@ -21,6 +21,9 @@ export interface KitchenTicketItemModifier {
 export interface KitchenTicketItemPayload {
   productName: string;
   quantity: number;
+  /** Solo en líneas por peso o medida: símbolo de la unidad («kg») y decimales (ver `quantity.ts`). */
+  unit?: string | null;
+  qtyDecimals?: number | null;
   notes?: string | null;
   variantData?: Record<string, string> | null;
   modifiers?: KitchenTicketItemModifier[] | null;
@@ -42,6 +45,10 @@ export interface KitchenTicketPrintPayload {
 export interface SaleTicketItemPayload {
   productName: string;
   quantity: number;
+  /** Solo en líneas por peso o medida: símbolo de la unidad («kg») y decimales (ver `quantity.ts`). */
+  unit?: string | null;
+  qtyDecimals?: number | null;
+  /** Precio por unidad de venta (por kg en una línea por peso). */
   unitPrice: number;
   total: number;
   taxAmount?: number;

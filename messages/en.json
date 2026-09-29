@@ -7554,12 +7554,7 @@
         "actualizados": "Updated",
         "conAvisos": "With warnings",
         "fallidos": "Failed",
-        "pendientes": "{n, plural, =0 {none pending} one {# pending} other {# pending}}",
-        "importados": "Imported",
-        "importadosDetalle": "{creados} created · {actualizados} updated",
-        "omitidos": "Skipped",
-        "omitidosDetalle": "Already existed",
-        "sinIntentar": "Not attempted"
+        "pendientes": "{n, plural, =0 {none pending} one {# pending} other {# pending}}"
       },
       "omitidos": "{n, plural, one {# row skipped} other {# rows skipped}} because of the chosen mode.",
       "errorLote": "Batch {n} could not be imported: {mensaje}. Its rows were not imported.",
@@ -7583,9 +7578,7 @@
         "resultado": "Result",
         "mensajes": "Messages",
         "archivo": "product_import_report"
-      },
-      "cuadre": "{seleccionados} selected · {importados} imported + {omitidos} skipped + {fallidos} failed + {sinIntentar} not attempted",
-      "conAvisosLinea": "{n, plural, one {# product imported with warnings} other {# products imported with warnings}}: see the report."
+      }
     },
     "mensajes": {
       "sinNombre": "Name is missing",
@@ -20315,6 +20308,301 @@
       "producto_no_encontrado": "The product does not exist or has been deleted.",
       "sin_permiso": "You don't have permission to edit recipes.",
       "desconocido": "An unexpected error occurred. Please try again."
+    }
+  },
+  "inventarioVariantes": {
+    "titulo": "Variants",
+    "migaInventario": "Inventory",
+    "cargando": "Loading the catalog…",
+    "subtitulo": "{tipos, plural, one {# type} other {# types}} · {valores, plural, one {# value} other {# values}} · {variantes} variants",
+    "subtituloMovil": "{tipos, plural, one {# type} other {# types}} · {valores, plural, one {# value} other {# values}}",
+    "nuevoTipo": "New type",
+    "nuevoValor": "New value",
+    "buscarTipo": "Search type or value",
+    "buscarValor": "Search value or code",
+    "verResultados": "Show {n, plural, one {# result} other {# results}}",
+    "errorCarga": "We couldn't load the variant catalog",
+    "avisoFuera": "{n, plural, one {# attribute used by your variants is} other {# attributes used by your variants are}} not in the catalog: they aren't offered when creating variants and can't be sorted.",
+    "pestanas": {
+      "tipos": "Types",
+      "valores": "Values"
+    },
+    "vista": {
+      "etiqueta": "Types view",
+      "tabla": "Table",
+      "tarjetas": "Cards"
+    },
+    "estilos": {
+      "texto": "Text",
+      "color": "Color swatch",
+      "imagen": "Image"
+    },
+    "estados": {
+      "activo": "Active",
+      "inactivo": "Inactive",
+      "repetido": "Duplicate",
+      "sinUsar": "Unused"
+    },
+    "meta": {
+      "ninguno": "Not set (inferred from the name)",
+      "color": "Color (color)",
+      "size": "Size (size)",
+      "material": "Material (material)",
+      "pattern": "Pattern (pattern)",
+      "gender": "Gender (gender)",
+      "age_group": "Age (age_group)"
+    },
+    "idiomas": {
+      "en": "English",
+      "fr": "Français",
+      "pt": "Português"
+    },
+    "tipo": {
+      "tituloNuevo": "New variant type",
+      "tituloEditar": "Edit “{nombre}”",
+      "descripcion": "Size, Color, Material… Its values are offered when creating variants.",
+      "nombre": "Name",
+      "ayudaNombre": "Case, accents and spaces don't matter: “size” and “Size” are the same type.",
+      "errorNombre": "Enter the type name.",
+      "errorRepetido": "“{nombre}” already exists. Merge them instead of creating another.",
+      "fusionarCon": "Merge with “{nombre}”",
+      "estilo": "How it shows in the POS and the store",
+      "meta": "In the Facebook catalog it maps to",
+      "ayudaMeta": "If you don't choose, it's inferred from the name (Color, Size, Material…).",
+      "traducciones": "Name in other languages (optional)",
+      "activo": "Active · offered when creating variants",
+      "guardar": "Save changes",
+      "crear": "Create type"
+    },
+    "valor": {
+      "tituloNuevo": "New value",
+      "tituloNuevoDe": "New “{tipo}” value",
+      "tituloEditar": "Edit “{valor}”",
+      "descripcion": "It's added at the end of the order; you can move it later.",
+      "tipo": "Type",
+      "elegirTipo": "Choose a type",
+      "valor": "Value",
+      "ayudaValor": "If it already exists with other casing or accents, we'll tell you so you use that one.",
+      "errorValor": "Enter the value.",
+      "errorRepetido": "“{nombre}” already exists in this type.",
+      "errorHex": "Use #RRGGBB for the color (for example #6B7C3A).",
+      "errorSku": "1 to 8 letters or numbers, no spaces.",
+      "errorSkuRepetido": "Another value of this type already uses that code.",
+      "errorTipo": "Choose the value's type.",
+      "muestra": "Swatch",
+      "hex": "Hex",
+      "muestrasRapidas": "Quick colors",
+      "colorPersonalizado": "Pick another color",
+      "sku": "SKU code",
+      "ayudaSku": "Used when generating the variant SKU: CAM-001-VOL-M. Unique within the type.",
+      "traducciones": "Name in other languages (optional)",
+      "guardarYOtro": "Save and add another",
+      "guardar": "Save changes",
+      "crear": "Create value"
+    },
+    "renombrar": {
+      "titulo": "Rename “{antes}” to “{despues}”?",
+      "descripcionTipo": "It's updated on {n, plural, one {# variant} other {# variants}} in a single operation, with its history. SKUs don't change.",
+      "descripcionValor": "It's updated on {n, plural, one {# variant} other {# variants}} in a single operation, with its history. SKUs don't change.",
+      "confirmar": "Rename"
+    },
+    "toast": {
+      "tipoCreado": "Type “{nombre}” created",
+      "tipoActualizado": "Type updated",
+      "tipoRenombrado": "Type renamed on {n, plural, one {# variant} other {# variants}}",
+      "valorCreado": "“{valor}” added to {tipo}",
+      "valorActualizado": "Value updated",
+      "valorRenombrado": "Value renamed on {n, plural, one {# variant} other {# variants}}",
+      "ordenGuardado": "Order saved: this is how they show in the POS, the store and the form",
+      "completado": "Catalog completed with your variants' attributes",
+      "sugeridos": "Suggested types added",
+      "activados": "{n, plural, one {# activated} other {# activated}}",
+      "desactivados": "{n, plural, one {# deactivated: no longer offered when creating variants} other {# deactivated: no longer offered when creating variants}}",
+      "estilo": "Display changed for {n, plural, one {# type} other {# types}}",
+      "idCopiado": "ID {id} copied",
+      "fusionados": "{n, plural, other {# merged into one}}",
+      "unificado": "Spelling unified on the variants",
+      "eliminados": "{n, plural, one {# deleted} other {# deleted}}"
+    },
+    "errores": {
+      "sinPermiso": "You don't have permission to change the variant catalog.",
+      "nombreRepetido": "A type with that name already exists (ignoring case and accents).",
+      "valorRepetido": "That value already exists in the type.",
+      "skuRepetido": "Another value of the type already uses that SKU code.",
+      "enUso": "Variants use it: deactivate or merge it instead of deleting it.",
+      "noEncontrado": "It no longer exists: someone changed it. Reload the page.",
+      "invalido": "Check the data: a field isn't valid.",
+      "desconocido": "We couldn't save. Try again."
+    },
+    "fusion": {
+      "tituloTipos": "Merge {n, plural, other {# types}}",
+      "tituloValores": "Merge {n, plural, other {# values}}",
+      "descripcionTipos": "Choose which one to keep. Its variants and values move to that type.",
+      "descripcionValores": "Choose which one to keep. The others' variants move to that value.",
+      "conservar": "Keep",
+      "confirmar": "Merge",
+      "motivo": "Choose which one to keep (at least two are needed).",
+      "variantes": "{n, plural, one {# variant} other {# variants}}",
+      "impacto": "{n, plural, =0 {No variant changes; the others are removed from the catalog.} one {# variant moves to “{nombre}”; if one has both, “{nombre}” is kept. Equal values are merged and SKUs don't change.} other {{total} variants move to “{nombre}”; if one has both, “{nombre}” is kept. Equal values are merged and SKUs don't change.}}",
+      "detalleTipo": "{n, plural, one {# value} other {# values}}"
+    },
+    "ordenar": {
+      "tituloTipos": "Sort types",
+      "tituloValores": "Sort “{tipo}” values",
+      "descripcion": "This is how they show in the POS selector, the store and the product form.",
+      "ayudaTeclado": "Drag with ⠿, use the arrows or, with a row focused, Alt + ↑ / ↓.",
+      "natural": "Natural order (2 before 10)",
+      "cancelar": "Cancel",
+      "guardar": "Save order",
+      "anuncio": "“{nombre}” is now in position {posicion} of {total}",
+      "fila": "{nombre}, position {posicion} of {total}",
+      "subir": "Move “{nombre}” up",
+      "bajar": "Move “{nombre}” down"
+    },
+    "acciones": {
+      "editarTipo": "Edit type",
+      "editarValor": "Edit value",
+      "verValores": "View its {n, plural, one {# value} other {# values}}",
+      "ordenarValores": "Sort values",
+      "ordenar": "Sort",
+      "ordenarTipos": "Sort types",
+      "unificar": "Unify spelling as “{nombre}”",
+      "estilo": "Change how it shows",
+      "estiloDetalle": "Text · Color swatch · Image",
+      "fusionarCon": "Merge with another…",
+      "copiarId": "Copy ID",
+      "desactivar": "Deactivate",
+      "desactivarDetalle": "No longer offered when creating variants; {n, plural, one {the # existing one doesn't change} other {the # existing ones don't change}}",
+      "activar": "Activate",
+      "eliminar": "Delete",
+      "motivoEnUso": "Used by {n, plural, one {# variant} other {# variants}} · deactivate or merge it",
+      "subir": "Move up",
+      "bajar": "Move down",
+      "completar": "Add to catalog",
+      "completarDetalle": "{n, plural, =0 {Nothing pending} one {# attribute in use is missing from the catalog} other {# attributes in use are missing from the catalog}}",
+      "sugeridos": "Use suggested types",
+      "sugeridosDetalle": "Size, Color, Material… with their values",
+      "exportar": "Export CSV",
+      "actualizar": "Refresh"
+    },
+    "columnas": {
+      "orden": "Order",
+      "tipo": "Type",
+      "estilo": "Shows as",
+      "estado": "Status",
+      "valores": "Values",
+      "variantes": "Variants",
+      "valor": "Value",
+      "muestra": "Swatch",
+      "traducciones": "Translations"
+    },
+    "filtros": {
+      "estado": "Status",
+      "estilo": "Shows as",
+      "tipo": "Type",
+      "todosLosTipos": "All types",
+      "estados": {
+        "todos": "All",
+        "activos": "Active",
+        "repetidos": "Duplicates",
+        "sinUsar": "Unused",
+        "inactivos": "Inactive"
+      }
+    },
+    "kpi": {
+      "etiquetaTipos": "Types summary",
+      "etiquetaValores": "Values summary",
+      "tiposActivos": "Active types",
+      "tiposActivosDetalle": "{nombres}{mas, plural, =0 {} other { and # more}}",
+      "ninguno": "None yet",
+      "valores": "Values",
+      "valoresDetalle": "In {tipos, plural, one {# type} other {# types}} · {sinOrden, plural, =0 {all sorted} one {# type without a set order} other {# types without a set order}}",
+      "valoresDe": "In “{tipo}”",
+      "valoresEnTipos": "In {n, plural, one {# type} other {# types}}",
+      "repetidos": "Duplicate names",
+      "valoresRepetidos": "Duplicate values",
+      "repetidosDetalle": "{ejemplo} · merge",
+      "repetidosNinguno": "None",
+      "sinUsar": "Unused",
+      "sinUsarDetalleTipos": "No variants · deactivate or delete",
+      "sinUsarDetalleValores": "No variant uses them",
+      "sinUsarNinguno": "All in use",
+      "conMuestra": "With color swatch",
+      "conMuestraDetalle": "Hex per value in color types"
+    },
+    "tipos": {
+      "titulo": "Variant types",
+      "igualA": "same as “{nombre}”",
+      "sinValores": "No values"
+    },
+    "valores": {
+      "titulo": "Variant values",
+      "tituloDe": "“{tipo}” values",
+      "igualA": "Same as “{nombre}” · merge",
+      "codigoSku": "SKU code: {codigo}",
+      "falta": "Missing {idiomas}",
+      "sinMuestra": "No swatch",
+      "avisoColor": "“{tipo}” shows as a color swatch: each value has its hex. It's shown in the POS selector and the store, and goes to the Facebook catalog color field. Without a hex, the name is shown."
+    },
+    "tarjeta": {
+      "meta": "{valores, plural, one {# value} other {# values}} · {variantes, plural, one {# variant} other {# variants}}",
+      "variantes": "{n, plural, one {# variant} other {# variants}}"
+    },
+    "sustantivo": {
+      "tipo": "type",
+      "tipos": "types",
+      "valor": "value",
+      "valores": "values"
+    },
+    "vacio": {
+      "tipos": {
+        "titulo": "No variant types yet",
+        "descripcion": "Create Size, Color or Material, or use the suggested ones from “⋯”. They're also created when saving a product with variants."
+      },
+      "valores": {
+        "titulo": "No values yet",
+        "tituloDe": "“{tipo}” has no values yet",
+        "descripcion": "Add the values offered when creating variants (S, M, L…)."
+      }
+    },
+    "sinPermiso": {
+      "titulo": "You don't have access to the variant catalog",
+      "descripcion": "Ask an administrator for the inventory permission to see it."
+    },
+    "masivo": {
+      "fusionar": "Merge into one",
+      "motivoFusionar": "Select at least two types",
+      "motivoFusionarValores": "Select at least two values of the same type",
+      "estilo": "How it shows",
+      "exportar": "Export",
+      "desactivar": "Deactivate",
+      "activar": "Activate",
+      "eliminarSinUso": "Delete the unused ones",
+      "motivoEliminar": "None of the selected ones is unused"
+    },
+    "unificar": {
+      "titulo": "Unify the spelling as “{nombre}”?",
+      "descripcion": "Variants spelling it {escrituras} ({n, plural, one {# variant} other {# variants}}) change to “{nombre}” in a single operation. SKUs don't change.",
+      "confirmar": "Unify"
+    },
+    "eliminar": {
+      "tituloTipo": "Delete the “{nombre}” type?",
+      "tituloValor": "Delete the “{nombre}” value?",
+      "tituloVarios": "Delete {n, plural, one {# item} other {# items}}?",
+      "descripcionTipos": "Only unused types are deleted, with their values. No variant changes.",
+      "descripcionValores": "Only unused values are deleted. No variant changes."
+    },
+    "csv": {
+      "id": "ID",
+      "orden": "Order",
+      "tipo": "Type",
+      "estilo": "Shows as",
+      "estado": "Status",
+      "valores": "Values",
+      "variantes": "Variants",
+      "valor": "Value",
+      "hex": "Hex",
+      "sku": "SKU code"
     }
   }
 }

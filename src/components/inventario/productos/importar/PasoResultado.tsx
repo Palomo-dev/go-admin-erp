@@ -2,14 +2,13 @@
 
 import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { AlertTriangle, CheckCircle2, CircleSlash, Clock, FileDown, Loader2, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, FileDown, Loader2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FormSection, KpiStrip, StatCard } from '@/components/kit';
 import { reporteCsv, type FilaReporte } from '@/lib/inventario/importacion/reporte';
 import type { AsistenteImportacion } from './useAsistenteImportacion';
 import { useTextoMensaje } from './useTextos';
 import { descargarTexto } from './exportarCatalogoCsv';
-import { recuentoImportacion } from './recuentoImportacion';
 
 export function PasoResultado({ a }: { a: AsistenteImportacion }) {
   const t = useTranslations('productosImportar.resultado');
@@ -24,7 +23,6 @@ export function PasoResultado({ a }: { a: AsistenteImportacion }) {
   if (!e) return null;
   const pct = e.total ? Math.round((e.procesadas / e.total) * 100) : 100;
   const corriendo = e.estado === 'corriendo';
-  const r = recuentoImportacion(e);
   const errorDe = (codigo?: string) => (codigo && tm.has(codigo) ? tm(codigo) : codigo ?? '');
 
   const descargar = () => {
@@ -79,34 +77,13 @@ export function PasoResultado({ a }: { a: AsistenteImportacion }) {
           </div>
         </div>
 
-        {/* D5: Importados · Omitidos (gris, no son fallos) · Fallidos · Sin intentar; siempre suman lo seleccionado. */}
         <KpiStrip etiqueta={t('titulo')}>
-          <StatCard
-            etiqueta={t('kpi.importados')}
-            valor={String(r.importados)}
-            icono={CheckCircle2}
-            tono="exito"
-            detalle={t('kpi.importadosDetalle', { creados: r.creados, actualizados: r.actualizados })}
-          />
-          <StatCard etiqueta={t('kpi.omitidos')} valor={String(r.omitidos)} icono={CircleSlash} tono="neutro" detalle={t('kpi.omitidosDetalle')} />
-          <StatCard etiqueta={t('kpi.fallidos')} valor={String(r.fallidos)} icono={XCircle} tono="peligro" />
-          <StatCard etiqueta={t('kpi.sinIntentar')} valor={String(r.sinIntentar)} icono={Clock} tono={r.sinIntentar > 0 ? 'advertencia' : 'neutro'} />
+          <StatCard etiqueta={t('kpi.creados')} valor={String(e.creados)} icono={CheckCircle2} tono="exito" />
+          <StatCard etiqueta={t('kpi.actualizados')} valor={String(e.actualizados)} tono="informacion" />
+          <StatCard etiqueta={t('kpi.conAvisos')} valor={String(conAvisos)} icono={AlertTriangle} tono="advertencia" />
+          <StatCard etiqueta={t('kpi.fallidos')} valor={String(e.fallidos)} icono={XCircle} tono="peligro" detalle={t('kpi.pendientes', { n: Math.max(0, e.total - e.procesadas) })} />
         </KpiStrip>
-        <p className="text-xs tabular-nums text-fg-secondary" aria-live="polite">
-          {t('cuadre', {
-            seleccionados: r.seleccionados,
-            importados: r.importados,
-            omitidos: r.omitidos,
-            fallidos: r.fallidos,
-            sinIntentar: r.sinIntentar,
-          })}
-        </p>
-        {conAvisos > 0 && (
-          <p className="flex items-center gap-1.5 text-xs text-warning-text">
-            <AlertTriangle className="size-3.5" aria-hidden="true" />
-            {t('conAvisosLinea', { n: conAvisos })}
-          </p>
-        )}
+        {e.omitidos > 0 && <p className="text-xs text-fg-secondary">{t('omitidos', { n: e.omitidos })}</p>}
 
         {e.erroresLote.map((x) => (
           <p key={x.lote} className="rounded-lg bg-danger-subtle p-3 text-sm text-danger-text" role="alert">

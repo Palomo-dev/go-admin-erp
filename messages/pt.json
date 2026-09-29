@@ -7449,12 +7449,7 @@
         "actualizados": "Atualizados",
         "conAvisos": "Com avisos",
         "fallidos": "Com falha",
-        "pendientes": "{n, plural, =0 {nenhum pendente} one {# pendente} other {# pendentes}}",
-        "importados": "Importados",
-        "importadosDetalle": "{creados} criados · {actualizados} atualizados",
-        "omitidos": "Ignorados",
-        "omitidosDetalle": "Já existiam",
-        "sinIntentar": "Não tentados"
+        "pendientes": "{n, plural, =0 {nenhum pendente} one {# pendente} other {# pendentes}}"
       },
       "omitidos": "{n, plural, one {# linha ignorada} other {# linhas ignoradas}} pelo modo escolhido.",
       "errorLote": "O lote {n} não pôde ser importado: {mensaje}. Suas linhas ficaram sem importar.",
@@ -7478,9 +7473,7 @@
         "resultado": "Resultado",
         "mensajes": "Mensagens",
         "archivo": "relatorio_importacao_produtos"
-      },
-      "cuadre": "{seleccionados} selecionados · {importados} importados + {omitidos} ignorados + {fallidos} com falha + {sinIntentar} não tentados",
-      "conAvisosLinea": "{n, plural, one {# produto importado com avisos} other {# produtos importados com avisos}}: veja o relatório."
+      }
     },
     "mensajes": {
       "sinNombre": "Falta o nome",
@@ -20210,6 +20203,301 @@
       "producto_no_encontrado": "O produto não existe ou foi excluído.",
       "sin_permiso": "Você não tem permissão para editar receitas.",
       "desconocido": "Ocorreu um erro inesperado. Tente novamente."
+    }
+  },
+  "inventarioVariantes": {
+    "titulo": "Variantes",
+    "migaInventario": "Estoque",
+    "cargando": "Carregando o catálogo…",
+    "subtitulo": "{tipos, plural, one {# tipo} other {# tipos}} · {valores, plural, one {# valor} other {# valores}} · {variantes} variantes",
+    "subtituloMovil": "{tipos, plural, one {# tipo} other {# tipos}} · {valores, plural, one {# valor} other {# valores}}",
+    "nuevoTipo": "Novo tipo",
+    "nuevoValor": "Novo valor",
+    "buscarTipo": "Buscar tipo ou valor",
+    "buscarValor": "Buscar valor ou código",
+    "verResultados": "Ver {n, plural, one {# resultado} other {# resultados}}",
+    "errorCarga": "Não foi possível carregar o catálogo de variantes",
+    "avisoFuera": "{n, plural, one {# atributo usado pelas suas variantes não está} other {# atributos usados pelas suas variantes não estão}} no catálogo: não são oferecidos ao criar variantes nem podem ser ordenados.",
+    "pestanas": {
+      "tipos": "Tipos",
+      "valores": "Valores"
+    },
+    "vista": {
+      "etiqueta": "Visualização dos tipos",
+      "tabla": "Tabela",
+      "tarjetas": "Cartões"
+    },
+    "estilos": {
+      "texto": "Texto",
+      "color": "Amostra de cor",
+      "imagen": "Imagem"
+    },
+    "estados": {
+      "activo": "Ativo",
+      "inactivo": "Inativo",
+      "repetido": "Repetido",
+      "sinUsar": "Sem uso"
+    },
+    "meta": {
+      "ninguno": "Não definido (deduzido pelo nome)",
+      "color": "Cor (color)",
+      "size": "Tamanho (size)",
+      "material": "Material (material)",
+      "pattern": "Estampa (pattern)",
+      "gender": "Gênero (gender)",
+      "age_group": "Idade (age_group)"
+    },
+    "idiomas": {
+      "en": "English",
+      "fr": "Français",
+      "pt": "Português"
+    },
+    "tipo": {
+      "tituloNuevo": "Novo tipo de variante",
+      "tituloEditar": "Editar «{nombre}»",
+      "descripcion": "Tamanho, Cor, Material… Seus valores são oferecidos ao criar variantes.",
+      "nombre": "Nome",
+      "ayudaNombre": "Não diferencia maiúsculas, acentos nem espaços: «tamanho» e «Tamanho» são o mesmo tipo.",
+      "errorNombre": "Digite o nome do tipo.",
+      "errorRepetido": "«{nombre}» já existe. Mescle-os em vez de criar outro.",
+      "fusionarCon": "Mesclar com «{nombre}»",
+      "estilo": "Como aparece no PDV e na loja",
+      "meta": "No catálogo do Facebook corresponde a",
+      "ayudaMeta": "Se você não escolher, é deduzido pelo nome (Cor, Tamanho, Material…).",
+      "traducciones": "Nome em outros idiomas (opcional)",
+      "activo": "Ativo · oferecido ao criar variantes",
+      "guardar": "Salvar alterações",
+      "crear": "Criar tipo"
+    },
+    "valor": {
+      "tituloNuevo": "Novo valor",
+      "tituloNuevoDe": "Novo valor de «{tipo}»",
+      "tituloEditar": "Editar «{valor}»",
+      "descripcion": "É adicionado ao final da ordem; você pode movê-lo depois.",
+      "tipo": "Tipo",
+      "elegirTipo": "Escolha um tipo",
+      "valor": "Valor",
+      "ayudaValor": "Se já existir com outras maiúsculas ou acentos, avisamos para você usar esse.",
+      "errorValor": "Digite o valor.",
+      "errorRepetido": "«{nombre}» já existe neste tipo.",
+      "errorHex": "A cor vai como #RRGGBB (por exemplo #6B7C3A).",
+      "errorSku": "De 1 a 8 letras ou números, sem espaços.",
+      "errorSkuRepetido": "Outro valor do tipo já usa esse código.",
+      "errorTipo": "Escolha o tipo do valor.",
+      "muestra": "Amostra",
+      "hex": "Hex",
+      "muestrasRapidas": "Cores rápidas",
+      "colorPersonalizado": "Escolher outra cor",
+      "sku": "Código para o SKU",
+      "ayudaSku": "Usado ao gerar o SKU da variante: CAM-001-VOL-M. Único dentro do tipo.",
+      "traducciones": "Nome em outros idiomas (opcional)",
+      "guardarYOtro": "Salvar e criar outro",
+      "guardar": "Salvar alterações",
+      "crear": "Criar valor"
+    },
+    "renombrar": {
+      "titulo": "Renomear «{antes}» para «{despues}»?",
+      "descripcionTipo": "É atualizado em {n, plural, one {# variante} other {# variantes}} em uma única operação, com seu histórico. Os SKUs não mudam.",
+      "descripcionValor": "É atualizado em {n, plural, one {# variante} other {# variantes}} em uma única operação, com seu histórico. Os SKUs não mudam.",
+      "confirmar": "Renomear"
+    },
+    "toast": {
+      "tipoCreado": "Tipo «{nombre}» criado",
+      "tipoActualizado": "Tipo atualizado",
+      "tipoRenombrado": "Tipo renomeado em {n, plural, one {# variante} other {# variantes}}",
+      "valorCreado": "«{valor}» adicionado a {tipo}",
+      "valorActualizado": "Valor atualizado",
+      "valorRenombrado": "Valor renomeado em {n, plural, one {# variante} other {# variantes}}",
+      "ordenGuardado": "Ordem salva: é assim que aparecem no PDV, na loja e no formulário",
+      "completado": "Catálogo completado com os atributos das suas variantes",
+      "sugeridos": "Tipos sugeridos adicionados",
+      "activados": "{n, plural, one {# ativado} other {# ativados}}",
+      "desactivados": "{n, plural, one {# desativado: não é mais oferecido ao criar variantes} other {# desativados: não são mais oferecidos ao criar variantes}}",
+      "estilo": "Exibição alterada em {n, plural, one {# tipo} other {# tipos}}",
+      "idCopiado": "ID {id} copiado",
+      "fusionados": "{n, plural, other {# mesclados em um}}",
+      "unificado": "Grafia unificada nas variantes",
+      "eliminados": "{n, plural, one {# excluído} other {# excluídos}}"
+    },
+    "errores": {
+      "sinPermiso": "Você não tem permissão para alterar o catálogo de variantes.",
+      "nombreRepetido": "Já existe um tipo com esse nome (sem diferenciar maiúsculas nem acentos).",
+      "valorRepetido": "Esse valor já existe no tipo.",
+      "skuRepetido": "Outro valor do tipo já usa esse código de SKU.",
+      "enUso": "Variantes o usam: desative-o ou mescle-o em vez de excluí-lo.",
+      "noEncontrado": "Não existe mais: alguém o alterou. Recarregue a página.",
+      "invalido": "Revise os dados: há um campo inválido.",
+      "desconocido": "Não foi possível salvar. Tente novamente."
+    },
+    "fusion": {
+      "tituloTipos": "Mesclar {n, plural, other {# tipos}}",
+      "tituloValores": "Mesclar {n, plural, other {# valores}}",
+      "descripcionTipos": "Escolha qual manter. Suas variantes e valores passam para esse tipo.",
+      "descripcionValores": "Escolha qual manter. As variantes dos demais passam para esse valor.",
+      "conservar": "Manter",
+      "confirmar": "Mesclar",
+      "motivo": "Escolha qual manter (são necessários pelo menos dois).",
+      "variantes": "{n, plural, one {# variante} other {# variantes}}",
+      "impacto": "{n, plural, =0 {Nenhuma variante muda; os demais são removidos do catálogo.} one {# variante passa para «{nombre}»; se uma tiver os dois, «{nombre}» é mantido. Os valores iguais são unidos e os SKUs não mudam.} other {{total} variantes passam para «{nombre}»; se uma tiver os dois, «{nombre}» é mantido. Os valores iguais são unidos e os SKUs não mudam.}}",
+      "detalleTipo": "{n, plural, one {# valor} other {# valores}}"
+    },
+    "ordenar": {
+      "tituloTipos": "Ordenar tipos",
+      "tituloValores": "Ordenar valores de «{tipo}»",
+      "descripcion": "É assim que aparecem no seletor do PDV, na loja e no formulário do produto.",
+      "ayudaTeclado": "Arraste com ⠿, use as setas ou, com o foco em uma linha, Alt + ↑ / ↓.",
+      "natural": "Ordem natural (2 antes de 10)",
+      "cancelar": "Cancelar",
+      "guardar": "Salvar ordem",
+      "anuncio": "«{nombre}» agora na posição {posicion} de {total}",
+      "fila": "{nombre}, posição {posicion} de {total}",
+      "subir": "Subir «{nombre}»",
+      "bajar": "Descer «{nombre}»"
+    },
+    "acciones": {
+      "editarTipo": "Editar tipo",
+      "editarValor": "Editar valor",
+      "verValores": "Ver seus {n, plural, one {# valor} other {# valores}}",
+      "ordenarValores": "Ordenar valores",
+      "ordenar": "Ordenar",
+      "ordenarTipos": "Ordenar tipos",
+      "unificar": "Unificar grafia como «{nombre}»",
+      "estilo": "Mudar como aparece",
+      "estiloDetalle": "Texto · Amostra de cor · Imagem",
+      "fusionarCon": "Mesclar com outro…",
+      "copiarId": "Copiar ID",
+      "desactivar": "Desativar",
+      "desactivarDetalle": "Deixa de ser oferecido ao criar variantes; {n, plural, one {a # existente não muda} other {as # existentes não mudam}}",
+      "activar": "Ativar",
+      "eliminar": "Excluir",
+      "motivoEnUso": "Em uso por {n, plural, one {# variante} other {# variantes}} · desative ou mescle",
+      "subir": "Subir",
+      "bajar": "Descer",
+      "completar": "Adicionar ao catálogo",
+      "completarDetalle": "{n, plural, =0 {Nada pendente} one {# atributo em uso falta no catálogo} other {# atributos em uso faltam no catálogo}}",
+      "sugeridos": "Usar os tipos sugeridos",
+      "sugeridosDetalle": "Tamanho, Cor, Material… com seus valores",
+      "exportar": "Exportar CSV",
+      "actualizar": "Atualizar"
+    },
+    "columnas": {
+      "orden": "Ordem",
+      "tipo": "Tipo",
+      "estilo": "Aparece como",
+      "estado": "Status",
+      "valores": "Valores",
+      "variantes": "Variantes",
+      "valor": "Valor",
+      "muestra": "Amostra",
+      "traducciones": "Traduções"
+    },
+    "filtros": {
+      "estado": "Status",
+      "estilo": "Aparece como",
+      "tipo": "Tipo",
+      "todosLosTipos": "Todos os tipos",
+      "estados": {
+        "todos": "Todos",
+        "activos": "Ativos",
+        "repetidos": "Repetidos",
+        "sinUsar": "Sem uso",
+        "inactivos": "Inativos"
+      }
+    },
+    "kpi": {
+      "etiquetaTipos": "Resumo dos tipos",
+      "etiquetaValores": "Resumo dos valores",
+      "tiposActivos": "Tipos ativos",
+      "tiposActivosDetalle": "{nombres}{mas, plural, =0 {} other { e mais #}}",
+      "ninguno": "Nenhum ainda",
+      "valores": "Valores",
+      "valoresDetalle": "Em {tipos, plural, one {# tipo} other {# tipos}} · {sinOrden, plural, =0 {todos ordenados} one {# tipo sem ordem definida} other {# tipos sem ordem definida}}",
+      "valoresDe": "Em «{tipo}»",
+      "valoresEnTipos": "Em {n, plural, one {# tipo} other {# tipos}}",
+      "repetidos": "Nomes repetidos",
+      "valoresRepetidos": "Valores repetidos",
+      "repetidosDetalle": "{ejemplo} · mesclar",
+      "repetidosNinguno": "Nenhum",
+      "sinUsar": "Sem uso",
+      "sinUsarDetalleTipos": "Sem variantes · desativar ou excluir",
+      "sinUsarDetalleValores": "Nenhuma variante os usa",
+      "sinUsarNinguno": "Todos em uso",
+      "conMuestra": "Com amostra de cor",
+      "conMuestraDetalle": "Hex por valor nos tipos de cor"
+    },
+    "tipos": {
+      "titulo": "Tipos de variante",
+      "igualA": "igual a «{nombre}»",
+      "sinValores": "Sem valores"
+    },
+    "valores": {
+      "titulo": "Valores de variante",
+      "tituloDe": "Valores de «{tipo}»",
+      "igualA": "Igual a «{nombre}» · mesclar",
+      "codigoSku": "Código para SKU: {codigo}",
+      "falta": "Falta {idiomas}",
+      "sinMuestra": "Sem amostra",
+      "avisoColor": "«{tipo}» aparece como amostra de cor: cada valor leva seu hex. Aparece no seletor do PDV e na loja, e vai para o campo cor do catálogo do Facebook. Sem hex, aparece o nome."
+    },
+    "tarjeta": {
+      "meta": "{valores, plural, one {# valor} other {# valores}} · {variantes, plural, one {# variante} other {# variantes}}",
+      "variantes": "{n, plural, one {# variante} other {# variantes}}"
+    },
+    "sustantivo": {
+      "tipo": "tipo",
+      "tipos": "tipos",
+      "valor": "valor",
+      "valores": "valores"
+    },
+    "vacio": {
+      "tipos": {
+        "titulo": "Ainda não há tipos de variante",
+        "descripcion": "Crie Tamanho, Cor ou Material, ou use os sugeridos em «⋯». Eles também são criados ao salvar um produto com variantes."
+      },
+      "valores": {
+        "titulo": "Ainda não há valores",
+        "tituloDe": "«{tipo}» ainda não tem valores",
+        "descripcion": "Adicione os valores oferecidos ao criar variantes (P, M, G…)."
+      }
+    },
+    "sinPermiso": {
+      "titulo": "Você não tem acesso ao catálogo de variantes",
+      "descripcion": "Peça a um administrador a permissão de estoque para vê-lo."
+    },
+    "masivo": {
+      "fusionar": "Mesclar em um",
+      "motivoFusionar": "Selecione pelo menos dois tipos",
+      "motivoFusionarValores": "Selecione pelo menos dois valores do mesmo tipo",
+      "estilo": "Como aparece",
+      "exportar": "Exportar",
+      "desactivar": "Desativar",
+      "activar": "Ativar",
+      "eliminarSinUso": "Excluir os sem uso",
+      "motivoEliminar": "Nenhum dos selecionados está sem uso"
+    },
+    "unificar": {
+      "titulo": "Unificar a grafia como «{nombre}»?",
+      "descripcion": "As variantes que o escrevem {escrituras} ({n, plural, one {# variante} other {# variantes}}) passam para «{nombre}» em uma única operação. Os SKUs não mudam.",
+      "confirmar": "Unificar"
+    },
+    "eliminar": {
+      "tituloTipo": "Excluir o tipo «{nombre}»?",
+      "tituloValor": "Excluir o valor «{nombre}»?",
+      "tituloVarios": "Excluir {n, plural, one {# item} other {# itens}}?",
+      "descripcionTipos": "Só são excluídos tipos sem uso, com seus valores. Nenhuma variante muda.",
+      "descripcionValores": "Só são excluídos valores sem uso. Nenhuma variante muda."
+    },
+    "csv": {
+      "id": "ID",
+      "orden": "Ordem",
+      "tipo": "Tipo",
+      "estilo": "Aparece como",
+      "estado": "Status",
+      "valores": "Valores",
+      "variantes": "Variantes",
+      "valor": "Valor",
+      "hex": "Hex",
+      "sku": "Código SKU"
     }
   }
 }

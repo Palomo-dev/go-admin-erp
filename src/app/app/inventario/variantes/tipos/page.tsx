@@ -1,7 +1,6 @@
-'use client';
+import { redirect } from 'next/navigation';
 
-import { VariantTypesPage } from '@/components/inventario/variantes/tipos';
-
-export default function InventarioVariantesTiposPage() {
-  return <VariantTypesPage />;
+/** Ruta vieja: los tipos viven en la pestaña «Tipos» de /app/inventario/variantes. */
+export default function InventarioVariantesTiposPage(): never {
+  redirect('/app/inventario/variantes');
 }

@@ -77,35 +77,80 @@ describe('devengo de compra con retenciones', () => {
     }
   });
 
+  test('las funciones de configuración y reporte exigen permiso y no se exponen a anon', () => {
+    const sql = migraciones.filter((m) => /retencion|asiento_previo/.test(m.nombre)).map((m) => m.sql).join('\n');
+    for (const firma of [
+      'fn_retenciones_configuracion(integer)',
+      'fn_retencion_configurar(integer, uuid, text, numeric)',
+      'fn_retenciones_cargar_plantilla(integer)',
+      'fn_certificado_retenciones_proveedor(integer, integer, date, date)',
+    ]) {
+      expect(sql).toMatch(new RegExp(String.raw`revoke all on function public\.${firma.replace(/[()]/g, '\\$&')} from public, anon;`));
+    }
+    for (const firma of ['fn_clase_retencion(text, text)', 'fn_retenciones_practicadas_filas(']) {
+      expect(sql).toContain(`revoke all on function public.${firma}`);
+    }
+    expect(ultimaDefinicion('fn_retencion_configurar').cuerpo).toMatch(/fn_impuestos_exigir_gestion\(p_organization_id\)/);
+    expect(ultimaDefinicion('fn_retenciones_cargar_plantilla').cuerpo).toMatch(/fn_impuestos_exigir_gestion\(p_organization_id\)/);
+    expect(ultimaDefinicion('fn_certificado_retenciones_proveedor').cuerpo).toMatch(/fn_finanzas_exigir_permiso/);
+    // Nadie escribe el mapeo desde el cliente: solo fn_retencion_configurar.
+    expect(sql).toMatch(/revoke insert, update, delete, truncate, references, trigger on table public\.tax_account_mapping from anon, authenticated;/);
+  });
+
+  test('el asiento previo usa el disparador real y deshace todo', () => {
+    const { cuerpo } = ultimaDefinicion('fn_factura_compra_asiento_previo');
+    expect(cuerpo).toMatch(/fn_finanzas_exigir_permiso/);
+    expect(cuerpo).toMatch(/fn_fc_acceso_sucursal/);
+    const actualizar = cuerpo.search(/update\s+invoice_purchase\s+set\s+status\s*=\s*'received'/i);
+    const deshacer = cuerpo.search(/raise exception using errcode = 'P0001', message = c_marca/);
+    expect(cuerpo).toMatch(/c_marca constant text := 'PREVIA_ASIENTO_DESHACER'/);
+    expect(actualizar).toBeGreaterThan(-1);
+    expect(deshacer).toBeGreaterThan(actualizar);
+    expect(cuerpo).toMatch(/exception\s+when others/i);
+  });
+
   test('cada migración de retenciones tiene su rollback', () => {
-    const propias = migraciones.filter((m) => /_compras_(asiento_con_retenciones|cuenta_retencion_por_clase)\.sql$/.test(m.nombre));
-    expect(propias).toHaveLength(2);
+    const propias = migraciones.filter((m) =>
+      /_compras_(asiento_con_retenciones|cuenta_retencion_por_clase|retenciones_configuracion|asiento_previo|retenciones_reporte_certificado)\.sql$/.test(m.nombre),
+    );
+    expect(propias).toHaveLength(5);
     for (const m of propias) {
       expect(existsSync(join(DIR_ROLLBACKS, m.nombre.replace(/\.sql$/, '_rollback.sql')))).toBe(true);
     }
   });
 });
 
-describe('cuenta de cada retención (fn_cuenta_retencion_compra)', () => {
+describe('cuenta de cada retención (fn_clase_retencion + fn_cuenta_retencion_compra)', () => {
   const { cuerpo } = ultimaDefinicion('fn_cuenta_retencion_compra');
-  const reglas = [...cuerpo.matchAll(/if v_texto ~ '([^']+)' then return '(\d+)';/g)].map(([, patron, cuenta]) => ({
+  const { cuerpo: cuerpoClase } = ultimaDefinicion('fn_clase_retencion');
+  const reglas = [...cuerpoClase.matchAll(/if v_texto ~ '([^']+)' then return '(\w+)';/g)].map(([, patron, clase]) => ({
     re: new RegExp(patron),
-    cuenta,
+    clase,
   }));
+  const cuentaPorClase: Record<string, string> = Object.fromEntries(
+    [...cuerpo.matchAll(/when '(\w+)' then '(\d+)'/g)].map(([, clase, cuenta]) => [clase, cuenta]),
+  );
+  const cuentaPorDefecto = /else '(\d+)'\s*end;/.exec(cuerpo)?.[1];
 
-  /** Misma lógica que la función: primero el código, luego el concepto; si nada coincide, 2365. */
-  function cuenta(codigo: string | null, concepto: string | null): string {
+  /** Misma lógica que las funciones: primero el código, luego el concepto; si nada coincide, retefuente. */
+  function clase(codigo: string | null, concepto: string | null): string {
     for (const texto of [(codigo ?? '').trim().toUpperCase(), (concepto ?? '').trim().toUpperCase()]) {
       if (!texto) continue;
       const regla = reglas.find((r) => r.re.test(texto));
-      if (regla) return regla.cuenta;
+      if (regla) return regla.clase;
     }
-    return '2365';
+    return 'retefuente';
+  }
+
+  function cuenta(codigo: string | null, concepto: string | null): string {
+    return cuentaPorClase[clase(codigo, concepto)] ?? cuentaPorDefecto ?? '';
   }
 
   test('las reglas salen del SQL, en orden: marcadores inequívocos antes que palabras sueltas', () => {
-    expect(reglas.map((r) => r.cuenta)).toEqual(['2368', '2367', '2365', '2368', '2367']);
-    expect(cuerpo).toMatch(/return '2365';\s*end;?\s*$/);
+    expect(reglas.map((r) => r.clase)).toEqual(['reteica', 'reteiva', 'retefuente', 'reteica', 'reteiva']);
+    expect(cuerpoClase).toMatch(/return 'retefuente';\s*end;?\s*$/);
+    expect(cuentaPorClase).toEqual({ reteica: '2368', reteiva: '2367' });
+    expect(cuentaPorDefecto).toBe('2365');
   });
 
   test.each([
@@ -127,9 +172,11 @@ describe('cuenta de cada retención (fn_cuenta_retencion_compra)', () => {
 
   test('el mapeo contable de la organización manda sobre la clase', () => {
     const mapeo = cuerpo.search(/from tax_account_mapping/);
-    const clases = cuerpo.search(/foreach v_texto/);
+    const clases = cuerpo.search(/fn_clase_retencion\(p_tax_code, p_concept\)/);
     expect(mapeo).toBeGreaterThan(-1);
     expect(clases).toBeGreaterThan(mapeo);
     expect(cuerpo).toMatch(/c\.account_code = m\.account_code/);
+    // Una retención propia sin plantilla se reconoce por su nombre (el concepto de la factura).
+    expect(cuerpo).toMatch(/upper\(btrim\(ot\.name\)\) = v_concepto/);
   });
 });

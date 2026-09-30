@@ -141,7 +141,7 @@ export interface ResultadoLote {
 /** Traduce los errores de la base a un código estable para la UI. */
 export function codigoErrorRpc(mensaje: string): string {
   const m = mensaje.toUpperCase();
-  for (const c of ['SIN_SKU', 'SIN_NOMBRE', 'PADRE_NO_ENCONTRADO', 'STOCK_SIN_COSTO', 'PRECIO_INVALIDO', 'COSTO_INVALIDO', 'STOCK_INVALIDO']) if (m.includes(c)) return c;
+  for (const c of ['SIN_SKU', 'SIN_NOMBRE', 'VARIANTE_PADRE_ELIMINADO', 'PADRE_NO_ENCONTRADO', 'STOCK_SIN_COSTO', 'PRECIO_INVALIDO', 'COSTO_INVALIDO', 'STOCK_INVALIDO']) if (m.includes(c)) return c;
   if (m.includes('DUPLICATE KEY')) return 'DUPLICADO';
   if (m.includes('VIOLATES CHECK') || m.includes('VIOLATES FOREIGN KEY')) return 'DATO_NO_VALIDO';
   return 'ERROR';

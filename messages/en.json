@@ -9639,6 +9639,7 @@
       "SIN_SKU": "SKU is missing",
       "SIN_NOMBRE": "Name is missing",
       "PADRE_NO_ENCONTRADO": "Parent SKU does not exist",
+      "VARIANTE_PADRE_ELIMINADO": "The variant belongs to a deleted product: restore the parent product first",
       "STOCK_SIN_COSTO": "Stock without cost: the stock ledger requires a cost",
       "PRECIO_INVALIDO": "Invalid price",
       "COSTO_INVALIDO": "Invalid cost",
@@ -11357,6 +11358,7 @@
       "sin_permiso": "You don't have permission for this action on products.",
       "producto_no_encontrado": "The product doesn't exist or doesn't belong to your organization.",
       "variante_no_encontrada": "The variant doesn't exist.",
+      "variante_padre_eliminado": "The parent product is deleted: restore it before activating or creating its variants.",
       "sku_requerido": "SKU is required.",
       "sku_duplicado": "A product with SKU {detalle} already exists.",
       "sku_variante_repetido": "Two variants (or a variant and the product) have the same SKU.",
@@ -12444,6 +12446,32 @@
       "guardada": "Data processing policy saved",
       "quitada": "Data processing policy removed",
       "errorGuardar": "Could not save the policy"
+    },
+    "numerosPrueba": {
+      "titulo": "Test numbers",
+      "descripcion": "Your own team's numbers for testing the voice agent. They are exempt only from the one-contact-per-channel-per-week limit of Colombian Law 2300 of 2023.",
+      "aviso": "Only add numbers of team members who have given their consent. Never customer or prospect numbers.",
+      "avisoSigue": "Everything else still applies: the legal time window (Monday to Friday 7:00–19:00, Saturday 8:00–15:00, never Sundays or holidays), the excluded and opted-out numbers, the agent's and campaign's daily limits, and the available minutes.",
+      "etiquetaNumero": "Number (international format)",
+      "etiquetaNombre": "Whose number (optional)",
+      "placeholderNombre": "e.g. sales mobile",
+      "agregar": "Add",
+      "agregando": "Adding…",
+      "quitar": "Remove",
+      "quitarAria": "Remove number {numero}",
+      "vacio": "No test numbers yet.",
+      "contador": "{usados} of {max} numbers",
+      "lleno": "You reached the maximum number of test numbers. Remove one to add another.",
+      "invalido": "Enter a valid number, for example +57 300 000 0000.",
+      "agregado": "Test number added",
+      "quitado": "Test number removed",
+      "errorAgregar": "Could not add the number",
+      "errorQuitar": "Could not remove the number",
+      "errorCargar": "Could not load the test numbers",
+      "reintentar": "Retry",
+      "cargando": "Loading test numbers…",
+      "soloAdmin": "Only an organization administrator can view and manage test numbers.",
+      "agregadoEl": "Added on {fecha}"
     }
   },
   "vozRne": {
@@ -13251,6 +13279,7 @@
     "precioNoConsultado": "“{producto}” was not added: its price could not be loaded. Check the connection and try again.",
     "errores": {
       "producto_invalido": "A line has a product that does not belong to this organization. Remove it and add it again. {detalle}",
+      "producto_eliminado": "A product in this sale was deleted from inventory: remove it from the sale. If the sale was made before it was deleted, restore it in Inventory and retry. {detalle}",
       "descuento_excede_linea": "A line's discount is greater than its value. Fix the discount. {detalle}",
       "modificador_invalido": "A modifier on the line is no longer set up for the product. Remove the line and add it again. {detalle}",
       "precio_no_vigente": "A product has no current price: set its price in Inventory. {detalle}",
@@ -15436,6 +15465,7 @@
       "cliente_invalido": "The customer does not belong to the organization.",
       "linea_invalida": "Check the lines: description, quantity and price.",
       "producto_invalido": "A product on the invoice does not belong to the organization.",
+      "producto_eliminado": "A product on the invoice was deleted from inventory: remove it or restore it in Inventory.",
       "vendedor_invalido": "The salesperson is not a member of the organization."
     },
     "listado": {

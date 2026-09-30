@@ -29,6 +29,9 @@
  *     `src/__tests__/timezone/horaOficialGuardrails.test.ts` (corre con `npm test`
  *     y con `npm run test:tz-all`). El navegador no escribe la marca de tiempo del
  *     hecho (sale_date, opened_at, closed_at…) con el reloj del equipo.
+ * 39. Variantes de un padre eliminado: src/ no elimina productos por RPC legadas
+ *     ni con UPDATE directo, y toda función nueva que lea stock_levels + products
+ *     lleva el predicado `pp_elim` (docs/inventario/VARIANTES-HUERFANAS.md).
  */
 
 import * as fs from 'fs';
@@ -36,6 +39,11 @@ import * as path from 'path';
 import { DB_CHECK_ENUMS } from '@/lib/crm/enums';
 import { DRAIN_INTERVAL_MIN, DRAIN_SCHEDULE, JOBS_RUN_PATH, JOBS_RUN_SCHEDULES, VERCEL_SCHEDULE_KINDS } from '@/lib/jobs/schedule';
 import { ORIGENES_MOVIMIENTO_STOCK, esOrigenMovimientoValido } from '@/lib/inventario/origenesMovimientoStock';
+import { VENTAS_TOOLS } from '@/lib/ai/agent/tools/ventas';
+import { COMPRAS_TOOLS } from '@/lib/ai/agent/tools/compras';
+import { CARGA_MASIVA_TOOLS } from '@/lib/ai/agent/tools/cargaMasiva';
+import { FACTURAS_TOOLS } from '@/lib/ai/agent/tools/facturas';
+import { ACTION_CATALOG } from '@/lib/ai/assistant/actionCatalog';
 
 const SRC_ROOT = path.resolve(__dirname, '..');
 const REPO_ROOT = path.resolve(SRC_ROOT, '..');
@@ -3348,5 +3356,320 @@ describe('38. get_user_permission_codes: solo los permisos propios', () => {
     expect(sql).toMatch(/check_user_permission\(v_uid, p_organization_id, 'users\.view'\)/);
     expect(sql).toMatch(/set search_path to 'public', 'pg_temp'/);
     expect(sql).toMatch(/revoke execute on function public\.get_user_permission_codes\(uuid, integer\) from public, anon/);
+  });
+});
+
+/**
+ * 39. Variantes de un padre eliminado (docs/inventario/VARIANTES-HUERFANAS.md).
+ *
+ * El 2026-09-30 había 2.084 variantes vivas bajo 398 padres eliminados: eliminar
+ * un padre no tocaba sus variantes y el stock y el inicio las contaban (la org 137
+ * veía «226 agotados» y la lista de Productos, 0). Desde 20260930233000 la baja
+ * cae en cascada por un disparador sobre products.status, y desde 20260930233100
+ * las lecturas de inventario/POS/reportes llevan el predicado `pp_elim`.
+ *
+ * - Nadie en src/ elimina productos por las RPC legadas ni con un UPDATE directo:
+ *   el camino es fn_producto_cambiar_estado / fn_productos_estado_masivo /
+ *   fn_producto_variante_estado (permiso en el servidor; el disparador hace el resto).
+ * - Toda función nueva que lea stock_levels junto con products lleva `pp_elim`
+ *   (o entra en la allow-list con su motivo).
+ */
+describe('39. Variantes de un padre eliminado: baja en cascada y lecturas sin huérfanas', () => {
+  const DIR = path.join(REPO_ROOT, 'supabase', 'migrations');
+  const DESDE = '20260930233100';
+  /** Funciones que leen stock y productos y NO deben excluir huérfanas, con motivo. */
+  const PERMITIDAS: Record<string, string> = {};
+
+  function funcionesSinPredicado(sql: string): string[] {
+    const limpio = sql.replace(/--.*$/gm, '');
+    const re = /create\s+or\s+replace\s+function\s+public\.(\w+)\s*\(/gi;
+    const inicios = [...limpio.matchAll(re)].map((m) => ({ nombre: m[1], i: m.index ?? 0 }));
+    return inicios
+      .map((f, k) => ({ nombre: f.nombre, cuerpo: limpio.slice(f.i, inicios[k + 1]?.i ?? undefined) }))
+      .filter((f) => /\bstock_levels\b/.test(f.cuerpo) && /\bproducts\b/.test(f.cuerpo) && !/\bpp_elim\b/.test(f.cuerpo))
+      .map((f) => f.nombre);
+  }
+
+  test('las tres migraciones existen con su rollback', () => {
+    for (const m of [
+      '20260930233000_inv_variantes_baja_en_cascada',
+      '20260930233100_inv_variantes_huerfanas_lecturas',
+      '20260930233200_inv_variantes_huerfanas_limpieza',
+    ]) {
+      expect(fs.existsSync(path.join(DIR, `${m}.sql`))).toBe(true);
+      expect(fs.existsSync(path.join(REPO_ROOT, 'supabase', 'rollbacks', `${m}_rollback.sql`))).toBe(true);
+    }
+  });
+
+  test('el detector reconoce una lectura de stock sin el predicado y acepta la que lo lleva', () => {
+    const sin = "create or replace function public.x(p integer) returns int as $$ select count(*) from stock_levels sl join products p on p.id = sl.product_id $$;";
+    const con = sin.replace('$$;', '') + " where not exists (select 1 from public.products pp_elim where pp_elim.id = p.parent_product_id and pp_elim.status = 'deleted') $$;";
+    expect(funcionesSinPredicado(sin)).toEqual(['x']);
+    expect(funcionesSinPredicado(con)).toEqual([]);
+  });
+
+  test('ninguna función nueva que lea stock y productos olvida excluir variantes de un padre eliminado', () => {
+    const ofensores: string[] = [];
+    for (const f of fs.readdirSync(DIR).filter((n) => n.endsWith('.sql') && n.slice(0, 14) > DESDE).sort()) {
+      for (const nombre of funcionesSinPredicado(readFile(path.join(DIR, f)))) {
+        if (!PERMITIDAS[nombre]) ofensores.push(`${f}: ${nombre}`);
+      }
+    }
+    expect(ofensores).toEqual([]);
+  });
+
+  test('src/ no elimina productos por las RPC legadas ni con un UPDATE directo', () => {
+    const ofensores: string[] = [];
+    for (const f of walkDir(SRC_ROOT)) {
+      if (/__tests__|\.test\.tsx?$/.test(f)) continue;
+      const src = stripAllComments(readFile(f));
+      if (/rpc\(\s*['"](soft_delete_product|deactivate_product)['"]/.test(src)) ofensores.push(`${rel(f)}: RPC legada`);
+      if (/\.from\(\s*['"]products['"]\s*\)[\s\S]{0,300}?\.update\(\s*\{[^}]*status\s*:\s*['"]deleted['"]/.test(src)) {
+        ofensores.push(`${rel(f)}: UPDATE directo a deleted`);
+      }
+    }
+    expect(ofensores).toEqual([]);
+  });
+});
+
+/**
+ * 40. Una línea NUEVA de venta no lleva un producto eliminado
+ *     (docs/inventario/VARIANTES-HUERFANAS.md, «RPC legadas y POS»).
+ *
+ * Desde 20260930234100 el punto único es fn_producto_exigir_vendible (producto o
+ * padre con status 'deleted' → producto_eliminado, salvo línea anterior a la baja).
+ * Lo llaman fn_pos_validar_linea_venta (pos_checkout_v1: mostrador, crédito, sin
+ * conexión y mesas), el alta de fn_factura_venta_guardar y las dos RPC de GO
+ * Assistant. Toda función nueva que inserte en sale_items debe pasar por él (o por
+ * el validador del POS), o entrar en la allow-list con su motivo.
+ */
+describe('40. Ventas: ninguna función nueva inserta líneas sin comprobar que el producto no está eliminado', () => {
+  const DIR = path.join(REPO_ROOT, 'supabase', 'migrations');
+  const DESDE = '20260930234100';
+  /** Funciones que insertan sale_items sin la comprobación, con motivo. */
+  const PERMITIDAS: Record<string, string> = {};
+
+  function funcionesSinComprobar(sql: string): string[] {
+    const limpio = sql.replace(/--.*$/gm, '');
+    const re = /create\s+or\s+replace\s+function\s+public\.(\w+)\s*\(/gi;
+    const inicios = [...limpio.matchAll(re)].map((m) => ({ nombre: m[1], i: m.index ?? 0 }));
+    return inicios
+      .map((f, k) => ({ nombre: f.nombre, cuerpo: limpio.slice(f.i, inicios[k + 1]?.i ?? undefined) }))
+      .filter((f) => /insert\s+into\s+(public\.)?sale_items\b/i.test(f.cuerpo))
+      .filter((f) => !/\b(fn_producto_exigir_vendible|fn_pos_validar_linea_venta)\b/.test(f.cuerpo))
+      .map((f) => f.nombre);
+  }
+
+  test('las dos migraciones existen con su rollback', () => {
+    for (const m of ['20260930234000_inv_rpc_legadas_baja_producto_permiso', '20260930234100_pos_rechaza_producto_eliminado']) {
+      expect(fs.existsSync(path.join(DIR, `${m}.sql`))).toBe(true);
+      expect(fs.existsSync(path.join(REPO_ROOT, 'supabase', 'rollbacks', `${m}_rollback.sql`))).toBe(true);
+    }
+  });
+
+  test('el detector reconoce un insert en sale_items sin la comprobación y acepta el que la lleva', () => {
+    const sin = 'create or replace function public.x(p integer) returns void as $$ begin insert into public.sale_items (sale_id) values (null); end $$;';
+    const con = sin.replace('begin', 'begin perform public.fn_producto_exigir_vendible(1, 2, now());');
+    expect(funcionesSinComprobar(sin)).toEqual(['x']);
+    expect(funcionesSinComprobar(con)).toEqual([]);
+  });
+
+  test('ninguna migración nueva inserta sale_items sin fn_producto_exigir_vendible', () => {
+    const ofensores: string[] = [];
+    for (const f of fs.readdirSync(DIR).filter((n) => n.endsWith('.sql') && n.slice(0, 14) >= DESDE).sort()) {
+      for (const nombre of funcionesSinComprobar(readFile(path.join(DIR, f)))) {
+        if (!PERMITIDAS[nombre]) ofensores.push(`${f}: ${nombre}`);
+      }
+    }
+    expect(ofensores).toEqual([]);
+  });
+
+  test('el código de error llega traducido al POS', () => {
+    const src = readFile(path.join(REPO_ROOT, 'src', 'lib', 'pos', 'erroresCobro.ts'));
+    expect(src).toContain("'producto_eliminado'");
+  });
+});
+
+/**
+ * 41. RPC assistant_* del GO Asistente: ni anon, ni organización ni usuario del llamador
+ *     (docs/ia-chat/GO-ASISTENTE-FIGMA-A-CODIGO.md, «Endurecimiento de las RPC
+ *     assistant_* (2026-09-30)»).
+ *
+ * Desde 20260930235000 toda assistant_* empieza por public.fn_assistant_exigir(org,
+ * usuario, códigos): con sesión exige p_user_id = auth.uid(), pertenencia y permiso
+ * (admin o alguno de los códigos); sin sesión, solo service_role. EXECUTE revocado a
+ * public y anon. Lo que este bloque impide:
+ *   - una assistant_* nueva (o redefinida) sin la guarda o sin su revoke de anon;
+ *   - un GRANT a anon sobre una assistant_*;
+ *   - que la herramienta del asistente admita un permiso que la base rechaza (el
+ *     asistente ofrecería la acción y fallaría al confirmarla);
+ *   - que src/ llame a una assistant_* que no pasó por la guarda.
+ */
+describe('41. GO Asistente: toda RPC assistant_* lleva fn_assistant_exigir y no es ejecutable por anon', () => {
+  const DIR = path.join(REPO_ROOT, 'supabase', 'migrations');
+  const DESDE = '20260930235000';
+  const MIGRACION = '20260930235000_assistant_rpc_endurecimiento';
+
+  /** Qué RPC alcanza cada herramienta (directa, anidada o al deshacer). */
+  const RPC_POR_HERRAMIENTA: Record<string, string[]> = {
+    registrar_venta: ['assistant_register_sale'],
+    crear_ajuste_inventario: ['assistant_create_adjustment'],
+    crear_orden_compra: ['assistant_create_purchase_order'],
+    crear_traslado: ['assistant_create_transfer'],
+    cargar_productos_masivo: ['assistant_bulk_load_products', 'assistant_create_product', 'assistant_set_product_price', 'assistant_create_adjustment'],
+    registrar_factura_compra: ['assistant_register_purchase_invoice', 'assistant_void_purchase_invoice'],
+    registrar_factura_venta: ['assistant_register_sales_invoice', 'assistant_void_sales_invoice'],
+    create_product: ['assistant_create_product'],
+    update_product_price: ['assistant_set_product_price'],
+  };
+
+  /**
+   * Códigos exigidos por la guarda de cada assistant_*, tal como los deja la última
+   * migración que la toca. Reconoce el parche sobre la definición viva (bloque
+   * `v_oid … v_new`) y la definición completa (`create or replace function`).
+   */
+  function codigosDeLaGuarda(sql: string): Record<string, string[] | null> {
+    const limpio = sql.replace(/^\s*--.*$/gm, '');
+    const inicio = /(?:v_oid\s+oid\s*:=\s*'public\.|create\s+or\s+replace\s+function\s+public\.)(assistant_\w+)\s*\(/gi;
+    const marcas = [...limpio.matchAll(inicio)].map((m) => ({ nombre: m[1].toLowerCase(), i: m.index ?? 0 }));
+    const out: Record<string, string[] | null> = {};
+    marcas.forEach((m, k) => {
+      let cuerpo = limpio.slice(m.i, marcas[k + 1]?.i ?? undefined);
+      // En el parche cuenta el fragmento NUEVO (en el rollback, v_new es el viejo).
+      const nuevo = /v_new\s+text\s*:=\s*\$frag\$([\s\S]*?)\$frag\$/i.exec(cuerpo);
+      if (nuevo) cuerpo = nuevo[1];
+      const g = /fn_assistant_exigir\s*\(\s*p_organization_id\s*,\s*(?:p_user_id|auth\.uid\(\))\s*,\s*array\[([^\]]*)\]\s*\)/i.exec(cuerpo);
+      out[m.nombre] = g ? [...g[1].matchAll(/'([^']+)'/g)].map((x) => x[1]) : null;
+    });
+    return out;
+  }
+
+  function migracionesDesde(): string[] {
+    return fs.readdirSync(DIR).filter((n) => n.endsWith('.sql') && n.slice(0, 14) >= DESDE).sort();
+  }
+
+  function guardasVigentes(): Record<string, string[] | null> {
+    const out: Record<string, string[] | null> = {};
+    for (const f of migracionesDesde()) Object.assign(out, codigosDeLaGuarda(readFile(path.join(DIR, f))));
+    return out;
+  }
+
+  test('la migración existe con su rollback, y el rollback borra la guarda', () => {
+    expect(fs.existsSync(path.join(DIR, `${MIGRACION}.sql`))).toBe(true);
+    const rb = path.join(REPO_ROOT, 'supabase', 'rollbacks', `${MIGRACION}_rollback.sql`);
+    expect(fs.existsSync(rb)).toBe(true);
+    expect(readFile(rb)).toMatch(/drop\s+function\s+if\s+exists\s+public\.fn_assistant_exigir/i);
+  });
+
+  test('el detector lee el parche y la definición completa, y marca la que no lleva guarda', () => {
+    const parche = "v_oid oid := 'public.assistant_x(integer)'::regprocedure; v_old text := $frag$\nbegin\n$frag$; v_new text := $frag$\nbegin\n  perform public.fn_assistant_exigir(p_organization_id, p_user_id, array['pos.create']);\n$frag$;";
+    const completa = "create or replace function public.assistant_y(p integer) returns void as $$ begin perform public.fn_assistant_exigir(p_organization_id, auth.uid(), array['a', 'b']); end $$;";
+    const sin = 'create or replace function public.assistant_z(p integer) returns void as $$ begin null; end $$;';
+    expect(codigosDeLaGuarda(parche + completa + sin)).toEqual({ assistant_x: ['pos.create'], assistant_y: ['a', 'b'], assistant_z: null });
+  });
+
+  test('las once assistant_* conocidas quedan con guarda', () => {
+    const vigentes = guardasVigentes();
+    const esperadas = [...new Set(Object.values(RPC_POR_HERRAMIENTA).flat())].sort();
+    for (const fn of esperadas) expect([fn, vigentes[fn]]).toEqual([fn, expect.any(Array)]);
+    expect(Object.keys(vigentes).sort()).toEqual(esperadas);
+  });
+
+  test('ninguna migración nueva define una assistant_* sin guarda ni sin revocar anon, ni le da EXECUTE a anon', () => {
+    const ofensores: string[] = [];
+    for (const f of migracionesDesde()) {
+      const sql = readFile(path.join(DIR, f));
+      const sinComentarios = sql.replace(/^\s*--.*$/gm, '');
+      for (const [nombre, codigos] of Object.entries(codigosDeLaGuarda(sql))) {
+        if (!codigos || codigos.length === 0) ofensores.push(`${f}: ${nombre} sin fn_assistant_exigir`);
+        const revoke = new RegExp(`revoke\\s+execute\\s+on\\s+function\\s+public\\.${nombre}\\s*\\([^)]*\\)\\s+from\\s+public\\s*,\\s*anon`, 'i');
+        if (!revoke.test(sinComentarios)) ofensores.push(`${f}: ${nombre} sin revoke de public y anon`);
+      }
+      for (const m of sinComentarios.matchAll(/grant\s+[^;]*\bon\s+function\s+public\.(assistant_\w+)[^;]*\bto\s+[^;]*\banon\b/gi)) {
+        ofensores.push(`${f}: GRANT a anon sobre ${m[1]}`);
+      }
+    }
+    expect(ofensores).toEqual([]);
+  });
+
+  test('la base admite todo permiso que la herramienta del asistente admite (no ofrece lo que luego rechaza)', () => {
+    const vigentes = guardasVigentes();
+    const herramientas: Array<{ name: string; permissions: readonly string[] }> = [
+      ...VENTAS_TOOLS, ...COMPRAS_TOOLS, ...CARGA_MASIVA_TOOLS, ...FACTURAS_TOOLS,
+      ...Object.values(ACTION_CATALOG).map((d) => ({ name: d.type, permissions: d.permissions })),
+    ];
+    const faltan: string[] = [];
+    for (const [herramienta, rpcs] of Object.entries(RPC_POR_HERRAMIENTA)) {
+      const t = herramientas.find((h) => h.name === herramienta);
+      expect([herramienta, Boolean(t)]).toEqual([herramienta, true]);
+      for (const rpc of rpcs) {
+        for (const codigo of t!.permissions) {
+          if (!(vigentes[rpc] ?? []).includes(codigo)) faltan.push(`${herramienta} → ${rpc}: ${codigo}`);
+        }
+      }
+    }
+    expect(faltan).toEqual([]);
+  });
+
+  test('ninguna herramienta que registra facturas se conforma con finance.view', () => {
+    for (const t of FACTURAS_TOOLS) {
+      expect([t.name, t.permissions.includes('finance.view')]).toEqual([t.name, false]);
+    }
+  });
+
+  test('src/ solo llama a assistant_* que pasaron por la guarda', () => {
+    const vigentes = guardasVigentes();
+    const llamadas = new Set<string>();
+    for (const f of walkDir(SRC_ROOT)) {
+      if (f.includes('__tests__')) continue;
+      for (const m of readFile(f).matchAll(/\.rpc\(\s*['"`](assistant_\w+)['"`]/g)) llamadas.add(m[1]);
+    }
+    expect(llamadas.size).toBeGreaterThan(0);
+    expect([...llamadas].filter((n) => !vigentes[n]).sort()).toEqual([]);
+  });
+});
+
+// === Caso 42: números de prueba del agente de voz — exención en UN punto ===
+//
+// 2026-09-30. Un número de prueba interno (`crm_voice_test_numbers`) exime SOLO
+// del tope semanal de la Ley 2300. Si la consulta de la exención se colara en
+// otro sitio (el despachador, la cola, una ruta), podría acabar eximiendo de la
+// franja horaria, del RNE o de los topes diarios. Por eso: la RPC la llama solo
+// `numerosPrueba.ts`, `esNumeroPrueba` lo usa solo `cumplimiento.ts`, y
+// `evaluarTopeSemanal` solo se invoca dentro de `decidirContactoLey2300`, que
+// evalúa el horario SIEMPRE, con o sin exención.
+describe('42. Voz: la exención por número de prueba vive en un solo punto y no toca el horario', () => {
+  const produccion = () => walkDir(SRC_ROOT).filter((f) => !isExcluded(f));
+
+  test('solo numerosPrueba.ts llama a fn_voz_es_numero_prueba y solo cumplimiento.ts usa esNumeroPrueba', () => {
+    const rpc: string[] = [];
+    const uso: string[] = [];
+    for (const f of produccion()) {
+      const src = stripAllComments(readFile(f));
+      if (/fn_voz_es_numero_prueba/.test(src)) rpc.push(rel(f));
+      if (/\besNumeroPrueba\s*\(/.test(src)) uso.push(rel(f));
+    }
+    expect(rpc).toEqual(['lib/services/crm/voiceAgent/numerosPrueba.ts']);
+    expect(uso.sort()).toEqual(['lib/services/crm/voiceAgent/cumplimiento.ts', 'lib/services/crm/voiceAgent/numerosPrueba.ts']);
+  });
+
+  test('evaluarTopeSemanal solo se invoca desde decidirContactoLey2300, que siempre evalúa la franja horaria', () => {
+    const llamadas: string[] = [];
+    for (const f of produccion()) {
+      const src = stripAllComments(readFile(f));
+      llamadas.push(...Array.from(src.matchAll(/\bevaluarTopeSemanal\s*\(/g), () => rel(f)));
+    }
+    // La definición y la única invocación, ambas en ley2300.ts.
+    expect(llamadas).toEqual(['lib/services/crm/voiceAgent/ley2300.ts', 'lib/services/crm/voiceAgent/ley2300.ts']);
+    const ley = stripAllComments(readFile(path.join(SRC_ROOT, 'lib/services/crm/voiceAgent/ley2300.ts')));
+    const cuerpo = ley.slice(ley.indexOf('export function decidirContactoLey2300'), ley.indexOf('export function describirMotivoLey2300'));
+    // La franja se evalúa FUERA del bloque condicionado a la exención.
+    expect(cuerpo).toMatch(/\n  if \(!ventanaLey2300Abierta\(p\.ahora, zona\)\)/);
+  });
+
+  test('la tabla no se escribe con el cliente de servicio: la ruta usa la sesión y la RLS vuelve a exigir admin', () => {
+    const ruta = stripAllComments(readFile(path.join(SRC_ROOT, 'app/api/crm/settings/telephony/test-numbers/route.ts')));
+    expect(ruta).not.toMatch(/getServiceClient|createServiceClient|service_role/);
+    expect((ruta.match(/\{\s*admin:\s*true\s*\}/g) ?? []).length).toBe(3);
   });
 });

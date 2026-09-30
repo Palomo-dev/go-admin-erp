@@ -443,9 +443,11 @@ export async function scheduleCallback(
   if (!Number.isFinite(when)) return { success: false, error: 'Fecha inválida' };
   if (!ctx.voiceAgentCallId) return { success: false, error: 'No hay llamada en curso' };
 
+  if (when <= Date.now()) return { success: false, error: 'La hora de la devolución ya pasó' };
+
   const { data: current, error: curError } = await ctx.supabase
     .from('voice_agent_calls')
-    .select('voice_agent_id, campaign_id, customer_id, opportunity_id, stage_agent_id')
+    .select('status, voice_agent_id, campaign_id, customer_id, opportunity_id, stage_agent_id')
     .eq('id', ctx.voiceAgentCallId)
     .eq('organization_id', ctx.orgId)
     .maybeSingle();
@@ -453,6 +455,23 @@ export async function scheduleCallback(
   if (!current) return { success: false, error: 'Llamada no encontrada' };
 
   const row = current as Record<string, unknown>;
+  const outcome = args.reason ? `callback: ${args.reason}`.slice(0, 500) : 'callback';
+
+  // Durante la llamada la fila sigue viva y el índice «una viva por cliente»
+  // rechaza otra `pending` del mismo cliente. Se guarda la hora en la propia
+  // llamada y el trigger `trg_vac_encolar_devolucion` (migración 20260930240000)
+  // crea la fila `pending` cuando la llamada se cierra.
+  if (row.status === 'pending' || row.status === 'queued' || row.status === 'in_progress') {
+    const scheduledAt = new Date(when).toISOString();
+    const { error: updError } = await ctx.supabase
+      .from('voice_agent_calls')
+      .update({ callback_at: scheduledAt, outcome, updated_at: new Date().toISOString() })
+      .eq('id', ctx.voiceAgentCallId)
+      .eq('organization_id', ctx.orgId);
+    if (updError) return { success: false, error: updError.message };
+    return { success: true, data: { scheduled_at: scheduledAt }, say: 'Perfecto, le devolvemos la llamada en ese momento.' };
+  }
+
   const { data: created, error } = await ctx.supabase
     .from('voice_agent_calls')
     .insert({
@@ -464,7 +483,7 @@ export async function scheduleCallback(
       stage_agent_id: row.stage_agent_id,
       status: 'pending',
       scheduled_at: new Date(when).toISOString(),
-      outcome: args.reason ? `callback: ${args.reason}` : 'callback',
+      outcome,
     })
     .select('id, scheduled_at')
     .single();

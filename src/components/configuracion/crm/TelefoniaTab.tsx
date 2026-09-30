@@ -18,6 +18,7 @@ import { RecordingConsentSection } from './telefonia/RecordingConsentSection';
 import { MyMobileSection } from './telefonia/MyMobileSection';
 import { VoiceAgentSwitchSection } from './telefonia/VoiceAgentSwitchSection';
 import { DataPolicySection } from './telefonia/DataPolicySection';
+import { TestNumbersSection } from './telefonia/TestNumbersSection';
 
 export function TelefoniaTab() {
   const t = useTelephonySettings();
@@ -106,6 +107,9 @@ export function TelefoniaTab() {
             canEdit={t.canEdit}
             onPatchSettings={t.patchSettings}
           />
+          <Separator />
+          {/* Números del equipo exentos SOLO del tope semanal de la Ley 2300 (para probar el agente). */}
+          <TestNumbersSection />
           <Separator />
           <RecordingConsentSection key={t.settings.organization_id} settings={t.settings} canEdit={t.canEdit} onPatchSettings={t.patchSettings} />
           <Separator />

@@ -85,6 +85,14 @@ interface Escenario {
   rne?: unknown[];
   excluido?: boolean;
   contactosSemana?: Array<{ canal: string; contactos: number }>;
+  /** El teléfono del cliente está en `crm_voice_test_numbers` (vigente). */
+  numeroPrueba?: boolean;
+  /** `fn_can_contact` responde false (baja voluntaria). */
+  sinConsentimiento?: boolean;
+  /** `deduct_comm_credits` responde false (sin minutos). */
+  sinCreditos?: boolean;
+  /** Intentos ya anotados hoy en el libro (topes diarios/horarios). */
+  intentosHoy?: number;
 }
 
 function escenario(e: Escenario = {}) {
@@ -115,7 +123,8 @@ function escenario(e: Escenario = {}) {
       }
       if (op.table === 'crm_excluded_numbers') return { data: e.excluido ? [{ id: 'x', phone_e164: '+573001112233' }] : [] };
       if (op.table === 'voice_agents') return { data: { is_active: true, max_calls_per_day: 50, max_calls_per_hour: 20, retry_policy: {} } };
-      if ((op.table === 'voice_agent_call_attempts' || op.table === 'voice_agent_calls') && op.head) return { count: 0 };
+      if (op.table === 'voice_agent_call_attempts' && op.head) return { count: e.intentosHoy ?? 0 };
+      if (op.table === 'voice_agent_calls' && op.head) return { count: 0 };
       if (op.table === 'voice_agent_calls' && op.verb === 'select') return { data: [] };
       if (op.table === 'opportunities') return { data: [] };
       if (op.table === 'customers') return { data: { id: 'cust-1', phone: '3001112233', timezone: 'America/Bogota' } };
@@ -124,8 +133,9 @@ function escenario(e: Escenario = {}) {
     },
     (name) => {
       if (name === 'fn_claim_voice_agent_calls') return { data: [fila] };
-      if (name === 'fn_can_contact') return { data: true };
-      if (name === 'deduct_comm_credits') return { data: true };
+      if (name === 'fn_can_contact') return { data: !e.sinConsentimiento };
+      if (name === 'deduct_comm_credits') return { data: !e.sinCreditos };
+      if (name === 'fn_voz_es_numero_prueba') return { data: e.numeroPrueba === true };
       if (name === 'fn_contactos_efectivos_semana') return { data: e.contactosSemana ?? [] };
       return { data: null };
     }
@@ -223,5 +233,100 @@ describe('Compuertas legales del despachador de voz', () => {
     const r = await runCampaignQueue(7, base.client);
     expect(r.calls_initiated).toBe(0);
     expect(twilioCreate).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Números de prueba internos (`crm_voice_test_numbers`): eximen SOLO del tope
+ * semanal de la Ley 2300. Todo lo demás se ejercita por el mismo camino real.
+ */
+describe('Número de prueba interno: exime solo del tope semanal', () => {
+  const SEMANA_LLENA = [{ canal: 'voice', contactos: 1 }, { canal: 'email', contactos: 1 }];
+  const insertCalls = (ops: Op[]) => ops.find((o) => o.table === 'calls' && o.verb === 'insert')?.payload as Record<string, unknown> | undefined;
+  const cierre = (ops: Op[]) =>
+    ops.find((o) => o.table === 'voice_agent_calls' && o.verb === 'update' && (o.payload as Record<string, unknown>).status === 'skipped')
+      ?.payload as Record<string, unknown> | undefined;
+
+  test('con la semana llena, un número de prueba se marca, no se cuentan contactos y la llamada queda marcada', async () => {
+    const { client, ops, rpcs } = escenario({ numeroPrueba: true, contactosSemana: SEMANA_LLENA });
+    const r = await runCampaignQueue(7, client);
+    expect(r.calls_initiated).toBe(1);
+    expect(twilioCreate).toHaveBeenCalledTimes(1);
+    expect(rpcs.find((c) => c.name === 'fn_voz_es_numero_prueba')?.args).toEqual({ p_org: 7, p_phone: '+573001112233' });
+    expect(rpcs.some((c) => c.name === 'fn_contactos_efectivos_semana')).toBe(false);
+    expect((insertCalls(ops)?.metadata as Record<string, unknown>).ley2300_exencion).toBe('numero_prueba');
+  });
+
+  test('la misma semana llena con un número que NO es de prueba sigue reprogramándose, sin marca', async () => {
+    const { client, ops } = escenario({ numeroPrueba: false, contactosSemana: SEMANA_LLENA });
+    expect((await runCampaignQueue(7, client)).calls_initiated).toBe(0);
+    expect(reprogramacion(ops)).toMatchObject({ last_error_code: 'LEY2300' });
+    expect(insertCalls(ops)).toBeUndefined();
+  });
+
+  test('una llamada normal (sin exención) no lleva la marca', async () => {
+    const { client, ops } = escenario();
+    expect((await runCampaignQueue(7, client)).calls_initiated).toBe(1);
+    expect(insertCalls(ops)?.metadata).not.toHaveProperty('ley2300_exencion');
+  });
+
+  test('NO exime de la franja horaria: sábado 15:30 se reprograma al martes 07:00', async () => {
+    jest.setSystemTime(new Date('2026-10-10T20:30:00Z'));
+    const { client, ops } = escenario({ numeroPrueba: true });
+    expect((await runCampaignQueue(7, client)).calls_initiated).toBe(0);
+    expect(twilioCreate).not.toHaveBeenCalled();
+    expect(reprogramacion(ops)).toMatchObject({ last_error_code: 'LEY2300', scheduled_at: '2026-10-13T12:00:00.000Z' });
+  });
+
+  test('NO exime del RNE / excluidos: se omite para siempre', async () => {
+    const { client, ops } = escenario({ numeroPrueba: true, excluido: true });
+    expect((await runCampaignQueue(7, client)).calls_initiated).toBe(0);
+    expect(cierre(ops)).toMatchObject({ last_error_code: 'RNE' });
+    expect(twilioCreate).not.toHaveBeenCalled();
+  });
+
+  test('NO exime de la baja voluntaria (fn_can_contact)', async () => {
+    const { client, ops } = escenario({ numeroPrueba: true, sinConsentimiento: true });
+    expect((await runCampaignQueue(7, client)).calls_initiated).toBe(0);
+    expect(String(cierre(ops)?.error_message)).toMatch(/baja voluntaria/);
+    expect(twilioCreate).not.toHaveBeenCalled();
+  });
+
+  test('NO exime de los créditos: sin minutos no se marca', async () => {
+    const { client } = escenario({ numeroPrueba: true, sinCreditos: true });
+    expect((await runCampaignQueue(7, client)).calls_initiated).toBe(0);
+    expect(twilioCreate).not.toHaveBeenCalled();
+  });
+
+  test('NO exime de los topes diarios de la campaña y del agente: no se reclama ninguna fila', async () => {
+    const { client, rpcs } = escenario({ numeroPrueba: true, intentosHoy: 50 });
+    expect((await runCampaignQueue(7, client)).calls_initiated).toBe(0);
+    expect(rpcs.some((c) => c.name === 'fn_claim_voice_agent_calls')).toBe(false);
+    expect(twilioCreate).not.toHaveBeenCalled();
+  });
+
+  test('NO exime de la verificación RNE de la campaña ni de la política de datos', async () => {
+    for (const e of [{ rne: [] as unknown[] }, { politica: null }]) {
+      const { client, rpcs } = escenario({ numeroPrueba: true, ...e });
+      expect((await runCampaignQueue(7, client)).calls_initiated).toBe(0);
+      expect(rpcs.some((c) => c.name === 'fn_claim_voice_agent_calls')).toBe(false);
+    }
+    expect(twilioCreate).not.toHaveBeenCalled();
+  });
+
+  test('si la base no puede decir si es de prueba, se aplica el tope semanal (falla hacia lo restrictivo)', async () => {
+    const base = escenario({ contactosSemana: SEMANA_LLENA });
+    const rpc = base.client.rpc as unknown as jest.Mock;
+    const original = rpc.getMockImplementation()!;
+    rpc.mockImplementation(async (name: string, args: Record<string, unknown>) =>
+      name === 'fn_voz_es_numero_prueba' ? { data: null, error: { message: 'boom' } } : original(name, args)
+    );
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      expect((await runCampaignQueue(7, base.client)).calls_initiated).toBe(0);
+      expect(reprogramacion(base.ops)).toMatchObject({ last_error_code: 'LEY2300' });
+    } finally {
+      warn.mockRestore();
+    }
   });
 });

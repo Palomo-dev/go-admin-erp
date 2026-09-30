@@ -199,6 +199,8 @@ describe('registrar_factura_venta', () => {
     ['PRICE_UNKNOWN:Camisa azul', 'no_price'],
     ['CUSTOMER_NOT_IN_ORG', 'not_found'],
     ['ITEMS_REQUIRED', 'missing_fields'],
+    // fn_producto_exigir_vendible (20260930234100).
+    ['producto_eliminado', 'bad_input'],
   ])('%s → %s', (msg, code) => {
     expect(mapFacturaVentaError(msg)?.errorCode).toBe(code);
   });

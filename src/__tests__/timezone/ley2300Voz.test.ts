@@ -190,3 +190,36 @@ describe('Decisión única del despachador', () => {
     expect(d.accion).toBe('reprogramar');
   });
 });
+
+describe('Exención por número de prueba interno (solo el tope semanal)', () => {
+  const base = { telefonoE164: '+573000000000', zonaCliente: 'America/Bogota', canal: 'voice' as const };
+
+  test('con la semana llena por el mismo canal y por el total, un número de prueba se contacta y la decisión lo marca', () => {
+    for (const conteosSemana of [{ voice: 1 }, { voice: 3 }, { email: 1, whatsapp: 1 }]) {
+      const d = decidirContactoLey2300({ ...base, ahora: bog('2026-09-29', '10:00'), conteosSemana, exencion: 'numero_prueba' });
+      expect(d).toEqual({ accion: 'contactar', zona: ZONA_COLOMBIA, exencion: 'numero_prueba' });
+    }
+  });
+
+  test('la franja horaria NO se exime: noche, domingo y festivo siguen reprogramando', () => {
+    const casos: Array<[Date, string]> = [
+      [bog('2026-09-29', '20:00'), bog('2026-09-30', '07:00').toISOString()], // martes 20:00 → miércoles 07:00
+      [bog('2026-10-04', '10:00'), bog('2026-10-05', '07:00').toISOString()], // domingo → lunes 07:00
+      [bog('2026-10-12', '10:00'), bog('2026-10-13', '07:00').toISOString()], // lunes festivo → martes 07:00
+      [bog('2026-10-10', '15:30'), bog('2026-10-13', '07:00').toISOString()], // sábado 15:30 → martes (lunes festivo)
+    ];
+    for (const [ahora, esperado] of casos) {
+      const d = decidirContactoLey2300({ ...base, ahora, conteosSemana: { voice: 1 }, exencion: 'numero_prueba' });
+      expect(d).toMatchObject({ accion: 'reprogramar', motivo: 'fuera_de_horario', exencion: 'numero_prueba' });
+      expect(d.accion === 'reprogramar' && d.en.toISOString()).toBe(esperado);
+    }
+  });
+
+  test('sin exención (null o ausente) el tope semanal aplica igual que antes', () => {
+    for (const exencion of [null, undefined]) {
+      const d = decidirContactoLey2300({ ...base, ahora: bog('2026-09-29', '10:00'), conteosSemana: { voice: 1 }, exencion });
+      expect(d).toMatchObject({ accion: 'reprogramar', motivo: 'tope_canal_semana' });
+      expect('exencion' in d).toBe(false);
+    }
+  });
+});

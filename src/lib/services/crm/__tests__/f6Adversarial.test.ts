@@ -1000,10 +1000,13 @@ describe('F. La configuración del agente alcanza el comportamiento de la llamad
   test('F5 [CORREGIDO r1] (C-13) el historial de tool-calls ya es válido para OpenAI', () => {
     const h = SRC('src/lib/services/integrations/twilio/voiceAgent/conversationRelayHandler.ts');
     // El assistant que precede a los role:'tool' lleva SUS tool_calls.
-    expect(h).toMatch(/session\.messages\.push\(\{\s*role: 'assistant',\s*content: '',\s*tool_calls:/);
-    // Y el mapeo a OpenAI los conserva.
-    const map = h.slice(h.indexOf('function mapToOpenAIMessages'), h.indexOf('// ─── OpenAI Client'));
-    expect(map).toContain('tool_calls: m.tool_calls');
+    // (2026-09-30: `content` lleva el texto que el modelo dijo antes de pedir la herramienta, o '').
+    expect(h).toMatch(/session\.messages\.push\(\{\s*role: 'assistant',\s*content: precedingText,\s*tool_calls:/);
+    // Y el mapeo al adaptador compartido (openaiAdapter) los conserva.
+    // 2026-09-30: `mapToOpenAIMessages` pasó a `toAdapterMessages` al llamar al
+    // modelo por el adaptador del GO Assistant (Responses API para gpt-5.x).
+    const map = h.slice(h.indexOf('function toAdapterMessages'), h.indexOf('function sessionTools'));
+    expect(map).toContain('toolCalls: m.tool_calls.map');
     // La interfaz ya declara el campo.
     const iface = h.slice(h.indexOf('interface ConversationMessage'), h.indexOf('export interface ConversationRelaySession'));
     expect(iface).toContain('tool_calls');

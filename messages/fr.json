@@ -7976,6 +7976,7 @@
       "SIN_SKU": "Le SKU manque",
       "SIN_NOMBRE": "Le nom manque",
       "PADRE_NO_ENCONTRADO": "Le SKU parent n’existe pas",
+      "VARIANTE_PADRE_ELIMINADO": "La variante appartient à un produit supprimé : restaurez d’abord le produit parent",
       "STOCK_SIN_COSTO": "Stock sans coût : le registre de stock exige un coût",
       "PRECIO_INVALIDO": "Prix non valide",
       "COSTO_INVALIDO": "Coût non valide",
@@ -9694,6 +9695,7 @@
       "sin_permiso": "Vous n’avez pas l’autorisation pour cette action sur les produits.",
       "producto_no_encontrado": "Le produit n’existe pas ou n’appartient pas à votre organisation.",
       "variante_no_encontrada": "La variante n’existe pas.",
+      "variante_padre_eliminado": "Le produit parent est supprimé : restaurez-le avant d’activer ou de créer ses variantes.",
       "sku_requerido": "Le SKU est obligatoire.",
       "sku_duplicado": "Un produit avec le SKU {detalle} existe déjà.",
       "sku_variante_repetido": "Deux variantes (ou une variante et le produit) ont le même SKU.",
@@ -10781,6 +10783,32 @@
       "guardada": "Politique de traitement des données enregistrée",
       "quitada": "Politique de traitement des données retirée",
       "errorGuardar": "Impossible d'enregistrer la politique"
+    },
+    "numerosPrueba": {
+      "titulo": "Numéros de test",
+      "descripcion": "Numéros de votre propre équipe pour tester l'agent vocal. Ils sont exemptés uniquement de la limite d'un contact par canal et par semaine de la loi colombienne 2300 de 2023.",
+      "aviso": "N'ajoutez que des numéros de membres de l'équipe ayant donné leur consentement. Jamais de numéros de clients ou de prospects.",
+      "avisoSigue": "Tout le reste s'applique toujours : la plage horaire légale (du lundi au vendredi 7h00–19h00, le samedi 8h00–15h00, jamais le dimanche ni les jours fériés), la liste des numéros exclus et des désinscriptions, les limites quotidiennes de l'agent et de la campagne, et les minutes disponibles.",
+      "etiquetaNumero": "Numéro (format international)",
+      "etiquetaNombre": "À qui appartient-il (facultatif)",
+      "placeholderNombre": "Ex. : mobile commercial",
+      "agregar": "Ajouter",
+      "agregando": "Ajout…",
+      "quitar": "Retirer",
+      "quitarAria": "Retirer le numéro {numero}",
+      "vacio": "Aucun numéro de test pour l'instant.",
+      "contador": "{usados} sur {max} numéros",
+      "lleno": "Vous avez atteint le nombre maximal de numéros de test. Retirez-en un pour en ajouter un autre.",
+      "invalido": "Saisissez un numéro valide, par exemple +57 300 000 0000.",
+      "agregado": "Numéro de test ajouté",
+      "quitado": "Numéro de test retiré",
+      "errorAgregar": "Impossible d'ajouter le numéro",
+      "errorQuitar": "Impossible de retirer le numéro",
+      "errorCargar": "Impossible de charger les numéros de test",
+      "reintentar": "Réessayer",
+      "cargando": "Chargement des numéros de test…",
+      "soloAdmin": "Seul un administrateur de l'organisation peut consulter et gérer les numéros de test.",
+      "agregadoEl": "Ajouté le {fecha}"
     }
   },
   "vozRne": {
@@ -11588,6 +11616,7 @@
     "precioNoConsultado": "« {producto} » n’a pas été ajouté : son prix n’a pas pu être consulté. Vérifiez la connexion et réessayez.",
     "errores": {
       "producto_invalido": "Une ligne contient un produit qui n’appartient pas à cette organisation. Retirez-la et ajoutez-la de nouveau. {detalle}",
+      "producto_eliminado": "Un produit de la vente a été supprimé de l’inventaire : retirez-le de la vente. Si la vente a été faite avant sa suppression, restaurez-le dans Inventaire et réessayez. {detalle}",
       "descuento_excede_linea": "La remise d’une ligne dépasse sa valeur. Corrigez la remise. {detalle}",
       "modificador_invalido": "Un modificateur de la ligne n’est plus configuré pour le produit. Retirez la ligne et ajoutez-la de nouveau. {detalle}",
       "precio_no_vigente": "Un produit n’a pas de prix en vigueur : définissez son prix dans Inventaire. {detalle}",
@@ -13773,6 +13802,7 @@
       "cliente_invalido": "Le client n’appartient pas à l’organisation.",
       "linea_invalida": "Vérifiez les lignes : description, quantité et prix.",
       "producto_invalido": "Un produit de la facture n’appartient pas à l’organisation.",
+      "producto_eliminado": "Un produit de la facture a été supprimé de l’inventaire : retirez-le ou restaurez-le dans Inventaire.",
       "vendedor_invalido": "Le vendeur n’est pas membre de l’organisation."
     },
     "listado": {

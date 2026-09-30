@@ -297,20 +297,31 @@ export function zonaHorariaDestinatario(telefonoE164: string | null | undefined,
 
 // ─── Decisión única ──────────────────────────────────────────────────────────
 
+/**
+ * Exención aplicada a la decisión. Hoy solo existe `numero_prueba`: número del
+ * propio equipo (`crm_voice_test_numbers`), exento del tope semanal y de nada más.
+ */
+export type ExencionLey2300 = 'numero_prueba';
+
 export type DecisionContacto =
-  | { accion: 'contactar'; zona: string }
+  | { accion: 'contactar'; zona: string; exencion?: ExencionLey2300 }
   | {
       accion: 'reprogramar';
       zona: string;
       motivo: 'fuera_de_horario' | MotivoTope;
       /** Primer instante legal para volver a intentarlo. */
       en: Date;
+      exencion?: ExencionLey2300;
     };
 
 /**
  * Decide si se contacta ahora o cuándo. Primero la periodicidad (si la semana
  * ya está llena, la siguiente oportunidad es la primera ventana de la semana
  * que viene) y después el horario.
+ *
+ * `exencion: 'numero_prueba'` (número interno del equipo, con consentimiento)
+ * salta SOLO la periodicidad; el horario legal se evalúa igual. La exención
+ * viaja en la decisión para que el despachador la deje marcada en la llamada.
  */
 export function decidirContactoLey2300(p: {
   ahora: Date;
@@ -318,21 +329,25 @@ export function decidirContactoLey2300(p: {
   zonaCliente?: string | null;
   canal: CanalContacto;
   conteosSemana: ConteoSemana;
+  exencion?: ExencionLey2300 | null;
 }): DecisionContacto {
   const zona = zonaHorariaDestinatario(p.telefonoE164, p.zonaCliente);
-  const tope = evaluarTopeSemanal(p.conteosSemana, p.canal);
-  if (!tope.permitido) {
-    return {
-      accion: 'reprogramar',
-      zona,
-      motivo: tope.motivo,
-      en: siguienteVentanaLey2300(inicioSemanaSiguienteLocal(p.ahora, zona), zona),
-    };
+  const marca = p.exencion ? { exencion: p.exencion } : {};
+  if (p.exencion !== 'numero_prueba') {
+    const tope = evaluarTopeSemanal(p.conteosSemana, p.canal);
+    if (!tope.permitido) {
+      return {
+        accion: 'reprogramar',
+        zona,
+        motivo: tope.motivo,
+        en: siguienteVentanaLey2300(inicioSemanaSiguienteLocal(p.ahora, zona), zona),
+      };
+    }
   }
   if (!ventanaLey2300Abierta(p.ahora, zona)) {
-    return { accion: 'reprogramar', zona, motivo: 'fuera_de_horario', en: siguienteVentanaLey2300(p.ahora, zona) };
+    return { accion: 'reprogramar', zona, motivo: 'fuera_de_horario', en: siguienteVentanaLey2300(p.ahora, zona), ...marca };
   }
-  return { accion: 'contactar', zona };
+  return { accion: 'contactar', zona, ...marca };
 }
 
 /** Texto corto del motivo para `error_message` y para el registro. */

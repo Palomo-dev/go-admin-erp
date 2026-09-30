@@ -1,4 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
+import { padreEliminado } from '@/lib/inventario/variantesHuerfanas';
+import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
+import { addPlainDays, todayInTz } from '@/lib/utils/dateDisplay';
 
 // Interfaces para el Dashboard de Inventario
 export interface InventoryKPIs {
@@ -57,6 +60,8 @@ interface ProductRef {
   is_parent?: boolean | null;
   organization_id?: number;
   status?: string;
+  /** Estado del padre (embed `padre:products!parent_product_id(status)`). */
+  padre?: { status?: string | null } | Array<{ status?: string | null }> | null;
 }
 
 interface BranchRef {
@@ -112,12 +117,23 @@ class InventoryDashboardService {
 
       const { count: totalProducts } = await productsQuery;
 
-      const { count: activeProducts } = await supabase
+      const { count: activosConHuerfanas } = await supabase
         .from('products')
         .select('id', { count: 'exact' })
         .eq('organization_id', organizationId)
         .eq('status', 'active')
         .or('is_parent.is.null,is_parent.eq.false');
+
+      // Variantes de un padre eliminado: no cuentan como productos activos
+      // (docs/inventario/VARIANTES-HUERFANAS.md). PostgREST no expresa «padre
+      // nulo o no eliminado» en una sola consulta: se restan.
+      const { count: huerfanasActivas } = await supabase
+        .from('products')
+        .select('id, padre:products!parent_product_id!inner(status)', { count: 'exact', head: true })
+        .eq('organization_id', organizationId)
+        .eq('status', 'active')
+        .eq('padre.status', 'deleted');
+      const activeProducts = Math.max((activosConHuerfanas || 0) - (huerfanasActivas || 0), 0);
 
       // Consulta de stock levels con filtro opcional por sucursal
       // Nota: product_costs NO tiene FK directa con stock_levels, por lo que
@@ -130,7 +146,7 @@ class InventoryDashboardService {
           qty_on_hand,
           min_level,
           avg_cost,
-          products!inner(organization_id, status, is_parent)
+          products!inner(organization_id, status, is_parent, padre:products!parent_product_id(status))
         `)
         .eq('products.organization_id', organizationId)
         .eq('products.status', 'active');
@@ -178,8 +194,8 @@ class InventoryDashboardService {
         stockData.forEach((item) => {
           const productRaw = item.products as ProductRef | ProductRef[] | null;
           const product = Array.isArray(productRaw) ? productRaw[0] : productRaw;
-          // Filtrar productos padre en JavaScript (no en la consulta)
-          if (product?.is_parent === true) return;
+          // Filtrar productos padre y variantes de un padre eliminado en JavaScript (no en la consulta)
+          if (product?.is_parent === true || padreEliminado(product)) return;
 
           const qty = Number(item.qty_on_hand) || 0;
           const minLevel = Number(item.min_level) || 0;
@@ -240,7 +256,7 @@ class InventoryDashboardService {
           branch_id,
           qty_on_hand,
           min_level,
-          products!inner(id, name, sku, organization_id, status, is_parent),
+          products!inner(id, name, sku, organization_id, status, is_parent, padre:products!parent_product_id(status)),
           branches!inner(id, name)
         `)
         .eq('products.organization_id', organizationId)
@@ -261,7 +277,7 @@ class InventoryDashboardService {
         lowStockData.forEach((item) => {
           const productRaw = item.products as ProductRef | ProductRef[] | null;
           const product = Array.isArray(productRaw) ? productRaw[0] : productRaw;
-          if (product?.is_parent === true) return;
+          if (product?.is_parent === true || padreEliminado(product)) return;
 
           const qty = Number(item.qty_on_hand) || 0;
           const minLevel = Number(item.min_level) || 0;
@@ -300,9 +316,10 @@ class InventoryDashboardService {
         });
       }
 
-      // 2. Lotes por vencer (próximos 30 días)
-      const thirtyDaysFromNow = new Date();
-      thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+      // 2. Lotes por vencer (próximos 30 días). `expiry_date` es `date`: se
+      // compara con el día calendario de la organización, no con el día UTC.
+      const hoy = todayInTz(await getOrganizationTimezone(organizationId));
+      const limiteVencimiento = addPlainDays(hoy, 30);
 
       const { data: expiringLots } = await supabase
         .from('lots')
@@ -315,8 +332,8 @@ class InventoryDashboardService {
         `)
         .eq('products.organization_id', organizationId)
         .not('expiry_date', 'is', null)
-        .lte('expiry_date', thirtyDaysFromNow.toISOString().split('T')[0])
-        .gte('expiry_date', new Date().toISOString().split('T')[0]);
+        .lte('expiry_date', limiteVencimiento)
+        .gte('expiry_date', hoy);
 
       if (expiringLots) {
         expiringLots.forEach((lot) => {
@@ -528,7 +545,7 @@ class InventoryDashboardService {
             min_level,
             avg_cost,
             product_id,
-            products!inner(organization_id, status, is_parent)
+            products!inner(organization_id, status, is_parent, padre:products!parent_product_id(status))
           `)
           .eq('branch_id', branch.id)
           .eq('products.organization_id', organizationId)
@@ -571,8 +588,8 @@ class InventoryDashboardService {
           stockData.forEach((item) => {
             const productRaw = item.products as ProductRef | ProductRef[] | null;
             const product = Array.isArray(productRaw) ? productRaw[0] : productRaw;
-            // Filtrar productos padre en JavaScript (no en la consulta)
-            if (product?.is_parent === true) return;
+            // Filtrar productos padre y variantes de un padre eliminado en JavaScript (no en la consulta)
+            if (product?.is_parent === true || padreEliminado(product)) return;
 
             const qty = Number(item.qty_on_hand) || 0;
             const minLevel = Number(item.min_level) || 0;

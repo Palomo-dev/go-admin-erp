@@ -9,6 +9,8 @@
 export const CODIGOS_ERROR_COBRO = [
   // Punto 3: precios y descuentos validados en el servidor.
   'producto_invalido',
+  // Producto (o su padre) eliminado: fn_producto_exigir_vendible, 20260930234100.
+  'producto_eliminado',
   'descuento_excede_linea',
   'modificador_invalido',
   'precio_no_vigente',
@@ -83,6 +85,19 @@ export function avisoAnulacion(avisos: string[], t: TraductorCobro): string {
     if ((AVISOS_ANULACION as readonly string[]).includes(aviso)) partes.push(t(`avisos.${aviso}`));
   }
   return partes.join(' ');
+}
+
+/**
+ * Mensaje traducido del `last_error` de una venta sin conexión (bandeja de
+ * pendientes). `salesSync` lo guarda como `código SQL — mensaje — detalle`; si
+ * alguna parte es un código conocido del cobro, se traduce con el detalle que la
+ * sigue. Si no, el texto tal cual.
+ */
+export function mensajeErrorOutbox(texto: string, t: TraductorCobro): string {
+  const partes = texto.split(' — ').map((p) => p.trim());
+  const i = partes.findIndex((p) => (CODIGOS_ERROR_COBRO as readonly string[]).includes(p));
+  if (i < 0) return texto;
+  return t(`errores.${partes[i]}`, { detalle: partes[i + 1] ?? '' });
 }
 
 /** Detalle humano que acompaña al código (PostgREST lo manda en `details`). */

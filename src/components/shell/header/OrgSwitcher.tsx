@@ -289,9 +289,11 @@ interface OrgSwitcherProps {
   variante: 'escritorio' | 'movil';
   organizacionId: number | null;
   organizacionNombre: string;
+  /** Sin el chip del plan: header compacto con el GO Asistente abierto (Figma 667:34706). */
+  sinPlan?: boolean;
 }
 
-export function OrgSwitcher({ variante, organizacionId, organizacionNombre }: OrgSwitcherProps) {
+export function OrgSwitcher({ variante, organizacionId, organizacionNombre, sinPlan = false }: OrgSwitcherProps) {
   const t = useTranslations('header');
   const { branches, selectedBranchId, isAllSelected, isLoading: cargandoSucursales } = useBranch();
   const { datos: plan } = usePlanSesion();
@@ -385,7 +387,7 @@ export function OrgSwitcher({ variante, organizacionId, organizacionNombre }: Or
         <PopoverTrigger asChild>
           <button type="button" className={cn(disparador, 'max-w-[320px]')} aria-label={t('switchOrganization', { name: organizacionNombre })}>
             <span className="truncate">{organizacionNombre || t('organization')}</span>
-            {nombrePlan && <ChipPlan texto={nombrePlan} marca />}
+            {nombrePlan && !sinPlan && <ChipPlan texto={nombrePlan} marca />}
             <ChevronsUpDown className="h-4 w-4 shrink-0 text-fg-muted" aria-hidden="true" />
           </button>
         </PopoverTrigger>

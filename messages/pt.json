@@ -2875,6 +2875,7 @@
     "allOrganizations": "Ver todas as organizações",
     "assistant": "GO Assistente",
     "openAssistant": "Abrir GO Assistente",
+    "closeAssistant": "Fechar GO Assistente",
     "branch": "Filial",
     "branchLimit": "Você atingiu o limite de filiais do seu plano",
     "branches": "Filiais",
@@ -23807,7 +23808,27 @@
       "otrasCiudades": "{n, plural, one {E mais # cidade} other {E mais # cidades}}",
       "sinCiudades": "Ainda não há cidades para este país no período.",
       "sinUbicacionTitulo": "Ainda não temos a localização dos seus visitantes",
-      "sinUbicacionTexto": "{n, plural, =0 {Não há visitas registradas sem localização.} one {A única visita registrada foi salva sem país nem cidade.} other {As # visitas registradas foram salvas sem país nem cidade.}} As novas visitas já chegam com a localização aproximada; as anteriores não podem ser recuperadas."
+      "sinUbicacionTexto": "{n, plural, =0 {Não há visitas registradas sem localização.} one {A única visita registrada foi salva sem país nem cidade.} other {As # visitas registradas foram salvas sem país nem cidade.}} As novas visitas já chegam com a localização aproximada; as anteriores não podem ser recuperadas.",
+      "mapaMundoTitulo": "Visitantes por país",
+      "porPaisTitulo": "Por país",
+      "porDepartamento": "{pais} por departamento",
+      "notaDepartamentos": "Os departamentos somam as {n} cidades com mais visitantes no período.",
+      "filtroRegion": "Cidades de {region}",
+      "quitarFiltro": "Ver todas as cidades",
+      "mapa": {
+        "mundoAria": "Mapa de visitantes por país",
+        "colombiaAria": "Mapa de visitantes de {pais} por departamento",
+        "ayudaTeclado": "Use as setas para percorrer as regiões e Enter para escolher uma. Os mesmos dados estão na tabela.",
+        "region": "{nombre}: {n, plural, one {{v} visitante} other {{v} visitantes}}, {pct} do total",
+        "regionSinVisitas": "{nombre}: sem visitas",
+        "tooltip": "{n, plural, one {{v} visitante} other {{v} visitantes}} · {pct}",
+        "sinVisitas": "Sem visitas",
+        "menos": "Menos",
+        "mas": "Mais",
+        "leyendaAria": "Escala de cor: de menos visitantes (azul-claro) a mais visitantes (azul-profundo); cinza, sem visitas.",
+        "cargando": "Carregando mapa…",
+        "error": "Não foi possível carregar o mapa. Os dados continuam na tabela."
+      }
     },
     "csv": {
       "fecha": "Data",

@@ -2875,6 +2875,7 @@
     "allOrganizations": "Voir toutes les organisations",
     "assistant": "GO Assistant",
     "openAssistant": "Ouvrir GO Assistant",
+    "closeAssistant": "Fermer GO Assistant",
     "branch": "Succursale",
     "branchLimit": "Vous avez atteint la limite de succursales de votre forfait",
     "branches": "Succursales",
@@ -23807,7 +23808,27 @@
       "otrasCiudades": "{n, plural, one {Et # autre ville} other {Et # autres villes}}",
       "sinCiudades": "Pas encore de villes pour ce pays sur la période.",
       "sinUbicacionTitulo": "Nous n'avons pas encore la localisation de vos visiteurs",
-      "sinUbicacionTexto": "{n, plural, =0 {Aucune visite enregistrée sans localisation.} one {La seule visite enregistrée l'a été sans pays ni ville.} other {Les # visites enregistrées l'ont été sans pays ni ville.}} Les nouvelles visites arrivent déjà avec leur localisation approximative ; les précédentes ne peuvent pas être récupérées."
+      "sinUbicacionTexto": "{n, plural, =0 {Aucune visite enregistrée sans localisation.} one {La seule visite enregistrée l'a été sans pays ni ville.} other {Les # visites enregistrées l'ont été sans pays ni ville.}} Les nouvelles visites arrivent déjà avec leur localisation approximative ; les précédentes ne peuvent pas être récupérées.",
+      "mapaMundoTitulo": "Visiteurs par pays",
+      "porPaisTitulo": "Par pays",
+      "porDepartamento": "{pais} par département",
+      "notaDepartamentos": "Les départements additionnent les {n} villes ayant le plus de visiteurs sur la période.",
+      "filtroRegion": "Villes de {region}",
+      "quitarFiltro": "Voir toutes les villes",
+      "mapa": {
+        "mundoAria": "Carte des visiteurs par pays",
+        "colombiaAria": "Carte des visiteurs de {pais} par département",
+        "ayudaTeclado": "Utilisez les flèches pour parcourir les régions et Entrée pour en choisir une. Les mêmes données figurent dans le tableau.",
+        "region": "{nombre} : {n, plural, one {{v} visiteur} other {{v} visiteurs}}, {pct} du total",
+        "regionSinVisitas": "{nombre} : aucune visite",
+        "tooltip": "{n, plural, one {{v} visiteur} other {{v} visiteurs}} · {pct}",
+        "sinVisitas": "Aucune visite",
+        "menos": "Moins",
+        "mas": "Plus",
+        "leyendaAria": "Échelle de couleur : de moins de visiteurs (bleu clair) à plus de visiteurs (bleu profond) ; gris, aucune visite.",
+        "cargando": "Chargement de la carte…",
+        "error": "Impossible de charger la carte. Les données restent dans le tableau."
+      }
     },
     "csv": {
       "fecha": "Date",

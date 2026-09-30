@@ -4010,6 +4010,7 @@
     "allOrganizations": "See all organizations",
     "assistant": "GO Assistant",
     "openAssistant": "Open GO Assistant",
+    "closeAssistant": "Close GO Assistant",
     "branch": "Branch",
     "branchLimit": "You reached your plan's branch limit",
     "branches": "Branches",
@@ -23910,7 +23911,27 @@
       "otrasCiudades": "{n, plural, one {And # more city} other {And # more cities}}",
       "sinCiudades": "No cities for this country in the period yet.",
       "sinUbicacionTitulo": "We don't have your visitors' location yet",
-      "sinUbicacionTexto": "{n, plural, =0 {There are no visits recorded without location.} one {The only recorded visit was saved without country or city.} other {The # recorded visits were saved without country or city.}} New visits already arrive with their approximate location; earlier ones cannot be recovered."
+      "sinUbicacionTexto": "{n, plural, =0 {There are no visits recorded without location.} one {The only recorded visit was saved without country or city.} other {The # recorded visits were saved without country or city.}} New visits already arrive with their approximate location; earlier ones cannot be recovered.",
+      "mapaMundoTitulo": "Visitors by country",
+      "porPaisTitulo": "By country",
+      "porDepartamento": "{pais} by department",
+      "notaDepartamentos": "Departments add up the {n} cities with the most visitors in the period.",
+      "filtroRegion": "Cities in {region}",
+      "quitarFiltro": "Show all cities",
+      "mapa": {
+        "mundoAria": "Map of visitors by country",
+        "colombiaAria": "Map of {pais} visitors by department",
+        "ayudaTeclado": "Use the arrow keys to move between regions and Enter to select one. The same data is in the table.",
+        "region": "{nombre}: {n, plural, one {{v} visitor} other {{v} visitors}}, {pct} of total",
+        "regionSinVisitas": "{nombre}: no visits",
+        "tooltip": "{n, plural, one {{v} visitor} other {{v} visitors}} · {pct}",
+        "sinVisitas": "No visits",
+        "menos": "Fewer",
+        "mas": "More",
+        "leyendaAria": "Color scale: from fewer visitors (light blue) to more visitors (deep blue); gray, no visits.",
+        "cargando": "Loading map…",
+        "error": "The map could not be loaded. The data is still in the table."
+      }
     },
     "csv": {
       "fecha": "Date",

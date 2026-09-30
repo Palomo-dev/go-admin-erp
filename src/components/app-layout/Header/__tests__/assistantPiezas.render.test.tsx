@@ -5,6 +5,7 @@
  * escritorio (propuesta)», `667:34452`) con el proveedor real de next-intl.
  * Sin jest-dom: se comprueban atributos y textos con la API de Testing Library.
  */
+import { act } from 'react';
 import { fireEvent, screen, within } from '@testing-library/react';
 import { renderConIdioma } from '@/test-utils/renderConIdioma';
 import ActionConfirmationForm from '../ActionConfirmationForm';
@@ -13,6 +14,7 @@ import AssistantNotice from '../assistant/AssistantNotice';
 import BulkPreviewTable from '../assistant/BulkPreviewTable';
 import PanelHeader from '../assistant/PanelHeader';
 import Composer from '../assistant/Composer';
+import WelcomeView from '../assistant/WelcomeView';
 import type { PendingAction } from '@/lib/ai/assistant/clientTypes';
 
 jest.mock('react-virtuoso', () => ({
@@ -245,6 +247,38 @@ describe('Cabecera', () => {
     renderConIdioma(<PanelHeader {...base} vista="chat" vozNoDisponible="Tu organización no tiene activada la respuesta en audio." />);
     expect((screen.getByRole('button', { name: /no tiene activada/ }) as HTMLButtonElement).disabled).toBe(true);
   });
+
+  test('deshabilitados conservan el círculo claro del Figma (no se apagan enteros)', () => {
+    renderConIdioma(
+      <PanelHeader {...base} vista="chat" hayConversacion={false} vozNoDisponible="Tu organización no tiene activada la respuesta en audio." />
+    );
+    const voz = screen.getByRole('button', { name: /no tiene activada/ }) as HTMLButtonElement;
+    const nueva = screen.getByRole('button', { name: 'Nueva conversación' }) as HTMLButtonElement;
+    for (const boton of [voz, nueva]) {
+      expect(boton.disabled).toBe(true);
+      expect(boton.className).toContain('bg-fg-on-brand/20');
+      expect(boton.className).not.toContain('opacity-50');
+      // Envoltorio para que el tooltip con el motivo salga aunque el botón no reciba el puntero.
+      expect(boton.parentElement?.tagName).toBe('SPAN');
+    }
+    const historial = screen.getByRole('button', { name: 'Conversaciones anteriores' });
+    expect(historial.className).toContain('bg-fg-on-brand/20');
+  });
+});
+
+describe('Bienvenida', () => {
+  test('sugerencias con el fondo tintado del Figma (lienzo), no blancas', () => {
+    const onSugerencia = jest.fn();
+    renderConIdioma(
+      <WelcomeView nombre="Ana" pagina="Inicio" sugerencias={['¿Cómo van las ventas de hoy?']} cargando={false} onSugerencia={onSugerencia} />
+    );
+    const sugerencia = screen.getByRole('button', { name: '¿Cómo van las ventas de hoy?' });
+    expect(sugerencia.className).toContain('bg-canvas');
+    expect(sugerencia.className).toContain('rounded-xl');
+    expect(sugerencia.className).not.toContain('bg-surface');
+    fireEvent.click(sugerencia);
+    expect(onSugerencia).toHaveBeenCalledWith('¿Cómo van las ventas de hoy?');
+  });
 });
 
 describe('Composer', () => {
@@ -271,6 +305,59 @@ describe('Composer', () => {
     expect(onAlternar).toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Enviar mensaje' }));
     expect(base.onSubmit).toHaveBeenCalled();
+  });
+
+  describe('altura de la caja (una línea que crece al escribir)', () => {
+    // jsdom no maqueta: se simula lo que mide Chromium. Con 0 px de ancho (el
+    // panel se monta cerrado) el placeholder parte una letra por línea y
+    // `scrollHeight` da 360; con ancho, una línea son 20 px.
+    let ancho = 0;
+    let alto = 360;
+    let alCambiarTamano: (() => void) | null = null;
+    const g = globalThis as unknown as { ResizeObserver: unknown };
+    const original = g.ResizeObserver;
+    const proto = HTMLTextAreaElement.prototype;
+    beforeEach(() => {
+      ancho = 0;
+      alto = 360;
+      alCambiarTamano = null;
+      Object.defineProperty(proto, 'clientWidth', { configurable: true, get: () => ancho });
+      Object.defineProperty(proto, 'scrollHeight', { configurable: true, get: () => alto });
+      g.ResizeObserver = class {
+        constructor(cb: () => void) {
+          alCambiarTamano = cb;
+        }
+        observe() {}
+        disconnect() {}
+      };
+    });
+    afterEach(() => {
+      delete (proto as unknown as Record<string, unknown>).clientWidth;
+      delete (proto as unknown as Record<string, unknown>).scrollHeight;
+      g.ResizeObserver = original;
+    });
+
+    test('montado con el panel cerrado no se topa en 8 líneas, y al abrir mide una', () => {
+      renderConIdioma(<Composer {...base} />);
+      const caja = screen.getByRole('textbox', { name: 'Mensaje para GO Asistente' }) as HTMLTextAreaElement;
+      // Antes: height = 164px (tope de 8 líneas) y así se quedaba al abrir.
+      expect(caja.style.height).toBe('');
+      ancho = 368;
+      alto = 20;
+      act(() => alCambiarTamano?.());
+      expect(caja.style.height).toBe('20px');
+    });
+
+    test('crece con el texto hasta 8 líneas', () => {
+      ancho = 368;
+      alto = 60;
+      const { rerender } = renderConIdioma(<Composer {...base} value={'a\nb\nc'} />);
+      const caja = screen.getByRole('textbox', { name: 'Mensaje para GO Asistente' }) as HTMLTextAreaElement;
+      expect(caja.style.height).toBe('60px');
+      alto = 400;
+      rerender(<Composer {...base} value={'muchas líneas'} />);
+      expect(caja.style.height).toBe('164px');
+    });
   });
 
   test('respondiendo: enviar se vuelve Detener y el pie dice que Esc detiene', () => {

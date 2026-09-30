@@ -37,6 +37,30 @@ export interface EstadoAsistente {
   modo: ModoPanel;
 }
 
+/**
+ * Ancho de ventana desde el que el modo ampliado se pinta de verdad a 720 px
+ * (decisión 3 del dueño). Por debajo, el panel se queda en 400 aunque la
+ * preferencia guardada diga «ampliado».
+ */
+export const ANCHO_MIN_AMPLIADO = 1280;
+
+/** Lee `detail` del evento sin fiarse de su forma. `null` si no es un estado válido. */
+export function estadoDesdeEvento(detalle: unknown): EstadoAsistente | null {
+  if (!detalle || typeof detalle !== 'object') return null;
+  const { abierto, modo } = detalle as Partial<EstadoAsistente>;
+  if (typeof abierto !== 'boolean' || (modo !== 'acoplado' && modo !== 'ampliado')) return null;
+  return { abierto, modo };
+}
+
+/**
+ * ¿El panel ocupa de verdad 720 px? Solo abierto, en modo ampliado y con la
+ * ventana en su punto de corte. Es la condición con la que el shell pasa el
+ * sidebar a rail y compacta el header al mínimo (Figma pantalla 09).
+ */
+export function ampliadoEfectivo(estado: EstadoAsistente, anchoVentana: number): boolean {
+  return estado.abierto && estado.modo === 'ampliado' && anchoVentana >= ANCHO_MIN_AMPLIADO;
+}
+
 type LecturaAlmacen = Pick<Storage, 'getItem'>;
 type EscrituraAlmacen = Pick<Storage, 'setItem'>;
 

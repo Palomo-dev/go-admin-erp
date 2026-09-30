@@ -23,6 +23,21 @@ function getResend(): Resend {
 const fromEmail = process.env.RESEND_FROM_EMAIL || 'GO Admin <noreply@goadmin.io>';
 
 /**
+ * Escapa caracteres HTML para prevenir XSS
+ */
+export function escapeHtml(text: string): string {
+  const map: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#x27;',
+    '/': '&#x2F;',
+  };
+  return text.replace(/[&<>"'/]/g, (char) => map[char] || char);
+}
+
+/**
  * Formatea una fecha en español con zona horaria de Colombia
  * @param date Fecha a formatear
  * @returns Fecha formateada en español, ej: "30 de septiembre de 2026"
@@ -55,7 +70,8 @@ export async function sendAccountDeletionRequestEmail(
 ): Promise<void> {
   const fechaSolicitud = formatearFechaEspanol(requestDate);
   const fechaProgramada = formatearFechaEspanol(scheduledDate);
-  const saludo = userName ? `Hola ${userName}:` : 'Hola:';
+  const saludoHtml = userName ? `Hola ${escapeHtml(userName)}:` : 'Hola:';
+  const saludoText = userName ? `Hola ${userName}:` : 'Hola:';
   
   const subject = 'Recibimos tu solicitud para eliminar tu cuenta';
   
@@ -99,7 +115,7 @@ export async function sendAccountDeletionRequestEmail(
     </head>
     <body>
       <div class="content">
-        <p>${saludo}</p>
+        <p>${saludoHtml}</p>
         
         <p>Recibimos tu solicitud para eliminar tu cuenta de GO Admin el ${fechaSolicitud}.</p>
         
@@ -126,7 +142,7 @@ export async function sendAccountDeletionRequestEmail(
   `;
   
   const text = `
-${saludo}
+${saludoText}
 
 Recibimos tu solicitud para eliminar tu cuenta de GO Admin el ${fechaSolicitud}.
 
@@ -284,9 +300,16 @@ export async function sendAdminBlockNotification(
 ): Promise<void> {
   const subject = `Solicitud de eliminación bloqueada - Usuario único administrador`;
   
+  const escapedEmail = escapeHtml(userEmail);
+  const escapedUserId = escapeHtml(userId);
+  
   const orgsList = blockingOrganizations
-    .map(org => `- Org ${org.organization_id} (${org.organization_name}) - Suscripción: ${org.subscription_status}`)
+    .map(org => `- Org ${org.organization_id} (${escapeHtml(org.organization_name)}) - Suscripción: ${escapeHtml(org.subscription_status)}`)
     .join('\n');
+  
+  const orgsListHtml = blockingOrganizations
+    .map(org => `<li>Org ${org.organization_id} (${escapeHtml(org.organization_name)}) - Suscripción: ${escapeHtml(org.subscription_status)}</li>`)
+    .join('\n          ');
   
   const html = `
     <!DOCTYPE html>
@@ -325,13 +348,13 @@ export async function sendAdminBlockNotification(
       <div class="content">
         <h2>Solicitud de eliminación bloqueada</h2>
         
-        <p><strong>Usuario:</strong> ${userEmail} (ID: <span class="code">${userId}</span>)</p>
+        <p><strong>Usuario:</strong> ${escapedEmail} (ID: <span class="code">${escapedUserId}</span>)</p>
         
-        <p><strong>Motivo:</strong> El usuario es el único administrador de una o más organizaciones con suscripción activa y otros usuarios.</p>
+        <p><strong>Motivo:</strong> El usuario es el único administrador de una o más organizaciones con otros usuarios activos.</p>
         
         <p><strong>Organizaciones bloqueantes:</strong></p>
         <ul>
-          ${blockingOrganizations.map(org => `<li>Org ${org.organization_id} (${org.organization_name}) - Suscripción: ${org.subscription_status}</li>`).join('\n          ')}
+          ${orgsListHtml}
         </ul>
         
         <p><strong>Acción requerida:</strong></p>
@@ -346,7 +369,7 @@ Solicitud de eliminación bloqueada
 
 Usuario: ${userEmail} (ID: ${userId})
 
-Motivo: El usuario es el único administrador de una o más organizaciones con suscripción activa y otros usuarios.
+Motivo: El usuario es el único administrador de una o más organizaciones con otros usuarios activos.
 
 Organizaciones bloqueantes:
 ${orgsList}

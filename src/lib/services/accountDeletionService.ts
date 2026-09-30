@@ -65,7 +65,8 @@ function getServiceClient() {
 }
 
 /**
- * Verifica si el usuario es el único admin de organizaciones con suscripción activa Y otros usuarios
+ * Verifica si el usuario es el único admin de organizaciones con otros usuarios activos
+ * (sin importar el estado de suscripción)
  */
 async function checkSoleAdminWithOtherUsers(userId: string): Promise<{
   isBlocked: boolean;
@@ -79,40 +80,77 @@ async function checkSoleAdminWithOtherUsers(userId: string): Promise<{
 }> {
   const supabase = getServiceClient();
   
-  // Primero verificar si es único admin con suscripción activa
-  const { data: soleAdminData, error: soleAdminError } = await supabase.rpc(
-    'is_sole_admin_with_active_subscription',
-    { p_user_id: userId }
-  );
+  // 1. Obtener todas las organizaciones donde el usuario es miembro activo
+  const { data: userOrgs, error: orgsError } = await supabase
+    .from('organization_members')
+    .select('organization_id, organizations(name, id, subscription_id, subscription_status)')
+    .eq('user_id', userId)
+    .eq('is_active', true);
   
-  if (soleAdminError) {
-    console.error('[Account Deletion] Error checking sole admin:', soleAdminError);
-    throw new Error(`Error verificando permisos de admin: ${soleAdminError.message}`);
+  if (orgsError) {
+    console.error('[Account Deletion] Error obteniendo organizaciones:', orgsError);
+    throw new Error(`Error obteniendo organizaciones: ${orgsError.message}`);
   }
   
-  if (!soleAdminData?.is_blocked) {
+  if (!userOrgs || userOrgs.length === 0) {
     return { isBlocked: false };
   }
   
-  // Si es único admin, verificar si hay otros usuarios en esas organizaciones
-  const blockingOrgs: typeof soleAdminData.blocking_organizations = [];
+  const blockingOrgs: Array<{
+    organization_id: number;
+    organization_name: string;
+    subscription_id: string;
+    subscription_status: string;
+  }> = [];
   
-  for (const org of soleAdminData.blocking_organizations || []) {
-    const { count, error: countError } = await supabase
+  for (const membership of userOrgs) {
+    const orgId = membership.organization_id;
+    const org = membership.organizations as {
+      name?: string;
+      id?: number;
+      subscription_id?: string;
+      subscription_status?: string;
+    } | null;
+    
+    // 2. Contar cuántos admins activos tiene esta organización
+    const { count: adminCount, error: adminError } = await supabase
       .from('organization_members')
       .select('*', { count: 'exact', head: true })
-      .eq('organization_id', org.organization_id)
+      .eq('organization_id', orgId)
       .eq('is_active', true)
-      .neq('user_id', userId);
+      .eq('role', 'admin');
     
-    if (countError) {
-      console.error('[Account Deletion] Error contando miembros:', countError);
+    if (adminError) {
+      console.error('[Account Deletion] Error contando admins:', adminError);
       continue;
     }
     
-    // Solo bloquear si hay otros usuarios
-    if (count && count > 0) {
-      blockingOrgs.push(org);
+    // Si no es el único admin, no bloqueamos por esta org
+    if (!adminCount || adminCount > 1) {
+      continue;
+    }
+    
+    // 3. Si es el único admin, verificar si hay otros usuarios activos
+    const { count: otherUsersCount, error: usersError } = await supabase
+      .from('organization_members')
+      .select('*', { count: 'exact', head: true })
+      .eq('organization_id', orgId)
+      .eq('is_active', true)
+      .neq('user_id', userId);
+    
+    if (usersError) {
+      console.error('[Account Deletion] Error contando miembros:', usersError);
+      continue;
+    }
+    
+    // Solo bloquear si hay otros usuarios activos
+    if (otherUsersCount && otherUsersCount > 0) {
+      blockingOrgs.push({
+        organization_id: orgId,
+        organization_name: org?.name || `Org ${orgId}`,
+        subscription_id: org?.subscription_id || 'N/A',
+        subscription_status: org?.subscription_status || 'none',
+      });
     }
   }
   
@@ -123,7 +161,7 @@ async function checkSoleAdminWithOtherUsers(userId: string): Promise<{
   return {
     isBlocked: true,
     blockingOrganizations: blockingOrgs,
-    reason: `Usuario es el único administrador de ${blockingOrgs.length} organización(es) con suscripción activa y otros usuarios`,
+    reason: `Usuario es el único administrador de ${blockingOrgs.length} organización(es) con otros usuarios activos`,
   };
 }
 

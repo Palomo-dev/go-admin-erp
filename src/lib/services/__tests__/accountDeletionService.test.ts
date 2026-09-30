@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from '@jest/globals';
-import { hashEmail } from '../accountDeletionEmails';
+import { hashEmail, escapeHtml } from '../accountDeletionEmails';
 
 describe('Account Deletion Service - Pure Functions', () => {
   describe('Formato de fechas en español (America/Bogota)', () => {
@@ -175,10 +175,10 @@ describe('Account Deletion Service - Pure Functions', () => {
 
     it('debe generar razón de bloqueo correcta', () => {
       const orgCount = 2;
-      const reason = `Usuario es el único administrador de ${orgCount} organización(es) con suscripción activa y otros usuarios`;
+      const reason = `Usuario es el único administrador de ${orgCount} organización(es) con otros usuarios activos`;
       
       expect(reason).toContain('único administrador');
-      expect(reason).toContain('otros usuarios');
+      expect(reason).toContain('otros usuarios activos');
       expect(reason).toContain('2');
     });
   });
@@ -362,6 +362,113 @@ describe('Account Deletion Service - Pure Functions', () => {
       const anonymizeIndex = operations.indexOf('anonymize_profile');
 
       expect(emailIndex).toBeLessThan(anonymizeIndex);
+    });
+  });
+
+  describe('Regla de bloqueo sin condición de suscripción', () => {
+    it('debe bloquear si es único admin de org sin suscripción pero con otros usuarios activos', () => {
+      const org = {
+        isOnlyAdmin: true,
+        hasOtherActiveUsers: true,
+        subscriptionStatus: 'none',
+      };
+      
+      const shouldBlock = org.isOnlyAdmin && org.hasOtherActiveUsers;
+      
+      expect(shouldBlock).toBe(true);
+    });
+
+    it('no debe bloquear si los otros usuarios están inactivos', () => {
+      const org = {
+        isOnlyAdmin: true,
+        activeUsersCount: 0,
+        inactiveUsersCount: 5,
+      };
+      
+      const shouldBlock = org.isOnlyAdmin && org.activeUsersCount > 0;
+      
+      expect(shouldBlock).toBe(false);
+    });
+
+    it('no debe bloquear si el usuario es el único miembro', () => {
+      const org = {
+        isOnlyAdmin: true,
+        totalMembers: 1,
+        otherActiveUsers: 0,
+      };
+      
+      const shouldBlock = org.isOnlyAdmin && org.otherActiveUsers > 0;
+      
+      expect(shouldBlock).toBe(false);
+    });
+
+    it('la suscripción es informacional, no afecta la decisión', () => {
+      const orgs = [
+        { isOnlyAdmin: true, otherActiveUsers: 2, subscription: 'active' },
+        { isOnlyAdmin: true, otherActiveUsers: 3, subscription: 'none' },
+        { isOnlyAdmin: true, otherActiveUsers: 1, subscription: 'canceled' },
+      ];
+      
+      const blockedOrgs = orgs.filter(
+        org => org.isOnlyAdmin && org.otherActiveUsers > 0
+      );
+      
+      expect(blockedOrgs.length).toBe(3);
+      expect(blockedOrgs.every(org => org.otherActiveUsers > 0)).toBe(true);
+    });
+  });
+
+  describe('Escape de HTML para seguridad', () => {
+    it('debe escapar caracteres HTML peligrosos', () => {
+      const dangerous = '<script>alert("XSS")</script>';
+      const escaped = escapeHtml(dangerous);
+      
+      expect(escaped).not.toContain('<script>');
+      expect(escaped).not.toContain('</script>');
+      expect(escaped).toContain('&lt;script&gt;');
+      expect(escaped).toContain('&lt;&#x2F;script&gt;');
+    });
+
+    it('debe escapar ampersands', () => {
+      const text = 'Johnson & Johnson';
+      const escaped = escapeHtml(text);
+      
+      expect(escaped).toBe('Johnson &amp; Johnson');
+    });
+
+    it('debe escapar comillas y apóstrofes', () => {
+      const text = `He said "it's mine"`;
+      const escaped = escapeHtml(text);
+      
+      expect(escaped).toContain('&quot;');
+      expect(escaped).toContain('&#x27;');
+      expect(escaped).not.toContain('"');
+    });
+
+    it('debe escapar slashes', () => {
+      const text = '</div>';
+      const escaped = escapeHtml(text);
+      
+      expect(escaped).toContain('&#x2F;');
+      expect(escaped).not.toContain('</div>');
+    });
+
+    it('texto seguro permanece sin cambios', () => {
+      const safe = 'Juan Pérez García';
+      const escaped = escapeHtml(safe);
+      
+      expect(escaped).toBe(safe);
+    });
+
+    it('debe manejar múltiples caracteres peligrosos', () => {
+      const mixed = `<a href="javascript:alert('xss')">Click</a>`;
+      const escaped = escapeHtml(mixed);
+      
+      expect(escaped).not.toContain('<a');
+      expect(escaped).not.toContain("'xss'");
+      expect(escaped).toContain('&lt;a');
+      expect(escaped).toContain('&quot;');
+      expect(escaped).toContain('&#x27;');
     });
   });
 });

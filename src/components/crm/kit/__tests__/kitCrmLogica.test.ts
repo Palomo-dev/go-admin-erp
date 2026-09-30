@@ -28,7 +28,7 @@ import { accionesPie, bandaIcp, estadoOportunidad } from '../drawerHeaderLogica'
 import { cuandoEntrada, tipoDesdeActividad } from '../timelineEntryLogica';
 import { esClienteNuevo, etapaCicloValida, tonoSalud, ubicacion } from '../customerIdentityCardLogica';
 import { accionTeclaCargo, cargoCambio, cargoNormalizado } from '../contactoVinculadoRowLogica';
-import { aFechaHoraLocal, deFechaHoraLocal, diaRelativo, fechaCortaPlana } from '../fechasCrm';
+import { aFechaHoraLocal, combinarFechaHora, deFechaHoraLocal, diaRelativo, fechaCortaPlana, partirFechaHora } from '../fechasCrm';
 import { parsearMonto } from '../camposCrm';
 import { LEAD_SOURCES } from '@/lib/crm/enums';
 import { PIPELINE_TEMPLATES } from '@/lib/services/crm/pipelineTemplates';
@@ -58,6 +58,15 @@ describe('camposCrm y fechasCrm', () => {
   });
   test('un `date` no se corre de día', () => {
     expect(fechaCortaPlana('2026-10-30', 'es')).toMatch(/30/);
+  });
+  test('CampoFechaHora parte y recompone el mismo valor que un datetime-local', () => {
+    expect(partirFechaHora('2026-09-30T22:00')).toEqual({ dia: '2026-09-30', hora: '22:00' });
+    expect(combinarFechaHora('2026-09-30', '22:00')).toBe('2026-09-30T22:00');
+    // Incompleto = '' (como el campo nativo): nada que guardar.
+    expect(combinarFechaHora('2026-09-30', '')).toBe('');
+    expect(combinarFechaHora('', '22:00')).toBe('');
+    expect(partirFechaHora('')).toEqual({ dia: '', hora: '' });
+    expect(partirFechaHora('2026-10-01T03:00:00Z')).toEqual({ dia: '', hora: '' });
   });
 });
 

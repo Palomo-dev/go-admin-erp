@@ -107,6 +107,20 @@ export function aFechaHoraLocal(valor: string | Date | null | undefined, zona: s
 }
 
 /**
+ * Valor de `datetime-local` («2026-09-24T10:00») → día y hora por separado,
+ * para `CampoFechaHora`. Lo que no tenga esa forma queda vacío.
+ */
+export function partirFechaHora(local: string | null | undefined): { dia: string; hora: string } {
+  const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)$/.exec((local ?? '').trim());
+  return m ? { dia: m[1], hora: m[2] } : { dia: '', hora: '' };
+}
+
+/** Día + hora → valor de `datetime-local`; `''` si falta alguno (como el campo nativo). */
+export function combinarFechaHora(dia: string, hora: string): string {
+  return dia && hora ? `${dia}T${hora}` : '';
+}
+
+/**
  * Valor de `datetime-local` («2026-09-24T10:00», hora de pared de la
  * organización) → ISO con offset. null si está vacío o mal formado.
  */

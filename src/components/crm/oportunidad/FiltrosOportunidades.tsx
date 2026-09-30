@@ -6,7 +6,8 @@ import { FilterChip } from '@/components/kit/FilterChip';
 import { FormField } from '@/components/kit/FormField';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { cn } from '@/utils/Utils';
-import { CLASE_CAMPO, type OpcionUsuario } from '@/components/crm/kit/camposCrm';
+import type { OpcionUsuario } from '@/components/crm/kit/camposCrm';
+import { SelectCrm } from '@/components/crm/kit/SelectCrm';
 import { alternarPrioridad, contarFiltros, filtrosVacios, PRESETS_CIERRE, PRIORIDADES, quitarFiltro, type FiltrosOportunidades as Filtros, type PresetCierre } from './filtrosLogica';
 
 /**
@@ -34,33 +35,24 @@ export function FiltrosOportunidades({ filtros, onFiltros, usuarios, pipelines, 
     <FilterPanel conteo={contarFiltros(filtros, conPipeline)} onLimpiar={() => onFiltros({ ...filtrosVacios(), q: filtros.q, pipelineId: conPipeline ? '' : filtros.pipelineId })} titulo={t('titulo')} etiquetaBoton={t('boton')}>
       {pipelines && (
         <FormField etiqueta={t('embudo')}>
-          <select value={filtros.pipelineId} onChange={(e) => cambiar({ pipelineId: e.target.value, etapaId: '' })} className={CLASE_CAMPO}>
-            <option value="">{t('todos')}</option>
-            {pipelines.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
+          <SelectCrm valor={filtros.pipelineId} onValorChange={(pipelineId) => cambiar({ pipelineId, etapaId: '' })} opcionVacia={t('todos')} opciones={pipelines.map((p) => ({ valor: p.id, etiqueta: p.name }))} />
         </FormField>
       )}
       {etapas && (
         <FormField etiqueta={t('etapa')}>
-          <select value={filtros.etapaId} onChange={(e) => cambiar({ etapaId: e.target.value })} className={CLASE_CAMPO}>
-            <option value="">{t('todas')}</option>
-            {etapasVisibles.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-          </select>
+          <SelectCrm valor={filtros.etapaId} onValorChange={(etapaId) => cambiar({ etapaId })} opcionVacia={t('todas')} opciones={etapasVisibles.map((e) => ({ valor: e.id, etiqueta: e.name }))} />
         </FormField>
       )}
       <FormField etiqueta={t('responsable')}>
-        <select value={filtros.responsable} onChange={(e) => cambiar({ responsable: e.target.value })} className={CLASE_CAMPO}>
-          <option value="">{t('todos')}</option>
-          <option value="yo">{t('yo')}</option>
-          <option value="ninguno">{t('sinAsignar')}</option>
-          {usuarios.map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}
-        </select>
+        <SelectCrm
+          valor={filtros.responsable}
+          onValorChange={(responsable) => cambiar({ responsable })}
+          opcionVacia={t('todos')}
+          opciones={[{ valor: 'yo', etiqueta: t('yo') }, { valor: 'ninguno', etiqueta: t('sinAsignar') }, ...usuarios.map((u) => ({ valor: u.id, etiqueta: u.nombre }))]}
+        />
       </FormField>
       <FormField etiqueta={t('cierre')}>
-        <select value={filtros.cierre} onChange={(e) => cambiar({ cierre: e.target.value as PresetCierre })} className={CLASE_CAMPO}>
-          <option value="">{t('cualquierFecha')}</option>
-          {PRESETS_CIERRE.map((p) => <option key={p} value={p}>{t(`preset.${p}`)}</option>)}
-        </select>
+        <SelectCrm valor={filtros.cierre} onValorChange={(cierre) => cambiar({ cierre: cierre as PresetCierre })} opcionVacia={t('cualquierFecha')} opciones={PRESETS_CIERRE.map((p) => ({ valor: p, etiqueta: t(`preset.${p}`) }))} />
       </FormField>
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-[13px] font-medium text-fg">{t('prioridad')}</legend>

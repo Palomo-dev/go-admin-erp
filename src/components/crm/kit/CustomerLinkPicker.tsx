@@ -11,6 +11,7 @@ import { PanelAdaptable } from '@/components/kit/PanelAdaptable';
 import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { CLASE_AVISO_INFO, CLASE_CAMPO } from './camposCrm';
+import { SelectCrm } from './SelectCrm';
 import {
   datosCrear,
   debeBuscar,
@@ -251,10 +252,7 @@ export function CustomerLinkPicker(props: CustomerLinkPickerProps) {
           )}
           <div className="grid gap-3 sm:grid-cols-2">
             <FormField etiqueta={t('tipoDocumento')}>
-              <select value={crear.identification_type} onChange={(e) => setCrear((c) => ({ ...c, identification_type: e.target.value }))} className={CLASE_CAMPO}>
-                <option value="">{t('elegir')}</option>
-                {tiposDocumentoPara(props.tiposDocumento ?? [], crear.tipo).map((d) => <option key={d.code} value={d.code}>{d.name}</option>)}
-              </select>
+              <SelectCrm valor={crear.identification_type} onValorChange={(identification_type) => setCrear((c) => ({ ...c, identification_type }))} opcionVacia={t('elegir')} opciones={tiposDocumentoPara(props.tiposDocumento ?? [], crear.tipo).map((d) => ({ valor: d.code, etiqueta: d.name }))} />
             </FormField>
             <FormField etiqueta={t('numero')}><input value={crear.identification_number} onChange={(e) => setCrear((c) => ({ ...c, identification_number: e.target.value }))} className={CLASE_CAMPO} /></FormField>
           </div>

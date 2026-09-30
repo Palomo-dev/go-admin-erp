@@ -4,9 +4,12 @@ import type { ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { CalendarClock, Lock, Plus, TrendingUp, User } from 'lucide-react';
 import { cn } from '@/utils/Utils';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 import { FormField } from '@/components/kit/FormField';
 import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { formatMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
+import { CampoFechaHora } from './CampoFechaHora';
+import { SelectCrm } from './SelectCrm';
 import { CLASE_CAMPO, simboloMoneda, type OpcionUsuario } from './camposCrm';
 import type { Temperatura } from './opportunityCardLogica';
 import { estaBloqueado, etapasAbiertas, probabilidadDeEtapa, type EtapaFormulario, type LayoutFormulario, type OrigenFormulario, type ValoresOportunidad } from './opportunityFormLogica';
@@ -38,6 +41,8 @@ export interface CamposOportunidadProps {
   onElegirCliente?: () => void;
   /** «Agregar productos, espacios o conceptos (opcional)» en diálogo y hoja. */
   onAgregarLineas?: () => void;
+  /** Opción extra del responsable antes de los usuarios (p. ej. «El de cada lead» en lote). */
+  opcionResponsable?: { valor: string; etiqueta: string };
 }
 
 const PRIORIDADES: readonly Temperatura[] = ['cold', 'warm', 'hot'];
@@ -92,34 +97,32 @@ export function CamposOportunidad(p: CamposOportunidadProps) {
         </FormField>
         <div className={compacto ? grid2 : grid}>
           <FormField etiqueta={t('embudo')} obligatorio error={errores.pipeline_id} ayuda={compacto ? undefined : t('embudoAyuda')}>
-            <select
-              value={v.pipeline_id}
-              onChange={(e) => cambiar({ pipeline_id: e.target.value, stage_id: etapasAbiertas(p.etapas, e.target.value)[0]?.id ?? '' })}
-              className={CLASE_CAMPO}
-            >
-              <option value="">{t('elegir')}</option>
-              {p.pipelines.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
-            </select>
+            <SelectCrm
+              valor={v.pipeline_id}
+              onValorChange={(pipeline_id) => cambiar({ pipeline_id, stage_id: etapasAbiertas(p.etapas, pipeline_id)[0]?.id ?? '' })}
+              opcionVacia={t('elegir')}
+              opciones={p.pipelines.map((x) => ({ valor: x.id, etiqueta: x.name }))}
+            />
           </FormField>
           <FormField etiqueta={t('etapa')} obligatorio error={errores.stage_id}>
-            <select value={v.stage_id} onChange={(e) => cambiar({ stage_id: e.target.value })} disabled={!v.pipeline_id} className={CLASE_CAMPO}>
-              <option value="">{t('elegir')}</option>
-              {abiertas.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
-            </select>
+            <SelectCrm valor={v.stage_id} onValorChange={(stage_id) => cambiar({ stage_id })} disabled={!v.pipeline_id} opcionVacia={t('elegir')} opciones={abiertas.map((x) => ({ valor: x.id, etiqueta: x.name }))} />
           </FormField>
           <FormField etiqueta={t('monto')} error={errores.amount} ayuda={compacto ? undefined : t('montoAyuda')}>
             <input inputMode="decimal" value={v.amount} disabled={bloqueado('amount')} onChange={(e) => cambiar({ amount: e.target.value })} placeholder={`${simboloMoneda(p.monedaBase)} 0`} className={CLASE_CAMPO} />
           </FormField>
           <FormField etiqueta={t('moneda')} error={errores.currency} ayuda={compacto ? undefined : t('monedaAyuda')}>
-            <select value={v.currency} disabled={bloqueado('currency')} onChange={(e) => cambiar({ currency: e.target.value })} className={CLASE_CAMPO}>
-              {monedas.map((m) => <option key={m} value={m}>{m === p.monedaBase.code ? t('monedaBase', { moneda: m }) : m}</option>)}
-            </select>
+            <SelectCrm
+              valor={v.currency}
+              disabled={bloqueado('currency')}
+              onValorChange={(currency) => cambiar({ currency })}
+              opciones={monedas.map((m) => ({ valor: m, etiqueta: m === p.monedaBase.code ? t('monedaBase', { moneda: m }) : m }))}
+            />
           </FormField>
           <FormField etiqueta={t('probabilidad')}>
             <input readOnly disabled value={prob === null ? '—' : compacto ? `${prob} %` : t('probEtapa', { prob })} className={CLASE_CAMPO} />
           </FormField>
           <FormField etiqueta={t('cierre')} error={errores.expected_close_date}>
-            <input type="date" value={v.expected_close_date} onChange={(e) => cambiar({ expected_close_date: e.target.value })} className={CLASE_CAMPO} />
+            <CampoFecha valor={v.expected_close_date} onValorChange={(expected_close_date) => cambiar({ expected_close_date })} />
           </FormField>
         </div>
       </section>
@@ -128,13 +131,18 @@ export function CamposOportunidad(p: CamposOportunidadProps) {
         <Titulo icono={CalendarClock}>{t('seguimiento')}</Titulo>
         <div className={compacto ? grid2 : grid}>
           <FormField etiqueta={t('responsable')}>
-            <select value={v.salesperson_id} onChange={(e) => cambiar({ salesperson_id: e.target.value })} className={CLASE_CAMPO}>
-              <option value="">{t('sinResponsable')}</option>
-              {p.usuarios.map((u) => <option key={u.id} value={u.id}>{u.id === p.usuarioActualId ? t('tu', { nombre: u.nombre }) : u.nombre}</option>)}
-            </select>
+            <SelectCrm
+              valor={v.salesperson_id}
+              onValorChange={(salesperson_id) => cambiar({ salesperson_id })}
+              opcionVacia={t('sinResponsable')}
+              opciones={[
+                ...(p.opcionResponsable ? [p.opcionResponsable] : []),
+                ...p.usuarios.map((u) => ({ valor: u.id, etiqueta: u.id === p.usuarioActualId ? t('tu', { nombre: u.nombre }) : u.nombre })),
+              ]}
+            />
           </FormField>
           <FormField etiqueta={t('proximoContacto')} error={errores.next_contact_at} ayuda={compacto ? undefined : t('horaOrg')}>
-            <input type="datetime-local" value={v.next_contact_at} onChange={(e) => cambiar({ next_contact_at: e.target.value })} className={CLASE_CAMPO} />
+            <CampoFechaHora valor={v.next_contact_at} onValorChange={(next_contact_at) => cambiar({ next_contact_at })} />
           </FormField>
         </div>
         {!compacto && (

@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { ClipboardCheck, Ellipsis, GripVertical, Trash2 } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { CLASE_CAMPO } from './camposCrm';
+import { SelectCrm } from './SelectCrm';
 import { conResultado, contarRequisitos, enteroDeCampo, resultadoDe, type EtapaEditable, type ErrorEtapa, type ResultadoEtapa } from './stageEditorRowLogica';
 
 /**
@@ -63,9 +64,15 @@ export function StageEditorRow({ etapa, onCambiar, error, arrastrando, propsAsa,
         <button type="button" {...propsAsa} onKeyDown={teclaAsa} aria-label={t('mover', { nombre: etapa.name || t('sinNombre') })} className="flex size-8 shrink-0 cursor-grab items-center justify-center rounded-lg text-fg-muted hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
           <GripVertical aria-hidden="true" className="size-4" strokeWidth={1.5} />
         </button>
-        <select aria-label={t('color')} value={etapa.color} disabled={deshabilitada} onChange={(e) => cambiar({ color: e.target.value })} className="h-10 w-14 shrink-0 rounded-lg border border-line-strong px-1 text-transparent" style={{ backgroundColor: etapa.color || undefined }}>
-          {colores.map((c) => <option key={c} value={c} style={{ backgroundColor: c }}>{c}</option>)}
-        </select>
+        <SelectCrm
+          aria-label={t('color')}
+          valor={etapa.color}
+          disabled={deshabilitada}
+          onValorChange={(color) => cambiar({ color })}
+          opciones={colores.map((c) => ({ valor: c, etiqueta: c, estilo: { backgroundColor: c } }))}
+          className="w-14 shrink-0 px-1 text-transparent"
+          style={{ backgroundColor: etapa.color || undefined }}
+        />
         <input
           aria-label={t('nombre')}
           aria-invalid={error ? true : undefined}
@@ -94,9 +101,14 @@ export function StageEditorRow({ etapa, onCambiar, error, arrastrando, propsAsa,
           <input inputMode="numeric" value={cerrada ? '' : etapa.sla_days ?? ''} placeholder={cerrada ? '—' : ''} disabled={deshabilitada || cerrada} onChange={(e) => cambiar({ sla_days: enteroDeCampo(e.target.value) })} className={num} />
           <span aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-fg-muted">{t('dias')}</span>
         </label>
-        <select aria-label={t('resultado')} value={resultado} disabled={deshabilitada} onChange={(e) => onCambiar(conResultado(etapa, e.target.value as ResultadoEtapa))} className={cn(CLASE_CAMPO, 'w-32 shrink-0')}>
-          {RESULTADOS.map((r) => <option key={r} value={r}>{t(`resultados.${r}`)}</option>)}
-        </select>
+        <SelectCrm
+          aria-label={t('resultado')}
+          valor={resultado}
+          disabled={deshabilitada}
+          onValorChange={(r) => onCambiar(conResultado(etapa, r as ResultadoEtapa))}
+          opciones={RESULTADOS.map((r) => ({ valor: r, etiqueta: t(`resultados.${r}`) }))}
+          className="w-32 shrink-0"
+        />
         {onRequisitos && (
           <button type="button" onClick={onRequisitos} className="hidden h-8 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[13px] text-fg-secondary hover:bg-hover lg:inline-flex">
             <ClipboardCheck aria-hidden="true" className="size-4" strokeWidth={1.5} />

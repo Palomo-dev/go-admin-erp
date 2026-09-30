@@ -2,16 +2,20 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { CheckCircle2, FileText, Info, Loader2, Trophy } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, FileText, Info, Loader2, Trophy } from 'lucide-react';
+import { cn } from '@/utils/Utils';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 import { FormField } from '@/components/kit/FormField';
 import { PanelAdaptable } from '@/components/kit/PanelAdaptable';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { formatMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 import { CLASE_AREA, CLASE_AVISO_INFO, CLASE_CAMPO, simboloMoneda, type OpcionUsuario } from './camposCrm';
+import { SelectCrm } from './SelectCrm';
 import {
   ACCIONES_GANAR,
   alternarAccion,
+  conteoResumen,
   cuerpoGanar,
   facturaCreada,
   validarGanar,
@@ -88,6 +92,7 @@ export function WinDialog({ abierto, onAbiertoChange, oportunidad, monedaBase, m
   };
 
   const factura = facturaCreada(docs);
+  const conteo = conteoResumen(docs);
   const titulo = paso === 'resumen' ? t('ganada') : t('titulo', { nombre: oportunidad.name });
   const descripcion =
     paso === 'resumen'
@@ -125,20 +130,20 @@ export function WinDialog({ abierto, onAbiertoChange, oportunidad, monedaBase, m
               <input inputMode="decimal" value={v.monto} onChange={(e) => cambiar({ monto: e.target.value })} placeholder={`${simboloMoneda(monedaBase)} 0`} className={CLASE_CAMPO} />
             </FormField>
             <FormField etiqueta={t('moneda')}>
-              <select value={v.moneda} onChange={(e) => cambiar({ moneda: e.target.value })} className={CLASE_CAMPO}>
-                {listaMonedas.map((m) => <option key={m} value={m}>{m === monedaBase.code ? t('monedaBase', { moneda: m }) : m}</option>)}
-              </select>
+              <SelectCrm
+                valor={v.moneda}
+                onValorChange={(moneda) => cambiar({ moneda })}
+                opciones={listaMonedas.map((m) => ({ valor: m, etiqueta: m === monedaBase.code ? t('monedaBase', { moneda: m }) : m }))}
+                className="sm:min-w-[160px]"
+              />
             </FormField>
           </div>
           <FormField etiqueta={t('fechaCierre')} obligatorio error={err('fechaCierre')}>
-            <input type="date" value={v.fechaCierre} max={hoy} onChange={(e) => cambiar({ fechaCierre: e.target.value })} className={CLASE_CAMPO} />
+            <CampoFecha valor={v.fechaCierre} max={hoy} hoy={hoy} onValorChange={(fechaCierre) => cambiar({ fechaCierre })} />
           </FormField>
           {motivos.length > 0 && (
             <FormField etiqueta={t('motivo')}>
-              <select value={v.motivoId} onChange={(e) => cambiar({ motivoId: e.target.value })} className={CLASE_CAMPO}>
-                <option value="">{t('elegir')}</option>
-                {motivos.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-              </select>
+              <SelectCrm valor={v.motivoId} onValorChange={(motivoId) => cambiar({ motivoId })} opcionVacia={t('elegir')} opciones={motivos.map((m) => ({ valor: m.id, etiqueta: m.label }))} />
             </FormField>
           )}
           {comision && (
@@ -172,12 +177,24 @@ export function WinDialog({ abierto, onAbiertoChange, oportunidad, monedaBase, m
         <>
           <p role="status" className="flex items-start gap-2 rounded-lg bg-success-subtle px-3 py-2 text-[13px] text-success-text">
             <CheckCircle2 aria-hidden="true" className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} />
-            {t('resumen', { n: docs.length })}
+            {t('resumen', { n: conteo.creados })}
           </p>
+          {conteo.fallidos > 0 && (
+            <p role="alert" className="flex items-start gap-2 rounded-lg bg-danger-subtle px-3 py-2 text-[13px] text-danger-text">
+              <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} />
+              {t('pasosFallidos', { n: conteo.fallidos })}
+            </p>
+          )}
           <ul className="flex flex-col gap-2">
             {docs.map((d) => (
-              <li key={`${d.tipo}-${d.numero}`} className="inline-flex items-center gap-1.5 self-start rounded-full bg-brand-tint px-3 py-1 text-[13px] text-brand-deep">
-                <FileText aria-hidden="true" className="size-3.5" />
+              <li
+                key={`${d.tipo}-${d.numero}`}
+                className={cn(
+                  'inline-flex items-center gap-1.5 self-start rounded-full px-3 py-1 text-[13px]',
+                  d.estado === 'error' ? 'bg-danger-subtle text-danger-text' : d.estado === 'omitido' ? 'bg-subtle text-fg-muted' : 'bg-brand-tint text-brand-deep',
+                )}
+              >
+                {d.estado === 'error' ? <AlertTriangle aria-hidden="true" className="size-3.5 shrink-0" /> : <FileText aria-hidden="true" className="size-3.5 shrink-0" />}
                 {d.href ? <a href={d.href} className="hover:underline">{d.numero}</a> : d.numero}
               </li>
             ))}

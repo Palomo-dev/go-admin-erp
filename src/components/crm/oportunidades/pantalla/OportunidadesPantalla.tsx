@@ -11,7 +11,7 @@ import { SearchInput } from '@/components/kit/SearchInput';
 import { TabBar } from '@/components/kit/TabBar';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { useEsEscritorio } from '@/components/kit/useEsEscritorio';
-import { CLASE_CAMPO } from '@/components/crm/kit/camposCrm';
+import { SelectCrm } from '@/components/crm/kit/SelectCrm';
 import { useCatalogosCrm } from '@/components/crm/acciones/useCatalogosCrm';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { KpisOportunidades } from '@/components/crm/oportunidad/KpisOportunidades';
@@ -133,9 +133,13 @@ export function OportunidadesPantalla() {
             <SearchInput value={filtros.q} onChange={(q) => setFiltros({ ...filtros, q })} placeholder={t('buscar')} etiqueta={t('buscar')} atajo="/" cargando={d.cargando} className="min-w-0 flex-1" />
             <FiltrosOportunidades filtros={filtros} onFiltros={setFiltros} usuarios={cat.usuarios} pipelines={cat.pipelines} etapas={cat.etapas} />
             <label className="sr-only" htmlFor="oportunidades-orden">{t('orden.aria')}</label>
-            <select id="oportunidades-orden" value={`${orden}:${asc ? 'asc' : 'desc'}`} onChange={(e) => { const [o, dir] = e.target.value.split(':'); setOrden(o as OrdenOportunidades); setAsc(dir === 'asc'); }} className={`${CLASE_CAMPO} w-auto`}>
-              {ORDENES.flatMap((o) => ['asc', 'desc'].map((dir) => <option key={`${o}:${dir}`} value={`${o}:${dir}`}>{t(`orden.${o}`)} {dir === 'asc' ? '↑' : '↓'}</option>))}
-            </select>
+            <SelectCrm
+              id="oportunidades-orden"
+              valor={`${orden}:${asc ? 'asc' : 'desc'}`}
+              onValorChange={(v) => { const [o, dir] = v.split(':'); setOrden(o as OrdenOportunidades); setAsc(dir === 'asc'); }}
+              opciones={ORDENES.flatMap((o) => ['asc', 'desc'].map((dir) => ({ valor: `${o}:${dir}`, etiqueta: `${t(`orden.${o}`)} ${dir === 'asc' ? '↑' : '↓'}` })))}
+              className="w-auto gap-2"
+            />
           </div>
           <ChipsFiltrosOportunidades filtros={filtros} onFiltros={setFiltros} usuarios={cat.usuarios} pipelines={cat.pipelines} etapas={cat.etapas} />
           {estadoFinal === 'error' ? (

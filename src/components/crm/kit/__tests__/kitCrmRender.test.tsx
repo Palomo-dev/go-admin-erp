@@ -259,7 +259,12 @@ describe('comportamiento (es)', () => {
   test('LoseDialog: competencia pide competidor; sin catálogo no deja perder', () => {
     const onPerder = jest.fn();
     const { unmount } = renderConIdioma(<LoseDialog abierto onAbiertoChange={() => undefined} oportunidad={{ name: 'R', amount: 1 }} moneda={COP} motivos={[{ id: 'm1', code: 'competitor', label: 'Eligió a la competencia' }]} onPerder={onPerder} />);
-    fireEvent.change(screen.getByLabelText(/Motivo/), { target: { value: 'm1' } });
+    // Select del kit (Radix): la etiqueta apunta al disparador; se abre y se elige la opción.
+    const motivo = screen.getByLabelText(/Motivo/);
+    expect(motivo.getAttribute('role')).toBe('combobox');
+    fireEvent.click(motivo);
+    fireEvent.click(screen.getByRole('option', { name: 'Eligió a la competencia' }));
+    expect(motivo.textContent).toContain('Eligió a la competencia');
     fireEvent.click(screen.getByRole('button', { name: 'Marcar perdida' }));
     expect(onPerder).not.toHaveBeenCalled();
     fireEvent.change(screen.getByLabelText(/Competidor/), { target: { value: 'Delta' } });

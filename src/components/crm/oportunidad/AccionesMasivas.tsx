@@ -9,7 +9,8 @@ import { Dialogo } from '@/components/kit/Dialogo';
 import { FormField } from '@/components/kit/FormField';
 import { LoseDialog } from '@/components/crm/kit/LoseDialog';
 import type { MotivoPerdida } from '@/components/crm/kit/loseDialogLogica';
-import { CLASE_CAMPO, type OpcionUsuario } from '@/components/crm/kit/camposCrm';
+import type { OpcionUsuario } from '@/components/crm/kit/camposCrm';
+import { SelectCrm } from '@/components/crm/kit/SelectCrm';
 import { emitirCambioCrm } from '@/components/crm/acciones/apiCrm';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { editarOportunidad, eliminarOportunidad, leerMotivosPerdida, moverEtapa, perderOportunidad } from './apiOportunidades';
@@ -101,10 +102,7 @@ export function AccionesMasivas(p: AccionesMasivasProps) {
         textoCancelar={t('cancelar')}
       >
         <FormField etiqueta={t('etapa')}>
-          <select value={destino} onChange={(e) => setDestino(e.target.value)} className={CLASE_CAMPO}>
-            <option value="">{t('elegirEtapa')}</option>
-            {etapas.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-          </select>
+          <SelectCrm valor={destino} onValorChange={setDestino} opcionVacia={t('elegirEtapa')} opciones={etapas.map((e) => ({ valor: e.id, etiqueta: e.name }))} />
         </FormField>
       </Dialogo>
       <Dialogo
@@ -117,10 +115,7 @@ export function AccionesMasivas(p: AccionesMasivasProps) {
         textoCancelar={t('cancelar')}
       >
         <FormField etiqueta={t('responsable')}>
-          <select value={responsable} onChange={(e) => setResponsable(e.target.value)} className={CLASE_CAMPO}>
-            <option value="">{t('sinAsignar')}</option>
-            {p.usuarios.map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}
-          </select>
+          <SelectCrm valor={responsable} onValorChange={setResponsable} opcionVacia={t('sinAsignar')} opciones={p.usuarios.map((u) => ({ valor: u.id, etiqueta: u.nombre }))} />
         </FormField>
       </Dialogo>
       <LoseDialog

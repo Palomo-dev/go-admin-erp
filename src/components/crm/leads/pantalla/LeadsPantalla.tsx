@@ -24,6 +24,7 @@ import { puede } from '@/components/crm/acciones/catalogosCrmLogica';
 import { useCatalogosCrm } from '@/components/crm/acciones/useCatalogosCrm';
 import { useBranchOpcional } from '@/lib/context/BranchContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { MAX_LOTE_CALIFICAR } from '@/lib/services/crm/calificarLoteLogica';
 import { alternar, aLeadFila, csvLeads, estadoPantallaLeads, filtrosLeadsVacios, hayFiltrosLeads } from './leadsPantallaLogica';
 import { useLeadsPantalla } from './useLeadsPantalla';
 import { LeadsKpis } from './LeadsKpis';
@@ -32,6 +33,7 @@ import { LeadsTabla } from './LeadsTabla';
 import { LeadsListaMovil } from './LeadsListaMovil';
 import { LeadDetalleHoja } from './LeadDetalleHoja';
 import { CalificarLead } from './CalificarLead';
+import { CalificarLeadsLote } from './CalificarLeadsLote';
 import { AsignarResponsableDialog } from './AsignarResponsableDialog';
 
 /**
@@ -55,6 +57,7 @@ export function LeadsPantalla() {
   const [modoSeleccion, setModoSeleccion] = useState(false);
   const [detalleId, setDetalleId] = useState<string | null>(null);
   const [calificarId, setCalificarId] = useState<string | null>(null);
+  const [loteIds, setLoteIds] = useState<string[] | null>(null);
   const [asignarIds, setAsignarIds] = useState<string[] | null>(null);
   const [descartarIds, setDescartarIds] = useState<string[] | null>(null);
   const [nuevo, setNuevo] = useState(false);
@@ -266,7 +269,7 @@ export function LeadsPantalla() {
             ...(permisos.asignar ? [{ id: 'asignar', etiqueta: t('masivo.asignar'), icono: UserPlus, onClick: () => setAsignarIds(seleccionados) }] : []),
             { id: 'etiquetar', etiqueta: t('masivo.etiquetar'), icono: Tags, onClick: () => undefined, deshabilitada: true, motivo: t('masivo.etiquetarMotivo') },
             ...(permisos.convertir
-              ? [{ id: 'calificar', etiqueta: t('masivo.calificar'), icono: TrendingUp, onClick: () => setCalificarId(seleccionados[0]), deshabilitada: seleccionados.length !== 1, motivo: t('masivo.calificarMotivo') }]
+              ? [{ id: 'calificar', etiqueta: t('masivo.calificar'), icono: TrendingUp, onClick: () => (seleccionados.length === 1 ? setCalificarId(seleccionados[0]) : setLoteIds(seleccionados)), deshabilitada: seleccionados.length > MAX_LOTE_CALIFICAR, motivo: t('masivo.calificarMotivo', { max: MAX_LOTE_CALIFICAR }) }]
               : []),
             { id: 'exportar', etiqueta: t('masivo.exportar'), icono: Download, onClick: () => exportar(seleccionados) },
             ...(permisos.editar ? [{ id: 'descartar', etiqueta: t('masivo.descartar'), icono: XCircle, destructiva: true, onClick: () => setDescartarIds(seleccionados) }] : []),
@@ -298,6 +301,15 @@ export function LeadsPantalla() {
           limpiarSeleccion();
           if (opp) router.push(`/app/crm/oportunidades/${opp}`);
         }}
+      />
+      <CalificarLeadsLote
+        ids={loteIds}
+        leads={filas.filter((f) => loteIds?.includes(f.id))}
+        onCerrar={() => setLoteIds(null)}
+        catalogos={cat}
+        moneda={moneda}
+        onCalificados={limpiarSeleccion}
+        onVerPipeline={() => router.push('/app/crm/pipeline')}
       />
       <AsignarResponsableDialog
         abierto={!!asignarIds}

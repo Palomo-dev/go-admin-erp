@@ -72,6 +72,16 @@ export interface DocumentoCreado {
   tipo: 'factura' | 'cotizacion' | 'onboarding' | 'renovacion' | 'otro';
   numero: string;
   href?: string | null;
+  /** `creado` (por defecto), `omitido` (no hizo falta o ya existía) o `error` (el paso falló). */
+  estado?: 'creado' | 'omitido' | 'error';
+}
+
+/** Cuántos documentos nuevos y cuántos pasos fallaron, para el resumen. */
+export function conteoResumen(docs: readonly DocumentoCreado[]): { creados: number; fallidos: number } {
+  return {
+    creados: docs.filter((d) => (d.estado ?? 'creado') === 'creado').length,
+    fallidos: docs.filter((d) => d.estado === 'error').length,
+  };
 }
 
 /** La factura del resumen, si se creó («Ver factura»). */

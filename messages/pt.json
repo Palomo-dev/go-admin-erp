@@ -23532,6 +23532,7 @@
         },
         "comisionSistema": "A comissão é registrada pelo sistema ao ganhar; não é uma caixa de seleção.",
         "resumen": "{n, plural, =0 {Etapa de ganho aplicada.} one {Etapa de ganho aplicada. Foi criado # documento.} other {Etapa de ganho aplicada. Foram criados # documentos.}}",
+        "pasosFallidos": "{n, plural, one {# etapa não pôde ser concluída; confira o detalhe.} other {# etapas não puderam ser concluídas; confira o detalhe.}}",
         "error": {
           "obligatorio": "Este campo é obrigatório.",
           "montoInvalido": "Digite um valor válido.",
@@ -23793,6 +23794,9 @@
         "esPrincipal": "{nombre} é o contato principal",
         "marcarPrincipal": "Marcar {nombre} como contato principal",
         "desvincular": "Desvincular {nombre}"
+      },
+      "campoFechaHora": {
+        "hora": "Hora"
       }
     },
     "accionesRapidas": {
@@ -23900,7 +23904,7 @@
         "etiquetar": "Etiquetar",
         "etiquetarMotivo": "As etiquetas são editadas na ficha do cliente",
         "calificar": "Qualificar",
-        "calificarMotivo": "Qualifique um lead por vez",
+        "calificarMotivo": "Máximo de {max} leads por lote",
         "exportar": "Exportar",
         "descartar": "Descartar"
       },
@@ -23985,6 +23989,32 @@
         "sinEtiquetas": "Sem etiquetas",
         "actividad": "Atividade recente",
         "sinActividad": "Ainda não há atividade com este lead."
+      },
+      "lote": {
+        "titulo": "{n, plural, one {Qualificar # lead} other {Qualificar # leads}}",
+        "seleccionados": "{n, plural, one {# lead selecionado} other {# leads selecionados}}",
+        "mas": "+{n}",
+        "cadaLead": "O de cada lead",
+        "aviso": "É criada uma oportunidade por lead com estes dados. O que você deixar sem definir (responsável, valor) vem de cada lead. O sistema passa cada lead para oportunidade.",
+        "contexto": "{n, plural, one {Será criada # oportunidade} other {Serão criadas # oportunidades}} · {marcador} é substituído pelo nome de cada lead",
+        "contextoDetalle": "Se você remover {marcador} do nome, todas as oportunidades terão o mesmo nome. Valor 0 = o valor estimado de cada lead.",
+        "clientes": "{n, plural, one {# lead} other {# leads}}",
+        "resultadoTitulo": "Qualificar em lote",
+        "creando": "{n, plural, one {Criando # oportunidade…} other {Criando # oportunidades…}}",
+        "creadas": "{n, plural, =0 {Nenhuma oportunidade foi criada} one {# oportunidade criada} other {# oportunidades criadas}}",
+        "fallidas": "{n, plural, one {# lead não pôde ser qualificado} other {# leads não puderam ser qualificados}}",
+        "leadNoDisponible": "Lead indisponível",
+        "verPipeline": "Ver no pipeline",
+        "cerrar": "Fechar",
+        "motivos": {
+          "no_encontrado": "Não existe mais ou não pertence a esta organização.",
+          "no_es_lead": "Não é mais um lead (talvez já tenha sido qualificado).",
+          "sin_permiso": "Você não tem permissão para criar oportunidades.",
+          "sin_embudo_ventas": "A organização não tem funil de vendas.",
+          "responsable_no_miembro": "O responsável não é membro ativo da organização.",
+          "error_interno": "Algo deu errado. Tente novamente.",
+          "otro": "Não foi possível criar a oportunidade ({codigo})."
+        }
       }
     },
     "pantallaActividades": {
@@ -25133,6 +25163,9 @@
       "existente": "Já há um fechamento deste período. Recalcular cria uma versão nova e marca a anterior como substituída.",
       "vacio": "Escolha pelo menos um relatório.",
       "listo": "Fechamento {numero} gerado",
+      "descargando": "Preparando o arquivo do fechamento…",
+      "bajar": "Baixar arquivo",
+      "sinArchivo": "O fechamento {numero} foi salvo. O arquivo não baixou.",
       "notaFranja": "A faixa só se aplica aos capítulos que a aceitam. Os demais usam o dia inteiro.",
       "sinDatos": "Um capítulo sem dados no período é impresso com a nota «Sem movimentos».",
       "plantillas": {

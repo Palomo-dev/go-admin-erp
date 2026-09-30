@@ -3,10 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { CheckSquare, Loader2, Plus } from 'lucide-react';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 import { FormField } from '@/components/kit/FormField';
 import { PanelAdaptable } from '@/components/kit/PanelAdaptable';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { CLASE_AREA, CLASE_AVISO_INFO, CLASE_CAMPO } from '@/components/crm/kit/camposCrm';
+import { SelectCrm } from '@/components/crm/kit/SelectCrm';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { addPlainDays } from '@/lib/utils/dateDisplay';
 import { PRIORIDADES_TAREA, validarTarea, valoresInicialesTarea, type PrioridadTarea, type ValoresTarea } from './accionesRapidasLogica';
@@ -78,17 +80,13 @@ export function TareaRapidaDialog({ abierto, onAbiertoChange, contexto, onGuarda
       </FormField>
       <div className="grid gap-3 sm:grid-cols-3">
         <FormField etiqueta={t('fecha')} error={err('fecha')}>
-          <input type="date" value={v.fecha} min={hoy} onChange={(e) => cambiar({ fecha: e.target.value })} className={CLASE_CAMPO} />
+          <CampoFecha valor={v.fecha} min={hoy} hoy={hoy} onValorChange={(fecha) => cambiar({ fecha })} />
         </FormField>
         <FormField etiqueta={t('hora')} error={err('hora')}>
           <input type="time" value={v.hora} onChange={(e) => cambiar({ hora: e.target.value })} className={CLASE_CAMPO} />
         </FormField>
         <FormField etiqueta={t('prioridad')}>
-          <select value={v.prioridad} onChange={(e) => cambiar({ prioridad: e.target.value as PrioridadTarea })} className={CLASE_CAMPO}>
-            {PRIORIDADES_TAREA.map((p) => (
-              <option key={p} value={p}>{t(`prioridades.${p}`)}</option>
-            ))}
-          </select>
+          <SelectCrm valor={v.prioridad} onValorChange={(p) => cambiar({ prioridad: p as PrioridadTarea })} opciones={PRIORIDADES_TAREA.map((p) => ({ valor: p, etiqueta: t(`prioridades.${p}`) }))} />
         </FormField>
       </div>
       <p className={CLASE_AVISO_INFO}>{t('aviso', { zona: timezone })}</p>

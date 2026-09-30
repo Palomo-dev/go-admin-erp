@@ -109,14 +109,28 @@ export async function executeInvoice(opp: OpportunityData, deps: WonCloseDeps): 
 export async function executePosSale(opp: OpportunityData, deps: WonCloseDeps): Promise<string> {
   if (!opp.customer_id) return 'Sin cliente — se omitió venta POS';
   const orgId = requireOrg(deps);
+  // `sales_status_check` solo admite draft|paid|partial|pending|void: con
+  // 'completed' el insert fallaba SIEMPRE (400) y el paso nunca funcionó.
   const { data: userData } = await deps.supabase.auth.getUser();
   const branchIdForSale = deps.contextBranchId;
   if (!branchIdForSale) return 'Sin sucursal seleccionada (selecciona una sucursal concreta, no "Todas") — se omitió venta POS';
+  // La factura de la cotización (paso «invoice», fn_cotizacion_convertir) ya
+  // crea su venta ligada a la oportunidad: una segunda duplicaría el ingreso.
+  const { data: ventaPrevia, error: previaError } = await deps.supabase
+    .from('sales')
+    .select('id')
+    .eq('organization_id', orgId)
+    .eq('opportunity_id', opp.id)
+    .neq('status', 'void')
+    .limit(1)
+    .maybeSingle();
+  if (previaError) throw previaError;
+  if (ventaPrevia) return `La oportunidad ya tiene una venta: ${(ventaPrevia as { id: string }).id.substring(0, 8)}… — no se duplicó`;
   const { data: sale, error } = await deps.supabase
     .from('sales')
     .insert({
       organization_id: orgId, branch_id: branchIdForSale, customer_id: opp.customer_id, user_id: userData.user?.id || opp.created_by || '',
-      total: opp.amount, subtotal: opp.amount, tax_total: 0, balance: opp.amount, status: 'completed', payment_status: 'pending', tax_included: false,
+      total: opp.amount, subtotal: opp.amount, tax_total: 0, balance: opp.amount, status: 'pending', payment_status: 'pending', tax_included: false,
       sale_date: (deps.now?.() ?? new Date()).toISOString(), opportunity_id: opp.id, salesperson_id: opp.salesperson_id, source: 'crm', include_in_cash_register: false,
     })
     .select('id')
@@ -128,7 +142,7 @@ export async function executePosSale(opp: OpportunityData, deps: WonCloseDeps): 
 export async function executeReservations(opp: OpportunityData, deps: WonCloseDeps): Promise<string> {
   const orgId = requireOrg(deps);
   const { data: spaces } = await deps.supabase.from('opportunity_spaces').select('space_id, nights, unit_price, checkin_date, checkout_date').eq('opportunity_id', opp.id);
-  if (!spaces || spaces.length === 0) return 'Sin espacios — se omitieron reservas';
+  if (!spaces || spaces.length === 0) return 'Sin espacios reservables — se omitieron reservas';
   const latestProposal = await deps.getLatestProposal(opp.id);
   const reservationBranchId = deps.contextBranchId ?? latestProposal?.branch_id ?? null;
   if (!reservationBranchId) throw new Error('No se puede crear la reserva: selecciona una sucursal concreta o asegúrate de que la oportunidad tenga una propuesta con sucursal asignada.');
@@ -187,7 +201,7 @@ export async function executeOnboarding(opp: OpportunityData, deps: WonCloseDeps
  */
 export async function executeRenewal(opp: OpportunityData, deps: WonCloseDeps): Promise<string> {
   const orgId = requireOrg(deps);
-  if (!opp.billing_cycle_months || opp.billing_cycle_months <= 0) return 'Sin billing_cycle_months — se omitió renovación';
+  if (!opp.billing_cycle_months || opp.billing_cycle_months <= 0) return 'Sin ciclo de facturación en la oportunidad — se omitió renovación';
   if (!opp.customer_id) return 'Sin cliente — se omitió renovación';
   const now = deps.now?.() ?? new Date();
   const schedule = deps.scheduleRenewal ?? scheduleRenewal;

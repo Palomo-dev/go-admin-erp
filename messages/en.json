@@ -3149,6 +3149,7 @@
         },
         "comisionSistema": "The system records the commission on winning; it is not a checkbox.",
         "resumen": "{n, plural, =0 {Won stage applied.} one {Won stage applied. # document was created.} other {Won stage applied. # documents were created.}}",
+        "pasosFallidos": "{n, plural, one {# step could not be completed; check the details.} other {# steps could not be completed; check the details.}}",
         "error": {
           "obligatorio": "This field is required.",
           "montoInvalido": "Enter a valid amount.",
@@ -3410,6 +3411,9 @@
         "esPrincipal": "{nombre} is the main contact",
         "marcarPrincipal": "Mark {nombre} as main contact",
         "desvincular": "Unlink {nombre}"
+      },
+      "campoFechaHora": {
+        "hora": "Time"
       }
     },
     "accionesRapidas": {
@@ -3517,7 +3521,7 @@
         "etiquetar": "Tag",
         "etiquetarMotivo": "Tags are edited on the customer record",
         "calificar": "Qualify",
-        "calificarMotivo": "Qualify one lead at a time",
+        "calificarMotivo": "Up to {max} leads per batch",
         "exportar": "Export",
         "descartar": "Discard"
       },
@@ -3602,6 +3606,32 @@
         "sinEtiquetas": "No tags",
         "actividad": "Recent activity",
         "sinActividad": "No activity with this lead yet."
+      },
+      "lote": {
+        "titulo": "{n, plural, one {Qualify # lead} other {Qualify # leads}}",
+        "seleccionados": "{n, plural, one {# lead selected} other {# leads selected}}",
+        "mas": "+{n}",
+        "cadaLead": "Each lead's own",
+        "aviso": "One opportunity is created per lead with this data. Anything you leave undefined (owner, amount) is taken from each lead. The system moves each lead to opportunity.",
+        "contexto": "{n, plural, one {# opportunity will be created} other {# opportunities will be created}} · {marcador} is replaced by each lead's name",
+        "contextoDetalle": "If you remove {marcador} from the name, all opportunities will have the same name. Amount 0 = each lead's estimated value.",
+        "clientes": "{n, plural, one {# lead} other {# leads}}",
+        "resultadoTitulo": "Bulk qualify",
+        "creando": "{n, plural, one {Creating # opportunity…} other {Creating # opportunities…}}",
+        "creadas": "{n, plural, =0 {No opportunities were created} one {# opportunity created} other {# opportunities created}}",
+        "fallidas": "{n, plural, one {# lead could not be qualified} other {# leads could not be qualified}}",
+        "leadNoDisponible": "Lead not available",
+        "verPipeline": "View in pipeline",
+        "cerrar": "Close",
+        "motivos": {
+          "no_encontrado": "It no longer exists or does not belong to this organization.",
+          "no_es_lead": "It is no longer a lead (it may already be qualified).",
+          "sin_permiso": "You do not have permission to create opportunities.",
+          "sin_embudo_ventas": "The organization has no sales pipeline.",
+          "responsable_no_miembro": "The owner is not an active member of the organization.",
+          "error_interno": "Something went wrong. Try again.",
+          "otro": "The opportunity could not be created ({codigo})."
+        }
       }
     },
     "pantallaActividades": {
@@ -25236,6 +25266,9 @@
       "existente": "There is already a closing for this period. Recalculating creates a new version and marks the previous one as replaced.",
       "vacio": "Choose at least one report.",
       "listo": "Closing {numero} generated",
+      "descargando": "Preparing the closing file…",
+      "bajar": "Download file",
+      "sinArchivo": "Closing {numero} was saved. The file did not download.",
       "notaFranja": "The time range only applies to chapters that accept it. The others use the full day.",
       "sinDatos": "A chapter with no data in the period prints the note “No movements”.",
       "plantillas": {

@@ -7,7 +7,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ChipsOpcion, Dialogo } from '@/components/kit';
 import { cn } from '@/utils/Utils';
 import { toastSuccess } from '@/components/ui/use-toast';
-import { abrirDocumento } from '@/lib/documents/cliente';
+import { entregarArchivo, obtenerDescarga, prepararDescarga } from '@/lib/documents/cliente';
+import { esIdiomaDocumento } from '@/lib/documents/tipos';
 import { reportePermitido } from '@/lib/services/reportes/alcanceSucursal';
 import { clienteReportes, ErrorPeticionReportes, type PedidoCierre } from '@/lib/services/reportes/clienteReportes';
 import type { ResumenCierre } from '@/lib/services/reportes/cierres/cierres.server';
@@ -56,6 +57,7 @@ export function GenerarCierreDialog({
   const [abiertos, setAbiertos] = useState<string[]>([]);
   const [ocupado, setOcupado] = useState<'previa' | 'generar' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pendiente, setPendiente] = useState<{ id: string; numero: string } | null>(null);
   const [existente, setExistente] = useState<string | null>(null);
   const [previa, setPrevia] = useState<ResumenCierre | null>(null);
 
@@ -67,6 +69,7 @@ export function GenerarCierreDialog({
     setPeriodo(periodoInicial);
     setSucursalId(ctx.accesoTotal ? null : ctx.sucursalEncabezado);
     setError(null);
+    setPendiente(null);
     setExistente(null);
     setPrevia(null);
     setAbiertos(pedido.reportes?.length ? [disponibles.find((r) => r.id === pedido.reportes?.[0])?.grupo ?? ''] : []);
@@ -100,23 +103,68 @@ export function GenerarCierreDialog({
     reemplaza: reemplaza ?? null,
   });
 
+  const cerrarPestana = (pestana: Window | null) => {
+    if (!pestana || pestana.closed) return;
+    try {
+      pestana.close();
+    } catch {
+      // El navegador no deja cerrarla.
+    }
+  };
+
+  const bajarArchivo = async (id: string, pestana: Window | null) => {
+    const idiomaDoc = esIdiomaDocumento(idioma) ? idioma : undefined;
+    const archivo =
+      formato === 'excel'
+        ? await clienteReportes.archivoExcelCierre(id, idioma)
+        : await obtenerDescarga('cierre-periodo', id, { papel: formato === '80mm' ? '80mm' : 'carta', idioma: idiomaDoc });
+    entregarArchivo(archivo.blob, archivo.nombre, pestana);
+  };
+
   const generar = async (reemplaza?: string) => {
     if (elegidos.length === 0) {
       setError(t('vacio'));
       return;
     }
+    // Antes del await: si la pestaña se abre después, el navegador la bloquea
+    // y no baja nada aunque el cierre sí se haya guardado.
+    const pestana = prepararDescarga(t('descargando'));
+    setOcupado('generar');
+    setError(null);
+    setPendiente(null);
+    let guardadoId: string | null = null;
+    let guardadoNumero: string | null = null;
+    try {
+      const guardado = await clienteReportes.generarCierre(cuerpo(reemplaza));
+      guardadoId = guardado.id;
+      guardadoNumero = guardado.numero;
+      toastSuccess(t('listo', { numero: guardado.numero }));
+      onListo();
+      await bajarArchivo(guardado.id, pestana);
+      onCerrar();
+    } catch (e) {
+      cerrarPestana(pestana);
+      if (guardadoId && guardadoNumero) {
+        setPendiente({ id: guardadoId, numero: guardadoNumero });
+        setError(t('sinArchivo', { numero: guardadoNumero }));
+      } else if (e instanceof ErrorPeticionReportes && e.codigo === 'cierre_existente' && e.existente) setExistente(e.existente);
+      else setError(mensaje(e));
+    } finally {
+      setOcupado(null);
+    }
+  };
+
+  const bajarPendiente = async () => {
+    if (!pendiente) return;
+    const pestana = prepararDescarga(t('descargando'));
     setOcupado('generar');
     setError(null);
     try {
-      const guardado = await clienteReportes.generarCierre(cuerpo(reemplaza));
-      toastSuccess(t('listo', { numero: guardado.numero }));
-      onListo();
-      if (formato === 'excel') await clienteReportes.descargarExcelCierre(guardado.id, idioma);
-      else abrirDocumento('cierre-periodo', guardado.id, { papel: formato === '80mm' ? '80mm' : 'carta' });
+      await bajarArchivo(pendiente.id, pestana);
       onCerrar();
     } catch (e) {
-      if (e instanceof ErrorPeticionReportes && e.codigo === 'cierre_existente' && e.existente) setExistente(e.existente);
-      else setError(mensaje(e));
+      cerrarPestana(pestana);
+      setError(mensaje(e));
     } finally {
       setOcupado(null);
     }
@@ -241,6 +289,11 @@ export function GenerarCierreDialog({
       )}
       {existente && <p className="rounded-lg bg-warning-subtle px-3 py-2 text-sm text-warning-text">{t('existente')}</p>}
       {error && <p className="text-sm text-danger-text">{error}</p>}
+      {pendiente && (
+        <button type="button" className="self-start text-sm font-medium text-link" onClick={() => void bajarPendiente()} disabled={ocupado !== null}>
+          {t('bajar')}
+        </button>
+      )}
     </Dialogo>
   );
 }

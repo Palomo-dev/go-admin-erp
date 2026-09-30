@@ -173,6 +173,17 @@ export async function detalleFactura(ctx: Ctx, id: string): Promise<DetalleFactu
   if (!f) throw new ErrorFacturaServidor('factura_no_encontrada');
   const fac = f as unknown as FilaFactura;
 
+  // `invoice_sales.sale_id` no tiene FK hacia `sales`: el canal se lee aparte.
+  type FilaVentaOrigen = { source: string | null; web_order_id: string | null; web_orders: { order_number: string | null } | null };
+  const ventaOrigenPromesa = fac.sale_id
+    ? db
+        .from('sales')
+        .select('source, web_order_id, web_orders:web_order_id (order_number)')
+        .eq('id', fac.sale_id)
+        .eq('organization_id', org)
+        .maybeSingle()
+    : Promise.resolve({ data: null });
+
   const [itemsRes, carteraRes, ncRes, appsRes, jobRes, asientosRes, histRes, vendedorRes] = await Promise.all([
     db
       .from('invoice_items')
@@ -280,6 +291,7 @@ export async function detalleFactura(ctx: Ctx, id: string): Promise<DetalleFactu
     revertidos = new Set(((rev ?? []) as { fact_key: string }[]).map((r) => r.fact_key));
   }
 
+  const ventaOrigen = ((await ventaOrigenPromesa).data ?? null) as unknown as FilaVentaOrigen | null;
   const vendedor = (vendedorRes as { data: { first_name: string | null; last_name: string | null } | null }).data;
   const cliente = fac.customers;
 
@@ -307,6 +319,9 @@ export async function detalleFactura(ctx: Ctx, id: string): Promise<DetalleFactu
       comisionTasa: fac.commission_rate === null ? null : num(fac.commission_rate),
       cargos: [],
       saleId: fac.sale_id,
+      origenVenta: ventaOrigen
+        ? { canal: ventaOrigen.source, pedidoWebId: ventaOrigen.web_order_id, pedidoWebNumero: ventaOrigen.web_orders?.order_number ?? null }
+        : null,
       facturaRelacionadaId: fac.related_invoice_id,
       fe: { estado: fac.einvoice_status, numero: fac.einvoice_number, qr: fac.einvoice_qr },
       creadaEn: fac.created_at,

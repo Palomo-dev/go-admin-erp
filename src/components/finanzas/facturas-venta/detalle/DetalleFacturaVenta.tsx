@@ -53,6 +53,7 @@ import { usePermisosFinanzas } from '@/lib/finanzas/usePermisosFinanzas';
 import { accionesFactura, estadoPagoFactura, puedeAnular } from '@/lib/finanzas/ventas/reglasFactura';
 import { asientoDescuadrado, diasVencidos, impuestosDeLineas, pagoAnulable, totalPagado } from '@/lib/finanzas/ventas/detalleLogica';
 import type { DetalleFacturaVenta as Detalle, FaltanteStock } from '@/lib/finanzas/ventas/contratoFacturas';
+import { eslabonVentaOrigen } from '@/lib/finanzas/ventas/origenVenta';
 import { ErrorPeticionFactura, anularFacturaVenta, emitirFacturaVenta, pedirDetalleFactura } from '@/lib/finanzas/ventas/clienteFacturas';
 import { RegistrarPagoConectado } from '@/components/finanzas/pagos/RegistrarPagoConectado';
 import { AnularPagoConectado } from '@/components/finanzas/pagos/AnularPagoConectado';
@@ -185,9 +186,17 @@ export function DetalleFacturaVenta({ id }: { id: string }) {
   const esBorrador = factura?.estado === 'draft';
   const numero = factura?.numero ?? t('detalle.sinNumero');
 
+  const ventaOrigen = factura?.saleId ? eslabonVentaOrigen(factura.saleId, factura.origenVenta) : null;
   const eslabones: EslabonDocumento[] = factura
     ? [
-        ...(factura.saleId ? [{ id: `venta-${factura.saleId}`, tipo: 'venta' as const, numero: t('detalle.ventaOrigen'), href: `/app/pos/ventas/${factura.saleId}` }] : []),
+        ...(factura.saleId && ventaOrigen
+          ? [{
+              id: `venta-${factura.saleId}`,
+              tipo: 'venta' as const,
+              numero: ventaOrigen.numero ? t('detalle.ventaWebNumero', { numero: ventaOrigen.numero }) : t(`detalle.${ventaOrigen.clave}`),
+              href: ventaOrigen.href,
+            }]
+          : []),
         { id: factura.id, tipo: 'factura' as const, numero, estado: factura.estado, fecha: formatDate(factura.emision), importe: fmt(factura.total), actual: true },
         ...(datos?.cartera
           ? [{ id: datos.cartera.id, tipo: 'cuentaPorCobrar' as const, numero: t('detalle.cartera'), estado: datos.cartera.estado, importe: fmt(datos.cartera.saldo), href: `/app/finanzas/cuentas-por-cobrar/${datos.cartera.id}` }]

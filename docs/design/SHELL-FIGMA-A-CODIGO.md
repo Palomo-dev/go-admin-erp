@@ -277,3 +277,194 @@ No se corrió el `tsc` completo ni `next build` (lo corre el dueño).
 | Propuestas — shell móvil y detalles (Nuevo) | `627:17020` | ya está en código desde tandas anteriores (menú por niveles, POS con «←», detalle de notificación, vista rápida de tarea): conviene quitarle la marca de propuesta en Figma o confirmar |
 | Inicio — Dashboard por módulo (propuesta) | `642:25956` | 14 frames; ver `DASHBOARD-POR-MODULO.md` |
 | GO Asistente — escritorio (propuesta) | `667:34452` | 16 frames; lo trabaja otra sesión |
+
+---
+
+## Tanda 2 — perfil y analítica (2026-09-30)
+
+Sin commit ni push. Lo aprobado por el dueño de `344:9278` (perfil) y `464:237482` (analítica web).
+
+### Zona horaria — regla única (cambia lo aprobado: no hay zona por persona)
+
+El dueño sustituyó «zona horaria propia del usuario» por: **la de la sucursal si la tiene; si no, la de la
+organización; `America/Bogota` solo como último recurso**. No se creó ninguna columna en `profiles`.
+
+| Pieza | Qué | Archivos |
+|---|---|---|
+| Punto único cliente | `useTimezoneFor` / `useFormatDate` sin argumento usan la **sucursal activa del header** (con «Todas», la organización); con `branch_id` del dato, ese; con `null`, la organización. Mostrar y calcular (`getToday`, `toDate`, `toInstant`) usan la misma zona | `lib/utils/sucursalParaZona.ts` (puro), `lib/context/OrganizationTimezoneContext.tsx`, `lib/context/BranchContext.tsx` (`useBranchOpcional`) |
+| Punto único servidor | `zonaHorariaEnServidor(ctx, branchId?)` delega en `fn_timezone_for` | `lib/utils/zonaHorariaServidor.ts` |
+| `346:20440` Preferencias | Zona de solo lectura con su origen («De la sucursal X» / «De la organización») | `components/profile/PreferenciasSection.tsx` |
+| Edición | Ya existía: `BranchTimezoneField` en Organización › Sucursales, `PUT /api/organization/timezone` con permiso en el servidor | sin cambios |
+| Regla escrita | §9 de `docs/reglas-fechas-timezone.md` | — |
+
+Las 94 sucursales tienen `timezone` vacío (verificado por MCP): hoy todo resuelve igual que antes. El contrato
+A3 de `timezoneForContract.test.ts` («el contexto no importa el BranchContext») se actualizó con la decisión.
+
+### `346:21440` Permisos efectivos
+
+`GET /api/me/permisos` (`withOrg`: organización y usuario de la sesión) → `get_user_permission_codes` (rol +
+cargo, precedencia del cargo) + catálogo `permissions`, agrupados por módulo con nombre legible
+(`description` sin «Permite…»). «Acceso total» por `isOrgAdminContext` (id de rol / super admin), nunca por
+nombre. UI `components/profile/PermisosEfectivos.tsx` en «Organización y roles» (`<details>` por módulo,
+«No incluye» con lo que falta del módulo, estados cargando/error/vacío). Lógica pura en
+`lib/organizacion/permisosEfectivos.ts`. Las descripciones de `permissions` solo existen en español.
+
+### `464:237482` Analítica web
+
+| Pieza | Qué |
+|---|---|
+| Migraciones (aplicadas por MCP) | `20260930180010_analitica_web_geolocalizacion` (`website_visits.city`, `.region` NULL-ables + índice `(organization_id, ip_hash, created_at)`), `20260930180020_web_conversion_stats_zona_organizacion` (`get_web_conversion_stats` usa `fn_timezone_for`, misma firma), `20260930180030_analitica_web_rpc` (`fn_analitica_web`, SECURITY INVOKER). Cada una con rollback |
+| Ruta | `GET /api/analitica-web?desde&hasta[&sucursal][&pais]`: `withOrg`; ve el panel completo o `reports.sales`; exporta con `reports.export`; sucursal ajena 400 |
+| Pantalla | `/app/inicio/analitica-web` (`components/analiticaWeb/*`): cabecera, periodo (atajos + personalizado), «vs periodo anterior», 5 indicadores, embudo, serie diaria, «De dónde entran» (países → ciudades), estados cargando / error / sin permiso / sin ubicación, CSV |
+| Sitio (`goadmin-websites`, PR aparte) | `app/api/track-visit/route.ts` guarda país/región/ciudad de las cabeceras de Vercel (`lib/geo/ubicacionVisita.ts`); la organización sale del host (`getOrgIdDelHost` en `lib/get-org-context.ts`), un body con otra da 403; `types/database.ts` declara las columnas y el insert deja de ser `as any` |
+
+Definiciones: visitante = persona distinta (hash de IP o sesión); sesión = `session_id` distinto; conversión =
+pedidos / sesiones; embudo visitantes → pedidos → completados (misma regla de «completado» que
+`get_web_conversion_stats`). Días con `fn_timezone_for(org, sucursal)`.
+
+Privacidad: solo país, región y ciudad aproximados; nunca IP en claro ni coordenadas (no se añadieron
+`latitude`/`longitude`; las cabeceras de coordenadas se ignoran). Valores malformados se descartan.
+
+Decisiones al pasar a código:
+
+- El **mapa** (topojson del mundo y de Colombia) se sustituye por tabla con barra de intensidad: no hay
+  geometrías en el repo y añadirlas es otra decisión.
+- **Conversión y venta media por país/ciudad** no se muestran: `web_orders` no guarda la sesión de la visita.
+  Hacerlo exige guardar `session_id` en el pedido desde el checkout del sitio (archivo sensible).
+- La página no sale en el menú (`enMenu: false` en `catalog.ts`, así «Inicio» sigue sin submenú); el enlace
+  «Ver analítica web» de la tarjeta «Tienda web» del inicio queda para la sesión que lleva el inicio.
+
+### Pruebas (TZ=UTC y TZ=America/Bogota)
+
+| Suite | Resultado |
+|---|---|
+| `__tests__/timezone/zonaUnicaSucursalOrganizacion.test.tsx` (regla, hook, servidor; sucursal en America/Mexico_City) | 16/16 (también en México, Madrid, Katmandú) |
+| `__tests__/timezone/guardarrailZonaUnica.test.ts` (sin zona por persona; trinquete del literal `America/Bogota`) | 8/8 |
+| `lib/organizacion` + `api/me/permisos` + `profile/permisosEfectivos` | 8 + 6 + 8 |
+| `lib/analiticaWeb` + `api/analitica-web` + `components/analiticaWeb` | 14 + 7 + 8 |
+| guardrails, i18n, timezone, context, navigation, shell, profile, busquedaGlobal y las nuevas | 41 suites, 1.701 pruebas en verde |
+
+`tsc` acotado a los 25 archivos tocados: 0 errores. ESLint limpio. Sitio: `npm run typecheck` en verde;
+`verify:tracking` no se pudo correr (no hay `.env.local`).
+
+### Pendiente
+
+- Enlace «Ver analítica web» desde el inicio (sesión del inicio).
+- Mapa con geometrías reales y conversión por país (necesita `session_id` en `web_orders`).
+- `get_user_permission_codes` acepta cualquier `p_user_id` (SECURITY DEFINER): un miembro podría leer los
+  códigos de otra persona. La ruta nueva solo la llama con el usuario de la sesión; conviene endurecerla.
+- `fn_analitica_web` tarda ~1,6 s con 90 días en la organización con más visitas (315 000 filas): suficiente
+  para una pantalla de administración; si crece, agregar por día en una tabla.
+
+---
+
+## Tanda 2 — inicio (2026-09-30)
+
+Sin commit ni push. Lo aprobado por el dueño para el inicio: personalizar y reordenar, ventas del periodo
+por canal, tarjeta «Tienda web», filas de módulo con resumen, «Inicio — Marcar turno» (`631:21816`) e
+«Inicio — Dashboard por módulo» (`642:25956`), estas dos antes «propuesta».
+
+### Migraciones (aplicadas por MCP, cada una con su rollback)
+
+| Migración | Qué |
+|---|---|
+| `20260930170000_inicio_preferencias_usuario` | Tabla `user_dashboard_preferences` (usuario + organización, único): `bloques_ocultos`, `modulos_orden`, `modulos_ocultos` (`text[]` con tope de tamaño). RLS: solo el propio usuario y solo si es miembro activo de la organización; sin grant a anon |
+| `20260930170100_inicio_ventas_periodo_y_tienda_web` | `fn_inicio_ventas_periodo` (llama dos veces a `fn_inicio_ventas_rango` —la regla única de ventas con criterio de caja— para comparar con el periodo anterior que elige el inicio, y añade `monedas`) y `fn_inicio_tienda_web` (visitantes, sesiones, pedidos, pagados, pendientes ahora; sin importes). SECURITY DEFINER, `fn_assert_acceso_org`, sucursal con `app_branch_access`, permiso de ventas en la base |
+| `20260930170200_inicio_modulos_resumen` | `fn_inicio_modulos_resumen` (el `get_module_summary` del diseño): una fila por módulo activo **y** con permiso de lectura (`fn_caja_puede`); reutiliza `fn_cxc_listado`, `fn_stock_listado` y `fn_inicio_ventas_periodo`; el fallo de un módulo llega como `error: true` sin tumbar los demás |
+| `20260930170300_inicio_modulos_resumen_omitir` | Parámetro `p_omitir`: los módulos que la persona ocultó **no se consultan** («al ocultar un módulo dejan de lanzarse sus consultas») |
+
+Probadas en seco con `DO … RAISE EXCEPTION` simulando a un administrador (`request.jwt.claims`): 23–145 ms el
+resumen por módulo; la tienda web bajó de 3 s a 0,4 s (60 días, organización con más visitas) contando
+distintos con `GROUP BY` en vez de `count(distinct)`. `get_advisors`: solo el aviso esperado de SECURITY
+DEFINER ejecutable por `authenticated` (patrón del repo, con guarda de pertenencia y sin anon).
+
+### Rutas
+
+| Ruta | Quién | Qué |
+|---|---|---|
+| `GET /api/inicio/ventas` | panel completo (`veePanelCompleto`) + permiso de ventas en la base | cobrado del periodo, variación, n.º de ventas, ticket, reintegros; desglose por canal (una sucursal) o por sucursal («Todas») |
+| `GET /api/inicio/tienda-web` | ídem; caché de 60 s por organización, usuario, periodo y sucursal | tarjeta «Tienda web» con «Ver pedidos» y «Ver analítica web» |
+| `GET /api/inicio/modulos` | ídem | filas con resumen: módulos del **menú visible** (`seccionesVisiblesServidor` → `filtrarNavegacion`) ∩ los que la base resume; orden y ocultos de las preferencias; badge sólido único |
+| `GET/PUT /api/inicio/preferencias` | cualquier miembro, su propio inicio | `readOrgBody` (organización ajena en body o query → 403), validación contra el menú visible, upsert con RLS |
+| `GET /api/inicio/turno` | cualquier miembro, su propio turno | estado de «Tu turno»; sin módulo HRM o sin contrato activo → `visible: false` |
+
+Todas con `withOrg` (organización de la sesión), periodo validado (`leerPeriodo`), sucursal validada contra la
+organización (400), 42501 → 403, 22023 → 400, `Cache-Control: private, no-store`.
+
+Nueva pieza compartida: `lib/navigation/navegacionServidor.ts` (el menú visible resuelto en el servidor). El
+buscador global (`busquedaGlobal.server.ts`) pasó a usarla en vez de repetir las tres lecturas.
+
+### Pantallas
+
+| Frame | Qué | Archivos |
+|---|---|---|
+| `445:137185` «Ventas del periodo» | `TarjetaVentas` encabeza la columna de la tendencia: neto cobrado (criterio de caja), variación, «N ventas cobradas · ticket promedio», reintegros, desglose por canal o por sucursal (máx. 3 + «otros»). Con cobros en varias monedas no hay total | `components/inicio/TarjetaVentas.tsx`, `lib/dashboard/ventasInicio.ts` |
+| `445:137185` bloque `463:15506` «Tienda web» | Visitantes, pedidos web y conversión con variación; badge en vivo (`LiveVisitorsBadge`); «Ver pedidos» y «Ver analítica web» (`/app/inicio/analitica-web`, de la otra sesión) | `components/inicio/TarjetaTiendaWeb.tsx` |
+| `445:195568` `FilaModulo` y `642:25956` «Dashboard por módulo» (`642:25959`, `643:26987`…`644:31259`, `646:30871`, `646:31926`, `647:32595`…) | Filas plegadas con icono, nombre, badge (uno sólido, el más grave) y línea de resumen; desplegadas: KPIs del **mismo** resumen, pie con alcance/periodo/hora y «Ver módulo →» (primera página visible del menú). Escritorio varios abiertos; móvil acordeón. Error por módulo con «Reintentar». Sin permiso el módulo no aparece | `components/inicio/ModulosInicio.tsx`, `lib/dashboard/resumenModulos.ts` |
+| `646:32649` «Reordenar y ocultar» | Flechas subir/bajar (accesibles con teclado; el asa del diseño queda decorativa), interruptor «En el inicio», Restablecer · Cancelar · Listo | ídem, `lib/dashboard/preferenciasInicio.ts` |
+| `448:196794` «Personalizar el inicio» | Botón «Personalizar» en la cabecera; «Hoy» fijo; bloques Indicadores · Ventas del periodo · Actividad reciente · Tienda web; módulos | `components/inicio/DialogoPersonalizar.tsx`, `usePreferenciasInicio.ts` |
+| `631:21816` «Marcar turno» (`631:23113`, `638:391286`, `631:23505`, `631:23911`, `638:391686`, `631:21819`…`631:22542`) | Escritorio, panel completo: el botón del encabezado cambia con el estado (antes · sin marcar + «N min tarde» · en turno «Marcar salida · 3 h 12 min» · cerrado no se muestra); sin contrato no se dibuja. Móvil: `TurnoCard` arriba. Panel de empleado: `TurnoCard` compacta en lugar de la tarjeta fija «Marcar turno» | `components/inicio/TurnoInicio.tsx`, `lib/dashboard/turno.ts` |
+
+Página: `app/app/inicio/page.tsx` (bloques según preferencias; `DashboardModulos` deja de montarse).
+Lecturas en servidor: `lib/dashboard/inicio.server.ts`; común de rutas: `lib/dashboard/rutasInicio.server.ts`.
+i18n: `home.ventasPeriodo.*`, `home.tiendaWeb.*`, `home.modulos.*`, `home.personalizar.*`, `home.turno.*` en
+es/en/fr/pt (añadidas por script, sin reescribir el resto).
+
+### Decisiones al pasar a código
+
+- **Una sola regla de periodo**: `lib/dashboard/periodo.ts` (`calcularRangoPeriodo`) sale de
+  `inicioService.rangoPeriodo`, que ahora delega en ella; las rutas del servidor usan la misma, con la zona de la
+  regla única (`zonaHorariaEnServidor`: sucursal → organización).
+- **Marcar turno no se reimplementa**: los botones llevan al flujo existente `/marcar`
+  (`QRAttendanceService.validateAndRecord`); el inicio solo lee el estado (turno de hoy en
+  `shift_assignments` + plantilla, y `attendance_events`).
+- **Permiso para «Tu turno»**: módulo HRM activo + contrato activo en la organización (el mismo requisito de
+  `/marcar`). No se exige `hr.attendance.mark`: hoy solo lo tiene el rol 2, y exigirlo dejaría sin marcar a
+  todos los empleados. Con contrato pero sin turno asignado hoy (solo hay 12 turnos en toda la base) se muestra
+  «Sin turno asignado hoy» con «Marcar turno», porque la marcación por QR no exige turno.
+- **Módulos con resumen**: finanzas, ventas, inventario, CRM, RRHH, hotel, membresías y transporte. Chat y
+  parqueadero no tienen permiso de lectura propio en `permissions`; proyectos, calendario, notificaciones,
+  integraciones y operaciones no tienen cifra de negocio (§2.11 de `DASHBOARD-POR-MODULO.md`): no aparecen en
+  «Módulos».
+- **CRM**: oportunidades `record_type='deal'` de toda la organización (casi ninguna tiene sucursal); pipeline
+  por moneda, nunca sumado.
+- **Tienda web**: visitante = hash de IP o sesión (misma definición que la analítica web); las visitas no
+  tienen sucursal y se dice en la tarjeta cuando hay una elegida.
+- **Monedas**: `fn_inicio_ventas_rango` suma `amount` sin mirar `currency` (una organización cobra en COP y
+  USD): la tarjeta y la fila de ventas no muestran total cuando hay más de una moneda.
+
+### Figma
+
+Secciones renombradas sin la marca de propuesta y con la nota junto al título (nodos de texto nuevos):
+`631:21816` «Inicio — Marcar turno» (nota `1363:17`), `642:25956` «Inicio — Dashboard por módulo»
+(`1363:18`) y, a pedido del coordinador, `627:17020` «Shell móvil y detalles» con «Aprobada por el dueño
+2026-09-30 · en código» (`1363:19`). Nada más del archivo se tocó (las descripciones antiguas de esas
+secciones siguen diciendo «propuesta»: cambiarlas no estaba pedido).
+
+### Pruebas (TZ=UTC y TZ=America/Bogota)
+
+| Suite | Resultado |
+|---|---|
+| `lib/dashboard/__tests__/periodo.test.ts` (rangos, query) | 10/10 |
+| `lib/dashboard/__tests__/resumenModulos.test.ts` (monedas, badge sólido, error, desglose de ventas) | 13/13 |
+| `lib/dashboard/__tests__/preferenciasTurno.test.ts` (validación, orden, estados del turno, nocturno) | 13/13 |
+| `app/api/inicio/__tests__/rutasTanda2.test.ts` (401, 403, 400, organización de la sesión, body ajeno 403) | 20/20 |
+| `components/inicio/__tests__/inicioTanda2.test.tsx` (render sin jest-dom, 4 idiomas) | 29/29 |
+| guardrails, guardrail de rutas, i18n, timezone, inicio, dashboard, navegación, shell, buscador, analítica web | 47 suites, 1.853 pruebas en verde |
+
+`tsc` acotado a los archivos tocados y a sus pruebas: 0 errores. ESLint limpio. La prueba de estas rutas
+encontró un fallo real (la validación rechazaba `tiendaWeb` por la mayúscula), corregido.
+Fuera de esta tanda fallan `__tests__/pos/venta/catalogo/productSearch.test.tsx` (archivos del POS con cambios
+de otra sesión) y, de forma intermitente, `pos-display/tester-f2b-r1`.
+
+### Pendiente
+
+- `fn_inicio_modulos_resumen` calcula «hoy» con `organizations.timezone`; la regla única nueva
+  (`fn_timezone_for`, sucursal → organización) llegó el mismo día. Hoy da igual (ninguna sucursal tiene zona);
+  cambiarla es otra migración.
+- Miniaturas de la tarjeta «Tienda web» y de los KPI de módulo (hacen falta series diarias en las RPC).
+- Panel desplegado sin «Requiere atención» ni desglose (`AtencionItem`, `BarraDesglose`): necesitan las RPC de
+  detalle por módulo (`get_inicio_modulo`, §6.2 de `DASHBOARD-POR-MODULO.md`).
+- Resumen de chat y parqueadero (falta un permiso de lectura propio para cada uno).
+- Reordenar con arrastre (hoy con flechas) y orden de los bloques (hoy solo mostrar/ocultar).
+- `DashboardModulos.tsx` y `components/inicio/sections/*` quedan sin montar en el inicio (se exportan aún).

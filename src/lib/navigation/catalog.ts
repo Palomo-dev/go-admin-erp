@@ -182,7 +182,12 @@ export const CATALOGO_NAV: ModuloNav[] = [
     icono: Home,
     seccion: 'principal',
     rutas: ['/app/inicio'],
-    paginas: [{ href: '/app/inicio', nombre: 'Inicio', icono: Home }],
+    paginas: [
+      { href: '/app/inicio', nombre: 'Inicio', icono: Home },
+      // Fuera del menú: se llega desde el inicio (enlace «Ver analítica web»
+      // de la tarjeta «Tienda web»). El acceso lo decide GET /api/analitica-web.
+      { href: '/app/inicio/analitica-web', nombre: 'Analítica web', icono: Globe, enMenu: false },
+    ],
   },
 
   // ─── Ventas ───────────────────────────────────────────────────────────────

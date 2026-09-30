@@ -185,6 +185,16 @@ export const BranchProvider = ({ children }: { children: React.ReactNode }) => {
 };
 
 /**
+ * Igual que `useBranch`, pero devuelve `undefined` fuera de `<BranchProvider>`
+ * en vez de lanzar. Lo usa la zona horaria (`useTimezoneFor`), cuyo provider
+ * está POR ENCIMA del `BranchProvider` y cuyos hooks también se llaman desde
+ * árboles sin sucursal (tests, pantallas fuera del shell).
+ */
+export function useBranchOpcional(): BranchContextValue | undefined {
+  return useContext(BranchContext);
+}
+
+/**
  * Hook para acceder al contexto de sucursal.
  * Debe usarse dentro de <BranchProvider>.
  */

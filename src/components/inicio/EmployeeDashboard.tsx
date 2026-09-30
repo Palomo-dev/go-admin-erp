@@ -6,7 +6,7 @@
  * A diferencia del dashboard financiero (KPIs, tendencia, actividad con
  * montos), este panel NO muestra datos financieros de la organización.
  * Muestra:
- *  - Marcar Turno (QR)
+ *  - «Tu turno» (estado del turno y acceso a la marcación QR de HRM)
  *  - Mis tareas asignadas (PM module, filtradas por assigned_to = usuario)
  *  - Mis notificaciones (recipient_user_id = usuario)
  *  - Accesos rápidos filtrados por los módulos/páginas que el cargo del
@@ -20,7 +20,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
-  QrCode,
   Bell,
   CheckCircle2,
   Circle,
@@ -35,8 +34,6 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState, StatusBadge, Tarjeta, type TonoBadge } from '@/components/kit';
@@ -47,11 +44,15 @@ import { NotificationService } from '@/components/app-layout/Header/Notification
 import type { Notification } from '@/components/app-layout/Header/Notifications/types';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { ESTADOS_TAREA_ABIERTA } from '@/lib/dashboard/bloqueHoy';
+import type { TurnoInicio } from '@/lib/dashboard/inicio.server';
+import { TurnoCard } from './TurnoInicio';
 
 interface EmployeeDashboardProps {
   organizationId?: number | null;
   userId?: string | null;
   permContext: UserPermissionContext | null;
+  /** «Tu turno» (null = sin contrato activo o sin módulo HRM: no se pinta). */
+  turno?: TurnoInicio | null;
 }
 
 interface TaskItem {
@@ -97,7 +98,7 @@ const RUTA_TAREAS = '/app/pm/tareas';
 const CLASE_VER_TODAS =
   'flex items-center gap-1 rounded-md text-sm font-medium text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand';
 
-export function EmployeeDashboard({ organizationId, userId, permContext }: EmployeeDashboardProps) {
+export function EmployeeDashboard({ organizationId, userId, permContext, turno = null }: EmployeeDashboardProps) {
   const t = useTranslations('home');
   const tRoot = useTranslations();
   // Vencimientos y fechas de aviso con la zona de la organización (E.4, E.9):
@@ -175,30 +176,11 @@ export function EmployeeDashboard({ organizationId, userId, permContext }: Emplo
 
   return (
     <div className="space-y-6">
-      {/* Marcar Turno destacado */}
-      <Card className="dark:bg-gray-800/50 border-blue-200 dark:border-blue-900">
-        <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <QrCode className="h-7 w-7 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <h2 className="text-base font-semibold text-gray-900 dark:text-white">
-                {t('markShift')}
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {t('markShiftDesc')}
-              </p>
-            </div>
-          </div>
-          <Link href="/marcar">
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-              <QrCode className="h-4 w-4 mr-2" />
-              {t('markShift')}
-            </Button>
-          </Link>
-        </CardContent>
-      </Card>
+      {/* «Tu turno» compacta arriba (Figma 638:391686, frame 11): sustituye a
+          la tarjeta «Marcar turno» fija. Estado desde el servidor sobre la
+          marcación de HRM; sin contrato activo o sin módulo HRM no aparece
+          (tampoco podría marcar en /marcar). */}
+      {turno && <TurnoCard turno={turno} compacta />}
 
       {/* Accesos rápidos filtrados por permisos del cargo */}
       {accessibleShortcuts.length > 0 && (

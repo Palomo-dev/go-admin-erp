@@ -34,6 +34,7 @@ import NotificacionesSection from '../../../components/profile/NotificacionesSec
 import RolesSection from '../../../components/profile/RolesSection';
 import EliminarCuentaSection from '../../../components/profile/EliminarCuentaSection';
 import PreferenciasSection from '../../../components/profile/PreferenciasSection';
+import PermisosEfectivos from '../../../components/profile/PermisosEfectivos';
 import { CabeceraPerfil } from '../../../components/profile/CabeceraPerfil';
 import { NavPerfil, type SeccionPerfil } from '../../../components/profile/NavPerfil';
 
@@ -365,6 +366,8 @@ export default function PerfilUsuarioPage() {
                 organizations={organizations}
                 onProfileUpdated={setProfile}
               />
+              <div className="border-t border-line" aria-hidden="true" />
+              <PermisosEfectivos organizacion={organizacionActiva} />
               <div className="border-t border-line" aria-hidden="true" />
               <RolesSection roles={userRoles} user={user} branches={userBranches} />
             </div>

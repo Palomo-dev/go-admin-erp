@@ -90,6 +90,15 @@ const MODULOS: Record<string, string[]> = {
   inventarioAjustes: ['src/components/inventario/ajustes', 'src/app/app/inventario/ajustes'],
   // GO Asistente, panel del header (Figma «GO Asistente — escritorio», 2026-09-29).
   asistente: ['src/components/app-layout/Header', 'src/lib/ai/assistant'],
+  // Kit CRM, ola 2 (Figma «CRM (Nuevo)» 759:20897, 2026-09-30). Namespace anidado: el resto de
+  // `crm` todavía no tiene fr ni pt, así que solo se exige paridad en `crm.kit`.
+  'crm.kit': ['src/components/crm/kit'],
+  // CRM ola 3A (Figma «CRM — Leads, actividades y acciones rápidas» 765:446568, 2026-09-30):
+  // pantallas de Leads y Actividades, acciones rápidas y bloque CRM de la ficha del cliente.
+  'crm.accionesRapidas': ['src/components/crm/acciones', 'src/components/crm/leads/pantalla', 'src/components/crm/actividades/pantalla', 'src/components/crm/ficha'],
+  'crm.pantallaLeads': ['src/components/crm/leads/pantalla'],
+  'crm.pantallaActividades': ['src/components/crm/actividades/pantalla'],
+  'crm.fichaCliente': ['src/components/crm/ficha', 'src/components/clientes/id', 'src/app/app/clientes'],
 };
 
 type Arbol = { [clave: string]: string | Arbol };
@@ -175,7 +184,8 @@ function clavesPedidas(codigo: string): { ns: string; clave: string; prefijo: bo
 }
 
 describe.each(Object.keys(MODULOS))('namespace %s en los 4 idiomas', (ns) => {
-  const planos = Object.fromEntries(IDIOMAS.map((l) => [l, aplanar(hijo(mensajes[l], ns))])) as Record<
+  // `ns` puede ser una ruta («crm.kit»): se baja nivel a nivel.
+  const planos = Object.fromEntries(IDIOMAS.map((l) => [l, aplanar(ns.split('.').reduce(hijo, mensajes[l]))])) as Record<
     Idioma,
     Record<string, string>
   >;

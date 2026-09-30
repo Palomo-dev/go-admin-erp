@@ -25,6 +25,10 @@
  *     `VERCEL_SCHEDULE_KINDS`; ningún otro archivo cablea la cadencia.
  * 20. Ningún archivo de src/ filtra `integration_connections` por
  *     `status = 'active'`: el CHECK real es draft|connected|paused|error|revoked.
+ * 37. Hora oficial del servidor en dinero e inventario: suite propia en
+ *     `src/__tests__/timezone/horaOficialGuardrails.test.ts` (corre con `npm test`
+ *     y con `npm run test:tz-all`). El navegador no escribe la marca de tiempo del
+ *     hecho (sale_date, opened_at, closed_at…) con el reloj del equipo.
  */
 
 import * as fs from 'fs';

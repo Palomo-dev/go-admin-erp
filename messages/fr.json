@@ -1,4 +1,10 @@
 {
+  "posReloj": {
+    "titulo": "Horloge de l'appareil décalée",
+    "mensaje": "L'heure de cet appareil est décalée de {minutos, plural, one {# minute} other {# minutes}} ; les ventes utilisent l'heure du serveur.",
+    "adelantado": "L'appareil est en avance : réglez sa date et son heure.",
+    "atrasado": "L'appareil est en retard : réglez sa date et son heure."
+  },
   "metodosPagoSeguridad": {
     "sinPermiso": "Vous n'avez pas l'autorisation de modifier les moyens de paiement de l'organisation (autorisation de facturation).",
     "codigoInvalido": "Le code ne peut contenir que des lettres, des chiffres, des tirets et des tirets bas, de 2 à 40 caractères.",
@@ -739,6 +745,190 @@
         "abrir": "Ouvrir"
       },
       "verTodas": "Voir les {n} · {resto}"
+    },
+    "ventasPeriodo": {
+      "titulo": "Ventes de la période",
+      "variasMonedas": "Encaissements en plusieurs devises",
+      "sinBase": "Aucune période précédente à comparer",
+      "resumen": "{ventas} {n, plural, one {vente encaissée} other {ventes encaissées}} · panier moyen {ticket}",
+      "sinVentas": "Aucun encaissement sur cette période",
+      "incluyeReintegros": "inclut −{valor} de remboursements",
+      "anterior": "Période précédente : {valor}",
+      "porCanal": "Par canal",
+      "porSucursal": "Par succursale",
+      "otros": "Autres",
+      "otroCanal": "Autre canal",
+      "sucursalSinNombre": "Succursale {id}",
+      "canales": {
+        "pos": "Caisse",
+        "web": "Boutique en ligne",
+        "factura": "Factures",
+        "mesa": "Tables"
+      }
+    },
+    "tiendaWeb": {
+      "titulo": "Boutique en ligne",
+      "verPedidos": "Voir les commandes",
+      "visitantes": "Visiteurs de la période",
+      "detalleVisitantes": "{sesiones} sessions · {nuevas} % nouvelles",
+      "pedidos": "Commandes en ligne",
+      "detallePedidos": "{pagados} payées · {pendientes} en attente",
+      "conversion": "Conversion",
+      "detalleConversion": "visiteur → commande payée",
+      "puntos": "{valor} pts",
+      "visitasTodaTienda": "Les visites concernent toute la boutique ; les commandes, la succursale choisie.",
+      "verAnalitica": "Voir l'analyse web"
+    },
+    "modulos": {
+      "titulo": "Modules",
+      "activos": "{n, plural, one {# actif} other {# actifs}}",
+      "visiblesDe": "{n} sur {total} visibles",
+      "reordenar": "Réorganiser et masquer",
+      "restablecer": "Réinitialiser",
+      "cancelar": "Annuler",
+      "listo": "Terminé",
+      "ayudaReordenar": "Utilisez les flèches pour changer l'ordre. Ce que vous désactivez n'est plus interrogé sur votre accueil ; cela ne change ni vos permissions ni les modules de l'organisation. Enregistré pour vous seul.",
+      "errorGuardar": "Impossible d'enregistrer les modifications. Réessayez.",
+      "vacioTitulo": "Aucun module à résumer",
+      "vacioDesc": "Aucun module actif n'a de résumé pour votre poste dans cette organisation.",
+      "subir": "Monter {modulo}",
+      "bajar": "Descendre {modulo}",
+      "enElInicio": "Sur l'accueil",
+      "mostrarEnInicio": "Afficher {modulo} sur l'accueil",
+      "errorModulo": "Impossible de calculer ce module",
+      "pie": "{alcance} · {cuando} · mis à jour à {hora}",
+      "cuandoPeriodo": "période choisie",
+      "cuandoHoy": "aujourd'hui et état actuel",
+      "alcanceTodas": "Toutes vos succursales",
+      "alcanceUna": "Succursale choisie",
+      "verModulo": "Voir le module →",
+      "badges": {
+        "vencidas": "{n, plural, one {# en retard} other {# en retard}}",
+        "porPagar": "{n, plural, one {# à payer} other {# à payer}}",
+        "cajasAntiguas": "{n, plural, one {# caisse des jours précédents} other {# caisses des jours précédents}}",
+        "cajasAbiertas": "{n, plural, one {# caisse ouverte} other {# caisses ouvertes}}",
+        "sinStock": "{n, plural, one {# en rupture} other {# en rupture}}",
+        "bajoMinimo": "{n, plural, one {# sous le minimum} other {# sous le minimum}}",
+        "sinTocar": "{n, plural, one {# sans suivi} other {# sans suivi}}",
+        "porAprobar": "{n, plural, one {# à approuver} other {# à approuver}}",
+        "llegadasPendientes": "{n, plural, one {# arrivée en attente} other {# arrivées en attente}}",
+        "enMora": "{n, plural, one {# impayé} other {# impayés}}",
+        "porVencer": "{n, plural, one {# à échéance} other {# à échéance}}",
+        "retrasados": "{n, plural, one {# en retard} other {# en retard}}"
+      },
+      "resumen": {
+        "carteraVencida": "Créances échues {valor}",
+        "cuentasVencidas": "{n, plural, one {# compte échu} other {# comptes échus}}",
+        "carteraAlDia": "Créances à jour",
+        "porCobrar": "À encaisser {valor}",
+        "variasMonedas": "plusieurs devises",
+        "porPagar7d": "À payer sous 7 jours {valor}",
+        "porPagar7dCuentas": "{n, plural, one {# à payer sous 7 jours} other {# à payer sous 7 jours}}",
+        "ventas": "{n, plural, one {# vente encaissée} other {# ventes encaissées}}",
+        "cobrado": "{valor} encaissés",
+        "ticketMedio": "panier moyen {valor}",
+        "productos": "{n, plural, one {# produit} other {# produits}}",
+        "valorizado": "{valor} en valeur de stock",
+        "bajoMinimo": "{n, plural, one {# sous le minimum} other {# sous le minimum}}",
+        "oportunidades": "{n, plural, one {# opportunité ouverte} other {# opportunités ouvertes}}",
+        "pipeline": "{valor} en pipeline",
+        "clientesNuevos": "{n, plural, one {# nouveau client} other {# nouveaux clients}}",
+        "personasActivas": "{n, plural, one {# personne active} other {# personnes actives}}",
+        "ausentesHoy": "{n, plural, one {# absent aujourd'hui} other {# absents aujourd'hui}}",
+        "turnosHoy": "{n, plural, one {# poste aujourd'hui} other {# postes aujourd'hui}}",
+        "llegadasSalidas": "{llegadas} arrivées et {salidas} départs aujourd'hui",
+        "enCasa": "{n, plural, one {# client présent} other {# clients présents}}",
+        "membresiasActivas": "{n, plural, one {# abonnement actif} other {# abonnements actifs}}",
+        "porVencer7d": "{n, plural, one {# expire sous 7 jours} other {# expirent sous 7 jours}}",
+        "viajesHoy": "{n, plural, one {# trajet aujourd'hui} other {# trajets aujourd'hui}}",
+        "enCurso": "{n, plural, one {# en cours} other {# en cours}}",
+        "completados": "{n, plural, one {# terminé} other {# terminés}}"
+      },
+      "kpis": {
+        "carteraVencida": "Créances échues",
+        "porCobrar": "À encaisser",
+        "porPagar7d": "À payer sous 7 jours",
+        "ventasCobradas": "Ventes encaissées",
+        "numeroVentas": "Nombre de ventes",
+        "ticketPromedio": "Panier moyen",
+        "cajasAbiertas": "Caisses ouvertes",
+        "productos": "Produits",
+        "sinStock": "En rupture",
+        "bajoMinimo": "Sous le minimum",
+        "valorInventario": "Valeur du stock",
+        "oportunidadesAbiertas": "Opportunités ouvertes",
+        "pipeline": "Pipeline",
+        "ganadas": "Gagnées sur la période",
+        "clientesNuevos": "Nouveaux clients",
+        "personasActivas": "Personnes actives",
+        "ausentesHoy": "Absents aujourd'hui",
+        "turnosHoy": "Postes aujourd'hui",
+        "ausenciasPorAprobar": "Absences à approuver",
+        "llegadasHoy": "Arrivées aujourd'hui",
+        "salidasHoy": "Départs aujourd'hui",
+        "enCasa": "Clients présents",
+        "membresiasActivas": "Abonnements actifs",
+        "porVencer7d": "Expirent sous 7 jours",
+        "enMora": "Impayés",
+        "viajesHoy": "Trajets aujourd'hui",
+        "enCurso": "En cours",
+        "retrasados": "En retard",
+        "completados": "Terminés"
+      },
+      "detalles": {
+        "cuentasDias": "{n, plural, one {# compte} other {# comptes}} · le plus ancien, {dias} jours",
+        "variasMonedas": "Plusieurs devises",
+        "cuentas": "{n, plural, one {# compte} other {# comptes}}",
+        "cajasAntiguas": "{n, plural, one {# ouverte depuis les jours précédents} other {# ouvertes depuis les jours précédents}}",
+        "sinTocar": "{n, plural, one {# sans activité depuis 7 jours} other {# sans activité depuis 7 jours}}",
+        "pendientes": "{n, plural, one {# en attente} other {# en attente}}"
+      }
+    },
+    "personalizar": {
+      "boton": "Personnaliser",
+      "titulo": "Personnaliser l'accueil",
+      "descripcion": "Enregistré pour vous seul, dans cette organisation.",
+      "bloques": "Blocs de l'accueil",
+      "hoy": "Aujourd'hui",
+      "siempreVisible": "Toujours visible · ne peut pas être masqué",
+      "bloque": {
+        "indicadores": "Indicateurs",
+        "ventas": "Ventes de la période",
+        "actividad": "Activité récente",
+        "tiendaWeb": "Boutique en ligne"
+      },
+      "modulos": "Modules",
+      "nota": "Masquer un module arrête ses requêtes. Ce que vous masquez ici ne change ni vos permissions ni les modules de l'organisation.",
+      "restablecer": "Réinitialiser",
+      "guardar": "Enregistrer",
+      "errorGuardar": "Impossible d'enregistrer les modifications.",
+      "guardado": "Accueil personnalisé"
+    },
+    "turno": {
+      "titulo": "Votre poste",
+      "duracion": "{h} h {m} min",
+      "duracionMin": "{m} min",
+      "tarde": "{min} min de retard",
+      "estados": {
+        "antes": "Avant le début",
+        "sinMarcar": "Non pointé · {min} min de retard",
+        "enTurno": "En poste",
+        "cerrado": "Poste terminé",
+        "sinTurno": "Aucun poste aujourd'hui"
+      },
+      "detalle": {
+        "entrada": "Début {hora}{sucursal}",
+        "enTurno": "Depuis {hora} · {duracion} · votre poste se termine à {fin}",
+        "cerrado": "{entrada} – {salida} · {duracion}",
+        "sinTurno": "Pointez avec le code QR du local"
+      },
+      "acciones": {
+        "marcarEntrada": "Pointer l'arrivée",
+        "marcarSalida": "Pointer le départ",
+        "marcarSalidaTiempo": "Pointer le départ · {duracion}",
+        "verMarcaciones": "Voir mes pointages",
+        "marcarTurno": "Pointer"
+      }
     }
   },
   "org": {
@@ -2269,7 +2459,8 @@
       "membresias_check-in": "Enregistrement",
       "membresias_instructores": "Instructeurs",
       "membresias_control-de-acceso": "Contrôle d'accès",
-      "membresias_pagos": "Paiements"
+      "membresias_pagos": "Paiements",
+      "inicio_analitica-web": "Analytique web"
     },
     "grupos": {
       "venta": "Vente",
@@ -22254,7 +22445,11 @@
       "sistema": "Système",
       "idioma": "Langue",
       "zonaHoraria": "Fuseau horaire",
-      "zonaHorariaAyuda": "Les dates s'affichent dans le fuseau horaire de l'organisation."
+      "zonaHorariaAyuda": "Les dates s'affichent dans ce fuseau horaire. Si la succursale active a son propre fuseau, il est utilisé ; sinon, celui de l'organisation.",
+      "zonaOrigenSucursal": "De la succursale {sucursal}",
+      "zonaOrigenSucursalSinNombre": "De la succursale active",
+      "zonaOrigenOrganizacion": "De l'organisation",
+      "zonaOrigenSistema": "Par défaut du système"
     },
     "vendedor": {
       "titulo": "Espace vendeur",
@@ -22272,6 +22467,42 @@
       "errorConexion": "Impossible de joindre le service. Réessayez plus tard.",
       "errorProcesar": "Impossible de traiter la demande",
       "errorToast": "Impossible d'activer le compte vendeur"
+    },
+    "permisos": {
+      "titulo": "Autorisations effectives",
+      "descripcion": "Ce que vous pouvez faire dans l'organisation active, selon votre rôle et votre poste.",
+      "descripcionOrg": "Ce que vous pouvez faire dans {organizacion}, selon votre rôle et votre poste.",
+      "cargando": "Chargement des autorisations…",
+      "error": "Impossible de charger vos autorisations.",
+      "reintentar": "Réessayer",
+      "vacio": "Vous n'avez aucune autorisation dans cette organisation. Demandez à un administrateur de vous attribuer un rôle ou un poste.",
+      "accesoTotal": "Vous administrez cette organisation : vous avez un accès complet.",
+      "resumen": "{n, plural, one {# autorisation} other {# autorisations}}",
+      "noIncluye": "Non inclus",
+      "noIncluyeSr": "Non inclus :",
+      "nota": "Les autorisations sont calculées sur le serveur. Si le poste définit une autorisation, elle prime sur le rôle.",
+      "modulos": {
+        "admin": "Administration",
+        "branches": "Succursales",
+        "calendar": "Calendrier",
+        "catalog": "Catalogue",
+        "crm": "CRM",
+        "finance": "Finances",
+        "hr": "Ressources humaines",
+        "integrations": "Intégrations",
+        "inventory": "Inventaire",
+        "memberships": "Abonnements",
+        "notifications": "Notifications",
+        "operations": "Opérations",
+        "organizations": "Organisations",
+        "pms": "Hôtel (PMS)",
+        "pos": "Point de vente",
+        "reports": "Rapports",
+        "roles": "Rôles",
+        "sales": "Ventes",
+        "transport": "Transport",
+        "users": "Utilisateurs"
+      }
     }
   },
   "asistente": {
@@ -22483,6 +22714,1109 @@
     "pie": {
       "aviso": "Il peut se tromper : vérifiez l’essentiel",
       "permisos": "Autorisations de l’assistant"
+    }
+  },
+  "crm": {
+    "kit": {
+      "acciones": {
+        "barra": "Actions rapides",
+        "nombre": {
+          "llamar": "Appeler",
+          "email": "E-mail",
+          "whatsapp": "WhatsApp",
+          "reunion": "Réunion",
+          "tarea": "Tâche",
+          "nota": "Note"
+        },
+        "motivo": {
+          "sinDestino": "Ni client ni opportunité",
+          "sinPermiso": "Sans autorisation",
+          "sinTelefono": "Sans téléphone",
+          "telefonoInvalido": "Téléphone invalide",
+          "noLlamar": "A demandé à ne pas être appelé",
+          "sinCorreo": "Sans e-mail",
+          "sinCanal": "Sans canal WhatsApp"
+        },
+        "propuesta": "Proposition",
+        "nuevaOportunidad": "Nouvelle opportunité"
+      },
+      "menuOportunidad": {
+        "ver": "Voir le détail",
+        "editar": "Modifier",
+        "mover": "Changer d’étape",
+        "ganar": "Marquer gagnée",
+        "perder": "Marquer perdue",
+        "reabrir": "Rouvrir",
+        "duplicar": "Dupliquer",
+        "nuevaTarea": "Nouvelle tâche",
+        "eliminar": "Supprimer"
+      },
+      "kpiMoneda": {
+        "base": "{moneda} · base",
+        "tasaDel": "taux du {fecha}",
+        "reintentar": "Réessayer",
+        "noIncluye": "N’inclut pas {monto} ({cantidad, plural, one {# opportunité} other {# opportunités}}) : taux {moneda} du {fecha} manquant.",
+        "esBase": "devise de base",
+        "sinTasa": "sans taux",
+        "tasaDe": "1 {moneda} = {tasa} ({fecha}).",
+        "sinTasaNoSuma": "{moneda} sans taux : non additionné.",
+        "registrarTasa": "Enregistrer le taux {moneda}",
+        "ocultarDesglose": "Masquer le détail",
+        "verPorMoneda": "Voir par devise",
+        "avisoLector": "{cantidad, plural, one {# opportunité est restée} other {# opportunités sont restées}} hors du total faute de taux."
+      },
+      "columna": {
+        "aria": "Étape {etapa}, {cantidad, plural, one {# opportunité} other {# opportunités}}",
+        "conteo": "{cantidad, plural, one {# opportunité} other {# opportunités}}",
+        "crearEn": "Nouvelle opportunité dans {etapa}",
+        "configurar": "Configurer l’étape {etapa}",
+        "monedaYProb": "{moneda} · prob. {prob} %",
+        "incluye": "dont {cantidad} en {moneda}",
+        "sinTasa": "{cantidad} sans taux",
+        "soltarAqui": "Déposer ici",
+        "pasaA": "Passe à {etapa}",
+        "pasaAProb": "Passe à {etapa} · {prob} %",
+        "vacia": "Aucune opportunité à cette étape",
+        "crearAqui": "Créer ici"
+      },
+      "tarjeta": {
+        "rel": {
+          "vencidaHoy": "en retard aujourd’hui {hora}",
+          "vencidaHace": "en retard depuis {dias} j",
+          "hoy": "aujourd’hui {hora}",
+          "manana": "demain {hora}",
+          "hace": "il y a {dias} j",
+          "en": "dans {dias} j"
+        },
+        "cierre": {
+          "ganada": "Gagnée · {detalle}",
+          "perdida": "Perdue · {detalle}",
+          "ganadaSolo": "Gagnée",
+          "perdidaSolo": "Perdue"
+        },
+        "sinCliente": "Sans client",
+        "seleccionar": "Sélectionner {nombre}",
+        "estado": {
+          "ganada": "Gagnée",
+          "perdida": "Perdue"
+        },
+        "prioridad": {
+          "cold": "Basse",
+          "warm": "Moyenne",
+          "hot": "Haute"
+        },
+        "prioridadAria": "Priorité {prioridad}",
+        "score": "Score {score}",
+        "sinAccion": "Aucune prochaine action",
+        "ultimo": "Dernier : {canal} · {cuando}",
+        "canal": {
+          "whatsapp": "WhatsApp",
+          "llamada": "Appel",
+          "correo": "E-mail",
+          "reunion": "Réunion",
+          "sms": "SMS",
+          "otro": "Autre"
+        },
+        "sinResponsable": "Non assignée",
+        "diasEnEtapa": "{dias} j dans l’étape"
+      },
+      "leads": {
+        "columnas": {
+          "seleccion": "Sélectionner",
+          "lead": "Lead",
+          "origen": "Origine",
+          "responsable": "Responsable",
+          "score": "Score",
+          "etiquetas": "Étiquettes",
+          "ultimoContacto": "Dernier contact",
+          "acciones": "Actions"
+        },
+        "menu": {
+          "ver": "Voir le détail",
+          "llamar": "Appeler",
+          "whatsapp": "WhatsApp",
+          "asignar": "Attribuer un responsable",
+          "etiquetar": "Étiqueter",
+          "descartar": "Écarter"
+        },
+        "sinNombre": "Sans nom",
+        "sinContacto": "Sans coordonnées",
+        "origen": {
+          "web_form": "Formulaire web",
+          "web_order": "Commande web",
+          "whatsapp": "WhatsApp",
+          "instagram": "Instagram",
+          "facebook": "Facebook",
+          "referral": "Recommandation",
+          "import": "Importation",
+          "inbound_call": "Appel entrant",
+          "outbound": "Prospection",
+          "manual": "Manuel",
+          "email": "E-mail",
+          "event": "Événement",
+          "partner": "Partenaire",
+          "other": "Autre"
+        },
+        "sinResponsable": "Non assigné",
+        "score": "{score} · {banda}",
+        "banda": {
+          "alto": "Élevé",
+          "medio": "Moyen",
+          "bajo": "Faible"
+        },
+        "masEtiquetas": "{n, plural, one {# étiquette de plus} other {# étiquettes de plus}}",
+        "nuncaContactado": "Jamais",
+        "haceDias": "{dias, plural, =0 {Aujourd’hui} one {Il y a # jour} other {Il y a # jours}}",
+        "calificar": "Qualifier",
+        "seleccionar": "Sélectionner {nombre}"
+      },
+      "captura": {
+        "cargando": "Chargement des leads non placés",
+        "reintentar": "Réessayer",
+        "titulo": "{cantidad, plural, one {# lead capturé non placé} other {# leads capturés non placés}}",
+        "descripcion": "Cette organisation n’a pas de pipeline de ventes. Les leads du formulaire web ont été enregistrés comme clients, mais ne sont entrés dans aucun pipeline.",
+        "sinPermiso": "Demandez à un administrateur de créer le pipeline de ventes.",
+        "verLeads": "{cantidad, plural, one {Voir le lead} other {Voir les # leads}}",
+        "crearEmbudo": "Créer le pipeline de ventes"
+      },
+      "cargarMas": {
+        "mostrando": {
+          "actividades": "{mostrados} activités affichées sur {total}",
+          "oportunidades": "{mostrados} opportunités affichées sur {total}",
+          "leads": "{mostrados} leads affichés sur {total}",
+          "clientes": "{mostrados} clients affichés sur {total}"
+        },
+        "mostrandoSinTotal": {
+          "actividades": "{mostrados} activités affichées",
+          "oportunidades": "{mostrados} opportunités affichées",
+          "leads": "{mostrados} leads affichés",
+          "clientes": "{mostrados} clients affichés"
+        },
+        "fin": {
+          "actividades": "Plus d’activités · {total} au total",
+          "oportunidades": "Plus d’opportunités · {total} au total",
+          "leads": "Plus de leads · {total} au total",
+          "clientes": "Plus de clients · {total} au total"
+        },
+        "finSinTotal": {
+          "actividades": "Plus d’activités",
+          "oportunidades": "Plus d’opportunités",
+          "leads": "Plus de leads",
+          "clientes": "Plus de clients"
+        },
+        "cargando": "Chargement…",
+        "reintentar": "Réessayer",
+        "cargar": "Charger {cantidad} de plus"
+      },
+      "filtrosLinea": {
+        "tipos": "Type d’activité",
+        "tipo": {
+          "todos": "Tous",
+          "call": "Appels",
+          "email": "E-mails",
+          "whatsapp": "WhatsApp",
+          "meeting": "Réunions",
+          "note": "Notes",
+          "task": "Tâches",
+          "system": "Système",
+          "ai_call": "Appel IA"
+        },
+        "buscar": "Rechercher dans les activités",
+        "filtros": "Filtres",
+        "filtrosConCuenta": "{n, plural, one {Filtres (# actif)} other {Filtres (# actifs)}}",
+        "responsable": "Responsable",
+        "todosResponsables": "Tous les responsables",
+        "rango": "Plage de dates",
+        "todasLasFechas": "Toutes les dates",
+        "limpiar": "Effacer"
+      },
+      "calificar": {
+        "titulo": "Qualifier le lead",
+        "paso": "Étape 1 sur 2 · Le formulaire d’opportunité s’ouvre ensuite avec ces données.",
+        "descartar": "Écarter le lead",
+        "cancelar": "Annuler",
+        "continuar": "Continuer : créer l’opportunité",
+        "necesidad": "De quoi a-t-il besoin ?",
+        "necesidadEj": "Ex. : devis de 200 uniformes pour son équipe commerciale",
+        "presupuesto": "Budget approximatif",
+        "cierre": "Clôture prévue",
+        "decisor": "Qui décide de l’achat ?",
+        "elegir": "Choisir…",
+        "decisores": {
+          "el_mismo": "La même personne",
+          "otra_persona": "Une autre personne",
+          "comite": "Un comité",
+          "no_se": "Inconnu"
+        },
+        "responsable": "Responsable",
+        "sinResponsable": "Non assigné",
+        "temperatura": "Température",
+        "temperaturas": {
+          "cold": "Froid",
+          "warm": "Tiède",
+          "hot": "Chaud"
+        },
+        "aviso": "En continuant, l’opportunité liée à ce client est créée. Le passage de lead à opportunité est fait par le système : vous ne changez pas l’étape du client.",
+        "error": {
+          "obligatorio": "Ce champ est obligatoire.",
+          "montoInvalido": "Saisissez un montant valide.",
+          "fechaPasada": "La date ne peut pas être antérieure à aujourd’hui."
+        }
+      },
+      "actividad": {
+        "titulo": {
+          "llamada": "Enregistrer un appel",
+          "correo": "Envoyer un e-mail",
+          "whatsapp": "Envoyer un WhatsApp",
+          "reunion": "Planifier une réunion",
+          "nota": "Nouvelle note"
+        },
+        "primario": {
+          "llamada": "Enregistrer l’appel",
+          "correo": "Envoyer l’e-mail",
+          "whatsapp": "Envoyer le WhatsApp",
+          "reunion": "Planifier la réunion",
+          "nota": "Enregistrer la note"
+        },
+        "cancelar": "Annuler",
+        "elegir": "Choisir…",
+        "fechaHora": "Date et heure",
+        "plantilla": "Modèle",
+        "sinPlantilla": "Sans modèle",
+        "mensaje": "Message",
+        "error": {
+          "obligatorio": "Ce champ est obligatoire.",
+          "duracionInvalida": "Saisissez la durée comme 4:12 ou 4 min 12 s.",
+          "fechaPasada": "La date ne peut pas être antérieure à aujourd’hui.",
+          "correoInvalido": "Saisissez un e-mail valide.",
+          "plantillaObligatoria": "Hors de la fenêtre de 24 h, seul un modèle approuvé peut être envoyé."
+        },
+        "llamada": {
+          "direccion": "Sens",
+          "direcciones": {
+            "outbound": "Sortant",
+            "inbound": "Entrant"
+          },
+          "resultado": "Résultat de l’appel",
+          "resultados": {
+            "answered": "Joint",
+            "no_answer": "Pas de réponse",
+            "voicemail": "Messagerie vocale",
+            "wrong_number": "Mauvais numéro",
+            "callback": "Demande à être rappelé",
+            "not_interested": "Pas intéressé"
+          },
+          "duracion": "Durée",
+          "duracionAyuda": "Minutes et secondes, p. ex. 4:12.",
+          "notas": "Notes de l’appel",
+          "seguimiento": "Créer une tâche de suivi qui m’est assignée",
+          "fechaSeguimiento": "Date de suivi"
+        },
+        "correo": {
+          "de": "De",
+          "verificado": "Expéditeur vérifié",
+          "para": "À",
+          "asunto": "Objet"
+        },
+        "whatsapp": {
+          "canal": "Canal",
+          "sinRespuesta": "{nombre} n’a pas encore écrit : seul un modèle approuvé peut être envoyé.",
+          "fueraVentana": "La dernière réponse de {nombre} date de {dias, plural, one {# jour} other {# jours}} : hors de la fenêtre de 24 h, seul un modèle approuvé peut être envoyé.",
+          "plantillaAprobada": "Modèle approuvé",
+          "vistaPrevia": "Aperçu",
+          "programar": "Programmer l’envoi (heure de {zona})",
+          "credito": "Cet envoi consomme 1 crédit de messagerie."
+        },
+        "reunion": {
+          "titulo": "Titre",
+          "empieza": "Début",
+          "termina": "Fin",
+          "zona": "Heure de l’organisation : {zona}",
+          "fin": "{hora} · {minutos} min",
+          "participantes": "Participants",
+          "quitar": "Retirer {nombre}",
+          "agregar": "Ajouter",
+          "lugar": "Lieu ou lien",
+          "oportunidad": "Opportunité"
+        },
+        "nota": {
+          "nota": "Note",
+          "relacionada": "Liée à",
+          "fijar": "Épingler sur la fiche client",
+          "ayuda": "Toutes les notes vivent dans une seule table et apparaissent dans la chronologie du client, de l’opportunité et des Activités.",
+          "cliente": "Client : {nombre}",
+          "oportunidad": "Opportunité : {nombre}"
+        }
+      },
+      "vinculador": {
+        "titulo": "Sélectionner un client",
+        "ayuda": "Recherchez par nom, pièce d’identité, e-mail ou téléphone.",
+        "vincularContacto": "Lier un contact à {nombre}",
+        "vincularEmpresa": "Lier une entreprise à {nombre}",
+        "crearPersona": "Créer une personne",
+        "crearEmpresa": "Créer une entreprise",
+        "crearAyuda": "Champs minimaux. « Plus de données » ouvre le formulaire client complet.",
+        "cargoTitulo": "Poste dans l’entreprise",
+        "cargoAyuda": "Uniquement pour lier personne ↔ entreprise.",
+        "errorBuscar": "La recherche a échoué. Vérifiez la connexion et réessayez.",
+        "errorCrear": "Le client n’a pas pu être créé. Vérifiez les données et réessayez.",
+        "error": {
+          "obligatorio": "Ce champ est obligatoire.",
+          "correoInvalido": "Saisissez un e-mail valide."
+        },
+        "cancelar": "Annuler",
+        "atras": "Retour",
+        "crearYContinuar": "Créer et continuer",
+        "vincular": "Lier",
+        "filtro": "Type de client",
+        "filtros": {
+          "todos": "Tous",
+          "personas": "Personnes",
+          "empresas": "Entreprises"
+        },
+        "buscar": "Rechercher une personne ou une entreprise…",
+        "limpiar": "Effacer la recherche",
+        "buscando": "Recherche en cours",
+        "resultados": {
+          "todos": "{n, plural, one {# résultat} other {# résultats}} · personnes et entreprises",
+          "personas": "{n, plural, one {# résultat} other {# résultats}} · personnes",
+          "empresas": "{n, plural, one {# résultat} other {# résultats}} · entreprises"
+        },
+        "sinResultados": "Aucun résultat pour « {texto} ».",
+        "sinNombre": "Sans nom",
+        "yaVinculada": "Déjà liée",
+        "persona": "Personne",
+        "empresa": "Entreprise",
+        "crearPersonaSinSalir": "Créer la personne « {texto} » sans quitter",
+        "crearEmpresaSinSalir": "Créer l’entreprise « {texto} » sans quitter",
+        "tipo": "Type de client",
+        "nombres": "Prénoms",
+        "apellidos": "Noms",
+        "razonSocial": "Raison sociale",
+        "tipoDocumento": "Type de pièce",
+        "elegir": "Choisir…",
+        "numero": "Numéro",
+        "correo": "E-mail",
+        "telefono": "Téléphone",
+        "masDatos": "Plus de données",
+        "cargo": "Poste",
+        "principal": "Contact principal de l’entreprise",
+        "avisoPrincipal": "Il n’y a qu’un contact principal : {nombre} cesse de l’être à l’enregistrement."
+      },
+      "ganar": {
+        "titulo": "Gagner « {nombre} »",
+        "ganada": "Opportunité gagnée",
+        "paso1": "Étape 1 sur 2 · Fiche de vente",
+        "paso2": "Étape 2 sur 2 · Que faire en gagnant",
+        "cancelar": "Annuler",
+        "siguiente": "Suivant",
+        "atras": "Retour",
+        "ganarOportunidad": "Gagner l’opportunité",
+        "verFactura": "Voir la facture",
+        "cerrar": "Fermer",
+        "errorGanar": "L’opportunité n’a pas pu être gagnée. Réessayez.",
+        "monto": "Montant",
+        "moneda": "Devise",
+        "monedaBase": "{moneda} · devise de base",
+        "fechaCierre": "Date de clôture",
+        "motivo": "Motif de gain (catalogue)",
+        "elegir": "Choisir…",
+        "comision": "Commission",
+        "comisionAyuda": "Acquise dans l’agence de l’opportunité.",
+        "notas": "Notes de clôture",
+        "acciones": {
+          "factura": "Créer une facture de vente avec les lignes de l’opportunité",
+          "pos": "Enregistrer la vente au point de vente",
+          "onboarding": "Créer un projet d’onboarding",
+          "renovacion": "Programmer le renouvellement dans 12 mois",
+          "referido": "Demander une recommandation au client",
+          "agradecimiento": "Envoyer un remerciement par WhatsApp"
+        },
+        "comisionSistema": "Le système enregistre la commission au gain ; ce n’est pas une case à cocher.",
+        "resumen": "{n, plural, =0 {Étape gagnée appliquée.} one {Étape gagnée appliquée. # document a été créé.} other {Étape gagnée appliquée. # documents ont été créés.}}",
+        "error": {
+          "obligatorio": "Ce champ est obligatoire.",
+          "montoInvalido": "Saisissez un montant valide.",
+          "fechaFutura": "La date de clôture ne peut pas être postérieure à aujourd’hui."
+        }
+      },
+      "perder": {
+        "titulo": "Marquer comme perdue",
+        "cancelar": "Annuler",
+        "marcarPerdida": "Marquer perdue",
+        "sinCatalogo": "L’organisation n’a pas de motifs de perte. Demandez à un administrateur de les configurer.",
+        "motivo": "Motif (catalogue de l’organisation)",
+        "cargando": "Chargement…",
+        "elegir": "Choisir…",
+        "competidor": "Concurrent",
+        "precioCompetidor": "Prix du concurrent",
+        "quePaso": "Ce qui s’est passé",
+        "seguimiento": "Créer une tâche de suivi dans {dias} jours",
+        "conserva": "Le reste des métadonnées est conservé (exigences, onboarding, renouvellement).",
+        "error": {
+          "obligatorio": "Ce champ est obligatoire.",
+          "montoInvalido": "Saisissez un montant valide."
+        }
+      },
+      "mover": {
+        "titulo": "Déplacer vers « {etapa} »",
+        "tituloSinPermiso": "Vous ne pouvez pas déplacer vers « {etapa} »",
+        "etapaProb": "{etapa} · {prob} %",
+        "cambio": "De {desde} à {hasta}",
+        "destino": "Étape de destination",
+        "proximoContacto": "Prochain contact",
+        "zona": "Heure de l’organisation ({zona}).",
+        "faltan": "{n, plural, one {Il manque # exigence de l’étape} other {Il manque # exigences de l’étape}}",
+        "completar": "Compléter",
+        "historial": "« Avancer quand même » reste dans l’historique avec votre nom.",
+        "sinOmitir": "Seuls les rôles autorisés à ignorer les exigences peuvent avancer sans les compléter.",
+        "sinPermiso": "Cela nécessite l’autorisation « {permiso} ».",
+        "sinPermisoQuien": "Cela nécessite l’autorisation « {permiso} ». {nombre} l’a, entre autres.",
+        "permisoMover": "Modifier les opportunités",
+        "pedirA": "Demander à {nombre}",
+        "entendido": "Compris",
+        "cancelar": "Annuler",
+        "avanzarIgual": "Avancer quand même",
+        "completarRequisitos": "Compléter les exigences",
+        "mover": "Déplacer"
+      },
+      "formulario": {
+        "titulo": "Nouvelle opportunité",
+        "tituloEditar": "Modifier l’opportunité",
+        "tituloLead": "Qualifier → créer l’opportunité",
+        "pasoLead": "Étape 2 sur 2 · formulaire unique avec les données du lead préremplies.",
+        "descOrigen": "Formulaire unique : les champs de l’origine sont préremplis et verrouillés.",
+        "bloqueado": "Verrouillé par l’origine",
+        "cliente": "Client",
+        "clienteAyuda": "Personne ou entreprise. Recherche sur le serveur ; s’il n’existe pas, créez-le sans quitter.",
+        "buscarCliente": "Rechercher une personne ou une entreprise…",
+        "clienteLead": "{nombre} (lead qualifié)",
+        "negocio": "Affaire",
+        "nombre": "Nom de l’opportunité",
+        "nombreEj": "Ex. : Renouvellement des licences 2027",
+        "embudo": "Pipeline",
+        "embudoAyuda": "Uniquement les pipelines de ventes.",
+        "elegir": "Choisir…",
+        "etapa": "Étape",
+        "monto": "Montant",
+        "montoAyuda": "Somme des lignes ou valeur manuelle.",
+        "moneda": "Devise",
+        "monedaAyuda": "Par défaut, la devise de base.",
+        "monedaBase": "{moneda} (base)",
+        "probabilidad": "Probabilité",
+        "probEtapa": "{prob} % · de l’étape",
+        "cierre": "Clôture prévue",
+        "seguimiento": "Responsable et suivi",
+        "responsable": "Responsable",
+        "sinResponsable": "Non assigné",
+        "tu": "{nombre} (vous)",
+        "proximoContacto": "Prochain contact",
+        "horaOrg": "Heure de l’organisation.",
+        "proximaAccion": "Prochaine action",
+        "proximaAccionEj": "Ex. : Appeler pour confirmer le périmètre",
+        "prioridad": "Priorité",
+        "prioridades": {
+          "cold": "Basse",
+          "warm": "Moyenne",
+          "hot": "Haute"
+        },
+        "agregarLineas": "Ajouter des produits, espaces ou postes (facultatif)",
+        "lineasCopiadas": "Lignes · copiées de {numero}",
+        "lineaCantidad": "{concepto} × {cantidad}",
+        "resumen": "Résumé",
+        "ponderado": "Pondéré",
+        "ayudaCrear": "Le montant est calculé à partir des produits, espaces et postes.",
+        "ayudaEditar": "Changer de pipeline demande de choisir une étape du nouveau pipeline. Les lignes sont conservées.",
+        "eliminar": "Supprimer",
+        "cancelar": "Annuler",
+        "cerrar": "Fermer",
+        "guardar": "Enregistrer les modifications",
+        "crear": "Créer l’opportunité",
+        "error": {
+          "obligatorio": "Ce champ est obligatoire.",
+          "montoInvalido": "Saisissez un montant valide.",
+          "monedaInvalida": "Choisissez une devise.",
+          "fechaInvalida": "Saisissez une date valide.",
+          "muyLargo": "Le texte est trop long."
+        }
+      },
+      "editorEtapa": {
+        "aria": "Étape {nombre}",
+        "sinNombre": "sans nom",
+        "mover": "Déplacer {nombre} (Alt + flèches)",
+        "color": "Couleur",
+        "nombre": "Nom de l’étape",
+        "nombrePlaceholder": "Saisissez le nom de l’étape",
+        "menu": "Plus d’options",
+        "probabilidad": "Probabilité (%)",
+        "sla": "SLA en jours",
+        "dias": "jours",
+        "resultado": "Résultat",
+        "resultados": {
+          "abierta": "Ouverte",
+          "ganada": "Gagnée",
+          "perdida": "Perdue"
+        },
+        "requisitos": "Exigences",
+        "requisitosN": "Exigences · {n}",
+        "eliminar": "Supprimer {nombre}",
+        "error": {
+          "nombreVacio": "Le nom est obligatoire.",
+          "nombreRepetido": "Le nom ne peut pas se répéter dans ce pipeline.",
+          "probabilidad": "La probabilité va de 0 à 100.",
+          "sla": "Le SLA est un nombre entier de jours.",
+          "ganadaDuplicada": "Il ne peut y avoir qu’une étape gagnée.",
+          "perdidaDuplicada": "Il ne peut y avoir qu’une étape perdue."
+        }
+      },
+      "plantilla": {
+        "ganada": "Gagnée",
+        "perdida": "Perdue",
+        "nombres": {
+          "ventas": "Ventes",
+          "onboarding": "Onboarding",
+          "renovacion": "Renouvellement",
+          "enBlanco": "Vierge"
+        },
+        "tipo": "Type : {tipo}",
+        "tipos": {
+          "ventas": "ventes",
+          "onboarding": "onboarding",
+          "renovacion": "renouvellement",
+          "enBlanco": "vierge"
+        },
+        "tuEliges": "Vous choisissez le type",
+        "descripciones": {
+          "ventas": "Du premier contact au contrat signé. C’est le pipeline utilisé par les leads web.",
+          "onboarding": "Accompagne le client du kickoff à la revue à 30 jours.",
+          "renovacion": "Renouvelle contrats et abonnements avant leur échéance.",
+          "enBlanco": "Créez vos propres étapes. « Gagnée » et « Perdue » sont ajoutées pour pouvoir clôturer."
+        },
+        "etapaGanada": "Étape gagnée",
+        "etapaPerdida": "Étape perdue",
+        "aviso": {
+          "tipoExistente": "Vous avez déjà un pipeline de ce type : un nouveau sera créé.",
+          "sinPerdida": "Ce modèle n’a pas d’étape perdue."
+        },
+        "etapas": "{n, plural, one {# étape} other {# étapes}}",
+        "etapasCierre": "{n, plural, one {# étape de clôture} other {# étapes de clôture}}",
+        "pieSla": "{n, plural, one {# étape} other {# étapes}} · SLA de {min} à {max} jours"
+      },
+      "barraEtapas": {
+        "aria": "Étapes de l’opportunité",
+        "etapaProb": "{etapa} · {prob} %",
+        "abrirEtapas": "Étape actuelle : {etapa}. Changer d’étape",
+        "posicion": "{i} sur {n}"
+      },
+      "cabecera": {
+        "cerrar": "Fermer",
+        "abrirDetalle": "Ouvrir le détail complet",
+        "etapaProb": "{etapa} {prob} %",
+        "estado": {
+          "open": "Ouverte",
+          "won": "Gagnée",
+          "lost": "Perdue"
+        },
+        "score": "Score {score}",
+        "icp": "ICP {banda}",
+        "temperatura": {
+          "cold": "Froide",
+          "warm": "Tiède",
+          "hot": "Chaude"
+        },
+        "monto": "Montant",
+        "probabilidad": "Probabilité",
+        "deLaEtapa": "de l’étape",
+        "cierre": "Clôture",
+        "cierreEstimado": "Clôture estimée",
+        "responsable": "Responsable",
+        "sinResponsable": "Non assigné",
+        "enLaEtapa": "Dans l’étape",
+        "dias": "{dias, plural, one {# jour} other {# jours}}",
+        "editar": "Modifier",
+        "marcarPerdida": "Marquer perdue",
+        "marcarGanada": "Marquer gagnée",
+        "reabrir": "Rouvrir"
+      },
+      "linea": {
+        "cuando": {
+          "hoy": "Aujourd’hui {hora}",
+          "ayer": "Hier {hora}",
+          "fecha": "{fecha} {hora}"
+        },
+        "editar": "Modifier",
+        "duplicar": "Dupliquer",
+        "eliminar": "Supprimer",
+        "tipo": {
+          "venta": "Vente",
+          "reserva": "Réservation",
+          "pedido": "Commande",
+          "llamada": "Appel",
+          "email": "E-mail",
+          "whatsapp": "WhatsApp",
+          "nota": "Note",
+          "tarea": "Tâche",
+          "sistema": "Système",
+          "reunion": "Réunion",
+          "llamadaIa": "Appel IA"
+        }
+      },
+      "identidad": {
+        "cargando": "Chargement du client",
+        "sinNombre": "Sans nom",
+        "persona": "Personne",
+        "empresa": "Entreprise",
+        "ciclo": {
+          "lead": "Lead",
+          "opportunity": "Opportunité",
+          "customer": "Client",
+          "churned": "Perdu"
+        },
+        "salud": "Santé {score}",
+        "nuevo": "Nouveau",
+        "documento": "Pièce d’identité",
+        "correo": "E-mail",
+        "telefono": "Téléphone",
+        "ubicacion": "Adresse",
+        "contactoPrincipal": "Contact principal :",
+        "sinContacto": "Sans contact principal",
+        "vinculadoA": "Lié à :",
+        "etiquetas": "Étiquettes :",
+        "cambiarFoto": "Changer la photo"
+      },
+      "contacto": {
+        "sinNombre": "Sans nom",
+        "principal": "Principal",
+        "nuevo": "Nouveau",
+        "cargoDe": "Poste de {nombre}",
+        "editarCargo": "Modifier le poste de {nombre} : {cargo}",
+        "sinCargo": "sans poste",
+        "agregarCargo": "Ajouter un poste",
+        "esPrincipal": "{nombre} est le contact principal",
+        "marcarPrincipal": "Marquer {nombre} comme contact principal",
+        "desvincular": "Délier {nombre}"
+      }
+    },
+    "accionesRapidas": {
+      "sinNombre": "Sans nom",
+      "errores": {
+        "sinPermiso": "Vous n'avez pas l'autorisation pour cette action.",
+        "noEncontrado": "L'enregistrement n'existe plus ou n'appartient pas à cette organisation.",
+        "sinEmbudo": "L'organisation n'a pas de pipeline de ventes. Créez-le avant de qualifier.",
+        "conflicto": "Quelqu'un a modifié cet enregistrement. Rechargez et réessayez.",
+        "datos": "Vérifiez les données : un champ n'est pas valide.",
+        "red": "Connexion impossible. Vérifiez votre connexion et réessayez.",
+        "generico": "Un problème est survenu. Réessayez."
+      },
+      "toast": {
+        "llamada": "Appel enregistré",
+        "llamadaConSeguimiento": "Appel enregistré et tâche de suivi créée",
+        "reunion": "Réunion planifiée",
+        "nota": "Note enregistrée",
+        "tarea": "Tâche créée et assignée à vous",
+        "correo": "E-mail envoyé",
+        "whatsapp": "WhatsApp envoyé"
+      },
+      "llamar": {
+        "titulo": "Appeler",
+        "modos": "Modes d'appel",
+        "modo": {
+          "browser": "Depuis le navigateur",
+          "mobile": "Depuis mon portable",
+          "ai": "Agent IA",
+          "registrar": "Enregistrer l'appel seulement"
+        },
+        "detalle": {
+          "browser": "Softphone enregistré",
+          "mobile": "Nous vous appelons et connectons le client",
+          "ai": "Un agent vocal appelle",
+          "registrar": "Vous avez déjà parlé : enregistrez le résultat"
+        },
+        "motivo": {
+          "sinTelefono": "Le client n'a pas de téléphone",
+          "softphone": "Softphone indisponible sur cette page",
+          "agente": "Disponible quand les agents vocaux seront activés"
+        },
+        "predeterminado": "par défaut",
+        "llamando": "Appel en cours…",
+        "tituloSeguimiento": "Suivi de l'appel avec {nombre}"
+      },
+      "tarea": {
+        "titulo": "Nouvelle tâche",
+        "cancelar": "Annuler",
+        "crear": "Créer la tâche",
+        "campoTitulo": "Titre",
+        "tituloEj": "Ex. : envoyer la proposition ajustée",
+        "descripcion": "Description",
+        "fecha": "Échéance",
+        "hora": "Heure",
+        "prioridad": "Priorité",
+        "prioridades": {
+          "low": "Basse",
+          "med": "Moyenne",
+          "high": "Haute",
+          "critical": "Critique"
+        },
+        "aviso": "Assignée à vous. Heure de l'organisation : {zona}.",
+        "error": {
+          "obligatorio": "Ce champ est obligatoire.",
+          "fechaPasada": "La date ne peut pas être antérieure à aujourd'hui.",
+          "muyLargo": "C'est trop long."
+        }
+      }
+    },
+    "pantallaLeads": {
+      "titulo": "Leads",
+      "subtitulo": "{n, plural, one {# personne ou entreprise sans opportunité ouverte} other {# personnes et entreprises sans opportunité ouverte}}",
+      "subtituloMovil": "{n, plural, one {# lead} other {# leads}}",
+      "subtituloSinPermiso": "Accès restreint",
+      "migas": {
+        "crm": "CRM"
+      },
+      "recargar": "Recharger",
+      "importar": "Importer",
+      "nuevo": "Nouveau lead",
+      "verDescartados": "Voir les écartés",
+      "ocultarDescartados": "Masquer les écartés",
+      "buscar": "Rechercher par nom, pièce d'identité, e-mail ou téléphone",
+      "seleccionarPagina": "Sélectionner les leads de cette page",
+      "sustantivo": {
+        "singular": "lead",
+        "plural": "leads"
+      },
+      "sinPermiso": {
+        "titulo": "Vous n'avez pas accès aux leads",
+        "descripcion": "Voir les leads nécessite l'autorisation « Voir les leads ». Demandez l'accès à l'administrateur de l'organisation.",
+        "volver": "Retour au CRM"
+      },
+      "error": {
+        "titulo": "Impossible de charger les leads"
+      },
+      "vacio": {
+        "titulo": "Vous n'avez pas encore de leads",
+        "descripcion": "Les leads arrivent du formulaire web, de WhatsApp, de parrainages ou d'une importation. Connectez le formulaire de votre site ou créez le premier.",
+        "conectar": "Connecter le formulaire web"
+      },
+      "masivo": {
+        "asignar": "Assigner un responsable",
+        "etiquetar": "Étiqueter",
+        "etiquetarMotivo": "Les étiquettes se modifient dans la fiche client",
+        "calificar": "Qualifier",
+        "calificarMotivo": "Qualifiez un lead à la fois",
+        "exportar": "Exporter",
+        "descartar": "Écarter"
+      },
+      "asignar": {
+        "titulo": "Assigner un responsable",
+        "descripcion": "{n, plural, one {# lead sera assigné.} other {# leads seront assignés.}}",
+        "asignar": "Assigner",
+        "cancelar": "Annuler",
+        "responsable": "Responsable",
+        "sinAsignar": "Non assigné",
+        "hecho": "{n, plural, one {# lead assigné} other {# leads assignés}}"
+      },
+      "descartar": {
+        "titulo": "{n, plural, one {Écarter le lead} other {Écarter # leads}}",
+        "descripcion": "Il n'apparaît plus dans la liste par défaut. Il reste client et vous pouvez le réactiver depuis « Voir les écartés ».",
+        "confirmar": "Écarter",
+        "hecho": "{n, plural, one {Lead écarté} other {# leads écartés}}",
+        "motivos": {
+          "noInteresado": "Pas intéressé",
+          "sinPresupuesto": "Pas de budget",
+          "duplicado": "Doublon",
+          "datosFalsos": "Données fausses ou incomplètes"
+        }
+      },
+      "csv": {
+        "nombre": "Nom",
+        "documento": "Pièce d'identité",
+        "correo": "E-mail",
+        "telefono": "Téléphone",
+        "origen": "Origine",
+        "responsable": "Responsable",
+        "score": "Score",
+        "etiquetas": "Étiquettes",
+        "creado": "Capturé",
+        "ultimoContacto": "Dernier contact"
+      },
+      "calificar": {
+        "hecho": "Opportunité créée pour {nombre}",
+        "contexto": "Depuis le lead {nombre}",
+        "contextoDetalle": "Le client est fixé ; l'opportunité naît dans le pipeline de ventes."
+      },
+      "kpi": {
+        "grupo": "Résumé des leads",
+        "leads": "Leads",
+        "nuevosMes": "+{n} ce mois-ci",
+        "sinResponsable": "Sans responsable",
+        "asignarLote": "Assignez-les en lot depuis le tableau",
+        "todosAsignados": "Tous ont un responsable",
+        "contactados": "Contactés (7 jours)",
+        "delTotal": "{pct} % du total",
+        "calificados": "Qualifiés ce mois-ci",
+        "calificadosCorto": "Qualifiés",
+        "oportunidadesNuevas": "{n} nouvelles opportunités"
+      },
+      "filtros": {
+        "titulo": "Filtrer les leads",
+        "boton": "Filtres",
+        "origen": "Origine",
+        "todos": "Tous",
+        "responsable": "Responsable",
+        "sinAsignar": "Non assigné",
+        "captura": "Date de capture",
+        "cualquierFecha": "N'importe quelle date",
+        "descartados": "Inclure les écartés",
+        "chipSinColocar": "Statut : non placé",
+        "chipOrigen": "Origine : {origen}",
+        "chipCaptura": "Date de capture : {rango}",
+        "chipResponsable": "Responsable : {nombre}",
+        "chipDescartados": "Avec les écartés",
+        "limpiarTodo": "Tout effacer"
+      },
+      "detalle": {
+        "lead": "Lead",
+        "abrirFicha": "Ouvrir la fiche",
+        "calificar": "Qualifier → créer l'opportunité",
+        "contacto": "Coordonnées",
+        "calificacion": "Qualification",
+        "responsable": "Responsable",
+        "capturado": "Capturé",
+        "ultimoContacto": "Dernier contact",
+        "etiquetas": "Étiquettes",
+        "sinEtiquetas": "Sans étiquettes",
+        "actividad": "Activité récente",
+        "sinActividad": "Pas encore d'activité avec ce lead."
+      }
+    },
+    "pantallaActividades": {
+      "titulo": "Activités",
+      "subtitulo": "{n} activités · {rango} · {responsable}",
+      "subtituloMovil": "{n} activités",
+      "migas": {
+        "crm": "CRM"
+      },
+      "recargar": "Recharger",
+      "exportar": "Exporter",
+      "nueva": "Nouvelle activité",
+      "todasLasFechas": "toutes les dates",
+      "todosResponsables": "tous les responsables",
+      "clienteUOportunidad": "Client ou opportunité",
+      "quitarEntidad": "Retirer le filtre {nombre}",
+      "linea": "Chronologie",
+      "tipoNueva": {
+        "llamar": "Appel",
+        "email": "E-mail",
+        "whatsapp": "WhatsApp",
+        "reunion": "Réunion",
+        "tarea": "Tâche",
+        "nota": "Note"
+      },
+      "tipoNuevaDetalle": {
+        "llamar": "Enregistrer le résultat d'un appel",
+        "tarea": "Tâche CRM, assignée à vous"
+      },
+      "sinPermiso": {
+        "titulo": "Vous n'avez pas accès aux activités",
+        "descripcion": "Demandez l'accès à l'administrateur de l'organisation.",
+        "volver": "Retour au CRM"
+      },
+      "error": {
+        "titulo": "Impossible de charger les activités"
+      },
+      "vacio": {
+        "titulo": "Pas encore d'activité ce mois-ci",
+        "descripcion": "Les appels, e-mails, WhatsApp, réunions, notes et tâches de l'équipe apparaissent ici. Commencez par enregistrer un appel.",
+        "registrarLlamada": "Enregistrer un appel",
+        "verLeads": "Voir les leads"
+      },
+      "kpi": {
+        "grupo": "Résumé des activités",
+        "total": "Total",
+        "llamadas": "Appels",
+        "correos": "E-mails",
+        "whatsapp": "WhatsApp",
+        "reuniones": "Réunions",
+        "notas": "Notes",
+        "tareasAbiertas": "Tâches ouvertes"
+      },
+      "dia": {
+        "hoy": "Aujourd'hui · {fecha}",
+        "ayer": "Hier · {fecha}",
+        "sinFecha": "Sans date"
+      },
+      "toast": {
+        "editada": "Modifications enregistrées",
+        "eliminada": "Activité supprimée",
+        "duplicada": "Activité dupliquée"
+      },
+      "eliminar": {
+        "titulo": "Supprimer cette activité ?",
+        "descripcion": "Elle disparaît de la chronologie du client, de l'opportunité et des Activités. Action irréversible.",
+        "confirmar": "Supprimer",
+        "cancelar": "Annuler"
+      },
+      "csv": {
+        "fecha": "Date",
+        "tipo": "Type",
+        "detalle": "Détail",
+        "resultado": "Résultat",
+        "duracion": "Durée (s)",
+        "autor": "Responsable",
+        "cliente": "Client",
+        "oportunidad": "Opportunité"
+      },
+      "entrada": {
+        "titulo": {
+          "llamadaSaliente": "Appel sortant",
+          "llamadaEntrante": "Appel entrant",
+          "llamada": "Appel",
+          "correo": "E-mail",
+          "whatsapp": "WhatsApp",
+          "reunion": "Réunion",
+          "nota": "Note",
+          "tarea": "Tâche : {titulo}",
+          "llamadaIa": "Appel de l'agent IA",
+          "sistema": "Activité du système"
+        },
+        "duracion": "{min} min {seg} s",
+        "prioridad": "Priorité {prioridad}",
+        "prioridades": {
+          "low": "basse",
+          "med": "moyenne",
+          "high": "haute",
+          "critical": "critique"
+        },
+        "sistema": "Système",
+        "estado": {
+          "fijada": "Épinglée",
+          "hecha": "Faite",
+          "cancelada": "Annulée",
+          "enCurso": "En cours",
+          "pendiente": "En attente",
+          "resultado": {
+            "answered": "Répondu",
+            "no_answer": "Pas de réponse",
+            "voicemail": "Messagerie",
+            "wrong_number": "Mauvais numéro",
+            "callback": "Rappeler",
+            "not_interested": "Pas intéressé"
+          }
+        }
+      },
+      "editar": {
+        "titulo": "Modifier l'activité",
+        "tituloNota": "Modifier la note",
+        "cancelar": "Annuler",
+        "guardar": "Enregistrer",
+        "resultado": "Résultat de l'appel",
+        "sinResultado": "Sans résultat",
+        "nota": "Note",
+        "notas": "Notes",
+        "obligatorio": "Ce champ est obligatoire.",
+        "fijar": "Épingler sur la fiche client"
+      },
+      "filtrosMovil": {
+        "titulo": "Filtres",
+        "limpiar": "Effacer",
+        "ver": "Voir les activités",
+        "responsable": "Responsable",
+        "todos": "Tous les responsables",
+        "entidad": "Client ou opportunité",
+        "rango": "Période",
+        "todasLasFechas": "Toutes les dates"
+      }
+    },
+    "fichaCliente": {
+      "oportunidadCreada": "Opportunité créée",
+      "desdeFicha": "Depuis la fiche de {nombre}",
+      "documentos": "Documents du CRM",
+      "vacio": {
+        "titulo": "Ce client n'a pas encore d'activité",
+        "descripcion": "Pas encore de ventes, réservations, appels ni notes. Commencez par enregistrer une vente, un appel ou une note.",
+        "nota": "Note",
+        "llamada": "Enregistrer un appel",
+        "venta": "Enregistrer une vente"
+      },
+      "tareas": {
+        "nueva": "Nouvelle",
+        "primera": "Créer la première tâche"
+      },
+      "oportunidades": {
+        "nueva": "Nouvelle opportunité",
+        "perdidas": "Perdues"
+      }
+    }
+  },
+  "analiticaWeb": {
+    "titulo": "Analytique web",
+    "subtitulo": "Boutique en ligne · {organizacion}",
+    "subtituloSinOrg": "Boutique en ligne",
+    "actualizar": "Actualiser",
+    "exportar": "Exporter CSV",
+    "todasSucursales": "Toutes les succursales ({n})",
+    "sucursal": "Succursale : {nombre}",
+    "notaSucursal": "les visites appartiennent à la boutique, pas à une succursale ; les commandes et la vente moyenne suivent la succursale.",
+    "compararAnterior": "vs période précédente",
+    "cargando": "Chargement de l'analytique…",
+    "error": "Impossible de charger l'analytique web.",
+    "reintentar": "Réessayer",
+    "sinPermiso": "Vous n'avez pas accès à l'analytique web. Demandez à un administrateur l'autorisation « Rapports de ventes ».",
+    "zona": "Jours selon le fuseau horaire {zona}.",
+    "kpi": {
+      "visitantes": "Visiteurs uniques",
+      "sesiones": "Sessions",
+      "pedidos": "Commandes",
+      "conversion": "Conversion",
+      "ventaMedia": "Vente moyenne",
+      "vsAnterior": "{v} vs période précédente",
+      "ppVsAnterior": "{v} pts vs période précédente",
+      "sinComparacion": "Aucune donnée pour la période précédente",
+      "nuevos": "{pct} nouveaux",
+      "pendientes": "{n, plural, one {# en attente} other {# en attente}}"
+    },
+    "embudo": {
+      "titulo": "Entonnoir de conversion",
+      "visitantes": "Visiteurs",
+      "pedidos": "Commandes",
+      "completados": "Terminées",
+      "deVisitantes": "{pct} des visiteurs",
+      "dePedidos": "{pct} des commandes",
+      "abandono": "Abandon {pct} · {n, plural, one {# commande annulée ou refusée} other {# commandes annulées ou refusées}}.",
+      "nota": "Visiteurs = personnes distinctes et sessions = onglets distincts, pas des lignes de visites."
+    },
+    "grafico": {
+      "titulo": "Visiteurs et commandes",
+      "visitantes": "Visiteurs",
+      "pedidos": "Commandes",
+      "visitantesAnterior": "Visiteurs (précédent)",
+      "pedidosAnterior": "Commandes (précédent)"
+    },
+    "geo": {
+      "titulo": "D'où ils viennent",
+      "privacidad": "La localisation est approximative (pays, région et ville) et résolue en périphérie : l'IP et les coordonnées ne sont jamais enregistrées.",
+      "sinCruceConPedidos": "La conversion et la vente moyenne par pays ne sont pas encore disponibles : les commandes n'enregistrent pas la visite d'origine.",
+      "resumenPaises": "{n, plural, one {# pays} other {# pays}} · {v} visiteurs",
+      "pais": "Pays",
+      "ciudad": "Ville",
+      "visitantes": "Visiteurs",
+      "sesiones": "Sessions",
+      "verCiudades": "Voir {pais} par ville",
+      "porCiudad": "{pais} par ville",
+      "volver": "Retour au monde",
+      "otrasCiudades": "{n, plural, one {Et # autre ville} other {Et # autres villes}}",
+      "sinCiudades": "Pas encore de villes pour ce pays sur la période.",
+      "sinUbicacionTitulo": "Nous n'avons pas encore la localisation de vos visiteurs",
+      "sinUbicacionTexto": "{n, plural, =0 {Aucune visite enregistrée sans localisation.} one {La seule visite enregistrée l'a été sans pays ni ville.} other {Les # visites enregistrées l'ont été sans pays ni ville.}} Les nouvelles visites arrivent déjà avec leur localisation approximative ; les précédentes ne peuvent pas être récupérées."
+    },
+    "csv": {
+      "fecha": "Date",
+      "visitantes": "Visiteurs",
+      "pedidos": "Commandes",
+      "visitantesAnterior": "Visiteurs période précédente",
+      "pedidosAnterior": "Commandes période précédente",
+      "pais": "Pays",
+      "sesiones": "Sessions"
     }
   }
 }

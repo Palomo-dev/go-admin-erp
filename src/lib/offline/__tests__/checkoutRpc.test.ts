@@ -454,4 +454,42 @@ describe('checkoutRpc — utilidades', () => {
     expect(env.invoice.commission_amount).toBe(1056.3);
     expect(env.items[0].notes).toEqual({ product_name: 'A', modifiers: checkout.cart.items[0].modifiers });
   });
+
+  describe('hora oficial (docs/reglas-fechas-timezone.md §«Hora oficial»)', () => {
+    const base = () => ({
+      checkout: makeCheckout(),
+      saleId: SALE_ID,
+      createdAt: CREATED_AT,
+      organizationId: 120,
+      branchId: 7,
+      userId: null,
+      currency: 'COP',
+      itemCalcs: [],
+      subtotal: 0,
+      taxTotal: 0,
+      discountTotal: 0,
+      total: 0,
+      promotionIds: [],
+      invoiceCommissionAmount: 0,
+    });
+
+    test('en línea el sobre no se declara sin conexión: el servidor usa su propia hora', () => {
+      const env = buildCheckoutEnvelope(base());
+      expect(env.created_at).toBe(CREATED_AT);
+      expect(env.offline).toBeUndefined();
+      expect(env.clock_offset_ms).toBeUndefined();
+    });
+
+    test('al reproducir el outbox lleva offline y el desfase medido (redondeado)', () => {
+      const env = buildCheckoutEnvelope({ ...base(), offline: true, clockOffsetMs: 30_000.4 });
+      expect(env.offline).toBe(true);
+      expect(env.clock_offset_ms).toBe(30_000);
+    });
+
+    test('sin desfase medido va offline sin clock_offset_ms (el servidor la marca para revisión)', () => {
+      const env = buildCheckoutEnvelope({ ...base(), offline: true, clockOffsetMs: null });
+      expect(env.offline).toBe(true);
+      expect('clock_offset_ms' in env).toBe(false);
+    });
+  });
 });

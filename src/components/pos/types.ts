@@ -351,8 +351,14 @@ export interface CheckoutData {
    * devuelve la existente y completa solo lo que falte (idempotencia).
    */
   saleId?: string;
-  /** Instante real de la venta (ISO). Al reproducir un sobre offline conserva la fecha original. */
+  /**
+   * Hora del EQUIPO al cobrar (ISO). No es la hora oficial: la pone el servidor
+   * (`pos_checkout_v1`). Al reproducir un sobre offline, el servidor la acepta
+   * solo si `clockOffsetMs` era ≤ 10 min (docs/reglas-fechas-timezone.md §«Hora oficial»).
+   */
   createdAt?: string;
+  /** Desfase del reloj del equipo (ms, equipo − servidor) medido antes de vender sin red. */
+  clockOffsetMs?: number | null;
   /** Usuario que hizo la venta. Al reproducir un sobre offline evita atribuirla a quien sincroniza. */
   userId?: string;
   /** true cuando `salesSync` reproduce un sobre: nunca vuelve a encolarse en el outbox. */

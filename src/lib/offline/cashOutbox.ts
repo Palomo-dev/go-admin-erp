@@ -45,6 +45,7 @@
 import type { CashMovement, CashSession, CashSummary } from '@/components/pos/cajas/types';
 import { isDesktop } from '@/lib/utils/desktop';
 import { isAppOnline } from '@/lib/utils/offlineCache';
+import { desfaseParaOperacionSinConexion } from '@/lib/pos/reloj/desfaseReloj';
 import { deleteCatalogMeta, listCatalogMeta, putCatalogMeta } from './catalogStore';
 import { closeIdb, openIdb, requestToPromise, txDone } from './offlineDb';
 import type { OutboxSaleRecord } from './salesOutbox';
@@ -69,9 +70,16 @@ export type CashOutboxKind = 'open' | 'movement' | 'close';
 /** Columnas escribibles de `cash_sessions` al abrir. */
 export interface CashOpenPayload {
   opened_by: string;
+  /**
+   * Hora del EQUIPO al abrir sin red. Al sincronizar, el trigger de
+   * `cash_sessions` la acepta como oficial solo si `device_clock_offset_ms`
+   * era ≤ 10 min; si no, usa la del servidor y marca la caja para revisión.
+   */
   opened_at: string;
   initial_amount: number;
   notes: string | null;
+  /** Desfase del reloj medido antes de quedarse sin red (ms, equipo − servidor); null si nunca se midió. */
+  device_clock_offset_ms?: number | null;
 }
 
 /** Columnas escribibles de `cash_movements`. */
@@ -409,6 +417,7 @@ export async function enqueueCashSessionOpen(input: EnqueueCashOpenInput): Promi
     opened_at: openedAt,
     initial_amount: Number(input.initialAmount) || 0,
     notes: input.notes ?? null,
+    device_clock_offset_ms: desfaseParaOperacionSinConexion(),
   };
   const record: CashOpenRecord = {
     id: uuid,

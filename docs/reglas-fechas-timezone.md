@@ -115,3 +115,96 @@ dateDisplay.ts producen el resultado correcto sin importar el TZ del
 runtime (TZ=UTC y TZ=America/Bogota).
 
 Ejecutar: `npm run test:tz-all`
+
+## 9. Regla única de zona: sucursal → organización → fallback (2026-09-30)
+
+Decisión del dueño. **No existe zona horaria por persona**: ni columna en
+`profiles` ni preferencia del usuario. La zona de una fecha es:
+
+1. la de la **sucursal**, si `branches.timezone` tiene valor;
+2. si no, la de la **organización** (`organizations.timezone`,
+   `getOrganizationTimezone`);
+3. `America/Bogota` (`DEFAULT_TIMEZONE`) solo como último recurso.
+
+Qué sucursal cuenta:
+
+| Caso | Sucursal |
+|---|---|
+| El dato tiene `branch_id` y el llamador lo pasa (`useFormatDate(row.branch_id)`) | la del dato (gana siempre) |
+| El dato no tiene sucursal (`useFormatDate(null)`) | ninguna → organización |
+| El llamador no pasa nada (`useFormatDate()`) | la **sucursal activa del header**; con «Todas» → organización |
+
+- **Mostrar** y **calcular** usan la misma zona. `getToday`, `toDate` y
+  `toInstant` de `useFormatDate` cortan el día con la zona de la sucursal de
+  la operación; los reportes por día de «Todas las sucursales» y las
+  operaciones sin sucursal, con la de la organización.
+- **Punto único en cliente**: `useTimezoneFor` / `useFormatDate`
+  (`OrganizationTimezoneContext`), que eligen la sucursal con
+  `sucursalParaZona` (`src/lib/utils/sucursalParaZona.ts`) y aplican la
+  cascada `resolveTimezoneForBranch`, gemela de `fn_timezone_for`.
+- **Punto único en servidor**: `zonaHorariaEnServidor(ctx, branchId?)`
+  (`src/lib/utils/zonaHorariaServidor.ts`), que delega en
+  `fn_timezone_for(p_organization_id, p_branch_id)`. El servidor no ve el
+  header: la sucursal la aporta el llamador (la del dato o la de la petición,
+  validada contra la organización de la sesión). En SQL, las RPC usan
+  `fn_timezone_for(org, sucursal)`, nunca una zona escrita.
+- **Edición**: la zona de una sucursal se cambia en Organización › Sucursales
+  (`BranchTimezoneField`), por `PUT /api/organization/timezone`, que valida el
+  permiso en el servidor. Por defecto la sucursal hereda (`NULL`).
+- **Perfil › Preferencias** muestra la zona efectiva en solo lectura y de dónde
+  viene («De la sucursal X» / «De la organización»).
+- A 2026-09-30 las 94 sucursales tienen `timezone` vacío: todo se resuelve con
+  la zona de la organización, exactamente igual que antes del cambio.
+
+Guardarraíl: `src/__tests__/timezone/guardarrailZonaUnica.test.ts` impide
+(1) cualquier zona por persona en `src/` o en las migraciones, y (2) escribir
+`'America/Bogota'` a mano en un archivo nuevo (trinquete con la deuda
+congelada; se usa `DEFAULT_TIMEZONE`). Pruebas de la regla, con una sucursal
+en `America/Mexico_City`, en
+`src/__tests__/timezone/zonaUnicaSucursalOrganizacion.test.tsx`.
+
+## Hora oficial de las operaciones de dinero e inventario (2026-09-30)
+
+La **hora del hecho** (cuándo ocurrió la venta, el pago, la apertura o el cierre
+de caja, el movimiento de inventario) la pone el **servidor**, nunca el reloj del
+equipo. Un equipo con la hora mal puesta dañaba ventas, cierres, reportes por día,
+contabilidad y facturación. Análisis y cifras: `docs/design/HORA-SERVIDOR-ANALISIS.md`.
+
+| Es | Ejemplos | Quién la pone |
+|---|---|---|
+| Marca de tiempo del hecho | `sales.sale_date`, `created_at`, `cash_sessions.opened_at`/`closed_at`, `table_sessions.*_at`, `returns.return_date`, `stock_movements.created_at` | La base (`now()`/default) o una RPC |
+| Fecha elegida por el usuario (dato) | `due_date`, `issue_date` tecleada, `payment_date` elegida, fecha contable | El usuario (día) + zona de la org (`instantForDayInTz`, `fn_registrar_pago`) |
+
+Reglas:
+
+1. **En el navegador no se escribe una marca de tiempo del hecho.** Se omite la
+   columna (default `now()`) o, para marcar un cierre, se envía
+   `HORA_DEL_SERVIDOR` (`'now'`, que Postgres resuelve con su reloj;
+   `src/lib/pos/reloj/horaOficial.ts`).
+2. **La base lo impone**: el trigger `trg_00_hora_oficial` (`fn_trg_hora_oficial`,
+   `fn_trg_caja_hora_oficial`) reemplaza por `now()` esas columnas cuando quien
+   escribe es `anon`/`authenticated` directamente, y no deja reescribirlas. Las
+   RPC `SECURITY DEFINER` y `service_role` (importaciones con fechas históricas)
+   no se tocan: una carga masiva legítima va por servicio o por RPC con su
+   parámetro documentado.
+3. **`pos_checkout_v1` usa `now()`**. La hora que manda el POS es la del equipo:
+   se guarda en `sales.device_created_at` y su desfase en `clock_skew_seconds`.
+4. **Sin conexión** (venta o apertura de caja reproducida desde el outbox): la hora
+   del equipo es la oficial **solo** si el desfase del reloj, medido contra el
+   servidor antes de quedarse sin red, era conocido y **≤ 10 min**, y la hora cae
+   en `[ahora − 30 días, ahora + 5 min]`. Así la venta de las 11:50 p. m.
+   sincronizada al día siguiente queda en su día contable y en su caja (sus pagos
+   toman la misma hora). Si no se cumple, se usa la hora del servidor y la
+   operación queda marcada en `time_review_reason` (no se bloquea); se consultan
+   con `pos_hora_en_revision(org, desde, hasta)`. Regla única en SQL:
+   `fn_hora_oficial_resolver`; espejo en TS: `resolverHoraOficial`.
+5. **Aviso**: al abrir el POS y la caja se mide el desfase
+   (`GET /api/pos/hora-servidor`); si pasa de **2 min**, `AvisoRelojDesfasado`
+   lo dice («La hora de este equipo está desfasada N minutos; las ventas usan la
+   hora del servidor»). No bloquea. La medición queda guardada para las
+   operaciones sin conexión.
+6. **Los datos históricos no se tocan**: las columnas nuevas nacen nulas.
+
+Guardarraíl 37: `src/__tests__/timezone/horaOficialGuardrails.test.ts` (allow-list
+con motivo por archivo). Pruebas: `src/__tests__/timezone/horaOficial.test.ts`
+(UTC y Bogotá).

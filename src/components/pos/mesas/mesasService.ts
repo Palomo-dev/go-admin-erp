@@ -8,6 +8,7 @@ import type {
   TableState,
 } from './types';
 import { ejecutarLiberacion } from './liberacionMesaCliente';
+import { HORA_DEL_SERVIDOR } from '@/lib/pos/reloj/horaOficial';
 
 export class MesasService {
   /**
@@ -405,7 +406,7 @@ export class MesasService {
           server_id: serverId,
           customers: options.customers || 2,
           status: 'active',
-          opened_at: new Date().toISOString()
+          // opened_at: default now() de la base (hora oficial del servidor).
         })
         .select()
         .single();
@@ -676,7 +677,9 @@ export class MesasService {
         .from('table_sessions')
         .update({
           status: 'completed',
-          closed_at: new Date().toISOString(),
+          // 'now' lo resuelve Postgres con la hora del servidor (y el trigger
+          // trg_00_hora_oficial la impone igual): nunca el reloj del equipo.
+          closed_at: HORA_DEL_SERVIDOR,
         })
         .eq('id', sesionId);
 

@@ -3,6 +3,7 @@ import { getCurrentUserId, getOrganizationId } from '@/lib/hooks/useOrganization
 import { PropinasService } from '@/components/pos/propinas/propinasService';
 import { deliveryIntegrationService } from './deliveryIntegrationService';
 import { generateInvoiceNumber } from '@/lib/utils/invoiceUtils';
+import { HORA_DEL_SERVIDOR } from '@/lib/pos/reloj/horaOficial';
 import type { WebOrder } from './webOrdersService';
 import {
   avisarSiNoCuadra,
@@ -444,7 +445,6 @@ class WebOrderConfirmationService {
   ): Promise<{ invoiceId: string; invoiceNumber: string; invoiceCurrency: string | null }> {
     try {
       const invoiceNumber = await generateInvoiceNumber(order.organization_id, 'FACT');
-      const now = new Date().toISOString();
 
       // Calcular totales incluyendo delivery_fee
       const subtotal = Number(order.subtotal) || 0;
@@ -462,8 +462,9 @@ class WebOrderConfirmationService {
           customer_id: order.customer_id || null,
           sale_id: saleId,
           number: invoiceNumber,
-          issue_date: now,
-          due_date: now,
+          // Emisión y vencimiento: hora del servidor, nunca el reloj del equipo.
+          issue_date: HORA_DEL_SERVIDOR,
+          due_date: HORA_DEL_SERVIDOR,
           // Sin moneda: el pedido web no la trae y el trigger
           // trg_00_moneda_base_por_defecto pone la base de la organización.
           currency: null,

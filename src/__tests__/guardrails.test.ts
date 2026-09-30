@@ -2414,7 +2414,10 @@ describe('28. Generadores de documentos: sin moneda fija', () => {
     'lib/documents/server/cargadores/estadoCuentaProveedor.ts',
     'lib/documents/server/cargadores/estadoCuentaProveedor.ts',
     'lib/documents/server/cargadores/cajas.ts',
-    'lib/services/reportes/pdfExportService.ts',
+    // `lib/services/reportes/pdfExportService.ts` se retiró (2026-09-30): el PDF
+    // de un reporte y el del cierre los arma el motor único
+    // (`app/api/documentos/[tipo]/[id]/route.ts`, ya en esta lista). Excel y CSV
+    // de un reporte se arman en el cliente con `exportarTabla.ts`, sin jsPDF.
     'lib/services/inicio/dashboardSectionExport.ts',
     'lib/services/printService.ts',
     'lib/services/printJobsService.ts',

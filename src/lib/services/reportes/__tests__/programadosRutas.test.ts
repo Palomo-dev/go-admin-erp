@@ -28,6 +28,7 @@ const guion = {
   tablas: {} as Tablas,
   accesoTotal: false,
   llamadasServicio: 0,
+  sinServicio: false,
 };
 const correos: Array<{ para: string; clave: string; prueba?: boolean }> = [];
 const sesionesArchivos: string[] = [];
@@ -39,6 +40,7 @@ jest.mock('@/lib/supabase/config', () => ({ supabase: {} }));
 jest.mock('@/lib/supabase/server-service', () => ({
   getServiceClient: () => {
     guion.llamadasServicio += 1;
+    if (guion.sinServicio) throw new Error('Faltan NEXT_PUBLIC_SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY (service role)');
     return servicio;
   },
 }));
@@ -176,6 +178,7 @@ beforeEach(() => {
   guion.permisos = new Set(['reports.export']);
   guion.accesoTotal = false;
   guion.llamadasServicio = 0;
+  guion.sinServicio = false;
   guion.tablas = {
     scheduled_reports: [filaProgramado(PROPIO, YO), filaProgramado(AJENO, OTRO, [{ tipo: 'externo', email: 'contador@example.com', estado: 'pendiente', aprobado_por: null }])],
     organization_members: [
@@ -343,6 +346,15 @@ describe('POST /api/reportes/programados/[id]/prueba', () => {
     expect(correos).toEqual([expect.objectContaining({ para: 'yo@example.com', prueba: true })]);
     expect(sesionesArchivos).toEqual([`${YO}:55`]);
     expect(sesion.escrituras.concat(servicio.escrituras)).toHaveLength(0);
+  });
+
+  test('sin clave de servicio no arma el PDF y responde 503', async () => {
+    guion.sinServicio = true;
+    const r = await probar(pedir('POST', `${URL_P}/${PROPIO}/prueba`), params(PROPIO));
+    expect(r.status).toBe(503);
+    expect((await r.json()).codigo).toBe('prueba_sin_servicio');
+    expect(correos).toHaveLength(0);
+    expect(sesionesArchivos).toHaveLength(0);
   });
 });
 

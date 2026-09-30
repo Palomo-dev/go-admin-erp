@@ -3651,3 +3651,9 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 ### Fase: Reportes v2 — el correo agregado se ve en Programados — 2026-09-30
 - Rama `cursor/reportes-v2-implementacion-e475` (PR #269). No se fusiona.
 - El correo externo sí se guardaba en `scheduled_reports.recipients`. La pestaña solo pintaba el conteo («1 destinatario») y en el diálogo el correo quedaba al final de la lista de miembros. Ahora la fila muestra las direcciones, y al agregar un correo externo aparece encima del campo. Si el correo es de un miembro que puede recibir, se marca esa persona.
+
+
+### Fase: Reportes v2 — la prueba dice por qué no sale el correo — 2026-09-30
+- Rama `cursor/reportes-v2-implementacion-e475` (PR #269). No se fusiona.
+- «No se pudo completar» en Programados era el 500 de `POST /api/reportes/programados/[id]/prueba`: el PDF ya se puede armar, y el correo lo manda el service role, que este localhost no tiene. La organización sí tiene credencial de Resend; la columna `credentials` no la lee la sesión. Sin la clave, la ruta responde 503 `prueba_sin_servicio` antes de generar el PDF.
+- Jest de programados: 20 en verde.

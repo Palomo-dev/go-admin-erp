@@ -24856,6 +24856,7 @@
       "dia_invalido": "Choisissez le jour de l'envoi.",
       "destinatarios": "Choisissez au moins un destinataire.",
       "servicio_no_configurado": "La clôture n'a pas pu être enregistrée : le serveur n'a pas sa clé de service.",
+      "prueba_sin_servicio": "L'essai n'a pas pu être envoyé : ce serveur n'a pas la clé pour expédier le courrier.",
       "snapshot_invalido": "Cette clôture ne peut pas être exportée en Excel."
     },
     "grupos": {

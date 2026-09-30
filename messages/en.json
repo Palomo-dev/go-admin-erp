@@ -24959,6 +24959,7 @@
       "dia_invalido": "Choose the delivery day.",
       "destinatarios": "Choose at least one recipient.",
       "servicio_no_configurado": "The closing could not be saved: the server is missing its service key.",
+      "prueba_sin_servicio": "The test email could not be sent: this server does not have the key to send mail.",
       "snapshot_invalido": "This closing cannot be exported to Excel."
     },
     "grupos": {

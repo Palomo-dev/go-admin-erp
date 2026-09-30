@@ -24856,6 +24856,7 @@
       "dia_invalido": "Escolha o dia do envio.",
       "destinatarios": "Escolha pelo menos um destinatário.",
       "servicio_no_configurado": "Não foi possível salvar o fechamento: o servidor não tem a chave de serviço configurada.",
+      "prueba_sin_servicio": "Não foi possível enviar o teste: este servidor não tem a chave para mandar o e-mail.",
       "snapshot_invalido": "Este fechamento não pode ser exportado para Excel."
     },
     "grupos": {

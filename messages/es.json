@@ -24959,6 +24959,7 @@
       "dia_invalido": "Elige el día del envío.",
       "destinatarios": "Elige al menos un destinatario.",
       "servicio_no_configurado": "No se pudo guardar el cierre: el servidor no tiene configurada la clave de servicio.",
+      "prueba_sin_servicio": "No se pudo enviar la prueba: este servidor no tiene la clave para mandar el correo.",
       "snapshot_invalido": "Este cierre no se puede exportar a Excel."
     },
     "grupos": {

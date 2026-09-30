@@ -323,11 +323,25 @@ export async function eliminarProgramado(ctx: Ctx, id: string): Promise<void> {
   if (error) throw new Error(`No se pudo eliminar el envío programado: ${error.message}`);
 }
 
+/** La credencial de Resend solo la lee el service role. Sin esa clave, no se arma el PDF. */
+function clienteDeCorreo(): SupabaseClient {
+  try {
+    return getServiceClient();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : '';
+    if (msg.includes('SERVICE_ROLE')) {
+      throw new OrgContextError('El servidor no tiene configurada la clave para enviar el correo de prueba', 503, 'prueba_sin_servicio');
+    }
+    throw err;
+  }
+}
+
 /**
  * Envío de prueba SOLO a quien lo pide, con SU sesión: ve lo que su alcance
  * le deja ver, aunque el envío sea de otra persona (admin).
  */
 export async function enviarPrueba(ctx: Ctx, id: string, ahora: Date = new Date()): Promise<{ para: string }> {
+  const correo = clienteDeCorreo();
   const { fila } = await cargarProgramado(ctx, id);
   if (!ctx.userEmail) throw new OrgContextError('Tu usuario no tiene correo', 400, 'sin_correo');
   if (!fila.report_id) throw new OrgContextError('El envío no tiene reporte', 400, 'sin_reporte');
@@ -360,7 +374,7 @@ export async function enviarPrueba(ctx: Ctx, id: string, ahora: Date = new Date(
       clave: `reporte-prueba:${fila.id}:${ctx.userId}:${ahora.getTime()}`,
       prueba: true,
     },
-    getServiceClient(),
+    correo,
   );
   return { para: ctx.userEmail };
 }

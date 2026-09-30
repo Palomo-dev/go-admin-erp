@@ -3637,3 +3637,12 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - Jest de Excel del cierre, programados, cierres y programación: 68 en verde. `npx tsc --noEmit -p tsconfig.json` en verde. eslint de los archivos tocados, sin avisos.
 - Con la sesión de un administrador, `GET /api/reportes/programados` pasó de 500 a 200 en el servidor de desarrollo.
 - Pendiente: recorrido en el navegador del resto (inicio, lista, visor con comparativo, 409, programar envío, móvil a 390 px). Generar cierre en este entorno sigue sin poder guardar hasta que el proceso tenga `SUPABASE_SERVICE_ROLE_KEY`.
+
+
+### Fase: Reportes v2 — el PDF de la prueba encuentra Chrome — 2026-09-30
+- Rama `cursor/reportes-v2-implementacion-e475` (PR #269). No se fusiona.
+- «El PDF no está disponible ahora» en Programados era el 503 `PDF_NO_DISPONIBLE` de `POST /api/reportes/programados/[id]/prueba`. Puppeteer no descarga su Chrome (`.npmrc`) y el lanzador local no miraba el Chrome del sistema. `ejecutableChromeLocal` usa `PDF_CHROMIUM_EXECUTABLE_PATH` o el primer `google-chrome-stable`, `google-chrome`, `chromium-browser` o `chromium` ejecutable en `PATH`.
+- En este entorno esa ruta es `/usr/bin/google-chrome-stable`. Un PDF de prueba con ese ejecutable sale bien (cabecera `%PDF`).
+- En Vercel, el binario de `@sparticuz/chromium` queda incluido también en la prueba, el cron de envíos y las rutas que mandan un documento por correo. Antes solo lo llevaban el visor y el PDF de factura.
+- Jest del ejecutable y de la ruta de documentos: 11 en verde. eslint de los archivos tocados, sin avisos.
+- El correo de la prueba sigue usando el service role. En este localhost, después de generar el PDF, el envío aún no puede salir si falta `SUPABASE_SERVICE_ROLE_KEY`.

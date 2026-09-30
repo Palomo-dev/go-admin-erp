@@ -443,7 +443,24 @@ export interface DetalleCxp {
   due_date: string | null;
   created_at: string | null;
   proveedor: { id: number; uuid: string | null; name: string; nit: string | null; email: string | null; phone: string | null; contact: string | null } | null;
-  factura: { id: string; number_ext: string; issue_date: string | null; currency: string | null; status: string; total: number; po_id: number | null } | null;
+  factura: {
+    id: string;
+    number_ext: string;
+    issue_date: string | null;
+    due_date: string | null;
+    currency: string | null;
+    status: string;
+    subtotal: number;
+    tax_total: number;
+    total: number;
+    /** Plazo en días; 0 o null es de contado. */
+    payment_terms: number | null;
+    po_id: number | null;
+    /** Tarjeta «Documento de origen»: lo retenido explica por qué la cuenta es menor que el total. */
+    retenciones: Array<{ concept: string; amount: number }>;
+    orden: { id: number; uuid: string } | null;
+    asiento: { id: number; memo: string | null } | null;
+  } | null;
   cuotas: CuotaLeida[];
   pagos: PagoCompraLeido[];
   programaciones: ProgramacionLeida[];
@@ -454,7 +471,8 @@ export async function leerDetalleCxp(org: number, id: string): Promise<DetalleCx
     .from('accounts_payable')
     .select(`id, organization_id, branch_id, amount, balance, status, due_date, created_at,
       proveedor:suppliers(id, uuid, name, nit, email, phone, contact),
-      factura:invoice_purchase!accounts_payable_invoice_id_fkey(id, number_ext, issue_date, currency, status, total, po_id),
+      factura:invoice_purchase!accounts_payable_invoice_id_fkey(id, number_ext, issue_date, due_date, currency, status, subtotal, tax_total,
+        total, payment_terms, po_id, orden:purchase_orders(id, uuid), retenciones:invoice_purchase_withholdings(concept, amount)),
       cuotas:ap_installments(id, installment_number, due_date, amount, principal, interest, balance, paid_amount, status, paid_at, notes)`)
     .eq('id', id)
     .eq('organization_id', org)
@@ -466,7 +484,7 @@ export async function leerDetalleCxp(org: number, id: string): Promise<DetalleCx
 
   const filtros = [`and(source.eq.account_payable,source_id.eq.${id})`];
   if (factura) filtros.push(`and(source.eq.invoice_purchase,source_id.eq.${String(factura.id)})`);
-  const [pagosRes, progRes] = await Promise.all([
+  const [pagosRes, progRes, asientoRes] = await Promise.all([
     supabase
       .from('payments')
       .select('id, source, method, amount, discount_amount, reference, payment_date, created_at, status, payment_group_id, installment_id')
@@ -474,8 +492,19 @@ export async function leerDetalleCxp(org: number, id: string): Promise<DetalleCx
       .or(filtros.join(','))
       .order('payment_date', { ascending: false }),
     supabase.from('ap_payment_schedules').select('*').eq('account_payable_id', id).order('requested_at', { ascending: false }),
+    factura
+      ? supabase
+          .from('journal_entries')
+          .select('id, memo')
+          .eq('organization_id', org)
+          .eq('source', 'invoice_purchase')
+          .eq('source_id', String(factura.id))
+          .order('id')
+          .limit(1)
+      : Promise.resolve({ data: [] }),
   ]);
   if (pagosRes.error) throw pagosRes.error;
+  const asiento = ((asientoRes as { data: Array<{ id: number; memo: string | null }> | null }).data ?? [])[0] ?? null;
 
   return {
     id: String(c.id),
@@ -492,10 +521,20 @@ export async function leerDetalleCxp(org: number, id: string): Promise<DetalleCx
           id: String(factura.id),
           number_ext: String(factura.number_ext),
           issue_date: (factura.issue_date as string | null) ?? null,
+          due_date: (factura.due_date as string | null) ?? null,
           currency: (factura.currency as string | null)?.trim() || null,
           status: String(factura.status),
+          subtotal: num(factura.subtotal),
+          tax_total: num(factura.tax_total),
           total: num(factura.total),
+          payment_terms: factura.payment_terms === null || factura.payment_terms === undefined ? null : Number(factura.payment_terms),
           po_id: (factura.po_id as number | null) ?? null,
+          retenciones: ((factura.retenciones as Array<Record<string, unknown>> | null) ?? []).map((r) => ({
+            concept: String(r.concept ?? ''),
+            amount: num(r.amount),
+          })),
+          orden: uno(factura.orden as { id: number; uuid: string } | { id: number; uuid: string }[] | null),
+          asiento: asiento ? { id: Number(asiento.id), memo: asiento.memo ?? null } : null,
         }
       : null,
     cuotas: ((c.cuotas as Array<Record<string, unknown>>) ?? [])

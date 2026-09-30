@@ -24,7 +24,15 @@ interface FilaCuenta {
   status: string | null;
   branch_id: number | null;
   supplier: { id: number; name: string | null } | Array<{ id: number; name: string | null }> | null;
-  invoice: { id: string; number_ext: string | null; currency: string | null; issue_date: string | null; total: number | string | null; status: string } | null;
+  invoice: {
+    id: string;
+    number_ext: string | null;
+    currency: string | null;
+    issue_date: string | null;
+    total: number | string | null;
+    status: string;
+    retenciones: Array<{ amount: number | string | null }> | null;
+  } | null;
 }
 
 const uno = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? (v[0] ?? null) : (v ?? null));
@@ -39,7 +47,8 @@ export async function contextoPagoProveedor(
 ): Promise<ContextoPago> {
   const sel = `id, balance, amount, due_date, created_at, status, branch_id,
     supplier:suppliers(id, name),
-    invoice:invoice_purchase!accounts_payable_invoice_id_fkey(id, number_ext, currency, issue_date, total, status)`;
+    invoice:invoice_purchase!accounts_payable_invoice_id_fkey(id, number_ext, currency, issue_date, total, status,
+      retenciones:invoice_purchase_withholdings(amount))`;
   let consulta = ctx.supabase.from('accounts_payable').select(sel).eq('organization_id', ctx.organizationId);
   consulta = entrada.documento === 'invoice_purchase' ? consulta.eq('invoice_id', entrada.id) : consulta.eq('id', entrada.id);
   const { data: cuentaRaw, error } = await consulta.maybeSingle();
@@ -89,6 +98,8 @@ export async function contextoPagoProveedor(
     numero: factura?.number_ext ?? null,
     saldo: num(cuenta.balance),
     total: factura ? num(factura.total) : num(cuenta.amount),
+    retenido: Math.round((factura?.retenciones ?? []).reduce((s, r) => s + num(r.amount), 0) * 100) / 100,
+    pagado: Math.max(0, num(cuenta.amount) - num(cuenta.balance)),
     moneda: String(monedaRes.data ?? '').trim().toUpperCase(),
     vencimiento: cuenta.due_date,
     emision: factura?.issue_date ?? cuenta.created_at,

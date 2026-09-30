@@ -3873,7 +3873,9 @@
         "fechaFutura": "La date ne peut pas être postérieure à aujourd’hui.",
         "referenciaVacia": "Ce moyen exige une référence.",
         "recibidoInsuficiente": "Les espèces reçues ne couvrent pas le montant."
-      }
+      },
+      "retenciones": "Retenues",
+      "netoPagado": "Net {neto} · Payé {pagado}"
     },
     "vista": {
       "etiqueta": "Affichage",
@@ -12322,13 +12324,33 @@
       },
       "kpis": {
         "pagado": "Payé : {monto}",
-        "programado": "Programmé, non approuvé : {monto}"
+        "programado": "Programmé, non approuvé : {monto}",
+        "netoRetenciones": "Net des retenues ({retenido}) · payé {monto}"
       },
       "proveedorDatos": {
         "nombre": "Nom",
         "nit": "N° fiscal",
         "telefono": "Téléphone",
         "correo": "E-mail"
+      },
+      "origen": {
+        "titulo": "Document d’origine",
+        "factura": "Facture",
+        "recibida": "Reçue",
+        "vence": "Échéance",
+        "retenciones": "Retenues",
+        "conceptos": "{n, plural, one {# élément} other {# éléments}}",
+        "sinRetenciones": "Aucune retenue",
+        "formaPago": "Mode de paiement",
+        "credito": "Crédit à {n, plural, one {# jour} other {# jours}}",
+        "contado": "Comptant",
+        "subtotal": "Sous-total",
+        "iva": "TVA",
+        "total": "Total facture",
+        "menosRetenciones": "Retenues",
+        "neto": "Net à payer",
+        "asiento": "Écriture comptable",
+        "orden": "Bon de commande"
       }
     },
     "estadoCuenta": {

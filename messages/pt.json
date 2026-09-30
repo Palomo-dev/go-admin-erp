@@ -3873,7 +3873,9 @@
         "fechaFutura": "A data não pode ser posterior a hoje.",
         "referenciaVacia": "Esta forma exige a referência.",
         "recibidoInsuficiente": "O valor recebido não cobre o pagamento."
-      }
+      },
+      "retenciones": "Retenções",
+      "netoPagado": "Líquido {neto} · Pago {pagado}"
     },
     "vista": {
       "etiqueta": "Visualização",
@@ -12322,13 +12324,33 @@
       },
       "kpis": {
         "pagado": "Pago: {monto}",
-        "programado": "Programado sem aprovação: {monto}"
+        "programado": "Programado sem aprovação: {monto}",
+        "netoRetenciones": "Líquido de retenções ({retenido}) · pago {monto}"
       },
       "proveedorDatos": {
         "nombre": "Nome",
         "nit": "ID fiscal",
         "telefono": "Telefone",
         "correo": "E-mail"
+      },
+      "origen": {
+        "titulo": "Documento de origem",
+        "factura": "Fatura",
+        "recibida": "Recebida",
+        "vence": "Vence",
+        "retenciones": "Retenções",
+        "conceptos": "{n, plural, one {# item} other {# itens}}",
+        "sinRetenciones": "Sem retenções",
+        "formaPago": "Forma de pagamento",
+        "credito": "A prazo, {n, plural, one {# dia} other {# dias}}",
+        "contado": "À vista",
+        "subtotal": "Subtotal",
+        "iva": "IVA",
+        "total": "Total da fatura",
+        "menosRetenciones": "Retenções",
+        "neto": "Líquido a pagar",
+        "asiento": "Lançamento contábil",
+        "orden": "Ordem de compra"
       }
     },
     "estadoCuenta": {

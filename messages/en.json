@@ -5536,7 +5536,9 @@
         "fechaFutura": "The date can't be later than today.",
         "referenciaVacia": "This method requires a reference.",
         "recibidoInsuficiente": "The cash received doesn't cover the amount."
-      }
+      },
+      "retenciones": "Withholdings",
+      "netoPagado": "Net {neto} · Paid {pagado}"
     },
     "vista": {
       "etiqueta": "View",
@@ -13985,13 +13987,33 @@
       },
       "kpis": {
         "pagado": "Paid: {monto}",
-        "programado": "Scheduled, not approved: {monto}"
+        "programado": "Scheduled, not approved: {monto}",
+        "netoRetenciones": "Net of withholdings ({retenido}) · paid {monto}"
       },
       "proveedorDatos": {
         "nombre": "Name",
         "nit": "Tax ID",
         "telefono": "Phone",
         "correo": "Email"
+      },
+      "origen": {
+        "titulo": "Source document",
+        "factura": "Invoice",
+        "recibida": "Received",
+        "vence": "Due",
+        "retenciones": "Withholdings",
+        "conceptos": "{n, plural, one {# item} other {# items}}",
+        "sinRetenciones": "No withholdings",
+        "formaPago": "Payment terms",
+        "credito": "Credit, {n, plural, one {# day} other {# days}}",
+        "contado": "Cash",
+        "subtotal": "Subtotal",
+        "iva": "VAT",
+        "total": "Invoice total",
+        "menosRetenciones": "Withholdings",
+        "neto": "Net payable",
+        "asiento": "Journal entry",
+        "orden": "Purchase order"
       }
     },
     "estadoCuenta": {

@@ -125,6 +125,7 @@ export default function CuentaPorPagarDetalle({ id }: { id: string }) {
   const cuotasAbiertas = c.cuotas.filter((q) => q.balance > 0 && q.status !== 'paid');
   const planConAbonos = c.cuotas.some((q) => q.paid_amount > 0);
   const titulo = c.factura ? td('titulo', { numero: c.factura.number_ext }) : td('tituloSinFactura');
+  const retenido = (c.factura?.retenciones ?? []).reduce((s, r) => s + r.amount, 0);
 
   // Se confirma con el diálogo del manual (PATRONES §8), no con el confirm del navegador.
   const eliminarPlan = async () => {
@@ -279,7 +280,11 @@ export default function CuentaPorPagarDetalle({ id }: { id: string }) {
           etiqueta={td('monto')}
           icono={ReceiptText}
           valor={formatear(c.amount)}
-          detalle={td('kpis.pagado', { monto: formatear(Math.max(0, c.amount - c.balance)) })}
+          detalle={
+            retenido > 0
+              ? td('kpis.netoRetenciones', { retenido: formatear(retenido), monto: formatear(Math.max(0, c.amount - c.balance)) })
+              : td('kpis.pagado', { monto: formatear(Math.max(0, c.amount - c.balance)) })
+          }
         />
         <StatCard
           etiqueta={td('saldo')}
@@ -406,9 +411,52 @@ export default function CuentaPorPagarDetalle({ id }: { id: string }) {
               {c.proveedor?.email && <FilaDato etiqueta={td('proveedorDatos.correo')} valor={c.proveedor.email} />}
             </ListaDatos>
           </Tarjeta>
+          {c.factura && (
+            // Figma «cxp-detalle»: de dónde sale el monto; lo retenido explica por qué es menor que el total.
+            <Tarjeta titulo={td('origen.titulo')} icono={FileText}>
+              <ListaDatos className="pb-2">
+                <FilaDato etiqueta={td('origen.factura')} valor={c.factura.number_ext} href={`${RUTA_COMPRAS_FINANZAS}/${c.factura.id}`} />
+                <FilaDato etiqueta={td('origen.recibida')} valor={formatDate(c.factura.issue_date)} />
+                <FilaDato etiqueta={td('origen.vence')} valor={formatDate(c.factura.due_date ?? c.due_date)} />
+                <FilaDato
+                  etiqueta={td('origen.retenciones')}
+                  valor={
+                    c.factura.retenciones.length > 0
+                      ? td('origen.conceptos', { n: c.factura.retenciones.length })
+                      : td('origen.sinRetenciones')
+                  }
+                  descripcion={c.factura.retenciones.length > 0 ? c.factura.retenciones.map((r) => r.concept).join(' · ') : undefined}
+                />
+                <FilaDato
+                  etiqueta={td('origen.formaPago')}
+                  valor={c.factura.payment_terms && c.factura.payment_terms > 0 ? td('origen.credito', { n: c.factura.payment_terms }) : td('origen.contado')}
+                />
+              </ListaDatos>
+              <ListaDatos className="border-t border-line py-2">
+                <FilaDato etiqueta={td('origen.subtotal')} valor={formatear(c.factura.subtotal)} />
+                <FilaDato etiqueta={td('origen.iva')} valor={formatear(c.factura.tax_total)} />
+                <FilaDato etiqueta={td('origen.total')} valor={formatear(c.factura.total)} />
+                {retenido > 0 && <FilaDato etiqueta={td('origen.menosRetenciones')} valor={`− ${formatear(retenido)}`} />}
+                <FilaDato etiqueta={td('origen.neto')} valor={formatear(Math.max(0, c.factura.total - retenido))} />
+              </ListaDatos>
+              {(c.factura.asiento || c.factura.orden) && (
+                <ListaDatos className="border-t border-line pb-3 pt-2">
+                  {c.factura.asiento && (
+                    <FilaDato
+                      etiqueta={td('origen.asiento')}
+                      valor={c.factura.asiento.memo ?? `#${c.factura.asiento.id}`}
+                      href={`/app/finanzas/contabilidad/asientos/${c.factura.asiento.id}`}
+                    />
+                  )}
+                  {c.factura.orden && (
+                    <FilaDato etiqueta={td('origen.orden')} valor={`OC-${c.factura.orden.id}`} href={`/app/inventario/ordenes-compra/${c.factura.orden.uuid}`} />
+                  )}
+                </ListaDatos>
+              )}
+            </Tarjeta>
+          )}
           <Tarjeta titulo={td('datos')}>
             <ListaDatos className="pb-3">
-              {c.factura && <FilaDato etiqueta={td('factura')} valor={c.factura.number_ext} href={`${RUTA_COMPRAS_FINANZAS}/${c.factura.id}`} />}
               <FilaDato etiqueta={td('moneda')} valor={ctxMoneda.code} />
               <FilaDato etiqueta={td('creada')} valor={formatDateTime(c.created_at)} />
             </ListaDatos>

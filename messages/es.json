@@ -5536,7 +5536,9 @@
         "fechaFutura": "La fecha no puede ser posterior a hoy.",
         "referenciaVacia": "Este método pide la referencia.",
         "recibidoInsuficiente": "Lo recibido no cubre el monto."
-      }
+      },
+      "retenciones": "Retenciones",
+      "netoPagado": "Neto {neto} · Pagado {pagado}"
     },
     "vista": {
       "etiqueta": "Vista",
@@ -13985,13 +13987,33 @@
       },
       "kpis": {
         "pagado": "Pagado: {monto}",
-        "programado": "Programado sin aprobar: {monto}"
+        "programado": "Programado sin aprobar: {monto}",
+        "netoRetenciones": "Neto de retenciones ({retenido}) · pagado {monto}"
       },
       "proveedorDatos": {
         "nombre": "Nombre",
         "nit": "NIT",
         "telefono": "Teléfono",
         "correo": "Correo"
+      },
+      "origen": {
+        "titulo": "Documento de origen",
+        "factura": "Factura",
+        "recibida": "Recibida",
+        "vence": "Vence",
+        "retenciones": "Retenciones",
+        "conceptos": "{n, plural, one {# concepto} other {# conceptos}}",
+        "sinRetenciones": "Sin retenciones",
+        "formaPago": "Forma de pago",
+        "credito": "Crédito a {n, plural, one {# día} other {# días}}",
+        "contado": "Contado",
+        "subtotal": "Subtotal",
+        "iva": "IVA",
+        "total": "Total factura",
+        "menosRetenciones": "Retenciones",
+        "neto": "Neto a pagar",
+        "asiento": "Asiento contable",
+        "orden": "Orden de compra"
       }
     },
     "estadoCuenta": {

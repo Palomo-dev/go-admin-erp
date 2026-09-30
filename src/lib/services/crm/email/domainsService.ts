@@ -242,7 +242,10 @@ export async function resolveSender(orgId: number, opts: { domainId?: string | n
   }
   if (settings.email_fallback_policy === 'block') throw new EmailError('NO_SENDER', 'La organización exige dominio propio verificado para enviar correos', 422);
   const g = globalDomain();
-  const apiKey = (await getOrgResendKey(orgId)) ?? getMasterResendKey();
+  // El remitente global es un dominio de la plataforma. La key propia de la
+  // organización solo puede enviar desde SU dominio verificado: usarla aquí
+  // hace que Resend rechace el correo y el PDF no llegue.
+  const apiKey = getMasterResendKey() ?? (await getOrgResendKey(orgId));
   if (!g.fromEmail || !apiKey) throw new EmailError('NO_SENDER', 'No hay dominio verificado ni remitente global configurado (EMAIL_GLOBAL_DOMAIN / EMAIL_FROM_ADDRESS)', 422);
   const orgName = opts.orgName?.trim() || g.fromName;
   const notice = settings.email_fallback_policy === 'global_silent' ? null : `Enviado vía ${g.fromName} en nombre de ${orgName}`;

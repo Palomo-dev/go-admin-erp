@@ -11,7 +11,7 @@ jest.mock('../resendClient', () => ({
   getMasterResendKey: () => 're_master',
   getResendClient: () => ({}),
 }));
-const store: { settings: Record<string, unknown>; keys: Record<string, string>; policy: string; tracking: boolean } = { settings: {}, keys: {}, policy: 'global_with_notice', tracking: false };
+const store: { settings: Record<string, unknown>; keys: Record<string, string>; policy: string; tracking: boolean; orgKey: string | null } = { settings: {}, keys: {}, policy: 'global_with_notice', tracking: false, orgKey: null };
 jest.mock('../domainStore', () => ({
   getEmailOrgSettings: async () => ({ email_fallback_policy: store.policy, email_tracking_transactional: store.tracking, email_domains: store.settings }),
   setDomainExtras: async (_o: number, id: string, extras: Record<string, unknown>) => { store.settings[id] = { ...(store.settings[id] as object ?? {}), ...extras }; },
@@ -22,14 +22,14 @@ jest.mock('../domainStore', () => ({
   listDomainKeyIds: async () => new Set(Object.keys(store.keys)),
   // r3: `withExtras` distingue credencial legible de ilegible (tester r2 #4).
   listDomainKeyStates: async () => new Map(Object.keys(store.keys).map((k) => [k, 'ok' as const])),
-  getOrgResendKey: async () => null,
+  getOrgResendKey: async () => store.orgKey,
 }));
 
 import { createDomain, dmarcRecord, mapProviderStatus, resolveSender } from '../domainsService';
 import type { EmailDomain } from '../types';
 import { fakeSupabase } from './fakeSupabase';
 
-beforeEach(() => { domainsCreate.mockClear(); apiKeysCreate.mockClear(); store.settings = {}; store.keys = {}; store.policy = 'global_with_notice'; delete process.env.EMAIL_GLOBAL_DOMAIN; delete process.env.EMAIL_FROM_ADDRESS; });
+beforeEach(() => { domainsCreate.mockClear(); apiKeysCreate.mockClear(); store.settings = {}; store.keys = {}; store.policy = 'global_with_notice'; store.orgKey = null; delete process.env.EMAIL_GLOBAL_DOMAIN; delete process.env.EMAIL_FROM_ADDRESS; });
 
 describe('mapProviderStatus / dmarcRecord', () => {
   it('mapea los estados de Resend al CHECK de email_domains', () => {
@@ -100,6 +100,13 @@ describe('resolveSender', () => {
     expect(s.notice).toContain('en nombre de ACME');
     store.policy = 'global_silent';
     expect((await resolveSender(5, { kind: 'transactional' }, dbWith([]))).notice).toBeNull();
+  });
+
+  it('con key propia y sin dominio verificado, el respaldo global usa la key de la plataforma', async () => {
+    process.env.EMAIL_GLOBAL_DOMAIN = 'mail.goadmin.io';
+    store.orgKey = 're_org';
+    const s = await resolveSender(5, { kind: 'transactional', orgName: 'ACME' }, dbWith([]));
+    expect(s).toMatchObject({ mode: 'global', apiKey: 're_master', fromEmail: 'noreply@mail.goadmin.io' });
   });
 
   it('sin dominio verificado ni remitente global → NO_SENDER', async () => {

@@ -3603,3 +3603,15 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - Migraciones aplicadas por MCP (con rollback; registradas en schema_migrations): 20260930085700_compras_retenciones_configuracion, 20260930085948_compras_asiento_previo y 20260930090435_compras_retenciones_reporte_certificado.
 - Pantallas aprobadas en código y conectadas: config-retenciones, detalle-factura, dialogo-confirmar con el asiento previo, cxp-detalle, dialogo-pago, asiento-compra-retenciones, comprobante-egreso, certificado-retenciones y visor-retenciones-practicadas (dos reportes de Finanzas).
 - Pendiente (§8.4 del plan de compras): pestañas y «Lectura rápida» del visor (el visor genérico no las tiene), «Regla» del asiento (no se guarda), facturas insertadas directamente como received, recorrido en navegador.
+
+
+### Fase: Reportes v2 — interfaz (plan docs/implementacion/REPORTES-V2-PLAN.md, fases 7 a 10) — 2026-09-30
+- Rama `cursor/reportes-v2-implementacion-e475` (PR #269, borrador, base main). No se fusiona: #261 y #265 van primero.
+- Commits de la interfaz: 34e95eed (inicio, listas, visor, pestañas y diálogos), c4d0822d (fuera la v1 y jsPDF), f1eadbe7 (buscador antes de los filtros; módulos no contratados), bdcffc79 y 31543f08 (el fetch de contabilidad acepta el cliente de sesión).
+- Pantallas en `/app/reportes`, `/app/reportes/[grupo]` y `/app/reportes/[grupo]/[reporte]`: inicio con KPI del catálogo, lista por módulo, visor con tabla comparada y lectura rápida, favoritos, cierres, programados e historial, y los diálogos de generar cierre y programar envío.
+- No hay permiso de página. El centro se abre con el módulo del plan. Cada reporte se bloquea por alcance (`reportePermitido`) o porque no está contratado. Quien no tiene acceso total ve el aviso y puede solicitar acceso.
+- i18n: `reportes.*` y `kit.franja.*` en es, en, pt y fr, con las mismas claves. Títulos, descripciones y columnas de los reportes siguen en español.
+- Se retiró la v1 y `pdfExportService` (jsPDF). Siguen `ReporteKPIs`, `ReporteTabla`, `ReporteChart`, `ReportePagination` (la tabla del chat lo importa) y `reportAgentService`.
+- Compuerta: jest de reportes, kit y guardrails 1079/1079; `npm run test:tz-all` 783/783 en UTC, Bogotá, Ciudad de México, Madrid, Santiago y Katmandú; tsc del alcance de reportes (tsconfig.tmp.json, sin commitear) en verde. El tsc completo deja errores en otros archivos (electron y el resto, preexistentes). `next build` compiló y se detuvo en el typecheck de `electron/src/main/agentRunner.ts` (no encuentra el módulo `electron`): no es de esta fase.
+- Jest completo: fallan suites ajenas a esta interfaz (sectionContract, testerR4.f0sec, f6Adversarial y el contrato de propuestas). El guardarraíl del cliente de sesión de reportes quedó en verde después de alinear la firma de contabilidad.
+- Pendiente: recorrido en el navegador con sesión (inicio, lista, visor con comparativo, vista previa de cierre y el 409, programar envío, móvil a 390 px). El Excel del cierre completo no existe: el diálogo lo dice y el PDF sí se abre.

@@ -129,6 +129,14 @@ centro de costo y Tendencia 12 meses del estado de resultados.
 5. Documentos `cierre-periodo` y `reporte`.
 6. Rutas de servidor y cron.
 7. UI: inicio, lista, visor, pestañas, diálogos, móvil, gerente de sede.
-8. i18n en es, en, pt y fr.
-9. Retiro de la v1 y de jsPDF.
-10. Pruebas, documentación, verificación y PR.
+   Hecho en `src/components/reportes/` y en `/app/reportes`, `/app/reportes/[grupo]`
+   y `/app/reportes/[grupo]/[reporte]`. No hay permiso de página: el módulo del
+   plan abre el centro; cada reporte se bloquea por alcance o por plan.
+8. i18n en es, en, pt y fr. Hecho: `reportes.*` y `kit.franja.*`. Los títulos,
+   descripciones y columnas de cada reporte se quedan en español.
+9. Retiro de la v1 y de jsPDF. Hecho. Siguen `ReporteKPIs`, `ReporteTabla`,
+   `ReporteChart` y `ReportePagination` (la tabla del chat la importa) y
+   `reportAgentService` (lo usa el asistente).
+10. Pruebas, documentación, verificación y PR. Hecho en la rama
+    `cursor/reportes-v2-implementacion-e475` (PR #269, sigue en borrador).
+    El recorrido con sesión iniciada no se pudo hacer en este entorno.

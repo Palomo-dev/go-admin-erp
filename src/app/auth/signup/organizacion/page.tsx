@@ -19,6 +19,7 @@ import { proceedWithLogin } from '@/lib/auth';
 import { EscenaAcceso, TarjetaAcceso, ProgresoPasos } from '@/components/kit/acceso';
 import { AsistenteAltaOrganizacion, type PasoAlta } from '@/components/auth/alta/AsistenteAltaOrganizacion';
 import { leerReferido, olvidarReferido } from '@/lib/auth/referido';
+import { leerParamsRegistro, limpiarParamsRegistro } from '@/lib/auth/registroParams';
 
 interface Persona {
   correo: string;
@@ -54,17 +55,23 @@ function OrganizacionContent() {
   useEffect(() => {
     let vivo = true;
     (async () => {
-      // Leer y validar parámetros de URL antes de la sesión.
+      // Leer parámetros de URL o sessionStorage (si vienen del flujo de registro completo).
       const planParam = params?.get('plan');
       const cycleParam = params?.get('cycle');
-      if (planParam) {
-        const planNormalizado = planParam.toLowerCase();
+      const paramsStorage = leerParamsRegistro();
+      
+      // Priorizar parámetros de URL sobre sessionStorage.
+      const planFinal = planParam || paramsStorage.plan;
+      const cycleFinal = cycleParam || paramsStorage.cycle;
+      
+      if (planFinal) {
+        const planNormalizado = planFinal.toLowerCase();
         if (PLANES_VALIDOS.includes(planNormalizado as any)) {
           setPlanInicial(planNormalizado);
         }
       }
-      if (cycleParam) {
-        const cycleNormalizado = cycleParam.toLowerCase() as 'monthly' | 'yearly';
+      if (cycleFinal) {
+        const cycleNormalizado = cycleFinal.toLowerCase() as 'monthly' | 'yearly';
         if (PERIODOS_VALIDOS.includes(cycleNormalizado)) {
           setPeriodoInicial(cycleNormalizado);
         }
@@ -148,6 +155,7 @@ function OrganizacionContent() {
           onCreada={async () => {
             setSaliendo(true);
             olvidarReferido();
+            limpiarParamsRegistro();
             await proceedWithLogin(false, persona.correo, { destino: '/app/inicio?welcome=true' });
           }}
         />

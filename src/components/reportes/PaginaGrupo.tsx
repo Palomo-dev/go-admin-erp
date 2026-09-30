@@ -11,7 +11,7 @@ import { useFiltrosReportes } from './useFiltrosReportes';
 
 /** Lista de un grupo, o de los módulos que no están en el plan (`adicionales`). */
 export function PaginaGrupo() {
-  const params = useParams();
+  const params = useParams() ?? {};
   const grupo = String(params.grupo ?? '');
   const t = useTranslations('reportes');
   const ctx = useContextoReportes();

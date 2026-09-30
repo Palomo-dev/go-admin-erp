@@ -202,7 +202,6 @@ describe('middleware · webhooks y crons que se autentican solos llegan sin cook
     '/api/integrations/redeban/webhook',
     '/api/integrations/sendgrid/webhook',
     '/api/crm/contracts/webhook',
-    '/api/crm/voice-agents/campaigns/run',
     // GO-sec 2026-09-24, tras 6f7c97e7: fail-closed (401) y nada se escribe antes de verificar.
     '/api/integrations/mercadopago/webhook',
     '/api/integrations/payu/webhook',
@@ -262,6 +261,11 @@ describe('middleware · webhooks y crons que se autentican solos llegan sin cook
       const res = await middleware(peticion(ruta, { method: 'POST' }), evento);
       expect(res.status).toBe(401);
     }
+  });
+
+  it('el alias histórico del cron de campañas sigue detrás de la sesión (la ruta canónica es /api/voice/)', async () => {
+    const res = await middleware(peticion('/api/crm/voice-agents/campaigns/run', { method: 'POST' }), evento);
+    expect(res.status).toBe(401);
   });
 
   it('los webhooks que NO se han revisado como fail-closed siguen pasando por el middleware (no se excluyen)', async () => {

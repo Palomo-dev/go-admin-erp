@@ -13,9 +13,12 @@ import { aQuery, escribirFiltrosReportes, leerFiltrosReportes, type FiltrosRepor
 const CLAVES_FILTRO = ['periodo', 'ref', 'desde', 'hasta', 'hi', 'hf', 'sucursal', 'comparar', 'vista'];
 
 export function useFiltrosReportes() {
-  const q = useSearchParams();
+  // Tras `next build`, los tipos de compatibilidad de App Router admiten null
+  // (el router de `pages/` aún no está listo). En el centro siempre hay URL.
+  const busqueda = useSearchParams();
+  const q = useMemo(() => busqueda ?? new URLSearchParams(), [busqueda]);
   const router = useRouter();
-  const ruta = usePathname();
+  const ruta = usePathname() ?? '';
   const { getToday } = useFormatDate();
   const hoy = getToday();
 

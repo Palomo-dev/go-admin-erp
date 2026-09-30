@@ -3615,3 +3615,15 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - Compuerta: jest de reportes, kit y guardrails 1079/1079; `npm run test:tz-all` 783/783 en UTC, Bogotá, Ciudad de México, Madrid, Santiago y Katmandú; tsc del alcance de reportes (tsconfig.tmp.json, sin commitear) en verde. El tsc completo deja errores en otros archivos (electron y el resto, preexistentes). `next build` compiló y se detuvo en el typecheck de `electron/src/main/agentRunner.ts` (no encuentra el módulo `electron`): no es de esta fase.
 - Jest completo: fallan suites ajenas a esta interfaz (sectionContract, testerR4.f0sec, f6Adversarial y el contrato de propuestas). El guardarraíl del cliente de sesión de reportes quedó en verde después de alinear la firma de contabilidad.
 - Pendiente: recorrido en el navegador con sesión (inicio, lista, visor con comparativo, vista previa de cierre y el 409, programar envío, móvil a 390 px). El Excel del cierre completo no existe: el diálogo lo dice y el PDF sí se abre.
+
+
+### Fase: Reportes v2 — typecheck y suites que el build dejaba en rojo — 2026-09-30
+- Rama `cursor/reportes-v2-implementacion-e475` (PR #269). No se fusiona.
+- `npx tsc --noEmit -p tsconfig.json` en verde (0 errores, heap 8192). Los ~120 errores eran el paquete `electron` sin `node_modules` dentro de `electron/`. La CI ya corre `npm ci --prefix electron` antes del typecheck. Tras `next build`, los tipos de compatibilidad dejan `useParams` y `useSearchParams` anulables: el centro de reportes los cubre.
+- `next build` compiló, pasó el typecheck y generó 352 páginas. Hace falta el mismo heap de 8 GB. Sin las variables públicas de Supabase la recolección de páginas se detiene; con los valores de `.env.example` el build termina.
+- Jest de las suites que fallaban (testerR4.f0sec, sectionContract, f6Adversarial, el contrato de propuestas, el estable de propuestas y el middleware de sesión): 189 pruebas en verde, 7 omitidas.
+- El caso 21 del tester recorta solo hasta el caso 22. Los guardarraíles posteriores sí filtran con `isExcluded`.
+- El alias histórico del cron de campañas queda detrás de la sesión. El cron externo sigue en `/api/voice/agent-campaigns/run`. Sin cookie responde 401.
+- El catálogo declara las variantes `grid`, `horizontal` e `icons` de `categories_grid`. El manifiesto de prueba declara `product_faq`, `product_shipping` y `product_specs`, que el sitio ya renderiza.
+- El doble en memoria de `fn_cotizacion_guardar` y `fn_cotizacion_cambiar_estado` deja leer la cotización creada. Editar no registra una escritura de la tabla `quotations` (el estable lo exige así).
+- Pendiente: recorrido en el navegador con sesión (inicio, lista, visor con comparativo, vista previa de cierre y el 409, programar envío, móvil a 390 px).

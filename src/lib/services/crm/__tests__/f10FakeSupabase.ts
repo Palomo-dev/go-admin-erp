@@ -149,6 +149,78 @@ function fnComisionOportunidadDevengar(db: FakeDb, args: Record<string, unknown>
   return { data: { created: true, already_accrued: false, reason: null, commission: { id: row.id, base_amount: base, commission_rate: tasa, commission_amount: monto, status: 'accrued', source_type: 'opportunity' } }, error: null };
 }
 
+/**
+ * Doble de `fn_cotizacion_guardar`: persiste cabecera y líneas en memoria.
+ * La validación de sucursal, permiso y totales vive en la función SQL; aquí
+ * solo hace falta que la ruta pueda leer la cotización que acaba de pedir.
+ * Crear registra un INSERT (el contrato de la ruta lo afirma). Editar no
+ * registra escritura de tabla: el estable comprueba que la cabecera ya no se
+ * actualiza sola, sino por la RPC.
+ */
+function fnCotizacionGuardar(db: FakeDb, args: Record<string, unknown>): RpcResult {
+  const org = args.p_org;
+  const datos = (args.p_datos ?? {}) as Row;
+  const items = Array.isArray(datos.items) ? (datos.items as Row[]) : [];
+  const total = items.reduce((suma, it) => {
+    const qty = Number(it.qty) || 0;
+    const precio = Number(it.unit_price) || 0;
+    const desc = Number(it.discount_amount) || 0;
+    return suma + qty * precio - desc;
+  }, 0);
+  const quotations = (db.rows.quotations ??= []);
+  if (args.p_id) {
+    const row = quotations.find((q) => q.id === args.p_id && q.organization_id === org);
+    if (!row) return { data: null, error: { code: 'P0002', message: 'cotizacion_no_encontrada' } };
+    Object.assign(row, {
+      sections_json: datos.sections_json ?? row.sections_json,
+      total,
+      customer_id: datos.customer_id ?? row.customer_id,
+      salesperson_id: datos.salesperson_id ?? row.salesperson_id,
+      currency: datos.currency ?? row.currency,
+      valid_until: datos.valid_until ?? row.valid_until,
+      opportunity_id: datos.opportunity_id ?? row.opportunity_id,
+      updated_at: new Date().toISOString(),
+    });
+    return { data: { id: row.id }, error: null };
+  }
+  const n = quotations.filter((q) => q.organization_id === org).length + 1;
+  const row: Row = {
+    id: `q-new-${++idSeq}`,
+    organization_id: org,
+    number: `COT-${String(n).padStart(4, '0')}`,
+    status: 'draft',
+    opportunity_id: datos.opportunity_id ?? null,
+    customer_id: datos.customer_id ?? null,
+    salesperson_id: datos.salesperson_id ?? null,
+    currency: datos.currency ?? null,
+    total,
+    sections_json: datos.sections_json ?? null,
+    valid_until: datos.valid_until ?? null,
+    issue_date: typeof datos.issue_date === 'string' && datos.issue_date !== '' ? datos.issue_date : '2026-09-30',
+    converted_invoice_id: null,
+    created_at: new Date().toISOString(),
+  };
+  quotations.push(row);
+  db.writes.push({ table: 'quotations', op: 'insert', row, filters: {} });
+  (db.rows.quotation_items ??= []).push(...items.map((it) => ({ ...it, quotation_id: row.id, organization_id: org })));
+  db.writes.push({ table: 'quotation_items', op: 'insert', row: { __rows: items }, filters: { quotation_id: row.id } });
+  return { data: { id: row.id }, error: null };
+}
+
+/** Doble de `fn_cotizacion_cambiar_estado`: deja el estado y registra el UPDATE. */
+function fnCotizacionCambiarEstado(db: FakeDb, args: Record<string, unknown>): RpcResult {
+  const row = (db.rows.quotations ?? []).find((q) => q.id === args.p_id && q.organization_id === args.p_org);
+  if (!row) return { data: null, error: { code: 'P0002', message: 'cotizacion_no_encontrada' } };
+  row.status = args.p_estado;
+  db.writes.push({
+    table: 'quotations',
+    op: 'update',
+    row: { status: args.p_estado },
+    filters: { id: args.p_id, organization_id: args.p_org },
+  });
+  return { data: { id: row.id }, error: null };
+}
+
 function p0001(message: string, detail: Record<string, unknown>): RpcResult {
   return { data: null, error: { code: 'P0001', message, details: JSON.stringify(detail) } };
 }
@@ -363,6 +435,8 @@ export function createFakeSupabase(db: FakeDb) {
     (db.rpcCalls ??= []).push({ fn, args });
     if (fn === 'fn_register_crm_payment') return runSerialized(db, `${String(args.p_organization_id)}:${String(args.p_invoice_id)}`, () => fnRegisterCrmPayment(db, args));
     if (fn === 'fn_comision_oportunidad_devengar') return runSerialized(db, `opp:${String(args.p_opportunity_id)}`, async () => fnComisionOportunidadDevengar(db, args));
+    if (fn === 'fn_cotizacion_guardar') return Promise.resolve(fnCotizacionGuardar(db, args));
+    if (fn === 'fn_cotizacion_cambiar_estado') return Promise.resolve(fnCotizacionCambiarEstado(db, args));
     return Promise.resolve({ data: db.rpcResult?.[fn] ?? null, error: null });
   };
   return { from, rpc, auth: { getUser: async () => ({ data: { user: { id: 'u-1' } } }) } };

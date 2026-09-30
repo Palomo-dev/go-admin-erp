@@ -11,7 +11,7 @@ import { VisorReporte } from './VisorReporte';
 
 /** Visor de un reporte del catálogo. */
 export function PaginaVisor() {
-  const params = useParams();
+  const params = useParams() ?? {};
   const id = String(params.reporte ?? '');
   const t = useTranslations('reportes');
   const ctx = useContextoReportes();

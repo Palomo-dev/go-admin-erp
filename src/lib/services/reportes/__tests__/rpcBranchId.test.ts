@@ -20,6 +20,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { ventasReports } from '../modulos/ventasReports';
 import { finanzasReports } from '../modulos/finanzasReports';
 import { inventarioReports } from '../modulos/inventarioReports';
+import { comprasFinanzasReports, comprasInventarioReports } from '../modulos/comprasReports';
 import type { PeriodoCierre, DefinicionModulo } from '../types';
 
 // `getOrgDateRange` consulta el timezone de la organización en Supabase; aquí
@@ -83,8 +84,9 @@ const ORG_ID = 142;
 
 /**
  * Los reportes que el frontend llama con `p_branch_id`: las 9 RPC de la
- * migración del filtro por sucursal y los dos reportes de retenciones, que
- * comparten `fn_reporte_retenciones_practicadas`.
+ * migración del filtro por sucursal, los dos reportes de retenciones, que
+ * comparten `fn_reporte_retenciones_practicadas`, y los de sucursal de la v2
+ * (las dos rentabilidades comparten `fn_reporte_rentabilidad_producto`).
  */
 const CASOS: Array<{ reporte: DefinicionModulo; rpc: string; claves: string[] }> = [
   { reporte: buscar(ventasReports, 'fn_reporte_cierre_caja'), rpc: 'fn_reporte_cierre_caja', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },
@@ -99,7 +101,21 @@ const CASOS: Array<{ reporte: DefinicionModulo; rpc: string; claves: string[] }>
     .map((reporte) => ({ reporte, rpc: 'fn_reporte_retenciones_practicadas', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] })),
   { reporte: buscar(inventarioReports, 'fn_reporte_movimientos_inventario'), rpc: 'fn_reporte_movimientos_inventario', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },
   { reporte: buscar(inventarioReports, 'fn_reporte_rotacion_inventario'), rpc: 'fn_reporte_rotacion_inventario', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },
+  { reporte: buscar(finanzasReports, 'fn_reporte_gastos_naturaleza'), rpc: 'fn_reporte_gastos_naturaleza', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },
+  { reporte: buscar(finanzasReports, 'fn_reporte_bancos_conciliacion'), rpc: 'fn_reporte_bancos_conciliacion', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },
+  { reporte: buscar(finanzasReports, 'fn_reporte_caja_bancos_diario'), rpc: 'fn_reporte_caja_bancos_diario', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },
+  ...[...finanzasReports, ...inventarioReports]
+    .filter((d) => d.fetch.toString().includes("'fn_reporte_rentabilidad_producto'"))
+    .map((reporte) => ({ reporte, rpc: 'fn_reporte_rentabilidad_producto', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] })),
+  { reporte: buscar(inventarioReports, 'fn_reporte_movimiento_valorizado'), rpc: 'fn_reporte_movimiento_valorizado', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },
+  { reporte: buscar(comprasFinanzasReports, 'fn_reporte_compras_proveedor'), rpc: 'fn_reporte_compras_proveedor', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },
+  { reporte: buscar(comprasInventarioReports, 'fn_reporte_ordenes_compra'), rpc: 'fn_reporte_ordenes_compra', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },
 ];
+
+test('las dos rentabilidades por producto llaman a la RPC con costo real', () => {
+  expect(CASOS.filter((c) => c.rpc === 'fn_reporte_rentabilidad_producto').map((c) => c.reporte.id).sort())
+    .toEqual(['rentabilidad-producto', 'rentabilidad-producto-inv']);
+});
 
 /**
  * Localiza la definición de reporte cuyo `fetch` llama a la RPC indicada.

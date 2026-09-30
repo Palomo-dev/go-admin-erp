@@ -1,6 +1,7 @@
 // ============================================================
 // Reportes de Inventario
-// Llama a las RPCs: fn_reporte_stock_critico, fn_reporte_movimientos_inventario, fn_reporte_rotacion_inventario
+// Llama a las RPCs: fn_reporte_stock_critico, fn_reporte_movimientos_inventario, fn_reporte_rotacion_inventario,
+// fn_reporte_rentabilidad_producto, fn_reporte_movimiento_valorizado
 // ============================================================
 
 import { supabase as browserSupabase } from '@/lib/supabase/config';
@@ -13,6 +14,7 @@ import type { ReportesClient } from '../types';
 import { applyBranchFilter, normalizeBranchParam } from '@/lib/services/branchFilterHelper';
 import type { DefinicionModulo, ReportData, PeriodoCierre } from '../types';
 import { rangoDelPeriodo } from '../rangoPeriodo';
+import { vistaRentabilidadProducto } from './rentabilidadProducto';
 
 function buildReportData(
   id: string,
@@ -379,79 +381,110 @@ export const inventarioReports: DefinicionModulo[] = [
     id: 'rentabilidad-producto-inv',
     modulo: 'inventory',
     titulo: 'Rentabilidad por producto (inventario)',
-    descripcion: 'Margen por producto y categoría al costo promedio',
+    descripcion: 'Margen por producto y categoría con el costo real de las salidas de inventario',
     categoria: 'comercial',
     alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
       const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
-      let ventasQuery = db
-        .from('sales')
-        .select('id')
-        .eq('organization_id', orgId)
-        .gte('sale_date', start)
-        .lte('sale_date', end)
-        .not('status', 'in', '("cancelled","void")');
-      ventasQuery = applyBranchFilter(ventasQuery, branchId);
-      const { data: ventas, error: errVentas } = await ventasQuery;
+      const { data, error } = await db.rpc('fn_reporte_rentabilidad_producto', {
+        p_organization_id: orgId,
+        p_from: start,
+        p_to: end,
+        p_branch_id: normalizeBranchParam(branchId),
+      });
+      if (error) throw error;
 
-      if (errVentas) throw errVentas;
+      const v = vistaRentabilidadProducto(data);
+      return {
+        ...buildReportData('rentabilidad-producto-inv', 'Rentabilidad por producto (inventario)', 'inventory', periodo, v.kpis, v.columnas, v.filas, v.totales),
+        vistaPrincipal: 'Por producto',
+        vistas: v.vistas,
+        lectura: v.lectura,
+      };
+    },
+  },
+  {
+    id: 'movimiento-valorizado',
+    modulo: 'inventory',
+    titulo: 'Movimiento de inventario valorizado',
+    descripcion: 'Existencia inicial, entradas, salidas y existencia final de cada producto, en cantidad y al costo',
+    categoria: 'operativo',
+    alcance: 'sucursal',
+    periodosSugeridos: ['mensual', 'trimestral', 'anual'],
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
+      const { data, error } = await db.rpc('fn_reporte_movimiento_valorizado', {
+        p_organization_id: orgId,
+        p_from: start,
+        p_to: end,
+        p_branch_id: normalizeBranchParam(branchId),
+      });
+      if (error) throw error;
 
-      const saleIds = (ventas ?? []).map((v: Record<string, unknown>) => v.id);
-      if (!saleIds.length) {
-        return buildReportData(
-          'rentabilidad-producto-inv', 'Rentabilidad por producto (inventario)', 'inventory', periodo,
+      const d = (data ?? {}) as Record<string, unknown>;
+      const t = (d.totales ?? {}) as Record<string, unknown>;
+      const n = (v: unknown) => Number(v ?? 0) || 0;
+      const productos = (Array.isArray(d.productos) ? d.productos : []) as Array<Record<string, unknown>>;
+      const sinCosto = n(t.movimientos_sin_costo);
+      const negativos = productos.filter((p) => n(p.cant_final) < 0).length;
+
+      const lectura: ReportData['lectura'] = [];
+      if (sinCosto > 0) {
+        lectura.push({ tono: 'aviso', texto: `${sinCosto} movimientos del periodo no tienen costo unitario: su valor cuenta como cero.`, href: '/app/inventario/movimientos', etiquetaAccion: 'Ver movimientos' });
+      }
+      if (negativos > 0) {
+        lectura.push({ tono: 'alerta', texto: `${negativos} productos terminan el periodo con existencia negativa.`, href: '/app/inventario/kardex', etiquetaAccion: 'Ver kárdex' });
+      }
+      if (d.truncado) {
+        lectura.push({ tono: 'aviso', texto: 'La tabla muestra los 2.000 productos de mayor valor; los totales cubren todos.' });
+      }
+
+      return {
+        ...buildReportData(
+          'movimiento-valorizado', 'Movimiento de inventario valorizado', 'inventory', periodo,
           [
-            { titulo: 'Total Ingresos', valor: 0, formato: 'moneda' },
-            { titulo: 'Productos', valor: 0, formato: 'numero' },
+            { titulo: 'Valor inicial', valor: n(t.valor_inicial), formato: 'moneda' },
+            { titulo: 'Entradas', valor: n(t.valor_entradas), formato: 'moneda' },
+            { titulo: 'Salidas', valor: n(t.valor_salidas), formato: 'moneda' },
+            { titulo: 'Valor final', valor: n(t.valor_final), formato: 'moneda' },
+            { titulo: 'Productos', valor: n(t.productos), formato: 'numero' },
           ],
           [
             { key: 'nombre', titulo: 'Producto', tipo: 'texto' },
             { key: 'sku', titulo: 'SKU', tipo: 'texto' },
-            { key: 'cantidad', titulo: 'Cantidad', tipo: 'numero', alinear: 'right' },
-            { key: 'total', titulo: 'Total', tipo: 'moneda', alinear: 'right' },
+            { key: 'cant_inicial', titulo: 'Inicial', tipo: 'numero', alinear: 'right' },
+            { key: 'valor_inicial', titulo: 'Valor inicial', tipo: 'moneda', alinear: 'right' },
+            { key: 'cant_entradas', titulo: 'Entradas', tipo: 'numero', alinear: 'right' },
+            { key: 'valor_entradas', titulo: 'Valor entradas', tipo: 'moneda', alinear: 'right' },
+            { key: 'cant_salidas', titulo: 'Salidas', tipo: 'numero', alinear: 'right' },
+            { key: 'valor_salidas', titulo: 'Valor salidas', tipo: 'moneda', alinear: 'right' },
+            { key: 'cant_final', titulo: 'Final', tipo: 'numero', alinear: 'right' },
+            { key: 'valor_final', titulo: 'Valor final', tipo: 'moneda', alinear: 'right' },
           ],
-          [],
-        );
-      }
-
-      const { data, error } = await db
-        .from('sale_items')
-        .select('product_id, quantity, unit_price, total, discount_amount, products(name, sku)')
-        .in('sale_id', saleIds)
-        .order('total', { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
-
-      const items = (data ?? []).map((item: Record<string, unknown>) => {
-        const products = item.products as Record<string, unknown> | null;
-        return {
-          nombre: products?.name ?? '—',
-          sku: products?.sku ?? '—',
-          cantidad: item.quantity,
-          precio_unitario: item.unit_price,
-          total: item.total,
-          descuento: item.discount_amount ?? 0,
-        };
-      });
-
-      return buildReportData(
-        'rentabilidad-producto-inv', 'Rentabilidad por producto (inventario)', 'inventory', periodo,
-        [
-          { titulo: 'Total Ingresos', valor: items.reduce((s: number, i: Record<string, unknown>) => s + Number(i.total ?? 0), 0), formato: 'moneda' },
-          { titulo: 'Productos', valor: items.length, formato: 'numero' },
-        ],
-        [
-          { key: 'nombre', titulo: 'Producto', tipo: 'texto' },
-          { key: 'sku', titulo: 'SKU', tipo: 'texto' },
-          { key: 'cantidad', titulo: 'Cantidad', tipo: 'numero', alinear: 'right' },
-          { key: 'total', titulo: 'Total', tipo: 'moneda', alinear: 'right' },
-        ],
-        items,
-        { total: items.reduce((s: number, i: Record<string, unknown>) => s + Number(i.total ?? 0), 0) },
-      );
+          productos.map((p) => ({
+            nombre: p.sin_costo ? `${p.nombre} (sin costo)` : p.nombre,
+            sku: p.sku ?? '',
+            cant_inicial: n(p.cant_inicial),
+            valor_inicial: n(p.valor_inicial),
+            cant_entradas: n(p.cant_entradas),
+            valor_entradas: n(p.valor_entradas),
+            cant_salidas: n(p.cant_salidas),
+            valor_salidas: n(p.valor_salidas),
+            cant_final: n(p.cant_final),
+            valor_final: n(p.valor_final),
+          })),
+          {
+            valor_inicial: n(t.valor_inicial),
+            valor_entradas: n(t.valor_entradas),
+            valor_salidas: n(t.valor_salidas),
+            valor_final: n(t.valor_final),
+          },
+        ),
+        lectura,
+      };
     },
   },
 ];

@@ -33,6 +33,7 @@ import { rolesReports } from './modulos/rolesReports';
 import { pmReports } from './modulos/pmReports';
 import { operacionesReports } from './modulos/operacionesReports';
 import { serialTrackingReports } from './modulos/serialTrackingReports';
+import { comprasFinanzasReports, comprasInventarioReports } from './modulos/comprasReports';
 
 // ============================================================
 // Metadatos de módulos (nombre visible + icono lucide)
@@ -117,6 +118,10 @@ const META: Record<string, MetaReporte> = {
   'estado-resultados': { grupo: 'contabilidad', filtros: 'c k' },
   'balance-general': { grupo: 'contabilidad', filtros: 'c' },
   'presupuesto-vs-real': { grupo: 'contabilidad', filtros: 'c f' },
+  'balance-prueba': { grupo: 'contabilidad', filtros: 'c', nuevo: true },
+  'libro-diario-origen': { grupo: 'contabilidad', filtros: 'c', nuevo: true },
+  'gastos-naturaleza': { grupo: 'contabilidad', filtros: 'c', nuevo: true },
+  'periodo-fiscal': { grupo: 'contabilidad', filtros: '', nuevo: true },
   // Finanzas y tesorería
   'cxc-vencidas': { grupo: 'finanzas', filtros: 's' },
   'cxc-aging': { grupo: 'finanzas', filtros: 'c s' },
@@ -128,6 +133,8 @@ const META: Record<string, MetaReporte> = {
   'facturacion-electronica': { grupo: 'finanzas', filtros: 'c s f' },
   'rentabilidad-producto': { grupo: 'finanzas', filtros: 'c s f' },
   'rentabilidad-sucursal': { grupo: 'finanzas', filtros: 'c s f' },
+  'bancos-conciliacion': { grupo: 'finanzas', filtros: 'c s f', nuevo: true },
+  'caja-bancos-diario': { grupo: 'finanzas', filtros: 'c s', nuevo: true },
   // Ventas y POS
   'cierre-caja': { grupo: 'ventas', filtros: 'c s f' },
   'ventas-periodo': { grupo: 'ventas', filtros: 'c s f' },
@@ -144,6 +151,7 @@ const META: Record<string, MetaReporte> = {
   'ventas-serial': { grupo: 'inventario', filtros: 'c s f' },
   'garantias-reporte': { grupo: 'inventario', filtros: 'c f' },
   'seriales-proveedor': { grupo: 'inventario', filtros: 'c s f' },
+  'movimiento-valorizado': { grupo: 'inventario', filtros: 'c s', nuevo: true },
   // Compras
   'retenciones-practicadas': { grupo: 'compras', filtros: 'c s' },
   'retenciones-por-proveedor': {
@@ -151,6 +159,8 @@ const META: Record<string, MetaReporte> = {
     filtros: 'c s',
     alias: { destino: 'retenciones-practicadas', vista: 'por-proveedor' },
   },
+  'compras-proveedor': { grupo: 'compras', filtros: 'c s', nuevo: true },
+  'ordenes-compra': { grupo: 'compras', filtros: 'c s', nuevo: true },
   // Personas
   'hrm-nomina': { grupo: 'personas', filtros: 'c' },
   'hrm-productividad': { grupo: 'personas', filtros: 'c s' },
@@ -223,8 +233,8 @@ function enriquecer(def: DefinicionModulo): ReportDefinition {
 const CATALOGO: Record<string, ReportDefinition[]> = Object.fromEntries(
   Object.entries({
     pos: ventasReports,
-    finance: [...finanzasReports, ...contabilidadReports],
-    inventory: [...inventarioReports, ...serialTrackingReports],
+    finance: [...finanzasReports, ...contabilidadReports, ...comprasFinanzasReports],
+    inventory: [...inventarioReports, ...serialTrackingReports, ...comprasInventarioReports],
     crm: crmReports,
     hrm: hrmReports,
     pms_hotel: pmsReports,

@@ -8,7 +8,7 @@ import { evaluateICPCriteria, type ICPCriterion, type ICPOperator } from './icpS
  * Estrategias:
  *  - round_robin: rota al siguiente miembro activo del team
  *  - territory:   evalúa territories.criteria contra el customer y asigna al responsable
- *  - load_balance: asigna al miembro con menos oportunidades abiertas
+ *  - load_balance: asigna al miembro con menos oportunidades abiertas + leads activos (ola 1)
  */
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
@@ -176,7 +176,7 @@ async function assignRoundRobin(
   // Buscar la oportunidad más reciente asignada a algún miembro del team
   const { data: lastOpp, error } = await supabase
     .from('opportunities')
-    .select('salesperson_id')
+    .select('salesperson_id, created_at')
     .eq('organization_id', orgId)
     .in('salesperson_id', memberUserIds)
     .not('salesperson_id', 'is', null)
@@ -188,7 +188,30 @@ async function assignRoundRobin(
     console.warn('assignmentService.assignRoundRobin - last assigned error:', error.message);
   }
 
-  const lastUserId = (lastOpp as { salesperson_id: string | null } | null)?.salesperson_id;
+  // CRM ola 1 (D2): un lead ya no crea oportunidad; su responsable vive en
+  // `customers.owner_id`. La rotación mira también el último lead asignado a un
+  // miembro del team (por `updated_at`, que el alta del lead escribe al
+  // asignarlo) y se queda con el más reciente de los dos.
+  const { data: lastLead, error: leadError } = await supabase
+    .from('customers')
+    .select('owner_id, updated_at')
+    .eq('organization_id', orgId)
+    .in('owner_id', memberUserIds)
+    .not('lead_source', 'is', null)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (leadError) {
+    console.warn('assignmentService.assignRoundRobin - last lead error:', leadError.message);
+  }
+
+  const opp = lastOpp as { salesperson_id: string | null; created_at: string | null } | null;
+  const lead = lastLead as { owner_id: string | null; updated_at: string | null } | null;
+  const lastUserId =
+    lead?.owner_id && (!opp?.salesperson_id || String(lead.updated_at ?? '') > String(opp.created_at ?? ''))
+      ? lead.owner_id
+      : opp?.salesperson_id;
   let nextIdx = 0;
 
   if (lastUserId) {
@@ -328,7 +351,22 @@ async function assignLoadBalance(
         console.warn('assignmentService.assignLoadBalance - count error for', m.user_id, error.message);
       }
 
-      return { userId: m.user_id, count: count ?? 0 };
+      // CRM ola 1 (D2): los leads activos (clientes en etapa lead con origen y
+      // sin descartar) también son carga del vendedor.
+      const { count: leads, error: leadError } = await supabase
+        .from('customers')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', orgId)
+        .eq('owner_id', m.user_id)
+        .eq('lifecycle_stage', 'lead')
+        .not('lead_source', 'is', null)
+        .is('lead_discarded_at', null);
+
+      if (leadError) {
+        console.warn('assignmentService.assignLoadBalance - lead count error for', m.user_id, leadError.message);
+      }
+
+      return { userId: m.user_id, count: (count ?? 0) + (leads ?? 0) };
     })
   );
 
@@ -339,7 +377,7 @@ async function assignLoadBalance(
 
   return {
     userId: assigned.userId,
-    assignmentReason: `load_balance: ${assigned.count} oportunidades abiertas (menor carga del team)`,
+    assignmentReason: `load_balance: ${assigned.count} oportunidades abiertas y leads activos (menor carga del team)`,
   };
 }
 

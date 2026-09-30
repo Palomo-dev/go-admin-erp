@@ -4,6 +4,7 @@ import {
   getCustomerFinance360,
   getOpportunityFinance360,
 } from '@/lib/services/crm/crmFinanceService';
+import { CRM_PERMISOS, exigirPermisoCrm } from '@/lib/services/crm/crmRouteSupport';
 
 /**
  * GET /api/crm/finance/[type]/[id] — Vista 360° financiera.
@@ -25,6 +26,8 @@ export async function GET(
     }
 
     if (type === 'opportunity') {
+      // CRM ola 1 (M7): el resumen financiero de una oportunidad exige verla.
+      await exigirPermisoCrm(ctx, [CRM_PERMISOS.oportunidadesVer], 'GET /api/crm/finance/opportunity/[id]');
       const data = await getOpportunityFinance360(ctx.organizationId, id, ctx.supabase);
       return NextResponse.json({ success: true, data }, { status: 200 });
     }

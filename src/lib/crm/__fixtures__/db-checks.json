@@ -196,6 +196,22 @@
       "sell_product",
       "book_meeting",
       "custom"
+    ],
+    "customers.lead_source": [
+      "web_form",
+      "web_order",
+      "whatsapp",
+      "instagram",
+      "facebook",
+      "referral",
+      "import",
+      "inbound_call",
+      "outbound",
+      "manual",
+      "email",
+      "event",
+      "partner",
+      "other"
     ]
   }
 }

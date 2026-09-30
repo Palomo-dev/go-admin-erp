@@ -1,152 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { z } from 'zod';
+import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
-import { isOrgAdmin } from '@/lib/utils/rbac';
+import { CRM_PERMISOS, CrmHttpError, exigirPermisoCrm, respuestaErrorCrm, sinClavesDeOrganizacion } from '@/lib/services/crm/crmRouteSupport';
 import { getPipelineTemplateById } from '@/lib/services/crm/pipelineTemplates';
+import { crearPipeline, datosDePipeline } from '@/lib/services/crm/pipelineWriteService';
 
 /**
  * POST /api/crm/pipeline-templates/[id]/import — Importa una plantilla de pipeline
  * creando un pipeline + sus etapas para la organización.
  *
- * Requiere permisos de admin de organización.
+ * CRM ola 1 (M6/M7): exige `crm.pipelines.manage` (antes, rol de administrador)
+ * y crea pipeline y etapas en UNA transacción con
+ * `crm_create_pipeline_with_stages` (antes, dos escrituras y un borrado
+ * compensatorio). Mismo servicio que `POST /api/crm/pipelines`.
  *
  * Body opcional: { pipelineName?: string, setAsDefault?: boolean }
- * - pipelineName: nombre personalizado para el pipeline (default: nombre de la plantilla)
- * - setAsDefault: si true, marca el pipeline como default (default: false)
- *
- * Idempotencia: si ya existe un pipeline con el mismo nombre para la org, no se duplica.
+ * 201 { pipelineId, pipelineName, templateId, templateName, stagesCreated, isDefault }
+ * 404 plantilla · 409 `nombre_duplicado` (ya existe un pipeline con ese nombre)
+ * · 400 plantilla sin etapas (la «en blanco» no es importable: un pipeline sin
+ * etapa ganadora no puede cerrar ventas).
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const ctx = await getServerOrgContext();
+const bodySchema = z
+  .object({ pipelineName: z.string().trim().min(1).max(120).optional(), setAsDefault: z.boolean().optional() })
+  .strict();
 
-    // Validar permisos de admin
-    if (!isOrgAdmin(ctx)) {
-      return NextResponse.json(
-        { success: false, error: 'Se requieren permisos de administrador de organización' },
-        { status: 403 }
-      );
-    }
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const ctx = await getServerOrgContext(request);
+    const body: Record<string, unknown> = await readOrgBody(ctx, request);
+    await exigirPermisoCrm(ctx, [CRM_PERMISOS.pipelinesGestionar], 'POST /api/crm/pipeline-templates/[id]/import');
 
     const { id: templateId } = await params;
-
-    // 1. Buscar la plantilla
     const template = getPipelineTemplateById(templateId);
-    if (!template) {
-      return NextResponse.json(
-        { success: false, error: `Plantilla no encontrada: ${templateId}` },
-        { status: 404 }
-      );
+    if (!template) throw new CrmHttpError(404, 'plantilla_no_encontrada', `Plantilla no encontrada: ${templateId}`);
+
+    const parsed = bodySchema.safeParse(sinClavesDeOrganizacion(body));
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, error: 'Datos inválidos', details: parsed.error.flatten() }, { status: 400 });
     }
+    const datos = datosDePipeline({ name: parsed.data.pipelineName, is_default: parsed.data.setAsDefault ?? false }, template);
+    if (!datos) throw new CrmHttpError(400, 'sin_etapas', 'La plantilla no trae etapas; crea el pipeline con sus etapas');
 
-    // 2. Parsear body opcional
-    let body: { pipelineName?: string; setAsDefault?: boolean } = {};
-    try {
-      body = await request.json();
-    } catch {
-      // Body vacío es válido
-    }
-    readOrgBody(ctx, body, { request });
-
-    const pipelineName = body.pipelineName || template.label;
-    const setAsDefault = body.setAsDefault ?? false;
-
-    // 3. Verificar idempotencia: si ya existe un pipeline con ese nombre para la org, no duplicar
-    const { data: existingPipeline } = await ctx.supabase
-      .from('pipelines')
-      .select('id, name')
-      .eq('organization_id', ctx.organizationId)
-      .eq('name', pipelineName)
-      .maybeSingle();
-
-    if (existingPipeline) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Ya existe un pipeline con el nombre "${pipelineName}" para la organización`,
-          data: { existingPipelineId: (existingPipeline as { id: string }).id },
-        },
-        { status: 409 }
-      );
-    }
-
-    // 4. Si setAsDefault, quitar el flag is_default de otros pipelines de la org
-    if (setAsDefault) {
-      await ctx.supabase
-        .from('pipelines')
-        .update({ is_default: false, updated_at: new Date().toISOString() })
-        .eq('organization_id', ctx.organizationId)
-        .eq('is_default', true);
-    }
-
-    // 5. Crear el pipeline
-    const { data: pipeline, error: pipelineError } = await ctx.supabase
-      .from('pipelines')
-      .insert({
-        organization_id: ctx.organizationId,
-        name: pipelineName,
-        is_default: setAsDefault,
-        pipeline_type: template.pipeline_type,
-      })
-      .select()
-      .single();
-
-    if (pipelineError) {
-      throw pipelineError;
-    }
-
-    const pipelineData = pipeline as { id: string };
-    const pipelineId = pipelineData.id;
-
-    // 6. Crear las etapas
-    const stagesToInsert = template.stages.map((stage) => ({
-      pipeline_id: pipelineId,
-      name: stage.name,
-      position: stage.position,
-      probability: stage.probability,
-      is_won: stage.is_won,
-      is_lost: stage.is_lost,
-      sla_days: stage.sla_days,
-      color: stage.color,
-      exit_criteria: stage.exit_criteria ?? null,
-    }));
-
-    const { error: stagesError } = await ctx.supabase
-      .from('stages')
-      .insert(stagesToInsert);
-
-    if (stagesError) {
-      // Si falla la inserción de etapas, eliminar el pipeline huérfano
-      await ctx.supabase.from('pipelines').delete().eq('id', pipelineId);
-      throw stagesError;
-    }
-
+    const creado = await crearPipeline(ctx, datos);
+    const pipeline = creado.pipeline as { id: string; name: string; is_default: boolean | null };
     return NextResponse.json(
       {
         success: true,
         data: {
-          pipelineId,
-          pipelineName,
+          pipelineId: pipeline.id,
+          pipelineName: pipeline.name,
           templateId: template.key,
           templateName: template.label,
-          stagesCreated: template.stages.length,
-          isDefault: setAsDefault,
+          stagesCreated: creado.stages.length,
+          isDefault: Boolean(pipeline.is_default),
         },
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Pipeline Templates Import] POST error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return respuestaErrorCrm(error, 'POST /api/crm/pipeline-templates/[id]/import');
   }
 }

@@ -6,8 +6,13 @@
  *
  * Cubre: deduplicación contra la base y en el archivo, cliente existente con y
  * sin lead abierto, aislamiento por organización (señuelos de la 121), mapeo a
- * cliente + lead tal como llega al INSERT, conversión de moneda, RNE e
+ * cliente + lead tal como llega a la base, conversión de moneda, RNE e
  * idempotencia (reimportar el mismo bloque no escribe nada).
+ *
+ * CRM ola 1 (D2, 2026-09-29): el lead ES la ficha de cliente. La importación
+ * crea o marca la ficha (`lead_source='import'`, `metadata.lead` con el valor
+ * anual y la importación, banda ICP de respaldo desde la prioridad) y NO crea
+ * oportunidades 'lead'.
  *
  * Datos 100 % sintéticos.
  */
@@ -29,7 +34,7 @@ import { importarBloque, validarImportacion } from '../leadsImportService';
 import type { FilaLeadEntrada, OpcionesImportacionLeads } from '@/lib/crm/importacionLeads/tipos';
 
 type Row = Record<string, unknown>;
-interface Filtro { k: 'eq' | 'neq' | 'in' | 'lte' | 'imatch'; col: string; v: unknown }
+interface Filtro { k: 'eq' | 'neq' | 'in' | 'lte' | 'imatch' | 'is' | 'not_is'; col: string; v: unknown }
 interface Db { t: Record<string, Row[]>; writes: { table: string; op: string; payload: unknown }[]; queries: { table: string; filtros: Filtro[] }[]; seq: number }
 
 const valor = (row: Row, col: string): unknown => {
@@ -45,6 +50,8 @@ const cumple = (row: Row, f: Filtro) => {
   if (f.k === 'neq') return v !== f.v;
   if (f.k === 'in') return (f.v as unknown[]).includes(v);
   if (f.k === 'lte') return String(v) <= String(f.v);
+  if (f.k === 'is') return f.v === null ? v === null || v === undefined : v === f.v;
+  if (f.k === 'not_is') return f.v === null ? v !== null && v !== undefined : v !== f.v;
   return typeof v === 'string' && new RegExp(String(f.v), 'i').test(v);
 };
 
@@ -89,6 +96,12 @@ function fake(db: Db): SupabaseClient {
       neq: (col: string, v: unknown) => (filtros.push({ k: 'neq', col, v }), c),
       in: (col: string, v: unknown[]) => (filtros.push({ k: 'in', col, v }), c),
       lte: (col: string, v: unknown) => (filtros.push({ k: 'lte', col, v }), c),
+      is: (col: string, v: unknown) => (filtros.push({ k: 'is', col, v }), c),
+      not: (col: string, operador: string, v: unknown) => {
+        if (operador !== 'is') throw new Error(`fake: not ${operador}`);
+        filtros.push({ k: 'not_is', col, v });
+        return c;
+      },
       filter: (col: string, operador: string, v: unknown) => {
         if (operador !== 'imatch') throw new Error(`fake: filter ${operador}`);
         filtros.push({ k: 'imatch', col, v });
@@ -163,6 +176,7 @@ const OPC: OpcionesImportacionLeads = { lote: 'lote_sintetico', tipoCliente: 'co
 let db: Db;
 const ctx = () => ({ organizationId: ORG, userId: 'u-200', supabase: fake(db) });
 const inserts = (table: string) => db.writes.filter((w) => w.table === table && w.op === 'insert').map((w) => w.payload as Row);
+const updates = (table: string) => db.writes.filter((w) => w.table === table && w.op === 'update').map((w) => w.payload as Row);
 
 beforeEach(() => {
   db = semilla();
@@ -200,7 +214,7 @@ describe('validarImportacion (vista previa)', () => {
 });
 
 describe('importarBloque', () => {
-  it('crea cliente + lead, liga al existente sin tocarlo y respeta omitidos y errores', async () => {
+  it('crea la ficha lead, marca como lead al existente sin tocar su ficha y respeta omitidos y errores', async () => {
     const r = await importarBloque(ctx(), filas, OPC);
     expect(r.resultados.map((x) => [x.fila, x.accion])).toEqual([[2, 'crear'], [3, 'omitir'], [4, 'omitir'], [5, 'ligar'], [6, 'crear'], [7, 'crear'], [8, 'error']]);
 
@@ -230,15 +244,26 @@ describe('importarBloque', () => {
     expect((clientes[2].metadata as { importacion: Row }).importacion.rne).toBe('excluido');
     expect((clientes[1].metadata as { importacion: Row }).importacion.rne).toBe('pendiente');
 
-    const leads = inserts('opportunities');
-    expect(leads).toHaveLength(4);
-    expect(leads[0]).toMatchObject({
-      organization_id: ORG, pipeline_id: 'pipe-120', stage_id: 'st-1', record_type: 'lead', status: 'open', source: 'importacion',
-      name: 'Nuevo Uno · Tunja', amount: 2400000, currency: 'COP', icp_band: 'A', vertical_id: 'v-rest', created_by: 'u-200',
+    // D2: ninguna oportunidad; el lead se escribe en la ficha.
+    expect(inserts('opportunities')).toEqual([]);
+    const fichas = updates('customers').filter((u) => 'lead_source' in u);
+    expect(fichas).toHaveLength(4);
+    expect(fichas[0]).toMatchObject({ lead_source: 'import', owner_id: null });
+    expect((fichas[0].metadata as { lead: Row }).lead).toMatchObject({
+      titulo: 'Nuevo Uno · Tunja',
+      valor_estimado: { monto: 2400000, moneda: 'COP' },
+      origen_texto: 'import',
+      importacion: expect.objectContaining({ lote: 'lote_sintetico', id_externo: 'S-1', rne: 'pendiente', plan_probable: 'Pro' }),
     });
-    expect(leads[1]).toMatchObject({ customer_id: 'c-sin-lead', name: 'Sin Lead', source: 'importacion' });
-    // La ficha existente no se modifica.
-    expect(db.writes.filter((w) => w.table === 'customers' && w.op !== 'insert')).toEqual([]);
+    // La prioridad A del archivo es la banda ICP de respaldo (sin perfiles ICP no hay score).
+    expect(updates('customers')).toContainEqual({ icp_band: 'A' });
+    // Cliente existente («ligar»): solo origen, responsable y metadata.lead; ni etiquetas ni do_not_call.
+    const ligado = db.t.customers.find((c) => c.id === 'c-sin-lead')!;
+    expect(ligado).toMatchObject({ lead_source: 'import' });
+    expect(ligado).not.toHaveProperty('lifecycle_stage'); // no se toca su etapa
+    expect(ligado).not.toHaveProperty('tags');
+    expect(ligado).not.toHaveProperty('do_not_call');
+    expect((ligado.metadata as { lead: Row }).lead).toMatchObject({ titulo: 'Sin Lead' });
     expect(r.resumen).toMatchObject({ crear: 3, ligar: 1, omitir: 2, error: 1 });
   });
 
@@ -271,10 +296,10 @@ describe('importarBloque', () => {
     const conFallo = {
       from: (t: string) => {
         const c = original.from(t) as unknown as Record<string, unknown>;
-        if (t !== 'opportunities') return c;
-        const insert = c.insert as (p: unknown) => Record<string, unknown>;
-        c.insert = (p: unknown) => {
-          const ch = insert(p);
+        if (t !== 'customers') return c;
+        const update = c.update as (p: unknown) => Record<string, unknown>;
+        c.update = (p: unknown) => {
+          const ch = update(p);
           ch.single = async () => ({ data: null, error: { message: 'fallo sintético' } });
           return ch;
         };
@@ -290,6 +315,7 @@ describe('importarBloque', () => {
   it('moneda: si la organización maneja la moneda del archivo, se guarda tal cual', async () => {
     db.t.organization_currencies.push({ organization_id: ORG, currency_code: 'USD', is_base: false });
     await importarBloque(ctx(), filas.slice(0, 1), OPC);
-    expect(inserts('opportunities')[0]).toMatchObject({ amount: 600, currency: 'USD' });
+    const ficha = updates('customers').find((u) => 'lead_source' in u)!;
+    expect((ficha.metadata as { lead: Row }).lead).toMatchObject({ valor_estimado: { monto: 600, moneda: 'USD' } });
   });
 });

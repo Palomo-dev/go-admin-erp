@@ -317,25 +317,24 @@ describe('3 · cierre ganado y perdido', () => {
     await expect(opportunitiesService.markAsWon('opp-1')).rejects.toThrow(/ficha de venta/);
   });
 
-  it('markAsLost FUSIONA el metadata existente, no lo reemplaza', async () => {
-    guionSelect.opportunities = {
-      data: [{ metadata: { gate_overrides: [{ etapa: 'e1', motivo: 'excepción comercial' }], onboarding: { paso: 3 } } }],
-      error: null,
-    };
-    guionUpdate.opportunities = { data: { id: 'opp-1' }, error: null };
-
-    await opportunitiesService.markAsLost('opp-1', {
-      lossReasonId: 'precio',
-      lossReasonLabel: 'Precio',
-      notes: 'pidió descuento',
-    });
-
-    const updates = registro.filter((l) => l.tabla === 'opportunities' && l.op === 'update');
-    expect(updates).toHaveLength(1); // un solo UPDATE, no dos
-    const metadata = (updates[0].payload as { metadata: Record<string, unknown> }).metadata;
-    expect(metadata.gate_overrides).toEqual([{ etapa: 'e1', motivo: 'excepción comercial' }]);
-    expect(metadata.onboarding).toEqual({ paso: 3 });
-    expect(metadata.lossReasonId).toBe('precio');
+  it('markAsLost pasa por el servidor (POST …/lose, ola 1): ningún UPDATE de opportunities desde el navegador', async () => {
+    // Antes escribía `status='lost'` con el cliente de navegador y FUSIONABA
+    // el metadata; ahora la ruta mueve a la etapa `is_lost` con
+    // `opportunityStageService`, que conserva `gate_overrides`.
+    const fetchMock = jest.fn(async () => ({ ok: true, status: 200, json: async () => ({ success: true, data: { opportunity: { id: 'opp-1', status: 'lost' } } }) }));
+    const original = global.fetch;
+    global.fetch = fetchMock as unknown as typeof fetch;
+    try {
+      const r = await opportunitiesService.markAsLost('opp-1', { lossReasonId: 'precio', lossReasonLabel: 'Precio', notes: 'pidió descuento' });
+      expect(r).toMatchObject({ status: 'lost' });
+    } finally {
+      global.fetch = original;
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe('/api/crm/opportunities/opp-1/lose');
+    expect(JSON.parse(String(init.body))).toEqual({ loss_data: { lossReasonId: 'precio', lossReasonLabel: 'Precio', notes: 'pidió descuento' } });
+    expect(registro.filter((l) => l.tabla === 'opportunities' && l.op === 'update')).toHaveLength(0);
   });
 });
 
@@ -410,8 +409,15 @@ describe('7 · columnas reales de activities', () => {
   const archivos = [
     'src/app/api/crm/ia/discovery-summary/route.ts',
     'src/app/api/crm/ia/next-action/route.ts',
-    'src/app/app/crm/clientes/[id]/page.tsx',
+    // `src/app/app/crm/clientes/[id]/page.tsx` salió de la lista: desde la ola 3A (D1)
+    // solo redirige a la ficha única `/app/clientes/[id]` (prueba abajo).
   ];
+
+  it('la ficha del CRM redirige a la ficha única del cliente (D1)', () => {
+    const src = leer('src/app/app/crm/clientes/[id]/page.tsx');
+    expect(src).toMatch(/redirect\(`\/app\/clientes\/\$\{encodeURIComponent\(id\)\}`\)/);
+    expect(src).not.toMatch(/from\('activities'\)/);
+  });
 
   it('ninguna consulta pide `title` ni `description`', () => {
     for (const archivo of archivos) {

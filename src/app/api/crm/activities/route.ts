@@ -7,6 +7,35 @@ import {
   DuplicateActivityError,
   RelatedNotFoundError,
 } from '@/lib/services/crm/activityService';
+import { respuestaErrorCrm } from '@/lib/services/crm/crmRouteSupport';
+import { leerFiltrosFeed, listarActividadesOrg } from '@/lib/services/crm/actividadesOrgService';
+
+/**
+ * GET /api/crm/activities — línea de tiempo de la organización (CRM ola 3A,
+ * pantalla Actividades, plan §4.9): `activities`, `notes` y tareas del CRM.
+ *
+ * Query: types=call,email,…(activity_type; `note` y `task` suman sus tablas) ·
+ *        q · user_id · customer_id | opportunity_id · from/to (ISO, `to`
+ *        exclusivo; la pantalla los calcula en la zona de la organización) ·
+ *        cursor · limit (≤ 50, por defecto 20).
+ * 200 { data, next_cursor, total (solo sin cursor) } · 400 parámetros.
+ * Lectura de miembro (RLS de pertenencia + organización de la sesión); cada
+ * entrada trae `editable`, resuelto en el servidor (D5).
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const ctx = await getServerOrgContext(request);
+    const sp = request.nextUrl.searchParams;
+    const filtros = leerFiltrosFeed(sp);
+    const pagina = await listarActividadesOrg(ctx, filtros, { cursor: sp.get('cursor'), limite: Number.parseInt(sp.get('limit') ?? '20', 10) });
+    return NextResponse.json(
+      { success: true, data: pagina.entradas, next_cursor: pagina.cursor, total: pagina.total },
+      { headers: { 'Cache-Control': 'no-store' } },
+    );
+  } catch (error) {
+    return respuestaErrorCrm(error, 'GET /api/crm/activities');
+  }
+}
 
 /**
  * POST /api/crm/activities — crea una actividad CRM (FASE-09 §4.1).

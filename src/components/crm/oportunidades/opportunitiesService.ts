@@ -582,54 +582,35 @@ class OpportunitiesService {
     return cerrada;
   }
 
+  /**
+   * Marca la oportunidad como perdida POR EL SERVIDOR (CRM ola 1, paso 1.3):
+   * `POST /api/crm/opportunities/[id]/lose` la mueve a la etapa `is_lost` del
+   * pipeline con el motivo estructurado, exige `crm.opportunities.close` y
+   * conserva `metadata.gate_overrides` (fusiona `loss_notes`). Antes se
+   * escribía `status='lost'` desde el navegador sin mover la etapa.
+   */
   async markAsLost(id: string, data: LossReasonData): Promise<Opportunity> {
-    // Guardar etiqueta visible en loss_reason (string) y datos estructurados
-    // en las nuevas columnas de FASE 2.
-    const lossReasonLabel = data.lossReasonLabel || data.lossReasonId;
-
-    // El `metadata` de la oportunidad se FUSIONA, nunca se reemplaza: ahí viven
-    // también `gate_overrides` (las excepciones de gate auditadas) y los datos
-    // de onboarding y renovación. Reemplazarlo los borraba.
-    const { data: previa, error: errorLeer } = await supabase
-      .from('opportunities')
-      .select('metadata')
-      .eq('id', id)
-      .single();
-    if (errorLeer) throw errorLeer;
-
-    const metadataPrevio =
-      previa?.metadata && typeof previa.metadata === 'object' && !Array.isArray(previa.metadata)
-        ? (previa.metadata as Record<string, unknown>)
-        : {};
-
-    const { data: updated, error } = await supabase
-      .from('opportunities')
-      .update({
-        status: 'lost',
-        loss_reason: lossReasonLabel,
-        loss_reason_value: data.lossReasonId || lossReasonLabel,
-        competitor_name: data.competitor || null,
-        competitor_price: data.competitorPrice || null,
-        missing_features: data.missingFeatures || null,
-        recontact_at: data.recontactDate || null,
-        metadata: {
-          ...metadataPrevio,
-          lossReasonId: data.lossReasonId,
-          lossReasonLabel: data.lossReasonLabel,
-          competitor: data.competitor || null,
-          competitorPrice: data.competitorPrice || null,
-          missingFeatures: data.missingFeatures || null,
-          recontactDate: data.recontactDate || null,
-          notes: data.notes || null,
+    const res = await fetch(`/api/crm/opportunities/${id}/lose`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        loss_data: {
+          lossReasonId: data.lossReasonId || undefined,
+          lossReasonLabel: data.lossReasonLabel || undefined,
+          competitor: data.competitor || undefined,
+          competitorPrice: data.competitorPrice || undefined,
+          missingFeatures: data.missingFeatures?.length ? data.missingFeatures : undefined,
+          recontactDate: data.recontactDate || undefined,
+          notes: data.notes || undefined,
         },
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return updated;
+      }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !json?.success) {
+      if (json?.reason === 'gate') throw new Error('La oportunidad no cumple los criterios para pasar a la etapa de pérdida');
+      throw new Error(json?.error || `Error ${res.status}`);
+    }
+    return (json.data?.opportunity ?? {}) as Opportunity;
   }
 
   async moveToStage(id: string, stageId: string): Promise<Opportunity> {

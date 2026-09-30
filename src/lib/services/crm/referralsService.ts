@@ -356,10 +356,12 @@ export interface ConvertReferralResult {
 }
 
 /**
- * Convierte el referido en lead (cliente `lifecycle_stage='lead'` +
- * oportunidad `record_type='lead'`, `source='referral'`, `deal_type='referral'`)
- * con el MISMO alta que `POST /api/crm/leads`, y pasa el referido a `converted`
- * enlazándolo. Si el enlace no cuaja, se deshace el alta (mejor esfuerzo).
+ * Convierte el referido en lead con el MISMO alta que `POST /api/crm/leads`:
+ * CRM ola 1 (D2) → el lead es el CLIENTE (`lifecycle_stage='lead'`,
+ * `lead_source='referral'`, `metadata.lead.deal_type='referral'`), sin
+ * oportunidad. El referido pasa a `converted` enlazado al cliente; su
+ * `opportunity_id` lo pone `crm_create_opportunity` cuando el lead se califica.
+ * Si el enlace no cuaja, se deshace la ficha creada (mejor esfuerzo).
  */
 export async function convertReferral(ctx: LeadCreateContext, id: string, body: ConvertReferralBody): Promise<ConvertReferralResult | Exclude<LeadCreateResult, { status: 201 }>> {
   const { supabase, organizationId } = ctx;
@@ -389,7 +391,7 @@ export async function convertReferral(ctx: LeadCreateContext, id: string, body: 
 
   const { data, error } = await supabase
     .from('referrals')
-    .update({ status: 'converted', opportunity_id: leadResult.data.id as string, referred_customer_id: leadResult.customer_id })
+    .update({ status: 'converted', referred_customer_id: leadResult.customer_id })
     .eq('id', id)
     .eq('organization_id', organizationId)
     .eq('status', current.status)
@@ -397,11 +399,9 @@ export async function convertReferral(ctx: LeadCreateContext, id: string, body: 
     .maybeSingle();
 
   if (error || !data) {
-    // El lead ya está en la base pero el referido no quedó enlazado: se deshace
-    // el alta (oportunidad y, si se creó aquí, la ficha) para no dejar un lead
-    // huérfano. Mejor esfuerzo: si el borrado falla se registra, no se oculta.
-    const { error: eOpp } = await supabase.from('opportunities').delete().eq('id', leadResult.data.id as string).eq('organization_id', organizationId);
-    if (eOpp) console.error('[referralsService.convertReferral] no se pudo revertir la oportunidad %s: %s', leadResult.data.id, eOpp.message);
+    // El lead ya está en la base pero el referido no quedó enlazado: si la
+    // ficha se creó aquí, se borra para no dejar un lead huérfano. Mejor
+    // esfuerzo: si el borrado falla se registra, no se oculta.
     if (leadResult.created_customer_id) await rollbackCustomer(ctx, leadResult.created_customer_id);
     if (error) throw error;
     throw new F12Error(409, 'CONCURRENT_CHANGE', 'El referido cambió mientras se convertía; recarga la lista.');

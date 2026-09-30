@@ -38,6 +38,8 @@ export interface OportunidadTarjeta {
   responsable?: { nombre: string; avatarUrl?: string | null } | null;
   /** Nombre de la etapa (solo densidad lista). */
   etapaNombre?: string | null;
+  /** D2 (ola 3B): una de las oportunidades `record_type='lead'` heredadas; se etiqueta «Lead». */
+  esLead?: boolean;
 }
 
 export type EstadoTarjeta = 'normal' | 'vencida' | 'ganada' | 'perdida';

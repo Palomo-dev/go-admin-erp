@@ -14,7 +14,7 @@
 //     guarda la subdivisión SIN país («ANT», «DC»): `codigoRegionIso` la completa.
 // ============================================================
 
-import type { FilaCiudad, FilaPais } from './analiticaWeb';
+import type { DatosAnalitica, FilaCiudad, FilaPais, FilaRegion } from './analiticaWeb';
 
 // La tabla ISO 3166-1 numérico → alfa-2 vive en `isoPaises.ts`: solo la usa
 // la carga diferida del mapa del mundo y así no pesa en el bundle de la pantalla.
@@ -117,6 +117,7 @@ export function agregarPorPais(paises: readonly FilaPais[]): Map<string, ValorRe
 }
 
 /**
+ * Respaldo de `valoresRegionMapa` cuando la RPC no trae `regiones`.
  * Visitantes por región (ISO 3166-2) a partir de las ciudades del país. La RPC
  * devuelve las 50 ciudades con más visitantes, así que con más ciudades el
  * departamento es una cota inferior (la UI lo avisa). `sinRegion`: visitantes
@@ -137,10 +138,89 @@ export function agregarPorRegion(ciudades: readonly FilaCiudad[], pais: string):
   return { valores: conPorcentaje(acum), sinRegion };
 }
 
+/**
+ * Visitantes por región (ISO 3166-2) a partir de la clave `regiones` de la RPC
+ * (ya agrupada por `website_visits.region`, sin tope de ciudades). Misma
+ * normalización que desde ciudades (`codigoRegionIso`: «ant» → «CO-ANT»,
+ * «BOG» → «CO-DC»); dos filas que caen en el mismo código se suman.
+ */
+export function agregarRegiones(regiones: readonly FilaRegion[], pais: string): { valores: Map<string, ValorRegion>; sinRegion: number } {
+  const acum = new Map<string, { visitantes: number; sesiones: number }>();
+  let sinRegion = 0;
+  for (const r of regiones) {
+    const codigo = codigoRegionIso(pais, r.region);
+    if (!codigo) {
+      sinRegion += r.visitantes;
+      continue;
+    }
+    if (r.visitantes <= 0) continue;
+    const previo = acum.get(codigo) ?? { visitantes: 0, sesiones: 0 };
+    acum.set(codigo, { visitantes: previo.visitantes + r.visitantes, sesiones: previo.sesiones + r.sesiones });
+  }
+  return { valores: conPorcentaje(acum), sinRegion };
+}
+
+/**
+ * Valores del mapa por región. Usa `regiones` cuando la RPC la trae y, si no
+ * (base sin la migración), agrega desde las ciudades. `parcial`: el valor es
+ * una cota inferior porque salió de las 50 ciudades con más visitantes y hay
+ * más ciudades (la UI lo avisa).
+ */
+export function valoresRegionMapa(
+  datos: Pick<DatosAnalitica, 'ciudades' | 'ciudadesTotal' | 'regiones'>,
+  pais: string,
+): { valores: Map<string, ValorRegion>; sinRegion: number; parcial: boolean } {
+  if (Array.isArray(datos.regiones)) return { ...agregarRegiones(datos.regiones, pais), parcial: false };
+  return { ...agregarPorRegion(datos.ciudades, pais), parcial: datos.ciudadesTotal > datos.ciudades.length };
+}
+
 /** Ciudades de una región (código ISO 3166-2); sin región elegida, todas. */
 export function filtrarCiudadesPorRegion<T extends Pick<FilaCiudad, 'region'>>(ciudades: readonly T[], pais: string, region: string | null): T[] {
   if (!region) return [...ciudades];
   return ciudades.filter((c) => codigoRegionIso(pais, c.region) === region);
+}
+
+/** Filas por página de la tabla de ciudades (la RPC puede traer cientos). */
+export const CIUDADES_POR_PAGINA = 20;
+
+/**
+ * Ciudades que muestra la tabla y cuántas quedan fuera («y N ciudades más»).
+ *
+ * - Sin región: `ciudades` (las 500 primeras del país) y, fuera, el resto
+ *   hasta `ciudadesTotal`.
+ * - Con región: las de `ciudades` de esa región más las de `ciudadesRegion`
+ *   (las primeras 50 de cada región que no entraron en el top del país), sin
+ *   repetir y de más a menos visitantes. Fuera: `regiones[].ciudades` menos las
+ *   mostradas, si la RPC trae el conteo.
+ * - Respaldo (base sin `ciudades_region`): solo el filtro de `ciudades`, como
+ *   antes, y sin conteo de las que faltan.
+ */
+export function ciudadesParaTabla(
+  datos: Pick<DatosAnalitica, 'ciudades' | 'ciudadesTotal' | 'ciudadesRegion' | 'regiones'>,
+  pais: string,
+  region: string | null,
+): { ciudades: FilaCiudad[]; otras: number } {
+  if (!region) return { ciudades: [...datos.ciudades], otras: Math.max(0, datos.ciudadesTotal - datos.ciudades.length) };
+
+  const vistas = new Set<string>();
+  const ciudades: FilaCiudad[] = [];
+  for (const c of [...datos.ciudades, ...(datos.ciudadesRegion ?? [])]) {
+    if (codigoRegionIso(pais, c.region) !== region) continue;
+    const clave = `${c.ciudad}\u0000${c.region ?? ''}`;
+    if (vistas.has(clave)) continue;
+    vistas.add(clave);
+    ciudades.push(c);
+  }
+  if (datos.ciudadesRegion) {
+    ciudades.sort((a, b) => b.visitantes - a.visitantes || (a.ciudad < b.ciudad ? -1 : a.ciudad > b.ciudad ? 1 : 0));
+  }
+
+  let total: number | null = null;
+  for (const r of datos.regiones ?? []) {
+    if (codigoRegionIso(pais, r.region) !== region || typeof r.ciudades !== 'number') continue;
+    total = (total ?? 0) + r.ciudades;
+  }
+  return { ciudades, otras: total === null ? 0 : Math.max(0, total - ciudades.length) };
 }
 
 /** ¿Se abre Colombia por defecto? Cuando más de la mitad de los visitantes ubicados son de CO. */

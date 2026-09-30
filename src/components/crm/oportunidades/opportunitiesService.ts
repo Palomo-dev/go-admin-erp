@@ -29,6 +29,7 @@ import {
 // Cerrar como ganada pasa por el MISMO PATCH del servidor que usan el detalle,
 // el drawer y el tablero. No hay una segunda implementación del cierre.
 import { requestStageChange } from '@/components/crm/pipeline/drawer/StageSelect';
+import { crearOportunidad as crearOportunidadServidor, editarOportunidad as editarOportunidadServidor, eliminarOportunidad as eliminarOportunidadServidor, guardarSeguimiento, moverEtapa } from '@/components/crm/oportunidad/apiOportunidades';
 
 /** Fila de `organization_members` con el perfil embebido. */
 interface MiembroConPerfil {
@@ -259,241 +260,72 @@ class OpportunitiesService {
     return data || [];
   }
 
+  /**
+   * Alta por `POST /api/crm/opportunities` (CRM ola 3B, guardarraíl 36): la
+   * RPC `crm_create_opportunity` crea oportunidad, líneas (productos,
+   * espacios y conceptos) y actividad en UNA transacción, con la organización
+   * de la sesión, el permiso `crm.opportunities.create` y la moneda base si
+   * no se indica. Siempre `record_type='deal'` (D2).
+   */
   async createOpportunity(input: CreateOpportunityInput): Promise<Opportunity> {
-    const { data: userData } = await supabase.auth.getUser();
-
-    const { data, error } = await supabase
-      .from('opportunities')
-      .insert({
-        organization_id: this.getOrganizationId(),
-        pipeline_id: input.pipeline_id,
-        stage_id: input.stage_id,
-        customer_id: input.customer_id || null,
-        name: input.name,
-        amount: input.amount,
-        // Sin moneda elegida, NULL: el trigger `trg_00_moneda_base_por_defecto`
-        // pone la moneda base de la organización.
-        currency: input.currency || null,
-        expected_close_date: input.expected_close_date || null,
-        status: 'open',
-        created_by: userData.user?.id || null,
-        salesperson_id: input.salesperson_id || null,
-        commission_rate: input.commission_rate || 0,
-        commission_type: input.salesperson_id && input.commission_rate && input.commission_rate > 0 ? input.commission_type : 'none',
-        source: input.source || null,
-        vertical_id: input.vertical_id || null,
-        next_contact_at: input.next_contact_at || null,
-        record_type: input.record_type || 'deal',
-        // La sucursal en la que se crea. Antes no se escribía nunca y todas
-        // nacían sin sucursal. Mismo origen que usa el POS: la seleccionada en
-        // sesión; si no hay ninguna («Todas»), queda nula y es de toda la org.
-        branch_id: input.branch_id ?? getCurrentBranchId(),
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // Agregar productos si existen
-    if (input.products && input.products.length > 0) {
-      const productsToInsert = input.products.map((p) => ({
-        opportunity_id: data.id,
-        product_id: Number(p.product_id),
-        quantity: Number(p.quantity),
-        unit_price: Number(p.unit_price),
-      }));
-
-      const { error: prodError } = await supabase.from('opportunity_products').insert(productsToInsert);
-      if (prodError) console.warn('Error insertando productos:', prodError.message);
-    }
-
-    // Agregar espacios si existen
-    if (input.spaces && input.spaces.length > 0) {
-      const spacesToInsert = input.spaces.map((s) => ({
-        opportunity_id: data.id,
-        space_id: s.space_id,
-        nights: Number(s.nights),
-        unit_price: Number(s.unit_price),
-      }));
-
-      const { error: spaceError } = await supabase.from('opportunity_spaces').insert(spacesToInsert);
-      if (spaceError) console.warn('Error insertando espacios:', spaceError.message);
-    }
-
-    // Agregar conceptos personalizados si existen
-    if (input.customLines && input.customLines.length > 0) {
-      const customToInsert = input.customLines.map((c) => ({
-        opportunity_id: data.id,
-        concept: c.concept,
-        quantity: Number(c.quantity),
-        unit_price: Number(c.unit_price),
-      }));
-
-      const { error: customError } = await supabase.from('opportunity_custom_lines').insert(customToInsert);
-      if (customError) console.warn('Error insertando conceptos:', customError.message);
-    }
-
-    return data;
-  }
-
-  async updateOpportunity(id: string, input: UpdateOpportunityInput): Promise<Opportunity> {
-    const updateData: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
-    };
-
-    if (input.stage_id !== undefined) updateData.stage_id = input.stage_id;
-    if (input.customer_id !== undefined) updateData.customer_id = input.customer_id;
-    if (input.name !== undefined) updateData.name = input.name;
-    if (input.amount !== undefined) updateData.amount = input.amount;
-    if (input.currency !== undefined) updateData.currency = input.currency;
-    if (input.expected_close_date !== undefined) updateData.expected_close_date = input.expected_close_date;
-    if (input.status !== undefined) updateData.status = input.status;
-    if (input.loss_reason !== undefined) updateData.loss_reason = input.loss_reason;
-    if (input.metadata !== undefined) updateData.metadata = input.metadata;
-    if (input.salesperson_id !== undefined) updateData.salesperson_id = input.salesperson_id;
-    if (input.commission_rate !== undefined) updateData.commission_rate = input.commission_rate;
-    if (input.commission_type !== undefined) updateData.commission_type = input.commission_type;
-    if (input.source !== undefined) updateData.source = input.source;
-    if (input.vertical_id !== undefined) updateData.vertical_id = input.vertical_id;
-    if (input.next_contact_at !== undefined) updateData.next_contact_at = input.next_contact_at;
-    // FASE 2 — Nuevas columnas
-    if (input.record_type !== undefined) updateData.record_type = input.record_type;
-    if (input.last_contact_at !== undefined) updateData.last_contact_at = input.last_contact_at;
-    if (input.contact_channel !== undefined) updateData.contact_channel = input.contact_channel;
-    if (input.contact_result !== undefined) updateData.contact_result = input.contact_result;
-    if (input.objection_id !== undefined) updateData.objection_id = input.objection_id;
-    if (input.loss_reason_value !== undefined) updateData.loss_reason_value = input.loss_reason_value;
-    if (input.competitor_name !== undefined) updateData.competitor_name = input.competitor_name;
-    if (input.competitor_price !== undefined) updateData.competitor_price = input.competitor_price;
-    if (input.missing_features !== undefined) updateData.missing_features = input.missing_features;
-    if (input.recontact_at !== undefined) updateData.recontact_at = input.recontact_at;
-    if (input.discovery_data !== undefined) updateData.discovery_data = input.discovery_data;
-    if (input.win_data !== undefined) updateData.win_data = input.win_data;
-    if (input.next_action !== undefined) updateData.next_action = input.next_action;
-    if (input.closed_at !== undefined) updateData.closed_at = input.closed_at;
-    if (input.temperature !== undefined) updateData.temperature = input.temperature;
-
-    const { data, error } = await supabase
-      .from('opportunities')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // Sincronizar líneas. NUNCA se envía `total_price`: en las tres tablas es
-    // `GENERATED ALWAYS` y Postgres rechaza el insert con 428C9 (verificado por
-    // MCP el 2026-09-23). Antes ese error no se miraba y las líneas quedaban
-    // borradas: editar una oportunidad le vaciaba el detalle.
-    if (input.products !== undefined) {
-      await this.reemplazarLineas(
-        'opportunity_products',
-        id,
-        input.products.map((p) => ({
-          opportunity_id: id,
-          product_id: p.product_id,
-          quantity: p.quantity,
-          unit_price: p.unit_price,
-        })),
-      );
-    }
-
-    if (input.spaces !== undefined) {
-      await this.reemplazarLineas(
-        'opportunity_spaces',
-        id,
-        input.spaces.map((s) => ({
-          opportunity_id: id,
-          space_id: s.space_id,
-          nights: s.nights,
-          unit_price: s.unit_price,
-        })),
-      );
-    }
-
-    if (input.customLines !== undefined) {
-      await this.reemplazarLineas(
-        'opportunity_custom_lines',
-        id,
-        input.customLines.map((c) => ({
-          opportunity_id: id,
-          concept: c.concept,
-          quantity: c.quantity,
-          unit_price: c.unit_price,
-        })),
-      );
-    }
-
-    return data;
+    const branchId = input.branch_id ?? getCurrentBranchId();
+    return (await crearOportunidadServidor({
+      pipeline_id: input.pipeline_id,
+      stage_id: input.stage_id,
+      customer_id: input.customer_id || null,
+      name: input.name,
+      amount: Number(input.amount) || 0,
+      ...(input.currency ? { currency: input.currency } : {}),
+      expected_close_date: input.expected_close_date || null,
+      salesperson_id: input.salesperson_id || null,
+      commission_rate: input.commission_rate || 0,
+      commission_type: input.salesperson_id && input.commission_rate && input.commission_rate > 0 ? input.commission_type ?? 'salesperson' : 'none',
+      source: input.source || null,
+      vertical_id: input.vertical_id || null,
+      next_contact_at: input.next_contact_at || null,
+      ...(branchId ? { branch_id: branchId } : {}),
+      origen: 'general',
+      products: (input.products ?? []).map((l) => ({ product_id: Number(l.product_id), quantity: Number(l.quantity), unit_price: Number(l.unit_price) })),
+      spaces: (input.spaces ?? []).map((l) => ({ space_id: l.space_id, nights: Number(l.nights), unit_price: Number(l.unit_price) })),
+      custom_lines: (input.customLines ?? []).map((l) => ({ concept: l.concept, quantity: Number(l.quantity), unit_price: Number(l.unit_price) })),
+    })) as unknown as Opportunity;
   }
 
   /**
-   * Reemplaza las líneas de una oportunidad en una tabla hija: borra las
-   * actuales e inserta las nuevas, comprobando el `error` de CADA llamada.
-   *
-   * No es atómico: desde el navegador no hay transacción. Lo más que se puede
-   * hacer es guardar una foto antes de borrar y devolverla si el insert falla,
-   * que es lo que hace este método. El arreglo definitivo es una RPC
-   * transaccional (`crm_replace_opportunity_lines`); está propuesta en el
-   * informe de esta ronda y la aplicará quien tenga la base a su cargo.
+   * Edición por el servidor (CRM ola 3B, guardarraíl 36):
+   * - la etapa → `PATCH …/stage` (gate, permisos y bloqueo);
+   * - canal y resultado del último contacto → `PATCH …/seguimiento`;
+   * - el resto → `PATCH …/[id]` (RPC `crm_update_opportunity`, líneas por
+   *   diferencia en la misma transacción).
+   * Estado, cierre, pérdida y ficha de venta NO se editan aquí: van por
+   * `…/win` y `…/lose` (se rechaza en vez de escribirlos a pelo).
    */
-  private async reemplazarLineas(
-    tabla: 'opportunity_products' | 'opportunity_spaces' | 'opportunity_custom_lines',
-    opportunityId: string,
-    filas: Record<string, unknown>[],
-  ): Promise<void> {
-    const { data: previas, error: errorLeer } = await supabase
-      .from(tabla)
-      .select('*')
-      .eq('opportunity_id', opportunityId);
-    if (errorLeer) {
-      throw new Error(`No se pudieron leer las líneas de ${tabla}: ${errorLeer.message}`);
+  async updateOpportunity(id: string, input: UpdateOpportunityInput): Promise<Opportunity> {
+    const cierre = (['status', 'loss_reason', 'loss_reason_value', 'win_data', 'closed_at', 'record_type', 'competitor_name', 'competitor_price', 'missing_features', 'recontact_at', 'objection_id', 'last_contact_at'] as const).filter((k) => input[k] !== undefined);
+    if (cierre.length > 0) throw new Error(`No editable aquí (${cierre.join(', ')}): se cambia al ganar o perder la oportunidad`);
+    if (input.stage_id !== undefined) await moverEtapa(id, { stage_id: input.stage_id });
+
+    const seguimiento = input.contact_channel !== undefined || input.contact_result !== undefined;
+    const cuerpo: Record<string, unknown> = {};
+    const copiar = ['customer_id', 'name', 'amount', 'currency', 'expected_close_date', 'metadata', 'salesperson_id', 'commission_rate', 'commission_type', 'source', 'vertical_id', 'next_contact_at', 'discovery_data', 'next_action', 'temperature'] as const;
+    for (const k of copiar) if (input[k] !== undefined) cuerpo[k] = input[k] === '' ? null : input[k];
+    if (input.products !== undefined) cuerpo.products = input.products.map((l) => ({ product_id: Number(l.product_id), quantity: Number(l.quantity), unit_price: Number(l.unit_price) }));
+    if (input.spaces !== undefined) cuerpo.spaces = input.spaces.map((l) => ({ space_id: l.space_id, nights: Number(l.nights), unit_price: Number(l.unit_price) }));
+    if (input.customLines !== undefined) cuerpo.custom_lines = input.customLines.map((l) => ({ concept: l.concept, quantity: Number(l.quantity), unit_price: Number(l.unit_price) }));
+
+    if (seguimiento) {
+      const { next_action, next_contact_at, temperature, ...resto } = cuerpo;
+      await guardarSeguimiento(id, { next_action, next_contact_at, temperature, contact_channel: input.contact_channel || null, contact_result: input.contact_result || null });
+      if (Object.keys(resto).length > 0) return (await editarOportunidadServidor(id, resto)) as unknown as Opportunity;
+      return (await this.getOpportunityById(id)) as Opportunity;
     }
-
-    const { error: errorBorrar } = await supabase
-      .from(tabla)
-      .delete()
-      .eq('opportunity_id', opportunityId);
-    if (errorBorrar) {
-      throw new Error(`No se pudieron borrar las líneas de ${tabla}: ${errorBorrar.message}`);
-    }
-
-    if (filas.length === 0) return;
-
-    const { error: errorInsertar } = await supabase.from(tabla).insert(filas);
-    if (!errorInsertar) return;
-
-    // El insert falló y las anteriores ya no están: intentar devolverlas.
-    // `total_price` es generada, así que se quita antes de reinsertar.
-    const restaurables = (previas ?? []).map((fila) => {
-      const copia = { ...(fila as Record<string, unknown>) };
-      delete copia.total_price;
-      return copia;
-    });
-    let restaurado = true;
-    if (restaurables.length > 0) {
-      const { error: errorRestaurar } = await supabase.from(tabla).insert(restaurables);
-      restaurado = !errorRestaurar;
-    }
-
-    throw new Error(
-      `No se pudieron guardar las líneas de ${tabla}: ${errorInsertar.message}. ` +
-        (restaurado
-          ? 'Las líneas anteriores se restauraron.'
-          : 'ATENCIÓN: las líneas anteriores NO se pudieron restaurar.'),
-    );
+    if (Object.keys(cuerpo).length === 0) return (await this.getOpportunityById(id)) as Opportunity;
+    return (await editarOportunidadServidor(id, cuerpo)) as unknown as Opportunity;
   }
 
+  /** Borrado por `DELETE …/[id]` (RPC con guarda: ganada o con documentos → 409; limpia líneas, notas y tareas). */
   async deleteOpportunity(id: string): Promise<void> {
-    // Eliminar registros asociados
-    await supabase.from('opportunity_products').delete().eq('opportunity_id', id);
-    await supabase.from('opportunity_spaces').delete().eq('opportunity_id', id);
-    await supabase.from('opportunity_custom_lines').delete().eq('opportunity_id', id);
-
-    const { error } = await supabase.from('opportunities').delete().eq('id', id);
-
-    if (error) throw error;
+    await eliminarOportunidadServidor(id);
   }
 
   async duplicateOpportunity(id: string): Promise<Opportunity> {
@@ -613,24 +445,22 @@ class OpportunitiesService {
     return (json.data?.opportunity ?? {}) as Opportunity;
   }
 
+  /** Por `PATCH …/stage` (gate y permisos del servidor). */
   async moveToStage(id: string, stageId: string): Promise<Opportunity> {
-    return this.updateOpportunity(id, { stage_id: stageId });
+    await moverEtapa(id, { stage_id: stageId });
+    return (await this.getOpportunityById(id)) as Opportunity;
   }
 
   /**
-   * Registra un contacto con la oportunidad (tracking de último contacto).
-   * Actualiza last_contact_at, contact_channel y contact_result.
+   * Registra canal y resultado del último contacto por `PATCH …/seguimiento`.
+   * `last_contact_at` lo mantiene la base (trigger de actividades), no el navegador.
    */
   async registerContact(
     id: string,
     channel: string,
     result: string
   ): Promise<Opportunity> {
-    return this.updateOpportunity(id, {
-      last_contact_at: new Date().toISOString(),
-      contact_channel: channel,
-      contact_result: result,
-    });
+    return this.updateOpportunity(id, { contact_channel: channel, contact_result: result });
   }
 
   async getStats(filters?: OpportunityFilters): Promise<OpportunityStats> {

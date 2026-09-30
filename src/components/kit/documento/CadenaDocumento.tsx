@@ -30,7 +30,7 @@ export interface CadenaDocumentoProps {
 function Eslabon({ e }: { e: EslabonDocumento }) {
   const t = useKitT();
   const Icono = ICONO_DOCUMENTO[e.tipo];
-  const nombreTipo = t(`documento.tipos.${e.tipo}`);
+  const nombreTipo = e.etiquetaTipo ?? t(`documento.tipos.${e.tipo}`);
   const numero = e.href ? (
     <Link
       href={e.href}

@@ -436,7 +436,10 @@ describe('nadie escribe cotizaciones desde el navegador ni numera por su cuenta'
   });
 
   test('el cierre «al ganar» del CRM convierte por la ruta del servidor', () => {
-    expect(leer('src/components/crm/pipeline/WonCloseModal.tsx')).toMatch(/CotizacionesService\.convertToInvoice\(quotationId, \{ branchId, opportunityId: oppId \}\)/);
+    // CRM ola 3B: el cableado vive en `crearDepsGanar` (lo comparten el
+    // `WonCloseModal` y el `WinDialog`); el modal lo usa, no lo duplica.
+    expect(leer('src/components/crm/oportunidad/pasosGanar.ts')).toMatch(/CotizacionesService\.convertToInvoice\(quotationId, \{ branchId, opportunityId: oppId \}\)/);
+    expect(leer('src/components/crm/pipeline/WonCloseModal.tsx')).toMatch(/crearDepsGanar\(/);
     expect(leer('src/lib/services/crm/wonCloseSteps.ts')).not.toMatch(/accounts_receivable/);
   });
 });

@@ -14,12 +14,16 @@ import {
   RELLENOS_ESCALA,
   agregarPorPais,
   agregarPorRegion,
+  agregarRegiones,
+  CIUDADES_POR_PAGINA,
+  ciudadesParaTabla,
   codigoRegionIso,
   debeAbrirColombia,
   filtrarCiudadesPorRegion,
   nombreRegion,
   pasoEscala,
   rellenoPaso,
+  valoresRegionMapa,
 } from '../mapa';
 import { ISO_NUMERICO_A_ALFA2, alfa2DesdeNumerico } from '../isoPaises';
 
@@ -91,10 +95,108 @@ describe('agregación', () => {
     expect(filtrarCiudadesPorRegion(ciudades, 'CO', null)).toHaveLength(4);
   });
 
+  test('por región desde `regiones` de la RPC: misma normalización, alias y repetidos sumados', () => {
+    const { valores, sinRegion } = agregarRegiones(
+      [
+        { region: 'ant', visitantes: 40, sesiones: 50 },
+        { region: 'CO-ANT', visitantes: 10, sesiones: 12 },
+        { region: 'BOG', visitantes: 20, sesiones: 25 },
+        { region: ' DC ', visitantes: 30, sesiones: 45 },
+        { region: 'no es un código', visitantes: 3, sesiones: 3 },
+        { region: 'VAU', visitantes: 0, sesiones: 0 },
+      ],
+      'CO',
+    );
+    expect([...valores.keys()].sort()).toEqual(['CO-ANT', 'CO-DC']);
+    expect(valores.get('CO-ANT')).toMatchObject({ visitantes: 50, sesiones: 62, pct: 0.5 });
+    expect(valores.get('CO-DC')).toMatchObject({ visitantes: 50, sesiones: 70, pct: 0.5 });
+    expect(sinRegion).toBe(3);
+  });
+
+  test('valoresRegionMapa usa `regiones` cuando viene (sin cota) y cae a las ciudades si no', () => {
+    // 51 ciudades en total pero la RPC solo devuelve 2: con ciudades, el mapa
+    // perdería el departamento que no está en la lista.
+    const ciudades = [
+      { ciudad: 'Medellín', region: 'ANT', visitantes: 40, sesiones: 50 },
+      { ciudad: 'Bogotá', region: 'DC', visitantes: 50, sesiones: 70 },
+    ];
+    const regiones = [
+      { region: 'DC', visitantes: 50, sesiones: 70 },
+      { region: 'ANT', visitantes: 45, sesiones: 56 },
+      { region: 'VID', visitantes: 1, sesiones: 1 },
+    ];
+    const conRegiones = valoresRegionMapa({ ciudades, ciudadesTotal: 51, regiones }, 'CO');
+    expect(conRegiones.parcial).toBe(false);
+    expect([...conRegiones.valores.keys()].sort()).toEqual(['CO-ANT', 'CO-DC', 'CO-VID']);
+    expect(conRegiones.valores.get('CO-ANT')?.visitantes).toBe(45);
+
+    for (const sinClave of [undefined, null]) {
+      const respaldo = valoresRegionMapa({ ciudades, ciudadesTotal: 51, regiones: sinClave }, 'CO');
+      expect(respaldo.parcial).toBe(true);
+      expect([...respaldo.valores.keys()].sort()).toEqual(['CO-ANT', 'CO-DC']);
+      expect(respaldo.valores.get('CO-ANT')?.visitantes).toBe(40);
+    }
+    // Con todas las ciudades en la lista, el respaldo no es cota inferior.
+    expect(valoresRegionMapa({ ciudades, ciudadesTotal: 2, regiones: null }, 'CO').parcial).toBe(false);
+    // `regiones` vacía (país sin regiones con visitas) no cae a las ciudades.
+    expect(valoresRegionMapa({ ciudades, ciudadesTotal: 51, regiones: [] }, 'CO').valores.size).toBe(0);
+  });
+
   test('Colombia por defecto solo si tiene más de la mitad', () => {
     expect(debeAbrirColombia([{ pais: 'CO', visitantes: 51, sesiones: 1 }, { pais: 'US', visitantes: 49, sesiones: 1 }])).toBe(true);
     expect(debeAbrirColombia([{ pais: 'CO', visitantes: 50, sesiones: 1 }, { pais: 'US', visitantes: 50, sesiones: 1 }])).toBe(false);
     expect(debeAbrirColombia([])).toBe(false);
+  });
+});
+
+describe('ciudades de la tabla (tope de 500 + `ciudades_region`)', () => {
+  const ciudades = [
+    { ciudad: 'Bogotá', region: 'DC', visitantes: 900, sesiones: 1200 },
+    { ciudad: 'Medellín', region: 'ANT', visitantes: 500, sesiones: 700 },
+    { ciudad: 'Envigado', region: 'ant', visitantes: 40, sesiones: 44 },
+  ];
+  const ciudadesRegion = [
+    // Fuera del top del país, entre las primeras de su departamento.
+    { ciudad: 'Puerto Carreño', region: 'VID', visitantes: 3, sesiones: 3 },
+    { ciudad: 'Cumaribo', region: 'VID', visitantes: 1, sesiones: 1 },
+    { ciudad: 'Abejorral', region: 'ANT', visitantes: 40, sesiones: 41 },
+    // Repetida (no debería pasar, pero no se pinta dos veces).
+    { ciudad: 'Envigado', region: 'ant', visitantes: 40, sesiones: 44 },
+  ];
+  const regiones = [
+    { region: 'DC', visitantes: 900, sesiones: 1200, ciudades: 1 },
+    { region: 'ANT', visitantes: 580, sesiones: 785, ciudades: 7 },
+    { region: 'VID', visitantes: 4, sesiones: 4, ciudades: 2 },
+  ];
+
+  test('sin región: el top del país y «N más» hasta ciudades_total', () => {
+    const r = ciudadesParaTabla({ ciudades, ciudadesTotal: 620, ciudadesRegion, regiones }, 'CO', null);
+    expect(r.ciudades.map((c) => c.ciudad)).toEqual(['Bogotá', 'Medellín', 'Envigado']);
+    expect(r.otras).toBe(617);
+  });
+
+  test('departamento sin ciudades en el top: salen las de `ciudades_region`', () => {
+    const r = ciudadesParaTabla({ ciudades, ciudadesTotal: 620, ciudadesRegion, regiones }, 'CO', 'CO-VID');
+    expect(r.ciudades.map((c) => c.ciudad)).toEqual(['Puerto Carreño', 'Cumaribo']);
+    expect(r.otras).toBe(0);
+  });
+
+  test('departamento con ciudades en el top y fuera: unidas, sin repetir, de más a menos y con «N más»', () => {
+    const r = ciudadesParaTabla({ ciudades, ciudadesTotal: 620, ciudadesRegion, regiones }, 'CO', 'CO-ANT');
+    expect(r.ciudades.map((c) => c.ciudad)).toEqual(['Medellín', 'Abejorral', 'Envigado']);
+    expect(r.otras).toBe(4);
+  });
+
+  test('respaldo (base sin la migración): solo filtra `ciudades`, como antes, sin conteo', () => {
+    const r = ciudadesParaTabla({ ciudades, ciudadesTotal: 620, ciudadesRegion: null, regiones: null }, 'CO', 'CO-VID');
+    expect(r).toEqual({ ciudades: [], otras: 0 });
+    const ant = ciudadesParaTabla({ ciudades, ciudadesTotal: 620 }, 'CO', 'CO-ANT');
+    expect(ant.ciudades.map((c) => c.ciudad)).toEqual(['Medellín', 'Envigado']);
+    expect(ant.otras).toBe(0);
+  });
+
+  test('la tabla pagina de a 20', () => {
+    expect(CIUDADES_POR_PAGINA).toBe(20);
   });
 });
 

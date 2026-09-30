@@ -212,6 +212,11 @@ export interface DetalleFacturaVenta {
     comisionTasa: number | null;
     cargos: { descripcion: string; monto: number }[];
     saleId: string | null;
+    /**
+     * Canal de la venta de origen (`sales.source`): «pos», «web» o «invoice».
+     * En «web» trae el pedido para enlazarlo; antes todo se rotulaba «Venta del POS».
+     */
+    origenVenta?: { canal: string | null; pedidoWebId: string | null; pedidoWebNumero: string | null } | null;
     facturaRelacionadaId: string | null;
     fe: { estado: string | null; numero: string | null; qr: string | null };
     creadaEn: string | null;

@@ -1047,16 +1047,20 @@ describe('F. La configuración del agente alcanza el comportamiento de la llamad
     expect(dlg).toContain('StageAgentTab');
     expect(dlg.toLowerCase()).toContain('agente ia');
     // Y ese diálogo lo monta el tablero pasándole la etapa que se está editando,
-    // desde el engranaje «Configurar etapa» de la columna.
-    const board = SRC('src/components/crm/pipeline/KanbanBoardV2.tsx');
-    expect(board).toContain("from './StageDialog'");
-    expect(board).toMatch(/<StageDialog[\s\S]*?stageId=\{stageDialog\.stage\?\.id\}/);
-    const column = SRC('src/components/crm/pipeline/KanbanColumnV2.tsx');
-    expect(column).toContain('Configurar etapa');
-    expect(column).toContain('onEditStage(stage)');
+    // desde el «⋯» (configurar) de la columna. CRM ola 3B: el tablero es
+    // `pantalla/KanbanTablero` (columna `StageColumn` del kit) y el diálogo lo
+    // monta `pantalla/EtapasPipeline` con la etapa elegida.
+    const etapas = SRC('src/components/crm/pipeline/pantalla/EtapasPipeline.tsx');
+    expect(etapas).toContain("from '../StageDialog'");
+    expect(etapas).toMatch(/<StageDialog[\s\S]*?stageId=\{editando\?\.id\}/);
+    const board = SRC('src/components/crm/pipeline/pantalla/KanbanTablero.tsx');
+    expect(board).toMatch(/onConfigurar=\{p\.permisos\.gestionarEtapas \? p\.onConfigurarEtapa/);
     // El tablero es el que se pinta en el pipeline (no es código muerto).
-    const pipelineView = SRC('src/components/crm/pipeline/PipelineView.tsx');
-    expect(pipelineView).toContain('KanbanBoardV2');
+    const pantalla = SRC('src/components/crm/pipeline/pantalla/PipelinePantalla.tsx');
+    expect(pantalla).toContain('<KanbanTablero');
+    expect(pantalla).toMatch(/onConfigurarEtapa=\{\(id\) => \{ setEditarEtapa\(id\)/);
+    expect(pantalla).toContain('<EtapasPipeline');
+    expect(SRC('src/app/app/crm/pipeline/page.tsx')).toContain('PipelinePantalla');
 
     const tab = SRC('src/components/crm/pipeline/StageAgentTab.tsx');
     expect(tab).toContain('/api/crm/stage-agents');

@@ -9,9 +9,7 @@ import { cn } from '@/utils/Utils';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
-import { CotizacionesService } from '@/lib/services/cotizacionesService';
-import { commissionService } from '@/lib/services/crm/commissionService';
-import { proposalService } from '@/lib/services/crm/proposalService';
+import { crearDepsGanar } from '@/components/crm/oportunidad/pasosGanar';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { buildInitialSteps, WON_STEP_EXECUTORS, type CloseStep, type OpportunityData, type StepStatus, type WonCloseDeps, type WonStepId } from '@/lib/services/crm/wonCloseSteps';
 
@@ -92,19 +90,8 @@ export function WonCloseModal({ open, onOpenChange, opportunityId, opportunityNa
     setRunning(true);
 
     const opp = opportunity;
-    const deps: WonCloseDeps = {
-      supabase,
-      orgId: getOrganizationId(),
-      contextBranchId,
-      timezone,
-      getLatestProposal: async (id) => {
-        const p = await proposalService.getLatestProposalForOpportunity(id);
-        return p ? { id: p.id, branch_id: p.branch_id ?? null } : null;
-      },
-      convertToInvoice: (quotationId, branchId, oppId) => CotizacionesService.convertToInvoice(quotationId, { branchId, opportunityId: oppId }),
-      // Vendedor, base y tasa los resuelve la RPC desde la base (no el navegador).
-      accrueCommission: (id) => commissionService.accrueCommission(id),
-    };
+    // Mismo cableado que el `WinDialog` de la ola 3B (`crearDepsGanar`).
+    const deps: WonCloseDeps = crearDepsGanar({ orgId: getOrganizationId(), contextBranchId, timezone });
 
     for (const step of steps) {
       if (!step.autoExecute) {

@@ -7,7 +7,8 @@ import { actualizarOportunidad, eliminarOportunidad, oportunidadEdicionSchema } 
 /**
  * /api/crm/opportunities/[id] — CRM ola 1 (plan §4.6 y §4.7).
  *
- * GET    detalle con líneas (`crm.opportunities.view`).
+ * GET    detalle con líneas (productos, conceptos y espacios), cliente, etapa,
+ *        pipeline y `entro_etapa_en` (`crm.opportunities.view`; ola 3B).
  * PATCH  edición con `crm_update_opportunity`: propia con `edit`, cualquiera con
  *        `edit_any`; metadata y discovery_data se fusionan; líneas por
  *        diferencia; `expected_updated_at` opcional → 409 `conflicto`.
@@ -28,14 +29,26 @@ export async function GET(request: NextRequest, { params }: Params) {
     await exigirPermisoCrm(ctx, [CRM_PERMISOS.oportunidadesVer], 'GET /api/crm/opportunities/[id]');
     const { data, error } = await ctx.supabase
       .from('opportunities')
-      .select('*, opportunity_products(id, product_id, quantity, unit_price, total_price), opportunity_custom_lines(id, concept, quantity, unit_price, total_price)')
+      .select(
+        '*, opportunity_products(id, product_id, quantity, unit_price, total_price, producto:products(name, sku)), opportunity_custom_lines(id, concept, quantity, unit_price, total_price), opportunity_spaces(id, space_id, nights, unit_price, total_price, espacio:spaces(label)), cliente:customers(id, full_name, customer_type, doc_type, doc_number, email, phone, city, avatar_url, lifecycle_stage, created_at, do_not_call), etapa:stages(id, name, probability, color, position, is_won, is_lost), pipeline:pipelines(id, name, pipeline_type)',
+      )
       .eq('id', id)
       .eq('organization_id', ctx.organizationId)
       .maybeSingle();
     if (error) throw error;
     if (!data) throw new CrmHttpError(404, 'oportunidad_no_encontrada', 'Oportunidad no encontrada');
     const opp = data as Record<string, unknown>;
-    return NextResponse.json({ success: true, data: { ...opp, es_lead: opp.record_type === 'lead' } });
+    // Ola 3B: desde cuándo está en la etapa (cabecera del drawer y del detalle).
+    const { data: entrada } = await ctx.supabase
+      .from('opportunity_stage_history')
+      .select('changed_at')
+      .eq('organization_id', ctx.organizationId)
+      .eq('opportunity_id', id)
+      .order('changed_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const entroEtapaEn = (entrada as { changed_at?: string | null } | null)?.changed_at ?? (opp.created_at as string | null) ?? null;
+    return NextResponse.json({ success: true, data: { ...opp, es_lead: opp.record_type === 'lead', entro_etapa_en: entroEtapaEn } });
   } catch (error) {
     return respuestaErrorCrm(error, 'GET /api/crm/opportunities/[id]');
   }

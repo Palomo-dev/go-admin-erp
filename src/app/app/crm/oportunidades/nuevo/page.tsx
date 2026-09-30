@@ -2,24 +2,26 @@
 
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { OpportunityForm } from '@/components/crm/oportunidades';
+import { FormularioOportunidadPagina } from '@/components/crm/oportunidad/FormularioOportunidadPagina';
 
+/**
+ * Nueva oportunidad en página (CRM ola 3B, plan §4.7; Figma 778:32176). Puntos
+ * de entrada por query: `pipeline`, `etapa`, `cliente` (ficha y listado de
+ * clientes) y `nombreCliente`.
+ */
 function NuevaOportunidadContent() {
-  const searchParams = useSearchParams();
-  const initialPipelineId = searchParams?.get('pipeline') || undefined;
-  // «Nueva oportunidad» desde la ficha o el listado de clientes.
-  const initialCustomerId = searchParams?.get('cliente') || undefined;
-
+  const sp = useSearchParams();
   return (
-    <div className="p-3 sm:p-4 md:p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <OpportunityForm initialPipelineId={initialPipelineId} initialCustomerId={initialCustomerId} />
-    </div>
+    <FormularioOportunidadPagina
+      modo="create"
+      inicial={{ pipelineId: sp?.get('pipeline') || null, etapaId: sp?.get('etapa') || null, clienteId: sp?.get('cliente') || null, clienteNombre: sp?.get('nombreCliente') || null }}
+    />
   );
 }
 
 export default function NuevaOportunidadPage() {
   return (
-    <Suspense fallback={<div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen" />}>
+    <Suspense fallback={<div className="min-h-full bg-canvas p-6" />}>
       <NuevaOportunidadContent />
     </Suspense>
   );

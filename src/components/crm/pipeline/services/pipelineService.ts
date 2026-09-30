@@ -1,6 +1,14 @@
 import { supabase } from "@/lib/supabase/config";
 import { Customer, CustomerInteraction, EditFormData, Opportunity, PipelineStage } from "../types";
 import { getOrganizationId } from "../utils/pipelineUtils";
+import { crearOportunidad } from "@/components/crm/oportunidad/apiOportunidades";
+
+/** Texto legible de un error de Supabase o de red, sin `any`. */
+function mensajeError(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  const e = error as { message?: string; error_description?: string } | null;
+  return e?.message || e?.error_description || JSON.stringify(error);
+}
 
 /**
  * Servicio para operaciones relacionadas con el pipeline en Supabase
@@ -27,9 +35,9 @@ export const loadPipelineStages = async (pipelineId: string): Promise<PipelineSt
     
     console.log(`Etapas cargadas: ${data?.length || 0}`);
     return data || [];
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error al cargar etapas del pipeline:", 
-      error?.message || error?.error_description || JSON.stringify(error));
+      mensajeError(error));
     return [];
   }
 };
@@ -75,16 +83,17 @@ export const loadCustomersWithOpportunities = async (pipelineId: string): Promis
       customers: customersData || [],
       opportunities: opportunitiesData || [],
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error al cargar clientes y oportunidades:", 
-      error?.message || error?.error_description || JSON.stringify(error));
+      mensajeError(error));
     
     // Mostrar mensaje más detallado para facilitar el diagnóstico
+    const e = error as { message?: string; details?: string; hint?: string; code?: string } | null;
     const errorDetails = {
-      message: error?.message,
-      details: error?.details,
-      hint: error?.hint,
-      code: error?.code
+      message: e?.message,
+      details: e?.details,
+      hint: e?.hint,
+      code: e?.code
     };
     console.log('Detalles del error:', JSON.stringify(errorDetails));
     
@@ -112,9 +121,9 @@ export const loadCustomerInteractions = async (customerId: string): Promise<Cust
       throw error;
     }
     return data || [];
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error al cargar interacciones del cliente:", 
-      error?.message || error?.error_description || JSON.stringify(error));
+      mensajeError(error));
     return [];
   }
 };
@@ -125,7 +134,7 @@ export const loadCustomerInteractions = async (customerId: string): Promise<Cust
 export const updateCustomer = async (
   customerId: string, 
   formData: EditFormData
-): Promise<{success: boolean, error?: any}> => {
+): Promise<{ success: boolean; error?: unknown }> => {
   try {
     console.log(`Actualizando cliente con ID: ${customerId}`);
     
@@ -146,15 +155,20 @@ export const updateCustomer = async (
       throw error;
     }
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error al actualizar cliente:", 
-      error?.message || error?.error_description || JSON.stringify(error));
+      mensajeError(error));
     return { success: false, error };
   }
 };
 
 /**
- * Crear una nueva oportunidad para un cliente
+ * Crear una nueva oportunidad para un cliente.
+ *
+ * CRM ola 3B (guardarraíl 36): por `POST /api/crm/opportunities` (RPC
+ * `crm_create_opportunity`: permiso, organización de la sesión, moneda base
+ * y actividad «creada» en una transacción). Antes insertaba desde el
+ * navegador con `status: "active"`, que el CHECK de la tabla rechaza.
  */
 export const createOpportunity = async (
   customerId: string,
@@ -165,40 +179,20 @@ export const createOpportunity = async (
     stage_id: string;
     expected_close_date: string;
   }
-): Promise<{success: boolean, opportunity?: Opportunity, error?: any}> => {
+): Promise<{ success: boolean; opportunity?: Opportunity; error?: unknown }> => {
   try {
-    const organizationId = getOrganizationId();
-    console.log(`Creando oportunidad con organizationId: ${organizationId}, pipelineId: ${pipelineId}, customerId: ${customerId}`);
-    
-    const newOpportunity = {
+    const creada = await crearOportunidad({
       name: data.name,
       amount: data.amount,
       customer_id: customerId,
       pipeline_id: pipelineId,
       stage_id: data.stage_id,
-      expected_close_date: data.expected_close_date,
-      status: "active",
-      created_at: new Date().toISOString(),
-      organization_id: organizationId,
-    };
-    
-    const { data: result, error } = await supabase
-      .from("opportunities")
-      .insert([newOpportunity])
-      .select();
-
-    if (error) {
-      console.error("Error de Supabase al crear oportunidad:", JSON.stringify(error));
-      throw error;
-    }
-    
-    return { 
-      success: true, 
-      opportunity: result && result.length > 0 ? result[0] as Opportunity : undefined 
-    };
-  } catch (error: any) {
-    console.error("Error al crear oportunidad:", 
-      error?.message || error?.error_description || JSON.stringify(error));
+      expected_close_date: data.expected_close_date || null,
+      origen: "cliente",
+    });
+    return { success: true, opportunity: creada as unknown as Opportunity };
+  } catch (error: unknown) {
+    console.error("Error al crear oportunidad:", error instanceof Error ? error.message : error);
     return { success: false, error };
   }
 };

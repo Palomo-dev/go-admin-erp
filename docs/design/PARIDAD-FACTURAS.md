@@ -488,3 +488,39 @@ Los mismos en todos los frames de cada flujo, sin nombres de organizaciones real
   Retención en la fuente 4 % · ReteICA 0,966 % · ReteIVA 15 %.
 - Otros terceros: Textiles Andinos S.A.S., Carlos Mejía Bordados,
   Empaques del Valle, Hotel Miramar.
+
+## Origen de la venta en la cadena del detalle (2026-09-30)
+
+El detalle de factura rotulaba toda venta enlazada como «Venta del POS», también las facturas
+de pedidos de la tienda web. Ahora el primer eslabón sigue `sales.source`:
+
+| Canal | Eslabón | Enlace |
+|---|---|---|
+| `web` | «Pedido web» · número del pedido (`web_orders.order_number`) · icono de pedido | `/app/pos/pedidos-online/[id]` |
+| `pos` (y sin canal) | «Venta» · «Venta del POS» | `/app/pos/ventas/[id]` |
+| `invoice` | «Venta» · «Venta por factura» | `/app/pos/ventas/[id]` |
+
+Figma (`07 Finanzas` › «Facturas de venta — detalle (B.2)»):
+- «Escritorio / Detalle factura de venta — listo» (`421:174342`): la `DocumentHeader` vuelve arriba
+  (había quedado debajo del contenido) y se añade la `CadenaDocumento` (`1405:831970`) con el caso web.
+- Lámina nueva «Detalle factura de venta — origen de la venta (web · POS · factura)» (`1406:834017`)
+  con los tres casos y la cadena vertical de móvil.
+
+Código: `src/lib/finanzas/ventas/origenVenta.ts` (lógica pura), `facturasVenta.server.ts` (lee el canal
+aparte: `invoice_sales.sale_id` no tiene FK hacia `sales`), `EslabonDocumento.etiquetaTipo` (rótulo propio
+en el kit) y la prueba `src/lib/finanzas/ventas/__tests__/origenVenta.test.tsx`.
+
+Ajuste posterior (mismo día), en `421:174342` «listo» y `421:175507` «anulada y sin pagos»:
+- La `DocumentHeader` va pegada bajo la `AppHeader`, a todo el ancho y con borde inferior: sobraba la
+  franja de 24 px de fondo entre las dos. En «anulada» también estaba debajo del contenido; el aviso de
+  anulación pasa a encabezar el contenido.
+- «Pagos aplicados» vacío en una factura anulada: sin acciones («Importar» y «Nuevo producto» no
+  correspondían) y el texto dice «La factura está anulada: no admite pagos.» (antes invitaba a
+  «marcar la factura como pagada», acción que el diseño ya había quitado).
+
+Corrección (mismo día): la cabecera pegada con fondo blanco **no** era coherente. En Figma las
+`PageHeader` (≈450 instancias en 04 Inventario y 07 Finanzas) van sin fondo, sobre el fondo de la página
+y dentro del margen de 24 px; solo `DocumentHeader` (63 instancias) traía fondo blanco y relleno propio.
+En código `DocumentoCabecera` es `PageHeader`, sin fondo. Se quitó el fondo y el relleno a las variantes de
+escritorio del componente `DocumentHeader` (`405:157092` detalle, `405:157242` formulario), con lo que las
+63 instancias quedan como el código, y en B.2 la cabecera vuelve dentro del margen del contenido.

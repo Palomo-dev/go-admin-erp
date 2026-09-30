@@ -20,6 +20,7 @@ import { requireOrgId } from '../useEquipoData';
 import type { Opportunity, SalesTeam, OrgMember } from '../types';
 import { pickEmbedded, profileDisplayName, type EmbeddedProfile } from '@/lib/utils/embeddedProfile';
 import { describeError, logError } from '@/lib/utils/errorMessage';
+import { editarOportunidad } from '@/components/crm/oportunidad/apiOportunidades';
 
 export function AsignarTab() {
   const { toast } = useToast();
@@ -69,8 +70,8 @@ export function AsignarTab() {
 
   const assignTeam = async (oppId: string, teamId: string | null) => {
     try {
-      const { error } = await supabase.from('opportunities').update({ sales_team_id: teamId, updated_at: new Date().toISOString() }).eq('id', oppId);
-      if (error) throw error;
+      // CRM ola 3B (guardarraíl 36): PATCH por el servidor (`crm_update_opportunity`).
+      await editarOportunidad(oppId, { sales_team_id: teamId });
       setOpportunities((prev) => prev.map((o) => o.id === oppId ? { ...o, sales_team_id: teamId } : o));
       toast({ title: 'Equipo asignado' });
     } catch {
@@ -80,8 +81,7 @@ export function AsignarTab() {
 
   const assignSeller = async (oppId: string, userId: string | null) => {
     try {
-      const { error } = await supabase.from('opportunities').update({ salesperson_id: userId, updated_at: new Date().toISOString() }).eq('id', oppId);
-      if (error) throw error;
+      await editarOportunidad(oppId, { salesperson_id: userId });
       setOpportunities((prev) => prev.map((o) => o.id === oppId ? { ...o, salesperson_id: userId } : o));
       toast({ title: 'Vendedor asignado' });
     } catch {

@@ -168,73 +168,52 @@ beforeEach(() => {
 });
 
 // ── 1 · Editar una oportunidad ya no borra sus líneas ───────────────────────
+// CRM ola 3B (guardarraíl 36): las líneas ya no se reemplazan desde el
+// navegador (borrar + reinsertar sin transacción). `updateOpportunity` manda
+// productos, espacios y conceptos a `PATCH /api/crm/opportunities/[id]`, y la
+// RPC `crm_update_opportunity` los aplica POR DIFERENCIA en la misma
+// transacción (migraciones 20260930160600 y 20260930210000). Lo que se
+// conserva de la ronda: nunca se envía `total_price` y nada se escribe en las
+// tablas hijas desde el navegador.
 describe('1 · líneas de la oportunidad', () => {
   const entradaConProducto = {
     products: [{ product_id: 7, quantity: 2, unit_price: 1500 }],
   };
+  let llamadas: { url: string; method: string; body: Record<string, unknown> }[];
+  beforeEach(() => {
+    llamadas = [];
+    global.fetch = jest.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      llamadas.push({ url: String(url), method: init?.method ?? 'GET', body: init?.body ? JSON.parse(String(init.body)) : {} });
+      return { ok: true, status: 200, json: async () => ({ success: true, data: { id: 'opp-1' } }) } as Response;
+    }) as typeof fetch;
+  });
 
-  it('no envía nunca `total_price` (GENERATED ALWAYS en las tres tablas)', async () => {
-    guionUpdate.opportunities = { data: { id: 'opp-1' }, error: null };
-
+  it('envía las tres clases de líneas al servidor en un solo PATCH, sin `total_price`', async () => {
     await opportunitiesService.updateOpportunity('opp-1', {
       ...entradaConProducto,
       spaces: [{ space_id: 'esp-1', nights: 3, unit_price: 200 }],
       customLines: [{ concept: 'Montaje', quantity: 1, unit_price: 90 }],
     });
-
-    const inserts = registro.filter(
-      (l) =>
-        l.op === 'insert' &&
-        ['opportunity_products', 'opportunity_spaces', 'opportunity_custom_lines'].includes(l.tabla),
-    );
-    expect(inserts).toHaveLength(3);
-    for (const ins of inserts) {
-      for (const fila of ins.payload as Record<string, unknown>[]) {
-        expect(Object.keys(fila)).not.toContain('total_price');
-      }
-    }
+    expect(llamadas).toHaveLength(1);
+    expect(llamadas[0]).toMatchObject({ url: '/api/crm/opportunities/opp-1', method: 'PATCH' });
+    expect(llamadas[0].body).toEqual({
+      products: [{ product_id: 7, quantity: 2, unit_price: 1500 }],
+      spaces: [{ space_id: 'esp-1', nights: 3, unit_price: 200 }],
+      custom_lines: [{ concept: 'Montaje', quantity: 1, unit_price: 90 }],
+    });
+    expect(JSON.stringify(llamadas[0].body)).not.toContain('total_price');
+    expect(registro.filter((l) => l.op !== 'select')).toEqual([]);
   });
 
-  it('propaga el error del insert en vez de dejar las líneas borradas', async () => {
-    guionUpdate.opportunities = { data: { id: 'opp-1' }, error: null };
-    guionInsert.opportunity_products = {
-      error: { code: '428C9', message: 'cannot insert a non-DEFAULT value into column "total_price"' },
-    };
-
-    await expect(
-      opportunitiesService.updateOpportunity('opp-1', entradaConProducto),
-    ).rejects.toThrow(/No se pudieron guardar las líneas de opportunity_products/);
+  it('propaga el rechazo del servidor en vez de dejar las líneas a medias', async () => {
+    global.fetch = jest.fn(async () => ({ ok: false, status: 400, json: async () => ({ success: false, error: 'linea_invalida' }) }) as Response) as typeof fetch;
+    await expect(opportunitiesService.updateOpportunity('opp-1', entradaConProducto)).rejects.toThrow(/linea_invalida/);
+    expect(registro.filter((l) => l.op !== 'select')).toEqual([]);
   });
 
-  it('propaga también el error del borrado', async () => {
-    guionUpdate.opportunities = { data: { id: 'opp-1' }, error: null };
-    guionDelete.opportunity_products = { error: { message: 'permission denied' } };
-
-    await expect(
-      opportunitiesService.updateOpportunity('opp-1', entradaConProducto),
-    ).rejects.toThrow(/No se pudieron borrar las líneas de opportunity_products/);
-  });
-
-  it('si el insert falla, intenta devolver las líneas anteriores', async () => {
-    guionUpdate.opportunities = { data: { id: 'opp-1' }, error: null };
-    guionSelect.opportunity_products = {
-      data: [{ id: 'lin-1', opportunity_id: 'opp-1', product_id: 3, quantity: 1, unit_price: 10, total_price: 10 }],
-      error: null,
-    };
-    // El primer insert (las líneas nuevas) falla; el segundo (la restauración)
-    // tiene que salir bien.
-    guionInsert.opportunity_products = [{ error: { code: '428C9', message: 'total_price' } }, { error: null }];
-
-    await expect(
-      opportunitiesService.updateOpportunity('opp-1', entradaConProducto),
-    ).rejects.toThrow(/restauraron/);
-
-    const inserts = registro.filter((l) => l.tabla === 'opportunity_products' && l.op === 'insert');
-    // El segundo insert es la restauración, y tampoco lleva `total_price`.
-    expect(inserts).toHaveLength(2);
-    const restauradas = inserts[1].payload as Record<string, unknown>[];
-    expect(restauradas[0].id).toBe('lin-1');
-    expect(Object.keys(restauradas[0])).not.toContain('total_price');
+  it('estado, cierre y ficha de venta no se escriben por aquí (van por …/win y …/lose)', async () => {
+    await expect(opportunitiesService.updateOpportunity('opp-1', { status: 'won' } as never)).rejects.toThrow(/No editable/);
+    expect(llamadas).toEqual([]);
   });
 });
 

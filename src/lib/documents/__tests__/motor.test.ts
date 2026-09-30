@@ -44,6 +44,16 @@ const C1 = '99999999-9999-4999-8999-999999999999';
 const AP1 = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const XSS = '<script>alert(1)</script>';
 const llamadasProveedor: Array<Record<string, unknown>> = [];
+const llamadasCertificado: Array<Record<string, unknown>> = [];
+const CERTIFICADO = {
+  conceptos: [
+    { clase: 'retefuente', concepto: 'Retención en la fuente', cuenta: '236540', tarifa: 2.5, base: 480, valor: 12 },
+    { clase: 'reteica', concepto: 'ReteICA', cuenta: '236801', tarifa: 0.966, base: 480, valor: 4.64 },
+  ],
+  facturas: [{ id: FC1, numero: 'PROV-77', emision: '2026-09-10T15:00:00Z', dia: '2026-09-10', valor: 16.64 }],
+  totales: { retenido: 16.64, retefuente: 12, reteiva: 0, reteica: 4.64 },
+};
+let respuestaCertificado: unknown = CERTIFICADO;
 
 const cliente = { full_name: `Cliente ${XSS}`, doc_type: 'CC', doc_number: '1234', dv: null, fiscal_responsibilities: [] };
 const item = { description: 'Servicio', qty: 1, unit_price: 100, discount_amount: 0, tax_code: 'IVA_19', tax_rate: 19, tax_included: false, total_line: 100, impuesto: { name: 'IVA 19 %' } };
@@ -92,6 +102,10 @@ function sesion(tablas = datos(), userId = 'usuario-1') {
         { fecha: '2026-09-10T15:00:00Z', dia: '2026-09-10', tipo: 'factura', documento: 'PROV-77', vence: '2026-10-10T15:00:00Z', cargo: 488, abono: 0, saldo: 488 },
         { fecha: '2026-09-25T15:00:00Z', dia: '2026-09-25', tipo: 'pago', documento: null, vence: null, cargo: 0, abono: 500, saldo: -12 },
       ] };
+    },
+    fn_certificado_retenciones_proveedor: (args) => {
+      llamadasCertificado.push(args);
+      return respuestaCertificado;
     },
     pos_caja_esperado: () => ({ efectivo_esperado: 500, por_metodo: { cash: 500, card: 200 }, detalle: { inicial: 100, ventas_efectivo: 420, salidas: 20 } }),
   });
@@ -275,6 +289,75 @@ describe('estado de cuenta de proveedor', () => {
   it('sin finance.view → 403', async () => {
     permisos.add('pos.view');
     expect(await codigoDe(pedir(sesion(), 'estado-cuenta-proveedor', '5'))).toBe('403 PERMISSION_REQUIRED');
+  });
+});
+
+describe('certificado de retenciones', () => {
+  beforeEach(() => {
+    llamadasCertificado.length = 0;
+    respuestaCertificado = CERTIFICADO;
+  });
+
+  it('sale de fn_certificado_retenciones_proveedor: del 1 de enero del año del corte a hoy en la zona de la organización', async () => {
+    permisos.add('finance.view');
+    const { payload, html } = await pedir(sesion(), 'certificado-retenciones', '5');
+    expect(llamadasCertificado).toEqual([{ p_organization_id: ORG, p_supplier_id: 5, p_desde: '2026-01-01', p_hasta: '2026-09-27' }]);
+    expect(payload.numero).toBe('CR-2026-0005');
+    expect(payload.contraparte).toMatchObject({ rol: 'proveedor', nombre: 'Proveedor Uno' });
+    expect(payload.sucursal).toBeNull();
+    expect(payload.metadatos.map((c) => c.clave)).toEqual(['periodoDesde', 'periodoHasta', 'facturasIncluidas', 'fechaExpedicion', 'moneda', 'declaradoEn']);
+    expect(payload.metadatos.find((c) => c.clave === 'declaradoEn')?.valor).toEqual({ tipo: 'clave', v: 'certificado.declarado350EIca' });
+    expect(payload.secciones[0].filas).toEqual([
+      ['Retención en la fuente', '236540', 480, 2.5, 12],
+      ['ReteICA', '236801', 480, 0.966, 4.64],
+    ]);
+    expect(payload.secciones[0].pie).toEqual(['Total retenido', null, null, null, 16.64]);
+    expect(payload.secciones[1].filas).toEqual([['2026-09-10', 'PROV-77', 16.64]]);
+    // Sin ReteIVA en el periodo no se pinta su fila.
+    expect(payload.totales.map((t) => [t.clave, t.valor])).toEqual([['retefuente', 12], ['reteica', 4.64], ['totalRetenido', 16.64]]);
+    expect(payload.firma).toBe('retenedorContador');
+    expect(payload.pieLegal.textos[0]).toMatch(/artículo 381 del Estatuto Tributario/);
+    expect(html).toContain('Certificado de retenciones');
+    expect(html).toContain('Agente retenedor');
+    expect(html).toContain('Contador público');
+    expect(html).toContain('Mi empresa S.A.S., como agente retenedor');
+  });
+
+  it('respeta desde/hasta válidos; un hasta futuro se recorta a hoy y un desde posterior cae al 1 de enero', async () => {
+    permisos.add('finance.view');
+    await pedir(sesion(), 'certificado-retenciones', '5', { desde: '2026-09-01', hasta: '2026-09-15' });
+    await pedir(sesion(), 'certificado-retenciones', '5', { desde: '2026-12-01', hasta: '2027-01-31' });
+    await pedir(sesion(), 'certificado-retenciones', '5', { desde: '01/09/2026', hasta: '2025-12-31' });
+    expect(llamadasCertificado.map((a) => [a.p_desde, a.p_hasta])).toEqual([
+      ['2026-09-01', '2026-09-15'],
+      ['2026-01-01', '2026-09-27'],
+      ['2025-01-01', '2025-12-31'],
+    ]);
+  });
+
+  it('sin retenciones en el periodo: la tabla dice que no hubo y el total es cero', async () => {
+    permisos.add('finance.view');
+    respuestaCertificado = { conceptos: [], facturas: [], totales: { retenido: 0, retefuente: 0, reteiva: 0, reteica: 0 } };
+    const { payload, html } = await pedir(sesion(), 'certificado-retenciones', '5');
+    expect(payload.secciones[0].pie).toBeUndefined();
+    expect(payload.totales).toEqual([{ clave: 'totalRetenido', valor: 0, estilo: 'total' }]);
+    expect(html).toContain('No se practicaron retenciones a este proveedor en el periodo.');
+  });
+
+  it('un proveedor de otra organización o un id no numérico es 404 y no se llama a la RPC; sin finance.view → 403', async () => {
+    permisos.add('finance.view');
+    expect(await codigoDe(pedir(sesion(), 'certificado-retenciones', '6'))).toBe('404 NOT_FOUND');
+    expect(await codigoDe(pedir(sesion(), 'certificado-retenciones', 'abc'))).toBe('404 NOT_FOUND');
+    expect(llamadasCertificado).toEqual([]);
+    permisos.clear();
+    permisos.add('pos.view');
+    expect(await codigoDe(pedir(sesion(), 'certificado-retenciones', '5'))).toBe('403 PERMISSION_REQUIRED');
+  });
+
+  it('no se imprime en rollo de 80 mm', async () => {
+    permisos.add('finance.view');
+    const s = sesion();
+    expect(await codigoDe(armarDocumento(s.ctx, { tipo: 'certificado-retenciones', id: '5', papel: '80mm', idioma: 'es' }))).toBe('400 PAPEL_NO_DISPONIBLE');
   });
 });
 

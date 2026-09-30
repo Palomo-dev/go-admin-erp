@@ -4942,7 +4942,10 @@
         "cuentasAbiertas": "Dettes fournisseurs ouvertes",
         "pagar": "Payer",
         "lotes": "Lots reçus de ce fournisseur",
-        "pagos": "Paiements enregistrés"
+        "pagos": "Paiements enregistrés",
+        "certificado": "Certificat de retenues",
+        "certificadoAnio": "Année en cours",
+        "generar": "Générer"
       },
       "valorStock": "Valeur du stock de ses produits (toutes les succursales) :",
       "totalPagado": "Total payé :",
@@ -11806,7 +11809,8 @@
         "pdf": "Télécharger le PDF",
         "imprimir": "Imprimer",
         "anular": "Annuler",
-        "eliminar": "Supprimer le brouillon"
+        "eliminar": "Supprimer le brouillon",
+        "certificado": "Certificat de retenues"
       },
       "motivos": {
         "sinPermiso": "Vous n'avez pas l'autorisation pour cette action",
@@ -12284,7 +12288,8 @@
         "programar": "Programmer un paiement",
         "plan": "Créer un échéancier",
         "estadoCuenta": "Relevé de compte du fournisseur",
-        "factura": "Voir la facture"
+        "factura": "Voir la facture",
+        "certificado": "Certificat de retenues"
       },
       "motivos": {
         "sinPermiso": "Vous n'avez pas l'autorisation pour cette action"
@@ -12404,6 +12409,28 @@
         "fecha": "La première échéance ne peut pas être antérieure à aujourd'hui.",
         "interes": "Entre 0 et 100 %."
       }
+    },
+    "certificado": {
+      "titulo": "Certificat de retenues",
+      "descripcion": "Ce qui a été retenu à {proveedor} pendant la période, pour lui remettre le certificat (art. 381 du Statut fiscal).",
+      "periodo": "Période certifiée",
+      "cargando": "Calcul des retenues…",
+      "errorLectura": "Impossible de lire les retenues.",
+      "reintentar": "Réessayer",
+      "clases": {
+        "retefuente": "Retenue à la source",
+        "reteiva": "Retenue de TVA",
+        "reteica": "Retenue d'ICA"
+      },
+      "total": "Total retenu",
+      "alcance": "{facturas, plural, =0 {Aucune facture} one {# facture} other {# factures}} · {conceptos, plural, =0 {aucun concept} one {# concept} other {# concepts}}",
+      "sinRetenciones": "Aucune retenue pendant cette période ; le certificat sera à zéro.",
+      "nota": "Couvre toutes les succursales : l'agent de retenue est l'organisation.",
+      "descargar": "Télécharger le PDF",
+      "imprimir": "Imprimer",
+      "ver": "Voir",
+      "cerrar": "Fermer",
+      "errorDescarga": "Impossible de télécharger le certificat"
     }
   },
   "documentos": {
@@ -12421,7 +12448,8 @@
       "reporte-caja-abierta": "Rapport de caisse ouverte",
       "arqueo-caja": "Comptage de caisse",
       "estado-cuenta-proveedor": "Relevé de compte fournisseur",
-      "nota-credito-electronica": "Note de crédit électronique"
+      "nota-credito-electronica": "Note de crédit électronique",
+      "certificado-retenciones": "Certificat de retenues"
     },
     "sinNumero": "Sans numéro",
     "paginacion": {
@@ -12568,7 +12596,13 @@
       "total": "Total",
       "vencido": "Échu",
       "porVencer": "Non échu",
-      "facturaCompraAsociada": "Facture d'achat associée"
+      "facturaCompraAsociada": "Facture d'achat associée",
+      "periodoDesde": "Période du",
+      "periodoHasta": "Période au",
+      "facturasIncluidas": "Factures incluses",
+      "fechaExpedicion": "Date d'émission",
+      "ciudadExpedicion": "Ville d'émission",
+      "declaradoEn": "Déclaré dans"
     },
     "formasPago": {
       "contado": "Comptant",
@@ -12609,7 +12643,9 @@
       "movimientosCaja": "Entrées et sorties de caisse",
       "arqueos": "Comptages",
       "denominaciones": "Coupures",
-      "retenciones": "Retenues appliquées au fournisseur"
+      "retenciones": "Retenues appliquées au fournisseur",
+      "conceptosRetenidos": "Retenues pratiquées",
+      "facturasIncluidas": "Factures incluses"
     },
     "columnas": {
       "descripcion": "Désignation",
@@ -12644,12 +12680,15 @@
       "subtotal": "Sous-total",
       "base": "Base",
       "tarifa": "Taux (%)",
-      "unidad": "Unité"
+      "unidad": "Unité",
+      "cuenta": "Compte",
+      "valorRetenido": "Montant retenu"
     },
     "vacios": {
       "lineas": "Aucune ligne.",
       "movimientos": "Aucun mouvement sur la période.",
-      "facturasAbiertas": "Aucune facture ouverte."
+      "facturasAbiertas": "Aucune facture ouverte.",
+      "retencionesPeriodo": "Aucune retenue n'a été pratiquée sur ce fournisseur pendant la période."
     },
     "totales": {
       "subtotal": "Sous-total",
@@ -12682,7 +12721,11 @@
       },
       "retencion": "{concepto} ({tasa} %)",
       "totalFactura": "Total de la facture",
-      "netoPagar": "Net à payer au fournisseur"
+      "netoPagar": "Net à payer au fournisseur",
+      "retefuente": "Retenue à la source",
+      "reteiva": "Retenue de TVA",
+      "reteica": "Retenue d'ICA",
+      "totalRetenido": "Total retenu"
     },
     "firmas": {
       "recibido": "Reçu conforme",
@@ -12693,7 +12736,10 @@
       "recibe": "Reçu par",
       "datosRecibe": "Nom · Pièce · Date",
       "datosAcepta": "Nom · Pièce · Fonction · Date",
-      "datosNombre": "Nom et pièce"
+      "datosNombre": "Nom et pièce",
+      "agenteRetenedor": "Agent de retenue",
+      "contador": "Expert-comptable",
+      "datosContador": "Nom · Carte professionnelle"
     },
     "legal": {
       "resolucion": "Résolution DIAN n° {numero} du {fecha}, préfixe {prefijo}, numérotation autorisée du {desde} au {hasta}, valable jusqu’au {vigencia}.",
@@ -12712,7 +12758,8 @@
         "comprobante-egreso": "Justificatif d'un paiement effectué.",
         "cierre-caja": "Rapport de caisse interne.",
         "arqueo-caja": "Rapport interne de comptage de caisse.",
-        "estado-cuenta-proveedor": "Relevé de compte du fournisseur selon nos registres. En cas d'écart, contactez-nous dans les 10 jours suivant sa réception."
+        "estado-cuenta-proveedor": "Relevé de compte du fournisseur selon nos registres. En cas d'écart, contactez-nous dans les 10 jours suivant sa réception.",
+        "certificado-retenciones": "Certificat délivré conformément à l'article 381 du Statut fiscal colombien. Aucune signature manuscrite requise (article 10 du décret 836 de 1991)."
       }
     },
     "movimientos": {
@@ -12788,6 +12835,14 @@
       "pos": "Vente enregistrée au point de vente (POS).",
       "mesa": "Vente enregistrée depuis une table.",
       "ventaPos": "Vente POS"
+    },
+    "certificado": {
+      "prefijo": "CR",
+      "totalRetenido": "Total retenu",
+      "declarado350": "Formulaire 350",
+      "declaradoIca": "Déclaration d'ICA",
+      "declarado350EIca": "Formulaire 350 et ICA",
+      "constancia": "{emisor}, en qualité d'agent de retenue, certifie avoir pratiqué sur {proveedor}, pendant la période indiquée, les retenues détaillées ci-dessous, sur les paiements ou crédits des factures incluses."
     }
   },
   "posVentas": {

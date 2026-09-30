@@ -6605,7 +6605,10 @@
         "cuentasAbiertas": "Open accounts payable",
         "pagar": "Pay",
         "lotes": "Lots received from this supplier",
-        "pagos": "Recorded payments"
+        "pagos": "Recorded payments",
+        "certificado": "Withholding certificate",
+        "certificadoAnio": "Current year",
+        "generar": "Generate"
       },
       "valorStock": "Stock value of its products (all branches):",
       "totalPagado": "Total paid:",
@@ -13469,7 +13472,8 @@
         "pdf": "Download PDF",
         "imprimir": "Print",
         "anular": "Void",
-        "eliminar": "Delete draft"
+        "eliminar": "Delete draft",
+        "certificado": "Withholding certificate"
       },
       "motivos": {
         "sinPermiso": "You don't have permission for this action",
@@ -13947,7 +13951,8 @@
         "programar": "Schedule payment",
         "plan": "Create installment plan",
         "estadoCuenta": "Supplier account statement",
-        "factura": "View invoice"
+        "factura": "View invoice",
+        "certificado": "Withholding certificate"
       },
       "motivos": {
         "sinPermiso": "You don't have permission for this action"
@@ -14067,6 +14072,28 @@
         "fecha": "The first installment can't be before today.",
         "interes": "Between 0 and 100 %."
       }
+    },
+    "certificado": {
+      "titulo": "Withholding certificate",
+      "descripcion": "What was withheld from {proveedor} in the period, to issue the certificate (art. 381 Colombian Tax Code).",
+      "periodo": "Certified period",
+      "cargando": "Calculating withholdings…",
+      "errorLectura": "Could not read the withholdings.",
+      "reintentar": "Retry",
+      "clases": {
+        "retefuente": "Income tax withholding",
+        "reteiva": "VAT withholding",
+        "reteica": "ICA withholding"
+      },
+      "total": "Total withheld",
+      "alcance": "{facturas, plural, =0 {No invoices} one {# invoice} other {# invoices}} · {conceptos, plural, =0 {no items} one {# item} other {# items}}",
+      "sinRetenciones": "No withholdings were applied in this period; the certificate will show zero.",
+      "nota": "Covers every branch: the withholding agent is the organization.",
+      "descargar": "Download PDF",
+      "imprimir": "Print",
+      "ver": "View",
+      "cerrar": "Close",
+      "errorDescarga": "Could not download the certificate"
     }
   },
   "documentos": {
@@ -14084,7 +14111,8 @@
       "reporte-caja-abierta": "Open cash register report",
       "arqueo-caja": "Cash count",
       "estado-cuenta-proveedor": "Supplier account statement",
-      "nota-credito-electronica": "Electronic credit note"
+      "nota-credito-electronica": "Electronic credit note",
+      "certificado-retenciones": "Withholding certificate"
     },
     "sinNumero": "No number yet",
     "paginacion": {
@@ -14231,7 +14259,13 @@
       "total": "Total",
       "vencido": "Overdue",
       "porVencer": "Not yet due",
-      "facturaCompraAsociada": "Related purchase invoice"
+      "facturaCompraAsociada": "Related purchase invoice",
+      "periodoDesde": "Period from",
+      "periodoHasta": "Period to",
+      "facturasIncluidas": "Invoices included",
+      "fechaExpedicion": "Issue date",
+      "ciudadExpedicion": "City of issue",
+      "declaradoEn": "Filed in"
     },
     "formasPago": {
       "contado": "Cash",
@@ -14272,7 +14306,9 @@
       "movimientosCaja": "Cash in and out",
       "arqueos": "Cash counts",
       "denominaciones": "Denominations",
-      "retenciones": "Withholdings applied to the supplier"
+      "retenciones": "Withholdings applied to the supplier",
+      "conceptosRetenidos": "Withholdings applied",
+      "facturasIncluidas": "Invoices included"
     },
     "columnas": {
       "descripcion": "Description",
@@ -14307,12 +14343,15 @@
       "subtotal": "Subtotal",
       "base": "Base",
       "tarifa": "Rate (%)",
-      "unidad": "Unit"
+      "unidad": "Unit",
+      "cuenta": "Account",
+      "valorRetenido": "Amount withheld"
     },
     "vacios": {
       "lineas": "No lines.",
       "movimientos": "No transactions in the period.",
-      "facturasAbiertas": "No open invoices."
+      "facturasAbiertas": "No open invoices.",
+      "retencionesPeriodo": "No withholdings were applied to this supplier in the period."
     },
     "totales": {
       "subtotal": "Subtotal",
@@ -14345,7 +14384,11 @@
       },
       "retencion": "{concepto} ({tasa} %)",
       "totalFactura": "Invoice total",
-      "netoPagar": "Net payable to supplier"
+      "netoPagar": "Net payable to supplier",
+      "retefuente": "Income tax withholding",
+      "reteiva": "VAT withholding",
+      "reteica": "ICA withholding",
+      "totalRetenido": "Total withheld"
     },
     "firmas": {
       "recibido": "Received in good order",
@@ -14356,7 +14399,10 @@
       "recibe": "Received by",
       "datosRecibe": "Name · ID · Date",
       "datosAcepta": "Name · ID · Title · Date",
-      "datosNombre": "Name and ID"
+      "datosNombre": "Name and ID",
+      "agenteRetenedor": "Withholding agent",
+      "contador": "Public accountant",
+      "datosContador": "Name · Professional license"
     },
     "legal": {
       "resolucion": "DIAN resolution no. {numero} dated {fecha}, prefix {prefijo}, authorized numbering from {desde} to {hasta}, valid until {vigencia}.",
@@ -14375,7 +14421,8 @@
         "comprobante-egreso": "Voucher of a payment made.",
         "cierre-caja": "Internal cash register report.",
         "arqueo-caja": "Internal cash count report.",
-        "estado-cuenta-proveedor": "Supplier account statement according to our records. If you find any discrepancy, please contact us within 10 days of receipt."
+        "estado-cuenta-proveedor": "Supplier account statement according to our records. If you find any discrepancy, please contact us within 10 days of receipt.",
+        "certificado-retenciones": "Certificate issued under article 381 of the Colombian Tax Code. Handwritten signature not required (article 10 of Decree 836 of 1991)."
       }
     },
     "movimientos": {
@@ -14451,6 +14498,14 @@
       "pos": "Sale recorded at the point of sale (POS).",
       "mesa": "Sale recorded from a table.",
       "ventaPos": "POS sale"
+    },
+    "certificado": {
+      "prefijo": "CR",
+      "totalRetenido": "Total withheld",
+      "declarado350": "Form 350",
+      "declaradoIca": "ICA return",
+      "declarado350EIca": "Form 350 and ICA",
+      "constancia": "{emisor}, as withholding agent, certifies that during the stated period it applied to {proveedor} the withholdings detailed below, on the payments or credits of the invoices included."
     }
   },
   "posVentas": {

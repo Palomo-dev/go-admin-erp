@@ -4942,7 +4942,10 @@
         "cuentasAbiertas": "Contas a pagar em aberto",
         "pagar": "Pagar",
         "lotes": "Lotes recebidos deste fornecedor",
-        "pagos": "Pagamentos registrados"
+        "pagos": "Pagamentos registrados",
+        "certificado": "Certificado de retenções",
+        "certificadoAnio": "Ano corrente",
+        "generar": "Gerar"
       },
       "valorStock": "Valor em estoque dos produtos (todas as filiais):",
       "totalPagado": "Total pago:",
@@ -11806,7 +11809,8 @@
         "pdf": "Baixar PDF",
         "imprimir": "Imprimir",
         "anular": "Anular",
-        "eliminar": "Excluir rascunho"
+        "eliminar": "Excluir rascunho",
+        "certificado": "Certificado de retenções"
       },
       "motivos": {
         "sinPermiso": "Você não tem permissão para esta ação",
@@ -12284,7 +12288,8 @@
         "programar": "Programar pagamento",
         "plan": "Criar plano de parcelas",
         "estadoCuenta": "Extrato do fornecedor",
-        "factura": "Ver fatura"
+        "factura": "Ver fatura",
+        "certificado": "Certificado de retenções"
       },
       "motivos": {
         "sinPermiso": "Você não tem permissão para esta ação"
@@ -12404,6 +12409,28 @@
         "fecha": "A primeira parcela não pode ser anterior a hoje.",
         "interes": "Entre 0 e 100 %."
       }
+    },
+    "certificado": {
+      "titulo": "Certificado de retenções",
+      "descripcion": "O que foi retido de {proveedor} no período, para emitir o certificado (art. 381 do Estatuto Tributário).",
+      "periodo": "Período certificado",
+      "cargando": "Calculando retenções…",
+      "errorLectura": "Não foi possível ler as retenções.",
+      "reintentar": "Tentar novamente",
+      "clases": {
+        "retefuente": "Retenção na fonte",
+        "reteiva": "Retenção de IVA",
+        "reteica": "Retenção de ICA"
+      },
+      "total": "Total retido",
+      "alcance": "{facturas, plural, =0 {Sem faturas} one {# fatura} other {# faturas}} · {conceptos, plural, =0 {sem conceitos} one {# conceito} other {# conceitos}}",
+      "sinRetenciones": "Nenhuma retenção foi praticada neste período; o certificado sairá zerado.",
+      "nota": "Abrange todas as filiais: o agente retentor é a organização.",
+      "descargar": "Baixar PDF",
+      "imprimir": "Imprimir",
+      "ver": "Ver",
+      "cerrar": "Fechar",
+      "errorDescarga": "Não foi possível baixar o certificado"
     }
   },
   "documentos": {
@@ -12421,7 +12448,8 @@
       "reporte-caja-abierta": "Relatório de caixa aberto",
       "arqueo-caja": "Conferência de caixa",
       "estado-cuenta-proveedor": "Extrato do fornecedor",
-      "nota-credito-electronica": "Nota de crédito eletrônica"
+      "nota-credito-electronica": "Nota de crédito eletrônica",
+      "certificado-retenciones": "Certificado de retenções"
     },
     "sinNumero": "Sem numeração",
     "paginacion": {
@@ -12568,7 +12596,13 @@
       "total": "Total",
       "vencido": "Vencido",
       "porVencer": "A vencer",
-      "facturaCompraAsociada": "Fatura de compra associada"
+      "facturaCompraAsociada": "Fatura de compra associada",
+      "periodoDesde": "Período de",
+      "periodoHasta": "Período até",
+      "facturasIncluidas": "Faturas incluídas",
+      "fechaExpedicion": "Data de emissão",
+      "ciudadExpedicion": "Cidade de emissão",
+      "declaradoEn": "Declarado em"
     },
     "formasPago": {
       "contado": "À vista",
@@ -12609,7 +12643,9 @@
       "movimientosCaja": "Entradas e saídas de caixa",
       "arqueos": "Conferências",
       "denominaciones": "Cédulas e moedas",
-      "retenciones": "Retenções aplicadas ao fornecedor"
+      "retenciones": "Retenções aplicadas ao fornecedor",
+      "conceptosRetenidos": "Retenções praticadas",
+      "facturasIncluidas": "Faturas incluídas"
     },
     "columnas": {
       "descripcion": "Descrição",
@@ -12644,12 +12680,15 @@
       "subtotal": "Subtotal",
       "base": "Base",
       "tarifa": "Alíquota (%)",
-      "unidad": "Unidade"
+      "unidad": "Unidade",
+      "cuenta": "Conta",
+      "valorRetenido": "Valor retido"
     },
     "vacios": {
       "lineas": "Sem linhas.",
       "movimientos": "Sem movimentos no período.",
-      "facturasAbiertas": "Não há faturas em aberto."
+      "facturasAbiertas": "Não há faturas em aberto.",
+      "retencionesPeriodo": "Nenhuma retenção foi praticada a este fornecedor no período."
     },
     "totales": {
       "subtotal": "Subtotal",
@@ -12682,7 +12721,11 @@
       },
       "retencion": "{concepto} ({tasa} %)",
       "totalFactura": "Total da fatura",
-      "netoPagar": "Líquido a pagar ao fornecedor"
+      "netoPagar": "Líquido a pagar ao fornecedor",
+      "retefuente": "Retenção na fonte",
+      "reteiva": "Retenção de IVA",
+      "reteica": "Retenção de ICA",
+      "totalRetenido": "Total retido"
     },
     "firmas": {
       "recibido": "Recebido de acordo",
@@ -12693,7 +12736,10 @@
       "recibe": "Recebido por",
       "datosRecibe": "Nome · Documento · Data",
       "datosAcepta": "Nome · Documento · Cargo · Data",
-      "datosNombre": "Nome e documento"
+      "datosNombre": "Nome e documento",
+      "agenteRetenedor": "Agente retentor",
+      "contador": "Contador público",
+      "datosContador": "Nome · Registro profissional"
     },
     "legal": {
       "resolucion": "Resolução DIAN n.º {numero} de {fecha}, prefixo {prefijo}, numeração autorizada de {desde} a {hasta}, válida até {vigencia}.",
@@ -12712,7 +12758,8 @@
         "comprobante-egreso": "Comprovante de um pagamento realizado.",
         "cierre-caja": "Relatório interno de caixa.",
         "arqueo-caja": "Relatório interno de conferência de caixa.",
-        "estado-cuenta-proveedor": "Extrato do fornecedor segundo nossos registros. Se encontrar alguma diferença, entre em contato conosco em até 10 dias após o recebimento."
+        "estado-cuenta-proveedor": "Extrato do fornecedor segundo nossos registros. Se encontrar alguma diferença, entre em contato conosco em até 10 dias após o recebimento.",
+        "certificado-retenciones": "Certificado emitido conforme o artigo 381 do Estatuto Tributário colombiano. Não requer assinatura manuscrita (artigo 10 do Decreto 836 de 1991)."
       }
     },
     "movimientos": {
@@ -12788,6 +12835,14 @@
       "pos": "Venda registrada no ponto de venda (PDV).",
       "mesa": "Venda registrada a partir de uma mesa.",
       "ventaPos": "Venda do PDV"
+    },
+    "certificado": {
+      "prefijo": "CR",
+      "totalRetenido": "Total retido",
+      "declarado350": "Formulário 350",
+      "declaradoIca": "Declaração de ICA",
+      "declarado350EIca": "Formulário 350 e ICA",
+      "constancia": "{emisor}, como agente retentor, certifica que durante o período indicado praticou a {proveedor} as retenções detalhadas, sobre os pagamentos ou créditos das faturas incluídas."
     }
   },
   "posVentas": {

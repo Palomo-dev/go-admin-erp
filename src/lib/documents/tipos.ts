@@ -25,6 +25,7 @@ export const TIPOS_DOCUMENTO = [
   'documento-soporte',
   'estado-cuenta',
   'estado-cuenta-proveedor',
+  'certificado-retenciones',
   'recibo-caja',
   'comprobante-egreso',
   'cierre-caja',
@@ -222,7 +223,7 @@ export interface PieLegal {
   qr: QrDocumento | null;
 }
 
-export type Firma = 'recibido' | 'aceptacion' | 'cajeroSupervisor' | 'entregaRecibe';
+export type Firma = 'recibido' | 'aceptacion' | 'cajeroSupervisor' | 'entregaRecibe' | 'retenedorContador';
 
 export type MarcaAgua = 'borrador' | 'anulada' | 'pagada';
 

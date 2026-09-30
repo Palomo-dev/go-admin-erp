@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { CalendarClock, CalendarRange, ClipboardList, FileText, HandCoins, Hourglass, ReceiptText, ScrollText, Trash2, Truck, Wallet } from 'lucide-react';
+import { CalendarClock, CalendarRange, ClipboardList, FileBadge, FileText, HandCoins, Hourglass, ReceiptText, ScrollText, Trash2, Truck, Wallet } from 'lucide-react';
 import {
   AccionRapida,
   DataTable,
@@ -46,9 +46,10 @@ import { RegistrarPagoProveedor } from '../RegistrarPagoProveedor';
 import { ProgramarPagoDialog } from '../ProgramarPagoDialog';
 import { AprobacionesPanel } from '../AprobacionesPanel';
 import { EstadoCuentaProveedorDialog } from '../EstadoCuentaProveedorDialog';
+import { CertificadoRetencionesDialog, rangoMesDe } from '../CertificadoRetencionesDialog';
 import { PlanCuotasDialog } from '../PlanCuotasDialog';
 
-type DialogoAbierto = 'pagar' | 'programar' | 'plan' | 'estadoCuenta' | 'eliminarPlan' | null;
+type DialogoAbierto = 'pagar' | 'programar' | 'plan' | 'estadoCuenta' | 'certificado' | 'eliminarPlan' | null;
 
 function estadoCuenta(c: DetalleCxp, hoy: string, diaVence: string | null): string {
   if (c.status === 'void' || c.status === 'cancelled') return 'anulada';
@@ -209,6 +210,13 @@ export default function CuentaPorPagarDetalle({ id }: { id: string }) {
 
   const menu: AccionFila[] = [
     { id: 'estadoCuenta', etiqueta: td('acciones.estadoCuenta'), icono: ScrollText, onSelect: () => setDialogo('estadoCuenta'), oculta: !c.proveedor },
+    {
+      id: 'certificado',
+      etiqueta: td('acciones.certificado'),
+      icono: FileBadge,
+      onSelect: () => setDialogo('certificado'),
+      oculta: !c.proveedor || retenido <= 0,
+    },
     {
       id: 'programar',
       etiqueta: td('acciones.programar'),
@@ -501,6 +509,15 @@ export default function CuentaPorPagarDetalle({ id }: { id: string }) {
           onAbiertoChange={(v) => !v && setDialogo(null)}
           proveedorId={c.proveedor.id}
           proveedorNombre={c.proveedor.name}
+        />
+      )}
+      {c.proveedor && retenido > 0 && (
+        <CertificadoRetencionesDialog
+          abierto={dialogo === 'certificado'}
+          onAbiertoChange={(v) => !v && setDialogo(null)}
+          proveedorId={c.proveedor.id}
+          proveedorNombre={c.proveedor.name}
+          rangoInicial={c.factura?.issue_date ? rangoMesDe(toDate(new Date(c.factura.issue_date)), hoy) : undefined}
         />
       )}
     </div>

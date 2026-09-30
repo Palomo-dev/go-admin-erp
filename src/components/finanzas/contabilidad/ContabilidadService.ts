@@ -16,6 +16,9 @@ export interface JournalEntry {
   created_at: string;
   updated_at: string;
   fact_key?: string | null;
+  currency_code?: string | null;
+  exchange_rate?: number | null;
+  base_currency_code?: string | null;
   lines?: JournalLine[];
 }
 
@@ -71,6 +74,8 @@ export interface JournalLine {
   credit: number;
   created_at: string;
   updated_at: string;
+  /** Sin llave foránea a `cost_centers`: el nombre se lee aparte (`centrosDeCosto`). */
+  cost_center_id?: string | null;
   account?: ChartAccount;
 }
 
@@ -260,6 +265,29 @@ export class ContabilidadService {
     }
 
     return data || [];
+  }
+
+  /** Código y nombre de los centros de costo de la organización con esos ids. */
+  static async centrosDeCosto(ids: string[]): Promise<Map<string, { code: string; name: string }>> {
+    if (ids.length === 0) return new Map();
+    const { data, error } = await supabase
+      .from('cost_centers')
+      .select('id, code, name')
+      .eq('organization_id', this.getOrganizationId())
+      .in('id', ids);
+    if (error) throw error;
+    return new Map(((data ?? []) as Array<{ id: string; code: string; name: string }>).map((c) => [c.id, { code: c.code, name: c.name }]));
+  }
+
+  static async nombreSucursal(branchId: number): Promise<string | null> {
+    const { data, error } = await supabase
+      .from('branches')
+      .select('name')
+      .eq('id', branchId)
+      .eq('organization_id', this.getOrganizationId())
+      .maybeSingle();
+    if (error) throw error;
+    return (data as { name: string | null } | null)?.name ?? null;
   }
 
   static async obtenerAsiento(id: number): Promise<JournalEntry | null> {

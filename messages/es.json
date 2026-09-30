@@ -24739,5 +24739,48 @@
       "pais": "País",
       "sesiones": "Sesiones"
     }
+  },
+  "asientoContable": {
+    "origenCompra": {
+      "titulo": "Asiento automático de la compra {numero}",
+      "conRetenciones": "Lo generó la confirmación de la factura; no se edita ni se borra (para revertirlo, anula la factura). Al proveedor se le acredita solo el neto, {neto}; las retenciones, {retenido}, van al pasivo de impuestos por pagar.",
+      "sinRetenciones": "Lo generó la confirmación de la factura; no se edita ni se borra (para revertirlo, anula la factura). Al proveedor se le acredita el total, {total}: la factura no tiene retenciones.",
+      "irFactura": "Ir a la factura",
+      "cadena": "Cadena del documento",
+      "pago": "Pago",
+      "retenciones": "Retenciones",
+      "verCertificado": "Ver certificado",
+      "conceptos": "{n, plural, one {# concepto} other {# conceptos}}"
+    },
+    "datos": {
+      "titulo": "Datos del asiento",
+      "fecha": "Fecha contable",
+      "sucursal": "Sucursal",
+      "origen": "Origen",
+      "moneda": "Moneda",
+      "tasa": "Tasa {tasa} frente a {base}",
+      "claveHecho": "Clave del hecho",
+      "creado": "Creado el",
+      "origenes": {
+        "manual": "Manual",
+        "reversal": "Contra-asiento",
+        "invoice_sales": "Factura de venta",
+        "invoice_purchase": "Factura de compra",
+        "sales": "Venta POS",
+        "payments": "Pago",
+        "stock_movements": "Movimiento de inventario",
+        "inventory_adjustment": "Ajuste de inventario",
+        "accounts_receivable": "Cuenta por cobrar",
+        "accounts_payable": "Cuenta por pagar",
+        "purchase_orders": "Orden de compra",
+        "cash_movements": "Movimiento de caja",
+        "cash_sessions": "Sesión de caja",
+        "commissions": "Comisión",
+        "credit_note": "Nota crédito"
+      }
+    },
+    "lineas": {
+      "centroCosto": "Centro de costo"
+    }
   }
 }

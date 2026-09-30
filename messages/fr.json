@@ -24636,5 +24636,48 @@
       "pais": "Pays",
       "sesiones": "Sessions"
     }
+  },
+  "asientoContable": {
+    "origenCompra": {
+      "titulo": "Écriture automatique de l'achat {numero}",
+      "conRetenciones": "Générée à la confirmation de la facture ; elle ne se modifie ni ne se supprime (pour l'annuler, annulez la facture). Le fournisseur n'est crédité que du net, {neto} ; les retenues, {retenido}, vont aux impôts à payer.",
+      "sinRetenciones": "Générée à la confirmation de la facture ; elle ne se modifie ni ne se supprime (pour l'annuler, annulez la facture). Le fournisseur est crédité du total, {total} : la facture n'a pas de retenues.",
+      "irFactura": "Aller à la facture",
+      "cadena": "Chaîne du document",
+      "pago": "Paiement",
+      "retenciones": "Retenues",
+      "verCertificado": "Voir le certificat",
+      "conceptos": "{n, plural, one {# concept} other {# concepts}}"
+    },
+    "datos": {
+      "titulo": "Données de l'écriture",
+      "fecha": "Date comptable",
+      "sucursal": "Succursale",
+      "origen": "Origine",
+      "moneda": "Devise",
+      "tasa": "Taux {tasa} par rapport à {base}",
+      "claveHecho": "Clé de l'événement",
+      "creado": "Créée le",
+      "origenes": {
+        "manual": "Manuelle",
+        "reversal": "Contre-passation",
+        "invoice_sales": "Facture de vente",
+        "invoice_purchase": "Facture d'achat",
+        "sales": "Vente PDV",
+        "payments": "Paiement",
+        "stock_movements": "Mouvement de stock",
+        "inventory_adjustment": "Ajustement de stock",
+        "accounts_receivable": "Compte client",
+        "accounts_payable": "Compte fournisseur",
+        "purchase_orders": "Bon de commande",
+        "cash_movements": "Mouvement de caisse",
+        "cash_sessions": "Session de caisse",
+        "commissions": "Commission",
+        "credit_note": "Avoir"
+      }
+    },
+    "lineas": {
+      "centroCosto": "Centre de coûts"
+    }
   }
 }

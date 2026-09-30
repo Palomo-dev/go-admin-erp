@@ -24739,5 +24739,48 @@
       "pais": "Country",
       "sesiones": "Sessions"
     }
+  },
+  "asientoContable": {
+    "origenCompra": {
+      "titulo": "Automatic entry for purchase {numero}",
+      "conRetenciones": "Created when the invoice was confirmed; it cannot be edited or deleted (to reverse it, void the invoice). The supplier is credited only the net amount, {neto}; the withholdings, {retenido}, go to taxes payable.",
+      "sinRetenciones": "Created when the invoice was confirmed; it cannot be edited or deleted (to reverse it, void the invoice). The supplier is credited the total, {total}: the invoice has no withholdings.",
+      "irFactura": "Go to invoice",
+      "cadena": "Document chain",
+      "pago": "Payment",
+      "retenciones": "Withholdings",
+      "verCertificado": "View certificate",
+      "conceptos": "{n, plural, one {# item} other {# items}}"
+    },
+    "datos": {
+      "titulo": "Entry details",
+      "fecha": "Posting date",
+      "sucursal": "Branch",
+      "origen": "Source",
+      "moneda": "Currency",
+      "tasa": "Rate {tasa} against {base}",
+      "claveHecho": "Event key",
+      "creado": "Created on",
+      "origenes": {
+        "manual": "Manual",
+        "reversal": "Reversal",
+        "invoice_sales": "Sales invoice",
+        "invoice_purchase": "Purchase invoice",
+        "sales": "POS sale",
+        "payments": "Payment",
+        "stock_movements": "Stock movement",
+        "inventory_adjustment": "Inventory adjustment",
+        "accounts_receivable": "Account receivable",
+        "accounts_payable": "Account payable",
+        "purchase_orders": "Purchase order",
+        "cash_movements": "Cash movement",
+        "cash_sessions": "Cash session",
+        "commissions": "Commission",
+        "credit_note": "Credit note"
+      }
+    },
+    "lineas": {
+      "centroCosto": "Cost center"
+    }
   }
 }

@@ -24636,5 +24636,48 @@
       "pais": "País",
       "sesiones": "Sessões"
     }
+  },
+  "asientoContable": {
+    "origenCompra": {
+      "titulo": "Lançamento automático da compra {numero}",
+      "conRetenciones": "Gerado ao confirmar a fatura; não se edita nem se apaga (para revertê-lo, anule a fatura). Ao fornecedor credita-se apenas o líquido, {neto}; as retenções, {retenido}, vão para impostos a pagar.",
+      "sinRetenciones": "Gerado ao confirmar a fatura; não se edita nem se apaga (para revertê-lo, anule a fatura). Ao fornecedor credita-se o total, {total}: a fatura não tem retenções.",
+      "irFactura": "Ir para a fatura",
+      "cadena": "Cadeia do documento",
+      "pago": "Pagamento",
+      "retenciones": "Retenções",
+      "verCertificado": "Ver certificado",
+      "conceptos": "{n, plural, one {# conceito} other {# conceitos}}"
+    },
+    "datos": {
+      "titulo": "Dados do lançamento",
+      "fecha": "Data contábil",
+      "sucursal": "Filial",
+      "origen": "Origem",
+      "moneda": "Moeda",
+      "tasa": "Taxa {tasa} em relação a {base}",
+      "claveHecho": "Chave do fato",
+      "creado": "Criado em",
+      "origenes": {
+        "manual": "Manual",
+        "reversal": "Estorno",
+        "invoice_sales": "Fatura de venda",
+        "invoice_purchase": "Fatura de compra",
+        "sales": "Venda PDV",
+        "payments": "Pagamento",
+        "stock_movements": "Movimento de estoque",
+        "inventory_adjustment": "Ajuste de estoque",
+        "accounts_receivable": "Conta a receber",
+        "accounts_payable": "Conta a pagar",
+        "purchase_orders": "Ordem de compra",
+        "cash_movements": "Movimento de caixa",
+        "cash_sessions": "Sessão de caixa",
+        "commissions": "Comissão",
+        "credit_note": "Nota de crédito"
+      }
+    },
+    "lineas": {
+      "centroCosto": "Centro de custo"
+    }
   }
 }

@@ -512,13 +512,11 @@ export const finanzasReports: ReportDefinition[] = [
     titulo: 'Retenciones practicadas',
     descripcion: 'ReteFuente, ReteIVA y ReteICA practicadas a proveedores en facturas de compra confirmadas, por concepto y tarifa',
     categoria: 'financiero',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await db.rpc('fn_reporte_retenciones_practicadas', {
         p_organization_id: orgId,
         p_from: start,
@@ -561,13 +559,11 @@ export const finanzasReports: ReportDefinition[] = [
     titulo: 'Retenciones por proveedor',
     descripcion: 'Lo retenido a cada proveedor en el período: la base del certificado de retenciones que se le expide',
     categoria: 'financiero',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual', 'anual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await db.rpc('fn_reporte_retenciones_practicadas', {
         p_organization_id: orgId,
         p_from: start,

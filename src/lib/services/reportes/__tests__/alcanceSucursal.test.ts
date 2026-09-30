@@ -43,8 +43,11 @@ function cuerpoDeFetch(def: ReportDefinition): string {
 describe('catálogo: alcance coherente con el uso de branchId', () => {
   const definiciones = todasLasDefiniciones();
 
-  test('el catálogo trae las 69 definiciones y todas declaran alcance', () => {
-    expect(definiciones.length).toBe(69);
+  // El conteo protege contra perder una definición al reorganizar el catálogo.
+  // 71 = las 69 de #261 + «Retenciones practicadas» y «Retenciones por
+  // proveedor» de #265. Si agregas o quitas un reporte, actualízalo aquí.
+  test('el catálogo trae las 71 definiciones y todas declaran alcance', () => {
+    expect(definiciones.length).toBe(71);
     const sinAlcance = definiciones.filter((d) => d.alcance !== 'sucursal' && d.alcance !== 'organizacion');
     expect(sinAlcance.map((d) => d.id)).toEqual([]);
   });

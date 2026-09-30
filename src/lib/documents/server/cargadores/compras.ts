@@ -112,7 +112,7 @@ async function pagosDeCompra(sesion: SesionDocumento, facturaId: string): Promis
   return (data ?? []) as Array<FilaPago & { discount_amount?: number | string | null }>;
 }
 
-interface FilaRetencion {
+export interface FilaRetencion {
   concept: string;
   base: number | string | null;
   rate: number | string | null;
@@ -120,7 +120,7 @@ interface FilaRetencion {
 }
 
 /** Retenciones de la factura (`invoice_purchase_withholdings`, migración 20260926100000). */
-async function retencionesDeCompra(sesion: SesionDocumento, facturaId: string): Promise<FilaRetencion[]> {
+export async function retencionesDeCompra(sesion: SesionDocumento, facturaId: string): Promise<FilaRetencion[]> {
   const { data, error } = await sesion.supabase
     .from('invoice_purchase_withholdings')
     .select('concept, base, rate, amount, created_at')
@@ -129,6 +129,11 @@ async function retencionesDeCompra(sesion: SesionDocumento, facturaId: string): 
     .order('created_at', { ascending: true });
   if (error) fallaLectura('invoice_purchase_withholdings', error);
   return (data ?? []) as FilaRetencion[];
+}
+
+/** Una fila restada por retención; la factura de compra y el comprobante de egreso las pintan igual. */
+export function filasRetencion(retenciones: readonly FilaRetencion[]): FilaTotal[] {
+  return retenciones.map((r) => ({ clave: 'retencion', vars: { concepto: r.concept, tasa: String(num(r.rate)) }, valor: num(r.amount), resta: true }));
 }
 
 export async function cargarFacturaCompra(
@@ -170,10 +175,7 @@ export async function cargarFacturaCompra(
     const filaTotal = totales[totales.length - 1];
     filaTotal.clave = 'totalFactura';
     filaTotal.estilo = 'normal';
-    for (const r of retenciones) {
-      totales.push({ clave: 'retencion', vars: { concepto: r.concept, tasa: String(num(r.rate)) }, valor: num(r.amount), resta: true });
-    }
-    totales.push({ clave: 'netoPagar', valor: neto, estilo: 'total' });
+    totales.push(...filasRetencion(retenciones), { clave: 'netoPagar', valor: neto, estilo: 'total' });
   }
 
   // Pagado = amount + discount_amount, el mismo criterio que `fn_invoice_purchase_paid` (D5).

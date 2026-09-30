@@ -302,6 +302,31 @@ describe('recibo de caja y comprobante de egreso', () => {
     const { payload } = await pedir(sesion(), 'comprobante-egreso', P2);
     expect(payload.contraparte).toMatchObject({ rol: 'proveedor', nombre: 'Proveedor Uno' });
   });
+
+  it('egreso de una factura con retenciones: total de la factura, cada retención restada y el neto antes del valor pagado', async () => {
+    permisos.add('finance.view');
+    const s = sesion();
+    const { payload, html } = await pedir(s, 'comprobante-egreso', P2);
+    expect(payload.totales.map((t) => [t.clave, t.valor])).toEqual([
+      ['totalFactura', 500],
+      ['retencion', 12],
+      ['netoPagar', 488],
+      ['valorPagado', 500],
+    ]);
+    expect(payload.totales.find((t) => t.clave === 'retencion')).toMatchObject({ resta: true, vars: { concepto: 'Retención en la fuente', tasa: '2.5' } });
+    expect(payload.totales.filter((t) => t.estilo === 'total').map((t) => t.clave)).toEqual(['valorPagado']);
+    expect(html).toContain('Neto a pagar al proveedor');
+    const consulta = s.supabase.consultas.find((c) => c.tabla === 'invoice_purchase_withholdings');
+    expect(consulta?.filtros).toContainEqual(['organization_id', 'eq', ORG]);
+  });
+
+  it('egreso sin retenciones: solo el valor pagado, como antes', async () => {
+    permisos.add('finance.view');
+    const tablas = datos();
+    tablas.invoice_purchase_withholdings = [];
+    const { payload } = await pedir(sesion(tablas), 'comprobante-egreso', P2);
+    expect(payload.totales.map((t) => t.clave)).toEqual(['valorPagado']);
+  });
 });
 
 /**

@@ -178,17 +178,33 @@ export async function buscarProductosDocumento(org: number, c: CriteriosProducto
 const SELECT_PRODUCTO_DOCUMENTO =
   `id, name, sku, barcode, description, product_type, track_stock, track_serial, ${COLUMNAS_CANTIDAD_PRODUCTO}, product_prices(price, effective_from, effective_to), product_costs(cost, effective_from, effective_to), product_tax_relations(organization_taxes(id, name, rate, is_default, is_active, kind, tax_templates(code))), product_images(storage_path, is_primary, display_order)`;
 
+/**
+ * Dos pasos: primero los ids (filtro, orden y límite sobre `products` solo),
+ * después las relaciones de ESOS ids. En una sola consulta, PostgREST resolvía
+ * precios, costos, impuestos e imágenes (con su RLS) de TODOS los productos de
+ * la organización antes de ordenar por nombre y cortar: con ~24.000 productos
+ * se pasaba del statement_timeout y el diálogo decía «No pudimos buscar los
+ * productos» (2026-09-30).
+ */
 async function consultarProductos(org: number, f: { texto?: string; ids: number[] | null; limite: number; conPadres?: boolean }, senal?: AbortSignal): Promise<FilaProducto[]> {
-  let q = supabase.from('products').select(SELECT_PRODUCTO_DOCUMENTO).eq('organization_id', org);
+  let q = supabase.from('products').select('id').eq('organization_id', org);
   if (!f.conPadres) q = q.eq('status', 'active').not('is_parent', 'is', true);
-  q = q.order('name').limit(f.limite);
+  q = q.order('name').order('id').limit(f.limite);
   const filtroTexto = ilikeAnyOf(['name', 'sku', 'barcode', 'reference'], f.texto ?? '');
   if (filtroTexto) q = q.or(filtroTexto);
   if (f.ids) q = q.in('id', f.ids.slice(0, 1000));
   if (senal) q = q.abortSignal(senal);
-  const { data, error } = await q;
+  const { data: idsData, error: idsError } = await q;
+  if (idsError) throw idsError;
+  const orden = ((idsData ?? []) as { id: number }[]).map((r) => r.id);
+  if (orden.length === 0) return [];
+
+  let qd = supabase.from('products').select(SELECT_PRODUCTO_DOCUMENTO).eq('organization_id', org).in('id', orden);
+  if (senal) qd = qd.abortSignal(senal);
+  const { data, error } = await qd;
   if (error) throw error;
-  return (data ?? []) as unknown as FilaProducto[];
+  const porId = new Map(((data ?? []) as unknown as FilaProducto[]).map((p) => [p.id, p]));
+  return orden.map((id) => porId.get(id)).filter((p): p is FilaProducto => !!p);
 }
 
 async function mapearProductos(

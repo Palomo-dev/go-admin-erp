@@ -25107,7 +25107,8 @@
         "ventas-caja": "Ventes et caisse",
         "personalizada": "Personnalisée"
       },
-      "erroresPrevios": "{n, plural, one {# rapport n'a pas pu être calculé} other {# rapports n'ont pas pu être calculés}}"
+      "erroresPrevios": "{n, plural, one {# rapport n'a pas pu être calculé} other {# rapports n'ont pas pu être calculés}}",
+      "excelVisor": "La clôture est enregistrée. L'Excel complet de la clôture n'est pas généré : exportez chaque rapport depuis son visualiseur."
     },
     "envioDlg": {
       "titulo": "Planifier l'envoi",

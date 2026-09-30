@@ -25107,7 +25107,8 @@
         "ventas-caja": "Vendas e caixa",
         "personalizada": "Personalizado"
       },
-      "erroresPrevios": "{n, plural, one {# relatório não pôde ser calculado} other {# relatórios não puderam ser calculados}}"
+      "erroresPrevios": "{n, plural, one {# relatório não pôde ser calculado} other {# relatórios não puderam ser calculados}}",
+      "excelVisor": "O fechamento foi salvo. O Excel completo do fechamento não é gerado: exporte cada relatório no visor."
     },
     "envioDlg": {
       "titulo": "Agendar envio",

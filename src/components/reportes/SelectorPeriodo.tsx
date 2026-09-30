@@ -36,12 +36,14 @@ export interface SelectorPeriodoProps {
   /** `si`: se elige franja; `noAplica`: el reporte se calcula por día; `oculta`: ni se menciona. */
   franja?: 'si' | 'noAplica' | 'oculta';
   tipos?: readonly TipoCierre[];
+  /** `false` cuando los tipos se eligen fuera (el diálogo de cierre). */
+  mostrarTipos?: boolean;
   anchoCompleto?: boolean;
   deshabilitado?: boolean;
   className?: string;
 }
 
-export function SelectorPeriodo({ periodo, onPeriodoChange, hoy, franja = 'si', tipos = TIPOS_CIERRE, anchoCompleto, deshabilitado, className }: SelectorPeriodoProps) {
+export function SelectorPeriodo({ periodo, onPeriodoChange, hoy, franja = 'si', tipos = TIPOS_CIERRE, mostrarTipos = true, anchoCompleto, deshabilitado, className }: SelectorPeriodoProps) {
   const t = useTranslations('reportes.periodo');
   const tTipo = useTranslations('reportes.tipos');
   const etiqueta = useEtiquetaPeriodo();
@@ -87,17 +89,19 @@ export function SelectorPeriodo({ periodo, onPeriodoChange, hoy, franja = 'si', 
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[min(92vw,420px)] p-4">
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <p id="periodo-tipo" className="text-xs font-semibold text-fg-secondary">
-              {t('tipo')}
-            </p>
-            <ChipsOpcion<TipoCierre>
-              aria-labelledby="periodo-tipo"
-              opciones={tipos.map((v) => ({ valor: v, etiqueta: tTipo(v) }))}
-              valor={periodo.tipo}
-              onValorChange={elegirTipo}
-            />
-          </div>
+          {mostrarTipos && (
+            <div className="flex flex-col gap-2">
+              <p id="periodo-tipo" className="text-xs font-semibold text-fg-secondary">
+                {t('tipo')}
+              </p>
+              <ChipsOpcion<TipoCierre>
+                aria-labelledby="periodo-tipo"
+                opciones={tipos.map((v) => ({ valor: v, etiqueta: tTipo(v) }))}
+                valor={periodo.tipo}
+                onValorChange={elegirTipo}
+              />
+            </div>
+          )}
 
           {periodo.tipo === 'personalizado' ? (
             <div className="grid grid-cols-2 gap-3">

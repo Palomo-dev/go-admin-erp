@@ -25210,7 +25210,8 @@
         "ventas-caja": "Sales and cash",
         "personalizada": "Custom"
       },
-      "erroresPrevios": "{n, plural, one {# report could not be calculated} other {# reports could not be calculated}}"
+      "erroresPrevios": "{n, plural, one {# report could not be calculated} other {# reports could not be calculated}}",
+      "excelVisor": "The closing was saved. A full Excel of the closing is not generated: export each report from its viewer."
     },
     "envioDlg": {
       "titulo": "Schedule delivery",

@@ -25210,7 +25210,8 @@
         "ventas-caja": "Ventas y caja",
         "personalizada": "Personalizada"
       },
-      "erroresPrevios": "{n, plural, one {# reporte no se pudo calcular} other {# reportes no se pudieron calcular}}"
+      "erroresPrevios": "{n, plural, one {# reporte no se pudo calcular} other {# reportes no se pudieron calcular}}",
+      "excelVisor": "El cierre quedó guardado. El Excel del cierre completo no se genera: exporta cada reporte desde su visor."
     },
     "envioDlg": {
       "titulo": "Programar envío",

@@ -21,6 +21,8 @@ export const CODIGOS_ERROR_PRODUCTO = [
   'sin_permiso',
   'producto_no_encontrado',
   'variante_no_encontrada',
+  // Variante bajo un padre eliminado (trg_producto_variante_padre_vigente · 20260930233000)
+  'variante_padre_eliminado',
   'sku_requerido',
   'sku_duplicado',
   'sku_variante_repetido',

@@ -29,6 +29,9 @@
  *     `src/__tests__/timezone/horaOficialGuardrails.test.ts` (corre con `npm test`
  *     y con `npm run test:tz-all`). El navegador no escribe la marca de tiempo del
  *     hecho (sale_date, opened_at, closed_at…) con el reloj del equipo.
+ * 39. Variantes de un padre eliminado: src/ no elimina productos por RPC legadas
+ *     ni con UPDATE directo, y toda función nueva que lea stock_levels + products
+ *     lleva el predicado `pp_elim` (docs/inventario/VARIANTES-HUERFANAS.md).
  */
 
 import * as fs from 'fs';
@@ -3344,5 +3347,78 @@ describe('38. get_user_permission_codes: solo los permisos propios', () => {
     expect(sql).toMatch(/check_user_permission\(v_uid, p_organization_id, 'users\.view'\)/);
     expect(sql).toMatch(/set search_path to 'public', 'pg_temp'/);
     expect(sql).toMatch(/revoke execute on function public\.get_user_permission_codes\(uuid, integer\) from public, anon/);
+  });
+});
+
+/**
+ * 39. Variantes de un padre eliminado (docs/inventario/VARIANTES-HUERFANAS.md).
+ *
+ * El 2026-09-30 había 2.084 variantes vivas bajo 398 padres eliminados: eliminar
+ * un padre no tocaba sus variantes y el stock y el inicio las contaban (la org 137
+ * veía «226 agotados» y la lista de Productos, 0). Desde 20260930233000 la baja
+ * cae en cascada por un disparador sobre products.status, y desde 20260930233100
+ * las lecturas de inventario/POS/reportes llevan el predicado `pp_elim`.
+ *
+ * - Nadie en src/ elimina productos por las RPC legadas ni con un UPDATE directo:
+ *   el camino es fn_producto_cambiar_estado / fn_productos_estado_masivo /
+ *   fn_producto_variante_estado (permiso en el servidor; el disparador hace el resto).
+ * - Toda función nueva que lea stock_levels junto con products lleva `pp_elim`
+ *   (o entra en la allow-list con su motivo).
+ */
+describe('39. Variantes de un padre eliminado: baja en cascada y lecturas sin huérfanas', () => {
+  const DIR = path.join(REPO_ROOT, 'supabase', 'migrations');
+  const DESDE = '20260930233100';
+  /** Funciones que leen stock y productos y NO deben excluir huérfanas, con motivo. */
+  const PERMITIDAS: Record<string, string> = {};
+
+  function funcionesSinPredicado(sql: string): string[] {
+    const limpio = sql.replace(/--.*$/gm, '');
+    const re = /create\s+or\s+replace\s+function\s+public\.(\w+)\s*\(/gi;
+    const inicios = [...limpio.matchAll(re)].map((m) => ({ nombre: m[1], i: m.index ?? 0 }));
+    return inicios
+      .map((f, k) => ({ nombre: f.nombre, cuerpo: limpio.slice(f.i, inicios[k + 1]?.i ?? undefined) }))
+      .filter((f) => /\bstock_levels\b/.test(f.cuerpo) && /\bproducts\b/.test(f.cuerpo) && !/\bpp_elim\b/.test(f.cuerpo))
+      .map((f) => f.nombre);
+  }
+
+  test('las tres migraciones existen con su rollback', () => {
+    for (const m of [
+      '20260930233000_inv_variantes_baja_en_cascada',
+      '20260930233100_inv_variantes_huerfanas_lecturas',
+      '20260930233200_inv_variantes_huerfanas_limpieza',
+    ]) {
+      expect(fs.existsSync(path.join(DIR, `${m}.sql`))).toBe(true);
+      expect(fs.existsSync(path.join(REPO_ROOT, 'supabase', 'rollbacks', `${m}_rollback.sql`))).toBe(true);
+    }
+  });
+
+  test('el detector reconoce una lectura de stock sin el predicado y acepta la que lo lleva', () => {
+    const sin = "create or replace function public.x(p integer) returns int as $$ select count(*) from stock_levels sl join products p on p.id = sl.product_id $$;";
+    const con = sin.replace('$$;', '') + " where not exists (select 1 from public.products pp_elim where pp_elim.id = p.parent_product_id and pp_elim.status = 'deleted') $$;";
+    expect(funcionesSinPredicado(sin)).toEqual(['x']);
+    expect(funcionesSinPredicado(con)).toEqual([]);
+  });
+
+  test('ninguna función nueva que lea stock y productos olvida excluir variantes de un padre eliminado', () => {
+    const ofensores: string[] = [];
+    for (const f of fs.readdirSync(DIR).filter((n) => n.endsWith('.sql') && n.slice(0, 14) > DESDE).sort()) {
+      for (const nombre of funcionesSinPredicado(readFile(path.join(DIR, f)))) {
+        if (!PERMITIDAS[nombre]) ofensores.push(`${f}: ${nombre}`);
+      }
+    }
+    expect(ofensores).toEqual([]);
+  });
+
+  test('src/ no elimina productos por las RPC legadas ni con un UPDATE directo', () => {
+    const ofensores: string[] = [];
+    for (const f of walkDir(SRC_ROOT)) {
+      if (/__tests__|\.test\.tsx?$/.test(f)) continue;
+      const src = stripAllComments(readFile(f));
+      if (/rpc\(\s*['"](soft_delete_product|deactivate_product)['"]/.test(src)) ofensores.push(`${rel(f)}: RPC legada`);
+      if (/\.from\(\s*['"]products['"]\s*\)[\s\S]{0,300}?\.update\(\s*\{[^}]*status\s*:\s*['"]deleted['"]/.test(src)) {
+        ofensores.push(`${rel(f)}: UPDATE directo a deleted`);
+      }
+    }
+    expect(ofensores).toEqual([]);
   });
 });

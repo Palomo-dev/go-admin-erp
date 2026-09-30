@@ -26,6 +26,7 @@ import type { OpcionesCarga, SesionDocumento } from './base';
 import { cargarArqueoCaja, cargarCierreCaja } from './cargadores/cajas';
 import { cargarDocumentoSoporte, cargarFacturaCompra } from './cargadores/compras';
 import { cargarCertificadoRetenciones } from './cargadores/certificadoRetenciones';
+import { cargarCierrePeriodo } from './cargadores/cierrePeriodo';
 import { cargarCotizacion } from './cargadores/cotizacion';
 import { cargarEstadoCuenta } from './cargadores/estadoCuenta';
 import { cargarEstadoCuentaProveedor } from './cargadores/estadoCuentaProveedor';
@@ -43,6 +44,8 @@ export interface SolicitudDocumento {
   nonce?: string;
   desde?: string | null;
   hasta?: string | null;
+  /** Filtros de presentación que solo lee un tipo (ver `OpcionesCarga.parametros`). */
+  parametros?: Readonly<Record<string, string | null>>;
   ahora?: Date;
 }
 
@@ -67,6 +70,10 @@ const CARGADORES: Record<TipoDocumento, Cargador> = {
   'comprobante-egreso': (s, id, o, t) => cargarComprobantePago(s, 'comprobante-egreso', id, o, t),
   'cierre-caja': cargarCierreCaja,
   'arqueo-caja': cargarArqueoCaja,
+  'cierre-periodo': cargarCierrePeriodo,
+  // Diferido: arrastra el catálogo de reportes y el servicio de módulos, que
+  // los demás documentos no necesitan.
+  reporte: async (s, id, o, t) => (await import('./cargadores/reporte')).cargarReporte(s, id, o, t),
 };
 
 export async function armarDocumento(sesion: SesionDocumento, solicitud: SolicitudDocumento): Promise<DocumentoArmado> {
@@ -79,7 +86,14 @@ export async function armarDocumento(sesion: SesionDocumento, solicitud: Solicit
   const payload = await CARGADORES[solicitud.tipo](
     sesion,
     solicitud.id,
-    { idioma: solicitud.idioma, desde: solicitud.desde, hasta: solicitud.hasta, ahora: solicitud.ahora },
+    {
+      idioma: solicitud.idioma,
+      desde: solicitud.desde,
+      hasta: solicitud.hasta,
+      ahora: solicitud.ahora,
+      papel: solicitud.papel,
+      parametros: solicitud.parametros,
+    },
     t,
   );
   if (payload.tipo !== solicitud.tipo) await autorizarTipo(sesion, payload.tipo);

@@ -6,7 +6,7 @@
 import { escaparHtml } from '../escape';
 import type { Formateador } from '../formato';
 import type { Traductor } from '../textos';
-import type { CeldaTabla, ColumnaTabla, DocumentoPayload, FilaTotal, Tono, Valor } from '../tipos';
+import type { Campo, CeldaTabla, ColumnaTabla, DocumentoPayload, FilaTotal, SeccionTabla, Tono, Valor } from '../tipos';
 
 export const OCULTO = '***';
 
@@ -27,6 +27,8 @@ export function textoDeValor(valor: Valor, f: Formateador, t: Traductor): string
       return f.fecha(valor.v);
     case 'numero':
       return valor.v === null ? '' : f.numero(valor.v, valor.decimales);
+    case 'porcentaje':
+      return valor.v === null ? '' : `${f.numero(valor.v, 2)} %`;
     case 'oculto':
       return OCULTO;
   }
@@ -56,6 +58,10 @@ export function textoDeCelda(columna: ColumnaTabla, celda: CeldaTabla, f: Format
       return f.fecha(String(celda));
     case 'numero':
       return f.numero(celda as number | string);
+    case 'porcentaje': {
+      const texto = f.numero(celda as number | string, 2);
+      return texto ? `${texto} %` : '';
+    }
     case 'clave':
       return t(String(celda));
     default:
@@ -73,6 +79,19 @@ export function textoDeTotal(fila: FilaTotal, f: Formateador): string {
 
 export function titulo(doc: DocumentoPayload, t: Traductor): string {
   return t(`tipos.${doc.tituloClave}`);
+}
+
+/** Rótulo de un campo: el texto ya resuelto si lo trae, si no su clave traducida. */
+export function rotuloCampo(campo: Campo, t: Traductor): string {
+  return campo.rotulo ?? t(`campos.${campo.clave}`);
+}
+
+export function rotuloColumna(columna: ColumnaTabla, t: Traductor): string {
+  return columna.rotulo ?? t(`columnas.${columna.clave}`);
+}
+
+export function tituloSeccion(seccion: SeccionTabla, t: Traductor): string {
+  return seccion.tituloTexto ?? t(`secciones.${seccion.titulo}`);
 }
 
 /** NIT con dígito de verificación: `900123456-7`. */

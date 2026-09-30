@@ -12449,7 +12449,9 @@
       "arqueo-caja": "Conferência de caixa",
       "estado-cuenta-proveedor": "Extrato do fornecedor",
       "nota-credito-electronica": "Nota de crédito eletrônica",
-      "certificado-retenciones": "Certificado de retenções"
+      "certificado-retenciones": "Certificado de retenções",
+      "cierre-periodo": "Fechamento de período",
+      "reporte": "Relatório"
     },
     "sinNumero": "Sem numeração",
     "paginacion": {
@@ -12529,7 +12531,13 @@
       "pending": "Pendente",
       "accepted": "Aceita",
       "processing": "Em processamento",
-      "failed": "Falhou"
+      "failed": "Falhou",
+      "cierre": {
+        "borrador": "Rascunho",
+        "emitido": "Emitido",
+        "firmado": "Assinado · período fechado",
+        "reemplazado": "Substituído"
+      }
     },
     "qr": {
       "verificacionDian": "Verifique na DIAN",
@@ -12542,12 +12550,17 @@
       "anulada": "Documento anulado.",
       "monedaExtranjera": "Documento emitido em {moneda}, diferente da moeda base da organização.",
       "noEsFactura": "Este orçamento não é uma fatura.",
-      "cierreCiego": "Fechamento cego: os valores esperados e as diferenças só são visíveis para a administração."
+      "cierreCiego": "Fechamento cego: os valores esperados e as diferenças só são visíveis para a administração.",
+      "cierreReemplazado": "Esta versão foi substituída por um recálculo. Consulte a versão vigente.",
+      "cierreReemplazadoPor": "Esta versão foi substituída pela v{version}. Consulte a versão vigente.",
+      "cierrePeriodoCerrado": "Fechamento assinado: o período contábil foi fechado.",
+      "cierreConErrores": "{cantidad} relatório(s) não puderam ser calculados e não estão incluídos. Veja o final do documento."
     },
     "marcas": {
       "borrador": "RASCUNHO",
       "anulada": "ANULADA",
-      "pagada": "PAGA"
+      "pagada": "PAGA",
+      "reemplazado": "SUBSTITUÍDO"
     },
     "campos": {
       "fechaEmision": "Data de emissão",
@@ -12602,7 +12615,16 @@
       "facturasIncluidas": "Faturas incluídas",
       "fechaExpedicion": "Data de emissão",
       "ciudadExpedicion": "Cidade de emissão",
-      "declaradoEn": "Declarado em"
+      "declaradoEn": "Declarado em",
+      "tipoCierre": "Tipo de fechamento",
+      "franja": "Faixa horária",
+      "plantilla": "Modelo",
+      "version": "Versão",
+      "emitidoEn": "Emitido",
+      "emitidoPor": "Emitido por",
+      "firmadoEn": "Assinado",
+      "firmadoPor": "Assinado por",
+      "kpi": "Indicador"
     },
     "formasPago": {
       "contado": "À vista",
@@ -12645,7 +12667,10 @@
       "denominaciones": "Cédulas e moedas",
       "retenciones": "Retenções aplicadas ao fornecedor",
       "conceptosRetenidos": "Retenções praticadas",
-      "facturasIncluidas": "Faturas incluídas"
+      "facturasIncluidas": "Faturas incluídas",
+      "indiceCapitulos": "Índice de capítulos",
+      "reportesConError": "Relatórios não incluídos (erro de cálculo)",
+      "reporte": "Relatório"
     },
     "columnas": {
       "descripcion": "Descrição",
@@ -12682,13 +12707,17 @@
       "tarifa": "Alíquota (%)",
       "unidad": "Unidade",
       "cuenta": "Conta",
-      "valorRetenido": "Valor retido"
+      "valorRetenido": "Valor retido",
+      "capitulo": "Capítulo",
+      "reportes": "Relatórios",
+      "reporte": "Relatório"
     },
     "vacios": {
       "lineas": "Sem linhas.",
       "movimientos": "Sem movimentos no período.",
       "facturasAbiertas": "Não há faturas em aberto.",
-      "retencionesPeriodo": "Nenhuma retenção foi praticada a este fornecedor no período."
+      "retencionesPeriodo": "Nenhuma retenção foi praticada a este fornecedor no período.",
+      "reporteSinDatos": "Sem dados no período."
     },
     "totales": {
       "subtotal": "Subtotal",
@@ -12739,7 +12768,9 @@
       "datosNombre": "Nome e documento",
       "agenteRetenedor": "Agente retentor",
       "contador": "Contador público",
-      "datosContador": "Nome · Registro profissional"
+      "datosContador": "Nome · Registro profissional",
+      "elaboro": "Elaborado por",
+      "representanteLegal": "Representante legal"
     },
     "legal": {
       "resolucion": "Resolução DIAN n.º {numero} de {fecha}, prefixo {prefijo}, numeração autorizada de {desde} a {hasta}, válida até {vigencia}.",
@@ -12759,7 +12790,9 @@
         "cierre-caja": "Relatório interno de caixa.",
         "arqueo-caja": "Relatório interno de conferência de caixa.",
         "estado-cuenta-proveedor": "Extrato do fornecedor segundo nossos registros. Se encontrar alguma diferença, entre em contato conosco em até 10 dias após o recebimento.",
-        "certificado-retenciones": "Certificado emitido conforme o artigo 381 do Estatuto Tributário colombiano. Não requer assinatura manuscrita (artigo 10 do Decreto 836 de 1991)."
+        "certificado-retenciones": "Certificado emitido conforme o artigo 381 do Estatuto Tributário colombiano. Não requer assinatura manuscrita (artigo 10 do Decreto 836 de 1991).",
+        "cierre-periodo": "Documento interno de fechamento. Os valores foram congelados na emissão; um recálculo gera uma nova versão com o mesmo número.",
+        "reporte": "Relatório interno gerado na data indicada com os dados vigentes naquele momento."
       }
     },
     "movimientos": {
@@ -12843,6 +12876,31 @@
       "declaradoIca": "Declaração de ICA",
       "declarado350EIca": "Formulário 350 e ICA",
       "constancia": "{emisor}, como agente retentor, certifica que durante o período indicado praticou a {proveedor} as retenções detalhadas, sobre os pagamentos ou créditos das faturas incluídas."
+    },
+    "reportes": {
+      "truncado": "Mostrando {mostradas} de {total} linhas. Os totais incluem todas. Consulte o relatório completo no aplicativo.",
+      "todaLaOrganizacion": "Toda a organização"
+    },
+    "cierre": {
+      "tipos": {
+        "diario": "Diário",
+        "semanal": "Semanal",
+        "quincenal": "Quinzenal",
+        "mensual": "Mensal",
+        "trimestral": "Trimestral",
+        "semestral": "Semestral",
+        "anual": "Anual",
+        "personalizado": "Personalizado"
+      },
+      "plantillas": {
+        "completo": "Completo",
+        "contable": "Contábil e financeiro",
+        "ventas-caja": "Vendas e caixa",
+        "personalizada": "Personalizado"
+      },
+      "consolidado": "Consolidado (todas as filiais)",
+      "sinFranja": "Este relatório é calculado por dia completo: a faixa horária do fechamento não se aplica.",
+      "reabierto": "Período reaberto por {quien}. Motivo: {motivo}"
     }
   },
   "posVentas": {

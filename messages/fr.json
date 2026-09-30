@@ -12449,7 +12449,9 @@
       "arqueo-caja": "Comptage de caisse",
       "estado-cuenta-proveedor": "Relevé de compte fournisseur",
       "nota-credito-electronica": "Note de crédit électronique",
-      "certificado-retenciones": "Certificat de retenues"
+      "certificado-retenciones": "Certificat de retenues",
+      "cierre-periodo": "Clôture de période",
+      "reporte": "Rapport"
     },
     "sinNumero": "Sans numéro",
     "paginacion": {
@@ -12529,7 +12531,13 @@
       "pending": "En attente",
       "accepted": "Acceptée",
       "processing": "En cours",
-      "failed": "Échouée"
+      "failed": "Échouée",
+      "cierre": {
+        "borrador": "Brouillon",
+        "emitido": "Émis",
+        "firmado": "Signé · période clôturée",
+        "reemplazado": "Remplacé"
+      }
     },
     "qr": {
       "verificacionDian": "Vérifier auprès de la DIAN",
@@ -12542,12 +12550,17 @@
       "anulada": "Document annulé.",
       "monedaExtranjera": "Document émis en {moneda}, différente de la devise de base de l'organisation.",
       "noEsFactura": "Ce devis n'est pas une facture.",
-      "cierreCiego": "Clôture à l'aveugle : les montants attendus et les écarts ne sont visibles que par l'administration."
+      "cierreCiego": "Clôture à l'aveugle : les montants attendus et les écarts ne sont visibles que par l'administration.",
+      "cierreReemplazado": "Cette version a été remplacée par un recalcul. Consultez la version en vigueur.",
+      "cierreReemplazadoPor": "Cette version a été remplacée par la v{version}. Consultez la version en vigueur.",
+      "cierrePeriodoCerrado": "Clôture signée : la période comptable est clôturée.",
+      "cierreConErrores": "{cantidad} rapport(s) n'ont pas pu être calculés et ne sont pas inclus. Voir la fin du document."
     },
     "marcas": {
       "borrador": "BROUILLON",
       "anulada": "ANNULÉE",
-      "pagada": "PAYÉE"
+      "pagada": "PAYÉE",
+      "reemplazado": "REMPLACÉ"
     },
     "campos": {
       "fechaEmision": "Date d'émission",
@@ -12602,7 +12615,16 @@
       "facturasIncluidas": "Factures incluses",
       "fechaExpedicion": "Date d'émission",
       "ciudadExpedicion": "Ville d'émission",
-      "declaradoEn": "Déclaré dans"
+      "declaradoEn": "Déclaré dans",
+      "tipoCierre": "Type de clôture",
+      "franja": "Plage horaire",
+      "plantilla": "Modèle",
+      "version": "Version",
+      "emitidoEn": "Émis le",
+      "emitidoPor": "Émis par",
+      "firmadoEn": "Signé le",
+      "firmadoPor": "Signé par",
+      "kpi": "Indicateur"
     },
     "formasPago": {
       "contado": "Comptant",
@@ -12645,7 +12667,10 @@
       "denominaciones": "Coupures",
       "retenciones": "Retenues appliquées au fournisseur",
       "conceptosRetenidos": "Retenues pratiquées",
-      "facturasIncluidas": "Factures incluses"
+      "facturasIncluidas": "Factures incluses",
+      "indiceCapitulos": "Index des chapitres",
+      "reportesConError": "Rapports non inclus (erreur de calcul)",
+      "reporte": "Rapport"
     },
     "columnas": {
       "descripcion": "Désignation",
@@ -12682,13 +12707,17 @@
       "tarifa": "Taux (%)",
       "unidad": "Unité",
       "cuenta": "Compte",
-      "valorRetenido": "Montant retenu"
+      "valorRetenido": "Montant retenu",
+      "capitulo": "Chapitre",
+      "reportes": "Rapports",
+      "reporte": "Rapport"
     },
     "vacios": {
       "lineas": "Aucune ligne.",
       "movimientos": "Aucun mouvement sur la période.",
       "facturasAbiertas": "Aucune facture ouverte.",
-      "retencionesPeriodo": "Aucune retenue n'a été pratiquée sur ce fournisseur pendant la période."
+      "retencionesPeriodo": "Aucune retenue n'a été pratiquée sur ce fournisseur pendant la période.",
+      "reporteSinDatos": "Aucune donnée sur la période."
     },
     "totales": {
       "subtotal": "Sous-total",
@@ -12739,7 +12768,9 @@
       "datosNombre": "Nom et pièce",
       "agenteRetenedor": "Agent de retenue",
       "contador": "Expert-comptable",
-      "datosContador": "Nom · Carte professionnelle"
+      "datosContador": "Nom · Carte professionnelle",
+      "elaboro": "Établi par",
+      "representanteLegal": "Représentant légal"
     },
     "legal": {
       "resolucion": "Résolution DIAN n° {numero} du {fecha}, préfixe {prefijo}, numérotation autorisée du {desde} au {hasta}, valable jusqu’au {vigencia}.",
@@ -12759,7 +12790,9 @@
         "cierre-caja": "Rapport de caisse interne.",
         "arqueo-caja": "Rapport interne de comptage de caisse.",
         "estado-cuenta-proveedor": "Relevé de compte du fournisseur selon nos registres. En cas d'écart, contactez-nous dans les 10 jours suivant sa réception.",
-        "certificado-retenciones": "Certificat délivré conformément à l'article 381 du Statut fiscal colombien. Aucune signature manuscrite requise (article 10 du décret 836 de 1991)."
+        "certificado-retenciones": "Certificat délivré conformément à l'article 381 du Statut fiscal colombien. Aucune signature manuscrite requise (article 10 du décret 836 de 1991).",
+        "cierre-periodo": "Document interne de clôture. Les chiffres ont été figés à l'émission ; un recalcul crée une nouvelle version avec le même numéro.",
+        "reporte": "Rapport interne généré à la date indiquée avec les données en vigueur à ce moment."
       }
     },
     "movimientos": {
@@ -12843,6 +12876,31 @@
       "declaradoIca": "Déclaration d'ICA",
       "declarado350EIca": "Formulaire 350 et ICA",
       "constancia": "{emisor}, en qualité d'agent de retenue, certifie avoir pratiqué sur {proveedor}, pendant la période indiquée, les retenues détaillées ci-dessous, sur les paiements ou crédits des factures incluses."
+    },
+    "reportes": {
+      "truncado": "{mostradas} lignes affichées sur {total}. Les totaux les incluent toutes. Consultez le rapport complet dans l'application.",
+      "todaLaOrganizacion": "Toute l'organisation"
+    },
+    "cierre": {
+      "tipos": {
+        "diario": "Quotidienne",
+        "semanal": "Hebdomadaire",
+        "quincenal": "Bimensuelle",
+        "mensual": "Mensuelle",
+        "trimestral": "Trimestrielle",
+        "semestral": "Semestrielle",
+        "anual": "Annuelle",
+        "personalizado": "Personnalisée"
+      },
+      "plantillas": {
+        "completo": "Complet",
+        "contable": "Comptable et financier",
+        "ventas-caja": "Ventes et caisse",
+        "personalizada": "Personnalisé"
+      },
+      "consolidado": "Consolidé (toutes les succursales)",
+      "sinFranja": "Ce rapport est calculé par journée complète : la plage horaire de la clôture ne s'applique pas.",
+      "reabierto": "Période rouverte par {quien}. Motif : {motivo}"
     }
   },
   "posVentas": {

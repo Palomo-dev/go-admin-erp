@@ -21,6 +21,7 @@ import type {
   Emisor,
   IdiomaDocumento,
   LineaDocumento,
+  PapelDocumento,
   SeccionTabla,
   SucursalDocumento,
   TipoDocumento,
@@ -46,6 +47,13 @@ export interface OpcionesCarga {
   desde?: string | null;
   hasta?: string | null;
   ahora?: Date;
+  /** Papel pedido: el cierre de periodo en 80 mm lleva solo la vista principal. */
+  papel?: PapelDocumento;
+  /**
+   * Filtros de presentación de la query que solo lee un tipo (reporte:
+   * `sucursal`, `hi`, `hf`, `vista`, `periodo`). El cargador los valida.
+   */
+  parametros?: Readonly<Record<string, string | null>>;
 }
 
 export interface BaseDocumento {
@@ -103,6 +111,19 @@ export function texto(valor: unknown): string | null {
   if (valor === null || valor === undefined) return null;
   const s = String(valor).trim();
   return s === '' ? null : s;
+}
+
+/** Nombre visible de cada perfil pedido (nombre y apellido, o el correo). */
+export async function nombresDePerfiles(sesion: SesionDocumento, ids: Array<string | null | undefined>): Promise<Map<string, string>> {
+  const unicos = [...new Set(ids.filter((x): x is string => !!x))];
+  if (unicos.length === 0) return new Map();
+  const { data } = await sesion.supabase.from('profiles').select('id, first_name, last_name, email').in('id', unicos);
+  return new Map(
+    ((data ?? []) as Array<{ id: string; first_name: string | null; last_name: string | null; email: string | null }>).map((p) => [
+      p.id,
+      [texto(p.first_name), texto(p.last_name)].filter(Boolean).join(' ') || texto(p.email) || '—',
+    ]),
+  );
 }
 
 /** Error de lectura: se registra (sin datos) y sale como 500 genérico. */

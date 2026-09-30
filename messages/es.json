@@ -14112,7 +14112,9 @@
       "arqueo-caja": "Arqueo de caja",
       "estado-cuenta-proveedor": "Estado de cuenta de proveedor",
       "nota-credito-electronica": "Nota crédito electrónica",
-      "certificado-retenciones": "Certificado de retenciones"
+      "certificado-retenciones": "Certificado de retenciones",
+      "cierre-periodo": "Cierre de periodo",
+      "reporte": "Reporte"
     },
     "sinNumero": "Sin consecutivo",
     "paginacion": {
@@ -14192,7 +14194,13 @@
       "pending": "Pendiente",
       "accepted": "Aceptada",
       "processing": "En proceso",
-      "failed": "Fallida"
+      "failed": "Fallida",
+      "cierre": {
+        "borrador": "Borrador",
+        "emitido": "Emitido",
+        "firmado": "Firmado · periodo cerrado",
+        "reemplazado": "Reemplazado"
+      }
     },
     "qr": {
       "verificacionDian": "Verifique en la DIAN",
@@ -14205,12 +14213,17 @@
       "anulada": "Documento anulado.",
       "monedaExtranjera": "Documento emitido en {moneda}, distinta de la moneda base de la organización.",
       "noEsFactura": "Esta cotización no es una factura.",
-      "cierreCiego": "Cierre ciego: los valores esperados y las diferencias solo los ve la administración."
+      "cierreCiego": "Cierre ciego: los valores esperados y las diferencias solo los ve la administración.",
+      "cierreReemplazado": "Esta versión fue reemplazada por un recálculo. Consulte la versión vigente.",
+      "cierreReemplazadoPor": "Esta versión fue reemplazada por la v{version}. Consulte la versión vigente.",
+      "cierrePeriodoCerrado": "Cierre firmado: el periodo contable quedó cerrado.",
+      "cierreConErrores": "{cantidad} reporte(s) no se pudieron calcular y no están incluidos. Ver el final del documento."
     },
     "marcas": {
       "borrador": "BORRADOR",
       "anulada": "ANULADA",
-      "pagada": "PAGADA"
+      "pagada": "PAGADA",
+      "reemplazado": "REEMPLAZADO"
     },
     "campos": {
       "fechaEmision": "Fecha de emisión",
@@ -14265,7 +14278,16 @@
       "facturasIncluidas": "Facturas incluidas",
       "fechaExpedicion": "Fecha de expedición",
       "ciudadExpedicion": "Ciudad de expedición",
-      "declaradoEn": "Declarado en"
+      "declaradoEn": "Declarado en",
+      "tipoCierre": "Tipo de cierre",
+      "franja": "Franja horaria",
+      "plantilla": "Plantilla",
+      "version": "Versión",
+      "emitidoEn": "Emitido",
+      "emitidoPor": "Emitido por",
+      "firmadoEn": "Firmado",
+      "firmadoPor": "Firmado por",
+      "kpi": "Indicador"
     },
     "formasPago": {
       "contado": "Contado",
@@ -14308,7 +14330,10 @@
       "denominaciones": "Denominaciones",
       "retenciones": "Retenciones practicadas al proveedor",
       "conceptosRetenidos": "Retenciones practicadas",
-      "facturasIncluidas": "Facturas incluidas"
+      "facturasIncluidas": "Facturas incluidas",
+      "indiceCapitulos": "Índice de capítulos",
+      "reportesConError": "Reportes no incluidos (error al calcular)",
+      "reporte": "Reporte"
     },
     "columnas": {
       "descripcion": "Descripción",
@@ -14345,13 +14370,17 @@
       "tarifa": "Tarifa (%)",
       "unidad": "Unidad",
       "cuenta": "Cuenta",
-      "valorRetenido": "Valor retenido"
+      "valorRetenido": "Valor retenido",
+      "capitulo": "Capítulo",
+      "reportes": "Reportes",
+      "reporte": "Reporte"
     },
     "vacios": {
       "lineas": "Sin líneas.",
       "movimientos": "Sin movimientos en el periodo.",
       "facturasAbiertas": "No hay facturas abiertas.",
-      "retencionesPeriodo": "No se practicaron retenciones a este proveedor en el periodo."
+      "retencionesPeriodo": "No se practicaron retenciones a este proveedor en el periodo.",
+      "reporteSinDatos": "Sin datos en el periodo."
     },
     "totales": {
       "subtotal": "Subtotal",
@@ -14402,7 +14431,9 @@
       "datosNombre": "Nombre y documento",
       "agenteRetenedor": "Agente retenedor",
       "contador": "Contador público",
-      "datosContador": "Nombre · Tarjeta profesional"
+      "datosContador": "Nombre · Tarjeta profesional",
+      "elaboro": "Elaboró",
+      "representanteLegal": "Representante legal"
     },
     "legal": {
       "resolucion": "Resolución DIAN n.º {numero} del {fecha}, prefijo {prefijo}, numeración autorizada del {desde} al {hasta}, vigente hasta el {vigencia}.",
@@ -14422,7 +14453,9 @@
         "cierre-caja": "Reporte interno de caja.",
         "arqueo-caja": "Reporte interno de arqueo de caja.",
         "estado-cuenta-proveedor": "Estado de cuenta del proveedor según nuestros registros. Si encuentra alguna diferencia, comuníquese con nosotros dentro de los 10 días siguientes a su recepción.",
-        "certificado-retenciones": "Certificado expedido según el artículo 381 del Estatuto Tributario. No requiere firma autógrafa (artículo 10 del Decreto 836 de 1991)."
+        "certificado-retenciones": "Certificado expedido según el artículo 381 del Estatuto Tributario. No requiere firma autógrafa (artículo 10 del Decreto 836 de 1991).",
+        "cierre-periodo": "Documento interno de cierre. Las cifras quedaron congeladas al emitirse; un recálculo genera una versión nueva con el mismo número.",
+        "reporte": "Reporte interno generado a la fecha indicada con los datos vigentes en ese momento."
       }
     },
     "movimientos": {
@@ -14506,6 +14539,31 @@
       "declaradoIca": "Declaración de ICA",
       "declarado350EIca": "Formulario 350 e ICA",
       "constancia": "{emisor}, como agente retenedor, certifica que durante el periodo indicado practicó a {proveedor} las retenciones que se detallan, sobre los pagos o abonos en cuenta de las facturas incluidas."
+    },
+    "reportes": {
+      "truncado": "Se muestran {mostradas} de {total} filas. Los totales incluyen todas. Consulte el reporte completo en la aplicación.",
+      "todaLaOrganizacion": "Toda la organización"
+    },
+    "cierre": {
+      "tipos": {
+        "diario": "Diario",
+        "semanal": "Semanal",
+        "quincenal": "Quincenal",
+        "mensual": "Mensual",
+        "trimestral": "Trimestral",
+        "semestral": "Semestral",
+        "anual": "Anual",
+        "personalizado": "Personalizado"
+      },
+      "plantillas": {
+        "completo": "Completo",
+        "contable": "Contable y financiero",
+        "ventas-caja": "Ventas y caja",
+        "personalizada": "Personalizada"
+      },
+      "consolidado": "Consolidado (todas las sucursales)",
+      "sinFranja": "Este reporte se calcula por día completo: la franja horaria del cierre no aplica.",
+      "reabierto": "Periodo reabierto por {quien}. Motivo: {motivo}"
     }
   },
   "posVentas": {

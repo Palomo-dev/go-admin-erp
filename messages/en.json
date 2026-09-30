@@ -14112,7 +14112,9 @@
       "arqueo-caja": "Cash count",
       "estado-cuenta-proveedor": "Supplier account statement",
       "nota-credito-electronica": "Electronic credit note",
-      "certificado-retenciones": "Withholding certificate"
+      "certificado-retenciones": "Withholding certificate",
+      "cierre-periodo": "Period close",
+      "reporte": "Report"
     },
     "sinNumero": "No number yet",
     "paginacion": {
@@ -14192,7 +14194,13 @@
       "pending": "Pending",
       "accepted": "Accepted",
       "processing": "Processing",
-      "failed": "Failed"
+      "failed": "Failed",
+      "cierre": {
+        "borrador": "Draft",
+        "emitido": "Issued",
+        "firmado": "Signed · period closed",
+        "reemplazado": "Superseded"
+      }
     },
     "qr": {
       "verificacionDian": "Verify with DIAN",
@@ -14205,12 +14213,17 @@
       "anulada": "Voided document.",
       "monedaExtranjera": "Document issued in {moneda}, which differs from the organization base currency.",
       "noEsFactura": "This quote is not an invoice.",
-      "cierreCiego": "Blind closing: expected amounts and differences are visible only to administrators."
+      "cierreCiego": "Blind closing: expected amounts and differences are visible only to administrators.",
+      "cierreReemplazado": "This version was superseded by a recalculation. See the current version.",
+      "cierreReemplazadoPor": "This version was superseded by v{version}. See the current version.",
+      "cierrePeriodoCerrado": "Signed close: the accounting period is closed.",
+      "cierreConErrores": "{cantidad} report(s) could not be calculated and are not included. See the end of the document."
     },
     "marcas": {
       "borrador": "DRAFT",
       "anulada": "VOIDED",
-      "pagada": "PAID"
+      "pagada": "PAID",
+      "reemplazado": "SUPERSEDED"
     },
     "campos": {
       "fechaEmision": "Issue date",
@@ -14265,7 +14278,16 @@
       "facturasIncluidas": "Invoices included",
       "fechaExpedicion": "Issue date",
       "ciudadExpedicion": "City of issue",
-      "declaradoEn": "Filed in"
+      "declaradoEn": "Filed in",
+      "tipoCierre": "Close type",
+      "franja": "Time window",
+      "plantilla": "Template",
+      "version": "Version",
+      "emitidoEn": "Issued",
+      "emitidoPor": "Issued by",
+      "firmadoEn": "Signed",
+      "firmadoPor": "Signed by",
+      "kpi": "Indicator"
     },
     "formasPago": {
       "contado": "Cash",
@@ -14308,7 +14330,10 @@
       "denominaciones": "Denominations",
       "retenciones": "Withholdings applied to the supplier",
       "conceptosRetenidos": "Withholdings applied",
-      "facturasIncluidas": "Invoices included"
+      "facturasIncluidas": "Invoices included",
+      "indiceCapitulos": "Chapter index",
+      "reportesConError": "Reports not included (calculation error)",
+      "reporte": "Report"
     },
     "columnas": {
       "descripcion": "Description",
@@ -14345,13 +14370,17 @@
       "tarifa": "Rate (%)",
       "unidad": "Unit",
       "cuenta": "Account",
-      "valorRetenido": "Amount withheld"
+      "valorRetenido": "Amount withheld",
+      "capitulo": "Chapter",
+      "reportes": "Reports",
+      "reporte": "Report"
     },
     "vacios": {
       "lineas": "No lines.",
       "movimientos": "No transactions in the period.",
       "facturasAbiertas": "No open invoices.",
-      "retencionesPeriodo": "No withholdings were applied to this supplier in the period."
+      "retencionesPeriodo": "No withholdings were applied to this supplier in the period.",
+      "reporteSinDatos": "No data in the period."
     },
     "totales": {
       "subtotal": "Subtotal",
@@ -14402,7 +14431,9 @@
       "datosNombre": "Name and ID",
       "agenteRetenedor": "Withholding agent",
       "contador": "Public accountant",
-      "datosContador": "Name · Professional license"
+      "datosContador": "Name · Professional license",
+      "elaboro": "Prepared by",
+      "representanteLegal": "Legal representative"
     },
     "legal": {
       "resolucion": "DIAN resolution no. {numero} dated {fecha}, prefix {prefijo}, authorized numbering from {desde} to {hasta}, valid until {vigencia}.",
@@ -14422,7 +14453,9 @@
         "cierre-caja": "Internal cash register report.",
         "arqueo-caja": "Internal cash count report.",
         "estado-cuenta-proveedor": "Supplier account statement according to our records. If you find any discrepancy, please contact us within 10 days of receipt.",
-        "certificado-retenciones": "Certificate issued under article 381 of the Colombian Tax Code. Handwritten signature not required (article 10 of Decree 836 of 1991)."
+        "certificado-retenciones": "Certificate issued under article 381 of the Colombian Tax Code. Handwritten signature not required (article 10 of Decree 836 of 1991).",
+        "cierre-periodo": "Internal closing document. Figures were frozen when issued; a recalculation creates a new version with the same number.",
+        "reporte": "Internal report generated on the stated date with the data current at that moment."
       }
     },
     "movimientos": {
@@ -14506,6 +14539,31 @@
       "declaradoIca": "ICA return",
       "declarado350EIca": "Form 350 and ICA",
       "constancia": "{emisor}, as withholding agent, certifies that during the stated period it applied to {proveedor} the withholdings detailed below, on the payments or credits of the invoices included."
+    },
+    "reportes": {
+      "truncado": "Showing {mostradas} of {total} rows. Totals include all of them. See the full report in the app.",
+      "todaLaOrganizacion": "Whole organization"
+    },
+    "cierre": {
+      "tipos": {
+        "diario": "Daily",
+        "semanal": "Weekly",
+        "quincenal": "Biweekly",
+        "mensual": "Monthly",
+        "trimestral": "Quarterly",
+        "semestral": "Half-yearly",
+        "anual": "Yearly",
+        "personalizado": "Custom"
+      },
+      "plantillas": {
+        "completo": "Complete",
+        "contable": "Accounting and finance",
+        "ventas-caja": "Sales and cash",
+        "personalizada": "Custom"
+      },
+      "consolidado": "Consolidated (all branches)",
+      "sinFranja": "This report is calculated by full day: the close time window does not apply.",
+      "reabierto": "Period reopened by {quien}. Reason: {motivo}"
     }
   },
   "posVentas": {

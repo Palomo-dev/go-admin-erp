@@ -12901,6 +12901,35 @@
       "consolidado": "Consolidado (todas as filiais)",
       "sinFranja": "Este relatório é calculado por dia completo: a faixa horária do fechamento não se aplica.",
       "reabierto": "Período reaberto por {quien}. Motivo: {motivo}"
+    },
+    "exportacion": {
+      "resumen": "Resumo",
+      "indicador": "Indicador",
+      "valor": "Valor",
+      "desde": "De",
+      "hasta": "Até"
+    },
+    "envios": {
+      "asunto": "{reporte} · {periodo}",
+      "asuntoPrueba": "[Teste] {reporte} · {periodo}",
+      "saludo": "Olá, {nombre}:",
+      "saludoSinNombre": "Olá:",
+      "cuerpo": "Segue em anexo o relatório «{reporte}» de {organizacion} para o período {periodo}.",
+      "franja": "Faixa horária: {franja}.",
+      "pie": "Você recebe este e-mail porque {creador} incluiu você no envio programado «{envio}». Para deixar de recebê-lo, peça para ser removido da lista.",
+      "pieExterno": "Você recebe este e-mail porque {organizacion} incluiu você no envio programado «{envio}». Se não deveria recebê-lo, responda a este e-mail.",
+      "pausado": {
+        "titulo": "Envio programado com destinatários pausados: {envio}",
+        "linea": "{destinatario}: {motivo}"
+      },
+      "motivos": {
+        "sin_membresia": "não é mais membro ativo da organização",
+        "sin_permiso": "não tem mais permissão para exportar relatórios",
+        "sin_alcance": "não tem acesso à filial do envio",
+        "modulo_no_contratado": "o plano não inclui mais este relatório",
+        "aprobador_sin_acceso": "quem aprovou este e-mail externo não é mais administrador",
+        "rebote": "o e-mail foi devolvido"
+      }
     }
   },
   "posVentas": {

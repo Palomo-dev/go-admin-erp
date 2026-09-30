@@ -14564,6 +14564,35 @@
       "consolidado": "Consolidated (all branches)",
       "sinFranja": "This report is calculated by full day: the close time window does not apply.",
       "reabierto": "Period reopened by {quien}. Reason: {motivo}"
+    },
+    "exportacion": {
+      "resumen": "Summary",
+      "indicador": "Indicator",
+      "valor": "Value",
+      "desde": "From",
+      "hasta": "To"
+    },
+    "envios": {
+      "asunto": "{reporte} · {periodo}",
+      "asuntoPrueba": "[Test] {reporte} · {periodo}",
+      "saludo": "Hello {nombre},",
+      "saludoSinNombre": "Hello,",
+      "cuerpo": "Attached is the “{reporte}” report from {organizacion} for the period {periodo}.",
+      "franja": "Time window: {franja}.",
+      "pie": "You are receiving this email because {creador} added you to the scheduled delivery “{envio}”. To stop receiving it, ask them to remove you from the list.",
+      "pieExterno": "You are receiving this email because {organizacion} added you to the scheduled delivery “{envio}”. If you should not receive it, reply to this email.",
+      "pausado": {
+        "titulo": "Scheduled delivery with paused recipients: {envio}",
+        "linea": "{destinatario}: {motivo}"
+      },
+      "motivos": {
+        "sin_membresia": "is no longer an active member of the organization",
+        "sin_permiso": "no longer has permission to export reports",
+        "sin_alcance": "has no access to the delivery's branch",
+        "modulo_no_contratado": "the plan no longer includes this report",
+        "aprobador_sin_acceso": "whoever approved this external email is no longer an administrator",
+        "rebote": "the email bounced"
+      }
     }
   },
   "posVentas": {

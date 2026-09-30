@@ -12901,6 +12901,35 @@
       "consolidado": "Consolidé (toutes les succursales)",
       "sinFranja": "Ce rapport est calculé par journée complète : la plage horaire de la clôture ne s'applique pas.",
       "reabierto": "Période rouverte par {quien}. Motif : {motivo}"
+    },
+    "exportacion": {
+      "resumen": "Résumé",
+      "indicador": "Indicateur",
+      "valor": "Valeur",
+      "desde": "Du",
+      "hasta": "Au"
+    },
+    "envios": {
+      "asunto": "{reporte} · {periodo}",
+      "asuntoPrueba": "[Test] {reporte} · {periodo}",
+      "saludo": "Bonjour {nombre},",
+      "saludoSinNombre": "Bonjour,",
+      "cuerpo": "Veuillez trouver ci-joint le rapport « {reporte} » de {organizacion} pour la période {periodo}.",
+      "franja": "Plage horaire : {franja}.",
+      "pie": "Vous recevez cet e-mail car {creador} vous a ajouté à l’envoi programmé « {envio} ». Pour ne plus le recevoir, demandez-lui de vous retirer de la liste.",
+      "pieExterno": "Vous recevez cet e-mail car {organizacion} vous a ajouté à l’envoi programmé « {envio} ». Si vous ne devriez pas le recevoir, répondez à cet e-mail.",
+      "pausado": {
+        "titulo": "Envoi programmé avec des destinataires en pause : {envio}",
+        "linea": "{destinatario} : {motivo}"
+      },
+      "motivos": {
+        "sin_membresia": "n’est plus membre actif de l’organisation",
+        "sin_permiso": "n’a plus l’autorisation d’exporter des rapports",
+        "sin_alcance": "n’a pas accès à la succursale de l’envoi",
+        "modulo_no_contratado": "le forfait n’inclut plus ce rapport",
+        "aprobador_sin_acceso": "la personne qui a approuvé cet e-mail externe n’est plus administrateur",
+        "rebote": "l’e-mail a été rejeté"
+      }
     }
   },
   "posVentas": {

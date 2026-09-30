@@ -14564,6 +14564,35 @@
       "consolidado": "Consolidado (todas las sucursales)",
       "sinFranja": "Este reporte se calcula por día completo: la franja horaria del cierre no aplica.",
       "reabierto": "Periodo reabierto por {quien}. Motivo: {motivo}"
+    },
+    "exportacion": {
+      "resumen": "Resumen",
+      "indicador": "Indicador",
+      "valor": "Valor",
+      "desde": "Desde",
+      "hasta": "Hasta"
+    },
+    "envios": {
+      "asunto": "{reporte} · {periodo}",
+      "asuntoPrueba": "[Prueba] {reporte} · {periodo}",
+      "saludo": "Hola, {nombre}:",
+      "saludoSinNombre": "Hola:",
+      "cuerpo": "Adjuntamos el reporte «{reporte}» de {organizacion} para el periodo {periodo}.",
+      "franja": "Franja horaria: {franja}.",
+      "pie": "Recibes este correo porque {creador} te incluyó en el envío programado «{envio}». Para dejar de recibirlo, pídele que te quite de la lista.",
+      "pieExterno": "Recibe este correo porque {organizacion} le incluyó en el envío programado «{envio}». Si no debería recibirlo, responda a este correo.",
+      "pausado": {
+        "titulo": "Envío programado con destinatarios en pausa: {envio}",
+        "linea": "{destinatario}: {motivo}"
+      },
+      "motivos": {
+        "sin_membresia": "ya no es miembro activo de la organización",
+        "sin_permiso": "ya no tiene permiso para exportar reportes",
+        "sin_alcance": "no tiene acceso a la sucursal del envío",
+        "modulo_no_contratado": "el plan ya no incluye este reporte",
+        "aprobador_sin_acceso": "quien aprobó este correo externo ya no es administrador",
+        "rebote": "el correo rebotó"
+      }
     }
   },
   "posVentas": {

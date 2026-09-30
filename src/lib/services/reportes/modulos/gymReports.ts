@@ -140,7 +140,7 @@ export const gymReports: ReportDefinition[] = [
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
       // Límites del periodo en la zona de la organización (no en UTC).
-      const { start, end, timezone } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, franjaDelPeriodo(periodo));
+      const { start, end, timezone } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, franjaDelPeriodo(periodo), db);
       const { data, error } = await db
         .from('membership_events')
         .select('id, membership_id, event_type, created_at')

@@ -85,7 +85,7 @@ export const pmsReports: ReportDefinition[] = [
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       let foliosQuery = db
         .from('folios')
         .select('id, balance, status, created_at, reservations!inner(organization_id, branch_id)')

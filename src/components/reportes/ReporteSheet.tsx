@@ -11,7 +11,7 @@ import { ReporteTabla } from './ReporteTabla';
 import { ReporteEmpty } from './ReporteEmpty';
 import { ReporteChart } from './ReporteChart';
 import { resolverPeriodo, TIPOS_CIERRE } from '@/lib/services/reportes/periodosService';
-import { subDays } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import type { ReportDefinition, ReportData, PeriodoCierre, TipoCierre } from '@/lib/services/reportes/types';
 
 interface ReporteSheetProps {
@@ -119,11 +119,11 @@ export function ReporteSheet({
         } else {
           refDate = new Date();
         }
-        compPeriodo = resolverPeriodo(comparisonTipo, refDate);
+        compPeriodo = resolverPeriodo(comparisonTipo, format(refDate, 'yyyy-MM-dd'));
       } else {
         const refDate = new Date(periodo.fechaInicio + 'T12:00:00');
         const dayBefore = subDays(refDate, 1);
-        compPeriodo = resolverPeriodo(comparisonTipo, dayBefore);
+        compPeriodo = resolverPeriodo(comparisonTipo, format(dayBefore, 'yyyy-MM-dd'));
       }
       const result = await reporte.fetch(orgId, compPeriodo, branchFilter);
       setComparisonData(result);
@@ -215,9 +215,9 @@ export function ReporteSheet({
                       className="h-7 text-xs rounded-md border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800 px-2 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
                       title="Tipo de período de comparación"
                     >
-                      {TIPOS_CIERRE.filter((t) => t.value !== 'personalizado').map((t) => (
-                        <option key={t.value} value={t.value}>
-                          {t.label}
+                      {TIPOS_CIERRE.filter((t) => t !== 'personalizado').map((t) => (
+                        <option key={t} value={t}>
+                          {t.charAt(0).toUpperCase() + t.slice(1)}
                         </option>
                       ))}
                     </select>
@@ -229,7 +229,7 @@ export function ReporteSheet({
                           // Al activar manual, pre-llenar con período anterior
                           const refDate = new Date(periodo.fechaInicio + 'T12:00:00');
                           const dayBefore = subDays(refDate, 1);
-                          const prev = resolverPeriodo(comparisonTipo, dayBefore);
+                          const prev = resolverPeriodo(comparisonTipo, format(dayBefore, 'yyyy-MM-dd'));
                           const prevDate = new Date(prev.fechaInicio + 'T12:00:00');
                           setManualMonth(prevDate.getMonth());
                           setManualYear(prevDate.getFullYear());

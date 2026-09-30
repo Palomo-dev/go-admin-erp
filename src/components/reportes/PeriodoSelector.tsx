@@ -14,6 +14,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, Check, X, Clock } from 'lucide
 import { HorasPresets } from '@/components/inicio/HorasPresets';
 import type { TipoCierre, PeriodoCierre } from '@/lib/services/reportes/types';
 import { resolverPeriodo, periodoAnterior, periodoSiguiente } from '@/lib/services/reportes/periodosService';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
 const OPCIONES: { value: TipoCierre; label: string }[] = [
   { value: 'diario', label: 'Diario' },
@@ -31,6 +32,7 @@ interface PeriodoSelectorProps {
 }
 
 export function PeriodoSelector({ periodo, onChange }: PeriodoSelectorProps) {
+  const { getToday } = useFormatDate();
   const [isCustom, setIsCustom] = useState(periodo.tipo === 'personalizado');
   const [customFrom, setCustomFrom] = useState(periodo.fechaInicio);
   const [customTo, setCustomTo] = useState(periodo.fechaFin);
@@ -44,7 +46,7 @@ export function PeriodoSelector({ periodo, onChange }: PeriodoSelectorProps) {
       return;
     }
     setIsCustom(false);
-    const nuevo = resolverPeriodo(tipo as TipoCierre);
+    const nuevo = resolverPeriodo(tipo as TipoCierre, getToday());
     // Preservar horas manuales si están definidas
     if (horaInicio || horaFin) {
       nuevo.horaInicio = horaInicio || null;
@@ -84,7 +86,7 @@ export function PeriodoSelector({ periodo, onChange }: PeriodoSelectorProps) {
 
   const handlePrev = () => onChange(periodoAnterior(periodo));
   const handleNext = () => {
-    const next = periodoSiguiente(periodo);
+    const next = periodoSiguiente(periodo, getToday());
     if (next) onChange(next);
   };
 

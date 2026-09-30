@@ -32,7 +32,7 @@ export const contabilidadReports: ReportDefinition[] = [
     periodosSugeridos: ['mensual', 'trimestral', 'anual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await db.rpc('fn_reporte_estado_resultados', {
         p_organization_id: orgId,
         p_from: start,
@@ -107,7 +107,7 @@ export const contabilidadReports: ReportDefinition[] = [
     periodosSugeridos: ['mensual', 'trimestral'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await db.rpc('fn_reporte_presupuesto_vs_real', {
         p_organization_id: orgId,
         p_from: start,

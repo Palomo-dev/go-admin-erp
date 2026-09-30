@@ -14,6 +14,7 @@ import { toPlainDate } from '@/lib/utils/timezone';
 import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
 import { rangoDelPeriodo } from '../rangoPeriodo';
+import { leerPaginado } from '../leerPaginado';
 
 /** Filas que devuelven las consultas de los informes (los embebidos llegan como objeto). */
 interface FilaSerialInforme {
@@ -36,6 +37,13 @@ interface FilaVentaSerialInforme {
   sold_by_user_id: string | null;
   products: { name?: string | null; sku?: string | null } | null;
   customers: { full_name?: string | null } | null;
+}
+
+interface FilaSerialProveedor {
+  id: number;
+  status: string;
+  cost_at_purchase: number | string | null;
+  suppliers: { id?: number | null; name?: string | null } | null;
 }
 
 interface FilaReclamoInforme {
@@ -105,8 +113,8 @@ export const serialTrackingReports: ReportDefinition[] = [
     periodosSugeridos: ['mensual', 'trimestral'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end, timezone } = await rangoDelPeriodo(orgId, periodo);
-      const { data, error } = await applyBranchFilter(
+      const { start, end, timezone } = await rangoDelPeriodo(orgId, periodo, db);
+      const data = await leerPaginado<FilaSerialInforme>((desde, hasta) => applyBranchFilter(
         db
           .from('serial_numbers')
           .select(`
@@ -119,15 +127,15 @@ export const serialTrackingReports: ReportDefinition[] = [
           `)
           .eq('organization_id', orgId)
           .gte('created_at', start)
-          .lte('created_at', end)
-          .order('created_at', { ascending: false })
-          .limit(500),
+          .lte('created_at', end),
         branchId,
-      );
+      )
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+        .range(desde, hasta)
+        .returns<FilaSerialInforme[]>());
 
-      if (error) throw error;
-
-      const filas = ((data ?? []) as unknown as FilaSerialInforme[]).map((s) => ({
+      const filas = data.map((s) => ({
         serial: s.serial,
         producto: s.products?.name ?? '—',
         sku: s.products?.sku ?? '—',
@@ -186,12 +194,12 @@ export const serialTrackingReports: ReportDefinition[] = [
     periodosSugeridos: ['mensual', 'trimestral'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end, timezone } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end, timezone } = await rangoDelPeriodo(orgId, periodo, db);
       // `serial_numbers.sold_by_user_id` NO tiene clave foránea a `profiles`
       // (la restricción `serial_numbers_sold_by_user_id_fkey` ni siquiera
       // existe), así que el embebido devolvía PGRST200 y el informe entero
       // fallaba. El vendedor se resuelve con una segunda consulta por id.
-      const { data, error } = await applyBranchFilter(
+      const data = await leerPaginado<FilaVentaSerialInforme>((desde, hasta) => applyBranchFilter(
         db
           .from('serial_numbers')
           .select(`
@@ -202,16 +210,16 @@ export const serialTrackingReports: ReportDefinition[] = [
           .eq('organization_id', orgId)
           .eq('status', 'sold')
           .gte('sale_date', start)
-          .lte('sale_date', end)
-          .order('sale_date', { ascending: false })
-          .limit(500),
+          .lte('sale_date', end),
         branchId,
-      );
-
-      if (error) throw error;
+      )
+        .order('sale_date', { ascending: false })
+        .order('id', { ascending: false })
+        .range(desde, hasta)
+        .returns<FilaVentaSerialInforme[]>());
 
       const vendedorIds = Array.from(
-        new Set(((data ?? []) as unknown as FilaVentaSerialInforme[]).map((s) => s.sold_by_user_id).filter(Boolean))
+        new Set(data.map((s) => s.sold_by_user_id).filter(Boolean))
       ) as string[];
       const emailPorUsuario = new Map<string, string>();
       if (vendedorIds.length > 0) {
@@ -236,7 +244,7 @@ export const serialTrackingReports: ReportDefinition[] = [
         manual: 'Manual',
       };
 
-      const filas = ((data ?? []) as unknown as FilaVentaSerialInforme[]).map((s) => ({
+      const filas = data.map((s) => ({
         serial: s.serial,
         producto: s.products?.name ?? '—',
         sku: s.products?.sku ?? '—',
@@ -289,8 +297,8 @@ export const serialTrackingReports: ReportDefinition[] = [
     periodosSugeridos: ['mensual', 'trimestral'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end, timezone } = await rangoDelPeriodo(orgId, periodo);
-      const { data, error } = await db
+      const { start, end, timezone } = await rangoDelPeriodo(orgId, periodo, db);
+      const data = await leerPaginado<FilaReclamoInforme>((desde, hasta) => db
         .from('warranty_claims')
         .select(`
           id, claim_date, claim_reason, status, resolution_type,
@@ -305,11 +313,11 @@ export const serialTrackingReports: ReportDefinition[] = [
         .gte('claim_date', start)
         .lte('claim_date', end)
         .order('claim_date', { ascending: false })
-        .limit(500);
+        .order('id', { ascending: false })
+        .range(desde, hasta)
+        .returns<FilaReclamoInforme[]>());
 
-      if (error) throw error;
-
-      const filas = ((data ?? []) as unknown as FilaReclamoInforme[]).map((c) => {
+      const filas = data.map((c) => {
         const claimDate = new Date(c.claim_date);
         const resolutionDate = c.resolution_date ? new Date(c.resolution_date) : null;
         const diasResolucion = resolutionDate
@@ -381,8 +389,8 @@ export const serialTrackingReports: ReportDefinition[] = [
     periodosSugeridos: ['mensual', 'trimestral'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
-      const { data, error } = await applyBranchFilter(
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
+      const data = await leerPaginado<FilaSerialProveedor>((desde, hasta) => applyBranchFilter(
         db
           .from('serial_numbers')
           .select(`
@@ -392,12 +400,12 @@ export const serialTrackingReports: ReportDefinition[] = [
           .eq('organization_id', orgId)
           .not('supplier_id', 'is', null)
           .gte('created_at', start)
-          .lte('created_at', end)
-          .limit(1000),
+          .lte('created_at', end),
         branchId,
-      );
-
-      if (error) throw error;
+      )
+        .order('id', { ascending: true })
+        .range(desde, hasta)
+        .returns<FilaSerialProveedor[]>());
 
       const porProveedor = new Map<string, {
         proveedor: string;
@@ -409,12 +417,12 @@ export const serialTrackingReports: ReportDefinition[] = [
         danados: number;
       }>();
 
-      for (const s of data ?? []) {
-        const supplier = s.suppliers as unknown as { name?: string | null } | null;
-        const nombre = supplier?.name ?? 'Sin proveedor';
-        const existente = porProveedor.get(nombre);
+      for (const s of data) {
+        const clave = String(s.suppliers?.id ?? 'sin-proveedor');
+        const nombre = s.suppliers?.name ?? 'Sin proveedor';
+        const existente = porProveedor.get(clave);
         const costo = Number(s.cost_at_purchase ?? 0);
-        const status = s.status as string;
+        const status = s.status;
 
         if (existente) {
           existente.seriales_comprados++;
@@ -424,7 +432,7 @@ export const serialTrackingReports: ReportDefinition[] = [
           if (status === 'in_stock') existente.en_stock++;
           if (status === 'damaged') existente.danados++;
         } else {
-          porProveedor.set(nombre, {
+          porProveedor.set(clave, {
             proveedor: nombre,
             seriales_comprados: 1,
             costo_total: costo,

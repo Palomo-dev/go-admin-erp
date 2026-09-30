@@ -13,7 +13,7 @@
 // ============================================================
 
 import { getOrgDateRange, type OperatingHoursOptions } from '@/lib/utils/timezone';
-import type { PeriodoCierre } from './types';
+import type { PeriodoCierre, ReportesClient } from './types';
 
 /** Franja manual del periodo, o null si no viene con las dos puntas. */
 export function franjaDelPeriodo(periodo: PeriodoCierre): OperatingHoursOptions | null {
@@ -22,15 +22,22 @@ export function franjaDelPeriodo(periodo: PeriodoCierre): OperatingHoursOptions 
     : null;
 }
 
+/**
+ * @param db Cliente con el que corre el reporte. En el servidor (cierre,
+ *   asistente, envíos programados) lleva la sesión: sin él, la zona y las horas
+ *   de la organización se leerían como `anon` y caerían al valor por defecto.
+ */
 export async function rangoDelPeriodo(
   orgId: number,
   periodo: PeriodoCierre,
+  db?: ReportesClient,
 ): Promise<{ start: string; end: string; timezone: string }> {
   const { start, end, timezone } = await getOrgDateRange(
     orgId,
     periodo.fechaInicio,
     periodo.fechaFin,
     franjaDelPeriodo(periodo),
+    db,
   );
   return { start, end, timezone };
 }

@@ -25,6 +25,7 @@ import { ReportesChatSheet } from '@/components/reportes/chat/ReportesChatSheet'
 import { registrarCierreConsolidado, obtenerHistorialCierres, obtenerDatosOrganizacion, generarNumeroDocumento, type CierreHistorico } from '@/lib/services/reportes/reportExecutionService';
 import { supabase } from '@/lib/supabase/config';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import type { PeriodoCierre, ReportDefinition, ReportData } from '@/lib/services/reportes/types';
 
 export default function ReportesPage() {
@@ -37,8 +38,9 @@ export default function ReportesPage() {
   const consolidadoRestringido = !cargandoCapacidades && !accesoTotal && filtroSelector === null;
   const { activeModules } = useActiveModules(organization?.id);
   const { toast } = useToast();
+  const { getToday } = useFormatDate();
 
-  const [periodo, setPeriodo] = useState<PeriodoCierre>(() => resolverPeriodo('mensual'));
+  const [periodo, setPeriodo] = useState<PeriodoCierre>(() => resolverPeriodo('mensual', getToday()));
   const [refreshKey, setRefreshKey] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);

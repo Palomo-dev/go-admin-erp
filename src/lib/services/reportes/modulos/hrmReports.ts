@@ -172,7 +172,7 @@ export const hrmReports: ReportDefinition[] = [
     periodosSugeridos: ['quincenal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       // La fuente es la tabla commissions (lo que de verdad se devengó, con su
       // método: monto fijo o porcentaje sobre la base SIN impuestos). Antes se
       // recalculaba desde sales comparando commission_type === 'fixed' (nunca

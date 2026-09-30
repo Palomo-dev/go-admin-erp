@@ -66,7 +66,7 @@ function OrganizacionContent() {
       
       if (planFinal) {
         const planNormalizado = planFinal.toLowerCase();
-        if (PLANES_VALIDOS.includes(planNormalizado as any)) {
+        if (PLANES_VALIDOS.includes(planNormalizado as typeof PLANES_VALIDOS[number])) {
           setPlanInicial(planNormalizado);
         }
       }

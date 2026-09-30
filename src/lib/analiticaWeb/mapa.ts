@@ -180,6 +180,49 @@ export function filtrarCiudadesPorRegion<T extends Pick<FilaCiudad, 'region'>>(c
   return ciudades.filter((c) => codigoRegionIso(pais, c.region) === region);
 }
 
+/** Filas por página de la tabla de ciudades (la RPC puede traer cientos). */
+export const CIUDADES_POR_PAGINA = 20;
+
+/**
+ * Ciudades que muestra la tabla y cuántas quedan fuera («y N ciudades más»).
+ *
+ * - Sin región: `ciudades` (las 500 primeras del país) y, fuera, el resto
+ *   hasta `ciudadesTotal`.
+ * - Con región: las de `ciudades` de esa región más las de `ciudadesRegion`
+ *   (las primeras 50 de cada región que no entraron en el top del país), sin
+ *   repetir y de más a menos visitantes. Fuera: `regiones[].ciudades` menos las
+ *   mostradas, si la RPC trae el conteo.
+ * - Respaldo (base sin `ciudades_region`): solo el filtro de `ciudades`, como
+ *   antes, y sin conteo de las que faltan.
+ */
+export function ciudadesParaTabla(
+  datos: Pick<DatosAnalitica, 'ciudades' | 'ciudadesTotal' | 'ciudadesRegion' | 'regiones'>,
+  pais: string,
+  region: string | null,
+): { ciudades: FilaCiudad[]; otras: number } {
+  if (!region) return { ciudades: [...datos.ciudades], otras: Math.max(0, datos.ciudadesTotal - datos.ciudades.length) };
+
+  const vistas = new Set<string>();
+  const ciudades: FilaCiudad[] = [];
+  for (const c of [...datos.ciudades, ...(datos.ciudadesRegion ?? [])]) {
+    if (codigoRegionIso(pais, c.region) !== region) continue;
+    const clave = `${c.ciudad}\u0000${c.region ?? ''}`;
+    if (vistas.has(clave)) continue;
+    vistas.add(clave);
+    ciudades.push(c);
+  }
+  if (datos.ciudadesRegion) {
+    ciudades.sort((a, b) => b.visitantes - a.visitantes || (a.ciudad < b.ciudad ? -1 : a.ciudad > b.ciudad ? 1 : 0));
+  }
+
+  let total: number | null = null;
+  for (const r of datos.regiones ?? []) {
+    if (codigoRegionIso(pais, r.region) !== region || typeof r.ciudades !== 'number') continue;
+    total = (total ?? 0) + r.ciudades;
+  }
+  return { ciudades, otras: total === null ? 0 : Math.max(0, total - ciudades.length) };
+}
+
 /** ¿Se abre Colombia por defecto? Cuando más de la mitad de los visitantes ubicados son de CO. */
 export function debeAbrirColombia(paises: readonly FilaPais[]): boolean {
   const co = agregarPorPais(paises).get('CO');

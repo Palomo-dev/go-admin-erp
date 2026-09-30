@@ -9,7 +9,11 @@
  * ciudades si la base aún no la trae) + ciudades; si es otro país, solo sus
  * ciudades.
  * Clic en un departamento filtra la lista de ciudades (no hay coordenadas de
- * ciudad, así que las ciudades siguen como lista).
+ * ciudad, así que las ciudades siguen como lista). Con la clave
+ * `ciudades_region` de la RPC, el filtro incluye las primeras ciudades del
+ * departamento aunque no estén en el top del país; sin ella, filtra solo
+ * `ciudades`. La tabla pagina de a 20 (`PaginationCompact` del kit): la RPC
+ * trae hasta 500 ciudades.
  *
  * Los mapas se cargan con `next/dynamic` (d3-geo + TopoJSON fuera del bundle
  * del inicio). La tabla es la alternativa accesible y está siempre visible.
@@ -22,9 +26,10 @@ import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useLocale, useTranslations } from 'next-intl';
 import { ArrowLeft, MapPin, X } from 'lucide-react';
+import { PaginationCompact, calcularRango } from '@/components/kit';
 import type { DatosAnalitica } from '@/lib/analiticaWeb/analiticaWeb';
 import { sinUbicacion } from '@/lib/analiticaWeb/analiticaWeb';
-import { agregarPorPais, filtrarCiudadesPorRegion, nombreRegion, valoresRegionMapa } from '@/lib/analiticaWeb/mapa';
+import { CIUDADES_POR_PAGINA, agregarPorPais, ciudadesParaTabla, nombreRegion, valoresRegionMapa } from '@/lib/analiticaWeb/mapa';
 import type { FormaDibujada } from './mapas/proyeccion';
 
 function EsqueletoMapa() {
@@ -150,7 +155,12 @@ function DetallePais({ datos, pais, cargandoPais, onVolver }: { datos: DatosAnal
   const t = useTranslations('analiticaWeb.geo');
   const locale = useLocale();
   const nf = new Intl.NumberFormat(locale);
-  const [region, setRegion] = useState<string | null>(null);
+  const [region, setRegionEstado] = useState<string | null>(null);
+  const [pagina, setPagina] = useState(1);
+  const setRegion = (siguiente: string | null | ((previo: string | null) => string | null)) => {
+    setRegionEstado(siguiente);
+    setPagina(1);
+  };
   const esColombia = pais === 'CO';
   const nombre = nombrePais(pais, locale);
   // `regiones` de la RPC si viene; si no, agregado desde las 50 ciudades (cota inferior).
@@ -158,9 +168,10 @@ function DetallePais({ datos, pais, cargandoPais, onVolver }: { datos: DatosAnal
     () => valoresRegionMapa(datos, pais),
     [datos, pais],
   );
-  const ciudades = filtrarCiudadesPorRegion(datos.ciudades, pais, region);
-  const maxC = Math.max(1, ...ciudades.map((c) => c.visitantes));
-  const otras = region ? 0 : Math.max(0, datos.ciudadesTotal - datos.ciudades.length);
+  const { ciudades, otras } = useMemo(() => ciudadesParaTabla(datos, pais, region), [datos, pais, region]);
+  const maxC = ciudades.reduce((m, c) => Math.max(m, c.visitantes), 1);
+  const rango = calcularRango(pagina, CIUDADES_POR_PAGINA, ciudades.length);
+  const visibles = ciudades.slice(rango.desde - 1, rango.hasta);
   const nombreRegionElegida = region ? nombreRegion(pais, region) : null;
 
   const volver = (
@@ -211,7 +222,7 @@ function DetallePais({ datos, pais, cargandoPais, onVolver }: { datos: DatosAnal
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
-              {ciudades.map((c) => (
+              {visibles.map((c) => (
                 <tr key={`${c.ciudad}-${c.region ?? ''}`}>
                   <td className="py-2 pr-2">
                     <span className="text-fg">{c.ciudad}</span>
@@ -224,6 +235,9 @@ function DetallePais({ datos, pais, cargandoPais, onVolver }: { datos: DatosAnal
               ))}
             </tbody>
           </table>
+        )}
+        {ciudades.length > CIUDADES_POR_PAGINA && (
+          <PaginationCompact pagina={rango.pagina} tamano={CIUDADES_POR_PAGINA} total={ciudades.length} onPaginaChange={setPagina} />
         )}
         {otras > 0 && <p className="text-xs text-fg-secondary">{t('otrasCiudades', { n: otras })}</p>}
       </Tarjeta>

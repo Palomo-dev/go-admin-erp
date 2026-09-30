@@ -596,5 +596,86 @@ dentro de un bloque que se revierte).
 
 - No hay en la base ningún miembro no admin con `users.view` para probar esa rama con datos reales; la rama
   usa `check_user_permission`, la misma función que ya resuelve los demás permisos.
-- La lista de ciudades sigue con el tope de 50: al filtrar por un departamento que no tiene ciudades en esa
-  lista, el mapa lo pinta pero la tabla dice «sin ciudades».
+- ~~La lista de ciudades sigue con el tope de 50: al filtrar por un departamento que no tiene ciudades en esa
+  lista, el mapa lo pinta pero la tabla dice «sin ciudades».~~ **Resuelto** el 2026-09-30: migración
+  `20260930220200_analitica_web_ciudades_region` (ver «Analítica web — límite de ciudades»).
+
+## Analítica web — límite de ciudades (2026-09-30)
+
+`fn_analitica_web` devolvía como mucho 50 ciudades del país pedido. Al filtrar en el mapa un departamento sin
+ciudades en ese top, el mapa lo pintaba (clave `regiones`) pero la tabla decía «sin ciudades».
+
+### Migración
+
+| Migración | Qué hace | md5(prosrc) antes → después |
+|---|---|---|
+| `20260930220200_analitica_web_ciudades_region` | `ciudades` hasta 500; clave nueva `ciudades_region`; campo `regiones[].ciudades` | `369be070ae3bd1a2e44373917fe61e18` → `13d6e20e4144e4bb749acef5910248ba` |
+
+Aplicada con `apply_migration`. El texto guardado en `schema_migrations` es el del archivo, byte a byte (md5 del
+archivo `52b4ad3e174dcf9225385e583f735808`). El rollback lleva el cuerpo anterior exacto (md5 `369be070…`,
+comprobado en local y en la base, dentro de un bloque que se revierte).
+
+- **Aditiva, con la misma firma** `(integer, date, date, integer, text)`. `ciudades` conserva su forma
+  `{ciudad, region, visitantes, sesiones}` y su orden; solo sube el tope de 50 a **500**. Clave nueva
+  `ciudades_region`: ciudades fuera de esas 500 que están entre las **50 primeras de su región**, con la misma forma
+  y hasta 1 000 filas. Campo nuevo `regiones[].ciudades`: ciudades distintas de la región, para el «y N ciudades
+  más» del filtro. `ciudades_total` sale de la misma agregación, sin el segundo recorrido que hacía antes.
+  Comprobado con la organización con más visitas (rango cerrado, hasta ayer): la salida nueva, sin las claves
+  nuevas, es igual a la anterior.
+- **Por qué una clave agrupada y no un parámetro `p_region`**: un parámetro cambia la firma, lo que deja una
+  sobrecarga ambigua u obliga a un `DROP`. Además, cada clic en el mapa costaría otra llamada a la RPC. Y un cliente
+  nuevo contra una base sin migrar fallaría, mientras que una clave que no viene se ignora. La clave sale de la
+  misma agregación por ciudad (dos `row_number()`: global y por región), así que no añade recorridos.
+- **Por qué 500 (y 50 por región)**: la geolocalización es reciente y la organización con más visitas tiene hoy
+  23 ciudades, así que se midió con datos sintéticos en una tabla temporal: 1 100 ciudades (≈ los municipios de
+  Colombia) con distribución Zipf, 61 182 visitas ubicadas y 120 000 sin país.
+
+  | Consulta de ciudades | Tiempo | JSON |
+  |---|---|---|
+  | Anterior (tope 50 + `count(distinct)` aparte) | 436 ms | 3,9 KB |
+  | Anterior con tope 500 / 1 000 | 438 / 442 ms | 38,5 / 77 KB |
+  | Nueva (top 500 + 50 por región, una agregación) | **312 ms** | 84 KB en total (500 + 600 extra) |
+
+  El top 500 cubre el 89 % de los visitantes de ese caso. El departamento sin ninguna ciudad en el top recupera
+  sus 18 ciudades por `ciudades_region`. El peor caso de Colombia son todas sus ciudades (~84 KB sin comprimir). El
+  tope de 1 000 filas extra acota a un país con muchas regiones.
+- **Seguridad igual que antes**: SECURITY INVOKER, `fn_assert_acceso_org` al entrar, `search_path` fijo, EXECUTE
+  solo para `authenticated` y `service_role` (ACL comprobada tras aplicar; una sola sobrecarga). Dry-run y
+  repetición tras aplicar (`set_config('request.jwt.claims')` + `set local role`, bloques que se revierten):
+  miembro de la org 137 → OK; miembro de otra org → `42501`; `anon` → `42501`.
+- **Rendimiento** (org 137, 90 días; `EXPLAIN ANALYZE` de la llamada, en caliente):
+
+  | | Antes | Después |
+  |---|---|---|
+  | `pais=CO` | 1 158–1 193 ms | 1 184–1 253 ms |
+  | Sin país | 1 181 ms | 1 189 ms |
+
+  Sin cambio apreciable: con datos reales la parte de ciudades es mínima (buffers 256 196 → 256 157, por el
+  recorrido que se quita). El coste sigue en los totales y la serie, que no se tocaron.
+
+### Cliente
+
+- `mapearRespuestaRpc` mapea `ciudades_region` → `ciudadesRegion` y `regiones[].ciudades`. Los deja en `null` si la
+  RPC no los trae (base atrasada).
+- `ciudadesParaTabla` (`lib/analiticaWeb/mapa.ts`):
+  - Sin departamento: `ciudades` y «y N más» hasta `ciudades_total`, como antes.
+  - Con departamento: une las de `ciudades` y `ciudadesRegion` de ese departamento, sin repetir y de más a menos
+    visitantes, con «y N más» desde `regiones[].ciudades`.
+  - Sin la clave: filtra solo `ciudades`, igual que antes.
+- `DeDondeEntran`: la tabla de ciudades pagina de a 20 (`CIUDADES_POR_PAGINA`) con `PaginationCompact` del kit
+  (la variante para tablas dentro de una tarjeta) y vuelve a la página 1 al cambiar de departamento. Sin textos
+  nuevos: reutiliza `analiticaWeb.geo.*` y `kit.paginacion.*`.
+
+### Pruebas
+
+| Suite | Resultado |
+|---|---|
+| `lib/analiticaWeb` + `components/analiticaWeb` (+ mapeo de las claves nuevas, `ciudadesParaTabla`, departamento fuera del top con `ciudades_region` y «N más», respaldo sin la clave, paginación y vuelta a la página 1) | 59/59, TZ=UTC y TZ=America/Bogota |
+| guardrails, `api/analitica-web`, i18n | en verde |
+
+`tsc` acotado a los archivos tocados (y lo que importan): 0 errores. ESLint limpio en los archivos tocados.
+
+### Pendiente
+
+- La ciudad se agrupa por nombre con `max(region)` (como antes): dos municipios homónimos de departamentos
+  distintos se suman en una fila. Hoy no hay ningún caso en la base; si aparece, agrupar por `(city, region)`.

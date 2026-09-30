@@ -133,13 +133,19 @@ export interface FilaCiudad {
 
 /**
  * Visitantes por región (`website_visits.region`, sin país: «ANT», «DC») del
- * país pedido. Viene de la clave `regiones` de la RPC, sin el tope de 50
+ * país pedido. Viene de la clave `regiones` de la RPC, sin el tope de
  * ciudades.
  */
 export interface FilaRegion {
   region: string;
   visitantes: number;
   sesiones: number;
+  /**
+   * Ciudades distintas de la región en el periodo (para «y N ciudades más» al
+   * filtrar). `null` si la RPC no trae el campo (base sin la migración
+   * `analitica_web_ciudades_region`).
+   */
+  ciudades?: number | null;
 }
 
 export interface DatosAnalitica {
@@ -152,8 +158,15 @@ export interface DatosAnalitica {
   serie: PuntoSerie[];
   paises: FilaPais[];
   pais: string | null;
+  /** Las 500 ciudades con más visitantes del país pedido (50 antes de `analitica_web_ciudades_region`). */
   ciudades: FilaCiudad[];
   ciudadesTotal: number;
+  /**
+   * Ciudades fuera de `ciudades` que están entre las 50 primeras de su región
+   * (clave `ciudades_region`). Solo se usan al filtrar un departamento. `null`
+   * (o ausente) cuando la RPC no la trae: el filtro usa solo `ciudades`.
+   */
+  ciudadesRegion?: FilaCiudad[] | null;
   /**
    * Regiones del país pedido. `null` (o ausente) cuando la RPC no trae la
    * clave —una base sin la migración `analitica_web_regiones`—: entonces el
@@ -173,6 +186,12 @@ const num = (v: unknown): number => {
 const numONull = (v: unknown): number | null => (v === null || v === undefined ? null : num(v));
 const obj = (v: unknown): Crudo => (v && typeof v === 'object' ? (v as Crudo) : {});
 const lista = (v: unknown): Crudo[] => (Array.isArray(v) ? (v as Crudo[]) : []);
+const ciudad = (c: Crudo): FilaCiudad => ({
+  ciudad: String(c.ciudad ?? ''),
+  region: typeof c.region === 'string' ? c.region : null,
+  visitantes: num(c.visitantes),
+  sesiones: num(c.sesiones),
+});
 
 function totales(v: unknown): TotalesAnalitica {
   const o = obj(v);
@@ -208,18 +227,19 @@ export function mapearRespuestaRpc(crudo: unknown): DatosAnalitica {
     })),
     paises: lista(o.paises).map((p) => ({ pais: String(p.pais ?? ''), visitantes: num(p.visitantes), sesiones: num(p.sesiones) })),
     pais: typeof o.pais === 'string' ? o.pais : null,
-    ciudades: lista(o.ciudades).map((c) => ({
-      ciudad: String(c.ciudad ?? ''),
-      region: typeof c.region === 'string' ? c.region : null,
-      visitantes: num(c.visitantes),
-      sesiones: num(c.sesiones),
-    })),
+    ciudades: lista(o.ciudades).map(ciudad),
     ciudadesTotal: num(o.ciudades_total),
     regiones: Array.isArray(o.regiones)
       ? lista(o.regiones)
           .filter((r) => typeof r.region === 'string' && r.region.trim() !== '')
-          .map((r) => ({ region: String(r.region), visitantes: num(r.visitantes), sesiones: num(r.sesiones) }))
+          .map((r) => ({
+            region: String(r.region),
+            visitantes: num(r.visitantes),
+            sesiones: num(r.sesiones),
+            ciudades: numONull(r.ciudades),
+          }))
       : null,
+    ciudadesRegion: Array.isArray(o.ciudades_region) ? lista(o.ciudades_region).map(ciudad) : null,
     visitasConPais: num(o.visitas_con_pais),
     visitasSinUbicacionTotal: numONull(o.visitas_sin_ubicacion_total),
   };

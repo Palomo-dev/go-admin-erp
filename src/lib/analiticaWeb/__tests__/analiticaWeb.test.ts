@@ -103,12 +103,29 @@ describe('mapeo e indicadores', () => {
       ],
     });
     expect(conRegiones.regiones).toEqual([
-      { region: 'ANT', visitantes: 12, sesiones: 20 },
-      { region: 'DC', visitantes: 9, sesiones: 0 },
+      { region: 'ANT', visitantes: 12, sesiones: 20, ciudades: null },
+      { region: 'DC', visitantes: 9, sesiones: 0, ciudades: null },
     ]);
     expect(mapearRespuestaRpc({ pais: 'CO', regiones: [] }).regiones).toEqual([]);
     expect(mapearRespuestaRpc({ pais: 'CO' }).regiones).toBeNull();
     expect(mapearRespuestaRpc({ pais: 'CO', regiones: 'basura' }).regiones).toBeNull();
+  });
+
+  test('`ciudades_region` y `regiones[].ciudades`: se mapean si vienen; null si la RPC no los trae', () => {
+    const d2 = mapearRespuestaRpc({
+      pais: 'CO',
+      ciudades: [{ ciudad: 'Bogotá', region: 'DC', visitantes: 10, sesiones: 12 }],
+      ciudades_region: [{ ciudad: 'Puerto Carreño', region: 'VID', visitantes: '2', sesiones: 3 }, { ciudad: 'Sin región', region: null }],
+      regiones: [{ region: 'VID', visitantes: 2, sesiones: 3, ciudades: '4' }],
+    });
+    expect(d2.ciudadesRegion).toEqual([
+      { ciudad: 'Puerto Carreño', region: 'VID', visitantes: 2, sesiones: 3 },
+      { ciudad: 'Sin región', region: null, visitantes: 0, sesiones: 0 },
+    ]);
+    expect(d2.regiones?.[0].ciudades).toBe(4);
+    expect(mapearRespuestaRpc({ pais: 'CO', ciudades_region: [] }).ciudadesRegion).toEqual([]);
+    expect(mapearRespuestaRpc({ pais: 'CO' }).ciudadesRegion).toBeNull();
+    expect(mapearRespuestaRpc({ pais: 'CO', ciudades_region: {} }).ciudadesRegion).toBeNull();
   });
 
   test('conversión = pedidos / sesiones (3,4 %) y diferencia en pp', () => {

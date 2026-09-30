@@ -5,7 +5,10 @@
  * el documento desde la base con la organización de la sesión (la cookie viaja
  * sola). Nunca se mandan datos del documento: no hay nada que manipular.
  *
- * - `abrirDocumento`: PDF en una pestaña nueva.
+ * - `abrirDocumento`: PDF en una pestaña nueva. Hay que llamarlo dentro del clic:
+ *   después de un `await` el navegador bloquea la ventana y no baja nada.
+ * - `prepararDescarga` + `entregarArchivo`: la pestaña se abre en el clic y el
+ *   archivo se guarda ahí cuando la respuesta ya llegó.
  * - `imprimirDocumento`: HTML imprimible en una pestaña nueva que abre el
  *   diálogo de impresión (se abre SÍNCRONAMENTE dentro del clic, para que el
  *   bloqueador de ventanas emergentes no la corte).
@@ -89,6 +92,68 @@ export function guardarArchivo(blob: Blob, nombre: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/**
+ * Abre la pestaña de la descarga en el mismo clic, antes de cualquier `await`.
+ * Un `window.open` después de guardar el cierre lo bloquea el navegador y el
+ * archivo no sale, aunque el cierre sí haya quedado guardado.
+ */
+export function prepararDescarga(aviso?: string): Window | null {
+  if (typeof window === 'undefined') return null;
+  let pestana: Window | null = null;
+  try {
+    pestana = window.open('about:blank', '_blank');
+  } catch {
+    return null;
+  }
+  if (!pestana) return null;
+  try {
+    if (aviso) {
+      pestana.document.title = aviso;
+      if (pestana.document.body) pestana.document.body.textContent = aviso;
+    }
+    pestana.blur();
+    window.focus();
+  } catch {
+    // La pestaña ya está abierta; el aviso no es necesario para bajar el archivo.
+  }
+  return pestana;
+}
+
+/**
+ * Baja el archivo. Si `pestana` se abrió en el clic, el clic de descarga
+ * ocurre ahí y el navegador no lo trata como una descarga automática.
+ */
+export function entregarArchivo(blob: Blob, nombre: string, pestana: Window | null = null): void {
+  if (pestana && !pestana.closed) {
+    try {
+      const url = pestana.URL.createObjectURL(blob);
+      const doc = pestana.document;
+      const cuerpo = doc.body ?? doc.documentElement.appendChild(doc.createElement('body'));
+      const a = doc.createElement('a');
+      a.href = url;
+      a.download = nombre;
+      cuerpo.appendChild(a);
+      a.click();
+      pestana.setTimeout(() => {
+        try {
+          pestana.URL.revokeObjectURL(url);
+        } catch {
+          // La pestaña ya no está.
+        }
+        try {
+          if (!pestana.closed) pestana.close();
+        } catch {
+          // El navegador no deja cerrarla.
+        }
+      }, 1500);
+      return;
+    } catch {
+      // La pestaña no dejó escribir el archivo: se baja en esta.
+    }
+  }
+  guardarArchivo(blob, nombre);
+}
+
 async function errorDeRespuesta(respuesta: Response): Promise<ErrorDocumento> {
   let cuerpo: { error?: string; code?: string } = {};
   try {
@@ -106,15 +171,20 @@ export async function obtenerPdf(tipo: TipoDocumento, id: string | number, opcio
   return { blob: await respuesta.blob(), nombre: nombreDeDisposicion(respuesta.headers.get('content-disposition'), `${tipo}.pdf`) };
 }
 
-/** Descarga el PDF; si el servidor no puede generarlo, descarga el HTML imprimible. */
-export async function descargarDocumento(tipo: TipoDocumento, id: string | number, opciones: OpcionesDocumentoCliente = {}): Promise<void> {
+/** Pide el archivo: PDF, o el HTML imprimible si el servidor no puede generar PDF. */
+export async function obtenerDescarga(tipo: TipoDocumento, id: string | number, opciones: OpcionesDocumentoCliente = {}): Promise<{ blob: Blob; nombre: string }> {
   try {
-    const { blob, nombre } = await obtenerPdf(tipo, id, opciones);
-    guardarArchivo(blob, nombre);
+    return await obtenerPdf(tipo, id, opciones);
   } catch (err) {
     if (!(err instanceof ErrorDocumento) || err.codigo !== 'PDF_NO_DISPONIBLE') throw err;
     const respuesta = await fetch(urlDocumento(tipo, id, { ...opciones, formato: 'html' }), { credentials: 'same-origin' });
     if (!respuesta.ok) throw await errorDeRespuesta(respuesta);
-    guardarArchivo(await respuesta.blob(), `${tipo}-${String(id)}.html`);
+    return { blob: await respuesta.blob(), nombre: `${tipo}-${String(id)}.html` };
   }
+}
+
+/** Descarga el PDF; si el servidor no puede generarlo, descarga el HTML imprimible. */
+export async function descargarDocumento(tipo: TipoDocumento, id: string | number, opciones: OpcionesDocumentoCliente = {}): Promise<void> {
+  const { blob, nombre } = await obtenerDescarga(tipo, id, opciones);
+  guardarArchivo(blob, nombre);
 }

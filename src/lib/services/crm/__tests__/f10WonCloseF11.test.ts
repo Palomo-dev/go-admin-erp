@@ -185,8 +185,8 @@ describe('D2 renovación delega en F11', () => {
 
   it('mensajes de omisión intactos: sin ciclo y sin cliente; org inválida lanza; nada escrito y F11 no se invoca', async () => {
     const schedule = jest.fn();
-    expect(await executeRenewal({ ...opp, billing_cycle_months: null }, deps({ scheduleRenewal: schedule }))).toBe('Sin billing_cycle_months — se omitió renovación');
-    expect(await executeRenewal({ ...opp, billing_cycle_months: 0 }, deps({ scheduleRenewal: schedule }))).toBe('Sin billing_cycle_months — se omitió renovación');
+    expect(await executeRenewal({ ...opp, billing_cycle_months: null }, deps({ scheduleRenewal: schedule }))).toBe('Sin ciclo de facturación en la oportunidad — se omitió renovación');
+    expect(await executeRenewal({ ...opp, billing_cycle_months: 0 }, deps({ scheduleRenewal: schedule }))).toBe('Sin ciclo de facturación en la oportunidad — se omitió renovación');
     expect(await executeRenewal({ ...opp, customer_id: null }, deps({ scheduleRenewal: schedule }))).toBe('Sin cliente — se omitió renovación');
     await expect(executeRenewal(opp, deps({ scheduleRenewal: schedule, orgId: 0 }))).rejects.toThrow('Organización no válida');
     expect(schedule).not.toHaveBeenCalled();

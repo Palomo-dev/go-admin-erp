@@ -23532,6 +23532,7 @@
         },
         "comisionSistema": "Le système enregistre la commission au gain ; ce n’est pas une case à cocher.",
         "resumen": "{n, plural, =0 {Étape gagnée appliquée.} one {Étape gagnée appliquée. # document a été créé.} other {Étape gagnée appliquée. # documents ont été créés.}}",
+        "pasosFallidos": "{n, plural, one {# étape n'a pas pu être terminée ; consultez le détail.} other {# étapes n'ont pas pu être terminées ; consultez le détail.}}",
         "error": {
           "obligatorio": "Ce champ est obligatoire.",
           "montoInvalido": "Saisissez un montant valide.",
@@ -25133,6 +25134,9 @@
       "existente": "Une clôture existe déjà pour cette période. Recalculer crée une nouvelle version et marque la précédente comme remplacée.",
       "vacio": "Choisissez au moins un rapport.",
       "listo": "Clôture {numero} générée",
+      "descargando": "Préparation du fichier de clôture…",
+      "bajar": "Télécharger le fichier",
+      "sinArchivo": "La clôture {numero} a été enregistrée. Le fichier n'a pas été téléchargé.",
       "notaFranja": "La plage ne s'applique qu'aux chapitres qui l'acceptent. Les autres utilisent la journée complète.",
       "sinDatos": "Un chapitre sans données sur la période s'imprime avec la note « Aucun mouvement ».",
       "plantillas": {

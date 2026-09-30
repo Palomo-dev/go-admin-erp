@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { CheckCircle2, FileText, Info, Loader2, Trophy } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, FileText, Info, Loader2, Trophy } from 'lucide-react';
+import { cn } from '@/utils/Utils';
 import { FormField } from '@/components/kit/FormField';
 import { PanelAdaptable } from '@/components/kit/PanelAdaptable';
 import { clasesBoton } from '@/components/kit/botonClases';
@@ -12,6 +13,7 @@ import { CLASE_AREA, CLASE_AVISO_INFO, CLASE_CAMPO, simboloMoneda, type OpcionUs
 import {
   ACCIONES_GANAR,
   alternarAccion,
+  conteoResumen,
   cuerpoGanar,
   facturaCreada,
   validarGanar,
@@ -88,6 +90,7 @@ export function WinDialog({ abierto, onAbiertoChange, oportunidad, monedaBase, m
   };
 
   const factura = facturaCreada(docs);
+  const conteo = conteoResumen(docs);
   const titulo = paso === 'resumen' ? t('ganada') : t('titulo', { nombre: oportunidad.name });
   const descripcion =
     paso === 'resumen'
@@ -172,12 +175,24 @@ export function WinDialog({ abierto, onAbiertoChange, oportunidad, monedaBase, m
         <>
           <p role="status" className="flex items-start gap-2 rounded-lg bg-success-subtle px-3 py-2 text-[13px] text-success-text">
             <CheckCircle2 aria-hidden="true" className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} />
-            {t('resumen', { n: docs.length })}
+            {t('resumen', { n: conteo.creados })}
           </p>
+          {conteo.fallidos > 0 && (
+            <p role="alert" className="flex items-start gap-2 rounded-lg bg-danger-subtle px-3 py-2 text-[13px] text-danger-text">
+              <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} />
+              {t('pasosFallidos', { n: conteo.fallidos })}
+            </p>
+          )}
           <ul className="flex flex-col gap-2">
             {docs.map((d) => (
-              <li key={`${d.tipo}-${d.numero}`} className="inline-flex items-center gap-1.5 self-start rounded-full bg-brand-tint px-3 py-1 text-[13px] text-brand-deep">
-                <FileText aria-hidden="true" className="size-3.5" />
+              <li
+                key={`${d.tipo}-${d.numero}`}
+                className={cn(
+                  'inline-flex items-center gap-1.5 self-start rounded-full px-3 py-1 text-[13px]',
+                  d.estado === 'error' ? 'bg-danger-subtle text-danger-text' : d.estado === 'omitido' ? 'bg-subtle text-fg-muted' : 'bg-brand-tint text-brand-deep',
+                )}
+              >
+                {d.estado === 'error' ? <AlertTriangle aria-hidden="true" className="size-3.5 shrink-0" /> : <FileText aria-hidden="true" className="size-3.5 shrink-0" />}
                 {d.href ? <a href={d.href} className="hover:underline">{d.numero}</a> : d.numero}
               </li>
             ))}

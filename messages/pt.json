@@ -23532,6 +23532,7 @@
         },
         "comisionSistema": "A comissão é registrada pelo sistema ao ganhar; não é uma caixa de seleção.",
         "resumen": "{n, plural, =0 {Etapa de ganho aplicada.} one {Etapa de ganho aplicada. Foi criado # documento.} other {Etapa de ganho aplicada. Foram criados # documentos.}}",
+        "pasosFallidos": "{n, plural, one {# etapa não pôde ser concluída; confira o detalhe.} other {# etapas não puderam ser concluídas; confira o detalhe.}}",
         "error": {
           "obligatorio": "Este campo é obrigatório.",
           "montoInvalido": "Digite um valor válido.",
@@ -25133,6 +25134,9 @@
       "existente": "Já há um fechamento deste período. Recalcular cria uma versão nova e marca a anterior como substituída.",
       "vacio": "Escolha pelo menos um relatório.",
       "listo": "Fechamento {numero} gerado",
+      "descargando": "Preparando o arquivo do fechamento…",
+      "bajar": "Baixar arquivo",
+      "sinArchivo": "O fechamento {numero} foi salvo. O arquivo não baixou.",
       "notaFranja": "A faixa só se aplica aos capítulos que a aceitam. Os demais usam o dia inteiro.",
       "sinDatos": "Um capítulo sem dados no período é impresso com a nota «Sem movimentos».",
       "plantillas": {

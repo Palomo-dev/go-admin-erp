@@ -158,7 +158,7 @@ export const contabilidadReports: DefinicionModulo[] = [
     categoria: 'contable',
     alcance: 'organizacion',
     periodosSugeridos: ['mensual', 'trimestral', 'anual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, _sucursal?: number | null, client?: ReportesClient): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
       const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const [resultado, desglose] = await Promise.all([
@@ -270,7 +270,7 @@ export const contabilidadReports: DefinicionModulo[] = [
     categoria: 'contable',
     alcance: 'organizacion',
     periodosSugeridos: ['mensual', 'trimestral', 'anual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, _sucursal?: number | null, client?: ReportesClient): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
       const { data, error } = await db.rpc('fn_reporte_balance_general', {
         p_organization_id: orgId,
@@ -315,7 +315,7 @@ export const contabilidadReports: DefinicionModulo[] = [
     categoria: 'contable',
     alcance: 'organizacion',
     periodosSugeridos: ['mensual', 'trimestral'],
-    async fetch(orgId: number, periodo: PeriodoCierre, _sucursal?: number | null, client?: ReportesClient): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
       const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await db.rpc('fn_reporte_presupuesto_vs_real', {
@@ -357,7 +357,7 @@ export const contabilidadReports: DefinicionModulo[] = [
     categoria: 'contable',
     alcance: 'organizacion',
     periodosSugeridos: ['mensual', 'trimestral', 'anual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, _sucursal?: number | null, client?: ReportesClient): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
       const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await db.rpc('fn_reporte_balance_prueba', {
@@ -415,7 +415,7 @@ export const contabilidadReports: DefinicionModulo[] = [
     categoria: 'contable',
     alcance: 'organizacion',
     periodosSugeridos: ['diario', 'semanal', 'mensual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, _sucursal?: number | null, client?: ReportesClient): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
       const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await db.rpc('fn_reporte_libro_diario_origen', {
@@ -476,7 +476,7 @@ export const contabilidadReports: DefinicionModulo[] = [
     categoria: 'contable',
     alcance: 'organizacion',
     periodosSugeridos: ['mensual', 'trimestral', 'anual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, _sucursal?: number | null, client?: ReportesClient): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
       const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await db.rpc('fn_reporte_gastos_naturaleza', {
@@ -545,7 +545,7 @@ export const contabilidadReports: DefinicionModulo[] = [
     categoria: 'contable',
     alcance: 'organizacion',
     periodosSugeridos: ['mensual', 'anual'],
-    async fetch(orgId: number, periodo: PeriodoCierre, _sucursal?: number | null, client?: ReportesClient): Promise<ReportData> {
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
       const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await db.rpc('fn_reporte_periodo_fiscal', {

@@ -24,7 +24,11 @@ export interface OpcionesDocumentoCliente {
   /** Estado de cuenta: días `YYYY-MM-DD`. */
   desde?: string;
   hasta?: string;
+  /** Reporte del catálogo: `periodo`, `sucursal`, `hi`, `hf`, `vista`, `comparar` (los valida el servidor). */
+  parametros?: Readonly<Record<string, string>>;
 }
+
+const PARAMETROS_REPORTE = ['periodo', 'sucursal', 'hi', 'hf', 'vista', 'comparar'] as const;
 
 export class ErrorDocumento extends Error {
   constructor(message: string, readonly status: number, readonly codigo: string | null) {
@@ -44,6 +48,10 @@ export function urlDocumento(
   if (opciones.idioma) q.set('idioma', opciones.idioma);
   if (opciones.desde) q.set('desde', opciones.desde);
   if (opciones.hasta) q.set('hasta', opciones.hasta);
+  for (const clave of PARAMETROS_REPORTE) {
+    const valor = opciones.parametros?.[clave];
+    if (valor) q.set(clave, valor);
+  }
   if (opciones.descargar) q.set('descargar', '1');
   if (opciones.imprimir) q.set('imprimir', '1');
   return `/api/documentos/${encodeURIComponent(tipo)}/${encodeURIComponent(String(id))}?${q.toString()}`;

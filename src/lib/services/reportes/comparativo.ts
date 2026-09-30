@@ -39,6 +39,19 @@ export function compararKpis(actual: ReportData, anterior: ReportData | null): V
 /** Umbral de variación (%) a partir del cual el cambio se menciona en la lectura. */
 export const UMBRAL_VARIACION = 15;
 
+/** Las (hasta 3) variaciones que merecen mención: |%| ≥ umbral, de mayor a menor. */
+export function variacionesRelevantes(variaciones: VariacionKpi[]): Array<VariacionKpi & { porcentaje: number }> {
+  return variaciones
+    .filter((v): v is VariacionKpi & { porcentaje: number } => v.porcentaje !== null && Math.abs(v.porcentaje) >= UMBRAL_VARIACION)
+    .sort((x, y) => Math.abs(y.porcentaje) - Math.abs(x.porcentaje))
+    .slice(0, 3);
+}
+
+/** ¿El resultado no tiene movimientos (ni filas ni KPI numéricos distintos de cero)? */
+export function sinMovimientos(actual: ReportData): boolean {
+  return actual.filas.length === 0 && actual.kpis.every((k) => !numero(k.valor));
+}
+
 /**
  * Lectura rápida genérica: lo que dice el propio resultado. Los reportes
  * pueden traer la suya (`ReportData.lectura`), que va primero.
@@ -52,21 +65,17 @@ export function lecturaDelReporte(
 ): LecturaReporte[] {
   const lectura: LecturaReporte[] = [...(actual.lectura ?? [])];
 
-  if (actual.filas.length === 0 && actual.kpis.every((k) => !numero(k.valor))) {
+  if (sinMovimientos(actual)) {
     lectura.push({ tono: 'info', texto: 'No hay movimientos en este periodo.' });
     return lectura;
   }
 
   if (variaciones && etiquetaComparado) {
-    const relevantes = variaciones
-      .filter((v) => v.porcentaje !== null && Math.abs(v.porcentaje) >= UMBRAL_VARIACION)
-      .sort((x, y) => Math.abs(y.porcentaje!) - Math.abs(x.porcentaje!))
-      .slice(0, 3);
-    for (const v of relevantes) {
-      const sube = v.porcentaje! > 0;
+    for (const v of variacionesRelevantes(variaciones)) {
+      const sube = v.porcentaje > 0;
       lectura.push({
         tono: 'info',
-        texto: `${v.titulo} ${sube ? 'sube' : 'baja'} ${Math.abs(v.porcentaje!).toFixed(1).replace('.', ',')} % frente a ${etiquetaComparado}.`,
+        texto: `${v.titulo} ${sube ? 'sube' : 'baja'} ${Math.abs(v.porcentaje).toFixed(1).replace('.', ',')} % frente a ${etiquetaComparado}.`,
       });
     }
   }

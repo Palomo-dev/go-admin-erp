@@ -1,6 +1,6 @@
 /**
  * Doble de Supabase en memoria para las pruebas de envíos programados:
- * select / insert / update / delete con `eq`, `in`, `lte` y `not is null`,
+ * select / insert / update / delete con `eq`, `in`, `lte`, `gte`, `contains` y `not is null`,
  * `single` / `maybeSingle` y `.select()` después de escribir. Registra cada
  * escritura para comprobar QUÉ se tocó y con qué filtros.
  */
@@ -29,6 +29,8 @@ class Consulta implements PromiseLike<{ data: unknown; error: null }> {
   eq(c: string, v: unknown) { this.filtros.push([c, 'eq', v]); return this; }
   in(c: string, v: unknown[]) { this.filtros.push([c, 'in', v]); return this; }
   lte(c: string, v: unknown) { this.filtros.push([c, 'lte', v]); return this; }
+  gte(c: string, v: unknown) { this.filtros.push([c, 'gte', v]); return this; }
+  contains(c: string, v: Record<string, unknown>) { this.filtros.push([c, 'contains', v]); return this; }
   not(c: string, op: string, v: unknown) { this.filtros.push([c, `not.${op}`, v]); return this; }
 
   private cumple(f: Fila): boolean {
@@ -37,6 +39,11 @@ class Consulta implements PromiseLike<{ data: unknown; error: null }> {
       if (op === 'eq') return String(x) === String(v);
       if (op === 'in') return (v as unknown[]).map(String).includes(String(x));
       if (op === 'lte') return Date.parse(String(x)) <= Date.parse(String(v));
+      if (op === 'gte') return Date.parse(String(x)) >= Date.parse(String(v));
+      if (op === 'contains') {
+        const o = (x ?? {}) as Record<string, unknown>;
+        return Object.entries(v as Record<string, unknown>).every(([k, val]) => o[k] === val);
+      }
       if (op === 'not.is') return x !== null && x !== undefined;
       return true;
     });

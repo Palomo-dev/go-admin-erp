@@ -17,9 +17,11 @@ import { getReporteById } from '@/lib/services/reportes/reportesCatalogo';
 import { ejecutarReporte } from '@/lib/services/reportes/reportesEngine';
 import type { ReportData } from '@/lib/services/reportes/types';
 import { aQuery } from '@/lib/services/reportes/filtrosUrl';
+import { BarraFiltros } from './BarraFiltros';
 import { iconoDeGrupo } from './iconoGrupo';
 import { rutaGrupo, rutaReporte } from './rutasReportes';
 import { useEtiquetaPeriodo } from './SelectorPeriodo';
+import { useFiltrosReportes } from './useFiltrosReportes';
 import type { ContextoReportes } from './useContextoReportes';
 import { useFormatoReporte } from './useFormatoReporte';
 import type { FiltrosReportes } from '@/lib/services/reportes/filtrosUrl';
@@ -39,6 +41,7 @@ export function InicioReportes({
 }) {
   const t = useTranslations('reportes');
   const router = useRouter();
+  const { hoy, cambiar } = useFiltrosReportes();
   const [texto, setTexto] = useState('');
   const busqueda = normalizarBusqueda(texto);
   const enPlan = useMemo(() => new Set(ctx.grupos.flatMap((g) => g.reportes.map((r) => r.id))), [ctx.grupos]);
@@ -51,11 +54,12 @@ export function InicioReportes({
     }))
     .filter((g) => g.visibles.length > 0);
 
-  const fuera = ctx.grupos.filter((g) => g.reportes.length === 0 && g.bloqueados.length > 0 && g.grupo.vertical);
+  const fuera = ctx.grupos.filter((g) => g.reportes.length === 0 && g.bloqueados.length > 0);
 
   return (
     <div className="flex flex-col gap-6">
       <SearchInput value={texto} onChange={setTexto} onValueChange={setTexto} debounceMs={0} placeholder={t('inicio.buscar', { n: total })} etiqueta={t('inicio.buscarCorto')} atajo="/" />
+      <BarraFiltros filtros={filtros} onCambiar={cambiar} hoy={hoy} ctx={ctx} />
       <KpisInicio ctx={ctx} filtros={filtros} enPlan={enPlan} query={query} />
       <Recientes ctx={ctx} query={query} recarga={recarga} onVerHistorial={onVerHistorial} />
       <div className="flex flex-col gap-1">

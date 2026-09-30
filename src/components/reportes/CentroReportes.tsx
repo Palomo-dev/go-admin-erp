@@ -138,12 +138,7 @@ export function CentroReportes({ titulo, subtitulo, migas, children }: { titulo?
           {children ?? (
             <div className="flex flex-col gap-4">
               {pestana !== 'inicio' && <BarraFiltros filtros={filtros} onCambiar={cambiar} hoy={hoy} ctx={ctx} sinComparar={pestana !== 'historial'} />}
-              {pestana === 'inicio' && (
-                <>
-                  <BarraFiltros filtros={filtros} onCambiar={cambiar} hoy={hoy} ctx={ctx} />
-                  <InicioReportes ctx={ctx} filtros={filtros} query={query} recarga={recarga} onVerHistorial={() => ir('historial')} />
-                </>
-              )}
+              {pestana === 'inicio' && <InicioReportes ctx={ctx} filtros={filtros} query={query} recarga={recarga} onVerHistorial={() => ir('historial')} />}
               {pestana === 'favoritos' && <FavoritosTab ctx={ctx} recarga={recarga} />}
               {pestana === 'cierres' && <CierresTab ctx={ctx} recarga={recarga} onRecargar={recargar} />}
               {pestana === 'programados' && <ProgramadosTab ctx={ctx} recarga={recarga} onRecargar={recargar} />}

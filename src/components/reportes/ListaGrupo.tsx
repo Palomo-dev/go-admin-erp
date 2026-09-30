@@ -34,12 +34,14 @@ export function ListaGrupo({ grupoId, ctx, query }: { grupoId: string; ctx: Cont
   const adicionales = grupoId === 'adicionales';
 
   const filas = useMemo<FilaLista[]>(() => {
-    const grupos = adicionales ? ctx.grupos.filter((g) => g.grupo.vertical) : ctx.grupos.filter((g) => g.grupo.id === grupoId);
+    const grupos = adicionales ? ctx.grupos.filter((g) => g.bloqueados.length > 0) : ctx.grupos.filter((g) => g.grupo.id === grupoId);
     const salida: FilaLista[] = [];
     for (const g of grupos) {
-      for (const r of g.reportes) {
-        const permitido = reportePermitido(r, ctx.accesoTotal);
-        salida.push(fila(r, permitido ? (r.nuevo ? 'nuevo' : 'disponible') : 'sinAcceso', permitido, t));
+      if (!adicionales) {
+        for (const r of g.reportes) {
+          const permitido = reportePermitido(r, ctx.accesoTotal);
+          salida.push(fila(r, permitido ? (r.nuevo ? 'nuevo' : 'disponible') : 'sinAcceso', permitido, t));
+        }
       }
       for (const r of g.bloqueados) salida.push(fila(r, 'requierePlan', false, t));
     }

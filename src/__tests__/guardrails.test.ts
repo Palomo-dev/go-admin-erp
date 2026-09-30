@@ -3624,3 +3624,48 @@ describe('41. GO Asistente: toda RPC assistant_* lleva fn_assistant_exigir y no 
     expect([...llamadas].filter((n) => !vigentes[n]).sort()).toEqual([]);
   });
 });
+
+// === Caso 42: números de prueba del agente de voz — exención en UN punto ===
+//
+// 2026-09-30. Un número de prueba interno (`crm_voice_test_numbers`) exime SOLO
+// del tope semanal de la Ley 2300. Si la consulta de la exención se colara en
+// otro sitio (el despachador, la cola, una ruta), podría acabar eximiendo de la
+// franja horaria, del RNE o de los topes diarios. Por eso: la RPC la llama solo
+// `numerosPrueba.ts`, `esNumeroPrueba` lo usa solo `cumplimiento.ts`, y
+// `evaluarTopeSemanal` solo se invoca dentro de `decidirContactoLey2300`, que
+// evalúa el horario SIEMPRE, con o sin exención.
+describe('42. Voz: la exención por número de prueba vive en un solo punto y no toca el horario', () => {
+  const produccion = () => walkDir(SRC_ROOT).filter((f) => !isExcluded(f));
+
+  test('solo numerosPrueba.ts llama a fn_voz_es_numero_prueba y solo cumplimiento.ts usa esNumeroPrueba', () => {
+    const rpc: string[] = [];
+    const uso: string[] = [];
+    for (const f of produccion()) {
+      const src = stripAllComments(readFile(f));
+      if (/fn_voz_es_numero_prueba/.test(src)) rpc.push(rel(f));
+      if (/\besNumeroPrueba\s*\(/.test(src)) uso.push(rel(f));
+    }
+    expect(rpc).toEqual(['lib/services/crm/voiceAgent/numerosPrueba.ts']);
+    expect(uso.sort()).toEqual(['lib/services/crm/voiceAgent/cumplimiento.ts', 'lib/services/crm/voiceAgent/numerosPrueba.ts']);
+  });
+
+  test('evaluarTopeSemanal solo se invoca desde decidirContactoLey2300, que siempre evalúa la franja horaria', () => {
+    const llamadas: string[] = [];
+    for (const f of produccion()) {
+      const src = stripAllComments(readFile(f));
+      llamadas.push(...Array.from(src.matchAll(/\bevaluarTopeSemanal\s*\(/g), () => rel(f)));
+    }
+    // La definición y la única invocación, ambas en ley2300.ts.
+    expect(llamadas).toEqual(['lib/services/crm/voiceAgent/ley2300.ts', 'lib/services/crm/voiceAgent/ley2300.ts']);
+    const ley = stripAllComments(readFile(path.join(SRC_ROOT, 'lib/services/crm/voiceAgent/ley2300.ts')));
+    const cuerpo = ley.slice(ley.indexOf('export function decidirContactoLey2300'), ley.indexOf('export function describirMotivoLey2300'));
+    // La franja se evalúa FUERA del bloque condicionado a la exención.
+    expect(cuerpo).toMatch(/\n  if \(!ventanaLey2300Abierta\(p\.ahora, zona\)\)/);
+  });
+
+  test('la tabla no se escribe con el cliente de servicio: la ruta usa la sesión y la RLS vuelve a exigir admin', () => {
+    const ruta = stripAllComments(readFile(path.join(SRC_ROOT, 'app/api/crm/settings/telephony/test-numbers/route.ts')));
+    expect(ruta).not.toMatch(/getServiceClient|createServiceClient|service_role/);
+    expect((ruta.match(/\{\s*admin:\s*true\s*\}/g) ?? []).length).toBe(3);
+  });
+});

@@ -1656,3 +1656,112 @@ voces de ConversationRelay; si suena, la causa queda confirmada.
 | `npx jest` (completa) | rojas ajenas y previas: `sectionContract` (2), `f10Proposals.contract` (4), `testerR4.f0sec` caso 21, `f6Adversarial` H2; comprobadas iguales sin este cambio |
 | `NODE_OPTIONS=--max-old-space-size=8192 npx tsc --noEmit -p tsconfig.json` | 0 errores |
 | `npx tsx ws-server.ts` sin credenciales | arranca, `/health` responde `ok`; el upgrade sin `WS_PUBLIC_URL` se rechaza (403), como debe |
+
+## 17. Números de prueba internos (2026-09-30)
+
+**Problema.** El despachador aplica la Ley 2300 de 2023 por número: franja horaria del
+destinatario (L-V 7–19, sáb 8–15, nunca domingos ni festivos) y como máximo un contacto
+efectivo por canal y dos en total por semana y persona. El dueño de una organización no podía
+volver a probar su agente con su propio celular: la segunda llamada de la semana salía
+«Reprogramada: ya hubo un contacto por este canal esta semana (Ley 2300 de 2023)».
+
+**Qué se hizo.** Una lista de **números de prueba internos por organización**, que exime
+**solo** del tope semanal.
+
+### 17.1 Qué exime y qué no
+
+| Compuerta | ¿Se exime? | Motivo |
+|---|---|---|
+| Tope semanal Ley 2300 (1 por canal, 2 en total) | **Sí** | El tope protege al consumidor de la insistencia comercial. Un número del propio equipo, con consentimiento, que prueba su herramienta no es un consumidor contactado con fines comerciales. |
+| Tope por cliente/semana equivalente | No existe otro | Verificado por MCP: la única función con ventana semanal es `fn_contactos_efectivos_semana`. `MAX_ATTEMPTS_PER_CUSTOMER_PER_DAY` (2 por agente y día) es **diario** y no se exime. |
+| Franja horaria legal y festivos | **No** | Es la regla que el dueño pidió conservar y la que más daño reputacional haría si fallara (una prueba a las 22:00 le suena a un empleado igual que a un cliente). Probar fuera de horario no aporta nada que no se pruebe dentro. |
+| Excluidos / RNE (`crm_excluded_numbers`) | **No** | Si un número del equipo está inscrito en el RNE, la inscripción es de la persona, no del rol: la organización no puede decidir por ella. Además la tabla la alimenta la carga de la CRC; una exención aquí convertiría la lista de prueba en una puerta para saltarse el registro. |
+| Baja voluntaria (`fn_can_contact`) | **No** | Si la persona pidió no recibir llamadas, se respeta aunque sea del equipo; para volver a probar basta revertir su baja en la ficha. |
+| Topes diarios/horarios del agente y de la campaña, concurrencia | **No** | Son protecciones de costo y de estabilidad (Twilio, OpenAI, créditos), no de privacidad. Un bucle de pruebas mal configurado es exactamente lo que deben frenar. |
+| Créditos / minutos | **No** | Una llamada de prueba cuesta lo mismo que una real. |
+| Verificación RNE vigente y política de datos de la campaña | **No** | Son requisitos de la campaña, no del número. Para probar sin campaña está el despacho puntual. |
+
+### 17.2 Dónde se guarda y por qué
+
+Se evaluó `comm_settings` (una columna jsonb) y se descartó: la tabla **solo la puede leer
+`service_role`** (verificado por MCP: `authenticated` no tiene privilegios de tabla, porque guarda
+secretos del proveedor), y una lista en jsonb no deja autor ni fecha por número ni historia de
+bajas. Se creó una tabla con RLS por organización, en el patrón de `crm_excluded_numbers`:
+
+- `crm_voice_test_numbers (id, organization_id, phone_e164, label, created_by, created_at,
+  removed_at, removed_by)`. `phone_e164` con el mismo CHECK que `crm_excluded_numbers`; único
+  entre los vigentes (índice parcial).
+- **Baja lógica**: quitar un número pone `removed_at`/`removed_by`; nadie borra con sesión. Así
+  queda quién agregó cada número, cuándo, y quién y cuándo lo quitó.
+- Trigger `fn_crm_voice_test_numbers_guarda`: máximo **10 vigentes** por organización, con candado
+  consultivo por organización (dos pestañas no cuelan el 11.º); la única transición permitida es
+  vigente → dada de baja; `created_at` y `removed_at` los fija el servidor.
+- RLS: leen los miembros activos; agregan y dan de baja **solo administradores** (rol 1/2, super
+  admin o `admin.full_access` por `check_user_permission`), y siempre a su nombre
+  (`created_by`/`removed_by = auth.uid()`). Privilegios de columna: `authenticated` solo puede
+  actualizar `removed_at` y `removed_by`. `anon` no tiene nada.
+- `fn_voz_es_numero_prueba(org, número)` (SECURITY INVOKER): la consulta del despachador.
+
+Migración `20260930235500_voz_numeros_prueba` (aplicada por MCP, versión registrada
+`20260930160524`), rollback en `supabase/rollbacks/20260930235500_voz_numeros_prueba_rollback.sql`
+(no restaura datos: lo advierte). Dry-run previo con `DO $t$ … RAISE EXCEPTION 'RESULTADOS:%'`
+con un admin y un no admin reales de una organización (ids solo en la consulta):
+admin inserta ✔, duplicado vigente ✘, `created_by` ajeno ✘, número sin E.164 ✘, otra
+organización ✘, no admin ve pero no inserta ni da de baja ✘, 11.º número ✘ («Máximo 10»),
+editar el número ✘, baja ✔ con autor y fecha, re-alta tras la baja ✔, reactivar una baja ✘,
+DELETE ✘, anon ✘. Asesor de seguridad sin avisos sobre los objetos nuevos.
+
+### 17.3 Un solo punto de exención
+
+`evaluarLey2300Cliente` (`voiceAgent/cumplimiento.ts`), por donde pasan la cola de campañas
+(`dialClaimedCall`) y el despacho puntual (`dispatchAgentCall`):
+
+1. `esNumeroPrueba(supabase, org, teléfono E.164)` → `fn_voz_es_numero_prueba`.
+2. Si es de prueba no se cuentan los contactos de la semana y `decidirContactoLey2300` recibe
+   `exencion: 'numero_prueba'`, que salta **solo** `evaluarTopeSemanal`; la franja se evalúa
+   siempre, fuera del bloque condicionado.
+3. La decisión devuelve la exención y `dialClaimedCall` la deja en
+   **`calls.metadata.ley2300_exencion = 'numero_prueba'`** (también en la rama de fallo del
+   proveedor), más un `console.info` con la fila. Así cada llamada que usó la exención queda
+   auditada junto a la lista (quién agregó el número y cuándo).
+
+Si la consulta de la exención falla, cuenta como «no es de prueba» y se aplica el tope semanal:
+falla hacia lo restrictivo sin detener el despacho de los demás números.
+
+Normalización: `normalizarNumeroPrueba` reutiliza `normalizarNumeroRne`, el mismo criterio con
+que el despachador normaliza el teléfono del cliente, para que el número guardado coincida con el
+que se marca (`300 000 0000`, `573000000000` y `+57 300 000 0000` dan `+573000000000`).
+
+### 17.4 Ruta y pantalla
+
+- `GET/POST/DELETE /api/crm/settings/telephony/test-numbers` con `withOrg(..., { admin: true })`,
+  `readOrgBody` (organización ajena en cuerpo o query → 403) y el **cliente de la sesión**, así que
+  la RLS vuelve a exigir admin en la base. POST `{ phone, label? }` → 201; duplicado o tope → 409;
+  número inválido → 400. DELETE `{ id }` → baja lógica.
+- Configuración › CRM › Telefonía › **Números de prueba** (`TestNumbersSection.tsx`): lista con
+  fecha de alta en la zona de la organización, agregar/quitar, contador «N de 10», y un aviso:
+  solo números del equipo con consentimiento, nunca de clientes; la franja horaria, los
+  excluidos, las bajas, los topes diarios y los minutos siguen aplicando. El permiso lo decide el
+  servidor: si la ruta responde 403, la sección lo dice. Textos en es/en/fr/pt
+  (`vozCampanasDisparo.numerosPrueba`).
+
+**Cómo se usa:** un administrador agrega su celular (y los del equipo que consientan) en esa
+sección; el cliente de prueba del CRM debe tener ese mismo teléfono. Desde ese momento el agente
+puede llamarlo varias veces en la semana, siempre dentro de la franja legal. **No se agregó ningún
+número real**: la lista queda vacía hasta que el orquestador cargue los del dueño.
+
+**Riesgo residual (documentado, no resuelto por código):** un administrador podría agregar números
+de prospectos para saltarse el tope. Lo acotan el tope de 10, la auditoría por número y por llamada
+y el aviso de la pantalla; una revisión periódica de `calls` con `metadata->>'ley2300_exencion'`
+lo detecta.
+
+### 17.5 Pruebas y verificación
+
+| Comando | Resultado |
+|---|---|
+| `npx jest src/__tests__/timezone/ley2300Voz.test.ts` | exención salta el tope por canal y el total; NO la franja (noche, domingo, festivo, sábado 15:30 → martes tras festivo); sin exención todo igual |
+| `npx jest src/__tests__/voz/compuertasDespacho.test.ts` | camino real `runCampaignQueue` → `dialClaimedCall`: con semana llena el número de prueba marca, no consulta los contactos y deja `ley2300_exencion`; sin exención reprograma; NO exime de horario, RNE, baja voluntaria, créditos, topes diarios, RNE de campaña ni política de datos; si la base falla se aplica el tope |
+| `npx jest src/__tests__/voz/numerosPrueba.test.ts` | normalización E.164; auditoría (autor, baja lógica, nunca DELETE); errores 409/403/500; ruta: 401, 403 sin admin sin tocar la base, 403 FOREIGN_ORGANIZATION en cuerpo y query, cliente de sesión |
+| `npx jest src/__tests__/guardrails.test.ts` | caso 42: la RPC solo en `numerosPrueba.ts`, `esNumeroPrueba` solo en `cumplimiento.ts`, `evaluarTopeSemanal` solo dentro de `decidirContactoLey2300` con la franja fuera de la condición, la ruta sin cliente de servicio y con admin en los tres métodos |
+| `npx jest src/__tests__/voz src/lib/services/crm src/__tests__/guardrails.test.ts src/__tests__/timezone` | verde salvo `f6Adversarial` H2 (middleware), previa y ajena (ver 16.3) |
+| `NODE_OPTIONS=--max-old-space-size=8192 npx tsc --noEmit -p tsconfig.json` | 0 errores |

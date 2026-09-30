@@ -10768,6 +10768,32 @@
       "guardada": "Politique de traitement des données enregistrée",
       "quitada": "Politique de traitement des données retirée",
       "errorGuardar": "Impossible d'enregistrer la politique"
+    },
+    "numerosPrueba": {
+      "titulo": "Numéros de test",
+      "descripcion": "Numéros de votre propre équipe pour tester l'agent vocal. Ils sont exemptés uniquement de la limite d'un contact par canal et par semaine de la loi colombienne 2300 de 2023.",
+      "aviso": "N'ajoutez que des numéros de membres de l'équipe ayant donné leur consentement. Jamais de numéros de clients ou de prospects.",
+      "avisoSigue": "Tout le reste s'applique toujours : la plage horaire légale (du lundi au vendredi 7h00–19h00, le samedi 8h00–15h00, jamais le dimanche ni les jours fériés), la liste des numéros exclus et des désinscriptions, les limites quotidiennes de l'agent et de la campagne, et les minutes disponibles.",
+      "etiquetaNumero": "Numéro (format international)",
+      "etiquetaNombre": "À qui appartient-il (facultatif)",
+      "placeholderNombre": "Ex. : mobile commercial",
+      "agregar": "Ajouter",
+      "agregando": "Ajout…",
+      "quitar": "Retirer",
+      "quitarAria": "Retirer le numéro {numero}",
+      "vacio": "Aucun numéro de test pour l'instant.",
+      "contador": "{usados} sur {max} numéros",
+      "lleno": "Vous avez atteint le nombre maximal de numéros de test. Retirez-en un pour en ajouter un autre.",
+      "invalido": "Saisissez un numéro valide, par exemple +57 300 000 0000.",
+      "agregado": "Numéro de test ajouté",
+      "quitado": "Numéro de test retiré",
+      "errorAgregar": "Impossible d'ajouter le numéro",
+      "errorQuitar": "Impossible de retirer le numéro",
+      "errorCargar": "Impossible de charger les numéros de test",
+      "reintentar": "Réessayer",
+      "cargando": "Chargement des numéros de test…",
+      "soloAdmin": "Seul un administrateur de l'organisation peut consulter et gérer les numéros de test.",
+      "agregadoEl": "Ajouté le {fecha}"
     }
   },
   "vozRne": {

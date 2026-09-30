@@ -1450,6 +1450,8 @@ interface DialOutcome {
  * Marca una fila ya reclamada. Orden: cliente → consentimiento → teléfono marcable →
  * RNE → Ley 2300 (horario + tope semanal) → crédito → fila en `calls` → proveedor →
  * correlación. Es el punto ÚNICO por donde sale toda llamada del agente.
+ * Un número de prueba interno salta solo el tope semanal (lo decide
+ * `evaluarLey2300Cliente`) y la llamada queda marcada en `calls.metadata`.
  */
 async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
   const { supabase, orgId, campaign, vac, twilioClient, fromNumber, webhookBase, recording } = p;
@@ -1535,6 +1537,15 @@ async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
     };
   }
 
+  const marcaExencion = ley2300.exencion ? { ley2300_exencion: ley2300.exencion } : {};
+  if (ley2300.exencion) {
+    console.info('[voz] llamada eximida del tope semanal (Ley 2300) por número de prueba', {
+      org: orgId,
+      voice_agent_call_id: vac.id,
+      exencion: ley2300.exencion,
+    });
+  }
+
   // D6: crédito reservado ANTES de gastar en el proveedor.
   const reserved = await reserveVoiceCredits(orgId, CREDITS_RESERVED_PER_CALL, supabase);
   if (!reserved) {
@@ -1579,6 +1590,9 @@ async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
           source: 'voice_agent_campaign',
           campaign_id: campaign.id,
           voice_agent_call_id: vac.id,
+          // Auditoría: la llamada salió eximida del tope semanal de la Ley 2300
+          // por ser a un número de prueba interno (`crm_voice_test_numbers`).
+          ...marcaExencion,
         },
       })
       .select('id')
@@ -1664,7 +1678,7 @@ async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
       .update({
         status: 'failed',
         ended_at: new Date().toISOString(),
-        metadata: { source: 'voice_agent_campaign', error: message },
+        metadata: { source: 'voice_agent_campaign', error: message, ...marcaExencion },
         updated_at: new Date().toISOString(),
       })
       .eq('id', callRow.id)

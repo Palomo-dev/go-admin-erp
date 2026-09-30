@@ -24,7 +24,7 @@
  * `idioma`, `descargar=1` (adjunto en vez de en línea), `imprimir=1` (HTML que
  * abre el diálogo de impresión) y, en los estados de cuenta y el certificado
  * de retenciones, `desde`/`hasta` (días `YYYY-MM-DD`). El documento `reporte`
- * lee además `periodo`, `sucursal`, `hi`, `hf` y `vista` (filtros del visor,
+ * lee además `periodo`, `sucursal`, `hi`, `hf`, `vista` y `comparar` (filtros del visor,
  * validados contra el plan y el alcance de sucursal de la sesión).
  */
 
@@ -50,7 +50,7 @@ export const maxDuration = 60;
 
 const RUTA = 'GET /api/documentos/[tipo]/[id]';
 /** Filtros del documento `reporte`; el cargador los valida. */
-const PARAMETROS_REPORTE = ['periodo', 'sucursal', 'hi', 'hf', 'vista'] as const;
+const PARAMETROS_REPORTE = ['periodo', 'sucursal', 'hi', 'hf', 'vista', 'comparar'] as const;
 
 function json(status: number, cuerpo: Record<string, unknown>): Response {
   return new Response(JSON.stringify(cuerpo), {

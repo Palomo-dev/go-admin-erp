@@ -4,7 +4,8 @@
  * `id` es el id del reporte (`estado-resultados`). Parámetros de la query:
  * `desde`/`hasta` (días `YYYY-MM-DD`), `periodo` (tipo de cierre, para la
  * etiqueta), `hi`/`hf` (franja `HH:mm`),
- * `sucursal` (id; vacío = consolidado) y `vista` (id de la pestaña).
+ * `sucursal` (id; vacío = consolidado), `vista` (id de la pestaña) y
+ * `comparar` (`anterior` | `anio-anterior`).
  *
  * - Plan y alcance de sucursal en el servidor (`acceso.server.ts`); la RPC
  *   del reporte vuelve a exigirlos con el cliente de la sesión.
@@ -14,11 +15,13 @@
 
 import { OrgContextError } from '@/lib/utils/orgContextError';
 import { resolverContextoMoneda } from '@/lib/services/monedaOrganizacion';
-import { congelarReporte } from '@/lib/services/reportes/cierres/snapshot';
+import { congelarReporte, type ReporteCongelado } from '@/lib/services/reportes/cierres/snapshot';
 import { exigirReporteDisponible, resolverAccesoReportes, sucursalDeParametro, sucursalDelReporte } from '@/lib/services/reportes/acceso.server';
 import { registrarEventoReporte } from '@/lib/services/reportes/historialService';
-import { esTipoCierre, normalizarPeriodo } from '@/lib/services/reportes/periodosService';
+import { compararKpis, lecturaDelReporte } from '@/lib/services/reportes/comparativo';
+import { esTipoCierre, normalizarPeriodo, periodoAnioAnterior, periodoAnterior } from '@/lib/services/reportes/periodosService';
 import { ejecutarReporte } from '@/lib/services/reportes/reportesEngine';
+import type { PeriodoCierre, ReportDefinition } from '@/lib/services/reportes/types';
 import { seccionesDeReporte } from '../../reporteSecciones';
 import type { Traductor } from '../../textos';
 import type { Campo, DocumentoPayload } from '../../tipos';
@@ -27,13 +30,35 @@ import { cargarBase, nombreArchivoBase, textoLegal, texto, type OpcionesCarga, t
 /** Filas por tabla en el PDF de un reporte suelto (el visor pagina; el PDF avisa si corta). */
 export const MAX_FILAS_REPORTE = 2000;
 
-export async function cargarReporte(
+/**
+ * `parametros.origen` que pone el envío programado para que el historial diga
+ * «enviar». Lo escribe solo el servidor: la ruta de documentos copia de la
+ * query únicamente `PARAMETROS_REPORTE`, que no lo incluye.
+ */
+export const ORIGEN_ENVIO = 'envio';
+
+export interface ReportePreparado {
+  def: ReportDefinition;
+  periodo: PeriodoCierre;
+  branchId: number | null;
+  reporte: ReporteCongelado;
+  vista: string | null;
+}
+
+/**
+ * Plan, alcance, periodo y ejecución de un reporte con los parámetros del
+ * documento. `comparar` (`anterior` | `anio-anterior`) corre también el
+ * periodo de referencia y deja la variación en la lectura, solo en los
+ * reportes que admiten comparativo.
+ */
+export async function prepararReporte(
   sesion: SesionDocumento,
   idCrudo: string,
-  opciones: OpcionesCarga,
-  t: Traductor,
-): Promise<DocumentoPayload> {
-  const p = opciones.parametros ?? {};
+  parametros: Readonly<Record<string, string | null>>,
+  desde: string | null | undefined,
+  hasta: string | null | undefined,
+): Promise<ReportePreparado> {
+  const p = parametros;
   const acceso = await resolverAccesoReportes(sesion);
   const { def, vista: vistaAlias } = exigirReporteDisponible(acceso, idCrudo);
   const branchId = sucursalDelReporte(acceso, def, sucursalDeParametro(p.sucursal));
@@ -41,20 +66,42 @@ export async function cargarReporte(
   // Un reporte sin el filtro de franja la ignora (se calcula por día) y el documento lo dice.
   const periodo = normalizarPeriodo({
     tipo: esTipoCierre(p.periodo) ? p.periodo : 'personalizado',
-    fechaInicio: opciones.desde,
-    fechaFin: opciones.hasta,
+    fechaInicio: desde,
+    fechaFin: hasta,
     horaInicio: p.hi,
     horaFin: p.hf,
   });
   if (!periodo) throw new OrgContextError('Periodo inválido: desde y hasta son días YYYY-MM-DD', 400, 'PERIODO_INVALIDO');
 
-  const [data, base, moneda] = await Promise.all([
+  const referencia =
+    def.filtros.includes('comparativo') && (p.comparar === 'anterior' || p.comparar === 'anio-anterior')
+      ? p.comparar === 'anterior'
+        ? periodoAnterior(periodo)
+        : periodoAnioAnterior(periodo)
+      : null;
+  const [data, previo] = await Promise.all([
     ejecutarReporte(def.id, sesion.organizationId, periodo, branchId, sesion.supabase),
-    cargarBase(sesion, branchId),
-    resolverContextoMoneda(sesion.supabase, sesion.organizationId),
+    referencia ? ejecutarReporte(def.id, sesion.organizationId, referencia, branchId, sesion.supabase).catch(() => null) : Promise.resolve(null),
   ]);
-  const reporte = congelarReporte(data, def, periodo, MAX_FILAS_REPORTE);
-  const vista = texto(p.vista) ?? vistaAlias;
+  const conLectura = referencia && previo ? { ...data, lectura: lecturaDelReporte(data, compararKpis(data, previo), referencia.etiqueta) } : data;
+  return {
+    def,
+    periodo,
+    branchId,
+    reporte: congelarReporte(conLectura, def, periodo, MAX_FILAS_REPORTE),
+    vista: texto(p.vista) ?? vistaAlias,
+  };
+}
+
+export async function cargarReporte(
+  sesion: SesionDocumento,
+  idCrudo: string,
+  opciones: OpcionesCarga,
+  t: Traductor,
+): Promise<DocumentoPayload> {
+  const p = opciones.parametros ?? {};
+  const { def, periodo, branchId, reporte, vista } = await prepararReporte(sesion, idCrudo, p, opciones.desde, opciones.hasta);
+  const [base, moneda] = await Promise.all([cargarBase(sesion, branchId), resolverContextoMoneda(sesion.supabase, sesion.organizationId)]);
 
   const metadatos: Campo[] = [
     { clave: 'periodoDesde', valor: { tipo: 'fecha', v: periodo.fechaInicio } },
@@ -75,7 +122,7 @@ export async function cargarReporte(
     userId: sesion.userId,
     reportId: def.id,
     modulo: def.modulo,
-    accion: 'exportar',
+    accion: p.origen === ORIGEN_ENVIO ? 'enviar' : 'exportar',
     filtros: {
       fechaInicio: periodo.fechaInicio,
       fechaFin: periodo.fechaFin,
@@ -83,6 +130,7 @@ export async function cargarReporte(
       horaInicio: periodo.horaInicio ?? null,
       horaFin: periodo.horaFin ?? null,
       vista: vista ?? null,
+      comparar: p.comparar ?? null,
       formato: 'pdf',
     },
     branchId,

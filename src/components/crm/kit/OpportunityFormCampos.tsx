@@ -41,6 +41,8 @@ export interface CamposOportunidadProps {
   onElegirCliente?: () => void;
   /** «Agregar productos, espacios o conceptos (opcional)» en diálogo y hoja. */
   onAgregarLineas?: () => void;
+  /** Opción extra del responsable antes de los usuarios (p. ej. «El de cada lead» en lote). */
+  opcionResponsable?: { valor: string; etiqueta: string };
 }
 
 const PRIORIDADES: readonly Temperatura[] = ['cold', 'warm', 'hot'];
@@ -133,7 +135,10 @@ export function CamposOportunidad(p: CamposOportunidadProps) {
               valor={v.salesperson_id}
               onValorChange={(salesperson_id) => cambiar({ salesperson_id })}
               opcionVacia={t('sinResponsable')}
-              opciones={p.usuarios.map((u) => ({ valor: u.id, etiqueta: u.id === p.usuarioActualId ? t('tu', { nombre: u.nombre }) : u.nombre }))}
+              opciones={[
+                ...(p.opcionResponsable ? [p.opcionResponsable] : []),
+                ...p.usuarios.map((u) => ({ valor: u.id, etiqueta: u.id === p.usuarioActualId ? t('tu', { nombre: u.nombre }) : u.nombre })),
+              ]}
             />
           </FormField>
           <FormField etiqueta={t('proximoContacto')} error={errores.next_contact_at} ayuda={compacto ? undefined : t('horaOrg')}>

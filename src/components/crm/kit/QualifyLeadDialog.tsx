@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { ArrowRight, Ban, Info, Loader2, TrendingUp } from 'lucide-react';
 import { cn } from '@/utils/Utils';
@@ -41,11 +41,18 @@ export interface QualifyLeadDialogProps {
   puedeDescartar?: boolean;
   ocupado?: boolean;
   error?: string | null;
+  /** Variante en lote: sustituye la tarjeta del lead (p. ej. avatares de los seleccionados). */
+  cabecera?: ReactNode;
+  titulo?: string;
+  aviso?: ReactNode;
+  /** Opción extra del responsable antes de los usuarios («El de cada lead»). */
+  opcionResponsable?: { valor: string; etiqueta: string };
 }
 
 const TEMPERATURAS: readonly Temperatura[] = ['cold', 'warm', 'hot'];
 
-export function QualifyLeadDialog({ abierto, onAbiertoChange, lead, moneda, usuarios, responsableId, onContinuar, onDescartar, puedeDescartar = true, ocupado, error }: QualifyLeadDialogProps) {
+export function QualifyLeadDialog(props: QualifyLeadDialogProps) {
+  const { abierto, onAbiertoChange, lead, moneda, usuarios, responsableId, onContinuar, onDescartar, puedeDescartar = true, ocupado, error } = props;
   const t = useTranslations('crm.kit.calificar');
   const tl = useTranslations('crm.kit.leads');
   const { getToday } = useFormatDate();
@@ -75,7 +82,7 @@ export function QualifyLeadDialog({ abierto, onAbiertoChange, lead, moneda, usua
     <PanelAdaptable
       abierto={abierto}
       onAbiertoChange={onAbiertoChange}
-      titulo={t('titulo')}
+      titulo={props.titulo ?? t('titulo')}
       descripcion={t('paso')}
       icono={TrendingUp}
       ancho={560}
@@ -98,17 +105,19 @@ export function QualifyLeadDialog({ abierto, onAbiertoChange, lead, moneda, usua
         </>
       }
     >
-      <div className="flex items-start gap-3 rounded-lg bg-subtle p-3">
-        <AvatarIniciales nombre={nombre} src={lead.avatar_url} />
-        <div className="flex min-w-0 flex-col gap-1">
-          <span className="truncate text-sm font-semibold text-fg">{nombre}</span>
-          <span className="truncate text-xs text-fg-muted">{detalleContacto(lead) || tl('sinContacto')}</span>
-          <span className="flex flex-wrap gap-1">
-            {origen && <Badge tono="informacion" apariencia="contorno" tamano="sm">{tl(`origen.${origen}`)}</Badge>}
-            {banda && <Badge tono={TONO_BANDA[banda]} tamano="sm">{tl('score', { score: lead.lead_score ?? 0, banda: tl(`banda.${banda}`) })}</Badge>}
-          </span>
+      {props.cabecera ?? (
+        <div className="flex items-start gap-3 rounded-lg bg-subtle p-3">
+          <AvatarIniciales nombre={nombre} src={lead.avatar_url} />
+          <div className="flex min-w-0 flex-col gap-1">
+            <span className="truncate text-sm font-semibold text-fg">{nombre}</span>
+            <span className="truncate text-xs text-fg-muted">{detalleContacto(lead) || tl('sinContacto')}</span>
+            <span className="flex flex-wrap gap-1">
+              {origen && <Badge tono="informacion" apariencia="contorno" tamano="sm">{tl(`origen.${origen}`)}</Badge>}
+              {banda && <Badge tono={TONO_BANDA[banda]} tamano="sm">{tl('score', { score: lead.lead_score ?? 0, banda: tl(`banda.${banda}`) })}</Badge>}
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
       {error && <p role="alert" className="rounded-lg bg-danger-subtle px-3 py-2 text-[13px] text-danger-text">{error}</p>}
 
@@ -135,7 +144,7 @@ export function QualifyLeadDialog({ abierto, onAbiertoChange, lead, moneda, usua
             valor={v.responsableId}
             onValorChange={(responsableId) => cambiar({ responsableId })}
             opcionVacia={t('sinResponsable')}
-            opciones={usuarios.map((u) => ({ valor: u.id, etiqueta: u.nombre }))}
+            opciones={[...(props.opcionResponsable ? [props.opcionResponsable] : []), ...usuarios.map((u) => ({ valor: u.id, etiqueta: u.nombre }))]}
           />
         </FormField>
       </div>
@@ -151,7 +160,7 @@ export function QualifyLeadDialog({ abierto, onAbiertoChange, lead, moneda, usua
       </FormField>
       <p className={CLASE_AVISO_INFO}>
         <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} />
-        {t('aviso')}
+        {props.aviso ?? t('aviso')}
       </p>
     </PanelAdaptable>
   );

@@ -75,6 +75,8 @@ export interface OpportunityFormProps {
   onEliminar?: () => void;
   ocupado?: boolean;
   error?: string | null;
+  /** Opción extra del responsable (Leads › Calificar en lote: «El de cada lead»). */
+  opcionResponsable?: { valor: string; etiqueta: string };
 }
 
 const ICONO_ORIGEN: Record<OrigenFormulario, LucideIcon> = { general: Lock, cliente: UserCheck, lead: UserCheck, factura: Receipt, conversacion: MessageSquare };
@@ -148,6 +150,7 @@ export function OpportunityForm(props: OpportunityFormProps) {
         clienteNombre={props.clienteNombre}
         onElegirCliente={props.onElegirCliente}
         onAgregarLineas={props.onAgregarLineas}
+        opcionResponsable={props.opcionResponsable}
       />
       {props.lineasFactura && <LineasCopiadas numero={props.lineasFactura.numero} lineas={props.lineasFactura.lineas} moneda={props.monedaBase} />}
       {layout === 'page' && props.seccionesPagina}

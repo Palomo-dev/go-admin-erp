@@ -23904,7 +23904,7 @@
         "etiquetar": "Etiquetar",
         "etiquetarMotivo": "As etiquetas são editadas na ficha do cliente",
         "calificar": "Qualificar",
-        "calificarMotivo": "Qualifique um lead por vez",
+        "calificarMotivo": "Máximo de {max} leads por lote",
         "exportar": "Exportar",
         "descartar": "Descartar"
       },
@@ -23989,6 +23989,32 @@
         "sinEtiquetas": "Sem etiquetas",
         "actividad": "Atividade recente",
         "sinActividad": "Ainda não há atividade com este lead."
+      },
+      "lote": {
+        "titulo": "{n, plural, one {Qualificar # lead} other {Qualificar # leads}}",
+        "seleccionados": "{n, plural, one {# lead selecionado} other {# leads selecionados}}",
+        "mas": "+{n}",
+        "cadaLead": "O de cada lead",
+        "aviso": "É criada uma oportunidade por lead com estes dados. O que você deixar sem definir (responsável, valor) vem de cada lead. O sistema passa cada lead para oportunidade.",
+        "contexto": "{n, plural, one {Será criada # oportunidade} other {Serão criadas # oportunidades}} · {marcador} é substituído pelo nome de cada lead",
+        "contextoDetalle": "Se você remover {marcador} do nome, todas as oportunidades terão o mesmo nome. Valor 0 = o valor estimado de cada lead.",
+        "clientes": "{n, plural, one {# lead} other {# leads}}",
+        "resultadoTitulo": "Qualificar em lote",
+        "creando": "{n, plural, one {Criando # oportunidade…} other {Criando # oportunidades…}}",
+        "creadas": "{n, plural, =0 {Nenhuma oportunidade foi criada} one {# oportunidade criada} other {# oportunidades criadas}}",
+        "fallidas": "{n, plural, one {# lead não pôde ser qualificado} other {# leads não puderam ser qualificados}}",
+        "leadNoDisponible": "Lead indisponível",
+        "verPipeline": "Ver no pipeline",
+        "cerrar": "Fechar",
+        "motivos": {
+          "no_encontrado": "Não existe mais ou não pertence a esta organização.",
+          "no_es_lead": "Não é mais um lead (talvez já tenha sido qualificado).",
+          "sin_permiso": "Você não tem permissão para criar oportunidades.",
+          "sin_embudo_ventas": "A organização não tem funil de vendas.",
+          "responsable_no_miembro": "O responsável não é membro ativo da organização.",
+          "error_interno": "Algo deu errado. Tente novamente.",
+          "otro": "Não foi possível criar a oportunidade ({codigo})."
+        }
       }
     },
     "pantallaActividades": {

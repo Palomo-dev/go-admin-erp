@@ -11866,7 +11866,29 @@
         "recepcionarSinProductos": "Aucune ligne avec produit : rien n'entre en stock.",
         "recepcionarSinPermiso": "Vous n'avez pas l'autorisation de mouvementer le stock.",
         "generarDs": "Générer le document justificatif",
-        "generarDsAyuda": "Pour les fournisseurs non tenus de facturer."
+        "generarDsAyuda": "Pour les fournisseurs non tenus de facturer.",
+        "descripcionNeto": "Total {total} · net à payer {neto} (retenues {retenido}).",
+        "asiento": {
+          "titulo": "Écriture générée",
+          "cuenta": "Compte",
+          "debito": "Débit",
+          "credito": "Crédit",
+          "sumas": "Totaux",
+          "cuadra": "Équilibrée",
+          "noCuadra": "Déséquilibrée",
+          "noCalculado": "Impossible de calculer l’aperçu de l’écriture ; elle est générée quand même à la confirmation.",
+          "motivos": {
+            "no_borrador": "La facture n’est plus un brouillon : son écriture est dans le détail.",
+            "no_rule": "Aucune règle comptable d’achat : la facture est confirmée sans écriture. Configurez-la dans Finances › Règles comptables.",
+            "amount_invalid": "Le total de la facture n’est pas valide pour générer l’écriture.",
+            "debit_account_missing": "Le compte de débit de la règle d’achat manque dans le plan comptable.",
+            "credit_account_missing": "Le compte fournisseur de la règle d’achat manque dans le plan comptable.",
+            "tax_account_missing": "Le compte de TVA déductible manque dans le plan comptable.",
+            "withholding_exceeds_total": "Les retenues égalent ou dépassent le total : l’écriture est passée pour le total sans les déduire.",
+            "sin_asiento": "Aucune écriture ne serait générée à la confirmation.",
+            "otro": "Aucune écriture ne serait générée : vérifiez la configuration comptable."
+          }
+        }
       },
       "recepcionar": {
         "titulo": "Réceptionner la facture {numero}",
@@ -11976,7 +11998,8 @@
         "base": "Base",
         "tarifa": "Taux %",
         "retefuente": "Retenue à la source",
-        "quitar": "Retirer {concepto}"
+        "quitar": "Retirer {concepto}",
+        "bajoBaseMinima": "La base n’atteint pas le minimum de {uvt} UVT ({valor} avec l’UVT {anio}) : cette retenue ne s’applique normalement pas. Vous pouvez l’appliquer si le fournisseur le demande."
       },
       "errores": {
         "revisar": "Vérifiez les champs signalés.",

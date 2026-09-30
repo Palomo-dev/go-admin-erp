@@ -173,14 +173,28 @@ export async function cuentasDePasivo(org: number): Promise<CuentaPasivo[]> {
   return ((data ?? []) as Array<{ account_code: string; name: string }>).map((c) => ({ codigo: c.account_code, nombre: c.name }));
 }
 
+/** Moneda en la que se expresa la UVT de cada país de `fiscal_uvt`. */
+const MONEDA_UVT: Record<string, string> = { COL: 'COP' };
+
+export interface UvtPais {
+  pais: string;
+  /** Moneda de la UVT; la base mínima solo se compara con documentos en esa moneda. */
+  moneda: string | null;
+  valores: Map<number, number>;
+}
+
 /** UVT por año del país de la organización (`fiscal_uvt`). */
-export async function uvtPorAnio(org: number): Promise<Map<number, number>> {
+export async function uvtPorAnio(org: number): Promise<UvtPais> {
   const { data: o, error: errorOrg } = await supabase.from('organizations').select('country_code').eq('id', org).maybeSingle();
   if (errorOrg) throw errorOrg;
-  const pais = ((o as { country_code?: string | null } | null)?.country_code ?? '').trim() || 'COL';
+  const pais = ((o as { country_code?: string | null } | null)?.country_code ?? '').trim().toUpperCase() || 'COL';
   const { data, error } = await supabase.from('fiscal_uvt').select('year, value').eq('country_code', pais);
   if (error) throw error;
-  return new Map(((data ?? []) as Array<{ year: number; value: number | string }>).map((u) => [Number(u.year), num(u.value)]));
+  return {
+    pais,
+    moneda: MONEDA_UVT[pais] ?? null,
+    valores: new Map(((data ?? []) as Array<{ year: number; value: number | string }>).map((u) => [Number(u.year), num(u.value)])),
+  };
 }
 
 export async function asientoPrevioCompra(facturaId: string): Promise<AsientoPrevio> {

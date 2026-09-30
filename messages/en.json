@@ -13529,7 +13529,29 @@
         "recepcionarSinProductos": "No lines with products: nothing enters inventory.",
         "recepcionarSinPermiso": "You don't have permission to move inventory.",
         "generarDs": "Generate support document",
-        "generarDsAyuda": "For suppliers not required to invoice."
+        "generarDsAyuda": "For suppliers not required to invoice.",
+        "descripcionNeto": "Total {total} · net payable {neto} (withholdings {retenido}).",
+        "asiento": {
+          "titulo": "Journal entry to be posted",
+          "cuenta": "Account",
+          "debito": "Debit",
+          "credito": "Credit",
+          "sumas": "Totals",
+          "cuadra": "Balanced",
+          "noCuadra": "Unbalanced",
+          "noCalculado": "The entry preview could not be calculated; it is still posted on confirmation.",
+          "motivos": {
+            "no_borrador": "The invoice is no longer a draft: its entry is on the detail page.",
+            "no_rule": "There is no purchase accounting rule: the invoice is confirmed without an entry. Set it up in Finance › Accounting rules.",
+            "amount_invalid": "The invoice total is not valid for posting the entry.",
+            "debit_account_missing": "The debit account of the purchase rule is missing from the chart of accounts.",
+            "credit_account_missing": "The supplier account of the purchase rule is missing from the chart of accounts.",
+            "tax_account_missing": "The deductible VAT account is missing from the chart of accounts.",
+            "withholding_exceeds_total": "Withholdings equal or exceed the total: the entry is posted for the total without deducting them.",
+            "sin_asiento": "No journal entry would be posted on confirmation.",
+            "otro": "No entry would be posted: check the accounting setup."
+          }
+        }
       },
       "recepcionar": {
         "titulo": "Receive invoice {numero}",
@@ -13639,7 +13661,8 @@
         "base": "Base",
         "tarifa": "Rate %",
         "retefuente": "Income tax withholding",
-        "quitar": "Remove {concepto}"
+        "quitar": "Remove {concepto}",
+        "bajoBaseMinima": "The base does not reach the minimum of {uvt} UVT ({valor} with the {anio} UVT): this withholding usually does not apply. You can still apply it if the supplier asks."
       },
       "errores": {
         "revisar": "Check the highlighted fields.",

@@ -11866,7 +11866,29 @@
         "recepcionarSinProductos": "Não há linhas com produto: nada entra no estoque.",
         "recepcionarSinPermiso": "Você não tem permissão para movimentar o estoque.",
         "generarDs": "Gerar documento suporte",
-        "generarDsAyuda": "Para fornecedores não obrigados a faturar."
+        "generarDsAyuda": "Para fornecedores não obrigados a faturar.",
+        "descripcionNeto": "Total {total} · líquido a pagar {neto} (retenções {retenido}).",
+        "asiento": {
+          "titulo": "Lançamento que será gerado",
+          "cuenta": "Conta",
+          "debito": "Débito",
+          "credito": "Crédito",
+          "sumas": "Somas",
+          "cuadra": "Fecha",
+          "noCuadra": "Não fecha",
+          "noCalculado": "Não foi possível calcular a prévia do lançamento; ao confirmar ele é gerado mesmo assim.",
+          "motivos": {
+            "no_borrador": "A fatura já não é um rascunho: o lançamento está no detalhe.",
+            "no_rule": "Não há regra contábil de compras: a fatura é confirmada sem lançamento. Configure-a em Finanças › Regras contábeis.",
+            "amount_invalid": "O total da fatura não é válido para gerar o lançamento.",
+            "debit_account_missing": "Falta a conta de débito da regra de compras no plano de contas.",
+            "credit_account_missing": "Falta a conta do fornecedor da regra de compras no plano de contas.",
+            "tax_account_missing": "Falta a conta do IVA dedutível no plano de contas.",
+            "withholding_exceeds_total": "As retenções igualam ou superam o total: o lançamento fica pelo total, sem descontá-las.",
+            "sin_asiento": "Ao confirmar não seria gerado lançamento contábil.",
+            "otro": "O lançamento não seria gerado: revise a configuração contábil."
+          }
+        }
       },
       "recepcionar": {
         "titulo": "Receber a fatura {numero}",
@@ -11976,7 +11998,8 @@
         "base": "Base",
         "tarifa": "Alíquota %",
         "retefuente": "Retenção na fonte",
-        "quitar": "Remover {concepto}"
+        "quitar": "Remover {concepto}",
+        "bajoBaseMinima": "A base não atinge o mínimo de {uvt} UVT ({valor} com a UVT {anio}): esta retenção normalmente não se aplica. Você pode aplicá-la mesmo assim se o fornecedor pedir."
       },
       "errores": {
         "revisar": "Revise os campos destacados.",

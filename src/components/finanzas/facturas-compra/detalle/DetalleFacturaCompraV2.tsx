@@ -527,6 +527,8 @@ export default function DetalleFacturaCompraV2({ id }: { id: string }) {
         onAbiertoChange={(v) => !v && !ocupado && setDialogo(null)}
         numero={f.number_ext}
         total={f.total}
+        retenido={f.total - neto}
+        facturaId={f.id}
         moneda={ctxMoneda}
         hayProductos={f.lineas.some((l) => l.product_id !== null)}
         puedeRecepcionar={permisos.crear}

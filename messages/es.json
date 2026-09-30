@@ -13529,7 +13529,29 @@
         "recepcionarSinProductos": "No hay líneas con producto: nada entra al inventario.",
         "recepcionarSinPermiso": "No tienes permiso para mover inventario.",
         "generarDs": "Generar documento soporte",
-        "generarDsAyuda": "Para proveedores no obligados a facturar."
+        "generarDsAyuda": "Para proveedores no obligados a facturar.",
+        "descripcionNeto": "Total {total} · neto a pagar {neto} (retenciones {retenido}).",
+        "asiento": {
+          "titulo": "Asiento que se genera",
+          "cuenta": "Cuenta",
+          "debito": "Débito",
+          "credito": "Crédito",
+          "sumas": "Sumas",
+          "cuadra": "Cuadra",
+          "noCuadra": "No cuadra",
+          "noCalculado": "No se pudo calcular el asiento previo; al confirmar se genera igual.",
+          "motivos": {
+            "no_borrador": "La factura ya no es un borrador: su asiento está en el detalle.",
+            "no_rule": "No hay regla contable de compras: la factura se confirma, pero sin asiento. Configúrala en Finanzas › Reglas contables.",
+            "amount_invalid": "El total de la factura no es válido para generar el asiento.",
+            "debit_account_missing": "Falta la cuenta de débito de la regla de compras en el plan de cuentas.",
+            "credit_account_missing": "Falta la cuenta del proveedor de la regla de compras en el plan de cuentas.",
+            "tax_account_missing": "Falta la cuenta del IVA descontable en el plan de cuentas.",
+            "withholding_exceeds_total": "Las retenciones igualan o superan el total: el asiento queda por el total, sin descontarlas.",
+            "sin_asiento": "Al confirmar no se generaría asiento contable.",
+            "otro": "El asiento no se generaría: revisa la configuración contable."
+          }
+        }
       },
       "recepcionar": {
         "titulo": "Recepcionar la factura {numero}",
@@ -13639,7 +13661,8 @@
         "base": "Base",
         "tarifa": "Tarifa %",
         "retefuente": "Retención en la fuente",
-        "quitar": "Quitar {concepto}"
+        "quitar": "Quitar {concepto}",
+        "bajoBaseMinima": "La base no llega a la mínima de {uvt} UVT ({valor} con la UVT {anio}): esta retención normalmente no aplica. Puedes practicarla igual si el proveedor lo pide."
       },
       "errores": {
         "revisar": "Revisa los campos marcados.",

@@ -24957,7 +24957,9 @@
       "BRANCH_SCOPE_REQUIRED": "Elige una sucursal a la que tengas acceso.",
       "periodo_invalido": "El periodo no es válido.",
       "dia_invalido": "Elige el día del envío.",
-      "destinatarios": "Elige al menos un destinatario."
+      "destinatarios": "Elige al menos un destinatario.",
+      "servicio_no_configurado": "No se pudo guardar el cierre: el servidor no tiene configurada la clave de servicio.",
+      "snapshot_invalido": "Este cierre no se puede exportar a Excel."
     },
     "grupos": {
       "contabilidad": "Contabilidad",
@@ -25100,6 +25102,7 @@
       "pdf": "PDF",
       "carta": "PDF carta",
       "mm80": "Tirilla 80 mm",
+      "excel": "Excel",
       "versiones": "Versiones",
       "auditoria": "Auditoría",
       "firmar": "Firmar",
@@ -25210,8 +25213,29 @@
         "ventas-caja": "Ventas y caja",
         "personalizada": "Personalizada"
       },
-      "erroresPrevios": "{n, plural, one {# reporte no se pudo calcular} other {# reportes no se pudieron calcular}}",
-      "excelVisor": "El cierre quedó guardado. El Excel del cierre completo no se genera: exporta cada reporte desde su visor."
+      "erroresPrevios": "{n, plural, one {# reporte no se pudo calcular} other {# reportes no se pudieron calcular}}"
+    },
+    "cierreExcel": {
+      "portada": "Portada",
+      "indicador": "Indicador",
+      "valor": "Valor",
+      "capitulo": "Capítulo",
+      "reportes": "Reportes",
+      "errores": "No se pudieron calcular",
+      "sinMovimientos": "Sin movimientos",
+      "sinFranja": "Este reporte se calcula por día completo",
+      "truncado": "{mostradas} de {total}",
+      "periodo": "{desde} – {hasta}",
+      "sucursal": "Sucursal: {nombre}",
+      "todas": "Todas las sucursales",
+      "franja": "Franja: {desde} – {hasta}",
+      "plantilla": "Plantilla: {nombre}",
+      "plantillas": {
+        "completo": "Completo",
+        "contable": "Contable y financiero",
+        "ventas-caja": "Ventas y caja",
+        "personalizada": "Personalizada"
+      }
     },
     "envioDlg": {
       "titulo": "Programar envío",

@@ -24957,7 +24957,9 @@
       "BRANCH_SCOPE_REQUIRED": "Choose a branch you can access.",
       "periodo_invalido": "The period is not valid.",
       "dia_invalido": "Choose the delivery day.",
-      "destinatarios": "Choose at least one recipient."
+      "destinatarios": "Choose at least one recipient.",
+      "servicio_no_configurado": "The closing could not be saved: the server is missing its service key.",
+      "snapshot_invalido": "This closing cannot be exported to Excel."
     },
     "grupos": {
       "contabilidad": "Accounting",
@@ -25100,6 +25102,7 @@
       "pdf": "PDF",
       "carta": "Letter PDF",
       "mm80": "80 mm receipt",
+      "excel": "Excel",
       "versiones": "Versions",
       "auditoria": "Audit",
       "firmar": "Sign",
@@ -25210,8 +25213,29 @@
         "ventas-caja": "Sales and cash",
         "personalizada": "Custom"
       },
-      "erroresPrevios": "{n, plural, one {# report could not be calculated} other {# reports could not be calculated}}",
-      "excelVisor": "The closing was saved. A full Excel of the closing is not generated: export each report from its viewer."
+      "erroresPrevios": "{n, plural, one {# report could not be calculated} other {# reports could not be calculated}}"
+    },
+    "cierreExcel": {
+      "portada": "Cover",
+      "indicador": "Indicator",
+      "valor": "Value",
+      "capitulo": "Chapter",
+      "reportes": "Reports",
+      "errores": "Could not be calculated",
+      "sinMovimientos": "No movements",
+      "sinFranja": "This report is calculated for the full day",
+      "truncado": "{mostradas} of {total}",
+      "periodo": "{desde} – {hasta}",
+      "sucursal": "Branch: {nombre}",
+      "todas": "All branches",
+      "franja": "Time range: {desde} – {hasta}",
+      "plantilla": "Template: {nombre}",
+      "plantillas": {
+        "completo": "Full",
+        "contable": "Accounting and finance",
+        "ventas-caja": "Sales and cash",
+        "personalizada": "Custom"
+      }
     },
     "envioDlg": {
       "titulo": "Schedule delivery",

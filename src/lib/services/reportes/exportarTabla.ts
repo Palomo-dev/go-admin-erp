@@ -12,7 +12,7 @@
  */
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
-import type { FilaCongelada, ReporteCongelado, TablaCongelada } from './cierres/snapshot';
+import type { FilaCongelada, ReporteCongelado, SnapshotCierre, TablaCongelada } from './cierres/snapshot';
 
 export interface EncabezadoExportacion {
   /** «Periodo: 01/09/2026 – 30/09/2026», ya en el idioma y formato de quien exporta. */
@@ -61,6 +61,63 @@ export function reporteAExcel(r: ReporteCongelado, enc: EncabezadoExportacion, s
   for (const t of tablasDelReporte(r, soloVista)) {
     const hoja = XLSX.utils.aoa_to_sheet(filasDeTabla(t, enc.textos.truncado));
     XLSX.utils.book_append_sheet(libro, hoja, nombreHoja(t.titulo ?? r.titulo, usados));
+  }
+  return new Uint8Array(XLSX.write(libro, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer);
+}
+
+export interface TextosCierreExcel {
+  portada: string;
+  indicador: string;
+  valor: string;
+  capitulo: string;
+  reportes: string;
+  errores: string;
+  sinMovimientos: string;
+  sinFranja: string;
+  truncado: (mostradas: number, total: number) => string;
+}
+
+/**
+ * Un libro del cierre completo: portada (periodo, indicadores, índice y
+ * reportes que no se pudieron calcular) y una hoja por reporte congelado,
+ * con sus indicadores y cada tabla. Los números quedan como números.
+ */
+export function cierreAExcel(s: SnapshotCierre, textos: TextosCierreExcel, lineas: string[]): Uint8Array {
+  const libro = XLSX.utils.book_new();
+  const usados = new Set<string>();
+  const portada: Celda[][] = [...lineas.map((l) => [l]), []];
+  if (s.kpisPortada.length > 0) {
+    portada.push([textos.indicador, textos.valor]);
+    for (const k of s.kpisPortada) portada.push([k.titulo, typeof k.valor === 'number' ? k.valor : String(k.valor ?? '')]);
+    portada.push([]);
+  }
+  portada.push([textos.capitulo, textos.reportes]);
+  for (const c of s.capitulos) portada.push([c.titulo, c.reportes.length]);
+  if (s.errores.length > 0) {
+    portada.push([]);
+    portada.push([textos.errores]);
+    for (const e of s.errores) portada.push([e.titulo]);
+  }
+  XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet(portada), nombreHoja(textos.portada, usados));
+
+  for (const cap of s.capitulos) {
+    for (const r of cap.reportes) {
+      const hoja: Celda[][] = [[cap.titulo], [r.titulo]];
+      if (r.sinFranja) hoja.push([textos.sinFranja]);
+      if (r.kpis.length > 0) {
+        hoja.push([]);
+        hoja.push([textos.indicador, textos.valor]);
+        for (const k of r.kpis) hoja.push([k.titulo, typeof k.valor === 'number' ? k.valor : String(k.valor ?? '')]);
+      }
+      for (const l of r.lectura) hoja.push([l.texto]);
+      for (const t of [r.principal, ...r.vistas]) {
+        hoja.push([]);
+        hoja.push([t.titulo ?? r.titulo]);
+        if (t.filas.length === 0 && !t.totales) hoja.push([textos.sinMovimientos]);
+        else hoja.push(...filasDeTabla(t, textos.truncado));
+      }
+      XLSX.utils.book_append_sheet(libro, XLSX.utils.aoa_to_sheet(hoja), nombreHoja(r.titulo, usados));
+    }
   }
   return new Uint8Array(XLSX.write(libro, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer);
 }

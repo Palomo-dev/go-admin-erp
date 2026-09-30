@@ -1,6 +1,6 @@
 /**
  * GET  /api/reportes/programados — envíos programados: los propios, o los de
- *      toda la organización para un administrador.
+ *      toda la organización para un administrador (RLS, con su sesión).
  * POST /api/reportes/programados — crea uno. El reporte y la sucursal se
  *      validan contra el plan y el alcance de quien programa; los correos
  *      externos quedan pendientes de aprobación salvo que programe un

@@ -27,6 +27,7 @@ const guion = {
   permisos: new Set<string>(),
   tablas: {} as Tablas,
   accesoTotal: false,
+  llamadasServicio: 0,
 };
 const correos: Array<{ para: string; clave: string; prueba?: boolean }> = [];
 const sesionesArchivos: string[] = [];
@@ -35,7 +36,12 @@ let sesion = fakeTablas({});
 let servicio = fakeTablas({});
 
 jest.mock('@/lib/supabase/config', () => ({ supabase: {} }));
-jest.mock('@/lib/supabase/server-service', () => ({ getServiceClient: () => servicio }));
+jest.mock('@/lib/supabase/server-service', () => ({
+  getServiceClient: () => {
+    guion.llamadasServicio += 1;
+    return servicio;
+  },
+}));
 jest.mock('@/lib/services/monedaOrganizacion', () => ({ resolverContextoMoneda: jest.fn(async () => null) }));
 jest.mock('@/lib/utils/orgContext', () => {
   const { OrgContextError: Err } = jest.requireActual('@/lib/utils/orgContextError');
@@ -169,6 +175,7 @@ beforeEach(() => {
   guion.roleId = 4;
   guion.permisos = new Set(['reports.export']);
   guion.accesoTotal = false;
+  guion.llamadasServicio = 0;
   guion.tablas = {
     scheduled_reports: [filaProgramado(PROPIO, YO), filaProgramado(AJENO, OTRO, [{ tipo: 'externo', email: 'contador@example.com', estado: 'pendiente', aprobado_por: null }])],
     organization_members: [
@@ -270,10 +277,11 @@ describe('GET, PATCH y DELETE /api/reportes/programados', () => {
     expect((r.resultado as unknown as Array<{ id: string }>).map((p) => p.id)).toEqual([PROPIO]);
   });
 
-  test('un administrador lista los de toda la organización', async () => {
+  test('un administrador lista los de toda la organización con su sesión', async () => {
     guion.roleId = 2;
     const r = await json(await listar(pedir('GET', URL_P), params('')));
     expect((r.resultado as unknown as Array<{ id: string }>).map((p) => p.id).sort()).toEqual([PROPIO, AJENO].sort());
+    expect(guion.llamadasServicio).toBe(0);
   });
 
   test('el de otra persona → 404 para quien no es administrador, sin tocarlo', async () => {
@@ -312,7 +320,8 @@ describe('GET, PATCH y DELETE /api/reportes/programados', () => {
     guion.roleId = 2;
     const r = await json(await actualizar(pedir('PATCH', `${URL_P}/${AJENO}`, { accion: 'aprobar', correos: ['contador@example.com'] }), params(AJENO)));
     expect(r.resultado.destinatarios?.[0]).toMatchObject({ estado: 'activo', aprobado_por: YO });
-    expect(servicio.escrituras.find((e) => e.op === 'update')?.filtros).toEqual(expect.arrayContaining([['organization_id', 'eq', ORG]]));
+    expect(sesion.escrituras.find((e) => e.op === 'update')?.filtros).toEqual(expect.arrayContaining([['organization_id', 'eq', ORG]]));
+    expect(servicio.escrituras).toHaveLength(0);
   });
 
   test('editar vuelve a validar el alcance', async () => {

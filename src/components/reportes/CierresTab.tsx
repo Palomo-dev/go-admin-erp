@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { FileText } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { DataTable, Dialogo, DialogoMotivo, EmptyState, ListCard, StatusBadge } from '@/components/kit';
 import { toastSuccess } from '@/components/ui/use-toast';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
@@ -19,6 +19,7 @@ const TONO = { borrador: 'neutro', emitido: 'informacion', firmado: 'exito', ree
 
 export function CierresTab({ ctx, recarga, onRecargar }: { ctx: ContextoReportes; recarga: number; onRecargar: () => void }) {
   const t = useTranslations('reportes');
+  const idioma = useLocale();
   const { formatDateTime, formatPlain } = useFormatDate();
   const etiqueta = useEtiquetaPeriodo();
   const mensaje = useMensajeError();
@@ -102,6 +103,7 @@ export function CierresTab({ ctx, recarga, onRecargar }: { ctx: ContextoReportes
                 <button type="button" className="text-link" onClick={() => abrirDocumento('cierre-periodo', f.id, { formato: 'html' })}>{t('cierres.ver')}</button>
                 <button type="button" className="text-link" onClick={() => abrirDocumento('cierre-periodo', f.id, { papel: 'carta' })}>{t('cierres.carta')}</button>
                 <button type="button" className="text-link" onClick={() => abrirDocumento('cierre-periodo', f.id, { papel: '80mm' })}>{t('cierres.mm80')}</button>
+                <button type="button" className="text-link" onClick={() => void clienteReportes.descargarExcelCierre(f.id, idioma).catch((e: unknown) => setError(mensaje(e)))}>{t('cierres.excel')}</button>
                 <button type="button" className="text-link" onClick={() => setVersionesDe(f)}>{t('cierres.versiones')}</button>
                 <button type="button" className="text-link" onClick={() => setAuditoriaDe(f)}>{t('cierres.auditoria')}</button>
                 {ctx.permisos.firmar && f.estado === 'emitido' && <button type="button" className="text-link" onClick={() => void firmar(f)}>{t('cierres.firmar')}</button>}

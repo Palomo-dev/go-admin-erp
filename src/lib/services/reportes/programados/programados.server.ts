@@ -1,11 +1,14 @@
 /**
  * Envíos programados de reportes en el servidor (decisión 11 del plan v2).
  *
- * Quién ve y edita qué:
- * - Cada persona, los suyos, con su cliente (RLS `auth.uid() = user_id`).
+ * Quién ve y edita qué, siempre con el cliente de la sesión:
+ * - Cada persona, los suyos (RLS `auth.uid() = user_id`).
  * - Un administrador (`hasOrgAdminOrPermission`), los de toda la
- *   organización: con el service role y SIEMPRE filtrando por la organización
- *   de la sesión. Es el único que aprueba correos externos.
+ *   organización: la política `scheduled_reports_admin_org` se lo permite
+ *   y la consulta filtra por la organización de la sesión. Es el único que
+ *   aprueba correos externos.
+ * El service role no lista ni edita estos envíos. Lo usan el cron y el
+ * correo de prueba, que escriben fuera de la sesión de quien mira la página.
  *
  * Al crear o editar, el reporte y la sucursal se validan contra el plan y el
  * alcance de quien programa: nadie programa lo que no puede ver. Cada
@@ -224,8 +227,7 @@ async function columnasDe(ctx: Ctx, datos: CuerpoProgramado, previos: Destinatar
 
 export async function listarProgramados(ctx: Ctx): Promise<ProgramadoVista[]> {
   const admin = await esAdmin(ctx);
-  const client = admin ? getServiceClient() : ctx.supabase;
-  let q = client.from('scheduled_reports').select(COLUMNAS_PROGRAMADO).eq('organization_id', ctx.organizationId);
+  let q = ctx.supabase.from('scheduled_reports').select(COLUMNAS_PROGRAMADO).eq('organization_id', ctx.organizationId);
   if (!admin) q = q.eq('user_id', ctx.userId);
   const { data, error } = await q.order('created_at', { ascending: false }).limit(200);
   if (error) throw new Error(`No se pudieron leer los envíos programados: ${error.message}`);
@@ -235,10 +237,10 @@ export async function listarProgramados(ctx: Ctx): Promise<ProgramadoVista[]> {
   return filas.map((f) => vistaDe(f, ctx, porNombre));
 }
 
-/** La fila con el cliente con el que se puede escribir: la propia con RLS, la ajena (admin) con service role. */
+/** La fila, con el cliente de la sesión. Un administrador alcanza la ajena por la política de la organización. */
 async function cargarProgramado(ctx: Ctx, id: string): Promise<{ fila: FilaProgramado; client: SupabaseClient; admin: boolean }> {
   const admin = await esAdmin(ctx);
-  const client = admin ? getServiceClient() : ctx.supabase;
+  const client = ctx.supabase;
   let q = client.from('scheduled_reports').select(COLUMNAS_PROGRAMADO).eq('id', id).eq('organization_id', ctx.organizationId);
   if (!admin) q = q.eq('user_id', ctx.userId);
   const { data, error } = await q.maybeSingle();

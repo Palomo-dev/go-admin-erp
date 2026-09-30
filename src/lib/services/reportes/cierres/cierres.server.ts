@@ -15,16 +15,21 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { createTranslator, type AbstractIntlMessages } from 'next-intl';
 import { getServiceClient } from '@/lib/supabase/server-service';
+import { defaultLocale, isValidLocale, type Locale } from '@/i18n/config';
 import { resolverContextoMoneda } from '@/lib/services/monedaOrganizacion';
 import { exigirSucursalPermitida } from '@/lib/security/alcanceSucursal';
 import { resolveTimezoneCascade } from '@/lib/utils/branchTimezoneCascade';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 import { OrgContextError } from '@/lib/utils/orgContextError';
 import { resolverAccesoReportes, type SujetoReportes } from '../acceso.server';
+import { cierreAExcel, type TextosCierreExcel } from '../exportarTabla';
+import { registrarEventoReporte } from '../historialService';
 import { ejecutarReportesSeleccionados } from '../reportesEngine';
 import { GRUPOS } from '../reportesCatalogo';
 import type { PeriodoCierre, ReportDefinition } from '../types';
-import { armarSnapshot, idsDelSnapshot, reportesDePlantilla, type PlantillaCierre, type SnapshotCierre } from './snapshot';
+import { armarSnapshot, idsDelSnapshot, leerSnapshot, reportesDePlantilla, type PlantillaCierre, type SnapshotCierre } from './snapshot';
 
 /** Error de un cierre con código estable para la interfaz (y el id del cierre vigente si ya existe). */
 export class ErrorCierre extends OrgContextError {
@@ -166,11 +171,24 @@ export async function vistaPreviaCierre(sujeto: SujetoReportes, entrada: Entrada
   return resumir(snapshot);
 }
 
+/** El service role es la única vía de `fn_cierre_guardar`. Si falta, se corta antes de calcular los reportes. */
+function clienteDeGuardado(): SupabaseClient {
+  try {
+    return getServiceClient();
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('SUPABASE_SERVICE_ROLE_KEY')) {
+      throw new ErrorCierre('No se pudo guardar el cierre', 503, 'servicio_no_configurado');
+    }
+    throw err;
+  }
+}
+
 /** Genera y congela el cierre (o su versión nueva si `reemplaza`). */
 export async function generarCierre(sujeto: SujetoReportes, entrada: EntradaCierre): Promise<CierreGuardado> {
+  const servicio = clienteDeGuardado();
   const { snapshot, zona } = await armar(sujeto, entrada);
   const p = entrada.periodo;
-  const { data, error } = await getServiceClient().rpc('fn_cierre_guardar', {
+  const { data, error } = await servicio.rpc('fn_cierre_guardar', {
     p_organization_id: sujeto.organizationId,
     p_usuario: sujeto.userId,
     p_datos: {
@@ -197,6 +215,84 @@ export async function firmarCierre(sujeto: Pick<SujetoReportes, 'supabase'>, id:
   const { data, error } = await sujeto.supabase.rpc('fn_cierre_firmar', { p_cierre: id });
   if (error) throw errorDeRpcCierre(error);
   return data as { id: string; estado: string; cierra_periodo: boolean; fiscal_period_id: string | null };
+}
+
+const TIPO_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+interface FilaExcel {
+  numero: string;
+  version: number;
+  tipo: string;
+  fecha_inicio: string;
+  fecha_fin: string;
+  hora_inicio: string | null;
+  hora_fin: string | null;
+  branch_id: number | null;
+  snapshot: unknown;
+}
+
+function horaCorta(valor: string | null): string | null {
+  const m = /^(\d{2}:\d{2})/.exec(valor ?? '');
+  return m ? m[1] : null;
+}
+
+type TraductorExcel = (clave: string, valores?: Record<string, string | number>) => string;
+
+async function textosDelExcel(idioma: string | null | undefined): Promise<{ t: TraductorExcel; textos: TextosCierreExcel }> {
+  const locale: Locale = idioma && isValidLocale(idioma) ? idioma : defaultLocale;
+  const mod = (await import(`../../../../../messages/${locale}.json`)) as { default?: AbstractIntlMessages } & AbstractIntlMessages;
+  const messages = (mod.default ?? mod) as AbstractIntlMessages;
+  // El tipo global de next-intl no conoce estas claves hasta regenerarse: el
+  // traductor se usa como función de texto, igual que en la exportación de membresías.
+  const t = createTranslator({ locale, messages, namespace: 'reportes.cierreExcel' }) as unknown as TraductorExcel;
+  const textos: TextosCierreExcel = {
+    portada: t('portada'),
+    indicador: t('indicador'),
+    valor: t('valor'),
+    capitulo: t('capitulo'),
+    reportes: t('reportes'),
+    errores: t('errores'),
+    sinMovimientos: t('sinMovimientos'),
+    sinFranja: t('sinFranja'),
+    truncado: (mostradas, total) => t('truncado', { mostradas, total }),
+  };
+  return { t, textos };
+}
+
+/** Excel del cierre ya congelado. Lo lee la sesión (RLS de `report_closings`) y registra la exportación. */
+export async function excelDelCierre(sujeto: SujetoReportes, id: string, idioma?: string | null): Promise<{ bytes: Uint8Array; nombre: string; tipo: string }> {
+  const { data, error } = await sujeto.supabase
+    .from('report_closings')
+    .select('numero, version, tipo, fecha_inicio, fecha_fin, hora_inicio, hora_fin, branch_id, snapshot')
+    .eq('id', id)
+    .eq('organization_id', sujeto.organizationId)
+    .maybeSingle();
+  if (error || !data) throw new ErrorCierre('Cierre no encontrado', 404, 'no_encontrado');
+  const fila = data as FilaExcel;
+  const snapshot = leerSnapshot(fila.snapshot);
+  if (!snapshot) throw new ErrorCierre('Este cierre no se puede exportar a Excel', 422, 'snapshot_invalido');
+
+  const { t, textos } = await textosDelExcel(idioma);
+  const desde = formatPlainDate(fila.fecha_inicio);
+  const hasta = formatPlainDate(fila.fecha_fin);
+  const lineas = [fila.numero, t('periodo', { desde, hasta }), t('sucursal', { nombre: snapshot.sucursal?.nombre ?? t('todas') })];
+  const hi = horaCorta(fila.hora_inicio);
+  const hf = horaCorta(fila.hora_fin);
+  if (hi && hf) lineas.push(t('franja', { desde: hi, hasta: hf }));
+  lineas.push(t('plantilla', { nombre: t(`plantillas.${snapshot.plantilla}`) }));
+
+  const bytes = cierreAExcel(snapshot, textos, lineas);
+  await registrarEventoReporte(sujeto.supabase, {
+    organizationId: sujeto.organizationId,
+    userId: sujeto.userId,
+    reportId: `cierre-${fila.tipo}`,
+    modulo: 'cierres',
+    accion: 'exportar',
+    filtros: { cierre_id: id, numero: fila.numero, version: fila.version, formato: 'excel' },
+    branchId: fila.branch_id,
+  });
+  const base = `${fila.numero}-v${fila.version}`.replace(/[^A-Za-z0-9._-]+/g, '_').slice(0, 80) || 'cierre';
+  return { bytes, nombre: `${base}.xlsx`, tipo: TIPO_XLSX };
 }
 
 export async function reabrirCierre(sujeto: Pick<SujetoReportes, 'supabase'>, id: string, motivo: string): Promise<{ id: string; estado: string }> {

@@ -19,6 +19,7 @@ const guion = {
   errorRpc: null as null | { code: string; message: string; details?: string },
   deLaOrg: true,
   accesoTotal: false,
+  sinServicio: false,
 };
 const rpcs: { cliente: 'sesion' | 'servicio'; nombre: string; args: Record<string, unknown> }[] = [];
 
@@ -72,7 +73,12 @@ jest.mock('@/lib/utils/orgContext', () => {
   };
 });
 jest.mock('@/lib/supabase/config', () => ({ supabase: {} }));
-jest.mock('@/lib/supabase/server-service', () => ({ getServiceClient: () => cliente('servicio') }));
+jest.mock('@/lib/supabase/server-service', () => ({
+  getServiceClient: () => {
+    if (guion.sinServicio) throw new Error('Faltan NEXT_PUBLIC_SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY (service role)');
+    return cliente('servicio');
+  },
+}));
 jest.mock('@/lib/services/monedaOrganizacion', () => ({ resolverContextoMoneda: jest.fn(async () => null) }));
 
 function def(id: string, grupo: ReportDefinition['grupo'], alcance: ReportDefinition['alcance'] = 'sucursal'): ReportDefinition {
@@ -122,6 +128,7 @@ beforeEach(() => {
   guion.errorRpc = null;
   guion.deLaOrg = true;
   guion.accesoTotal = false;
+  guion.sinServicio = false;
   rpcs.length = 0;
   ejecutados.length = 0;
   jest.spyOn(console, 'warn').mockImplementation(() => undefined);
@@ -164,6 +171,15 @@ describe('POST /api/reportes/cierres', () => {
         { ids: ['balance'], branchId: null },
       ]),
     );
+  });
+
+  test('sin clave de servicio no calcula reportes y responde 503', async () => {
+    guion.sinServicio = true;
+    const r = await generar(post(URL_CIERRES, cuerpo()), params(''));
+    expect(r.status).toBe(503);
+    expect((await r.json()).codigo).toBe('servicio_no_configurado');
+    expect(ejecutados).toHaveLength(0);
+    expect(rpcs).toHaveLength(0);
   });
 
   test('vista previa: resume sin guardar', async () => {

@@ -24854,7 +24854,9 @@
       "BRANCH_SCOPE_REQUIRED": "Choisissez une succursale à laquelle vous avez accès.",
       "periodo_invalido": "La période n'est pas valide.",
       "dia_invalido": "Choisissez le jour de l'envoi.",
-      "destinatarios": "Choisissez au moins un destinataire."
+      "destinatarios": "Choisissez au moins un destinataire.",
+      "servicio_no_configurado": "La clôture n'a pas pu être enregistrée : le serveur n'a pas sa clé de service.",
+      "snapshot_invalido": "Cette clôture ne peut pas être exportée en Excel."
     },
     "grupos": {
       "contabilidad": "Comptabilité",
@@ -24997,6 +24999,7 @@
       "pdf": "PDF",
       "carta": "PDF lettre",
       "mm80": "Ticket 80 mm",
+      "excel": "Excel",
       "versiones": "Versions",
       "auditoria": "Audit",
       "firmar": "Signer",
@@ -25107,8 +25110,29 @@
         "ventas-caja": "Ventes et caisse",
         "personalizada": "Personnalisée"
       },
-      "erroresPrevios": "{n, plural, one {# rapport n'a pas pu être calculé} other {# rapports n'ont pas pu être calculés}}",
-      "excelVisor": "La clôture est enregistrée. L'Excel complet de la clôture n'est pas généré : exportez chaque rapport depuis son visualiseur."
+      "erroresPrevios": "{n, plural, one {# rapport n'a pas pu être calculé} other {# rapports n'ont pas pu être calculés}}"
+    },
+    "cierreExcel": {
+      "portada": "Couverture",
+      "indicador": "Indicateur",
+      "valor": "Valeur",
+      "capitulo": "Chapitre",
+      "reportes": "Rapports",
+      "errores": "N'ont pas pu être calculés",
+      "sinMovimientos": "Aucun mouvement",
+      "sinFranja": "Ce rapport est calculé sur la journée complète",
+      "truncado": "{mostradas} sur {total}",
+      "periodo": "{desde} – {hasta}",
+      "sucursal": "Succursale : {nombre}",
+      "todas": "Toutes les succursales",
+      "franja": "Plage : {desde} – {hasta}",
+      "plantilla": "Modèle : {nombre}",
+      "plantillas": {
+        "completo": "Complet",
+        "contable": "Comptable et financier",
+        "ventas-caja": "Ventes et caisse",
+        "personalizada": "Personnalisée"
+      }
     },
     "envioDlg": {
       "titulo": "Planifier l'envoi",

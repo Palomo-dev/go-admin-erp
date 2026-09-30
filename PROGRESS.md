@@ -3627,3 +3627,13 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - El catálogo declara las variantes `grid`, `horizontal` e `icons` de `categories_grid`. El manifiesto de prueba declara `product_faq`, `product_shipping` y `product_specs`, que el sitio ya renderiza.
 - El doble en memoria de `fn_cotizacion_guardar` y `fn_cotizacion_cambiar_estado` deja leer la cotización creada. Editar no registra una escritura de la tabla `quotations` (el estable lo exige así).
 - Pendiente: recorrido en el navegador con sesión (inicio, lista, visor con comparativo, vista previa de cierre y el 409, programar envío, móvil a 390 px).
+
+
+### Fase: Reportes v2 — programados con la sesión y Excel del cierre — 2026-09-30
+- Rama `cursor/reportes-v2-implementacion-e475` (PR #269). No se fusiona.
+- La pestaña Programados respondía 500: un administrador listaba con el service role y este entorno no tiene `SUPABASE_SERVICE_ROLE_KEY`. La política `scheduled_reports_admin_org` (migración `20260930235500`, aplicada por MCP, con rollback) deja ver y editar los envíos de la organización con la sesión. Mismo criterio que `hasOrgAdminOrPermission`: super admin, rol 1 o 2, o `admin.full_access`. Quien no es administrador sigue viendo solo los suyos. El cron y el correo de prueba siguen con el service role.
+- `fn_cierre_guardar` sigue concedida solo a `service_role`. Sin la clave, Generar cierre responde 503 `servicio_no_configurado` antes de calcular los reportes. La vista previa no la usa.
+- El Excel del cierre completo se descarga al generarlo y desde la pestaña Cierres (`GET /api/reportes/cierres/[id]/excel`). Sale del snapshot congelado: portada y una hoja por reporte. Carta y tirilla 80 mm siguen igual. Se quitó el texto que decía que el Excel no existía, en es, en, pt y fr.
+- Jest de Excel del cierre, programados, cierres y programación: 68 en verde. `npx tsc --noEmit -p tsconfig.json` en verde. eslint de los archivos tocados, sin avisos.
+- Con la sesión de un administrador, `GET /api/reportes/programados` pasó de 500 a 200 en el servidor de desarrollo.
+- Pendiente: recorrido en el navegador del resto (inicio, lista, visor con comparativo, 409, programar envío, móvil a 390 px). Generar cierre en este entorno sigue sin poder guardar hasta que el proceso tenga `SUPABASE_SERVICE_ROLE_KEY`.

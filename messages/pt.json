@@ -24854,7 +24854,9 @@
       "BRANCH_SCOPE_REQUIRED": "Escolha uma filial à qual você tenha acesso.",
       "periodo_invalido": "O período não é válido.",
       "dia_invalido": "Escolha o dia do envio.",
-      "destinatarios": "Escolha pelo menos um destinatário."
+      "destinatarios": "Escolha pelo menos um destinatário.",
+      "servicio_no_configurado": "Não foi possível salvar o fechamento: o servidor não tem a chave de serviço configurada.",
+      "snapshot_invalido": "Este fechamento não pode ser exportado para Excel."
     },
     "grupos": {
       "contabilidad": "Contabilidade",
@@ -24997,6 +24999,7 @@
       "pdf": "PDF",
       "carta": "PDF carta",
       "mm80": "Bobina 80 mm",
+      "excel": "Excel",
       "versiones": "Versões",
       "auditoria": "Auditoria",
       "firmar": "Assinar",
@@ -25107,8 +25110,29 @@
         "ventas-caja": "Vendas e caixa",
         "personalizada": "Personalizado"
       },
-      "erroresPrevios": "{n, plural, one {# relatório não pôde ser calculado} other {# relatórios não puderam ser calculados}}",
-      "excelVisor": "O fechamento foi salvo. O Excel completo do fechamento não é gerado: exporte cada relatório no visor."
+      "erroresPrevios": "{n, plural, one {# relatório não pôde ser calculado} other {# relatórios não puderam ser calculados}}"
+    },
+    "cierreExcel": {
+      "portada": "Capa",
+      "indicador": "Indicador",
+      "valor": "Valor",
+      "capitulo": "Capítulo",
+      "reportes": "Relatórios",
+      "errores": "Não foi possível calcular",
+      "sinMovimientos": "Sem movimentos",
+      "sinFranja": "Este relatório é calculado pelo dia inteiro",
+      "truncado": "{mostradas} de {total}",
+      "periodo": "{desde} – {hasta}",
+      "sucursal": "Filial: {nombre}",
+      "todas": "Todas as filiais",
+      "franja": "Faixa: {desde} – {hasta}",
+      "plantilla": "Modelo: {nombre}",
+      "plantillas": {
+        "completo": "Completo",
+        "contable": "Contábil e financeiro",
+        "ventas-caja": "Vendas e caixa",
+        "personalizada": "Personalizado"
+      }
     },
     "envioDlg": {
       "titulo": "Agendar envio",

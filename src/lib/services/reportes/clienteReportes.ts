@@ -7,6 +7,7 @@
  * `ErrorPeticionReportes` con el código estable de la ruta (`cierre_existente`,
  * `sin_permiso`, `BRANCH_SCOPE_REQUIRED`…), que la interfaz traduce.
  */
+import { guardarArchivo } from '@/lib/documents/cliente';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import type { CuerpoCierre, CuerpoProgramado } from './contrato';
 import type { CierreGuardado, ResumenCierre } from './cierres/cierres.server';
@@ -62,6 +63,30 @@ export type PedidoCierre = Omit<CuerpoCierre, 'periodo'> & {
   periodo: { tipo: string; fechaInicio: string; fechaFin: string; horaInicio?: string | null; horaFin?: string | null };
 };
 
+function nombreDeArchivo(cabecera: string | null, respaldo: string): string {
+  const m = cabecera ? /filename="([^"]+)"/.exec(cabecera) : null;
+  return m?.[1] ?? respaldo;
+}
+
+async function descargarExcel(id: string, idioma: string): Promise<void> {
+  const org = getOrganizationId();
+  const r = await fetch(`/api/reportes/cierres/${encodeURIComponent(id)}/excel?idioma=${encodeURIComponent(idioma)}`, {
+    credentials: 'same-origin',
+    cache: 'no-store',
+    headers: org > 0 ? { 'x-organization-id': String(org) } : {},
+  });
+  if (!r.ok) {
+    let cuerpo: { codigo?: string; code?: string } = {};
+    try {
+      cuerpo = (await r.json()) as { codigo?: string; code?: string };
+    } catch {
+      cuerpo = {};
+    }
+    throw new ErrorPeticionReportes(cuerpo.codigo ?? cuerpo.code ?? 'error_desconocido', r.status, null);
+  }
+  guardarArchivo(await r.blob(), nombreDeArchivo(r.headers.get('content-disposition'), `cierre-${id}.xlsx`));
+}
+
 export const clienteReportes = {
   permisos: () => pedir<PermisosReportes>('/api/reportes/permisos'),
   solicitarAcceso: (s: SolicitudAcceso) => pedir<ResultadoSolicitud>('/api/reportes/solicitar-acceso', { method: 'POST', body: s }),
@@ -69,6 +94,7 @@ export const clienteReportes = {
   vistaPreviaCierre: (datos: PedidoCierre) =>
     pedir<{ resumen: ResumenCierre }>('/api/reportes/cierres', { method: 'POST', body: { ...datos, vistaPrevia: true } }).then((r) => r.resumen),
   generarCierre: (datos: PedidoCierre) => pedir<CierreGuardado>('/api/reportes/cierres', { method: 'POST', body: datos }),
+  descargarExcelCierre: (id: string, idioma: string) => descargarExcel(id, idioma),
   firmarCierre: (id: string) =>
     pedir<{ id: string; estado: string; cierra_periodo: boolean }>(`/api/reportes/cierres/${encodeURIComponent(id)}/firmar`, { method: 'POST', body: {} }),
   reabrirCierre: (id: string, motivo: string) =>

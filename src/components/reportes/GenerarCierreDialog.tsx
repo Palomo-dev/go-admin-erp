@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, FileText } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ChipsOpcion, Dialogo } from '@/components/kit';
 import { cn } from '@/utils/Utils';
@@ -39,6 +39,7 @@ export function GenerarCierreDialog({
   onListo: () => void;
 }) {
   const t = useTranslations('reportes.cierreDlg');
+  const idioma = useLocale();
   const tTipo = useTranslations('reportes.tipos');
   const tGrupo = useTranslations('reportes.grupos');
   const tFiltros = useTranslations('reportes.filtros');
@@ -109,10 +110,10 @@ export function GenerarCierreDialog({
     try {
       const guardado = await clienteReportes.generarCierre(cuerpo(reemplaza));
       toastSuccess(t('listo', { numero: guardado.numero }));
-      if (formato === 'excel') setError(t('excelVisor'));
-      else abrirDocumento('cierre-periodo', guardado.id, { papel: formato === '80mm' ? '80mm' : 'carta' });
       onListo();
-      if (formato !== 'excel') onCerrar();
+      if (formato === 'excel') await clienteReportes.descargarExcelCierre(guardado.id, idioma);
+      else abrirDocumento('cierre-periodo', guardado.id, { papel: formato === '80mm' ? '80mm' : 'carta' });
+      onCerrar();
     } catch (e) {
       if (e instanceof ErrorPeticionReportes && e.codigo === 'cierre_existente' && e.existente) setExistente(e.existente);
       else setError(mensaje(e));

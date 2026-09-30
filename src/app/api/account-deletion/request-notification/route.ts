@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendDeletionRequestNotification } from '@/lib/services/accountDeletionService';
+import { getServerUserClient } from '@/lib/supabase/server-user';
 
 /**
  * POST /api/account-deletion/request-notification
@@ -14,6 +15,17 @@ import { sendDeletionRequestNotification } from '@/lib/services/accountDeletionS
  *   - userName: string (opcional)
  */
 export async function POST(request: NextRequest) {
+  // Puerta del servidor: requiere sesión activa
+  const supabase = await getServerUserClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  
+  if (authError || !user) {
+    return NextResponse.json(
+      { success: false, error: 'No autorizado' },
+      { status: 401 }
+    );
+  }
+
   try {
     const body = await request.json();
     const { email, userName } = body;

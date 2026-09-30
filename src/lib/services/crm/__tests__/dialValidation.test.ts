@@ -4,7 +4,7 @@
  * Criterios de aceptación: CA-30 a CA-37
  */
 
-import { describe, test, expect, vi, beforeEach, afterEach } from '@jest/globals';
+import { describe, test, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { canDial, type DialContext, type DialValidationResult } from '../dialValidation';
 import { COLOMBIA_HOLIDAYS_2026_2027 } from '../holidays/colombia2026_2027';
@@ -12,7 +12,7 @@ import { COLOMBIA_HOLIDAYS_2026_2027 } from '../holidays/colombia2026_2027';
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
 const createMockSupabase = (mockData: Record<string, any> = {}): SupabaseClient => {
-  const defaultMock = {
+  const defaultMock: Record<string, any> = {
     comm_settings: { metadata: {}, voice_agent_enabled: true, voice_max_concurrent_calls: 2, voice_credits_remaining: 1000, voice_caller_id: '+5760412345' },
     customers: { metadata: { rne_status: 'no_excluido', rne_checked_at: new Date().toISOString(), rne_receipt: 'CRC-TEST-12345' } },
     voice_agent_campaigns: { status: 'running', emergency_stop: false },
@@ -25,66 +25,66 @@ const createMockSupabase = (mockData: Record<string, any> = {}): SupabaseClient 
     ...mockData,
   };
 
-  const from = vi.fn((table: string) => ({
-    select: vi.fn(() => ({
-      eq: vi.fn(() => ({
-        maybeSingle: vi.fn(async () => ({
+  const from = jest.fn((table: string) => ({
+    select: jest.fn(() => ({
+      eq: jest.fn(() => ({
+        maybeSingle: jest.fn(async () => ({
           data: defaultMock[table],
           error: null,
         })),
-        single: vi.fn(async () => ({
+        single: jest.fn(async () => ({
           data: defaultMock[table],
           error: null,
         })),
-        limit: vi.fn(() => ({
-          maybeSingle: vi.fn(async () => ({
+        limit: jest.fn(() => ({
+          maybeSingle: jest.fn(async () => ({
             data: defaultMock[table],
             error: null,
           })),
         })),
       })),
-      gte: vi.fn(() => ({
-        eq: vi.fn(() => ({
+      gte: jest.fn(() => ({
+        eq: jest.fn(() => ({
           head: true,
           count: 'exact',
-          then: vi.fn(async () => ({
+          then: jest.fn(async () => ({
             count: Array.isArray(defaultMock[table]) ? defaultMock[table].length : 0,
             error: null,
           })),
         })),
-        not: vi.fn(() => ({
-          gte: vi.fn(() => ({
-            then: vi.fn(async () => ({
+        not: jest.fn(() => ({
+          gte: jest.fn(() => ({
+            then: jest.fn(async () => ({
               data: defaultMock[table],
               error: null,
             })),
           })),
         })),
       })),
-      lte: vi.fn(() => ({
-        then: vi.fn(async () => ({
+      lte: jest.fn(() => ({
+        then: jest.fn(async () => ({
           data: defaultMock[table],
           error: null,
         })),
       })),
-      order: vi.fn(() => ({
-        limit: vi.fn(() => ({
-          maybeSingle: vi.fn(async () => ({
+      order: jest.fn(() => ({
+        limit: jest.fn(() => ({
+          maybeSingle: jest.fn(async () => ({
             data: defaultMock[table],
             error: null,
           })),
         })),
       })),
-      in: vi.fn(() => ({
-        then: vi.fn(async () => ({
+      in: jest.fn(() => ({
+        then: jest.fn(async () => ({
           data: defaultMock[table],
           error: null,
         })),
       })),
-      count: vi.fn(() => ({
+      count: jest.fn(() => ({
         exact: true,
         head: true,
-        then: vi.fn(async () => ({
+        then: jest.fn(async () => ({
           count: Array.isArray(defaultMock[table]) ? defaultMock[table].length : 0,
           error: null,
         })),
@@ -92,7 +92,7 @@ const createMockSupabase = (mockData: Record<string, any> = {}): SupabaseClient 
     })),
   }));
 
-  const rpc = vi.fn(async (name: string, params: any) => {
+  const rpc = jest.fn(async (name: string, params: any) => {
     if (name === 'fn_can_contact') {
       return { data: true, error: null };
     }
@@ -788,17 +788,17 @@ describe('canDial - CA-36: Fail-closed', () => {
   test('Rechaza cuando la base de datos no responde', async () => {
     const context = createContext();
     const supabase = {
-      from: vi.fn(() => ({
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            maybeSingle: vi.fn(async () => ({
+      from: jest.fn(() => ({
+        select: jest.fn(() => ({
+          eq: jest.fn(() => ({
+            maybeSingle: jest.fn(async () => ({
               data: null,
               error: { message: 'Connection timeout', code: '500' },
             })),
           })),
         })),
       })),
-      rpc: vi.fn(async () => ({ data: null, error: { message: 'Connection timeout' } })),
+      rpc: jest.fn(async () => ({ data: null, error: { message: 'Connection timeout' } })),
     } as any as SupabaseClient;
     
     const validTime = new Date('2026-10-13T13:05:00Z');
@@ -811,7 +811,7 @@ describe('canDial - CA-36: Fail-closed', () => {
   test('Registra el error cuando ocurre una excepción', async () => {
     const context = createContext();
     const supabase = {
-      from: vi.fn(() => {
+      from: jest.fn(() => {
         throw new Error('Database connection lost');
       }),
     } as any as SupabaseClient;

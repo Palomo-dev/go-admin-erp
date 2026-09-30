@@ -10,8 +10,11 @@ import type { ReportesClient } from '../types';
 // del usuario; en el servidor (asistente de reportes) el route handler pasa el
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
-import { getOrgDateRange, toPlainDate } from '@/lib/utils/timezone';
-import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import { toPlainDate } from '@/lib/utils/timezone';
+import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
+import type { DefinicionModulo, ReportData, PeriodoCierre } from '../types';
+import { rangoDelPeriodo } from '../rangoPeriodo';
+import { leerPaginado } from '../leerPaginado';
 
 /** Filas que devuelven las consultas de los informes (los embebidos llegan como objeto). */
 interface FilaSerialInforme {
@@ -34,6 +37,13 @@ interface FilaVentaSerialInforme {
   sold_by_user_id: string | null;
   products: { name?: string | null; sku?: string | null } | null;
   customers: { full_name?: string | null } | null;
+}
+
+interface FilaSerialProveedor {
+  id: number;
+  status: string;
+  cost_at_purchase: number | string | null;
+  suppliers: { id?: number | null; name?: string | null } | null;
 }
 
 interface FilaReclamoInforme {
@@ -89,42 +99,43 @@ const CLAIM_STATUS_LABELS: Record<string, string> = {
   cancelled: 'Cancelado',
 };
 
-export const serialTrackingReports: ReportDefinition[] = [
+export const serialTrackingReports: DefinicionModulo[] = [
   // ============================================================
   // 10.1: Reporte de Trazabilidad por Producto
   // ============================================================
   {
     id: 'trazabilidad-producto',
     modulo: 'inventory',
-    titulo: 'Trazabilidad por Producto',
-    descripcion: 'Seriales recibidos, proveedor, costo, estado actual y ubicación por producto',
+    titulo: 'Trazabilidad por producto',
+    descripcion: 'Seriales recibidos, proveedor, costo, estado y ubicación',
     categoria: 'operativo',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual', 'trimestral'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end, timezone } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
-      const { data, error } = await db
-        .from('serial_numbers')
-        .select(`
-          id, serial, status, cost_at_purchase, received_date,
-          warranty_start, warranty_end,
-          products!inner ( id, name, sku, brand ),
-          suppliers ( name ),
-          branches!fk_serial_branch ( name ),
-          current_branch:branches!fk_serial_current_branch ( name )
-        `)
-        .eq('organization_id', orgId)
-        .gte('created_at', start)
-        .lte('created_at', end)
+      const { start, end, timezone } = await rangoDelPeriodo(orgId, periodo, db);
+      const data = await leerPaginado<FilaSerialInforme>((desde, hasta) => applyBranchFilter(
+        db
+          .from('serial_numbers')
+          .select(`
+            id, serial, status, cost_at_purchase, received_date,
+            warranty_start, warranty_end,
+            products!inner ( id, name, sku, brand ),
+            suppliers ( name ),
+            branches!fk_serial_branch ( name ),
+            current_branch:branches!fk_serial_current_branch ( name )
+          `)
+          .eq('organization_id', orgId)
+          .gte('created_at', start)
+          .lte('created_at', end),
+        branchId,
+      )
         .order('created_at', { ascending: false })
-        .limit(500);
+        .order('id', { ascending: false })
+        .range(desde, hasta)
+        .returns<FilaSerialInforme[]>());
 
-      if (error) throw error;
-
-      const filas = ((data ?? []) as unknown as FilaSerialInforme[]).map((s) => ({
+      const filas = data.map((s) => ({
         serial: s.serial,
         producto: s.products?.name ?? '—',
         sku: s.products?.sku ?? '—',
@@ -145,7 +156,7 @@ export const serialTrackingReports: ReportDefinition[] = [
       const costoTotal = filas.reduce((s, f) => s + Number(f.costo ?? 0), 0);
 
       return buildReportData(
-        'trazabilidad-producto', 'Trazabilidad por Producto', 'inventory', periodo,
+        'trazabilidad-producto', 'Trazabilidad por producto', 'inventory', periodo,
         [
           { titulo: 'Total Seriales', valor: totalSeriales, formato: 'numero' },
           { titulo: 'En Stock', valor: enStock, formato: 'numero' },
@@ -176,38 +187,39 @@ export const serialTrackingReports: ReportDefinition[] = [
   {
     id: 'ventas-serial',
     modulo: 'inventory',
-    titulo: 'Ventas por Serial',
-    descripcion: 'Seriales vendidos: producto, cliente, vendedor, canal, precio y fecha',
+    titulo: 'Ventas por serial',
+    descripcion: 'Seriales vendidos: producto, cliente, vendedor, canal y precio',
     categoria: 'comercial',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual', 'trimestral'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end, timezone } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end, timezone } = await rangoDelPeriodo(orgId, periodo, db);
       // `serial_numbers.sold_by_user_id` NO tiene clave foránea a `profiles`
       // (la restricción `serial_numbers_sold_by_user_id_fkey` ni siquiera
       // existe), así que el embebido devolvía PGRST200 y el informe entero
       // fallaba. El vendedor se resuelve con una segunda consulta por id.
-      const { data, error } = await db
-        .from('serial_numbers')
-        .select(`
-          id, serial, sale_date, sale_channel, price_at_sale, sold_by_user_id,
-          products!inner ( id, name, sku ),
-          customers ( id, full_name )
-        `)
-        .eq('organization_id', orgId)
-        .eq('status', 'sold')
-        .gte('sale_date', start)
-        .lte('sale_date', end)
+      const data = await leerPaginado<FilaVentaSerialInforme>((desde, hasta) => applyBranchFilter(
+        db
+          .from('serial_numbers')
+          .select(`
+            id, serial, sale_date, sale_channel, price_at_sale, sold_by_user_id,
+            products!inner ( id, name, sku ),
+            customers ( id, full_name )
+          `)
+          .eq('organization_id', orgId)
+          .eq('status', 'sold')
+          .gte('sale_date', start)
+          .lte('sale_date', end),
+        branchId,
+      )
         .order('sale_date', { ascending: false })
-        .limit(500);
-
-      if (error) throw error;
+        .order('id', { ascending: false })
+        .range(desde, hasta)
+        .returns<FilaVentaSerialInforme[]>());
 
       const vendedorIds = Array.from(
-        new Set(((data ?? []) as unknown as FilaVentaSerialInforme[]).map((s) => s.sold_by_user_id).filter(Boolean))
+        new Set(data.map((s) => s.sold_by_user_id).filter(Boolean))
       ) as string[];
       const emailPorUsuario = new Map<string, string>();
       if (vendedorIds.length > 0) {
@@ -232,7 +244,7 @@ export const serialTrackingReports: ReportDefinition[] = [
         manual: 'Manual',
       };
 
-      const filas = ((data ?? []) as unknown as FilaVentaSerialInforme[]).map((s) => ({
+      const filas = data.map((s) => ({
         serial: s.serial,
         producto: s.products?.name ?? '—',
         sku: s.products?.sku ?? '—',
@@ -249,7 +261,7 @@ export const serialTrackingReports: ReportDefinition[] = [
       const canalWeb = filas.filter((f) => f.canal === 'Web').length;
 
       return buildReportData(
-        'ventas-serial', 'Ventas por Serial', 'inventory', periodo,
+        'ventas-serial', 'Ventas por serial', 'inventory', periodo,
         [
           { titulo: 'Seriales Vendidos', valor: totalVentas, formato: 'numero' },
           { titulo: 'Ingresos Total', valor: ingresosTotal, formato: 'moneda' },
@@ -278,17 +290,15 @@ export const serialTrackingReports: ReportDefinition[] = [
   {
     id: 'garantias-reporte',
     modulo: 'inventory',
-    titulo: 'Reporte de Garantías',
-    descripcion: 'Reclamos de garantía: tipo de resolución, monto y tiempo de resolución',
+    titulo: 'Reporte de garantías',
+    descripcion: 'Reclamos de garantía: resolución, monto y tiempo',
     categoria: 'operativo',
+    alcance: 'organizacion',
     periodosSugeridos: ['mensual', 'trimestral'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end, timezone } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
-      const { data, error } = await db
+      const { start, end, timezone } = await rangoDelPeriodo(orgId, periodo, db);
+      const data = await leerPaginado<FilaReclamoInforme>((desde, hasta) => db
         .from('warranty_claims')
         .select(`
           id, claim_date, claim_reason, status, resolution_type,
@@ -303,11 +313,11 @@ export const serialTrackingReports: ReportDefinition[] = [
         .gte('claim_date', start)
         .lte('claim_date', end)
         .order('claim_date', { ascending: false })
-        .limit(500);
+        .order('id', { ascending: false })
+        .range(desde, hasta)
+        .returns<FilaReclamoInforme[]>());
 
-      if (error) throw error;
-
-      const filas = ((data ?? []) as unknown as FilaReclamoInforme[]).map((c) => {
+      const filas = data.map((c) => {
         const claimDate = new Date(c.claim_date);
         const resolutionDate = c.resolution_date ? new Date(c.resolution_date) : null;
         const diasResolucion = resolutionDate
@@ -340,7 +350,7 @@ export const serialTrackingReports: ReportDefinition[] = [
         : 0;
 
       return buildReportData(
-        'garantias-reporte', 'Reporte de Garantías', 'inventory', periodo,
+        'garantias-reporte', 'Reporte de garantías', 'inventory', periodo,
         [
           { titulo: 'Total Reclamos', valor: totalReclamos, formato: 'numero' },
           { titulo: 'Pendientes', valor: pendientes, formato: 'numero' },
@@ -372,29 +382,30 @@ export const serialTrackingReports: ReportDefinition[] = [
   {
     id: 'seriales-proveedor',
     modulo: 'inventory',
-    titulo: 'Seriales por Proveedor',
-    descripcion: 'Seriales comprados, costo total, vendidos y devueltos por proveedor',
+    titulo: 'Seriales por proveedor',
+    descripcion: 'Seriales comprados, vendidos y devueltos por proveedor',
     categoria: 'operativo',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual', 'trimestral'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
-      const { data, error } = await db
-        .from('serial_numbers')
-        .select(`
-          id, status, cost_at_purchase,
-          suppliers!inner ( id, name )
-        `)
-        .eq('organization_id', orgId)
-        .not('supplier_id', 'is', null)
-        .gte('created_at', start)
-        .lte('created_at', end)
-        .limit(1000);
-
-      if (error) throw error;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
+      const data = await leerPaginado<FilaSerialProveedor>((desde, hasta) => applyBranchFilter(
+        db
+          .from('serial_numbers')
+          .select(`
+            id, status, cost_at_purchase,
+            suppliers!inner ( id, name )
+          `)
+          .eq('organization_id', orgId)
+          .not('supplier_id', 'is', null)
+          .gte('created_at', start)
+          .lte('created_at', end),
+        branchId,
+      )
+        .order('id', { ascending: true })
+        .range(desde, hasta)
+        .returns<FilaSerialProveedor[]>());
 
       const porProveedor = new Map<string, {
         proveedor: string;
@@ -406,12 +417,12 @@ export const serialTrackingReports: ReportDefinition[] = [
         danados: number;
       }>();
 
-      for (const s of data ?? []) {
-        const supplier = s.suppliers as unknown as { name?: string | null } | null;
-        const nombre = supplier?.name ?? 'Sin proveedor';
-        const existente = porProveedor.get(nombre);
+      for (const s of data) {
+        const clave = String(s.suppliers?.id ?? 'sin-proveedor');
+        const nombre = s.suppliers?.name ?? 'Sin proveedor';
+        const existente = porProveedor.get(clave);
         const costo = Number(s.cost_at_purchase ?? 0);
-        const status = s.status as string;
+        const status = s.status;
 
         if (existente) {
           existente.seriales_comprados++;
@@ -421,7 +432,7 @@ export const serialTrackingReports: ReportDefinition[] = [
           if (status === 'in_stock') existente.en_stock++;
           if (status === 'damaged') existente.danados++;
         } else {
-          porProveedor.set(nombre, {
+          porProveedor.set(clave, {
             proveedor: nombre,
             seriales_comprados: 1,
             costo_total: costo,
@@ -442,7 +453,7 @@ export const serialTrackingReports: ReportDefinition[] = [
       const totalDevueltos = filas.reduce((s, f) => s + f.devueltos, 0);
 
       return buildReportData(
-        'seriales-proveedor', 'Seriales por Proveedor', 'inventory', periodo,
+        'seriales-proveedor', 'Seriales por proveedor', 'inventory', periodo,
         [
           { titulo: 'Proveedores', valor: filas.length, formato: 'numero' },
           { titulo: 'Total Seriales', valor: totalSeriales, formato: 'numero' },

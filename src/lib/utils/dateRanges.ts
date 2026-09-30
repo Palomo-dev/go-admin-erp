@@ -12,6 +12,7 @@
 // de primavera) y de 25 h (vuelta al horario estandar).
 // ============================================================
 
+import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   DEFAULT_TIMEZONE,
   formatInstantWithOffset,
@@ -197,19 +198,22 @@ export async function getOrgDayRange(
  *
  * @param overrideHours Horas que sobreescriben las de la organizacion
  *                      (filtro manual de horas en reportes).
+ * @param db Cliente con la sesion. En un route handler es obligatorio: el
+ *           cliente del navegador no tiene sesion ahi y leeria como `anon`.
  */
 export async function getOrgDateRange(
   organizationId: number,
   fechaInicio: string,
   fechaFin: string,
   overrideHours?: OperatingHoursOptions | null,
+  db?: SupabaseClient,
 ): Promise<RangoDeOrganizacion> {
   const { getOrganizationTimezone } = await import('@/lib/services/organizationTimezoneService');
   const { getOperatingHours } = await import('@/lib/services/organizationOperatingHoursService');
 
   const [timezone, orgHours] = await Promise.all([
-    getOrganizationTimezone(organizationId),
-    getOperatingHours(organizationId),
+    db ? getOrganizationTimezone(organizationId, db) : getOrganizationTimezone(organizationId),
+    db ? getOperatingHours(organizationId, db) : getOperatingHours(organizationId),
   ]);
 
   const operatingHours = tieneHorasCompletas(overrideHours) ? overrideHours : orgHours;

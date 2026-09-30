@@ -1,330 +1,283 @@
 // ============================================================
-// Servicio de resolución de períodos de cierre
-// Convierte un TipoCierre en un PeriodoCierre con fechas concretas
+// Periodos de reporte y de cierre, en días calendario de la organización.
+//
+// Todo trabaja sobre fechas planas `YYYY-MM-DD`: el «hoy» lo pone quien llama,
+// con la zona de la organización (`useFormatDate().getToday()` en el
+// navegador, `todayInTz(tz)` en el servidor). Nada de `new Date('YYYY-MM-DD')`
+// ni de `startOfDay` del navegador: en Bogotá esa fecha es la medianoche UTC y
+// se muestra como el día anterior.
+//
+// `etiqueta` es el rótulo en español que se congela en el cierre; la interfaz
+// pinta el suyo en el idioma del usuario (`etiquetaDePeriodo` del visor).
 // ============================================================
 
-import {
-  format,
-  startOfDay,
-  endOfDay,
-  startOfWeek,
-  endOfWeek,
-  startOfMonth,
-  endOfMonth,
-  startOfYear,
-  endOfYear,
-  addDays,
-  addWeeks,
-  addMonths,
-  addQuarters,
-  addYears,
-  subDays,
-  subWeeks,
-  subMonths,
-  subQuarters,
-  subYears,
-  getQuarter,
-  getYear,
-  getDate,
-  lastDayOfMonth,
-} from 'date-fns';
-import { es } from 'date-fns/locale';
-
+import { addPlainDays, todayInTz, DEFAULT_TIMEZONE } from '@/lib/utils/timezone';
 import type { PeriodoCierre, TipoCierre } from './types';
 
-/** Formatea una fecha como dd/MM/yyyy */
-function fmt(date: Date): string {
-  return format(date, 'dd/MM/yyyy', { locale: es });
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+interface Partes {
+  anio: number;
+  mes: number;
+  dia: number;
 }
 
-/** Convierte un Date a ISO date string (yyyy-mm-dd) */
-function toISO(date: Date): string {
-  return format(date, 'yyyy-MM-dd');
+function partes(fecha: string): Partes {
+  const [anio, mes, dia] = fecha.split('-').map(Number);
+  return { anio, mes, dia };
+}
+
+function plano(anio: number, mes: number, dia: number): string {
+  return `${String(anio).padStart(4, '0')}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+}
+
+/** Último día del mes (1-12). */
+function ultimoDia(anio: number, mes: number): number {
+  return new Date(Date.UTC(anio, mes, 0)).getUTCDate();
+}
+
+/** Suma meses a un (año, mes) y devuelve el par normalizado. */
+function sumarMeses(anio: number, mes: number, n: number): { anio: number; mes: number } {
+  const total = anio * 12 + (mes - 1) + n;
+  return { anio: Math.floor(total / 12), mes: (total % 12) + 1 };
+}
+
+/** Día de la semana ISO de una fecha plana: 1 = lunes … 7 = domingo. */
+function diaSemanaIso(fecha: string): number {
+  const { anio, mes, dia } = partes(fecha);
+  const d = new Date(Date.UTC(anio, mes - 1, dia)).getUTCDay();
+  return d === 0 ? 7 : d;
+}
+
+function dm(fecha: string): string {
+  const { dia, mes } = partes(fecha);
+  return `${String(dia).padStart(2, '0')}/${String(mes).padStart(2, '0')}`;
+}
+
+function dma(fecha: string): string {
+  const { anio } = partes(fecha);
+  return `${dm(fecha)}/${anio}`;
+}
+
+function capitalizar(texto: string): string {
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
+/** Rótulo en español del periodo (el que se congela en el cierre). */
+export function etiquetaEspanol(tipo: TipoCierre, fechaInicio: string, fechaFin: string): string {
+  const i = partes(fechaInicio);
+  const f = partes(fechaFin);
+  switch (tipo) {
+    case 'diario':
+      return `Cierre diario — ${dma(fechaInicio)}`;
+    case 'semanal':
+      return `Cierre semanal — ${dma(fechaInicio)} al ${dma(fechaFin)}`;
+    case 'quincenal':
+      return `Cierre quincenal — ${i.dia} al ${f.dia} de ${MESES[i.mes - 1]} ${i.anio}`;
+    case 'mensual':
+      return `Cierre mensual — ${capitalizar(MESES[i.mes - 1])} ${i.anio}`;
+    case 'trimestral':
+      return `Cierre trimestral — T${Math.ceil(i.mes / 3)} ${i.anio}`;
+    case 'semestral':
+      return `Cierre semestral — S${i.mes <= 6 ? 1 : 2} ${i.anio}`;
+    case 'anual':
+      return `Cierre anual — ${i.anio}`;
+    default:
+      return `Periodo personalizado — ${dma(fechaInicio)} al ${dma(fechaFin)}`;
+  }
+}
+
+function periodo(tipo: TipoCierre, fechaInicio: string, fechaFin: string, base?: PeriodoCierre): PeriodoCierre {
+  return {
+    tipo,
+    fechaInicio,
+    fechaFin,
+    etiqueta: etiquetaEspanol(tipo, fechaInicio, fechaFin),
+    horaInicio: base?.horaInicio ?? null,
+    horaFin: base?.horaFin ?? null,
+  };
+}
+
+/** `true` si el texto es una fecha plana válida. */
+export function esFechaPlana(valor: unknown): valor is string {
+  if (typeof valor !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(valor)) return false;
+  const { anio, mes, dia } = partes(valor);
+  return mes >= 1 && mes <= 12 && dia >= 1 && dia <= ultimoDia(anio, mes);
 }
 
 /**
- * Resuelve un TipoCierre en un PeriodoCierre con fechas concretas.
- * @param tipo Tipo de cierre
- * @param referencia Fecha de referencia (default: hoy)
- * @param custom Rango personalizado (solo para tipo 'personalizado')
+ * Periodo del tipo pedido que contiene el día `hoy`.
+ * @param hoy Día calendario de la organización (`YYYY-MM-DD`). El valor por
+ *   defecto usa la zona de respaldo: pásalo siempre desde la organización.
+ * @param custom Rango del tipo `personalizado` (días incluidos).
  */
 export function resolverPeriodo(
   tipo: TipoCierre,
-  referencia: Date = new Date(),
+  hoy: string = todayInTz(DEFAULT_TIMEZONE),
   custom?: { from: string; to: string },
 ): PeriodoCierre {
-  const ref = startOfDay(referencia);
-
+  const { anio, mes, dia } = partes(hoy);
   switch (tipo) {
-    case 'diario': {
-      return {
-        tipo,
-        fechaInicio: toISO(ref),
-        fechaFin: toISO(ref),
-        etiqueta: `Cierre Diario — ${fmt(ref)}`,
-      };
-    }
-
+    case 'diario':
+      return periodo(tipo, hoy, hoy);
     case 'semanal': {
-      const inicio = startOfWeek(ref, { weekStartsOn: 1 });
-      const fin = endOfWeek(ref, { weekStartsOn: 1 });
-      return {
-        tipo,
-        fechaInicio: toISO(inicio),
-        fechaFin: toISO(fin),
-        etiqueta: `Cierre Semanal — ${fmt(inicio)} al ${fmt(fin)}`,
-      };
+      const inicio = addPlainDays(hoy, 1 - diaSemanaIso(hoy));
+      return periodo(tipo, inicio, addPlainDays(inicio, 6));
     }
-
-    case 'quincenal': {
-      const dia = getDate(ref);
-      if (dia <= 15) {
-        const inicio = startOfMonth(ref);
-        const fin = addDays(startOfMonth(ref), 14);
-        return {
-          tipo,
-          fechaInicio: toISO(inicio),
-          fechaFin: toISO(fin),
-          etiqueta: `Cierre Quincenal — 1 al 15 ${format(ref, 'MMMM yyyy', { locale: es })}`,
-        };
-      }
-      const inicio = addDays(startOfMonth(ref), 15);
-      const fin = endOfMonth(ref);
-      return {
-        tipo,
-        fechaInicio: toISO(inicio),
-        fechaFin: toISO(fin),
-        etiqueta: `Cierre Quincenal — 16 al ${fmt(fin)} ${format(ref, 'MMMM yyyy', { locale: es })}`,
-      };
-    }
-
-    case 'mensual': {
-      const inicio = startOfMonth(ref);
-      const fin = endOfMonth(ref);
-      return {
-        tipo,
-        fechaInicio: toISO(inicio),
-        fechaFin: toISO(fin),
-        etiqueta: `Cierre Mensual — ${format(ref, 'MMMM yyyy', { locale: es })}`,
-      };
-    }
-
+    case 'quincenal':
+      return dia <= 15
+        ? periodo(tipo, plano(anio, mes, 1), plano(anio, mes, 15))
+        : periodo(tipo, plano(anio, mes, 16), plano(anio, mes, ultimoDia(anio, mes)));
+    case 'mensual':
+      return periodo(tipo, plano(anio, mes, 1), plano(anio, mes, ultimoDia(anio, mes)));
     case 'trimestral': {
-      const q = getQuarter(ref);
-      const year = getYear(ref);
-      const inicio = startOfMonth(addQuarters(startOfYear(ref), q - 1));
-      const fin = endOfMonth(addQuarters(startOfYear(ref), q - 1 + 2) );
-      const etiquetas = ['Q1', 'Q2', 'Q3', 'Q4'];
-      return {
-        tipo,
-        fechaInicio: toISO(inicio),
-        fechaFin: toISO(fin),
-        etiqueta: `Cierre Trimestral — ${etiquetas[q - 1]} ${year}`,
-      };
+      const primero = Math.floor((mes - 1) / 3) * 3 + 1;
+      return periodo(tipo, plano(anio, primero, 1), plano(anio, primero + 2, ultimoDia(anio, primero + 2)));
     }
-
-    case 'semestral': {
-      const year = getYear(ref);
-      const mitad = getQuarter(ref) <= 2 ? 1 : 2;
-      if (mitad === 1) {
-        return {
-          tipo,
-          fechaInicio: toISO(startOfYear(ref)),
-          fechaFin: toISO(endOfMonth(addMonths(startOfYear(ref), 5))),
-          etiqueta: `Cierre Semestral — S1 ${year}`,
-        };
-      }
-      return {
-        tipo,
-        fechaInicio: toISO(addMonths(startOfYear(ref), 6)),
-        fechaFin: toISO(endOfYear(ref)),
-        etiqueta: `Cierre Semestral — S2 ${year}`,
-      };
-    }
-
-    case 'anual': {
-      return {
-        tipo,
-        fechaInicio: toISO(startOfYear(ref)),
-        fechaFin: toISO(endOfYear(ref)),
-        etiqueta: `Cierre Anual — ${getYear(ref)}`,
-      };
-    }
-
+    case 'semestral':
+      return mes <= 6
+        ? periodo(tipo, plano(anio, 1, 1), plano(anio, 6, 30))
+        : periodo(tipo, plano(anio, 7, 1), plano(anio, 12, 31));
+    case 'anual':
+      return periodo(tipo, plano(anio, 1, 1), plano(anio, 12, 31));
     case 'personalizado': {
-      if (custom?.from && custom?.to) {
-        return {
-          tipo,
-          fechaInicio: custom.from,
-          fechaFin: custom.to,
-          etiqueta: `Período Personalizado — ${fmt(new Date(custom.from))} al ${fmt(new Date(custom.to))}`,
-        };
+      if (custom && esFechaPlana(custom.from) && esFechaPlana(custom.to)) {
+        const [a, b] = custom.from <= custom.to ? [custom.from, custom.to] : [custom.to, custom.from];
+        return periodo(tipo, a, b);
       }
-      // Fallback: últimos 30 días
-      const fin = endOfDay(referencia);
-      const inicio = subDays(fin, 29);
-      return {
-        tipo,
-        fechaInicio: toISO(inicio),
-        fechaFin: toISO(fin),
-        etiqueta: `Período Personalizado — ${fmt(inicio)} al ${fmt(fin)}`,
-      };
+      return periodo(tipo, addPlainDays(hoy, -29), hoy);
     }
+    default:
+      return periodo('diario', hoy, hoy);
+  }
+}
 
+/** Días del rango, incluidos los dos extremos. */
+function diasDelRango(p: PeriodoCierre): number {
+  const a = partes(p.fechaInicio);
+  const b = partes(p.fechaFin);
+  return Math.round((Date.UTC(b.anio, b.mes - 1, b.dia) - Date.UTC(a.anio, a.mes - 1, a.dia)) / 86_400_000) + 1;
+}
+
+/** Periodo anterior del mismo tipo (conserva la franja). */
+export function periodoAnterior(p: PeriodoCierre): PeriodoCierre {
+  const { anio, mes } = partes(p.fechaInicio);
+  const conFranja = (r: PeriodoCierre) => ({ ...r, horaInicio: p.horaInicio ?? null, horaFin: p.horaFin ?? null });
+  switch (p.tipo) {
+    case 'diario':
+    case 'semanal':
+    case 'quincenal':
+      return conFranja(resolverPeriodo(p.tipo, addPlainDays(p.fechaInicio, -1)));
+    case 'mensual': {
+      const m = sumarMeses(anio, mes, -1);
+      return conFranja(resolverPeriodo('mensual', plano(m.anio, m.mes, 1)));
+    }
+    case 'trimestral': {
+      const m = sumarMeses(anio, mes, -3);
+      return conFranja(resolverPeriodo('trimestral', plano(m.anio, m.mes, 1)));
+    }
+    case 'semestral': {
+      const m = sumarMeses(anio, mes, -6);
+      return conFranja(resolverPeriodo('semestral', plano(m.anio, m.mes, 1)));
+    }
+    case 'anual':
+      return conFranja(resolverPeriodo('anual', plano(anio - 1, 1, 1)));
     default: {
-      return {
-        tipo: 'diario',
-        fechaInicio: toISO(ref),
-        fechaFin: toISO(ref),
-        etiqueta: `Cierre Diario — ${fmt(ref)}`,
-      };
+      const fin = addPlainDays(p.fechaInicio, -1);
+      return periodo('personalizado', addPlainDays(fin, 1 - diasDelRango(p)), fin, p);
     }
   }
 }
 
-/**
- * Navega al período anterior del mismo tipo.
- */
-export function periodoAnterior(periodo: PeriodoCierre): PeriodoCierre {
-  const ref = new Date(periodo.fechaInicio + 'T12:00:00');
-
-  switch (periodo.tipo) {
-    case 'diario':
-      return resolverPeriodo('diario', subDays(ref, 1));
-    case 'semanal':
-      return resolverPeriodo('semanal', subWeeks(ref, 1));
-    case 'quincenal': {
-      const dia = getDate(ref);
-      if (dia <= 15) {
-        // Estamos en 1-15, ir a 16-fin del mes anterior
-        const mesAnterior = subMonths(ref, 1);
-        return resolverPeriodo('quincenal', addDays(startOfMonth(mesAnterior), 16));
-      }
-      // Estamos en 16-fin, ir a 1-15 del mismo mes
-      return resolverPeriodo('quincenal', startOfMonth(ref));
-    }
-    case 'mensual':
-      return resolverPeriodo('mensual', subMonths(ref, 1));
-    case 'trimestral':
-      return resolverPeriodo('trimestral', subQuarters(ref, 1));
-    case 'semestral': {
-      const mitad = getQuarter(ref) <= 2 ? 1 : 2;
-      if (mitad === 1) {
-        // S1 → S2 del año anterior
-        return resolverPeriodo('semestral', addMonths(startOfYear(subYears(ref, 1)), 6));
-      }
-      // S2 → S1 del mismo año
-      return resolverPeriodo('semestral', startOfYear(ref));
-    }
-    case 'anual':
-      return resolverPeriodo('anual', subYears(ref, 1));
-    case 'personalizado': {
-      const inicio = new Date(periodo.fechaInicio + 'T12:00:00');
-      const fin = new Date(periodo.fechaFin + 'T12:00:00');
-      const duracion = addDays(fin, 1).getTime() - inicio.getTime();
-      const nuevoFin = subDays(inicio, 1);
-      const nuevoInicio = new Date(nuevoFin.getTime() - duracion);
-      return {
-        tipo: 'personalizado',
-        fechaInicio: toISO(nuevoInicio),
-        fechaFin: toISO(nuevoFin),
-        etiqueta: `Período Personalizado — ${fmt(nuevoInicio)} al ${fmt(nuevoFin)}`,
-      };
-    }
-    default:
-      return resolverPeriodo('diario', subDays(ref, 1));
-  }
-}
-
-/**
- * Navega al período siguiente del mismo tipo.
- * No navega hacia el futuro si el siguiente período aún no ha terminado.
- */
-export function periodoSiguiente(periodo: PeriodoCierre): PeriodoCierre | null {
-  const ref = new Date(periodo.fechaInicio + 'T12:00:00');
-  const hoy = new Date();
-
+/** Periodo siguiente del mismo tipo, o `null` si empieza después de `hoy`. */
+export function periodoSiguiente(p: PeriodoCierre, hoy: string = todayInTz(DEFAULT_TIMEZONE)): PeriodoCierre | null {
+  const { anio, mes } = partes(p.fechaInicio);
   let siguiente: PeriodoCierre;
-
-  switch (periodo.tipo) {
+  switch (p.tipo) {
     case 'diario':
-      siguiente = resolverPeriodo('diario', addDays(ref, 1));
-      break;
     case 'semanal':
-      siguiente = resolverPeriodo('semanal', addWeeks(ref, 1));
+    case 'quincenal':
+      siguiente = resolverPeriodo(p.tipo, addPlainDays(p.fechaFin, 1));
       break;
-    case 'quincenal': {
-      const dia = getDate(ref);
-      if (dia <= 15) {
-        siguiente = resolverPeriodo('quincenal', addDays(startOfMonth(ref), 16));
-      } else {
-        siguiente = resolverPeriodo('quincenal', startOfMonth(addMonths(ref, 1)));
-      }
+    case 'mensual': {
+      const m = sumarMeses(anio, mes, 1);
+      siguiente = resolverPeriodo('mensual', plano(m.anio, m.mes, 1));
       break;
     }
-    case 'mensual':
-      siguiente = resolverPeriodo('mensual', addMonths(ref, 1));
+    case 'trimestral': {
+      const m = sumarMeses(anio, mes, 3);
+      siguiente = resolverPeriodo('trimestral', plano(m.anio, m.mes, 1));
       break;
-    case 'trimestral':
-      siguiente = resolverPeriodo('trimestral', addQuarters(ref, 1));
-      break;
+    }
     case 'semestral': {
-      const mitad = getQuarter(ref) <= 2 ? 1 : 2;
-      if (mitad === 1) {
-        siguiente = resolverPeriodo('semestral', addMonths(startOfYear(ref), 6));
-      } else {
-        siguiente = resolverPeriodo('semestral', startOfYear(addYears(ref, 1)));
-      }
+      const m = sumarMeses(anio, mes, 6);
+      siguiente = resolverPeriodo('semestral', plano(m.anio, m.mes, 1));
       break;
     }
     case 'anual':
-      siguiente = resolverPeriodo('anual', addYears(ref, 1));
+      siguiente = resolverPeriodo('anual', plano(anio + 1, 1, 1));
       break;
-    case 'personalizado': {
-      const inicio = new Date(periodo.fechaInicio + 'T12:00:00');
-      const fin = new Date(periodo.fechaFin + 'T12:00:00');
-      const duracion = addDays(fin, 1).getTime() - inicio.getTime();
-      const nuevoInicio = addDays(fin, 1);
-      const nuevoFin = new Date(nuevoInicio.getTime() + duracion);
-      siguiente = {
-        tipo: 'personalizado',
-        fechaInicio: toISO(nuevoInicio),
-        fechaFin: toISO(nuevoFin),
-        etiqueta: `Período Personalizado — ${fmt(nuevoInicio)} al ${fmt(nuevoFin)}`,
-      };
-      break;
+    default: {
+      const inicio = addPlainDays(p.fechaFin, 1);
+      siguiente = periodo('personalizado', inicio, addPlainDays(inicio, diasDelRango(p) - 1));
     }
-    default:
-      siguiente = resolverPeriodo('diario', addDays(ref, 1));
   }
-
-  // No navegar al futuro si el período siguiente aún no ha comenzado
-  if (new Date(siguiente.fechaInicio + 'T00:00:00') > hoy) {
-    return null;
-  }
-
-  return siguiente;
+  if (siguiente.fechaInicio > hoy) return null;
+  return { ...siguiente, horaInicio: p.horaInicio ?? null, horaFin: p.horaFin ?? null };
 }
 
-/**
- * Determina si un cierre es "oficial" (ya cerró).
- * @returns true si la fechaFin del período es anterior a hoy
- */
-export function esCierreCerrado(periodo: PeriodoCierre): boolean {
-  const fin = new Date(periodo.fechaFin + 'T23:59:59');
-  return fin < new Date();
+/** Mismo periodo del año anterior (comparativo «vs. año anterior»). */
+export function periodoAnioAnterior(p: PeriodoCierre): PeriodoCierre {
+  const restarAnio = (fecha: string) => {
+    const { anio, mes, dia } = partes(fecha);
+    return plano(anio - 1, mes, Math.min(dia, ultimoDia(anio - 1, mes)));
+  };
+  return periodo(p.tipo, restarAnio(p.fechaInicio), restarAnio(p.fechaFin), p);
 }
 
-/**
- * Lista de tipos de cierre disponibles para el selector.
- */
-export const TIPOS_CIERRE: { value: TipoCierre; label: string }[] = [
-  { value: 'diario', label: 'Diario' },
-  { value: 'semanal', label: 'Semanal' },
-  { value: 'quincenal', label: 'Quincenal' },
-  { value: 'mensual', label: 'Mensual' },
-  { value: 'trimestral', label: 'Trimestral' },
-  { value: 'semestral', label: 'Semestral' },
-  { value: 'anual', label: 'Anual' },
-  { value: 'personalizado', label: 'Personalizado' },
+/** `true` si el periodo ya terminó (su último día es anterior a `hoy`). */
+export function esCierreCerrado(p: PeriodoCierre, hoy: string = todayInTz(DEFAULT_TIMEZONE)): boolean {
+  return p.fechaFin < hoy;
+}
+
+/** Tipos de periodo, en el orden del selector. */
+export const TIPOS_CIERRE: readonly TipoCierre[] = [
+  'diario',
+  'semanal',
+  'quincenal',
+  'mensual',
+  'trimestral',
+  'semestral',
+  'anual',
+  'personalizado',
 ];
+
+export function esTipoCierre(valor: unknown): valor is TipoCierre {
+  return typeof valor === 'string' && (TIPOS_CIERRE as readonly string[]).includes(valor);
+}
+
+/** Franja `HH:mm` válida (24 h). */
+export function esHora(valor: unknown): valor is string {
+  return typeof valor === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(valor);
+}
+
+/**
+ * Valida y normaliza un periodo que llega del cliente (ruta de cierre, envío
+ * programado). Devuelve `null` si no es válido. La etiqueta se recalcula: no
+ * se confía en la del cliente.
+ */
+export function normalizarPeriodo(valor: unknown): PeriodoCierre | null {
+  if (!valor || typeof valor !== 'object') return null;
+  const v = valor as Record<string, unknown>;
+  if (!esTipoCierre(v.tipo) || !esFechaPlana(v.fechaInicio) || !esFechaPlana(v.fechaFin)) return null;
+  if (v.fechaInicio > v.fechaFin) return null;
+  const conFranja = esHora(v.horaInicio) && esHora(v.horaFin);
+  return {
+    tipo: v.tipo,
+    fechaInicio: v.fechaInicio,
+    fechaFin: v.fechaFin,
+    etiqueta: etiquetaEspanol(v.tipo, v.fechaInicio, v.fechaFin),
+    horaInicio: conFranja ? (v.horaInicio as string) : null,
+    horaFin: conFranja ? (v.horaFin as string) : null,
+  };
+}

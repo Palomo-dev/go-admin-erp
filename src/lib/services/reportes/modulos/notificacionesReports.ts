@@ -10,7 +10,8 @@ import type { ReportesClient } from '../types';
 // del usuario; en el servidor (asistente de reportes) el route handler pasa el
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
-import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import type { DefinicionModulo, ReportData, PeriodoCierre } from '../types';
+import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
   id: string, titulo: string, modulo: string, periodo: PeriodoCierre,
@@ -20,27 +21,29 @@ function buildReportData(
   return { id, titulo, modulo, kpis, columnas, filas, totales, generadoEn: new Date().toISOString(), periodo };
 }
 
-export const notificacionesReports: ReportDefinition[] = [
+export const notificacionesReports: DefinicionModulo[] = [
   {
     id: 'notificaciones-enviadas',
     modulo: 'notifications',
-    titulo: 'Enviadas por Canal',
+    titulo: 'Notificaciones por canal',
     descripcion: 'Volumen de notificaciones por canal y estado',
     categoria: 'sistema',
+    alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await db.rpc('fn_reporte_notificaciones_enviadas', {
         p_organization_id: orgId,
-        p_from: `${periodo.fechaInicio}T00:00:00Z`,
-        p_to: `${periodo.fechaFin}T23:59:59Z`,
+        p_from: start,
+        p_to: end,
       });
       if (error) throw error;
 
       const d = data ?? {};
 
       return buildReportData(
-        'notificaciones-enviadas', 'Enviadas por Canal', 'notifications', periodo,
+        'notificaciones-enviadas', 'Notificaciones por canal', 'notifications', periodo,
         [
           { titulo: 'Total Enviadas', valor: d.total ?? 0, formato: 'numero' },
         ],
@@ -56,18 +59,20 @@ export const notificacionesReports: ReportDefinition[] = [
   {
     id: 'notificaciones-lectura',
     modulo: 'notifications',
-    titulo: 'Tasa de Lectura',
-    descripcion: 'Apertura y CTR por canal y tipo',
+    titulo: 'Tasa de lectura',
+    descripcion: 'Apertura y clics por canal y tipo',
     categoria: 'sistema',
+    alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await db
         .from('notifications')
         .select('id, channel, read_at, created_at')
         .eq('organization_id', orgId)
-        .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
+        .gte('created_at', start)
+        .lte('created_at', end);
 
       if (error) throw error;
 
@@ -88,7 +93,7 @@ export const notificacionesReports: ReportDefinition[] = [
       }));
 
       return buildReportData(
-        'notificaciones-lectura', 'Tasa de Lectura', 'notifications', periodo,
+        'notificaciones-lectura', 'Tasa de lectura', 'notifications', periodo,
         [
           { titulo: 'Total Enviadas', valor: notifs.length, formato: 'numero' },
           { titulo: 'Total Leídas', valor: notifs.filter((n: Record<string, unknown>) => n.read_at).length, formato: 'numero' },
@@ -106,18 +111,20 @@ export const notificacionesReports: ReportDefinition[] = [
   {
     id: 'notificaciones-modulo',
     modulo: 'notifications',
-    titulo: 'Por Módulo',
-    descripcion: 'Notificaciones agrupadas por módulo origen',
+    titulo: 'Notificaciones por módulo',
+    descripcion: 'Notificaciones agrupadas por el módulo que las originó',
     categoria: 'sistema',
+    alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await db
         .from('notifications')
         .select('id, payload, created_at')
         .eq('organization_id', orgId)
-        .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
+        .gte('created_at', start)
+        .lte('created_at', end);
 
       if (error) throw error;
 
@@ -132,7 +139,7 @@ export const notificacionesReports: ReportDefinition[] = [
       const filas = Object.entries(porModulo).map(([modulo, cantidad]) => ({ modulo, cantidad }));
 
       return buildReportData(
-        'notificaciones-modulo', 'Por Módulo', 'notifications', periodo,
+        'notificaciones-modulo', 'Notificaciones por módulo', 'notifications', periodo,
         [
           { titulo: 'Total', valor: notifs.length, formato: 'numero' },
         ],

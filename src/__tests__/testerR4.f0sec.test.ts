@@ -48,7 +48,9 @@ describe('caso 21 · el detector de bytes de control', () => {
   test('está definido como [\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F] (sin allow-list de archivos)', () => {
     expect(CONTROL_BYTE.source).toBe('[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]');
     const src = fs.readFileSync(GUARDRAILS, 'utf8');
-    const caso21 = src.slice(src.indexOf('Caso 21'));
+    // Solo el caso 21: los guardarraíles posteriores sí filtran con isExcluded.
+    const inicio = src.indexOf('Caso 21');
+    const caso21 = src.slice(inicio, src.indexOf('Caso 22', inicio));
     expect(caso21).toContain('walkDir(SRC_ROOT)');
     expect(caso21).not.toMatch(/isExcluded\(/);
     expect(caso21).toContain("toString('latin1')");

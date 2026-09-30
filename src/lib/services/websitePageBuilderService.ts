@@ -990,6 +990,10 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
     description: 'Grid, lista o carrusel de categorías de productos',
     variants: [
       { id: 'default', label: 'Categorías' },
+      // El sitio sigue renderizando estos alias (el layout fino va en los campos).
+      { id: 'grid', label: 'Grid' },
+      { id: 'horizontal', label: 'Horizontal' },
+      { id: 'icons', label: 'Iconos' },
     ],
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Categorías' },

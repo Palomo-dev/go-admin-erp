@@ -135,6 +135,32 @@ export function calcularTotalesCompra(
   };
 }
 
+// ─── Base mínima de las retenciones ─────────────────────────────────────────
+
+/**
+ * Base mínima en moneda: UVT del año de la factura × UVT de la retención
+ * (`organization_taxes.min_base_uvt`, `fiscal_uvt`). Redondeada al peso, como
+ * se publican las tablas de la DIAN. `null` si falta cualquiera de los dos.
+ */
+export function baseMinimaEnMoneda(minimoUvt: number | null | undefined, valorUvt: number | null | undefined): number | null {
+  const m = Number(minimoUvt);
+  const u = Number(valorUvt);
+  if (minimoUvt === null || minimoUvt === undefined || valorUvt === null || valorUvt === undefined) return null;
+  if (!Number.isFinite(m) || !Number.isFinite(u) || m <= 0 || u <= 0) return null;
+  return Math.round(m * u);
+}
+
+/**
+ * ¿La base de la retención no llega a la base mínima? Solo avisa: la
+ * retención se puede practicar igual (hay proveedores que piden retención
+ * aunque no se llegue, y el concepto lo decide quien registra).
+ */
+export function retencionBajoBaseMinima(base: number | null | undefined, minimoUvt: number | null | undefined, valorUvt: number | null | undefined): boolean {
+  const minimo = baseMinimaEnMoneda(minimoUvt, valorUvt);
+  if (minimo === null) return false;
+  return aCentavos(base) < aCentavos(minimo);
+}
+
 /**
  * Costo unitario que entra al kardex y a `product_costs` (D6): neto de descuento
  * y, para responsables de IVA, sin el IVA descontable. Es la regla de

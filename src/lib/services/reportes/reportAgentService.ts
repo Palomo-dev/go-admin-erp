@@ -8,6 +8,9 @@ import { checkAICredits, estimateCredits, consumeAICredits } from '../aiCreditsS
 import { getReportesVisibles, getReporteById } from './reportesCatalogo';
 import { ejecutarReporte } from './reportesEngine';
 import { resolverPeriodo } from './periodosService';
+import { getOrganizationTimezone } from '../organizationTimezoneService';
+import { todayInTz } from '@/lib/utils/timezone';
+import { reportePermitido } from './alcanceSucursal';
 import type { PeriodoCierre, TipoCierre, ReportData, ReportesClient } from './types';
 
 // ---- Tipos ----
@@ -25,7 +28,16 @@ export interface ReportAgentContext {
   organizationName?: string;
   userName: string;
   userRole: string;
-  branchId?: number | null;
+  /** Sucursal ya validada contra la sesión; null = consolidado. */
+  branchId: number | null;
+  /** Resuelto en el servidor (`resolverAlcanceSucursal`). */
+  accesoTotal: boolean;
+}
+
+function catalogoPermitido(modulosActivos: string[], accesoTotal: boolean) {
+  return getReportesVisibles(modulosActivos)
+    .map((m) => ({ ...m, reportes: m.reportes.filter((r) => reportePermitido(r, accesoTotal)) }))
+    .filter((m) => m.reportes.length > 0);
 }
 
 export interface ReportAgentResponse {
@@ -66,7 +78,7 @@ function buildSystemPrompt(
   modulosActivos: string[],
   periodoActual: PeriodoCierre,
 ): string {
-  const modulos = getReportesVisibles(modulosActivos);
+  const modulos = catalogoPermitido(modulosActivos, context.accesoTotal);
 
   const catalogoTexto = modulos
     .map((m) => {
@@ -84,6 +96,7 @@ Respondes siempre en español. Eres conciso, analítico y profesional.
 - Usuario: ${context.userName}
 - Rol: ${context.userRole}
 - Organización: ${context.organizationName || 'N/A'}
+- Sucursal: ${context.branchId == null ? 'todas (consolidado)' : `solo la sucursal seleccionada (id ${context.branchId})`}
 - Período actual: ${periodoActual.etiqueta} (${periodoActual.fechaInicio} a ${periodoActual.fechaFin})
 
 ## Catálogo de Reportes Disponibles
@@ -211,13 +224,15 @@ class ReportAgentService {
 
     if (block) {
       // Whitelist: validar reportId contra catálogo de módulos activos
-      const modulosVisibles = getReportesVisibles(modulosActivos);
-      const todosIds = modulosVisibles.flatMap((m) => m.reportes.map((r) => r.id));
+      const todosIds = catalogoPermitido(modulosActivos, context.accesoTotal).flatMap((m) => m.reportes.map((r) => r.id));
       const reporteDef = getReporteById(block.reportId);
 
       if (!reporteDef || !todosIds.includes(block.reportId)) {
+        const motivo = reporteDef && !reportePermitido(reporteDef, context.accesoTotal)
+          ? 'requiere acceso a todas las sucursales'
+          : 'no está disponible en tus módulos activos';
         return {
-          content: `${content}\n\n⚠️ El reporte solicitado no está disponible en tus módulos activos. Revisa el catálogo en /app/reportes.`,
+          content: `${content}\n\n⚠️ El reporte solicitado ${motivo}. Revisa el catálogo en /app/reportes.`,
           usage: {
             promptTokens: usage?.prompt_tokens || 0,
             completionTokens: usage?.completion_tokens || 0,
@@ -230,7 +245,8 @@ class ReportAgentService {
       let periodo = periodoActual;
       if (block.periodo?.tipo && block.periodo.tipo !== periodoActual.tipo) {
         try {
-          periodo = resolverPeriodo(block.periodo.tipo);
+          const tz = await getOrganizationTimezone(context.organizationId, client);
+          periodo = resolverPeriodo(block.periodo.tipo, todayInTz(tz));
         } catch {
           // si falla, usar el período actual
         }

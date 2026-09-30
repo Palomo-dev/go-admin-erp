@@ -47,6 +47,10 @@ export interface DocumentoPago {
   /** Cliente o proveedor. */
   tercero?: string | null;
   total?: number | null;
+  /** Compras: lo retenido al proveedor; la deuda es el neto (total − retenido). */
+  retenido?: number | null;
+  /** Lo ya pagado del neto, para leer el saldo como «neto − pagado». */
+  pagado?: number | null;
   saldo: number;
   /** Vencimiento ya formateado en la zona de la organización. */
   vencimiento?: string | null;
@@ -205,8 +209,23 @@ export function RegistrarPagoDialog({
             <FilaDato etiqueta={esDeCompras(documento.tipo) ? t('pago.proveedor') : t('pago.cliente')} valor={documento.tercero} />
           )}
           {typeof documento.total === 'number' && <FilaDato etiqueta={t('pago.total')} valor={formatear(documento.total)} />}
+          {typeof documento.retenido === 'number' && documento.retenido > 0 && (
+            <FilaDato etiqueta={t('pago.retenciones')} valor={`− ${formatear(documento.retenido)}`} />
+          )}
           {documento.vencimiento && <FilaDato etiqueta={t('pago.vence')} valor={documento.vencimiento} />}
-          <FilaDato etiqueta={t('pago.saldo')} valor={formatear(documento.saldo)} tono={documento.saldo > 0 ? 'peligro' : 'exito'} />
+          <FilaDato
+            etiqueta={t('pago.saldo')}
+            valor={formatear(documento.saldo)}
+            tono={documento.saldo > 0 ? 'peligro' : 'exito'}
+            descripcion={
+              typeof documento.total === 'number' && typeof documento.retenido === 'number' && documento.retenido > 0
+                ? t('pago.netoPagado', {
+                    neto: formatear(Math.max(0, documento.total - documento.retenido)),
+                    pagado: formatear(documento.pagado ?? 0),
+                  })
+                : undefined
+            }
+          />
         </ListaDatos>
       )}
 

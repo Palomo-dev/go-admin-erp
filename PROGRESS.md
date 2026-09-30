@@ -3668,3 +3668,7 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
   verificadas fusión/deshacer y búsquedas con fixtures retiradas al terminar.
 - El alcance completo de CRM sigue en curso; el plan anexa evidencia,
   diferencias y pendientes por módulo. No se marca finalizada la ola 6.
+
+### CRM — Llamadas: cifras, búsqueda y listado (2026-09-30)
+
+RPC con ámbito vendedor/ver-todas, texto indexado de transcripciones, grabaciones listas filtradas antes de paginar y estadísticas globales. Listado único con kit, 4 idiomas, paginación/exportación y fechas de organización. 269 tests, guardarraíles, tsc y lint tocado pasan; POST real manual y lectura en navegador comprobados, fixture eliminado. Dos migraciones aplicadas con rollback y MD5 registrados en PLAN-FIGMA-A-CODIGO. Continúan Pronósticos y el resto del alcance autorizado; Telefonía visual y flujos físicos de dispositivos aún no se declaran terminados.

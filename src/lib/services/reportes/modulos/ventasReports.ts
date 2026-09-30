@@ -10,9 +10,9 @@ import type { ReportesClient } from '../types';
 // del usuario; en el servidor (asistente de reportes) el route handler pasa el
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
-import { getOrgDateRange } from '@/lib/utils/timezone';
 import { applyBranchFilter, normalizeBranchParam } from '@/lib/services/branchFilterHelper';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
   id: string,
@@ -44,13 +44,11 @@ export const ventasReports: ReportDefinition[] = [
     titulo: 'Cierre de Caja (Zeta)',
     descripcion: 'Totales por método de pago, sesiones, descuentos y propinas del día',
     categoria: 'operativo',
+    alcance: 'sucursal',
     periodosSugeridos: ['diario'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await db.rpc('fn_reporte_cierre_caja', {
         p_organization_id: orgId,
         p_from: start,
@@ -171,13 +169,11 @@ export const ventasReports: ReportDefinition[] = [
     titulo: 'Ventas del Período',
     descripcion: 'Ventas por día, sucursal y vendedor',
     categoria: 'operativo',
+    alcance: 'sucursal',
     periodosSugeridos: ['diario', 'semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await db.rpc('fn_reporte_ventas_resumen', {
         p_organization_id: orgId,
         p_from: start,
@@ -282,13 +278,11 @@ export const ventasReports: ReportDefinition[] = [
     titulo: 'Ventas por Hora',
     descripcion: 'Heatmap de volumen de ventas por hora del día',
     categoria: 'operativo',
+    alcance: 'sucursal',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await db.rpc('fn_reporte_ventas_por_hora', {
         p_organization_id: orgId,
         p_from: start,
@@ -346,13 +340,11 @@ export const ventasReports: ReportDefinition[] = [
     titulo: 'Ventas por Vendedor',
     descripcion: 'Ranking de vendedores por monto y número de ventas',
     categoria: 'comercial',
+    alcance: 'sucursal',
     periodosSugeridos: ['semanal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await db.rpc('fn_reporte_ventas_resumen', {
         p_organization_id: orgId,
         p_from: start,
@@ -433,13 +425,11 @@ export const ventasReports: ReportDefinition[] = [
     titulo: 'Devoluciones y Descuentos',
     descripcion: 'Resumen de devoluciones y descuentos aplicados',
     categoria: 'operativo',
+    alcance: 'sucursal',
     periodosSugeridos: ['semanal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start: from, end: to } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start: from, end: to } = await rangoDelPeriodo(orgId, periodo);
 
       let devolucionesQuery = db
         .from('returns')
@@ -563,13 +553,11 @@ export const ventasReports: ReportDefinition[] = [
     titulo: 'Pedidos Online',
     descripcion: 'Pedidos web: estado, tiempo de entrega, conversión',
     categoria: 'operativo',
+    alcance: 'sucursal',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       let query = db
         .from('web_orders')
         .select('id, order_number, status, source, total, subtotal, delivery_fee, tip_amount, discount_total, delivery_type, payment_method, payment_status, customer_name, customer_email, created_at, confirmed_at, delivered_at, cancelled_at, cancellation_reason')

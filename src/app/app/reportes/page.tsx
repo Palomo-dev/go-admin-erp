@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { Lock } from 'lucide-react';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
+import { useCapacidades } from '@/lib/navigation/useCapacidades';
+import { sucursalDeReportes, reportePermitido } from '@/lib/services/reportes/alcanceSucursal';
 import { useActiveModules } from '@/hooks/useActiveModules';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -26,7 +29,12 @@ import type { PeriodoCierre, ReportDefinition, ReportData } from '@/lib/services
 
 export default function ReportesPage() {
   const { organization } = useOrganization();
-  const { branchFilter } = useBranch();
+  const { branchFilter: filtroSelector, selectedBranchId, branches } = useBranch();
+  const { datos: capacidades, cargando: cargandoCapacidades } = useCapacidades();
+  const accesoTotal = capacidades.sucursales.accesoTotal;
+  const branchFilter = sucursalDeReportes(accesoTotal, filtroSelector, selectedBranchId);
+  const sucursalActual = branches.find((b) => b.id === branchFilter)?.name ?? null;
+  const consolidadoRestringido = !cargandoCapacidades && !accesoTotal && filtroSelector === null;
   const { activeModules } = useActiveModules(organization?.id);
   const { toast } = useToast();
 
@@ -56,7 +64,7 @@ export default function ReportesPage() {
 
   // Cargar KPIs globales (reportes clave del período) — en paralelo, filtrado por módulos activos
   const cargarKPIsGlobales = useCallback(async () => {
-    if (!orgId) return;
+    if (!orgId || cargandoCapacidades) return;
     setKpisLoading(true);
     const idsClave = ['cierre-caja', 'ventas-periodo', 'stock-critico', 'crm-funnel', 'cxc-vencidas', 'clientes-crecimiento'];
 
@@ -69,7 +77,8 @@ export default function ReportesPage() {
     const definiciones = idsClave
       .map((id) => getReporteById(id))
       .filter((def): def is ReportDefinition => def !== undefined)
-      .filter((def) => activeModuleSet.has(def.modulo));
+      .filter((def) => activeModuleSet.has(def.modulo))
+      .filter((def) => reportePermitido(def, accesoTotal));
 
     const resultados = await Promise.allSettled(
       definiciones.map((def) => ejecutarReporte(def.id, orgId, periodo, branchFilter)),
@@ -81,7 +90,7 @@ export default function ReportesPage() {
     }
     setGlobalKPIs(reportesClave);
     setKpisLoading(false);
-  }, [orgId, periodo, moduleCodes, branchFilter]);
+  }, [orgId, periodo, moduleCodes, branchFilter, accesoTotal, cargandoCapacidades]);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -92,9 +101,10 @@ export default function ReportesPage() {
   }, [cargarKPIsGlobales, toast]);
 
   const handleReporteClick = useCallback((reporte: ReportDefinition) => {
+    if (!reportePermitido(reporte, accesoTotal)) return;
     setSelectedReporte(reporte);
     setSheetOpen(true);
-  }, []);
+  }, [accesoTotal]);
 
   // Moneda base + locale del país: los PDF no suponen pesos.
   const monedaOrg = useMonedaOrganizacion();
@@ -125,7 +135,7 @@ export default function ReportesPage() {
         supabase.auth.getUser(),
       ]);
 
-      const { resultados } = await ejecutarCierre(orgId, periodo, moduleCodes, 4, branchFilter);
+      const { resultados } = await ejecutarCierre(orgId, periodo, moduleCodes, 4, branchFilter, undefined, accesoTotal);
       if (!resultados.length) {
         toast({ title: 'No hay reportes para exportar', description: 'No se encontraron datos en este período', variant: 'destructive' });
         return;
@@ -183,7 +193,7 @@ export default function ReportesPage() {
     } finally {
       setIsExporting(false);
     }
-  }, [orgId, periodo, moduleCodes, orgInfo, moneda, toast]);
+  }, [orgId, periodo, moduleCodes, orgInfo, moneda, toast, branchFilter, accesoTotal]);
 
   const handleExportIndividual = useCallback((data: ReportData, comparisonData?: ReportData) => {
     try {
@@ -210,7 +220,7 @@ export default function ReportesPage() {
         generarNumeroDocumento(orgId, periodoCierre),
       ]);
 
-      const { resultados } = await ejecutarCierre(orgId, periodoCierre, modulos, 4, branchFilter);
+      const { resultados } = await ejecutarCierre(orgId, periodoCierre, modulos, 4, branchFilter, undefined, accesoTotal);
       if (!resultados.length) {
         toast({ title: 'Sin datos', description: 'No se encontraron datos para este período', variant: 'destructive' });
         return;
@@ -244,7 +254,7 @@ export default function ReportesPage() {
     } catch (err) {
       toast({ title: 'Error al regenerar PDF', description: err instanceof Error ? err.message : 'Error desconocido', variant: 'destructive' });
     }
-  }, [orgId, moduleCodes, orgInfo, moneda, toast]);
+  }, [orgId, moduleCodes, orgInfo, moneda, toast, branchFilter, accesoTotal]);
 
   // Cargar KPIs globales al montar y cuando cambie el período
   useEffect(() => {
@@ -284,6 +294,16 @@ export default function ReportesPage() {
         <ReportesSkeleton />
       ) : activeTab === 'reportes' ? (
         <>
+          {consolidadoRestringido && (
+            <div role="status" className="flex items-start gap-2 rounded-lg bg-warning-subtle p-3 text-sm text-warning-text">
+              <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <p>
+                Ves los reportes de {sucursalActual ?? 'tu sucursal'}. El consolidado de todas las sucursales y los reportes
+                de toda la organización requieren acceso a todas las sucursales.
+              </p>
+            </div>
+          )}
+
           <ReportesResumenGlobal reportes={globalKPIs} isLoading={kpisLoading} />
 
           <div className="space-y-6">
@@ -292,6 +312,7 @@ export default function ReportesPage() {
                 key={modulo.code}
                 modulo={modulo}
                 onReporteClick={handleReporteClick}
+                esBloqueado={(r) => !reportePermitido(r, accesoTotal)}
               />
             ))}
           </div>
@@ -319,6 +340,7 @@ export default function ReportesPage() {
         userRole="admin"
         periodoActual={periodo}
         modulosActivos={moduleCodes}
+        branchId={branchFilter}
       />
     </div>
   );

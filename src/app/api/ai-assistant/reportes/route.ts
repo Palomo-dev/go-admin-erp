@@ -7,8 +7,9 @@ import {
 import type { PeriodoCierre } from '@/lib/services/reportes/types';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
 import { getServerOrgContext, OrgContextError, type ServerOrgContext } from '@/lib/utils/orgContext';
-
 import { readOrgBody } from '@/lib/security/organizationBody';
+import { resolverAlcanceSucursal, exigirSucursalPermitida } from '@/lib/security/alcanceSucursal';
+import { normalizeBranchParam } from '@/lib/services/branchFilterHelper';
 
 /**
  * F0-SEC r4 (qa r3 §2, regla dura 6): la lista blanca de reportes que el
@@ -64,13 +65,6 @@ export async function POST(request: NextRequest) {
     // la regla dura 5: una organización ajena → 403 FOREIGN_ORGANIZATION y
     // registro, en vez de sobrescribirse en silencio.
     const claimedContext = readOrgBody<Partial<ReportAgentContext> | undefined>(ctx, body.context as Partial<ReportAgentContext> | undefined);
-    const context = {
-      ...(claimedContext ?? {}),
-      organizationId: ctx.organizationId,
-      // El rol que ve el prompt es el de la sesión, no el que declare el cliente
-      // (solo es texto para el modelo: los permisos no salen de aquí).
-      userRole: ctx.roleName || 'miembro',
-    } as ReportAgentContext;
 
     if (!message || !claimedContext || !periodoActual) {
       return NextResponse.json(
@@ -78,6 +72,36 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
+
+    // La sucursal llega del selector del cliente: se valida contra el alcance
+    // de la sesión (null = consolidado, solo con acceso a todas).
+    const branchPedida: unknown = claimedContext.branchId;
+    const branchId = normalizeBranchParam(typeof branchPedida === 'string' ? Number(branchPedida) : (branchPedida as number | null | undefined));
+    const alcance = await resolverAlcanceSucursal(ctx);
+    try {
+      exigirSucursalPermitida(alcance, branchId);
+    } catch (err) {
+      if (err instanceof OrgContextError) {
+        console.warn('[Reportes IA] sucursal fuera del alcance de la sesión → 403', {
+          organizationId: ctx.organizationId,
+          userId: ctx.userId,
+          branchId,
+          code: err.code,
+        });
+      }
+      throw err;
+    }
+
+    const context: ReportAgentContext = {
+      organizationId: ctx.organizationId,
+      organizationName: claimedContext.organizationName,
+      userName: claimedContext.userName || ctx.userEmail || 'usuario',
+      // El rol que ve el prompt es el de la sesión, no el que declare el cliente
+      // (solo es texto para el modelo: los permisos no salen de aquí).
+      userRole: ctx.roleName || 'miembro',
+      branchId,
+      accesoTotal: alcance.accesoTotal,
+    };
 
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(

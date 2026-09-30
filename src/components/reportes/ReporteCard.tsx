@@ -26,13 +26,20 @@ const CATEGORIA_LABEL: Record<CategoriaReporte, string> = {
 interface ReporteCardProps {
   reporte: ReportDefinition;
   onClick: () => void;
+  /** Sin acceso: la tarjeta se ve con candado y no abre el reporte. */
+  bloqueado?: boolean;
 }
 
-export function ReporteCard({ reporte, onClick }: ReporteCardProps) {
+export function ReporteCard({ reporte, onClick, bloqueado = false }: ReporteCardProps) {
   return (
     <Card
-      onClick={onClick}
-      className="cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md transition-all"
+      onClick={bloqueado ? undefined : onClick}
+      aria-disabled={bloqueado || undefined}
+      className={
+        bloqueado
+          ? 'cursor-not-allowed opacity-60'
+          : 'cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md transition-all'
+      }
     >
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-2">
@@ -43,6 +50,12 @@ export function ReporteCard({ reporte, onClick }: ReporteCardProps) {
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
               {reporte.descripcion}
             </p>
+            {bloqueado && (
+              <p className="mt-2 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                <LucideIcons.Lock className="h-3 w-3" aria-hidden="true" />
+                Requiere acceso a todas las sucursales
+              </p>
+            )}
           </div>
           <Badge variant={CATEGORIA_VARIANT[reporte.categoria]} className="shrink-0 text-[10px]">
             {CATEGORIA_LABEL[reporte.categoria]}

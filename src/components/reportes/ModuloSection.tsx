@@ -9,10 +9,12 @@ import type { ModuloReportes, ReportDefinition } from '@/lib/services/reportes/t
 interface ModuloSectionProps {
   modulo: ModuloReportes;
   onReporteClick: (reporte: ReportDefinition) => void;
+  /** Reportes que la persona no puede abrir (p. ej. sin acceso a todas las sucursales). */
+  esBloqueado?: (reporte: ReportDefinition) => boolean;
   defaultOpen?: boolean;
 }
 
-export function ModuloSection({ modulo, onReporteClick, defaultOpen = true }: ModuloSectionProps) {
+export function ModuloSection({ modulo, onReporteClick, esBloqueado, defaultOpen = true }: ModuloSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
@@ -36,7 +38,7 @@ export function ModuloSection({ modulo, onReporteClick, defaultOpen = true }: Mo
       {open && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 pl-6">
           {modulo.reportes.map((r) => (
-            <ReporteCard key={r.id} reporte={r} onClick={() => onReporteClick(r)} />
+            <ReporteCard key={r.id} reporte={r} bloqueado={esBloqueado?.(r) ?? false} onClick={() => onReporteClick(r)} />
           ))}
         </div>
       )}

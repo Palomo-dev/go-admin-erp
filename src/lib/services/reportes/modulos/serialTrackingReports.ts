@@ -10,8 +10,10 @@ import type { ReportesClient } from '../types';
 // del usuario; en el servidor (asistente de reportes) el route handler pasa el
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
-import { getOrgDateRange, toPlainDate } from '@/lib/utils/timezone';
+import { toPlainDate } from '@/lib/utils/timezone';
+import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import { rangoDelPeriodo } from '../rangoPeriodo';
 
 /** Filas que devuelven las consultas de los informes (los embebidos llegan como objeto). */
 interface FilaSerialInforme {
@@ -99,28 +101,29 @@ export const serialTrackingReports: ReportDefinition[] = [
     titulo: 'Trazabilidad por Producto',
     descripcion: 'Seriales recibidos, proveedor, costo, estado actual y ubicación por producto',
     categoria: 'operativo',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual', 'trimestral'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end, timezone } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
-      const { data, error } = await db
-        .from('serial_numbers')
-        .select(`
-          id, serial, status, cost_at_purchase, received_date,
-          warranty_start, warranty_end,
-          products!inner ( id, name, sku, brand ),
-          suppliers ( name ),
-          branches!fk_serial_branch ( name ),
-          current_branch:branches!fk_serial_current_branch ( name )
-        `)
-        .eq('organization_id', orgId)
-        .gte('created_at', start)
-        .lte('created_at', end)
-        .order('created_at', { ascending: false })
-        .limit(500);
+      const { start, end, timezone } = await rangoDelPeriodo(orgId, periodo);
+      const { data, error } = await applyBranchFilter(
+        db
+          .from('serial_numbers')
+          .select(`
+            id, serial, status, cost_at_purchase, received_date,
+            warranty_start, warranty_end,
+            products!inner ( id, name, sku, brand ),
+            suppliers ( name ),
+            branches!fk_serial_branch ( name ),
+            current_branch:branches!fk_serial_current_branch ( name )
+          `)
+          .eq('organization_id', orgId)
+          .gte('created_at', start)
+          .lte('created_at', end)
+          .order('created_at', { ascending: false })
+          .limit(500),
+        branchId,
+      );
 
       if (error) throw error;
 
@@ -179,30 +182,31 @@ export const serialTrackingReports: ReportDefinition[] = [
     titulo: 'Ventas por Serial',
     descripcion: 'Seriales vendidos: producto, cliente, vendedor, canal, precio y fecha',
     categoria: 'comercial',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual', 'trimestral'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end, timezone } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end, timezone } = await rangoDelPeriodo(orgId, periodo);
       // `serial_numbers.sold_by_user_id` NO tiene clave foránea a `profiles`
       // (la restricción `serial_numbers_sold_by_user_id_fkey` ni siquiera
       // existe), así que el embebido devolvía PGRST200 y el informe entero
       // fallaba. El vendedor se resuelve con una segunda consulta por id.
-      const { data, error } = await db
-        .from('serial_numbers')
-        .select(`
-          id, serial, sale_date, sale_channel, price_at_sale, sold_by_user_id,
-          products!inner ( id, name, sku ),
-          customers ( id, full_name )
-        `)
-        .eq('organization_id', orgId)
-        .eq('status', 'sold')
-        .gte('sale_date', start)
-        .lte('sale_date', end)
-        .order('sale_date', { ascending: false })
-        .limit(500);
+      const { data, error } = await applyBranchFilter(
+        db
+          .from('serial_numbers')
+          .select(`
+            id, serial, sale_date, sale_channel, price_at_sale, sold_by_user_id,
+            products!inner ( id, name, sku ),
+            customers ( id, full_name )
+          `)
+          .eq('organization_id', orgId)
+          .eq('status', 'sold')
+          .gte('sale_date', start)
+          .lte('sale_date', end)
+          .order('sale_date', { ascending: false })
+          .limit(500),
+        branchId,
+      );
 
       if (error) throw error;
 
@@ -281,13 +285,11 @@ export const serialTrackingReports: ReportDefinition[] = [
     titulo: 'Reporte de Garantías',
     descripcion: 'Reclamos de garantía: tipo de resolución, monto y tiempo de resolución',
     categoria: 'operativo',
+    alcance: 'organizacion',
     periodosSugeridos: ['mensual', 'trimestral'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end, timezone } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end, timezone } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await db
         .from('warranty_claims')
         .select(`
@@ -375,24 +377,25 @@ export const serialTrackingReports: ReportDefinition[] = [
     titulo: 'Seriales por Proveedor',
     descripcion: 'Seriales comprados, costo total, vendidos y devueltos por proveedor',
     categoria: 'operativo',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual', 'trimestral'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
-      const { data, error } = await db
-        .from('serial_numbers')
-        .select(`
-          id, status, cost_at_purchase,
-          suppliers!inner ( id, name )
-        `)
-        .eq('organization_id', orgId)
-        .not('supplier_id', 'is', null)
-        .gte('created_at', start)
-        .lte('created_at', end)
-        .limit(1000);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { data, error } = await applyBranchFilter(
+        db
+          .from('serial_numbers')
+          .select(`
+            id, status, cost_at_purchase,
+            suppliers!inner ( id, name )
+          `)
+          .eq('organization_id', orgId)
+          .not('supplier_id', 'is', null)
+          .gte('created_at', start)
+          .lte('created_at', end)
+          .limit(1000),
+        branchId,
+      );
 
       if (error) throw error;
 

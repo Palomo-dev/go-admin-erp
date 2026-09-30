@@ -70,6 +70,15 @@ export type CategoriaReporte =
   | 'sistema';
 
 /**
+ * Qué datos ve el reporte respecto a las sucursales.
+ * - 'sucursal': filtra por la sucursal elegida; sin sucursal es el consolidado.
+ * - 'organizacion': cifras de toda la organización, no se dividen por
+ *   sucursal. Solo las ve quien tiene acceso a todas las sucursales; la RPC
+ *   lo exige igual (`reporte_exigir_alcance_sucursal`).
+ */
+export type AlcanceReporte = 'sucursal' | 'organizacion';
+
+/**
  * Cliente de Supabase con el que se ejecuta un reporte (F0-SEC r3, tester r2
  * fallo 3). En el navegador es el cliente browser con la sesión del usuario; en
  * un route handler es el cliente de sesión de `getServerOrgContext()`. Nunca el
@@ -105,6 +114,7 @@ export interface ReportDefinition {
   titulo: string;
   descripcion: string;
   categoria: CategoriaReporte;
+  alcance: AlcanceReporte;
   periodosSugeridos: TipoCierre[];
   fetch: (orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient) => Promise<ReportData>;
 }

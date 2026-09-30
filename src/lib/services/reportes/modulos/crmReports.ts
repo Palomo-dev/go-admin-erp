@@ -10,7 +10,9 @@ import type { ReportesClient } from '../types';
 // del usuario; en el servidor (asistente de reportes) el route handler pasa el
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
+import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
   id: string, titulo: string, modulo: string, periodo: PeriodoCierre,
@@ -27,13 +29,15 @@ export const crmReports: ReportDefinition[] = [
     titulo: 'Funnel de Ventas',
     descripcion: 'Oportunidades por etapa, conversión entre etapas y forecast',
     categoria: 'comercial',
+    alcance: 'organizacion',
     periodosSugeridos: ['semanal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await db.rpc('fn_reporte_crm_funnel', {
         p_organization_id: orgId,
-        p_from: `${periodo.fechaInicio}T00:00:00Z`,
-        p_to: `${periodo.fechaFin}T23:59:59Z`,
+        p_from: start,
+        p_to: end,
       });
       if (error) throw error;
 
@@ -61,13 +65,15 @@ export const crmReports: ReportDefinition[] = [
     titulo: 'Pipeline Forecast',
     descripcion: 'Proyección de ingresos por probabilidad de cierre',
     categoria: 'comercial',
+    alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await db.rpc('fn_reporte_crm_funnel', {
         p_organization_id: orgId,
-        p_from: `${periodo.fechaInicio}T00:00:00Z`,
-        p_to: `${periodo.fechaFin}T23:59:59Z`,
+        p_from: start,
+        p_to: end,
       });
       if (error) throw error;
 
@@ -104,13 +110,15 @@ export const crmReports: ReportDefinition[] = [
     titulo: 'Ranking de Vendedores',
     descripcion: 'Performance de vendedores por oportunidades y monto cerrado',
     categoria: 'comercial',
+    alcance: 'organizacion',
     periodosSugeridos: ['quincenal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await db.rpc('fn_reporte_crm_ranking_vendedores', {
         p_organization_id: orgId,
-        p_from: `${periodo.fechaInicio}T00:00:00Z`,
-        p_to: `${periodo.fechaFin}T23:59:59Z`,
+        p_from: start,
+        p_to: end,
       });
       if (error) throw error;
 
@@ -138,15 +146,20 @@ export const crmReports: ReportDefinition[] = [
     titulo: 'Actividades',
     descripcion: 'Llamadas, reuniones, emails y visitas del período',
     categoria: 'comercial',
+    alcance: 'sucursal',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { data, error } = await db
-        .from('activities')
-        .select('activity_type, created_at')
-        .eq('organization_id', orgId)
-        .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { data, error } = await applyBranchFilter(
+        db
+          .from('activities')
+          .select('activity_type, created_at')
+          .eq('organization_id', orgId)
+          .gte('created_at', start)
+          .lte('created_at', end),
+        branchId,
+      );
 
       if (error) throw error;
 
@@ -179,15 +192,17 @@ export const crmReports: ReportDefinition[] = [
     titulo: 'Campañas',
     descripcion: 'Performance de campañas: contactos, conversión, ROI',
     categoria: 'comercial',
+    alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await db
         .from('campaigns')
         .select('id, name, status, channel, created_at')
         .eq('organization_id', orgId)
-        .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
+        .gte('created_at', start)
+        .lte('created_at', end);
 
       if (error) throw error;
 
@@ -213,13 +228,15 @@ export const crmReports: ReportDefinition[] = [
     titulo: 'Clientes',
     descripcion: 'Crecimiento, segmentación y valor por cliente',
     categoria: 'comercial',
+    alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await db.rpc('fn_reporte_clientes_crecimiento', {
         p_organization_id: orgId,
-        p_from: `${periodo.fechaInicio}T00:00:00Z`,
-        p_to: `${periodo.fechaFin}T23:59:59Z`,
+        p_from: start,
+        p_to: end,
       });
       if (error) throw error;
 

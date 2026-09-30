@@ -4,6 +4,7 @@
 // ============================================================
 
 import { supabase } from '@/lib/supabase/config';
+import { getOrgDateRange } from '@/lib/utils/timezone';
 import type { PeriodoCierre, ReportData } from './types';
 
 /** Datos completos de la organización para el PDF */
@@ -155,15 +156,21 @@ export async function generarNumeroDocumento(
   const year = periodo.fechaInicio.slice(0, 4);
   const month = periodo.fechaInicio.slice(5, 7);
   const prefix = `cierre-${periodo.tipo}`;
+  const ultimoDia = new Date(Date.UTC(Number(year), Number(month), 0)).getUTCDate();
+  const { start, end } = await getOrgDateRange(
+    organizationId,
+    `${year}-${month}-01`,
+    `${year}-${month}-${String(ultimoDia).padStart(2, '0')}`,
+  );
 
-  // Contar cierres del mismo tipo en el mismo mes/año
+  // Contar cierres del mismo tipo en el mismo mes/año de la organización
   const { count, error } = await supabase
     .from('report_executions')
     .select('id', { count: 'exact', head: true })
     .eq('organization_id', organizationId)
     .eq('report_id', prefix)
-    .gte('created_at', `${year}-${month}-01T00:00:00Z`)
-    .lt('created_at', `${year}-${String(Number(month) + 1).padStart(2, '0')}-01T00:00:00Z`);
+    .gte('created_at', start)
+    .lte('created_at', end);
 
   if (error) {
     console.warn('Error obteniendo correlativo de cierre:', error.message);

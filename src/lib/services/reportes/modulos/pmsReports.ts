@@ -10,8 +10,9 @@ import type { ReportesClient } from '../types';
 // del usuario; en el servidor (asistente de reportes) el route handler pasa el
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
-import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
+import { applyBranchFilter, normalizeBranchParam } from '@/lib/services/branchFilterHelper';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
   id: string, titulo: string, modulo: string, periodo: PeriodoCierre,
@@ -28,6 +29,7 @@ export const pmsReports: ReportDefinition[] = [
     titulo: 'Ocupación Hotelera',
     descripcion: 'Tasa de ocupación, ADR y RevPAR del período',
     categoria: 'operativo',
+    alcance: 'sucursal',
     periodosSugeridos: ['semanal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -40,8 +42,8 @@ export const pmsReports: ReportDefinition[] = [
         .from('reservations')
         .select('id, checkin, checkout, status, total_estimated')
         .eq('organization_id', orgId)
-        .gte('checkin', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('checkin', `${periodo.fechaFin}T23:59:59Z`);
+        .gte('checkin', periodo.fechaInicio)
+        .lte('checkin', periodo.fechaFin);
       reservationsQuery = applyBranchFilter(reservationsQuery, branchId);
       const { data: reservations } = await reservationsQuery;
 
@@ -79,17 +81,20 @@ export const pmsReports: ReportDefinition[] = [
     titulo: 'Ingresos Hoteleros',
     descripcion: 'Ingresos por habitaciones, servicios y folios',
     categoria: 'financiero',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       let foliosQuery = db
         .from('folios')
-        .select('id, balance, status, created_at, reservations!inner(organization_id)')
+        .select('id, balance, status, created_at, reservations!inner(organization_id, branch_id)')
         .eq('reservations.organization_id', orgId)
-        .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
-      // Filtrar folios por branch_id cuando branchId != null
-      foliosQuery = applyBranchFilter(foliosQuery, branchId);
+        .gte('created_at', start)
+        .lte('created_at', end);
+      // `folios` no tiene branch_id: la sucursal es la de su reserva.
+      const sucursal = normalizeBranchParam(branchId);
+      if (sucursal != null) foliosQuery = foliosQuery.eq('reservations.branch_id', sucursal);
       const { data, error } = await foliosQuery;
 
       if (error) throw error;
@@ -123,6 +128,7 @@ export const pmsReports: ReportDefinition[] = [
     titulo: 'Housekeeping',
     descripcion: 'Tareas de limpieza: pendientes, completadas y tiempos',
     categoria: 'operativo',
+    alcance: 'sucursal',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;

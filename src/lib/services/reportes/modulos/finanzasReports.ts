@@ -10,9 +10,9 @@ import type { ReportesClient } from '../types';
 // del usuario; en el servidor (asistente de reportes) el route handler pasa el
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
-import { getOrgDateRange } from '@/lib/utils/timezone';
 import { applyBranchFilter, normalizeBranchParam } from '@/lib/services/branchFilterHelper';
 import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
   id: string,
@@ -34,6 +34,7 @@ export const finanzasReports: ReportDefinition[] = [
     titulo: 'Cuentas por Cobrar Vencidas',
     descripcion: 'Facturas vencidas agrupadas por cliente y antigüedad',
     categoria: 'financiero',
+    alcance: 'sucursal',
     periodosSugeridos: ['diario'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -143,6 +144,7 @@ export const finanzasReports: ReportDefinition[] = [
     titulo: 'CxC — Edades de Saldo',
     descripcion: 'Aging de cartera: corriente, 1-30, 31-60, 61-90, +90 días',
     categoria: 'financiero',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -258,6 +260,7 @@ export const finanzasReports: ReportDefinition[] = [
     titulo: 'CxP — Edades de Saldo',
     descripcion: 'Aging de cuentas por pagar al proveedor',
     categoria: 'financiero',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -395,13 +398,11 @@ export const finanzasReports: ReportDefinition[] = [
     titulo: 'Flujo de Efectivo',
     descripcion: 'Flujo operativo, inversión y financiación del período',
     categoria: 'financiero',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await db.rpc('fn_reporte_flujo_efectivo', {
         p_organization_id: orgId,
         p_from: start,
@@ -439,13 +440,11 @@ export const finanzasReports: ReportDefinition[] = [
     titulo: 'Impuestos (IVA/Retenciones)',
     descripcion: 'IVA generado, IVA descontable y retenciones del período',
     categoria: 'financiero',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await db.rpc('fn_reporte_impuestos', {
         p_organization_id: orgId,
         p_from: start,
@@ -480,6 +479,7 @@ export const finanzasReports: ReportDefinition[] = [
     titulo: 'Liquidez (Flujo Proyectado)',
     descripcion: 'Proyección de liquidez basada en CxC y CxP pendientes',
     categoria: 'financiero',
+    alcance: 'sucursal',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -527,13 +527,11 @@ export const finanzasReports: ReportDefinition[] = [
     titulo: 'Gastos Operativos',
     descripcion: 'Gastos por categoría y sucursal',
     categoria: 'financiero',
+    alcance: 'sucursal',
     periodosSugeridos: ['quincenal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       let gastosQuery = db
         .from('journal_lines')
         .select('account_code, debit_base, credit_base, description, journal_entries!inner(entry_date, branch_id)')
@@ -580,13 +578,11 @@ export const finanzasReports: ReportDefinition[] = [
     titulo: 'Facturación Electrónica',
     descripcion: 'Resumen de facturas electrónicas emitidas y estado DIAN',
     categoria: 'financiero',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       let facturacionQuery = db
         .from('invoice_sales')
         .select('id, subtotal, tax_total, total, balance, status, document_type, issue_date')
@@ -727,13 +723,11 @@ export const finanzasReports: ReportDefinition[] = [
     titulo: 'Rentabilidad por Producto',
     descripcion: 'Margen por producto: ingreso vs costo',
     categoria: 'financiero',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await db.rpc('fn_reporte_rotacion_inventario', {
         p_organization_id: orgId,
         p_from: start,
@@ -767,13 +761,11 @@ export const finanzasReports: ReportDefinition[] = [
     titulo: 'Rentabilidad por Sucursal',
     descripcion: 'Ingresos, costos y margen por sucursal',
     categoria: 'financiero',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo);
       const { data, error } = await db.rpc('fn_reporte_ventas_resumen', {
         p_organization_id: orgId,
         p_from: start,

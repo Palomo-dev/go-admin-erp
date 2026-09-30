@@ -468,3 +468,58 @@ de otra sesión) y, de forma intermitente, `pos-display/tester-f2b-r1`.
 - Resumen de chat y parqueadero (falta un permiso de lectura propio para cada uno).
 - Reordenar con arrastre (hoy con flechas) y orden de los bloques (hoy solo mostrar/ocultar).
 - `DashboardModulos.tsx` y `components/inicio/sections/*` quedan sin montar en el inicio (se exportan aún).
+
+## Analítica web — mapas
+
+2026-09-30. «De dónde entran» (Figma 03 › 464:237485) pasa de tabla sola a coropleta, como en el diseño.
+Aprobado por el dueño.
+
+### Qué hay
+
+- **Mundo** («Visitantes por país»): coropleta por `website_visits.country` (ISO 3166-1 alfa-2) junto a la
+  tabla «Por país», que sigue siendo la alternativa accesible. Clic en un país (mapa o tabla) pide sus ciudades.
+- **Colombia por departamento**: al elegir Colombia, o por defecto si más de la mitad de los visitantes son de
+  CO (`debeAbrirColombia`; «Volver al mundo» lo desactiva para el resto de la sesión de la pantalla). Los
+  departamentos se agregan desde las ciudades de la RPC usando `region` («ANT» → «CO-ANT»,
+  `codigoRegionIso`). Como `fn_analitica_web` devuelve solo las 50 ciudades con más visitantes, con más ciudades
+  el departamento es una cota inferior y la tarjeta lo avisa. Clic en un departamento filtra la lista de ciudades.
+  San Andrés y Providencia va en un recuadro.
+- Otros países: solo la lista de ciudades (no hay geometrías de sus regiones ni coordenadas de ciudad).
+- Escala secuencial logarítmica de 5 pasos con tokens: tinte `--brand-tint` → Azul GO `--brand-primary` →
+  `--brand-deep` (con `color-mix`); sin visitas en gris claro (`--border-default`). Modo oscuro por los mismos
+  tokens. Leyenda «Menos ■■■■■ Más · Sin visitas».
+- Teclado: el mapa es una parada de tabulación (tabindex itinerante); flechas recorren las regiones de más a
+  menos visitas, Inicio/Fin, Enter/Espacio elige. Cada región lleva `aria-label` (nombre, visitantes, % del
+  total); el tooltip aparece al pasar el ratón o al enfocar.
+
+### Geometrías, fuentes y licencias
+
+| Archivo | Fuente | Licencia | Peso (min / gzip) |
+|---|---|---|---|
+| `world-atlas/countries-110m.json` (npm `world-atlas` 2.0.2) | Natural Earth 1:110m | ISC (paquete); datos de dominio público | 105 KB / 38 KB |
+| `src/components/analiticaWeb/mapas/geo/colombia-departamentos.topo.json` | Natural Earth 1:10m Admin 1 (v5.1) | Dominio público | 13 KB / 4,8 KB |
+| `d3-geo` + `topojson-client` (lo que se usa) | npm | ISC | 22 KB / 8,7 KB |
+
+Colombia: se filtró el país, se corrigió Bogotá (Natural Earth la etiqueta «CO-CUN»; aquí «CO-DC»), se quitó un
+islote sin departamento y se simplificó con mapshaper (`-simplify 10% keep-shapes`, cuantización 1e4). Ids =
+ISO 3166-2; la prueba verifica los 32 departamentos + Bogotá D. C. Mundo: el id numérico ISO 3166-1 pasa a
+alfa-2 con `lib/analiticaWeb/isoPaises.ts` (tabla de Natural Earth 110m, `ISO_N3_EH`/`ISO_A2_EH`); Kosovo por
+nombre («XK»); N. Cyprus y Somaliland quedan sin código (gris). Se omite la Antártida.
+
+Todo se carga diferido: `DeDondeEntran` importa `mapas/MapaVisitas` con `next/dynamic` (`ssr: false`) y la
+geometría del mundo baja al abrir la pantalla, la de Colombia solo al elegir CO. Sin servicios externos ni claves.
+El bundle de la pantalla solo suma la lógica pura (`lib/analiticaWeb/mapa.ts`, ~2 KB).
+
+### Pruebas
+
+| Suite | Resultado |
+|---|---|
+| `lib/analiticaWeb/__tests__/mapa.test.ts` (ISO, agregación país/región, escala, geometrías reales) | 11/11 |
+| `components/analiticaWeb/__tests__/mapas.test.tsx` (coropleta, teclado, tooltip, filtro por departamento, 4 idiomas) | 11/11 |
+| `components/analiticaWeb/__tests__/analiticaWeb.test.tsx` (+ Colombia por defecto) | 10/10 |
+| guardrails + i18n (ahora con el namespace `analiticaWeb`) | en verde |
+
+### Pendiente
+
+- Agregar `regiones` a `fn_analitica_web` (visitantes por `region` sin el tope de 50 ciudades) para que el mapa
+  de Colombia no dependa de la lista de ciudades.

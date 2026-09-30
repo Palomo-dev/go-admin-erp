@@ -30,6 +30,7 @@ import {
   type DatosAnalitica,
   type PeriodoAnalitica,
 } from '@/lib/analiticaWeb/analiticaWeb';
+import { debeAbrirColombia } from '@/lib/analiticaWeb/mapa';
 import { GraficoVisitas } from './GraficoVisitas';
 import { DeDondeEntran } from './DeDondeEntran';
 
@@ -121,6 +122,21 @@ export function AnaliticaWeb() {
     },
     [rango.desde, rango.hasta, sucursal, pais],
   );
+
+  // Si la mayoría de los visitantes son de Colombia, se abre su mapa por
+  // departamento, salvo que la persona ya haya elegido (o vuelto al mundo).
+  const paisElegidoPorUsuario = useRef(false);
+  const elegirPais = useCallback((p: string | null) => {
+    paisElegidoPorUsuario.current = true;
+    setPais(p);
+  }, []);
+  useEffect(() => {
+    if (estado.tipo !== 'listo' || pais !== null || paisElegidoPorUsuario.current) return;
+    if (debeAbrirColombia(estado.datos.paises)) {
+      paisElegidoPorUsuario.current = true;
+      setPais('CO');
+    }
+  }, [estado, pais]);
 
   // Periodo o sucursal: recarga completa. País: solo la parte geográfica.
   const ultimaClave = useRef('');
@@ -318,9 +334,12 @@ export function AnaliticaWeb() {
               </Seccion>
             </div>
 
-            <Seccion titulo={t('geo.titulo')}>
-              <DeDondeEntran datos={d} cargandoPais={cargandoPais} onElegirPais={setPais} />
-            </Seccion>
+            <section aria-labelledby="analitica-web-geo" className="flex flex-col gap-3">
+              <h2 id="analitica-web-geo" className="text-base font-semibold text-fg">
+                {t('geo.titulo')}
+              </h2>
+              <DeDondeEntran datos={d} cargandoPais={cargandoPais} onElegirPais={elegirPais} />
+            </section>
           </>
         );
       })()}

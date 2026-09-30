@@ -99,6 +99,8 @@ const MODULOS: Record<string, string[]> = {
   'crm.pantallaLeads': ['src/components/crm/leads/pantalla'],
   'crm.pantallaActividades': ['src/components/crm/actividades/pantalla'],
   'crm.fichaCliente': ['src/components/crm/ficha', 'src/components/clientes/id', 'src/app/app/clientes'],
+  // Analítica web (Figma 03 › 464:237482, 2026-09-30), con los mapas de «De dónde entran».
+  analiticaWeb: ['src/components/analiticaWeb', 'src/app/app/inicio/analitica-web'],
 };
 
 type Arbol = { [clave: string]: string | Arbol };

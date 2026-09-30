@@ -114,3 +114,19 @@ test.each<[IdiomaPrueba, string, string]>([
   expect(container.textContent).toContain(titulo);
   expect(container.textContent).toContain(kpi);
 });
+
+test('mapas: si la mayoría de visitantes son de Colombia, abre Colombia por departamento', async () => {
+  await montar();
+  const urls = fetchMock.mock.calls.map((c) => String(c[0]));
+  expect(urls[0]).not.toContain('pais=');
+  expect(urls.some((u) => u.includes('pais=CO'))).toBe(true);
+});
+
+test('mapas: si Colombia no es mayoría, se queda en el mundo', async () => {
+  respuesta = () => ({
+    status: 200,
+    body: { datos: { ...DATOS, paises: [{ pais: 'CO', visitantes: 10, sesiones: 10 }, { pais: 'MX', visitantes: 90, sesiones: 90 }] }, puedeExportar: true },
+  });
+  await montar();
+  expect(fetchMock.mock.calls.every((c) => !String(c[0]).includes('pais='))).toBe(true);
+});

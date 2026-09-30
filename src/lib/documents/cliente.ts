@@ -125,8 +125,11 @@ export function prepararDescarga(aviso?: string): Window | null {
  */
 export function entregarArchivo(blob: Blob, nombre: string, pestana: Window | null = null): void {
   if (pestana && !pestana.closed) {
+    // `Window` no declara `URL` en los tipos del DOM (es de `globalThis`), pero
+    // cada ventana tiene el suyo: el blob se crea en la pestaña que lo descarga.
+    const urlPestana = (pestana as Window & typeof globalThis).URL;
     try {
-      const url = pestana.URL.createObjectURL(blob);
+      const url = urlPestana.createObjectURL(blob);
       const doc = pestana.document;
       const cuerpo = doc.body ?? doc.documentElement.appendChild(doc.createElement('body'));
       const a = doc.createElement('a');
@@ -136,7 +139,7 @@ export function entregarArchivo(blob: Blob, nombre: string, pestana: Window | nu
       a.click();
       pestana.setTimeout(() => {
         try {
-          pestana.URL.revokeObjectURL(url);
+          urlPestana.revokeObjectURL(url);
         } catch {
           // La pestaña ya no está.
         }

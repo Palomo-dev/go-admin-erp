@@ -5,9 +5,9 @@
  */
 const estado = {
   secreto: null as string | null,
-  signOut: jest.fn(async () => ({ data: null, error: null })),
-  getUser: jest.fn(async () => ({ data: { user: { email: 'ana@example.com' } }, error: null })),
-  generateLink: jest.fn(async () => ({ data: { properties: { hashed_token: 'hash' } }, error: null })),
+  signOut: jest.fn<Promise<{ data: null; error: null }>, [string, string]>(async () => ({ data: null, error: null })),
+  getUser: jest.fn<Promise<{ data: { user: { email: string } }; error: null }>, [string]>(async () => ({ data: { user: { email: 'ana@example.com' } }, error: null })),
+  generateLink: jest.fn<Promise<{ data: { properties: { hashed_token: string } }; error: null }>, [unknown]>(async () => ({ data: { properties: { hashed_token: 'hash' } }, error: null })),
 };
 
 jest.mock('@/lib/security/secrets', () => ({

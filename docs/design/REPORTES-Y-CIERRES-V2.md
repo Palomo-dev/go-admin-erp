@@ -135,6 +135,25 @@ Comprobaciones de cuadre ya dibujadas:
 - Débitos = créditos = 580.877.500.
 - Utilidad neta 17.322.500 = utilidad antes de impuestos 26.650.000 − renta
   del 35 %.
+- Cuentas por pagar 21.800.000 (pág. 4) = balance (pág. 2); flujo de efectivo
+  +15.842.500 (pág. 9) = variación de caja y bancos (pág. 2); costo de nómina
+  26.400.000 (pág. 10) = gastos de personal (pág. 3).
+
+Coherencia entre páginas corregida al completar las páginas 1, 4, 9, 10 y 11:
+
+- **Fecha de emisión:** la pág. 12 dice ahora «emitido el 30/09/2026 10:30 p. m.», igual que la portada.
+- **Periodo fiscal:** la pág. 3 lo muestra «Cerrado», porque el documento está firmado.
+- **Sucursales:** la pág. 12 incluye «Bodega principal», en ceros porque no vende en POS, y así cuadra con las 3 sucursales de la portada.
+- **Referencias de página:** la pág. 8 remite a Compras en la pág. 4, y la pág. 5 remite a propinas y arqueo en la pág. 7.
+
+Pendiente:
+
+- **Compras en el libro diario:** la pág. 3 muestra 58 asientos por $ 120.000.000 y la pág. 4, 38 facturas por $ 96.400.000.
+  - La diferencia puede ser el inventario recibido sin factura, pero hay que decidirlo.
+  - Cambiarlo mueve el total de débitos y créditos.
+- **Tipografía:**
+  - Las páginas 1, 4, 9, 10 y 11 usan los estilos de texto del sistema, de 12 a 16 px. Las páginas anteriores usan tamaños sueltos de 7 a 13 px.
+  - Hay que unificarlas pasando las anteriores a estilos de texto.
 
 ## 5. Hallazgos en el código (para la fase de implementación)
 

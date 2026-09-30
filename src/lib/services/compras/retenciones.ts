@@ -13,6 +13,8 @@
  * - `fn_factura_compra_asiento_previo`: el asiento que armaría la
  *   confirmación, sin confirmar (el disparador real dentro de un bloque que se
  *   deshace).
+ * - `fn_certificado_retenciones_proveedor`: lo retenido a un proveedor en un
+ *   periodo (el mismo cálculo del documento `certificado-retenciones`).
  * `fiscal_uvt` y `chart_of_accounts` se leen con la RLS de la sesión.
  */
 import { supabase } from '@/lib/supabase/config';
@@ -76,6 +78,17 @@ export interface AsientoPrevio {
   cuadra: boolean;
 }
 
+export interface ResumenCertificadoRetenciones {
+  desde: string;
+  hasta: string;
+  facturas: number;
+  conceptos: number;
+  retefuente: number;
+  reteiva: number;
+  reteica: number;
+  retenido: number;
+}
+
 type Crudo = Record<string, unknown>;
 
 const num = (v: unknown): number => {
@@ -133,6 +146,21 @@ export function aAsientoPrevio(data: unknown): AsientoPrevio {
   };
 }
 
+export function aResumenCertificado(data: unknown): ResumenCertificadoRetenciones {
+  const d = (data ?? {}) as Crudo;
+  const totales = (d.totales ?? {}) as Crudo;
+  return {
+    desde: String(d.desde ?? ''),
+    hasta: String(d.hasta ?? ''),
+    facturas: Array.isArray(d.facturas) ? d.facturas.length : 0,
+    conceptos: Array.isArray(d.conceptos) ? d.conceptos.length : 0,
+    retefuente: num(totales.retefuente),
+    reteiva: num(totales.reteiva),
+    reteica: num(totales.reteica),
+    retenido: num(totales.retenido),
+  };
+}
+
 export async function leerConfiguracionRetenciones(org: number): Promise<ConfiguracionRetenciones> {
   const { data, error } = await supabase.rpc('fn_retenciones_configuracion', { p_organization_id: org });
   if (error) throw error;
@@ -173,8 +201,12 @@ export async function cuentasDePasivo(org: number): Promise<CuentaPasivo[]> {
   return ((data ?? []) as Array<{ account_code: string; name: string }>).map((c) => ({ codigo: c.account_code, nombre: c.name }));
 }
 
-/** Moneda en la que se expresa la UVT de cada país de `fiscal_uvt`. */
-const MONEDA_UVT: Record<string, string> = { COL: 'COP' };
+/** Moneda en la que se expresa la UVT de un país: la de `countries.default_currency_code`. */
+export async function monedaDePais(pais: string): Promise<string | null> {
+  const { data, error } = await supabase.from('countries').select('default_currency_code').eq('code', pais).maybeSingle();
+  if (error) throw error;
+  return textoONulo((data as { default_currency_code?: string | null } | null)?.default_currency_code)?.trim().toUpperCase() ?? null;
+}
 
 export interface UvtPais {
   pais: string;
@@ -188,11 +220,14 @@ export async function uvtPorAnio(org: number): Promise<UvtPais> {
   const { data: o, error: errorOrg } = await supabase.from('organizations').select('country_code').eq('id', org).maybeSingle();
   if (errorOrg) throw errorOrg;
   const pais = ((o as { country_code?: string | null } | null)?.country_code ?? '').trim().toUpperCase() || 'COL';
-  const { data, error } = await supabase.from('fiscal_uvt').select('year, value').eq('country_code', pais);
+  const [{ data, error }, moneda] = await Promise.all([
+    supabase.from('fiscal_uvt').select('year, value').eq('country_code', pais),
+    monedaDePais(pais),
+  ]);
   if (error) throw error;
   return {
     pais,
-    moneda: MONEDA_UVT[pais] ?? null,
+    moneda,
     valores: new Map(((data ?? []) as Array<{ year: number; value: number | string }>).map((u) => [Number(u.year), num(u.value)])),
   };
 }
@@ -201,4 +236,21 @@ export async function asientoPrevioCompra(facturaId: string): Promise<AsientoPre
   const { data, error } = await supabase.rpc('fn_factura_compra_asiento_previo', { p_id: facturaId });
   if (error) throw error;
   return aAsientoPrevio(data);
+}
+
+/** Días calendario de la zona de la organización, ambos incluidos. */
+export async function resumenCertificadoRetenciones(
+  org: number,
+  proveedorId: number,
+  desde: string,
+  hasta: string,
+): Promise<ResumenCertificadoRetenciones> {
+  const { data, error } = await supabase.rpc('fn_certificado_retenciones_proveedor', {
+    p_organization_id: org,
+    p_supplier_id: proveedorId,
+    p_desde: desde,
+    p_hasta: hasta,
+  });
+  if (error) throw error;
+  return aResumenCertificado(data);
 }

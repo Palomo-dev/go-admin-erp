@@ -14,6 +14,7 @@ import { baseMinimaEnMoneda } from '@/lib/services/compras/logica';
 import {
   cargarPlantillaRetenciones,
   leerConfiguracionRetenciones,
+  monedaDePais,
   type ConfiguracionRetenciones,
   type RetencionConfigurada,
 } from '@/lib/services/compras/retenciones';
@@ -76,10 +77,21 @@ export default function RetencionesTable({ retenciones, loading, error, organiza
 
   const porId = useMemo(() => new Map((config?.retenciones ?? []).map((r) => [r.id, r])), [config]);
 
-  // La UVT es de Colombia (fiscal_uvt solo trae COL): su equivalente va en pesos.
+  // El equivalente de la UVT va en la moneda de su país (`countries`), no en la de la organización.
+  const [monedaUvt, setMonedaUvt] = useState<string | null>(null);
+  useEffect(() => {
+    if (!config?.pais) return;
+    let vigente = true;
+    monedaDePais(config.pais)
+      .then((m) => vigente && setMonedaUvt(m))
+      .catch((err) => console.error('Error al leer la moneda del país de la UVT:', err));
+    return () => {
+      vigente = false;
+    };
+  }, [config?.pais]);
   const formatearUvt = useMemo(
-    () => (config?.pais === 'COL' ? crearFormateadorMoneda('COP', { decimals: 0 }) : moneda.formatear),
-    [config?.pais, moneda.formatear],
+    () => (monedaUvt ? crearFormateadorMoneda(monedaUvt, { decimals: 0 }) : moneda.formatear),
+    [monedaUvt, moneda.formatear],
   );
 
   const alternarActiva = async (fila: OrganizationTax) => {

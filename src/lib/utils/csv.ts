@@ -12,7 +12,7 @@
 export function celdaCsv(valor: string | number | null | undefined): string {
   if (valor === null || valor === undefined) return '';
   let texto = String(valor);
-  if (typeof valor === 'string' && /^[=+\-@\t\r]/.test(texto)) texto = `'${texto}`;
+  if (typeof valor === 'string' && /^[\t\r]|^\s*[=+\-@]/.test(texto)) texto = `'${texto}`;
   return /[";\n\r]/.test(texto) ? `"${texto.replace(/"/g, '""')}"` : texto;
 }
 

@@ -1,3 +1,4 @@
+import { filasACsv } from "@/lib/utils/csv";
 import type { CallListRow } from "@/lib/services/crm/callManagementService";
 
 export interface CallsTableFilters {
@@ -57,28 +58,18 @@ export function csvLlamadas(
   headers: string[],
   date: (value: string) => string,
 ) {
-  const cell = (value: unknown) => {
-    let text = String(value ?? "");
-    if (/^[\s]*[=+\-@]/.test(text)) text = `'${text}`;
-    return `"${text.replace(/"/g, '""')}"`;
-  };
-  return (
-    "\uFEFF" +
-    [
-      headers,
-      ...rows.map((c) => [
-        date(c.started_at ?? c.created_at),
-        c.customer?.full_name,
-        c.direction === "inbound" ? c.from_number : c.to_number,
-        c.mode,
-        [c.user?.first_name, c.user?.last_name].filter(Boolean).join(" "),
-        c.duration_seconds,
-        c.disposition_outcome,
-        c.status,
-        c.analysis?.sentiment,
-      ]),
-    ]
-      .map((row) => row.map(cell).join(","))
-      .join("\r\n")
+  return filasACsv(
+    headers,
+    rows.map((c) => [
+      date(c.started_at ?? c.created_at),
+      c.customer?.full_name,
+      c.direction === "inbound" ? c.from_number : c.to_number,
+      c.mode,
+      [c.user?.first_name, c.user?.last_name].filter(Boolean).join(" "),
+      c.duration_seconds,
+      c.disposition_outcome,
+      c.status,
+      c.analysis?.sentiment,
+    ]),
   );
 }

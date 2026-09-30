@@ -3676,3 +3676,7 @@ RPC con ámbito vendedor/ver-todas, texto indexado de transcripciones, grabacion
 ### CRM — Pronósticos: integridad y auditoría (2026-09-30)
 
 Dos migraciones aplicadas por MCP con rollback y MD5 en el plan: categorías reales usando stages, snapshot con ámbito vendedor, auditoría de ajustes/reversión y concurrencia. Se cerró la lectura anónima de la vista materializada antigua. Pruebas SQL reales sin fixtures persistentes. Continúa la conexión de la pantalla y el resto de olas 4/5/6.
+
+### CRM — Pronósticos conectado (2026-09-30)
+
+Pantalla y API con categorías, auditoría/reversión, conversión real de monedas, totales globales y cuotas configuradas. Revenue OS sigue en la misma ruta. 274 pruebas enfocadas/guardarraíles, TypeScript y lint pasan; API real de ajuste/conflicto/reversión verificada, fixtures eliminados. El plan registra límites y diferencias. Continúan Campañas/Plantillas y los módulos pendientes de olas 4/5/6.

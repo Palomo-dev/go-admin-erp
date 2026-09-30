@@ -18,6 +18,8 @@
  */
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -37,7 +39,6 @@ import { addMonthsPlain } from '@/lib/services/crm/revenueOs/dateRange';
 const TABS = [
   { value: 'resumen', label: 'Resumen' },
   { value: 'embudo', label: 'Embudo' },
-  { value: 'forecast', label: 'Forecast' },
   { value: 'cohortes', label: 'Cohortes' },
   { value: 'matematica', label: 'Matemática comercial' },
 ] as const;
@@ -57,7 +58,7 @@ function PanelSkeleton() {
 
 const PANEL = 'mt-4 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800';
 
-export function RevenueOsPage() {
+function RevenueAnalyticsPanel() {
   const [range, setRange] = useState<DashboardRange>({ start: null, end: null });
   const { data, lastPeriod, canEditInputs, loading, error, reload } = useRevenueDashboard(range);
   const [tab, setTab] = useState<(typeof TABS)[number]['value']>('resumen');
@@ -134,10 +135,6 @@ export function RevenueOsPage() {
           ) : null}
         </TabsContent>
 
-        <TabsContent value="forecast" className="mt-4">
-          {data ? <ForecastDashboard currency={currency} /> : null}
-        </TabsContent>
-
         <TabsContent value="cohortes" className={PANEL}>
           {!data && loading && !error ? (
             <Skeleton className="h-48 w-full" />
@@ -163,4 +160,14 @@ export function RevenueOsPage() {
       </Tabs>
     </div>
   );
+}
+
+/** El pronóstico es la entrada; Revenue OS conserva sus cuatro paneles existentes. */
+export function RevenueOsPage() {
+  const t = useTranslations('crm.pronostico');
+  const [view, setView] = useState<'forecast' | 'analytics'>('forecast');
+  return <div className="space-y-5 bg-canvas p-4 sm:p-6 lg:p-8">
+    <SegmentedControl opciones={[{valor:'forecast',etiqueta:t('titulo')},{valor:'analytics',etiqueta:t('analitica')}]} valor={view} onValorChange={setView} etiqueta={t('vistas')} />
+    {view === 'forecast' ? <ForecastDashboard currency={null} /> : <RevenueAnalyticsPanel />}
+  </div>;
 }

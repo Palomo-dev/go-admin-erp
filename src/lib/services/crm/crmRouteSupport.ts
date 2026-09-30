@@ -36,6 +36,8 @@ export const CRM_PERMISOS = {
   clientesEditar: 'crm.customers.edit',
   clientesFusionar: 'crm.customers.merge',
   llamadasVerTodas: 'crm.calls.view_all',
+  pronosticoVerTodas: 'crm.forecast.view_all',
+  pronosticoAjustar: 'crm.forecast.adjust',
 } as const;
 
 export type CrmPermiso = (typeof CRM_PERMISOS)[keyof typeof CRM_PERMISOS];

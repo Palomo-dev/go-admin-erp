@@ -1,73 +1,92 @@
-'use client';
-
-import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Download } from 'lucide-react';
-import { Pipeline } from '@/components/crm/oportunidades/types';
-
-interface ForecastFiltersProps {
-  pipelines: Pipeline[];
-  selectedPipelineId: string;
-  period: 'weekly' | 'monthly' | 'quarterly';
-  onPipelineChange: (id: string) => void;
-  onPeriodChange: (period: 'weekly' | 'monthly' | 'quarterly') => void;
-  onExport?: () => void;
+"use client";
+import { useTranslations } from "next-intl";
+import { FormField } from "@/components/kit/FormField";
+import { CLASE_CAMPO } from "@/components/crm/kit/camposCrm";
+import { useFormatDate } from "@/lib/context/OrganizationTimezoneContext";
+import { opcionesTrimestre } from "./forecastVistaLogica";
+import type { ForecastResponse } from "./useForecastData";
+interface Props {
+  data: ForecastResponse | null;
+  period: string;
+  team: string;
+  seller: string;
+  busy: boolean;
+  setPeriod: (value: string) => void;
+  setTeam: (value: string) => void;
+  setSeller: (value: string) => void;
+  setPage: (value: number) => void;
 }
-
 export function ForecastFilters({
-  pipelines,
-  selectedPipelineId,
+  data,
   period,
-  onPipelineChange,
-  onPeriodChange,
-  onExport,
-}: ForecastFiltersProps) {
+  team,
+  seller,
+  busy,
+  setPeriod,
+  setTeam,
+  setSeller,
+  setPage,
+}: Props) {
+  const t = useTranslations("crm.pronostico");
+  const { getToday } = useFormatDate(null);
   return (
-    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-start sm:items-center justify-between">
-      <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
-        {/* Pipeline */}
-        <Select value={selectedPipelineId} onValueChange={onPipelineChange}>
-          <SelectTrigger className="w-full sm:w-48 h-9 text-xs sm:text-sm bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
-            <SelectValue placeholder="Seleccionar pipeline" />
-          </SelectTrigger>
-          <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            {pipelines.map((pipeline) => (
-              <SelectItem key={pipeline.id} value={pipeline.id} className="text-gray-900 dark:text-gray-100 text-xs sm:text-sm">
-                {pipeline.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Periodo */}
-        <Select value={period} onValueChange={(v) => onPeriodChange(v as typeof period)}>
-          <SelectTrigger className="w-full sm:w-40 h-9 text-xs sm:text-sm bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <SelectItem value="weekly" className="text-gray-900 dark:text-gray-100 text-xs sm:text-sm">Semanal</SelectItem>
-            <SelectItem value="monthly" className="text-gray-900 dark:text-gray-100 text-xs sm:text-sm">Mensual</SelectItem>
-            <SelectItem value="quarterly" className="text-gray-900 dark:text-gray-100 text-xs sm:text-sm">Trimestral</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {onExport && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onExport}
-          className="h-9 text-xs sm:text-sm border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+    <div className="grid gap-3 sm:grid-cols-3">
+      <FormField etiqueta={t("trimestre")}>
+        <select
+          className={CLASE_CAMPO}
+          value={period}
+          disabled={busy}
+          onChange={(e) => {
+            setPeriod(e.target.value);
+            setPage(1);
+          }}
         >
-          <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-          Exportar
-        </Button>
+          {opcionesTrimestre(getToday()).map((o) => (
+            <option key={o.period} value={o.period}>
+              {t("trimestreEtiqueta", { n: o.n, year: o.year })}
+            </option>
+          ))}
+        </select>
+      </FormField>
+      <FormField etiqueta={t("equipo")}>
+        <select
+          className={CLASE_CAMPO}
+          value={team}
+          disabled={busy}
+          onChange={(e) => {
+            setTeam(e.target.value);
+            setSeller("");
+            setPage(1);
+          }}
+        >
+          <option value="">{t("todosEquipos")}</option>
+          {data?.teams?.map((team) => (
+            <option key={team.id} value={team.id}>
+              {team.name}
+            </option>
+          ))}
+        </select>
+      </FormField>
+      {data?.canViewAll && (
+        <FormField etiqueta={t("vendedor")}>
+          <select
+            className={CLASE_CAMPO}
+            value={seller}
+            disabled={busy}
+            onChange={(e) => {
+              setSeller(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="">{t("todosVendedores")}</option>
+            {data.sellers.map((r) => (
+              <option key={r.id} value={r.id}>
+                {[r.first_name, r.last_name].filter(Boolean).join(" ") ||
+                  t("vendedorInactivo")}
+              </option>
+            ))}
+          </select>
+        </FormField>
       )}
     </div>
   );

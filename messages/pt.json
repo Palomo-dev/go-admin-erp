@@ -25137,6 +25137,9 @@
       "existente": "Já há um fechamento deste período. Recalcular cria uma versão nova e marca a anterior como substituída.",
       "vacio": "Escolha pelo menos um relatório.",
       "listo": "Fechamento {numero} gerado",
+      "descargando": "Preparando o arquivo do fechamento…",
+      "bajar": "Baixar arquivo",
+      "sinArchivo": "O fechamento {numero} foi salvo. O arquivo não baixou.",
       "notaFranja": "A faixa só se aplica aos capítulos que a aceitam. Os demais usam o dia inteiro.",
       "sinDatos": "Um capítulo sem dados no período é impresso com a nota «Sem movimentos».",
       "plantillas": {

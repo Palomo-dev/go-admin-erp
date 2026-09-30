@@ -25137,6 +25137,9 @@
       "existente": "Une clôture existe déjà pour cette période. Recalculer crée une nouvelle version et marque la précédente comme remplacée.",
       "vacio": "Choisissez au moins un rapport.",
       "listo": "Clôture {numero} générée",
+      "descargando": "Préparation du fichier de clôture…",
+      "bajar": "Télécharger le fichier",
+      "sinArchivo": "La clôture {numero} a été enregistrée. Le fichier n'a pas été téléchargé.",
       "notaFranja": "La plage ne s'applique qu'aux chapitres qui l'acceptent. Les autres utilisent la journée complète.",
       "sinDatos": "Un chapitre sans données sur la période s'imprime avec la note « Aucun mouvement ».",
       "plantillas": {

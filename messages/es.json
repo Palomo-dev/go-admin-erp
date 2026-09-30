@@ -12431,6 +12431,32 @@
       "guardada": "Política de tratamiento de datos guardada",
       "quitada": "Política de tratamiento de datos quitada",
       "errorGuardar": "No se pudo guardar la política"
+    },
+    "numerosPrueba": {
+      "titulo": "Números de prueba",
+      "descripcion": "Números del propio equipo para probar el agente de voz. Quedan exentos solo del tope de un contacto por canal y semana de la Ley 2300 de 2023.",
+      "aviso": "Agrega solo números de personas del equipo que hayan dado su consentimiento. Nunca números de clientes o prospectos.",
+      "avisoSigue": "Sigue aplicando todo lo demás: la franja horaria legal (lunes a viernes 7:00–19:00, sábados 8:00–15:00, nunca domingos ni festivos), la lista de excluidos y las bajas, los topes diarios del agente y de la campaña, y los minutos disponibles.",
+      "etiquetaNumero": "Número (formato internacional)",
+      "etiquetaNombre": "De quién es (opcional)",
+      "placeholderNombre": "Ej.: celular de ventas",
+      "agregar": "Agregar",
+      "agregando": "Agregando…",
+      "quitar": "Quitar",
+      "quitarAria": "Quitar el número {numero}",
+      "vacio": "Aún no hay números de prueba.",
+      "contador": "{usados} de {max} números",
+      "lleno": "Llegaste al máximo de números de prueba. Quita uno para agregar otro.",
+      "invalido": "Escribe un número válido, por ejemplo +57 300 000 0000.",
+      "agregado": "Número de prueba agregado",
+      "quitado": "Número de prueba quitado",
+      "errorAgregar": "No se pudo agregar el número",
+      "errorQuitar": "No se pudo quitar el número",
+      "errorCargar": "No se pudieron cargar los números de prueba",
+      "reintentar": "Reintentar",
+      "cargando": "Cargando números de prueba…",
+      "soloAdmin": "Solo un administrador de la organización puede ver y gestionar los números de prueba.",
+      "agregadoEl": "Agregado el {fecha}"
     }
   },
   "vozRne": {

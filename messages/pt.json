@@ -10768,6 +10768,32 @@
       "guardada": "Política de tratamento de dados salva",
       "quitada": "Política de tratamento de dados removida",
       "errorGuardar": "Não foi possível salvar a política"
+    },
+    "numerosPrueba": {
+      "titulo": "Números de teste",
+      "descripcion": "Números da própria equipe para testar o agente de voz. Ficam isentos apenas do limite de um contato por canal por semana da Lei colombiana 2300 de 2023.",
+      "aviso": "Adicione apenas números de pessoas da equipe que deram consentimento. Nunca números de clientes ou prospects.",
+      "avisoSigue": "Todo o resto continua valendo: a faixa horária legal (segunda a sexta 7:00–19:00, sábado 8:00–15:00, nunca domingos nem feriados), a lista de números excluídos e descadastros, os limites diários do agente e da campanha, e os minutos disponíveis.",
+      "etiquetaNumero": "Número (formato internacional)",
+      "etiquetaNombre": "De quem é (opcional)",
+      "placeholderNombre": "Ex.: celular de vendas",
+      "agregar": "Adicionar",
+      "agregando": "Adicionando…",
+      "quitar": "Remover",
+      "quitarAria": "Remover o número {numero}",
+      "vacio": "Ainda não há números de teste.",
+      "contador": "{usados} de {max} números",
+      "lleno": "Você atingiu o máximo de números de teste. Remova um para adicionar outro.",
+      "invalido": "Digite um número válido, por exemplo +57 300 000 0000.",
+      "agregado": "Número de teste adicionado",
+      "quitado": "Número de teste removido",
+      "errorAgregar": "Não foi possível adicionar o número",
+      "errorQuitar": "Não foi possível remover o número",
+      "errorCargar": "Não foi possível carregar os números de teste",
+      "reintentar": "Tentar novamente",
+      "cargando": "Carregando números de teste…",
+      "soloAdmin": "Somente um administrador da organização pode ver e gerenciar os números de teste.",
+      "agregadoEl": "Adicionado em {fecha}"
     }
   },
   "vozRne": {

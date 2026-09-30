@@ -21,6 +21,7 @@ import {
   type DecisionContacto,
 } from './ley2300';
 import { normalizarNumeroRne, verificacionRneVigente } from './rne';
+import { esNumeroPrueba, EXENCION_NUMERO_PRUEBA } from './numerosPrueba';
 import { DEFAULT_TIMEZONE, isUsableTimezone } from '@/lib/utils/dateCore';
 
 export class CumplimientoDbError extends Error {
@@ -55,6 +56,12 @@ export async function leerConteosSemana(
 /**
  * Veredicto de la Ley 2300 para contactar a un cliente AHORA por `canal`:
  * horario del destinatario (+57 → Colombia), festivos y tope semanal.
+ *
+ * PUNTO ÚNICO de la exención por número de prueba (`numerosPrueba.ts`): si el
+ * número es de prueba vigente de la organización, no se cuentan los contactos
+ * de la semana y la decisión sale con `exencion: 'numero_prueba'`. El horario
+ * legal se evalúa igual. Nada más (excluidos, baja voluntaria, topes diarios,
+ * créditos, RNE de la campaña) pasa por aquí: siguen aplicando en su sitio.
  */
 export async function evaluarLey2300Cliente(
   supabase: SupabaseClient,
@@ -65,8 +72,16 @@ export async function evaluarLey2300Cliente(
 ): Promise<DecisionContacto> {
   const telefono = normalizarNumeroRne(cliente.phone) ?? cliente.phone;
   const zona = zonaHorariaDestinatario(telefono, cliente.timezone);
-  const conteosSemana = await leerConteosSemana(supabase, orgId, cliente.id, zona, ahora);
-  return decidirContactoLey2300({ ahora, telefonoE164: telefono, zonaCliente: cliente.timezone, canal, conteosSemana });
+  const esPrueba = await esNumeroPrueba(supabase, orgId, telefono);
+  const conteosSemana = esPrueba ? {} : await leerConteosSemana(supabase, orgId, cliente.id, zona, ahora);
+  return decidirContactoLey2300({
+    ahora,
+    telefonoE164: telefono,
+    zonaCliente: cliente.timezone,
+    canal,
+    conteosSemana,
+    exencion: esPrueba ? EXENCION_NUMERO_PRUEBA : null,
+  });
 }
 
 /** ¿El número está en la lista de excluidos de la organización (RNE o manual)? */

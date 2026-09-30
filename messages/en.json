@@ -12431,6 +12431,32 @@
       "guardada": "Data processing policy saved",
       "quitada": "Data processing policy removed",
       "errorGuardar": "Could not save the policy"
+    },
+    "numerosPrueba": {
+      "titulo": "Test numbers",
+      "descripcion": "Your own team's numbers for testing the voice agent. They are exempt only from the one-contact-per-channel-per-week limit of Colombian Law 2300 of 2023.",
+      "aviso": "Only add numbers of team members who have given their consent. Never customer or prospect numbers.",
+      "avisoSigue": "Everything else still applies: the legal time window (Monday to Friday 7:00–19:00, Saturday 8:00–15:00, never Sundays or holidays), the excluded and opted-out numbers, the agent's and campaign's daily limits, and the available minutes.",
+      "etiquetaNumero": "Number (international format)",
+      "etiquetaNombre": "Whose number (optional)",
+      "placeholderNombre": "e.g. sales mobile",
+      "agregar": "Add",
+      "agregando": "Adding…",
+      "quitar": "Remove",
+      "quitarAria": "Remove number {numero}",
+      "vacio": "No test numbers yet.",
+      "contador": "{usados} of {max} numbers",
+      "lleno": "You reached the maximum number of test numbers. Remove one to add another.",
+      "invalido": "Enter a valid number, for example +57 300 000 0000.",
+      "agregado": "Test number added",
+      "quitado": "Test number removed",
+      "errorAgregar": "Could not add the number",
+      "errorQuitar": "Could not remove the number",
+      "errorCargar": "Could not load the test numbers",
+      "reintentar": "Retry",
+      "cargando": "Loading test numbers…",
+      "soloAdmin": "Only an organization administrator can view and manage test numbers.",
+      "agregadoEl": "Added on {fecha}"
     }
   },
   "vozRne": {

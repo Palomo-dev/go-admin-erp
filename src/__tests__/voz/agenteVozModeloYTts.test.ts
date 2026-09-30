@@ -110,7 +110,14 @@ import { responsesParamsFor, usesResponsesApi, openModelStream, EMERGENCY_MODEL 
 
 // ─── WebSocket simulado ──────────────────────────────────────────────────────
 
+/** Conexiones abiertas: se cierran al final de cada caso (el vigilante de silencio arma temporizadores). */
+const abiertas: FakeWs[] = [];
+
 class FakeWs extends EventEmitter {
+  constructor() {
+    super();
+    abiertas.push(this);
+  }
   readyState = 1;
   sent: Array<Record<string, unknown>> = [];
   send(data: string) {
@@ -151,7 +158,14 @@ beforeEach(() => {
   jest.spyOn(console, 'error').mockImplementation(() => undefined);
 });
 
-afterEach(() => jest.restoreAllMocks());
+afterEach(async () => {
+  for (const ws of abiertas.splice(0)) {
+    ws.readyState = 3;
+    ws.emit('close');
+  }
+  await new Promise((r) => setImmediate(r));
+  jest.restoreAllMocks();
+});
 
 // ─── 1. Parámetros por modelo ────────────────────────────────────────────────
 

@@ -34,6 +34,11 @@ import {
   TtsFallbackTracker,
   TTS_FALLBACK_PARAM,
 } from '@/lib/services/crm/voiceAgent/ttsFallback';
+import {
+  FRASE_AVISO_SILENCIO,
+  FRASE_CIERRE_SILENCIO,
+  VigilanteSilencio,
+} from '@/lib/services/crm/voiceAgent/inactividad';
 
 /** Cliente con service_role para bypasear RLS en el WS server */
 function getServiceSupabase(): SupabaseClient {
@@ -107,6 +112,8 @@ export interface ConversationRelaySession {
   runtime?: AgentRuntimeConfig | null;
   /** Turnos para `voice_agent_calls.conversation_log`. */
   turns: ConversationTurn[];
+  /** Cuelga si la línea queda en silencio (ver `voiceAgent/inactividad.ts`). */
+  silencio?: VigilanteSilencio;
 }
 
 const activeSessions = new Map<string, ConversationRelaySession>();
@@ -209,13 +216,20 @@ export function handleConversationRelayConnection(ws: WebSocket, upgradeClaims?:
 
         case 'prompt':
           if (session) {
-            await handlePrompt(ws, session, message);
+            session.silencio?.pausar();
+            try {
+              await handlePrompt(ws, session, message);
+            } finally {
+              session.silencio?.reiniciar();
+            }
           }
           break;
 
         case 'interrupt':
-          // El usuario interrumpió — detener generación actual
+          // El usuario interrumpió — detener generación actual. Está hablando:
+          // el conteo de silencio vuelve a empezar.
           console.log(`[CR] Interrupción en ${session?.callSid}`);
+          session?.silencio?.reiniciar();
           break;
 
         case 'dtmf':
@@ -348,6 +362,20 @@ async function handleSetup(
 
   activeSessions.set(callSid, session);
 
+  session.silencio = new VigilanteSilencio({
+    avisar: () => {
+      console.log(`[CR] [${callSid}] Silencio: se pregunta si sigue en la línea`);
+      session.turns.push({ role: 'assistant', content: FRASE_AVISO_SILENCIO, at: new Date().toISOString() });
+      sendText(ws, FRASE_AVISO_SILENCIO, true);
+    },
+    cerrar: () => {
+      console.log(`[CR] [${callSid}] Silencio: se cierra la llamada`);
+      session.turns.push({ role: 'assistant', content: FRASE_CIERRE_SILENCIO, at: new Date().toISOString() });
+      sendText(ws, FRASE_CIERRE_SILENCIO, true);
+      sendEnd(ws);
+    },
+  });
+
   // Log inicio de sesión
   const usageInsert = await sb.from('comm_usage_logs').insert({
     organization_id: orgId,
@@ -382,6 +410,8 @@ async function handleSetup(
     const pendiente = ttsTrackers.get(ws)?.seedSpoken(greeting);
     if (pendiente) sendText(ws, pendiente, true);
   }
+
+  session.silencio.reiniciar();
 
   console.log(
     `[CR] Sesión iniciada: ${callSid} (org: ${orgId}, agente: ${runtime?.agent.name ?? 'genérico'}, ` +
@@ -631,6 +661,7 @@ function handleRelayError(
 async function endSession(session: ConversationRelaySession): Promise<void> {
   if (!session.isActive) return;
   session.isActive = false;
+  session.silencio?.detener();
 
   const duration = Math.ceil((Date.now() - session.startedAt.getTime()) / 60000);
 

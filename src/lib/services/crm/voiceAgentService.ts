@@ -1207,12 +1207,14 @@ async function enqueueCampaignTargets(
       .in('status', ['pending', 'queued', 'in_progress'])
   ) || []) as Array<{ customer_id: string }>;
   const alreadyQueued = new Set(existing.map((r) => r.customer_id));
+  const yaAtendidos = await clientesYaAtendidosPorCampana(supabase, orgId, campaign, customerIds);
   const excluidos = await customersInExclusionList(supabase, orgId, customerIds);
 
   const rows: Record<string, unknown>[] = [];
   for (const target of targets) {
     if (rows.length >= room) break;
     if (alreadyQueued.has(target.customer_id)) continue;
+    if (yaAtendidos.has(target.customer_id)) continue;
     // RNE: un número excluido no llega ni a la cola.
     if (excluidos.has(target.customer_id)) continue;
     // C-F6-10: baja voluntaria antes incluso de encolar.
@@ -1254,6 +1256,70 @@ async function enqueueCampaignTargets(
     throw new VoiceAgentDbError('enqueueCampaignTargets.insert', una.error);
   }
   return encoladas;
+}
+
+/**
+ * Clientes que esta campaña no debe volver a encolar todavía.
+ *
+ * Caso real (org 125, 2026-09-30): nueve minutos después de una llamada
+ * contestada, la campaña de lista manual volvió a encolar al mismo cliente;
+ * solo lo frenó el tope semanal de la Ley 2300, que la reprogramó al lunes.
+ * Una llamada no contestada, en cambio, se volvía a marcar en la siguiente
+ * vuelta del cron (5 min) hasta agotar el tope diario.
+ *
+ * - Contacto efectivo (`completed`, `transferred`) o cierre explícito
+ *   (`canceled`, `skipped`): no se vuelve a encolar. En `pipeline_stage` solo
+ *   cuenta el contacto efectivo; mover la oportunidad de etapa la saca.
+ * - Sin contacto (`no_answer`, `voicemail`, `failed`): se reintenta según la
+ *   `retry_policy` del agente (máximo de intentos y espera entre ellos).
+ * - `followup_due`: sin filtro; el objetivo lo marca `next_contact_at`.
+ */
+export function clientesNoReencolables(
+  filas: Array<{ customer_id: string; status: string; completed_at: string | null }>,
+  targetSource: string,
+  retry: { maxAttempts: number; backoffMinutes: number },
+  ahora: number = Date.now()
+): Set<string> {
+  const fuera = new Set<string>();
+  if (targetSource === 'followup_due') return fuera;
+  const cerrados =
+    targetSource === 'pipeline_stage' ? ['completed', 'transferred'] : ['completed', 'transferred', 'canceled', 'skipped'];
+  const sinContacto = new Map<string, { n: number; ultimo: number }>();
+  for (const f of filas) {
+    if (cerrados.includes(f.status)) {
+      fuera.add(f.customer_id);
+    } else if (f.status === 'no_answer' || f.status === 'voicemail' || f.status === 'failed') {
+      const previo = sinContacto.get(f.customer_id) ?? { n: 0, ultimo: 0 };
+      const t = f.completed_at ? Date.parse(f.completed_at) : ahora;
+      sinContacto.set(f.customer_id, { n: previo.n + 1, ultimo: Math.max(previo.ultimo, Number.isFinite(t) ? t : ahora) });
+    }
+  }
+  sinContacto.forEach(({ n, ultimo }, id) => {
+    if (n >= retry.maxAttempts || ahora - ultimo < retry.backoffMinutes * 60_000) fuera.add(id);
+  });
+  return fuera;
+}
+
+async function clientesYaAtendidosPorCampana(
+  supabase: SupabaseClient,
+  orgId: number,
+  campaign: VoiceAgentCampaign,
+  customerIds: string[]
+): Promise<Set<string>> {
+  if (campaign.target_source === 'followup_due' || customerIds.length === 0) return new Set();
+  const filas = (unwrap(
+    'enqueueCampaignTargets.yaAtendidos',
+    await supabase
+      .from('voice_agent_calls')
+      .select('customer_id, status, completed_at')
+      .eq('organization_id', orgId)
+      .eq('campaign_id', campaign.id)
+      .in('customer_id', customerIds)
+      .in('status', ['completed', 'transferred', 'canceled', 'skipped', 'no_answer', 'voicemail', 'failed'])
+  ) || []) as Array<{ customer_id: string; status: string; completed_at: string | null }>;
+  if (filas.length === 0) return new Set();
+  const retry = await getRetryPolicy(supabase, orgId, campaign.voice_agent_id);
+  return clientesNoReencolables(filas, campaign.target_source, retry);
 }
 
 /**
@@ -1450,6 +1516,8 @@ interface DialOutcome {
  * Marca una fila ya reclamada. Orden: cliente → consentimiento → teléfono marcable →
  * RNE → Ley 2300 (horario + tope semanal) → crédito → fila en `calls` → proveedor →
  * correlación. Es el punto ÚNICO por donde sale toda llamada del agente.
+ * Un número de prueba interno salta solo el tope semanal (lo decide
+ * `evaluarLey2300Cliente`) y la llamada queda marcada en `calls.metadata`.
  */
 async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
   const { supabase, orgId, campaign, vac, twilioClient, fromNumber, webhookBase, recording } = p;
@@ -1535,6 +1603,15 @@ async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
     };
   }
 
+  const marcaExencion = ley2300.exencion ? { ley2300_exencion: ley2300.exencion } : {};
+  if (ley2300.exencion) {
+    console.info('[voz] llamada eximida del tope semanal (Ley 2300) por número de prueba', {
+      org: orgId,
+      voice_agent_call_id: vac.id,
+      exencion: ley2300.exencion,
+    });
+  }
+
   // D6: crédito reservado ANTES de gastar en el proveedor.
   const reserved = await reserveVoiceCredits(orgId, CREDITS_RESERVED_PER_CALL, supabase);
   if (!reserved) {
@@ -1579,6 +1656,9 @@ async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
           source: 'voice_agent_campaign',
           campaign_id: campaign.id,
           voice_agent_call_id: vac.id,
+          // Auditoría: la llamada salió eximida del tope semanal de la Ley 2300
+          // por ser a un número de prueba interno (`crm_voice_test_numbers`).
+          ...marcaExencion,
         },
       })
       .select('id')
@@ -1664,7 +1744,7 @@ async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
       .update({
         status: 'failed',
         ended_at: new Date().toISOString(),
-        metadata: { source: 'voice_agent_campaign', error: message },
+        metadata: { source: 'voice_agent_campaign', error: message, ...marcaExencion },
         updated_at: new Date().toISOString(),
       })
       .eq('id', callRow.id)

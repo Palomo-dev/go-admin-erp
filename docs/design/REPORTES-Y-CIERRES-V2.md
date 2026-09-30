@@ -116,17 +116,18 @@ septiembre 2026 contra agosto, cuadradas entre sí.
 
 | Página | Nodo | Contenido | Estado |
 |---|---|---|---|
-| 1 | — | Portada, KPIs consolidados e índice de capítulos | Pendiente |
+| 1 | `1327:7949` | Portada, KPIs consolidados e índice de capítulos | Hecha |
 | 2 | `1265:7913` | Contabilidad: estado de resultados y balance general | Hecha |
 | 3 | `1265:9236` | Balance de prueba, libro diario por origen, gastos por naturaleza y periodo fiscal | Hecha |
-| 4 | — | Finanzas y tesorería | Pendiente |
+| 4 | `1315:7917` | Finanzas y tesorería | Hecha |
 | 5–7 | `1242:8254`, `1244:8620`, `1248:8562` | Ventas (POS) | Hechas |
 | 8 | `1250:8569` | Inventario | Hecha |
-| 9 | — | Compras y movimiento de inventario valorizado | Pendiente |
-| 10 | — | Personas (nómina) | Pendiente |
-| 11 | — | Clientes, CRM y otros módulos | Pendiente |
+| 9 | `1317:7934` | Compras y movimiento de inventario valorizado | Hecha |
+| 10 | `1320:7939` | Personas (nómina) | Hecha |
+| 11 | `1323:7941` | Clientes, CRM y otros módulos | Hecha |
 | 12 | `1256:7916` | Sucursales, cómo se calcula y firmas | Hecha |
 | 80 mm | `1257:7930`, `1257:8159` | Cierre de turno por franja, general y por trabajador | Hechas |
+| — | `1330:8025` | Tipos de periodo: qué cambia en cada cierre, versiones y bloqueo | Hecho |
 
 Comprobaciones de cuadre ya dibujadas:
 
@@ -184,15 +185,79 @@ Comprobaciones de cuadre ya dibujadas:
   «Embudo de ventas» y «Performance de Agentes» → «Desempeño de agentes».
   Todo en 4 idiomas.
 
-## 6. Preguntas para el dueño
+## 6. Decisiones del dueño (2026-09-29)
 
-1. ¿Las cuatro plantillas del cierre (Completo, Contable y financiero, Ventas y
-   caja, Personalizada) cubren lo que usan los clientes, o falta alguna?
-2. ¿«Programar envíos» (reportes por correo) entra en esta fase o después?
-3. ¿El cierre mensual debe cerrar el periodo fiscal al firmarse, o solo avisar
-   que sigue abierto?
+| Pregunta | Decisión |
+|---|---|
+| Plantillas del cierre | Se mantienen las cuatro: Completo, Contable y financiero, Ventas y caja, Personalizada. |
+| Cierre ya emitido | Queda congelado. Recalcular crea una versión nueva (v2, v3…) y la anterior pasa a «Reemplazada»; ninguna se borra. |
+| Franja horaria | Aplica a todos los módulos. Los reportes que no la admiten la muestran deshabilitada con el motivo. |
+| «Programar envíos» | Entra en esta fase. |
+| Firma del cierre mensual | Firmar cierra el periodo contable. Reabrirlo exige permiso y queda en la auditoría. |
+| Alcance de sucursal | Igual que en POS y productos: el reporte se filtra por sucursal y el consolidado solo aparece con acceso a todas. Un gerente de una sede no ve las demás. El servidor lo decide (`member_branches`); sin filas, no hay restricción. |
+| Correcciones de código | Van en un PR aparte, no en este. |
 
-## 7. Chequeo de Figma (2026-09-29)
+## 7. Todas las pantallas de reportes (secciones 10–21, página 14)
+
+Cada módulo tiene su sección con una **pantalla de lista** (arriba a la
+izquierda) y un **visor por reporte**, en cuadrícula de 4 columnas. Todos los
+visores parten de la plantilla `1279:6586` y comparten estructura: migas,
+pestañas de vista, filtros (franja, comparativo, sucursal), KPIs, tabla con
+anchos calculados según el contenido y panel «Lectura rápida». Cuando el
+reporte es de toda la organización, la sucursal dice «no aplica».
+
+| Sección | Nodo | Lista | Visores |
+|---|---|---|---|
+| 10. Contabilidad | `1339:6000` | `1377:39135` (7 reportes) | 6 |
+| 11. Finanzas y tesorería | `1339:6001` | `1377:39803` (12) | 12 |
+| 12. Ventas y POS | `1339:6002` | `1377:40556` (6) | 6 |
+| 13. Inventario | `1339:6003` | `1377:41201` (9) | 9 |
+| 14. Compras | `1339:6004` | `1377:41897` (3) | 3 |
+| 15. Personas (nómina) | `1339:6005` | `1380:40990` (3) | 3 |
+| 16. Clientes y CRM | `1339:6006` | `1380:41588` (9) | 9 |
+| 17. Atención y mensajería | `1339:6007` | `1380:42288` (7) | 7 |
+| 18. Operación y organización | `1339:6008` | `1380:42952` (11) | 11 |
+| 19. No contratados | `1339:6009` | `1380:43688` (12) | 12 |
+| **Total** | | **79 filas** | **78 visores** |
+
+El estado de resultados tiene su visor en la sección 9 (`1279:6586`); por eso
+Contabilidad lista 7 reportes y tiene 6 visores.
+
+La lista de cada módulo es una tabla de cuatro columnas:
+
+- **Reporte**: título y descripción en dos líneas.
+- **Filtros además del periodo**: comparativo, sucursal, franja y trabajador.
+- **Alcance**: «Por sucursal» o «Toda la org.».
+- **Estado**: «Existe», «Nuevo» o «Requiere plan».
+
+Sin acceso a todas las sucursales, los de «Toda la org.» salen bloqueados.
+
+**Sección 20** (`1382:42880`): las demás pestañas del centro de reportes.
+
+| Nodo | Pantalla | Qué muestra |
+|---|---|---|
+| `1382:43483` | Favoritos | Reportes con estrella y los últimos filtros usados en cada uno. Son personales. |
+| `1382:43640` | Cierres v2 | Número, alcance, versión (vigente o reemplazada), estado (borrador, emitido, firmado · periodo cerrado, reemplazado) y acciones (ver, PDF, versiones, auditoría). |
+| `1382:43797` | Programados | Envío, destinatarios, frecuencia, formato, próximo envío y estado (activo o pausado). |
+| `1382:43954` | Historial | Quién abrió, exportó, envió o recalculó cada reporte, con los filtros usados. Solo lectura. |
+| `1390:44739` | Diálogo «Programar envío» | Reporte, día y hora, frecuencia, periodo y franja, sucursal y comparativo, formato y destinatarios. Cada destinatario muestra su alcance («Solo Sucursal Norte»); los correos externos requieren aprobación. Si alguien pierde el acceso, el envío se pausa para esa persona. |
+| `1382:44111` | Gerente de una sede | Sucursal fija y deshabilitada, aviso «Estás viendo solo Sucursal Norte» con «Solicitar acceso», y los reportes de toda la organización marcados «Sin acceso». |
+
+**Sección 21** (`1393:44827`), móvil v2: inicio por módulos (`1393:44864`),
+lista de un módulo (`1393:45725`), visor de ventas por hora con la franja
+arriba y tarjetas por hora (`1393:46351`), cierres con estado y versión
+(`1393:47056`) y gerente de una sede con candado en los reportes de toda la
+organización (`1393:47688`). Se armaron con `MobileTabBar`, `PageHeader`
+móvil, `ListCard`, `SearchBar`, `FilterButton` y `SelectorFranja`.
+
+Detalle de implementación: el `PageHeader` móvil copiado de otra pantalla
+traía los textos sobrescritos. Cambiar la propiedad `Título` no los reemplaza,
+así que hubo que editar el texto directamente.
+
+El Índice (`1235:767457`) enlaza las 21 secciones. El Léeme de 01 Sistema
+incluye ya «14 Reportes» en la lista de páginas.
+
+## 8. Chequeo de Figma (2026-09-29)
 
 | Página | Nodos de primer nivel que no son SECTION | Solapes entre secciones | Hijos fuera de su sección | Instancias sin componente | Componentes fuera de 02 |
 |---|---|---|---|---|---|

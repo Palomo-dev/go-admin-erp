@@ -526,7 +526,7 @@ export async function completeSignupAfterEmailConfirmation(supabase: SupabaseCli
           // Importar Stripe de forma lazy para no bloquear si no está configurado
           const Stripe = (await import('stripe')).default;
           const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-            apiVersion: '2024-11-20.acacia',
+            apiVersion: '2025-09-30.clover',
           });
 
           // Caso 1: Usuario saltó la tarjeta -> crear customer y subscription

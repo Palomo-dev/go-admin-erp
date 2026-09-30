@@ -300,7 +300,49 @@ async function updateSubscriptionInDatabase(
     }
 
     if (action === 'deleted' || subscription.status === 'canceled') {
-      // Actualizar como cancelada
+      // PROTECCIÓN CRÍTICA: No cancelar suscripciones con periodo pagado vigente
+      // Buscar primero la suscripción actual para verificar si tiene pago manual
+      const { data: existingSub } = await supabase
+        .from('subscriptions')
+        .select('id, current_period_end, status')
+        .eq('stripe_subscription_id', stripeSubscriptionId)
+        .maybeSingle()
+
+      if (existingSub) {
+        const localPeriodEnd = existingSub.current_period_end ? new Date(existingSub.current_period_end) : null;
+        const now = new Date();
+        
+        // Si el periodo local aún no ha terminado y está muy en el futuro, es probable pago manual
+        if (localPeriodEnd && localPeriodEnd > now) {
+          const daysRemaining = Math.floor((localPeriodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          
+          if (daysRemaining > 30) {
+            console.warn(`⚠️ PROTECCIÓN CANCELACIÓN - Org ${organizationId}: Pago manual vigente detectado`);
+            console.warn(`   Local period_end: ${localPeriodEnd.toISOString().split('T')[0]} (${daysRemaining} días restantes)`);
+            console.warn(`   NO se cancelará la suscripción, se mantiene el acceso hasta fin de periodo pagado`);
+            
+            // Solo actualizar cancel_at pero NO el status ni el period_end
+            const { error } = await supabase
+              .from('subscriptions')
+              .update({
+                cancel_at: subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString() : null,
+                cancel_at_period_end: true,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', existingSub.id)
+
+            if (error) {
+              console.error('❌ Error actualizando cancelación protegida:', error)
+            } else {
+              console.log(`✅ Cancelación protegida registrada (org ${organizationId}): se cancelará al fin del periodo local`)
+            }
+            
+            return; // No continuar con la cancelación inmediata
+          }
+        }
+      }
+
+      // Cancelación normal (sin protección)
       const { error } = await supabase
         .from('subscriptions')
         .update({
@@ -332,15 +374,64 @@ async function updateSubscriptionInDatabase(
         planId = planData?.id || null
       }
 
-      // Buscar suscripción existente: primero por stripe_subscription_id, luego por organization_id
+      // Buscar suscripción existente con datos completos para protección de pagos manuales
       const { data: existingSub } = await supabase
         .from('subscriptions')
-        .select('id, plan_id')
+        .select('id, plan_id, status, trial_end, current_period_end, billing_period')
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle()
 
+      // PROTECCIÓN CRÍTICA: Pagos anuales manuales (orgs 199, 200, etc.)
+      // Si la suscripción local tiene un current_period_end posterior al de Stripe,
+      // es probable que sea un pago anual por fuera de Stripe. NO sobrescribir.
+      const stripePeriodEnd = new Date((subscription as unknown as PeriodoSuscripcion).current_period_end * 1000);
+      const localPeriodEnd = existingSub?.current_period_end ? new Date(existingSub.current_period_end) : null;
+      
+      let isManualPayment = false;
+      if (localPeriodEnd && localPeriodEnd > stripePeriodEnd) {
+        const daysDiff = Math.floor((localPeriodEnd.getTime() - stripePeriodEnd.getTime()) / (1000 * 60 * 60 * 24));
+        isManualPayment = daysDiff > 30; // Diferencia > 30 días = probable pago manual
+        
+        if (isManualPayment) {
+          console.warn(`⚠️ PROTECCIÓN ACTIVADA - Org ${organizationId}: Pago manual detectado`);
+          console.warn(`   Local period_end: ${localPeriodEnd.toISOString().split('T')[0]} vs Stripe: ${stripePeriodEnd.toISOString().split('T')[0]} (${daysDiff} días)`);
+          console.warn(`   NO se sobrescribirá status, trial_end ni current_period_end desde Stripe`);
+        }
+      }
+
+      // Estados que indican problema en Stripe
+      const problematicStatuses = ['past_due', 'canceled', 'incomplete', 'incomplete_expired', 'unpaid'];
+      const isProblematicStatus = problematicStatuses.includes(subscription.status);
+
+      // Si hay pago manual y Stripe tiene estado problemático, no degradar el estado local
+      if (isManualPayment && isProblematicStatus && existingSub) {
+        console.warn(`⚠️ PROTECCIÓN - Org ${organizationId}: Stripe status="${subscription.status}" ignorado, manteniendo status local="${existingSub.status}"`);
+        
+        // Solo actualizar IDs de Stripe, no tocar status ni fechas
+        const protectedUpdate = {
+          stripe_subscription_id: stripeSubscriptionId,
+          stripe_customer_id: stripeCustomerId,
+          plan_id: planId || existingSub.plan_id,
+          updated_at: new Date().toISOString(),
+        };
+
+        const result = await supabase
+          .from('subscriptions')
+          .update(protectedUpdate)
+          .eq('id', existingSub.id);
+        
+        if (result.error) {
+          console.error('❌ Error actualizando suscripción (protegida):', result.error);
+        } else {
+          console.log(`✅ Suscripción protegida actualizada (org ${organizationId}): solo IDs de Stripe`);
+        }
+        
+        return; // No continuar con la actualización normal
+      }
+
+      // Actualización normal (sin protección)
       const subscriptionData = {
         organization_id: organizationId,
         stripe_subscription_id: stripeSubscriptionId,

@@ -6,7 +6,8 @@
  * SOLO LECTURA: no modifica datos de producción.
  *
  * Identifica organizaciones que tienen módulos activos que su plan actual
- * no incluye en module_config.available_modules.
+ * no incluye en module_config.available_modules (consultado directamente
+ * desde la tabla plans, sin duplicación).
  *
  * Uso:
  *   node scripts/analyze-module-plan-compliance.js
@@ -35,7 +36,7 @@ async function analyzeModulePlanCompliance() {
   console.log('='.repeat(70));
   console.log();
 
-  // 1. Obtener todos los planes con su configuración de módulos
+  // 1. Obtener todos los planes activos con module_config (fuente única de verdad)
   const { data: plans, error: plansError } = await supabase
     .from('plans')
     .select('id, code, name, module_config, is_active');
@@ -44,6 +45,20 @@ async function analyzeModulePlanCompliance() {
     console.error('Error obteniendo planes:', plansError);
     process.exit(1);
   }
+
+  console.log('Matriz de planes (desde tabla plans):');
+  console.log('-'.repeat(70));
+  plans
+    .filter(p => p.is_active)
+    .forEach(plan => {
+      const config = plan.module_config || {};
+      const coreModules = config.core_modules || [];
+      const availableModules = config.available_modules || [];
+      console.log(`\n${plan.name} (${plan.code}):`);
+      console.log(`  Core: ${coreModules.join(', ')}`);
+      console.log(`  Disponibles: ${availableModules.join(', ')}`);
+    });
+  console.log();
 
   // Construir mapa: plan_id -> módulos permitidos
   const planModules = new Map();
@@ -75,10 +90,13 @@ async function analyzeModulePlanCompliance() {
         id,
         plan_id,
         status,
+        billing_cycle,
         plans!inner(
           id,
           code,
-          name
+          name,
+          price_usd_month,
+          price_usd_year
         )
       )
     `)
@@ -93,6 +111,7 @@ async function analyzeModulePlanCompliance() {
   // 3. Para cada organización, obtener sus módulos activos
   const affectedOrgs = [];
   const moduleViolationCounts = {};
+  let protectedCount = 0;
 
   for (const org of orgs) {
     const subscription = Array.isArray(org.subscriptions)
@@ -105,6 +124,15 @@ async function analyzeModulePlanCompliance() {
     const planInfo = planModules.get(plan.id);
 
     if (!planInfo) continue;
+
+    // Verificar si es suscripción protegida (pago o anual)
+    const isPaid = 
+      parseFloat(plan.price_usd_month || '0') > 0 ||
+      parseFloat(plan.price_usd_year || '0') > 0;
+    const isAnnual = 
+      subscription.billing_cycle === 'yearly' || 
+      subscription.billing_cycle === 'annual';
+    const isProtected = isPaid || isAnnual;
 
     // Obtener módulos activos no-core de esta organización
     const { data: activeModules, error: modulesError } = await supabase
@@ -130,8 +158,12 @@ async function analyzeModulePlanCompliance() {
         plan_code: planInfo.code,
         plan_name: planInfo.name,
         subscription_status: subscription.status,
+        billing_cycle: subscription.billing_cycle,
+        is_protected: isProtected,
         unauthorized_modules: unauthorizedModules
       });
+
+      if (isProtected) protectedCount++;
 
       // Contar por módulo
       unauthorizedModules.forEach(moduleCode => {
@@ -143,6 +175,7 @@ async function analyzeModulePlanCompliance() {
   // 4. Mostrar resultados
   console.log(`Total de organizaciones analizadas: ${orgs.length}`);
   console.log(`Organizaciones con módulos fuera de plan: ${affectedOrgs.length}`);
+  console.log(`  Protegidas de enforcement (pago/anual): ${protectedCount}`);
   console.log();
 
   if (affectedOrgs.length === 0) {
@@ -160,22 +193,26 @@ async function analyzeModulePlanCompliance() {
   console.log();
 
   console.log('Detalle de organizaciones afectadas:');
-  console.log('-'.repeat(70));
-  console.log('Org ID | Plan       | Estado    | Módulos no permitidos');
-  console.log('-'.repeat(70));
+  console.log('-'.repeat(80));
+  console.log('Org ID | Plan       | Estado | Ciclo   | Protegida | Módulos no permitidos');
+  console.log('-'.repeat(80));
 
   affectedOrgs.forEach(org => {
     const modulesStr = org.unauthorized_modules.join(', ');
+    const protectedMark = org.is_protected ? '✓' : ' ';
     console.log(
       `${String(org.org_id).padEnd(6)} | ` +
       `${org.plan_code.padEnd(10)} | ` +
-      `${org.subscription_status.padEnd(9)} | ` +
+      `${org.subscription_status.padEnd(6)} | ` +
+      `${(org.billing_cycle || 'N/A').padEnd(7)} | ` +
+      `${protectedMark.padEnd(9)} | ` +
       modulesStr
     );
   });
 
   console.log();
   console.log('Nota: los nombres de organizaciones no se muestran (repositorio público).');
+  console.log('Nota: organizaciones protegidas (✓) NO serán bloqueadas en modo enforce.');
   console.log();
 
   // Salida en formato JSON si se solicita
@@ -186,6 +223,7 @@ async function analyzeModulePlanCompliance() {
     console.log(JSON.stringify({
       total_analyzed: orgs.length,
       total_affected: affectedOrgs.length,
+      total_protected: protectedCount,
       module_violations: moduleViolationCounts,
       affected_organizations: affectedOrgs
     }, null, 2));
@@ -194,10 +232,10 @@ async function analyzeModulePlanCompliance() {
   if (args.includes('--format=csv')) {
     console.log('='.repeat(70));
     console.log('Salida CSV:');
-    console.log('org_id,plan_code,plan_name,subscription_status,unauthorized_modules');
+    console.log('org_id,plan_code,plan_name,subscription_status,billing_cycle,is_protected,unauthorized_modules');
     affectedOrgs.forEach(org => {
       console.log(
-        `${org.org_id},${org.plan_code},"${org.plan_name}",${org.subscription_status},"${org.unauthorized_modules.join(';')}"`
+        `${org.org_id},${org.plan_code},"${org.plan_name}",${org.subscription_status},${org.billing_cycle || ''},${org.is_protected},"${org.unauthorized_modules.join(';')}"`
       );
     });
   }

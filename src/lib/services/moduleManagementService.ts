@@ -75,6 +75,84 @@ export interface ModulePageToggleResult {
 
 export const moduleManagementService = {
   /**
+   * Obtener el modo de enforcement para una organización (GO-156)
+   * 
+   * Prioridad:
+   * 1. Excepción específica de la org en module_enforcement_exceptions
+   * 2. Configuración global en platform_settings
+   * 
+   * Solo la plataforma (service_role) puede cambiar estos valores.
+   */
+  async getEnforcementMode(
+    organizationId: number,
+    supabaseClient = supabase
+  ): Promise<'off' | 'warn' | 'enforce'> {
+    // 1. Verificar si hay excepción para esta organización
+    const { data: exception } = await supabaseClient
+      .from('module_enforcement_exceptions')
+      .select('enforcement_mode, expires_at')
+      .eq('organization_id', organizationId)
+      .maybeSingle();
+
+    if (exception) {
+      // Si tiene fecha de expiración y ya expiró, ignorar excepción
+      if (exception.expires_at) {
+        const expiry = new Date(exception.expires_at);
+        if (expiry < new Date()) {
+          // Excepción expirada, usar configuración global
+        } else {
+          return exception.enforcement_mode;
+        }
+      } else {
+        // Sin fecha de expiración, usar excepción permanente
+        return exception.enforcement_mode;
+      }
+    }
+
+    // 2. Usar configuración global
+    const { data: globalConfig } = await supabaseClient
+      .from('platform_settings')
+      .select('module_enforcement_mode')
+      .eq('id', 1)
+      .maybeSingle();
+
+    return globalConfig?.module_enforcement_mode || 'warn';
+  },
+
+  /**
+   * Verificar si una organización debe ser excluida del enforcement estricto (GO-156)
+   * 
+   * En modo 'enforce', nunca bloqueamos organizaciones con:
+   * - Suscripción activa de pago
+   * - Suscripción anual activa
+   * 
+   * Esto protege a clientes de pago de bloqueos automáticos sin decisión explícita.
+   */
+  async isProtectedFromEnforcement(
+    organizationId: number,
+    supabaseClient = supabase
+  ): Promise<boolean> {
+    const { data: subscription } = await supabaseClient
+      .from('subscriptions')
+      .select('status, billing_cycle, plan_id, plans!inner(price_usd_month, price_usd_year)')
+      .eq('organization_id', organizationId)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (!subscription) return false;
+
+    // Proteger suscripciones activas de pago
+    const isPaid = 
+      parseFloat(subscription.plans.price_usd_month || '0') > 0 ||
+      parseFloat(subscription.plans.price_usd_year || '0') > 0;
+
+    // Proteger suscripciones anuales
+    const isAnnual = subscription.billing_cycle === 'yearly' || subscription.billing_cycle === 'annual';
+
+    return isPaid || isAnnual;
+  },
+
+  /**
    * Verificar si un módulo está permitido por el plan de la organización (GO-156)
    * 
    * Retorna información sobre si el módulo está permitido y qué acción tomar
@@ -96,14 +174,8 @@ export const moduleManagementService = {
       };
     }
 
-    // Obtener modo de enforcement de la organización
-    const { data: prefs, error: prefsError } = await supabaseClient
-      .from('organization_preferences')
-      .select('module_enforcement_mode')
-      .eq('organization_id', organizationId)
-      .maybeSingle();
-
-    const enforcementMode = prefs?.module_enforcement_mode || 'warn';
+    // Obtener modo de enforcement
+    const enforcementMode = await this.getEnforcementMode(organizationId, supabaseClient);
 
     // Si está en modo 'off', no hay restricción
     if (enforcementMode === 'off') {
@@ -132,7 +204,7 @@ export const moduleManagementService = {
 
     const planInfo = planData[0];
 
-    // Obtener plan completo con module_config
+    // Obtener plan completo con module_config desde la tabla plans
     const { data: fullPlan, error: fullPlanError } = await supabaseClient
       .from('plans')
       .select('module_config')
@@ -168,8 +240,23 @@ export const moduleManagementService = {
     }
 
     // El módulo NO está en el plan
-    const warningMessage = `El módulo "${moduleCode}" no está incluido en tu plan ${planInfo.plan_name}. ` +
-      `Considera actualizar a un plan que lo incluya.`;
+    const warningMessage = `Este módulo no está incluido en tu plan ${planInfo.plan_name}. ` +
+      `Considera actualizar tu plan para mantenerlo.`;
+
+    // En modo 'enforce', verificar si la org está protegida
+    if (enforcementMode === 'enforce') {
+      const isProtected = await this.isProtectedFromEnforcement(organizationId, supabaseClient);
+      if (isProtected) {
+        // Org protegida: no bloquear pero sí avisar
+        return {
+          allowed: false,
+          reason: 'not_in_plan',
+          enforcement_mode: enforcementMode,
+          should_block: false,
+          warning_message: warningMessage + ' (Organización con suscripción activa - no bloqueado)'
+        };
+      }
+    }
 
     // En modo 'warn' permitimos pero avisamos; en modo 'enforce' bloqueamos
     return {

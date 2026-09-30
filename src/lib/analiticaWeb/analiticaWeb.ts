@@ -131,6 +131,17 @@ export interface FilaCiudad {
   sesiones: number;
 }
 
+/**
+ * Visitantes por región (`website_visits.region`, sin país: «ANT», «DC») del
+ * país pedido. Viene de la clave `regiones` de la RPC, sin el tope de 50
+ * ciudades.
+ */
+export interface FilaRegion {
+  region: string;
+  visitantes: number;
+  sesiones: number;
+}
+
 export interface DatosAnalitica {
   zona: string;
   desde: string;
@@ -143,6 +154,12 @@ export interface DatosAnalitica {
   pais: string | null;
   ciudades: FilaCiudad[];
   ciudadesTotal: number;
+  /**
+   * Regiones del país pedido. `null` (o ausente) cuando la RPC no trae la
+   * clave —una base sin la migración `analitica_web_regiones`—: entonces el
+   * mapa agrega los departamentos desde `ciudades`.
+   */
+  regiones?: FilaRegion[] | null;
   visitasConPais: number;
   /** Solo viene cuando el periodo no tiene ninguna visita ubicada. */
   visitasSinUbicacionTotal: number | null;
@@ -198,6 +215,11 @@ export function mapearRespuestaRpc(crudo: unknown): DatosAnalitica {
       sesiones: num(c.sesiones),
     })),
     ciudadesTotal: num(o.ciudades_total),
+    regiones: Array.isArray(o.regiones)
+      ? lista(o.regiones)
+          .filter((r) => typeof r.region === 'string' && r.region.trim() !== '')
+          .map((r) => ({ region: String(r.region), visitantes: num(r.visitantes), sesiones: num(r.sesiones) }))
+      : null,
     visitasConPais: num(o.visitas_con_pais),
     visitasSinUbicacionTotal: numONull(o.visitas_sin_ubicacion_total),
   };

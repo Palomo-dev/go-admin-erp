@@ -5,7 +5,9 @@
  *
  * Fila 1: coropleta del mundo («Visitantes por país») + tabla «Por país».
  * Fila 2, con un país elegido: si es Colombia, coropleta por departamento
- * (`website_visits.region`) + ciudades; si es otro país, solo sus ciudades.
+ * (`website_visits.region`: clave `regiones` de la RPC, o agregado desde las
+ * ciudades si la base aún no la trae) + ciudades; si es otro país, solo sus
+ * ciudades.
  * Clic en un departamento filtra la lista de ciudades (no hay coordenadas de
  * ciudad, así que las ciudades siguen como lista).
  *
@@ -22,7 +24,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { ArrowLeft, MapPin, X } from 'lucide-react';
 import type { DatosAnalitica } from '@/lib/analiticaWeb/analiticaWeb';
 import { sinUbicacion } from '@/lib/analiticaWeb/analiticaWeb';
-import { agregarPorPais, agregarPorRegion, filtrarCiudadesPorRegion, nombreRegion } from '@/lib/analiticaWeb/mapa';
+import { agregarPorPais, filtrarCiudadesPorRegion, nombreRegion, valoresRegionMapa } from '@/lib/analiticaWeb/mapa';
 import type { FormaDibujada } from './mapas/proyeccion';
 
 function EsqueletoMapa() {
@@ -151,7 +153,11 @@ function DetallePais({ datos, pais, cargandoPais, onVolver }: { datos: DatosAnal
   const [region, setRegion] = useState<string | null>(null);
   const esColombia = pais === 'CO';
   const nombre = nombrePais(pais, locale);
-  const { valores: valoresRegion } = useMemo(() => agregarPorRegion(datos.ciudades, pais), [datos.ciudades, pais]);
+  // `regiones` de la RPC si viene; si no, agregado desde las 50 ciudades (cota inferior).
+  const { valores: valoresRegion, parcial: regionesParciales } = useMemo(
+    () => valoresRegionMapa(datos, pais),
+    [datos, pais],
+  );
   const ciudades = filtrarCiudadesPorRegion(datos.ciudades, pais, region);
   const maxC = Math.max(1, ...ciudades.map((c) => c.visitantes));
   const otras = region ? 0 : Math.max(0, datos.ciudadesTotal - datos.ciudades.length);
@@ -176,7 +182,7 @@ function DetallePais({ datos, pais, cargandoPais, onVolver }: { datos: DatosAnal
             etiqueta={t('mapa.colombiaAria', { pais: nombre })}
             testId="mapa-colombia"
           />
-          {datos.ciudadesTotal > datos.ciudades.length && (
+          {regionesParciales && (
             <p className="text-xs text-fg-secondary">{t('notaDepartamentos', { n: datos.ciudades.length })}</p>
           )}
         </Tarjeta>

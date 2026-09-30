@@ -351,10 +351,12 @@ Decisiones al pasar a código:
 
 - Enlace «Ver analítica web» desde el inicio (sesión del inicio).
 - Mapa con geometrías reales y conversión por país (necesita `session_id` en `web_orders`).
-- `get_user_permission_codes` acepta cualquier `p_user_id` (SECURITY DEFINER): un miembro podría leer los
-  códigos de otra persona. La ruta nueva solo la llama con el usuario de la sesión; conviene endurecerla.
+- ~~`get_user_permission_codes` acepta cualquier `p_user_id` (SECURITY DEFINER): un miembro podría leer los
+  códigos de otra persona. La ruta nueva solo la llama con el usuario de la sesión; conviene endurecerla.~~
+  **Resuelto** en la Tanda 3 (2026-09-30): migración `20260930220000_permisos_codigos_solo_propios`.
 - `fn_analitica_web` tarda ~1,6 s con 90 días en la organización con más visitas (315 000 filas): suficiente
-  para una pantalla de administración; si crece, agregar por día en una tabla.
+  para una pantalla de administración; si crece, agregar por día en una tabla. *(Tanda 3: con el índice parcial
+  por país baja a ~1,1–1,2 s con `pais=CO`; la agregación diaria sigue pendiente si crece.)*
 
 ---
 
@@ -521,5 +523,78 @@ El bundle de la pantalla solo suma la lógica pura (`lib/analiticaWeb/mapa.ts`, 
 
 ### Pendiente
 
-- Agregar `regiones` a `fn_analitica_web` (visitantes por `region` sin el tope de 50 ciudades) para que el mapa
-  de Colombia no dependa de la lista de ciudades.
+- ~~Agregar `regiones` a `fn_analitica_web` (visitantes por `region` sin el tope de 50 ciudades) para que el mapa
+  de Colombia no dependa de la lista de ciudades.~~ **Resuelto** en la Tanda 3 (2026-09-30): migración
+  `20260930220100_analitica_web_regiones`.
+
+## Tanda 3 — permisos y regiones (2026-09-30)
+
+Dos pendientes de las tandas anteriores. Ambas migraciones aplicadas por MCP (`apply_migration`), con su `.sql`
+y su rollback; el cuerpo del rollback es el original byte a byte (md5 de `prosrc` comprobado en local y en la base,
+dentro de un bloque que se revierte).
+
+### Migraciones
+
+| Migración | Qué hace | md5(prosrc) antes → después |
+|---|---|---|
+| `20260930220000_permisos_codigos_solo_propios` | `get_user_permission_codes` solo devuelve los permisos propios; los de otra persona, solo a un admin de la organización o a quien tenga `users.view` | `1579f8d7b5eed1a8033cd2e528fe211f` → `8604dddab1e2e6eb3e72cb461b7752c6` |
+| `20260930220100_analitica_web_regiones` | `fn_analitica_web` suma la clave `regiones`; índice parcial `idx_website_visits_org_pais_created` | `750b6a406c3c1061766c423dbdf3221e` → `369be070ae3bd1a2e44373917fe61e18` |
+
+### `get_user_permission_codes`: solo los propios
+
+- Con sesión (`auth.uid()` no nulo): `p_user_id = auth.uid()` funciona igual que antes. Para otra persona exige
+  pertenencia (`fn_assert_acceso_org`) y, además, ser admin de esa organización (super admin o rol 1/2 **por id**,
+  el mismo criterio de `isOrgAdminLike` y `fn_crm_tiene_permiso`) o tener `users.view`
+  (`check_user_permission`, rol + cargo). Si no, `42501`.
+- Sin sesión: `anon`/`authenticated` sin `sub` reciben `42501`; `service_role` y el trabajo interno siguen igual.
+- Se fija `search_path` (no tenía) y `revoke execute … from public, anon` explícito (anon ya no lo tenía).
+- Llamadores revisados (todos piden los del usuario de la sesión, así que ninguno cambia): `/api/me/permisos`,
+  `/api/crm/permisos`, `lib/ai/assistant/capabilities.ts`, `busquedaGlobal.server.ts`, `membresias.server.ts`,
+  `permissionService.checkMultiplePermissions` (vía `useActiveModules` con `user.id`) y
+  `lib/middleware/permissions.ts` (vía `usePermissionContext` con `session.user.id`). En SQL solo la llama
+  `fn_tiene_permiso`, con `auth.uid()`. Ninguna edge function la usa y el repo del sitio tampoco.
+- Pruebas simuladas (`set_config('request.jwt.claims')` + `set local role`, en bloques que se revierten; org 120
+  y org 142): propio → OK (17 códigos); otro miembro sin permiso → `42501`; admin de la org → OK; admin de otra
+  org pidiendo en la org 120 → `42501` (y en su propia org, donde la persona no es miembro, lista vacía); `service_role`
+  → OK; `anon` → sin EXECUTE; `authenticated` sin `sub` → `42501`; `fn_tiene_permiso` del propio usuario → `true`.
+  Antes de la migración las ocho llamadas devolvían los códigos (incluido otro usuario y otra organización).
+- Guardarraíl 38 (`src/__tests__/guardrails.test.ts`): todo `.rpc('get_user_permission_codes', …)` de `src/`
+  pasa `ctx.userId`/`userId`, y la migración conserva la guarda, el `search_path` y el revoke.
+
+### `fn_analitica_web`: clave `regiones`
+
+- Aditiva: `regiones = [{ region, visitantes, sesiones }]` del país pedido (`p_pais`), agrupado por
+  `website_visits.region`, sin el tope de 50 ciudades (hasta 100 filas). Sin país pedido: `[]`. Las claves
+  existentes no cambian (comprobado: la salida nueva menos `regiones` es igual a la anterior).
+- Solo del país pedido, no de todos: la pantalla ya pide el país al abrir Colombia (o cualquier otro), así que
+  `regiones` llega exactamente cuando el mapa la necesita y no se paga en la carga del mundo.
+- Seguridad igual que antes: la función es **SECURITY INVOKER** (no DEFINER; así estaba y así se queda: lee con
+  la RLS de la sesión), `fn_assert_acceso_org` al entrar, `search_path` fijo, EXECUTE solo para `authenticated`
+  y `service_role`. Verificado: miembro de otra organización → `42501`; `anon` → sin EXECUTE.
+- Rendimiento (organización con más visitas, 90 días, `pais=CO`; `EXPLAIN ANALYZE` de la llamada):
+  antes 2 328 ms en frío y 1 513–1 742 ms en caliente; después 1 123–1 198 ms, ya con la consulta de regiones.
+  Sin país: 1 242 → 1 131 ms. El índice parcial `(organization_id, country, created_at) where country is not null`
+  hace que las consultas por país (ciudades, total de ciudades y regiones) no recorran las ~120 000 visitas sin
+  país del rango. Se creó sin `CONCURRENTLY` (apply_migration va en una transacción): en el dry-run tardó
+  ~0,7 s y ocupa 16 kB, así que el bloqueo de escrituras sobre `website_visits` fue breve.
+- Cliente: `mapearRespuestaRpc` deja `regiones` en `null` si la RPC no la trae; `valoresRegionMapa` usa
+  `regiones` cuando viene (normalizada con `codigoRegionIso`, alias «BOG» → «CO-DC», repetidos sumados) y, si no,
+  agrega desde las ciudades como antes. El aviso «Los departamentos suman las N ciudades…» solo sale en ese
+  respaldo y cuando hay más ciudades que las listadas.
+
+### Pruebas
+
+| Suite | Resultado |
+|---|---|
+| `lib/analiticaWeb` (+ mapeo de `regiones`, `agregarRegiones`, `valoresRegionMapa` con y sin la clave) | 28/28, TZ=UTC y TZ=America/Bogota |
+| `components/analiticaWeb` (+ departamento fuera de las ciudades con `regiones`; respaldo con aviso) | en verde |
+| guardrails (con el 38), `api/me/permisos`, `busqueda-global`, membresías, `lib/organizacion`, `api/analitica-web` | 26 suites, 528 pruebas |
+
+`tsc` acotado a los archivos tocados (y lo que importan): 0 errores. ESLint limpio en los archivos tocados.
+
+### Pendiente
+
+- No hay en la base ningún miembro no admin con `users.view` para probar esa rama con datos reales; la rama
+  usa `check_user_permission`, la misma función que ya resuelve los demás permisos.
+- La lista de ciudades sigue con el tope de 50: al filtrar por un departamento que no tiene ciudades en esa
+  lista, el mapa lo pinta pero la tabla dice «sin ciudades».

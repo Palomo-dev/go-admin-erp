@@ -3281,3 +3281,45 @@ describe('36. CRM ola 1: escrituras de oportunidades/actividades por el servidor
     expect(alta).not.toMatch(/v_data\s*->>\s*'record_type'/);
   });
 });
+/**
+ * 38. get_user_permission_codes: cada quien lee solo sus propios permisos
+ * (tanda 3, 2026-09-30, docs/design/SHELL-FIGMA-A-CODIGO.md).
+ *
+ * La RPC es SECURITY DEFINER y aceptaba cualquier `p_user_id`. Desde
+ * `20260930220000_permisos_codigos_solo_propios` la base solo deja pedir los de
+ * otra persona a un admin de la organización (super admin / rol 1-2 por id) o a
+ * quien tenga `users.view`. Todos los llamadores de src/ piden los del usuario
+ * de la sesión: si alguno empieza a pasar otro id, la base lo rechaza con 42501
+ * y esta prueba avisa antes.
+ */
+describe('38. get_user_permission_codes: solo los permisos propios', () => {
+  test('todo llamador de src/ pasa el usuario de la sesión como p_user_id', () => {
+    const permitidos = new Set(['ctx.userId', 'userId']);
+    const ofensores: string[] = [];
+    let total = 0;
+    for (const f of walkDir(SRC_ROOT)) {
+      if (/__tests__|\.test\.tsx?$/.test(f)) continue;
+      const src = readFile(f);
+      const llamadas = src.match(/rpc\(\s*'get_user_permission_codes'\s*,\s*\{[^}]*\}/g) ?? [];
+      for (const l of llamadas) {
+        total += 1;
+        const m = l.match(/p_user_id\s*:\s*([\w.]+)/);
+        if (!m || !permitidos.has(m[1])) ofensores.push(`${rel(f)}: ${l.replace(/\s+/g, ' ')}`);
+      }
+    }
+    expect(ofensores).toEqual([]);
+    // Si el regex dejara de encontrar llamadas, la prueba no protegería nada.
+    expect(total).toBeGreaterThanOrEqual(7);
+  });
+
+  test('la migración restringe a los propios, fija search_path y revoca a anon', () => {
+    const base = '20260930220000_permisos_codigos_solo_propios';
+    const sql = readFile(path.join(REPO_ROOT, 'supabase', 'migrations', `${base}.sql`));
+    expect(fs.existsSync(path.join(REPO_ROOT, 'supabase', 'rollbacks', `${base}_rollback.sql`))).toBe(true);
+    expect(sql).toMatch(/p_user_id IS DISTINCT FROM v_uid/);
+    expect(sql).toMatch(/fn_assert_acceso_org\(p_organization_id\)/);
+    expect(sql).toMatch(/check_user_permission\(v_uid, p_organization_id, 'users\.view'\)/);
+    expect(sql).toMatch(/set search_path to 'public', 'pg_temp'/);
+    expect(sql).toMatch(/revoke execute on function public\.get_user_permission_codes\(uuid, integer\) from public, anon/);
+  });
+});

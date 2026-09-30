@@ -153,3 +153,26 @@ test('clic en un país del mapa del mundo lo elige', () => {
   fireEvent.click(container.querySelector('[data-testid="mapa-mundo"] [data-codigo="MX"]')!);
   expect(onElegirPais).toHaveBeenCalledWith('MX');
 });
+
+test('Colombia: con `regiones` de la RPC pinta departamentos fuera de las ciudades y no avisa cota; sin ella, cae a las ciudades', () => {
+  const nota = 'Los departamentos suman';
+  // 60 ciudades en total pero solo 3 en la lista: Valle del Cauca no tiene ciudad listada
+  // (el mapa falso solo trae DC, ANT y VAC).
+  const base = { ...DATOS, ciudadesTotal: 60 };
+  const conRegiones = renderConIdioma(
+    <DeDondeEntran
+      datos={{ ...base, regiones: [{ region: 'DC', visitantes: 1042, sesiones: 1588 }, { region: 'ANT', visitantes: 700, sesiones: 1000 }, { region: 'VAC', visitantes: 5, sesiones: 6 }] }}
+      cargandoPais={false}
+      onElegirPais={jest.fn()}
+    />,
+  );
+  const valle = (c: HTMLElement) => c.querySelector('[data-testid="mapa-colombia"] [data-codigo="CO-VAC"]')!;
+  expect(valle(conRegiones.container).getAttribute('aria-label')).toMatch(/^Valle del Cauca/);
+  expect(valle(conRegiones.container).getAttribute('aria-label')).not.toMatch(/sin visitas/i);
+  expect(conRegiones.container.textContent).not.toContain(nota);
+  conRegiones.unmount();
+
+  const respaldo = renderConIdioma(<DeDondeEntran datos={{ ...base, regiones: null }} cargandoPais={false} onElegirPais={jest.fn()} />);
+  expect(valle(respaldo.container).getAttribute('aria-label')).toMatch(/sin visitas/i);
+  expect(respaldo.container.textContent).toContain(nota);
+});

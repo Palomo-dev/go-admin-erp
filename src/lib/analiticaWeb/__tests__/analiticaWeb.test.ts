@@ -92,6 +92,25 @@ describe('mapeo e indicadores', () => {
     expect(mapearRespuestaRpc({ actual: { venta_media: null } }).actual.ventaMedia).toBeNull();
   });
 
+  test('`regiones`: se mapea si viene; null si la RPC no la trae (base atrasada)', () => {
+    const conRegiones = mapearRespuestaRpc({
+      pais: 'CO',
+      regiones: [
+        { region: 'ANT', visitantes: '12', sesiones: 20 },
+        { region: '', visitantes: 3, sesiones: 3 },
+        { region: null, visitantes: 1, sesiones: 1 },
+        { region: 'DC', visitantes: 9 },
+      ],
+    });
+    expect(conRegiones.regiones).toEqual([
+      { region: 'ANT', visitantes: 12, sesiones: 20 },
+      { region: 'DC', visitantes: 9, sesiones: 0 },
+    ]);
+    expect(mapearRespuestaRpc({ pais: 'CO', regiones: [] }).regiones).toEqual([]);
+    expect(mapearRespuestaRpc({ pais: 'CO' }).regiones).toBeNull();
+    expect(mapearRespuestaRpc({ pais: 'CO', regiones: 'basura' }).regiones).toBeNull();
+  });
+
   test('conversión = pedidos / sesiones (3,4 %) y diferencia en pp', () => {
     const k = indicadores(d);
     expect(k.conversion.valor).toBeCloseTo(164 / 4812, 6);

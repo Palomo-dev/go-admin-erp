@@ -14,12 +14,14 @@ import {
   RELLENOS_ESCALA,
   agregarPorPais,
   agregarPorRegion,
+  agregarRegiones,
   codigoRegionIso,
   debeAbrirColombia,
   filtrarCiudadesPorRegion,
   nombreRegion,
   pasoEscala,
   rellenoPaso,
+  valoresRegionMapa,
 } from '../mapa';
 import { ISO_NUMERICO_A_ALFA2, alfa2DesdeNumerico } from '../isoPaises';
 
@@ -89,6 +91,53 @@ describe('agregación', () => {
     expect(sinRegion).toBe(7);
     expect(filtrarCiudadesPorRegion(ciudades, 'CO', 'CO-ANT').map((c) => c.ciudad)).toEqual(['Medellín', 'Envigado']);
     expect(filtrarCiudadesPorRegion(ciudades, 'CO', null)).toHaveLength(4);
+  });
+
+  test('por región desde `regiones` de la RPC: misma normalización, alias y repetidos sumados', () => {
+    const { valores, sinRegion } = agregarRegiones(
+      [
+        { region: 'ant', visitantes: 40, sesiones: 50 },
+        { region: 'CO-ANT', visitantes: 10, sesiones: 12 },
+        { region: 'BOG', visitantes: 20, sesiones: 25 },
+        { region: ' DC ', visitantes: 30, sesiones: 45 },
+        { region: 'no es un código', visitantes: 3, sesiones: 3 },
+        { region: 'VAU', visitantes: 0, sesiones: 0 },
+      ],
+      'CO',
+    );
+    expect([...valores.keys()].sort()).toEqual(['CO-ANT', 'CO-DC']);
+    expect(valores.get('CO-ANT')).toMatchObject({ visitantes: 50, sesiones: 62, pct: 0.5 });
+    expect(valores.get('CO-DC')).toMatchObject({ visitantes: 50, sesiones: 70, pct: 0.5 });
+    expect(sinRegion).toBe(3);
+  });
+
+  test('valoresRegionMapa usa `regiones` cuando viene (sin cota) y cae a las ciudades si no', () => {
+    // 51 ciudades en total pero la RPC solo devuelve 2: con ciudades, el mapa
+    // perdería el departamento que no está en la lista.
+    const ciudades = [
+      { ciudad: 'Medellín', region: 'ANT', visitantes: 40, sesiones: 50 },
+      { ciudad: 'Bogotá', region: 'DC', visitantes: 50, sesiones: 70 },
+    ];
+    const regiones = [
+      { region: 'DC', visitantes: 50, sesiones: 70 },
+      { region: 'ANT', visitantes: 45, sesiones: 56 },
+      { region: 'VID', visitantes: 1, sesiones: 1 },
+    ];
+    const conRegiones = valoresRegionMapa({ ciudades, ciudadesTotal: 51, regiones }, 'CO');
+    expect(conRegiones.parcial).toBe(false);
+    expect([...conRegiones.valores.keys()].sort()).toEqual(['CO-ANT', 'CO-DC', 'CO-VID']);
+    expect(conRegiones.valores.get('CO-ANT')?.visitantes).toBe(45);
+
+    for (const sinClave of [undefined, null]) {
+      const respaldo = valoresRegionMapa({ ciudades, ciudadesTotal: 51, regiones: sinClave }, 'CO');
+      expect(respaldo.parcial).toBe(true);
+      expect([...respaldo.valores.keys()].sort()).toEqual(['CO-ANT', 'CO-DC']);
+      expect(respaldo.valores.get('CO-ANT')?.visitantes).toBe(40);
+    }
+    // Con todas las ciudades en la lista, el respaldo no es cota inferior.
+    expect(valoresRegionMapa({ ciudades, ciudadesTotal: 2, regiones: null }, 'CO').parcial).toBe(false);
+    // `regiones` vacía (país sin regiones con visitas) no cae a las ciudades.
+    expect(valoresRegionMapa({ ciudades, ciudadesTotal: 51, regiones: [] }, 'CO').valores.size).toBe(0);
   });
 
   test('Colombia por defecto solo si tiene más de la mitad', () => {

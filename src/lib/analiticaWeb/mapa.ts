@@ -14,7 +14,7 @@
 //     guarda la subdivisión SIN país («ANT», «DC»): `codigoRegionIso` la completa.
 // ============================================================
 
-import type { FilaCiudad, FilaPais } from './analiticaWeb';
+import type { DatosAnalitica, FilaCiudad, FilaPais, FilaRegion } from './analiticaWeb';
 
 // La tabla ISO 3166-1 numérico → alfa-2 vive en `isoPaises.ts`: solo la usa
 // la carga diferida del mapa del mundo y así no pesa en el bundle de la pantalla.
@@ -117,6 +117,7 @@ export function agregarPorPais(paises: readonly FilaPais[]): Map<string, ValorRe
 }
 
 /**
+ * Respaldo de `valoresRegionMapa` cuando la RPC no trae `regiones`.
  * Visitantes por región (ISO 3166-2) a partir de las ciudades del país. La RPC
  * devuelve las 50 ciudades con más visitantes, así que con más ciudades el
  * departamento es una cota inferior (la UI lo avisa). `sinRegion`: visitantes
@@ -135,6 +136,42 @@ export function agregarPorRegion(ciudades: readonly FilaCiudad[], pais: string):
     acum.set(codigo, { visitantes: previo.visitantes + c.visitantes, sesiones: previo.sesiones + c.sesiones });
   }
   return { valores: conPorcentaje(acum), sinRegion };
+}
+
+/**
+ * Visitantes por región (ISO 3166-2) a partir de la clave `regiones` de la RPC
+ * (ya agrupada por `website_visits.region`, sin tope de ciudades). Misma
+ * normalización que desde ciudades (`codigoRegionIso`: «ant» → «CO-ANT»,
+ * «BOG» → «CO-DC»); dos filas que caen en el mismo código se suman.
+ */
+export function agregarRegiones(regiones: readonly FilaRegion[], pais: string): { valores: Map<string, ValorRegion>; sinRegion: number } {
+  const acum = new Map<string, { visitantes: number; sesiones: number }>();
+  let sinRegion = 0;
+  for (const r of regiones) {
+    const codigo = codigoRegionIso(pais, r.region);
+    if (!codigo) {
+      sinRegion += r.visitantes;
+      continue;
+    }
+    if (r.visitantes <= 0) continue;
+    const previo = acum.get(codigo) ?? { visitantes: 0, sesiones: 0 };
+    acum.set(codigo, { visitantes: previo.visitantes + r.visitantes, sesiones: previo.sesiones + r.sesiones });
+  }
+  return { valores: conPorcentaje(acum), sinRegion };
+}
+
+/**
+ * Valores del mapa por región. Usa `regiones` cuando la RPC la trae y, si no
+ * (base sin la migración), agrega desde las ciudades. `parcial`: el valor es
+ * una cota inferior porque salió de las 50 ciudades con más visitantes y hay
+ * más ciudades (la UI lo avisa).
+ */
+export function valoresRegionMapa(
+  datos: Pick<DatosAnalitica, 'ciudades' | 'ciudadesTotal' | 'regiones'>,
+  pais: string,
+): { valores: Map<string, ValorRegion>; sinRegion: number; parcial: boolean } {
+  if (Array.isArray(datos.regiones)) return { ...agregarRegiones(datos.regiones, pais), parcial: false };
+  return { ...agregarPorRegion(datos.ciudades, pais), parcial: datos.ciudadesTotal > datos.ciudades.length };
 }
 
 /** Ciudades de una región (código ISO 3166-2); sin región elegida, todas. */

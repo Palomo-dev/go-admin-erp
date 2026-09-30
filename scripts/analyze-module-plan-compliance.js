@@ -90,7 +90,7 @@ async function analyzeModulePlanCompliance() {
         id,
         plan_id,
         status,
-        billing_cycle,
+        billing_period,
         plans!inner(
           id,
           code,
@@ -129,10 +129,9 @@ async function analyzeModulePlanCompliance() {
     const isPaid = 
       parseFloat(plan.price_usd_month || '0') > 0 ||
       parseFloat(plan.price_usd_year || '0') > 0;
-    const isAnnual = 
-      subscription.billing_cycle === 'yearly' || 
-      subscription.billing_cycle === 'annual';
-    const isProtected = isPaid || isAnnual;
+    const isAnnual = subscription.billing_period === 'yearly';
+    const isActive = subscription.status === 'active';
+    const isProtected = isActive && (isPaid || isAnnual);
 
     // Obtener módulos activos no-core de esta organización
     const { data: activeModules, error: modulesError } = await supabase
@@ -158,7 +157,7 @@ async function analyzeModulePlanCompliance() {
         plan_code: planInfo.code,
         plan_name: planInfo.name,
         subscription_status: subscription.status,
-        billing_cycle: subscription.billing_cycle,
+        billing_period: subscription.billing_period,
         is_protected: isProtected,
         unauthorized_modules: unauthorizedModules
       });

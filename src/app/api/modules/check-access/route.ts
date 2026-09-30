@@ -6,9 +6,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext } from '@/lib/server/orgContext';
+import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
-import { getServerUserClient } from '@/lib/supabase/server';
+import { getServerUserClient } from '@/lib/supabase/server-user';
 
 export async function POST(request: NextRequest) {
   try {

@@ -123,8 +123,11 @@ export const moduleManagementService = {
    * Verificar si una organización debe ser excluida del enforcement estricto (GO-156)
    * 
    * En modo 'enforce', nunca bloqueamos organizaciones con:
-   * - Suscripción activa de pago
-   * - Suscripción anual activa
+   * - Suscripción activa (no trialing) de pago
+   * - Suscripción anual activa (billing_period = 'yearly')
+   * - Suscripción con pago anual adelantado (metadata.pago_anual.pagado_hasta futuro)
+   * 
+   * Las suscripciones trialing NO están protegidas (a menos que tengan pago anual adelantado).
    * 
    * Esto protege a clientes de pago de bloqueos automáticos sin decisión explícita.
    */
@@ -134,22 +137,43 @@ export const moduleManagementService = {
   ): Promise<boolean> {
     const { data: subscription } = await supabaseClient
       .from('subscriptions')
-      .select('status, billing_cycle, plan_id, plans!inner(price_usd_month, price_usd_year)')
+      .select('status, billing_period, metadata, plans!inner(price_usd_month, price_usd_year)')
       .eq('organization_id', organizationId)
-      .eq('status', 'active')
       .maybeSingle();
 
     if (!subscription) return false;
 
-    // Proteger suscripciones activas de pago
-    const isPaid = 
-      parseFloat(subscription.plans.price_usd_month || '0') > 0 ||
-      parseFloat(subscription.plans.price_usd_year || '0') > 0;
+    // Las suscripciones trialing NO están protegidas por defecto
+    const isTrialing = subscription.status === 'trialing';
 
-    // Proteger suscripciones anuales
-    const isAnnual = subscription.billing_cycle === 'yearly' || subscription.billing_cycle === 'annual';
+    // Verificar pago anual adelantado en metadata
+    const pagoAnual = subscription.metadata?.pago_anual;
+    if (pagoAnual?.pagado_hasta) {
+      const pagadoHasta = new Date(pagoAnual.pagado_hasta);
+      if (pagadoHasta > new Date()) {
+        // Tiene pago anual vigente, proteger incluso si está en trialing
+        return true;
+      }
+    }
 
-    return isPaid || isAnnual;
+    // Si está en trialing sin pago anual, no proteger
+    if (isTrialing) return false;
+
+    // Si está activa (no trialing), proteger si es de pago o anual
+    if (subscription.status === 'active') {
+      // Proteger suscripciones de pago
+      const isPaid = 
+        parseFloat(subscription.plans.price_usd_month || '0') > 0 ||
+        parseFloat(subscription.plans.price_usd_year || '0') > 0;
+
+      // Proteger suscripciones anuales (billing_period = 'yearly')
+      const isAnnual = subscription.billing_period === 'yearly';
+
+      return isPaid || isAnnual;
+    }
+
+    // Cualquier otro estado (canceled, etc.) no está protegido
+    return false;
   },
 
   /**
@@ -787,7 +811,7 @@ export const moduleManagementService = {
     }
 
     return {
-      organizationsWithoutSubscriptions: orgsWithoutSubs?.map(o => o.id) || [],
+      organizationsWithoutSubscriptions: orgsWithoutSubs?.map((o: any) => o.id) || [],
       organizationsExceedingLimits,
       organizationsWithoutCoreModules: [] // Se puede implementar después
     };

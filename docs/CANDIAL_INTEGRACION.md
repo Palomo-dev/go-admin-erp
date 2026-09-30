@@ -101,23 +101,34 @@ Mientras falte alguna fecha, solo se permite llamar a números de `internal_test
 
 ### Paso 3: Cargar consulta del RNE (V4)
 
-⚠️ **Requisito legal**: El Registro de Números Excluidos debe consultarse **el mismo día calendario** del lote de marcación (en timezone America/Bogota).
+⚠️ **Requisito legal (Regla L11, actualizado 2026-09-30)**:
+- La **CRC actualiza la lista del RNE a las 2:00 AM** (America/Bogota) cada día
+- La consulta debe ser del **MISMO DÍA CALENDARIO** (America/Bogota) **Y DESPUÉS de las 3:00 AM**
+- Consultas de la noche anterior **NO son válidas**
+- No se puede llamar entre las 0:00 AM y 2:59 AM (ventana de actualización del RNE)
 
 Para cada cliente que se vaya a llamar, agregar en `customers.metadata`:
 
 ```json
 {
   "rne_status": "no_excluido",
-  "rne_checked_at": "<TIMESTAMP_DEL_DIA_ACTUAL>"
+  "rne_checked_at": "<TIMESTAMP_DEL_DIA_ACTUAL_DESPUES_DE_LAS_3AM>"
 }
 ```
 
 **Flujo diario**:
-1. Antes de cada lote, consultar el RNE de la CRC para todos los números
-2. Actualizar `rne_checked_at` al timestamp actual (mismo día)
-3. Solo entonces ejecutar el lote de marcación
+1. **Esperar hasta las 3:00 AM** (hora Colombia) o después
+2. Consultar el RNE de la CRC para todos los números del lote
+3. Actualizar `rne_checked_at` al timestamp actual (debe ser >= 3:00 AM)
+4. Solo entonces ejecutar el lote de marcación
 
-Si `rne_checked_at` no es del día de hoy, `canDial` **deniega** la llamada (fail-closed).
+Si `rne_checked_at` no es del día de hoy O es anterior a las 3:00 AM, `canDial` **deniega** la llamada (código: `rne_not_checked_today`, fail-closed).
+
+**Carga masiva del RNE** (para implementación futura):
+- La API de la CRC admite hasta **10,000 números por consulta**
+- Formato: CSV de máximo **3 MB**
+- Se puede automatizar con un cron que corra diariamente a las 3:00 AM
+- Guardar comprobante de la consulta en `customers.metadata` junto con `rne_checked_at`
 
 ### Paso 4: Integrar en el despacho manual
 
@@ -255,11 +266,16 @@ WHERE c.mode = 'ai_agent'
   AND c.started_at >= CURRENT_DATE
   AND o.tags @> ARRAY['canal_humano'];
 
--- Clientes con RNE no consultado HOY (para el próximo lote)
-SELECT cu.id, cu.phone, cu.metadata->>'rne_checked_at' as ultima_consulta
+-- Clientes con RNE no consultado HOY después de las 3:00 AM (para el próximo lote)
+SELECT cu.id, cu.phone, 
+       cu.metadata->>'rne_checked_at' as ultima_consulta,
+       EXTRACT(HOUR FROM (cu.metadata->>'rne_checked_at')::timestamptz AT TIME ZONE 'America/Bogota') as hora_consulta
 FROM customers cu
 WHERE cu.metadata->>'rne_status' = 'no_excluido'
-  AND (cu.metadata->>'rne_checked_at')::date < CURRENT_DATE AT TIME ZONE 'America/Bogota';
+  AND (
+    (cu.metadata->>'rne_checked_at')::timestamptz AT TIME ZONE 'America/Bogota' < (CURRENT_DATE AT TIME ZONE 'America/Bogota') + INTERVAL '3 hours'
+    OR (cu.metadata->>'rne_checked_at')::date AT TIME ZONE 'America/Bogota' < CURRENT_DATE AT TIME ZONE 'America/Bogota'
+  );
 ```
 
 **Criterio de aceptación CA-37**: En todo el piloto, las 3 primeras consultas deben devolver **0**. La cuarta muestra los clientes que requieren consulta RNE antes del próximo lote.
@@ -279,7 +295,7 @@ TZ=America/Bogota npm test dialValidation.test.ts
 
 Los tests cubren todos los criterios CA-30 a CA-37:
 - CA-30: Horarios legales (L-V, sábado, domingos, festivos, márgenes)
-- CA-31: RNE (excluido, sin consulta, no es del mismo día)
+- CA-31: RNE (excluido, sin consulta, mismo día después de 3:00 AM, ventana de actualización)
 - CA-32: Bloqueo al canal humano
 - CA-32b: Un solo canal por ventana de 7 días
 - CA-33: Frecuencia (1/día, 3 en 14 días, 7 días después de conversación)
@@ -364,16 +380,18 @@ También actualizar `src/lib/services/crm/holidays/colombia2026_2027.ts` y renom
 2. Verificar que no sea festivo: `SELECT * FROM holidays_co WHERE holiday_date = '2026-XX-XX';`
 3. Verificar horario interno en `voice_agents.business_hours`
 
-### "Rechaza por RNE_STALE"
+### "Rechaza por RNE_NOT_CHECKED_TODAY"
 
 1. Cargar consulta del RNE en `customers.metadata`:
    ```json
    {
      "rne_status": "no_excluido",
-     "rne_checked_at": "<TIMESTAMP_DEL_DIA_ACTUAL>"
+     "rne_checked_at": "<TIMESTAMP_DEL_DIA_ACTUAL_DESPUES_DE_LAS_3AM>"
    }
    ```
-2. La consulta debe ser del **mismo día calendario** (en America/Bogota)
+2. La consulta debe ser del **mismo día calendario** (America/Bogota) **Y después de las 3:00 AM**
+3. La CRC actualiza el RNE a las 2:00 AM; consultar después de las 3:00 AM
+4. Consultas de la noche anterior (antes de medianoche) NO son válidas
 
 ### "Rechaza por FREQUENCY_LIMIT"
 

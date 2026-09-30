@@ -26,7 +26,7 @@ export type DialValidationCode =
   | 'OUTSIDE_POLICY_HOURS'
   | 'DNC_INTERNAL'
   | 'RNE_EXCLUDED'
-  | 'RNE_STALE'
+  | 'RNE_NOT_CHECKED_TODAY'
   | 'LOCKED_TO_HUMAN'
   | 'CHANNEL_WINDOW'
   | 'FREQUENCY_LIMIT'
@@ -400,12 +400,17 @@ async function checkDoNotCall(
 /**
  * V4: Verifica el Registro de Números Excluidos (RNE) de la CRC
  * 
+ * Regla L11 y chequeo 3.4 (actualizado 2026-09-30):
+ * - La CRC actualiza la lista del RNE a las 2:00 AM (America/Bogota)
+ * - La consulta debe ser del MISMO DÍA CALENDARIO (America/Bogota) Y después de las 3:00 AM
+ * - Consultas de la noche anterior NO son válidas
+ * - Cualquier ventana de validez de 24h o días calendario sin hora debe descartarse
+ * 
  * El número debe tener:
  * - rne_status = 'no_excluido'
- * - rne_checked_at del MISMO DÍA CALENDARIO en America/Bogota
+ * - rne_checked_at del día actual (America/Bogota) y >= 3:00 AM
  * 
- * Regla legal: El RNE debe consultarse el mismo día del lote de marcación.
- * Si no hay consulta del día, NO se llama (fail-closed)
+ * Si no hay consulta válida, NO se llama (fail-closed, código: rne_not_checked_today)
  */
 async function checkRNE(
   context: DialContext,
@@ -422,7 +427,7 @@ async function checkRNE(
   if (error) {
     return {
       allowed: false,
-      code: 'RNE_STALE',
+      code: 'RNE_NOT_CHECKED_TODAY',
       reason: 'Error al consultar estado RNE del cliente',
     };
   }
@@ -435,7 +440,7 @@ async function checkRNE(
   if (!metadata.rne_status || !metadata.rne_checked_at) {
     return {
       allowed: false,
-      code: 'RNE_STALE',
+      code: 'RNE_NOT_CHECKED_TODAY',
       reason: 'No hay consulta del RNE para este número',
     };
   }
@@ -449,17 +454,73 @@ async function checkRNE(
   }
 
   // Verificar que la consulta sea del MISMO DÍA CALENDARIO en America/Bogota
-  // Regla legal: el RNE debe ser consultado el mismo día del lote de marcación
+  // Y DESPUÉS de las 3:00 AM (la CRC actualiza la lista a las 2:00 AM)
   const tz = context.timezone || DEFAULT_TIMEZONE;
-  const todayInTz = toDateStringInTz(now, tz);
   const checkedAt = new Date(metadata.rne_checked_at);
-  const checkedDateInTz = toDateStringInTz(checkedAt, tz);
   
-  if (checkedDateInTz !== todayInTz) {
+  // Obtener día actual y hora en America/Bogota
+  const nowParts = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hour12: false,
+  }).formatToParts(now);
+  
+  const nowYear = parseInt(nowParts.find(p => p.type === 'year')!.value);
+  const nowMonth = parseInt(nowParts.find(p => p.type === 'month')!.value);
+  const nowDay = parseInt(nowParts.find(p => p.type === 'day')!.value);
+  const nowHour = parseInt(nowParts.find(p => p.type === 'hour')!.value);
+  
+  // Obtener día y hora de la consulta en America/Bogota
+  const checkedParts = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hour12: false,
+  }).formatToParts(checkedAt);
+  
+  const checkedYear = parseInt(checkedParts.find(p => p.type === 'year')!.value);
+  const checkedMonth = parseInt(checkedParts.find(p => p.type === 'month')!.value);
+  const checkedDay = parseInt(checkedParts.find(p => p.type === 'day')!.value);
+  const checkedHour = parseInt(checkedParts.find(p => p.type === 'hour')!.value);
+  
+  // Verificar mismo día
+  const sameDay = (
+    nowYear === checkedYear &&
+    nowMonth === checkedMonth &&
+    nowDay === checkedDay
+  );
+  
+  if (!sameDay) {
+    const checkedDateStr = toDateStringInTz(checkedAt, tz);
+    const nowDateStr = toDateStringInTz(now, tz);
     return {
       allowed: false,
-      code: 'RNE_STALE',
-      reason: `Consulta del RNE no es del día de hoy (última consulta: ${checkedDateInTz}). Se requiere consulta del mismo día calendario en ${tz}.`,
+      code: 'RNE_NOT_CHECKED_TODAY',
+      reason: `Consulta del RNE no es de hoy (última consulta: ${checkedDateStr}, hoy: ${nowDateStr}). Se requiere consulta del mismo día después de las 3:00 AM.`,
+    };
+  }
+  
+  // Verificar que sea después de las 3:00 AM
+  if (checkedHour < 3) {
+    return {
+      allowed: false,
+      code: 'RNE_NOT_CHECKED_TODAY',
+      reason: `Consulta del RNE fue antes de las 3:00 AM (hora: ${checkedHour}:xx). La CRC actualiza a las 2:00 AM; consultar después de las 3:00 AM.`,
+    };
+  }
+  
+  // Si estamos entre las 0:00 y 2:59 AM, la consulta válida más reciente
+  // sería del día anterior después de las 3:00 AM, lo cual ya no es del mismo día
+  if (nowHour < 3) {
+    return {
+      allowed: false,
+      code: 'RNE_NOT_CHECKED_TODAY',
+      reason: `Son las ${nowHour}:xx AM. No se puede llamar hasta las 3:00 AM (después de la actualización del RNE a las 2:00 AM).`,
     };
   }
 

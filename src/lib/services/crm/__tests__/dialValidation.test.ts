@@ -211,7 +211,7 @@ describe('canDial - CA-30: Horario legal (Ley 2300)', () => {
   });
 });
 
-// ─── Tests: CA-31 RNE ────────────────────────────────────────────────────────
+// ─── Tests: CA-31 RNE (Regla L11, actualizado 2026-09-30) ───────────────────
 
 describe('canDial - CA-31: Registro de Números Excluidos (RNE)', () => {
   test('Rechaza número con rne_status="excluido"', async () => {
@@ -220,12 +220,12 @@ describe('canDial - CA-31: Registro de Números Excluidos (RNE)', () => {
       customers: {
         metadata: {
           rne_status: 'excluido',
-          rne_checked_at: new Date().toISOString(),
+          rne_checked_at: new Date('2026-10-13T08:00:00Z').toISOString(), // 03:00 AM Bogotá
         },
       },
     });
     
-    const validTime = new Date('2026-10-13T13:05:00Z');
+    const validTime = new Date('2026-10-13T13:05:00Z'); // 08:05 AM Bogotá
     const result = await canDial(context, supabase, validTime);
     
     expect(result.allowed).toBe(false);
@@ -241,18 +241,18 @@ describe('canDial - CA-31: Registro de Números Excluidos (RNE)', () => {
       },
     });
     
-    const validTime = new Date('2026-10-13T13:05:00Z');
+    const validTime = new Date('2026-10-13T13:05:00Z'); // 08:05 AM Bogotá
     const result = await canDial(context, supabase, validTime);
     
     expect(result.allowed).toBe(false);
-    expect(result.code).toBe('RNE_STALE');
+    expect(result.code).toBe('RNE_NOT_CHECKED_TODAY');
     expect(result.reason).toContain('No hay consulta del RNE');
   });
 
-  test('Rechaza número con consulta RNE del día anterior', async () => {
+  test('Rechaza consulta RNE de ayer a las 23:00 (después de medianoche en hora actual)', async () => {
     const context = createContext();
-    // Ayer en America/Bogota
-    const yesterday = new Date('2026-10-12T20:00:00Z'); // 15:00 en Bogotá del día 12
+    // Ayer 12 de octubre a las 23:00 hora Colombia = 04:00 UTC del 13
+    const yesterday = new Date('2026-10-13T04:00:00Z'); // 23:00 del 12 en Bogotá
     
     const supabase = createMockSupabase({
       customers: {
@@ -263,33 +263,101 @@ describe('canDial - CA-31: Registro de Números Excluidos (RNE)', () => {
       },
     });
     
-    // Hoy 13 de octubre a las 13:05 UTC (08:05 en Bogotá)
+    // Hoy 13 de octubre a las 13:05 UTC = 08:05 AM Bogotá
     const validTime = new Date('2026-10-13T13:05:00Z');
     const result = await canDial(context, supabase, validTime);
     
     expect(result.allowed).toBe(false);
-    expect(result.code).toBe('RNE_STALE');
-    expect(result.reason).toContain('no es del día de hoy');
+    expect(result.code).toBe('RNE_NOT_CHECKED_TODAY');
+    expect(result.reason).toContain('no es de hoy');
   });
 
-  test('Permite número con RNE consultado el MISMO DÍA', async () => {
+  test('Rechaza consulta RNE de hoy a las 2:30 AM (antes de las 3:00 AM)', async () => {
     const context = createContext();
-    // Hoy 13 de octubre temprano (03:00 UTC = 22:00 del 12 en Bogotá)
-    // Espera, esto sería el día 12 en Bogotá. Voy a usar una hora del día 13 en Bogotá.
-    const todayMorning = new Date('2026-10-13T12:00:00Z'); // 07:00 en Bogotá del día 13
+    // Hoy 13 de octubre a las 2:30 AM Bogotá = 07:30 UTC
+    const tooEarly = new Date('2026-10-13T07:30:00Z'); // 02:30 AM Bogotá
     
     const supabase = createMockSupabase({
       customers: {
         metadata: {
           rne_status: 'no_excluido',
-          rne_checked_at: todayMorning.toISOString(),
+          rne_checked_at: tooEarly.toISOString(),
         },
       },
     });
     
-    // Hoy 13 de octubre a las 13:05 UTC (08:05 en Bogotá) - MISMO DÍA
+    // Validando a las 13:05 UTC = 08:05 AM Bogotá del mismo día
     const validTime = new Date('2026-10-13T13:05:00Z');
     const result = await canDial(context, supabase, validTime);
+    
+    expect(result.allowed).toBe(false);
+    expect(result.code).toBe('RNE_NOT_CHECKED_TODAY');
+    expect(result.reason).toContain('antes de las 3:00 AM');
+  });
+
+  test('Permite consulta RNE de hoy a las 3:05 AM (después de las 3:00 AM)', async () => {
+    const context = createContext();
+    // Hoy 13 de octubre a las 3:05 AM Bogotá = 08:05 UTC
+    const validCheck = new Date('2026-10-13T08:05:00Z'); // 03:05 AM Bogotá
+    
+    const supabase = createMockSupabase({
+      customers: {
+        metadata: {
+          rne_status: 'no_excluido',
+          rne_checked_at: validCheck.toISOString(),
+        },
+      },
+    });
+    
+    // Validando a las 13:05 UTC = 08:05 AM Bogotá del mismo día
+    const validTime = new Date('2026-10-13T13:05:00Z');
+    const result = await canDial(context, supabase, validTime);
+    
+    expect(result.allowed).toBe(true);
+    expect(result.code).toBe('ALLOWED');
+  });
+
+  test('Rechaza si es antes de las 3:00 AM (ventana de actualización del RNE)', async () => {
+    const context = createContext();
+    // Consulta válida de ayer (ya no sirve porque es otro día)
+    const yesterdayCheck = new Date('2026-10-12T20:00:00Z'); // 15:00 del 12 en Bogotá
+    
+    const supabase = createMockSupabase({
+      customers: {
+        metadata: {
+          rne_status: 'no_excluido',
+          rne_checked_at: yesterdayCheck.toISOString(),
+        },
+      },
+    });
+    
+    // Intentando marcar hoy a las 2:00 AM Bogotá = 07:00 UTC
+    const tooEarly = new Date('2026-10-13T07:00:00Z'); // 02:00 AM Bogotá
+    const result = await canDial(context, supabase, tooEarly);
+    
+    expect(result.allowed).toBe(false);
+    expect(result.code).toBe('RNE_NOT_CHECKED_TODAY');
+    // Puede fallar por dos razones: o es antes de las 3 AM o la consulta no es de hoy
+    expect(result.reason).toMatch(/no es de hoy|antes de las 3:00 AM|Son las [0-2]:[0-9]+ AM/);
+  });
+
+  test('Cambio de día: consulta válida a las 3:05 AM permite todo el día', async () => {
+    const context = createContext();
+    // Consulta temprano hoy a las 3:05 AM Bogotá
+    const earlyCheck = new Date('2026-10-13T08:05:00Z'); // 03:05 AM Bogotá del 13
+    
+    const supabase = createMockSupabase({
+      customers: {
+        metadata: {
+          rne_status: 'no_excluido',
+          rne_checked_at: earlyCheck.toISOString(),
+        },
+      },
+    });
+    
+    // Validando al final del día a las 23:59 Bogotá = 04:59 UTC del día siguiente
+    const endOfDay = new Date('2026-10-14T04:59:00Z'); // 23:59 del 13 en Bogotá
+    const result = await canDial(context, supabase, endOfDay);
     
     expect(result.allowed).toBe(true);
     expect(result.code).toBe('ALLOWED');

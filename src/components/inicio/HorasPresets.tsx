@@ -16,7 +16,8 @@ interface HorasPresetsProps {
 
 // Presets comunes para filtrar por horas del día. Sin emoji (el manual los
 // prohíbe como icono); los mismos seis presets de siempre.
-const PRESETS: { labelKey: 'morning' | 'afternoon' | 'night' | 'dawn' | 'lunch' | 'dinner'; inicio: string; fin: string }[] = [
+// Los comparte el selector de periodo del inicio (`SelectorPeriodoInicio`).
+export const PRESETS_HORAS: { labelKey: 'morning' | 'afternoon' | 'night' | 'dawn' | 'lunch' | 'dinner'; inicio: string; fin: string }[] = [
   { labelKey: 'morning', inicio: '06:00', fin: '12:00' },
   { labelKey: 'afternoon', inicio: '12:00', fin: '18:00' },
   { labelKey: 'night', inicio: '18:00', fin: '23:59' },
@@ -30,7 +31,7 @@ export function HorasPresets({ horaInicio, horaFin, onApply, onCancel }: HorasPr
   const [inicio, setInicio] = useState(horaInicio);
   const [fin, setFin] = useState(horaFin);
 
-  const applyPreset = (preset: typeof PRESETS[0]) => {
+  const applyPreset = (preset: typeof PRESETS_HORAS[0]) => {
     setInicio(preset.inicio);
     setFin(preset.fin);
   };
@@ -43,7 +44,7 @@ export function HorasPresets({ horaInicio, horaFin, onApply, onCancel }: HorasPr
     <div className="flex flex-col gap-2 rounded-lg border border-line bg-surface p-2 shadow-sm">
       {/* Presets rápidos */}
       <div className="flex flex-wrap gap-1">
-        {PRESETS.map((preset) => {
+        {PRESETS_HORAS.map((preset) => {
           const isActive = inicio === preset.inicio && fin === preset.fin;
           return (
             <button

@@ -1,29 +1,35 @@
 'use client';
 
 /**
- * «Ventas del periodo» (Figma 445:137185, decisión del dueño V.9b/V.9c): lo
- * COBRADO en el periodo del selector (criterio de caja), su variación frente
- * al periodo anterior, número de ventas, ticket promedio y el desglose por
- * canal (una sucursal) o por sucursal («Todas»).
+ * «Ventas del periodo» (Figma 445:137185, `447:73036`; móvil 448:205216):
+ * total cobrado del periodo (criterio de caja), variación, «POS + tienda web ·
+ * frente a los 30 días anteriores · COP» y la gráfica periodo actual frente al
+ * anterior DENTRO de la tarjeta, con su leyenda y el rango. Al pulsarla abre
+ * el detalle (448:196680 escritorio, 448:205745 hoja en móvil).
  *
- * Datos: `GET /api/inicio/ventas` → `fn_inicio_ventas_periodo` →
- * `fn_inicio_ventas_rango`, la misma regla que los KPI de Ventas del POS. Con
- * cobros en varias monedas no se muestra un total (no se suman monedas). Sin
- * permiso de ventas (403) no se pinta.
+ * Sustituye a la pareja `TarjetaVentas` (cifras) + `DashboardTendencia`
+ * (gráfica aparte de 30 días fijos, con otra regla de ventas —`sales.total`
+ * por `sale_date`— y sin sucursal ni periodo). Ahora una sola lectura:
+ * `GET /api/inicio/ventas` → `fn_inicio_ventas_periodo` →
+ * `fn_inicio_ventas_rango`, la regla única de ventas, que ya trae la serie por
+ * hora/día local del periodo y del anterior. Con cobros en varias monedas no
+ * hay total ni gráfica (no se suman monedas). Sin permiso de ventas (403) no
+ * se pinta.
  */
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/kit/EmptyState';
 import { StatusBadge } from '@/components/kit/StatusBadge';
-import { formatMoneda } from '@/lib/utils/moneda';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { queryPeriodo, type FechasPeriodo, type HorasPeriodo, type PeriodoInicio } from '@/lib/dashboard/periodo';
-import { desgloseVentas, monedaUnica } from '@/lib/dashboard/ventasInicio';
-import { variacion } from '@/lib/dashboard/resumenModulos';
-import type { VentasPeriodo } from '@/lib/dashboard/inicio.server';
-import { formatoEntero, formatoVariacion, useLecturaInicio } from './useLecturaInicio';
+import { formatoVariacion, useLecturaInicio, type LecturaInicio } from './useLecturaInicio';
+import { GraficoVentas } from './GraficoVentas';
+import { DetalleVentas } from './DetalleVentas';
+import { claveComparacion, clavesLeyenda } from './textosPeriodo';
+import { CANALES_CONOCIDOS, vistaVentas, type DatosVentas } from './vistaVentas';
 
-const CANALES_CONOCIDOS = ['pos', 'web', 'factura', 'mesa'];
+export type { DatosVentas };
 
 export interface TarjetaVentasProps {
   organizationId: number;
@@ -31,90 +37,145 @@ export interface TarjetaVentasProps {
   horas?: HorasPeriodo | null;
   fechas?: FechasPeriodo | null;
   sucursal: number | null;
+  /** Nombre del alcance para el detalle («Sucursal Principal», «Todas las sucursales»). */
+  alcance?: string;
   version?: number;
+  /** «Actualizar» del encabezado: recarga sin esqueleto (ver `useLecturaInicio`). */
+  refresco?: number;
+  onFalloRefresco?: () => void;
+  /** La página junta el error de ventas y actividad en un solo estado (445:137833). */
+  onFase?: (fase: LecturaInicio<unknown>['fase']) => void;
+  className?: string;
 }
 
-export function TarjetaVentas({ organizationId, periodo, horas, fechas, sucursal, version = 0 }: TarjetaVentasProps) {
+export function TarjetaVentas({
+  organizationId,
+  periodo,
+  horas,
+  fechas,
+  sucursal,
+  alcance,
+  version = 0,
+  refresco,
+  onFalloRefresco,
+  onFase,
+  className,
+}: TarjetaVentasProps) {
   const t = useTranslations('home.ventasPeriodo');
   const locale = useLocale();
+  const { timezone } = useFormatDate(sucursal);
+  const [detalleAbierto, setDetalleAbierto] = useState(false);
   const url = `/api/inicio/ventas?${queryPeriodo({ periodo, horas, fechas, sucursal })}`;
-  const { estado, recargar } = useLecturaInicio<VentasPeriodo & { unaSucursal: boolean }>(url, organizationId, version);
+  const { estado, recargar } = useLecturaInicio<DatosVentas>(url, organizationId, version, { refresco, onFalloRefresco });
 
-  const vista = useMemo(() => {
-    if (estado.fase !== 'listo') return null;
-    const d = estado.datos;
-    const moneda = monedaUnica(d.monedas, d.moneda_base);
-    const importe = (v: number) => (moneda ? formatMoneda(v, moneda, { decimals: 0 }) : '');
-    const delta = moneda ? variacion(Number(d.actual?.neto) || 0, Number(d.anterior?.neto) || 0) : null;
-    const desglose = moneda ? desgloseVentas(d.actual?.por_canal, d.actual?.por_sucursal, d.unaSucursal) : null;
-    return { d, moneda, importe, delta, desglose };
-  }, [estado]);
+  useEffect(() => onFase?.(estado.fase), [estado.fase, onFase]);
+
+  const vista = useMemo(
+    () => (estado.fase === 'listo' ? { d: estado.datos, ...vistaVentas(estado.datos, locale, timezone) } : null),
+    [estado, locale, timezone],
+  );
 
   if (estado.fase === 'sinPermiso') return null;
 
-  const etiquetaDesglose = (clave: string, tipo: 'canal' | 'sucursal', nombres: Record<string, string>) => {
-    if (clave === 'otros') return t('otros');
-    if (tipo === 'canal') return CANALES_CONOCIDOS.includes(clave) ? t(`canales.${clave}`) : t('otroCanal');
-    return nombres[clave] ?? t('sucursalSinNombre', { id: clave });
-  };
+  const leyenda = clavesLeyenda(periodo);
+  const comparacion = claveComparacion(periodo);
+  const canales = vista
+    ? Object.entries(vista.d.actual?.por_canal ?? {})
+        .filter(([, v]) => Number(v) !== 0)
+        .sort((a, b) => Number(b[1]) - Number(a[1]))
+        .map(([c]) => (CANALES_CONOCIDOS.includes(c) ? t(`canales.${c}`) : t('otroCanal')))
+    : [];
+  const subtitulo = vista
+    ? [canales.length > 0 ? Array.from(new Set(canales)).join(' + ') : null, t(`frente.${comparacion.clave}`, comparacion.params), vista.moneda]
+        .filter(Boolean)
+        .join(' · ')
+    : '';
 
   return (
-    <section aria-labelledby="inicio-ventas-titulo" className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4 sm:p-5">
-      <h2 id="inicio-ventas-titulo" className="text-lg font-semibold leading-6 text-fg">
-        {t('titulo')}
-      </h2>
+    <section aria-labelledby="inicio-ventas-titulo" className={className ?? 'flex min-h-[368px] flex-col rounded-xl border border-line bg-surface'}>
       {estado.fase === 'cargando' ? (
-        <div className="flex flex-col gap-2" aria-busy="true">
-          <Skeleton className="h-8 w-48" />
+        <div className="flex flex-1 flex-col gap-3 px-4 py-3.5" aria-busy="true">
+          <h2 id="inicio-ventas-titulo" className="text-base font-semibold leading-[22px] text-fg">
+            {t('titulo')}
+          </h2>
           <Skeleton className="h-4 w-64" />
+          <Skeleton className="min-h-[180px] w-full flex-1 rounded-lg" />
         </div>
       ) : estado.fase === 'error' ? (
-        <EmptyState variante="error" compacto onReintentar={() => recargar(false)} />
+        <div className="flex flex-1 flex-col gap-3 px-4 py-3.5">
+          <h2 id="inicio-ventas-titulo" className="text-base font-semibold leading-[22px] text-fg">
+            {t('titulo')}
+          </h2>
+          <EmptyState variante="error" compacto onReintentar={() => recargar(false)} />
+        </div>
       ) : vista ? (
         <>
-          <div className="flex flex-wrap items-baseline gap-2">
-            <p className="text-[28px] font-semibold leading-9 tracking-[-0.3px] text-fg tabular-nums" data-cifra="neto">
-              {vista.moneda ? vista.importe(Number(vista.d.actual?.neto) || 0) : t('variasMonedas')}
-            </p>
-            {vista.delta !== null ? (
-              <StatusBadge
-                estado="variacion"
-                etiqueta={formatoVariacion(vista.delta, locale)}
-                tono={vista.delta >= 0 ? 'exito' : 'peligro'}
-                apariencia="suave"
-              />
-            ) : vista.moneda ? (
-              <span className="text-xs text-fg-secondary">{t('sinBase')}</span>
-            ) : null}
-          </div>
-          <p className="text-sm leading-5 text-fg-secondary">
-            {Number(vista.d.actual?.ventas_cobradas) > 0
-              ? t('resumen', {
-                  n: Number(vista.d.actual.ventas_cobradas),
-                  ventas: formatoEntero(Number(vista.d.actual.ventas_cobradas), locale),
-                  ticket: vista.moneda ? vista.importe(Number(vista.d.actual.ticket_promedio) || 0) : '—',
-                })
-              : t('sinVentas')}
-            {vista.moneda && Number(vista.d.actual?.reintegros) > 0 && (
-              <> · {t('incluyeReintegros', { valor: vista.importe(Number(vista.d.actual.reintegros)) })}</>
-            )}
-          </p>
-          {vista.moneda && Number(vista.d.anterior?.neto) > 0 && (
-            <p className="text-xs leading-4 text-fg-secondary">{t('anterior', { valor: vista.importe(Number(vista.d.anterior.neto)) })}</p>
-          )}
-          {vista.desglose && (
-            <div>
-              <h3 className="mb-1 text-xs font-medium text-fg-secondary">{t(vista.desglose.tipo === 'canal' ? 'porCanal' : 'porSucursal')}</h3>
-              <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-fg" data-desglose={vista.desglose.tipo}>
-                {vista.desglose.filas.map((f) => (
-                  <li key={f.clave} className="tabular-nums">
-                    <span className="text-fg-secondary">{etiquetaDesglose(f.clave, vista.desglose!.tipo, vista.d.sucursales ?? {})}</span>{' '}
-                    {vista.importe(f.total)}
-                  </li>
-                ))}
-              </ul>
+          {/* Toda la tarjeta abre el detalle: el botón del título se estira
+              sobre ella («enlace estirado»), sin meter un encabezado dentro de
+              un botón. */}
+          <div className="relative flex flex-1 flex-col gap-3 rounded-xl px-4 py-3.5 transition-colors hover:bg-hover/40">
+            <div className="flex w-full flex-wrap items-center gap-2">
+              <h2 id="inicio-ventas-titulo" className="text-base font-semibold leading-[22px] text-fg">
+                <button
+                  type="button"
+                  onClick={() => setDetalleAbierto(true)}
+                  aria-haspopup="dialog"
+                  title={t('abrirDetalle')}
+                  className="rounded-sm text-left outline-none after:absolute after:inset-0 after:rounded-xl focus-visible:after:ring-2 focus-visible:after:ring-brand"
+                >
+                  {t('titulo')}
+                </button>
+              </h2>
+              <span className="flex-1" />
+              <span className="text-base font-semibold leading-[22px] text-fg tabular-nums" data-cifra="neto">
+                {vista.moneda ? vista.importe(vista.neto) : t('variasMonedas')}
+              </span>
+              {vista.delta !== null && (
+                <StatusBadge
+                  estado="variacion"
+                  etiqueta={formatoVariacion(vista.delta, locale)}
+                  tono={vista.delta >= 0 ? 'exito' : 'peligro'}
+                  apariencia="suave"
+                />
+              )}
             </div>
-          )}
+            <p className="text-[13px] leading-[18px] text-fg-secondary" data-subtitulo="ventas">
+              {vista.moneda && vista.neto === 0 && vista.netoAnterior === 0 ? t('sinVentas') : subtitulo}
+            </p>
+            {vista.hayGrafica ? (
+              <GraficoVentas
+                puntos={vista.puntos}
+                etiqueta={vista.etiqueta}
+                importe={vista.importe}
+                leyendaActual={t(`leyenda.${leyenda.actual}`)}
+                leyendaAnterior={t(`leyenda.${leyenda.anterior}`)}
+                titulo={t('grafica')}
+                className="min-h-[180px] w-full flex-1"
+              />
+            ) : (
+              <p className="flex min-h-[120px] flex-1 items-center justify-center text-center text-[13px] text-fg-secondary">
+                {vista.moneda ? t('sinGrafica') : t('sinGraficaMonedas')}
+              </p>
+            )}
+            {vista.hayGrafica && (
+              <div className="flex w-full flex-wrap items-center gap-4 text-[13px] leading-[18px]">
+                <span className="text-fg-secondary">— {t(`leyenda.${leyenda.actual}`)}</span>
+                <span className="text-fg-secondary">- - {t(`leyenda.${leyenda.anterior}`)}</span>
+                <span className="flex-1" />
+                <span className="text-fg-secondary tabular-nums">{vista.rango}</span>
+              </div>
+            )}
+          </div>
+          <DetalleVentas
+            abierto={detalleAbierto}
+            onAbiertoChange={setDetalleAbierto}
+            datos={vista.d}
+            periodo={periodo}
+            fechas={fechas ?? null}
+            alcance={alcance}
+            zona={timezone}
+            onAbrir={() => recargar(true)}
+          />
         </>
       ) : null}
     </section>

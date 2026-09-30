@@ -28,6 +28,8 @@ import { badgeSolido, resumirModulo, type CrudoResumen, type ResumenModulo } fro
 import { desdeFila, ordenarModulos, type PreferenciasInicio } from './preferenciasInicio';
 import { calcularTurno, type TurnoCalculado } from './turno';
 import { ErrorInicio } from './errorInicio';
+import { leerActividad, type Actividad, type PedidoActividad } from './actividadInicio';
+import { armarPrimerosPasos, type PrimerosPasos } from './primerosPasos';
 
 type Ctx = Pick<ServerOrgContext, 'organizationId' | 'userId' | 'supabase' | 'memberId'>;
 
@@ -73,6 +75,11 @@ function argsRango(ctx: Ctx, r: RangoPeriodo, sucursal: number | null) {
   };
 }
 
+/** ¿La persona ve esta página en su menú? (las secciones las resuelve el servidor). */
+function paginaVisible(secciones: Awaited<ReturnType<typeof seccionesVisiblesServidor>>, href: string): boolean {
+  return secciones.some((s) => s.modulos.some((m) => m.paginas.some((p) => p.href === href)));
+}
+
 // ─── Ventas del periodo ─────────────────────────────────────────────────────
 
 export interface CifrasVentasPeriodo {
@@ -84,6 +91,12 @@ export interface CifrasVentasPeriodo {
   ticket_promedio?: number;
   por_canal?: Record<string, number>;
   por_sucursal?: Record<string, number>;
+  /**
+   * Neto por hora o por día LOCAL del periodo (`fn_inicio_ventas_rango`,
+   * migración 20260930230100): la gráfica de la tarjeta y del detalle.
+   */
+  granularidad?: 'hora' | 'dia';
+  serie?: Array<{ b: string; v: number }>;
 }
 
 export interface VentasPeriodo {
@@ -95,19 +108,31 @@ export interface VentasPeriodo {
   anterior: CifrasVentasPeriodo;
   /** Nombres de las sucursales del desglose «Todas» (id → nombre). */
   sucursales: Record<string, string>;
+  /** «Ver ventas» del detalle, solo si la persona ve esa página del menú. */
+  hrefVentas: string | null;
 }
 
+const PAGINA_VENTAS = '/app/pos/ventas';
+
 export async function ventasDelPeriodo(ctx: Ctx, rango: RangoPeriodo, sucursal: number | null): Promise<VentasPeriodo> {
-  const { data, error } = await ctx.supabase.rpc('fn_inicio_ventas_periodo', argsRango(ctx, rango, sucursal));
-  if (error) throw errorRpc('fn_inicio_ventas_periodo', error);
-  const r = data as Omit<VentasPeriodo, 'sucursales'>;
+  const [res, secciones] = await Promise.all([
+    ctx.supabase.rpc('fn_inicio_ventas_periodo', argsRango(ctx, rango, sucursal)),
+    seccionesVisiblesServidor(ctx).catch(() => []),
+  ]);
+  if (res.error) throw errorRpc('fn_inicio_ventas_periodo', res.error);
+  const r = res.data as Omit<VentasPeriodo, 'sucursales' | 'hrefVentas'>;
   const ids = Object.keys(r.actual?.por_sucursal ?? {}).map(Number).filter((n) => Number.isInteger(n));
   let sucursales: Record<string, string> = {};
   if (ids.length > 0) {
-    const res = await ctx.supabase.from('branches').select('id, name').eq('organization_id', ctx.organizationId).in('id', ids);
-    if (!res.error) sucursales = Object.fromEntries((res.data ?? []).map((b: { id: number; name: string }) => [String(b.id), b.name]));
+    const nombres = await ctx.supabase.from('branches').select('id, name').eq('organization_id', ctx.organizationId).in('id', ids);
+    if (!nombres.error) sucursales = Object.fromEntries((nombres.data ?? []).map((b: { id: number; name: string }) => [String(b.id), b.name]));
   }
-  return { ...r, monedas: Array.isArray(r.monedas) ? r.monedas : [], sucursales };
+  return {
+    ...r,
+    monedas: Array.isArray(r.monedas) ? r.monedas : [],
+    sucursales,
+    hrefVentas: paginaVisible(secciones, PAGINA_VENTAS) ? PAGINA_VENTAS : null,
+  };
 }
 
 // ─── Tienda web ─────────────────────────────────────────────────────────────
@@ -117,6 +142,12 @@ export interface TiendaWeb {
   actual?: { visitantes: number; sesiones: number; sesiones_nuevas: number; pedidos: number; pedidos_pagados: number };
   anterior?: { visitantes: number; sesiones: number; pedidos: number; pedidos_pagados: number };
   pendientes?: number;
+  /** De los pendientes, los que expiran en 30 min y antes de acabar el día. */
+  por_expirar?: number;
+  expiran_hoy?: number;
+  /** Miniaturas: visitantes, pedidos y pagados por hora o día LOCAL del periodo. */
+  granularidad?: 'hora' | 'dia';
+  serie?: Array<{ b: string; visitantes: number; pedidos: number; pagados: number }>;
   /** Enlace a los pedidos online, solo si la persona ve esa página en el menú. */
   hrefPedidos: string | null;
   /**
@@ -137,13 +168,79 @@ export async function tiendaWeb(ctx: Ctx, rango: RangoPeriodo, sucursal: number 
     seccionesVisiblesServidor(ctx).catch(() => []),
   ]);
   if (res.error) throw errorRpc('fn_inicio_tienda_web', res.error);
-  const visible = secciones.some((s) => s.modulos.some((m) => m.paginas.some((p) => p.href === PAGINA_PEDIDOS_ONLINE)));
+  const visible = paginaVisible(secciones, PAGINA_PEDIDOS_ONLINE);
   const analitica = CATALOGO_NAV.some((m) => m.paginas.some((p) => p.href === PAGINA_ANALITICA_WEB));
   return {
     ...(res.data as Omit<TiendaWeb, 'hrefPedidos' | 'hrefAnalitica'>),
     hrefPedidos: visible ? PAGINA_PEDIDOS_ONLINE : null,
     hrefAnalitica: analitica ? PAGINA_ANALITICA_WEB : null,
   };
+}
+
+// ─── Actividad reciente ─────────────────────────────────────────────────────
+
+/**
+ * «Actividad reciente» del periodo y la sucursal: `fn_inicio_actividad`
+ * decide en la base qué tipos ve la persona (módulo activo + permiso) y
+ * devuelve el conteo por tipo y una página.
+ */
+export async function actividadDelInicio(ctx: Ctx, rango: RangoPeriodo, sucursal: number | null, pedido: PedidoActividad): Promise<Actividad> {
+  const { data, error } = await ctx.supabase.rpc('fn_inicio_actividad', {
+    p_organization_id: ctx.organizationId,
+    p_desde: rango.inicio,
+    p_hasta: rango.fin,
+    p_branch_id: sucursal,
+    p_tipo: pedido.tipo,
+    p_limite: pedido.tamano,
+    p_offset: (pedido.pagina - 1) * pedido.tamano,
+  });
+  if (error) throw errorRpc('fn_inicio_actividad', error);
+  return leerActividad(data);
+}
+
+// ─── Primeros pasos ─────────────────────────────────────────────────────────
+
+/** Módulos de base, activos en todas las organizaciones: no cuentan como «activar módulos». */
+const MODULOS_BASE = ['clientes', 'organizations', 'roles', 'configuracion'];
+
+/**
+ * «Primeros pasos» y «Todavía no hay movimientos» (Figma 445:137617): los
+ * conteos del antiguo onboarding del navegador, ahora en el servidor con el
+ * cliente de la sesión (RLS) y la organización del contexto. Cada conteo es
+ * `head` o `limit 1`: nada de traer filas.
+ */
+export async function primerosPasos(ctx: Ctx): Promise<PrimerosPasos> {
+  const org = ctx.organizationId;
+  const db = ctx.supabase;
+  const contar = async (q: PromiseLike<{ count: number | null; error: { message?: string; code?: string } | null }>, etiqueta: string) => {
+    const r = await q;
+    if (r.error) throw errorRpc(etiqueta, r.error);
+    return r.count ?? 0;
+  };
+  const alguno = async (tabla: string) => {
+    const r = await db.from(tabla).select('id').eq('organization_id', org).limit(1);
+    if (r.error) throw errorRpc(tabla, r.error);
+    return (r.data ?? []).length > 0;
+  };
+  const [modulos, sucursales, miembros, productos, impuestos, clientes, movimientos, secciones] = await Promise.all([
+    contar(
+      db.from('organization_modules').select('id', { count: 'exact', head: true }).eq('organization_id', org).eq('is_active', true)
+        .not('module_code', 'in', `(${MODULOS_BASE.join(',')})`),
+      'organization_modules',
+    ),
+    contar(db.from('branches').select('id', { count: 'exact', head: true }).eq('organization_id', org), 'branches'),
+    contar(db.from('organization_members').select('id', { count: 'exact', head: true }).eq('organization_id', org).eq('is_active', true), 'organization_members'),
+    contar(db.from('products').select('id', { count: 'exact', head: true }).eq('organization_id', org).eq('status', 'active'), 'products'),
+    contar(db.from('organization_taxes').select('id', { count: 'exact', head: true }).eq('organization_id', org), 'organization_taxes'),
+    contar(db.from('customers').select('id', { count: 'exact', head: true }).eq('organization_id', org), 'customers'),
+    Promise.all(['sales', 'invoice_sales', 'stock_movements', 'reservations'].map(alguno)).then((r) => r.some(Boolean)),
+    seccionesVisiblesServidor(ctx).catch(() => []),
+  ]);
+  return armarPrimerosPasos(
+    { modulos, sucursales, miembros, productos, impuestos, clientes },
+    movimientos,
+    (href) => paginaVisible(secciones, href),
+  );
 }
 
 // ─── Preferencias ───────────────────────────────────────────────────────────
@@ -355,8 +452,6 @@ export async function turnoDeHoy(ctx: Ctx, ahora: Date = new Date()): Promise<Tu
     visible: true,
     sucursal: uno(t?.branches ?? null)?.name ?? uno(empleo.branches)?.name ?? null,
     hrefMarcar: RUTA_MARCAR,
-    hrefMarcaciones: secciones.some((s) => s.modulos.some((m) => m.paginas.some((p) => p.href === PAGINA_MARCACIONES)))
-      ? PAGINA_MARCACIONES
-      : null,
+    hrefMarcaciones: paginaVisible(secciones, PAGINA_MARCACIONES) ? PAGINA_MARCACIONES : null,
   };
 }

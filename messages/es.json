@@ -696,6 +696,7 @@
         "stockCritico": "Stock crítico",
         "pedidosWeb": "Pedidos web",
         "cajasAnteriores": "Cajas sin cerrar",
+        "reservasStock": "Reservas de stock sin mover",
         "misTareas": "Mis tareas"
       },
       "estados": {
@@ -714,6 +715,7 @@
         "sinPendientes": "Sin pendientes",
         "pendientes": "{n, plural, one {# pendiente} other {# pendientes}}",
         "cajasAbiertas": "{n, plural, one {# caja abierta} other {# cajas abiertas}}",
+        "reservas": "{n, plural, one {# reserva} other {# reservas}}",
         "abiertas": "{n, plural, one {# abierta} other {# abiertas}}"
       },
       "detalles": {
@@ -730,6 +732,8 @@
         },
         "pedidosAlDia": "Ningún pedido por confirmar",
         "pedidosSinConfirmar": "Esperan confirmación de pago",
+        "pedidosPorExpirar": "{n, plural, one {# expira} other {# expiran}} en menos de {minutos} min",
+        "reservasSinMover": "{unidades, plural, one {# unidad reservada} other {# unidades reservadas}} hace más de 24 h",
         "cajasDesde": "Abierta desde hace {dias, plural, one {# día} other {# días}}",
         "tareasVencidas": "{n, plural, one {# vencida} other {# vencidas}}{hoy, plural, =0 {} one { · # vence hoy} other { · # vencen hoy}}",
         "tareasHoy": "{n, plural, one {# vence hoy} other {# vencen hoy}}",
@@ -743,6 +747,7 @@
         "verPedidos": "Ver pedidos",
         "atender": "Atender",
         "verCajas": "Ver cajas",
+        "revisar": "Revisar",
         "abrir": "Abrir"
       },
       "verTodas": "Ver las {n} · {resto}"
@@ -760,6 +765,34 @@
       "otros": "Otros",
       "otroCanal": "Otro canal",
       "sucursalSinNombre": "Sucursal {id}",
+      "abrirDetalle": "Ver el detalle de las ventas del periodo",
+      "grafica": "Ventas del periodo actual frente al anterior",
+      "sinGrafica": "Sin cobros en este periodo ni en el anterior",
+      "sinGraficaMonedas": "Con cobros en varias monedas no se dibuja la tendencia",
+      "frenteConValor": "{frente} ({valor})",
+      "transacciones": "Transacciones",
+      "ticketMedio": "Ticket medio",
+      "devoluciones": "Devoluciones",
+      "seActualizaAlAbrir": "Se actualiza al abrirse; no vuelve a consultar cada 30 s.",
+      "exportarCsv": "Exportar CSV",
+      "verVentas": "Ver ventas",
+      "csv": {
+        "hora": "Hora",
+        "dia": "Día"
+      },
+      "frente": {
+        "ayerMismaHora": "frente a ayer a esta misma hora",
+        "anteayer": "frente a anteayer",
+        "anioAnterior": "frente al año anterior",
+        "diasAnteriores": "frente a los {n} días anteriores",
+        "periodoAnterior": "frente al periodo anterior"
+      },
+      "leyenda": {
+        "hoy": "Hoy",
+        "ayerMismaHora": "Ayer a la misma hora",
+        "actual": "Periodo actual",
+        "anterior": "Periodo anterior"
+      },
       "canales": {
         "pos": "POS",
         "web": "Tienda web",
@@ -778,7 +811,9 @@
       "detalleConversion": "visitante → pedido pagado",
       "puntos": "{valor} pp",
       "visitasTodaTienda": "Las visitas son de toda la tienda; los pedidos, de la sucursal elegida.",
-      "verAnalitica": "Ver analítica web"
+      "verAnalitica": "Ver analítica web",
+      "detallePendientes": "{pendientes, plural, one {# pendiente} other {# pendientes}} · {expiran, plural, =0 {ninguno expira hoy} one {# expira hoy} other {# expiran hoy}}",
+      "detalleConversionPedidos": "visita → pedido {visitaPedido} % · {pagados} pagados"
     },
     "modulos": {
       "titulo": "Módulos",
@@ -930,6 +965,101 @@
         "verMarcaciones": "Ver mis marcaciones",
         "marcarTurno": "Marcar turno"
       }
+    },
+    "periodo": {
+      "horasDelDia": "Horas del día",
+      "todoElDia": "Todo el día",
+      "rangoFechas": "Rango de fechas",
+      "desde": "Desde",
+      "hasta": "Hasta",
+      "notaZona": "Las fechas se muestran en la zona horaria de la organización ({zona})."
+    },
+    "alcance": {
+      "todas": "Todas las sucursales"
+    },
+    "errorInicio": {
+      "titulo": "No se pudieron cargar los datos del inicio",
+      "descripcion": "La consulta no respondió. Los números que ves pueden estar desactualizados; no se muestran ceros para no confundir.",
+      "actualizarTitulo": "No se pudo actualizar el inicio",
+      "actualizarDesc": "Se conservan los últimos datos válidos.",
+      "reintentar": "Reintentar"
+    },
+    "primerosPasos": {
+      "titulo": "Primeros pasos",
+      "progreso": "{hechos} de {total} · {pct} %",
+      "ocultar": "Ocultar por ahora",
+      "mostrar": "Mostrar primeros pasos",
+      "descripcion": "Cuando termines estos pasos, aquí verás lo que hay que atender cada día: caja, cobros, pedidos, stock y tareas.",
+      "pasos": {
+        "modulos": "Activar módulos",
+        "organizacion": "Configurar la organización",
+        "sucursal": "Crear una sucursal",
+        "equipo": "Invitar al equipo",
+        "productos": "Agregar productos",
+        "impuestos": "Configurar impuestos",
+        "clientes": "Registrar clientes"
+      },
+      "hecho": "Hecho",
+      "pendiente": "Pendiente",
+      "ir": "Ir",
+      "irA": "Ir a {paso}",
+      "sinMovimientosTitulo": "Todavía no hay movimientos",
+      "sinMovimientosDesc": "En cuanto registres la primera venta o factura, aquí aparecerán la tendencia del periodo y la actividad reciente.",
+      "agregarProductos": "Agregar productos",
+      "abrirPos": "Abrir el POS"
+    },
+    "actividad": {
+      "titulo": "Actividad reciente",
+      "filtrar": "Filtrar la actividad",
+      "filtros": {
+        "todo": "Todo",
+        "venta": "Ventas",
+        "factura": "Facturas",
+        "cliente": "Clientes",
+        "stock": "Inventario",
+        "reserva": "Reservas"
+      },
+      "hace": {
+        "ahora": "ahora",
+        "minutos": "hace {n} min",
+        "horas": "hace {n} h"
+      },
+      "titulos": {
+        "venta": {
+          "paid": "Venta pagada",
+          "pending": "Venta pendiente de pago",
+          "void": "Venta anulada",
+          "otro": "Venta registrada"
+        },
+        "factura": {
+          "paid": "Factura {numero} pagada",
+          "issued": "Factura {numero} emitida",
+          "partial": "Factura {numero} con abono",
+          "void": "Factura {numero} anulada",
+          "otro": "Factura {numero}"
+        },
+        "cliente": "Cliente nuevo: {nombre}",
+        "clienteSinNombre": "Cliente nuevo",
+        "entradaStock": "Entrada de stock · {producto}",
+        "salidaStock": "Salida de stock · {producto}",
+        "reserva": {
+          "confirmed": "Reserva confirmada",
+          "checked_in": "Reserva con check-in",
+          "checked_out": "Reserva con check-out",
+          "cancelled": "Reserva cancelada",
+          "no_show": "Reserva no presentada",
+          "tentative": "Reserva tentativa",
+          "otro": "Reserva registrada"
+        }
+      },
+      "contexto": {
+        "texto": "{texto}",
+        "crm": "CRM",
+        "entrada": "+{n} {n, plural, one {unidad} other {unidades}}",
+        "salida": "−{n} {n, plural, one {unidad} other {unidades}}"
+      },
+      "vacioTitulo": "Sin movimientos en el periodo",
+      "vacioDesc": "Cambia el periodo o la sucursal para ver más movimientos."
     }
   },
   "org": {

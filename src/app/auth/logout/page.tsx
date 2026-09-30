@@ -20,7 +20,7 @@ import { EscenaAcceso, TarjetaAcceso } from '@/components/kit/acceso';
 function Salida() {
   const t = useTranslations('acceso.salida');
   const params = useSearchParams();
-  const motivo = params.get('reason') === 'expired' ? 'expired' : null;
+  const motivo = params?.get('reason') === 'expired' ? 'expired' : null;
 
   useEffect(() => {
     let vivo = true;

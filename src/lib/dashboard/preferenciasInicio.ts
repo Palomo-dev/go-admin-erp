@@ -14,8 +14,12 @@
  *   consultarse en su inicio.
  */
 
-/** Bloques del inicio que se pueden ocultar, en el orden en que se pintan. */
-export const BLOQUES_OCULTABLES = ['indicadores', 'ventas', 'actividad', 'tiendaWeb'] as const;
+/**
+ * Bloques del inicio que se pueden ocultar, en el orden en que se pintan
+ * (Figma 448:196794). «indicadores» (la grilla vieja de KPIs) salió del inicio
+ * en la tanda 4: una fila guardada con ese valor se lee sin él (`desdeFila`).
+ */
+export const BLOQUES_OCULTABLES = ['ventas', 'actividad', 'tiendaWeb'] as const;
 export type BloqueInicio = (typeof BLOQUES_OCULTABLES)[number];
 
 export const MAX_MODULOS_PREFERENCIA = 60;

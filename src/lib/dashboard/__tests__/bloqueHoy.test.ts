@@ -97,6 +97,29 @@ describe('casillasHoy', () => {
       accion: { etiqueta: { clave: 'acciones.verPedidos' }, href: '/app/pos/pedidos-online' },
     });
   });
+
+  test('reservas de stock sin mover: aviso solo si las hay, con «Revisar» en Pedidos online', () => {
+    expect(casillasHoy({ ...VACIO, reservasStock: { huerfanas: 0, unidades: 0 } })).toEqual([]);
+    expect(casillasHoy({ ...VACIO, reservasStock: { huerfanas: 2, unidades: 7 } })[0]).toMatchObject({
+      id: 'reservasStock',
+      tono: 'advertencia',
+      cifra: { tipo: 'texto', texto: { clave: 'cifras.reservas', params: { n: 2 } } },
+      detalle: { clave: 'detalles.reservasSinMover', params: { unidades: 7 } },
+      accion: { etiqueta: { clave: 'acciones.revisar' }, href: '/app/pos/pedidos-online' },
+    });
+  });
+
+  test('pedidos web por expirar: el detalle dice cuántos expiran en menos de 30 min (Figma 445:137185)', () => {
+    const [c] = casillasHoy({ ...VACIO, pedidosWeb: { pendientes: 12, porExpirar: 3, minutos: 30 } });
+    expect(c).toMatchObject({
+      tono: 'advertencia',
+      cifra: { tipo: 'texto', texto: { clave: 'cifras.pendientes', params: { n: 12 } } },
+      detalle: { clave: 'detalles.pedidosPorExpirar', params: { n: 3, minutos: 30 } },
+      accion: { etiqueta: { clave: 'acciones.atender' } },
+    });
+    // Sin ninguno por expirar, el detalle de siempre.
+    expect(casillasHoy({ ...VACIO, pedidosWeb: { pendientes: 12, porExpirar: 0 } })[0].detalle).toEqual({ clave: 'detalles.pedidosSinConfirmar' });
+  });
 });
 
 describe('auxiliares', () => {

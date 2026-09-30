@@ -14,27 +14,44 @@ export type LecturaInicio<T> =
   | { fase: 'sinPermiso' }
   | { fase: 'listo'; datos: T };
 
-export function useLecturaInicio<T>(url: string | null, organizationId: number | null | undefined, version = 0) {
+export interface OpcionesLectura {
+  /**
+   * Recarga SILENCIOSA («Actualizar» del encabezado): cuando cambia, vuelve a
+   * pedir sin pasar por «cargando» y, si falla, conserva lo último que se vio
+   * y avisa con `onFalloRefresco` (Figma 445:137833: «Se conservan los
+   * últimos datos válidos»).
+   */
+  refresco?: number;
+  onFalloRefresco?: () => void;
+}
+
+export function useLecturaInicio<T>(url: string | null, organizationId: number | null | undefined, version = 0, opciones: OpcionesLectura = {}) {
   const [estado, setEstado] = useState<LecturaInicio<T>>({ fase: 'cargando' });
   const pedido = useRef(0);
+  const { refresco = 0, onFalloRefresco } = opciones;
+  const avisar = useRef(onFalloRefresco);
+  avisar.current = onFalloRefresco;
 
+  /** `true` si leyó (o la respuesta era 403); `false` si falló. */
   const cargar = useCallback(
-    async (silencioso = false) => {
-      if (!url || !organizationId) return;
+    async (silencioso = false): Promise<boolean> => {
+      if (!url || !organizationId) return true;
       const id = ++pedido.current;
       if (!silencioso) setEstado({ fase: 'cargando' });
       try {
         const res = await fetch(url, { headers: { 'X-Organization-Id': String(organizationId) }, cache: 'no-store' });
-        if (id !== pedido.current) return;
+        if (id !== pedido.current) return true;
         if (res.status === 403) {
           setEstado({ fase: 'sinPermiso' });
-          return;
+          return true;
         }
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const datos = (await res.json()) as T;
         if (id === pedido.current) setEstado({ fase: 'listo', datos });
+        return true;
       } catch {
         if (id === pedido.current && !silencioso) setEstado({ fase: 'error' });
+        return false;
       }
     },
     [url, organizationId],
@@ -43,6 +60,16 @@ export function useLecturaInicio<T>(url: string | null, organizationId: number |
   useEffect(() => {
     cargar(false);
   }, [cargar, version]);
+
+  // El primer valor de `refresco` no recarga (ya lo hizo el efecto de arriba).
+  const ultimoRefresco = useRef(refresco);
+  useEffect(() => {
+    if (ultimoRefresco.current === refresco) return;
+    ultimoRefresco.current = refresco;
+    void cargar(true).then((ok) => {
+      if (!ok) avisar.current?.();
+    });
+  }, [refresco, cargar]);
 
   return { estado, recargar: cargar, setEstado };
 }

@@ -824,3 +824,27 @@ Para ver el detalle por organización, cambiar cada `select count(*)` por `selec
 - **F13, borrar los componentes viejos** (`FacturasCompraPage`, `nueva-factura/*`, `editar/*`, `id/*`, `CuentasPorPagarPage`, `id/*` de CxP) y los métodos muertos de `FacturasCompraService`/`CuentasPorPagarService`: ya no los monta ninguna página (lo fija el guardarraíl 26b), pero los importan las pruebas de caracterización de F0, el guardarraíl 28 y la prueba de banca online de otra sesión, que además está editando `CuentasPorPagarService.ts` y `ExportarBancaModal.tsx` ahora mismo. Se borran cuando esas pruebas apunten a las RPC y esa sesión termine.
 - **F7 PDF**: depende del motor (6.5).
 - **Verificación en navegador**: el preview activo pide iniciar sesión y las credenciales no se escriben desde el agente; quedan por recorrer en escritorio, tableta y móvil los recorridos de F4–F10.
+
+## 7. Retenciones en el asiento (D4 fase 2) — 2026-09-30
+
+D4 dejó la CxP por el neto (total − retenciones), pero el asiento de la compra seguía acreditando al proveedor por el total y la retención no aparecía como pasivo con la DIAN: la 2105 quedaba mayor que la CxP y el cierre no cuadraba. Esta fase lo resuelve. Detalle completo, clasificación y nodos de Figma en `docs/design/RETENCIONES-COMPRAS.md`.
+
+### 7.1 Migraciones aplicadas por MCP (con rollback; dry-run en transacción que se deshace)
+
+| Versión | Qué hace |
+|---|---|
+| `20260930073908_compras_asiento_con_retenciones` | Cuentas 2365/2367/2368 bajo el grupo 21 en todas las organizaciones (y en las nuevas, por trigger), plantilla `RETEIVA_15`, `fn_asiento_compra_aplicar_retenciones` y su llamada en `fn_auto_journal_purchase` y `fn_retro_journal_purchases` |
+| `20260930074406_compras_cuenta_retencion_por_clase` | `fn_cuenta_retencion_compra`: primero `tax_account_mapping`; si no hay, clase por código o concepto (ReteFuente → 2365, ReteIVA → 2367, ReteICA → 2368) |
+
+### 7.2 Resultado
+
+- Asiento de la compra: débito inventario + IVA; crédito proveedor por el **neto**; una línea de crédito por cada retención en su cuenta. Se valida que cuadre (`ASIENTO_DESCUADRADO`) y, si la retención iguala o supera el total, no se toca el asiento y se registra `withholding_exceeds_total`.
+- La línea del proveedor se ajusta solo en el asiento recién creado en la misma transacción, con el permiso de mantenimiento que se restaura al terminar; los asientos ya publicados no se reescriben. Había 0 retenciones históricas: no hizo falta reprocesar.
+- Comprobante de egreso: si el pago es de una factura de compra con retenciones, muestra total de la factura, cada retención y el neto a pagar antes del valor pagado (`cargadores/pagos.ts`, reutiliza `filasRetencion` de `cargadores/compras.ts`).
+- La nota de §6.5 sobre el motor («la `factura-compra` no pinta retenciones ni el neto») quedó resuelta antes de esta fase; sigue pendiente `estado-cuenta-proveedor`.
+
+### 7.3 Pendiente
+
+- Tipo de documento «Certificado de retenciones» y visor «Retenciones practicadas» (diseñados en Figma, sin código).
+- Configuración: mostrar y editar la cuenta de cada retención (`tax_account_mapping`) y la base mínima en UVT.
+- Facturas insertadas directamente como `received` (sin pasar por `fn_fc_confirmar_int`) crean el asiento antes de guardar las retenciones y quedan sin sus líneas.

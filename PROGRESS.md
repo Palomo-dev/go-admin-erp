@@ -3589,3 +3589,11 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - Compuerta: jest completo 679/682 suites (fallan sectionContract, f6Adversarial y testerR4.f0sec, de otras zonas); tsc (8 GB) 9 errores, todos en .next-desktop/types; eslint de los archivos tocados sin errores (quedan 2 avisos de dependencias preexistentes y los `any` de CheckoutDialog y posService).
 - Pendiente (§6 del plan): recorrido en navegador (el preview pedía iniciar sesión), textos de OfflineCustomerDialog y PendientesSinConexionDialog, «Otro» de la propina en la pantalla del cliente sin tope, cargos de servicio / supervisor / «A toda la venta» (D5, D6).
 <!-- POS rediseño pantalla principal (fin) -->
+
+### Fase: FASE 2 — Retenciones en el asiento de compra y en el comprobante de egreso (D4 fase 2; docs/design/RETENCIONES-COMPRAS.md) — 2026-09-30
+- Rama `cursor/compras-retenciones-contables-e475` desde main.
+- Figma primero (archivo del rediseño): retenciones en configuración, factura de compra, confirmación, CxP, pago al proveedor, comprobante de egreso, asiento, visor de retenciones, certificado y cierre (páginas 02, 07, 09 y 14), con componentes reutilizados; ajuste P3 del cierre.
+- Migraciones aplicadas por MCP (con rollback; dry-run en transacción que se deshace): 20260930073908_compras_asiento_con_retenciones y 20260930074406_compras_cuenta_retencion_por_clase. El proveedor queda acreditado por el neto y cada retención en 2365/2367/2368; la 2105 vuelve a cuadrar con la CxP.
+- Backend: el comprobante de egreso muestra total, retenciones y neto a pagar cuando paga una factura de compra con retenciones.
+- Pruebas: contrato de las funciones SQL (orden de llamadas, guardas, permiso restaurado, clasificación con 12 casos) y 2 casos nuevos del motor de documentos.
+- Pendiente (§7.3 del plan de compras): certificado de retenciones, visor, edición de la cuenta por retención y base mínima en UVT.

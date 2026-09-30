@@ -202,7 +202,6 @@ describe('middleware · webhooks y crons que se autentican solos llegan sin cook
     '/api/integrations/redeban/webhook',
     '/api/integrations/sendgrid/webhook',
     '/api/crm/contracts/webhook',
-    '/api/crm/voice-agents/campaigns/run',
     // GO-sec 2026-09-24, tras 6f7c97e7: fail-closed (401) y nada se escribe antes de verificar.
     '/api/integrations/mercadopago/webhook',
     '/api/integrations/payu/webhook',

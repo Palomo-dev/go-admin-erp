@@ -16,19 +16,38 @@ export async function sweepStalledCalls(
 ): Promise<void> {
   const tenMinutesAgo = new Date(Date.now() - STALLED_TIMEOUT_MS).toISOString();
   
-  const { data: stalled, error } = await supabase
-    .from('voice_agent_calls')
-    .select('id, call_id, status, started_at')
+  // D-17: Buscar en `calls` que están en dialing/ringing (no en voice_agent_calls,
+  // donde esos estados se mapean a in_progress). Luego obtener las filas
+  // voice_agent_calls correspondientes para actualizar ambas tablas.
+  const { data: stalledCalls, error: callsError } = await supabase
+    .from('calls')
+    .select('id, organization_id, status, started_at')
     .eq('organization_id', orgId)
     .in('status', ['dialing', 'ringing'])
-    .lt('started_at', tenMinutesAgo);
+    .lt('started_at', tenMinutesAgo)
+    .is('ended_at', null);
   
-  if (error) {
-    console.error('[Stalled Calls Sweeper] Error al buscar llamadas atascadas:', error);
+  if (callsError) {
+    console.error('[Stalled Calls Sweeper] Error al buscar llamadas atascadas:', callsError);
     return;
   }
   
-  if (!stalled || stalled.length === 0) return;
+  if (!stalledCalls || stalledCalls.length === 0) return;
+  
+  // Obtener las voice_agent_calls correspondientes
+  const callIds = stalledCalls.map(c => c.id);
+  const { data: stalledVacs, error: vacsError } = await supabase
+    .from('voice_agent_calls')
+    .select('id, call_id, status, started_at')
+    .eq('organization_id', orgId)
+    .in('call_id', callIds);
+  
+  if (vacsError) {
+    console.error('[Stalled Calls Sweeper] Error al buscar voice_agent_calls:', vacsError);
+    return;
+  }
+  
+  const stalled = stalledVacs || [];
   
   const now = new Date().toISOString();
   

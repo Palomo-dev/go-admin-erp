@@ -10,20 +10,21 @@ describe('sweepStalledCalls', () => {
   let vacUpdates: any[];
   let callUpdates: any[];
 
-  const createMockSupabase = (stalledData: any[] = []) => {
+  const createMockSupabase = (stalledCallsData: any[] = [], stalledVacsData: any[] = []) => {
     vacUpdates = [];
     callUpdates = [];
 
     return {
       from: jest.fn((table: string) => {
-        if (table === 'voice_agent_calls') {
+        if (table === 'calls') {
           return {
             select: jest.fn().mockReturnThis(),
             eq: jest.fn().mockReturnThis(),
             in: jest.fn().mockReturnThis(),
-            lt: jest.fn().mockResolvedValue({ data: stalledData, error: null }),
+            lt: jest.fn().mockReturnThis(),
+            is: jest.fn().mockResolvedValue({ data: stalledCallsData, error: null }),
             update: jest.fn((patch: any) => {
-              vacUpdates.push(patch);
+              callUpdates.push(patch);
               return {
                 eq: jest.fn().mockReturnValue({
                   eq: jest.fn().mockResolvedValue({ error: null })
@@ -32,10 +33,13 @@ describe('sweepStalledCalls', () => {
             })
           };
         }
-        if (table === 'calls') {
+        if (table === 'voice_agent_calls') {
           return {
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            in: jest.fn().mockResolvedValue({ data: stalledVacsData, error: null }),
             update: jest.fn((patch: any) => {
-              callUpdates.push(patch);
+              vacUpdates.push(patch);
               return {
                 eq: jest.fn().mockReturnValue({
                   eq: jest.fn().mockResolvedValue({ error: null })
@@ -50,7 +54,7 @@ describe('sweepStalledCalls', () => {
   };
 
   test('no hace nada si no hay llamadas atascadas', async () => {
-    mockSupabase = createMockSupabase([]);
+    mockSupabase = createMockSupabase([], []);
     await sweepStalledCalls(orgId, mockSupabase);
 
     expect(vacUpdates).toHaveLength(0);
@@ -59,12 +63,16 @@ describe('sweepStalledCalls', () => {
 
   test('cierra llamadas en dialing atascadas por más de 10 minutos', async () => {
     const elevenMinutesAgo = new Date(Date.now() - 11 * 60 * 1000).toISOString();
-    const stalledCalls = [
-      { id: 'vac-1', call_id: 'call-1', status: 'dialing', started_at: elevenMinutesAgo },
-      { id: 'vac-2', call_id: 'call-2', status: 'ringing', started_at: elevenMinutesAgo }
+    const stalledCallsData = [
+      { id: 'call-1', organization_id: orgId, status: 'dialing', started_at: elevenMinutesAgo },
+      { id: 'call-2', organization_id: orgId, status: 'ringing', started_at: elevenMinutesAgo }
+    ];
+    const stalledVacsData = [
+      { id: 'vac-1', call_id: 'call-1', status: 'in_progress', started_at: elevenMinutesAgo },
+      { id: 'vac-2', call_id: 'call-2', status: 'in_progress', started_at: elevenMinutesAgo }
     ];
 
-    mockSupabase = createMockSupabase(stalledCalls);
+    mockSupabase = createMockSupabase(stalledCallsData, stalledVacsData);
     await sweepStalledCalls(orgId, mockSupabase);
 
     expect(vacUpdates).toHaveLength(2);
@@ -81,11 +89,14 @@ describe('sweepStalledCalls', () => {
 
   test('cierra solo voice_agent_calls si no hay call_id espejo', async () => {
     const elevenMinutesAgo = new Date(Date.now() - 11 * 60 * 1000).toISOString();
-    const stalledCalls = [
-      { id: 'vac-1', call_id: null, status: 'dialing', started_at: elevenMinutesAgo }
+    const stalledCallsData = [
+      { id: 'call-1', organization_id: orgId, status: 'dialing', started_at: elevenMinutesAgo }
+    ];
+    const stalledVacsData = [
+      { id: 'vac-1', call_id: null, status: 'in_progress', started_at: elevenMinutesAgo }
     ];
 
-    mockSupabase = createMockSupabase(stalledCalls);
+    mockSupabase = createMockSupabase(stalledCallsData, stalledVacsData);
     await sweepStalledCalls(orgId, mockSupabase);
 
     expect(vacUpdates).toHaveLength(1);
@@ -98,7 +109,8 @@ describe('sweepStalledCalls', () => {
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
         in: jest.fn().mockReturnThis(),
-        lt: jest.fn().mockResolvedValue({ data: null, error: { message: 'DB error' } })
+        lt: jest.fn().mockReturnThis(),
+        is: jest.fn().mockResolvedValue({ data: null, error: { message: 'DB error' } })
       }))
     };
 
@@ -119,11 +131,14 @@ describe('sweepStalledCalls', () => {
     const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
     
     const elevenMinutesAgo = new Date(Date.now() - 11 * 60 * 1000).toISOString();
-    const stalledCalls = [
-      { id: 'vac-test', call_id: 'call-test', status: 'dialing', started_at: elevenMinutesAgo }
+    const stalledCallsData = [
+      { id: 'call-test', organization_id: orgId, status: 'dialing', started_at: elevenMinutesAgo }
+    ];
+    const stalledVacsData = [
+      { id: 'vac-test', call_id: 'call-test', status: 'in_progress', started_at: elevenMinutesAgo }
     ];
 
-    mockSupabase = createMockSupabase(stalledCalls);
+    mockSupabase = createMockSupabase(stalledCallsData, stalledVacsData);
     await sweepStalledCalls(orgId, mockSupabase);
 
     expect(consoleWarnSpy).toHaveBeenCalledWith(

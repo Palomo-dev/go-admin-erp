@@ -107,25 +107,6 @@ export async function POST(request: Request) {
     // un contacto efectivo que nunca existió.
     const keepTerminal = vac.status === 'transferred' || vac.status === 'voicemail';
 
-    // D-17: Timeout para llamadas atascadas. Si la llamada lleva más de 5 minutos
-    // en 'dialing' y Twilio reporta un estado terminal, forzamos el cierre.
-    // Esto previene que llamadas queden atascadas si el callback intermedio se perdió.
-    const DIALING_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutos
-    const twilioTerminal = ['completed', 'busy', 'no-answer', 'failed', 'canceled'];
-    const isStalled = 
-      (vac.status === 'dialing' || vac.status === 'ringing') &&
-      vac.started_at &&
-      Date.now() - new Date(vac.started_at).getTime() > DIALING_TIMEOUT_MS;
-    
-    if (isStalled && twilioTerminal.includes(callStatus.toLowerCase())) {
-      console.warn('[AI Agent status] Llamada atascada detectada y cerrada:', {
-        vacId: vac.id,
-        status: vac.status,
-        startedAt: vac.started_at,
-        callStatus
-      });
-    }
-
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (nextStatus && !keepTerminal) patch.status = nextStatus;
     if (nextStatus && TERMINAL_VAC_STATUSES.includes(nextStatus)) {

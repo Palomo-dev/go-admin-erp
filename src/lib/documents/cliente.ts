@@ -120,13 +120,23 @@ export function prepararDescarga(aviso?: string): Window | null {
 }
 
 /**
+ * `URL` es una variable global: el tipo `Window` no la declara, pero en el
+ * navegador cada ventana tiene la suya. El blob tiene que crearse en la
+ * pestaña de la descarga para que el clic de ahí pueda usarlo.
+ */
+function urlDeVentana(ventana: Window): typeof URL {
+  return (ventana as Window & { URL: typeof URL }).URL;
+}
+
+/**
  * Baja el archivo. Si `pestana` se abrió en el clic, el clic de descarga
  * ocurre ahí y el navegador no lo trata como una descarga automática.
  */
 export function entregarArchivo(blob: Blob, nombre: string, pestana: Window | null = null): void {
   if (pestana && !pestana.closed) {
     try {
-      const url = pestana.URL.createObjectURL(blob);
+      const urlApi = urlDeVentana(pestana);
+      const url = urlApi.createObjectURL(blob);
       const doc = pestana.document;
       const cuerpo = doc.body ?? doc.documentElement.appendChild(doc.createElement('body'));
       const a = doc.createElement('a');
@@ -136,7 +146,7 @@ export function entregarArchivo(blob: Blob, nombre: string, pestana: Window | nu
       a.click();
       pestana.setTimeout(() => {
         try {
-          pestana.URL.revokeObjectURL(url);
+          urlApi.revokeObjectURL(url);
         } catch {
           // La pestaña ya no está.
         }

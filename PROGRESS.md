@@ -3673,3 +3673,9 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - Jest de sesión, cron, programación y remitente: 52 en verde. eslint de los archivos tocados, sin avisos.
 
 
+
+### Fase: Reportes v2 — el merge deja el typecheck en verde — 2026-09-30
+- Rama cursor/tsc-reportes-documentos-e475.
+- El merge con main dejó 5 errores de tsc en documentos y reportes. URL no está declarada en el tipo Window: el blob de la descarga se crea con la URL de esa pestaña. Los mocks de Auth en el test de la sesión del cron no aceptaban los argumentos con los que el cron los llama.
+- Jest de la entrega del archivo y de la sesión: 5 en verde. npx tsc --noEmit -p tsconfig.json en verde (0 errores).
+

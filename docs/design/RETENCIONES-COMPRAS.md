@@ -50,6 +50,11 @@ Migraciones (aplicadas por MCP, dry-run en transacción que se deshace, md5 del 
 |---|---|---|
 | `20260930073908_compras_asiento_con_retenciones` | Cuentas 2365/2367/2368 en los 89 planes (+ disparador en `organizations`), plantilla `RETEIVA_15`, `fn_cuenta_retencion_compra`, `fn_asiento_compra_aplicar_retenciones`, y la llamada en `fn_auto_journal_purchase` y `fn_retro_journal_purchases` | restaura ambos cuerpos; borra cuentas y plantilla solo si nada las usa |
 | `20260930074406_compras_cuenta_retencion_por_clase` | Clasificación con marcadores inequívocos antes que palabras sueltas | restaura la de la versión anterior |
+| `20260930085700_compras_retenciones_configuracion` | `fiscal_uvt` (UVT por país y año, solo lectura), `organization_taxes.min_base_uvt`, `fn_clase_retencion` (una sola clasificación), `fn_retenciones_configuracion` / `fn_retencion_configurar` (cuenta y base mínima, finance.create o finance.approve), `fn_retenciones_cargar_plantilla`, y `tax_account_mapping` cerrada a escritura directa desde el cliente | restaura funciones y privilegios; quita la columna y la tabla nuevas |
+| `20260930085948_compras_asiento_previo` | `fn_factura_compra_asiento_previo`: confirma dentro de un bloque que siempre se deshace y devuelve las líneas del asiento real (o el motivo de `journal_entry_failures`) | borra la función |
+| `20260930090435_compras_retenciones_reporte_certificado` | `fn_retenciones_practicadas_filas` (interna, solo service_role), `fn_reporte_retenciones_practicadas` (rango, sucursal, guarda de pertenencia) y `fn_certificado_retenciones_proveedor` (días de la organización, finance.view) | borra las tres funciones |
+
+Las cinco están en `supabase_migrations.schema_migrations` (verificado por MCP el 2026-09-30).
 
 ### 3.1 Cuenta de cada retención
 
@@ -111,9 +116,9 @@ ReteIVA 15 % (167.910,60 a 2367) el asiento también cuadra y la cuenta por paga
 | 07 Finanzas | `424:177444`, `424:178751` | saldo y `AplicarPagoDialog` sobre el neto |
 | 07 Finanzas | `1485:117655` | detalle de asiento — compra con retenciones (5 líneas) |
 | 09 Documentos | `1055:7087` | comprobante de egreso CE-0001: total, retenciones, neto, descuento y valor pagado |
-| 09 Documentos | `1491:126182` | **certificado de retenciones** (tipo propuesto, §6) |
+| 09 Documentos | `1491:126182` | **certificado de retenciones** (implementado, §6) |
 | 09 Documentos | `1265:9236`, `1315:8494` | cierre: páginas 3 y 4 cuadradas; retenciones en el pasivo hasta declararlas |
-| 14 Reportes | `1360:23377`, `1353:12139` | visor «Retenciones practicadas» (propuesta, §6) |
+| 14 Reportes | `1360:23377`, `1353:12139` | visor «Retenciones practicadas» (implementado en el visor genérico de reportes, §6) |
 
 ## 5. Código
 
@@ -127,16 +132,63 @@ ReteIVA 15 % (167.910,60 a 2367) el asiento también cuadra y la cuenta por paga
   definición de cada función en las migraciones; la clasificación usa las expresiones del SQL) y
   dos casos nuevos en `src/lib/documents/__tests__/motor.test.ts`.
 
-## 6. Pendiente (siguiente fase)
+## 6. Fase 3 — pantallas de Figma en código (2026-09-30)
 
-- **Certificado de retenciones** (`certificado-retenciones`, 09 · `1491:126182`): nuevo tipo en el
-  motor de documentos, por proveedor y periodo, agrupado por concepto y cuenta, desde
-  `invoice_purchase_withholdings` de facturas no anuladas.
-- **Visor «Retenciones practicadas»** (14 · `1360:23377`): reporte por periodo y sucursal con los
-  saldos de 2365/2367/2368 y el vencimiento de la declaración.
-- **Configuración** (07 · `1012:87208`): mostrar la cuenta contable de cada retención y permitir
-  cambiarla (escribe `tax_account_mapping`, que `fn_cuenta_retencion_compra` ya respeta), y la
-  base mínima en UVT.
+Cada pantalla aprobada tiene su código, conectado a la BD de §3. Nada de cálculo repetido en la
+UI: la clase sale de `fn_clase_retencion`, la cuenta de `fn_cuenta_retencion_compra`, el asiento
+previo del disparador real y el certificado de la misma RPC que el documento.
+
+| Pantalla (Figma) | Código | Lee / escribe |
+|---|---|---|
+| config-retenciones (07 · `1012:87208`) | `finanzas/impuestos/RetencionesTable.tsx`, `TaxForm.tsx` | tipo, cuenta propia o automática, base mínima en UVT y en pesos del año, «Cargar plantilla del país». La moneda de la UVT sale de `countries.default_currency_code` |
+| detalle-factura | `facturas-compra/detalle/DetalleFacturaCompraV2.tsx`, `formulario/FormularioFacturaCompra.tsx` | aviso «bajo la base mínima» en el formulario (`retencionBajoBaseMinima`, solo avisa); menú «Certificado de retenciones» en el detalle |
+| dialogo-confirmar (07 · `1069:113139`) | `facturas-compra/detalle/DialogosCompra.tsx` | `fn_factura_compra_asiento_previo`: tabla «Asiento que se genera», sumas y «cuadra», neto a pagar |
+| cxp-detalle y dialogo-pago (07 · `452:26278`, `424:177444`) | `cuentas-por-pagar/detalle/CuentaPorPagarDetalle.tsx`, `RegistrarPagoProveedor.tsx` sobre el `RegistrarPagoDialog` del kit | documento de origen con retenciones y neto; el pago sobre el neto (`contextoPagoProveedor.server.ts`); menú «Certificado de retenciones» |
+| asiento-compra-retenciones (07 · `1485:117655`) | `contabilidad/asientos/OrigenCompraAsiento.tsx`, `DatosAsiento.tsx`, `AsientoDetailPage.tsx` | aviso «al proveedor se le acredita el neto», cadena OC → factura → pagos → retenciones (abre el certificado del mes), datos del asiento con la zona de la sucursal y quién lo creó, columna «Centro de costo» solo si alguna línea lo tiene |
+| comprobante-egreso (09 · `1055:7087`) | `documents/server/cargadores/pagos.ts` | total, cada retención, neto a pagar y valor pagado |
+| certificado-retenciones (09 · `1491:126182`) | tipo `certificado-retenciones` (`cargadores/certificadoRetenciones.ts`), `CertificadoRetencionesDialog.tsx` | `fn_certificado_retenciones_proveedor`; se abre desde CxP, factura, asiento y el detalle del proveedor (finance.view) |
+| visor-retenciones-practicadas (14 · `1360:23377`) | `reportes/modulos/finanzasReports.ts`: `retenciones-practicadas` y `retenciones-por-proveedor` | `fn_reporte_retenciones_practicadas` con rango de la zona de la organización y sucursal |
+
+### 6.1 Certificado de retenciones
+
+- Por proveedor y periodo (días calendario de la organización). Sin periodo: 1 de enero del año
+  de «hasta» a hoy; «hasta» nunca pasa de hoy (`periodoCertificado`). Desde una factura, CxP o
+  asiento abre en el mes de la factura (`rangoMesDe`); desde el proveedor, en el año en curso.
+- Número `CR-<año>-<id del proveedor en 4 dígitos>`: se puede volver a expedir, no es un
+  consecutivo de la DIAN.
+- Toda la organización: el agente retenedor es la organización, no la sucursal. Moneda: la base.
+- Solo carta (80 mm responde 400 `PAPEL_NO_DISPONIBLE`). Firma del agente retenedor y del
+  contador; texto legal del artículo 381 del Estatuto Tributario y del artículo 10 del Decreto 836
+  de 1991 (sin firma autógrafa).
+
+### 6.2 Reportes
+
+- «Retenciones practicadas»: KPIs ReteFuente, ReteIVA, ReteICA y Total a declarar; una fila por
+  tipo, concepto, cuenta y tarifa con base, retenido y facturas. El total no suma bases (la misma
+  factura es base de la retención en la fuente y del ICA).
+- «Retenciones por proveedor»: una fila por proveedor con NIT, facturas, las tres clases y el
+  total retenido: es lo que dice el certificado de cada uno.
+- La RPC nace con `p_branch_id` y se verifica en `migracionBranchId.test.ts` contra su propia
+  migración (`RPC_NUEVAS`), con las mismas exigencias que las 9 del filtro por sucursal que
+  aplican a una función nueva.
+
+### 6.3 Pruebas
+
+`src/__tests__/finanzas/compras/retencionesUi.test.ts` (base mínima, mapeadores, periodos),
+`src/lib/services/reportes/__tests__/retencionesReportes.test.ts` (lo que muestran los dos
+reportes), casos nuevos en `rpcBranchId.test.ts` y `migracionBranchId.test.ts`, y el
+`describe('certificado de retenciones')` de `src/lib/documents/__tests__/motor.test.ts`.
+
+## 7. Pendiente
+
+- El visor genérico de reportes no tiene pestañas, notas ni acciones por fila: la pestaña
+  «Certificados» del diseño se resuelve con el certificado desde el proveedor y la CxP, y la
+  «Lectura rápida» no se pinta. Los saldos de 2365/2367/2368 y el vencimiento de la declaración
+  del diseño original tampoco: salen del balance de prueba, no de este reporte.
+- Detalle del asiento: la «Regla» del diseño no se muestra; `journal_entries` no guarda qué
+  regla contable lo armó. «Creado por» sí (de `profiles`); los asientos de los disparadores no
+  tienen `created_by` (0 de 73 de compras, 2.858 de 2.983 de pagos sí) y salen como automáticos.
 - Una factura insertada directamente en `received` por un camino que no sea
   `fn_fc_guardar_int` + `fn_fc_confirmar_int` graba las retenciones después del asiento y este
   queda por el total. Hoy ningún camino lo hace.
+- Recorrido en navegador de las pantallas con una sesión real (el preview pide iniciar sesión).

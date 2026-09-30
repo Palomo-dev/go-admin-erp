@@ -3597,3 +3597,9 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - Backend: el comprobante de egreso muestra total, retenciones y neto a pagar cuando paga una factura de compra con retenciones.
 - Pruebas: contrato de las funciones SQL (orden de llamadas, guardas, permiso restaurado, clasificación con 12 casos) y 2 casos nuevos del motor de documentos.
 - Pendiente (§7.3 del plan de compras): certificado de retenciones, visor, edición de la cuenta por retención y base mínima en UVT.
+
+### Fase: FASE 2 — Retenciones de compra: pantallas de Figma en código (D4 fase 3; docs/design/RETENCIONES-COMPRAS.md §6) — 2026-09-30
+- Rama `cursor/compras-retenciones-contables-e475` (PR #265). Commits: 888ed75d (BD), 8292e619 (configuración), fd248c78 (base mínima y asiento previo), 7982b7b0 (CxP y pago por el neto), b77f6b16 (moneda de la UVT), 71a59fa9 (certificado), 22e8346d (asiento), 535a6930 (reportes), 123450ae (pruebas), de694bbd (creado por) y el de esta documentación.
+- Migraciones aplicadas por MCP (con rollback; registradas en schema_migrations): 20260930085700_compras_retenciones_configuracion, 20260930085948_compras_asiento_previo y 20260930090435_compras_retenciones_reporte_certificado.
+- Pantallas aprobadas en código y conectadas: config-retenciones, detalle-factura, dialogo-confirmar con el asiento previo, cxp-detalle, dialogo-pago, asiento-compra-retenciones, comprobante-egreso, certificado-retenciones y visor-retenciones-practicadas (dos reportes de Finanzas).
+- Pendiente (§8.4 del plan de compras): pestañas y «Lectura rápida» del visor (el visor genérico no las tiene), «Regla» del asiento (no se guarda), facturas insertadas directamente como received, recorrido en navegador.

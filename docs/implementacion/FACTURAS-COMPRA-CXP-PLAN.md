@@ -848,3 +848,36 @@ D4 dejó la CxP por el neto (total − retenciones), pero el asiento de la compr
 - Tipo de documento «Certificado de retenciones» y visor «Retenciones practicadas» (diseñados en Figma, sin código).
 - Configuración: mostrar y editar la cuenta de cada retención (`tax_account_mapping`) y la base mínima en UVT.
 - Facturas insertadas directamente como `received` (sin pasar por `fn_fc_confirmar_int`) crean el asiento antes de guardar las retenciones y quedan sin sus líneas.
+
+## 8. Retenciones: pantallas de Figma en código (D4 fase 3) — 2026-09-30
+
+Resuelve lo pendiente de §7.3 salvo lo que se lista al final. Detalle por pantalla, nodos de Figma y decisiones en `docs/design/RETENCIONES-COMPRAS.md` §6.
+
+### 8.1 Migraciones aplicadas por MCP (con rollback; registradas en `schema_migrations`)
+
+| Versión | Qué hace |
+|---|---|
+| `20260930085700_compras_retenciones_configuracion` | UVT por país y año (`fiscal_uvt`), base mínima en UVT (`organization_taxes.min_base_uvt`), una sola clasificación (`fn_clase_retencion`), leer y fijar cuenta y base mínima, cargar la plantilla del país; `tax_account_mapping` ya no se escribe desde el cliente |
+| `20260930085948_compras_asiento_previo` | `fn_factura_compra_asiento_previo`: el asiento real de la confirmación dentro de un bloque que siempre se deshace |
+| `20260930090435_compras_retenciones_reporte_certificado` | `fn_reporte_retenciones_practicadas` (reporte por rango y sucursal) y `fn_certificado_retenciones_proveedor` (certificado por proveedor y periodo) sobre una sola lectura interna |
+
+### 8.2 Resultado
+
+- Configuración: tipo, cuenta contable (propia o la automática de su clase) y base mínima en UVT y en pesos del año de cada retención; «Cargar plantilla» con las que falten del país.
+- Factura: aviso cuando la base no llega a la base mínima (solo avisa) y, al confirmar, el asiento que se va a generar con sumas, cuadre y neto a pagar.
+- CxP y pago: documento de origen con retenciones y neto; el pago se registra sobre el neto.
+- Asiento: aviso de que al proveedor se le acredita el neto, cadena OC → factura → pagos → retenciones, datos del asiento (fecha, sucursal, origen, moneda, clave del hecho, creado por y cuándo) y centro de costo solo si alguna línea lo tiene.
+- Certificado de retenciones (`certificado-retenciones` en el motor de documentos): desde la CxP, la factura, el asiento y el proveedor; periodo elegible, carta, texto del artículo 381 del E.T.
+- Reportes «Retenciones practicadas» y «Retenciones por proveedor» en Finanzas, con la sucursal activa.
+- Corrección: la moneda de la UVT sale de `countries.default_currency_code` (guardarraíl 28b).
+
+### 8.3 Pruebas
+
+`retencionesUi.test.ts` (15), `retencionesReportes.test.ts` (8), casos nuevos en `rpcBranchId.test.ts` y `migracionBranchId.test.ts` (la RPC nueva se verifica contra su propia migración) y 5 del certificado en `motor.test.ts`.
+
+### 8.4 Pendiente
+
+- El visor genérico de reportes no tiene pestañas, notas ni acciones por fila: la pestaña «Certificados» del diseño se cubre con el certificado desde el proveedor y la CxP; la «Lectura rápida» no se pinta.
+- «Regla» en el detalle del asiento: `journal_entries` no guarda la regla que lo armó.
+- Facturas insertadas directamente como `received` (sin `fn_fc_confirmar_int`): sigue igual que en §7.3; hoy ningún camino lo hace.
+- Recorrido en navegador con sesión real.

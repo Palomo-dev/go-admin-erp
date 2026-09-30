@@ -8,7 +8,11 @@
  *  4. es fuera del horario de la Ley 2300 (se reprograma a la ventana siguiente);
  *  5. ya hubo un contacto efectivo esta semana (se reprograma a la semana siguiente).
  * Y cuando sí sale, la llamada lleva AMD.
+ *
+ * D-17: Deshabilitar el barrido de llamadas atascadas para que no interfiera con
+ * las compuertas legales y las expectativas del test.
  */
+process.env.DISABLE_STALLED_CALLS_SWEEP = 'true';
 
 jest.mock('@/lib/services/providerRegistry', () => ({
   getActiveProvider: jest.fn(async () => ({ credentials: {}, settings: {} })),

@@ -12,7 +12,11 @@
  * Los literales de CHECK/columnas están tomados de `pg_constraint`/`pg_attribute`
  * del proyecto real jgmgphmzusbluqhuqihj (2026-09-09, tras las migraciones
  * `crm_v4_f06_01..03`).
+ *
+ * D-17: Deshabilitar el barrido de llamadas atascadas para que no interfiera con
+ * los mocks de Supabase de este test.
  */
+process.env.DISABLE_STALLED_CALLS_SWEEP = 'true';
 
 jest.mock('@/lib/services/providerRegistry', () => ({
   getActiveProvider: jest.fn(async () => ({ credentials: {}, settings: {} })),

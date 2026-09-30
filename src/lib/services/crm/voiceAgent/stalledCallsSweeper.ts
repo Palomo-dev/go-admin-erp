@@ -10,11 +10,18 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 const STALLED_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutos
 
+/**
+ * Variable de entorno para deshabilitar el barrido en tests.
+ * NO usar en producción.
+ */
+const SWEEP_ENABLED = process.env.DISABLE_STALLED_CALLS_SWEEP !== 'true';
+
 export async function sweepStalledCalls(
   orgId: number,
   supabase: SupabaseClient,
   nowMs?: number
 ): Promise<void> {
+  if (!SWEEP_ENABLED) return;
   const now = nowMs ?? Date.now();
   const tenMinutesAgo = new Date(now - STALLED_TIMEOUT_MS).toISOString();
   

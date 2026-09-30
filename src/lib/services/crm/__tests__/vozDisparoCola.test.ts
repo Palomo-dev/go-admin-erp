@@ -18,6 +18,12 @@
  *
  *  3. EL PANEL DICE POR QUÉ NO LLAMA. Antes, silencio.
  *
+ * D-17: Deshabilitar el barrido de llamadas atascadas en este test para que no
+ * interfiera con las expectativas de concurrencia y estado.
+ */
+process.env.DISABLE_STALLED_CALLS_SWEEP = 'true';
+
+/**
  * Nada de esto marca de verdad: `twilio.calls.create` está doblado.
  */
 

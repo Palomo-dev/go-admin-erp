@@ -12,9 +12,11 @@ const STALLED_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutos
 
 export async function sweepStalledCalls(
   orgId: number,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  nowMs?: number
 ): Promise<void> {
-  const tenMinutesAgo = new Date(Date.now() - STALLED_TIMEOUT_MS).toISOString();
+  const now = nowMs ?? Date.now();
+  const tenMinutesAgo = new Date(now - STALLED_TIMEOUT_MS).toISOString();
   
   // D-17: Buscar en `calls` que están en dialing/ringing (no en voice_agent_calls,
   // donde esos estados se mapean a in_progress). Luego obtener las filas
@@ -49,7 +51,7 @@ export async function sweepStalledCalls(
   
   const stalled = stalledVacs || [];
   
-  const now = new Date().toISOString();
+  const nowISO = new Date(now).toISOString();
   
   for (const vac of stalled) {
     console.warn('[Stalled Calls Sweeper] Cerrando llamada atascada', {
@@ -66,8 +68,8 @@ export async function sweepStalledCalls(
       .update({
         status: 'failed',
         outcome: 'stuck_timeout',
-        completed_at: now,
-        updated_at: now,
+        completed_at: nowISO,
+        updated_at: nowISO,
         locked_by: null
       })
       .eq('id', vac.id)
@@ -83,8 +85,8 @@ export async function sweepStalledCalls(
         .from('calls')
         .update({
           status: 'failed',
-          ended_at: now,
-          updated_at: now
+          ended_at: nowISO,
+          updated_at: nowISO
         })
         .eq('id', vac.call_id)
         .eq('organization_id', orgId);

@@ -8,8 +8,13 @@
  * - El login con Google u OAuth
  * - La navegación entre páginas
  * 
- * Los parámetros funcionales (plan, cycle) se guardan siempre. Las UTM solo se
- * persisten si el usuario ha dado consentimiento para Medición (analytics).
+ * POLÍTICA DE PRIVACIDAD (criterio de Legal):
+ * - Parámetros funcionales (plan, cycle): se guardan siempre (no requieren consentimiento).
+ * - Parámetros analíticos (UTM, gclid, fbclid): SOLO se guardan si el usuario ha dado
+ *   consentimiento explícito para Medición (goadmin_consent.analytics === true).
+ * - Sin consentimiento: los parámetros analíticos se DESCARTAN completamente. No se guardan
+ *   en localStorage, no se mantienen en memoria, no se envían al backend, no quedan en la
+ *   organización ni en el perfil. Solo plan y cycle viajan.
  */
 
 const STORAGE_KEY = 'go_admin_signup_params';
@@ -55,7 +60,9 @@ function leerConsentimiento(): ConsentCookie | null {
  * Se llama desde /auth/signup cuando el usuario entra con ?plan=, ?cycle=, etc.
  * 
  * Los parámetros funcionales (plan, cycle) se guardan siempre.
- * Las UTM solo se guardan si el usuario ha dado consentimiento para analytics.
+ * Los parámetros analíticos (UTM, gclid, fbclid) SOLO se guardan si el usuario
+ * ha dado consentimiento explícito para Medición (analytics === true).
+ * Sin consentimiento, los parámetros analíticos se descartan completamente.
  */
 export function guardarParamsRegistro(params: URLSearchParams): void {
   if (typeof window === 'undefined') return;
@@ -63,10 +70,14 @@ export function guardarParamsRegistro(params: URLSearchParams): void {
   const plan = params.get('plan');
   const cycle = params.get('cycle');
   
-  // Capturar parámetros UTM y otros relevantes.
+  // Capturar parámetros analíticos (UTM, gclid, fbclid).
   const utm: Record<string, string> = {};
-  const utmKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'];
-  for (const key of utmKeys) {
+  const analyticsKeys = [
+    'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
+    'gclid', // Google Click ID
+    'fbclid', // Facebook Click ID
+  ];
+  for (const key of analyticsKeys) {
     const value = params.get(key);
     if (value) utm[key] = value;
   }
@@ -75,7 +86,8 @@ export function guardarParamsRegistro(params: URLSearchParams): void {
   if (plan) datos.plan = plan;
   if (cycle === 'monthly' || cycle === 'yearly') datos.cycle = cycle;
   
-  // Solo guardar UTM si el usuario ha dado consentimiento para Medición.
+  // POLÍTICA DE PRIVACIDAD: Solo guardar parámetros analíticos si el usuario ha dado
+  // consentimiento explícito para Medición. Sin consentimiento, se descartan completamente.
   const consent = leerConsentimiento();
   if (Object.keys(utm).length > 0 && consent?.analytics === true) {
     datos.utm = utm;

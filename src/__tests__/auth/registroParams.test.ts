@@ -245,3 +245,70 @@ describe('flujo completo', () => {
     expect(storage['go_admin_signup_params']).toBeDefined();
   });
 });
+
+describe('payload de registro (privacidad)', () => {
+  test('CON consentimiento: payload incluye plan, cycle y UTM', () => {
+    // Usuario da consentimiento para analytics.
+    cookieString = 'goadmin_consent=' + encodeURIComponent(JSON.stringify({
+      v: 1,
+      analytics: true,
+      marketing: false,
+      ts: Date.now()
+    }));
+    
+    // Usuario entra con todos los parámetros.
+    const params = new URLSearchParams('?plan=business&cycle=yearly&utm_source=google&utm_campaign=test&gclid=abc123');
+    guardarParamsRegistro(params);
+    
+    // Verificar que el payload leído incluye TODO.
+    const payload = leerParamsRegistro();
+    expect(payload.plan).toBe('business');
+    expect(payload.cycle).toBe('yearly');
+    expect(payload.utm).toEqual({
+      utm_source: 'google',
+      utm_campaign: 'test',
+      gclid: 'abc123',
+    });
+  });
+
+  test('SIN consentimiento: payload incluye SOLO plan y cycle (NO UTM, gclid, fbclid)', () => {
+    // Usuario NO da consentimiento (no hay cookie).
+    
+    // Usuario entra con todos los parámetros incluidos UTM y click IDs.
+    const params = new URLSearchParams('?plan=ultimate&cycle=monthly&utm_source=facebook&utm_medium=cpc&gclid=xyz789&fbclid=fb456');
+    guardarParamsRegistro(params);
+    
+    // Verificar que el payload leído incluye SOLO plan y cycle.
+    const payload = leerParamsRegistro();
+    expect(payload.plan).toBe('ultimate');
+    expect(payload.cycle).toBe('monthly');
+    expect(payload.utm).toBeUndefined(); // No se guardó porque no hay consentimiento.
+    
+    // Verificar que NO hay rastro de parámetros analíticos en localStorage.
+    const raw = storage['go_admin_signup_params'];
+    expect(raw).toBeDefined();
+    const stored = JSON.parse(raw);
+    expect(stored.utm).toBeUndefined();
+    expect(stored.gclid).toBeUndefined();
+    expect(stored.fbclid).toBeUndefined();
+  });
+
+  test('SIN consentimiento pero con analytics=false: NO guarda parámetros analíticos', () => {
+    // Usuario rechaza consentimiento de analytics.
+    cookieString = 'goadmin_consent=' + encodeURIComponent(JSON.stringify({
+      v: 1,
+      analytics: false,
+      marketing: true,
+      ts: Date.now()
+    }));
+    
+    // Usuario entra con parámetros analíticos.
+    const params = new URLSearchParams('?plan=pro&utm_source=email&gclid=test123');
+    guardarParamsRegistro(params);
+    
+    // Verificar que el payload NO incluye parámetros analíticos.
+    const payload = leerParamsRegistro();
+    expect(payload.plan).toBe('pro');
+    expect(payload.utm).toBeUndefined();
+  });
+});

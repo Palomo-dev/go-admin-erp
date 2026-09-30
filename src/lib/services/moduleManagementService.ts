@@ -53,6 +53,14 @@ export interface OrganizationModuleStatus {
   available_modules: Module[];
 }
 
+export interface ModulePlanEnforcementResult {
+  allowed: boolean;
+  reason?: 'core_module' | 'included_in_plan' | 'not_in_plan' | 'no_plan_config';
+  enforcement_mode: 'off' | 'warn' | 'enforce';
+  should_block: boolean;
+  warning_message?: string;
+}
+
 export interface ModulePageStatus {
   module_code: string;
   page_href: string;
@@ -66,6 +74,113 @@ export interface ModulePageToggleResult {
 }
 
 export const moduleManagementService = {
+  /**
+   * Verificar si un módulo está permitido por el plan de la organización (GO-156)
+   * 
+   * Retorna información sobre si el módulo está permitido y qué acción tomar
+   * según el modo de enforcement configurado.
+   */
+  async checkModulePlanCompliance(
+    organizationId: number,
+    moduleCode: string,
+    isCore: boolean,
+    supabaseClient = supabase
+  ): Promise<ModulePlanEnforcementResult> {
+    // Los módulos core siempre están permitidos
+    if (isCore) {
+      return {
+        allowed: true,
+        reason: 'core_module',
+        enforcement_mode: 'off',
+        should_block: false
+      };
+    }
+
+    // Obtener modo de enforcement de la organización
+    const { data: prefs, error: prefsError } = await supabaseClient
+      .from('organization_preferences')
+      .select('module_enforcement_mode')
+      .eq('organization_id', organizationId)
+      .maybeSingle();
+
+    const enforcementMode = prefs?.module_enforcement_mode || 'warn';
+
+    // Si está en modo 'off', no hay restricción
+    if (enforcementMode === 'off') {
+      return {
+        allowed: true,
+        reason: 'core_module',
+        enforcement_mode: 'off',
+        should_block: false
+      };
+    }
+
+    // Obtener el plan actual con su configuración de módulos
+    const { data: planData, error: planError } = await supabaseClient
+      .rpc('get_current_plan', { org_id: organizationId });
+
+    if (planError || !planData?.[0]) {
+      console.warn(`No se pudo obtener plan para org ${organizationId}:`, planError);
+      return {
+        allowed: true,
+        reason: 'no_plan_config',
+        enforcement_mode: enforcementMode,
+        should_block: false,
+        warning_message: 'No se pudo verificar el plan de la organización'
+      };
+    }
+
+    const planInfo = planData[0];
+
+    // Obtener plan completo con module_config
+    const { data: fullPlan, error: fullPlanError } = await supabaseClient
+      .from('plans')
+      .select('module_config')
+      .eq('id', planInfo.plan_id)
+      .single();
+
+    if (fullPlanError || !fullPlan?.module_config) {
+      console.warn(`No se pudo obtener module_config para plan ${planInfo.plan_id}:`, fullPlanError);
+      return {
+        allowed: true,
+        reason: 'no_plan_config',
+        enforcement_mode: enforcementMode,
+        should_block: false,
+        warning_message: 'El plan no tiene configuración de módulos'
+      };
+    }
+
+    const moduleConfig = fullPlan.module_config;
+    const coreModules = moduleConfig.core_modules || [];
+    const availableModules = moduleConfig.available_modules || [];
+    const allowedModules = [...coreModules, ...availableModules];
+
+    // Verificar si el módulo está permitido
+    const isAllowed = allowedModules.includes(moduleCode);
+
+    if (isAllowed) {
+      return {
+        allowed: true,
+        reason: 'included_in_plan',
+        enforcement_mode: enforcementMode,
+        should_block: false
+      };
+    }
+
+    // El módulo NO está en el plan
+    const warningMessage = `El módulo "${moduleCode}" no está incluido en tu plan ${planInfo.plan_name}. ` +
+      `Considera actualizar a un plan que lo incluya.`;
+
+    // En modo 'warn' permitimos pero avisamos; en modo 'enforce' bloqueamos
+    return {
+      allowed: false,
+      reason: 'not_in_plan',
+      enforcement_mode: enforcementMode,
+      should_block: enforcementMode === 'enforce',
+      warning_message: warningMessage
+    };
+  },
+
   /**
    * Obtener todos los módulos disponibles
    */
@@ -259,6 +374,43 @@ export const moduleManagementService = {
           success: false,
           message: 'El módulo ya está activo'
         };
+      }
+
+      // Verificar restricciones de plan (GO-156)
+      const planCompliance = await this.checkModulePlanCompliance(
+        organizationId,
+        moduleCode,
+        module.is_core,
+        supabaseClient
+      );
+
+      console.log(`moduleManagementService.activateModule - Plan compliance check:`, planCompliance);
+
+      // Si debe bloquear (modo 'enforce'), rechazar activación
+      if (planCompliance.should_block) {
+        console.log(`moduleManagementService.activateModule - Module blocked by plan enforcement`);
+        return {
+          success: false,
+          message: planCompliance.warning_message || 'Este módulo no está incluido en tu plan actual'
+        };
+      }
+
+      // Si es modo 'warn', registrar el evento (no bloqueamos pero avisamos)
+      if (planCompliance.enforcement_mode === 'warn' && !planCompliance.allowed) {
+        console.warn(`moduleManagementService.activateModule - WARNING: Module ${moduleCode} not in plan for org ${organizationId}, but allowed in warn mode`);
+        // Registrar en ops_audit_log
+        await supabaseClient.from('ops_audit_log').insert({
+          organization_id: organizationId,
+          table_name: 'organization_modules',
+          operation: 'INSERT',
+          record_id: `${organizationId}-${moduleCode}`,
+          changes: {
+            warning: 'module_not_in_plan',
+            module_code: moduleCode,
+            enforcement_mode: 'warn',
+            message: planCompliance.warning_message
+          }
+        }).catch(err => console.warn('Could not log plan warning:', err));
       }
 
       // Si es un módulo pagado, verificar límites del plan

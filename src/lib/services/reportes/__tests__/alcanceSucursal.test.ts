@@ -16,25 +16,25 @@
 import fs from 'fs';
 import path from 'path';
 import { reportePermitido, sucursalDeReportes } from '../alcanceSucursal';
-import type { ReportDefinition } from '../types';
+import type { DefinicionModulo } from '../types';
 
 jest.mock('@/lib/supabase/config', () => ({ supabase: {} }));
 
 const DIR_MODULOS = path.join(__dirname, '..', 'modulos');
 
-function todasLasDefiniciones(): ReportDefinition[] {
+function todasLasDefiniciones(): DefinicionModulo[] {
   return fs
     .readdirSync(DIR_MODULOS)
     .filter((f) => f.endsWith('Reports.ts'))
     .flatMap((f) => {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const modulo = require(path.join(DIR_MODULOS, f)) as Record<string, unknown>;
-      return Object.values(modulo).filter(Array.isArray).flat() as ReportDefinition[];
+      return Object.values(modulo).filter(Array.isArray).flat() as DefinicionModulo[];
     });
 }
 
 /** Cuerpo de `fetch` sin su lista de parámetros. */
-function cuerpoDeFetch(def: ReportDefinition): string {
+function cuerpoDeFetch(def: DefinicionModulo): string {
   const fuente = def.fetch.toString();
   const cierre = fuente.indexOf(')');
   return fuente.slice(cierre + 1);

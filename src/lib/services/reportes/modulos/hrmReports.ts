@@ -11,7 +11,7 @@ import type { ReportesClient } from '../types';
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
 import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
-import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import type { DefinicionModulo, ReportData, PeriodoCierre } from '../types';
 import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
@@ -64,12 +64,12 @@ export function resumirComisionesPorVendedor(rows: readonly FilaComision[]): Res
   return Array.from(grupos.values()).sort((a, b) => b.comision - a.comision);
 }
 
-export const hrmReports: ReportDefinition[] = [
+export const hrmReports: DefinicionModulo[] = [
   {
     id: 'hrm-nomina',
     modulo: 'hrm',
-    titulo: 'Nómina Quincenal',
-    descripcion: 'Pagos, deducciones y costos employer del período',
+    titulo: 'Nómina quincenal',
+    descripcion: 'Pagos, deducciones y costo del empleador por periodo de nómina',
     categoria: 'personas',
     alcance: 'organizacion',
     periodosSugeridos: ['quincenal'],
@@ -88,7 +88,7 @@ export const hrmReports: ReportDefinition[] = [
       const periodos = data ?? [];
 
       return buildReportData(
-        'hrm-nomina', 'Nómina Quincenal', 'hrm', periodo,
+        'hrm-nomina', 'Nómina quincenal', 'hrm', periodo,
         [
           { titulo: 'Total Bruto', valor: periodos.reduce((s: number, p: Record<string, unknown>) => s + Number(p.total_gross ?? 0), 0), formato: 'moneda' },
           { titulo: 'Total Neto', valor: periodos.reduce((s: number, p: Record<string, unknown>) => s + Number(p.total_net ?? 0), 0), formato: 'moneda' },
@@ -110,8 +110,8 @@ export const hrmReports: ReportDefinition[] = [
   {
     id: 'hrm-productividad',
     modulo: 'hrm',
-    titulo: 'Productividad de Personal',
-    descripcion: 'Horas trabajadas, ausencias y productividad por departamento',
+    titulo: 'Productividad de personal',
+    descripcion: 'Turnos, horas trabajadas y ausencias',
     categoria: 'personas',
     alcance: 'sucursal',
     periodosSugeridos: ['semanal'],
@@ -147,7 +147,7 @@ export const hrmReports: ReportDefinition[] = [
       const totalHoras = shifts.reduce((s: number, r: Record<string, unknown>) => s + calcHoras(r), 0);
 
       return buildReportData(
-        'hrm-productividad', 'Productividad de Personal', 'hrm', periodo,
+        'hrm-productividad', 'Productividad de personal', 'hrm', periodo,
         [
           { titulo: 'Total Turnos', valor: shifts.length, formato: 'numero' },
           { titulo: 'Horas Trabajadas', valor: totalHoras, formato: 'numero' },
@@ -166,7 +166,7 @@ export const hrmReports: ReportDefinition[] = [
     id: 'hrm-comisiones',
     modulo: 'hrm',
     titulo: 'Comisiones',
-    descripcion: 'Comisiones devengadas por vendedor (pagadas y pendientes)',
+    descripcion: 'Comisiones devengadas por vendedor, pagadas y pendientes',
     categoria: 'personas',
     alcance: 'sucursal',
     periodosSugeridos: ['quincenal', 'mensual'],

@@ -12,7 +12,7 @@ import type { ReportesClient } from '../types';
 // corren como `authenticated` miembro y nunca como `anon`.
 import { toPlainDate } from '@/lib/utils/timezone';
 import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
-import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import type { DefinicionModulo, ReportData, PeriodoCierre } from '../types';
 import { rangoDelPeriodo } from '../rangoPeriodo';
 import { leerPaginado } from '../leerPaginado';
 
@@ -99,15 +99,15 @@ const CLAIM_STATUS_LABELS: Record<string, string> = {
   cancelled: 'Cancelado',
 };
 
-export const serialTrackingReports: ReportDefinition[] = [
+export const serialTrackingReports: DefinicionModulo[] = [
   // ============================================================
   // 10.1: Reporte de Trazabilidad por Producto
   // ============================================================
   {
     id: 'trazabilidad-producto',
     modulo: 'inventory',
-    titulo: 'Trazabilidad por Producto',
-    descripcion: 'Seriales recibidos, proveedor, costo, estado actual y ubicación por producto',
+    titulo: 'Trazabilidad por producto',
+    descripcion: 'Seriales recibidos, proveedor, costo, estado y ubicación',
     categoria: 'operativo',
     alcance: 'sucursal',
     periodosSugeridos: ['mensual', 'trimestral'],
@@ -156,7 +156,7 @@ export const serialTrackingReports: ReportDefinition[] = [
       const costoTotal = filas.reduce((s, f) => s + Number(f.costo ?? 0), 0);
 
       return buildReportData(
-        'trazabilidad-producto', 'Trazabilidad por Producto', 'inventory', periodo,
+        'trazabilidad-producto', 'Trazabilidad por producto', 'inventory', periodo,
         [
           { titulo: 'Total Seriales', valor: totalSeriales, formato: 'numero' },
           { titulo: 'En Stock', valor: enStock, formato: 'numero' },
@@ -187,8 +187,8 @@ export const serialTrackingReports: ReportDefinition[] = [
   {
     id: 'ventas-serial',
     modulo: 'inventory',
-    titulo: 'Ventas por Serial',
-    descripcion: 'Seriales vendidos: producto, cliente, vendedor, canal, precio y fecha',
+    titulo: 'Ventas por serial',
+    descripcion: 'Seriales vendidos: producto, cliente, vendedor, canal y precio',
     categoria: 'comercial',
     alcance: 'sucursal',
     periodosSugeridos: ['mensual', 'trimestral'],
@@ -261,7 +261,7 @@ export const serialTrackingReports: ReportDefinition[] = [
       const canalWeb = filas.filter((f) => f.canal === 'Web').length;
 
       return buildReportData(
-        'ventas-serial', 'Ventas por Serial', 'inventory', periodo,
+        'ventas-serial', 'Ventas por serial', 'inventory', periodo,
         [
           { titulo: 'Seriales Vendidos', valor: totalVentas, formato: 'numero' },
           { titulo: 'Ingresos Total', valor: ingresosTotal, formato: 'moneda' },
@@ -290,8 +290,8 @@ export const serialTrackingReports: ReportDefinition[] = [
   {
     id: 'garantias-reporte',
     modulo: 'inventory',
-    titulo: 'Reporte de Garantías',
-    descripcion: 'Reclamos de garantía: tipo de resolución, monto y tiempo de resolución',
+    titulo: 'Reporte de garantías',
+    descripcion: 'Reclamos de garantía: resolución, monto y tiempo',
     categoria: 'operativo',
     alcance: 'organizacion',
     periodosSugeridos: ['mensual', 'trimestral'],
@@ -350,7 +350,7 @@ export const serialTrackingReports: ReportDefinition[] = [
         : 0;
 
       return buildReportData(
-        'garantias-reporte', 'Reporte de Garantías', 'inventory', periodo,
+        'garantias-reporte', 'Reporte de garantías', 'inventory', periodo,
         [
           { titulo: 'Total Reclamos', valor: totalReclamos, formato: 'numero' },
           { titulo: 'Pendientes', valor: pendientes, formato: 'numero' },
@@ -382,8 +382,8 @@ export const serialTrackingReports: ReportDefinition[] = [
   {
     id: 'seriales-proveedor',
     modulo: 'inventory',
-    titulo: 'Seriales por Proveedor',
-    descripcion: 'Seriales comprados, costo total, vendidos y devueltos por proveedor',
+    titulo: 'Seriales por proveedor',
+    descripcion: 'Seriales comprados, vendidos y devueltos por proveedor',
     categoria: 'operativo',
     alcance: 'sucursal',
     periodosSugeridos: ['mensual', 'trimestral'],
@@ -453,7 +453,7 @@ export const serialTrackingReports: ReportDefinition[] = [
       const totalDevueltos = filas.reduce((s, f) => s + f.devueltos, 0);
 
       return buildReportData(
-        'seriales-proveedor', 'Seriales por Proveedor', 'inventory', periodo,
+        'seriales-proveedor', 'Seriales por proveedor', 'inventory', periodo,
         [
           { titulo: 'Proveedores', valor: filas.length, formato: 'numero' },
           { titulo: 'Total Seriales', valor: totalSeriales, formato: 'numero' },

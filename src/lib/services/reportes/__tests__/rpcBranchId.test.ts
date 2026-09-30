@@ -20,7 +20,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { ventasReports } from '../modulos/ventasReports';
 import { finanzasReports } from '../modulos/finanzasReports';
 import { inventarioReports } from '../modulos/inventarioReports';
-import type { PeriodoCierre, ReportDefinition } from '../types';
+import type { PeriodoCierre, DefinicionModulo } from '../types';
 
 // `getOrgDateRange` consulta el timezone de la organización en Supabase; aquí
 // solo interesa que la llamada RPC salga bien formada, así que se fija.
@@ -86,7 +86,7 @@ const ORG_ID = 142;
  * migración del filtro por sucursal y los dos reportes de retenciones, que
  * comparten `fn_reporte_retenciones_practicadas`.
  */
-const CASOS: Array<{ reporte: ReportDefinition; rpc: string; claves: string[] }> = [
+const CASOS: Array<{ reporte: DefinicionModulo; rpc: string; claves: string[] }> = [
   { reporte: buscar(ventasReports, 'fn_reporte_cierre_caja'), rpc: 'fn_reporte_cierre_caja', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },
   { reporte: buscar(ventasReports, 'fn_reporte_ventas_resumen'), rpc: 'fn_reporte_ventas_resumen', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },
   { reporte: buscar(ventasReports, 'fn_reporte_ventas_por_hora'), rpc: 'fn_reporte_ventas_por_hora', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },
@@ -106,7 +106,7 @@ const CASOS: Array<{ reporte: ReportDefinition; rpc: string; claves: string[] }>
  * Se busca por el texto de la función en vez de por id para que el test no se
  * quede callado si alguien renombra un reporte.
  */
-function buscar(defs: ReportDefinition[], rpc: string): ReportDefinition {
+function buscar(defs: DefinicionModulo[], rpc: string): DefinicionModulo {
   const encontrado = defs.find((d) => d.fetch.toString().includes(`'${rpc}'`));
   if (!encontrado) {
     throw new Error(`Ningún reporte del módulo llama a ${rpc}`);

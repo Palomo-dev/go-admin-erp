@@ -47,6 +47,34 @@ export interface ReporteKPI {
   formato?: 'moneda' | 'numero' | 'porcentaje';
 }
 
+/**
+ * Otra forma de leer el mismo resultado (pestañas del visor: «Por tipo»,
+ * «Por proveedor», «Por cuenta»…). La vista principal son `columnas`/`filas`
+ * del propio `ReportData`; estas son las adicionales.
+ */
+export interface VistaReporte {
+  id: string;
+  titulo: string;
+  columnas: ReporteColumna[];
+  filas: Record<string, unknown>[];
+  totales?: Record<string, unknown>;
+}
+
+/** Tono de una observación del panel «Lectura rápida». */
+export type TonoLectura = 'bien' | 'aviso' | 'alerta' | 'info';
+
+/**
+ * Observación calculada sobre el resultado (no inventada): «3 facturas
+ * vencidas a más de 90 días», «la caja de la sede Norte sigue abierta».
+ */
+export interface LecturaReporte {
+  tono: TonoLectura;
+  texto: string;
+  /** Ruta de la app donde se resuelve (p. ej. la cartera vencida). */
+  href?: string;
+  etiquetaAccion?: string;
+}
+
 /** Estructura universal de datos de un reporte ejecutado */
 export interface ReportData {
   id: string; // 'cierre-caja', 'estado-resultados', ...
@@ -58,6 +86,10 @@ export interface ReportData {
   totales?: Record<string, unknown>; // fila de totales al pie
   generadoEn: string; // timestamp ISO
   periodo: PeriodoCierre;
+  /** Título de la vista principal cuando hay `vistas` (p. ej. «Por tipo»). */
+  vistaPrincipal?: string;
+  vistas?: VistaReporte[];
+  lectura?: LecturaReporte[];
 }
 
 /** Categoría del reporte para agrupación visual */
@@ -107,8 +139,41 @@ export type AlcanceReporte = 'sucursal' | 'organizacion';
  */
 export type ReportesClient = SupabaseClient;
 
-/** Definición (catálogo) de un reporte disponible */
-export interface ReportDefinition {
+/**
+ * Tarjeta del centro de reportes. Es distinta de `modulo`: el módulo decide si
+ * el plan de la organización incluye el reporte; el grupo, dónde se muestra
+ * (Compras reúne reportes de Finanzas y de Inventario, por ejemplo).
+ */
+export type GrupoReporte =
+  | 'contabilidad'
+  | 'finanzas'
+  | 'ventas'
+  | 'inventario'
+  | 'compras'
+  | 'personas'
+  | 'clientes'
+  | 'atencion'
+  | 'operacion'
+  | 'hoteleria'
+  | 'parqueadero'
+  | 'membresias'
+  | 'transporte';
+
+/**
+ * Filtros que el reporte admite además del periodo. La interfaz solo habilita
+ * estos; los demás salen deshabilitados con el motivo. Declarar uno que la
+ * consulta no aplica es mentirle al usuario: `catalogoV2.test.ts` lo vigila.
+ * - `comparativo`: el reporte depende del periodo, así que se puede correr
+ *   con el anterior y comparar.
+ * - `sucursal`: filtra por la sucursal elegida (`alcance: 'sucursal'`).
+ * - `franja`: la consulta usa instantes (`rangoDelPeriodo`), así que respeta
+ *   la franja horaria; los reportes por día contable no.
+ * - `centroCosto`: tiene la vista por centro de costo.
+ */
+export type FiltroReporte = 'comparativo' | 'sucursal' | 'franja' | 'centroCosto';
+
+/** Definición tal como la escribe cada archivo de `modulos/`. */
+export interface DefinicionModulo {
   id: string;
   modulo: string; // 'pos' | 'finance' | 'crm' | ...
   titulo: string;
@@ -117,6 +182,19 @@ export interface ReportDefinition {
   alcance: AlcanceReporte;
   periodosSugeridos: TipoCierre[];
   fetch: (orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient) => Promise<ReportData>;
+}
+
+/** Definición (catálogo) de un reporte disponible */
+export interface ReportDefinition extends DefinicionModulo {
+  grupo: GrupoReporte;
+  filtros: FiltroReporte[];
+  /** Etiqueta «Nuevo» en la lista (reportes de la v2). */
+  nuevo?: boolean;
+  /**
+   * Reporte que ya no se lista porque quedó como vista de otro. Se conserva
+   * para enlaces, favoritos y el asistente: abre `destino` en la vista `vista`.
+   */
+  alias?: { destino: string; vista: string };
 }
 
 /** Agrupación de reportes por módulo para la UI */

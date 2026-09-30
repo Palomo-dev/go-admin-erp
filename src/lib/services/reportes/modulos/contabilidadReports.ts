@@ -10,7 +10,7 @@ import type { ReportesClient } from '../types';
 // del usuario; en el servidor (asistente de reportes) el route handler pasa el
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
-import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import type { DefinicionModulo, ReportData, PeriodoCierre } from '../types';
 import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
@@ -21,12 +21,12 @@ function buildReportData(
   return { id, titulo, modulo, kpis, columnas, filas, totales, generadoEn: new Date().toISOString(), periodo };
 }
 
-export const contabilidadReports: ReportDefinition[] = [
+export const contabilidadReports: DefinicionModulo[] = [
   {
     id: 'estado-resultados',
     modulo: 'finance',
-    titulo: 'Estado de Resultados',
-    descripcion: 'Ingresos, costos y gastos → utilidad neta del período',
+    titulo: 'Estado de resultados',
+    descripcion: 'Ingresos, costos y gastos del periodo',
     categoria: 'contable',
     alcance: 'organizacion',
     periodosSugeridos: ['mensual', 'trimestral', 'anual'],
@@ -43,7 +43,7 @@ export const contabilidadReports: ReportDefinition[] = [
       const d = data ?? {};
 
       return buildReportData(
-        'estado-resultados', 'Estado de Resultados', 'finance', periodo,
+        'estado-resultados', 'Estado de resultados', 'finance', periodo,
         [
           { titulo: 'Ingresos', valor: d.ingresos ?? 0, formato: 'moneda' },
           { titulo: 'Costos', valor: d.costos ?? 0, formato: 'moneda' },
@@ -64,8 +64,8 @@ export const contabilidadReports: ReportDefinition[] = [
   {
     id: 'balance-general',
     modulo: 'finance',
-    titulo: 'Balance General',
-    descripcion: 'Activo, pasivo y patrimonio a la fecha de corte',
+    titulo: 'Balance general',
+    descripcion: 'Activo, pasivo y patrimonio a la fecha de corte · Fuente: libro mayor',
     categoria: 'contable',
     alcance: 'organizacion',
     periodosSugeridos: ['mensual', 'trimestral', 'anual'],
@@ -80,7 +80,7 @@ export const contabilidadReports: ReportDefinition[] = [
       const d = data ?? {};
 
       return buildReportData(
-        'balance-general', 'Balance General', 'finance', periodo,
+        'balance-general', 'Balance general', 'finance', periodo,
         [
           { titulo: 'Total Activos', valor: d.activos ?? 0, formato: 'moneda' },
           { titulo: 'Total Pasivos', valor: d.pasivos ?? 0, formato: 'moneda' },
@@ -100,8 +100,8 @@ export const contabilidadReports: ReportDefinition[] = [
   {
     id: 'presupuesto-vs-real',
     modulo: 'finance',
-    titulo: 'Presupuesto vs Real',
-    descripcion: 'Comparativo de presupuestos contra ejecución real',
+    titulo: 'Presupuesto vs. real',
+    descripcion: 'Ejecución del presupuesto por cuenta',
     categoria: 'contable',
     alcance: 'organizacion',
     periodosSugeridos: ['mensual', 'trimestral'],
@@ -118,7 +118,7 @@ export const contabilidadReports: ReportDefinition[] = [
       const d = data ?? {};
 
       return buildReportData(
-        'presupuesto-vs-real', 'Presupuesto vs Real', 'finance', periodo,
+        'presupuesto-vs-real', 'Presupuesto vs. real', 'finance', periodo,
         [
           { titulo: 'Tiene Presupuesto', valor: d.tiene_presupuesto ? 'Sí' : 'No' },
         ],

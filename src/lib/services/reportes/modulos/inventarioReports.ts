@@ -11,7 +11,7 @@ import type { ReportesClient } from '../types';
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
 import { applyBranchFilter, normalizeBranchParam } from '@/lib/services/branchFilterHelper';
-import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import type { DefinicionModulo, ReportData, PeriodoCierre } from '../types';
 import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
@@ -52,12 +52,12 @@ function getEffectiveCost(
   return Number(vigentes[0]?.cost) || 0;
 }
 
-export const inventarioReports: ReportDefinition[] = [
+export const inventarioReports: DefinicionModulo[] = [
   {
     id: 'stock-critico',
     modulo: 'inventory',
-    titulo: 'Stock Crítico',
-    descripcion: 'Productos bajo el mínimo de stock',
+    titulo: 'Stock crítico',
+    descripcion: 'Productos bajo el mínimo por sucursal · existencias al momento',
     categoria: 'operativo',
     alcance: 'sucursal',
     periodosSugeridos: ['diario'],
@@ -216,7 +216,7 @@ export const inventarioReports: ReportDefinition[] = [
       const totalProductosTrackeado = (data ?? []).length;
 
       return buildReportData(
-        'stock-critico', 'Stock Crítico', 'inventory', periodo,
+        'stock-critico', 'Stock crítico', 'inventory', periodo,
         [
           { titulo: 'Total Productos', valor: totalProductosTrackeado, formato: 'numero' },
           { titulo: 'Productos Críticos', valor: totalCriticos, formato: 'numero' },
@@ -246,8 +246,8 @@ export const inventarioReports: ReportDefinition[] = [
   {
     id: 'movimientos-inventario',
     modulo: 'inventory',
-    titulo: 'Movimientos de Inventario',
-    descripcion: 'Entradas, salidas y ajustes del período',
+    titulo: 'Movimientos de inventario',
+    descripcion: 'Entradas, salidas y ajustes del periodo',
     categoria: 'operativo',
     alcance: 'sucursal',
     periodosSugeridos: ['diario', 'semanal'],
@@ -315,7 +315,7 @@ export const inventarioReports: ReportDefinition[] = [
       const valorTotal = filas.reduce((s, f) => s + Number(f.valor_total ?? 0), 0);
 
       return buildReportData(
-        'movimientos-inventario', 'Movimientos de Inventario', 'inventory', periodo,
+        'movimientos-inventario', 'Movimientos de inventario', 'inventory', periodo,
         [
           { titulo: 'Total Entradas', valor: d.total_entradas ?? 0, formato: 'numero' },
           { titulo: 'Total Salidas', valor: d.total_salidas ?? 0, formato: 'numero' },
@@ -341,8 +341,8 @@ export const inventarioReports: ReportDefinition[] = [
   {
     id: 'rotacion-inventario',
     modulo: 'inventory',
-    titulo: 'Rotación de Inventario',
-    descripcion: 'Top vendidos, dead stock y días promedio de inventario',
+    titulo: 'Rotación de inventario',
+    descripcion: 'Productos más vendidos, sin movimiento y días de inventario',
     categoria: 'operativo',
     alcance: 'sucursal',
     periodosSugeridos: ['semanal', 'mensual'],
@@ -360,7 +360,7 @@ export const inventarioReports: ReportDefinition[] = [
       const d = data ?? {};
 
       return buildReportData(
-        'rotacion-inventario', 'Rotación de Inventario', 'inventory', periodo,
+        'rotacion-inventario', 'Rotación de inventario', 'inventory', periodo,
         [
           { titulo: 'Total Vendido', valor: d.total_vendido ?? 0, formato: 'moneda' },
           { titulo: 'Productos Vendidos', valor: d.num_productos_vendidos ?? 0, formato: 'numero' },
@@ -378,8 +378,8 @@ export const inventarioReports: ReportDefinition[] = [
   {
     id: 'rentabilidad-producto-inv',
     modulo: 'inventory',
-    titulo: 'Rentabilidad por Producto',
-    descripcion: 'Margen de ganancia por producto',
+    titulo: 'Rentabilidad por producto (inventario)',
+    descripcion: 'Margen por producto y categoría al costo promedio',
     categoria: 'comercial',
     alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
@@ -401,7 +401,7 @@ export const inventarioReports: ReportDefinition[] = [
       const saleIds = (ventas ?? []).map((v: Record<string, unknown>) => v.id);
       if (!saleIds.length) {
         return buildReportData(
-          'rentabilidad-producto-inv', 'Rentabilidad por Producto', 'inventory', periodo,
+          'rentabilidad-producto-inv', 'Rentabilidad por producto (inventario)', 'inventory', periodo,
           [
             { titulo: 'Total Ingresos', valor: 0, formato: 'moneda' },
             { titulo: 'Productos', valor: 0, formato: 'numero' },
@@ -438,7 +438,7 @@ export const inventarioReports: ReportDefinition[] = [
       });
 
       return buildReportData(
-        'rentabilidad-producto-inv', 'Rentabilidad por Producto', 'inventory', periodo,
+        'rentabilidad-producto-inv', 'Rentabilidad por producto (inventario)', 'inventory', periodo,
         [
           { titulo: 'Total Ingresos', valor: items.reduce((s: number, i: Record<string, unknown>) => s + Number(i.total ?? 0), 0), formato: 'moneda' },
           { titulo: 'Productos', valor: items.length, formato: 'numero' },

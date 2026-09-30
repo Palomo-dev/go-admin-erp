@@ -12,7 +12,7 @@ import type { ReportesClient } from '../types';
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
 import { applyBranchFilter, normalizeBranchParam } from '@/lib/services/branchFilterHelper';
-import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import type { DefinicionModulo, ReportData, PeriodoCierre, VistaReporte } from '../types';
 import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
@@ -60,12 +60,45 @@ function kpisRetenciones(t: RetencionesPracticadas['totales']): ReportData['kpis
   ];
 }
 
-export const finanzasReports: ReportDefinition[] = [
+/** Vista «Por proveedor»: la base del certificado de retenciones de cada uno. */
+function vistaRetencionesPorProveedor(d: RetencionesPracticadas): Pick<VistaReporte, 'columnas' | 'filas' | 'totales'> {
+  const t = d.totales;
+  return {
+    columnas: [
+      { key: 'proveedor', titulo: 'Proveedor', tipo: 'texto' },
+      { key: 'nit', titulo: 'NIT', tipo: 'texto' },
+      { key: 'facturas', titulo: 'Facturas', tipo: 'numero', alinear: 'right' },
+      { key: 'retefuente', titulo: 'ReteFuente', tipo: 'moneda', alinear: 'right' },
+      { key: 'reteiva', titulo: 'ReteIVA', tipo: 'moneda', alinear: 'right' },
+      { key: 'reteica', titulo: 'ReteICA', tipo: 'moneda', alinear: 'right' },
+      { key: 'retenido', titulo: 'Total retenido', tipo: 'moneda', alinear: 'right' },
+    ],
+    filas: d.por_proveedor.map((f) => ({
+      proveedor: f.proveedor ?? `Proveedor #${f.proveedor_id}`,
+      nit: f.nit ?? '',
+      facturas: Number(f.facturas ?? 0),
+      retefuente: Number(f.retefuente ?? 0),
+      reteiva: Number(f.reteiva ?? 0),
+      reteica: Number(f.reteica ?? 0),
+      retenido: Number(f.retenido ?? 0),
+    })),
+    totales: {
+      proveedor: 'Total',
+      facturas: Number(t.facturas ?? 0),
+      retefuente: Number(t.retefuente ?? 0),
+      reteiva: Number(t.reteiva ?? 0),
+      reteica: Number(t.reteica ?? 0),
+      retenido: Number(t.total ?? 0),
+    },
+  };
+}
+
+export const finanzasReports: DefinicionModulo[] = [
   {
     id: 'cxc-vencidas',
     modulo: 'finance',
-    titulo: 'Cuentas por Cobrar Vencidas',
-    descripcion: 'Facturas vencidas agrupadas por cliente y antigüedad',
+    titulo: 'Cuentas por cobrar vencidas',
+    descripcion: 'Facturas vencidas por cliente y antigüedad',
     categoria: 'financiero',
     alcance: 'sucursal',
     periodosSugeridos: ['diario'],
@@ -140,7 +173,7 @@ export const finanzasReports: ReportDefinition[] = [
       const rango180 = items.filter((i) => i.dias_vencido > 90).length;
 
       return buildReportData(
-        'cxc-vencidas', 'Cuentas por Cobrar Vencidas', 'finance', periodo,
+        'cxc-vencidas', 'Cuentas por cobrar vencidas', 'finance', periodo,
         [
           { titulo: 'Total Vencido', valor: totalVencido, formato: 'moneda' },
           { titulo: 'N° Facturas', valor: numFacturas, formato: 'numero' },
@@ -174,8 +207,8 @@ export const finanzasReports: ReportDefinition[] = [
   {
     id: 'cxc-aging',
     modulo: 'finance',
-    titulo: 'CxC — Edades de Saldo',
-    descripcion: 'Aging de cartera: corriente, 1-30, 31-60, 61-90, +90 días',
+    titulo: 'CxC — edades de saldo',
+    descripcion: 'Cartera por rangos: corriente, 1–30, 31–60, 61–90 y más de 90 días',
     categoria: 'financiero',
     alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
@@ -253,7 +286,7 @@ export const finanzasReports: ReportDefinition[] = [
       const filas = detalle.length > 0 ? detalle : bucketsTraducidos;
 
       return buildReportData(
-        'cxc-aging', 'CxC — Edades de Saldo', 'finance', periodo,
+        'cxc-aging', 'CxC — edades de saldo', 'finance', periodo,
         [
           { titulo: 'Total CxC', valor: totalCxC, formato: 'moneda' },
           { titulo: 'Corriente', valor: Number(totalCorriente), formato: 'moneda' },
@@ -290,8 +323,8 @@ export const finanzasReports: ReportDefinition[] = [
   {
     id: 'cxp-aging',
     modulo: 'finance',
-    titulo: 'CxP — Edades de Saldo',
-    descripcion: 'Aging de cuentas por pagar al proveedor',
+    titulo: 'CxP — edades de saldo',
+    descripcion: 'Cuentas por pagar a proveedores por rango de vencimiento',
     categoria: 'financiero',
     alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
@@ -388,7 +421,7 @@ export const finanzasReports: ReportDefinition[] = [
       const filas = detalle.length > 0 ? detalle : bucketsTraducidos;
 
       return buildReportData(
-        'cxp-aging', 'CxP — Edades de Saldo', 'finance', periodo,
+        'cxp-aging', 'CxP — edades de saldo', 'finance', periodo,
         [
           { titulo: 'Total CxP', valor: totalCxP, formato: 'moneda' },
           { titulo: 'Corriente', valor: Number(totalCorriente), formato: 'moneda' },
@@ -428,8 +461,8 @@ export const finanzasReports: ReportDefinition[] = [
   {
     id: 'flujo-efectivo',
     modulo: 'finance',
-    titulo: 'Flujo de Efectivo',
-    descripcion: 'Flujo operativo, inversión y financiación del período',
+    titulo: 'Flujo de efectivo',
+    descripcion: 'Flujo operativo, de inversión y de financiación del periodo',
     categoria: 'financiero',
     alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
@@ -447,7 +480,7 @@ export const finanzasReports: ReportDefinition[] = [
       const d = data ?? {};
 
       return buildReportData(
-        'flujo-efectivo', 'Flujo de Efectivo', 'finance', periodo,
+        'flujo-efectivo', 'Flujo de efectivo', 'finance', periodo,
         [
           { titulo: 'Flujo Operativo', valor: d.operativo ?? 0, formato: 'moneda' },
           { titulo: 'Flujo Neto', valor: d.neto ?? 0, formato: 'moneda' },
@@ -470,8 +503,8 @@ export const finanzasReports: ReportDefinition[] = [
   {
     id: 'impuestos',
     modulo: 'finance',
-    titulo: 'Impuestos (IVA/Retenciones)',
-    descripcion: 'IVA generado, IVA descontable y retenciones del período',
+    titulo: 'Impuestos (IVA y retenciones)',
+    descripcion: 'IVA generado, IVA descontable y retenciones del periodo',
     categoria: 'financiero',
     alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
@@ -489,7 +522,7 @@ export const finanzasReports: ReportDefinition[] = [
       const d = data ?? {};
 
       return buildReportData(
-        'impuestos', 'Impuestos (IVA/Retenciones)', 'finance', periodo,
+        'impuestos', 'Impuestos (IVA y retenciones)', 'finance', periodo,
         [
           { titulo: 'IVA Generado', valor: d.iva_generado ?? 0, formato: 'moneda' },
           { titulo: 'IVA Descontable', valor: d.iva_descontable ?? 0, formato: 'moneda' },
@@ -510,7 +543,7 @@ export const finanzasReports: ReportDefinition[] = [
     id: 'retenciones-practicadas',
     modulo: 'finance',
     titulo: 'Retenciones practicadas',
-    descripcion: 'ReteFuente, ReteIVA y ReteICA practicadas a proveedores en facturas de compra confirmadas, por concepto y tarifa',
+    descripcion: 'Retención en la fuente, de IVA y de ICA practicadas a proveedores',
     categoria: 'financiero',
     alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
@@ -527,33 +560,39 @@ export const finanzasReports: ReportDefinition[] = [
       const d = aRetencionesPracticadas(data);
       const t = d.totales;
 
-      return buildReportData(
-        'retenciones-practicadas', 'Retenciones practicadas', 'finance', periodo,
-        kpisRetenciones(t),
-        [
-          { key: 'tipo', titulo: 'Tipo', tipo: 'texto' },
-          { key: 'concepto', titulo: 'Concepto', tipo: 'texto' },
-          { key: 'cuenta', titulo: 'Cuenta', tipo: 'texto' },
-          { key: 'base', titulo: 'Base', tipo: 'moneda', alinear: 'right' },
-          { key: 'tarifa', titulo: 'Tarifa', tipo: 'porcentaje', alinear: 'right' },
-          { key: 'retenido', titulo: 'Retenido', tipo: 'moneda', alinear: 'right' },
-          { key: 'facturas', titulo: 'Facturas', tipo: 'numero', alinear: 'right' },
-        ],
-        d.por_tipo.map((f) => ({
-          tipo: CLASES_RETENCION[f.clase] ?? f.clase,
-          concepto: f.concepto,
-          cuenta: f.cuenta,
-          base: Number(f.base ?? 0),
-          tarifa: Number(f.tarifa ?? 0),
-          retenido: Number(f.retenido ?? 0),
-          facturas: Number(f.facturas ?? 0),
-        })),
-        // Sin total de bases: la misma factura es base de varias retenciones.
-        { tipo: 'Total a declarar', retenido: Number(t.total ?? 0), facturas: Number(t.facturas ?? 0) },
-      );
+      return {
+        ...buildReportData(
+          'retenciones-practicadas', 'Retenciones practicadas', 'finance', periodo,
+          kpisRetenciones(t),
+          [
+            { key: 'tipo', titulo: 'Tipo', tipo: 'texto' },
+            { key: 'concepto', titulo: 'Concepto', tipo: 'texto' },
+            { key: 'cuenta', titulo: 'Cuenta', tipo: 'texto' },
+            { key: 'base', titulo: 'Base', tipo: 'moneda', alinear: 'right' },
+            { key: 'tarifa', titulo: 'Tarifa', tipo: 'porcentaje', alinear: 'right' },
+            { key: 'retenido', titulo: 'Retenido', tipo: 'moneda', alinear: 'right' },
+            { key: 'facturas', titulo: 'Facturas', tipo: 'numero', alinear: 'right' },
+          ],
+          d.por_tipo.map((f) => ({
+            tipo: CLASES_RETENCION[f.clase] ?? f.clase,
+            concepto: f.concepto,
+            cuenta: f.cuenta,
+            base: Number(f.base ?? 0),
+            tarifa: Number(f.tarifa ?? 0),
+            retenido: Number(f.retenido ?? 0),
+            facturas: Number(f.facturas ?? 0),
+          })),
+          // Sin total de bases: la misma factura es base de varias retenciones.
+          { tipo: 'Total a declarar', retenido: Number(t.total ?? 0), facturas: Number(t.facturas ?? 0) },
+        ),
+        vistaPrincipal: 'Por tipo',
+        vistas: [{ id: 'por-proveedor', titulo: 'Por proveedor', ...vistaRetencionesPorProveedor(d) }],
+      };
     },
   },
   {
+    // Alias: la misma consulta, abierta en la vista «Por proveedor». Se
+    // conserva para favoritos, cierres y el asistente que ya la nombran.
     id: 'retenciones-por-proveedor',
     modulo: 'finance',
     titulo: 'Retenciones por proveedor',
@@ -572,45 +611,22 @@ export const finanzasReports: ReportDefinition[] = [
       });
       if (error) throw error;
       const d = aRetencionesPracticadas(data);
-      const t = d.totales;
+      const vista = vistaRetencionesPorProveedor(d);
 
       return buildReportData(
         'retenciones-por-proveedor', 'Retenciones por proveedor', 'finance', periodo,
-        kpisRetenciones(t),
-        [
-          { key: 'proveedor', titulo: 'Proveedor', tipo: 'texto' },
-          { key: 'nit', titulo: 'NIT', tipo: 'texto' },
-          { key: 'facturas', titulo: 'Facturas', tipo: 'numero', alinear: 'right' },
-          { key: 'retefuente', titulo: 'ReteFuente', tipo: 'moneda', alinear: 'right' },
-          { key: 'reteiva', titulo: 'ReteIVA', tipo: 'moneda', alinear: 'right' },
-          { key: 'reteica', titulo: 'ReteICA', tipo: 'moneda', alinear: 'right' },
-          { key: 'retenido', titulo: 'Total retenido', tipo: 'moneda', alinear: 'right' },
-        ],
-        d.por_proveedor.map((f) => ({
-          proveedor: f.proveedor ?? `Proveedor #${f.proveedor_id}`,
-          nit: f.nit ?? '',
-          facturas: Number(f.facturas ?? 0),
-          retefuente: Number(f.retefuente ?? 0),
-          reteiva: Number(f.reteiva ?? 0),
-          reteica: Number(f.reteica ?? 0),
-          retenido: Number(f.retenido ?? 0),
-        })),
-        {
-          proveedor: 'Total',
-          facturas: Number(t.facturas ?? 0),
-          retefuente: Number(t.retefuente ?? 0),
-          reteiva: Number(t.reteiva ?? 0),
-          reteica: Number(t.reteica ?? 0),
-          retenido: Number(t.total ?? 0),
-        },
+        kpisRetenciones(d.totales),
+        vista.columnas,
+        vista.filas,
+        vista.totales,
       );
     },
   },
   {
     id: 'liquidez',
     modulo: 'finance',
-    titulo: 'Liquidez (Flujo Proyectado)',
-    descripcion: 'Proyección de liquidez basada en CxC y CxP pendientes',
+    titulo: 'Liquidez (flujo proyectado)',
+    descripcion: 'Proyección con la cartera y las cuentas por pagar pendientes',
     categoria: 'financiero',
     alcance: 'sucursal',
     periodosSugeridos: ['semanal'],
@@ -636,7 +652,7 @@ export const finanzasReports: ReportDefinition[] = [
       const totalCxP = (cxp ?? []).reduce((s: number, r: Record<string, unknown>) => s + Number(r.balance ?? 0), 0);
 
       return buildReportData(
-        'liquidez', 'Liquidez (Flujo Proyectado)', 'finance', periodo,
+        'liquidez', 'Liquidez (flujo proyectado)', 'finance', periodo,
         [
           { titulo: 'CxC Pendiente', valor: totalCxC, formato: 'moneda' },
           { titulo: 'CxP Pendiente', valor: totalCxP, formato: 'moneda' },
@@ -657,8 +673,8 @@ export const finanzasReports: ReportDefinition[] = [
   {
     id: 'gastos-operativos',
     modulo: 'finance',
-    titulo: 'Gastos Operativos',
-    descripcion: 'Gastos por categoría y sucursal',
+    titulo: 'Gastos operativos',
+    descripcion: 'Gastos por cuenta y por sucursal',
     categoria: 'financiero',
     alcance: 'sucursal',
     periodosSugeridos: ['quincenal', 'mensual'],
@@ -691,7 +707,7 @@ export const finanzasReports: ReportDefinition[] = [
         .sort((a, b) => b.monto - a.monto);
 
       return buildReportData(
-        'gastos-operativos', 'Gastos Operativos', 'finance', periodo,
+        'gastos-operativos', 'Gastos operativos', 'finance', periodo,
         [
           { titulo: 'Total Gastos', valor: filas.reduce((s, f) => s + f.monto, 0), formato: 'moneda' },
           { titulo: 'Cuentas', valor: filas.length, formato: 'numero' },
@@ -708,8 +724,8 @@ export const finanzasReports: ReportDefinition[] = [
   {
     id: 'facturacion-electronica',
     modulo: 'finance',
-    titulo: 'Facturación Electrónica',
-    descripcion: 'Resumen de facturas electrónicas emitidas y estado DIAN',
+    titulo: 'Facturación electrónica',
+    descripcion: 'Documentos emitidos y su estado ante la DIAN',
     categoria: 'financiero',
     alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
@@ -822,7 +838,7 @@ export const finanzasReports: ReportDefinition[] = [
       });
 
       return buildReportData(
-        'facturacion-electronica', 'Facturación Electrónica', 'finance', periodo,
+        'facturacion-electronica', 'Facturación electrónica', 'finance', periodo,
         [
           { titulo: 'Total Facturado', valor: totalFacturado, formato: 'moneda' },
           { titulo: 'Base Gravable', valor: baseGravable, formato: 'moneda' },
@@ -853,8 +869,8 @@ export const finanzasReports: ReportDefinition[] = [
   {
     id: 'rentabilidad-producto',
     modulo: 'finance',
-    titulo: 'Rentabilidad por Producto',
-    descripcion: 'Margen por producto: ingreso vs costo',
+    titulo: 'Rentabilidad por producto',
+    descripcion: 'Ingreso, costo y margen por producto vendido',
     categoria: 'financiero',
     alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
@@ -873,7 +889,7 @@ export const finanzasReports: ReportDefinition[] = [
       const top = d.top_vendidos ?? [];
 
       return buildReportData(
-        'rentabilidad-producto', 'Rentabilidad por Producto', 'finance', periodo,
+        'rentabilidad-producto', 'Rentabilidad por producto', 'finance', periodo,
         [
           { titulo: 'Total Vendido', valor: d.total_vendido ?? 0, formato: 'moneda' },
           { titulo: 'Productos', valor: d.num_productos_vendidos ?? 0, formato: 'numero' },
@@ -891,7 +907,7 @@ export const finanzasReports: ReportDefinition[] = [
   {
     id: 'rentabilidad-sucursal',
     modulo: 'finance',
-    titulo: 'Rentabilidad por Sucursal',
+    titulo: 'Rentabilidad por sucursal',
     descripcion: 'Ingresos, costos y margen por sucursal',
     categoria: 'financiero',
     alcance: 'sucursal',
@@ -911,7 +927,7 @@ export const finanzasReports: ReportDefinition[] = [
       const porSucursal = d.por_sucursal ?? [];
 
       return buildReportData(
-        'rentabilidad-sucursal', 'Rentabilidad por Sucursal', 'finance', periodo,
+        'rentabilidad-sucursal', 'Rentabilidad por sucursal', 'finance', periodo,
         [
           { titulo: 'Total Ventas', valor: d.total_ventas ?? 0, formato: 'moneda' },
           { titulo: 'Sucursales', valor: porSucursal.length, formato: 'numero' },

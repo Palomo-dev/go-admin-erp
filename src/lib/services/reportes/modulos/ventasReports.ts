@@ -11,7 +11,7 @@ import type { ReportesClient } from '../types';
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
 import { applyBranchFilter, normalizeBranchParam } from '@/lib/services/branchFilterHelper';
-import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import type { DefinicionModulo, ReportData, PeriodoCierre } from '../types';
 import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
@@ -37,11 +37,11 @@ function buildReportData(
   };
 }
 
-export const ventasReports: ReportDefinition[] = [
+export const ventasReports: DefinicionModulo[] = [
   {
     id: 'cierre-caja',
     modulo: 'pos',
-    titulo: 'Cierre de Caja (Zeta)',
+    titulo: 'Cierre de caja (Zeta)',
     descripcion: 'Totales por método de pago, sesiones, descuentos y propinas del día',
     categoria: 'operativo',
     alcance: 'sucursal',
@@ -134,7 +134,7 @@ export const ventasReports: ReportDefinition[] = [
       }));
 
       return buildReportData(
-        'cierre-caja', 'Cierre de Caja (Zeta)', 'pos', periodo,
+        'cierre-caja', 'Cierre de caja (Zeta)', 'pos', periodo,
         [
           { titulo: 'Total Ventas', valor: d.total_ventas ?? 0, formato: 'moneda' },
           { titulo: 'Total Ingresos', valor: totalIngresos, formato: 'moneda' },
@@ -166,7 +166,7 @@ export const ventasReports: ReportDefinition[] = [
   {
     id: 'ventas-periodo',
     modulo: 'pos',
-    titulo: 'Ventas del Período',
+    titulo: 'Ventas del periodo',
     descripcion: 'Ventas por día, sucursal y vendedor',
     categoria: 'operativo',
     alcance: 'sucursal',
@@ -244,7 +244,7 @@ export const ventasReports: ReportDefinition[] = [
       const ventasPorVendedor = filasVendedor.length;
 
       return buildReportData(
-        'ventas-periodo', 'Ventas del Período', 'pos', periodo,
+        'ventas-periodo', 'Ventas del periodo', 'pos', periodo,
         [
           { titulo: 'Total Ventas', valor: totalVentas, formato: 'moneda' },
           { titulo: 'N° Ventas', valor: numVentas, formato: 'numero' },
@@ -275,8 +275,8 @@ export const ventasReports: ReportDefinition[] = [
   {
     id: 'ventas-hora',
     modulo: 'pos',
-    titulo: 'Ventas por Hora',
-    descripcion: 'Heatmap de volumen de ventas por hora del día',
+    titulo: 'Ventas por hora',
+    descripcion: 'Volumen de ventas por hora del día',
     categoria: 'operativo',
     alcance: 'sucursal',
     periodosSugeridos: ['semanal'],
@@ -315,7 +315,7 @@ export const ventasReports: ReportDefinition[] = [
       const ticketPromedio = totalTransacciones > 0 ? totalVentas / totalTransacciones : 0;
 
       return buildReportData(
-        'ventas-hora', 'Ventas por Hora', 'pos', periodo,
+        'ventas-hora', 'Ventas por hora', 'pos', periodo,
         [
           { titulo: 'Hora Pico', valor: horaPico?.rango ?? '—' },
           { titulo: 'Total Ventas', valor: totalVentas, formato: 'moneda' },
@@ -337,7 +337,7 @@ export const ventasReports: ReportDefinition[] = [
   {
     id: 'ventas-vendedor',
     modulo: 'pos',
-    titulo: 'Ventas por Vendedor',
+    titulo: 'Ventas por vendedor',
     descripcion: 'Ranking de vendedores por monto y número de ventas',
     categoria: 'comercial',
     alcance: 'sucursal',
@@ -395,7 +395,7 @@ export const ventasReports: ReportDefinition[] = [
         : 0;
 
       return buildReportData(
-        'ventas-vendedor', 'Ventas por Vendedor', 'pos', periodo,
+        'ventas-vendedor', 'Ventas por vendedor', 'pos', periodo,
         [
           { titulo: 'Total Ventas', valor: totalVentas, formato: 'moneda' },
           { titulo: 'Vendedores Activos', valor: filas.length, formato: 'numero' },
@@ -422,8 +422,8 @@ export const ventasReports: ReportDefinition[] = [
   {
     id: 'devoluciones-descuentos',
     modulo: 'pos',
-    titulo: 'Devoluciones y Descuentos',
-    descripcion: 'Resumen de devoluciones y descuentos aplicados',
+    titulo: 'Devoluciones y descuentos',
+    descripcion: 'Devoluciones, descuentos y propinas del periodo',
     categoria: 'operativo',
     alcance: 'sucursal',
     periodosSugeridos: ['semanal', 'mensual'],
@@ -524,7 +524,7 @@ export const ventasReports: ReportDefinition[] = [
         .sort((a, b) => Number(b.monto) - Number(a.monto));
 
       return buildReportData(
-        'devoluciones-descuentos', 'Devoluciones y Descuentos', 'pos', periodo,
+        'devoluciones-descuentos', 'Devoluciones y descuentos', 'pos', periodo,
         [
           { titulo: 'Total Descuentos', valor: totalDescuentos, formato: 'moneda' },
           { titulo: 'Total Devoluciones', valor: totalDevoluciones, formato: 'moneda' },
@@ -550,8 +550,8 @@ export const ventasReports: ReportDefinition[] = [
   {
     id: 'pedidos-online',
     modulo: 'pos',
-    titulo: 'Pedidos Online',
-    descripcion: 'Pedidos web: estado, tiempo de entrega, conversión',
+    titulo: 'Pedidos online',
+    descripcion: 'Pedidos web: estado, tiempo de entrega y conversión',
     categoria: 'operativo',
     alcance: 'sucursal',
     periodosSugeridos: ['semanal'],
@@ -630,7 +630,7 @@ export const ventasReports: ReportDefinition[] = [
       const ticketPromedio = totalPedidos > 0 ? totalValor / totalPedidos : 0;
 
       return buildReportData(
-        'pedidos-online', 'Pedidos Online', 'pos', periodo,
+        'pedidos-online', 'Pedidos online', 'pos', periodo,
         [
           { titulo: 'Total Pedidos', valor: totalPedidos, formato: 'numero' },
           { titulo: 'Total Valor', valor: totalValor, formato: 'moneda' },

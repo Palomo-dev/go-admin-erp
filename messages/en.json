@@ -3149,6 +3149,7 @@
         },
         "comisionSistema": "The system records the commission on winning; it is not a checkbox.",
         "resumen": "{n, plural, =0 {Won stage applied.} one {Won stage applied. # document was created.} other {Won stage applied. # documents were created.}}",
+        "pasosFallidos": "{n, plural, one {# step could not be completed; check the details.} other {# steps could not be completed; check the details.}}",
         "error": {
           "obligatorio": "This field is required.",
           "montoInvalido": "Enter a valid amount.",

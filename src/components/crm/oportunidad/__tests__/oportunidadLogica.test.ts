@@ -37,7 +37,8 @@ import { calcularScore, temperaturaDeScore } from '@/lib/services/crm/scoringCal
 jest.mock('@/lib/services/cotizacionesService', () => ({ CotizacionesService: {} }));
 jest.mock('@/lib/services/crm/commissionService', () => ({ commissionService: {} }));
 jest.mock('@/lib/services/crm/proposalService', () => ({ proposalService: {} }));
-import { documentosDe, pasosElegidos } from '../pasosGanar';
+import { documentosDe, mensajeDeError, pasosElegidos } from '../pasosGanar';
+import { conteoResumen } from '@/components/crm/kit/winDialogLogica';
 
 const YO = 'u-yo';
 const op = (p: Partial<OportunidadApi> = {}): OportunidadApi => ({ id: 'o1', name: 'Renovación', customer_id: 'c1', pipeline_id: 'p1', stage_id: 's1', amount: 100, currency: 'COP', status: 'open', salesperson_id: YO, created_by: YO, ...p });
@@ -231,9 +232,26 @@ describe('ganar: acciones del Figma → pasos únicos de wonCloseSteps', () => {
   it('reservas y comisión siempre; «agradecimiento» no tiene ejecutor; orden de buildInitialSteps', () => {
     expect(pasosElegidos(['renovacion', 'factura', 'agradecimiento'])).toEqual(['invoice', 'reservations', 'renewal', 'commission']);
     expect(documentosDe([{ paso: 'invoice', ok: true, mensaje: 'Factura en borrador: FV-1' }, { paso: 'renewal', ok: false, mensaje: 'x' }])).toEqual([
-      { tipo: 'factura', numero: 'Factura en borrador: FV-1', href: '/app/finanzas/facturas-venta' },
-      { tipo: 'otro', numero: 'x', href: null },
+      { tipo: 'factura', numero: 'Factura en borrador: FV-1', href: '/app/finanzas/facturas-venta', estado: 'creado' },
+      { tipo: 'otro', numero: 'x', href: null, estado: 'error' },
     ]);
+  });
+
+  it('el resumen no cuenta lo omitido ni lo fallido; el error de Supabase se lee por su message', () => {
+    const docs = documentosDe([
+      { paso: 'invoice', ok: true, mensaje: 'La cotización ya tenía factura: FACT-0002 — no se duplicó' },
+      { paso: 'reservations', ok: true, mensaje: 'Sin espacios reservables — se omitieron reservas' },
+      { paso: 'referral', ok: true, mensaje: 'Tarea de referido programada para 30/10/2026' },
+      { paso: 'pos_sale', ok: false, mensaje: 'x' },
+    ]);
+    expect(docs.map((d) => d.estado)).toEqual(['omitido', 'omitido', 'creado', 'error']);
+    expect(conteoResumen(docs)).toEqual({ creados: 1, fallidos: 1 });
+    // Caso real 2026-09-30: un PostgrestError (objeto plano) salía como «[object Object]».
+    expect(mensajeDeError({ message: 'new row for relation "sales" violates check constraint', code: '23514' })).toBe(
+      'new row for relation "sales" violates check constraint',
+    );
+    expect(mensajeDeError(new Error('boom'))).toBe('boom');
+    expect(mensajeDeError(42)).toBe('Error desconocido');
   });
 });
 

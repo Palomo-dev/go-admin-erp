@@ -3149,6 +3149,7 @@
         },
         "comisionSistema": "La comisión la registra el sistema al ganar; no es una casilla.",
         "resumen": "{n, plural, =0 {Etapa ganadora aplicada.} one {Etapa ganadora aplicada. Se creó # documento.} other {Etapa ganadora aplicada. Se crearon # documentos.}}",
+        "pasosFallidos": "{n, plural, one {# paso no se pudo completar; revisa el detalle.} other {# pasos no se pudieron completar; revisa el detalle.}}",
         "error": {
           "obligatorio": "Este campo es obligatorio.",
           "montoInvalido": "Escribe un monto válido.",

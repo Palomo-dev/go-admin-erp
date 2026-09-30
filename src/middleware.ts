@@ -747,8 +747,9 @@ async function checkOrgAndSubscriptionStatus(ctx: GateContext, pathname: string)
     current_period_end: string | null;
     stripe_subscription_id: string | null;
     stripe_customer_id: string | null;
+    metadata: Record<string, unknown> | null;
   }>(
-    `subscriptions?select=status,trial_end,current_period_end,stripe_subscription_id,stripe_customer_id` +
+    `subscriptions?select=status,trial_end,current_period_end,stripe_subscription_id,stripe_customer_id,metadata` +
       `&organization_id=eq.${orgId}&order=created_at.desc&limit=1`,
     { deadline: ctx.deadline, accessToken: ctx.accessToken }
   );
@@ -758,39 +759,55 @@ async function checkOrgAndSubscriptionStatus(ctx: GateContext, pathname: string)
 
   const now = new Date();
 
-  // Suscripcion cancelada
+  // Verificar si tiene periodo pagado vigente (pago anual directo)
+  const { hasPaidPeriod } = await import('@/lib/utils/subscriptionUtils');
+  const tienePeriodoPagado = hasPaidPeriod(subData);
+
+  // Suscripcion cancelada (incluso con pago anual, si se cancela debe congelar)
   if (subData.status === 'canceled') {
     const redirectUrl = new URL('/app/cuenta-congelada', request.url);
     redirectUrl.searchParams.set('reason', 'canceled');
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Pago pendiente (past_due)
+  // Pago pendiente (past_due) - permitir si tiene periodo pagado vigente
   if (subData.status === 'past_due') {
-    const redirectUrl = new URL('/app/cuenta-congelada', request.url);
-    redirectUrl.searchParams.set('reason', 'payment_failed');
-    return NextResponse.redirect(redirectUrl);
+    if (tienePeriodoPagado) {
+      console.warn(`[middleware] Org ${orgId}: past_due con periodo pagado vigente - permitiendo acceso`);
+    } else {
+      const redirectUrl = new URL('/app/cuenta-congelada', request.url);
+      redirectUrl.searchParams.set('reason', 'payment_failed');
+      return NextResponse.redirect(redirectUrl);
+    }
   }
 
   // Trial expirado: si el status sigue "trialing" y la fecha ya paso, bloquear
-  // sin importar si tiene stripe_subscription_id (el webhook actualizaria a "active" si pago)
+  // (salvo que tenga periodo pagado vigente)
   if (subData.status === 'trialing') {
     const trialEnd = subData.trial_end
       ? new Date(subData.trial_end)
       : (subData.current_period_end ? new Date(subData.current_period_end) : null);
 
     if (trialEnd && trialEnd < now) {
+      if (tienePeriodoPagado) {
+        console.warn(`[middleware] Org ${orgId}: trialing vencido con periodo pagado vigente - permitiendo acceso`);
+      } else {
+        const redirectUrl = new URL('/app/cuenta-congelada', request.url);
+        redirectUrl.searchParams.set('reason', 'trial_expired');
+        return NextResponse.redirect(redirectUrl);
+      }
+    }
+  }
+
+  // Suscripcion inactiva sin trial vigente - permitir si tiene periodo pagado vigente
+  if (subData.status === 'incomplete' || subData.status === 'incomplete_expired') {
+    if (tienePeriodoPagado) {
+      console.warn(`[middleware] Org ${orgId}: ${subData.status} con periodo pagado vigente - permitiendo acceso`);
+    } else {
       const redirectUrl = new URL('/app/cuenta-congelada', request.url);
       redirectUrl.searchParams.set('reason', 'trial_expired');
       return NextResponse.redirect(redirectUrl);
     }
-  }
-
-  // Suscripcion inactiva sin trial vigente
-  if (subData.status === 'incomplete' || subData.status === 'incomplete_expired') {
-    const redirectUrl = new URL('/app/cuenta-congelada', request.url);
-    redirectUrl.searchParams.set('reason', 'trial_expired');
-    return NextResponse.redirect(redirectUrl);
   }
 
   return null; // Todo en orden

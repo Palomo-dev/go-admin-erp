@@ -112,23 +112,36 @@ Para cada cliente que se vaya a llamar, agregar en `customers.metadata`:
 ```json
 {
   "rne_status": "no_excluido",
-  "rne_checked_at": "<TIMESTAMP_DEL_DIA_ACTUAL_DESPUES_DE_LAS_3AM>"
+  "rne_checked_at": "<TIMESTAMP_DEL_DIA_ACTUAL_DESPUES_DE_LAS_3AM>",
+  "rne_receipt": "<ID_RADICADO_O_REFERENCIA_ARCHIVO_CRC>",
+  "rne_batch_id": "<ID_LOTE_OPCIONAL>"
 }
 ```
+
+**Campos obligatorios**:
+- `rne_status`: `'no_excluido'` o `'excluido'`
+- `rne_checked_at`: Timestamp de la consulta (mismo día >= 3:00 AM)
+- `rne_receipt`: **Comprobante** - ID de radicado de la CRC, nombre del archivo CSV de respuesta, o referencia única de la consulta
+
+**Campos opcionales**:
+- `rne_batch_id`: ID del lote si se consulta en bloque
 
 **Flujo diario**:
 1. **Esperar hasta las 3:00 AM** (hora Colombia) o después
 2. Consultar el RNE de la CRC para todos los números del lote
-3. Actualizar `rne_checked_at` al timestamp actual (debe ser >= 3:00 AM)
+3. Guardar para cada cliente:
+   - `rne_checked_at`: timestamp actual (>= 3:00 AM)
+   - `rne_receipt`: ID de radicado o nombre del archivo CSV recibido
+   - `rne_batch_id`: ID del lote (si aplica)
 4. Solo entonces ejecutar el lote de marcación
 
-Si `rne_checked_at` no es del día de hoy O es anterior a las 3:00 AM, `canDial` **deniega** la llamada (código: `rne_not_checked_today`, fail-closed).
+Si `rne_checked_at` no es del día de hoy, es anterior a las 3:00 AM, **o falta `rne_receipt`**, `canDial` **deniega** la llamada (código: `rne_not_checked_today`, fail-closed).
 
 **Carga masiva del RNE** (para implementación futura):
 - La API de la CRC admite hasta **10,000 números por consulta**
 - Formato: CSV de máximo **3 MB**
 - Se puede automatizar con un cron que corra diariamente a las 3:00 AM
-- Guardar comprobante de la consulta en `customers.metadata` junto con `rne_checked_at`
+- Guardar el comprobante (ID de radicado o nombre del archivo CSV) en `rne_receipt`
 
 ### Paso 4: Integrar en el despacho manual
 
@@ -267,14 +280,24 @@ WHERE c.mode = 'ai_agent'
   AND o.tags @> ARRAY['canal_humano'];
 
 -- Clientes con RNE no consultado HOY después de las 3:00 AM (para el próximo lote)
-SELECT cu.id, cu.phone, 
+SELECT cu.id, 
+       cu.phone, 
        cu.metadata->>'rne_checked_at' as ultima_consulta,
-       EXTRACT(HOUR FROM (cu.metadata->>'rne_checked_at')::timestamptz AT TIME ZONE 'America/Bogota') as hora_consulta
+       ((cu.metadata->>'rne_checked_at')::timestamptz AT TIME ZONE 'America/Bogota')::date as fecha_consulta,
+       EXTRACT(HOUR FROM (cu.metadata->>'rne_checked_at')::timestamptz AT TIME ZONE 'America/Bogota') as hora_consulta,
+       cu.metadata->>'rne_receipt' as comprobante
 FROM customers cu
 WHERE cu.metadata->>'rne_status' = 'no_excluido'
   AND (
-    (cu.metadata->>'rne_checked_at')::timestamptz AT TIME ZONE 'America/Bogota' < (CURRENT_DATE AT TIME ZONE 'America/Bogota') + INTERVAL '3 hours'
-    OR (cu.metadata->>'rne_checked_at')::date AT TIME ZONE 'America/Bogota' < CURRENT_DATE AT TIME ZONE 'America/Bogota'
+    -- Fecha no es de hoy
+    ((cu.metadata->>'rne_checked_at')::timestamptz AT TIME ZONE 'America/Bogota')::date < (now() AT TIME ZONE 'America/Bogota')::date
+    -- O fecha es de hoy pero hora < 3:00 AM
+    OR (
+      ((cu.metadata->>'rne_checked_at')::timestamptz AT TIME ZONE 'America/Bogota')::date = (now() AT TIME ZONE 'America/Bogota')::date
+      AND EXTRACT(HOUR FROM (cu.metadata->>'rne_checked_at')::timestamptz AT TIME ZONE 'America/Bogota') < 3
+    )
+    -- O falta el comprobante
+    OR cu.metadata->>'rne_receipt' IS NULL
   );
 ```
 
@@ -386,12 +409,15 @@ También actualizar `src/lib/services/crm/holidays/colombia2026_2027.ts` y renom
    ```json
    {
      "rne_status": "no_excluido",
-     "rne_checked_at": "<TIMESTAMP_DEL_DIA_ACTUAL_DESPUES_DE_LAS_3AM>"
+     "rne_checked_at": "<TIMESTAMP_DEL_DIA_ACTUAL_DESPUES_DE_LAS_3AM>",
+     "rne_receipt": "<ID_RADICADO_O_ARCHIVO_CSV>",
+     "rne_batch_id": "<ID_LOTE>"
    }
    ```
 2. La consulta debe ser del **mismo día calendario** (America/Bogota) **Y después de las 3:00 AM**
-3. La CRC actualiza el RNE a las 2:00 AM; consultar después de las 3:00 AM
-4. Consultas de la noche anterior (antes de medianoche) NO son válidas
+3. **Debe existir el comprobante** (`rne_receipt`): ID de radicado o referencia al archivo de respuesta
+4. La CRC actualiza el RNE a las 2:00 AM; consultar después de las 3:00 AM
+5. Consultas de la noche anterior (antes de medianoche) NO son válidas
 
 ### "Rechaza por FREQUENCY_LIMIT"
 

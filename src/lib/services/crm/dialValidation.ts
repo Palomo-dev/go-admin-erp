@@ -405,12 +405,15 @@ async function checkDoNotCall(
  * - La consulta debe ser del MISMO DÍA CALENDARIO (America/Bogota) Y después de las 3:00 AM
  * - Consultas de la noche anterior NO son válidas
  * - Cualquier ventana de validez de 24h o días calendario sin hora debe descartarse
+ * - Se requiere comprobante de cada consulta (rne_receipt: ID de radicado, referencia al CSV)
  * 
  * El número debe tener:
  * - rne_status = 'no_excluido'
  * - rne_checked_at del día actual (America/Bogota) y >= 3:00 AM
+ * - rne_receipt (comprobante: ID de radicado o referencia al archivo de respuesta)
+ * - rne_batch_id (opcional: ID del lote si aplica)
  * 
- * Si no hay consulta válida, NO se llama (fail-closed, código: rne_not_checked_today)
+ * Si no hay consulta válida o falta el comprobante, NO se llama (fail-closed, código: rne_not_checked_today)
  */
 async function checkRNE(
   context: DialContext,
@@ -435,6 +438,8 @@ async function checkRNE(
   const metadata = (data?.metadata || {}) as {
     rne_status?: string;
     rne_checked_at?: string;
+    rne_receipt?: string;
+    rne_batch_id?: string;
   };
 
   if (!metadata.rne_status || !metadata.rne_checked_at) {
@@ -442,6 +447,15 @@ async function checkRNE(
       allowed: false,
       code: 'RNE_NOT_CHECKED_TODAY',
       reason: 'No hay consulta del RNE para este número',
+    };
+  }
+
+  // Verificar que exista el comprobante de la consulta (requisito legal)
+  if (!metadata.rne_receipt) {
+    return {
+      allowed: false,
+      code: 'RNE_NOT_CHECKED_TODAY',
+      reason: 'Falta el comprobante de la consulta del RNE (rne_receipt). Se requiere el ID de radicado o referencia al archivo de respuesta de la CRC.',
     };
   }
 

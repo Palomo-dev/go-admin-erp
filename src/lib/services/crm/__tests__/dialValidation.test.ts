@@ -14,7 +14,7 @@ import { COLOMBIA_HOLIDAYS_2026_2027 } from '../holidays/colombia2026_2027';
 const createMockSupabase = (mockData: Record<string, any> = {}): SupabaseClient => {
   const defaultMock = {
     comm_settings: { metadata: {}, voice_agent_enabled: true, voice_max_concurrent_calls: 2, voice_credits_remaining: 1000, voice_caller_id: '+5760412345' },
-    customers: { metadata: { rne_status: 'no_excluido', rne_checked_at: new Date().toISOString() } },
+    customers: { metadata: { rne_status: 'no_excluido', rne_checked_at: new Date().toISOString(), rne_receipt: 'CRC-TEST-12345' } },
     voice_agent_campaigns: { status: 'running', emergency_stop: false },
     voice_agents: { is_active: true },
     opportunities: null,
@@ -221,6 +221,7 @@ describe('canDial - CA-31: Registro de Números Excluidos (RNE)', () => {
         metadata: {
           rne_status: 'excluido',
           rne_checked_at: new Date('2026-10-13T08:00:00Z').toISOString(), // 03:00 AM Bogotá
+          rne_receipt: 'CRC-2026-10-13-BATCH-001',
         },
       },
     });
@@ -249,6 +250,30 @@ describe('canDial - CA-31: Registro de Números Excluidos (RNE)', () => {
     expect(result.reason).toContain('No hay consulta del RNE');
   });
 
+  test('Rechaza consulta RNE sin comprobante (falta rne_receipt)', async () => {
+    const context = createContext();
+    // Consulta válida en fecha y hora, pero sin comprobante
+    const validCheck = new Date('2026-10-13T08:05:00Z'); // 03:05 AM Bogotá
+    
+    const supabase = createMockSupabase({
+      customers: {
+        metadata: {
+          rne_status: 'no_excluido',
+          rne_checked_at: validCheck.toISOString(),
+          // SIN rne_receipt
+        },
+      },
+    });
+    
+    const validTime = new Date('2026-10-13T13:05:00Z'); // 08:05 AM Bogotá
+    const result = await canDial(context, supabase, validTime);
+    
+    expect(result.allowed).toBe(false);
+    expect(result.code).toBe('RNE_NOT_CHECKED_TODAY');
+    expect(result.reason).toContain('comprobante');
+    expect(result.reason).toContain('rne_receipt');
+  });
+
   test('Rechaza consulta RNE de ayer a las 23:00 (después de medianoche en hora actual)', async () => {
     const context = createContext();
     // Ayer 12 de octubre a las 23:00 hora Colombia = 04:00 UTC del 13
@@ -259,6 +284,7 @@ describe('canDial - CA-31: Registro de Números Excluidos (RNE)', () => {
         metadata: {
           rne_status: 'no_excluido',
           rne_checked_at: yesterday.toISOString(),
+          rne_receipt: 'CRC-2026-10-12-BATCH-999', // Comprobante de ayer
         },
       },
     });
@@ -282,6 +308,7 @@ describe('canDial - CA-31: Registro de Números Excluidos (RNE)', () => {
         metadata: {
           rne_status: 'no_excluido',
           rne_checked_at: tooEarly.toISOString(),
+          rne_receipt: 'CRC-2026-10-13-BATCH-001', // Comprobante de hoy pero temprano
         },
       },
     });
@@ -305,6 +332,8 @@ describe('canDial - CA-31: Registro de Números Excluidos (RNE)', () => {
         metadata: {
           rne_status: 'no_excluido',
           rne_checked_at: validCheck.toISOString(),
+          rne_receipt: 'CRC-2026-10-13-BATCH-001',
+          rne_batch_id: 'BATCH-001',
         },
       },
     });
@@ -327,6 +356,7 @@ describe('canDial - CA-31: Registro de Números Excluidos (RNE)', () => {
         metadata: {
           rne_status: 'no_excluido',
           rne_checked_at: yesterdayCheck.toISOString(),
+          rne_receipt: 'CRC-2026-10-12-BATCH-001',
         },
       },
     });
@@ -351,6 +381,8 @@ describe('canDial - CA-31: Registro de Números Excluidos (RNE)', () => {
         metadata: {
           rne_status: 'no_excluido',
           rne_checked_at: earlyCheck.toISOString(),
+          rne_receipt: 'CRC-2026-10-13-BATCH-001',
+          rne_batch_id: 'BATCH-001',
         },
       },
     });

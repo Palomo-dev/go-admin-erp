@@ -6,7 +6,7 @@
 // resultados salen del mismo `fetch`, así que traen los mismos KPI).
 // ============================================================
 
-import type { LecturaReporte, ReportData, ReporteKPI } from './types';
+import type { LecturaReporte, ReportData, ReporteColumna, ReporteKPI } from './types';
 
 export interface VariacionKpi {
   titulo: string;
@@ -50,6 +50,67 @@ export function variacionesRelevantes(variaciones: VariacionKpi[]): Array<Variac
 /** ¿El resultado no tiene movimientos (ni filas ni KPI numéricos distintos de cero)? */
 export function sinMovimientos(actual: ReportData): boolean {
   return actual.filas.length === 0 && actual.kpis.every((k) => !numero(k.valor));
+}
+
+export interface TablaComparable {
+  columnas: ReporteColumna[];
+  filas: Record<string, unknown>[];
+  totales?: Record<string, unknown>;
+}
+
+/** Sufijos de las columnas que agrega `tablaComparada`. */
+export const SUFIJO_ANTERIOR = '__anterior';
+export const SUFIJO_VARIACION = '__variacion';
+
+/**
+ * Tabla del visor con comparativo («Septiembre · Agosto · Variación», Figma
+ * «Visor · Estado de resultados»): tras la primera columna de importe o
+ * cantidad (y su porcentaje, si lo sigue) se agregan la del periodo de
+ * referencia y la variación; las demás columnas quedan después.
+ *
+ * Las filas se cruzan por la primera columna de texto. Si esa clave se repite
+ * (filas que no son un concepto único, como un listado de ventas) no hay
+ * cruce posible y se devuelve `null`: el visor muestra la tabla sin columnas
+ * de comparación en lugar de emparejar mal.
+ */
+export function tablaComparada(
+  actual: TablaComparable,
+  referencia: TablaComparable,
+  titulos: { anterior: string; variacion: string },
+): TablaComparable | null {
+  const clave = actual.columnas.find((c) => c.tipo === 'texto');
+  const cifra = actual.columnas.find((c) => c.tipo === 'moneda' || c.tipo === 'numero');
+  if (!clave || !cifra) return null;
+
+  const texto = (f: Record<string, unknown>) => String(f[clave.key] ?? '').trim();
+  const claves = actual.filas.map(texto);
+  if (new Set(claves).size !== claves.length) return null;
+
+  const previas = new Map<string, Record<string, unknown>>();
+  for (const f of referencia.filas) previas.set(texto(f), f);
+
+  const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v)) ? Number(v) : null);
+  const kAnt = `${cifra.key}${SUFIJO_ANTERIOR}`;
+  const kVar = `${cifra.key}${SUFIJO_VARIACION}`;
+  const extender = (f: Record<string, unknown>, previa: Record<string, unknown> | undefined) => {
+    const a = num(f[cifra.key]);
+    const b = previa ? num(previa[cifra.key]) : null;
+    return { ...f, [kAnt]: b, [kVar]: a !== null && b !== null ? a - b : null };
+  };
+
+  const indice = actual.columnas.indexOf(cifra);
+  const corte = actual.columnas[indice + 1]?.tipo === 'porcentaje' ? indice + 2 : indice + 1;
+  const columnas = [
+    ...actual.columnas.slice(0, corte),
+    { key: kAnt, titulo: titulos.anterior, tipo: cifra.tipo, alinear: 'right' as const },
+    { key: kVar, titulo: titulos.variacion, tipo: cifra.tipo, alinear: 'right' as const },
+    ...actual.columnas.slice(corte),
+  ];
+  return {
+    columnas,
+    filas: actual.filas.map((f) => extender(f, previas.get(texto(f)))),
+    totales: actual.totales ? extender(actual.totales, referencia.totales) : undefined,
+  };
 }
 
 /**

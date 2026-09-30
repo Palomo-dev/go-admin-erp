@@ -98,7 +98,7 @@ export async function sendAccountDeletionRequestEmail(
         <p><strong>¿Cambiaste de opinión?</strong></p>
         <p>
           Si deseas cancelar esta solicitud, por favor contacta con nuestro equipo de soporte 
-          lo antes posible en <a href="mailto:soporte@goadmin.io">soporte@goadmin.io</a>.
+          lo antes posible en <a href="mailto:servicio@goadmin.io">servicio@goadmin.io</a>.
         </p>
         
         <div class="footer">
@@ -126,7 +126,7 @@ Recibirás un correo de confirmación cuando se complete el proceso.
 
 ¿CAMBIASTE DE OPINIÓN?
 Si deseas cancelar esta solicitud, por favor contacta con nuestro equipo de soporte 
-lo antes posible en soporte@goadmin.io.
+lo antes posible en servicio@goadmin.io.
 
 ---
 Este correo se envió automáticamente. Por favor no respondas a este mensaje.
@@ -230,7 +230,7 @@ export async function sendAccountDeletionCompleteEmail(
         
         <p>
           Si tienes alguna pregunta sobre este proceso, puedes contactarnos en 
-          <a href="mailto:privacidad@goadmin.io">privacidad@goadmin.io</a>.
+          <a href="mailto:servicio@goadmin.io">servicio@goadmin.io</a>.
         </p>
         
         <div class="footer">
@@ -256,7 +256,7 @@ ${LEGAL_TEXT}
 - Tu cuenta de usuario ha sido deshabilitada
 - Los registros de facturación y contabilidad se conservan por obligación legal durante 10 años
 
-Si tienes alguna pregunta sobre este proceso, puedes contactarnos en privacidad@goadmin.io.
+Si tienes alguna pregunta sobre este proceso, puedes contactarnos en servicio@goadmin.io.
 
 ---
 Este correo se envió automáticamente. Por favor no respondas a este mensaje.

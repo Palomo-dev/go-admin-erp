@@ -109,6 +109,9 @@ export function EscenaAcceso({ children, mostrarMarca = true, mostrarViajero = t
   const t = useTranslations('acceso.escena');
   const anio = new Date().getFullYear();
   return (
+    // Scroll propio: `html` y `body` tienen `overflow: hidden` (globals.css), así
+    // que sin este contenedor la escena no bajaba en móvil (registro, términos…).
+    <div className="h-dvh overflow-y-auto overscroll-contain">
     <div className="relative isolate flex min-h-dvh flex-col overflow-x-hidden bg-gradient-to-b from-auth-cielo-alto via-auth-cielo-medio via-55% to-auth-cielo-bajo text-fg">
       <style>{ESTILOS}</style>
       <Cielo />
@@ -167,6 +170,7 @@ export function EscenaAcceso({ children, mostrarMarca = true, mostrarViajero = t
         <Enlace href="/privacy" tono="sobre-color">{t('privacidad')}</Enlace>
         <Enlace href="mailto:soporte@goadmin.io" tono="sobre-color">{t('ayuda')}</Enlace>
       </footer>
+    </div>
     </div>
   );
 }

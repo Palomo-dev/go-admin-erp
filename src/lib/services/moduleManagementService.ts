@@ -356,13 +356,13 @@ export const moduleManagementService = {
     };
 
     const allModules = allModulesRes.data || [];
-    const coreModules = allModules.filter(m => m.is_core);
-    const paidModules = allModules.filter(m => !m.is_core);
+    const coreModules = allModules.filter((m: Module) => m.is_core);
+    const paidModules = allModules.filter((m: Module) => !m.is_core);
 
     // Calcular estadísticas
-    const activeModuleCodes = activeModulesRes.data?.map(am => am.module_code) || [];
-    const activePaidModules = activeModuleCodes.filter(code => 
-      paidModules.some(m => m.code === code)
+    const activeModuleCodes = activeModulesRes.data?.map((am: any) => am.module_code) || [];
+    const activePaidModules = activeModuleCodes.filter((code: string) => 
+      paidModules.some((m: Module) => m.code === code)
     );
 
     const maxModulesAllowed = plan?.max_modules || 0;
@@ -370,7 +370,7 @@ export const moduleManagementService = {
     const canActivateMore = paidModulesCount < maxModulesAllowed;
 
     // Módulos disponibles para activar (no activos actualmente)
-    const availableModules = allModules.filter(module => 
+    const availableModules = allModules.filter((module: Module) => 
       !activeModuleCodes.includes(module.code)
     );
 
@@ -497,7 +497,7 @@ export const moduleManagementService = {
             enforcement_mode: 'warn',
             message: planCompliance.warning_message
           }
-        }).catch(err => console.warn('Could not log plan warning:', err));
+        }).catch((err: any) => console.warn('Could not log plan warning:', err));
       }
 
       // Si es un módulo pagado, verificar límites del plan
@@ -703,12 +703,12 @@ export const moduleManagementService = {
     if (coreRes.error) throw coreRes.error;
     if (activeRes.error) throw activeRes.error;
 
-    const paidModules = activeRes.data?.map(item => item.modules).filter(Boolean) || [];
+    const paidModules = activeRes.data?.map((item: any) => item.modules).filter(Boolean) || [];
     
     // Combinar módulos core y pagados, evitando duplicados
     const allModules = [...(coreRes.data || []), ...paidModules];
-    const uniqueModules = allModules.filter((module, index, self) => 
-      index === self.findIndex(m => m.code === module.code)
+    const uniqueModules = allModules.filter((module: Module, index: number, self: Module[]) => 
+      index === self.findIndex((m: Module) => m.code === module.code)
     );
     
     return uniqueModules;
@@ -769,7 +769,7 @@ export const moduleManagementService = {
           
           const planInfo = planData?.[0];
           const maxModules = planInfo?.max_modules || 0;
-          const paidModules = org.organization_modules?.filter(om =>
+          const paidModules = org.organization_modules?.filter((om: any) =>
             om.modules && !om.modules[0]?.is_core
           ).length || 0;
 

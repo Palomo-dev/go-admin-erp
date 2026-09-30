@@ -7,8 +7,8 @@
  */
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/config';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase/config';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import Link from 'next/link';
@@ -31,9 +31,7 @@ export function useModuleAccessCheck(moduleCode: string): ModuleComplianceCheck 
   useEffect(() => {
     async function checkAccess() {
       try {
-        const supabase = createClient();
-        
-        // Obtener organización actual del contexto
+        // Obtener sesión actual
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
           setCheck({ isChecking: false, isAllowed: true, shouldBlock: false });
@@ -89,11 +87,13 @@ export function ModuleAccessWarning({ moduleCode }: { moduleCode: string }) {
   }
 
   // En modo 'enforce' con bloqueo activo, redirigir
-  if (check.shouldBlock) {
-    useEffect(() => {
+  useEffect(() => {
+    if (check.shouldBlock) {
       router.push('/app/plan?reason=module_not_allowed');
-    }, [router]);
-    
+    }
+  }, [check.shouldBlock, router]);
+
+  if (check.shouldBlock) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Alert variant="destructive" className="max-w-lg">

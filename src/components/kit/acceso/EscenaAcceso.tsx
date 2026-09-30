@@ -14,7 +14,7 @@
  * (tokens.css); lo único que depende de la clase `dark` es QUÉ piezas se pintan
  * (`dark:hidden` / `hidden dark:block`), no su color.
  *
- * Reemplaza a `AuthSceneBackground` (decisión v2-3). Quieta en móvil y con
+ * Reemplaza a `AuthSceneBackground` (decisión v2-3). Quieta con
  * `prefers-reduced-motion`.
  *
  * Dispositivos (los mismos cortes que el Figma):
@@ -33,20 +33,51 @@ import { Enlace } from './piezas';
 import { Cohete, EstrellaTrazo, Luna, Nube, Planeta, ViajeroDePie, ViajeroSentado } from './ilustraciones';
 import { ESTRELLAS_DIA, ESTRELLAS_NOCHE, ESTRELLAS_TRAZO, NUBES, enPorcentaje } from './cieloDatos';
 
-/** Movimiento de la escena. Inline para no depender de CSS global ni de módulos (los tests renderizan sin bundler). */
+/**
+ * Movimiento de la escena. Inline para no depender de CSS global ni de módulos
+ * (los tests renderizan sin bundler).
+ *
+ * Ajustado el 2026-09-30: la primera versión movía las nubes 18 px en 26 s y
+ * el planeta 8 px, y en pantalla no se percibía; el cohete ni se movía. Ahora
+ * todo flota en el espacio con amplitud visible y cada pieza con su ritmo
+ * (duración y desfase propios), para que no se muevan al unísono.
+ */
 const ESTILOS = `
-@keyframes ga-escena-deriva { 0%,100% { transform: translateX(0); } 50% { transform: translateX(18px); } }
-@keyframes ga-escena-flota { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
-@keyframes ga-escena-titila { 0%,100% { opacity: .72; } 50% { opacity: .25; } }
-@keyframes ga-escena-ondea { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-1.5deg); } }
-.ga-escena-nube { animation: ga-escena-deriva 26s ease-in-out infinite; }
-.ga-escena-flota { animation: ga-escena-flota 8s ease-in-out infinite; }
-.ga-escena-titila { animation: ga-escena-titila 3.6s ease-in-out infinite; }
+@keyframes ga-escena-deriva {
+  0%,100% { transform: translate3d(0,0,0); }
+  25% { transform: translate3d(28px,-6px,0); }
+  50% { transform: translate3d(56px,0,0); }
+  75% { transform: translate3d(28px,6px,0); }
+}
+@keyframes ga-escena-flota {
+  0%,100% { transform: translate3d(0,0,0) rotate(0deg); }
+  50% { transform: translate3d(0,-22px,0) rotate(-4deg); }
+}
+@keyframes ga-escena-cohete {
+  0%,100% { transform: translate3d(0,0,0) rotate(-3deg); }
+  50% { transform: translate3d(-6px,-28px,0) rotate(4deg); }
+}
+@keyframes ga-escena-viajero {
+  0%,100% { transform: translate3d(0,0,0); }
+  50% { transform: translate3d(0,-14px,0); }
+}
+@keyframes ga-escena-titila { 0%,100% { opacity: .75; } 50% { opacity: .2; } }
+@keyframes ga-escena-ondea { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-2.5deg); } }
+.ga-escena-nube { animation: ga-escena-deriva var(--ga-dur, 22s) ease-in-out infinite; will-change: transform; }
+.ga-escena-flota { animation: ga-escena-flota 7s ease-in-out infinite; will-change: transform; }
+.ga-escena-cohete { animation: ga-escena-cohete 5.5s ease-in-out infinite; will-change: transform; }
+.ga-escena-viajero { animation: ga-escena-viajero 6.5s ease-in-out infinite; will-change: transform; }
+.ga-escena-titila { animation: ga-escena-titila var(--ga-dur, 3.6s) ease-in-out infinite; }
 .ga-escena-ondea { animation: ga-escena-ondea 4s ease-in-out infinite; transform-origin: 50% 90%; }
-@media (max-width: 767px), (prefers-reduced-motion: reduce) {
-  .ga-escena-nube, .ga-escena-flota, .ga-escena-titila, .ga-escena-ondea { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .ga-escena-nube, .ga-escena-flota, .ga-escena-cohete, .ga-escena-viajero, .ga-escena-titila, .ga-escena-ondea { animation: none; }
 }
 `;
+
+/** Duración y desfase por pieza: determinista (sin azar, para no romper la hidratación). */
+function ritmo(i: number, base: number, paso: number): React.CSSProperties {
+  return { ['--ga-dur' as string]: `${base + (i % 4) * paso}s`, animationDelay: `${-(i * 3.7) % 20}s` };
+}
 
 function Cielo() {
   return (
@@ -54,13 +85,17 @@ function Cielo() {
       {/* Día */}
       <div className="absolute inset-0 dark:hidden">
         {ESTRELLAS_DIA.map((p, i) => (
-          <span key={i} className="absolute rounded-full bg-auth-estrella/40" style={{ ...enPorcentaje(p), width: p[2], height: p[2] }} />
+          <span
+            key={i}
+            className={cn('absolute rounded-full bg-auth-estrella/40', i % 3 === 0 && 'ga-escena-titila')}
+            style={{ ...enPorcentaje(p), width: p[2], height: p[2], ...ritmo(i, 3, 0.8) }}
+          />
         ))}
         {NUBES.map((p, i) => (
           <span
             key={i}
             className={cn('ga-escena-nube absolute opacity-35', i > 3 && 'hidden md:block')}
-            style={{ ...enPorcentaje(p), width: p[2], animationDelay: `${i * -4}s` }}
+            style={{ ...enPorcentaje(p), width: p[2], ...ritmo(i, 18, 5) }}
           >
             <Nube className="w-full" />
           </span>
@@ -68,7 +103,7 @@ function Cielo() {
         <span className="ga-escena-flota absolute right-[4%] top-[150px] hidden w-[150px] md:block">
           <Planeta className="w-full" />
         </span>
-        <span className="absolute bottom-[110px] right-[4%] hidden w-[54px] md:block">
+        <span className="ga-escena-cohete absolute bottom-[110px] right-[4%] hidden w-[54px] md:block">
           <Cohete className="w-full" />
         </span>
       </div>
@@ -78,15 +113,15 @@ function Cielo() {
           <span
             key={i}
             className={cn('absolute rounded-full bg-auth-estrella/70', i % 5 === 0 && 'ga-escena-titila')}
-            style={{ ...enPorcentaje(p), width: Math.max(p[2], 1.5), height: Math.max(p[2], 1.5), animationDelay: `${(i % 7) * -0.5}s` }}
+            style={{ ...enPorcentaje(p), width: Math.max(p[2], 1.5), height: Math.max(p[2], 1.5), ...ritmo(i, 3, 0.7) }}
           />
         ))}
         {ESTRELLAS_TRAZO.map((p, i) => (
-          <span key={i} className="absolute hidden md:block" style={{ ...enPorcentaje(p), width: p[2] }}>
+          <span key={i} className="ga-escena-titila absolute hidden md:block" style={{ ...enPorcentaje(p), width: p[2], ...ritmo(i, 4, 1.1) }}>
             <EstrellaTrazo className="w-full" />
           </span>
         ))}
-        <span className="absolute right-[4.5%] top-[188px] hidden w-[96px] md:block">
+        <span className="ga-escena-flota absolute right-[4.5%] top-[188px] hidden w-[96px] md:block">
           <Luna className="w-full" />
         </span>
       </div>
@@ -145,7 +180,7 @@ export function EscenaAcceso({ children, mostrarMarca = true, mostrarViajero = t
 
       {/* Viajero */}
       {mostrarViajero && (
-        <div aria-hidden="true" className="pointer-events-none absolute bottom-[72px] left-6 hidden w-[180px] md:block xl:bottom-[72px] xl:left-24 xl:w-[280px]">
+        <div aria-hidden="true" className="ga-escena-viajero pointer-events-none absolute bottom-[72px] left-6 hidden w-[180px] md:block xl:bottom-[72px] xl:left-24 xl:w-[280px]">
           <ViajeroDePie className="ga-escena-ondea w-full dark:hidden" />
           <ViajeroSentado className="hidden w-full dark:block" />
         </div>
@@ -158,8 +193,8 @@ export function EscenaAcceso({ children, mostrarMarca = true, mostrarViajero = t
 
       {/* Viajero en móvil: pequeño, al centro, sobre el pie */}
       {mostrarViajero && (
-        <div aria-hidden="true" className="pointer-events-none mx-auto w-[89px] md:hidden">
-          <ViajeroDePie className="w-full dark:hidden" />
+        <div aria-hidden="true" className="ga-escena-viajero pointer-events-none mx-auto w-[89px] md:hidden">
+          <ViajeroDePie className="ga-escena-ondea w-full dark:hidden" />
           <ViajeroSentado className="hidden w-full dark:block" />
         </div>
       )}

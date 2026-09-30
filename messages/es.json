@@ -25237,6 +25237,9 @@
       "existente": "Ya hay un cierre de este periodo. Recalcular crea una versión nueva y marca la anterior como reemplazada.",
       "vacio": "Elige al menos un reporte.",
       "listo": "Cierre {numero} generado",
+      "descargando": "Preparando el archivo del cierre…",
+      "bajar": "Descargar archivo",
+      "sinArchivo": "El cierre {numero} quedó guardado. El archivo no se descargó.",
       "notaFranja": "La franja solo aplica a los capítulos que la admiten. Los demás usan el día completo.",
       "sinDatos": "Un capítulo sin datos en el periodo se imprime con la nota «Sin movimientos».",
       "plantillas": {

@@ -3657,3 +3657,10 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - Rama `cursor/reportes-v2-implementacion-e475` (PR #269). No se fusiona.
 - «No se pudo completar» en Programados era el 500 de `POST /api/reportes/programados/[id]/prueba`: el PDF ya se puede armar, y el correo lo manda el service role, que este localhost no tiene. La organización sí tiene credencial de Resend; la columna `credentials` no la lee la sesión. Sin la clave, la ruta responde 503 `prueba_sin_servicio` antes de generar el PDF.
 - Jest de programados: 20 en verde.
+
+
+### Fase: Reportes v2 — el cierre generado sí baja el archivo — 2026-09-30
+- Rama cursor/cierre-descarga-archivo-e475.
+- El aviso de cierre generado salía después de guardar. Carta y tirilla pedían el PDF con una ventana abierta ya fuera del clic, y el navegador la bloqueaba: no se descargaba nada. Ahora la pestaña se abre en el clic y, cuando el cierre ya está guardado, el archivo (PDF o Excel) se baja ahí. Si el PDF no se puede armar, baja el HTML. Si la descarga falla, el diálogo avisa y deja el botón para bajar el archivo.
+- Jest de la entrega del archivo: 3 en verde. eslint de los archivos tocados, sin avisos.
+

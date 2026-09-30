@@ -8,6 +8,8 @@ import { checkAICredits, estimateCredits, consumeAICredits } from '../aiCreditsS
 import { getReportesVisibles, getReporteById } from './reportesCatalogo';
 import { ejecutarReporte } from './reportesEngine';
 import { resolverPeriodo } from './periodosService';
+import { getOrganizationTimezone } from '../organizationTimezoneService';
+import { todayInTz } from '@/lib/utils/timezone';
 import { reportePermitido } from './alcanceSucursal';
 import type { PeriodoCierre, TipoCierre, ReportData, ReportesClient } from './types';
 
@@ -243,7 +245,8 @@ class ReportAgentService {
       let periodo = periodoActual;
       if (block.periodo?.tipo && block.periodo.tipo !== periodoActual.tipo) {
         try {
-          periodo = resolverPeriodo(block.periodo.tipo);
+          const tz = await getOrganizationTimezone(context.organizationId, client);
+          periodo = resolverPeriodo(block.periodo.tipo, todayInTz(tz));
         } catch {
           // si falla, usar el período actual
         }

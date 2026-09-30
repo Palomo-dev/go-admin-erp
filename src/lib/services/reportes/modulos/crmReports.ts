@@ -11,7 +11,7 @@ import type { ReportesClient } from '../types';
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
 import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
-import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import type { DefinicionModulo, ReportData, PeriodoCierre } from '../types';
 import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
@@ -22,18 +22,18 @@ function buildReportData(
   return { id, titulo, modulo, kpis, columnas, filas, totales, generadoEn: new Date().toISOString(), periodo };
 }
 
-export const crmReports: ReportDefinition[] = [
+export const crmReports: DefinicionModulo[] = [
   {
     id: 'crm-funnel',
     modulo: 'crm',
-    titulo: 'Funnel de Ventas',
-    descripcion: 'Oportunidades por etapa, conversión entre etapas y forecast',
+    titulo: 'Embudo de ventas',
+    descripcion: 'Oportunidades por etapa, conversión entre etapas y proyección',
     categoria: 'comercial',
     alcance: 'organizacion',
     periodosSugeridos: ['semanal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await db.rpc('fn_reporte_crm_funnel', {
         p_organization_id: orgId,
         p_from: start,
@@ -44,7 +44,7 @@ export const crmReports: ReportDefinition[] = [
       const d = data ?? {};
 
       return buildReportData(
-        'crm-funnel', 'Funnel de Ventas', 'crm', periodo,
+        'crm-funnel', 'Embudo de ventas', 'crm', periodo,
         [
           { titulo: 'Total Pipeline', valor: d.total_pipeline ?? 0, formato: 'moneda' },
           { titulo: 'Forecast', valor: d.forecast ?? 0, formato: 'moneda' },
@@ -62,14 +62,14 @@ export const crmReports: ReportDefinition[] = [
   {
     id: 'crm-forecast',
     modulo: 'crm',
-    titulo: 'Pipeline Forecast',
-    descripcion: 'Proyección de ingresos por probabilidad de cierre',
+    titulo: 'Proyección del embudo',
+    descripcion: 'Ingresos esperados según la probabilidad de cierre',
     categoria: 'comercial',
     alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await db.rpc('fn_reporte_crm_funnel', {
         p_organization_id: orgId,
         p_from: start,
@@ -88,7 +88,7 @@ export const crmReports: ReportDefinition[] = [
       }));
 
       return buildReportData(
-        'crm-forecast', 'Pipeline Forecast', 'crm', periodo,
+        'crm-forecast', 'Proyección del embudo', 'crm', periodo,
         [
           { titulo: 'Total Pipeline', valor: d.total_pipeline ?? 0, formato: 'moneda' },
           { titulo: 'Forecast Ponderado', valor: d.forecast ?? 0, formato: 'moneda' },
@@ -107,14 +107,14 @@ export const crmReports: ReportDefinition[] = [
   {
     id: 'crm-ranking-vendedores',
     modulo: 'crm',
-    titulo: 'Ranking de Vendedores',
-    descripcion: 'Performance de vendedores por oportunidades y monto cerrado',
+    titulo: 'Ranking de vendedores (CRM)',
+    descripcion: 'Oportunidades abiertas, ganadas y monto cerrado por vendedor',
     categoria: 'comercial',
     alcance: 'organizacion',
     periodosSugeridos: ['quincenal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await db.rpc('fn_reporte_crm_ranking_vendedores', {
         p_organization_id: orgId,
         p_from: start,
@@ -125,7 +125,7 @@ export const crmReports: ReportDefinition[] = [
       const d = data ?? {};
 
       return buildReportData(
-        'crm-ranking-vendedores', 'Ranking de Vendedores', 'crm', periodo,
+        'crm-ranking-vendedores', 'Ranking de vendedores (CRM)', 'crm', periodo,
         [
           { titulo: 'Vendedores', valor: (d.ranking ?? []).length, formato: 'numero' },
         ],
@@ -144,13 +144,13 @@ export const crmReports: ReportDefinition[] = [
     id: 'crm-actividades',
     modulo: 'crm',
     titulo: 'Actividades',
-    descripcion: 'Llamadas, reuniones, emails y visitas del período',
+    descripcion: 'Llamadas, reuniones, correos y visitas del periodo',
     categoria: 'comercial',
     alcance: 'sucursal',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await applyBranchFilter(
         db
           .from('activities')
@@ -190,13 +190,13 @@ export const crmReports: ReportDefinition[] = [
     id: 'crm-campanas',
     modulo: 'crm',
     titulo: 'Campañas',
-    descripcion: 'Performance de campañas: contactos, conversión, ROI',
+    descripcion: 'Rendimiento de campañas: contactos, conversión y retorno',
     categoria: 'comercial',
     alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await db
         .from('campaigns')
         .select('id, name, status, channel, created_at')
@@ -225,14 +225,14 @@ export const crmReports: ReportDefinition[] = [
   {
     id: 'crm-clientes',
     modulo: 'crm',
-    titulo: 'Clientes',
+    titulo: 'Clientes (CRM)',
     descripcion: 'Crecimiento, segmentación y valor por cliente',
     categoria: 'comercial',
     alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await db.rpc('fn_reporte_clientes_crecimiento', {
         p_organization_id: orgId,
         p_from: start,
@@ -243,7 +243,7 @@ export const crmReports: ReportDefinition[] = [
       const d = data ?? {};
 
       return buildReportData(
-        'crm-clientes', 'Clientes', 'crm', periodo,
+        'crm-clientes', 'Clientes (CRM)', 'crm', periodo,
         [
           { titulo: 'Total Clientes', valor: d.total_acumulado ?? 0, formato: 'numero' },
           { titulo: 'Nuevos', valor: d.nuevos_en_periodo ?? 0, formato: 'numero' },

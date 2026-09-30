@@ -10,7 +10,7 @@ import type { ReportesClient } from '../types';
 // del usuario; en el servidor (asistente de reportes) el route handler pasa el
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
-import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import type { DefinicionModulo, ReportData, PeriodoCierre } from '../types';
 import { franjaDelPeriodo } from '../rangoPeriodo';
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 import { getOrgDateRange, toPlainDate } from '@/lib/utils/timezone';
@@ -45,12 +45,12 @@ function buildReportData(
   return { id, titulo, modulo, kpis, columnas, filas, totales, generadoEn: new Date().toISOString(), periodo };
 }
 
-export const gymReports: ReportDefinition[] = [
+export const gymReports: DefinicionModulo[] = [
   {
     id: 'gym-membresias',
     modulo: 'gym',
-    titulo: 'Membresías',
-    descripcion: 'Membresías activas y en gracia, nuevas del periodo e ingreso recurrente mensual (MRR)',
+    titulo: 'Membresías activas',
+    descripcion: 'Membresías activas y en gracia, nuevas e ingreso recurrente mensual',
     categoria: 'comercial',
     alcance: 'sucursal',
     periodosSugeridos: ['semanal', 'mensual'],
@@ -113,7 +113,7 @@ export const gymReports: ReportDefinition[] = [
       const mrr = calcularMrr(filas.map(aMrr), precios, ahora, tz);
 
       return buildReportData(
-        'gym-membresias', 'Membresías', 'gym', periodo,
+        'gym-membresias', 'Membresías activas', 'gym', periodo,
         [
           { titulo: 'Activas y en gracia', valor: activas.length, formato: 'numero' },
           { titulo: 'Nuevas', valor: nuevas.length, formato: 'numero' },
@@ -132,15 +132,15 @@ export const gymReports: ReportDefinition[] = [
   {
     id: 'gym-asistencia',
     modulo: 'gym',
-    titulo: 'Actividad de Membresías',
-    descripcion: 'Eventos de membresías por día (altas, renovaciones, cancelaciones)',
+    titulo: 'Actividad de membresías',
+    descripcion: 'Altas, renovaciones y cancelaciones por día',
     categoria: 'operativo',
     alcance: 'organizacion',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
       // Límites del periodo en la zona de la organización (no en UTC).
-      const { start, end, timezone } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, franjaDelPeriodo(periodo));
+      const { start, end, timezone } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, franjaDelPeriodo(periodo), db);
       const { data, error } = await db
         .from('membership_events')
         .select('id, membership_id, event_type, created_at')
@@ -160,7 +160,7 @@ export const gymReports: ReportDefinition[] = [
       const filas = Object.entries(porDia).map(([dia, cantidad]) => ({ dia, cantidad }));
 
       return buildReportData(
-        'gym-asistencia', 'Actividad de Membresías', 'gym', periodo,
+        'gym-asistencia', 'Actividad de membresías', 'gym', periodo,
         [
           { titulo: 'Total Eventos', valor: eventos.length, formato: 'numero' },
         ],
@@ -177,7 +177,7 @@ export const gymReports: ReportDefinition[] = [
     id: 'gym-retencion',
     modulo: 'gym',
     titulo: 'Retención',
-    descripcion: 'Tasa de retención y churn por cohorte',
+    descripcion: 'Tasa de retención y abandono por cohorte',
     categoria: 'comercial',
     alcance: 'organizacion',
     periodosSugeridos: ['mensual'],

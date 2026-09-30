@@ -6,9 +6,7 @@
  * Diseño profesional: header con logo + nombre de organización + título de
  * sección + periodo, KPIs en cards, y tabla de datos consolidados.
  *
- * Reutiliza jsPDF + jspdf-autotable (ya usados en pdfExportService) y
- * papaparse para CSV. No depende de pdfExportService para mantener
- * desacoplado el dashboard unificado del módulo de reportes.
+ * PDF con jsPDF + jspdf-autotable y CSV con papaparse.
  */
 
 import jsPDF from 'jspdf';

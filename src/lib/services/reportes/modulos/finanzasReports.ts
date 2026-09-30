@@ -1,7 +1,8 @@
 // ============================================================
 // Reportes de Finanzas
 // Llama a las RPCs: fn_reporte_cxc_aging, fn_reporte_cxp_aging, fn_reporte_flujo_efectivo, fn_reporte_impuestos,
-// fn_reporte_retenciones_practicadas
+// fn_reporte_retenciones_practicadas, fn_reporte_gastos_naturaleza, fn_reporte_rentabilidad_producto,
+// fn_reporte_ventas_resumen, fn_reporte_bancos_conciliacion, fn_reporte_caja_bancos_diario
 // ============================================================
 
 import { supabase as browserSupabase } from '@/lib/supabase/config';
@@ -12,8 +13,9 @@ import type { ReportesClient } from '../types';
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
 import { applyBranchFilter, normalizeBranchParam } from '@/lib/services/branchFilterHelper';
-import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import type { DefinicionModulo, ReportData, PeriodoCierre, VistaReporte } from '../types';
 import { rangoDelPeriodo } from '../rangoPeriodo';
+import { vistaRentabilidadProducto } from './rentabilidadProducto';
 
 function buildReportData(
   id: string,
@@ -60,12 +62,45 @@ function kpisRetenciones(t: RetencionesPracticadas['totales']): ReportData['kpis
   ];
 }
 
-export const finanzasReports: ReportDefinition[] = [
+/** Vista «Por proveedor»: la base del certificado de retenciones de cada uno. */
+function vistaRetencionesPorProveedor(d: RetencionesPracticadas): Pick<VistaReporte, 'columnas' | 'filas' | 'totales'> {
+  const t = d.totales;
+  return {
+    columnas: [
+      { key: 'proveedor', titulo: 'Proveedor', tipo: 'texto' },
+      { key: 'nit', titulo: 'NIT', tipo: 'texto' },
+      { key: 'facturas', titulo: 'Facturas', tipo: 'numero', alinear: 'right' },
+      { key: 'retefuente', titulo: 'ReteFuente', tipo: 'moneda', alinear: 'right' },
+      { key: 'reteiva', titulo: 'ReteIVA', tipo: 'moneda', alinear: 'right' },
+      { key: 'reteica', titulo: 'ReteICA', tipo: 'moneda', alinear: 'right' },
+      { key: 'retenido', titulo: 'Total retenido', tipo: 'moneda', alinear: 'right' },
+    ],
+    filas: d.por_proveedor.map((f) => ({
+      proveedor: f.proveedor ?? `Proveedor #${f.proveedor_id}`,
+      nit: f.nit ?? '',
+      facturas: Number(f.facturas ?? 0),
+      retefuente: Number(f.retefuente ?? 0),
+      reteiva: Number(f.reteiva ?? 0),
+      reteica: Number(f.reteica ?? 0),
+      retenido: Number(f.retenido ?? 0),
+    })),
+    totales: {
+      proveedor: 'Total',
+      facturas: Number(t.facturas ?? 0),
+      retefuente: Number(t.retefuente ?? 0),
+      reteiva: Number(t.reteiva ?? 0),
+      reteica: Number(t.reteica ?? 0),
+      retenido: Number(t.total ?? 0),
+    },
+  };
+}
+
+export const finanzasReports: DefinicionModulo[] = [
   {
     id: 'cxc-vencidas',
     modulo: 'finance',
-    titulo: 'Cuentas por Cobrar Vencidas',
-    descripcion: 'Facturas vencidas agrupadas por cliente y antigüedad',
+    titulo: 'Cuentas por cobrar vencidas',
+    descripcion: 'Facturas vencidas por cliente y antigüedad',
     categoria: 'financiero',
     alcance: 'sucursal',
     periodosSugeridos: ['diario'],
@@ -140,7 +175,7 @@ export const finanzasReports: ReportDefinition[] = [
       const rango180 = items.filter((i) => i.dias_vencido > 90).length;
 
       return buildReportData(
-        'cxc-vencidas', 'Cuentas por Cobrar Vencidas', 'finance', periodo,
+        'cxc-vencidas', 'Cuentas por cobrar vencidas', 'finance', periodo,
         [
           { titulo: 'Total Vencido', valor: totalVencido, formato: 'moneda' },
           { titulo: 'N° Facturas', valor: numFacturas, formato: 'numero' },
@@ -174,8 +209,8 @@ export const finanzasReports: ReportDefinition[] = [
   {
     id: 'cxc-aging',
     modulo: 'finance',
-    titulo: 'CxC — Edades de Saldo',
-    descripcion: 'Aging de cartera: corriente, 1-30, 31-60, 61-90, +90 días',
+    titulo: 'CxC — edades de saldo',
+    descripcion: 'Cartera por rangos: corriente, 1–30, 31–60, 61–90 y más de 90 días',
     categoria: 'financiero',
     alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
@@ -253,7 +288,7 @@ export const finanzasReports: ReportDefinition[] = [
       const filas = detalle.length > 0 ? detalle : bucketsTraducidos;
 
       return buildReportData(
-        'cxc-aging', 'CxC — Edades de Saldo', 'finance', periodo,
+        'cxc-aging', 'CxC — edades de saldo', 'finance', periodo,
         [
           { titulo: 'Total CxC', valor: totalCxC, formato: 'moneda' },
           { titulo: 'Corriente', valor: Number(totalCorriente), formato: 'moneda' },
@@ -290,8 +325,8 @@ export const finanzasReports: ReportDefinition[] = [
   {
     id: 'cxp-aging',
     modulo: 'finance',
-    titulo: 'CxP — Edades de Saldo',
-    descripcion: 'Aging de cuentas por pagar al proveedor',
+    titulo: 'CxP — edades de saldo',
+    descripcion: 'Cuentas por pagar a proveedores por rango de vencimiento',
     categoria: 'financiero',
     alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
@@ -388,7 +423,7 @@ export const finanzasReports: ReportDefinition[] = [
       const filas = detalle.length > 0 ? detalle : bucketsTraducidos;
 
       return buildReportData(
-        'cxp-aging', 'CxP — Edades de Saldo', 'finance', periodo,
+        'cxp-aging', 'CxP — edades de saldo', 'finance', periodo,
         [
           { titulo: 'Total CxP', valor: totalCxP, formato: 'moneda' },
           { titulo: 'Corriente', valor: Number(totalCorriente), formato: 'moneda' },
@@ -428,14 +463,14 @@ export const finanzasReports: ReportDefinition[] = [
   {
     id: 'flujo-efectivo',
     modulo: 'finance',
-    titulo: 'Flujo de Efectivo',
-    descripcion: 'Flujo operativo, inversión y financiación del período',
+    titulo: 'Flujo de efectivo',
+    descripcion: 'Flujo operativo, de inversión y de financiación del periodo',
     categoria: 'financiero',
     alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await db.rpc('fn_reporte_flujo_efectivo', {
         p_organization_id: orgId,
         p_from: start,
@@ -447,7 +482,7 @@ export const finanzasReports: ReportDefinition[] = [
       const d = data ?? {};
 
       return buildReportData(
-        'flujo-efectivo', 'Flujo de Efectivo', 'finance', periodo,
+        'flujo-efectivo', 'Flujo de efectivo', 'finance', periodo,
         [
           { titulo: 'Flujo Operativo', valor: d.operativo ?? 0, formato: 'moneda' },
           { titulo: 'Flujo Neto', valor: d.neto ?? 0, formato: 'moneda' },
@@ -470,14 +505,14 @@ export const finanzasReports: ReportDefinition[] = [
   {
     id: 'impuestos',
     modulo: 'finance',
-    titulo: 'Impuestos (IVA/Retenciones)',
-    descripcion: 'IVA generado, IVA descontable y retenciones del período',
+    titulo: 'Impuestos (IVA y retenciones)',
+    descripcion: 'IVA generado, IVA descontable y retenciones del periodo',
     categoria: 'financiero',
     alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await db.rpc('fn_reporte_impuestos', {
         p_organization_id: orgId,
         p_from: start,
@@ -489,7 +524,7 @@ export const finanzasReports: ReportDefinition[] = [
       const d = data ?? {};
 
       return buildReportData(
-        'impuestos', 'Impuestos (IVA/Retenciones)', 'finance', periodo,
+        'impuestos', 'Impuestos (IVA y retenciones)', 'finance', periodo,
         [
           { titulo: 'IVA Generado', valor: d.iva_generado ?? 0, formato: 'moneda' },
           { titulo: 'IVA Descontable', valor: d.iva_descontable ?? 0, formato: 'moneda' },
@@ -510,15 +545,13 @@ export const finanzasReports: ReportDefinition[] = [
     id: 'retenciones-practicadas',
     modulo: 'finance',
     titulo: 'Retenciones practicadas',
-    descripcion: 'ReteFuente, ReteIVA y ReteICA practicadas a proveedores en facturas de compra confirmadas, por concepto y tarifa',
+    descripcion: 'Retención en la fuente, de IVA y de ICA practicadas a proveedores',
     categoria: 'financiero',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await db.rpc('fn_reporte_retenciones_practicadas', {
         p_organization_id: orgId,
         p_from: start,
@@ -529,45 +562,49 @@ export const finanzasReports: ReportDefinition[] = [
       const d = aRetencionesPracticadas(data);
       const t = d.totales;
 
-      return buildReportData(
-        'retenciones-practicadas', 'Retenciones practicadas', 'finance', periodo,
-        kpisRetenciones(t),
-        [
-          { key: 'tipo', titulo: 'Tipo', tipo: 'texto' },
-          { key: 'concepto', titulo: 'Concepto', tipo: 'texto' },
-          { key: 'cuenta', titulo: 'Cuenta', tipo: 'texto' },
-          { key: 'base', titulo: 'Base', tipo: 'moneda', alinear: 'right' },
-          { key: 'tarifa', titulo: 'Tarifa', tipo: 'porcentaje', alinear: 'right' },
-          { key: 'retenido', titulo: 'Retenido', tipo: 'moneda', alinear: 'right' },
-          { key: 'facturas', titulo: 'Facturas', tipo: 'numero', alinear: 'right' },
-        ],
-        d.por_tipo.map((f) => ({
-          tipo: CLASES_RETENCION[f.clase] ?? f.clase,
-          concepto: f.concepto,
-          cuenta: f.cuenta,
-          base: Number(f.base ?? 0),
-          tarifa: Number(f.tarifa ?? 0),
-          retenido: Number(f.retenido ?? 0),
-          facturas: Number(f.facturas ?? 0),
-        })),
-        // Sin total de bases: la misma factura es base de varias retenciones.
-        { tipo: 'Total a declarar', retenido: Number(t.total ?? 0), facturas: Number(t.facturas ?? 0) },
-      );
+      return {
+        ...buildReportData(
+          'retenciones-practicadas', 'Retenciones practicadas', 'finance', periodo,
+          kpisRetenciones(t),
+          [
+            { key: 'tipo', titulo: 'Tipo', tipo: 'texto' },
+            { key: 'concepto', titulo: 'Concepto', tipo: 'texto' },
+            { key: 'cuenta', titulo: 'Cuenta', tipo: 'texto' },
+            { key: 'base', titulo: 'Base', tipo: 'moneda', alinear: 'right' },
+            { key: 'tarifa', titulo: 'Tarifa', tipo: 'porcentaje', alinear: 'right' },
+            { key: 'retenido', titulo: 'Retenido', tipo: 'moneda', alinear: 'right' },
+            { key: 'facturas', titulo: 'Facturas', tipo: 'numero', alinear: 'right' },
+          ],
+          d.por_tipo.map((f) => ({
+            tipo: CLASES_RETENCION[f.clase] ?? f.clase,
+            concepto: f.concepto,
+            cuenta: f.cuenta,
+            base: Number(f.base ?? 0),
+            tarifa: Number(f.tarifa ?? 0),
+            retenido: Number(f.retenido ?? 0),
+            facturas: Number(f.facturas ?? 0),
+          })),
+          // Sin total de bases: la misma factura es base de varias retenciones.
+          { tipo: 'Total a declarar', retenido: Number(t.total ?? 0), facturas: Number(t.facturas ?? 0) },
+        ),
+        vistaPrincipal: 'Por tipo',
+        vistas: [{ id: 'por-proveedor', titulo: 'Por proveedor', ...vistaRetencionesPorProveedor(d) }],
+      };
     },
   },
   {
+    // Alias: la misma consulta, abierta en la vista «Por proveedor». Se
+    // conserva para favoritos, cierres y el asistente que ya la nombran.
     id: 'retenciones-por-proveedor',
     modulo: 'finance',
     titulo: 'Retenciones por proveedor',
     descripcion: 'Lo retenido a cada proveedor en el período: la base del certificado de retenciones que se le expide',
     categoria: 'financiero',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual', 'anual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await db.rpc('fn_reporte_retenciones_practicadas', {
         p_organization_id: orgId,
         p_from: start,
@@ -576,45 +613,22 @@ export const finanzasReports: ReportDefinition[] = [
       });
       if (error) throw error;
       const d = aRetencionesPracticadas(data);
-      const t = d.totales;
+      const vista = vistaRetencionesPorProveedor(d);
 
       return buildReportData(
         'retenciones-por-proveedor', 'Retenciones por proveedor', 'finance', periodo,
-        kpisRetenciones(t),
-        [
-          { key: 'proveedor', titulo: 'Proveedor', tipo: 'texto' },
-          { key: 'nit', titulo: 'NIT', tipo: 'texto' },
-          { key: 'facturas', titulo: 'Facturas', tipo: 'numero', alinear: 'right' },
-          { key: 'retefuente', titulo: 'ReteFuente', tipo: 'moneda', alinear: 'right' },
-          { key: 'reteiva', titulo: 'ReteIVA', tipo: 'moneda', alinear: 'right' },
-          { key: 'reteica', titulo: 'ReteICA', tipo: 'moneda', alinear: 'right' },
-          { key: 'retenido', titulo: 'Total retenido', tipo: 'moneda', alinear: 'right' },
-        ],
-        d.por_proveedor.map((f) => ({
-          proveedor: f.proveedor ?? `Proveedor #${f.proveedor_id}`,
-          nit: f.nit ?? '',
-          facturas: Number(f.facturas ?? 0),
-          retefuente: Number(f.retefuente ?? 0),
-          reteiva: Number(f.reteiva ?? 0),
-          reteica: Number(f.reteica ?? 0),
-          retenido: Number(f.retenido ?? 0),
-        })),
-        {
-          proveedor: 'Total',
-          facturas: Number(t.facturas ?? 0),
-          retefuente: Number(t.retefuente ?? 0),
-          reteiva: Number(t.reteiva ?? 0),
-          reteica: Number(t.reteica ?? 0),
-          retenido: Number(t.total ?? 0),
-        },
+        kpisRetenciones(d.totales),
+        vista.columnas,
+        vista.filas,
+        vista.totales,
       );
     },
   },
   {
     id: 'liquidez',
     modulo: 'finance',
-    titulo: 'Liquidez (Flujo Proyectado)',
-    descripcion: 'Proyección de liquidez basada en CxC y CxP pendientes',
+    titulo: 'Liquidez (flujo proyectado)',
+    descripcion: 'Proyección con la cartera y las cuentas por pagar pendientes',
     categoria: 'financiero',
     alcance: 'sucursal',
     periodosSugeridos: ['semanal'],
@@ -640,7 +654,7 @@ export const finanzasReports: ReportDefinition[] = [
       const totalCxP = (cxp ?? []).reduce((s: number, r: Record<string, unknown>) => s + Number(r.balance ?? 0), 0);
 
       return buildReportData(
-        'liquidez', 'Liquidez (Flujo Proyectado)', 'finance', periodo,
+        'liquidez', 'Liquidez (flujo proyectado)', 'finance', periodo,
         [
           { titulo: 'CxC Pendiente', valor: totalCxC, formato: 'moneda' },
           { titulo: 'CxP Pendiente', valor: totalCxP, formato: 'moneda' },
@@ -661,65 +675,66 @@ export const finanzasReports: ReportDefinition[] = [
   {
     id: 'gastos-operativos',
     modulo: 'finance',
-    titulo: 'Gastos Operativos',
-    descripcion: 'Gastos por categoría y sucursal',
+    titulo: 'Gastos operativos',
+    descripcion: 'Gastos de la clase 5 del PUC por cuenta, en la sucursal elegida o consolidados',
     categoria: 'financiero',
     alcance: 'sucursal',
     periodosSugeridos: ['quincenal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
-      let gastosQuery = db
-        .from('journal_lines')
-        .select('account_code, debit_base, credit_base, description, journal_entries!inner(entry_date, branch_id)')
-        .eq('organization_id', orgId)
-        .gte('journal_entries.entry_date', start)
-        .lte('journal_entries.entry_date', end);
-      if (branchId != null && Number.isFinite(branchId) && branchId > 0) {
-        gastosQuery = gastosQuery.eq('journal_entries.branch_id', branchId);
-      }
-      const { data, error } = await gastosQuery;
-
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
+      const { data, error } = await db.rpc('fn_reporte_gastos_naturaleza', {
+        p_organization_id: orgId,
+        p_from: start,
+        p_to: end,
+        p_branch_id: normalizeBranchParam(branchId),
+      });
       if (error) throw error;
 
-      const lineas = data ?? [];
-      const porCuenta: Record<string, number> = {};
-      lineas.forEach((l: Record<string, unknown>) => {
-        const code = String(l.account_code ?? '');
-        porCuenta[code] = (porCuenta[code] ?? 0) + Number(l.debit_base ?? 0) - Number(l.credit_base ?? 0);
-      });
+      const d = (data ?? {}) as Record<string, unknown>;
+      const esGasto = (grupo: unknown) => String(grupo ?? '').startsWith('5');
+      const filas = (Array.isArray(d.cuentas) ? d.cuentas : [])
+        .filter((c: Record<string, unknown>) => esGasto(c.grupo))
+        .map((c: Record<string, unknown>) => ({ cuenta: String(c.cuenta ?? ''), nombre: String(c.nombre ?? ''), monto: Number(c.monto ?? 0) }));
+      const grupos = (Array.isArray(d.grupos) ? d.grupos : []) as Array<Record<string, unknown>>;
+      const sumaGrupos = (filtro: (g: Record<string, unknown>) => boolean) =>
+        grupos.filter(filtro).reduce((s, g) => s + Number(g.monto ?? 0), 0);
+      const total = sumaGrupos((g) => esGasto(g.grupo));
 
-      const filas = Object.entries(porCuenta)
-        .filter(([, monto]) => monto > 0)
-        .map(([cuenta, monto]) => ({ cuenta, monto }))
-        .sort((a, b) => b.monto - a.monto);
-
-      return buildReportData(
-        'gastos-operativos', 'Gastos Operativos', 'finance', periodo,
-        [
-          { titulo: 'Total Gastos', valor: filas.reduce((s, f) => s + f.monto, 0), formato: 'moneda' },
-          { titulo: 'Cuentas', valor: filas.length, formato: 'numero' },
-        ],
-        [
-          { key: 'cuenta', titulo: 'Cuenta', tipo: 'texto' },
-          { key: 'monto', titulo: 'Monto', tipo: 'moneda', alinear: 'right' },
-        ],
-        filas,
-        { monto: filas.reduce((s, f) => s + f.monto, 0) },
-      );
+      return {
+        ...buildReportData(
+          'gastos-operativos', 'Gastos operativos', 'finance', periodo,
+          [
+            { titulo: 'Total gastos', valor: total, formato: 'moneda' },
+            { titulo: 'Operacionales', valor: sumaGrupos((g) => g.naturaleza === 'operacional'), formato: 'moneda' },
+            { titulo: 'No operacionales', valor: sumaGrupos((g) => g.naturaleza === 'no_operacional'), formato: 'moneda' },
+            { titulo: 'Cuentas', valor: filas.length, formato: 'numero' },
+          ],
+          [
+            { key: 'cuenta', titulo: 'Cuenta', tipo: 'texto' },
+            { key: 'nombre', titulo: 'Nombre', tipo: 'texto' },
+            { key: 'monto', titulo: 'Monto', tipo: 'moneda', alinear: 'right' },
+          ],
+          filas,
+          { monto: total },
+        ),
+        lectura: d.truncado
+          ? [{ tono: 'aviso', texto: 'La tabla muestra las 2.000 cuentas de mayor valor; los totales cubren todas.' }]
+          : [],
+      };
     },
   },
   {
     id: 'facturacion-electronica',
     modulo: 'finance',
-    titulo: 'Facturación Electrónica',
-    descripcion: 'Resumen de facturas electrónicas emitidas y estado DIAN',
+    titulo: 'Facturación electrónica',
+    descripcion: 'Documentos emitidos y su estado ante la DIAN',
     categoria: 'financiero',
     alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       let facturacionQuery = db
         .from('invoice_sales')
         .select('id, subtotal, tax_total, total, balance, status, document_type, issue_date')
@@ -826,7 +841,7 @@ export const finanzasReports: ReportDefinition[] = [
       });
 
       return buildReportData(
-        'facturacion-electronica', 'Facturación Electrónica', 'finance', periodo,
+        'facturacion-electronica', 'Facturación electrónica', 'finance', periodo,
         [
           { titulo: 'Total Facturado', valor: totalFacturado, formato: 'moneda' },
           { titulo: 'Base Gravable', valor: baseGravable, formato: 'moneda' },
@@ -857,15 +872,15 @@ export const finanzasReports: ReportDefinition[] = [
   {
     id: 'rentabilidad-producto',
     modulo: 'finance',
-    titulo: 'Rentabilidad por Producto',
-    descripcion: 'Margen por producto: ingreso vs costo',
+    titulo: 'Rentabilidad por producto',
+    descripcion: 'Ingreso neto, costo real de lo vendido y margen por producto',
     categoria: 'financiero',
     alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
-      const { data, error } = await db.rpc('fn_reporte_rotacion_inventario', {
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
+      const { data, error } = await db.rpc('fn_reporte_rentabilidad_producto', {
         p_organization_id: orgId,
         p_from: start,
         p_to: end,
@@ -873,36 +888,26 @@ export const finanzasReports: ReportDefinition[] = [
       });
       if (error) throw error;
 
-      const d = data ?? {};
-      const top = d.top_vendidos ?? [];
-
-      return buildReportData(
-        'rentabilidad-producto', 'Rentabilidad por Producto', 'finance', periodo,
-        [
-          { titulo: 'Total Vendido', valor: d.total_vendido ?? 0, formato: 'moneda' },
-          { titulo: 'Productos', valor: d.num_productos_vendidos ?? 0, formato: 'numero' },
-        ],
-        [
-          { key: 'nombre', titulo: 'Producto', tipo: 'texto' },
-          { key: 'cantidad_vendida', titulo: 'Cantidad', tipo: 'numero', alinear: 'right' },
-          { key: 'total_ventas', titulo: 'Ingresos', tipo: 'moneda', alinear: 'right' },
-        ],
-        top,
-        { total_ventas: top.reduce((s: number, r: Record<string, unknown>) => s + Number(r.total_ventas ?? 0), 0) },
-      );
+      const v = vistaRentabilidadProducto(data);
+      return {
+        ...buildReportData('rentabilidad-producto', 'Rentabilidad por producto', 'finance', periodo, v.kpis, v.columnas, v.filas, v.totales),
+        vistaPrincipal: 'Por producto',
+        vistas: v.vistas,
+        lectura: v.lectura,
+      };
     },
   },
   {
     id: 'rentabilidad-sucursal',
     modulo: 'finance',
-    titulo: 'Rentabilidad por Sucursal',
+    titulo: 'Rentabilidad por sucursal',
     descripcion: 'Ingresos, costos y margen por sucursal',
     categoria: 'financiero',
     alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await db.rpc('fn_reporte_ventas_resumen', {
         p_organization_id: orgId,
         p_from: start,
@@ -915,7 +920,7 @@ export const finanzasReports: ReportDefinition[] = [
       const porSucursal = d.por_sucursal ?? [];
 
       return buildReportData(
-        'rentabilidad-sucursal', 'Rentabilidad por Sucursal', 'finance', periodo,
+        'rentabilidad-sucursal', 'Rentabilidad por sucursal', 'finance', periodo,
         [
           { titulo: 'Total Ventas', valor: d.total_ventas ?? 0, formato: 'moneda' },
           { titulo: 'Sucursales', valor: porSucursal.length, formato: 'numero' },
@@ -929,6 +934,154 @@ export const finanzasReports: ReportDefinition[] = [
         { total: porSucursal.reduce((s: number, r: Record<string, unknown>) => s + Number(r.total ?? 0), 0),
           num_ventas: porSucursal.reduce((s: number, r: Record<string, unknown>) => s + Number(r.num_ventas ?? 0), 0) },
       );
+    },
+  },
+  {
+    id: 'bancos-conciliacion',
+    modulo: 'finance',
+    titulo: 'Bancos y conciliación',
+    descripcion: 'Movimientos de cada cuenta bancaria en el periodo y lo que falta por conciliar',
+    categoria: 'financiero',
+    alcance: 'sucursal',
+    periodosSugeridos: ['semanal', 'mensual'],
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
+      const { data, error } = await db.rpc('fn_reporte_bancos_conciliacion', {
+        p_organization_id: orgId,
+        p_from: start,
+        p_to: end,
+        p_branch_id: normalizeBranchParam(branchId),
+      });
+      if (error) throw error;
+
+      const d = (data ?? {}) as Record<string, unknown>;
+      const t = (d.totales ?? {}) as Record<string, unknown>;
+      const cuentas = (Array.isArray(d.cuentas) ? d.cuentas : []) as Array<Record<string, unknown>>;
+      const sinConciliar = Number(t.sin_conciliar ?? 0);
+      const ultima = (c: Record<string, unknown>) => (c.ultima_conciliacion ?? null) as Record<string, unknown> | null;
+      const conDiferencia = cuentas.filter((c) => Number(ultima(c)?.diferencia ?? 0) !== 0).length;
+
+      const lectura: ReportData['lectura'] = [];
+      if (cuentas.length === 0) {
+        lectura.push({ tono: 'info', texto: 'No hay cuentas bancarias activas en este alcance.', href: '/app/finanzas/bancos', etiquetaAccion: 'Ver bancos' });
+      }
+      if (sinConciliar > 0) {
+        lectura.push({ tono: 'aviso', texto: `${sinConciliar} movimientos del periodo siguen sin conciliar.`, href: '/app/finanzas/conciliacion-bancaria', etiquetaAccion: 'Conciliar' });
+      }
+      if (conDiferencia > 0) {
+        lectura.push({ tono: 'alerta', texto: `${conDiferencia} cuentas cerraron su última conciliación con diferencia.`, href: '/app/finanzas/conciliacion-bancaria', etiquetaAccion: 'Revisar' });
+      }
+
+      const ESTADO_CONCILIACION: Record<string, string> = { draft: 'Borrador', in_progress: 'En curso', closed: 'Cerrada' };
+
+      return {
+        ...buildReportData(
+          'bancos-conciliacion', 'Bancos y conciliación', 'finance', periodo,
+          [
+            { titulo: 'Cuentas', valor: Number(t.cuentas ?? 0), formato: 'numero' },
+            { titulo: 'Entradas', valor: Number(t.entradas ?? 0), formato: 'moneda' },
+            { titulo: 'Salidas', valor: Number(t.salidas ?? 0), formato: 'moneda' },
+            { titulo: 'Movimientos sin conciliar', valor: sinConciliar, formato: 'numero' },
+            { titulo: 'Monto por conciliar', valor: Number(t.por_conciliar ?? 0), formato: 'moneda' },
+          ],
+          [
+            { key: 'cuenta', titulo: 'Cuenta', tipo: 'texto' },
+            { key: 'banco', titulo: 'Banco', tipo: 'texto' },
+            { key: 'moneda', titulo: 'Moneda', tipo: 'texto' },
+            { key: 'saldo', titulo: 'Saldo actual', tipo: 'moneda', alinear: 'right' },
+            { key: 'entradas', titulo: 'Entradas', tipo: 'moneda', alinear: 'right' },
+            { key: 'salidas', titulo: 'Salidas', tipo: 'moneda', alinear: 'right' },
+            { key: 'movimientos', titulo: 'Movimientos', tipo: 'numero', alinear: 'right' },
+            { key: 'sin_conciliar', titulo: 'Sin conciliar', tipo: 'numero', alinear: 'right' },
+            { key: 'ultima_hasta', titulo: 'Conciliada hasta', tipo: 'fecha' },
+            { key: 'ultima_estado', titulo: 'Estado', tipo: 'texto' },
+          ],
+          cuentas.map((c) => ({
+            cuenta: c.numero ? `${c.cuenta} · ${c.numero}` : c.cuenta,
+            banco: c.banco ?? '',
+            moneda: c.moneda ?? '',
+            saldo: Number(c.saldo ?? 0),
+            entradas: Number(c.entradas ?? 0),
+            salidas: Number(c.salidas ?? 0),
+            movimientos: Number(c.movimientos ?? 0),
+            sin_conciliar: Number(c.sin_conciliar ?? 0),
+            ultima_hasta: ultima(c)?.hasta ?? null,
+            ultima_estado: ultima(c) ? (ESTADO_CONCILIACION[String(ultima(c)?.estado)] ?? String(ultima(c)?.estado)) : 'Nunca',
+          })),
+          { entradas: Number(t.entradas ?? 0), salidas: Number(t.salidas ?? 0), movimientos: Number(t.movimientos ?? 0), sin_conciliar: sinConciliar },
+        ),
+        lectura,
+      };
+    },
+  },
+  {
+    id: 'caja-bancos-diario',
+    modulo: 'finance',
+    titulo: 'Caja y bancos: saldos diarios',
+    descripcion: 'Entradas, salidas y saldo al cierre de cada día en caja (1105) y bancos (111x, 112x)',
+    categoria: 'financiero',
+    alcance: 'sucursal',
+    periodosSugeridos: ['semanal', 'quincenal', 'mensual'],
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
+      const { data, error } = await db.rpc('fn_reporte_caja_bancos_diario', {
+        p_organization_id: orgId,
+        p_from: start,
+        p_to: end,
+        p_branch_id: normalizeBranchParam(branchId),
+      });
+      if (error) throw error;
+
+      const d = (data ?? {}) as Record<string, unknown>;
+      const dias = ((Array.isArray(d.dias) ? d.dias : []) as Array<Record<string, unknown>>).map((f) => ({
+        dia: f.dia,
+        caja_entradas: Number(f.caja_entradas ?? 0),
+        caja_salidas: Number(f.caja_salidas ?? 0),
+        saldo_caja: Number(f.saldo_caja ?? 0),
+        bancos_entradas: Number(f.bancos_entradas ?? 0),
+        bancos_salidas: Number(f.bancos_salidas ?? 0),
+        saldo_bancos: Number(f.saldo_bancos ?? 0),
+        saldo_total: Number(f.saldo_total ?? 0),
+      }));
+      const inicialCaja = Number(d.saldo_inicial_caja ?? 0);
+      const inicialBancos = Number(d.saldo_inicial_bancos ?? 0);
+      const final = dias[dias.length - 1];
+      const suma = (k: keyof (typeof dias)[number]) => dias.reduce((s, f) => s + Number(f[k] ?? 0), 0);
+      const diasCajaNegativa = dias.filter((f) => f.saldo_caja < 0).length;
+
+      return {
+        ...buildReportData(
+          'caja-bancos-diario', 'Caja y bancos: saldos diarios', 'finance', periodo,
+          [
+            { titulo: 'Saldo inicial', valor: inicialCaja + inicialBancos, formato: 'moneda' },
+            { titulo: 'Caja al cierre', valor: final?.saldo_caja ?? inicialCaja, formato: 'moneda' },
+            { titulo: 'Bancos al cierre', valor: final?.saldo_bancos ?? inicialBancos, formato: 'moneda' },
+            { titulo: 'Saldo final', valor: final?.saldo_total ?? inicialCaja + inicialBancos, formato: 'moneda' },
+          ],
+          [
+            { key: 'dia', titulo: 'Día', tipo: 'fecha' },
+            { key: 'caja_entradas', titulo: 'Caja: entradas', tipo: 'moneda', alinear: 'right' },
+            { key: 'caja_salidas', titulo: 'Caja: salidas', tipo: 'moneda', alinear: 'right' },
+            { key: 'saldo_caja', titulo: 'Saldo caja', tipo: 'moneda', alinear: 'right' },
+            { key: 'bancos_entradas', titulo: 'Bancos: entradas', tipo: 'moneda', alinear: 'right' },
+            { key: 'bancos_salidas', titulo: 'Bancos: salidas', tipo: 'moneda', alinear: 'right' },
+            { key: 'saldo_bancos', titulo: 'Saldo bancos', tipo: 'moneda', alinear: 'right' },
+            { key: 'saldo_total', titulo: 'Saldo total', tipo: 'moneda', alinear: 'right' },
+          ],
+          dias,
+          {
+            caja_entradas: suma('caja_entradas'),
+            caja_salidas: suma('caja_salidas'),
+            bancos_entradas: suma('bancos_entradas'),
+            bancos_salidas: suma('bancos_salidas'),
+          },
+        ),
+        lectura: diasCajaNegativa > 0
+          ? [{ tono: 'alerta', texto: `La caja queda con saldo negativo en ${diasCajaNegativa} días: faltan registrar ingresos o sobran egresos.`, href: '/app/finanzas/contabilidad/asientos', etiquetaAccion: 'Ver asientos' }]
+          : [],
+      };
     },
   },
 ];

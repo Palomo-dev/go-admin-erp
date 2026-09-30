@@ -10,7 +10,7 @@ import type { ReportesClient } from '../types';
 // del usuario; en el servidor (asistente de reportes) el route handler pasa el
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
-import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import type { DefinicionModulo, ReportData, PeriodoCierre } from '../types';
 import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
@@ -21,18 +21,18 @@ function buildReportData(
   return { id, titulo, modulo, kpis, columnas, filas, totales, generadoEn: new Date().toISOString(), periodo };
 }
 
-export const pmReports: ReportDefinition[] = [
+export const pmReports: DefinicionModulo[] = [
   {
     id: 'pm-tareas',
     modulo: 'pm',
-    titulo: 'Tareas por Estado',
+    titulo: 'Tareas por estado',
     descripcion: 'Distribución de tareas por estado y proyecto',
     categoria: 'sistema',
     alcance: 'organizacion',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await db
         .from('tasks')
         .select('id, status, project_id, created_at')
@@ -52,7 +52,7 @@ export const pmReports: ReportDefinition[] = [
       const filas = Object.entries(porEstado).map(([estado, cantidad]) => ({ estado, cantidad }));
 
       return buildReportData(
-        'pm-tareas', 'Tareas por Estado', 'pm', periodo,
+        'pm-tareas', 'Tareas por estado', 'pm', periodo,
         [
           { titulo: 'Total Tareas', valor: tareas.length, formato: 'numero' },
         ],
@@ -68,8 +68,8 @@ export const pmReports: ReportDefinition[] = [
   {
     id: 'pm-performance',
     modulo: 'pm',
-    titulo: 'Performance por Proyecto',
-    descripcion: 'Horas estimadas vs reales, hitos completados',
+    titulo: 'Desempeño por proyecto',
+    descripcion: 'Horas estimadas frente a reales e hitos completados',
     categoria: 'sistema',
     alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
@@ -85,7 +85,7 @@ export const pmReports: ReportDefinition[] = [
       const proyectos = data ?? [];
 
       return buildReportData(
-        'pm-performance', 'Performance por Proyecto', 'pm', periodo,
+        'pm-performance', 'Desempeño por proyecto', 'pm', periodo,
         [
           { titulo: 'Total Proyectos', valor: proyectos.length, formato: 'numero' },
         ],

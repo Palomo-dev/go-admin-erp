@@ -22,6 +22,7 @@ export { ListToolbar, type ListToolbarProps } from './ListToolbar';
 export { DateRangeButton, type DateRangeButtonProps } from './DateRangeButton';
 export { CampoFecha, type CampoFechaProps } from './CampoFecha';
 export { CalendarioMes, type CalendarioMesProps } from './CalendarioMes';
+export { SelectorFranja, cruzaMedianoche, type SelectorFranjaProps, type FranjaHoraria } from './SelectorFranja';
 export { primerDiaDeSemana, grillaMes, etiquetaDiaTrigger, type CeldaDia } from './calendarioLogica';
 export {
   etiquetaRango,
@@ -70,6 +71,7 @@ export { resolverEstado, etiquetaEstado, type TonoBadge, type AparienciaBadge } 
 export { FormSection, type FormSectionProps } from './FormSection';
 export { FormField, type FormFieldProps, type PropsCampo } from './FormField';
 export { SegmentedControl, type SegmentedControlProps, type OpcionSegmento } from './SegmentedControl';
+export { ChipsOpcion, type ChipsOpcionProps, type OpcionChip } from './ChipsOpcion';
 
 // Estado de listados en la URL
 export { useListadoServidor, type ListadoServidor } from './useListadoServidor';

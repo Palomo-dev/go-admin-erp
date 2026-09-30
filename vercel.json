@@ -60,6 +60,10 @@
     {
       "path": "/api/factus/process-pending",
       "schedule": "*/2 * * * *"
+    },
+    {
+      "path": "/api/cron/reportes-programados",
+      "schedule": "*/15 * * * *"
     }
   ],
   "headers": [

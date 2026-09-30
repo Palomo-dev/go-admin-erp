@@ -4,7 +4,7 @@
  * Ruta ÚNICA de documentos imprimibles (motor en `src/lib/documents`):
  * factura de venta, nota crédito, cotización, factura de compra, documento
  * soporte, estado de cuenta de cliente, recibo de caja, comprobante de
- * egreso, cierre y arqueo de caja.
+ * egreso, cierre y arqueo de caja, cierre de periodo y reporte del catálogo.
  *
  * Seguridad:
  * - Sesión y organización activa con `getServerOrgContext`; una organización
@@ -23,7 +23,9 @@
  * Parámetros de presentación (no cambian el contenido): `formato`, `papel`,
  * `idioma`, `descargar=1` (adjunto en vez de en línea), `imprimir=1` (HTML que
  * abre el diálogo de impresión) y, en los estados de cuenta y el certificado
- * de retenciones, `desde`/`hasta` (días `YYYY-MM-DD`).
+ * de retenciones, `desde`/`hasta` (días `YYYY-MM-DD`). El documento `reporte`
+ * lee además `periodo`, `sucursal`, `hi`, `hf`, `vista` y `comparar` (filtros del visor,
+ * validados contra el plan y el alcance de sucursal de la sesión).
  */
 
 import { randomBytes } from 'crypto';
@@ -47,6 +49,8 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 const RUTA = 'GET /api/documentos/[tipo]/[id]';
+/** Filtros del documento `reporte`; el cargador los valida. */
+const PARAMETROS_REPORTE = ['periodo', 'sucursal', 'hi', 'hf', 'vista', 'comparar'] as const;
 
 function json(status: number, cuerpo: Record<string, unknown>): Response {
   return new Response(JSON.stringify(cuerpo), {
@@ -117,6 +121,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ tipo
       nonce,
       desde: url.searchParams.get('desde'),
       hasta: url.searchParams.get('hasta'),
+      parametros: Object.fromEntries(PARAMETROS_REPORTE.map((k) => [k, url.searchParams.get(k)])),
     });
     const nombre = nombreArchivoSeguro(payload.nombreArchivo);
 

@@ -10,7 +10,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { finanzasReports } from '../modulos/finanzasReports';
-import type { PeriodoCierre, ReportDefinition } from '../types';
+import type { PeriodoCierre, DefinicionModulo } from '../types';
 
 jest.mock('@/lib/utils/timezone', () => ({
   getOrgDateRange: jest.fn(async () => ({
@@ -45,7 +45,7 @@ function cliente(data: unknown, error: unknown = null): SupabaseClient {
   return { rpc: jest.fn(async () => ({ data, error })) } as unknown as SupabaseClient;
 }
 
-function reporte(id: string): ReportDefinition {
+function reporte(id: string): DefinicionModulo {
   const def = finanzasReports.find((d) => d.id === id);
   if (!def) throw new Error(`No existe el reporte ${id}`);
   return def;
@@ -89,6 +89,18 @@ describe('reporte retenciones-practicadas', () => {
   it('propaga el error de la RPC (p. ej. 42501 fuera de la organización)', async () => {
     const error = { code: '42501', message: 'ORG_FORBIDDEN' };
     await expect(reporte('retenciones-practicadas').fetch(120, PERIODO, null, cliente(null, error))).rejects.toBe(error);
+  });
+});
+
+describe('retenciones-practicadas trae la vista «Por proveedor»', () => {
+  it('con las mismas filas y totales que el alias retenciones-por-proveedor', async () => {
+    const unificado = await reporte('retenciones-practicadas').fetch(120, PERIODO, 7, cliente(RESPUESTA));
+    const alias = await reporte('retenciones-por-proveedor').fetch(120, PERIODO, 7, cliente(RESPUESTA));
+    expect(unificado.vistaPrincipal).toBe('Por tipo');
+    const vista = unificado.vistas!.find((v) => v.id === 'por-proveedor')!;
+    expect(vista.columnas).toEqual(alias.columnas);
+    expect(vista.filas).toEqual(alias.filas);
+    expect(vista.totales).toEqual(alias.totales);
   });
 });
 

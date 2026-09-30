@@ -1,15 +1,7 @@
-export { ReportesHeader, type ReportesTab } from './ReportesHeader';
-export { PeriodoSelector } from './PeriodoSelector';
-export { ReportesResumenGlobal } from './ReportesResumenGlobal';
-export { ModuloSection } from './ModuloSection';
-export { ReporteCard, ModuloIcon } from './ReporteCard';
-export { ReporteSheet } from './ReporteSheet';
 export { ReporteTabla } from './ReporteTabla';
 export { ReporteKPIs } from './ReporteKPIs';
-export { ReporteEmpty } from './ReporteEmpty';
-export { ReportesSkeleton } from './ReportesSkeleton';
+// Lo usa ReporteTabla, que pinta las tablas del chat. No es de la v1 suelta.
 export { ReportePagination } from './ReportePagination';
 export { ReporteChart } from './ReporteChart';
-export { CierresHistorial } from './CierresHistorial';
 export { ReportesChatSheet } from './chat/ReportesChatSheet';
 export { ChatMessage } from './chat/ChatMessage';

@@ -16,25 +16,25 @@
 import fs from 'fs';
 import path from 'path';
 import { reportePermitido, sucursalDeReportes } from '../alcanceSucursal';
-import type { ReportDefinition } from '../types';
+import type { DefinicionModulo } from '../types';
 
 jest.mock('@/lib/supabase/config', () => ({ supabase: {} }));
 
 const DIR_MODULOS = path.join(__dirname, '..', 'modulos');
 
-function todasLasDefiniciones(): ReportDefinition[] {
+function todasLasDefiniciones(): DefinicionModulo[] {
   return fs
     .readdirSync(DIR_MODULOS)
     .filter((f) => f.endsWith('Reports.ts'))
     .flatMap((f) => {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const modulo = require(path.join(DIR_MODULOS, f)) as Record<string, unknown>;
-      return Object.values(modulo).filter(Array.isArray).flat() as ReportDefinition[];
+      return Object.values(modulo).filter(Array.isArray).flat() as DefinicionModulo[];
     });
 }
 
 /** Cuerpo de `fetch` sin su lista de parámetros. */
-function cuerpoDeFetch(def: ReportDefinition): string {
+function cuerpoDeFetch(def: DefinicionModulo): string {
   const fuente = def.fetch.toString();
   const cierre = fuente.indexOf(')');
   return fuente.slice(cierre + 1);
@@ -43,8 +43,13 @@ function cuerpoDeFetch(def: ReportDefinition): string {
 describe('catálogo: alcance coherente con el uso de branchId', () => {
   const definiciones = todasLasDefiniciones();
 
-  test('el catálogo trae las 69 definiciones y todas declaran alcance', () => {
-    expect(definiciones.length).toBe(69);
+  // El conteo protege contra perder una definición al reorganizar el catálogo.
+  // 71 = las 69 de #261 + «Retenciones practicadas» y «Retenciones por
+  // proveedor» de #265. 80 = + los nueve reportes nuevos de la v2 (cuatro
+  // contables, dos de bancos, movimiento valorizado, compras por proveedor y
+  // órdenes de compra). Si agregas o quitas un reporte, actualízalo aquí.
+  test('el catálogo trae las 80 definiciones y todas declaran alcance', () => {
+    expect(definiciones.length).toBe(80);
     const sinAlcance = definiciones.filter((d) => d.alcance !== 'sucursal' && d.alcance !== 'organizacion');
     expect(sinAlcance.map((d) => d.id)).toEqual([]);
   });

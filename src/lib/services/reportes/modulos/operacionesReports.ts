@@ -10,7 +10,7 @@ import type { ReportesClient } from '../types';
 // del usuario; en el servidor (asistente de reportes) el route handler pasa el
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
-import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import type { DefinicionModulo, ReportData, PeriodoCierre } from '../types';
 import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
@@ -21,18 +21,18 @@ function buildReportData(
   return { id, titulo, modulo, kpis, columnas, filas, totales, generadoEn: new Date().toISOString(), periodo };
 }
 
-export const operacionesReports: ReportDefinition[] = [
+export const operacionesReports: DefinicionModulo[] = [
   {
     id: 'operaciones-actividad',
     modulo: 'operations',
-    titulo: 'Actividad del Sistema',
-    descripcion: 'Eventos de auditoría y timeline del período',
+    titulo: 'Actividad del sistema',
+    descripcion: 'Eventos de auditoría por módulo en el periodo',
     categoria: 'sistema',
     alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await db.rpc('fn_reporte_operaciones_actividad', {
         p_organization_id: orgId,
         p_from: start,
@@ -43,7 +43,7 @@ export const operacionesReports: ReportDefinition[] = [
       const d = data ?? {};
 
       return buildReportData(
-        'operaciones-actividad', 'Actividad del Sistema', 'operations', periodo,
+        'operaciones-actividad', 'Actividad del sistema', 'operations', periodo,
         [
           { titulo: 'Total Eventos', valor: d.total_eventos ?? 0, formato: 'numero' },
         ],
@@ -58,14 +58,14 @@ export const operacionesReports: ReportDefinition[] = [
   {
     id: 'operaciones-auditoria',
     modulo: 'operations',
-    titulo: 'Auditoría General',
-    descripcion: 'Logs de auditoría por usuario y módulo',
+    titulo: 'Auditoría general',
+    descripcion: 'Registro de auditoría por usuario y módulo',
     categoria: 'sistema',
     alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await db.rpc('fn_reporte_operaciones_actividad', {
         p_organization_id: orgId,
         p_from: start,
@@ -76,7 +76,7 @@ export const operacionesReports: ReportDefinition[] = [
       const d = data ?? {};
 
       return buildReportData(
-        'operaciones-auditoria', 'Auditoría General', 'operations', periodo,
+        'operaciones-auditoria', 'Auditoría general', 'operations', periodo,
         [
           { titulo: 'Total Eventos', valor: d.total_eventos ?? 0, formato: 'numero' },
         ],

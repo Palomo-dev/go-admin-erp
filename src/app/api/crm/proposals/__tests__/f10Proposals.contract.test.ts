@@ -107,7 +107,8 @@ describe('POST /api/crm/proposals', () => {
     expect(Object.keys((ins?.row as Row).sections_json as Row)).toEqual(['situacion', 'problemas', 'solucion', 'roi', 'pricing']);
     expect(((ins?.row as Row).sections_json as Row & { situacion: { content: string } }).situacion.content).toContain('Gerente op-1');
     expect(String((ins?.row as Row).number)).toMatch(/^COT-\d{4}$/);
-    expect((ins?.row as Row).issue_date).toBeUndefined(); // lo pone el trigger en la tz de la organización
+    // La RPC rellena el día de emisión (antes lo dejaba el trigger).
+    expect(String((ins?.row as Row).issue_date)).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     const items = writesTo('quotation_items').find((w) => w.op === 'insert');
     expect(((items?.row as Row).__rows as Row[]).length).toBe(2);
     const act = writesTo('activities').find((w) => w.op === 'insert');

@@ -6,8 +6,9 @@
  *   el agente de escritorio) y NO se duplica la plantilla. Como esa plantilla
  *   interpola sin escapar (salvo la nota de línea), los textos se escapan aquí
  *   antes de entregárselos.
- * - Recibo de caja, comprobante de egreso, cierre y arqueo de caja: no tienen
- *   plantilla en `@printing`; se pintan con la misma especificación de papel
+ * - Recibo de caja, comprobante de egreso, cierre y arqueo de caja, y la
+ *   tirilla del cierre de periodo (turno o franja): no tienen plantilla en
+ *   `@printing`; se pintan con la misma especificación de papel
  *   (`getPaperSpec('80mm')`: 72,06 mm imprimibles) y las mismas reglas
  *   térmicas (negro puro, nada por debajo de 10 px).
  */
@@ -17,7 +18,18 @@ import { escaparHtml as e, dataUriImagenSeguro } from '../escape';
 import { crearFormateador } from '../formato';
 import type { Traductor } from '../textos';
 import type { DocumentoPayload } from '../tipos';
-import { htmlDeValor, nitEmisor, nombresResponsabilidades, numeroDocumentoLegible, siglaDocumento, textoDeCelda, textoDeTotal, titulo } from './comun';
+import {
+  htmlDeValor,
+  nitEmisor,
+  nombresResponsabilidades,
+  numeroDocumentoLegible,
+  rotuloCampo,
+  siglaDocumento,
+  textoDeCelda,
+  textoDeTotal,
+  titulo,
+  tituloSeccion,
+} from './comun';
 
 const PAPEL = getPaperSpec('80mm');
 
@@ -133,7 +145,7 @@ export function renderizarTermico(doc: DocumentoPayload, t: Traductor, opciones:
   partesHtml.push(`<div class="banner">${e(titulo(doc, t).toUpperCase())}${doc.numero ? `<br/>${e(doc.numero)}` : ''}</div>`);
   if (doc.estado) partesHtml.push(fila(t('campos.estado'), e(t(`estados.${doc.estado.codigo}`))));
   for (const b of doc.bandas) partesHtml.push(`<div class="nota">${e(t(`bandas.${b.clave}`, b.vars))}</div>`);
-  for (const c of [...doc.metadatos, ...doc.referencia]) partesHtml.push(fila(t(`campos.${c.clave}`), htmlDeValor(c.valor, f, t)));
+  for (const c of [...doc.metadatos, ...doc.referencia]) partesHtml.push(fila(rotuloCampo(c, t), htmlDeValor(c.valor, f, t)));
   if (doc.contraparte) {
     const c = doc.contraparte;
     partesHtml.push(`<div class="separador"></div>`);
@@ -144,11 +156,14 @@ export function renderizarTermico(doc: DocumentoPayload, t: Traductor, opciones:
   }
   if (doc.resumen.length > 0) {
     partesHtml.push(`<div class="separador"></div>`);
-    for (const c of doc.resumen) partesHtml.push(fila(t(`campos.${c.clave}`), htmlDeValor(c.valor, f, t)));
+    for (const c of doc.resumen) partesHtml.push(fila(rotuloCampo(c, t), htmlDeValor(c.valor, f, t)));
   }
   for (const s of doc.secciones) {
-    if (s.filas.length === 0) continue;
-    partesHtml.push(`<div class="titulo-seccion">${e(t(`secciones.${s.titulo}`))}</div>`);
+    const resumenSeccion = s.resumen ?? [];
+    if (s.capitulo) partesHtml.push(`<div class="banner">${e(s.capitulo.toUpperCase())}</div>`);
+    if (s.filas.length === 0 && resumenSeccion.length === 0) continue;
+    partesHtml.push(`<div class="titulo-seccion">${e(tituloSeccion(s, t))}</div>`);
+    for (const c of resumenSeccion) partesHtml.push(fila(rotuloCampo(c, t), htmlDeValor(c.valor, f, t)));
     for (const filaTabla of s.filas) {
       const textos = s.columnas.map((col, i) => textoDeCelda(col, filaTabla[i] ?? null, f, t)).filter(Boolean);
       const ultimo = textos.pop() ?? '';
@@ -163,7 +178,9 @@ export function renderizarTermico(doc: DocumentoPayload, t: Traductor, opciones:
     }
   }
   if (doc.notas) partesHtml.push(`<div class="separador"></div><div class="nota">${e(doc.notas)}</div>`);
-  if (doc.firma === 'cajeroSupervisor') {
+  if (doc.firma === 'cierrePeriodo') {
+    partesHtml.push(`<div class="firma">${e(t('firmas.elaboro'))}</div><div class="firma">${e(t('firmas.contador'))}</div>`);
+  } else if (doc.firma === 'cajeroSupervisor') {
     partesHtml.push(`<div class="firma">${e(t('firmas.cajero'))}</div><div class="firma">${e(t('firmas.supervisor'))}</div>`);
   } else if (doc.firma) {
     partesHtml.push(`<div class="firma">${e(t(doc.firma === 'entregaRecibe' ? 'firmas.recibe' : 'firmas.recibido'))}</div>`);

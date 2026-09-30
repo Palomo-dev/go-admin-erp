@@ -11,7 +11,7 @@ import type { ReportesClient } from '../types';
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
 import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
-import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import type { DefinicionModulo, ReportData, PeriodoCierre } from '../types';
 import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
@@ -22,18 +22,18 @@ function buildReportData(
   return { id, titulo, modulo, kpis, columnas, filas, totales, generadoEn: new Date().toISOString(), periodo };
 }
 
-export const transporteReports: ReportDefinition[] = [
+export const transporteReports: DefinicionModulo[] = [
   {
     id: 'transporte-envios',
     modulo: 'transport',
-    titulo: 'Envíos por Estado',
+    titulo: 'Envíos por estado',
     descripcion: 'Volumen de envíos por estado y transportadora',
     categoria: 'operativo',
     alcance: 'sucursal',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await applyBranchFilter(
         db
           .from('shipments')
@@ -56,7 +56,7 @@ export const transporteReports: ReportDefinition[] = [
       const filas = Object.entries(porEstado).map(([estado, cantidad]) => ({ estado, cantidad }));
 
       return buildReportData(
-        'transporte-envios', 'Envíos por Estado', 'transport', periodo,
+        'transporte-envios', 'Envíos por estado', 'transport', periodo,
         [
           { titulo: 'Total Envíos', valor: envios.length, formato: 'numero' },
         ],
@@ -72,14 +72,14 @@ export const transporteReports: ReportDefinition[] = [
   {
     id: 'transporte-performance',
     modulo: 'transport',
-    titulo: 'Performance de Conductores',
+    titulo: 'Desempeño de conductores',
     descripcion: 'Entregas a tiempo, incidentes y eficiencia',
     categoria: 'operativo',
     alcance: 'sucursal',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await applyBranchFilter(
         db
           .from('shipments')
@@ -110,7 +110,7 @@ export const transporteReports: ReportDefinition[] = [
       }));
 
       return buildReportData(
-        'transporte-performance', 'Performance de Conductores', 'transport', periodo,
+        'transporte-performance', 'Desempeño de conductores', 'transport', periodo,
         [
           { titulo: 'Conductores', valor: filas.length, formato: 'numero' },
           { titulo: 'Total Envíos', valor: envios.length, formato: 'numero' },
@@ -128,14 +128,14 @@ export const transporteReports: ReportDefinition[] = [
   {
     id: 'transporte-rutas',
     modulo: 'transport',
-    titulo: 'Volumen por Ruta',
+    titulo: 'Volumen por ruta',
     descripcion: 'Envíos y costos por ruta',
     categoria: 'operativo',
     alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await applyBranchFilter(
         db
           .from('shipments')
@@ -163,7 +163,7 @@ export const transporteReports: ReportDefinition[] = [
       }));
 
       return buildReportData(
-        'transporte-rutas', 'Volumen por Ruta', 'transport', periodo,
+        'transporte-rutas', 'Volumen por ruta', 'transport', periodo,
         [
           { titulo: 'Rutas', valor: filas.length, formato: 'numero' },
           { titulo: 'Total Costo', valor: filas.reduce((s, f) => s + f.costo, 0), formato: 'moneda' },

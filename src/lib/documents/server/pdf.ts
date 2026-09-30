@@ -12,7 +12,9 @@
  *   2. En serverless (Vercel/Lambda): `puppeteer-core` + `@sparticuz/chromium`
  *      138 (la misma versión de Chrome que puppeteer 24.15). La función lleva
  *      ~65 MB de Chromium comprimido; en frío lo descomprime en /tmp.
- *   3. Local / servidor propio: `puppeteer` (o `PDF_CHROMIUM_EXECUTABLE_PATH`).
+ *   3. Local / servidor propio: `PDF_CHROMIUM_EXECUTABLE_PATH`, si no un
+ *      Chrome o Chromium ejecutable en `PATH`, y si no el de `puppeteer`.
+ *      El paquete no descarga su Chrome (`.npmrc`).
  *
  * Si no hay navegador, `ErrorPdfNoDisponible` → la ruta responde 503 y las
  * funciones cliente caen al HTML imprimible (mismo documento, «Guardar como
@@ -24,8 +26,36 @@
  * simultáneos por instancia y tiempo máximo por documento.
  */
 
+import { accessSync, constants as fsConstants } from 'node:fs';
+import { delimiter, join } from 'node:path';
 import { getPaperSpec } from '@printing';
 import type { PapelDocumento } from '../tipos';
+
+/** Nombres, en orden, de un Chrome o Chromium de la máquina (no el caché de puppeteer). */
+const CHROME_EN_PATH = ['google-chrome-stable', 'google-chrome', 'chromium-browser', 'chromium'] as const;
+
+/**
+ * Ejecutable para el proceso local. La variable manda aunque el archivo no
+ * exista: así el error nombra la ruta que se configuró. Sin variable, el
+ * primero ejecutable en `PATH`.
+ */
+export function ejecutableChromeLocal(): string | undefined {
+  const explicito = process.env.PDF_CHROMIUM_EXECUTABLE_PATH?.trim();
+  if (explicito) return explicito;
+  const dirs = (process.env.PATH ?? '').split(delimiter).filter(Boolean);
+  for (const nombre of CHROME_EN_PATH) {
+    for (const dir of dirs) {
+      const ruta = join(dir, nombre);
+      try {
+        accessSync(ruta, fsConstants.X_OK);
+        return ruta;
+      } catch {
+        // sigue buscando
+      }
+    }
+  }
+  return undefined;
+}
 
 export class ErrorPdfNoDisponible extends Error {
   constructor(motivo: string) {
@@ -103,14 +133,13 @@ async function lanzar(): Promise<NavegadorMinimo> {
     })) as unknown as NavegadorMinimo;
   }
 
-  // Local / servidor propio: `puppeteer` completo, con su Chrome o el de
-  // PDF_CHROMIUM_EXECUTABLE_PATH. El nombre va en una variable para que el
-  // rastreo de Vercel no meta `puppeteer` en la función (allí no se usa).
+  // Local / servidor propio. El nombre del paquete va en una variable para
+  // que el rastreo de Vercel no meta `puppeteer` en la función (allí no se usa).
   const paquete = 'puppeteer';
   const puppeteer = ((await import(/* webpackIgnore: true */ paquete)) as { default: typeof import('puppeteer-core').default }).default;
   return (await puppeteer.launch({
     headless: true,
-    executablePath: process.env.PDF_CHROMIUM_EXECUTABLE_PATH || undefined,
+    executablePath: ejecutableChromeLocal(),
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--disable-dev-shm-usage'],
   })) as unknown as NavegadorMinimo;
 }
@@ -126,8 +155,10 @@ async function obtenerNavegador(): Promise<NavegadorMinimo> {
       })
       .catch((err) => {
         navegador = null;
+        const motivo = err instanceof ErrorPdfNoDisponible ? err.message : err instanceof Error ? err.message : String(err);
+        console.error('[pdf] no se pudo abrir Chromium:', motivo);
         if (err instanceof ErrorPdfNoDisponible) throw err;
-        throw new ErrorPdfNoDisponible(err instanceof Error ? err.message : String(err));
+        throw new ErrorPdfNoDisponible(motivo);
       });
   }
   return navegador;

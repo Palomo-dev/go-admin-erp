@@ -11,7 +11,7 @@ import type { ReportesClient } from '../types';
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
 import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
-import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import type { DefinicionModulo, ReportData, PeriodoCierre } from '../types';
 import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
@@ -22,18 +22,18 @@ function buildReportData(
   return { id, titulo, modulo, kpis, columnas, filas, totales, generadoEn: new Date().toISOString(), periodo };
 }
 
-export const chatReports: ReportDefinition[] = [
+export const chatReports: DefinicionModulo[] = [
   {
     id: 'chat-volumen',
     modulo: 'chat',
-    titulo: 'Volumen de Conversaciones',
-    descripcion: 'Conversaciones por canal y período',
+    titulo: 'Volumen de conversaciones',
+    descripcion: 'Conversaciones por canal en el periodo',
     categoria: 'sistema',
     alcance: 'sucursal',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await applyBranchFilter(
         db
           .from('conversations')
@@ -56,7 +56,7 @@ export const chatReports: ReportDefinition[] = [
       const filas = Object.entries(porCanal).map(([canal, cantidad]) => ({ canal, cantidad }));
 
       return buildReportData(
-        'chat-volumen', 'Volumen de Conversaciones', 'chat', periodo,
+        'chat-volumen', 'Volumen de conversaciones', 'chat', periodo,
         [
           { titulo: 'Total Conversaciones', valor: convs.length, formato: 'numero' },
         ],
@@ -72,14 +72,14 @@ export const chatReports: ReportDefinition[] = [
   {
     id: 'chat-sla',
     modulo: 'chat',
-    titulo: 'SLA y Tiempos',
-    descripcion: 'Primera respuesta, resolución y volumen por canal',
+    titulo: 'SLA y tiempos',
+    descripcion: 'Primera respuesta, resolución y volumen por estado',
     categoria: 'sistema',
     alcance: 'organizacion',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await db.rpc('fn_reporte_chat_sla', {
         p_organization_id: orgId,
         p_from: start,
@@ -90,7 +90,7 @@ export const chatReports: ReportDefinition[] = [
       const d = data ?? {};
 
       return buildReportData(
-        'chat-sla', 'SLA y Tiempos', 'chat', periodo,
+        'chat-sla', 'SLA y tiempos', 'chat', periodo,
         [
           { titulo: 'Total Conversaciones', valor: d.total_conversaciones ?? 0, formato: 'numero' },
           { titulo: 'Primera Respuesta (s)', valor: Math.round(Number(d.promedio_primera_respuesta_seg ?? 0)), formato: 'numero' },
@@ -107,14 +107,14 @@ export const chatReports: ReportDefinition[] = [
   {
     id: 'chat-agentes',
     modulo: 'chat',
-    titulo: 'Performance de Agentes',
-    descripcion: 'Conversaciones atendidas, satisfacción y tiempos',
+    titulo: 'Desempeño de agentes',
+    descripcion: 'Conversaciones atendidas, mensajes y tiempos por agente',
     categoria: 'sistema',
     alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await applyBranchFilter(
         db
           .from('conversations')
@@ -146,7 +146,7 @@ export const chatReports: ReportDefinition[] = [
       }));
 
       return buildReportData(
-        'chat-agentes', 'Performance de Agentes', 'chat', periodo,
+        'chat-agentes', 'Desempeño de agentes', 'chat', periodo,
         [
           { titulo: 'Agentes', valor: filas.length, formato: 'numero' },
           { titulo: 'Total Conversaciones', valor: convs.length, formato: 'numero' },
@@ -164,14 +164,14 @@ export const chatReports: ReportDefinition[] = [
   {
     id: 'chat-tags',
     modulo: 'chat',
-    titulo: 'Tags y Categorización',
-    descripcion: 'Distribución de conversaciones por tag',
+    titulo: 'Etiquetas y categorías',
+    descripcion: 'Conversaciones por etiqueta',
     categoria: 'sistema',
     alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await db
         .from('conversation_tag_relations')
         .select('tag_id, conversation_id, conversation_tags(name)')
@@ -192,7 +192,7 @@ export const chatReports: ReportDefinition[] = [
       const filas = Object.entries(porTag).map(([tag, cantidad]) => ({ tag, cantidad }));
 
       return buildReportData(
-        'chat-tags', 'Tags y Categorización', 'chat', periodo,
+        'chat-tags', 'Etiquetas y categorías', 'chat', periodo,
         [
           { titulo: 'Tags Usados', valor: filas.length, formato: 'numero' },
         ],

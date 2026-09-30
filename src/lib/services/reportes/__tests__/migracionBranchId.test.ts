@@ -75,6 +75,18 @@ function rpcsConBranchId(): string[] {
  */
 const RPC_NUEVAS: Record<string, string> = {
   fn_reporte_retenciones_practicadas: '20260930090435_compras_retenciones_reporte_certificado',
+  // Reportes v2: las once consultas nuevas nacen juntas en una migración.
+  fn_reporte_balance_prueba: '20260930233000_reportes_v2_consultas_nuevas',
+  fn_reporte_libro_diario_origen: '20260930233000_reportes_v2_consultas_nuevas',
+  fn_reporte_gastos_naturaleza: '20260930233000_reportes_v2_consultas_nuevas',
+  fn_reporte_periodo_fiscal: '20260930233000_reportes_v2_consultas_nuevas',
+  fn_reporte_resultados_desglose: '20260930233000_reportes_v2_consultas_nuevas',
+  fn_reporte_bancos_conciliacion: '20260930233000_reportes_v2_consultas_nuevas',
+  fn_reporte_caja_bancos_diario: '20260930233000_reportes_v2_consultas_nuevas',
+  fn_reporte_rentabilidad_producto: '20260930233000_reportes_v2_consultas_nuevas',
+  fn_reporte_movimiento_valorizado: '20260930233000_reportes_v2_consultas_nuevas',
+  fn_reporte_compras_proveedor: '20260930233000_reportes_v2_consultas_nuevas',
+  fn_reporte_ordenes_compra: '20260930233000_reportes_v2_consultas_nuevas',
 };
 
 const SQL_MIGRACION = readFileSync(MIGRACION, 'utf8');
@@ -83,18 +95,28 @@ const RPCS_FRONTEND = rpcsConBranchId();
 const RPCS = RPCS_FRONTEND.filter((rpc) => !(rpc in RPC_NUEVAS));
 
 describe('reportes — el frontend y la migración de p_branch_id cuadran', () => {
-  it('el frontend sigue llamando con p_branch_id a las 10 RPC conocidas', () => {
+  it('el frontend sigue llamando con p_branch_id a las 17 RPC conocidas', () => {
     // Si este test falla porque la lista creció, NO lo relajes: añade la función
     // nueva a la migración (o a una nueva, registrada en RPC_NUEVAS) antes de
     // tocar el frontend. La décima, fn_reporte_retenciones_practicadas, es la
-    // del reporte de retenciones practicadas (2026-09-30).
+    // del reporte de retenciones practicadas (2026-09-30). Las siete últimas
+    // son de los reportes de sucursal de la v2 (bancos, caja y bancos,
+    // gastos operativos, rentabilidad, movimiento valorizado, compras y
+    // órdenes de compra), en `20260930233000_reportes_v2_consultas_nuevas`.
     expect(RPCS_FRONTEND).toEqual([
+      'fn_reporte_bancos_conciliacion',
+      'fn_reporte_caja_bancos_diario',
       'fn_reporte_cierre_caja',
+      'fn_reporte_compras_proveedor',
       'fn_reporte_cxc_aging',
       'fn_reporte_cxp_aging',
       'fn_reporte_flujo_efectivo',
+      'fn_reporte_gastos_naturaleza',
       'fn_reporte_impuestos',
+      'fn_reporte_movimiento_valorizado',
       'fn_reporte_movimientos_inventario',
+      'fn_reporte_ordenes_compra',
+      'fn_reporte_rentabilidad_producto',
       'fn_reporte_retenciones_practicadas',
       'fn_reporte_rotacion_inventario',
       'fn_reporte_ventas_por_hora',

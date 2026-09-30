@@ -3603,3 +3603,57 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - Migraciones aplicadas por MCP (con rollback; registradas en schema_migrations): 20260930085700_compras_retenciones_configuracion, 20260930085948_compras_asiento_previo y 20260930090435_compras_retenciones_reporte_certificado.
 - Pantallas aprobadas en código y conectadas: config-retenciones, detalle-factura, dialogo-confirmar con el asiento previo, cxp-detalle, dialogo-pago, asiento-compra-retenciones, comprobante-egreso, certificado-retenciones y visor-retenciones-practicadas (dos reportes de Finanzas).
 - Pendiente (§8.4 del plan de compras): pestañas y «Lectura rápida» del visor (el visor genérico no las tiene), «Regla» del asiento (no se guarda), facturas insertadas directamente como received, recorrido en navegador.
+
+
+### Fase: Reportes v2 — interfaz (plan docs/implementacion/REPORTES-V2-PLAN.md, fases 7 a 10) — 2026-09-30
+- Rama `cursor/reportes-v2-implementacion-e475` (PR #269, borrador, base main). No se fusiona: #261 y #265 van primero.
+- Commits de la interfaz: 34e95eed (inicio, listas, visor, pestañas y diálogos), c4d0822d (fuera la v1 y jsPDF), f1eadbe7 (buscador antes de los filtros; módulos no contratados), bdcffc79 y 31543f08 (el fetch de contabilidad acepta el cliente de sesión).
+- Pantallas en `/app/reportes`, `/app/reportes/[grupo]` y `/app/reportes/[grupo]/[reporte]`: inicio con KPI del catálogo, lista por módulo, visor con tabla comparada y lectura rápida, favoritos, cierres, programados e historial, y los diálogos de generar cierre y programar envío.
+- No hay permiso de página. El centro se abre con el módulo del plan. Cada reporte se bloquea por alcance (`reportePermitido`) o porque no está contratado. Quien no tiene acceso total ve el aviso y puede solicitar acceso.
+- i18n: `reportes.*` y `kit.franja.*` en es, en, pt y fr, con las mismas claves. Títulos, descripciones y columnas de los reportes siguen en español.
+- Se retiró la v1 y `pdfExportService` (jsPDF). Siguen `ReporteKPIs`, `ReporteTabla`, `ReporteChart`, `ReportePagination` (la tabla del chat lo importa) y `reportAgentService`.
+- Compuerta: jest de reportes, kit y guardrails 1079/1079; `npm run test:tz-all` 783/783 en UTC, Bogotá, Ciudad de México, Madrid, Santiago y Katmandú; tsc del alcance de reportes (tsconfig.tmp.json, sin commitear) en verde. El tsc completo deja errores en otros archivos (electron y el resto, preexistentes). `next build` compiló y se detuvo en el typecheck de `electron/src/main/agentRunner.ts` (no encuentra el módulo `electron`): no es de esta fase.
+- Jest completo: fallan suites ajenas a esta interfaz (sectionContract, testerR4.f0sec, f6Adversarial y el contrato de propuestas). El guardarraíl del cliente de sesión de reportes quedó en verde después de alinear la firma de contabilidad.
+- Pendiente: recorrido en el navegador con sesión (inicio, lista, visor con comparativo, vista previa de cierre y el 409, programar envío, móvil a 390 px). El Excel del cierre completo no existe: el diálogo lo dice y el PDF sí se abre.
+
+
+### Fase: Reportes v2 — typecheck y suites que el build dejaba en rojo — 2026-09-30
+- Rama `cursor/reportes-v2-implementacion-e475` (PR #269). No se fusiona.
+- `npx tsc --noEmit -p tsconfig.json` en verde (0 errores, heap 8192). Los ~120 errores eran el paquete `electron` sin `node_modules` dentro de `electron/`. La CI ya corre `npm ci --prefix electron` antes del typecheck. Tras `next build`, los tipos de compatibilidad dejan `useParams` y `useSearchParams` anulables: el centro de reportes los cubre.
+- `next build` compiló, pasó el typecheck y generó 352 páginas. Hace falta el mismo heap de 8 GB. Sin las variables públicas de Supabase la recolección de páginas se detiene; con los valores de `.env.example` el build termina.
+- Jest de las suites que fallaban (testerR4.f0sec, sectionContract, f6Adversarial, el contrato de propuestas, el estable de propuestas y el middleware de sesión): 189 pruebas en verde, 7 omitidas.
+- El caso 21 del tester recorta solo hasta el caso 22. Los guardarraíles posteriores sí filtran con `isExcluded`.
+- El alias histórico del cron de campañas queda detrás de la sesión. El cron externo sigue en `/api/voice/agent-campaigns/run`. Sin cookie responde 401.
+- El catálogo declara las variantes `grid`, `horizontal` e `icons` de `categories_grid`. El manifiesto de prueba declara `product_faq`, `product_shipping` y `product_specs`, que el sitio ya renderiza.
+- El doble en memoria de `fn_cotizacion_guardar` y `fn_cotizacion_cambiar_estado` deja leer la cotización creada. Editar no registra una escritura de la tabla `quotations` (el estable lo exige así).
+- Pendiente: recorrido en el navegador con sesión (inicio, lista, visor con comparativo, vista previa de cierre y el 409, programar envío, móvil a 390 px).
+
+
+### Fase: Reportes v2 — programados con la sesión y Excel del cierre — 2026-09-30
+- Rama `cursor/reportes-v2-implementacion-e475` (PR #269). No se fusiona.
+- La pestaña Programados respondía 500: un administrador listaba con el service role y este entorno no tiene `SUPABASE_SERVICE_ROLE_KEY`. La política `scheduled_reports_admin_org` (migración `20260930235500`, aplicada por MCP, con rollback) deja ver y editar los envíos de la organización con la sesión. Mismo criterio que `hasOrgAdminOrPermission`: super admin, rol 1 o 2, o `admin.full_access`. Quien no es administrador sigue viendo solo los suyos. El cron y el correo de prueba siguen con el service role.
+- `fn_cierre_guardar` sigue concedida solo a `service_role`. Sin la clave, Generar cierre responde 503 `servicio_no_configurado` antes de calcular los reportes. La vista previa no la usa.
+- El Excel del cierre completo se descarga al generarlo y desde la pestaña Cierres (`GET /api/reportes/cierres/[id]/excel`). Sale del snapshot congelado: portada y una hoja por reporte. Carta y tirilla 80 mm siguen igual. Se quitó el texto que decía que el Excel no existía, en es, en, pt y fr.
+- Jest de Excel del cierre, programados, cierres y programación: 68 en verde. `npx tsc --noEmit -p tsconfig.json` en verde. eslint de los archivos tocados, sin avisos.
+- Con la sesión de un administrador, `GET /api/reportes/programados` pasó de 500 a 200 en el servidor de desarrollo.
+- Pendiente: recorrido en el navegador del resto (inicio, lista, visor con comparativo, 409, programar envío, móvil a 390 px). Generar cierre en este entorno sigue sin poder guardar hasta que el proceso tenga `SUPABASE_SERVICE_ROLE_KEY`.
+
+
+### Fase: Reportes v2 — el PDF de la prueba encuentra Chrome — 2026-09-30
+- Rama `cursor/reportes-v2-implementacion-e475` (PR #269). No se fusiona.
+- «El PDF no está disponible ahora» en Programados era el 503 `PDF_NO_DISPONIBLE` de `POST /api/reportes/programados/[id]/prueba`. Puppeteer no descarga su Chrome (`.npmrc`) y el lanzador local no miraba el Chrome del sistema. `ejecutableChromeLocal` usa `PDF_CHROMIUM_EXECUTABLE_PATH` o el primer `google-chrome-stable`, `google-chrome`, `chromium-browser` o `chromium` ejecutable en `PATH`.
+- En este entorno esa ruta es `/usr/bin/google-chrome-stable`. Un PDF de prueba con ese ejecutable sale bien (cabecera `%PDF`).
+- En Vercel, el binario de `@sparticuz/chromium` queda incluido también en la prueba, el cron de envíos y las rutas que mandan un documento por correo. Antes solo lo llevaban el visor y el PDF de factura.
+- Jest del ejecutable y de la ruta de documentos: 11 en verde. eslint de los archivos tocados, sin avisos.
+- El correo de la prueba sigue usando el service role. En este localhost, después de generar el PDF, el envío aún no puede salir si falta `SUPABASE_SERVICE_ROLE_KEY`.
+
+
+### Fase: Reportes v2 — el correo agregado se ve en Programados — 2026-09-30
+- Rama `cursor/reportes-v2-implementacion-e475` (PR #269). No se fusiona.
+- El correo externo sí se guardaba en `scheduled_reports.recipients`. La pestaña solo pintaba el conteo («1 destinatario») y en el diálogo el correo quedaba al final de la lista de miembros. Ahora la fila muestra las direcciones, y al agregar un correo externo aparece encima del campo. Si el correo es de un miembro que puede recibir, se marca esa persona.
+
+
+### Fase: Reportes v2 — la prueba dice por qué no sale el correo — 2026-09-30
+- Rama `cursor/reportes-v2-implementacion-e475` (PR #269). No se fusiona.
+- «No se pudo completar» en Programados era el 500 de `POST /api/reportes/programados/[id]/prueba`: el PDF ya se puede armar, y el correo lo manda el service role, que este localhost no tiene. La organización sí tiene credencial de Resend; la columna `credentials` no la lee la sesión. Sin la clave, la ruta responde 503 `prueba_sin_servicio` antes de generar el PDF.
+- Jest de programados: 20 en verde.

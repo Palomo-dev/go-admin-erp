@@ -61,7 +61,7 @@ export async function ejecutarCierre(
   const modulosVisibles = getReportesVisibles(activeModuleCodes);
   const todasDefiniciones: ReportDefinition[] = modulosVisibles
     .flatMap((m) => m.reportes)
-    .filter((def) => reportePermitido(def, accesoTotal));
+    .filter((def) => !def.alias && reportePermitido(def, accesoTotal));
 
   const resultados: ReportData[] = [];
   const errores: { reportId: string; titulo: string; error: string }[] = [];

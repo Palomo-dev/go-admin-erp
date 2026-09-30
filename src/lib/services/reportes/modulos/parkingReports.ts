@@ -11,7 +11,7 @@ import type { ReportesClient } from '../types';
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
 import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
-import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import type { DefinicionModulo, ReportData, PeriodoCierre } from '../types';
 import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
@@ -22,18 +22,18 @@ function buildReportData(
   return { id, titulo, modulo, kpis, columnas, filas, totales, generadoEn: new Date().toISOString(), periodo };
 }
 
-export const parkingReports: ReportDefinition[] = [
+export const parkingReports: DefinicionModulo[] = [
   {
     id: 'parking-ocupacion',
     modulo: 'parking',
-    titulo: 'Ocupación de Parking',
+    titulo: 'Ocupación del parqueadero',
     descripcion: 'Sesiones, tiempo promedio y tasa de ocupación',
     categoria: 'operativo',
     alcance: 'sucursal',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await applyBranchFilter(
         db
           .from('parking_sessions')
@@ -56,7 +56,7 @@ export const parkingReports: ReportDefinition[] = [
       const filas = Object.entries(porEstado).map(([estado, cantidad]) => ({ estado, cantidad }));
 
       return buildReportData(
-        'parking-ocupacion', 'Ocupación de Parking', 'parking', periodo,
+        'parking-ocupacion', 'Ocupación del parqueadero', 'parking', periodo,
         [
           { titulo: 'Total Sesiones', valor: sesiones.length, formato: 'numero' },
         ],
@@ -72,14 +72,14 @@ export const parkingReports: ReportDefinition[] = [
   {
     id: 'parking-ingresos',
     modulo: 'parking',
-    titulo: 'Ingresos de Parking',
+    titulo: 'Ingresos del parqueadero',
     descripcion: 'Ingresos por tarifas, abonados y pagos',
     categoria: 'financiero',
     alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await applyBranchFilter(
         db
           .from('parking_sessions')
@@ -96,7 +96,7 @@ export const parkingReports: ReportDefinition[] = [
       const total = sesiones.reduce((s: number, r: Record<string, unknown>) => s + Number(r.amount ?? 0), 0);
 
       return buildReportData(
-        'parking-ingresos', 'Ingresos de Parking', 'parking', periodo,
+        'parking-ingresos', 'Ingresos del parqueadero', 'parking', periodo,
         [
           { titulo: 'Total Ingresos', valor: total, formato: 'moneda' },
           { titulo: 'Sesiones', valor: sesiones.length, formato: 'numero' },
@@ -114,14 +114,14 @@ export const parkingReports: ReportDefinition[] = [
   {
     id: 'parking-rotacion',
     modulo: 'parking',
-    titulo: 'Rotación de Espacios',
+    titulo: 'Rotación de espacios',
     descripcion: 'Uso por espacio, rotación y tiempo promedio',
     categoria: 'operativo',
     alcance: 'sucursal',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await applyBranchFilter(
         db
           .from('parking_sessions')
@@ -153,7 +153,7 @@ export const parkingReports: ReportDefinition[] = [
       }));
 
       return buildReportData(
-        'parking-rotacion', 'Rotación de Espacios', 'parking', periodo,
+        'parking-rotacion', 'Rotación de espacios', 'parking', periodo,
         [
           { titulo: 'Espacios Usados', valor: filas.length, formato: 'numero' },
           { titulo: 'Total Sesiones', valor: sesiones.length, formato: 'numero' },

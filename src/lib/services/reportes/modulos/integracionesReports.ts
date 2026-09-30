@@ -10,7 +10,7 @@ import type { ReportesClient } from '../types';
 // del usuario; en el servidor (asistente de reportes) el route handler pasa el
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
-import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import type { DefinicionModulo, ReportData, PeriodoCierre } from '../types';
 import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
@@ -21,12 +21,12 @@ function buildReportData(
   return { id, titulo, modulo, kpis, columnas, filas, totales, generadoEn: new Date().toISOString(), periodo };
 }
 
-export const integracionesReports: ReportDefinition[] = [
+export const integracionesReports: DefinicionModulo[] = [
   {
     id: 'integraciones-estado',
     modulo: 'integrations',
-    titulo: 'Estado de Conexiones',
-    descripcion: 'Conexiones activas, pausadas y errores',
+    titulo: 'Estado de conexiones',
+    descripcion: 'Conexiones activas, pausadas y con error',
     categoria: 'sistema',
     alcance: 'organizacion',
     periodosSugeridos: ['semanal'],
@@ -40,7 +40,7 @@ export const integracionesReports: ReportDefinition[] = [
       const d = data ?? {};
 
       return buildReportData(
-        'integraciones-estado', 'Estado de Conexiones', 'integrations', periodo,
+        'integraciones-estado', 'Estado de conexiones', 'integrations', periodo,
         [
           { titulo: 'Activas', valor: d.activas ?? 0, formato: 'numero' },
           { titulo: 'Con Error', valor: d.con_error ?? 0, formato: 'numero' },
@@ -59,14 +59,14 @@ export const integracionesReports: ReportDefinition[] = [
   {
     id: 'integraciones-eventos',
     modulo: 'integrations',
-    titulo: 'Eventos y Jobs',
-    descripcion: 'Volumen de eventos, jobs ejecutados y tasa de error',
+    titulo: 'Eventos y tareas programadas',
+    descripcion: 'Volumen de eventos, tareas ejecutadas y tasa de error',
     categoria: 'sistema',
     alcance: 'organizacion',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { start, end } = await rangoDelPeriodo(orgId, periodo);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await db
         .from('integration_events')
         .select('id, event_type, status, created_at')
@@ -86,7 +86,7 @@ export const integracionesReports: ReportDefinition[] = [
       const filas = Object.entries(porEstado).map(([estado, cantidad]) => ({ estado, cantidad }));
 
       return buildReportData(
-        'integraciones-eventos', 'Eventos y Jobs', 'integrations', periodo,
+        'integraciones-eventos', 'Eventos y tareas programadas', 'integrations', periodo,
         [
           { titulo: 'Total Eventos', valor: eventos.length, formato: 'numero' },
           { titulo: 'Errores', valor: porEstado['error'] ?? 0, formato: 'numero' },

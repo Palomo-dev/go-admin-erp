@@ -5949,6 +5949,16 @@
       "motivoAgotado": "Esta variante está agotada en la sucursal: elige otra.",
       "motivoSinPrecio": "Esta variante no tiene precio vigente: asígnalo en Inventario para venderla.",
       "motivoElegir": "Elige una variante para agregarla."
+    },
+    "franja": {
+      "etiqueta": "Franja horaria",
+      "todoElDia": "Todo el día",
+      "franja": "Franja",
+      "desde": "Desde",
+      "hasta": "Hasta",
+      "diaSiguiente": "{hora} (+1)",
+      "ayuda": "Cuenta lo vendido entre las {desde} y las {hasta}.",
+      "ayudaCruza": "La franja cruza la medianoche: lo vendido entre las {desde} y las {hasta} del día siguiente suma al día en que empezó el turno."
     }
   },
   "inventarioEtiquetas": {
@@ -14141,7 +14151,9 @@
       "arqueo-caja": "Arqueo de caja",
       "estado-cuenta-proveedor": "Estado de cuenta de proveedor",
       "nota-credito-electronica": "Nota crédito electrónica",
-      "certificado-retenciones": "Certificado de retenciones"
+      "certificado-retenciones": "Certificado de retenciones",
+      "cierre-periodo": "Cierre de periodo",
+      "reporte": "Reporte"
     },
     "sinNumero": "Sin consecutivo",
     "paginacion": {
@@ -14221,7 +14233,13 @@
       "pending": "Pendiente",
       "accepted": "Aceptada",
       "processing": "En proceso",
-      "failed": "Fallida"
+      "failed": "Fallida",
+      "cierre": {
+        "borrador": "Borrador",
+        "emitido": "Emitido",
+        "firmado": "Firmado · periodo cerrado",
+        "reemplazado": "Reemplazado"
+      }
     },
     "qr": {
       "verificacionDian": "Verifique en la DIAN",
@@ -14234,12 +14252,17 @@
       "anulada": "Documento anulado.",
       "monedaExtranjera": "Documento emitido en {moneda}, distinta de la moneda base de la organización.",
       "noEsFactura": "Esta cotización no es una factura.",
-      "cierreCiego": "Cierre ciego: los valores esperados y las diferencias solo los ve la administración."
+      "cierreCiego": "Cierre ciego: los valores esperados y las diferencias solo los ve la administración.",
+      "cierreReemplazado": "Esta versión fue reemplazada por un recálculo. Consulte la versión vigente.",
+      "cierreReemplazadoPor": "Esta versión fue reemplazada por la v{version}. Consulte la versión vigente.",
+      "cierrePeriodoCerrado": "Cierre firmado: el periodo contable quedó cerrado.",
+      "cierreConErrores": "{cantidad} reporte(s) no se pudieron calcular y no están incluidos. Ver el final del documento."
     },
     "marcas": {
       "borrador": "BORRADOR",
       "anulada": "ANULADA",
-      "pagada": "PAGADA"
+      "pagada": "PAGADA",
+      "reemplazado": "REEMPLAZADO"
     },
     "campos": {
       "fechaEmision": "Fecha de emisión",
@@ -14294,7 +14317,16 @@
       "facturasIncluidas": "Facturas incluidas",
       "fechaExpedicion": "Fecha de expedición",
       "ciudadExpedicion": "Ciudad de expedición",
-      "declaradoEn": "Declarado en"
+      "declaradoEn": "Declarado en",
+      "tipoCierre": "Tipo de cierre",
+      "franja": "Franja horaria",
+      "plantilla": "Plantilla",
+      "version": "Versión",
+      "emitidoEn": "Emitido",
+      "emitidoPor": "Emitido por",
+      "firmadoEn": "Firmado",
+      "firmadoPor": "Firmado por",
+      "kpi": "Indicador"
     },
     "formasPago": {
       "contado": "Contado",
@@ -14337,7 +14369,10 @@
       "denominaciones": "Denominaciones",
       "retenciones": "Retenciones practicadas al proveedor",
       "conceptosRetenidos": "Retenciones practicadas",
-      "facturasIncluidas": "Facturas incluidas"
+      "facturasIncluidas": "Facturas incluidas",
+      "indiceCapitulos": "Índice de capítulos",
+      "reportesConError": "Reportes no incluidos (error al calcular)",
+      "reporte": "Reporte"
     },
     "columnas": {
       "descripcion": "Descripción",
@@ -14374,13 +14409,17 @@
       "tarifa": "Tarifa (%)",
       "unidad": "Unidad",
       "cuenta": "Cuenta",
-      "valorRetenido": "Valor retenido"
+      "valorRetenido": "Valor retenido",
+      "capitulo": "Capítulo",
+      "reportes": "Reportes",
+      "reporte": "Reporte"
     },
     "vacios": {
       "lineas": "Sin líneas.",
       "movimientos": "Sin movimientos en el periodo.",
       "facturasAbiertas": "No hay facturas abiertas.",
-      "retencionesPeriodo": "No se practicaron retenciones a este proveedor en el periodo."
+      "retencionesPeriodo": "No se practicaron retenciones a este proveedor en el periodo.",
+      "reporteSinDatos": "Sin datos en el periodo."
     },
     "totales": {
       "subtotal": "Subtotal",
@@ -14431,7 +14470,9 @@
       "datosNombre": "Nombre y documento",
       "agenteRetenedor": "Agente retenedor",
       "contador": "Contador público",
-      "datosContador": "Nombre · Tarjeta profesional"
+      "datosContador": "Nombre · Tarjeta profesional",
+      "elaboro": "Elaboró",
+      "representanteLegal": "Representante legal"
     },
     "legal": {
       "resolucion": "Resolución DIAN n.º {numero} del {fecha}, prefijo {prefijo}, numeración autorizada del {desde} al {hasta}, vigente hasta el {vigencia}.",
@@ -14451,7 +14492,9 @@
         "cierre-caja": "Reporte interno de caja.",
         "arqueo-caja": "Reporte interno de arqueo de caja.",
         "estado-cuenta-proveedor": "Estado de cuenta del proveedor según nuestros registros. Si encuentra alguna diferencia, comuníquese con nosotros dentro de los 10 días siguientes a su recepción.",
-        "certificado-retenciones": "Certificado expedido según el artículo 381 del Estatuto Tributario. No requiere firma autógrafa (artículo 10 del Decreto 836 de 1991)."
+        "certificado-retenciones": "Certificado expedido según el artículo 381 del Estatuto Tributario. No requiere firma autógrafa (artículo 10 del Decreto 836 de 1991).",
+        "cierre-periodo": "Documento interno de cierre. Las cifras quedaron congeladas al emitirse; un recálculo genera una versión nueva con el mismo número.",
+        "reporte": "Reporte interno generado a la fecha indicada con los datos vigentes en ese momento."
       }
     },
     "movimientos": {
@@ -14535,6 +14578,60 @@
       "declaradoIca": "Declaración de ICA",
       "declarado350EIca": "Formulario 350 e ICA",
       "constancia": "{emisor}, como agente retenedor, certifica que durante el periodo indicado practicó a {proveedor} las retenciones que se detallan, sobre los pagos o abonos en cuenta de las facturas incluidas."
+    },
+    "reportes": {
+      "truncado": "Se muestran {mostradas} de {total} filas. Los totales incluyen todas. Consulte el reporte completo en la aplicación.",
+      "todaLaOrganizacion": "Toda la organización"
+    },
+    "cierre": {
+      "tipos": {
+        "diario": "Diario",
+        "semanal": "Semanal",
+        "quincenal": "Quincenal",
+        "mensual": "Mensual",
+        "trimestral": "Trimestral",
+        "semestral": "Semestral",
+        "anual": "Anual",
+        "personalizado": "Personalizado"
+      },
+      "plantillas": {
+        "completo": "Completo",
+        "contable": "Contable y financiero",
+        "ventas-caja": "Ventas y caja",
+        "personalizada": "Personalizada"
+      },
+      "consolidado": "Consolidado (todas las sucursales)",
+      "sinFranja": "Este reporte se calcula por día completo: la franja horaria del cierre no aplica.",
+      "reabierto": "Periodo reabierto por {quien}. Motivo: {motivo}"
+    },
+    "exportacion": {
+      "resumen": "Resumen",
+      "indicador": "Indicador",
+      "valor": "Valor",
+      "desde": "Desde",
+      "hasta": "Hasta"
+    },
+    "envios": {
+      "asunto": "{reporte} · {periodo}",
+      "asuntoPrueba": "[Prueba] {reporte} · {periodo}",
+      "saludo": "Hola, {nombre}:",
+      "saludoSinNombre": "Hola:",
+      "cuerpo": "Adjuntamos el reporte «{reporte}» de {organizacion} para el periodo {periodo}.",
+      "franja": "Franja horaria: {franja}.",
+      "pie": "Recibes este correo porque {creador} te incluyó en el envío programado «{envio}». Para dejar de recibirlo, pídele que te quite de la lista.",
+      "pieExterno": "Recibe este correo porque {organizacion} le incluyó en el envío programado «{envio}». Si no debería recibirlo, responda a este correo.",
+      "pausado": {
+        "titulo": "Envío programado con destinatarios en pausa: {envio}",
+        "linea": "{destinatario}: {motivo}"
+      },
+      "motivos": {
+        "sin_membresia": "ya no es miembro activo de la organización",
+        "sin_permiso": "ya no tiene permiso para exportar reportes",
+        "sin_alcance": "no tiene acceso a la sucursal del envío",
+        "modulo_no_contratado": "el plan ya no incluye este reporte",
+        "aprobador_sin_acceso": "quien aprobó este correo externo ya no es administrador",
+        "rebote": "el correo rebotó"
+      }
     }
   },
   "posVentas": {
@@ -24813,6 +24910,401 @@
     },
     "lineas": {
       "centroCosto": "Centro de costo"
+    }
+  },
+  "reportes": {
+    "titulo": "Reportes",
+    "migaInicio": "Inicio",
+    "actualizar": "Actualizar",
+    "programarEnvios": "Programar envíos",
+    "generarCierre": "Generar cierre",
+    "preguntar": "Preguntar a la IA",
+    "masAcciones": "Más acciones",
+    "pestanas": {
+      "etiqueta": "Secciones de reportes",
+      "inicio": "Inicio",
+      "favoritos": "Favoritos",
+      "cierres": "Cierres",
+      "programados": "Programados",
+      "historial": "Historial"
+    },
+    "periodo": {
+      "trimestre": "T{n} {anio}",
+      "semestre": "S{n} {anio}",
+      "diaCompleto": "Día completo",
+      "cambiar": "Cambiar periodo, {periodo}",
+      "masUnDia": "+1 día",
+      "tipo": "Tipo de periodo",
+      "desde": "Desde",
+      "hasta": "Hasta",
+      "anterior": "Periodo anterior",
+      "siguiente": "Periodo siguiente",
+      "sinSiguiente": "Ese periodo todavía no empieza",
+      "franjaNoAplica": "Este reporte se calcula con el día completo.",
+      "listo": "Listo"
+    },
+    "tipos": {
+      "diario": "Diario",
+      "semanal": "Semanal",
+      "quincenal": "Quincenal",
+      "mensual": "Mensual",
+      "trimestral": "Trimestral",
+      "semestral": "Semestral",
+      "anual": "Anual",
+      "personalizado": "Personalizado"
+    },
+    "filtros": {
+      "titulo": "Filtros",
+      "comparar": "Comparar",
+      "compararCon": "Comparar: {periodo}",
+      "compararNoAplica": "Comparar: no aplica",
+      "sinComparar": "Sin comparar",
+      "sucursal": "Sucursal",
+      "sucursalNoAplica": "Este reporte es de toda la organización",
+      "sucursalFija": "Tu acceso está fijo en tu sucursal",
+      "todaLaOrganizacion": "Toda la organización",
+      "todasLasSucursales": "Todas las sucursales",
+      "franjaNoAplica": "Franja: no aplica",
+      "franjaNoAplicaMotivo": "Este reporte se calcula por día"
+    },
+    "alcance": {
+      "titulo": "{n, plural, =0 {No tienes sucursales asignadas} one {Estás viendo solo {sucursales}} other {Estás viendo solo {sucursales}}}",
+      "descripcion": "{n, plural, =0 {Pide que te asignen una sucursal para ver los reportes.} one {Tu usuario tiene acceso a una sucursal. Los reportes de toda la organización aparecen bloqueados.} other {Tu usuario tiene acceso a estas sucursales. Los reportes de toda la organización aparecen bloqueados.}}",
+      "ninguna": "ninguna sucursal",
+      "boton": "Solicitar acceso",
+      "botonEnviada": "Solicitud enviada",
+      "solicitada": "Avisamos a los administradores",
+      "yaSolicitada": "Ya enviaste esta solicitud hace poco"
+    },
+    "errores": {
+      "generico": "No se pudo completar. Inténtalo de nuevo.",
+      "sin_permiso": "No tienes permiso para esta acción.",
+      "cierre_existente": "Ya existe un cierre de este periodo.",
+      "datos_invalidos": "Revisa los datos e inténtalo de nuevo.",
+      "sin_administradores": "No hay administradores a quienes avisar.",
+      "correo_no_configurado": "El correo de la organización no está configurado.",
+      "PDF_NO_DISPONIBLE": "El PDF no está disponible ahora.",
+      "BRANCH_SCOPE_REQUIRED": "Elige una sucursal a la que tengas acceso.",
+      "periodo_invalido": "El periodo no es válido.",
+      "dia_invalido": "Elige el día del envío.",
+      "destinatarios": "Elige al menos un destinatario.",
+      "servicio_no_configurado": "No se pudo guardar el cierre: el servidor no tiene configurada la clave de servicio.",
+      "prueba_sin_servicio": "No se pudo enviar la prueba: este servidor no tiene la clave para mandar el correo.",
+      "snapshot_invalido": "Este cierre no se puede exportar a Excel."
+    },
+    "grupos": {
+      "contabilidad": "Contabilidad",
+      "finanzas": "Finanzas y tesorería",
+      "ventas": "Ventas y POS",
+      "inventario": "Inventario",
+      "compras": "Compras",
+      "personas": "Personas (nómina)",
+      "clientes": "Clientes y CRM",
+      "atencion": "Atención y mensajería",
+      "operacion": "Operación y organización",
+      "hoteleria": "Hotelería",
+      "parqueadero": "Parqueadero",
+      "membresias": "Membresías",
+      "transporte": "Transporte"
+    },
+    "gruposDesc": {
+      "contabilidad": "Balance, resultados y periodo fiscal",
+      "finanzas": "Cartera, flujo, impuestos y bancos",
+      "ventas": "Cierre de caja, ventas por hora y por vendedor",
+      "inventario": "Stock, rotación y seriales",
+      "compras": "Proveedores, órdenes y retenciones",
+      "personas": "Nómina, productividad y comisiones",
+      "clientes": "Clientes, embudo y campañas",
+      "atencion": "Conversaciones, tiempos y campañas",
+      "operacion": "Sucursales, auditoría y conexiones",
+      "hoteleria": "Ocupación, ingresos y housekeeping",
+      "parqueadero": "Ocupación, ingresos y rotación",
+      "membresias": "Activas, actividad y retención",
+      "transporte": "Envíos, conductores y rutas"
+    },
+    "filtroTipo": {
+      "comparativo": "Comparativo",
+      "sucursal": "Sucursal",
+      "franja": "Franja",
+      "centroCosto": "Centro de costo"
+    },
+    "badges": {
+      "nuevo": "Nuevo",
+      "disponible": "Disponible",
+      "sinAcceso": "Sin acceso",
+      "requierePlan": "Requiere plan",
+      "porSucursal": "Por sucursal",
+      "todaLaOrg": "Toda la org."
+    },
+    "inicio": {
+      "buscar": "Buscar entre {n} reportes…",
+      "buscarCorto": "Buscar reporte",
+      "subtitulo": "{n} reportes en {m} módulos activos",
+      "recientes": "Recientes",
+      "verHistorial": "Ver historial",
+      "sinRecientes": "Los reportes que abras aparecerán aquí.",
+      "porModulo": "Reportes por módulo",
+      "hint": "Las etiquetas dicen qué filtros admite cada reporte. Los que no aplican se ven deshabilitados al abrirlo.",
+      "conteo": "{n} reportes",
+      "nuevos": "{n, plural, one {# nuevo} other {# nuevos}}",
+      "moduloNuevo": "módulo nuevo",
+      "verLos": "Ver los {n} reportes",
+      "fueraPlan": "{n, plural, one {# módulo no está en tu plan} other {# módulos no están en tu plan}}",
+      "fueraDesc": "{nombres} suman {reportes} reportes. Se activan desde el plan.",
+      "verPlanes": "Ver planes",
+      "vs": "{signo}{valor} vs. {periodo}",
+      "detalleMargen": "Margen {valor}",
+      "detalleVencido": "{valor} vencido",
+      "detalleBajo": "{n, plural, one {# bajo el mínimo} other {# bajo el mínimo}}",
+      "kpis": {
+        "ventas": "Ventas del periodo",
+        "utilidad": "Utilidad neta",
+        "caja": "Caja y bancos",
+        "cobrar": "Por cobrar",
+        "pagar": "Por pagar",
+        "inventario": "Inventario"
+      }
+    },
+    "lista": {
+      "titulo": "Reportes de {grupo}",
+      "adicionales": "Módulos no contratados",
+      "subtitulo": "{n} reportes",
+      "subtituloAdicionales": "Se activan al contratar el módulo",
+      "colReporte": "Reporte",
+      "colFiltros": "Filtros además del periodo",
+      "colAlcance": "Alcance",
+      "colEstado": "Estado",
+      "programar": "Programar envío",
+      "pie": "Las filas «Sin acceso» y «Requiere plan» no abren el visor.",
+      "sinFiltros": "Solo el periodo"
+    },
+    "visor": {
+      "datosAl": "datos al {cuando}",
+      "agregar": "Agregar al cierre",
+      "exportar": "Exportar",
+      "pdf": "PDF",
+      "excel": "Excel",
+      "csv": "CSV",
+      "imprimir": "Imprimir",
+      "favorito": "Agregar a favoritos",
+      "quitarFavorito": "Quitar de favoritos",
+      "copiar": "Copiar enlace",
+      "copiado": "Enlace copiado",
+      "lectura": "Lectura rápida",
+      "filtrosDeEste": "Filtros de este reporte",
+      "aplica": "Aplica",
+      "noAplica": "no aplica",
+      "variacion": "Variación",
+      "sinComparacion": "Este reporte no se puede comparar fila a fila.",
+      "sube": "{titulo} sube {valor} frente a {periodo}.",
+      "baja": "{titulo} baja {valor} frente a {periodo}.",
+      "sinMovimientos": "No hay movimientos en este periodo.",
+      "verFuente": "Ver el origen",
+      "exportado": "Exportado",
+      "sinExportar": "No tienes permiso para exportar.",
+      "bloqueado": "No puedes abrir este reporte",
+      "bloqueadoPlan": "Este reporte se activa al contratar el módulo.",
+      "bloqueadoAlcance": "Requiere acceso a todas las sucursales."
+    },
+    "favoritos": {
+      "titulo": "{n} favoritos",
+      "vacio": "Aún no tienes favoritos",
+      "vacioDesc": "Marca un reporte con la estrella en su visor para verlo aquí.",
+      "colReporte": "Reporte",
+      "colFiltros": "Últimos filtros usados",
+      "colAlcance": "Alcance",
+      "colCuando": "Última vez",
+      "pie": "Los favoritos son personales: cada usuario tiene los suyos.",
+      "quitar": "Quitar de favoritos"
+    },
+    "cierres": {
+      "titulo": "Historial de cierres",
+      "vacio": "Aún no hay cierres",
+      "vacioDesc": "Genera el primero para dejar las cifras de un periodo congeladas.",
+      "colCierre": "Cierre",
+      "colAlcance": "Alcance",
+      "colVersion": "Versión",
+      "colEstado": "Estado",
+      "colAcciones": "Acciones",
+      "vigente": "vigente",
+      "reemplazada": "reemplazada",
+      "sinVersion": "Sin versión",
+      "ver": "Ver",
+      "pdf": "PDF",
+      "carta": "PDF carta",
+      "mm80": "Tirilla 80 mm",
+      "excel": "Excel",
+      "versiones": "Versiones",
+      "auditoria": "Auditoría",
+      "firmar": "Firmar",
+      "reabrir": "Reabrir",
+      "firmado": "Cierre firmado",
+      "reabierto": "Cierre reabierto",
+      "motivo": "Por qué se reabre",
+      "estados": {
+        "borrador": "Borrador",
+        "emitido": "Emitido",
+        "firmado": "Firmado",
+        "reemplazado": "Reemplazado"
+      },
+      "periodoCerrado": "periodo cerrado",
+      "pie": "Emitir congela el cierre. Firmar el mensual cierra el periodo contable. Reabrirlo exige permiso y queda en la auditoría.",
+      "sinAuditoria": "Este cierre no tiene eventos."
+    },
+    "programados": {
+      "titulo": "{n} envíos programados",
+      "nuevo": "Programar envío",
+      "vacio": "No hay envíos programados",
+      "vacioDesc": "Programa un reporte para que llegue por correo con sus filtros.",
+      "colEnvio": "Envío",
+      "colFrecuencia": "Frecuencia",
+      "colFormato": "Formato",
+      "colProximo": "Próximo envío",
+      "colEstado": "Estado",
+      "destinatarios": "{n, plural, one {# destinatario} other {# destinatarios}}",
+      "activo": "Activo",
+      "pausado": "Pausado",
+      "pausar": "Pausar",
+      "reanudar": "Reanudar",
+      "aprobar": "Aprobar externos",
+      "prueba": "Enviar prueba",
+      "editar": "Editar",
+      "eliminar": "Eliminar",
+      "eliminado": "Envío eliminado",
+      "pruebaEnviada": "Prueba enviada a {para}",
+      "confirmEliminar": "Eliminar este envío",
+      "confirmDesc": "Deja de enviarse. No se puede deshacer.",
+      "pie": "Cada destinatario recibe solo las sucursales que puede ver. Si pierde el acceso, el envío se pausa.",
+      "frecuencia": {
+        "daily": "Todos los días",
+        "weekly": "Cada semana",
+        "biweekly": "Cada dos semanas",
+        "monthly": "Mensual",
+        "quarterly": "Trimestral",
+        "custom": "Días elegidos"
+      },
+      "formato": {
+        "pdf": "PDF",
+        "excel": "Excel",
+        "pdf_excel": "PDF + Excel",
+        "csv": "CSV"
+      },
+      "aLas": "{cuando} · {hora}"
+    },
+    "historial": {
+      "titulo": "Actividad reciente",
+      "vacio": "Todavía no hay actividad",
+      "vacioDesc": "Aquí queda cada reporte que se abre, exporta o envía.",
+      "colReporte": "Reporte",
+      "colFiltros": "Filtros usados",
+      "colQuien": "Quién",
+      "colCuando": "Cuándo",
+      "colAccion": "Acción",
+      "usuario": "Usuario",
+      "todos": "Todos los usuarios",
+      "pie": "El historial es de solo lectura. Un gerente de sede solo ve la actividad de sus sucursales.",
+      "accion": {
+        "ver": "Abrió",
+        "exportar": "Exportó",
+        "enviar": "Envió por correo",
+        "programar": "Programó un envío",
+        "emitir": "Emitió cierre",
+        "recalcular": "Recalculó cierre",
+        "firmar": "Firmó cierre",
+        "reabrir": "Reabrió cierre"
+      }
+    },
+    "cierreDlg": {
+      "titulo": "Generar cierre",
+      "descripcion": "Elige el periodo y los capítulos. El documento se guarda con sus cifras: si luego se edita una venta, se genera una versión nueva.",
+      "tipo": "Tipo de cierre",
+      "periodo": "Periodo y franja",
+      "sucursal": "Sucursal",
+      "comparar": "Comparar con",
+      "plantilla": "Plantilla",
+      "capitulos": "Capítulos y reportes",
+      "resumenCap": "{c} capítulos · {r} reportes",
+      "de": "{n} de {t}",
+      "siempre": "Siempre",
+      "formato": "Formato",
+      "carta": "Carta (PDF)",
+      "mm80": "Tirilla 80 mm",
+      "excel": "Excel",
+      "vistaPrevia": "Vista previa",
+      "generar": "Generar cierre",
+      "recalcular": "Recalcular",
+      "existente": "Ya hay un cierre de este periodo. Recalcular crea una versión nueva y marca la anterior como reemplazada.",
+      "vacio": "Elige al menos un reporte.",
+      "listo": "Cierre {numero} generado",
+      "notaFranja": "La franja solo aplica a los capítulos que la admiten. Los demás usan el día completo.",
+      "sinDatos": "Un capítulo sin datos en el periodo se imprime con la nota «Sin movimientos».",
+      "plantillas": {
+        "completo": "Completo",
+        "contable": "Contable y financiero",
+        "ventas-caja": "Ventas y caja",
+        "personalizada": "Personalizada"
+      },
+      "erroresPrevios": "{n, plural, one {# reporte no se pudo calcular} other {# reportes no se pudieron calcular}}"
+    },
+    "cierreExcel": {
+      "portada": "Portada",
+      "indicador": "Indicador",
+      "valor": "Valor",
+      "capitulo": "Capítulo",
+      "reportes": "Reportes",
+      "errores": "No se pudieron calcular",
+      "sinMovimientos": "Sin movimientos",
+      "sinFranja": "Este reporte se calcula por día completo",
+      "truncado": "{mostradas} de {total}",
+      "periodo": "{desde} – {hasta}",
+      "sucursal": "Sucursal: {nombre}",
+      "todas": "Todas las sucursales",
+      "franja": "Franja: {desde} – {hasta}",
+      "plantilla": "Plantilla: {nombre}",
+      "plantillas": {
+        "completo": "Completo",
+        "contable": "Contable y financiero",
+        "ventas-caja": "Ventas y caja",
+        "personalizada": "Personalizada"
+      }
+    },
+    "envioDlg": {
+      "titulo": "Programar envío",
+      "tituloEditar": "Editar envío",
+      "descripcion": "El reporte se genera con estos filtros y llega por correo. Cada destinatario recibe solo las sucursales que puede ver.",
+      "nombre": "Nombre",
+      "reporte": "Reporte",
+      "diaHora": "Día y hora de envío",
+      "hora": "Hora",
+      "dia": "Día del mes",
+      "dias": "Días de la semana",
+      "frecuencia": "Frecuencia",
+      "periodo": "Periodo que cubre cada envío",
+      "sucursal": "Sucursal",
+      "comparar": "Comparar con",
+      "formato": "Formato",
+      "destinatarios": "Destinatarios",
+      "externo": "Correo externo",
+      "agregar": "Agregar",
+      "requiere": "Requiere aprobación",
+      "sinAcceso": "Sin acceso",
+      "prueba": "Enviar prueba",
+      "programar": "Programar envío",
+      "guardar": "Guardar cambios",
+      "avisoTitulo": "Si alguien pierde el acceso",
+      "aviso": "El envío se pausa para esa persona y se avisa a quien lo programó. Nada sale sin permiso vigente.",
+      "listo": "Envío programado",
+      "guardado": "Envío actualizado",
+      "correoInvalido": "Ese correo no es válido.",
+      "diasSemana": {
+        "1": "Lunes",
+        "2": "Martes",
+        "3": "Miércoles",
+        "4": "Jueves",
+        "5": "Viernes",
+        "6": "Sábado",
+        "7": "Domingo"
+      }
     }
   }
 }

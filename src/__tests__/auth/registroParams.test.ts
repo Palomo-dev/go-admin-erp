@@ -7,11 +7,15 @@
 
 import { guardarParamsRegistro, leerParamsRegistro, limpiarParamsRegistro } from '@/lib/auth/registroParams';
 
-// Mock de sessionStorage para el entorno de pruebas.
+// Mock de localStorage y document.cookie para el entorno de pruebas.
 const storage: Record<string, string> = {};
+let cookieString = '';
+
 beforeEach(() => {
   Object.keys(storage).forEach(k => delete storage[k]);
-  Object.defineProperty(window, 'sessionStorage', {
+  cookieString = '';
+  
+  Object.defineProperty(window, 'localStorage', {
     value: {
       getItem: (key: string) => storage[key] || null,
       setItem: (key: string, value: string) => { storage[key] = value; },
@@ -19,6 +23,19 @@ beforeEach(() => {
     },
     writable: true,
   });
+  
+  Object.defineProperty(document, 'cookie', {
+    get: () => cookieString,
+    set: (value: string) => { cookieString = value; },
+    configurable: true,
+  });
+  
+  // Mock de Date.now para tests predecibles.
+  jest.spyOn(Date, 'now').mockReturnValue(1609459200000); // 2021-01-01 00:00:00
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
 });
 
 describe('guardarParamsRegistro', () => {
@@ -29,6 +46,7 @@ describe('guardarParamsRegistro', () => {
     const leido = leerParamsRegistro();
     expect(leido.plan).toBe('business');
     expect(leido.cycle).toBe('yearly');
+    expect(leido.ts).toBe(1609459200000);
   });
 
   test('guarda solo plan si cycle no viene', () => {
@@ -40,7 +58,15 @@ describe('guardarParamsRegistro', () => {
     expect(leido.cycle).toBeUndefined();
   });
 
-  test('guarda parámetros UTM cuando vienen en la URL', () => {
+  test('guarda parámetros UTM solo si hay consentimiento de analytics', () => {
+    // Establecer cookie de consentimiento con analytics=true.
+    cookieString = 'goadmin_consent=' + encodeURIComponent(JSON.stringify({
+      v: 1,
+      analytics: true,
+      marketing: false,
+      ts: Date.now()
+    }));
+    
     const params = new URLSearchParams('?plan=pro&utm_source=google&utm_medium=cpc&utm_campaign=verano2026');
     guardarParamsRegistro(params);
     
@@ -51,6 +77,33 @@ describe('guardarParamsRegistro', () => {
       utm_medium: 'cpc',
       utm_campaign: 'verano2026',
     });
+  });
+
+  test('NO guarda parámetros UTM si no hay consentimiento', () => {
+    // Sin cookie de consentimiento.
+    const params = new URLSearchParams('?plan=pro&utm_source=google&utm_medium=cpc');
+    guardarParamsRegistro(params);
+    
+    const leido = leerParamsRegistro();
+    expect(leido.plan).toBe('pro');
+    expect(leido.utm).toBeUndefined();
+  });
+
+  test('NO guarda parámetros UTM si analytics=false en consentimiento', () => {
+    // Establecer cookie de consentimiento con analytics=false.
+    cookieString = 'goadmin_consent=' + encodeURIComponent(JSON.stringify({
+      v: 1,
+      analytics: false,
+      marketing: true,
+      ts: Date.now()
+    }));
+    
+    const params = new URLSearchParams('?plan=business&utm_source=facebook');
+    guardarParamsRegistro(params);
+    
+    const leido = leerParamsRegistro();
+    expect(leido.plan).toBe('business');
+    expect(leido.utm).toBeUndefined();
   });
 
   test('no guarda nada si no hay parámetros relevantes', () => {
@@ -72,7 +125,11 @@ describe('guardarParamsRegistro', () => {
 
 describe('leerParamsRegistro', () => {
   test('lee parámetros guardados previamente', () => {
-    storage['go_admin_signup_params'] = JSON.stringify({ plan: 'business', cycle: 'monthly' });
+    storage['go_admin_signup_params'] = JSON.stringify({ 
+      plan: 'business', 
+      cycle: 'monthly',
+      ts: Date.now()
+    });
     
     const leido = leerParamsRegistro();
     expect(leido.plan).toBe('business');
@@ -90,6 +147,32 @@ describe('leerParamsRegistro', () => {
     const leido = leerParamsRegistro();
     expect(leido).toEqual({});
   });
+
+  test('devuelve objeto vacío si los datos expiraron (más de 7 días)', () => {
+    const hace8Dias = Date.now() - (8 * 24 * 60 * 60 * 1000);
+    storage['go_admin_signup_params'] = JSON.stringify({ 
+      plan: 'ultimate',
+      ts: hace8Dias
+    });
+    
+    const leido = leerParamsRegistro();
+    expect(leido).toEqual({});
+    // Verificar que se limpió de localStorage.
+    expect(storage['go_admin_signup_params']).toBeUndefined();
+  });
+
+  test('lee datos si están dentro del vencimiento (menos de 7 días)', () => {
+    const hace3Dias = Date.now() - (3 * 24 * 60 * 60 * 1000);
+    storage['go_admin_signup_params'] = JSON.stringify({ 
+      plan: 'business',
+      cycle: 'yearly',
+      ts: hace3Dias
+    });
+    
+    const leido = leerParamsRegistro();
+    expect(leido.plan).toBe('business');
+    expect(leido.cycle).toBe('yearly');
+  });
 });
 
 describe('limpiarParamsRegistro', () => {
@@ -105,14 +188,22 @@ describe('limpiarParamsRegistro', () => {
 });
 
 describe('flujo completo', () => {
-  test('guarda en /auth/signup y lee en /auth/signup/organizacion', () => {
+  test('guarda en /auth/signup y lee en /auth/signup/organizacion con consentimiento', () => {
+    // Usuario da consentimiento para analytics.
+    cookieString = 'goadmin_consent=' + encodeURIComponent(JSON.stringify({
+      v: 1,
+      analytics: true,
+      marketing: false,
+      ts: Date.now()
+    }));
+    
     // Usuario entra a /auth/signup?plan=business&cycle=yearly&utm_source=facebook
     const paramsEntrada = new URLSearchParams('?plan=business&cycle=yearly&utm_source=facebook');
     guardarParamsRegistro(paramsEntrada);
     
     // ... se registra, confirma correo, etc. ...
     
-    // Llega a /auth/signup/organizacion (sin parámetros en URL, pero en sessionStorage).
+    // Llega a /auth/signup/organizacion (sin parámetros en URL, pero en localStorage).
     const leido = leerParamsRegistro();
     expect(leido.plan).toBe('business');
     expect(leido.cycle).toBe('yearly');
@@ -123,5 +214,34 @@ describe('flujo completo', () => {
     
     const despuesLimpiar = leerParamsRegistro();
     expect(despuesLimpiar).toEqual({});
+  });
+
+  test('guarda en /auth/signup y lee en /auth/signup/organizacion sin consentimiento (sin UTM)', () => {
+    // Usuario NO da consentimiento (no hay cookie).
+    // Usuario entra a /auth/signup?plan=ultimate&utm_source=google
+    const paramsEntrada = new URLSearchParams('?plan=ultimate&utm_source=google');
+    guardarParamsRegistro(paramsEntrada);
+    
+    // Llega a /auth/signup/organizacion.
+    const leido = leerParamsRegistro();
+    expect(leido.plan).toBe('ultimate');
+    expect(leido.utm).toBeUndefined(); // No se guardó porque no hay consentimiento.
+  });
+
+  test('pestaña nueva: enlace de verificación abre nueva pestaña y lee desde localStorage', () => {
+    // Simular pestaña 1: usuario se registra.
+    const params = new URLSearchParams('?plan=business&cycle=yearly');
+    guardarParamsRegistro(params);
+    
+    // Simular pestaña 2: enlace de verificación abre en pestaña nueva.
+    // localStorage se comparte entre pestañas del mismo origen, pero sessionStorage no.
+    // Por eso usamos localStorage.
+    
+    const leido = leerParamsRegistro();
+    expect(leido.plan).toBe('business');
+    expect(leido.cycle).toBe('yearly');
+    
+    // Verificar que los datos están en localStorage (no sessionStorage).
+    expect(storage['go_admin_signup_params']).toBeDefined();
   });
 });

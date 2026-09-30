@@ -7,10 +7,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
 import { scoringService } from '@/lib/services/crm/scoringService';
+import { puntuarOportunidad } from '@/components/crm/oportunidad/apiOportunidades';
 import type {
   ScoringConfig,
   ScoreAnswer,
-  ScoreResult,
   Temperature,
 } from '@/lib/services/crm/scoringService';
 import { ScoreBadge } from '@/components/crm/pipeline/ScoreBadge';
@@ -96,43 +96,10 @@ export function ScoringSection({ opportunityId }: ScoringSectionProps) {
         value: answers[ind.key] || '',
       })) || [];
 
-      // Calcular score
-      const result: ScoreResult = await scoringService.calculateScore(answerList, config);
-
-      // Guardar en la oportunidad
-      const { error } = await supabase
-        .from('opportunities')
-        .update({
-          score_total: result.score_total,
-          temperature: result.temperature,
-          score_data: {
-            answers: answerList,
-            details: result.details,
-            calculated_at: new Date().toISOString(),
-          },
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', opportunityId);
-
-      if (error) {
-        // Si falla el guardado en columnas, intentar guardar en metadata como fallback
-        console.warn('Columnas de score no existen, guardando en metadata:', error.message);
-        await supabase
-          .from('opportunities')
-          .update({
-            metadata: {
-              score_total: result.score_total,
-              score_temperature: result.temperature,
-              score_data: {
-                answers: answerList,
-                details: result.details,
-                calculated_at: new Date().toISOString(),
-              },
-            },
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', opportunityId);
-      }
+      // CRM ola 3B (guardarraíl 36): el servidor calcula con la configuración
+      // de la organización (`scoringCalculo`, el único) y guarda score,
+      // temperatura y respuestas en la oportunidad de la sesión.
+      const result = await puntuarOportunidad(opportunityId, answerList);
 
       setCurrentScore(result.score_total);
       setCurrentTemp(result.temperature);

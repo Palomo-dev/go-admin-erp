@@ -116,9 +116,19 @@ function ctx(supabase: unknown): ToolContext {
   };
 }
 
+/**
+ * Módulos de una organización de membresías TAL COMO ESTÁN EN LA BASE
+ * (2026-09-29): «gym» se generalizó como «memberships» y un disparador mantiene
+ * activas las dos filas (43 organizaciones). El asistente tiene que ver UN
+ * módulo, el canónico, con su nombre vigente.
+ */
 const MODULOS_DE_GIMNASIO = {
   data: [
-    { module_code: 'gym', modules: { name: 'Gimnasio', description: 'Membresías', is_core: false, rank: 10 } },
+    { module_code: 'gym', modules: { name: 'Gimnasio', description: 'Gestión de gimnasios', is_core: false, rank: 10 } },
+    {
+      module_code: 'memberships',
+      modules: { name: 'Membresías', description: 'Gimnasios, academias, clubes, coworking y spa', is_core: false, rank: 10 },
+    },
     {
       module_code: 'configuracion',
       modules: { name: 'Configuración', description: null, is_core: true, rank: 150 },
@@ -129,15 +139,18 @@ const MODULOS_DE_GIMNASIO = {
 
 /**
  * Filas de `organization_module_pages` del gimnasio: son las páginas APAGADAS
- * a propósito, porque la consulta las pide con `is_active = false`.
+ * a propósito, porque la consulta las pide con `is_active = false`. Una está
+ * guardada bajo el código viejo: sigue contando como apagada.
  */
 const APAGADAS_DEL_GIMNASIO = {
   data: [
-    { module_code: 'gym', page_href: '/app/gym/clases' },
-    { module_code: 'gym', page_href: '/app/gym/horarios' },
+    { module_code: 'memberships', page_href: '/app/membresias/clases' },
+    { module_code: 'gym', page_href: '/app/membresias/reservas' },
   ],
   error: null,
 };
+
+const APAGADAS = ['/app/membresias/clases', '/app/membresias/reservas'];
 
 function espiaNuevo(): Espia {
   return { filtros: [], tablasConsultadas: [] };
@@ -237,22 +250,26 @@ describe('F6 — listar_modulos_activos', () => {
 
     const res = await listarModulosActivos.execute(ctx(db), {});
     expect(res.ok).toBe(true);
-    expect(res.message).toContain('Gimnasio');
+    expect(res.message).toContain('Membresías');
+    // El código viejo no aparece como un módulo aparte y sin pantallas.
+    expect(res.message).not.toContain('Gimnasio');
 
     const data = res.data as { total: number; modulos: Array<{ codigo: string; paginas: unknown[] }> };
     expect(data.total).toBe(2);
-    // Ordenados por `rank`: el gimnasio (10) antes que configuración (150).
-    expect(data.modulos.map((m) => m.codigo)).toEqual(['gym', 'configuracion']);
+    // Ordenados por `rank`: membresías (10) antes que configuración (150).
+    expect(data.modulos.map((m) => m.codigo)).toEqual(['memberships', 'configuracion']);
     // Todas las del catálogo menos las dos apagadas: una página que nadie
     // apagó se ve, aunque la organización no tenga fila para ella.
     expect(data.modulos[0].paginas).toEqual(
-      visibles('gym', ['/app/gym/clases', '/app/gym/horarios'])
+      visibles('memberships', APAGADAS)
     );
     expect(data.modulos[0].paginas).toContainEqual({
       nombre: 'Membresías',
-      ruta: '/app/gym/membresias',
+      ruta: '/app/membresias/membresias',
     });
-    expect(data.modulos[0].paginas).not.toContainEqual({ nombre: 'Clases', ruta: '/app/gym/clases' });
+    expect(data.modulos[0].paginas).not.toContainEqual({ nombre: 'Clases', ruta: '/app/membresias/clases' });
+    // La apagada bajo el código viejo también se respeta.
+    expect(data.modulos[0].paginas).not.toContainEqual({ nombre: 'Reservas', ruta: '/app/membresias/reservas' });
   });
 
   it('siempre acota por la organización del contexto', async () => {
@@ -386,8 +403,8 @@ describe('F6 — explicar_configuracion', () => {
     const data = res.data as { encontrado: boolean; modulos_activos: Array<{ codigo: string }> };
     expect(data.encontrado).toBe(false);
     // Se le dice lo que SÍ tiene, en vez de dejarlo en "no puedo".
-    expect(data.modulos_activos.map((m) => m.codigo)).toEqual(['gym', 'configuracion']);
-    expect(res.message).toContain('Gimnasio');
+    expect(data.modulos_activos.map((m) => m.codigo)).toEqual(['memberships', 'configuracion']);
+    expect(res.message).toContain('Membresías');
     // Y en ningún caso se menciona una pantalla de inventario.
     expect(res.message).not.toContain('/app/inventario');
     expect(espia.tablasConsultadas).not.toContain('products');
@@ -403,10 +420,19 @@ describe('F6 — explicar_configuracion', () => {
       espia
     );
 
-    const res = await explicarConfiguracion.execute(ctx(db), { modulo: 'Gimnasio' });
+    const res = await explicarConfiguracion.execute(ctx(db), { modulo: 'Membresías' });
     const data = res.data as { encontrado: boolean; modulo: { codigo: string } };
     expect(data.encontrado).toBe(true);
-    expect(data.modulo.codigo).toBe('gym');
+    expect(data.modulo.codigo).toBe('memberships');
+  });
+
+  it('el código viejo «gym» encuentra el módulo canónico', async () => {
+    const espia = espiaNuevo();
+    const db = fakeSupabase({ organization_modules: MODULOS_DE_GIMNASIO, organization_module_pages: APAGADAS_DEL_GIMNASIO }, espia);
+    const res = await explicarConfiguracion.execute(ctx(db), { modulo: 'gym' });
+    const data = res.data as { encontrado: boolean; modulo: { codigo: string } };
+    expect(data.encontrado).toBe(true);
+    expect(data.modulo.codigo).toBe('memberships');
   });
 
   it('para un módulo con comprobaciones propias devuelve qué falta y dónde', async () => {
@@ -468,10 +494,10 @@ describe('F6 — explicar_configuracion', () => {
       espia
     );
 
-    const res = await explicarConfiguracion.execute(ctx(db), { modulo: 'gym' });
+    const res = await explicarConfiguracion.execute(ctx(db), { modulo: 'memberships' });
     const data = res.data as { encontrado: boolean; pantallas: unknown[]; puntos: unknown[] };
     expect(data.encontrado).toBe(true);
-    expect(data.pantallas).toEqual(visibles('gym', ['/app/gym/clases', '/app/gym/horarios']));
+    expect(data.pantallas).toEqual(visibles('memberships', APAGADAS));
     // Sin extras declarados no se inventa ninguno.
     expect(data.puntos).toEqual([]);
     expect(res.ok).toBe(true);

@@ -824,3 +824,60 @@ Para ver el detalle por organización, cambiar cada `select count(*)` por `selec
 - **F13, borrar los componentes viejos** (`FacturasCompraPage`, `nueva-factura/*`, `editar/*`, `id/*`, `CuentasPorPagarPage`, `id/*` de CxP) y los métodos muertos de `FacturasCompraService`/`CuentasPorPagarService`: ya no los monta ninguna página (lo fija el guardarraíl 26b), pero los importan las pruebas de caracterización de F0, el guardarraíl 28 y la prueba de banca online de otra sesión, que además está editando `CuentasPorPagarService.ts` y `ExportarBancaModal.tsx` ahora mismo. Se borran cuando esas pruebas apunten a las RPC y esa sesión termine.
 - **F7 PDF**: depende del motor (6.5).
 - **Verificación en navegador**: el preview activo pide iniciar sesión y las credenciales no se escriben desde el agente; quedan por recorrer en escritorio, tableta y móvil los recorridos de F4–F10.
+
+## 7. Retenciones en el asiento (D4 fase 2) — 2026-09-30
+
+D4 dejó la CxP por el neto (total − retenciones), pero el asiento de la compra seguía acreditando al proveedor por el total y la retención no aparecía como pasivo con la DIAN: la 2105 quedaba mayor que la CxP y el cierre no cuadraba. Esta fase lo resuelve. Detalle completo, clasificación y nodos de Figma en `docs/design/RETENCIONES-COMPRAS.md`.
+
+### 7.1 Migraciones aplicadas por MCP (con rollback; dry-run en transacción que se deshace)
+
+| Versión | Qué hace |
+|---|---|
+| `20260930073908_compras_asiento_con_retenciones` | Cuentas 2365/2367/2368 bajo el grupo 21 en todas las organizaciones (y en las nuevas, por trigger), plantilla `RETEIVA_15`, `fn_asiento_compra_aplicar_retenciones` y su llamada en `fn_auto_journal_purchase` y `fn_retro_journal_purchases` |
+| `20260930074406_compras_cuenta_retencion_por_clase` | `fn_cuenta_retencion_compra`: primero `tax_account_mapping`; si no hay, clase por código o concepto (ReteFuente → 2365, ReteIVA → 2367, ReteICA → 2368) |
+
+### 7.2 Resultado
+
+- Asiento de la compra: débito inventario + IVA; crédito proveedor por el **neto**; una línea de crédito por cada retención en su cuenta. Se valida que cuadre (`ASIENTO_DESCUADRADO`) y, si la retención iguala o supera el total, no se toca el asiento y se registra `withholding_exceeds_total`.
+- La línea del proveedor se ajusta solo en el asiento recién creado en la misma transacción, con el permiso de mantenimiento que se restaura al terminar; los asientos ya publicados no se reescriben. Había 0 retenciones históricas: no hizo falta reprocesar.
+- Comprobante de egreso: si el pago es de una factura de compra con retenciones, muestra total de la factura, cada retención y el neto a pagar antes del valor pagado (`cargadores/pagos.ts`, reutiliza `filasRetencion` de `cargadores/compras.ts`).
+- La nota de §6.5 sobre el motor («la `factura-compra` no pinta retenciones ni el neto») quedó resuelta antes de esta fase; sigue pendiente `estado-cuenta-proveedor`.
+
+### 7.3 Pendiente
+
+- Tipo de documento «Certificado de retenciones» y visor «Retenciones practicadas» (diseñados en Figma, sin código).
+- Configuración: mostrar y editar la cuenta de cada retención (`tax_account_mapping`) y la base mínima en UVT.
+- Facturas insertadas directamente como `received` (sin pasar por `fn_fc_confirmar_int`) crean el asiento antes de guardar las retenciones y quedan sin sus líneas.
+
+## 8. Retenciones: pantallas de Figma en código (D4 fase 3) — 2026-09-30
+
+Resuelve lo pendiente de §7.3 salvo lo que se lista al final. Detalle por pantalla, nodos de Figma y decisiones en `docs/design/RETENCIONES-COMPRAS.md` §6.
+
+### 8.1 Migraciones aplicadas por MCP (con rollback; registradas en `schema_migrations`)
+
+| Versión | Qué hace |
+|---|---|
+| `20260930085700_compras_retenciones_configuracion` | UVT por país y año (`fiscal_uvt`), base mínima en UVT (`organization_taxes.min_base_uvt`), una sola clasificación (`fn_clase_retencion`), leer y fijar cuenta y base mínima, cargar la plantilla del país; `tax_account_mapping` ya no se escribe desde el cliente |
+| `20260930085948_compras_asiento_previo` | `fn_factura_compra_asiento_previo`: el asiento real de la confirmación dentro de un bloque que siempre se deshace |
+| `20260930090435_compras_retenciones_reporte_certificado` | `fn_reporte_retenciones_practicadas` (reporte por rango y sucursal) y `fn_certificado_retenciones_proveedor` (certificado por proveedor y periodo) sobre una sola lectura interna |
+
+### 8.2 Resultado
+
+- Configuración: tipo, cuenta contable (propia o la automática de su clase) y base mínima en UVT y en pesos del año de cada retención; «Cargar plantilla» con las que falten del país.
+- Factura: aviso cuando la base no llega a la base mínima (solo avisa) y, al confirmar, el asiento que se va a generar con sumas, cuadre y neto a pagar.
+- CxP y pago: documento de origen con retenciones y neto; el pago se registra sobre el neto.
+- Asiento: aviso de que al proveedor se le acredita el neto, cadena OC → factura → pagos → retenciones, datos del asiento (fecha, sucursal, origen, moneda, clave del hecho, creado por y cuándo) y centro de costo solo si alguna línea lo tiene.
+- Certificado de retenciones (`certificado-retenciones` en el motor de documentos): desde la CxP, la factura, el asiento y el proveedor; periodo elegible, carta, texto del artículo 381 del E.T.
+- Reportes «Retenciones practicadas» y «Retenciones por proveedor» en Finanzas, con la sucursal activa.
+- Corrección: la moneda de la UVT sale de `countries.default_currency_code` (guardarraíl 28b).
+
+### 8.3 Pruebas
+
+`retencionesUi.test.ts` (15), `retencionesReportes.test.ts` (8), casos nuevos en `rpcBranchId.test.ts` y `migracionBranchId.test.ts` (la RPC nueva se verifica contra su propia migración) y 5 del certificado en `motor.test.ts`.
+
+### 8.4 Pendiente
+
+- El visor genérico de reportes no tiene pestañas, notas ni acciones por fila: la pestaña «Certificados» del diseño se cubre con el certificado desde el proveedor y la CxP; la «Lectura rápida» no se pinta.
+- «Regla» en el detalle del asiento: `journal_entries` no guarda la regla que lo armó.
+- Facturas insertadas directamente como `received` (sin `fn_fc_confirmar_int`): sigue igual que en §7.3; hoy ningún camino lo hace.
+- Recorrido en navegador con sesión real.

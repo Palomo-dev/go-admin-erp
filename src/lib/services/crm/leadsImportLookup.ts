@@ -69,19 +69,40 @@ export async function buscarCandidatos(ctx: LookupContext, claves: ClavesBusqued
   return Array.from(porId.values());
 }
 
-/** Clientes que ya tienen un lead ABIERTO en la organización. */
+/**
+ * Clientes que ya se trabajan como lead en la organización (CRM ola 1, D2):
+ *  - ficha con origen de lead (`lead_source`) y sin descartar —el lead es el
+ *    cliente; cualquier etapa: si ya avanzó a oportunidad o cliente, tampoco se
+ *    vuelve a marcar—, o
+ *  - con una oportunidad `record_type='lead'` abierta (las heredadas).
+ * Una ficha SIN origen no cuenta: `lifecycle_stage` vale 'lead' por defecto en
+ * toda ficha nueva, así que ese valor solo no dice que alguien la esté
+ * trabajando como prospecto; la importación la marca como lead («ligar»). Así
+ * reimportar el mismo archivo no vuelve a escribir las fichas ligadas.
+ */
 export async function clientesConLeadAbierto(ctx: LookupContext, customerIds: readonly string[]): Promise<Set<string>> {
   const out = new Set<string>();
   for (const t of trozos(Array.from(new Set(customerIds)), 150)) {
-    const { data, error } = await ctx.supabase
-      .from('opportunities')
-      .select('customer_id')
-      .eq('organization_id', ctx.organizationId)
-      .eq('record_type', 'lead')
-      .eq('status', 'open')
-      .in('customer_id', t);
-    if (error) throw new Error(`[leadsImport] opportunities: ${error.message}`);
-    for (const r of (data ?? []) as Array<{ customer_id: string | null }>) if (r.customer_id) out.add(r.customer_id);
+    const [fichas, heredados] = await Promise.all([
+      ctx.supabase
+        .from('customers')
+        .select('id')
+        .eq('organization_id', ctx.organizationId)
+        .not('lead_source', 'is', null)
+        .is('lead_discarded_at', null)
+        .in('id', t),
+      ctx.supabase
+        .from('opportunities')
+        .select('customer_id')
+        .eq('organization_id', ctx.organizationId)
+        .eq('record_type', 'lead')
+        .eq('status', 'open')
+        .in('customer_id', t),
+    ]);
+    if (fichas.error) throw new Error(`[leadsImport] customers: ${fichas.error.message}`);
+    if (heredados.error) throw new Error(`[leadsImport] opportunities: ${heredados.error.message}`);
+    for (const r of (fichas.data ?? []) as Array<{ id: string }>) out.add(r.id);
+    for (const r of (heredados.data ?? []) as Array<{ customer_id: string | null }>) if (r.customer_id) out.add(r.customer_id);
   }
   return out;
 }

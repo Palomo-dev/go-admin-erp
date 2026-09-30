@@ -1,6 +1,7 @@
 // ============================================================
 // Reportes de Finanzas
-// Llama a las RPCs: fn_reporte_cxc_aging, fn_reporte_cxp_aging, fn_reporte_flujo_efectivo, fn_reporte_impuestos
+// Llama a las RPCs: fn_reporte_cxc_aging, fn_reporte_cxp_aging, fn_reporte_flujo_efectivo, fn_reporte_impuestos,
+// fn_reporte_retenciones_practicadas
 // ============================================================
 
 import { supabase as browserSupabase } from '@/lib/supabase/config';
@@ -25,6 +26,38 @@ function buildReportData(
   totales?: Record<string, unknown>,
 ): ReportData {
   return { id, titulo, modulo, kpis, columnas, filas, totales, generadoEn: new Date().toISOString(), periodo };
+}
+
+interface RetencionesPracticadas {
+  totales: { retefuente?: number; reteiva?: number; reteica?: number; total?: number; facturas?: number; proveedores?: number };
+  por_tipo: Array<{ clase: string; concepto: string; cuenta: string | null; tarifa: number | null; base: number | null; retenido: number | null; facturas: number | null }>;
+  por_proveedor: Array<{ proveedor_id: number; proveedor: string | null; nit: string | null; facturas: number | null; retefuente: number | null; reteiva: number | null; reteica: number | null; retenido: number | null }>;
+}
+
+/** Normaliza el jsonb de `fn_reporte_retenciones_practicadas` (el doble de los tests devuelve `{}`). */
+function aRetencionesPracticadas(data: unknown): RetencionesPracticadas {
+  const d = (data ?? {}) as Partial<RetencionesPracticadas>;
+  return {
+    totales: d.totales ?? {},
+    por_tipo: Array.isArray(d.por_tipo) ? d.por_tipo : [],
+    por_proveedor: Array.isArray(d.por_proveedor) ? d.por_proveedor : [],
+  };
+}
+
+/** Clase de `fn_clase_retencion` → rótulo de la DIAN. */
+const CLASES_RETENCION: Record<string, string> = {
+  retefuente: 'ReteFuente',
+  reteiva: 'ReteIVA',
+  reteica: 'ReteICA',
+};
+
+function kpisRetenciones(t: RetencionesPracticadas['totales']): ReportData['kpis'] {
+  return [
+    { titulo: 'ReteFuente', valor: Number(t.retefuente ?? 0), formato: 'moneda' },
+    { titulo: 'ReteIVA', valor: Number(t.reteiva ?? 0), formato: 'moneda' },
+    { titulo: 'ReteICA', valor: Number(t.reteica ?? 0), formato: 'moneda' },
+    { titulo: 'Total a declarar', valor: Number(t.total ?? 0), formato: 'moneda' },
+  ];
 }
 
 export const finanzasReports: ReportDefinition[] = [
@@ -470,6 +503,110 @@ export const finanzasReports: ReportDefinition[] = [
           { key: 'monto', titulo: 'Monto IVA', tipo: 'moneda', alinear: 'right' },
         ],
         d.por_codigo ?? [],
+      );
+    },
+  },
+  {
+    id: 'retenciones-practicadas',
+    modulo: 'finance',
+    titulo: 'Retenciones practicadas',
+    descripcion: 'ReteFuente, ReteIVA y ReteICA practicadas a proveedores en facturas de compra confirmadas, por concepto y tarifa',
+    categoria: 'financiero',
+    periodosSugeridos: ['mensual'],
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const overrideHours = (periodo.horaInicio && periodo.horaFin)
+        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
+        : null;
+      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { data, error } = await db.rpc('fn_reporte_retenciones_practicadas', {
+        p_organization_id: orgId,
+        p_from: start,
+        p_to: end,
+        p_branch_id: normalizeBranchParam(branchId),
+      });
+      if (error) throw error;
+      const d = aRetencionesPracticadas(data);
+      const t = d.totales;
+
+      return buildReportData(
+        'retenciones-practicadas', 'Retenciones practicadas', 'finance', periodo,
+        kpisRetenciones(t),
+        [
+          { key: 'tipo', titulo: 'Tipo', tipo: 'texto' },
+          { key: 'concepto', titulo: 'Concepto', tipo: 'texto' },
+          { key: 'cuenta', titulo: 'Cuenta', tipo: 'texto' },
+          { key: 'base', titulo: 'Base', tipo: 'moneda', alinear: 'right' },
+          { key: 'tarifa', titulo: 'Tarifa', tipo: 'porcentaje', alinear: 'right' },
+          { key: 'retenido', titulo: 'Retenido', tipo: 'moneda', alinear: 'right' },
+          { key: 'facturas', titulo: 'Facturas', tipo: 'numero', alinear: 'right' },
+        ],
+        d.por_tipo.map((f) => ({
+          tipo: CLASES_RETENCION[f.clase] ?? f.clase,
+          concepto: f.concepto,
+          cuenta: f.cuenta,
+          base: Number(f.base ?? 0),
+          tarifa: Number(f.tarifa ?? 0),
+          retenido: Number(f.retenido ?? 0),
+          facturas: Number(f.facturas ?? 0),
+        })),
+        // Sin total de bases: la misma factura es base de varias retenciones.
+        { tipo: 'Total a declarar', retenido: Number(t.total ?? 0), facturas: Number(t.facturas ?? 0) },
+      );
+    },
+  },
+  {
+    id: 'retenciones-por-proveedor',
+    modulo: 'finance',
+    titulo: 'Retenciones por proveedor',
+    descripcion: 'Lo retenido a cada proveedor en el período: la base del certificado de retenciones que se le expide',
+    categoria: 'financiero',
+    periodosSugeridos: ['mensual', 'anual'],
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const overrideHours = (periodo.horaInicio && periodo.horaFin)
+        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
+        : null;
+      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { data, error } = await db.rpc('fn_reporte_retenciones_practicadas', {
+        p_organization_id: orgId,
+        p_from: start,
+        p_to: end,
+        p_branch_id: normalizeBranchParam(branchId),
+      });
+      if (error) throw error;
+      const d = aRetencionesPracticadas(data);
+      const t = d.totales;
+
+      return buildReportData(
+        'retenciones-por-proveedor', 'Retenciones por proveedor', 'finance', periodo,
+        kpisRetenciones(t),
+        [
+          { key: 'proveedor', titulo: 'Proveedor', tipo: 'texto' },
+          { key: 'nit', titulo: 'NIT', tipo: 'texto' },
+          { key: 'facturas', titulo: 'Facturas', tipo: 'numero', alinear: 'right' },
+          { key: 'retefuente', titulo: 'ReteFuente', tipo: 'moneda', alinear: 'right' },
+          { key: 'reteiva', titulo: 'ReteIVA', tipo: 'moneda', alinear: 'right' },
+          { key: 'reteica', titulo: 'ReteICA', tipo: 'moneda', alinear: 'right' },
+          { key: 'retenido', titulo: 'Total retenido', tipo: 'moneda', alinear: 'right' },
+        ],
+        d.por_proveedor.map((f) => ({
+          proveedor: f.proveedor ?? `Proveedor #${f.proveedor_id}`,
+          nit: f.nit ?? '',
+          facturas: Number(f.facturas ?? 0),
+          retefuente: Number(f.retefuente ?? 0),
+          reteiva: Number(f.reteiva ?? 0),
+          reteica: Number(f.reteica ?? 0),
+          retenido: Number(f.retenido ?? 0),
+        })),
+        {
+          proveedor: 'Total',
+          facturas: Number(t.facturas ?? 0),
+          retefuente: Number(t.retefuente ?? 0),
+          reteiva: Number(t.reteiva ?? 0),
+          reteica: Number(t.reteica ?? 0),
+          retenido: Number(t.total ?? 0),
+        },
       );
     },
   },

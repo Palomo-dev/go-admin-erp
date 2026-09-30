@@ -18,7 +18,7 @@ export interface Write {
 }
 
 interface Filter {
-  kind: 'eq' | 'neq' | 'in' | 'not_is';
+  kind: 'eq' | 'neq' | 'in' | 'not_is' | 'is';
   key: string;
   value: unknown;
 }
@@ -50,6 +50,8 @@ function matches(row: Row, f: Filter): boolean {
       return (f.value as unknown[]).includes(v);
     case 'not_is':
       return f.value === null ? v !== null && v !== undefined : v !== f.value;
+    case 'is':
+      return f.value === null ? v === null || v === undefined : v === f.value;
   }
 }
 
@@ -91,7 +93,14 @@ export function fakeSupabase(db: FakeDb) {
         const hit = rows.filter((r) => filters.every((f) => matches(r, f)));
         if (op === 'update') {
           db.writes.push({ table, op, payload, filters: [...filters] });
-          for (const r of hit) Object.assign(r, payload as Row);
+          // CRM ola 1: `updated_at` monótono (como `now()` en la base) para que
+          // «el último asignado» del round-robin no dependa de empates de reloj.
+          let cambios = payload as Row;
+          if (cambios && typeof cambios === 'object' && 'updated_at' in cambios) {
+            db.seq += 1;
+            cambios = { ...cambios, updated_at: `2026-09-21T13:00:${String(db.seq).padStart(2, '0')}.000Z` };
+          }
+          for (const r of hit) Object.assign(r, cambios);
         } else if (op === 'delete') {
           db.writes.push({ table, op, payload: null, filters: [...filters] });
           db.tables[table] = rows.filter((r) => !hit.includes(r));
@@ -150,6 +159,10 @@ export function fakeSupabase(db: FakeDb) {
       not(key: string, operator: string, value: unknown) {
         if (operator !== 'is') throw new Error(`fake: not(${operator}) no soportado`);
         filters.push({ kind: 'not_is', key, value });
+        return chain;
+      },
+      is(key: string, value: unknown) {
+        filters.push({ kind: 'is', key, value });
         return chain;
       },
       order(key: string, opts?: { ascending?: boolean }) {

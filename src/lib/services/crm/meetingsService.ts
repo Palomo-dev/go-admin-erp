@@ -122,6 +122,9 @@ export async function createMeeting(
       timezone: input.timezone ?? 'America/Bogota',
       assigned_to: assignedTo,
       customer_id: customerId,
+      // CRM ola 1 (M3): columna con FK e índice; `metadata.opportunity_id` se
+      // conserva por compatibilidad con lectores anteriores.
+      opportunity_id: input.opportunity_id ?? null,
       event_type: 'meeting',
       status: 'confirmed',
       created_by: userId,

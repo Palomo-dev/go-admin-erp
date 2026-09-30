@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { esReservaHuerfana } from '@/lib/pos/reservasStock';
 
 /**
  * GET /api/web-orders/observability
@@ -23,6 +24,31 @@ import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
  * (`getServerOrgContext`) y el `organization_id` del query solo se acepta si
  * coincide con ella.
  */
+
+type Rel<T> = T | T[] | null;
+const uno = <T,>(v: Rel<T>): T | null => (Array.isArray(v) ? v[0] ?? null : v);
+
+interface FilaStock {
+  product_id: number;
+  branch_id: number;
+  qty_on_hand: number | string | null;
+  qty_reserved: number | string | null;
+  updated_at: string | null;
+  products: Rel<{ name: string | null; sku: string | null; track_stock: boolean | null }>;
+  branches: Rel<{ name: string | null }>;
+}
+
+interface PedidoPendiente {
+  id: string;
+  order_number: string;
+  organization_id: number;
+  branch_id: number;
+  payment_method: string;
+  total: number | string | null;
+  customer_name: string | null;
+  created_at: string;
+  branches: Rel<{ name: string | null }>;
+}
 
 export async function GET(request: Request) {
   try {
@@ -71,7 +97,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const branchIds = (orgBranches || []).map((b: any) => b.id);
+    const branchIds = (orgBranches || []).map((b: { id: number }) => b.id);
 
     // ── 1. Stock reservado vs disponible por sucursal ──
     // Solo productos con qty_reserved > 0 (los que tienen reserva activa).
@@ -107,24 +133,22 @@ export async function GET(request: Request) {
     }
 
     const now = Date.now();
-    const ORPHAN_THRESHOLD_MS = 24 * 60 * 60 * 1000; // 24h
 
-    const reservedStock = (stockRows || [])
-      .filter((row: any) => row.products?.track_stock)
-      .map((row: any) => ({
+    const reservedStock = ((stockRows || []) as unknown as FilaStock[])
+      .filter((row) => uno(row.products)?.track_stock)
+      .map((row) => ({
         productId: row.product_id,
-        productName: row.products?.name || `Producto ${row.product_id}`,
-        sku: row.products?.sku || null,
+        productName: uno(row.products)?.name || `Producto ${row.product_id}`,
+        sku: uno(row.products)?.sku || null,
         branchId: row.branch_id,
-        branchName: row.branches?.name || `Sucursal ${row.branch_id}`,
+        branchName: uno(row.branches)?.name || `Sucursal ${row.branch_id}`,
         qtyOnHand: Number(row.qty_on_hand) || 0,
         qtyReserved: Number(row.qty_reserved) || 0,
         qtyAvailable: (Number(row.qty_on_hand) || 0) - (Number(row.qty_reserved) || 0),
         updatedAt: row.updated_at,
         // Reserva huérfana: lleva más de 24h sin moverse (síntoma de pedido
-        // abandonado cuyo stock no se liberó)
-        isOrphan:
-          row.updated_at && now - new Date(row.updated_at).getTime() > ORPHAN_THRESHOLD_MS,
+        // abandonado cuyo stock no se liberó). Regla única con el inicio.
+        isOrphan: esReservaHuerfana(row.updated_at, now),
       }));
 
     // ── 2. Pedidos pendientes próximos a expirar ──
@@ -179,7 +203,8 @@ export async function GET(request: Request) {
     }
 
     // Leer configuración de expiración por organización
-    const orgIds = [...new Set((pendingOrders || []).map((o: any) => o.organization_id))];
+    const pendientes = (pendingOrders || []) as unknown as PedidoPendiente[];
+    const orgIds = [...new Set(pendientes.map((o) => o.organization_id))];
     const { data: orgSettings } = await supabase
       .from('organization_settings')
       .select('organization_id, settings')
@@ -188,7 +213,7 @@ export async function GET(request: Request) {
 
     const expirationMap = new Map<number, number>();
     for (const s of orgSettings || []) {
-      const mins = (s.settings as any)?.order_expiration_minutes;
+      const mins = (s.settings as { order_expiration_minutes?: unknown } | null)?.order_expiration_minutes;
       if (typeof mins === 'number' && mins > 0) {
         expirationMap.set(s.organization_id, mins);
       }
@@ -197,8 +222,8 @@ export async function GET(request: Request) {
     const MANUAL_METHODS = ['transfer', 'cash', 'bancolombia_transfer', 'bancolombia_collect', 'pse'];
     const DEFAULT_MINUTES = 30;
 
-    const ordersNearExpiry = (pendingOrders || [])
-      .map((o: any) => {
+    const ordersNearExpiry = pendientes
+      .map((o) => {
         const orgMinutes = expirationMap.get(o.organization_id);
         const effectiveMinutes =
           orgMinutes ??
@@ -213,7 +238,7 @@ export async function GET(request: Request) {
           orderNumber: o.order_number,
           organizationId: o.organization_id,
           branchId: o.branch_id,
-          branchName: o.branches?.name || null,
+          branchName: uno(o.branches)?.name || null,
           paymentMethod: o.payment_method,
           total: Number(o.total) || 0,
           customerName: o.customer_name || null,
@@ -224,8 +249,8 @@ export async function GET(request: Request) {
           isNearExpiry: minutesUntilExpiry >= 0 && minutesUntilExpiry <= withinMinutes,
         };
       })
-      .filter((o: any) => o.minutesUntilExpiry >= 0 && o.minutesUntilExpiry <= withinMinutes)
-      .sort((a: any, b: any) => a.minutesUntilExpiry - b.minutesUntilExpiry);
+      .filter((o) => o.minutesUntilExpiry >= 0 && o.minutesUntilExpiry <= withinMinutes)
+      .sort((a, b) => a.minutesUntilExpiry - b.minutesUntilExpiry);
 
     // ── Resumen ──
     const summary = {

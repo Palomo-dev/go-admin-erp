@@ -1,7 +1,6 @@
 'use client';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { Bot } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
 import { isAuthenticated } from '@/lib/supabase/auth-manager';
@@ -87,7 +86,6 @@ export const AppLayout = ({
   // Hook para obtener la ruta actual
   const pathname = usePathname();
   const tNav = useTranslations('nav');
-  const tHeader = useTranslations('header');
   const nombresNav = useNombresNav();
   const router = useRouter();
 
@@ -991,17 +989,8 @@ export const AppLayout = ({
         } as AssistantContext}
       />
       
-      {/* Botón flotante para abrir el panel de IA cuando está cerrado */}
-      {!aiAssistantOpen && (
-        <button
-          onClick={() => setAiAssistantOpen(true)}
-          className="hidden lg:flex items-center justify-center h-10 w-10 bg-brand-action hover:bg-brand-action-hover text-fg-on-brand rounded-l-lg shadow-lg transition-colors fixed right-0 top-1/2 -translate-y-1/2 z-40"
-          aria-label={tHeader('openAssistant')}
-          title={tHeader('assistant')}
-        >
-          <Bot size={20} />
-        </button>
-      )}
+      {/* La pestaña lateral para abrir el asistente (28 × 96, Figma `AssistantLauncher`
+          edge-tab) y el atajo Ctrl/⌘+J los pinta el propio panel. */}
       
       {/* El aviso flotante «Límite de módulos alcanzado» se retiró (2026-09-23,
           decisión del dueño: invasivo). El uso del plan vive en «Mi cuenta»

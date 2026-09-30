@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import {FileText, Check, Copy, Trash2, ArrowLeft, Calendar, User, Link as LinkIcon, Undo2, Loader2} from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import {FileText, Check, Copy, Trash2, ArrowLeft, Undo2, Loader2} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +17,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { ContabilidadService, JournalEntry, EstadoReversion } from '../ContabilidadService';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { DetailSkeleton } from '@/components/common/PageSkeletons';
-import { useFormatDateFor } from '@/lib/context/OrganizationTimezoneContext';
+import { OrigenCompraAsiento } from './OrigenCompraAsiento';
+import { DatosAsiento } from './DatosAsiento';
 
 interface AsientoDetailPageProps {
   entryId: number;
@@ -33,9 +35,8 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
   const [puedeRevertir, setPuedeRevertir] = useState(false);
   const [dialogoRevertir, setDialogoRevertir] = useState(false);
   const [motivo, setMotivo] = useState('');
-  // `entry_date` es timestamptz: se formatea en la zona de la SUCURSAL dueña
-  // del asiento (cascada sucursal -> organizacion), no en la del navegador.
-  const { formatDate } = useFormatDateFor(asiento?.branch_id);
+  const tl = useTranslations('asientoContable.lineas');
+  const [centros, setCentros] = useState<Map<string, { code: string; name: string }>>(new Map());
 
   useEffect(() => {
     loadAsiento();
@@ -52,7 +53,13 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
         return;
       }
       setAsiento(data);
-      setReversion(await ContabilidadService.obtenerReversion(data));
+      const idsCentros = [...new Set((data.lines ?? []).map((l) => l.cost_center_id).filter((id): id is string => !!id))];
+      const [estadoReversion, nombresCentros] = await Promise.all([
+        ContabilidadService.obtenerReversion(data),
+        ContabilidadService.centrosDeCosto(idsCentros).catch(() => new Map<string, { code: string; name: string }>()),
+      ]);
+      setReversion(estadoReversion);
+      setCentros(nombresCentros);
     } catch (error) {
       console.error('Error cargando asiento:', error);
       toast.error('Error al cargar el asiento');
@@ -207,7 +214,9 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
         </div>
       </div>
 
-      {asiento.posted && !esManual && !esContraAsiento && !reversion.revertidoPor && (
+      {asiento.source === 'invoice_purchase' && asiento.source_id && <OrigenCompraAsiento facturaId={asiento.source_id} />}
+
+      {asiento.posted && !esManual && !esContraAsiento && !reversion.revertidoPor && asiento.source !== 'invoice_purchase' && (
         <p className="text-sm text-gray-600 dark:text-gray-400">
           Este asiento es automático: no se edita ni se borra. Para revertirlo, anula el documento que lo originó.
         </p>
@@ -244,54 +253,9 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Info */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <Calendar className="h-5 w-5 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Fecha</p>
-                <p className="font-semibold text-gray-900 dark:text-white">
-                  {formatDate(asiento.entry_date)}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <LinkIcon className="h-5 w-5 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Origen</p>
-                <p className="font-semibold text-gray-900 dark:text-white">
-                  {asiento.source || 'Manual'}
-                  {asiento.source_id && <span className="text-gray-500 ml-1">#{asiento.source_id}</span>}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <User className="h-5 w-5 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Creado</p>
-                <p className="font-semibold text-gray-900 dark:text-white">
-                  {new Date(asiento.created_at).toLocaleString('es-CO')}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
       {/* Líneas */}
-      <Card className="dark:bg-gray-800 dark:border-gray-700">
+      <Card className="dark:bg-gray-800 dark:border-gray-700 lg:col-span-2">
         <CardHeader>
           <CardTitle className="text-gray-900 dark:text-white">Líneas del Asiento</CardTitle>
           <CardDescription className="dark:text-gray-400">
@@ -304,6 +268,7 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
               <TableRow className="dark:border-gray-700">
                 <TableHead className="dark:text-gray-300">Cuenta</TableHead>
                 <TableHead className="dark:text-gray-300">Descripción</TableHead>
+                {centros.size > 0 && <TableHead className="dark:text-gray-300">{tl('centroCosto')}</TableHead>}
                 <TableHead className="text-right dark:text-gray-300">Débito</TableHead>
                 <TableHead className="text-right dark:text-gray-300">Crédito</TableHead>
               </TableRow>
@@ -326,6 +291,13 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
                   <TableCell className="text-gray-700 dark:text-gray-300">
                     {line.description || '-'}
                   </TableCell>
+                  {centros.size > 0 && (
+                    <TableCell className="text-gray-700 dark:text-gray-300">
+                      {line.cost_center_id && centros.get(line.cost_center_id)
+                        ? `${centros.get(line.cost_center_id)?.code} · ${centros.get(line.cost_center_id)?.name}`
+                        : '-'}
+                    </TableCell>
+                  )}
                   <TableCell className="text-right font-mono text-gray-900 dark:text-white">
                     {line.debit > 0 ? formatear(line.debit) : '-'}
                   </TableCell>
@@ -362,6 +334,8 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
           </div>
         </CardContent>
       </Card>
+      <DatosAsiento asiento={asiento} />
+      </div>
     </div>
   );
 }

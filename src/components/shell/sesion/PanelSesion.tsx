@@ -44,7 +44,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase/config';
-import { changeLanguage } from '@/i18n/provider';
+import { guardarIdiomaPreferido } from '@/lib/i18n/idiomaPreferido';
 import { locales, localeNames, type Locale } from '@/i18n/config';
 import { isDesktop } from '@/lib/utils/desktop';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
@@ -560,14 +560,8 @@ export function PanelSesion({ usuario, organizacion, tema, onAlternarTema, onCer
   const elegirIdioma = async (nuevo: Locale) => {
     setVerIdiomas(false);
     if (nuevo === locale) return;
-    changeLanguage(nuevo);
-    // Se guarda en el perfil para que viaje a otros dispositivos, como hace
-    // «Datos personales». Si falla, el idioma cambia igual en este dispositivo.
-    const { data } = await supabase.auth.getUser();
-    if (data.user) {
-      const { error } = await supabase.from('profiles').update({ preferred_language: nuevo }).eq('id', data.user.id);
-      if (error) console.warn('[PanelSesion] no se guardó el idioma en el perfil', error.message);
-    }
+    // En este dispositivo y en el perfil (misma función que «Mi perfil › Preferencias»).
+    await guardarIdiomaPreferido(nuevo);
   };
 
   return (

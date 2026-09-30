@@ -33,7 +33,16 @@ export interface CheckoutItemCalc {
 export interface CheckoutEnvelopeInput {
   checkout: CheckoutData;
   saleId: string;
+  /**
+   * Hora del EQUIPO. No es la hora oficial: `pos_checkout_v1` usa `now()` y
+   * guarda esta en `sales.device_created_at` (docs/reglas-fechas-timezone.md
+   * §«Hora oficial»). Solo cuenta en una venta sin conexión (`offline`).
+   */
   createdAt: string;
+  /** true al reproducir un sobre del outbox (venta hecha sin red). */
+  offline?: boolean;
+  /** Desfase del reloj del equipo medido antes de quedarse sin red (ms, equipo − servidor). */
+  clockOffsetMs?: number | null;
   organizationId: number;
   branchId: number;
   /** Cajero (`sales.user_id`). Null → la RPC usa `auth.uid()`. */
@@ -110,7 +119,11 @@ export interface CheckoutEnvelopeItem {
 export interface CheckoutEnvelope {
   version: 1;
   sale_id: string;
+  /** Hora del equipo (auditoría); la oficial la pone el servidor. */
   created_at: string;
+  /** Venta hecha sin red: el servidor aplica `fn_hora_oficial_resolver` con `clock_offset_ms`. */
+  offline?: true;
+  clock_offset_ms?: number;
   organization_id: number;
   branch_id: number;
   user_id: string | null;
@@ -251,6 +264,14 @@ export function buildCheckoutEnvelope(input: CheckoutEnvelopeInput): CheckoutEnv
     version: 1,
     sale_id: input.saleId,
     created_at: input.createdAt,
+    ...(input.offline
+      ? {
+          offline: true as const,
+          ...(typeof input.clockOffsetMs === 'number' && Number.isFinite(input.clockOffsetMs)
+            ? { clock_offset_ms: Math.round(input.clockOffsetMs) }
+            : {}),
+        }
+      : {}),
     organization_id: input.organizationId,
     branch_id: input.branchId,
     user_id: input.userId,

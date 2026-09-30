@@ -200,18 +200,21 @@ describe('POST /api/crm/referrals/[id]/convert', () => {
     expect(body.code).toBe('INVALID_TRANSITION');
     expect(db.writes).toEqual([]);
   });
-  it('crea cliente lead + oportunidad lead (source/deal_type referral) y enlaza el referido como converted', async () => {
+  it('crea el cliente lead (lead_source/deal_type referral, sin oportunidad: ola 1, D2) y enlaza el referido como converted', async () => {
     const { status, body } = await json(await convertPost(req(`/api/crm/referrals/${U(21)}/convert`, 'POST', {}), params(U(21))));
     expect(status).toBe(201);
     const customerInsert = db.writes.find((w) => w.table === 'customers' && w.op === 'insert')!.payload as Record<string, unknown>;
     expect(customerInsert).toMatchObject({ organization_id: ORG, lifecycle_stage: 'lead', first_name: 'Dani', last_name: 'Calificado', phone: '3001234567' });
     expect(customerInsert.full_name).toBeUndefined();
-    const oppInsert = db.writes.find((w) => w.table === 'opportunities' && w.op === 'insert')!.payload as Record<string, unknown>;
-    expect(oppInsert).toMatchObject({ organization_id: ORG, record_type: 'lead', status: 'open', source: 'referral', deal_type: 'referral', pipeline_id: U(40), stage_id: U(41), created_by: 'u-1' });
+    const ficha = db.writes.find((w) => w.table === 'customers' && w.op === 'update')!.payload as Record<string, unknown>;
+    expect(ficha).toMatchObject({ lead_source: 'referral' });
+    expect((ficha.metadata as { lead: Record<string, unknown> }).lead).toMatchObject({ deal_type: 'referral', titulo: 'Referido: Dani Calificado' });
+    expect(db.writes.filter((w) => w.table === 'opportunities')).toHaveLength(0);
     const referral = (body.data as Record<string, unknown>).referral as Record<string, unknown>;
     expect(referral.status).toBe('converted');
-    expect(referral.opportunity_id).toBe(oppInsert.id ?? (body.data as Record<string, unknown> & { lead: Record<string, unknown> }).lead.id);
-    expect(referral.referred_customer_id).toBeTruthy();
+    // La oportunidad la enlaza `crm_create_opportunity` al calificar el lead.
+    expect(referral.opportunity_id ?? null).toBeNull();
+    expect(referral.referred_customer_id).toBe(customerInsert.id ?? (body.data as Record<string, unknown> & { lead: Record<string, unknown> }).lead.id);
     const link = db.writes.find((w) => w.table === 'referrals' && w.op === 'update')!;
     expect(link.filters).toEqual(expect.arrayContaining([{ kind: 'eq', key: 'organization_id', value: ORG }, { kind: 'eq', key: 'status', value: 'qualified' }]));
   });
@@ -231,12 +234,12 @@ describe('POST /api/crm/referrals/[id]/convert', () => {
     expect(bad.status).toBe(400);
     expect(db.writes).toEqual([]);
   });
-  it('si el enlace del referido pierde la carrera, deshace la oportunidad y el cliente creados -> 409', async () => {
-    db.updateAffectsNone = true;
+  it('si el enlace del referido pierde la carrera, deshace el cliente creado -> 409 (ola 1: no hay oportunidad)', async () => {
+    db.updateAffectsNone = ['referrals'];
     const { status, body } = await json(await convertPost(req(`/api/crm/referrals/${U(21)}/convert`, 'POST', {}), params(U(21))));
     expect(status).toBe(409);
     expect(body.code).toBe('CONCURRENT_CHANGE');
-    expect(db.writes.filter((w) => w.op === 'delete').map((w) => w.table).sort()).toEqual(['customers', 'opportunities']);
+    expect(db.writes.filter((w) => w.op === 'delete').map((w) => w.table).sort()).toEqual(['customers']);
   });
   it('referido ajeno -> 404; organization_id ajeno -> 403', async () => {
     expect((await convertPost(req(`/api/crm/referrals/${U(93)}/convert`, 'POST', {}), params(U(93)))).status).toBe(404);

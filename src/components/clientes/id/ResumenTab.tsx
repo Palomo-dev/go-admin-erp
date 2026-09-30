@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
@@ -31,6 +31,11 @@ interface EstadisticaCard {
 interface ResumenTabProps {
   clienteId: string;
   organizationId: number;
+  /**
+   * CRM ola 3A (Figma 772:20971): vacío corregido cuando el cliente no tiene
+   * historial (Nota, Registrar llamada, Registrar venta). Sin él, el texto de siempre.
+   */
+  vacio?: ReactNode;
 }
 
 /** Fila de reserva que usa el resumen (checkin es columna date). */
@@ -48,7 +53,7 @@ interface FolioResumen {
 
 const DIA_MES: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
 
-export default function ResumenTab({ clienteId, organizationId }: ResumenTabProps) {
+export default function ResumenTab({ clienteId, organizationId, vacio }: ResumenTabProps) {
   const t = useTranslations('clientes.ficha');
   // Ventas, folios y cartera no traen moneda propia: la base de la organización.
   const { formatear } = useMonedaOrganizacion();
@@ -334,6 +339,8 @@ export default function ResumenTab({ clienteId, organizationId }: ResumenTabProp
       </div>
     );
   }
+
+  if (vacio && stats.historial.length === 0) return <>{vacio}</>;
 
   return (
     <div className="space-y-6">

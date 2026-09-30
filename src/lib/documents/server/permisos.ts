@@ -21,6 +21,7 @@ export const PERMISOS_POR_TIPO: Record<TipoDocumento, readonly string[] | 'caja'
   'documento-soporte': ['finance.view'],
   'estado-cuenta': ['finance.view'],
   'estado-cuenta-proveedor': ['finance.view'],
+  'certificado-retenciones': ['finance.view'],
   'recibo-caja': ['finance.view', 'pos.view'],
   'comprobante-egreso': ['finance.view'],
   'cierre-caja': 'caja',

@@ -33,6 +33,7 @@ import { supabase } from '@/lib/supabase/config';
 import { describeError, logError } from '@/lib/utils/errorMessage';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { verticalsService } from '@/lib/services/crm/verticalsService';
+import { totalLineas } from '@/components/crm/oportunidad/lineasLogica';
 
 interface OpportunityFormProps {
   opportunity?: Opportunity;
@@ -483,12 +484,8 @@ export function OpportunityForm({ opportunity, initialPipelineId, initialStageId
     setCustomLines(customLines.filter((_, i) => i !== index));
   };
 
-  const calculateTotal = () => {
-    const productsTotal = productLines.reduce((sum, line) => sum + line.quantity * line.unit_price, 0);
-    const spacesTotal = spaceLines.reduce((sum, line) => sum + line.nights * line.unit_price, 0);
-    const customTotal = customLines.reduce((sum, line) => sum + line.quantity * line.unit_price, 0);
-    return productsTotal + spacesTotal + customTotal;
-  };
+  // Cálculo único de líneas (ola 3B): el mismo que el formulario en página.
+  const calculateTotal = () => totalLineas({ products: productLines, spaces: spaceLines, custom: customLines });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

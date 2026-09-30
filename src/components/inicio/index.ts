@@ -1,30 +1,7 @@
-export { inicioService } from './inicioService';
-export type {
-  DashboardKPIData,
-  ActividadReciente,
-  OnboardingStep,
-  DashboardData,
-  PeriodoDashboard,
-  FechasCustomDashboard,
-  HorasDashboard,
-  PuntoTendencia,
-  AlertaDashboard,
-} from './inicioService';
-
-export { DashboardKPIs } from './DashboardKPIs';
-export type { KpiConfigItem } from './DashboardKPIs';
-export { KpiDetailDialog } from './KpiDetailDialog';
-export { useDashboardRealtime } from './useDashboardRealtime';
 export { LiveVisitorsBadge } from './LiveVisitorsBadge';
 export { useLiveVisitors } from './useLiveVisitors';
-export { DashboardAtajos } from './DashboardAtajos';
-export { DashboardActividad } from './DashboardActividad';
-export { DashboardTendencia } from './DashboardTendencia';
-export { DashboardAlertas } from './DashboardAlertas';
 export { LazySection } from './LazySection';
-export { PeriodoSelector } from './PeriodoSelector';
 export { HorasPresets } from './HorasPresets';
-export { OnboardingBanner } from './OnboardingBanner';
 export { default as DashboardModulos } from './DashboardModulos';
 export { EmployeeDashboard } from './EmployeeDashboard';
 export { ModoCompactoContext } from './DashboardModulos';

@@ -130,7 +130,12 @@ async function replayOpen(client: CashSyncClient, record: CashOpenRecord): Promi
         organization_id: org,
         branch_id: record.branch_id,
         opened_by: record.payload.opened_by,
+        // Hora del equipo + su desfase medido: el trigger de cash_sessions decide la hora oficial.
         opened_at: record.payload.opened_at,
+        // Columna integer: un desfase de semanas se acota (ya es «reloj_desfasado»).
+        device_clock_offset_ms: typeof record.payload.device_clock_offset_ms === 'number' && Number.isFinite(record.payload.device_clock_offset_ms)
+          ? Math.max(-2_000_000_000, Math.min(2_000_000_000, Math.round(record.payload.device_clock_offset_ms)))
+          : null,
         initial_amount: record.payload.initial_amount,
         notes: record.payload.notes ?? 'Apertura de caja',
         status: 'open',

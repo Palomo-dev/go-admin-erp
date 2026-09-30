@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/utils/Utils';
 import type { TimelineEntityType, TimelineEntry, TimelineQuery } from '@/lib/services/crm/timelineService';
-import { QuickActionsBar } from '@/components/crm/shared/QuickActionsBar';
+import { AccionesRapidasCrm } from '@/components/crm/acciones/AccionesRapidasCrm';
 import { useTimeline } from './hooks/useTimeline';
 import { TimelineFilters } from './TimelineFilters';
 import { TimelineEntryCard, type EntryAction, type EntryActionContext } from './TimelineEntryCard';
@@ -103,7 +103,7 @@ export function OpportunityTimeline({
       {(showComposer || showFilters) && (
         <div className="flex flex-col gap-2">
           {showComposer && (
-            <QuickActionsBar variant="drawer" opportunityId={entityType === 'opportunity' ? entityId : emptyCtx.opportunityId} customerId={entityType === 'customer' ? entityId : emptyCtx.customerId} customer={emptyCtx.customer} onActionCompleted={handleActionCompleted} />
+            <AccionesRapidasCrm variante="drawer" oportunidadId={entityType === 'opportunity' ? entityId : emptyCtx.opportunityId} clienteId={entityType === 'customer' ? entityId : emptyCtx.customerId} cliente={emptyCtx.customer} onAccionCompletada={handleActionCompleted} />
           )}
           {showFilters && (
             <div className="flex items-start gap-2">
@@ -140,7 +140,7 @@ export function OpportunityTimeline({
             <Inbox className="h-9 w-9 text-gray-300 dark:text-gray-600" />
             <p className="text-sm text-gray-500 dark:text-gray-400">Aún no hay interacciones. Empieza con una llamada, un email o una nota.</p>
             {!showComposer && (
-              <QuickActionsBar variant="drawer" opportunityId={entityType === 'opportunity' ? entityId : emptyCtx.opportunityId} customerId={entityType === 'customer' ? entityId : emptyCtx.customerId} customer={emptyCtx.customer} onActionCompleted={handleActionCompleted} className="justify-center" />
+              <AccionesRapidasCrm variante="drawer" oportunidadId={entityType === 'opportunity' ? entityId : emptyCtx.opportunityId} clienteId={entityType === 'customer' ? entityId : emptyCtx.customerId} cliente={emptyCtx.customer} onAccionCompletada={handleActionCompleted} className="justify-center" />
             )}
           </div>
         ) : (

@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase/config';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatMoneda } from '@/lib/utils/moneda';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp } from 'lucide-react';
+import { Plus, TrendingUp } from 'lucide-react';
 import { DetailSkeleton } from '@/components/common/PageSkeletons';
 import { mensajeError, useFechasFicha } from './useFechasFicha';
 
@@ -33,10 +33,18 @@ interface Oportunidad {
 interface OportunidadesTabProps {
   clienteId: string;
   organizationId: number;
+  /**
+   * CRM ola 3A (Figma 772:19838): «Nueva oportunidad» en la pestaña y en su
+   * vacío → `OpportunityForm Layout=sheet Origen=cliente`. Sin permiso, no se pasa.
+   */
+  onNuevaOportunidad?: () => void;
+  /** Cambia tras crear una oportunidad: se vuelve a leer. */
+  recarga?: number;
 }
 
-export default function OportunidadesTab({ clienteId, organizationId }: OportunidadesTabProps) {
+export default function OportunidadesTab({ clienteId, organizationId, onNuevaOportunidad, recarga }: OportunidadesTabProps) {
   const t = useTranslations('clientes.ficha');
+  const tc = useTranslations('crm.fichaCliente.oportunidades');
   const { paraDocumento } = useMonedaOrganizacion();
   const { plana } = useFechasFicha();
   const [loading, setLoading] = useState(true);
@@ -72,7 +80,7 @@ export default function OportunidadesTab({ clienteId, organizationId }: Oportuni
     };
 
     fetchOportunidades();
-  }, [clienteId, organizationId]);
+  }, [clienteId, organizationId, recarga]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -109,17 +117,24 @@ export default function OportunidadesTab({ clienteId, organizationId }: Oportuni
         <p className="mt-2 text-gray-500 dark:text-gray-400">
           {t('oportunidades.vacioDescripcion')}
         </p>
+        {onNuevaOportunidad && (
+          <button type="button" onClick={onNuevaOportunidad} className="mt-4 inline-flex h-10 items-center gap-2 rounded-lg bg-brand-action px-4 text-sm font-medium text-fg-on-brand hover:bg-brand-action-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
+            <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+            {tc('nueva')}
+          </button>
+        )}
       </div>
     );
   }
 
   const ganadas = oportunidades.filter(o => o.status === 'won').length;
   const abiertas = oportunidades.filter(o => o.status === 'open').length;
+  const perdidas = oportunidades.filter(o => o.status === 'lost').length;
 
   return (
     <div className="space-y-4">
       {/* Resumen */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
           <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{t('oportunidades.total')}</p>
           <p className="text-xl font-bold text-gray-900 dark:text-white">{oportunidades.length}</p>
@@ -132,13 +147,25 @@ export default function OportunidadesTab({ clienteId, organizationId }: Oportuni
           <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{t('oportunidades.ganadas')}</p>
           <p className="text-xl font-bold text-green-600 dark:text-green-400">{ganadas}</p>
         </div>
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+          <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{tc('perdidas')}</p>
+          <p className="text-xl font-bold text-red-600 dark:text-red-400">{perdidas}</p>
+        </div>
       </div>
 
       {/* Lista de oportunidades */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-          {t('oportunidades.titulo', { n: oportunidades.length })}
-        </h3>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+            {t('oportunidades.titulo', { n: oportunidades.length })}
+          </h3>
+          {onNuevaOportunidad && (
+            <button type="button" onClick={onNuevaOportunidad} className="inline-flex h-9 items-center gap-2 rounded-lg bg-brand-action px-3 text-sm font-medium text-fg-on-brand hover:bg-brand-action-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
+              <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {tc('nueva')}
+            </button>
+          )}
+        </div>
         <div className="space-y-3">
           {oportunidades.map((opp) => (
             <Link

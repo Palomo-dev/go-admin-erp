@@ -22,6 +22,8 @@ const session: { roleId: number; isSuperAdmin: boolean; roleName: string; supaba
 jest.mock('@/lib/utils/orgContext', () => ({
   OrgContextError: RealOrgContextError,
   getServerOrgContext: jest.fn(async () => ({ organizationId: ORG, userId: 'u-1', roleId: session.roleId, roleName: session.roleName, isSuperAdmin: session.isSuperAdmin, supabase: session.supabase ?? fakeSupabase(db) })),
+  // POST /api/crm/leads exige crm.leads.create en el servidor; aquí se concede.
+  hasOrgAdminOrPermission: jest.fn(async () => true),
 }));
 
 import { POST as leadsPost } from '../../leads/route';
@@ -71,31 +73,33 @@ describe('POST /api/crm/leads tras la extracción a leadCreateService (tester r1
     db.errors['customers:insert'] = { code: '42501', message: 'permission denied' };
     expect((await json(await leadsPost(req('/api/crm/leads', 'POST', { name: 'L', new_customer: { full_name: 'X Y', phone: '300' } })))).status).toBe(500);
   });
-  it('T1.4: el cliente y el lead nacen en la organización de la sesión: record_type lead, status open, source manual_erp, sin deal_type', async () => {
+  it('T1.4 (ola 1, D2): el lead ES la ficha en la organización de la sesión: lifecycle lead, lead_source manual, sin oportunidad', async () => {
     const { status, body } = await json(await leadsPost(req('/api/crm/leads', 'POST', { organization_id: ORG, name: 'Lead', new_customer: { full_name: 'Nuevo Cliente', phone: '3001112233' } })));
     expect(status).toBe(201);
     const customer = db.writes.find((w) => w.table === 'customers' && w.op === 'insert')!.payload as Record<string, unknown>;
-    const opp = db.writes.find((w) => w.table === 'opportunities' && w.op === 'insert')!.payload as Record<string, unknown>;
-    expect(customer.organization_id).toBe(ORG);
-    expect(opp).toMatchObject({ organization_id: ORG, record_type: 'lead', status: 'open', source: 'manual_erp' });
-    expect(opp).not.toHaveProperty('deal_type');
-    expect(body.created_customer_id).toBe(customer.id ?? (body.data as Record<string, unknown>).customer_id);
+    expect(customer).toMatchObject({ organization_id: ORG, lifecycle_stage: 'lead' });
+    const ficha = db.writes.find((w) => w.table === 'customers' && w.op === 'update')!.payload as Record<string, unknown>;
+    expect(ficha).toMatchObject({ lead_source: 'manual' });
+    expect((ficha.metadata as { lead: Record<string, unknown> }).lead).not.toHaveProperty('deal_type');
+    expect(db.writes.filter((w) => w.table === 'opportunities')).toHaveLength(0);
+    expect(body.created_customer_id).toBe((body.data as Record<string, unknown>).id);
   });
-  it('T1.5: contrato de validación: sin nombre 400; sin ficha 400; sin correo ni teléfono 400; pipeline ajeno 400 «no pertenece a la organización»; nada escrito', async () => {
+  it('T1.5: contrato de validación: sin ficha 400; sin correo ni teléfono 400; nada escrito. pipeline_id ya no aplica (D2) y se ignora', async () => {
     expect((await leadsPost(req('/api/crm/leads', 'POST', {}))).status).toBe(400);
     expect((await leadsPost(req('/api/crm/leads', 'POST', { name: 'L' }))).status).toBe(400);
     expect((await leadsPost(req('/api/crm/leads', 'POST', { name: 'L', new_customer: { full_name: 'Sin Contacto' } }))).status).toBe(400);
-    const foreignPipeline = await json(await leadsPost(req('/api/crm/leads', 'POST', { name: 'L', pipeline_id: U(95), new_customer: { full_name: 'A B', phone: '1' } })));
-    expect(foreignPipeline.status).toBe(400);
-    expect(String(foreignPipeline.body.error)).toContain('no pertenece a la organización');
     expect(db.writes).toHaveLength(0);
+    const conPipeline = await json(await leadsPost(req('/api/crm/leads', 'POST', { name: 'L', pipeline_id: U(95), new_customer: { full_name: 'A B', phone: '1' } })));
+    expect(conPipeline.status).toBe(201);
+    expect(db.writes.filter((w) => w.table === 'opportunities')).toHaveLength(0);
   });
-  it('T1.6: deal_type (aditivo) se valida contra el CHECK; record_type/status del body no se leen', async () => {
+  it('T1.6: deal_type se valida contra el CHECK y queda en metadata.lead; record_type/status del body no se leen', async () => {
     expect((await leadsPost(req('/api/crm/leads', 'POST', { name: 'L', deal_type: 'bogus', new_customer: { full_name: 'A B', phone: '1' } }))).status).toBe(400);
     const ok = await json(await leadsPost(req('/api/crm/leads', 'POST', { name: 'L', deal_type: 'referral', record_type: 'deal', status: 'won', new_customer: { full_name: 'A B', phone: '1' } })));
     expect(ok.status).toBe(201);
-    const opp = db.writes.find((w) => w.table === 'opportunities')!.payload as Record<string, unknown>;
-    expect(opp).toMatchObject({ deal_type: 'referral', record_type: 'lead', status: 'open' });
+    const ficha = db.writes.find((w) => w.table === 'customers' && w.op === 'update')!.payload as Record<string, unknown>;
+    expect((ficha.metadata as { lead: Record<string, unknown> }).lead).toMatchObject({ deal_type: 'referral' });
+    expect(db.writes.filter((w) => w.table === 'opportunities')).toHaveLength(0);
   });
 });
 
@@ -155,11 +159,11 @@ describe('descartes del body y producto (tester r1 §3/§4)', () => {
     expect(status).toBe(200);
     expect((body.data as Array<{ id: string }>).map((t) => t.id).sort()).toEqual([U(50), U(53)].sort());
   });
-  it('T4.4: convert: si el enlace falla por error de BD, deshace oportunidad y ficha y responde 502', async () => {
+  it('T4.4: convert: si el enlace falla por error de BD, deshace la ficha creada y responde 502 (ola 1: no hay oportunidad que deshacer)', async () => {
     db.errors['referrals:update'] = { code: 'XX000', message: 'boom' };
     expect((await convertPost(req(`/api/crm/referrals/${U(21)}/convert`, 'POST', {}), params(U(21)))).status).toBe(502);
-    expect(db.writes.filter((w) => w.op === 'delete').map((w) => w.table).sort()).toEqual(['customers', 'opportunities']);
-    expect(db.tables.opportunities.some((o) => o.name === 'Referido: Dani Calificado')).toBe(false);
+    expect(db.writes.filter((w) => w.op === 'delete').map((w) => w.table).sort()).toEqual(['customers']);
+    expect(db.writes.filter((w) => w.table === 'opportunities')).toHaveLength(0);
   });
 });
 

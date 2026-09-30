@@ -1,30 +1,44 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { LEAD_SOURCES, type LeadSource } from '@/lib/crm/enums';
 import { autoAssignLead, type LeadAssignmentOutcome } from './leadAutoAssign';
 import { clean, resolveLeadCustomer, rollbackCustomer, type LeadCreateFailure, type LeadCustomerExtras, type NewCustomerInput } from './leadCustomer';
+import { guardarLeadScore } from './leadScoreService';
 
 // Reexportados para los llamadores previos a la extracción (F12, referidos).
 export { isUniqueViolation, rollbackCustomer, splitPersonName } from './leadCustomer';
 export type { LeadCustomerExtras, NewCustomerInput } from './leadCustomer';
 
 /**
- * Alta de un lead con ficha de cliente (`customers` + `opportunities` con
- * `record_type='lead'`). Vivía dentro de `POST /api/crm/leads`; F12 lo
- * extrajo aquí SIN cambiar el contrato para que la conversión de un referido
- * (`POST /api/crm/referrals/[id]/convert`) reutilice exactamente el mismo alta
- * (regla dura 7: nada de lógica duplicada). La ruta de leads mapea el
- * resultado a `NextResponse`; este módulo no conoce `next/server`.
+ * Alta de un lead (CRM ola 1, decisión D2 del dueño, 2026-09-29).
  *
- * Añadido en F12 (aditivo): `deal_type` opcional, validado contra el CHECK
- * `opportunities_deal_type_check` (`new|renewal|expansion|referral|partner`).
+ * **Un lead ES un cliente con `lifecycle_stage='lead'`.** Esta función crea o
+ * actualiza la FICHA (`customers`) con los datos del lead —origen
+ * (`lead_source`), responsable (`owner_id`), score e ICP (`lead_score`,
+ * `icp_band`, D3) y `metadata.lead` (valor estimado, tipo de negocio, próximo
+ * contacto…)— y **no crea ninguna oportunidad**. Antes creaba una
+ * `opportunities.record_type='lead'`; las 42 que existen se siguen mostrando en
+ * Oportunidades con la etiqueta «Lead», pero no nacen más (guardarraíl en
+ * `src/__tests__/guardrails.test.ts`). La oportunidad la crea «Calificar»
+ * (`POST /api/crm/leads/[id]/qualify` → `crm_create_opportunity`).
  *
- * Añadido en F1 (cierre, aditivo): si el cuerpo NO trae `salesperson_id`, el
- * vendedor se resuelve con `assignmentService` según la configuración de la
- * organización (`leadAutoAssign`). El resultado viaja en `assignment`; la
- * asignación nunca hace fallar el alta (sin equipo → lead sin asignar).
+ * La usan `POST /api/crm/leads`, la conversión de referidos y el importador de
+ * leads (regla dura 7: una sola alta).
+ *
+ * - Ficha nueva: `lifecycle_stage='lead'` y al menos correo o teléfono
+ *   (`resolveLeadCustomer`). Si algo falla después de crearla, se revierte.
+ * - Ficha existente: nunca se degrada su ciclo de vida (un `customer` sigue
+ *   siendo `customer`); se completa lo que falte (origen, responsable), se
+ *   fusiona `metadata.lead` y se reactiva si estaba descartada. No se tocan
+ *   etiquetas, `do_not_call` ni el resto de `metadata`.
+ * - Responsable: el `salesperson_id` explícito (miembro de la organización) o
+ *   la asignación automática (F1, `leadAutoAssign`), que nunca hace fallar el
+ *   alta. Un responsable ya puesto en la ficha no se pisa.
+ * - `pipeline_id` y `stage_id` ya no aplican (el lead no está en un embudo): se
+ *   ignoran.
  */
 
-/** Origen por defecto de un lead creado a mano desde el ERP. */
-export const MANUAL_LEAD_SOURCE = 'manual_erp';
+/** Origen por defecto de un lead creado a mano desde el ERP (`customers.lead_source`). */
+export const MANUAL_LEAD_SOURCE: LeadSource = 'manual';
 
 /**
  * Permiso de crear leads (`permissions.code`). Lo exigen POST /api/crm/leads y la
@@ -36,13 +50,16 @@ export const LEADS_CREATE_PERMISSION = 'crm.leads.create';
 export const OPPORTUNITY_DEAL_TYPES = ['new', 'renewal', 'expansion', 'referral', 'partner'] as const;
 export type OpportunityDealType = (typeof OPPORTUNITY_DEAL_TYPES)[number];
 
-
 export interface CreateLeadBody {
+  /** Título del lead («Distribuidora · Cali»); queda en `metadata.lead.titulo`. */
   name?: string;
+  /** @deprecated D2: el lead ya no vive en un pipeline; se ignora. */
   pipeline_id?: string;
+  /** @deprecated D2: se ignora. */
   stage_id?: string;
   customer_id?: string;
   new_customer?: NewCustomerInput;
+  /** Valor estimado del lead → `metadata.lead.valor_estimado`. */
   amount?: number;
   currency?: string;
   expected_close_date?: string;
@@ -54,30 +71,18 @@ export interface CreateLeadBody {
   branch_id?: number;
 }
 
-/**
- * Columnas extra del lead que solo pone el servidor (importador de leads,
- * `leadsImportService`). No salen del cuerpo de `POST /api/crm/leads`, cuyo
- * contrato no cambia.
- */
-export interface LeadOpportunityExtras {
+/** Datos del lead que solo pone el servidor (importador de leads). */
+export interface LeadExtras {
+  /** Se fusiona dentro de `customers.metadata.lead`. */
   metadata?: Record<string, unknown> | null;
-  vertical_id?: string | null;
+  /** Banda de respaldo (A/B/C) si el ICP de la organización no da una. */
   icp_band?: 'A' | 'B' | 'C' | null;
 }
 
-/** Extras de servidor para la ficha nueva y el lead (ver `LeadCustomerExtras`). */
+/** Extras de servidor para la ficha nueva y el lead. */
 export interface LeadCreateExtras {
   customer?: LeadCustomerExtras;
-  opportunity?: LeadOpportunityExtras;
-}
-
-function opportunityExtrasPayload(extras: LeadOpportunityExtras | undefined): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  if (!extras) return out;
-  if (extras.metadata) out.metadata = extras.metadata;
-  if (extras.vertical_id) out.vertical_id = extras.vertical_id;
-  if (extras.icp_band && ['A', 'B', 'C'].includes(extras.icp_band)) out.icp_band = extras.icp_band;
-  return out;
+  lead?: LeadExtras;
 }
 
 export interface LeadCreateContext {
@@ -89,29 +94,59 @@ export interface LeadCreateContext {
 export type LeadCreateResult =
   | {
       status: 201;
+      /** La ficha del lead (cliente), no una oportunidad. */
       data: Record<string, unknown>;
       created_customer_id: string | null;
       customer_id: string;
-      /** Cómo se resolvió el vendedor (F1): explícito, automático, apagado o sin asignar. */
+      /** Cómo se resolvió el responsable (F1): explícito, automático, apagado o sin asignar. */
       assignment: LeadAssignmentOutcome;
     }
   | LeadCreateFailure;
 
-
-/** Columnas que devuelve el alta (literal: el tipado de Supabase las analiza). `salesperson_id` desde F1. */
+/** Columnas que devuelve el alta. */
 const LEAD_COLUMNS =
-  'id, name, customer_id, pipeline_id, stage_id, amount, currency, status, record_type, source, temperature, next_contact_at, salesperson_id, created_at';
+  'id, full_name, email, phone, lifecycle_stage, lead_source, owner_id, lead_score, icp_band, last_contact_at, lead_discarded_at, metadata, created_at, updated_at';
 
 const bad = (error: string): LeadCreateResult => ({ status: 400, error });
 
+const ALIAS_ORIGEN: Record<string, LeadSource> = {
+  manual_erp: 'manual',
+  website: 'web_form',
+  web: 'web_form',
+  formulario_web: 'web_form',
+  referido: 'referral',
+  importacion: 'import',
+  whatsapp_qr: 'whatsapp',
+  llamada_entrante: 'inbound_call',
+  evento: 'event',
+  correo: 'email',
+  otro: 'other',
+};
+
+/** Texto libre de origen → valor del CHECK `customers_lead_source_check` ('other' si no casa). */
+export function normalizarOrigenLead(source: string | null | undefined): LeadSource {
+  const s = (source ?? '').trim().toLowerCase();
+  if (!s) return MANUAL_LEAD_SOURCE;
+  if ((LEAD_SOURCES as readonly string[]).includes(s)) return s as LeadSource;
+  return ALIAS_ORIGEN[s] ?? 'other';
+}
+
+function sinNulos(o: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== null && v !== undefined && v !== ''));
+}
+
+interface FichaLead {
+  id: string;
+  lifecycle_stage: string | null;
+  lead_source: string | null;
+  owner_id: string | null;
+  lead_discarded_at: string | null;
+  metadata: Record<string, unknown> | null;
+}
+
 /**
- * Crea el lead. Un lead SIEMPRE nace con ficha de cliente: `opportunities` no
- * guarda correo ni teléfono, así que sin `customers` no se le puede llamar,
- * escribir ni mandar WhatsApp. Por eso exige `customer_id` (cliente existente)
- * o `new_customer` (ficha nueva, con `lifecycle_stage='lead'`).
- *
- * `record_type` y `status` no se leen del cuerpo: siempre 'lead' y 'open'.
- * Errores de BD inesperados se lanzan (la ruta los convierte en 500).
+ * Crea (o marca como lead) la ficha del cliente. Errores de BD inesperados se
+ * lanzan (la ruta los convierte en 500); validación → 400; ficha repetida → 409.
  */
 export async function createLeadWithCustomer(
   ctx: LeadCreateContext,
@@ -121,58 +156,18 @@ export async function createLeadWithCustomer(
 ): Promise<LeadCreateResult> {
   const { supabase, organizationId } = ctx;
 
-  const name = clean(body.name);
-  if (!name) return bad('El nombre del lead es obligatorio');
-
   const dealType = clean(body.deal_type);
   if (dealType && !(OPPORTUNITY_DEAL_TYPES as readonly string[]).includes(dealType)) {
     return bad(`deal_type inválido. Valores: ${OPPORTUNITY_DEAL_TYPES.join(', ')}`);
   }
+  const temperature = clean(body.temperature);
+  if (temperature && !['cold', 'warm', 'hot'].includes(temperature)) return bad('temperature inválida. Valores: cold, warm, hot');
+  const amount = body.amount === undefined || body.amount === null ? null : Number(body.amount);
+  if (amount !== null && (!Number.isFinite(amount) || amount < 0)) return bad('amount inválido');
+  const currency = clean(body.currency)?.toUpperCase() ?? null;
+  if (currency && !/^[A-Z]{3}$/.test(currency)) return bad('currency inválida');
 
-  // ── 1. Pipeline y etapa ──────────────────────────────────────────────────
-  let pipelineId = clean(body.pipeline_id);
-  if (pipelineId) {
-    const { data: pipeline, error } = await supabase
-      .from('pipelines')
-      .select('id')
-      .eq('id', pipelineId)
-      .eq('organization_id', organizationId)
-      .maybeSingle();
-    if (error) throw error;
-    if (!pipeline) return bad('El pipeline no pertenece a la organización');
-  } else {
-    const { data: pipeline, error } = await supabase
-      .from('pipelines')
-      .select('id')
-      .eq('organization_id', organizationId)
-      .order('is_default', { ascending: false })
-      .order('created_at', { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    if (error) throw error;
-    if (!pipeline) return bad('La organización no tiene ningún pipeline configurado');
-    pipelineId = pipeline.id as string;
-  }
-
-  let stageId = clean(body.stage_id);
-  if (stageId) {
-    const { data: stage, error } = await supabase.from('stages').select('id').eq('id', stageId).eq('pipeline_id', pipelineId).maybeSingle();
-    if (error) throw error;
-    if (!stage) return bad('La etapa no pertenece al pipeline indicado');
-  } else {
-    const { data: stage, error } = await supabase
-      .from('stages')
-      .select('id')
-      .eq('pipeline_id', pipelineId)
-      .order('position', { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    if (error) throw error;
-    if (!stage) return bad('El pipeline no tiene etapas configuradas');
-    stageId = stage.id as string;
-  }
-
-  // ── 2. Sucursal (opcional, siempre validada contra la organización) ──────
+  // ── 1. Sucursal (opcional, siempre validada contra la organización) ──────
   let branchId: number | null = null;
   if (body.branch_id != null) {
     const { data: branch, error } = await supabase
@@ -186,84 +181,94 @@ export async function createLeadWithCustomer(
     branchId = Number(branch.id);
   }
 
-  // ── 3. Cliente: existente o nuevo. Sin ficha no hay lead contactable ─────
-  const ficha = await resolveLeadCustomer(ctx, body, branchId, extras?.customer);
-  if (!ficha.ok) return ficha.result;
-  const { customerId, createdCustomerId } = ficha;
-
-  const amount = Number.isFinite(Number(body.amount)) ? Number(body.amount) : 0;
-  // Sin moneda elegida va NULL: el trigger `trg_00_moneda_base_por_defecto`
-  // pone la moneda base de la organización (nunca 'COP' cableado).
-  const currency = clean(body.currency);
-
-  // ── 4. Vendedor: explícito (validado contra la organización) o automático ─
-  // El explícito manda: la asignación automática solo entra cuando el cuerpo
-  // no trae vendedor. Un vendedor ajeno a la organización es 400, nunca se
-  // «corrige» en silencio con la asignación automática.
-  const explicitSalespersonId = clean(body.salesperson_id);
-  let assignment: LeadAssignmentOutcome;
-  if (explicitSalespersonId) {
+  // ── 2. Responsable explícito: validado ANTES de crear nada ───────────────
+  const explicitOwner = clean(body.salesperson_id);
+  if (explicitOwner) {
     const { data: member, error } = await supabase
       .from('organization_members')
       .select('user_id')
-      .eq('user_id', explicitSalespersonId)
+      .eq('user_id', explicitOwner)
       .eq('organization_id', organizationId)
       .maybeSingle();
     if (error) throw error;
     if (!member) return bad('El vendedor asignado no es miembro de la organización');
-    assignment = { status: 'explicit', user_id: explicitSalespersonId };
-  } else {
-    // Nunca lanza: sin equipo/miembros o con error, el lead sigue adelante sin asignar.
-    const auto = await autoAssignLead(
-      { organizationId, customerId, opportunityData: { amount, currency, deal_type: dealType } },
-      supabase,
-    );
-    if (auto.status !== 'assigned') {
-      console.info('[leadCreateService] lead sin asignar (org %s, %s): %s', organizationId, auto.status, auto.reason);
+  }
+
+  // ── 3. Ficha: existente o nueva ─────────────────────────────────────────
+  const ficha = await resolveLeadCustomer(ctx, body, branchId, extras?.customer);
+  if (!ficha.ok) return ficha.result;
+  const { customerId, createdCustomerId } = ficha;
+
+  try {
+    const { data: actual, error: readError } = await supabase
+      .from('customers')
+      .select('id, lifecycle_stage, lead_source, owner_id, lead_discarded_at, metadata')
+      .eq('id', customerId)
+      .eq('organization_id', organizationId)
+      .maybeSingle();
+    if (readError) throw readError;
+    if (!actual) throw new Error('La ficha del lead no se pudo leer tras crearla');
+    const f = actual as FichaLead;
+
+    // ── 4. Responsable: el de la ficha, el explícito o el automático ───────
+    let assignment: LeadAssignmentOutcome;
+    if (explicitOwner) {
+      assignment = { status: 'explicit', user_id: explicitOwner };
+    } else if (f.owner_id) {
+      assignment = { status: 'skipped', reason: 'La ficha ya tiene responsable' };
+    } else {
+      // Nunca lanza: sin equipo/miembros o con error, el lead sigue sin asignar.
+      assignment = await autoAssignLead({ organizationId, customerId, opportunityData: { amount: amount ?? 0, currency, deal_type: dealType } }, supabase);
+      if (assignment.status !== 'assigned') {
+        console.info('[leadCreateService] lead sin asignar (org %s, %s): %s', organizationId, assignment.status, assignment.reason);
+      }
     }
-    assignment = auto;
-  }
-  const salespersonId = assignment.status === 'assigned' || assignment.status === 'explicit' ? assignment.user_id : null;
+    const nuevoOwner = assignment.status === 'assigned' || assignment.status === 'explicit' ? assignment.user_id : null;
 
-  // ── 5. Alta del lead ────────────────────────────────────────────────────
+    // ── 5. Datos del lead en la ficha (una sola escritura) ─────────────────
+    const metadata = f.metadata ?? {};
+    const leadPrevio = (metadata.lead && typeof metadata.lead === 'object' ? metadata.lead : {}) as Record<string, unknown>;
+    const leadNuevo = {
+      ...leadPrevio,
+      ...sinNulos({
+        titulo: clean(body.name),
+        valor_estimado: amount !== null ? sinNulos({ monto: amount, moneda: currency }) : null,
+        deal_type: dealType,
+        temperatura: temperature,
+        proximo_contacto: clean(body.next_contact_at),
+        cierre_esperado: clean(body.expected_close_date),
+        origen_texto: clean(body.source),
+        capturado_por: ctx.userId,
+      }),
+      ...(extras?.lead?.metadata ?? {}),
+    };
+    const cambios: Record<string, unknown> = {
+      lead_source: f.lead_source ?? normalizarOrigenLead(body.source),
+      owner_id: f.owner_id ?? nuevoOwner,
+      metadata: { ...metadata, lead: leadNuevo },
+      lead_discarded_at: null,
+      lead_discard_reason: null,
+      lead_discarded_by: null,
+      updated_at: new Date().toISOString(),
+    };
+    const { data: guardado, error: updError } = await supabase
+      .from('customers')
+      .update(cambios)
+      .eq('id', customerId)
+      .eq('organization_id', organizationId)
+      .select(LEAD_COLUMNS)
+      .single();
+    if (updError) throw updError;
 
-  const { data: lead, error: insertError } = await supabase
-    .from('opportunities')
-    .insert({
-      ...opportunityExtrasPayload(extras?.opportunity),
-      organization_id: organizationId,
-      branch_id: branchId,
-      pipeline_id: pipelineId,
-      stage_id: stageId,
-      customer_id: customerId,
-      name,
-      amount,
-      currency,
-      expected_close_date: clean(body.expected_close_date),
-      status: 'open',
-      record_type: 'lead',
-      source: clean(body.source) || MANUAL_LEAD_SOURCE,
-      ...(dealType ? { deal_type: dealType } : {}),
-      next_contact_at: clean(body.next_contact_at),
-      temperature: clean(body.temperature),
-      salesperson_id: salespersonId,
-      created_by: ctx.userId,
-    })
-    .select(LEAD_COLUMNS)
-    .single();
+    // ── 6. Score desde el ICP (D3). Nunca hace fallar el alta ──────────────
+    const score = await guardarLeadScore(ctx, customerId, { amount, currency, deal_type: dealType }, extras?.lead?.icp_band ?? null);
+    const data = { ...(guardado as Record<string, unknown>), ...(score ?? {}) };
 
-  if (insertError) {
-    // Si acabamos de crear la ficha para este lead y el lead no cuajó, no se
-    // deja un cliente huérfano en la base.
+    return { status: 201, data, created_customer_id: createdCustomerId, customer_id: customerId, assignment };
+  } catch (e) {
+    // Si acabamos de crear la ficha para este lead y el resto no cuajó, no se
+    // deja un cliente a medias en la base.
     if (createdCustomerId) await rollbackCustomer(ctx, createdCustomerId);
-    throw insertError;
+    throw e;
   }
-
-  return {
-    status: 201,
-    data: lead as Record<string, unknown>,
-    created_customer_id: createdCustomerId,
-    customer_id: customerId,
-    assignment,
-  };
 }

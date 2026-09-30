@@ -37,8 +37,10 @@ const cuerpo = (extra: Record<string, unknown> = {}) => ({
 });
 const config = (settings: unknown) =>
   db.tables.organization_settings.push({ id: U(500), organization_id: ORG, key: LEAD_ASSIGNMENT_SETTINGS_KEY, settings } as Row);
-const leadInserts = () => db.writes.filter((w) => w.table === 'opportunities' && w.op === 'insert');
-const salespersonDe = (w: { payload: unknown }) => (w.payload as { salesperson_id: unknown }).salesperson_id;
+// CRM ola 1 (D2): el lead ES el cliente; su responsable se escribe en
+// `customers.owner_id` con la actualización que cierra el alta (no hay oportunidad).
+const leadInserts = () => db.writes.filter((w) => w.table === 'customers' && w.op === 'update' && 'owner_id' in (w.payload as object));
+const salespersonDe = (w: { payload: unknown }) => (w.payload as { owner_id: unknown }).owner_id;
 
 beforeEach(() => {
   db = makeDb(seed());
@@ -79,7 +81,7 @@ describe('tenencia · miembro de equipo cuyo user_id no pertenece a la organizac
     colarAjeno();
     const r = await crear();
     expect(r.assignment.status).toBe('unassigned');
-    expect(r.data.salesperson_id).toBeNull();
+    expect(r.data.owner_id).toBeNull();
   });
 
   it('load_balance: el ajeno con 0 oportunidades no gana el empate', async () => {
@@ -136,7 +138,7 @@ describe('concurrencia · round-robin sin puntero persistido', () => {
 
   it('en serie sí rota: A, B, A, B', async () => {
     const ids: string[] = [];
-    for (let i = 0; i < 4; i += 1) ids.push((await crear()).assignment.status === 'assigned' ? (leadInserts().at(-1)!.payload as { salesperson_id: string }).salesperson_id : 'x');
+    for (let i = 0; i < 4; i += 1) ids.push((await crear()).assignment.status === 'assigned' ? (leadInserts().at(-1)!.payload as { owner_id: string }).owner_id : 'x');
     expect(ids).toEqual([VENDEDOR_A, VENDEDOR_B, VENDEDOR_A, VENDEDOR_B]);
   });
 });
@@ -198,6 +200,10 @@ describe('robustez · configuración y estrategias', () => {
       id: U(700), organization_id: ORG, name: 'Medellín', is_active: true,
       criteria: { rules: [{ field_key: 'customers.city', operator: 'eq', value: 'Medellín' }], assigned_user_id: VENDEDOR_B },
     });
+    // Ola 1 (D2): la ficha guarda su responsable y un alta posterior no lo pisa;
+    // para volver a evaluar el territorio se quita el responsable entre altas.
+    const sinResponsable = () => { db.tables.customers.find((c) => c.id === U(1))!.owner_id = null; };
+    sinResponsable();
     const r1 = await crear({ customer_id: U(1), new_customer: undefined });
     expect((r1.assignment as { reason: string }).reason).toMatch(/sin match/);
 
@@ -205,6 +211,7 @@ describe('robustez · configuración y estrategias', () => {
       id: U(701), organization_id: ORG, name: 'Bogotá', is_active: true,
       criteria: { rules: [{ field_key: 'customers.city', operator: 'eq', value: 'Bogotá' }], assigned_user_id: VENDEDOR_B },
     });
+    sinResponsable();
     const r2 = await crear({ customer_id: U(1), new_customer: undefined });
     expect(r2.assignment).toMatchObject({ status: 'assigned', user_id: VENDEDOR_B });
     expect((r2.assignment as { reason: string }).reason).toMatch(/"Bogotá".*asignado directamente/);
@@ -224,7 +231,7 @@ describe('robustez · configuración y estrategias', () => {
     config({ strategy: 'load_balance' });
     const r = await crear();
     expect(r.assignment).toMatchObject({ status: 'assigned', user_id: VENDEDOR_A });
-    expect((r.assignment as { reason: string }).reason).toBe('load_balance: 0 oportunidades abiertas (menor carga del team)');
+    expect((r.assignment as { reason: string }).reason).toBe('load_balance: 0 oportunidades abiertas y leads activos (menor carga del team)');
   });
 
   it('load_balance cuenta SOLO oportunidades abiertas de la organización: cerradas y señuelos de la 121 no pesan', async () => {
@@ -238,7 +245,7 @@ describe('robustez · configuración y estrategias', () => {
     );
     const r = await crear();
     expect(r.assignment).toMatchObject({ status: 'assigned', user_id: VENDEDOR_B });
-    expect((r.assignment as { reason: string }).reason).toBe('load_balance: 0 oportunidades abiertas (menor carga del team)');
+    expect((r.assignment as { reason: string }).reason).toBe('load_balance: 0 oportunidades abiertas y leads activos (menor carga del team)');
   });
 
   it('autoAssignLead nunca lanza: un cliente que revienta en from() produce unassigned con motivo', async () => {
@@ -266,19 +273,20 @@ describe('contrato', () => {
     expect(r.assignment).toEqual({ status: 'explicit', user_id: VENDEDOR_B });
   });
 
-  it('un solo INSERT en opportunities, ninguna UPDATE, y la respuesta trae salesperson_id', async () => {
+  it('una sola escritura del lead en la ficha, ninguna en opportunities (D2), y la respuesta trae owner_id', async () => {
     const r = await crear();
     expect(leadInserts()).toHaveLength(1);
-    expect(db.writes.filter((w) => w.table === 'opportunities' && w.op === 'update')).toHaveLength(0);
-    expect(r.data.salesperson_id).toBe(VENDEDOR_A);
+    expect(db.writes.filter((w) => w.table === 'opportunities')).toHaveLength(0);
+    expect(r.data.owner_id).toBe(VENDEDOR_A);
     expect(r.assignment).toEqual({
       status: 'assigned', user_id: VENDEDOR_A, strategy: 'round_robin', team_id: TEAM,
       reason: 'round_robin: índice 0 de 2 miembros',
     });
   });
 
-  it('si el INSERT del lead falla tras asignar, la ficha nueva se revierte y el error sube', async () => {
-    db.errors['opportunities:insert'] = { message: 'boom' };
+  it('si la escritura del lead falla tras asignar, la ficha nueva se revierte y el error sube', async () => {
+    // Ola 1 (D2): el lead se cierra con un UPDATE de la ficha (no hay INSERT en opportunities).
+    db.errors['customers:update'] = { message: 'boom' };
     await expect(createLeadWithCustomer(ctx(), cuerpo())).rejects.toMatchObject({ message: 'boom' });
     expect(db.writes.filter((w) => w.table === 'customers' && w.op === 'delete')).toHaveLength(1);
   });

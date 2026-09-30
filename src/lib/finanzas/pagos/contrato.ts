@@ -212,6 +212,10 @@ export interface DocumentoAbiertoPago {
   numero: string | null;
   saldo: number;
   total: number;
+  /** Compras: retenciones de la factura; la cuenta por pagar es por total − retenido. */
+  retenido?: number;
+  /** Compras: lo pagado de la cuenta (monto neto − saldo). */
+  pagado?: number;
   moneda: string;
   vencimiento: string | null;
   emision: string | null;

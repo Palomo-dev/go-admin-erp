@@ -31,6 +31,10 @@ import InfoTab from '@/components/clientes/id/InfoTab';
 import OportunidadesTab from '@/components/clientes/id/OportunidadesTab';
 import { CompanyContactsManager } from '@/components/clientes/CompanyContactsManager';
 import { mensajeError, useFechasFicha } from '@/components/clientes/id/useFechasFicha';
+import { useFichaClienteCrm } from '@/components/crm/ficha/useFichaClienteCrm';
+import { ClientHealthCard } from '@/components/crm/health/ClientHealthCard';
+import { CustomerFoliosSection } from '@/components/crm/clientes/CustomerFoliosSection';
+import { DocumentUploader } from '@/components/crm/documents/DocumentUploader';
 
 interface Cliente {
   id: string;
@@ -54,6 +58,7 @@ interface Cliente {
   dv?: number | null;
   lifecycle_stage?: string | null;
   status?: string | null;
+  do_not_call?: boolean | null;
 }
 
 /** Por qué no cargó la ficha: un código que se traduce o el mensaje de Supabase. */
@@ -68,6 +73,7 @@ export default function PerfilCliente() {
   const id = params?.id as string;
   const t = useTranslations('clientes.ficha');
   const tListado = useTranslations('clientes.listado');
+  const tCrm = useTranslations('crm.fichaCliente');
   const { instante } = useFechasFicha();
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,6 +84,18 @@ export default function PerfilCliente() {
   const recargar = useCallback(() => setRecarga((n) => n + 1), []);
   const idsCliente = useMemo(() => (id ? [id] : []), [id]);
   const { cambiarEstado, copiarId } = useOperacionesClientes(cliente?.organization_id ?? null, recargar);
+  // D1 (CRM ola 3A): esta es la ficha única; el bloque CRM vive aquí y /app/crm/clientes/[id] redirige.
+  const crm = useFichaClienteCrm(
+    cliente
+      ? {
+          id: cliente.id,
+          nombre: cliente.full_name || `${cliente.first_name || ''} ${cliente.last_name || ''}`.trim(),
+          email: cliente.email,
+          phone: cliente.phone,
+          do_not_call: cliente.do_not_call ?? null,
+        }
+      : null,
+  );
 
   useEffect(() => {
     let cancelado = false;
@@ -218,7 +236,7 @@ export default function PerfilCliente() {
         }}
       />
 
-      <ClienteHeader cliente={cliente} />
+      <ClienteHeader cliente={cliente} pie={crm.barra} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="col-span-1 min-w-0 lg:col-span-2">
@@ -236,22 +254,30 @@ export default function PerfilCliente() {
             </TabsList>
 
             <TabsContent value="resumen">
-              <ResumenTab clienteId={cliente.id} organizationId={cliente.organization_id} />
+              <ResumenTab clienteId={cliente.id} organizationId={cliente.organization_id} vacio={crm.vacioResumen} />
             </TabsContent>
             <TabsContent value="info">
               <InfoTab clienteId={cliente.id} organizationId={cliente.organization_id} />
             </TabsContent>
             <TabsContent value="oportunidades">
-              <OportunidadesTab clienteId={cliente.id} organizationId={cliente.organization_id} />
+              <OportunidadesTab clienteId={cliente.id} organizationId={cliente.organization_id} onNuevaOportunidad={crm.onNuevaOportunidad} recarga={crm.recarga} />
             </TabsContent>
             <TabsContent value="timeline">
-              <TimelineTab clienteId={cliente.id} organizationId={cliente.organization_id} />
+              <TimelineTab key={crm.recarga} clienteId={cliente.id} organizationId={cliente.organization_id} />
             </TabsContent>
             <TabsContent value="cuentas">
               <CuentasTab clienteId={cliente.id} organizationId={cliente.organization_id} />
+              {/* Antes en /app/crm/clientes/[id] (D1): folios del PMS. */}
+              <div className="mt-6">
+                <CustomerFoliosSection customerId={cliente.id} />
+              </div>
             </TabsContent>
             <TabsContent value="notas">
               <NotasArchivosTab clienteId={cliente.id} organizationId={cliente.organization_id} />
+              {/* Antes en /app/crm/clientes/[id] (D1): documentos del CRM. */}
+              <div className="mt-6">
+                <DocumentUploader organizationId={cliente.organization_id} relatedType="customer" relatedId={cliente.id} title={tCrm('documentos')} />
+              </div>
             </TabsContent>
             {esEmpresa && (
               <TabsContent value="contactos">
@@ -262,9 +288,15 @@ export default function PerfilCliente() {
         </div>
 
         <div className="col-span-1">
-          <TareasSidebar clienteId={cliente.id} organizationId={cliente.organization_id} />
+          <div className="flex flex-col gap-4">
+            <TareasSidebar clienteId={cliente.id} organizationId={cliente.organization_id} onNuevaTarea={crm.onNuevaTarea} recarga={crm.recarga} />
+            {/* Antes en /app/crm/clientes/[id] (D1); Figma 772:19838: «Salud del cliente» en el panel. */}
+            <ClientHealthCard customerId={cliente.id} customerName={nombre} lifecycleStage={cliente.lifecycle_stage ?? null} />
+          </div>
         </div>
       </div>
+
+      {crm.dialogos}
 
       <EliminarClientesDialog
         abierto={eliminarAbierto}

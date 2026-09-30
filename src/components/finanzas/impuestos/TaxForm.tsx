@@ -19,6 +19,22 @@ import { useToast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { esRetencion, type ClaseImpuesto } from '@/lib/services/taxResolverCore';
+import { baseMinimaEnMoneda } from '@/lib/services/compras/logica';
+import {
+  configurarRetencion,
+  cuentasDePasivo,
+  type CuentaPasivo,
+  type RetencionConfigurada,
+  type UvtVigente,
+} from '@/lib/services/compras/retenciones';
+
+const ERRORES_CONFIGURACION = [
+  'cuenta_no_existe',
+  'cuenta_no_es_pasivo',
+  'cuenta_inactiva',
+  'base_minima_invalida',
+  'retencion_no_encontrada',
+] as const;
 
 interface TaxTemplate {
   id: number;
@@ -54,6 +70,11 @@ interface TaxFormProps {
    * 'withholding' (retención: sin «por defecto» ni «incluido en el precio»).
    */
   clase?: ClaseImpuesto;
+  /** Solo retenciones: cuenta y base mínima actuales (fn_retenciones_configuracion). */
+  retencion?: RetencionConfigurada | null;
+  /** Solo retenciones: UVT vigente, para mostrar la base mínima en moneda. */
+  uvt?: UvtVigente | null;
+  formatearUvt?: (valor: number) => string;
 }
 
 const TaxForm: React.FC<TaxFormProps> = ({
@@ -63,6 +84,9 @@ const TaxForm: React.FC<TaxFormProps> = ({
   editMode,
   organizationId,
   clase = 'tax',
+  retencion = null,
+  uvt = null,
+  formatearUvt,
 }) => {
   const t = useTranslations('impuestosRetenciones');
   const esClaseRetencion = clase === 'withholding';
@@ -77,7 +101,35 @@ const TaxForm: React.FC<TaxFormProps> = ({
   const [templates, setTemplates] = useState<TaxTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
   const [useTemplate, setUseTemplate] = useState(false);
+  // '' es la cuenta automática de su clase (2365 / 2367 / 2368).
+  const [cuenta, setCuenta] = useState('');
+  const [baseMinima, setBaseMinima] = useState('');
+  const [cuentas, setCuentas] = useState<CuentaPasivo[]>([]);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!esClaseRetencion || !organizationId) return;
+    let cancelado = false;
+    cuentasDePasivo(organizationId)
+      .then((lista) => {
+        if (!cancelado) setCuentas(lista);
+      })
+      .catch((err) => console.error('Error al cargar las cuentas de pasivo:', err));
+    return () => {
+      cancelado = true;
+    };
+  }, [esClaseRetencion, organizationId]);
+
+  useEffect(() => {
+    setCuenta(retencion?.cuentaPropia ? retencion.cuenta : '');
+    setBaseMinima(retencion?.baseMinimaUvt != null ? String(retencion.baseMinimaUvt) : '');
+  }, [retencion]);
+
+  const baseMinimaUvt = baseMinima.trim() === '' ? null : Number(baseMinima);
+  const baseMinimaValida = baseMinimaUvt === null || (Number.isFinite(baseMinimaUvt) && baseMinimaUvt >= 0);
+  const baseMinimaMoneda = baseMinimaValida ? baseMinimaEnMoneda(baseMinimaUvt, uvt?.valor ?? null) : null;
+  // Una cuenta propia que ya no es pasivo activo se sigue mostrando para no perderla de vista.
+  const cuentaFueraDeLista = cuenta !== '' && !cuentas.some((c) => c.codigo === cuenta);
 
   // Cargar datos de plantillas de impuestos filtradas por país de la organización
   useEffect(() => {
@@ -176,7 +228,7 @@ const TaxForm: React.FC<TaxFormProps> = ({
 
   // Validación básica
   const isFormValid = () => {
-    return name.trim() !== '' && !isNaN(parseFloat(rate));
+    return name.trim() !== '' && !isNaN(parseFloat(rate)) && (!esClaseRetencion || baseMinimaValida);
   };
 
   // Guardar el impuesto
@@ -200,6 +252,7 @@ const TaxForm: React.FC<TaxFormProps> = ({
       return;
     }
 
+    setLoading(true);
     try {
       // Llamar a la función RPC con SECURITY DEFINER para evitar problemas de RLS
       const { data, error } = await supabase.rpc('manage_organization_tax', {
@@ -221,6 +274,28 @@ const TaxForm: React.FC<TaxFormProps> = ({
 
       if (data && !data.success) {
         throw new Error(data.message || 'Error desconocido al guardar el impuesto');
+      }
+
+      // La cuenta y la base mínima van por su propia RPC (con permiso de impuestos):
+      // si fallan, la retención ya quedó guardada y se dice qué faltó.
+      const idGuardado: string | null = (data?.id as string | undefined) ?? (editMode && tax ? tax.id : null);
+      if (esClaseRetencion && idGuardado) {
+        try {
+          await configurarRetencion(organizationId, idGuardado, { cuenta: cuenta || null, baseMinimaUvt });
+        } catch (errConfig) {
+          console.error('Error al guardar la cuenta o la base mínima de la retención:', errConfig);
+          const mensaje = errConfig instanceof Error ? errConfig.message : String((errConfig as { message?: string })?.message ?? '');
+          const codigo = ERRORES_CONFIGURACION.find((c) => mensaje.includes(c));
+          toast({
+            title: t('formulario.errorConfiguracionTitulo'),
+            description: t('formulario.errorConfiguracion', {
+              detalle: codigo ? t(`formulario.errores.${codigo}`) : t('formulario.errores.otro'),
+            }),
+            variant: 'destructive',
+          });
+          onClose(true);
+          return;
+        }
       }
 
       // Mostrar mensaje de éxito
@@ -372,6 +447,62 @@ const TaxForm: React.FC<TaxFormProps> = ({
               placeholder="Descripción del impuesto"
             />
           </div>
+
+          {esClaseRetencion && (
+            <>
+              <div className="grid grid-cols-1 gap-2">
+                <Label htmlFor="cuentaRetencion" className="text-sm dark:text-gray-300">
+                  {t('formulario.cuenta')}
+                </Label>
+                <select
+                  id="cuentaRetencion"
+                  value={cuenta}
+                  onChange={(e) => setCuenta(e.target.value)}
+                  aria-describedby="cuentaRetencionAyuda"
+                  className="flex h-10 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:ring-offset-2"
+                >
+                  <option value="">
+                    {retencion && !retencion.cuentaPropia
+                      ? t('formulario.cuentaAutomaticaActual', { cuenta: retencion.cuenta })
+                      : t('formulario.cuentaAutomatica')}
+                  </option>
+                  {cuentaFueraDeLista && <option value={cuenta}>{cuenta}</option>}
+                  {cuentas.map((c) => (
+                    <option key={c.codigo} value={c.codigo}>
+                      {c.codigo} · {c.nombre}
+                    </option>
+                  ))}
+                </select>
+                <p id="cuentaRetencionAyuda" className="text-xs text-gray-500 dark:text-gray-400">
+                  {t('formulario.cuentaAyuda')}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2">
+                <Label htmlFor="baseMinimaUvt" className="text-sm dark:text-gray-300">
+                  {t('formulario.baseMinima')}
+                </Label>
+                <Input
+                  id="baseMinimaUvt"
+                  value={baseMinima}
+                  onChange={(e) => setBaseMinima(e.target.value.replace(/[^0-9.]/g, ''))}
+                  className="dark:bg-gray-900 dark:border-gray-700 dark:text-gray-200 dark:placeholder:text-gray-500"
+                  placeholder={t('formulario.baseMinimaPlaceholder')}
+                  type="text"
+                  inputMode="decimal"
+                  aria-invalid={!baseMinimaValida}
+                  aria-describedby="baseMinimaAyuda"
+                />
+                <p id="baseMinimaAyuda" className="text-xs text-gray-500 dark:text-gray-400">
+                  {!baseMinimaValida
+                    ? t('formulario.errores.base_minima_invalida')
+                    : baseMinimaMoneda !== null && uvt && formatearUvt
+                      ? t('formulario.baseMinimaEquivale', { valor: formatearUvt(baseMinimaMoneda), anio: uvt.anio })
+                      : t('formulario.baseMinimaAyuda')}
+                </p>
+              </div>
+            </>
+          )}
 
           <div className="flex items-center space-x-2">
             <Switch 

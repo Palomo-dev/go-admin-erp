@@ -1,4 +1,10 @@
 {
+  "posReloj": {
+    "titulo": "Device clock out of sync",
+    "mensaje": "This device's clock is off by {minutos, plural, one {# minute} other {# minutes}}; sales use the server time.",
+    "adelantado": "The device is ahead: adjust its date and time.",
+    "atrasado": "The device is behind: adjust its date and time."
+  },
   "metodosPagoSeguridad": {
     "sinPermiso": "You don't have permission to change the organization's payment methods (billing permission).",
     "codigoInvalido": "The code may only contain letters, numbers, hyphens and underscores, 2 to 40 characters.",
@@ -666,7 +672,8 @@
         "eventosTotales": "Total events",
         "usuariosActivos": "Active users",
         "modulosActivos": "Active modules"
-      }
+      },
+      "soloAdministracion": "Financial indicators are only available to the organization's administrators."
     },
     "datosEmpresa": {
       "titulo": "Complete your company details",
@@ -677,6 +684,382 @@
         "ciudad": "city",
         "direccion": "address"
       }
+    },
+    "hoy": {
+      "titulo": "Today",
+      "porAtender": "{n, plural, =0 {All caught up} one {# thing to handle} other {# things to handle}}",
+      "actualizadoALas": "Updated at {hora}",
+      "vacioTitulo": "Nothing to handle today",
+      "vacioDesc": "Overdue receivables, stock shortages, web orders and tasks due today will show up here.",
+      "etiquetas": {
+        "porCobrar": "Overdue receivables",
+        "stockCritico": "Critical stock",
+        "pedidosWeb": "Web orders",
+        "cajasAnteriores": "Registers left open",
+        "reservasStock": "Stale stock reservations",
+        "misTareas": "My tasks"
+      },
+      "estados": {
+        "vencido": "Overdue",
+        "critico": "Critical",
+        "urgente": "Urgent",
+        "revisar": "Review",
+        "paraHoy": "Due today",
+        "alDia": "Up to date"
+      },
+      "cifras": {
+        "sinVencidos": "Nothing overdue",
+        "cuentas": "{n, plural, one {# account} other {# accounts}}",
+        "sinFaltantes": "No shortages",
+        "productos": "{n, plural, one {# product} other {# products}}",
+        "sinPendientes": "None pending",
+        "pendientes": "{n, plural, one {# pending} other {# pending}}",
+        "cajasAbiertas": "{n, plural, one {# open register} other {# open registers}}",
+        "reservas": "{n, plural, one {# reservation} other {# reservations}}",
+        "abiertas": "{n, plural, one {# open} other {# open}}"
+      },
+      "detalles": {
+        "carteraAlDia": "No overdue accounts",
+        "cuentasVencidas": "{n, plural, one {# account} other {# accounts}} · oldest {dias, plural, one {# day} other {# days}}",
+        "variasMonedas": "In several currencies · oldest {dias, plural, one {# day} other {# days}}",
+        "stockAlDia": {
+          "estaSucursal": "Everything above minimum at this branch",
+          "tusSucursales": "Everything above minimum at your branches"
+        },
+        "stockBajo": {
+          "estaSucursal": "Below minimum at this branch{agotados, plural, =0 {} one { · # out of stock} other { · # out of stock}}",
+          "tusSucursales": "Below minimum at your branches{agotados, plural, =0 {} one { · # out of stock} other { · # out of stock}}"
+        },
+        "pedidosAlDia": "No orders to confirm",
+        "pedidosSinConfirmar": "Awaiting payment confirmation",
+        "pedidosPorExpirar": "{n, plural, one {# expires} other {# expire}} in less than {minutos} min",
+        "reservasSinMover": "{unidades, plural, one {# unit reserved} other {# units reserved}} over 24 h ago",
+        "cajasDesde": "Open for {dias, plural, one {# day} other {# days}}",
+        "tareasVencidas": "{n, plural, one {# overdue} other {# overdue}}{hoy, plural, =0 {} one { · # due today} other { · # due today}}",
+        "tareasHoy": "{n, plural, one {# due today} other {# due today}}",
+        "tareasSinVencer": "None due today"
+      },
+      "acciones": {
+        "verCartera": "View receivables",
+        "cobrar": "Collect",
+        "verExistencias": "View stock",
+        "reponer": "Restock",
+        "verPedidos": "View orders",
+        "atender": "Handle",
+        "verCajas": "View registers",
+        "revisar": "Review",
+        "abrir": "Open"
+      },
+      "verTodas": "See all {n} · {resto}"
+    },
+    "ventasPeriodo": {
+      "titulo": "Sales for the period",
+      "variasMonedas": "Payments in several currencies",
+      "sinBase": "No previous period to compare",
+      "resumen": "{ventas} {n, plural, one {paid sale} other {paid sales}} · average ticket {ticket}",
+      "sinVentas": "No payments yet in this period",
+      "incluyeReintegros": "includes −{valor} in refunds",
+      "anterior": "Previous period: {valor}",
+      "porCanal": "By channel",
+      "porSucursal": "By branch",
+      "otros": "Other",
+      "otroCanal": "Other channel",
+      "sucursalSinNombre": "Branch {id}",
+      "abrirDetalle": "View the sales detail for the period",
+      "grafica": "Sales in the current period compared with the previous one",
+      "sinGrafica": "No payments in this period or the previous one",
+      "sinGraficaMonedas": "With payments in several currencies the trend is not drawn",
+      "frenteConValor": "{frente} ({valor})",
+      "transacciones": "Transactions",
+      "ticketMedio": "Average ticket",
+      "devoluciones": "Refunds",
+      "seActualizaAlAbrir": "Updated when opened; it does not query again every 30 s.",
+      "exportarCsv": "Export CSV",
+      "verVentas": "View sales",
+      "csv": {
+        "hora": "Hour",
+        "dia": "Day"
+      },
+      "frente": {
+        "ayerMismaHora": "vs. yesterday at this time",
+        "anteayer": "vs. the day before yesterday",
+        "anioAnterior": "vs. the previous year",
+        "diasAnteriores": "vs. the previous {n} days",
+        "periodoAnterior": "vs. the previous period"
+      },
+      "leyenda": {
+        "hoy": "Today",
+        "ayerMismaHora": "Yesterday at the same time",
+        "actual": "Current period",
+        "anterior": "Previous period"
+      },
+      "canales": {
+        "pos": "POS",
+        "web": "Online store",
+        "factura": "Invoices",
+        "mesa": "Tables"
+      }
+    },
+    "tiendaWeb": {
+      "titulo": "Online store",
+      "verPedidos": "View orders",
+      "visitantes": "Visitors in the period",
+      "detalleVisitantes": "{sesiones} sessions · {nuevas} % new",
+      "pedidos": "Online orders",
+      "detallePedidos": "{pagados} paid · {pendientes} pending now",
+      "conversion": "Conversion",
+      "detalleConversion": "visitor → paid order",
+      "puntos": "{valor} pp",
+      "visitasTodaTienda": "Visits cover the whole store; orders, the selected branch.",
+      "verAnalitica": "View web analytics",
+      "detallePendientes": "{pendientes, plural, one {# pending} other {# pending}} · {expiran, plural, =0 {none expires today} one {# expires today} other {# expire today}}",
+      "detalleConversionPedidos": "visit → order {visitaPedido} % · {pagados} paid"
+    },
+    "modulos": {
+      "titulo": "Modules",
+      "activos": "{n, plural, one {# active} other {# active}}",
+      "visiblesDe": "{n} of {total} visible",
+      "reordenar": "Reorder and hide",
+      "restablecer": "Reset",
+      "cancelar": "Cancel",
+      "listo": "Done",
+      "ayudaReordenar": "Use the arrows to change the order. Whatever you turn off stops being queried on your home; it does not change your permissions or the organization's modules. Saved only for you.",
+      "errorGuardar": "Changes could not be saved. Try again.",
+      "vacioTitulo": "No modules to summarize",
+      "vacioDesc": "No active module has a summary for your role in this organization.",
+      "subir": "Move {modulo} up",
+      "bajar": "Move {modulo} down",
+      "enElInicio": "On home",
+      "mostrarEnInicio": "Show {modulo} on home",
+      "errorModulo": "This module could not be calculated",
+      "pie": "{alcance} · {cuando} · updated at {hora}",
+      "cuandoPeriodo": "selected period",
+      "cuandoHoy": "today and current status",
+      "alcanceTodas": "All your branches",
+      "alcanceUna": "Selected branch",
+      "verModulo": "View module →",
+      "badges": {
+        "vencidas": "{n, plural, one {# overdue} other {# overdue}}",
+        "porPagar": "{n, plural, one {# to pay} other {# to pay}}",
+        "cajasAntiguas": "{n, plural, one {# register from previous days} other {# registers from previous days}}",
+        "cajasAbiertas": "{n, plural, one {# open register} other {# open registers}}",
+        "sinStock": "{n, plural, one {# out of stock} other {# out of stock}}",
+        "bajoMinimo": "{n, plural, one {# below minimum} other {# below minimum}}",
+        "sinTocar": "{n, plural, one {# untouched} other {# untouched}}",
+        "porAprobar": "{n, plural, one {# to approve} other {# to approve}}",
+        "llegadasPendientes": "{n, plural, one {# pending arrival} other {# pending arrivals}}",
+        "enMora": "{n, plural, one {# past due} other {# past due}}",
+        "porVencer": "{n, plural, one {# expiring} other {# expiring}}",
+        "retrasados": "{n, plural, one {# delayed} other {# delayed}}"
+      },
+      "resumen": {
+        "carteraVencida": "Overdue receivables {valor}",
+        "cuentasVencidas": "{n, plural, one {# overdue account} other {# overdue accounts}}",
+        "carteraAlDia": "Receivables up to date",
+        "porCobrar": "Receivable {valor}",
+        "variasMonedas": "several currencies",
+        "porPagar7d": "Payable in 7 days {valor}",
+        "porPagar7dCuentas": "{n, plural, one {# payable in 7 days} other {# payable in 7 days}}",
+        "ventas": "{n, plural, one {# paid sale} other {# paid sales}}",
+        "cobrado": "{valor} collected",
+        "ticketMedio": "average ticket {valor}",
+        "productos": "{n, plural, one {# product} other {# products}}",
+        "valorizado": "{valor} in stock value",
+        "bajoMinimo": "{n, plural, one {# below minimum} other {# below minimum}}",
+        "oportunidades": "{n, plural, one {# open opportunity} other {# open opportunities}}",
+        "pipeline": "{valor} in pipeline",
+        "clientesNuevos": "{n, plural, one {# new customer} other {# new customers}}",
+        "personasActivas": "{n, plural, one {# active person} other {# active people}}",
+        "ausentesHoy": "{n, plural, one {# absent today} other {# absent today}}",
+        "turnosHoy": "{n, plural, one {# shift today} other {# shifts today}}",
+        "llegadasSalidas": "{llegadas} arrivals and {salidas} departures today",
+        "enCasa": "{n, plural, one {# guest in house} other {# guests in house}}",
+        "membresiasActivas": "{n, plural, one {# active membership} other {# active memberships}}",
+        "porVencer7d": "{n, plural, one {# expiring in 7 days} other {# expiring in 7 days}}",
+        "viajesHoy": "{n, plural, one {# trip today} other {# trips today}}",
+        "enCurso": "{n, plural, one {# in progress} other {# in progress}}",
+        "completados": "{n, plural, one {# completed} other {# completed}}"
+      },
+      "kpis": {
+        "carteraVencida": "Overdue receivables",
+        "porCobrar": "Receivable",
+        "porPagar7d": "Payable in 7 days",
+        "ventasCobradas": "Collected sales",
+        "numeroVentas": "Number of sales",
+        "ticketPromedio": "Average ticket",
+        "cajasAbiertas": "Open registers",
+        "productos": "Products",
+        "sinStock": "Out of stock",
+        "bajoMinimo": "Below minimum",
+        "valorInventario": "Inventory value",
+        "oportunidadesAbiertas": "Open opportunities",
+        "pipeline": "Pipeline",
+        "ganadas": "Won in the period",
+        "clientesNuevos": "New customers",
+        "personasActivas": "Active people",
+        "ausentesHoy": "Absent today",
+        "turnosHoy": "Shifts today",
+        "ausenciasPorAprobar": "Leaves to approve",
+        "llegadasHoy": "Arrivals today",
+        "salidasHoy": "Departures today",
+        "enCasa": "Guests in house",
+        "membresiasActivas": "Active memberships",
+        "porVencer7d": "Expiring in 7 days",
+        "enMora": "Past due",
+        "viajesHoy": "Trips today",
+        "enCurso": "In progress",
+        "retrasados": "Delayed",
+        "completados": "Completed"
+      },
+      "detalles": {
+        "cuentasDias": "{n, plural, one {# account} other {# accounts}} · oldest, {dias} days",
+        "variasMonedas": "Several currencies",
+        "cuentas": "{n, plural, one {# account} other {# accounts}}",
+        "cajasAntiguas": "{n, plural, one {# open since previous days} other {# open since previous days}}",
+        "sinTocar": "{n, plural, one {# with no activity in 7 days} other {# with no activity in 7 days}}",
+        "pendientes": "{n, plural, one {# pending} other {# pending}}"
+      }
+    },
+    "personalizar": {
+      "boton": "Customize",
+      "titulo": "Customize home",
+      "descripcion": "Saved only for you, in this organization.",
+      "bloques": "Home blocks",
+      "hoy": "Today",
+      "siempreVisible": "Always visible · cannot be hidden",
+      "bloque": {
+        "indicadores": "Indicators",
+        "ventas": "Sales for the period",
+        "actividad": "Recent activity",
+        "tiendaWeb": "Online store"
+      },
+      "modulos": "Modules",
+      "nota": "Hiding a module stops its queries. What you hide here does not change your permissions or the organization's modules.",
+      "restablecer": "Reset",
+      "guardar": "Save",
+      "errorGuardar": "Changes could not be saved.",
+      "guardado": "Home customized"
+    },
+    "turno": {
+      "titulo": "Your shift",
+      "duracion": "{h} h {m} min",
+      "duracionMin": "{m} min",
+      "tarde": "{min} min late",
+      "estados": {
+        "antes": "Before start",
+        "sinMarcar": "Not clocked in · {min} min late",
+        "enTurno": "On shift",
+        "cerrado": "Shift closed",
+        "sinTurno": "No shift assigned today"
+      },
+      "detalle": {
+        "entrada": "Starts {hora}{sucursal}",
+        "enTurno": "Since {hora} · {duracion} · your shift ends at {fin}",
+        "cerrado": "{entrada} – {salida} · {duracion}",
+        "sinTurno": "Clock in with the store's QR code"
+      },
+      "acciones": {
+        "marcarEntrada": "Clock in",
+        "marcarSalida": "Clock out",
+        "marcarSalidaTiempo": "Clock out · {duracion}",
+        "verMarcaciones": "View my time records",
+        "marcarTurno": "Clock in/out"
+      }
+    },
+    "periodo": {
+      "horasDelDia": "Hours of the day",
+      "todoElDia": "All day",
+      "rangoFechas": "Date range",
+      "desde": "From",
+      "hasta": "To",
+      "notaZona": "Dates are shown in the organization's time zone ({zona})."
+    },
+    "alcance": {
+      "todas": "All branches"
+    },
+    "errorInicio": {
+      "titulo": "The home data could not be loaded",
+      "descripcion": "The query did not respond. The numbers you see may be out of date; zeros are not shown to avoid confusion.",
+      "actualizarTitulo": "The home page could not be updated",
+      "actualizarDesc": "The last valid data is kept.",
+      "reintentar": "Retry"
+    },
+    "primerosPasos": {
+      "titulo": "First steps",
+      "progreso": "{hechos} of {total} · {pct} %",
+      "ocultar": "Hide for now",
+      "mostrar": "Show first steps",
+      "descripcion": "Once you finish these steps, you will see here what needs attention every day: cash, collections, orders, stock and tasks.",
+      "pasos": {
+        "modulos": "Activate modules",
+        "organizacion": "Set up the organization",
+        "sucursal": "Create a branch",
+        "equipo": "Invite the team",
+        "productos": "Add products",
+        "impuestos": "Set up taxes",
+        "clientes": "Register customers"
+      },
+      "hecho": "Done",
+      "pendiente": "Pending",
+      "ir": "Go",
+      "irA": "Go to {paso}",
+      "sinMovimientosTitulo": "No activity yet",
+      "sinMovimientosDesc": "As soon as you record the first sale or invoice, the period trend and recent activity will appear here.",
+      "agregarProductos": "Add products",
+      "abrirPos": "Open the POS"
+    },
+    "actividad": {
+      "titulo": "Recent activity",
+      "filtrar": "Filter activity",
+      "filtros": {
+        "todo": "All",
+        "venta": "Sales",
+        "factura": "Invoices",
+        "cliente": "Customers",
+        "stock": "Inventory",
+        "reserva": "Reservations"
+      },
+      "hace": {
+        "ahora": "now",
+        "minutos": "{n} min ago",
+        "horas": "{n} h ago"
+      },
+      "titulos": {
+        "venta": {
+          "paid": "Sale paid",
+          "pending": "Sale awaiting payment",
+          "void": "Sale voided",
+          "otro": "Sale recorded"
+        },
+        "factura": {
+          "paid": "Invoice {numero} paid",
+          "issued": "Invoice {numero} issued",
+          "partial": "Invoice {numero} partially paid",
+          "void": "Invoice {numero} voided",
+          "otro": "Invoice {numero}"
+        },
+        "cliente": "New customer: {nombre}",
+        "clienteSinNombre": "New customer",
+        "entradaStock": "Stock in · {producto}",
+        "salidaStock": "Stock out · {producto}",
+        "reserva": {
+          "confirmed": "Reservation confirmed",
+          "checked_in": "Reservation checked in",
+          "checked_out": "Reservation checked out",
+          "cancelled": "Reservation cancelled",
+          "no_show": "Reservation no-show",
+          "tentative": "Tentative reservation",
+          "otro": "Reservation recorded"
+        }
+      },
+      "contexto": {
+        "texto": "{texto}",
+        "crm": "CRM",
+        "entrada": "+{n} {n, plural, one {unit} other {units}}",
+        "salida": "−{n} {n, plural, one {unit} other {units}}"
+      },
+      "vacioTitulo": "No activity in the period",
+      "vacioDesc": "Change the period or branch to see more activity."
     }
   },
   "org": {
@@ -2210,7 +2593,8 @@
       "membresias_check-in": "Check-in",
       "membresias_instructores": "Instructors",
       "membresias_control-de-acceso": "Access control",
-      "membresias_pagos": "Payments"
+      "membresias_pagos": "Payments",
+      "inicio_analitica-web": "Web analytics"
     },
     "grupos": {
       "venta": "Sales",
@@ -2346,6 +2730,1564 @@
       "errorNoOpportunity": "opportunityId is required",
       "errorNotFound": "Could not get opportunity information",
       "errorNoKey": "AI configuration not available"
+    },
+    "kit": {
+      "acciones": {
+        "barra": "Quick actions",
+        "nombre": {
+          "llamar": "Call",
+          "email": "Email",
+          "whatsapp": "WhatsApp",
+          "reunion": "Meeting",
+          "tarea": "Task",
+          "nota": "Note"
+        },
+        "motivo": {
+          "sinDestino": "No customer or opportunity",
+          "sinPermiso": "No permission",
+          "sinTelefono": "No phone",
+          "telefonoInvalido": "Invalid phone",
+          "noLlamar": "Asked not to be called",
+          "sinCorreo": "No email",
+          "sinCanal": "No WhatsApp channel"
+        },
+        "propuesta": "Proposal",
+        "nuevaOportunidad": "New opportunity"
+      },
+      "menuOportunidad": {
+        "ver": "View details",
+        "editar": "Edit",
+        "mover": "Move stage",
+        "ganar": "Mark as won",
+        "perder": "Mark as lost",
+        "reabrir": "Reopen",
+        "duplicar": "Duplicate",
+        "nuevaTarea": "New task",
+        "eliminar": "Delete"
+      },
+      "kpiMoneda": {
+        "base": "{moneda} · base",
+        "tasaDel": "rate of {fecha}",
+        "reintentar": "Retry",
+        "noIncluye": "Excludes {monto} ({cantidad, plural, one {# opportunity} other {# opportunities}}): missing the {moneda} rate for {fecha}.",
+        "esBase": "base currency",
+        "sinTasa": "no rate",
+        "tasaDe": "1 {moneda} = {tasa} ({fecha}).",
+        "sinTasaNoSuma": "{moneda} has no rate: not added.",
+        "registrarTasa": "Add {moneda} rate",
+        "ocultarDesglose": "Hide breakdown",
+        "verPorMoneda": "View by currency",
+        "avisoLector": "{cantidad, plural, one {# opportunity was} other {# opportunities were}} left out of the total for lack of a rate."
+      },
+      "columna": {
+        "aria": "Stage {etapa}, {cantidad, plural, one {# opportunity} other {# opportunities}}",
+        "conteo": "{cantidad, plural, one {# opportunity} other {# opportunities}}",
+        "crearEn": "New opportunity in {etapa}",
+        "configurar": "Configure stage {etapa}",
+        "monedaYProb": "{moneda} · prob. {prob}%",
+        "incluye": "incl. {cantidad} in {moneda}",
+        "sinTasa": "{cantidad} without rate",
+        "soltarAqui": "Drop here",
+        "pasaA": "Moves to {etapa}",
+        "pasaAProb": "Moves to {etapa} · {prob}%",
+        "vacia": "No opportunities in this stage",
+        "crearAqui": "Create here"
+      },
+      "tarjeta": {
+        "rel": {
+          "vencidaHoy": "overdue today {hora}",
+          "vencidaHace": "overdue {dias} d ago",
+          "hoy": "today {hora}",
+          "manana": "tomorrow {hora}",
+          "hace": "{dias} d ago",
+          "en": "in {dias} d"
+        },
+        "cierre": {
+          "ganada": "Won · {detalle}",
+          "perdida": "Lost · {detalle}",
+          "ganadaSolo": "Won",
+          "perdidaSolo": "Lost"
+        },
+        "sinCliente": "No customer",
+        "seleccionar": "Select {nombre}",
+        "estado": {
+          "ganada": "Won",
+          "perdida": "Lost"
+        },
+        "prioridad": {
+          "cold": "Low",
+          "warm": "Medium",
+          "hot": "High"
+        },
+        "prioridadAria": "{prioridad} priority",
+        "score": "Score {score}",
+        "sinAccion": "No next action",
+        "ultimo": "Last: {canal} · {cuando}",
+        "canal": {
+          "whatsapp": "WhatsApp",
+          "llamada": "Call",
+          "correo": "Email",
+          "reunion": "Meeting",
+          "sms": "SMS",
+          "otro": "Other"
+        },
+        "sinResponsable": "Unassigned",
+        "diasEnEtapa": "{dias} d in stage",
+        "lead": "Lead"
+      },
+      "leads": {
+        "columnas": {
+          "seleccion": "Select",
+          "lead": "Lead",
+          "origen": "Source",
+          "responsable": "Owner",
+          "score": "Score",
+          "etiquetas": "Tags",
+          "ultimoContacto": "Last contact",
+          "acciones": "Actions"
+        },
+        "menu": {
+          "ver": "View details",
+          "llamar": "Call",
+          "whatsapp": "WhatsApp",
+          "asignar": "Assign owner",
+          "etiquetar": "Tag",
+          "descartar": "Discard"
+        },
+        "sinNombre": "No name",
+        "sinContacto": "No contact details",
+        "origen": {
+          "web_form": "Web form",
+          "web_order": "Web order",
+          "whatsapp": "WhatsApp",
+          "instagram": "Instagram",
+          "facebook": "Facebook",
+          "referral": "Referral",
+          "import": "Import",
+          "inbound_call": "Inbound call",
+          "outbound": "Outbound",
+          "manual": "Manual",
+          "email": "Email",
+          "event": "Event",
+          "partner": "Partner",
+          "other": "Other"
+        },
+        "sinResponsable": "Unassigned",
+        "score": "{score} · {banda}",
+        "banda": {
+          "alto": "High",
+          "medio": "Medium",
+          "bajo": "Low"
+        },
+        "masEtiquetas": "{n, plural, one {# more tag} other {# more tags}}",
+        "nuncaContactado": "Never",
+        "haceDias": "{dias, plural, =0 {Today} one {# day ago} other {# days ago}}",
+        "calificar": "Qualify",
+        "seleccionar": "Select {nombre}"
+      },
+      "captura": {
+        "cargando": "Loading unplaced leads",
+        "reintentar": "Retry",
+        "titulo": "{cantidad, plural, one {# captured lead not placed} other {# captured leads not placed}}",
+        "descripcion": "This organization has no sales pipeline. Web form leads were saved as customers but did not enter any pipeline.",
+        "sinPermiso": "Ask an administrator to create the sales pipeline.",
+        "verLeads": "{cantidad, plural, one {View the lead} other {View the # leads}}",
+        "crearEmbudo": "Create sales pipeline"
+      },
+      "cargarMas": {
+        "mostrando": {
+          "actividades": "Showing {mostrados} of {total} activities",
+          "oportunidades": "Showing {mostrados} of {total} opportunities",
+          "leads": "Showing {mostrados} of {total} leads",
+          "clientes": "Showing {mostrados} of {total} customers"
+        },
+        "mostrandoSinTotal": {
+          "actividades": "Showing {mostrados} activities",
+          "oportunidades": "Showing {mostrados} opportunities",
+          "leads": "Showing {mostrados} leads",
+          "clientes": "Showing {mostrados} customers"
+        },
+        "fin": {
+          "actividades": "No more activities · {total} in total",
+          "oportunidades": "No more opportunities · {total} in total",
+          "leads": "No more leads · {total} in total",
+          "clientes": "No more customers · {total} in total"
+        },
+        "finSinTotal": {
+          "actividades": "No more activities",
+          "oportunidades": "No more opportunities",
+          "leads": "No more leads",
+          "clientes": "No more customers"
+        },
+        "cargando": "Loading…",
+        "reintentar": "Retry",
+        "cargar": "Load {cantidad} more"
+      },
+      "filtrosLinea": {
+        "tipos": "Activity type",
+        "tipo": {
+          "todos": "All",
+          "call": "Calls",
+          "email": "Emails",
+          "whatsapp": "WhatsApp",
+          "meeting": "Meetings",
+          "note": "Notes",
+          "task": "Tasks",
+          "system": "System",
+          "ai_call": "AI call"
+        },
+        "buscar": "Search activities",
+        "filtros": "Filters",
+        "filtrosConCuenta": "{n, plural, one {Filters (# active)} other {Filters (# active)}}",
+        "responsable": "Owner",
+        "todosResponsables": "All owners",
+        "rango": "Date range",
+        "todasLasFechas": "All dates",
+        "limpiar": "Clear"
+      },
+      "calificar": {
+        "titulo": "Qualify lead",
+        "paso": "Step 1 of 2 · Then the opportunity form opens with this data.",
+        "descartar": "Discard lead",
+        "cancelar": "Cancel",
+        "continuar": "Continue: create opportunity",
+        "necesidad": "What do they need?",
+        "necesidadEj": "E.g.: quote for 200 uniforms for their sales team",
+        "presupuesto": "Approximate budget",
+        "cierre": "Expected close",
+        "decisor": "Who makes the purchase decision?",
+        "elegir": "Choose…",
+        "decisores": {
+          "el_mismo": "The same person",
+          "otra_persona": "Someone else",
+          "comite": "A committee",
+          "no_se": "Unknown"
+        },
+        "responsable": "Owner",
+        "sinResponsable": "Unassigned",
+        "temperatura": "Temperature",
+        "temperaturas": {
+          "cold": "Cold",
+          "warm": "Warm",
+          "hot": "Hot"
+        },
+        "aviso": "Continuing creates the opportunity linked to this customer. The system moves the lead to opportunity: you do not change the customer stage.",
+        "error": {
+          "obligatorio": "This field is required.",
+          "montoInvalido": "Enter a valid amount.",
+          "fechaPasada": "The date cannot be earlier than today."
+        }
+      },
+      "actividad": {
+        "titulo": {
+          "llamada": "Log call",
+          "correo": "Send email",
+          "whatsapp": "Send WhatsApp",
+          "reunion": "Schedule meeting",
+          "nota": "New note"
+        },
+        "primario": {
+          "llamada": "Save call",
+          "correo": "Send email",
+          "whatsapp": "Send WhatsApp",
+          "reunion": "Schedule meeting",
+          "nota": "Save note"
+        },
+        "cancelar": "Cancel",
+        "elegir": "Choose…",
+        "fechaHora": "Date and time",
+        "plantilla": "Template",
+        "sinPlantilla": "No template",
+        "mensaje": "Message",
+        "error": {
+          "obligatorio": "This field is required.",
+          "duracionInvalida": "Enter the duration as 4:12 or 4 min 12 s.",
+          "fechaPasada": "The date cannot be earlier than today.",
+          "correoInvalido": "Enter a valid email.",
+          "plantillaObligatoria": "Outside the 24-hour window only an approved template can be sent."
+        },
+        "llamada": {
+          "direccion": "Direction",
+          "direcciones": {
+            "outbound": "Outbound",
+            "inbound": "Inbound"
+          },
+          "resultado": "Call outcome",
+          "resultados": {
+            "answered": "Reached",
+            "no_answer": "No answer",
+            "voicemail": "Voicemail",
+            "wrong_number": "Wrong number",
+            "callback": "Asked for a callback",
+            "not_interested": "Not interested"
+          },
+          "duracion": "Duration",
+          "duracionAyuda": "Minutes and seconds, e.g. 4:12.",
+          "notas": "Call notes",
+          "seguimiento": "Create a follow-up task assigned to me",
+          "fechaSeguimiento": "Follow-up date"
+        },
+        "correo": {
+          "de": "From",
+          "verificado": "Verified sender",
+          "para": "To",
+          "asunto": "Subject"
+        },
+        "whatsapp": {
+          "canal": "Channel",
+          "sinRespuesta": "{nombre} has not written yet: only an approved template can be sent.",
+          "fueraVentana": "{nombre} last replied {dias, plural, one {# day} other {# days}} ago: outside the 24-hour window only an approved template can be sent.",
+          "plantillaAprobada": "Approved template",
+          "vistaPrevia": "Preview",
+          "programar": "Schedule the send ({zona} time)",
+          "credito": "This send uses 1 messaging credit."
+        },
+        "reunion": {
+          "titulo": "Title",
+          "empieza": "Starts",
+          "termina": "Ends",
+          "zona": "Organization time: {zona}",
+          "fin": "{hora} · {minutos} min",
+          "participantes": "Participants",
+          "quitar": "Remove {nombre}",
+          "agregar": "Add",
+          "lugar": "Place or link",
+          "oportunidad": "Opportunity"
+        },
+        "nota": {
+          "nota": "Note",
+          "relacionada": "Related to",
+          "fijar": "Pin on the customer profile",
+          "ayuda": "All notes live in a single table and appear in the timeline of the customer, the opportunity and Activities.",
+          "cliente": "Customer: {nombre}",
+          "oportunidad": "Opportunity: {nombre}"
+        }
+      },
+      "vinculador": {
+        "titulo": "Select customer",
+        "ayuda": "Search by name, ID, email or phone.",
+        "vincularContacto": "Link contact to {nombre}",
+        "vincularEmpresa": "Link company to {nombre}",
+        "crearPersona": "Create person",
+        "crearEmpresa": "Create company",
+        "crearAyuda": "Minimum fields. “More details” opens the full customer form.",
+        "cargoTitulo": "Role at the company",
+        "cargoAyuda": "Only when linking person ↔ company.",
+        "errorBuscar": "Search failed. Check your connection and try again.",
+        "errorCrear": "The customer could not be created. Check the data and try again.",
+        "error": {
+          "obligatorio": "This field is required.",
+          "correoInvalido": "Enter a valid email."
+        },
+        "cancelar": "Cancel",
+        "atras": "Back",
+        "crearYContinuar": "Create and continue",
+        "vincular": "Link",
+        "filtro": "Customer type",
+        "filtros": {
+          "todos": "All",
+          "personas": "People",
+          "empresas": "Companies"
+        },
+        "buscar": "Search person or company…",
+        "limpiar": "Clear search",
+        "buscando": "Searching",
+        "resultados": {
+          "todos": "{n, plural, one {# result} other {# results}} · people and companies",
+          "personas": "{n, plural, one {# result} other {# results}} · people",
+          "empresas": "{n, plural, one {# result} other {# results}} · companies"
+        },
+        "sinResultados": "No results for “{texto}”.",
+        "sinNombre": "No name",
+        "yaVinculada": "Already linked",
+        "persona": "Person",
+        "empresa": "Company",
+        "crearPersonaSinSalir": "Create person “{texto}” without leaving",
+        "crearEmpresaSinSalir": "Create company “{texto}” without leaving",
+        "tipo": "Customer type",
+        "nombres": "First names",
+        "apellidos": "Last names",
+        "razonSocial": "Legal name",
+        "tipoDocumento": "ID type",
+        "elegir": "Choose…",
+        "numero": "Number",
+        "correo": "Email",
+        "telefono": "Phone",
+        "masDatos": "More details",
+        "cargo": "Role",
+        "principal": "Main contact of the company",
+        "avisoPrincipal": "There is only one main contact: {nombre} stops being it when you save."
+      },
+      "ganar": {
+        "titulo": "Win “{nombre}”",
+        "ganada": "Opportunity won",
+        "paso1": "Step 1 of 2 · Sale details",
+        "paso2": "Step 2 of 2 · What to do on winning",
+        "cancelar": "Cancel",
+        "siguiente": "Next",
+        "atras": "Back",
+        "ganarOportunidad": "Win opportunity",
+        "verFactura": "View invoice",
+        "cerrar": "Close",
+        "errorGanar": "The opportunity could not be won. Try again.",
+        "monto": "Amount",
+        "moneda": "Currency",
+        "monedaBase": "{moneda} · base currency",
+        "fechaCierre": "Close date",
+        "motivo": "Win reason (catalog)",
+        "elegir": "Choose…",
+        "comision": "Commission",
+        "comisionAyuda": "Accrued at the opportunity branch.",
+        "notas": "Closing notes",
+        "acciones": {
+          "factura": "Create a sales invoice with the opportunity lines",
+          "pos": "Record the sale in the POS",
+          "onboarding": "Create an onboarding project",
+          "renovacion": "Schedule renewal in 12 months",
+          "referido": "Ask the customer for a referral",
+          "agradecimiento": "Send a thank-you on WhatsApp"
+        },
+        "comisionSistema": "The system records the commission on winning; it is not a checkbox.",
+        "resumen": "{n, plural, =0 {Won stage applied.} one {Won stage applied. # document was created.} other {Won stage applied. # documents were created.}}",
+        "error": {
+          "obligatorio": "This field is required.",
+          "montoInvalido": "Enter a valid amount.",
+          "fechaFutura": "The close date cannot be later than today."
+        }
+      },
+      "perder": {
+        "titulo": "Mark as lost",
+        "cancelar": "Cancel",
+        "marcarPerdida": "Mark as lost",
+        "sinCatalogo": "The organization has no loss reasons. Ask an administrator to set them up.",
+        "motivo": "Reason (organization catalog)",
+        "cargando": "Loading…",
+        "elegir": "Choose…",
+        "competidor": "Competitor",
+        "precioCompetidor": "Competitor price",
+        "quePaso": "What happened",
+        "seguimiento": "Create a follow-up task in {dias} days",
+        "conserva": "The rest of the metadata is kept (requirements, onboarding, renewal).",
+        "error": {
+          "obligatorio": "This field is required.",
+          "montoInvalido": "Enter a valid amount."
+        }
+      },
+      "mover": {
+        "titulo": "Move to “{etapa}”",
+        "tituloSinPermiso": "You cannot move to “{etapa}”",
+        "etapaProb": "{etapa} · {prob}%",
+        "cambio": "From {desde} to {hasta}",
+        "destino": "Target stage",
+        "proximoContacto": "Next contact",
+        "zona": "Organization time ({zona}).",
+        "faltan": "{n, plural, one {# stage requirement is missing} other {# stage requirements are missing}}",
+        "completar": "Complete",
+        "historial": "“Move anyway” is recorded in the history with your name.",
+        "sinOmitir": "Only roles with the skip-requirements permission can move without completing them.",
+        "sinPermiso": "This requires the “{permiso}” permission.",
+        "sinPermisoQuien": "This requires the “{permiso}” permission. {nombre} has it, among others.",
+        "permisoMover": "Edit opportunities",
+        "pedirA": "Ask {nombre}",
+        "entendido": "Got it",
+        "cancelar": "Cancel",
+        "avanzarIgual": "Move anyway",
+        "completarRequisitos": "Complete requirements",
+        "mover": "Move"
+      },
+      "formulario": {
+        "titulo": "New opportunity",
+        "tituloEditar": "Edit opportunity",
+        "tituloLead": "Qualify → create opportunity",
+        "pasoLead": "Step 2 of 2 · single form with the lead data prefilled.",
+        "descOrigen": "Single form: the source fields come prefilled and locked.",
+        "bloqueado": "Locked by the source",
+        "cliente": "Customer",
+        "clienteAyuda": "Person or company. Searches the server; if it does not exist, create it without leaving.",
+        "buscarCliente": "Search person or company…",
+        "clienteLead": "{nombre} (qualified lead)",
+        "negocio": "Deal",
+        "nombre": "Opportunity name",
+        "nombreEj": "E.g.: 2027 license renewal",
+        "embudo": "Pipeline",
+        "embudoAyuda": "Sales pipelines only.",
+        "elegir": "Choose…",
+        "etapa": "Stage",
+        "monto": "Amount",
+        "montoAyuda": "Sum of the lines or a manual value.",
+        "moneda": "Currency",
+        "monedaAyuda": "Defaults to the base currency.",
+        "monedaBase": "{moneda} (base)",
+        "probabilidad": "Probability",
+        "probEtapa": "{prob}% · from the stage",
+        "cierre": "Expected close",
+        "seguimiento": "Owner and follow-up",
+        "responsable": "Owner",
+        "sinResponsable": "Unassigned",
+        "tu": "{nombre} (you)",
+        "proximoContacto": "Next contact",
+        "horaOrg": "Organization time.",
+        "proximaAccion": "Next action",
+        "proximaAccionEj": "E.g.: Call to confirm scope",
+        "prioridad": "Priority",
+        "prioridades": {
+          "cold": "Low",
+          "warm": "Medium",
+          "hot": "High"
+        },
+        "agregarLineas": "Add products, spaces or items (optional)",
+        "lineasCopiadas": "Lines · copied from {numero}",
+        "lineaCantidad": "{concepto} × {cantidad}",
+        "resumen": "Summary",
+        "ponderado": "Weighted",
+        "ayudaCrear": "The amount is calculated from products, spaces and items.",
+        "ayudaEditar": "Changing pipeline asks for a stage of the new pipeline. Lines are kept.",
+        "eliminar": "Delete",
+        "cancelar": "Cancel",
+        "cerrar": "Close",
+        "guardar": "Save changes",
+        "crear": "Create opportunity",
+        "error": {
+          "obligatorio": "This field is required.",
+          "montoInvalido": "Enter a valid amount.",
+          "monedaInvalida": "Choose a currency.",
+          "fechaInvalida": "Enter a valid date.",
+          "muyLargo": "The text is too long."
+        }
+      },
+      "editorEtapa": {
+        "aria": "Stage {nombre}",
+        "sinNombre": "unnamed",
+        "mover": "Move {nombre} (Alt + arrows)",
+        "color": "Color",
+        "nombre": "Stage name",
+        "nombrePlaceholder": "Type the stage name",
+        "menu": "More options",
+        "probabilidad": "Probability (%)",
+        "sla": "SLA in days",
+        "dias": "days",
+        "resultado": "Outcome",
+        "resultados": {
+          "abierta": "Open",
+          "ganada": "Won",
+          "perdida": "Lost"
+        },
+        "requisitos": "Requirements",
+        "requisitosN": "Requirements · {n}",
+        "eliminar": "Delete {nombre}",
+        "error": {
+          "nombreVacio": "The name is required.",
+          "nombreRepetido": "The name cannot repeat in this pipeline.",
+          "probabilidad": "Probability goes from 0 to 100.",
+          "sla": "The SLA is a whole number of days.",
+          "ganadaDuplicada": "There can only be one won stage.",
+          "perdidaDuplicada": "There can only be one lost stage."
+        }
+      },
+      "plantilla": {
+        "ganada": "Won",
+        "perdida": "Lost",
+        "nombres": {
+          "ventas": "Sales",
+          "onboarding": "Onboarding",
+          "renovacion": "Renewal",
+          "enBlanco": "Blank"
+        },
+        "tipo": "Type: {tipo}",
+        "tipos": {
+          "ventas": "sales",
+          "onboarding": "onboarding",
+          "renovacion": "renewal",
+          "enBlanco": "blank"
+        },
+        "tuEliges": "You choose the type",
+        "descripciones": {
+          "ventas": "From first contact to signed contract. It is the pipeline web leads use.",
+          "onboarding": "Guides the customer from kickoff to the 30-day review.",
+          "renovacion": "Renews contracts and subscriptions before they expire.",
+          "enBlanco": "Create your own stages. “Won” and “Lost” are added so you can close."
+        },
+        "etapaGanada": "Won stage",
+        "etapaPerdida": "Lost stage",
+        "aviso": {
+          "tipoExistente": "You already have a pipeline of this type: a new one will be created.",
+          "sinPerdida": "This template has no lost stage."
+        },
+        "etapas": "{n, plural, one {# stage} other {# stages}}",
+        "etapasCierre": "{n, plural, one {# closing stage} other {# closing stages}}",
+        "pieSla": "{n, plural, one {# stage} other {# stages}} · SLA from {min} to {max} days"
+      },
+      "barraEtapas": {
+        "aria": "Opportunity stages",
+        "etapaProb": "{etapa} · {prob}%",
+        "abrirEtapas": "Current stage: {etapa}. Change stage",
+        "posicion": "{i} of {n}"
+      },
+      "cabecera": {
+        "cerrar": "Close",
+        "abrirDetalle": "Open full details",
+        "etapaProb": "{etapa} {prob}%",
+        "estado": {
+          "open": "Open",
+          "won": "Won",
+          "lost": "Lost"
+        },
+        "score": "Score {score}",
+        "icp": "ICP {banda}",
+        "temperatura": {
+          "cold": "Cold",
+          "warm": "Warm",
+          "hot": "Hot"
+        },
+        "monto": "Amount",
+        "probabilidad": "Probability",
+        "deLaEtapa": "from the stage",
+        "cierre": "Close",
+        "cierreEstimado": "Estimated close",
+        "responsable": "Owner",
+        "sinResponsable": "Unassigned",
+        "enLaEtapa": "In stage",
+        "dias": "{dias, plural, one {# day} other {# days}}",
+        "editar": "Edit",
+        "marcarPerdida": "Mark as lost",
+        "marcarGanada": "Mark as won",
+        "reabrir": "Reopen"
+      },
+      "linea": {
+        "cuando": {
+          "hoy": "Today {hora}",
+          "ayer": "Yesterday {hora}",
+          "fecha": "{fecha} {hora}"
+        },
+        "editar": "Edit",
+        "duplicar": "Duplicate",
+        "eliminar": "Delete",
+        "tipo": {
+          "venta": "Sale",
+          "reserva": "Booking",
+          "pedido": "Order",
+          "llamada": "Call",
+          "email": "Email",
+          "whatsapp": "WhatsApp",
+          "nota": "Note",
+          "tarea": "Task",
+          "sistema": "System",
+          "reunion": "Meeting",
+          "llamadaIa": "AI call"
+        }
+      },
+      "identidad": {
+        "cargando": "Loading customer",
+        "sinNombre": "No name",
+        "persona": "Person",
+        "empresa": "Company",
+        "ciclo": {
+          "lead": "Lead",
+          "opportunity": "Opportunity",
+          "customer": "Customer",
+          "churned": "Churned"
+        },
+        "salud": "Health {score}",
+        "nuevo": "New",
+        "documento": "ID",
+        "correo": "Email",
+        "telefono": "Phone",
+        "ubicacion": "Location",
+        "contactoPrincipal": "Main contact:",
+        "sinContacto": "No main contact",
+        "vinculadoA": "Linked to:",
+        "etiquetas": "Tags:",
+        "cambiarFoto": "Change photo"
+      },
+      "contacto": {
+        "sinNombre": "No name",
+        "principal": "Main",
+        "nuevo": "New",
+        "cargoDe": "Role of {nombre}",
+        "editarCargo": "Edit the role of {nombre}: {cargo}",
+        "sinCargo": "no role",
+        "agregarCargo": "Add role",
+        "esPrincipal": "{nombre} is the main contact",
+        "marcarPrincipal": "Mark {nombre} as main contact",
+        "desvincular": "Unlink {nombre}"
+      }
+    },
+    "accionesRapidas": {
+      "sinNombre": "No name",
+      "errores": {
+        "sinPermiso": "You don't have permission for this action.",
+        "noEncontrado": "The record no longer exists or doesn't belong to this organization.",
+        "sinEmbudo": "The organization has no sales pipeline. Create it before qualifying.",
+        "conflicto": "Someone changed this record. Reload and try again.",
+        "datos": "Check the data: a field isn't valid.",
+        "red": "Couldn't connect. Check your connection and try again.",
+        "generico": "Something went wrong. Try again."
+      },
+      "toast": {
+        "llamada": "Call logged",
+        "llamadaConSeguimiento": "Call logged and follow-up task created",
+        "reunion": "Meeting scheduled",
+        "nota": "Note saved",
+        "tarea": "Task created and assigned to you",
+        "correo": "Email sent",
+        "whatsapp": "WhatsApp sent"
+      },
+      "llamar": {
+        "titulo": "Call",
+        "modos": "Call modes",
+        "modo": {
+          "browser": "From the browser",
+          "mobile": "From my phone",
+          "ai": "AI agent",
+          "registrar": "Just log the call"
+        },
+        "detalle": {
+          "browser": "Softphone registered",
+          "mobile": "We call you and connect the customer",
+          "ai": "A voice agent calls",
+          "registrar": "You already talked: save the outcome"
+        },
+        "motivo": {
+          "sinTelefono": "The customer has no phone",
+          "softphone": "Softphone not available on this page",
+          "agente": "Available once voice agents are enabled"
+        },
+        "predeterminado": "default",
+        "llamando": "Calling…",
+        "tituloSeguimiento": "Follow up on the call with {nombre}"
+      },
+      "tarea": {
+        "titulo": "New task",
+        "cancelar": "Cancel",
+        "crear": "Create task",
+        "campoTitulo": "Title",
+        "tituloEj": "E.g.: send the adjusted proposal",
+        "descripcion": "Description",
+        "fecha": "Due",
+        "hora": "Time",
+        "prioridad": "Priority",
+        "prioridades": {
+          "low": "Low",
+          "med": "Medium",
+          "high": "High",
+          "critical": "Critical"
+        },
+        "aviso": "Assigned to you. Organization time: {zona}.",
+        "error": {
+          "obligatorio": "This field is required.",
+          "fechaPasada": "The date can't be before today.",
+          "muyLargo": "It's too long."
+        }
+      }
+    },
+    "pantallaLeads": {
+      "titulo": "Leads",
+      "subtitulo": "{n, plural, one {# person or company with no open opportunity} other {# people and companies with no open opportunity}}",
+      "subtituloMovil": "{n, plural, one {# lead} other {# leads}}",
+      "subtituloSinPermiso": "Restricted access",
+      "migas": {
+        "crm": "CRM"
+      },
+      "recargar": "Reload",
+      "importar": "Import",
+      "nuevo": "New lead",
+      "verDescartados": "Show discarded",
+      "ocultarDescartados": "Hide discarded",
+      "buscar": "Search by name, ID, email or phone",
+      "seleccionarPagina": "Select the leads on this page",
+      "sustantivo": {
+        "singular": "lead",
+        "plural": "leads"
+      },
+      "sinPermiso": {
+        "titulo": "You don't have access to leads",
+        "descripcion": "Viewing leads requires the “View leads” permission. Ask the organization's administrator for access.",
+        "volver": "Back to CRM"
+      },
+      "error": {
+        "titulo": "Couldn't load the leads"
+      },
+      "vacio": {
+        "titulo": "You don't have leads yet",
+        "descripcion": "Leads come from the web form, WhatsApp, referrals or an import. Connect your site's form or create the first one.",
+        "conectar": "Connect web form"
+      },
+      "masivo": {
+        "asignar": "Assign owner",
+        "etiquetar": "Tag",
+        "etiquetarMotivo": "Tags are edited on the customer record",
+        "calificar": "Qualify",
+        "calificarMotivo": "Qualify one lead at a time",
+        "exportar": "Export",
+        "descartar": "Discard"
+      },
+      "asignar": {
+        "titulo": "Assign owner",
+        "descripcion": "{n, plural, one {# lead will be assigned.} other {# leads will be assigned.}}",
+        "asignar": "Assign",
+        "cancelar": "Cancel",
+        "responsable": "Owner",
+        "sinAsignar": "Unassigned",
+        "hecho": "{n, plural, one {# lead assigned} other {# leads assigned}}"
+      },
+      "descartar": {
+        "titulo": "{n, plural, one {Discard lead} other {Discard # leads}}",
+        "descripcion": "It stops showing in the default list. It's still a customer and you can reactivate it from “Show discarded”.",
+        "confirmar": "Discard",
+        "hecho": "{n, plural, one {Lead discarded} other {# leads discarded}}",
+        "motivos": {
+          "noInteresado": "Not interested",
+          "sinPresupuesto": "No budget",
+          "duplicado": "Duplicate",
+          "datosFalsos": "Fake or incomplete data"
+        }
+      },
+      "csv": {
+        "nombre": "Name",
+        "documento": "ID",
+        "correo": "Email",
+        "telefono": "Phone",
+        "origen": "Source",
+        "responsable": "Owner",
+        "score": "Score",
+        "etiquetas": "Tags",
+        "creado": "Captured",
+        "ultimoContacto": "Last contact"
+      },
+      "calificar": {
+        "hecho": "Opportunity created for {nombre}",
+        "contexto": "From the lead {nombre}",
+        "contextoDetalle": "The customer is locked; the opportunity starts in the sales pipeline."
+      },
+      "kpi": {
+        "grupo": "Leads summary",
+        "leads": "Leads",
+        "nuevosMes": "+{n} this month",
+        "sinResponsable": "No owner",
+        "asignarLote": "Assign them in bulk from the table",
+        "todosAsignados": "All have an owner",
+        "contactados": "Contacted (7 days)",
+        "delTotal": "{pct}% of total",
+        "calificados": "Qualified this month",
+        "calificadosCorto": "Qualified",
+        "oportunidadesNuevas": "{n} new opportunities"
+      },
+      "filtros": {
+        "titulo": "Filter leads",
+        "boton": "Filters",
+        "origen": "Source",
+        "todos": "All",
+        "responsable": "Owner",
+        "sinAsignar": "Unassigned",
+        "captura": "Capture date",
+        "cualquierFecha": "Any date",
+        "descartados": "Include discarded",
+        "chipSinColocar": "Status: not placed",
+        "chipOrigen": "Source: {origen}",
+        "chipCaptura": "Capture date: {rango}",
+        "chipResponsable": "Owner: {nombre}",
+        "chipDescartados": "With discarded",
+        "limpiarTodo": "Clear all"
+      },
+      "detalle": {
+        "lead": "Lead",
+        "abrirFicha": "Open record",
+        "calificar": "Qualify → create opportunity",
+        "contacto": "Contact details",
+        "calificacion": "Qualification",
+        "responsable": "Owner",
+        "capturado": "Captured",
+        "ultimoContacto": "Last contact",
+        "etiquetas": "Tags",
+        "sinEtiquetas": "No tags",
+        "actividad": "Recent activity",
+        "sinActividad": "No activity with this lead yet."
+      }
+    },
+    "pantallaActividades": {
+      "titulo": "Activities",
+      "subtitulo": "{n} activities · {rango} · {responsable}",
+      "subtituloMovil": "{n} activities",
+      "migas": {
+        "crm": "CRM"
+      },
+      "recargar": "Reload",
+      "exportar": "Export",
+      "nueva": "New activity",
+      "todasLasFechas": "all dates",
+      "todosResponsables": "all owners",
+      "clienteUOportunidad": "Customer or opportunity",
+      "quitarEntidad": "Remove the {nombre} filter",
+      "linea": "Timeline",
+      "tipoNueva": {
+        "llamar": "Call",
+        "email": "Email",
+        "whatsapp": "WhatsApp",
+        "reunion": "Meeting",
+        "tarea": "Task",
+        "nota": "Note"
+      },
+      "tipoNuevaDetalle": {
+        "llamar": "Log the outcome of a call",
+        "tarea": "CRM task, assigned to you"
+      },
+      "sinPermiso": {
+        "titulo": "You don't have access to activities",
+        "descripcion": "Ask the organization's administrator for access.",
+        "volver": "Back to CRM"
+      },
+      "error": {
+        "titulo": "Couldn't load the activities"
+      },
+      "vacio": {
+        "titulo": "No activity this month yet",
+        "descripcion": "The team's calls, emails, WhatsApp messages, meetings, notes and tasks show up here. Start by logging a call.",
+        "registrarLlamada": "Log call",
+        "verLeads": "View leads"
+      },
+      "kpi": {
+        "grupo": "Activities summary",
+        "total": "Total",
+        "llamadas": "Calls",
+        "correos": "Emails",
+        "whatsapp": "WhatsApp",
+        "reuniones": "Meetings",
+        "notas": "Notes",
+        "tareasAbiertas": "Open tasks"
+      },
+      "dia": {
+        "hoy": "Today · {fecha}",
+        "ayer": "Yesterday · {fecha}",
+        "sinFecha": "No date"
+      },
+      "toast": {
+        "editada": "Changes saved",
+        "eliminada": "Activity deleted",
+        "duplicada": "Activity duplicated"
+      },
+      "eliminar": {
+        "titulo": "Delete this activity?",
+        "descripcion": "It disappears from the customer's timeline, the opportunity and Activities. This can't be undone.",
+        "confirmar": "Delete",
+        "cancelar": "Cancel"
+      },
+      "csv": {
+        "fecha": "Date",
+        "tipo": "Type",
+        "detalle": "Detail",
+        "resultado": "Outcome",
+        "duracion": "Duration (s)",
+        "autor": "Owner",
+        "cliente": "Customer",
+        "oportunidad": "Opportunity"
+      },
+      "entrada": {
+        "titulo": {
+          "llamadaSaliente": "Outbound call",
+          "llamadaEntrante": "Inbound call",
+          "llamada": "Call",
+          "correo": "Email",
+          "whatsapp": "WhatsApp",
+          "reunion": "Meeting",
+          "nota": "Note",
+          "tarea": "Task: {titulo}",
+          "llamadaIa": "AI agent call",
+          "sistema": "System activity"
+        },
+        "duracion": "{min} min {seg} s",
+        "prioridad": "Priority {prioridad}",
+        "prioridades": {
+          "low": "low",
+          "med": "medium",
+          "high": "high",
+          "critical": "critical"
+        },
+        "sistema": "System",
+        "estado": {
+          "fijada": "Pinned",
+          "hecha": "Done",
+          "cancelada": "Canceled",
+          "enCurso": "In progress",
+          "pendiente": "Pending",
+          "resultado": {
+            "answered": "Answered",
+            "no_answer": "No answer",
+            "voicemail": "Voicemail",
+            "wrong_number": "Wrong number",
+            "callback": "Call back",
+            "not_interested": "Not interested"
+          }
+        }
+      },
+      "editar": {
+        "titulo": "Edit activity",
+        "tituloNota": "Edit note",
+        "cancelar": "Cancel",
+        "guardar": "Save changes",
+        "resultado": "Call outcome",
+        "sinResultado": "No outcome",
+        "nota": "Note",
+        "notas": "Notes",
+        "obligatorio": "This field is required.",
+        "fijar": "Pin to the customer record"
+      },
+      "filtrosMovil": {
+        "titulo": "Filters",
+        "limpiar": "Clear",
+        "ver": "View activities",
+        "responsable": "Owner",
+        "todos": "All owners",
+        "entidad": "Customer or opportunity",
+        "rango": "Date range",
+        "todasLasFechas": "All dates"
+      }
+    },
+    "fichaCliente": {
+      "oportunidadCreada": "Opportunity created",
+      "desdeFicha": "From {nombre}'s record",
+      "documentos": "CRM documents",
+      "vacio": {
+        "titulo": "This customer has no activity yet",
+        "descripcion": "No sales, bookings, calls or notes yet. Start by logging a sale, a call or a note.",
+        "nota": "Note",
+        "llamada": "Log call",
+        "venta": "Record sale"
+      },
+      "tareas": {
+        "nueva": "New",
+        "primera": "Create the first task"
+      },
+      "oportunidades": {
+        "nueva": "New opportunity",
+        "perdidas": "Lost"
+      }
+    },
+    "oportunidad": {
+      "flujo": {
+        "conflicto": "The opportunity changed while saving. Try again.",
+        "errorMover": "Couldn't change the stage",
+        "motivoOverride": "Moved forward without meeting the stage requirements",
+        "movida": "Opportunity moved to {etapa}",
+        "gateGanar": "Stage requirements missing: {lista}",
+        "sinPermisoCerrar": "You don't have permission to close opportunities.",
+        "errorGanar": "Couldn't mark as won",
+        "perdida": "Opportunity marked as lost",
+        "errorPerder": "Couldn't mark as lost",
+        "permisoCerrar": "close opportunities",
+        "sinEtapaGanada": "This pipeline has no won stage; set it up in «Stages».",
+        "sinEtapaPerdida": "This pipeline has no lost stage; set it up in «Stages»."
+      },
+      "acciones": {
+        "sufijoCopia": "(copy)",
+        "duplicada": "Opportunity duplicated",
+        "errorDuplicar": "Couldn't duplicate",
+        "eliminada": "Opportunity deleted",
+        "errorEliminar": "Couldn't delete",
+        "noEliminable": "It's won or has a quote, invoice, sale or commission: it can't be deleted.",
+        "eliminarTitulo": "Delete «{nombre}»?",
+        "eliminarDescripcion": "Its lines, notes and tasks are deleted too. This can't be undone.",
+        "eliminar": "Delete",
+        "cancelar": "Cancel"
+      },
+      "filtros": {
+        "titulo": "Filters",
+        "boton": "Filters",
+        "embudo": "Pipeline",
+        "todos": "All",
+        "etapa": "Stage",
+        "todas": "All",
+        "responsable": "Owner",
+        "yo": "Me",
+        "sinAsignar": "Unassigned",
+        "cierre": "Expected close",
+        "cualquierFecha": "Any date",
+        "preset": {
+          "mes": "this month",
+          "trimestre": "this quarter",
+          "vencido": "overdue"
+        },
+        "prioridad": "Priority",
+        "chipEmbudo": "Pipeline: {nombre}",
+        "chipEtapa": "Stage: {nombre}",
+        "chipResponsable": "Owner: {nombre}",
+        "chipCierre": "Close: {periodo}",
+        "chipPrioridad": "Priority: {lista}",
+        "limpiar": "Clear filters"
+      },
+      "kpis": {
+        "aria": "Opportunity indicators",
+        "valorAbierto": "Open value",
+        "detalleAbiertas": "{n, plural, one {# open opportunity} other {# open opportunities}}",
+        "ponderado": "Weighted (open only)",
+        "abiertas": "Open opportunities",
+        "cierranMes": "{n, plural, =0 {None due this month} one {# due this month} other {# due this month}}",
+        "tasaCierre": "Win rate (90 d)",
+        "ganadasPerdidas": "{ganadas, plural, one {# won} other {# won}} · {perdidas, plural, one {# lost} other {# lost}}",
+        "truncado": "There are too many opportunities to add them all: indicators count the first 20,000. Filter to narrow down."
+      },
+      "tablero": {
+        "aria": "Pipeline board",
+        "errorColumna": "Couldn't load the cards for this stage",
+        "etapasAria": "Stages",
+        "chipEtapa": "{etapa} · {n}",
+        "resumenColumna": "{moneda} · {n, plural, one {# opportunity} other {# opportunities}} · prob. {prob} %"
+      },
+      "tabla": {
+        "vencido": "overdue {dias, plural, =0 {by a few hours} one {# d} other {# d}}",
+        "hoy": "today {hora}",
+        "manana": "tomorrow {hora}",
+        "seleccionarPagina": "Select the opportunities on this page",
+        "oportunidad": "Opportunity",
+        "etapa": "Stage",
+        "monto": "Amount",
+        "prob": "Prob.",
+        "cierre": "Close",
+        "responsable": "Owner",
+        "proximo": "Next contact",
+        "acciones": "Actions",
+        "seleccionar": "Select {nombre}",
+        "lead": "Lead",
+        "sinCliente": "No customer",
+        "sinResponsable": "Unassigned",
+        "sustantivo": {
+          "singular": "opportunity",
+          "plural": "opportunities"
+        }
+      },
+      "masivo": {
+        "resultado": "{ok, plural, one {# of {total} applied} other {# of {total} applied}}",
+        "motivoVariosEmbudos": "The selected ones belong to different pipelines",
+        "motivoSinPermiso": "You don't have permission",
+        "sustantivo": {
+          "singular": "selected",
+          "plural": "selected"
+        },
+        "mover": "Move stage",
+        "asignar": "Assign owner",
+        "perder": "Mark as lost",
+        "eliminar": "Delete",
+        "exportar": "Export",
+        "moverTitulo": "Move {n, plural, one {# opportunity} other {# opportunities}}",
+        "moverDescripcion": "Each one goes through the stage requirements; those that don't meet them stay where they are.",
+        "cancelar": "Cancel",
+        "etapa": "Target stage",
+        "elegirEtapa": "Choose a stage",
+        "asignarTitulo": "Assign an owner to {n, plural, one {# opportunity} other {# opportunities}}",
+        "responsable": "Owner",
+        "sinAsignar": "Unassigned",
+        "varias": "{n, plural, one {# opportunity} other {# opportunities}}",
+        "eliminarTitulo": "Delete {n, plural, one {# opportunity} other {# opportunities}}?",
+        "eliminarDescripcion": "Won ones or those with documents aren't deleted. This can't be undone."
+      },
+      "lista": {
+        "titulo": "Opportunities",
+        "subtitulo": "Deals from all sales pipelines",
+        "subtituloSinPermiso": "No access",
+        "subtituloMovil": "{n, plural, one {# opportunity} other {# opportunities}}",
+        "migas": {
+          "crm": "CRM"
+        },
+        "nueva": "New opportunity",
+        "importar": "Import",
+        "exportar": "Export",
+        "sinPermiso": {
+          "titulo": "You don't have access to opportunities",
+          "descripcion": "Ask an administrator for permission to view opportunities.",
+          "volver": "Back to CRM"
+        },
+        "vacio": {
+          "titulo": "You don't have opportunities yet",
+          "descripcion": "Create the first one or qualify a lead to start selling.",
+          "verPipeline": "View pipeline"
+        },
+        "pestanas": {
+          "aria": "Opportunity status",
+          "open": "Open",
+          "won": "Won",
+          "lost": "Lost",
+          "all": "All"
+        },
+        "errorKpi": "Couldn't calculate the indicators",
+        "buscar": "Search by name or customer",
+        "orden": {
+          "aria": "Sort by",
+          "cierre": "Expected close",
+          "creada": "Creation date",
+          "monto": "Amount",
+          "proximo": "Next contact",
+          "nombre": "Name"
+        },
+        "error": {
+          "titulo": "Couldn't load the opportunities",
+          "descripcion": "Check your connection and try again."
+        },
+        "sinResultados": {
+          "titulo": "No opportunity matches",
+          "descripcion": "Try another search, another tab or remove filters."
+        },
+        "csv": {
+          "oportunidad": "Opportunity",
+          "cliente": "Customer",
+          "etapa": "Stage",
+          "monto": "Amount",
+          "moneda": "Currency",
+          "prob": "Probability",
+          "cierre": "Expected close",
+          "responsable": "Owner",
+          "proximo": "Next contact",
+          "estado": "Status",
+          "tipo": "Type"
+        }
+      },
+      "etapas": {
+        "guardada": "Stage saved",
+        "error": "Couldn't save the stage",
+        "eliminada": "Stage deleted",
+        "titulo": "Pipeline stages",
+        "descripcion": "Change name, color, probability and outcome. Requirements and the AI agent are set up in each stage.",
+        "ganada": "Won",
+        "perdida": "Lost",
+        "editar": "Edit {etapa}",
+        "eliminar": "Delete {etapa}",
+        "nueva": "New stage"
+      },
+      "asistente": {
+        "titulo": "New pipeline",
+        "tituloCon": "New pipeline · {nombre}",
+        "cancelar": "Cancel",
+        "atras": "Back",
+        "crear": "Create pipeline",
+        "siguiente": "Next",
+        "desc": {
+          "plantilla": "Choose a template to start. Everything can be changed in step 3.",
+          "datos": "Name it and decide whether it will be the default pipeline.",
+          "etapas": "Order the stages and change name, color, probability, SLA and outcome."
+        },
+        "pasos": {
+          "plantilla": "Template",
+          "datos": "Name and type",
+          "etapas": "Stages"
+        },
+        "pasosAria": "Wizard steps",
+        "pasoMovil": "Step {n} of {total} · {etiqueta}",
+        "notaCierre": "Closing stages (trophy and X) mark the opportunity as won or lost when it's moved there.",
+        "nombre": "Pipeline name",
+        "nombreAyuda": "It can't be repeated within the organization.",
+        "tipo": "Type",
+        "tipoAyuda": "Website leads go into the default sales pipeline.",
+        "tipos": {
+          "sales": "Sales",
+          "onboarding": "Onboarding",
+          "renewal": "Renewal"
+        },
+        "meta": "Period goal (optional)",
+        "moneda": "Currency",
+        "periodo": "Period",
+        "periodos": {
+          "monthly": "Monthly",
+          "quarterly": "Quarterly",
+          "yearly": "Yearly"
+        },
+        "porDefecto": "Use as default pipeline",
+        "porDefectoAyuda": "It's the one the board opens and where website leads go. There can only be one.",
+        "vistaPrevia": "Preview",
+        "agregarEtapa": "Add stage",
+        "limiteEtapas": "{n, plural, one {# stage} other {# stages}} · you can add up to {max}",
+        "requisitosAria": "Requirements to create the pipeline",
+        "checkGanada": "One won closing stage: «{nombre}»",
+        "faltaGanada": "A won closing stage is missing",
+        "checkPerdida": "One lost closing stage: «{nombre}»",
+        "faltaPerdida": "A lost closing stage is missing",
+        "checkOrden": "Probabilities in ascending order",
+        "error": {
+          "nombreObligatorio": "The name is required.",
+          "nombreRepetido": "There's already a pipeline with that name.",
+          "metaInvalida": "The goal must be a number greater than or equal to zero."
+        },
+        "errorNombre": "A pipeline with that name already exists. Nothing was created.",
+        "errorEtapas": "Check the stages: a won or lost stage is missing, or the probabilities aren't in order. Nothing was created.",
+        "errorCrear": "Couldn't create the pipeline ({detalle}). Nothing was created; your changes are still here."
+      },
+      "selector": {
+        "aria": "Pipeline: {nombre}",
+        "conDefecto": "{nombre} (main)",
+        "elegir": "Choose a pipeline",
+        "titulo": "Organization pipelines",
+        "porDefecto": "Default",
+        "tipos": {
+          "ventas": "Sales",
+          "onboarding": "Onboarding",
+          "renovacion": "Renewal"
+        },
+        "etapas": "{n, plural, one {# stage} other {# stages}}",
+        "nuevo": "New pipeline",
+        "nuevoDetalle": "From a template or blank",
+        "sinPermiso": "You don't have permission",
+        "usarDefecto": "Use «{nombre}» as default",
+        "yaDefecto": "It's already the default pipeline",
+        "usarDefectoDetalle": "The board will open this pipeline",
+        "editarEtapas": "Edit this pipeline's stages",
+        "eliminar": "Delete pipeline",
+        "noEliminable": "Not possible: {n, plural, one {it has # opportunity} other {it has # opportunities}}",
+        "eliminarDetalle": "No opportunities: it can be deleted"
+      },
+      "resumen": {
+        "guardado": "Follow-up saved",
+        "errorGuardar": "Couldn't save the follow-up",
+        "proximoPaso": "Next step",
+        "ultimoContacto": "Last contact: {canal} · {cuando}",
+        "hoy": "today",
+        "hace": "{dias, plural, one {# d ago} other {# d ago}}",
+        "accion": "Next action",
+        "fechaHora": "Date and time",
+        "zona": "Organization time ({zona})",
+        "canal": "Channel",
+        "canales": {
+          "call": "Call",
+          "email": "Email",
+          "whatsapp": "WhatsApp",
+          "meeting": "Meeting",
+          "visit": "Visit"
+        },
+        "resultado": "Result of last contact",
+        "resultados": {
+          "reached": "Reached",
+          "no_answer": "No answer",
+          "left_voicemail": "Voicemail",
+          "callback_scheduled": "Call back",
+          "qualified": "Qualified",
+          "not_interested": "Not interested",
+          "objection": "Objection"
+        },
+        "temperatura": "Temperature",
+        "temperaturas": {
+          "cold": "Cold",
+          "warm": "Warm",
+          "hot": "Hot"
+        },
+        "cambiosSinGuardar": "There are unsaved changes",
+        "sinCambios": "No unsaved changes",
+        "guardar": "Save follow-up",
+        "informacion": "Information",
+        "monto": "Amount",
+        "moneda": "Currency",
+        "monedaBase": "{codigo} · base currency",
+        "cierre": "Estimated close",
+        "creada": "Created",
+        "equipo": "Team and owner"
+      },
+      "drawer": {
+        "cargando": "Loading opportunity",
+        "titulo": "Opportunity",
+        "noEncontrada": "Opportunity not found",
+        "noEncontradaDetalle": "It may have been deleted or you may not have access.",
+        "sinPermiso": "You don't have access to this opportunity",
+        "cerrar": "Close",
+        "descripcion": "Summary, activity, tasks, notes, documents and AI of the opportunity",
+        "pestanasAria": "Opportunity sections",
+        "pestanas": {
+          "resumen": "Summary",
+          "onboarding": "Onboarding",
+          "actividad": "Activity",
+          "tareas": "Tasks",
+          "notas": "Notes",
+          "documentos": "Documents",
+          "ia": "AI"
+        }
+      },
+      "lineas": {
+        "elegirProducto": "Choose a product",
+        "cantidad": "Qty.",
+        "precio": "Unit price",
+        "elegirEspacio": "Choose a space",
+        "noches": "Nights",
+        "concepto": "Item",
+        "titulo": "Lines",
+        "descripcion": "Products, spaces (PMS) and other items. Optional.",
+        "clases": {
+          "products": "Products ({n})",
+          "spaces": "Spaces ({n})",
+          "custom": "Other items ({n})"
+        },
+        "columna": {
+          "products": "Product",
+          "spaces": "Space",
+          "custom": "Item"
+        },
+        "total": "Total",
+        "quitar": "Remove line",
+        "agregar": {
+          "products": "Add product",
+          "spaces": "Add space",
+          "custom": "Add item"
+        },
+        "totalGeneral": "Total {total}",
+        "sinLineas": "This opportunity has no lines. Add them in «Edit».",
+        "producto": "Product",
+        "espacio": "Space",
+        "detalleCantidad": "{n} × {precio}",
+        "detalleNoches": "{n, plural, one {# night} other {# nights}} × {precio}"
+      },
+      "origenComision": {
+        "titulo": "Source and commission",
+        "origen": "Source",
+        "sinOrigen": "No source",
+        "vertical": "Vertical",
+        "sinVertical": "No vertical",
+        "comisionista": "Commission goes to",
+        "tipos": {
+          "salesperson": "The owner",
+          "intermediation_sale": "An intermediary",
+          "none": "No commission"
+        },
+        "comision": "Commission (%)",
+        "comisionAyuda": "Also editable when editing."
+      },
+      "formularioPagina": {
+        "tituloEditar": "Edit opportunity",
+        "tituloNueva": "New opportunity",
+        "migas": {
+          "crm": "CRM",
+          "oportunidades": "Opportunities",
+          "editar": "Edit",
+          "nueva": "New"
+        },
+        "lineasInvalidas": "Check the lines: each one needs a product, space or item and a quantity greater than zero.",
+        "conflicto": "Someone changed this opportunity while you were editing it. Reload the page to see their version.",
+        "noEncontrada": "Opportunity not found",
+        "volver": "Back to Opportunities",
+        "sinPermiso": "You can't edit this opportunity",
+        "sinPermisoDetalle": "Only the owner, whoever created it or someone allowed to edit any opportunity."
+      },
+      "nueva": {
+        "creada": "Opportunity created"
+      },
+      "pipeline": {
+        "titulo": "Pipeline",
+        "porDefectoHecho": "«{nombre}» is now the default pipeline",
+        "errorPipeline": "Couldn't change the pipeline",
+        "pipelineConOportunidades": "It has opportunities: move or delete them first.",
+        "nueva": "New opportunity",
+        "subtituloSinEmbudo": "This organization has no sales pipeline",
+        "subtituloSinPermiso": "No access",
+        "subtitulo": "{embudo} · {n, plural, one {# open opportunity} other {# open opportunities}}",
+        "migas": {
+          "crm": "CRM"
+        },
+        "etapas": "Stages",
+        "vistas": {
+          "aria": "Pipeline view",
+          "kanban": "Kanban",
+          "tabla": "Table",
+          "pronostico": "Forecast",
+          "clientes": "Customers",
+          "automatizacion": "Automation"
+        },
+        "buscar": "Search opportunity or customer",
+        "eliminarTitulo": "Delete the pipeline «{nombre}»?",
+        "eliminarDescripcion": "Its stages are deleted. Only possible if it has no opportunities.",
+        "eliminar": "Delete",
+        "cancelar": "Cancel",
+        "sinEmbudo": {
+          "titulo": "Create your sales pipeline",
+          "descripcion": "The pipeline only shows opportunities from a sales pipeline. Start with the template (Qualification, Proposal, Negotiation, Won, Lost) and adjust it later.",
+          "crear": "Create sales pipeline",
+          "sinPermiso": "Ask an administrator to create the sales pipeline.",
+          "verLeads": "View unplaced leads ({n})"
+        },
+        "estados": {
+          "sinPermiso": {
+            "titulo": "You don't have access to the pipeline",
+            "descripcion": "Ask an administrator for permission to view opportunities.",
+            "volver": "Back to CRM"
+          },
+          "error": {
+            "titulo": "Couldn't load the pipeline",
+            "descripcion": "Check your connection and try again."
+          },
+          "sinResultados": {
+            "titulo": "No opportunity matches",
+            "descripcion": "Try another search or remove filters."
+          },
+          "vacio": {
+            "titulo": "Your pipeline is ready",
+            "descripcion": "Create the first opportunity or qualify a lead to see it move through the stages.",
+            "crear": "New opportunity",
+            "leads": "Go to Leads"
+          }
+        }
+      },
+      "conexiones": {
+        "titulo": "Connections",
+        "cotizacion": "Quote {numero}",
+        "cotizacionSola": "Quote",
+        "sinCotizacion": "No quote",
+        "factura": "Invoice {numero}",
+        "facturaSola": "Invoice",
+        "seCreaAlGanar": "Created when won",
+        "tareas": "Tasks",
+        "abiertas": "{n, plural, =0 {None open} one {# open} other {# open}}",
+        "reunion": "Meeting",
+        "renovacion": "Renewal",
+        "cadaMeses": "{n, plural, one {every month} other {every # months}}",
+        "comision": "Commission",
+        "estimada": "{monto} estimated"
+      },
+      "detalle": {
+        "titulo": "Opportunity",
+        "migas": {
+          "crm": "CRM",
+          "oportunidades": "Opportunities"
+        },
+        "volver": "Back to Opportunities",
+        "noEncontrada": {
+          "titulo": "Opportunity not found",
+          "descripcion": "It may have been deleted or the link may be wrong."
+        },
+        "sinPermiso": {
+          "titulo": "You don't have access to this opportunity",
+          "descripcion": "Ask an administrator for permission to view opportunities."
+        },
+        "error": {
+          "titulo": "Couldn't load the opportunity",
+          "descripcion": "Check your connection and try again."
+        },
+        "clienteVinculado": "Customer linked",
+        "errorVincular": "Couldn't link the customer",
+        "editar": "Edit",
+        "marcarPerdida": "Mark as lost",
+        "marcarGanada": "Mark as won",
+        "pestanasAria": "Opportunity sections",
+        "pestanas": {
+          "actividad": "Activity",
+          "tareas": "Tasks",
+          "notas": "Notes",
+          "documentos": "Documents",
+          "lineas": "Lines",
+          "analisis": "Analysis",
+          "cierre": "Closing",
+          "ia": "AI"
+        },
+        "sinCliente": "This opportunity has no linked customer.",
+        "vincularCliente": "Link customer"
+      },
+      "metricas": {
+        "hoy": "today {hora}",
+        "manana": "tomorrow {hora}",
+        "monto": "Amount",
+        "montoDetalle": "{moneda} · {n, plural, =0 {no lines} one {# line} other {# lines}}",
+        "probabilidad": "Probability",
+        "deLaEtapa": "from the stage",
+        "ponderado": "Weighted",
+        "ponderadoDetalle": "amount × probability",
+        "cierre": "Expected close",
+        "enDias": "{n, plural, =0 {today} one {in # day} other {in # days}}",
+        "haceDias": "{n, plural, one {overdue by # day} other {overdue by # days}}",
+        "responsable": "Owner",
+        "sinResponsable": "Unassigned",
+        "comision": "commission {pct} %",
+        "proximo": "Next contact"
+      }
     }
   },
   "posCustomerDisplay": {
@@ -2726,6 +4668,7 @@
     "allOrganizations": "See all organizations",
     "assistant": "GO Assistant",
     "openAssistant": "Open GO Assistant",
+    "closeAssistant": "Close GO Assistant",
     "branch": "Branch",
     "branchLimit": "You reached your plan's branch limit",
     "branches": "Branches",
@@ -3593,7 +5536,9 @@
         "fechaFutura": "The date can't be later than today.",
         "referenciaVacia": "This method requires a reference.",
         "recibidoInsuficiente": "The cash received doesn't cover the amount."
-      }
+      },
+      "retenciones": "Withholdings",
+      "netoPagado": "Net {neto} · Paid {pagado}"
     },
     "vista": {
       "etiqueta": "View",
@@ -4660,7 +6605,10 @@
         "cuentasAbiertas": "Open accounts payable",
         "pagar": "Pay",
         "lotes": "Lots received from this supplier",
-        "pagos": "Recorded payments"
+        "pagos": "Recorded payments",
+        "certificado": "Withholding certificate",
+        "certificadoAnio": "Current year",
+        "generar": "Generate"
       },
       "valorStock": "Stock value of its products (all branches):",
       "totalPagado": "Total paid:",
@@ -11524,7 +13472,8 @@
         "pdf": "Download PDF",
         "imprimir": "Print",
         "anular": "Void",
-        "eliminar": "Delete draft"
+        "eliminar": "Delete draft",
+        "certificado": "Withholding certificate"
       },
       "motivos": {
         "sinPermiso": "You don't have permission for this action",
@@ -11586,7 +13535,29 @@
         "recepcionarSinProductos": "No lines with products: nothing enters inventory.",
         "recepcionarSinPermiso": "You don't have permission to move inventory.",
         "generarDs": "Generate support document",
-        "generarDsAyuda": "For suppliers not required to invoice."
+        "generarDsAyuda": "For suppliers not required to invoice.",
+        "descripcionNeto": "Total {total} · net payable {neto} (withholdings {retenido}).",
+        "asiento": {
+          "titulo": "Journal entry to be posted",
+          "cuenta": "Account",
+          "debito": "Debit",
+          "credito": "Credit",
+          "sumas": "Totals",
+          "cuadra": "Balanced",
+          "noCuadra": "Unbalanced",
+          "noCalculado": "The entry preview could not be calculated; it is still posted on confirmation.",
+          "motivos": {
+            "no_borrador": "The invoice is no longer a draft: its entry is on the detail page.",
+            "no_rule": "There is no purchase accounting rule: the invoice is confirmed without an entry. Set it up in Finance › Accounting rules.",
+            "amount_invalid": "The invoice total is not valid for posting the entry.",
+            "debit_account_missing": "The debit account of the purchase rule is missing from the chart of accounts.",
+            "credit_account_missing": "The supplier account of the purchase rule is missing from the chart of accounts.",
+            "tax_account_missing": "The deductible VAT account is missing from the chart of accounts.",
+            "withholding_exceeds_total": "Withholdings equal or exceed the total: the entry is posted for the total without deducting them.",
+            "sin_asiento": "No journal entry would be posted on confirmation.",
+            "otro": "No entry would be posted: check the accounting setup."
+          }
+        }
       },
       "recepcionar": {
         "titulo": "Receive invoice {numero}",
@@ -11696,7 +13667,8 @@
         "base": "Base",
         "tarifa": "Rate %",
         "retefuente": "Income tax withholding",
-        "quitar": "Remove {concepto}"
+        "quitar": "Remove {concepto}",
+        "bajoBaseMinima": "The base does not reach the minimum of {uvt} UVT ({valor} with the {anio} UVT): this withholding usually does not apply. You can still apply it if the supplier asks."
       },
       "errores": {
         "revisar": "Check the highlighted fields.",
@@ -11979,7 +13951,8 @@
         "programar": "Schedule payment",
         "plan": "Create installment plan",
         "estadoCuenta": "Supplier account statement",
-        "factura": "View invoice"
+        "factura": "View invoice",
+        "certificado": "Withholding certificate"
       },
       "motivos": {
         "sinPermiso": "You don't have permission for this action"
@@ -12019,13 +13992,33 @@
       },
       "kpis": {
         "pagado": "Paid: {monto}",
-        "programado": "Scheduled, not approved: {monto}"
+        "programado": "Scheduled, not approved: {monto}",
+        "netoRetenciones": "Net of withholdings ({retenido}) · paid {monto}"
       },
       "proveedorDatos": {
         "nombre": "Name",
         "nit": "Tax ID",
         "telefono": "Phone",
         "correo": "Email"
+      },
+      "origen": {
+        "titulo": "Source document",
+        "factura": "Invoice",
+        "recibida": "Received",
+        "vence": "Due",
+        "retenciones": "Withholdings",
+        "conceptos": "{n, plural, one {# item} other {# items}}",
+        "sinRetenciones": "No withholdings",
+        "formaPago": "Payment terms",
+        "credito": "Credit, {n, plural, one {# day} other {# days}}",
+        "contado": "Cash",
+        "subtotal": "Subtotal",
+        "iva": "VAT",
+        "total": "Invoice total",
+        "menosRetenciones": "Withholdings",
+        "neto": "Net payable",
+        "asiento": "Journal entry",
+        "orden": "Purchase order"
       }
     },
     "estadoCuenta": {
@@ -12079,6 +14072,28 @@
         "fecha": "The first installment can't be before today.",
         "interes": "Between 0 and 100 %."
       }
+    },
+    "certificado": {
+      "titulo": "Withholding certificate",
+      "descripcion": "What was withheld from {proveedor} in the period, to issue the certificate (art. 381 Colombian Tax Code).",
+      "periodo": "Certified period",
+      "cargando": "Calculating withholdings…",
+      "errorLectura": "Could not read the withholdings.",
+      "reintentar": "Retry",
+      "clases": {
+        "retefuente": "Income tax withholding",
+        "reteiva": "VAT withholding",
+        "reteica": "ICA withholding"
+      },
+      "total": "Total withheld",
+      "alcance": "{facturas, plural, =0 {No invoices} one {# invoice} other {# invoices}} · {conceptos, plural, =0 {no items} one {# item} other {# items}}",
+      "sinRetenciones": "No withholdings were applied in this period; the certificate will show zero.",
+      "nota": "Covers every branch: the withholding agent is the organization.",
+      "descargar": "Download PDF",
+      "imprimir": "Print",
+      "ver": "View",
+      "cerrar": "Close",
+      "errorDescarga": "Could not download the certificate"
     }
   },
   "documentos": {
@@ -12096,7 +14111,8 @@
       "reporte-caja-abierta": "Open cash register report",
       "arqueo-caja": "Cash count",
       "estado-cuenta-proveedor": "Supplier account statement",
-      "nota-credito-electronica": "Electronic credit note"
+      "nota-credito-electronica": "Electronic credit note",
+      "certificado-retenciones": "Withholding certificate"
     },
     "sinNumero": "No number yet",
     "paginacion": {
@@ -12243,7 +14259,13 @@
       "total": "Total",
       "vencido": "Overdue",
       "porVencer": "Not yet due",
-      "facturaCompraAsociada": "Related purchase invoice"
+      "facturaCompraAsociada": "Related purchase invoice",
+      "periodoDesde": "Period from",
+      "periodoHasta": "Period to",
+      "facturasIncluidas": "Invoices included",
+      "fechaExpedicion": "Issue date",
+      "ciudadExpedicion": "City of issue",
+      "declaradoEn": "Filed in"
     },
     "formasPago": {
       "contado": "Cash",
@@ -12284,7 +14306,9 @@
       "movimientosCaja": "Cash in and out",
       "arqueos": "Cash counts",
       "denominaciones": "Denominations",
-      "retenciones": "Withholdings applied to the supplier"
+      "retenciones": "Withholdings applied to the supplier",
+      "conceptosRetenidos": "Withholdings applied",
+      "facturasIncluidas": "Invoices included"
     },
     "columnas": {
       "descripcion": "Description",
@@ -12319,12 +14343,15 @@
       "subtotal": "Subtotal",
       "base": "Base",
       "tarifa": "Rate (%)",
-      "unidad": "Unit"
+      "unidad": "Unit",
+      "cuenta": "Account",
+      "valorRetenido": "Amount withheld"
     },
     "vacios": {
       "lineas": "No lines.",
       "movimientos": "No transactions in the period.",
-      "facturasAbiertas": "No open invoices."
+      "facturasAbiertas": "No open invoices.",
+      "retencionesPeriodo": "No withholdings were applied to this supplier in the period."
     },
     "totales": {
       "subtotal": "Subtotal",
@@ -12357,7 +14384,11 @@
       },
       "retencion": "{concepto} ({tasa} %)",
       "totalFactura": "Invoice total",
-      "netoPagar": "Net payable to supplier"
+      "netoPagar": "Net payable to supplier",
+      "retefuente": "Income tax withholding",
+      "reteiva": "VAT withholding",
+      "reteica": "ICA withholding",
+      "totalRetenido": "Total withheld"
     },
     "firmas": {
       "recibido": "Received in good order",
@@ -12368,7 +14399,10 @@
       "recibe": "Received by",
       "datosRecibe": "Name · ID · Date",
       "datosAcepta": "Name · ID · Title · Date",
-      "datosNombre": "Name and ID"
+      "datosNombre": "Name and ID",
+      "agenteRetenedor": "Withholding agent",
+      "contador": "Public accountant",
+      "datosContador": "Name · Professional license"
     },
     "legal": {
       "resolucion": "DIAN resolution no. {numero} dated {fecha}, prefix {prefijo}, authorized numbering from {desde} to {hasta}, valid until {vigencia}.",
@@ -12387,7 +14421,8 @@
         "comprobante-egreso": "Voucher of a payment made.",
         "cierre-caja": "Internal cash register report.",
         "arqueo-caja": "Internal cash count report.",
-        "estado-cuenta-proveedor": "Supplier account statement according to our records. If you find any discrepancy, please contact us within 10 days of receipt."
+        "estado-cuenta-proveedor": "Supplier account statement according to our records. If you find any discrepancy, please contact us within 10 days of receipt.",
+        "certificado-retenciones": "Certificate issued under article 381 of the Colombian Tax Code. Handwritten signature not required (article 10 of Decree 836 of 1991)."
       }
     },
     "movimientos": {
@@ -12463,6 +14498,14 @@
       "pos": "Sale recorded at the point of sale (POS).",
       "mesa": "Sale recorded from a table.",
       "ventaPos": "POS sale"
+    },
+    "certificado": {
+      "prefijo": "CR",
+      "totalRetenido": "Total withheld",
+      "declarado350": "Form 350",
+      "declaradoIca": "ICA return",
+      "declarado350EIca": "Form 350 and ICA",
+      "constancia": "{emisor}, as withholding agent, certifies that during the stated period it applied to {proveedor} the withholdings detailed below, on the payments or credits of the invoices included."
     }
   },
   "posVentas": {
@@ -13165,6 +15208,8 @@
       "errorCarga": "The invoice could not be loaded",
       "impuesto": "Tax",
       "ventaOrigen": "POS sale",
+      "ventaWeb": "Web order",
+      "ventaFactura": "Invoice sale",
       "cartera": "Receivable",
       "pago": "Payment",
       "cadena": "Related documents",
@@ -15062,7 +17107,9 @@
       "tipo": "Type",
       "tarifa": "Rate",
       "aplicaA": "Applies to",
-      "estado": "Status"
+      "estado": "Status",
+      "baseMinima": "Minimum base",
+      "cuenta": "Ledger account"
     },
     "tipos": {
       "retefuente": "ReteFuente",
@@ -15087,16 +17134,51 @@
       "activada": "{nombre} is now active.",
       "desactivada": "{nombre} is now inactive.",
       "errorTitulo": "Error",
-      "errorEstado": "The withholding status could not be changed."
+      "errorEstado": "The withholding status could not be changed.",
+      "errorConfiguracion": "The ledger account and minimum base of the withholdings could not be read."
     },
     "formulario": {
       "nueva": "New withholding",
       "editar": "Edit withholding",
-      "nota": "A withholding is applied by the buyer: it is not added to the price, it is not assigned to products and it cannot be the default rate."
+      "nota": "A withholding is applied by the buyer: it is not added to the price, it is not assigned to products and it cannot be the default rate.",
+      "cuenta": "Ledger account",
+      "cuentaAutomatica": "Automatic by type (2365 / 2367 / 2368)",
+      "cuentaAutomaticaActual": "Automatic by type ({cuenta})",
+      "cuentaAyuda": "Active liability accounts only. The purchase journal entry credits the withholding to this account.",
+      "baseMinima": "Minimum base (UVT)",
+      "baseMinimaPlaceholder": "E.g. 27",
+      "baseMinimaAyuda": "If the invoice base is lower, the form warns that the withholding does not apply. Empty: no minimum base.",
+      "baseMinimaEquivale": "Equals {valor} with the {anio} UVT. Below it, the invoice warns that it does not apply.",
+      "errorConfiguracionTitulo": "The withholding was only partly saved",
+      "errorConfiguracion": "The name and rate were saved, but not the account or the minimum base: {detalle}",
+      "errores": {
+        "cuenta_no_existe": "the account does not exist in the chart of accounts.",
+        "cuenta_no_es_pasivo": "the account is not a liability.",
+        "cuenta_inactiva": "the account is inactive.",
+        "base_minima_invalida": "The minimum base must be a number greater than or equal to zero.",
+        "retencion_no_encontrada": "the withholding does not exist in this organization.",
+        "otro": "check your tax permissions and try again."
+      }
     },
     "titulo": "Taxes",
     "migas": {
       "finanzas": "Finance"
+    },
+    "baseMinima": {
+      "sin": "No minimum base",
+      "uvt": "{uvt} UVT",
+      "equivalente": "≈ {valor} (UVT {anio})"
+    },
+    "cuenta": {
+      "automatica": "Automatic by type"
+    },
+    "uvtVigente": "UVT {anio}: {valor} · {norma}",
+    "uvtSinDato": "No UVT recorded for the country: the minimum base cannot be converted to currency.",
+    "plantilla": {
+      "cargar": "Load {pais} template",
+      "alDia": "You already have every withholding in the {pais} template.",
+      "cargada": "{creadas, plural, =0 {You already had every withholding for {pais}.} one {# withholding for {pais} was added.} other {# withholdings for {pais} were added.}}",
+      "error": "The withholding template could not be loaded."
     }
   },
   "receta": {
@@ -22263,6 +24345,444 @@
     "toast": {
       "error": "Error",
       "plantilla": "Template downloaded"
+    }
+  },
+  "perfil": {
+    "navegacion": "My profile sections",
+    "volver": "Back",
+    "editar": "Edit",
+    "seUnio": "Joined on {fecha}",
+    "sinNombre": "Unnamed",
+    "secciones": {
+      "datos-personales": "Personal details",
+      "seguridad": "Security",
+      "preferencias": "Preferences",
+      "sesiones": "Sessions and devices",
+      "organizacion-roles": "Organization and roles",
+      "notificaciones": "Notifications",
+      "panel-vendedor": "Seller panel",
+      "eliminar-cuenta": "Delete account"
+    },
+    "errores": {
+      "sinSesion": "No user session was found",
+      "cargarPerfil": "Couldn't load the profile details",
+      "cargarDatos": "Couldn't load the user details"
+    },
+    "preferencias": {
+      "titulo": "Preferences",
+      "descripcion": "Theme, language and time zone.",
+      "tema": "Theme",
+      "temaAyuda": "Saved to your account and applied on all your devices.",
+      "claro": "Light",
+      "oscuro": "Dark",
+      "sistema": "System",
+      "idioma": "Language",
+      "zonaHoraria": "Time zone",
+      "zonaHorariaAyuda": "Dates are shown in this time zone. If the active branch has its own time zone, that one is used; otherwise, the organization's.",
+      "zonaOrigenSucursal": "From the {sucursal} branch",
+      "zonaOrigenSucursalSinNombre": "From the active branch",
+      "zonaOrigenOrganizacion": "From the organization",
+      "zonaOrigenSistema": "System default"
+    },
+    "vendedor": {
+      "titulo": "Seller panel",
+      "descripcion": "Sell with us and earn commissions on every referral.",
+      "yaEresTitulo": "You're already a seller",
+      "yaEresDesc": "Your account is linked to the seller panel. Open it to see your commissions, payouts and referrals.",
+      "abrir": "Open seller panel",
+      "convierteteTitulo": "Become a seller",
+      "convierteteDesc": "Activate your seller account and earn commissions on every customer you refer. You'll use the same credentials, email and avatar as in the ERP.",
+      "activar": "Activate seller account",
+      "activando": "Activating…",
+      "exito": "You're now a seller! Your account is linked.",
+      "errorSinSesion": "You need to sign in to activate the seller account.",
+      "errorCrear": "Couldn't create the seller account",
+      "errorConexion": "Couldn't reach the service. Try again later.",
+      "errorProcesar": "Couldn't process the request",
+      "errorToast": "Couldn't activate the seller account"
+    },
+    "permisos": {
+      "titulo": "Effective permissions",
+      "descripcion": "What you can do in the active organization, based on your role and job position.",
+      "descripcionOrg": "What you can do in {organizacion}, based on your role and job position.",
+      "cargando": "Loading permissions…",
+      "error": "Your permissions could not be loaded.",
+      "reintentar": "Retry",
+      "vacio": "You have no permissions in this organization. Ask an administrator to assign you a role or job position.",
+      "accesoTotal": "You administer this organization: you have full access.",
+      "resumen": "{n, plural, one {# permission} other {# permissions}}",
+      "noIncluye": "Not included",
+      "noIncluyeSr": "Not included:",
+      "nota": "Permissions are calculated on the server. If the job position defines a permission, it overrides the role.",
+      "modulos": {
+        "admin": "Administration",
+        "branches": "Branches",
+        "calendar": "Calendar",
+        "catalog": "Catalog",
+        "crm": "CRM",
+        "finance": "Finance",
+        "hr": "Human resources",
+        "integrations": "Integrations",
+        "inventory": "Inventory",
+        "memberships": "Memberships",
+        "notifications": "Notifications",
+        "operations": "Operations",
+        "organizations": "Organizations",
+        "pms": "Hotel (PMS)",
+        "pos": "Point of sale",
+        "reports": "Reports",
+        "roles": "Roles",
+        "sales": "Sales",
+        "transport": "Transport",
+        "users": "Users"
+      }
+    }
+  },
+  "asistente": {
+    "cabecera": {
+      "titulo": "GO Assistant",
+      "conversaciones": "Conversations",
+      "volver": "Back to the conversation",
+      "nueva": "New conversation",
+      "historial": "Previous conversations",
+      "voz": "Reply with audio",
+      "vozActiva": "Reply with audio: on",
+      "ampliar": "Expand",
+      "reducir": "Collapse",
+      "cerrar": "Close",
+      "abrir": "Open GO Assistant"
+    },
+    "bienvenida": {
+      "saludo": "Hi, {nombre}!",
+      "texto": "Ask me about your data, ask me to record something or upload a file. Before saving anything I show you a summary to confirm.",
+      "sugerenciasPara": "Suggestions for {pagina}",
+      "sugerencias": "Suggestions",
+      "respaldo1": "How do I create a new product?",
+      "respaldo2": "How do I get a sales report?",
+      "respaldo3": "How do I register a new customer?"
+    },
+    "mensaje": {
+      "escuchar": "Listen",
+      "escucharRespuesta": "Listen to the reply",
+      "leyendo": "Reading…",
+      "detenerLectura": "Stop reading",
+      "copiar": "Copy",
+      "copiarRespuesta": "Copy reply",
+      "copiado": "Copied",
+      "vozNoActiva": "Your organization hasn't turned on audio replies.",
+      "leeDocumento": "Read this document."
+    },
+    "pasos": {
+      "pensando": "Thinking…",
+      "enCurso": "Steps in progress",
+      "plegados": "{n, plural, one {# step} other {# steps}} · View",
+      "anuncio": {
+        "pensando": "GO Assistant is thinking",
+        "consultando": "GO Assistant is checking your data",
+        "escribiendo": "GO Assistant is replying",
+        "lista": "Reply ready"
+      }
+    },
+    "pregunta": {
+      "etiqueta": "Question from the assistant",
+      "opciones": "Options",
+      "otro": "Other: I'll type it",
+      "atajo": "Shortcut: press {letras}"
+    },
+    "tarjeta": {
+      "etiqueta": "Confirm action: {titulo}",
+      "estado": {
+        "pendiente": "To confirm",
+        "ejecutando": "Saving",
+        "completada": "Done",
+        "deshecha": "Undone",
+        "error": "Not completed",
+        "caducada": "Expired"
+      },
+      "puedesDeshacer": "You can undo it for {n, plural, one {# minute} other {# minutes}}.",
+      "avisoContable": "This action affects your accounting.",
+      "falta": "Missing: {campos}. Tell me in the chat before confirming.",
+      "irreversible": "This action can't be undone from the chat.",
+      "caducaEn": "The proposal expires in {n, plural, one {# minute} other {# minutes}}.",
+      "caducada": "This proposal expired and can no longer be confirmed. Ask me for a new summary.",
+      "nota": "Nothing is saved until you confirm · Confirming uses no credits",
+      "formulario": "Open the full form",
+      "formularioAyuda": "Opens the same Customers form, with this data already filled in",
+      "repetir": "You're about to: {resumen} Shall I confirm it?",
+      "confirmar": "Confirm",
+      "siConfirmar": "Yes, confirm",
+      "guardando": "Saving…",
+      "volver": "Back",
+      "corregir": "Correct",
+      "rechazar": "Reject",
+      "atajos": "Ctrl+Enter confirms · Esc rejects",
+      "atajosRepetir": "Ctrl+Enter confirms · Esc goes back",
+      "pedirOtro": "Ask for a new summary",
+      "ver": {
+        "customer": "View customer",
+        "product": "View product",
+        "sale": "View sale",
+        "purchase_order": "View purchase order",
+        "inventory_transfer": "View transfer",
+        "inventory_adjustment": "View adjustment",
+        "invoice_purchase": "View purchase invoice",
+        "invoice_sales": "View sales invoice",
+        "generico": "View"
+      },
+      "deshacer": "Undo",
+      "deshacerMin": "Undo · {n} min",
+      "deshaciendo": "Undoing…",
+      "corregirReintentar": "Correct and retry",
+      "errorGenerico": "The action couldn't be completed. Try again.",
+      "errorRed": "The action couldn't be completed. Check its status before trying again.",
+      "errorCancelar": "I couldn't cancel that proposal. Reload the history before continuing.",
+      "errorDeshacer": "It couldn't be undone.",
+      "canceladaMensaje": "Action cancelled.",
+      "corregirMensaje": "Tell me what you want to correct. I'll prepare a new summary to confirm; the previous proposal is already cancelled.",
+      "caducadaMensaje": "That proposal expired. Tell me again what you need and I'll prepare a new summary."
+    },
+    "masiva": {
+      "filas": "{n, plural, one {# row} other {# rows}}",
+      "nuevos": "{n, plural, one {# new} other {# new}}",
+      "existen": "{n, plural, one {# already exists} other {# already exist}}",
+      "omiten": "{n, plural, one {# skipped} other {# skipped}}",
+      "pie": "{n} will be loaded · duplicates by SKU, barcode or name · all or nothing (a single transaction)",
+      "tabla": "Rows to load",
+      "colProducto": "Product",
+      "colSku": "SKU",
+      "colPrecio": "Price",
+      "colStock": "Stock",
+      "colEstado": "Status",
+      "sinNombre": "(no name)",
+      "estado": {
+        "nuevo": "New",
+        "existente": "Exists",
+        "error": "Skipped"
+      },
+      "seOmite": "Skipped",
+      "seOmiteMotivo": "{motivo}: skipped",
+      "yaExiste": "Already exists",
+      "coincidePor": "Matches by {campo}",
+      "campo": {
+        "sku": "SKU",
+        "barcode": "barcode",
+        "nombre": "name"
+      },
+      "verEnGrande": "View all {n} rows expanded",
+      "verFilas": "View the {n} rows",
+      "ocultarFilas": "Hide the rows"
+    },
+    "aviso": {
+      "creditosBajosTitulo": "{n, plural, one {You have # credit left} other {You have # credits left}}",
+      "creditosBajosRespuestas": "{n, plural, =0 {Not enough for a full reply.} one {Enough for about one more reply.} other {Enough for about # replies.}}",
+      "creditosBajosSinPromedio": "When they run out, the assistant pauses until you buy more.",
+      "sinCreditosTitulo": "No AI credits",
+      "sinCreditosTexto": "The assistant is paused until you buy a pack or your plan renews. Your conversations are kept.",
+      "sinPermisoTitulo": "You don't have permission for that",
+      "sinPermisoTexto": "Your role or plan doesn't include that action. I can show you the information or walk you through the process.",
+      "sesionTitulo": "Your session expired",
+      "sesionTexto": "Sign in again to continue. Your conversation is saved.",
+      "limiteTitulo": "You're going too fast",
+      "limiteTexto": "Wait a few seconds and try again.",
+      "errorTitulo": "The reply is incomplete",
+      "errorTexto": "I couldn't complete the reply.",
+      "errorConservado": "Your message is back in the text box. Check the history before retrying: the turn may have gone through.",
+      "comprarCreditos": "Buy credits",
+      "verPermisos": "See my permissions",
+      "iniciarSesion": "Sign in",
+      "reintentar": "Retry",
+      "descartar": "Dismiss notice"
+    },
+    "composer": {
+      "etiqueta": "Message for GO Assistant",
+      "placeholder": "Ask or request something…",
+      "placeholderSinCreditos": "No credits: the assistant is paused",
+      "transcribiendo": "Transcribing your note…",
+      "adjuntar": "Attach file or photo",
+      "adjuntos": "Attached files",
+      "quitarAdjunto": "Remove {nombre}",
+      "adjuntosNoDisponibles": "I can't read files yet. For now, tell me in writing what it says.",
+      "dictar": "Dictate",
+      "detenerGrabacion": "Stop and transcribe",
+      "grabando": "Recording… {tiempo}",
+      "enviar": "Send message",
+      "detener": "Stop reply",
+      "contextoActivo": "The assistant knows you're on {pagina}. Tap to stop sending it.",
+      "contextoInactivo": "No page context. Tap to send it again.",
+      "ayuda": "Enter sends · Shift+Enter new line",
+      "ayudaMovil": "Tap send to submit",
+      "ayudaRespondiendo": "Esc stops the reply",
+      "ayudaGrabando": "When you stop, the text stays here for review · Esc cancels",
+      "ayudaSinCreditos": "Buy credits to continue",
+      "creditos": "{n, plural, one {# credit} other {# credits}}",
+      "notaDudosa": "I didn't catch the note well: check the text before sending it.",
+      "notaVacia": "Nothing was heard in the note. Try recording again, closer to the microphone.",
+      "notaError": "I couldn't transcribe the note.",
+      "sinMicrofono": "I couldn't use the microphone. Check the browser permission.",
+      "soltar": "Drop the photo or file here",
+      "limiteArchivo": "Some files couldn't be attached: the limit is 20 MB per file."
+    },
+    "historial": {
+      "etiqueta": "Conversation history",
+      "buscar": "Search the history",
+      "cargando": "Loading history…",
+      "errorCarga": "The history couldn't be loaded.",
+      "errorArchivar": "The conversation couldn't be archived.",
+      "errorAbrir": "I couldn't open that conversation. Try again.",
+      "reintentar": "Retry",
+      "vacio": "No saved conversations yet.",
+      "sinCoincidencias": "No conversation matches the search.",
+      "sinTitulo": "Untitled conversation",
+      "grupo": {
+        "hoy": "Today",
+        "ayer": "Yesterday",
+        "semana": "This week",
+        "anteriores": "Earlier"
+      },
+      "mensajes": "{n, plural, one {# message} other {# messages}}",
+      "archivar": "Archive “{titulo}”",
+      "archivarAyuda": "Archive",
+      "nota": "Archiving removes the conversation from the list; it doesn't delete it."
+    },
+    "pie": {
+      "aviso": "It can make mistakes: check what matters",
+      "permisos": "Assistant permissions"
+    }
+  },
+  "analiticaWeb": {
+    "titulo": "Web analytics",
+    "subtitulo": "Online store · {organizacion}",
+    "subtituloSinOrg": "Online store",
+    "actualizar": "Refresh",
+    "exportar": "Export CSV",
+    "todasSucursales": "All branches ({n})",
+    "sucursal": "Branch: {nombre}",
+    "notaSucursal": "visits belong to the store, not to a branch; orders and average sale do follow the branch.",
+    "compararAnterior": "vs previous period",
+    "cargando": "Loading analytics…",
+    "error": "Web analytics could not be loaded.",
+    "reintentar": "Retry",
+    "sinPermiso": "You don't have access to web analytics. Ask an administrator for the “Sales reports” permission.",
+    "zona": "Days follow the {zona} time zone.",
+    "kpi": {
+      "visitantes": "Unique visitors",
+      "sesiones": "Sessions",
+      "pedidos": "Orders",
+      "conversion": "Conversion",
+      "ventaMedia": "Average sale",
+      "vsAnterior": "{v} vs previous period",
+      "ppVsAnterior": "{v} pp vs previous period",
+      "sinComparacion": "No data for the previous period",
+      "nuevos": "{pct} new",
+      "pendientes": "{n} pending"
+    },
+    "embudo": {
+      "titulo": "Conversion funnel",
+      "visitantes": "Visitors",
+      "pedidos": "Orders",
+      "completados": "Completed",
+      "deVisitantes": "{pct} of visitors",
+      "dePedidos": "{pct} of orders",
+      "abandono": "Drop-off {pct} · {n, plural, one {# order cancelled or rejected} other {# orders cancelled or rejected}}.",
+      "nota": "Visitors = distinct people and sessions = distinct browser tabs, not visit rows."
+    },
+    "grafico": {
+      "titulo": "Visitors and orders",
+      "visitantes": "Visitors",
+      "pedidos": "Orders",
+      "visitantesAnterior": "Visitors (previous)",
+      "pedidosAnterior": "Orders (previous)"
+    },
+    "geo": {
+      "titulo": "Where they come from",
+      "privacidad": "Location is approximate (country, region and city) and resolved at the edge: the IP address and coordinates are never stored.",
+      "sinCruceConPedidos": "Conversion and average sale by country are not available yet: orders do not store the originating visit.",
+      "resumenPaises": "{n, plural, one {# country} other {# countries}} · {v} visitors",
+      "pais": "Country",
+      "ciudad": "City",
+      "visitantes": "Visitors",
+      "sesiones": "Sessions",
+      "verCiudades": "See {pais} by city",
+      "porCiudad": "{pais} by city",
+      "volver": "Back to world",
+      "otrasCiudades": "{n, plural, one {And # more city} other {And # more cities}}",
+      "sinCiudades": "No cities for this country in the period yet.",
+      "sinUbicacionTitulo": "We don't have your visitors' location yet",
+      "sinUbicacionTexto": "{n, plural, =0 {There are no visits recorded without location.} one {The only recorded visit was saved without country or city.} other {The # recorded visits were saved without country or city.}} New visits already arrive with their approximate location; earlier ones cannot be recovered.",
+      "mapaMundoTitulo": "Visitors by country",
+      "porPaisTitulo": "By country",
+      "porDepartamento": "{pais} by department",
+      "notaDepartamentos": "Departments add up the {n} cities with the most visitors in the period.",
+      "filtroRegion": "Cities in {region}",
+      "quitarFiltro": "Show all cities",
+      "mapa": {
+        "mundoAria": "Map of visitors by country",
+        "colombiaAria": "Map of {pais} visitors by department",
+        "ayudaTeclado": "Use the arrow keys to move between regions and Enter to select one. The same data is in the table.",
+        "region": "{nombre}: {n, plural, one {{v} visitor} other {{v} visitors}}, {pct} of total",
+        "regionSinVisitas": "{nombre}: no visits",
+        "tooltip": "{n, plural, one {{v} visitor} other {{v} visitors}} · {pct}",
+        "sinVisitas": "No visits",
+        "menos": "Fewer",
+        "mas": "More",
+        "leyendaAria": "Color scale: from fewer visitors (light blue) to more visitors (deep blue); gray, no visits.",
+        "cargando": "Loading map…",
+        "error": "The map could not be loaded. The data is still in the table."
+      }
+    },
+    "csv": {
+      "fecha": "Date",
+      "visitantes": "Visitors",
+      "pedidos": "Orders",
+      "visitantesAnterior": "Visitors previous period",
+      "pedidosAnterior": "Orders previous period",
+      "pais": "Country",
+      "sesiones": "Sessions"
+    }
+  },
+  "asientoContable": {
+    "origenCompra": {
+      "titulo": "Automatic entry for purchase {numero}",
+      "conRetenciones": "Created when the invoice was confirmed; it cannot be edited or deleted (to reverse it, void the invoice). The supplier is credited only the net amount, {neto}; the withholdings, {retenido}, go to taxes payable.",
+      "sinRetenciones": "Created when the invoice was confirmed; it cannot be edited or deleted (to reverse it, void the invoice). The supplier is credited the total, {total}: the invoice has no withholdings.",
+      "irFactura": "Go to invoice",
+      "cadena": "Document chain",
+      "pago": "Payment",
+      "retenciones": "Withholdings",
+      "verCertificado": "View certificate",
+      "conceptos": "{n, plural, one {# item} other {# items}}"
+    },
+    "datos": {
+      "titulo": "Entry details",
+      "fecha": "Posting date",
+      "sucursal": "Branch",
+      "origen": "Source",
+      "moneda": "Currency",
+      "tasa": "Rate {tasa} against {base}",
+      "claveHecho": "Event key",
+      "creado": "Created on",
+      "origenes": {
+        "manual": "Manual",
+        "reversal": "Reversal",
+        "invoice_sales": "Sales invoice",
+        "invoice_purchase": "Purchase invoice",
+        "sales": "POS sale",
+        "payments": "Payment",
+        "stock_movements": "Stock movement",
+        "inventory_adjustment": "Inventory adjustment",
+        "accounts_receivable": "Account receivable",
+        "accounts_payable": "Account payable",
+        "purchase_orders": "Purchase order",
+        "cash_movements": "Cash movement",
+        "cash_sessions": "Cash session",
+        "commissions": "Commission",
+        "credit_note": "Credit note"
+      },
+      "creadoPor": "Created by",
+      "automatico": "Automatic (system)"
+    },
+    "lineas": {
+      "centroCosto": "Cost center"
     }
   }
 }

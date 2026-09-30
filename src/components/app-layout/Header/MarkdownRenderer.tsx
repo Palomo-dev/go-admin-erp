@@ -43,16 +43,20 @@ export default function MarkdownRenderer({ content, className }: MarkdownRendere
         li: ({ children }) => (
           <li className="text-sm">{children}</li>
         ),
-        a: ({ href, children }) => (
-          <a
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-500 hover:text-blue-600 underline"
-          >
-            {children}
-          </a>
-        ),
+        // Un enlace del propio ERP se abre en la misma pestaña (el panel
+        // sigue abierto); uno externo, en otra y sin `opener`.
+        a: ({ href, children }) => {
+          const interno = typeof href === 'string' && href.startsWith('/') && !href.startsWith('//');
+          return (
+            <a
+              href={href}
+              {...(interno ? {} : { target: '_blank', rel: 'noopener noreferrer' })}
+              className="text-link underline underline-offset-2 hover:text-brand-action"
+            >
+              {children}
+            </a>
+          );
+        },
         code: ({ className: codeClassName, children, ...props }) => {
           const isInline = !codeClassName;
           if (isInline) {
@@ -82,25 +86,22 @@ export default function MarkdownRenderer({ content, className }: MarkdownRendere
             {children}
           </blockquote>
         ),
+        // Figma `AsistenteTablaRespuesta` (662:15900): tabla sobre Superficie
+        // dentro de la burbuja, cabecera 12 semibold y celdas compactas. La
+        // alineación (números a la derecha) la respeta desde el markdown.
         table: ({ children }) => (
-          <div className="overflow-x-auto my-2 rounded-lg border border-gray-200 dark:border-gray-700">
-            <table className="w-full text-xs">{children}</table>
+          <div className="my-2 overflow-x-auto rounded-lg border border-line bg-surface">
+            <table className="w-full text-[13px]">{children}</table>
           </div>
         ),
-        thead: ({ children }) => (
-          <thead className="bg-gray-100 dark:bg-gray-800">{children}</thead>
+        thead: ({ children }) => <thead className="border-b border-line">{children}</thead>,
+        tbody: ({ children }) => <tbody className="divide-y divide-line">{children}</tbody>,
+        tr: ({ children }) => <tr>{children}</tr>,
+        th: ({ children, style }) => (
+          <th style={style} className="px-3 py-2 text-left text-xs font-semibold text-fg-secondary">{children}</th>
         ),
-        tbody: ({ children }) => (
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">{children}</tbody>
-        ),
-        tr: ({ children }) => (
-          <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/50">{children}</tr>
-        ),
-        th: ({ children }) => (
-          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-gray-300">{children}</th>
-        ),
-        td: ({ children }) => (
-          <td className="px-2 py-1.5 text-gray-600 dark:text-gray-400">{children}</td>
+        td: ({ children, style }) => (
+          <td style={style} className="px-3 py-2 tabular-nums text-fg">{children}</td>
         ),
         hr: () => (
           <hr className="my-2 border-gray-200 dark:border-gray-700" />

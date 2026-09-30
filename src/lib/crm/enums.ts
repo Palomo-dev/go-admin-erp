@@ -73,6 +73,31 @@ export type TaskStatus = (typeof TASK_STATUSES)[number];
 export const TASK_PRIORITIES = ['low', 'med', 'high', 'critical'] as const;
 export type TaskPriority = (typeof TASK_PRIORITIES)[number];
 
+// ─── customers (leads, CRM ola 1 · M1) ────────────────────────────────────────
+
+/**
+ * Origen del lead (`customers.lead_source`, CHECK `customers_lead_source_check`,
+ * migración 20260930160300). `web_order` es el comprador de la tienda web: se
+ * admite pero no se copia a los leads (ver la migración).
+ */
+export const LEAD_SOURCES = [
+  'web_form',
+  'web_order',
+  'whatsapp',
+  'instagram',
+  'facebook',
+  'referral',
+  'import',
+  'inbound_call',
+  'outbound',
+  'manual',
+  'email',
+  'event',
+  'partner',
+  'other',
+] as const;
+export type LeadSource = (typeof LEAD_SOURCES)[number];
+
 // ─── voice_agents / voice_agent_calls / mobile_call_bridges ─────────────────
 
 export const VOICE_AGENT_ENGINES = [
@@ -262,6 +287,7 @@ export const DB_CHECK_ENUMS: Record<string, readonly string[]> = {
   'activities.activity_type': ACTIVITY_TYPES,
   'tasks.status': TASK_STATUSES,
   'tasks.priority': TASK_PRIORITIES,
+  'customers.lead_source': LEAD_SOURCES,
   'voice_agents.engine': VOICE_AGENT_ENGINES,
   'voice_agents.purpose_type': VOICE_AGENT_PURPOSES,
   'voice_agent_calls.status': VOICE_AGENT_CALL_STATUSES,

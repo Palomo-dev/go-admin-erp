@@ -224,7 +224,7 @@ describe('mapeo a cliente + lead', () => {
     const { body, extras } = altaConClienteNuevo(datos, CTX);
     expect(body).toMatchObject({
       name: 'Pizzas Inventadas · Manizales',
-      source: 'importacion',
+      source: 'import',
       amount: 1985178.59,
       currency: 'COP',
       new_customer: { customer_type: 'company', company_name: 'Pizzas Inventadas S.A.S.', email: 'hola@pizzas-inventadas.co', phone: '+573001234567' },
@@ -250,7 +250,8 @@ describe('mapeo a cliente + lead', () => {
     });
     // Una importación nunca decide bajas.
     expect(extras.customer).not.toHaveProperty('do_not_call');
-    expect(extras.opportunity).toEqual({ metadata: { importacion: expect.objectContaining({ lote: 'tanda_sintetica', id_externo: 'SIN-0007', rne: 'pendiente' }) }, vertical_id: 'v-rest', icp_band: 'B' });
+    // Ola 1 (D2): el lead es la ficha; la vertical va en el cliente y la prioridad es la banda ICP de respaldo.
+    expect(extras.lead).toEqual({ metadata: { importacion: expect.objectContaining({ lote: 'tanda_sintetica', id_externo: 'SIN-0007', rne: 'pendiente' }) }, icp_band: 'B' });
   });
 
   it('cliente existente: solo el lead, sin tocar la ficha', () => {

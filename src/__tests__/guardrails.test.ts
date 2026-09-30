@@ -25,6 +25,10 @@
  *     `VERCEL_SCHEDULE_KINDS`; ningún otro archivo cablea la cadencia.
  * 20. Ningún archivo de src/ filtra `integration_connections` por
  *     `status = 'active'`: el CHECK real es draft|connected|paused|error|revoked.
+ * 37. Hora oficial del servidor en dinero e inventario: suite propia en
+ *     `src/__tests__/timezone/horaOficialGuardrails.test.ts` (corre con `npm test`
+ *     y con `npm run test:tz-all`). El navegador no escribe la marca de tiempo del
+ *     hecho (sale_date, opened_at, closed_at…) con el reloj del equipo.
  */
 
 import * as fs from 'fs';
@@ -1155,7 +1159,10 @@ describe('F0 Guardarraíles', () => {
     const supabaseConfig = readFile(path.join(SRC_ROOT, 'lib', 'supabase', 'config.ts'));
     const subscriptionGuard = readFile(path.join(SRC_ROOT, 'lib', 'hooks', 'useSubscriptionGuard.ts'));
     const inicio = readFile(path.join(SRC_ROOT, 'app', 'app', 'inicio', 'page.tsx'));
-    const kpis = readFile(path.join(SRC_ROOT, 'components', 'inicio', 'DashboardKPIs.tsx'));
+    // Tanda 4 del inicio (2026-09-30): la grilla vieja `DashboardKPIs` salió
+    // del inicio (Figma 445:137185); cada bloque lee su ruta /api/inicio/* y
+    // la actividad pagina de 4 en 4 en el servidor.
+    const actividad = readFile(path.join(SRC_ROOT, 'components', 'inicio', 'ActividadReciente.tsx'));
 
     test('datos y refresh tienen timeout sin cancelar el resto de auth', () => {
       expect(supabaseConfig).toContain('const DATA_REQUEST_TIMEOUT_MS = 15_000;');
@@ -1184,7 +1191,10 @@ describe('F0 Guardarraíles', () => {
       // solo cuando el contexto cargado es de ESTA organización
       // (resolvedOrganizationId), no con `!loading` a secas.
       expect(inicio).toContain('const rolResuelto = !!organization && resolvedOrganizationId === organization.id;');
-      expect(inicio).toContain('if (!organization?.id || branchLoading || !rolResuelto) return;');
+      // Ya no hay un `loadData` en la página: los bloques del panel no se
+      // montan (y no consultan) hasta tener organización, sucursal y rol.
+      expect(inicio).toContain('const puedeConsultar = !!organization?.id && !branchLoading && rolResuelto && canSeeFinancialDashboard;');
+      expect(inicio).toContain('!puedeConsultar ? (');
     });
 
     test('el inicio no elige panel (empleado/financiero) hasta resolver el rol', () => {
@@ -1197,7 +1207,7 @@ describe('F0 Guardarraíles', () => {
     test('el inicio limita la carga inicial a cuatro skeletons', () => {
       expect(inicio).not.toContain('Array.from({ length: 10 })');
       expect(inicio).not.toContain('Array.from({ length: 8 })');
-      expect(kpis).toContain('Array.from({ length: 4 })');
+      expect(actividad).toContain('Array.from({ length: TAMANO_ACTIVIDAD })');
     });
   });
 
@@ -1923,6 +1933,7 @@ describe('26b. Compras y CxP: una sola RPC para registrar la compra y nada escri
           'ProgramarPagoDialog.tsx',
           'AprobacionesPanel.tsx',
           'EstadoCuentaProveedorDialog.tsx',
+          'CertificadoRetencionesDialog.tsx',
           'PlanCuotasDialog.tsx',
           // BandaAntiguedad.tsx subió al kit (kit/documento/BandaAntiguedad, compartida
           // con CxC; solo pinta lo que recibe). Los dos diálogos de arriba son ahora
@@ -3196,5 +3207,143 @@ describe('35. Miembros: rol, cargo, estado y retiro solo por las RPC fn_miembro_
       .filter((f) => /rpc\(\s*fn\b|rpc\(\s*['"]fn_miembro_/.test(readFile(f)) && /fn_miembro_/.test(readFile(f)))
       .map(rel);
     expect(llaman).toEqual(['lib/services/miembrosService.ts']);
+  });
+});
+
+// CRM ola 1 (docs/crm/PLAN-FIGMA-A-CODIGO.md §7.4.7, decisiones D2 y D5).
+//
+// 36a. Las oportunidades y las actividades se escriben POR EL SERVIDOR: rutas
+// `/api/crm/opportunities/**` (RPC `crm_create/update/delete_opportunity`,
+// `opportunityStageService`) y `/api/crm/activities/**`, con la organización de
+// la sesión y los permisos `crm.*`. Desde el navegador (`src/components/crm/**`)
+// no hay transacción, ni permiso, ni autoría. La allow-list es la DEUDA que
+// existía al abrir la ola 1 (2026-09-29): se congeló aquí y la ola 3B la vació
+// (pipeline, drawer, oportunidades, equipo y el código muerto `ImportLeadsCsv`).
+// Solo queda la fusión de identidades. Prohibido añadir entradas; quitar las
+// que se migren.
+//
+// 36b. D2 (dueño, 2026-09-29): un lead ES un cliente con lifecycle_stage='lead'.
+// No se crean oportunidades `record_type='lead'` nuevas: ni desde TypeScript
+// (`record_type: 'lead'` en un objeto que se escribe) ni desde una migración
+// posterior a 20260930160800 (que retiró el último escritor, `web_capture_lead`).
+describe('36. CRM ola 1: escrituras de oportunidades/actividades por el servidor y sin leads-oportunidad nuevos', () => {
+  const esPrueba = (f: string) => /[\/]__tests__[\/]|\.test\.tsx?$/.test(f);
+  const ESCRITURA = /from\(\s*['"](opportunities|activities)['"]\s*\)\s*\.(insert|update|delete|upsert)\(/;
+  const CRM_COMPONENTES = path.join(SRC_ROOT, 'components', 'crm');
+  const DEUDA_NAVEGADOR = new Map<string, string>([
+    // `components/crm/actividades/ActividadesService.ts` salió en la ola 3A: edita y borra por PATCH/DELETE /api/crm/activities/[id].
+    // Ola 3B (2026-09-30) vació la deuda del pipeline, el drawer, Oportunidades y Equipo:
+    //  - `oportunidades/opportunitiesService.ts` → POST, PATCH (+ …/stage y …/seguimiento) y DELETE /api/crm/opportunities/**;
+    //  - `pipeline/TableView.tsx` → DELETE /api/crm/opportunities/[id];
+    //  - `pipeline/drawer/SalesTeamTerritorySelectors.tsx` y `equipo/tabs/AsignarTab.tsx` → PATCH /api/crm/opportunities/[id];
+    //  - `oportunidades/ScoringSection.tsx` → PUT /api/crm/opportunities/[id]/score (cálculo en el servidor);
+    //  - `pipeline/services/pipelineService.ts` → POST /api/crm/opportunities;
+    //  - `oportunidades/ImportLeadsCsv.tsx` era código muerto (sin importadores): se borró.
+    // Queda UNA entrada, fuera de la 3B: la fusión de identidades no es una pantalla del plan.
+    ['components/crm/identidades/IdentidadesService.ts', 'fusión de identidades (re-apunta related_id): pendiente de RPC propia'],
+  ]);
+
+  const ofensoresNavegador = (): string[] =>
+    walkDir(CRM_COMPONENTES)
+      .filter((f) => !esPrueba(f) && /\.(ts|tsx)$/.test(f))
+      .filter((f) => ESCRITURA.test(stripAllComments(readFile(f))))
+      .map(rel)
+      .sort();
+
+  test('ningún archivo nuevo de src/components/crm/** escribe opportunities o activities con el cliente del navegador', () => {
+    const nuevos = ofensoresNavegador().filter((f) => !DEUDA_NAVEGADOR.has(f));
+    if (nuevos.length > 0) console.error('Escriben opportunities/activities desde el navegador (usar /api/crm/**):\n' + nuevos.join('\n'));
+    expect(nuevos).toEqual([]);
+  });
+
+  test('la deuda congelada no tiene entradas obsoletas', () => {
+    const actuales = new Set(ofensoresNavegador());
+    const obsoletas = Array.from(DEUDA_NAVEGADOR.keys()).filter((f) => !actuales.has(f));
+    expect(obsoletas).toEqual([]);
+  });
+
+  test('ningún archivo de src/ escribe una oportunidad con record_type = "lead" (D2)', () => {
+    const ofensores = walkDir(SRC_ROOT)
+      .filter((f) => !esPrueba(f) && /\.(ts|tsx)$/.test(f))
+      .filter((f) => /\brecord_type\s*:\s*['"]lead['"]/.test(stripAllComments(readFile(f))))
+      .map(rel);
+    expect(ofensores).toEqual([]);
+  });
+
+  test('ninguna migración posterior a la ola 1 inserta oportunidades record_type = "lead" (D2)', () => {
+    const dir = path.join(REPO_ROOT, 'supabase', 'migrations');
+    const ofensoras = fs
+      .readdirSync(dir)
+      .filter((f) => /^\d{14}_.*\.sql$/.test(f) && f.slice(0, 14) >= '20260930160800')
+      .filter((f) => {
+        const sql = readFile(path.join(dir, f)).replace(/--[^\n]*/g, '');
+        const inserts = sql.match(/insert\s+into\s+(?:public\.)?opportunities\b[\s\S]*?;/gi) ?? [];
+        return inserts.some((i) => /'lead'/.test(i));
+      });
+    expect(ofensoras).toEqual([]);
+  });
+
+  // Ola 3B (plan §7.4.7): las pantallas nuevas de Pipeline, Oportunidades,
+  // drawer, detalle, formulario y diálogos leen y escriben SOLO por
+  // `/api/crm/**`. Única excepción: `pasosGanar.ts` arma las dependencias de los
+  // ejecutores únicos de `wonCloseSteps` (los mismos del `WonCloseModal`).
+  test('las pantallas de la ola 3B no importan el cliente de Supabase del navegador', () => {
+    const dirs = ['oportunidad', 'pipeline/pantalla', 'oportunidades/pantalla'].map((d) => path.join(CRM_COMPONENTES, d));
+    const ofensores = dirs
+      .flatMap((d) => walkDir(d))
+      .filter((f) => !esPrueba(f) && /\.(ts|tsx)$/.test(f) && !f.endsWith('pasosGanar.ts'))
+      .filter((f) => /@\/lib\/supabase\/config/.test(stripAllComments(readFile(f))))
+      .map(rel);
+    expect(ofensores).toEqual([]);
+  });
+
+  test('crm_create_opportunity fija record_type = deal (no lo lee del cuerpo)', () => {
+    const sql = readFile(path.join(REPO_ROOT, 'supabase', 'migrations', '20260930160600_crm_ola1_oportunidad_rpc.sql'));
+    const alta = sql.slice(sql.indexOf('create or replace function public.crm_create_opportunity'), sql.indexOf('create or replace function public.crm_update_opportunity'));
+    expect(alta).toMatch(/'open',\s*'deal'/);
+    expect(alta).not.toMatch(/v_data\s*->>\s*'record_type'/);
+  });
+});
+
+/**
+ * 38. get_user_permission_codes: cada quien lee solo sus propios permisos
+ * (tanda 3, 2026-09-30, docs/design/SHELL-FIGMA-A-CODIGO.md).
+ *
+ * La RPC es SECURITY DEFINER y aceptaba cualquier `p_user_id`. Desde
+ * `20260930220000_permisos_codigos_solo_propios` la base solo deja pedir los de
+ * otra persona a un admin de la organización (super admin / rol 1-2 por id) o a
+ * quien tenga `users.view`. Todos los llamadores de src/ piden los del usuario
+ * de la sesión: si alguno empieza a pasar otro id, la base lo rechaza con 42501
+ * y esta prueba avisa antes.
+ */
+describe('38. get_user_permission_codes: solo los permisos propios', () => {
+  test('todo llamador de src/ pasa el usuario de la sesión como p_user_id', () => {
+    const permitidos = new Set(['ctx.userId', 'userId']);
+    const ofensores: string[] = [];
+    let total = 0;
+    for (const f of walkDir(SRC_ROOT)) {
+      if (/__tests__|\.test\.tsx?$/.test(f)) continue;
+      const src = readFile(f);
+      const llamadas = src.match(/rpc\(\s*'get_user_permission_codes'\s*,\s*\{[^}]*\}/g) ?? [];
+      for (const l of llamadas) {
+        total += 1;
+        const m = l.match(/p_user_id\s*:\s*([\w.]+)/);
+        if (!m || !permitidos.has(m[1])) ofensores.push(`${rel(f)}: ${l.replace(/\s+/g, ' ')}`);
+      }
+    }
+    expect(ofensores).toEqual([]);
+    // Si el regex dejara de encontrar llamadas, la prueba no protegería nada.
+    expect(total).toBeGreaterThanOrEqual(7);
+  });
+
+  test('la migración restringe a los propios, fija search_path y revoca a anon', () => {
+    const base = '20260930220000_permisos_codigos_solo_propios';
+    const sql = readFile(path.join(REPO_ROOT, 'supabase', 'migrations', `${base}.sql`));
+    expect(fs.existsSync(path.join(REPO_ROOT, 'supabase', 'rollbacks', `${base}_rollback.sql`))).toBe(true);
+    expect(sql).toMatch(/p_user_id IS DISTINCT FROM v_uid/);
+    expect(sql).toMatch(/fn_assert_acceso_org\(p_organization_id\)/);
+    expect(sql).toMatch(/check_user_permission\(v_uid, p_organization_id, 'users\.view'\)/);
+    expect(sql).toMatch(/set search_path to 'public', 'pg_temp'/);
+    expect(sql).toMatch(/revoke execute on function public\.get_user_permission_codes\(uuid, integer\) from public, anon/);
   });
 });

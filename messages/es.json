@@ -1,4 +1,10 @@
 {
+  "posReloj": {
+    "titulo": "Reloj del equipo desfasado",
+    "mensaje": "La hora de este equipo está desfasada {minutos, plural, one {# minuto} other {# minutos}}; las ventas usan la hora del servidor.",
+    "adelantado": "El equipo va adelantado: ajusta su fecha y hora.",
+    "atrasado": "El equipo va atrasado: ajusta su fecha y hora."
+  },
   "metodosPagoSeguridad": {
     "sinPermiso": "No tienes permiso para cambiar los métodos de pago de la organización (permiso de facturación).",
     "codigoInvalido": "El código solo admite letras, números, guion y guion bajo, de 2 a 40 caracteres.",
@@ -666,7 +672,8 @@
         "eventosTotales": "Eventos totales",
         "usuariosActivos": "Usuarios activos",
         "modulosActivos": "Módulos activos"
-      }
+      },
+      "soloAdministracion": "Los indicadores financieros son solo para la administración de la organización."
     },
     "datosEmpresa": {
       "titulo": "Completa los datos de tu empresa",
@@ -677,6 +684,382 @@
         "ciudad": "la ciudad",
         "direccion": "la dirección"
       }
+    },
+    "hoy": {
+      "titulo": "Hoy",
+      "porAtender": "{n, plural, =0 {Todo al día} one {# cosa por atender} other {# cosas por atender}}",
+      "actualizadoALas": "Actualizado a las {hora}",
+      "vacioTitulo": "Nada que atender hoy",
+      "vacioDesc": "Cuando haya cobros vencidos, faltantes de stock, pedidos web o tareas para hoy, aparecerán aquí.",
+      "etiquetas": {
+        "porCobrar": "Por cobrar vencido",
+        "stockCritico": "Stock crítico",
+        "pedidosWeb": "Pedidos web",
+        "cajasAnteriores": "Cajas sin cerrar",
+        "reservasStock": "Reservas de stock sin mover",
+        "misTareas": "Mis tareas"
+      },
+      "estados": {
+        "vencido": "Vencido",
+        "critico": "Crítico",
+        "urgente": "Urgente",
+        "revisar": "Revisar",
+        "paraHoy": "Para hoy",
+        "alDia": "Al día"
+      },
+      "cifras": {
+        "sinVencidos": "Sin vencidos",
+        "cuentas": "{n, plural, one {# cuenta} other {# cuentas}}",
+        "sinFaltantes": "Sin faltantes",
+        "productos": "{n, plural, one {# producto} other {# productos}}",
+        "sinPendientes": "Sin pendientes",
+        "pendientes": "{n, plural, one {# pendiente} other {# pendientes}}",
+        "cajasAbiertas": "{n, plural, one {# caja abierta} other {# cajas abiertas}}",
+        "reservas": "{n, plural, one {# reserva} other {# reservas}}",
+        "abiertas": "{n, plural, one {# abierta} other {# abiertas}}"
+      },
+      "detalles": {
+        "carteraAlDia": "Ninguna cuenta vencida",
+        "cuentasVencidas": "{n, plural, one {# cuenta} other {# cuentas}} · {dias, plural, one {# día} other {# días}} la más vieja",
+        "variasMonedas": "En varias monedas · {dias, plural, one {# día} other {# días}} la más vieja",
+        "stockAlDia": {
+          "estaSucursal": "Todo sobre el mínimo en esta sucursal",
+          "tusSucursales": "Todo sobre el mínimo en tus sucursales"
+        },
+        "stockBajo": {
+          "estaSucursal": "Bajo el mínimo en esta sucursal{agotados, plural, =0 {} one { · # agotado} other { · # agotados}}",
+          "tusSucursales": "Bajo el mínimo en tus sucursales{agotados, plural, =0 {} one { · # agotado} other { · # agotados}}"
+        },
+        "pedidosAlDia": "Ningún pedido por confirmar",
+        "pedidosSinConfirmar": "Esperan confirmación de pago",
+        "pedidosPorExpirar": "{n, plural, one {# expira} other {# expiran}} en menos de {minutos} min",
+        "reservasSinMover": "{unidades, plural, one {# unidad reservada} other {# unidades reservadas}} hace más de 24 h",
+        "cajasDesde": "Abierta desde hace {dias, plural, one {# día} other {# días}}",
+        "tareasVencidas": "{n, plural, one {# vencida} other {# vencidas}}{hoy, plural, =0 {} one { · # vence hoy} other { · # vencen hoy}}",
+        "tareasHoy": "{n, plural, one {# vence hoy} other {# vencen hoy}}",
+        "tareasSinVencer": "Ninguna vence hoy"
+      },
+      "acciones": {
+        "verCartera": "Ver cartera",
+        "cobrar": "Cobrar",
+        "verExistencias": "Ver existencias",
+        "reponer": "Reponer",
+        "verPedidos": "Ver pedidos",
+        "atender": "Atender",
+        "verCajas": "Ver cajas",
+        "revisar": "Revisar",
+        "abrir": "Abrir"
+      },
+      "verTodas": "Ver las {n} · {resto}"
+    },
+    "ventasPeriodo": {
+      "titulo": "Ventas del periodo",
+      "variasMonedas": "Cobros en varias monedas",
+      "sinBase": "Sin periodo anterior para comparar",
+      "resumen": "{ventas} {n, plural, one {venta cobrada} other {ventas cobradas}} · ticket promedio {ticket}",
+      "sinVentas": "Aún no hay cobros en este periodo",
+      "incluyeReintegros": "incluye −{valor} en devoluciones",
+      "anterior": "Periodo anterior: {valor}",
+      "porCanal": "Por canal",
+      "porSucursal": "Por sucursal",
+      "otros": "Otros",
+      "otroCanal": "Otro canal",
+      "sucursalSinNombre": "Sucursal {id}",
+      "abrirDetalle": "Ver el detalle de las ventas del periodo",
+      "grafica": "Ventas del periodo actual frente al anterior",
+      "sinGrafica": "Sin cobros en este periodo ni en el anterior",
+      "sinGraficaMonedas": "Con cobros en varias monedas no se dibuja la tendencia",
+      "frenteConValor": "{frente} ({valor})",
+      "transacciones": "Transacciones",
+      "ticketMedio": "Ticket medio",
+      "devoluciones": "Devoluciones",
+      "seActualizaAlAbrir": "Se actualiza al abrirse; no vuelve a consultar cada 30 s.",
+      "exportarCsv": "Exportar CSV",
+      "verVentas": "Ver ventas",
+      "csv": {
+        "hora": "Hora",
+        "dia": "Día"
+      },
+      "frente": {
+        "ayerMismaHora": "frente a ayer a esta misma hora",
+        "anteayer": "frente a anteayer",
+        "anioAnterior": "frente al año anterior",
+        "diasAnteriores": "frente a los {n} días anteriores",
+        "periodoAnterior": "frente al periodo anterior"
+      },
+      "leyenda": {
+        "hoy": "Hoy",
+        "ayerMismaHora": "Ayer a la misma hora",
+        "actual": "Periodo actual",
+        "anterior": "Periodo anterior"
+      },
+      "canales": {
+        "pos": "POS",
+        "web": "Tienda web",
+        "factura": "Facturas",
+        "mesa": "Mesas"
+      }
+    },
+    "tiendaWeb": {
+      "titulo": "Tienda web",
+      "verPedidos": "Ver pedidos",
+      "visitantes": "Visitantes del periodo",
+      "detalleVisitantes": "{sesiones} sesiones · {nuevas} % nuevas",
+      "pedidos": "Pedidos web",
+      "detallePedidos": "{pagados} pagados · {pendientes} pendientes ahora",
+      "conversion": "Conversión",
+      "detalleConversion": "visitante → pedido pagado",
+      "puntos": "{valor} pp",
+      "visitasTodaTienda": "Las visitas son de toda la tienda; los pedidos, de la sucursal elegida.",
+      "verAnalitica": "Ver analítica web",
+      "detallePendientes": "{pendientes, plural, one {# pendiente} other {# pendientes}} · {expiran, plural, =0 {ninguno expira hoy} one {# expira hoy} other {# expiran hoy}}",
+      "detalleConversionPedidos": "visita → pedido {visitaPedido} % · {pagados} pagados"
+    },
+    "modulos": {
+      "titulo": "Módulos",
+      "activos": "{n, plural, one {# activo} other {# activos}}",
+      "visiblesDe": "{n} de {total} visibles",
+      "reordenar": "Reordenar y ocultar",
+      "restablecer": "Restablecer",
+      "cancelar": "Cancelar",
+      "listo": "Listo",
+      "ayudaReordenar": "Usa las flechas para cambiar el orden. Lo que apagues deja de consultarse en tu inicio; no cambia tus permisos ni los módulos de la organización. Se guarda solo para ti.",
+      "errorGuardar": "No se pudieron guardar los cambios. Inténtalo de nuevo.",
+      "vacioTitulo": "Sin módulos para resumir",
+      "vacioDesc": "Ningún módulo activo tiene resumen para tu cargo en esta organización.",
+      "subir": "Subir {modulo}",
+      "bajar": "Bajar {modulo}",
+      "enElInicio": "En el inicio",
+      "mostrarEnInicio": "Mostrar {modulo} en el inicio",
+      "errorModulo": "No se pudo calcular este módulo",
+      "pie": "{alcance} · {cuando} · actualizado a las {hora}",
+      "cuandoPeriodo": "periodo elegido",
+      "cuandoHoy": "hoy y estado actual",
+      "alcanceTodas": "Todas tus sucursales",
+      "alcanceUna": "Sucursal elegida",
+      "verModulo": "Ver módulo →",
+      "badges": {
+        "vencidas": "{n, plural, one {# vencida} other {# vencidas}}",
+        "porPagar": "{n, plural, one {# por pagar} other {# por pagar}}",
+        "cajasAntiguas": "{n, plural, one {# caja de días anteriores} other {# cajas de días anteriores}}",
+        "cajasAbiertas": "{n, plural, one {# caja abierta} other {# cajas abiertas}}",
+        "sinStock": "{n, plural, one {# sin stock} other {# sin stock}}",
+        "bajoMinimo": "{n, plural, one {# bajo mínimo} other {# bajo mínimo}}",
+        "sinTocar": "{n, plural, one {# sin tocar} other {# sin tocar}}",
+        "porAprobar": "{n, plural, one {# por aprobar} other {# por aprobar}}",
+        "llegadasPendientes": "{n, plural, one {# llegada pendiente} other {# llegadas pendientes}}",
+        "enMora": "{n, plural, one {# en mora} other {# en mora}}",
+        "porVencer": "{n, plural, one {# por vencer} other {# por vencer}}",
+        "retrasados": "{n, plural, one {# retrasado} other {# retrasados}}"
+      },
+      "resumen": {
+        "carteraVencida": "Cartera vencida {valor}",
+        "cuentasVencidas": "{n, plural, one {# cuenta vencida} other {# cuentas vencidas}}",
+        "carteraAlDia": "Cartera al día",
+        "porCobrar": "Por cobrar {valor}",
+        "variasMonedas": "varias monedas",
+        "porPagar7d": "Por pagar en 7 días {valor}",
+        "porPagar7dCuentas": "{n, plural, one {# por pagar en 7 días} other {# por pagar en 7 días}}",
+        "ventas": "{n, plural, one {# venta cobrada} other {# ventas cobradas}}",
+        "cobrado": "{valor} cobrados",
+        "ticketMedio": "ticket medio {valor}",
+        "productos": "{n, plural, one {# producto} other {# productos}}",
+        "valorizado": "{valor} valorizado",
+        "bajoMinimo": "{n, plural, one {# bajo mínimo} other {# bajo mínimo}}",
+        "oportunidades": "{n, plural, one {# oportunidad abierta} other {# oportunidades abiertas}}",
+        "pipeline": "{valor} en pipeline",
+        "clientesNuevos": "{n, plural, one {# cliente nuevo} other {# clientes nuevos}}",
+        "personasActivas": "{n, plural, one {# persona activa} other {# personas activas}}",
+        "ausentesHoy": "{n, plural, one {# ausente hoy} other {# ausentes hoy}}",
+        "turnosHoy": "{n, plural, one {# turno hoy} other {# turnos hoy}}",
+        "llegadasSalidas": "{llegadas} llegadas y {salidas} salidas hoy",
+        "enCasa": "{n, plural, one {# huésped en casa} other {# huéspedes en casa}}",
+        "membresiasActivas": "{n, plural, one {# membresía activa} other {# membresías activas}}",
+        "porVencer7d": "{n, plural, one {# por vencer en 7 días} other {# por vencer en 7 días}}",
+        "viajesHoy": "{n, plural, one {# viaje hoy} other {# viajes hoy}}",
+        "enCurso": "{n, plural, one {# en curso} other {# en curso}}",
+        "completados": "{n, plural, one {# completado} other {# completados}}"
+      },
+      "kpis": {
+        "carteraVencida": "Cartera vencida",
+        "porCobrar": "Por cobrar",
+        "porPagar7d": "Por pagar en 7 días",
+        "ventasCobradas": "Ventas cobradas",
+        "numeroVentas": "Número de ventas",
+        "ticketPromedio": "Ticket promedio",
+        "cajasAbiertas": "Cajas abiertas",
+        "productos": "Productos",
+        "sinStock": "Sin stock",
+        "bajoMinimo": "Bajo mínimo",
+        "valorInventario": "Valor del inventario",
+        "oportunidadesAbiertas": "Oportunidades abiertas",
+        "pipeline": "Pipeline",
+        "ganadas": "Ganadas en el periodo",
+        "clientesNuevos": "Clientes nuevos",
+        "personasActivas": "Personas activas",
+        "ausentesHoy": "Ausentes hoy",
+        "turnosHoy": "Turnos hoy",
+        "ausenciasPorAprobar": "Ausencias por aprobar",
+        "llegadasHoy": "Llegadas hoy",
+        "salidasHoy": "Salidas hoy",
+        "enCasa": "Huéspedes en casa",
+        "membresiasActivas": "Membresías activas",
+        "porVencer7d": "Vencen en 7 días",
+        "enMora": "En mora",
+        "viajesHoy": "Viajes hoy",
+        "enCurso": "En curso",
+        "retrasados": "Retrasados",
+        "completados": "Completados"
+      },
+      "detalles": {
+        "cuentasDias": "{n, plural, one {# cuenta} other {# cuentas}} · la más antigua, {dias} días",
+        "variasMonedas": "Varias monedas",
+        "cuentas": "{n, plural, one {# cuenta} other {# cuentas}}",
+        "cajasAntiguas": "{n, plural, one {# abierta desde días anteriores} other {# abiertas desde días anteriores}}",
+        "sinTocar": "{n, plural, one {# sin actividad en 7 días} other {# sin actividad en 7 días}}",
+        "pendientes": "{n, plural, one {# pendiente} other {# pendientes}}"
+      }
+    },
+    "personalizar": {
+      "boton": "Personalizar",
+      "titulo": "Personalizar el inicio",
+      "descripcion": "Se guarda solo para ti, en esta organización.",
+      "bloques": "Bloques del inicio",
+      "hoy": "Hoy",
+      "siempreVisible": "Siempre visible · no se puede ocultar",
+      "bloque": {
+        "indicadores": "Indicadores",
+        "ventas": "Ventas del periodo",
+        "actividad": "Actividad reciente",
+        "tiendaWeb": "Tienda web"
+      },
+      "modulos": "Módulos",
+      "nota": "Al ocultar un módulo dejan de lanzarse sus consultas. Lo que ocultes aquí no cambia tus permisos ni los módulos de la organización.",
+      "restablecer": "Restablecer",
+      "guardar": "Guardar",
+      "errorGuardar": "No se pudieron guardar los cambios.",
+      "guardado": "Inicio personalizado"
+    },
+    "turno": {
+      "titulo": "Tu turno",
+      "duracion": "{h} h {m} min",
+      "duracionMin": "{m} min",
+      "tarde": "{min} min tarde",
+      "estados": {
+        "antes": "Antes de la entrada",
+        "sinMarcar": "Sin marcar · {min} min tarde",
+        "enTurno": "En turno",
+        "cerrado": "Turno cerrado",
+        "sinTurno": "Sin turno asignado hoy"
+      },
+      "detalle": {
+        "entrada": "Entrada {hora}{sucursal}",
+        "enTurno": "Desde {hora} · {duracion} · tu turno termina a las {fin}",
+        "cerrado": "{entrada} – {salida} · {duracion}",
+        "sinTurno": "Marca con el código QR del local"
+      },
+      "acciones": {
+        "marcarEntrada": "Marcar entrada",
+        "marcarSalida": "Marcar salida",
+        "marcarSalidaTiempo": "Marcar salida · {duracion}",
+        "verMarcaciones": "Ver mis marcaciones",
+        "marcarTurno": "Marcar turno"
+      }
+    },
+    "periodo": {
+      "horasDelDia": "Horas del día",
+      "todoElDia": "Todo el día",
+      "rangoFechas": "Rango de fechas",
+      "desde": "Desde",
+      "hasta": "Hasta",
+      "notaZona": "Las fechas se muestran en la zona horaria de la organización ({zona})."
+    },
+    "alcance": {
+      "todas": "Todas las sucursales"
+    },
+    "errorInicio": {
+      "titulo": "No se pudieron cargar los datos del inicio",
+      "descripcion": "La consulta no respondió. Los números que ves pueden estar desactualizados; no se muestran ceros para no confundir.",
+      "actualizarTitulo": "No se pudo actualizar el inicio",
+      "actualizarDesc": "Se conservan los últimos datos válidos.",
+      "reintentar": "Reintentar"
+    },
+    "primerosPasos": {
+      "titulo": "Primeros pasos",
+      "progreso": "{hechos} de {total} · {pct} %",
+      "ocultar": "Ocultar por ahora",
+      "mostrar": "Mostrar primeros pasos",
+      "descripcion": "Cuando termines estos pasos, aquí verás lo que hay que atender cada día: caja, cobros, pedidos, stock y tareas.",
+      "pasos": {
+        "modulos": "Activar módulos",
+        "organizacion": "Configurar la organización",
+        "sucursal": "Crear una sucursal",
+        "equipo": "Invitar al equipo",
+        "productos": "Agregar productos",
+        "impuestos": "Configurar impuestos",
+        "clientes": "Registrar clientes"
+      },
+      "hecho": "Hecho",
+      "pendiente": "Pendiente",
+      "ir": "Ir",
+      "irA": "Ir a {paso}",
+      "sinMovimientosTitulo": "Todavía no hay movimientos",
+      "sinMovimientosDesc": "En cuanto registres la primera venta o factura, aquí aparecerán la tendencia del periodo y la actividad reciente.",
+      "agregarProductos": "Agregar productos",
+      "abrirPos": "Abrir el POS"
+    },
+    "actividad": {
+      "titulo": "Actividad reciente",
+      "filtrar": "Filtrar la actividad",
+      "filtros": {
+        "todo": "Todo",
+        "venta": "Ventas",
+        "factura": "Facturas",
+        "cliente": "Clientes",
+        "stock": "Inventario",
+        "reserva": "Reservas"
+      },
+      "hace": {
+        "ahora": "ahora",
+        "minutos": "hace {n} min",
+        "horas": "hace {n} h"
+      },
+      "titulos": {
+        "venta": {
+          "paid": "Venta pagada",
+          "pending": "Venta pendiente de pago",
+          "void": "Venta anulada",
+          "otro": "Venta registrada"
+        },
+        "factura": {
+          "paid": "Factura {numero} pagada",
+          "issued": "Factura {numero} emitida",
+          "partial": "Factura {numero} con abono",
+          "void": "Factura {numero} anulada",
+          "otro": "Factura {numero}"
+        },
+        "cliente": "Cliente nuevo: {nombre}",
+        "clienteSinNombre": "Cliente nuevo",
+        "entradaStock": "Entrada de stock · {producto}",
+        "salidaStock": "Salida de stock · {producto}",
+        "reserva": {
+          "confirmed": "Reserva confirmada",
+          "checked_in": "Reserva con check-in",
+          "checked_out": "Reserva con check-out",
+          "cancelled": "Reserva cancelada",
+          "no_show": "Reserva no presentada",
+          "tentative": "Reserva tentativa",
+          "otro": "Reserva registrada"
+        }
+      },
+      "contexto": {
+        "texto": "{texto}",
+        "crm": "CRM",
+        "entrada": "+{n} {n, plural, one {unidad} other {unidades}}",
+        "salida": "−{n} {n, plural, one {unidad} other {unidades}}"
+      },
+      "vacioTitulo": "Sin movimientos en el periodo",
+      "vacioDesc": "Cambia el periodo o la sucursal para ver más movimientos."
     }
   },
   "org": {
@@ -2210,7 +2593,8 @@
       "membresias_check-in": "Check-in",
       "membresias_instructores": "Instructores",
       "membresias_control-de-acceso": "Control de acceso",
-      "membresias_pagos": "Pagos"
+      "membresias_pagos": "Pagos",
+      "inicio_analitica-web": "Analítica web"
     },
     "grupos": {
       "venta": "Venta",
@@ -2346,6 +2730,1564 @@
       "errorNoOpportunity": "opportunityId es requerido",
       "errorNotFound": "No se pudo obtener información de la oportunidad",
       "errorNoKey": "Configuración de IA no disponible"
+    },
+    "kit": {
+      "acciones": {
+        "barra": "Acciones rápidas",
+        "nombre": {
+          "llamar": "Llamar",
+          "email": "Email",
+          "whatsapp": "WhatsApp",
+          "reunion": "Reunión",
+          "tarea": "Tarea",
+          "nota": "Nota"
+        },
+        "motivo": {
+          "sinDestino": "Sin cliente ni oportunidad",
+          "sinPermiso": "Sin permiso",
+          "sinTelefono": "Sin teléfono",
+          "telefonoInvalido": "Teléfono no válido",
+          "noLlamar": "Pidió no ser llamado",
+          "sinCorreo": "Sin correo",
+          "sinCanal": "Sin canal de WhatsApp"
+        },
+        "propuesta": "Propuesta",
+        "nuevaOportunidad": "Nueva oportunidad"
+      },
+      "menuOportunidad": {
+        "ver": "Ver detalle",
+        "editar": "Editar",
+        "mover": "Mover de etapa",
+        "ganar": "Marcar ganada",
+        "perder": "Marcar perdida",
+        "reabrir": "Reabrir",
+        "duplicar": "Duplicar",
+        "nuevaTarea": "Nueva tarea",
+        "eliminar": "Eliminar"
+      },
+      "kpiMoneda": {
+        "base": "{moneda} · base",
+        "tasaDel": "tasa del {fecha}",
+        "reintentar": "Reintentar",
+        "noIncluye": "No incluye {monto} ({cantidad, plural, one {# oportunidad} other {# oportunidades}}): falta la tasa {moneda} del {fecha}.",
+        "esBase": "moneda base",
+        "sinTasa": "sin tasa",
+        "tasaDe": "1 {moneda} = {tasa} ({fecha}).",
+        "sinTasaNoSuma": "{moneda} sin tasa: no suma.",
+        "registrarTasa": "Registrar tasa {moneda}",
+        "ocultarDesglose": "Ocultar desglose",
+        "verPorMoneda": "Ver por moneda",
+        "avisoLector": "{cantidad, plural, one {# oportunidad quedó} other {# oportunidades quedaron}} fuera del total por falta de tasa."
+      },
+      "columna": {
+        "aria": "Etapa {etapa}, {cantidad, plural, one {# oportunidad} other {# oportunidades}}",
+        "conteo": "{cantidad, plural, one {# oportunidad} other {# oportunidades}}",
+        "crearEn": "Nueva oportunidad en {etapa}",
+        "configurar": "Configurar la etapa {etapa}",
+        "monedaYProb": "{moneda} · prob. {prob} %",
+        "incluye": "incl. {cantidad} en {moneda}",
+        "sinTasa": "{cantidad} sin tasa",
+        "soltarAqui": "Soltar aquí",
+        "pasaA": "Pasa a {etapa}",
+        "pasaAProb": "Pasa a {etapa} · {prob} %",
+        "vacia": "Sin oportunidades en esta etapa",
+        "crearAqui": "Crear aquí"
+      },
+      "tarjeta": {
+        "rel": {
+          "vencidaHoy": "vencida hoy {hora}",
+          "vencidaHace": "vencida hace {dias} d",
+          "hoy": "hoy {hora}",
+          "manana": "mañana {hora}",
+          "hace": "hace {dias} d",
+          "en": "en {dias} d"
+        },
+        "cierre": {
+          "ganada": "Ganada · {detalle}",
+          "perdida": "Perdida · {detalle}",
+          "ganadaSolo": "Ganada",
+          "perdidaSolo": "Perdida"
+        },
+        "sinCliente": "Sin cliente",
+        "seleccionar": "Seleccionar {nombre}",
+        "estado": {
+          "ganada": "Ganada",
+          "perdida": "Perdida"
+        },
+        "prioridad": {
+          "cold": "Baja",
+          "warm": "Media",
+          "hot": "Alta"
+        },
+        "prioridadAria": "Prioridad {prioridad}",
+        "score": "Score {score}",
+        "sinAccion": "Sin próxima acción",
+        "ultimo": "Última: {canal} · {cuando}",
+        "canal": {
+          "whatsapp": "WhatsApp",
+          "llamada": "Llamada",
+          "correo": "Correo",
+          "reunion": "Reunión",
+          "sms": "SMS",
+          "otro": "Otro"
+        },
+        "sinResponsable": "Sin responsable",
+        "diasEnEtapa": "{dias} d en etapa",
+        "lead": "Lead"
+      },
+      "leads": {
+        "columnas": {
+          "seleccion": "Seleccionar",
+          "lead": "Lead",
+          "origen": "Origen",
+          "responsable": "Responsable",
+          "score": "Score",
+          "etiquetas": "Etiquetas",
+          "ultimoContacto": "Último contacto",
+          "acciones": "Acciones"
+        },
+        "menu": {
+          "ver": "Ver detalle",
+          "llamar": "Llamar",
+          "whatsapp": "WhatsApp",
+          "asignar": "Asignar responsable",
+          "etiquetar": "Etiquetar",
+          "descartar": "Descartar"
+        },
+        "sinNombre": "Sin nombre",
+        "sinContacto": "Sin datos de contacto",
+        "origen": {
+          "web_form": "Formulario web",
+          "web_order": "Pedido web",
+          "whatsapp": "WhatsApp",
+          "instagram": "Instagram",
+          "facebook": "Facebook",
+          "referral": "Referido",
+          "import": "Importación",
+          "inbound_call": "Llamada entrante",
+          "outbound": "Prospección",
+          "manual": "Manual",
+          "email": "Correo",
+          "event": "Evento",
+          "partner": "Aliado",
+          "other": "Otro"
+        },
+        "sinResponsable": "Sin asignar",
+        "score": "{score} · {banda}",
+        "banda": {
+          "alto": "Alto",
+          "medio": "Medio",
+          "bajo": "Bajo"
+        },
+        "masEtiquetas": "{n, plural, one {# etiqueta más} other {# etiquetas más}}",
+        "nuncaContactado": "Nunca",
+        "haceDias": "{dias, plural, =0 {Hoy} one {Hace # día} other {Hace # días}}",
+        "calificar": "Calificar",
+        "seleccionar": "Seleccionar {nombre}"
+      },
+      "captura": {
+        "cargando": "Cargando leads sin colocar",
+        "reintentar": "Reintentar",
+        "titulo": "{cantidad, plural, one {# lead capturado sin colocar} other {# leads capturados sin colocar}}",
+        "descripcion": "Esta organización no tiene embudo de ventas. Los leads del formulario web quedaron guardados como clientes, pero no entraron a ningún pipeline.",
+        "sinPermiso": "Pide a un administrador que cree el embudo de ventas.",
+        "verLeads": "{cantidad, plural, one {Ver el lead} other {Ver los # leads}}",
+        "crearEmbudo": "Crear embudo de ventas"
+      },
+      "cargarMas": {
+        "mostrando": {
+          "actividades": "Mostrando {mostrados} de {total} actividades",
+          "oportunidades": "Mostrando {mostrados} de {total} oportunidades",
+          "leads": "Mostrando {mostrados} de {total} leads",
+          "clientes": "Mostrando {mostrados} de {total} clientes"
+        },
+        "mostrandoSinTotal": {
+          "actividades": "Mostrando {mostrados} actividades",
+          "oportunidades": "Mostrando {mostrados} oportunidades",
+          "leads": "Mostrando {mostrados} leads",
+          "clientes": "Mostrando {mostrados} clientes"
+        },
+        "fin": {
+          "actividades": "No hay más actividades · {total} en total",
+          "oportunidades": "No hay más oportunidades · {total} en total",
+          "leads": "No hay más leads · {total} en total",
+          "clientes": "No hay más clientes · {total} en total"
+        },
+        "finSinTotal": {
+          "actividades": "No hay más actividades",
+          "oportunidades": "No hay más oportunidades",
+          "leads": "No hay más leads",
+          "clientes": "No hay más clientes"
+        },
+        "cargando": "Cargando…",
+        "reintentar": "Reintentar",
+        "cargar": "Cargar {cantidad} más"
+      },
+      "filtrosLinea": {
+        "tipos": "Tipo de actividad",
+        "tipo": {
+          "todos": "Todos",
+          "call": "Llamadas",
+          "email": "Correos",
+          "whatsapp": "WhatsApp",
+          "meeting": "Reuniones",
+          "note": "Notas",
+          "task": "Tareas",
+          "system": "Sistema",
+          "ai_call": "Llamada IA"
+        },
+        "buscar": "Buscar en actividades",
+        "filtros": "Filtros",
+        "filtrosConCuenta": "{n, plural, one {Filtros (# activo)} other {Filtros (# activos)}}",
+        "responsable": "Responsable",
+        "todosResponsables": "Todos los responsables",
+        "rango": "Rango de fechas",
+        "todasLasFechas": "Todas las fechas",
+        "limpiar": "Limpiar"
+      },
+      "calificar": {
+        "titulo": "Calificar lead",
+        "paso": "Paso 1 de 2 · Luego se abre el formulario de oportunidad con estos datos.",
+        "descartar": "Descartar lead",
+        "cancelar": "Cancelar",
+        "continuar": "Continuar: crear oportunidad",
+        "necesidad": "¿Qué necesita?",
+        "necesidadEj": "Ej.: cotización de 200 uniformes para su equipo de ventas",
+        "presupuesto": "Presupuesto aproximado",
+        "cierre": "Cierre esperado",
+        "decisor": "¿Quién decide la compra?",
+        "elegir": "Elegir…",
+        "decisores": {
+          "el_mismo": "La misma persona",
+          "otra_persona": "Otra persona",
+          "comite": "Un comité",
+          "no_se": "No se sabe"
+        },
+        "responsable": "Responsable",
+        "sinResponsable": "Sin asignar",
+        "temperatura": "Temperatura",
+        "temperaturas": {
+          "cold": "Frío",
+          "warm": "Tibio",
+          "hot": "Caliente"
+        },
+        "aviso": "Al continuar se crea la oportunidad vinculada a este cliente. El paso de lead a oportunidad lo hace el sistema: tú no cambias la etapa del cliente.",
+        "error": {
+          "obligatorio": "Este campo es obligatorio.",
+          "montoInvalido": "Escribe un monto válido.",
+          "fechaPasada": "La fecha no puede ser anterior a hoy."
+        }
+      },
+      "actividad": {
+        "titulo": {
+          "llamada": "Registrar llamada",
+          "correo": "Enviar correo",
+          "whatsapp": "Enviar WhatsApp",
+          "reunion": "Agendar reunión",
+          "nota": "Nueva nota"
+        },
+        "primario": {
+          "llamada": "Guardar llamada",
+          "correo": "Enviar correo",
+          "whatsapp": "Enviar WhatsApp",
+          "reunion": "Agendar reunión",
+          "nota": "Guardar nota"
+        },
+        "cancelar": "Cancelar",
+        "elegir": "Elegir…",
+        "fechaHora": "Fecha y hora",
+        "plantilla": "Plantilla",
+        "sinPlantilla": "Sin plantilla",
+        "mensaje": "Mensaje",
+        "error": {
+          "obligatorio": "Este campo es obligatorio.",
+          "duracionInvalida": "Escribe la duración como 4:12 o 4 min 12 s.",
+          "fechaPasada": "La fecha no puede ser anterior a hoy.",
+          "correoInvalido": "Escribe un correo válido.",
+          "plantillaObligatoria": "Fuera de la ventana de 24 h solo se puede enviar una plantilla aprobada."
+        },
+        "llamada": {
+          "direccion": "Dirección",
+          "direcciones": {
+            "outbound": "Saliente",
+            "inbound": "Entrante"
+          },
+          "resultado": "Resultado de la llamada",
+          "resultados": {
+            "answered": "Contactado",
+            "no_answer": "No contestó",
+            "voicemail": "Buzón de voz",
+            "wrong_number": "Número equivocado",
+            "callback": "Pidió que le llamen luego",
+            "not_interested": "No interesado"
+          },
+          "duracion": "Duración",
+          "duracionAyuda": "Minutos y segundos, p. ej. 4:12.",
+          "notas": "Notas de la llamada",
+          "seguimiento": "Crear tarea de seguimiento, asignada a mí",
+          "fechaSeguimiento": "Fecha de seguimiento"
+        },
+        "correo": {
+          "de": "De",
+          "verificado": "Remitente verificado",
+          "para": "Para",
+          "asunto": "Asunto"
+        },
+        "whatsapp": {
+          "canal": "Canal",
+          "sinRespuesta": "{nombre} no ha escrito todavía: solo se puede enviar una plantilla aprobada.",
+          "fueraVentana": "La última respuesta de {nombre} fue hace {dias, plural, one {# día} other {# días}}: fuera de la ventana de 24 h solo se puede enviar una plantilla aprobada.",
+          "plantillaAprobada": "Plantilla aprobada",
+          "vistaPrevia": "Vista previa",
+          "programar": "Programar el envío (hora de {zona})",
+          "credito": "Este envío descuenta 1 crédito de mensajería."
+        },
+        "reunion": {
+          "titulo": "Título",
+          "empieza": "Empieza",
+          "termina": "Termina",
+          "zona": "Hora de la organización: {zona}",
+          "fin": "{hora} · {minutos} min",
+          "participantes": "Participantes",
+          "quitar": "Quitar a {nombre}",
+          "agregar": "Agregar",
+          "lugar": "Lugar o enlace",
+          "oportunidad": "Oportunidad"
+        },
+        "nota": {
+          "nota": "Nota",
+          "relacionada": "Relacionada con",
+          "fijar": "Fijar en la ficha del cliente",
+          "ayuda": "Todas las notas viven en una sola tabla y salen en la línea de tiempo del cliente, de la oportunidad y de Actividades.",
+          "cliente": "Cliente: {nombre}",
+          "oportunidad": "Oportunidad: {nombre}"
+        }
+      },
+      "vinculador": {
+        "titulo": "Seleccionar cliente",
+        "ayuda": "Busca por nombre, documento, correo o teléfono.",
+        "vincularContacto": "Vincular contacto a {nombre}",
+        "vincularEmpresa": "Vincular empresa a {nombre}",
+        "crearPersona": "Crear persona",
+        "crearEmpresa": "Crear empresa",
+        "crearAyuda": "Campos mínimos. «Más datos» abre el formulario completo de cliente.",
+        "cargoTitulo": "Cargo en la empresa",
+        "cargoAyuda": "Solo al vincular persona ↔ empresa.",
+        "errorBuscar": "No se pudo buscar. Revisa la conexión e intenta de nuevo.",
+        "errorCrear": "No se pudo crear el cliente. Revisa los datos e intenta de nuevo.",
+        "error": {
+          "obligatorio": "Este campo es obligatorio.",
+          "correoInvalido": "Escribe un correo válido."
+        },
+        "cancelar": "Cancelar",
+        "atras": "Atrás",
+        "crearYContinuar": "Crear y continuar",
+        "vincular": "Vincular",
+        "filtro": "Tipo de cliente",
+        "filtros": {
+          "todos": "Todos",
+          "personas": "Personas",
+          "empresas": "Empresas"
+        },
+        "buscar": "Buscar persona o empresa…",
+        "limpiar": "Limpiar búsqueda",
+        "buscando": "Buscando",
+        "resultados": {
+          "todos": "{n, plural, one {# resultado} other {# resultados}} · personas y empresas",
+          "personas": "{n, plural, one {# resultado} other {# resultados}} · personas",
+          "empresas": "{n, plural, one {# resultado} other {# resultados}} · empresas"
+        },
+        "sinResultados": "Sin resultados para «{texto}».",
+        "sinNombre": "Sin nombre",
+        "yaVinculada": "Ya vinculada",
+        "persona": "Persona",
+        "empresa": "Empresa",
+        "crearPersonaSinSalir": "Crear persona «{texto}» sin salir de aquí",
+        "crearEmpresaSinSalir": "Crear empresa «{texto}» sin salir de aquí",
+        "tipo": "Tipo de cliente",
+        "nombres": "Nombres",
+        "apellidos": "Apellidos",
+        "razonSocial": "Razón social",
+        "tipoDocumento": "Tipo de documento",
+        "elegir": "Elegir…",
+        "numero": "Número",
+        "correo": "Correo",
+        "telefono": "Teléfono",
+        "masDatos": "Más datos",
+        "cargo": "Cargo",
+        "principal": "Contacto principal de la empresa",
+        "avisoPrincipal": "Solo hay un contacto principal: {nombre} deja de serlo al guardar."
+      },
+      "ganar": {
+        "titulo": "Ganar «{nombre}»",
+        "ganada": "Oportunidad ganada",
+        "paso1": "Paso 1 de 2 · Ficha de venta",
+        "paso2": "Paso 2 de 2 · Qué hacer al ganar",
+        "cancelar": "Cancelar",
+        "siguiente": "Siguiente",
+        "atras": "Atrás",
+        "ganarOportunidad": "Ganar oportunidad",
+        "verFactura": "Ver factura",
+        "cerrar": "Cerrar",
+        "errorGanar": "No se pudo ganar la oportunidad. Intenta de nuevo.",
+        "monto": "Monto",
+        "moneda": "Moneda",
+        "monedaBase": "{moneda} · moneda base",
+        "fechaCierre": "Fecha de cierre",
+        "motivo": "Motivo de ganancia (catálogo)",
+        "elegir": "Elegir…",
+        "comision": "Comisión",
+        "comisionAyuda": "Se devenga en la sucursal de la oportunidad.",
+        "notas": "Notas de cierre",
+        "acciones": {
+          "factura": "Crear factura de venta con las líneas de la oportunidad",
+          "pos": "Registrar la venta en el POS",
+          "onboarding": "Crear proyecto de onboarding",
+          "renovacion": "Programar renovación en 12 meses",
+          "referido": "Pedir un referido al cliente",
+          "agradecimiento": "Enviar agradecimiento por WhatsApp"
+        },
+        "comisionSistema": "La comisión la registra el sistema al ganar; no es una casilla.",
+        "resumen": "{n, plural, =0 {Etapa ganadora aplicada.} one {Etapa ganadora aplicada. Se creó # documento.} other {Etapa ganadora aplicada. Se crearon # documentos.}}",
+        "error": {
+          "obligatorio": "Este campo es obligatorio.",
+          "montoInvalido": "Escribe un monto válido.",
+          "fechaFutura": "La fecha de cierre no puede ser posterior a hoy."
+        }
+      },
+      "perder": {
+        "titulo": "Marcar como perdida",
+        "cancelar": "Cancelar",
+        "marcarPerdida": "Marcar perdida",
+        "sinCatalogo": "La organización no tiene motivos de pérdida. Pide a un administrador que los configure.",
+        "motivo": "Motivo (catálogo de la organización)",
+        "cargando": "Cargando…",
+        "elegir": "Elegir…",
+        "competidor": "Competidor",
+        "precioCompetidor": "Precio del competidor",
+        "quePaso": "Qué pasó",
+        "seguimiento": "Crear tarea de seguimiento en {dias} días",
+        "conserva": "Se conserva el resto de metadata (requisitos, onboarding, renovación).",
+        "error": {
+          "obligatorio": "Este campo es obligatorio.",
+          "montoInvalido": "Escribe un monto válido."
+        }
+      },
+      "mover": {
+        "titulo": "Mover a «{etapa}»",
+        "tituloSinPermiso": "No puedes mover a «{etapa}»",
+        "etapaProb": "{etapa} · {prob} %",
+        "cambio": "De {desde} a {hasta}",
+        "destino": "Etapa destino",
+        "proximoContacto": "Próximo contacto",
+        "zona": "Hora de la organización ({zona}).",
+        "faltan": "{n, plural, one {Falta # requisito de la etapa} other {Faltan # requisitos de la etapa}}",
+        "completar": "Completar",
+        "historial": "«Avanzar de todos modos» queda en el historial con tu nombre.",
+        "sinOmitir": "Solo los roles con el permiso de omitir requisitos pueden avanzar sin completarlos.",
+        "sinPermiso": "Hacerlo requiere el permiso «{permiso}».",
+        "sinPermisoQuien": "Hacerlo requiere el permiso «{permiso}». Lo tiene {nombre}, entre otros.",
+        "permisoMover": "Editar oportunidades",
+        "pedirA": "Pedir a {nombre}",
+        "entendido": "Entendido",
+        "cancelar": "Cancelar",
+        "avanzarIgual": "Avanzar de todos modos",
+        "completarRequisitos": "Completar requisitos",
+        "mover": "Mover"
+      },
+      "formulario": {
+        "titulo": "Nueva oportunidad",
+        "tituloEditar": "Editar oportunidad",
+        "tituloLead": "Calificar → crear oportunidad",
+        "pasoLead": "Paso 2 de 2 · formulario único con los datos del lead prellenados.",
+        "descOrigen": "Formulario único: los campos del origen vienen prellenados y bloqueados.",
+        "bloqueado": "Bloqueado por el origen",
+        "cliente": "Cliente",
+        "clienteAyuda": "Persona o empresa. Busca en el servidor; si no existe, créala sin salir.",
+        "buscarCliente": "Buscar persona o empresa…",
+        "clienteLead": "{nombre} (lead calificado)",
+        "negocio": "Negocio",
+        "nombre": "Nombre de la oportunidad",
+        "nombreEj": "Ej.: Renovación de licencias 2027",
+        "embudo": "Embudo",
+        "embudoAyuda": "Solo embudos de ventas.",
+        "elegir": "Elegir…",
+        "etapa": "Etapa",
+        "monto": "Monto",
+        "montoAyuda": "Suma de las líneas o valor manual.",
+        "moneda": "Moneda",
+        "monedaAyuda": "Por defecto, la moneda base.",
+        "monedaBase": "{moneda} (base)",
+        "probabilidad": "Probabilidad",
+        "probEtapa": "{prob} % · de la etapa",
+        "cierre": "Cierre esperado",
+        "seguimiento": "Responsable y seguimiento",
+        "responsable": "Responsable",
+        "sinResponsable": "Sin asignar",
+        "tu": "{nombre} (tú)",
+        "proximoContacto": "Próximo contacto",
+        "horaOrg": "Hora de la organización.",
+        "proximaAccion": "Próxima acción",
+        "proximaAccionEj": "Ej.: Llamar para confirmar alcance",
+        "prioridad": "Prioridad",
+        "prioridades": {
+          "cold": "Baja",
+          "warm": "Media",
+          "hot": "Alta"
+        },
+        "agregarLineas": "Agregar productos, espacios o conceptos (opcional)",
+        "lineasCopiadas": "Líneas · copiadas de {numero}",
+        "lineaCantidad": "{concepto} × {cantidad}",
+        "resumen": "Resumen",
+        "ponderado": "Ponderado",
+        "ayudaCrear": "El importe se calcula con productos, espacios y conceptos.",
+        "ayudaEditar": "Cambiar de embudo pide elegir la etapa del embudo nuevo. Las líneas se conservan.",
+        "eliminar": "Eliminar",
+        "cancelar": "Cancelar",
+        "cerrar": "Cerrar",
+        "guardar": "Guardar cambios",
+        "crear": "Crear oportunidad",
+        "error": {
+          "obligatorio": "Este campo es obligatorio.",
+          "montoInvalido": "Escribe un monto válido.",
+          "monedaInvalida": "Elige una moneda.",
+          "fechaInvalida": "Escribe una fecha válida.",
+          "muyLargo": "El texto es demasiado largo."
+        }
+      },
+      "editorEtapa": {
+        "aria": "Etapa {nombre}",
+        "sinNombre": "sin nombre",
+        "mover": "Mover {nombre} (Alt + flechas)",
+        "color": "Color",
+        "nombre": "Nombre de la etapa",
+        "nombrePlaceholder": "Escribe el nombre de la etapa",
+        "menu": "Más opciones",
+        "probabilidad": "Probabilidad (%)",
+        "sla": "SLA en días",
+        "dias": "días",
+        "resultado": "Resultado",
+        "resultados": {
+          "abierta": "Abierta",
+          "ganada": "Ganada",
+          "perdida": "Perdida"
+        },
+        "requisitos": "Requisitos",
+        "requisitosN": "Requisitos · {n}",
+        "eliminar": "Eliminar {nombre}",
+        "error": {
+          "nombreVacio": "El nombre es obligatorio.",
+          "nombreRepetido": "El nombre no puede repetirse en este pipeline.",
+          "probabilidad": "La probabilidad va de 0 a 100.",
+          "sla": "El SLA es un número entero de días.",
+          "ganadaDuplicada": "Solo puede haber una etapa ganada.",
+          "perdidaDuplicada": "Solo puede haber una etapa perdida."
+        }
+      },
+      "plantilla": {
+        "ganada": "Ganada",
+        "perdida": "Perdida",
+        "nombres": {
+          "ventas": "Ventas",
+          "onboarding": "Onboarding",
+          "renovacion": "Renovación",
+          "enBlanco": "En blanco"
+        },
+        "tipo": "Tipo: {tipo}",
+        "tipos": {
+          "ventas": "ventas",
+          "onboarding": "onboarding",
+          "renovacion": "renovación",
+          "enBlanco": "en blanco"
+        },
+        "tuEliges": "Tú eliges el tipo",
+        "descripciones": {
+          "ventas": "Del primer contacto al contrato firmado. Es el embudo que usan los leads web.",
+          "onboarding": "Acompaña al cliente desde el kickoff hasta la revisión de 30 días.",
+          "renovacion": "Renueva contratos y suscripciones antes de que venzan.",
+          "enBlanco": "Crea tus propias etapas. Se agregan «Ganada» y «Perdida» para poder cerrar."
+        },
+        "etapaGanada": "Etapa ganada",
+        "etapaPerdida": "Etapa perdida",
+        "aviso": {
+          "tipoExistente": "Ya tienes un pipeline de este tipo: se creará uno nuevo.",
+          "sinPerdida": "Esta plantilla no tiene etapa perdida."
+        },
+        "etapas": "{n, plural, one {# etapa} other {# etapas}}",
+        "etapasCierre": "{n, plural, one {# etapa de cierre} other {# etapas de cierre}}",
+        "pieSla": "{n, plural, one {# etapa} other {# etapas}} · SLA de {min} a {max} días"
+      },
+      "barraEtapas": {
+        "aria": "Etapas de la oportunidad",
+        "etapaProb": "{etapa} · {prob} %",
+        "abrirEtapas": "Etapa actual: {etapa}. Cambiar de etapa",
+        "posicion": "{i} de {n}"
+      },
+      "cabecera": {
+        "cerrar": "Cerrar",
+        "abrirDetalle": "Abrir detalle completo",
+        "etapaProb": "{etapa} {prob} %",
+        "estado": {
+          "open": "Abierta",
+          "won": "Ganada",
+          "lost": "Perdida"
+        },
+        "score": "Score {score}",
+        "icp": "ICP {banda}",
+        "temperatura": {
+          "cold": "Fría",
+          "warm": "Tibia",
+          "hot": "Caliente"
+        },
+        "monto": "Monto",
+        "probabilidad": "Probabilidad",
+        "deLaEtapa": "de la etapa",
+        "cierre": "Cierre",
+        "cierreEstimado": "Cierre estimado",
+        "responsable": "Responsable",
+        "sinResponsable": "Sin asignar",
+        "enLaEtapa": "En la etapa",
+        "dias": "{dias, plural, one {# día} other {# días}}",
+        "editar": "Editar",
+        "marcarPerdida": "Marcar perdida",
+        "marcarGanada": "Marcar ganada",
+        "reabrir": "Reabrir"
+      },
+      "linea": {
+        "cuando": {
+          "hoy": "Hoy {hora}",
+          "ayer": "Ayer {hora}",
+          "fecha": "{fecha} {hora}"
+        },
+        "editar": "Editar",
+        "duplicar": "Duplicar",
+        "eliminar": "Eliminar",
+        "tipo": {
+          "venta": "Venta",
+          "reserva": "Reserva",
+          "pedido": "Pedido",
+          "llamada": "Llamada",
+          "email": "Correo",
+          "whatsapp": "WhatsApp",
+          "nota": "Nota",
+          "tarea": "Tarea",
+          "sistema": "Sistema",
+          "reunion": "Reunión",
+          "llamadaIa": "Llamada IA"
+        }
+      },
+      "identidad": {
+        "cargando": "Cargando cliente",
+        "sinNombre": "Sin nombre",
+        "persona": "Persona",
+        "empresa": "Empresa",
+        "ciclo": {
+          "lead": "Lead",
+          "opportunity": "Oportunidad",
+          "customer": "Cliente",
+          "churned": "Perdido"
+        },
+        "salud": "Salud {score}",
+        "nuevo": "Nuevo",
+        "documento": "Documento",
+        "correo": "Correo",
+        "telefono": "Teléfono",
+        "ubicacion": "Ubicación",
+        "contactoPrincipal": "Contacto principal:",
+        "sinContacto": "Sin contacto principal",
+        "vinculadoA": "Vinculado a:",
+        "etiquetas": "Etiquetas:",
+        "cambiarFoto": "Cambiar foto"
+      },
+      "contacto": {
+        "sinNombre": "Sin nombre",
+        "principal": "Principal",
+        "nuevo": "Nuevo",
+        "cargoDe": "Cargo de {nombre}",
+        "editarCargo": "Editar el cargo de {nombre}: {cargo}",
+        "sinCargo": "sin cargo",
+        "agregarCargo": "Agregar cargo",
+        "esPrincipal": "{nombre} es el contacto principal",
+        "marcarPrincipal": "Marcar a {nombre} como contacto principal",
+        "desvincular": "Desvincular a {nombre}"
+      }
+    },
+    "accionesRapidas": {
+      "sinNombre": "Sin nombre",
+      "errores": {
+        "sinPermiso": "No tienes permiso para esta acción.",
+        "noEncontrado": "El registro ya no existe o no es de esta organización.",
+        "sinEmbudo": "La organización no tiene embudo de ventas. Créalo antes de calificar.",
+        "conflicto": "Alguien cambió este registro. Recarga e inténtalo de nuevo.",
+        "datos": "Revisa los datos: hay un campo que no es válido.",
+        "red": "No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.",
+        "generico": "Algo salió mal. Inténtalo de nuevo."
+      },
+      "toast": {
+        "llamada": "Llamada registrada",
+        "llamadaConSeguimiento": "Llamada registrada y tarea de seguimiento creada",
+        "reunion": "Reunión agendada",
+        "nota": "Nota guardada",
+        "tarea": "Tarea creada y asignada a ti",
+        "correo": "Correo enviado",
+        "whatsapp": "WhatsApp enviado"
+      },
+      "llamar": {
+        "titulo": "Llamar",
+        "modos": "Modos de llamada",
+        "modo": {
+          "browser": "Desde el navegador",
+          "mobile": "Desde mi celular",
+          "ai": "Agente IA",
+          "registrar": "Solo registrar la llamada"
+        },
+        "detalle": {
+          "browser": "Softphone registrado",
+          "mobile": "Te llamamos y conectamos al cliente",
+          "ai": "Llama un agente de voz",
+          "registrar": "Ya hablaste: guarda el resultado"
+        },
+        "motivo": {
+          "sinTelefono": "El cliente no tiene teléfono",
+          "softphone": "Softphone no disponible en esta página",
+          "agente": "Disponible cuando se activen los agentes de voz"
+        },
+        "predeterminado": "predeterminado",
+        "llamando": "Llamando…",
+        "tituloSeguimiento": "Seguimiento de la llamada con {nombre}"
+      },
+      "tarea": {
+        "titulo": "Nueva tarea",
+        "cancelar": "Cancelar",
+        "crear": "Crear tarea",
+        "campoTitulo": "Título",
+        "tituloEj": "Ej.: enviar propuesta ajustada",
+        "descripcion": "Descripción",
+        "fecha": "Vence",
+        "hora": "Hora",
+        "prioridad": "Prioridad",
+        "prioridades": {
+          "low": "Baja",
+          "med": "Media",
+          "high": "Alta",
+          "critical": "Crítica"
+        },
+        "aviso": "Se asigna a ti. Hora de la organización: {zona}.",
+        "error": {
+          "obligatorio": "Este campo es obligatorio.",
+          "fechaPasada": "La fecha no puede ser anterior a hoy.",
+          "muyLargo": "Es demasiado largo."
+        }
+      }
+    },
+    "pantallaLeads": {
+      "titulo": "Leads",
+      "subtitulo": "{n, plural, one {# persona o empresa sin oportunidad abierta} other {# personas y empresas sin oportunidad abierta}}",
+      "subtituloMovil": "{n, plural, one {# lead} other {# leads}}",
+      "subtituloSinPermiso": "Acceso restringido",
+      "migas": {
+        "crm": "CRM"
+      },
+      "recargar": "Recargar",
+      "importar": "Importar",
+      "nuevo": "Nuevo lead",
+      "verDescartados": "Ver descartados",
+      "ocultarDescartados": "Ocultar descartados",
+      "buscar": "Buscar por nombre, documento, correo o teléfono",
+      "seleccionarPagina": "Seleccionar los leads de esta página",
+      "sustantivo": {
+        "singular": "lead",
+        "plural": "leads"
+      },
+      "sinPermiso": {
+        "titulo": "No tienes acceso a los leads",
+        "descripcion": "Ver leads requiere el permiso «Ver leads». Pide acceso al administrador de la organización.",
+        "volver": "Volver al CRM"
+      },
+      "error": {
+        "titulo": "No se pudieron cargar los leads"
+      },
+      "vacio": {
+        "titulo": "Aún no tienes leads",
+        "descripcion": "Los leads llegan del formulario web, de WhatsApp, de referidos o de una importación. Conecta el formulario de tu sitio o crea el primero.",
+        "conectar": "Conectar formulario web"
+      },
+      "masivo": {
+        "asignar": "Asignar responsable",
+        "etiquetar": "Etiquetar",
+        "etiquetarMotivo": "Las etiquetas se editan en la ficha del cliente",
+        "calificar": "Calificar",
+        "calificarMotivo": "Califica un lead a la vez",
+        "exportar": "Exportar",
+        "descartar": "Descartar"
+      },
+      "asignar": {
+        "titulo": "Asignar responsable",
+        "descripcion": "{n, plural, one {Se asigna # lead.} other {Se asignan # leads.}}",
+        "asignar": "Asignar",
+        "cancelar": "Cancelar",
+        "responsable": "Responsable",
+        "sinAsignar": "Sin asignar",
+        "hecho": "{n, plural, one {# lead asignado} other {# leads asignados}}"
+      },
+      "descartar": {
+        "titulo": "{n, plural, one {Descartar lead} other {Descartar # leads}}",
+        "descripcion": "Deja de verse en la lista por defecto. Sigue siendo cliente y puedes reactivarlo desde «Ver descartados».",
+        "confirmar": "Descartar",
+        "hecho": "{n, plural, one {Lead descartado} other {# leads descartados}}",
+        "motivos": {
+          "noInteresado": "No está interesado",
+          "sinPresupuesto": "Sin presupuesto",
+          "duplicado": "Duplicado",
+          "datosFalsos": "Datos falsos o incompletos"
+        }
+      },
+      "csv": {
+        "nombre": "Nombre",
+        "documento": "Documento",
+        "correo": "Correo",
+        "telefono": "Teléfono",
+        "origen": "Origen",
+        "responsable": "Responsable",
+        "score": "Score",
+        "etiquetas": "Etiquetas",
+        "creado": "Capturado",
+        "ultimoContacto": "Último contacto"
+      },
+      "calificar": {
+        "hecho": "Oportunidad creada para {nombre}",
+        "contexto": "Desde el lead {nombre}",
+        "contextoDetalle": "El cliente queda fijado; la oportunidad nace en el embudo de ventas."
+      },
+      "kpi": {
+        "grupo": "Resumen de leads",
+        "leads": "Leads",
+        "nuevosMes": "+{n} este mes",
+        "sinResponsable": "Sin responsable",
+        "asignarLote": "Asígnalos en lote desde la tabla",
+        "todosAsignados": "Todos tienen responsable",
+        "contactados": "Contactados (7 días)",
+        "delTotal": "{pct} % del total",
+        "calificados": "Calificados este mes",
+        "calificadosCorto": "Calificados",
+        "oportunidadesNuevas": "{n} oportunidades nuevas"
+      },
+      "filtros": {
+        "titulo": "Filtrar leads",
+        "boton": "Filtros",
+        "origen": "Origen",
+        "todos": "Todos",
+        "responsable": "Responsable",
+        "sinAsignar": "Sin asignar",
+        "captura": "Fecha de captura",
+        "cualquierFecha": "Cualquier fecha",
+        "descartados": "Incluir descartados",
+        "chipSinColocar": "Estado: sin colocar",
+        "chipOrigen": "Origen: {origen}",
+        "chipCaptura": "Fecha de captura: {rango}",
+        "chipResponsable": "Responsable: {nombre}",
+        "chipDescartados": "Con descartados",
+        "limpiarTodo": "Limpiar todo"
+      },
+      "detalle": {
+        "lead": "Lead",
+        "abrirFicha": "Abrir ficha",
+        "calificar": "Calificar → crear oportunidad",
+        "contacto": "Datos de contacto",
+        "calificacion": "Calificación",
+        "responsable": "Responsable",
+        "capturado": "Capturado",
+        "ultimoContacto": "Último contacto",
+        "etiquetas": "Etiquetas",
+        "sinEtiquetas": "Sin etiquetas",
+        "actividad": "Actividad reciente",
+        "sinActividad": "Todavía no hay actividad con este lead."
+      }
+    },
+    "pantallaActividades": {
+      "titulo": "Actividades",
+      "subtitulo": "{n} actividades · {rango} · {responsable}",
+      "subtituloMovil": "{n} actividades",
+      "migas": {
+        "crm": "CRM"
+      },
+      "recargar": "Recargar",
+      "exportar": "Exportar",
+      "nueva": "Nueva actividad",
+      "todasLasFechas": "todas las fechas",
+      "todosResponsables": "todos los responsables",
+      "clienteUOportunidad": "Cliente u oportunidad",
+      "quitarEntidad": "Quitar el filtro {nombre}",
+      "linea": "Línea de tiempo",
+      "tipoNueva": {
+        "llamar": "Llamada",
+        "email": "Correo",
+        "whatsapp": "WhatsApp",
+        "reunion": "Reunión",
+        "tarea": "Tarea",
+        "nota": "Nota"
+      },
+      "tipoNuevaDetalle": {
+        "llamar": "Registrar el resultado de una llamada",
+        "tarea": "Tarea del CRM, asignada a ti"
+      },
+      "sinPermiso": {
+        "titulo": "No tienes acceso a las actividades",
+        "descripcion": "Pide acceso al administrador de la organización.",
+        "volver": "Volver al CRM"
+      },
+      "error": {
+        "titulo": "No se pudieron cargar las actividades"
+      },
+      "vacio": {
+        "titulo": "Todavía no hay actividad este mes",
+        "descripcion": "Las llamadas, correos, WhatsApp, reuniones, notas y tareas del equipo aparecen aquí. Empieza registrando una llamada.",
+        "registrarLlamada": "Registrar llamada",
+        "verLeads": "Ver leads"
+      },
+      "kpi": {
+        "grupo": "Resumen de actividades",
+        "total": "Total",
+        "llamadas": "Llamadas",
+        "correos": "Correos",
+        "whatsapp": "WhatsApp",
+        "reuniones": "Reuniones",
+        "notas": "Notas",
+        "tareasAbiertas": "Tareas abiertas"
+      },
+      "dia": {
+        "hoy": "Hoy · {fecha}",
+        "ayer": "Ayer · {fecha}",
+        "sinFecha": "Sin fecha"
+      },
+      "toast": {
+        "editada": "Cambios guardados",
+        "eliminada": "Actividad eliminada",
+        "duplicada": "Actividad duplicada"
+      },
+      "eliminar": {
+        "titulo": "¿Eliminar esta actividad?",
+        "descripcion": "Desaparece de la línea de tiempo del cliente, de la oportunidad y de Actividades. No se puede deshacer.",
+        "confirmar": "Eliminar",
+        "cancelar": "Cancelar"
+      },
+      "csv": {
+        "fecha": "Fecha",
+        "tipo": "Tipo",
+        "detalle": "Detalle",
+        "resultado": "Resultado",
+        "duracion": "Duración (s)",
+        "autor": "Responsable",
+        "cliente": "Cliente",
+        "oportunidad": "Oportunidad"
+      },
+      "entrada": {
+        "titulo": {
+          "llamadaSaliente": "Llamada saliente",
+          "llamadaEntrante": "Llamada entrante",
+          "llamada": "Llamada",
+          "correo": "Correo",
+          "whatsapp": "WhatsApp",
+          "reunion": "Reunión",
+          "nota": "Nota",
+          "tarea": "Tarea: {titulo}",
+          "llamadaIa": "Llamada del agente IA",
+          "sistema": "Actividad del sistema"
+        },
+        "duracion": "{min} min {seg} s",
+        "prioridad": "Prioridad {prioridad}",
+        "prioridades": {
+          "low": "baja",
+          "med": "media",
+          "high": "alta",
+          "critical": "crítica"
+        },
+        "sistema": "Sistema",
+        "estado": {
+          "fijada": "Fijada",
+          "hecha": "Hecha",
+          "cancelada": "Cancelada",
+          "enCurso": "En curso",
+          "pendiente": "Pendiente",
+          "resultado": {
+            "answered": "Contestada",
+            "no_answer": "No contestó",
+            "voicemail": "Buzón de voz",
+            "wrong_number": "Número equivocado",
+            "callback": "Volver a llamar",
+            "not_interested": "No interesado"
+          }
+        }
+      },
+      "editar": {
+        "titulo": "Editar actividad",
+        "tituloNota": "Editar nota",
+        "cancelar": "Cancelar",
+        "guardar": "Guardar cambios",
+        "resultado": "Resultado de la llamada",
+        "sinResultado": "Sin resultado",
+        "nota": "Nota",
+        "notas": "Notas",
+        "obligatorio": "Este campo es obligatorio.",
+        "fijar": "Fijar en la ficha del cliente"
+      },
+      "filtrosMovil": {
+        "titulo": "Filtros",
+        "limpiar": "Limpiar",
+        "ver": "Ver actividades",
+        "responsable": "Responsable",
+        "todos": "Todos los responsables",
+        "entidad": "Cliente u oportunidad",
+        "rango": "Rango de fechas",
+        "todasLasFechas": "Todas las fechas"
+      }
+    },
+    "fichaCliente": {
+      "oportunidadCreada": "Oportunidad creada",
+      "desdeFicha": "Desde la ficha de {nombre}",
+      "documentos": "Documentos del CRM",
+      "vacio": {
+        "titulo": "Este cliente todavía no tiene actividad",
+        "descripcion": "Aún no tiene ventas, reservas, llamadas ni notas. Empieza registrando una venta, una llamada o una nota.",
+        "nota": "Nota",
+        "llamada": "Registrar llamada",
+        "venta": "Registrar venta"
+      },
+      "tareas": {
+        "nueva": "Nueva",
+        "primera": "Crear la primera tarea"
+      },
+      "oportunidades": {
+        "nueva": "Nueva oportunidad",
+        "perdidas": "Perdidas"
+      }
+    },
+    "oportunidad": {
+      "flujo": {
+        "conflicto": "La oportunidad cambió mientras se guardaba. Vuelve a intentarlo.",
+        "errorMover": "No se pudo mover de etapa",
+        "motivoOverride": "Avanzó sin cumplir los requisitos de la etapa",
+        "movida": "Oportunidad movida a {etapa}",
+        "gateGanar": "Faltan requisitos de la etapa: {lista}",
+        "sinPermisoCerrar": "No tienes permiso para cerrar oportunidades.",
+        "errorGanar": "No se pudo marcar como ganada",
+        "perdida": "Oportunidad marcada como perdida",
+        "errorPerder": "No se pudo marcar como perdida",
+        "permisoCerrar": "cerrar oportunidades",
+        "sinEtapaGanada": "Este embudo no tiene etapa ganada; configúrala en «Etapas».",
+        "sinEtapaPerdida": "Este embudo no tiene etapa de pérdida; configúrala en «Etapas»."
+      },
+      "acciones": {
+        "sufijoCopia": "(copia)",
+        "duplicada": "Oportunidad duplicada",
+        "errorDuplicar": "No se pudo duplicar",
+        "eliminada": "Oportunidad eliminada",
+        "errorEliminar": "No se pudo eliminar",
+        "noEliminable": "Está ganada o tiene cotización, factura, venta o comisión: no se puede eliminar.",
+        "eliminarTitulo": "¿Eliminar «{nombre}»?",
+        "eliminarDescripcion": "Se borran también sus líneas, notas y tareas. No se puede deshacer.",
+        "eliminar": "Eliminar",
+        "cancelar": "Cancelar"
+      },
+      "filtros": {
+        "titulo": "Filtros",
+        "boton": "Filtros",
+        "embudo": "Embudo",
+        "todos": "Todos",
+        "etapa": "Etapa",
+        "todas": "Todas",
+        "responsable": "Responsable",
+        "yo": "Yo",
+        "sinAsignar": "Sin asignar",
+        "cierre": "Cierre esperado",
+        "cualquierFecha": "Cualquier fecha",
+        "preset": {
+          "mes": "este mes",
+          "trimestre": "este trimestre",
+          "vencido": "vencido"
+        },
+        "prioridad": "Prioridad",
+        "chipEmbudo": "Embudo: {nombre}",
+        "chipEtapa": "Etapa: {nombre}",
+        "chipResponsable": "Responsable: {nombre}",
+        "chipCierre": "Cierre: {periodo}",
+        "chipPrioridad": "Prioridad: {lista}",
+        "limpiar": "Limpiar filtros"
+      },
+      "kpis": {
+        "aria": "Indicadores de oportunidades",
+        "valorAbierto": "Valor abierto",
+        "detalleAbiertas": "{n, plural, one {# oportunidad abierta} other {# oportunidades abiertas}}",
+        "ponderado": "Ponderado (solo abiertas)",
+        "abiertas": "Oportunidades abiertas",
+        "cierranMes": "{n, plural, =0 {Ninguna vence este mes} one {# vence este mes} other {# vencen este mes}}",
+        "tasaCierre": "Tasa de cierre (90 d)",
+        "ganadasPerdidas": "{ganadas, plural, one {# ganada} other {# ganadas}} · {perdidas, plural, one {# perdida} other {# perdidas}}",
+        "truncado": "Hay demasiadas oportunidades para sumarlas todas: los indicadores cuentan las primeras 20.000. Filtra para afinar."
+      },
+      "tablero": {
+        "aria": "Tablero del pipeline",
+        "errorColumna": "No se pudieron cargar las tarjetas de esta etapa",
+        "etapasAria": "Etapas",
+        "chipEtapa": "{etapa} · {n}",
+        "resumenColumna": "{moneda} · {n, plural, one {# oportunidad} other {# oportunidades}} · prob. {prob} %"
+      },
+      "tabla": {
+        "vencido": "vencido hace {dias, plural, =0 {unas horas} one {# d} other {# d}}",
+        "hoy": "hoy {hora}",
+        "manana": "mañana {hora}",
+        "seleccionarPagina": "Seleccionar las oportunidades de esta página",
+        "oportunidad": "Oportunidad",
+        "etapa": "Etapa",
+        "monto": "Monto",
+        "prob": "Prob.",
+        "cierre": "Cierre",
+        "responsable": "Responsable",
+        "proximo": "Próximo contacto",
+        "acciones": "Acciones",
+        "seleccionar": "Seleccionar {nombre}",
+        "lead": "Lead",
+        "sinCliente": "Sin cliente",
+        "sinResponsable": "Sin asignar",
+        "sustantivo": {
+          "singular": "oportunidad",
+          "plural": "oportunidades"
+        }
+      },
+      "masivo": {
+        "resultado": "{ok, plural, one {# de {total} aplicada} other {# de {total} aplicadas}}",
+        "motivoVariosEmbudos": "Las seleccionadas son de embudos distintos",
+        "motivoSinPermiso": "No tienes permiso",
+        "sustantivo": {
+          "singular": "seleccionada",
+          "plural": "seleccionadas"
+        },
+        "mover": "Mover de etapa",
+        "asignar": "Asignar responsable",
+        "perder": "Marcar perdida",
+        "eliminar": "Eliminar",
+        "exportar": "Exportar",
+        "moverTitulo": "Mover {n, plural, one {# oportunidad} other {# oportunidades}}",
+        "moverDescripcion": "Cada una pasa por los requisitos de la etapa; las que no los cumplan se quedan donde están.",
+        "cancelar": "Cancelar",
+        "etapa": "Etapa destino",
+        "elegirEtapa": "Elige una etapa",
+        "asignarTitulo": "Asignar responsable a {n, plural, one {# oportunidad} other {# oportunidades}}",
+        "responsable": "Responsable",
+        "sinAsignar": "Sin asignar",
+        "varias": "{n, plural, one {# oportunidad} other {# oportunidades}}",
+        "eliminarTitulo": "¿Eliminar {n, plural, one {# oportunidad} other {# oportunidades}}?",
+        "eliminarDescripcion": "Las ganadas o con documentos no se eliminan. No se puede deshacer."
+      },
+      "lista": {
+        "titulo": "Oportunidades",
+        "subtitulo": "Negocios de todos los embudos de ventas",
+        "subtituloSinPermiso": "Sin acceso",
+        "subtituloMovil": "{n, plural, one {# oportunidad} other {# oportunidades}}",
+        "migas": {
+          "crm": "CRM"
+        },
+        "nueva": "Nueva oportunidad",
+        "importar": "Importar",
+        "exportar": "Exportar",
+        "sinPermiso": {
+          "titulo": "No tienes acceso a las oportunidades",
+          "descripcion": "Pide a un administrador el permiso para ver oportunidades.",
+          "volver": "Volver al CRM"
+        },
+        "vacio": {
+          "titulo": "Aún no tienes oportunidades",
+          "descripcion": "Crea la primera o califica un lead para empezar a vender.",
+          "verPipeline": "Ver pipeline"
+        },
+        "pestanas": {
+          "aria": "Estado de las oportunidades",
+          "open": "Abiertas",
+          "won": "Ganadas",
+          "lost": "Perdidas",
+          "all": "Todas"
+        },
+        "errorKpi": "No se pudieron calcular los indicadores",
+        "buscar": "Buscar por nombre o cliente",
+        "orden": {
+          "aria": "Ordenar por",
+          "cierre": "Cierre esperado",
+          "creada": "Fecha de creación",
+          "monto": "Monto",
+          "proximo": "Próximo contacto",
+          "nombre": "Nombre"
+        },
+        "error": {
+          "titulo": "No se pudieron cargar las oportunidades",
+          "descripcion": "Revisa tu conexión e inténtalo de nuevo."
+        },
+        "sinResultados": {
+          "titulo": "Ninguna oportunidad coincide",
+          "descripcion": "Prueba con otra búsqueda, otra pestaña o quita filtros."
+        },
+        "csv": {
+          "oportunidad": "Oportunidad",
+          "cliente": "Cliente",
+          "etapa": "Etapa",
+          "monto": "Monto",
+          "moneda": "Moneda",
+          "prob": "Probabilidad",
+          "cierre": "Cierre esperado",
+          "responsable": "Responsable",
+          "proximo": "Próximo contacto",
+          "estado": "Estado",
+          "tipo": "Tipo"
+        }
+      },
+      "etapas": {
+        "guardada": "Etapa guardada",
+        "error": "No se pudo guardar la etapa",
+        "eliminada": "Etapa eliminada",
+        "titulo": "Etapas del pipeline",
+        "descripcion": "Cambia nombre, color, probabilidad y resultado. Los requisitos y el agente IA se configuran en cada etapa.",
+        "ganada": "Ganada",
+        "perdida": "Perdida",
+        "editar": "Editar {etapa}",
+        "eliminar": "Eliminar {etapa}",
+        "nueva": "Nueva etapa"
+      },
+      "asistente": {
+        "titulo": "Nuevo pipeline",
+        "tituloCon": "Nuevo pipeline · {nombre}",
+        "cancelar": "Cancelar",
+        "atras": "Atrás",
+        "crear": "Crear pipeline",
+        "siguiente": "Siguiente",
+        "desc": {
+          "plantilla": "Elige una plantilla para empezar. Todo se puede cambiar en el paso 3.",
+          "datos": "Ponle nombre y decide si será el pipeline por defecto.",
+          "etapas": "Ordena las etapas y cambia nombre, color, probabilidad, SLA y resultado."
+        },
+        "pasos": {
+          "plantilla": "Plantilla",
+          "datos": "Nombre y tipo",
+          "etapas": "Etapas"
+        },
+        "pasosAria": "Pasos del asistente",
+        "pasoMovil": "Paso {n} de {total} · {etiqueta}",
+        "notaCierre": "Las etapas de cierre (trofeo y X) marcan la oportunidad como ganada o perdida al moverla allí.",
+        "nombre": "Nombre del pipeline",
+        "nombreAyuda": "No puede repetirse dentro de la organización.",
+        "tipo": "Tipo",
+        "tipoAyuda": "Los leads del sitio web entran al pipeline de ventas por defecto.",
+        "tipos": {
+          "sales": "Ventas",
+          "onboarding": "Onboarding",
+          "renewal": "Renovación"
+        },
+        "meta": "Meta del periodo (opcional)",
+        "moneda": "Moneda",
+        "periodo": "Periodo",
+        "periodos": {
+          "monthly": "Mensual",
+          "quarterly": "Trimestral",
+          "yearly": "Anual"
+        },
+        "porDefecto": "Usar como pipeline por defecto",
+        "porDefectoAyuda": "Es el que abre el tablero y donde entran los leads web. Solo puede haber uno.",
+        "vistaPrevia": "Vista previa",
+        "agregarEtapa": "Agregar etapa",
+        "limiteEtapas": "{n, plural, one {# etapa} other {# etapas}} · puedes agregar hasta {max}",
+        "requisitosAria": "Requisitos para crear el pipeline",
+        "checkGanada": "Una etapa de cierre ganada: «{nombre}»",
+        "faltaGanada": "Falta una etapa de cierre ganada",
+        "checkPerdida": "Una etapa de cierre perdida: «{nombre}»",
+        "faltaPerdida": "Falta una etapa de cierre perdida",
+        "checkOrden": "Probabilidades en orden de menor a mayor",
+        "error": {
+          "nombreObligatorio": "El nombre es obligatorio.",
+          "nombreRepetido": "Ya hay un pipeline con ese nombre.",
+          "metaInvalida": "La meta debe ser un número mayor o igual a cero."
+        },
+        "errorNombre": "Ya existe un pipeline con ese nombre. No se creó nada.",
+        "errorEtapas": "Revisa las etapas: falta una ganada o una perdida, o las probabilidades no están en orden. No se creó nada.",
+        "errorCrear": "No se pudo crear el pipeline ({detalle}). No se creó nada; tus cambios siguen aquí."
+      },
+      "selector": {
+        "aria": "Embudo: {nombre}",
+        "conDefecto": "{nombre} (principal)",
+        "elegir": "Elige un embudo",
+        "titulo": "Pipelines de la organización",
+        "porDefecto": "Por defecto",
+        "tipos": {
+          "ventas": "Ventas",
+          "onboarding": "Onboarding",
+          "renovacion": "Renovación"
+        },
+        "etapas": "{n, plural, one {# etapa} other {# etapas}}",
+        "nuevo": "Nuevo pipeline",
+        "nuevoDetalle": "Desde una plantilla o en blanco",
+        "sinPermiso": "No tienes permiso",
+        "usarDefecto": "Usar «{nombre}» como por defecto",
+        "yaDefecto": "Ya es el pipeline por defecto",
+        "usarDefectoDetalle": "El tablero abrirá este embudo",
+        "editarEtapas": "Editar etapas de este pipeline",
+        "eliminar": "Eliminar pipeline",
+        "noEliminable": "No se puede: {n, plural, one {tiene # oportunidad} other {tiene # oportunidades}}",
+        "eliminarDetalle": "Sin oportunidades: se puede eliminar"
+      },
+      "resumen": {
+        "guardado": "Seguimiento guardado",
+        "errorGuardar": "No se pudo guardar el seguimiento",
+        "proximoPaso": "Próximo paso",
+        "ultimoContacto": "Último contacto: {canal} · {cuando}",
+        "hoy": "hoy",
+        "hace": "hace {dias, plural, one {# d} other {# d}}",
+        "accion": "Próxima acción",
+        "fechaHora": "Fecha y hora",
+        "zona": "Hora de la organización ({zona})",
+        "canal": "Canal",
+        "canales": {
+          "call": "Llamada",
+          "email": "Correo",
+          "whatsapp": "WhatsApp",
+          "meeting": "Reunión",
+          "visit": "Visita"
+        },
+        "resultado": "Resultado del último contacto",
+        "resultados": {
+          "reached": "Contactado",
+          "no_answer": "Sin respuesta",
+          "left_voicemail": "Buzón de voz",
+          "callback_scheduled": "Devolver la llamada",
+          "qualified": "Calificado",
+          "not_interested": "No interesado",
+          "objection": "Objeción"
+        },
+        "temperatura": "Temperatura",
+        "temperaturas": {
+          "cold": "Fría",
+          "warm": "Tibia",
+          "hot": "Caliente"
+        },
+        "cambiosSinGuardar": "Hay cambios sin guardar",
+        "sinCambios": "Sin cambios sin guardar",
+        "guardar": "Guardar seguimiento",
+        "informacion": "Información",
+        "monto": "Monto",
+        "moneda": "Moneda",
+        "monedaBase": "{codigo} · moneda base",
+        "cierre": "Cierre estimado",
+        "creada": "Creada",
+        "equipo": "Equipo y responsable"
+      },
+      "drawer": {
+        "cargando": "Cargando oportunidad",
+        "titulo": "Oportunidad",
+        "noEncontrada": "Oportunidad no encontrada",
+        "noEncontradaDetalle": "Puede que se haya eliminado o que no tengas acceso.",
+        "sinPermiso": "No tienes acceso a esta oportunidad",
+        "cerrar": "Cerrar",
+        "descripcion": "Resumen, actividad, tareas, notas, documentos e IA de la oportunidad",
+        "pestanasAria": "Secciones de la oportunidad",
+        "pestanas": {
+          "resumen": "Resumen",
+          "onboarding": "Onboarding",
+          "actividad": "Actividad",
+          "tareas": "Tareas",
+          "notas": "Notas",
+          "documentos": "Documentos",
+          "ia": "IA"
+        }
+      },
+      "lineas": {
+        "elegirProducto": "Elige un producto",
+        "cantidad": "Cant.",
+        "precio": "Precio unit.",
+        "elegirEspacio": "Elige un espacio",
+        "noches": "Noches",
+        "concepto": "Concepto",
+        "titulo": "Líneas",
+        "descripcion": "Productos, espacios (PMS) y otros conceptos. Opcional.",
+        "clases": {
+          "products": "Productos ({n})",
+          "spaces": "Espacios ({n})",
+          "custom": "Otros conceptos ({n})"
+        },
+        "columna": {
+          "products": "Producto",
+          "spaces": "Espacio",
+          "custom": "Concepto"
+        },
+        "total": "Total",
+        "quitar": "Quitar línea",
+        "agregar": {
+          "products": "Agregar producto",
+          "spaces": "Agregar espacio",
+          "custom": "Agregar concepto"
+        },
+        "totalGeneral": "Total {total}",
+        "sinLineas": "Esta oportunidad no tiene líneas. Agrégalas en «Editar».",
+        "producto": "Producto",
+        "espacio": "Espacio",
+        "detalleCantidad": "{n} × {precio}",
+        "detalleNoches": "{n, plural, one {# noche} other {# noches}} × {precio}"
+      },
+      "origenComision": {
+        "titulo": "Origen y comisión",
+        "origen": "Origen",
+        "sinOrigen": "Sin origen",
+        "vertical": "Vertical",
+        "sinVertical": "Sin vertical",
+        "comisionista": "Comisionista",
+        "tipos": {
+          "salesperson": "El responsable",
+          "intermediation_sale": "Un intermediario",
+          "none": "Sin comisión"
+        },
+        "comision": "Comisión (%)",
+        "comisionAyuda": "Editable también al editar."
+      },
+      "formularioPagina": {
+        "tituloEditar": "Editar oportunidad",
+        "tituloNueva": "Nueva oportunidad",
+        "migas": {
+          "crm": "CRM",
+          "oportunidades": "Oportunidades",
+          "editar": "Editar",
+          "nueva": "Nueva"
+        },
+        "lineasInvalidas": "Revisa las líneas: cada una necesita producto, espacio o concepto y una cantidad mayor que cero.",
+        "conflicto": "Alguien cambió esta oportunidad mientras la editabas. Recarga la página para ver su versión.",
+        "noEncontrada": "Oportunidad no encontrada",
+        "volver": "Volver a Oportunidades",
+        "sinPermiso": "No puedes editar esta oportunidad",
+        "sinPermisoDetalle": "Solo el responsable, quien la creó o alguien con permiso para editar cualquier oportunidad."
+      },
+      "nueva": {
+        "creada": "Oportunidad creada"
+      },
+      "pipeline": {
+        "titulo": "Pipeline",
+        "porDefectoHecho": "«{nombre}» es ahora el pipeline por defecto",
+        "errorPipeline": "No se pudo cambiar el pipeline",
+        "pipelineConOportunidades": "Tiene oportunidades: muévelas o elimínalas antes.",
+        "nueva": "Nueva oportunidad",
+        "subtituloSinEmbudo": "Esta organización no tiene embudo de ventas",
+        "subtituloSinPermiso": "Sin acceso",
+        "subtitulo": "{embudo} · {n, plural, one {# oportunidad abierta} other {# oportunidades abiertas}}",
+        "migas": {
+          "crm": "CRM"
+        },
+        "etapas": "Etapas",
+        "vistas": {
+          "aria": "Vista del pipeline",
+          "kanban": "Kanban",
+          "tabla": "Tabla",
+          "pronostico": "Pronóstico",
+          "clientes": "Clientes",
+          "automatizacion": "Automatización"
+        },
+        "buscar": "Buscar oportunidad o cliente",
+        "eliminarTitulo": "¿Eliminar el pipeline «{nombre}»?",
+        "eliminarDescripcion": "Se borran sus etapas. Solo se puede si no tiene oportunidades.",
+        "eliminar": "Eliminar",
+        "cancelar": "Cancelar",
+        "sinEmbudo": {
+          "titulo": "Crea tu embudo de ventas",
+          "descripcion": "El pipeline solo muestra oportunidades de un embudo de ventas. Empieza con la plantilla (Calificación, Propuesta, Negociación, Ganada, Perdida) y ajústala después.",
+          "crear": "Crear embudo de ventas",
+          "sinPermiso": "Pide a un administrador que cree el embudo de ventas.",
+          "verLeads": "Ver leads sin colocar ({n})"
+        },
+        "estados": {
+          "sinPermiso": {
+            "titulo": "No tienes acceso al pipeline",
+            "descripcion": "Pide a un administrador el permiso para ver oportunidades.",
+            "volver": "Volver al CRM"
+          },
+          "error": {
+            "titulo": "No se pudo cargar el pipeline",
+            "descripcion": "Revisa tu conexión e inténtalo de nuevo."
+          },
+          "sinResultados": {
+            "titulo": "Ninguna oportunidad coincide",
+            "descripcion": "Prueba con otra búsqueda o quita filtros."
+          },
+          "vacio": {
+            "titulo": "Tu pipeline está listo",
+            "descripcion": "Crea la primera oportunidad o califica un lead para verla avanzar por las etapas.",
+            "crear": "Nueva oportunidad",
+            "leads": "Ir a Leads"
+          }
+        }
+      },
+      "conexiones": {
+        "titulo": "Conexiones",
+        "cotizacion": "Cotización {numero}",
+        "cotizacionSola": "Cotización",
+        "sinCotizacion": "Sin cotización",
+        "factura": "Factura {numero}",
+        "facturaSola": "Factura",
+        "seCreaAlGanar": "Se crea al ganar",
+        "tareas": "Tareas",
+        "abiertas": "{n, plural, =0 {Ninguna abierta} one {# abierta} other {# abiertas}}",
+        "reunion": "Reunión",
+        "renovacion": "Renovación",
+        "cadaMeses": "{n, plural, one {cada mes} other {cada # meses}}",
+        "comision": "Comisión",
+        "estimada": "{monto} estimada"
+      },
+      "detalle": {
+        "titulo": "Oportunidad",
+        "migas": {
+          "crm": "CRM",
+          "oportunidades": "Oportunidades"
+        },
+        "volver": "Volver a Oportunidades",
+        "noEncontrada": {
+          "titulo": "Oportunidad no encontrada",
+          "descripcion": "Puede que se haya eliminado o que el enlace esté mal."
+        },
+        "sinPermiso": {
+          "titulo": "No tienes acceso a esta oportunidad",
+          "descripcion": "Pide a un administrador el permiso para ver oportunidades."
+        },
+        "error": {
+          "titulo": "No se pudo cargar la oportunidad",
+          "descripcion": "Revisa tu conexión e inténtalo de nuevo."
+        },
+        "clienteVinculado": "Cliente vinculado",
+        "errorVincular": "No se pudo vincular el cliente",
+        "editar": "Editar",
+        "marcarPerdida": "Marcar perdida",
+        "marcarGanada": "Marcar ganada",
+        "pestanasAria": "Secciones de la oportunidad",
+        "pestanas": {
+          "actividad": "Actividad",
+          "tareas": "Tareas",
+          "notas": "Notas",
+          "documentos": "Documentos",
+          "lineas": "Líneas",
+          "analisis": "Análisis",
+          "cierre": "Cierre",
+          "ia": "IA"
+        },
+        "sinCliente": "Esta oportunidad no tiene cliente vinculado.",
+        "vincularCliente": "Vincular cliente"
+      },
+      "metricas": {
+        "hoy": "hoy {hora}",
+        "manana": "mañana {hora}",
+        "monto": "Monto",
+        "montoDetalle": "{moneda} · {n, plural, =0 {sin líneas} one {# línea} other {# líneas}}",
+        "probabilidad": "Probabilidad",
+        "deLaEtapa": "de la etapa",
+        "ponderado": "Ponderado",
+        "ponderadoDetalle": "monto × probabilidad",
+        "cierre": "Cierre esperado",
+        "enDias": "{n, plural, =0 {hoy} one {en # día} other {en # días}}",
+        "haceDias": "{n, plural, one {vencido hace # día} other {vencido hace # días}}",
+        "responsable": "Responsable",
+        "sinResponsable": "Sin asignar",
+        "comision": "comisión {pct} %",
+        "proximo": "Próximo contacto"
+      }
     }
   },
   "posCustomerDisplay": {
@@ -2726,6 +4668,7 @@
     "allOrganizations": "Ver todas las organizaciones",
     "assistant": "GO Asistente",
     "openAssistant": "Abrir GO Asistente",
+    "closeAssistant": "Cerrar GO Asistente",
     "branch": "Sucursal",
     "branchLimit": "Llegaste al límite de sucursales de tu plan",
     "branches": "Sucursales",
@@ -3593,7 +5536,9 @@
         "fechaFutura": "La fecha no puede ser posterior a hoy.",
         "referenciaVacia": "Este método pide la referencia.",
         "recibidoInsuficiente": "Lo recibido no cubre el monto."
-      }
+      },
+      "retenciones": "Retenciones",
+      "netoPagado": "Neto {neto} · Pagado {pagado}"
     },
     "vista": {
       "etiqueta": "Vista",
@@ -4660,7 +6605,10 @@
         "cuentasAbiertas": "Cuentas por pagar abiertas",
         "pagar": "Pagar",
         "lotes": "Lotes recibidos de este proveedor",
-        "pagos": "Pagos registrados"
+        "pagos": "Pagos registrados",
+        "certificado": "Certificado de retenciones",
+        "certificadoAnio": "Año en curso",
+        "generar": "Generar"
       },
       "valorStock": "Valor en stock de sus productos (todas las sucursales):",
       "totalPagado": "Total pagado:",
@@ -11524,7 +13472,8 @@
         "pdf": "Descargar PDF",
         "imprimir": "Imprimir",
         "anular": "Anular",
-        "eliminar": "Eliminar borrador"
+        "eliminar": "Eliminar borrador",
+        "certificado": "Certificado de retenciones"
       },
       "motivos": {
         "sinPermiso": "No tienes permiso para esta acción",
@@ -11586,7 +13535,29 @@
         "recepcionarSinProductos": "No hay líneas con producto: nada entra al inventario.",
         "recepcionarSinPermiso": "No tienes permiso para mover inventario.",
         "generarDs": "Generar documento soporte",
-        "generarDsAyuda": "Para proveedores no obligados a facturar."
+        "generarDsAyuda": "Para proveedores no obligados a facturar.",
+        "descripcionNeto": "Total {total} · neto a pagar {neto} (retenciones {retenido}).",
+        "asiento": {
+          "titulo": "Asiento que se genera",
+          "cuenta": "Cuenta",
+          "debito": "Débito",
+          "credito": "Crédito",
+          "sumas": "Sumas",
+          "cuadra": "Cuadra",
+          "noCuadra": "No cuadra",
+          "noCalculado": "No se pudo calcular el asiento previo; al confirmar se genera igual.",
+          "motivos": {
+            "no_borrador": "La factura ya no es un borrador: su asiento está en el detalle.",
+            "no_rule": "No hay regla contable de compras: la factura se confirma, pero sin asiento. Configúrala en Finanzas › Reglas contables.",
+            "amount_invalid": "El total de la factura no es válido para generar el asiento.",
+            "debit_account_missing": "Falta la cuenta de débito de la regla de compras en el plan de cuentas.",
+            "credit_account_missing": "Falta la cuenta del proveedor de la regla de compras en el plan de cuentas.",
+            "tax_account_missing": "Falta la cuenta del IVA descontable en el plan de cuentas.",
+            "withholding_exceeds_total": "Las retenciones igualan o superan el total: el asiento queda por el total, sin descontarlas.",
+            "sin_asiento": "Al confirmar no se generaría asiento contable.",
+            "otro": "El asiento no se generaría: revisa la configuración contable."
+          }
+        }
       },
       "recepcionar": {
         "titulo": "Recepcionar la factura {numero}",
@@ -11696,7 +13667,8 @@
         "base": "Base",
         "tarifa": "Tarifa %",
         "retefuente": "Retención en la fuente",
-        "quitar": "Quitar {concepto}"
+        "quitar": "Quitar {concepto}",
+        "bajoBaseMinima": "La base no llega a la mínima de {uvt} UVT ({valor} con la UVT {anio}): esta retención normalmente no aplica. Puedes practicarla igual si el proveedor lo pide."
       },
       "errores": {
         "revisar": "Revisa los campos marcados.",
@@ -11979,7 +13951,8 @@
         "programar": "Programar pago",
         "plan": "Crear plan de cuotas",
         "estadoCuenta": "Estado de cuenta del proveedor",
-        "factura": "Ver factura"
+        "factura": "Ver factura",
+        "certificado": "Certificado de retenciones"
       },
       "motivos": {
         "sinPermiso": "No tienes permiso para esta acción"
@@ -12019,13 +13992,33 @@
       },
       "kpis": {
         "pagado": "Pagado: {monto}",
-        "programado": "Programado sin aprobar: {monto}"
+        "programado": "Programado sin aprobar: {monto}",
+        "netoRetenciones": "Neto de retenciones ({retenido}) · pagado {monto}"
       },
       "proveedorDatos": {
         "nombre": "Nombre",
         "nit": "NIT",
         "telefono": "Teléfono",
         "correo": "Correo"
+      },
+      "origen": {
+        "titulo": "Documento de origen",
+        "factura": "Factura",
+        "recibida": "Recibida",
+        "vence": "Vence",
+        "retenciones": "Retenciones",
+        "conceptos": "{n, plural, one {# concepto} other {# conceptos}}",
+        "sinRetenciones": "Sin retenciones",
+        "formaPago": "Forma de pago",
+        "credito": "Crédito a {n, plural, one {# día} other {# días}}",
+        "contado": "Contado",
+        "subtotal": "Subtotal",
+        "iva": "IVA",
+        "total": "Total factura",
+        "menosRetenciones": "Retenciones",
+        "neto": "Neto a pagar",
+        "asiento": "Asiento contable",
+        "orden": "Orden de compra"
       }
     },
     "estadoCuenta": {
@@ -12079,6 +14072,28 @@
         "fecha": "La primera cuota no puede ser anterior a hoy.",
         "interes": "Entre 0 y 100 %."
       }
+    },
+    "certificado": {
+      "titulo": "Certificado de retenciones",
+      "descripcion": "Lo retenido a {proveedor} en el periodo, para entregarle el certificado (art. 381 E.T.).",
+      "periodo": "Periodo certificado",
+      "cargando": "Calculando retenciones…",
+      "errorLectura": "No se pudieron leer las retenciones.",
+      "reintentar": "Reintentar",
+      "clases": {
+        "retefuente": "Retención en la fuente",
+        "reteiva": "Retención de IVA",
+        "reteica": "Retención de ICA"
+      },
+      "total": "Total retenido",
+      "alcance": "{facturas, plural, =0 {Sin facturas} one {# factura} other {# facturas}} · {conceptos, plural, =0 {sin conceptos} one {# concepto} other {# conceptos}}",
+      "sinRetenciones": "No se le practicaron retenciones en este periodo; el certificado saldrá en cero.",
+      "nota": "Cubre todas las sucursales: el agente retenedor es la organización.",
+      "descargar": "Descargar PDF",
+      "imprimir": "Imprimir",
+      "ver": "Ver",
+      "cerrar": "Cerrar",
+      "errorDescarga": "No se pudo descargar el certificado"
     }
   },
   "documentos": {
@@ -12096,7 +14111,8 @@
       "reporte-caja-abierta": "Reporte de caja abierta",
       "arqueo-caja": "Arqueo de caja",
       "estado-cuenta-proveedor": "Estado de cuenta de proveedor",
-      "nota-credito-electronica": "Nota crédito electrónica"
+      "nota-credito-electronica": "Nota crédito electrónica",
+      "certificado-retenciones": "Certificado de retenciones"
     },
     "sinNumero": "Sin consecutivo",
     "paginacion": {
@@ -12243,7 +14259,13 @@
       "total": "Total",
       "vencido": "Vencido",
       "porVencer": "Por vencer",
-      "facturaCompraAsociada": "Factura de compra asociada"
+      "facturaCompraAsociada": "Factura de compra asociada",
+      "periodoDesde": "Periodo certificado desde",
+      "periodoHasta": "Periodo certificado hasta",
+      "facturasIncluidas": "Facturas incluidas",
+      "fechaExpedicion": "Fecha de expedición",
+      "ciudadExpedicion": "Ciudad de expedición",
+      "declaradoEn": "Declarado en"
     },
     "formasPago": {
       "contado": "Contado",
@@ -12284,7 +14306,9 @@
       "movimientosCaja": "Entradas y salidas de caja",
       "arqueos": "Arqueos",
       "denominaciones": "Denominaciones",
-      "retenciones": "Retenciones practicadas al proveedor"
+      "retenciones": "Retenciones practicadas al proveedor",
+      "conceptosRetenidos": "Retenciones practicadas",
+      "facturasIncluidas": "Facturas incluidas"
     },
     "columnas": {
       "descripcion": "Descripción",
@@ -12319,12 +14343,15 @@
       "subtotal": "Subtotal",
       "base": "Base",
       "tarifa": "Tarifa (%)",
-      "unidad": "Unidad"
+      "unidad": "Unidad",
+      "cuenta": "Cuenta",
+      "valorRetenido": "Valor retenido"
     },
     "vacios": {
       "lineas": "Sin líneas.",
       "movimientos": "Sin movimientos en el periodo.",
-      "facturasAbiertas": "No hay facturas abiertas."
+      "facturasAbiertas": "No hay facturas abiertas.",
+      "retencionesPeriodo": "No se practicaron retenciones a este proveedor en el periodo."
     },
     "totales": {
       "subtotal": "Subtotal",
@@ -12357,7 +14384,11 @@
       },
       "retencion": "{concepto} ({tasa} %)",
       "totalFactura": "Total de la factura",
-      "netoPagar": "Neto a pagar al proveedor"
+      "netoPagar": "Neto a pagar al proveedor",
+      "retefuente": "Retención en la fuente",
+      "reteiva": "Retención de IVA",
+      "reteica": "Retención de ICA",
+      "totalRetenido": "Total retenido"
     },
     "firmas": {
       "recibido": "Recibido a satisfacción",
@@ -12368,7 +14399,10 @@
       "recibe": "Recibe",
       "datosRecibe": "Nombre · Documento · Fecha",
       "datosAcepta": "Nombre · Documento · Cargo · Fecha",
-      "datosNombre": "Nombre y documento"
+      "datosNombre": "Nombre y documento",
+      "agenteRetenedor": "Agente retenedor",
+      "contador": "Contador público",
+      "datosContador": "Nombre · Tarjeta profesional"
     },
     "legal": {
       "resolucion": "Resolución DIAN n.º {numero} del {fecha}, prefijo {prefijo}, numeración autorizada del {desde} al {hasta}, vigente hasta el {vigencia}.",
@@ -12387,7 +14421,8 @@
         "comprobante-egreso": "Comprobante de un pago realizado.",
         "cierre-caja": "Reporte interno de caja.",
         "arqueo-caja": "Reporte interno de arqueo de caja.",
-        "estado-cuenta-proveedor": "Estado de cuenta del proveedor según nuestros registros. Si encuentra alguna diferencia, comuníquese con nosotros dentro de los 10 días siguientes a su recepción."
+        "estado-cuenta-proveedor": "Estado de cuenta del proveedor según nuestros registros. Si encuentra alguna diferencia, comuníquese con nosotros dentro de los 10 días siguientes a su recepción.",
+        "certificado-retenciones": "Certificado expedido según el artículo 381 del Estatuto Tributario. No requiere firma autógrafa (artículo 10 del Decreto 836 de 1991)."
       }
     },
     "movimientos": {
@@ -12463,6 +14498,14 @@
       "pos": "Venta registrada en el punto de venta (POS).",
       "mesa": "Venta registrada desde una mesa.",
       "ventaPos": "Venta del POS"
+    },
+    "certificado": {
+      "prefijo": "CR",
+      "totalRetenido": "Total retenido",
+      "declarado350": "Formulario 350",
+      "declaradoIca": "Declaración de ICA",
+      "declarado350EIca": "Formulario 350 e ICA",
+      "constancia": "{emisor}, como agente retenedor, certifica que durante el periodo indicado practicó a {proveedor} las retenciones que se detallan, sobre los pagos o abonos en cuenta de las facturas incluidas."
     }
   },
   "posVentas": {
@@ -13165,6 +15208,8 @@
       "errorCarga": "No se pudo cargar la factura",
       "impuesto": "Impuesto",
       "ventaOrigen": "Venta del POS",
+      "ventaWeb": "Pedido web",
+      "ventaFactura": "Venta por factura",
       "cartera": "Cuenta por cobrar",
       "pago": "Pago",
       "cadena": "Documentos relacionados",
@@ -15062,7 +17107,9 @@
       "tipo": "Tipo",
       "tarifa": "Tarifa",
       "aplicaA": "Aplica a",
-      "estado": "Estado"
+      "estado": "Estado",
+      "baseMinima": "Base mínima",
+      "cuenta": "Cuenta contable"
     },
     "tipos": {
       "retefuente": "ReteFuente",
@@ -15087,16 +17134,51 @@
       "activada": "{nombre} quedó activa.",
       "desactivada": "{nombre} quedó inactiva.",
       "errorTitulo": "Error",
-      "errorEstado": "No se pudo cambiar el estado de la retención."
+      "errorEstado": "No se pudo cambiar el estado de la retención.",
+      "errorConfiguracion": "No se pudo leer la cuenta contable y la base mínima de las retenciones."
     },
     "formulario": {
       "nueva": "Nueva retención",
       "editar": "Editar retención",
-      "nota": "Una retención la practica el comprador: no se suma al precio, no se asigna a productos y no puede ser la tarifa por defecto."
+      "nota": "Una retención la practica el comprador: no se suma al precio, no se asigna a productos y no puede ser la tarifa por defecto.",
+      "cuenta": "Cuenta contable",
+      "cuentaAutomatica": "Automática según el tipo (2365 / 2367 / 2368)",
+      "cuentaAutomaticaActual": "Automática según el tipo ({cuenta})",
+      "cuentaAyuda": "Solo cuentas de pasivo activas. En el asiento de la compra la retención se acredita a esta cuenta.",
+      "baseMinima": "Base mínima (UVT)",
+      "baseMinimaPlaceholder": "Ej: 27",
+      "baseMinimaAyuda": "Si la base de la factura es menor, el formulario avisa que la retención no aplica. Vacío: sin base mínima.",
+      "baseMinimaEquivale": "Equivale a {valor} con la UVT {anio}. Por debajo, la factura avisa que no aplica.",
+      "errorConfiguracionTitulo": "La retención se guardó a medias",
+      "errorConfiguracion": "Se guardaron el nombre y la tarifa, pero no la cuenta ni la base mínima: {detalle}",
+      "errores": {
+        "cuenta_no_existe": "la cuenta no existe en el plan de cuentas.",
+        "cuenta_no_es_pasivo": "la cuenta no es de pasivo.",
+        "cuenta_inactiva": "la cuenta está inactiva.",
+        "base_minima_invalida": "La base mínima debe ser un número mayor o igual a cero.",
+        "retencion_no_encontrada": "la retención no existe en esta organización.",
+        "otro": "revisa tus permisos de impuestos e inténtalo de nuevo."
+      }
     },
     "titulo": "Impuestos",
     "migas": {
       "finanzas": "Finanzas"
+    },
+    "baseMinima": {
+      "sin": "Sin base mínima",
+      "uvt": "{uvt} UVT",
+      "equivalente": "≈ {valor} (UVT {anio})"
+    },
+    "cuenta": {
+      "automatica": "Automática según el tipo"
+    },
+    "uvtVigente": "UVT {anio}: {valor} · {norma}",
+    "uvtSinDato": "Sin UVT registrada para el país: la base mínima no se puede convertir a moneda.",
+    "plantilla": {
+      "cargar": "Cargar plantilla de {pais}",
+      "alDia": "Ya tienes todas las retenciones de la plantilla de {pais}.",
+      "cargada": "{creadas, plural, =0 {Ya tenías todas las retenciones de {pais}.} one {Se agregó # retención de {pais}.} other {Se agregaron # retenciones de {pais}.}}",
+      "error": "No se pudo cargar la plantilla de retenciones."
     }
   },
   "receta": {
@@ -22263,6 +24345,444 @@
     "toast": {
       "error": "Error",
       "plantilla": "Plantilla descargada"
+    }
+  },
+  "perfil": {
+    "navegacion": "Secciones de mi perfil",
+    "volver": "Volver",
+    "editar": "Editar",
+    "seUnio": "Se unió el {fecha}",
+    "sinNombre": "Sin nombre",
+    "secciones": {
+      "datos-personales": "Datos personales",
+      "seguridad": "Seguridad",
+      "preferencias": "Preferencias",
+      "sesiones": "Sesiones y dispositivos",
+      "organizacion-roles": "Organización y roles",
+      "notificaciones": "Notificaciones",
+      "panel-vendedor": "Panel de vendedor",
+      "eliminar-cuenta": "Eliminar cuenta"
+    },
+    "errores": {
+      "sinSesion": "No se encontró la sesión del usuario",
+      "cargarPerfil": "No se pudieron cargar los datos del perfil",
+      "cargarDatos": "No se pudieron cargar los datos del usuario"
+    },
+    "preferencias": {
+      "titulo": "Preferencias",
+      "descripcion": "Tema, idioma y zona horaria.",
+      "tema": "Tema",
+      "temaAyuda": "Se guarda en tu cuenta y se aplica en todos tus dispositivos.",
+      "claro": "Claro",
+      "oscuro": "Oscuro",
+      "sistema": "Sistema",
+      "idioma": "Idioma",
+      "zonaHoraria": "Zona horaria",
+      "zonaHorariaAyuda": "Las fechas se muestran con esta zona. Si la sucursal activa tiene zona propia, se usa esa; si no, la de la organización.",
+      "zonaOrigenSucursal": "De la sucursal {sucursal}",
+      "zonaOrigenSucursalSinNombre": "De la sucursal activa",
+      "zonaOrigenOrganizacion": "De la organización",
+      "zonaOrigenSistema": "Por defecto del sistema"
+    },
+    "vendedor": {
+      "titulo": "Panel de vendedor",
+      "descripcion": "Vende con nosotros y genera comisiones por cada referencia.",
+      "yaEresTitulo": "Ya eres vendedor",
+      "yaEresDesc": "Tu cuenta está vinculada al panel de vendedores. Entra para ver tus comisiones, pagos y referidos.",
+      "abrir": "Abrir panel de vendedor",
+      "convierteteTitulo": "Conviértete en vendedor",
+      "convierteteDesc": "Activa tu cuenta de vendedor y genera comisiones por cada cliente que refieras. Usarás las mismas credenciales, el mismo correo y el mismo avatar que en el ERP.",
+      "activar": "Activar cuenta de vendedor",
+      "activando": "Activando…",
+      "exito": "¡Ya eres vendedor! Tu cuenta quedó vinculada.",
+      "errorSinSesion": "Debes iniciar sesión para activar la cuenta de vendedor.",
+      "errorCrear": "No se pudo crear la cuenta de vendedor",
+      "errorConexion": "No se pudo conectar con el servicio. Intenta más tarde.",
+      "errorProcesar": "No se pudo procesar la solicitud",
+      "errorToast": "No se pudo activar la cuenta de vendedor"
+    },
+    "permisos": {
+      "titulo": "Permisos efectivos",
+      "descripcion": "Lo que puedes hacer en la organización activa, según tu rol y tu cargo.",
+      "descripcionOrg": "Lo que puedes hacer en {organizacion}, según tu rol y tu cargo.",
+      "cargando": "Cargando permisos…",
+      "error": "No se pudieron cargar tus permisos.",
+      "reintentar": "Reintentar",
+      "vacio": "No tienes permisos asignados en esta organización. Pide a un administrador que te asigne un rol o un cargo.",
+      "accesoTotal": "Administras esta organización: tienes acceso a todo.",
+      "resumen": "{n, plural, one {# permiso} other {# permisos}}",
+      "noIncluye": "No incluye",
+      "noIncluyeSr": "No incluido:",
+      "nota": "Los permisos se calculan en el servidor. Si el cargo define un permiso, manda sobre el rol.",
+      "modulos": {
+        "admin": "Administración",
+        "branches": "Sucursales",
+        "calendar": "Calendario",
+        "catalog": "Catálogo",
+        "crm": "CRM",
+        "finance": "Finanzas",
+        "hr": "Recursos humanos",
+        "integrations": "Integraciones",
+        "inventory": "Inventario",
+        "memberships": "Membresías",
+        "notifications": "Notificaciones",
+        "operations": "Operaciones",
+        "organizations": "Organizaciones",
+        "pms": "Hotel (PMS)",
+        "pos": "Punto de venta",
+        "reports": "Reportes",
+        "roles": "Roles",
+        "sales": "Ventas",
+        "transport": "Transporte",
+        "users": "Usuarios"
+      }
+    }
+  },
+  "asistente": {
+    "cabecera": {
+      "titulo": "GO Asistente",
+      "conversaciones": "Conversaciones",
+      "volver": "Volver a la conversación",
+      "nueva": "Nueva conversación",
+      "historial": "Conversaciones anteriores",
+      "voz": "Responder en audio",
+      "vozActiva": "Responder en audio: activado",
+      "ampliar": "Ampliar",
+      "reducir": "Reducir",
+      "cerrar": "Cerrar",
+      "abrir": "Abrir GO Asistente"
+    },
+    "bienvenida": {
+      "saludo": "¡Hola, {nombre}!",
+      "texto": "Pregúntame por tus datos, pídeme que registre algo o súbeme un archivo. Antes de guardar cualquier cosa te muestro un resumen para que lo confirmes.",
+      "sugerenciasPara": "Sugerencias para {pagina}",
+      "sugerencias": "Sugerencias",
+      "respaldo1": "¿Cómo creo un producto nuevo?",
+      "respaldo2": "¿Cómo saco un reporte de ventas?",
+      "respaldo3": "¿Cómo registro un cliente nuevo?"
+    },
+    "mensaje": {
+      "escuchar": "Escuchar",
+      "escucharRespuesta": "Escuchar respuesta",
+      "leyendo": "Leyendo…",
+      "detenerLectura": "Detener lectura",
+      "copiar": "Copiar",
+      "copiarRespuesta": "Copiar respuesta",
+      "copiado": "Copiado",
+      "vozNoActiva": "Tu organización no tiene activada la respuesta en audio.",
+      "leeDocumento": "Lee este documento."
+    },
+    "pasos": {
+      "pensando": "Pensando…",
+      "enCurso": "Pasos en curso",
+      "plegados": "{n, plural, one {# paso} other {# pasos}} · Ver",
+      "anuncio": {
+        "pensando": "GO Asistente está pensando",
+        "consultando": "GO Asistente está consultando tus datos",
+        "escribiendo": "GO Asistente está respondiendo",
+        "lista": "Respuesta lista"
+      }
+    },
+    "pregunta": {
+      "etiqueta": "Pregunta del asistente",
+      "opciones": "Opciones",
+      "otro": "Otro: lo escribo",
+      "atajo": "Atajo: pulsa {letras}"
+    },
+    "tarjeta": {
+      "etiqueta": "Confirmar acción: {titulo}",
+      "estado": {
+        "pendiente": "Por confirmar",
+        "ejecutando": "Guardando",
+        "completada": "Hecha",
+        "deshecha": "Deshecha",
+        "error": "No se completó",
+        "caducada": "Caducó"
+      },
+      "puedesDeshacer": "Puedes deshacerlo durante {n, plural, one {# minuto} other {# minutos}}.",
+      "avisoContable": "Esta acción tiene impacto contable.",
+      "falta": "Falta: {campos}. Dímelo en el chat antes de confirmar.",
+      "irreversible": "Esta acción no se puede deshacer desde el chat.",
+      "caducaEn": "La propuesta caduca en {n, plural, one {# minuto} other {# minutos}}.",
+      "caducada": "Esta propuesta caducó y ya no se puede confirmar. Pídeme un resumen nuevo.",
+      "nota": "No se guarda nada hasta que confirmes · Confirmar no gasta créditos",
+      "formulario": "Abrir el formulario completo",
+      "formularioAyuda": "Abre el mismo formulario del módulo de Clientes, con estos datos ya puestos",
+      "repetir": "Vas a: {resumen} ¿Lo confirmo?",
+      "confirmar": "Confirmar",
+      "siConfirmar": "Sí, confirmar",
+      "guardando": "Guardando…",
+      "volver": "Volver",
+      "corregir": "Corregir",
+      "rechazar": "Rechazar",
+      "atajos": "Ctrl+Enter confirma · Esc rechaza",
+      "atajosRepetir": "Ctrl+Enter confirma · Esc vuelve",
+      "pedirOtro": "Pedir un resumen nuevo",
+      "ver": {
+        "customer": "Ver cliente",
+        "product": "Ver producto",
+        "sale": "Ver venta",
+        "purchase_order": "Ver orden de compra",
+        "inventory_transfer": "Ver traslado",
+        "inventory_adjustment": "Ver ajuste",
+        "invoice_purchase": "Ver factura de compra",
+        "invoice_sales": "Ver factura de venta",
+        "generico": "Ver"
+      },
+      "deshacer": "Deshacer",
+      "deshacerMin": "Deshacer · {n} min",
+      "deshaciendo": "Deshaciendo…",
+      "corregirReintentar": "Corregir y reintentar",
+      "errorGenerico": "No se pudo ejecutar la acción. Vuelve a intentarlo.",
+      "errorRed": "No se pudo ejecutar la acción. Revisa su estado antes de intentarlo otra vez.",
+      "errorCancelar": "No pude cancelar esa propuesta. Recarga el historial antes de continuar.",
+      "errorDeshacer": "No se pudo deshacer.",
+      "canceladaMensaje": "Acción cancelada.",
+      "corregirMensaje": "Dime qué quieres corregir. Prepararé un nuevo resumen para confirmar; la propuesta anterior ya está cancelada.",
+      "caducadaMensaje": "Esa propuesta caducó. Dime otra vez qué necesitas y te preparo un resumen nuevo."
+    },
+    "masiva": {
+      "filas": "{n, plural, one {# fila} other {# filas}}",
+      "nuevos": "{n, plural, one {# nuevo} other {# nuevos}}",
+      "existen": "{n, plural, one {# ya existe} other {# ya existen}}",
+      "omiten": "{n, plural, one {# se omite} other {# se omiten}}",
+      "pie": "Se cargarán {n} · duplicados por SKU, código de barras o nombre · todo o nada (una sola transacción)",
+      "tabla": "Filas de la carga",
+      "colProducto": "Producto",
+      "colSku": "SKU",
+      "colPrecio": "Precio",
+      "colStock": "Stock",
+      "colEstado": "Estado",
+      "sinNombre": "(sin nombre)",
+      "estado": {
+        "nuevo": "Nuevo",
+        "existente": "Ya existe",
+        "error": "Se omite"
+      },
+      "seOmite": "Se omite",
+      "seOmiteMotivo": "{motivo}: se omite",
+      "yaExiste": "Ya existe",
+      "coincidePor": "Coincide por {campo}",
+      "campo": {
+        "sku": "SKU",
+        "barcode": "código de barras",
+        "nombre": "nombre"
+      },
+      "verEnGrande": "Ver las {n} filas en grande",
+      "verFilas": "Ver las {n} filas",
+      "ocultarFilas": "Ocultar las filas"
+    },
+    "aviso": {
+      "creditosBajosTitulo": "{n, plural, one {Te queda # crédito} other {Te quedan # créditos}}",
+      "creditosBajosRespuestas": "{n, plural, =0 {No alcanzan para una respuesta completa.} one {Alcanzan para una respuesta más, aproximadamente.} other {Alcanzan para unas # respuestas.}}",
+      "creditosBajosSinPromedio": "Cuando se acaben, el asistente queda en pausa hasta que compres más.",
+      "sinCreditosTitulo": "Sin créditos de IA",
+      "sinCreditosTexto": "El asistente queda en pausa hasta que compres un paquete o se renueve tu plan. Tus conversaciones se conservan.",
+      "sinPermisoTitulo": "No tienes permiso para eso",
+      "sinPermisoTexto": "Tu cargo o tu plan no incluyen esa acción. Puedo mostrarte la información o explicarte el proceso paso a paso.",
+      "sesionTitulo": "Tu sesión caducó",
+      "sesionTexto": "Vuelve a iniciar sesión para seguir. Tu conversación está guardada.",
+      "limiteTitulo": "Vas muy rápido",
+      "limiteTexto": "Espera unos segundos y vuelve a intentarlo.",
+      "errorTitulo": "La respuesta quedó incompleta",
+      "errorTexto": "No pude completar la respuesta.",
+      "errorConservado": "Tu mensaje volvió al cuadro de texto. Revisa el historial antes de reintentar: el turno pudo haber avanzado.",
+      "comprarCreditos": "Comprar créditos",
+      "verPermisos": "Ver mis permisos",
+      "iniciarSesion": "Iniciar sesión",
+      "reintentar": "Reintentar",
+      "descartar": "Descartar aviso"
+    },
+    "composer": {
+      "etiqueta": "Mensaje para GO Asistente",
+      "placeholder": "Pregunta o pide algo…",
+      "placeholderSinCreditos": "Sin créditos: el asistente está en pausa",
+      "transcribiendo": "Transcribiendo tu nota…",
+      "adjuntar": "Adjuntar archivo o foto",
+      "adjuntos": "Archivos adjuntos",
+      "quitarAdjunto": "Quitar {nombre}",
+      "adjuntosNoDisponibles": "Todavía no puedo leer archivos. Por ahora cuéntame por escrito qué dice.",
+      "dictar": "Dictar",
+      "detenerGrabacion": "Detener y transcribir",
+      "grabando": "Grabando… {tiempo}",
+      "enviar": "Enviar mensaje",
+      "detener": "Detener respuesta",
+      "contextoActivo": "El asistente sabe que estás en {pagina}. Tócalo para no enviarlo.",
+      "contextoInactivo": "Sin contexto de página. Tócalo para volver a enviarlo.",
+      "ayuda": "Enter envía · Shift+Enter nueva línea",
+      "ayudaMovil": "Toca enviar para mandar",
+      "ayudaRespondiendo": "Esc detiene la respuesta",
+      "ayudaGrabando": "Al parar, el texto queda aquí para revisarlo · Esc cancela",
+      "ayudaSinCreditos": "Compra créditos para seguir",
+      "creditos": "{n, plural, one {# crédito} other {# créditos}}",
+      "notaDudosa": "No entendí bien la nota: revisa el texto antes de enviarlo.",
+      "notaVacia": "No se oyó nada en la nota. Prueba a grabar de nuevo, más cerca del micrófono.",
+      "notaError": "No pude transcribir la nota.",
+      "sinMicrofono": "No pude usar el micrófono. Revisa el permiso del navegador.",
+      "soltar": "Suelta aquí la foto o el archivo",
+      "limiteArchivo": "No pude adjuntar algunos archivos: el límite es 20 MB por archivo."
+    },
+    "historial": {
+      "etiqueta": "Historial de conversaciones",
+      "buscar": "Buscar en el historial",
+      "cargando": "Cargando historial…",
+      "errorCarga": "No se pudo cargar el historial.",
+      "errorArchivar": "No se pudo archivar la conversación.",
+      "errorAbrir": "No pude abrir esa conversación. Inténtalo otra vez.",
+      "reintentar": "Reintentar",
+      "vacio": "Todavía no hay conversaciones guardadas.",
+      "sinCoincidencias": "Ninguna conversación coincide con la búsqueda.",
+      "sinTitulo": "Conversación sin título",
+      "grupo": {
+        "hoy": "Hoy",
+        "ayer": "Ayer",
+        "semana": "Esta semana",
+        "anteriores": "Anteriores"
+      },
+      "mensajes": "{n, plural, one {# mensaje} other {# mensajes}}",
+      "archivar": "Archivar «{titulo}»",
+      "archivarAyuda": "Archivar",
+      "nota": "Archivar quita la conversación de la lista; no la borra."
+    },
+    "pie": {
+      "aviso": "Puede equivocarse: revisa lo importante",
+      "permisos": "Permisos del asistente"
+    }
+  },
+  "analiticaWeb": {
+    "titulo": "Analítica web",
+    "subtitulo": "Tienda web · {organizacion}",
+    "subtituloSinOrg": "Tienda web",
+    "actualizar": "Actualizar",
+    "exportar": "Exportar CSV",
+    "todasSucursales": "Todas las sucursales ({n})",
+    "sucursal": "Sucursal: {nombre}",
+    "notaSucursal": "las visitas son de la tienda, no de una sucursal; los pedidos y la venta media sí respetan la sucursal.",
+    "compararAnterior": "vs periodo anterior",
+    "cargando": "Cargando analítica…",
+    "error": "No se pudo cargar la analítica web.",
+    "reintentar": "Reintentar",
+    "sinPermiso": "No tienes acceso a la analítica web. Pide a un administrador el permiso «Reportes de ventas».",
+    "zona": "Días según la zona horaria {zona}.",
+    "kpi": {
+      "visitantes": "Visitantes únicos",
+      "sesiones": "Sesiones",
+      "pedidos": "Pedidos",
+      "conversion": "Conversión",
+      "ventaMedia": "Venta media",
+      "vsAnterior": "{v} vs periodo anterior",
+      "ppVsAnterior": "{v} pp vs periodo anterior",
+      "sinComparacion": "Sin datos del periodo anterior",
+      "nuevos": "{pct} nuevos",
+      "pendientes": "{n, plural, one {# pendiente} other {# pendientes}}"
+    },
+    "embudo": {
+      "titulo": "Embudo de conversión",
+      "visitantes": "Visitantes",
+      "pedidos": "Pedidos",
+      "completados": "Completados",
+      "deVisitantes": "{pct} de los visitantes",
+      "dePedidos": "{pct} de los pedidos",
+      "abandono": "Abandono {pct} · {n, plural, one {# pedido cancelado o rechazado} other {# pedidos cancelados o rechazados}}.",
+      "nota": "Visitantes = personas distintas y sesiones = pestañas distintas, no filas de visitas."
+    },
+    "grafico": {
+      "titulo": "Visitantes y pedidos",
+      "visitantes": "Visitantes",
+      "pedidos": "Pedidos",
+      "visitantesAnterior": "Visitantes (anterior)",
+      "pedidosAnterior": "Pedidos (anterior)"
+    },
+    "geo": {
+      "titulo": "De dónde entran",
+      "privacidad": "La ubicación es aproximada (país, región y ciudad) y se resuelve en el borde: nunca se guarda la IP ni coordenadas.",
+      "sinCruceConPedidos": "La conversión y la venta media por país aún no están disponibles: los pedidos no guardan la visita de origen.",
+      "resumenPaises": "{n, plural, one {# país} other {# países}} · {v} visitantes",
+      "pais": "País",
+      "ciudad": "Ciudad",
+      "visitantes": "Visitantes",
+      "sesiones": "Sesiones",
+      "verCiudades": "Ver {pais} por ciudad",
+      "porCiudad": "{pais} por ciudad",
+      "volver": "Volver al mundo",
+      "otrasCiudades": "{n, plural, one {Y # ciudad más} other {Y # ciudades más}}",
+      "sinCiudades": "Aún no hay ciudades para este país en el periodo.",
+      "sinUbicacionTitulo": "Todavía no tenemos la ubicación de tus visitantes",
+      "sinUbicacionTexto": "{n, plural, =0 {Aún no hay visitas registradas sin ubicación.} one {La única visita registrada se guardó sin país ni ciudad.} other {Las # visitas registradas se guardaron sin país ni ciudad.}} Las visitas nuevas ya llegan con su ubicación aproximada; las anteriores no se pueden recuperar.",
+      "mapaMundoTitulo": "Visitantes por país",
+      "porPaisTitulo": "Por país",
+      "porDepartamento": "{pais} por departamento",
+      "notaDepartamentos": "Los departamentos suman las {n} ciudades con más visitantes del periodo.",
+      "filtroRegion": "Ciudades de {region}",
+      "quitarFiltro": "Ver todas las ciudades",
+      "mapa": {
+        "mundoAria": "Mapa de visitantes por país",
+        "colombiaAria": "Mapa de visitantes de {pais} por departamento",
+        "ayudaTeclado": "Usa las flechas para recorrer las regiones y Enter para elegir una. Los mismos datos están en la tabla.",
+        "region": "{nombre}: {n, plural, one {{v} visitante} other {{v} visitantes}}, {pct} del total",
+        "regionSinVisitas": "{nombre}: sin visitas",
+        "tooltip": "{n, plural, one {{v} visitante} other {{v} visitantes}} · {pct}",
+        "sinVisitas": "Sin visitas",
+        "menos": "Menos",
+        "mas": "Más",
+        "leyendaAria": "Escala de color: de menos visitantes (azul claro) a más visitantes (azul profundo); gris, sin visitas.",
+        "cargando": "Cargando mapa…",
+        "error": "No se pudo cargar el mapa. Los datos siguen en la tabla."
+      }
+    },
+    "csv": {
+      "fecha": "Fecha",
+      "visitantes": "Visitantes",
+      "pedidos": "Pedidos",
+      "visitantesAnterior": "Visitantes periodo anterior",
+      "pedidosAnterior": "Pedidos periodo anterior",
+      "pais": "País",
+      "sesiones": "Sesiones"
+    }
+  },
+  "asientoContable": {
+    "origenCompra": {
+      "titulo": "Asiento automático de la compra {numero}",
+      "conRetenciones": "Lo generó la confirmación de la factura; no se edita ni se borra (para revertirlo, anula la factura). Al proveedor se le acredita solo el neto, {neto}; las retenciones, {retenido}, van al pasivo de impuestos por pagar.",
+      "sinRetenciones": "Lo generó la confirmación de la factura; no se edita ni se borra (para revertirlo, anula la factura). Al proveedor se le acredita el total, {total}: la factura no tiene retenciones.",
+      "irFactura": "Ir a la factura",
+      "cadena": "Cadena del documento",
+      "pago": "Pago",
+      "retenciones": "Retenciones",
+      "verCertificado": "Ver certificado",
+      "conceptos": "{n, plural, one {# concepto} other {# conceptos}}"
+    },
+    "datos": {
+      "titulo": "Datos del asiento",
+      "fecha": "Fecha contable",
+      "sucursal": "Sucursal",
+      "origen": "Origen",
+      "moneda": "Moneda",
+      "tasa": "Tasa {tasa} frente a {base}",
+      "claveHecho": "Clave del hecho",
+      "creado": "Creado el",
+      "origenes": {
+        "manual": "Manual",
+        "reversal": "Contra-asiento",
+        "invoice_sales": "Factura de venta",
+        "invoice_purchase": "Factura de compra",
+        "sales": "Venta POS",
+        "payments": "Pago",
+        "stock_movements": "Movimiento de inventario",
+        "inventory_adjustment": "Ajuste de inventario",
+        "accounts_receivable": "Cuenta por cobrar",
+        "accounts_payable": "Cuenta por pagar",
+        "purchase_orders": "Orden de compra",
+        "cash_movements": "Movimiento de caja",
+        "cash_sessions": "Sesión de caja",
+        "commissions": "Comisión",
+        "credit_note": "Nota crédito"
+      },
+      "creadoPor": "Creado por",
+      "automatico": "Automático (sistema)"
+    },
+    "lineas": {
+      "centroCosto": "Centro de costo"
     }
   }
 }

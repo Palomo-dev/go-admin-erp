@@ -12,58 +12,28 @@ import { getOrganizationId as getOrganizationIdFromContext } from '@/lib/utils/o
  * }
  */
 
-export type Temperature = 'cold' | 'warm' | 'hot';
+import {
+  calcularScore,
+  temperaturaDeScore,
+  type ScoreAnswer,
+  type ScoreResult,
+  type ScoringBands,
+  type ScoringConfig,
+} from './scoringCalculo';
 
-export interface ScoringOption {
-  value: string;
-  label: string;
-  score: number;
-}
-
-export interface ScoringIndicator {
-  key: string;
-  label: string;
-  weight: number;
-  options: ScoringOption[];
-}
-
-export interface ScoringBand {
-  min: number;
-  max: number;
-}
-
-export interface ScoringBands {
-  cold: ScoringBand;
-  warm: ScoringBand;
-  hot: ScoringBand;
-}
-
-export interface ScoringConfig {
-  id?: string;
-  organization_id?: number;
-  indicators: ScoringIndicator[];
-  bands: ScoringBands;
-  updated_at?: string;
-  created_at?: string;
-}
-
-export interface ScoreAnswer {
-  key: string;
-  value: string;
-}
-
-export interface ScoreResult {
-  score_total: number;
-  temperature: Temperature;
-  details: {
-    key: string;
-    label: string;
-    weight: number;
-    selectedValue: string;
-    score: number;
-    weightedScore: number;
-  }[];
-}
+// Tipos y cálculo ÚNICOS en `scoringCalculo.ts` (CRM ola 3B): los usa también
+// `PUT /api/crm/opportunities/[id]/score`.
+export type {
+  Temperature,
+  ScoringOption,
+  ScoringIndicator,
+  ScoringBand,
+  ScoringBands,
+  ScoringConfig,
+  ScoreAnswer,
+  ScoreResult,
+} from './scoringCalculo';
+import type { Temperature } from './scoringCalculo';
 
 // ---------------------------------------------------------------------------
 // Schema GOC canónico (F1) — dimensions + bands (5 bandas)
@@ -289,94 +259,18 @@ class ScoringService {
     config?: ScoringConfig | null
   ): Promise<ScoreResult> {
     try {
-      let scoringConfig: ScoringConfig | null = config || null;
-
-      if (!scoringConfig) {
-        scoringConfig = await this.getConfig();
-      }
-
-      if (!scoringConfig || !scoringConfig.indicators || scoringConfig.indicators.length === 0) {
-        return {
-          score_total: 0,
-          temperature: 'cold',
-          details: [],
-        };
-      }
-
-      const answerMap = new Map<string, string>();
-      for (const answer of answers) {
-        answerMap.set(answer.key, answer.value);
-      }
-
-      const details: ScoreResult['details'] = [];
-      let totalWeight = 0;
-      let totalWeightedScore = 0;
-
-      for (const indicator of scoringConfig.indicators) {
-        const selectedValue = answerMap.get(indicator.key);
-        const option = indicator.options.find((opt) => opt.value === selectedValue);
-        const score = option?.score ?? 0;
-        const weight = indicator.weight ?? 0;
-
-        // Score ponderado: (score / maxScore) * weight
-        // maxScore se asume 3 (escala típica 0-3) si no se puede determinar
-        const maxScore = Math.max(...indicator.options.map((o) => o.score), 1);
-        const normalizedScore = (score / maxScore) * 100;
-        const weightedScore = (normalizedScore / 100) * weight;
-
-        details.push({
-          key: indicator.key,
-          label: indicator.label,
-          weight,
-          selectedValue: selectedValue || '',
-          score,
-          weightedScore,
-        });
-
-        totalWeight += weight;
-        totalWeightedScore += weightedScore;
-      }
-
-      // Score total normalizado a 100
-      const scoreTotal = totalWeight > 0
-        ? Math.round((totalWeightedScore / totalWeight) * 100)
-        : 0;
-
-      const temperature = this.deriveTemperature(scoreTotal, scoringConfig.bands);
-
-      return {
-        score_total: scoreTotal,
-        temperature,
-        details,
-      };
+      return calcularScore(answers, config || (await this.getConfig()));
     } catch (err) {
       console.error('Error en scoringService.calculateScore:', err);
-      return {
-        score_total: 0,
-        temperature: 'cold',
-        details: [],
-      };
+      return { score_total: 0, temperature: 'cold', details: [] };
     }
   }
 
   /**
-   * Deriva la temperatura (cold/warm/hot) desde el score y las bandas configuradas.
-   * @param score - Score total (0-100)
-   * @param bands - Bandas { cold: {min,max}, warm: {min,max}, hot: {min,max} }
-   * @returns 'cold' | 'warm' | 'hot'
+   * Deriva la temperatura según las bandas configuradas.
    */
   deriveTemperature(score: number, bands?: ScoringBands): Temperature {
-    if (!bands) {
-      // Bandas por defecto
-      if (score >= 67) return 'hot';
-      if (score >= 34) return 'warm';
-      return 'cold';
-    }
-
-    // Evaluar bandas en orden: hot → warm → cold
-    if (bands.hot && score >= bands.hot.min) return 'hot';
-    if (bands.warm && score >= bands.warm.min) return 'warm';
-    return 'cold';
+    return temperaturaDeScore(score, bands);
   }
 
   // -------------------------------------------------------------------------

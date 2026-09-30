@@ -15,6 +15,8 @@ import { creditLevel, LOW_CREDITS } from '@/lib/ai/assistant/credits';
 
 const SRC = path.join(process.cwd(), 'src');
 const leer = (p: string) => fs.readFileSync(path.join(SRC, p), 'utf8');
+/** Textos del panel en español: desde el rediseño del Figma viven en `messages/es.json` › `asistente`. */
+const ES = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'messages', 'es.json'), 'utf8')).asistente;
 
 describe('sugerencias según la pantalla', () => {
   it('propone lo de la pantalla en la que está el usuario', () => {
@@ -36,7 +38,10 @@ describe('sugerencias según la pantalla', () => {
   });
 
   it('el panel manda la ruta y el endpoint la valida antes de usarla', () => {
-    expect(leer('components/app-layout/Header/AIAssistantPanel.tsx')).toContain('currentPath: typeof window');
+    // La ruta sale de la ventana, salvo que la persona quite el chip de contexto.
+    const panel = leer('components/app-layout/Header/AIAssistantPanel.tsx');
+    expect(panel).toContain('currentPath: rutaContexto()');
+    expect(panel).toContain('usarContexto && typeof window');
     const route = leer('app/api/ai-assistant/suggestions/route.ts');
     expect(route).toContain("raw.startsWith('/')");
     expect(route).toContain('currentPath');
@@ -70,7 +75,9 @@ describe('saldo de créditos visible', () => {
     expect(panel).toContain('credits={credits}');
     const composer = leer('components/app-layout/Header/assistant/Composer.tsx');
     expect(composer).toContain("credits.level === 'empty'");
-    expect(composer).toContain('/app/plan');
+    // El enlace de compra vive en el aviso (Figma `AsistenteAviso`), que el panel pinta al abrir.
+    expect(leer('components/app-layout/Header/assistant/AssistantNotice.tsx')).toContain('/app/plan');
+    expect(panel).toContain('<AssistantNotice tipo="sin_creditos"');
   });
 });
 
@@ -93,19 +100,33 @@ describe('la interfaz que el diseño señalaba', () => {
   it('la tarjeta muestra el desenlace en su sitio, con Ver y Deshacer', () => {
     const card = leer('components/app-layout/Header/ActionConfirmationForm.tsx');
     expect(card).toContain('outcome');
-    expect(card).toContain('Deshacer');
-    expect(card).toContain('Corregir y reintentar');
+    expect(card).toContain("t('deshacerMin'");
+    expect(card).toContain("t('corregirReintentar')");
+    expect(ES.tarjeta.deshacer).toBe('Deshacer');
+    expect(ES.tarjeta.corregirReintentar).toBe('Corregir y reintentar');
   });
 
   it('la papelera es "Nueva conversación" y se puede copiar una respuesta', () => {
     const p = panel();
-    expect(p).toContain('Nueva conversación');
-    expect(p).not.toContain('Limpiar conversación');
+    expect(ES.cabecera.nueva).toBe('Nueva conversación');
+    expect(JSON.stringify(ES)).not.toContain('Limpiar conversación');
+    expect(leer('components/app-layout/Header/assistant/PanelHeader.tsx')).toContain("t('nueva')");
     expect(p).toContain('copyMessage');
-    expect(p).toContain('Copiar respuesta');
+    expect(ES.mensaje.copiarRespuesta).toBe('Copiar respuesta');
   });
 
   it('los pasos se pliegan cuando empieza a llegar la respuesta', () => {
-    expect(panel()).toContain('<details');
+    expect(leer('components/app-layout/Header/assistant/TurnInProgress.tsx')).toContain('<details');
+  });
+
+  it('el nombre del modelo del proveedor ya no se enseña al cliente', () => {
+    const p = panel();
+    expect(p).not.toContain('Modelo:');
+    expect(p).not.toContain('answeringModel');
+  });
+
+  it('el título es «GO Asistente» en español, no «GO Assistant»', () => {
+    expect(ES.cabecera.titulo).toBe('GO Asistente');
+    expect(panel()).not.toMatch(/>\s*GO Assistant\s*</);
   });
 });

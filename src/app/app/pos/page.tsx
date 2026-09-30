@@ -32,6 +32,7 @@ import { getUserName } from '@/lib/services/userService';
 import { supabase } from '@/lib/supabase/config';
 import { toast } from 'sonner';
 import { AperturaCajaDialog } from '@/components/pos/cajas/AperturaCajaDialog';
+import { AvisoRelojDesfasado } from '@/components/pos/reloj/AvisoRelojDesfasado';
 import { CierreCajaDialog } from '@/components/pos/cajas/CierreCajaDialog';
 import { startSalesSync } from '@/lib/offline/salesSync';
 import { startOfflineSync } from '@/lib/offline/syncStages';
@@ -673,6 +674,8 @@ export default function POSPage() {
           carritosActivos={carritosActivos}
           carritosEnEspera={carritosEnEspera}
         />
+        {/* Reloj del equipo desfasado > 2 min: aviso, no bloquea (la hora de las ventas la pone el servidor). */}
+        <AvisoRelojDesfasado />
         {/* Apertura y cierre de caja: abiertos por programa (cabecera, F9, hoja móvil, «Abrir caja para cobrar»). */}
         {cashSession ? (
           canClose && (

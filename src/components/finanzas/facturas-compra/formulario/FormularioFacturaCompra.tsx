@@ -35,7 +35,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Barcode, CheckCircle2, FileText, Hash, ListPlus, Percent, Plus, ReceiptText, Save, Search, StickyNote, Trash2, Truck, Wallet } from 'lucide-react';
+import { AlertTriangle, Barcode, CheckCircle2, FileText, Hash, ListPlus, Percent, Plus, ReceiptText, Save, Search, StickyNote, Trash2, Truck, Wallet } from 'lucide-react';
 import { FormField, FormSection, KbdButton, Tarjeta, useAtajos, type AccionFila } from '@/components/kit';
 import { CampoFecha } from '@/components/kit/CampoFecha';
 import { CampoNumero } from '@/components/kit/CampoNumero';
@@ -65,7 +65,14 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
 import { addPlainDays } from '@/lib/utils/dateDisplay';
-import { calcularLineaCompra, calcularTotalesCompra, valorRetencion } from '@/lib/services/compras/logica';
+import {
+  baseMinimaEnMoneda,
+  calcularLineaCompra,
+  calcularTotalesCompra,
+  retencionBajoBaseMinima,
+  valorRetencion,
+} from '@/lib/services/compras/logica';
+import { uvtPorAnio, type UvtPais } from '@/lib/services/compras/retenciones';
 import { clienteCompras, ErrorPeticionCompra } from '@/lib/services/compras/clienteCompras';
 import { leerDetalleFacturaCompra, type DetalleFacturaCompra } from '@/lib/services/compras/lecturasCompras';
 import type { GuardarFacturaCompra } from '@/lib/services/compras/contrato';
@@ -156,6 +163,7 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
   const [retenciones, setRetenciones] = useState<RetencionForm[]>([]);
   const [impuestos, setImpuestos] = useState<ImpuestoDocumento[]>([]);
   const [configuradas, setConfiguradas] = useState<ImpuestoDocumento[]>([]);
+  const [uvt, setUvt] = useState<UvtPais | null>(null);
   const [comision, setComision] = useState<{ salesperson_id: string | null; rate: number; type: string; method: string; amount: number }>({
     salesperson_id: null,
     rate: 0,
@@ -209,6 +217,12 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
         if (cancelado) return;
         setImpuestos(r.impuestos);
         setConfiguradas(r.retenciones);
+      })
+      .catch(() => undefined);
+    // Sin UVT no hay aviso de base mínima; la factura se guarda igual.
+    uvtPorAnio(getOrganizationId())
+      .then((u) => {
+        if (!cancelado) setUvt(u);
       })
       .catch(() => undefined);
     return () => {
@@ -567,7 +581,29 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
   }
   if (soloLectura) return <VistaCompraNoEditable factura={soloLectura} base={base} />;
 
-  const retencionConfigurada = (r: RetencionForm) => (r.tax_code && configuradas.some((c) => c.codigo === r.tax_code) ? r.tax_code : OTRA);
+  // Una retención propia (sin plantilla) no tiene código: se reconoce por su
+  // nombre, igual que `fn_cuenta_retencion_compra` al armar el asiento.
+  const configuradaDe = (r: RetencionForm): ImpuestoDocumento | undefined =>
+    r.tax_code
+      ? configuradas.find((c) => c.codigo === r.tax_code)
+      : configuradas.find((c) => !c.codigo && c.nombre === r.concept.trim());
+  const retencionConfigurada = (r: RetencionForm) => {
+    const c = configuradaDe(r);
+    return c ? c.codigo ?? c.id : OTRA;
+  };
+  /** Aviso (no bloquea) cuando la base no llega a la mínima en UVT del año de emisión. */
+  const avisoBaseMinima = (r: RetencionForm): string | null => {
+    const c = configuradaDe(r);
+    if (!c?.baseMinimaUvt || !uvt || uvt.moneda !== ctxMoneda.code || !/^\d{4}-/.test(emision)) return null;
+    const anio = Number(emision.slice(0, 4));
+    const valorUvt = uvt.valores.get(anio) ?? null;
+    if (!retencionBajoBaseMinima(r.base, c.baseMinimaUvt, valorUvt)) return null;
+    return tf('retenciones.bajoBaseMinima', {
+      uvt: c.baseMinimaUvt,
+      valor: formatear(baseMinimaEnMoneda(c.baseMinimaUvt, valorUvt)),
+      anio,
+    });
+  };
 
   return (
     <FormularioDocumentoLayout
@@ -868,10 +904,15 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
                               value={retencionConfigurada(r)}
                               onChange={(e) => {
                                 marcar();
-                                const elegida = configuradas.find((x) => x.codigo === e.target.value);
+                                const elegida = configuradas.find((x) => (x.codigo ?? x.id) === e.target.value);
+                                // «Otra»: concepto en blanco, para que no siga coincidiendo con una retención propia por nombre.
                                 setRetenciones((prev) =>
                                   prev.map((x) =>
-                                    x.key === r.key ? (elegida ? { ...x, concept: elegida.nombre, rate: elegida.tarifa, tax_code: elegida.codigo } : { ...x, tax_code: null }) : x,
+                                    x.key === r.key
+                                      ? elegida
+                                        ? { ...x, concept: elegida.nombre, rate: elegida.tarifa, tax_code: elegida.codigo }
+                                        : { ...x, concept: configuradaDe(x) ? '' : x.concept, tax_code: null }
+                                      : x,
                                   ),
                                 );
                               }}
@@ -946,6 +987,12 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
                     >
                       <Trash2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
                     </button>
+                    {avisoBaseMinima(r) && (
+                      <p role="status" className="flex items-start gap-1.5 text-xs text-warning-text sm:col-span-full">
+                        <AlertTriangle aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" strokeWidth={1.5} />
+                        {avisoBaseMinima(r)}
+                      </p>
+                    )}
                   </div>
                 ))}
                 {errores.retenciones && <p className="text-sm text-danger-text">{errores.retenciones}</p>}
@@ -1079,6 +1126,8 @@ export default function FormularioFacturaCompra({ id }: { id?: string }) {
               }}
               numero={numero}
               total={totales.total}
+              retenido={totales.total - totales.netoAPagar}
+              facturaId={confirmarId}
               moneda={ctxMoneda}
               hayProductos={lineas.some((l) => l.product_id !== null)}
               puedeRecepcionar

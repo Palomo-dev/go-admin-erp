@@ -43,16 +43,27 @@ describe('la firma vieja de useFormatDate sigue valiendo', () => {
   });
 });
 
-describe('la zona sale del dato, no del selector de la barra superior', () => {
-  it('el contexto resuelve por cascada y no importa el BranchContext', () => {
+// 2026-09-30 — CAMBIO DE REGLA POR DECISIÓN DEL DUEÑO. Hasta aquí este bloque
+// prohibía que el contexto leyera el selector del header («la zona sale del
+// dato»). La regla única vigente es: sucursal del DATO si el llamador la pasa;
+// si no pasa nada, la sucursal ACTIVA del header; sin sucursal o con «Todas»,
+// la organización. El bug que la prohibición evitaba (formatear la venta de
+// Madrid con la zona del header) sigue cerrado: el branchId del dato gana
+// siempre (`sucursalParaZona`, probado en
+// src/__tests__/timezone/zonaUnicaSucursalOrganizacion.test.tsx).
+describe('la zona sale del dato y, si no hay dato, de la sucursal activa del header', () => {
+  it('el contexto resuelve por cascada y lee el header solo por la regla única', () => {
     expect(CONTEXTO).toContain('resolveTimezoneForBranch');
-    // Importar useBranch/selectedBranchId aquí sería justamente el bug.
-    expect(CONTEXTO).not.toContain('useBranch');
+    expect(CONTEXTO).toContain('sucursalParaZona(branchId, activa)');
+    expect(CONTEXTO).toContain('sucursalActivaDelHeader(useBranchOpcional())');
+    // Nunca el hook que lanza fuera del provider, ni el id suelto del selector.
+    expect(CONTEXTO).not.toMatch(/\buseBranch\(\)/);
     expect(CONTEXTO).not.toContain('selectedBranchId');
   });
 
   it('queda escrito en el código de dónde sale el branchId', () => {
-    expect(CONTEXTO).toContain('NUNCA el del selector de sucursal de la barra');
+    expect(CONTEXTO).toContain('REGLA UNICA');
+    expect(CONTEXTO).toContain('la del DATO');
   });
 
   it('useFormatDate delega en useTimezoneFor (no lee la zona de la org a pelo)', () => {

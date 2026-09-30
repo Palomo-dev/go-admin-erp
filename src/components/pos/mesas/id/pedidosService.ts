@@ -217,7 +217,7 @@ export class PedidosService {
           server_id: serverId,
           customers,
           status: 'active',
-          opened_at: new Date().toISOString(),
+          // opened_at: default now() de la base (hora oficial del servidor).
         })
         .select()
         .single();
@@ -285,7 +285,7 @@ export class PedidosService {
             organization_id: organizationId,
             branch_id: branchId,
             user_id: session.server_id,
-            sale_date: new Date().toISOString(),
+            // sale_date: default now() de la base (hora oficial del servidor).
             status: 'pending',
             payment_status: 'pending',
             total: 0,

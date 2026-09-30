@@ -16,6 +16,14 @@
  * la regla única vive en cabeceraMovil.tsx (`barraInferiorVisible`).
  *
  * Los avisos de prueba y de correo sin verificar van debajo, como antes.
+ *
+ * Con el GO Asistente abierto (Figma `667:34706`) el header se compacta: el
+ * buscador queda en icono (sigue abriendo la paleta con Ctrl/⌘ K) y el chip del
+ * plan sale del OrgSwitcher. Con el panel ampliado a 720 px (pantalla 09,
+ * `668:37351`) además se retira «Reportar problema» (sigue en el panel de
+ * sesión) y el botón del asistente queda en icono. El estado llega por el
+ * evento `go-asistente:estado` (`useEstadoAsistente`), sin acoplar el header al
+ * panel.
  */
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -32,6 +40,8 @@ import { rutaActiva, type SeccionVisible } from '@/lib/navigation/filtrar';
 import { useNombresNav } from '@/lib/navigation/useNombresNav';
 import { BranchBadgeActiva } from '@/components/kit/BranchBadge';
 import { Kbd } from '@/components/kit/Kbd';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useEstadoAsistente } from '../useEstadoAsistente';
 import { OrgSwitcher } from './OrgSwitcher';
 import { FeedbackButton, ReportarProblemaDialog } from './ReportarProblema';
 import { DetalleNotificacion, NotificationsBell, PanelNotificaciones, textoContador } from './Notificaciones';
@@ -51,14 +61,19 @@ import {
 
 const abrirBuscador = () => window.dispatchEvent(new Event(ABRIR_BUSCADOR_EVENT));
 
-/** «⌘K» en Mac y iPad, «Ctrl+K» en el resto (tras montar: el servidor no sabe el sistema). */
-function useAtajoBuscador(): string {
-  const [atajo, setAtajo] = useState('Ctrl+K');
+/** ¿Mac o iPad? Tras montar: el servidor no sabe el sistema. */
+function useEsMac(): boolean {
+  const [esMac, setEsMac] = useState(false);
   useEffect(() => {
     const plataforma = typeof navigator !== 'undefined' ? navigator.platform || navigator.userAgent : '';
-    if (/Mac|iPhone|iPad/i.test(plataforma)) setAtajo('Meta+K');
+    if (/Mac|iPhone|iPad/i.test(plataforma)) setEsMac(true);
   }, []);
-  return atajo;
+  return esMac;
+}
+
+/** Texto del atajo del asistente como lo pinta el tooltip del Figma: «Ctrl+J» o «⌘J». */
+export function textoAtajoAsistente(esMac: boolean): string {
+  return esMac ? '⌘J' : 'Ctrl+J';
 }
 
 interface AppHeaderProps {
@@ -92,7 +107,13 @@ export function AppHeader({
   const barrasPropias = useBarrasInferioresPropias();
   const barraVisible = barraInferiorVisible({ pathname, pagina, barrasPropias: barrasPropias.cantidad, teclado });
   const espacio = espacioInferior(barraVisible, barrasPropias.alto);
-  const atajoBuscador = useAtajoBuscador();
+  const esMac = useEsMac();
+  const atajoBuscador = esMac ? 'Meta+K' : 'Ctrl+K';
+  // Header compacto con el panel abierto; mínimo con el panel a 720 px.
+  const { ampliado } = useEstadoAsistente();
+  const compacto = asistenteAbierto;
+  const minimo = asistenteAbierto && ampliado;
+  const etiquetaAsistente = asistenteAbierto ? t('closeAssistant') : t('openAssistant');
 
   // El contenido (AppLayout) y los avisos flotantes dejan abajo el sitio de la
   // barra que se vea: la de la app o la propia de la pieza (BulkActionBar…).
@@ -111,36 +132,76 @@ export function AppHeader({
       <header className="sticky top-0 z-30 border-b border-line bg-surface mobile-safe-top">
         {/* Escritorio */}
         <div className="hidden h-16 items-center gap-2 px-6 lg:flex">
-          <OrgSwitcher variante="escritorio" organizacionId={orgNum} organizacionNombre={organizacionNombre} />
+          <OrgSwitcher
+            variante="escritorio"
+            organizacionId={orgNum}
+            organizacionNombre={organizacionNombre}
+            sinPlan={compacto}
+          />
           <div className="flex-1" />
-          {/* SearchTrigger Variant=button (Figma 54:2970): abre la paleta; también Ctrl K / ⌘ K y «/». */}
-          <button
-            type="button"
-            onClick={abrirBuscador}
-            aria-haspopup="dialog"
-            aria-keyshortcuts="Control+K Meta+K /"
-            className="flex h-10 items-center gap-2 rounded-lg border border-line bg-surface pl-3 pr-2 text-sm font-medium text-fg-secondary outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-brand"
-          >
-            <Search className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
-            {t('search')}
-            <Kbd tecla={atajoBuscador} tamano="md" />
-          </button>
-          <FeedbackButton />
+          {/* SearchTrigger (Figma 54:2970): abre la paleta; también Ctrl K / ⌘ K y «/».
+              Variant=button normalmente; icon-outline con el asistente abierto. */}
+          {compacto ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={abrirBuscador}
+                  aria-label={t('search')}
+                  aria-haspopup="dialog"
+                  aria-keyshortcuts="Control+K Meta+K /"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-line bg-surface text-fg-secondary outline-none transition-colors hover:bg-hover hover:text-fg focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                  <Search className="h-5 w-5" strokeWidth={1.5} aria-hidden="true" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="flex items-center gap-2">
+                {t('search')}
+                <Kbd tecla={atajoBuscador} tema="oscuro" />
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <button
+              type="button"
+              onClick={abrirBuscador}
+              aria-haspopup="dialog"
+              aria-keyshortcuts="Control+K Meta+K /"
+              className="flex h-10 items-center gap-2 rounded-lg border border-line bg-surface pl-3 pr-2 text-sm font-medium text-fg-secondary outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-brand"
+            >
+              <Search className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+              {t('search')}
+              <Kbd tecla={atajoBuscador} tamano="md" />
+            </button>
+          )}
+          {!minimo && <FeedbackButton />}
           <NotificationsBell datos={notificaciones} />
-          <button
-            type="button"
-            onClick={onAlternarAsistente}
-            aria-pressed={asistenteAbierto}
-            className={cn(
-              'flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand',
-              asistenteAbierto
-                ? 'bg-brand-action text-fg-on-brand hover:bg-brand-action-hover'
-                : 'bg-brand-tint text-brand-deep hover:bg-brand-tint-hover'
-            )}
-          >
-            <Bot className="h-4 w-4" aria-hidden="true" />
-            {t('assistant')}
-          </button>
+          {/* AssistantLauncher (Figma 45:2223): tooltip «Abrir GO Asistente · Ctrl+J» (667:34455).
+              El atajo lo atiende el panel; aquí solo se anuncia. */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onAlternarAsistente}
+                aria-pressed={asistenteAbierto}
+                aria-keyshortcuts="Control+J Meta+J"
+                aria-label={minimo ? t('assistant') : undefined}
+                className={cn(
+                  'flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand',
+                  minimo ? 'w-10' : 'px-4',
+                  asistenteAbierto
+                    ? 'bg-brand-action text-fg-on-brand hover:bg-brand-action-hover'
+                    : 'bg-brand-tint text-brand-deep hover:bg-brand-tint-hover'
+                )}
+              >
+                <Bot className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+                {!minimo && t('assistant')}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" align="end" className="flex flex-col items-start gap-0.5 leading-4">
+              <span>{etiquetaAsistente}</span>
+              <span className="opacity-70">{textoAtajoAsistente(esMac)}</span>
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         {/* Móvil: raíz, página o POS (ver cabeceraMovil.tsx) */}

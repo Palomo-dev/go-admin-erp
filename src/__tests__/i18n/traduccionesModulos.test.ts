@@ -88,6 +88,22 @@ const MODULOS: Record<string, string[]> = {
   inventarioTrazabilidad: SERIALES_B4,
   // Inventario B2 (2026-09-29): ajustes y ajuste por conteo.
   inventarioAjustes: ['src/components/inventario/ajustes', 'src/app/app/inventario/ajustes'],
+  // GO Asistente, panel del header (Figma «GO Asistente — escritorio», 2026-09-29).
+  asistente: ['src/components/app-layout/Header', 'src/lib/ai/assistant'],
+  // Kit CRM, ola 2 (Figma «CRM (Nuevo)» 759:20897, 2026-09-30). Namespace anidado: el resto de
+  // `crm` todavía no tiene fr ni pt, así que solo se exige paridad en `crm.kit`.
+  'crm.kit': ['src/components/crm/kit', 'src/components/crm/oportunidad', 'src/components/crm/pipeline/pantalla'],
+  // CRM ola 3A (Figma «CRM — Leads, actividades y acciones rápidas» 765:446568, 2026-09-30):
+  // pantallas de Leads y Actividades, acciones rápidas y bloque CRM de la ficha del cliente.
+  'crm.accionesRapidas': ['src/components/crm/acciones', 'src/components/crm/leads/pantalla', 'src/components/crm/actividades/pantalla', 'src/components/crm/ficha'],
+  'crm.pantallaLeads': ['src/components/crm/leads/pantalla'],
+  'crm.pantallaActividades': ['src/components/crm/actividades/pantalla'],
+  'crm.fichaCliente': ['src/components/crm/ficha', 'src/components/clientes/id', 'src/app/app/clientes'],
+  // CRM ola 3B (Figma «CRM — Pipeline y oportunidades» 768:454425, aprobada D7): Pipeline,
+  // «Nuevo pipeline», Oportunidades, drawer, detalle, formulario en página y diálogos.
+  'crm.oportunidad': ['src/components/crm/oportunidad', 'src/components/crm/pipeline/pantalla', 'src/components/crm/oportunidades/pantalla'],
+  // Analítica web (Figma 03 › 464:237482, 2026-09-30), con los mapas de «De dónde entran».
+  analiticaWeb: ['src/components/analiticaWeb', 'src/app/app/inicio/analitica-web'],
 };
 
 type Arbol = { [clave: string]: string | Arbol };
@@ -173,7 +189,8 @@ function clavesPedidas(codigo: string): { ns: string; clave: string; prefijo: bo
 }
 
 describe.each(Object.keys(MODULOS))('namespace %s en los 4 idiomas', (ns) => {
-  const planos = Object.fromEntries(IDIOMAS.map((l) => [l, aplanar(hijo(mensajes[l], ns))])) as Record<
+  // `ns` puede ser una ruta («crm.kit»): se baja nivel a nivel.
+  const planos = Object.fromEntries(IDIOMAS.map((l) => [l, aplanar(ns.split('.').reduce(hijo, mensajes[l]))])) as Record<
     Idioma,
     Record<string, string>
   >;

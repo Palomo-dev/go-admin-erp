@@ -29,7 +29,9 @@ const cuerpo = (extra: Record<string, unknown> = {}) => ({
 });
 const config = (settings: Record<string, unknown>) =>
   db.tables.organization_settings.push({ id: U(500), organization_id: ORG, key: LEAD_ASSIGNMENT_SETTINGS_KEY, settings });
-const leadInserts = () => db.writes.filter((w) => w.table === 'opportunities' && w.op === 'insert');
+// CRM ola 1 (D2): el lead ES el cliente; su responsable se escribe en
+// `customers.owner_id` con la actualización que cierra el alta (no hay oportunidad).
+const leadInserts = () => db.writes.filter((w) => w.table === 'customers' && w.op === 'update' && 'owner_id' in (w.payload as object));
 
 beforeEach(() => {
   db = makeDb(seed());
@@ -53,15 +55,16 @@ describe('round-robin sin salesperson_id', () => {
     expect(r1.assignment).toMatchObject({ status: 'assigned', user_id: VENDEDOR_A, strategy: 'round_robin', team_id: TEAM });
     expect(r2.assignment).toMatchObject({ status: 'assigned', user_id: VENDEDOR_B });
     expect(r3.assignment).toMatchObject({ status: 'assigned', user_id: VENDEDOR_A });
-    const asignados = leadInserts().map((w) => (w.payload as { salesperson_id: unknown }).salesperson_id);
+    const asignados = leadInserts().map((w) => (w.payload as { owner_id: unknown }).owner_id);
     expect(asignados).toEqual([VENDEDOR_A, VENDEDOR_B, VENDEDOR_A]);
     expect(asignados).not.toContain(VENDEDOR_INACTIVO);
   });
 
-  it('el lead nace YA asignado (salesperson_id en el INSERT, no en un UPDATE posterior)', async () => {
+  it('el lead nace YA asignado (owner_id en la única escritura que cierra el alta) y sin oportunidad (D2)', async () => {
     const r = await crear();
-    expect(r.data.salesperson_id).toBe(VENDEDOR_A);
-    expect(db.writes.filter((w) => w.table === 'opportunities' && w.op === 'update')).toHaveLength(0);
+    expect(r.data.owner_id).toBe(VENDEDOR_A);
+    expect(leadInserts()).toHaveLength(1);
+    expect(db.writes.filter((w) => w.table === 'opportunities')).toHaveLength(0);
   });
 
   it('miembro inactivo: si el último asignado fue desactivado, sigue con el primero activo', async () => {
@@ -78,7 +81,7 @@ describe('salesperson_id explícito', () => {
   it('se respeta tal cual y NO se consultan equipos', async () => {
     const r = await crear({ salesperson_id: VENDEDOR_B });
     expect(r.assignment).toEqual({ status: 'explicit', user_id: VENDEDOR_B });
-    expect(r.data.salesperson_id).toBe(VENDEDOR_B);
+    expect(r.data.owner_id).toBe(VENDEDOR_B);
     expect(db.reads.sales_teams).toBeUndefined();
     expect(db.reads.sales_team_members).toBeUndefined();
   });
@@ -96,15 +99,15 @@ describe('sin equipo o sin miembros: el lead se crea sin asignar', () => {
     const r = await crear();
     expect(r.assignment.status).toBe('unassigned');
     expect((r.assignment as { reason: string }).reason).toMatch(/equipo/i);
-    expect(r.data.salesperson_id).toBeNull();
-    expect((leadInserts()[0].payload as { salesperson_id: unknown }).salesperson_id).toBeNull();
+    expect(r.data.owner_id).toBeNull();
+    expect((leadInserts()[0].payload as { owner_id: unknown }).owner_id).toBeNull();
   });
 
   it('equipo sin miembros activos → 201 sin asignar', async () => {
     for (const m of db.tables.sales_team_members) if (m.organization_id === ORG) m.is_active = false;
     const r = await crear();
     expect(r.assignment.status).toBe('unassigned');
-    expect(r.data.salesperson_id).toBeNull();
+    expect(r.data.owner_id).toBeNull();
   });
 
   it('equipo inactivo no cuenta como equipo', async () => {
@@ -142,7 +145,7 @@ describe('organización ajena (señuelos de la 121)', () => {
     config({ strategy: 'round_robin', team_id: TEAM_OTHER });
     const r = await crear();
     expect(r.assignment.status).toBe('unassigned');
-    expect(r.data.salesperson_id).toBeNull();
+    expect(r.data.owner_id).toBeNull();
     // El id configurado no se cree: la búsqueda del equipo lleva la organización de la sesión.
     const equipos = db.queries.filter((q) => q.table === 'sales_teams');
     expect(equipos.length).toBeGreaterThanOrEqual(1);
@@ -153,7 +156,7 @@ describe('organización ajena (señuelos de la 121)', () => {
     db.tables.sales_team_members.push({ id: U(399), organization_id: ORG, sales_team_id: TEAM_OTHER, user_id: VENDEDOR_121, sales_role_id: null, is_active: true, created_at: '2026-01-01T00:00:02.000Z' });
     const r2 = await crear();
     expect(r2.assignment.status).toBe('unassigned');
-    expect(r2.data.salesperson_id).toBeNull();
+    expect(r2.data.owner_id).toBeNull();
   });
 
   it('las consultas de equipos y miembros llevan organization_id de la sesión', async () => {
@@ -162,7 +165,7 @@ describe('organización ajena (señuelos de la 121)', () => {
     // Sin filtro de organización el "primer equipo activo" sería el de la 121 (created_at anterior).
     const r = await crear();
     expect(r.assignment.status).toBe('unassigned');
-    expect(leadInserts().map((w) => (w.payload as { salesperson_id: unknown }).salesperson_id)).toEqual([null]);
+    expect(leadInserts().map((w) => (w.payload as { owner_id: unknown }).owner_id)).toEqual([null]);
     expect(db.tables.opportunities.some((o) => o.organization_id === OTHER && o.id !== U(94))).toBe(false);
   });
 
@@ -188,7 +191,7 @@ describe('configuración por organización (organization_settings.crm_lead_assig
     config({ enabled: false });
     const r = await crear();
     expect(r.assignment.status).toBe('skipped');
-    expect(r.data.salesperson_id).toBeNull();
+    expect(r.data.owner_id).toBeNull();
     expect(db.reads.sales_teams).toBeUndefined();
   });
 

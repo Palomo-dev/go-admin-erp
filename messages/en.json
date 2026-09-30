@@ -17007,7 +17007,9 @@
       "tipo": "Type",
       "tarifa": "Rate",
       "aplicaA": "Applies to",
-      "estado": "Status"
+      "estado": "Status",
+      "baseMinima": "Minimum base",
+      "cuenta": "Ledger account"
     },
     "tipos": {
       "retefuente": "ReteFuente",
@@ -17032,16 +17034,51 @@
       "activada": "{nombre} is now active.",
       "desactivada": "{nombre} is now inactive.",
       "errorTitulo": "Error",
-      "errorEstado": "The withholding status could not be changed."
+      "errorEstado": "The withholding status could not be changed.",
+      "errorConfiguracion": "The ledger account and minimum base of the withholdings could not be read."
     },
     "formulario": {
       "nueva": "New withholding",
       "editar": "Edit withholding",
-      "nota": "A withholding is applied by the buyer: it is not added to the price, it is not assigned to products and it cannot be the default rate."
+      "nota": "A withholding is applied by the buyer: it is not added to the price, it is not assigned to products and it cannot be the default rate.",
+      "cuenta": "Ledger account",
+      "cuentaAutomatica": "Automatic by type (2365 / 2367 / 2368)",
+      "cuentaAutomaticaActual": "Automatic by type ({cuenta})",
+      "cuentaAyuda": "Active liability accounts only. The purchase journal entry credits the withholding to this account.",
+      "baseMinima": "Minimum base (UVT)",
+      "baseMinimaPlaceholder": "E.g. 27",
+      "baseMinimaAyuda": "If the invoice base is lower, the form warns that the withholding does not apply. Empty: no minimum base.",
+      "baseMinimaEquivale": "Equals {valor} with the {anio} UVT. Below it, the invoice warns that it does not apply.",
+      "errorConfiguracionTitulo": "The withholding was only partly saved",
+      "errorConfiguracion": "The name and rate were saved, but not the account or the minimum base: {detalle}",
+      "errores": {
+        "cuenta_no_existe": "the account does not exist in the chart of accounts.",
+        "cuenta_no_es_pasivo": "the account is not a liability.",
+        "cuenta_inactiva": "the account is inactive.",
+        "base_minima_invalida": "The minimum base must be a number greater than or equal to zero.",
+        "retencion_no_encontrada": "the withholding does not exist in this organization.",
+        "otro": "check your tax permissions and try again."
+      }
     },
     "titulo": "Taxes",
     "migas": {
       "finanzas": "Finance"
+    },
+    "baseMinima": {
+      "sin": "No minimum base",
+      "uvt": "{uvt} UVT",
+      "equivalente": "≈ {valor} (UVT {anio})"
+    },
+    "cuenta": {
+      "automatica": "Automatic by type"
+    },
+    "uvtVigente": "UVT {anio}: {valor} · {norma}",
+    "uvtSinDato": "No UVT recorded for the country: the minimum base cannot be converted to currency.",
+    "plantilla": {
+      "cargar": "Load {pais} template",
+      "alDia": "You already have every withholding in the {pais} template.",
+      "cargada": "{creadas, plural, =0 {You already had every withholding for {pais}.} one {# withholding for {pais} was added.} other {# withholdings for {pais} were added.}}",
+      "error": "The withholding template could not be loaded."
     }
   },
   "receta": {

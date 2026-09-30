@@ -15344,7 +15344,9 @@
       "tipo": "Type",
       "tarifa": "Taux",
       "aplicaA": "S’applique à",
-      "estado": "Statut"
+      "estado": "Statut",
+      "baseMinima": "Base minimale",
+      "cuenta": "Compte comptable"
     },
     "tipos": {
       "retefuente": "ReteFuente",
@@ -15369,16 +15371,51 @@
       "activada": "{nombre} est maintenant active.",
       "desactivada": "{nombre} est maintenant inactive.",
       "errorTitulo": "Erreur",
-      "errorEstado": "Impossible de modifier le statut de la retenue."
+      "errorEstado": "Impossible de modifier le statut de la retenue.",
+      "errorConfiguracion": "Impossible de lire le compte comptable et la base minimale des retenues."
     },
     "formulario": {
       "nueva": "Nouvelle retenue",
       "editar": "Modifier la retenue",
-      "nota": "Une retenue est pratiquée par l’acheteur : elle ne s’ajoute pas au prix, ne s’attribue pas aux produits et ne peut pas être le taux par défaut."
+      "nota": "Une retenue est pratiquée par l’acheteur : elle ne s’ajoute pas au prix, ne s’attribue pas aux produits et ne peut pas être le taux par défaut.",
+      "cuenta": "Compte comptable",
+      "cuentaAutomatica": "Automatique selon le type (2365 / 2367 / 2368)",
+      "cuentaAutomaticaActual": "Automatique selon le type ({cuenta})",
+      "cuentaAyuda": "Uniquement des comptes de passif actifs. L’écriture d’achat crédite la retenue sur ce compte.",
+      "baseMinima": "Base minimale (UVT)",
+      "baseMinimaPlaceholder": "Ex. : 27",
+      "baseMinimaAyuda": "Si la base de la facture est inférieure, le formulaire avertit que la retenue ne s’applique pas. Vide : sans base minimale.",
+      "baseMinimaEquivale": "Équivaut à {valor} avec l’UVT {anio}. En dessous, la facture avertit qu’elle ne s’applique pas.",
+      "errorConfiguracionTitulo": "La retenue n’a été enregistrée qu’en partie",
+      "errorConfiguracion": "Le nom et le taux ont été enregistrés, mais pas le compte ni la base minimale : {detalle}",
+      "errores": {
+        "cuenta_no_existe": "le compte n’existe pas dans le plan comptable.",
+        "cuenta_no_es_pasivo": "le compte n’est pas un compte de passif.",
+        "cuenta_inactiva": "le compte est inactif.",
+        "base_minima_invalida": "La base minimale doit être un nombre supérieur ou égal à zéro.",
+        "retencion_no_encontrada": "la retenue n’existe pas dans cette organisation.",
+        "otro": "vérifiez vos autorisations sur les taxes et réessayez."
+      }
     },
     "titulo": "Taxes",
     "migas": {
       "finanzas": "Finances"
+    },
+    "baseMinima": {
+      "sin": "Sans base minimale",
+      "uvt": "{uvt} UVT",
+      "equivalente": "≈ {valor} (UVT {anio})"
+    },
+    "cuenta": {
+      "automatica": "Automatique selon le type"
+    },
+    "uvtVigente": "UVT {anio} : {valor} · {norma}",
+    "uvtSinDato": "Aucune UVT enregistrée pour le pays : la base minimale ne peut pas être convertie en devise.",
+    "plantilla": {
+      "cargar": "Charger le modèle {pais}",
+      "alDia": "Vous avez déjà toutes les retenues du modèle {pais}.",
+      "cargada": "{creadas, plural, =0 {Vous aviez déjà toutes les retenues de {pais}.} one {# retenue de {pais} a été ajoutée.} other {# retenues de {pais} ont été ajoutées.}}",
+      "error": "Impossible de charger le modèle de retenues."
     }
   },
   "receta": {

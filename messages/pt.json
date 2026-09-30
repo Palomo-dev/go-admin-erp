@@ -15344,7 +15344,9 @@
       "tipo": "Tipo",
       "tarifa": "Alíquota",
       "aplicaA": "Aplica-se a",
-      "estado": "Status"
+      "estado": "Status",
+      "baseMinima": "Base mínima",
+      "cuenta": "Conta contábil"
     },
     "tipos": {
       "retefuente": "ReteFuente",
@@ -15369,16 +15371,51 @@
       "activada": "{nombre} agora está ativa.",
       "desactivada": "{nombre} agora está inativa.",
       "errorTitulo": "Erro",
-      "errorEstado": "Não foi possível alterar o status da retenção."
+      "errorEstado": "Não foi possível alterar o status da retenção.",
+      "errorConfiguracion": "Não foi possível ler a conta contábil e a base mínima das retenções."
     },
     "formulario": {
       "nueva": "Nova retenção",
       "editar": "Editar retenção",
-      "nota": "A retenção é feita pelo comprador: não é somada ao preço, não é atribuída a produtos e não pode ser a alíquota padrão."
+      "nota": "A retenção é feita pelo comprador: não é somada ao preço, não é atribuída a produtos e não pode ser a alíquota padrão.",
+      "cuenta": "Conta contábil",
+      "cuentaAutomatica": "Automática conforme o tipo (2365 / 2367 / 2368)",
+      "cuentaAutomaticaActual": "Automática conforme o tipo ({cuenta})",
+      "cuentaAyuda": "Somente contas de passivo ativas. No lançamento da compra a retenção é creditada nesta conta.",
+      "baseMinima": "Base mínima (UVT)",
+      "baseMinimaPlaceholder": "Ex.: 27",
+      "baseMinimaAyuda": "Se a base da fatura for menor, o formulário avisa que a retenção não se aplica. Vazio: sem base mínima.",
+      "baseMinimaEquivale": "Equivale a {valor} com a UVT {anio}. Abaixo disso, a fatura avisa que não se aplica.",
+      "errorConfiguracionTitulo": "A retenção foi salva só em parte",
+      "errorConfiguracion": "O nome e a alíquota foram salvos, mas não a conta nem a base mínima: {detalle}",
+      "errores": {
+        "cuenta_no_existe": "a conta não existe no plano de contas.",
+        "cuenta_no_es_pasivo": "a conta não é de passivo.",
+        "cuenta_inactiva": "a conta está inativa.",
+        "base_minima_invalida": "A base mínima deve ser um número maior ou igual a zero.",
+        "retencion_no_encontrada": "a retenção não existe nesta organização.",
+        "otro": "verifique suas permissões de impostos e tente novamente."
+      }
     },
     "titulo": "Impostos",
     "migas": {
       "finanzas": "Finanças"
+    },
+    "baseMinima": {
+      "sin": "Sem base mínima",
+      "uvt": "{uvt} UVT",
+      "equivalente": "≈ {valor} (UVT {anio})"
+    },
+    "cuenta": {
+      "automatica": "Automática conforme o tipo"
+    },
+    "uvtVigente": "UVT {anio}: {valor} · {norma}",
+    "uvtSinDato": "Sem UVT registrada para o país: a base mínima não pode ser convertida em moeda.",
+    "plantilla": {
+      "cargar": "Carregar modelo de {pais}",
+      "alDia": "Você já tem todas as retenções do modelo de {pais}.",
+      "cargada": "{creadas, plural, =0 {Você já tinha todas as retenções de {pais}.} one {# retenção de {pais} foi adicionada.} other {# retenções de {pais} foram adicionadas.}}",
+      "error": "Não foi possível carregar o modelo de retenções."
     }
   },
   "receta": {

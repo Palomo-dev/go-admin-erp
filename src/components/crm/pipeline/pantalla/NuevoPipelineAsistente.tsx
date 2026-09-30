@@ -13,6 +13,7 @@ import { StageEditorRow } from '@/components/crm/kit/StageEditorRow';
 import { clavePlantilla } from '@/components/crm/kit/pipelineTemplateCardLogica';
 import { reordenar } from '@/components/crm/kit/stageEditorRowLogica';
 import { CLASE_CAMPO } from '@/components/crm/kit/camposCrm';
+import { SelectCrm } from '@/components/crm/kit/SelectCrm';
 import { claveError, emitirCambioCrm, ErrorApiCrm, pedirCrm } from '@/components/crm/acciones/apiCrm';
 import { invalidarCatalogosCrm } from '@/components/crm/acciones/useCatalogosCrm';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
@@ -148,9 +149,7 @@ export function NuevoPipelineAsistente(p: NuevoPipelineAsistenteProps) {
               <input value={datos.nombre} onChange={(e) => setDatos({ ...datos, nombre: e.target.value })} maxLength={120} className={CLASE_CAMPO} />
             </FormField>
             <FormField etiqueta={t('tipo')} obligatorio ayuda={datos.tipo === 'sales' ? t('tipoAyuda') : undefined}>
-              <select value={datos.tipo} onChange={(e) => setDatos({ ...datos, tipo: e.target.value as DatosPipeline['tipo'] })} className={CLASE_CAMPO}>
-                {TIPOS_PIPELINE.map((x) => <option key={x} value={x}>{t(`tipos.${x}`)}</option>)}
-              </select>
+              <SelectCrm valor={datos.tipo} onValorChange={(tipo) => setDatos({ ...datos, tipo: tipo as DatosPipeline['tipo'] })} opciones={TIPOS_PIPELINE.map((x) => ({ valor: x, etiqueta: t(`tipos.${x}`) }))} />
             </FormField>
             <div className="grid gap-3 sm:grid-cols-3">
               <FormField etiqueta={t('meta')} error={intentado && errorDatos === 'metaInvalida' ? t('error.metaInvalida') : undefined}>
@@ -160,9 +159,7 @@ export function NuevoPipelineAsistente(p: NuevoPipelineAsistenteProps) {
                 <input value={datos.moneda} onChange={(e) => setDatos({ ...datos, moneda: e.target.value.toUpperCase().slice(0, 3) })} className={CLASE_CAMPO} />
               </FormField>
               <FormField etiqueta={t('periodo')}>
-                <select value={datos.periodo} onChange={(e) => setDatos({ ...datos, periodo: e.target.value as DatosPipeline['periodo'] })} className={CLASE_CAMPO}>
-                  {PERIODOS_META.map((x) => <option key={x} value={x}>{t(`periodos.${x}`)}</option>)}
-                </select>
+                <SelectCrm valor={datos.periodo} onValorChange={(periodo) => setDatos({ ...datos, periodo: periodo as DatosPipeline['periodo'] })} opciones={PERIODOS_META.map((x) => ({ valor: x, etiqueta: t(`periodos.${x}`) }))} />
               </FormField>
             </div>
             <label className="flex items-start gap-3 rounded-xl border border-line p-3">

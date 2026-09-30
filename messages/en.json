@@ -3411,6 +3411,9 @@
         "esPrincipal": "{nombre} is the main contact",
         "marcarPrincipal": "Mark {nombre} as main contact",
         "desvincular": "Unlink {nombre}"
+      },
+      "campoFechaHora": {
+        "hora": "Time"
       }
     },
     "accionesRapidas": {

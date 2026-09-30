@@ -23794,6 +23794,9 @@
         "esPrincipal": "{nombre} est le contact principal",
         "marcarPrincipal": "Marquer {nombre} comme contact principal",
         "desvincular": "Délier {nombre}"
+      },
+      "campoFechaHora": {
+        "hora": "Heure"
       }
     },
     "accionesRapidas": {

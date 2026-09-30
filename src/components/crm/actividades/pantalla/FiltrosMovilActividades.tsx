@@ -7,7 +7,8 @@ import { PanelAdaptable } from '@/components/kit/PanelAdaptable';
 import { FormField } from '@/components/kit/FormField';
 import { DateRangeButton } from '@/components/kit/DateRangeButton';
 import { clasesBoton } from '@/components/kit/botonClases';
-import { CLASE_CAMPO, type OpcionUsuario } from '@/components/crm/kit/camposCrm';
+import type { OpcionUsuario } from '@/components/crm/kit/camposCrm';
+import { SelectCrm } from '@/components/crm/kit/SelectCrm';
 import type { FiltrosTimeline } from '@/components/crm/kit/timelineFiltersLogica';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { addPlainDays } from '@/lib/utils/dateDisplay';
@@ -46,12 +47,12 @@ export function FiltrosMovilActividades({ abierto, onAbiertoChange, filtros, onF
       }
     >
       <FormField etiqueta={t('responsable')}>
-        <select value={filtros.responsableId} onChange={(e) => onFiltros({ ...filtros, responsableId: e.target.value })} className={CLASE_CAMPO}>
-          <option value="">{t('todos')}</option>
-          {usuarios.map((u) => (
-            <option key={u.id} value={u.id}>{u.nombre}</option>
-          ))}
-        </select>
+        <SelectCrm
+          valor={filtros.responsableId}
+          onValorChange={(responsableId) => onFiltros({ ...filtros, responsableId })}
+          opcionVacia={t('todos')}
+          opciones={usuarios.map((u) => ({ valor: u.id, etiqueta: u.nombre }))}
+        />
       </FormField>
       <FormField etiqueta={t('entidad')}>
         <div>{selectorEntidad}</div>

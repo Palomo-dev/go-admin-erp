@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Link2 } from 'lucide-react';
 import { FormField } from '@/components/kit/FormField';
 import { CLASE_CAMPO } from '@/components/crm/kit/camposCrm';
+import { SelectCrm } from '@/components/crm/kit/SelectCrm';
 import { pedirCrm } from '@/components/crm/acciones/apiCrm';
 import { LEAD_SOURCES } from '@/lib/crm/enums';
 import { TIPOS_COMISION, type OrigenComision } from './lineasLogica';
@@ -38,22 +39,28 @@ export function OrigenComisionSeccion({ valor, onCambiar, deshabilitado }: Orige
       </h3>
       <div className="grid gap-3 sm:grid-cols-2">
         <FormField etiqueta={t('origen')}>
-          <select value={valor.source} onChange={(e) => cambiar({ source: e.target.value })} disabled={deshabilitado} className={CLASE_CAMPO}>
-            <option value="">{t('sinOrigen')}</option>
-            {LEAD_SOURCES.map((o) => <option key={o} value={o}>{to(o)}</option>)}
-            {valor.source && !(LEAD_SOURCES as readonly string[]).includes(valor.source) && <option value={valor.source}>{valor.source}</option>}
-          </select>
+          <SelectCrm
+            valor={valor.source}
+            onValorChange={(source) => cambiar({ source })}
+            disabled={deshabilitado}
+            opcionVacia={t('sinOrigen')}
+            opciones={[
+              ...LEAD_SOURCES.map((o) => ({ valor: o, etiqueta: to(o) })),
+              // Un origen fuera del catálogo (dato anterior) se conserva y se muestra tal cual.
+              ...(valor.source && !(LEAD_SOURCES as readonly string[]).includes(valor.source) ? [{ valor: valor.source, etiqueta: valor.source }] : []),
+            ]}
+          />
         </FormField>
         <FormField etiqueta={t('vertical')}>
-          <select value={valor.vertical_id} onChange={(e) => cambiar({ vertical_id: e.target.value })} disabled={deshabilitado} className={CLASE_CAMPO}>
-            <option value="">{t('sinVertical')}</option>
-            {verticales.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
-          </select>
+          <SelectCrm valor={valor.vertical_id} onValorChange={(vertical_id) => cambiar({ vertical_id })} disabled={deshabilitado} opcionVacia={t('sinVertical')} opciones={verticales.map((v) => ({ valor: v.id, etiqueta: v.name }))} />
         </FormField>
         <FormField etiqueta={t('comisionista')}>
-          <select value={valor.commission_type} onChange={(e) => cambiar({ commission_type: e.target.value as OrigenComision['commission_type'] })} disabled={deshabilitado} className={CLASE_CAMPO}>
-            {TIPOS_COMISION.map((c) => <option key={c} value={c}>{t(`tipos.${c}`)}</option>)}
-          </select>
+          <SelectCrm
+            valor={valor.commission_type}
+            onValorChange={(tipo) => cambiar({ commission_type: tipo as OrigenComision['commission_type'] })}
+            disabled={deshabilitado}
+            opciones={TIPOS_COMISION.map((c) => ({ valor: c, etiqueta: t(`tipos.${c}`) }))}
+          />
         </FormField>
         <FormField etiqueta={t('comision')} ayuda={t('comisionAyuda')}>
           <input inputMode="decimal" value={valor.commission_rate} onChange={(e) => cambiar({ commission_rate: e.target.value })} disabled={deshabilitado || valor.commission_type === 'none'} placeholder="0" className={CLASE_CAMPO} />

@@ -3411,6 +3411,9 @@
         "esPrincipal": "{nombre} es el contacto principal",
         "marcarPrincipal": "Marcar a {nombre} como contacto principal",
         "desvincular": "Desvincular a {nombre}"
+      },
+      "campoFechaHora": {
+        "hora": "Hora"
       }
     },
     "accionesRapidas": {

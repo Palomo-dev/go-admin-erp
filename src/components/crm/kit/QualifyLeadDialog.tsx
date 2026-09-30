@@ -6,6 +6,7 @@ import { ArrowRight, Ban, Info, Loader2, TrendingUp } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { Badge } from '@/components/ui/badge';
 import { AvatarIniciales } from '@/components/kit/AvatarIniciales';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 import { FormField } from '@/components/kit/FormField';
 import { PanelAdaptable } from '@/components/kit/PanelAdaptable';
 import { SegmentedControl } from '@/components/kit/SegmentedControl';
@@ -16,6 +17,7 @@ import { CLASE_AREA, CLASE_AVISO_INFO, CLASE_CAMPO, simboloMoneda, type OpcionUs
 import { bandaScore, detalleContacto, origenValido, TONO_BANDA, type LeadFila } from './leadRowLogica';
 import type { Temperatura } from './opportunityCardLogica';
 import type { ValoresOportunidad } from './opportunityFormLogica';
+import { SelectCrm } from './SelectCrm';
 import { DECISORES, esValida, prefillDesdeLead, validarCalificacion, valoresInicialesCalificacion, type ValoresCalificacion } from './qualifyLeadLogica';
 
 /**
@@ -118,23 +120,23 @@ export function QualifyLeadDialog({ abierto, onAbiertoChange, lead, moneda, usua
           <input inputMode="decimal" value={v.presupuesto} onChange={(e) => cambiar({ presupuesto: e.target.value })} placeholder={`${simboloMoneda(moneda)} 0`} className={CLASE_CAMPO} />
         </FormField>
         <FormField etiqueta={t('cierre')} error={err('cierre')}>
-          <input type="date" value={v.cierre} min={getToday()} onChange={(e) => cambiar({ cierre: e.target.value })} className={CLASE_CAMPO} />
+          <CampoFecha valor={v.cierre} min={getToday()} hoy={getToday()} onValorChange={(cierre) => cambiar({ cierre })} />
         </FormField>
         <FormField etiqueta={t('decisor')}>
-          <select value={v.decisor} onChange={(e) => cambiar({ decisor: e.target.value as ValoresCalificacion['decisor'] })} className={CLASE_CAMPO}>
-            <option value="">{t('elegir')}</option>
-            {DECISORES.map((d) => (
-              <option key={d} value={d}>{t(`decisores.${d}`)}</option>
-            ))}
-          </select>
+          <SelectCrm
+            valor={v.decisor}
+            onValorChange={(decisor) => cambiar({ decisor: decisor as ValoresCalificacion['decisor'] })}
+            opcionVacia={t('elegir')}
+            opciones={DECISORES.map((d) => ({ valor: d, etiqueta: t(`decisores.${d}`) }))}
+          />
         </FormField>
         <FormField etiqueta={t('responsable')}>
-          <select value={v.responsableId} onChange={(e) => cambiar({ responsableId: e.target.value })} className={CLASE_CAMPO}>
-            <option value="">{t('sinResponsable')}</option>
-            {usuarios.map((u) => (
-              <option key={u.id} value={u.id}>{u.nombre}</option>
-            ))}
-          </select>
+          <SelectCrm
+            valor={v.responsableId}
+            onValorChange={(responsableId) => cambiar({ responsableId })}
+            opcionVacia={t('sinResponsable')}
+            opciones={usuarios.map((u) => ({ valor: u.id, etiqueta: u.nombre }))}
+          />
         </FormField>
       </div>
       <FormField etiqueta={t('temperatura')}>

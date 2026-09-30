@@ -4,12 +4,14 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { AlertTriangle, CheckCircle2, FileText, Info, Loader2, Trophy } from 'lucide-react';
 import { cn } from '@/utils/Utils';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 import { FormField } from '@/components/kit/FormField';
 import { PanelAdaptable } from '@/components/kit/PanelAdaptable';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { formatMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 import { CLASE_AREA, CLASE_AVISO_INFO, CLASE_CAMPO, simboloMoneda, type OpcionUsuario } from './camposCrm';
+import { SelectCrm } from './SelectCrm';
 import {
   ACCIONES_GANAR,
   alternarAccion,
@@ -128,20 +130,20 @@ export function WinDialog({ abierto, onAbiertoChange, oportunidad, monedaBase, m
               <input inputMode="decimal" value={v.monto} onChange={(e) => cambiar({ monto: e.target.value })} placeholder={`${simboloMoneda(monedaBase)} 0`} className={CLASE_CAMPO} />
             </FormField>
             <FormField etiqueta={t('moneda')}>
-              <select value={v.moneda} onChange={(e) => cambiar({ moneda: e.target.value })} className={CLASE_CAMPO}>
-                {listaMonedas.map((m) => <option key={m} value={m}>{m === monedaBase.code ? t('monedaBase', { moneda: m }) : m}</option>)}
-              </select>
+              <SelectCrm
+                valor={v.moneda}
+                onValorChange={(moneda) => cambiar({ moneda })}
+                opciones={listaMonedas.map((m) => ({ valor: m, etiqueta: m === monedaBase.code ? t('monedaBase', { moneda: m }) : m }))}
+                className="sm:min-w-[160px]"
+              />
             </FormField>
           </div>
           <FormField etiqueta={t('fechaCierre')} obligatorio error={err('fechaCierre')}>
-            <input type="date" value={v.fechaCierre} max={hoy} onChange={(e) => cambiar({ fechaCierre: e.target.value })} className={CLASE_CAMPO} />
+            <CampoFecha valor={v.fechaCierre} max={hoy} hoy={hoy} onValorChange={(fechaCierre) => cambiar({ fechaCierre })} />
           </FormField>
           {motivos.length > 0 && (
             <FormField etiqueta={t('motivo')}>
-              <select value={v.motivoId} onChange={(e) => cambiar({ motivoId: e.target.value })} className={CLASE_CAMPO}>
-                <option value="">{t('elegir')}</option>
-                {motivos.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-              </select>
+              <SelectCrm valor={v.motivoId} onValorChange={(motivoId) => cambiar({ motivoId })} opcionVacia={t('elegir')} opciones={motivos.map((m) => ({ valor: m.id, etiqueta: m.label }))} />
             </FormField>
           )}
           {comision && (

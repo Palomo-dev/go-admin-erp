@@ -11575,6 +11575,7 @@
     "precioNoConsultado": "“{producto}” não foi adicionado: não foi possível consultar o preço. Verifique a conexão e tente novamente.",
     "errores": {
       "producto_invalido": "Uma linha tem um produto que não pertence a esta organização. Remova-a e adicione de novo. {detalle}",
+      "producto_eliminado": "Um produto da venda foi excluído do estoque: remova-o da venda. Se a venda foi feita antes da exclusão, restaure-o em Estoque e tente de novo. {detalle}",
       "descuento_excede_linea": "O desconto de uma linha é maior que o seu valor. Corrija o desconto. {detalle}",
       "modificador_invalido": "Um modificador da linha não está mais configurado para o produto. Remova a linha e adicione de novo. {detalle}",
       "precio_no_vigente": "Um produto não tem preço vigente: configure o preço em Estoque. {detalle}",
@@ -13578,6 +13579,7 @@
       "cliente_invalido": "O cliente não pertence à organização.",
       "linea_invalida": "Revise as linhas: descrição, quantidade e preço.",
       "producto_invalido": "Um produto da fatura não pertence à organização.",
+      "producto_eliminado": "Um produto da fatura foi excluído do estoque: remova-o ou restaure-o em Estoque.",
       "vendedor_invalido": "O vendedor não é membro da organização."
     },
     "listado": {

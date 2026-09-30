@@ -11575,6 +11575,7 @@
     "precioNoConsultado": "« {producto} » n’a pas été ajouté : son prix n’a pas pu être consulté. Vérifiez la connexion et réessayez.",
     "errores": {
       "producto_invalido": "Une ligne contient un produit qui n’appartient pas à cette organisation. Retirez-la et ajoutez-la de nouveau. {detalle}",
+      "producto_eliminado": "Un produit de la vente a été supprimé de l’inventaire : retirez-le de la vente. Si la vente a été faite avant sa suppression, restaurez-le dans Inventaire et réessayez. {detalle}",
       "descuento_excede_linea": "La remise d’une ligne dépasse sa valeur. Corrigez la remise. {detalle}",
       "modificador_invalido": "Un modificateur de la ligne n’est plus configuré pour le produit. Retirez la ligne et ajoutez-la de nouveau. {detalle}",
       "precio_no_vigente": "Un produit n’a pas de prix en vigueur : définissez son prix dans Inventaire. {detalle}",
@@ -13578,6 +13579,7 @@
       "cliente_invalido": "Le client n’appartient pas à l’organisation.",
       "linea_invalida": "Vérifiez les lignes : description, quantité et prix.",
       "producto_invalido": "Un produit de la facture n’appartient pas à l’organisation.",
+      "producto_eliminado": "Un produit de la facture a été supprimé de l’inventaire : retirez-le ou restaurez-le dans Inventaire.",
       "vendedor_invalido": "Le vendeur n’est pas membre de l’organisation."
     },
     "listado": {

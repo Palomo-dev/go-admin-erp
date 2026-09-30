@@ -212,3 +212,115 @@ En este orden (cada rollback se niega o avisa si el anterior falta):
   `getProductById`, `app/productos/[id]` por uuid, `getProductVariantRelations`; y
   `app/api/orders` no comprueba `status` de los productos del carrito (acepta uno
   eliminado). Tras la limpieza el alcance son las 889 que se quedan.
+
+## RPC legadas y POS con productos eliminados (2026-09-30, segunda ronda)
+
+> Migraciones `20260930234000` y `20260930234100`, aplicadas por MCP, con rollback en
+> `supabase/rollbacks/`. Cierra los dos primeros puntos de «Pendiente fuera de este cambio».
+
+### 1. `soft_delete_product` y `deactivate_product`
+
+Llamadores buscados: `src/` (ninguno desde `e65f9b1a`; el guardarraíl 39 lo impide),
+`supabase/functions` (ninguno), otras funciones SQL (`pg_proc.prosrc`: ninguna) y
+`goadmin-websites` en solo lectura (ninguno). `deactivate_product` no tuvo llamadores nunca
+en la historia de `src/`; `soft_delete_product` lo usaban la lista y las acciones masivas
+hasta ese commit.
+
+| Función | Antes | Ahora | Por qué |
+|---|---|---|---|
+| `soft_delete_product(integer)` | solo membresía; EXECUTE `authenticated` | **delega** en `fn_producto_cambiar_estado(org, id, 'deleted')`: `fn_assert_acceso_org` + `inventory.delete` / `product_management` / `inventory_management` por `check_user_permission` (o dueño); `search_path` fijo | una pestaña con el paquete anterior a `e65f9b1a` aún puede llamarla: sigue funcionando para quien tiene el permiso. Sin lógica duplicada, sin `role_id` cableado |
+| `deactivate_product(integer)` | leía la organización de un claim del JWT que no existe | sin EXECUTE para `public`/`anon`/`authenticated` (queda `service_role`) | sin llamadores; además, llamarla con un argumento era ambiguo con la otra firma |
+| `deactivate_product(integer, integer)` | `fn_assert_acceso_org`, sin permiso fino | ídem | sin llamadores |
+
+md5 de `prosrc`: `soft_delete_product` `5994240bc79ad07b3d6343f25bd739e6` →
+`75499bb13aedddb65b71f5ee8975199f`; las dos `deactivate_product` sin cambio
+(`2b7b6d6b02ce4dac1280062e8b81fdd2`, `b08547c67b6743c637dd090c803a32c5`), solo permisos.
+
+Prueba en seco (org 144, producto 63992, `request.jwt.claims` + `set local role authenticated`):
+miembro sin permiso → `sin_permiso`; miembro con `inventory.delete` → eliminado; usuario de
+la org 135 → «Acceso denegado a la organización»; `anon` → sin EXECUTE; `deactivate_product`
+→ «permission denied» para los tres. Repetida después de aplicar: igual.
+
+### 2. El POS rechaza en el servidor vender un producto eliminado
+
+Punto único (regla 7): **`fn_producto_exigir_vendible(p_org, p_product, p_momento)`**. Si el
+producto o su padre tienen `status = 'deleted'` → `producto_eliminado` (22023), con el nombre y
+el id en `details`. Pasa si `p_momento` es **anterior a la baja**; la baja es la última
+transición a `deleted` en `products_audit_log` (la más temprana entre producto y padre) y, si no
+hay rastro, `updated_at`. Sin momento o sin fecha de baja se rechaza. `inactive` y
+`discontinued`: sin cambio (el servidor no los bloqueaba y sigue sin bloquearlos).
+
+Quién lo llama:
+
+| Camino | Momento | md5 antes → después |
+|---|---|---|
+| `fn_pos_validar_linea_venta` → `pos_checkout_v1`: mostrador, crédito, outbox sin conexión | en línea `now()`; sin conexión la hora del equipo (nunca futura) | `c746ceafe47ad9d2c280f3a3164d9b5f` → `57205fc766689e75b59b572450959797` |
+| ídem, cobro de una mesa (`settle`) | `sale_items.created_at` de cada línea | (misma función) |
+| `fn_factura_venta_guardar`, solo el alta | `now()` | `7018240f33a289a5c5600b9d4646a0dc` → `b4d7eabca066fd0b0d3ec218a8cafca0` |
+| `assistant_register_sale` (GO Assistant) | `now()` | `acd10cef219c064df062b57bc112933c` → `362b402609545ca209ad63f86bd222e6` |
+| `assistant_register_sales_invoice` (GO Assistant) | `now()` | `cf16d1953aacc29a8ddd2e7062b4a49b` → `24784c3215a4fcd06ccfddfc08beb16d` |
+
+`fn_producto_exigir_vendible` es nueva (md5 `eff8466949db9e4ab225c37644bf4296`), SECURITY
+DEFINER con `search_path` fijo, exige `fn_assert_acceso_org`; EXECUTE para `authenticated`
+(las dos de GO Assistant son SECURITY INVOKER) y `service_role`, no para `anon`/`public`.
+
+**Decisiones sobre los casos que no deben romperse**
+
+- **Venta sin conexión hecha cuando el producto existía**: se acepta. El momento es la hora
+  del equipo que ya usa el precio vigente; si el reloj estaba desfasado la venta entra y queda
+  marcada `reloj_desfasado` por el mecanismo de hora oficial que ya existía
+  (`docs/design/HORA-SERVIDOR-ANALISIS.md`). Una venta sin conexión **posterior** a la baja
+  (catálogo viejo en caché) se rechaza: `salesSync` la reintenta y termina en
+  `needs_review` con el sobre íntegro; la bandeja de pendientes muestra el mensaje traducido.
+  Salida: restaurar el producto en Inventario y «Reintentar». La reproducción de un sobre cuya
+  venta ya existe no revalida (sin cambio).
+- **Devoluciones y notas crédito** de ventas antiguas de productos hoy eliminados: no pasan
+  por la comprobación (`procesar_devolucion`, `fn_nota_credito_emitir` operan sobre
+  `sale_items` ya guardados). Probado.
+- **Mesas**: una línea pedida antes de la baja se cobra; una añadida después se rechaza al
+  cobrar (el pedido de mesa lo inserta el navegador; el servidor lo valida en el cobro).
+- **No la llaman, a propósito**: la confirmación de un pedido web (el pedido ya se hizo y
+  se pagó en el sitio; lo que falta es que `goadmin-websites` no lo acepte, ver pendiente),
+  el cargo de folios PMS a la venta del checkout del hotel (el cargo es anterior) y el
+  traslado de una línea entre mesas.
+
+Prueba en seco (org 144, admin simulado, sucursal 119, producto 63882, todo revertido):
+
+| Caso | Resultado |
+|---|---|
+| POS en línea, producto activo | venta pagada |
+| POS en línea, producto eliminado | `producto_eliminado` · «…» (producto 63882) está eliminado. |
+| sin conexión, hora del equipo 1 h antes de la baja | venta pagada |
+| sin conexión, 20 min antes de la baja con reloj desfasado 15 min | venta pagada, `time_review_reason = reloj_desfasado` |
+| sin conexión, hora = baja | `producto_eliminado` |
+| línea de mesa pedida 1 h antes / después | pasa / `producto_eliminado` |
+| variante viva 62589 bajo padre eliminado | `producto_eliminado` · «…»: su producto padre está eliminado. (momento 2020 → pasa) |
+| producto inactivo 63907 | pasa (sin cambio) |
+| devolución de una venta antigua de 63882 ya eliminado | hecha, con nota crédito y saldo a favor |
+| factura de venta nueva / GO Assistant venta / GO Assistant factura | `producto_eliminado` las tres; con un producto activo, la factura del asistente se crea |
+| usuario de la org 135 llama al helper para la org 144 / `anon` | «Acceso denegado» / sin EXECUTE |
+
+Ida y vuelta de los rollbacks en una transacción revertida: las cuatro funciones vuelven a su
+md5 original, `soft_delete_product` a `5994240bc79ad07b3d6343f25bd739e6` y
+`deactivate_product` recupera el EXECUTE de `authenticated`.
+
+**Interfaz**: `producto_eliminado` entra en `CODIGOS_ERROR_COBRO` (cobro y mesas lo traducen con
+`posCobroServidor.errores`), en `ERRORES_FACTURA` (422, `facturasVenta.errores`), en la bandeja
+sin conexión (`mensajeErrorOutbox`, que traduce el `last_error` de `salesSync`) y en los
+mapeos de error de GO Assistant. Textos en es/en/fr/pt.
+
+**Pruebas**: `src/__tests__/pos/productoEliminadoServidor.test.ts` (contrato de las dos
+migraciones, parches y rollbacks simétricos, mapeo del error, textos en 4 idiomas), caso nuevo
+en `src/__tests__/services/goAssistantPreguntasYFacturaVenta.test.ts` y guardarraíl 40 de
+`src/__tests__/guardrails.test.ts` (toda función nueva que inserte en `sale_items` pasa por
+`fn_producto_exigir_vendible` o por `fn_pos_validar_linea_venta`).
+
+### Sigue pendiente
+
+- `goadmin-websites` `app/api/orders` no comprueba `status` de los productos del carrito: es
+  ahí donde un pedido web con un producto eliminado debe rechazarse (PR aparte en ese repo).
+- `assistant_register_sale` conserva EXECUTE para `anon` (es SECURITY INVOKER, así que corre
+  con los permisos y el RLS de `anon`; no se revisó en esta ronda). Conviene retirarlo en una
+  ronda de permisos.
+- Un pedido de mesa con un producto eliminado se inserta desde el navegador y solo se rechaza
+  al cobrar; si se quiere antes, el pedido de mesa debe pasar a una RPC.

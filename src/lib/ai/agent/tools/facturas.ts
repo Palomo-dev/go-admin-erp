@@ -420,6 +420,8 @@ export function mapFacturaVentaError(message: string): ToolResult | null {
   }
   if (message.includes('CUSTOMER_NOT_IN_ORG')) return { ok: false, errorCode: 'not_found', message: 'Ese cliente no existe en esta organización.' };
   if (message.includes('PRODUCT_NOT_IN_ORG')) return { ok: false, errorCode: 'not_found', message: 'Uno de los productos no existe en esta organización.' };
+  // fn_producto_exigir_vendible (20260930234100).
+  if (message.includes('producto_eliminado')) return { ok: false, errorCode: 'bad_input', message: 'Uno de los productos está eliminado del inventario: quítalo de la factura o restáuralo primero.' };
   if (message.includes('PRICE_UNKNOWN')) {
     const n = message.split('PRICE_UNKNOWN:')[1]?.split('\n')[0]?.trim() ?? 'ese producto';
     return { ok: false, errorCode: 'no_price', message: `"${n}" no tiene precio de venta registrado. Dime a qué precio va y lo pongo en la factura.` };

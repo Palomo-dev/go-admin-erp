@@ -3422,3 +3422,61 @@ describe('39. Variantes de un padre eliminado: baja en cascada y lecturas sin hu
     expect(ofensores).toEqual([]);
   });
 });
+
+/**
+ * 40. Una línea NUEVA de venta no lleva un producto eliminado
+ *     (docs/inventario/VARIANTES-HUERFANAS.md, «RPC legadas y POS»).
+ *
+ * Desde 20260930234100 el punto único es fn_producto_exigir_vendible (producto o
+ * padre con status 'deleted' → producto_eliminado, salvo línea anterior a la baja).
+ * Lo llaman fn_pos_validar_linea_venta (pos_checkout_v1: mostrador, crédito, sin
+ * conexión y mesas), el alta de fn_factura_venta_guardar y las dos RPC de GO
+ * Assistant. Toda función nueva que inserte en sale_items debe pasar por él (o por
+ * el validador del POS), o entrar en la allow-list con su motivo.
+ */
+describe('40. Ventas: ninguna función nueva inserta líneas sin comprobar que el producto no está eliminado', () => {
+  const DIR = path.join(REPO_ROOT, 'supabase', 'migrations');
+  const DESDE = '20260930234100';
+  /** Funciones que insertan sale_items sin la comprobación, con motivo. */
+  const PERMITIDAS: Record<string, string> = {};
+
+  function funcionesSinComprobar(sql: string): string[] {
+    const limpio = sql.replace(/--.*$/gm, '');
+    const re = /create\s+or\s+replace\s+function\s+public\.(\w+)\s*\(/gi;
+    const inicios = [...limpio.matchAll(re)].map((m) => ({ nombre: m[1], i: m.index ?? 0 }));
+    return inicios
+      .map((f, k) => ({ nombre: f.nombre, cuerpo: limpio.slice(f.i, inicios[k + 1]?.i ?? undefined) }))
+      .filter((f) => /insert\s+into\s+(public\.)?sale_items\b/i.test(f.cuerpo))
+      .filter((f) => !/\b(fn_producto_exigir_vendible|fn_pos_validar_linea_venta)\b/.test(f.cuerpo))
+      .map((f) => f.nombre);
+  }
+
+  test('las dos migraciones existen con su rollback', () => {
+    for (const m of ['20260930234000_inv_rpc_legadas_baja_producto_permiso', '20260930234100_pos_rechaza_producto_eliminado']) {
+      expect(fs.existsSync(path.join(DIR, `${m}.sql`))).toBe(true);
+      expect(fs.existsSync(path.join(REPO_ROOT, 'supabase', 'rollbacks', `${m}_rollback.sql`))).toBe(true);
+    }
+  });
+
+  test('el detector reconoce un insert en sale_items sin la comprobación y acepta el que la lleva', () => {
+    const sin = 'create or replace function public.x(p integer) returns void as $$ begin insert into public.sale_items (sale_id) values (null); end $$;';
+    const con = sin.replace('begin', 'begin perform public.fn_producto_exigir_vendible(1, 2, now());');
+    expect(funcionesSinComprobar(sin)).toEqual(['x']);
+    expect(funcionesSinComprobar(con)).toEqual([]);
+  });
+
+  test('ninguna migración nueva inserta sale_items sin fn_producto_exigir_vendible', () => {
+    const ofensores: string[] = [];
+    for (const f of fs.readdirSync(DIR).filter((n) => n.endsWith('.sql') && n.slice(0, 14) >= DESDE).sort()) {
+      for (const nombre of funcionesSinComprobar(readFile(path.join(DIR, f)))) {
+        if (!PERMITIDAS[nombre]) ofensores.push(`${f}: ${nombre}`);
+      }
+    }
+    expect(ofensores).toEqual([]);
+  });
+
+  test('el código de error llega traducido al POS', () => {
+    const src = readFile(path.join(REPO_ROOT, 'src', 'lib', 'pos', 'erroresCobro.ts'));
+    expect(src).toContain("'producto_eliminado'");
+  });
+});

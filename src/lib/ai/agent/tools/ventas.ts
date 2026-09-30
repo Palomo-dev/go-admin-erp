@@ -88,6 +88,10 @@ function mapSaleError(message: string): ToolResult | null {
   if (message.includes('PRODUCT_NOT_IN_ORG')) {
     return { ok: false, errorCode: 'not_found', message: 'Uno de los productos no existe en esta organización.' };
   }
+  // fn_producto_exigir_vendible (20260930234100).
+  if (message.includes('producto_eliminado')) {
+    return { ok: false, errorCode: 'bad_input', message: 'Uno de los productos está eliminado del inventario: quítalo de la venta o restáuralo primero.' };
+  }
   if (message.includes('ITEMS_REQUIRED')) {
     return { ok: false, errorCode: 'missing_fields', message: 'Me falta saber qué productos y en qué cantidad.' };
   }

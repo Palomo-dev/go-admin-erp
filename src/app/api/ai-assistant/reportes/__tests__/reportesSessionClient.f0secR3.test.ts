@@ -34,7 +34,9 @@ jest.mock('@/lib/utils/orgContext', () => ({
 }));
 jest.mock('@/lib/supabase/config', () => ({ supabase: { rpc: browserRpc, from: jest.fn() } }));
 // r4: la lista blanca de módulos sale del servidor con el cliente de sesión.
-const getActiveModules = jest.fn(async () => [{ code: 'crm' }]);
+// La firma imita getActiveModules(orgId, client). Este caso no usa los valores.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const getActiveModules = jest.fn(async (_orgId: number, _client: unknown) => [{ code: 'crm' }]);
 jest.mock('@/lib/services/moduleManagementService', () => ({
   moduleManagementService: { getActiveModules: (orgId: number, client: unknown) => getActiveModules(orgId, client) },
 }));

@@ -24777,7 +24777,9 @@
         "cash_sessions": "Sesión de caja",
         "commissions": "Comisión",
         "credit_note": "Nota crédito"
-      }
+      },
+      "creadoPor": "Creado por",
+      "automatico": "Automático (sistema)"
     },
     "lineas": {
       "centroCosto": "Centro de costo"

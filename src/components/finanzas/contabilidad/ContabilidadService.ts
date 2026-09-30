@@ -290,6 +290,20 @@ export class ContabilidadService {
     return (data as { name: string | null } | null)?.name ?? null;
   }
 
+  /** Nombre (o correo) de quien creó el asiento; la RLS de `profiles` solo deja ver miembros de la organización. */
+  static async nombreUsuario(userId: string): Promise<string | null> {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('first_name, last_name, email')
+      .eq('id', userId)
+      .maybeSingle();
+    if (error) throw error;
+    const p = data as { first_name: string | null; last_name: string | null; email: string | null } | null;
+    if (!p) return null;
+    const nombre = [p.first_name, p.last_name].filter((v) => v && v.trim()).join(' ').trim();
+    return nombre || p.email || null;
+  }
+
   static async obtenerAsiento(id: number): Promise<JournalEntry | null> {
     const { data: entry, error: entryError } = await supabase
       .from('journal_entries')

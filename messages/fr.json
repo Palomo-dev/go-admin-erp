@@ -24674,7 +24674,9 @@
         "cash_sessions": "Session de caisse",
         "commissions": "Commission",
         "credit_note": "Avoir"
-      }
+      },
+      "creadoPor": "Créée par",
+      "automatico": "Automatique (système)"
     },
     "lineas": {
       "centroCosto": "Centre de coûts"

@@ -3,7 +3,9 @@
 /**
  * «Datos del asiento» (Figma «asiento-compra-retenciones»): fecha contable,
  * sucursal, origen, moneda (y la tasa si no es la base), clave del hecho y
- * cuándo se creó. Las fechas pasan por la zona de la sucursal del asiento.
+ * quién y cuándo lo creó. Las fechas pasan por la zona de la sucursal del
+ * asiento. Los asientos de los disparadores (compras, inventario…) no tienen
+ * `created_by`: se muestran como automáticos.
  */
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
@@ -34,6 +36,7 @@ export function DatosAsiento({ asiento }: { asiento: JournalEntry }) {
   const t = useTranslations('asientoContable.datos');
   const { formatDate, formatDateTime } = useFormatDateFor(asiento.branch_id);
   const [sucursal, setSucursal] = useState<string | null>(null);
+  const [autor, setAutor] = useState<string | null>(null);
 
   useEffect(() => {
     if (!asiento.branch_id) return;
@@ -46,7 +49,20 @@ export function DatosAsiento({ asiento }: { asiento: JournalEntry }) {
     };
   }, [asiento.branch_id]);
 
+  useEffect(() => {
+    setAutor(null);
+    if (!asiento.created_by) return;
+    let vigente = true;
+    ContabilidadService.nombreUsuario(asiento.created_by)
+      .then((n) => vigente && setAutor(n))
+      .catch((e) => console.error('Error leyendo el autor del asiento:', e));
+    return () => {
+      vigente = false;
+    };
+  }, [asiento.created_by]);
+
   const origen = asiento.source ?? 'manual';
+  const creadoPor = asiento.created_by ? autor ?? '—' : origen === 'manual' ? '—' : t('automatico');
   const moneda = asiento.currency_code ?? asiento.base_currency_code ?? null;
   const otraMoneda = !!asiento.currency_code && !!asiento.base_currency_code && asiento.currency_code !== asiento.base_currency_code;
 
@@ -68,6 +84,7 @@ export function DatosAsiento({ asiento }: { asiento: JournalEntry }) {
           />
         )}
         {asiento.fact_key && <FilaDato etiqueta={t('claveHecho')} valor={<span className="break-all font-mono text-xs">{asiento.fact_key}</span>} />}
+        <FilaDato etiqueta={t('creadoPor')} valor={creadoPor} />
         <FilaDato etiqueta={t('creado')} valor={formatDateTime(asiento.created_at)} />
       </ListaDatos>
     </Tarjeta>

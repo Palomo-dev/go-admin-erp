@@ -24777,7 +24777,9 @@
         "cash_sessions": "Cash session",
         "commissions": "Commission",
         "credit_note": "Credit note"
-      }
+      },
+      "creadoPor": "Created by",
+      "automatico": "Automatic (system)"
     },
     "lineas": {
       "centroCosto": "Cost center"

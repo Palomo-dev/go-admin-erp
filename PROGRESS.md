@@ -3672,3 +3672,7 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 ### CRM — Llamadas: cifras, búsqueda y listado (2026-09-30)
 
 RPC con ámbito vendedor/ver-todas, texto indexado de transcripciones, grabaciones listas filtradas antes de paginar y estadísticas globales. Listado único con kit, 4 idiomas, paginación/exportación y fechas de organización. 269 tests, guardarraíles, tsc y lint tocado pasan; POST real manual y lectura en navegador comprobados, fixture eliminado. Dos migraciones aplicadas con rollback y MD5 registrados en PLAN-FIGMA-A-CODIGO. Continúan Pronósticos y el resto del alcance autorizado; Telefonía visual y flujos físicos de dispositivos aún no se declaran terminados.
+
+### CRM — Pronósticos: integridad y auditoría (2026-09-30)
+
+Dos migraciones aplicadas por MCP con rollback y MD5 en el plan: categorías reales usando stages, snapshot con ámbito vendedor, auditoría de ajustes/reversión y concurrencia. Se cerró la lectura anónima de la vista materializada antigua. Pruebas SQL reales sin fixtures persistentes. Continúa la conexión de la pantalla y el resto de olas 4/5/6.

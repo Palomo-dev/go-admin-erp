@@ -509,3 +509,11 @@ Figma (`07 Finanzas` › «Facturas de venta — detalle (B.2)»):
 Código: `src/lib/finanzas/ventas/origenVenta.ts` (lógica pura), `facturasVenta.server.ts` (lee el canal
 aparte: `invoice_sales.sale_id` no tiene FK hacia `sales`), `EslabonDocumento.etiquetaTipo` (rótulo propio
 en el kit) y la prueba `src/lib/finanzas/ventas/__tests__/origenVenta.test.tsx`.
+
+Ajuste posterior (mismo día), en `421:174342` «listo» y `421:175507` «anulada y sin pagos»:
+- La `DocumentHeader` va pegada bajo la `AppHeader`, a todo el ancho y con borde inferior: sobraba la
+  franja de 24 px de fondo entre las dos. En «anulada» también estaba debajo del contenido; el aviso de
+  anulación pasa a encabezar el contenido.
+- «Pagos aplicados» vacío en una factura anulada: sin acciones («Importar» y «Nuevo producto» no
+  correspondían) y el texto dice «La factura está anulada: no admite pagos.» (antes invitaba a
+  «marcar la factura como pagada», acción que el diseño ya había quitado).

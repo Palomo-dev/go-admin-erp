@@ -87,7 +87,7 @@ Secret del webhook no está en las variables de entorno.
 
 2. Agregar a `.env.local`:
    ```bash
-   STRIPE_WEBHOOK_SECRET=whsec_xK75awYp4UtuYWz9AAF6OgklEvyd1Y2Z
+   STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
    ```
 
 3. En Vercel, agregar la variable y redesplegar.
@@ -209,7 +209,7 @@ El webhook secret no coincide o el body fue modificado.
 1. **Verificar el secret:**
    ```bash
    # En .env.local
-   STRIPE_WEBHOOK_SECRET=whsec_xK75awYp4UtuYWz9AAF6OgklEvyd1Y2Z
+   STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
    ```
 
 2. **No parsear el body antes de verificar:**

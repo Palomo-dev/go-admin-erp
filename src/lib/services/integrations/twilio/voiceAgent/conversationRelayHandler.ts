@@ -3,12 +3,15 @@
  * GO Admin ERP
  *
  * Twilio ConversationRelay envía texto (post-STT) y recibe texto (pre-TTS).
- * Este handler conecta esos mensajes con OpenAI Chat Completions + function calling.
- * No requiere OpenAI Realtime API — usa la API estándar con streaming.
+ * Este handler conecta esos mensajes con el modelo (streaming + function calling).
+ *
+ * 2026-09-30: el modelo se llama por el MISMO adaptador que el GO Assistant
+ * (`@/lib/ai/agent/openaiAdapter`): Responses API para `gpt-5.x`/`gpt-6.x`,
+ * Chat Completions para los legacy, razonamiento mínimo y respaldo a
+ * `EMERGENCY_MODEL`. Antes se llamaba a Chat Completions con `max_tokens` para
+ * cualquier modelo y `gpt-5.6-luna` respondía 400 en cada turno.
  */
 
-import OpenAI from 'openai';
-import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import type WebSocket from 'ws';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { buildVoiceAgentPrompt, tipoDeNegocio, type VoiceAgentContext } from './voiceAgentPrompts';
@@ -23,6 +26,14 @@ import {
   type ConversationTurn,
 } from '@/lib/services/crm/voiceAgent/agentRuntime';
 import { executeTool as executeCrmTool } from '@/lib/services/crm/voiceAgentTools';
+import { openModelStream, type AdapterMessage, type AdapterTool } from '@/lib/ai/agent/openaiAdapter';
+import type { JsonSchemaObject } from '@/lib/ai/agent/types';
+import {
+  isTtsError,
+  twilioErrorCode,
+  TtsFallbackTracker,
+  TTS_FALLBACK_PARAM,
+} from '@/lib/services/crm/voiceAgent/ttsFallback';
 
 /** Cliente con service_role para bypasear RLS en el WS server */
 function getServiceSupabase(): SupabaseClient {
@@ -66,7 +77,13 @@ interface CRDtmfMessage {
   digit: string;
 }
 
-type CRInboundMessage = CRSetupMessage | CRPromptMessage | CRInterruptMessage | CRDtmfMessage;
+/** Error que reporta Twilio (p. ej. TTS: «Error converting tokens to speech, code: 64111»). */
+interface CRErrorMessage {
+  type: 'error';
+  description?: string;
+}
+
+type CRInboundMessage = CRSetupMessage | CRPromptMessage | CRInterruptMessage | CRDtmfMessage | CRErrorMessage;
 
 // ─── Sesión de ConversationRelay ────────────────────────
 
@@ -94,34 +111,52 @@ export interface ConversationRelaySession {
 
 const activeSessions = new Map<string, ConversationRelaySession>();
 
-// ─── Helper para mapear mensajes a OpenAI ───────────────
+// ─── Helper para mapear mensajes al adaptador del modelo ─────
 
-function mapToOpenAIMessages(messages: ConversationMessage[]): ChatCompletionMessageParam[] {
-  return messages.map((m): ChatCompletionMessageParam => {
-    if (m.role === 'tool') {
-      return { role: 'tool', content: m.content, tool_call_id: m.tool_call_id || '' };
+/**
+ * C-13: los `tool_calls` DEBEN viajar en el mensaje del asistente que precede a
+ * los mensajes `role:'tool'`; si se descartan, el proveedor rechaza el historial.
+ * El adaptador los traduce a Chat Completions o a la Responses API.
+ */
+export function toAdapterMessages(messages: ConversationMessage[]): AdapterMessage[] {
+  return messages.map((m): AdapterMessage => {
+    if (m.role === 'tool') return { role: 'tool', content: m.content, toolCallId: m.tool_call_id || '' };
+    if (m.role === 'assistant' && m.tool_calls?.length) {
+      return {
+        role: 'assistant',
+        content: m.content || null,
+        toolCalls: m.tool_calls.map((tc) => ({ id: tc.id, name: tc.function.name, arguments: tc.function.arguments })),
+      };
     }
-    if (m.role === 'assistant') {
-      // C-13: los `tool_calls` DEBEN viajar en el mensaje del asistente que precede
-      // a los mensajes `role:'tool'`; si se descartan, OpenAI rechaza el historial.
-      return m.tool_calls?.length
-        ? { role: 'assistant', content: m.content || null, tool_calls: m.tool_calls }
-        : { role: 'assistant', content: m.content };
-    }
-    if (m.role === 'user') {
-      return { role: 'user', content: m.content };
-    }
-    return { role: 'system', content: m.content };
+    return { role: m.role, content: m.content };
   });
 }
 
-// ─── OpenAI Client ──────────────────────────────────────
-
-function getOpenAIClient(): OpenAI {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error('Falta OPENAI_API_KEY');
-  return new OpenAI({ apiKey });
+/** Herramientas de la sesión en el formato plano del adaptador. */
+function sessionTools(session: ConversationRelaySession): AdapterTool[] {
+  if (session.runtime) {
+    return session.runtime.toolDefinitions.map((t) => ({
+      name: t.function.name,
+      description: t.function.description,
+      parameters: t.function.parameters as unknown as JsonSchemaObject,
+    }));
+  }
+  return VOICE_AGENT_TOOLS.map((t) => ({
+    name: t.name,
+    description: t.description,
+    parameters: t.parameters as unknown as JsonSchemaObject,
+  }));
 }
+
+/**
+ * Tras ejecutar herramientas se vuelve a llamar al modelo con los resultados.
+ * Puede pedir más herramientas (p. ej. consultar disponibilidad y luego
+ * agendar); a partir de esta profundidad se le quitan para que conteste.
+ */
+const MAX_TOOL_ROUNDS = 3;
+
+/** Estado de TTS por conexión (respaldo ante el error 64111/64112). */
+const ttsTrackers = new WeakMap<WebSocket, TtsFallbackTracker>();
 
 // ─── Handler principal ──────────────────────────────────
 
@@ -135,6 +170,7 @@ function getOpenAIClient(): OpenAI {
  */
 export function handleConversationRelayConnection(ws: WebSocket, upgradeClaims?: WsSessionClaims | null): void {
   let session: ConversationRelaySession | null = null;
+  let tts: TtsFallbackTracker | null = null;
 
   ws.on('message', async (data) => {
     let msgType = 'unknown';
@@ -159,9 +195,17 @@ export function handleConversationRelayConnection(ws: WebSocket, upgradeClaims?:
             ws.close(1008, 'unauthorized');
             return;
           }
+          // El error de TTS del saludo puede llegar mientras `handleSetup` lee la
+          // base: el estado de TTS se crea ANTES del primer `await`.
+          tts = new TtsFallbackTracker(message.customParameters?.[TTS_FALLBACK_PARAM] || null);
+          ttsTrackers.set(ws, tts);
           session = await handleSetup(ws, message, claims);
           break;
         }
+
+        case 'error':
+          handleRelayError(ws, tts, session, message);
+          break;
 
         case 'prompt':
           if (session) {
@@ -331,7 +375,13 @@ async function handleSetup(
   // aquí solo entra en el historial para que el modelo no lo repita.
   session.messages.push({ role: 'assistant', content: greeting });
   session.turns.push({ role: 'assistant', content: greeting, at: new Date().toISOString() });
-  if (!runtime) sendText(ws, greeting);
+  if (!runtime) {
+    sendText(ws, greeting);
+  } else {
+    // Si el TTS del `welcomeGreeting` ya falló, el saludo se repite con la voz de respaldo.
+    const pendiente = ttsTrackers.get(ws)?.seedSpoken(greeting);
+    if (pendiente) sendText(ws, pendiente, true);
+  }
 
   console.log(
     `[CR] Sesión iniciada: ${callSid} (org: ${orgId}, agente: ${runtime?.agent.name ?? 'genérico'}, ` +
@@ -342,7 +392,7 @@ async function handleSetup(
 
 /**
  * Prompt: Twilio envía el texto transcrito del usuario.
- * Procesamos con OpenAI Chat y respondemos con texto.
+ * Se procesa con el modelo del agente y se responde con texto.
  */
 async function handlePrompt(
   ws: WebSocket,
@@ -374,113 +424,115 @@ async function handlePrompt(
   session.messages.push({ role: 'user', content: userText });
   session.turns.push({ role: 'user', content: userText, at: new Date().toISOString() });
 
-  // Llamar a OpenAI con streaming
-  const openai = getOpenAIClient();
+  await runModelTurn(ws, session, 0);
+}
+
+/**
+ * Un turno del modelo: abre el stream por el adaptador compartido, manda el
+ * texto a ConversationRelay por cláusulas (latencia baja: no se espera a la
+ * respuesta completa) y, si el modelo pide herramientas, las ejecuta y vuelve
+ * a llamarlo con los resultados.
+ *
+ * Si el modelo configurado falla al abrir el stream, `openModelStream` responde
+ * con `EMERGENCY_MODEL` y lo deja en el log con el prefijo `[CR]`. La frase de
+ * error solo se dice si fallan los dos.
+ */
+async function runModelTurn(ws: WebSocket, session: ConversationRelaySession, depth: number): Promise<void> {
   let fullResponse = '';
-  const toolCalls: Array<{
-    id: string;
-    name: string;
-    arguments: string;
-  }> = [];
+  const toolCalls: Array<{ id: string; name: string; arguments: string }> = [];
+  let sentAny = false;
+
+  // Modelo del agente (ai_settings/agente → entorno → default, resuelto en agentRuntime).
+  const model = session.runtime?.model || process.env.OPENAI_CHAT_MODEL || 'gpt-4o';
 
   try {
-    const stream = await openai.chat.completions.create({
-      model: session.runtime?.model || process.env.OPENAI_CHAT_MODEL || 'gpt-4o',
-      messages: mapToOpenAIMessages(session.messages),
-      tools: session.runtime
-        ? session.runtime.toolDefinitions
-        : VOICE_AGENT_TOOLS.map((t) => ({
-            type: 'function' as const,
-            function: {
-              name: t.name,
-              description: t.description,
-              parameters: t.parameters,
-            },
-          })),
-      stream: true,
+    const stream = await openModelStream({
+      model,
+      messages: toAdapterMessages(session.messages),
+      tools: depth < MAX_TOOL_ROUNDS ? sessionTools(session) : [],
       // F-NEW-14: la longitud de la respuesta la modula la organización
       // (`voice_agents.guardrails.max_response_tokens`), ya no es una constante.
-      max_tokens: session.runtime?.maxResponseTokens ?? 200,
+      maxTokens: session.runtime?.maxResponseTokens ?? 200,
+      // El adaptador solo la envía si el modelo la admite.
       temperature: session.runtime?.temperature ?? 0.7,
+      logTag: `[CR] [${session.callSid}]`,
     });
+    if (stream.model !== model) {
+      console.warn(`[CR] [${session.callSid}] Turno respondido con el modelo de respaldo ${stream.model}`);
+    }
 
     let currentTokenBatch = '';
 
-    for await (const chunk of stream) {
-      const delta = chunk.choices[0]?.delta;
+    for await (const chunk of stream.chunks) {
+      if (chunk.delta) {
+        fullResponse += chunk.delta;
+        currentTokenBatch += chunk.delta;
 
-      // Texto normal
-      if (delta?.content) {
-        fullResponse += delta.content;
-        currentTokenBatch += delta.content;
-
-        // Enviar texto en lotes por oración (al encontrar punto, coma o signo)
-        const sentenceEnd = currentTokenBatch.match(/[.!?,:;]\s/);
-        if (sentenceEnd) {
+        // Enviar texto en lotes por cláusula (al encontrar punto, coma o signo)
+        if (/[.!?,:;]\s/.test(currentTokenBatch)) {
           sendText(ws, currentTokenBatch, false);
+          sentAny = true;
           currentTokenBatch = '';
         }
       }
-
-      // Tool calls
-      if (delta?.tool_calls) {
-        for (const tc of delta.tool_calls) {
-          if (tc.index !== undefined) {
-            if (!toolCalls[tc.index]) {
-              toolCalls[tc.index] = { id: tc.id || '', name: tc.function?.name || '', arguments: '' };
-            }
-            if (tc.id) toolCalls[tc.index].id = tc.id;
-            if (tc.function?.name) toolCalls[tc.index].name = tc.function.name;
-            if (tc.function?.arguments) toolCalls[tc.index].arguments += tc.function.arguments;
-          }
-        }
-      }
+      if (chunk.toolCall) toolCalls.push(chunk.toolCall);
     }
 
-    // Enviar último batch de texto
-    if (currentTokenBatch.trim()) {
+    // Cierre de la frase: si ya se mandaron trozos, Twilio necesita `last: true`
+    // aunque el resto esté vacío; si no, la frase queda abierta.
+    if (currentTokenBatch.trim() || sentAny) {
       sendText(ws, currentTokenBatch, true);
-    }
-
-    // Si hubo tool calls, ejecutarlas
-    if (toolCalls.length > 0) {
-      await handleToolCalls(ws, session, toolCalls);
-      return;
-    }
-
-    // Guardar respuesta en historial
-    if (fullResponse) {
-      session.messages.push({ role: 'assistant', content: fullResponse });
-      session.turns.push({ role: 'assistant', content: fullResponse, at: new Date().toISOString() });
-      console.log(`[CR] [${session.callSid}] Agente: ${fullResponse}`);
     }
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
-    console.error(`[CR] Error en OpenAI: ${errMsg}`);
-    console.error('[CR] OpenAI error full:', JSON.stringify(error, null, 2));
-    sendText(ws, 'Disculpe, tuve un problema procesando su solicitud. ¿Puede repetir?');
+    console.error(`[CR] [${session.callSid}] Error en el modelo (incluido el respaldo): ${errMsg}`);
+    sendText(
+      ws,
+      depth === 0
+        ? 'Disculpe, tuve un problema procesando su solicitud. ¿Puede repetir?'
+        : 'Disculpe, ocurrió un error procesando la acción.'
+    );
+    return;
+  }
+
+  if (toolCalls.length > 0) {
+    // El texto que el modelo dijo antes de pedir la herramienta también es un turno.
+    await handleToolCalls(ws, session, toolCalls, fullResponse, depth);
+    return;
+  }
+
+  // Guardar respuesta en historial
+  if (fullResponse) {
+    session.messages.push({ role: 'assistant', content: fullResponse });
+    session.turns.push({ role: 'assistant', content: fullResponse, at: new Date().toISOString() });
+    console.log(`[CR] [${session.callSid}] Agente${depth > 0 ? ' (post-tool)' : ''}: ${fullResponse}`);
   }
 }
 
 /**
- * Ejecuta tool calls y envía el resultado de vuelta a OpenAI.
+ * Ejecuta tool calls y vuelve a llamar al modelo con los resultados.
  */
 async function handleToolCalls(
   ws: WebSocket,
   session: ConversationRelaySession,
-  toolCalls: Array<{ id: string; name: string; arguments: string }>
+  toolCalls: Array<{ id: string; name: string; arguments: string }>,
+  precedingText: string,
+  depth: number
 ): Promise<void> {
   // C-13: el mensaje del asistente lleva SUS `tool_calls`; sin ellos el historial
-  // que se envía a OpenAI es inválido y la API responde 400.
+  // que se envía al modelo es inválido y la API responde 400.
   session.messages.push({
     role: 'assistant',
-    content: '',
+    content: precedingText,
     tool_calls: toolCalls.map((tc) => ({
       id: tc.id,
       type: 'function' as const,
       function: { name: tc.name, arguments: tc.arguments || '{}' },
     })),
   });
+  if (precedingText) {
+    session.turns.push({ role: 'assistant', content: precedingText, at: new Date().toISOString() });
+  }
 
   const runtime = session.runtime;
 
@@ -525,27 +577,52 @@ async function handleToolCalls(
     session.turns.push({ role: 'tool', content: result, at: new Date().toISOString(), tool: tc.name });
   }
 
-  // Pedir a OpenAI que genere respuesta con los resultados
-  const openai = getOpenAIClient();
+  // Respuesta con los resultados, también en streaming (antes era una llamada
+  // sin stream: el cliente esperaba la respuesta completa en silencio).
+  await runModelTurn(ws, session, depth + 1);
+}
 
-  try {
-    const response = await openai.chat.completions.create({
-      model: runtime?.model || process.env.OPENAI_CHAT_MODEL || 'gpt-4o',
-      messages: mapToOpenAIMessages(session.messages),
-      max_tokens: runtime?.maxResponseTokens ?? 200,
-      temperature: runtime?.temperature ?? 0.7,
-    });
+// ─── Errores de Twilio (TTS) ────────────────────────────
 
-    const assistantMsg = response.choices[0]?.message?.content || '';
-    if (assistantMsg) {
-      session.messages.push({ role: 'assistant', content: assistantMsg });
-      session.turns.push({ role: 'assistant', content: assistantMsg, at: new Date().toISOString() });
-      sendText(ws, assistantMsg, true);
-      console.log(`[CR] [${session.callSid}] Agente (post-tool): ${assistantMsg}`);
-    }
-  } catch (error) {
-    console.error('[CR] Error en OpenAI post-tool:', error);
-    sendText(ws, 'Disculpe, ocurrió un error procesando la acción.');
+/**
+ * `{"type":"error"}` de ConversationRelay. Si es un fallo de TTS (64111/64112)
+ * y el TwiML declaró voz de respaldo, se cambia a ella UNA vez y se reenvía la
+ * frase que no sonó. Ver `voiceAgent/ttsFallback.ts`.
+ */
+function handleRelayError(
+  ws: WebSocket,
+  tts: TtsFallbackTracker | null,
+  session: ConversationRelaySession | null,
+  message: CRErrorMessage
+): void {
+  const description = message.description ?? '';
+  const code = twilioErrorCode(description);
+  const callSid = session?.callSid ?? 'sin-sesión';
+  if (!isTtsError(description)) {
+    console.error(`[CR] [${callSid}] Error de Twilio (code ${code ?? 'n/d'}): ${description.substring(0, 300)}`);
+    return;
+  }
+
+  const cambio = tts?.onTtsError() ?? null;
+  if (!cambio) {
+    console.error(
+      `[CR] [${callSid}] Fallo de TTS (code ${code ?? 'n/d'}) ` +
+        (tts?.hasSwitched ? 'también con la voz de respaldo' : 'sin voz de respaldo declarada en el TwiML') +
+        `: ${description.substring(0, 300)}`
+    );
+    return;
+  }
+
+  console.error(
+    `[CR] [${callSid}] Fallo de TTS con la voz configurada (code ${code ?? 'n/d'}, org ${session?.orgId ?? 'n/d'}, ` +
+      `voz ${session?.runtime?.voice.ttsProvider ?? 'n/d'}:${session?.runtime?.voice.voice ?? 'n/d'}). ` +
+      `Se cambia a la voz de respaldo (ttsLanguage=${cambio.switchMessage.ttsLanguage}). Revisar la voz del agente.`
+  );
+  if (ws.readyState !== 1) return;
+  ws.send(JSON.stringify(cambio.switchMessage));
+  if (cambio.resend) {
+    // Directo, sin `sendText`: no es texto nuevo, es el que no sonó.
+    ws.send(JSON.stringify({ type: 'text', token: cambio.resend, last: cambio.resendIsComplete }));
   }
 }
 
@@ -667,6 +744,7 @@ async function endSession(session: ConversationRelaySession): Promise<void> {
 function sendText(ws: WebSocket, text: string, last = true): void {
   if (ws.readyState !== 1) return; // WebSocket.OPEN = 1
   ws.send(JSON.stringify({ type: 'text', token: text, last }));
+  ttsTrackers.get(ws)?.recordSent(text, last);
 }
 
 /** Señala fin de conversación a Twilio */

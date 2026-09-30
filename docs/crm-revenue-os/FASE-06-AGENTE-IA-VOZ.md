@@ -1552,3 +1552,107 @@ Sin cambios respecto a la ronda 2, y se repite para que no se lea como resuelto:
   despachador de eventos.
 - **`send_payment_link`** sigue sin pasarela y **`book_meeting`** sigue sin comprobar doble
   reserva ni enviar ICS/WhatsApp.
+
+## 16. Llamada real de prueba (2026-09-30): modelo 400 y TTS 64111
+
+Llamada `CAbe3e5ad9ca529ffd23d2a3129de69ce2`, org 125, agente `c194ab52-8089-422d-b625-1b56f47ba146`
+(`llm_model = gpt-5.6-luna`, `temperature 0.7`, `voice_provider = elevenlabs`, `language = es-CO`,
+`stt_provider = deepgram`). Dos fallas independientes; las dos dejaron al cliente sin oír al agente.
+
+### 16.1 Cada turno: `400 Unsupported parameter: 'max_tokens'`
+
+**Causa (confirmada en el código y en el log de Railway).** `conversationRelayHandler.ts` llamaba
+`openai.chat.completions.create({ model, max_tokens, temperature, … })` para cualquier modelo, en
+el turno con herramientas y en la respuesta posterior a la herramienta. La familia `gpt-5.x` /
+`gpt-6.x` no acepta `max_tokens` en Chat Completions y vive en la Responses API; el GO Assistant y
+la Edge Function `ai-auto-response` ya lo resolvían, el servidor de voz no. Cada turno caía en el
+`catch` y Pedro decía «Disculpe, tuve un problema procesando su solicitud».
+
+**Cambio (regla 7: sin segunda implementación).** El handler llama al modelo por
+`openModelStream` de `src/lib/ai/agent/openaiAdapter.ts`, el mismo del GO Assistant:
+- Responses API para `gpt-5.x`/`gpt-6.x` (`max_output_tokens`, `instructions`, tools planas,
+  `function_call_output`, `store: false`), Chat Completions para los legacy.
+- Streaming por cláusulas hacia ConversationRelay (`sendText(ws, tokens, false)` y cierre con
+  `last: true` aunque el resto esté vacío; antes una respuesta terminada en puntuación dejaba la
+  frase abierta).
+- Tool calling con los `toolDefinitions` del runtime; la respuesta posterior a la herramienta
+  también va en streaming (antes era una llamada sin stream: silencio hasta tener la respuesta
+  completa) y puede encadenar herramientas hasta `MAX_TOOL_ROUNDS = 3`.
+- Respaldo: si el modelo configurado falla al abrir el stream, responde `EMERGENCY_MODEL` y queda
+  en el log con el prefijo `[CR] [<CallSid>]` (nuevo `logTag` del adaptador). La frase de error
+  solo se dice si fallan los dos.
+- Parámetros por modelo (`responsesParamsFor`, en el adaptador, sirve también al asistente):
+  el SDK instalado (`openai` 6.15.0, `resources/shared.d.ts`, `Reasoning.effort`) documenta que
+  `gpt-5.1`+ admite `effort: 'none'` y los anteriores (`gpt-5`, `gpt-5-mini`, `gpt-5-nano`) solo
+  desde `minimal`. `none` + `temperature` para 5.1+/6.x (lo que ya usaban el asistente y la Edge
+  Function con `gpt-5.6-luna`); `minimal` sin `temperature` para `gpt-5`/`-mini`/`-nano`; nada
+  para `gpt-5-pro`. Antes el adaptador mandaba `none` + `temperature` a cualquier `gpt-5*`.
+
+**Latencia esperada.** El primer audio de cada turno depende del primer token del modelo más la
+primera cláusula. Con `effort: 'none'` no hay fase de razonamiento, así que el tiempo hasta el
+primer token es el de un modelo sin razonamiento (del orden de cientos de ms, no medido en esta
+cuenta), y el texto sale hacia Twilio en cuanto aparece `, . ; : ! ?`. El respaldo al modelo de
+emergencia añade el tiempo del intento fallido (un 400 vuelve rápido). La demora «al principio»
+que notó el dueño coincide con el saludo que no sonó (16.2) y con el primer turno fallido.
+
+### 16.2 El saludo no sonó: `Error converting tokens to speech, code: 64111`
+
+**Lo que dice Twilio.** 64111 = «ConversationRelay: TTS provider service error»: los tokens no se
+pudieron convertir en voz por un error en el servicio del proveedor de TTS; la solución que
+indica es vigilar o cambiar temporalmente a otro proveedor de TTS. Es distinto de 64112 (error de
+conversión por parámetros). Fuente: https://www.twilio.com/docs/api/errors/64111 (y 64112).
+
+**Lo que se descartó.** El fallo afecta al `welcomeGreeting`, texto fijo que no pasa por el
+modelo, así que no es el 400 de 16.1. El TwiML ya salía con el formato documentado de
+ConversationRelay para ElevenLabs: `ttsProvider="ElevenLabs"`, `voice="{voiceId}-flash_v2_5"`
+(`crVoiceModelSuffix`), `language`/`ttsLanguage="es-MX"` (`es-CO` no existe en Twilio,
+`twilioLanguage`). Formato: https://www.twilio.com/docs/voice/conversationrelay/voice-configuration
+(el `voice` es el id de la voz, opcionalmente `-modelo` con `flash_v2_5` por defecto, `flash_v2`,
+`turbo_v2_5`, `turbo_v2`, y opcionalmente `-velocidad_estabilidad_similitud`).
+
+**Causa más probable (no confirmada con Twilio).** La voz del agente es la fila `voices`
+`a4b4ca3c-…` (`kind = library`, `provider_voice_id = O00tZiHVGzUDE9eqys2a`). Consultada en la API
+de ElevenLabs: es una voz de la **biblioteca comunitaria** (`is_library_voice: true`) de categoría
+**`professional`** (clon profesional de un tercero, acento `es-argentine`). ConversationRelay
+sintetiza con la integración de ElevenLabs **de Twilio**, no con la cuenta de ElevenLabs de la
+organización, y la guía de voces de ConversationRelay ofrece un buscador de voces de ElevenLabs
+para copiar el id; ni la guía ni el anuncio de la integración dicen que admita voces de la
+biblioteca comunitaria o clones profesionales (la sección 15.9 ya dejaba como NO VERIFICADO «la
+credencial de ElevenLabs del lado de Twilio, imprescindible para que ConversationRelay use una
+voz clonada»). Con el resto del TwiML en el formato documentado, la voz es la única pieza no
+estándar. **Para confirmarlo**: repetir la llamada con una voz tomada del buscador de la guía de
+voces de ConversationRelay; si suena, la causa queda confirmada.
+- Nota: las páginas de Twilio no se pudieron abrir desde el entorno de trabajo (proxy de salida);
+  el contenido citado sale de los extractos del buscador sobre esas URLs oficiales.
+
+**Cambio: respaldo de TTS** (`src/lib/services/crm/voiceAgent/ttsFallback.ts`).
+- El TwiML `/api/voice/twiml/ai-agent` añade dentro de `<ConversationRelay>` un
+  `<Language code="es-US" ttsProvider="Google" voice="es-US-Journey-D"/>` y un
+  `<Parameter name="ttsFallbackLanguage" value="es-US"/>`. La voz principal no cambia.
+- El ws-server atiende `{"type":"error"}`: si es 64111/64112 y hay respaldo, manda
+  `{"type":"language","ttsLanguage":"es-US"}` (mensaje documentado para cambiar el idioma/TTS de
+  las síntesis siguientes; la transcripción no se toca) y reenvía la frase que no sonó. Si el error
+  del saludo llega mientras el `setup` aún lee la base, el saludo se repite al terminar. Una sola
+  vez por llamada: si el respaldo también falla, se registra y no hay bucle. Todo queda en el log
+  con org, voz y código.
+- Configuración, nunca cableada: `VOICE_AGENT_TTS_FALLBACK_PROVIDER` (`Google` | `Amazon` |
+  `ElevenLabs` | `off`), `VOICE_AGENT_TTS_FALLBACK_LANGUAGE`, `VOICE_AGENT_TTS_FALLBACK_VOICE`
+  (ver `.env.example`; se leen en Vercel, que emite el TwiML). Los defaults son la voz de Google
+  es-US que lista la guía de voces de ConversationRelay. Si `code` coincide con el idioma
+  principal no se declara respaldo (un `<Language>` con el mismo código sustituiría la
+  configuración principal).
+- **Pendiente para la org 125 (dato, no código):** elegir para el agente una voz del catálogo de
+  ConversationRelay. Con el respaldo, la llamada ya no queda muda, pero sonará con la voz de Google.
+- ⚠️ NO VERIFICADO contra Twilio: que `es-US-Journey-D` siga disponible (Google renombró la
+  familia Journey); si Twilio la rechaza, basta cambiar `VOICE_AGENT_TTS_FALLBACK_VOICE`.
+
+### 16.3 Pruebas y verificación
+
+| Comando | Resultado |
+|---|---|
+| `npx jest src/__tests__/voz/agenteVozModeloYTts.test.ts` | parámetros por modelo (gpt-4o, gpt-5, gpt-5-mini, gpt-5-pro, gpt-5.6-luna, gpt-6), handler real con SDK simulado: sin `max_tokens` a gpt-5.x, streaming con `last`, tool calling por Responses API, respaldo a `EMERGENCY_MODEL`, frase de error solo si fallan los dos, respaldo de TTS ante 64111 (antes y después del setup, sin bucle) |
+| `npx jest src/__tests__/voz/twimlVozRespaldoTts.test.ts` | formato ElevenLabs/idioma, `resolveTtsFallback`, detección 64111/64112 y la ruta real del TwiML con `<Language>` + `<Parameter>` |
+| `npx jest src/__tests__/voz src/lib/services/crm/__tests__ src/lib/ai src/__tests__/guardrails.test.ts src/__tests__/infra src/__tests__/services` | verde salvo `f6Adversarial` H2 (middleware), que falla igual sin este cambio |
+| `npx jest` (completa) | rojas ajenas y previas: `sectionContract` (2), `f10Proposals.contract` (4), `testerR4.f0sec` caso 21, `f6Adversarial` H2; comprobadas iguales sin este cambio |
+| `NODE_OPTIONS=--max-old-space-size=8192 npx tsc --noEmit -p tsconfig.json` | 0 errores |
+| `npx tsx ws-server.ts` sin credenciales | arranca, `/health` responde `ok`; el upgrade sin `WS_PUBLIC_URL` se rechaza (403), como debe |

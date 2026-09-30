@@ -26,6 +26,7 @@ import {
   type VoiceAgentCallLiveStatus,
 } from '@/lib/services/crm/voiceAgent/callStatusMap';
 import { devolverReservaSinConversacion, sinConversacion } from '@/lib/services/crm/voiceAgent/reservaCreditos';
+import { sweepStalledCalls } from '@/lib/services/crm/voiceAgent/stalledCallsSweeper';
 
 export const runtime = 'nodejs';
 
@@ -89,6 +90,10 @@ export async function POST(request: Request) {
       console.warn('[AI Agent status] AccountSid ajeno a la org de la llamada', { org: vac.organization_id });
       return new NextResponse('Forbidden', { status: 403 });
     }
+
+    // D-17: barrido proactivo de llamadas atascadas de esta organización.
+    // Ejecutamos en cada status callback para que canDial no quede bloqueado.
+    await sweepStalledCalls(vac.organization_id, supabase);
 
     const callStatus = params.CallStatus || params.SessionStatus || '';
     const answeredBy = params.AnsweredBy || null;

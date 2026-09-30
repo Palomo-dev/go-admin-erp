@@ -1454,6 +1454,11 @@ interface DialOutcome {
 async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
   const { supabase, orgId, campaign, vac, twilioClient, fromNumber, webhookBase, recording } = p;
 
+  // D-17: barrido proactivo de llamadas atascadas antes de marcar una nueva.
+  // Libera concurrencia fantasma y previene que canDial quede bloqueado.
+  const { sweepStalledCalls } = await import('./voiceAgent/stalledCallsSweeper');
+  await sweepStalledCalls(orgId, supabase);
+
   if (!vac.customer_id) {
     await releaseCall(supabase, vac.id, 'skipped', 'La llamada no tiene cliente asociado', null);
     return { initiated: false, reason: 'sin cliente' };

@@ -35,6 +35,10 @@ function fakeClient() {
 }
 
 let answeredBy: string | undefined;
+
+// D-10: configurar WS_PUBLIC_URL para que el test funcione
+process.env.WS_PUBLIC_URL = 'wss://test.example.com';
+
 jest.mock('@/lib/security/webhookSignatures', () => ({
   verifyTwilioWebhook: jest.fn(async () => ({ params: { CallSid: 'CA1', ...(answeredBy ? { AnsweredBy: answeredBy } : {}) }, accountSid: 'AC1' })),
   WebhookError: class extends Error {},

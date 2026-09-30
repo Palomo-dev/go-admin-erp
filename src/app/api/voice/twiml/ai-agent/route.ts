@@ -81,6 +81,7 @@ import { recordConsent, recordingEnabledForCall, voidConsentWithoutRecording } f
 import { updateCall } from '@/lib/services/crm/callManagementService';
 import { cierrePorAmd } from '@/lib/services/crm/voiceAgent/amd';
 import { devolverReservaSinConversacion } from '@/lib/services/crm/voiceAgent/reservaCreditos';
+import { resolveTtsFallback, TTS_FALLBACK_PARAM } from '@/lib/services/crm/voiceAgent/ttsFallback';
 
 export const runtime = 'nodejs';
 
@@ -380,11 +381,22 @@ export async function POST(request: Request) {
       attr('dtmfDetection', 'true') +
       attr('reportInputDuringAgentSpeech', 'none');
 
+    // Respaldo de TTS (2026-09-30, error 64111): una segunda configuración de
+    // voz que el ws-server activa con un mensaje `language` si la voz principal
+    // no se puede sintetizar. Ver `voiceAgent/ttsFallback.ts`.
+    const ttsFallback = resolveTtsFallback(config.voice, language);
+    const fallbackNodes = ttsFallback
+      ? `
+      <Language${attr('code', ttsFallback.code)}${attr('ttsProvider', ttsFallback.ttsProvider)}${attr('voice', ttsFallback.voice)}
+      />
+      <Parameter name="${TTS_FALLBACK_PARAM}" value="${escapeXml(ttsFallback.code)}" />`
+      : '';
+
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>${startRecording}
   <Connect action="${escapeXml(`${origin}/api/voice/ai-agent/status?callId=${encodeURIComponent(callId)}&handoff=1`)}">
     <ConversationRelay${relayAttrs}
-    >
+    >${fallbackNodes}
       <Parameter name="agentId" value="${escapeXml(agentId)}" />
       <Parameter name="callId" value="${escapeXml(callId)}" />
       <Parameter name="orgId" value="${agentOrgId}" />

@@ -9624,6 +9624,7 @@
       "SIN_SKU": "SKU is missing",
       "SIN_NOMBRE": "Name is missing",
       "PADRE_NO_ENCONTRADO": "Parent SKU does not exist",
+      "VARIANTE_PADRE_ELIMINADO": "The variant belongs to a deleted product: restore the parent product first",
       "STOCK_SIN_COSTO": "Stock without cost: the stock ledger requires a cost",
       "PRECIO_INVALIDO": "Invalid price",
       "COSTO_INVALIDO": "Invalid cost",
@@ -11342,6 +11343,7 @@
       "sin_permiso": "You don't have permission for this action on products.",
       "producto_no_encontrado": "The product doesn't exist or doesn't belong to your organization.",
       "variante_no_encontrada": "The variant doesn't exist.",
+      "variante_padre_eliminado": "The parent product is deleted: restore it before activating or creating its variants.",
       "sku_requerido": "SKU is required.",
       "sku_duplicado": "A product with SKU {detalle} already exists.",
       "sku_variante_repetido": "Two variants (or a variant and the product) have the same SKU.",
@@ -13236,6 +13238,7 @@
     "precioNoConsultado": "“{producto}” was not added: its price could not be loaded. Check the connection and try again.",
     "errores": {
       "producto_invalido": "A line has a product that does not belong to this organization. Remove it and add it again. {detalle}",
+      "producto_eliminado": "A product in this sale was deleted from inventory: remove it from the sale. If the sale was made before it was deleted, restore it in Inventory and retry. {detalle}",
       "descuento_excede_linea": "A line's discount is greater than its value. Fix the discount. {detalle}",
       "modificador_invalido": "A modifier on the line is no longer set up for the product. Remove the line and add it again. {detalle}",
       "precio_no_vigente": "A product has no current price: set its price in Inventory. {detalle}",
@@ -15239,6 +15242,7 @@
       "cliente_invalido": "The customer does not belong to the organization.",
       "linea_invalida": "Check the lines: description, quantity and price.",
       "producto_invalido": "A product on the invoice does not belong to the organization.",
+      "producto_eliminado": "A product on the invoice was deleted from inventory: remove it or restore it in Inventory.",
       "vendedor_invalido": "The salesperson is not a member of the organization."
     },
     "listado": {

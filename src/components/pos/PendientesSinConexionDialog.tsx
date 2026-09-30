@@ -30,6 +30,7 @@ import { retryCashOutboxRecord } from '@/lib/offline/cashSync';
 import { OUTBOX_CHANGED_EVENTS } from '@/lib/offline/outboxCounts';
 import { runSyncStages } from '@/lib/offline/syncOrchestrator';
 import { registerDefaultSyncStages } from '@/lib/offline/syncStages';
+import { mensajeErrorOutbox } from '@/lib/pos/erroresCobro';
 
 /**
  * Bandeja unificada de lo hecho sin conexión (Desktop, fases 4B/4D/4F):
@@ -163,6 +164,7 @@ export function PendientesSinConexionDialog() {
   const { formatDateTime } = useFormatDate();
   const { formatear } = useMonedaOrganizacion();
   const t = useTranslations('posVenta.pendientesSinConexion');
+  const tCobro = useTranslations('posCobroServidor');
 
   const reload = useCallback(async () => {
     try {
@@ -273,7 +275,9 @@ export function PendientesSinConexionDialog() {
           </span>
         </div>
         {row.lastError && (
-          <p className="text-xs rounded bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300 px-2 py-1 break-words">{row.lastError}</p>
+          <p className="text-xs rounded bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300 px-2 py-1 break-words">
+            {row.kind === 'sale' ? mensajeErrorOutbox(row.lastError, tCobro) : row.lastError}
+          </p>
         )}
         <div className="flex flex-wrap gap-2">
           {row.status !== 'synced' && (

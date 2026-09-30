@@ -52,6 +52,31 @@ export function usesResponsesApi(model: string): boolean {
  */
 export const EMERGENCY_MODEL = 'gpt-4o-mini';
 
+/**
+ * Parámetros de razonamiento y muestreo que admite un modelo de la Responses API.
+ *
+ * Según la documentación del SDK instalado (`openai` 6.15.0,
+ * `resources/shared.d.ts` → `Reasoning.effort`):
+ * - `gpt-5.1` en adelante (y `gpt-6.x`) admiten `effort: 'none'`: no razona, que
+ *   es lo que se quiere en chat y en voz (menos latencia hasta el primer token).
+ *   Con `none` también se acepta `temperature`.
+ * - Los modelos ANTERIORES a `gpt-5.1` (`gpt-5`, `gpt-5-mini`, `gpt-5-nano`) no
+ *   admiten `none`: el mínimo es `minimal`. Esos modelos tampoco aceptan
+ *   `temperature` (responden 400 `Unsupported parameter`), así que no se envía.
+ * - `gpt-5-pro` solo admite `high`: no se envía `reasoning` ni `temperature`.
+ *
+ * Antes el adaptador mandaba `none` + `temperature` a cualquier `gpt-5*`, que
+ * sirve para `gpt-5.6-*` pero rompe `gpt-5-mini` si una organización lo elige.
+ */
+export function responsesParamsFor(
+  model: string,
+  temperature: number
+): { reasoning?: { effort: 'none' | 'minimal' }; temperature?: number } {
+  if (/^gpt-5-pro/.test(model)) return {};
+  if (/^gpt-5(-|$)/.test(model)) return { reasoning: { effort: 'minimal' } };
+  return { reasoning: { effort: 'none' }, temperature };
+}
+
 export interface AdapterMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string | null;
@@ -81,6 +106,12 @@ export interface AdapterRequest {
   tools: AdapterTool[];
   temperature: number;
   maxTokens: number;
+  /**
+   * Prefijo del log cuando se cae al modelo de emergencia. Por defecto
+   * `[GO Assistant]`; el agente de voz pasa `[CR]` para que el fallo aparezca
+   * junto al resto de su traza en Railway.
+   */
+  logTag?: string;
 }
 
 export interface AdapterStream {
@@ -213,10 +244,10 @@ async function* responsesStream(req: AdapterRequest): AsyncGenerator<AdapterChun
     model: req.model,
     instructions,
     input: input as never,
-    temperature: req.temperature,
     max_output_tokens: req.maxTokens,
-    // Respuestas de chat: no se quiere que gaste tokens razonando.
-    reasoning: { effort: 'none' } as never,
+    // Respuestas de chat y de voz: el razonamiento mínimo que admita el modelo,
+    // y `temperature` solo si el modelo la acepta (ver `responsesParamsFor`).
+    ...(responsesParamsFor(req.model, req.temperature) as Record<string, never>),
     // Datos de clientes: no se guardan en OpenAI (ANEXO-B §4.2).
     store: false,
     stream: true,
@@ -299,7 +330,7 @@ export async function openModelStream(req: AdapterRequest): Promise<AdapterStrea
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     console.error(
-      `[GO Assistant] El modelo ${req.model} falló al abrir el stream (${detail}). ` +
+      `${req.logTag ?? '[GO Assistant]'} El modelo ${req.model} falló al abrir el stream (${detail}). ` +
         `Se responde con ${EMERGENCY_MODEL}. Revisar acceso al modelo en la cuenta de OpenAI.`
     );
     const fallback = chatCompletionsStream({ ...req, model: EMERGENCY_MODEL });

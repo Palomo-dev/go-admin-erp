@@ -2,14 +2,19 @@
  * GET /api/crm/voice-agents/campaigns/diagnostics — por qué no llama nadie.
  *
  * Lectura, así que basta con ser miembro activo: la organización sale de la
- * sesión (`withOrg` → `getServerOrgContext`) y el diagnóstico se hace con el
- * cliente del usuario, bajo RLS. No devuelve ninguna credencial: solo códigos de
- * motivo y contadores (ver `voiceCampaignDiagnostics.ts`).
+ * sesión (`withOrg` → `getServerOrgContext`). El diagnóstico usa el cliente de
+ * SERVICIO, como `run-now`: repite las barreras del despachador y una de ellas
+ * lee `comm_settings`, que solo concede SELECT a `service_role` (guarda
+ * credenciales de Twilio). Con el cliente del usuario fallaba con 42501 y el
+ * panel escondía «Ejecutar ahora». Toda consulta del diagnóstico filtra por la
+ * organización ya validada y no devuelve credenciales: solo códigos de motivo y
+ * contadores (ver `voiceCampaignDiagnostics.ts`).
  */
 
 import { NextResponse } from 'next/server';
 import { hasOrgAdminOrPermission, withOrg } from '@/lib/utils/orgContext';
 import { diagnosticarCampanasDeVoz } from '@/lib/services/crm/voiceCampaignDiagnostics';
+import { getServiceClient } from '@/lib/supabase/server-service';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,7 +26,7 @@ export const GET = withOrg(async (ctx) => {
     // un botón que va a devolver 403, y el permiso no se deduce de ningún dato
     // del cliente ni del nombre del rol (regla dura 6).
     const [data, puedeEjecutar] = await Promise.all([
-      diagnosticarCampanasDeVoz(ctx.organizationId, ctx.supabase),
+      diagnosticarCampanasDeVoz(ctx.organizationId, getServiceClient()),
       hasOrgAdminOrPermission(ctx),
     ]);
     return NextResponse.json(

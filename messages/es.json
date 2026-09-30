@@ -9624,6 +9624,7 @@
       "SIN_SKU": "Falta el SKU",
       "SIN_NOMBRE": "Falta el nombre",
       "PADRE_NO_ENCONTRADO": "El SKU padre no existe",
+      "VARIANTE_PADRE_ELIMINADO": "La variante es de un producto eliminado: restaura el producto padre primero",
       "STOCK_SIN_COSTO": "Stock sin costo: el kardex exige costo",
       "PRECIO_INVALIDO": "Precio no válido",
       "COSTO_INVALIDO": "Costo no válido",
@@ -11342,6 +11343,7 @@
       "sin_permiso": "No tienes permiso para esta acción sobre productos.",
       "producto_no_encontrado": "El producto no existe o no pertenece a tu organización.",
       "variante_no_encontrada": "La variante no existe.",
+      "variante_padre_eliminado": "El producto padre está eliminado: restáuralo antes de activar o crear sus variantes.",
       "sku_requerido": "El SKU es obligatorio.",
       "sku_duplicado": "Ya existe un producto con el SKU {detalle}.",
       "sku_variante_repetido": "Dos variantes (o una variante y el producto) tienen el mismo SKU.",
@@ -13236,6 +13238,7 @@
     "precioNoConsultado": "No se agregó «{producto}»: no se pudo consultar su precio. Revise la conexión e intente de nuevo.",
     "errores": {
       "producto_invalido": "Una línea tiene un producto que no es de esta organización. Quítela y vuelva a agregarla. {detalle}",
+      "producto_eliminado": "Un producto de la venta fue eliminado del inventario: quítelo de la venta. Si la venta se hizo antes de eliminarlo, restáurelo en Inventario y reintente. {detalle}",
       "descuento_excede_linea": "El descuento de una línea es mayor que su valor. Corrija el descuento. {detalle}",
       "modificador_invalido": "Un modificador de la línea ya no está configurado para el producto. Quite la línea y agréguela de nuevo. {detalle}",
       "precio_no_vigente": "Un producto no tiene precio vigente: configure su precio en Inventario. {detalle}",
@@ -15239,6 +15242,7 @@
       "cliente_invalido": "El cliente no es de la organización.",
       "linea_invalida": "Revisa las líneas: descripción, cantidad y precio.",
       "producto_invalido": "Un producto de la factura no es de la organización.",
+      "producto_eliminado": "Un producto de la factura está eliminado del inventario: quítelo o restáurelo en Inventario.",
       "vendedor_invalido": "El vendedor no es miembro de la organización."
     },
     "listado": {

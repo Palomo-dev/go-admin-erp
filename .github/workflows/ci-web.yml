@@ -2,6 +2,7 @@ name: CI Web
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     branches: [main]
     paths:
       - 'src/**'
@@ -22,8 +23,17 @@ on:
       - 'package.json'
       - 'tsconfig.json'
 
+# Ahorro de minutos de Actions (2026-09-30: se agotaron con los PR del bot):
+# en un PR, un commit nuevo cancela la corrida anterior de ese mismo PR; en
+# main no se cancela nada (cada commit conserva su resultado). Los PR en
+# borrador no corren: el CI arranca al marcarlos «listo para revisión».
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   lint:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     name: ESLint
     runs-on: ubuntu-latest
     steps:
@@ -39,6 +49,7 @@ jobs:
         # Cuando P1-3 termine, quitar continue-on-error para que rompa el build.
 
   typecheck:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     name: TypeScript (tsc --noEmit)
     # Compuerta de tipos del repo. Vercel y el build del desktop no la hacen
     # dentro de `next build` (NEXT_SKIP_TYPECHECK=1): necesita ~8 GB de heap.
@@ -58,6 +69,7 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=8192
 
   timezone-tests:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     # Matriz multi-pais (fase A2). Las seis zonas cubren los casos que
     # rompian el codigo: sin DST y offset entero (Bogota), sin DST pero
     # otro offset (Ciudad de Mexico, sin DST desde 2022), DST del
@@ -88,6 +100,7 @@ jobs:
           TZ: ${{ matrix.tz }}
 
   full-suite-tz:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     # La suite COMPLETA solo en dos zonas. Ver
     # docs/adr/ADR-002-dst-y-matriz-de-zonas.md: correrla en las seis
     # multiplicaria por tres el tiempo de CI y metaria en la matriz

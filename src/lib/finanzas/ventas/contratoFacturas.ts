@@ -23,6 +23,8 @@ export const ERRORES_FACTURA = [
   'cliente_invalido',
   'linea_invalida',
   'producto_invalido',
+  // Alta con un producto eliminado (fn_producto_exigir_vendible, 20260930234100).
+  'producto_eliminado',
   'vendedor_invalido',
   'numero_duplicado',
 ] as const;

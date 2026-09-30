@@ -37,6 +37,7 @@ import { FacebookFeedDialog, type PestanaMeta } from './FacebookFeedDialog';
 import { ImprimirEtiquetasDialog } from './etiquetas/ImprimirEtiquetasDialog';
 import { GenerarCodigosDialog } from './etiquetas/GenerarCodigosDialog';
 import type { CodigoAsignado } from '@/lib/services/codigosBarrasService';
+import { ErrorProducto, productoService } from '@/lib/services/productoService';
 
 /** 'normal' = esqueleto hasta el primer lote · 'suave' = conserva la lista (búsqueda) · 'silencioso' = reemplaza al final. */
 type ModoCarga = 'normal' | 'suave' | 'silencioso';
@@ -441,14 +442,19 @@ const CatalogoProductos: React.FC = () => {
 
   const handleConfirmDelete = async () => {
     const producto = productoAEliminar;
-    if (!producto) return;
+    if (!producto || !organization?.id) return;
     const id = Number(producto.id);
     try {
       setActionLoading(true);
-      // Función RPC con SECURITY DEFINER para evitar problemas de RLS
-      const { data: rpcResult, error: rpcError } = await supabase.rpc('soft_delete_product', { p_product_id: id });
-      if (rpcError) throw new Error(rpcError.message || t('catalogo.errorEliminar'));
-      if (!rpcResult) throw new Error(t('catalogo.sinPermisoEliminar'));
+      // El mismo camino que el detalle: `fn_producto_cambiar_estado` exige
+      // `inventory.delete` en el servidor, y si es un padre sus variantes caen
+      // con él en la misma operación (disparador de cascada, 20260930233000).
+      try {
+        await productoService.cambiarEstado(organization.id, id, 'deleted');
+      } catch (e) {
+        if (e instanceof ErrorProducto && e.codigo === 'sin_permiso') throw new Error(t('catalogo.sinPermisoEliminar'));
+        throw new Error(mensajeDe(e) || t('catalogo.errorEliminar'));
+      }
 
       toast({ title: t('catalogo.eliminado'), description: t('catalogo.eliminadoDetalle') });
       // Quitarlo de la vista y de la selección

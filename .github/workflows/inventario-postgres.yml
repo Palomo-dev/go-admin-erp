@@ -9,6 +9,7 @@ name: Inventario Postgres
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     branches: [main]
   push:
     branches: [main]
@@ -19,8 +20,17 @@ on:
     - cron: '0 13 * * *'
   workflow_dispatch:
 
+# Ahorro de minutos de Actions (2026-09-30: se agotaron con los PR del bot):
+# en un PR, un commit nuevo cancela la corrida anterior de ese mismo PR; en
+# main no se cancela nada (cada commit conserva su resultado). Los PR en
+# borrador no corren: el CI arranca al marcarlos «listo para revisión».
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   current-date:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     name: Ninguna funcion nueva decide el dia en UTC
     runs-on: ubuntu-latest
     steps:

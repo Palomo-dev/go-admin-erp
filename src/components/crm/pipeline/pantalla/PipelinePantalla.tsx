@@ -162,10 +162,13 @@ export function PipelinePantalla() {
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-2">
+            {/* En móvil no hay pestañas: sin el espaciador, el buscador ocupa el ancho (PATRONES §3). */}
             {escritorio && (
-              <TabBar id="pipeline-vista" etiqueta={t('vistas.aria')} valor={vista} onValorChange={setVista} pestanas={(['kanban', 'tabla', 'pronostico', 'clientes', 'automatizacion'] as const).map((v) => ({ valor: v, etiqueta: t(`vistas.${v}`) }))} />
+              <>
+                <TabBar id="pipeline-vista" etiqueta={t('vistas.aria')} valor={vista} onValorChange={setVista} pestanas={(['kanban', 'tabla', 'pronostico', 'clientes', 'automatizacion'] as const).map((v) => ({ valor: v, etiqueta: t(`vistas.${v}`) }))} />
+                <span className="flex-1" />
+              </>
             )}
-            <span className="flex-1" />
             {(vista === 'kanban' || vista === 'tabla') && (
               <>
                 <SearchInput value={filtros.q} onChange={(q) => setFiltros({ ...filtros, q })} placeholder={t('buscar')} etiqueta={t('buscar')} cargando={tablero.cargando} className="min-w-0 flex-1 sm:w-72 sm:flex-none" />

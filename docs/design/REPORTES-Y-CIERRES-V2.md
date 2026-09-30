@@ -283,3 +283,207 @@ incluye ya «14 Reportes» en la lista de páginas.
 | 01 Sistema | 0 | 0 | 0 | 0 | 0 |
 | 09 Documentos | 0 | 0 | 0 | 0 | 34 (la sección de componentes de Documentos que ya existía y está documentada; no se creó ninguno) |
 | 14 Reportes | 0 | 0 | 0 | 0 | 0 |
+
+## 9. Tipografía unificada en componentes y documentos (2026-09-30)
+
+Todos los componentes compartidos del archivo y todos los documentos usan ya
+solo los 9 estilos de texto aprobados de 01 Sistema. Eso incluye:
+
+- las secciones de componentes de 02, 03, 04, 05, 09 y 10;
+- el componente `DocumentoImpreso` (`731:21879`);
+- todas las secciones de documentos de 09.
+
+La regla quedó en el Léeme de 01 Sistema, apartado «Tipografía — regla única».
+
+| Estilo | Tamaño / interlínea | Peso |
+|---|---|---|
+| Display | 28 / 36 | Semi Bold |
+| H1 | 22 / 28 | Semi Bold |
+| H2 | 18 / 24 | Semi Bold |
+| H3 | 16 / 22 | Semi Bold |
+| Body | 14 / 20 | Regular |
+| Body-medium | 14 / 20 | Medium |
+| Small | 13 / 18 | Regular |
+| Caption | 12 / 16 | Medium |
+| Label | 12 / 16 | Semi Bold |
+
+**Equivalencia usada para migrar cada texto suelto:**
+
+| Tamaño original | Estilo |
+|---|---|
+| 26 o más | Display |
+| 20 a 25 | H1 |
+| 17 a 19 | H2 |
+| 15 a 16 | H3 si es negrita o media; si no, Body |
+| 14 | Body-medium si es negrita o media; si no, Body |
+| 13 | Body-medium si es negrita o media; si no, Small |
+| 12 o menos | Label si es negrita; si no, Caption |
+
+El piso es 12 px.
+
+**Excepciones:**
+
+- el isotipo, la marca, `OrgAvatar` y los fundamentos de marca;
+- la lectura de báscula de 44 px;
+- los textos con estilos mezclados: `CartLine`, `PantallaArranque` y `Firma`;
+- los textos dentro de instancias, que heredan de su componente.
+
+### Qué cambió
+
+- **Componentes de 02:**
+  - Se corrigieron 53 textos que se salían de su contenedor.
+  - Se resolvieron los solapes que aparecieron al crecer los textos: `166:7945`,
+    `237:76686`, `638:37528`, `680:406327`, `405:156742`, `302:9990` y
+    `690:17077`.
+  - Resultado: 0 solapes.
+- **Componentes de 10:** `SettingRow`, `SettingsSaveBar` y `SecretField`
+  crecieron 48 px de ancho y `ConfigNav` 48 px de alto.
+- **Componentes de documentos en 09:**
+  - `Doc/Campo`, `Doc/Sello de firma` y `Doc/Paginación` pasaron a abrazar su
+    contenido.
+  - La etiqueta de 50 × 25 mm conserva su alto fijo de 95 px: se redujeron el
+    relleno y el espaciado.
+- **`DocumentoImpreso`:**
+  - 756 textos con estilo.
+  - Se ajustaron las columnas de soporte, recibo, estado de cuenta y factura
+    (por ejemplo, «Dcto.» pasó de 52 a 61 px).
+  - Todas las variantes Carta caben en 1056 px. El tiquete de 80 mm mide 482 px.
+- **Documentos de 09:**
+  - 67 columnas ajustadas y 233 textos puestos a «rellenar».
+  - 89 celdas de la matriz del motor ampliadas.
+  - Segunda pasada, sobre textos cortos (números, porcentajes y encabezados)
+    que se partían en dos líneas:
+    - 25 textos tenían alto fijo y se veían cortados; ahora crecen en alto.
+    - 76 textos se pusieron a «rellenar» dentro de su celda.
+    - 44 columnas se ensancharon en todas las filas, quitándole el mismo ancho
+      a la columna con más holgura medida.
+    - En las 36 celdas de participación (barra y porcentaje), la barra rellena
+      y el porcentaje toma el ancho natural del mayor valor de su columna, así
+      que todas las barras terminan alineadas.
+- **Texto huérfano:** «Nota crédito» (`405:156907`) estaba suelto en
+  «Componentes — Documentos». Se movió a 99 Descartes.
+
+### Decisiones y costos
+
+- **Mayúsculas.** Aplicar un estilo reinicia la transformación a mayúsculas,
+  y volver a ponerla desvincula el estilo. Se quitó, igual que en las
+  pantallas aprobadas de 14. Si un rótulo va en mayúsculas, se escribe así.
+- **Páginas más altas que el papel.** Con el piso de 12 px, varias páginas
+  Carta o A4 quedan más altas que su tamaño estándar. No se partieron en
+  páginas nuevas: se muestra el flujo continuo y el motor de impresión
+  pagina. El pie legal se re-ancló a su margen original, y las referencias
+  entre páginas (por ejemplo, «pág. 7» en el índice del cierre) no cambian.
+
+  | Documento | Alto (px) |
+  |---|---|
+  | Factura de venta: página 1, página 2 y en USD | 1535, 1432 y 1453 |
+  | Factura de compra | 1546 |
+  | Cotización | 1495 |
+  | Nota crédito | 1314 |
+  | Estado Borrador | 1510 |
+  | Estados Anulada, Pagada y Con saldo pendiente | 1535 |
+  | Estado Sin logo | 1551 |
+  | Media carta (estándar 528) | 756 |
+  | Orden de compra: Carta enviada, A4 enviada (estándar 1123) y Carta borrador | 1543, 1543 y 1555 |
+  | Cierre de caja, página 1 | 1205 |
+  | Arqueo | 1158 |
+  | Estados de cuenta de cliente y de proveedor | 1240 |
+  | Cierre de periodo: páginas 2, 3, 6 y 7 | 1159, 1116, 1192 y 1167 |
+
+  La página 8 del cierre se compactó y volvió a 1056.
+- **Textos que se envuelven a propósito.** Algunas etiquetas largas no tienen
+  columna vecina con holgura y se envuelven en dos líneas, que en un
+  documento es correcto. Por ejemplo: las sesiones del cuadre de cajas
+  («#119 · Caja 2 Centro»), las filas de la matriz del motor, «Documento
+  abonado» y «22/09/2026 09:41». En los documentos nunca se trunca. La
+  excepción son las etiquetas de producto, que tienen un tamaño físico fijo.
+- **Sin reversión automática.** No se guardó el tamaño original de cada
+  texto. Volver atrás exige el historial de versiones de Figma.
+- **Solapes previos que no se tocaron.** Fuera de las secciones trabajadas
+  quedan solapes que ya existían:
+  - notas apiladas en la misma posición en 03, 04, 05, 08 y 11;
+  - nodos fuera de su sección en 11 CRM («Red y gestión»);
+  - dos marcos grandes solapados en 03 y 05.
+
+  Van en una limpieza aparte.
+
+**Chequeo al cerrar:**
+
+| Página | Solapes entre secciones | Solapes dentro de las secciones trabajadas | Textos sin estilo en documentos | Textos de alto fijo |
+|---|---|---|---|---|
+| 01 Sistema | 0 | 0 | — | — |
+| 02 Componentes | 0 | 0 | 0 (salvo las excepciones) | 0 en `DocumentoImpreso` |
+| 09 Documentos | 0 | 0 | 0 | 0 |
+
+## 10. Imágenes exportadas (2026-09-30)
+
+Se exportaron desde Figma a tamaño real y están en
+[`figma/reportes/`](figma/reportes/). Las del cierre y los documentos ya
+tienen la tipografía unificada.
+
+**Documento de cierre de periodo** (09, sección `1242:7891`):
+
+| Página | Imagen |
+|---|---|
+| 1 · Portada y resumen | [cierre-p01-portada.png](figma/reportes/cierre-p01-portada.png) |
+| 2–3 · Contabilidad | [cierre-p02.png](figma/reportes/cierre-p02.png) · [cierre-p03.png](figma/reportes/cierre-p03.png) |
+| 4 · Compras | [cierre-p04.png](figma/reportes/cierre-p04.png) |
+| 5–7 · Ventas y POS | [cierre-p05.png](figma/reportes/cierre-p05.png) · [cierre-p06.png](figma/reportes/cierre-p06.png) · [cierre-p07.png](figma/reportes/cierre-p07.png) |
+| 8 · Inventario | [cierre-p08.png](figma/reportes/cierre-p08.png) |
+| 9 · Finanzas y tesorería | [cierre-p09.png](figma/reportes/cierre-p09.png) |
+| 10 · Nómina | [cierre-p10.png](figma/reportes/cierre-p10.png) |
+| 11 · Clientes y otros módulos | [cierre-p11.png](figma/reportes/cierre-p11.png) |
+| 12 · Sucursales, método y firmas | [cierre-p12.png](figma/reportes/cierre-p12.png) |
+| Tiquetes de 80 mm | [cierre-tiquete-80mm-a.png](figma/reportes/cierre-tiquete-80mm-a.png) · [cierre-tiquete-80mm-b.png](figma/reportes/cierre-tiquete-80mm-b.png) |
+| Tipos de periodo | [cierre-tipos-de-periodo.png](figma/reportes/cierre-tipos-de-periodo.png) |
+
+**Centro de reportes v2** (14):
+
+| Pantalla | Imagen |
+|---|---|
+| Inicio: todos los módulos | [v2-inicio-todos-los-modulos.png](figma/reportes/v2-inicio-todos-los-modulos.png) |
+| Visor: estado de resultados (plantilla de todos los visores) | [v2-visor-estado-de-resultados.png](figma/reportes/v2-visor-estado-de-resultados.png) |
+| Diálogo: generar cierre por capítulos | [v2-dialogo-generar-cierre.png](figma/reportes/v2-dialogo-generar-cierre.png) |
+| Favoritos · Cierres · Programados · Historial | [v2-favoritos.png](figma/reportes/v2-favoritos.png) · [v2-cierres.png](figma/reportes/v2-cierres.png) · [v2-programados.png](figma/reportes/v2-programados.png) · [v2-historial.png](figma/reportes/v2-historial.png) |
+| Gerente de una sede | [v2-gerente-de-sede.png](figma/reportes/v2-gerente-de-sede.png) |
+| Diálogo: programar envío | [v2-dialogo-programar-envio.png](figma/reportes/v2-dialogo-programar-envio.png) |
+| Estados: cargando, sin datos, error y sin permiso | [estado-cargando.png](figma/reportes/estado-cargando.png) · [estado-sin-datos.png](figma/reportes/estado-sin-datos.png) · [estado-error.png](figma/reportes/estado-error.png) · [estado-sin-permiso.png](figma/reportes/estado-sin-permiso.png) |
+
+**Lista de reportes de cada módulo** (secciones 10–19). Los 78 visores
+comparten la plantilla del estado de resultados y están en Figma:
+
+| Módulo | Imagen |
+|---|---|
+| Contabilidad | [lista-10-contabilidad.png](figma/reportes/lista-10-contabilidad.png) |
+| Finanzas y tesorería | [lista-11-finanzas-tesoreria.png](figma/reportes/lista-11-finanzas-tesoreria.png) |
+| Ventas y POS | [lista-12-ventas-pos.png](figma/reportes/lista-12-ventas-pos.png) |
+| Inventario | [lista-13-inventario.png](figma/reportes/lista-13-inventario.png) |
+| Compras | [lista-14-compras.png](figma/reportes/lista-14-compras.png) |
+| Personas (nómina) | [lista-15-personas-nomina.png](figma/reportes/lista-15-personas-nomina.png) |
+| Clientes y CRM | [lista-16-clientes-crm.png](figma/reportes/lista-16-clientes-crm.png) |
+| Atención y mensajería | [lista-17-atencion-mensajeria.png](figma/reportes/lista-17-atencion-mensajeria.png) |
+| Operación y organización | [lista-18-operacion-organizacion.png](figma/reportes/lista-18-operacion-organizacion.png) |
+| No contratados | [lista-19-no-contratados.png](figma/reportes/lista-19-no-contratados.png) |
+
+**Filtros por franja, trabajador y productos vendidos** (secciones 3–7):
+
+| Pantalla | Imagen |
+|---|---|
+| Ventas por hora y por día | [filtro-ventas-por-hora-y-dia.png](figma/reportes/filtro-ventas-por-hora-y-dia.png) |
+| Productos vendidos en la franja | [filtro-productos-vendidos-en-franja.png](figma/reportes/filtro-productos-vendidos-en-franja.png) |
+| Ventas por trabajador | [filtro-ventas-por-trabajador.png](figma/reportes/filtro-ventas-por-trabajador.png) |
+| Historial de cierres (primera propuesta) | [cierres-historial-v1.png](figma/reportes/cierres-historial-v1.png) |
+
+**Móvil** (secciones 7 y 21):
+
+| Pantalla | Imagen |
+|---|---|
+| Inicio | [movil-inicio.png](figma/reportes/movil-inicio.png) |
+| Lista de Ventas y POS | [movil-lista-ventas-pos.png](figma/reportes/movil-lista-ventas-pos.png) |
+| Visor de ventas por hora | [movil-visor-ventas-por-hora.png](figma/reportes/movil-visor-ventas-por-hora.png) |
+| Cierres | [movil-cierres.png](figma/reportes/movil-cierres.png) |
+| Gerente de una sede | [movil-gerente-de-sede.png](figma/reportes/movil-gerente-de-sede.png) |
+| Selector de franja | [movil-selector-de-franja.png](figma/reportes/movil-selector-de-franja.png) |
+
+Los datos de las imágenes son ficticios: la empresa es «Mi empresa S.A.S.» y
+los nombres de las personas son inventados.

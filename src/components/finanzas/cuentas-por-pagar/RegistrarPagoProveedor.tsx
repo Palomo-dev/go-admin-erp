@@ -121,6 +121,8 @@ export function RegistrarPagoProveedor({
         numero: principal.numero ?? t('sinNumero'),
         tercero: contexto?.tercero?.nombre ?? null,
         total: principal.total,
+        retenido: principal.retenido ?? null,
+        pagado: principal.pagado ?? null,
         saldo: cuota ? Math.min(cuota.saldo, principal.saldo) : principal.saldo,
         vencimiento: principal.vencimiento ? formatDate(principal.vencimiento) : null,
       }

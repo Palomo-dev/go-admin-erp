@@ -1941,6 +1941,7 @@ describe('26b. Compras y CxP: una sola RPC para registrar la compra y nada escri
           'ProgramarPagoDialog.tsx',
           'AprobacionesPanel.tsx',
           'EstadoCuentaProveedorDialog.tsx',
+          'CertificadoRetencionesDialog.tsx',
           'PlanCuotasDialog.tsx',
           // BandaAntiguedad.tsx subió al kit (kit/documento/BandaAntiguedad, compartida
           // con CxC; solo pinta lo que recibe). Los dos diálogos de arriba son ahora
@@ -2421,7 +2422,10 @@ describe('28. Generadores de documentos: sin moneda fija', () => {
     'lib/documents/server/cargadores/estadoCuentaProveedor.ts',
     'lib/documents/server/cargadores/estadoCuentaProveedor.ts',
     'lib/documents/server/cargadores/cajas.ts',
-    'lib/services/reportes/pdfExportService.ts',
+    // `lib/services/reportes/pdfExportService.ts` se retiró (2026-09-30): el PDF
+    // de un reporte y el del cierre los arma el motor único
+    // (`app/api/documentos/[tipo]/[id]/route.ts`, ya en esta lista). Excel y CSV
+    // de un reporte se arman en el cliente con `exportarTabla.ts`, sin jsPDF.
     'lib/services/inicio/dashboardSectionExport.ts',
     'lib/services/printService.ts',
     'lib/services/printJobsService.ts',

@@ -21,10 +21,15 @@ export const PERMISOS_POR_TIPO: Record<TipoDocumento, readonly string[] | 'caja'
   'documento-soporte': ['finance.view'],
   'estado-cuenta': ['finance.view'],
   'estado-cuenta-proveedor': ['finance.view'],
+  'certificado-retenciones': ['finance.view'],
   'recibo-caja': ['finance.view', 'pos.view'],
   'comprobante-egreso': ['finance.view'],
   'cierre-caja': 'caja',
   'arqueo-caja': 'caja',
+  // Además, el alcance de sucursal: el cargador lee el cierre con la RLS de
+  // report_closings y ejecuta el reporte con las guardas de las fn_reporte_*.
+  'cierre-periodo': ['reports.export', 'finance.view'],
+  reporte: ['reports.export'],
 };
 
 /** 403 `PERMISSION_REQUIRED` si el usuario de la sesión no tiene ninguno de los permisos del tipo. */

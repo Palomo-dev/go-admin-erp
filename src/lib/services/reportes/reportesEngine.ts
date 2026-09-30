@@ -5,6 +5,7 @@
 
 import type { PeriodoCierre, ReportData, ReportDefinition, ReportesClient } from './types';
 import { getReporteById, getReportesVisibles } from './reportesCatalogo';
+import { reportePermitido } from './alcanceSucursal';
 
 /**
  * Ejecuta un reporte individual por su ID.
@@ -44,6 +45,8 @@ export async function ejecutarReporte(
  * @param periodo Período de cierre a ejecutar
  * @param activeModuleCodes Códigos de módulos activos
  * @param concurrencyLimit Máximo de reportes en paralelo (default: 4)
+ * @param accesoTotal false si la persona no tiene todas las sucursales: se
+ *   omiten los reportes de alcance 'organizacion' (ver alcanceSucursal.ts)
  * @returns Array de ReportData exitosos + array de errores
  */
 export async function ejecutarCierre(
@@ -53,9 +56,12 @@ export async function ejecutarCierre(
   concurrencyLimit: number = 4,
   branchId?: number | null,
   client?: ReportesClient,
+  accesoTotal: boolean = true,
 ): Promise<{ resultados: ReportData[]; errores: { reportId: string; titulo: string; error: string }[] }> {
   const modulosVisibles = getReportesVisibles(activeModuleCodes);
-  const todasDefiniciones: ReportDefinition[] = modulosVisibles.flatMap((m) => m.reportes);
+  const todasDefiniciones: ReportDefinition[] = modulosVisibles
+    .flatMap((m) => m.reportes)
+    .filter((def) => !def.alias && reportePermitido(def, accesoTotal));
 
   const resultados: ReportData[] = [];
   const errores: { reportId: string; titulo: string; error: string }[] = [];

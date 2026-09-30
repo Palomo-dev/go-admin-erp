@@ -203,10 +203,15 @@ describe('lecturas de la organización', () => {
   test('impuestos y retenciones separados por su clase', async () => {
     respuestas.organization_taxes = [
       { id: 'a', name: 'IVA 19%', rate: 19, is_default: true, is_active: true, kind: 'tax', tax_templates: { code: 'IVA_19' } },
-      { id: 'b', name: 'ReteFuente 2,5%', rate: 2.5, is_default: false, is_active: true, kind: 'withholding', tax_templates: { code: 'RETE_25' } },
+      { id: 'b', name: 'ReteFuente 2,5%', rate: 2.5, is_default: false, is_active: true, kind: 'withholding', min_base_uvt: '27', tax_templates: { code: 'RETE_25' } },
+      { id: 'c', name: 'ReteICA', rate: 0.966, is_default: false, is_active: true, kind: 'withholding', min_base_uvt: null, tax_templates: null },
     ];
     const r = await impuestosOrganizacion(7);
     expect(r.impuestos.map((i) => i.id)).toEqual(['a']);
-    expect(r.retenciones.map((i) => i.id)).toEqual(['b']);
+    expect(r.impuestos[0]).not.toHaveProperty('baseMinimaUvt');
+    expect(r.retenciones.map((i) => [i.id, i.baseMinimaUvt])).toEqual([
+      ['b', 27],
+      ['c', null],
+    ]);
   });
 });

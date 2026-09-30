@@ -42,6 +42,8 @@ export interface ImpuestoDocumento {
   nombre: string;
   tarifa: number;
   predeterminado?: boolean;
+  /** Solo retenciones: base mínima en UVT (`organization_taxes.min_base_uvt`); null sin base mínima. */
+  baseMinimaUvt?: number | null;
 }
 
 export interface ProductoParaDocumento {
@@ -87,6 +89,7 @@ type FilaImpuesto = {
   is_default: boolean | null;
   is_active: boolean | null;
   kind: string | null;
+  min_base_uvt?: number | string | null;
   tax_templates: { code: string | null } | { code: string | null }[] | null;
 };
 
@@ -103,7 +106,7 @@ function aImpuesto(f: FilaImpuesto): ImpuestoDocumento {
 export async function impuestosOrganizacion(org: number): Promise<{ impuestos: ImpuestoDocumento[]; retenciones: ImpuestoDocumento[] }> {
   const { data, error } = await supabase
     .from('organization_taxes')
-    .select('id, name, rate, is_default, is_active, kind, tax_templates(code)')
+    .select('id, name, rate, is_default, is_active, kind, min_base_uvt, tax_templates(code)')
     .eq('organization_id', org)
     .eq('is_active', true)
     .order('rate', { ascending: false });
@@ -111,7 +114,9 @@ export async function impuestosOrganizacion(org: number): Promise<{ impuestos: I
   const filas = (data ?? []) as unknown as FilaImpuesto[];
   return {
     impuestos: filas.filter((f) => !esRetencion(f)).map(aImpuesto),
-    retenciones: filas.filter((f) => esRetencion(f)).map(aImpuesto),
+    retenciones: filas
+      .filter((f) => esRetencion(f))
+      .map((f) => ({ ...aImpuesto(f), baseMinimaUvt: f.min_base_uvt == null || f.min_base_uvt === '' ? null : Number(f.min_base_uvt) })),
   };
 }
 

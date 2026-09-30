@@ -25,10 +25,13 @@ export const TIPOS_DOCUMENTO = [
   'documento-soporte',
   'estado-cuenta',
   'estado-cuenta-proveedor',
+  'certificado-retenciones',
   'recibo-caja',
   'comprobante-egreso',
   'cierre-caja',
   'arqueo-caja',
+  'cierre-periodo',
+  'reporte',
 ] as const;
 export type TipoDocumento = (typeof TIPOS_DOCUMENTO)[number];
 
@@ -49,6 +52,7 @@ export const TIPOS_CON_80MM: ReadonlySet<TipoDocumento> = new Set<TipoDocumento>
   'comprobante-egreso',
   'cierre-caja',
   'arqueo-caja',
+  'cierre-periodo',
 ]);
 
 export function esTipoDocumento(valor: unknown): valor is TipoDocumento {
@@ -75,6 +79,7 @@ export type Tono = 'neutro' | 'marca' | 'exito' | 'aviso' | 'peligro' | 'info';
  * - `instante` / `instanteHora`: `timestamptz` → zona horaria de la organización.
  * - `fecha`: columna `date` (`YYYY-MM-DD`) → sin conversión de zona.
  * - `numero`: cantidad con decimales.
+ * - `porcentaje`: número en escala 0–100 → «12,5 %».
  * - `oculto`: importe que el usuario no puede ver (cierre ciego) → «***».
  */
 export type Valor =
@@ -85,11 +90,17 @@ export type Valor =
   | { tipo: 'instanteHora'; v: string | null }
   | { tipo: 'fecha'; v: string | null }
   | { tipo: 'numero'; v: number | null; decimales?: number }
+  | { tipo: 'porcentaje'; v: number | null }
   | { tipo: 'oculto' };
 
-/** Par rótulo/valor. `clave` vive en `documentos.campos`. */
+/**
+ * Par rótulo/valor. `clave` vive en `documentos.campos`. `rotulo` es un texto
+ * ya resuelto que manda sobre la clave: los KPIs de un reporte congelado en
+ * un cierre, que conservan el idioma en que se emitió.
+ */
 export interface Campo {
   clave: string;
+  rotulo?: string;
   valor: Valor;
 }
 
@@ -159,13 +170,21 @@ export interface LineaDocumento {
   total: number;
 }
 
-export type TipoColumna = 'texto' | 'clave' | 'dinero' | 'instante' | 'instanteHora' | 'fecha' | 'numero';
+export type TipoColumna = 'texto' | 'clave' | 'dinero' | 'instante' | 'instanteHora' | 'fecha' | 'numero' | 'porcentaje';
 
 export interface ColumnaTabla {
   /** Rótulo: clave de `documentos.columnas`. */
   clave: string;
+  /** Rótulo ya resuelto (columnas de un reporte congelado); manda sobre `clave`. */
+  rotulo?: string;
   tipo: TipoColumna;
   alinear?: 'izquierda' | 'derecha' | 'centro';
+}
+
+/** Observación de una sección (panel «Lectura rápida» de un reporte). */
+export interface NotaSeccion {
+  tono: Tono;
+  texto: string;
 }
 
 /** Una celda: valor crudo del tipo de su columna, o `{ oculto: true }` (cierre ciego). */
@@ -180,6 +199,20 @@ export interface SeccionTabla {
   pie?: CeldaTabla[];
   /** Clave de `documentos.vacios` cuando no hay filas; sin ella, la sección se omite. */
   vacio?: string;
+  /** Título ya resuelto (reporte congelado); manda sobre `titulo`. */
+  tituloTexto?: string;
+  /**
+   * Abre un capítulo (Contabilidad, Ventas y POS…): encabezado grande y, en
+   * carta, salto de página antes (salvo el primero).
+   */
+  capitulo?: string;
+  /** Línea bajo el título (vista o descripción del reporte). */
+  subtitulo?: string;
+  /** Tarjetas antes de la tabla (KPIs del reporte). */
+  resumen?: Campo[];
+  notas?: NotaSeccion[];
+  /** Filas que se omitieron del documento: `total` es cuántas tenía el reporte. */
+  truncado?: { mostradas: number; total: number };
 }
 
 export type EstiloTotal = 'normal' | 'descuento' | 'total' | 'saldo' | 'pagado' | 'informativo';
@@ -222,9 +255,9 @@ export interface PieLegal {
   qr: QrDocumento | null;
 }
 
-export type Firma = 'recibido' | 'aceptacion' | 'cajeroSupervisor' | 'entregaRecibe';
+export type Firma = 'recibido' | 'aceptacion' | 'cajeroSupervisor' | 'entregaRecibe' | 'retenedorContador' | 'cierrePeriodo';
 
-export type MarcaAgua = 'borrador' | 'anulada' | 'pagada';
+export type MarcaAgua = 'borrador' | 'anulada' | 'pagada' | 'reemplazado';
 
 /** Banda destacada bajo la cabecera (clave de `documentos.bandas`). */
 export interface Banda {

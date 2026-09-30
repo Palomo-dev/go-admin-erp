@@ -215,7 +215,8 @@ function shouldSkipRoute(pathname: string): boolean {
     '/api/integrations/meta/webhook', // <-- POST: HMAC x-hub-signature-256 con appSecret de la conexión (401); GET: META_WEBHOOK_VERIFY_TOKEN (403 sin él)
     '/api/integrations/tiktok/webhook', // <-- POST siempre 401 hasta implementar la firma (inocuo); GET: TIKTOK_WEBHOOK_VERIFY_TOKEN (403 sin él)
     '/api/crm/contracts/webhook', // <-- re-exporta el POST de /api/crm/webhooks/documenso (firma Documenso fail-closed)
-    '/api/crm/voice-agents/campaigns/run', // <-- withCron → verifyCronSecret (Bearer CRON_SECRET real, fail-closed)
+    // El alias histórico del cron de campañas (bajo /api/crm/) NO se exime: queda
+    // detrás de la sesión. El cron externo usa /api/voice/agent-campaigns/run.
     '/api/auth/invite/resend', // <-- Reenvío de magic link para invitaciones (usuario no autenticado, valida contra tabla invitations)
     '/auth/v1/',
     '/auth/callback', // <-- Excluir callback de OAuth para no interferir con PKCE
@@ -1106,6 +1107,6 @@ export const config = {
      * está también en shouldSkipRoute con el motivo por el que es fail-closed.
      * Solo se añade aquí lo que verifica firma o CRON_SECRET por sí mismo.
      */
-    '/((?!_next/static|_next/image|favicon.ico|favicon-16x16.png|favicon-32x32.png|apple-touch-icon.png|icon.svg|icon-192x192.png|icon-512x512.png|icon-maskable-192x192.png|icon-maskable-512x512.png|badge-96x96.png|placeholder-image.png|placeholder.svg|manifest.json|sw.js|api/stripe|api/integrations/twilio|api/integrations/whatsapp/webhook|api/integrations/whatsapp/qr/dispatch-pending|api/voice|api/super-admin-access|api/factus|api/facebook-feed|api/cron|api/crm/jobs/run|api/email/webhook|api/crm/webhooks|u/|api/pos/display/|api/web-orders|api/desktop/agent-session|api/webhooks/facebook/|api/webhooks/instagram/|api/integrations/qr/expire-sessions|api/auth|api/integrations/bancolombia/webhook|api/integrations/bold/webhook|api/integrations/breb/webhook|api/integrations/wompi/webhook|api/integrations/redeban/webhook|api/integrations/sendgrid/webhook|api/integrations/mercadopago/webhook|api/integrations/payu/webhook|api/integrations/paypal/webhook|api/integrations/stripe/webhook|api/integrations/meta/webhook|api/integrations/tiktok/webhook|api/crm/contracts/webhook|api/crm/voice-agents/campaigns/run).*)',
+    '/((?!_next/static|_next/image|favicon.ico|favicon-16x16.png|favicon-32x32.png|apple-touch-icon.png|icon.svg|icon-192x192.png|icon-512x512.png|icon-maskable-192x192.png|icon-maskable-512x512.png|badge-96x96.png|placeholder-image.png|placeholder.svg|manifest.json|sw.js|api/stripe|api/integrations/twilio|api/integrations/whatsapp/webhook|api/integrations/whatsapp/qr/dispatch-pending|api/voice|api/super-admin-access|api/factus|api/facebook-feed|api/cron|api/crm/jobs/run|api/email/webhook|api/crm/webhooks|u/|api/pos/display/|api/web-orders|api/desktop/agent-session|api/webhooks/facebook/|api/webhooks/instagram/|api/integrations/qr/expire-sessions|api/auth|api/integrations/bancolombia/webhook|api/integrations/bold/webhook|api/integrations/breb/webhook|api/integrations/wompi/webhook|api/integrations/redeban/webhook|api/integrations/sendgrid/webhook|api/integrations/mercadopago/webhook|api/integrations/payu/webhook|api/integrations/paypal/webhook|api/integrations/stripe/webhook|api/integrations/meta/webhook|api/integrations/tiktok/webhook|api/crm/contracts/webhook).*)',
   ],
 };

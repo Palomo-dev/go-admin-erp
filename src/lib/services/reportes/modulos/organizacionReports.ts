@@ -10,7 +10,8 @@ import type { ReportesClient } from '../types';
 // del usuario; en el servidor (asistente de reportes) el route handler pasa el
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
-import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import type { DefinicionModulo, ReportData, PeriodoCierre } from '../types';
+import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
   id: string, titulo: string, modulo: string, periodo: PeriodoCierre,
@@ -20,13 +21,14 @@ function buildReportData(
   return { id, titulo, modulo, kpis, columnas, filas, totales, generadoEn: new Date().toISOString(), periodo };
 }
 
-export const organizacionReports: ReportDefinition[] = [
+export const organizacionReports: DefinicionModulo[] = [
   {
     id: 'org-miembros',
     modulo: 'organizations',
-    titulo: 'Miembros de la Organización',
+    titulo: 'Miembros de la organización',
     descripcion: 'Usuarios, roles y estado de membresía',
     categoria: 'sistema',
+    alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -47,7 +49,7 @@ export const organizacionReports: ReportDefinition[] = [
       const filas = Object.entries(porEstado).map(([estado, cantidad]) => ({ estado, cantidad }));
 
       return buildReportData(
-        'org-miembros', 'Miembros de la Organización', 'organizations', periodo,
+        'org-miembros', 'Miembros de la organización', 'organizations', periodo,
         [
           { titulo: 'Total Miembros', valor: miembros.length, formato: 'numero' },
         ],
@@ -63,12 +65,14 @@ export const organizacionReports: ReportDefinition[] = [
   {
     id: 'org-sucursales',
     modulo: 'organizations',
-    titulo: 'Comparativa de Sucursales',
-    descripcion: 'Métricas comparativas por sucursal',
+    titulo: 'Comparativa de sucursales',
+    descripcion: 'Ventas, ticket y actividad por sucursal',
     categoria: 'sistema',
+    alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data: branches } = await db
         .from('branches')
         .select('id, name, is_active')
@@ -78,8 +82,8 @@ export const organizacionReports: ReportDefinition[] = [
         .from('sales')
         .select('branch_id, total')
         .eq('organization_id', orgId)
-        .gte('sale_date', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('sale_date', `${periodo.fechaFin}T23:59:59Z`)
+        .gte('sale_date', start)
+        .lte('sale_date', end)
         .not('status', 'in', '("cancelled","void")');
 
       const sucursales = branches ?? [];
@@ -99,7 +103,7 @@ export const organizacionReports: ReportDefinition[] = [
       }));
 
       return buildReportData(
-        'org-sucursales', 'Comparativa de Sucursales', 'organizations', periodo,
+        'org-sucursales', 'Comparativa de sucursales', 'organizations', periodo,
         [
           { titulo: 'Sucursales', valor: sucursales.length, formato: 'numero' },
           { titulo: 'Total Ventas', valor: filas.reduce((s: number, f: Record<string, unknown>) => s + Number(f.total_ventas ?? 0), 0), formato: 'moneda' },
@@ -118,12 +122,14 @@ export const organizacionReports: ReportDefinition[] = [
   {
     id: 'org-uso-sistema',
     modulo: 'organizations',
-    titulo: 'Uso del Sistema',
-    descripcion: 'Métricas de uso: sesiones, módulos activos, storage',
+    titulo: 'Uso del sistema',
+    descripcion: 'Sesiones, módulos activos y almacenamiento',
     categoria: 'sistema',
+    alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data: modules } = await db
         .from('organization_modules')
         .select('module_code, is_active')
@@ -133,14 +139,14 @@ export const organizacionReports: ReportDefinition[] = [
         .from('ops_audit_log')
         .select('id, created_at')
         .eq('organization_id', orgId)
-        .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
+        .gte('created_at', start)
+        .lte('created_at', end);
 
       const modulosActivos = (modules ?? []).filter((m: Record<string, unknown>) => m.is_active).length;
       const totalEventos = eventos?.length ?? 0;
 
       return buildReportData(
-        'org-uso-sistema', 'Uso del Sistema', 'organizations', periodo,
+        'org-uso-sistema', 'Uso del sistema', 'organizations', periodo,
         [
           { titulo: 'Módulos Activos', valor: modulosActivos, formato: 'numero' },
           { titulo: 'Eventos de Actividad', valor: totalEventos, formato: 'numero' },

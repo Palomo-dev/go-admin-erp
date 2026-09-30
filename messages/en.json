@@ -5537,7 +5537,9 @@
         "fechaFutura": "The date can't be later than today.",
         "referenciaVacia": "This method requires a reference.",
         "recibidoInsuficiente": "The cash received doesn't cover the amount."
-      }
+      },
+      "retenciones": "Withholdings",
+      "netoPagado": "Net {neto} · Paid {pagado}"
     },
     "vista": {
       "etiqueta": "View",
@@ -5948,6 +5950,16 @@
       "motivoAgotado": "This variant is out of stock at the branch: choose another one.",
       "motivoSinPrecio": "This variant has no current price: set it in Inventory to sell it.",
       "motivoElegir": "Choose a variant to add it."
+    },
+    "franja": {
+      "etiqueta": "Time range",
+      "todoElDia": "All day",
+      "franja": "Time range",
+      "desde": "From",
+      "hasta": "To",
+      "diaSiguiente": "{hora} (+1)",
+      "ayuda": "Counts what was sold between {desde} and {hasta}.",
+      "ayudaCruza": "The range crosses midnight: sales between {desde} and {hasta} the next day count toward the day the shift started."
     }
   },
   "inventarioEtiquetas": {
@@ -6604,7 +6616,10 @@
         "cuentasAbiertas": "Open accounts payable",
         "pagar": "Pay",
         "lotes": "Lots received from this supplier",
-        "pagos": "Recorded payments"
+        "pagos": "Recorded payments",
+        "certificado": "Withholding certificate",
+        "certificadoAnio": "Current year",
+        "generar": "Generate"
       },
       "valorStock": "Stock value of its products (all branches):",
       "totalPagado": "Total paid:",
@@ -13497,7 +13512,8 @@
         "pdf": "Download PDF",
         "imprimir": "Print",
         "anular": "Void",
-        "eliminar": "Delete draft"
+        "eliminar": "Delete draft",
+        "certificado": "Withholding certificate"
       },
       "motivos": {
         "sinPermiso": "You don't have permission for this action",
@@ -13559,7 +13575,29 @@
         "recepcionarSinProductos": "No lines with products: nothing enters inventory.",
         "recepcionarSinPermiso": "You don't have permission to move inventory.",
         "generarDs": "Generate support document",
-        "generarDsAyuda": "For suppliers not required to invoice."
+        "generarDsAyuda": "For suppliers not required to invoice.",
+        "descripcionNeto": "Total {total} · net payable {neto} (withholdings {retenido}).",
+        "asiento": {
+          "titulo": "Journal entry to be posted",
+          "cuenta": "Account",
+          "debito": "Debit",
+          "credito": "Credit",
+          "sumas": "Totals",
+          "cuadra": "Balanced",
+          "noCuadra": "Unbalanced",
+          "noCalculado": "The entry preview could not be calculated; it is still posted on confirmation.",
+          "motivos": {
+            "no_borrador": "The invoice is no longer a draft: its entry is on the detail page.",
+            "no_rule": "There is no purchase accounting rule: the invoice is confirmed without an entry. Set it up in Finance › Accounting rules.",
+            "amount_invalid": "The invoice total is not valid for posting the entry.",
+            "debit_account_missing": "The debit account of the purchase rule is missing from the chart of accounts.",
+            "credit_account_missing": "The supplier account of the purchase rule is missing from the chart of accounts.",
+            "tax_account_missing": "The deductible VAT account is missing from the chart of accounts.",
+            "withholding_exceeds_total": "Withholdings equal or exceed the total: the entry is posted for the total without deducting them.",
+            "sin_asiento": "No journal entry would be posted on confirmation.",
+            "otro": "No entry would be posted: check the accounting setup."
+          }
+        }
       },
       "recepcionar": {
         "titulo": "Receive invoice {numero}",
@@ -13669,7 +13707,8 @@
         "base": "Base",
         "tarifa": "Rate %",
         "retefuente": "Income tax withholding",
-        "quitar": "Remove {concepto}"
+        "quitar": "Remove {concepto}",
+        "bajoBaseMinima": "The base does not reach the minimum of {uvt} UVT ({valor} with the {anio} UVT): this withholding usually does not apply. You can still apply it if the supplier asks."
       },
       "errores": {
         "revisar": "Check the highlighted fields.",
@@ -13952,7 +13991,8 @@
         "programar": "Schedule payment",
         "plan": "Create installment plan",
         "estadoCuenta": "Supplier account statement",
-        "factura": "View invoice"
+        "factura": "View invoice",
+        "certificado": "Withholding certificate"
       },
       "motivos": {
         "sinPermiso": "You don't have permission for this action"
@@ -13992,13 +14032,33 @@
       },
       "kpis": {
         "pagado": "Paid: {monto}",
-        "programado": "Scheduled, not approved: {monto}"
+        "programado": "Scheduled, not approved: {monto}",
+        "netoRetenciones": "Net of withholdings ({retenido}) · paid {monto}"
       },
       "proveedorDatos": {
         "nombre": "Name",
         "nit": "Tax ID",
         "telefono": "Phone",
         "correo": "Email"
+      },
+      "origen": {
+        "titulo": "Source document",
+        "factura": "Invoice",
+        "recibida": "Received",
+        "vence": "Due",
+        "retenciones": "Withholdings",
+        "conceptos": "{n, plural, one {# item} other {# items}}",
+        "sinRetenciones": "No withholdings",
+        "formaPago": "Payment terms",
+        "credito": "Credit, {n, plural, one {# day} other {# days}}",
+        "contado": "Cash",
+        "subtotal": "Subtotal",
+        "iva": "VAT",
+        "total": "Invoice total",
+        "menosRetenciones": "Withholdings",
+        "neto": "Net payable",
+        "asiento": "Journal entry",
+        "orden": "Purchase order"
       }
     },
     "estadoCuenta": {
@@ -14052,6 +14112,28 @@
         "fecha": "The first installment can't be before today.",
         "interes": "Between 0 and 100 %."
       }
+    },
+    "certificado": {
+      "titulo": "Withholding certificate",
+      "descripcion": "What was withheld from {proveedor} in the period, to issue the certificate (art. 381 Colombian Tax Code).",
+      "periodo": "Certified period",
+      "cargando": "Calculating withholdings…",
+      "errorLectura": "Could not read the withholdings.",
+      "reintentar": "Retry",
+      "clases": {
+        "retefuente": "Income tax withholding",
+        "reteiva": "VAT withholding",
+        "reteica": "ICA withholding"
+      },
+      "total": "Total withheld",
+      "alcance": "{facturas, plural, =0 {No invoices} one {# invoice} other {# invoices}} · {conceptos, plural, =0 {no items} one {# item} other {# items}}",
+      "sinRetenciones": "No withholdings were applied in this period; the certificate will show zero.",
+      "nota": "Covers every branch: the withholding agent is the organization.",
+      "descargar": "Download PDF",
+      "imprimir": "Print",
+      "ver": "View",
+      "cerrar": "Close",
+      "errorDescarga": "Could not download the certificate"
     }
   },
   "documentos": {
@@ -14069,7 +14151,10 @@
       "reporte-caja-abierta": "Open cash register report",
       "arqueo-caja": "Cash count",
       "estado-cuenta-proveedor": "Supplier account statement",
-      "nota-credito-electronica": "Electronic credit note"
+      "nota-credito-electronica": "Electronic credit note",
+      "certificado-retenciones": "Withholding certificate",
+      "cierre-periodo": "Period close",
+      "reporte": "Report"
     },
     "sinNumero": "No number yet",
     "paginacion": {
@@ -14149,7 +14234,13 @@
       "pending": "Pending",
       "accepted": "Accepted",
       "processing": "Processing",
-      "failed": "Failed"
+      "failed": "Failed",
+      "cierre": {
+        "borrador": "Draft",
+        "emitido": "Issued",
+        "firmado": "Signed · period closed",
+        "reemplazado": "Superseded"
+      }
     },
     "qr": {
       "verificacionDian": "Verify with DIAN",
@@ -14162,12 +14253,17 @@
       "anulada": "Voided document.",
       "monedaExtranjera": "Document issued in {moneda}, which differs from the organization base currency.",
       "noEsFactura": "This quote is not an invoice.",
-      "cierreCiego": "Blind closing: expected amounts and differences are visible only to administrators."
+      "cierreCiego": "Blind closing: expected amounts and differences are visible only to administrators.",
+      "cierreReemplazado": "This version was superseded by a recalculation. See the current version.",
+      "cierreReemplazadoPor": "This version was superseded by v{version}. See the current version.",
+      "cierrePeriodoCerrado": "Signed close: the accounting period is closed.",
+      "cierreConErrores": "{cantidad} report(s) could not be calculated and are not included. See the end of the document."
     },
     "marcas": {
       "borrador": "DRAFT",
       "anulada": "VOIDED",
-      "pagada": "PAID"
+      "pagada": "PAID",
+      "reemplazado": "SUPERSEDED"
     },
     "campos": {
       "fechaEmision": "Issue date",
@@ -14216,7 +14312,22 @@
       "total": "Total",
       "vencido": "Overdue",
       "porVencer": "Not yet due",
-      "facturaCompraAsociada": "Related purchase invoice"
+      "facturaCompraAsociada": "Related purchase invoice",
+      "periodoDesde": "Period from",
+      "periodoHasta": "Period to",
+      "facturasIncluidas": "Invoices included",
+      "fechaExpedicion": "Issue date",
+      "ciudadExpedicion": "City of issue",
+      "declaradoEn": "Filed in",
+      "tipoCierre": "Close type",
+      "franja": "Time window",
+      "plantilla": "Template",
+      "version": "Version",
+      "emitidoEn": "Issued",
+      "emitidoPor": "Issued by",
+      "firmadoEn": "Signed",
+      "firmadoPor": "Signed by",
+      "kpi": "Indicator"
     },
     "formasPago": {
       "contado": "Cash",
@@ -14257,7 +14368,12 @@
       "movimientosCaja": "Cash in and out",
       "arqueos": "Cash counts",
       "denominaciones": "Denominations",
-      "retenciones": "Withholdings applied to the supplier"
+      "retenciones": "Withholdings applied to the supplier",
+      "conceptosRetenidos": "Withholdings applied",
+      "facturasIncluidas": "Invoices included",
+      "indiceCapitulos": "Chapter index",
+      "reportesConError": "Reports not included (calculation error)",
+      "reporte": "Report"
     },
     "columnas": {
       "descripcion": "Description",
@@ -14292,12 +14408,19 @@
       "subtotal": "Subtotal",
       "base": "Base",
       "tarifa": "Rate (%)",
-      "unidad": "Unit"
+      "unidad": "Unit",
+      "cuenta": "Account",
+      "valorRetenido": "Amount withheld",
+      "capitulo": "Chapter",
+      "reportes": "Reports",
+      "reporte": "Report"
     },
     "vacios": {
       "lineas": "No lines.",
       "movimientos": "No transactions in the period.",
-      "facturasAbiertas": "No open invoices."
+      "facturasAbiertas": "No open invoices.",
+      "retencionesPeriodo": "No withholdings were applied to this supplier in the period.",
+      "reporteSinDatos": "No data in the period."
     },
     "totales": {
       "subtotal": "Subtotal",
@@ -14330,7 +14453,11 @@
       },
       "retencion": "{concepto} ({tasa} %)",
       "totalFactura": "Invoice total",
-      "netoPagar": "Net payable to supplier"
+      "netoPagar": "Net payable to supplier",
+      "retefuente": "Income tax withholding",
+      "reteiva": "VAT withholding",
+      "reteica": "ICA withholding",
+      "totalRetenido": "Total withheld"
     },
     "firmas": {
       "recibido": "Received in good order",
@@ -14341,7 +14468,12 @@
       "recibe": "Received by",
       "datosRecibe": "Name · ID · Date",
       "datosAcepta": "Name · ID · Title · Date",
-      "datosNombre": "Name and ID"
+      "datosNombre": "Name and ID",
+      "agenteRetenedor": "Withholding agent",
+      "contador": "Public accountant",
+      "datosContador": "Name · Professional license",
+      "elaboro": "Prepared by",
+      "representanteLegal": "Legal representative"
     },
     "legal": {
       "resolucion": "DIAN resolution no. {numero} dated {fecha}, prefix {prefijo}, authorized numbering from {desde} to {hasta}, valid until {vigencia}.",
@@ -14360,7 +14492,10 @@
         "comprobante-egreso": "Voucher of a payment made.",
         "cierre-caja": "Internal cash register report.",
         "arqueo-caja": "Internal cash count report.",
-        "estado-cuenta-proveedor": "Supplier account statement according to our records. If you find any discrepancy, please contact us within 10 days of receipt."
+        "estado-cuenta-proveedor": "Supplier account statement according to our records. If you find any discrepancy, please contact us within 10 days of receipt.",
+        "certificado-retenciones": "Certificate issued under article 381 of the Colombian Tax Code. Handwritten signature not required (article 10 of Decree 836 of 1991).",
+        "cierre-periodo": "Internal closing document. Figures were frozen when issued; a recalculation creates a new version with the same number.",
+        "reporte": "Internal report generated on the stated date with the data current at that moment."
       }
     },
     "movimientos": {
@@ -14436,6 +14571,68 @@
       "pos": "Sale recorded at the point of sale (POS).",
       "mesa": "Sale recorded from a table.",
       "ventaPos": "POS sale"
+    },
+    "certificado": {
+      "prefijo": "CR",
+      "totalRetenido": "Total withheld",
+      "declarado350": "Form 350",
+      "declaradoIca": "ICA return",
+      "declarado350EIca": "Form 350 and ICA",
+      "constancia": "{emisor}, as withholding agent, certifies that during the stated period it applied to {proveedor} the withholdings detailed below, on the payments or credits of the invoices included."
+    },
+    "reportes": {
+      "truncado": "Showing {mostradas} of {total} rows. Totals include all of them. See the full report in the app.",
+      "todaLaOrganizacion": "Whole organization"
+    },
+    "cierre": {
+      "tipos": {
+        "diario": "Daily",
+        "semanal": "Weekly",
+        "quincenal": "Biweekly",
+        "mensual": "Monthly",
+        "trimestral": "Quarterly",
+        "semestral": "Half-yearly",
+        "anual": "Yearly",
+        "personalizado": "Custom"
+      },
+      "plantillas": {
+        "completo": "Complete",
+        "contable": "Accounting and finance",
+        "ventas-caja": "Sales and cash",
+        "personalizada": "Custom"
+      },
+      "consolidado": "Consolidated (all branches)",
+      "sinFranja": "This report is calculated by full day: the close time window does not apply.",
+      "reabierto": "Period reopened by {quien}. Reason: {motivo}"
+    },
+    "exportacion": {
+      "resumen": "Summary",
+      "indicador": "Indicator",
+      "valor": "Value",
+      "desde": "From",
+      "hasta": "To"
+    },
+    "envios": {
+      "asunto": "{reporte} · {periodo}",
+      "asuntoPrueba": "[Test] {reporte} · {periodo}",
+      "saludo": "Hello {nombre},",
+      "saludoSinNombre": "Hello,",
+      "cuerpo": "Attached is the “{reporte}” report from {organizacion} for the period {periodo}.",
+      "franja": "Time window: {franja}.",
+      "pie": "You are receiving this email because {creador} added you to the scheduled delivery “{envio}”. To stop receiving it, ask them to remove you from the list.",
+      "pieExterno": "You are receiving this email because {organizacion} added you to the scheduled delivery “{envio}”. If you should not receive it, reply to this email.",
+      "pausado": {
+        "titulo": "Scheduled delivery with paused recipients: {envio}",
+        "linea": "{destinatario}: {motivo}"
+      },
+      "motivos": {
+        "sin_membresia": "is no longer an active member of the organization",
+        "sin_permiso": "no longer has permission to export reports",
+        "sin_alcance": "has no access to the delivery's branch",
+        "modulo_no_contratado": "the plan no longer includes this report",
+        "aprobador_sin_acceso": "whoever approved this external email is no longer an administrator",
+        "rebote": "the email bounced"
+      }
     }
   },
   "posVentas": {
@@ -17038,7 +17235,9 @@
       "tipo": "Type",
       "tarifa": "Rate",
       "aplicaA": "Applies to",
-      "estado": "Status"
+      "estado": "Status",
+      "baseMinima": "Minimum base",
+      "cuenta": "Ledger account"
     },
     "tipos": {
       "retefuente": "ReteFuente",
@@ -17063,16 +17262,51 @@
       "activada": "{nombre} is now active.",
       "desactivada": "{nombre} is now inactive.",
       "errorTitulo": "Error",
-      "errorEstado": "The withholding status could not be changed."
+      "errorEstado": "The withholding status could not be changed.",
+      "errorConfiguracion": "The ledger account and minimum base of the withholdings could not be read."
     },
     "formulario": {
       "nueva": "New withholding",
       "editar": "Edit withholding",
-      "nota": "A withholding is applied by the buyer: it is not added to the price, it is not assigned to products and it cannot be the default rate."
+      "nota": "A withholding is applied by the buyer: it is not added to the price, it is not assigned to products and it cannot be the default rate.",
+      "cuenta": "Ledger account",
+      "cuentaAutomatica": "Automatic by type (2365 / 2367 / 2368)",
+      "cuentaAutomaticaActual": "Automatic by type ({cuenta})",
+      "cuentaAyuda": "Active liability accounts only. The purchase journal entry credits the withholding to this account.",
+      "baseMinima": "Minimum base (UVT)",
+      "baseMinimaPlaceholder": "E.g. 27",
+      "baseMinimaAyuda": "If the invoice base is lower, the form warns that the withholding does not apply. Empty: no minimum base.",
+      "baseMinimaEquivale": "Equals {valor} with the {anio} UVT. Below it, the invoice warns that it does not apply.",
+      "errorConfiguracionTitulo": "The withholding was only partly saved",
+      "errorConfiguracion": "The name and rate were saved, but not the account or the minimum base: {detalle}",
+      "errores": {
+        "cuenta_no_existe": "the account does not exist in the chart of accounts.",
+        "cuenta_no_es_pasivo": "the account is not a liability.",
+        "cuenta_inactiva": "the account is inactive.",
+        "base_minima_invalida": "The minimum base must be a number greater than or equal to zero.",
+        "retencion_no_encontrada": "the withholding does not exist in this organization.",
+        "otro": "check your tax permissions and try again."
+      }
     },
     "titulo": "Taxes",
     "migas": {
       "finanzas": "Finance"
+    },
+    "baseMinima": {
+      "sin": "No minimum base",
+      "uvt": "{uvt} UVT",
+      "equivalente": "≈ {valor} (UVT {anio})"
+    },
+    "cuenta": {
+      "automatica": "Automatic by type"
+    },
+    "uvtVigente": "UVT {anio}: {valor} · {norma}",
+    "uvtSinDato": "No UVT recorded for the country: the minimum base cannot be converted to currency.",
+    "plantilla": {
+      "cargar": "Load {pais} template",
+      "alDia": "You already have every withholding in the {pais} template.",
+      "cargada": "{creadas, plural, =0 {You already had every withholding for {pais}.} one {# withholding for {pais} was added.} other {# withholdings for {pais} were added.}}",
+      "error": "The withholding template could not be loaded."
     }
   },
   "receta": {
@@ -24632,6 +24866,446 @@
       "pedidosAnterior": "Orders previous period",
       "pais": "Country",
       "sesiones": "Sessions"
+    }
+  },
+  "asientoContable": {
+    "origenCompra": {
+      "titulo": "Automatic entry for purchase {numero}",
+      "conRetenciones": "Created when the invoice was confirmed; it cannot be edited or deleted (to reverse it, void the invoice). The supplier is credited only the net amount, {neto}; the withholdings, {retenido}, go to taxes payable.",
+      "sinRetenciones": "Created when the invoice was confirmed; it cannot be edited or deleted (to reverse it, void the invoice). The supplier is credited the total, {total}: the invoice has no withholdings.",
+      "irFactura": "Go to invoice",
+      "cadena": "Document chain",
+      "pago": "Payment",
+      "retenciones": "Withholdings",
+      "verCertificado": "View certificate",
+      "conceptos": "{n, plural, one {# item} other {# items}}"
+    },
+    "datos": {
+      "titulo": "Entry details",
+      "fecha": "Posting date",
+      "sucursal": "Branch",
+      "origen": "Source",
+      "moneda": "Currency",
+      "tasa": "Rate {tasa} against {base}",
+      "claveHecho": "Event key",
+      "creado": "Created on",
+      "origenes": {
+        "manual": "Manual",
+        "reversal": "Reversal",
+        "invoice_sales": "Sales invoice",
+        "invoice_purchase": "Purchase invoice",
+        "sales": "POS sale",
+        "payments": "Payment",
+        "stock_movements": "Stock movement",
+        "inventory_adjustment": "Inventory adjustment",
+        "accounts_receivable": "Account receivable",
+        "accounts_payable": "Account payable",
+        "purchase_orders": "Purchase order",
+        "cash_movements": "Cash movement",
+        "cash_sessions": "Cash session",
+        "commissions": "Commission",
+        "credit_note": "Credit note"
+      },
+      "creadoPor": "Created by",
+      "automatico": "Automatic (system)"
+    },
+    "lineas": {
+      "centroCosto": "Cost center"
+    }
+  },
+  "reportes": {
+    "titulo": "Reports",
+    "migaInicio": "Home",
+    "actualizar": "Refresh",
+    "programarEnvios": "Schedule deliveries",
+    "generarCierre": "Generate closing",
+    "preguntar": "Ask the AI",
+    "masAcciones": "More actions",
+    "pestanas": {
+      "etiqueta": "Report sections",
+      "inicio": "Home",
+      "favoritos": "Favorites",
+      "cierres": "Closings",
+      "programados": "Scheduled",
+      "historial": "History"
+    },
+    "periodo": {
+      "trimestre": "Q{n} {anio}",
+      "semestre": "H{n} {anio}",
+      "diaCompleto": "Full day",
+      "cambiar": "Change period, {periodo}",
+      "masUnDia": "+1 day",
+      "tipo": "Period type",
+      "desde": "From",
+      "hasta": "To",
+      "anterior": "Previous period",
+      "siguiente": "Next period",
+      "sinSiguiente": "That period has not started yet",
+      "franjaNoAplica": "This report uses the full day.",
+      "listo": "Done"
+    },
+    "tipos": {
+      "diario": "Daily",
+      "semanal": "Weekly",
+      "quincenal": "Biweekly",
+      "mensual": "Monthly",
+      "trimestral": "Quarterly",
+      "semestral": "Semiannual",
+      "anual": "Yearly",
+      "personalizado": "Custom"
+    },
+    "filtros": {
+      "titulo": "Filters",
+      "comparar": "Compare",
+      "compararCon": "Compare: {periodo}",
+      "compararNoAplica": "Compare: not applicable",
+      "sinComparar": "No comparison",
+      "sucursal": "Branch",
+      "sucursalNoAplica": "This report covers the whole organization",
+      "sucursalFija": "Your access is fixed to your branch",
+      "todaLaOrganizacion": "Whole organization",
+      "todasLasSucursales": "All branches",
+      "franjaNoAplica": "Time range: not applicable",
+      "franjaNoAplicaMotivo": "This report is calculated by day"
+    },
+    "alcance": {
+      "titulo": "{n, plural, =0 {You have no assigned branches} one {You are only seeing {sucursales}} other {You are only seeing {sucursales}}}",
+      "descripcion": "{n, plural, =0 {Ask to be assigned a branch to see reports.} one {Your user can access one branch. Organization-wide reports are locked.} other {Your user can access these branches. Organization-wide reports are locked.}}",
+      "ninguna": "no branch",
+      "boton": "Request access",
+      "botonEnviada": "Request sent",
+      "solicitada": "We notified the administrators",
+      "yaSolicitada": "You already sent this request recently"
+    },
+    "errores": {
+      "generico": "Could not complete. Try again.",
+      "sin_permiso": "You do not have permission for this action.",
+      "cierre_existente": "A closing already exists for this period.",
+      "datos_invalidos": "Check the data and try again.",
+      "sin_administradores": "There are no administrators to notify.",
+      "correo_no_configurado": "The organization email is not configured.",
+      "PDF_NO_DISPONIBLE": "The PDF is not available right now.",
+      "BRANCH_SCOPE_REQUIRED": "Choose a branch you can access.",
+      "periodo_invalido": "The period is not valid.",
+      "dia_invalido": "Choose the delivery day.",
+      "destinatarios": "Choose at least one recipient.",
+      "servicio_no_configurado": "The closing could not be saved: the server is missing its service key.",
+      "prueba_sin_servicio": "The test email could not be sent: this server does not have the key to send mail.",
+      "snapshot_invalido": "This closing cannot be exported to Excel."
+    },
+    "grupos": {
+      "contabilidad": "Accounting",
+      "finanzas": "Finance and treasury",
+      "ventas": "Sales and POS",
+      "inventario": "Inventory",
+      "compras": "Purchasing",
+      "personas": "People (payroll)",
+      "clientes": "Customers and CRM",
+      "atencion": "Support and messaging",
+      "operacion": "Operations and organization",
+      "hoteleria": "Hospitality",
+      "parqueadero": "Parking",
+      "membresias": "Memberships",
+      "transporte": "Transport"
+    },
+    "gruposDesc": {
+      "contabilidad": "Balance, results and fiscal period",
+      "finanzas": "Receivables, cash flow, taxes and banks",
+      "ventas": "Cash closing, sales by hour and by seller",
+      "inventario": "Stock, turnover and serials",
+      "compras": "Suppliers, orders and withholdings",
+      "personas": "Payroll, productivity and commissions",
+      "clientes": "Customers, funnel and campaigns",
+      "atencion": "Conversations, response times and campaigns",
+      "operacion": "Branches, audit and connections",
+      "hoteleria": "Occupancy, revenue and housekeeping",
+      "parqueadero": "Occupancy, revenue and turnover",
+      "membresias": "Active, activity and retention",
+      "transporte": "Shipments, drivers and routes"
+    },
+    "filtroTipo": {
+      "comparativo": "Comparative",
+      "sucursal": "Branch",
+      "franja": "Time range",
+      "centroCosto": "Cost center"
+    },
+    "badges": {
+      "nuevo": "New",
+      "disponible": "Available",
+      "sinAcceso": "No access",
+      "requierePlan": "Requires plan",
+      "porSucursal": "By branch",
+      "todaLaOrg": "Whole org."
+    },
+    "inicio": {
+      "buscar": "Search among {n} reports…",
+      "buscarCorto": "Search report",
+      "subtitulo": "{n} reports in {m} active modules",
+      "recientes": "Recent",
+      "verHistorial": "View history",
+      "sinRecientes": "Reports you open will appear here.",
+      "porModulo": "Reports by module",
+      "hint": "The labels show which filters each report accepts. The ones that do not apply look disabled when you open it.",
+      "conteo": "{n} reports",
+      "nuevos": "{n, plural, one {# new} other {# new}}",
+      "moduloNuevo": "new module",
+      "verLos": "View all {n} reports",
+      "fueraPlan": "{n, plural, one {# module is not in your plan} other {# modules are not in your plan}}",
+      "fueraDesc": "{nombres} add up to {reportes} reports. They turn on from the plan.",
+      "verPlanes": "View plans",
+      "vs": "{signo}{valor} vs. {periodo}",
+      "detalleMargen": "Margin {valor}",
+      "detalleVencido": "{valor} overdue",
+      "detalleBajo": "{n, plural, one {# below minimum} other {# below minimum}}",
+      "kpis": {
+        "ventas": "Period sales",
+        "utilidad": "Net profit",
+        "caja": "Cash and banks",
+        "cobrar": "Receivable",
+        "pagar": "Payable",
+        "inventario": "Inventory"
+      }
+    },
+    "lista": {
+      "titulo": "{grupo} reports",
+      "adicionales": "Modules not in the plan",
+      "subtitulo": "{n} reports",
+      "subtituloAdicionales": "They turn on when the module is contracted",
+      "colReporte": "Report",
+      "colFiltros": "Filters besides the period",
+      "colAlcance": "Scope",
+      "colEstado": "Status",
+      "programar": "Schedule delivery",
+      "pie": "Rows marked No access and Requires plan do not open the viewer.",
+      "sinFiltros": "Period only"
+    },
+    "visor": {
+      "datosAl": "data as of {cuando}",
+      "agregar": "Add to closing",
+      "exportar": "Export",
+      "pdf": "PDF",
+      "excel": "Excel",
+      "csv": "CSV",
+      "imprimir": "Print",
+      "favorito": "Add to favorites",
+      "quitarFavorito": "Remove from favorites",
+      "copiar": "Copy link",
+      "copiado": "Link copied",
+      "lectura": "Quick read",
+      "filtrosDeEste": "Filters for this report",
+      "aplica": "Applies",
+      "noAplica": "not applicable",
+      "variacion": "Change",
+      "sinComparacion": "This report cannot be compared row by row.",
+      "sube": "{titulo} is up {valor} compared with {periodo}.",
+      "baja": "{titulo} is down {valor} compared with {periodo}.",
+      "sinMovimientos": "There are no movements in this period.",
+      "verFuente": "View the source",
+      "exportado": "Exported",
+      "sinExportar": "You do not have permission to export.",
+      "bloqueado": "You cannot open this report",
+      "bloqueadoPlan": "This report turns on when the module is contracted.",
+      "bloqueadoAlcance": "It requires access to every branch."
+    },
+    "favoritos": {
+      "titulo": "{n} favorites",
+      "vacio": "You have no favorites yet",
+      "vacioDesc": "Star a report in its viewer to see it here.",
+      "colReporte": "Report",
+      "colFiltros": "Last filters used",
+      "colAlcance": "Scope",
+      "colCuando": "Last time",
+      "pie": "Favorites are personal: each user has their own.",
+      "quitar": "Remove from favorites"
+    },
+    "cierres": {
+      "titulo": "Closing history",
+      "vacio": "No closings yet",
+      "vacioDesc": "Generate the first one to freeze a period's figures.",
+      "colCierre": "Closing",
+      "colAlcance": "Scope",
+      "colVersion": "Version",
+      "colEstado": "Status",
+      "colAcciones": "Actions",
+      "vigente": "current",
+      "reemplazada": "replaced",
+      "sinVersion": "No version",
+      "ver": "View",
+      "pdf": "PDF",
+      "carta": "Letter PDF",
+      "mm80": "80 mm receipt",
+      "excel": "Excel",
+      "versiones": "Versions",
+      "auditoria": "Audit",
+      "firmar": "Sign",
+      "reabrir": "Reopen",
+      "firmado": "Closing signed",
+      "reabierto": "Closing reopened",
+      "motivo": "Why it is reopened",
+      "estados": {
+        "borrador": "Draft",
+        "emitido": "Issued",
+        "firmado": "Signed",
+        "reemplazado": "Replaced"
+      },
+      "periodoCerrado": "period closed",
+      "pie": "Issuing freezes the closing. Signing the monthly one closes the accounting period. Reopening it requires permission and stays in the audit.",
+      "sinAuditoria": "This closing has no events."
+    },
+    "programados": {
+      "titulo": "{n} scheduled deliveries",
+      "nuevo": "Schedule delivery",
+      "vacio": "No scheduled deliveries",
+      "vacioDesc": "Schedule a report so it arrives by email with its filters.",
+      "colEnvio": "Delivery",
+      "colFrecuencia": "Frequency",
+      "colFormato": "Format",
+      "colProximo": "Next delivery",
+      "colEstado": "Status",
+      "destinatarios": "{n, plural, one {# recipient} other {# recipients}}",
+      "activo": "Active",
+      "pausado": "Paused",
+      "pausar": "Pause",
+      "reanudar": "Resume",
+      "aprobar": "Approve external",
+      "prueba": "Send test",
+      "editar": "Edit",
+      "eliminar": "Delete",
+      "eliminado": "Delivery deleted",
+      "pruebaEnviada": "Test sent to {para}",
+      "confirmEliminar": "Delete this delivery",
+      "confirmDesc": "It will stop being sent. This cannot be undone.",
+      "pie": "Each recipient only gets the branches they can see. If they lose access, the delivery pauses.",
+      "frecuencia": {
+        "daily": "Every day",
+        "weekly": "Every week",
+        "biweekly": "Every two weeks",
+        "monthly": "Monthly",
+        "quarterly": "Quarterly",
+        "custom": "Chosen days"
+      },
+      "formato": {
+        "pdf": "PDF",
+        "excel": "Excel",
+        "pdf_excel": "PDF + Excel",
+        "csv": "CSV"
+      },
+      "aLas": "{cuando} · {hora}"
+    },
+    "historial": {
+      "titulo": "Recent activity",
+      "vacio": "No activity yet",
+      "vacioDesc": "Every report that is opened, exported or sent stays here.",
+      "colReporte": "Report",
+      "colFiltros": "Filters used",
+      "colQuien": "Who",
+      "colCuando": "When",
+      "colAccion": "Action",
+      "usuario": "User",
+      "todos": "All users",
+      "pie": "History is read-only. A branch manager only sees activity for their branches.",
+      "accion": {
+        "ver": "Opened",
+        "exportar": "Exported",
+        "enviar": "Sent by email",
+        "programar": "Scheduled a delivery",
+        "emitir": "Issued closing",
+        "recalcular": "Recalculated closing",
+        "firmar": "Signed closing",
+        "reabrir": "Reopened closing"
+      }
+    },
+    "cierreDlg": {
+      "titulo": "Generate closing",
+      "descripcion": "Choose the period and the chapters. The document keeps its figures: if a sale is edited later, a new version is generated.",
+      "tipo": "Closing type",
+      "periodo": "Period and time range",
+      "sucursal": "Branch",
+      "comparar": "Compare with",
+      "plantilla": "Template",
+      "capitulos": "Chapters and reports",
+      "resumenCap": "{c} chapters · {r} reports",
+      "de": "{n} of {t}",
+      "siempre": "Always",
+      "formato": "Format",
+      "carta": "Letter (PDF)",
+      "mm80": "80 mm receipt",
+      "excel": "Excel",
+      "vistaPrevia": "Preview",
+      "generar": "Generate closing",
+      "recalcular": "Recalculate",
+      "existente": "There is already a closing for this period. Recalculating creates a new version and marks the previous one as replaced.",
+      "vacio": "Choose at least one report.",
+      "listo": "Closing {numero} generated",
+      "notaFranja": "The time range only applies to chapters that accept it. The others use the full day.",
+      "sinDatos": "A chapter with no data in the period prints the note “No movements”.",
+      "plantillas": {
+        "completo": "Full",
+        "contable": "Accounting and finance",
+        "ventas-caja": "Sales and cash",
+        "personalizada": "Custom"
+      },
+      "erroresPrevios": "{n, plural, one {# report could not be calculated} other {# reports could not be calculated}}"
+    },
+    "cierreExcel": {
+      "portada": "Cover",
+      "indicador": "Indicator",
+      "valor": "Value",
+      "capitulo": "Chapter",
+      "reportes": "Reports",
+      "errores": "Could not be calculated",
+      "sinMovimientos": "No movements",
+      "sinFranja": "This report is calculated for the full day",
+      "truncado": "{mostradas} of {total}",
+      "periodo": "{desde} – {hasta}",
+      "sucursal": "Branch: {nombre}",
+      "todas": "All branches",
+      "franja": "Time range: {desde} – {hasta}",
+      "plantilla": "Template: {nombre}",
+      "plantillas": {
+        "completo": "Full",
+        "contable": "Accounting and finance",
+        "ventas-caja": "Sales and cash",
+        "personalizada": "Custom"
+      }
+    },
+    "envioDlg": {
+      "titulo": "Schedule delivery",
+      "tituloEditar": "Edit delivery",
+      "descripcion": "The report is generated with these filters and arrives by email. Each recipient only gets the branches they can see.",
+      "nombre": "Name",
+      "reporte": "Report",
+      "diaHora": "Delivery day and time",
+      "hora": "Time",
+      "dia": "Day of the month",
+      "dias": "Days of the week",
+      "frecuencia": "Frequency",
+      "periodo": "Period covered by each delivery",
+      "sucursal": "Branch",
+      "comparar": "Compare with",
+      "formato": "Format",
+      "destinatarios": "Recipients",
+      "externo": "External email",
+      "agregar": "Add",
+      "requiere": "Requires approval",
+      "sinAcceso": "No access",
+      "prueba": "Send test",
+      "programar": "Schedule delivery",
+      "guardar": "Save changes",
+      "avisoTitulo": "If someone loses access",
+      "aviso": "The delivery pauses for that person and whoever scheduled it is notified. Nothing goes out without a current permission.",
+      "listo": "Delivery scheduled",
+      "guardado": "Delivery updated",
+      "correoInvalido": "That email is not valid.",
+      "diasSemana": {
+        "1": "Monday",
+        "2": "Tuesday",
+        "3": "Wednesday",
+        "4": "Thursday",
+        "5": "Friday",
+        "6": "Saturday",
+        "7": "Sunday"
+      }
     }
   }
 }

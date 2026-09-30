@@ -3873,7 +3873,9 @@
         "fechaFutura": "La date ne peut pas être postérieure à aujourd’hui.",
         "referenciaVacia": "Ce moyen exige une référence.",
         "recibidoInsuficiente": "Les espèces reçues ne couvrent pas le montant."
-      }
+      },
+      "retenciones": "Retenues",
+      "netoPagado": "Net {neto} · Payé {pagado}"
     },
     "vista": {
       "etiqueta": "Affichage",
@@ -4284,6 +4286,16 @@
       "motivoAgotado": "Cette variante est épuisée dans la succursale : choisissez-en une autre.",
       "motivoSinPrecio": "Cette variante n’a pas de prix en vigueur : définissez-le dans Inventaire pour la vendre.",
       "motivoElegir": "Choisissez une variante pour l’ajouter."
+    },
+    "franja": {
+      "etiqueta": "Plage horaire",
+      "todoElDia": "Toute la journée",
+      "franja": "Plage",
+      "desde": "De",
+      "hasta": "À",
+      "diaSiguiente": "{hora} (+1)",
+      "ayuda": "Compte ce qui a été vendu entre {desde} et {hasta}.",
+      "ayudaCruza": "La plage traverse minuit : les ventes entre {desde} et {hasta} le lendemain s'ajoutent au jour où le service a commencé."
     }
   },
   "inventarioEtiquetas": {
@@ -4940,7 +4952,10 @@
         "cuentasAbiertas": "Dettes fournisseurs ouvertes",
         "pagar": "Payer",
         "lotes": "Lots reçus de ce fournisseur",
-        "pagos": "Paiements enregistrés"
+        "pagos": "Paiements enregistrés",
+        "certificado": "Certificat de retenues",
+        "certificadoAnio": "Année en cours",
+        "generar": "Générer"
       },
       "valorStock": "Valeur du stock de ses produits (toutes les succursales) :",
       "totalPagado": "Total payé :",
@@ -11833,7 +11848,8 @@
         "pdf": "Télécharger le PDF",
         "imprimir": "Imprimer",
         "anular": "Annuler",
-        "eliminar": "Supprimer le brouillon"
+        "eliminar": "Supprimer le brouillon",
+        "certificado": "Certificat de retenues"
       },
       "motivos": {
         "sinPermiso": "Vous n'avez pas l'autorisation pour cette action",
@@ -11895,7 +11911,29 @@
         "recepcionarSinProductos": "Aucune ligne avec produit : rien n'entre en stock.",
         "recepcionarSinPermiso": "Vous n'avez pas l'autorisation de mouvementer le stock.",
         "generarDs": "Générer le document justificatif",
-        "generarDsAyuda": "Pour les fournisseurs non tenus de facturer."
+        "generarDsAyuda": "Pour les fournisseurs non tenus de facturer.",
+        "descripcionNeto": "Total {total} · net à payer {neto} (retenues {retenido}).",
+        "asiento": {
+          "titulo": "Écriture générée",
+          "cuenta": "Compte",
+          "debito": "Débit",
+          "credito": "Crédit",
+          "sumas": "Totaux",
+          "cuadra": "Équilibrée",
+          "noCuadra": "Déséquilibrée",
+          "noCalculado": "Impossible de calculer l’aperçu de l’écriture ; elle est générée quand même à la confirmation.",
+          "motivos": {
+            "no_borrador": "La facture n’est plus un brouillon : son écriture est dans le détail.",
+            "no_rule": "Aucune règle comptable d’achat : la facture est confirmée sans écriture. Configurez-la dans Finances › Règles comptables.",
+            "amount_invalid": "Le total de la facture n’est pas valide pour générer l’écriture.",
+            "debit_account_missing": "Le compte de débit de la règle d’achat manque dans le plan comptable.",
+            "credit_account_missing": "Le compte fournisseur de la règle d’achat manque dans le plan comptable.",
+            "tax_account_missing": "Le compte de TVA déductible manque dans le plan comptable.",
+            "withholding_exceeds_total": "Les retenues égalent ou dépassent le total : l’écriture est passée pour le total sans les déduire.",
+            "sin_asiento": "Aucune écriture ne serait générée à la confirmation.",
+            "otro": "Aucune écriture ne serait générée : vérifiez la configuration comptable."
+          }
+        }
       },
       "recepcionar": {
         "titulo": "Réceptionner la facture {numero}",
@@ -12005,7 +12043,8 @@
         "base": "Base",
         "tarifa": "Taux %",
         "retefuente": "Retenue à la source",
-        "quitar": "Retirer {concepto}"
+        "quitar": "Retirer {concepto}",
+        "bajoBaseMinima": "La base n’atteint pas le minimum de {uvt} UVT ({valor} avec l’UVT {anio}) : cette retenue ne s’applique normalement pas. Vous pouvez l’appliquer si le fournisseur le demande."
       },
       "errores": {
         "revisar": "Vérifiez les champs signalés.",
@@ -12288,7 +12327,8 @@
         "programar": "Programmer un paiement",
         "plan": "Créer un échéancier",
         "estadoCuenta": "Relevé de compte du fournisseur",
-        "factura": "Voir la facture"
+        "factura": "Voir la facture",
+        "certificado": "Certificat de retenues"
       },
       "motivos": {
         "sinPermiso": "Vous n'avez pas l'autorisation pour cette action"
@@ -12328,13 +12368,33 @@
       },
       "kpis": {
         "pagado": "Payé : {monto}",
-        "programado": "Programmé, non approuvé : {monto}"
+        "programado": "Programmé, non approuvé : {monto}",
+        "netoRetenciones": "Net des retenues ({retenido}) · payé {monto}"
       },
       "proveedorDatos": {
         "nombre": "Nom",
         "nit": "N° fiscal",
         "telefono": "Téléphone",
         "correo": "E-mail"
+      },
+      "origen": {
+        "titulo": "Document d’origine",
+        "factura": "Facture",
+        "recibida": "Reçue",
+        "vence": "Échéance",
+        "retenciones": "Retenues",
+        "conceptos": "{n, plural, one {# élément} other {# éléments}}",
+        "sinRetenciones": "Aucune retenue",
+        "formaPago": "Mode de paiement",
+        "credito": "Crédit à {n, plural, one {# jour} other {# jours}}",
+        "contado": "Comptant",
+        "subtotal": "Sous-total",
+        "iva": "TVA",
+        "total": "Total facture",
+        "menosRetenciones": "Retenues",
+        "neto": "Net à payer",
+        "asiento": "Écriture comptable",
+        "orden": "Bon de commande"
       }
     },
     "estadoCuenta": {
@@ -12388,6 +12448,28 @@
         "fecha": "La première échéance ne peut pas être antérieure à aujourd'hui.",
         "interes": "Entre 0 et 100 %."
       }
+    },
+    "certificado": {
+      "titulo": "Certificat de retenues",
+      "descripcion": "Ce qui a été retenu à {proveedor} pendant la période, pour lui remettre le certificat (art. 381 du Statut fiscal).",
+      "periodo": "Période certifiée",
+      "cargando": "Calcul des retenues…",
+      "errorLectura": "Impossible de lire les retenues.",
+      "reintentar": "Réessayer",
+      "clases": {
+        "retefuente": "Retenue à la source",
+        "reteiva": "Retenue de TVA",
+        "reteica": "Retenue d'ICA"
+      },
+      "total": "Total retenu",
+      "alcance": "{facturas, plural, =0 {Aucune facture} one {# facture} other {# factures}} · {conceptos, plural, =0 {aucun concept} one {# concept} other {# concepts}}",
+      "sinRetenciones": "Aucune retenue pendant cette période ; le certificat sera à zéro.",
+      "nota": "Couvre toutes les succursales : l'agent de retenue est l'organisation.",
+      "descargar": "Télécharger le PDF",
+      "imprimir": "Imprimer",
+      "ver": "Voir",
+      "cerrar": "Fermer",
+      "errorDescarga": "Impossible de télécharger le certificat"
     }
   },
   "documentos": {
@@ -12405,7 +12487,10 @@
       "reporte-caja-abierta": "Rapport de caisse ouverte",
       "arqueo-caja": "Comptage de caisse",
       "estado-cuenta-proveedor": "Relevé de compte fournisseur",
-      "nota-credito-electronica": "Note de crédit électronique"
+      "nota-credito-electronica": "Note de crédit électronique",
+      "certificado-retenciones": "Certificat de retenues",
+      "cierre-periodo": "Clôture de période",
+      "reporte": "Rapport"
     },
     "sinNumero": "Sans numéro",
     "paginacion": {
@@ -12485,7 +12570,13 @@
       "pending": "En attente",
       "accepted": "Acceptée",
       "processing": "En cours",
-      "failed": "Échouée"
+      "failed": "Échouée",
+      "cierre": {
+        "borrador": "Brouillon",
+        "emitido": "Émis",
+        "firmado": "Signé · période clôturée",
+        "reemplazado": "Remplacé"
+      }
     },
     "qr": {
       "verificacionDian": "Vérifier auprès de la DIAN",
@@ -12498,12 +12589,17 @@
       "anulada": "Document annulé.",
       "monedaExtranjera": "Document émis en {moneda}, différente de la devise de base de l'organisation.",
       "noEsFactura": "Ce devis n'est pas une facture.",
-      "cierreCiego": "Clôture à l'aveugle : les montants attendus et les écarts ne sont visibles que par l'administration."
+      "cierreCiego": "Clôture à l'aveugle : les montants attendus et les écarts ne sont visibles que par l'administration.",
+      "cierreReemplazado": "Cette version a été remplacée par un recalcul. Consultez la version en vigueur.",
+      "cierreReemplazadoPor": "Cette version a été remplacée par la v{version}. Consultez la version en vigueur.",
+      "cierrePeriodoCerrado": "Clôture signée : la période comptable est clôturée.",
+      "cierreConErrores": "{cantidad} rapport(s) n'ont pas pu être calculés et ne sont pas inclus. Voir la fin du document."
     },
     "marcas": {
       "borrador": "BROUILLON",
       "anulada": "ANNULÉE",
-      "pagada": "PAYÉE"
+      "pagada": "PAYÉE",
+      "reemplazado": "REMPLACÉ"
     },
     "campos": {
       "fechaEmision": "Date d'émission",
@@ -12552,7 +12648,22 @@
       "total": "Total",
       "vencido": "Échu",
       "porVencer": "Non échu",
-      "facturaCompraAsociada": "Facture d'achat associée"
+      "facturaCompraAsociada": "Facture d'achat associée",
+      "periodoDesde": "Période du",
+      "periodoHasta": "Période au",
+      "facturasIncluidas": "Factures incluses",
+      "fechaExpedicion": "Date d'émission",
+      "ciudadExpedicion": "Ville d'émission",
+      "declaradoEn": "Déclaré dans",
+      "tipoCierre": "Type de clôture",
+      "franja": "Plage horaire",
+      "plantilla": "Modèle",
+      "version": "Version",
+      "emitidoEn": "Émis le",
+      "emitidoPor": "Émis par",
+      "firmadoEn": "Signé le",
+      "firmadoPor": "Signé par",
+      "kpi": "Indicateur"
     },
     "formasPago": {
       "contado": "Comptant",
@@ -12593,7 +12704,12 @@
       "movimientosCaja": "Entrées et sorties de caisse",
       "arqueos": "Comptages",
       "denominaciones": "Coupures",
-      "retenciones": "Retenues appliquées au fournisseur"
+      "retenciones": "Retenues appliquées au fournisseur",
+      "conceptosRetenidos": "Retenues pratiquées",
+      "facturasIncluidas": "Factures incluses",
+      "indiceCapitulos": "Index des chapitres",
+      "reportesConError": "Rapports non inclus (erreur de calcul)",
+      "reporte": "Rapport"
     },
     "columnas": {
       "descripcion": "Désignation",
@@ -12628,12 +12744,19 @@
       "subtotal": "Sous-total",
       "base": "Base",
       "tarifa": "Taux (%)",
-      "unidad": "Unité"
+      "unidad": "Unité",
+      "cuenta": "Compte",
+      "valorRetenido": "Montant retenu",
+      "capitulo": "Chapitre",
+      "reportes": "Rapports",
+      "reporte": "Rapport"
     },
     "vacios": {
       "lineas": "Aucune ligne.",
       "movimientos": "Aucun mouvement sur la période.",
-      "facturasAbiertas": "Aucune facture ouverte."
+      "facturasAbiertas": "Aucune facture ouverte.",
+      "retencionesPeriodo": "Aucune retenue n'a été pratiquée sur ce fournisseur pendant la période.",
+      "reporteSinDatos": "Aucune donnée sur la période."
     },
     "totales": {
       "subtotal": "Sous-total",
@@ -12666,7 +12789,11 @@
       },
       "retencion": "{concepto} ({tasa} %)",
       "totalFactura": "Total de la facture",
-      "netoPagar": "Net à payer au fournisseur"
+      "netoPagar": "Net à payer au fournisseur",
+      "retefuente": "Retenue à la source",
+      "reteiva": "Retenue de TVA",
+      "reteica": "Retenue d'ICA",
+      "totalRetenido": "Total retenu"
     },
     "firmas": {
       "recibido": "Reçu conforme",
@@ -12677,7 +12804,12 @@
       "recibe": "Reçu par",
       "datosRecibe": "Nom · Pièce · Date",
       "datosAcepta": "Nom · Pièce · Fonction · Date",
-      "datosNombre": "Nom et pièce"
+      "datosNombre": "Nom et pièce",
+      "agenteRetenedor": "Agent de retenue",
+      "contador": "Expert-comptable",
+      "datosContador": "Nom · Carte professionnelle",
+      "elaboro": "Établi par",
+      "representanteLegal": "Représentant légal"
     },
     "legal": {
       "resolucion": "Résolution DIAN n° {numero} du {fecha}, préfixe {prefijo}, numérotation autorisée du {desde} au {hasta}, valable jusqu’au {vigencia}.",
@@ -12696,7 +12828,10 @@
         "comprobante-egreso": "Justificatif d'un paiement effectué.",
         "cierre-caja": "Rapport de caisse interne.",
         "arqueo-caja": "Rapport interne de comptage de caisse.",
-        "estado-cuenta-proveedor": "Relevé de compte du fournisseur selon nos registres. En cas d'écart, contactez-nous dans les 10 jours suivant sa réception."
+        "estado-cuenta-proveedor": "Relevé de compte du fournisseur selon nos registres. En cas d'écart, contactez-nous dans les 10 jours suivant sa réception.",
+        "certificado-retenciones": "Certificat délivré conformément à l'article 381 du Statut fiscal colombien. Aucune signature manuscrite requise (article 10 du décret 836 de 1991).",
+        "cierre-periodo": "Document interne de clôture. Les chiffres ont été figés à l'émission ; un recalcul crée une nouvelle version avec le même numéro.",
+        "reporte": "Rapport interne généré à la date indiquée avec les données en vigueur à ce moment."
       }
     },
     "movimientos": {
@@ -12772,6 +12907,68 @@
       "pos": "Vente enregistrée au point de vente (POS).",
       "mesa": "Vente enregistrée depuis une table.",
       "ventaPos": "Vente POS"
+    },
+    "certificado": {
+      "prefijo": "CR",
+      "totalRetenido": "Total retenu",
+      "declarado350": "Formulaire 350",
+      "declaradoIca": "Déclaration d'ICA",
+      "declarado350EIca": "Formulaire 350 et ICA",
+      "constancia": "{emisor}, en qualité d'agent de retenue, certifie avoir pratiqué sur {proveedor}, pendant la période indiquée, les retenues détaillées ci-dessous, sur les paiements ou crédits des factures incluses."
+    },
+    "reportes": {
+      "truncado": "{mostradas} lignes affichées sur {total}. Les totaux les incluent toutes. Consultez le rapport complet dans l'application.",
+      "todaLaOrganizacion": "Toute l'organisation"
+    },
+    "cierre": {
+      "tipos": {
+        "diario": "Quotidienne",
+        "semanal": "Hebdomadaire",
+        "quincenal": "Bimensuelle",
+        "mensual": "Mensuelle",
+        "trimestral": "Trimestrielle",
+        "semestral": "Semestrielle",
+        "anual": "Annuelle",
+        "personalizado": "Personnalisée"
+      },
+      "plantillas": {
+        "completo": "Complet",
+        "contable": "Comptable et financier",
+        "ventas-caja": "Ventes et caisse",
+        "personalizada": "Personnalisé"
+      },
+      "consolidado": "Consolidé (toutes les succursales)",
+      "sinFranja": "Ce rapport est calculé par journée complète : la plage horaire de la clôture ne s'applique pas.",
+      "reabierto": "Période rouverte par {quien}. Motif : {motivo}"
+    },
+    "exportacion": {
+      "resumen": "Résumé",
+      "indicador": "Indicateur",
+      "valor": "Valeur",
+      "desde": "Du",
+      "hasta": "Au"
+    },
+    "envios": {
+      "asunto": "{reporte} · {periodo}",
+      "asuntoPrueba": "[Test] {reporte} · {periodo}",
+      "saludo": "Bonjour {nombre},",
+      "saludoSinNombre": "Bonjour,",
+      "cuerpo": "Veuillez trouver ci-joint le rapport « {reporte} » de {organizacion} pour la période {periodo}.",
+      "franja": "Plage horaire : {franja}.",
+      "pie": "Vous recevez cet e-mail car {creador} vous a ajouté à l’envoi programmé « {envio} ». Pour ne plus le recevoir, demandez-lui de vous retirer de la liste.",
+      "pieExterno": "Vous recevez cet e-mail car {organizacion} vous a ajouté à l’envoi programmé « {envio} ». Si vous ne devriez pas le recevoir, répondez à cet e-mail.",
+      "pausado": {
+        "titulo": "Envoi programmé avec des destinataires en pause : {envio}",
+        "linea": "{destinatario} : {motivo}"
+      },
+      "motivos": {
+        "sin_membresia": "n’est plus membre actif de l’organisation",
+        "sin_permiso": "n’a plus l’autorisation d’exporter des rapports",
+        "sin_alcance": "n’a pas accès à la succursale de l’envoi",
+        "modulo_no_contratado": "le forfait n’inclut plus ce rapport",
+        "aprobador_sin_acceso": "la personne qui a approuvé cet e-mail externe n’est plus administrateur",
+        "rebote": "l’e-mail a été rejeté"
+      }
     }
   },
   "posVentas": {
@@ -15374,7 +15571,9 @@
       "tipo": "Type",
       "tarifa": "Taux",
       "aplicaA": "S’applique à",
-      "estado": "Statut"
+      "estado": "Statut",
+      "baseMinima": "Base minimale",
+      "cuenta": "Compte comptable"
     },
     "tipos": {
       "retefuente": "ReteFuente",
@@ -15399,16 +15598,51 @@
       "activada": "{nombre} est maintenant active.",
       "desactivada": "{nombre} est maintenant inactive.",
       "errorTitulo": "Erreur",
-      "errorEstado": "Impossible de modifier le statut de la retenue."
+      "errorEstado": "Impossible de modifier le statut de la retenue.",
+      "errorConfiguracion": "Impossible de lire le compte comptable et la base minimale des retenues."
     },
     "formulario": {
       "nueva": "Nouvelle retenue",
       "editar": "Modifier la retenue",
-      "nota": "Une retenue est pratiquée par l’acheteur : elle ne s’ajoute pas au prix, ne s’attribue pas aux produits et ne peut pas être le taux par défaut."
+      "nota": "Une retenue est pratiquée par l’acheteur : elle ne s’ajoute pas au prix, ne s’attribue pas aux produits et ne peut pas être le taux par défaut.",
+      "cuenta": "Compte comptable",
+      "cuentaAutomatica": "Automatique selon le type (2365 / 2367 / 2368)",
+      "cuentaAutomaticaActual": "Automatique selon le type ({cuenta})",
+      "cuentaAyuda": "Uniquement des comptes de passif actifs. L’écriture d’achat crédite la retenue sur ce compte.",
+      "baseMinima": "Base minimale (UVT)",
+      "baseMinimaPlaceholder": "Ex. : 27",
+      "baseMinimaAyuda": "Si la base de la facture est inférieure, le formulaire avertit que la retenue ne s’applique pas. Vide : sans base minimale.",
+      "baseMinimaEquivale": "Équivaut à {valor} avec l’UVT {anio}. En dessous, la facture avertit qu’elle ne s’applique pas.",
+      "errorConfiguracionTitulo": "La retenue n’a été enregistrée qu’en partie",
+      "errorConfiguracion": "Le nom et le taux ont été enregistrés, mais pas le compte ni la base minimale : {detalle}",
+      "errores": {
+        "cuenta_no_existe": "le compte n’existe pas dans le plan comptable.",
+        "cuenta_no_es_pasivo": "le compte n’est pas un compte de passif.",
+        "cuenta_inactiva": "le compte est inactif.",
+        "base_minima_invalida": "La base minimale doit être un nombre supérieur ou égal à zéro.",
+        "retencion_no_encontrada": "la retenue n’existe pas dans cette organisation.",
+        "otro": "vérifiez vos autorisations sur les taxes et réessayez."
+      }
     },
     "titulo": "Taxes",
     "migas": {
       "finanzas": "Finances"
+    },
+    "baseMinima": {
+      "sin": "Sans base minimale",
+      "uvt": "{uvt} UVT",
+      "equivalente": "≈ {valor} (UVT {anio})"
+    },
+    "cuenta": {
+      "automatica": "Automatique selon le type"
+    },
+    "uvtVigente": "UVT {anio} : {valor} · {norma}",
+    "uvtSinDato": "Aucune UVT enregistrée pour le pays : la base minimale ne peut pas être convertie en devise.",
+    "plantilla": {
+      "cargar": "Charger le modèle {pais}",
+      "alDia": "Vous avez déjà toutes les retenues du modèle {pais}.",
+      "cargada": "{creadas, plural, =0 {Vous aviez déjà toutes les retenues de {pais}.} one {# retenue de {pais} a été ajoutée.} other {# retenues de {pais} ont été ajoutées.}}",
+      "error": "Impossible de charger le modèle de retenues."
     }
   },
   "receta": {
@@ -24529,6 +24763,446 @@
       "pedidosAnterior": "Commandes période précédente",
       "pais": "Pays",
       "sesiones": "Sessions"
+    }
+  },
+  "asientoContable": {
+    "origenCompra": {
+      "titulo": "Écriture automatique de l'achat {numero}",
+      "conRetenciones": "Générée à la confirmation de la facture ; elle ne se modifie ni ne se supprime (pour l'annuler, annulez la facture). Le fournisseur n'est crédité que du net, {neto} ; les retenues, {retenido}, vont aux impôts à payer.",
+      "sinRetenciones": "Générée à la confirmation de la facture ; elle ne se modifie ni ne se supprime (pour l'annuler, annulez la facture). Le fournisseur est crédité du total, {total} : la facture n'a pas de retenues.",
+      "irFactura": "Aller à la facture",
+      "cadena": "Chaîne du document",
+      "pago": "Paiement",
+      "retenciones": "Retenues",
+      "verCertificado": "Voir le certificat",
+      "conceptos": "{n, plural, one {# concept} other {# concepts}}"
+    },
+    "datos": {
+      "titulo": "Données de l'écriture",
+      "fecha": "Date comptable",
+      "sucursal": "Succursale",
+      "origen": "Origine",
+      "moneda": "Devise",
+      "tasa": "Taux {tasa} par rapport à {base}",
+      "claveHecho": "Clé de l'événement",
+      "creado": "Créée le",
+      "origenes": {
+        "manual": "Manuelle",
+        "reversal": "Contre-passation",
+        "invoice_sales": "Facture de vente",
+        "invoice_purchase": "Facture d'achat",
+        "sales": "Vente PDV",
+        "payments": "Paiement",
+        "stock_movements": "Mouvement de stock",
+        "inventory_adjustment": "Ajustement de stock",
+        "accounts_receivable": "Compte client",
+        "accounts_payable": "Compte fournisseur",
+        "purchase_orders": "Bon de commande",
+        "cash_movements": "Mouvement de caisse",
+        "cash_sessions": "Session de caisse",
+        "commissions": "Commission",
+        "credit_note": "Avoir"
+      },
+      "creadoPor": "Créée par",
+      "automatico": "Automatique (système)"
+    },
+    "lineas": {
+      "centroCosto": "Centre de coûts"
+    }
+  },
+  "reportes": {
+    "titulo": "Rapports",
+    "migaInicio": "Accueil",
+    "actualizar": "Actualiser",
+    "programarEnvios": "Planifier les envois",
+    "generarCierre": "Générer la clôture",
+    "preguntar": "Demander à l'IA",
+    "masAcciones": "Plus d'actions",
+    "pestanas": {
+      "etiqueta": "Sections des rapports",
+      "inicio": "Accueil",
+      "favoritos": "Favoris",
+      "cierres": "Clôtures",
+      "programados": "Planifiés",
+      "historial": "Historique"
+    },
+    "periodo": {
+      "trimestre": "T{n} {anio}",
+      "semestre": "S{n} {anio}",
+      "diaCompleto": "Journée complète",
+      "cambiar": "Changer la période, {periodo}",
+      "masUnDia": "+1 jour",
+      "tipo": "Type de période",
+      "desde": "De",
+      "hasta": "À",
+      "anterior": "Période précédente",
+      "siguiente": "Période suivante",
+      "sinSiguiente": "Cette période n'a pas encore commencé",
+      "franjaNoAplica": "Ce rapport se calcule sur la journée complète.",
+      "listo": "Terminé"
+    },
+    "tipos": {
+      "diario": "Quotidien",
+      "semanal": "Hebdomadaire",
+      "quincenal": "Bimensuel",
+      "mensual": "Mensuel",
+      "trimestral": "Trimestriel",
+      "semestral": "Semestriel",
+      "anual": "Annuel",
+      "personalizado": "Personnalisé"
+    },
+    "filtros": {
+      "titulo": "Filtres",
+      "comparar": "Comparer",
+      "compararCon": "Comparer : {periodo}",
+      "compararNoAplica": "Comparer : sans objet",
+      "sinComparar": "Sans comparaison",
+      "sucursal": "Succursale",
+      "sucursalNoAplica": "Ce rapport couvre toute l'organisation",
+      "sucursalFija": "Votre accès est fixé à votre succursale",
+      "todaLaOrganizacion": "Toute l'organisation",
+      "todasLasSucursales": "Toutes les succursales",
+      "franjaNoAplica": "Plage : sans objet",
+      "franjaNoAplicaMotivo": "Ce rapport se calcule par jour"
+    },
+    "alcance": {
+      "titulo": "{n, plural, =0 {Vous n'avez aucune succursale assignée} one {Vous ne voyez que {sucursales}} other {Vous ne voyez que {sucursales}}}",
+      "descripcion": "{n, plural, =0 {Demandez qu'on vous assigne une succursale pour voir les rapports.} one {Votre utilisateur n'a accès qu'à une succursale. Les rapports de toute l'organisation sont bloqués.} other {Votre utilisateur a accès à ces succursales. Les rapports de toute l'organisation sont bloqués.}}",
+      "ninguna": "aucune succursale",
+      "boton": "Demander l'accès",
+      "botonEnviada": "Demande envoyée",
+      "solicitada": "Nous avons prévenu les administrateurs",
+      "yaSolicitada": "Vous avez déjà envoyé cette demande récemment"
+    },
+    "errores": {
+      "generico": "Impossible de terminer. Réessayez.",
+      "sin_permiso": "Vous n'avez pas la permission pour cette action.",
+      "cierre_existente": "Une clôture existe déjà pour cette période.",
+      "datos_invalidos": "Vérifiez les données et réessayez.",
+      "sin_administradores": "Il n'y a pas d'administrateur à prévenir.",
+      "correo_no_configurado": "Le courriel de l'organisation n'est pas configuré.",
+      "PDF_NO_DISPONIBLE": "Le PDF n'est pas disponible pour le moment.",
+      "BRANCH_SCOPE_REQUIRED": "Choisissez une succursale à laquelle vous avez accès.",
+      "periodo_invalido": "La période n'est pas valide.",
+      "dia_invalido": "Choisissez le jour de l'envoi.",
+      "destinatarios": "Choisissez au moins un destinataire.",
+      "servicio_no_configurado": "La clôture n'a pas pu être enregistrée : le serveur n'a pas sa clé de service.",
+      "prueba_sin_servicio": "L'essai n'a pas pu être envoyé : ce serveur n'a pas la clé pour expédier le courrier.",
+      "snapshot_invalido": "Cette clôture ne peut pas être exportée en Excel."
+    },
+    "grupos": {
+      "contabilidad": "Comptabilité",
+      "finanzas": "Finances et trésorerie",
+      "ventas": "Ventes et PDV",
+      "inventario": "Stocks",
+      "compras": "Achats",
+      "personas": "Personnel (paie)",
+      "clientes": "Clients et CRM",
+      "atencion": "Accueil et messagerie",
+      "operacion": "Exploitation et organisation",
+      "hoteleria": "Hôtellerie",
+      "parqueadero": "Stationnement",
+      "membresias": "Abonnements",
+      "transporte": "Transport"
+    },
+    "gruposDesc": {
+      "contabilidad": "Bilan, résultats et période fiscale",
+      "finanzas": "Créances, flux, taxes et banques",
+      "ventas": "Clôture de caisse, ventes par heure et par vendeur",
+      "inventario": "Stock, rotation et numéros de série",
+      "compras": "Fournisseurs, commandes et retenues",
+      "personas": "Paie, productivité et commissions",
+      "clientes": "Clients, entonnoir et campagnes",
+      "atencion": "Conversations, délais et campagnes",
+      "operacion": "Succursales, audit et connexions",
+      "hoteleria": "Occupation, revenus et housekeeping",
+      "parqueadero": "Occupation, revenus et rotation",
+      "membresias": "Actifs, activité et rétention",
+      "transporte": "Envois, conducteurs et routes"
+    },
+    "filtroTipo": {
+      "comparativo": "Comparatif",
+      "sucursal": "Succursale",
+      "franja": "Plage",
+      "centroCosto": "Centre de coût"
+    },
+    "badges": {
+      "nuevo": "Nouveau",
+      "disponible": "Disponible",
+      "sinAcceso": "Sans accès",
+      "requierePlan": "Nécessite un plan",
+      "porSucursal": "Par succursale",
+      "todaLaOrg": "Toute l'org."
+    },
+    "inicio": {
+      "buscar": "Chercher parmi {n} rapports…",
+      "buscarCorto": "Chercher un rapport",
+      "subtitulo": "{n} rapports dans {m} modules actifs",
+      "recientes": "Récents",
+      "verHistorial": "Voir l'historique",
+      "sinRecientes": "Les rapports que vous ouvrez apparaîtront ici.",
+      "porModulo": "Rapports par module",
+      "hint": "Les étiquettes indiquent les filtres de chaque rapport. Ceux qui ne s'appliquent pas sont désactivés à l'ouverture.",
+      "conteo": "{n} rapports",
+      "nuevos": "{n, plural, one {# nouveau} other {# nouveaux}}",
+      "moduloNuevo": "nouveau module",
+      "verLos": "Voir les {n} rapports",
+      "fueraPlan": "{n, plural, one {# module n'est pas dans votre plan} other {# modules ne sont pas dans votre plan}}",
+      "fueraDesc": "{nombres} totalisent {reportes} rapports. Ils s'activent depuis le plan.",
+      "verPlanes": "Voir les plans",
+      "vs": "{signo}{valor} vs {periodo}",
+      "detalleMargen": "Marge {valor}",
+      "detalleVencido": "{valor} échu",
+      "detalleBajo": "{n, plural, one {# sous le minimum} other {# sous le minimum}}",
+      "kpis": {
+        "ventas": "Ventes de la période",
+        "utilidad": "Résultat net",
+        "caja": "Caisse et banques",
+        "cobrar": "À recevoir",
+        "pagar": "À payer",
+        "inventario": "Stocks"
+      }
+    },
+    "lista": {
+      "titulo": "Rapports de {grupo}",
+      "adicionales": "Modules non souscrits",
+      "subtitulo": "{n} rapports",
+      "subtituloAdicionales": "Ils s'activent en souscrivant le module",
+      "colReporte": "Rapport",
+      "colFiltros": "Filtres en plus de la période",
+      "colAlcance": "Portée",
+      "colEstado": "État",
+      "programar": "Planifier l'envoi",
+      "pie": "Les lignes « Sans accès » et « Nécessite un plan » n'ouvrent pas le visualiseur.",
+      "sinFiltros": "Période seulement"
+    },
+    "visor": {
+      "datosAl": "données au {cuando}",
+      "agregar": "Ajouter à la clôture",
+      "exportar": "Exporter",
+      "pdf": "PDF",
+      "excel": "Excel",
+      "csv": "CSV",
+      "imprimir": "Imprimer",
+      "favorito": "Ajouter aux favoris",
+      "quitarFavorito": "Retirer des favoris",
+      "copiar": "Copier le lien",
+      "copiado": "Lien copié",
+      "lectura": "Lecture rapide",
+      "filtrosDeEste": "Filtres de ce rapport",
+      "aplica": "S'applique",
+      "noAplica": "sans objet",
+      "variacion": "Variation",
+      "sinComparacion": "Ce rapport ne se compare pas ligne à ligne.",
+      "sube": "{titulo} augmente de {valor} par rapport à {periodo}.",
+      "baja": "{titulo} baisse de {valor} par rapport à {periodo}.",
+      "sinMovimientos": "Aucun mouvement sur cette période.",
+      "verFuente": "Voir la source",
+      "exportado": "Exporté",
+      "sinExportar": "Vous n'avez pas la permission d'exporter.",
+      "bloqueado": "Vous ne pouvez pas ouvrir ce rapport",
+      "bloqueadoPlan": "Ce rapport s'active en souscrivant le module.",
+      "bloqueadoAlcance": "Il exige l'accès à toutes les succursales."
+    },
+    "favoritos": {
+      "titulo": "{n} favoris",
+      "vacio": "Vous n'avez pas encore de favoris",
+      "vacioDesc": "Marquez un rapport avec l'étoile dans son visualiseur pour le voir ici.",
+      "colReporte": "Rapport",
+      "colFiltros": "Derniers filtres utilisés",
+      "colAlcance": "Portée",
+      "colCuando": "Dernière fois",
+      "pie": "Les favoris sont personnels : chaque utilisateur a les siens.",
+      "quitar": "Retirer des favoris"
+    },
+    "cierres": {
+      "titulo": "Historique des clôtures",
+      "vacio": "Pas encore de clôtures",
+      "vacioDesc": "Générez la première pour figer les chiffres d'une période.",
+      "colCierre": "Clôture",
+      "colAlcance": "Portée",
+      "colVersion": "Version",
+      "colEstado": "État",
+      "colAcciones": "Actions",
+      "vigente": "en vigueur",
+      "reemplazada": "remplacée",
+      "sinVersion": "Sans version",
+      "ver": "Voir",
+      "pdf": "PDF",
+      "carta": "PDF lettre",
+      "mm80": "Ticket 80 mm",
+      "excel": "Excel",
+      "versiones": "Versions",
+      "auditoria": "Audit",
+      "firmar": "Signer",
+      "reabrir": "Rouvrir",
+      "firmado": "Clôture signée",
+      "reabierto": "Clôture rouverte",
+      "motivo": "Pourquoi on la rouvre",
+      "estados": {
+        "borrador": "Brouillon",
+        "emitido": "Émise",
+        "firmado": "Signée",
+        "reemplazado": "Remplacée"
+      },
+      "periodoCerrado": "période close",
+      "pie": "Émettre fige la clôture. Signer la mensuelle clôt la période comptable. La rouvrir exige une permission et reste dans l'audit.",
+      "sinAuditoria": "Cette clôture n'a pas d'événements."
+    },
+    "programados": {
+      "titulo": "{n} envois planifiés",
+      "nuevo": "Planifier l'envoi",
+      "vacio": "Aucun envoi planifié",
+      "vacioDesc": "Planifiez un rapport pour qu'il arrive par courriel avec ses filtres.",
+      "colEnvio": "Envoi",
+      "colFrecuencia": "Fréquence",
+      "colFormato": "Format",
+      "colProximo": "Prochain envoi",
+      "colEstado": "État",
+      "destinatarios": "{n, plural, one {# destinataire} other {# destinataires}}",
+      "activo": "Actif",
+      "pausado": "En pause",
+      "pausar": "Mettre en pause",
+      "reanudar": "Reprendre",
+      "aprobar": "Approuver les externes",
+      "prueba": "Envoyer un essai",
+      "editar": "Modifier",
+      "eliminar": "Supprimer",
+      "eliminado": "Envoi supprimé",
+      "pruebaEnviada": "Essai envoyé à {para}",
+      "confirmEliminar": "Supprimer cet envoi",
+      "confirmDesc": "Il ne sera plus envoyé. Cette action est définitive.",
+      "pie": "Chaque destinataire ne reçoit que les succursales qu'il peut voir. S'il perd l'accès, l'envoi se met en pause.",
+      "frecuencia": {
+        "daily": "Tous les jours",
+        "weekly": "Chaque semaine",
+        "biweekly": "Toutes les deux semaines",
+        "monthly": "Mensuel",
+        "quarterly": "Trimestriel",
+        "custom": "Jours choisis"
+      },
+      "formato": {
+        "pdf": "PDF",
+        "excel": "Excel",
+        "pdf_excel": "PDF + Excel",
+        "csv": "CSV"
+      },
+      "aLas": "{cuando} · {hora}"
+    },
+    "historial": {
+      "titulo": "Activité récente",
+      "vacio": "Pas encore d'activité",
+      "vacioDesc": "Chaque rapport ouvert, exporté ou envoyé reste ici.",
+      "colReporte": "Rapport",
+      "colFiltros": "Filtres utilisés",
+      "colQuien": "Qui",
+      "colCuando": "Quand",
+      "colAccion": "Action",
+      "usuario": "Utilisateur",
+      "todos": "Tous les utilisateurs",
+      "pie": "L'historique est en lecture seule. Un responsable de succursale ne voit que l'activité de ses succursales.",
+      "accion": {
+        "ver": "A ouvert",
+        "exportar": "A exporté",
+        "enviar": "A envoyé par courriel",
+        "programar": "A planifié un envoi",
+        "emitir": "A émis la clôture",
+        "recalcular": "A recalculé la clôture",
+        "firmar": "A signé la clôture",
+        "reabrir": "A rouvert la clôture"
+      }
+    },
+    "cierreDlg": {
+      "titulo": "Générer la clôture",
+      "descripcion": "Choisissez la période et les chapitres. Le document conserve ses chiffres : si une vente est modifiée ensuite, une nouvelle version est générée.",
+      "tipo": "Type de clôture",
+      "periodo": "Période et plage",
+      "sucursal": "Succursale",
+      "comparar": "Comparer avec",
+      "plantilla": "Modèle",
+      "capitulos": "Chapitres et rapports",
+      "resumenCap": "{c} chapitres · {r} rapports",
+      "de": "{n} sur {t}",
+      "siempre": "Toujours",
+      "formato": "Format",
+      "carta": "Lettre (PDF)",
+      "mm80": "Ticket 80 mm",
+      "excel": "Excel",
+      "vistaPrevia": "Aperçu",
+      "generar": "Générer la clôture",
+      "recalcular": "Recalculer",
+      "existente": "Une clôture existe déjà pour cette période. Recalculer crée une nouvelle version et marque la précédente comme remplacée.",
+      "vacio": "Choisissez au moins un rapport.",
+      "listo": "Clôture {numero} générée",
+      "notaFranja": "La plage ne s'applique qu'aux chapitres qui l'acceptent. Les autres utilisent la journée complète.",
+      "sinDatos": "Un chapitre sans données sur la période s'imprime avec la note « Aucun mouvement ».",
+      "plantillas": {
+        "completo": "Complet",
+        "contable": "Comptable et financier",
+        "ventas-caja": "Ventes et caisse",
+        "personalizada": "Personnalisée"
+      },
+      "erroresPrevios": "{n, plural, one {# rapport n'a pas pu être calculé} other {# rapports n'ont pas pu être calculés}}"
+    },
+    "cierreExcel": {
+      "portada": "Couverture",
+      "indicador": "Indicateur",
+      "valor": "Valeur",
+      "capitulo": "Chapitre",
+      "reportes": "Rapports",
+      "errores": "N'ont pas pu être calculés",
+      "sinMovimientos": "Aucun mouvement",
+      "sinFranja": "Ce rapport est calculé sur la journée complète",
+      "truncado": "{mostradas} sur {total}",
+      "periodo": "{desde} – {hasta}",
+      "sucursal": "Succursale : {nombre}",
+      "todas": "Toutes les succursales",
+      "franja": "Plage : {desde} – {hasta}",
+      "plantilla": "Modèle : {nombre}",
+      "plantillas": {
+        "completo": "Complet",
+        "contable": "Comptable et financier",
+        "ventas-caja": "Ventes et caisse",
+        "personalizada": "Personnalisée"
+      }
+    },
+    "envioDlg": {
+      "titulo": "Planifier l'envoi",
+      "tituloEditar": "Modifier l'envoi",
+      "descripcion": "Le rapport est généré avec ces filtres et arrive par courriel. Chaque destinataire ne reçoit que les succursales qu'il peut voir.",
+      "nombre": "Nom",
+      "reporte": "Rapport",
+      "diaHora": "Jour et heure d'envoi",
+      "hora": "Heure",
+      "dia": "Jour du mois",
+      "dias": "Jours de la semaine",
+      "frecuencia": "Fréquence",
+      "periodo": "Période couverte par chaque envoi",
+      "sucursal": "Succursale",
+      "comparar": "Comparer avec",
+      "formato": "Format",
+      "destinatarios": "Destinataires",
+      "externo": "Courriel externe",
+      "agregar": "Ajouter",
+      "requiere": "Nécessite une approbation",
+      "sinAcceso": "Sans accès",
+      "prueba": "Envoyer un essai",
+      "programar": "Planifier l'envoi",
+      "guardar": "Enregistrer",
+      "avisoTitulo": "Si quelqu'un perd l'accès",
+      "aviso": "L'envoi se met en pause pour cette personne et celui qui l'a planifié est prévenu. Rien ne part sans une permission en vigueur.",
+      "listo": "Envoi planifié",
+      "guardado": "Envoi mis à jour",
+      "correoInvalido": "Ce courriel n'est pas valide.",
+      "diasSemana": {
+        "1": "Lundi",
+        "2": "Mardi",
+        "3": "Mercredi",
+        "4": "Jeudi",
+        "5": "Vendredi",
+        "6": "Samedi",
+        "7": "Dimanche"
+      }
     }
   }
 }

@@ -34,6 +34,8 @@ jest.mock('@/lib/utils/orgContext', () => ({
 }));
 jest.mock('@/lib/supabase/config', () => ({ supabase: { rpc: browserRpc, from: jest.fn() } }));
 // r4: la lista blanca de módulos sale del servidor con el cliente de sesión.
+// La firma imita getActiveModules(orgId, client). Este caso no usa los valores.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const getActiveModules = jest.fn(async (_orgId: number, _client: unknown) => [{ code: 'crm' }]);
 jest.mock('@/lib/services/moduleManagementService', () => ({
   moduleManagementService: { getActiveModules: (orgId: number, client: unknown) => getActiveModules(orgId, client) },
@@ -52,6 +54,11 @@ jest.mock('openai', () => ({
   default: class { chat = { completions: { create: chatCreate } }; },
 }));
 
+// Alcance de sucursal con acceso total: los casos restringidos están en alcanceSucursal.test.ts.
+jest.mock('@/lib/security/alcanceSucursal', () => ({
+  ...jest.requireActual('@/lib/security/alcanceSucursal'),
+  resolverAlcanceSucursal: async () => ({ esAdmin: true, todas: [1], permitidas: [1], accesoTotal: true }),
+}));
 import { POST } from '../route';
 import { crmReports } from '@/lib/services/reportes/modulos/crmReports';
 import { ejecutarReporte } from '@/lib/services/reportes/reportesEngine';
@@ -128,6 +135,10 @@ describe('guardarraíl estático: los 19 módulos de reportes aceptan el cliente
     const offenders: string[] = [];
     for (const f of files) {
       const src = fs.readFileSync(path.join(dir, f), 'utf8');
+      // `rentabilidadProducto.ts` no es un módulo: da forma al resultado de una
+      // RPC que cada `fetch` llama por su cuenta (los tests de alcance leen
+      // ese cuerpo). Un archivo sin `fetch` no puede saltarse el cliente.
+      if (!src.includes('async fetch(')) continue;
       const fetches = (src.match(/async fetch\(/g) ?? []).length;
       const withClient = (src.match(/async fetch\(orgId: number, periodo: PeriodoCierre, branchId\?: number \| null, client\?: ReportesClient\)/g) ?? []).length;
       const fallbacks = (src.match(/const db = client \?\? browserSupabase;/g) ?? []).length;

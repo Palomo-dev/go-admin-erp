@@ -24,6 +24,8 @@ interface ReportesChatSheetProps {
   userRole: string;
   periodoActual: PeriodoCierre;
   modulosActivos: string[];
+  /** Sucursal efectiva de la página (null = consolidado). El servidor la valida. */
+  branchId: number | null;
 }
 
 const SUGERENCIAS_DEFAULT = [
@@ -42,6 +44,7 @@ export function ReportesChatSheet({
   userRole,
   periodoActual,
   modulosActivos,
+  branchId,
 }: ReportesChatSheetProps) {
   const [messages, setMessages] = useState<ChatMessageData[]>([]);
   const [input, setInput] = useState('');
@@ -86,6 +89,7 @@ export function ReportesChatSheet({
             organizationName,
             userName,
             userRole,
+            branchId,
           },
           periodoActual,
           modulosActivos,
@@ -118,7 +122,7 @@ export function ReportesChatSheet({
     } finally {
       setLoading(false);
     }
-  }, [loading, messages, organizationId, organizationName, userName, userRole, periodoActual, modulosActivos]);
+  }, [loading, messages, organizationId, organizationName, userName, userRole, periodoActual, modulosActivos, branchId]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {

@@ -63,6 +63,11 @@ let aiReply = 'Nómina.\n```report\n{"reportId":"hrm-nomina"}\n```';
 const chatCreate = jest.fn(async () => { callOrder.push('openai'); return { choices: [{ message: { content: aiReply } }], usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 } }; });
 jest.mock('openai', () => ({ __esModule: true, default: class { chat = { completions: { create: chatCreate } }; } }));
 
+// Alcance de sucursal con acceso total: los casos restringidos están en alcanceSucursal.test.ts.
+jest.mock('@/lib/security/alcanceSucursal', () => ({
+  ...jest.requireActual('@/lib/security/alcanceSucursal'),
+  resolverAlcanceSucursal: async () => ({ esAdmin: true, todas: [1], permitidas: [1], accesoTotal: true }),
+}));
 import { POST } from '../route';
 import type { PeriodoCierre } from '@/lib/services/reportes/types';
 

@@ -10,7 +10,9 @@ import type { ReportesClient } from '../types';
 // del usuario; en el servidor (asistente de reportes) el route handler pasa el
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
-import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
+import type { DefinicionModulo, ReportData, PeriodoCierre } from '../types';
+import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
   id: string, titulo: string, modulo: string, periodo: PeriodoCierre,
@@ -20,22 +22,27 @@ function buildReportData(
   return { id, titulo, modulo, kpis, columnas, filas, totales, generadoEn: new Date().toISOString(), periodo };
 }
 
-export const chatReports: ReportDefinition[] = [
+export const chatReports: DefinicionModulo[] = [
   {
     id: 'chat-volumen',
     modulo: 'chat',
-    titulo: 'Volumen de Conversaciones',
-    descripcion: 'Conversaciones por canal y período',
+    titulo: 'Volumen de conversaciones',
+    descripcion: 'Conversaciones por canal en el periodo',
     categoria: 'sistema',
+    alcance: 'sucursal',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { data, error } = await db
-        .from('conversations')
-        .select('id, status, channel_id, created_at')
-        .eq('organization_id', orgId)
-        .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
+      const { data, error } = await applyBranchFilter(
+        db
+          .from('conversations')
+          .select('id, status, channel_id, created_at')
+          .eq('organization_id', orgId)
+          .gte('created_at', start)
+          .lte('created_at', end),
+        branchId,
+      );
 
       if (error) throw error;
 
@@ -49,7 +56,7 @@ export const chatReports: ReportDefinition[] = [
       const filas = Object.entries(porCanal).map(([canal, cantidad]) => ({ canal, cantidad }));
 
       return buildReportData(
-        'chat-volumen', 'Volumen de Conversaciones', 'chat', periodo,
+        'chat-volumen', 'Volumen de conversaciones', 'chat', periodo,
         [
           { titulo: 'Total Conversaciones', valor: convs.length, formato: 'numero' },
         ],
@@ -65,23 +72,25 @@ export const chatReports: ReportDefinition[] = [
   {
     id: 'chat-sla',
     modulo: 'chat',
-    titulo: 'SLA y Tiempos',
-    descripcion: 'Primera respuesta, resolución y volumen por canal',
+    titulo: 'SLA y tiempos',
+    descripcion: 'Primera respuesta, resolución y volumen por estado',
     categoria: 'sistema',
+    alcance: 'organizacion',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await db.rpc('fn_reporte_chat_sla', {
         p_organization_id: orgId,
-        p_from: `${periodo.fechaInicio}T00:00:00Z`,
-        p_to: `${periodo.fechaFin}T23:59:59Z`,
+        p_from: start,
+        p_to: end,
       });
       if (error) throw error;
 
       const d = data ?? {};
 
       return buildReportData(
-        'chat-sla', 'SLA y Tiempos', 'chat', periodo,
+        'chat-sla', 'SLA y tiempos', 'chat', periodo,
         [
           { titulo: 'Total Conversaciones', valor: d.total_conversaciones ?? 0, formato: 'numero' },
           { titulo: 'Primera Respuesta (s)', valor: Math.round(Number(d.promedio_primera_respuesta_seg ?? 0)), formato: 'numero' },
@@ -98,19 +107,24 @@ export const chatReports: ReportDefinition[] = [
   {
     id: 'chat-agentes',
     modulo: 'chat',
-    titulo: 'Performance de Agentes',
-    descripcion: 'Conversaciones atendidas, satisfacción y tiempos',
+    titulo: 'Desempeño de agentes',
+    descripcion: 'Conversaciones atendidas, mensajes y tiempos por agente',
     categoria: 'sistema',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const { data, error } = await db
-        .from('conversations')
-        .select('id, assigned_member_id, status, message_count, first_response_time_seconds')
-        .eq('organization_id', orgId)
-        .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('created_at', `${periodo.fechaFin}T23:59:59Z`)
-        .not('assigned_member_id', 'is', null);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
+      const { data, error } = await applyBranchFilter(
+        db
+          .from('conversations')
+          .select('id, assigned_member_id, status, message_count, first_response_time_seconds')
+          .eq('organization_id', orgId)
+          .gte('created_at', start)
+          .lte('created_at', end)
+          .not('assigned_member_id', 'is', null),
+        branchId,
+      );
 
       if (error) throw error;
 
@@ -132,7 +146,7 @@ export const chatReports: ReportDefinition[] = [
       }));
 
       return buildReportData(
-        'chat-agentes', 'Performance de Agentes', 'chat', periodo,
+        'chat-agentes', 'Desempeño de agentes', 'chat', periodo,
         [
           { titulo: 'Agentes', valor: filas.length, formato: 'numero' },
           { titulo: 'Total Conversaciones', valor: convs.length, formato: 'numero' },
@@ -150,18 +164,20 @@ export const chatReports: ReportDefinition[] = [
   {
     id: 'chat-tags',
     modulo: 'chat',
-    titulo: 'Tags y Categorización',
-    descripcion: 'Distribución de conversaciones por tag',
+    titulo: 'Etiquetas y categorías',
+    descripcion: 'Conversaciones por etiqueta',
     categoria: 'sistema',
+    alcance: 'organizacion',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       const { data, error } = await db
         .from('conversation_tag_relations')
         .select('tag_id, conversation_id, conversation_tags(name)')
         .eq('organization_id', orgId)
-        .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
+        .gte('created_at', start)
+        .lte('created_at', end);
 
       if (error) throw error;
 
@@ -176,7 +192,7 @@ export const chatReports: ReportDefinition[] = [
       const filas = Object.entries(porTag).map(([tag, cantidad]) => ({ tag, cantidad }));
 
       return buildReportData(
-        'chat-tags', 'Tags y Categorización', 'chat', periodo,
+        'chat-tags', 'Etiquetas y categorías', 'chat', periodo,
         [
           { titulo: 'Tags Usados', valor: filas.length, formato: 'numero' },
         ],

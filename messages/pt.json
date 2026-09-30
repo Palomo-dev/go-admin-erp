@@ -3873,7 +3873,9 @@
         "fechaFutura": "A data não pode ser posterior a hoje.",
         "referenciaVacia": "Esta forma exige a referência.",
         "recibidoInsuficiente": "O valor recebido não cobre o pagamento."
-      }
+      },
+      "retenciones": "Retenções",
+      "netoPagado": "Líquido {neto} · Pago {pagado}"
     },
     "vista": {
       "etiqueta": "Visualização",
@@ -4284,6 +4286,16 @@
       "motivoAgotado": "Esta variante está esgotada na filial: escolha outra.",
       "motivoSinPrecio": "Esta variante não tem preço vigente: defina-o em Estoque para vendê-la.",
       "motivoElegir": "Escolha uma variante para adicioná-la."
+    },
+    "franja": {
+      "etiqueta": "Faixa de horário",
+      "todoElDia": "O dia todo",
+      "franja": "Faixa",
+      "desde": "De",
+      "hasta": "Até",
+      "diaSiguiente": "{hora} (+1)",
+      "ayuda": "Conta o que foi vendido entre {desde} e {hasta}.",
+      "ayudaCruza": "A faixa cruza a meia-noite: o vendido entre {desde} e {hasta} do dia seguinte soma ao dia em que o turno começou."
     }
   },
   "inventarioEtiquetas": {
@@ -4940,7 +4952,10 @@
         "cuentasAbiertas": "Contas a pagar em aberto",
         "pagar": "Pagar",
         "lotes": "Lotes recebidos deste fornecedor",
-        "pagos": "Pagamentos registrados"
+        "pagos": "Pagamentos registrados",
+        "certificado": "Certificado de retenções",
+        "certificadoAnio": "Ano corrente",
+        "generar": "Gerar"
       },
       "valorStock": "Valor em estoque dos produtos (todas as filiais):",
       "totalPagado": "Total pago:",
@@ -11833,7 +11848,8 @@
         "pdf": "Baixar PDF",
         "imprimir": "Imprimir",
         "anular": "Anular",
-        "eliminar": "Excluir rascunho"
+        "eliminar": "Excluir rascunho",
+        "certificado": "Certificado de retenções"
       },
       "motivos": {
         "sinPermiso": "Você não tem permissão para esta ação",
@@ -11895,7 +11911,29 @@
         "recepcionarSinProductos": "Não há linhas com produto: nada entra no estoque.",
         "recepcionarSinPermiso": "Você não tem permissão para movimentar o estoque.",
         "generarDs": "Gerar documento suporte",
-        "generarDsAyuda": "Para fornecedores não obrigados a faturar."
+        "generarDsAyuda": "Para fornecedores não obrigados a faturar.",
+        "descripcionNeto": "Total {total} · líquido a pagar {neto} (retenções {retenido}).",
+        "asiento": {
+          "titulo": "Lançamento que será gerado",
+          "cuenta": "Conta",
+          "debito": "Débito",
+          "credito": "Crédito",
+          "sumas": "Somas",
+          "cuadra": "Fecha",
+          "noCuadra": "Não fecha",
+          "noCalculado": "Não foi possível calcular a prévia do lançamento; ao confirmar ele é gerado mesmo assim.",
+          "motivos": {
+            "no_borrador": "A fatura já não é um rascunho: o lançamento está no detalhe.",
+            "no_rule": "Não há regra contábil de compras: a fatura é confirmada sem lançamento. Configure-a em Finanças › Regras contábeis.",
+            "amount_invalid": "O total da fatura não é válido para gerar o lançamento.",
+            "debit_account_missing": "Falta a conta de débito da regra de compras no plano de contas.",
+            "credit_account_missing": "Falta a conta do fornecedor da regra de compras no plano de contas.",
+            "tax_account_missing": "Falta a conta do IVA dedutível no plano de contas.",
+            "withholding_exceeds_total": "As retenções igualam ou superam o total: o lançamento fica pelo total, sem descontá-las.",
+            "sin_asiento": "Ao confirmar não seria gerado lançamento contábil.",
+            "otro": "O lançamento não seria gerado: revise a configuração contábil."
+          }
+        }
       },
       "recepcionar": {
         "titulo": "Receber a fatura {numero}",
@@ -12005,7 +12043,8 @@
         "base": "Base",
         "tarifa": "Alíquota %",
         "retefuente": "Retenção na fonte",
-        "quitar": "Remover {concepto}"
+        "quitar": "Remover {concepto}",
+        "bajoBaseMinima": "A base não atinge o mínimo de {uvt} UVT ({valor} com a UVT {anio}): esta retenção normalmente não se aplica. Você pode aplicá-la mesmo assim se o fornecedor pedir."
       },
       "errores": {
         "revisar": "Revise os campos destacados.",
@@ -12288,7 +12327,8 @@
         "programar": "Programar pagamento",
         "plan": "Criar plano de parcelas",
         "estadoCuenta": "Extrato do fornecedor",
-        "factura": "Ver fatura"
+        "factura": "Ver fatura",
+        "certificado": "Certificado de retenções"
       },
       "motivos": {
         "sinPermiso": "Você não tem permissão para esta ação"
@@ -12328,13 +12368,33 @@
       },
       "kpis": {
         "pagado": "Pago: {monto}",
-        "programado": "Programado sem aprovação: {monto}"
+        "programado": "Programado sem aprovação: {monto}",
+        "netoRetenciones": "Líquido de retenções ({retenido}) · pago {monto}"
       },
       "proveedorDatos": {
         "nombre": "Nome",
         "nit": "ID fiscal",
         "telefono": "Telefone",
         "correo": "E-mail"
+      },
+      "origen": {
+        "titulo": "Documento de origem",
+        "factura": "Fatura",
+        "recibida": "Recebida",
+        "vence": "Vence",
+        "retenciones": "Retenções",
+        "conceptos": "{n, plural, one {# item} other {# itens}}",
+        "sinRetenciones": "Sem retenções",
+        "formaPago": "Forma de pagamento",
+        "credito": "A prazo, {n, plural, one {# dia} other {# dias}}",
+        "contado": "À vista",
+        "subtotal": "Subtotal",
+        "iva": "IVA",
+        "total": "Total da fatura",
+        "menosRetenciones": "Retenções",
+        "neto": "Líquido a pagar",
+        "asiento": "Lançamento contábil",
+        "orden": "Ordem de compra"
       }
     },
     "estadoCuenta": {
@@ -12388,6 +12448,28 @@
         "fecha": "A primeira parcela não pode ser anterior a hoje.",
         "interes": "Entre 0 e 100 %."
       }
+    },
+    "certificado": {
+      "titulo": "Certificado de retenções",
+      "descripcion": "O que foi retido de {proveedor} no período, para emitir o certificado (art. 381 do Estatuto Tributário).",
+      "periodo": "Período certificado",
+      "cargando": "Calculando retenções…",
+      "errorLectura": "Não foi possível ler as retenções.",
+      "reintentar": "Tentar novamente",
+      "clases": {
+        "retefuente": "Retenção na fonte",
+        "reteiva": "Retenção de IVA",
+        "reteica": "Retenção de ICA"
+      },
+      "total": "Total retido",
+      "alcance": "{facturas, plural, =0 {Sem faturas} one {# fatura} other {# faturas}} · {conceptos, plural, =0 {sem conceitos} one {# conceito} other {# conceitos}}",
+      "sinRetenciones": "Nenhuma retenção foi praticada neste período; o certificado sairá zerado.",
+      "nota": "Abrange todas as filiais: o agente retentor é a organização.",
+      "descargar": "Baixar PDF",
+      "imprimir": "Imprimir",
+      "ver": "Ver",
+      "cerrar": "Fechar",
+      "errorDescarga": "Não foi possível baixar o certificado"
     }
   },
   "documentos": {
@@ -12405,7 +12487,10 @@
       "reporte-caja-abierta": "Relatório de caixa aberto",
       "arqueo-caja": "Conferência de caixa",
       "estado-cuenta-proveedor": "Extrato do fornecedor",
-      "nota-credito-electronica": "Nota de crédito eletrônica"
+      "nota-credito-electronica": "Nota de crédito eletrônica",
+      "certificado-retenciones": "Certificado de retenções",
+      "cierre-periodo": "Fechamento de período",
+      "reporte": "Relatório"
     },
     "sinNumero": "Sem numeração",
     "paginacion": {
@@ -12485,7 +12570,13 @@
       "pending": "Pendente",
       "accepted": "Aceita",
       "processing": "Em processamento",
-      "failed": "Falhou"
+      "failed": "Falhou",
+      "cierre": {
+        "borrador": "Rascunho",
+        "emitido": "Emitido",
+        "firmado": "Assinado · período fechado",
+        "reemplazado": "Substituído"
+      }
     },
     "qr": {
       "verificacionDian": "Verifique na DIAN",
@@ -12498,12 +12589,17 @@
       "anulada": "Documento anulado.",
       "monedaExtranjera": "Documento emitido em {moneda}, diferente da moeda base da organização.",
       "noEsFactura": "Este orçamento não é uma fatura.",
-      "cierreCiego": "Fechamento cego: os valores esperados e as diferenças só são visíveis para a administração."
+      "cierreCiego": "Fechamento cego: os valores esperados e as diferenças só são visíveis para a administração.",
+      "cierreReemplazado": "Esta versão foi substituída por um recálculo. Consulte a versão vigente.",
+      "cierreReemplazadoPor": "Esta versão foi substituída pela v{version}. Consulte a versão vigente.",
+      "cierrePeriodoCerrado": "Fechamento assinado: o período contábil foi fechado.",
+      "cierreConErrores": "{cantidad} relatório(s) não puderam ser calculados e não estão incluídos. Veja o final do documento."
     },
     "marcas": {
       "borrador": "RASCUNHO",
       "anulada": "ANULADA",
-      "pagada": "PAGA"
+      "pagada": "PAGA",
+      "reemplazado": "SUBSTITUÍDO"
     },
     "campos": {
       "fechaEmision": "Data de emissão",
@@ -12552,7 +12648,22 @@
       "total": "Total",
       "vencido": "Vencido",
       "porVencer": "A vencer",
-      "facturaCompraAsociada": "Fatura de compra associada"
+      "facturaCompraAsociada": "Fatura de compra associada",
+      "periodoDesde": "Período de",
+      "periodoHasta": "Período até",
+      "facturasIncluidas": "Faturas incluídas",
+      "fechaExpedicion": "Data de emissão",
+      "ciudadExpedicion": "Cidade de emissão",
+      "declaradoEn": "Declarado em",
+      "tipoCierre": "Tipo de fechamento",
+      "franja": "Faixa horária",
+      "plantilla": "Modelo",
+      "version": "Versão",
+      "emitidoEn": "Emitido",
+      "emitidoPor": "Emitido por",
+      "firmadoEn": "Assinado",
+      "firmadoPor": "Assinado por",
+      "kpi": "Indicador"
     },
     "formasPago": {
       "contado": "À vista",
@@ -12593,7 +12704,12 @@
       "movimientosCaja": "Entradas e saídas de caixa",
       "arqueos": "Conferências",
       "denominaciones": "Cédulas e moedas",
-      "retenciones": "Retenções aplicadas ao fornecedor"
+      "retenciones": "Retenções aplicadas ao fornecedor",
+      "conceptosRetenidos": "Retenções praticadas",
+      "facturasIncluidas": "Faturas incluídas",
+      "indiceCapitulos": "Índice de capítulos",
+      "reportesConError": "Relatórios não incluídos (erro de cálculo)",
+      "reporte": "Relatório"
     },
     "columnas": {
       "descripcion": "Descrição",
@@ -12628,12 +12744,19 @@
       "subtotal": "Subtotal",
       "base": "Base",
       "tarifa": "Alíquota (%)",
-      "unidad": "Unidade"
+      "unidad": "Unidade",
+      "cuenta": "Conta",
+      "valorRetenido": "Valor retido",
+      "capitulo": "Capítulo",
+      "reportes": "Relatórios",
+      "reporte": "Relatório"
     },
     "vacios": {
       "lineas": "Sem linhas.",
       "movimientos": "Sem movimentos no período.",
-      "facturasAbiertas": "Não há faturas em aberto."
+      "facturasAbiertas": "Não há faturas em aberto.",
+      "retencionesPeriodo": "Nenhuma retenção foi praticada a este fornecedor no período.",
+      "reporteSinDatos": "Sem dados no período."
     },
     "totales": {
       "subtotal": "Subtotal",
@@ -12666,7 +12789,11 @@
       },
       "retencion": "{concepto} ({tasa} %)",
       "totalFactura": "Total da fatura",
-      "netoPagar": "Líquido a pagar ao fornecedor"
+      "netoPagar": "Líquido a pagar ao fornecedor",
+      "retefuente": "Retenção na fonte",
+      "reteiva": "Retenção de IVA",
+      "reteica": "Retenção de ICA",
+      "totalRetenido": "Total retido"
     },
     "firmas": {
       "recibido": "Recebido de acordo",
@@ -12677,7 +12804,12 @@
       "recibe": "Recebido por",
       "datosRecibe": "Nome · Documento · Data",
       "datosAcepta": "Nome · Documento · Cargo · Data",
-      "datosNombre": "Nome e documento"
+      "datosNombre": "Nome e documento",
+      "agenteRetenedor": "Agente retentor",
+      "contador": "Contador público",
+      "datosContador": "Nome · Registro profissional",
+      "elaboro": "Elaborado por",
+      "representanteLegal": "Representante legal"
     },
     "legal": {
       "resolucion": "Resolução DIAN n.º {numero} de {fecha}, prefixo {prefijo}, numeração autorizada de {desde} a {hasta}, válida até {vigencia}.",
@@ -12696,7 +12828,10 @@
         "comprobante-egreso": "Comprovante de um pagamento realizado.",
         "cierre-caja": "Relatório interno de caixa.",
         "arqueo-caja": "Relatório interno de conferência de caixa.",
-        "estado-cuenta-proveedor": "Extrato do fornecedor segundo nossos registros. Se encontrar alguma diferença, entre em contato conosco em até 10 dias após o recebimento."
+        "estado-cuenta-proveedor": "Extrato do fornecedor segundo nossos registros. Se encontrar alguma diferença, entre em contato conosco em até 10 dias após o recebimento.",
+        "certificado-retenciones": "Certificado emitido conforme o artigo 381 do Estatuto Tributário colombiano. Não requer assinatura manuscrita (artigo 10 do Decreto 836 de 1991).",
+        "cierre-periodo": "Documento interno de fechamento. Os valores foram congelados na emissão; um recálculo gera uma nova versão com o mesmo número.",
+        "reporte": "Relatório interno gerado na data indicada com os dados vigentes naquele momento."
       }
     },
     "movimientos": {
@@ -12772,6 +12907,68 @@
       "pos": "Venda registrada no ponto de venda (PDV).",
       "mesa": "Venda registrada a partir de uma mesa.",
       "ventaPos": "Venda do PDV"
+    },
+    "certificado": {
+      "prefijo": "CR",
+      "totalRetenido": "Total retido",
+      "declarado350": "Formulário 350",
+      "declaradoIca": "Declaração de ICA",
+      "declarado350EIca": "Formulário 350 e ICA",
+      "constancia": "{emisor}, como agente retentor, certifica que durante o período indicado praticou a {proveedor} as retenções detalhadas, sobre os pagamentos ou créditos das faturas incluídas."
+    },
+    "reportes": {
+      "truncado": "Mostrando {mostradas} de {total} linhas. Os totais incluem todas. Consulte o relatório completo no aplicativo.",
+      "todaLaOrganizacion": "Toda a organização"
+    },
+    "cierre": {
+      "tipos": {
+        "diario": "Diário",
+        "semanal": "Semanal",
+        "quincenal": "Quinzenal",
+        "mensual": "Mensal",
+        "trimestral": "Trimestral",
+        "semestral": "Semestral",
+        "anual": "Anual",
+        "personalizado": "Personalizado"
+      },
+      "plantillas": {
+        "completo": "Completo",
+        "contable": "Contábil e financeiro",
+        "ventas-caja": "Vendas e caixa",
+        "personalizada": "Personalizado"
+      },
+      "consolidado": "Consolidado (todas as filiais)",
+      "sinFranja": "Este relatório é calculado por dia completo: a faixa horária do fechamento não se aplica.",
+      "reabierto": "Período reaberto por {quien}. Motivo: {motivo}"
+    },
+    "exportacion": {
+      "resumen": "Resumo",
+      "indicador": "Indicador",
+      "valor": "Valor",
+      "desde": "De",
+      "hasta": "Até"
+    },
+    "envios": {
+      "asunto": "{reporte} · {periodo}",
+      "asuntoPrueba": "[Teste] {reporte} · {periodo}",
+      "saludo": "Olá, {nombre}:",
+      "saludoSinNombre": "Olá:",
+      "cuerpo": "Segue em anexo o relatório «{reporte}» de {organizacion} para o período {periodo}.",
+      "franja": "Faixa horária: {franja}.",
+      "pie": "Você recebe este e-mail porque {creador} incluiu você no envio programado «{envio}». Para deixar de recebê-lo, peça para ser removido da lista.",
+      "pieExterno": "Você recebe este e-mail porque {organizacion} incluiu você no envio programado «{envio}». Se não deveria recebê-lo, responda a este e-mail.",
+      "pausado": {
+        "titulo": "Envio programado com destinatários pausados: {envio}",
+        "linea": "{destinatario}: {motivo}"
+      },
+      "motivos": {
+        "sin_membresia": "não é mais membro ativo da organização",
+        "sin_permiso": "não tem mais permissão para exportar relatórios",
+        "sin_alcance": "não tem acesso à filial do envio",
+        "modulo_no_contratado": "o plano não inclui mais este relatório",
+        "aprobador_sin_acceso": "quem aprovou este e-mail externo não é mais administrador",
+        "rebote": "o e-mail foi devolvido"
+      }
     }
   },
   "posVentas": {
@@ -15374,7 +15571,9 @@
       "tipo": "Tipo",
       "tarifa": "Alíquota",
       "aplicaA": "Aplica-se a",
-      "estado": "Status"
+      "estado": "Status",
+      "baseMinima": "Base mínima",
+      "cuenta": "Conta contábil"
     },
     "tipos": {
       "retefuente": "ReteFuente",
@@ -15399,16 +15598,51 @@
       "activada": "{nombre} agora está ativa.",
       "desactivada": "{nombre} agora está inativa.",
       "errorTitulo": "Erro",
-      "errorEstado": "Não foi possível alterar o status da retenção."
+      "errorEstado": "Não foi possível alterar o status da retenção.",
+      "errorConfiguracion": "Não foi possível ler a conta contábil e a base mínima das retenções."
     },
     "formulario": {
       "nueva": "Nova retenção",
       "editar": "Editar retenção",
-      "nota": "A retenção é feita pelo comprador: não é somada ao preço, não é atribuída a produtos e não pode ser a alíquota padrão."
+      "nota": "A retenção é feita pelo comprador: não é somada ao preço, não é atribuída a produtos e não pode ser a alíquota padrão.",
+      "cuenta": "Conta contábil",
+      "cuentaAutomatica": "Automática conforme o tipo (2365 / 2367 / 2368)",
+      "cuentaAutomaticaActual": "Automática conforme o tipo ({cuenta})",
+      "cuentaAyuda": "Somente contas de passivo ativas. No lançamento da compra a retenção é creditada nesta conta.",
+      "baseMinima": "Base mínima (UVT)",
+      "baseMinimaPlaceholder": "Ex.: 27",
+      "baseMinimaAyuda": "Se a base da fatura for menor, o formulário avisa que a retenção não se aplica. Vazio: sem base mínima.",
+      "baseMinimaEquivale": "Equivale a {valor} com a UVT {anio}. Abaixo disso, a fatura avisa que não se aplica.",
+      "errorConfiguracionTitulo": "A retenção foi salva só em parte",
+      "errorConfiguracion": "O nome e a alíquota foram salvos, mas não a conta nem a base mínima: {detalle}",
+      "errores": {
+        "cuenta_no_existe": "a conta não existe no plano de contas.",
+        "cuenta_no_es_pasivo": "a conta não é de passivo.",
+        "cuenta_inactiva": "a conta está inativa.",
+        "base_minima_invalida": "A base mínima deve ser um número maior ou igual a zero.",
+        "retencion_no_encontrada": "a retenção não existe nesta organização.",
+        "otro": "verifique suas permissões de impostos e tente novamente."
+      }
     },
     "titulo": "Impostos",
     "migas": {
       "finanzas": "Finanças"
+    },
+    "baseMinima": {
+      "sin": "Sem base mínima",
+      "uvt": "{uvt} UVT",
+      "equivalente": "≈ {valor} (UVT {anio})"
+    },
+    "cuenta": {
+      "automatica": "Automática conforme o tipo"
+    },
+    "uvtVigente": "UVT {anio}: {valor} · {norma}",
+    "uvtSinDato": "Sem UVT registrada para o país: a base mínima não pode ser convertida em moeda.",
+    "plantilla": {
+      "cargar": "Carregar modelo de {pais}",
+      "alDia": "Você já tem todas as retenções do modelo de {pais}.",
+      "cargada": "{creadas, plural, =0 {Você já tinha todas as retenções de {pais}.} one {# retenção de {pais} foi adicionada.} other {# retenções de {pais} foram adicionadas.}}",
+      "error": "Não foi possível carregar o modelo de retenções."
     }
   },
   "receta": {
@@ -24529,6 +24763,446 @@
       "pedidosAnterior": "Pedidos período anterior",
       "pais": "País",
       "sesiones": "Sessões"
+    }
+  },
+  "asientoContable": {
+    "origenCompra": {
+      "titulo": "Lançamento automático da compra {numero}",
+      "conRetenciones": "Gerado ao confirmar a fatura; não se edita nem se apaga (para revertê-lo, anule a fatura). Ao fornecedor credita-se apenas o líquido, {neto}; as retenções, {retenido}, vão para impostos a pagar.",
+      "sinRetenciones": "Gerado ao confirmar a fatura; não se edita nem se apaga (para revertê-lo, anule a fatura). Ao fornecedor credita-se o total, {total}: a fatura não tem retenções.",
+      "irFactura": "Ir para a fatura",
+      "cadena": "Cadeia do documento",
+      "pago": "Pagamento",
+      "retenciones": "Retenções",
+      "verCertificado": "Ver certificado",
+      "conceptos": "{n, plural, one {# conceito} other {# conceitos}}"
+    },
+    "datos": {
+      "titulo": "Dados do lançamento",
+      "fecha": "Data contábil",
+      "sucursal": "Filial",
+      "origen": "Origem",
+      "moneda": "Moeda",
+      "tasa": "Taxa {tasa} em relação a {base}",
+      "claveHecho": "Chave do fato",
+      "creado": "Criado em",
+      "origenes": {
+        "manual": "Manual",
+        "reversal": "Estorno",
+        "invoice_sales": "Fatura de venda",
+        "invoice_purchase": "Fatura de compra",
+        "sales": "Venda PDV",
+        "payments": "Pagamento",
+        "stock_movements": "Movimento de estoque",
+        "inventory_adjustment": "Ajuste de estoque",
+        "accounts_receivable": "Conta a receber",
+        "accounts_payable": "Conta a pagar",
+        "purchase_orders": "Ordem de compra",
+        "cash_movements": "Movimento de caixa",
+        "cash_sessions": "Sessão de caixa",
+        "commissions": "Comissão",
+        "credit_note": "Nota de crédito"
+      },
+      "creadoPor": "Criado por",
+      "automatico": "Automático (sistema)"
+    },
+    "lineas": {
+      "centroCosto": "Centro de custo"
+    }
+  },
+  "reportes": {
+    "titulo": "Relatórios",
+    "migaInicio": "Início",
+    "actualizar": "Atualizar",
+    "programarEnvios": "Agendar envios",
+    "generarCierre": "Gerar fechamento",
+    "preguntar": "Perguntar à IA",
+    "masAcciones": "Mais ações",
+    "pestanas": {
+      "etiqueta": "Seções de relatórios",
+      "inicio": "Início",
+      "favoritos": "Favoritos",
+      "cierres": "Fechamentos",
+      "programados": "Agendados",
+      "historial": "Histórico"
+    },
+    "periodo": {
+      "trimestre": "T{n} {anio}",
+      "semestre": "S{n} {anio}",
+      "diaCompleto": "Dia inteiro",
+      "cambiar": "Mudar período, {periodo}",
+      "masUnDia": "+1 dia",
+      "tipo": "Tipo de período",
+      "desde": "De",
+      "hasta": "Até",
+      "anterior": "Período anterior",
+      "siguiente": "Período seguinte",
+      "sinSiguiente": "Esse período ainda não começou",
+      "franjaNoAplica": "Este relatório usa o dia inteiro.",
+      "listo": "Pronto"
+    },
+    "tipos": {
+      "diario": "Diário",
+      "semanal": "Semanal",
+      "quincenal": "Quinzenal",
+      "mensual": "Mensal",
+      "trimestral": "Trimestral",
+      "semestral": "Semestral",
+      "anual": "Anual",
+      "personalizado": "Personalizado"
+    },
+    "filtros": {
+      "titulo": "Filtros",
+      "comparar": "Comparar",
+      "compararCon": "Comparar: {periodo}",
+      "compararNoAplica": "Comparar: não se aplica",
+      "sinComparar": "Sem comparação",
+      "sucursal": "Filial",
+      "sucursalNoAplica": "Este relatório é de toda a organização",
+      "sucursalFija": "Seu acesso está fixo na sua filial",
+      "todaLaOrganizacion": "Toda a organização",
+      "todasLasSucursales": "Todas as filiais",
+      "franjaNoAplica": "Faixa: não se aplica",
+      "franjaNoAplicaMotivo": "Este relatório é calculado por dia"
+    },
+    "alcance": {
+      "titulo": "{n, plural, =0 {Você não tem filiais atribuídas} one {Você está vendo só {sucursales}} other {Você está vendo só {sucursales}}}",
+      "descripcion": "{n, plural, =0 {Peça para atribuírem uma filial para ver os relatórios.} one {Seu usuário tem acesso a uma filial. Os relatórios de toda a organização ficam bloqueados.} other {Seu usuário tem acesso a estas filiais. Os relatórios de toda a organização ficam bloqueados.}}",
+      "ninguna": "nenhuma filial",
+      "boton": "Solicitar acesso",
+      "botonEnviada": "Solicitação enviada",
+      "solicitada": "Avisamos os administradores",
+      "yaSolicitada": "Você já enviou esta solicitação há pouco"
+    },
+    "errores": {
+      "generico": "Não foi possível concluir. Tente de novo.",
+      "sin_permiso": "Você não tem permissão para esta ação.",
+      "cierre_existente": "Já existe um fechamento deste período.",
+      "datos_invalidos": "Revise os dados e tente de novo.",
+      "sin_administradores": "Não há administradores para avisar.",
+      "correo_no_configurado": "O e-mail da organização não está configurado.",
+      "PDF_NO_DISPONIBLE": "O PDF não está disponível agora.",
+      "BRANCH_SCOPE_REQUIRED": "Escolha uma filial à qual você tenha acesso.",
+      "periodo_invalido": "O período não é válido.",
+      "dia_invalido": "Escolha o dia do envio.",
+      "destinatarios": "Escolha pelo menos um destinatário.",
+      "servicio_no_configurado": "Não foi possível salvar o fechamento: o servidor não tem a chave de serviço configurada.",
+      "prueba_sin_servicio": "Não foi possível enviar o teste: este servidor não tem a chave para mandar o e-mail.",
+      "snapshot_invalido": "Este fechamento não pode ser exportado para Excel."
+    },
+    "grupos": {
+      "contabilidad": "Contabilidade",
+      "finanzas": "Finanças e tesouraria",
+      "ventas": "Vendas e PDV",
+      "inventario": "Estoque",
+      "compras": "Compras",
+      "personas": "Pessoas (folha)",
+      "clientes": "Clientes e CRM",
+      "atencion": "Atendimento e mensagens",
+      "operacion": "Operação e organização",
+      "hoteleria": "Hotelaria",
+      "parqueadero": "Estacionamento",
+      "membresias": "Assinaturas",
+      "transporte": "Transporte"
+    },
+    "gruposDesc": {
+      "contabilidad": "Balanço, resultados e período fiscal",
+      "finanzas": "Carteira, fluxo, impostos e bancos",
+      "ventas": "Fechamento de caixa, vendas por hora e por vendedor",
+      "inventario": "Estoque, giro e seriais",
+      "compras": "Fornecedores, pedidos e retenções",
+      "personas": "Folha, produtividade e comissões",
+      "clientes": "Clientes, funil e campanhas",
+      "atencion": "Conversas, tempos e campanhas",
+      "operacion": "Filiais, auditoria e conexões",
+      "hoteleria": "Ocupação, receita e housekeeping",
+      "parqueadero": "Ocupação, receita e giro",
+      "membresias": "Ativas, atividade e retenção",
+      "transporte": "Envios, motoristas e rotas"
+    },
+    "filtroTipo": {
+      "comparativo": "Comparativo",
+      "sucursal": "Filial",
+      "franja": "Faixa",
+      "centroCosto": "Centro de custo"
+    },
+    "badges": {
+      "nuevo": "Novo",
+      "disponible": "Disponível",
+      "sinAcceso": "Sem acesso",
+      "requierePlan": "Exige plano",
+      "porSucursal": "Por filial",
+      "todaLaOrg": "Toda a org."
+    },
+    "inicio": {
+      "buscar": "Buscar entre {n} relatórios…",
+      "buscarCorto": "Buscar relatório",
+      "subtitulo": "{n} relatórios em {m} módulos ativos",
+      "recientes": "Recentes",
+      "verHistorial": "Ver histórico",
+      "sinRecientes": "Os relatórios que você abrir aparecerão aqui.",
+      "porModulo": "Relatórios por módulo",
+      "hint": "As etiquetas dizem quais filtros cada relatório aceita. Os que não se aplicam ficam desabilitados ao abrir.",
+      "conteo": "{n} relatórios",
+      "nuevos": "{n, plural, one {# novo} other {# novos}}",
+      "moduloNuevo": "módulo novo",
+      "verLos": "Ver os {n} relatórios",
+      "fueraPlan": "{n, plural, one {# módulo não está no seu plano} other {# módulos não estão no seu plano}}",
+      "fueraDesc": "{nombres} somam {reportes} relatórios. Ativam-se pelo plano.",
+      "verPlanes": "Ver planos",
+      "vs": "{signo}{valor} vs. {periodo}",
+      "detalleMargen": "Margem {valor}",
+      "detalleVencido": "{valor} vencido",
+      "detalleBajo": "{n, plural, one {# abaixo do mínimo} other {# abaixo do mínimo}}",
+      "kpis": {
+        "ventas": "Vendas do período",
+        "utilidad": "Lucro líquido",
+        "caja": "Caixa e bancos",
+        "cobrar": "A receber",
+        "pagar": "A pagar",
+        "inventario": "Estoque"
+      }
+    },
+    "lista": {
+      "titulo": "Relatórios de {grupo}",
+      "adicionales": "Módulos não contratados",
+      "subtitulo": "{n} relatórios",
+      "subtituloAdicionales": "Ativam-se ao contratar o módulo",
+      "colReporte": "Relatório",
+      "colFiltros": "Filtros além do período",
+      "colAlcance": "Alcance",
+      "colEstado": "Estado",
+      "programar": "Agendar envio",
+      "pie": "As linhas «Sem acesso» e «Exige plano» não abrem o visor.",
+      "sinFiltros": "Só o período"
+    },
+    "visor": {
+      "datosAl": "dados em {cuando}",
+      "agregar": "Adicionar ao fechamento",
+      "exportar": "Exportar",
+      "pdf": "PDF",
+      "excel": "Excel",
+      "csv": "CSV",
+      "imprimir": "Imprimir",
+      "favorito": "Adicionar aos favoritos",
+      "quitarFavorito": "Tirar dos favoritos",
+      "copiar": "Copiar link",
+      "copiado": "Link copiado",
+      "lectura": "Leitura rápida",
+      "filtrosDeEste": "Filtros deste relatório",
+      "aplica": "Aplica",
+      "noAplica": "não se aplica",
+      "variacion": "Variação",
+      "sinComparacion": "Este relatório não pode ser comparado linha a linha.",
+      "sube": "{titulo} sobe {valor} em relação a {periodo}.",
+      "baja": "{titulo} cai {valor} em relação a {periodo}.",
+      "sinMovimientos": "Não há movimentos neste período.",
+      "verFuente": "Ver a origem",
+      "exportado": "Exportado",
+      "sinExportar": "Você não tem permissão para exportar.",
+      "bloqueado": "Você não pode abrir este relatório",
+      "bloqueadoPlan": "Este relatório se ativa ao contratar o módulo.",
+      "bloqueadoAlcance": "Exige acesso a todas as filiais."
+    },
+    "favoritos": {
+      "titulo": "{n} favoritos",
+      "vacio": "Você ainda não tem favoritos",
+      "vacioDesc": "Marque um relatório com a estrela no visor para vê-lo aqui.",
+      "colReporte": "Relatório",
+      "colFiltros": "Últimos filtros usados",
+      "colAlcance": "Alcance",
+      "colCuando": "Última vez",
+      "pie": "Os favoritos são pessoais: cada usuário tem os seus.",
+      "quitar": "Tirar dos favoritos"
+    },
+    "cierres": {
+      "titulo": "Histórico de fechamentos",
+      "vacio": "Ainda não há fechamentos",
+      "vacioDesc": "Gere o primeiro para congelar as cifras de um período.",
+      "colCierre": "Fechamento",
+      "colAlcance": "Alcance",
+      "colVersion": "Versão",
+      "colEstado": "Estado",
+      "colAcciones": "Ações",
+      "vigente": "vigente",
+      "reemplazada": "substituída",
+      "sinVersion": "Sem versão",
+      "ver": "Ver",
+      "pdf": "PDF",
+      "carta": "PDF carta",
+      "mm80": "Bobina 80 mm",
+      "excel": "Excel",
+      "versiones": "Versões",
+      "auditoria": "Auditoria",
+      "firmar": "Assinar",
+      "reabrir": "Reabrir",
+      "firmado": "Fechamento assinado",
+      "reabierto": "Fechamento reaberto",
+      "motivo": "Por que se reabre",
+      "estados": {
+        "borrador": "Rascunho",
+        "emitido": "Emitido",
+        "firmado": "Assinado",
+        "reemplazado": "Substituído"
+      },
+      "periodoCerrado": "período fechado",
+      "pie": "Emitir congela o fechamento. Assinar o mensal fecha o período contábil. Reabri-lo exige permissão e fica na auditoria.",
+      "sinAuditoria": "Este fechamento não tem eventos."
+    },
+    "programados": {
+      "titulo": "{n} envios agendados",
+      "nuevo": "Agendar envio",
+      "vacio": "Não há envios agendados",
+      "vacioDesc": "Agende um relatório para que chegue por e-mail com seus filtros.",
+      "colEnvio": "Envio",
+      "colFrecuencia": "Frequência",
+      "colFormato": "Formato",
+      "colProximo": "Próximo envio",
+      "colEstado": "Estado",
+      "destinatarios": "{n, plural, one {# destinatário} other {# destinatários}}",
+      "activo": "Ativo",
+      "pausado": "Pausado",
+      "pausar": "Pausar",
+      "reanudar": "Retomar",
+      "aprobar": "Aprovar externos",
+      "prueba": "Enviar teste",
+      "editar": "Editar",
+      "eliminar": "Excluir",
+      "eliminado": "Envio excluído",
+      "pruebaEnviada": "Teste enviado para {para}",
+      "confirmEliminar": "Excluir este envio",
+      "confirmDesc": "Deixa de ser enviado. Não dá para desfazer.",
+      "pie": "Cada destinatário recebe só as filiais que pode ver. Se perder o acesso, o envio pausa.",
+      "frecuencia": {
+        "daily": "Todos os dias",
+        "weekly": "Toda semana",
+        "biweekly": "A cada duas semanas",
+        "monthly": "Mensal",
+        "quarterly": "Trimestral",
+        "custom": "Dias escolhidos"
+      },
+      "formato": {
+        "pdf": "PDF",
+        "excel": "Excel",
+        "pdf_excel": "PDF + Excel",
+        "csv": "CSV"
+      },
+      "aLas": "{cuando} · {hora}"
+    },
+    "historial": {
+      "titulo": "Atividade recente",
+      "vacio": "Ainda não há atividade",
+      "vacioDesc": "Aqui fica cada relatório aberto, exportado ou enviado.",
+      "colReporte": "Relatório",
+      "colFiltros": "Filtros usados",
+      "colQuien": "Quem",
+      "colCuando": "Quando",
+      "colAccion": "Ação",
+      "usuario": "Usuário",
+      "todos": "Todos os usuários",
+      "pie": "O histórico é só de leitura. Um gerente de filial só vê a atividade das suas filiais.",
+      "accion": {
+        "ver": "Abriu",
+        "exportar": "Exportou",
+        "enviar": "Enviou por e-mail",
+        "programar": "Agendou um envio",
+        "emitir": "Emitiu fechamento",
+        "recalcular": "Recalculou fechamento",
+        "firmar": "Assinou fechamento",
+        "reabrir": "Reabriu fechamento"
+      }
+    },
+    "cierreDlg": {
+      "titulo": "Gerar fechamento",
+      "descripcion": "Escolha o período e os capítulos. O documento guarda as cifras: se depois uma venda for editada, gera-se uma versão nova.",
+      "tipo": "Tipo de fechamento",
+      "periodo": "Período e faixa",
+      "sucursal": "Filial",
+      "comparar": "Comparar com",
+      "plantilla": "Modelo",
+      "capitulos": "Capítulos e relatórios",
+      "resumenCap": "{c} capítulos · {r} relatórios",
+      "de": "{n} de {t}",
+      "siempre": "Sempre",
+      "formato": "Formato",
+      "carta": "Carta (PDF)",
+      "mm80": "Bobina 80 mm",
+      "excel": "Excel",
+      "vistaPrevia": "Pré-visualizar",
+      "generar": "Gerar fechamento",
+      "recalcular": "Recalcular",
+      "existente": "Já há um fechamento deste período. Recalcular cria uma versão nova e marca a anterior como substituída.",
+      "vacio": "Escolha pelo menos um relatório.",
+      "listo": "Fechamento {numero} gerado",
+      "notaFranja": "A faixa só se aplica aos capítulos que a aceitam. Os demais usam o dia inteiro.",
+      "sinDatos": "Um capítulo sem dados no período é impresso com a nota «Sem movimentos».",
+      "plantillas": {
+        "completo": "Completo",
+        "contable": "Contábil e financeiro",
+        "ventas-caja": "Vendas e caixa",
+        "personalizada": "Personalizado"
+      },
+      "erroresPrevios": "{n, plural, one {# relatório não pôde ser calculado} other {# relatórios não puderam ser calculados}}"
+    },
+    "cierreExcel": {
+      "portada": "Capa",
+      "indicador": "Indicador",
+      "valor": "Valor",
+      "capitulo": "Capítulo",
+      "reportes": "Relatórios",
+      "errores": "Não foi possível calcular",
+      "sinMovimientos": "Sem movimentos",
+      "sinFranja": "Este relatório é calculado pelo dia inteiro",
+      "truncado": "{mostradas} de {total}",
+      "periodo": "{desde} – {hasta}",
+      "sucursal": "Filial: {nombre}",
+      "todas": "Todas as filiais",
+      "franja": "Faixa: {desde} – {hasta}",
+      "plantilla": "Modelo: {nombre}",
+      "plantillas": {
+        "completo": "Completo",
+        "contable": "Contábil e financeiro",
+        "ventas-caja": "Vendas e caixa",
+        "personalizada": "Personalizado"
+      }
+    },
+    "envioDlg": {
+      "titulo": "Agendar envio",
+      "tituloEditar": "Editar envio",
+      "descripcion": "O relatório é gerado com estes filtros e chega por e-mail. Cada destinatário recebe só as filiais que pode ver.",
+      "nombre": "Nome",
+      "reporte": "Relatório",
+      "diaHora": "Dia e hora do envio",
+      "hora": "Hora",
+      "dia": "Dia do mês",
+      "dias": "Dias da semana",
+      "frecuencia": "Frequência",
+      "periodo": "Período que cada envio cobre",
+      "sucursal": "Filial",
+      "comparar": "Comparar com",
+      "formato": "Formato",
+      "destinatarios": "Destinatários",
+      "externo": "E-mail externo",
+      "agregar": "Adicionar",
+      "requiere": "Exige aprovação",
+      "sinAcceso": "Sem acesso",
+      "prueba": "Enviar teste",
+      "programar": "Agendar envio",
+      "guardar": "Salvar alterações",
+      "avisoTitulo": "Se alguém perder o acesso",
+      "aviso": "O envio pausa para essa pessoa e quem agendou é avisado. Nada sai sem permissão vigente.",
+      "listo": "Envio agendado",
+      "guardado": "Envio atualizado",
+      "correoInvalido": "Esse e-mail não é válido.",
+      "diasSemana": {
+        "1": "Segunda",
+        "2": "Terça",
+        "3": "Quarta",
+        "4": "Quinta",
+        "5": "Sexta",
+        "6": "Sábado",
+        "7": "Domingo"
+      }
     }
   }
 }

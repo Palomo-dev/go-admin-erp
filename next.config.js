@@ -109,13 +109,21 @@ const nextConfig = {
   outputFileTracingRoot: __dirname,
   // PDF en Vercel (motor de documentos, src/lib/documents/server/pdf.ts):
   // `@sparticuz/chromium` busca su Chromium comprimido en `bin/` con una ruta
-  // relativa, que el rastreo de archivos no ve. Solo las dos rutas que generan
-  // PDF lo llevan (~65 MB; la función queda ~150-175 MB de 250). Las claves son
-  // globs de picomatch: los corchetes de los segmentos dinámicos van escapados.
-  outputFileTracingIncludes: {
-    '/api/documentos/\\[tipo\\]/\\[id\\]': ['./node_modules/@sparticuz/chromium/bin/**'],
-    '/api/facturas-venta/\\[id\\]/pdf': ['./node_modules/@sparticuz/chromium/bin/**'],
-  },
+  // relativa, que el rastreo de archivos no ve. Cada ruta que llama a
+  // `generarPdf` lo lleva (~65 MB; la función queda ~150-175 MB de 250).
+  // Las claves son globs de picomatch: los corchetes van escapados.
+  outputFileTracingIncludes: Object.fromEntries(
+    [
+      '/api/documentos/\\[tipo\\]/\\[id\\]',
+      '/api/facturas-venta/\\[id\\]/pdf',
+      '/api/facturas-venta/\\[id\\]/enviar',
+      '/api/cotizaciones/\\[id\\]/enviar',
+      '/api/cartera/\\[id\\]/recordatorio',
+      '/api/clientes/\\[id\\]/estado-cuenta/enviar',
+      '/api/reportes/programados/\\[id\\]/prueba',
+      '/api/cron/reportes-programados',
+    ].map((ruta) => [ruta, ['./node_modules/@sparticuz/chromium/bin/**']]),
+  ),
 }
 
 // NOTA: withSentryConfig removido del build web para evitar OOM en Vercel.

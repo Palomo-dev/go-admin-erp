@@ -11,8 +11,9 @@ import type { ReportesClient } from '../types';
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
 import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
-import { getDateRange, getOrgDateRange } from '@/lib/utils/timezone';
-import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import { getDateRange } from '@/lib/utils/timezone';
+import type { DefinicionModulo, ReportData, PeriodoCierre } from '../types';
+import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
   id: string, titulo: string, modulo: string, periodo: PeriodoCierre,
@@ -22,20 +23,18 @@ function buildReportData(
   return { id, titulo, modulo, kpis, columnas, filas, totales, generadoEn: new Date().toISOString(), periodo };
 }
 
-export const clientesReports: ReportDefinition[] = [
+export const clientesReports: DefinicionModulo[] = [
   {
     id: 'clientes-crecimiento',
     modulo: 'clientes',
-    titulo: 'Crecimiento de Clientes',
-    descripcion: 'Nuevos clientes, total acumulado y crecimiento',
+    titulo: 'Crecimiento de clientes',
+    descripcion: 'Clientes nuevos, total acumulado y crecimiento mensual',
     categoria: 'comercial',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end, timezone: tz } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end, timezone: tz } = await rangoDelPeriodo(orgId, periodo, db);
 
       // Conteo total exacto (sin límite de 1000)
       const baseEq: Record<string, unknown> = { organization_id: orgId };
@@ -129,7 +128,7 @@ export const clientesReports: ReportDefinition[] = [
         : 0;
 
       return buildReportData(
-        'clientes-crecimiento', 'Crecimiento de Clientes', 'clientes', periodo,
+        'clientes-crecimiento', 'Crecimiento de clientes', 'clientes', periodo,
         [
           { titulo: 'Total Clientes', valor: totalAcumulado ?? 0, formato: 'numero' },
           { titulo: 'Nuevos en Período', valor: nuevosEnPeriodo ?? 0, formato: 'numero' },
@@ -150,9 +149,10 @@ export const clientesReports: ReportDefinition[] = [
   {
     id: 'clientes-tipo',
     modulo: 'clientes',
-    titulo: 'Clientes por Tipo',
-    descripcion: 'Distribución por tipo (persona/empresa), ciudad, segmento',
+    titulo: 'Clientes por tipo',
+    descripcion: 'Distribución por tipo de persona, ciudad y segmento',
     categoria: 'comercial',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -178,7 +178,7 @@ export const clientesReports: ReportDefinition[] = [
       ];
 
       return buildReportData(
-        'clientes-tipo', 'Clientes por Tipo', 'clientes', periodo,
+        'clientes-tipo', 'Clientes por tipo', 'clientes', periodo,
         [
           { titulo: 'Total Clientes', valor: total, formato: 'numero' },
           { titulo: 'Personas', valor: personCount, formato: 'numero' },
@@ -197,16 +197,14 @@ export const clientesReports: ReportDefinition[] = [
   {
     id: 'clientes-top',
     modulo: 'clientes',
-    titulo: 'Top Clientes',
-    descripcion: 'Clientes por volumen de compras y valor',
+    titulo: 'Top clientes',
+    descripcion: 'Clientes por volumen y valor de compras',
     categoria: 'comercial',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      const overrideHours = (periodo.horaInicio && periodo.horaFin)
-        ? { start_time: periodo.horaInicio, end_time: periodo.horaFin }
-        : null;
-      const { start, end } = await getOrgDateRange(orgId, periodo.fechaInicio, periodo.fechaFin, overrideHours);
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       let ventasQuery = db
         .from('sales')
         .select('customer_id, total, customers!inner(first_name, last_name, customer_type, company_name)')
@@ -248,7 +246,7 @@ export const clientesReports: ReportDefinition[] = [
         .slice(0, 20);
 
       return buildReportData(
-        'clientes-top', 'Top Clientes', 'clientes', periodo,
+        'clientes-top', 'Top clientes', 'clientes', periodo,
         [
           { titulo: 'Clientes Activos', valor: filas.length, formato: 'numero' },
           { titulo: 'Total Ventas', valor: filas.reduce((s, f) => s + f.total, 0), formato: 'moneda' },

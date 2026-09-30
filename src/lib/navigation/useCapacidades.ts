@@ -14,14 +14,15 @@ export interface Capacidades {
   organizationId: number | null;
   esAdmin: boolean;
   capacidades: Record<'gestionarNotificaciones' | 'crearSucursal', boolean>;
-  sucursales: { permitidas: number[]; verTodas: boolean };
+  /** `accesoTotal`: tiene todas las sucursales activas (puede ver el consolidado). */
+  sucursales: { permitidas: number[]; verTodas: boolean; accesoTotal: boolean };
 }
 
 const VACIAS: Capacidades = {
   organizationId: null,
   esAdmin: false,
   capacidades: { gestionarNotificaciones: false, crearSucursal: false },
-  sucursales: { permitidas: [], verTodas: false },
+  sucursales: { permitidas: [], verTodas: false, accesoTotal: false },
 };
 
 // Una sola petición en vuelo para todos los componentes que la piden a la vez.

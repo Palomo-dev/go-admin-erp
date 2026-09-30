@@ -10,8 +10,9 @@ import type { ReportesClient } from '../types';
 // del usuario; en el servidor (asistente de reportes) el route handler pasa el
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
-import { applyBranchFilter } from '@/lib/services/branchFilterHelper';
-import type { ReportDefinition, ReportData, PeriodoCierre } from '../types';
+import { applyBranchFilter, normalizeBranchParam } from '@/lib/services/branchFilterHelper';
+import type { DefinicionModulo, ReportData, PeriodoCierre } from '../types';
+import { rangoDelPeriodo } from '../rangoPeriodo';
 
 function buildReportData(
   id: string, titulo: string, modulo: string, periodo: PeriodoCierre,
@@ -21,13 +22,14 @@ function buildReportData(
   return { id, titulo, modulo, kpis, columnas, filas, totales, generadoEn: new Date().toISOString(), periodo };
 }
 
-export const pmsReports: ReportDefinition[] = [
+export const pmsReports: DefinicionModulo[] = [
   {
     id: 'pms-ocupacion',
     modulo: 'pms_hotel',
-    titulo: 'Ocupación Hotelera',
-    descripcion: 'Tasa de ocupación, ADR y RevPAR del período',
+    titulo: 'Ocupación hotelera',
+    descripcion: 'Tasa de ocupación, tarifa promedio (ADR) y RevPAR',
     categoria: 'operativo',
+    alcance: 'sucursal',
     periodosSugeridos: ['semanal', 'mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
@@ -40,8 +42,8 @@ export const pmsReports: ReportDefinition[] = [
         .from('reservations')
         .select('id, checkin, checkout, status, total_estimated')
         .eq('organization_id', orgId)
-        .gte('checkin', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('checkin', `${periodo.fechaFin}T23:59:59Z`);
+        .gte('checkin', periodo.fechaInicio)
+        .lte('checkin', periodo.fechaFin);
       reservationsQuery = applyBranchFilter(reservationsQuery, branchId);
       const { data: reservations } = await reservationsQuery;
 
@@ -54,7 +56,7 @@ export const pmsReports: ReportDefinition[] = [
       const revpar = totalRooms > 0 ? totalIngresos / totalRooms : 0;
 
       return buildReportData(
-        'pms-ocupacion', 'Ocupación Hotelera', 'pms_hotel', periodo,
+        'pms-ocupacion', 'Ocupación hotelera', 'pms_hotel', periodo,
         [
           { titulo: 'Habitaciones', valor: totalRooms, formato: 'numero' },
           { titulo: 'Ocupadas', valor: ocupadas, formato: 'numero' },
@@ -76,20 +78,23 @@ export const pmsReports: ReportDefinition[] = [
   {
     id: 'pms-ingresos',
     modulo: 'pms_hotel',
-    titulo: 'Ingresos Hoteleros',
+    titulo: 'Ingresos hoteleros',
     descripcion: 'Ingresos por habitaciones, servicios y folios',
     categoria: 'financiero',
+    alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
       let foliosQuery = db
         .from('folios')
-        .select('id, balance, status, created_at, reservations!inner(organization_id)')
+        .select('id, balance, status, created_at, reservations!inner(organization_id, branch_id)')
         .eq('reservations.organization_id', orgId)
-        .gte('created_at', `${periodo.fechaInicio}T00:00:00Z`)
-        .lte('created_at', `${periodo.fechaFin}T23:59:59Z`);
-      // Filtrar folios por branch_id cuando branchId != null
-      foliosQuery = applyBranchFilter(foliosQuery, branchId);
+        .gte('created_at', start)
+        .lte('created_at', end);
+      // `folios` no tiene branch_id: la sucursal es la de su reserva.
+      const sucursal = normalizeBranchParam(branchId);
+      if (sucursal != null) foliosQuery = foliosQuery.eq('reservations.branch_id', sucursal);
       const { data, error } = await foliosQuery;
 
       if (error) throw error;
@@ -104,7 +109,7 @@ export const pmsReports: ReportDefinition[] = [
       const filas = Object.entries(porTipo).map(([tipo, monto]) => ({ tipo, monto }));
 
       return buildReportData(
-        'pms-ingresos', 'Ingresos Hoteleros', 'pms_hotel', periodo,
+        'pms-ingresos', 'Ingresos hoteleros', 'pms_hotel', periodo,
         [
           { titulo: 'Total Ingresos', valor: folios.reduce((s: number, f: Record<string, unknown>) => s + Number(f.balance ?? 0), 0), formato: 'moneda' },
         ],
@@ -121,8 +126,9 @@ export const pmsReports: ReportDefinition[] = [
     id: 'pms-housekeeping',
     modulo: 'pms_hotel',
     titulo: 'Housekeeping',
-    descripcion: 'Tareas de limpieza: pendientes, completadas y tiempos',
+    descripcion: 'Tareas de limpieza pendientes, completadas y tiempos',
     categoria: 'operativo',
+    alcance: 'sucursal',
     periodosSugeridos: ['semanal'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;

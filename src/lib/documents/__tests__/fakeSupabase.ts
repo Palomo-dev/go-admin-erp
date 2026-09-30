@@ -13,6 +13,7 @@ export interface ConsultaRegistrada {
   filtros: Array<[string, string, unknown]>;
   /** Columnas pedidas en `select` (para comprobar qué relaciones embebidas se piden). */
   columnas?: string;
+  insertado?: Fila;
 }
 
 function comparar(valor: unknown, operador: string, esperado: unknown): boolean {
@@ -76,6 +77,12 @@ class Consulta implements PromiseLike<{ data: unknown; error: null }> {
   }
   order() { return this; }
   limit() { return this; }
+  /** Agrega la fila a la tabla en memoria (el historial de reportes). */
+  async insert(fila: Fila) {
+    this.filas.push(fila);
+    this.registro.insertado = fila;
+    return { data: null, error: null };
+  }
   eq(col: string, v: unknown) { return this.agregar(col, 'eq', v); }
   in(col: string, v: unknown[]) { return this.agregar(col, 'in', v); }
   lt(col: string, v: unknown) { return this.agregar(col, 'lt', v); }
@@ -110,7 +117,7 @@ export function fakeSupabase(tablas: Record<string, Fila[]>, rpcs: Record<string
     from(tabla: string) {
       const registro: ConsultaRegistrada = { tabla, filtros: [] };
       consultas.push(registro);
-      return new Consulta(tablas[tabla] ?? [], registro);
+      return new Consulta((tablas[tabla] ??= []), registro);
     },
     async rpc(nombre: string, args: Record<string, unknown>) {
       const fn = rpcs[nombre];

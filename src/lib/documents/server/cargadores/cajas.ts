@@ -24,6 +24,7 @@ import {
   exigirEntero,
   fallaLectura,
   nombreArchivoBase,
+  nombresDePerfiles,
   noEncontrado,
   num,
   numONull,
@@ -84,17 +85,7 @@ function sinPermiso(): OrgContextError {
   return new OrgContextError('Sin permiso para ver este reporte de caja', 403, 'PERMISSION_REQUIRED');
 }
 
-async function nombres(sesion: SesionDocumento, ids: Array<string | null>): Promise<Map<string, string>> {
-  const unicos = [...new Set(ids.filter((x): x is string => !!x))];
-  if (unicos.length === 0) return new Map();
-  const { data } = await sesion.supabase.from('profiles').select('id, first_name, last_name, email').in('id', unicos);
-  return new Map(
-    ((data ?? []) as Array<{ id: string; first_name: string | null; last_name: string | null; email: string | null }>).map((p) => [
-      p.id,
-      [texto(p.first_name), texto(p.last_name)].filter(Boolean).join(' ') || texto(p.email) || '—',
-    ]),
-  );
-}
+const nombres = nombresDePerfiles;
 
 async function leerSesion(sesion: SesionDocumento, id: number): Promise<FilaSesionCaja> {
   const { data, error } = await sesion.supabase

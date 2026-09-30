@@ -21,6 +21,7 @@ import {
   BookOpen,
   CalendarClock,
   CheckCircle2,
+  FileBadge,
   FileText,
   HandCoins,
   ClipboardList,
@@ -67,11 +68,12 @@ import { clienteCompras, ErrorPeticionCompra } from '@/lib/services/compras/clie
 import { leerDetalleFacturaCompra, type DetalleFacturaCompra, type PagoCompraLeido } from '@/lib/services/compras/lecturasCompras';
 import { RegistrarPagoProveedor } from '@/components/finanzas/cuentas-por-pagar/RegistrarPagoProveedor';
 import { ProgramarPagoDialog } from '@/components/finanzas/cuentas-por-pagar/ProgramarPagoDialog';
+import { CertificadoRetencionesDialog, rangoMesDe } from '@/components/finanzas/cuentas-por-pagar/CertificadoRetencionesDialog';
 import { RUTA_CXP, RUTA_PROVEEDORES, useBaseCompras } from '../rutasCompras';
 import { DialogoConfirmarCompra, DialogoRecepcionar, type RecepcionConLotes } from './DialogosCompra';
 import { useProductosConLote, useTextoErrorRecepcion } from '@/components/inventario/recepcion/LotesRecepcion';
 
-type DialogoAbierto = 'confirmar' | 'recepcionar' | 'anular' | 'pagar' | 'programar' | 'eliminar' | null;
+type DialogoAbierto = 'confirmar' | 'recepcionar' | 'anular' | 'pagar' | 'programar' | 'eliminar' | 'certificado' | null;
 
 export default function DetalleFacturaCompraV2({ id }: { id: string }) {
   const router = useRouter();
@@ -114,7 +116,7 @@ export default function DetalleFacturaCompraV2({ id }: { id: string }) {
     if (params?.get('accion') === 'recepcionar' && f && f.status !== 'draft' && !f.stock_received_at) setDialogo('recepcionar');
   }, [params, f]);
 
-  const { formatDate, formatDateTime, getToday } = useFormatDate(f?.branch_id ?? null);
+  const { formatDate, formatDateTime, getToday, toDate } = useFormatDate(f?.branch_id ?? null);
   const ctxMoneda = moneda.paraDocumento(f?.currency);
   const formatear = useMemo(() => crearFormateadorMoneda(ctxMoneda), [ctxMoneda]);
 
@@ -246,6 +248,13 @@ export default function DetalleFacturaCompraV2({ id }: { id: string }) {
 
   const menu: AccionFila[] = [
     { id: 'pdf', etiqueta: td('acciones.pdf'), icono: FileText, onSelect: () => abrirDocumento('factura-compra', f.id) },
+    {
+      id: 'certificado',
+      etiqueta: td('acciones.certificado'),
+      icono: FileBadge,
+      onSelect: () => setDialogo('certificado'),
+      oculta: !f.proveedor || f.retenciones.length === 0 || f.status === 'draft' || f.status === 'void',
+    },
     {
       id: 'programar',
       etiqueta: td('acciones.programar'),
@@ -527,6 +536,8 @@ export default function DetalleFacturaCompraV2({ id }: { id: string }) {
         onAbiertoChange={(v) => !v && !ocupado && setDialogo(null)}
         numero={f.number_ext}
         total={f.total}
+        retenido={f.total - neto}
+        facturaId={f.id}
         moneda={ctxMoneda}
         hayProductos={f.lineas.some((l) => l.product_id !== null)}
         puedeRecepcionar={permisos.crear}
@@ -554,6 +565,15 @@ export default function DetalleFacturaCompraV2({ id }: { id: string }) {
           }, td('recepcionar.listo'))
         }
       />
+      {f.proveedor && f.retenciones.length > 0 && (
+        <CertificadoRetencionesDialog
+          abierto={dialogo === 'certificado'}
+          onAbiertoChange={(v) => !v && setDialogo(null)}
+          proveedorId={f.proveedor.id}
+          proveedorNombre={f.proveedor.name}
+          rangoInicial={f.issue_date ? rangoMesDe(toDate(new Date(f.issue_date)), getToday()) : undefined}
+        />
+      )}
       <DialogoMotivo
         abierto={dialogo === 'anular'}
         onAbiertoChange={(v) => !v && !ocupado && setDialogo(null)}

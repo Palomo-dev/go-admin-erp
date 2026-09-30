@@ -23,7 +23,19 @@ import { qrSvg } from '../qr';
 import { temaDocumento, type TemaDocumento } from '../tema';
 import type { Traductor } from '../textos';
 import type { Campo, DocumentoPayload, FilaTotal, LineaDocumento, SeccionTabla } from '../tipos';
-import { claseTono, documentoLegible, htmlDeValor, nitEmisor, nombresResponsabilidades, textoDeCelda, textoDeTotal, titulo } from './comun';
+import {
+  claseTono,
+  documentoLegible,
+  htmlDeValor,
+  nitEmisor,
+  nombresResponsabilidades,
+  rotuloCampo,
+  rotuloColumna,
+  textoDeCelda,
+  textoDeTotal,
+  titulo,
+  tituloSeccion,
+} from './comun';
 
 export interface OpcionesCarta {
   papel: 'carta' | 'a4';
@@ -127,13 +139,27 @@ tfoot td { font-weight: 700; border-top: 2px solid ${tema.bordeFuerte}; }
 .firma .preimpreso { font-size: 8pt; font-weight: 500; color: ${tema.texto}; margin-bottom: 3px; }
 .pie-legal { margin-top: 16px; padding-top: 8px; border-top: 1px solid ${tema.borde}; font-size: 7pt; color: ${tema.textoSecundario}; break-inside: avoid; }
 .pie-legal p { margin-bottom: 3px; }
+.capitulo { font-size: 13pt; font-weight: 700; color: ${tema.acento}; margin: 4px 0 4px; padding-bottom: 4px; border-bottom: 1px solid ${tema.acento}; }
+.capitulo.salto { break-before: page; page-break-before: always; }
+.subtitulo { font-size: 8pt; color: ${tema.textoSecundario}; margin: -2px 0 6px; }
+.truncado { font-size: 7pt; color: ${tema.textoTenue}; margin-top: 4px; font-style: italic; }
+.notas-seccion { list-style: none; margin: 6px 0 4px; display: grid; gap: 3px; }
+.notas-seccion li { font-size: 8pt; border-left: 3px solid ${tema.bordeFuerte}; padding: 3px 8px; background: ${tema.fondoSuave}; border-radius: 3px; }
+.notas-seccion li.tono-peligro { border-left-color: ${tema.peligro}; }
+.notas-seccion li.tono-aviso { border-left-color: ${tema.aviso}; }
+.notas-seccion li.tono-exito { border-left-color: ${tema.exito}; }
+.notas-seccion li.tono-info { border-left-color: ${tema.info}; }
 .pie-legal .codigo-unico { font-family: 'Consolas', 'Courier New', monospace; word-break: break-all; }
 .generado { font-size: 6.5pt; color: ${tema.textoTenue}; margin-top: 4px; }
 `;
 }
 
 function campoHtml(campo: Campo, f: Formateador, t: Traductor): string {
-  return `<div class="campo"><div class="rotulo">${e(t(`campos.${campo.clave}`))}</div><div class="valor">${htmlDeValor(campo.valor, f, t) || '—'}</div></div>`;
+  return `<div class="campo"><div class="rotulo">${e(rotuloCampo(campo, t))}</div><div class="valor">${htmlDeValor(campo.valor, f, t) || '—'}</div></div>`;
+}
+
+function tarjetasHtml(campos: Campo[], f: Formateador, t: Traductor): string {
+  return `<section class="resumen">${campos.map((c) => `<div class="tarjeta"><div class="rotulo">${e(rotuloCampo(c, t))}</div><div class="valor">${htmlDeValor(c.valor, f, t) || '—'}</div></div>`).join('')}</section>`;
 }
 
 function cabecera(doc: DocumentoPayload, f: Formateador, t: Traductor): string {
@@ -222,14 +248,30 @@ function claseColumna(alinear: string | undefined, tipo: string): string {
   return '';
 }
 
-function tablaSeccion(s: SeccionTabla, f: Formateador, t: Traductor): string {
-  if (s.filas.length === 0 && !s.vacio) return '';
-  const cabeza = s.columnas.map((c) => `<th class="${claseColumna(c.alinear, c.tipo)}">${e(t(`columnas.${c.clave}`))}</th>`).join('');
-  const cuerpo = s.filas.length > 0
-    ? s.filas.map((fila) => `<tr>${s.columnas.map((c, i) => `<td class="${claseColumna(c.alinear, c.tipo)}">${e(textoDeCelda(c, fila[i] ?? null, f, t))}</td>`).join('')}</tr>`).join('')
-    : `<tr><td colspan="${s.columnas.length}" class="centro">${e(t(`vacios.${s.vacio}`))}</td></tr>`;
-  const pie = s.pie ? `<tfoot><tr>${s.columnas.map((c, i) => `<td class="${claseColumna(c.alinear, c.tipo)}">${e(textoDeCelda(c, s.pie?.[i] ?? null, f, t))}</td>`).join('')}</tr></tfoot>` : '';
-  return `<h2>${e(t(`secciones.${s.titulo}`))}</h2><table><thead><tr>${cabeza}</tr></thead><tbody>${cuerpo}</tbody>${pie}</table>`;
+function tablaSeccion(s: SeccionTabla, f: Formateador, t: Traductor, primerCapitulo: boolean): string {
+  const extras = Boolean(s.capitulo || s.resumen?.length || s.notas?.length);
+  if (s.filas.length === 0 && !s.vacio && !extras) return '';
+  const capitulo = s.capitulo
+    ? `<div class="capitulo${primerCapitulo ? '' : ' salto'}">${e(s.capitulo)}</div>`
+    : '';
+  const subtitulo = s.subtitulo ? `<p class="subtitulo">${e(s.subtitulo)}</p>` : '';
+  const resumen = s.resumen && s.resumen.length > 0 ? tarjetasHtml(s.resumen, f, t) : '';
+  const notas = s.notas && s.notas.length > 0
+    ? `<ul class="notas-seccion">${s.notas.map((n) => `<li class="${claseTono(n.tono)}">${e(n.texto)}</li>`).join('')}</ul>`
+    : '';
+  let tabla = '';
+  if (s.columnas.length > 0 && (s.filas.length > 0 || s.vacio)) {
+    const cabeza = s.columnas.map((c) => `<th class="${claseColumna(c.alinear, c.tipo)}">${e(rotuloColumna(c, t))}</th>`).join('');
+    const cuerpo = s.filas.length > 0
+      ? s.filas.map((fila) => `<tr>${s.columnas.map((c, i) => `<td class="${claseColumna(c.alinear, c.tipo)}">${e(textoDeCelda(c, fila[i] ?? null, f, t))}</td>`).join('')}</tr>`).join('')
+      : `<tr><td colspan="${s.columnas.length}" class="centro">${e(t(`vacios.${s.vacio}`))}</td></tr>`;
+    const pie = s.pie ? `<tfoot><tr>${s.columnas.map((c, i) => `<td class="${claseColumna(c.alinear, c.tipo)}">${e(textoDeCelda(c, s.pie?.[i] ?? null, f, t))}</td>`).join('')}</tr></tfoot>` : '';
+    tabla = `<table><thead><tr>${cabeza}</tr></thead><tbody>${cuerpo}</tbody>${pie}</table>`;
+  }
+  const truncado = s.truncado
+    ? `<p class="truncado">${e(t('reportes.truncado', { mostradas: f.numero(s.truncado.mostradas), total: f.numero(s.truncado.total) }))}</p>`
+    : '';
+  return `${capitulo}<h2>${e(tituloSeccion(s, t))}</h2>${subtitulo}${resumen}${tabla}${truncado}${notas}`;
 }
 
 function totalesHtml(totales: FilaTotal[], f: Formateador, t: Traductor): string {
@@ -263,6 +305,16 @@ function firmasHtml(doc: DocumentoPayload, t: Traductor): string {
       break;
     case 'entregaRecibe':
       cajas.push(caja(t('firmas.entrega'), t('firmas.datosNombre'), 'entrega'), caja(t('firmas.recibe'), t('firmas.datosRecibe'), 'recibe'));
+      break;
+    case 'retenedorContador':
+      cajas.push(caja(t('firmas.agenteRetenedor'), t('firmas.datosNombre')), caja(t('firmas.contador'), t('firmas.datosContador')));
+      break;
+    case 'cierrePeriodo':
+      cajas.push(
+        caja(t('firmas.elaboro'), t('firmas.datosNombre')),
+        caja(t('firmas.contador'), t('firmas.datosContador')),
+        caja(t('firmas.representanteLegal'), t('firmas.datosNombre')),
+      );
       break;
   }
   return `<section class="firmas">${cajas.join('')}</section>`;
@@ -301,11 +353,10 @@ export function renderizarCarta(doc: DocumentoPayload, t: Traductor, opciones: O
   const bandas = doc.bandas.map((b) => `<div class="banda ${claseTono(b.tono)}">${e(t(`bandas.${b.clave}`, b.vars))}</div>`).join('');
   const referencia = doc.referencia.length > 0 ? `<section class="referencia">${doc.referencia.map((c) => campoHtml(c, f, t)).join('')}</section>` : '';
   const metadatos = doc.metadatos.length > 0 ? `<section class="campos">${doc.metadatos.map((c) => campoHtml(c, f, t)).join('')}</section>` : '';
-  const resumen = doc.resumen.length > 0
-    ? `<section class="resumen">${doc.resumen.map((c) => `<div class="tarjeta"><div class="rotulo">${e(t(`campos.${c.clave}`))}</div><div class="valor">${htmlDeValor(c.valor, f, t) || '—'}</div></div>`).join('')}</section>`
-    : '';
+  const resumen = doc.resumen.length > 0 ? tarjetasHtml(doc.resumen, f, t) : '';
   const lineas = doc.lineas ? tablaLineas(doc.lineas, f, t) : '';
-  const secciones = doc.secciones.map((s) => tablaSeccion(s, f, t)).join('');
+  const primerCapitulo = doc.secciones.findIndex((s) => s.capitulo);
+  const secciones = doc.secciones.map((s, i) => tablaSeccion(s, f, t, i === primerCapitulo)).join('');
   const notas = [
     doc.notas ? `<div class="rotulo">${e(t('secciones.notas'))}</div><div class="nota">${e(doc.notas)}</div>` : '',
     doc.terminos ? `<div class="rotulo">${e(t('secciones.terminos'))}</div><div class="nota">${e(doc.terminos)}</div>` : '',

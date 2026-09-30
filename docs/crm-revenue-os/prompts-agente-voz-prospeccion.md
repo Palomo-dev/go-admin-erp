@@ -51,11 +51,13 @@ Las dos variantes de prospección comparten un bloque común con:
 
 **Proceso**:
 1. Apertura con aviso de IA y grabación
-2. Calificación (sistema actual, factura electrónica, cantidad de locales)
-3. Propuesta de valor
+2. Calificación (sistema actual, cantidad de locales, necesidad de hardware)
+3. Propuesta de valor (caja, inventario y cuentas integrados)
 4. Oferta de horarios (check_availability)
 5. Autorización de datos
 6. Confirmación de reunión
+
+**Nota**: No se menciona facturación electrónica; el asesor confirma el alcance en la cita.
 
 **Objeciones manejadas**:
 - "No tengo tiempo"
@@ -106,6 +108,8 @@ Según especificación R-02:
 - ✅ "GO Admin" sin guion
 - ✅ Sin signos de exclamación iniciales ("¡")
 - ✅ Precios en COP: "$99.000", "$189.000", "$990.000" mensuales
+- ✅ Prueba gratis: Pro 15 días, Business/Ultimate 30 días, sin tarjeta
+- ✅ Sin promesas de facturación electrónica
 - ✅ Frases cortas y verbos simples
 - ✅ Tono amable y tranquilo
 

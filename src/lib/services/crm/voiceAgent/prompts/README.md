@@ -112,6 +112,8 @@ Todos los prompts siguen estas reglas (especificación R-02):
 - **Marca**: "GO Admin" (sin guion, sin espacio)
 - **Signos**: Sin signos de exclamación inicial ("¡")
 - **Precios**: En COP con punto separador de miles: "$99.000" (Pro), "$189.000" (Business), "$990.000" (Ultimate) mensuales
+- **Prueba gratis**: Pro 15 días, Business y Ultimate 30 días, sin tarjeta al empezar
+- **Alcance**: No se promete facturación electrónica; el asesor confirma el alcance en la cita
 - **Naturalidad**: Frases cortas, verbos simples, tono amable y tranquilo
 
 ## Avisos legales

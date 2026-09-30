@@ -6,19 +6,24 @@
  *    SIN escribir nada (vista previa).
  *  - `importarBloque`: vuelve a hacer lo mismo (nunca se fía de la validación
  *    del navegador) y crea cada lead con `createLeadWithCustomer`, el MISMO alta
- *    de `POST /api/crm/leads` (regla dura 7): pipeline/etapa por defecto, ficha
- *    de cliente con `lifecycle_stage='lead'`, asignación automática de vendedor
- *    y reversión de la ficha si el lead no cuaja.
+ *    de `POST /api/crm/leads` (regla dura 7). CRM ola 1 (D2): el lead ES la
+ *    ficha de cliente (`lifecycle_stage='lead'`, `lead_source='import'`,
+ *    responsable por asignación automática, score desde el ICP con la
+ *    prioridad del archivo como banda de respaldo, valor anual en
+ *    `metadata.lead.valor_estimado`); ya no se crea `opportunities` 'lead'.
+ *    La ficha nueva se revierte si el alta no cuaja.
  *
  * Decisión por fila (deduplicación ANTES de crear, por organización):
  *  - `error`  : sin nombre o sin teléfono/correo válidos.
  *  - `omitir` : repetida en el archivo (`duplicado_archivo`), ya importada en el
- *               mismo lote (`ya_importado`, idempotencia), o su cliente ya tiene
- *               un lead abierto (`lead_abierto`).
- *  - `ligar`  : el cliente existe (teléfono, NIT o correo) y no tiene lead
- *               abierto → solo se crea el lead, ligado a esa ficha, que NO se
- *               modifica (ni `do_not_call`, ni etiquetas, ni metadata).
- *  - `crear`  : cliente nuevo + lead.
+ *               mismo lote (`ya_importado`, idempotencia), o su cliente ya es un
+ *               lead activo —ficha en etapa lead con origen y sin descartar, o
+ *               con una oportunidad 'lead' heredada abierta— (`lead_abierto`).
+ *  - `ligar`  : el cliente existe (teléfono, NIT o correo) y no es lead activo
+ *               → se marca como lead: origen y responsable solo si faltan y
+ *               `metadata.lead`; ni `do_not_call`, ni etiquetas, ni el resto de
+ *               la metadata se tocan.
+ *  - `crear`  : ficha de cliente nueva en etapa lead.
  *
  * Cumplimiento (Registro de Números Excluidos, CRC): TODA fila escrita queda con
  * `metadata.importacion.rne = 'pendiente'` (o `'excluido'` si el número ya está
@@ -223,7 +228,8 @@ export async function importarBloque(
     try {
       const res = await createLeadWithCustomer({ organizationId: ctx.organizationId, userId: ctx.userId, supabase: ctx.supabase }, body, extras);
       if (res.status === 201) {
-        resultados.push({ ...r, customerId: res.customer_id, leadId: String(res.data.id ?? '') });
+        // D2: el lead es la ficha; `leadId` = id del cliente (no hay oportunidad).
+        resultados.push({ ...r, customerId: res.customer_id, leadId: res.customer_id });
       } else if (res.status === 409) {
         // Otra petición creó la ficha entre la lectura y el alta (correo único).
         resultados.push({ ...r, accion: 'omitir', motivo: 'duplicado_bd', avisos: [...r.avisos, aviso('conflicto', { detalle: res.error })] });

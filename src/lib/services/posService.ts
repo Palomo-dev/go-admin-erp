@@ -7,6 +7,7 @@ import { promotionEngine } from '@/lib/services/promotionEngine';
 import { getPosDisplayEmitter } from '@/lib/pos/display/posDisplay';
 import { enqueueOfflineSale, shouldCheckoutOffline, newLocalUuid, newSaleId } from '@/lib/offline/salesOutbox';
 import { buildCheckoutEnvelope, callCheckoutRpc, type LineaMesaSinCobrar } from '@/lib/offline/checkoutRpc';
+import { desfaseParaOperacionSinConexion } from '@/lib/pos/reloj/desfaseReloj';
 import { enqueueOfflineCustomer, findLocalCustomerDuplicate, type OfflineCustomerPayload } from '@/lib/offline/customersOutbox';
 import { posOfflineReads } from '@/lib/offline/posOfflineReads';
 import { buscarClientes } from '@/lib/services/customers/busquedaClientesService';
@@ -1832,7 +1833,10 @@ export class POSService {
       const envelope = buildCheckoutEnvelope({
         checkout: checkoutData,
         saleId: ventaExistenteId || checkoutData.saleId || newSaleId(),
+        // Hora del equipo, solo auditoría: la oficial la pone pos_checkout_v1.
         createdAt: checkoutData.createdAt || new Date().toISOString(),
+        offline: !!checkoutData.replayFromOutbox,
+        clockOffsetMs: checkoutData.clockOffsetMs ?? null,
         organizationId: cart.organization_id || this.organizationId,
         branchId: rpcBranchId,
         userId: checkoutData.userId ?? null,
@@ -1910,7 +1914,9 @@ export class POSService {
     } catch {
       userId = null;
     }
-    const sale = await enqueueOfflineSale(checkoutData, {
+    // El sobre lleva el último desfase del reloj medido con red: al sincronizar,
+    // el servidor acepta la hora del equipo solo si era ≤ 10 min (fn_hora_oficial_resolver).
+    const sale = await enqueueOfflineSale({ ...checkoutData, clockOffsetMs: desfaseParaOperacionSinConexion() }, {
       organizationId: cart.organization_id || this.organizationId,
       branchId,
       userId,

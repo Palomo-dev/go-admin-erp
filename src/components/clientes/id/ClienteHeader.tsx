@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Camera, Loader2, Building2, User } from 'lucide-react';
@@ -21,6 +21,8 @@ interface ClienteHeaderProps {
     customer_type?: string | null;
   };
   onAvatarUpdate?: (newUrl: string) => void;
+  /** CRM ola 3A (Figma 772:19838): barra de acciones rápidas dentro de la tarjeta, bajo los datos. */
+  pie?: ReactNode;
 }
 
 // Ya no necesitamos este componente porque usaremos UserAvatar
@@ -67,7 +69,7 @@ const NivelFidelidad = ({ nivel, etiqueta }: { nivel: Nivel; etiqueta: string })
 };
 
 // Componente principal del encabezado del cliente
-export default function ClienteHeader({ cliente, onAvatarUpdate }: ClienteHeaderProps) {
+export default function ClienteHeader({ cliente, onAvatarUpdate, pie }: ClienteHeaderProps) {
   const t = useTranslations('clientes.ficha');
   const nombreCompleto = cliente.full_name || `${cliente.first_name || ''} ${cliente.last_name || ''}`.trim();
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -208,7 +210,7 @@ export default function ClienteHeader({ cliente, onAvatarUpdate }: ClienteHeader
         : 'basico';
   
   return (
-    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+    <div className="flex flex-col md:flex-row md:flex-wrap items-start md:items-center justify-between gap-4 p-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
       <div className="flex flex-wrap items-center gap-4">
         <div className="relative group cursor-pointer" onClick={handleAvatarClick} title={t('cabecera.cambiarFoto')}>
           <UserAvatar name={nombreCompleto} avatarUrl={avatarUrl} size="lg" className="w-16 h-16" />
@@ -284,7 +286,7 @@ export default function ClienteHeader({ cliente, onAvatarUpdate }: ClienteHeader
           </div>
         </div>
       </div>
-      
+      {pie && <div className="w-full md:basis-full">{pie}</div>}
     </div>
   );
 }

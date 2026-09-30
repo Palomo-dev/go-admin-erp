@@ -8,9 +8,10 @@
  *   bloque de sesión (`themeService`: local al instante y remoto para los
  *   demás dispositivos); aquí se suma «Sistema», que el interruptor no ofrece.
  * - Idioma: `guardarIdiomaPreferido`, la misma función del bloque de sesión.
- * - Zona horaria: la persona no tiene una propia (no existe la columna; el
- *   frame la marca «Nuevo»). Se muestra, de solo lectura, la de la
- *   organización, que es con la que se pintan todas las fechas.
+ * - Zona horaria: de solo lectura. No hay zona por persona (decisión del
+ *   dueño, 2026-09-30): es la de la sucursal activa del header si tiene una
+ *   propia y, si no, la de la organización (`useTimezoneFor`, regla única).
+ *   Debajo se dice de dónde viene. Se edita en Organización › Sucursales.
  *
  * Las notificaciones siguen en su propia sección («Notificaciones»).
  */
@@ -22,7 +23,8 @@ import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { themeService } from '@/lib/services/themeService';
 import { guardarIdiomaPreferido } from '@/lib/i18n/idiomaPreferido';
 import { isValidLocale, localeNames, locales, type Locale } from '@/i18n/config';
-import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { useTimezoneFor } from '@/lib/context/OrganizationTimezoneContext';
+import { useBranchOpcional } from '@/lib/context/BranchContext';
 
 type Tema = 'light' | 'dark' | 'system';
 
@@ -30,7 +32,17 @@ export default function PreferenciasSection() {
   const t = useTranslations('perfil.preferencias');
   const locale = useLocale();
   const { theme, setTheme } = useTheme();
-  const { timezone } = useFormatDate();
+  const zona = useTimezoneFor();
+  const sucursales = useBranchOpcional()?.branches;
+  const nombreSucursal = zona.branchId !== null ? sucursales?.find((b) => Number(b.id) === zona.branchId)?.name : undefined;
+  const origenZona =
+    zona.source === 'branch'
+      ? nombreSucursal
+        ? t('zonaOrigenSucursal', { sucursal: nombreSucursal })
+        : t('zonaOrigenSucursalSinNombre')
+      : zona.source === 'organization'
+        ? t('zonaOrigenOrganizacion')
+        : t('zonaOrigenSistema');
   // next-themes no conoce el tema hasta montar: se evita pintar uno equivocado.
   const [montado, setMontado] = useState(false);
   useEffect(() => setMontado(true), []);
@@ -90,7 +102,10 @@ export default function PreferenciasSection() {
         </label>
         <div className="flex flex-col gap-1.5">
           <span className="text-sm font-medium text-fg">{t('zonaHoraria')}</span>
-          <p className="flex h-10 items-center rounded-lg border border-line bg-subtle px-3 text-sm text-fg-secondary">{timezone}</p>
+          <p className="flex h-10 items-center justify-between gap-2 rounded-lg border border-line bg-subtle px-3 text-sm text-fg-secondary">
+            <span className="truncate">{zona.timezone}</span>
+            <span className="shrink-0 text-xs font-medium text-fg" data-testid="zona-origen">{origenZona}</span>
+          </p>
           <p className="text-xs text-fg-secondary">{t('zonaHorariaAyuda')}</p>
         </div>
       </div>

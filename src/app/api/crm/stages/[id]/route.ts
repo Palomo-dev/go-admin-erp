@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
-import { canManageStages, STAGE_MANAGER_REQUIRED } from '@/lib/services/crm/stagePermissions';
+import { STAGE_MANAGER_REQUIRED } from '@/lib/services/crm/stagePermissions';
+// CRM ola 1 (M7): la gestión de etapas es el permiso `crm.stages.manage`, no una lista de roles.
+import { CRM_PERMISOS, tienePermisoCrm } from '@/lib/services/crm/crmRouteSupport';
 
 /**
  * PATCH /api/crm/stages/[id]  — edita una etapa del pipeline (F9-41)
@@ -70,7 +72,7 @@ function fail(error: unknown, tag: string): NextResponse {
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const ctx = await getServerOrgContext(request);
-    if (!canManageStages(ctx)) {
+    if (!(await tienePermisoCrm(ctx, CRM_PERMISOS.etapasGestionar))) {
       return NextResponse.json({ success: false, error: STAGE_MANAGER_REQUIRED }, { status: 403 });
     }
     const { id } = await params;
@@ -120,7 +122,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   try {
     const ctx = await getServerOrgContext(request);
     await readOrgBody(ctx, request);
-    if (!canManageStages(ctx)) {
+    if (!(await tienePermisoCrm(ctx, CRM_PERMISOS.etapasGestionar))) {
       return NextResponse.json({ success: false, error: STAGE_MANAGER_REQUIRED }, { status: 403 });
     }
     const { id } = await params;

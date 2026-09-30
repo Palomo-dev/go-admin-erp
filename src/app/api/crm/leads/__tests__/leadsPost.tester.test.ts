@@ -7,8 +7,12 @@
  *  - Regla 5: `organization_id` ajeno en el body o en la query → 403 y NADA
  *    se escribe (ni cliente ni lead).
  *  - 201 con `assignment` documentado (`assigned` | `explicit` | `skipped` |
- *    `unassigned`) y `data.salesperson_id` coherente.
+ *    `unassigned`) y `data.owner_id` coherente.
  *  - `salesperson_id` explícito ajeno sigue siendo 400 (no se «corrige»).
+ *
+ * CRM ola 1 (D2, 2026-09-29): el lead ES el cliente. `data` es la ficha
+ * (`lifecycle_stage='lead'`, `lead_source`, `owner_id`) y NO se escribe
+ * ninguna oportunidad.
  */
 const { OrgContextError: RealOrgContextError } = jest.requireActual<typeof import('@/lib/utils/orgContextError')>('@/lib/utils/orgContextError');
 
@@ -80,9 +84,10 @@ describe('POST /api/crm/leads · respuesta 201 con assignment', () => {
       created_customer_id: expect.any(String),
       assignment: { status: 'assigned', user_id: VENDEDOR_A, strategy: 'round_robin', team_id: TEAM, reason: expect.any(String) },
     });
-    expect(json.data.salesperson_id).toBe(VENDEDOR_A);
-    expect(json.data.record_type).toBe('lead');
-    expect(json.data.status).toBe('open');
+    expect(json.data.owner_id).toBe(VENDEDOR_A);
+    expect(json.data.lifecycle_stage).toBe('lead');
+    expect(json.data.lead_source).toBe('manual');
+    expect(db.writes.filter((w) => w.table === 'opportunities')).toEqual([]); // D2: ninguna oportunidad 'lead'
   });
 
   it('salesperson_id explícito propio → explicit; ajeno → 400 sin lead ni cliente huérfano', async () => {
@@ -94,19 +99,18 @@ describe('POST /api/crm/leads · respuesta 201 con assignment', () => {
     const mal = await POST(peticion(cuerpo({ salesperson_id: VENDEDOR_121 })));
     expect(mal.status).toBe(400);
     expect((await mal.json()).error).toMatch(/no es miembro/);
-    expect(db.writes.filter((w) => w.table === 'opportunities')).toHaveLength(1); // solo el del caso «ok»
-    // Nota: la ficha del cliente nuevo del caso 400 queda creada (comportamiento
-    // previo a F1, no lo introduce esta entrega): se documenta, no se afirma.
-    expect(db.tables.customers.length).toBeGreaterThanOrEqual(antes);
+    expect(db.writes.filter((w) => w.table === 'opportunities')).toEqual([]);
+    // Ola 1: el responsable se valida ANTES de crear la ficha → sin cliente huérfano.
+    expect(db.tables.customers.length).toBe(antes);
   });
 
-  it('sin equipos → 201, assignment.unassigned con motivo, salesperson_id null', async () => {
+  it('sin equipos → 201, assignment.unassigned con motivo, owner_id null', async () => {
     db.tables.sales_teams = db.tables.sales_teams.filter((t) => t.organization_id !== ORG);
     const res = await POST(peticion(cuerpo()));
     const json = await res.json();
     expect(res.status).toBe(201);
     expect(json.assignment).toEqual({ status: 'unassigned', reason: expect.stringMatching(/equipo/i) });
-    expect(json.data.salesperson_id).toBeNull();
+    expect(json.data.owner_id).toBeNull();
   });
 
   it('asignación desactivada → skipped', async () => {

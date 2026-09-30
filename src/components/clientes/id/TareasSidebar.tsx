@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
+import { ListPlus, Plus } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
@@ -30,10 +31,15 @@ interface PerfilUsuario {
 interface TareasSidebarProps {
   clienteId: string;
   organizationId: number;
+  /** CRM ola 3A (Figma 772:21523): «+ Nueva» y «Crear la primera tarea» (`POST /api/crm/tasks`). */
+  onNuevaTarea?: () => void;
+  /** Cambia tras crear una tarea: se vuelve a leer. */
+  recarga?: number;
 }
 
-export default function TareasSidebar({ clienteId, organizationId }: TareasSidebarProps) {
+export default function TareasSidebar({ clienteId, organizationId, onNuevaTarea, recarga }: TareasSidebarProps) {
   const t = useTranslations('clientes.ficha');
+  const tc = useTranslations('crm.fichaCliente.tareas');
   const { relativa } = useFechasFicha();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<{ mensaje: string | null } | null>(null);
@@ -136,7 +142,7 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
     };
 
     fetchTareas();
-  }, [clienteId, organizationId]);
+  }, [clienteId, organizationId, recarga]);
 
   // Formatear fecha relativa
   const formatRelativeDate = (dateString: string | null) => {
@@ -257,8 +263,16 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
         <h3 className="font-medium text-lg text-gray-900 dark:text-white">
           {t('tareas.pendientes')}
         </h3>
-        <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-          {tareasPendientes.length}
+        <span className="flex items-center gap-2">
+          <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+            {tareasPendientes.length}
+          </span>
+          {onNuevaTarea && (
+            <button type="button" onClick={onNuevaTarea} className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2 text-[13px] font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+              <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {tc('nueva')}
+            </button>
+          )}
         </span>
       </div>
 
@@ -272,6 +286,12 @@ export default function TareasSidebar({ clienteId, organizationId }: TareasSideb
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
             {t('tareas.sinPendientes')}
           </p>
+          {onNuevaTarea && (
+            <button type="button" onClick={onNuevaTarea} className="mt-3 inline-flex h-8 items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-3 text-[13px] font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+              <ListPlus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {tc('primera')}
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 mb-6">

@@ -20,6 +20,8 @@ import {
   type TimezoneSource,
 } from '@/lib/utils/branchTimezoneCascade';
 import { avisarResolucionZonaHoraria } from '@/lib/utils/timezoneFallback';
+import { sucursalActivaDelHeader, sucursalParaZona } from '@/lib/utils/sucursalParaZona';
+import { useBranchOpcional } from '@/lib/context/BranchContext';
 import {
   TIMEZONES_UPDATED_EVENT,
   invalidateBranchTimezoneCache,
@@ -187,22 +189,28 @@ export function useOrgTimezone(): OrganizationTimezoneContextValue {
 }
 
 /**
- * Zona horaria efectiva de UNA sucursal, por la cascada
- * sucursal -> organizacion -> 'America/Bogota'.
+ * Zona horaria efectiva — REGLA UNICA (decision del dueno, 2026-09-30):
+ * la de la sucursal si la tiene; si no, la de la organizacion; el fallback
+ * del sistema solo como ultimo recurso. No hay zona por persona.
  *
- * `branchId` es el de la FILA DE DATOS (`sale.branch_id`,
- * `payment.branch_id`...), NUNCA el del selector de sucursal de la barra
- * superior: una venta de Madrid se muestra en hora de Madrid aunque el
- * usuario tenga «seleccionada» Bogota. Mezclar ambas cosas es exactamente
- * el bug que esta fase cierra.
+ * Que sucursal cuenta (`sucursalParaZona`):
+ *  - `branchId` numero: la del DATO (`sale.branch_id`...). Una venta de
+ *    Madrid se muestra en hora de Madrid aunque el header diga otra (fase A3).
+ *  - `branchId` null: el dato no tiene sucursal -> organizacion.
+ *  - sin argumento (`undefined`): la sucursal ACTIVA del header; con «Todas»
+ *    -> organizacion.
  *
- * Sin `branchId` (o con uno desconocido) devuelve la zona de la organizacion.
+ * La cascada es `resolveFor` (gemela de `fn_timezone_for`). Con las 94
+ * sucursales sin zona propia (2026-09-30) el resultado es identico al de
+ * antes: todas heredan la de la organizacion.
  */
 export function useTimezoneFor(
   branchId?: number | null,
-): { timezone: string; source: TimezoneSource } {
+): { timezone: string; source: TimezoneSource; branchId: number | null } {
   const { resolveFor } = useOrgTimezone();
-  return useMemo(() => resolveFor(branchId), [resolveFor, branchId]);
+  const activa = sucursalActivaDelHeader(useBranchOpcional());
+  const sucursal = sucursalParaZona(branchId, activa);
+  return useMemo(() => ({ ...resolveFor(sucursal), branchId: sucursal }), [resolveFor, sucursal]);
 }
 
 /**
@@ -215,9 +223,11 @@ export function useTimezoneFor(
  *
  * Firma ADITIVA (fase A3): con `branchId` formatea en la zona de ESA
  * sucursal (cascada sucursal -> organizacion -> fallback). El parametro es
- * el `branch_id` DEL DATO, no el del selector de la barra superior. Sin
- * parametro se comporta exactamente como antes, asi que los 83 archivos que
- * ya lo usan no cambian.
+ * el `branch_id` DEL DATO. Sin parametro (2026-09-30) usa la sucursal ACTIVA
+ * del header si tiene zona propia, y si no la de la organizacion (regla unica
+ * de `useTimezoneFor`). Las funciones de calculo (`getToday`, `toDate`,
+ * `toInstant`) usan la MISMA zona: el dia de negocio de una operacion es el de
+ * su sucursal. Con todas las sucursales sin zona propia, nada cambia.
  */
 export function useFormatDate(branchId?: number | null) {
   const { timezone } = useTimezoneFor(branchId);

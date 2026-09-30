@@ -51,7 +51,11 @@ jest.mock('@/lib/supabase/config', () => {
 });
 
 jest.mock('@/lib/hooks/useOrganization', () => ({ getOrganizationId: () => 7, getCurrentUserId: async () => 'u-1', useOrganization: () => ({ organization: { id: 7 } }) }));
-jest.mock('@/lib/context/BranchContext', () => ({ useBranch: () => ({ selectedBranchId: 3, branches: [{ id: 3, name: 'Sucursal Principal' }] }) }));
+// useBranchOpcional: la zona horaria resuelve sucursal → organización (OrganizationTimezoneContext).
+jest.mock('@/lib/context/BranchContext', () => {
+  const sucursal = { selectedBranchId: 3, branches: [{ id: 3, name: 'Sucursal Principal' }] };
+  return { useBranch: () => sucursal, useBranchOpcional: () => sucursal };
+});
 jest.mock('@/lib/hooks/useOrgCurrency', () => ({
   useMonedaOrganizacion: () => ({ code: 'COP', resuelta: true, decimals: 0, locale: 'es-CO', paraDocumento: (c?: string | null) => ({ code: c || 'COP', decimals: 0, locale: 'es-CO' }) }),
 }));

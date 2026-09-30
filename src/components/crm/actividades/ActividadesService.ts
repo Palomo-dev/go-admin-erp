@@ -216,37 +216,34 @@ class ActividadesService {
     return json.data as Activity;
   }
 
+  /**
+   * Ola 3A: la edición va por `PATCH /api/crm/activities/[id]` (solo lo propio
+   * salvo `crm.activities.edit_any`; las `system` no se tocan). La ruta admite
+   * `notes`, `outcome`, `channel`, `duration_seconds` y `occurred_at`: el tipo,
+   * la entidad y la metadata ya no se cambian desde aquí.
+   */
   async updateActivity(id: string, input: UpdateActivityInput): Promise<Activity> {
-    const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
-    if (input.activity_type !== undefined) updateData.activity_type = input.activity_type;
-    if (input.notes !== undefined) updateData.notes = input.notes || null;
-    if (input.related_type !== undefined) updateData.related_type = input.related_type || null;
-    if (input.related_id !== undefined) updateData.related_id = input.related_id || null;
-    if (input.occurred_at !== undefined) updateData.occurred_at = input.occurred_at;
-    if (input.channel !== undefined) updateData.channel = input.channel;
-    if (input.outcome !== undefined) updateData.outcome = input.outcome;
-    if (input.duration_seconds !== undefined) updateData.duration_seconds = input.duration_seconds;
-    if (input.metadata !== undefined) updateData.metadata = input.metadata;
-
-    const { data, error } = await supabase
-      .from('activities')
-      .update(updateData)
-      .eq('id', id)
-      .eq('organization_id', this.getOrgId())
-      .select()
-      .single();
-
-    if (error) throw new Error(`No se pudo actualizar la actividad: ${error.message}`);
-    return data as Activity;
+    const cuerpo: Record<string, unknown> = {};
+    if (input.notes !== undefined) cuerpo.notes = input.notes || null;
+    if (input.occurred_at !== undefined) cuerpo.occurred_at = input.occurred_at;
+    if (input.channel !== undefined) cuerpo.channel = input.channel;
+    if (input.outcome !== undefined) cuerpo.outcome = input.outcome;
+    if (input.duration_seconds !== undefined) cuerpo.duration_seconds = input.duration_seconds;
+    const res = await fetch(`/api/crm/activities/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cuerpo),
+    });
+    const json = (await res.json().catch(() => null)) as { success?: boolean; data?: Activity; error?: string } | null;
+    if (!res.ok || !json?.success) throw new Error(`No se pudo actualizar la actividad: ${json?.error ?? res.status}`);
+    return json.data as Activity;
   }
 
+  /** Ola 3A: `DELETE /api/crm/activities/[id]` (misma regla de autoría que editar). */
   async deleteActivity(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('activities')
-      .delete()
-      .eq('id', id)
-      .eq('organization_id', this.getOrgId());
-    if (error) throw new Error(`No se pudo eliminar la actividad: ${error.message}`);
+    const res = await fetch(`/api/crm/activities/${id}`, { method: 'DELETE' });
+    const json = (await res.json().catch(() => null)) as { success?: boolean; error?: string } | null;
+    if (!res.ok || !json?.success) throw new Error(`No se pudo eliminar la actividad: ${json?.error ?? res.status}`);
   }
 
   async duplicateActivity(id: string): Promise<Activity> {

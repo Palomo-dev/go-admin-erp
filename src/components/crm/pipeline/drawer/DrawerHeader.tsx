@@ -8,7 +8,9 @@ import { Button } from '@/components/ui/button';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatMoneda } from '@/lib/utils/moneda';
 import { translateOpportunityStatus } from '@/utils/crmTranslations';
-import { QuickActionsBar, type QuickActionKind } from '@/components/crm/shared/QuickActionsBar';
+import type { QuickActionKind } from '@/components/crm/shared/quickActionsConfig';
+import { AccionesRapidasCrm } from '@/components/crm/acciones/AccionesRapidasCrm';
+import { KIND_DE_ACCION } from '@/components/crm/kit/quickActionLogica';
 import { TemperatureDot } from '../TemperatureDot';
 import { ScoreBadge } from '../ScoreBadge';
 import { StageSelect, type StageChangeResult, type StageOption } from './StageSelect';
@@ -100,7 +102,7 @@ export function DrawerHeader({ opportunity, customer, stages, onStageResult, onW
       </div>
 
       <div className="overflow-x-auto -mx-1 px-1">
-        <QuickActionsBar variant="drawer" opportunityId={opportunity.id} customerId={opportunity.customer_id ?? undefined} customer={barCustomer} opportunityName={opportunity.name} onActionCompleted={onActionCompleted} />
+        <AccionesRapidasCrm variante="drawer" oportunidadId={opportunity.id} clienteId={opportunity.customer_id} cliente={barCustomer} oportunidadNombre={opportunity.name} onAccionCompletada={(a) => onActionCompleted(KIND_DE_ACCION[a])} />
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
 import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
+import { HORA_DEL_SERVIDOR } from '@/lib/pos/reloj/horaOficial';
 
 export interface InvoiceData {
   id: string;
@@ -107,14 +108,14 @@ class ParkingFinanceService {
         console.warn('Usando número temporal:', tempNumber);
       }
 
-      const now = new Date().toISOString();
       const invoiceData = {
         organization_id: data.organization_id,
         branch_id: data.branch_id,
         customer_id: data.customer_id || null,
         number: invoiceNumber?.number || `PKG-${Date.now()}`,
-        issue_date: now,
-        due_date: now,
+        // Emisión y vencimiento: hora del servidor, nunca el reloj del equipo.
+        issue_date: HORA_DEL_SERVIDOR,
+        due_date: HORA_DEL_SERVIDOR,
         // Sin `currency`: el trigger `trg_00_moneda_base_por_defecto` pone la
         // moneda base de la organización (parking no tiene moneda propia).
         subtotal: data.amount,

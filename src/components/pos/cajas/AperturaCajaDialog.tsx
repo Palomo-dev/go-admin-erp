@@ -29,6 +29,7 @@ import { useBranch } from '@/lib/context/BranchContext';
 import { getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { getUserName } from '@/lib/services/userService';
 import { alcancesDisponibles, type AlcanceApertura, type ModoCaja } from '@/lib/pos/cajas/alcance';
+import { AvisoRelojDesfasado } from '@/components/pos/reloj/AvisoRelojDesfasado';
 import { CajasService } from './CajasService';
 import { useFechaHoraCaja, useMensajeErrorCaja, useMonedaCaja } from './comunesCaja';
 import type { CashSession } from './types';
@@ -142,6 +143,8 @@ export function AperturaCajaDialog({ onSessionOpened, disabled, open: controlled
             void abrir();
           }}
         >
+          {/* La apertura toma la hora del servidor; si el reloj del equipo está desfasado, se avisa. */}
+          <AvisoRelojDesfasado activo={open} />
           <ListaDatos etiqueta={t('datos')} className="rounded-lg border border-line bg-subtle px-3 py-2">
             <FilaDato etiqueta={t('sucursal')} valor={sucursal} />
             <FilaDato etiqueta={t('cajero')} valor={nombre || '…'} />

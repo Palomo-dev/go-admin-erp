@@ -258,3 +258,74 @@ Aprobadas tal como quedaron implementadas:
 4. El saldo de créditos lo ven todos los usuarios.
 5. Con la voz apagada en la organización, «Escuchar» se ve deshabilitado con el motivo.
 6. Atajo Ctrl/⌘+J (dentro del ERP lo toma el asistente, aunque en Chrome abre Descargas).
+
+## Integración con el shell — estado (2026-09-30)
+
+Cierra los dos pendientes del shell de §4.4 y tres diferencias visuales que el dueño vio en producción
+(captura en modo ampliado). Comparado contra `get_design_context` de `667:34706` y capturas de
+`667:34455` y `668:37351`.
+
+### Shell
+
+| Figma | Qué hace ahora | Dónde |
+|---|---|---|
+| `668:37351` (09, ampliado 720) | Con el panel **ampliado de verdad** (abierto + ampliado + ventana ≥ 1280 px) el sidebar se pinta en **rail**. Es un modo visible, no una preferencia: `shell.sidebar` no se toca y al acoplar o cerrar vuelve a lo que la persona tenía. Si en ese rato pulsa «Expandir», se respeta hasta que el panel deje de estar ampliado. Por debajo de 1280 px (el panel se queda en 400) no cambia nada | `shell/sidebar/SidebarShell.tsx` (`modoVisibleSidebar`) |
+| `667:34706` (02, abierto) | Header compacto: el buscador pasa a icono de 40 × 40 (tooltip «Buscar» + Kbd; sigue abriendo la paleta con Ctrl/⌘ K y «/», `aria-keyshortcuts` intacto) y el chip del plan sale del OrgSwitcher | `shell/header/AppHeader.tsx`, `OrgSwitcher.tsx` (`sinPlan`) |
+| `668:37351` (09) | Además, sin «Reportar problema» (sigue en el panel de sesión y en la paleta) y el botón del asistente en icono con `aria-label` | `AppHeader.tsx` |
+| `667:34455` (01, cerrado) | Botón «GO Asistente» con tooltip de dos líneas «Abrir GO Asistente» / «Ctrl+J» (⌘J en Mac) y `aria-keyshortcuts="Control+J Meta+J"`; abierto dice «Cerrar GO Asistente». Clave nueva `header.closeAssistant` en es/en/fr/pt | `AppHeader.tsx`, `messages/*.json` |
+
+Sin acoplar componentes: el panel ya publicaba `go-asistente:estado` `{ abierto, modo }`; el shell lo
+escucha con `shell/useEstadoAsistente.ts` (valida el `detail` con `estadoDesdeEvento` y decide con
+`ampliadoEfectivo`, ambos en `lib/ai/assistant/panelUi.ts` junto a `ANCHO_MIN_AMPLIADO = 1280`).
+`AppLayout.tsx` no cambió: `SidebarShell` y `AppHeader` van antes que el panel en el árbol y
+registran el oyente antes de que el panel publique su primer estado.
+
+### Diferencias visuales corregidas
+
+**(a) Cuadro de escribir muy alto — causa real.** No era un `min-height` heredado ni el flex: era el
+autoajuste. El panel se monta **cerrado**, como columna de 0 px (`w-0`), y `Composer` medía la altura
+al montar. A 0 px de ancho el placeholder se parte en una letra por línea y Chromium lo cuenta en
+`scrollHeight` (360 px medidos en Chromium 1194 con el mismo CSS), así que la caja quedaba en el tope
+de 8 líneas (164 px). Nadie la volvía a medir hasta escribir, porque el efecto dependía solo de
+`value`: al abrir o ampliar el panel seguía alta. Arreglo en `Composer.tsx`: sin ancho no se mide
+(se queda en `rows={1}`), y un `ResizeObserver` vuelve a medir cuando cambia **el ancho** (abrir,
+ampliar, acoplar, redimensionar; el alto no, para no entrar en bucle). Reproducido en Chromium con la
+lógica vieja (164 px al abrir a 720) y la nueva (20 px).
+
+**(b) Sugerencias de la bienvenida.** Pasan de blancas con borde a como el Figma
+(`AsistenteSugerencia` 660:16009): `bg-canvas` (Fondo de lienzo, tinte azulado), borde claro, radio
+12 (`rounded-xl`), relleno 12, hover `bg-subtle`. Etiqueta en Semi Bold 12 sin tracking; sparkles de
+32 px.
+
+**(c) Botones de la cabecera del panel.** Se veían apagados porque «Nueva conversación» (sin hilo) y
+la voz (apagada en la organización) estaban deshabilitados con `opacity-50` en el botón entero: el
+blanco al 20 % quedaba en un 10 % casi invisible sobre el Azul GO. Ahora el círculo claro se mantiene
+siempre y solo se atenúa el icono (`text-fg-on-brand/60`); siguen `disabled`. Un envoltorio recibe el
+puntero para que el tooltip con el motivo («tu organización no tiene activada la respuesta en audio»)
+salga también con el botón deshabilitado (antes no salía).
+
+### Verificación
+
+- **Navegador:** la app no se puede levantar con el shell sin sesión (sin `.env` ni sesión: el
+  middleware y los clientes de Supabase lo impiden). Se verificó así: (1) el HTML real de `SidebarShell`,
+  `AppHeader`, `PanelHeader`, `WelcomeView` y `Composer`, renderizado en jsdom tras publicar el evento,
+  con el CSS de Tailwind del proyecto (tokens reales), capturado en Chromium a 1440 × 900 en los estados
+  01, 02 y 09: coincide con los frames (rail, buscador en icono, sin chip de plan, sin «Reportar
+  problema», botón del asistente en icono, círculos visibles, sugerencias tintadas, caja de 20 px);
+  (2) la causa del cuadro alto, reproducida en Chromium (arriba). El arnés temporal se borró.
+- **Pruebas nuevas:** `src/components/shell/__tests__/asistenteShell.render.test.tsx` (11: lógica
+  pura, rail al ampliar y vuelta al acoplar/cerrar sin tocar la preferencia, «Expandir» prestado, < 1280
+  sin cambios, header cerrado/abierto/ampliado, tooltip y `aria-keyshortcuts`) y 5 más en
+  `Header/__tests__/assistantPiezas.render.test.tsx` (círculo en deshabilitados, sugerencia tintada,
+  caja montada a 0 px sin topar y medida al abrir, crecimiento hasta 8 líneas).
+- **jest** (asistente, `src/lib/ai`, rutas `ai-assistant`, `app-layout`, shell, guardrails, i18n):
+  **40 suites, 1.502 pruebas en verde** con `TZ=UTC`; panel y shell también con `TZ=America/Bogota`
+  (8 suites, 113).
+- **tsc acotado** (archivos tocados y sus pruebas): 0 errores. **eslint** de los archivos tocados:
+  limpio. No se corrió el `tsc` completo ni `next build` (poca memoria; instrucción del encargo).
+
+### Pendiente
+
+- Prueba en navegador con sesión real (dueño).
+- `messages/*.json` los edita en paralelo la sesión de analítica web: la única línea de esta sesión en
+  cada archivo es `header.closeAssistant`.

@@ -175,3 +175,27 @@ migración `20260930140500_voz_ley2300_rne_politica_datos`):
   401, 403 por permiso, 403 por organización ajena (body y query), 400/413.
 
 Datos siempre sintéticos: el repositorio es público.
+
+
+## Cambio de modelo — CRM ola 1 (D2, 2026-09-29)
+
+Desde la ola 1 del CRM **un lead ES un cliente** con `lifecycle_stage='lead'`.
+La importación ya no crea `opportunities` con `record_type='lead'`:
+
+- **crear**: ficha nueva en etapa lead con `lead_source='import'`, responsable
+  por la asignación automática (`customers.owner_id`) y `metadata.lead`
+  (`titulo`, `valor_estimado { monto, moneda }` con el valor anual ya resuelto
+  a la moneda de la organización, e `importacion { lote, id_externo, fila,
+  plan_probable, rne, valor_original }`). `metadata.importacion` de la ficha
+  no cambia.
+- **ligar**: la ficha existente se marca como lead —origen y responsable solo si
+  faltan, y `metadata.lead`—; etiquetas, `do_not_call`, etapa y el resto de la
+  metadata no se tocan.
+- **omitir `lead_abierto`**: la ficha ya tiene origen de lead y no está
+  descartada, o tiene una oportunidad 'lead' heredada abierta. Así reimportar
+  el mismo archivo no vuelve a escribir.
+- **Score (D3)**: `lead_score` e `icp_band` los calcula el servidor desde los
+  perfiles ICP de la organización; sin perfiles, la prioridad A/B/C del archivo
+  queda como banda de respaldo y el score en NULL.
+- Deduplicación, RNE pendiente, moneda y pruebas se conservan. La oportunidad
+  nace al «Calificar» el lead (`POST /api/crm/leads/[id]/qualify`).

@@ -3,8 +3,8 @@ import {
   getOrgDayRange,
   getOrgDateRange,
   getOperatingToday,
-  getDayRange,
 } from '@/lib/utils/timezone';
+import { calcularRangoPeriodo } from '@/lib/dashboard/periodo';
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 import { getOperatingHours } from '@/lib/services/organizationOperatingHoursService';
 
@@ -185,30 +185,11 @@ function addDays(dateString: string, days: number): string {
   return `${ny}-${nm}-${nd}`;
 }
 
-/**
- * Devuelve el inicio del día operativo actual (UTC ISO) respetando
- * timezone y horas de operación de la organización.
- * Usa getOrgDayRange para calcular el rango UTC del día operativo.
- */
-async function startOfToday(
-  organizationId: number,
-): Promise<{ start: string; end: string; operatingToday: string }> {
-  // Obtener timezone y operating hours para calcular el día operativo actual
-  // (getOperatingToday necesita ambos para manejar cruce de medianoche)
-  const [timezone, operatingHours] = await Promise.all([
-    getOrganizationTimezone(organizationId),
-    getOperatingHours(organizationId),
-  ]);
-  const operatingToday = getOperatingToday(timezone, operatingHours);
-  // Usar getOrgDayRange para obtener el rango UTC del día operativo
-  const { start, end } = await getOrgDayRange(organizationId, operatingToday);
-  return { start, end, operatingToday };
-}
-
-// Devuelve [inicio, fin] del período actual y [inicioAnterior, finAnterior] del período anterior
-// Respetando timezone y horas de operación de la organización.
-// finAnterior siempre es igual a inicio del período actual (exclusive upper bound).
-// Si se pasan horasOverride, se usan en vez de las operating hours de la org.
+// Devuelve [inicio, fin] del período actual y [inicioAnterior, finAnterior] del
+// período anterior, en la zona y con las horas de operación de la organización.
+// La regla vive en `@/lib/dashboard/periodo` (`calcularRangoPeriodo`), la misma
+// que usan las rutas del servidor del inicio (ventas, tienda web, módulos):
+// así la tarjeta de ventas y los KPIs cuentan exactamente el mismo periodo.
 async function rangoPeriodo(
   organizationId: number,
   periodo: PeriodoDashboard,
@@ -221,132 +202,21 @@ async function rangoPeriodo(
   finAnterior: string;
   operatingToday: string;
 }> {
-  const { operatingToday } = await startOfToday(organizationId);
-  const fin = new Date().toISOString(); // momento actual
-
-  // Convertir horasOverride al formato que esperan getOrgDayRange/getOrgDateRange
-  const overrideHours = horasOverride && (horasOverride.horaInicio || horasOverride.horaFin)
-    ? {
-        enabled: true,
-        start_time: horasOverride.horaInicio,
-        end_time: horasOverride.horaFin,
-      }
-    : undefined;
-
-  switch (periodo) {
-    case 'hoy': {
-      let inicio: string;
-      if (overrideHours) {
-        // Con horas override: usar getDayRange directamente con el timezone de la org
-        const timezone = await getOrganizationTimezone(organizationId);
-        const range = getDayRange(operatingToday, timezone, overrideHours);
-        inicio = range.start;
-      } else {
-        const range = await getOrgDayRange(organizationId, operatingToday);
-        inicio = range.start;
-      }
-      const yesterday = addDays(operatingToday, -1);
-      const { start: inicioAnterior } = await getOrgDayRange(organizationId, yesterday);
-      // Comparar contra "ayer a esta misma hora" (no contra el día completo de ayer),
-      // igual que pedidos-online, para que el delta sea justo mientras el día no termina.
-      // fin = ahora; finAnterior = ahora menos 24h (misma hora local de la org).
-      const ahora = new Date();
-      const finAnterior = new Date(ahora.getTime() - 24 * 60 * 60 * 1000).toISOString();
-      return { inicio, fin: ahora.toISOString(), inicioAnterior, finAnterior, operatingToday };
-    }
-    case 'ayer': {
-      const yesterday = addDays(operatingToday, -1);
-      let inicio: string;
-      let fin: string;
-      if (overrideHours) {
-        const timezone = await getOrganizationTimezone(organizationId);
-        const range = getDayRange(yesterday, timezone, overrideHours);
-        inicio = range.start;
-        fin = range.end;
-      } else {
-        const range = await getOrgDayRange(organizationId, yesterday);
-        inicio = range.start;
-        fin = range.end;
-      }
-      // Período anterior = anteayer (mismo día completo)
-      const twoDaysAgo = addDays(operatingToday, -2);
-      const { start: inicioAnterior, end: finAnterior } = await getOrgDayRange(organizationId, twoDaysAgo);
-      return { inicio, fin, inicioAnterior, finAnterior, operatingToday };
-    }
-    case '7d': {
-      const start7d = addDays(operatingToday, -7);
-      const { start: inicio } = await getOrgDateRange(organizationId, start7d, operatingToday, overrideHours ?? null);
-      const start14d = addDays(operatingToday, -14);
-      const { start: inicioAnterior } = await getOrgDateRange(organizationId, start14d, start7d);
-      return { inicio, fin, inicioAnterior, finAnterior: inicio, operatingToday };
-    }
-    case '30d': {
-      const start30d = addDays(operatingToday, -30);
-      const { start: inicio } = await getOrgDateRange(organizationId, start30d, operatingToday, overrideHours ?? null);
-      const start60d = addDays(operatingToday, -60);
-      const { start: inicioAnterior } = await getOrgDateRange(organizationId, start60d, start30d);
-      return { inicio, fin, inicioAnterior, finAnterior: inicio, operatingToday };
-    }
-    case '90d': {
-      const start90d = addDays(operatingToday, -90);
-      const { start: inicio } = await getOrgDateRange(organizationId, start90d, operatingToday, overrideHours ?? null);
-      const start180d = addDays(operatingToday, -180);
-      const { start: inicioAnterior } = await getOrgDateRange(organizationId, start180d, start90d);
-      return { inicio, fin, inicioAnterior, finAnterior: inicio, operatingToday };
-    }
-    case 'año': {
-      const start365d = addDays(operatingToday, -365);
-      const { start: inicio } = await getOrgDateRange(organizationId, start365d, operatingToday, overrideHours ?? null);
-      const start730d = addDays(operatingToday, -730);
-      const { start: inicioAnterior } = await getOrgDateRange(organizationId, start730d, start365d);
-      return { inicio, fin, inicioAnterior, finAnterior: inicio, operatingToday };
-    }
-    case 'personalizado': {
-      // Requiere fechasCustom; si no llegan, fallback a "hoy"
-      if (!fechasCustom?.fechaInicio || !fechasCustom?.fechaFin) {
-        const range = await getOrgDayRange(organizationId, operatingToday);
-        const yesterday = addDays(operatingToday, -1);
-        const { start: inicioAnterior } = await getOrgDayRange(organizationId, yesterday);
-        const ahora = new Date();
-        const finAnterior = new Date(ahora.getTime() - 24 * 60 * 60 * 1000).toISOString();
-        return { inicio: range.start, fin: ahora.toISOString(), inicioAnterior, finAnterior, operatingToday };
-      }
-      const { start: inicio } = await getOrgDateRange(
-        organizationId, fechasCustom.fechaInicio, fechasCustom.fechaFin, overrideHours ?? null,
-      );
-      // Período anterior = mismo rango de días inmediatamente antes
-      const diasDiff = Math.round(
-        (new Date(fechasCustom.fechaFin).getTime() - new Date(fechasCustom.fechaInicio).getTime()) / 86400000,
-      ) + 1;
-      const fechaInicioAnterior = addDays(fechasCustom.fechaInicio, -diasDiff);
-      const fechaFinAnterior = addDays(fechasCustom.fechaInicio, -1);
-      const { start: inicioAnterior } = await getOrgDateRange(
-        organizationId, fechaInicioAnterior, fechaFinAnterior,
-      );
-      // fin = final del día de fechaFin (no "ahora")
-      const { end: finCustom } = await getOrgDateRange(
-        organizationId, fechasCustom.fechaFin, fechasCustom.fechaFin,
-      );
-      return { inicio, fin: finCustom, inicioAnterior, finAnterior: inicio, operatingToday };
-    }
-    default: {
-      let inicio: string;
-      if (overrideHours) {
-        const timezone = await getOrganizationTimezone(organizationId);
-        const range = getDayRange(operatingToday, timezone, overrideHours);
-        inicio = range.start;
-      } else {
-        const range = await getOrgDayRange(organizationId, operatingToday);
-        inicio = range.start;
-      }
-      const yesterday = addDays(operatingToday, -1);
-      const { start: inicioAnterior } = await getOrgDayRange(organizationId, yesterday);
-      // Mismo criterio que 'hoy': comparar contra "ayer a esta misma hora".
-      const ahora = new Date();
-      const finAnterior = new Date(ahora.getTime() - 24 * 60 * 60 * 1000).toISOString();
-      return { inicio, fin: ahora.toISOString(), inicioAnterior, finAnterior, operatingToday };
-    }
-  }
+  const [timezone, operatingHours] = await Promise.all([
+    getOrganizationTimezone(organizationId),
+    getOperatingHours(organizationId),
+  ]);
+  const operatingToday = getOperatingToday(timezone, operatingHours);
+  const rango = calcularRangoPeriodo({
+    periodo,
+    hoyOperativo: operatingToday,
+    zona: timezone,
+    horasOrg: operatingHours,
+    horas: horasOverride,
+    fechas: fechasCustom,
+    ahora: new Date(),
+  });
+  return { ...rango, operatingToday };
 }
 
 

@@ -14,6 +14,12 @@
  * - en el rail, pasar el ratón muestra una vista previa flotante;
  * - «Fijar» (`shell.submenuFijado`) lo deja abierto al navegar y cambia solo al
  *   módulo de la ruta; sin fijar, se cierra al navegar.
+ *
+ * GO Asistente ampliado (Figma pantalla 09, `668:37351`): mientras el panel
+ * ocupa 720 px, el sidebar se pinta en rail para dejar sitio al contenido. Es
+ * un modo **visible**, no una preferencia: no se guarda, y al cerrar o acoplar
+ * el panel vuelve a lo que la persona tenía (`shell.sidebar`). Si en ese rato
+ * pulsa «Expandir», se respeta hasta que el panel deje de estar ampliado.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -22,10 +28,22 @@ import { Sidebar } from './Sidebar';
 import { SubMenuPanel } from './SubMenuPanel';
 import { BloqueSesion } from '../sesion/BloqueSesion';
 import type { UsuarioSesion } from '../sesion/PanelSesion';
+import { useEstadoAsistente } from '../useEstadoAsistente';
 
 const CLAVE_MODO = 'shell.sidebar';
 const CLAVE_FIJADO = 'shell.submenuFijado';
 const PANEL_ID = 'shell-submenu';
+
+type ModoSidebar = 'rail' | 'expanded';
+
+/**
+ * Modo que se pinta: la preferencia de la persona, salvo que el asistente esté
+ * ampliado (entonces rail), y salvo que en ese rato haya pedido expandirlo.
+ */
+export function modoVisibleSidebar(preferido: ModoSidebar, asistenteAmpliado: boolean, expandidoAMano: boolean): ModoSidebar {
+  if (!asistenteAmpliado) return preferido;
+  return expandidoAMano ? 'expanded' : 'rail';
+}
 
 function leer(clave: string): string | null {
   try {
@@ -81,6 +99,13 @@ export function SidebarShell({
   const [fijado, setFijado] = useState(false);
   const [flotante, setFlotante] = useState<{ id: string; top: number } | null>(null);
   const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { ampliado: asistenteAmpliado } = useEstadoAsistente();
+  /** «Expandir» pulsado con el asistente ampliado: vale hasta que deje de estarlo. */
+  const [expandidoAMano, setExpandidoAMano] = useState(false);
+  useEffect(() => {
+    if (!asistenteAmpliado) setExpandidoAMano(false);
+  }, [asistenteAmpliado]);
+  const modoVisible = modoVisibleSidebar(modo, asistenteAmpliado, expandidoAMano);
 
   // Preferencias guardadas y punto de corte.
   useEffect(() => {
@@ -113,6 +138,12 @@ export function SidebarShell({
   }, [pathname, fijado]);
 
   const alternarModo = () => {
+    // Con el asistente ampliado el rail es prestado: alternar no toca la
+    // preferencia guardada, solo lo que se ve mientras dure.
+    if (asistenteAmpliado) {
+      setExpandidoAMano(modoVisible === 'rail');
+      return;
+    }
     const nuevo = modo === 'rail' ? 'expanded' : 'rail';
     setModo(nuevo);
     guardar(CLAVE_MODO, nuevo);
@@ -206,19 +237,19 @@ export function SidebarShell({
     <>
       <div className="relative z-30 flex h-dynamic-screen shrink-0">
         <Sidebar
-          modo={modo}
+          modo={modoVisible}
           secciones={secciones}
           cargando={cargando}
           activa={activa}
           submenuAbierto={panel}
           submenuPanelId={PANEL_ID}
           onAbrirSubmenu={abrirSubmenu}
-          onHoverModulo={modo === 'rail' ? alPasar : undefined}
+          onHoverModulo={modoVisible === 'rail' ? alPasar : undefined}
           onAlternarModo={alternarModo}
           onNavegar={() => {
             if (!fijado) setPanel(null);
           }}
-          pie={bloque(modo)}
+          pie={bloque(modoVisible)}
         />
         {itemPanel && itemPanel.tieneSubmenu && (
           <SubMenuPanel
@@ -235,7 +266,7 @@ export function SidebarShell({
           />
         )}
       </div>
-      {modo === 'rail' && itemFlotante && flotante && (
+      {modoVisible === 'rail' && itemFlotante && flotante && (
         <div
           className="fixed z-50"
           style={{

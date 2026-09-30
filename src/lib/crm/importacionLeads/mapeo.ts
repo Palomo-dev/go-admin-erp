@@ -3,7 +3,7 @@
  *
  * Mapeo recomendado (documentado en docs/crm-revenue-os/IMPORTAR-LEADS.md):
  *
- *  customers (ficha NUEVA; una existente no se toca)
+ *  customers (ficha NUEVA)
  *    customer_type   'company' (o 'person' si se eligió), CHECK person|company
  *    company_name    razón social si viene; si no, el nombre comercial
  *    trade_name      nombre comercial
@@ -17,21 +17,25 @@
  *    metadata.importacion { lote, id_externo, fila, archivo, importado_en, importado_por, fuentes,
  *                           verificacion, fecha_verificacion, tipo_telefono, web, plan_probable,
  *                           departamento, zona, barrio, horario_contacto, rne, rne_archivo, valor_original }
- *  opportunities (record_type 'lead', status 'open': los fija el servicio)
- *    name            «nombre comercial · ciudad»
- *    amount/currency el valor en su moneda si la organización la maneja; si no, convertido a la base
- *    source          'importacion' (sin CHECK en la base)
- *    icp_band        A/B/C desde la prioridad · vertical_id igual que el cliente
- *    temperature     sin valor: nadie ha hablado aún con el prospecto
- *    metadata.importacion { lote, id_externo, fila, plan_probable, rne }
+ *    lead_source     'import' (CRM ola 1, D2: el lead ES el cliente; no se crea oportunidad)
+ *    owner_id        asignación automática (la del alta de leads)
+ *    lead_score      calculado por el servidor desde el ICP (D3); icp_band de
+ *                    respaldo = la prioridad A/B/C del archivo
+ *    metadata.lead   { titulo «nombre comercial · ciudad», valor_estimado { monto, moneda }
+ *                      (el valor anual en su moneda si la organización la maneja;
+ *                      si no, convertido a la base), importacion { lote, id_externo,
+ *                      fila, plan_probable, rne, valor_original } }
+ *  Cliente EXISTENTE («ligar»): solo se completan origen y responsable si faltan
+ *  y se fusiona `metadata.lead`; etiquetas, `do_not_call` y el resto de la
+ *  ficha no se tocan.
  */
 
 import type { CreateLeadBody, LeadCreateExtras } from '@/lib/services/crm/leadCreateService';
 import { normalizarNombre } from '@/lib/inventario/importacion/texto';
 import type { EstadoRneImportacion, FilaLeadNormalizada, TipoClienteImportacion } from './tipos';
 
-/** `opportunities.source` de todo lead importado. */
-export const FUENTE_IMPORTACION = 'importacion';
+/** `customers.lead_source` de todo lead importado (catálogo `LEAD_SOURCES`). */
+export const FUENTE_IMPORTACION = 'import';
 
 export interface ContextoAltaLead {
   lote: string;
@@ -123,8 +127,8 @@ function cuerpoLead(d: FilaLeadNormalizada, ctx: ContextoAltaLead): CreateLeadBo
   return body;
 }
 
-function extrasLead(d: FilaLeadNormalizada, ctx: ContextoAltaLead): LeadCreateExtras['opportunity'] {
-  return { metadata: { importacion: metadataImportacionLead(d, ctx) }, vertical_id: ctx.verticalId, icp_band: d.icpBand };
+function extrasLead(d: FilaLeadNormalizada, ctx: ContextoAltaLead): LeadCreateExtras['lead'] {
+  return { metadata: { importacion: metadataImportacionLead(d, ctx) }, icp_band: d.icpBand };
 }
 
 /** Alta de cliente NUEVO + lead. */
@@ -160,16 +164,16 @@ export function altaConClienteNuevo(d: FilaLeadNormalizada, ctx: ContextoAltaLea
       timezone: zonaDelCliente(d.telefono, ctx.zonaOrganizacion),
       metadata: { importacion: metadataImportacionCliente(d, ctx) },
     },
-    opportunity: extrasLead(d, ctx),
+    lead: extrasLead(d, ctx),
   };
   return { body, extras };
 }
 
-/** Solo el lead, ligado a un cliente que ya existe (la ficha existente NO se modifica). */
+/** Lead sobre un cliente que ya existe: solo origen/responsable si faltan y `metadata.lead` (ver cabecera). */
 export function altaConClienteExistente(d: FilaLeadNormalizada, customerId: string, ctx: ContextoAltaLead): { body: CreateLeadBody; extras: LeadCreateExtras } {
   const body = cuerpoLead(d, ctx);
   body.customer_id = customerId;
-  return { body, extras: { opportunity: extrasLead(d, ctx) } };
+  return { body, extras: { lead: extrasLead(d, ctx) } };
 }
 
 export interface VerticalRef {

@@ -25,7 +25,8 @@ const config = {
     // las pruebas de render usen el proveedor real con messages/*.json.
     'node_modules[\\\\/].+\\.m?js$': ['ts-jest', { tsconfig: 'tsconfig.jest.json' }],
   },
-  transformIgnorePatterns: ['/node_modules/(?!(next-intl|use-intl|intl-messageformat|@formatjs|@schummar)/)'],
+  // d3-geo, d3-array e internmap (mapas de Analítica web) también son solo ESM.
+  transformIgnorePatterns: ['/node_modules/(?!(next-intl|use-intl|intl-messageformat|@formatjs|@schummar|d3-geo|d3-array|internmap)/)'],
   // Ignorar módulos que dependen de Supabase/browser APIs en los tests
   // (se mockean individualmente en cada test).
   testPathIgnorePatterns: ['/node_modules/', '/mobile/', '/print-agent/'],

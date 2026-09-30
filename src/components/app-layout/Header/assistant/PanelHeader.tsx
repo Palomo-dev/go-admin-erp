@@ -12,6 +12,12 @@
  * Vista «historial»: el título pasa a «Conversaciones» con ← para volver, y
  * desaparecen historial y voz (no aplican ahí).
  *
+ * Deshabilitado (voz apagada en la organización, «Nueva» sin nada que
+ * reiniciar, historial mientras responde) el círculo claro se mantiene y solo
+ * se atenúa el icono. Antes el botón entero bajaba al 50 %: el blanco al 20 %
+ * quedaba en un 10 % casi invisible sobre el Azul GO y la cabecera de la
+ * bienvenida se veía «apagada», distinta del Figma (pantalla 02, `667:34706`).
+ *
  * Mejora sobre el Figma: en móvil (hoja a pantalla completa) los botones miden
  * 40 px, el mínimo táctil del kit, y «Ampliar» no aparece (no hay a dónde).
  */
@@ -54,29 +60,39 @@ interface BotonProps {
 }
 
 function BotonCabecera({ etiqueta, atajo, activo, deshabilitado, esMovil, onClick, children, className, presionado }: BotonProps) {
+  const boton = (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={deshabilitado}
+      aria-label={etiqueta}
+      aria-pressed={presionado}
+      aria-keyshortcuts={atajo}
+      className={cn(
+        'flex shrink-0 items-center justify-center rounded-full outline-none transition-colors',
+        'focus-visible:ring-2 focus-visible:ring-fg-on-brand focus-visible:ring-offset-2 focus-visible:ring-offset-brand',
+        esMovil ? 'h-10 w-10' : 'h-8 w-8',
+        activo
+          ? 'bg-surface text-brand hover:bg-surface/90'
+          : 'bg-fg-on-brand/20 text-fg-on-brand hover:bg-fg-on-brand/30',
+        // El puntero pasa al envoltorio para que el tooltip diga el motivo.
+        'disabled:pointer-events-none disabled:text-fg-on-brand/60 disabled:hover:bg-fg-on-brand/20',
+        !deshabilitado && className
+      )}
+    >
+      {children}
+    </button>
+  );
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <button
-          type="button"
-          onClick={onClick}
-          disabled={deshabilitado}
-          aria-label={etiqueta}
-          aria-pressed={presionado}
-          aria-keyshortcuts={atajo}
-          className={cn(
-            'flex shrink-0 items-center justify-center rounded-full outline-none transition-colors',
-            'focus-visible:ring-2 focus-visible:ring-fg-on-brand focus-visible:ring-offset-2 focus-visible:ring-offset-brand',
-            'disabled:cursor-not-allowed disabled:opacity-50',
-            esMovil ? 'h-10 w-10' : 'h-8 w-8',
-            activo
-              ? 'bg-surface text-brand hover:bg-surface/90'
-              : 'bg-fg-on-brand/20 text-fg-on-brand hover:bg-fg-on-brand/30',
-            className
-          )}
-        >
-          {children}
-        </button>
+        {deshabilitado ? (
+          // Un botón deshabilitado no recibe el puntero: sin envoltorio, el
+          // tooltip con el motivo («tu organización no activó la voz») no salía.
+          <span className={cn('inline-flex shrink-0 cursor-not-allowed rounded-full', className)}>{boton}</span>
+        ) : (
+          boton
+        )}
       </TooltipTrigger>
       <TooltipContent side="bottom">
         {etiqueta}

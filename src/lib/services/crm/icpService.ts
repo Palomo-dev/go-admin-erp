@@ -154,7 +154,8 @@ interface CustomerData {
   vertical_id?: string | null;
 }
 
-interface OpportunityData {
+/** Datos de oportunidad para la evaluación (exportado para el score de leads, D3). */
+export interface OpportunityData {
   amount?: number | null;
   currency?: string | null;
   deal_type?: string | null;
@@ -509,7 +510,13 @@ export function evaluateICPCriteria(
 export async function evaluateICP(
   organizationId: number,
   customerId: string,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  /**
+   * CRM ola 1 (D3): datos de oportunidad dados por el llamador. Un lead ya no
+   * tiene oportunidad (D2): su valor estimado vive en el cliente y llega aquí.
+   * Sin él se usa la oportunidad más reciente, como antes.
+   */
+  opportunityDataOverride?: OpportunityData
 ): Promise<ICPEvaluationResult[]> {
   // 1. Obtener ICP profiles con criteria
   const profiles = await getICPProfiles(organizationId, supabase);
@@ -531,16 +538,18 @@ export async function evaluateICP(
   const customerData = customer as CustomerData;
 
   // 3. Obtener la oportunidad más reciente del customer (si existe)
-  const { data: opp } = await supabase
-    .from('opportunities')
-    .select('amount, currency, deal_type')
-    .eq('customer_id', customerId)
-    .eq('organization_id', organizationId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const opportunityData: OpportunityData = (opp as OpportunityData) || {};
+  let opportunityData: OpportunityData = opportunityDataOverride ?? {};
+  if (!opportunityDataOverride) {
+    const { data: opp } = await supabase
+      .from('opportunities')
+      .select('amount, currency, deal_type')
+      .eq('customer_id', customerId)
+      .eq('organization_id', organizationId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    opportunityData = (opp as OpportunityData) || {};
+  }
 
   // 4. Evaluar contra cada profile
   const evaluations: ICPEvaluationResult[] = [];
@@ -716,6 +725,13 @@ export async function assignICPBand(
       .eq('customer_id', customerId)
       .eq('organization_id', organizationId)
       .in('status', ['open', 'won']);
+
+    // CRM ola 1 (D3): la banda y el score también quedan en el cliente (lead).
+    await supabase
+      .from('customers')
+      .update({ icp_band: assignedBand, lead_score: Math.max(0, Math.min(100, Math.round(fitScore))) })
+      .eq('id', customerId)
+      .eq('organization_id', organizationId);
   }
 
   return {

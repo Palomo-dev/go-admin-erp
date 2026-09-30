@@ -45,8 +45,12 @@ export interface FakeDb {
   writes: Write[];
   /** Error a inyectar en `tabla:op` (p. ej. `partners:insert`). */
   errors: Record<string, { code?: string; message: string }>;
-  /** Si es `true`, los UPDATE no afectan a ninguna fila (simula que otra petición ganó la carrera). */
-  updateAffectsNone: boolean;
+  /**
+   * Si es `true`, los UPDATE no afectan a ninguna fila (simula que otra petición
+   * ganó la carrera). Con una lista de tablas, solo los UPDATE de esas tablas
+   * (CRM ola 1: el alta del lead actualiza su ficha antes de enlazar el referido).
+   */
+  updateAffectsNone: boolean | string[];
   seq: number;
 }
 
@@ -120,7 +124,7 @@ export function fakeSupabase(db: FakeDb) {
         let hit = rows.filter((r) => filters.every((f) => matches(r, f)));
         if (op === 'update') {
           db.writes.push({ table, op, payload, filters: [...filters] });
-          if (db.updateAffectsNone) hit = [];
+          if (db.updateAffectsNone === true || (Array.isArray(db.updateAffectsNone) && db.updateAffectsNone.includes(table))) hit = [];
           for (const r of hit) Object.assign(r, payload as Row);
         } else if (op === 'delete') {
           db.writes.push({ table, op, payload: null, filters: [...filters] });

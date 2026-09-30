@@ -25,6 +25,10 @@
  *     `VERCEL_SCHEDULE_KINDS`; ningún otro archivo cablea la cadencia.
  * 20. Ningún archivo de src/ filtra `integration_connections` por
  *     `status = 'active'`: el CHECK real es draft|connected|paused|error|revoked.
+ * 37. Hora oficial del servidor en dinero e inventario: suite propia en
+ *     `src/__tests__/timezone/horaOficialGuardrails.test.ts` (corre con `npm test`
+ *     y con `npm run test:tz-all`). El navegador no escribe la marca de tiempo del
+ *     hecho (sale_date, opened_at, closed_at…) con el reloj del equipo.
  */
 
 import * as fs from 'fs';
@@ -3196,5 +3200,84 @@ describe('35. Miembros: rol, cargo, estado y retiro solo por las RPC fn_miembro_
       .filter((f) => /rpc\(\s*fn\b|rpc\(\s*['"]fn_miembro_/.test(readFile(f)) && /fn_miembro_/.test(readFile(f)))
       .map(rel);
     expect(llaman).toEqual(['lib/services/miembrosService.ts']);
+  });
+});
+
+// CRM ola 1 (docs/crm/PLAN-FIGMA-A-CODIGO.md §7.4.7, decisiones D2 y D5).
+//
+// 36a. Las oportunidades y las actividades se escriben POR EL SERVIDOR: rutas
+// `/api/crm/opportunities/**` (RPC `crm_create/update/delete_opportunity`,
+// `opportunityStageService`) y `/api/crm/activities/**`, con la organización de
+// la sesión y los permisos `crm.*`. Desde el navegador (`src/components/crm/**`)
+// no hay transacción, ni permiso, ni autoría. La allow-list es la DEUDA que
+// existía al abrir la ola 1 (2026-09-29): se congela aquí y se vacía en las
+// olas 3B (pipeline, drawer, oportunidades, equipo) y 5 (código muerto:
+// `ImportLeadsCsv`). Prohibido añadir entradas; quitar las que se migren.
+//
+// 36b. D2 (dueño, 2026-09-29): un lead ES un cliente con lifecycle_stage='lead'.
+// No se crean oportunidades `record_type='lead'` nuevas: ni desde TypeScript
+// (`record_type: 'lead'` en un objeto que se escribe) ni desde una migración
+// posterior a 20260930160800 (que retiró el último escritor, `web_capture_lead`).
+describe('36. CRM ola 1: escrituras de oportunidades/actividades por el servidor y sin leads-oportunidad nuevos', () => {
+  const esPrueba = (f: string) => /[\/]__tests__[\/]|\.test\.tsx?$/.test(f);
+  const ESCRITURA = /from\(\s*['"](opportunities|activities)['"]\s*\)\s*\.(insert|update|delete|upsert)\(/;
+  const CRM_COMPONENTES = path.join(SRC_ROOT, 'components', 'crm');
+  const DEUDA_NAVEGADOR = new Map<string, string>([
+    // `components/crm/actividades/ActividadesService.ts` salió en la ola 3A: edita y borra por PATCH/DELETE /api/crm/activities/[id].
+    ['components/crm/equipo/tabs/AsignarTab.tsx', 'reasignar responsable: ola 3B → PATCH /api/crm/opportunities/[id]'],
+    ['components/crm/identidades/IdentidadesService.ts', 'fusión de identidades (re-apunta related_id): pendiente de RPC propia'],
+    ['components/crm/oportunidades/ImportLeadsCsv.tsx', 'código muerto (sin importadores): se borra en la ola 5'],
+    ['components/crm/oportunidades/ScoringSection.tsx', 'score del drawer: ola 3B → PATCH /api/crm/opportunities/[id]'],
+    ['components/crm/oportunidades/opportunitiesService.ts', 'alta/edición/borrado del formulario actual: ola 3B → /api/crm/opportunities'],
+    ['components/crm/pipeline/TableView.tsx', 'borrar desde la tabla: ola 3B → DELETE /api/crm/opportunities/[id]'],
+    ['components/crm/pipeline/drawer/SalesTeamTerritorySelectors.tsx', 'equipo y territorio: ola 3B → PATCH /api/crm/opportunities/[id]'],
+    ['components/crm/pipeline/services/pipelineService.ts', 'alta desde el tablero: ola 3B → POST /api/crm/opportunities'],
+  ]);
+
+  const ofensoresNavegador = (): string[] =>
+    walkDir(CRM_COMPONENTES)
+      .filter((f) => !esPrueba(f) && /\.(ts|tsx)$/.test(f))
+      .filter((f) => ESCRITURA.test(stripAllComments(readFile(f))))
+      .map(rel)
+      .sort();
+
+  test('ningún archivo nuevo de src/components/crm/** escribe opportunities o activities con el cliente del navegador', () => {
+    const nuevos = ofensoresNavegador().filter((f) => !DEUDA_NAVEGADOR.has(f));
+    if (nuevos.length > 0) console.error('Escriben opportunities/activities desde el navegador (usar /api/crm/**):\n' + nuevos.join('\n'));
+    expect(nuevos).toEqual([]);
+  });
+
+  test('la deuda congelada no tiene entradas obsoletas', () => {
+    const actuales = new Set(ofensoresNavegador());
+    const obsoletas = Array.from(DEUDA_NAVEGADOR.keys()).filter((f) => !actuales.has(f));
+    expect(obsoletas).toEqual([]);
+  });
+
+  test('ningún archivo de src/ escribe una oportunidad con record_type = "lead" (D2)', () => {
+    const ofensores = walkDir(SRC_ROOT)
+      .filter((f) => !esPrueba(f) && /\.(ts|tsx)$/.test(f))
+      .filter((f) => /\brecord_type\s*:\s*['"]lead['"]/.test(stripAllComments(readFile(f))))
+      .map(rel);
+    expect(ofensores).toEqual([]);
+  });
+
+  test('ninguna migración posterior a la ola 1 inserta oportunidades record_type = "lead" (D2)', () => {
+    const dir = path.join(REPO_ROOT, 'supabase', 'migrations');
+    const ofensoras = fs
+      .readdirSync(dir)
+      .filter((f) => /^\d{14}_.*\.sql$/.test(f) && f.slice(0, 14) >= '20260930160800')
+      .filter((f) => {
+        const sql = readFile(path.join(dir, f)).replace(/--[^\n]*/g, '');
+        const inserts = sql.match(/insert\s+into\s+(?:public\.)?opportunities\b[\s\S]*?;/gi) ?? [];
+        return inserts.some((i) => /'lead'/.test(i));
+      });
+    expect(ofensoras).toEqual([]);
+  });
+
+  test('crm_create_opportunity fija record_type = deal (no lo lee del cuerpo)', () => {
+    const sql = readFile(path.join(REPO_ROOT, 'supabase', 'migrations', '20260930160600_crm_ola1_oportunidad_rpc.sql'));
+    const alta = sql.slice(sql.indexOf('create or replace function public.crm_create_opportunity'), sql.indexOf('create or replace function public.crm_update_opportunity'));
+    expect(alta).toMatch(/'open',\s*'deal'/);
+    expect(alta).not.toMatch(/v_data\s*->>\s*'record_type'/);
   });
 });

@@ -1,11 +1,12 @@
 import { Metadata } from 'next';
-import { ActividadesPage } from '@/components/crm/actividades';
+import { ActividadesPantalla } from '@/components/crm/actividades/pantalla/ActividadesPantalla';
 
 export const metadata: Metadata = {
   title: 'Actividades | CRM',
-  description: 'Registro y agenda de actividades del equipo comercial',
+  description: 'Línea de tiempo de la actividad comercial de la organización',
 };
 
+/** /app/crm/actividades — CRM ola 3A (plan §4.9, Figma 769:12376). */
 export default function ActividadesRoute() {
-  return <ActividadesPage />;
+  return <ActividadesPantalla />;
 }

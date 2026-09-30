@@ -7,7 +7,7 @@ import { cn } from '@/utils/Utils';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatMoneda } from '@/lib/utils/moneda';
 import { translateOpportunityStatus } from '@/utils/crmTranslations';
-import { QuickActionsBar } from '@/components/crm/shared/QuickActionsBar';
+import { AccionesRapidasCrm } from '@/components/crm/acciones/AccionesRapidasCrm';
 import { relativeTime } from '@/components/crm/timeline/utils';
 import { TemperatureDot } from './TemperatureDot';
 import { ScoreBadge } from './ScoreBadge';
@@ -17,7 +17,7 @@ import { formatPlainDate } from '@/lib/utils/dateDisplay';
 /**
  * OpportunityCardV2 (FASE-09 §5.2): avatar/iniciales, temperatura, próxima
  * acción (rojo si vencida), última interacción con icono de canal, badges
- * score/ICP, pill won/lost y QuickActionsBar en hover/focus. Drag con handle
+ * score/ICP, pill won/lost y acciones rápidas siempre visibles (ola 3A). Drag con handle
  * separado (GripVertical); el clic en la tarjeta abre el drawer (B17).
  */
 export interface OpportunityCardV2Props {
@@ -123,10 +123,10 @@ function OpportunityCardV2Inner({ opportunity: o, index, onOpen, compact }: Oppo
             </div>
           )}
 
-          {/* F9-23: `opacity-0` no impide el clic; sin `pointer-events-none` una
-              tarjeta sin hover abría un diálogo en vez del drawer. */}
-          <div className="mt-1.5 flex justify-end opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto transition-opacity">
-            <QuickActionsBar variant="card" opportunityId={o.id} customerId={o.customer_id ?? undefined} customer={customer} opportunityName={o.name} />
+          {/* Ola 3A (Figma 773:472568): las acciones de la tarjeta se ven siempre, sin hover;
+              la barra detiene el clic y el arrastre para no abrir el drawer. */}
+          <div className="mt-1.5">
+            <AccionesRapidasCrm variante="tarjeta" oportunidadId={o.id} clienteId={o.customer_id} cliente={customer} oportunidadNombre={o.name} />
           </div>
         </div>
       )}

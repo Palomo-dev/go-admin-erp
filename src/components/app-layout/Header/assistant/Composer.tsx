@@ -106,10 +106,24 @@ export default function Composer({
     return () => mq.removeEventListener('change', handler);
   }, []);
 
-  /** Ajusta la altura al contenido, hasta 8 líneas. */
+  /**
+   * Ajusta la altura al contenido, de 1 a 8 líneas.
+   *
+   * El cuadro alto que se veía en producción venía de aquí: el panel se monta
+   * cerrado (columna de 0 px de ancho) y en ese momento se medía. A 0 px el
+   * placeholder parte una letra por línea y Chromium lo cuenta en
+   * `scrollHeight` (360 px), así que la caja quedaba topada en 8 líneas y nadie
+   * la volvía a medir hasta escribir. Ahora no se mide sin ancho, y se vuelve a
+   * medir cuando cambia el ancho (abrir, ampliar, acoplar, redimensionar).
+   */
   const autoResize = useCallback(() => {
     const el = textareaRef.current;
     if (!el) return;
+    if (el.clientWidth === 0) {
+      // Sin ancho no hay medida fiable: se queda en `rows={1}`.
+      el.style.height = '';
+      return;
+    }
     el.style.height = 'auto';
     el.style.height = `${Math.min(el.scrollHeight, MAX_ROWS * LINE_HEIGHT + 4)}px`;
   }, []);
@@ -117,6 +131,25 @@ export default function Composer({
   useEffect(() => {
     autoResize();
   }, [value, autoResize]);
+
+  // Remedir cuando cambia el ancho de la caja (solo el ancho: el alto lo pone
+  // `autoResize`, y reaccionar a él sería un bucle).
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    autoResize();
+    if (typeof ResizeObserver === 'undefined') return;
+    let anchoPrevio = el.clientWidth;
+    const observador = new ResizeObserver(() => {
+      const ancho = el.clientWidth;
+      if (ancho === anchoPrevio) return;
+      anchoPrevio = ancho;
+      autoResize();
+    });
+    observador.observe(el);
+    return () => observador.disconnect();
+    // La caja se vuelve a montar al terminar de grabar una nota de voz.
+  }, [autoResize, isRecording]);
 
   useEffect(() => {
     if (!isRecording) return;

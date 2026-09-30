@@ -26,10 +26,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ServerOrgContext } from '@/lib/utils/orgContext';
 import { isOrgAdminLike, ORG_ADMIN_PERMISSION_CODE } from '@/lib/utils/orgAdmin';
-import { moduleManagementService } from '@/lib/services/moduleManagementService';
-import { jobPositionModuleAccessService } from '@/lib/services/jobPositionModuleAccessService';
+import { seccionesVisiblesServidor } from '@/lib/navigation/navegacionServidor';
 import { buscarClientes, type ClienteEncontrado } from '@/lib/services/customers/busquedaClientesService';
-import { filtrarNavegacion } from '@/lib/navigation/filtrar';
 import type { ResultadoEntidad, TipoEntidad } from '@/lib/busquedaGlobal/definiciones';
 import {
   coincideCampos,
@@ -58,24 +56,15 @@ export interface AccesoBusqueda {
  */
 export async function resolverAccesoBusqueda(ctx: Contexto): Promise<AccesoBusqueda> {
   const db = ctx.supabase;
-  const [modulos, paginasOcultas, cargo, permisosRes] = await Promise.all([
-    moduleManagementService.getActiveModules(ctx.organizationId, db),
-    moduleManagementService.getHiddenModulePages(ctx.organizationId, db),
-    jobPositionModuleAccessService.getUserAccess(ctx.userId, ctx.organizationId, db),
+  // Menú visible: misma regla que el sidebar y que el inicio
+  // (`seccionesVisiblesServidor`).
+  const [secciones, permisosRes] = await Promise.all([
+    seccionesVisiblesServidor(ctx),
     db.rpc('get_user_permission_codes', { p_user_id: ctx.userId, p_organization_id: ctx.organizationId }),
   ]);
   if (permisosRes.error) throw new Error(`get_user_permission_codes: ${permisosRes.error.message}`);
 
   const permisos = new Set(Array.isArray(permisosRes.data) ? (permisosRes.data as string[]) : []);
-  const secciones = filtrarNavegacion({
-    modulosActivos: modulos.map((m) => m.code),
-    paginasOcultas,
-    modulosCargo: cargo.visibleModules,
-    paginasCargo: cargo.visiblePages,
-    // Las páginas que piden capacidades (bandeja de notificaciones) no
-    // respaldan ningún grupo ni acción del buscador.
-    capacidades: new Set(),
-  });
   const hrefsVisibles = new Set(secciones.flatMap((s) => s.modulos.flatMap((m) => m.paginas.map((p) => p.href))));
   return {
     hrefsVisibles,

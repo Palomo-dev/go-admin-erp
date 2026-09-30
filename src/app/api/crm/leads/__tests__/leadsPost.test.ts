@@ -41,15 +41,25 @@ let guion: Guion;
  * Doble encadenable del cliente de Supabase. Cada método devuelve `this` y la
  * cadena se resuelve en `maybeSingle`/`single`, que es como la usa la ruta.
  */
+/** Ficha creada por el alta (CRM ola 1: el lead ES el cliente; se relee y se actualiza). */
+let fichaCreada: Record<string, unknown> | null = null;
+
 function fakeSupabase() {
   const make = (tabla: string) => {
     let esInsert = false;
+    let esUpdate = false;
     const chain: Record<string, unknown> = {
       insert(payload: unknown) {
         esInsert = true;
         (chain as { _payload?: unknown })._payload = payload;
         return chain;
       },
+      update(payload: unknown) {
+        esUpdate = true;
+        (chain as { _payload?: unknown })._payload = payload;
+        return chain;
+      },
+      in: () => chain,
       select: () => chain,
       eq: () => chain,
       order: () => chain,
@@ -58,13 +68,19 @@ function fakeSupabase() {
       async maybeSingle() {
         if (tabla === 'pipelines') return { data: { id: 'pipe-1' }, error: null };
         if (tabla === 'stages') return { data: { id: 'stage-1' }, error: null };
-        if (tabla === 'customers') return { data: guion.clienteExistente ?? null, error: null };
+        if (tabla === 'customers') return { data: guion.clienteExistente ?? fichaCreada, error: null };
         if (tabla === 'organization_members') return { data: { user_id: 'u-1' }, error: null };
         return { data: null, error: null };
       },
       async single() {
         if (tabla === 'customers' && esInsert) {
+          if (!guion.insertCustomerError && guion.insertCustomerData) {
+            fichaCreada = { ...(guion.insertCustomerData as Record<string, unknown>), lifecycle_stage: 'lead', lead_source: null, owner_id: null, metadata: {} };
+          }
           return { data: guion.insertCustomerData, error: guion.insertCustomerError };
+        }
+        if (tabla === 'customers' && esUpdate) {
+          return { data: { ...(fichaCreada ?? {}), ...((chain as { _payload?: Record<string, unknown> })._payload ?? {}) }, error: null };
         }
         if (tabla === 'opportunities' && esInsert) {
           return { data: { id: 'opp-1' }, error: null };
@@ -105,6 +121,7 @@ const CUERPO = {
 
 describe('POST /api/crm/leads · correo de cliente ya existente', () => {
   beforeEach(() => {
+    fichaCreada = null;
     guion = { insertCustomerError: null, insertCustomerData: { id: 'cust-1', full_name: 'Ana' } };
   });
 

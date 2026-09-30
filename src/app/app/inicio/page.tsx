@@ -4,13 +4,12 @@ export const dynamic = 'force-dynamic';
 
 import React, { Suspense, useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import ModuleAccessDenied from '@/components/modules/ModuleAccessDenied';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
-import { Home, RefreshCw, QrCode } from 'lucide-react';
+import { Home, RefreshCw, SlidersHorizontal } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { cn } from '@/utils/Utils';
 import {
@@ -21,7 +20,6 @@ import {
   DashboardTendencia,
   PeriodoSelector,
   OnboardingBanner,
-  DashboardModulos,
 } from '@/components/inicio';
 import type { DashboardData, PeriodoDashboard, HorasDashboard, FechasCustomDashboard } from '@/components/inicio';
 import { useDynamicGreeting } from '@/components/inicio/useDynamicGreeting';
@@ -39,6 +37,13 @@ import { TarjetaDatosEmpresa } from '@/components/inicio/TarjetaDatosEmpresa';
 import { useDesktopCatalog } from '@/lib/offline/useDesktopCatalog';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { formatDateInTz } from '@/lib/utils/dateDisplay';
+import { bloqueVisible } from '@/lib/dashboard/preferenciasInicio';
+import { TarjetaVentas } from '@/components/inicio/TarjetaVentas';
+import { TarjetaTiendaWeb } from '@/components/inicio/TarjetaTiendaWeb';
+import { ModulosInicio } from '@/components/inicio/ModulosInicio';
+import { DialogoPersonalizar } from '@/components/inicio/DialogoPersonalizar';
+import { BotonTurno, TurnoCard, useTurnoInicio } from '@/components/inicio/TurnoInicio';
+import { usePreferenciasInicio } from '@/components/inicio/usePreferenciasInicio';
 
 /**
  * Esqueleto de la primera carga (antes de montar o de tener organización) y
@@ -68,6 +73,7 @@ function InicioContent() {
   const { timezone } = useFormatDate();
   const { toast } = useToast();
   const t = useTranslations('home');
+  const tNav = useTranslations('nav');
   const locale = useLocale();
   const { context: permContext, resolvedOrganizationId } = usePermissionContext(organization?.id);
   // Go Admin Desktop (fase 4A): replicar el catálogo del POS al entrar al inicio.
@@ -88,6 +94,27 @@ function InicioContent() {
   const [userName, setUserName] = useState<string>('');
   const [userId, setUserId] = useState<string | null>(null);
   const greeting = useDynamicGreeting(userName, locale);
+  // Preferencias del inicio por usuario y organización (Figma 448:196794):
+  // bloques ocultos y orden/ocultos de «Módulos», guardadas en la base.
+  const { prefs, guardando: guardandoPrefs, guardar: guardarPrefs } = usePreferenciasInicio(organization?.id);
+  const [personalizarAbierto, setPersonalizarAbierto] = useState(false);
+  const [versionModulos, setVersionModulos] = useState(0);
+  const [modulosLista, setModulosLista] = useState<Array<{ codigo: string; etiqueta: string }>>([]);
+  // «Tu turno» (Figma 631:21816): estado calculado en el servidor sobre la
+  // marcación de HRM; marcar sigue siendo el flujo existente (/marcar).
+  const turno = useTurnoInicio(organization?.id, versionHoy);
+  const guardarPreferencias = useCallback(
+    async (p: Parameters<typeof guardarPrefs>[0]) => {
+      const ok = await guardarPrefs(p);
+      if (ok) {
+        // Los módulos que se vuelven a mostrar necesitan su resumen.
+        setVersionModulos((v) => v + 1);
+        toast({ title: t('personalizar.guardado') });
+      }
+      return ok;
+    },
+    [guardarPrefs, toast, t],
+  );
 
   // Quién ve el panel con datos financieros. La regla vive en
   // `@/lib/dashboard/accesoPanel`: antes se leía la lista del CRM
@@ -236,6 +263,7 @@ function InicioContent() {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     setVersionHoy((v) => v + 1);
+    setVersionModulos((v) => v + 1);
     await loadData();
     setIsRefreshing(false);
     toast({ title: t('dashboardUpdated') });
@@ -274,10 +302,25 @@ function InicioContent() {
         movil={false}
         acciones={
           <>
-            <Link href="/marcar" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
-              <QrCode aria-hidden="true" className="size-4" strokeWidth={1.5} />
-              {t('markShift')}
-            </Link>
+            {/* «Tu turno» en el encabezado solo en el panel completo y en
+                escritorio (Figma frames 7–10); en móvil va la tarjeta y en el
+                panel de empleado, la tarjeta compacta (frame 11). Sin
+                contrato activo (dueño que no marca) no se dibuja. */}
+            {canSeeFinancialDashboard && (
+              <span className="max-lg:hidden">
+                <BotonTurno turno={turno} />
+              </span>
+            )}
+            {canSeeFinancialDashboard && (
+              <button
+                type="button"
+                onClick={() => setPersonalizarAbierto(true)}
+                className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}
+              >
+                <SlidersHorizontal aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                {t('personalizar.boton')}
+              </button>
+            )}
             {canSeeFinancialDashboard && (
               <button
                 type="button"
@@ -307,6 +350,12 @@ function InicioContent() {
           </>
         }
       />
+
+      {/* Móvil, panel completo: «Tu turno» arriba del todo, bajo el saludo
+          (Figma 631:21819…22367). */}
+      {rolResuelto && canSeeFinancialDashboard && turno && (
+        <TurnoCard turno={turno} className="lg:hidden" />
+      )}
 
       {/* Datos mínimos de la empresa (acceso v3, fase 7): solo a quien administra. */}
       {rolResuelto && <TarjetaDatosEmpresa organizationId={organization?.id} permContext={permContext} />}
@@ -355,7 +404,7 @@ function InicioContent() {
               carga por su cuenta y se monta desde el principio, en paralelo,
               en vez de esperar a que termine la carga principal (antes eran
               dos oleadas de loaders: primero KPIs, después todo lo demás). */}
-          {errorCarga && !isLoading ? (
+          {bloqueVisible(prefs, 'indicadores') && (errorCarga && !isLoading ? (
             <EmptyState
               variante="error"
               onReintentar={() => loadData()}
@@ -363,33 +412,70 @@ function InicioContent() {
             />
           ) : (
             <DashboardKPIs data={isLoading ? null : (dashboardData?.kpis ?? null)} isLoading={isLoading} periodo={periodo} organizationId={organization?.id} horas={horas} fechasCustom={fechasCustom} branchFilter={branchFilter} />
+          ))}
+
+          {/* «Ventas del periodo» (tarjeta con canal/sucursal + tendencia) y
+              «Actividad reciente» (Figma 445:137185). Cada bloque se puede
+              ocultar en «Personalizar el inicio». */}
+          {(bloqueVisible(prefs, 'ventas') || bloqueVisible(prefs, 'actividad')) && (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              {bloqueVisible(prefs, 'ventas') && (
+                <div className={cn('flex flex-col gap-6', !bloqueVisible(prefs, 'actividad') && 'lg:col-span-2')}>
+                  <TarjetaVentas
+                    organizationId={organization.id}
+                    periodo={periodo}
+                    horas={horas}
+                    fechas={fechasCustom}
+                    sucursal={branchFilter}
+                    version={versionHoy}
+                  />
+                  <DashboardTendencia organizationId={organization.id} dias={30} />
+                </div>
+              )}
+              {bloqueVisible(prefs, 'actividad') && (
+                <div className={cn(!bloqueVisible(prefs, 'ventas') && 'lg:col-span-2')}>
+                  <DashboardActividad
+                    data={dashboardData?.actividad ?? []}
+                    isLoading={isLoading}
+                  />
+                </div>
+              )}
+            </div>
           )}
 
-          {/* Actividad Reciente + Tendencia de Ventas */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <DashboardActividad
-              data={dashboardData?.actividad ?? []}
-              isLoading={isLoading}
-            />
-
-            {/* Tendencia de ventas (reemplaza al antiguo bloque "Accesos Rápidos" redundante) */}
-            {organization?.id && (
-              <DashboardTendencia organizationId={organization.id} dias={30} />
-            )}
-          </div>
-
-          {/* Observabilidad de comercio web: stock reservado + pedidos próximos a expirar */}
-          {organization?.id && (
-            <WebCommerceObservability
-              organizationId={organization.id}
-              withinMinutes={30}
-            />
+          {/* Tienda web (Figma bloque 463:15506) y su observabilidad: stock
+              reservado + pedidos próximos a expirar. */}
+          {bloqueVisible(prefs, 'tiendaWeb') && (
+            <>
+              <TarjetaTiendaWeb
+                organizationId={organization.id}
+                periodo={periodo}
+                horas={horas}
+                fechas={fechasCustom}
+                sucursal={branchFilter}
+                version={versionHoy}
+              />
+              <WebCommerceObservability
+                organizationId={organization.id}
+                withinMinutes={30}
+              />
+            </>
           )}
 
-          {/* Dashboards consolidados por módulo activo */}
-          <DashboardModulos
-            activeModuleCodes={activeModuleCodes}
-            isLoading={false}
+          {/* Módulos con resumen (FilaModulo 445:195568 y «Dashboard por
+              módulo» 642:25956): una lectura en el servidor para toda la
+              lista; qué módulos aparecen lo decide el servidor. */}
+          <ModulosInicio
+            organizationId={organization.id}
+            periodo={periodo}
+            horas={horas}
+            fechas={fechasCustom}
+            sucursal={branchFilter}
+            version={versionModulos}
+            prefs={prefs}
+            onGuardar={guardarPreferencias}
+            guardando={guardandoPrefs}
+            onModulos={setModulosLista}
           />
         </>
       ) : (
@@ -399,6 +485,18 @@ function InicioContent() {
           organizationId={organization?.id}
           userId={userId}
           permContext={permContext}
+          turno={turno}
+        />
+      )}
+
+      {canSeeFinancialDashboard && (
+        <DialogoPersonalizar
+          abierto={personalizarAbierto}
+          onAbiertoChange={setPersonalizarAbierto}
+          prefs={prefs}
+          modulos={modulosLista.map((m) => ({ codigo: m.codigo, nombre: tNav(m.etiqueta) }))}
+          onGuardar={guardarPreferencias}
+          guardando={guardandoPrefs}
         />
       )}
     </div>

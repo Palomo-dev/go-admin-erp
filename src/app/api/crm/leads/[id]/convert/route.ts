@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
-import { isOrgAdmin } from '@/lib/utils/rbac';
+import { CRM_PERMISOS, tienePermisoCrm } from '@/lib/services/crm/crmRouteSupport';
 import StageGateService from '@/lib/services/crm/stageGateService';
 
 /**
@@ -11,7 +11,11 @@ import StageGateService from '@/lib/services/crm/stageGateService';
  * 1. El lead debe pertenecer a la organización del usuario.
  * 2. El record_type actual debe ser 'lead'.
  * 3. Evalúa el stage gate de la etapa actual (soft-gate: informa pero no bloquea).
- * 4. Requiere rol de admin de organización.
+ * 4. Requiere `crm.leads.convert` (CRM ola 1, M7: antes, rol de administrador),
+ *    resuelto en el servidor por rol o cargo.
+ *
+ * Solo para las oportunidades `record_type='lead'` HEREDADAS (D2): los leads
+ * nuevos son clientes y se califican con `POST /api/crm/leads/[id]/qualify`.
  *
  * Body opcional: { targetStageId?: string, skipGateCheck?: boolean }
  *
@@ -29,14 +33,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
 
-    // Validar permisos de admin
-    if (!isOrgAdmin(ctx)) {
-      return NextResponse.json(
-        { success: false, error: 'Se requieren permisos de administrador de organización' },
-        { status: 403 }
-      );
+    if (!(await tienePermisoCrm(ctx, CRM_PERMISOS.leadsConvertir))) {
+      console.warn('[CRM Leads convert] sin crm.leads.convert (org %s, rol %s)', ctx.organizationId, ctx.roleId);
+      return NextResponse.json({ success: false, error: 'No tienes permiso para convertir leads', code: 'CRM_FORBIDDEN' }, { status: 403 });
     }
 
     const { id: leadId } = await params;

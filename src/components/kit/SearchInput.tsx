@@ -112,14 +112,18 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
   // no es un cambio externo y NO se cancela la búsqueda pendiente. Antes se
   // cancelaba y `onChange` no llegaba nunca: en el selector de clientes del POS
   // se escribía «pepe» y seguía la lista completa.
+  // Se compara con el último `value` RECIBIDO (no con el último emitido): así un
+  // «limpiar» de la pantalla tras elegir (el POS pone '' después de agregar)
+  // se aplica aunque el debounce todavía no hubiera emitido lo escrito.
+  const valorRecibido = React.useRef(value);
   React.useEffect(() => {
+    if (value === valorRecibido.current) return;
+    valorRecibido.current = value;
     if (value === textoRef.current) return;
-    if (value !== ultimoEmitido.current) {
-      ultimoEmitido.current = value;
-      textoRef.current = value;
-      debounced.cancelar();
-      setTexto(value);
-    }
+    ultimoEmitido.current = value;
+    textoRef.current = value;
+    debounced.cancelar();
+    setTexto(value);
   }, [value, debounced]);
 
   React.useEffect(() => {

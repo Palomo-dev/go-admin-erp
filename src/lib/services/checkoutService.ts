@@ -3,6 +3,7 @@ import { getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { resolveLineTax, type ResolveTaxInput } from '@/lib/services/taxResolver';
 import { sinRetenciones } from '@/lib/services/taxResolverCore';
 import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
+import { HORA_DEL_SERVIDOR } from '@/lib/pos/reloj/horaOficial';
 
 export interface CheckoutReservation {
   id: string;
@@ -824,7 +825,7 @@ class CheckoutService {
         source: 'reservation',
         include_in_cash_register: false,
         notes: `Checkout reserva ${reservationId.slice(0, 8)}`,
-        sale_date: new Date().toISOString(),
+        // sale_date: default now() de la base (hora oficial del servidor).
       })
       .select('id')
       .single();
@@ -901,8 +902,8 @@ class CheckoutService {
           customer_id: reservation.customer_id || null,
           sale_id: sale.id,
           number: invoiceNumber,
-          issue_date: new Date().toISOString(),
-          due_date: new Date().toISOString(),
+          // Emisión: default now() de la base. Vence al emitir: también hora del servidor.
+          due_date: HORA_DEL_SERVIDOR,
           currency: currencyCode,
           subtotal,
           tax_total: taxTotal,

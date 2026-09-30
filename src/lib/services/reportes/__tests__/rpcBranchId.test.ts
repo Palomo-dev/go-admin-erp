@@ -81,7 +81,11 @@ const PERIODO: PeriodoCierre = {
 
 const ORG_ID = 142;
 
-/** Los 9 reportes que el frontend llama con `p_branch_id`. */
+/**
+ * Los reportes que el frontend llama con `p_branch_id`: las 9 RPC de la
+ * migración del filtro por sucursal y los dos reportes de retenciones, que
+ * comparten `fn_reporte_retenciones_practicadas`.
+ */
 const CASOS: Array<{ reporte: ReportDefinition; rpc: string; claves: string[] }> = [
   { reporte: buscar(ventasReports, 'fn_reporte_cierre_caja'), rpc: 'fn_reporte_cierre_caja', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },
   { reporte: buscar(ventasReports, 'fn_reporte_ventas_resumen'), rpc: 'fn_reporte_ventas_resumen', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },
@@ -90,6 +94,9 @@ const CASOS: Array<{ reporte: ReportDefinition; rpc: string; claves: string[] }>
   { reporte: buscar(finanzasReports, 'fn_reporte_cxp_aging'), rpc: 'fn_reporte_cxp_aging', claves: ['p_organization_id', 'p_as_of', 'p_branch_id'] },
   { reporte: buscar(finanzasReports, 'fn_reporte_flujo_efectivo'), rpc: 'fn_reporte_flujo_efectivo', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },
   { reporte: buscar(finanzasReports, 'fn_reporte_impuestos'), rpc: 'fn_reporte_impuestos', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },
+  ...finanzasReports
+    .filter((d) => d.fetch.toString().includes("'fn_reporte_retenciones_practicadas'"))
+    .map((reporte) => ({ reporte, rpc: 'fn_reporte_retenciones_practicadas', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] })),
   { reporte: buscar(inventarioReports, 'fn_reporte_movimientos_inventario'), rpc: 'fn_reporte_movimientos_inventario', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },
   { reporte: buscar(inventarioReports, 'fn_reporte_rotacion_inventario'), rpc: 'fn_reporte_rotacion_inventario', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },
 ];

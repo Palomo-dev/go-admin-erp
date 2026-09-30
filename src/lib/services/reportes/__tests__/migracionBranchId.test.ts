@@ -67,21 +67,35 @@ function rpcsConBranchId(): string[] {
   return [...encontradas].sort();
 }
 
+/**
+ * RPC creadas DESPUÉS de `20260922210000`, que nacen ya con `p_branch_id`: no
+ * hay firma vieja que borrar ni que restaurar, así que se verifican contra su
+ * propia migración (bloque de abajo) y no contra la del filtro por sucursal.
+ * Cada entrada nueva necesita su `.sql` y su reversión en el repositorio.
+ */
+const RPC_NUEVAS: Record<string, string> = {
+  fn_reporte_retenciones_practicadas: '20260930090435_compras_retenciones_reporte_certificado',
+};
+
 const SQL_MIGRACION = readFileSync(MIGRACION, 'utf8');
 const SQL_ROLLBACK = readFileSync(ROLLBACK, 'utf8');
-const RPCS = rpcsConBranchId();
+const RPCS_FRONTEND = rpcsConBranchId();
+const RPCS = RPCS_FRONTEND.filter((rpc) => !(rpc in RPC_NUEVAS));
 
 describe('reportes — el frontend y la migración de p_branch_id cuadran', () => {
-  it('el frontend sigue llamando con p_branch_id a las 9 RPC conocidas', () => {
+  it('el frontend sigue llamando con p_branch_id a las 10 RPC conocidas', () => {
     // Si este test falla porque la lista creció, NO lo relajes: añade la función
-    // nueva a la migración (o a una nueva) antes de tocar el frontend.
-    expect(RPCS).toEqual([
+    // nueva a la migración (o a una nueva, registrada en RPC_NUEVAS) antes de
+    // tocar el frontend. La décima, fn_reporte_retenciones_practicadas, es la
+    // del reporte de retenciones practicadas (2026-09-30).
+    expect(RPCS_FRONTEND).toEqual([
       'fn_reporte_cierre_caja',
       'fn_reporte_cxc_aging',
       'fn_reporte_cxp_aging',
       'fn_reporte_flujo_efectivo',
       'fn_reporte_impuestos',
       'fn_reporte_movimientos_inventario',
+      'fn_reporte_retenciones_practicadas',
       'fn_reporte_rotacion_inventario',
       'fn_reporte_ventas_por_hora',
       'fn_reporte_ventas_resumen',
@@ -166,5 +180,69 @@ describe('reportes — el frontend y la migración de p_branch_id cuadran', () =
     // Ningún filtro desnudo `branch_id = p_branch_id` sin la guarda del NULL.
     const desnudos = SQL_MIGRACION.match(/(?<!OR )\b\w+\.branch_id = p_branch_id\b/g) ?? [];
     expect(desnudos).toHaveLength(0);
+  });
+});
+
+describe('reportes — las RPC nuevas nacen con p_branch_id bien declarado', () => {
+  const CASOS_NUEVAS = Object.entries(RPC_NUEVAS).map(([rpc, archivo]) => ({
+    rpc,
+    sql: readFileSync(join(__dirname, '../../../../..', `supabase/migrations/${archivo}.sql`), 'utf8'),
+    rollback: readFileSync(join(__dirname, '../../../../..', `supabase/rollbacks/${archivo}_rollback.sql`), 'utf8'),
+  }));
+
+  it.each(CASOS_NUEVAS)('$rpc está creada una sola vez en su migración', ({ rpc, sql }) => {
+    const creates = sql.match(new RegExp(`CREATE OR REPLACE FUNCTION public\\.${rpc}\\(`, 'gi'));
+    expect(creates).toHaveLength(1);
+  });
+
+  it.each(CASOS_NUEVAS)('$rpc declara p_branch_id como ÚLTIMO parámetro y con DEFAULT NULL', ({ rpc, sql }) => {
+    const m = new RegExp(
+      `CREATE OR REPLACE FUNCTION public\\.${rpc}\\(([\\s\\S]*?)\\)\\s*\\n\\s*RETURNS`,
+      'i',
+    ).exec(sql);
+    expect(m).not.toBeNull();
+
+    const params = m![1]
+      .split(',')
+      .map((p) => p.trim().replace(/\s+/g, ' ').toLowerCase())
+      .filter(Boolean);
+    expect(params[params.length - 1]).toBe('p_branch_id bigint default null');
+    expect(params.filter((p) => p.startsWith('p_branch_id'))).toHaveLength(1);
+  });
+
+  it.each(CASOS_NUEVAS)('$rpc revoca a PUBLIC y anon y concede a authenticated y service_role', ({ rpc, sql }) => {
+    const revoke = new RegExp(`REVOKE EXECUTE ON FUNCTION public\\.${rpc}\\([^)]*\\) FROM ([^;]+);`, 'i').exec(sql);
+    expect(revoke).not.toBeNull();
+    expect(revoke![1].toLowerCase()).toContain('public');
+    expect(revoke![1].toLowerCase()).toContain('anon');
+
+    const grant = new RegExp(`GRANT EXECUTE ON FUNCTION public\\.${rpc}\\([^)]*\\) TO ([^;]+);`, 'i').exec(sql);
+    expect(grant).not.toBeNull();
+    expect(grant![1]).toContain('authenticated');
+    expect(grant![1]).toContain('service_role');
+    expect(grant![1]).not.toContain('anon');
+  });
+
+  it.each(CASOS_NUEVAS)('$rpc es SECURITY DEFINER, fija el search_path y pone la guarda de pertenencia', ({ rpc, sql }) => {
+    const cuerpo = new RegExp(
+      `CREATE OR REPLACE FUNCTION public\\.${rpc}\\([\\s\\S]*?\\nEND;\\s*\\n\\$\\$`,
+      'i',
+    ).exec(sql)![0];
+    expect(cuerpo).toMatch(/security definer/i);
+    expect(cuerpo).toMatch(/set search_path to 'public'/i);
+    expect(cuerpo).toContain("ERRCODE = '42501'");
+    expect(cuerpo).toContain('reporte_exigir_alcance_sucursal(p_organization_id, p_branch_id)');
+  });
+
+  it.each(CASOS_NUEVAS)('$rpc filtra por sucursal solo con la forma que no cambia nada con NULL', ({ sql }) => {
+    expect(sql).toMatch(/\(p_branch_id is null or [\w.]+\.branch_id = p_branch_id\)/i);
+    const desnudos = sql.match(/(?<!or )\b\w+\.branch_id = p_branch_id\b/gi) ?? [];
+    expect(desnudos).toHaveLength(0);
+  });
+
+  it.each(CASOS_NUEVAS)('la reversión de $rpc borra la firma con p_branch_id', ({ rpc, rollback }) => {
+    expect(rollback).toMatch(
+      new RegExp(`drop function if exists public\\.${rpc}\\(bigint, timestamptz, timestamptz, bigint\\)`, 'i'),
+    );
   });
 });

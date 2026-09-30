@@ -264,6 +264,9 @@ function firmasHtml(doc: DocumentoPayload, t: Traductor): string {
     case 'entregaRecibe':
       cajas.push(caja(t('firmas.entrega'), t('firmas.datosNombre'), 'entrega'), caja(t('firmas.recibe'), t('firmas.datosRecibe'), 'recibe'));
       break;
+    case 'retenedorContador':
+      cajas.push(caja(t('firmas.agenteRetenedor'), t('firmas.datosNombre')), caja(t('firmas.contador'), t('firmas.datosContador')));
+      break;
   }
   return `<section class="firmas">${cajas.join('')}</section>`;
 }

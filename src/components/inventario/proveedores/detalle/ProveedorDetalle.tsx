@@ -13,6 +13,7 @@ import {
   Copy,
   Eye,
   EyeOff,
+  FileBadge,
   FileText,
   HandCoins,
   Package,
@@ -55,6 +56,8 @@ import {
   type SupplierStockSummary,
 } from '@/lib/services/supplierService';
 import { formatDateInTz, formatPlainDate } from '@/lib/utils/dateDisplay';
+import { CertificadoRetencionesDialog } from '@/components/finanzas/cuentas-por-pagar/CertificadoRetencionesDialog';
+import { usePermisosFinanzas } from '@/lib/finanzas/usePermisosFinanzas';
 import { DialogoEliminarProveedor } from '../DialogoEliminarProveedor';
 import {
   condicionPago,
@@ -180,6 +183,8 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
   const [pestana, setPestana] = useState<Pestana>('resumen');
   const [recarga, setRecarga] = useState(0);
   const [verCuenta, setVerCuenta] = useState(false);
+  const [certificado, setCertificado] = useState(false);
+  const permisosFinanzas = usePermisosFinanzas();
 
   const recargar = useCallback(() => setRecarga((n) => n + 1), []);
   const { accionesDe, aEliminar, setAEliminar, permisos } = useAccionesProveedor({ onCambio: recargar, conVer: false });
@@ -815,6 +820,15 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
                 cargando={!resumen}
                 onAccion={() => setPestana('pagos')}
               />
+              {permisosFinanzas.ver && (
+                <RelatedLinkCard
+                  icono={FileBadge}
+                  etiqueta={t('conexiones.certificado')}
+                  valor={t('conexiones.certificadoAnio')}
+                  textoAccion={t('conexiones.generar')}
+                  onAccion={() => setCertificado(true)}
+                />
+              )}
             </section>
           </div>
         </>,
@@ -931,6 +945,14 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
           recargar();
         }}
       />
+      {permisosFinanzas.ver && (
+        <CertificadoRetencionesDialog
+          abierto={certificado}
+          onAbiertoChange={setCertificado}
+          proveedorId={supplier.id}
+          proveedorNombre={supplier.name}
+        />
+      )}
     </div>
   );
 }

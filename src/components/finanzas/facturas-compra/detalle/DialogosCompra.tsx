@@ -9,11 +9,13 @@
  */
 import { useMemo, useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { CheckCircle2, PackageCheck } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, PackageCheck } from 'lucide-react';
 import { DataTable, Dialogo } from '@/components/kit';
+import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { crearFormateadorMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 import { costoUnitarioCompra } from '@/lib/services/compras/logica';
+import { asientoPrevioCompra, type AsientoPrevio, type LineaAsientoPrevio } from '@/lib/services/compras/retenciones';
 import type { LineaCompra } from '@/lib/services/compras/lecturasCompras';
 import type { LotesRecepcionFactura } from '@/lib/services/compras/contrato';
 import type { LoteCapturado } from '@/lib/services/inventario/recepcionOrdenCompra';
@@ -39,11 +41,123 @@ function useLotesDeRecepcion(abierto: boolean) {
   return { valores, cambiar };
 }
 
+const MOTIVOS_ASIENTO = [
+  'no_borrador',
+  'no_rule',
+  'amount_invalid',
+  'debit_account_missing',
+  'credit_account_missing',
+  'tax_account_missing',
+  'withholding_exceeds_total',
+  'sin_asiento',
+] as const;
+
+type EstadoPrevio = { estado: 'cargando' } | { estado: 'error' } | { estado: 'listo'; asiento: AsientoPrevio };
+
+/**
+ * El asiento que dejaría la confirmación, calculado por la base con el mismo
+ * disparador que la confirma (`fn_factura_compra_asiento_previo`, que lo
+ * deshace). Solo informa: si no se puede calcular, la confirmación sigue.
+ */
+function AsientoQueSeGenera({ facturaId, moneda }: { facturaId: string; moneda: ContextoMoneda }) {
+  const t = useTranslations('facturasCompra.detalle.confirmar.asiento');
+  const formatear = useMemo(() => crearFormateadorMoneda(moneda), [moneda]);
+  const [previo, setPrevio] = useState<EstadoPrevio>({ estado: 'cargando' });
+
+  useEffect(() => {
+    let cancelado = false;
+    setPrevio({ estado: 'cargando' });
+    asientoPrevioCompra(facturaId)
+      .then((asiento) => {
+        if (!cancelado) setPrevio({ estado: 'listo', asiento });
+      })
+      .catch((err) => {
+        console.error('Error al calcular el asiento previo de la compra:', err);
+        if (!cancelado) setPrevio({ estado: 'error' });
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [facturaId]);
+
+  const motivo = (codigo: string | null) => {
+    const conocido = MOTIVOS_ASIENTO.find((m) => m === codigo);
+    return conocido ? t(`motivos.${conocido}`) : t('motivos.otro');
+  };
+
+  if (previo.estado === 'error') return <p className="text-xs text-fg-muted">{t('noCalculado')}</p>;
+  const asiento = previo.estado === 'listo' ? previo.asiento : null;
+  if (asiento && !asiento.ok) {
+    return (
+      <p role="status" className="flex items-start gap-1.5 text-sm text-warning-text">
+        <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} />
+        {motivo(asiento.motivo)}
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-sm font-medium text-fg">{t('titulo')}</p>
+      <DataTable<LineaAsientoPrevio>
+        densidad="compacta"
+        etiqueta={t('titulo')}
+        estado={previo.estado === 'cargando' ? 'cargando' : 'listo'}
+        filasEsqueleto={3}
+        filas={asiento?.lineas ?? []}
+        obtenerId={(l) => `${l.cuenta}:${l.debito}:${l.credito}:${l.descripcion ?? ''}`}
+        virtualizar={false}
+        columnas={[
+          {
+            id: 'cuenta',
+            encabezado: t('cuenta'),
+            celda: (l) => (
+              <div className="min-w-0">
+                <p className="truncate text-fg">
+                  <span className="font-medium tabular-nums">{l.cuenta}</span>
+                  {l.nombre && <span className="text-fg-secondary"> · {l.nombre}</span>}
+                </p>
+                {l.descripcion && <p className="truncate text-xs text-fg-muted">{l.descripcion}</p>}
+              </div>
+            ),
+          },
+          { id: 'debito', encabezado: t('debito'), variante: 'importe', celda: (l) => (l.debito > 0 ? formatear(l.debito) : '') },
+          { id: 'credito', encabezado: t('credito'), variante: 'importe', celda: (l) => (l.credito > 0 ? formatear(l.credito) : '') },
+        ]}
+        pie={
+          asiento ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+              <span className="flex items-center gap-2 font-medium text-fg">
+                {t('sumas')}
+                <Badge tono={asiento.cuadra ? 'exito' : 'peligro'} tamano="sm">
+                  {t(asiento.cuadra ? 'cuadra' : 'noCuadra')}
+                </Badge>
+              </span>
+              <span className="flex gap-6 tabular-nums text-fg">
+                <span>{formatear(asiento.debitos)}</span>
+                <span>{formatear(asiento.creditos)}</span>
+              </span>
+            </div>
+          ) : undefined
+        }
+      />
+      {asiento?.aviso && (
+        <p role="status" className="flex items-start gap-1.5 text-xs text-warning-text">
+          <AlertTriangle aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" strokeWidth={1.5} />
+          {motivo(asiento.aviso)}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function DialogoConfirmarCompra({
   abierto,
   onAbiertoChange,
   numero,
   total,
+  retenido = 0,
+  facturaId = null,
   moneda,
   hayProductos,
   puedeRecepcionar,
@@ -56,6 +170,10 @@ export function DialogoConfirmarCompra({
   onAbiertoChange: (v: boolean) => void;
   numero: string;
   total: number;
+  /** Suma de las retenciones: la cuenta por pagar queda por total − retenido. */
+  retenido?: number;
+  /** Borrador guardado: con él se muestra el asiento que se genera. */
+  facturaId?: string | null;
   moneda: ContextoMoneda;
   hayProductos: boolean;
   puedeRecepcionar: boolean;
@@ -83,8 +201,13 @@ export function DialogoConfirmarCompra({
       abierto={abierto}
       onAbiertoChange={onAbiertoChange}
       titulo={t('titulo', { numero })}
-      descripcion={t('descripcion', { total: formatear(total) })}
+      descripcion={
+        retenido > 0
+          ? t('descripcionNeto', { total: formatear(total), neto: formatear(total - retenido), retenido: formatear(retenido) })
+          : t('descripcion', { total: formatear(total) })
+      }
       icono={CheckCircle2}
+      ancho={facturaId ? 672 : undefined}
       primario={{
         etiqueta: t('boton'),
         onClick: () =>
@@ -104,6 +227,7 @@ export function DialogoConfirmarCompra({
           <li>{t('consecuencias.asiento')}</li>
           <li>{t('consecuencias.noEditable')}</li>
         </ul>
+        {abierto && facturaId && <AsientoQueSeGenera facturaId={facturaId} moneda={moneda} />}
         <label className="flex items-start gap-2 text-sm text-fg">
           <Checkbox
             checked={recepcionar}

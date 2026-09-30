@@ -3873,7 +3873,9 @@
         "fechaFutura": "A data não pode ser posterior a hoje.",
         "referenciaVacia": "Esta forma exige a referência.",
         "recibidoInsuficiente": "O valor recebido não cobre o pagamento."
-      }
+      },
+      "retenciones": "Retenções",
+      "netoPagado": "Líquido {neto} · Pago {pagado}"
     },
     "vista": {
       "etiqueta": "Visualização",
@@ -4940,7 +4942,10 @@
         "cuentasAbiertas": "Contas a pagar em aberto",
         "pagar": "Pagar",
         "lotes": "Lotes recebidos deste fornecedor",
-        "pagos": "Pagamentos registrados"
+        "pagos": "Pagamentos registrados",
+        "certificado": "Certificado de retenções",
+        "certificadoAnio": "Ano corrente",
+        "generar": "Gerar"
       },
       "valorStock": "Valor em estoque dos produtos (todas as filiais):",
       "totalPagado": "Total pago:",
@@ -11833,7 +11838,8 @@
         "pdf": "Baixar PDF",
         "imprimir": "Imprimir",
         "anular": "Anular",
-        "eliminar": "Excluir rascunho"
+        "eliminar": "Excluir rascunho",
+        "certificado": "Certificado de retenções"
       },
       "motivos": {
         "sinPermiso": "Você não tem permissão para esta ação",
@@ -11895,7 +11901,29 @@
         "recepcionarSinProductos": "Não há linhas com produto: nada entra no estoque.",
         "recepcionarSinPermiso": "Você não tem permissão para movimentar o estoque.",
         "generarDs": "Gerar documento suporte",
-        "generarDsAyuda": "Para fornecedores não obrigados a faturar."
+        "generarDsAyuda": "Para fornecedores não obrigados a faturar.",
+        "descripcionNeto": "Total {total} · líquido a pagar {neto} (retenções {retenido}).",
+        "asiento": {
+          "titulo": "Lançamento que será gerado",
+          "cuenta": "Conta",
+          "debito": "Débito",
+          "credito": "Crédito",
+          "sumas": "Somas",
+          "cuadra": "Fecha",
+          "noCuadra": "Não fecha",
+          "noCalculado": "Não foi possível calcular a prévia do lançamento; ao confirmar ele é gerado mesmo assim.",
+          "motivos": {
+            "no_borrador": "A fatura já não é um rascunho: o lançamento está no detalhe.",
+            "no_rule": "Não há regra contábil de compras: a fatura é confirmada sem lançamento. Configure-a em Finanças › Regras contábeis.",
+            "amount_invalid": "O total da fatura não é válido para gerar o lançamento.",
+            "debit_account_missing": "Falta a conta de débito da regra de compras no plano de contas.",
+            "credit_account_missing": "Falta a conta do fornecedor da regra de compras no plano de contas.",
+            "tax_account_missing": "Falta a conta do IVA dedutível no plano de contas.",
+            "withholding_exceeds_total": "As retenções igualam ou superam o total: o lançamento fica pelo total, sem descontá-las.",
+            "sin_asiento": "Ao confirmar não seria gerado lançamento contábil.",
+            "otro": "O lançamento não seria gerado: revise a configuração contábil."
+          }
+        }
       },
       "recepcionar": {
         "titulo": "Receber a fatura {numero}",
@@ -12005,7 +12033,8 @@
         "base": "Base",
         "tarifa": "Alíquota %",
         "retefuente": "Retenção na fonte",
-        "quitar": "Remover {concepto}"
+        "quitar": "Remover {concepto}",
+        "bajoBaseMinima": "A base não atinge o mínimo de {uvt} UVT ({valor} com a UVT {anio}): esta retenção normalmente não se aplica. Você pode aplicá-la mesmo assim se o fornecedor pedir."
       },
       "errores": {
         "revisar": "Revise os campos destacados.",
@@ -12288,7 +12317,8 @@
         "programar": "Programar pagamento",
         "plan": "Criar plano de parcelas",
         "estadoCuenta": "Extrato do fornecedor",
-        "factura": "Ver fatura"
+        "factura": "Ver fatura",
+        "certificado": "Certificado de retenções"
       },
       "motivos": {
         "sinPermiso": "Você não tem permissão para esta ação"
@@ -12328,13 +12358,33 @@
       },
       "kpis": {
         "pagado": "Pago: {monto}",
-        "programado": "Programado sem aprovação: {monto}"
+        "programado": "Programado sem aprovação: {monto}",
+        "netoRetenciones": "Líquido de retenções ({retenido}) · pago {monto}"
       },
       "proveedorDatos": {
         "nombre": "Nome",
         "nit": "ID fiscal",
         "telefono": "Telefone",
         "correo": "E-mail"
+      },
+      "origen": {
+        "titulo": "Documento de origem",
+        "factura": "Fatura",
+        "recibida": "Recebida",
+        "vence": "Vence",
+        "retenciones": "Retenções",
+        "conceptos": "{n, plural, one {# item} other {# itens}}",
+        "sinRetenciones": "Sem retenções",
+        "formaPago": "Forma de pagamento",
+        "credito": "A prazo, {n, plural, one {# dia} other {# dias}}",
+        "contado": "À vista",
+        "subtotal": "Subtotal",
+        "iva": "IVA",
+        "total": "Total da fatura",
+        "menosRetenciones": "Retenções",
+        "neto": "Líquido a pagar",
+        "asiento": "Lançamento contábil",
+        "orden": "Ordem de compra"
       }
     },
     "estadoCuenta": {
@@ -12388,6 +12438,28 @@
         "fecha": "A primeira parcela não pode ser anterior a hoje.",
         "interes": "Entre 0 e 100 %."
       }
+    },
+    "certificado": {
+      "titulo": "Certificado de retenções",
+      "descripcion": "O que foi retido de {proveedor} no período, para emitir o certificado (art. 381 do Estatuto Tributário).",
+      "periodo": "Período certificado",
+      "cargando": "Calculando retenções…",
+      "errorLectura": "Não foi possível ler as retenções.",
+      "reintentar": "Tentar novamente",
+      "clases": {
+        "retefuente": "Retenção na fonte",
+        "reteiva": "Retenção de IVA",
+        "reteica": "Retenção de ICA"
+      },
+      "total": "Total retido",
+      "alcance": "{facturas, plural, =0 {Sem faturas} one {# fatura} other {# faturas}} · {conceptos, plural, =0 {sem conceitos} one {# conceito} other {# conceitos}}",
+      "sinRetenciones": "Nenhuma retenção foi praticada neste período; o certificado sairá zerado.",
+      "nota": "Abrange todas as filiais: o agente retentor é a organização.",
+      "descargar": "Baixar PDF",
+      "imprimir": "Imprimir",
+      "ver": "Ver",
+      "cerrar": "Fechar",
+      "errorDescarga": "Não foi possível baixar o certificado"
     }
   },
   "documentos": {
@@ -12405,7 +12477,8 @@
       "reporte-caja-abierta": "Relatório de caixa aberto",
       "arqueo-caja": "Conferência de caixa",
       "estado-cuenta-proveedor": "Extrato do fornecedor",
-      "nota-credito-electronica": "Nota de crédito eletrônica"
+      "nota-credito-electronica": "Nota de crédito eletrônica",
+      "certificado-retenciones": "Certificado de retenções"
     },
     "sinNumero": "Sem numeração",
     "paginacion": {
@@ -12552,7 +12625,13 @@
       "total": "Total",
       "vencido": "Vencido",
       "porVencer": "A vencer",
-      "facturaCompraAsociada": "Fatura de compra associada"
+      "facturaCompraAsociada": "Fatura de compra associada",
+      "periodoDesde": "Período de",
+      "periodoHasta": "Período até",
+      "facturasIncluidas": "Faturas incluídas",
+      "fechaExpedicion": "Data de emissão",
+      "ciudadExpedicion": "Cidade de emissão",
+      "declaradoEn": "Declarado em"
     },
     "formasPago": {
       "contado": "À vista",
@@ -12593,7 +12672,9 @@
       "movimientosCaja": "Entradas e saídas de caixa",
       "arqueos": "Conferências",
       "denominaciones": "Cédulas e moedas",
-      "retenciones": "Retenções aplicadas ao fornecedor"
+      "retenciones": "Retenções aplicadas ao fornecedor",
+      "conceptosRetenidos": "Retenções praticadas",
+      "facturasIncluidas": "Faturas incluídas"
     },
     "columnas": {
       "descripcion": "Descrição",
@@ -12628,12 +12709,15 @@
       "subtotal": "Subtotal",
       "base": "Base",
       "tarifa": "Alíquota (%)",
-      "unidad": "Unidade"
+      "unidad": "Unidade",
+      "cuenta": "Conta",
+      "valorRetenido": "Valor retido"
     },
     "vacios": {
       "lineas": "Sem linhas.",
       "movimientos": "Sem movimentos no período.",
-      "facturasAbiertas": "Não há faturas em aberto."
+      "facturasAbiertas": "Não há faturas em aberto.",
+      "retencionesPeriodo": "Nenhuma retenção foi praticada a este fornecedor no período."
     },
     "totales": {
       "subtotal": "Subtotal",
@@ -12666,7 +12750,11 @@
       },
       "retencion": "{concepto} ({tasa} %)",
       "totalFactura": "Total da fatura",
-      "netoPagar": "Líquido a pagar ao fornecedor"
+      "netoPagar": "Líquido a pagar ao fornecedor",
+      "retefuente": "Retenção na fonte",
+      "reteiva": "Retenção de IVA",
+      "reteica": "Retenção de ICA",
+      "totalRetenido": "Total retido"
     },
     "firmas": {
       "recibido": "Recebido de acordo",
@@ -12677,7 +12765,10 @@
       "recibe": "Recebido por",
       "datosRecibe": "Nome · Documento · Data",
       "datosAcepta": "Nome · Documento · Cargo · Data",
-      "datosNombre": "Nome e documento"
+      "datosNombre": "Nome e documento",
+      "agenteRetenedor": "Agente retentor",
+      "contador": "Contador público",
+      "datosContador": "Nome · Registro profissional"
     },
     "legal": {
       "resolucion": "Resolução DIAN n.º {numero} de {fecha}, prefixo {prefijo}, numeração autorizada de {desde} a {hasta}, válida até {vigencia}.",
@@ -12696,7 +12787,8 @@
         "comprobante-egreso": "Comprovante de um pagamento realizado.",
         "cierre-caja": "Relatório interno de caixa.",
         "arqueo-caja": "Relatório interno de conferência de caixa.",
-        "estado-cuenta-proveedor": "Extrato do fornecedor segundo nossos registros. Se encontrar alguma diferença, entre em contato conosco em até 10 dias após o recebimento."
+        "estado-cuenta-proveedor": "Extrato do fornecedor segundo nossos registros. Se encontrar alguma diferença, entre em contato conosco em até 10 dias após o recebimento.",
+        "certificado-retenciones": "Certificado emitido conforme o artigo 381 do Estatuto Tributário colombiano. Não requer assinatura manuscrita (artigo 10 do Decreto 836 de 1991)."
       }
     },
     "movimientos": {
@@ -12772,6 +12864,14 @@
       "pos": "Venda registrada no ponto de venda (PDV).",
       "mesa": "Venda registrada a partir de uma mesa.",
       "ventaPos": "Venda do PDV"
+    },
+    "certificado": {
+      "prefijo": "CR",
+      "totalRetenido": "Total retido",
+      "declarado350": "Formulário 350",
+      "declaradoIca": "Declaração de ICA",
+      "declarado350EIca": "Formulário 350 e ICA",
+      "constancia": "{emisor}, como agente retentor, certifica que durante o período indicado praticou a {proveedor} as retenções detalhadas, sobre os pagamentos ou créditos das faturas incluídas."
     }
   },
   "posVentas": {
@@ -15374,7 +15474,9 @@
       "tipo": "Tipo",
       "tarifa": "Alíquota",
       "aplicaA": "Aplica-se a",
-      "estado": "Status"
+      "estado": "Status",
+      "baseMinima": "Base mínima",
+      "cuenta": "Conta contábil"
     },
     "tipos": {
       "retefuente": "ReteFuente",
@@ -15399,16 +15501,51 @@
       "activada": "{nombre} agora está ativa.",
       "desactivada": "{nombre} agora está inativa.",
       "errorTitulo": "Erro",
-      "errorEstado": "Não foi possível alterar o status da retenção."
+      "errorEstado": "Não foi possível alterar o status da retenção.",
+      "errorConfiguracion": "Não foi possível ler a conta contábil e a base mínima das retenções."
     },
     "formulario": {
       "nueva": "Nova retenção",
       "editar": "Editar retenção",
-      "nota": "A retenção é feita pelo comprador: não é somada ao preço, não é atribuída a produtos e não pode ser a alíquota padrão."
+      "nota": "A retenção é feita pelo comprador: não é somada ao preço, não é atribuída a produtos e não pode ser a alíquota padrão.",
+      "cuenta": "Conta contábil",
+      "cuentaAutomatica": "Automática conforme o tipo (2365 / 2367 / 2368)",
+      "cuentaAutomaticaActual": "Automática conforme o tipo ({cuenta})",
+      "cuentaAyuda": "Somente contas de passivo ativas. No lançamento da compra a retenção é creditada nesta conta.",
+      "baseMinima": "Base mínima (UVT)",
+      "baseMinimaPlaceholder": "Ex.: 27",
+      "baseMinimaAyuda": "Se a base da fatura for menor, o formulário avisa que a retenção não se aplica. Vazio: sem base mínima.",
+      "baseMinimaEquivale": "Equivale a {valor} com a UVT {anio}. Abaixo disso, a fatura avisa que não se aplica.",
+      "errorConfiguracionTitulo": "A retenção foi salva só em parte",
+      "errorConfiguracion": "O nome e a alíquota foram salvos, mas não a conta nem a base mínima: {detalle}",
+      "errores": {
+        "cuenta_no_existe": "a conta não existe no plano de contas.",
+        "cuenta_no_es_pasivo": "a conta não é de passivo.",
+        "cuenta_inactiva": "a conta está inativa.",
+        "base_minima_invalida": "A base mínima deve ser um número maior ou igual a zero.",
+        "retencion_no_encontrada": "a retenção não existe nesta organização.",
+        "otro": "verifique suas permissões de impostos e tente novamente."
+      }
     },
     "titulo": "Impostos",
     "migas": {
       "finanzas": "Finanças"
+    },
+    "baseMinima": {
+      "sin": "Sem base mínima",
+      "uvt": "{uvt} UVT",
+      "equivalente": "≈ {valor} (UVT {anio})"
+    },
+    "cuenta": {
+      "automatica": "Automática conforme o tipo"
+    },
+    "uvtVigente": "UVT {anio}: {valor} · {norma}",
+    "uvtSinDato": "Sem UVT registrada para o país: a base mínima não pode ser convertida em moeda.",
+    "plantilla": {
+      "cargar": "Carregar modelo de {pais}",
+      "alDia": "Você já tem todas as retenções do modelo de {pais}.",
+      "cargada": "{creadas, plural, =0 {Você já tinha todas as retenções de {pais}.} one {# retenção de {pais} foi adicionada.} other {# retenções de {pais} foram adicionadas.}}",
+      "error": "Não foi possível carregar o modelo de retenções."
     }
   },
   "receta": {
@@ -24528,6 +24665,51 @@
       "pedidosAnterior": "Pedidos período anterior",
       "pais": "País",
       "sesiones": "Sessões"
+    }
+  },
+  "asientoContable": {
+    "origenCompra": {
+      "titulo": "Lançamento automático da compra {numero}",
+      "conRetenciones": "Gerado ao confirmar a fatura; não se edita nem se apaga (para revertê-lo, anule a fatura). Ao fornecedor credita-se apenas o líquido, {neto}; as retenções, {retenido}, vão para impostos a pagar.",
+      "sinRetenciones": "Gerado ao confirmar a fatura; não se edita nem se apaga (para revertê-lo, anule a fatura). Ao fornecedor credita-se o total, {total}: a fatura não tem retenções.",
+      "irFactura": "Ir para a fatura",
+      "cadena": "Cadeia do documento",
+      "pago": "Pagamento",
+      "retenciones": "Retenções",
+      "verCertificado": "Ver certificado",
+      "conceptos": "{n, plural, one {# conceito} other {# conceitos}}"
+    },
+    "datos": {
+      "titulo": "Dados do lançamento",
+      "fecha": "Data contábil",
+      "sucursal": "Filial",
+      "origen": "Origem",
+      "moneda": "Moeda",
+      "tasa": "Taxa {tasa} em relação a {base}",
+      "claveHecho": "Chave do fato",
+      "creado": "Criado em",
+      "origenes": {
+        "manual": "Manual",
+        "reversal": "Estorno",
+        "invoice_sales": "Fatura de venda",
+        "invoice_purchase": "Fatura de compra",
+        "sales": "Venda PDV",
+        "payments": "Pagamento",
+        "stock_movements": "Movimento de estoque",
+        "inventory_adjustment": "Ajuste de estoque",
+        "accounts_receivable": "Conta a receber",
+        "accounts_payable": "Conta a pagar",
+        "purchase_orders": "Ordem de compra",
+        "cash_movements": "Movimento de caixa",
+        "cash_sessions": "Sessão de caixa",
+        "commissions": "Comissão",
+        "credit_note": "Nota de crédito"
+      },
+      "creadoPor": "Criado por",
+      "automatico": "Automático (sistema)"
+    },
+    "lineas": {
+      "centroCosto": "Centro de custo"
     }
   }
 }

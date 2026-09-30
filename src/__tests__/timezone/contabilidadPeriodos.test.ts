@@ -209,9 +209,14 @@ describe('los archivos de la tanda 1 no vuelven al día UTC', () => {
     expect(pagina).toContain('{formatDate(asiento.entry_date)}');
     expect(pagina).not.toContain("toLocaleDateString('es-CO')");
 
+    // Las fechas del detalle (contable y de creación) viven en «Datos del asiento».
     const detalle = leer('src/components/finanzas/contabilidad/asientos/AsientoDetailPage.tsx');
-    expect(detalle).toContain('useFormatDateFor(asiento?.branch_id)');
-    expect(detalle).not.toContain('toLocaleDateString');
+    const datos = leer('src/components/finanzas/contabilidad/asientos/DatosAsiento.tsx');
+    expect(detalle).toContain('<DatosAsiento asiento={asiento} />');
+    expect(datos).toContain('useFormatDateFor(asiento.branch_id)');
+    expect(datos).toContain('formatDate(asiento.entry_date)');
+    expect(datos).toContain('formatDateTime(asiento.created_at)');
+    for (const fuente of [detalle, datos]) expect(fuente).not.toMatch(/toLocale(Date)?String/);
 
     const servicio = leer('src/components/finanzas/contabilidad/ContabilidadService.ts');
     // La tasa del día sale del día del asiento EN SU ZONA, no de `.split('T')`.

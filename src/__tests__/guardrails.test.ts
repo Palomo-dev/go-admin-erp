@@ -1941,6 +1941,7 @@ describe('26b. Compras y CxP: una sola RPC para registrar la compra y nada escri
           'ProgramarPagoDialog.tsx',
           'AprobacionesPanel.tsx',
           'EstadoCuentaProveedorDialog.tsx',
+          'CertificadoRetencionesDialog.tsx',
           'PlanCuotasDialog.tsx',
           // BandaAntiguedad.tsx subió al kit (kit/documento/BandaAntiguedad, compartida
           // con CxC; solo pinta lo que recibe). Los dos diálogos de arriba son ahora

@@ -22,8 +22,8 @@
  *
  * Parámetros de presentación (no cambian el contenido): `formato`, `papel`,
  * `idioma`, `descargar=1` (adjunto en vez de en línea), `imprimir=1` (HTML que
- * abre el diálogo de impresión) y, en el estado de cuenta, `desde`/`hasta`
- * (días `YYYY-MM-DD`).
+ * abre el diálogo de impresión) y, en los estados de cuenta y el certificado
+ * de retenciones, `desde`/`hasta` (días `YYYY-MM-DD`).
  */
 
 import { randomBytes } from 'crypto';

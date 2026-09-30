@@ -39,6 +39,7 @@ const PANTALLAS = [
   'src/components/finanzas/cuentas-por-pagar/detalle/CuentaPorPagarDetalle.tsx',
   'src/components/finanzas/cuentas-por-pagar/AprobacionesPanel.tsx',
   'src/components/finanzas/cuentas-por-pagar/EstadoCuentaProveedorDialog.tsx',
+  'src/components/finanzas/cuentas-por-pagar/CertificadoRetencionesDialog.tsx',
   'src/components/finanzas/cuentas-por-pagar/PlanCuotasDialog.tsx',
   // BandaAntiguedad subió al kit (textos en kit.documento.antiguedad, los cubre
   // src/__tests__/i18n/traduccionesModulos.test.ts).

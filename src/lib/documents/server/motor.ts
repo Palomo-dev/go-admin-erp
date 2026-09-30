@@ -25,6 +25,7 @@ import {
 import type { OpcionesCarga, SesionDocumento } from './base';
 import { cargarArqueoCaja, cargarCierreCaja } from './cargadores/cajas';
 import { cargarDocumentoSoporte, cargarFacturaCompra } from './cargadores/compras';
+import { cargarCertificadoRetenciones } from './cargadores/certificadoRetenciones';
 import { cargarCotizacion } from './cargadores/cotizacion';
 import { cargarEstadoCuenta } from './cargadores/estadoCuenta';
 import { cargarEstadoCuentaProveedor } from './cargadores/estadoCuentaProveedor';
@@ -61,6 +62,7 @@ const CARGADORES: Record<TipoDocumento, Cargador> = {
   'documento-soporte': cargarDocumentoSoporte,
   'estado-cuenta': cargarEstadoCuenta,
   'estado-cuenta-proveedor': cargarEstadoCuentaProveedor,
+  'certificado-retenciones': cargarCertificadoRetenciones,
   'recibo-caja': (s, id, o, t) => cargarComprobantePago(s, 'recibo-caja', id, o, t),
   'comprobante-egreso': (s, id, o, t) => cargarComprobantePago(s, 'comprobante-egreso', id, o, t),
   'cierre-caja': cargarCierreCaja,

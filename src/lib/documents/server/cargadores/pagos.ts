@@ -37,6 +37,7 @@ import {
   type OpcionesCarga,
   type SesionDocumento,
 } from '../base';
+import { filasRetencion, retencionesDeCompra } from './compras';
 
 /** Orígenes de pago que son egresos a proveedores. */
 export const ORIGENES_EGRESO = new Set(['invoice_purchase', 'account_payable']);
@@ -82,6 +83,8 @@ interface DocumentoAbonado {
   numero: string | null;
   contraparte: Contraparte | null;
   saldo: number | null;
+  /** Solo si abona una factura de compra: su id y su total, para mostrar las retenciones. */
+  facturaCompra?: { id: string; total: number };
 }
 
 async function documentoAbonado(sesion: SesionDocumento, pago: FilaPagoCompleta): Promise<DocumentoAbonado | null> {
@@ -97,9 +100,11 @@ async function documentoAbonado(sesion: SesionDocumento, pago: FilaPagoCompleta)
     return f ? { clave: 'facturaVenta', numero: f.number, contraparte: contraparteCliente(uno(f.customer)), saldo: num(f.balance) } : null;
   };
   const facturaCompra = async (id: string): Promise<DocumentoAbonado | null> => {
-    const { data } = await db.from('invoice_purchase').select(`number_ext, balance, supplier:suppliers(${SELECT_PROVEEDOR})`).eq('id', id).eq('organization_id', org).maybeSingle();
-    const f = data as { number_ext: string; balance: number | null; supplier: FilaProveedor | FilaProveedor[] | null } | null;
-    return f ? { clave: 'facturaCompra', numero: f.number_ext, contraparte: contraparteProveedor(uno(f.supplier)), saldo: num(f.balance) } : null;
+    const { data } = await db.from('invoice_purchase').select(`id, number_ext, total, balance, supplier:suppliers(${SELECT_PROVEEDOR})`).eq('id', id).eq('organization_id', org).maybeSingle();
+    const f = data as { id: string; number_ext: string; total: number | string | null; balance: number | null; supplier: FilaProveedor | FilaProveedor[] | null } | null;
+    return f
+      ? { clave: 'facturaCompra', numero: f.number_ext, contraparte: contraparteProveedor(uno(f.supplier)), saldo: num(f.balance), facturaCompra: { id: f.id, total: num(f.total) } }
+      : null;
   };
 
   switch (origen) {
@@ -179,6 +184,17 @@ export async function cargarComprobantePago(
   }
 
   const totales: FilaTotal[] = [];
+  // Egreso de una factura con retenciones: el proveedor cobra el neto, no el total (D4 de compras).
+  const factura = esEgreso ? abonado?.facturaCompra : undefined;
+  const retenciones = factura && esUuid(factura.id) ? await retencionesDeCompra(sesion, factura.id) : [];
+  if (factura && retenciones.length > 0) {
+    const retenido = retenciones.reduce((s, r) => s + num(r.amount), 0);
+    totales.push(
+      { clave: 'totalFactura', valor: factura.total },
+      ...filasRetencion(retenciones),
+      { clave: 'netoPagar', valor: Math.max(factura.total - retenido, 0) },
+    );
+  }
   if (cambio > 0) {
     totales.push({ clave: 'recibido', valor: num(pago.amount) });
     totales.push({ clave: 'cambio', valor: cambio, resta: true });

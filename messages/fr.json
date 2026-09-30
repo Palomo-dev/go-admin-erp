@@ -3873,7 +3873,9 @@
         "fechaFutura": "La date ne peut pas être postérieure à aujourd’hui.",
         "referenciaVacia": "Ce moyen exige une référence.",
         "recibidoInsuficiente": "Les espèces reçues ne couvrent pas le montant."
-      }
+      },
+      "retenciones": "Retenues",
+      "netoPagado": "Net {neto} · Payé {pagado}"
     },
     "vista": {
       "etiqueta": "Affichage",
@@ -4940,7 +4942,10 @@
         "cuentasAbiertas": "Dettes fournisseurs ouvertes",
         "pagar": "Payer",
         "lotes": "Lots reçus de ce fournisseur",
-        "pagos": "Paiements enregistrés"
+        "pagos": "Paiements enregistrés",
+        "certificado": "Certificat de retenues",
+        "certificadoAnio": "Année en cours",
+        "generar": "Générer"
       },
       "valorStock": "Valeur du stock de ses produits (toutes les succursales) :",
       "totalPagado": "Total payé :",
@@ -11833,7 +11838,8 @@
         "pdf": "Télécharger le PDF",
         "imprimir": "Imprimer",
         "anular": "Annuler",
-        "eliminar": "Supprimer le brouillon"
+        "eliminar": "Supprimer le brouillon",
+        "certificado": "Certificat de retenues"
       },
       "motivos": {
         "sinPermiso": "Vous n'avez pas l'autorisation pour cette action",
@@ -11895,7 +11901,29 @@
         "recepcionarSinProductos": "Aucune ligne avec produit : rien n'entre en stock.",
         "recepcionarSinPermiso": "Vous n'avez pas l'autorisation de mouvementer le stock.",
         "generarDs": "Générer le document justificatif",
-        "generarDsAyuda": "Pour les fournisseurs non tenus de facturer."
+        "generarDsAyuda": "Pour les fournisseurs non tenus de facturer.",
+        "descripcionNeto": "Total {total} · net à payer {neto} (retenues {retenido}).",
+        "asiento": {
+          "titulo": "Écriture générée",
+          "cuenta": "Compte",
+          "debito": "Débit",
+          "credito": "Crédit",
+          "sumas": "Totaux",
+          "cuadra": "Équilibrée",
+          "noCuadra": "Déséquilibrée",
+          "noCalculado": "Impossible de calculer l’aperçu de l’écriture ; elle est générée quand même à la confirmation.",
+          "motivos": {
+            "no_borrador": "La facture n’est plus un brouillon : son écriture est dans le détail.",
+            "no_rule": "Aucune règle comptable d’achat : la facture est confirmée sans écriture. Configurez-la dans Finances › Règles comptables.",
+            "amount_invalid": "Le total de la facture n’est pas valide pour générer l’écriture.",
+            "debit_account_missing": "Le compte de débit de la règle d’achat manque dans le plan comptable.",
+            "credit_account_missing": "Le compte fournisseur de la règle d’achat manque dans le plan comptable.",
+            "tax_account_missing": "Le compte de TVA déductible manque dans le plan comptable.",
+            "withholding_exceeds_total": "Les retenues égalent ou dépassent le total : l’écriture est passée pour le total sans les déduire.",
+            "sin_asiento": "Aucune écriture ne serait générée à la confirmation.",
+            "otro": "Aucune écriture ne serait générée : vérifiez la configuration comptable."
+          }
+        }
       },
       "recepcionar": {
         "titulo": "Réceptionner la facture {numero}",
@@ -12005,7 +12033,8 @@
         "base": "Base",
         "tarifa": "Taux %",
         "retefuente": "Retenue à la source",
-        "quitar": "Retirer {concepto}"
+        "quitar": "Retirer {concepto}",
+        "bajoBaseMinima": "La base n’atteint pas le minimum de {uvt} UVT ({valor} avec l’UVT {anio}) : cette retenue ne s’applique normalement pas. Vous pouvez l’appliquer si le fournisseur le demande."
       },
       "errores": {
         "revisar": "Vérifiez les champs signalés.",
@@ -12288,7 +12317,8 @@
         "programar": "Programmer un paiement",
         "plan": "Créer un échéancier",
         "estadoCuenta": "Relevé de compte du fournisseur",
-        "factura": "Voir la facture"
+        "factura": "Voir la facture",
+        "certificado": "Certificat de retenues"
       },
       "motivos": {
         "sinPermiso": "Vous n'avez pas l'autorisation pour cette action"
@@ -12328,13 +12358,33 @@
       },
       "kpis": {
         "pagado": "Payé : {monto}",
-        "programado": "Programmé, non approuvé : {monto}"
+        "programado": "Programmé, non approuvé : {monto}",
+        "netoRetenciones": "Net des retenues ({retenido}) · payé {monto}"
       },
       "proveedorDatos": {
         "nombre": "Nom",
         "nit": "N° fiscal",
         "telefono": "Téléphone",
         "correo": "E-mail"
+      },
+      "origen": {
+        "titulo": "Document d’origine",
+        "factura": "Facture",
+        "recibida": "Reçue",
+        "vence": "Échéance",
+        "retenciones": "Retenues",
+        "conceptos": "{n, plural, one {# élément} other {# éléments}}",
+        "sinRetenciones": "Aucune retenue",
+        "formaPago": "Mode de paiement",
+        "credito": "Crédit à {n, plural, one {# jour} other {# jours}}",
+        "contado": "Comptant",
+        "subtotal": "Sous-total",
+        "iva": "TVA",
+        "total": "Total facture",
+        "menosRetenciones": "Retenues",
+        "neto": "Net à payer",
+        "asiento": "Écriture comptable",
+        "orden": "Bon de commande"
       }
     },
     "estadoCuenta": {
@@ -12388,6 +12438,28 @@
         "fecha": "La première échéance ne peut pas être antérieure à aujourd'hui.",
         "interes": "Entre 0 et 100 %."
       }
+    },
+    "certificado": {
+      "titulo": "Certificat de retenues",
+      "descripcion": "Ce qui a été retenu à {proveedor} pendant la période, pour lui remettre le certificat (art. 381 du Statut fiscal).",
+      "periodo": "Période certifiée",
+      "cargando": "Calcul des retenues…",
+      "errorLectura": "Impossible de lire les retenues.",
+      "reintentar": "Réessayer",
+      "clases": {
+        "retefuente": "Retenue à la source",
+        "reteiva": "Retenue de TVA",
+        "reteica": "Retenue d'ICA"
+      },
+      "total": "Total retenu",
+      "alcance": "{facturas, plural, =0 {Aucune facture} one {# facture} other {# factures}} · {conceptos, plural, =0 {aucun concept} one {# concept} other {# concepts}}",
+      "sinRetenciones": "Aucune retenue pendant cette période ; le certificat sera à zéro.",
+      "nota": "Couvre toutes les succursales : l'agent de retenue est l'organisation.",
+      "descargar": "Télécharger le PDF",
+      "imprimir": "Imprimer",
+      "ver": "Voir",
+      "cerrar": "Fermer",
+      "errorDescarga": "Impossible de télécharger le certificat"
     }
   },
   "documentos": {
@@ -12405,7 +12477,8 @@
       "reporte-caja-abierta": "Rapport de caisse ouverte",
       "arqueo-caja": "Comptage de caisse",
       "estado-cuenta-proveedor": "Relevé de compte fournisseur",
-      "nota-credito-electronica": "Note de crédit électronique"
+      "nota-credito-electronica": "Note de crédit électronique",
+      "certificado-retenciones": "Certificat de retenues"
     },
     "sinNumero": "Sans numéro",
     "paginacion": {
@@ -12552,7 +12625,13 @@
       "total": "Total",
       "vencido": "Échu",
       "porVencer": "Non échu",
-      "facturaCompraAsociada": "Facture d'achat associée"
+      "facturaCompraAsociada": "Facture d'achat associée",
+      "periodoDesde": "Période du",
+      "periodoHasta": "Période au",
+      "facturasIncluidas": "Factures incluses",
+      "fechaExpedicion": "Date d'émission",
+      "ciudadExpedicion": "Ville d'émission",
+      "declaradoEn": "Déclaré dans"
     },
     "formasPago": {
       "contado": "Comptant",
@@ -12593,7 +12672,9 @@
       "movimientosCaja": "Entrées et sorties de caisse",
       "arqueos": "Comptages",
       "denominaciones": "Coupures",
-      "retenciones": "Retenues appliquées au fournisseur"
+      "retenciones": "Retenues appliquées au fournisseur",
+      "conceptosRetenidos": "Retenues pratiquées",
+      "facturasIncluidas": "Factures incluses"
     },
     "columnas": {
       "descripcion": "Désignation",
@@ -12628,12 +12709,15 @@
       "subtotal": "Sous-total",
       "base": "Base",
       "tarifa": "Taux (%)",
-      "unidad": "Unité"
+      "unidad": "Unité",
+      "cuenta": "Compte",
+      "valorRetenido": "Montant retenu"
     },
     "vacios": {
       "lineas": "Aucune ligne.",
       "movimientos": "Aucun mouvement sur la période.",
-      "facturasAbiertas": "Aucune facture ouverte."
+      "facturasAbiertas": "Aucune facture ouverte.",
+      "retencionesPeriodo": "Aucune retenue n'a été pratiquée sur ce fournisseur pendant la période."
     },
     "totales": {
       "subtotal": "Sous-total",
@@ -12666,7 +12750,11 @@
       },
       "retencion": "{concepto} ({tasa} %)",
       "totalFactura": "Total de la facture",
-      "netoPagar": "Net à payer au fournisseur"
+      "netoPagar": "Net à payer au fournisseur",
+      "retefuente": "Retenue à la source",
+      "reteiva": "Retenue de TVA",
+      "reteica": "Retenue d'ICA",
+      "totalRetenido": "Total retenu"
     },
     "firmas": {
       "recibido": "Reçu conforme",
@@ -12677,7 +12765,10 @@
       "recibe": "Reçu par",
       "datosRecibe": "Nom · Pièce · Date",
       "datosAcepta": "Nom · Pièce · Fonction · Date",
-      "datosNombre": "Nom et pièce"
+      "datosNombre": "Nom et pièce",
+      "agenteRetenedor": "Agent de retenue",
+      "contador": "Expert-comptable",
+      "datosContador": "Nom · Carte professionnelle"
     },
     "legal": {
       "resolucion": "Résolution DIAN n° {numero} du {fecha}, préfixe {prefijo}, numérotation autorisée du {desde} au {hasta}, valable jusqu’au {vigencia}.",
@@ -12696,7 +12787,8 @@
         "comprobante-egreso": "Justificatif d'un paiement effectué.",
         "cierre-caja": "Rapport de caisse interne.",
         "arqueo-caja": "Rapport interne de comptage de caisse.",
-        "estado-cuenta-proveedor": "Relevé de compte du fournisseur selon nos registres. En cas d'écart, contactez-nous dans les 10 jours suivant sa réception."
+        "estado-cuenta-proveedor": "Relevé de compte du fournisseur selon nos registres. En cas d'écart, contactez-nous dans les 10 jours suivant sa réception.",
+        "certificado-retenciones": "Certificat délivré conformément à l'article 381 du Statut fiscal colombien. Aucune signature manuscrite requise (article 10 du décret 836 de 1991)."
       }
     },
     "movimientos": {
@@ -12772,6 +12864,14 @@
       "pos": "Vente enregistrée au point de vente (POS).",
       "mesa": "Vente enregistrée depuis une table.",
       "ventaPos": "Vente POS"
+    },
+    "certificado": {
+      "prefijo": "CR",
+      "totalRetenido": "Total retenu",
+      "declarado350": "Formulaire 350",
+      "declaradoIca": "Déclaration d'ICA",
+      "declarado350EIca": "Formulaire 350 et ICA",
+      "constancia": "{emisor}, en qualité d'agent de retenue, certifie avoir pratiqué sur {proveedor}, pendant la période indiquée, les retenues détaillées ci-dessous, sur les paiements ou crédits des factures incluses."
     }
   },
   "posVentas": {
@@ -15374,7 +15474,9 @@
       "tipo": "Type",
       "tarifa": "Taux",
       "aplicaA": "S’applique à",
-      "estado": "Statut"
+      "estado": "Statut",
+      "baseMinima": "Base minimale",
+      "cuenta": "Compte comptable"
     },
     "tipos": {
       "retefuente": "ReteFuente",
@@ -15399,16 +15501,51 @@
       "activada": "{nombre} est maintenant active.",
       "desactivada": "{nombre} est maintenant inactive.",
       "errorTitulo": "Erreur",
-      "errorEstado": "Impossible de modifier le statut de la retenue."
+      "errorEstado": "Impossible de modifier le statut de la retenue.",
+      "errorConfiguracion": "Impossible de lire le compte comptable et la base minimale des retenues."
     },
     "formulario": {
       "nueva": "Nouvelle retenue",
       "editar": "Modifier la retenue",
-      "nota": "Une retenue est pratiquée par l’acheteur : elle ne s’ajoute pas au prix, ne s’attribue pas aux produits et ne peut pas être le taux par défaut."
+      "nota": "Une retenue est pratiquée par l’acheteur : elle ne s’ajoute pas au prix, ne s’attribue pas aux produits et ne peut pas être le taux par défaut.",
+      "cuenta": "Compte comptable",
+      "cuentaAutomatica": "Automatique selon le type (2365 / 2367 / 2368)",
+      "cuentaAutomaticaActual": "Automatique selon le type ({cuenta})",
+      "cuentaAyuda": "Uniquement des comptes de passif actifs. L’écriture d’achat crédite la retenue sur ce compte.",
+      "baseMinima": "Base minimale (UVT)",
+      "baseMinimaPlaceholder": "Ex. : 27",
+      "baseMinimaAyuda": "Si la base de la facture est inférieure, le formulaire avertit que la retenue ne s’applique pas. Vide : sans base minimale.",
+      "baseMinimaEquivale": "Équivaut à {valor} avec l’UVT {anio}. En dessous, la facture avertit qu’elle ne s’applique pas.",
+      "errorConfiguracionTitulo": "La retenue n’a été enregistrée qu’en partie",
+      "errorConfiguracion": "Le nom et le taux ont été enregistrés, mais pas le compte ni la base minimale : {detalle}",
+      "errores": {
+        "cuenta_no_existe": "le compte n’existe pas dans le plan comptable.",
+        "cuenta_no_es_pasivo": "le compte n’est pas un compte de passif.",
+        "cuenta_inactiva": "le compte est inactif.",
+        "base_minima_invalida": "La base minimale doit être un nombre supérieur ou égal à zéro.",
+        "retencion_no_encontrada": "la retenue n’existe pas dans cette organisation.",
+        "otro": "vérifiez vos autorisations sur les taxes et réessayez."
+      }
     },
     "titulo": "Taxes",
     "migas": {
       "finanzas": "Finances"
+    },
+    "baseMinima": {
+      "sin": "Sans base minimale",
+      "uvt": "{uvt} UVT",
+      "equivalente": "≈ {valor} (UVT {anio})"
+    },
+    "cuenta": {
+      "automatica": "Automatique selon le type"
+    },
+    "uvtVigente": "UVT {anio} : {valor} · {norma}",
+    "uvtSinDato": "Aucune UVT enregistrée pour le pays : la base minimale ne peut pas être convertie en devise.",
+    "plantilla": {
+      "cargar": "Charger le modèle {pais}",
+      "alDia": "Vous avez déjà toutes les retenues du modèle {pais}.",
+      "cargada": "{creadas, plural, =0 {Vous aviez déjà toutes les retenues de {pais}.} one {# retenue de {pais} a été ajoutée.} other {# retenues de {pais} ont été ajoutées.}}",
+      "error": "Impossible de charger le modèle de retenues."
     }
   },
   "receta": {
@@ -24528,6 +24665,51 @@
       "pedidosAnterior": "Commandes période précédente",
       "pais": "Pays",
       "sesiones": "Sessions"
+    }
+  },
+  "asientoContable": {
+    "origenCompra": {
+      "titulo": "Écriture automatique de l'achat {numero}",
+      "conRetenciones": "Générée à la confirmation de la facture ; elle ne se modifie ni ne se supprime (pour l'annuler, annulez la facture). Le fournisseur n'est crédité que du net, {neto} ; les retenues, {retenido}, vont aux impôts à payer.",
+      "sinRetenciones": "Générée à la confirmation de la facture ; elle ne se modifie ni ne se supprime (pour l'annuler, annulez la facture). Le fournisseur est crédité du total, {total} : la facture n'a pas de retenues.",
+      "irFactura": "Aller à la facture",
+      "cadena": "Chaîne du document",
+      "pago": "Paiement",
+      "retenciones": "Retenues",
+      "verCertificado": "Voir le certificat",
+      "conceptos": "{n, plural, one {# concept} other {# concepts}}"
+    },
+    "datos": {
+      "titulo": "Données de l'écriture",
+      "fecha": "Date comptable",
+      "sucursal": "Succursale",
+      "origen": "Origine",
+      "moneda": "Devise",
+      "tasa": "Taux {tasa} par rapport à {base}",
+      "claveHecho": "Clé de l'événement",
+      "creado": "Créée le",
+      "origenes": {
+        "manual": "Manuelle",
+        "reversal": "Contre-passation",
+        "invoice_sales": "Facture de vente",
+        "invoice_purchase": "Facture d'achat",
+        "sales": "Vente PDV",
+        "payments": "Paiement",
+        "stock_movements": "Mouvement de stock",
+        "inventory_adjustment": "Ajustement de stock",
+        "accounts_receivable": "Compte client",
+        "accounts_payable": "Compte fournisseur",
+        "purchase_orders": "Bon de commande",
+        "cash_movements": "Mouvement de caisse",
+        "cash_sessions": "Session de caisse",
+        "commissions": "Commission",
+        "credit_note": "Avoir"
+      },
+      "creadoPor": "Créée par",
+      "automatico": "Automatique (système)"
+    },
+    "lineas": {
+      "centroCosto": "Centre de coûts"
     }
   }
 }

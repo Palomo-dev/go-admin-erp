@@ -2062,3 +2062,72 @@ Las rutas, los contratos y la pantalla se implementan en el siguiente commit.
 No se declara cerrado el checklist punta a punta hasta verificar navegador.
 El worker debe desplegarse junto con el productor de búsquedas; no se debe
 habilitar el productor con una versión anterior del handler de mantenimiento.
+
+## Ola 6 — estado: Identidades, servidor y pantalla (2026-09-30)
+
+- Frames revisados: listado `1436:19`, comparación `1436:843123`, historial
+  `1436:843665`, vacío `1438:721`, búsqueda `1438:1130`, error `1438:1553`.
+  Código: `components/crm/identidades`, rutas `api/crm/customer-duplicates`,
+  `customer-merges` y `customer-identities`; servicios `customerMergeService`,
+  `customerDuplicatesLogica`, `customerDuplicateScanService`.
+- Todas las mutaciones van por la sesión y permisos `crm.customers.*`.
+  La comparación permite escoger principal y campos editables; no envía
+  columnas generadas. La lista de canales usa filas reales de
+  `customer_channel_identities`, sin ids virtuales ni escrituras del navegador.
+- Historial paginado de los últimos 90 días, relaciones movidas y autor;
+  deshacer disponible únicamente para administrador dentro de 30 días.
+  Exclusiones persistentes por par; candidatos completos antes de paginar,
+  sin omitir otros pares de un grupo al excluir uno.
+- Kit compartido, estados vacío/cargando/error/sin permiso y textos es/en/fr/pt.
+  Fechas con el contexto de la organización. Acciones accesibles también
+  en móvil; cambio de organización remonta el contenido y cancela lecturas.
+- Refinamiento compatible del worker: migración
+  `20260930215527_crm_busqueda_worker_compatible`, MD5
+  `15e1bf559c69e632ebd6ab1b444af102`, aplicada por MCP con rollback versionado.
+  Reemplaza el encolado `maintenance` descrito en el estado anterior por
+  `noop` + `operation=crm_duplicate_scan`; una versión anterior devuelve el
+  payload y no ejecuta mantenimiento global. El productor y el handler nuevo
+  deben desplegarse juntos para completar la búsqueda. Si un worker anterior
+  finaliza el job sin procesarla, la API devuelve estado fallido y permite
+  reintentar; no queda un sondeo indefinido. El mantenimiento global conserva
+  su comportamiento original. El worker valida organización y job de la búsqueda.
+
+### Pruebas y revisión
+
+- Contratos de rutas: sesión, permiso denegado, organización ajena en body/query,
+  ids ajenos, SQLSTATE a HTTP y ningún falso éxito. Lógica pura: teléfono
+  internacional/nacional con normalizador canónico, sufijo parecido que no
+  coincide, exclusión por par y conteo global antes de paginar.
+- Render con proveedor real de next-intl en los cuatro idiomas: estados,
+  selección de principal/campo, historial/deshacer y canales sin permiso.
+- Navegador con sesión y dos contactos ficticios: comparación, selección del
+  correo secundario, fusión 201, comprobación de archivo y correo único,
+  historial/deshacer 200 y restauración comprobada en PostgreSQL; exclusión
+  200 y resultado vacío; edición y borrado de una identidad de prueba 200.
+- Búsqueda 202, handler real local limitado al job propio de prueba,
+  finalización y lectura 200 con estado `done`. Ningún drenaje global de cola.
+  Contactos, identidad, exclusión, auditoría y job de prueba retirados por id.
+- Escritorio 1440×960 y móvil 390×844 revisados sin desbordamiento de página.
+  La cuenta de prueba tiene el módulo CRM inactivo: se usó la alternativa
+  local indicada por la skill E2E (retirar cookies de preferencia de módulo);
+  no se cambió licencia ni membresía. Las API siguieron verificando sesión.
+- Lint de archivos tocados limpio. Contratos/render enfocados: 53 pruebas
+  pasan. El conjunto completo ejecutó 917 suites: 915 pasan, una omitida y
+  una falla de temporización en POS (`tester-f2b-r1`); las dos suites POS
+  que fallaron intermitentemente entre ejecuciones pasan aisladas (49 pruebas).
+  Este fallo ajeno no se registra como una de las ocho fallas del baseline
+  antiguo: la base actual es `main`, que ya las corrigió.
+- Corrección del informe anterior de advisors: la comprobación actual sí
+  muestra aviso 0029 para las RPC `security definer` ejecutables por usuarios
+  autenticados. Es acceso intencional: validan membresía/permisos dentro de
+  la función, fijan `search_path` y rechazan `anon`; no se revoca el acceso
+  necesario para la pantalla. Rendimiento: índices nuevos aún sin uso.
+  Referencia: https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable
+
+### Diferencias y pendientes de este módulo
+
+No se implementó exportación del historial. Se exige que los clientes sean del
+mismo tipo y se bloquean fusiones encadenadas mientras exista una reversión
+pendiente, para evitar restauraciones ambiguas; estas restricciones son más
+estrictas que la anotación del frame. Se conservan como pendientes explícitos,
+no se declara cerrado el alcance completo de las olas 4/5/6.

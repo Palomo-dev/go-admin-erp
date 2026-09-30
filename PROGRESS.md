@@ -3657,3 +3657,14 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - Rama `cursor/reportes-v2-implementacion-e475` (PR #269). No se fusiona.
 - «No se pudo completar» en Programados era el 500 de `POST /api/reportes/programados/[id]/prueba`: el PDF ya se puede armar, y el correo lo manda el service role, que este localhost no tiene. La organización sí tiene credencial de Resend; la columna `credentials` no la lee la sesión. Sin la clave, la ruta responde 503 `prueba_sin_servicio` antes de generar el PDF.
 - Jest de programados: 20 en verde.
+
+### CRM — Identidades con fusión transaccional y reversible — 2026-09-30
+
+- Rama `feat/crm-flujo-completo`, sobre `main`; no se toca `master`.
+- Cuatro migraciones CRM aplicadas por MCP y versionadas con rollback: auditoría
+  de fusión, duplicados/exclusiones, snapshots de relaciones y compatibilidad
+  del worker. No se alteran importes ni documentos emitidos.
+- API con sesión/permisos, kit de Identidades en es/en/fr/pt y canal real;
+  verificadas fusión/deshacer y búsquedas con fixtures retiradas al terminar.
+- El alcance completo de CRM sigue en curso; el plan anexa evidencia,
+  diferencias y pendientes por módulo. No se marca finalizada la ola 6.

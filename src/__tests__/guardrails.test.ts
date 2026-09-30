@@ -3251,7 +3251,6 @@ describe('36. CRM ola 1: escrituras de oportunidades/actividades por el servidor
     //  - `pipeline/services/pipelineService.ts` → POST /api/crm/opportunities;
     //  - `oportunidades/ImportLeadsCsv.tsx` era código muerto (sin importadores): se borró.
     // Queda UNA entrada, fuera de la 3B: la fusión de identidades no es una pantalla del plan.
-    ['components/crm/identidades/IdentidadesService.ts', 'fusión de identidades (re-apunta related_id): pendiente de RPC propia'],
   ]);
 
   const ofensoresNavegador = (): string[] =>

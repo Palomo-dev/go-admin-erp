@@ -1,4 +1,11 @@
-import type { JobHandler } from '../types';
+import type { JobHandler } from "../types";
 
-/** Handler de prueba del runner (FASE-00 §4.4): devuelve el payload recibido. */
-export const noopHandler: JobHandler = async ({ job }) => ({ echoed: job.payload, at: new Date().toISOString() });
+/** Operaciones locales sin efectos externos. Las versiones anteriores solo devuelven el payload. */
+export const noopHandler: JobHandler = async (ctx) => {
+  if (ctx.job.payload.operation === "crm_duplicate_scan") {
+    const { ejecutarBusquedaDuplicados } =
+      await import("@/lib/services/crm/customerDuplicateScanService");
+    return ejecutarBusquedaDuplicados(ctx);
+  }
+  return { echoed: ctx.job.payload, at: new Date().toISOString() };
+};

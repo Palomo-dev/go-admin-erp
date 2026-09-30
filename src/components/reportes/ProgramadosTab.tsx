@@ -83,19 +83,30 @@ export function ProgramadosTab({ ctx, recarga, onRecargar }: { ctx: ContextoRepo
           {
             id: 'envio',
             encabezado: t('programados.colEnvio'),
-            celda: (f) => (
-              <span className="block">
-                <span className="block font-medium">{f.nombre}</span>
-                <span className="block text-xs text-fg-secondary">{t('programados.destinatarios', { n: f.destinatarios.length })}</span>
-              </span>
-            ),
+            celda: (f) => {
+              const correos = f.destinatarios.map((d) => d.email);
+              return (
+                <span className="block min-w-0">
+                  <span className="block font-medium">{f.nombre}</span>
+                  <span className="block truncate text-xs text-fg-secondary" title={correos.join(', ')}>
+                    {correos.length > 0 ? correos.join(', ') : t('programados.destinatarios', { n: 0 })}
+                  </span>
+                </span>
+              );
+            },
           },
           { id: 'frecuencia', encabezado: t('programados.colFrecuencia'), celda: (f) => `${t(`programados.frecuencia.${f.frecuencia}`)} · ${etiquetaHora(f.hora.slice(0, 5), locale)}` },
           { id: 'formato', encabezado: t('programados.colFormato'), ocultarDebajo: 'md', celda: (f) => t(`programados.formato.${f.formato}`) },
           { id: 'proximo', encabezado: t('programados.colProximo'), celda: (f) => (f.proximoEnvio ? formatDateTime(f.proximoEnvio) : '—') },
           { id: 'estado', encabezado: t('programados.colEstado'), celda: (f) => <StatusBadge estado={f.activo ? 'activo' : 'pausado'} etiqueta={f.activo ? t('programados.activo') : t('programados.pausado')} tono={f.activo ? 'exito' : 'neutro'} tamano="sm" /> },
         ]}
-        tarjetaMovil={(f) => <ListCard titulo={f.nombre} subtitulo={t(`programados.frecuencia.${f.frecuencia}`)} estado={<StatusBadge estado={f.activo ? 'activo' : 'pausado'} etiqueta={f.activo ? t('programados.activo') : t('programados.pausado')} tamano="sm" />} />}
+        tarjetaMovil={(f) => (
+          <ListCard
+            titulo={f.nombre}
+            subtitulo={f.destinatarios.map((d) => d.email).join(', ') || t(`programados.frecuencia.${f.frecuencia}`)}
+            estado={<StatusBadge estado={f.activo ? 'activo' : 'pausado'} etiqueta={f.activo ? t('programados.activo') : t('programados.pausado')} tamano="sm" />}
+          />
+        )}
       />
       <p className="text-xs text-fg-secondary">{t('programados.pie')}</p>
       <Dialogo

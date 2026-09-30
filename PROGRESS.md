@@ -3646,3 +3646,8 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - En Vercel, el binario de `@sparticuz/chromium` queda incluido también en la prueba, el cron de envíos y las rutas que mandan un documento por correo. Antes solo lo llevaban el visor y el PDF de factura.
 - Jest del ejecutable y de la ruta de documentos: 11 en verde. eslint de los archivos tocados, sin avisos.
 - El correo de la prueba sigue usando el service role. En este localhost, después de generar el PDF, el envío aún no puede salir si falta `SUPABASE_SERVICE_ROLE_KEY`.
+
+
+### Fase: Reportes v2 — el correo agregado se ve en Programados — 2026-09-30
+- Rama `cursor/reportes-v2-implementacion-e475` (PR #269). No se fusiona.
+- El correo externo sí se guardaba en `scheduled_reports.recipients`. La pestaña solo pintaba el conteo («1 destinatario») y en el diálogo el correo quedaba al final de la lista de miembros. Ahora la fila muestra las direcciones, y al agregar un correo externo aparece encima del campo. Si el correo es de un miembro que puede recibir, se marca esa persona.

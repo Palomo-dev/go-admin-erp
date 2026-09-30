@@ -110,7 +110,16 @@ export function ProgramarEnvioDialog({
       setError(t('correoInvalido'));
       return;
     }
-    setExternos((prev) => (prev.includes(limpio) ? prev : [...prev, limpio]));
+    const miembro = gente.find((d) => d.email?.trim().toLowerCase() === limpio);
+    if (miembro) {
+      if (!miembro.puedeRecibir) {
+        setError(t('sinAcceso'));
+        return;
+      }
+      setMiembros((prev) => (prev.includes(miembro.userId) ? prev : [...prev, miembro.userId]));
+    } else {
+      setExternos((prev) => (prev.includes(limpio) ? prev : [...prev, limpio]));
+    }
     setCorreo('');
     setError(null);
   };
@@ -278,20 +287,28 @@ export function ProgramarEnvioDialog({
         {gente.map((d) => (
           <li key={d.userId} className="flex items-center gap-2 py-1">
             <Checkbox checked={miembros.includes(d.userId)} disabled={!d.puedeRecibir} onCheckedChange={(v) => setMiembros((prev) => (v === true ? [...prev, d.userId] : prev.filter((id) => id !== d.userId)))} aria-label={d.nombre ?? d.email ?? d.userId} />
-            <span className="min-w-0 flex-1 truncate text-sm text-fg">
-              {d.nombre} <span className="text-fg-secondary">· {d.rol}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm text-fg">
+                {d.nombre ?? d.email ?? d.userId}
+                {d.rol ? <span className="text-fg-secondary"> · {d.rol}</span> : null}
+              </span>
+              {d.email && d.nombre ? <span className="block truncate text-xs text-fg-secondary">{d.email}</span> : null}
             </span>
             <span className="shrink-0 text-xs text-fg-secondary">{d.puedeRecibir ? alcanceDe(d) : t('sinAcceso')}</span>
           </li>
         ))}
-        {externos.map((correoExterno) => (
-          <li key={correoExterno} className="flex items-center gap-2 py-1">
-            <Checkbox checked onCheckedChange={() => setExternos((prev) => prev.filter((c) => c !== correoExterno))} aria-label={correoExterno} />
-            <span className="min-w-0 flex-1 truncate text-sm text-fg">{correoExterno}</span>
-            <span className="text-xs text-warning-text">{t('requiere')}</span>
-          </li>
-        ))}
       </ul>
+      {externos.length > 0 && (
+        <ul className="flex flex-col gap-1">
+          {externos.map((correoExterno) => (
+            <li key={correoExterno} className="flex items-center gap-2 py-1">
+              <Checkbox checked onCheckedChange={() => setExternos((prev) => prev.filter((c) => c !== correoExterno))} aria-label={correoExterno} />
+              <span className="min-w-0 flex-1 truncate text-sm text-fg">{correoExterno}</span>
+              <span className="shrink-0 text-xs text-warning-text">{t('requiere')}</span>
+            </li>
+          ))}
+        </ul>
+      )}
       <div className="flex gap-2">
         <input className={clasesSelect + ' flex-1'} type="email" placeholder={t('externo')} value={correo} onChange={(e) => setCorreo(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), agregarCorreo())} />
         <button type="button" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })} onClick={agregarCorreo}>

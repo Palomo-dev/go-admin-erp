@@ -207,7 +207,7 @@ export function DialogoConfirmarCompra({
           : t('descripcion', { total: formatear(total) })
       }
       icono={CheckCircle2}
-      ancho={facturaId ? 640 : undefined}
+      ancho={facturaId ? 672 : undefined}
       primario={{
         etiqueta: t('boton'),
         onClick: () =>

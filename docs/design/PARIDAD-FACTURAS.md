@@ -517,3 +517,10 @@ Ajuste posterior (mismo día), en `421:174342` «listo» y `421:175507` «anulad
 - «Pagos aplicados» vacío en una factura anulada: sin acciones («Importar» y «Nuevo producto» no
   correspondían) y el texto dice «La factura está anulada: no admite pagos.» (antes invitaba a
   «marcar la factura como pagada», acción que el diseño ya había quitado).
+
+Corrección (mismo día): la cabecera pegada con fondo blanco **no** era coherente. En Figma las
+`PageHeader` (≈450 instancias en 04 Inventario y 07 Finanzas) van sin fondo, sobre el fondo de la página
+y dentro del margen de 24 px; solo `DocumentHeader` (63 instancias) traía fondo blanco y relleno propio.
+En código `DocumentoCabecera` es `PageHeader`, sin fondo. Se quitó el fondo y el relleno a las variantes de
+escritorio del componente `DocumentHeader` (`405:157092` detalle, `405:157242` formulario), con lo que las
+63 instancias quedan como el código, y en B.2 la cabecera vuelve dentro del margen del contenido.

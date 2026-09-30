@@ -339,7 +339,13 @@ export async function POST(request: Request) {
       }
     }
 
-    const wsHost = process.env.WS_SERVER_URL || 'wss://localhost:8080';
+    // D-10: leer WS_PUBLIC_URL (nombre correcto en Vercel), con WS_SERVER_URL como
+    // alias por compatibilidad. Nunca caer en silencio a localhost en producción.
+    const wsHost = process.env.WS_PUBLIC_URL || process.env.WS_SERVER_URL;
+    if (!wsHost) {
+      console.error('[AI Agent TwiML] WS_PUBLIC_URL/WS_SERVER_URL no configurado: el agente IA no puede conectar al ws-server');
+      throw new Error('WS_PUBLIC_URL no configurado');
+    }
     const token = issueWsSessionToken({
       orgId: agentOrgId,
       agentId,

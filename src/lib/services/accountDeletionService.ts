@@ -5,13 +5,18 @@
  * - Plazo de 15 días hábiles (implementado como 10 días calendario)
  * - Conservación de facturación y contabilidad por 10 años (art. 28 Ley 962 de 2005)
  * - Anonimización vs eliminación según tipo de dato
- * - Auditoría completa sin datos personales
+ * - Auditoría completa con hash SHA-256 del email, sin PII en claro
  * 
  * @module lib/services/accountDeletionService
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { sendAccountDeletionRequestEmail, sendAccountDeletionCompleteEmail } from './accountDeletionEmails';
+import { 
+  sendAccountDeletionRequestEmail, 
+  sendAccountDeletionCompleteEmail,
+  sendAdminBlockNotification,
+  hashEmail
+} from './accountDeletionEmails';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -60,9 +65,9 @@ function getServiceClient() {
 }
 
 /**
- * Verifica si el usuario es el único administrador de alguna organización con suscripción activa
+ * Verifica si el usuario es el único admin de organizaciones con suscripción activa Y otros usuarios
  */
-async function checkSoleAdmin(userId: string): Promise<{
+async function checkSoleAdminWithOtherUsers(userId: string): Promise<{
   isBlocked: boolean;
   blockingOrganizations?: Array<{
     organization_id: number;
@@ -74,19 +79,51 @@ async function checkSoleAdmin(userId: string): Promise<{
 }> {
   const supabase = getServiceClient();
   
-  const { data, error } = await supabase.rpc('is_sole_admin_with_active_subscription', {
-    p_user_id: userId,
-  });
+  // Primero verificar si es único admin con suscripción activa
+  const { data: soleAdminData, error: soleAdminError } = await supabase.rpc(
+    'is_sole_admin_with_active_subscription',
+    { p_user_id: userId }
+  );
   
-  if (error) {
-    console.error('[Account Deletion] Error checking sole admin:', error);
-    throw new Error(`Error verificando permisos de admin: ${error.message}`);
+  if (soleAdminError) {
+    console.error('[Account Deletion] Error checking sole admin:', soleAdminError);
+    throw new Error(`Error verificando permisos de admin: ${soleAdminError.message}`);
+  }
+  
+  if (!soleAdminData?.is_blocked) {
+    return { isBlocked: false };
+  }
+  
+  // Si es único admin, verificar si hay otros usuarios en esas organizaciones
+  const blockingOrgs: typeof soleAdminData.blocking_organizations = [];
+  
+  for (const org of soleAdminData.blocking_organizations || []) {
+    const { count, error: countError } = await supabase
+      .from('organization_members')
+      .select('*', { count: 'exact', head: true })
+      .eq('organization_id', org.organization_id)
+      .eq('is_active', true)
+      .neq('user_id', userId);
+    
+    if (countError) {
+      console.error('[Account Deletion] Error contando miembros:', countError);
+      continue;
+    }
+    
+    // Solo bloquear si hay otros usuarios
+    if (count && count > 0) {
+      blockingOrgs.push(org);
+    }
+  }
+  
+  if (blockingOrgs.length === 0) {
+    return { isBlocked: false };
   }
   
   return {
-    isBlocked: data?.is_blocked || false,
-    blockingOrganizations: data?.blocking_organizations || [],
-    reason: data?.reason || undefined,
+    isBlocked: true,
+    blockingOrganizations: blockingOrgs,
+    reason: `Usuario es el único administrador de ${blockingOrgs.length} organización(es) con suscripción activa y otros usuarios`,
   };
 }
 
@@ -121,7 +158,6 @@ async function anonymizeProfile(userId: string): Promise<void> {
 async function deleteAvatar(userId: string): Promise<void> {
   const supabase = getServiceClient();
   
-  // Buscar archivos del usuario en el bucket profiles/avatars
   const { data: files, error: listError } = await supabase.storage
     .from('profiles')
     .list(`avatars`, {
@@ -151,7 +187,6 @@ async function deleteAvatar(userId: string): Promise<void> {
 async function removeFromOrganizations(userId: string): Promise<void> {
   const supabase = getServiceClient();
   
-  // Marcar como inactivo en lugar de borrar (conserva la referencia para facturación)
   const { error } = await supabase
     .from('organization_members')
     .update({
@@ -167,19 +202,15 @@ async function removeFromOrganizations(userId: string): Promise<void> {
 
 /**
  * Elimina o deshabilita al usuario en Supabase Auth
- * 
- * Libera el email para que pueda ser reutilizado.
  */
 async function disableAuthUser(userId: string): Promise<void> {
   const supabase = getServiceClient();
   
   try {
-    // Intentar eliminar el usuario de Auth (libera el email)
     const { error } = await supabase.auth.admin.deleteUser(userId);
     
     if (error) {
       console.warn('[Account Deletion] No se pudo eliminar de Auth:', error);
-      // Si falla, intentar actualizar el email a uno anónimo
       const anonymizedEmail = `deleted_${userId}@deleted.goadmin.local`;
       await supabase.auth.admin.updateUserById(userId, {
         email: anonymizedEmail,
@@ -193,7 +224,7 @@ async function disableAuthUser(userId: string): Promise<void> {
 }
 
 /**
- * Registra la eliminación en la tabla de auditoría
+ * Registra la eliminación en la tabla de auditoría con hash del email
  */
 async function createAuditRecord(
   userId: string,
@@ -208,7 +239,7 @@ async function createAuditRecord(
     .from('account_deletion_audit')
     .insert({
       user_id: userId,
-      email: email,
+      email: hashEmail(email), // Hash SHA-256, no email en claro
       deletion_requested_at: deletionRequestedAt,
       deletion_completed_at: new Date().toISOString(),
       reason: 'user_request',
@@ -218,12 +249,12 @@ async function createAuditRecord(
       metadata: {
         processed_at: new Date().toISOString(),
         version: '1.0',
+        email_hash_algorithm: 'SHA-256',
       },
     });
   
   if (error) {
     console.error('[Account Deletion] Error creando registro de auditoría:', error);
-    // No lanzar error, solo registrar - la eliminación ya se completó
   }
 }
 
@@ -237,40 +268,60 @@ async function processAccountDeletion(account: PendingDeletion): Promise<Deletio
   try {
     console.log(`[Account Deletion] Procesando usuario ${email} (${user_id})`);
     
-    // 1. Verificar si es único admin con suscripción activa
-    const soleAdminCheck = await checkSoleAdmin(user_id);
+    // 1. Verificar si es único admin con otros usuarios
+    const adminCheck = await checkSoleAdminWithOtherUsers(user_id);
     
-    if (soleAdminCheck.isBlocked) {
+    if (adminCheck.isBlocked) {
       console.warn(
-        `[Account Deletion] Usuario ${email} bloqueado: ${soleAdminCheck.reason}`,
-        soleAdminCheck.blockingOrganizations
+        `[Account Deletion] Usuario ${email} bloqueado: ${adminCheck.reason}`,
+        adminCheck.blockingOrganizations
       );
+      
+      // Enviar alerta a soporte
+      try {
+        await sendAdminBlockNotification(
+          email,
+          user_id,
+          adminCheck.blockingOrganizations || []
+        );
+      } catch (alertError) {
+        console.error('[Account Deletion] Error enviando alerta a soporte:', alertError);
+      }
       
       return {
         success: false,
         user_id,
         email,
-        skipped_reason: `Único administrador con suscripción activa en ${soleAdminCheck.blockingOrganizations?.length} organización(es). Requiere revisión manual.`,
+        skipped_reason: adminCheck.reason || 'Único admin con otros usuarios',
       };
     }
     
-    // 2. Anonimizar datos personales del perfil
+    // 2. Enviar correo de completado ANTES de anonimizar (último uso del email en claro)
+    const requestDate = new Date(deletion_requested_at);
+    try {
+      await sendAccountDeletionCompleteEmail(email, requestDate);
+      actionsTaken.push('sent_confirmation_email');
+    } catch (emailError) {
+      console.warn('[Account Deletion] Error enviando correo de confirmación:', emailError);
+    }
+    
+    // 3. Anonimizar datos personales del perfil
     await anonymizeProfile(user_id);
     actionsTaken.push('anonymized_profile');
     
-    // 3. Eliminar avatar del storage
+    // 4. Eliminar avatar del storage
     await deleteAvatar(user_id);
     actionsTaken.push('deleted_avatar');
     
-    // 4. Remover de organizaciones (marcar como inactivo)
+    // 5. Remover de organizaciones
     await removeFromOrganizations(user_id);
     actionsTaken.push('removed_from_organizations');
     
-    // 5. Deshabilitar/eliminar usuario de Auth
+    // 6. Deshabilitar usuario de Auth
     await disableAuthUser(user_id);
     actionsTaken.push('disabled_auth_user');
     
-    // 6. Crear registro de auditoría
+    // 7. Crear registro de auditoría (con hash del email)
     await createAuditRecord(
       user_id,
       email,
@@ -279,21 +330,12 @@ async function processAccountDeletion(account: PendingDeletion): Promise<Deletio
       actionsTaken
     );
     
-    // 7. Enviar correo de confirmación
-    try {
-      await sendAccountDeletionCompleteEmail(email);
-      actionsTaken.push('sent_confirmation_email');
-    } catch (emailError) {
-      console.warn('[Account Deletion] Error enviando correo de confirmación:', emailError);
-      // No fallar por el correo
-    }
-    
     console.log(`[Account Deletion] Usuario ${email} eliminado exitosamente`);
     
     return {
       success: true,
       user_id,
-      email,
+      email: hashEmail(email), // Ya no retornar email en claro
       actions_taken: actionsTaken,
     };
     
@@ -303,7 +345,7 @@ async function processAccountDeletion(account: PendingDeletion): Promise<Deletio
     return {
       success: false,
       user_id,
-      email,
+      email: hashEmail(email), // No retornar email en claro ni en errores
       error: error instanceof Error ? error.message : String(error),
       actions_taken: actionsTaken,
     };
@@ -330,15 +372,11 @@ export async function getPendingAccountDeletions(daysAfter: number = 10): Promis
 
 /**
  * Procesa todas las cuentas pendientes de eliminación
- * 
- * @param daysAfter - Días calendario después de la solicitud para procesar (por defecto 10)
- * @returns Resultado del procesamiento con estadísticas
  */
 export async function processPendingAccountDeletions(daysAfter: number = 10): Promise<ProcessResult> {
   console.log(`[Account Deletion] Iniciando procesamiento de cuentas pendientes (${daysAfter} días)`);
   
   try {
-    // 1. Obtener cuentas pendientes
     const pendingAccounts = await getPendingAccountDeletions(daysAfter);
     
     if (pendingAccounts.length === 0) {
@@ -354,7 +392,6 @@ export async function processPendingAccountDeletions(daysAfter: number = 10): Pr
     
     console.log(`[Account Deletion] Encontradas ${pendingAccounts.length} cuentas pendientes`);
     
-    // 2. Procesar cada cuenta
     const results: DeletionResult[] = [];
     let succeeded = 0;
     let failed = 0;
@@ -393,14 +430,16 @@ export async function processPendingAccountDeletions(daysAfter: number = 10): Pr
 
 /**
  * Envía el correo inicial cuando el usuario solicita la eliminación
- * 
- * Se debe llamar desde EliminarCuentaSection.tsx después de marcar pending_deletion
  */
 export async function sendDeletionRequestNotification(email: string, userName: string): Promise<void> {
   try {
-    await sendAccountDeletionRequestEmail(email, userName);
+    const requestDate = new Date();
+    const scheduledDate = new Date(requestDate);
+    scheduledDate.setDate(scheduledDate.getDate() + 10); // +10 días calendario
+    
+    await sendAccountDeletionRequestEmail(email, userName, requestDate, scheduledDate);
   } catch (error) {
     console.error('[Account Deletion] Error enviando notificación de solicitud:', error);
-    // No lanzar error - la solicitud ya se registró
+    throw error;
   }
 }

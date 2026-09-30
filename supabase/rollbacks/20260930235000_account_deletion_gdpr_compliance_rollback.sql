@@ -1,4 +1,4 @@
--- Rollback: Revertir cambios de eliminación de cuenta GDPR
+-- Rollback: Revertir cambios de eliminación de cuenta (Ley 1581/2012)
 
 -- 1. Eliminar funciones
 DROP FUNCTION IF EXISTS public.is_sole_admin_with_active_subscription(uuid);

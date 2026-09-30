@@ -1,9 +1,9 @@
 /**
- * Servicio de eliminación de cuentas con cumplimiento GDPR/LOPD
+ * Servicio de eliminación de cuentas con cumplimiento Ley 1581 de 2012
  * 
  * Implementa el flujo de eliminación de datos personales respetando:
  * - Plazo de 15 días hábiles (implementado como 10 días calendario)
- * - Conservación de facturación y contabilidad por 10 años
+ * - Conservación de facturación y contabilidad por 10 años (art. 28 Ley 962 de 2005)
  * - Anonimización vs eliminación según tipo de dato
  * - Auditoría completa sin datos personales
  * 
@@ -170,7 +170,7 @@ async function removeFromOrganizations(userId: string): Promise<void> {
  * 
  * Libera el email para que pueda ser reutilizado.
  */
-async function disableAuthUser(userId: string, email: string): Promise<void> {
+async function disableAuthUser(userId: string): Promise<void> {
   const supabase = getServiceClient();
   
   try {
@@ -267,7 +267,7 @@ async function processAccountDeletion(account: PendingDeletion): Promise<Deletio
     actionsTaken.push('removed_from_organizations');
     
     // 5. Deshabilitar/eliminar usuario de Auth
-    await disableAuthUser(user_id, email);
+    await disableAuthUser(user_id);
     actionsTaken.push('disabled_auth_user');
     
     // 6. Crear registro de auditoría

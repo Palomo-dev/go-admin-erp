@@ -1,6 +1,6 @@
--- Migración: Cumplimiento GDPR para eliminación de cuentas
+-- Migración: Cumplimiento Ley 1581 de 2012 para eliminación de cuentas
 -- Fecha: 2026-09-30
--- Ticket: Eliminación de cuenta con retención legal
+-- Ticket: Eliminación de cuenta con retención legal (art. 28 Ley 962 de 2005)
 
 -- 1. Agregar columna deletion_requested_at a profiles
 ALTER TABLE public.profiles

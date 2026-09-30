@@ -1,7 +1,7 @@
 /**
  * Plantillas de correo para el flujo de eliminación de cuenta
  * 
- * Cumplimiento GDPR: textos proporcionados por Legal
+ * Cumplimiento Ley 1581 de 2012: textos proporcionados por Legal
  */
 
 import { Resend } from 'resend';

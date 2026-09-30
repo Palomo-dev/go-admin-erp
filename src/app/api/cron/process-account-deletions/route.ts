@@ -7,9 +7,9 @@ import { processPendingAccountDeletions } from '@/lib/services/accountDeletionSe
  *
  * Procesa las solicitudes de eliminación de cuenta que han superado el plazo legal.
  * 
- * Cumplimiento GDPR/LOPD:
+ * Cumplimiento Ley 1581 de 2012 (protección de datos personales):
  * - Elimina/anonimiza datos personales después de 10 días calendario (15 días hábiles)
- * - Conserva facturación y contabilidad por 10 años (obligación legal)
+ * - Conserva facturación y contabilidad por 10 años (art. 28 Ley 962 de 2005)
  * - Envía correos de confirmación
  * - Registra auditoría completa sin datos personales
  * 

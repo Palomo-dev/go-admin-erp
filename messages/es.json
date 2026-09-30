@@ -14451,7 +14451,6 @@
       "impuesto": "Impuesto",
       "ventaOrigen": "Venta del POS",
       "ventaWeb": "Pedido web",
-      "ventaWebNumero": "Pedido web {numero}",
       "ventaFactura": "Venta por factura",
       "cartera": "Cuenta por cobrar",
       "pago": "Pago",

@@ -192,8 +192,9 @@ export function DetalleFacturaVenta({ id }: { id: string }) {
         ...(factura.saleId && ventaOrigen
           ? [{
               id: `venta-${factura.saleId}`,
-              tipo: 'venta' as const,
-              numero: ventaOrigen.numero ? t('detalle.ventaWebNumero', { numero: ventaOrigen.numero }) : t(`detalle.${ventaOrigen.clave}`),
+              tipo: ventaOrigen.tipo,
+              etiquetaTipo: ventaOrigen.claveEtiqueta ? t(`detalle.${ventaOrigen.claveEtiqueta}`) : undefined,
+              numero: ventaOrigen.numero ?? t(`detalle.${ventaOrigen.claveNumero}`),
               href: ventaOrigen.href,
             }]
           : []),

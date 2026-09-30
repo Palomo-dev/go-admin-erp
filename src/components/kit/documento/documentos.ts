@@ -75,6 +75,11 @@ export function esTipoDocumento(v: unknown): v is TipoDocumento {
 export interface EslabonDocumento {
   id: string;
   tipo: TipoDocumento;
+  /**
+   * Rótulo propio cuando el nombre del tipo no basta («Pedido web» en vez de
+   * «Pedido», como en Figma `CadenaDocumento`). Sin él, el nombre del tipo.
+   */
+  etiquetaTipo?: string;
   /** «FV-00042», «V-2144», «NC-12». */
   numero: string;
   /** Estado para `StatusBadge` (`paid`, «Anulada»). */

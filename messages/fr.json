@@ -13316,7 +13316,6 @@
       "impuesto": "Taxe",
       "ventaOrigen": "Vente PDV",
       "ventaWeb": "Commande web",
-      "ventaWebNumero": "Commande web {numero}",
       "ventaFactura": "Vente par facture",
       "cartera": "Créance",
       "pago": "Paiement",

@@ -13316,7 +13316,6 @@
       "impuesto": "Imposto",
       "ventaOrigen": "Venda do PDV",
       "ventaWeb": "Pedido web",
-      "ventaWebNumero": "Pedido web {numero}",
       "ventaFactura": "Venda por fatura",
       "cartera": "Conta a receber",
       "pago": "Pagamento",

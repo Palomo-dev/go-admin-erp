@@ -14451,7 +14451,6 @@
       "impuesto": "Tax",
       "ventaOrigen": "POS sale",
       "ventaWeb": "Web order",
-      "ventaWebNumero": "Web order {numero}",
       "ventaFactura": "Invoice sale",
       "cartera": "Receivable",
       "pago": "Payment",

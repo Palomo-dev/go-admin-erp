@@ -488,3 +488,24 @@ Los mismos en todos los frames de cada flujo, sin nombres de organizaciones real
   Retención en la fuente 4 % · ReteICA 0,966 % · ReteIVA 15 %.
 - Otros terceros: Textiles Andinos S.A.S., Carlos Mejía Bordados,
   Empaques del Valle, Hotel Miramar.
+
+## Origen de la venta en la cadena del detalle (2026-09-30)
+
+El detalle de factura rotulaba toda venta enlazada como «Venta del POS», también las facturas
+de pedidos de la tienda web. Ahora el primer eslabón sigue `sales.source`:
+
+| Canal | Eslabón | Enlace |
+|---|---|---|
+| `web` | «Pedido web» · número del pedido (`web_orders.order_number`) · icono de pedido | `/app/pos/pedidos-online/[id]` |
+| `pos` (y sin canal) | «Venta» · «Venta del POS» | `/app/pos/ventas/[id]` |
+| `invoice` | «Venta» · «Venta por factura» | `/app/pos/ventas/[id]` |
+
+Figma (`07 Finanzas` › «Facturas de venta — detalle (B.2)»):
+- «Escritorio / Detalle factura de venta — listo» (`421:174342`): la `DocumentHeader` vuelve arriba
+  (había quedado debajo del contenido) y se añade la `CadenaDocumento` (`1405:831970`) con el caso web.
+- Lámina nueva «Detalle factura de venta — origen de la venta (web · POS · factura)» (`1406:834017`)
+  con los tres casos y la cadena vertical de móvil.
+
+Código: `src/lib/finanzas/ventas/origenVenta.ts` (lógica pura), `facturasVenta.server.ts` (lee el canal
+aparte: `invoice_sales.sale_id` no tiene FK hacia `sales`), `EslabonDocumento.etiquetaTipo` (rótulo propio
+en el kit) y la prueba `src/lib/finanzas/ventas/__tests__/origenVenta.test.tsx`.

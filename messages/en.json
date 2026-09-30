@@ -696,6 +696,7 @@
         "stockCritico": "Critical stock",
         "pedidosWeb": "Web orders",
         "cajasAnteriores": "Registers left open",
+        "reservasStock": "Stale stock reservations",
         "misTareas": "My tasks"
       },
       "estados": {
@@ -714,6 +715,7 @@
         "sinPendientes": "None pending",
         "pendientes": "{n, plural, one {# pending} other {# pending}}",
         "cajasAbiertas": "{n, plural, one {# open register} other {# open registers}}",
+        "reservas": "{n, plural, one {# reservation} other {# reservations}}",
         "abiertas": "{n, plural, one {# open} other {# open}}"
       },
       "detalles": {
@@ -730,6 +732,8 @@
         },
         "pedidosAlDia": "No orders to confirm",
         "pedidosSinConfirmar": "Awaiting payment confirmation",
+        "pedidosPorExpirar": "{n, plural, one {# expires} other {# expire}} in less than {minutos} min",
+        "reservasSinMover": "{unidades, plural, one {# unit reserved} other {# units reserved}} over 24 h ago",
         "cajasDesde": "Open for {dias, plural, one {# day} other {# days}}",
         "tareasVencidas": "{n, plural, one {# overdue} other {# overdue}}{hoy, plural, =0 {} one { · # due today} other { · # due today}}",
         "tareasHoy": "{n, plural, one {# due today} other {# due today}}",
@@ -743,6 +747,7 @@
         "verPedidos": "View orders",
         "atender": "Handle",
         "verCajas": "View registers",
+        "revisar": "Review",
         "abrir": "Open"
       },
       "verTodas": "See all {n} · {resto}"
@@ -760,6 +765,34 @@
       "otros": "Other",
       "otroCanal": "Other channel",
       "sucursalSinNombre": "Branch {id}",
+      "abrirDetalle": "View the sales detail for the period",
+      "grafica": "Sales in the current period compared with the previous one",
+      "sinGrafica": "No payments in this period or the previous one",
+      "sinGraficaMonedas": "With payments in several currencies the trend is not drawn",
+      "frenteConValor": "{frente} ({valor})",
+      "transacciones": "Transactions",
+      "ticketMedio": "Average ticket",
+      "devoluciones": "Refunds",
+      "seActualizaAlAbrir": "Updated when opened; it does not query again every 30 s.",
+      "exportarCsv": "Export CSV",
+      "verVentas": "View sales",
+      "csv": {
+        "hora": "Hour",
+        "dia": "Day"
+      },
+      "frente": {
+        "ayerMismaHora": "vs. yesterday at this time",
+        "anteayer": "vs. the day before yesterday",
+        "anioAnterior": "vs. the previous year",
+        "diasAnteriores": "vs. the previous {n} days",
+        "periodoAnterior": "vs. the previous period"
+      },
+      "leyenda": {
+        "hoy": "Today",
+        "ayerMismaHora": "Yesterday at the same time",
+        "actual": "Current period",
+        "anterior": "Previous period"
+      },
       "canales": {
         "pos": "POS",
         "web": "Online store",
@@ -778,7 +811,9 @@
       "detalleConversion": "visitor → paid order",
       "puntos": "{valor} pp",
       "visitasTodaTienda": "Visits cover the whole store; orders, the selected branch.",
-      "verAnalitica": "View web analytics"
+      "verAnalitica": "View web analytics",
+      "detallePendientes": "{pendientes, plural, one {# pending} other {# pending}} · {expiran, plural, =0 {none expires today} one {# expires today} other {# expire today}}",
+      "detalleConversionPedidos": "visit → order {visitaPedido} % · {pagados} paid"
     },
     "modulos": {
       "titulo": "Modules",
@@ -930,6 +965,101 @@
         "verMarcaciones": "View my time records",
         "marcarTurno": "Clock in/out"
       }
+    },
+    "periodo": {
+      "horasDelDia": "Hours of the day",
+      "todoElDia": "All day",
+      "rangoFechas": "Date range",
+      "desde": "From",
+      "hasta": "To",
+      "notaZona": "Dates are shown in the organization's time zone ({zona})."
+    },
+    "alcance": {
+      "todas": "All branches"
+    },
+    "errorInicio": {
+      "titulo": "The home data could not be loaded",
+      "descripcion": "The query did not respond. The numbers you see may be out of date; zeros are not shown to avoid confusion.",
+      "actualizarTitulo": "The home page could not be updated",
+      "actualizarDesc": "The last valid data is kept.",
+      "reintentar": "Retry"
+    },
+    "primerosPasos": {
+      "titulo": "First steps",
+      "progreso": "{hechos} of {total} · {pct} %",
+      "ocultar": "Hide for now",
+      "mostrar": "Show first steps",
+      "descripcion": "Once you finish these steps, you will see here what needs attention every day: cash, collections, orders, stock and tasks.",
+      "pasos": {
+        "modulos": "Activate modules",
+        "organizacion": "Set up the organization",
+        "sucursal": "Create a branch",
+        "equipo": "Invite the team",
+        "productos": "Add products",
+        "impuestos": "Set up taxes",
+        "clientes": "Register customers"
+      },
+      "hecho": "Done",
+      "pendiente": "Pending",
+      "ir": "Go",
+      "irA": "Go to {paso}",
+      "sinMovimientosTitulo": "No activity yet",
+      "sinMovimientosDesc": "As soon as you record the first sale or invoice, the period trend and recent activity will appear here.",
+      "agregarProductos": "Add products",
+      "abrirPos": "Open the POS"
+    },
+    "actividad": {
+      "titulo": "Recent activity",
+      "filtrar": "Filter activity",
+      "filtros": {
+        "todo": "All",
+        "venta": "Sales",
+        "factura": "Invoices",
+        "cliente": "Customers",
+        "stock": "Inventory",
+        "reserva": "Reservations"
+      },
+      "hace": {
+        "ahora": "now",
+        "minutos": "{n} min ago",
+        "horas": "{n} h ago"
+      },
+      "titulos": {
+        "venta": {
+          "paid": "Sale paid",
+          "pending": "Sale awaiting payment",
+          "void": "Sale voided",
+          "otro": "Sale recorded"
+        },
+        "factura": {
+          "paid": "Invoice {numero} paid",
+          "issued": "Invoice {numero} issued",
+          "partial": "Invoice {numero} partially paid",
+          "void": "Invoice {numero} voided",
+          "otro": "Invoice {numero}"
+        },
+        "cliente": "New customer: {nombre}",
+        "clienteSinNombre": "New customer",
+        "entradaStock": "Stock in · {producto}",
+        "salidaStock": "Stock out · {producto}",
+        "reserva": {
+          "confirmed": "Reservation confirmed",
+          "checked_in": "Reservation checked in",
+          "checked_out": "Reservation checked out",
+          "cancelled": "Reservation cancelled",
+          "no_show": "Reservation no-show",
+          "tentative": "Tentative reservation",
+          "otro": "Reservation recorded"
+        }
+      },
+      "contexto": {
+        "texto": "{texto}",
+        "crm": "CRM",
+        "entrada": "+{n} {n, plural, one {unit} other {units}}",
+        "salida": "−{n} {n, plural, one {unit} other {units}}"
+      },
+      "vacioTitulo": "No activity in the period",
+      "vacioDesc": "Change the period or branch to see more activity."
     }
   },
   "org": {

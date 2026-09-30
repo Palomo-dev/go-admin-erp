@@ -695,6 +695,7 @@
         "stockCritico": "Stock critique",
         "pedidosWeb": "Commandes web",
         "cajasAnteriores": "Caisses non clôturées",
+        "reservasStock": "Réservations de stock inactives",
         "misTareas": "Mes tâches"
       },
       "estados": {
@@ -713,6 +714,7 @@
         "sinPendientes": "Aucune en attente",
         "pendientes": "{n, plural, one {# en attente} other {# en attente}}",
         "cajasAbiertas": "{n, plural, one {# caisse ouverte} other {# caisses ouvertes}}",
+        "reservas": "{n, plural, one {# réservation} other {# réservations}}",
         "abiertas": "{n, plural, one {# ouverte} other {# ouvertes}}"
       },
       "detalles": {
@@ -729,6 +731,8 @@
         },
         "pedidosAlDia": "Aucune commande à confirmer",
         "pedidosSinConfirmar": "En attente de confirmation du paiement",
+        "pedidosPorExpirar": "{n, plural, one {# expire} other {# expirent}} dans moins de {minutos} min",
+        "reservasSinMover": "{unidades, plural, one {# unité réservée} other {# unités réservées}} depuis plus de 24 h",
         "cajasDesde": "Ouverte depuis {dias, plural, one {# jour} other {# jours}}",
         "tareasVencidas": "{n, plural, one {# en retard} other {# en retard}}{hoy, plural, =0 {} one { · # pour aujourd'hui} other { · # pour aujourd'hui}}",
         "tareasHoy": "{n, plural, one {# pour aujourd'hui} other {# pour aujourd'hui}}",
@@ -742,6 +746,7 @@
         "verPedidos": "Voir les commandes",
         "atender": "Traiter",
         "verCajas": "Voir les caisses",
+        "revisar": "Vérifier",
         "abrir": "Ouvrir"
       },
       "verTodas": "Voir les {n} · {resto}"
@@ -759,6 +764,34 @@
       "otros": "Autres",
       "otroCanal": "Autre canal",
       "sucursalSinNombre": "Succursale {id}",
+      "abrirDetalle": "Voir le détail des ventes de la période",
+      "grafica": "Ventes de la période actuelle comparées à la précédente",
+      "sinGrafica": "Aucun encaissement sur cette période ni sur la précédente",
+      "sinGraficaMonedas": "Avec des encaissements en plusieurs devises, la tendance n'est pas tracée",
+      "frenteConValor": "{frente} ({valor})",
+      "transacciones": "Transactions",
+      "ticketMedio": "Panier moyen",
+      "devoluciones": "Remboursements",
+      "seActualizaAlAbrir": "Mis à jour à l'ouverture ; ne relance pas de requête toutes les 30 s.",
+      "exportarCsv": "Exporter en CSV",
+      "verVentas": "Voir les ventes",
+      "csv": {
+        "hora": "Heure",
+        "dia": "Jour"
+      },
+      "frente": {
+        "ayerMismaHora": "par rapport à hier à la même heure",
+        "anteayer": "par rapport à avant-hier",
+        "anioAnterior": "par rapport à l'année précédente",
+        "diasAnteriores": "par rapport aux {n} jours précédents",
+        "periodoAnterior": "par rapport à la période précédente"
+      },
+      "leyenda": {
+        "hoy": "Aujourd'hui",
+        "ayerMismaHora": "Hier à la même heure",
+        "actual": "Période actuelle",
+        "anterior": "Période précédente"
+      },
       "canales": {
         "pos": "Caisse",
         "web": "Boutique en ligne",
@@ -777,7 +810,9 @@
       "detalleConversion": "visiteur → commande payée",
       "puntos": "{valor} pts",
       "visitasTodaTienda": "Les visites concernent toute la boutique ; les commandes, la succursale choisie.",
-      "verAnalitica": "Voir l'analyse web"
+      "verAnalitica": "Voir l'analyse web",
+      "detallePendientes": "{pendientes, plural, one {# en attente} other {# en attente}} · {expiran, plural, =0 {aucune n'expire aujourd'hui} one {# expire aujourd'hui} other {# expirent aujourd'hui}}",
+      "detalleConversionPedidos": "visite → commande {visitaPedido} % · {pagados} payées"
     },
     "modulos": {
       "titulo": "Modules",
@@ -929,6 +964,101 @@
         "verMarcaciones": "Voir mes pointages",
         "marcarTurno": "Pointer"
       }
+    },
+    "periodo": {
+      "horasDelDia": "Heures de la journée",
+      "todoElDia": "Toute la journée",
+      "rangoFechas": "Plage de dates",
+      "desde": "Du",
+      "hasta": "Au",
+      "notaZona": "Les dates sont affichées dans le fuseau horaire de l'organisation ({zona})."
+    },
+    "alcance": {
+      "todas": "Toutes les succursales"
+    },
+    "errorInicio": {
+      "titulo": "Impossible de charger les données de l'accueil",
+      "descripcion": "La requête n'a pas répondu. Les chiffres affichés peuvent être périmés ; aucun zéro n'est affiché pour éviter toute confusion.",
+      "actualizarTitulo": "Impossible de mettre à jour l'accueil",
+      "actualizarDesc": "Les dernières données valides sont conservées.",
+      "reintentar": "Réessayer"
+    },
+    "primerosPasos": {
+      "titulo": "Premiers pas",
+      "progreso": "{hechos} sur {total} · {pct} %",
+      "ocultar": "Masquer pour l'instant",
+      "mostrar": "Afficher les premiers pas",
+      "descripcion": "Une fois ces étapes terminées, vous verrez ici ce qu'il faut traiter chaque jour : caisse, encaissements, commandes, stock et tâches.",
+      "pasos": {
+        "modulos": "Activer des modules",
+        "organizacion": "Configurer l'organisation",
+        "sucursal": "Créer une succursale",
+        "equipo": "Inviter l'équipe",
+        "productos": "Ajouter des produits",
+        "impuestos": "Configurer les taxes",
+        "clientes": "Enregistrer des clients"
+      },
+      "hecho": "Fait",
+      "pendiente": "À faire",
+      "ir": "Aller",
+      "irA": "Aller à {paso}",
+      "sinMovimientosTitulo": "Aucun mouvement pour l'instant",
+      "sinMovimientosDesc": "Dès que vous enregistrerez la première vente ou facture, la tendance de la période et l'activité récente apparaîtront ici.",
+      "agregarProductos": "Ajouter des produits",
+      "abrirPos": "Ouvrir la caisse"
+    },
+    "actividad": {
+      "titulo": "Activité récente",
+      "filtrar": "Filtrer l'activité",
+      "filtros": {
+        "todo": "Tout",
+        "venta": "Ventes",
+        "factura": "Factures",
+        "cliente": "Clients",
+        "stock": "Inventaire",
+        "reserva": "Réservations"
+      },
+      "hace": {
+        "ahora": "à l'instant",
+        "minutos": "il y a {n} min",
+        "horas": "il y a {n} h"
+      },
+      "titulos": {
+        "venta": {
+          "paid": "Vente payée",
+          "pending": "Vente en attente de paiement",
+          "void": "Vente annulée",
+          "otro": "Vente enregistrée"
+        },
+        "factura": {
+          "paid": "Facture {numero} payée",
+          "issued": "Facture {numero} émise",
+          "partial": "Facture {numero} partiellement payée",
+          "void": "Facture {numero} annulée",
+          "otro": "Facture {numero}"
+        },
+        "cliente": "Nouveau client : {nombre}",
+        "clienteSinNombre": "Nouveau client",
+        "entradaStock": "Entrée de stock · {producto}",
+        "salidaStock": "Sortie de stock · {producto}",
+        "reserva": {
+          "confirmed": "Réservation confirmée",
+          "checked_in": "Réservation enregistrée à l'arrivée",
+          "checked_out": "Réservation clôturée au départ",
+          "cancelled": "Réservation annulée",
+          "no_show": "Réservation non honorée",
+          "tentative": "Réservation provisoire",
+          "otro": "Réservation enregistrée"
+        }
+      },
+      "contexto": {
+        "texto": "{texto}",
+        "crm": "CRM",
+        "entrada": "+{n} {n, plural, one {unité} other {unités}}",
+        "salida": "−{n} {n, plural, one {unité} other {unités}}"
+      },
+      "vacioTitulo": "Aucun mouvement sur la période",
+      "vacioDesc": "Changez de période ou de succursale pour voir plus de mouvements."
     }
   },
   "org": {

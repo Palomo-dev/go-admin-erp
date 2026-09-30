@@ -1159,7 +1159,10 @@ describe('F0 Guardarraíles', () => {
     const supabaseConfig = readFile(path.join(SRC_ROOT, 'lib', 'supabase', 'config.ts'));
     const subscriptionGuard = readFile(path.join(SRC_ROOT, 'lib', 'hooks', 'useSubscriptionGuard.ts'));
     const inicio = readFile(path.join(SRC_ROOT, 'app', 'app', 'inicio', 'page.tsx'));
-    const kpis = readFile(path.join(SRC_ROOT, 'components', 'inicio', 'DashboardKPIs.tsx'));
+    // Tanda 4 del inicio (2026-09-30): la grilla vieja `DashboardKPIs` salió
+    // del inicio (Figma 445:137185); cada bloque lee su ruta /api/inicio/* y
+    // la actividad pagina de 4 en 4 en el servidor.
+    const actividad = readFile(path.join(SRC_ROOT, 'components', 'inicio', 'ActividadReciente.tsx'));
 
     test('datos y refresh tienen timeout sin cancelar el resto de auth', () => {
       expect(supabaseConfig).toContain('const DATA_REQUEST_TIMEOUT_MS = 15_000;');
@@ -1188,7 +1191,10 @@ describe('F0 Guardarraíles', () => {
       // solo cuando el contexto cargado es de ESTA organización
       // (resolvedOrganizationId), no con `!loading` a secas.
       expect(inicio).toContain('const rolResuelto = !!organization && resolvedOrganizationId === organization.id;');
-      expect(inicio).toContain('if (!organization?.id || branchLoading || !rolResuelto) return;');
+      // Ya no hay un `loadData` en la página: los bloques del panel no se
+      // montan (y no consultan) hasta tener organización, sucursal y rol.
+      expect(inicio).toContain('const puedeConsultar = !!organization?.id && !branchLoading && rolResuelto && canSeeFinancialDashboard;');
+      expect(inicio).toContain('!puedeConsultar ? (');
     });
 
     test('el inicio no elige panel (empleado/financiero) hasta resolver el rol', () => {
@@ -1201,7 +1207,7 @@ describe('F0 Guardarraíles', () => {
     test('el inicio limita la carga inicial a cuatro skeletons', () => {
       expect(inicio).not.toContain('Array.from({ length: 10 })');
       expect(inicio).not.toContain('Array.from({ length: 8 })');
-      expect(kpis).toContain('Array.from({ length: 4 })');
+      expect(actividad).toContain('Array.from({ length: TAMANO_ACTIVIDAD })');
     });
   });
 

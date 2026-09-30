@@ -1,13 +1,14 @@
 /**
- * Rango de instantes del selector de periodo del inicio (`PeriodoSelector`:
- * Hoy · Ayer · 7 · 30 · 90 días · Año · Personalizado, con filtro de horas) y
- * del periodo anterior con el que se compara.
+ * Rango de instantes del selector de periodo del inicio
+ * (`SelectorPeriodoInicio`: Hoy · Ayer · 7 · 30 · 90 días · Año ·
+ * Personalizado, con filtro de horas) y del periodo anterior con el que se
+ * compara.
  *
- * Regla pura y ÚNICA: la usa el navegador (`inicioService.rangoPeriodo`, KPIs
- * y tendencia) y el servidor (`/api/inicio/ventas`, `/tienda-web`,
- * `/modulos`), para que la tarjeta de ventas, la tienda web y los módulos
- * cuenten el mismo periodo que los KPIs. Antes vivía solo dentro de
- * `inicioService.ts` y leía la zona con el cliente del navegador.
+ * Regla pura y ÚNICA: la usan todas las rutas del inicio con periodo
+ * (`/api/inicio/ventas`, `/tienda-web`, `/actividad`, `/modulos`), así que
+ * ventas, actividad, tienda web y módulos cuentan el mismo periodo. Antes
+ * vivía dentro de `inicioService.ts` (borrado en la tanda 4, 2026-09-30) y
+ * leía la zona con el cliente del navegador.
  *
  * - Días en la zona de la organización y con sus horas de operación
  *   (`getDayRange` / `getDateRange` de `dateRanges.ts`); nunca el día UTC.

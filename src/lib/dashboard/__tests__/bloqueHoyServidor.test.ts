@@ -43,7 +43,7 @@ function cadena(tabla: string) {
   const filtros: Array<[string, string, unknown]> = (filtrosPorTabla[tabla] ??= []);
   const q: Record<string, unknown> = {};
   for (const m of ['select', 'order', 'limit']) q[m] = () => q;
-  for (const m of ['eq', 'in', 'is', 'lt', 'gte']) {
+  for (const m of ['eq', 'in', 'is', 'lt', 'gte', 'gt']) {
     q[m] = (col: string, val?: unknown) => {
       filtros.push([m, col, val]);
       return q;
@@ -54,18 +54,27 @@ function cadena(tabla: string) {
       ? { count: 2, data: null, error: null }
       : tabla === 'cash_sessions'
         ? { count: 1, data: [{ opened_at: '2026-09-26T13:00:00Z' }], error: null }
-        : { count: 5, data: [{ id: 'x' }], error: null };
+        : tabla === 'stock_levels'
+          ? { count: 2, data: [{ qty_reserved: 3 }, { qty_reserved: '4' }], error: null }
+          : { count: 5, data: [{ id: 'x' }], error: null };
   q.then = (ok: (x: unknown) => void) => ok(resultado);
   return q;
 }
 
-const ctx = { organizationId: 120, userId: 'u-1', supabase: { from: cadena } as never };
+const llamadasRpc: Array<{ fn: string; args: Record<string, unknown> }> = [];
+function rpc(fn: string, args: Record<string, unknown>) {
+  llamadasRpc.push({ fn, args });
+  return Promise.resolve({ data: { pendientes: 5, por_expirar: 2, expiran_hoy: 3, minutos: 30, hay_pedidos: true }, error: null });
+}
+
+const ctx = { organizationId: 120, userId: 'u-1', supabase: { from: cadena, rpc } as never };
 
 beforeEach(() => {
   modulos = ['finance', 'inventory', 'pos'];
   carteraFalla = false;
   consultasCartera.length = 0;
   consultasStock.length = 0;
+  llamadasRpc.length = 0;
   for (const k of Object.keys(filtrosPorTabla)) delete filtrosPorTabla[k];
   jest.spyOn(console, 'error').mockImplementation(() => undefined);
 });
@@ -76,13 +85,30 @@ test('con los tres módulos: todas las casillas, con la sucursal pedida y la org
   const d = await datosHoy(ctx, 7, new Date('2026-09-29T15:00:00Z'));
   expect(d.porCobrar).toEqual({ vencido: 3480000, cuentas: 7, diasMasVieja: 42, monedas: ['COP'] });
   expect(d.stock).toEqual({ bajoMinimo: 3, agotados: 1 });
-  expect(d.pedidosWeb).toEqual({ pendientes: 5 });
+  expect(d.pedidosWeb).toEqual({ pendientes: 5, porExpirar: 2, minutos: 30 });
   expect(d.cajasAnteriores).toEqual({ cantidad: 1, diasMasVieja: 3 });
+  // Reservas de stock sin mover (lo que mostraba el panel de observabilidad):
+  // solo en las sucursales pedidas, con control de stock y más de 24 h quietas.
+  expect(d.reservasStock).toEqual({ huerfanas: 2, unidades: 7 });
+  expect(filtrosPorTabla.stock_levels).toEqual(
+    expect.arrayContaining([
+      ['in', 'branch_id', [7]],
+      ['gt', 'qty_reserved', 0],
+      ['is', 'lot_id', null],
+      ['eq', 'products.track_stock', true],
+      ['lt', 'updated_at', '2026-09-28T15:00:00.000Z'],
+    ]),
+  );
   expect(d.tareas).toEqual({ abiertas: 2, vencenHoy: 2, vencidas: 2 });
   expect(d.unaSucursal).toBe(true);
   expect(consultasCartera[0]).toMatchObject({ sucursal: 7 });
   expect(consultasStock[0]).toEqual({ org: 120, sucursales: [7] });
-  for (const tabla of ['tasks', 'web_orders', 'cash_sessions']) {
+  // Pedidos web: la función única del inicio, con la organización del
+  // contexto, la sucursal pedida y la ventana de 30 min.
+  expect(llamadasRpc).toEqual([
+    { fn: 'fn_inicio_pedidos_web_pendientes', args: { p_organization_id: 120, p_branch_id: 7, p_minutos: 30 } },
+  ]);
+  for (const tabla of ['tasks', 'cash_sessions']) {
     expect(filtrosPorTabla[tabla]).toContainEqual(['eq', 'organization_id', 120]);
   }
   expect(filtrosPorTabla.tasks).toContainEqual(['eq', 'assigned_to', 'u-1']);
@@ -97,7 +123,7 @@ test('módulo apagado: su casilla llega null y no se consulta', async () => {
   expect(d.pedidosWeb).toBeNull();
   expect(d.cajasAnteriores).toBeNull();
   expect(consultasStock).toHaveLength(0);
-  expect(filtrosPorTabla.web_orders).toBeUndefined();
+  expect(llamadasRpc).toHaveLength(0);
 });
 
 test('sin la lista de módulos solo quedan las tareas propias (no se adivina)', async () => {

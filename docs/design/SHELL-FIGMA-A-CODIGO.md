@@ -679,3 +679,118 @@ comprobado en local y en la base, dentro de un bloque que se revierte).
 
 - La ciudad se agrupa por nombre con `max(region)` (como antes): dos municipios homónimos de departamentos
   distintos se suman en una fila. Hoy no hay ningún caso en la base; si aparece, agrupar por `(city, region)`.
+
+## Tanda 4 — inicio igual al Figma (2026-09-30)
+
+Sin commit ni push. El dueño abría `/app/inicio` y «seguía lo viejo»: el inicio nuevo de la tanda 2 convivía con
+la fila de atajos, la grilla vieja de KPIs, la tendencia aparte, la actividad vieja, el panel suelto de
+observabilidad, la franja de onboarding y el selector de periodo viejo (en móvil, siete iconos con etiquetas
+cortadas). Se leyeron por MCP de Figma los 13 frames de `445:137182`, sus anotaciones y el texto `445:137184`.
+
+### Frame por frame
+
+| Frame | Lo que pintaba el código | Ahora |
+|---|---|---|
+| `445:137185` escritorio listo | Cabecera con Personalizar/Actualizar en texto, sin «⋯» ni organización; `PeriodoSelector` (SegmentedControl gris + rango e `HorasPresets` en línea); atajos; KPIs viejos; `TarjetaVentas` sin gráfica y `DashboardTendencia` debajo (30 días fijos, otra regla de ventas, sin sucursal); `DashboardActividad`; `WebCommerceObservability` | Cabecera: saludo, «fecha · organización», Actualizar (solo icono), Marcar turno, Personalizar, «⋯» · sucursal + `SelectorPeriodoInicio` (7 opciones con el aspecto de `SelectorPeriodo` y «Horas») · «Hoy» · «Ventas del periodo» con la gráfica actual/anterior dentro, leyenda y rango \| «Actividad reciente» con filtros y «1–4 de 15» · «Tienda web» con miniaturas · «Módulos» |
+| `445:137401` cargando | Esqueletos por bloque, grilla de 6 + KPIs | Cabecera y selector no esperan (§E.1); esqueleto de «Hoy», fila de dos y filas de módulos |
+| `445:137617` vacío | Franja `OnboardingBanner` encima de todo, 3 primeros días, estilos fuera del manual | «Primeros pasos» en lugar de «Hoy» (§C.4) con «3 de 7 · 43 %», «Ocultar por ahora», «Ir» solo a páginas del menú; «Todavía no hay movimientos» con «Agregar productos» y «Abrir el POS» en lugar de ventas y actividad |
+| `445:137833` error | Una caja roja por bloque | Si fallan ventas y actividad, un solo estado «No se pudieron cargar los datos del inicio» con «Reintentar»; «Actualizar» que falla deja los datos y avisa «Se conservan los últimos datos válidos» con «Reintentar»; cada módulo reintenta por su cuenta |
+| `445:138049` sin sucursal | Ya estaba (`EmptyState sinSucursal`) | Igual; no se lanza ninguna lectura del panel |
+| `448:196680` detalle de KPI | `KpiDetailDialog` (volvía a lanzar las 41 consultas y dejaba un intervalo de 30 s, §B.2) | `DetalleVentas`: la misma lectura de la tarjeta, una recarga al abrirse; total, variación «frente a … (valor)», desglose por canal o sucursal, transacciones, ticket medio, devoluciones, gráfica, «Exportar CSV» y «Ver ventas» (si la persona ve esa página) |
+| `448:196736` periodo personalizado | Campos y horas en línea que empujaban la cabecera | Capa anclada al botón (patrón 11): rango con `CampoFecha`, nota de la zona de la organización, «Horas del día» (Mañana · Tarde · Noche · Todo el día + rango libre), Cancelar/Aplicar |
+| `448:196794` / `448:196927` personalizar | Incluía «Indicadores» | «Hoy» fijo + Ventas del periodo · Actividad reciente · Tienda web + módulos (sin «Indicadores»: la grilla salió) |
+| `448:205216` móvil listo | Botones de cabecera, selector de 7 iconos truncados, atajos, KPIs viejos | Saludo y fecha; sucursal + `Select` del periodo + «⋯» (Actualizar, Personalizar…); «Hoy» apilado con «Ver las N»; ventas con gráfica; tienda web; módulos. Sin actividad (no está en el frame: ni se consulta) |
+| `448:205458` / `448:205616` / `448:205745` móvil cargando, vacío, detalle | — | Mismos componentes; el detalle es hoja inferior (`PanelAdaptable`) |
+
+### Qué se quitó y dónde quedó cada cosa
+
+| Pieza vieja | Destino |
+|---|---|
+| `DashboardAtajos` (lista cableada de rutas y módulos, contra la regla del mapa de módulos) | Borrada. «Ver módulo →» de cada fila de «Módulos» (menú visible del servidor) y el menú lateral |
+| `DashboardKPIs` + `KpiDetailDialog` + `inicioService.getDashboardData` (41 consultas desde el navegador) | Borrados. Ventas → «Ventas del periodo» y su detalle; facturas y cartera → fila Finanzas de «Módulos»; clientes → CRM; productos → Inventario; miembros → RRHH; reservas → Hotel; visitas, compras y conversión web → «Tienda web» (+ `/app/inicio/analitica-web`) |
+| `DashboardTendencia` | Borrada; la gráfica vive dentro de «Ventas del periodo» con la regla única de ventas y el periodo/sucursal del selector |
+| `DashboardActividad` | Borrada; `ActividadReciente` (servidor). Reservas: chip «Reservas» solo para quien tiene hotel y alguna en el periodo |
+| `WebCommerceObservability` en el inicio | Pedidos por expirar → casilla «Pedidos web» de «Hoy» («N expiran en menos de 30 min») y «Tienda web» («N expiran hoy»). Reservas huérfanas → casilla nueva «Reservas de stock sin mover» de «Hoy» (aviso solo si las hay; «Revisar» lleva a Pedidos online). El panel completo (items reservados, stock disponible por producto) se monta ahora en `/app/pos/pedidos-online`, donde se atienden los pedidos |
+| `OnboardingBanner` | Borrado; «Primeros pasos» (mismos 7 pasos, conteos en el servidor) |
+| `PeriodoSelector` del inicio | Borrado; `SelectorPeriodoInicio`. `HorasPresets` sigue (lo usa Reportes) y exporta sus franjas |
+| `useDashboardRealtime` (canal a todas las tablas + intervalo de 30 s) | Borrado. «Hoy» sigue refrescando cada 2 min con la pestaña visible; el resto con «Actualizar» |
+| `DashboardAlertas` (sin montar desde la tanda 1) | Borrado |
+
+`DashboardModulos`, `ModuloSection`, `LazySection` y `components/inicio/sections/*` siguen sin montar desde la
+tanda 2 pero no se borraron: los leen `guardrails.test.ts` (COP cableado) y las pruebas de comisiones F13.
+
+### Migraciones (por MCP, con `.sql` y rollback)
+
+| Migración | Qué | md5(prosrc) antes → después |
+|---|---|---|
+| `20260930230000_inicio_pedidos_web_pendientes` | Nueva `fn_inicio_pedidos_web_pendientes(org, sucursal, minutos)`: pendientes, `por_expirar`, `expiran_hoy` (día de `fn_timezone_for`), `hay_pedidos`; criterio de expiración de `expire_pending_web_orders`. La usan «Hoy» y «Tienda web» | — → `2aed560ca16defe5dd36e61b0e72ddc8` |
+| `20260930230100_inicio_series_diarias` | `fn_inicio_ventas_rango`: `actual.granularidad` y `actual.serie` (neto por hora si el rango cabe en 2 días, si no por día, en la zona `fn_timezone_for`; sale de los mismos CTE, suma exactamente `neto` —verificado en tres organizaciones—); `fn_inicio_ventas_periodo` la devuelve para el periodo y el anterior sin cambiar. `fn_inicio_tienda_web`: `serie` [{b, visitantes, pedidos, pagados}], `por_expirar`, `expiran_hoy` | ventas_rango `af58f90c…c1f2` → `9259818828e635c04edbbb617f166bd7`; tienda_web `b3619e82…b4c4` → `8c8e5889ab2413db90a5d0be90bfbaae` |
+| `20260930230200_inicio_actividad` | Nueva `fn_inicio_actividad`: ventas, facturas, clientes, stock y reservas del periodo y la sucursal, cada tipo solo con su módulo activo y su permiso (`fn_caja_puede`), conteo por tipo y una página | — → `4029dba8c1a7c1b9ff36aae0968f2e7e` |
+
+Todas SECURITY DEFINER con `fn_assert_acceso_org`, `revoke … from public, anon`. El rollback de las series lleva los
+cuerpos anteriores byte a byte (md5 comprobado contra la base). `fn_inicio_tienda_web` se aplicó dos veces: la
+primera versión agrupaba (hora/día, visitante) sobre las visitas crudas y ordenaba en disco (2,25 s en frío /
+656 ms en caliente); el archivo refleja la versión final (visitante por hora/día primero y de ahí el total).
+`get_advisors`: solo el aviso esperado de SECURITY DEFINER ejecutable por `authenticated`.
+
+EXPLAIN ANALYZE (organización 137, la de más visitas: 120 mil; 30 días + 30 anteriores): `fn_inicio_tienda_web`
+456 ms antes → 530 ms después (la serie cuesta ~25 ms; el resto es el mismo índice de visitas). La ruta mantiene
+su caché de 60 s por organización, usuario, periodo y sucursal: una sola llamada por render, sin consultas por
+fila. `fn_inicio_ventas_periodo` (organización 135, 30 días): 94 ms en frío / 41 ms. `fn_inicio_actividad` (un año):
+93 ms (organización 135) y 208 ms (organización 2, 18 mil clientes).
+
+### Rutas nuevas
+
+| Ruta | Qué |
+|---|---|
+| `GET /api/inicio/actividad?periodo…&sucursal=&tipo=&pagina=&tamano=` | `withOrg`, panel completo, periodo/sucursal (`pedidoPanel`), filtro y página validados (`leerPedidoActividad`); 42501 → 403 |
+| `GET /api/inicio/primeros-pasos` | `withOrg`, panel completo; conteos con el cliente de la sesión y enlaces solo a páginas del menú visible |
+
+`GET /api/inicio/ventas` añade `hrefVentas` (solo si se ve `/app/pos/ventas`). Regla nueva compartida
+`lib/pos/reservasStock.ts` (umbral de reserva huérfana), que ahora usan la ruta de observabilidad y «Hoy».
+
+### Decisiones
+
+- «Actualizar» recarga ventas, actividad, tienda y primeros pasos en silencio (`useLecturaInicio` con `refresco`):
+  sin esqueleto y, si falla, se conservan los datos y avisa un toast. «Hoy» y «Módulos» recargan como antes.
+- «Hoy» y la fila de ventas esperan a saber si la organización es nueva: montarlos antes lanzaba sus consultas y
+  parpadeaba. Si la lectura de los pasos falla, se pinta el panel normal.
+- «Vacío» = sin ventas, facturas, movimientos de stock ni reservas nunca. «Módulos» y «Tienda web» se pintan igual
+  (el frame no los muestra; una organización sin ventas pero con hotel o gimnasio perdería el acceso).
+- La casilla «Caja» del frame sigue sustituida por «Cajas sin cerrar» (V.9b). «Hoy» mantiene el tope de cinco.
+- La tarjeta «Tienda web» solo lleva «Ver analítica web» (`463:15514`); los pedidos se atienden desde «Hoy».
+- Conversión de la tienda: pagados/visitantes (como la tanda 2); el detalle dice «visita → pedido N % · M pagados»
+  (el «abandono» del frame no está en la RPC).
+- Móvil: las acciones de la cabecera pasan al «⋯» junto al periodo (el frame no tiene botones).
+- Bug del dueño en móvil («Hoy» recortado con un hueco debajo): no se reprodujo en Chromium a 390 y 360 px ni con
+  el código de producción (`origin/master`, mismo `BloqueHoy`). Se quitó el único recorte del camino
+  (`overflow-hidden` de `TarjetaHoy`, el acento va ahora dentro del borde con su radio) y la tarjeta crece con su
+  contenido. Verificado con un arnés que renderiza la página real (esbuild + Tailwind del repo + Chromium de
+  `/opt/pw-browsers`) a 1440, 390 y 360 px: las casillas se apilan completas y no hay desborde horizontal. Pendiente
+  confirmar en el iPhone del dueño (WebKit no está disponible aquí).
+
+### Pruebas (TZ=UTC y TZ=America/Bogota)
+
+| Suite | Qué |
+|---|---|
+| `lib/dashboard/__tests__/inicioTanda4.test.ts` | series (lectura, alineación, etiquetas de día sin correrse con TZ del proceso, trazo, CSV), actividad (pedido, respuesta, chips, títulos, «hace N min»), primeros pasos |
+| `lib/dashboard/__tests__/inicioTanda4Servidor.test.ts` | args de `fn_inicio_actividad` (organización del contexto, desplazamiento), 42501 → 403, conteos de primeros pasos, «Ver ventas» |
+| `app/api/inicio/__tests__/rutasTanda4.test.ts` | 401, 403 empleado, 400 (periodo, sucursal ajena, tipo, página, tamaño), organización de la sesión |
+| `components/inicio/__tests__/inicioTanda4.test.tsx` | tarjeta de ventas y detalle, recarga silenciosa, actividad (filtro y página al servidor), miniaturas, primeros pasos, selector; 4 idiomas |
+| `components/inicio/__tests__/paginaInicio.test.tsx` | la página: orden del Figma, solo `/api/inicio/*` con la organización, Actualizar, vacío, error de fila, sin sucursal, móvil, empleado; 4 idiomas |
+| `bloqueHoy*.test.ts` | casilla «Reservas de stock sin mover», «N expiran en menos de 30 min», RPC de pedidos web |
+
+50 suites y 1.821 pruebas en verde en las dos zonas (inicio, dashboard, rutas del inicio, guardrails, guardarraíl
+de rutas, i18n, timezone, reportes, pedidos online, `lib/pos`). `guardrails.test.ts`: se cambió el bloque del
+inicio (leía `DashboardKPIs.tsx` y la línea de `loadData`), manteniendo la intención: la página no monta bloques
+que consulten antes de tener organización, sucursal y rol. `tsc` completo: 0 errores. ESLint limpio en lo tocado.
+
+### Pendiente
+
+- Unificar el criterio de expiración de pedidos web: vive en `expire_pending_web_orders`,
+  `fn_inicio_pedidos_web_pendientes` y la ruta de observabilidad (Node).
+- Claves i18n de las piezas borradas (`home.kpis`, `home.activity`, `home.onboarding`, `home.quickAccess`…) siguen
+  en los cuatro idiomas: quitarlas cuando no haya otra sesión editando `messages/*.json`.
+- `posDashboardService.ts` menciona `inicioService` en tres comentarios.
+- Borrar `DashboardModulos`, `ModuloSection`, `LazySection` y `sections/*` exige mover antes las pruebas F13 y la
+  lista del guardarraíl de COP.

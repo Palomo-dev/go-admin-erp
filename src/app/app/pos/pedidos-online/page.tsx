@@ -52,6 +52,7 @@ import {
 import { WebOrderCard } from '@/components/pos/pedidos-online/WebOrderCard';
 import { WebOrderFilters } from '@/components/pos/pedidos-online/WebOrderFilters';
 import { WebOrderStats } from '@/components/pos/pedidos-online/WebOrderStats';
+import { WebCommerceObservability } from '@/components/pos/pedidos-online/WebCommerceObservability';
 import { PaymentStatusBadge } from '@/components/pos/pedidos-online/PaymentStatusBadge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
@@ -711,6 +712,13 @@ export default function PedidosOnlinePage() {
 
       {/* Estadísticas */}
       <WebOrderStats stats={stats} previousStats={previousStats} isLoading={loading} datePreset={datePreset} />
+
+      {/* Observabilidad de la tienda (stock reservado, reservas huérfanas y
+          pedidos por expirar), plegada. Vivía suelta en el inicio; el Figma
+          del inicio (445:137185) solo conserva el conteo «N expiran en menos
+          de 30 min» en el bloque «Hoy», así que el panel completo vive aquí,
+          donde se atienden los pedidos. */}
+      <WebCommerceObservability organizationId={organization?.id} withinMinutes={30} />
 
       {/* Filtro de fechas */}
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">

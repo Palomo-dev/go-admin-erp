@@ -35,9 +35,13 @@ export function TarjetaHoy({ tono, etiqueta, estado, cifra, detalle, accion, cla
   return (
     <article
       data-tono={tono}
-      className={cn('relative flex min-h-[152px] min-w-0 flex-col overflow-hidden rounded-xl border border-line bg-surface', className)}
+      // Sin `overflow-hidden` ni alto fijo (2026-09-30): en el móvil del dueño
+      // el bloque «Hoy» se veía recortado a media tarjeta con un hueco debajo.
+      // La tarjeta crece con su contenido; el acento va dentro del borde con
+      // su propio radio en vez de recortarse con el contenedor.
+      className={cn('relative flex h-auto min-h-[152px] min-w-0 flex-col rounded-xl border border-line bg-surface', className)}
     >
-      <span aria-hidden="true" className={cn('absolute inset-y-0 left-0 w-1', ACENTO[tono])} />
+      <span aria-hidden="true" className={cn('absolute -bottom-px -left-px -top-px w-1 rounded-l-xl', ACENTO[tono])} />
       <div className="flex flex-1 flex-col gap-1.5 pb-2 pl-4 pr-3 pt-3">
         <div className="flex items-center justify-between gap-2">
           <h3 className="truncate text-xs font-medium leading-4 text-fg-secondary">{etiqueta}</h3>

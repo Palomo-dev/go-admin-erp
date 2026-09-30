@@ -60,8 +60,13 @@ describe('TarjetaVentas', () => {
     expect(pedidos[0]).toMatchObject({ url: '/api/inicio/ventas?periodo=7d&sucursal=7', org: '120' });
     expect(container.querySelector('[data-cifra="neto"]')?.textContent).toMatch(/4\.200\.000/);
     expect(container.textContent).toContain('+14,0 %');
-    expect(container.querySelector('[data-desglose="canal"]')?.textContent).toContain('POS');
-    expect(container.textContent).toContain('48 ventas cobradas');
+    // Tanda 4 (Figma 447:73045): canales, contra qué se compara y la moneda.
+    expect(container.querySelector('[data-subtitulo="ventas"]')?.textContent).toBe('POS + Tienda web · frente a los 7 días anteriores · COP');
+    // El desglose y las ventas cobradas pasaron al detalle (448:196680).
+    fireEvent.click(container.querySelector('#inicio-ventas-titulo button') as HTMLElement);
+    const detalle = document.body.querySelector('[data-detalle="ventas"]') as HTMLElement;
+    expect(detalle.textContent).toContain('POS');
+    expect(detalle.textContent).toContain('Transacciones48');
   });
 
   test('con cobros en varias monedas no muestra un total', async () => {
@@ -94,7 +99,8 @@ describe('TarjetaTiendaWeb', () => {
     respuestas['/api/inicio/tienda-web'] = { status: 200, json: TIENDA };
     const { container } = renderConIdioma(<TarjetaTiendaWeb organizationId={120} periodo="30d" sucursal={null} />, { idioma });
     await waitFor(() => expect(container.querySelectorAll('h3')).toHaveLength(3));
-    expect(Array.from(container.querySelectorAll('a')).map((a) => a.getAttribute('href'))).toEqual(['/app/pos/pedidos-online', '/app/inicio/analitica-web']);
+    // Figma 463:15514: solo «Ver analítica web» (los pedidos se atienden desde «Hoy»).
+    expect(Array.from(container.querySelectorAll('a')).map((a) => a.getAttribute('href'))).toEqual(['/app/inicio/analitica-web']);
     sinClavesCrudas(container.textContent);
   });
 
@@ -186,11 +192,11 @@ describe('DialogoPersonalizar', () => {
     );
     const dialogo = document.body.querySelector('[role="dialog"]') as HTMLElement;
     const interruptores = within(dialogo).getAllByRole('switch');
-    // Hoy + 4 bloques + 1 módulo.
-    expect(interruptores).toHaveLength(6);
+    // Hoy + 3 bloques (ventas, actividad, tienda web; «Indicadores» salió en la tanda 4) + 1 módulo.
+    expect(interruptores).toHaveLength(5);
     expect(interruptores[0].hasAttribute('disabled')).toBe(true);
     sinClavesCrudas(dialogo.textContent);
-    fireEvent.click(interruptores[5]);
+    fireEvent.click(interruptores[4]);
     const botones = within(dialogo).getAllByRole('button');
     fireEvent.click(botones[botones.length - 1]);
     await waitFor(() => expect(onGuardar).toHaveBeenCalledWith({ bloquesOcultos: [], modulosOrden: [], modulosOcultos: ['finance'] }));

@@ -24,12 +24,24 @@
 
 export type TonoHoy = 'exito' | 'peligro' | 'advertencia' | 'neutro';
 
-export type IdCasillaHoy = 'porCobrar' | 'stockCritico' | 'pedidosWeb' | 'cajasAnteriores' | 'misTareas';
+export type IdCasillaHoy = 'porCobrar' | 'stockCritico' | 'pedidosWeb' | 'reservasStock' | 'cajasAnteriores' | 'misTareas';
 
 export interface DatosHoy {
   porCobrar: { vencido: number; cuentas: number; diasMasVieja: number; monedas: string[] } | null;
   stock: { bajoMinimo: number; agotados: number } | null;
-  pedidosWeb: { pendientes: number } | null;
+  /**
+   * Pendientes ahora y, de ellos, los que expiran en los próximos
+   * `minutos` (criterio de `expire_pending_web_orders`, vía
+   * `fn_inicio_pedidos_web_pendientes`). Figma: «3 expiran en menos de 30 min».
+   */
+  pedidosWeb: { pendientes: number; porExpirar?: number; minutos?: number } | null;
+  /**
+   * Reservas de stock de la tienda web sin moverse hace más de 24 h
+   * («huérfanas», regla de `lib/pos/reservasStock.ts`). Solo es un aviso: sin
+   * ninguna no se pinta. Lo que antes mostraba el panel suelto de
+   * observabilidad en el inicio.
+   */
+  reservasStock?: { huerfanas: number; unidades: number } | null;
   cajasAnteriores: { cantidad: number; diasMasVieja: number } | null;
   tareas: { abiertas: number; vencenHoy: number; vencidas: number } | null;
   /** true si el alcance es una sola sucursal (cambia el texto del detalle de stock). */
@@ -66,7 +78,7 @@ export const MAX_CASILLAS_HOY = 5;
 export const ESTADOS_TAREA_ABIERTA: readonly string[] = ['open', 'in_progress', 'todo'];
 
 /** Orden fijo a igual urgencia. */
-const ORDEN: IdCasillaHoy[] = ['porCobrar', 'stockCritico', 'pedidosWeb', 'cajasAnteriores', 'misTareas'];
+const ORDEN: IdCasillaHoy[] = ['porCobrar', 'stockCritico', 'pedidosWeb', 'reservasStock', 'cajasAnteriores', 'misTareas'];
 const PESO_TONO: Record<TonoHoy, number> = { peligro: 0, advertencia: 1, exito: 2, neutro: 3 };
 
 function casillaPorCobrar(d: NonNullable<DatosHoy['porCobrar']>): CasillaHoy {
@@ -136,8 +148,28 @@ function casillaPedidosWeb(d: NonNullable<DatosHoy['pedidosWeb']>): CasillaHoy {
     tono: 'advertencia',
     estado: 'urgente',
     cifra: { tipo: 'texto', texto: { clave: 'cifras.pendientes', params: { n: d.pendientes } } },
-    detalle: { clave: 'detalles.pedidosSinConfirmar' },
+    // Los que están por expirar son lo accionable (se pierden la venta y la
+    // reserva de stock); sin ninguno, el detalle de siempre.
+    detalle:
+      (d.porExpirar ?? 0) > 0
+        ? { clave: 'detalles.pedidosPorExpirar', params: { n: d.porExpirar ?? 0, minutos: d.minutos ?? 30 } }
+        : { clave: 'detalles.pedidosSinConfirmar' },
     accion: { etiqueta: { clave: 'acciones.atender' }, href },
+  };
+}
+
+function casillaReservas(d: NonNullable<DatosHoy['reservasStock']>): CasillaHoy | null {
+  // Solo es un aviso: sin reservas huérfanas no se pinta. El detalle
+  // (producto, sucursal, desde cuándo) está en el panel de observabilidad de
+  // Pedidos online.
+  if (d.huerfanas <= 0) return null;
+  return {
+    id: 'reservasStock',
+    tono: 'advertencia',
+    estado: 'revisar',
+    cifra: { tipo: 'texto', texto: { clave: 'cifras.reservas', params: { n: d.huerfanas } } },
+    detalle: { clave: 'detalles.reservasSinMover', params: { unidades: d.unidades } },
+    accion: { etiqueta: { clave: 'acciones.revisar' }, href: '/app/pos/pedidos-online' },
   };
 }
 
@@ -179,6 +211,7 @@ export function casillasHoy(datos: DatosHoy): CasillaHoy[] {
     datos.porCobrar ? casillaPorCobrar(datos.porCobrar) : null,
     datos.stock ? casillaStock(datos.stock, datos.unaSucursal) : null,
     datos.pedidosWeb ? casillaPedidosWeb(datos.pedidosWeb) : null,
+    datos.reservasStock ? casillaReservas(datos.reservasStock) : null,
     datos.cajasAnteriores ? casillaCajas(datos.cajasAnteriores) : null,
     datos.tareas ? casillaTareas(datos.tareas) : null,
   ];

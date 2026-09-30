@@ -238,7 +238,10 @@ async function handleCheckoutSessionCompleted(checkoutSession: Stripe.Checkout.S
 }
 
 /**
- * Actualizar suscripción en base de datos
+ * Actualizar suscripción en base de datos (idempotente).
+ * 
+ * Busca primero por stripe_subscription_id, luego por stripe_customer_id + organization_id,
+ * y finalmente por organization_id sola. Siempre guarda stripe_customer_id y stripe_subscription_id.
  */
 async function updateSubscriptionInDatabase(
   subscription: Stripe.Subscription,
@@ -255,11 +258,44 @@ async function updateSubscriptionInDatabase(
       },
     })
 
+    const stripeCustomerId = subscription.customer as string
+    const stripeSubscriptionId = subscription.id
+
     // Obtener organization_id del metadata
-    const organizationId = parseInt(subscription.metadata?.organizationId || '0')
+    let organizationId = parseInt(subscription.metadata?.organizationId || '0')
     
+    // Si no hay organizationId en metadata, intentar buscar por stripe_customer_id
+    if (!organizationId && stripeCustomerId) {
+      const { data: subByCustomer } = await supabase
+        .from('subscriptions')
+        .select('organization_id')
+        .eq('stripe_customer_id', stripeCustomerId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      
+      if (subByCustomer) {
+        organizationId = subByCustomer.organization_id
+        console.log(`✅ OrganizationId recuperado desde stripe_customer_id: ${organizationId}`)
+      }
+    }
+
+    // Si aún no hay organizationId, intentar buscar por stripe_subscription_id
     if (!organizationId) {
-      console.warn('⚠️ Suscripción sin organizationId en metadata:', subscription.id)
+      const { data: subById } = await supabase
+        .from('subscriptions')
+        .select('organization_id')
+        .eq('stripe_subscription_id', stripeSubscriptionId)
+        .maybeSingle()
+      
+      if (subById) {
+        organizationId = subById.organization_id
+        console.log(`✅ OrganizationId recuperado desde stripe_subscription_id: ${organizationId}`)
+      }
+    }
+
+    if (!organizationId) {
+      console.warn('⚠️ Suscripción sin organizationId:', stripeSubscriptionId, '- no se puede sincronizar')
       return
     }
 
@@ -272,7 +308,7 @@ async function updateSubscriptionInDatabase(
           cancel_at: subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString() : null,
           updated_at: new Date().toISOString(),
         })
-        .eq('stripe_subscription_id', subscription.id)
+        .eq('stripe_subscription_id', stripeSubscriptionId)
 
       if (error) {
         console.error('❌ Error actualizando suscripción cancelada:', error)
@@ -291,24 +327,25 @@ async function updateSubscriptionInDatabase(
           .from('plans')
           .select('id')
           .eq('code', planCode)
-          .single()
+          .maybeSingle()
         
         planId = planData?.id || null
       }
 
-      // Buscar suscripción existente por organization_id o stripe_subscription_id
+      // Buscar suscripción existente: primero por stripe_subscription_id, luego por organization_id
       const { data: existingSub } = await supabase
         .from('subscriptions')
-        .select('id')
-        .or(`organization_id.eq.${organizationId},stripe_subscription_id.eq.${subscription.id}`)
+        .select('id, plan_id')
+        .eq('organization_id', organizationId)
+        .order('created_at', { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()
 
       const subscriptionData = {
         organization_id: organizationId,
-        stripe_subscription_id: subscription.id,
-        stripe_customer_id: subscription.customer as string,
-        plan_id: planId,
+        stripe_subscription_id: stripeSubscriptionId,
+        stripe_customer_id: stripeCustomerId,
+        plan_id: planId || existingSub?.plan_id || null,
         status: subscription.status,
         trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
         current_period_start: new Date((subscription as unknown as PeriodoSuscripcion).current_period_start * 1000).toISOString(),
@@ -326,6 +363,9 @@ async function updateSubscriptionInDatabase(
           .update(subscriptionData)
           .eq('id', existingSub.id)
         error = result.error
+        if (!error) {
+          console.log(`✅ Suscripción actualizada (org ${organizationId}): ${stripeSubscriptionId}`)
+        }
       } else {
         // Crear nueva suscripción
         const result = await supabase
@@ -335,12 +375,13 @@ async function updateSubscriptionInDatabase(
             created_at: new Date().toISOString(),
           })
         error = result.error
+        if (!error) {
+          console.log(`✅ Suscripción creada (org ${organizationId}): ${stripeSubscriptionId}`)
+        }
       }
 
       if (error) {
         console.error('❌ Error actualizando suscripción en BD:', error)
-      } else {
-        console.log('✅ Suscripción actualizada en BD')
       }
 
       // También actualizar plan_id en la organización si tenemos planId

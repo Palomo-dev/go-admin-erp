@@ -500,15 +500,75 @@ export async function completeSignupAfterEmailConfirmation(supabase: SupabaseCli
         }
       }
       
-      // 5. Actualizar la suscripción con los datos reales del plan comprado
-      // NOTA: un trigger de la BD (after_organization_insert_subscription) ya crea
-      // automáticamente una suscripción (plan_id tomado de organizations.plan_id) al
-      // insertar la organización. Aquí solo la actualizamos con período de facturación,
-      // trial y datos de Stripe capturados en el signup.
-      console.log('5️⃣ Updating subscription with real plan data...');
+      // 5. Crear customer y suscripción en Stripe (siempre, incluso si se salta la tarjeta)
+      console.log('5️⃣ Creating Stripe customer and subscription...');
       const trialDays = planId === 5 ? 30 : (planId === 3 ? 30 : (planId === 2 ? 15 : 0));
       const periodDays = billingPeriod === 'yearly' ? 365 : 30;
-      
+
+      let stripeCustomerId = signupData.stripeCustomerId;
+      let stripeSubscriptionId: string | null = null;
+
+      // Si no hay customer ID (usuario saltó la tarjeta), crear customer y suscripción en Stripe
+      if (!stripeCustomerId && process.env.STRIPE_SECRET_KEY) {
+        try {
+          // Importar Stripe de forma lazy para no bloquear si no está configurado
+          const Stripe = (await import('stripe')).default;
+          const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+            apiVersion: '2024-11-20.acacia',
+          });
+
+          // Obtener datos del plan de la BD
+          const { data: planData } = await supabase
+            .from('plans')
+            .select('code, stripe_price_monthly_id, stripe_price_yearly_id')
+            .eq('id', planId)
+            .maybeSingle();
+
+          const planCode = planData?.code || (planId === 5 ? 'ultimate' : planId === 3 ? 'business' : 'pro');
+          const priceId = billingPeriod === 'yearly' ? planData?.stripe_price_yearly_id : planData?.stripe_price_monthly_id;
+
+          if (priceId) {
+            // Crear customer en Stripe
+            const customer = await stripe.customers.create({
+              email: user.email || signupData.organizationEmail || '',
+              name: signupData.organizationName,
+              metadata: {
+                organizationId: orgData.id.toString(),
+                userId: user.id,
+                createdFrom: 'registration',
+              },
+            });
+            stripeCustomerId = customer.id;
+            console.log('✅ Stripe customer created:', stripeCustomerId);
+
+            // Crear suscripción en trial en Stripe
+            const subscription = await stripe.subscriptions.create({
+              customer: customer.id,
+              items: [{ price: priceId }],
+              trial_period_days: trialDays,
+              payment_behavior: 'default_incomplete',
+              payment_settings: {
+                save_default_payment_method: 'on_subscription',
+              },
+              metadata: {
+                organizationId: orgData.id.toString(),
+                planCode: planCode,
+                billingPeriod: billingPeriod,
+                createdFrom: 'registration',
+              },
+            });
+            stripeSubscriptionId = subscription.id;
+            console.log('✅ Stripe subscription created in trial:', stripeSubscriptionId);
+          } else {
+            console.warn('⚠️ No se pudo crear suscripción en Stripe: plan sin price_id configurado');
+          }
+        } catch (stripeError) {
+          // No bloquear el registro si falla Stripe, pero registrar el error
+          console.error('⚠️ Error creando customer/suscripción en Stripe (no bloquea registro):', stripeError);
+        }
+      }
+
+      // Actualizar la suscripción en la BD con los datos de Stripe
       const { error: subscriptionError } = await supabase
         .from('subscriptions')
         .update({
@@ -519,7 +579,9 @@ export async function completeSignupAfterEmailConfirmation(supabase: SupabaseCli
           trial_end: new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString(),
           current_period_start: new Date().toISOString(),
           current_period_end: new Date(Date.now() + periodDays * 24 * 60 * 60 * 1000).toISOString(),
-          stripe_customer_id: signupData.stripeCustomerId || null,
+          stripe_customer_id: stripeCustomerId || null,
+          stripe_subscription_id: stripeSubscriptionId || null,
+          status: stripeSubscriptionId ? 'trialing' : 'active',
           updated_at: new Date().toISOString()
         })
         .eq('organization_id', orgData.id);
@@ -528,7 +590,7 @@ export async function completeSignupAfterEmailConfirmation(supabase: SupabaseCli
         console.error('❌ Error updating subscription:', subscriptionError);
         throw subscriptionError;
       }
-      console.log('✅ Subscription updated successfully');
+      console.log('✅ Subscription updated successfully in database');
       
       console.log('🎉 Complete signup finished successfully!');
     } else {

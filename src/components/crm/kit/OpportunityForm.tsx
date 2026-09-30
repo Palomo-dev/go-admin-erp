@@ -15,6 +15,7 @@ import {
   cuerpoAlta,
   cuerpoEdicion,
   ponderado,
+  estaBloqueado,
   probabilidadDeEtapa,
   validarOportunidad,
   valoresIniciales,
@@ -58,7 +59,11 @@ export interface OpportunityFormProps {
   monedaBase: ContextoMoneda;
   monedas?: readonly string[];
   clienteNombre?: string | null;
+  /** Ola 3B: cliente elegido fuera del formulario (`CustomerLinkPicker`): se copia a `customer_id`. */
+  clienteId?: string | null;
   onElegirCliente?: () => void;
+  /** Ola 3B (página): suma de las líneas; si hay líneas, es el monto. */
+  montoCalculado?: number | null;
   onAgregarLineas?: () => void;
   lineasFactura?: { numero: string; lineas: readonly { concepto: string; cantidad: number; total: number }[] } | null;
   seccionesPagina?: ReactNode;
@@ -87,6 +92,13 @@ export function OpportunityForm(props: OpportunityFormProps) {
     // Se reinicia al abrir; el prefill puede cambiar de identidad en cada render de la pantalla.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [abierto]);
+
+  useEffect(() => {
+    if (props.clienteId !== undefined && !estaBloqueado(origen, 'customer_id')) setV((x) => ({ ...x, customer_id: props.clienteId ?? '' }));
+  }, [props.clienteId, origen]);
+  useEffect(() => {
+    if (typeof props.montoCalculado === 'number' && props.montoCalculado > 0) setV((x) => ({ ...x, amount: String(props.montoCalculado) }));
+  }, [props.montoCalculado]);
 
   const codigos = validarOportunidad(v);
   const errores = Object.fromEntries(Object.entries(codigos).map(([k, c]) => [k, intentado && c ? t(`error.${c}`) : null]));

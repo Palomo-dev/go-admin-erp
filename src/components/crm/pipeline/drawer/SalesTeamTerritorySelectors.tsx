@@ -13,6 +13,7 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { editarOportunidad } from '@/components/crm/oportunidad/apiOportunidades';
 
 interface SalesTeamTerritorySelectorsProps {
   opportunityId: string;
@@ -114,11 +115,8 @@ export function SalesTeamTerritorySelectors({
     setTeamId(value === 'none' ? '' : value);
     setSavingTeam(true);
     try {
-      const { error } = await supabase
-        .from('opportunities')
-        .update({ sales_team_id: newVal, updated_at: new Date().toISOString() })
-        .eq('id', opportunityId);
-      if (error) throw error;
+      // CRM ola 3B (guardarraíl 36): por el servidor, con permiso y organización de la sesión.
+      await editarOportunidad(opportunityId, { sales_team_id: newVal });
       toast({ title: 'Equipo actualizado' });
       onUpdated?.();
     } catch (err) {
@@ -134,11 +132,8 @@ export function SalesTeamTerritorySelectors({
     setTerritoryId(value === 'none' ? '' : value);
     setSavingTerritory(true);
     try {
-      const { error } = await supabase
-        .from('opportunities')
-        .update({ territory_id: newVal, updated_at: new Date().toISOString() })
-        .eq('id', opportunityId);
-      if (error) throw error;
+      // CRM ola 3B (guardarraíl 36): por el servidor, con permiso y organización de la sesión.
+      await editarOportunidad(opportunityId, { territory_id: newVal });
       toast({ title: 'Territorio actualizado' });
       onUpdated?.();
     } catch (err) {
@@ -154,11 +149,8 @@ export function SalesTeamTerritorySelectors({
     setSalespersonId(value === 'none' ? '' : value);
     setSavingSalesperson(true);
     try {
-      const { error } = await supabase
-        .from('opportunities')
-        .update({ salesperson_id: newVal, updated_at: new Date().toISOString() })
-        .eq('id', opportunityId);
-      if (error) throw error;
+      // CRM ola 3B (guardarraíl 36): por el servidor, con permiso y organización de la sesión.
+      await editarOportunidad(opportunityId, { salesperson_id: newVal });
       toast({ title: 'Responsable actualizado' });
       onUpdated?.();
     } catch (err) {

@@ -106,6 +106,11 @@ export function OpportunityCard({
           </button>
           <span className="truncate text-xs text-fg-secondary">{cliente}</span>
         </div>
+        {op.esLead && (
+          <Badge tono="neutro" apariencia="contorno" tamano="sm">
+            {t('lead')}
+          </Badge>
+        )}
         {v.estado === 'ganada' || v.estado === 'perdida' ? (
           <StatusBadge estado={v.estado === 'ganada' ? 'ganada' : 'perdida'} etiqueta={t(`estado.${v.estado}`)} />
         ) : (

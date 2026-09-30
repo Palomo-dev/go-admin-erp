@@ -44,6 +44,16 @@ const lineaLibre = z
   })
   .strict();
 
+/** CRM ola 3B: espacios del PMS (`opportunity_spaces`), por la misma RPC (migración 20260930210000). */
+const lineaEspacio = z
+  .object({
+    id: uuid.optional(),
+    space_id: uuid,
+    nights: z.number().int().positive().max(3650).optional(),
+    unit_price: z.number().min(0).optional(),
+  })
+  .strict();
+
 /** Campos editables de una oportunidad (alta y edición). */
 const camposEditables = {
   name: z.string().trim().min(1).max(255),
@@ -68,6 +78,7 @@ const camposEditables = {
   metadata: z.record(z.unknown()),
   products: z.array(lineaProducto).max(200),
   custom_lines: z.array(lineaLibre).max(200),
+  spaces: z.array(lineaEspacio).max(200),
 };
 
 export const oportunidadAltaSchema = z

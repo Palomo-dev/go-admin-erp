@@ -9,6 +9,8 @@ export class ErrorApiCrm extends Error {
     public readonly status: number,
     public readonly codigo: string | null,
     message: string,
+    /** Cuerpo JSON de la respuesta (ola 3B: `reason` y `gate` del 409 de etapa). */
+    public readonly cuerpo: Record<string, unknown> | null = null,
   ) {
     super(message);
     this.name = 'ErrorApiCrm';
@@ -25,7 +27,7 @@ export interface DetalleCambioCrm {
 }
 
 export function emitirCambioCrm(detalle: DetalleCambioCrm): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') return;
   window.dispatchEvent(new CustomEvent<DetalleCambioCrm>(EVENTO_CAMBIO_CRM, { detail: detalle }));
 }
 
@@ -46,7 +48,7 @@ export async function pedirCrm<T = unknown>(url: string, init: { method?: string
   }
   const json = (await res.json().catch(() => null)) as ({ success?: boolean; data?: T; error?: string; code?: string } & Record<string, unknown>) | null;
   if (!res.ok || !json || json.success === false) {
-    throw new ErrorApiCrm(res.status, (json?.code as string | undefined) ?? null, (json?.error as string | undefined) ?? `HTTP ${res.status}`);
+    throw new ErrorApiCrm(res.status, (json?.code as string | undefined) ?? (json?.reason as string | undefined) ?? null, (json?.error as string | undefined) ?? `HTTP ${res.status}`, json);
   }
   const { data, success: _s, ...extra } = json;
   void _s;

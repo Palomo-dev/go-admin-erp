@@ -22821,7 +22821,8 @@
           "otro": "Autre"
         },
         "sinResponsable": "Non assignée",
-        "diasEnEtapa": "{dias} j dans l’étape"
+        "diasEnEtapa": "{dias} j dans l’étape",
+        "lead": "Lead"
       },
       "leads": {
         "columnas": {
@@ -23748,6 +23749,533 @@
       "oportunidades": {
         "nueva": "Nouvelle opportunité",
         "perdidas": "Perdues"
+      }
+    },
+    "oportunidad": {
+      "flujo": {
+        "conflicto": "L'opportunité a changé pendant l'enregistrement. Réessayez.",
+        "errorMover": "Impossible de changer l'étape",
+        "motivoOverride": "Avancée sans remplir les exigences de l'étape",
+        "movida": "Opportunité déplacée vers {etapa}",
+        "gateGanar": "Exigences de l'étape manquantes : {lista}",
+        "sinPermisoCerrar": "Vous n'avez pas l'autorisation de clôturer des opportunités.",
+        "errorGanar": "Impossible de marquer comme gagnée",
+        "perdida": "Opportunité marquée comme perdue",
+        "errorPerder": "Impossible de marquer comme perdue",
+        "permisoCerrar": "clôturer des opportunités",
+        "sinEtapaGanada": "Ce pipeline n'a pas d'étape gagnée ; configurez-la dans « Étapes ».",
+        "sinEtapaPerdida": "Ce pipeline n'a pas d'étape perdue ; configurez-la dans « Étapes »."
+      },
+      "acciones": {
+        "sufijoCopia": "(copie)",
+        "duplicada": "Opportunité dupliquée",
+        "errorDuplicar": "Impossible de dupliquer",
+        "eliminada": "Opportunité supprimée",
+        "errorEliminar": "Impossible de supprimer",
+        "noEliminable": "Elle est gagnée ou a un devis, une facture, une vente ou une commission : elle ne peut pas être supprimée.",
+        "eliminarTitulo": "Supprimer « {nombre} » ?",
+        "eliminarDescripcion": "Ses lignes, notes et tâches sont aussi supprimées. Action irréversible.",
+        "eliminar": "Supprimer",
+        "cancelar": "Annuler"
+      },
+      "filtros": {
+        "titulo": "Filtres",
+        "boton": "Filtres",
+        "embudo": "Pipeline",
+        "todos": "Tous",
+        "etapa": "Étape",
+        "todas": "Toutes",
+        "responsable": "Responsable",
+        "yo": "Moi",
+        "sinAsignar": "Non attribué",
+        "cierre": "Clôture prévue",
+        "cualquierFecha": "N'importe quelle date",
+        "preset": {
+          "mes": "ce mois-ci",
+          "trimestre": "ce trimestre",
+          "vencido": "en retard"
+        },
+        "prioridad": "Priorité",
+        "chipEmbudo": "Pipeline : {nombre}",
+        "chipEtapa": "Étape : {nombre}",
+        "chipResponsable": "Responsable : {nombre}",
+        "chipCierre": "Clôture : {periodo}",
+        "chipPrioridad": "Priorité : {lista}",
+        "limpiar": "Effacer les filtres"
+      },
+      "kpis": {
+        "aria": "Indicateurs des opportunités",
+        "valorAbierto": "Valeur ouverte",
+        "detalleAbiertas": "{n, plural, one {# opportunité ouverte} other {# opportunités ouvertes}}",
+        "ponderado": "Pondéré (ouvertes seulement)",
+        "abiertas": "Opportunités ouvertes",
+        "cierranMes": "{n, plural, =0 {Aucune n'échoit ce mois-ci} one {# échoit ce mois-ci} other {# échoient ce mois-ci}}",
+        "tasaCierre": "Taux de conversion (90 j)",
+        "ganadasPerdidas": "{ganadas, plural, one {# gagnée} other {# gagnées}} · {perdidas, plural, one {# perdue} other {# perdues}}",
+        "truncado": "Il y a trop d'opportunités pour toutes les additionner : les indicateurs comptent les 20 000 premières. Filtrez pour affiner."
+      },
+      "tablero": {
+        "aria": "Tableau du pipeline",
+        "errorColumna": "Impossible de charger les cartes de cette étape",
+        "etapasAria": "Étapes",
+        "chipEtapa": "{etapa} · {n}",
+        "resumenColumna": "{moneda} · {n, plural, one {# opportunité} other {# opportunités}} · prob. {prob} %"
+      },
+      "tabla": {
+        "vencido": "en retard {dias, plural, =0 {de quelques heures} one {de # j} other {de # j}}",
+        "hoy": "aujourd'hui {hora}",
+        "manana": "demain {hora}",
+        "seleccionarPagina": "Sélectionner les opportunités de cette page",
+        "oportunidad": "Opportunité",
+        "etapa": "Étape",
+        "monto": "Montant",
+        "prob": "Prob.",
+        "cierre": "Clôture",
+        "responsable": "Responsable",
+        "proximo": "Prochain contact",
+        "acciones": "Actions",
+        "seleccionar": "Sélectionner {nombre}",
+        "lead": "Lead",
+        "sinCliente": "Sans client",
+        "sinResponsable": "Non attribué",
+        "sustantivo": {
+          "singular": "opportunité",
+          "plural": "opportunités"
+        }
+      },
+      "masivo": {
+        "resultado": "{ok, plural, one {# sur {total} appliquée} other {# sur {total} appliquées}}",
+        "motivoVariosEmbudos": "Les éléments sélectionnés appartiennent à des pipelines différents",
+        "motivoSinPermiso": "Vous n'avez pas l'autorisation",
+        "sustantivo": {
+          "singular": "sélectionnée",
+          "plural": "sélectionnées"
+        },
+        "mover": "Changer d'étape",
+        "asignar": "Attribuer un responsable",
+        "perder": "Marquer perdue",
+        "eliminar": "Supprimer",
+        "exportar": "Exporter",
+        "moverTitulo": "Déplacer {n, plural, one {# opportunité} other {# opportunités}}",
+        "moverDescripcion": "Chacune passe par les exigences de l'étape ; celles qui ne les remplissent pas restent où elles sont.",
+        "cancelar": "Annuler",
+        "etapa": "Étape de destination",
+        "elegirEtapa": "Choisissez une étape",
+        "asignarTitulo": "Attribuer un responsable à {n, plural, one {# opportunité} other {# opportunités}}",
+        "responsable": "Responsable",
+        "sinAsignar": "Non attribué",
+        "varias": "{n, plural, one {# opportunité} other {# opportunités}}",
+        "eliminarTitulo": "Supprimer {n, plural, one {# opportunité} other {# opportunités}} ?",
+        "eliminarDescripcion": "Les gagnées ou celles avec des documents ne sont pas supprimées. Action irréversible."
+      },
+      "lista": {
+        "titulo": "Opportunités",
+        "subtitulo": "Affaires de tous les pipelines de vente",
+        "subtituloSinPermiso": "Sans accès",
+        "subtituloMovil": "{n, plural, one {# opportunité} other {# opportunités}}",
+        "migas": {
+          "crm": "CRM"
+        },
+        "nueva": "Nouvelle opportunité",
+        "importar": "Importer",
+        "exportar": "Exporter",
+        "sinPermiso": {
+          "titulo": "Vous n'avez pas accès aux opportunités",
+          "descripcion": "Demandez à un administrateur l'autorisation de voir les opportunités.",
+          "volver": "Retour au CRM"
+        },
+        "vacio": {
+          "titulo": "Vous n'avez pas encore d'opportunités",
+          "descripcion": "Créez la première ou qualifiez un lead pour commencer à vendre.",
+          "verPipeline": "Voir le pipeline"
+        },
+        "pestanas": {
+          "aria": "Statut des opportunités",
+          "open": "Ouvertes",
+          "won": "Gagnées",
+          "lost": "Perdues",
+          "all": "Toutes"
+        },
+        "errorKpi": "Impossible de calculer les indicateurs",
+        "buscar": "Rechercher par nom ou client",
+        "orden": {
+          "aria": "Trier par",
+          "cierre": "Clôture prévue",
+          "creada": "Date de création",
+          "monto": "Montant",
+          "proximo": "Prochain contact",
+          "nombre": "Nom"
+        },
+        "error": {
+          "titulo": "Impossible de charger les opportunités",
+          "descripcion": "Vérifiez votre connexion et réessayez."
+        },
+        "sinResultados": {
+          "titulo": "Aucune opportunité ne correspond",
+          "descripcion": "Essayez une autre recherche, un autre onglet ou retirez des filtres."
+        },
+        "csv": {
+          "oportunidad": "Opportunité",
+          "cliente": "Client",
+          "etapa": "Étape",
+          "monto": "Montant",
+          "moneda": "Devise",
+          "prob": "Probabilité",
+          "cierre": "Clôture prévue",
+          "responsable": "Responsable",
+          "proximo": "Prochain contact",
+          "estado": "Statut",
+          "tipo": "Type"
+        }
+      },
+      "etapas": {
+        "guardada": "Étape enregistrée",
+        "error": "Impossible d'enregistrer l'étape",
+        "eliminada": "Étape supprimée",
+        "titulo": "Étapes du pipeline",
+        "descripcion": "Modifiez le nom, la couleur, la probabilité et le résultat. Les exigences et l'agent IA se configurent dans chaque étape.",
+        "ganada": "Gagnée",
+        "perdida": "Perdue",
+        "editar": "Modifier {etapa}",
+        "eliminar": "Supprimer {etapa}",
+        "nueva": "Nouvelle étape"
+      },
+      "asistente": {
+        "titulo": "Nouveau pipeline",
+        "tituloCon": "Nouveau pipeline · {nombre}",
+        "cancelar": "Annuler",
+        "atras": "Retour",
+        "crear": "Créer le pipeline",
+        "siguiente": "Suivant",
+        "desc": {
+          "plantilla": "Choisissez un modèle pour commencer. Tout peut être modifié à l'étape 3.",
+          "datos": "Donnez-lui un nom et décidez s'il sera le pipeline par défaut.",
+          "etapas": "Ordonnez les étapes et modifiez le nom, la couleur, la probabilité, le SLA et le résultat."
+        },
+        "pasos": {
+          "plantilla": "Modèle",
+          "datos": "Nom et type",
+          "etapas": "Étapes"
+        },
+        "pasosAria": "Étapes de l'assistant",
+        "pasoMovil": "Étape {n} sur {total} · {etiqueta}",
+        "notaCierre": "Les étapes de clôture (trophée et X) marquent l'opportunité comme gagnée ou perdue quand on l'y déplace.",
+        "nombre": "Nom du pipeline",
+        "nombreAyuda": "Il ne peut pas se répéter dans l'organisation.",
+        "tipo": "Type",
+        "tipoAyuda": "Les leads du site web entrent dans le pipeline de vente par défaut.",
+        "tipos": {
+          "sales": "Ventes",
+          "onboarding": "Onboarding",
+          "renewal": "Renouvellement"
+        },
+        "meta": "Objectif de la période (facultatif)",
+        "moneda": "Devise",
+        "periodo": "Période",
+        "periodos": {
+          "monthly": "Mensuelle",
+          "quarterly": "Trimestrielle",
+          "yearly": "Annuelle"
+        },
+        "porDefecto": "Utiliser comme pipeline par défaut",
+        "porDefectoAyuda": "C'est celui qu'ouvre le tableau et où entrent les leads web. Il ne peut y en avoir qu'un.",
+        "vistaPrevia": "Aperçu",
+        "agregarEtapa": "Ajouter une étape",
+        "limiteEtapas": "{n, plural, one {# étape} other {# étapes}} · vous pouvez en ajouter jusqu'à {max}",
+        "requisitosAria": "Conditions pour créer le pipeline",
+        "checkGanada": "Une étape de clôture gagnée : « {nombre} »",
+        "faltaGanada": "Il manque une étape de clôture gagnée",
+        "checkPerdida": "Une étape de clôture perdue : « {nombre} »",
+        "faltaPerdida": "Il manque une étape de clôture perdue",
+        "checkOrden": "Probabilités par ordre croissant",
+        "error": {
+          "nombreObligatorio": "Le nom est obligatoire.",
+          "nombreRepetido": "Un pipeline porte déjà ce nom.",
+          "metaInvalida": "L'objectif doit être un nombre supérieur ou égal à zéro."
+        },
+        "errorNombre": "Un pipeline porte déjà ce nom. Rien n'a été créé.",
+        "errorEtapas": "Vérifiez les étapes : il manque une étape gagnée ou perdue, ou les probabilités ne sont pas dans l'ordre. Rien n'a été créé.",
+        "errorCrear": "Impossible de créer le pipeline ({detalle}). Rien n'a été créé ; vos modifications sont toujours là."
+      },
+      "selector": {
+        "aria": "Pipeline : {nombre}",
+        "conDefecto": "{nombre} (principal)",
+        "elegir": "Choisissez un pipeline",
+        "titulo": "Pipelines de l'organisation",
+        "porDefecto": "Par défaut",
+        "tipos": {
+          "ventas": "Ventes",
+          "onboarding": "Onboarding",
+          "renovacion": "Renouvellement"
+        },
+        "etapas": "{n, plural, one {# étape} other {# étapes}}",
+        "nuevo": "Nouveau pipeline",
+        "nuevoDetalle": "À partir d'un modèle ou vierge",
+        "sinPermiso": "Vous n'avez pas l'autorisation",
+        "usarDefecto": "Utiliser « {nombre} » par défaut",
+        "yaDefecto": "C'est déjà le pipeline par défaut",
+        "usarDefectoDetalle": "Le tableau ouvrira ce pipeline",
+        "editarEtapas": "Modifier les étapes de ce pipeline",
+        "eliminar": "Supprimer le pipeline",
+        "noEliminable": "Impossible : {n, plural, one {il a # opportunité} other {il a # opportunités}}",
+        "eliminarDetalle": "Sans opportunités : il peut être supprimé"
+      },
+      "resumen": {
+        "guardado": "Suivi enregistré",
+        "errorGuardar": "Impossible d'enregistrer le suivi",
+        "proximoPaso": "Prochaine étape",
+        "ultimoContacto": "Dernier contact : {canal} · {cuando}",
+        "hoy": "aujourd'hui",
+        "hace": "{dias, plural, one {il y a # j} other {il y a # j}}",
+        "accion": "Prochaine action",
+        "fechaHora": "Date et heure",
+        "zona": "Heure de l'organisation ({zona})",
+        "canal": "Canal",
+        "canales": {
+          "call": "Appel",
+          "email": "E-mail",
+          "whatsapp": "WhatsApp",
+          "meeting": "Réunion",
+          "visit": "Visite"
+        },
+        "resultado": "Résultat du dernier contact",
+        "resultados": {
+          "reached": "Joint",
+          "no_answer": "Pas de réponse",
+          "left_voicemail": "Messagerie vocale",
+          "callback_scheduled": "Rappeler",
+          "qualified": "Qualifié",
+          "not_interested": "Pas intéressé",
+          "objection": "Objection"
+        },
+        "temperatura": "Température",
+        "temperaturas": {
+          "cold": "Froide",
+          "warm": "Tiède",
+          "hot": "Chaude"
+        },
+        "cambiosSinGuardar": "Il y a des modifications non enregistrées",
+        "sinCambios": "Aucune modification non enregistrée",
+        "guardar": "Enregistrer le suivi",
+        "informacion": "Informations",
+        "monto": "Montant",
+        "moneda": "Devise",
+        "monedaBase": "{codigo} · devise de base",
+        "cierre": "Clôture estimée",
+        "creada": "Créée",
+        "equipo": "Équipe et responsable"
+      },
+      "drawer": {
+        "cargando": "Chargement de l'opportunité",
+        "titulo": "Opportunité",
+        "noEncontrada": "Opportunité introuvable",
+        "noEncontradaDetalle": "Elle a peut-être été supprimée ou vous n'y avez pas accès.",
+        "sinPermiso": "Vous n'avez pas accès à cette opportunité",
+        "cerrar": "Fermer",
+        "descripcion": "Résumé, activité, tâches, notes, documents et IA de l'opportunité",
+        "pestanasAria": "Sections de l'opportunité",
+        "pestanas": {
+          "resumen": "Résumé",
+          "onboarding": "Onboarding",
+          "actividad": "Activité",
+          "tareas": "Tâches",
+          "notas": "Notes",
+          "documentos": "Documents",
+          "ia": "IA"
+        }
+      },
+      "lineas": {
+        "elegirProducto": "Choisissez un produit",
+        "cantidad": "Qté",
+        "precio": "Prix unit.",
+        "elegirEspacio": "Choisissez un espace",
+        "noches": "Nuits",
+        "concepto": "Élément",
+        "titulo": "Lignes",
+        "descripcion": "Produits, espaces (PMS) et autres éléments. Facultatif.",
+        "clases": {
+          "products": "Produits ({n})",
+          "spaces": "Espaces ({n})",
+          "custom": "Autres éléments ({n})"
+        },
+        "columna": {
+          "products": "Produit",
+          "spaces": "Espace",
+          "custom": "Élément"
+        },
+        "total": "Total",
+        "quitar": "Retirer la ligne",
+        "agregar": {
+          "products": "Ajouter un produit",
+          "spaces": "Ajouter un espace",
+          "custom": "Ajouter un élément"
+        },
+        "totalGeneral": "Total {total}",
+        "sinLineas": "Cette opportunité n'a pas de lignes. Ajoutez-les dans « Modifier ».",
+        "producto": "Produit",
+        "espacio": "Espace",
+        "detalleCantidad": "{n} × {precio}",
+        "detalleNoches": "{n, plural, one {# nuit} other {# nuits}} × {precio}"
+      },
+      "origenComision": {
+        "titulo": "Origine et commission",
+        "origen": "Origine",
+        "sinOrigen": "Sans origine",
+        "vertical": "Verticale",
+        "sinVertical": "Sans verticale",
+        "comisionista": "Bénéficiaire de la commission",
+        "tipos": {
+          "salesperson": "Le responsable",
+          "intermediation_sale": "Un intermédiaire",
+          "none": "Sans commission"
+        },
+        "comision": "Commission (%)",
+        "comisionAyuda": "Modifiable aussi lors de l'édition."
+      },
+      "formularioPagina": {
+        "tituloEditar": "Modifier l'opportunité",
+        "tituloNueva": "Nouvelle opportunité",
+        "migas": {
+          "crm": "CRM",
+          "oportunidades": "Opportunités",
+          "editar": "Modifier",
+          "nueva": "Nouvelle"
+        },
+        "lineasInvalidas": "Vérifiez les lignes : chacune nécessite un produit, un espace ou un élément et une quantité supérieure à zéro.",
+        "conflicto": "Quelqu'un a modifié cette opportunité pendant que vous l'éditiez. Rechargez la page pour voir sa version.",
+        "noEncontrada": "Opportunité introuvable",
+        "volver": "Retour aux opportunités",
+        "sinPermiso": "Vous ne pouvez pas modifier cette opportunité",
+        "sinPermisoDetalle": "Seuls le responsable, la personne qui l'a créée ou quelqu'un autorisé à modifier toute opportunité."
+      },
+      "nueva": {
+        "creada": "Opportunité créée"
+      },
+      "pipeline": {
+        "titulo": "Pipeline",
+        "porDefectoHecho": "« {nombre} » est maintenant le pipeline par défaut",
+        "errorPipeline": "Impossible de modifier le pipeline",
+        "pipelineConOportunidades": "Il a des opportunités : déplacez-les ou supprimez-les d'abord.",
+        "nueva": "Nouvelle opportunité",
+        "subtituloSinEmbudo": "Cette organisation n'a pas de pipeline de vente",
+        "subtituloSinPermiso": "Sans accès",
+        "subtitulo": "{embudo} · {n, plural, one {# opportunité ouverte} other {# opportunités ouvertes}}",
+        "migas": {
+          "crm": "CRM"
+        },
+        "etapas": "Étapes",
+        "vistas": {
+          "aria": "Vue du pipeline",
+          "kanban": "Kanban",
+          "tabla": "Tableau",
+          "pronostico": "Prévision",
+          "clientes": "Clients",
+          "automatizacion": "Automatisation"
+        },
+        "buscar": "Rechercher une opportunité ou un client",
+        "eliminarTitulo": "Supprimer le pipeline « {nombre} » ?",
+        "eliminarDescripcion": "Ses étapes sont supprimées. Possible seulement s'il n'a pas d'opportunités.",
+        "eliminar": "Supprimer",
+        "cancelar": "Annuler",
+        "sinEmbudo": {
+          "titulo": "Créez votre pipeline de vente",
+          "descripcion": "Le pipeline n'affiche que les opportunités d'un pipeline de vente. Commencez avec le modèle (Qualification, Proposition, Négociation, Gagnée, Perdue) et ajustez-le ensuite.",
+          "crear": "Créer le pipeline de vente",
+          "sinPermiso": "Demandez à un administrateur de créer le pipeline de vente.",
+          "verLeads": "Voir les leads non placés ({n})"
+        },
+        "estados": {
+          "sinPermiso": {
+            "titulo": "Vous n'avez pas accès au pipeline",
+            "descripcion": "Demandez à un administrateur l'autorisation de voir les opportunités.",
+            "volver": "Retour au CRM"
+          },
+          "error": {
+            "titulo": "Impossible de charger le pipeline",
+            "descripcion": "Vérifiez votre connexion et réessayez."
+          },
+          "sinResultados": {
+            "titulo": "Aucune opportunité ne correspond",
+            "descripcion": "Essayez une autre recherche ou retirez des filtres."
+          },
+          "vacio": {
+            "titulo": "Votre pipeline est prêt",
+            "descripcion": "Créez la première opportunité ou qualifiez un lead pour la voir avancer dans les étapes.",
+            "crear": "Nouvelle opportunité",
+            "leads": "Aller aux leads"
+          }
+        }
+      },
+      "conexiones": {
+        "titulo": "Connexions",
+        "cotizacion": "Devis {numero}",
+        "cotizacionSola": "Devis",
+        "sinCotizacion": "Sans devis",
+        "factura": "Facture {numero}",
+        "facturaSola": "Facture",
+        "seCreaAlGanar": "Créée à la victoire",
+        "tareas": "Tâches",
+        "abiertas": "{n, plural, =0 {Aucune ouverte} one {# ouverte} other {# ouvertes}}",
+        "reunion": "Réunion",
+        "renovacion": "Renouvellement",
+        "cadaMeses": "{n, plural, one {chaque mois} other {tous les # mois}}",
+        "comision": "Commission",
+        "estimada": "{monto} estimée"
+      },
+      "detalle": {
+        "titulo": "Opportunité",
+        "migas": {
+          "crm": "CRM",
+          "oportunidades": "Opportunités"
+        },
+        "volver": "Retour aux opportunités",
+        "noEncontrada": {
+          "titulo": "Opportunité introuvable",
+          "descripcion": "Elle a peut-être été supprimée ou le lien est incorrect."
+        },
+        "sinPermiso": {
+          "titulo": "Vous n'avez pas accès à cette opportunité",
+          "descripcion": "Demandez à un administrateur l'autorisation de voir les opportunités."
+        },
+        "error": {
+          "titulo": "Impossible de charger l'opportunité",
+          "descripcion": "Vérifiez votre connexion et réessayez."
+        },
+        "clienteVinculado": "Client lié",
+        "errorVincular": "Impossible de lier le client",
+        "editar": "Modifier",
+        "marcarPerdida": "Marquer perdue",
+        "marcarGanada": "Marquer gagnée",
+        "pestanasAria": "Sections de l'opportunité",
+        "pestanas": {
+          "actividad": "Activité",
+          "tareas": "Tâches",
+          "notas": "Notes",
+          "documentos": "Documents",
+          "lineas": "Lignes",
+          "analisis": "Analyse",
+          "cierre": "Clôture",
+          "ia": "IA"
+        },
+        "sinCliente": "Cette opportunité n'a pas de client lié.",
+        "vincularCliente": "Lier un client"
+      },
+      "metricas": {
+        "hoy": "aujourd'hui {hora}",
+        "manana": "demain {hora}",
+        "monto": "Montant",
+        "montoDetalle": "{moneda} · {n, plural, =0 {sans lignes} one {# ligne} other {# lignes}}",
+        "probabilidad": "Probabilité",
+        "deLaEtapa": "de l'étape",
+        "ponderado": "Pondéré",
+        "ponderadoDetalle": "montant × probabilité",
+        "cierre": "Clôture prévue",
+        "enDias": "{n, plural, =0 {aujourd'hui} one {dans # jour} other {dans # jours}}",
+        "haceDias": "{n, plural, one {en retard de # jour} other {en retard de # jours}}",
+        "responsable": "Responsable",
+        "sinResponsable": "Non attribué",
+        "comision": "commission {pct} %",
+        "proximo": "Prochain contact"
       }
     }
   },

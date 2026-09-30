@@ -1,18 +1,14 @@
 'use client';
 
 import { use } from 'react';
-import { OpportunityDetail } from '@/components/crm/oportunidades';
+import { OportunidadDetalle } from '@/components/crm/oportunidad/OportunidadDetalle';
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
+/** Detalle de oportunidad (CRM ola 3B, plan §4.6; Figma 775:473076). */
 export default function OpportunityDetailPage({ params }: PageProps) {
   const { id } = use(params);
-
-  return (
-    <div className="p-3 sm:p-4 md:p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <OpportunityDetail opportunityId={id} />
-    </div>
-  );
+  return <OportunidadDetalle id={id} />;
 }

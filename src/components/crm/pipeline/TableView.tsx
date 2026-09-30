@@ -42,6 +42,7 @@ import { ArrowUpDown, MoreHorizontal, Filter } from "lucide-react";
 import { getOrganizationId as getOrganizationIdFromContext } from "@/lib/hooks/useOrganization";
 import { CopyableId } from "@/components/common/CopyableId";
 import { SearchInput } from "@/components/kit/SearchInput";
+import { eliminarOportunidad } from '@/components/crm/oportunidad/apiOportunidades';
 
 interface Stage {
   id: string;
@@ -287,12 +288,8 @@ const TableView: React.FC<TableViewProps> = ({ pipelineId }) => {
     setIsDeleting(true);
     
     try {
-      const { error } = await supabase
-        .from("opportunities")
-        .delete()
-        .eq("id", deleteOpportunityId);
-        
-      if (error) throw error;
+      // CRM ola 3B (guardarraíl 36): DELETE por el servidor (RPC con guarda).
+      await eliminarOportunidad(deleteOpportunityId);
       
       // Actualizar estado local
       setOpportunities(prevOpps => 

@@ -2702,7 +2702,8 @@
           "otro": "Otro"
         },
         "sinResponsable": "Sin responsable",
-        "diasEnEtapa": "{dias} d en etapa"
+        "diasEnEtapa": "{dias} d en etapa",
+        "lead": "Lead"
       },
       "leads": {
         "columnas": {
@@ -3629,6 +3630,533 @@
       "oportunidades": {
         "nueva": "Nueva oportunidad",
         "perdidas": "Perdidas"
+      }
+    },
+    "oportunidad": {
+      "flujo": {
+        "conflicto": "La oportunidad cambió mientras se guardaba. Vuelve a intentarlo.",
+        "errorMover": "No se pudo mover de etapa",
+        "motivoOverride": "Avanzó sin cumplir los requisitos de la etapa",
+        "movida": "Oportunidad movida a {etapa}",
+        "gateGanar": "Faltan requisitos de la etapa: {lista}",
+        "sinPermisoCerrar": "No tienes permiso para cerrar oportunidades.",
+        "errorGanar": "No se pudo marcar como ganada",
+        "perdida": "Oportunidad marcada como perdida",
+        "errorPerder": "No se pudo marcar como perdida",
+        "permisoCerrar": "cerrar oportunidades",
+        "sinEtapaGanada": "Este embudo no tiene etapa ganada; configúrala en «Etapas».",
+        "sinEtapaPerdida": "Este embudo no tiene etapa de pérdida; configúrala en «Etapas»."
+      },
+      "acciones": {
+        "sufijoCopia": "(copia)",
+        "duplicada": "Oportunidad duplicada",
+        "errorDuplicar": "No se pudo duplicar",
+        "eliminada": "Oportunidad eliminada",
+        "errorEliminar": "No se pudo eliminar",
+        "noEliminable": "Está ganada o tiene cotización, factura, venta o comisión: no se puede eliminar.",
+        "eliminarTitulo": "¿Eliminar «{nombre}»?",
+        "eliminarDescripcion": "Se borran también sus líneas, notas y tareas. No se puede deshacer.",
+        "eliminar": "Eliminar",
+        "cancelar": "Cancelar"
+      },
+      "filtros": {
+        "titulo": "Filtros",
+        "boton": "Filtros",
+        "embudo": "Embudo",
+        "todos": "Todos",
+        "etapa": "Etapa",
+        "todas": "Todas",
+        "responsable": "Responsable",
+        "yo": "Yo",
+        "sinAsignar": "Sin asignar",
+        "cierre": "Cierre esperado",
+        "cualquierFecha": "Cualquier fecha",
+        "preset": {
+          "mes": "este mes",
+          "trimestre": "este trimestre",
+          "vencido": "vencido"
+        },
+        "prioridad": "Prioridad",
+        "chipEmbudo": "Embudo: {nombre}",
+        "chipEtapa": "Etapa: {nombre}",
+        "chipResponsable": "Responsable: {nombre}",
+        "chipCierre": "Cierre: {periodo}",
+        "chipPrioridad": "Prioridad: {lista}",
+        "limpiar": "Limpiar filtros"
+      },
+      "kpis": {
+        "aria": "Indicadores de oportunidades",
+        "valorAbierto": "Valor abierto",
+        "detalleAbiertas": "{n, plural, one {# oportunidad abierta} other {# oportunidades abiertas}}",
+        "ponderado": "Ponderado (solo abiertas)",
+        "abiertas": "Oportunidades abiertas",
+        "cierranMes": "{n, plural, =0 {Ninguna vence este mes} one {# vence este mes} other {# vencen este mes}}",
+        "tasaCierre": "Tasa de cierre (90 d)",
+        "ganadasPerdidas": "{ganadas, plural, one {# ganada} other {# ganadas}} · {perdidas, plural, one {# perdida} other {# perdidas}}",
+        "truncado": "Hay demasiadas oportunidades para sumarlas todas: los indicadores cuentan las primeras 20.000. Filtra para afinar."
+      },
+      "tablero": {
+        "aria": "Tablero del pipeline",
+        "errorColumna": "No se pudieron cargar las tarjetas de esta etapa",
+        "etapasAria": "Etapas",
+        "chipEtapa": "{etapa} · {n}",
+        "resumenColumna": "{moneda} · {n, plural, one {# oportunidad} other {# oportunidades}} · prob. {prob} %"
+      },
+      "tabla": {
+        "vencido": "vencido hace {dias, plural, =0 {unas horas} one {# d} other {# d}}",
+        "hoy": "hoy {hora}",
+        "manana": "mañana {hora}",
+        "seleccionarPagina": "Seleccionar las oportunidades de esta página",
+        "oportunidad": "Oportunidad",
+        "etapa": "Etapa",
+        "monto": "Monto",
+        "prob": "Prob.",
+        "cierre": "Cierre",
+        "responsable": "Responsable",
+        "proximo": "Próximo contacto",
+        "acciones": "Acciones",
+        "seleccionar": "Seleccionar {nombre}",
+        "lead": "Lead",
+        "sinCliente": "Sin cliente",
+        "sinResponsable": "Sin asignar",
+        "sustantivo": {
+          "singular": "oportunidad",
+          "plural": "oportunidades"
+        }
+      },
+      "masivo": {
+        "resultado": "{ok, plural, one {# de {total} aplicada} other {# de {total} aplicadas}}",
+        "motivoVariosEmbudos": "Las seleccionadas son de embudos distintos",
+        "motivoSinPermiso": "No tienes permiso",
+        "sustantivo": {
+          "singular": "seleccionada",
+          "plural": "seleccionadas"
+        },
+        "mover": "Mover de etapa",
+        "asignar": "Asignar responsable",
+        "perder": "Marcar perdida",
+        "eliminar": "Eliminar",
+        "exportar": "Exportar",
+        "moverTitulo": "Mover {n, plural, one {# oportunidad} other {# oportunidades}}",
+        "moverDescripcion": "Cada una pasa por los requisitos de la etapa; las que no los cumplan se quedan donde están.",
+        "cancelar": "Cancelar",
+        "etapa": "Etapa destino",
+        "elegirEtapa": "Elige una etapa",
+        "asignarTitulo": "Asignar responsable a {n, plural, one {# oportunidad} other {# oportunidades}}",
+        "responsable": "Responsable",
+        "sinAsignar": "Sin asignar",
+        "varias": "{n, plural, one {# oportunidad} other {# oportunidades}}",
+        "eliminarTitulo": "¿Eliminar {n, plural, one {# oportunidad} other {# oportunidades}}?",
+        "eliminarDescripcion": "Las ganadas o con documentos no se eliminan. No se puede deshacer."
+      },
+      "lista": {
+        "titulo": "Oportunidades",
+        "subtitulo": "Negocios de todos los embudos de ventas",
+        "subtituloSinPermiso": "Sin acceso",
+        "subtituloMovil": "{n, plural, one {# oportunidad} other {# oportunidades}}",
+        "migas": {
+          "crm": "CRM"
+        },
+        "nueva": "Nueva oportunidad",
+        "importar": "Importar",
+        "exportar": "Exportar",
+        "sinPermiso": {
+          "titulo": "No tienes acceso a las oportunidades",
+          "descripcion": "Pide a un administrador el permiso para ver oportunidades.",
+          "volver": "Volver al CRM"
+        },
+        "vacio": {
+          "titulo": "Aún no tienes oportunidades",
+          "descripcion": "Crea la primera o califica un lead para empezar a vender.",
+          "verPipeline": "Ver pipeline"
+        },
+        "pestanas": {
+          "aria": "Estado de las oportunidades",
+          "open": "Abiertas",
+          "won": "Ganadas",
+          "lost": "Perdidas",
+          "all": "Todas"
+        },
+        "errorKpi": "No se pudieron calcular los indicadores",
+        "buscar": "Buscar por nombre o cliente",
+        "orden": {
+          "aria": "Ordenar por",
+          "cierre": "Cierre esperado",
+          "creada": "Fecha de creación",
+          "monto": "Monto",
+          "proximo": "Próximo contacto",
+          "nombre": "Nombre"
+        },
+        "error": {
+          "titulo": "No se pudieron cargar las oportunidades",
+          "descripcion": "Revisa tu conexión e inténtalo de nuevo."
+        },
+        "sinResultados": {
+          "titulo": "Ninguna oportunidad coincide",
+          "descripcion": "Prueba con otra búsqueda, otra pestaña o quita filtros."
+        },
+        "csv": {
+          "oportunidad": "Oportunidad",
+          "cliente": "Cliente",
+          "etapa": "Etapa",
+          "monto": "Monto",
+          "moneda": "Moneda",
+          "prob": "Probabilidad",
+          "cierre": "Cierre esperado",
+          "responsable": "Responsable",
+          "proximo": "Próximo contacto",
+          "estado": "Estado",
+          "tipo": "Tipo"
+        }
+      },
+      "etapas": {
+        "guardada": "Etapa guardada",
+        "error": "No se pudo guardar la etapa",
+        "eliminada": "Etapa eliminada",
+        "titulo": "Etapas del pipeline",
+        "descripcion": "Cambia nombre, color, probabilidad y resultado. Los requisitos y el agente IA se configuran en cada etapa.",
+        "ganada": "Ganada",
+        "perdida": "Perdida",
+        "editar": "Editar {etapa}",
+        "eliminar": "Eliminar {etapa}",
+        "nueva": "Nueva etapa"
+      },
+      "asistente": {
+        "titulo": "Nuevo pipeline",
+        "tituloCon": "Nuevo pipeline · {nombre}",
+        "cancelar": "Cancelar",
+        "atras": "Atrás",
+        "crear": "Crear pipeline",
+        "siguiente": "Siguiente",
+        "desc": {
+          "plantilla": "Elige una plantilla para empezar. Todo se puede cambiar en el paso 3.",
+          "datos": "Ponle nombre y decide si será el pipeline por defecto.",
+          "etapas": "Ordena las etapas y cambia nombre, color, probabilidad, SLA y resultado."
+        },
+        "pasos": {
+          "plantilla": "Plantilla",
+          "datos": "Nombre y tipo",
+          "etapas": "Etapas"
+        },
+        "pasosAria": "Pasos del asistente",
+        "pasoMovil": "Paso {n} de {total} · {etiqueta}",
+        "notaCierre": "Las etapas de cierre (trofeo y X) marcan la oportunidad como ganada o perdida al moverla allí.",
+        "nombre": "Nombre del pipeline",
+        "nombreAyuda": "No puede repetirse dentro de la organización.",
+        "tipo": "Tipo",
+        "tipoAyuda": "Los leads del sitio web entran al pipeline de ventas por defecto.",
+        "tipos": {
+          "sales": "Ventas",
+          "onboarding": "Onboarding",
+          "renewal": "Renovación"
+        },
+        "meta": "Meta del periodo (opcional)",
+        "moneda": "Moneda",
+        "periodo": "Periodo",
+        "periodos": {
+          "monthly": "Mensual",
+          "quarterly": "Trimestral",
+          "yearly": "Anual"
+        },
+        "porDefecto": "Usar como pipeline por defecto",
+        "porDefectoAyuda": "Es el que abre el tablero y donde entran los leads web. Solo puede haber uno.",
+        "vistaPrevia": "Vista previa",
+        "agregarEtapa": "Agregar etapa",
+        "limiteEtapas": "{n, plural, one {# etapa} other {# etapas}} · puedes agregar hasta {max}",
+        "requisitosAria": "Requisitos para crear el pipeline",
+        "checkGanada": "Una etapa de cierre ganada: «{nombre}»",
+        "faltaGanada": "Falta una etapa de cierre ganada",
+        "checkPerdida": "Una etapa de cierre perdida: «{nombre}»",
+        "faltaPerdida": "Falta una etapa de cierre perdida",
+        "checkOrden": "Probabilidades en orden de menor a mayor",
+        "error": {
+          "nombreObligatorio": "El nombre es obligatorio.",
+          "nombreRepetido": "Ya hay un pipeline con ese nombre.",
+          "metaInvalida": "La meta debe ser un número mayor o igual a cero."
+        },
+        "errorNombre": "Ya existe un pipeline con ese nombre. No se creó nada.",
+        "errorEtapas": "Revisa las etapas: falta una ganada o una perdida, o las probabilidades no están en orden. No se creó nada.",
+        "errorCrear": "No se pudo crear el pipeline ({detalle}). No se creó nada; tus cambios siguen aquí."
+      },
+      "selector": {
+        "aria": "Embudo: {nombre}",
+        "conDefecto": "{nombre} (principal)",
+        "elegir": "Elige un embudo",
+        "titulo": "Pipelines de la organización",
+        "porDefecto": "Por defecto",
+        "tipos": {
+          "ventas": "Ventas",
+          "onboarding": "Onboarding",
+          "renovacion": "Renovación"
+        },
+        "etapas": "{n, plural, one {# etapa} other {# etapas}}",
+        "nuevo": "Nuevo pipeline",
+        "nuevoDetalle": "Desde una plantilla o en blanco",
+        "sinPermiso": "No tienes permiso",
+        "usarDefecto": "Usar «{nombre}» como por defecto",
+        "yaDefecto": "Ya es el pipeline por defecto",
+        "usarDefectoDetalle": "El tablero abrirá este embudo",
+        "editarEtapas": "Editar etapas de este pipeline",
+        "eliminar": "Eliminar pipeline",
+        "noEliminable": "No se puede: {n, plural, one {tiene # oportunidad} other {tiene # oportunidades}}",
+        "eliminarDetalle": "Sin oportunidades: se puede eliminar"
+      },
+      "resumen": {
+        "guardado": "Seguimiento guardado",
+        "errorGuardar": "No se pudo guardar el seguimiento",
+        "proximoPaso": "Próximo paso",
+        "ultimoContacto": "Último contacto: {canal} · {cuando}",
+        "hoy": "hoy",
+        "hace": "hace {dias, plural, one {# d} other {# d}}",
+        "accion": "Próxima acción",
+        "fechaHora": "Fecha y hora",
+        "zona": "Hora de la organización ({zona})",
+        "canal": "Canal",
+        "canales": {
+          "call": "Llamada",
+          "email": "Correo",
+          "whatsapp": "WhatsApp",
+          "meeting": "Reunión",
+          "visit": "Visita"
+        },
+        "resultado": "Resultado del último contacto",
+        "resultados": {
+          "reached": "Contactado",
+          "no_answer": "Sin respuesta",
+          "left_voicemail": "Buzón de voz",
+          "callback_scheduled": "Devolver la llamada",
+          "qualified": "Calificado",
+          "not_interested": "No interesado",
+          "objection": "Objeción"
+        },
+        "temperatura": "Temperatura",
+        "temperaturas": {
+          "cold": "Fría",
+          "warm": "Tibia",
+          "hot": "Caliente"
+        },
+        "cambiosSinGuardar": "Hay cambios sin guardar",
+        "sinCambios": "Sin cambios sin guardar",
+        "guardar": "Guardar seguimiento",
+        "informacion": "Información",
+        "monto": "Monto",
+        "moneda": "Moneda",
+        "monedaBase": "{codigo} · moneda base",
+        "cierre": "Cierre estimado",
+        "creada": "Creada",
+        "equipo": "Equipo y responsable"
+      },
+      "drawer": {
+        "cargando": "Cargando oportunidad",
+        "titulo": "Oportunidad",
+        "noEncontrada": "Oportunidad no encontrada",
+        "noEncontradaDetalle": "Puede que se haya eliminado o que no tengas acceso.",
+        "sinPermiso": "No tienes acceso a esta oportunidad",
+        "cerrar": "Cerrar",
+        "descripcion": "Resumen, actividad, tareas, notas, documentos e IA de la oportunidad",
+        "pestanasAria": "Secciones de la oportunidad",
+        "pestanas": {
+          "resumen": "Resumen",
+          "onboarding": "Onboarding",
+          "actividad": "Actividad",
+          "tareas": "Tareas",
+          "notas": "Notas",
+          "documentos": "Documentos",
+          "ia": "IA"
+        }
+      },
+      "lineas": {
+        "elegirProducto": "Elige un producto",
+        "cantidad": "Cant.",
+        "precio": "Precio unit.",
+        "elegirEspacio": "Elige un espacio",
+        "noches": "Noches",
+        "concepto": "Concepto",
+        "titulo": "Líneas",
+        "descripcion": "Productos, espacios (PMS) y otros conceptos. Opcional.",
+        "clases": {
+          "products": "Productos ({n})",
+          "spaces": "Espacios ({n})",
+          "custom": "Otros conceptos ({n})"
+        },
+        "columna": {
+          "products": "Producto",
+          "spaces": "Espacio",
+          "custom": "Concepto"
+        },
+        "total": "Total",
+        "quitar": "Quitar línea",
+        "agregar": {
+          "products": "Agregar producto",
+          "spaces": "Agregar espacio",
+          "custom": "Agregar concepto"
+        },
+        "totalGeneral": "Total {total}",
+        "sinLineas": "Esta oportunidad no tiene líneas. Agrégalas en «Editar».",
+        "producto": "Producto",
+        "espacio": "Espacio",
+        "detalleCantidad": "{n} × {precio}",
+        "detalleNoches": "{n, plural, one {# noche} other {# noches}} × {precio}"
+      },
+      "origenComision": {
+        "titulo": "Origen y comisión",
+        "origen": "Origen",
+        "sinOrigen": "Sin origen",
+        "vertical": "Vertical",
+        "sinVertical": "Sin vertical",
+        "comisionista": "Comisionista",
+        "tipos": {
+          "salesperson": "El responsable",
+          "intermediation_sale": "Un intermediario",
+          "none": "Sin comisión"
+        },
+        "comision": "Comisión (%)",
+        "comisionAyuda": "Editable también al editar."
+      },
+      "formularioPagina": {
+        "tituloEditar": "Editar oportunidad",
+        "tituloNueva": "Nueva oportunidad",
+        "migas": {
+          "crm": "CRM",
+          "oportunidades": "Oportunidades",
+          "editar": "Editar",
+          "nueva": "Nueva"
+        },
+        "lineasInvalidas": "Revisa las líneas: cada una necesita producto, espacio o concepto y una cantidad mayor que cero.",
+        "conflicto": "Alguien cambió esta oportunidad mientras la editabas. Recarga la página para ver su versión.",
+        "noEncontrada": "Oportunidad no encontrada",
+        "volver": "Volver a Oportunidades",
+        "sinPermiso": "No puedes editar esta oportunidad",
+        "sinPermisoDetalle": "Solo el responsable, quien la creó o alguien con permiso para editar cualquier oportunidad."
+      },
+      "nueva": {
+        "creada": "Oportunidad creada"
+      },
+      "pipeline": {
+        "titulo": "Pipeline",
+        "porDefectoHecho": "«{nombre}» es ahora el pipeline por defecto",
+        "errorPipeline": "No se pudo cambiar el pipeline",
+        "pipelineConOportunidades": "Tiene oportunidades: muévelas o elimínalas antes.",
+        "nueva": "Nueva oportunidad",
+        "subtituloSinEmbudo": "Esta organización no tiene embudo de ventas",
+        "subtituloSinPermiso": "Sin acceso",
+        "subtitulo": "{embudo} · {n, plural, one {# oportunidad abierta} other {# oportunidades abiertas}}",
+        "migas": {
+          "crm": "CRM"
+        },
+        "etapas": "Etapas",
+        "vistas": {
+          "aria": "Vista del pipeline",
+          "kanban": "Kanban",
+          "tabla": "Tabla",
+          "pronostico": "Pronóstico",
+          "clientes": "Clientes",
+          "automatizacion": "Automatización"
+        },
+        "buscar": "Buscar oportunidad o cliente",
+        "eliminarTitulo": "¿Eliminar el pipeline «{nombre}»?",
+        "eliminarDescripcion": "Se borran sus etapas. Solo se puede si no tiene oportunidades.",
+        "eliminar": "Eliminar",
+        "cancelar": "Cancelar",
+        "sinEmbudo": {
+          "titulo": "Crea tu embudo de ventas",
+          "descripcion": "El pipeline solo muestra oportunidades de un embudo de ventas. Empieza con la plantilla (Calificación, Propuesta, Negociación, Ganada, Perdida) y ajústala después.",
+          "crear": "Crear embudo de ventas",
+          "sinPermiso": "Pide a un administrador que cree el embudo de ventas.",
+          "verLeads": "Ver leads sin colocar ({n})"
+        },
+        "estados": {
+          "sinPermiso": {
+            "titulo": "No tienes acceso al pipeline",
+            "descripcion": "Pide a un administrador el permiso para ver oportunidades.",
+            "volver": "Volver al CRM"
+          },
+          "error": {
+            "titulo": "No se pudo cargar el pipeline",
+            "descripcion": "Revisa tu conexión e inténtalo de nuevo."
+          },
+          "sinResultados": {
+            "titulo": "Ninguna oportunidad coincide",
+            "descripcion": "Prueba con otra búsqueda o quita filtros."
+          },
+          "vacio": {
+            "titulo": "Tu pipeline está listo",
+            "descripcion": "Crea la primera oportunidad o califica un lead para verla avanzar por las etapas.",
+            "crear": "Nueva oportunidad",
+            "leads": "Ir a Leads"
+          }
+        }
+      },
+      "conexiones": {
+        "titulo": "Conexiones",
+        "cotizacion": "Cotización {numero}",
+        "cotizacionSola": "Cotización",
+        "sinCotizacion": "Sin cotización",
+        "factura": "Factura {numero}",
+        "facturaSola": "Factura",
+        "seCreaAlGanar": "Se crea al ganar",
+        "tareas": "Tareas",
+        "abiertas": "{n, plural, =0 {Ninguna abierta} one {# abierta} other {# abiertas}}",
+        "reunion": "Reunión",
+        "renovacion": "Renovación",
+        "cadaMeses": "{n, plural, one {cada mes} other {cada # meses}}",
+        "comision": "Comisión",
+        "estimada": "{monto} estimada"
+      },
+      "detalle": {
+        "titulo": "Oportunidad",
+        "migas": {
+          "crm": "CRM",
+          "oportunidades": "Oportunidades"
+        },
+        "volver": "Volver a Oportunidades",
+        "noEncontrada": {
+          "titulo": "Oportunidad no encontrada",
+          "descripcion": "Puede que se haya eliminado o que el enlace esté mal."
+        },
+        "sinPermiso": {
+          "titulo": "No tienes acceso a esta oportunidad",
+          "descripcion": "Pide a un administrador el permiso para ver oportunidades."
+        },
+        "error": {
+          "titulo": "No se pudo cargar la oportunidad",
+          "descripcion": "Revisa tu conexión e inténtalo de nuevo."
+        },
+        "clienteVinculado": "Cliente vinculado",
+        "errorVincular": "No se pudo vincular el cliente",
+        "editar": "Editar",
+        "marcarPerdida": "Marcar perdida",
+        "marcarGanada": "Marcar ganada",
+        "pestanasAria": "Secciones de la oportunidad",
+        "pestanas": {
+          "actividad": "Actividad",
+          "tareas": "Tareas",
+          "notas": "Notas",
+          "documentos": "Documentos",
+          "lineas": "Líneas",
+          "analisis": "Análisis",
+          "cierre": "Cierre",
+          "ia": "IA"
+        },
+        "sinCliente": "Esta oportunidad no tiene cliente vinculado.",
+        "vincularCliente": "Vincular cliente"
+      },
+      "metricas": {
+        "hoy": "hoy {hora}",
+        "manana": "mañana {hora}",
+        "monto": "Monto",
+        "montoDetalle": "{moneda} · {n, plural, =0 {sin líneas} one {# línea} other {# líneas}}",
+        "probabilidad": "Probabilidad",
+        "deLaEtapa": "de la etapa",
+        "ponderado": "Ponderado",
+        "ponderadoDetalle": "monto × probabilidad",
+        "cierre": "Cierre esperado",
+        "enDias": "{n, plural, =0 {hoy} one {en # día} other {en # días}}",
+        "haceDias": "{n, plural, one {vencido hace # día} other {vencido hace # días}}",
+        "responsable": "Responsable",
+        "sinResponsable": "Sin asignar",
+        "comision": "comisión {pct} %",
+        "proximo": "Próximo contacto"
       }
     }
   },

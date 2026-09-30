@@ -1857,3 +1857,139 @@ moneda con `useMonedaOrganizacion`.
 - Código muerto tras la 3A (ola 5): `components/crm/actividades/{ActividadesPage,ActividadesTable,ActividadForm,ActividadesFiltros,ActividadesStats,ActividadesPagination}`,
   `shared/QuickActionsBar.tsx` (ya sin usos; sus pruebas de F15/F16 leen el archivo) y la ruta
   `GET /api/crm/leads/heredados`.
+
+---
+
+## Ola 3B — estado
+
+Fecha: 2026-09-30. Pantallas de la sección «CRM — Pipeline y oportunidades» (`768:454425`, aprobada
+por el dueño, D7) conectadas al backend de la ola 1 y al kit de la ola 2. Sin commit. Toda escritura
+de oportunidades, etapas y actividades va por `/api/crm/**`; las pantallas nuevas no importan
+`@/lib/supabase/config` (guardarraíl 36, prueba nueva), salvo `oportunidad/pasosGanar.ts`, que arma
+las dependencias de los ejecutores únicos de `wonCloseSteps` (los mismos del `WonCloseModal`).
+
+### Pantallas ↔ Figma ↔ código
+
+| Paso | Figma | Ruta | Código |
+|---|---|---|---|
+| 3B.1 Pipeline | `768:454428` listo, `768:456094` arrastrando, `768:457615`/`812:53241` menú y acciones, `768:459368` tabla, `770:462337`–`770:465308` estados; móvil `771:37311`–`771:38704`, `812:54748` | `/app/crm/pipeline` | `src/components/crm/pipeline/pantalla/**` (`PipelinePantalla`, `KanbanTablero`, `PipelineMovil`, `TablaPipeline`, `EstadosPipeline`, `EtapasPipeline`, `useTableroPipeline`, `usePipelines`) |
+| 3B.2 Selector y «Nuevo pipeline» | `812:54821`, `816:56539`, `816:56990`, `816:57260`, `816:57906`, `816:58273`; móvil `817:*` | Pipeline | `SelectorPipeline`, `NuevoPipelineAsistente`, `nuevoPipelineLogica` |
+| 3B.3 Drawer | `776:30540`, `820:*`, `822:*`, `823:*`, `824:*` | Pipeline (tarjeta) | `src/components/crm/oportunidad/OportunidadDrawer.tsx`, `ResumenOportunidad.tsx` |
+| 3B.4 Oportunidades | `773:23160`–`773:27539`; móvil `775:471491`–`775:472941`, `845:82719` | `/app/crm/oportunidades` | `src/components/crm/oportunidades/pantalla/OportunidadesPantalla.tsx` + `oportunidad/{TablaOportunidades,ListaMovilOportunidades,AccionesMasivas,KpisOportunidades,FiltrosOportunidades,useListaOportunidades}` |
+| 3B.5 Detalle | `775:473076`, `775:473990`, `775:474532`, `775:474947`, `775:475356`; móvil `776:30808`–`776:31652` | `/app/crm/oportunidades/[id]` | `oportunidad/{OportunidadDetalle,MetricasOportunidad,ConexionesOportunidad,LineasResumen}` |
+| 3B.6 Formulario y entradas | `778:32176`, `778:33132`, `778:33942` | `/app/crm/oportunidades/nuevo` (`?pipeline&etapa&cliente&nombreCliente`), `…/[id]/editar`, «+» de columna | `oportunidad/{FormularioOportunidadPagina,NuevaOportunidadDialogo,LineasOportunidad,OrigenComisionSeccion,lineasLogica}` |
+| 3B.7 Diálogos | `779:36778`–`779:37686`; móvil `779:37888`–`779:38675` | tablero, lista, drawer y detalle | `oportunidad/{useFlujoEtapa,useAccionesOportunidad,pasosGanar}` + `WinDialog`, `LoseDialog`, `MoveStageDialog`, `CustomerLinkPicker` del kit |
+
+- **Flujo de etapa único** (`useFlujoEtapa`): tablero, tabla, lista, drawer y detalle usan el mismo.
+  Destino ganada → `WinDialog` → `POST …/win`; perdida → `LoseDialog` → `POST …/lose` (siempre a la
+  etapa `is_lost`, motivo del catálogo `GET /api/crm/loss-reasons`); abierta → `MoveStageDialog` →
+  `PATCH …/stage` (y `PATCH …/[id]` del próximo contacto si cambió). Sin `edit` propio/`edit_any` o
+  sin `close` para cerrar/reabrir, «sin permiso» sin llamar al servidor; el 409 `gate` abre el diálogo
+  con los requisitos y «Avanzar de todos modos» solo con `crm.stages.override_gate`.
+- **Kanban**: @dnd-kit (puntero). Alternativa de teclado: «Mover de etapa» del menú «⋯» de cada
+  tarjeta. Soltar en una columna abierta mueve YA (optimista) y revierte si el servidor rechaza;
+  soltar en Ganada/Perdida abre su diálogo sin mover. Cada columna pide sus tarjetas paginadas
+  (`GET /api/crm/opportunities?stage_id=…&limit=20`, «Cargar más» por columna).
+- **Ganar**: `POST …/win` y después los pasos elegidos por los ejecutores ÚNICOS de `wonCloseSteps`
+  (`pasosGanar.crearDepsGanar`, que ahora comparte el `WonCloseModal`). «Agradecimiento» no tiene
+  ejecutor; reservas y comisión se ejecutan siempre (son del sistema).
+- **D2**: las 42 `record_type='lead'` llevan la etiqueta «Lead» (tarjeta del kit con `esLead`, tabla
+  y detalle).
+- **Formulario en página**: `OpportunityForm layout=page` + `seccionesPagina` (líneas y «Origen y
+  comisión»). El total de líneas es `lineasLogica.totalLineas`, que también usa ahora el formulario
+  anterior (un solo cálculo; las oportunidades no llevan impuestos). El kit ganó dos props aditivas:
+  `clienteId` (cliente elegido con `CustomerLinkPicker`) y `montoCalculado` (suma de líneas).
+
+### Backend añadido
+
+| Qué | Detalle |
+|---|---|
+| `GET /api/crm/opportunities` | Pasa a `oportunidadesLecturaService`: filtros de temperatura (D4), cierre, «sin responsable», búsqueda por nombre **o cliente**, orden (`sort`/`dir`) y por fila `cliente_nombre`, contacto del cliente, `etapa` y `entro_etapa_en`. |
+| `GET /api/crm/opportunities/resumen` | Conteos por estado, abiertas por moneda (con ponderado), cierres del mes, ganadas/perdidas a 90 días y tasas de la organización. Moneda base resuelta en el servidor (`resolveOrgCurrency`). Lee 7 columnas en páginas de 1000 hasta 20 000 (`truncado`). |
+| `GET /api/crm/pipelines/[id]/board` | Pipeline (404 si es de otra organización), etapas y el resumen del pipeline; **no** trae tarjetas. |
+| `GET /api/crm/opportunities/[id]` | Añade cliente, etapa, pipeline, espacios, nombre del producto y `entro_etapa_en`. |
+| `PUT /api/crm/opportunities/[id]/score` | Calificación GOC calculada en el servidor (`scoringCalculo.calcularScore`, cálculo único que ahora usa también `scoringService`). |
+| `PATCH /api/crm/opportunities/[id]/seguimiento` | Próximo paso: lo editable por `crm_update_opportunity`; canal y resultado del último contacto (no están en la RPC) en el servidor con la organización. |
+| `GET /api/crm/loss-reasons` | Motivos globales + de la organización, activos. |
+| Migración `20260930210000_crm_ola3b_lineas_espacios` | `fn_crm_opp_lineas_aplicar` aplica también `spaces` (espacios del PMS, por diferencia, espacio de una sucursal de la organización) y `fn_crm_uuid_o_null` fija `search_path` (aviso de la ola 1). Aplicada por MCP; prueba en seco con `begin … rollback`; md5 del `.sql` = lo aplicado (`a407f9b1…`). Rollback en `supabase/rollbacks/`. |
+
+Bug encontrado por la prueba de contrato: devolver el constructor de PostgREST desde una función
+`async` lo ejecutaba (es «thenable») sin orden ni rango; `aplicarFiltros` devuelve `{ q }`.
+
+### Guardarraíl 36: deuda vaciada
+
+De 8 entradas queda 1. Salieron:
+
+- `oportunidades/opportunitiesService.ts` → `POST`, `PATCH` (+ `…/stage` y `…/seguimiento`) y
+  `DELETE /api/crm/opportunities/**`; estado, cierre y ficha de venta ya no se escriben por ahí.
+- `pipeline/TableView.tsx` → `DELETE /api/crm/opportunities/[id]`.
+- `pipeline/drawer/SalesTeamTerritorySelectors.tsx` y `equipo/tabs/AsignarTab.tsx` → `PATCH …/[id]`.
+- `oportunidades/ScoringSection.tsx` → `PUT …/[id]/score`.
+- `pipeline/services/pipelineService.ts` → `POST /api/crm/opportunities` (antes insertaba
+  `status:"active"`, que el CHECK rechaza).
+- `oportunidades/ImportLeadsCsv.tsx`: código muerto sin importadores, **borrado**.
+
+Queda `identidades/IdentidadesService.ts` (fusión de identidades): no es pantalla de la 3B; necesita
+su RPC transaccional.
+
+### i18n
+
+Namespace `crm.oportunidad` (405 claves) en `messages/{es,en,fr,pt}.json` con paridad exacta, más
+`crm.kit.tarjeta.lead`; registrado en `src/__tests__/i18n/traduccionesModulos.test.ts`. Fechas con
+`dateDisplay`/`fechasCrm` y la zona de la organización (filtros de cierre y KPI calculados en su día;
+«hace 90 días» como instante en su zona). Moneda con `useMonedaOrganizacion`/`resolveOrgCurrency`.
+
+### Pruebas
+
+- `src/app/api/crm/__tests__/ola3bRutas.contract.test.ts` (15): lista (organización de la sesión,
+  «Lead», entrada a la etapa, filtros y búsqueda por cliente, filtros inválidos ignorados),
+  resumen, board (404 ajeno, 400, 403), detalle, score (servidor calcula; 400 si el navegador manda el
+  score; 403 ajena), seguimiento (RPC + contacto con organización; 400; 403 body ajeno), motivos y
+  espacios en el alta. `ola1Fake.ts` admite `ilike` dentro de `or()` (aditivo).
+- `src/components/crm/oportunidad/__tests__/oportunidadLogica.test.ts` (30): permisos, tarjeta,
+  moneda base y «falta tasa», estados, rechazos (gate, cierre, permiso, conflicto), tablero
+  optimista, filtros en la zona, líneas y comisión, duplicar, asistente, elección de pipeline, pasos
+  al ganar, conexiones y scoring. Pasa con `TZ=UTC` y `TZ=America/Bogota`.
+- `src/components/crm/oportunidad/__tests__/pantallasOla3bRender.test.tsx` (26, sin jest-dom, 4
+  idiomas): Oportunidades y Pipeline listos; vacío, sin permiso, error con reintento; sin embudo →
+  asistente → `POST /api/crm/pipelines` con 9 etapas en una llamada; 409 sin estado a medias;
+  crear en página con líneas → mover (menú, alternativa de teclado) → ganar (3 pasos, `…/win` y
+  pasos) / perder (`…/lose` a la etapa perdida); Empleado sin cerrar (menú y «sin permiso» sin
+  llamada); arrastre optimista revertido por el gate con el diálogo de requisitos; drawer →
+  «Guardar seguimiento»; móvil por etapa; detalle listo, 404 y 403. Cada prueba verifica que toda
+  escritura va a `/api/crm/**`.
+- Adaptadas: `crmOportunidadesRonda` §1 (las líneas van por el servidor en un PATCH, sin
+  `total_price` ni escrituras del navegador), `f6Adversarial` (el tablero es `pantalla/KanbanTablero`
+  y `EtapasPipeline` monta `StageDialog`), `finanzas/ventas/cotizaciones` (el cableado de la factura
+  al ganar vive en `crearDepsGanar`).
+- En verde: guardarraíles (174) + i18n + `src/lib/services/crm/**` (3 807 − 1), `src/components/crm/**`
+  (562) y `src/app/api/crm/**` (383 − 4). Los únicos fallos son los preexistentes anotados:
+  `f10Proposals.contract` y `f6Adversarial › H2` (middleware). tsc acotado de los archivos tocados
+  (con sus pruebas) sin errores; ESLint limpio en los archivos tocados. `npx next build` no se corrió
+  (memoria de la sesión).
+
+### Diferencias con el Figma y pendientes
+
+- Selector de embudo: muestra etapas por pipeline, no «N abiertas» (no hay conteo por pipeline sin
+  leerlos todos).
+- «Etapas» abre la lista con editar/eliminar/nueva sobre `StageDialog` y `/api/crm/stages/**`; la
+  edición en rejilla con `StageEditorRow` solo está en «Nuevo pipeline».
+- «Vincular cliente» (`CustomerLinkPicker`) busca y vincula; crear un cliente desde el vinculador no
+  tiene ruta de alta en el CRM: sin «Crear persona/empresa».
+- «Importar» de Oportunidades lleva al importador de Leads (se importan leads y se califican).
+- Selección masiva: sin «Seleccionar las N» de todas las páginas; cada acción va una por una (cada
+  ruta vuelve a comprobar permiso y propiedad).
+- Estados de cotización y factura en «Conexiones» se muestran con el valor de la base.
+- `/nuevo?cliente=` sin `nombreCliente` deja el cliente elegido pero sin su nombre en el botón.
+- Pestañas heredadas del drawer y del detalle (Actividad, Tareas, Notas, Documentos, IA, Onboarding,
+  Análisis y Cierre) se reutilizan tal cual; leen del navegador con `useOpportunityData` (solo
+  lectura). «Análisis» ahora filtra `activities` por organización.
+- Ola 4: «Crear oportunidad» desde factura (`778:34520`) y desde conversación (`778:35164`) con el
+  mismo `OpportunityForm`; línea de tiempo única de la ficha; `TaskForm` del PM.
+- Ola 5: borrar lo que la 3B dejó sin uso — `PipelineView`, `PipelineHeader`, `KanbanBoardV2`,
+  `KanbanColumnV2`, `OpportunityCardV2`, `hooks/useKanbanBoard`, `pipeline/OpportunityDrawer`,
+  `drawer/DrawerHeader`, `drawer/StageSelect`, `ClosedWonDialog`, `GateWarningDialog`, `TableView`,
+  `modals/CreateOpportunityDialog`, `BulkActionsDialog`, `oportunidades/{OpportunityDetail,
+  OpportunitiesTable,OpportunitiesFilters,OpportunitiesStats,MarkWonFlow,StructuredLossDialog,
+  LossReasonDialog,OpportunityForm}` y `detail/{DetailHeader,DetailSidebar,useStageFlow}` (antes,
+  comprobar importadores); `pipelineService.updateCustomer` escribe `full_name`, que es GENERATED.

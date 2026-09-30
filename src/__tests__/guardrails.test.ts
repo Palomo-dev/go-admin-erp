@@ -3210,9 +3210,10 @@ describe('35. Miembros: rol, cargo, estado y retiro solo por las RPC fn_miembro_
 // `opportunityStageService`) y `/api/crm/activities/**`, con la organización de
 // la sesión y los permisos `crm.*`. Desde el navegador (`src/components/crm/**`)
 // no hay transacción, ni permiso, ni autoría. La allow-list es la DEUDA que
-// existía al abrir la ola 1 (2026-09-29): se congela aquí y se vacía en las
-// olas 3B (pipeline, drawer, oportunidades, equipo) y 5 (código muerto:
-// `ImportLeadsCsv`). Prohibido añadir entradas; quitar las que se migren.
+// existía al abrir la ola 1 (2026-09-29): se congeló aquí y la ola 3B la vació
+// (pipeline, drawer, oportunidades, equipo y el código muerto `ImportLeadsCsv`).
+// Solo queda la fusión de identidades. Prohibido añadir entradas; quitar las
+// que se migren.
 //
 // 36b. D2 (dueño, 2026-09-29): un lead ES un cliente con lifecycle_stage='lead'.
 // No se crean oportunidades `record_type='lead'` nuevas: ni desde TypeScript
@@ -3224,14 +3225,15 @@ describe('36. CRM ola 1: escrituras de oportunidades/actividades por el servidor
   const CRM_COMPONENTES = path.join(SRC_ROOT, 'components', 'crm');
   const DEUDA_NAVEGADOR = new Map<string, string>([
     // `components/crm/actividades/ActividadesService.ts` salió en la ola 3A: edita y borra por PATCH/DELETE /api/crm/activities/[id].
-    ['components/crm/equipo/tabs/AsignarTab.tsx', 'reasignar responsable: ola 3B → PATCH /api/crm/opportunities/[id]'],
+    // Ola 3B (2026-09-30) vació la deuda del pipeline, el drawer, Oportunidades y Equipo:
+    //  - `oportunidades/opportunitiesService.ts` → POST, PATCH (+ …/stage y …/seguimiento) y DELETE /api/crm/opportunities/**;
+    //  - `pipeline/TableView.tsx` → DELETE /api/crm/opportunities/[id];
+    //  - `pipeline/drawer/SalesTeamTerritorySelectors.tsx` y `equipo/tabs/AsignarTab.tsx` → PATCH /api/crm/opportunities/[id];
+    //  - `oportunidades/ScoringSection.tsx` → PUT /api/crm/opportunities/[id]/score (cálculo en el servidor);
+    //  - `pipeline/services/pipelineService.ts` → POST /api/crm/opportunities;
+    //  - `oportunidades/ImportLeadsCsv.tsx` era código muerto (sin importadores): se borró.
+    // Queda UNA entrada, fuera de la 3B: la fusión de identidades no es una pantalla del plan.
     ['components/crm/identidades/IdentidadesService.ts', 'fusión de identidades (re-apunta related_id): pendiente de RPC propia'],
-    ['components/crm/oportunidades/ImportLeadsCsv.tsx', 'código muerto (sin importadores): se borra en la ola 5'],
-    ['components/crm/oportunidades/ScoringSection.tsx', 'score del drawer: ola 3B → PATCH /api/crm/opportunities/[id]'],
-    ['components/crm/oportunidades/opportunitiesService.ts', 'alta/edición/borrado del formulario actual: ola 3B → /api/crm/opportunities'],
-    ['components/crm/pipeline/TableView.tsx', 'borrar desde la tabla: ola 3B → DELETE /api/crm/opportunities/[id]'],
-    ['components/crm/pipeline/drawer/SalesTeamTerritorySelectors.tsx', 'equipo y territorio: ola 3B → PATCH /api/crm/opportunities/[id]'],
-    ['components/crm/pipeline/services/pipelineService.ts', 'alta desde el tablero: ola 3B → POST /api/crm/opportunities'],
   ]);
 
   const ofensoresNavegador = (): string[] =>
@@ -3274,6 +3276,20 @@ describe('36. CRM ola 1: escrituras de oportunidades/actividades por el servidor
     expect(ofensoras).toEqual([]);
   });
 
+  // Ola 3B (plan §7.4.7): las pantallas nuevas de Pipeline, Oportunidades,
+  // drawer, detalle, formulario y diálogos leen y escriben SOLO por
+  // `/api/crm/**`. Única excepción: `pasosGanar.ts` arma las dependencias de los
+  // ejecutores únicos de `wonCloseSteps` (los mismos del `WonCloseModal`).
+  test('las pantallas de la ola 3B no importan el cliente de Supabase del navegador', () => {
+    const dirs = ['oportunidad', 'pipeline/pantalla', 'oportunidades/pantalla'].map((d) => path.join(CRM_COMPONENTES, d));
+    const ofensores = dirs
+      .flatMap((d) => walkDir(d))
+      .filter((f) => !esPrueba(f) && /\.(ts|tsx)$/.test(f) && !f.endsWith('pasosGanar.ts'))
+      .filter((f) => /@\/lib\/supabase\/config/.test(stripAllComments(readFile(f))))
+      .map(rel);
+    expect(ofensores).toEqual([]);
+  });
+
   test('crm_create_opportunity fija record_type = deal (no lo lee del cuerpo)', () => {
     const sql = readFile(path.join(REPO_ROOT, 'supabase', 'migrations', '20260930160600_crm_ola1_oportunidad_rpc.sql'));
     const alta = sql.slice(sql.indexOf('create or replace function public.crm_create_opportunity'), sql.indexOf('create or replace function public.crm_update_opportunity'));
@@ -3281,6 +3297,7 @@ describe('36. CRM ola 1: escrituras de oportunidades/actividades por el servidor
     expect(alta).not.toMatch(/v_data\s*->>\s*'record_type'/);
   });
 });
+
 /**
  * 38. get_user_permission_codes: cada quien lee solo sus propios permisos
  * (tanda 3, 2026-09-30, docs/design/SHELL-FIGMA-A-CODIGO.md).

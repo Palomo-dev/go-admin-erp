@@ -26,7 +26,7 @@ export function AnalyticsTab({ opportunity, displayAmount, active }: { opportuni
     (async () => {
       const [t, a] = await Promise.allSettled([
         opportunitiesService.getOpportunityTasks(opportunity.id),
-        supabase.from('activities').select('activity_type').eq('related_type', 'opportunity').eq('related_id', opportunity.id),
+        supabase.from('activities').select('activity_type').eq('organization_id', opportunity.organization_id).eq('related_type', 'opportunity').eq('related_id', opportunity.id),
       ]);
       if (cancelled) return;
       const byType: Record<string, number> = {};
@@ -34,7 +34,7 @@ export function AnalyticsTab({ opportunity, displayAmount, active }: { opportuni
       setData({ tasks: t.status === 'fulfilled' ? t.value : [], byType });
     })();
     return () => { cancelled = true; };
-  }, [active, data, opportunity.id]);
+  }, [active, data, opportunity.id, opportunity.organization_id]);
 
   if (!active) return null;
   if (!data) return <Skeleton className="h-40 w-full" />;

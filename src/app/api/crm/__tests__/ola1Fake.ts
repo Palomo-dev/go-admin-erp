@@ -19,7 +19,7 @@ interface Filtro {
 
 /**
  * `.or()` de PostgREST (ola 3A, feed de actividades): lista separada por comas
- * de `col.op.valor` o `and(...)`, con `eq`, `lt`, `lte`, `gte`, `in` e `is`.
+ * de `col.op.valor` o `and(...)`, con `eq`, `lt`, `lte`, `gte`, `in`, `is` e `ilike` (ola 3B).
  */
 type Condicion = { y: Condicion[] } | { col: string; op: string; v: string };
 
@@ -42,7 +42,7 @@ function partirNivel(expr: string): string[] {
 function parsearCondicion(parte: string): Condicion {
   const y = /^and\((.*)\)$/.exec(parte.trim());
   if (y) return { y: partirNivel(y[1]).map(parsearCondicion) };
-  const m = /^([\w.>-]+?)\.(eq|lt|lte|gte|in|is)\.(.*)$/.exec(parte.trim());
+  const m = /^([\w.>-]+?)\.(eq|lt|lte|gte|in|is|ilike)\.(.*)$/.exec(parte.trim());
   if (!m) throw new Error(`fake: or no soportado: ${parte}`);
   return { col: m[1], op: m[2], v: m[3].replace(/^"(.*)"$/, '$1') };
 }
@@ -63,6 +63,9 @@ function cumpleCondicion(row: Row, c: Condicion): boolean {
       return c.v.replace(/^\(|\)$/g, '').split(',').includes(String(v));
     case 'is':
       return c.v === 'null' ? v === null || v === undefined : String(v) === c.v;
+    case 'ilike':
+      // Ola 3B (búsqueda por nombre o cliente): `%texto%` sin comodines.
+      return typeof v === 'string' && v.toLowerCase().includes(c.v.replace(/%/g, '').replace(/\\/g, '').toLowerCase());
     default:
       return false;
   }

@@ -23,6 +23,8 @@ export interface MontoEnMoneda {
   monto: number | string | null | undefined;
   /** `opportunities.currency`; null → la base. */
   moneda: string | null | undefined;
+  /** Ola 3B: el ítem ya viene agregado por el servidor (N oportunidades). Por defecto 1. */
+  cantidad?: number;
 }
 
 export interface GrupoMoneda {
@@ -92,7 +94,7 @@ export function sumarEnMonedaBase(
     const moneda = normalizarCodigoMoneda(it.moneda) ?? codigoBase;
     const actual = porMoneda.get(moneda) ?? { monto: 0, cantidad: 0 };
     actual.monto += numero(it.monto);
-    actual.cantidad += 1;
+    actual.cantidad += it.cantidad ?? 1;
     porMoneda.set(moneda, actual);
   }
   const grupos: GrupoMoneda[] = [];

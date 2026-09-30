@@ -92,13 +92,16 @@ const MODULOS: Record<string, string[]> = {
   asistente: ['src/components/app-layout/Header', 'src/lib/ai/assistant'],
   // Kit CRM, ola 2 (Figma «CRM (Nuevo)» 759:20897, 2026-09-30). Namespace anidado: el resto de
   // `crm` todavía no tiene fr ni pt, así que solo se exige paridad en `crm.kit`.
-  'crm.kit': ['src/components/crm/kit'],
+  'crm.kit': ['src/components/crm/kit', 'src/components/crm/oportunidad', 'src/components/crm/pipeline/pantalla'],
   // CRM ola 3A (Figma «CRM — Leads, actividades y acciones rápidas» 765:446568, 2026-09-30):
   // pantallas de Leads y Actividades, acciones rápidas y bloque CRM de la ficha del cliente.
   'crm.accionesRapidas': ['src/components/crm/acciones', 'src/components/crm/leads/pantalla', 'src/components/crm/actividades/pantalla', 'src/components/crm/ficha'],
   'crm.pantallaLeads': ['src/components/crm/leads/pantalla'],
   'crm.pantallaActividades': ['src/components/crm/actividades/pantalla'],
   'crm.fichaCliente': ['src/components/crm/ficha', 'src/components/clientes/id', 'src/app/app/clientes'],
+  // CRM ola 3B (Figma «CRM — Pipeline y oportunidades» 768:454425, aprobada D7): Pipeline,
+  // «Nuevo pipeline», Oportunidades, drawer, detalle, formulario en página y diálogos.
+  'crm.oportunidad': ['src/components/crm/oportunidad', 'src/components/crm/pipeline/pantalla', 'src/components/crm/oportunidades/pantalla'],
   // Analítica web (Figma 03 › 464:237482, 2026-09-30), con los mapas de «De dónde entran».
   analiticaWeb: ['src/components/analiticaWeb', 'src/app/app/inicio/analitica-web'],
 };

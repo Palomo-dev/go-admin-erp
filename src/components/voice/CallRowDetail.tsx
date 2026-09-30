@@ -7,6 +7,7 @@
  */
 
 import { useState, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { CallPlayer } from './CallPlayer';
 import { CallLinkPanel } from './CallLinkPanel';
@@ -18,6 +19,7 @@ interface CallRowDetailProps {
 }
 
 export function CallRowDetail({ call }: CallRowDetailProps) {
+  const t = useTranslations('crm.llamadas');
   const state = useCallIntelligence(call.id, true);
   const [seekToMs, setSeekToMs] = useState<number | null>(null);
   const [currentMs, setCurrentMs] = useState(0);
@@ -32,7 +34,7 @@ export function CallRowDetail({ call }: CallRowDetailProps) {
     : null;
 
   return (
-    <div className="space-y-3 bg-gray-50 p-3 dark:bg-gray-900/60">
+    <div className="space-y-3 bg-subtle p-3">
       {/* Panel de vinculación: aparece si falta cliente o oportunidad */}
       <CallLinkPanel
         key={`link-${linkVersion}`}
@@ -43,15 +45,15 @@ export function CallRowDetail({ call }: CallRowDetailProps) {
         customerName={customerName}
         onLinked={() => setLinkVersion((v) => v + 1)}
       />
-      <CallPlayer callId={call.id} recordingEnabled={call.recording_enabled} consentMethod={call.consent_method} variant="full" seekToMs={seekToMs} onTimeUpdate={onTime} />
+      <CallPlayer callId={call.id} recordingEnabled={call.recording_enabled || call.recordings.some(r => r.status === 'ready')} consentMethod={call.consent_method} variant="full" seekToMs={seekToMs} onTimeUpdate={onTime} />
       <div className="hidden gap-3 md:grid md:grid-cols-2">
         <CallTranscriptPanel callId={call.id} state={state} onSeek={onSeek} currentMs={currentMs} />
         <CallAnalysisPanel callId={call.id} state={state} opportunityId={call.opportunity_id} />
       </div>
       <Tabs defaultValue="transcript" className="md:hidden">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="transcript">Transcripción</TabsTrigger>
-          <TabsTrigger value="analysis">Análisis IA</TabsTrigger>
+          <TabsTrigger value="transcript">{t('transcripcion')}</TabsTrigger>
+          <TabsTrigger value="analysis">{t('analisis')}</TabsTrigger>
         </TabsList>
         <TabsContent value="transcript">
           <CallTranscriptPanel callId={call.id} state={state} onSeek={onSeek} currentMs={currentMs} />

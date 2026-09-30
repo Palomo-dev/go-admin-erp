@@ -76,7 +76,6 @@ import type { NextRequest } from 'next/server';
 import {
   reconcileConsentsWithoutRecording,
   RECONCILE_ALERT_AFTER_DEFERRALS,
-  RECONCILE_ALERT_AFTER_DAYS,
   RECONCILE_DEFERRED_AT_KEY,
   RECONCILE_DEFERRALS_KEY,
 } from '@/lib/services/crm/consentReconcileService';
@@ -379,20 +378,20 @@ describe('VOZR8B-H4 · consent_method por conducta', () => {
     expect(isUnverifiedConsent('')).toBe(false);
   });
 
-  it('B.3 · listCallsWithRelations mapea `consent_method` de la acta de grabación del embed (y null sin acta o con acta de otro tipo)', async () => {
-    fake = seed({
-      calls: [
-        callRow({ id: CALL_ID, user_id: null, call_consents: [{ consent_type: 'marketing', method: 'sms' }, { consent_type: 'recording', method: 'unverified_announcement' }], call_recordings: [] }),
-        callRow({ id: CALL_B, user_id: null, call_consents: [{ consent_type: 'marketing', method: 'sms' }], call_recordings: [] }),
-        callRow({ id: 'cccccccc-0000-4000-8000-000000000105', user_id: null, call_consents: null, call_recordings: [] }),
-      ],
+  it('B.3 · el listado conserva el acta no acreditada devuelta por la RPC', async () => {
+    fake = seed({});
+    fake.rpcImpl.crm_calls_list = () => ({
+      data: [
+        callRow({ id: CALL_ID, consent_method: 'unverified_announcement', recordings: [] }),
+        callRow({ id: CALL_B, consent_method: null, recordings: [] }),
+      ], count: 2, canViewAll: false, stats: { totalToday: 2, avgDuration: 0, missed: 0 },
     });
     const { data } = await listCallsWithRelations(ORG, fake.client());
-    const byId = new Map(data.map((r) => [r.id, r.consent_method]));
+    const byId = new Map(data.map(r => [r.id, r.consent_method]));
     expect(byId.get(CALL_ID)).toBe('unverified_announcement');
     expect(byId.get(CALL_B)).toBeNull();
-    expect(byId.get('cccccccc-0000-4000-8000-000000000105')).toBeNull();
     expect(isUnverifiedConsent(byId.get(CALL_ID))).toBe(true);
+    expect(fake.rpcCalls).toEqual([{ name: 'crm_calls_list', args: { p_org: ORG, p_filters: {} } }]);
   });
 });
 

@@ -24763,6 +24763,95 @@
         "comision": "comissão {pct} %",
         "proximo": "Próximo contato"
       }
+    },
+    "llamadas": {
+      "titulo": "Chamadas",
+      "subtitulo": "Histórico, gravações e análise · últimos 30 dias",
+      "llamar": "Ligar",
+      "resumen": "Resumo de chamadas",
+      "total": "Chamadas",
+      "periodo": "Período filtrado",
+      "contacto": "Contato efetivo",
+      "humano": "Atendidas por uma pessoa",
+      "promedio": "Duração média",
+      "contestadas": "Somente chamadas atendidas",
+      "voz": "Minutos de conversa",
+      "sinPlan": "Nenhum plano de voz configurado",
+      "ilimitado": "Saldo ilimitado",
+      "saldo": "{n} minutos disponíveis",
+      "buscar": "Cliente, número ou palavra falada…",
+      "filtros": "Filtros de chamadas",
+      "direction": "Direção",
+      "mode": "Modo",
+      "outcome": "Resultado",
+      "todos": "Todos",
+      "fromDate": "De",
+      "toDate": "Até",
+      "mine": "Minhas chamadas",
+      "hasRecording": "Com gravação",
+      "actualizar": "Atualizar",
+      "exportar": "Exportar",
+      "exportando": "Exportando…",
+      "errorExportar": "Não foi possível exportar. Tente novamente.",
+      "detalle": "Ver detalhes",
+      "sinPermiso": "Sem permissão para consultar chamadas",
+      "error": "Não foi possível carregar as chamadas",
+      "sinResultados": "Nenhuma chamada para estes filtros",
+      "vacio": "Ainda não há chamadas",
+      "vacioDetalle": "Ligue pelo pipeline, pela oportunidade ou pelo discador.",
+      "fila": "Chamada com {nombre}",
+      "procesando": "Processando gravação…",
+      "transcripcion": "Transcrição",
+      "analisis": "Análise IA",
+      "columnas": {
+        "fecha": "Data",
+        "tipo": "Tipo",
+        "cliente": "Cliente",
+        "usuario": "Quem",
+        "duracion": "Duração",
+        "resultado": "Resultado",
+        "estado": "Estado",
+        "sentimiento": "Sentimento",
+        "grabacion": "Gravação"
+      },
+      "direcciones": {
+        "inbound": "Recebida",
+        "outbound": "Efetuada"
+      },
+      "modos": {
+        "browser": "Navegador",
+        "bridge": "Meu celular",
+        "ai_agent": "Agente IA",
+        "manual": "Manual",
+        "inbound": "Recebida"
+      },
+      "resultados": {
+        "answered": "Contatado",
+        "no_answer": "Sem resposta",
+        "voicemail": "Correio de voz",
+        "busy": "Ocupado",
+        "wrong_number": "Número inválido",
+        "callback_requested": "Solicitou retorno",
+        "canceled": "Cancelada",
+        "failed": "Falhou"
+      },
+      "estados": {
+        "dialing": "Discando",
+        "ringing": "Chamando",
+        "in_progress": "Em andamento",
+        "completed": "Concluída",
+        "failed": "Falhou",
+        "busy": "Ocupado",
+        "no_answer": "Sem resposta",
+        "canceled": "Cancelada",
+        "voicemail": "Correio de voz"
+      },
+      "sentimientos": {
+        "positive": "Positivo",
+        "neutral": "Neutro",
+        "negative": "Negativo",
+        "mixed": "Misto"
+      }
     }
   },
   "analiticaWeb": {

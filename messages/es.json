@@ -4380,6 +4380,95 @@
         "comision": "comisión {pct} %",
         "proximo": "Próximo contacto"
       }
+    },
+    "llamadas": {
+      "titulo": "Llamadas",
+      "subtitulo": "Historial, grabaciones y análisis · últimos 30 días",
+      "llamar": "Llamar",
+      "resumen": "Resumen de llamadas",
+      "total": "Llamadas",
+      "periodo": "Período filtrado",
+      "contacto": "Contacto efectivo",
+      "humano": "Respondidas por una persona",
+      "promedio": "Duración media",
+      "contestadas": "Solo llamadas contestadas",
+      "voz": "Minutos de conversación",
+      "sinPlan": "Sin plan de voz configurado",
+      "ilimitado": "Saldo ilimitado",
+      "saldo": "{n} minutos disponibles",
+      "buscar": "Cliente, número o palabra dicha…",
+      "filtros": "Filtros de llamadas",
+      "direction": "Dirección",
+      "mode": "Modo",
+      "outcome": "Resultado",
+      "todos": "Todos",
+      "fromDate": "Desde",
+      "toDate": "Hasta",
+      "mine": "Mis llamadas",
+      "hasRecording": "Con grabación",
+      "actualizar": "Actualizar",
+      "exportar": "Exportar",
+      "exportando": "Exportando…",
+      "errorExportar": "No se pudo exportar. Inténtalo de nuevo.",
+      "detalle": "Ver detalle",
+      "sinPermiso": "Sin permiso para consultar llamadas",
+      "error": "No se pudieron cargar las llamadas",
+      "sinResultados": "Sin llamadas para estos filtros",
+      "vacio": "Aún no hay llamadas",
+      "vacioDetalle": "Llama desde el pipeline, la oportunidad o el marcador.",
+      "fila": "Llamada con {nombre}",
+      "procesando": "Procesando grabación…",
+      "transcripcion": "Transcripción",
+      "analisis": "Análisis IA",
+      "columnas": {
+        "fecha": "Fecha",
+        "tipo": "Tipo",
+        "cliente": "Cliente",
+        "usuario": "Quién",
+        "duracion": "Duración",
+        "resultado": "Resultado",
+        "estado": "Estado",
+        "sentimiento": "Sentimiento",
+        "grabacion": "Grabación"
+      },
+      "direcciones": {
+        "inbound": "Entrante",
+        "outbound": "Saliente"
+      },
+      "modos": {
+        "browser": "Navegador",
+        "bridge": "Mi celular",
+        "ai_agent": "Agente IA",
+        "manual": "Manual",
+        "inbound": "Entrante"
+      },
+      "resultados": {
+        "answered": "Contactado",
+        "no_answer": "No contesta",
+        "voicemail": "Buzón de voz",
+        "busy": "Ocupado",
+        "wrong_number": "Número inválido",
+        "callback_requested": "Pidió otra llamada",
+        "canceled": "Cancelada",
+        "failed": "Fallida"
+      },
+      "estados": {
+        "dialing": "Marcando",
+        "ringing": "Timbrando",
+        "in_progress": "En curso",
+        "completed": "Completada",
+        "failed": "Fallida",
+        "busy": "Ocupado",
+        "no_answer": "Sin respuesta",
+        "canceled": "Cancelada",
+        "voicemail": "Buzón"
+      },
+      "sentimientos": {
+        "positive": "Positivo",
+        "neutral": "Neutral",
+        "negative": "Negativo",
+        "mixed": "Mixto"
+      }
     }
   },
   "posCustomerDisplay": {

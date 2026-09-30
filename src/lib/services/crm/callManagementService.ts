@@ -123,6 +123,8 @@ export interface CallFilters {
   q?: string;
   from_date?: string;
   to_date?: string;
+  /** Fin exclusivo al convertir un día calendario de la organización. */
+  to_date_exclusive?: boolean;
   limit?: number;
   offset?: number;
 }
@@ -613,6 +615,7 @@ export interface CallListRow extends CallRecord {
   user: { id: string; first_name: string | null; last_name: string | null; email: string | null } | null;
   recordings: { id: string; status: RecordingStatus; duration_seconds: number | null; channels: string }[];
   disposition_outcome: string | null;
+  analysis?: { summary: string | null; sentiment: string | null; detected_objections: unknown } | null;
   /**
    * `call_consents.method` de la acta de grabación (F-4, ronda 7 de voz):
    * `unverified_announcement` = grabación sin aviso acreditado; la UI la marca.
@@ -625,75 +628,25 @@ export interface CallListRow extends CallRecord {
  * Lista llamadas con cliente, oportunidad, usuario (profiles) y grabaciones.
  * Los filtros son los de `CallFilters`; `user_id` acepta 'me' resuelto por el llamador.
  */
+export interface CallStats {
+  totalToday: number;
+  avgDuration: number;
+  missed: number;
+  answered: number;
+  voiceSeconds: number;
+  remainingVoiceMinutes: number | null;
+  voiceConfigured: boolean;
+}
+
 export async function listCallsWithRelations(
   organizationId: number,
   supabase: SupabaseClient,
-  filters?: CallFilters
-): Promise<{ data: CallListRow[]; count: number }> {
-  let query = supabase
-    .from('calls')
-    .select(
-      '*, customers:customer_id(id, full_name, first_name, last_name, phone), opportunities:opportunity_id(id, name), call_recordings(id, status, duration_seconds, channels), call_consents(consent_type, method)',
-      { count: 'exact' }
-    )
-    .eq('organization_id', organizationId)
-    .order('started_at', { ascending: false, nullsFirst: false });
-
-  if (filters?.status) query = query.eq('status', filters.status);
-  if (filters?.direction) query = query.eq('direction', filters.direction);
-  if (filters?.mode) query = query.eq('mode', filters.mode);
-  if (filters?.customer_id) query = query.eq('customer_id', filters.customer_id);
-  if (filters?.user_id) query = query.eq('user_id', filters.user_id);
-  if (filters?.opportunity_id) query = query.eq('opportunity_id', filters.opportunity_id);
-  if (filters?.provider_call_sid) query = query.eq('provider_call_sid', filters.provider_call_sid);
-  if (filters?.outcome) query = query.eq('metadata->>disposition_outcome', filters.outcome);
-  if (filters?.q) {
-    const filter = ilikeAnyOf(['to_number', 'from_number'], filters.q);
-    if (filter) query = query.or(filter);
-  }
-  if (filters?.from_date) query = query.gte('started_at', filters.from_date);
-  if (filters?.to_date) query = query.lte('started_at', filters.to_date);
-  if (filters?.has_recording === true) query = query.eq('recording_enabled', true);
-
-  const limit = Math.min(200, Math.max(1, filters?.limit ?? 50));
-  const offset = Math.max(0, filters?.offset ?? 0);
-  query = query.range(offset, offset + limit - 1);
-
-  const { data, error, count } = await query;
-  if (error) {
-    console.error('[callManagementService.listCallsWithRelations] error:', error.message);
-    return { data: [], count: 0 };
-  }
-
-  type Raw = CallRecord & {
-    customers?: CallListRow['customer'] | CallListRow['customer'][] | null;
-    opportunities?: CallListRow['opportunity'] | CallListRow['opportunity'][] | null;
-    call_recordings?: CallListRow['recordings'] | null;
-    call_consents?: { consent_type: string; method: string }[] | null;
-  };
-  const rows = (data ?? []) as Raw[];
-  const userIds = Array.from(new Set(rows.map((r) => r.user_id).filter((u): u is string => Boolean(u))));
-  const users = new Map<string, CallListRow['user']>();
-  if (userIds.length > 0) {
-    const { data: profiles } = await supabase.from('profiles').select('id, first_name, last_name, email').in('id', userIds);
-    for (const p of (profiles ?? []) as NonNullable<CallListRow['user']>[]) users.set(p.id, p);
-  }
-
-  const first = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? v[0] ?? null : v ?? null);
-  const mapped: CallListRow[] = rows.map((r) => {
-    const { customers, opportunities, call_recordings, call_consents, ...rest } = r;
-    const recordings = (call_recordings ?? []).filter((x) => x.status !== 'deleted');
-    return {
-      ...(rest as CallRecord),
-      customer: first(customers),
-      opportunity: first(opportunities),
-      user: r.user_id ? users.get(r.user_id) ?? null : null,
-      recordings,
-      disposition_outcome: (r.metadata?.disposition_outcome as string | undefined) ?? null,
-      consent_method: (call_consents ?? []).find((c) => c.consent_type === 'recording')?.method ?? null,
-    };
+  filters: CallFilters = {},
+): Promise<{ data: CallListRow[]; count: number; stats: CallStats; canViewAll: boolean }> {
+  const { data, error } = await supabase.rpc('crm_calls_list', {
+    p_org: organizationId,
+    p_filters: filters,
   });
-
-  const filtered = filters?.has_recording === true ? mapped.filter((m) => m.recordings.some((x) => x.status === 'ready')) : mapped;
-  return { data: filtered, count: count ?? filtered.length };
+  if (error) throw error;
+  return data as { data: CallListRow[]; count: number; stats: CallStats; canViewAll: boolean };
 }

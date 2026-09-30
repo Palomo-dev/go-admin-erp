@@ -4380,6 +4380,95 @@
         "comision": "commission {pct} %",
         "proximo": "Next contact"
       }
+    },
+    "llamadas": {
+      "titulo": "Calls",
+      "subtitulo": "History, recordings and analysis · last 30 days",
+      "llamar": "Call",
+      "resumen": "Call overview",
+      "total": "Calls",
+      "periodo": "Filtered period",
+      "contacto": "Effective contact",
+      "humano": "Answered by a person",
+      "promedio": "Average duration",
+      "contestadas": "Answered calls only",
+      "voz": "Conversation minutes",
+      "sinPlan": "No voice plan configured",
+      "ilimitado": "Unlimited balance",
+      "saldo": "{n} minutes available",
+      "buscar": "Customer, number or spoken word…",
+      "filtros": "Call filters",
+      "direction": "Direction",
+      "mode": "Mode",
+      "outcome": "Outcome",
+      "todos": "All",
+      "fromDate": "From",
+      "toDate": "To",
+      "mine": "My calls",
+      "hasRecording": "With recording",
+      "actualizar": "Refresh",
+      "exportar": "Export",
+      "exportando": "Exporting…",
+      "errorExportar": "Export failed. Please try again.",
+      "detalle": "View details",
+      "sinPermiso": "You cannot view calls",
+      "error": "Calls could not be loaded",
+      "sinResultados": "No calls match these filters",
+      "vacio": "No calls yet",
+      "vacioDetalle": "Call from the pipeline, opportunity or dialer.",
+      "fila": "Call with {nombre}",
+      "procesando": "Processing recording…",
+      "transcripcion": "Transcript",
+      "analisis": "AI analysis",
+      "columnas": {
+        "fecha": "Date",
+        "tipo": "Type",
+        "cliente": "Customer",
+        "usuario": "Who",
+        "duracion": "Duration",
+        "resultado": "Outcome",
+        "estado": "Status",
+        "sentimiento": "Sentiment",
+        "grabacion": "Recording"
+      },
+      "direcciones": {
+        "inbound": "Inbound",
+        "outbound": "Outbound"
+      },
+      "modos": {
+        "browser": "Browser",
+        "bridge": "My phone",
+        "ai_agent": "AI agent",
+        "manual": "Manual",
+        "inbound": "Inbound"
+      },
+      "resultados": {
+        "answered": "Contacted",
+        "no_answer": "No answer",
+        "voicemail": "Voicemail",
+        "busy": "Busy",
+        "wrong_number": "Wrong number",
+        "callback_requested": "Requested callback",
+        "canceled": "Canceled",
+        "failed": "Failed"
+      },
+      "estados": {
+        "dialing": "Dialing",
+        "ringing": "Ringing",
+        "in_progress": "In progress",
+        "completed": "Completed",
+        "failed": "Failed",
+        "busy": "Busy",
+        "no_answer": "No answer",
+        "canceled": "Canceled",
+        "voicemail": "Voicemail"
+      },
+      "sentimientos": {
+        "positive": "Positive",
+        "neutral": "Neutral",
+        "negative": "Negative",
+        "mixed": "Mixed"
+      }
     }
   },
   "posCustomerDisplay": {

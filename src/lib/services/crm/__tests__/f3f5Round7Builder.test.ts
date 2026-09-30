@@ -239,7 +239,10 @@ describe('VOZR7B-U · unverified_announcement', () => {
 
   it('U.2 · la UI marca la grabación no acreditada: `consent_method` viaja en la lista y en el timeline, y CallPlayer/CallRow/CallEntry lo enseñan con icono + texto', () => {
     const list = src('src/lib/services/crm/callManagementService.ts');
-    expect(list).toContain('call_consents(consent_type, method)');
+    expect(list).toContain("supabase.rpc('crm_calls_list'");
+    const sql = src('supabase/migrations/20260930220920_crm_llamadas_busqueda_y_cifras.sql');
+    expect(sql).toContain("'consent_method'");
+    expect(sql).toContain("co.consent_type='recording'");
     expect(list).toContain('consent_method:');
     const tl = src('src/lib/services/crm/timeline/sources.ts');
     expect(tl).toContain('call_consents(consent_type, method)');

@@ -169,7 +169,9 @@ export const registrarFacturaCompra: ToolDefinition<FacturaCompraArgs> = {
     additionalProperties: false,
   },
   risk: 'high',
-  permissions: ['inventory.create', 'inventory_management', 'finance.view'],
+  // Los mismos que exige assistant_register_purchase_invoice en la base
+  // (20260930235000). finance.view es de lectura: no registra facturas.
+  permissions: ['inventory.create', 'inventory_management', 'finance.create'],
   minLevel: 'write_full',
   requiredModule: 'inventory',
   availableInVoice: false,
@@ -467,7 +469,9 @@ export const registrarFacturaVenta: ToolDefinition<FacturaVentaArgs> = {
     additionalProperties: false,
   },
   risk: 'high',
-  permissions: ['pos.create', 'finance.view'],
+  // Los mismos que exige assistant_register_sales_invoice en la base
+  // (20260930235000). finance.view es de lectura: no registra facturas.
+  permissions: ['pos.create', 'finance.create'],
   minLevel: 'write_full',
   requiredModule: 'finance',
   availableInVoice: false,

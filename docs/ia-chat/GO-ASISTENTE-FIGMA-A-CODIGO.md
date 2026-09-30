@@ -329,3 +329,101 @@ salga también con el botón deshabilitado (antes no salía).
 - Prueba en navegador con sesión real (dueño).
 - `messages/*.json` los edita en paralelo la sesión de analítica web: la única línea de esta sesión en
   cada archivo es `header.closeAssistant`.
+
+## Endurecimiento de las RPC assistant_* (2026-09-30)
+
+Migración `supabase/migrations/20260930235000_assistant_rpc_endurecimiento.sql` (rollback en
+`supabase/rollbacks/`), aplicada por MCP.
+
+### Qué estaba mal
+
+- `assistant_register_sale`, `assistant_create_adjustment`, `assistant_create_purchase_order`,
+  `assistant_create_transfer` y `assistant_bulk_load_products` tenían **EXECUTE para `anon`**.
+- Nueve de las once (todas salvo las dos de factura de compra) eran SECURITY INVOKER y confiaban en
+  `p_organization_id` / `p_user_id` tal como llegaban: sin `fn_assert_acceso_org` ni `auth.uid()`.
+  La comprobación de permisos vivía solo en el servidor (`evaluateTool`), así que una llamada directa
+  a PostgREST con la sesión de cualquier miembro la saltaba. Medido en seco, antes del cambio, con un
+  empleado cuyos permisos del cargo estaban todos en `false`: las once pasaban (venta, factura,
+  ajuste, carga masiva…), y con `p_user_id` de otro usuario también (se registraba a su nombre).
+
+### Qué quedó
+
+- Guarda única `public.fn_assistant_exigir(org, usuario, códigos)`, SECURITY INVOKER a propósito
+  (`current_user` es el rol real del llamador), al inicio de las once:
+  - con sesión: `p_user_id = auth.uid()` (`USUARIO_NO_COINCIDE`) y luego
+    `fn_finanzas_exigir_permiso(org, códigos)`: pertenencia (`fn_assert_acceso_org`) y admin
+    (super admin o rol 1/2, espejo de `isOrgAdminLike`) o alguno de los códigos. Es el mismo criterio
+    que `hasAnyPermission`; no se reimplementa (regla 7).
+  - sin sesión: solo `service_role` (o el dueño de la base); `anon` y `authenticated` sin `sub`,
+    nunca. Si viene `p_user_id`, debe ser miembro de la organización (`USUARIO_FUERA_DE_LA_ORG`).
+    Hoy ningún llamador usa service role: todos van con `ctx.supabase` (sesión, `getServerOrgContext`).
+- EXECUTE revocado a `public` y `anon` en las once; `authenticated` y `service_role` lo conservan.
+- Parche sobre la definición viva (el `begin` de columna 0, único), con md5 de `prosrc` comprobado
+  antes y después. Firma, SECURITY, `search_path` y comentarios sin cambio.
+
+| RPC | Llamadores (todos con la sesión del usuario; `p_user_id` = `ctx.userId`) | Permiso exigido (basta uno; admin siempre) | md5 antes | md5 después |
+|---|---|---|---|---|
+| `assistant_register_sale` | `tools/ventas.ts` (registrar_venta) | pos.create | `362b4026…` | `e15bad57…` |
+| `assistant_register_sales_invoice` | `tools/facturas.ts` (registrar_factura_venta) | pos.create, finance.create | `24784c32…` | `5f41add4…` |
+| `assistant_void_sales_invoice` | `undoService.ts` (deshacer factura de venta) | pos.create, finance.create, finance.void | `e57802a8…` | `9377f4c8…` |
+| `assistant_register_purchase_invoice` | `tools/facturas.ts` (registrar_factura_compra) | inventory.create, inventory_management, finance.create | `9b647e33…` | `ae306ed0…` |
+| `assistant_void_purchase_invoice` | `undoService.ts` (deshacer factura de compra) | inventory.create, inventory_management, finance.create, finance.void | `c899cbcc…` | `23175c39…` |
+| `assistant_create_purchase_order` | `tools/compras.ts` (crear_orden_compra) | inventory.create, inventory_management | `4e175dd3…` | `c27645bd…` |
+| `assistant_create_transfer` | `tools/compras.ts` (crear_traslado) | inventory.transfer, inventory_management | `54c3588f…` | `753f3fd0…` |
+| `assistant_create_adjustment` | `tools/ventas.ts` (crear_ajuste_inventario), `undoService.ts` (deshacer carga), anidada en `bulk_load_products` | inventory.adjust, inventory_management, inventory.create, product_management | `66a56e1a…` | `3c3bd125…` |
+| `assistant_create_product` | `aiActionsService.ts` (create_product), anidada en `bulk_load_products` | inventory.create, inventory_management, product_management | `ecfb8d75…` | `e54dcbfa…` |
+| `assistant_set_product_price` | `aiActionsService.ts` (update_product_price), anidada en `bulk_load_products` | inventory.edit, inventory_management, product_management, inventory.create | `72cf9a17…` | `acdb221d…` |
+| `assistant_bulk_load_products` | `tools/cargaMasiva.ts` (cargar_productos_masivo) | inventory.create, inventory_management, product_management | `c949bcc7…` | `c9033fee…` |
+
+Criterio de los códigos: los de la herramienta que llega a la función, para que la base nunca rechace
+lo que el asistente ofrece. Tres matices:
+
+- **Facturas: `finance.view` → `finance.create`**, en la base y en `tools/facturas.ts`. Un permiso de
+  lectura no registra facturas (`/api/facturas-compra` y `fn_factura_venta_guardar` exigen
+  `finance.create`). Quien solo tenía `finance.view` deja de ver esas dos herramientas.
+- Las anulaciones admiten los códigos de la herramienta que crea (el deshacer lo hace el autor, dentro
+  de la ventana) más `finance.void`.
+- `create_adjustment` y `set_product_price` admiten además los de la carga masiva, que ya las ejecuta
+  anidadas (y el deshacer de la carga llama a `create_adjustment` directo). No amplía lo que esos
+  usuarios podían hacer: la carga masiva ya les permitía ajustar stock y precios.
+
+### Verificación
+
+Dry-run en la org 112 (de prueba): cargos temporales con los permisos en `true`/`false`, miembros
+temporales, una segunda sucursal; todo deshecho con la excepción final del bloque. Impersonación con
+`set local role` + `request.jwt.claims`.
+
+| Caso | Antes | Después (las once) |
+|---|---|---|
+| admin de la org | OK | OK |
+| miembro con permiso | OK | OK |
+| miembro sin permiso | **OK** | `42501 sin_permiso` |
+| usuario de otra org | error de negocio por RLS de sucursales (las de factura de compra ya daban 42501) | `42501 Acceso denegado a la organización` |
+| `p_user_id` ≠ sesión | **OK** (salvo facturas de compra) | `42501 USUARIO_NO_COINCIDE` (no aplica a `create_product`/`set_product_price`, que no lo reciben) |
+| `anon` | cinco entraban al cuerpo | `42501 permission denied for function` |
+| `authenticated` sin `sub` | error de negocio (las de factura de compra ya daban 42501) | `42501 Acceso denegado a la organización` |
+| `service_role` | OK | OK |
+| `service_role` con autor de otra org | OK | `42501 USUARIO_FUERA_DE_LA_ORG` |
+
+Granular (un solo permiso del cargo, el resto en `false`): `inventory.create` → carga masiva con
+`stock_mode=set` y precio, ajuste, precio, orden de compra y factura de compra OK; traslado, venta y
+factura de venta rechazados. `product_management` → carga masiva, ajuste y precio OK. `inventory.adjust`
+→ solo ajuste. `pos.create` → venta y factura de venta OK. `finance.create` → factura de venta y de
+compra OK. `finance.view` → todo rechazado. Las anulaciones con factura inexistente devuelven
+`INVOICE_NOT_IN_ORG` (pasó la guarda) o `sin_permiso` según el caso.
+
+Rollback verificado en seco sobre el estado aplicado: md5 de las once igual al original, ACL igual
+(anon de vuelta solo en las cinco), SECURITY/`search_path` intactos y `fn_assistant_exigir` borrada.
+
+Pruebas: guardarraíl **41** en `src/__tests__/guardrails.test.ts` (toda `assistant_*` definida desde
+`20260930235000` lleva `fn_assistant_exigir` y su `revoke … from public, anon`; ningún GRANT a anon;
+la base admite cada permiso de la herramienta que llega a la RPC; ninguna herramienta de facturas se
+conforma con `finance.view`; `src/` solo llama a `assistant_*` guardadas). jest de `src/lib/ai`,
+`src/app/api/ai-assistant`, `src/__tests__/services`, `src/__tests__/pos` y guardrails: 261 suites,
+5 184 pruebas en verde. `tsc` completo: 0 errores.
+
+### Pendiente
+
+- `check_user_permission(uuid, integer, text)` sigue con EXECUTE para `public` y `anon` (SECURITY
+  DEFINER): permite preguntar por los permisos de cualquier usuario en cualquier organización. Fuera
+  del alcance de esta ronda.

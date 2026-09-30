@@ -39,6 +39,11 @@ import * as path from 'path';
 import { DB_CHECK_ENUMS } from '@/lib/crm/enums';
 import { DRAIN_INTERVAL_MIN, DRAIN_SCHEDULE, JOBS_RUN_PATH, JOBS_RUN_SCHEDULES, VERCEL_SCHEDULE_KINDS } from '@/lib/jobs/schedule';
 import { ORIGENES_MOVIMIENTO_STOCK, esOrigenMovimientoValido } from '@/lib/inventario/origenesMovimientoStock';
+import { VENTAS_TOOLS } from '@/lib/ai/agent/tools/ventas';
+import { COMPRAS_TOOLS } from '@/lib/ai/agent/tools/compras';
+import { CARGA_MASIVA_TOOLS } from '@/lib/ai/agent/tools/cargaMasiva';
+import { FACTURAS_TOOLS } from '@/lib/ai/agent/tools/facturas';
+import { ACTION_CATALOG } from '@/lib/ai/assistant/actionCatalog';
 
 const SRC_ROOT = path.resolve(__dirname, '..');
 const REPO_ROOT = path.resolve(SRC_ROOT, '..');
@@ -3478,5 +3483,144 @@ describe('40. Ventas: ninguna función nueva inserta líneas sin comprobar que e
   test('el código de error llega traducido al POS', () => {
     const src = readFile(path.join(REPO_ROOT, 'src', 'lib', 'pos', 'erroresCobro.ts'));
     expect(src).toContain("'producto_eliminado'");
+  });
+});
+
+/**
+ * 41. RPC assistant_* del GO Asistente: ni anon, ni organización ni usuario del llamador
+ *     (docs/ia-chat/GO-ASISTENTE-FIGMA-A-CODIGO.md, «Endurecimiento de las RPC
+ *     assistant_* (2026-09-30)»).
+ *
+ * Desde 20260930235000 toda assistant_* empieza por public.fn_assistant_exigir(org,
+ * usuario, códigos): con sesión exige p_user_id = auth.uid(), pertenencia y permiso
+ * (admin o alguno de los códigos); sin sesión, solo service_role. EXECUTE revocado a
+ * public y anon. Lo que este bloque impide:
+ *   - una assistant_* nueva (o redefinida) sin la guarda o sin su revoke de anon;
+ *   - un GRANT a anon sobre una assistant_*;
+ *   - que la herramienta del asistente admita un permiso que la base rechaza (el
+ *     asistente ofrecería la acción y fallaría al confirmarla);
+ *   - que src/ llame a una assistant_* que no pasó por la guarda.
+ */
+describe('41. GO Asistente: toda RPC assistant_* lleva fn_assistant_exigir y no es ejecutable por anon', () => {
+  const DIR = path.join(REPO_ROOT, 'supabase', 'migrations');
+  const DESDE = '20260930235000';
+  const MIGRACION = '20260930235000_assistant_rpc_endurecimiento';
+
+  /** Qué RPC alcanza cada herramienta (directa, anidada o al deshacer). */
+  const RPC_POR_HERRAMIENTA: Record<string, string[]> = {
+    registrar_venta: ['assistant_register_sale'],
+    crear_ajuste_inventario: ['assistant_create_adjustment'],
+    crear_orden_compra: ['assistant_create_purchase_order'],
+    crear_traslado: ['assistant_create_transfer'],
+    cargar_productos_masivo: ['assistant_bulk_load_products', 'assistant_create_product', 'assistant_set_product_price', 'assistant_create_adjustment'],
+    registrar_factura_compra: ['assistant_register_purchase_invoice', 'assistant_void_purchase_invoice'],
+    registrar_factura_venta: ['assistant_register_sales_invoice', 'assistant_void_sales_invoice'],
+    create_product: ['assistant_create_product'],
+    update_product_price: ['assistant_set_product_price'],
+  };
+
+  /**
+   * Códigos exigidos por la guarda de cada assistant_*, tal como los deja la última
+   * migración que la toca. Reconoce el parche sobre la definición viva (bloque
+   * `v_oid … v_new`) y la definición completa (`create or replace function`).
+   */
+  function codigosDeLaGuarda(sql: string): Record<string, string[] | null> {
+    const limpio = sql.replace(/^\s*--.*$/gm, '');
+    const inicio = /(?:v_oid\s+oid\s*:=\s*'public\.|create\s+or\s+replace\s+function\s+public\.)(assistant_\w+)\s*\(/gi;
+    const marcas = [...limpio.matchAll(inicio)].map((m) => ({ nombre: m[1].toLowerCase(), i: m.index ?? 0 }));
+    const out: Record<string, string[] | null> = {};
+    marcas.forEach((m, k) => {
+      let cuerpo = limpio.slice(m.i, marcas[k + 1]?.i ?? undefined);
+      // En el parche cuenta el fragmento NUEVO (en el rollback, v_new es el viejo).
+      const nuevo = /v_new\s+text\s*:=\s*\$frag\$([\s\S]*?)\$frag\$/i.exec(cuerpo);
+      if (nuevo) cuerpo = nuevo[1];
+      const g = /fn_assistant_exigir\s*\(\s*p_organization_id\s*,\s*(?:p_user_id|auth\.uid\(\))\s*,\s*array\[([^\]]*)\]\s*\)/i.exec(cuerpo);
+      out[m.nombre] = g ? [...g[1].matchAll(/'([^']+)'/g)].map((x) => x[1]) : null;
+    });
+    return out;
+  }
+
+  function migracionesDesde(): string[] {
+    return fs.readdirSync(DIR).filter((n) => n.endsWith('.sql') && n.slice(0, 14) >= DESDE).sort();
+  }
+
+  function guardasVigentes(): Record<string, string[] | null> {
+    const out: Record<string, string[] | null> = {};
+    for (const f of migracionesDesde()) Object.assign(out, codigosDeLaGuarda(readFile(path.join(DIR, f))));
+    return out;
+  }
+
+  test('la migración existe con su rollback, y el rollback borra la guarda', () => {
+    expect(fs.existsSync(path.join(DIR, `${MIGRACION}.sql`))).toBe(true);
+    const rb = path.join(REPO_ROOT, 'supabase', 'rollbacks', `${MIGRACION}_rollback.sql`);
+    expect(fs.existsSync(rb)).toBe(true);
+    expect(readFile(rb)).toMatch(/drop\s+function\s+if\s+exists\s+public\.fn_assistant_exigir/i);
+  });
+
+  test('el detector lee el parche y la definición completa, y marca la que no lleva guarda', () => {
+    const parche = "v_oid oid := 'public.assistant_x(integer)'::regprocedure; v_old text := $frag$\nbegin\n$frag$; v_new text := $frag$\nbegin\n  perform public.fn_assistant_exigir(p_organization_id, p_user_id, array['pos.create']);\n$frag$;";
+    const completa = "create or replace function public.assistant_y(p integer) returns void as $$ begin perform public.fn_assistant_exigir(p_organization_id, auth.uid(), array['a', 'b']); end $$;";
+    const sin = 'create or replace function public.assistant_z(p integer) returns void as $$ begin null; end $$;';
+    expect(codigosDeLaGuarda(parche + completa + sin)).toEqual({ assistant_x: ['pos.create'], assistant_y: ['a', 'b'], assistant_z: null });
+  });
+
+  test('las once assistant_* conocidas quedan con guarda', () => {
+    const vigentes = guardasVigentes();
+    const esperadas = [...new Set(Object.values(RPC_POR_HERRAMIENTA).flat())].sort();
+    for (const fn of esperadas) expect([fn, vigentes[fn]]).toEqual([fn, expect.any(Array)]);
+    expect(Object.keys(vigentes).sort()).toEqual(esperadas);
+  });
+
+  test('ninguna migración nueva define una assistant_* sin guarda ni sin revocar anon, ni le da EXECUTE a anon', () => {
+    const ofensores: string[] = [];
+    for (const f of migracionesDesde()) {
+      const sql = readFile(path.join(DIR, f));
+      const sinComentarios = sql.replace(/^\s*--.*$/gm, '');
+      for (const [nombre, codigos] of Object.entries(codigosDeLaGuarda(sql))) {
+        if (!codigos || codigos.length === 0) ofensores.push(`${f}: ${nombre} sin fn_assistant_exigir`);
+        const revoke = new RegExp(`revoke\\s+execute\\s+on\\s+function\\s+public\\.${nombre}\\s*\\([^)]*\\)\\s+from\\s+public\\s*,\\s*anon`, 'i');
+        if (!revoke.test(sinComentarios)) ofensores.push(`${f}: ${nombre} sin revoke de public y anon`);
+      }
+      for (const m of sinComentarios.matchAll(/grant\s+[^;]*\bon\s+function\s+public\.(assistant_\w+)[^;]*\bto\s+[^;]*\banon\b/gi)) {
+        ofensores.push(`${f}: GRANT a anon sobre ${m[1]}`);
+      }
+    }
+    expect(ofensores).toEqual([]);
+  });
+
+  test('la base admite todo permiso que la herramienta del asistente admite (no ofrece lo que luego rechaza)', () => {
+    const vigentes = guardasVigentes();
+    const herramientas: Array<{ name: string; permissions: readonly string[] }> = [
+      ...VENTAS_TOOLS, ...COMPRAS_TOOLS, ...CARGA_MASIVA_TOOLS, ...FACTURAS_TOOLS,
+      ...Object.values(ACTION_CATALOG).map((d) => ({ name: d.type, permissions: d.permissions })),
+    ];
+    const faltan: string[] = [];
+    for (const [herramienta, rpcs] of Object.entries(RPC_POR_HERRAMIENTA)) {
+      const t = herramientas.find((h) => h.name === herramienta);
+      expect([herramienta, Boolean(t)]).toEqual([herramienta, true]);
+      for (const rpc of rpcs) {
+        for (const codigo of t!.permissions) {
+          if (!(vigentes[rpc] ?? []).includes(codigo)) faltan.push(`${herramienta} → ${rpc}: ${codigo}`);
+        }
+      }
+    }
+    expect(faltan).toEqual([]);
+  });
+
+  test('ninguna herramienta que registra facturas se conforma con finance.view', () => {
+    for (const t of FACTURAS_TOOLS) {
+      expect([t.name, t.permissions.includes('finance.view')]).toEqual([t.name, false]);
+    }
+  });
+
+  test('src/ solo llama a assistant_* que pasaron por la guarda', () => {
+    const vigentes = guardasVigentes();
+    const llamadas = new Set<string>();
+    for (const f of walkDir(SRC_ROOT)) {
+      if (f.includes('__tests__')) continue;
+      for (const m of readFile(f).matchAll(/\.rpc\(\s*['"`](assistant_\w+)['"`]/g)) llamadas.add(m[1]);
+    }
+    expect(llamadas.size).toBeGreaterThan(0);
+    expect([...llamadas].filter((n) => !vigentes[n]).sort()).toEqual([]);
   });
 });

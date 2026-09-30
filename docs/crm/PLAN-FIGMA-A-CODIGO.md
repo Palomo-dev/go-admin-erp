@@ -1993,3 +1993,72 @@ Namespace `crm.oportunidad` (405 claves) en `messages/{es,en,fr,pt}.json` con pa
   OpportunitiesTable,OpportunitiesFilters,OpportunitiesStats,MarkWonFlow,StructuredLossDialog,
   LossReasonDialog,OpportunityForm}` y `detail/{DetailHeader,DetailSidebar,useStageFlow}` (antes,
   comprobar importadores); `pipelineService.updateCustomer` escribe `full_name`, que es GENERATED.
+
+
+## Ola 6 — estado: Identidades, base transaccional (2026-09-30)
+
+Especificación leída directamente en la sección `1295:767955`, frames
+`1436:19` (lista), `1436:843123` (comparación), `1436:843665` (historial),
+`1438:721` (vacío), `1438:1130` (búsqueda) y `1438:1553` (error), y sus
+anotaciones `1436:1043`, `1436:843664`, `1436:844178` y `1438:1907`.
+
+### Base de datos aplicada por MCP
+
+| Versión | Migración | MD5 del SQL aplicado |
+| --- | --- | --- |
+| 20260930210840 | `crm_fusion_transaccional` | `7d8ddda6c6239d225df73efc067b0161` |
+| 20260930211556 | `crm_busqueda_duplicados` | `cc78c97d4b07b8cb32e222c20075d940` |
+| 20260930213351 | `crm_fusion_snapshot_relaciones` | `7e18f575bdf67be889019ba0fd76d3cf` |
+
+Cada migración tiene el SQL exacto y su rollback. Los rollbacks conservan las
+tablas y la auditoría; no revierten automáticamente fusiones ejecutadas. La
+tercera reversión restaura exactamente la función de la primera migración.
+
+- `customer_merges`: ambos contactos antes/después, snapshots de relaciones,
+  autor, fecha y restauración. Permiso `crm.customers.merge` y RLS; sin
+  escrituras directas de `authenticated` ni ejecución de `anon`.
+- `crm_merge_customers`: un par por transacción, bloqueo ordenado de contactos
+  y facturas, elecciones limitadas a columnas editables. Conserva metadata,
+  usa `status='merged'`, libera correo/documento transferidos sin violar las
+  restricciones únicas y guarda su original en el snapshot.
+- Relaciones trasladadas: conversaciones, oportunidades, llamadas,
+  identidades reales, actividades de cliente, contactos de campañas de la
+  organización y facturas exclusivamente en borrador. Una restricción única
+  bloquea y revierte la fusión completa; no se elimina silenciosamente una
+  inscripción para resolver conflictos.
+- Facturas con estado distinto de borrador, XML fiscal o estado de factura
+  electrónica bloquean la operación. Los importes no se modifican.
+- `crm_unmerge_customer`: solo administrador, ventana de 30 días, restaura
+  únicamente relaciones registradas. Falla sin cambios parciales ante filas
+  desaparecidas, reasignadas o facturas emitidas después de fusionar. Las
+  relaciones creadas después permanecen en el principal.
+- `crm_find_duplicates`: candidatos completos en PostgreSQL, con conteos
+  agregados por organización; la comparación definitiva de teléfono usa
+  `phoneNormalize.ts` y los ajustes existentes de WhatsApp. No se confirma
+  una coincidencia por un sufijo o un nombre.
+- `customer_merge_exclusions` y `crm_exclude_customer_pair`: pares ordenados,
+  exclusión idempotente, validación de ambos clientes contra la sesión.
+- `customer_duplicate_scans` y `crm_start_duplicate_scan`: búsqueda persistida
+  y trabajo de la cola existente en una sola transacción; solicitudes
+  concurrentes reutilizan el trabajo activo. Operación de mantenimiento
+  `crm_duplicate_scan`, separada del mantenimiento global.
+
+### Verificación de esta base
+
+Pruebas reales por `execute_sql` dentro de `BEGIN … ROLLBACK`: fusión y
+restauración de llamadas; transferencia y devolución de correo único;
+retención de una llamada creada después; conflicto de relación y rollback
+completo; clientes inexistentes y membresía ajena; exclusión repetida;
+encolado idempotente; documento fiscal bloqueando la fusión antes de escribir.
+Los SQL temporales de prueba no se versionan (regla 1 de `CLAUDE.md`).
+
+`get_advisors` de seguridad sin hallazgos sobre las tablas nuevas. Rendimiento:
+las claves foráneas nuevas tienen índices; únicamente avisos de índices recién
+creados sin uso registrado ([regla 0005](https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index)).
+
+### Estado de integración
+
+Las rutas, los contratos y la pantalla se implementan en el siguiente commit.
+No se declara cerrado el checklist punta a punta hasta verificar navegador.
+El worker debe desplegarse junto con el productor de búsquedas; no se debe
+habilitar el productor con una versión anterior del handler de mantenimiento.

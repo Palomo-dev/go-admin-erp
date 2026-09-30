@@ -51,7 +51,7 @@ export interface ArchivosEnvio {
 
 const TIPO_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
-function nombreSeguro(texto: string): string {
+export function nombreSeguro(texto: string): string {
   return (
     texto
       .normalize('NFD')
@@ -75,7 +75,7 @@ function parametrosDe(e: EnvioAArmar): Record<string, string | null> {
   };
 }
 
-async function nombreSucursal(sesion: SesionDocumento, branchId: number | null): Promise<string | null> {
+export async function nombreSucursal(sesion: SesionDocumento, branchId: number | null): Promise<string | null> {
   if (!branchId) return null;
   const { data } = await sesion.supabase.from('branches').select('name').eq('id', branchId).eq('organization_id', sesion.organizationId).maybeSingle();
   return (data as { name?: string | null } | null)?.name ?? null;

@@ -22,7 +22,8 @@ import { exigirReporteDisponible, resolverAccesoReportes, sucursalDelReporte } f
 import type { CuerpoProgramado, AccionProgramado } from '../contrato';
 import { registrarEventoReporte } from '../historialService';
 import { getReporteById } from '../reportesCatalogo';
-import { archivosDelEnvio, enviarCorreoReporte, idiomaDe } from './envio.server';
+import { archivosParaMiembro } from './archivosMiembro.server';
+import { enviarCorreoReporte, idiomaDe } from './envio.server';
 import {
   esFormatoEnvio,
   esFrecuencia,
@@ -334,8 +335,8 @@ export async function enviarPrueba(ctx: Ctx, id: string, ahora: Date = new Date(
   const [perfil, moneda] = await Promise.all([perfiles(ctx.supabase, [ctx.userId], true), resolverContextoMoneda(ctx.supabase, ctx.organizationId)]);
   const yo = perfil.get(ctx.userId);
   const idioma = idiomaDe(yo?.preferred_language);
-  const archivos = await archivosDelEnvio(
-    ctx,
+  const archivos = await archivosParaMiembro(
+    { ...ctx, memberId: ctx.memberId ?? undefined },
     { reportId: fila.report_id, branchId: fila.branch_id, formato: esFormatoEnvio(fila.formato) ? fila.formato : 'pdf', filtros, periodo, zona: prog.zona },
     idioma,
   );

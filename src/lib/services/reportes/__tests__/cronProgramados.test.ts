@@ -40,14 +40,16 @@ jest.mock('@/lib/services/reportes/programados/sesionMiembro.server', () => ({
     guion.sesiones.has(userId) ? { userId, organizationId, memberId: 1, organizationName: 'Org de prueba' } : null,
   ),
 }));
+async function archivosFalsos(sesion: { userId: string }, _envio: unknown, idioma: string) {
+  archivosPedidos.push({ userId: sesion.userId, idioma });
+  const err = guion.fallaArchivosDe.get(sesion.userId);
+  if (err) throw err;
+  return { titulo: 'Ventas por día', adjuntos: [] };
+}
+jest.mock('@/lib/services/reportes/programados/archivosMiembro.server', () => ({ archivosParaMiembro: jest.fn(archivosFalsos) }));
 jest.mock('@/lib/services/reportes/programados/envio.server', () => ({
   idiomaDe: (v: unknown) => (typeof v === 'string' && ['es', 'en', 'pt', 'fr'].includes(v) ? v : 'es'),
-  archivosDelEnvio: jest.fn(async (sesion: { userId: string }, _envio: unknown, idioma: string) => {
-    archivosPedidos.push({ userId: sesion.userId, idioma });
-    const err = guion.fallaArchivosDe.get(sesion.userId);
-    if (err) throw err;
-    return { titulo: 'Ventas por día', adjuntos: [] };
-  }),
+  archivosDelEnvio: jest.fn(archivosFalsos),
   enviarCorreoReporte: jest.fn(async (c: { para: string; clave: string; externo: boolean; idioma: string }) => {
     correos.push({ para: c.para, clave: c.clave, externo: c.externo, idioma: c.idioma });
     return 'email-1';

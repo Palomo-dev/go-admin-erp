@@ -103,12 +103,14 @@ jest.mock('@/lib/services/reportes/historialService', () => ({
     eventos.push(e);
   }),
 }));
-jest.mock('@/lib/services/reportes/programados/envio.server', () => ({
-  idiomaDe: () => 'es',
-  archivosDelEnvio: jest.fn(async (s: { userId: string }) => {
-    sesionesArchivos.push(s.userId);
+jest.mock('@/lib/services/reportes/programados/archivosMiembro.server', () => ({
+  archivosParaMiembro: jest.fn(async (s: { userId: string; memberId?: number }) => {
+    sesionesArchivos.push(`${s.userId}:${s.memberId}`);
     return { titulo: 'Ventas', adjuntos: [] };
   }),
+}));
+jest.mock('@/lib/services/reportes/programados/envio.server', () => ({
+  idiomaDe: () => 'es',
   enviarCorreoReporte: jest.fn(async (c: { para: string; clave: string; prueba?: boolean }) => {
     correos.push({ para: c.para, clave: c.clave, prueba: c.prueba });
     return 'email-1';
@@ -330,7 +332,7 @@ describe('POST /api/reportes/programados/[id]/prueba', () => {
     const r = await probar(pedir('POST', `${URL_P}/${PROPIO}/prueba`), params(PROPIO));
     expect(r.status).toBe(200);
     expect(correos).toEqual([expect.objectContaining({ para: 'yo@example.com', prueba: true })]);
-    expect(sesionesArchivos).toEqual([YO]);
+    expect(sesionesArchivos).toEqual([`${YO}:55`]);
     expect(sesion.escrituras.concat(servicio.escrituras)).toHaveLength(0);
   });
 });

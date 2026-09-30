@@ -8,8 +8,9 @@
  *   2. Si quien lo programó ya no es miembro activo, el envío se pausa.
  *   3. Cada miembro activo recibe el reporte generado con SU sesión
  *      (`sesionDeMiembro`): su plan, su permiso y su alcance de sucursal. Si
- *      alguno ya no alcanza, se pausa para esa persona y se avisa a quien lo
- *      programó. Nada sale sin permiso vigente.
+ *      el envío es de todas las sucursales y la persona solo ve algunas,
+ *      recibe un archivo por cada una. Si ya no alcanza, se pausa para esa
+ *      persona y se avisa a quien lo programó. Nada sale sin permiso vigente.
  *   4. Los externos reciben lo que ve quien programó, y solo si quien los
  *      aprobó sigue siendo administrador.
  *   5. Se guardan el resultado (`last_*`) y el estado por destinatario.
@@ -22,6 +23,7 @@ import { todayInTz } from '@/lib/utils/dateCore';
 import { resolverContextoMoneda } from '@/lib/services/monedaOrganizacion';
 import { cargarTextos } from '@/lib/documents/textos';
 import type { IdiomaDocumento } from '@/lib/documents/tipos';
+import { archivosParaMiembro } from './archivosMiembro.server';
 import { archivosDelEnvio, enviarCorreoReporte, idiomaDe, type ArchivosEnvio, type EnvioAArmar } from './envio.server';
 import { COLUMNAS_PROGRAMADO, programacionDe, type FilaProgramado } from './programados.server';
 import { esFormatoEnvio, leerDestinatarios, leerFiltros, nombreDePerfil, periodoDelEnvio, proximoEnvio, type Destinatario, type MotivoPausa } from './programacion';
@@ -181,7 +183,7 @@ export async function procesarEnvio(service: SupabaseClient, fila: FilaProgramad
         const perfil = perfiles.get(d.user_id);
         para = perfil?.email ?? d.email;
         idioma = idiomaDe(perfil?.preferred_language);
-        archivos = await archivosDelEnvio(sesion, envio, idioma);
+        archivos = await archivosParaMiembro(sesion, envio, idioma);
       } else {
         adminAprobador ??= new Map();
         const clave = d.aprobado_por ?? '';

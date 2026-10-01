@@ -11,9 +11,11 @@
  * - Descartar no toca `lifecycle_stage` (su CHECK no tiene «descartado»):
  *   escribe `lead_discarded_at/_reason/_by`.
  * - Asignar escribe `customers.owner_id` (miembro activo de la organización).
+ * - Calificar en lote repite «Calificar» lead por lead (`calificarLeadsEnLote`).
  */
 
-import { CRM_PERMISOS, CrmHttpError, tienePermisoCrm, type CrmSesion } from './crmRouteSupport';
+import { CRM_PERMISOS, CrmHttpError, clasificarErrorCrm, mensajeCrudo, tienePermisoCrm, type CrmSesion } from './crmRouteSupport';
+import { MAX_LOTE_CALIFICAR, nombreDesdePatron } from './calificarLoteLogica';
 import { crearOportunidad, type OportunidadAlta } from './opportunityWriteService';
 
 interface LeadFicha {
@@ -52,9 +54,97 @@ export function prellenadoDesdeLead(ficha: LeadFicha, cuerpo: OportunidadAlta): 
 
 /** «Calificar»: crea la oportunidad del lead (record_type 'deal', origen 'lead'). */
 export async function calificarLead(ctx: CrmSesion, customerId: string, cuerpo: OportunidadAlta): Promise<Record<string, unknown>> {
-  const ficha = await leerLead(ctx, customerId);
-  const datos = prellenadoDesdeLead(ficha, { ...cuerpo, customer_id: customerId, origen: 'lead' });
+  return calificarFicha(ctx, await leerLead(ctx, customerId), cuerpo);
+}
+
+/** Núcleo de «Calificar» sobre una ficha ya leída de la organización de la sesión. */
+function calificarFicha(ctx: CrmSesion, ficha: LeadFicha, cuerpo: OportunidadAlta): Promise<Record<string, unknown>> {
+  const datos = prellenadoDesdeLead(ficha, { ...cuerpo, customer_id: ficha.id, origen: 'lead' });
   return crearOportunidad(ctx, datos);
+}
+
+export interface ResultadoCalificarLote {
+  creadas: Array<{ customer_id: string; opportunity_id: string | null; nombre: string }>;
+  /** `nombre` es el del lead (null si no es de la organización: no se revela). */
+  fallidas: Array<{ customer_id: string; nombre: string | null; codigo: string; mensaje: string }>;
+}
+
+/**
+ * Fallos que se repetirían idénticos en todos los leads (permiso, embudo,
+ * etapa o responsable de la plantilla): al primero se deja de llamar a la base
+ * y el resto del lote se informa con el mismo código.
+ */
+const FALLOS_DE_LOTE = new Set(['sin_embudo_ventas', 'pipeline_sin_etapas', 'pipeline_no_encontrado', 'etapa_no_encontrada', 'etapa_terminal', 'responsable_no_miembro']);
+
+function falloDeLead(error: unknown): { codigo: string; mensaje: string; deLote: boolean } {
+  const c = clasificarErrorCrm(error);
+  if (!c) {
+    console.error('[crm] calificar en lote: error inesperado:', mensajeCrudo(error));
+    return { codigo: 'error_interno', mensaje: 'Error interno', deLote: false };
+  }
+  if (c.code === 'lead_no_encontrado' || c.code === 'cliente_no_encontrado') return { codigo: 'no_encontrado', mensaje: 'Lead no encontrado', deLote: false };
+  if (c.status === 403) return { codigo: 'sin_permiso', mensaje: 'No tienes permiso para esta acción', deLote: true };
+  return { codigo: c.code, mensaje: c.error, deLote: FALLOS_DE_LOTE.has(c.code) };
+}
+
+/**
+ * «Calificar en lote»: una oportunidad por lead con la misma plantilla y el
+ * nombre `patronNombre` con `{cliente}` reemplazado por el nombre de cada lead.
+ * Cada alta es la de `calificarLead` (misma RPC atómica y el mismo prellenado:
+ * lo que la plantilla no trae —p. ej. `salesperson_id`— sale de cada lead).
+ *
+ * Secuencial (no en paralelo) para no martillar la base; hasta 100 ids sin
+ * repetir. Un lead que falla no detiene a los demás. Un id de otra
+ * organización se informa como `no_encontrado` y un cliente que ya no está en
+ * etapa lead (p. ej. calificado entre tanto) como `no_es_lead`.
+ */
+export async function calificarLeadsEnLote(
+  ctx: CrmSesion,
+  customerIds: readonly string[],
+  plantilla: Omit<OportunidadAlta, 'name'>,
+  patronNombre: string,
+): Promise<ResultadoCalificarLote> {
+  const ids = Array.from(new Set(customerIds));
+  if (ids.length === 0 || ids.length > MAX_LOTE_CALIFICAR) {
+    throw new CrmHttpError(400, 'lote_invalido', `Entre 1 y ${MAX_LOTE_CALIFICAR} leads por lote`);
+  }
+  const { data, error } = await ctx.supabase
+    .from('customers')
+    .select('id, full_name, lifecycle_stage, owner_id, lead_discarded_at, metadata')
+    .eq('organization_id', ctx.organizationId)
+    .in('id', ids);
+  if (error) throw error;
+  const fichas = new Map(((data ?? []) as LeadFicha[]).map((f) => [f.id, f]));
+
+  const resultado: ResultadoCalificarLote = { creadas: [], fallidas: [] };
+  let falloComun: { codigo: string; mensaje: string } | null = null;
+  for (const id of ids) {
+    const ficha = fichas.get(id);
+    if (!ficha) {
+      resultado.fallidas.push({ customer_id: id, nombre: null, codigo: 'no_encontrado', mensaje: 'Lead no encontrado' });
+      continue;
+    }
+    const nombreLead = ficha.full_name?.trim() || null;
+    if (falloComun) {
+      resultado.fallidas.push({ customer_id: id, nombre: nombreLead, ...falloComun });
+      continue;
+    }
+    if (ficha.lifecycle_stage !== 'lead') {
+      resultado.fallidas.push({ customer_id: id, nombre: nombreLead, codigo: 'no_es_lead', mensaje: 'El cliente ya no está en etapa lead' });
+      continue;
+    }
+    const nombre = nombreDesdePatron(patronNombre, ficha.full_name);
+    try {
+      const opp = await calificarFicha(ctx, ficha, { ...plantilla, name: nombre });
+      const oppId = typeof opp?.id === 'string' ? opp.id : typeof opp?.opportunity_id === 'string' ? opp.opportunity_id : null;
+      resultado.creadas.push({ customer_id: id, opportunity_id: oppId, nombre });
+    } catch (e) {
+      const { deLote, ...fallo } = falloDeLead(e);
+      resultado.fallidas.push({ customer_id: id, nombre: nombreLead, ...fallo });
+      if (deLote) falloComun = fallo;
+    }
+  }
+  return resultado;
 }
 
 /**

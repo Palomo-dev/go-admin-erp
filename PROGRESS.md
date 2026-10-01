@@ -3685,3 +3685,18 @@ Pantalla y API con categorías, auditoría/reversión, conversión real de moned
 ### 2026-10-01 — CRM: campañas unificadas y voz auditada
 
 Campañas comparte estados canónicos de mensajes y legalidad de voz; 207 filas probadas sin truncamiento. Detalle de voz conserva reintentos, aplica criterio único de contacto efectivo y cuenta reuniones reales. Parada con permiso, motivo/fecha y umbral aprobado de 10 fallos. Kit en cuatro idiomas, 360 pruebas focalizadas y guardarraíles verdes; tsc 0, lint tocado limpio. Ciclo real de fixture crear/detalle/detener/eliminar completado; fixtures 0, ninguna llamada/mensaje. Sigue el asistente de creación, plantillas y el resto del alcance de CRM; aún sin push ni PR.
+
+### Fase: Reportes v2 — el cierre generado sí baja el archivo — 2026-09-30
+- Rama cursor/cierre-descarga-archivo-e475.
+- El aviso de cierre generado salía después de guardar. Carta y tirilla pedían el PDF con una ventana abierta ya fuera del clic, y el navegador la bloqueaba: no se descargaba nada. Ahora la pestaña se abre en el clic y, cuando el cierre ya está guardado, el archivo (PDF o Excel) se baja ahí. Si el PDF no se puede armar, baja el HTML. Si la descarga falla, el diálogo avisa y deja el botón para bajar el archivo.
+- Jest de la entrega del archivo: 3 en verde. eslint de los archivos tocados, sin avisos.
+
+
+### Fase: Reportes v2 — el envío programado manda el correo con el PDF — 2026-09-30
+- Rama cursor/envio-programado-correo-e475.
+- En producción el cron de envíos respondía 503 JWT_NO_CONFIGURADO: sin el secreto para firmar la sesión del destinatario no armaba el PDF ni mandaba el correo. Los envíos vencidos seguían sin last_run_at. Ahora, si ese secreto no está, la sesión la abre Auth con la clave de servicio y se cierra al terminar. El cron acepta POST, y pg_cron lo llama cada 15 minutos (migración 20260930241000, aplicada por MCP, con rollback).
+- El respaldo global del correo usa la key de la plataforma. La key propia de la organización, sin un dominio verificado, hacía que el proveedor rechazara el mensaje.
+- Si la sesión no abre, el vencimiento se devuelve para que el siguiente cron reintente.
+- Jest de sesión, cron, programación y remitente: 52 en verde. eslint de los archivos tocados, sin avisos.
+
+

@@ -66,13 +66,38 @@ export async function ejecutarPasosGanar(opp: OpportunityData, pasos: readonly W
     try {
       salida.push({ paso, ok: true, mensaje: await WON_STEP_EXECUTORS[paso](opp, deps) });
     } catch (e) {
-      salida.push({ paso, ok: false, mensaje: e instanceof Error ? e.message : String(e) });
+      salida.push({ paso, ok: false, mensaje: mensajeDeError(e) });
     }
   }
   return salida;
 }
 
+/**
+ * Texto de un error de paso. Los errores de Supabase (PostgrestError) son
+ * objetos planos, no `Error`: con `String(e)` el resumen mostraba «[object Object]».
+ */
+export function mensajeDeError(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (e && typeof e === 'object' && typeof (e as { message?: unknown }).message === 'string') {
+    return (e as { message: string }).message;
+  }
+  return typeof e === 'string' ? e : 'Error desconocido';
+}
+
+/**
+ * Los ejecutores de `wonCloseSteps` terminan en «— se omitió…» / «— no se duplicó»
+ * cuando no crean nada: eso no es un documento nuevo, y el resumen no debe contarlo.
+ */
+export function pasoSinCambios(mensaje: string): boolean {
+  return /—\s*(se omiti|no se duplic)/i.test(mensaje) || /^Comisión no devengada/.test(mensaje);
+}
+
 /** Resultados → documentos del resumen del `WinDialog`. */
 export function documentosDe(resultados: readonly ResultadoPaso[]): DocumentoCreado[] {
-  return resultados.map((r) => ({ tipo: (r.ok && TIPO_DOC[r.paso]) || 'otro', numero: r.mensaje, href: r.ok && r.paso === 'invoice' ? '/app/finanzas/facturas-venta' : null }));
+  return resultados.map((r) => ({
+    tipo: (r.ok && TIPO_DOC[r.paso]) || 'otro',
+    numero: r.mensaje,
+    href: r.ok && r.paso === 'invoice' ? '/app/finanzas/facturas-venta' : null,
+    estado: !r.ok ? 'error' : pasoSinCambios(r.mensaje) ? 'omitido' : 'creado',
+  }));
 }

@@ -6,9 +6,12 @@ import { Check, Info, Plus, X } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { Badge } from '@/components/ui/badge';
 import { CalendarioMes } from '@/components/kit/CalendarioMes';
+import { CampoFecha } from '@/components/kit/CampoFecha';
 import { FormField } from '@/components/kit/FormField';
 import { SegmentedControl } from '@/components/kit/SegmentedControl';
+import { CampoFechaHora } from './CampoFechaHora';
 import { CLASE_AREA, CLASE_AVISO_INFO, CLASE_CAMPO } from './camposCrm';
+import { SelectCrm } from './SelectCrm';
 import {
   DURACIONES_REUNION,
   horaFin,
@@ -19,6 +22,7 @@ import {
   type ValoresReunion,
   type ValoresWhatsApp,
 } from './activityDialogLogica';
+import { CampoHora } from '@/components/kit/CampoHora';
 
 /**
  * Cuerpos de `ActivityDialog` (Figma 760:445129), uno por tipo. Solo
@@ -78,7 +82,7 @@ export function CamposLlamada({ v, cambiar, errores }: CamposProps<ValoresLlamad
           <input value={v.duracion} onChange={(e) => cambiar({ duracion: e.target.value })} className={CLASE_CAMPO} placeholder="4:12" />
         </FormField>
         <FormField etiqueta={t('fechaHora')} obligatorio error={errores.fechaHora}>
-          <input type="datetime-local" value={v.fechaHora} onChange={(e) => cambiar({ fechaHora: e.target.value })} className={CLASE_CAMPO} />
+          <CampoFechaHora valor={v.fechaHora} onValorChange={(fechaHora) => cambiar({ fechaHora })} />
         </FormField>
       </div>
       <FormField etiqueta={t('llamada.notas')}>
@@ -90,7 +94,7 @@ export function CamposLlamada({ v, cambiar, errores }: CamposProps<ValoresLlamad
       </label>
       {v.crearSeguimiento && (
         <FormField etiqueta={t('llamada.fechaSeguimiento')} obligatorio error={errores.fechaSeguimiento}>
-          <input type="date" value={v.fechaSeguimiento} onChange={(e) => cambiar({ fechaSeguimiento: e.target.value })} className={CLASE_CAMPO} />
+          <CampoFecha valor={v.fechaSeguimiento} onValorChange={(fechaSeguimiento) => cambiar({ fechaSeguimiento })} />
         </FormField>
       )}
     </>
@@ -102,26 +106,22 @@ export interface OpcionSimple {
   etiqueta: string;
 }
 
+const aOpcion = (o: OpcionSimple) => ({ valor: o.id, etiqueta: o.etiqueta });
+
 export function CamposCorreo({ v, cambiar, errores, remitentes, plantillas }: CamposProps<ValoresCorreo> & { remitentes: readonly (OpcionSimple & { verificado?: boolean })[]; plantillas: readonly OpcionSimple[] }) {
   const t = useTranslations('crm.kit.actividad');
   const remitente = remitentes.find((r) => r.id === v.remitenteId);
   return (
     <>
       <FormField etiqueta={t('correo.de')} obligatorio error={errores.remitenteId} extra={remitente?.verificado ? <Badge tono="exito" apariencia="contorno" tamano="sm">{t('correo.verificado')}</Badge> : undefined}>
-        <select value={v.remitenteId} onChange={(e) => cambiar({ remitenteId: e.target.value })} className={CLASE_CAMPO}>
-          <option value="">{t('elegir')}</option>
-          {remitentes.map((r) => <option key={r.id} value={r.id}>{r.etiqueta}</option>)}
-        </select>
+        <SelectCrm valor={v.remitenteId} onValorChange={(remitenteId) => cambiar({ remitenteId })} opcionVacia={t('elegir')} opciones={remitentes.map(aOpcion)} />
       </FormField>
       <FormField etiqueta={t('correo.para')} obligatorio error={errores.para}>
         <input type="email" value={v.para} onChange={(e) => cambiar({ para: e.target.value })} className={CLASE_CAMPO} />
       </FormField>
       {plantillas.length > 0 && (
         <FormField etiqueta={t('plantilla')}>
-          <select value={v.plantillaId} onChange={(e) => cambiar({ plantillaId: e.target.value })} className={CLASE_CAMPO}>
-            <option value="">{t('sinPlantilla')}</option>
-            {plantillas.map((p) => <option key={p.id} value={p.id}>{p.etiqueta}</option>)}
-          </select>
+          <SelectCrm valor={v.plantillaId} onValorChange={(plantillaId) => cambiar({ plantillaId })} opcionVacia={t('sinPlantilla')} opciones={plantillas.map(aOpcion)} />
         </FormField>
       )}
       <FormField etiqueta={t('correo.asunto')} obligatorio error={errores.asunto}>
@@ -157,10 +157,7 @@ export function CamposWhatsApp({
   return (
     <>
       <FormField etiqueta={t('whatsapp.canal')} obligatorio error={errores.canalId}>
-        <select value={v.canalId} onChange={(e) => cambiar({ canalId: e.target.value })} className={CLASE_CAMPO}>
-          <option value="">{t('elegir')}</option>
-          {canales.map((c) => <option key={c.id} value={c.id}>{c.etiqueta}</option>)}
-        </select>
+        <SelectCrm valor={v.canalId} onValorChange={(canalId) => cambiar({ canalId })} opcionVacia={t('elegir')} opciones={canales.map(aOpcion)} />
       </FormField>
       {!dentroVentana && (
         <p className={CLASE_AVISO_INFO}>
@@ -169,10 +166,7 @@ export function CamposWhatsApp({
         </p>
       )}
       <FormField etiqueta={dentroVentana ? t('plantilla') : t('whatsapp.plantillaAprobada')} obligatorio={!dentroVentana} error={errores.plantillaId}>
-        <select value={v.plantillaId} onChange={(e) => cambiar({ plantillaId: e.target.value })} className={CLASE_CAMPO}>
-          <option value="">{dentroVentana ? t('sinPlantilla') : t('elegir')}</option>
-          {plantillas.map((p) => <option key={p.id} value={p.id}>{p.etiqueta}</option>)}
-        </select>
+        <SelectCrm valor={v.plantillaId} onValorChange={(plantillaId) => cambiar({ plantillaId })} opcionVacia={dentroVentana ? t('sinPlantilla') : t('elegir')} opciones={plantillas.map(aOpcion)} />
       </FormField>
       {vista ? (
         <div className="flex flex-col gap-1">
@@ -192,7 +186,7 @@ export function CamposWhatsApp({
       </label>
       {v.programar && (
         <FormField etiqueta={t('fechaHora')} obligatorio error={errores.fechaHora}>
-          <input type="datetime-local" value={v.fechaHora} onChange={(e) => cambiar({ fechaHora: e.target.value })} className={CLASE_CAMPO} />
+          <CampoFechaHora valor={v.fechaHora} onValorChange={(fechaHora) => cambiar({ fechaHora })} />
         </FormField>
       )}
       <p className="text-xs text-fg-muted">{t('whatsapp.credito')}</p>
@@ -220,14 +214,14 @@ export function CamposReunion({ v, cambiar, errores, hoy, zonaNombre, oportunida
         </div>
         <div className="flex flex-col gap-3">
           <FormField etiqueta={t('reunion.empieza')} obligatorio error={errores.hora}>
-            <input type="time" value={v.hora} onChange={(e) => cambiar({ hora: e.target.value })} className={CLASE_CAMPO} />
+            <CampoHora valor={v.hora} onValorChange={(hora) => cambiar({ hora })} />
           </FormField>
           <FormField etiqueta={t('reunion.termina')} ayuda={t('reunion.zona', { zona: zonaNombre })}>
-            <select value={v.duracionMin} onChange={(e) => cambiar({ duracionMin: Number(e.target.value) })} className={CLASE_CAMPO}>
-              {DURACIONES_REUNION.map((d) => (
-                <option key={d} value={d}>{t('reunion.fin', { hora: horaFin(v.hora, d), minutos: d })}</option>
-              ))}
-            </select>
+            <SelectCrm
+              valor={String(v.duracionMin)}
+              onValorChange={(d) => cambiar({ duracionMin: Number(d) })}
+              opciones={DURACIONES_REUNION.map((d) => ({ valor: String(d), etiqueta: t('reunion.fin', { hora: horaFin(v.hora, d), minutos: d }) }))}
+            />
           </FormField>
         </div>
       </div>

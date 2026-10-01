@@ -3241,6 +3241,7 @@
         },
         "comisionSistema": "La comisión la registra el sistema al ganar; no es una casilla.",
         "resumen": "{n, plural, =0 {Etapa ganadora aplicada.} one {Etapa ganadora aplicada. Se creó # documento.} other {Etapa ganadora aplicada. Se crearon # documentos.}}",
+        "pasosFallidos": "{n, plural, one {# paso no se pudo completar; revisa el detalle.} other {# pasos no se pudieron completar; revisa el detalle.}}",
         "error": {
           "obligatorio": "Este campo es obligatorio.",
           "montoInvalido": "Escribe un monto válido.",
@@ -3502,6 +3503,9 @@
         "esPrincipal": "{nombre} es el contacto principal",
         "marcarPrincipal": "Marcar a {nombre} como contacto principal",
         "desvincular": "Desvincular a {nombre}"
+      },
+      "campoFechaHora": {
+        "hora": "Hora"
       }
     },
     "accionesRapidas": {
@@ -3609,7 +3613,7 @@
         "etiquetar": "Etiquetar",
         "etiquetarMotivo": "Las etiquetas se editan en la ficha del cliente",
         "calificar": "Calificar",
-        "calificarMotivo": "Califica un lead a la vez",
+        "calificarMotivo": "Máximo {max} leads por lote",
         "exportar": "Exportar",
         "descartar": "Descartar"
       },
@@ -3694,6 +3698,32 @@
         "sinEtiquetas": "Sin etiquetas",
         "actividad": "Actividad reciente",
         "sinActividad": "Todavía no hay actividad con este lead."
+      },
+      "lote": {
+        "titulo": "{n, plural, one {Calificar # lead} other {Calificar # leads}}",
+        "seleccionados": "{n, plural, one {# lead seleccionado} other {# leads seleccionados}}",
+        "mas": "+{n}",
+        "cadaLead": "El de cada lead",
+        "aviso": "Se crea una oportunidad por lead con estos datos. Lo que dejes sin definir (responsable, monto) se toma de cada lead. El paso de lead a oportunidad lo hace el sistema.",
+        "contexto": "{n, plural, one {Se creará # oportunidad} other {Se crearán # oportunidades}} · {marcador} se reemplaza por el nombre de cada lead",
+        "contextoDetalle": "Si quitas {marcador} del nombre, todas las oportunidades se llamarán igual. Monto en 0 = el valor estimado de cada lead.",
+        "clientes": "{n, plural, one {# lead} other {# leads}}",
+        "resultadoTitulo": "Calificar en lote",
+        "creando": "{n, plural, one {Creando # oportunidad…} other {Creando # oportunidades…}}",
+        "creadas": "{n, plural, =0 {No se creó ninguna oportunidad} one {Se creó # oportunidad} other {Se crearon # oportunidades}}",
+        "fallidas": "{n, plural, one {# lead no se pudo calificar} other {# leads no se pudieron calificar}}",
+        "leadNoDisponible": "Lead no disponible",
+        "verPipeline": "Ver en el pipeline",
+        "cerrar": "Cerrar",
+        "motivos": {
+          "no_encontrado": "Ya no existe o no es de esta organización.",
+          "no_es_lead": "Ya no está en etapa lead (quizá ya se calificó).",
+          "sin_permiso": "No tienes permiso para crear oportunidades.",
+          "sin_embudo_ventas": "La organización no tiene embudo de ventas.",
+          "responsable_no_miembro": "El responsable no es miembro activo de la organización.",
+          "error_interno": "Algo salió mal. Inténtalo de nuevo.",
+          "otro": "No se pudo crear la oportunidad ({codigo})."
+        }
       }
     },
     "pantallaActividades": {
@@ -5470,6 +5500,12 @@
       "limpiar": "Limpiar",
       "pieRango": "Desde {desde} · Hasta {hasta}",
       "eligeFin": "Desde {desde} · elige el día final"
+    },
+    "hora": {
+      "etiqueta": "Hora",
+      "elegir": "Elegir hora",
+      "sinHora": "sin hora",
+      "limpiar": "Limpiar"
     },
     "tabla": {
       "seleccionarPagina": "Seleccionar esta página",
@@ -25590,6 +25626,9 @@
       "existente": "Ya hay un cierre de este periodo. Recalcular crea una versión nueva y marca la anterior como reemplazada.",
       "vacio": "Elige al menos un reporte.",
       "listo": "Cierre {numero} generado",
+      "descargando": "Preparando el archivo del cierre…",
+      "bajar": "Descargar archivo",
+      "sinArchivo": "El cierre {numero} quedó guardado. El archivo no se descargó.",
       "notaFranja": "La franja solo aplica a los capítulos que la admiten. Los demás usan el día completo.",
       "sinDatos": "Un capítulo sin datos en el periodo se imprime con la nota «Sin movimientos».",
       "plantillas": {

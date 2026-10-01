@@ -8,6 +8,8 @@ import { FormField } from '@/components/kit/FormField';
 import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { CLASE_CAMPO } from '@/components/crm/kit/camposCrm';
+import { CampoFechaHora } from '@/components/crm/kit/CampoFechaHora';
+import { SelectCrm } from '@/components/crm/kit/SelectCrm';
 import { aFechaHoraLocal, deFechaHoraLocal, diaRelativo, fechaCortaPlana } from '@/components/crm/kit/fechasCrm';
 import { claveCanal } from '@/components/crm/kit/opportunityCardLogica';
 import { claveError } from '@/components/crm/acciones/apiCrm';
@@ -100,19 +102,13 @@ export function ResumenOportunidad({ op, puedeEditar, onCambio, ahora = new Date
             <input value={v.accion} onChange={(e) => setV({ ...v, accion: e.target.value })} disabled={!puedeEditar} maxLength={500} className={CLASE_CAMPO} />
           </FormField>
           <FormField etiqueta={t('fechaHora')} ayuda={t('zona', { zona: timezone })}>
-            <input type="datetime-local" value={v.cuando} onChange={(e) => setV({ ...v, cuando: e.target.value })} disabled={!puedeEditar} className={CLASE_CAMPO} />
+            <CampoFechaHora valor={v.cuando} onValorChange={(cuando) => setV((x) => ({ ...x, cuando }))} disabled={!puedeEditar} />
           </FormField>
           <FormField etiqueta={t('canal')}>
-            <select value={v.canal} onChange={(e) => setV({ ...v, canal: e.target.value })} disabled={!puedeEditar} className={CLASE_CAMPO}>
-              <option value="">—</option>
-              {CANALES_CONTACTO.map((c) => <option key={c} value={c}>{t(`canales.${c}`)}</option>)}
-            </select>
+            <SelectCrm valor={v.canal} onValorChange={(canal) => setV({ ...v, canal })} disabled={!puedeEditar} opcionVacia="—" opciones={CANALES_CONTACTO.map((c) => ({ valor: c, etiqueta: t(`canales.${c}`) }))} />
           </FormField>
           <FormField etiqueta={t('resultado')}>
-            <select value={v.resultado} onChange={(e) => setV({ ...v, resultado: e.target.value })} disabled={!puedeEditar} className={CLASE_CAMPO}>
-              <option value="">—</option>
-              {RESULTADOS_CONTACTO.map((c) => <option key={c} value={c}>{t(`resultados.${c}`)}</option>)}
-            </select>
+            <SelectCrm valor={v.resultado} onValorChange={(resultado) => setV({ ...v, resultado })} disabled={!puedeEditar} opcionVacia="—" opciones={RESULTADOS_CONTACTO.map((c) => ({ valor: c, etiqueta: t(`resultados.${c}`) }))} />
           </FormField>
         </div>
         <div className="flex flex-wrap items-end justify-between gap-3">

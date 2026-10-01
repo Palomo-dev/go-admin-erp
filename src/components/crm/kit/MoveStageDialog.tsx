@@ -8,8 +8,9 @@ import { FormField } from '@/components/kit/FormField';
 import { PanelAdaptable } from '@/components/kit/PanelAdaptable';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
-import { CLASE_CAMPO } from './camposCrm';
+import { CampoFechaHora } from './CampoFechaHora';
 import { aFechaHoraLocal, deFechaHoraLocal } from './fechasCrm';
+import { SelectCrm } from './SelectCrm';
 import { aQuienPedir, destinosPosibles, resultadoMover, type EtapaDestino, type RequisitoPendiente } from './moveStageDialogLogica';
 
 /**
@@ -106,12 +107,15 @@ export function MoveStageDialog(props: MoveStageDialogProps) {
       {resultado === 'confirmar' && (
         <>
           <FormField etiqueta={t('destino')}>
-            <select value={etapaDestinoId} onChange={(e) => props.onEtapaDestinoChange?.(e.target.value)} disabled={!props.onEtapaDestinoChange} className={CLASE_CAMPO}>
-              {destinosPosibles(etapas, etapaActualId).map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-            </select>
+            <SelectCrm
+              valor={etapaDestinoId}
+              onValorChange={(id) => props.onEtapaDestinoChange?.(id)}
+              disabled={!props.onEtapaDestinoChange}
+              opciones={destinosPosibles(etapas, etapaActualId).map((e) => ({ valor: e.id, etiqueta: e.name }))}
+            />
           </FormField>
           <FormField etiqueta={t('proximoContacto')} ayuda={t('zona', { zona: timezone })}>
-            <input type="datetime-local" value={proximo} onChange={(e) => setProximo(e.target.value)} className={CLASE_CAMPO} />
+            <CampoFechaHora valor={proximo} onValorChange={setProximo} />
           </FormField>
         </>
       )}

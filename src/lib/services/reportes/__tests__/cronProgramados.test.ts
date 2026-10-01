@@ -22,6 +22,7 @@ const VENCE = '2026-09-30T12:00:00.000Z';
 const guion = {
   sesiones: new Set<string>([DUENO, ANA, LUIS]),
   fallaArchivosDe: new Map<string, Error>(),
+  lanzaSesion: false,
 };
 const archivosPedidos: Array<{ userId: string; idioma: string }> = [];
 const correos: Array<{ para: string; clave: string; externo: boolean; idioma: string }> = [];
@@ -36,9 +37,10 @@ jest.mock('@/lib/utils/orgContext', () => ({
   hasOrgAdminOrPermission: jest.fn(async (s: { roleId: number }) => s.roleId === 1 || s.roleId === 2),
 }));
 jest.mock('@/lib/services/reportes/programados/sesionMiembro.server', () => ({
-  sesionDeMiembro: jest.fn(async (organizationId: number, userId: string) =>
-    guion.sesiones.has(userId) ? { userId, organizationId, memberId: 1, organizationName: 'Org de prueba' } : null,
-  ),
+  sesionDeMiembro: jest.fn(async (organizationId: number, userId: string) => {
+    if (guion.lanzaSesion) throw new Error('jwt_no_configurado');
+    return guion.sesiones.has(userId) ? { userId, organizationId, memberId: 1, organizationName: 'Org de prueba' } : null;
+  }),
 }));
 async function archivosFalsos(sesion: { userId: string }, _envio: unknown, idioma: string) {
   archivosPedidos.push({ userId: sesion.userId, idioma });
@@ -105,6 +107,7 @@ const AHORA = new Date('2026-09-30T12:05:00.000Z');
 beforeEach(() => {
   guion.sesiones = new Set([DUENO, ANA, LUIS]);
   guion.fallaArchivosDe.clear();
+  guion.lanzaSesion = false;
   archivosPedidos.length = 0;
   correos.length = 0;
 });
@@ -140,6 +143,16 @@ describe('procesarEnvio', () => {
       `reporte-programado:prog-1:${VENCE}:luis@example.com`,
     ]);
     expect(db.tablas.scheduled_reports[0]).toMatchObject({ last_status: 'enviado', last_error: null });
+  });
+
+  it('si la sesión de quien lo programó no abre, devuelve el vencimiento para reintentar', async () => {
+    guion.lanzaSesion = true;
+    const f = fila([miembro(ANA, 'ana@example.com')]);
+    const db = montar(f);
+    const r = await procesarEnvio(db as never, f, AHORA);
+    expect(r).toMatchObject({ estado: 'fallido', enviados: 0, fallidos: 1 });
+    expect(correos).toHaveLength(0);
+    expect(db.tablas.scheduled_reports[0]).toMatchObject({ next_run_at: VENCE, last_status: 'fallido', last_error: 'sesion_no_disponible' });
   });
 
   it('si quien lo programó ya no es miembro, se pausa el envío entero', async () => {

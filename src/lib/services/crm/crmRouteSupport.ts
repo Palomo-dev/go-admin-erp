@@ -100,24 +100,52 @@ export function estadoDeSqlState(code: string): number | null {
  * viaja como `code`; un error inesperado nunca filtra el texto de Postgres.
  */
 export function respuestaErrorCrm(error: unknown, etiqueta: string): NextResponse {
+  const conocido = clasificarErrorCrm(error);
+  if (conocido) {
+    if (conocido.status === 403 && conocido.origen === 'base') console.warn('[crm] %s denegado por la base: %s', etiqueta, conocido.code);
+    return NextResponse.json({ success: false, error: conocido.error, code: conocido.code, ...conocido.extra }, { status: conocido.status });
+  }
+  console.error('[crm] %s error:', etiqueta, mensajeCrudo(error));
+  return NextResponse.json({ success: false, error: 'Error interno' }, { status: 500 });
+}
+
+/** Error de negocio reconocido: estado HTTP, código corto y mensaje apto para el cliente. */
+export interface ErrorCrmClasificado {
+  status: number;
+  code: string;
+  error: string;
+  extra: Record<string, unknown>;
+  /** 'base' = SQLSTATE de una RPC; 'ruta' = error lanzado en Node. */
+  origen: 'ruta' | 'base';
+}
+
+/**
+ * Clasifica un error como lo hace `respuestaErrorCrm`, sin responder: lo usan
+ * las operaciones en lote para informar el fallo de cada elemento. `null` si
+ * es inesperado (nunca se filtra el texto de Postgres).
+ */
+export function clasificarErrorCrm(error: unknown): ErrorCrmClasificado | null {
   if (error instanceof OrgContextError) {
-    return NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.statusCode });
+    return { status: error.statusCode, code: error.code, error: error.message, extra: {}, origen: 'ruta' };
   }
   if (error instanceof CrmHttpError) {
-    return NextResponse.json({ success: false, error: error.message, code: error.code, ...error.extra }, { status: error.status });
+    return { status: error.status, code: error.code, error: error.message, extra: error.extra, origen: 'ruta' };
   }
   const pg = comoErrorConCodigo(error);
   if (pg && typeof pg.code === 'string') {
     const status = estadoDeSqlState(pg.code);
     if (status) {
       const code = typeof pg.message === 'string' && /^[a-z_]{3,60}$/.test(pg.message) ? pg.message : 'error_de_datos';
-      if (status === 403) console.warn('[crm] %s denegado por la base: %s', etiqueta, code);
-      return NextResponse.json({ success: false, error: code, code }, { status });
+      return { status, code, error: code, extra: {}, origen: 'base' };
     }
   }
-  const message = error instanceof Error ? error.message : typeof pg?.message === 'string' ? pg.message : String(error);
-  console.error('[crm] %s error:', etiqueta, message);
-  return NextResponse.json({ success: false, error: 'Error interno' }, { status: 500 });
+  return null;
+}
+
+/** Texto crudo de un error inesperado, solo para el registro del servidor. */
+export function mensajeCrudo(error: unknown): string {
+  const pg = comoErrorConCodigo(error);
+  return error instanceof Error ? error.message : typeof pg?.message === 'string' ? pg.message : String(error);
 }
 
 /** Cuerpo sin las claves de organización (ya comprobadas por `readOrgBody`). */

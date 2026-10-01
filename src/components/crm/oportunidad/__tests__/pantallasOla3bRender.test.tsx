@@ -295,8 +295,10 @@ describe('flujo: crear → mover → ganar / perder', () => {
     await abrirMenu(fila);
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Marcar perdida' }));
     const dialogo = await screen.findByRole('dialog');
-    await waitFor(() => expect(within(dialogo).getByRole('combobox')).toBeTruthy());
-    fireEvent.change(within(dialogo).getByRole('combobox'), { target: { value: 'm1' } });
+    // Select del kit (Radix): habilitado al cargar el catálogo; se abre y se elige «Precio» (m1).
+    await waitFor(() => expect((within(dialogo).getByRole('combobox') as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(within(dialogo).getByRole('combobox'));
+    fireEvent.click(await screen.findByRole('option', { name: 'Precio' }));
     await act(async () => {
       fireEvent.click(within(dialogo).getByRole('button', { name: 'Marcar perdida' }));
     });

@@ -9,7 +9,8 @@ import { DateRangeButton } from '@/components/kit/DateRangeButton';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { addPlainDays } from '@/lib/utils/dateDisplay';
-import { CLASE_CAMPO, type OpcionUsuario } from './camposCrm';
+import type { OpcionUsuario } from './camposCrm';
+import { SelectCrm } from './SelectCrm';
 import { contarFiltrosPanel, filtrosVacios, hayFiltros, TIPOS_TIMELINE, type FiltrosTimeline, type TipoTimeline } from './timelineFiltersLogica';
 
 /**
@@ -89,20 +90,15 @@ export function TimelineFilters({ valor, onValorChange, usuarios = [], modo = 'o
           {enPanel > 0 && <span className="rounded-full bg-brand-action px-1.5 text-xs text-fg-on-brand">{enPanel}</span>}
         </button>
         <div className="hidden min-w-0 flex-1 items-center gap-2 lg:flex">
-          <select
+          <SelectCrm
             aria-label={t('responsable')}
-            value={valor.responsableId}
+            valor={valor.responsableId}
             disabled={deshabilitado}
-            onChange={(e) => cambiar({ responsableId: e.target.value })}
-            className={cn(CLASE_CAMPO, 'w-auto max-w-[220px]')}
-          >
-            <option value="">{t('todosResponsables')}</option>
-            {usuarios.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.nombre}
-              </option>
-            ))}
-          </select>
+            onValorChange={(responsableId) => cambiar({ responsableId })}
+            opcionVacia={t('todosResponsables')}
+            opciones={usuarios.map((u) => ({ valor: u.id, etiqueta: u.nombre }))}
+            className="w-auto max-w-[220px] gap-2"
+          />
           {modo === 'organizacion' && selectorEntidad}
           {valor.rango ? (
             <DateRangeButton

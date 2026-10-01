@@ -3454,6 +3454,12 @@
       "pieRango": "Du {desde} · Au {hasta}",
       "eligeFin": "Du {desde} · choisissez le dernier jour"
     },
+    "hora": {
+      "etiqueta": "Heure",
+      "elegir": "Choisir une heure",
+      "sinHora": "sans heure",
+      "limpiar": "Effacer"
+    },
     "tabla": {
       "seleccionarPagina": "Sélectionner cette page",
       "seleccionarFila": "Sélectionner la ligne",
@@ -23624,6 +23630,7 @@
         },
         "comisionSistema": "Le système enregistre la commission au gain ; ce n’est pas une case à cocher.",
         "resumen": "{n, plural, =0 {Étape gagnée appliquée.} one {Étape gagnée appliquée. # document a été créé.} other {Étape gagnée appliquée. # documents ont été créés.}}",
+        "pasosFallidos": "{n, plural, one {# étape n'a pas pu être terminée ; consultez le détail.} other {# étapes n'ont pas pu être terminées ; consultez le détail.}}",
         "error": {
           "obligatorio": "Ce champ est obligatoire.",
           "montoInvalido": "Saisissez un montant valide.",
@@ -23885,6 +23892,9 @@
         "esPrincipal": "{nombre} est le contact principal",
         "marcarPrincipal": "Marquer {nombre} comme contact principal",
         "desvincular": "Délier {nombre}"
+      },
+      "campoFechaHora": {
+        "hora": "Heure"
       }
     },
     "accionesRapidas": {
@@ -23992,7 +24002,7 @@
         "etiquetar": "Étiqueter",
         "etiquetarMotivo": "Les étiquettes se modifient dans la fiche client",
         "calificar": "Qualifier",
-        "calificarMotivo": "Qualifiez un lead à la fois",
+        "calificarMotivo": "Maximum {max} leads par lot",
         "exportar": "Exporter",
         "descartar": "Écarter"
       },
@@ -24077,6 +24087,32 @@
         "sinEtiquetas": "Sans étiquettes",
         "actividad": "Activité récente",
         "sinActividad": "Pas encore d'activité avec ce lead."
+      },
+      "lote": {
+        "titulo": "{n, plural, one {Qualifier # lead} other {Qualifier # leads}}",
+        "seleccionados": "{n, plural, one {# lead sélectionné} other {# leads sélectionnés}}",
+        "mas": "+{n}",
+        "cadaLead": "Celui de chaque lead",
+        "aviso": "Une opportunité est créée par lead avec ces données. Ce que vous laissez non défini (responsable, montant) est repris de chaque lead. Le système fait passer chaque lead en opportunité.",
+        "contexto": "{n, plural, one {# opportunité sera créée} other {# opportunités seront créées}} · {marcador} est remplacé par le nom de chaque lead",
+        "contextoDetalle": "Si vous retirez {marcador} du nom, toutes les opportunités porteront le même nom. Montant 0 = la valeur estimée de chaque lead.",
+        "clientes": "{n, plural, one {# lead} other {# leads}}",
+        "resultadoTitulo": "Qualifier en lot",
+        "creando": "{n, plural, one {Création de # opportunité…} other {Création de # opportunités…}}",
+        "creadas": "{n, plural, =0 {Aucune opportunité créée} one {# opportunité créée} other {# opportunités créées}}",
+        "fallidas": "{n, plural, one {# lead n'a pas pu être qualifié} other {# leads n'ont pas pu être qualifiés}}",
+        "leadNoDisponible": "Lead indisponible",
+        "verPipeline": "Voir dans le pipeline",
+        "cerrar": "Fermer",
+        "motivos": {
+          "no_encontrado": "Il n'existe plus ou n'appartient pas à cette organisation.",
+          "no_es_lead": "Ce n'est plus un lead (il a peut-être déjà été qualifié).",
+          "sin_permiso": "Vous n'avez pas l'autorisation de créer des opportunités.",
+          "sin_embudo_ventas": "L'organisation n'a pas de pipeline de ventes.",
+          "responsable_no_miembro": "Le responsable n'est pas un membre actif de l'organisation.",
+          "error_interno": "Une erreur s'est produite. Réessayez.",
+          "otro": "L'opportunité n'a pas pu être créée ({codigo})."
+        }
       }
     },
     "pantallaActividades": {
@@ -25487,6 +25523,9 @@
       "existente": "Une clôture existe déjà pour cette période. Recalculer crée une nouvelle version et marque la précédente comme remplacée.",
       "vacio": "Choisissez au moins un rapport.",
       "listo": "Clôture {numero} générée",
+      "descargando": "Préparation du fichier de clôture…",
+      "bajar": "Télécharger le fichier",
+      "sinArchivo": "La clôture {numero} a été enregistrée. Le fichier n'a pas été téléchargé.",
       "notaFranja": "La plage ne s'applique qu'aux chapitres qui l'acceptent. Les autres utilisent la journée complète.",
       "sinDatos": "Un chapitre sans données sur la période s'imprime avec la note « Aucun mouvement ».",
       "plantillas": {

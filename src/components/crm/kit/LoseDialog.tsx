@@ -9,6 +9,7 @@ import { clasesBoton } from '@/components/kit/botonClases';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { formatMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 import { CLASE_AREA, CLASE_AVISO_INFO, CLASE_CAMPO, simboloMoneda } from './camposCrm';
+import { SelectCrm } from './SelectCrm';
 import { cuerpoPerder, DIAS_RECONTACTO, esCompetencia, motivosVisibles, validarPerder, valoresInicialesPerder, type MotivoPerdida, type ValoresPerder } from './loseDialogLogica';
 
 /**
@@ -78,10 +79,14 @@ export function LoseDialog({ abierto, onAbiertoChange, oportunidad, moneda, moti
         <p role="alert" className="rounded-lg bg-warning-subtle px-3 py-2 text-[13px] text-warning-text">{t('sinCatalogo')}</p>
       ) : (
         <FormField etiqueta={t('motivo')} obligatorio error={err('motivoId')}>
-          <select value={v.motivoId} disabled={cargandoMotivos} aria-busy={cargandoMotivos || undefined} onChange={(e) => cambiar({ motivoId: e.target.value })} className={CLASE_CAMPO}>
-            <option value="">{cargandoMotivos ? t('cargando') : t('elegir')}</option>
-            {lista.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-          </select>
+          <SelectCrm
+            valor={v.motivoId}
+            disabled={cargandoMotivos}
+            aria-busy={cargandoMotivos || undefined}
+            onValorChange={(motivoId) => cambiar({ motivoId })}
+            opcionVacia={cargandoMotivos ? t('cargando') : t('elegir')}
+            opciones={lista.map((m) => ({ valor: m.id, etiqueta: m.label }))}
+          />
         </FormField>
       )}
       {esCompetencia(motivo) && (

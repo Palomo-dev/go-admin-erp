@@ -68,7 +68,7 @@ function nombreDeArchivo(cabecera: string | null, respaldo: string): string {
   return m?.[1] ?? respaldo;
 }
 
-async function descargarExcel(id: string, idioma: string): Promise<void> {
+async function archivoExcel(id: string, idioma: string): Promise<{ blob: Blob; nombre: string }> {
   const org = getOrganizationId();
   const r = await fetch(`/api/reportes/cierres/${encodeURIComponent(id)}/excel?idioma=${encodeURIComponent(idioma)}`, {
     credentials: 'same-origin',
@@ -84,7 +84,12 @@ async function descargarExcel(id: string, idioma: string): Promise<void> {
     }
     throw new ErrorPeticionReportes(cuerpo.codigo ?? cuerpo.code ?? 'error_desconocido', r.status, null);
   }
-  guardarArchivo(await r.blob(), nombreDeArchivo(r.headers.get('content-disposition'), `cierre-${id}.xlsx`));
+  return { blob: await r.blob(), nombre: nombreDeArchivo(r.headers.get('content-disposition'), `cierre-${id}.xlsx`) };
+}
+
+async function descargarExcel(id: string, idioma: string): Promise<void> {
+  const archivo = await archivoExcel(id, idioma);
+  guardarArchivo(archivo.blob, archivo.nombre);
 }
 
 export const clienteReportes = {
@@ -95,6 +100,7 @@ export const clienteReportes = {
     pedir<{ resumen: ResumenCierre }>('/api/reportes/cierres', { method: 'POST', body: { ...datos, vistaPrevia: true } }).then((r) => r.resumen),
   generarCierre: (datos: PedidoCierre) => pedir<CierreGuardado>('/api/reportes/cierres', { method: 'POST', body: datos }),
   descargarExcelCierre: (id: string, idioma: string) => descargarExcel(id, idioma),
+  archivoExcelCierre: (id: string, idioma: string) => archivoExcel(id, idioma),
   firmarCierre: (id: string) =>
     pedir<{ id: string; estado: string; cierra_periodo: boolean }>(`/api/reportes/cierres/${encodeURIComponent(id)}/firmar`, { method: 'POST', body: {} }),
   reabrirCierre: (id: string, motivo: string) =>

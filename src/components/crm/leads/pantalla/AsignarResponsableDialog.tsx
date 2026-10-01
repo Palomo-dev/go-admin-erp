@@ -5,7 +5,8 @@ import { useTranslations } from 'next-intl';
 import { UserPlus } from 'lucide-react';
 import { Dialogo } from '@/components/kit/Dialogo';
 import { FormField } from '@/components/kit/FormField';
-import { CLASE_CAMPO, type OpcionUsuario } from '@/components/crm/kit/camposCrm';
+import type { OpcionUsuario } from '@/components/crm/kit/camposCrm';
+import { SelectCrm } from '@/components/crm/kit/SelectCrm';
 
 /**
  * «Asignar responsable» de uno o varios leads (Figma 765:447453, barra
@@ -43,12 +44,7 @@ export function AsignarResponsableDialog({ abierto, onAbiertoChange, cantidad, u
     >
       {error && <p role="alert" className="rounded-lg bg-danger-subtle px-3 py-2 text-[13px] text-danger-text">{error}</p>}
       <FormField etiqueta={t('responsable')}>
-        <select value={valor} onChange={(e) => setValor(e.target.value)} className={CLASE_CAMPO}>
-          <option value="">{t('sinAsignar')}</option>
-          {usuarios.map((u) => (
-            <option key={u.id} value={u.id}>{u.nombre}</option>
-          ))}
-        </select>
+        <SelectCrm valor={valor} onValorChange={setValor} opcionVacia={t('sinAsignar')} opciones={usuarios.map((u) => ({ valor: u.id, etiqueta: u.nombre }))} />
       </FormField>
     </Dialogo>
   );

@@ -46,7 +46,10 @@ export function clasesBoton({
   anchoCompleto?: boolean;
   className?: string;
 } = {}): string {
-  return cn(BASE, VARIANTE[variante], TAMANO[tamano], anchoCompleto && 'w-full', className);
+  // Ancho completo también se encoge: con `shrink-0` de la base, un botón al 100 %
+  // junto a otro («Volver» + «Continuar») medía 100 % + el vecino y desbordaba el
+  // contenedor (en el móvil el diálogo de nueva organización quedaba corrido).
+  return cn(BASE, VARIANTE[variante], TAMANO[tamano], anchoCompleto && 'w-full min-w-0 shrink', className);
 }
 
 /** Tema del `Kbd` que va dentro de un botón: sobre color de marca o peligro, `marca`; si no, `claro`. */

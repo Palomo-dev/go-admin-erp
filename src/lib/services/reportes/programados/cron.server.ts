@@ -128,7 +128,19 @@ export async function procesarEnvio(service: SupabaseClient, fila: FilaProgramad
   if (!reclamado) return { id: fila.id, estado: 'reclamado_por_otro', enviados: 0, pausados: 0, fallidos: 0 };
 
   const base = { last_run_at: ahora.toISOString(), updated_at: ahora.toISOString() };
-  const dueno = await sesionDeMiembro(fila.organization_id, fila.user_id);
+  let dueno: SesionEnvio | null;
+  try {
+    dueno = await sesionDeMiembro(fila.organization_id, fila.user_id);
+  } catch (err) {
+    // El reclamo ya movió la próxima fecha. Si la sesión no abre, se devuelve
+    // el vencimiento para que el siguiente cron lo reintente: si no, ese
+    // correo se pierde hasta la semana siguiente.
+    await cerrar(service, fila, { ...base, next_run_at: fila.next_run_at, last_status: 'fallido', last_error: 'sesion_no_disponible' });
+    console.error('[reportes/programados] no se abrió la sesión de quien programó', { id: fila.id, message: err instanceof Error ? err.message : String(err) });
+    return { id: fila.id, estado: 'fallido', enviados: 0, pausados: 0, fallidos: 1 };
+  }
+  const abiertas = dueno ? [dueno] : [];
+  try {
   if (!dueno || !fila.report_id) {
     await cerrar(service, fila, { ...base, is_active: false, last_status: 'omitido', last_error: dueno ? 'sin_reporte' : 'creador_sin_acceso' });
     return { id: fila.id, estado: 'omitido', enviados: 0, pausados: 0, fallidos: 0 };
@@ -176,6 +188,7 @@ export async function procesarEnvio(service: SupabaseClient, fila: FilaProgramad
       let archivos: ArchivosEnvio;
       if (d.tipo === 'miembro') {
         sesion = d.user_id === fila.user_id ? dueno : await sesionDeMiembro(fila.organization_id, d.user_id);
+        if (sesion && sesion !== dueno) abiertas.push(sesion);
         if (!sesion) {
           pausar('sin_membresia');
           continue;
@@ -242,6 +255,9 @@ export async function procesarEnvio(service: SupabaseClient, fila: FilaProgramad
   });
   await avisarPausas(service, fila, pausas, idiomaDueno);
   return { id: fila.id, estado, enviados, pausados: pausas.length, fallidos };
+  } finally {
+    await Promise.all(abiertas.map((s) => s.cerrar?.() ?? Promise.resolve()));
+  }
 }
 
 /** Procesa hasta `LOTE_ENVIOS` envíos vencidos, en orden de vencimiento. */

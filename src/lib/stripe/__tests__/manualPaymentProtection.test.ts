@@ -141,3 +141,81 @@ describe('shouldProtectManualPayment', () => {
     expect(shouldProtectManualPayment(localSub, stripeSub)).toBe(true);
   });
 });
+
+describe('shouldProtectManualPayment - Cortesías', () => {
+  // Caso cortesía: metadata.cortesia presente (proteger)
+  it('debe proteger cuando metadata.cortesia es truthy', () => {
+    const localSub = {
+      current_period_end: '2027-09-29T00:00:00.000Z',
+      metadata: {
+        cortesia: true,
+      },
+    };
+
+    const stripeSub = {
+      current_period_end: Math.floor(new Date('2026-10-01').getTime() / 1000),
+    };
+
+    expect(shouldProtectManualPayment(localSub, stripeSub)).toBe(true);
+    
+    const reason = getProtectionReason(localSub, stripeSub);
+    expect(reason).toContain('metadata.cortesia=true');
+    expect(reason).toContain('cortesía aprobada');
+  });
+
+  // Caso cortesía con objeto (proteger)
+  it('debe proteger cuando metadata.cortesia es un objeto', () => {
+    const localSub = {
+      current_period_end: '2027-09-29T00:00:00.000Z',
+      metadata: {
+        cortesia: {
+          aprobado_por: 'Juan',
+          fecha: '2026-09-15',
+        },
+      },
+    };
+
+    const stripeSub = {
+      current_period_end: Math.floor(new Date('2026-10-01').getTime() / 1000),
+    };
+
+    expect(shouldProtectManualPayment(localSub, stripeSub)).toBe(true);
+  });
+
+  // Caso: metadata.cortesia false o 0 (no proteger)
+  it('NO debe proteger cuando metadata.cortesia es falsy', () => {
+    const localSub = {
+      current_period_end: '2026-10-15T00:00:00.000Z',
+      metadata: {
+        cortesia: false,
+      },
+    };
+
+    const stripeSub = {
+      current_period_end: Math.floor(new Date('2026-10-15').getTime() / 1000),
+    };
+
+    expect(shouldProtectManualPayment(localSub, stripeSub)).toBe(false);
+  });
+
+  // Caso org 143: cortesía Ultimate sin Stripe IDs
+  it('debe proteger org 143 (TecnoShopping) con cortesía', () => {
+    // Simula org 143: active en Ultimate hasta 29-sep-2027, sin Stripe IDs
+    const localSub = {
+      current_period_end: '2027-09-29T00:00:00.000Z',
+      metadata: {
+        cortesia: true,
+      },
+    };
+
+    // Stripe subscription está canceled
+    const stripeSub = {
+      current_period_end: Math.floor(new Date('2026-10-01').getTime() / 1000),
+    };
+
+    expect(shouldProtectManualPayment(localSub, stripeSub)).toBe(true);
+    
+    const reason = getProtectionReason(localSub, stripeSub);
+    expect(reason).toContain('cortesía aprobada');
+  });
+});

@@ -18,8 +18,9 @@ export interface StripeSubscriptionData {
  * Detecta si una suscripción tiene pago manual y debe ser protegida.
  * 
  * Criterios de protección:
- * 1. metadata.pago_anual.pagado_hasta existe y es fecha futura
- * 2. current_period_end local > current_period_end Stripe + 30 días
+ * 1. metadata.cortesia existe y es truthy (cortesía aprobada, ej: org 143)
+ * 2. metadata.pago_anual.pagado_hasta existe y es fecha futura
+ * 3. current_period_end local > current_period_end Stripe + 30 días
  * 
  * @param localSub - Suscripción de la base de datos
  * @param stripeSub - Suscripción de Stripe
@@ -33,7 +34,15 @@ export function shouldProtectManualPayment(
     return false;
   }
 
-  // Criterio 1: metadata.pago_anual.pagado_hasta con fecha futura
+  // Criterio 1: metadata.cortesia (cortesía aprobada)
+  if (localSub.metadata && typeof localSub.metadata === 'object') {
+    const cortesia = (localSub.metadata as Record<string, unknown>).cortesia;
+    if (cortesia) {
+      return true; // Proteger: suscripción de cortesía
+    }
+  }
+
+  // Criterio 2: metadata.pago_anual.pagado_hasta con fecha futura
   if (localSub.metadata && typeof localSub.metadata === 'object') {
     const pagoAnual = (localSub.metadata as Record<string, unknown>).pago_anual;
     if (pagoAnual && typeof pagoAnual === 'object') {
@@ -46,13 +55,13 @@ export function shouldProtectManualPayment(
             return true; // Proteger: metadata indica pago manual futuro
           }
         } catch {
-          // Si no se puede parsear la fecha, continuar con el criterio 2
+          // Si no se puede parsear la fecha, continuar con el criterio 3
         }
       }
     }
   }
 
-  // Criterio 2: periodo local > periodo Stripe + 30 días
+  // Criterio 3: periodo local > periodo Stripe + 30 días
   if (!localSub.current_period_end) {
     return false;
   }
@@ -76,6 +85,14 @@ export function getProtectionReason(
 ): string {
   if (!localSub) {
     return 'No local subscription';
+  }
+
+  // Verificar metadata.cortesia
+  if (localSub.metadata && typeof localSub.metadata === 'object') {
+    const cortesia = (localSub.metadata as Record<string, unknown>).cortesia;
+    if (cortesia) {
+      return `metadata.cortesia=${JSON.stringify(cortesia)} (cortesía aprobada)`;
+    }
   }
 
   // Verificar metadata.pago_anual.pagado_hasta

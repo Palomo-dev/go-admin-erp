@@ -15,7 +15,7 @@ export { estimateMessageCost } from './costs';
 export { isWithinAllowedHours, nextAllowedSlot } from './allowedHours';
 export { listCampaigns, getCampaign, requireCampaign, createCampaign, updateCampaign, deleteCampaign } from './campaignStore';
 export { materializeCampaign, resolveAudience, classifyCandidate } from './campaignMaterialize';
-export { launchCampaign, pauseCampaign, resumeCampaign, cancelCampaign, getCampaignStats, listCampaignContacts, contactsToCsv, countContacts, checkMessagingLimit } from './campaignService';
+export { launchCampaign, pauseCampaign, resumeCampaign, cancelCampaign, getCampaignStats, listCampaignContacts, exportCampaignContacts, contactsToCsv, countContacts, checkMessagingLimit } from './campaignService';
 export { runCampaignBatch, planDelay, classifySendError } from './campaignBatch';
 export { recordWhatsAppProviderStatus, syncCampaignProviderReceipts, providerErrorAction } from './campaignEvents';
 export { handleWhatsAppInbound, extractInboundText, inboundContentType } from './inboundService';

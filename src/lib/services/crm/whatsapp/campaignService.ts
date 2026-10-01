@@ -9,6 +9,8 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getServiceClient } from '@/lib/supabase/server-service';
+import { filasACsv } from '@/lib/utils/csv';
+import { formatDateInTz } from '@/lib/utils/dateDisplay';
 import { enqueueJob } from '@/lib/jobs/enqueue';
 import { getChannelCredentials, resolveChannel } from './channelService';
 import { rowToCampaign, requireCampaign } from './campaignStore';
@@ -104,19 +106,6 @@ export async function cancelCampaign(orgId: number, id: string, supabase: Supaba
   return transitionCampaign(orgId, await requireCampaign(orgId, id, supabase), 'cancel', actor, {}, service);
 }
 
-/** pending|queued → skipped:reason (metadata). Devuelve cuántos. */
-export async function skipPending(campaignId: string, reason: string, service: SupabaseClient): Promise<number> {
-  const { data } = await service.from('campaign_contacts').select('id, metadata').eq('campaign_id', campaignId).is('state', null).limit(5000);
-  let n = 0;
-  for (const r of (data ?? []) as Array<{ id: string; metadata: CampaignContactMeta | null }>) {
-    const st = r.metadata?.state ?? 'pending';
-    if (st !== 'pending' && st !== 'queued') continue;
-    await service.from('campaign_contacts').update({ metadata: { ...(r.metadata ?? {}), state: 'skipped', skipped_reason: reason }, updated_at: new Date().toISOString() }).eq('id', r.id);
-    n += 1;
-  }
-  return n;
-}
-
 /** Conteos puros a partir de filas (testeable). */
 export function countContacts(rows: Array<{ state: string | null; metadata: CampaignContactMeta | null; replied_at?: string | null }>): CampaignCounts {
   const c: CampaignCounts = { total: 0, pending: 0, queued: 0, sent: 0, delivered: 0, read: 0, replied: 0, failed: 0, skipped: 0, cost: 0 };
@@ -141,66 +130,63 @@ export function countContacts(rows: Array<{ state: string | null; metadata: Camp
   return c;
 }
 
-export async function computeCampaignCounts(campaignId: string, service: SupabaseClient): Promise<CampaignCounts> {
-  const { data } = await service.from('campaign_contacts').select('state, metadata, replied_at').eq('campaign_id', campaignId).limit(20000);
-  return countContacts((data ?? []) as Array<{ state: string | null; metadata: CampaignContactMeta | null; replied_at: string | null }>);
-}
-
 export interface CampaignStats {
   counts: CampaignCounts;
   by_error_code: Record<string, number>;
   by_skip_reason: Record<string, number>;
   timeline: Array<{ minute: string; sent: number; delivered: number; read: number; failed: number }>;
   estimated_cost: number | null;
-  actual_cost: number;
+  actual_cost: number | null;
+  known_actual_cost: number;
+  actual_cost_complete: boolean;
+  unpriced_contacts: number;
 }
 
-export async function getCampaignStats(orgId: number, id: string, supabase: SupabaseClient, service: SupabaseClient = getServiceClient()): Promise<CampaignStats> {
-  const c = await requireCampaign(orgId, id, supabase);
-  const { data } = await service.from('campaign_contacts').select('state, metadata, replied_at, sent_at').eq('campaign_id', id).limit(20000);
-  const rows = (data ?? []) as Array<{ state: string | null; metadata: CampaignContactMeta | null; replied_at: string | null; sent_at: string | null }>;
-  const counts = countContacts(rows);
-  const byErr: Record<string, number> = {};
-  const bySkip: Record<string, number> = {};
-  const tl = new Map<string, { sent: number; delivered: number; read: number; failed: number }>();
-  const bucket = (iso: string | null | undefined) => (iso ? iso.slice(0, 16) + ':00' : null);
-  for (const r of rows) {
-    const m = r.metadata ?? {};
-    if (m.error_code) byErr[String(m.error_code)] = (byErr[String(m.error_code)] ?? 0) + 1;
-    if (m.skipped_reason && contactState(r) === 'skipped') bySkip[String(m.skipped_reason)] = (bySkip[String(m.skipped_reason)] ?? 0) + 1;
-    const get = (k: string | null) => { if (!k) return null; if (!tl.has(k)) tl.set(k, { sent: 0, delivered: 0, read: 0, failed: 0 }); return tl.get(k)!; };
-    const s = get(bucket(r.sent_at)); if (s) s.sent += 1;
-    const d = get(bucket(m.delivered_at)); if (d) d.delivered += 1;
-    const rd = get(bucket(m.read_at)); if (rd) rd.read += 1;
-    const f = get(bucket(m.failed_at)); if (f) f.failed += 1;
-  }
-  const timeline = Array.from(tl.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([minute, v]) => ({ minute, ...v }));
-  return { counts, by_error_code: byErr, by_skip_reason: bySkip, timeline, estimated_cost: c.statistics.estimated_cost ?? null, actual_cost: counts.cost };
+export async function getCampaignStats(orgId: number, id: string, supabase: SupabaseClient): Promise<CampaignStats> {
+  const { data, error } = await supabase.rpc('crm_campaign_contact_stats', { p_org: orgId, p_campaign: id });
+  if (error) throw errorWhatsAppDb(error);
+  if (!data || typeof data !== 'object' || !data.counts || !Array.isArray(data.timeline)
+    || typeof data.actual_cost_complete !== 'boolean' || typeof data.known_actual_cost !== 'number')
+    throw new WhatsAppError('INTERNAL', 'Cifras sin resultado válido', 500);
+  return data as CampaignStats;
 }
 
-export async function listCampaignContacts(orgId: number, id: string, opts: { state?: string; q?: string; page?: number; pageSize?: number }, supabase: SupabaseClient, service: SupabaseClient = getServiceClient()): Promise<{ data: CampaignContact[]; total: number }> {
-  await requireCampaign(orgId, id, supabase);
-  const pageSize = Math.min(500, Math.max(1, opts.pageSize ?? 50));
-  const page = Math.max(1, opts.page ?? 1);
-  const { data } = await service
-    .from('campaign_contacts')
-    .select('id, campaign_id, customer_id, state, sent_at, opened_at, clicked_at, replied_at, bounced_at, metadata, created_at, updated_at, customer:customers(id, full_name, first_name, email, phone)')
-    .eq('campaign_id', id)
-    .order('created_at', { ascending: true })
-    .limit(5000);
-  let rows = ((data ?? []) as unknown as CampaignContact[]).map((r) => ({ ...r, customer: Array.isArray(r.customer) ? (r.customer[0] ?? null) : r.customer }));
-  if (opts.state) rows = rows.filter((r) => contactState(r) === opts.state);
-  if (opts.q) {
-    const q = opts.q.toLowerCase();
-    rows = rows.filter((r) => `${r.customer?.full_name ?? ''} ${r.customer?.phone ?? ''} ${r.customer?.email ?? ''}`.toLowerCase().includes(q));
-  }
-  const total = rows.length;
-  return { data: rows.slice((page - 1) * pageSize, page * pageSize), total };
+type ContactsFilter = { state?: string; q?: string };
+type ContactsResult = { data: CampaignContact[]; total: number };
+
+function contactsResult(data: unknown): ContactsResult {
+  if (!data || typeof data !== 'object' || !('data' in data) || !Array.isArray(data.data)
+    || !('total' in data) || !Number.isSafeInteger(data.total) || Number(data.total) < data.data.length)
+    throw new WhatsAppError('INTERNAL', 'Contactos sin resultado válido', 500);
+  return data as ContactsResult;
 }
 
-export function contactsToCsv(rows: CampaignContact[]): string {
-  const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+export async function listCampaignContacts(orgId: number, id: string, opts: ContactsFilter & { page?: number; pageSize?: number }, supabase: SupabaseClient): Promise<ContactsResult> {
+  const { data, error } = await supabase.rpc('crm_campaign_contacts_page', {
+    p_org: orgId, p_campaign: id, p_state: opts.state ?? null, p_q: opts.q ?? null,
+    p_page: opts.page ?? 1, p_size: opts.pageSize ?? 50,
+  });
+  if (error) throw errorWhatsAppDb(error);
+  return contactsResult(data);
+}
+
+/** La exportación se obtiene completa en una lectura, sin páginas mutables. */
+export async function exportCampaignContacts(orgId: number, id: string, opts: ContactsFilter, supabase: SupabaseClient): Promise<ContactsResult> {
+  const { data, error } = await supabase.rpc('crm_campaign_contacts_export', {
+    p_org: orgId, p_campaign: id, p_state: opts.state ?? null, p_q: opts.q ?? null,
+  });
+  if (error) throw errorWhatsAppDb(error);
+  const result = contactsResult(data);
+  if (result.data.length !== result.total) throw new WhatsAppError('INTERNAL', 'Exportación incompleta', 500);
+  return result;
+}
+
+export function contactsToCsv(rows: CampaignContact[], timezone: string): string {
+  const fecha = (value: string | null | undefined) => formatDateInTz(value, timezone, { dateStyle: 'short', timeStyle: 'medium' });
   const head = ['cliente', 'telefono', 'email', 'estado', 'razon', 'error', 'enviado', 'entregado', 'leido', 'respondio'];
-  const lines = rows.map((r) => [r.customer?.full_name ?? '', r.customer?.phone ?? '', r.customer?.email ?? '', contactState(r), r.metadata?.skipped_reason ?? '', r.metadata?.error_code ?? '', r.sent_at ?? '', r.metadata?.delivered_at ?? '', r.metadata?.read_at ?? '', r.replied_at ?? ''].map(esc).join(','));
-  return [head.join(','), ...lines].join('\n');
+  return filasACsv(head, rows.map((r) => [
+    r.customer?.full_name ?? '', r.customer?.phone ?? '', r.customer?.email ?? '', contactState(r),
+    r.metadata?.skipped_reason ?? '', r.metadata?.error_code ?? '', fecha(r.sent_at),
+    fecha(r.metadata?.delivered_at), fecha(r.metadata?.read_at), fecha(r.replied_at),
+  ]));
 }

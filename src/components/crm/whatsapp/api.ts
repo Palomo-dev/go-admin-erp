@@ -109,7 +109,7 @@ export interface CreateCampaignBody {
 }
 
 export interface MaterializeResult { total: number; pending: number; skipped: number; skipped_by_reason: Record<string, number>; estimated_cost: number | null }
-export interface CampaignStatsResult { counts: CampaignCounts; by_error_code: Record<string, number>; by_skip_reason: Record<string, number>; timeline: Array<{ minute: string; sent: number; delivered: number; read: number; failed: number }>; estimated_cost: number | null; actual_cost: number }
+export interface CampaignStatsResult { counts: CampaignCounts; by_error_code: Record<string, number>; by_skip_reason: Record<string, number>; timeline: Array<{ minute: string; sent: number; delivered: number; read: number; failed: number }>; estimated_cost: number | null; actual_cost: number | null; known_actual_cost: number; actual_cost_complete: boolean; unpriced_contacts: number }
 
 export const campaignsApi = {
   list: (q: { status?: string; channel?: string; q?: string } = {}) => get<{ data: Campaign[]; can_manage: boolean }>(`/api/crm/campaigns?${new URLSearchParams(Object.entries(q).filter(([, v]) => !!v) as [string, string][]).toString()}`),

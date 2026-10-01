@@ -25267,6 +25267,7 @@
       "mm80": "80 mm receipt",
       "excel": "Excel",
       "vistaPrevia": "Preview",
+      "calculando": "Calculating the closing reports…",
       "generar": "Generate closing",
       "recalcular": "Recalculate",
       "existente": "There is already a closing for this period. Recalculating creates a new version and marks the previous one as replaced.",

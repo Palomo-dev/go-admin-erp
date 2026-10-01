@@ -25267,6 +25267,7 @@
       "mm80": "Tirilla 80 mm",
       "excel": "Excel",
       "vistaPrevia": "Vista previa",
+      "calculando": "Calculando los reportes del cierre…",
       "generar": "Generar cierre",
       "recalcular": "Recalcular",
       "existente": "Ya hay un cierre de este periodo. Recalcular crea una versión nueva y marca la anterior como reemplazada.",

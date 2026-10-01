@@ -3734,3 +3734,7 @@ Migración `20261001030800_crm_segmentos_recuento_en_cola.sql`, aplicada por MCP
 ### 2026-10-01 — verificación CRM: cierre del reintento en prueba de outbox
 
 La batería completa aprobaba todas las aserciones pero salía 1 por un log tardío: la última prueba de customersOutbox dejaba activo el reintento de una venta fallida. Su afterEach ahora cierra ambos sincronizadores y el outbox antes de desmontar IndexedDB. Sin cambio en producción. 22 casos focalizados pasan con detectOpenHandles; repetida toda la batería, 940 suites / 16.989 pruebas pasan y el proceso sale 0.
+
+### 2026-10-01 — CRM: segmentos con recuento real y usos conectados
+
+Consumidor canónico noop por página, cron existente para vencimientos de 15 minutos y listado con cifras por canal, pendiente/error y usos en campañas/secuencias. Guardado dinámico sin escanear; cache conservada al renombrar; referencias propias y versiones en SQL. API+runner reales verificaron job/final/versión/caché; fixtures, jobs y eventos cero. Escritorio y móvil 390 revisados. 940 suites / 16.989 pruebas, tsc, lint tocado y build de producción pasan. Sigue pendiente prellenado del asistente, consentimiento/campañas/plantillas y las demás olas; PR #280 continúa en borrador.

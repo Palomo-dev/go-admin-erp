@@ -36,7 +36,7 @@ export const VERCEL_SCHEDULE_KINDS: Readonly<Record<string, readonly ScheduledKi
   // y el drenaje de `campaign_batch` no se toca. Es una `ScheduledTask`, así que
   // `splitScheduledKinds` la aparta de los kinds de cola: el runner no intenta
   // drenar nada con ese nombre.
-  '*/5 * * * *': ['campaign_batch', 'voice_campaigns'],
+  '*/5 * * * *': ['campaign_batch', 'voice_campaigns', 'segment_counts'],
   '30 8 * * *': ['recording_cleanup', 'maintenance', 'health_recalculate', 'renewals_sync'],
 };
 

@@ -25139,7 +25139,12 @@
       "invalidImport": "Use IDs válidos e sem duplicados (máximo 5.000).",
       "back": "Voltar",
       "download": "Baixar CSV",
-      "voiceContactable": "Contatáveis por voz"
+      "voiceContactable": "Contatáveis por voz",
+      "countQueued": "Recontagem na fila",
+      "countFailed": "A recontagem falhou; será tentada novamente em segundo plano",
+      "usedIn": "Usado em",
+      "campaignUsage": "{count, plural, =0 {0 campanhas} one {1 campanha} other {# campanhas}}",
+      "sequenceUsage": "{count, plural, =0 {0 sequências} one {1 sequência} other {# sequências}}"
     }
   },
   "analiticaWeb": {

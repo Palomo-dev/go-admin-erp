@@ -25139,7 +25139,12 @@
       "invalidImport": "Utilisez des IDs valides et sans doublons (maximum 5,000).",
       "back": "Retour",
       "download": "Télécharger le CSV",
-      "voiceContactable": "Contactables par téléphone"
+      "voiceContactable": "Contactables par téléphone",
+      "countQueued": "Recomptage en attente",
+      "countFailed": "Le recomptage a échoué ; une nouvelle tentative aura lieu en arrière-plan",
+      "usedIn": "Utilisé dans",
+      "campaignUsage": "{count, plural, =0 {0 campagnes} one {1 campagne} other {# campagnes}}",
+      "sequenceUsage": "{count, plural, =0 {0 séquences} one {1 séquence} other {# séquences}}"
     }
   },
   "analiticaWeb": {

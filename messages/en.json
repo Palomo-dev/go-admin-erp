@@ -4750,7 +4750,12 @@
       "invalidImport": "Use valid customer IDs without duplicates (maximum 5,000).",
       "back": "Back",
       "download": "Download CSV",
-      "voiceContactable": "Contactable by voice"
+      "voiceContactable": "Contactable by voice",
+      "countQueued": "Count queued",
+      "countFailed": "The count failed; it will retry in the background",
+      "usedIn": "Used in",
+      "campaignUsage": "{count, plural, =0 {0 campaigns} one {1 campaign} other {# campaigns}}",
+      "sequenceUsage": "{count, plural, =0 {0 sequences} one {1 sequence} other {# sequences}}"
     }
   },
   "posCustomerDisplay": {

@@ -4750,7 +4750,12 @@
       "invalidImport": "El archivo debe contener IDs de clientes válidos, sin duplicados (máximo 5.000).",
       "back": "Volver",
       "download": "Descargar CSV",
-      "voiceContactable": "Contactables por voz"
+      "voiceContactable": "Contactables por voz",
+      "countQueued": "Recuento en cola",
+      "countFailed": "El recuento falló; se reintentará en segundo plano",
+      "usedIn": "Usado en",
+      "campaignUsage": "{count, plural, =0 {0 campañas} one {1 campaña} other {# campañas}}",
+      "sequenceUsage": "{count, plural, =0 {0 secuencias} one {1 secuencia} other {# secuencias}}"
     }
   },
   "posCustomerDisplay": {

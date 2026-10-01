@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useTranslations, useFormatter } from 'next-intl';
 import { Users, Plus, RefreshCw, Upload } from 'lucide-react';
@@ -15,6 +15,7 @@ import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { ErrorApiCrm, pedirCrm } from '@/components/crm/acciones/apiCrm';
 import type { SegmentoRegistro } from '@/lib/services/crm/segmentosAudiencia';
 import { useSegmentosData } from './useSegmentosData';
+import { SegmentoEstadoRecuento } from './SegmentoEstadoRecuento';
 export function SegmentosPage() {
   const t = useTranslations('crm.segmentosNuevo');
   const formatter = useFormatter();
@@ -22,6 +23,12 @@ export function SegmentosPage() {
   const [q, setQ] = useState(''), [type, setType] = useState('all'), [page, setPage] = useState(1), [revision, setRevision] = useState(0);
   const [target, setTarget] = useState<SegmentoRegistro | null>(null), [busy, setBusy] = useState(false), [actionError, setActionError] = useState<string | null>(null);
   const { data, loading, error, canManage } = useSegmentosData<SegmentoRegistro[]>('/api/crm/segments', revision);
+  const waitingForCount = data?.some(s => !!s.count_job_id) === true;
+  useEffect(() => {
+    if (!waitingForCount) return;
+    const timer = setInterval(() => setRevision(n => n + 1), 15000);
+    return () => clearInterval(timer);
+  }, [waitingForCount]);
   const rows = (data ?? []).filter(s => (!q || `${s.name} ${s.description ?? ''}`.toLocaleLowerCase().includes(q.toLocaleLowerCase())) &&
     (type === 'all' || (type === 'dynamic' ? s.is_dynamic !== false : s.is_dynamic === false)));
   const refresh = () => setRevision(n => n + 1);
@@ -48,7 +55,7 @@ export function SegmentosPage() {
         onLimpiarFiltros={() => { setQ(''); setType('all'); setPage(1); }} accion={!data?.length && canManage ? { etiqueta: t('new'), href: '/app/crm/segmentos/nuevo' } : undefined} />
       : <><div className="divide-y divide-line rounded-xl border border-line bg-surface">
         {rows.slice((page - 1) * 25, page * 25).map(s => <article key={s.id} className="grid items-center gap-3 p-4 text-sm md:grid-cols-[minmax(0,2fr)_1fr_1fr_minmax(0,2fr)]">
-          <div><Link href={`/app/crm/segmentos/${s.id}`} className="font-semibold text-link hover:underline">{s.name}</Link><p className="mt-1 truncate text-xs text-fg-secondary">{s.description || '—'}</p></div>
+          <div className="space-y-2"><div><Link href={`/app/crm/segmentos/${s.id}`} className="font-semibold text-link hover:underline">{s.name}</Link><p className="mt-1 truncate text-xs text-fg-secondary">{s.description || '—'}</p></div><SegmentoEstadoRecuento segment={s} /></div>
           <div className="text-fg"><span className="rounded-md bg-brand-tint px-2 py-1 text-xs text-brand-deep">{t(s.is_dynamic === false ? 'static' : 'dynamic')}</span>
             <p className="mt-2 text-xs text-fg-secondary">{t('lastCount')}: {s.last_run_at ? formatter.number(s.customer_count) : '—'}</p></div>
           <p className="text-xs text-fg-secondary">{t('updated')}<br />{formatDateTime(s.updated_at)}</p>

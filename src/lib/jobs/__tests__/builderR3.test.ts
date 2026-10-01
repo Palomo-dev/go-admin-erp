@@ -224,7 +224,7 @@ describe('schedule.ts — contrato único (N-3)', () => {
     // F6) viaja en ESTE cron, que ya existía, para no añadir una entrada más a
     // `crons` de `vercel.json`. `splitScheduledKinds` la aparta de los kinds de
     // cola, así que el drenaje de `campaign_batch` no cambia.
-    expect(VERCEL_SCHEDULE_KINDS['*/5 * * * *']).toEqual(['campaign_batch', 'voice_campaigns']);
+    expect(VERCEL_SCHEDULE_KINDS['*/5 * * * *']).toEqual(['campaign_batch', 'voice_campaigns', 'segment_counts']);
     expect(JOBS_RUN_SCHEDULES).toEqual([DRAIN_SCHEDULE, '*/5 * * * *', '30 8 * * *']);
   });
 });

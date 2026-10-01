@@ -2,6 +2,11 @@ import type { JobHandler } from "../types";
 
 /** Operaciones locales sin efectos externos. Las versiones anteriores solo devuelven el payload. */
 export const noopHandler: JobHandler = async (ctx) => {
+  if (ctx.job.payload.operation === "crm_segment_recount") {
+    const { ejecutarRecuentoSegmento } =
+      await import("@/lib/services/crm/segmentosRecuentoService");
+    return ejecutarRecuentoSegmento(ctx);
+  }
   if (ctx.job.payload.operation === "crm_duplicate_scan") {
     const { ejecutarBusquedaDuplicados } =
       await import("@/lib/services/crm/customerDuplicateScanService");

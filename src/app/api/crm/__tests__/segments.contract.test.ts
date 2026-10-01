@@ -62,6 +62,22 @@ test('empleado sin gestionar no escribe aunque pueda leer', async () => {
   expect((await POST(req('/api/crm/segments', 'POST', { name: 'Fixture', is_dynamic: false, filter_json: [], member_ids: [U(1)] }))).status).toBe(403);
   expect(serviceDb.rpcCalls).toHaveLength(0);
 });
+test('guardar un dinámico no recorre clientes y solicita el conteo a la RPC transaccional', async () => {
+  serviceDb.rpc.crm_save_segment = { data: { ...segment(), is_dynamic: true, last_run_at: null, count_job_id: U(12) } };
+  const response = await POST(req('/api/crm/segments', 'POST', { name: 'Fixture', is_dynamic: true, filter_json: [] }));
+  expect(response.status).toBe(201);
+  expect(serviceDb.rpcCalls[0].args).toMatchObject({ p_count: null, p_members: null });
+  expect(db.rpcCalls).toHaveLength(0);
+});
+test('el listado combina usos propios y falla explícitamente cuando la RPC falla', async () => {
+  db.rpc.crm_segment_usages = { data: [{ id: U(10), campaigns: 2, voice_campaigns: 1, sequences: 3 }] };
+  const response = await GET(req('/api/crm/segments'));
+  expect(response.status).toBe(200);
+  expect((await response.json()).data[0].usage).toEqual({ campaigns: 2, voice_campaigns: 1, sequences: 3 });
+  expect(db.rpcCalls[0].args).toEqual({ p_org: ORG, p_ids: [U(10)] });
+  db.rpc.crm_segment_usages = { error: { code: 'XX000', message: 'fixture' } };
+  expect((await GET(req('/api/crm/segments'))).status).toBe(500);
+});
 test('edición conserva snapshot; SQLSTATE de versión vieja devuelve 409', async () => {
   serviceDb.rpc.crm_save_segment = { error: { code: '40001', message: 'registro_cambio' } };
   const response = await PATCH(req('/api/crm/segments/id', 'PATCH', { name: 'Fixture', is_dynamic: false, filter_json: [], expected_updated_at: '2026-09-30T00:00:00Z' }), params());

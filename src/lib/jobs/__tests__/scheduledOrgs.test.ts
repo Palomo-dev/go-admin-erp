@@ -53,7 +53,7 @@ describe('ScheduledTask — tipo aparte del CHECK de outbound_jobs.kind', () => 
     // falta: el reclamo de trabajo de la voz ya vive en la base
     // (`fn_claim_voice_agent_calls`). La lista se mantiene EXACTA a propósito:
     // añadir una tarea obliga a declararla aquí.
-    expect(SCHEDULED_TASKS).toEqual(['health_recalculate', 'renewals_sync', 'voice_campaigns']);
+    expect(SCHEDULED_TASKS).toEqual(['health_recalculate', 'renewals_sync', 'voice_campaigns', 'segment_counts']);
     expect(isScheduledTask('voice_campaigns')).toBe(true);
     expect(isScheduledTask('health_recalculate')).toBe(true);
     expect(isScheduledTask('maintenance')).toBe(false);

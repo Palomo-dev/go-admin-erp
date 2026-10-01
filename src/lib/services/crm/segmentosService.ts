@@ -25,7 +25,7 @@ export async function guardarSegmento(
   const filter = input.member_ids ? filtroDeIdsSegmento(input.member_ids) : normalizarFiltroSegmento(input.filter_json);
   const old = input.id ? await obtenerSegmento(ctx.organizationId, input.id, ctx.supabase) : null;
   const retain = old?.is_dynamic === false && !input.is_dynamic && !input.refresh_members && !input.member_ids;
-  const read = retain || input.member_ids
+  const read = input.is_dynamic || retain || input.member_ids
     ? null
     : await leerAudienciaSegmento(ctx.organizationId, ctx.supabase, {
         filter,
@@ -40,7 +40,7 @@ export async function guardarSegmento(
     p_description: input.description ?? null,
     p_filter: filter,
     p_dynamic: input.is_dynamic,
-    p_count: input.member_ids?.length ?? read?.counts.total ?? 0,
+    p_count: input.is_dynamic ? null : input.member_ids?.length ?? read?.counts.total ?? 0,
     p_members: input.member_ids ?? (input.is_dynamic || retain ? null : read?.ids),
     p_expected: input.expected_updated_at ?? null,
   });

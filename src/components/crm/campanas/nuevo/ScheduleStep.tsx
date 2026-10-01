@@ -1,28 +1,42 @@
 'use client';
 
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { useTranslations } from 'next-intl';
+import { ShieldCheck } from 'lucide-react';
+import { FormField } from '@/components/kit/FormField';
+import { SegmentedControl } from '@/components/kit/SegmentedControl';
+import { CampoFechaHora } from '@/components/crm/kit/CampoFechaHora';
 import { Slider } from '@/components/ui/slider';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { minutosMinimosCampana, type ErrorProgramacion, type ModoProgramacion } from './programacionCampanaLogica';
 
-/** Paso 3 del wizard: programación, throttle (1–80 msg/s) y horario permitido. */
-export function ScheduleStep(p: { scheduledAt: string | null; onScheduledAt: (v: string | null) => void; throttle: number; onThrottle: (v: number) => void; respectHours: boolean; onRespectHours: (v: boolean) => void }) {
-  const minutes = p.throttle > 0 ? Math.ceil(1000 / p.throttle / 60) : 0;
-  return (
-    <div className="space-y-5">
-      <div className="space-y-1.5">
-        <Label htmlFor="camp-when" className="text-xs">Enviar</Label>
-        <div className="flex flex-wrap items-center gap-2">
-          <button type="button" className={`text-xs px-3 py-1.5 rounded-md border ${!p.scheduledAt ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-300' : 'border-gray-200 dark:border-gray-700'}`} onClick={() => p.onScheduledAt(null)}>Ahora</button>
-          <Input id="camp-when" type="datetime-local" className="h-9 w-56 bg-gray-50 dark:bg-gray-900 text-sm" value={p.scheduledAt ? p.scheduledAt.slice(0, 16) : ''} min={new Date(Date.now() + 5 * 60_000).toISOString().slice(0, 16)} onChange={(e) => p.onScheduledAt(e.target.value ? new Date(e.target.value).toISOString() : null)} aria-label="Fecha y hora de envío" />
-        </div>
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="camp-throttle" className="text-xs">Velocidad: {p.throttle} mensajes/segundo (≈ {p.throttle * 60}/min · 1.000 contactos en ≈ {minutes} min)</Label>
-        <Slider id="camp-throttle" min={1} max={80} step={1} value={[p.throttle]} onValueChange={(v: number[]) => p.onThrottle(v[0] ?? 10)} aria-valuemin={1} aria-valuemax={80} aria-valuenow={p.throttle} />
-        <p className="text-[11px] text-gray-500">Meta permite hasta 80 msg/s por número; el límite real es el tier de usuarios únicos/24 h del WABA (se verifica al lanzar).</p>
-      </div>
-      <label className="flex items-center gap-2 text-sm"><Checkbox checked={p.respectHours} onCheckedChange={(v) => p.onRespectHours(v === true)} />Respetar el horario permitido de contacto (Configuración › WhatsApp)</label>
+/** Figma 1402:821: programación en zona de organización y cumplimiento obligatorio. */
+export function ScheduleStep(p: {
+  mode: ModoProgramacion; onMode: (v: ModoProgramacion) => void;
+  local: string; onLocal: (v: string) => void; error: ErrorProgramacion | null;
+  throttle: number; onThrottle: (v: number) => void; disabled?: boolean;
+}) {
+  const t = useTranslations('crm.campanasAsistente.programacion');
+  const { timezone, getToday } = useFormatDate(null);
+  const min = getToday();
+  return <div className="space-y-5">
+    <FormField etiqueta={t('enviar')}>
+      {campo => <SegmentedControl aria-labelledby={campo.idEtiqueta} valor={p.mode} onValorChange={p.onMode}
+        opciones={[{ valor: 'now', etiqueta: t('ahora') }, { valor: 'scheduled', etiqueta: t('programar') }]}
+        anchoCompleto className="flex-col items-stretch sm:flex-row" deshabilitado={p.disabled} />}
+    </FormField>
+    {p.mode === 'scheduled' && <FormField etiqueta={t('fecha')} obligatorio ayuda={t('zona', { zona: timezone })} error={p.error && t(p.error)}>
+      <CampoFechaHora valor={p.local} onValorChange={p.onLocal} min={min} disabled={p.disabled} />
+    </FormField>}
+    <FormField etiqueta={t('velocidad', { n: p.throttle })} ayuda={t('estimacion', {
+      n: p.throttle * 60, minutos: minutosMinimosCampana(1000, p.throttle),
+    })}>
+      <Slider min={1} max={80} step={1} value={[p.throttle]} disabled={p.disabled}
+        onValueChange={v => p.onThrottle(v[0] ?? 10)} aria-valuemin={1} aria-valuemax={80} aria-valuenow={p.throttle} />
+    </FormField>
+    <p className="text-xs text-fg-secondary">{t('limites')}</p>
+    <div className="flex gap-2 rounded-lg border border-line-success bg-success-subtle p-3 text-sm text-success-text">
+      <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+      <div><p className="font-medium">{t('legal')}</p><p className="mt-1 text-xs">{t('legalDetalle')}</p></div>
     </div>
-  );
+  </div>;
 }

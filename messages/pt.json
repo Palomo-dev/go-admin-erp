@@ -25264,6 +25264,23 @@
       "usedIn": "Usado em",
       "campaignUsage": "{count, plural, =0 {0 campanhas} one {1 campanha} other {# campanhas}}",
       "sequenceUsage": "{count, plural, =0 {0 sequências} one {1 sequência} other {# sequências}}"
+    },
+    "campanasAsistente": {
+      "programacion": {
+        "enviar": "Enviar",
+        "ahora": "Assim que o horário legal permitir",
+        "programar": "Agendar",
+        "fecha": "Data e hora de início",
+        "zona": "Fuso horário da organização: {zona}",
+        "incompleta": "Selecione o dia e a hora de início.",
+        "invalida": "Esta data ou hora não existe neste fuso horário.",
+        "pasada": "Selecione uma data e hora futuras.",
+        "velocidad": "Velocidade máxima: {n} mensagens por segundo",
+        "estimacion": "Até {n} por minuto · 1.000 contatos em pelo menos {minutos} min, antes de pausas e exclusões.",
+        "limites": "A velocidade real depende do provedor, dos créditos e das regras de contato. O agendamento não garante o horário de entrega.",
+        "legal": "Horário legal sempre ativo",
+        "legalDetalle": "Aplicam-se a Lei 2300, os feriados, o fuso horário do destinatário e o limite semanal. A faixa configurada pela organização só pode restringir o horário permitido."
+      }
     }
   },
   "analiticaWeb": {

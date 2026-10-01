@@ -4064,3 +4064,11 @@ La materialización y la importación RNE devuelven `campaign_updated_at` leído
 - Rollback ensayado antes y después; definiciones anteriores restauradas exactamente. Fixtures exclusivamente sintéticos y transaccionales; no se llamó a proveedores ni se guardó un archivo RNE real.
 
 Pendiente: conectar estos testigos en el asistente y actualizar sus contratos. Esta ronda cierra el soporte SQL; no acredita aún el asistente unificado ni correo/voz.
+
+### 42 — Programación de campañas en zona de organización (2026-10-01)
+
+Se reemplazó el `datetime-local` del asistente por `CampoFechaHora` y `FormField` del kit. La conversión y la revisión usan la zona de organización, nunca la del navegador. Seleccionar programación sin día y hora bloquea guardar, avanzar y lanzar; la fecha se vuelve a validar al guardar. Se rechazan fechas inválidas, pasadas y horas inexistentes por DST. El horario legal queda siempre activo y se explica en es/en/fr/pt; la velocidad muestra una duración mínima, no una promesa de entrega.
+
+Validación: 3 suites / 58 casos pasan; lógica y kit en UTC, Bogotá, Nueva York, Madrid, Tokio y Auckland, 2 suites / 54 casos por zona. TypeScript 0, lint tocado limpio y build completo (357 páginas). Navegador real: formulario sin canales bloqueado; con canal/pipeline/etapa sintéticos, fecha incompleta bloquea y 7 de octubre a las 10:00 conserva esa hora en la revisión. Capturas privadas a 1440/390, sin overflow ni overlay; únicamente error Stripe.js del header. No se guardó campaña ni se envió contenido. MCP confirma canal/pipeline/etapa temporales eliminados.
+
+La inspección visual pidió poner las opciones en columna en móvil y pasar un día calendario al mínimo de `CampoFecha`; ambos ajustes están cubiertos por las pruebas del componente y se comprobarán de nuevo en el siguiente build conjunto del asistente. Pendientes: testigos de versión, RNE dentro del flujo, prellenado, audiencia/canal al inicio, voz/correo y adaptación del resto del asistente a Figma. Esta ronda no acredita el asistente completo.

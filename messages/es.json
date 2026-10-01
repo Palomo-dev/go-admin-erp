@@ -4872,6 +4872,23 @@
       "usedIn": "Usado en",
       "campaignUsage": "{count, plural, =0 {0 campañas} one {1 campaña} other {# campañas}}",
       "sequenceUsage": "{count, plural, =0 {0 secuencias} one {1 secuencia} other {# secuencias}}"
+    },
+    "campanasAsistente": {
+      "programacion": {
+        "enviar": "Enviar",
+        "ahora": "En cuanto lo permita el horario legal",
+        "programar": "Programar",
+        "fecha": "Fecha y hora de inicio",
+        "zona": "Zona horaria de la organización: {zona}",
+        "incompleta": "Selecciona el día y la hora de inicio.",
+        "invalida": "La fecha o la hora no existe en esta zona horaria.",
+        "pasada": "Selecciona una fecha y hora futuras.",
+        "velocidad": "Velocidad máxima: {n} mensajes por segundo",
+        "estimacion": "Hasta {n} por minuto · 1.000 contactos en al menos {minutos} min, antes de pausas y exclusiones.",
+        "limites": "La velocidad efectiva depende del proveedor, los créditos y las reglas de contacto. La programación no garantiza la hora de entrega.",
+        "legal": "Horario legal siempre activo",
+        "legalDetalle": "Se aplican la Ley 2300, los festivos, la zona del destinatario y el límite semanal. La franja configurada por la organización solo puede restringir el horario permitido."
+      }
     }
   },
   "posCustomerDisplay": {

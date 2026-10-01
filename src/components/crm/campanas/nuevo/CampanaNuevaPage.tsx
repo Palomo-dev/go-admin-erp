@@ -1,9 +1,10 @@
 'use client';
 
-/** /app/crm/campanas/nueva (FASE-16 §5.1): wizard 4 pasos — canal+plantilla → audiencia → programación → revisión/lanzar. */
+/** /app/crm/campanas/nuevo: canal y mensaje → audiencia → programación → revisión. */
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { ArrowLeft, ArrowRight, Loader2, Megaphone, Rocket } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,14 +22,16 @@ import { AudienceStep, type AudienceValue } from './AudienceStep';
 import { ScheduleStep } from './ScheduleStep';
 import type { MaterializeResult } from '@/components/crm/whatsapp/api';
 import { SKIP_REASON_LABELS } from '@/components/crm/whatsapp/api';
-import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { todayInTz } from '@/lib/utils/timezone';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
+import { evaluarProgramacion, type ModoProgramacion } from './programacionCampanaLogica';
 
 const STEPS = ['Canal y mensaje', 'Audiencia', 'Programación', 'Revisión'];
 
 export function CampanaNuevaPage() {
-  const { timezone } = useOrgTimezone();
+  const { timezone, formatDateTime } = useFormatDate(null);
+  const tp = useTranslations('crm.campanasAsistente.programacion');
   const router = useRouter();
   const search = useSearchParams();
   const { toast } = useToast();
@@ -36,9 +39,11 @@ export function CampanaNuevaPage() {
   const [name, setName] = useState('');
   const c = useWhatsAppCompose({ enabled: true });
   const [audience, setAudience] = useState<AudienceValue>({ source: search?.get('segment') ? 'segment' : 'stage', segment_id: search?.get('segment') ?? null, pipeline_id: null, stage_ids: [] });
-  const [scheduledAt, setScheduledAt] = useState<string | null>(null);
+  const [scheduleMode, setScheduleMode] = useState<ModoProgramacion>('now');
+  const [scheduleLocal, setScheduleLocal] = useState('');
+  const schedule = evaluarProgramacion(scheduleMode, scheduleLocal, timezone, new Date());
+  const scheduledAt = schedule.instante;
   const [throttle, setThrottle] = useState(10);
-  const [respectHours, setRespectHours] = useState(true);
   const [campaignId, setCampaignId] = useState<string | null>(null);
   const [mat, setMat] = useState<MaterializeResult | null>(null);
   const [busy, setBusy] = useState<'save' | 'mat' | 'launch' | null>(null);
@@ -59,14 +64,16 @@ export function CampanaNuevaPage() {
     audience: { source: audience.source, segment_id: audience.segment_id, pipeline_id: audience.pipeline_id, stage_ids: audience.stage_ids },
     scheduled_at: scheduledAt,
     throttle_mps: throttle,
-    respect_allowed_hours: respectHours,
+    respect_allowed_hours: true,
     default_variables: c.variables,
     purpose: marketing ? 'marketing' as const : 'utility' as const,
-  }), [name, c.channelId, c.tab, c.templateId, c.text, c.variables, audience, scheduledAt, throttle, respectHours, marketing]);
+  }), [name, c.channelId, c.tab, c.templateId, c.text, c.variables, audience, scheduledAt, throttle, marketing]);
 
   const save = async () => {
     setBusy('save');
     try {
+      const valid = evaluarProgramacion(scheduleMode, scheduleLocal, timezone, new Date());
+      if (valid.error) throw new Error(tp(valid.error));
       const saved = campaignId ? await CampanasService.updateCampaign(campaignId, body) : await CampanasService.createCampaign(body);
       setCampaignId(saved.id);
       return saved.id;
@@ -126,7 +133,7 @@ export function CampanaNuevaPage() {
             </div>
           )}
           {step === 1 && <AudienceStep value={audience} onChange={(v) => { setAudience(v); setMat(null); }} />}
-          {step === 2 && <ScheduleStep scheduledAt={scheduledAt} onScheduledAt={setScheduledAt} throttle={throttle} onThrottle={setThrottle} respectHours={respectHours} onRespectHours={setRespectHours} />}
+          {step === 2 && <ScheduleStep mode={scheduleMode} onMode={setScheduleMode} local={scheduleLocal} onLocal={setScheduleLocal} error={schedule.error} throttle={throttle} onThrottle={setThrottle} disabled={!!busy} />}
           {step === 3 && (
             <div className="space-y-3 text-sm">
               <dl className="grid grid-cols-[140px_1fr] gap-y-1 text-xs">
@@ -134,7 +141,7 @@ export function CampanaNuevaPage() {
                 <dt className="text-gray-500">Canal</dt><dd>{c.channel?.name} · {c.channel?.provider}</dd>
                 <dt className="text-gray-500">Mensaje</dt><dd>{c.tab === 'template' ? `Plantilla ${c.template?.name} (${c.preview?.category})` : `Texto libre (${c.text.length} chars)`}</dd>
                 <dt className="text-gray-500">Audiencia</dt><dd>{audience.source === 'segment' ? 'Segmento' : `${audience.stage_ids.length} etapas`}</dd>
-                <dt className="text-gray-500">Programación</dt><dd>{scheduledAt ? new Date(scheduledAt).toLocaleString('es-CO') : 'Inmediata'} · {throttle} msg/s · {respectHours ? 'respeta horario' : 'sin horario'}</dd>
+                <dt className="text-gray-500">Programación</dt><dd>{scheduledAt ? formatDateTime(scheduledAt) : schedule.error ? tp(schedule.error) : tp('ahora')} · {throttle} msg/s · {tp('legal')}</dd>
               </dl>
               <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2">
                 <div className="flex items-center justify-between"><p className="font-medium">Audiencia calculada</p><Button type="button" size="sm" variant="outline" onClick={() => void materialize()} disabled={!!busy}>{busy === 'mat' ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}{mat ? 'Recalcular' : 'Calcular audiencia'}</Button></div>
@@ -155,9 +162,9 @@ export function CampanaNuevaPage() {
       <div className="flex flex-wrap justify-between gap-2">
         <Button variant="outline" onClick={() => (step === 0 ? router.push('/app/crm/campanas') : setStep(step - 1))} disabled={!!busy}>{step === 0 ? 'Cancelar' : 'Atrás'}</Button>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => void launch(true)} disabled={!!busy || !step0ok}>Guardar borrador</Button>
-          {step < 3 ? <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setStep(step + 1)} disabled={(step === 0 && !step0ok) || (step === 1 && !step1ok)}>Continuar<ArrowRight className="h-4 w-4 ml-2" /></Button>
-            : <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => void launch()} disabled={!!busy || !mat || mat.pending === 0 || (marketing && !optin)}>{busy === 'launch' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Rocket className="h-4 w-4 mr-2" />}{scheduledAt ? 'Programar' : 'Lanzar ahora'}</Button>}
+          <Button variant="outline" onClick={() => void launch(true)} disabled={!!busy || !step0ok || !!schedule.error}>Guardar borrador</Button>
+          {step < 3 ? <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setStep(step + 1)} disabled={!!busy || (step === 0 && !step0ok) || (step === 1 && !step1ok) || (step === 2 && !!schedule.error)}>Continuar<ArrowRight className="h-4 w-4 ml-2" /></Button>
+            : <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => void launch()} disabled={!!busy || !!schedule.error || !mat || mat.pending === 0 || (marketing && !optin)}>{busy === 'launch' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Rocket className="h-4 w-4 mr-2" />}{scheduledAt ? 'Programar' : 'Lanzar ahora'}</Button>}
         </div>
       </div>
     </div>

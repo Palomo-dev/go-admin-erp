@@ -25264,6 +25264,23 @@
       "usedIn": "Utilisé dans",
       "campaignUsage": "{count, plural, =0 {0 campagnes} one {1 campagne} other {# campagnes}}",
       "sequenceUsage": "{count, plural, =0 {0 séquences} one {1 séquence} other {# séquences}}"
+    },
+    "campanasAsistente": {
+      "programacion": {
+        "enviar": "Envoyer",
+        "ahora": "Dès que les horaires légaux le permettent",
+        "programar": "Programmer",
+        "fecha": "Date et heure de début",
+        "zona": "Fuseau horaire de l’organisation : {zona}",
+        "incompleta": "Sélectionnez la date et l’heure de début.",
+        "invalida": "Cette date ou cette heure n’existe pas dans ce fuseau horaire.",
+        "pasada": "Sélectionnez une date et une heure futures.",
+        "velocidad": "Vitesse maximale : {n} messages par seconde",
+        "estimacion": "Jusqu’à {n} par minute · 1 000 contacts en au moins {minutos} min, avant les pauses et les exclusions.",
+        "limites": "La vitesse réelle dépend du fournisseur, des crédits et des règles de contact. La programmation ne garantit pas l’heure de livraison.",
+        "legal": "Les horaires légaux restent toujours actifs",
+        "legalDetalle": "La loi 2300, les jours fériés, le fuseau horaire du destinataire et la limite hebdomadaire s’appliquent. La plage configurée par l’organisation peut uniquement restreindre les horaires autorisés."
+      }
     }
   },
   "analiticaWeb": {

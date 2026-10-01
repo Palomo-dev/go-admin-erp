@@ -4872,6 +4872,23 @@
       "usedIn": "Used in",
       "campaignUsage": "{count, plural, =0 {0 campaigns} one {1 campaign} other {# campaigns}}",
       "sequenceUsage": "{count, plural, =0 {0 sequences} one {1 sequence} other {# sequences}}"
+    },
+    "campanasAsistente": {
+      "programacion": {
+        "enviar": "Send",
+        "ahora": "As soon as contact hours allow",
+        "programar": "Schedule",
+        "fecha": "Start date and time",
+        "zona": "Organization time zone: {zona}",
+        "incompleta": "Select the start date and time.",
+        "invalida": "This date or time does not exist in this time zone.",
+        "pasada": "Select a future date and time.",
+        "velocidad": "Maximum speed: {n} messages per second",
+        "estimacion": "Up to {n} per minute · 1,000 contacts in at least {minutos} min, before pauses and exclusions.",
+        "limites": "Actual speed depends on the provider, credits and contact rules. Scheduling does not guarantee delivery time.",
+        "legal": "Legal contact hours are always enforced",
+        "legalDetalle": "Law 2300, holidays, the recipient’s time zone and the weekly limit apply. The organization’s configured window can only narrow the allowed hours."
+      }
     }
   },
   "posCustomerDisplay": {

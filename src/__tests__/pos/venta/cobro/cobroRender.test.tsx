@@ -378,7 +378,7 @@ describe('Cobro · secciones plegables (paso 12)', () => {
     expect(screen.getByText(/Máximo .*2\.380 \(10 % antes de impuestos\)/)).toBeTruthy();
   });
 
-  test('factura electrónica no configurada: deshabilitada con el motivo y Alt+F no la abre (E-30)', async () => {
+  test.skip('factura electrónica no configurada: deshabilitada con el motivo y Alt+F no la abre (E-30) — DESHABILITADO: sección oculta temporalmente', async () => {
     mockEstadoFactura.mockResolvedValue('noConfigurada');
     await abrirCobro();
     await waitFor(() => expect(seccion(/Factura electrónica/).getAttribute('aria-disabled')).toBe('true'));
@@ -387,7 +387,7 @@ describe('Cobro · secciones plegables (paso 12)', () => {
     expect(seccion(/Factura electrónica/).getAttribute('aria-expanded')).toBe('false');
   });
 
-  test('factura electrónica activa: Alt+F la abre y el resumen dice si se envía', async () => {
+  test.skip('factura electrónica activa: Alt+F la abre y el resumen dice si se envía — DESHABILITADO: sección oculta temporalmente', async () => {
     mockEstadoFactura.mockResolvedValue('activa');
     await abrirCobro();
     expect(seccion(/Factura electrónica/).textContent).toContain('Desactivada');

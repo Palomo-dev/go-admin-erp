@@ -21872,7 +21872,7 @@
       "elegirTipo": "Choisissez le type",
       "nit": "Numéro fiscal (NIT)",
       "nitDv": "Chiffre de contrôle : {dv}",
-      "nitAyuda": "Facultatif pour l’instant. Nécessaire pour la facturation électronique.",
+      "nitAyuda": "Pour les données de votre entreprise.",
       "razonSocial": "Raison sociale",
       "razonSocialAyuda": "Si vous la laissez vide, nous utilisons le nom commercial.",
       "correo": "E-mail de l’organisation",

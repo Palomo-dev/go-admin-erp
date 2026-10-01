@@ -23565,7 +23565,7 @@
       "elegirTipo": "Choose the type",
       "nit": "Tax ID (NIT)",
       "nitDv": "Check digit: {dv}",
-      "nitAyuda": "Optional for now. We need it for electronic invoicing.",
+      "nitAyuda": "For your company details.",
       "razonSocial": "Legal name",
       "razonSocialAyuda": "If you leave it empty, we use the trade name.",
       "correo": "Organization email",

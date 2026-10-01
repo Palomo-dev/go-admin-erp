@@ -2288,30 +2288,33 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
               </div>
             </SeccionPlegable>
 
-            <SeccionPlegable
-              id="cobro-factura"
-              titulo={tPos('factura.titulo')}
-              icono={FileCheck2}
-              atajo={teclaAtajo('facturaElectronica')}
-              resumen={facturaDisponible ? resumenFactura : undefined}
-              deshabilitada={!facturaDisponible}
-              motivo={motivoFactura}
-              abierta={seccionesAbiertas.factura}
-              onAbiertaChange={(v) => abrirSeccion('factura', v)}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <label htmlFor="cobro-factura-enviar" className="text-sm text-fg">
-                  {tPos('factura.enviar')}
-                </label>
-                <Switch
-                  id="cobro-factura-enviar"
-                  checked={sendToFactus}
-                  onCheckedChange={setSendToFactus}
-                  disabled={eInvoiceAlwaysEnabled}
-                />
-              </div>
-              {eInvoiceAlwaysEnabled && <p className="mt-2 text-xs text-fg-muted">{tPos('factura.global')}</p>}
-            </SeccionPlegable>
+            {/* Factura electrónica: oculta temporalmente (GoAdmin no ofrece el servicio) */}
+            {false && (
+              <SeccionPlegable
+                id="cobro-factura"
+                titulo={tPos('factura.titulo')}
+                icono={FileCheck2}
+                atajo={teclaAtajo('facturaElectronica')}
+                resumen={facturaDisponible ? resumenFactura : undefined}
+                deshabilitada={!facturaDisponible}
+                motivo={motivoFactura}
+                abierta={seccionesAbiertas.factura}
+                onAbiertaChange={(v) => abrirSeccion('factura', v)}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <label htmlFor="cobro-factura-enviar" className="text-sm text-fg">
+                    {tPos('factura.enviar')}
+                  </label>
+                  <Switch
+                    id="cobro-factura-enviar"
+                    checked={sendToFactus}
+                    onCheckedChange={setSendToFactus}
+                    disabled={eInvoiceAlwaysEnabled}
+                  />
+                </div>
+                {eInvoiceAlwaysEnabled && <p className="mt-2 text-xs text-fg-muted">{tPos('factura.global')}</p>}
+              </SeccionPlegable>
+            )}
           </>
         )}
     </CobroPanel>

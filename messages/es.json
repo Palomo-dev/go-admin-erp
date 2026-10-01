@@ -23565,7 +23565,7 @@
       "elegirTipo": "Elige el tipo",
       "nit": "NIT",
       "nitDv": "Dígito de verificación: {dv}",
-      "nitAyuda": "Opcional ahora. Lo pedimos para facturar electrónicamente.",
+      "nitAyuda": "Para los datos de tu empresa.",
       "razonSocial": "Razón social",
       "razonSocialAyuda": "Si la dejas vacía, usamos el nombre comercial.",
       "correo": "Correo de la organización",

@@ -21872,7 +21872,7 @@
       "elegirTipo": "Escolha o tipo",
       "nit": "NIT (identificação fiscal)",
       "nitDv": "Dígito verificador: {dv}",
-      "nitAyuda": "Opcional por enquanto. Precisamos dele para a fatura eletrônica.",
+      "nitAyuda": "Para os dados da sua empresa.",
       "razonSocial": "Razão social",
       "razonSocialAyuda": "Se deixar vazio, usamos o nome comercial.",
       "correo": "E-mail da organização",

@@ -204,8 +204,8 @@ export function PreCuentaDialog({
             </div>
           )}
 
-          {/* Opción de Factura Electrónica */}
-          {showEInvoiceOption && (
+          {/* Opción de Factura Electrónica: oculta temporalmente (GoAdmin no ofrece el servicio) */}
+          {false && showEInvoiceOption && (
             <div className={`p-2 sm:p-3 rounded-lg ${eInvoiceAlwaysEnabled ? 'bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800' : 'bg-gray-50 dark:bg-gray-800/50'}`}>
               <div className="flex items-center justify-between">
                 <ElectronicInvoiceToggle

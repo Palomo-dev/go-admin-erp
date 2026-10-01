@@ -1,15 +1,19 @@
 /**
  * Utilitarios compartidos para validar el estado de suscripciones
- * con pagos anuales directos (fuera de Stripe).
+ * con pagos anuales directos (fuera de Stripe) y cortesías.
  */
 
 interface SubscriptionWithMetadata {
+  status?: string;
   current_period_end: string | Date | null;
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
   metadata?: {
     pago_anual?: {
       pagado_hasta?: string;
       [key: string]: unknown;
     };
+    cortesia?: unknown;
     [key: string]: unknown;
   } | null;
 }
@@ -57,4 +61,53 @@ export function hasPaidPeriod(subscription: SubscriptionWithMetadata): boolean {
   }
 
   return true;
+}
+
+/**
+ * Determina si una suscripción es una cortesía aprobada que NO debe congelarse.
+ * 
+ * @param subscription - Objeto de suscripción con metadata
+ * @returns true si tiene metadata.cortesia (truthy) con periodo futuro, O si está
+ *          active sin IDs de Stripe con periodo futuro
+ * 
+ * Contexto: Algunas orgs tienen cortesías aprobadas (ej. org 143 TecnoShopping).
+ * Estas suscripciones están activas sin stripe_customer_id ni stripe_subscription_id,
+ * y pueden tener metadata.cortesia. NO deben congelarse mientras el periodo esté vigente.
+ */
+export function isCourtesySubscription(subscription: SubscriptionWithMetadata): boolean {
+  if (!subscription || !subscription.current_period_end) {
+    return false;
+  }
+
+  const now = new Date();
+  const periodEnd = new Date(subscription.current_period_end);
+  if (isNaN(periodEnd.getTime()) || periodEnd <= now) {
+    return false;
+  }
+
+  // Caso 1: Tiene metadata.cortesia explícita (truthy) con periodo futuro
+  if (subscription.metadata?.cortesia) {
+    return true;
+  }
+
+  // Caso 2: Active sin IDs de Stripe con periodo futuro
+  if (
+    subscription.status === 'active' &&
+    !subscription.stripe_customer_id &&
+    !subscription.stripe_subscription_id
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Determina si una suscripción debe estar exenta de congelamiento.
+ * 
+ * @param subscription - Objeto de suscripción completo
+ * @returns true si tiene periodo pagado vigente O es cortesía
+ */
+export function isExemptFromFreezing(subscription: SubscriptionWithMetadata): boolean {
+  return hasPaidPeriod(subscription) || isCourtesySubscription(subscription);
 }

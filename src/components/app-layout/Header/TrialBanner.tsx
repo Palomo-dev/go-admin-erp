@@ -65,12 +65,12 @@ export function TrialBanner({ orgId }: TrialBannerProps) {
       const plan = Array.isArray(sub.plans) ? sub.plans[0] : sub.plans;
       setPlanName(plan?.name || '');
 
-      // Verificar si tiene periodo pagado vigente
-      const { hasPaidPeriod } = await import('@/lib/utils/subscriptionUtils');
-      const tienePeriodoPagado = hasPaidPeriod(sub);
+      // Verificar si debe estar exenta de congelamiento (pago anual vigente o cortesía)
+      const { isExemptFromFreezing } = await import('@/lib/utils/subscriptionUtils');
+      const estaExenta = isExemptFromFreezing(sub);
 
-      // Si tiene periodo pagado vigente, no mostrar banners de prueba vencida ni días restantes
-      if (tienePeriodoPagado) {
+      // Si está exenta, no mostrar banners de prueba vencida ni días restantes
+      if (estaExenta) {
         setBannerState('hidden');
         setLoaded(true);
         return;

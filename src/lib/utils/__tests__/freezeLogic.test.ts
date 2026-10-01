@@ -1,12 +1,14 @@
-import { hasPaidPeriod } from '../subscriptionUtils';
+import { isExemptFromFreezing } from '../subscriptionUtils';
 
 /**
- * Pruebas de la lógica de congelamiento de cuentas con pagos anuales directos.
+ * Pruebas de la lógica de congelamiento de cuentas con pagos anuales directos
+ * y cortesías aprobadas.
  * 
  * Estas pruebas documentan el comportamiento esperado cuando una organización
- * tiene metadata.pago_anual (establecida por fix_pagos_anuales.sql).
+ * tiene metadata.pago_anual (establecida por fix_pagos_anuales.sql) o
+ * metadata.cortesia (cortesía aprobada como org 143).
  */
-describe('Lógica de congelamiento con pagos anuales', () => {
+describe('Lógica de congelamiento con pagos anuales y cortesías', () => {
   const now = new Date();
   const futureDate = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000); // +90 días
   const pastDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); // -30 días
@@ -25,11 +27,11 @@ describe('Lógica de congelamiento con pagos anuales', () => {
         },
       };
 
-      const tienePeriodoPagado = hasPaidPeriod(subscription);
-      expect(tienePeriodoPagado).toBe(true);
+      const estaExenta = isExemptFromFreezing(subscription);
+      expect(estaExenta).toBe(true);
       
-      // Lógica esperada: NO congelar porque tienePeriodoPagado es true
-      const debeCongelar = !tienePeriodoPagado;
+      // Lógica esperada: NO congelar porque está exenta
+      const debeCongelar = !estaExenta;
       expect(debeCongelar).toBe(false);
     });
   });
@@ -43,11 +45,11 @@ describe('Lógica de congelamiento con pagos anuales', () => {
         metadata: {},
       };
 
-      const tienePeriodoPagado = hasPaidPeriod(subscription);
-      expect(tienePeriodoPagado).toBe(false);
+      const estaExenta = isExemptFromFreezing(subscription);
+      expect(estaExenta).toBe(false);
       
       // Lógica esperada: congelar porque es prueba vencida sin pago
-      const debeCongelar = !tienePeriodoPagado;
+      const debeCongelar = !estaExenta;
       expect(debeCongelar).toBe(true);
     });
   });
@@ -65,9 +67,9 @@ describe('Lógica de congelamiento con pagos anuales', () => {
         },
       };
 
-      const tienePeriodoPagado = hasPaidPeriod(subscription);
+      const estaExenta = isExemptFromFreezing(subscription);
       
-      // Incluso con periodo pagado, canceled siempre congela
+      // Incluso con exención, canceled siempre congela
       const debeCongelar = subscription.status === 'canceled';
       expect(debeCongelar).toBe(true);
     });
@@ -86,11 +88,11 @@ describe('Lógica de congelamiento con pagos anuales', () => {
         },
       };
 
-      const tienePeriodoPagado = hasPaidPeriod(subscription);
-      expect(tienePeriodoPagado).toBe(false);
+      const estaExenta = isExemptFromFreezing(subscription);
+      expect(estaExenta).toBe(false);
       
       // Lógica esperada: congelar porque el periodo pagado ya venció
-      const debeCongelar = !tienePeriodoPagado;
+      const debeCongelar = !estaExenta;
       expect(debeCongelar).toBe(true);
     });
   });
@@ -108,11 +110,11 @@ describe('Lógica de congelamiento con pagos anuales', () => {
         },
       };
 
-      const tienePeriodoPagado = hasPaidPeriod(subscription);
-      expect(tienePeriodoPagado).toBe(true);
+      const estaExenta = isExemptFromFreezing(subscription);
+      expect(estaExenta).toBe(true);
       
       // Lógica esperada: NO congelar porque tiene periodo pagado vigente
-      const debeCongelar = subscription.status === 'past_due' && !tienePeriodoPagado;
+      const debeCongelar = subscription.status === 'past_due' && !estaExenta;
       expect(debeCongelar).toBe(false);
     });
   });
@@ -130,11 +132,11 @@ describe('Lógica de congelamiento con pagos anuales', () => {
         },
       };
 
-      const tienePeriodoPagado = hasPaidPeriod(subscription);
-      expect(tienePeriodoPagado).toBe(true);
+      const estaExenta = isExemptFromFreezing(subscription);
+      expect(estaExenta).toBe(true);
       
       // Lógica esperada: NO congelar porque tiene periodo pagado vigente
-      const debeCongelar = subscription.status === 'incomplete' && !tienePeriodoPagado;
+      const debeCongelar = subscription.status === 'incomplete' && !estaExenta;
       expect(debeCongelar).toBe(false);
     });
   });
@@ -155,6 +157,103 @@ describe('Lógica de congelamiento con pagos anuales', () => {
       // Con status active, no se congelaría de todos modos
       const debeCongelar = false;
       expect(debeCongelar).toBe(false);
+    });
+  });
+
+  describe('Escenario: cortesía con metadata.cortesia (org 143)', () => {
+    it('NO debe congelar cuando tiene metadata.cortesia truthy', () => {
+      const subscription = {
+        status: 'active',
+        current_period_end: '2027-09-29T00:00:00Z',
+        stripe_customer_id: null,
+        stripe_subscription_id: null,
+        metadata: {
+          cortesia: true,
+        },
+      };
+
+      const estaExenta = isExemptFromFreezing(subscription);
+      expect(estaExenta).toBe(true);
+      
+      // Lógica esperada: NO congelar porque es cortesía
+      const debeCongelar = !estaExenta;
+      expect(debeCongelar).toBe(false);
+    });
+
+    it('NO debe congelar cuando active sin IDs de Stripe con periodo futuro (org 143)', () => {
+      const subscription = {
+        status: 'active',
+        current_period_end: '2027-09-29T00:00:00Z',
+        stripe_customer_id: null,
+        stripe_subscription_id: null,
+        metadata: {},
+      };
+
+      const estaExenta = isExemptFromFreezing(subscription);
+      expect(estaExenta).toBe(true);
+      
+      // Lógica esperada: NO congelar porque es cortesía implícita
+      const debeCongelar = !estaExenta;
+      expect(debeCongelar).toBe(false);
+    });
+
+    it('NO debe congelar cortesía aunque cambie a trialing', () => {
+      const subscription = {
+        status: 'trialing',
+        trial_end: pastDate.toISOString(),
+        current_period_end: '2027-09-29T00:00:00Z',
+        stripe_customer_id: null,
+        stripe_subscription_id: null,
+        metadata: {
+          cortesia: { aprobada_por: 'Juan' },
+        },
+      };
+
+      const estaExenta = isExemptFromFreezing(subscription);
+      expect(estaExenta).toBe(true);
+      
+      // Lógica esperada: NO congelar incluso si el estado cambia
+      const debeCongelar = subscription.status === 'trialing' && !estaExenta;
+      expect(debeCongelar).toBe(false);
+    });
+
+    it('NO debe congelar cortesía aunque cambie a past_due', () => {
+      const subscription = {
+        status: 'past_due',
+        current_period_end: '2027-09-29T00:00:00Z',
+        metadata: {
+          cortesia: true,
+        },
+      };
+
+      const estaExenta = isExemptFromFreezing(subscription);
+      expect(estaExenta).toBe(true);
+      
+      // Lógica esperada: NO congelar aunque esté past_due
+      const debeCongelar = subscription.status === 'past_due' && !estaExenta;
+      expect(debeCongelar).toBe(false);
+    });
+  });
+
+  describe('Escenario: cortesía con periodo vencido', () => {
+    it('DEBE congelar cortesía cuando el periodo ya venció', () => {
+      const subscription = {
+        status: 'active',
+        current_period_end: pastDate.toISOString(),
+        stripe_customer_id: null,
+        stripe_subscription_id: null,
+        metadata: {
+          cortesia: true,
+        },
+      };
+
+      const estaExenta = isExemptFromFreezing(subscription);
+      // La cortesía requiere periodo futuro
+      expect(estaExenta).toBe(false);
+      
+      // Lógica esperada: congelar porque el periodo ya venció
+      const debeCongelar = !estaExenta;
+      expect(debeCongelar).toBe(true);
     });
   });
 });

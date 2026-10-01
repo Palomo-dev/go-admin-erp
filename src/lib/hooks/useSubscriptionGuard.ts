@@ -61,7 +61,7 @@ export function useSubscriptionGuard() {
             .single(),
           supabase
             .from('subscriptions')
-            .select('status, trial_end, current_period_end, metadata')
+            .select('status, trial_end, current_period_end, stripe_customer_id, stripe_subscription_id, metadata')
             .eq('organization_id', orgId)
             .order('created_at', { ascending: false })
             .limit(1)
@@ -96,32 +96,32 @@ export function useSubscriptionGuard() {
 
         const now = new Date();
 
-        // Verificar si tiene periodo pagado vigente (pago anual directo)
-        const { hasPaidPeriod } = await import('@/lib/utils/subscriptionUtils');
-        const tienePeriodoPagado = hasPaidPeriod(sub);
+        // Verificar si debe estar exenta de congelamiento (pago anual vigente o cortesía)
+        const { isExemptFromFreezing } = await import('@/lib/utils/subscriptionUtils');
+        const estaExenta = isExemptFromFreezing(sub);
 
-        // Cancelada (incluso con pago anual, si se cancela debe congelar)
+        // Cancelada (incluso con pago anual o cortesía, si se cancela debe congelar)
         if (sub.status === 'canceled') {
           router.push('/app/cuenta-congelada?reason=canceled');
           return;
         }
 
-        // Pago pendiente - permitir si tiene periodo pagado vigente
+        // Pago pendiente - permitir si está exenta
         if (sub.status === 'past_due') {
-          if (tienePeriodoPagado) {
-            console.warn(`[useSubscriptionGuard] Org ${orgId}: past_due con periodo pagado vigente - permitiendo acceso`);
+          if (estaExenta) {
+            console.warn(`[useSubscriptionGuard] Org ${orgId}: past_due exenta de congelamiento (pago anual vigente o cortesía) - permitiendo acceso`);
           } else {
             router.push('/app/cuenta-congelada?reason=payment_failed');
             return;
           }
         }
 
-        // Trial vencido - permitir si tiene periodo pagado vigente
+        // Trial vencido - permitir si está exenta
         if (sub.status === 'trialing') {
           const trialEnd = sub.trial_end ? new Date(sub.trial_end) : (sub.current_period_end ? new Date(sub.current_period_end) : null);
           if (trialEnd && trialEnd < now) {
-            if (tienePeriodoPagado) {
-              console.warn(`[useSubscriptionGuard] Org ${orgId}: trialing vencido con periodo pagado vigente - permitiendo acceso`);
+            if (estaExenta) {
+              console.warn(`[useSubscriptionGuard] Org ${orgId}: trialing vencido exento de congelamiento (pago anual vigente o cortesía) - permitiendo acceso`);
             } else {
               router.push('/app/cuenta-congelada?reason=trial_expired');
               return;
@@ -129,10 +129,10 @@ export function useSubscriptionGuard() {
           }
         }
 
-        // Incompleta - permitir si tiene periodo pagado vigente
+        // Incompleta - permitir si está exenta
         if (sub.status === 'incomplete' || sub.status === 'incomplete_expired') {
-          if (tienePeriodoPagado) {
-            console.warn(`[useSubscriptionGuard] Org ${orgId}: ${sub.status} con periodo pagado vigente - permitiendo acceso`);
+          if (estaExenta) {
+            console.warn(`[useSubscriptionGuard] Org ${orgId}: ${sub.status} exento de congelamiento (pago anual vigente o cortesía) - permitiendo acceso`);
           } else {
             router.push('/app/cuenta-congelada?reason=trial_expired');
             return;

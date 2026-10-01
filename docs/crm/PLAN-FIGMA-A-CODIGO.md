@@ -2279,3 +2279,9 @@ no se declara cerrado el alcance completo de las olas 4/5/6.
 ### 2026-10-01 — consentimiento: servidor conectado y verificado
 
 Registro y postprocesado entrante usan las RPC privadas de la migración 17. Se propagan errores de lectura/escritura; el servidor no concede opt-in por un saludo ni recorre solo los primeros 200 pendientes. Pasan 23 suites / 597 pruebas de WhatsApp, integraciones, webhook y guardarraíles, TypeScript con heap de 8 GB y lint de los archivos tocados. Despacho canónico y contabilidad de campañas siguen en curso.
+
+### 2026-10-01 — despacho y consentimiento compartido
+
+Migración `20261001035400_crm_despacho_consentimiento_canonico.sql` aplicada por MCP, MD5 `09727dff1cf8e153f773e6510d30bf4c`; rollback exacto de los dos triggers anteriores conserva mensajes y preferencias. Puerta privada única para consentimiento/identidades y categoría real de plantilla/campaña. Plantillas requieren aprobación propia, nombre/idioma coherentes y ContentSid propio; rawTemplate sigue funcionando si resuelve una plantilla propia aprobada. El trigger de despacho añade el secreto interno desde Vault, sin valores en el repositorio. IA comprueba consentimiento antes de encolar.
+
+BEGIN/ROLLBACK real pasó fila visible en AFTER INSERT (función VOLATILE), utility sin marketing, marketing con/sin alta, categoría falsificada, plantilla ajena/payload sustituido, compatibilidad raw, campaña de marketing y STOP sin despacho/IA; rollback y cero fixtures. Se reforzaron las aserciones con IS DISTINCT FROM para que NULL no esconda un fallo; el caso de campaña crea unknown explícitamente porque unknown conserva un alta previa. Advisors sin avisos para las funciones tocadas. Pendiente consumidor Edge: autenticación, claim de envío, revalidación tras espera y persistencia atómica del resultado. No se desplegaron Edge Functions.

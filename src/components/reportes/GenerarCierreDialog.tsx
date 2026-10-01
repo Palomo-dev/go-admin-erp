@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, FileText } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -19,6 +19,7 @@ import type { PedidoCierreUi } from './accionesReportes';
 import { clasesSelect } from './BarraFiltros';
 import { SelectorPeriodo } from './SelectorPeriodo';
 import type { ContextoReportes } from './useContextoReportes';
+import { useFormatoReporte } from './useFormatoReporte';
 import { useMensajeError } from './useMensajeError';
 
 type FormatoCierre = 'carta' | '80mm' | 'excel';
@@ -45,6 +46,8 @@ export function GenerarCierreDialog({
   const tGrupo = useTranslations('reportes.grupos');
   const tFiltros = useTranslations('reportes.filtros');
   const mensaje = useMensajeError();
+  const formatoCifra = useFormatoReporte();
+  const anclaPrevia = useRef<HTMLElement>(null);
   const disponibles = useMemo(
     () => ctx.grupos.flatMap((g) => g.reportes).filter((r) => reportePermitido(r, ctx.accesoTotal)),
     [ctx.grupos, ctx.accesoTotal],
@@ -60,6 +63,7 @@ export function GenerarCierreDialog({
   const [pendiente, setPendiente] = useState<{ id: string; numero: string } | null>(null);
   const [existente, setExistente] = useState<string | null>(null);
   const [previa, setPrevia] = useState<ResumenCierre | null>(null);
+  const [verPrevia, setVerPrevia] = useState(false);
 
   useEffect(() => {
     if (!pedido) return;
@@ -72,6 +76,7 @@ export function GenerarCierreDialog({
     setPendiente(null);
     setExistente(null);
     setPrevia(null);
+    setVerPrevia(false);
     setAbiertos(pedido.reportes?.length ? [disponibles.find((r) => r.id === pedido.reportes?.[0])?.grupo ?? ''] : []);
   }, [pedido, disponibles, periodoInicial, ctx.sucursalEncabezado, ctx.accesoTotal]);
 
@@ -171,8 +176,10 @@ export function GenerarCierreDialog({
   };
 
   const vistaPrevia = async () => {
+    setVerPrevia(true);
     setOcupado('previa');
     setError(null);
+    setPrevia(null);
     try {
       setPrevia(await clienteReportes.vistaPreviaCierre(cuerpo()));
     } catch (e) {
@@ -181,6 +188,10 @@ export function GenerarCierreDialog({
       setOcupado(null);
     }
   };
+
+  useEffect(() => {
+    if (verPrevia) anclaPrevia.current?.scrollIntoView({ block: 'nearest' });
+  }, [verPrevia, ocupado, previa, error]);
 
   const elegirTipo = (tipo: TipoCierre) => {
     const referencia = periodo.fechaFin < hoy ? periodo.fechaFin : hoy;
@@ -281,14 +292,52 @@ export function GenerarCierreDialog({
           onValorChange={setFormato}
         />
       </Campo>
-      {previa && (
-        <p className="text-sm text-fg-secondary">
-          {t('resumenCap', { c: previa.capitulos.length, r: previa.capitulos.reduce((s, c) => s + c.reportes.length, 0) })}
-          {previa.errores.length > 0 && ` · ${t('erroresPrevios', { n: previa.errores.length })}`}
-        </p>
+      {verPrevia && (
+        <section ref={anclaPrevia} aria-busy={ocupado === 'previa' || undefined} className="flex flex-col gap-3 rounded-xl border border-line bg-subtle p-3">
+          <p className="text-sm font-semibold text-fg">{t('vistaPrevia')}</p>
+          {ocupado === 'previa' && (
+            <>
+              <p className="text-sm text-fg-secondary">{t('calculando')}</p>
+              <div className="grid grid-cols-2 gap-2" aria-hidden>
+                {Array.from({ length: 4 }, (_, i) => (
+                  <div key={i} className="h-14 animate-pulse rounded-lg bg-surface" />
+                ))}
+              </div>
+            </>
+          )}
+          {previa && ocupado !== 'previa' && (
+            <>
+              {previa.kpis.length > 0 && (
+                <ul className="grid grid-cols-2 gap-2">
+                  {previa.kpis.map((k, i) => (
+                    <li key={`${k.titulo}-${i}`} className="rounded-lg border border-line bg-surface px-3 py-2">
+                      <p className="truncate text-xs text-fg-secondary">{k.titulo}</p>
+                      <p className="truncate text-sm font-semibold text-fg">{formatoCifra.valor(k.valor, k.formato)}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="text-xs text-fg-secondary">{t('resumenCap', { c: previa.capitulos.length, r: previa.capitulos.reduce((s, c) => s + c.reportes.length, 0) })}</p>
+              <ul className="flex flex-col gap-2">
+                {previa.capitulos.map((c) => (
+                  <li key={c.grupo}>
+                    <p className="text-sm font-medium text-fg">{c.titulo}</p>
+                    <p className="text-xs text-fg-secondary">{c.reportes.map((r) => r.titulo).join(' · ')}</p>
+                  </li>
+                ))}
+              </ul>
+              {previa.errores.length > 0 && (
+                <p className="text-sm text-warning-text">
+                  {t('erroresPrevios', { n: previa.errores.length })}: {previa.errores.map((e) => e.titulo).join(', ')}
+                </p>
+              )}
+            </>
+          )}
+          {error && ocupado !== 'previa' && <p className="text-sm text-danger-text">{error}</p>}
+        </section>
       )}
       {existente && <p className="rounded-lg bg-warning-subtle px-3 py-2 text-sm text-warning-text">{t('existente')}</p>}
-      {error && <p className="text-sm text-danger-text">{error}</p>}
+      {error && !verPrevia && <p className="text-sm text-danger-text">{error}</p>}
       {pendiente && (
         <button type="button" className="self-start text-sm font-medium text-link" onClick={() => void bajarPendiente()} disabled={ocupado !== null}>
           {t('bajar')}

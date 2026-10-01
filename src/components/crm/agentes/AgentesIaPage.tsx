@@ -12,6 +12,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -55,7 +56,8 @@ export function AgentesIaPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<AgentDraft | null>(null);
-  const [tab, setTab] = useState<"agentes" | "voces" | "campanas">("agentes");
+  const searchParams = useSearchParams();
+  const [tab, setTab] = useState<"agentes" | "voces" | "campanas">(searchParams?.get("tab") === "campanas" ? "campanas" : "agentes");
 
   const load = useCallback(async () => {
     setLoading(true);

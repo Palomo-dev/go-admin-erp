@@ -3680,3 +3680,8 @@ Dos migraciones aplicadas por MCP con rollback y MD5 en el plan: categorías rea
 ### CRM — Pronósticos conectado (2026-09-30)
 
 Pantalla y API con categorías, auditoría/reversión, conversión real de monedas, totales globales y cuotas configuradas. Revenue OS sigue en la misma ruta. 274 pruebas enfocadas/guardarraíles, TypeScript y lint pasan; API real de ajuste/conflicto/reversión verificada, fixtures eliminados. El plan registra límites y diferencias. Continúan Campañas/Plantillas y los módulos pendientes de olas 4/5/6.
+
+
+### 2026-10-01 — CRM: campañas unificadas y voz auditada
+
+Campañas comparte estados canónicos de mensajes y legalidad de voz; 207 filas probadas sin truncamiento. Detalle de voz conserva reintentos, aplica criterio único de contacto efectivo y cuenta reuniones reales. Parada con permiso, motivo/fecha y umbral aprobado de 10 fallos. Kit en cuatro idiomas, 360 pruebas focalizadas y guardarraíles verdes; tsc 0, lint tocado limpio. Ciclo real de fixture crear/detalle/detener/eliminar completado; fixtures 0, ninguna llamada/mensaje. Sigue el asistente de creación, plantillas y el resto del alcance de CRM; aún sin push ni PR.

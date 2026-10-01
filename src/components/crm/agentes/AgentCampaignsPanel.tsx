@@ -6,7 +6,7 @@
  * Los topes que se ven aquí son los que aplica el despachador:
  *  - tope diario contando TODO intento (también los fallidos),
  *  - tope por hora, independiente del anterior,
- *  - parada de emergencia (se activa sola tras 5 fallos seguidos).
+ *  - parada de emergencia (el umbral lo aplica el despachador).
  *
  * El destino se elige con pipeline → etapa (`useCrmLookups`, el mismo de
  * Automatizaciones); nadie escribe un identificador a mano. Si hay más de un
@@ -35,6 +35,8 @@ import { buildCampaignBody, type CampaignRow } from "./campanas/campaignModel";
 import { CampaignTargetPicker } from "./campanas/CampaignTargetPicker";
 import { CampaignCard } from "./campanas/CampaignCard";
 import { CampaignRunNow } from "./campanas/CampaignRunNow";
+import { DialogoMotivo } from "@/components/kit/DialogoMotivo";
+import { useTranslations } from "next-intl";
 
 interface Props {
   agents: VoiceAgentListItem[];
@@ -62,10 +64,13 @@ function CampaignsPanelInner({
   agents: VoiceAgentListItem[];
   lookups: CrmLookupsState;
 }) {
+  const t = useTranslations("crm.campanasNuevo");
+  const [stopId, setStopId] = useState<string | null>(null);
   const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [canManage, setCanManage] = useState(false);
   const [patching, setPatching] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [pipelineId, setPipelineId] = useState<string | null>(null);
@@ -79,12 +84,13 @@ function CampaignsPanelInner({
     setLoading(true);
     setLoadError(null);
     try {
-      const json = await fetchJson<{ success?: boolean; error?: string; data?: CampaignRow[] }>(
+      const json = await fetchJson<{ success?: boolean; error?: string; data?: CampaignRow[]; can_manage?: boolean }>(
         "/api/crm/voice-agents/campaigns",
         { cache: "no-store" },
       );
       if (!json?.success) throw new Error(json?.error || "La respuesta no indicó éxito");
       setCampaigns(json.data ?? []);
+      setCanManage(json.can_manage === true);
     } catch (err) {
       logError("[AgentCampaignsPanel] cargar campañas", err);
       setLoadError(describeError(err));
@@ -140,14 +146,15 @@ function CampaignsPanelInner({
   const patch = async (id: string, body: Record<string, unknown>, ok: string) => {
     setPatching(id);
     try {
-      const res = await fetch(`/api/crm/voice-agents/campaigns/${id}`, {
-        method: "PATCH",
+      const res = await fetch(`/api/crm/voice-agents/campaigns/${id}${body.reason ? "/stop" : ""}`, {
+        method: body.reason ? "POST" : "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
       const json = await res.json();
       if (!res.ok || !json?.success) throw new Error(json?.error || `Error ${res.status}`);
       toast({ title: ok });
+      setStopId(null);
       void load();
     } catch (err) {
       toast({
@@ -228,7 +235,7 @@ function CampaignsPanelInner({
         <Button
           className="mt-4 w-full sm:w-auto"
           onClick={() => void create()}
-          disabled={busy || selectableAgents.length === 0}
+          disabled={busy || !canManage || selectableAgents.length === 0}
         >
           {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : null}
           Crear campaña
@@ -257,17 +264,18 @@ function CampaignsPanelInner({
               campaign={c}
               stages={lookups.stages}
               pipelines={lookups.pipelines}
-              busy={patching === c.id}
+              busy={!canManage || patching === c.id}
               onActivate={(row) =>
                 void patch(row.id, { status: "running", emergency_stop: false }, "Campaña activada")
               }
               onStop={(row) =>
-                void patch(row.id, { emergency_stop: true, status: "paused" }, "Campaña detenida")
+                setStopId(row.id)
               }
             />
           ))}
         </ul>
       )}
+      <DialogoMotivo abierto={!!stopId} onAbiertoChange={open => { if (!open) setStopId(null); }} titulo={t("confirmarParada")} descripcion={t("notaParada")} textoConfirmar={t("detener")} onConfirmar={reason => stopId ? patch(stopId, { reason }, t("estados.stopped")) : undefined} cargando={!!patching} />
     </div>
   );
 }

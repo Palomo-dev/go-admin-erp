@@ -21,7 +21,7 @@ export function IdentidadesCanal({
   onEliminar: (id: string) => Promise<boolean>;
 }) {
   const t = useTranslations('crm.identidades');
-  const { formatDateTime } = useFormatDate();
+  const { formatDateTime } = useFormatDate(null);
   const [editing, setEditing] = useState<IdentidadReal | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [value, setValue] = useState('');

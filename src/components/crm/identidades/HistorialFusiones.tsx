@@ -17,7 +17,7 @@ export function HistorialFusiones({
   onDeshacer: (id: string) => void;
 }) {
   const t = useTranslations('crm.identidades');
-  const { formatDateTime } = useFormatDate();
+  const { formatDateTime } = useFormatDate(null);
   return (
     <div className="overflow-x-auto rounded-xl border border-line bg-surface">
       <table className="w-full min-w-[720px] text-sm">

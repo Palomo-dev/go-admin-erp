@@ -56,7 +56,7 @@ const MAX_BYTES = 8 * 1024 * 1024;
 
 export function CampaignRnePanel({ campaignId }: { campaignId: string }) {
   const t = useTranslations("vozRne");
-  const { formatDateTime } = useFormatDate();
+  const { formatDateTime } = useFormatDate(null);
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [verificacion, setVerificacion] = useState<Verificacion | null>(null);

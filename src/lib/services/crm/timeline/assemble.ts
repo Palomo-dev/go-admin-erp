@@ -96,19 +96,26 @@ export async function hydrate(rows: Raw[], ctx: Ctx): Promise<Hydration> {
   const vaByCall = [...new Set(rows.filter((r) => r.kind === 'ai_call' && 'activity_type' in r.row && r.row.call_id).map((r) => r.row.call_id as string))];
 
   const sb = ctx.supabase;
+  let linkedCalls = callIds.length ? sb.from('calls').select(CALL_SELECT).eq('organization_id', ctx.orgId).in('id', callIds) : null;
+  if (linkedCalls && ctx.access?.callUserId) linkedCalls = linkedCalls.eq('user_id', ctx.access.callUserId);
   const [profiles, stages, events, calls, emails, vaCalls, calEvents] = await Promise.all([
-    userIds.length ? sb.from('profiles').select('id, first_name, last_name, email, avatar_url').in('id', userIds) : Promise.resolve({ data: [] as Row[] }),
-    stageIds.length ? sb.from('stages').select('id, name, color').in('id', stageIds) : Promise.resolve({ data: [] as Row[] }),
+    userIds.length ? sb.from('organization_members').select('user_id, profile:profiles!organization_members_user_id_fkey1(id, first_name, last_name, email, avatar_url)').eq('organization_id', ctx.orgId).in('user_id', userIds) : Promise.resolve({ data: [] as Row[] }),
+    stageIds.length ? sb.from('stages').select('id, name, color, pipelines!inner(organization_id)').eq('pipelines.organization_id', ctx.orgId).in('id', stageIds) : Promise.resolve({ data: [] as Row[] }),
     // F9-22: el tope se escala con el número de emails de la página (10 eventos
     // por email) para que con muchos emails ninguno se quede sin eventos.
-    emailIds.length ? sb.from('email_events').select('email_message_id, event_type, occurred_at').in('email_message_id', emailIds).order('occurred_at', { ascending: false }).limit(Math.min(1000, Math.max(50, emailIds.length * 10))) : Promise.resolve({ data: [] as Row[] }),
-    callIds.length ? sb.from('calls').select(CALL_SELECT).eq('organization_id', ctx.orgId).in('id', callIds) : Promise.resolve({ data: [] as Row[] }),
+    emailIds.length ? sb.from('email_events').select('email_message_id, event_type, occurred_at').eq('organization_id', ctx.orgId).in('email_message_id', emailIds).order('occurred_at', { ascending: false }).limit(Math.min(1000, Math.max(50, emailIds.length * 10))) : Promise.resolve({ data: [] as Row[] }),
+    linkedCalls ?? Promise.resolve({ data: [] as Row[] }),
     activityEmailIds.length ? sb.from('email_messages').select('id, subject, to_email, from_email, status, sent_at, created_at, open_count, click_count, body_html_snapshot').eq('organization_id', ctx.orgId).in('id', activityEmailIds) : Promise.resolve({ data: [] as Row[] }),
     vaByCall.length ? sb.from('voice_agent_calls').select('id, call_id, status, outcome, duration_seconds, turns_count, conversation_log, voice_agents(id, name)').eq('organization_id', ctx.orgId).in('call_id', vaByCall) : Promise.resolve({ data: [] as Row[] }),
     eventIds.length ? sb.from('calendar_events').select('id, start_at, end_at, location, status').eq('organization_id', ctx.orgId).in('id', eventIds) : Promise.resolve({ data: [] as Row[] }),
   ]);
 
-  for (const p of (profiles.data ?? []) as Row[]) {
+  for (const result of [profiles, stages, events, calls, emails, vaCalls, calEvents]) {
+    if ('error' in result && result.error) throw result.error;
+  }
+  for (const member of (profiles.data ?? []) as Row[]) {
+    const p = pickOne<Row>(member.profile);
+    if (!p) continue;
     const name = `${p.first_name ?? ''} ${p.last_name ?? ''}`.trim() || p.email || 'Usuario';
     h.profiles.set(p.id, { id: p.id, name, avatar_url: p.avatar_url ?? null });
   }
@@ -120,7 +127,9 @@ export async function hydrate(rows: Raw[], ctx: Ctx): Promise<Hydration> {
   }
   for (const c of (calls.data ?? []) as Row[]) h.calls.set(c.id, c);
   for (const e of (emails.data ?? []) as Row[]) h.emails.set(e.id, e);
-  for (const v of (vaCalls.data ?? []) as Row[]) if (v.call_id) h.vaCalls.set(v.call_id, v);
+  for (const v of (vaCalls.data ?? []) as Row[]) {
+    if (v.call_id && (!ctx.access?.callUserId || h.calls.has(v.call_id))) h.vaCalls.set(v.call_id, v);
+  }
   for (const ce of (calEvents.data ?? []) as Row[]) h.events_cal.set(ce.id, ce);
   return h;
 }

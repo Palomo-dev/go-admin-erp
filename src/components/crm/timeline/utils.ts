@@ -1,3 +1,4 @@
+import { compareDesc } from '@/lib/services/crm/timeline/types';
 import type { TimelineEntry, TimelineKind } from '@/lib/services/crm/timelineService';
 
 /**
@@ -7,13 +8,6 @@ import type { TimelineEntry, TimelineKind } from '@/lib/services/crm/timelineSer
 
 export function entryKey(e: Pick<TimelineEntry, 'kind' | 'id'>): string {
   return `${e.kind}:${e.id}`;
-}
-
-function cmpDesc(a: TimelineEntry, b: TimelineEntry): number {
-  const ta = Date.parse(a.occurred_at);
-  const tb = Date.parse(b.occurred_at);
-  if (ta !== tb) return tb - ta;
-  return b.id.localeCompare(a.id);
 }
 
 /**
@@ -29,7 +23,7 @@ export function mergeEntries(prev: TimelineEntry[], next: TimelineEntry[]): Time
     if (e.kind === 'call_live') map.delete(`call:${e.id}`);
     map.set(entryKey(e), e);
   }
-  return [...map.values()].sort(cmpDesc);
+  return [...map.values()].sort(compareDesc);
 }
 
 export interface DayGroup {

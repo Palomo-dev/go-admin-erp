@@ -63,11 +63,11 @@ function channelSet(ctx: Ctx): Set<string> | null {
 
 export async function fetchActivities(ctx: Ctx): Promise<SourceResult> {
   let q = ctx.supabase
-    .from('activities')
+    .from(ctx.entityType === 'customer' ? 'crm_customer_activities' : 'activities')
     .select('id, activity_type, notes, user_id, occurred_at, metadata, channel, outcome, duration_seconds, call_id, email_message_id, message_id, conversation_id')
-    .eq('organization_id', ctx.orgId)
-    .eq('related_type', ctx.entityType)
-    .eq('related_id', ctx.entityId);
+    .eq('organization_id', ctx.orgId);
+  if (ctx.entityType === 'customer') q = q.eq('timeline_customer_id', ctx.entityId);
+  else q = q.eq('related_type', ctx.entityType).eq('related_id', ctx.entityId);
   q = applyRange(q, 'occurred_at', ctx);
   if (ctx.q.userId) q = q.eq('user_id', ctx.q.userId);
   const { data, error } = await q
@@ -83,14 +83,27 @@ export async function fetchActivities(ctx: Ctx): Promise<SourceResult> {
     user_id: r.user_id ?? null,
     row: r,
   }));
+  // Un autor de activity no concede acceso a la llamada referenciada. El
+  // dueño se comprueba en calls con la organización y sesión de la ruta.
+  const actor = ctx.access?.callUserId;
+  const linkedIds = actor ? [...new Set(raw.map(r => r.call_id).filter(Boolean))] : [];
+  const owned = new Set<string>();
+  if (linkedIds.length) {
+    const result = await ctx.supabase.from('calls').select('id')
+      .eq('organization_id', ctx.orgId).eq('user_id', actor!).in('id', linkedIds);
+    if (result.error) throw result.error;
+    for (const call of result.data ?? []) owned.add(call.id);
+  }
   // F9-08: `channels` filtra las activities genéricas (visita, tarea manual…).
   // F9-30: se pasa como predicado a `finish` para que la cola siga saliendo de
   // las filas LEÍDAS; filtrarlas antes hacía que una página entera de canales
   // no pedidos declarase la fuente agotada y truncase el timeline en silencio.
   const chans = channelSet(ctx);
-  const keep = chans
-    ? (r: Raw) => r.kind !== 'activity' || (r.row.channel != null && chans.has(String(r.row.channel)))
-    : undefined;
+  const keep = (r: Raw) => {
+    if (actor && r.row.call_id && !owned.has(r.row.call_id)) return false;
+    if (actor && !r.row.call_id && ['call', 'ai_call'].includes(r.kind) && r.user_id !== actor) return false;
+    return !chans || r.kind !== 'activity' || (r.row.channel != null && chans.has(String(r.row.channel)));
+  };
   return finish(rows, ctx, raw.length, keep);
 }
 
@@ -109,11 +122,11 @@ function activityKind(type: string): TimelineKind {
 
 export async function fetchTasks(ctx: Ctx): Promise<SourceResult> {
   let q = ctx.supabase
-    .from('tasks')
+    .from(ctx.entityType === 'customer' ? 'crm_customer_tasks' : 'tasks')
     .select('id, title, description, assigned_to, due_date, status, priority, created_at, completed_at')
-    .eq('organization_id', ctx.orgId)
-    .eq('related_to_type', ctx.entityType)
-    .eq('related_to_id', ctx.entityId);
+    .eq('organization_id', ctx.orgId);
+  if (ctx.entityType === 'customer') q = q.eq('timeline_customer_id', ctx.entityId);
+  else q = q.eq('related_to_type', ctx.entityType).eq('related_to_id', ctx.entityId);
   q = applyRange(q, 'created_at', ctx);
   if (ctx.q.userId) q = q.eq('assigned_to', ctx.q.userId);
   const { data, error } = await q
@@ -130,11 +143,11 @@ export async function fetchTasks(ctx: Ctx): Promise<SourceResult> {
 
 export async function fetchNotes(ctx: Ctx): Promise<SourceResult> {
   let q = ctx.supabase
-    .from('notes')
+    .from(ctx.entityType === 'customer' ? 'crm_customer_notes' : 'notes')
     .select('id, body, user_id, created_at, is_pinned')
-    .eq('organization_id', ctx.orgId)
-    .eq('related_type', ctx.entityType)
-    .eq('related_id', ctx.entityId);
+    .eq('organization_id', ctx.orgId);
+  if (ctx.entityType === 'customer') q = q.eq('timeline_customer_id', ctx.entityId);
+  else q = q.eq('related_type', ctx.entityType).eq('related_id', ctx.entityId);
   q = applyRange(q, 'created_at', ctx);
   if (ctx.q.userId) q = q.eq('user_id', ctx.q.userId);
   const { data, error } = await q
@@ -165,6 +178,7 @@ export async function fetchCalls(ctx: Ctx): Promise<SourceResult> {
     .eq(col, ctx.entityId);
   q = applyRange(q, 'started_at', ctx);
   if (ctx.q.userId) q = q.eq('user_id', ctx.q.userId);
+  if (ctx.access?.callUserId) q = q.eq('user_id', ctx.access.callUserId);
   const { data, error } = await q
     .order('started_at', DESC_NULLS_LAST)
     .order('id', ID_DESC)
@@ -186,11 +200,11 @@ export async function fetchEmails(ctx: Ctx): Promise<SourceResult> {
   // F9-07: se pagina y se muestra por `created_at`; `sent_at` sigue en el
   // payload (`TimelineEmailData.sent_at`) para que la tarjeta indique el envío.
   let q = ctx.supabase
-    .from('email_messages')
+    .from(ctx.entityType === 'customer' ? 'crm_customer_email_messages' : 'email_messages')
     .select('id, subject, to_email, from_email, status, sent_at, created_at, open_count, click_count, body_html_snapshot')
-    .eq('organization_id', ctx.orgId)
-    .eq('related_type', ctx.entityType)
-    .eq('related_id', ctx.entityId);
+    .eq('organization_id', ctx.orgId);
+  if (ctx.entityType === 'customer') q = q.eq('timeline_customer_id', ctx.entityId);
+  else q = q.eq('related_type', ctx.entityType).eq('related_id', ctx.entityId);
   q = applyRange(q, 'created_at', ctx);
   const { data, error } = await q
     .order('created_at', DESC_NULLS_LAST)
@@ -211,9 +225,10 @@ export async function fetchVoiceAgentCalls(ctx: Ctx): Promise<SourceResult> {
   // siguen en la fila para el detalle de la tarjeta).
   let q = ctx.supabase
     .from('voice_agent_calls')
-    .select('id, call_id, status, outcome, duration_seconds, turns_count, conversation_log, started_at, scheduled_at, created_at, voice_agents(id, name)')
+    .select('id, call_id, status, outcome, duration_seconds, turns_count, conversation_log, started_at, scheduled_at, created_at, voice_agents(id, name)' + (ctx.access?.callUserId ? ',owner_call:calls!inner(user_id,organization_id)' : ''))
     .eq('organization_id', ctx.orgId)
     .eq(col, ctx.entityId);
+  if (ctx.access?.callUserId) q = q.eq('owner_call.user_id', ctx.access.callUserId).eq('owner_call.organization_id', ctx.orgId);
   q = applyRange(q, 'created_at', ctx);
   const { data, error } = await q
     .order('created_at', DESC_NULLS_LAST)
@@ -228,12 +243,11 @@ export async function fetchVoiceAgentCalls(ctx: Ctx): Promise<SourceResult> {
 }
 
 export async function fetchStageHistory(ctx: Ctx): Promise<SourceResult> {
-  if (ctx.entityType !== 'opportunity') return { rows: [], tail: null };
   let q = ctx.supabase
-    .from('opportunity_stage_history')
+    .from(ctx.entityType === 'customer' ? 'crm_customer_stage_history' : 'opportunity_stage_history')
     .select('id, from_stage_id, to_stage_id, changed_by, changed_at')
     .eq('organization_id', ctx.orgId)
-    .eq('opportunity_id', ctx.entityId);
+    .eq(ctx.entityType === 'customer' ? 'timeline_customer_id' : 'opportunity_id', ctx.entityId);
   q = applyRange(q, 'changed_at', ctx);
   if (ctx.q.userId) q = q.eq('changed_by', ctx.q.userId);
   const { data, error } = await q

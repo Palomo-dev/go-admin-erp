@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { ArrowUp, Loader2, RefreshCw, Wifi, WifiOff, Inbox } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -51,6 +52,7 @@ function readStoredFilters(): TimelineQuery | null {
 export function OpportunityTimeline({
   entityType, entityId, initialFilters, pageSize = 30, compact, showFilters = true, showComposer = false, context, onEntryAction, refreshToken, className,
 }: OpportunityTimelineProps) {
+  const te = useTranslations('crm.accionesRapidas.errores');
   const [filters, setFilters] = useState<TimelineQuery>(() => ({ ...(readStoredFilters() ?? {}), ...(initialFilters ?? {}) }));
   const [atTop, setAtTop] = useState(true);
   const topRef = useRef<HTMLDivElement>(null);
@@ -125,7 +127,7 @@ export function OpportunityTimeline({
 
       {error && (
         <div className="rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3 text-xs text-red-700 dark:text-red-300 flex items-center justify-between gap-2">
-          <span>{error}</span>
+          <span>{te(error)}</span>
           <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => void refresh()}>Reintentar</Button>
         </div>
       )}

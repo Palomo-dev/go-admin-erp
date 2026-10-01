@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase/config';
+import { ORGANIZATION_CHANGED_EVENT } from '@/lib/hooks/useOrganization';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { claveError, pedirCrm, ErrorApiCrm, type ClaveErrorCrm } from '@/components/crm/acciones/apiCrm';
 import type { TimelineEntry, TimelineEntityType, TimelineQuery } from '@/lib/services/crm/timelineService';
 import { allRealtimePublished } from '@/components/crm/shared/realtimeTables';
 import { groupByDay, mergeEntries, type DayGroup } from '../utils';
@@ -26,7 +29,7 @@ export interface UseTimelineResult {
   groups: DayGroup[];
   loading: boolean;
   loadingMore: boolean;
-  error: string | null;
+  error: ClaveErrorCrm | null;
   hasMore: boolean;
   loadMore: () => void;
   refresh: () => Promise<void>;
@@ -47,11 +50,9 @@ function buildUrl(type: TimelineEntityType, id: string, q: TimelineQuery, cursor
   return `/api/crm/timeline/${type}/${id}?${p.toString()}`;
 }
 
-async function fetchPage(url: string): Promise<{ data: TimelineEntry[]; next_cursor: string | null }> {
-  const res = await fetch(url, { cache: 'no-store' });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok || !json.success) throw new Error(json.error || `Error ${res.status}`);
-  return { data: json.data as TimelineEntry[], next_cursor: json.next_cursor ?? null };
+async function fetchPage(url: string, signal?: AbortSignal): Promise<{ data: TimelineEntry[]; next_cursor: string | null }> {
+  const { data, extra } = await pedirCrm<TimelineEntry[]>(url, { signal });
+  return { data, next_cursor: typeof extra.next_cursor === 'string' ? extra.next_cursor : null };
 }
 
 /** Tablas que alimentan el timeline. */
@@ -64,11 +65,18 @@ export function useTimeline(
   filters: TimelineQuery = {},
   opts: { pauseNew?: boolean } = {}
 ): UseTimelineResult {
+  const { timezone } = useFormatDate();
+  const [orgRevision, setOrgRevision] = useState(0);
+  useEffect(() => {
+    const changed = () => setOrgRevision(n => n + 1);
+    window.addEventListener(ORGANIZATION_CHANGED_EVENT, changed);
+    return () => window.removeEventListener(ORGANIZATION_CHANGED_EVENT, changed);
+  }, []);
   const [entries, setEntries] = useState<TimelineEntry[]>([]);
   const [pending, setPending] = useState<TimelineEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ClaveErrorCrm | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
   const [realtime, setRealtime] = useState<'connecting' | 'live' | 'polling'>('connecting');
   const filtersKey = JSON.stringify(filters);
@@ -77,16 +85,28 @@ export function useTimeline(
   const pauseRef = useRef(Boolean(opts.pauseNew));
   pauseRef.current = Boolean(opts.pauseNew);
   const reqSeq = useRef(0);
+  const moreSeq = useRef(0);
+  const moreActive = useRef(false);
+  const firstController = useRef<AbortController | null>(null);
+  const firstReady = useRef<string | null>(null);
+  const scope = `${entityType}:${entityId}:${orgRevision}:${filtersKey}`;
+  const scopeRef = useRef(scope);
+  scopeRef.current = scope;
+  const [loadedScope, setLoadedScope] = useState(scope);
 
   const loadFirst = useCallback(async (silent = false) => {
-    if (!entityId) return;
+    if (!entityId || scopeRef.current !== scope) return;
+    const refreshOnly = silent && firstReady.current === scope;
     const seq = ++reqSeq.current;
-    if (!silent) setLoading(true);
+    firstController.current?.abort();
+    const controller = new AbortController();
+    firstController.current = controller;
+    if (!refreshOnly) setLoading(true);
     setError(null);
     try {
-      const page = await fetchPage(buildUrl(entityType, entityId, filtersRef.current));
-      if (seq !== reqSeq.current) return;
-      if (silent) {
+      const page = await fetchPage(buildUrl(entityType, entityId, filtersRef.current), controller.signal);
+      if (seq !== reqSeq.current || scopeRef.current !== scope) return;
+      if (refreshOnly) {
         setEntries((prev) => {
           const known = new Set(prev.map((e) => `${e.kind}:${e.id}`));
           const fresh = page.data.filter((e) => !known.has(`${e.kind}:${e.id}`));
@@ -102,35 +122,58 @@ export function useTimeline(
         setPending([]);
         setCursor(page.next_cursor);
       }
-      if (!silent) setCursor(page.next_cursor);
+      firstReady.current = scope;
     } catch (err) {
-      if (seq !== reqSeq.current) return;
-      setError(err instanceof Error ? err.message : 'Error cargando el timeline');
+      if (seq !== reqSeq.current || scopeRef.current !== scope) return;
+      if (controller.signal.aborted) return;
+      if (err instanceof ErrorApiCrm && [401, 403, 404].includes(err.status)) { firstReady.current = null; setEntries([]); setPending([]); setCursor(null); }
+      setError(claveError(err));
     } finally {
-      if (seq === reqSeq.current && !silent) setLoading(false);
+      if (seq === reqSeq.current && scopeRef.current === scope) setLoading(false);
     }
-  }, [entityType, entityId]);
+  }, [entityType, entityId, scope]);
 
   // Carga inicial y por cambio de filtros
   useEffect(() => {
+    setLoadedScope(scope);
     setEntries([]);
     setCursor(null);
     setPending([]);
+    setError(null);
+    setLoadingMore(false);
+    moreSeq.current++;
+    moreActive.current = false;
     void loadFirst(false);
+    const requests = reqSeq;
+    const moreRequests = moreSeq;
+    const controllerRef = firstController;
+    return () => { requests.current++; moreRequests.current++; controllerRef.current?.abort(); };
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadFirst, filtersKey]);
+  }, [loadFirst, scope]);
 
   const loadMore = useCallback(() => {
-    if (!entityId || !cursor || loadingMore) return;
+    if (!entityId || !cursor || moreActive.current || loading || loadedScope !== scope) return;
+    const seq = ++moreSeq.current;
+    moreActive.current = true;
     setLoadingMore(true);
     fetchPage(buildUrl(entityType, entityId, filtersRef.current, cursor))
       .then((page) => {
-        setEntries((prev) => mergeEntries(prev, page.data));
+        if (seq !== moreSeq.current || scopeRef.current !== scope) return;
+        setEntries(prev => mergeEntries(prev, page.data));
         setCursor(page.next_cursor);
       })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Error cargando más'))
-      .finally(() => setLoadingMore(false));
-  }, [entityType, entityId, cursor, loadingMore]);
+      .catch(err => {
+        if (seq !== moreSeq.current || scopeRef.current !== scope) return;
+        if (err instanceof ErrorApiCrm && [401, 403, 404].includes(err.status)) { firstReady.current = null; setEntries([]); setPending([]); setCursor(null); }
+        setError(claveError(err));
+      })
+      .finally(() => {
+        if (seq !== moreSeq.current || scopeRef.current !== scope) return;
+        moreActive.current = false;
+        setLoadingMore(false);
+      });
+  }, [entityType, entityId, cursor, loading, loadedScope, scope]);
 
   // Realtime + fallback polling
   useEffect(() => {
@@ -182,19 +225,19 @@ export function useTimeline(
     setPending([]);
   }, [pending]);
 
-  const groups = useMemo(() => groupByDay(entries), [entries]);
+  const groups = useMemo(() => groupByDay(loadedScope === scope ? entries : [], timezone), [entries, loadedScope, scope, timezone]);
 
   return {
-    entries,
+    entries: loadedScope === scope ? entries : [],
     groups,
-    loading,
-    loadingMore,
-    error,
-    hasMore: Boolean(cursor),
+    loading: loadedScope !== scope || loading,
+    loadingMore: loadedScope === scope && loadingMore,
+    error: loadedScope === scope ? error : null,
+    hasMore: loadedScope === scope && Boolean(cursor),
     loadMore,
     refresh: () => loadFirst(true),
     realtime,
-    newCount: pending.length,
+    newCount: loadedScope === scope ? pending.length : 0,
     showNew,
   };
 }

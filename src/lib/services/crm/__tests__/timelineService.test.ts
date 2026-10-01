@@ -5,9 +5,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { decodeCursor, dedupeRaw, encodeCursor, getTimeline } from '../timelineService';
-import { createPgMock } from './pgMock';
-
-type Row = Record<string, any>;
+import { createPgMock, type Row } from './pgMock';
 
 interface TableData { rows: Row[]; orderCol?: string }
 
@@ -57,8 +55,8 @@ function baseTables(): Record<string, TableData> {
       { id: uuid(300), from_stage_id: 's1', to_stage_id: 's2', changed_by: 'u1', changed_at: T(8) },
       { id: uuid(301), from_stage_id: 's0', to_stage_id: 's1', changed_by: 'u1', changed_at: T(3) },
     ], { opportunity_id: OPP }) },
-    profiles: { rows: [{ id: 'u1', first_name: 'Ana', last_name: 'Pérez', avatar_url: null }] },
-    stages: { rows: [{ id: 's0', name: 'Nuevo', color: '#000' }, { id: 's1', name: 'Calificado', color: '#111' }, { id: 's2', name: 'Negociación', color: '#222' }] },
+    organization_members: { rows: [{ organization_id: ORG, user_id: 'u1', profile: { id: 'u1', first_name: 'Ana', last_name: 'Pérez', avatar_url: null } }] },
+    stages: { rows: [{ id: 's0', name: 'Nuevo', color: '#000', pipelines: { organization_id: ORG } }, { id: 's1', name: 'Calificado', color: '#111', pipelines: { organization_id: ORG } }, { id: 's2', name: 'Negociación', color: '#222', pipelines: { organization_id: ORG } }] },
     calendar_events: { rows: [] },
   };
 }
@@ -105,7 +103,7 @@ describe('timelineService v2', () => {
     expect(sys && sys.kind === 'system' ? sys.to_stage?.name : null).toBe('Calificado');
     expect(next_cursor).toBeNull();
     // presupuesto de consultas: entidad + 8 fuentes (+1 extra de messages) + hidratación ≤ 9
-    const hydration = calls.filter((t) => ['profiles', 'stages', 'email_events', 'calendar_events'].includes(t) || calls.indexOf(t) > 9).length;
+    const hydration = calls.filter((t) => ['organization_members', 'stages', 'email_events', 'calendar_events'].includes(t) || calls.indexOf(t) > 9).length;
     expect(hydration).toBeLessThanOrEqual(9);
   });
 

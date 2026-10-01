@@ -184,6 +184,12 @@ export interface TimelineResult {
   next_cursor: string | null;
 }
 
+/** Restricciones calculadas por la ruta; nunca se aceptan desde query/body. */
+export interface TimelineAccess {
+  callUserId?: string;
+  onlyLeads?: boolean;
+}
+
 // ─── Cursor ──────────────────────────────────────────────────────────────────
 
 function toBase64Url(s: string): string {
@@ -291,4 +297,5 @@ export interface Ctx {
   q: TimelineQuery;
   customerId: string | null;
   windowFrom: string | null;
+  access?: TimelineAccess;
 }

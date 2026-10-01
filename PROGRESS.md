@@ -3738,3 +3738,7 @@ La batería completa aprobaba todas las aserciones pero salía 1 por un log tard
 ### 2026-10-01 — CRM: segmentos con recuento real y usos conectados
 
 Consumidor canónico noop por página, cron existente para vencimientos de 15 minutos y listado con cifras por canal, pendiente/error y usos en campañas/secuencias. Guardado dinámico sin escanear; cache conservada al renombrar; referencias propias y versiones en SQL. API+runner reales verificaron job/final/versión/caché; fixtures, jobs y eventos cero. Escritorio y móvil 390 revisados. 940 suites / 16.989 pruebas, tsc, lint tocado y build de producción pasan. Sigue pendiente prellenado del asistente, consentimiento/campañas/plantillas y las demás olas; PR #280 continúa en borrador.
+
+### 2026-10-01 — CRM: consentimiento entrante y bajas en una transacción
+
+Migración `20261001034200_crm_consentimiento_atomico_entrante.sql`, aplicada por MCP, MD5 `879c62783a852a724fb86f154159d2b3`; rollback conserva datos y cierra el acceso nuevo. Saludo no equivale a marketing; baja registra preferencia, metadata, auditoría y exclusión de pendientes antes del trigger de IA. Prueba SQL real pasó 240 contactos, reintentos, altas posteriores, palabras configuradas, tenant ajeno y rollback; advisors nuevos sin avisos. 597 pruebas focalizadas pasan. Siguen en curso despacho canónico, créditos/materialización/activación y demás pantallas del alcance.

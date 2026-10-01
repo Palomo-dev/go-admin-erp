@@ -4887,8 +4887,13 @@
         "estimacion": "Hasta {n} por minuto · 1.000 contactos en al menos {minutos} min, antes de pausas y exclusiones.",
         "limites": "La velocidad efectiva depende del proveedor, los créditos y las reglas de contacto. La programación no garantiza la hora de entrega.",
         "legal": "Horario legal siempre activo",
-        "legalDetalle": "Se aplican la Ley 2300, los festivos, la zona del destinatario y el límite semanal. La franja configurada por la organización solo puede restringir el horario permitido."
-      }
+        "legalDetalle": "Se aplican la Ley 2300, los festivos, la zona del destinatario y el límite semanal. La franja configurada por la organización solo puede restringir el horario permitido.",
+        "cumplimientoPendiente": "Verifica RNE y la política de datos antes de activar."
+      },
+      "cargando": "Cargando asistente de campañas",
+      "error": "No pudimos cargar los canales",
+      "sinPermiso": "No tienes permiso para gestionar campañas",
+      "errorCompositor": "No pudimos preparar el mensaje. Revisa el canal y la plantilla antes de continuar."
     }
   },
   "posCustomerDisplay": {

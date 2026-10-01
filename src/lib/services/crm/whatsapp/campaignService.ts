@@ -54,9 +54,10 @@ export async function checkMessagingLimit(orgId: number, channelId: string, pend
 async function transitionCampaign(
   orgId: number, c: Campaign, action: 'launch' | 'pause' | 'resume' | 'cancel', actor: string | null,
   options: Record<string, unknown>, service: SupabaseClient,
+  expectedUpdatedAt?: string,
 ): Promise<Campaign> {
   const { data, error } = await service.rpc('crm_campaign_transition', {
-    p_org: orgId, p_campaign: c.id, p_action: action, p_version: c.updated_at, p_actor: actor, p_options: options,
+    p_org: orgId, p_campaign: c.id, p_action: action, p_version: expectedUpdatedAt ?? c.updated_at, p_actor: actor, p_options: options,
   });
   if (error) throw errorWhatsAppDb(error);
   if (!data || typeof data !== 'object') throw new WhatsAppError('INTERNAL', 'Transición sin resultado', 500);
@@ -70,7 +71,7 @@ export async function readCampaignCounts(orgId: number, id: string, service: Sup
   return data as CampaignCounts;
 }
 
-export async function launchCampaign(orgId: number, userId: string | null, id: string, opts: { scheduledAt?: string | null; force?: boolean }, supabase: SupabaseClient, service: SupabaseClient = getServiceClient()): Promise<Campaign> {
+export async function launchCampaign(orgId: number, userId: string | null, id: string, opts: { scheduledAt?: string | null; force?: boolean; expectedUpdatedAt?: string }, supabase: SupabaseClient, service: SupabaseClient = getServiceClient()): Promise<Campaign> {
   const c = await requireCampaign(orgId, id, supabase);
   if (c.effective_status !== 'draft') throw new WhatsAppError('NOT_EDITABLE', `La campaña está en estado ${c.effective_status}`, 409);
   if (!c.statistics.materialized_at) throw new WhatsAppError('NOT_MATERIALIZED', 'Calcula la audiencia antes de lanzar', 409);
@@ -91,7 +92,7 @@ export async function launchCampaign(orgId: number, userId: string | null, id: s
   }
   return transitionCampaign(orgId, c, 'launch', userId, {
     ...(opts.scheduledAt !== undefined ? { scheduled_at: opts.scheduledAt } : {}), messaging_limit: messagingLimit,
-  }, service);
+  }, service, opts.expectedUpdatedAt);
 }
 
 export async function pauseCampaign(orgId: number, id: string, supabase: SupabaseClient, service: SupabaseClient = getServiceClient(), actor: string | null = null): Promise<Campaign> {

@@ -45,6 +45,15 @@ test("materializar una programada no modifica audiencia ni estado", async () => 
   expect(rpcCalls).toHaveLength(0);
 });
 
+test('materializar y lanzar transmiten la versión del formulario sin sustituirla por una lectura posterior', async () => {
+  const expected = '2026-09-30T23:00:00.123456+00:00';
+  const { sb, rpcCalls } = fixture();
+  await materializeCampaign(7, 'camp', sb, sb, new Date('2026-10-01T12:00:00Z'), 'actor', expected);
+  expect(rpcCalls.find(c => c.fn === 'crm_materialize_campaign')?.args.p_version).toBe(expected);
+  await launchCampaign(7, 'actor', 'camp', { expectedUpdatedAt: expected }, sb, sb);
+  expect(rpcCalls.find(c => c.fn === 'crm_campaign_transition')?.args.p_version).toBe(expected);
+});
+
 test("fallo de publicación se propaga sin escrituras de reparación fuera de la transacción", async () => {
   const { sb, calls } = fixture("draft", {}, { code: "P0001", message: "campana_modificada" });
   await expect(materializeCampaign(7, "camp", sb, sb)).rejects.toMatchObject({ status: 409 });

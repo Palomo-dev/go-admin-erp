@@ -25279,8 +25279,13 @@
         "estimacion": "Jusqu’à {n} par minute · 1 000 contacts en au moins {minutos} min, avant les pauses et les exclusions.",
         "limites": "La vitesse réelle dépend du fournisseur, des crédits et des règles de contact. La programmation ne garantit pas l’heure de livraison.",
         "legal": "Les horaires légaux restent toujours actifs",
-        "legalDetalle": "La loi 2300, les jours fériés, le fuseau horaire du destinataire et la limite hebdomadaire s’appliquent. La plage configurée par l’organisation peut uniquement restreindre les horaires autorisés."
-      }
+        "legalDetalle": "La loi 2300, les jours fériés, le fuseau horaire du destinataire et la limite hebdomadaire s’appliquent. La plage configurée par l’organisation peut uniquement restreindre les horaires autorisés.",
+        "cumplimientoPendiente": "Vérifiez le RNE et la politique de données avant l’activation."
+      },
+      "cargando": "Chargement de l’assistant de campagne",
+      "error": "Impossible de charger les canaux",
+      "sinPermiso": "Vous n’avez pas l’autorisation de gérer les campagnes",
+      "errorCompositor": "Impossible de préparer le message. Vérifiez le canal et le modèle avant de continuer."
     }
   },
   "analiticaWeb": {

@@ -25279,8 +25279,13 @@
         "estimacion": "Até {n} por minuto · 1.000 contatos em pelo menos {minutos} min, antes de pausas e exclusões.",
         "limites": "A velocidade real depende do provedor, dos créditos e das regras de contato. O agendamento não garante o horário de entrega.",
         "legal": "Horário legal sempre ativo",
-        "legalDetalle": "Aplicam-se a Lei 2300, os feriados, o fuso horário do destinatário e o limite semanal. A faixa configurada pela organização só pode restringir o horário permitido."
-      }
+        "legalDetalle": "Aplicam-se a Lei 2300, os feriados, o fuso horário do destinatário e o limite semanal. A faixa configurada pela organização só pode restringir o horário permitido.",
+        "cumplimientoPendiente": "Verifique o RNE e a política de dados antes de ativar."
+      },
+      "cargando": "Carregando assistente de campanhas",
+      "error": "Não foi possível carregar os canais",
+      "sinPermiso": "Você não tem permissão para gerenciar campanhas",
+      "errorCompositor": "Não foi possível preparar a mensagem. Verifique o canal e o modelo antes de continuar."
     }
   },
   "analiticaWeb": {

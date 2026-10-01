@@ -146,7 +146,9 @@ export const zLaunchBody = z.object({
   scheduled_at: zIsoDate.nullable().optional(),
   scheduledAt: zIsoDate.nullable().optional(),
   force: z.boolean().optional(),
+  expected_updated_at: zIsoDate.optional(),
 });
+export const zCampaignVersionBody = z.object({ expected_updated_at: zIsoDate.optional() });
 
 export const zCampaignListQuery = z.object({
   status: z.enum(['draft', 'scheduled', 'sending', 'sent', 'paused', 'canceled', 'materializing']).optional(),

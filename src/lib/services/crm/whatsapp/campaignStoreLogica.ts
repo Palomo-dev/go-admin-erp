@@ -47,14 +47,15 @@ export function validateAudience(a: CampaignAudience | undefined): CampaignAudie
 export function sameAudience(a: CampaignAudience | undefined | null, b: CampaignAudience | undefined | null): boolean {
   if (!a || !b) return !a && !b;
   const list = (x?: string[] | null) => [...(x ?? [])].map(String).sort().join('|');
-  return (
-    a.source === b.source &&
-    (a.segment_id ?? null) === (b.segment_id ?? null) &&
-    (a.pipeline_id ?? null) === (b.pipeline_id ?? null) &&
-    list(a.stage_ids) === list(b.stage_ids) &&
-    list(a.opportunity_ids) === list(b.opportunity_ids) &&
-    list(a.customer_ids) === list(b.customer_ids)
-  );
+  if (a.source !== b.source) return false;
+  // La RPC descarta los campos que no corresponden al origen elegido.
+  // El selector puede conservarlos al cambiar de pestaña: no son audiencia.
+  switch (a.source) {
+    case 'segment': return (a.segment_id ?? null) === (b.segment_id ?? null);
+    case 'stage': return (a.pipeline_id ?? null) === (b.pipeline_id ?? null) && list(a.stage_ids) === list(b.stage_ids);
+    case 'manual': return list(a.opportunity_ids) === list(b.opportunity_ids) && list(a.customer_ids) === list(b.customer_ids);
+    default: return false;
+  }
 }
 
 export function clampThrottle(v: unknown, fallback = 10): number {
@@ -111,6 +112,17 @@ export function campaignCreateValues(input: CreateCampaignInput): Record<string,
   };
 }
 
+/** Comparación canónica compartida por el guardado y el asistente. */
+export function campaignNeedsMaterialization(c: Campaign, input: UpdateCampaignInput): boolean {
+  return (!!input.audience && !sameAudience(c.statistics.audience, input.audience))
+    || (input.template_id !== undefined && (input.template_id ?? null) !== (c.template_id ?? null))
+    || (input.purpose !== undefined && input.purpose !== c.statistics.purpose)
+    || (input.channel_id !== undefined && (input.channel_id ?? null) !== (c.statistics.channel_id ?? null))
+    || (input.channel !== undefined && input.channel !== c.channel)
+    || (input.content !== undefined && input.content !== c.content)
+    || (input.default_variables !== undefined && !sameJson(input.default_variables, c.statistics.default_variables ?? {}));
+}
+
 /** Invalida el cálculo solo si cambian datos relevantes para el envío. */
 export function campaignUpdateValues(c: Campaign, input: UpdateCampaignInput): Record<string, unknown> {
   const audience = input.audience ? validateAudience(input.audience) : c.statistics.audience;
@@ -124,30 +136,7 @@ export function campaignUpdateValues(c: Campaign, input: UpdateCampaignInput): R
     purpose: input.purpose ?? c.statistics.purpose,
     description: input.description === undefined ? c.statistics.description : input.description,
   };
-  // Cambiar audiencia/plantilla invalida la materialización previa.
-  // Solo si CAMBIA de verdad (tester r1 · fallo 3): el compositor masivo del
-  // Kanban reenvía siempre el mismo `audience`+`template_id` al pulsar
-  // "Enviar", así que invalidar por la mera presencia del campo borraba el
-  // cálculo hecho con "Calcular" y `launch` respondía 409 NOT_MATERIALIZED en
-  // bucle.
-  const audienceChanged = !!input.audience && !sameAudience(c.statistics.audience, audience);
-  const templateChanged = input.template_id !== undefined && (input.template_id ?? null) !== (c.template_id ?? null);
-  // `purpose` cambia las exclusiones (marketing exige consentimiento).
-  const purposeChanged = input.purpose !== undefined && input.purpose !== c.statistics.purpose;
-  // El CANAL también invalida: `materializeCampaign` calcula la ventana de 24 h
-  // POR CANAL (`openWindowSet(orgId, channelId, …)`) y el proveedor (QR o no)
-  // sale del canal. Al corregir el fallo 3 del tester r1 la invalidación se
-  // quedó comparando solo audiencia/plantilla/propósito, así que cambiar de
-  // canal conservaba `materialized_at` y la campaña se lanzaba con contactos
-  // calculados contra OTRO canal — verificado en vivo por el tester: 3 pending
-  // → 3 `skipped:window_required` con los créditos ya reservados
-  // (tester F16 r2 · F-13).
-  const channelChanged = input.channel_id !== undefined && (input.channel_id ?? null) !== (c.statistics.channel_id ?? null);
-  // Cambiar de canal WhatsApp ↔ email cambia el destinatario entero.
-  const channelKindChanged = input.channel !== undefined && input.channel !== c.channel;
-  const contentChanged = input.content !== undefined && input.content !== c.content;
-  const variablesChanged = input.default_variables !== undefined && !sameJson(input.default_variables, c.statistics.default_variables ?? {});
-  if (audienceChanged || templateChanged || purposeChanged || channelChanged || channelKindChanged || contentChanged || variablesChanged) stats.materialized_at = null;
+  if (campaignNeedsMaterialization(c, input)) stats.materialized_at = null;
   const patch: Record<string, unknown> = { statistics: stats };
   if (input.name !== undefined) patch.name = input.name.trim();
   if (input.channel !== undefined) patch.channel = input.channel;

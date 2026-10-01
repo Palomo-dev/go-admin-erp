@@ -82,6 +82,22 @@ test('sin sesión, permiso o con organización ajena nunca eleva ni importa', as
   expect(elevated).not.toHaveBeenCalled(); expect(sessionRpc).not.toHaveBeenCalled(); expect(privateRpc).not.toHaveBeenCalled();
 });
 
+test('RNE versionado exige el testigo del formulario y conserva la versión devuelta por SQL', async () => {
+  const expected = '2026-10-01T08:00:00.123456+00:00';
+  privateRpc.mockResolvedValue({ data: { ...check, campaign_updated_at: '2026-10-01T08:01:00.123456+00:00' }, error: null });
+  const response = await post({ contenido: '3001234567', expected_updated_at: expected });
+  expect(response.status).toBe(200);
+  expect(privateRpc).toHaveBeenCalledWith('crm_register_campaign_rne_versioned', expect.objectContaining({ p_version: expected, p_org: 7, p_actor: 'actor' }));
+  expect((await response.json()).data.campaign_updated_at).toBe('2026-10-01T08:01:00.123456+00:00');
+  privateRpc.mockResolvedValue({ data: null, error: { code: 'P0001', message: 'campana_modificada' } });
+  expect((await post({ contenido: '3001234567', expected_updated_at: expected })).status).toBe(409);
+});
+
+test('una versión RNE inválida se rechaza antes de leer audiencia o elevar privilegios', async () => {
+  expect((await post({ contenido: '3001234567', expected_updated_at: 'ayer' })).status).toBe(400);
+  expect(sessionRpc).not.toHaveBeenCalled(); expect(elevated).not.toHaveBeenCalled();
+});
+
 test('consulta privada pasa por sesión y permiso de lectura, y devuelve permiso de gestión separado', async () => {
   sessionRpc.mockResolvedValue({ data: compliance, error: null }); canManage = false;
   const response = await GET(new NextRequest(url), params);

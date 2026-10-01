@@ -7,6 +7,7 @@ import { WhatsAppError } from './types';
 import { filtrarContraRne, leerArchivoRne, MAX_BYTES_ARCHIVO_RNE, normalizarNumeroRne, VIGENCIA_RNE_DIAS } from '../voiceAgent/rne';
 
 export interface CampaignRneCheck {
+  campaign_updated_at?: string;
   check_id?: string;
   id: string;
   checked_at: string;
@@ -48,7 +49,7 @@ export async function getCampaignCompliance(orgId: number, campaignId: string, s
 }
 
 export async function registerCampaignRne(orgId: number, campaignId: string, actorId: string,
-  archivo: { nombre: string | null; contenido: string }, session: SupabaseClient, service: SupabaseClient,
+  archivo: { nombre: string | null; contenido: string; expectedUpdatedAt?: string }, session: SupabaseClient, service: SupabaseClient,
 ): Promise<CampaignRneCheck & { descartados: number }> {
   if (!archivo.contenido.trim()) throw new WhatsAppError('VALIDATION', 'El archivo está vacío', 400);
   if (Buffer.byteLength(archivo.contenido, 'utf8') > MAX_BYTES_ARCHIVO_RNE)
@@ -65,12 +66,13 @@ export async function registerCampaignRne(orgId: number, campaignId: string, act
     return { customer_id: row.customer_id, phone: row.customer.phone };
   });
   const { excluidos } = filtrarContraRne(objetivos, lectura.numeros);
-  const { data, error } = await service.rpc('crm_register_campaign_rne', {
+  const { data, error } = await service.rpc(archivo.expectedUpdatedAt ? 'crm_register_campaign_rne_versioned' : 'crm_register_campaign_rne', {
     p_org: orgId, p_campaign: campaignId, p_actor: actorId,
     p_numbers: lectura.numeros,
     p_excluded: excluidos.map(row => ({ ...row, phone_e164: normalizarNumeroRne(row.phone) })),
     p_file: (archivo.nombre || 'rne.csv').slice(0, 255),
     p_sha256: createHash('sha256').update(archivo.contenido, 'utf8').digest('hex'), p_days: VIGENCIA_RNE_DIAS,
+    ...(archivo.expectedUpdatedAt ? { p_version: archivo.expectedUpdatedAt } : {}),
   });
   if (error) throw errorWhatsAppDb(error);
   if (!validCheck(data)) throw new WhatsAppError('INTERNAL', 'Verificación sin resultado válido', 500);

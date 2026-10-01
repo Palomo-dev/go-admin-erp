@@ -13,8 +13,11 @@ import { MAX_BYTES_ARCHIVO_RNE, VIGENCIA_RNE_DIAS } from '@/lib/services/crm/voi
 import type { CampaignCompliance, CampaignRneCheck } from '@/lib/services/crm/whatsapp/campaignRneService';
 
 /** Figma 1402:1206: requisitos certificados por el servidor, también en el detalle. */
-export function CampaignCompliancePanel({ campaignId, onChanged, onAllowed }: {
-  campaignId: string; onChanged?: () => void; onAllowed?: (allowed: boolean) => void;
+export function CampaignCompliancePanel({ campaignId, expectedUpdatedAt, onChanged, onAllowed, onUploadingChange, refreshKey, disabled }: {
+  campaignId: string; expectedUpdatedAt?: string;
+  refreshKey?: string | number; disabled?: boolean;
+  onChanged?: (check: CampaignRneCheck) => void; onAllowed?: (allowed: boolean) => void;
+  onUploadingChange?: (uploading: boolean) => void;
 }) {
   const t = useTranslations('crm.campanasCumplimiento');
   const r = useTranslations('vozRne');
@@ -44,28 +47,28 @@ export function CampaignCompliancePanel({ campaignId, onChanged, onAllowed }: {
   useEffect(() => {
     setUploading(false); void load();
     return () => { controller.current?.abort(); uploadController.current?.abort(); };
-  }, [load]);
+  }, [load, refreshKey]);
   const upload = async (file: File) => {
     setError(null);
     if (file.size > MAX_BYTES_ARCHIVO_RNE) { setError(r('demasiadoGrande')); return; }
-    setUploading(true); onAllowed?.(false);
+    setUploading(true); onUploadingChange?.(true); onAllowed?.(false);
     const request = new AbortController(); uploadController.current = request;
     try {
       const contenido = await file.text();
       const response = await fetchJson<{ data: CampaignRneCheck }>(url, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, timeoutMs: 60000,
-        body: JSON.stringify({ nombre_archivo: file.name, contenido }), signal: request.signal,
+        body: JSON.stringify({ nombre_archivo: file.name, contenido, expected_updated_at: expectedUpdatedAt }), signal: request.signal,
       });
       if (!response?.data?.id) throw new Error('invalid');
-      if (!request.signal.aborted) { await load(); onChanged?.(); }
+      if (!request.signal.aborted) { await onChanged?.(response.data); await load(); }
     } catch { if (!request.signal.aborted) setError(r('errorVerificar')); }
-    finally { if (!request.signal.aborted) setUploading(false); if (fileInput.current) fileInput.current.value = ''; }
+    finally { if (!request.signal.aborted) { setUploading(false); onUploadingChange?.(false); } if (fileInput.current) fileInput.current.value = ''; }
   };
   const check = data?.rne;
   return <section aria-labelledby={`${id}-title`} className="space-y-3 rounded-xl border border-line bg-surface p-4">
     <div className="flex items-center justify-between gap-2">
       <h2 id={`${id}-title`} className="flex items-center gap-2 text-base font-semibold text-fg"><ShieldCheck className="size-4 text-brand" aria-hidden="true" />{t('titulo')}</h2>
-      <button className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })} disabled={loading || uploading} onClick={() => void load()} aria-label={t('actualizar')}><RefreshCw className="size-4" aria-hidden="true" /></button>
+      <button className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })} disabled={loading || uploading || disabled} onClick={() => void load()} aria-label={t('actualizar')}><RefreshCw className="size-4" aria-hidden="true" /></button>
     </div>
     {loading ? <div role="status" aria-label={r('cargando')} className="space-y-3"><Skeleton className="h-32" /><Skeleton className="h-24" /></div> : data && <>
       <div className={`space-y-2 rounded-lg border p-3 ${data.rne_current ? 'border-line-success bg-success-subtle' : 'border-line-danger bg-danger-subtle'}`}>
@@ -80,8 +83,8 @@ export function CampaignCompliancePanel({ campaignId, onChanged, onAllowed }: {
           <FilaDato etiqueta={t('omitidos')} valor={String(check.skipped_contacts)} />
         </ListaDatos>}
         {canVerify ? <>
-          <input id={id} ref={fileInput} type="file" accept=".csv,.txt,text/csv,text/plain" className="sr-only" aria-label={t('archivo')} disabled={uploading} onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file); }} />
-          <button className={clasesBoton({ variante: 'secundario', tamano: 'sm' })} disabled={uploading} onClick={() => fileInput.current?.click()}>
+          <input id={id} ref={fileInput} type="file" accept=".csv,.txt,text/csv,text/plain" className="sr-only" aria-label={t('archivo')} disabled={uploading || disabled} onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file); }} />
+          <button className={clasesBoton({ variante: 'secundario', tamano: 'sm' })} disabled={uploading || disabled} onClick={() => fileInput.current?.click()}>
             {uploading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Upload className="size-4" aria-hidden="true" />}{r(uploading ? 'verificando' : 'verificar')}
           </button>
         </> : <p className="text-xs text-fg-secondary">{t('sinPermiso')}</p>}

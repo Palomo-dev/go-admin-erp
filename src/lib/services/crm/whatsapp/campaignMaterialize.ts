@@ -28,6 +28,7 @@ export type SkipReason =
   'no_phone' | 'no_email' | 'opted_out' | 'us_marketing' | 'window_required' | 'duplicate_recent' | 'invalid_number';
 
 export interface MaterializeResult {
+  campaign_updated_at?: string;
   total: number;
   pending: number;
   skipped: number;
@@ -230,6 +231,7 @@ export async function materializeCampaign(
   service: SupabaseClient = getServiceClient(),
   now: Date = new Date(),
   actor: string | null = null,
+  expectedUpdatedAt?: string,
 ): Promise<MaterializeResult> {
   const c: Campaign = await requireCampaign(orgId, id, supabase);
   if (c.effective_status !== 'draft')
@@ -274,7 +276,7 @@ export async function materializeCampaign(
   }
   const estimated = channel === 'whatsapp' ? await estimateCampaignCost({ provider, category, isTemplate: !!c.template_id, pending, defaultCountry }) : null;
   const { data, error } = await service.rpc('crm_materialize_campaign', {
-    p_org: orgId, p_campaign: id, p_version: c.updated_at, p_channel: channelId,
+    p_org: orgId, p_campaign: id, p_version: expectedUpdatedAt ?? c.updated_at, p_channel: channelId,
     p_rows: rows, p_estimated: estimated, p_actor: actor,
   });
   if (error) throw errorWhatsAppDb(error);

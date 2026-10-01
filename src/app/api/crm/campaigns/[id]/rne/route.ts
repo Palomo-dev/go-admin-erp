@@ -7,6 +7,7 @@ import { CRM_PERMISOS, exigirPermisoCrm, UUID_RE } from '@/lib/services/crm/crmR
 import { hasOrgAdminOrPermission } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import { getServiceClient } from '@/lib/supabase/server-service';
+import { parseWith, zCampaignVersionBody } from '@/lib/services/crm/whatsapp/schemas';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -56,7 +57,8 @@ export const POST = withWhatsAppRoute(async (ctx, req, params) => {
   if (!raw || typeof raw !== 'object' || !('contenido' in raw) || typeof raw.contenido !== 'string')
     throw new WhatsAppError('VALIDATION', 'Selecciona un archivo RNE de texto', 400);
   const nombre = 'nombre_archivo' in raw && typeof raw.nombre_archivo === 'string' ? raw.nombre_archivo : null;
+  const version = parseWith(zCampaignVersionBody, raw).expected_updated_at;
   const data = await registerCampaignRne(ctx.organizationId, id, ctx.userId,
-    { nombre, contenido: raw.contenido }, ctx.supabase, getServiceClient());
+    { nombre, contenido: raw.contenido, expectedUpdatedAt: version }, ctx.supabase, getServiceClient());
   return NextResponse.json({ data }, { headers: NO_STORE });
 }, { admin: true, permission: CRM_PERMISOS.campanasGestionar });

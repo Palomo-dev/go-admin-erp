@@ -108,7 +108,7 @@ export interface CreateCampaignBody {
   description?: string | null;
 }
 
-export interface MaterializeResult { total: number; pending: number; skipped: number; skipped_by_reason: Record<string, number>; estimated_cost: number | null }
+export interface MaterializeResult { campaign_updated_at?: string; total: number; pending: number; skipped: number; skipped_by_reason: Record<string, number>; estimated_cost: number | null }
 export interface CampaignStatsResult { counts: CampaignCounts; by_error_code: Record<string, number>; by_skip_reason: Record<string, number>; timeline: Array<{ minute: string; sent: number; delivered: number; read: number; failed: number }>; estimated_cost: number | null; actual_cost: number | null; known_actual_cost: number; actual_cost_complete: boolean; unpriced_contacts: number }
 
 export const campaignsApi = {
@@ -117,8 +117,8 @@ export const campaignsApi = {
   create: (body: CreateCampaignBody) => post<{ data: Campaign }>('/api/crm/campaigns', body),
   update: (id: string, body: Partial<CreateCampaignBody> & { expected_updated_at?: string }) => call<{ data: Campaign }>(`/api/crm/campaigns/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   remove: (id: string) => call<{ success: boolean }>(`/api/crm/campaigns/${id}`, { method: 'DELETE' }),
-  materialize: (id: string) => post<MaterializeResult & { success: boolean }>(`/api/crm/campaigns/${id}/materialize`),
-  launch: (id: string, body: { scheduled_at?: string | null; force?: boolean } = {}) => post<{ data: Campaign }>(`/api/crm/campaigns/${id}/launch`, body),
+  materialize: (id: string, body: { expected_updated_at?: string } = {}) => post<MaterializeResult & { success: boolean }>(`/api/crm/campaigns/${id}/materialize`, body),
+  launch: (id: string, body: { scheduled_at?: string | null; force?: boolean; expected_updated_at?: string } = {}) => post<{ data: Campaign }>(`/api/crm/campaigns/${id}/launch`, body),
   pause: (id: string) => post<{ data: Campaign }>(`/api/crm/campaigns/${id}/pause`),
   resume: (id: string) => post<{ data: Campaign }>(`/api/crm/campaigns/${id}/resume`),
   cancel: (id: string) => post<{ data: Campaign }>(`/api/crm/campaigns/${id}/cancel`),

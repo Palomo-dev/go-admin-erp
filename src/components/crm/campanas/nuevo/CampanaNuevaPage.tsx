@@ -17,42 +17,46 @@ import { ChannelSelect } from '@/components/crm/whatsapp/compose/ChannelSelect';
 import { TemplatePicker } from '@/components/crm/whatsapp/compose/TemplatePicker';
 import { MessageForm } from '@/components/crm/whatsapp/compose/MessageForm';
 import { useWhatsAppCompose } from '@/components/crm/whatsapp/compose/useWhatsAppCompose';
-import { CampanasService } from '../CampanasService';
 import { AudienceStep, type AudienceValue } from './AudienceStep';
 import { ScheduleStep } from './ScheduleStep';
-import type { MaterializeResult } from '@/components/crm/whatsapp/api';
 import { SKIP_REASON_LABELS } from '@/components/crm/whatsapp/api';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { todayInTz } from '@/lib/utils/timezone';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
 import { evaluarProgramacion, type ModoProgramacion } from './programacionCampanaLogica';
+import { useBorradorCampana } from './useBorradorCampana';
+import { CampaignCompliancePanel } from '../CampaignCompliancePanel';
+import { useOrganization } from '@/lib/hooks/useOrganization';
+import { EmptyState } from '@/components/kit/EmptyState';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const STEPS = ['Canal y mensaje', 'Audiencia', 'Programación', 'Revisión'];
 
-export function CampanaNuevaPage() {
+function AsistenteCampana() {
   const { timezone, formatDateTime } = useFormatDate(null);
   const tp = useTranslations('crm.campanasAsistente.programacion');
+  const ta = useTranslations('crm.campanasAsistente');
   const router = useRouter();
   const search = useSearchParams();
   const { toast } = useToast();
   const [step, setStep] = useState(0);
   const [name, setName] = useState('');
   const c = useWhatsAppCompose({ enabled: true });
-  const [audience, setAudience] = useState<AudienceValue>({ source: search?.get('segment') ? 'segment' : 'stage', segment_id: search?.get('segment') ?? null, pipeline_id: null, stage_ids: [] });
+  const segmentId = search?.get('segment_id') ?? search?.get('segment');
+  const [audience, setAudience] = useState<AudienceValue>({ source: segmentId ? 'segment' : 'stage', segment_id: segmentId ?? null, pipeline_id: null, stage_ids: [] });
   const [scheduleMode, setScheduleMode] = useState<ModoProgramacion>('now');
   const [scheduleLocal, setScheduleLocal] = useState('');
   const schedule = evaluarProgramacion(scheduleMode, scheduleLocal, timezone, new Date());
   const scheduledAt = schedule.instante;
   const [throttle, setThrottle] = useState(10);
-  const [campaignId, setCampaignId] = useState<string | null>(null);
-  const [mat, setMat] = useState<MaterializeResult | null>(null);
-  const [busy, setBusy] = useState<'save' | 'mat' | 'launch' | null>(null);
+  const [allowed, setAllowed] = useState(false);
+  const [rneBusy, setRneBusy] = useState(false);
   const [optin, setOptin] = useState(false);
 
   useEffect(() => { if (!name && c.template) setName(`${c.template.name} · ${formatPlainDate(todayInTz(timezone))}`); }, [c.template, name, timezone]);
 
   const marketing = c.preview?.category === 'marketing';
-  const step0ok = !!c.channelId && (c.tab === 'template' ? !!c.templateId && !!c.preview && c.preview.status === 'APPROVED' : c.text.trim().length > 0);
+  const step0ok = !!name.trim() && !!c.channelId && (c.tab === 'template' ? !!c.templateId && !!c.preview && c.preview.status === 'APPROVED' && c.preview.missing.length === 0 : c.text.trim().length > 0);
   const step1ok = audience.source === 'segment' ? !!audience.segment_id : audience.source === 'stage' ? audience.stage_ids.length > 0 : false;
 
   const body = useMemo(() => ({
@@ -68,43 +72,41 @@ export function CampanaNuevaPage() {
     default_variables: c.variables,
     purpose: marketing ? 'marketing' as const : 'utility' as const,
   }), [name, c.channelId, c.tab, c.templateId, c.text, c.variables, audience, scheduledAt, throttle, marketing]);
+  const draft = useBorradorCampana(body);
+  const { mat } = draft;
+  const busy = draft.busy ?? (rneBusy ? 'rne' : null);
 
-  const save = async () => {
-    setBusy('save');
-    try {
-      const valid = evaluarProgramacion(scheduleMode, scheduleLocal, timezone, new Date());
-      if (valid.error) throw new Error(tp(valid.error));
-      const saved = campaignId ? await CampanasService.updateCampaign(campaignId, body) : await CampanasService.createCampaign(body);
-      setCampaignId(saved.id);
-      return saved.id;
-    } finally { setBusy(null); }
+  const validarProgramacion = () => {
+    const valid = evaluarProgramacion(scheduleMode, scheduleLocal, timezone, new Date());
+    if (valid.error) throw new Error(tp(valid.error));
   };
 
   const materialize = async () => {
     try {
-      const id = await save();
-      setBusy('mat');
-      setMat(await CampanasService.materialize(id));
+      validarProgramacion();
+      setAllowed(false);
+      await draft.calcular();
     } catch (e) {
       toast({ title: 'No se pudo calcular la audiencia', description: e instanceof Error ? e.message : 'Error', variant: 'destructive' });
-    } finally { setBusy(null); }
+    }
   };
 
   const launch = async (draftOnly = false) => {
     try {
-      const id = await save();
-      if (draftOnly) { toast({ title: 'Borrador guardado' }); router.push(`/app/crm/campanas/${id}`); return; }
-      setBusy('launch');
-      if (!mat) setMat(await CampanasService.materialize(id));
-      const r = await CampanasService.launch(id, { scheduled_at: scheduledAt });
-      toast({ title: r.data.effective_status === 'scheduled' ? 'Campaña programada' : 'Campaña lanzada', description: `${mat?.pending ?? ''} contactos en cola` });
-      router.push(`/app/crm/campanas/${id}`);
+      validarProgramacion();
+      if (draftOnly) { const saved = await draft.guardar(); toast({ title: 'Borrador guardado' }); router.push(`/app/crm/campanas/${saved.id}`); return; }
+      if (!allowed) throw new Error(tp('cumplimientoPendiente'));
+      const result = await draft.lanzar();
+      toast({ title: result.effective_status === 'scheduled' ? 'Campaña programada' : 'Campaña lanzada', description: `${mat?.pending ?? ''} contactos en cola` });
+      router.push(`/app/crm/campanas/${result.id}`);
     } catch (e) {
       const err = e instanceof ApiError ? e : null;
       toast({ title: err?.code === 'TIER_EXCEEDED' ? 'Supera el límite del WABA' : 'No se pudo lanzar', description: e instanceof Error ? e.message : 'Error', variant: 'destructive' });
-    } finally { setBusy(null); }
+    }
   };
 
+  if (c.loadingChannels) return <div role="status" aria-label={ta('cargando')} className="space-y-4 p-6"><Skeleton className="h-16" /><Skeleton className="h-80" /></div>;
+  if (!c.canManage) return <div className="p-6"><EmptyState variante={c.error ? 'error' : 'forbidden'} titulo={ta(c.error ? 'error' : 'sinPermiso')} /></div>;
   return (
     <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="flex items-center gap-3">
@@ -116,6 +118,8 @@ export function CampanaNuevaPage() {
         {STEPS.map((s, i) => <li key={s} className={`text-xs px-3 py-1.5 rounded-full border ${i === step ? 'bg-emerald-600 text-white border-emerald-600' : i < step ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' : 'text-gray-500 border-gray-200 dark:border-gray-700'}`} aria-current={i === step ? 'step' : undefined}>{i + 1}. {s}</li>)}
       </ol>
 
+      <fieldset disabled={!!busy} className="min-w-0 space-y-6">
+      {c.error && <p role="alert" className="rounded-lg bg-danger-subtle p-3 text-sm text-danger-text">{ta('errorCompositor')}</p>}
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader><CardTitle className="text-gray-900 dark:text-gray-100 text-base">{STEPS[step]}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
@@ -132,7 +136,7 @@ export function CampanaNuevaPage() {
               {c.preview && c.preview.missing.length > 0 && <p className="text-xs text-amber-700 dark:text-amber-400">Variables sin valor por defecto ({c.preview.missing.join(', ')}): escríbelas arriba; se aplicarán a todos los contactos.</p>}
             </div>
           )}
-          {step === 1 && <AudienceStep value={audience} onChange={(v) => { setAudience(v); setMat(null); }} />}
+          {step === 1 && <AudienceStep value={audience} onChange={setAudience} />}
           {step === 2 && <ScheduleStep mode={scheduleMode} onMode={setScheduleMode} local={scheduleLocal} onLocal={setScheduleLocal} error={schedule.error} throttle={throttle} onThrottle={setThrottle} disabled={!!busy} />}
           {step === 3 && (
             <div className="space-y-3 text-sm">
@@ -144,7 +148,7 @@ export function CampanaNuevaPage() {
                 <dt className="text-gray-500">Programación</dt><dd>{scheduledAt ? formatDateTime(scheduledAt) : schedule.error ? tp(schedule.error) : tp('ahora')} · {throttle} msg/s · {tp('legal')}</dd>
               </dl>
               <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2">
-                <div className="flex items-center justify-between"><p className="font-medium">Audiencia calculada</p><Button type="button" size="sm" variant="outline" onClick={() => void materialize()} disabled={!!busy}>{busy === 'mat' ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}{mat ? 'Recalcular' : 'Calcular audiencia'}</Button></div>
+                <div className="flex flex-wrap items-center justify-between gap-2"><p className="font-medium">Audiencia calculada</p><Button type="button" size="sm" variant="outline" onClick={() => void materialize()} disabled={!!busy || !!schedule.error}>{busy === 'mat' ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}{mat ? 'Recalcular' : 'Calcular audiencia'}</Button></div>
                 {mat ? (
                   <div className="text-xs space-y-1">
                     <p><strong className="text-emerald-700 dark:text-emerald-400">{mat.pending} pendientes</strong> · {mat.skipped} excluidos de {mat.total}{mat.estimated_cost !== null ? ` · costo estimado ≈ $${mat.estimated_cost.toFixed(4)} USD` : ''}</p>
@@ -153,6 +157,10 @@ export function CampanaNuevaPage() {
                   </div>
                 ) : <p className="text-xs text-gray-500">Calcula la audiencia para ver pendientes, exclusiones y costo antes de lanzar.</p>}
               </div>
+              {draft.saved && <CampaignCompliancePanel key={draft.saved.id} campaignId={draft.saved.id}
+                expectedUpdatedAt={draft.saved.updated_at} onChanged={draft.actualizarRne}
+                refreshKey={draft.calculationKey} disabled={!mat}
+                onAllowed={setAllowed} onUploadingChange={setRneBusy} />}
               {marketing && <label className="flex items-center gap-2 text-xs font-medium text-amber-800 dark:text-amber-300"><Checkbox checked={optin} onCheckedChange={(v) => setOptin(v === true)} />He verificado que la audiencia dio su consentimiento (opt-in) para marketing (Habeas Data)</label>}
             </div>
           )}
@@ -164,9 +172,15 @@ export function CampanaNuevaPage() {
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => void launch(true)} disabled={!!busy || !step0ok || !!schedule.error}>Guardar borrador</Button>
           {step < 3 ? <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setStep(step + 1)} disabled={!!busy || (step === 0 && !step0ok) || (step === 1 && !step1ok) || (step === 2 && !!schedule.error)}>Continuar<ArrowRight className="h-4 w-4 ml-2" /></Button>
-            : <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => void launch()} disabled={!!busy || !!schedule.error || !mat || mat.pending === 0 || (marketing && !optin)}>{busy === 'launch' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Rocket className="h-4 w-4 mr-2" />}{scheduledAt ? 'Programar' : 'Lanzar ahora'}</Button>}
+            : <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => void launch()} disabled={!!busy || !!schedule.error || !mat || !allowed || mat.pending === 0 || (marketing && !optin)}>{busy === 'launch' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Rocket className="h-4 w-4 mr-2" />}{scheduledAt ? 'Programar' : 'Lanzar ahora'}</Button>}
         </div>
       </div>
+      </fieldset>
     </div>
   );
+}
+
+export function CampanaNuevaPage() {
+  const { organization } = useOrganization();
+  return <AsistenteCampana key={organization?.id ?? 'sin-organizacion'} />;
 }

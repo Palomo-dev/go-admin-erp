@@ -61,6 +61,17 @@ describe('updateCampaign · materialized_at', () => {
     expect(sameAudience({ source: 'stage', stage_ids: ['s1'] }, { source: 'segment', segment_id: 's1' })).toBe(false);
   });
 
+  it('compara únicamente los campos activos de cada origen y conserva las diferencias de pipeline y destinatarios', () => {
+    expect(sameAudience({ source: 'stage', pipeline_id: 'p1', stage_ids: ['s2', 's1'], customer_ids: ['inactivo'] },
+      { source: 'stage', pipeline_id: 'p1', stage_ids: ['s1', 's2'] })).toBe(true);
+    expect(sameAudience({ source: 'stage', pipeline_id: 'p1', stage_ids: ['s1'] },
+      { source: 'stage', pipeline_id: 'p2', stage_ids: ['s1'] })).toBe(false);
+    expect(sameAudience({ source: 'manual', customer_ids: ['a'], segment_id: 'inactivo', pipeline_id: 'inactivo' },
+      { source: 'manual', customer_ids: ['a'] })).toBe(true);
+    expect(sameAudience({ source: 'manual', customer_ids: ['a'], opportunity_ids: ['o1'] },
+      { source: 'manual', customer_ids: ['a'], opportunity_ids: ['o2'] })).toBe(false);
+  });
+
   // F-13 (tester r2): la ventana de 24 h se calcula POR CANAL y el proveedor
   // (QR o no) sale del canal; cambiar channel_id lanzaba la campaña con
   // contactos calculados contra OTRO canal (3 pending → 3 skipped:window_required).

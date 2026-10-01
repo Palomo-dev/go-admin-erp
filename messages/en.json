@@ -4887,8 +4887,13 @@
         "estimacion": "Up to {n} per minute · 1,000 contacts in at least {minutos} min, before pauses and exclusions.",
         "limites": "Actual speed depends on the provider, credits and contact rules. Scheduling does not guarantee delivery time.",
         "legal": "Legal contact hours are always enforced",
-        "legalDetalle": "Law 2300, holidays, the recipient’s time zone and the weekly limit apply. The organization’s configured window can only narrow the allowed hours."
-      }
+        "legalDetalle": "Law 2300, holidays, the recipient’s time zone and the weekly limit apply. The organization’s configured window can only narrow the allowed hours.",
+        "cumplimientoPendiente": "Verify RNE and the data policy before activating."
+      },
+      "cargando": "Loading campaign wizard",
+      "error": "We could not load the channels",
+      "sinPermiso": "You do not have permission to manage campaigns",
+      "errorCompositor": "We could not prepare the message. Check the channel and template before continuing."
     }
   },
   "posCustomerDisplay": {

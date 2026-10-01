@@ -282,17 +282,30 @@ export async function buildRuntimeConfig(
   // Nombre del cliente y de la organización.
   // F-NEW-8: estas tres lecturas descartaban `error`. Ahora se comprueba y se
   // propaga con el mensaje real de la base (nunca un fallo silencioso).
+  // GO-1510: se obtienen también company_name y metadata.importacion para
+  // las variables {{negocio}} y {{origen_dato}}.
   let customerName: string | null = null;
+  let companyName: string | null = null;
+  let dataSource: string | null = null;
   if (customerId) {
     const custRes = await supabase
       .from('customers')
-      .select('first_name, full_name, company_name')
+      .select('first_name, full_name, company_name, metadata')
       .eq('id', customerId)
       .eq('organization_id', orgId)
       .maybeSingle();
     if (custRes.error) throw new AgentRuntimeError('db_error', `customers: ${custRes.error.message}`);
-    const c = custRes.data as { first_name?: string; full_name?: string; company_name?: string } | null;
+    const c = custRes.data as { first_name?: string; full_name?: string; company_name?: string; metadata?: { importacion?: { verificacion?: string } } } | null;
     customerName = c?.first_name || c?.full_name || c?.company_name || null;
+    companyName = c?.company_name || null;
+    
+    // GO-1510: Resuelve {{origen_dato}} según metadata.importacion.verificacion
+    const verificacion = c?.metadata?.importacion?.verificacion;
+    if (verificacion?.includes('V1')) {
+      dataSource = 'es el número que tu negocio publica en su página web';
+    } else if (verificacion?.includes('V2')) {
+      dataSource = 'aparece como teléfono de tu negocio en el mapa abierto OpenStreetMap';
+    }
   }
 
   const orgRes = await supabase.from('organizations').select('name').eq('id', orgId).maybeSingle();
@@ -365,6 +378,8 @@ export async function buildRuntimeConfig(
     customerName,
     recordingEnabled,
     consentMessage,
+    companyName,
+    dataSource,
   });
 
   return {
@@ -527,6 +542,10 @@ function describeGuardrails(value: Record<string, unknown> | null | undefined): 
  * Saludo real de la llamada SALIENTE (antes era «gracias por llamar», de entrante).
  * Siempre lleva la identificación como IA delante: si `first_message` no la incluye,
  * se antepone. Nunca se omite (D9).
+ * 
+ * GO-1510: Agregadas las variables {{negocio}} (company_name del cliente) y
+ * {{origen_dato}} (de donde salió el teléfono: web propia o OpenStreetMap).
+ * Ya NO se antepone "Hola {cliente}" si el first_message ya empieza con un saludo.
  */
 export function buildGreeting(p: {
   firstMessage: string | null;
@@ -535,19 +554,35 @@ export function buildGreeting(p: {
   customerName: string | null;
   recordingEnabled: boolean;
   consentMessage: string;
+  /** GO-1510: nombre del negocio del cliente (company_name) */
+  companyName?: string | null;
+  /** GO-1510: origen del dato (V1: web, V2: OSM) */
+  dataSource?: string | null;
 }): string {
   const base = (p.firstMessage || '').trim();
   const rendered = base
     .replace(/\{\{\s*cliente\s*\}\}/gi, p.customerName || '')
     .replace(/\{\{\s*org(anizacion)?\s*\}\}/gi, p.organizationName)
+    .replace(/\{\{\s*negocio\s*\}\}/gi, p.companyName || p.customerName || '')
+    .replace(/\{\{\s*origen_dato\s*\}\}/gi, p.dataSource || '')
     .trim();
 
   const disclosureIncluded = /asistente virtual|inteligencia artificial/i.test(rendered);
-  const saludo = p.customerName ? `Hola ${p.customerName}.` : 'Hola, buenos días.';
+  
+  // GO-1510: Solo antepone el saludo si el first_message NO empieza con uno
+  const startsWithGreeting = /^(hola|buenos\s+d[ií]as|buenas\s+tardes|buenas\s+noches)/i.test(rendered);
+  const saludo = !startsWithGreeting && p.customerName ? `Hola ${p.customerName}.` : '';
 
-  const pieces = [saludo];
+  const pieces: string[] = [];
+  if (saludo) pieces.push(saludo);
   if (!disclosureIncluded) pieces.push(p.identityDisclosure);
   pieces.push(rendered || `Le llamo de ${p.organizationName}. ¿Tiene un momento?`);
+  
+  // GO-1510: Después del first_message va el aviso de grabación (voice_consent_message)
+  if (p.recordingEnabled && p.consentMessage) {
+    pieces.push(p.consentMessage);
+  }
+  
   return pieces.join(' ').replace(/\s+/g, ' ').trim();
 }
 

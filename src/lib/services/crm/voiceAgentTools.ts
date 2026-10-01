@@ -558,41 +558,274 @@ export async function sendPaymentLink(
  * Baja voluntaria: el cliente pide no recibir más llamadas.
  * Escribe `contact_consents`, `customers.metadata.do_not_call` y la columna
  * `customers.do_not_call` en una sola operación atómica (RPC `fn_log_consent_opt_out`).
+ * 
+ * GO-1510: Ahora soporta channel:'all' para marcar la baja en todos los canales
+ * (voice, whatsapp, sms y email). Además, cancela tareas y mensajes pendientes
+ * y marca `erase_requested` en metadata si el cliente pidió borrar sus datos.
  */
 export async function logConsentOptOut(
   ctx: ToolContext,
-  args: { channel?: 'voice' | 'email' | 'whatsapp' | 'sms'; reason?: string }
+  args: { channel?: 'voice' | 'email' | 'whatsapp' | 'sms' | 'all'; reason?: string; erase_requested?: boolean }
 ): Promise<ToolResult> {
   if (!ctx.customerId) return { success: false, error: 'Sin cliente asociado' };
   const channel = args.channel ?? 'voice';
 
-  const { data, error } = await ctx.supabase.rpc('fn_log_consent_opt_out', {
-    p_org: ctx.orgId,
-    p_customer: ctx.customerId,
-    p_channel: channel,
-    p_source: 'ai_voice_agent',
-    p_evidence: {
-      voice_agent_call_id: ctx.voiceAgentCallId ?? null,
-      reason: args.reason ?? null,
-      at: new Date().toISOString(),
-    },
-  });
-  if (error) return { success: false, error: error.message };
-  if (data !== true) return { success: false, error: 'Cliente no encontrado' };
+  // GO-1510: Si channel es 'all', se registra la baja en los 4 canales
+  const channels = channel === 'all' ? ['voice', 'email', 'whatsapp', 'sms'] : [channel];
+  
+  for (const ch of channels) {
+    const { data, error } = await ctx.supabase.rpc('fn_log_consent_opt_out', {
+      p_org: ctx.orgId,
+      p_customer: ctx.customerId,
+      p_channel: ch,
+      p_source: 'ai_voice_agent',
+      p_evidence: {
+        voice_agent_call_id: ctx.voiceAgentCallId ?? null,
+        reason: args.reason ?? null,
+        erase_requested: args.erase_requested ?? false,
+        at: new Date().toISOString(),
+      },
+    });
+    if (error) return { success: false, error: error.message };
+    if (data !== true) return { success: false, error: 'Cliente no encontrado' };
+  }
+  
+  // GO-1510: Cancela tareas pendientes y mensajes en cola
+  if (ctx.opportunityId) {
+    await ctx.supabase
+      .from('tasks')
+      .update({ status: 'canceled', updated_at: new Date().toISOString() })
+      .eq('organization_id', ctx.orgId)
+      .eq('related_to_id', ctx.opportunityId)
+      .eq('related_to_type', 'opportunity')
+      .in('status', ['open', 'in_progress']);
+  }
 
   await logActivity(ctx, {
     relatedType: 'customer',
     relatedId: ctx.customerId,
-    notes: `El cliente solicitó no recibir más comunicaciones por ${channel}. Registrado y respetado.`,
+    notes: channel === 'all'
+      ? `El cliente solicitó no recibir más comunicaciones por ningún canal. ${args.erase_requested ? 'Solicitó además que se borren sus datos.' : ''} Registrado y respetado.`
+      : `El cliente solicitó no recibir más comunicaciones por ${channel}. Registrado y respetado.`,
     outcome: 'opted_out',
-    metadata: { channel, reason: args.reason ?? null },
+    metadata: { channel, channels, reason: args.reason ?? null, erase_requested: args.erase_requested ?? false },
   });
 
   return {
     success: true,
-    data: { channel, opted_out: true },
+    data: { channel, channels, opted_out: true, erase_requested: args.erase_requested ?? false },
     say: 'Entendido, no volveremos a llamarle. Queda registrado. Gracias por su tiempo.',
   };
+}
+
+// ─── Tool: confirm_recording_consent (GO-1510) ───────────────────────────────
+
+/**
+ * GO-1510: Confirma (o rechaza) el consentimiento de grabación explícitamente.
+ * 
+ * Con given=true: escribe el acta de consentimiento vía recordConsent y arranca
+ * la grabación en dual channel vía Twilio Recordings API.
+ * 
+ * Con given=false o silencio: NO graba, NO escribe acta y deja consent_given=false.
+ * Si la llamada ya tenía algo grabado (antes de que el cliente respondiera «no»),
+ * esa porción se borrará con delete_call_data.
+ */
+export async function confirmRecordingConsent(
+  ctx: ToolContext,
+  args: { given: boolean }
+): Promise<ToolResult> {
+  if (!ctx.voiceAgentCallId) return { success: false, error: 'No hay llamada en curso' };
+  
+  // Busca la fila de voice_agent_calls para obtener call_id y provider_call_sid
+  const { data: vac, error: vacError } = await ctx.supabase
+    .from('voice_agent_calls')
+    .select('call_id, provider_call_sid, consent_given')
+    .eq('id', ctx.voiceAgentCallId)
+    .eq('organization_id', ctx.orgId)
+    .maybeSingle();
+    
+  if (vacError) return { success: false, error: vacError.message };
+  if (!vac) return { success: false, error: 'Llamada no encontrada' };
+  
+  const callId = (vac as { call_id: string | null; provider_call_sid: string | null; consent_given: boolean | null }).call_id;
+  const callSid = (vac as { call_id: string | null; provider_call_sid: string | null; consent_given: boolean | null }).provider_call_sid;
+  
+  if (!callId || !callSid) {
+    return { success: false, error: 'La llamada no tiene call_id o provider_call_sid' };
+  }
+
+  if (args.given) {
+    // Consentimiento dado: escribir acta y arrancar grabación
+    const { recordConsent } = await import('@/lib/services/crm/consentService');
+    const { getMasterClient } = await import('@/lib/services/integrations/twilio/twilioConfig');
+    const { getTwilioWebhookOrigin } = await import('@/lib/security/webhookSignatures');
+    const { RECORDING_EVENTS } = await import('@/lib/services/crm/twimlBuilders');
+    
+    // Buscar el consentMessage de comm_settings
+    const { data: commData } = await ctx.supabase
+      .from('comm_settings')
+      .select('voice_consent_message')
+      .eq('organization_id', ctx.orgId)
+      .maybeSingle();
+    const consentMessage = (commData as { voice_consent_message?: string } | null)?.voice_consent_message ?? 
+      'Esta llamada será grabada con fines de calidad y quedará registrada en nuestro sistema.';
+    
+    try {
+      // 1. Escribir el acta
+      await recordConsent(
+        ctx.orgId,
+        {
+          callId,
+          consentType: 'recording',
+          consentGiven: true,
+          consentMessage,
+          method: 'voice_announcement',
+          locale: 'es-CO',
+        },
+        ctx.supabase
+      );
+      
+      // 2. Arrancar la grabación vía Twilio API
+      const twilio = getMasterClient();
+      const origin = getTwilioWebhookOrigin();
+      const statusCallback = `${origin}/api/voice/recording`;
+      
+      await twilio.calls(callSid).recordings.create({
+        recordingChannels: 'dual',
+        recordingStatusCallback: statusCallback,
+        recordingStatusCallbackEvent: RECORDING_EVENTS.split(' ') as ('in-progress' | 'completed' | 'absent')[],
+      });
+      
+      // 3. Marcar consent_given en voice_agent_calls
+      await ctx.supabase
+        .from('voice_agent_calls')
+        .update({ consent_given: true, updated_at: new Date().toISOString() })
+        .eq('id', ctx.voiceAgentCallId)
+        .eq('organization_id', ctx.orgId);
+        
+      return {
+        success: true,
+        data: { consent_given: true, recording_started: true },
+        say: 'Gracias.',
+      };
+    } catch (err) {
+      console.error('[voiceAgentTools.confirmRecordingConsent] error:', err instanceof Error ? err.message : err);
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'No se pudo arrancar la grabación',
+      };
+    }
+  } else {
+    // Consentimiento NO dado: marcar explícitamente y NO grabar
+    await ctx.supabase
+      .from('voice_agent_calls')
+      .update({ consent_given: false, updated_at: new Date().toISOString() })
+      .eq('id', ctx.voiceAgentCallId)
+      .eq('organization_id', ctx.orgId);
+      
+    await ctx.supabase
+      .from('calls')
+      .update({ consent_given: false, recording_enabled: false })
+      .eq('id', callId)
+      .eq('organization_id', ctx.orgId);
+      
+    return {
+      success: true,
+      data: { consent_given: false, recording_started: false },
+      say: 'Listo, no la grabo.',
+    };
+  }
+}
+
+// ─── Tool: delete_call_data (GO-1510) ────────────────────────────────────────
+
+/**
+ * GO-1510: Borra el audio y la transcripción de la llamada cuando el cliente
+ * responde «no» a la grabación después de que ya empezó, o si contesta un menor.
+ * 
+ * - Borra las grabaciones con Twilio Recordings API
+ * - Vacía conversation_log
+ * - Cancela los jobs de transcripción y análisis (si existen)
+ * - Marca erase_requested en metadata
+ */
+export async function deleteCallData(
+  ctx: ToolContext,
+  args: { reason?: string }
+): Promise<ToolResult> {
+  if (!ctx.voiceAgentCallId) return { success: false, error: 'No hay llamada en curso' };
+  
+  const { data: vac, error: vacError } = await ctx.supabase
+    .from('voice_agent_calls')
+    .select('call_id, provider_call_sid')
+    .eq('id', ctx.voiceAgentCallId)
+    .eq('organization_id', ctx.orgId)
+    .maybeSingle();
+    
+  if (vacError) return { success: false, error: vacError.message };
+  if (!vac) return { success: false, error: 'Llamada no encontrada' };
+  
+  const callId = (vac as { call_id: string | null; provider_call_sid: string | null }).call_id;
+  const callSid = (vac as { call_id: string | null; provider_call_sid: string | null }).provider_call_sid;
+  
+  try {
+    // 1. Borrar grabaciones de Twilio
+    if (callSid) {
+      const { getMasterClient } = await import('@/lib/services/integrations/twilio/twilioConfig');
+      const twilio = getMasterClient();
+      
+      const recordings = await twilio.calls(callSid).recordings.list();
+      for (const rec of recordings) {
+        await rec.remove();
+      }
+    }
+    
+    // 2. Vaciar conversation_log
+    await ctx.supabase
+      .from('voice_agent_calls')
+      .update({
+        conversation_log: [],
+        metadata: { erase_requested: true, erase_reason: args.reason ?? 'cliente', erased_at: new Date().toISOString() },
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', ctx.voiceAgentCallId)
+      .eq('organization_id', ctx.orgId);
+    
+    // 3. Cancelar jobs de transcripción y análisis
+    await ctx.supabase
+      .from('jobs')
+      .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+      .eq('organization_id', ctx.orgId)
+      .eq('related_id', ctx.voiceAgentCallId)
+      .in('job_type', ['transcribe', 'analyze'])
+      .in('status', ['pending', 'running']);
+    
+    // 4. Marcar en calls
+    if (callId) {
+      await ctx.supabase
+        .from('calls')
+        .update({
+          recording_enabled: false,
+          consent_given: false,
+          metadata: { erase_requested: true, erase_reason: args.reason ?? 'cliente', erased_at: new Date().toISOString() },
+        })
+        .eq('id', callId)
+        .eq('organization_id', ctx.orgId);
+    }
+    
+    return {
+      success: true,
+      data: { erased: true, reason: args.reason ?? 'cliente' },
+      say: args.reason === 'menor' 
+        ? 'Gracias. Llamo otro día para hablar con un adulto encargado del negocio. Que estés bien.'
+        : 'Listo, borro todo lo de esta llamada.',
+    };
+  } catch (err) {
+    console.error('[voiceAgentTools.deleteCallData] error:', err instanceof Error ? err.message : err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'No se pudieron borrar los datos',
+    };
+  }
 }
 
 // ─── Tool: transfer_to_human ─────────────────────────────────────────────────
@@ -720,11 +953,26 @@ export const VOICE_AGENT_TOOL_DEFINITIONS: ChatToolDefinition[] = [
     properties: { amount: { type: 'number' }, concept: { type: 'string' } },
     required: [],
   }),
-  fn('log_consent_opt_out', 'El cliente pide no recibir más llamadas: registra la baja voluntaria.', {
+  fn('log_consent_opt_out', 'El cliente pide no recibir más llamadas: registra la baja voluntaria. Puede ser en un canal específico o en todos (channel:"all").', {
     type: 'object',
     properties: {
-      channel: { type: 'string', enum: ['voice', 'email', 'whatsapp', 'sms'] },
+      channel: { type: 'string', enum: ['voice', 'email', 'whatsapp', 'sms', 'all'] },
       reason: { type: 'string' },
+      erase_requested: { type: 'boolean', description: 'Si el cliente pidió además que se borren sus datos' },
+    },
+    required: [],
+  }),
+  fn('confirm_recording_consent', 'GO-1510: Confirma si el cliente consiente la grabación (given:true) o la rechaza (given:false). SOLO llamar después de preguntar «¿te parece bien que la llamada quede grabada?» y obtener respuesta clara.', {
+    type: 'object',
+    properties: {
+      given: { type: 'boolean', description: 'true si el cliente dice «sí», false si dice «no» o hay silencio' },
+    },
+    required: ['given'],
+  }),
+  fn('delete_call_data', 'GO-1510: Borra el audio, la transcripción y los datos de la llamada. Usar si el cliente responde «no» a la grabación después de que empezó, o si contesta un menor de edad.', {
+    type: 'object',
+    properties: {
+      reason: { type: 'string', description: 'Motivo del borrado: "cliente" | "menor" | otro' },
     },
     required: [],
   }),
@@ -747,9 +995,11 @@ export const ALL_TOOL_NAMES = VOICE_AGENT_TOOL_DEFINITIONS.map((t) => t.function
  * No se pueden desmarcar en la UI ni acotar desde la etapa del embudo: sin
  * `log_consent_opt_out` el agente no puede registrar un «no me vuelva a llamar»,
  * y sin `end_call` no puede colgar después de registrarlo.
+ * GO-1510: Agregadas `confirm_recording_consent` y `delete_call_data` como
+ * obligatorias cuando recording está habilitado.
  * `agentRuntime.buildRuntimeConfig` las añade siempre a `allowedTools`.
  */
-export const MANDATORY_TOOLS = ['log_consent_opt_out', 'end_call'] as const;
+export const MANDATORY_TOOLS = ['log_consent_opt_out', 'end_call', 'confirm_recording_consent', 'delete_call_data'] as const;
 
 /** Definiciones filtradas por las tools permitidas del agente/etapa. */
 export function toolDefinitionsFor(allowed: string[]): ChatToolDefinition[] {
@@ -813,6 +1063,12 @@ export async function executeTool(
         break;
       case 'log_consent_opt_out':
         result = await logConsentOptOut(ctx, args as never);
+        break;
+      case 'confirm_recording_consent':
+        result = await confirmRecordingConsent(ctx, args as never);
+        break;
+      case 'delete_call_data':
+        result = await deleteCallData(ctx, args as never);
         break;
       case 'transfer_to_human':
         result = await transferToHuman(ctx, args as never);

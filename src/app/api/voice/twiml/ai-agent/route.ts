@@ -272,47 +272,22 @@ export async function POST(request: Request) {
     return new NextResponse(sayHangup('El asistente virtual no está configurado en este momento. Un asesor le contactará.'), { status: 200, headers: XML_HEADERS });
   }
 
-  // 1ª pasada (A-2): SOLO el aviso. No se escribe acta, no se graba y no se
-  // abre todavía el ConversationRelay. Quien cuelgue durante el aviso no deja
-  // un consentimiento registrado que nunca existió.
-  if (recordingEnabled && !announced && config.consentMessage) {
-    const back = buildCallbackUrl(origin, '/api/voice/twiml/ai-agent', { agentId, callId: callId || undefined, ct: signConsentToken(callSid ?? '') });
-    return new NextResponse(
-      `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="${CONSENT_VOICE}" language="${CONSENT_LANGUAGE}">${escapeXml(config.consentMessage)}</Say>
-  <Redirect method="POST">${escapeXml(back)}</Redirect>
-</Response>`,
-      { status: 200, headers: XML_HEADERS }
-    );
-  }
+  // GO-1510: El aviso de grabación ya NO va en la primera pasada como <Say>
+  // separado. El ConversationRelay arranca directo con el greeting (que incluye
+  // first_message + voice_consent_message), y el consentimiento se confirma
+  // explícitamente con la herramienta confirm_recording_consent. Así se cumple
+  // el orden legal: saludo → aviso → pregunta «¿te parece bien?» → respuesta.
+  // Quien cuelgue antes de confirmar no deja acta de consentimiento, y quien
+  // responda «no» activa delete_call_data (borra audio + transcripción).
 
   /** Acta escrita en ESTA petición: si algo falla después, se retira (N-2). */
   let consentWritten = false;
   try {
-    // 2ª pasada (o única, sin grabación). Acta PRIMERO: sin acta no hay
-    // `<Start><Recording>` y la fila dice `recording_enabled=false`.
-    if (recordingEnabled && consentCallId) {
-      try {
-        await recordConsent(
-          agentOrgId,
-          {
-            callId: consentCallId,
-            consentType: 'recording',
-            consentGiven: true,
-            consentMessage: config.consentMessage,
-            method: 'voice_announcement',
-            locale: CONSENT_LANGUAGE,
-          },
-          supabase
-        );
-        consentWritten = true;
-      } catch (err) {
-        console.error('[AI Agent TwiML] sin acta no se graba:', err instanceof Error ? err.message : err, { org: agentOrgId });
-        recordingEnabled = false;
-        await updateCall(consentCallId, agentOrgId, { recording_enabled: false }, supabase);
-      }
-    }
+    // GO-1510: Ya NO se escribe el acta aquí. El acta la escribe la herramienta
+    // confirm_recording_consent cuando el cliente responda «sí». La grabación
+    // tampoco arranca ahora: arrancará vía Twilio Recordings API cuando el
+    // agente confirme el «sí». Si el cliente dice «no» o cuelga sin confirmar,
+    // NO hay acta, NO hay grabación.
 
     // D5 (idempotencia): solo se marca el inicio la primera vez. Si ya hay
     // `provider_call_sid` de OTRA llamada, este POST no toca la fila.
@@ -323,8 +298,8 @@ export async function POST(request: Request) {
       };
       if (!row.started_at) patch.started_at = new Date().toISOString();
       if (callSid && !row.provider_call_sid) patch.provider_call_sid = callSid;
-      // Solo con acta escrita (arriba): el aviso YA sonó y el token lo acredita.
-      if (recordingEnabled) patch.consent_given = true;
+      // GO-1510: consent_given se marca SOLO cuando la herramienta
+      // confirm_recording_consent lo confirma, no al contestar.
 
       const { error: updError } = await supabase
         .from('voice_agent_calls')
@@ -352,19 +327,12 @@ export async function POST(request: Request) {
     const wsUrl = `${wsHost}/conversation-relay?st=${encodeURIComponent(token)}`;
     const language = twilioLanguage(config.agent.language);
 
-    // C-F6-09: el aviso de grabación es OBLIGATORIO y no depende del agente,
-    // pero ya viajó en su PROPIA pasada (arriba). Repetirlo aquí se lo haría
-    // oír dos veces al cliente, así que este documento no lo lleva.
-    //
-    // La grabación arranca AQUÍ, con el acta ya escrita y el aviso ya emitido,
-    // por la vía documentada para ConversationRelay: `<Start><Recording>` antes
-    // del `<Connect>`. Sin acta (`recordingEnabled` cayó a false) no se emite.
-    const startRecording = recordingEnabled
-      ? `
-  <Start>
-    <Recording channels="dual" recordingStatusCallback="${escapeXml(buildCallbackUrl(origin, '/api/voice/recording'))}" recordingStatusCallbackEvent="${RECORDING_EVENTS}"/>
-  </Start>`
-      : '';
+    // C-F6-09 · GO-1510: la grabación ya NO arranca aquí con `<Start><Recording>`.
+    // El agente pregunta «¿te parece bien que la llamada quede grabada?» y,
+    // cuando el cliente responda «sí», la herramienta confirm_recording_consent
+    // arrancará la grabación vía Twilio Recordings API (calls.recordings.create).
+    // Así se graba solo con un «sí» explícito. Con un «no» o silencio, la
+    // herramienta delete_call_data borra lo que ya se grabó.
 
     const relayAttrs =
       attr('url', wsUrl) +
@@ -393,7 +361,7 @@ export async function POST(request: Request) {
       : '';
 
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>${startRecording}
+<Response>
   <Connect action="${escapeXml(`${origin}/api/voice/ai-agent/status?callId=${encodeURIComponent(callId)}&handoff=1`)}">
     <ConversationRelay${relayAttrs}
     >${fallbackNodes}

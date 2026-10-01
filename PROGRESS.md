@@ -3691,3 +3691,20 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - El perfil guarda esos cinco interruptores en allowed_types del canal email, sin borrar otros tipos que ya estuvieran. La campana marca leído y descartado solo en member_notices.
 - El cron /api/cron/avisos-miembro corre cada 5 minutos en Vercel y en pg_cron. Migración 20261001180000 aplicada por MCP, con rollback. El archivo coincide con lo aplicado.
 - Jest de las reglas y de guardrails: 197 en verde. npx tsc --noEmit -p tsconfig.json en verde.
+
+
+### Fase: Avisos al miembro — cierre, seguimiento, caja y resúmenes — 2026-10-01
+- Rama cursor/avisos-cierre-stock-e475.
+- Cinco avisos más sobre member_notices, la campana y el mismo correo. No hay cola nueva.
+- Oportunidad ganada o perdida: solo al vendedor, no a quien cierra. Si el mismo update pasa el status a won o lost, no sale también el correo de etapa. El motivo usa loss_reason. El importe solo si hay monto y moneda, con el código, sin símbolo.
+- Seguimiento el día de next_contact_at, al vendedor. Si ese día también vence o ya pasó el cierre esperado, un solo correo cuando los dos interruptores están prendidos. La campana conserva las dos filas. Si solo uno está permitido, sale ese y el otro queda omitido.
+- Caja cerrada con diferencia distinta de cero, a quien puede ver el esperado (pos.cajas.ver_esperado, el mismo atajo de administración que fn_caja_puede). Quien cierra no se avisa. Con cierre ciego el correo no lleva el monto. Cierre en cero o una apertura no escriben.
+- Cartera vencida: un resumen por miembro con finance.view, desde las 07:00 en la zona de la organización. Conteos y saldos, no un correo por factura. La moneda sale de la organización.
+- Stock: la variante avisa por su nombre (el de products.name). El padre con hijas vivas no. El producto simple sí. Fuera: eliminados, variante de un padre eliminado, track_stock en falso y la variante que nunca tuvo fila de stock. Bajo el mínimo, un correo al cruzar y quedar por encima de cero. En cero, solo el resumen de la mañana, uno por miembro, no uno por producto.
+- Caja y stock bajo nacen en triggers. El seguimiento y los resúmenes los arma el cron. La primera pasada después de desplegar este código, si ya pasaron las 07:00 locales, manda el resumen de hoy. No repone cierres ni contactos viejos.
+- Una lista guardada con los ocho eventos anteriores y ninguno nuevo deja prendidos los grupos nuevos. Una lista parcial no.
+- Migraciones aplicadas por MCP, con rollback de la serie: 20261001211353, 20261001211551, 20261001211814, 20261001211901 y 20261001211941. El md5 del archivo coincide con schema_migrations. La segunda quedó registrada como avisos_miembro_cierre_caja y el archivo es avisos_miembro_cierre.sql: el cuerpo es el de la oportunidad.
+- Jest de las reglas y de guardrails: 201 en verde. eslint de los archivos tocados, sin avisos. tsc no reporta esos archivos.
+
+- Corrección de la misma fase: npx tsc --noEmit -p tsconfig.json terminó en verde, 0 errores.
+- npx next build terminó en verde.

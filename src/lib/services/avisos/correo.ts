@@ -70,6 +70,58 @@ export function textoPlanoAviso(contenido: ContenidoCorreoAviso): string {
   return `${contenido.titulo}\n\n${contenido.cuerpo}\n\nVer en GO Admin: ${contenido.enlace}\n\nPuede silenciar estos avisos en su perfil.`;
 }
 
+export function textoContacto(nombre: string): { titulo: string; cuerpo: string } {
+  const limpio = nombre.trim() || 'Sin nombre';
+  return { titulo: 'Hoy toca contactar', cuerpo: `«${limpio}» tiene seguimiento hoy.` };
+}
+
+/** Un solo correo cuando el seguimiento y el cierre caen el mismo día. */
+export function unirSeguimientoYCierre(cuerpoContacto: string, clase: 'vence' | 'atrasada'): string {
+  const base = cuerpoContacto.replace(/\.$/, '');
+  if (clase === 'vence') return `${base} y también llega hoy a su fecha de cierre.`;
+  return `${base} y su fecha de cierre ya pasó.`;
+}
+
+export function textoCartera(entrada: {
+  porCobrar: number;
+  saldoCobrar: string;
+  porPagar: number;
+  saldoPagar: string;
+}): { titulo: string; cuerpo: string } | null {
+  if (entrada.porCobrar <= 0 && entrada.porPagar <= 0) return null;
+  return {
+    titulo: 'Cartera vencida de hoy',
+    cuerpo: `Hay ${entrada.porCobrar} cuentas por cobrar vencidas (${entrada.saldoCobrar}) y ${entrada.porPagar} por pagar (${entrada.saldoPagar}).`,
+  };
+}
+
+/** Hasta 8 nombres en total. El resto se cuenta, no se enumera. */
+export function textoInventarioCero(grupos: { sucursal: string; nombres: string[] }[]): { titulo: string; cuerpo: string } | null {
+  const total = grupos.reduce((suma, grupo) => suma + grupo.nombres.length, 0);
+  if (total === 0) return null;
+  const tope = 8;
+  const partes: string[] = [];
+  let mostrados = 0;
+  let ocultos = 0;
+  for (const grupo of grupos) {
+    const cupo = tope - mostrados;
+    if (cupo <= 0) {
+      ocultos += grupo.nombres.length;
+      continue;
+    }
+    const visibles = grupo.nombres.slice(0, cupo);
+    mostrados += visibles.length;
+    const resto = grupo.nombres.length - visibles.length;
+    const lista = visibles.map((nombre) => `«${nombre.trim() || 'Sin nombre'}»`).join(', ');
+    partes.push(`En ${grupo.sucursal}: ${lista}${resto > 0 ? ` y ${resto} más` : ''}.`);
+  }
+  const cierre = ocultos > 0 ? ` Y ${ocultos} más en otras sucursales.` : '';
+  return {
+    titulo: 'Productos en cero',
+    cuerpo: `Hay ${total} productos sin existencias. ${partes.join(' ')}${cierre}`,
+  };
+}
+
 export function copiaVencimiento(evento: string, nombre: string): { titulo: string; cuerpo: string } | null {
   const limpio = nombre.trim() || 'Sin nombre';
   switch (evento) {

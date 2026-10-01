@@ -12,6 +12,7 @@ import { SelectCrm } from '@/components/crm/kit/SelectCrm';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { addPlainDays } from '@/lib/utils/dateDisplay';
 import { PRIORIDADES_TAREA, validarTarea, valoresInicialesTarea, type PrioridadTarea, type ValoresTarea } from './accionesRapidasLogica';
+import { CampoHora } from '@/components/kit/CampoHora';
 
 /**
  * Tarea rápida del CRM (Figma 773:472975, «Tarea»): título, vencimiento en la
@@ -83,7 +84,7 @@ export function TareaRapidaDialog({ abierto, onAbiertoChange, contexto, onGuarda
           <CampoFecha valor={v.fecha} min={hoy} hoy={hoy} onValorChange={(fecha) => cambiar({ fecha })} />
         </FormField>
         <FormField etiqueta={t('hora')} error={err('hora')}>
-          <input type="time" value={v.hora} onChange={(e) => cambiar({ hora: e.target.value })} className={CLASE_CAMPO} />
+          <CampoHora valor={v.hora} onValorChange={(hora) => cambiar({ hora })} />
         </FormField>
         <FormField etiqueta={t('prioridad')}>
           <SelectCrm valor={v.prioridad} onValorChange={(p) => cambiar({ prioridad: p as PrioridadTarea })} opciones={PRIORIDADES_TAREA.map((p) => ({ valor: p, etiqueta: t(`prioridades.${p}`) }))} />

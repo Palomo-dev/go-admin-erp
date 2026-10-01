@@ -4,7 +4,7 @@
  * archivo vuelva por debajo de las 300 líneas; el comportamiento es idéntico,
  * incluido el plegado a 75 octetos sin partir UTF-8 (F9-28).
  */
-/** ICS mínimo RFC 5545 (METHOD:REQUEST). Sin uso hasta que F7 exponga adjuntos. */
+/** ICS mínimo RFC 5545 (METHOD:REQUEST). Viaja adjunto al correo de la reunión. */
 export function buildIcs(e: {
   uid: string;
   title: string;

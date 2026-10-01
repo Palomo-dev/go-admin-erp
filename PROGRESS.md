@@ -3708,3 +3708,9 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 
 - Corrección de la misma fase: npx tsc --noEmit -p tsconfig.json terminó en verde, 0 errores.
 - npx next build terminó en verde.
+
+### Fase: Reunión — correo al cliente y al responsable — 2026-10-01
+- Rama cursor/correo-reunion-e475.
+- Al agendar una reunión, si el cliente tiene correo se le avisa. También se avisa al responsable: el vendedor de la oportunidad, o quien quedó asignado al evento si no hay vendedor. El correo lleva la fecha en la zona de la organización y un archivo de calendario. Si el cliente pidió no recibir correos, a él no se le escribe; el responsable sí. Si el envío falla, la reunión queda agendada.
+- El mismo aviso sale al agendar desde el diálogo y cuando el agente de voz deja la reunión.
+- Jest del texto y de los destinatarios, más el agendado del agente: 8 en verde. npx tsc --noEmit -p tsconfig.json en verde. El build de Next compiló y el proceso murió en su propio chequeo de tipos; el tsc aparte cubre ese chequeo.

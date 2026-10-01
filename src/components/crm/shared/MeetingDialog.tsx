@@ -9,11 +9,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
 import { cn } from '@/utils/Utils';
+import { detalleAvisoReunion } from '@/lib/services/crm/reunionCorreo';
 
 /**
  * MeetingDialog (F9) — agenda una reunión vía POST /api/crm/meetings
  * (calendar_events + activity 'meeting'). Sin inserts desde el cliente (B11).
- * La invitación .ics por email se activa cuando F7 exponga adjuntos.
+ * Si el cliente tiene correo, y el responsable, reciben la invitación.
  */
 export interface MeetingDialogProps {
   open: boolean;
@@ -67,12 +68,12 @@ export function MeetingDialog({ open, onOpenChange, opportunityId, customerId, c
           opportunity_id: opportunityId ?? null,
           customer_id: customerId ?? customer?.id ?? null,
           attendees: customer?.email ? [customer.email] : [],
-          send_invite: false,
+          send_invite: true,
         }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json.success) throw new Error(json.error || `Error ${res.status}`);
-      toast({ title: 'Reunión agendada', description: 'Visible en el timeline y en /app/calendario' });
+      toast({ title: 'Reunión agendada', description: detalleAvisoReunion(json.data?.invite) });
       onCreated?.({ event_id: json.data?.event?.id, activity_id: json.data?.activity_id });
       onOpenChange(false);
     } catch (err) {

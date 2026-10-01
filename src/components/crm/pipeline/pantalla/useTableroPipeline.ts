@@ -1,8 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { EVENTO_CAMBIO_CRM, pedirCrm } from '@/components/crm/acciones/apiCrm';
+import { EVENTO_CAMBIO_CRM, pedirCrm, type DetalleCambioCrm } from '@/components/crm/acciones/apiCrm';
 import { COLUMNA_VACIA, moverEnTablero, unirPagina, type EtapaApi, type OportunidadApi, type ResumenApi, type Tablero } from '@/components/crm/oportunidad/oportunidadLogica';
+import { recargaDeTablero } from './tableroPipelineLogica';
 
 /**
  * Datos del kanban (CRM ola 3B, plan §4.2): la cabecera del tablero
@@ -10,7 +11,8 @@ import { COLUMNA_VACIA, moverEnTablero, unirPagina, type EtapaApi, type Oportuni
  * las tarjetas POR COLUMNA, paginadas (`GET /api/crm/opportunities?stage_id=…`,
  * 20 por página, «Cargar más» por columna): en organizaciones grandes nunca
  * se trae todo. Mover es optimista (`mover`) con reversión (`revertir`).
- * Se refresca con `crm:entity-changed`.
+ * Mover, ganar o perder refresca solo los totales: recargar el tablero
+ * encendía el loader y vaciaba las columnas.
  */
 export const POR_COLUMNA = 20;
 
@@ -29,8 +31,30 @@ export function useTableroPipeline(o: { pipelineId: string | null; query: string
   const snapshots = useRef(new Map<string, Tablero>());
   const tableroRef = useRef(tablero);
   tableroRef.current = tablero;
+  /** Una carga completa invalida el refresco de totales que todavía vaya en vuelo. */
+  const epoca = useRef(0);
+  const cabeceraAbort = useRef<AbortController | null>(null);
 
   const recargar = useCallback(() => setRecarga((n) => n + 1), []);
+
+  /** Totales y KPI, sin apagar las tarjetas que ya se movieron. */
+  const refrescarCabecera = useCallback(async () => {
+    if (!o.pipelineId) return;
+    cabeceraAbort.current?.abort();
+    const control = new AbortController();
+    cabeceraAbort.current = control;
+    const marca = epoca.current;
+    try {
+      const p = new URLSearchParams(o.query);
+      new URLSearchParams(o.periodo).forEach((v, k) => p.set(k, v));
+      const { data } = await pedirCrm<CabeceraTablero>(`/api/crm/pipelines/${o.pipelineId}/board?${p.toString()}`, { signal: control.signal });
+      if (control.signal.aborted || marca !== epoca.current || !data) return;
+      setCabecera(data);
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return;
+      // La tarjeta ya está en su columna. Los totales se corrigen en la próxima carga.
+    }
+  }, [o.pipelineId, o.query, o.periodo]);
 
   const cargarColumna = useCallback(
     async (etapaId: string, pagina: number, signal?: AbortSignal) => {
@@ -58,6 +82,9 @@ export function useTableroPipeline(o: { pipelineId: string | null; query: string
   );
 
   useEffect(() => {
+    epoca.current += 1;
+    const marca = epoca.current;
+    cabeceraAbort.current?.abort();
     if (!o.pipelineId) {
       setCabecera(null);
       setCargando(false);
@@ -69,6 +96,7 @@ export function useTableroPipeline(o: { pipelineId: string | null; query: string
     new URLSearchParams(o.periodo).forEach((v, k) => p.set(k, v));
     pedirCrm<CabeceraTablero>(`/api/crm/pipelines/${o.pipelineId}/board?${p.toString()}`, { signal: control.signal })
       .then(({ data }) => {
+        if (control.signal.aborted || marca !== epoca.current) return;
         setCabecera(data);
         setError(null);
         setTablero(Object.fromEntries(data.etapas.map((e) => [e.id, { ...COLUMNA_VACIA }])));
@@ -85,10 +113,17 @@ export function useTableroPipeline(o: { pipelineId: string | null; query: string
   }, [o.pipelineId, o.query, o.periodo, recarga, cargarColumna]);
 
   useEffect(() => {
-    const oir = () => recargar();
+    const oir = (ev: Event) => {
+      const detalle = (ev as CustomEvent<DetalleCambioCrm>).detail;
+      if (detalle?.entidad === 'opportunity' && recargaDeTablero(detalle.accion) === 'silenciosa') {
+        void refrescarCabecera();
+        return;
+      }
+      recargar();
+    };
     window.addEventListener(EVENTO_CAMBIO_CRM, oir);
     return () => window.removeEventListener(EVENTO_CAMBIO_CRM, oir);
-  }, [recargar]);
+  }, [recargar, refrescarCabecera]);
 
   /** Optimista: guarda cómo estaba para poder revertir si el servidor rechaza. */
   const mover = useCallback(

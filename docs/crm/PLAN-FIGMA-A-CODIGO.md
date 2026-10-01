@@ -2373,3 +2373,9 @@ Integrada main hasta 8b7a3620 conservando ambas entradas de PROGRESS.md; build c
 Migración `20261001061000_crm_consentimiento_twilio_atomico.sql` aplicada por MCP, MD5 `cf4a0f466663f2c3ff5d7af9839315c0`. RPC privada prevalida todos los clientes propios y el teléfono leído antes de llamar a crm_set_contact_consent. Preferencia, banderas, exclusión de pendientes y devolución canónica comparten transacción. Constancia privada con RLS y sin acceso de navegador impide que un STOP repetido deshaga un START posterior; reutilizar SID con otra evidencia falla.
 
 BEGIN/ROLLBACK pasó STOP→START→STOP antiguo, SID conflictivo, cliente ajeno y teléfono cambiado sin modificación parcial, 405 destinos sin recorte, metadata conservada, SMS independiente, cancelación y devolución única, processing conservado y ACL. Rollback probado; conserva preferencias, saldos y constancias, revoca acceso. Cero fixtures; advisors sin hallazgos para objetos nuevos.
+
+### 2026-10-01 — Twilio conectado al consentimiento canónico
+
+El webhook resuelve teléfonos con la normalización compartida, recorre páginas y envía todos los destinos en una RPC. Propaga fallos para reintentar; elimina INSERT de preferencias y UPDATE de banderas separados. Opt-in exige coincidencia inequívoca; para opt-out conserva el criterio conservador de sufijo. Transmite el teléfono leído y la clave estable del proveedor para CAS/deduplicación. El harness de lectura incorpora range para verificar 405 coincidencias sin simular las mutaciones SQL.
+
+Verificación: 19 suites / 451 pruebas, tipos y lint tocado limpios. La prueba failing del viejo INSERT pasa como contrato normal de STOP/START; su efecto real y la repetición del STOP se verifican por MCP. La suite completa y build posteriores están en curso. Eventos y correo de campañas, cumplimiento compartido y resto del alcance aún pendientes.

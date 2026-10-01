@@ -139,12 +139,7 @@ describe('whatsappCloudService / whatsappQrService', () => {
     return { sb, estado };
   };
 
-  it('B3.F4 · el webhook Cloud encuentra al cliente guardado como «+57 310 987 6543» y no lo duplica', async () => {
-    const { whatsappCloudService } = await import('@/lib/services/integrations/whatsapp/whatsappCloudService');
-    const { sb, estado } = existente();
-    await expect((whatsappCloudService as unknown as ProveedorConAlta).findOrCreateCustomer(sb, 7, UUID_A, '573109876543', 'Ana')).resolves.toBe('cust-existente');
-    expect(estado.inserted).toBe(false);
-  });
+  // Cloud usa recepción transaccional; su contrato completo está en recepcionCloud.test.ts.
 
   it('B3.F4 · el proveedor QR (gemelo copiado) tampoco duplica clientes', async () => {
     const { whatsappQrService } = await import('@/lib/services/integrations/whatsapp/whatsappQrService');
@@ -153,20 +148,4 @@ describe('whatsappCloudService / whatsappQrService', () => {
     expect(estado.inserted).toBe(false);
   });
 
-  const altaDesdeProveedor = async (phone: string): Promise<string | undefined> => {
-    const { whatsappCloudService } = await import('@/lib/services/integrations/whatsapp/whatsappCloudService');
-    let insertado: Record<string, unknown> | null = null;
-    const { sb } = makeSupabase({
-      customer_channel_identities: () => ({ data: null }),
-      provider_configs: () => ({ data: { settings: { default_country_code: '57' } } }),
-      customers: (ops) => { if (has(ops, 'insert')) { insertado = opArg<Record<string, unknown>>(ops, 'insert') ?? null; return { data: { id: 'nuevo' } }; } return { data: [] }; },
-    });
-    await (whatsappCloudService as unknown as ProveedorConAlta).findOrCreateCustomer(sb, 7, 'chan-1', phone, 'Ann');
-    return (insertado as unknown as { phone?: string } | null)?.phone;
-  };
-
-  it('B4.F4 · el identificador que llega del PROVEEDOR se guarda tal cual, sin añadirle indicativo (ni al colombiano ni al de EE.UU.)', async () => {
-    await expect(altaDesdeProveedor('3109876543')).resolves.toBe('+3109876543');
-    await expect(altaDesdeProveedor('4155550100')).resolves.toBe('+4155550100');
-  });
 });

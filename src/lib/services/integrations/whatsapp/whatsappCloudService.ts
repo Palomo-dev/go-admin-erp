@@ -19,9 +19,8 @@ import {
 } from './whatsappCloudConfig';
 import { applyTemplateStatusUpdate, parseTemplateStatusUpdate, templateEventKey } from '@/lib/services/crm/whatsapp/webhookTemplateStatus';
 import { isTemplateField, normalizeMetaId } from './webhookAuthorization';
-import { extractInboundText, handleWhatsAppInbound, inboundContentType } from '@/lib/services/crm/whatsapp/inboundService';
+import { receiveWhatsAppCloud } from '@/lib/services/crm/whatsapp/recepcionCloudService';
 import { recordWhatsAppProviderStatus } from '@/lib/services/crm/whatsapp/campaignEvents';
-import { defaultCountryOf, findCustomerIdByPhone, getOrgSettings, normalizePhoneDigits } from '@/lib/services/crm/whatsapp/channelService';
 import type {
   WhatsAppCloudCredentials,
   WhatsAppSendPayload,
@@ -517,95 +516,13 @@ class WhatsAppCloudService {
     message: WhatsAppWebhookMessage,
     value: WhatsAppWebhookValue
   ): Promise<void> {
-    const contactInfo = value.contacts?.[0];
-    const senderPhone = message.from;
-    const senderName = contactInfo?.profile?.name || senderPhone;
-
-    // Antes de crear cliente/conversación, recuperar un mensaje del mismo canal.
-    const { data: duplicate, error: duplicateError } = await supabase.from('messages')
-      .select('id, conversation_id').eq('organization_id', organizationId)
-      .eq('channel_id', channelId).eq('direction', 'inbound')
-      .eq('external_message_id', message.id).maybeSingle();
-    if (duplicateError) throw new WhatsAppInboundPersistError(message.id, duplicateError.message);
-    if (duplicate) {
-      const { data: conversation, error: contextError } = await supabase.from('conversations')
-        .select('customer_id').eq('organization_id', organizationId)
-        .eq('channel_id', channelId).eq('id', duplicate.conversation_id).maybeSingle();
-      if (contextError || !conversation?.customer_id) {
-        throw new WhatsAppInboundPersistError(message.id, contextError?.message ?? 'Conversación del mensaje no disponible');
-      }
-      await handleWhatsAppInbound({
-        orgId: organizationId, channelId, conversationId: duplicate.conversation_id,
-        customerId: conversation.customer_id, messageId: duplicate.id, text: '', contentType: message.type,
-      }, supabase);
-      return;
-    }
-
-    // Buscar o crear customer por teléfono
-    const customerId = await this.findOrCreateCustomer(
-      supabase,
-      organizationId,
-      channelId,
-      senderPhone,
-      senderName
-    );
-
-    // Buscar o crear conversación
-    const conversationId = await this.findOrCreateConversation(
-      supabase,
-      organizationId,
-      channelId,
-      customerId
-    );
-
-    // Determinar payload (tipo Meta) y content/content_type con la shape viva (F16, cierra C20/A2)
     const { contentType: metaType, messagePayload } = this.extractMessageContent(message);
-    const content = extractInboundText(message as Parameters<typeof extractInboundText>[0]) || '[mensaje]';
-    const contentType = inboundContentType(message.type);
-
-    const insertRow = {
-      organization_id: organizationId,
-      conversation_id: conversationId,
-      channel_id: channelId,
-      direction: 'inbound',
-      role: 'customer',
-      sender_customer_id: customerId,
-      content_type: contentType,
-      content,
-      payload: { ...messagePayload, meta_type: metaType, raw: message, phone: senderPhone, wa_id: senderPhone },
-      external_message_id: message.id,
-      is_read: false,
-      metadata: { wa_id: senderPhone, profile_name: senderName, source: 'whatsapp_cloud', timestamp: message.timestamp },
-    };
-    const { data: inserted, error: insertError } = await supabase.from('messages').insert(insertRow).select('id').single();
-    if (insertError || !inserted) {
-      // NO se traga el fallo (tester r1 · fallo 1): este INSERT llevaba tiempo
-      // reventando en silencio por el trigger `fn_update_customer_channel_identity`
-      // (inserta identity_type='whatsapp', valor que el CHECK de
-      // customer_channel_identities no admite) y el resultado era que NINGÚN
-      // mensaje entrante de la Cloud API se guardaba: sin `last_inbound_at` no
-      // hay ventana de 24 h, ni opt-out por palabra clave, ni atribución de
-      // respuestas a campañas. Se registra con todo el detalle y se propaga
-      // para que el webhook devuelva error y Meta reintente.
-      const detail = insertError?.message ?? 'insert sin filas devueltas';
-      console.error('[WhatsApp Webhook] INBOUND NO PERSISTIDO', {
-        organization_id: organizationId,
-        channel_id: channelId,
-        conversation_id: conversationId,
-        external_message_id: message.id,
-        code: (insertError as { code?: string } | null)?.code ?? null,
-        details: (insertError as { details?: string } | null)?.details ?? null,
-        hint: (insertError as { hint?: string } | null)?.hint ?? null,
-        error: detail,
-      });
-      throw new WhatsAppInboundPersistError(message.id, detail, insertError ?? null);
+    try {
+      await receiveWhatsAppCloud(organizationId, channelId, message, value.contacts,
+        { ...messagePayload, meta_type: metaType }, supabase);
+    } catch (error) {
+      throw new WhatsAppInboundPersistError(message.id, error instanceof Error ? error.message : 'Recepción incompleta', error);
     }
-
-    // Reapertura, consentimiento, atribución, actividad y notificación en una RPC.
-    await handleWhatsAppInbound(
-      { orgId: organizationId, channelId, conversationId, customerId, messageId: (inserted as { id: string }).id, text: content, contentType },
-      supabase,
-    );
   }
 
   /** Firma y canal ya validados por el consumidor del webhook. */
@@ -618,128 +535,6 @@ class WhatsAppCloudService {
     await recordWhatsAppProviderStatus(organizationId, channelId, status, supabase);
   }
 
-  /** Buscar o crear customer por teléfono */
-  private async findOrCreateCustomer(
-    supabase: SupabaseAdmin,
-    organizationId: number,
-    channelId: string,
-    phone: string,
-    name: string
-  ): Promise<string> {
-    // Meta manda `from` en dígitos («573109876543»); el CRM guarda los
-    // teléfonos como texto libre («+57 310 987 6543»). Sin normalizar, la
-    // búsqueda por igualdad no encontraba nunca al cliente existente y CADA
-    // respuesta creaba un cliente DUPLICADO, con lo que se perdía la
-    // atribución de la respuesta a la campaña (tester F16 r2 · F-4).
-    // El `from` de Meta ES un wa_id: ya viene cualificado. NO se le completa
-    // indicativo (eso convertiría un número de otro país en uno colombiano
-    // real y distinto — tester F16 r3 · F-4).
-    const digits = normalizePhoneDigits(phone) ?? String(phone).replace(/\D/g, '');
-    // Para comparar con `customers.phone`, que SÍ es texto libre de la org, se
-    // usa el indicativo configurado por la organización.
-    const defaultCountry = defaultCountryOf(await getOrgSettings(organizationId, supabase as never));
-
-    // Buscar identidad existente
-    const { data: identity } = await supabase
-      .from('customer_channel_identities')
-      .select('customer_id')
-      .eq('channel_id', channelId)
-      .eq('identity_value', digits)
-      .single();
-
-    if (identity) {
-      // Actualizar last_seen_at
-      await supabase
-        .from('customer_channel_identities')
-        .update({ last_seen_at: new Date().toISOString() })
-        .eq('channel_id', channelId)
-        .eq('identity_value', digits);
-      return (identity as { customer_id: string }).customer_id;
-    }
-
-    // Buscar customer por teléfono, comparando NÚMEROS y no cadenas
-    const existingId = await findCustomerIdByPhone(organizationId, digits, supabase as never, { defaultCountry });
-
-    let customerId: string;
-
-    if (existingId) {
-      customerId = existingId;
-    } else {
-      // Crear nuevo customer. Se guarda en E.164 para que el próximo webhook
-      // lo encuentre por igualdad exacta.
-      const { data: newCustomer } = await supabase
-        .from('customers')
-        .insert({
-          organization_id: organizationId,
-          first_name: name,
-          phone: `+${digits}`,
-          metadata: { source: 'whatsapp' },
-        })
-        .select('id')
-        .single();
-
-      customerId = (newCustomer as { id: string } | null)?.id ?? '';
-    }
-
-    // Crear identidad del canal.
-    // `organization_id` e `identity_type` son NOT NULL y el CHECK exige
-    // 'whatsapp_phone' (NO 'whatsapp'): sin ellos este INSERT fallaba siempre
-    // en silencio.
-    const { error: identityError } = await supabase.from('customer_channel_identities').insert({
-      organization_id: organizationId,
-      customer_id: customerId,
-      channel_id: channelId,
-      identity_type: 'whatsapp_phone',
-      identity_value: digits,
-    });
-    if (identityError) {
-      console.error('[WhatsApp Webhook] No se pudo crear customer_channel_identities', {
-        organization_id: organizationId,
-        channel_id: channelId,
-        identity_value: digits,
-        error: identityError.message,
-      });
-    }
-
-    return customerId;
-  }
-
-  /** Buscar o crear conversación */
-  private async findOrCreateConversation(
-    supabase: SupabaseAdmin,
-    organizationId: number,
-    channelId: string,
-    customerId: string
-  ): Promise<string> {
-    // Buscar conversación abierta existente
-    const { data: existing } = await supabase
-      .from('conversations')
-      .select('id')
-      .eq('organization_id', organizationId)
-      .eq('channel_id', channelId)
-      .eq('customer_id', customerId)
-      .in('status', ['open', 'pending'])
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (existing) return existing.id;
-
-    // Crear nueva conversación
-    const { data: newConv } = await supabase
-      .from('conversations')
-      .insert({
-        organization_id: organizationId,
-        channel_id: channelId,
-        customer_id: customerId,
-        status: 'open',
-        priority: 'normal',
-      })
-      .select('id')
-      .single();
-
-    return (newConv as { id: string } | null)?.id ?? '';
-  }
 
   /** Extraer contenido del mensaje según tipo */
   private extractMessageContent(message: WhatsAppWebhookMessage): {

@@ -29,31 +29,25 @@ test.each([
   await expect(handleWhatsAppInbound(input, mock.sb)).rejects.toMatchObject({ status: 500 });
 });
 
-test('Cloud repite postprocesado del mensaje propio antes de buscar o crear clientes', async () => {
+test('Cloud usa el recibo privado antes de buscar clientes y deja el replay a SQL', async () => {
   const { whatsappCloudService } = await import('@/lib/services/integrations/whatsapp/whatsappCloudService');
   const cloud = whatsappCloudService as unknown as { processIncomingMessage: (s: unknown, channel: string, org: number, message: WhatsAppWebhookMessage, value: WhatsAppWebhookValue) => Promise<void> };
   const message = { id: 'wamid.fixture', from: '12025550198', timestamp: '1790830000', type: 'text', text: { body: 'STOP' } } as WhatsAppWebhookMessage;
   const value = { messaging_product: 'whatsapp' } as WhatsAppWebhookValue;
   const mock = makeSupabase({
-    messages: (ops) => {
+    crm_inbound_message_receipts: (ops) => {
       expect(has(ops, 'eq', 'organization_id', 7)).toBe(true);
       expect(has(ops, 'eq', 'channel_id', input.channelId)).toBe(true);
-      expect(has(ops, 'eq', 'direction', 'inbound')).toBe(true);
-      expect(has(ops, 'eq', 'external_message_id', message.id)).toBe(true);
-      return { data: { id: input.messageId, conversation_id: input.conversationId } };
+      expect(has(ops, 'eq', 'provider_external_id', message.id)).toBe(true);
+      return { data: { message_id: input.messageId } };
     },
-    conversations: (ops) => {
-      expect(has(ops, 'eq', 'organization_id', 7)).toBe(true);
-      expect(has(ops, 'eq', 'channel_id', input.channelId)).toBe(true);
-      expect(has(ops, 'eq', 'id', input.conversationId)).toBe(true);
-      return { data: { customer_id: input.customerId } };
-    },
-  }, () => ({ data: saved }));
+  }, () => ({ data: { ...saved, message_id: input.messageId, customer_id: input.customerId, conversation_id: input.conversationId, duplicate: true } }));
   await cloud.processIncomingMessage(mock.sb, input.channelId, 7, message, value);
-  expect(mock.rpcCalls[0].args).toEqual({ p_org: 7, p_message: input.messageId, p_channel: input.channelId, p_conversation: input.conversationId, p_customer: input.customerId });
+  expect(mock.rpcCalls[0].fn).toBe('crm_receive_whatsapp_cloud');
+  expect(mock.rpcCalls[0].args).toMatchObject({ p_org: 7, p_channel: input.channelId, p_request: { customer_proof: null, external_id: message.id, raw: message } });
   expect(mock.calls.every((call) => !has(call.ops, 'insert') && !has(call.ops, 'update'))).toBe(true);
-  const failed = makeSupabase({ messages: () => ({ data: { id: input.messageId, conversation_id: input.conversationId } }), conversations: () => ({ data: { customer_id: input.customerId } }) }, () => ({ error: { message: 'Fixture fallo' } }));
-  await expect(cloud.processIncomingMessage(failed.sb, input.channelId, 7, message, value)).rejects.toMatchObject({ status: 500 });
+  const failed = makeSupabase({ crm_inbound_message_receipts: () => ({ data: { message_id: input.messageId } }) }, () => ({ error: { message: 'Fixture fallo' } }));
+  await expect(cloud.processIncomingMessage(failed.sb, input.channelId, 7, message, value)).rejects.toMatchObject({ code: 'INBOUND_NOT_PERSISTED' });
 });
 
 test('Cloud falla antes de mutar si la búsqueda del mensaje o contexto no responde', async () => {
@@ -61,8 +55,8 @@ test('Cloud falla antes de mutar si la búsqueda del mensaje o contexto no respo
   const cloud = whatsappCloudService as unknown as { processIncomingMessage: (s: unknown, channel: string, org: number, message: WhatsAppWebhookMessage, value: WhatsAppWebhookValue) => Promise<void> };
   const message = { id: 'wamid.fixture', from: '12025550198', timestamp: '1790830000', type: 'text', text: { body: 'STOP' } } as WhatsAppWebhookMessage;
   const scenarios: Array<Record<string, TableResolver>> = [
-    { messages: () => ({ error: { message: 'Fixture lectura fallida' } }) },
-    { messages: () => ({ data: { id: input.messageId, conversation_id: input.conversationId } }), conversations: () => ({ data: null }) },
+    { crm_inbound_message_receipts: () => ({ error: { message: 'Fixture lectura fallida' } }) },
+    { crm_inbound_message_receipts: () => ({ data: null }), provider_configs: () => ({ error: { message: 'Fixture configuración fallida' } }) },
   ];
   for (const tables of scenarios) {
     const mock = makeSupabase(tables);

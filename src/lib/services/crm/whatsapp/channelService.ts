@@ -268,13 +268,13 @@ export function defaultCountryOf(settings: Pick<WhatsAppOrgSettings, 'default_co
  * igual `created_at` (una importación masiva escribe el mismo `now()` en todas
  * sus filas), el `id` menor.
  *
- * **Una sola consulta** (F16 r5 · T-4). Hasta la ronda 4 había un «camino
+ * **Un solo orden de búsqueda** (F16 r5 · T-4). Hasta la ronda 4 había un «camino
  * rápido» previo por igualdad exacta (`phone in (digits, +digits)`) que
  * cortocircuitaba: si la ficha NUEVA estaba en E.164 exacto y la VIEJA con
  * separadores, ganaba la nueva y «siempre el más antiguo» era falso (2 grupos
  * reales de los 276, medido el 2026-09-14). El prefiltro por sufijo es
- * superconjunto de la igualdad exacta, así que una única consulta ordenada
- * basta; el índice de `organization_id` acota el barrido y la regex se evalúa
+ * superconjunto de la igualdad exacta. Las páginas conservan ese orden y no
+ * recortan los candidatos a 200; el índice de `organization_id` acota el barrido y la regex se evalúa
  * solo sobre los clientes de la organización.
  */
 export async function findCustomerIdByPhone(
@@ -283,16 +283,18 @@ export async function findCustomerIdByPhone(
   supabase: SupabaseClient,
   opts: { defaultCountry?: string | null } = {},
 ): Promise<string | null> {
-  const { data: candidatos } = await supabase
-    .from('customers')
-    .select('id, phone')
-    .eq('organization_id', orgId)
-    .filter('phone', 'imatch', phoneSuffixPattern(digits))
-    .order('created_at', { ascending: true })
-    .order('id', { ascending: true })
-    .limit(200);
-  for (const c of (candidatos ?? []) as Array<{ id: string; phone: string | null }>) {
-    if (c.phone && normalizePhoneDigits(c.phone, opts.defaultCountry ?? null) === digits) return c.id;
+  const pageSize = 200;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await supabase
+      .from('customers').select('id, phone').eq('organization_id', orgId)
+      .filter('phone', 'imatch', phoneSuffixPattern(digits))
+      .order('created_at', { ascending: true }).order('id', { ascending: true })
+      .range(offset, offset + pageSize - 1);
+    if (error) throw errorWhatsAppDb(error);
+    if (!Array.isArray(data)) throw new WhatsAppError('INTERNAL', 'No se pudo leer los candidatos por teléfono', 500);
+    for (const c of data as Array<{ id: string; phone: string | null }>) {
+      if (c.phone && normalizePhoneDigits(c.phone, opts.defaultCountry ?? null) === digits) return c.id;
+    }
+    if (data.length < pageSize) return null;
   }
-  return null;
 }

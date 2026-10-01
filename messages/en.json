@@ -5147,6 +5147,12 @@
       "pieRango": "From {desde} · To {hasta}",
       "eligeFin": "From {desde} · pick the end date"
     },
+    "hora": {
+      "etiqueta": "Time",
+      "elegir": "Choose a time",
+      "sinHora": "no time",
+      "limpiar": "Clear"
+    },
     "tabla": {
       "seleccionarPagina": "Select this page",
       "seleccionarFila": "Select row",

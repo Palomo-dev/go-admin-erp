@@ -22,6 +22,7 @@ import {
   type ValoresReunion,
   type ValoresWhatsApp,
 } from './activityDialogLogica';
+import { CampoHora } from '@/components/kit/CampoHora';
 
 /**
  * Cuerpos de `ActivityDialog` (Figma 760:445129), uno por tipo. Solo
@@ -213,7 +214,7 @@ export function CamposReunion({ v, cambiar, errores, hoy, zonaNombre, oportunida
         </div>
         <div className="flex flex-col gap-3">
           <FormField etiqueta={t('reunion.empieza')} obligatorio error={errores.hora}>
-            <input type="time" value={v.hora} onChange={(e) => cambiar({ hora: e.target.value })} className={CLASE_CAMPO} />
+            <CampoHora valor={v.hora} onValorChange={(hora) => cambiar({ hora })} />
           </FormField>
           <FormField etiqueta={t('reunion.termina')} ayuda={t('reunion.zona', { zona: zonaNombre })}>
             <SelectCrm

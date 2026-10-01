@@ -4,8 +4,8 @@ import * as React from 'react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/utils/Utils';
 import { CampoFecha } from '@/components/kit/CampoFecha';
-import { CLASE_CAMPO } from './camposCrm';
 import { combinarFechaHora, partirFechaHora } from './fechasCrm';
+import { CampoHora } from '@/components/kit/CampoHora';
 
 /**
  * Fecha y hora del CRM: `CampoFecha` para el día y el campo de hora del kit al
@@ -49,15 +49,15 @@ export function CampoFechaHora({ valor, onValorChange, min, max, id, disabled, c
   return (
     <div className={cn('flex min-w-0 gap-2', className)}>
       <CampoFecha id={id} valor={borrador.dia} onValorChange={(dia) => cambiar({ dia })} min={min} max={max} disabled={disabled} className="flex-1" {...aria} />
-      <input
-        type="time"
+      <CampoHora
         aria-label={t('hora')}
         aria-describedby={aria['aria-describedby']}
         aria-invalid={aria['aria-invalid']}
-        value={borrador.hora}
+        valor={borrador.hora}
         disabled={disabled}
-        onChange={(e) => cambiar({ hora: e.target.value })}
-        className={cn(CLASE_CAMPO, 'w-[116px] shrink-0')}
+        limpiable={false}
+        onValorChange={(hora) => cambiar({ hora })}
+        className="w-[136px] shrink-0"
       />
     </div>
   );

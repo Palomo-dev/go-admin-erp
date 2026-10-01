@@ -3454,6 +3454,12 @@
       "pieRango": "Du {desde} · Au {hasta}",
       "eligeFin": "Du {desde} · choisissez le dernier jour"
     },
+    "hora": {
+      "etiqueta": "Heure",
+      "elegir": "Choisir une heure",
+      "sinHora": "sans heure",
+      "limpiar": "Effacer"
+    },
     "tabla": {
       "seleccionarPagina": "Sélectionner cette page",
       "seleccionarFila": "Sélectionner la ligne",

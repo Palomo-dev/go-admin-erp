@@ -209,7 +209,10 @@ export function CamposReunion({ v, cambiar, errores, hoy, zonaNombre, oportunida
       </FormField>
       <div className="grid gap-3 sm:grid-cols-[auto_1fr]">
         <div className="flex flex-col gap-1">
-          <CalendarioMes valor={v.dia || null} diaInicial={v.dia || hoy} hoy={hoy} min={hoy} onElegir={(dia) => cambiar({ dia })} className="rounded-lg border border-line p-2" />
+          {/* El borde va en un contenedor: CalendarioMes mide 7 × 42 px y con el relleno dentro se salía el domingo. */}
+          <div className="self-start rounded-lg border border-line p-2">
+            <CalendarioMes valor={v.dia || null} diaInicial={v.dia || hoy} hoy={hoy} min={hoy} onElegir={(dia) => cambiar({ dia })} />
+          </div>
           {errores.dia && <p role="alert" className="text-xs text-danger-text">{errores.dia}</p>}
         </div>
         <div className="flex flex-col gap-3">

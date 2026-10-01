@@ -13,6 +13,7 @@ import { esPaginaEntidad, estadoListaEntidad, hayMasResultados, ofrecerCrear, ty
 import { ariaAtajo } from './teclas';
 import { useEsEscritorio } from './useEsEscritorio';
 import { useFormatoEntero, useKitT } from './useIdiomaKit';
+import { PROPS_SCROLL_EN_CAPA } from './scrollEnCapa';
 
 /**
  * Base común de los selectores de tercero (Figma `CustomerPicker` 849:558484…,
@@ -584,6 +585,7 @@ export function SelectorEntidad<T>({
       <PopoverPrimitive.Trigger asChild>{disparador}</PopoverPrimitive.Trigger>
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content
+          {...PROPS_SCROLL_EN_CAPA}
           align="start"
           sideOffset={4}
           collisionPadding={8}

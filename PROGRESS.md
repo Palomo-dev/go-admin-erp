@@ -3822,3 +3822,14 @@ BEGIN/ROLLBACK pasó 260 contactos (200 terminales delante), límite 50, tokens 
 El job exige organización antes de leer y filtra la campaña por ella. Reclama por RPC, transmite el testigo en cada resultado y publica progreso/job de forma atómica. Node deja de hacer UPDATE de contactos/estadísticas, fn_campaign_mark_sent y encolado separado. El resultado distingue prepared de sent: preparar conserva sent=0; SQL cuenta las confirmaciones del proveedor. Timeout después del commit no libera el mensaje vinculado. Abort o deadline libera solamente lo no procesado con su testigo; respeta throttle global/por destinatario y no permite desactivar el horario configurado con respect_allowed_hours=false o force. Historial reciente recorre páginas sin truncar.
 
 Verificación: 37 suites / 683 pruebas de WhatsApp, jobs y guardarraíles; 21 casos finales con reloj/abort/contratos; tipos y lint limpios. Los mocks anteriores simulaban UPDATE de SQL y afirmaban sent al insertar: se sustituyeron por contratos del consumidor; claim, rescate, ledger, backoff y resultados permanecen probados en transacciones reales por MCP, documentadas en el paso anterior. Eventos de proveedor, correo, horario legal común y RNE de mensajes siguen en curso. No se desplegó.
+
+### Fase: Reportes v2 — el merge deja el typecheck en verde — 2026-09-30
+- Rama cursor/tsc-reportes-documentos-e475.
+- El merge con main dejó 5 errores de tsc en documentos y reportes. URL no está declarada en el tipo Window: el blob de la descarga se crea con la URL de esa pestaña. Los mocks de Auth en el test de la sesión del cron no aceptaban los argumentos con los que el cron los llama.
+- Jest de la entrega del archivo y de la sesión: 5 en verde. npx tsc --noEmit -p tsconfig.json en verde (0 errores).
+
+
+### Fase: Reportes v2 — la vista previa del cierre se ve al calcular — 2026-10-01
+- Rama cursor/vista-previa-cierre-e475.
+- «Vista previa» corría los reportes de la plantilla y, al terminar, solo repetía el conteo de capítulos que ya estaba en el diálogo. Ahora el panel aparece al clic, con el estado de carga, y se llena con los indicadores y los capítulos cuando llega la respuesta. Las consultas no cambian. La ruta tiene el mismo tope de 300 s que el cron de envíos, para que el cálculo completo no se corte.
+

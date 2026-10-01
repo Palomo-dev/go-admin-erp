@@ -28,7 +28,7 @@ import {
   validateConditions,
   type ConditionNode,
 } from './automation/conditionsDsl';
-import { emptyRuleContext, loadRuleContext, type RuleContext } from './automation/ruleContext';
+import { emptyRuleContext, loadRuleContext, enriquecerContextoCompras, type RuleContext } from './automation/ruleContext';
 import { defaultEventFor } from './automation/ruleCatalog';
 
 /** Evento por defecto según el disparador. Vive en `ruleCatalog` (puro) para que el editor use la misma función. */
@@ -328,6 +328,7 @@ export async function evaluateTrigger(
   for (const rule of (rules ?? []) as AutomationRule[]) {
     if (options?.eventType && rule.event && rule.event !== options.eventType) continue;
     if (!matchesTriggerConfig(rule, triggerType, triggerPayload)) continue;
+    await enriquecerContextoCompras(ctx, rule.conditions, supabase);
     if (!evaluateConditionTree(rule.conditions, ctx).result) continue;
     matching.push(rule);
   }
@@ -499,6 +500,7 @@ export async function executeAutomationRule(
   );
 
   // 3. Condiciones.
+  await enriquecerContextoCompras(ctx, automationRule.conditions, supabase);
   const evaluated = evaluateConditionTree(automationRule.conditions, ctx);
   if (!evaluated.result) {
     return skip('conditions_not_met', { trace: evaluated.trace });
@@ -586,7 +588,7 @@ export async function testRunAutomationRule(
   if (!rule) throw new Error('Regla de automatización no encontrada');
 
   const r = rule as AutomationRule;
-  const ctx = await loadRuleContext({ orgId, opportunityId }, supabase);
+  const ctx = await loadRuleContext({ orgId, opportunityId, conditions: r.conditions }, supabase);
   const evaluated = evaluateConditionTree(r.conditions, ctx);
   const plan = (r.actions || []).map((a, i) => ({
     index: i,

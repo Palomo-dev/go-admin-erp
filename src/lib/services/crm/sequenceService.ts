@@ -1020,7 +1020,7 @@ export async function processStepRun(
           );
         }
         const ctx = await loadRuleContext(
-          { orgId, opportunityId: enrollment.opportunity_id, customerId: enrollment.customer_id },
+          { orgId, opportunityId: enrollment.opportunity_id, customerId: enrollment.customer_id, conditions: definition },
           supabase,
         );
         const evaluated = evaluateConditionTree(definition, ctx);

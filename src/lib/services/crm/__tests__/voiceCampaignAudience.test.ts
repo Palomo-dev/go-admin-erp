@@ -9,10 +9,13 @@ const campaign = (segment: string): VoiceAgentCampaign => ({
 });
 test("voz resuelve el segmento por sus reglas, sin confundir su id con campaign_contacts", async () => {
   const db = makeDb({
-    segments: [{ id: U(3), organization_id: ORG, filter_json: [{ field: "city", operator: "equals", value: "Ciudad de prueba" }] }],
+    segments: [{ id: U(3), organization_id: ORG, is_dynamic: true, filter_json: [{ field: "city", operator: "equals", value: "Ciudad de prueba" }] }],
     customers: [{ id: U(4), organization_id: ORG, city: "Ciudad de prueba" }, { id: U(5), organization_id: ORG, city: "Otra ciudad" }, { id: U(6), organization_id: OTRA, city: "Ciudad de prueba" }],
     campaign_contacts: [{ campaign_id: U(3), customer_id: U(6) }],
   });
+  db.rpc.crm_segment_context_page = { data: [
+    { id: U(4), city: 'Ciudad de prueba', consent: {} }, { id: U(5), city: 'Otra ciudad', consent: {} },
+  ] };
   const result = await buildCampaignTargets(fakeSupabase(db) as unknown as SupabaseClient, ORG, campaign(U(3)), 50);
   expect(result).toEqual([{ customer_id: U(4), opportunity_id: null, stage_id: null }]);
 });

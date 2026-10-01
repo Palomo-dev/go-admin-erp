@@ -14,9 +14,23 @@
  */
 
 export type ConditionOperator =
-  | 'eq' | 'ne' | 'gt' | 'gte' | 'lt' | 'lte'
-  | 'in' | 'not_in' | 'contains' | 'not_contains'
-  | 'is_null' | 'is_not_null' | 'before' | 'after' | 'within_days';
+  | 'eq'
+  | 'ne'
+  | 'gt'
+  | 'gte'
+  | 'lt'
+  | 'lte'
+  | 'in'
+  | 'not_in'
+  | 'contains'
+  | 'not_contains'
+  | 'is_null'
+  | 'is_not_null'
+  | 'before'
+  | 'after'
+  | 'within_days'
+  | 'starts_with'
+  | 'ends_with';
 
 export interface ConditionRule {
   field: string;
@@ -54,22 +68,77 @@ export interface RuleContext {
 }
 
 export const OPERATORS: readonly ConditionOperator[] = [
-  'eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in', 'contains', 'not_contains',
-  'is_null', 'is_not_null', 'before', 'after', 'within_days',
+  'eq',
+  'ne',
+  'gt',
+  'gte',
+  'lt',
+  'lte',
+  'in',
+  'not_in',
+  'contains',
+  'not_contains',
+  'is_null',
+  'is_not_null',
+  'before',
+  'after',
+  'within_days',
+  'starts_with',
+  'ends_with',
 ] as const;
 
 /** Campos permitidos (§2.4). `event.payload.*` se admite con prefijo. */
 export const CONDITION_FIELDS: readonly string[] = [
-  'opportunity.amount', 'opportunity.currency', 'opportunity.status', 'opportunity.temperature',
-  'opportunity.icp_band', 'opportunity.icp_fit_score', 'opportunity.score_total', 'opportunity.record_type',
-  'opportunity.source', 'opportunity.expected_close_date', 'opportunity.last_contact_at',
-  'opportunity.contact_channel', 'opportunity.contact_result', 'opportunity.deal_type',
-  'opportunity.name', 'opportunity.stage_id', 'opportunity.pipeline_id',
-  'customer.customer_type', 'customer.lifecycle_stage', 'customer.health_score', 'customer.tags',
-  'customer.company_size', 'customer.has_email', 'customer.has_phone', 'customer.email', 'customer.phone',
-  'stage.id', 'stage.name', 'stage.position', 'stage.probability', 'stage.is_won', 'stage.is_lost', 'stage.sla_days',
-  'pipeline.id', 'pipeline.pipeline_type',
-  'consent.email', 'consent.whatsapp', 'consent.sms', 'consent.voice',
+  'opportunity.amount',
+  'opportunity.currency',
+  'opportunity.status',
+  'opportunity.temperature',
+  'opportunity.icp_band',
+  'opportunity.icp_fit_score',
+  'opportunity.score_total',
+  'opportunity.record_type',
+  'opportunity.source',
+  'opportunity.expected_close_date',
+  'opportunity.last_contact_at',
+  'opportunity.contact_channel',
+  'opportunity.contact_result',
+  'opportunity.deal_type',
+  'opportunity.name',
+  'opportunity.stage_id',
+  'opportunity.pipeline_id',
+  'customer.customer_type',
+  'customer.lifecycle_stage',
+  'customer.health_score',
+  'customer.tags',
+  'customer.company_size',
+  'customer.has_email',
+  'customer.has_phone',
+  'customer.email',
+  'customer.phone',
+  'customer.id',
+  'customer.full_name',
+  'customer.city',
+  'customer.status',
+  'customer.created_at',
+  'customer.last_contact_at',
+  'customer.last_seen_at',
+  'customer.vertical_id',
+  'customer.tags_count',
+  'customer.last_purchase_at',
+  'customer.purchased_category_ids',
+  'stage.id',
+  'stage.name',
+  'stage.position',
+  'stage.probability',
+  'stage.is_won',
+  'stage.is_lost',
+  'stage.sla_days',
+  'pipeline.id',
+  'pipeline.pipeline_type',
+  'consent.email',
+  'consent.whatsapp',
+  'consent.sms',
+  'consent.voice',
   'event.event_type',
 ] as const;
 
@@ -93,6 +162,7 @@ export function getField(ctx: RuleContext, field: string): unknown {
     case 'customer': {
       if (prop === 'has_email') return !!ctx.customer?.email;
       if (prop === 'has_phone') return !!ctx.customer?.phone;
+      if (prop === 'tags_count') return Array.isArray(ctx.customer?.tags) ? ctx.customer.tags.length : 0;
       return ctx.customer?.[prop];
     }
     case 'stage':
@@ -124,12 +194,7 @@ function asDate(v: unknown): Date | null {
 }
 
 /** Evalúa un operador. Devuelve false si los tipos no son comparables. */
-export function applyOperator(
-  operator: ConditionOperator,
-  actual: unknown,
-  expected: unknown,
-  now: Date,
-): boolean {
+export function applyOperator(operator: ConditionOperator, actual: unknown, expected: unknown, now: Date): boolean {
   switch (operator) {
     case 'eq':
       return actual === expected;
@@ -169,6 +234,13 @@ export function applyOperator(
         ? !actual.toLowerCase().includes(expected.toLowerCase())
         : false;
     }
+    case 'starts_with':
+    case 'ends_with': {
+      if (typeof actual !== 'string' || typeof expected !== 'string') return false;
+      const a = actual.toLowerCase();
+      const b = expected.toLowerCase();
+      return operator === 'starts_with' ? a.startsWith(b) : a.endsWith(b);
+    }
     case 'is_null':
       return actual === null || actual === undefined || actual === '';
     case 'is_not_null':
@@ -207,7 +279,10 @@ export function normalizeConditions(input: unknown): ConditionGroup {
   if (Array.isArray(input)) return { op: 'and', rules: input as ConditionNode[] };
   if (input && typeof input === 'object' && 'op' in (input as Record<string, unknown>)) {
     const g = input as ConditionGroup;
-    return { op: g.op === 'or' ? 'or' : 'and', rules: Array.isArray(g.rules) ? g.rules : [] };
+    return {
+      op: g.op === 'or' ? 'or' : 'and',
+      rules: Array.isArray(g.rules) ? g.rules : [],
+    };
   }
   if (input && typeof input === 'object' && 'field' in (input as Record<string, unknown>)) {
     return { op: 'and', rules: [input as ConditionRule] };
@@ -285,10 +360,7 @@ export function validateConditions(input: unknown, path = 'conditions'): string[
  * Evalúa el árbol de condiciones. Un grupo vacío es verdadero (regla sin
  * condiciones). Devuelve la traza para el dry-run y el historial.
  */
-export function evaluateConditionTree(
-  input: unknown,
-  ctx: RuleContext,
-): { result: boolean; trace: ConditionTrace[] } {
+export function evaluateConditionTree(input: unknown, ctx: RuleContext): { result: boolean; trace: ConditionTrace[] } {
   const trace: ConditionTrace[] = [];
 
   const ev = (node: ConditionNode, depth: number): boolean => {
@@ -303,16 +375,31 @@ export function evaluateConditionTree(
     }
     const rule = node as ConditionRule;
     if (!rule || typeof rule.field !== 'string' || !isConditionFieldAllowed(rule.field)) {
-      trace.push({ field: String(rule?.field), ok: false, reason: 'field_not_allowed' });
+      trace.push({
+        field: String(rule?.field),
+        ok: false,
+        reason: 'field_not_allowed',
+      });
       return false;
     }
     if (!OPERATORS.includes(rule.operator)) {
-      trace.push({ field: rule.field, operator: String(rule.operator), ok: false, reason: 'operator_not_allowed' });
+      trace.push({
+        field: rule.field,
+        operator: String(rule.operator),
+        ok: false,
+        reason: 'operator_not_allowed',
+      });
       return false;
     }
     const actual = getField(ctx, rule.field);
     const ok = applyOperator(rule.operator, actual, rule.value, ctx.now);
-    trace.push({ field: rule.field, operator: rule.operator, expected: rule.value, actual, ok });
+    trace.push({
+      field: rule.field,
+      operator: rule.operator,
+      expected: rule.value,
+      actual,
+      ok,
+    });
     return ok;
   };
 

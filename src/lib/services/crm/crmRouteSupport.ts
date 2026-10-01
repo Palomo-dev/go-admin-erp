@@ -13,6 +13,8 @@
  *   sitio (42501→403, P0002→404, 22xxx→400, P0001/40001/23505→409).
  */
 
+import { CrmHttpError } from './crmErrors';
+export { CrmHttpError, exigirUuid, UUID_RE } from './crmErrors';
 import { NextResponse } from 'next/server';
 import { hasOrgAdminOrPermission, OrgContextError, type ServerOrgContext } from '@/lib/utils/orgContext';
 
@@ -36,6 +38,7 @@ export const CRM_PERMISOS = {
   clientesEditar: 'crm.customers.edit',
   clientesFusionar: 'crm.customers.merge',
   campanasGestionar: 'crm.campaigns.manage',
+  segmentosGestionar: 'crm.segments.manage',
   llamadasVerTodas: 'crm.calls.view_all',
   pronosticoVerTodas: 'crm.forecast.view_all',
   pronosticoAjustar: 'crm.forecast.adjust',
@@ -47,18 +50,6 @@ export type CrmPermiso = (typeof CRM_PERMISOS)[keyof typeof CRM_PERMISOS];
 export type CrmSesion = Pick<ServerOrgContext, 'userId' | 'organizationId' | 'roleId' | 'isSuperAdmin' | 'supabase'>;
 
 /** Error de negocio con estado HTTP (lo lanzan los servicios de la ola 1). */
-export class CrmHttpError extends Error {
-  constructor(
-    public readonly status: number,
-    public readonly code: string,
-    message: string,
-    public readonly extra: Record<string, unknown> = {},
-  ) {
-    super(message);
-    this.name = 'CrmHttpError';
-  }
-}
-
 export function tienePermisoCrm(ctx: CrmSesion, codigo: CrmPermiso): Promise<boolean> {
   return hasOrgAdminOrPermission(ctx, codigo);
 }
@@ -67,7 +58,11 @@ export function tienePermisoCrm(ctx: CrmSesion, codigo: CrmPermiso): Promise<boo
  * Exige AL MENOS UNO de los permisos. Devuelve el primero que concede; si
  * ninguno, registra (sin datos personales) y lanza 403 `CRM_FORBIDDEN`.
  */
-export async function exigirPermisoCrm(ctx: CrmSesion, codigos: readonly CrmPermiso[], etiqueta: string): Promise<CrmPermiso> {
+export async function exigirPermisoCrm(
+  ctx: CrmSesion,
+  codigos: readonly CrmPermiso[],
+  etiqueta: string,
+): Promise<CrmPermiso> {
   for (const c of codigos) {
     if (await tienePermisoCrm(ctx, c)) return c;
   }
@@ -102,8 +97,17 @@ export function estadoDeSqlState(code: string): number | null {
 export function respuestaErrorCrm(error: unknown, etiqueta: string): NextResponse {
   const conocido = clasificarErrorCrm(error);
   if (conocido) {
-    if (conocido.status === 403 && conocido.origen === 'base') console.warn('[crm] %s denegado por la base: %s', etiqueta, conocido.code);
-    return NextResponse.json({ success: false, error: conocido.error, code: conocido.code, ...conocido.extra }, { status: conocido.status });
+    if (conocido.status === 403 && conocido.origen === 'base')
+      console.warn('[crm] %s denegado por la base: %s', etiqueta, conocido.code);
+    return NextResponse.json(
+      {
+        success: false,
+        error: conocido.error,
+        code: conocido.code,
+        ...conocido.extra,
+      },
+      { status: conocido.status },
+    );
   }
   console.error('[crm] %s error:', etiqueta, mensajeCrudo(error));
   return NextResponse.json({ success: false, error: 'Error interno' }, { status: 500 });
@@ -126,10 +130,22 @@ export interface ErrorCrmClasificado {
  */
 export function clasificarErrorCrm(error: unknown): ErrorCrmClasificado | null {
   if (error instanceof OrgContextError) {
-    return { status: error.statusCode, code: error.code, error: error.message, extra: {}, origen: 'ruta' };
+    return {
+      status: error.statusCode,
+      code: error.code,
+      error: error.message,
+      extra: {},
+      origen: 'ruta',
+    };
   }
   if (error instanceof CrmHttpError) {
-    return { status: error.status, code: error.code, error: error.message, extra: error.extra, origen: 'ruta' };
+    return {
+      status: error.status,
+      code: error.code,
+      error: error.message,
+      extra: error.extra,
+      origen: 'ruta',
+    };
   }
   const pg = comoErrorConCodigo(error);
   if (pg && typeof pg.code === 'string') {
@@ -149,17 +165,14 @@ export function mensajeCrudo(error: unknown): string {
 }
 
 /** Cuerpo sin las claves de organización (ya comprobadas por `readOrgBody`). */
-export function sinClavesDeOrganizacion<T extends Record<string, unknown>>(body: T | null | undefined): Record<string, unknown> {
+export function sinClavesDeOrganizacion<T extends Record<string, unknown>>(
+  body: T | null | undefined,
+): Record<string, unknown> {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return {};
   const { organization_id: _a, organizationId: _b, orgId: _c, org_id: _d, ...resto } = body as Record<string, unknown>;
-  void _a; void _b; void _c; void _d;
+  void _a;
+  void _b;
+  void _c;
+  void _d;
   return resto;
-}
-
-export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/** 400 si el id de la ruta no es un uuid (evita un 500 de Postgres por el cast). */
-export function exigirUuid(id: string, campo = 'id'): string {
-  if (!UUID_RE.test(id)) throw new CrmHttpError(400, 'id_invalido', `${campo} inválido`);
-  return id;
 }

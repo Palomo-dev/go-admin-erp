@@ -3707,3 +3707,4 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - Jest de las reglas y de guardrails: 201 en verde. eslint de los archivos tocados, sin avisos. tsc no reporta esos archivos.
 
 - Corrección de la misma fase: npx tsc --noEmit -p tsconfig.json terminó en verde, 0 errores.
+- npx next build terminó en verde.

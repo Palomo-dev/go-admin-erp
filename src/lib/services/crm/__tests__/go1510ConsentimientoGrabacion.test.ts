@@ -9,11 +9,12 @@
  * 5. El TwiML ya NO emite <Say> de aviso en la 1ª pasada
  */
 
-import { buildGreeting } from '../voiceAgent/agentRuntime';
+import { buildGreeting, buildSystemPrompt } from '../voiceAgent/agentRuntime';
 import {
   confirmRecordingConsent,
   deleteCallData,
   logConsentOptOut,
+  transferToHuman,
   type ToolContext,
 } from '../voiceAgentTools';
 
@@ -153,15 +154,29 @@ describe('GO-1510: Consentimiento de grabación (Ley 1581)', () => {
         expect(result.say).toContain('no la grabo');
       });
 
-      // El test de given=true requiere mock de Twilio y se omite aquí (ver comentario en el brief)
+      it('falla gracefully cuando given=true pero falta call_id', async () => {
+        mockSupabase.maybeSingle.mockResolvedValueOnce({
+          data: {
+            call_id: null,
+            provider_call_sid: 'CA123',
+            consent_given: null,
+          },
+          error: null,
+        });
+        
+        const result = await confirmRecordingConsent(mockContext, { given: true });
+
+        expect(result.success).toBe(false);
+        expect(result.error).toContain('call_id');
+      });
     });
 
     describe('delete_call_data', () => {
-      it('vacía conversation_log y marca erase_requested', async () => {
+      it('vacía conversation_log y marca erase_requested (sin Twilio)', async () => {
         mockSupabase.maybeSingle.mockResolvedValueOnce({
           data: {
             call_id: 'calls-789',
-            provider_call_sid: 'CA123',
+            provider_call_sid: null, // Sin CallSid, no intenta borrar en Twilio
           },
           error: null,
         });
@@ -174,11 +189,11 @@ describe('GO-1510: Consentimiento de grabación (Ley 1581)', () => {
         expect(mockSupabase.update).toHaveBeenCalled();
       });
 
-      it('responde con mensaje específico para menores', async () => {
+      it('responde con mensaje específico para menores (sin Twilio)', async () => {
         mockSupabase.maybeSingle.mockResolvedValueOnce({
           data: {
             call_id: 'calls-789',
-            provider_call_sid: 'CA123',
+            provider_call_sid: null, // Sin CallSid, no intenta borrar en Twilio
           },
           error: null,
         });
@@ -191,14 +206,24 @@ describe('GO-1510: Consentimiento de grabación (Ley 1581)', () => {
     });
 
     describe('log_consent_opt_out con channel:all', () => {
-      it('llama a la RPC con cada canal cuando channel=all', async () => {
+      it('usa channel:all por defecto cuando no se especifica', async () => {
+        mockSupabase.rpc.mockResolvedValue({ data: true, error: null });
+        
+        const result = await logConsentOptOut(mockContext, { reason: 'no me interesa' });
+
+        expect(result.success).toBe(true);
+        expect(result.data?.channels).toEqual(['voice', 'email', 'whatsapp', 'sms']);
+        // La RPC se llama 4 veces (una por canal)
+        expect(mockSupabase.rpc).toHaveBeenCalledTimes(4);
+      });
+
+      it('llama a la RPC con cada canal cuando channel=all explícito', async () => {
         mockSupabase.rpc.mockResolvedValue({ data: true, error: null });
         
         const result = await logConsentOptOut(mockContext, { channel: 'all', reason: 'no me interesa' });
 
         expect(result.success).toBe(true);
         expect(result.data?.channels).toEqual(['voice', 'email', 'whatsapp', 'sms']);
-        // La RPC se llama 4 veces (una por canal)
         expect(mockSupabase.rpc).toHaveBeenCalledTimes(4);
       });
 
@@ -213,6 +238,125 @@ describe('GO-1510: Consentimiento de grabación (Ley 1581)', () => {
         expect(result.success).toBe(true);
         expect(result.data?.erase_requested).toBe(true);
       });
+      
+      it('NO devuelve frase fija en say (la dice el agente según el prompt)', async () => {
+        mockSupabase.rpc.mockResolvedValue({ data: true, error: null });
+        
+        const result = await logConsentOptOut(mockContext, { reason: 'no me interesa' });
+
+        expect(result.success).toBe(true);
+        expect(result.say).toBeUndefined();
+      });
+    });
+
+    describe('transfer_to_human', () => {
+      it('NO devuelve frase fija en say (la dice el agente según el prompt)', async () => {
+        const result = await transferToHuman(mockContext, { reason: 'cliente molesto' });
+
+        expect(result.success).toBe(true);
+        expect(result.data?.transferred).toBe(true);
+        expect(result.say).toBeUndefined();
+      });
+    });
+  });
+
+  describe('buildSystemPrompt y mandatoryGuardrails (GO-1510)', () => {
+    it('NO repite identity_disclosure si first_message ya dice "asistente virtual"', () => {
+      const prompt = buildSystemPrompt({
+        organizationName: 'GO Admin',
+        identityDisclosure: 'Asistente virtual con IA.',
+        agent: {
+          name: 'Pedro',
+          system_prompt: '',
+          purpose_type: 'sales',
+          guardrails: {},
+          transfer_to_human_rules: {},
+          max_turns: 20,
+          first_message: 'Hola, te habla Pedro, un asistente virtual con inteligencia artificial.',
+        } as any,
+        stage: null,
+        customerName: 'Test',
+        recordingEnabled: false,
+        consentMessage: '',
+      });
+
+      // No debe repetir la frase "Al inicio de la llamada te identificas así, literalmente"
+      expect(prompt).toContain('Ya te identificaste como asistente virtual al inicio');
+      expect(prompt).not.toContain('Al inicio de la llamada te identificas así, literalmente');
+    });
+
+    it('SÍ incluye identity_disclosure si first_message NO lo trae', () => {
+      const prompt = buildSystemPrompt({
+        organizationName: 'GO Admin',
+        identityDisclosure: 'Asistente virtual con IA.',
+        agent: {
+          name: 'Pedro',
+          system_prompt: '',
+          purpose_type: 'sales',
+          guardrails: {},
+          transfer_to_human_rules: {},
+          max_turns: 20,
+          first_message: 'Hola, te llamo de GO Admin.',
+        } as any,
+        stage: null,
+        customerName: 'Test',
+        recordingEnabled: false,
+        consentMessage: '',
+      });
+
+      // Debe incluir la instrucción literal de identificación
+      expect(prompt).toContain('Al inicio de la llamada te identificas así, literalmente');
+      expect(prompt).toContain('Asistente virtual con IA.');
+    });
+  });
+
+  describe('modo_sin_datos (GO-1510)', () => {
+    it('buildSystemPrompt incluye instrucciones de modo respaldo', () => {
+      const prompt = buildSystemPrompt({
+        organizationName: 'GO Admin',
+        identityDisclosure: 'Asistente virtual.',
+        agent: {
+          name: 'Pedro',
+          system_prompt: '',
+          purpose_type: 'sales',
+          guardrails: {},
+          transfer_to_human_rules: {},
+          max_turns: 20,
+          first_message: '',
+        } as any,
+        stage: null,
+        customerName: 'Test',
+        recordingEnabled: false,
+        consentMessage: '',
+        modoSinDatos: true,
+      });
+
+      expect(prompt).toContain('MODO RESPALDO (sin grabación ni guardado de datos)');
+      expect(prompt).toContain('NO pides datos personales, NO agendas, NO guardas nada');
+    });
+
+    it('buildSystemPrompt NO incluye aviso de grabación en modo_sin_datos', () => {
+      const prompt = buildSystemPrompt({
+        organizationName: 'GO Admin',
+        identityDisclosure: 'Asistente virtual.',
+        agent: {
+          name: 'Pedro',
+          system_prompt: '',
+          purpose_type: 'sales',
+          guardrails: {},
+          transfer_to_human_rules: {},
+          max_turns: 20,
+          first_message: '',
+        } as any,
+        stage: null,
+        customerName: 'Test',
+        recordingEnabled: true,
+        consentMessage: 'Esta llamada se graba.',
+        modoSinDatos: true,
+      });
+
+      expect(prompt).not.toContain('AVISO DE GRABACIÓN');
+      expect(prompt).not.toContain('Esta llamada se graba');
     });
   });
 

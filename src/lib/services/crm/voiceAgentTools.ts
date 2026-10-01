@@ -562,13 +562,17 @@ export async function sendPaymentLink(
  * GO-1510: Ahora soporta channel:'all' para marcar la baja en todos los canales
  * (voice, whatsapp, sms y email). Además, cancela tareas y mensajes pendientes
  * y marca `erase_requested` en metadata si el cliente pidió borrar sus datos.
+ * 
+ * Por defecto usa channel:'all' cuando la persona pide que no la llamen más.
+ * La frase de despedida la dice el agente según el prompt, no la herramienta.
  */
 export async function logConsentOptOut(
   ctx: ToolContext,
   args: { channel?: 'voice' | 'email' | 'whatsapp' | 'sms' | 'all'; reason?: string; erase_requested?: boolean }
 ): Promise<ToolResult> {
   if (!ctx.customerId) return { success: false, error: 'Sin cliente asociado' };
-  const channel = args.channel ?? 'voice';
+  // GO-1510: Por defecto usa 'all' cuando la persona pide que no la llamen más
+  const channel = args.channel ?? 'all';
 
   // GO-1510: Si channel es 'all', se registra la baja en los 4 canales
   const channels = channel === 'all' ? ['voice', 'email', 'whatsapp', 'sms'] : [channel];
@@ -611,10 +615,10 @@ export async function logConsentOptOut(
     metadata: { channel, channels, reason: args.reason ?? null, erase_requested: args.erase_requested ?? false },
   });
 
+  // GO-1510: La frase de despedida la dice el agente según el prompt, no la herramienta
   return {
     success: true,
     data: { channel, channels, opted_out: true, erase_requested: args.erase_requested ?? false },
-    say: 'Entendido, no volveremos a llamarle. Queda registrado. Gracias por su tiempo.',
   };
 }
 
@@ -830,6 +834,12 @@ export async function deleteCallData(
 
 // ─── Tool: transfer_to_human ─────────────────────────────────────────────────
 
+/**
+ * GO-1510: Marca la llamada como transferida. La frase («Le paso con un asesor»)
+ * la dice el agente según el prompt, no la herramienta. Twilio ConversationRelay
+ * no soporta transferencia real en vivo; la herramienta solo marca el estado
+ * para que el equipo sepa que debe devolver la llamada.
+ */
 export async function transferToHuman(ctx: ToolContext, args: { reason?: string }): Promise<ToolResult> {
   if (!ctx.voiceAgentCallId) return { success: false, error: 'No hay llamada en curso' };
 
@@ -854,7 +864,8 @@ export async function transferToHuman(ctx: ToolContext, args: { reason?: string 
       outcome: 'transferred',
     });
   }
-  return { success: true, data: { transferred: true }, say: 'Le paso con un asesor, un momento por favor.' };
+  // GO-1510: La frase la dice el agente según el prompt, no la herramienta
+  return { success: true, data: { transferred: true } };
 }
 
 // ─── Tool: end_call ──────────────────────────────────────────────────────────

@@ -429,12 +429,11 @@ async function handlePrompt(
   session: ConversationRelaySession,
   message: CRPromptMessage
 ): Promise<void> {
-  // Log raw message para diagnosticar campos de Twilio CR
-  console.log(`[CR] [${session.callSid}] Raw prompt:`, JSON.stringify(message));
+  // GO-1510: Log de metadatos sin el contenido del usuario (privacidad)
   const userText = message.voicePrompt || message.voiceInput || message.transcript || message.text || '';
   if (!userText.trim()) return;
 
-  console.log(`[CR] [${session.callSid}] Usuario: ${userText}`);
+  console.log(`[CR] [${session.callSid}] Usuario habló (${userText.length} caracteres)`);
 
   // F6 (A-F6-24): límites del agente, no constantes del handler.
   const maxTurns = session.runtime?.maxTurns ?? 20;

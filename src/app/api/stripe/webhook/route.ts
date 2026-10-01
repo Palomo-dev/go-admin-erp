@@ -6,6 +6,63 @@
  * Es llamado automáticamente por Stripe cuando ocurren eventos.
  * 
  * URL del webhook: https://app.goadmin.io/api/stripe/webhook
+ * 
+ * PROTECCIÓN DE CORTESÍAS Y PAGOS MANUALES
+ * ========================================
+ * 
+ * El webhook implementa protección para organizaciones con suscripciones especiales:
+ * 
+ * 1. **Cortesías** (metadata.cortesia = true):
+ *    - Ejemplo: Org 143 (TecnoShopping)
+ *    - No se actualiza status, trial_end ni current_period_end desde Stripe
+ *    - No se cancelan ni degradan aunque Stripe lo indique
+ *    - No se envían notificaciones de pago fallido
+ * 
+ * 2. **Pagos anuales manuales** (metadata.pago_anual.pagado_hasta con fecha futura):
+ *    - Ejemplo: Org 199 (Samar), 200 (Max Pollos)
+ *    - Mantienen el periodo pagado local aunque Stripe esté en trial/canceled
+ *    - No se sobrescribe current_period_end si el local es mayor
+ * 
+ * 3. **Detección por diferencia de periodos** (periodo local > Stripe + 30 días):
+ *    - Fallback para detectar pagos manuales sin metadata
+ * 
+ * LOOKUP DE SUSCRIPCIONES
+ * =======================
+ * 
+ * Para encontrar la suscripción local, el webhook intenta en orden:
+ * 
+ * 1. Por stripe_subscription_id (caso normal)
+ * 2. Por organization_id extraído de subscription.metadata.organizationId
+ *    - Este fallback es crítico para org 143, que no tiene stripe_subscription_id
+ *    ni stripe_customer_id en la BD pero sí metadata.organizationId en Stripe
+ * 3. Por stripe_customer_id (si está en metadata pero no subscription_id)
+ * 
+ * La protección se verifica DESPUÉS de encontrar la suscripción por cualquier ruta
+ * y ANTES de cualquier escritura en la base de datos.
+ * 
+ * ESCENARIOS DE PRUEBA CRÍTICOS
+ * ==============================
+ * 
+ * customer.subscription.deleted con cortesía (org 143):
+ *   - Entrada: subscription con metadata.organizationId="143", status="canceled"
+ *   - Lookup: Encuentra suscripción local por organization_id (stripe_subscription_id es null)
+ *   - Protección: shouldProtectManualPayment retorna true (metadata.cortesia=true)
+ *   - Resultado: Status NO se actualiza a "canceled", solo cancel_at y cancel_at_period_end
+ *   - Log: "⚠️ PROTECCIÓN CANCELACIÓN - Org 143: Pago manual vigente detectado"
+ * 
+ * invoice.payment_failed con cortesía (org 143):
+ *   - Entrada: invoice con subscription="sub_cortesia"
+ *   - Lookup: Encuentra suscripción con metadata.cortesia=true
+ *   - Protección: shouldProtectManualPayment retorna true
+ *   - Resultado: NO se insertan notificaciones en tabla notifications
+ *   - Log: "⚠️ PROTECCIÓN - Org 143: Pago fallido ignorado (cortesía/pago manual)"
+ * 
+ * customer.subscription.deleted sin cortesía (org 145):
+ *   - Entrada: subscription con metadata.organizationId="145", status="canceled"
+ *   - Lookup: Encuentra suscripción local sin metadata.cortesia
+ *   - Protección: shouldProtectManualPayment retorna false
+ *   - Resultado: Status se actualiza a "canceled", módulos no-core se desactivan
+ *   - Log: "✅ Suscripción marcada como cancelada en BD"
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -303,11 +360,33 @@ async function updateSubscriptionInDatabase(
     if (action === 'deleted' || subscription.status === 'canceled') {
       // PROTECCIÓN CRÍTICA: No cancelar suscripciones con periodo pagado vigente
       // Buscar primero la suscripción actual para verificar si tiene pago manual
-      const { data: existingSub } = await supabase
+      // Intentar por stripe_subscription_id primero, luego por organization_id como fallback
+      let existingSub = null;
+      
+      // Intento 1: Buscar por stripe_subscription_id
+      const { data: subById } = await supabase
         .from('subscriptions')
-        .select('id, current_period_end, status, metadata')
+        .select('id, current_period_end, status, metadata, organization_id')
         .eq('stripe_subscription_id', stripeSubscriptionId)
         .maybeSingle()
+      
+      if (subById) {
+        existingSub = subById;
+      } else if (organizationId) {
+        // Intento 2: Buscar por organization_id (caso org 143 sin stripe_subscription_id)
+        const { data: subByOrg } = await supabase
+          .from('subscriptions')
+          .select('id, current_period_end, status, metadata, organization_id')
+          .eq('organization_id', organizationId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        
+        if (subByOrg) {
+          existingSub = subByOrg;
+          console.log(`✅ Suscripción encontrada por organization_id: ${organizationId} (sin stripe_subscription_id)`)
+        }
+      }
 
       // Verificar protección usando el helper
       const isProtected = shouldProtectManualPayment(
@@ -506,15 +585,26 @@ async function notifyPaymentFailed(stripeSubscriptionId: string, invoiceId: stri
       auth: { autoRefreshToken: false, persistSession: false },
     })
 
-    // Obtener organization_id desde la suscripción
+    // Obtener suscripción completa para verificar protección
     const { data: sub } = await supabase
       .from('subscriptions')
-      .select('organization_id')
+      .select('organization_id, metadata, current_period_end')
       .eq('stripe_subscription_id', stripeSubscriptionId)
-      .single()
+      .maybeSingle()
 
     if (!sub?.organization_id) {
       console.warn('⚠️ No se encontró organización para suscripción:', stripeSubscriptionId)
+      return
+    }
+
+    // PROTECCIÓN: No notificar pagos fallidos en cortesías o pagos manuales
+    const isProtected = shouldProtectManualPayment(
+      sub as { metadata: unknown; current_period_end: string | null },
+      { current_period_end: Math.floor(Date.now() / 1000) } // Comparar con ahora
+    );
+
+    if (isProtected) {
+      console.warn(`⚠️ PROTECCIÓN - Org ${sub.organization_id}: Pago fallido ignorado (cortesía/pago manual)`)
       return
     }
 

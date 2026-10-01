@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
 import { ORGANIZATION_CHANGED_EVENT } from '@/lib/hooks/useOrganization';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
@@ -45,6 +46,7 @@ function buildUrl(type: TimelineEntityType, id: string, q: TimelineQuery, cursor
   if (q.userId) p.set('user_id', q.userId);
   if (q.from) p.set('from', q.from);
   if (q.to) p.set('to', q.to);
+  if (q.toExclusive && q.to) p.set('to_exclusive', 'true');
   p.set('limit', String(q.limit ?? 30));
   if (cursor) p.set('cursor', cursor);
   return `/api/crm/timeline/${type}/${id}?${p.toString()}`;
@@ -66,6 +68,10 @@ export function useTimeline(
   opts: { pauseNew?: boolean } = {}
 ): UseTimelineResult {
   const { timezone } = useFormatDate();
+  const locale = useLocale();
+  const t = useTranslations('crm.historial');
+  const hoy = t('hoy');
+  const ayer = t('ayer');
   const [orgRevision, setOrgRevision] = useState(0);
   useEffect(() => {
     const changed = () => setOrgRevision(n => n + 1);
@@ -225,7 +231,7 @@ export function useTimeline(
     setPending([]);
   }, [pending]);
 
-  const groups = useMemo(() => groupByDay(loadedScope === scope ? entries : [], timezone), [entries, loadedScope, scope, timezone]);
+  const groups = useMemo(() => groupByDay(loadedScope === scope ? entries : [], timezone, new Date(), locale, { hoy, ayer }), [entries, loadedScope, scope, timezone, locale, hoy, ayer]);
 
   return {
     entries: loadedScope === scope ? entries : [],

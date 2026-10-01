@@ -20,10 +20,13 @@ export type TimelineKind =
   | 'note'
   | 'meeting'
   | 'system'
-  | 'activity';
+  | 'activity'
+  | 'sale'
+  | 'reservation'
+  | 'web_order';
 
 export const TIMELINE_KINDS: readonly TimelineKind[] = [
-  'call', 'call_live', 'email', 'whatsapp', 'sms', 'ai_call', 'task', 'note', 'meeting', 'system', 'activity',
+  'call', 'call_live', 'email', 'whatsapp', 'sms', 'ai_call', 'task', 'note', 'meeting', 'system', 'activity', 'sale', 'reservation', 'web_order',
 ];
 
 export interface TimelineUser {
@@ -124,7 +127,23 @@ export interface TimelineStageRef {
   color: string | null;
 }
 
+export interface TimelineFinancialData {
+  source_id: string;
+  reference: string;
+  amount: number | string | null;
+  status: string | null;
+  payment_status: string | null;
+  notes: string | null;
+  end_at: string | null;
+  checkin: string | null;
+  checkout: string | null;
+  delivery_type: string | null;
+  spaces: Array<{ id: string; label: string; type: string | null }>;
+  folios: Array<{ id: string; status: string; balance: number | string; items_count: number; pending_count: number; pending_amount: number | string }>;
+}
+
 export type TimelineEntry =
+  | (TimelineEntryBase & { kind: 'sale' | 'reservation' | 'web_order'; financial: TimelineFinancialData })
   | (TimelineEntryBase & { kind: 'call' | 'call_live'; call: TimelineCallData; activity: TimelineActivityRef | null })
   | (TimelineEntryBase & {
       kind: 'email';
@@ -175,6 +194,8 @@ export interface TimelineQuery {
   userId?: string;
   from?: string;
   to?: string;
+  /** El kit envía hasta+1 00:00 para conservar el último microsegundo del día. */
+  toExclusive?: boolean;
   limit?: number;
   cursor?: string;
 }
@@ -188,6 +209,7 @@ export interface TimelineResult {
 export interface TimelineAccess {
   callUserId?: string;
   onlyLeads?: boolean;
+  timezone?: string;
 }
 
 // ─── Cursor ──────────────────────────────────────────────────────────────────

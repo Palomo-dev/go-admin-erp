@@ -36,17 +36,19 @@ export interface TimelineFiltersProps {
   onAbrirPanel?: () => void;
   deshabilitado?: boolean;
   className?: string;
+  mostrarBusqueda?: boolean;
 }
 
-export function TimelineFilters({ valor, onValorChange, usuarios = [], modo = 'organizacion', selectorEntidad, onAbrirPanel, deshabilitado, className }: TimelineFiltersProps) {
+export function TimelineFilters({ valor, onValorChange, usuarios = [], modo = 'organizacion', selectorEntidad, onAbrirPanel, deshabilitado, className, mostrarBusqueda = true }: TimelineFiltersProps) {
   const t = useTranslations('crm.kit.filtrosLinea');
   const { getToday } = useFormatDate();
   const hoy = getToday();
   const cambiar = (parcial: Partial<FiltrosTimeline>) => onValorChange({ ...valor, ...parcial });
   const enPanel = contarFiltrosPanel(valor);
+  const ficha = modo === 'entidad' && !mostrarBusqueda;
 
   const chips = (
-    <div role="group" aria-label={t('tipos')} className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 lg:flex-wrap lg:overflow-visible">
+    <div role="group" aria-label={t('tipos')} className={cn('-mx-1 flex gap-1.5 px-1 pb-1 lg:flex-wrap lg:overflow-visible', ficha ? 'flex-wrap' : 'overflow-x-auto')}>
       {TIPOS_TIMELINE.map((tipo: TipoTimeline) => {
         const activo = valor.tipo === tipo;
         return (
@@ -70,15 +72,16 @@ export function TimelineFilters({ valor, onValorChange, usuarios = [], modo = 'o
 
   return (
     <div className={cn('flex flex-col gap-3', className)}>
-      <div className="flex items-center gap-2">
-        <SearchInput
+      {ficha && chips}
+      <div className="flex flex-wrap items-center gap-2">
+        {mostrarBusqueda && <SearchInput
           value={valor.texto}
           onChange={(texto) => cambiar({ texto })}
           placeholder={t('buscar')}
           etiqueta={t('buscar')}
           className="min-w-0 flex-1 lg:max-w-[320px]"
-        />
-        <button
+        />}
+        {!ficha && <button
           type="button"
           onClick={onAbrirPanel}
           disabled={deshabilitado}
@@ -88,8 +91,8 @@ export function TimelineFilters({ valor, onValorChange, usuarios = [], modo = 'o
           <SlidersHorizontal aria-hidden="true" className="size-4" strokeWidth={1.5} />
           {t('filtros')}
           {enPanel > 0 && <span className="rounded-full bg-brand-action px-1.5 text-xs text-fg-on-brand">{enPanel}</span>}
-        </button>
-        <div className="hidden min-w-0 flex-1 items-center gap-2 lg:flex">
+        </button>}
+        <div className={cn('min-w-0 flex-1 flex-wrap items-center gap-2', ficha ? 'flex' : 'hidden lg:flex')}>
           <SelectCrm
             aria-label={t('responsable')}
             valor={valor.responsableId}
@@ -129,7 +132,7 @@ export function TimelineFilters({ valor, onValorChange, usuarios = [], modo = 'o
           )}
         </div>
       </div>
-      {chips}
+      {!ficha && chips}
     </div>
   );
 }

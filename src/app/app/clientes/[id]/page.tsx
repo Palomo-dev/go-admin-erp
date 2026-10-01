@@ -207,7 +207,7 @@ export default function PerfilCliente() {
               <OportunidadesTab clienteId={cliente.id} organizationId={cliente.organization_id} onNuevaOportunidad={crm.onNuevaOportunidad} recarga={crm.recarga} />
             </TabsContent>
             <TabsContent value="timeline">
-              <TimelineTab key={crm.recarga} clienteId={cliente.id} organizationId={cliente.organization_id} />
+              <TimelineTab key={crm.recarga} clienteId={cliente.id} organizationId={cliente.organization_id} cliente={cliente} />
             </TabsContent>
             <TabsContent value="cuentas">
               <CuentasTab clienteId={cliente.id} organizationId={cliente.organization_id} />

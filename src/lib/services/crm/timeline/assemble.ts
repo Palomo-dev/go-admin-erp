@@ -213,6 +213,17 @@ export function assemble(r: Raw, h: Hydration): TimelineEntry | null {
   const isActivity = 'activity_type' in r.row;
 
   switch (r.kind) {
+    case 'sale':
+    case 'reservation':
+    case 'web_order':
+      return { ...base, kind: r.kind, financial: {
+        source_id: r.row.source_id, reference: r.row.reference,
+        amount: r.row.amount ?? null, status: r.row.status ?? null,
+        payment_status: r.row.payment_status ?? null, notes: r.row.notes ?? null,
+        end_at: r.row.end_at ?? null, checkin: r.row.checkin ?? null,
+        checkout: r.row.checkout ?? null, delivery_type: r.row.delivery_type ?? null,
+        spaces: r.row.spaces ?? [], folios: r.row.folios ?? [],
+      } };
     case 'call':
     case 'call_live': {
       if (isActivity) {

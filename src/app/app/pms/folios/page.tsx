@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useToast } from '@/components/ui/use-toast';
+import React, { Suspense, useMemo, useState } from 'react';
 import { FoliosHeader, FoliosList, FolioDetailDialog } from '@/components/pms/folios';
-import FoliosService, { type Folio } from '@/lib/services/foliosService';
-import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
+import { leerEnlaceFolio } from '@/components/pms/folios/enlaceFolioLogica';
+import { useFoliosPagina } from '@/components/pms/folios/useFoliosPagina';
 import { PageHeaderSkeleton, TableSkeleton } from '@/components/common/PageSkeletons';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
@@ -18,92 +18,22 @@ import {
 import { Label } from '@/components/ui/label';
 
 export default function FoliosPage() {
-  const { toast } = useToast();
-  const router = useRouter();
+  return <Suspense fallback={<TableSkeleton rows={5} columns={6} />}><FoliosContenido /></Suspense>;
+}
+
+function FoliosContenido() {
+  const params = useSearchParams();
+  const enlace = leerEnlaceFolio(params);
   const { organization } = useOrganization();
   const { branchFilter, isLoading: branchLoading } = useBranch();
-
-  // Estado de datos
-  const [folios, setFolios] = useState<Folio[]>([]);
-  const [filteredFolios, setFilteredFolios] = useState<Folio[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const isFirstLoadRef = useRef(true);
-
-  // Estado de filtros
+  const { folios, loadData, isLoading, isRefreshing, selectedFolioId,
+    handleViewDetails, handleCloseDialog, scope } = useFoliosPagina(organization?.id, branchFilter, branchLoading, enlace);
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<'all' | 'with_balance' | 'without_balance'>('all');
-
-  // Estado de dialog
-  const [showDetailDialog, setShowDetailDialog] = useState(false);
-  const [selectedFolioId, setSelectedFolioId] = useState<string | null>(null);
-
-  // Cargar datos iniciales
-  useEffect(() => {
-    if (organization?.id && !branchLoading) {
-      loadData();
-    }
-  }, [organization?.id, branchFilter, branchLoading]);
-
-  const loadData = async () => {
-    if (!organization?.id) return;
-    try {
-      if (isFirstLoadRef.current) {
-        setIsLoading(true);
-      }
-      setIsRefreshing(true);
-
-      const foliosData = await FoliosService.getFolios({
-        organizationId: organization.id,
-        branchId: branchFilter,
-      });
-      setFolios(foliosData);
-      setFilteredFolios(foliosData);
-    } catch (error) {
-      console.error('Error cargando datos:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar los folios.',
-        variant: 'destructive',
-      });
-    } finally {
-      isFirstLoadRef.current = false;
-      setIsRefreshing(false);
-      setIsLoading(false);
-    }
-  };
-
-  // Filtrar folios
-  useEffect(() => {
-    let filtered = folios;
-
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter((folio) => folio.status === statusFilter);
-    }
-
-    if (paymentStatusFilter === 'with_balance') {
-      filtered = filtered.filter((folio) => folio.balance > 0);
-    } else if (paymentStatusFilter === 'without_balance') {
-      filtered = filtered.filter((folio) => folio.balance <= 0);
-    }
-
-    setFilteredFolios(filtered);
-  }, [folios, statusFilter, paymentStatusFilter]);
-
-  // Handlers
-  const handleViewDetails = (folio: Folio) => {
-    setSelectedFolioId(folio.id);
-    setShowDetailDialog(true);
-  };
-
-  const handleCloseDialog = () => {
-    setShowDetailDialog(false);
-    setSelectedFolioId(null);
-  };
-
-  const handleUpdateFolio = () => {
-    loadData(); // Recargar la lista después de actualizar
-  };
+  const filteredFolios = useMemo(() => folios.filter(folio =>
+    (statusFilter === 'all' || folio.status === statusFilter) &&
+    (paymentStatusFilter === 'all' || (paymentStatusFilter === 'with_balance' ? folio.balance > 0 : folio.balance <= 0))
+  ), [folios, statusFilter, paymentStatusFilter]);
 
   if (isLoading && folios.length === 0) {
     return (
@@ -128,7 +58,7 @@ export default function FoliosPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="status">Estado</Label>
-              <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
+              <Select value={statusFilter} onValueChange={value => { if (value === 'all' || value === 'open' || value === 'closed') setStatusFilter(value); }}>
                 <SelectTrigger id="status" className="dark:bg-gray-900">
                   <SelectValue placeholder="Todos los estados" />
                 </SelectTrigger>
@@ -141,7 +71,7 @@ export default function FoliosPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="payment-status">Saldo</Label>
-              <Select value={paymentStatusFilter} onValueChange={(value: any) => setPaymentStatusFilter(value)}>
+              <Select value={paymentStatusFilter} onValueChange={value => { if (value === 'all' || value === 'with_balance' || value === 'without_balance') setPaymentStatusFilter(value); }}>
                 <SelectTrigger id="payment-status" className="dark:bg-gray-900">
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
@@ -197,10 +127,11 @@ export default function FoliosPage() {
 
       {/* Detail Dialog */}
       <FolioDetailDialog
-        open={showDetailDialog}
+        key={`${scope}:${selectedFolioId ?? 'cerrado'}`}
+        open={!!selectedFolioId}
         onOpenChange={handleCloseDialog}
         folioId={selectedFolioId}
-        onUpdate={handleUpdateFolio}
+        onUpdate={() => { void loadData(); }}
       />
     </div>
   );

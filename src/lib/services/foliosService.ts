@@ -15,6 +15,8 @@ export interface Folio {
     checkin: string;
     checkout: string;
     customer_id: string;
+    organization_id: number;
+    branch_id: number | null;
     customers?: {
       first_name: string;
       last_name: string;
@@ -76,7 +78,7 @@ export interface Payment {
   amount?: number;
   currency: string;
   reference?: string;
-  processor_response?: any;
+  processor_response?: unknown;
   status?: string;
   created_by?: string;
   created_at: string;
@@ -115,6 +117,21 @@ export interface CreatePaymentData {
   created_by?: string;
 }
 
+type ReservaFolio = NonNullable<Folio['reservations']>;
+type FolioCrudo = Omit<Folio, 'reservations'> & {
+  reservations: (Omit<ReservaFolio, 'customers'> & {
+    customers?: ReservaFolio['customers'] | NonNullable<ReservaFolio['customers']>[];
+  }) | Array<Omit<ReservaFolio, 'customers'> & {
+    customers?: ReservaFolio['customers'] | NonNullable<ReservaFolio['customers']>[];
+  }> | null;
+};
+function normalizarFolio(folio: FolioCrudo): Folio {
+  const reserva = Array.isArray(folio.reservations) ? folio.reservations[0] : folio.reservations;
+  return { ...folio, reservations: reserva ? {
+    ...reserva, customers: Array.isArray(reserva.customers) ? reserva.customers[0] : reserva.customers,
+  } : undefined };
+}
+
 export class FoliosService {
   /**
    * Obtener todos los folios con filtros
@@ -122,10 +139,13 @@ export class FoliosService {
   async getFolios(filters?: {
     status?: 'open' | 'closed' | 'all';
     reservation_id?: string;
+    folioId?: string;
     organizationId?: number;
     branchId?: number | null;
   }): Promise<Folio[]> {
     try {
+      const organizationId = filters?.organizationId ?? getOrganizationId();
+      if (!organizationId) throw new Error('Selecciona una organización para consultar folios.');
       let query = supabase
         .from('folios')
         .select(`
@@ -135,7 +155,7 @@ export class FoliosService {
           status,
           created_at,
           updated_at,
-          reservations (
+          reservations!inner (
             id,
             checkin,
             checkout,
@@ -169,28 +189,19 @@ export class FoliosService {
       if (filters?.reservation_id) {
         query = query.eq('reservation_id', filters.reservation_id);
       }
+      if (filters?.folioId) query = query.eq('id', filters.folioId);
+      query = query.eq('reservations.organization_id', organizationId);
 
       if (filters?.branchId) {
         query = query.eq('reservations.branch_id', filters.branchId);
-      } else if (filters?.organizationId) {
-        query = query.eq('reservations.organization_id', filters.organizationId);
       }
 
-      const { data, error } = await query;
+      const { data, error } = await query.returns<FolioCrudo[]>();
 
       if (error) throw error;
 
       // Transformar datos
-      return ((data || []) as any[]).map(folio => {
-        const reservations = folio.reservations?.[0] || folio.reservations;
-        return {
-          ...folio,
-          reservations: reservations ? {
-            ...reservations,
-            customers: reservations.customers?.[0] || reservations.customers
-          } : undefined
-        };
-      }) as Folio[];
+      return (data ?? []).map(normalizarFolio);
     } catch (error) {
       console.error('Error obteniendo folios:', error);
       throw error;
@@ -202,6 +213,8 @@ export class FoliosService {
    */
   async getFolioById(folioId: string): Promise<Folio | null> {
     try {
+      const organizationId = getOrganizationId();
+      if (!organizationId) throw new Error('Selecciona una organización para consultar folios.');
       const { data: folio, error } = await supabase
         .from('folios')
         .select(`
@@ -211,7 +224,7 @@ export class FoliosService {
           status,
           created_at,
           updated_at,
-          reservations (
+          reservations!inner (
             id,
             checkin,
             checkout,
@@ -237,33 +250,33 @@ export class FoliosService {
           )
         `)
         .eq('id', folioId)
+        .eq('reservations.organization_id', organizationId)
+        .returns<FolioCrudo[]>()
         .single();
 
       if (error) throw error;
       if (!folio) return null;
 
       // Obtener items del folio
-      const { data: items } = await supabase
+      const { data: items, error: itemsError } = await supabase
         .from('folio_items')
         .select('*')
         .eq('folio_id', folioId)
         .order('created_at', { ascending: true });
+      if (itemsError) throw itemsError;
 
       // Obtener pagos del folio
-      const { data: payments } = await supabase
+      const { data: payments, error: paymentsError } = await supabase
         .from('payments')
         .select('*')
         .eq('source', 'folio')
         .eq('source_id', folioId)
+        .eq('organization_id', organizationId)
         .order('created_at', { ascending: true});
+      if (paymentsError) throw paymentsError;
 
-      const reservations = folio.reservations?.[0] || folio.reservations;
       return {
-        ...folio,
-        reservations: reservations ? {
-          ...reservations,
-          customers: reservations.customers?.[0] || reservations.customers
-        } : undefined,
+        ...normalizarFolio(folio),
         items: items || [],
         payments: payments || [],
       } as Folio;
@@ -332,11 +345,11 @@ export class FoliosService {
       await this.updateFolioBalance(data.folio_id);
 
       return item as FolioItem;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error completo agregando item:', {
-        message: error.message,
-        name: error.name,
-        stack: error.stack,
+        message: error instanceof Error ? error.message : String(error),
+        name: error instanceof Error ? error.name : undefined,
+        stack: error instanceof Error ? error.stack : undefined,
       });
       throw error;
     }
@@ -435,7 +448,7 @@ export class FoliosService {
       // Fallback: si no hay organization_id en localStorage, obtenerlo del folio
       if (!organizationId || organizationId === 0) {
         const folio = await this.getFolioById(folioId);
-        const reservationData = folio?.reservations as any;
+        const reservationData = folio?.reservations;
         if (reservationData?.organization_id) {
           organizationId = reservationData.organization_id;
           branchId = branchId || reservationData.branch_id || null;
@@ -689,4 +702,5 @@ export class FoliosService {
   }
 }
 
-export default new FoliosService();
+const foliosService = new FoliosService();
+export default foliosService;

@@ -1,6 +1,7 @@
 /** @jest-environment jsdom */
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { ErrorApiCrm, pedirCrm } from '@/components/crm/acciones/apiCrm';
+jest.mock('next-intl', () => ({ useLocale: () => 'es', useTranslations: () => (key: string) => key }));
 jest.mock('@/components/crm/acciones/apiCrm', () => ({ ...jest.requireActual('@/components/crm/acciones/apiCrm'), pedirCrm: jest.fn() }));
 jest.mock('@/lib/hooks/useOrganization', () => ({ ORGANIZATION_CHANGED_EVENT: 'organization-changed' }));
 jest.mock('@/lib/context/OrganizationTimezoneContext', () => ({ useFormatDate: () => ({ timezone: 'Europe/Madrid' }) }));

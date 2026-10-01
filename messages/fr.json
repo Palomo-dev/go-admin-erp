@@ -23126,6 +23126,21 @@
     }
   },
   "crm": {
+    "historial": {
+      "agregarNota": "Ajouter une note",
+      "catalogosError": "Impossible de charger les filtres.",
+      "actividad": "Activité",
+      "hoy": "Aujourd’hui",
+      "ayer": "Hier",
+      "actualizar": "Actualiser",
+      "reintentar": "Réessayer",
+      "mas": "Charger plus",
+      "nuevas": "{n, plural, one {# nouvelle entrée} other {# nouvelles entrées}}",
+      "vacio": "Aucune interaction. Commencez par un appel, un e-mail ou une note.",
+      "live": "Actualisation en temps réel",
+      "polling": "Actualisation toutes les 15 s",
+      "conectando": "Connexion…"
+    },
     "identidades": {
       "titulo": "Identités",
       "subtitulo": "Clients pouvant représenter la même personne ou entreprise et leurs identités par canal",

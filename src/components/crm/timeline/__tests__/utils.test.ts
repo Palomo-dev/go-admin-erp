@@ -32,6 +32,10 @@ describe('mergeEntries', () => {
 });
 
 describe('groupByDay', () => {
+  test.each([['2026-03-29T22:30:00Z', '2026-03-29T11:00:00Z'], ['2026-10-25T22:30:00Z', '2026-10-24T11:00:00Z']])('Ayer es el día calendario anterior al cruzar el horario de verano %s', (ahora, ayer) => {
+    const groups = groupByDay([note('ayer', ayer)], 'Europe/Madrid', new Date(ahora), 'en', { hoy: 'Today', ayer: 'Yesterday' });
+    expect(groups[0].label).toMatch(/^Yesterday/);
+  });
   test('23:30 UTC-5 cae en el día local correcto y etiqueta Hoy/Ayer', () => {
     const now = new Date('2026-09-09T12:00:00-05:00');
     const entries = [

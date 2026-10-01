@@ -2629,6 +2629,21 @@
     "membresias": "Memberships"
   },
   "crm": {
+    "historial": {
+      "agregarNota": "Add note",
+      "catalogosError": "Could not load filters.",
+      "actividad": "Activity",
+      "hoy": "Today",
+      "ayer": "Yesterday",
+      "actualizar": "Refresh",
+      "reintentar": "Retry",
+      "mas": "Load more",
+      "nuevas": "{n, plural, one {# new entry} other {# new entries}}",
+      "vacio": "No interactions yet. Start with a call, an email or a note.",
+      "live": "Live updates active",
+      "polling": "Refreshing every 15 s",
+      "conectando": "Connecting…"
+    },
     "identidades": {
       "titulo": "Identities",
       "subtitulo": "Customers who may represent the same person or company, and their channel identities",

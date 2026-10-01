@@ -9,6 +9,22 @@ const at = (n: number) => `2026-10-01T10:00:00.${String(n).padStart(6, '0')}Z`;
 const scoped = { organization_id: 120, timeline_customer_id: CUSTOMER };
 const tables = () => ({ customers: [{ id: CUSTOMER, organization_id: 120, lifecycle_stage: 'lead' }] });
 
+test('WhatsApp agrupa y pagina según la zona de la organización, sin fijar Bogotá', async () => {
+  const messages = ['2026-10-01T21:30:00Z', '2026-10-01T22:30:00Z'].map((created_at, n) => ({
+    id: uuid(n + 800), organization_id: 120, conversation_id: uuid(700), created_at, content: 'Mensaje de prueba',
+    conversation: { id: uuid(700), customer_id: CUSTOMER }, direction: 'inbound', content_type: 'text',
+  }));
+  const db = createPgMock({ ...tables(), messages });
+  const madrid = await getTimeline(120, 'customer', CUSTOMER, db, { kinds: ['whatsapp'], limit: 1 }, { timezone: 'Europe/Madrid' });
+  const next = await getTimeline(120, 'customer', CUSTOMER, db, { kinds: ['whatsapp'], limit: 1, cursor: madrid.next_cursor! }, { timezone: 'Europe/Madrid' });
+  expect(madrid.entries[0]).toMatchObject({ id: uuid(801), count: 1 });
+  expect(next.entries[0]).toMatchObject({ id: uuid(800), count: 1 });
+  expect(next.next_cursor).toBeNull();
+  const bogota = await getTimeline(120, 'customer', CUSTOMER, db, { kinds: ['whatsapp'] }, { timezone: 'America/Bogota' });
+  expect(bogota.entries).toHaveLength(1);
+  expect(bogota.entries[0]).toMatchObject({ count: 2 });
+});
+
 test('cliente consume las relaciones SQL, incluye oportunidades y conserva cursor de microsegundos', async () => {
   const notes = Array.from({ length: 67 }, (_, n) => ({ ...scoped, id: uuid(n + 1), body: `Nota ${n}`, created_at: at(n), user_id: null }));
   const data = { ...tables(), crm_customer_notes: [...notes,

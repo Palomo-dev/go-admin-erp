@@ -2629,6 +2629,21 @@
     "membresias": "Membresías"
   },
   "crm": {
+    "historial": {
+      "agregarNota": "Agregar nota",
+      "catalogosError": "No se pudieron cargar los filtros.",
+      "actividad": "Actividad",
+      "hoy": "Hoy",
+      "ayer": "Ayer",
+      "actualizar": "Actualizar",
+      "reintentar": "Reintentar",
+      "mas": "Cargar más",
+      "nuevas": "{n, plural, one {# entrada nueva} other {# entradas nuevas}}",
+      "vacio": "Aún no hay interacciones. Empieza con una llamada, un correo o una nota.",
+      "live": "Tiempo real activo",
+      "polling": "Actualizando cada 15 s",
+      "conectando": "Conectando…"
+    },
     "identidades": {
       "titulo": "Identidades",
       "subtitulo": "Clientes que pueden ser la misma persona o empresa y cómo se reconocen en cada canal",

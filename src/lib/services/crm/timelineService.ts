@@ -36,6 +36,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { compareDesc, decodeCursor, encodeCursor, isBefore, type Ctx, type Raw, type SourceResult, type TimelineAccess, type TimelineEntityType, type TimelineEntry, type TimelineKind, type TimelineQuery, type TimelineResult } from './timeline/types';
 import { fetchActivities, fetchCalls, fetchEmails, fetchNotes, fetchStageHistory, fetchTasks, fetchVoiceAgentCalls, fetchWhatsApp, resolveKinds } from './timeline/sources';
 import { assemble, dedupeRaw, hydrate } from './timeline/assemble';
+import { fetchFinancialHistory } from './timeline/financialSource';
 
 export * from './timeline/types';
 export { dedupeRaw } from './timeline/assemble';
@@ -51,6 +52,7 @@ const SOURCE_KINDS: Record<string, TimelineKind[]> = {
   whatsapp: ['whatsapp'],
   voice_agent_calls: ['ai_call'],
   stage_history: ['system'],
+  financial: ['sale', 'reservation', 'web_order'],
 };
 
 /** Reintentos internos cuando el corte seguro deja la página vacía. */
@@ -113,6 +115,7 @@ async function collectRound(ctx: Ctx, kinds: Set<TimelineKind>): Promise<RoundRe
     wants('whatsapp') ? fetchWhatsApp(ctx) : empty,
     wants('voice_agent_calls') ? fetchVoiceAgentCalls(ctx) : empty,
     wants('stage_history') ? fetchStageHistory(ctx) : empty,
+    wants('financial') ? fetchFinancialHistory(ctx) : empty,
   ]);
 
   const deduped = dedupeRaw(results.flatMap((r) => r.rows)).filter((r) => kinds.has(r.kind));

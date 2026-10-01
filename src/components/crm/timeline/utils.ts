@@ -1,4 +1,5 @@
 import { compareDesc } from '@/lib/services/crm/timeline/types';
+import { addPlainDays, toPlainDate } from '@/lib/utils/dateDisplay';
 import type { TimelineEntry, TimelineKind } from '@/lib/services/crm/timelineService';
 
 /**
@@ -35,11 +36,11 @@ export interface DayGroup {
 const DAY_MS = 86_400_000;
 
 /** Agrupa por día en la zona horaria (por defecto America/Bogota) con etiquetas Hoy/Ayer. */
-export function groupByDay(entries: TimelineEntry[], tz = 'America/Bogota', now: Date = new Date()): DayGroup[] {
+export function groupByDay(entries: TimelineEntry[], tz = 'America/Bogota', now: Date = new Date(), locale = 'es-CO', relativos = { hoy: 'Hoy', ayer: 'Ayer' }): DayGroup[] {
   const keyFmt = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' });
-  const labelFmt = new Intl.DateTimeFormat('es-CO', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long' });
+  const labelFmt = new Intl.DateTimeFormat(locale, { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long' });
   const todayKey = keyFmt.format(now);
-  const yesterdayKey = keyFmt.format(new Date(now.getTime() - DAY_MS));
+  const yesterdayKey = addPlainDays(toPlainDate(now, tz), -1);
   const groups = new Map<string, DayGroup>();
   for (const e of entries) {
     const d = new Date(e.occurred_at);
@@ -47,7 +48,7 @@ export function groupByDay(entries: TimelineEntry[], tz = 'America/Bogota', now:
     let g = groups.get(key);
     if (!g) {
       const base = labelFmt.format(d);
-      const label = key === todayKey ? `Hoy · ${base}` : key === yesterdayKey ? `Ayer · ${base}` : base;
+      const label = key === todayKey ? `${relativos.hoy} · ${base}` : key === yesterdayKey ? `${relativos.ayer} · ${base}` : base;
       g = { day: key, label: label.charAt(0).toUpperCase() + label.slice(1), entries: [] };
       groups.set(key, g);
     }
@@ -68,6 +69,9 @@ export const KIND_LABELS: Record<TimelineKind, string> = {
   meeting: 'Reunión',
   system: 'Sistema',
   activity: 'Actividad',
+  sale: 'Venta',
+  reservation: 'Reserva',
+  web_order: 'Pedido web',
 };
 
 /** Chips de filtro (agrupan kinds relacionados). */

@@ -5,6 +5,7 @@ import { CRM_PERMISOS, exigirPermisoCrm, respuestaErrorCrm, tienePermisoCrm, Crm
 import { getTimeline, TimelineEntityNotFoundError, type TimelineAccess } from '@/lib/services/crm/timelineService';
 import { leerConsultaTimeline } from '@/lib/services/crm/timeline/query';
 import { exigirUuid } from '@/lib/services/crm/crmErrors';
+import { getOrgTimezoneServer } from '@/lib/services/crm/revenueOsService';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +25,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
     if (!(await tienePermisoCrm(ctx, CRM_PERMISOS.llamadasVerTodas))) access.callUserId = ctx.userId;
     const query = leerConsultaTimeline(request.nextUrl.searchParams);
+    access.timezone = await getOrgTimezoneServer(ctx.organizationId, ctx.supabase);
     const result = await getTimeline(ctx.organizationId, type, id, ctx.supabase, query, access);
     return NextResponse.json({ success: true, data: result.entries, next_cursor: result.next_cursor },
       { headers: { 'Cache-Control': 'private, no-store' } });

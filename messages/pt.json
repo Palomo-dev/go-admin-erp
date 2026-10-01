@@ -23126,6 +23126,21 @@
     }
   },
   "crm": {
+    "historial": {
+      "agregarNota": "Adicionar nota",
+      "catalogosError": "Não foi possível carregar os filtros.",
+      "actividad": "Atividade",
+      "hoy": "Hoje",
+      "ayer": "Ontem",
+      "actualizar": "Atualizar",
+      "reintentar": "Tentar novamente",
+      "mas": "Carregar mais",
+      "nuevas": "{n, plural, one {# nova entrada} other {# novas entradas}}",
+      "vacio": "Ainda não há interações. Comece com uma ligação, um e-mail ou uma nota.",
+      "live": "Atualizações em tempo real",
+      "polling": "Atualizando a cada 15 s",
+      "conectando": "Conectando…"
+    },
     "identidades": {
       "titulo": "Identidades",
       "subtitulo": "Clientes que podem representar a mesma pessoa ou empresa e suas identidades por canal",

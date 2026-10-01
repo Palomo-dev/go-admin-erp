@@ -4,6 +4,7 @@ import { OrgContextError } from '@/lib/utils/orgContextError';
 jest.mock('@/lib/utils/orgContext', () => ({ getServerOrgContext: jest.fn(), hasOrgAdminOrPermission: jest.fn(), OrgContextError: jest.requireActual('@/lib/utils/orgContextError').OrgContextError }));
 import { getTimeline, TimelineEntityNotFoundError } from '@/lib/services/crm/timelineService';
 jest.mock('@/lib/services/crm/timelineService', () => ({ ...jest.requireActual('@/lib/services/crm/timelineService'), getTimeline: jest.fn() }));
+jest.mock('@/lib/services/crm/revenueOsService', () => ({ getOrgTimezoneServer: jest.fn().mockResolvedValue('Europe/Madrid') }));
 import { GET } from '../route';
 const id = '11111111-1111-4111-8111-111111111111';
 const actor = '22222222-2222-4222-8222-222222222222';
@@ -23,18 +24,18 @@ beforeEach(() => {
 test('visibilidad de llamadas se decide por sesión, un parámetro no concede ver todas', async () => {
   const response = await get('customer', '?callUserId=otro&onlyLeads=false');
   expect(response.status).toBe(200);
-  expect(timeline).toHaveBeenCalledWith(120, 'customer', id, sb, {}, { callUserId: actor });
+  expect(timeline).toHaveBeenCalledWith(120, 'customer', id, sb, {}, { callUserId: actor, timezone: 'Europe/Madrid' });
   expect(response.headers.get('cache-control')).toBe('private, no-store');
 });
 test('ver todas exige permiso real del servidor', async () => {
   permisos.add('crm.calls.view_all');
   await get();
-  expect(timeline).toHaveBeenCalledWith(120, 'customer', id, sb, {}, {});
+  expect(timeline).toHaveBeenCalledWith(120, 'customer', id, sb, {}, { timezone: 'Europe/Madrid' });
 });
 test('permiso leads se transmite como restricción interna, no como filtro editable', async () => {
   permisos = new Set(['crm.leads.view']);
   await get('customer', '?onlyLeads=false');
-  expect(timeline).toHaveBeenCalledWith(120, 'customer', id, sb, {}, { onlyLeads: true, callUserId: actor });
+  expect(timeline).toHaveBeenCalledWith(120, 'customer', id, sb, {}, { onlyLeads: true, callUserId: actor, timezone: 'Europe/Madrid' });
 });
 test.each(['customer', 'opportunity'])('sin permiso %s rechaza antes de leer historial', async type => {
   permisos.clear();

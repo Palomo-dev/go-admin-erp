@@ -28,6 +28,7 @@ import {
 import { executeTool as executeCrmTool } from '@/lib/services/crm/voiceAgentTools';
 import { openModelStream, type AdapterMessage, type AdapterTool } from '@/lib/ai/agent/openaiAdapter';
 import type { JsonSchemaObject } from '@/lib/ai/agent/types';
+import { abrirSesionCreditoVoz, conciliarSesionCreditoVoz } from '@/lib/services/crm/voiceAgent/creditosVoz';
 import {
   isTtsError,
   twilioErrorCode,
@@ -178,6 +179,7 @@ const ttsTrackers = new WeakMap<WebSocket, TtsFallbackTracker>();
 export function handleConversationRelayConnection(ws: WebSocket, upgradeClaims?: WsSessionClaims | null): void {
   let session: ConversationRelaySession | null = null;
   let tts: TtsFallbackTracker | null = null;
+  let closing = false;
 
   ws.on('message', async (data) => {
     let msgType = 'unknown';
@@ -190,7 +192,8 @@ export function handleConversationRelayConnection(ws: WebSocket, upgradeClaims?:
       switch (message.type) {
         case 'setup': {
           const claims = verifyWsSessionToken(message.customParameters?.token);
-          if (!claims || (upgradeClaims && upgradeClaims.orgId !== claims.orgId)) {
+          if (!claims || (upgradeClaims && (upgradeClaims.orgId !== claims.orgId || upgradeClaims.jti !== claims.jti ||
+              upgradeClaims.callSid !== claims.callSid || upgradeClaims.agentId !== claims.agentId || upgradeClaims.callId !== claims.callId))) {
             console.warn('[CR] setup rechazado: token de sesión inválido/expirado o incoherente');
             ws.close(1008, 'unauthorized');
             return;
@@ -207,6 +210,7 @@ export function handleConversationRelayConnection(ws: WebSocket, upgradeClaims?:
           tts = new TtsFallbackTracker(message.customParameters?.[TTS_FALLBACK_PARAM] || null);
           ttsTrackers.set(ws, tts);
           session = await handleSetup(ws, message, claims);
+          if (session && (closing || ws.readyState !== 1)) await endSession(session);
           break;
         }
 
@@ -249,15 +253,17 @@ export function handleConversationRelayConnection(ws: WebSocket, upgradeClaims?:
   });
 
   ws.on('close', () => {
+    closing = true;
     if (session) {
-      endSession(session);
+      void endSession(session).catch((error) => console.error('[CR] Falló el cierre de sesión:', error));
     }
   });
 
   ws.on('error', (error) => {
+    closing = true;
     console.error('[CR] WebSocket error:', error);
     if (session) {
-      endSession(session);
+      void endSession(session).catch((error) => console.error('[CR] Falló el cierre de sesión:', error));
     }
   });
 }
@@ -273,6 +279,12 @@ async function handleSetup(
   claims: WsSessionClaims
 ): Promise<ConversationRelaySession | null> {
   const { callSid, from, to } = message;
+  if (!claims.callSid || claims.callSid !== callSid ||
+      (message.customParameters?.agentId && message.customParameters.agentId !== claims.agentId) ||
+      (message.customParameters?.callId && message.customParameters.callId !== claims.callId)) {
+    ws.close(1008, 'unauthorized');
+    return null;
+  }
   // F0: la org viene del token firmado (no del parámetro en claro ni de un fallback).
   const orgIdParam = message.customParameters?.orgId;
   if (orgIdParam && parseInt(orgIdParam, 10) !== claims.orgId) {
@@ -312,7 +324,7 @@ async function handleSetup(
     return null;
   }
 
-  if (commSettings.voice_minutes_remaining !== null && commSettings.voice_minutes_remaining <= 0) {
+  if (!claims.callId && commSettings.voice_minutes_remaining !== null && commSettings.voice_minutes_remaining <= 0) {
     sendText(ws, 'No hay minutos disponibles en este momento. Por favor intente más tarde.');
     sendEnd(ws);
     return null;
@@ -330,9 +342,11 @@ async function handleSetup(
         callId: claims.callId || message.customParameters?.callId || null,
         orgId,
       });
+      if (runtime.orgId !== orgId || runtime.voiceAgentCallId !== (claims.callId ?? null)) throw new Error('Configuración de otro intento');
     } catch (err) {
-      // No se traga el fallo: se registra con su mensaje real y se cae al flujo genérico.
       console.error('[CR] No se pudo cargar el agente del CRM:', err instanceof Error ? err.message : err);
+      sendEnd(ws);
+      return null;
     }
   }
 
@@ -360,6 +374,16 @@ async function handleSetup(
     turns: [],
   };
 
+  // La apertura prueba la reserva saliente y escribe el uso en la misma transacción.
+  // Una reserva del último minuto deja saldo cero y sigue autorizando ESTA sesión.
+  try {
+    await abrirSesionCreditoVoz(sb, orgId, callSid, claims.callId ?? null, session.startedAt.toISOString(), from);
+  } catch (error) {
+    console.error('[CR] No se pudo acreditar la apertura de voz:', error instanceof Error ? error.message : error, { org: orgId });
+    sendEnd(ws);
+    return null;
+  }
+
   activeSessions.set(callSid, session);
 
   session.silencio = new VigilanteSilencio({
@@ -375,29 +399,6 @@ async function handleSetup(
       sendEnd(ws);
     },
   });
-
-  // Log inicio de sesión
-  const usageInsert = await sb.from('comm_usage_logs').insert({
-    organization_id: orgId,
-    channel: 'voice',
-    credits_used: 0,
-    twilio_message_sid: callSid,
-    recipient: from,
-    status: 'in_progress',
-    direction: runtime ? 'outbound' : 'inbound',
-    module: 'voice_agent',
-    metadata: {
-      type: 'conversation_relay_session',
-      startedAt: new Date().toISOString(),
-      voice_agent_id: runtime?.agent.id ?? null,
-      voice_agent_call_id: runtime?.voiceAgentCallId ?? null,
-      stage_objective: runtime?.stage?.objective ?? null,
-    },
-  });
-  // No se traga el fallo: sin este registro no hay traza de coste de la sesión.
-  if (usageInsert.error) {
-    console.error('[CR] comm_usage_logs insert falló:', usageInsert.error.message);
-  }
 
   // Saludo inicial. Con agente del CRM, `welcomeGreeting` ya lo dijo ConversationRelay:
   // aquí solo entra en el historial para que el modelo no lo repita.
@@ -667,89 +668,14 @@ async function endSession(session: ConversationRelaySession): Promise<void> {
 
   const sb = getServiceSupabase();
 
-  // ── Conciliación del crédito (F-NEW-6) ──
-  // El despachador RESERVA `voice_agent_calls.credits_reserved` minutos antes de
-  // marcar. Antes aquí se cobraban los minutos completos ENCIMA de la reserva:
-  // una llamada de 30 s costaba 2 créditos y una de 5 min costaba 6. Ahora se
-  // cobra solo la diferencia, y una sola vez (`credits_settled_at`).
-  let alreadyReserved = 0;
-  let settleRowId: string | null = null;
-  if (session.runtime?.voiceAgentCallId) {
-    const { data: vac, error: vacError } = await sb
-      .from('voice_agent_calls')
-      .select('id, credits_reserved, credits_settled_at')
-      .eq('id', session.runtime.voiceAgentCallId)
-      .eq('organization_id', session.orgId)
-      .maybeSingle();
-    if (vacError) {
-      console.error('[CR] no se pudo leer la reserva de créditos:', vacError.message);
-    } else if (vac) {
-      const row = vac as { id: string; credits_reserved: number | null; credits_settled_at: string | null };
-      if (row.credits_settled_at) {
-        // Ya conciliada (cierre duplicado): no se vuelve a cobrar.
-        alreadyReserved = duration;
-      } else {
-        alreadyReserved = row.credits_reserved ?? 0;
-        settleRowId = row.id;
-      }
-    }
+  // El libro privado calcula la diferencia, comprueba el débito y sella una vez.
+  // Un saldo insuficiente conserva la deuda y la fecha del primer cierre.
+  try {
+    const resultado = await conciliarSesionCreditoVoz(sb, session.orgId, session.callSid, new Date().toISOString(), session.messages.length);
+    if (!resultado.settled) console.warn('[CR] Voz pendiente de conciliación:', { org: session.orgId, minutosPendientes: resultado.minutes_due });
+  } catch (error) {
+    console.error('[CR] No se pudo conciliar la sesión de voz:', error instanceof Error ? error.message : error, { org: session.orgId });
   }
-
-  const creditsToCharge = Math.max(0, duration - alreadyReserved);
-  // R3-7: el cobro era fail-OPEN. Si `deduct_comm_credits` fallaba se registraba
-  // el error y aun así se sellaba `credits_settled_at`, así que la llamada
-  // quedaba dada por conciliada y el cobro se perdía para siempre. Ahora el
-  // sello depende de que el cobro haya salido bien: si falla, la fila se queda
-  // SIN sellar y sigue siendo reconciliable.
-  let cobroOk = true;
-  if (creditsToCharge > 0) {
-    const { error: creditError } = await sb.rpc('deduct_comm_credits', {
-      p_org_id: session.orgId,
-      p_channel: 'voice',
-      p_amount: creditsToCharge,
-    });
-    if (creditError) {
-      cobroOk = false;
-      console.error(
-        `[CR] deduct_comm_credits falló (org ${session.orgId}, ${creditsToCharge} créditos): ${creditError.message}. ` +
-        'La llamada NO se marca como conciliada para que el cobro pueda reintentarse.'
-      );
-    }
-  }
-
-  if (settleRowId && !cobroOk) {
-    // No se sella: queda pendiente de conciliar, a propósito.
-    settleRowId = null;
-  }
-
-  if (settleRowId) {
-    const { error: settleError } = await sb
-      .from('voice_agent_calls')
-      .update({ credits_settled_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-      .eq('id', settleRowId)
-      .eq('organization_id', session.orgId);
-    if (settleError) console.error('[CR] no se pudo marcar la conciliación de créditos:', settleError.message);
-  }
-
-  // Actualizar log
-  const { error: usageError } = await sb
-    .from('comm_usage_logs')
-    .update({
-      status: 'completed',
-      credits_used: Math.max(duration, alreadyReserved),
-      metadata: {
-        type: 'conversation_relay_session',
-        startedAt: session.startedAt.toISOString(),
-        endedAt: new Date().toISOString(),
-        durationMinutes: duration,
-        creditsReserved: alreadyReserved,
-        creditsChargedAtHangup: creditsToCharge,
-        messageCount: session.messages.length,
-      },
-    })
-    .eq('twilio_message_sid', session.callSid)
-    .eq('module', 'voice_agent');
-  if (usageError) console.error('[CR] comm_usage_logs update falló:', usageError.message);
 
   // F6: la conversación se guarda en `voice_agent_calls` (antes no se escribía nada
   // y la fila no salía nunca de `in_progress`).
@@ -761,7 +687,8 @@ async function endSession(session: ConversationRelaySession): Promise<void> {
       session.turns,
       {
         duration_seconds: Math.max(1, Math.round((Date.now() - session.startedAt.getTime()) / 1000)),
-      }
+      },
+      session.callSid
     );
   }
 

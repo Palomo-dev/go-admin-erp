@@ -8,7 +8,7 @@
  * que gobierna el guion real de la llamada.
  * Respeta la baja voluntaria (`fn_can_contact`) antes de marcar.
  *
- * F-NEW-5 (ronda 2): lanzar llamadas exige rol de administrador de la organización
+ * Lanzar llamadas exige administración o el permiso canónico de campañas
  * y pasa por las mismas barreras que la cola de campañas (canal habilitado, agente
  * activo, franja horaria, tope diario/horario contra el libro de intentos,
  * concurrencia y deduplicación por cliente). Antes bastaba una sesión de miembro y
@@ -16,31 +16,33 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError, requireOrgAdmin } from '@/lib/utils/orgContext';
+import { getServerOrgContext, requireOrgAdminOrPermission } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import { dispatchAgentCall, VoiceDispatchBlocked } from '@/lib/services/crm/voiceAgentService';
+import { getServiceClient } from '@/lib/supabase/server-service';
+import { CRM_PERMISOS, CrmHttpError, exigirUuid, respuestaErrorCrm } from '@/lib/services/crm/crmRouteSupport';
+import { z } from 'zod';
 
 export const runtime = 'nodejs';
+const bodySchema = z.object({
+  opportunity_id: z.string().uuid().nullable().optional(), customer_id: z.string().uuid().nullable().optional(), dial_now: z.boolean().optional(),
+}).strict().refine((body) => Boolean(body.opportunity_id || body.customer_id));
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const ctx = await getServerOrgContext();
-    requireOrgAdmin(ctx);
+    const ctx = await getServerOrgContext(request);
+    await requireOrgAdminOrPermission(ctx, CRM_PERMISOS.campanasGestionar);
     const { id } = await params;
-    const body = readOrgBody(ctx, await request.json().catch(() => ({})), { request });
+    const voiceAgentId = exigirUuid(id, 'Agente');
+    const parsed = bodySchema.safeParse(readOrgBody(ctx, await request.json().catch(() => ({})), { request }));
+    if (!parsed.success) throw new CrmHttpError(400, 'datos_invalidos', 'Selecciona un cliente o una oportunidad válida.');
+    const body = parsed.data;
 
-    if (!body?.opportunity_id && !body?.customer_id) {
-      return NextResponse.json(
-        { success: false, error: 'Se requiere opportunity_id o customer_id' },
-        { status: 400 }
-      );
-    }
-
-    const result = await dispatchAgentCall(ctx.organizationId, ctx.supabase, {
-      voiceAgentId: id,
+    const result = await dispatchAgentCall(ctx.organizationId, getServiceClient(), {
+      voiceAgentId,
       opportunityId: body.opportunity_id ?? null,
       customerId: body.customer_id ?? null,
       dialNow: body.dial_now !== false,
@@ -48,9 +50,6 @@ export async function POST(
 
     return NextResponse.json({ success: true, data: result }, { status: 200 });
   } catch (error) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json({ success: false, error: error.message }, { status: error.statusCode });
-    }
     if (error instanceof VoiceDispatchBlocked) {
       // 429 para los topes (el cliente puede reintentar más tarde), 409 para el resto.
       const isRate = ['daily_cap', 'hourly_cap', 'customer_cap', 'concurrency'].includes(error.reason);
@@ -59,9 +58,6 @@ export async function POST(
         { status: isRate ? 429 : 409 }
       );
     }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    const isBusiness = /no encontrad|desactivad|do_not_call|Se requiere/i.test(message);
-    console.error('[voice-agents/dispatch]', message);
-    return NextResponse.json({ success: false, error: message }, { status: isBusiness ? 400 : 500 });
+    return respuestaErrorCrm(error, 'voice-agents.dispatch');
   }
 }

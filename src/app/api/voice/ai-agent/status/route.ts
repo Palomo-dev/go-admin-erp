@@ -26,6 +26,8 @@ import {
   type VoiceAgentCallLiveStatus,
 } from '@/lib/services/crm/voiceAgent/callStatusMap';
 import { devolverReservaSinConversacion, sinConversacion } from '@/lib/services/crm/voiceAgent/reservaCreditos';
+import { aplicarCallbackVoz, buscarReservaVoz } from '@/lib/services/crm/voiceAgent/creditosVoz';
+import { CrmHttpError } from '@/lib/services/crm/crmErrors';
 
 export const runtime = 'nodejs';
 
@@ -53,14 +55,16 @@ export async function POST(request: Request) {
 
   try {
     const supabase = getServiceClient();
-    const callId = new URL(request.url).searchParams.get('callId') || '';
+    const search = new URL(request.url).searchParams;
+    const callId = search.get('callId') || '';
+    const reservationId = search.get('reservationId');
     const callSid = params.CallSid || '';
 
     // La org sale de la fila persistida, jamás del cuerpo.
     let query = supabase
       .from('voice_agent_calls')
       .select(
-        'id, organization_id, call_id, status, started_at, outcome, customer_id, opportunity_id, credits_reserved, credits_settled_at'
+        'id, organization_id, call_id, provider_call_sid, status, started_at, outcome, customer_id, opportunity_id, credits_reserved, credits_settled_at'
       );
     query = callId ? query.eq('id', callId) : query.eq('provider_call_sid', callSid);
     const { data, error } = await query.maybeSingle();
@@ -70,6 +74,7 @@ export async function POST(request: Request) {
       id: string;
       organization_id: number;
       call_id: string | null;
+      provider_call_sid: string | null;
       status: VoiceAgentCallLiveStatus;
       started_at: string | null;
       outcome: string | null;
@@ -78,6 +83,7 @@ export async function POST(request: Request) {
     } | null;
 
     if (!vac) {
+      if (reservationId) return new NextResponse('Forbidden', { status: 403 });
       console.warn('[AI Agent status] Sin correlación para', callId || callSid);
       return new NextResponse(EMPTY_TWIML, { status: 200, headers: XML_HEADERS });
     }
@@ -96,6 +102,16 @@ export async function POST(request: Request) {
       parseInt(params.CallDuration || params.SessionDuration || '0', 10) || null;
 
     const nextStatus = mapTwilioCallStatus(callStatus, answeredBy);
+    const reservation = await buscarReservaVoz(supabase, vac.organization_id, vac.id, reservationId, callSid);
+    if (reservation) {
+      if (nextStatus) await aplicarCallbackVoz(
+        supabase, vac.organization_id, reservation.id, callSid, nextStatus, durationSeconds,
+        params.HandoffData ? String(params.HandoffData).slice(0, 500) : answeredBy ? `answered_by_${answeredBy}` : callStatus
+      );
+      return new NextResponse(EMPTY_TWIML, { status: 200, headers: XML_HEADERS });
+    }
+    // El escritor de compatibilidad solo admite un SID ya correlacionado.
+    if (!callSid || vac.provider_call_sid !== callSid) return new NextResponse('Forbidden', { status: 403 });
     // Una llamada transferida no vuelve atrás cuando llega el `completed` del
     // tramo, y una que el TwiML ya cerró como buzón (AMD) tampoco: el
     // `completed` posterior puede llegar sin `AnsweredBy` y la convertiría en
@@ -114,10 +130,8 @@ export async function POST(request: Request) {
       patch.outcome = String(params.HandoffData).slice(0, 500);
     }
 
-    // F-NEW-6: si la llamada no llegó a hablar (nadie contestó, comunicaba, falló,
-    // se canceló o contestó un buzón), el ws-server nunca concilia y la reserva de
-    // crédito se quedaba cobrada. Aquí se devuelve, una sola vez
-    // (`credits_settled_at`), con la MISMA función que usa el TwiML del agente.
+    // Compatibilidad: una reserva antigua sin prueba privada no se devuelve
+    // desde banderas públicas. El helper exige conciliación antes de escribir.
     const efectivo = keepTerminal ? vac.status : nextStatus;
     if (sinConversacion(efectivo)) {
       const devolucion = await devolverReservaSinConversacion(supabase, vac);
@@ -152,6 +166,7 @@ export async function POST(request: Request) {
 
     return new NextResponse(EMPTY_TWIML, { status: 200, headers: XML_HEADERS });
   } catch (error) {
+    if (error instanceof CrmHttpError && error.status === 403) return new NextResponse('Forbidden', { status: 403 });
     console.error('[AI Agent status] Error:', error instanceof Error ? error.message : error);
     // Twilio reintenta ante 5xx: no se traga el fallo con un 200 mentiroso.
     return new NextResponse('Error', { status: 500 });

@@ -1,3 +1,4 @@
+import { dobleReservaVoz } from '@/lib/services/crm/__tests__/dobles/reservaVoz';
 /**
  * F6 · r-voz 2026-09-23 — «la campaña se crea y no llama nadie, nunca».
  *
@@ -97,6 +98,7 @@ interface RpcResolver {
 }
 
 function makeSupabase(resolve: Resolver, resolveRpc?: RpcResolver) {
+  const reserva = dobleReservaVoz();
   const ops: Op[] = [];
   const rpcs: { name: string; args: Record<string, unknown> }[] = [];
 
@@ -144,7 +146,7 @@ function makeSupabase(resolve: Resolver, resolveRpc?: RpcResolver) {
     rpc: jest.fn(async (name: string, args: Record<string, unknown>) => {
       rpcs.push({ name, args });
       const r = resolveRpc ? resolveRpc({ name, args }) : {};
-      return { data: r.data ?? null, error: r.error ?? null };
+      return { data: r.data ?? (r.error ? null : reserva(name, args)) ?? null, error: r.error ?? null };
     }),
   } as unknown as SupabaseClient;
 
@@ -163,7 +165,7 @@ function campaignRow(over: Record<string, unknown> = {}) {
   };
 }
 
-function pendingRow(id = 'vac-1') {
+function pendingRow(id = '20000000-0000-4000-8000-000000000001') {
   return {
     id, organization_id: ORG, voice_agent_id: 'agent-1', campaign_id: 'camp-1',
     customer_id: 'cust-1', opportunity_id: null, status: 'in_progress', attempts: 1,
@@ -222,7 +224,6 @@ function escenario(o: EscenarioOpts = {}) {
   const rpcResolver: RpcResolver = ({ name }) => {
     if (name === 'fn_claim_voice_agent_calls') return { data: claimedRows };
     if (name === 'fn_can_contact') return { data: true };
-    if (name === 'deduct_comm_credits') return { data: true };
     return { data: null };
   };
   return makeSupabase(resolver, rpcResolver);
@@ -349,7 +350,7 @@ describe('2. Lo que el disparo automático sigue respetando', () => {
   test('V10 · dos ejecuciones solapadas no marcan dos veces la misma fila: las filas salen SOLO del claim atómico', async () => {
     // La primera pasada recibe la fila; la segunda, nada (la RPC ya la reservó
     // con FOR UPDATE SKIP LOCKED). El despachador no tiene otra fuente de filas.
-    const a = escenario({ claimed: [pendingRow('vac-1')] });
+    const a = escenario({ claimed: [pendingRow('20000000-0000-4000-8000-000000000001')] });
     const b = escenario({ claimed: [] });
     const [r1, r2] = await Promise.all([
       runCampaignQueue(ORG, a.client, { worker: 'w1' }),

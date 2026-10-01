@@ -108,13 +108,18 @@ function fakeClient() {
     select: () => q,
     eq: () => q,
     maybeSingle: async () => ({
-      data: { id: 'vac-1', started_at: null, provider_call_sid: null, call_id: null, customer_id: 'c1', credits_reserved: 1, credits_settled_at: null },
+      data: { id: 'vac-1', started_at: null, provider_call_sid: 'CA1', call_id: null, customer_id: 'c1', credits_reserved: 0, credits_settled_at: null },
       error: null,
     }),
     update: () => q,
     then: (ok: (v: unknown) => unknown) => Promise.resolve({ error: null }).then(ok),
   });
-  return { from: () => q, rpc: async () => ({ data: true, error: null }) };
+  const empty = {
+    select: () => empty, eq: () => empty,
+    maybeSingle: async () => ({ data: null, error: null }),
+  };
+  return { from: (table: string) => table === 'crm_voice_credit_reservations' ? empty : q,
+    rpc: async () => ({ data: true, error: null }) };
 }
 
 jest.mock('@/lib/security/webhookSignatures', () => ({

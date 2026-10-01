@@ -58,7 +58,9 @@ import {
   type VoiceAgentEngine as EnumVoiceAgentEngine,
 } from '@/lib/crm/enums';
 import { describirMotivoLey2300, ventanaLey2300Abierta, ZONA_COLOMBIA } from '@/lib/services/crm/voiceAgent/ley2300';
-import { parametrosAmd } from '@/lib/services/crm/voiceAgent/amd';
+import { despacharVozConReserva, preparacionVozRechazada } from '@/lib/services/crm/voiceAgent/despachoConReserva';
+import { VoiceCreditPendingError } from '@/lib/services/crm/voiceAgent/creditosVoz';
+import { CrmHttpError } from './crmErrors';
 import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 import { normalizarNumeroRne } from '@/lib/services/crm/voiceAgent/rne';
 import {
@@ -586,38 +588,6 @@ export async function canCallCustomer(
   return data === true;
 }
 
-/** Reserva de crédito de voz ANTES del proveedor (D6). Devuelve false si no alcanza. */
-async function reserveVoiceCredits(
-  orgId: number,
-  minutes: number,
-  supabase: SupabaseClient
-): Promise<boolean> {
-  const { data, error } = await supabase.rpc('deduct_comm_credits', {
-    p_org_id: orgId,
-    p_channel: 'voice',
-    p_amount: minutes,
-  });
-  if (error) {
-    console.warn('[voiceAgent] deduct_comm_credits falló:', error.message);
-    return false; // fail-closed
-  }
-  return data === true;
-}
-
-/** Devuelve la reserva si el proveedor rechazó la llamada. */
-async function refundVoiceCredits(
-  orgId: number,
-  minutes: number,
-  supabase: SupabaseClient
-): Promise<void> {
-  const { error } = await supabase.rpc('deduct_comm_credits', {
-    p_org_id: orgId,
-    p_channel: 'voice',
-    p_amount: -minutes,
-  });
-  if (error) console.warn('[voiceAgent] reembolso de créditos falló:', error.message);
-}
-
 // ─── Targets de campaña ──────────────────────────────────────────────────────
 
 export interface CustomerTarget {
@@ -746,9 +716,6 @@ export interface RunCampaignQueueResult {
 
 /** Racha de fallos consecutivos que dispara la parada de emergencia. */
 export const FAILURE_STREAK_TO_STOP = 10;
-
-/** Minutos reservados por llamada antes de marcar (se ajusta al colgar). */
-export const CREDITS_RESERVED_PER_CALL = 1;
 
 /** Desfase en minutos de una zona horaria respecto a UTC en un instante dado. */
 function tzOffsetMinutes(timezone: string, at: Date): number | null {
@@ -1068,7 +1035,8 @@ export async function runCampaignQueue(
         result.calls_skipped++;
         streak++;
         result.errors.push(`Llamada ${vac.id}: ${message}`);
-        await releaseCall(supabase, vac.id, 'failed', message, null);
+        if (err instanceof VoiceCreditPendingError) orgConcurrencyRoom--;
+        else await releaseCall(supabase, orgId, vac.id, 'failed', message, null);
       }
 
       if (streak >= FAILURE_STREAK_TO_STOP) {
@@ -1393,6 +1361,7 @@ export async function getOrgVoiceSettings(
 /** Libera/cierra una fila reclamada sin dejar el estado colgado. */
 async function releaseCall(
   supabase: SupabaseClient,
+  orgId: number,
   vacId: string,
   status: VoiceAgentCallStatus,
   errorMessage: string | null,
@@ -1404,11 +1373,12 @@ async function releaseCall(
       status,
       error_message: errorMessage,
       last_error_code: errorCode,
-      completed_at: new Date().toISOString(),
+      completed_at: status === 'pending' || status === 'queued' ? null : new Date().toISOString(),
       locked_by: null,
       updated_at: new Date().toISOString(),
     })
-    .eq('id', vacId);
+    .eq('id', vacId)
+    .eq('organization_id', orgId);
   if (res.error) throw new VoiceAgentDbError('releaseCall', res.error);
 }
 
@@ -1437,10 +1407,10 @@ interface DialOutcome {
  * `evaluarLey2300Cliente`) y la llamada queda marcada en `calls.metadata`.
  */
 async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
-  const { supabase, orgId, campaign, vac, twilioClient, fromNumber, webhookBase, recording } = p;
+  const { supabase, orgId, vac, twilioClient, fromNumber, webhookBase, recording } = p;
 
   if (!vac.customer_id) {
-    await releaseCall(supabase, vac.id, 'skipped', 'La llamada no tiene cliente asociado', null);
+    await releaseCall(supabase, orgId, vac.id, 'skipped', 'La llamada no tiene cliente asociado', null);
     return { initiated: false, reason: 'sin cliente' };
   }
 
@@ -1456,17 +1426,17 @@ async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
   }
   const customer = customerRes.data as { id: string; phone: string | null; timezone: string | null } | null;
   if (!customer) {
-    await releaseCall(supabase, vac.id, 'skipped', 'Cliente no encontrado', null);
+    await releaseCall(supabase, orgId, vac.id, 'skipped', 'Cliente no encontrado', null);
     return { initiated: false, reason: 'cliente no encontrado' };
   }
 
   if (!(await canCallCustomer(orgId, vac.customer_id, supabase))) {
-    await releaseCall(supabase, vac.id, 'skipped', 'Cliente con baja voluntaria de llamadas (do_not_call)', null);
+    await releaseCall(supabase, orgId, vac.id, 'skipped', 'Cliente con baja voluntaria de llamadas (do_not_call)', null);
     return { initiated: false, reason: 'baja voluntaria' };
   }
 
   if (!customer.phone) {
-    await releaseCall(supabase, vac.id, 'skipped', 'Cliente sin teléfono', null);
+    await releaseCall(supabase, orgId, vac.id, 'skipped', 'Cliente sin teléfono', null);
     return { initiated: false, reason: 'sin teléfono' };
   }
 
@@ -1475,14 +1445,14 @@ async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
   // gastando el minuto de Twilio. Se comprueba ANTES de reservar créditos.
   const dialableTo = normalizarNumeroRne(customer.phone) ?? normalizeDialableE164(customer.phone);
   if (!dialableTo) {
-    await releaseCall(supabase, vac.id, 'skipped', `Teléfono no marcable: ${customer.phone}`, null);
+    await releaseCall(supabase, orgId, vac.id, 'skipped', `Teléfono no marcable: ${customer.phone}`, null);
     return { initiated: false, reason: 'teléfono no marcable' };
   }
 
   // Registro de Números Excluidos (CRC): un número inscrito no se marca nunca,
   // venga de campaña o de despacho puntual. Es definitivo: no se reprograma.
   if (await numeroExcluido(supabase, orgId, dialableTo)) {
-    await releaseCall(supabase, vac.id, 'skipped', 'Número inscrito en el Registro de Números Excluidos (RNE)', 'RNE');
+    await releaseCall(supabase, orgId, vac.id, 'skipped', 'Número inscrito en el Registro de Números Excluidos (RNE)', 'RNE');
     return { initiated: false, reason: 'número en el RNE' };
   }
 
@@ -1509,7 +1479,8 @@ async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
         last_error_code: 'LEY2300',
         updated_at: new Date().toISOString(),
       })
-      .eq('id', vac.id);
+      .eq('id', vac.id)
+      .eq('organization_id', orgId);
     if (res.error) throw new VoiceAgentDbError('dialClaimedCall.reschedule', res.error);
     return {
       initiated: false,
@@ -1529,167 +1500,20 @@ async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
     });
   }
 
-  // D6: crédito reservado ANTES de gastar en el proveedor.
-  const reserved = await reserveVoiceCredits(orgId, CREDITS_RESERVED_PER_CALL, supabase);
-  if (!reserved) {
-    await releaseCall(supabase, vac.id, 'skipped', 'Sin minutos de voz disponibles', null);
-    return { initiated: false, reason: 'sin créditos' };
-  }
-  // F-NEW-6: la reserva queda anotada en la fila para que al colgar se cobre
-  // SOLO la diferencia (antes se cobraban los minutos completos encima).
-  unwrap(
-    'dialClaimedCall.reserveCredits',
-    await supabase
-      .from('voice_agent_calls')
-      .update({ credits_reserved: CREDITS_RESERVED_PER_CALL, credits_settled_at: null, updated_at: new Date().toISOString() })
-      .eq('id', vac.id)
-      .eq('organization_id', orgId)
-  );
-
-  const toNumber = dialableTo;
-  const startedAt = new Date().toISOString();
-
-  // C-F6-03: fila en `calls` con las columnas reales y todos los NOT NULL.
-  const callRow = unwrap(
-    'dialClaimedCall.calls.insert',
-    await supabase
-      .from('calls')
-      .insert({
-        organization_id: orgId,
-        provider: 'twilio',
-        direction: 'outbound',
-        mode: 'ai_agent',
-        from_number: fromNumber,
-        to_number: toNumber,
-        status: 'dialing',
-        started_at: startedAt,
-        customer_id: vac.customer_id,
-        opportunity_id: vac.opportunity_id,
-        voice_agent_id: vac.voice_agent_id,
-        recording_enabled: recording.enabled,
-        consent_given: false,
-        duration_source: 'provider',
-        metadata: {
-          source: 'voice_agent_campaign',
-          campaign_id: campaign.id,
-          voice_agent_call_id: vac.id,
-          // Auditoría: la llamada salió eximida del tope semanal de la Ley 2300
-          // por ser a un número de prueba interno (`crm_voice_test_numbers`).
-          ...marcaExencion,
-        },
-      })
-      .select('id')
-      .single()
-  ) as { id: string };
-
-  // C-F6-04: el UUID de `calls` va en call_id; el CallSid, en provider_call_sid.
-  unwrap(
-    'dialClaimedCall.link',
-    await supabase
-      .from('voice_agent_calls')
-      .update({ call_id: callRow.id, updated_at: new Date().toISOString() })
-      .eq('id', vac.id)
-      .eq('organization_id', orgId)
-  );
-
-  const agentTwimlUrl =
-    `${webhookBase}/api/voice/twiml/ai-agent` +
-    `?agentId=${encodeURIComponent(vac.voice_agent_id)}&callId=${encodeURIComponent(vac.id)}`;
-  const statusUrl = `${webhookBase}/api/voice/ai-agent/status?callId=${encodeURIComponent(vac.id)}`;
-
   try {
-    const call = await twilioClient.calls.create({
-      to: toNumber,
-      from: fromNumber,
-      url: agentTwimlUrl,
-      statusCallback: statusUrl,
-      statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
-      statusCallbackMethod: 'POST',
-      timeout: 30,
-      // AMD síncrono (`voiceAgent/amd.ts`): Twilio espera el veredicto y lo
-      // manda como `AnsweredBy` al TwiML; si es una máquina, `twiml/ai-agent`
-      // cuelga sin abrir la conversación y registra `buzon`.
-      ...parametrosAmd(),
-      // C-F6-09 / A-2: la grabación dual-channel NO se pide aquí. `record: true`
-      // en el `calls.create` arranca a grabar en cuanto contestan, es decir
-      // ANTES de que suene el aviso: el acta quedaba bien fechada pero la
-      // grabación ya existía sin consentimiento. La inicia `twiml/ai-agent`
-      // con `<Start><Recording>` (ronda 5; ya NO por REST), en la segunda
-      // pasada, después del aviso y solo con el acta escrita.
+    return await despacharVozConReserva({
+      supabase, organizationId: orgId, agentId: vac.voice_agent_id, webhookBase, provider: twilioClient,
+      preparation: {
+        callId: vac.id, attempt: vac.attempts, from: fromNumber, to: dialableTo, recording: recording.enabled,
+        customerPhone: customer.phone, customerTimezone: customer.timezone, metadata: marcaExencion,
+      },
     });
-
-    unwrap(
-      'dialClaimedCall.correlate',
-      await supabase
-        .from('voice_agent_calls')
-        .update({
-          provider_call_sid: call.sid,
-          started_at: startedAt,
-          error_message: null,
-          last_error_code: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', vac.id)
-        .eq('organization_id', orgId)
-    );
-    unwrap(
-      'dialClaimedCall.calls.sid',
-      await supabase
-        .from('calls')
-        .update({ provider_call_sid: call.sid, updated_at: new Date().toISOString() })
-        .eq('id', callRow.id)
-        .eq('organization_id', orgId)
-    );
-
-    return { initiated: true };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Error desconocido';
-    const code = (err as { code?: number | string })?.code;
-    await refundVoiceCredits(orgId, CREDITS_RESERVED_PER_CALL, supabase);
-    // La reserva se devolvió: la fila deja de tener crédito pendiente de conciliar.
-    unwrap(
-      'dialClaimedCall.releaseReserve',
-      await supabase
-        .from('voice_agent_calls')
-        .update({ credits_reserved: 0, credits_settled_at: new Date().toISOString() })
-        .eq('id', vac.id)
-        .eq('organization_id', orgId)
-    );
-
-    const failRes = await supabase
-      .from('calls')
-      .update({
-        status: 'failed',
-        ended_at: new Date().toISOString(),
-        metadata: { source: 'voice_agent_campaign', error: message, ...marcaExencion },
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', callRow.id)
-      .eq('organization_id', orgId);
-    if (failRes.error) throw new VoiceAgentDbError('dialClaimedCall.callsFail', failRes.error);
-
-    // A-F6-23: reintento según `retry_policy` del agente.
-    const retry = await getRetryPolicy(supabase, orgId, vac.voice_agent_id);
-    const attempts = vac.attempts ?? 1;
-    if (attempts < retry.maxAttempts) {
-      const res = await supabase
-        .from('voice_agent_calls')
-        .update({
-          status: 'pending',
-          claimed_at: null,
-          locked_by: null,
-          error_message: message,
-          last_error_code: code != null ? String(code) : null,
-          scheduled_at: new Date(Date.now() + retry.backoffMinutes * 60 * 1000).toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', vac.id);
-      if (res.error) throw new VoiceAgentDbError('dialClaimedCall.retry', res.error);
-    } else {
-      await releaseCall(supabase, vac.id, 'failed', message, code != null ? String(code) : null);
-    }
-
-    return { initiated: false, reason: message, providerFailure: true };
+  } catch (error) {
+    if (!preparacionVozRechazada(error)) throw error;
+    // La RPC revirtió antes de reservar. Conservar la fila para la próxima compuerta válida.
+    const code = String((error as { message: string }).message);
+    await releaseCall(supabase, orgId, vac.id, 'pending', code === 'creditos_insuficientes' ? 'Sin minutos de voz disponibles' : 'La llamada no cumple las condiciones de envío.', code);
+    return { initiated: false, reason: code === 'creditos_insuficientes' ? 'Sin minutos de voz disponibles.' : 'La llamada no cumple las condiciones de envío.' };
   }
 }
 
@@ -1768,8 +1592,8 @@ export async function dispatchAgentCall(
   input: DispatchAgentCallInput
 ): Promise<DispatchAgentCallResult> {
   const agent = await getVoiceAgent(input.voiceAgentId, orgId, supabase);
-  if (!agent) throw new Error('Agente no encontrado');
-  if (!agent.is_active) throw new Error('El agente está desactivado');
+  if (!agent) throw new CrmHttpError(404, 'agente_no_encontrado', 'Agente no encontrado');
+  if (!agent.is_active) throw new CrmHttpError(409, 'agente_inactivo', 'El agente está desactivado');
 
   const orgSettings = await getOrgVoiceSettings(orgId, supabase);
   if (!orgSettings.agentEnabled) {
@@ -1792,7 +1616,8 @@ export async function dispatchAgentCall(
         .eq('organization_id', orgId)
         .maybeSingle()
     ) as { id: string; customer_id: string | null; stage_id: string } | null;
-    if (!opp) throw new Error('Oportunidad no encontrada');
+    if (!opp) throw new CrmHttpError(404, 'oportunidad_no_encontrada', 'Oportunidad no encontrada');
+    if (customerId && customerId !== opp.customer_id) throw new CrmHttpError(400, 'cliente_oportunidad_invalido', 'El cliente no corresponde a la oportunidad.');
     customerId = customerId ?? opp.customer_id;
     stageId = opp.stage_id;
   }

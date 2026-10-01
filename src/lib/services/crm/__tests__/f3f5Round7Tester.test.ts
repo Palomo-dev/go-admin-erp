@@ -170,7 +170,7 @@ function seedAgent(p: { linked: boolean; rowRecording?: boolean | null; orgRecor
   fake = seed({
     comm_settings: [commSettings({ voice_recording_enabled: p.orgRecording ?? true })],
     voice_agent_calls: [
-      { id: VAC, organization_id: ORG, voice_agent_id: 'ag-7', call_id: p.linked ? CALL_ID : null, provider_call_sid: null, status: 'dialing', started_at: null, consent_given: false, customer_id: null, opportunity_id: null, stage_agent_id: null },
+      { id: VAC, organization_id: ORG, voice_agent_id: 'ag-7', call_id: p.linked ? CALL_ID : null, provider_call_sid: 'CAr7tagent01', status: 'dialing', started_at: null, consent_given: false, customer_id: null, opportunity_id: null, stage_agent_id: null },
     ],
     calls: p.linked ? [callRow({ provider_call_sid: 'CAr7tagent01', mode: 'ai_agent', status: 'dialing', consent_given: false, ended_at: null, recording_enabled: p.rowRecording === undefined ? true : p.rowRecording })] : [],
   });

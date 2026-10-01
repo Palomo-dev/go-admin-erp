@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 /**
  * F3 ronda 4 · F5 ronda 2 — ZONA DE VOZ (una sola suite, un solo encargo).
  *
@@ -97,8 +98,8 @@ jest.mock('@/lib/services/crm/voiceAgent/agentRuntime', () => ({
 }));
 
 /** Cliente REST de Twilio para arrancar la grabación DESPUÉS del aviso (A-2). */
-const recordingsCreate = jest.fn(async (_opts: Record<string, unknown>) => ({ sid: 'REafteranuncio' }));
-const twilioCallsFn = jest.fn((_sid: string) => ({ recordings: { create: recordingsCreate } }));
+const recordingsCreate = jest.fn(async (opts: Record<string, unknown>) => { void opts; return { sid: 'REafteranuncio' }; });
+const twilioCallsFn = jest.fn((sid: string) => { void sid; return { recordings: { create: recordingsCreate } }; });
 const getTwilioClientForOrg = jest.fn(async () => ({
   client: { calls: twilioCallsFn } as unknown,
   creds: {},
@@ -330,7 +331,7 @@ function seedAgentCall() {
   fake = seed({
     extra: {
       voice_agent_calls: [
-        { id: VAC, organization_id: ORG, voice_agent_id: 'ag-1', call_id: CALL_ID, provider_call_sid: null, status: 'dialing', started_at: null, consent_given: false, customer_id: null },
+        { id: VAC, organization_id: ORG, voice_agent_id: 'ag-1', call_id: CALL_ID, provider_call_sid: 'CAr4agent01', status: 'dialing', started_at: null, consent_given: false, customer_id: null },
       ],
       calls: [
         { id: CALL_ID, organization_id: ORG, provider_call_sid: 'CAr4agent01', direction: 'outbound', mode: 'ai_agent', status: 'dialing', from_number: '+573001234567', to_number: '+573001112233', recording_enabled: true, consent_given: false, metadata: {} },
@@ -378,7 +379,7 @@ describe('A-2 · el agente IA no firma el acta antes de que suene el aviso', () 
     // `record: true` en el `calls.create` graba desde que contestan, es decir
     // ANTES del aviso: separar las pasadas arreglaría la fecha del acta pero no
     // la existencia de la grabación. Se mira el CÓDIGO, no los comentarios.
-    const src = require('fs').readFileSync('src/lib/services/crm/voiceAgentService.ts', 'utf8') as string;
+    const src = readFileSync('src/lib/services/crm/voiceAgentService.ts', 'utf8') as string;
     const code = src
       .split(/\r?\n/)
       .filter((l: string) => !/^\s*(\/\/|\*|\/\*)/.test(l))
@@ -407,7 +408,7 @@ describe('A-2 · el agente IA no firma el acta antes de que suene el aviso', () 
       'src/lib/services/crm/voiceAgentService.ts',
       'src/app/api/voice/call/route.ts',
     ]) {
-      expect(strip(require('fs').readFileSync(f, 'utf8') as string)).not.toMatch(/record:\s*true/);
+      expect(strip(readFileSync(f, 'utf8') as string)).not.toMatch(/record:\s*true/);
     }
   });
 
@@ -597,7 +598,7 @@ describe('B-2 · token HMAC de customer-leg y agent-leg (la barrera que de verda
   });
 
   it('B-2.8 · queda ESCRITO en el código que hoy el HMAC es la única barrera de organización', () => {
-    const src = require('fs').readFileSync('src/lib/services/crm/voiceContextService.ts', 'utf8') as string;
+    const src = readFileSync('src/lib/services/crm/voiceContextService.ts', 'utf8') as string;
     expect(src).toContain('subcuenta');
     expect(src.toLowerCase()).toContain('hmac');
   });

@@ -200,7 +200,7 @@ const completed = (callSid: string, sid = 'REr6tdone') =>
 function seedAgent(callPatch: Row = {}) {
   fake = seed({
     voice_agent_calls: [
-      { id: VAC, organization_id: ORG, voice_agent_id: 'ag-1', call_id: CALL_ID, provider_call_sid: null, status: 'dialing', started_at: null, consent_given: false, customer_id: null },
+      { id: VAC, organization_id: ORG, voice_agent_id: 'ag-1', call_id: CALL_ID, provider_call_sid: 'CAr6tagent01', status: 'dialing', started_at: null, consent_given: false, customer_id: null },
     ],
     calls: [callRow({ provider_call_sid: 'CAr6tagent01', mode: 'ai_agent', status: 'dialing', consent_given: false, ended_at: null, ...callPatch })],
   });

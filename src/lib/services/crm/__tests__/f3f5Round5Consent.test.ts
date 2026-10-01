@@ -490,7 +490,7 @@ describe('V-3 · inbound falla cerrado cuando el acta no se puede escribir', () 
 function seedAgent(patch: { vac?: Row; call?: Row | null } = {}) {
   fake = seed({
     voice_agent_calls: [
-      { id: VAC, organization_id: ORG, voice_agent_id: 'ag-1', call_id: CALL_ID, provider_call_sid: null, status: 'dialing', started_at: null, consent_given: false, customer_id: null, ...(patch.vac ?? {}) },
+      { id: VAC, organization_id: ORG, voice_agent_id: 'ag-1', call_id: CALL_ID, provider_call_sid: 'CAr5agent01', status: 'dialing', started_at: null, consent_given: false, customer_id: null, ...(patch.vac ?? {}) },
     ],
     calls: patch.call === null ? [] : [callRow({ provider_call_sid: 'CAr5agent01', mode: 'ai_agent', ...(patch.call ?? {}) })],
   });

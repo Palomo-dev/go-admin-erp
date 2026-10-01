@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { clasesBoton } from '@/components/kit/botonClases';
@@ -11,12 +11,14 @@ import { emitirCambioCrm, pedirCrm } from '@/components/crm/acciones/apiCrm';
 import type { EtapaApi } from '@/components/crm/oportunidad/oportunidadLogica';
 import { StageDialog, type StageDialogValues } from '../StageDialog';
 import { DeleteStageDialog } from '../DeleteStageDialog';
+import { etapasOrdenadas, moverEtapa, ordenAlInsertar } from './etapasPipelineLogica';
 
 /**
  * «Etapas» del Pipeline y «⋯» de cada columna (Figma 768:454806, 812:54821
- * «Editar etapas de este pipeline»): lista de etapas con editar, eliminar y
- * «Nueva etapa». Reutiliza `StageDialog` y `DeleteStageDialog` y escribe por
- * `/api/crm/stages/**` (`crm.stages.manage`, resuelto en el servidor).
+ * «Editar etapas de este pipeline»): lista de etapas con subir, bajar,
+ * editar, eliminar y «Nueva etapa». Reutiliza `StageDialog` y
+ * `DeleteStageDialog` y escribe por `/api/crm/stages/**`
+ * (`crm.stages.manage`, resuelto en el servidor).
  */
 export interface EtapasPipelineProps {
   pipelineId: string;
@@ -29,19 +31,66 @@ export interface EtapasPipelineProps {
   cantidadPorEtapa: (id: string) => number;
 }
 
+function claveDe(etapas: readonly EtapaApi[]): string {
+  return etapasOrdenadas(etapas)
+    .map((e) => `${e.id}:${e.position}:${e.name}:${e.probability ?? ''}:${e.is_won ? 1 : 0}:${e.is_lost ? 1 : 0}`)
+    .join('|');
+}
+
 export function EtapasPipeline(p: EtapasPipelineProps) {
   const t = useTranslations('crm.oportunidad.etapas');
   const [crear, setCrear] = useState(false);
   const [borrar, setBorrar] = useState<EtapaApi | null>(null);
-  const editando = p.etapas.find((e) => e.id === p.editarId) ?? null;
+  const [lista, setLista] = useState<EtapaApi[]>(() => etapasOrdenadas(p.etapas));
+  const [guardando, setGuardando] = useState(false);
+  const etapasRef = useRef(p.etapas);
+  etapasRef.current = p.etapas;
+  const clave = claveDe(p.etapas);
+  const editando = lista.find((e) => e.id === p.editarId) ?? null;
+
+  useEffect(() => {
+    setLista(etapasOrdenadas(etapasRef.current));
+  }, [clave]);
+
+  const guardarOrden = async (orden: { id: string; position: number }[]) => {
+    await pedirCrm('/api/crm/stages', { method: 'PUT', cuerpo: { pipeline_id: p.pipelineId, order: orden } });
+  };
+
+  const mover = async (indice: number, delta: -1 | 1) => {
+    const destino = indice + delta;
+    if (destino < 0 || destino >= lista.length || guardando) return;
+    const previa = lista;
+    const siguiente = moverEtapa(lista, indice, destino);
+    setLista(siguiente);
+    setGuardando(true);
+    try {
+      await guardarOrden(siguiente.map((e) => ({ id: e.id, position: e.position })));
+      toast({ title: t('ordenGuardado') });
+      emitirCambioCrm({ entidad: 'opportunity', accion: 'etapas' });
+    } catch (e) {
+      setLista(previa);
+      toast({ title: t('errorOrden'), description: e instanceof Error ? e.message : undefined, variant: 'destructive' });
+    } finally {
+      setGuardando(false);
+    }
+  };
 
   const guardar = async (v: StageDialogValues) => {
     try {
       if (editando) {
         await pedirCrm(`/api/crm/stages/${editando.id}`, { method: 'PATCH', cuerpo: { name: v.name, color: v.color, description: v.description || null, probability: v.probability, is_won: v.is_won, is_lost: v.is_lost } });
       } else {
-        const posicion = p.etapas.reduce((m, e) => Math.max(m, e.position), 0) + 1;
-        await pedirCrm('/api/crm/stages', { method: 'POST', cuerpo: { pipeline_id: p.pipelineId, name: v.name, position: posicion, probability: v.probability, color: v.color, description: v.description || null, is_won: v.is_won, is_lost: v.is_lost } });
+        const creada = await pedirCrm<{ id: string }>('/api/crm/stages', {
+          method: 'POST',
+          cuerpo: { pipeline_id: p.pipelineId, name: v.name, probability: v.probability, color: v.color, description: v.description || null, is_won: v.is_won, is_lost: v.is_lost },
+        });
+        try {
+          await guardarOrden(ordenAlInsertar(lista, creada.data.id));
+        } catch (ordenError) {
+          emitirCambioCrm({ entidad: 'opportunity', accion: 'etapas' });
+          toast({ title: t('errorOrden'), description: ordenError instanceof Error ? ordenError.message : undefined, variant: 'destructive' });
+          return;
+        }
       }
       toast({ title: t('guardada') });
       emitirCambioCrm({ entidad: 'opportunity', accion: 'etapas' });
@@ -73,13 +122,19 @@ export function EtapasPipeline(p: EtapasPipelineProps) {
             <SheetDescription className="text-sm text-fg-secondary">{t('descripcion')}</SheetDescription>
           </div>
           <ol className="flex flex-col gap-2">
-            {[...p.etapas].sort((a, b) => a.position - b.position).map((e) => {
+            {lista.map((e, i) => {
               const color = colorEtapa(e.color);
               return (
-                <li key={e.id} className="flex items-center gap-3 rounded-lg border border-line px-3 py-2">
-                  <span aria-hidden="true" className="size-2.5 rounded-full bg-brand" style={color ? { backgroundColor: color } : undefined} />
-                  <span className="flex-1 text-sm text-fg">{e.name}</span>
-                  <span className="text-xs text-fg-muted">{e.is_won ? t('ganada') : e.is_lost ? t('perdida') : `${e.probability ?? 0} %`}</span>
+                <li key={e.id} className="flex items-center gap-2 rounded-lg border border-line px-3 py-2">
+                  <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full bg-brand" style={color ? { backgroundColor: color } : undefined} />
+                  <span className="min-w-0 flex-1 truncate text-sm text-fg">{e.name}</span>
+                  <span className="shrink-0 text-xs text-fg-muted">{e.is_won ? t('ganada') : e.is_lost ? t('perdida') : `${e.probability ?? 0} %`}</span>
+                  <button type="button" aria-label={t('subir', { etapa: e.name })} disabled={i === 0 || guardando} onClick={() => void mover(i, -1)} className="flex size-8 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover disabled:opacity-30">
+                    <ChevronUp aria-hidden="true" className="size-4" />
+                  </button>
+                  <button type="button" aria-label={t('bajar', { etapa: e.name })} disabled={i === lista.length - 1 || guardando} onClick={() => void mover(i, 1)} className="flex size-8 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover disabled:opacity-30">
+                    <ChevronDown aria-hidden="true" className="size-4" />
+                  </button>
                   <button type="button" aria-label={t('editar', { etapa: e.name })} onClick={() => p.onEditarId?.(e.id)} className="flex size-8 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover"><Pencil aria-hidden="true" className="size-4" /></button>
                   <button type="button" aria-label={t('eliminar', { etapa: e.name })} onClick={() => setBorrar(e)} className="flex size-8 items-center justify-center rounded-lg text-danger-text hover:bg-danger-subtle"><Trash2 aria-hidden="true" className="size-4" /></button>
                 </li>

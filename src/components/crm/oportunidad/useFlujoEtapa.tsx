@@ -45,7 +45,8 @@ export interface OpcionesFlujoEtapa {
   etapas: readonly EtapaApi[];
   permisos: PermisosPantalla;
   usuarioId: string | null;
-  onHecho?: (id: string) => void;
+  /** `destinoId` es la etapa confirmada, para mover la tarjeta sin recargar el tablero. */
+  onHecho?: (id: string, destinoId?: string) => void;
   onRevertir?: (id: string) => void;
 }
 
@@ -106,7 +107,7 @@ export function useFlujoEtapa({ etapas, permisos, usuarioId, onHecho, onRevertir
       return false;
     }
     void moverEtapa(op.id, { stage_id: destinoId }).then(
-      () => onHecho?.(op.id),
+      () => onHecho?.(op.id, destinoId),
       (e: unknown) => {
         onRevertir?.(op.id);
         tratarRechazo(op, destinoId, e);
@@ -131,7 +132,7 @@ export function useFlujoEtapa({ etapas, permisos, usuarioId, onHecho, onRevertir
       if (datos.nextContactAt && datos.nextContactAt !== op.next_contact_at) await editarOportunidad(op.id, { next_contact_at: datos.nextContactAt });
       toast({ title: t('movida', { etapa: destino?.name ?? '' }) });
       cerrar();
-      onHecho?.(op.id);
+      onHecho?.(op.id, datos.stageId);
     } catch (e) {
       const r = interpretarRechazo(e);
       if (r.tipo === 'gate') setModo({ ...modo, destino: datos.stageId, pendientes: r.pendientes });
@@ -150,7 +151,7 @@ export function useFlujoEtapa({ etapas, permisos, usuarioId, onHecho, onRevertir
       if (r.tipo === 'gate') throw new Error(t('gateGanar', { lista: r.pendientes.map((p) => p.etiqueta).join(' · ') }));
       throw new Error(r.tipo === 'sinPermiso' ? t('sinPermisoCerrar') : r.tipo === 'conflicto' ? t('conflicto') : t('errorGanar'));
     }
-    onHecho?.(op.id);
+    onHecho?.(op.id, cuerpo.stage_id ?? etapas.find((e) => e.is_won)?.id);
     const acciones = (Array.isArray(cuerpo.won_data.actions) ? cuerpo.won_data.actions : []) as AccionGanar[];
     const detalle = await leerOportunidad(op.id).catch(() => null);
     if (!detalle) return [];
@@ -165,7 +166,7 @@ export function useFlujoEtapa({ etapas, permisos, usuarioId, onHecho, onRevertir
       await perderOportunidad(op.id, cuerpo);
       toast({ title: t('perdida') });
       cerrar();
-      onHecho?.(op.id);
+      onHecho?.(op.id, cuerpo.stage_id ?? etapas.find((e) => e.is_lost)?.id);
     } catch (e) {
       const r = interpretarRechazo(e);
       setError(r.tipo === 'sinPermiso' ? t('sinPermisoCerrar') : r.tipo === 'gate' ? t('gateGanar', { lista: r.pendientes.map((p) => p.etiqueta).join(' · ') }) : t('errorPerder'));

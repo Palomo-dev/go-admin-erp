@@ -1,6 +1,6 @@
 /**
  * GET|POST /api/cron/avisos-miembro
- * Vercel y pg_cron revisan atraso y vencimiento y mandan los correos pendientes.
+ * Vercel y pg_cron revisan atraso, vencimiento, seguimiento y los resúmenes de la mañana, y mandan los correos pendientes.
  * El trigger pide POST con `{ solo: "correo" }` para no repetir el barrido.
  */
 import { NextResponse } from 'next/server';

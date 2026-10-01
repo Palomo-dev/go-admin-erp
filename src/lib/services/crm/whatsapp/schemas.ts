@@ -140,7 +140,7 @@ const campaignFields = {
 };
 
 export const zCreateCampaignBody = z.object(campaignFields);
-export const zUpdateCampaignBody = z.object(campaignFields).partial();
+export const zUpdateCampaignBody = z.object(campaignFields).partial().extend({ expected_updated_at: zIsoDate.optional() });
 
 export const zLaunchBody = z.object({
   scheduled_at: zIsoDate.nullable().optional(),

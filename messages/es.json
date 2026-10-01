@@ -4722,6 +4722,9 @@
       "limpiar": "Limpiar búsqueda",
       "notaParada": "Las llamadas activas terminarán su turno y colgarán. El motivo y la fecha quedan registrados.",
       "confirmarDestructivo": "Esta acción cambia la campaña. Los mensajes ya enviados permanecen en las conversaciones.",
+      "confirmarArchivo": "La campaña dejará de aparecer en la lista y se cancelarán los contactos pendientes. Su historial se conserva. Las entregas sin resolver requieren conciliación antes de archivarla.",
+      "archivoConciliacion": "Hay entregas pendientes de conciliación. Revisa su resultado antes de archivar la campaña.",
+      "archivoConflicto": "La campaña fue modificada. Actualiza la lista y vuelve a intentarlo.",
       "filtros": {
         "all": "Todas",
         "voice": "Voz IA",

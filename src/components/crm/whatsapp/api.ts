@@ -115,7 +115,7 @@ export const campaignsApi = {
   list: (q: { status?: string; channel?: string; q?: string } = {}) => get<{ data: Campaign[]; can_manage: boolean }>(`/api/crm/campaigns?${new URLSearchParams(Object.entries(q).filter(([, v]) => !!v) as [string, string][]).toString()}`),
   get: (id: string, signal?: AbortSignal) => get<{ data: Campaign; can_manage: boolean }>(`/api/crm/campaigns/${id}`, { signal }),
   create: (body: CreateCampaignBody) => post<{ data: Campaign }>('/api/crm/campaigns', body),
-  update: (id: string, body: Partial<CreateCampaignBody>) => call<{ data: Campaign }>(`/api/crm/campaigns/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  update: (id: string, body: Partial<CreateCampaignBody> & { expected_updated_at?: string }) => call<{ data: Campaign }>(`/api/crm/campaigns/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   remove: (id: string) => call<{ success: boolean }>(`/api/crm/campaigns/${id}`, { method: 'DELETE' }),
   materialize: (id: string) => post<MaterializeResult & { success: boolean }>(`/api/crm/campaigns/${id}/materialize`),
   launch: (id: string, body: { scheduled_at?: string | null; force?: boolean } = {}) => post<{ data: Campaign }>(`/api/crm/campaigns/${id}/launch`, body),

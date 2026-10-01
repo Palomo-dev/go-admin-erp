@@ -5,6 +5,7 @@ import { createCampaign, listCampaigns, type CreateCampaignInput } from '@/lib/s
 import { hasOrgAdminOrPermission } from '@/lib/utils/orgContext';
 
 import { readOrgBody } from '@/lib/security/organizationBody';
+import { exigirPermisoCrm, CRM_PERMISOS } from '@/lib/services/crm/crmRouteSupport';
 /**
  * GET  /api/crm/campaigns?status=&channel=&q= → { data: Campaign[], can_manage }
  * POST /api/crm/campaigns CreateCampaignInput → 201 { data }
@@ -17,6 +18,7 @@ import { readOrgBody } from '@/lib/security/organizationBody';
  */
 export const GET = withWhatsAppRoute(async (ctx, req) => {
   readOrgBody(ctx, {}, { request: req });
+  await exigirPermisoCrm(ctx, [CRM_PERMISOS.oportunidadesVer], 'Consultar campañas');
   const q = parseWith(zCampaignListQuery, searchParamsToObject(new URL(req.url).searchParams), 'query');
   const data = await listCampaigns(ctx.organizationId, q, ctx.supabase);
   return NextResponse.json({ data, can_manage: await hasOrgAdminOrPermission(ctx, 'crm.campaigns.manage') });

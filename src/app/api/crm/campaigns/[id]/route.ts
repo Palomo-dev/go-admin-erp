@@ -5,21 +5,23 @@ import { deleteCampaign, requireCampaign, updateCampaign, type UpdateCampaignInp
 import { hasOrgAdminOrPermission } from '@/lib/utils/orgContext';
 
 import { readOrgBody } from '@/lib/security/organizationBody';
+import { exigirPermisoCrm, CRM_PERMISOS } from '@/lib/services/crm/crmRouteSupport';
 /** GET | PATCH (solo draft/scheduled) | DELETE /api/crm/campaigns/[id] */
 export const GET = withWhatsAppRoute(async (ctx, req, params) => {
   readOrgBody(ctx, {}, { request: req });
+  await exigirPermisoCrm(ctx, [CRM_PERMISOS.oportunidadesVer], 'Consultar campañas');
   const data = await requireCampaign(ctx.organizationId, params.id, ctx.supabase);
   return NextResponse.json({ data, can_manage: await hasOrgAdminOrPermission(ctx, 'crm.campaigns.manage') });
 });
 
 export const PATCH = withWhatsAppRoute(async (ctx, req, params) => {
   const b = parseWith(zUpdateCampaignBody, await readOrgBody<unknown>(ctx, req));
-  const data = await updateCampaign(ctx.organizationId, params.id, b as UpdateCampaignInput, ctx.supabase);
+  const data = await updateCampaign(ctx.organizationId, params.id, b as UpdateCampaignInput, ctx.supabase, ctx.userId);
   return NextResponse.json({ data });
 }, { admin: true, permission: 'crm.campaigns.manage' });
 
 export const DELETE = withWhatsAppRoute(async (ctx, req, params) => {
   await readOrgBody(ctx, req);
-  await deleteCampaign(ctx.organizationId, params.id, ctx.supabase);
+  await deleteCampaign(ctx.organizationId, params.id, ctx.supabase, ctx.userId);
   return NextResponse.json({ success: true });
 }, { admin: true, permission: 'crm.campaigns.manage' });

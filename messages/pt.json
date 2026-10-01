@@ -25114,6 +25114,9 @@
       "limpiar": "Limpar busca",
       "notaParada": "As chamadas ativas encerram o turno e desligam. O motivo e a data ficam registrados.",
       "confirmarDestructivo": "Esta ação altera a campanha. Mensagens já enviadas permanecem nas conversas.",
+      "confirmarArchivo": "A campanha deixará de aparecer na lista e os contatos pendentes serão cancelados. Seu histórico será preservado. Entregas não resolvidas exigem conciliação antes do arquivamento.",
+      "archivoConciliacion": "Há entregas pendentes de conciliação. Verifique o resultado antes de arquivar a campanha.",
+      "archivoConflicto": "A campanha foi modificada. Atualize a lista e tente novamente.",
       "filtros": {
         "all": "Todas",
         "voice": "Voz IA",

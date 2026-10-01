@@ -18,6 +18,7 @@ import { CLASE_CAMPO } from "@/components/crm/kit/camposCrm";
 import { pedirCrm } from "@/components/crm/acciones/apiCrm";
 import { useOrganization } from "@/lib/hooks/useOrganization";
 import { CampanasService } from "./CampanasService";
+import { ApiError } from "@/components/crm/whatsapp/api";
 import { useCampanasData } from "./useCampanasData";
 import { CampanasTable, type CampanaFila } from "./CampanasTable";
 function CampanasContent() {
@@ -60,8 +61,9 @@ function CampanasContent() {
         await CampanasService.deleteCampaign(row.id);
       setTarget(null);
       refresh();
-    } catch {
-      setActionError(t("errorAccion"));
+    } catch (error) {
+      const code = error instanceof ApiError ? error.code : null;
+      setActionError(t(code === "RECONCILIATION_REQUIRED" ? "archivoConciliacion" : code === "CAMPAIGN_MODIFIED" ? "archivoConflicto" : "errorAccion"));
     } finally {
       setBusy(false);
     }
@@ -229,7 +231,7 @@ function CampanasContent() {
           if (!open && !busy) setTarget(null);
         }}
         titulo={t(target?.action === "delete" ? "eliminar" : "cancelarCampana")}
-        descripcion={t("confirmarDestructivo")}
+        descripcion={t(target?.action === "delete" && target.row.source === "message" ? "confirmarArchivo" : "confirmarDestructivo")}
         primario={{
           etiqueta: t(
             target?.action === "delete" ? "eliminar" : "cancelarCampana",

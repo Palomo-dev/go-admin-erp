@@ -87,9 +87,9 @@ describe('recepción Cloud certificada', () => {
     expect(rpcCalls).toHaveLength(0);
   });
 
-  test('el error SQL se propaga para que el webhook pueda reintentarse', async () => {
+  test.each(['40001', 'P0001'])('el error SQL %s se propaga para que el webhook pueda reintentarse', async code => {
     const mock = setup();
-    mock.sb.rpc = jest.fn(async () => ({ data: null, error: { code: '40001', message: 'cliente_entrante_cambio' } })) as unknown as typeof mock.sb.rpc;
+    mock.sb.rpc = jest.fn(async () => ({ data: null, error: { code, message: 'cliente_entrante_cambio' } })) as unknown as typeof mock.sb.rpc;
     await expect(receiveWhatsAppCloud(7, 'ch-1', message(), undefined, {}, mock.sb)).rejects.toThrow();
   });
 

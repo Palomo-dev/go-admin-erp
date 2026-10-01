@@ -18,6 +18,12 @@ export function errorWhatsAppDb(error: { code?: string; message: string }): What
   if (error.message === "canal_no_disponible") return new WhatsAppError("NO_CHANNEL", "El canal no está disponible", 422);
   if (["audiencia_no_calculada", "audiencia_sin_pendientes"].includes(error.message))
     return new WhatsAppError("NOT_MATERIALIZED", "Calcula una audiencia con contactos pendientes antes de lanzar", 409);
+  if (error.message === "campana_modificada") return new WhatsAppError("CAMPAIGN_MODIFIED", "La campaña fue modificada. Actualiza los datos antes de guardar", 409);
+  if (error.code === "40001") return new WhatsAppError("NOT_EDITABLE", "Los datos cambiaron. Actualiza antes de continuar", 409);
+  if (error.message === "campana_requiere_conciliacion")
+    return new WhatsAppError("RECONCILIATION_REQUIRED", "Hay entregas pendientes de conciliación. Revisa su resultado antes de archivar", 409);
+  if (error.message === "campana_programada_no_editable")
+    return new WhatsAppError("NOT_EDITABLE", "Una campaña programada solo permite cambiar el nombre y la descripción", 409);
   if (error.code === "P0001") return new WhatsAppError("NOT_EDITABLE", "La campaña o el envío cambió. Actualiza los datos antes de continuar", 409);
   return new WhatsAppError("INTERNAL", error.message, 500);
 }

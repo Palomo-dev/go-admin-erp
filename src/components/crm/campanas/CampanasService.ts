@@ -19,7 +19,7 @@ export const CampanasService = {
   getCampaignById: (id: string) => campaignsApi.get(id).then((r) => r.data).catch(() => null),
   getCampaignWithPermissions: (id: string, signal?: AbortSignal) => campaignsApi.get(id, signal),
   createCampaign: (input: CreateCampaignBody) => campaignsApi.create(input).then((r) => r.data),
-  updateCampaign: (id: string, input: Partial<CreateCampaignBody>) => campaignsApi.update(id, input).then((r) => r.data),
+  updateCampaign: (id: string, input: Partial<CreateCampaignBody> & { expected_updated_at?: string }) => campaignsApi.update(id, input).then((r) => r.data),
   deleteCampaign: (id: string) => campaignsApi.remove(id).then(() => true),
   duplicateCampaign: async (id: string): Promise<Campaign> => {
     const c = await campaignsApi.get(id).then((r) => r.data);

@@ -25114,6 +25114,9 @@
       "limpiar": "Effacer la recherche",
       "notaParada": "Les appels actifs terminent leur tour puis raccrochent. Le motif et la date sont enregistrés.",
       "confirmarDestructivo": "Cette action modifie la campagne. Les messages déjà envoyés restent dans les conversations.",
+      "confirmarArchivo": "La campagne disparaîtra de la liste et les contacts en attente seront annulés. Son historique est conservé. Les envois non résolus doivent être rapprochés avant l’archivage.",
+      "archivoConciliacion": "Certains envois nécessitent un rapprochement. Vérifiez leur résultat avant d’archiver la campagne.",
+      "archivoConflicto": "La campagne a été modifiée. Actualisez la liste et réessayez.",
       "filtros": {
         "all": "Toutes",
         "voice": "Voix IA",

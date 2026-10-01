@@ -4722,6 +4722,9 @@
       "limpiar": "Clear search",
       "notaParada": "Active calls will finish their turn and hang up. The reason and date are recorded.",
       "confirmarDestructivo": "This changes the campaign. Previously sent messages remain in conversations.",
+      "confirmarArchivo": "The campaign will disappear from the list and pending contacts will be canceled. Its history is preserved. Unresolved deliveries must be reconciled before archiving.",
+      "archivoConciliacion": "Some deliveries need reconciliation. Check their outcome before archiving the campaign.",
+      "archivoConflicto": "The campaign has changed. Refresh the list and try again.",
       "filtros": {
         "all": "All",
         "voice": "AI voice",

@@ -30,18 +30,16 @@ const UUID_C = '33333333-3333-4333-8333-333333333333';
 describe('updateCampaign · materialized_at', () => {
   const AUDIENCE = { source: 'manual' as const, segment_id: null, pipeline_id: null, stage_ids: [], opportunity_ids: ['b5f1e4e5-1111-4111-8111-111111111111'], customer_ids: [] };
   const base = { id: 'camp-1', organization_id: 7, name: 'Masivo', channel: 'whatsapp', status: 'draft', scheduled_at: null, template_id: null, segment_id: null, content: 'hola', statistics: { audience: AUDIENCE, materialized_at: '2026-09-08T10:00:00Z', pending: 4, purpose: 'utility' }, created_by: null, created_at: '', updated_at: '' };
-  const mk = () => makeSupabase({
-    campaigns: (ops) => (has(ops, 'update') ? { data: { ...base, statistics: opArg<Record<string, unknown>>(ops, 'update')!.statistics } } : { data: base }),
-    templates: () => ({ data: { id: 't', channel: 'whatsapp' } }),
-    channels: () => ({ data: { id: 'chan-1' } }),
-    segments: () => ({ data: { id: 's' } }),
-  });
-  const statsEscritas = (calls: ReturnType<typeof mk>['calls']) => opArg<Record<string, unknown>>(calls.find((c) => c.table === 'campaigns' && has(c.ops, 'update'))!.ops, 'update')!.statistics as Record<string, unknown>;
+  const mk = () => makeSupabase({ campaigns: () => ({ data: base }) }, (_fn, args) => ({
+    data: { ...base, ...(args.p_values as Record<string, unknown>) },
+  }));
+  const statsEscritas = (calls: ReturnType<typeof mk>['rpcCalls']) =>
+    (calls.at(-1)!.args.p_values as Record<string, unknown>).statistics as Record<string, unknown>;
 
   it('B2.3 · misma audiencia y misma plantilla → materialized_at intacto', async () => {
-    const { sb, calls } = mk();
-    await updateCampaign(7, 'camp-1', { name: 'Masivo (2)', audience: { ...AUDIENCE }, template_id: null, content: 'hola' }, sb);
-    expect(statsEscritas(calls).materialized_at).toBe('2026-09-08T10:00:00Z');
+    const { sb, rpcCalls } = mk();
+    await updateCampaign(7, 'camp-1', { name: 'Masivo (2)', audience: { ...AUDIENCE }, template_id: null, content: 'hola' }, sb, UUID_A, sb);
+    expect(statsEscritas(rpcCalls).materialized_at).toBe('2026-09-08T10:00:00Z');
   });
 
   it('B2.3 · audiencia distinta, plantilla distinta o purpose distinto → materialized_at se anula', async () => {
@@ -51,9 +49,9 @@ describe('updateCampaign · materialized_at', () => {
       { purpose: 'marketing' as const },
     ];
     for (const patch of patches) {
-      const { sb, calls } = mk();
-      await updateCampaign(7, 'camp-1', patch, sb);
-      expect(statsEscritas(calls).materialized_at).toBeNull();
+      const { sb, rpcCalls } = mk();
+      await updateCampaign(7, 'camp-1', patch, sb, UUID_A, sb);
+      expect(statsEscritas(rpcCalls).materialized_at).toBeNull();
     }
   });
 
@@ -70,24 +68,20 @@ describe('updateCampaign · materialized_at', () => {
     const stats = { audience: { source: 'manual', segment_id: null, pipeline_id: null, stage_ids: [], opportunity_ids: [], customer_ids: [UUID_B] }, channel_id: UUID_A, materialized_at: '2026-09-09T00:00:00.000Z', pending: 3, purpose: 'utility' };
     const row = { id: UUID_C, organization_id: 2, name: 'C', channel: 'whatsapp', status: 'draft', scheduled_at: null, template_id: null, segment_id: null, content: 'hola', statistics: stats, created_by: null, created_at: '', updated_at: '' };
     const escrito: { statistics?: { materialized_at?: string | null; channel_id?: string | null } } = {};
-    const { sb } = makeSupabase({
-      campaigns: (ops) => {
-        const upd = ops.find((o) => o.method === 'update');
-        if (!upd) return { data: row };
-        Object.assign(escrito, upd.args[0]);
-        return { data: { ...row, statistics: escrito.statistics } };
-      },
-      channels: () => ({ data: { id: channelDevuelto } }),
+    const { sb } = makeSupabase({ campaigns: () => ({ data: row }) }, (_fn, args) => {
+      Object.assign(escrito, args.p_values);
+      return { data: { ...row, statistics: escrito.statistics } };
     });
+    void channelDevuelto;
     return { sb, escrito };
   };
 
   it('B3.F13 · cambiar channel_id anula materialized_at; reenviar el MISMO channel_id no invalida nada', async () => {
     const a = conCanal(UUID_B);
-    await updateCampaign(2, UUID_C, { channel_id: UUID_B }, a.sb);
+    await updateCampaign(2, UUID_C, { channel_id: UUID_B }, a.sb, UUID_A, a.sb);
     expect(a.escrito.statistics).toMatchObject({ channel_id: UUID_B, materialized_at: null });
     const b = conCanal(UUID_A);
-    await updateCampaign(2, UUID_C, { channel_id: UUID_A }, b.sb);
+    await updateCampaign(2, UUID_C, { channel_id: UUID_A }, b.sb, UUID_A, b.sb);
     expect(b.escrito.statistics?.materialized_at).toBe('2026-09-09T00:00:00.000Z');
   });
 });

@@ -9,6 +9,10 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { renderConIdioma } from '@/test-utils/renderConIdioma';
 import { contextoMoneda } from '@/lib/utils/moneda';
+import es from '../../../../../messages/es.json';
+import en from '../../../../../messages/en.json';
+import fr from '../../../../../messages/fr.json';
+import pt from '../../../../../messages/pt.json';
 
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }), usePathname: () => '/app/clientes/c1' }));
 const FECHAS = { timezone: 'America/Bogota', getToday: () => '2026-09-23', formatDate: (v: string) => v, formatDateTime: (v: string) => v, formatTime: (v: string) => v, formatPlain: (v: string) => v };
@@ -63,6 +67,20 @@ afterEach(() => {
 const CLIENTE = { id: 'c1', full_name: 'Ana Gómez', email: 'ana@correo-ejemplo.com', phone: '3005550142', do_not_call: true };
 
 describe('Acciones rápidas (Variant=cliente)', () => {
+  test.each(['es', 'en', 'fr', 'pt'] as const)('reunión conserva los campos y distingue sesión vencida en %s', async idioma => {
+    const m = { es, en, fr, pt }[idioma];
+    global.fetch = jest.fn(async () => ({ ok: false, status: 401,
+      json: async () => ({ success: false, code: 'UNAUTHENTICATED', error: 'No hay sesión activa' }) }) as Response);
+    renderConIdioma(<AccionesRapidasCrm variante="cliente" clienteId="c1" cliente={CLIENTE} sinBarra abrirAccion={{ accion: 'reunion', clave: 1 }} />, { idioma });
+    const d = await screen.findByRole('dialog');
+    const title = within(d).getByRole('textbox', { name: new RegExp(m.crm.kit.actividad.reunion.titulo) });
+    fireEvent.change(title, { target: { value: 'Reunión de prueba' } });
+    fireEvent.click(within(d).getByRole('button', { name: m.crm.kit.actividad.primario.reunion }));
+    expect(await screen.findByText(m.crm.accionesRapidas.errores.sesionVencida)).toBeTruthy();
+    expect(screen.queryByText(m.crm.accionesRapidas.errores.sinPermiso)).toBeNull();
+    expect((title as HTMLInputElement).value).toBe('Reunión de prueba');
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
   test('Llamar deshabilitada con su motivo visible (do_not_call) y «Nueva oportunidad»', () => {
     renderConIdioma(<AccionesRapidasCrm variante="cliente" clienteId="c1" cliente={CLIENTE} onNuevaOportunidad={() => undefined} />);
     expect(screen.getByText('Pidió no ser llamado')).toBeTruthy();

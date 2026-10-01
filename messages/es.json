@@ -3511,6 +3511,8 @@
     "accionesRapidas": {
       "sinNombre": "Sin nombre",
       "errores": {
+        "sesionVencida": "Tu sesión ya no es válida. Vuelve a iniciar sesión e inténtalo otra vez.",
+        "organizacionCambiada": "La organización activa cambió. Actualiza la página y vuelve a intentarlo.",
         "sinPermiso": "No tienes permiso para esta acción.",
         "noEncontrado": "El registro ya no existe o no es de esta organización.",
         "sinEmbudo": "La organización no tiene embudo de ventas. Créalo antes de calificar.",

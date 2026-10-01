@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     );
   } catch (error: unknown) {
     if (error instanceof OrgContextError) {
-      return NextResponse.json({ success: false, error: error.message }, { status: error.statusCode });
+      return NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.statusCode });
     }
     if (error instanceof RelatedNotFoundError) {
       return NextResponse.json({ success: false, error: error.message }, { status: 404 });

@@ -3511,6 +3511,8 @@
     "accionesRapidas": {
       "sinNombre": "No name",
       "errores": {
+        "sesionVencida": "Your session is no longer valid. Sign in again and try once more.",
+        "organizacionCambiada": "The active organization changed. Refresh the page and try again.",
         "sinPermiso": "You don't have permission for this action.",
         "noEncontrado": "The record no longer exists or doesn't belong to this organization.",
         "sinEmbudo": "The organization has no sales pipeline. Create it before qualifying.",

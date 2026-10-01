@@ -19,7 +19,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ success: true, data: event }, { status: 200 });
   } catch (error: unknown) {
     if (error instanceof OrgContextError) {
-      return NextResponse.json({ success: false, error: error.message }, { status: error.statusCode });
+      return NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.statusCode });
     }
     if (error instanceof MeetingNotFoundError) {
       return NextResponse.json({ success: false, error: error.message }, { status: 404 });

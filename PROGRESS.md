@@ -3702,3 +3702,11 @@ Campañas comparte estados canónicos de mensajes y legalidad de voz; 207 filas 
 ### 2026-10-01 — CRM: PR borrador y verificación tras integrar main
 
 PR #280 sobre main; integrado 8ebd05a3 y conservados ambos apéndices. 934 suites / 16.926 pruebas en verde, 8 omisiones previas; tsc 0, lint tocado limpio y compilación de producción completa con el mismo gate separado de tipos que CI. Seis zonas horarias: 804 casos por zona. Dos esperas de integración de POS corregidas sin cambiar producción; 49 casos pasan con detección de recursos abiertos. El plan registra evidencia y límites. Continúan Segmentos, el asistente de Campañas, Plantillas y las olas 4/5/6 restantes; no se declara terminado el CRM completo.
+
+### 2026-10-01 — segmentos: snapshots estáticos y lectura sin truncamiento
+
+- Migración `20261001010300_crm_segmentos_estaticos_y_contexto.sql`, aplicada por MCP; MD5 `1b5348d63ab91613fe89c5afa177debb`. Reversión de acceso en `supabase/rollbacks/` en el mismo commit: conserva miembros y auditoría.
+- Nueva tabla `segment_members` con RLS, pertenencia y guard de organización; `crm.segments.manage` se resuelve por código/rol/cargo. Guardado privado transaccional: filtros, miembros, conteo, auditoría y token de concurrencia. No materializa segmentos históricos al migrar.
+- Prueba BEGIN/ROLLBACK en dos organizaciones ficticias: 1.206 miembros, varias páginas, rechazo de miembros ajenos, empleado sin permiso, conflicto de edición, snapshot estable ante altas, alias de fusión reversible, compras sin ventas anuladas/futuras, categorías propias, RNE y ACL. No quedaron fixtures. Primer intento detectó lectura estática lenta; materializar los ids una vez corrigió el coste y la prueba completa pasó en 21,3 s.
+- Advisors: dos avisos 0029 intencionales para RPC de lectura autenticada con permiso y organización comprobados dentro de SQL; ninguna ejecución anónima ni escritura de miembros autenticada. Tres índices nuevos todavía sin uso (INFO). No aparece aviso de search_path ni FK sin índice en los objetos nuevos.
+- La API y las pantallas de segmentos aún no están conectadas; siguiente paso: DSL canónico compartido con automatizaciones y campañas. No se declara terminada la fase.

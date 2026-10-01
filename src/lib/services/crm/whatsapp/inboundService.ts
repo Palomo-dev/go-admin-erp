@@ -13,7 +13,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { applyInboundConsent } from './consent';
-import { getOrgSettings } from './channelService';
 import { linkInboundReply } from './campaignEvents';
 import { createWhatsAppActivity } from './outboundService';
 
@@ -28,7 +27,7 @@ export interface InboundInput {
 }
 
 export interface InboundResult {
-  consent: 'opted_out' | 'opted_in' | 'implicit_opt_in' | 'none';
+  consent: 'opted_out' | 'opted_in' | 'none';
   campaign_id: string | null;
   opportunity_id: string | null;
   activity_id: string | null;
@@ -37,9 +36,8 @@ export interface InboundResult {
 
 export async function handleWhatsAppInbound(input: InboundInput, service: SupabaseClient = getServiceClient()): Promise<InboundResult> {
   const { orgId, customerId, messageId } = input;
-  const settings = await getOrgSettings(orgId, service).catch(() => null);
   const consent = input.contentType === 'text'
-    ? await applyInboundConsent({ orgId, customerId, messageId, text: input.text, optoutKeywords: settings?.optout_keywords, optinKeywords: settings?.optin_keywords }, service)
+    ? await applyInboundConsent({ orgId, customerId, messageId }, service)
     : 'none';
 
   const reply = await linkInboundReply(orgId, customerId, messageId, service).catch(() => null);

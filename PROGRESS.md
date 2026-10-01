@@ -3742,3 +3742,7 @@ Consumidor canónico noop por página, cron existente para vencimientos de 15 mi
 ### 2026-10-01 — CRM: consentimiento entrante y bajas en una transacción
 
 Migración `20261001034200_crm_consentimiento_atomico_entrante.sql`, aplicada por MCP, MD5 `879c62783a852a724fb86f154159d2b3`; rollback conserva datos y cierra el acceso nuevo. Saludo no equivale a marketing; baja registra preferencia, metadata, auditoría y exclusión de pendientes antes del trigger de IA. Prueba SQL real pasó 240 contactos, reintentos, altas posteriores, palabras configuradas, tenant ajeno y rollback; advisors nuevos sin avisos. 597 pruebas focalizadas pasan. Siguen en curso despacho canónico, créditos/materialización/activación y demás pantallas del alcance.
+
+### 2026-10-01 — consentimiento: servidor conectado y verificado
+
+Registro y postprocesado entrante usan las RPC privadas de la migración 17. Se propagan errores de lectura/escritura; el servidor no concede opt-in por un saludo ni recorre solo los primeros 200 pendientes. Pasan 23 suites / 597 pruebas de WhatsApp, integraciones, webhook y guardarraíles, TypeScript con heap de 8 GB y lint de los archivos tocados. Despacho canónico y contabilidad de campañas siguen en curso.

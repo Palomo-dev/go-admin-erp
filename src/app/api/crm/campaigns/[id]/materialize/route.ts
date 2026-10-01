@@ -9,6 +9,6 @@ export const maxDuration = 60;
 
 export const POST = withWhatsAppRoute(async (ctx, req, params) => {
   await readOrgBody(ctx, req);
-  const r = await materializeCampaign(ctx.organizationId, params.id, ctx.supabase);
+  const r = await materializeCampaign(ctx.organizationId, params.id, ctx.supabase, undefined, undefined, ctx.userId);
   return NextResponse.json({ success: true, ...r });
 }, { admin: true, permission: 'crm.campaigns.manage' });

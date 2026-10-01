@@ -1,13 +1,4 @@
-/**
- * Materialización de audiencias (FASE-16 §2.3, §3.1 `fn_campaign_materialize`).
- *
- * `fn_campaign_materialize` / `fn_segment_customers` NO existen en BD → se
- * implementa en TS con service role (misma semántica: dedupe por cliente,
- * razones de exclusión, estimado). `campaign_contacts.state` solo admite
- * sent|opened|clicked|replied|bounced → pending/skipped van en
- * `metadata.state` con `state = NULL` (idempotente: se borran y recrean los
- * no enviados).
- */
+/** Clasifica la audiencia con las reglas compartidas y la publica en una RPC atómica. */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { leerAudienciaSegmento, obtenerSegmento } from '../segmentosAudiencia';
@@ -22,8 +13,9 @@ import {
   resolveChannel,
 } from './channelService';
 import { estimateMessageCost } from './costs';
-import { patchCampaignStats, requireCampaign } from './campaignStore';
+import { requireCampaign } from './campaignStore';
 import { getHsm } from './templateService';
+import { errorWhatsAppDb } from './erroresDbLogica';
 import { WINDOW_MS } from './windowService';
 import { WhatsAppError, type Campaign, type CampaignAudience, type HsmCategory } from './types';
 
@@ -169,14 +161,14 @@ async function openWindowSet(
   if (!channelId) return set;
   const since = new Date(now.getTime() - WINDOW_MS).toISOString();
   for (const ids of chunk(customerIds, 500)) {
-    const { data } = await service
-      .from('conversations')
-      .select('customer_id')
-      .eq('organization_id', orgId)
-      .eq('channel_id', channelId)
-      .in('customer_id', ids)
-      .gt('last_inbound_at', since);
-    for (const r of (data ?? []) as Array<{ customer_id: string }>) set.add(r.customer_id);
+    for (let from = 0; ; from += 500) {
+      const { data, error } = await service.from('conversations').select('id, customer_id')
+        .eq('organization_id', orgId).eq('channel_id', channelId).in('customer_id', ids)
+        .gt('last_inbound_at', since).order('id').range(from, from + 499);
+      if (error) throw errorWhatsAppDb(error);
+      for (const r of (data ?? []) as Array<{ customer_id: string }>) set.add(r.customer_id);
+      if (!data || data.length < 500) break;
+    }
   }
   return set;
 }
@@ -192,23 +184,18 @@ async function duplicateSet(
 ): Promise<Set<string>> {
   const set = new Set<string>();
   if (!templateId) return set;
-  const { data: others } = await service
-    .from('campaigns')
-    .select('id')
-    .eq('organization_id', orgId)
-    .eq('template_id', templateId)
-    .neq('id', campaignId);
-  const otherIds = ((others ?? []) as Array<{ id: string }>).map((o) => o.id);
-  if (!otherIds.length) return set;
   const since = new Date(now.getTime() - 7 * 24 * 3600 * 1000).toISOString();
   for (const ids of chunk(customerIds, 500)) {
-    const { data } = await service
-      .from('campaign_contacts')
-      .select('customer_id')
-      .in('campaign_id', otherIds)
-      .in('customer_id', ids)
-      .gt('sent_at', since);
-    for (const r of (data ?? []) as Array<{ customer_id: string }>) set.add(r.customer_id);
+    for (let from = 0; ; from += 500) {
+      const { data, error } = await service.from('campaign_contacts')
+        .select('id, customer_id, campaigns!inner(organization_id, template_id)')
+        .eq('campaigns.organization_id', orgId).eq('campaigns.template_id', templateId)
+        .neq('campaign_id', campaignId).in('customer_id', ids).gt('sent_at', since)
+        .order('id').range(from, from + 499);
+      if (error) throw errorWhatsAppDb(error);
+      for (const r of (data ?? []) as Array<{ customer_id: string }>) set.add(r.customer_id);
+      if (!data || data.length < 500) break;
+    }
   }
   return set;
 }
@@ -242,151 +229,55 @@ export async function materializeCampaign(
   supabase: SupabaseClient,
   service: SupabaseClient = getServiceClient(),
   now: Date = new Date(),
+  actor: string | null = null,
 ): Promise<MaterializeResult> {
   const c: Campaign = await requireCampaign(orgId, id, supabase);
-  if (!['draft', 'scheduled'].includes(c.effective_status))
-    throw new WhatsAppError('NOT_EDITABLE', 'Solo se materializan campañas en borrador o programadas', 409);
+  if (c.effective_status !== 'draft')
+    throw new WhatsAppError('NOT_EDITABLE', 'Solo se recalcula la audiencia de un borrador sin reservas', 409);
   const audience = c.statistics.audience;
   if (!audience) throw new WhatsAppError('VALIDATION', 'La campaña no tiene audiencia definida', 400);
   const channel = c.channel ?? 'whatsapp';
-  await patchCampaignStats(id, { state: 'materializing' }, service);
-  try {
-    const template = c.template_id ? await getHsm(orgId, c.template_id, service) : null;
-    const category: HsmCategory | null = template?.meta.category ?? null;
-    const purpose = category === 'marketing' || c.statistics.purpose === 'marketing' ? 'marketing' : 'utility';
-    let channelId = c.statistics.channel_id ?? null;
-    let provider: 'meta' | 'twilio' | 'baileys' = 'meta';
-    if (channel === 'whatsapp') {
-      const ch = await resolveChannel(orgId, channelId, service, service);
-      channelId = ch.id;
-      provider = ch.provider;
-    }
-
-    const candidates = await resolveAudience(orgId, audience, service);
-    // Limpia lo no enviado (idempotente)
-    const { data: existing } = await service
-      .from('campaign_contacts')
-      .select('id, customer_id, state, metadata')
-      .eq('campaign_id', id);
-    const keep = new Set<string>();
-    const toDelete: string[] = [];
-    for (const r of (existing ?? []) as Array<{
-      id: string;
-      customer_id: string;
-      state: string | null;
-      metadata: Record<string, unknown> | null;
-    }>) {
-      const st = r.state ?? (r.metadata?.state as string | undefined) ?? 'pending';
-      if (['pending', 'queued', 'skipped'].includes(st)) toDelete.push(r.id);
-      else keep.add(r.customer_id);
-    }
-    for (const ids of chunk(toDelete, 500)) await service.from('campaign_contacts').delete().in('id', ids);
-
-    const fresh = candidates.filter((x) => !keep.has(x.customer_id));
-    const ids = fresh.map((x) => x.customer_id);
-    const customers = new Map<string, { phone: string | null; email: string | null }>();
-    for (const part of chunk(ids, 500)) {
-      const { data } = await service
-        .from('customers')
-        .select('id, phone, email')
-        .eq('organization_id', orgId)
-        .in('id', part);
-      for (const r of (data ?? []) as Array<{
-        id: string;
-        phone: string | null;
-        email: string | null;
-      }>)
-        customers.set(r.id, { phone: r.phone, email: r.email });
-    }
-    const windows =
-      channel === 'whatsapp' && !c.template_id
-        ? await openWindowSet(orgId, channelId, ids, service, now)
-        : new Set<string>();
-    const dups = await duplicateSet(orgId, id, c.template_id, ids, service, now);
-
-    // Indicativo por defecto de la ORG (una sola lectura para todo el lote).
-    const defaultCountry = defaultCountryOf(await getOrgSettings(orgId, service));
-    const rows: Record<string, unknown>[] = [];
-    const byReason: Record<string, number> = {};
-    let pending = 0;
-    for (const cand of fresh) {
-      const cu = customers.get(cand.customer_id);
-      if (!cu) continue;
-      const ok = await canContact(orgId, cand.customer_id, channel, purpose, service);
-      const cls = classifyCandidate({
-        channel,
-        phone: cu.phone,
-        email: cu.email,
-        canContact: ok,
-        category,
-        hasTemplate: !!c.template_id,
-        windowOpen: windows.has(cand.customer_id),
-        duplicateRecent: dups.has(cand.customer_id),
-        channelIsQr: provider === 'baileys',
-        defaultCountry,
-      });
-      if (cls.reason) byReason[cls.reason] = (byReason[cls.reason] ?? 0) + 1;
-      else pending += 1;
-      rows.push({
-        campaign_id: id,
-        customer_id: cand.customer_id,
-        state: null,
-        metadata: {
-          state: cls.reason ? 'skipped' : 'pending',
-          skipped_reason: cls.reason,
-          opportunity_id: cand.opportunity_id,
-          recipient: cls.recipient,
-          attempts: 0,
-          batch_no: null,
-          variables: {},
-          organization_id: orgId,
-        },
-      });
-    }
-    for (const part of chunk(rows, 500)) {
-      const { error } = await service.from('campaign_contacts').upsert(part, {
-        onConflict: 'campaign_id,customer_id',
-        ignoreDuplicates: true,
-      });
-      if (error) throw new WhatsAppError('INTERNAL', `campaign_contacts: ${error.message}`, 500);
-    }
-
-    const skipped = Object.values(byReason).reduce((a, b) => a + b, 0);
-    const estimated =
-      channel === 'whatsapp'
-        ? await estimateCampaignCost({
-            provider,
-            category,
-            isTemplate: !!c.template_id,
-            pending,
-            defaultCountry,
-          })
-        : null;
-    const total = keep.size + rows.length;
-    await patchCampaignStats(
-      id,
-      {
-        state: null,
-        channel_id: channelId,
-        total_contacts: total,
-        pending,
-        skipped,
-        exclusions: byReason,
-        estimated_cost: estimated,
-        materialized_at: now.toISOString(),
-        purpose,
-      },
-      service,
-    );
-    return {
-      total,
-      pending,
-      skipped,
-      skipped_by_reason: byReason,
-      estimated_cost: estimated,
-    };
-  } catch (err) {
-    await patchCampaignStats(id, { state: null }, service).catch(() => undefined);
-    throw err;
+  const template = c.template_id ? await getHsm(orgId, c.template_id, service) : null;
+  const category: HsmCategory | null = template?.meta.category ?? null;
+  const purpose = category === 'marketing' || c.statistics.purpose === 'marketing' ? 'marketing' : 'utility';
+  let channelId = c.statistics.channel_id ?? null;
+  let provider: 'meta' | 'twilio' | 'baileys' = 'meta';
+  if (channel === 'whatsapp') {
+    const ch = await resolveChannel(orgId, channelId, service, service);
+    channelId = ch.id;
+    provider = ch.provider;
   }
+  const candidates = await resolveAudience(orgId, audience, service, 5000);
+  const ids = candidates.map(cand => cand.customer_id);
+  const customers = new Map<string, { phone: string | null; email: string | null }>();
+  for (const part of chunk(ids, 500)) {
+    const { data, error } = await service.from('customers').select('id, phone, email')
+      .eq('organization_id', orgId).neq('status', 'merged').in('id', part);
+    if (error) throw errorWhatsAppDb(error);
+    for (const r of (data ?? []) as Array<{ id: string; phone: string | null; email: string | null }>) customers.set(r.id, r);
+  }
+  if (customers.size !== candidates.length) throw new WhatsAppError('NOT_FOUND', 'Un cliente de la audiencia ya no está disponible', 404);
+  const windows = channel === 'whatsapp' && !c.template_id ? await openWindowSet(orgId, channelId, ids, service, now) : new Set<string>();
+  const dups = await duplicateSet(orgId, id, c.template_id, ids, service, now);
+  const defaultCountry = defaultCountryOf(await getOrgSettings(orgId, service));
+  const rows: Array<{ customer_id: string; state: 'pending' | 'skipped'; metadata: Record<string, unknown> }> = [];
+  let pending = 0;
+  for (const cand of candidates) {
+    const cu = customers.get(cand.customer_id)!;
+    const ok = await canContact(orgId, cand.customer_id, channel, purpose, service);
+    const cls = classifyCandidate({ channel, phone: cu.phone, email: cu.email, canContact: ok, category,
+      hasTemplate: !!c.template_id, windowOpen: windows.has(cand.customer_id), duplicateRecent: dups.has(cand.customer_id),
+      channelIsQr: provider === 'baileys', defaultCountry });
+    if (!cls.reason) pending++;
+    rows.push({ customer_id: cand.customer_id, state: cls.reason ? 'skipped' : 'pending',
+      metadata: { skipped_reason: cls.reason, opportunity_id: cand.opportunity_id, recipient: cls.recipient, variables: {} } });
+  }
+  const estimated = channel === 'whatsapp' ? await estimateCampaignCost({ provider, category, isTemplate: !!c.template_id, pending, defaultCountry }) : null;
+  const { data, error } = await service.rpc('crm_materialize_campaign', {
+    p_org: orgId, p_campaign: id, p_version: c.updated_at, p_channel: channelId,
+    p_rows: rows, p_estimated: estimated, p_actor: actor,
+  });
+  if (error) throw errorWhatsAppDb(error);
+  if (!data || typeof data !== 'object') throw new WhatsAppError('INTERNAL', 'Materialización sin resultado', 500);
+  return data as MaterializeResult;
 }

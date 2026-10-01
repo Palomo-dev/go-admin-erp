@@ -10,6 +10,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { errorWhatsAppDb } from './erroresDbLogica';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import {
   WhatsAppError,
@@ -133,7 +134,8 @@ export async function listCampaigns(orgId: number, filters: { status?: string; c
 }
 
 export async function getCampaign(orgId: number, id: string, supabase: SupabaseClient): Promise<Campaign | null> {
-  const { data } = await supabase.from('campaigns').select(COLS).eq('id', id).eq('organization_id', orgId).maybeSingle();
+  const { data, error } = await supabase.from('campaigns').select(COLS).eq('id', id).eq('organization_id', orgId).maybeSingle();
+  if (error) throw errorWhatsAppDb(error);
   return data ? rowToCampaign(data as Record<string, unknown>) : null;
 }
 

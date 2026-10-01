@@ -6,6 +6,6 @@ import { readOrgBody } from '@/lib/security/organizationBody';
 /** POST /api/crm/campaigns/[id]/cancel (admin) → { data } (pending → skipped:canceled, créditos devueltos). */
 export const POST = withWhatsAppRoute(async (ctx, req, params) => {
   await readOrgBody(ctx, req);
-  const data = await cancelCampaign(ctx.organizationId, params.id, ctx.supabase);
+  const data = await cancelCampaign(ctx.organizationId, params.id, ctx.supabase, undefined, ctx.userId);
   return NextResponse.json({ data });
 }, { admin: true, permission: 'crm.campaigns.manage' });

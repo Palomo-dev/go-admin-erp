@@ -9,6 +9,7 @@
  *   (desviación documentada: `comm_settings` no tiene esas columnas).
  */
 
+import { errorWhatsAppDb } from './erroresDbLogica';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { normalizePhoneDigits, phoneSuffixPattern, resolveDefaultCountry } from '@/lib/services/crm/phoneNormalize';
 import { getServiceClient } from '@/lib/supabase/server-service';
@@ -40,14 +41,15 @@ function normalizeProvider(p: string | null | undefined): WhatsAppProvider {
 }
 
 export async function getOrgSettings(orgId: number, service: SupabaseClient = getServiceClient()): Promise<WhatsAppOrgSettings> {
-  const { data } = await service
+  const { data, error } = await service
     .from('provider_configs')
     .select('settings')
     .eq('organization_id', orgId)
     .eq('category', 'whatsapp')
-    .order('priority', { ascending: true })
+    .order('priority', { ascending: true }).order('id')
     .limit(1)
     .maybeSingle();
+  if (error) throw errorWhatsAppDb(error);
   const s = ((data as { settings?: Record<string, unknown> } | null)?.settings ?? {}) as Record<string, unknown>;
   return {
     default_channel_id: (s.default_channel_id as string) ?? null,
@@ -203,20 +205,23 @@ export async function getChannelCredentials(orgId: number, channelId: string, se
  * silencio es un mal parámetro: ahora omitirlo hace lo correcto.
  */
 export async function resolveRecipient(orgId: number, customerId: string, channelId: string, supabase: SupabaseClient, defaultCountry?: string | null): Promise<string | null> {
-  const { data: ident } = await supabase
+  const { data: ident, error: identityError } = await supabase
     .from('customer_channel_identities')
     .select('identity_value')
+    .eq('organization_id', orgId)
     .eq('channel_id', channelId)
     .eq('customer_id', customerId)
     .eq('identity_type', 'whatsapp_phone')
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (identityError) throw errorWhatsAppDb(identityError);
   const fromIdentity = (ident as { identity_value?: string } | null)?.identity_value;
   // La identidad del canal la escribe el proveedor (wa_id): ya viene
   // cualificada y NO se le completa indicativo.
   if (fromIdentity) return normalizePhoneDigits(fromIdentity);
-  const { data: c } = await supabase.from('customers').select('phone').eq('id', customerId).eq('organization_id', orgId).maybeSingle();
+  const { data: c, error: customerError } = await supabase.from('customers').select('phone').eq('id', customerId).eq('organization_id', orgId).maybeSingle();
+  if (customerError) throw errorWhatsAppDb(customerError);
   const phone = (c as { phone?: string | null } | null)?.phone;
   if (!phone) return null;
   // Solo se consultan los ajustes si de verdad hacen falta: un teléfono ya

@@ -73,7 +73,8 @@ export async function listHsm(orgId: number, filters: HsmFilters, supabase: Supa
 }
 
 export async function getHsm(orgId: number, id: string, supabase: SupabaseClient): Promise<WhatsAppTemplate | null> {
-  const { data } = await supabase.from('templates').select(COLS).eq('organization_id', orgId).eq('channel', 'whatsapp').eq('id', id).maybeSingle();
+  const { data, error } = await supabase.from('templates').select(COLS).eq('organization_id', orgId).eq('channel', 'whatsapp').eq('id', id).maybeSingle();
+  if (error) throw new WhatsAppError('INTERNAL', error.message, 500);
   return data ? rowToTemplate(data as Record<string, unknown>) : null;
 }
 

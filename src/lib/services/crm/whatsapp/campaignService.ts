@@ -11,7 +11,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { enqueueJob } from '@/lib/jobs/enqueue';
 import { getChannelCredentials, resolveChannel } from './channelService';
-import { patchCampaignStats, requireCampaign } from './campaignStore';
+import { rowToCampaign, requireCampaign } from './campaignStore';
+import { errorWhatsAppDb } from './erroresDbLogica';
 import { getHsm } from './templateService';
 import { metaMessagingLimit } from './templateProvider';
 import { contactState, WhatsAppError, type Campaign, type CampaignContact, type CampaignContactMeta, type CampaignCounts } from './types';
@@ -48,12 +49,31 @@ export async function checkMessagingLimit(orgId: number, channelId: string, pend
   }
 }
 
-export async function launchCampaign(orgId: number, userId: string | null, id: string, opts: { scheduledAt?: string | null; force?: boolean }, supabase: SupabaseClient, service: SupabaseClient = getServiceClient(), now: Date = new Date()): Promise<Campaign> {
+async function transitionCampaign(
+  orgId: number, c: Campaign, action: 'launch' | 'pause' | 'resume' | 'cancel', actor: string | null,
+  options: Record<string, unknown>, service: SupabaseClient,
+): Promise<Campaign> {
+  const { data, error } = await service.rpc('crm_campaign_transition', {
+    p_org: orgId, p_campaign: c.id, p_action: action, p_version: c.updated_at, p_actor: actor, p_options: options,
+  });
+  if (error) throw errorWhatsAppDb(error);
+  if (!data || typeof data !== 'object') throw new WhatsAppError('INTERNAL', 'Transición sin resultado', 500);
+  return rowToCampaign(data as Record<string, unknown>);
+}
+
+export async function readCampaignCounts(orgId: number, id: string, service: SupabaseClient): Promise<CampaignCounts> {
+  const { data, error } = await service.rpc('crm_campaign_contact_counts', { p_org: orgId, p_campaign: id });
+  if (error) throw errorWhatsAppDb(error);
+  if (!data || typeof data !== 'object') throw new WhatsAppError('INTERNAL', 'Recuento sin resultado', 500);
+  return data as CampaignCounts;
+}
+
+export async function launchCampaign(orgId: number, userId: string | null, id: string, opts: { scheduledAt?: string | null; force?: boolean }, supabase: SupabaseClient, service: SupabaseClient = getServiceClient()): Promise<Campaign> {
   const c = await requireCampaign(orgId, id, supabase);
-  if (!['draft', 'scheduled'].includes(c.effective_status)) throw new WhatsAppError('NOT_EDITABLE', `La campaña está en estado ${c.effective_status}`, 409);
+  if (c.effective_status !== 'draft') throw new WhatsAppError('NOT_EDITABLE', `La campaña está en estado ${c.effective_status}`, 409);
   if (!c.statistics.materialized_at) throw new WhatsAppError('NOT_MATERIALIZED', 'Calcula la audiencia antes de lanzar', 409);
-  const pending = c.statistics.pending ?? 0;
-  if (pending <= 0) throw new WhatsAppError('NOT_MATERIALIZED', 'La campaña no tiene contactos pendientes', 409);
+  const counts = await readCampaignCounts(orgId, id, service);
+  if (counts.pending <= 0) throw new WhatsAppError('NOT_MATERIALIZED', 'La campaña no tiene contactos pendientes', 409);
   let messagingLimit: Campaign['statistics']['messaging_limit'] = null;
   if (c.channel === 'whatsapp') {
     const channel = await resolveChannel(orgId, c.statistics.channel_id ?? null, service, service);
@@ -64,54 +84,24 @@ export async function launchCampaign(orgId: number, userId: string | null, id: s
       if (t.meta.status !== 'APPROVED') throw new WhatsAppError('TEMPLATE_NOT_APPROVED', `La plantilla "${t.name}" no está aprobada (${t.meta.status})`, 409);
       if (!channel.capabilities.templates) throw new WhatsAppError('CHANNEL_NO_TEMPLATES', 'El canal QR no admite plantillas', 422);
     }
-    messagingLimit = await checkMessagingLimit(orgId, channel.id, pending, service);
-    if (typeof messagingLimit.limit === 'number' && pending > messagingLimit.limit && !opts.force) {
-      throw new WhatsAppError('TIER_EXCEEDED', messagingLimit.warning ?? 'Supera el messaging_limit del WABA', 409, { messaging_limit: messagingLimit });
-    }
-    const { data: ok, error } = await service.rpc('deduct_comm_credits', { p_org_id: orgId, p_channel: 'whatsapp', p_amount: pending });
-    if (!error && ok === false) throw new WhatsAppError('NO_CREDITS', `Sin créditos de WhatsApp para ${pending} mensajes`, 402);
+    // El límite externo es un aviso; la RPC decide saldo y audiencia actuales.
+    messagingLimit = await checkMessagingLimit(orgId, channel.id, counts.pending, service);
   }
-  const scheduledAt = opts.scheduledAt ? new Date(opts.scheduledAt) : c.scheduled_at ? new Date(c.scheduled_at) : null;
-  const future = !!scheduledAt && scheduledAt.getTime() > now.getTime() + 60_000;
-  const status = future ? 'scheduled' : 'sending';
-  const batchNo = c.statistics.next_batch_no ?? 1;
-  await enqueueBatch(orgId, id, batchNo, future ? scheduledAt! : now, service);
-  return patchCampaignStats(id, {
-    state: null,
-    started_at: future ? null : now.toISOString(),
-    launched_at: now.toISOString(),
-    launched_by: userId,
-    messaging_limit: messagingLimit,
-    credits_reserved: c.channel === 'whatsapp' ? pending : 0,
-    next_batch_no: batchNo,
-  }, service, { status, scheduled_at: scheduledAt ? scheduledAt.toISOString() : null });
+  return transitionCampaign(orgId, c, 'launch', userId, {
+    ...(opts.scheduledAt !== undefined ? { scheduled_at: opts.scheduledAt } : {}), messaging_limit: messagingLimit,
+  }, service);
 }
 
-export async function pauseCampaign(orgId: number, id: string, supabase: SupabaseClient, service: SupabaseClient = getServiceClient()): Promise<Campaign> {
-  const c = await requireCampaign(orgId, id, supabase);
-  if (!['sending', 'scheduled'].includes(c.effective_status)) throw new WhatsAppError('NOT_EDITABLE', `No se puede pausar una campaña en estado ${c.effective_status}`, 409);
-  return patchCampaignStats(id, { state: 'paused', paused_at: new Date().toISOString() }, service);
+export async function pauseCampaign(orgId: number, id: string, supabase: SupabaseClient, service: SupabaseClient = getServiceClient(), actor: string | null = null): Promise<Campaign> {
+  return transitionCampaign(orgId, await requireCampaign(orgId, id, supabase), 'pause', actor, {}, service);
 }
 
-export async function resumeCampaign(orgId: number, id: string, supabase: SupabaseClient, service: SupabaseClient = getServiceClient(), now: Date = new Date()): Promise<Campaign> {
-  const c = await requireCampaign(orgId, id, supabase);
-  if (c.effective_status !== 'paused') throw new WhatsAppError('NOT_EDITABLE', 'La campaña no está pausada', 409);
-  const batchNo = c.statistics.next_batch_no ?? 1;
-  const scheduled = c.scheduled_at ? new Date(c.scheduled_at) : null;
-  const future = !!scheduled && scheduled.getTime() > now.getTime() + 60_000;
-  await enqueueBatch(orgId, id, batchNo, future ? scheduled! : now, service);
-  return patchCampaignStats(id, { state: null, paused_at: null, resumed_at: now.toISOString(), template_paused: false }, service, { status: future ? 'scheduled' : 'sending' });
+export async function resumeCampaign(orgId: number, id: string, supabase: SupabaseClient, service: SupabaseClient = getServiceClient(), actor: string | null = null): Promise<Campaign> {
+  return transitionCampaign(orgId, await requireCampaign(orgId, id, supabase), 'resume', actor, {}, service);
 }
 
-export async function cancelCampaign(orgId: number, id: string, supabase: SupabaseClient, service: SupabaseClient = getServiceClient()): Promise<Campaign> {
-  const c = await requireCampaign(orgId, id, supabase);
-  if (['sent', 'canceled'].includes(c.effective_status)) throw new WhatsAppError('NOT_EDITABLE', `La campaña ya está ${c.effective_status}`, 409);
-  const n = await skipPending(id, 'canceled', service);
-  if (n > 0 && c.channel === 'whatsapp' && (c.statistics.credits_reserved ?? 0) > 0) {
-    await service.rpc('deduct_comm_credits', { p_org_id: orgId, p_channel: 'whatsapp', p_amount: -n }).then(() => undefined, () => undefined);
-  }
-  const counts = await computeCampaignCounts(id, service);
-  return patchCampaignStats(id, { state: 'canceled', canceled_at: new Date().toISOString(), counts, pending: 0 }, service);
+export async function cancelCampaign(orgId: number, id: string, supabase: SupabaseClient, service: SupabaseClient = getServiceClient(), actor: string | null = null): Promise<Campaign> {
+  return transitionCampaign(orgId, await requireCampaign(orgId, id, supabase), 'cancel', actor, {}, service);
 }
 
 /** pending|queued → skipped:reason (metadata). Devuelve cuántos. */

@@ -3683,3 +3683,11 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - Rama cursor/vista-previa-cierre-e475.
 - «Vista previa» corría los reportes de la plantilla y, al terminar, solo repetía el conteo de capítulos que ya estaba en el diálogo. Ahora el panel aparece al clic, con el estado de carga, y se llena con los indicadores y los capítulos cuando llega la respuesta. Las consultas no cambian. La ruta tiene el mismo tope de 300 s que el cron de envíos, para que el cálculo completo no se corte.
 
+
+
+### Fase: Avisos al miembro — asignación, etapa, cierre y vencimiento — 2026-10-01
+- Rama cursor/avisos-miembro-e475.
+- Al asignar una tarea o una oportunidad, al cambiar la etapa, al completar una tarea y cuando se atrasa o vence, el miembro lo ve en la campana del encabezado y puede recibir el correo. La fila nace en el trigger de tasks y opportunities, en la tabla member_notices. El correo sale por sendEmail. No entra en la cola de notificaciones al cliente. Quien hace el cambio no se avisa a sí mismo. En el canal de correo, un arreglo vacío significa todos los eventos; el valor ninguno los apaga. El modo no molestar deja el correo pendiente hasta que pase la ventana, en la zona de la organización.
+- El perfil guarda esos cinco interruptores en allowed_types del canal email, sin borrar otros tipos que ya estuvieran. La campana marca leído y descartado solo en member_notices.
+- El cron /api/cron/avisos-miembro corre cada 5 minutos en Vercel y en pg_cron. Migración 20261001180000 aplicada por MCP, con rollback. El archivo coincide con lo aplicado.
+- Jest de las reglas y de guardrails: 197 en verde. npx tsc --noEmit -p tsconfig.json en verde.

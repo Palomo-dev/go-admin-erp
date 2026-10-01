@@ -38,6 +38,46 @@ export interface NotificacionHeader {
 
 export type AlcanceNotificaciones = 'mine' | 'all';
 
+interface AvisoMiembroFila {
+  id: string;
+  organization_id: number;
+  recipient_user_id: string;
+  event: string;
+  entity_type: string;
+  entity_id: string;
+  title: string;
+  body: string;
+  href: string;
+  read_at: string | null;
+  created_at: string;
+}
+
+function avisoANotificacion(fila: AvisoMiembroFila): NotificacionHeader {
+  const tarea = fila.entity_type === 'task';
+  return {
+    id: fila.id,
+    organization_id: fila.organization_id,
+    recipient_user_id: fila.recipient_user_id,
+    channel: 'in_app',
+    payload: {
+      type: fila.event,
+      title: fila.title,
+      content: fila.body,
+      href: fila.href,
+      source: 'member_notice',
+      ...(tarea ? { task_id: fila.entity_id } : { opportunity_id: fila.entity_id }),
+    },
+    status: 'sent',
+    read_at: fila.read_at,
+    is_read_by_me: !!fila.read_at,
+    created_at: fila.created_at,
+  };
+}
+
+function esAvisoMiembro(n: NotificacionHeader): boolean {
+  return n.payload?.source === 'member_notice';
+}
+
 /** Filas de más que se piden para que, tras quitar las descartadas, la lista siga llena. */
 const MARGEN_DESCARTADAS = 20;
 
@@ -48,6 +88,7 @@ export function useNotificacionesHeader(organizationId: string | null) {
   const [todas, setTodas] = useState<NotificacionHeader[]>([]);
   const [noLeidasMias, setNoLeidasMias] = useState(0);
   const [noLeidasTodas, setNoLeidasTodas] = useState(0);
+  const [avisosNoLeidos, setAvisosNoLeidos] = useState(0);
   const [cargando, setCargando] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -86,12 +127,33 @@ export function useNotificacionesHeader(organizationId: string | null) {
           consultaMias = consultaMias.not('payload->>type', 'in', TIPOS_TAREA);
           consultaTodas = consultaTodas.not('payload->>type', 'in', TIPOS_TAREA);
         }
+        let consultaAvisos = supabase
+          .from('member_notices')
+          .select('id, organization_id, recipient_user_id, event, entity_type, entity_id, title, body, href, read_at, created_at')
+          .eq('organization_id', orgNum)
+          .eq('recipient_user_id', userId)
+          .is('dismissed_at', null)
+          .order('created_at', { ascending: false })
+          .limit(15);
+        let conteoAvisos = supabase
+          .from('member_notices')
+          .select('id', { count: 'exact', head: true })
+          .eq('organization_id', orgNum)
+          .eq('recipient_user_id', userId)
+          .is('dismissed_at', null)
+          .is('read_at', null);
+        if (!pmActivo) {
+          consultaAvisos = consultaAvisos.not('event', 'like', 'tarea.%');
+          conteoAvisos = conteoAvisos.not('event', 'like', 'tarea.%');
+        }
 
-        const [rMias, rTodas, rNoLeidasMias, rNoLeidasTodas] = await Promise.all([
+        const [rMias, rTodas, rNoLeidasMias, rNoLeidasTodas, rAvisos, rConteoAvisos] = await Promise.all([
           consultaMias,
           consultaTodas,
           supabase.rpc('get_unread_notifications_count', { p_organization_id: orgNum, p_scope: 'mine', p_exclude_task_types: !pmActivo }),
           supabase.rpc('get_unread_notifications_count', { p_organization_id: orgNum, p_scope: 'all', p_exclude_task_types: !pmActivo }),
+          consultaAvisos,
+          conteoAvisos,
         ]);
         if (rMias.error) throw rMias.error;
         if (rTodas.error) throw rTodas.error;
@@ -115,9 +177,20 @@ export function useNotificacionesHeader(organizationId: string | null) {
             .slice(0, tope)
             .map((n) => ({ ...n, is_read_by_me: leidas.has(n.id) }));
 
-        setMias(visibles(filasMias, 15));
+        const avisos = rAvisos.error
+          ? []
+          : ((rAvisos.data ?? []) as AvisoMiembroFila[]).map(avisoANotificacion);
+        if (rAvisos.error) console.error('[useNotificacionesHeader] avisos', rAvisos.error.message);
+        const noLeidosAvisos = rConteoAvisos.error ? 0 : (rConteoAvisos.count ?? 0);
+        if (rConteoAvisos.error) console.error('[useNotificacionesHeader] conteo avisos', rConteoAvisos.error.message);
+        const combinadas = [...visibles(filasMias, 15), ...avisos]
+          .sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0))
+          .slice(0, 15);
+
+        setMias(combinadas);
         setTodas(visibles(filasTodas, 20));
-        setNoLeidasMias((rNoLeidasMias.data as number | null) ?? 0);
+        setAvisosNoLeidos(noLeidosAvisos);
+        setNoLeidasMias(((rNoLeidasMias.data as number | null) ?? 0) + noLeidosAvisos);
         setNoLeidasTodas((rNoLeidasTodas.data as number | null) ?? 0);
       } catch (e) {
         console.error('[useNotificacionesHeader] cargar', e);
@@ -146,10 +219,15 @@ export function useNotificacionesHeader(organizationId: string | null) {
       .channel(`notification-reads-${userId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notification_reads', filter: `user_id=eq.${userId}` }, refrescar)
       .subscribe();
+    const canalAvisos = supabase
+      .channel(`member-notices-${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'member_notices', filter: `recipient_user_id=eq.${userId}` }, refrescar)
+      .subscribe();
     return () => {
       activo = false;
       void supabase.removeChannel(canalNotif);
       void supabase.removeChannel(canalLecturas);
+      void supabase.removeChannel(canalAvisos);
     };
   }, [organizationId, userId]);
 
@@ -164,6 +242,21 @@ export function useNotificacionesHeader(organizationId: string | null) {
   const marcarLeida = useCallback(
     async (n: NotificacionHeader) => {
       if (n.is_read_by_me || !userId) return;
+      if (esAvisoMiembro(n)) {
+        const { error } = await supabase
+          .from('member_notices')
+          .update({ read_at: new Date().toISOString() })
+          .eq('id', n.id)
+          .eq('recipient_user_id', userId);
+        if (error) {
+          console.error('[useNotificacionesHeader] aviso leído', error.message);
+          return;
+        }
+        setMias((lista) => lista.map((item) => (item.id === n.id ? { ...item, is_read_by_me: true, read_at: new Date().toISOString() } : item)));
+        setNoLeidasMias((c) => Math.max(0, c - 1));
+        setAvisosNoLeidos((c) => Math.max(0, c - 1));
+        return;
+      }
       const { error } = await supabase.from('notification_reads').insert({ notification_id: n.id, user_id: userId });
       // 23505: ya estaba leída (otro dispositivo).
       if (!error || error.code === '23505') marcarLocal(n.id);
@@ -174,7 +267,7 @@ export function useNotificacionesHeader(organizationId: string | null) {
 
   const marcarTodas = useCallback(
     async (alcance: AlcanceNotificaciones) => {
-      if (!orgNum) return;
+      if (!orgNum || !userId) return;
       const { data, error } = await supabase.rpc('mark_all_notifications_as_read', { p_organization_id: orgNum, p_scope: alcance });
       if (error) {
         console.error('[useNotificacionesHeader] marcar todas', error.message);
@@ -190,14 +283,42 @@ export function useNotificacionesHeader(organizationId: string | null) {
       } else {
         setNoLeidasTodas((c) => Math.max(0, c - insertadas));
       }
+      const { error: errorAvisos } = await supabase
+        .from('member_notices')
+        .update({ read_at: new Date().toISOString() })
+        .eq('recipient_user_id', userId)
+        .eq('organization_id', orgNum)
+        .is('read_at', null)
+        .is('dismissed_at', null);
+      if (errorAvisos) console.error('[useNotificacionesHeader] avisos leídos', errorAvisos.message);
+      else setAvisosNoLeidos(0);
     },
-    [orgNum]
+    [orgNum, userId]
   );
 
   /** Solo para quien la descarta (antes la borraba para toda la organización). También la marca leída. */
   const descartar = useCallback(
     async (n: NotificacionHeader) => {
       if (!userId) return;
+      if (esAvisoMiembro(n)) {
+        const ahora = new Date().toISOString();
+        const { error } = await supabase
+          .from('member_notices')
+          .update({ dismissed_at: ahora, read_at: n.read_at ?? ahora })
+          .eq('id', n.id)
+          .eq('recipient_user_id', userId);
+        if (error) {
+          console.error('[useNotificacionesHeader] descartar aviso', error.message);
+          return false;
+        }
+        if (!n.is_read_by_me) {
+          setNoLeidasMias((c) => Math.max(0, c - 1));
+          setAvisosNoLeidos((c) => Math.max(0, c - 1));
+        }
+        const quitarAviso = (lista: NotificacionHeader[]) => lista.filter((x) => x.id !== n.id);
+        setMias(quitarAviso);
+        return true;
+      }
       const { error } = await supabase.from('notification_dismissals').insert({ notification_id: n.id, user_id: userId });
       if (error && error.code !== '23505') {
         console.error('[useNotificacionesHeader] descartar', error.message);
@@ -216,6 +337,21 @@ export function useNotificacionesHeader(organizationId: string | null) {
   const marcarNoLeida = useCallback(
     async (n: NotificacionHeader) => {
       if (!userId) return false;
+      if (esAvisoMiembro(n)) {
+        const { error } = await supabase
+          .from('member_notices')
+          .update({ read_at: null })
+          .eq('id', n.id)
+          .eq('recipient_user_id', userId);
+        if (error) {
+          console.error('[useNotificacionesHeader] aviso no leído', error.message);
+          return false;
+        }
+        setMias((lista) => lista.map((x) => (x.id === n.id ? { ...x, is_read_by_me: false, read_at: null } : x)));
+        setNoLeidasMias((c) => c + 1);
+        setAvisosNoLeidos((c) => c + 1);
+        return true;
+      }
       const { error } = await supabase.from('notification_reads').delete().eq('notification_id', n.id).eq('user_id', userId);
       if (error) {
         console.error('[useNotificacionesHeader] marcar no leída', error.message);
@@ -243,7 +379,7 @@ export function useNotificacionesHeader(organizationId: string | null) {
     recordatorios,
     cargandoTareas,
     /** Lo que muestra el contador de la campana: no leídas + recordatorios. */
-    pendientes: noLeidasTodas + recordatorios.length,
+    pendientes: noLeidasTodas + recordatorios.length + avisosNoLeidos,
     marcarLeida,
     marcarTodas,
     descartar,

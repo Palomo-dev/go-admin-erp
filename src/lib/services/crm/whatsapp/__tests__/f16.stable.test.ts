@@ -199,9 +199,10 @@ describe('estimateCampaignCost', () => {
 describe('channel-dispatch (Edge Function, Deno) · message_events.event_time es GENERATED ALWAYS', () => {
   it('T2.F1 · el INSERT no lleva event_time y se comprueba el error', () => {
     const src = fs.readFileSync(path.join(ROOT, 'supabase/functions/channel-dispatch/index.ts'), 'utf8');
-    const i = src.indexOf('from("message_events").insert(');
-    expect(i).toBeGreaterThan(-1);
-    expect(src.slice(i, i + 400)).not.toMatch(/^\s*event_time:/m);
-    expect(src.slice(i - 60, i)).toContain('error');
+    expect(src).toContain('rpc("crm_finish_message_dispatch"');
+    expect(src).toContain('if (error) throw');
+    const sql = fs.readFileSync(path.join(ROOT, 'supabase/migrations/20261001040341_crm_despacho_claim_y_resultado.sql'), 'utf8');
+    expect(sql).toContain('insert into public.message_events(organization_id,message_id,event_type,provider_payload,error_code,error_message)');
+    expect(sql).not.toContain('event_time');
   });
 });

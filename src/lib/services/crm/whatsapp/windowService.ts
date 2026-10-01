@@ -10,20 +10,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { WindowState } from './types';
 
-export const WINDOW_MS = 24 * 60 * 60 * 1000;
-
-/** Cálculo puro (testeable). */
-export function computeWindow(lastInboundAt: string | Date | null | undefined, now: Date = new Date()): Omit<WindowState, 'conversation_id'> {
-  if (!lastInboundAt) return { is_open: false, last_inbound_at: null, expires_at: null };
-  const d = lastInboundAt instanceof Date ? lastInboundAt : new Date(lastInboundAt);
-  if (Number.isNaN(d.getTime())) return { is_open: false, last_inbound_at: null, expires_at: null };
-  const expires = new Date(d.getTime() + WINDOW_MS);
-  return {
-    is_open: expires.getTime() > now.getTime(),
-    last_inbound_at: d.toISOString(),
-    expires_at: expires.toISOString(),
-  };
-}
+import { computeWindow } from '../../../../../supabase/functions/_shared/contacto/ventana';
+export { computeWindow, WINDOW_MS } from '../../../../../supabase/functions/_shared/contacto/ventana';
 
 export async function getWindow(
   orgId: number,

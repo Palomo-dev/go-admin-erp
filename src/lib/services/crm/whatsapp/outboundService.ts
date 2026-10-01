@@ -227,38 +227,6 @@ export async function findByClientRequestId(orgId: number, clientRequestId: stri
   return row?.id ? { id: row.id, conversation_id: row.conversation_id } : null;
 }
 
-export async function createWhatsAppActivity(
-  p: { orgId: number; messageId: string; conversationId: string; customerId: string; opportunityId: string | null; userId: string | null; content: string; contentType: string; customerName: string; direction?: 'inbound' | 'outbound'; campaignId?: string | null; templateId?: string | null },
-  service: SupabaseClient,
-): Promise<string | null> {
-  const direction = p.direction ?? 'outbound';
-  const { data: existing } = await service.from('activities').select('id').eq('message_id', p.messageId).limit(1).maybeSingle();
-  if (existing) return (existing as { id: string }).id;
-  const { data, error } = await service
-    .from('activities')
-    .insert({
-      organization_id: p.orgId,
-      activity_type: 'whatsapp',
-      channel: 'whatsapp',
-      outcome: direction === 'inbound' ? 'received' : 'sent',
-      user_id: p.userId,
-      notes: direction === 'inbound' ? `WhatsApp de ${p.customerName}: ${p.content.slice(0, 500)}` : `WhatsApp a ${p.customerName}: ${p.content.slice(0, 500)}`,
-      related_type: p.opportunityId ? 'opportunity' : 'customer',
-      related_id: p.opportunityId ?? p.customerId,
-      occurred_at: new Date().toISOString(),
-      message_id: p.messageId,
-      conversation_id: p.conversationId,
-      metadata: { direction, content_type: p.contentType, customer_id: p.customerId, campaign_id: p.campaignId ?? null, template_id: p.templateId ?? null, message_id: p.messageId },
-    })
-    .select('id')
-    .single();
-  if (error) {
-    console.warn('[whatsapp] No se pudo crear la activity:', error.message);
-    return null;
-  }
-  return (data as { id: string }).id;
-}
-
 function guessMime(url: string): string {
   const u = url.toLowerCase().split('?')[0];
   if (/\.(png)$/.test(u)) return 'image/png';

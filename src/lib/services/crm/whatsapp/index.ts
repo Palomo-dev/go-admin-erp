@@ -4,7 +4,7 @@
  * `templateRender.ts` y `consent.isOptOutKeyword` (puros).
  */
 export * from './types';
-export { sendWhatsApp, createWhatsAppActivity } from './outboundService';
+export { sendWhatsApp } from './outboundService';
 export { getWindow, getWindowByConversation, computeWindow, describeWindow, WINDOW_MS } from './windowService';
 export { listChannels, resolveChannel, resolveRecipient, getOrgSettings, saveOrgSettings, capabilitiesFor, normalizePhoneDigits, countryFromPhone } from './channelService';
 export { listHsm, getHsm, requireHsm, createHsm, updateHsm, deleteHsm, submitHsm, syncFromMeta, previewHsm } from './templateService';
@@ -17,5 +17,5 @@ export { listCampaigns, getCampaign, requireCampaign, createCampaign, updateCamp
 export { materializeCampaign, resolveAudience, classifyCandidate } from './campaignMaterialize';
 export { launchCampaign, pauseCampaign, resumeCampaign, cancelCampaign, getCampaignStats, listCampaignContacts, contactsToCsv, countContacts, checkMessagingLimit } from './campaignService';
 export { runCampaignBatch, planDelay, classifySendError } from './campaignBatch';
-export { recordWhatsAppProviderStatus, syncCampaignProviderReceipts, linkInboundReply, providerErrorAction } from './campaignEvents';
+export { recordWhatsAppProviderStatus, syncCampaignProviderReceipts, providerErrorAction } from './campaignEvents';
 export { handleWhatsAppInbound, extractInboundText, inboundContentType } from './inboundService';

@@ -521,6 +521,26 @@ class WhatsAppCloudService {
     const senderPhone = message.from;
     const senderName = contactInfo?.profile?.name || senderPhone;
 
+    // Antes de crear cliente/conversación, recuperar un mensaje del mismo canal.
+    const { data: duplicate, error: duplicateError } = await supabase.from('messages')
+      .select('id, conversation_id').eq('organization_id', organizationId)
+      .eq('channel_id', channelId).eq('direction', 'inbound')
+      .eq('external_message_id', message.id).maybeSingle();
+    if (duplicateError) throw new WhatsAppInboundPersistError(message.id, duplicateError.message);
+    if (duplicate) {
+      const { data: conversation, error: contextError } = await supabase.from('conversations')
+        .select('customer_id').eq('organization_id', organizationId)
+        .eq('channel_id', channelId).eq('id', duplicate.conversation_id).maybeSingle();
+      if (contextError || !conversation?.customer_id) {
+        throw new WhatsAppInboundPersistError(message.id, contextError?.message ?? 'Conversación del mensaje no disponible');
+      }
+      await handleWhatsAppInbound({
+        orgId: organizationId, channelId, conversationId: duplicate.conversation_id,
+        customerId: conversation.customer_id, messageId: duplicate.id, text: '', contentType: message.type,
+      }, supabase);
+      return;
+    }
+
     // Buscar o crear customer por teléfono
     const customerId = await this.findOrCreateCustomer(
       supabase,
@@ -542,16 +562,6 @@ class WhatsAppCloudService {
     const { contentType: metaType, messagePayload } = this.extractMessageContent(message);
     const content = extractInboundText(message as Parameters<typeof extractInboundText>[0]) || '[mensaje]';
     const contentType = inboundContentType(message.type);
-
-    // Idempotencia por external_message_id (Meta reintenta webhooks)
-    const { data: dup } = await supabase
-      .from('messages')
-      .select('id')
-      .eq('organization_id', organizationId)
-      .eq('external_message_id', message.id)
-      .limit(1)
-      .maybeSingle();
-    if (dup) return;
 
     const insertRow = {
       organization_id: organizationId,
@@ -591,14 +601,11 @@ class WhatsAppCloudService {
       throw new WhatsAppInboundPersistError(message.id, detail, insertError ?? null);
     }
 
-    // Conversación reabierta (last_message_at/last_inbound_at los mantienen los triggers)
-    await supabase.from('conversations').update({ status: 'open', updated_at: new Date().toISOString() }).eq('id', conversationId);
-
-    // Opt-out / opt-in, respuesta a campaña, actividad y notificación (F16)
+    // Reapertura, consentimiento, atribución, actividad y notificación en una RPC.
     await handleWhatsAppInbound(
       { orgId: organizationId, channelId, conversationId, customerId, messageId: (inserted as { id: string }).id, text: content, contentType },
-      supabase as unknown as Parameters<typeof handleWhatsAppInbound>[1],
-    ).catch((err) => console.warn('[WhatsApp Webhook] handleWhatsAppInbound:', err instanceof Error ? err.message : err));
+      supabase,
+    );
   }
 
   /** Firma y canal ya validados por el consumidor del webhook. */

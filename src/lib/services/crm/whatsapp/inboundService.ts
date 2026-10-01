@@ -1,8 +1,8 @@
 /**
  * Post-proceso de un inbound de WhatsApp ya insertado en `messages` (FASE-16
  * §2.2 paso "inbound → content + last_inbound_at + opt-out + activity +
- * notificación"). Sustituye en TS a los triggers `fn_whatsapp_detect_optout`,
- * `fn_campaign_link_reply` y `fn_messages_crm_activity` (DB no los creó).
+ * notificación"). Consentimiento, atribución, actividad y notificación usan la RPC privada
+ * crm_process_whatsapp_inbound con resultado idempotente.
  *
  * `last_inbound_at` sí lo mantiene el trigger real `trg_messages_set_last_inbound`.
  * Lo llaman: webhook Cloud (whatsappCloudService.processIncomingMessage).
@@ -12,9 +12,8 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getServiceClient } from '@/lib/supabase/server-service';
-import { applyInboundConsent } from './consent';
-import { linkInboundReply } from './campaignEvents';
-import { createWhatsAppActivity } from './outboundService';
+import { WhatsAppError } from './types';
+import { errorWhatsAppDb } from './erroresDbLogica';
 
 export interface InboundInput {
   orgId: number;
@@ -35,48 +34,19 @@ export interface InboundResult {
 }
 
 export async function handleWhatsAppInbound(input: InboundInput, service: SupabaseClient = getServiceClient()): Promise<InboundResult> {
-  const { orgId, customerId, messageId } = input;
-  const consent = input.contentType === 'text'
-    ? await applyInboundConsent({ orgId, customerId, messageId }, service)
-    : 'none';
-
-  const reply = await linkInboundReply(orgId, customerId, messageId, service).catch(() => null);
-
-  // Oportunidad: la de la campaña, o la abierta más reciente del cliente
-  let opportunityId = reply?.opportunity_id ?? null;
-  let salespersonId: string | null = null;
-  if (!opportunityId) {
-    const { data: opp } = await service.from('opportunities').select('id, salesperson_id').eq('organization_id', orgId).eq('customer_id', customerId).eq('status', 'open').order('updated_at', { ascending: false }).limit(1).maybeSingle();
-    if (opp) { opportunityId = (opp as { id: string }).id; salespersonId = (opp as { salesperson_id: string | null }).salesperson_id ?? null; }
-  } else {
-    const { data: opp } = await service.from('opportunities').select('salesperson_id').eq('id', opportunityId).maybeSingle();
-    salespersonId = (opp as { salesperson_id: string | null } | null)?.salesperson_id ?? null;
-  }
-  if (opportunityId) {
-    await service.from('messages').update({ related_opportunity_id: opportunityId, ...(reply ? { metadata: { campaign_id: reply.campaign_id, campaign_reply: true } } : {}) }).eq('id', messageId).is('related_opportunity_id', null);
-  }
-
-  const { data: cust } = await service.from('customers').select('full_name, first_name').eq('id', customerId).maybeSingle();
-  const name = (cust as { full_name?: string | null; first_name?: string | null } | null)?.full_name || (cust as { first_name?: string | null } | null)?.first_name || 'cliente';
-  const activityId = await createWhatsAppActivity({
-    orgId, messageId, conversationId: input.conversationId, customerId, opportunityId, userId: salespersonId,
-    content: input.text, contentType: input.contentType, customerName: name, direction: 'inbound', campaignId: reply?.campaign_id ?? null,
-  }, service);
-
-  let notified: string | null = null;
-  if (salespersonId) {
-    const { error } = await service.rpc('fn_create_org_notification', {
-      p_organization_id: orgId,
-      p_recipient_user_id: salespersonId,
-      p_channel: 'app',
-      p_type: 'whatsapp_reply',
-      p_title: `WhatsApp de ${name}`,
-      p_content: input.text.slice(0, 140),
-      p_metadata: { conversation_id: input.conversationId, opportunity_id: opportunityId, message_id: messageId, customer_id: customerId, campaign_id: reply?.campaign_id ?? null },
-    });
-    if (!error) notified = salespersonId;
-  }
-  return { consent, campaign_id: reply?.campaign_id ?? null, opportunity_id: opportunityId, activity_id: activityId, notified_user_id: notified };
+  const { data, error } = await service.rpc('crm_process_whatsapp_inbound', {
+    p_org: input.orgId, p_message: input.messageId, p_channel: input.channelId,
+    p_conversation: input.conversationId, p_customer: input.customerId,
+  });
+  if (error) throw errorWhatsAppDb(error);
+  const result = data as Partial<InboundResult> | null;
+  if (!result || !['none', 'opted_in', 'opted_out'].includes(String(result.consent))
+    || typeof result.activity_id !== 'string'
+    || !['campaign_id', 'opportunity_id', 'notified_user_id'].every((key) => {
+      const value = (result as Record<string, unknown>)[key];
+      return value === null || typeof value === 'string';
+    })) throw new WhatsAppError('INTERNAL', 'Respuesta inválida del postprocesado entrante.', 500);
+  return result as InboundResult;
 }
 
 /** Texto legible de un mensaje inbound de Meta (text.body | caption | [tipo] | botón). */

@@ -6,7 +6,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { WhatsAppWebhookStatus } from '@/lib/services/integrations/whatsapp/whatsappCloudTypes';
 import { countryFromPhone } from '@/lib/services/crm/phoneNormalize';
 import { getUnitCost } from '@/lib/services/crm/pricingService';
-import { WhatsAppError, type CampaignContactMeta } from './types';
+import { WhatsAppError } from './types';
 
 export type ProviderErrorAction = { state: 'skipped'; skipped_reason: string; retry_after?: null } | { state: 'pending'; retry_after_ms: number } | { state: 'failed' };
 
@@ -63,15 +63,4 @@ export async function syncCampaignProviderReceipts(orgId: number, campaignId: st
     throw new WhatsAppError('INTERNAL', 'Respuesta inválida al conciliar la campaña.', 500);
   }
   return data;
-}
-
-/** Respuesta inbound ≤72 h; se sustituirá por la atribución transaccional. */
-export async function linkInboundReply(orgId: number, customerId: string, messageId: string, service: SupabaseClient): Promise<{ campaign_id: string; opportunity_id: string | null } | null> {
-  const since = new Date(Date.now() - 72 * 3600_000).toISOString();
-  const { data } = await service.from('campaign_contacts').select('id, campaign_id, metadata, campaigns!inner(organization_id)').eq('customer_id', customerId).eq('campaigns.organization_id', orgId).gt('sent_at', since).is('replied_at', null).order('sent_at', { ascending: false }).limit(1).maybeSingle();
-  const row = data as { id: string; campaign_id: string; metadata: CampaignContactMeta | null } | null;
-  if (!row) return null;
-  await service.rpc('fn_campaign_mark_replied', { p_campaign_id: row.campaign_id, p_customer_id: customerId });
-  await service.from('campaign_contacts').update({ metadata: { ...(row.metadata ?? {}), state: 'replied', reply_message_id: messageId }, updated_at: new Date().toISOString() }).eq('id', row.id);
-  return { campaign_id: row.campaign_id, opportunity_id: (row.metadata?.opportunity_id as string | null) ?? null };
 }

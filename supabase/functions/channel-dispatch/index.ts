@@ -24,6 +24,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { secretosCoinciden } from "../_shared/ai-chat/politicaRespuesta.ts";
 import { cargarSecretoInterno, evaluarContactoPersistido } from "../_shared/contacto/puerta.ts";
 import { normalizePhoneDigits, resolverIndicativo } from "../_shared/contacto/telefono.ts";
+import { reservarContactoLegal } from "../_shared/contacto/despachoLegal.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -173,7 +174,7 @@ async function resolveRecipient(orgId: number, channelType: string, channelId: s
   const identityTypeByChannel: Record<string, string> = { facebook: "facebook_psid", instagram: "instagram_user", whatsapp: "whatsapp_phone" };
   const { data: ident, error: identityError } = await supabase.from("customer_channel_identities")
     .select("identity_value").eq("organization_id", orgId).eq("channel_id", channelId).eq("customer_id", customerId)
-    .eq("identity_type", identityTypeByChannel[channelType]).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    .eq("identity_type", identityTypeByChannel[channelType]).order("created_at", { ascending: false }).order("id").limit(1).maybeSingle();
   if (identityError) throw new Error("No se pudo resolver la identidad propia");
   if (ident?.identity_value) return channelType === "whatsapp" ? normalizePhoneDigits(ident.identity_value) || "" : ident.identity_value;
   if (channelType !== "whatsapp") return "";
@@ -273,6 +274,19 @@ Deno.serve(async (req: Request) => {
     if (!gate.allowed) {
       await recordResult(reserved, { ok: false, error: "Contacto bloqueado antes del envío", errorCode: gate.reason }, channel.type);
       return json({ skipped: gate.reason });
+    }
+    const legal = await reservarContactoLegal(supabase, msg.organization_id, msg.id, reserved.dispatchToken, recipient, Deno.env.get("WHATSAPP_DEFAULT_COUNTRY_CODE"));
+    if (!legal.allowed) {
+      if (legal.retryAt) {
+        const { data, error } = await supabase.rpc("crm_defer_message_legal", {
+          p_org: msg.organization_id, p_message: msg.id, p_token: reserved.dispatchToken,
+          p_at: legal.retryAt, p_reason: legal.reason,
+        });
+        if (error || !data?.job_id) throw new Error("No se pudo reprogramar el contacto");
+        return json({ deferred: true, run_at: legal.retryAt, reason: legal.reason });
+      }
+      await recordResult(reserved, { ok: false, error: "Compuerta legal bloqueó el envío", errorCode: legal.reason }, channel.type, legal.uncertain ? "uncertain" : "failed");
+      return json({ skipped: legal.reason, ...(legal.uncertain ? { pendingReconciliation: true } : {}) });
     }
     const payload = (msg.payload || {}) as Record<string, unknown>;
     const text = cleanText(msg.content || "");

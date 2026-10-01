@@ -213,6 +213,7 @@ export async function resolveRecipient(orgId: number, customerId: string, channe
     .eq('customer_id', customerId)
     .eq('identity_type', 'whatsapp_phone')
     .order('created_at', { ascending: false })
+    .order('id')
     .limit(1)
     .maybeSingle();
   if (identityError) throw errorWhatsAppDb(identityError);

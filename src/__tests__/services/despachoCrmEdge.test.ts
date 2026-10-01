@@ -6,6 +6,7 @@ import { secretosCoinciden } from '../../../supabase/functions/_shared/ai-chat/p
 import { cargarSecretoInterno, evaluarContactoPersistido } from '../../../supabase/functions/_shared/contacto/puerta';
 import { normalizePhoneDigits, resolverIndicativo } from '../../../supabase/functions/_shared/contacto/telefono';
 import { computeWindow } from '../../../supabase/functions/_shared/contacto/ventana';
+import { reservarContactoLegal } from '../../../supabase/functions/_shared/contacto/despachoLegal';
 
 const mensaje = '00000000-0000-4000-a000-000000000001';
 const token = '00000000-0000-4000-a000-000000000002';
@@ -14,6 +15,7 @@ type Resultado = { data: unknown; error: { message: string; code?: string } | nu
 function cargar(funcion: 'channel-dispatch' | 'ai-auto-response', opts: {
   gate?: boolean[]; claim?: boolean; fetchError?: boolean; providerResponse?: Record<string, unknown>; providerStatus?: number; persistError?: boolean;
   channelType?: string; closedWindow?: boolean; provider?: string; failIdentity?: boolean; failJob?: boolean;
+  legalNow?: string; legalCounts?: Record<string, number>; legalBlocked?: string; legalPersistError?: boolean;
 } = {}) {
   const queries: Consulta[] = [];
   const gates = [...(opts.gate || [true])];
@@ -21,6 +23,12 @@ function cargar(funcion: 'channel-dispatch' | 'ai-auto-response', opts: {
     if (nombre === 'crm_message_contact_gate') return { data: { allowed: gates.length > 1 ? gates.shift() : gates[0], reason: 'consent_blocked' }, error: null };
     if (nombre === 'crm_claim_message_dispatch') return { data: opts.claim === false ? { claimed: false, reason: 'already_claimed' } : { claimed: true, token }, error: null };
     if (nombre === 'crm_finish_message_dispatch') return { data: {}, error: opts.persistError ? { message: 'fixture' } : null };
+    if (nombre === 'crm_message_legal_context') return { data: { gate: { allowed: true }, required: !!opts.legalNow,
+      phone_raw: '12025550198', identity_raw: true, timezone: 'America/Bogota', default_country_code: null,
+      allowed_hours: null, server_now: opts.legalNow || '2026-10-01T15:00:00Z' }, error: null };
+    if (nombre === 'crm_reserve_legal_contact') return { data: opts.legalBlocked ? { allowed: false, reason: opts.legalBlocked }
+      : opts.legalCounts ? { allowed: false, reason: 'weekly_capacity', counts: opts.legalCounts } : { allowed: true }, error: null };
+    if (nombre === 'crm_defer_message_legal') return { data: { job_id: 'fixture-legal-job' }, error: opts.legalPersistError ? { message: 'fixture' } : null };
     return { data: null, error: null };
   });
   const from = jest.fn((tabla: string) => {
@@ -60,7 +68,7 @@ function cargar(funcion: 'channel-dispatch' | 'ai-auto-response', opts: {
   vm.runInNewContext(compiled.outputText, {
     Deno: { env: { get: (clave: string) => clave === 'AI_INTERNAL_SECRET' ? 'fixture-secret' : undefined }, serve: (fn: typeof handler) => { handler = fn; } },
     createClient: () => ({ from, rpc }), OpenAI: class {}, cargarSecretoInterno, evaluarContactoPersistido,
-    secretosCoinciden, normalizePhoneDigits, resolverIndicativo, computeWindow,
+    secretosCoinciden, normalizePhoneDigits, resolverIndicativo, computeWindow, reservarContactoLegal,
     fetch: proveedor, Response, Request, URLSearchParams, btoa, console: { error: jest.fn(), warn: jest.fn(), log: jest.fn() },
     setTimeout: (fn: () => void) => { fn(); return 0; },
   });
@@ -92,6 +100,35 @@ test('envía a la identidad propia, ignora metadata.to y registra entrega atómi
   expect(body.to).toBe('12025550198'); expect(h.proveedor).toHaveBeenCalledTimes(1);
   expect(h.rpc).toHaveBeenCalledWith('crm_finish_message_dispatch', expect.objectContaining({ p_status: 'sent', p_external_id: 'fixture-external', p_token: token }));
   for (const q of h.queries.filter(q => ['conversations', 'channels', 'customer_channel_identities'].includes(q.tabla))) expect(q.filtros.organization_id).toBe(120);
+});
+test.each(['2026-10-04T15:00:00Z', '2026-10-12T15:00:00Z'])('domingo/festivo %s reprograma sin POST ni confirmar entrega', async legalNow => {
+  const h = cargar('channel-dispatch', { legalNow });
+  expect(await (await h.run()).json()).toMatchObject({ deferred: true, reason: 'fuera_de_horario' });
+  expect(h.proveedor).not.toHaveBeenCalled();
+  expect(h.rpc).toHaveBeenCalledWith('crm_defer_message_legal', expect.objectContaining({ p_org: 120, p_message: mensaje, p_token: token }));
+  expect(h.rpc.mock.calls.map(call => call[0])).not.toContain('crm_finish_message_dispatch');
+});
+test('capacidad semanal privada reprograma el mismo mensaje', async () => {
+  const h = cargar('channel-dispatch', { legalNow: '2026-10-01T15:00:00Z', legalCounts: { whatsapp: 1 } });
+  expect(await (await h.run()).json()).toMatchObject({ deferred: true, reason: 'tope_canal_semana', run_at: '2026-10-05T12:00:00.000Z' });
+  expect(h.proveedor).not.toHaveBeenCalled();
+  expect(h.rpc).toHaveBeenCalledWith('crm_reserve_legal_contact', expect.objectContaining({ p_phone: '+12025550198', p_token: token, p_limits: { channel: 1, total: 2 } }));
+});
+test('RNE del destinatario impide proveedor y persiste rechazo sin entrega', async () => {
+  const h = cargar('channel-dispatch', { legalNow: '2026-10-01T15:00:00Z', legalBlocked: 'rne_excluded' });
+  expect(await (await h.run()).json()).toEqual({ skipped: 'rne_excluded' });
+  expect(h.proveedor).not.toHaveBeenCalled();
+  expect(h.rpc).toHaveBeenCalledWith('crm_finish_message_dispatch', expect.objectContaining({ p_status: 'failed', p_error_code: 'rne_excluded' }));
+});
+test('turno sin conciliar mantiene incertidumbre y no publica', async () => {
+  const h = cargar('channel-dispatch', { legalNow: '2026-10-01T15:00:00Z', legalBlocked: 'dispatch_unresolved' });
+  expect(await (await h.run()).json()).toEqual({ skipped: 'dispatch_unresolved', pendingReconciliation: true });
+  expect(h.proveedor).not.toHaveBeenCalled();
+  expect(h.rpc).toHaveBeenCalledWith('crm_finish_message_dispatch', expect.objectContaining({ p_status: 'uncertain' }));
+});
+test('si falla guardar reprogramación, no responde deferred ni llama al proveedor', async () => {
+  const h = cargar('channel-dispatch', { legalNow: '2026-10-04T15:00:00Z', legalPersistError: true });
+  expect((await h.run()).status).toBe(500); expect(h.proveedor).not.toHaveBeenCalled();
 });
 test('desconexión tras POST queda uncertain, no simula entrega confirmada', async () => {
   const h = cargar('channel-dispatch', { fetchError: true }); expect((await h.run()).status).toBe(500);

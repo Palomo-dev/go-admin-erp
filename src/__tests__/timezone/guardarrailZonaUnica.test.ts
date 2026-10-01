@@ -73,7 +73,6 @@ const PERMITIDOS_BOGOTA = new Set<string>([
   // Misma regla de +57 trasladada para compartirla con Edge; no añade un fallback.
   'supabase/functions/_shared/contacto/ley2300.ts',
   'src/lib/services/crm/voiceAgentService.ts',
-  'src/lib/services/crm/whatsapp/allowedHours.ts',
   'src/lib/services/mobilePrintService.ts',
   'src/lib/services/openexchangerates.ts',
   'src/lib/services/organizationTimezoneService.ts',

@@ -150,10 +150,10 @@ describe('N-2 de punta a punta', () => {
 // ─── N-5 · muerte entre la respuesta del proveedor y la marca de enviado (tester r4) ──
 
 describe('N-5 de punta a punta', () => {
-  it('T4.N5 · el rescate a los 15 min no inserta un segundo mensaje ni descuenta créditos otra vez', async () => {
+  it('T4.N5 · el rescate transmite la misma clave a SQL y no publica ni cobra desde Node', async () => {
     let clock = T0;
-    let n = 0;
-    const mensajes = fakeTable([], { onInsert: (row) => { row.id = `msg-${++n}`; row.created_at = new Date(clock).toISOString(); return row; } });
+    const mensajes = fakeTable([]);
+    let preparaciones = 0;
     const contacts = fakeTable([pendingRow('cc-1')]);
     const camp = statefulCampaign({ channel_id: 'chan-1' });
     const tables: Record<string, TableResolver> = {
@@ -169,22 +169,28 @@ describe('N-5 de punta a punta', () => {
     };
     const rpcCalls: string[] = [];
     let morir = true;
-    const { sb } = makeSupabase(tables, (fn) => { rpcCalls.push(fn); if (fn === 'fn_campaign_mark_sent' && morir) return new Promise(() => undefined); return { data: true }; });
+    const { sb, calls } = makeSupabase(tables, (fn) => {
+      rpcCalls.push(fn);
+      if (fn === 'fn_campaign_mark_sent' && morir) return new Promise(() => undefined);
+      if (fn === 'crm_prepare_whatsapp_outbound') return { data: { message_id: 'msg-1', conversation_id: 'conv-1', activity_id: null, customer_id: 'cust-cc-1', channel_id: 'chan-1', scheduled: false, duplicate: ++preparaciones > 1 } };
+      return { data: true };
+    });
     const deps = { send: (i: never, s: never) => sendWhatsApp(i, s, s, new Date(clock)), now: () => clock, sleep: async () => undefined };
 
     const muerto = runCampaignBatch({ campaign_id: UUID_C, batch_no: 2 }, sb, deps as never); // muere en fn_campaign_mark_sent: nunca vuelve
     await new Promise((r) => setTimeout(r, 20));
-    expect(mensajes.rows).toHaveLength(1);
+    expect(preparaciones).toBe(1);
     expect(meta(contacts.rows[0]).state).toBe('queued');
-    expect(rpcCalls.filter((f) => f === 'deduct_comm_credits')).toHaveLength(1);
+    expect(rpcCalls.filter((f) => f === 'deduct_comm_credits')).toHaveLength(0);
     void muerto;
 
     clock = T0 + STALE_CLAIM_MS + 1000;
     morir = false;
     const r = await runCampaignBatch({ campaign_id: UUID_C, batch_no: 3 }, sb, deps as never);
     expect(r).toMatchObject({ claimed: 1, sent: 1 });
-    expect(mensajes.rows).toHaveLength(1); // sin duplicado
-    expect(rpcCalls.filter((f) => f === 'deduct_comm_credits')).toHaveLength(1); // sin doble cobro
+    expect(preparaciones).toBe(2); // SQL devuelve el mismo mensaje en la recuperación
+    expect(calls.some((c) => c.table === 'messages' && has(c.ops, 'insert'))).toBe(false);
+    expect(rpcCalls.filter((f) => f === 'deduct_comm_credits')).toHaveLength(0); // sin doble cobro
     expect(meta(contacts.rows[0])).toMatchObject({ state: 'sent', message_id: 'msg-1' });
   });
 });

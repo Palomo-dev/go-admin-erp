@@ -8,6 +8,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { errorWhatsAppDb } from './erroresDbLogica';
 import type { WindowState } from './types';
 
 import { computeWindow } from '../../../../../supabase/functions/_shared/contacto/ventana';
@@ -20,7 +21,7 @@ export async function getWindow(
   supabase: SupabaseClient,
   now: Date = new Date(),
 ): Promise<WindowState> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('conversations')
     .select('id, last_inbound_at, status, last_message_at')
     .eq('organization_id', orgId)
@@ -29,6 +30,7 @@ export async function getWindow(
     .order('last_inbound_at', { ascending: false, nullsFirst: false })
     .limit(1)
     .maybeSingle();
+  if (error) throw errorWhatsAppDb(error);
   const row = data as { id: string; last_inbound_at: string | null } | null;
   const w = computeWindow(row?.last_inbound_at ?? null, now);
   return { ...w, conversation_id: row?.id ?? null };
@@ -40,12 +42,13 @@ export async function getWindowByConversation(
   supabase: SupabaseClient,
   now: Date = new Date(),
 ): Promise<WindowState & { customer_id: string | null; channel_id: string | null }> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('conversations')
     .select('id, customer_id, channel_id, last_inbound_at')
     .eq('organization_id', orgId)
     .eq('id', conversationId)
     .maybeSingle();
+  if (error) throw errorWhatsAppDb(error);
   const row = data as { id: string; customer_id: string; channel_id: string; last_inbound_at: string | null } | null;
   const w = computeWindow(row?.last_inbound_at ?? null, now);
   return { ...w, conversation_id: row?.id ?? null, customer_id: row?.customer_id ?? null, channel_id: row?.channel_id ?? null };

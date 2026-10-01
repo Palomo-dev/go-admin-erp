@@ -37,7 +37,7 @@ function archivos(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-const FUENTES = archivos(SRC).map((ruta) => ({
+const FUENTES = [...archivos(SRC), ...archivos(join(RAIZ, 'supabase/functions/_shared/contacto'))].map((ruta) => ({
   ruta: relative(RAIZ, ruta).split('\\').join('/'),
   texto: readFileSync(ruta, 'utf8'),
 }));
@@ -70,7 +70,8 @@ const PERMITIDOS_BOGOTA = new Set<string>([
   'src/lib/services/crm/email/variablesContext.ts',
   'src/lib/services/crm/meetingsService.ts',
   'src/lib/services/crm/renewalMilestones.ts',
-  'src/lib/services/crm/voiceAgent/ley2300.ts',
+  // Misma regla de +57 trasladada para compartirla con Edge; no añade un fallback.
+  'supabase/functions/_shared/contacto/ley2300.ts',
   'src/lib/services/crm/voiceAgentService.ts',
   'src/lib/services/crm/whatsapp/allowedHours.ts',
   'src/lib/services/mobilePrintService.ts',

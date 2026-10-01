@@ -3654,13 +3654,18 @@ describe('42. Voz: la exención por número de prueba vive en un solo punto y no
 
   test('evaluarTopeSemanal solo se invoca desde decidirContactoLey2300, que siempre evalúa la franja horaria', () => {
     const llamadas: string[] = [];
-    for (const f of produccion()) {
+    // La regla también se distribuye al consumidor Edge: se revisa el módulo
+    // compartido, sin permitir una segunda evaluación fuera de la decisión única.
+    const compartidos = walkDir(path.join(REPO_ROOT, 'supabase/functions/_shared/contacto'));
+    for (const f of [...produccion(), ...compartidos]) {
       const src = stripAllComments(readFile(f));
       llamadas.push(...Array.from(src.matchAll(/\bevaluarTopeSemanal\s*\(/g), () => rel(f)));
     }
-    // La definición y la única invocación, ambas en ley2300.ts.
-    expect(llamadas).toEqual(['lib/services/crm/voiceAgent/ley2300.ts', 'lib/services/crm/voiceAgent/ley2300.ts']);
-    const ley = stripAllComments(readFile(path.join(SRC_ROOT, 'lib/services/crm/voiceAgent/ley2300.ts')));
+    const canonico = '../supabase/functions/_shared/contacto/ley2300.ts';
+    expect(llamadas).toEqual([canonico, canonico]);
+    const compatibilidad = stripAllComments(readFile(path.join(SRC_ROOT, 'lib/services/crm/voiceAgent/ley2300.ts')));
+    expect(compatibilidad).toMatch(/export \* from .*supabase\/functions\/_shared\/contacto\/ley2300/);
+    const ley = stripAllComments(readFile(path.join(REPO_ROOT, 'supabase/functions/_shared/contacto/ley2300.ts')));
     const cuerpo = ley.slice(ley.indexOf('export function decidirContactoLey2300'), ley.indexOf('export function describirMotivoLey2300'));
     // La franja se evalúa FUERA del bloque condicionado a la exención.
     expect(cuerpo).toMatch(/\n  if \(!ventanaLey2300Abierta\(p\.ahora, zona\)\)/);

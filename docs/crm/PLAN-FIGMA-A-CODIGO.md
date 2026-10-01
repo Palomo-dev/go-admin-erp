@@ -2466,3 +2466,10 @@ Verificación: 26 suites / 552 pruebas pasan; TypeScript 0 errores y lint tocado
 ### 2026-10-01 — índices de las constancias RNE de voz
 
 Migración `20261001083240_crm_rne_indices_de_relaciones.sql` aplicada por MCP, MD5 `83d6e3d38df538f9b55fb1697f181f5b`. Cubre campaign_id y checked_by, las dos FK preexistentes detectadas al reutilizar la importación de voz. Verificación previa: una constancia y 49.152 bytes. BEGIN/ROLLBACK comprobó índices y reversión sin cambiar evidencia ni saldo. Rollback conserva deliberadamente estos índices de soporte, sin DROP. Advisor ya no señala FK sin índice en esta tabla; solo índices aún no usados. SQL archivado exacto. Sin despliegue.
+
+
+### 2026-10-01 — reglas puras de contacto compartidas con Edge
+
+Ley 2300 y RNE conservan exactamente su implementación y se trasladan a supabase/functions/_shared/contacto. Las rutas de voz reexportan el módulo compatible; el despacho Edge podrá importar la misma regla, sin duplicar calendario, ventana, topes ni normalización. El guardarraíl examina también esa ubicación y exige una sola evaluación del tope dentro de la decisión que comprueba siempre el horario. La excepción previa de la zona fija de +57 se traslada al mismo archivo; no añade un fallback.
+
+Verificación: 14 suites / 393 pruebas pasan, TypeScript 0 errores y lint tocado limpio. Voz, RNE y guardarraíles conservan su comportamiento. La compuerta por destinatario y su reserva de concurrencia se conectan en el siguiente paso; sin despliegue.

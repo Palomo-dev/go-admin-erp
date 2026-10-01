@@ -85,7 +85,7 @@ export default function CreateOrganizationDialog({
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
       <div 
         ref={dialogRef}
-        className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-800 rounded-lg shadow-xl m-4"
+        className="relative m-4 max-h-[90vh] w-[calc(100%-2rem)] max-w-3xl overflow-y-auto overflow-x-hidden rounded-lg bg-white shadow-xl dark:bg-gray-800"
       >
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">

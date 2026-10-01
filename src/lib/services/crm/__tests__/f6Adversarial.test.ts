@@ -599,10 +599,17 @@ describe('B. Concurrencia y topes del despachador de campañas', () => {
     expect(twilioCreate).not.toHaveBeenCalled();
   });
 
-  test('B7 [NUEVO r1] racha de fallos consecutivos detiene la campaña sola', () => {
-    const src = SRC('src/lib/services/crm/voiceAgentService.ts');
-    expect(src).toContain('export const FAILURE_STREAK_TO_STOP = 5;');
-    expect(src).toMatch(/streak >= FAILURE_STREAK_TO_STOP[\s\S]{0,300}stopCampaign\(/);
+  test.each([8, 9])('B7 la racha persistida %i se detiene al décimo fallo de proveedor', async (previous) => {
+    const { resolver, rpcResolver, campaign } = scenario();
+    campaign.consecutive_failures = previous;
+    twilioCreate.mockRejectedValue(new Error('Proveedor no disponible'));
+    const { client, rpcs } = makeSupabase(resolver, rpcResolver);
+    const result = await runCampaignQueue(7, client);
+    expect(twilioCreate).toHaveBeenCalledTimes(1);
+    expect(result.campaigns_stopped).toEqual(previous === 9 ? ['camp-1'] : []);
+    const stop = rpcs.find(r => r.name === 'fn_stop_voice_campaign');
+    if (previous === 9) expect(stop?.args).toMatchObject({ p_org: 7, p_campaign: 'camp-1', p_reason: 'Parada automática: 10 fallos consecutivos al marcar' });
+    else expect(stop).toBeUndefined();
   });
 
   test('B8 [NUEVO r5] fuera de la franja legal del cliente NO se marca: la fila vuelve a la cola', async () => {

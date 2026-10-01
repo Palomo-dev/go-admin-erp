@@ -1,75 +1,41 @@
-/**
- * GET /api/crm/voice-agents/campaigns — Lista las campañas de agentes de voz.
- * POST /api/crm/voice-agents/campaigns — Crea una nueva campaña.
- */
-
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
-import { readOrgBody } from '@/lib/security/organizationBody';
+import { NextRequest, NextResponse } from "next/server";
+import { getServerOrgContext, hasOrgAdminOrPermission } from "@/lib/utils/orgContext";
+import { readOrgBody } from "@/lib/security/organizationBody";
+import { getVoiceAgentCampaigns } from "@/lib/services/crm/voiceAgentService";
+import { guardarCampanaVoz } from "@/lib/services/crm/voiceCampaignWriteService";
 import {
-  getVoiceAgentCampaigns,
-  createCampaign,
-} from '@/lib/services/crm/voiceAgentService';
-
-export async function GET() {
+  CRM_PERMISOS,
+  exigirPermisoCrm,
+  respuestaErrorCrm,
+  sinClavesDeOrganizacion,
+} from "@/lib/services/crm/crmRouteSupport";
+export async function GET(request: NextRequest) {
   try {
-    const ctx = await getServerOrgContext();
-    const campaigns = await getVoiceAgentCampaigns(ctx.organizationId, ctx.supabase);
-
-    return NextResponse.json({ success: true, data: campaigns }, { status: 200 });
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[Voice Agent Campaigns] GET error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    const ctx = await getServerOrgContext(request);
+    readOrgBody(ctx, {}, { request });
+    await exigirPermisoCrm(
+      ctx,
+      [CRM_PERMISOS.oportunidadesVer],
+      "ver campañas",
+    );
+    return NextResponse.json({
+      success: true,
+      data: await getVoiceAgentCampaigns(ctx.organizationId, ctx.supabase),
+      can_manage: await hasOrgAdminOrPermission(ctx, CRM_PERMISOS.campanasGestionar),
+    });
+  } catch (e) {
+    return respuestaErrorCrm(e, "GET /api/crm/voice-agents/campaigns");
   }
 }
-
 export async function POST(request: NextRequest) {
   try {
-    const ctx = await getServerOrgContext();
-    const body = await readOrgBody(ctx, request);
-
-    if (!body?.name || !body?.voice_agent_id) {
-      return NextResponse.json(
-        { success: false, error: 'Faltan campos obligatorios: name, voice_agent_id' },
-        { status: 400 }
-      );
-    }
-
-    const campaign = await createCampaign(
-      ctx.organizationId,
-      {
-        voice_agent_id: body.voice_agent_id,
-        name: body.name,
-        objective: body.objective,
-        target_source: body.target_source,
-        target_config: body.target_config,
-        schedule: body.schedule,
-        max_calls_per_day: body.max_calls_per_day,
-        // Tester UXM-D: la UI lo enviaba y aquí se descartaba en silencio (quedaba el default 20).
-        max_calls_per_hour: body.max_calls_per_hour,
-        max_concurrent: body.max_concurrent,
-        status: body.status,
-      },
-      ctx.supabase
+    const ctx = await getServerOrgContext(request);
+    const body = sinClavesDeOrganizacion(await readOrgBody(ctx, request));
+    return NextResponse.json(
+      { success: true, data: await guardarCampanaVoz(ctx, body) },
+      { status: 201 },
     );
-
-    return NextResponse.json({ success: true, data: campaign }, { status: 201 });
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[Voice Agent Campaigns] POST error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+  } catch (e) {
+    return respuestaErrorCrm(e, "POST /api/crm/voice-agents/campaigns");
   }
 }

@@ -531,13 +531,14 @@ export async function stopCampaign(
   campaignId: string,
   reason: string,
   supabase: SupabaseClient
-): Promise<void> {
-  const { error } = await supabase.rpc('fn_stop_voice_campaign', {
+): Promise<boolean> {
+  const { data, error } = await supabase.rpc('fn_stop_voice_campaign', {
     p_org: orgId,
     p_campaign: campaignId,
     p_reason: reason,
   });
   if (error) throw new VoiceAgentDbError('stopCampaign', error);
+  return data === true;
 }
 
 // ─── Voice Agent Calls ───────────────────────────────────────────────────────
@@ -829,7 +830,7 @@ export interface RunCampaignQueueResult {
 }
 
 /** Racha de fallos consecutivos que dispara la parada de emergencia. */
-export const FAILURE_STREAK_TO_STOP = 5;
+export const FAILURE_STREAK_TO_STOP = 10;
 
 /** Minutos reservados por llamada antes de marcar (se ajusta al colgar). */
 export const CREDITS_RESERVED_PER_CALL = 1;

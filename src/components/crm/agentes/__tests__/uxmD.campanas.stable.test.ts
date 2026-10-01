@@ -8,6 +8,7 @@
 import fs from "fs";
 import path from "path";
 import { buildCampaignBody, describeCampaignTarget, targetStagesOf } from "../campanas/campaignModel";
+import { voiceCampaignCreateSchema } from "@/lib/services/crm/voiceCampaignWriteLogica";
 
 const ROOT = process.cwd();
 const SRC = (rel: string) => fs.readFileSync(path.join(ROOT, rel), "utf8");
@@ -24,10 +25,10 @@ describe("UXM-D (de tester r1) · campañas", () => {
   });
 
   test("toda clave del cuerpo de la campaña la acepta POST /campaigns (max_calls_per_hour incluido)", () => {
-    const route = SRC("src/app/api/crm/voice-agents/campaigns/route.ts");
-    const accepted = new Set(Array.from(route.matchAll(/^\s+(\w+): body\.\1,?$/gm)).map((m) => m[1]));
-    const body = buildCampaignBody({ name: "C", voiceAgentId: "a", stageId: null });
-    for (const key of Object.keys(body)) expect({ key, ok: accepted.has(key) }).toEqual({ key, ok: true });
+    // El contrato se valida ahora en el servicio; se comprueba el cuerpo real,
+    // no el formato del antiguo mapeo del route handler.
+    const body = buildCampaignBody({ name: "C", voiceAgentId: "00000000-0000-4000-8000-000000000001", stageId: null });
+    expect(voiceCampaignCreateSchema.safeParse(body).success).toBe(true);
   });
 
   test("embudo sin etapas → lista vacía; etapa borrada → texto claro, no rompe", () => {

@@ -35,6 +35,7 @@ export const CRM_PERMISOS = {
   clientesVer: 'crm.customers.view',
   clientesEditar: 'crm.customers.edit',
   clientesFusionar: 'crm.customers.merge',
+  campanasGestionar: 'crm.campaigns.manage',
   llamadasVerTodas: 'crm.calls.view_all',
   pronosticoVerTodas: 'crm.forecast.view_all',
   pronosticoAjustar: 'crm.forecast.adjust',

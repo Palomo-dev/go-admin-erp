@@ -8,4 +8,4 @@ export const POST = withWhatsAppRoute(async (ctx, req, params) => {
   await readOrgBody(ctx, req);
   const data = await resumeCampaign(ctx.organizationId, params.id, ctx.supabase);
   return NextResponse.json({ data });
-}, { admin: true });
+}, { admin: true, permission: 'crm.campaigns.manage' });

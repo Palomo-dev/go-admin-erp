@@ -53,7 +53,11 @@ interface AvisoMiembroFila {
 }
 
 function avisoANotificacion(fila: AvisoMiembroFila): NotificacionHeader {
-  const tarea = fila.entity_type === 'task';
+  const extra = fila.entity_type === 'task'
+    ? { task_id: fila.entity_id }
+    : fila.entity_type === 'opportunity'
+      ? { opportunity_id: fila.entity_id }
+      : {};
   return {
     id: fila.id,
     organization_id: fila.organization_id,
@@ -65,7 +69,7 @@ function avisoANotificacion(fila: AvisoMiembroFila): NotificacionHeader {
       content: fila.body,
       href: fila.href,
       source: 'member_notice',
-      ...(tarea ? { task_id: fila.entity_id } : { opportunity_id: fila.entity_id }),
+      ...extra,
     },
     status: 'sent',
     read_at: fila.read_at,
@@ -95,6 +99,9 @@ export function useNotificacionesHeader(organizationId: string | null) {
   const orgNum = organizationId ? parseInt(organizationId, 10) : undefined;
   const { canAccessModule } = useOptimizedModules(orgNum);
   const pmActivo = canAccessModule('pm');
+  const posActivo = canAccessModule('pos');
+  const finanzasActivo = canAccessModule('finance');
+  const inventarioActivo = canAccessModule('inventory');
   const { taskReminders, loading: cargandoTareas, refreshReminders } = useTaskReminders(organizationId);
 
   const cargarRef = useRef<(silencioso?: boolean) => Promise<void>>(async () => {});
@@ -145,6 +152,18 @@ export function useNotificacionesHeader(organizationId: string | null) {
         if (!pmActivo) {
           consultaAvisos = consultaAvisos.not('event', 'like', 'tarea.%');
           conteoAvisos = conteoAvisos.not('event', 'like', 'tarea.%');
+        }
+        if (!posActivo) {
+          consultaAvisos = consultaAvisos.neq('event', 'caja.diferencia');
+          conteoAvisos = conteoAvisos.neq('event', 'caja.diferencia');
+        }
+        if (!finanzasActivo) {
+          consultaAvisos = consultaAvisos.neq('event', 'cartera.resumen');
+          conteoAvisos = conteoAvisos.neq('event', 'cartera.resumen');
+        }
+        if (!inventarioActivo) {
+          consultaAvisos = consultaAvisos.not('event', 'in', '(inventario.cero,inventario.bajo)');
+          conteoAvisos = conteoAvisos.not('event', 'in', '(inventario.cero,inventario.bajo)');
         }
 
         const [rMias, rTodas, rNoLeidasMias, rNoLeidasTodas, rAvisos, rConteoAvisos] = await Promise.all([
@@ -200,7 +219,7 @@ export function useNotificacionesHeader(organizationId: string | null) {
     };
     cargarRef.current = cargar;
     void cargar();
-  }, [organizationId, orgNum, userId, pmActivo]);
+  }, [organizationId, orgNum, userId, pmActivo, posActivo, finanzasActivo, inventarioActivo]);
 
   // Realtime: notificaciones de la organización y lecturas propias.
   useEffect(() => {

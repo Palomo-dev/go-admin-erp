@@ -13,9 +13,28 @@ export const EVENTOS_AVISO = [
   'tarea.vence',
   'oportunidad.vence',
   'oportunidad.atrasada',
+  'oportunidad.ganada',
+  'oportunidad.perdida',
+  'oportunidad.contacto',
+  'caja.diferencia',
+  'cartera.resumen',
+  'inventario.cero',
+  'inventario.bajo',
 ] as const;
 
 export type EventoAviso = (typeof EVENTOS_AVISO)[number];
+
+/** Eventos de la primera tanda. Una lista guardada con todos estos y ninguno nuevo deja los avisos nuevos prendidos. */
+const EVENTOS_ANTERIORES: readonly EventoAviso[] = [
+  'tarea.asignada',
+  'oportunidad.asignada',
+  'oportunidad.etapa',
+  'tarea.completada',
+  'tarea.atrasada',
+  'tarea.vence',
+  'oportunidad.vence',
+  'oportunidad.atrasada',
+];
 
 export const GRUPOS_AVISO = {
   'tarea.asignada': ['tarea.asignada'],
@@ -23,6 +42,11 @@ export const GRUPOS_AVISO = {
   'oportunidad.etapa': ['oportunidad.etapa'],
   'tarea.completada': ['tarea.completada'],
   vence: ['tarea.atrasada', 'tarea.vence', 'oportunidad.vence', 'oportunidad.atrasada'],
+  'oportunidad.cierre': ['oportunidad.ganada', 'oportunidad.perdida'],
+  'oportunidad.contacto': ['oportunidad.contacto'],
+  'caja.diferencia': ['caja.diferencia'],
+  'cartera.resumen': ['cartera.resumen'],
+  inventario: ['inventario.cero', 'inventario.bajo'],
 } as const;
 
 export type GrupoAviso = keyof typeof GRUPOS_AVISO;
@@ -45,10 +69,28 @@ export function correoPermitido(
 export function gruposActivos(allowed: string[] | null | undefined): Record<GrupoAviso, boolean> {
   const claves = Object.keys(GRUPOS_AVISO) as GrupoAviso[];
   const activos = {} as Record<GrupoAviso, boolean>;
-  const apagado = !!allowed?.includes(CENTINELA_NINGUNO);
-  const todos = !allowed || allowed.length === 0;
+  const lista = allowed ?? [];
+  const apagado = lista.includes(CENTINELA_NINGUNO);
+  const todos = lista.length === 0;
+  const nuevosYaElegidos = lista.some(
+    (tipo) => (EVENTOS_AVISO as readonly string[]).includes(tipo) && !(EVENTOS_ANTERIORES as readonly string[]).includes(tipo),
+  );
+  const anteriorCompleta = !apagado && !nuevosYaElegidos && EVENTOS_ANTERIORES.every((evento) => lista.includes(evento));
   for (const clave of claves) {
-    activos[clave] = todos || (!apagado && GRUPOS_AVISO[clave].every((evento) => allowed.includes(evento)));
+    const eventos = GRUPOS_AVISO[clave];
+    if (todos) {
+      activos[clave] = true;
+    } else if (apagado) {
+      activos[clave] = false;
+    } else if (eventos.every((evento) => lista.includes(evento))) {
+      activos[clave] = true;
+    } else if (eventos.some((evento) => lista.includes(evento))) {
+      activos[clave] = false;
+    } else if (anteriorCompleta && eventos.every((evento) => !(EVENTOS_ANTERIORES as readonly string[]).includes(evento))) {
+      activos[clave] = true;
+    } else {
+      activos[clave] = false;
+    }
   }
   return activos;
 }
@@ -79,6 +121,36 @@ export function clasificarVencimiento(
   if (fechaLocal === hoy) return 'vence';
   if (fechaLocal < hoy) return 'atrasada';
   return null;
+}
+
+/** A partir de las 7:00, hora de la organización, sale el resumen del día. */
+export const MINUTO_RESUMEN = 7 * 60;
+
+export function esHoraDeResumen(minutos: number): boolean {
+  return minutos >= MINUTO_RESUMEN;
+}
+
+/**
+ * La variante avisa por su existencia. El padre con hijas vivas no.
+ * Un producto simple, o un padre que ya no tiene hijas, sí.
+ * Misma regla que el trigger de stock bajo y fn_avisos_miembro_stock_cero.
+ */
+export function productoAvisable(producto: {
+  trackStock: boolean;
+  eliminado: boolean;
+  esPadre: boolean;
+  hijosVivos: number;
+  padreEliminado: boolean;
+}): boolean {
+  if (!producto.trackStock || producto.eliminado || producto.padreEliminado) return false;
+  if (producto.esPadre && producto.hijosVivos > 0) return false;
+  return true;
+}
+
+/** Cruzó el mínimo y todavía quedan unidades. En cero lo cubre el resumen. */
+export function cruzoMinimo(anterior: number, actual: number, minimo: number | null): boolean {
+  if (minimo == null || minimo <= 0) return false;
+  return anterior > minimo && actual > 0 && actual <= minimo;
 }
 
 export function eventoVencimiento(

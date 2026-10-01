@@ -24363,11 +24363,15 @@
         "error": "Não foi possível salvar a etapa",
         "eliminada": "Etapa excluída",
         "titulo": "Etapas do pipeline",
-        "descripcion": "Mude nome, cor, probabilidade e resultado. Os requisitos e o agente de IA são configurados em cada etapa.",
+        "descripcion": "Mude nome, cor, probabilidade e resultado. Suba ou desça cada etapa para mudar a ordem. Os requisitos e o agente de IA são configurados em cada etapa.",
         "ganada": "Ganha",
         "perdida": "Perdida",
         "editar": "Editar {etapa}",
         "eliminar": "Excluir {etapa}",
+        "subir": "Subir {etapa}",
+        "bajar": "Descer {etapa}",
+        "ordenGuardado": "Ordem atualizada",
+        "errorOrden": "Não foi possível mudar a ordem",
         "nueva": "Nova etapa"
       },
       "asistente": {

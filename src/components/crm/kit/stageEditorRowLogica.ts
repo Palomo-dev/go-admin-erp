@@ -80,7 +80,7 @@ export function enteroDeCampo(texto: string): number | null {
 }
 
 /** Mueve la etapa `desde` → `hasta` (arrastre o teclado) y renumera `position` 1..N. */
-export function reordenar<T extends EtapaEditable>(etapas: readonly T[], desde: number, hasta: number): (T & { position: number })[] {
+export function reordenar<T extends object>(etapas: readonly T[], desde: number, hasta: number): (T & { position: number })[] {
   const copia = [...etapas];
   if (desde >= 0 && desde < copia.length && hasta >= 0 && hasta < copia.length) {
     const [e] = copia.splice(desde, 1);

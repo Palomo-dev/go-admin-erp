@@ -3691,3 +3691,10 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - El perfil guarda esos cinco interruptores en allowed_types del canal email, sin borrar otros tipos que ya estuvieran. La campana marca leído y descartado solo en member_notices.
 - El cron /api/cron/avisos-miembro corre cada 5 minutos en Vercel y en pg_cron. Migración 20261001180000 aplicada por MCP, con rollback. El archivo coincide con lo aplicado.
 - Jest de las reglas y de guardrails: 197 en verde. npx tsc --noEmit -p tsconfig.json en verde.
+
+
+### Fase: Pipeline Ventas B2B igual a la plantilla — 2026-10-01
+- Rama cursor/etapas-ventas-b2b-e475.
+- El pipeline Ventas B2B de la organización 125 tenía cinco etapas (Contacto Inicial, Reunión Agendada, Propuesta Enviada, Ganado y Perdido). Ahora sigue la plantilla de ventas, en este orden: Lead nuevo, Contactado, Calificado, Discovery, Demo, Propuesta, Negociacion, Contrato/pago y Perdido. Las 252 oportunidades del primer paso se quedaron en Lead nuevo. Las 2 de Reunión Agendada pasaron a Contactado y su probabilidad bajó de 30 a 20. Las 2 ganadas quedaron en Contrato/pago y las 2 perdidas en Perdido. No se tocó ningún otro pipeline. Migración 20261001223153 aplicada por MCP, con rollback. El archivo coincide con lo aplicado.
+- En la hoja de etapas, subir y bajar guarda el orden. Una etapa nueva entra antes del cierre, no debajo de Perdido.
+- Jest de la hoja y del kit: 44 en verde. npx tsc --noEmit -p tsconfig.json en verde. No se abrió el tablero con sesión: el reorden se comprobó en la lógica y la base quedó consultada después de la migración.

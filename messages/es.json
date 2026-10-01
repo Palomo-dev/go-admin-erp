@@ -3974,11 +3974,15 @@
         "error": "No se pudo guardar la etapa",
         "eliminada": "Etapa eliminada",
         "titulo": "Etapas del pipeline",
-        "descripcion": "Cambia nombre, color, probabilidad y resultado. Los requisitos y el agente IA se configuran en cada etapa.",
+        "descripcion": "Cambia nombre, color, probabilidad y resultado. Sube o baja cada etapa para cambiar el orden. Los requisitos y el agente IA se configuran en cada etapa.",
         "ganada": "Ganada",
         "perdida": "Perdida",
         "editar": "Editar {etapa}",
         "eliminar": "Eliminar {etapa}",
+        "subir": "Subir {etapa}",
+        "bajar": "Bajar {etapa}",
+        "ordenGuardado": "Orden actualizado",
+        "errorOrden": "No se pudo cambiar el orden",
         "nueva": "Nueva etapa"
       },
       "asistente": {

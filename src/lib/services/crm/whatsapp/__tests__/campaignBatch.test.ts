@@ -1,8 +1,7 @@
 import { planDelay, classifySendError, PER_RECIPIENT_MIN_MS } from '../campaignBatch';
-import { providerErrorAction, applyMessageEventToCampaign } from '../campaignEvents';
+import { providerErrorAction } from '../campaignEvents';
 import { countContacts } from '../campaignService';
-import { WhatsAppError, type CampaignContactMeta } from '../types';
-import { makeSupabase, has, opArg } from './mockSupabase';
+import { WhatsAppError } from '../types';
 
 jest.mock('@/lib/supabase/server-service', () => ({ getServiceClient: () => { throw new Error('no service client en tests'); } }));
 jest.mock('@/lib/services/crm/pricingService', () => ({ getUnitCost: jest.fn(async () => 0.0008) }));
@@ -35,41 +34,6 @@ describe('classifySendError / providerErrorAction', () => {
     expect(providerErrorAction('131056')).toEqual({ state: 'pending', retry_after_ms: 6000 });
     expect(providerErrorAction('130429')).toEqual({ state: 'pending', retry_after_ms: 30000 });
     expect(providerErrorAction('131026')).toEqual({ state: 'failed' });
-  });
-});
-
-describe('applyMessageEventToCampaign', () => {
-  test('failed 131049 → contacto skipped:rate_limited_24h, error_summary y evidencia en consents', async () => {
-    const updates: Array<{ table: string; row: Record<string, unknown> }> = [];
-    const { sb } = makeSupabase({
-      campaign_contacts: (ops) => {
-        if (has(ops, 'update')) { updates.push({ table: 'campaign_contacts', row: opArg(ops, 'update')! }); return { data: null }; }
-        return { data: { id: 'cc-1', campaign_id: 'camp-1', customer_id: 'cust-1', state: 'sent', metadata: { state: 'sent', message_id: 'msg-1', attempts: 1 }, replied_at: null } };
-      },
-      contact_consents: (ops) => (has(ops, 'update') ? (updates.push({ table: 'contact_consents', row: opArg(ops, 'update')! }), { data: null }) : { data: { id: 'cs-1', evidence: {} } }),
-      campaigns: (ops) => (has(ops, 'update') ? (updates.push({ table: 'campaigns', row: opArg(ops, 'update')! }), { data: null }) : { data: { statistics: { error_summary: { '131049': 2 } } } }),
-    });
-    const r = await applyMessageEventToCampaign({ message_id: 'msg-1', event_type: 'failed', error_code: '131049', error_message: 'Marketing limit' }, sb);
-    expect(r).toEqual({ applied: true, state: 'skipped' });
-    const cc = updates.find((u) => u.table === 'campaign_contacts')!.row;
-    expect(cc.state).toBeNull();
-    expect((cc.metadata as CampaignContactMeta)).toMatchObject({ state: 'skipped', skipped_reason: 'rate_limited_24h', error_code: '131049' });
-    expect((updates.find((u) => u.table === 'contact_consents')!.row.evidence as Record<string, unknown>).meta_131049_until).toBeDefined();
-    expect((updates.find((u) => u.table === 'campaigns')!.row.statistics as { error_summary: Record<string, number> }).error_summary['131049']).toBe(3);
-  });
-
-  test('delivered con pricing billable → delivered_at + cost_amount; read es monótono', async () => {
-    let meta: CampaignContactMeta = { state: 'read', message_id: 'msg-1' };
-    const { sb } = makeSupabase({
-      campaign_contacts: (ops) => {
-        if (has(ops, 'update')) { meta = (opArg<Record<string, unknown>>(ops, 'update')!.metadata as CampaignContactMeta); return { data: null }; }
-        return { data: { id: 'cc-1', campaign_id: 'camp-1', customer_id: 'cust-1', state: 'sent', metadata: meta, replied_at: null } };
-      },
-    });
-    await applyMessageEventToCampaign({ message_id: 'msg-1', event_type: 'delivered', provider_payload: { pricing: { billable: true, category: 'utility' }, recipient_id: '5731' } }, sb);
-    expect(meta.state).toBe('read');
-    expect(meta.cost_amount).toBe(0.0008);
-    expect(meta.delivered_at).toBeDefined();
   });
 });
 

@@ -17,5 +17,5 @@ export { listCampaigns, getCampaign, requireCampaign, createCampaign, updateCamp
 export { materializeCampaign, resolveAudience, classifyCandidate } from './campaignMaterialize';
 export { launchCampaign, pauseCampaign, resumeCampaign, cancelCampaign, getCampaignStats, listCampaignContacts, contactsToCsv, countContacts, checkMessagingLimit } from './campaignService';
 export { runCampaignBatch, planDelay, classifySendError } from './campaignBatch';
-export { applyMessageEventToCampaign, syncCampaignFromEvents, linkInboundReply, providerErrorAction } from './campaignEvents';
+export { recordWhatsAppProviderStatus, syncCampaignProviderReceipts, linkInboundReply, providerErrorAction } from './campaignEvents';
 export { handleWhatsAppInbound, extractInboundText, inboundContentType } from './inboundService';

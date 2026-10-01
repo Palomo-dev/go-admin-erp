@@ -20,7 +20,7 @@ import {
 import { applyTemplateStatusUpdate, parseTemplateStatusUpdate, templateEventKey } from '@/lib/services/crm/whatsapp/webhookTemplateStatus';
 import { isTemplateField, normalizeMetaId } from './webhookAuthorization';
 import { extractInboundText, handleWhatsAppInbound, inboundContentType } from '@/lib/services/crm/whatsapp/inboundService';
-import { applyMessageEventToCampaign } from '@/lib/services/crm/whatsapp/campaignEvents';
+import { recordWhatsAppProviderStatus } from '@/lib/services/crm/whatsapp/campaignEvents';
 import { defaultCountryOf, findCustomerIdByPhone, getOrgSettings, normalizePhoneDigits } from '@/lib/services/crm/whatsapp/channelService';
 import type {
   WhatsAppCloudCredentials,
@@ -498,7 +498,7 @@ class WhatsAppCloudService {
         // Procesar status updates
         if (value.statuses) {
           for (const status of value.statuses) {
-            await this.processStatusUpdate(supabase, channelInfo.organizationId, status);
+            await this.processStatusUpdate(supabase, channelInfo.organizationId, channelInfo.channelId, status);
           }
         }
       }
@@ -601,74 +601,14 @@ class WhatsAppCloudService {
     ).catch((err) => console.warn('[WhatsApp Webhook] handleWhatsAppInbound:', err instanceof Error ? err.message : err));
   }
 
-  /** Procesar status update de un mensaje saliente */
+  /** Firma y canal ya validados por el consumidor del webhook. */
   private async processStatusUpdate(
     supabase: SupabaseAdmin,
     organizationId: number,
-    status: WhatsAppWebhookStatus
+    channelId: string,
+    status: WhatsAppWebhookStatus,
   ): Promise<void> {
-    // Buscar mensaje por la columna real external_message_id (F16; antes `external_id`, inexistente)
-    const { data: message } = await supabase
-      .from('messages')
-      .select('id, metadata')
-      .eq('external_message_id', status.id)
-      .eq('organization_id', organizationId)
-      .limit(1)
-      .maybeSingle();
-
-    if (!message) return;
-
-    const eventTime = status.timestamp ? new Date(parseInt(status.timestamp, 10) * 1000).toISOString() : new Date().toISOString();
-    const providerPayload = {
-      timestamp: status.timestamp,
-      recipient_id: status.recipient_id,
-      conversation: status.conversation || null,
-      pricing: status.pricing || null,
-      errors: status.errors || null,
-    };
-    const errorCode = status.errors?.[0]?.code?.toString() || null;
-    const errorMessage = status.errors?.[0]?.title || null;
-
-    // Registrar evento (messages no tiene columna de estado: el estado es el último message_event).
-    //
-    // `event_time` es GENERATED ALWAYS AS (created_at) en la BD (verificado en
-    // information_schema): incluirla en el INSERT lo hace fallar entero con
-    // 428C9 «cannot insert a non-DEFAULT value into column "event_time"».
-    // Como nadie miraba el error, TODOS los eventos de estado se perdían en
-    // silencio: sin `delivered`/`read`/`failed` no hay estado de mensaje, ni
-    // sincronización de campañas, ni 131049/131056. La marca real del
-    // proveedor se conserva dentro de `provider_payload.event_time`
-    // (tester F16 r2 · F-1).
-    const { error: eventError } = await supabase.from('message_events').insert({
-      organization_id: organizationId,
-      message_id: message.id,
-      event_type: status.status,
-      provider_payload: { ...providerPayload, event_time: eventTime },
-      error_code: errorCode,
-      error_message: errorMessage,
-    });
-    if (eventError) {
-      console.error('[WhatsApp Webhook] message_events NO PERSISTIDO', {
-        organization_id: organizationId,
-        message_id: message.id,
-        event_type: status.status,
-        error: eventError.message,
-      });
-    }
-
-    // Campañas: delivered/read/failed (131049 → skipped 24 h, 131056/130429 → reencolar)
-    await applyMessageEventToCampaign(
-      { message_id: message.id as string, event_type: status.status, error_code: errorCode, error_message: errorMessage, provider_payload: providerPayload, event_time: eventTime },
-      supabase as unknown as Parameters<typeof applyMessageEventToCampaign>[1],
-    ).catch((err) => console.warn('[WhatsApp Webhook] applyMessageEventToCampaign:', err instanceof Error ? err.message : err));
-
-    // Si leído, actualizar read_at
-    if (status.status === 'read') {
-      await supabase
-        .from('messages')
-        .update({ read_at: new Date(parseInt(status.timestamp) * 1000).toISOString() })
-        .eq('id', message.id);
-    }
+    await recordWhatsAppProviderStatus(organizationId, channelId, status, supabase);
   }
 
   /** Buscar o crear customer por teléfono */

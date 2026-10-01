@@ -3871,3 +3871,9 @@ BEGIN/ROLLBACK pasó callbacks tempranos/repetidos/fuera de orden, precio atrasa
 ### 2026-10-01 — índices de relaciones de eventos privados
 
 Migración `20261001064500_crm_eventos_proveedor_indices_de_relaciones.sql` aplicada por MCP, MD5 `be6c3f0d4e0ca43db5661aa75e0fc588`. Cubre las FK de canal y mensaje que detectó el advisor. BEGIN/ROLLBACK confirmó ambos índices y reversión funcional sin retirar soporte ni evidencia. Advisors sin FK descubiertas ni hallazgos de seguridad para objetos nuevos; avisos de índices todavía no usados son esperables antes de desplegar el consumidor. fn_can_contact conserva el aviso 0029 intencional y la pertenencia interna.
+
+### 2026-10-01 — webhook y respaldo conectados a constancias privadas
+
+Cloud transmite el canal y organización ya autorizados por la firma, conserva el evento completo y delega en crm_record_provider_status; falla de persistencia se propaga para reintentar. Elimina INSERT de evento, cambios de estado/cifras y lectura sin canal separados. Detalle sync=1 exige permiso de lectura usado por el listado, valida campaña propia y concilia solo evidencia privada; errores no se ocultan. Costo usa countryFromPhone/getUnitCost compartidos, sin tarifa de otro país ni categoría sustituida. Eliminadas las funciones públicas de reapertura y sincronización desde eventos editables.
+
+Verificación: 26 suites / 629 pruebas focalizadas y 217 casos finales de eventos/rutas/guardarraíles; TypeScript final 0 errores, lint tocado limpio. Se sustituyeron mocks de N updates y reapertura por contratos del consumidor privado; efectos de ledger/estado/event_time/cifras se comprobaron en SQL real en el paso anterior. Reintento por rechazo, atribución inbound, cifras/CSV completas y correo siguen en curso. No se desplegó.

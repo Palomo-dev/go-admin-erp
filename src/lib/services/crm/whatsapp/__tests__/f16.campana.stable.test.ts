@@ -11,7 +11,6 @@
  * comportamiento que aquellos solo leían.
  */
 import { updateCampaign, sameAudience } from '../campaignStore';
-import { applyMessageEventToCampaign, reopenCampaignForRetry } from '../campaignEvents';
 import { updateHsm } from '../templateService';
 import { makeSupabase, has, opArg, type TableResolver } from './mockSupabase';
 
@@ -93,36 +92,6 @@ describe('updateCampaign · materialized_at', () => {
   });
 });
 
-// ─── #4 · un reintento sobre una campaña cerrada la reabre (r2) ─────────────────
-
-describe('campaignEvents · reapertura por 131056', () => {
-  it('B2.4 · 131056 con la campaña en sent → encola el lote next_batch_no y vuelve a sending', async () => {
-    const contact = { id: 'cc-1', campaign_id: 'camp-1', customer_id: 'cust-1', state: 'sent', metadata: { state: 'sent', message_id: 'msg-1', attempts: 1 }, replied_at: null };
-    const closed = { id: 'camp-1', organization_id: 7, status: 'sent', statistics: { next_batch_no: 4, finished_at: '2026-09-08T09:00:00Z' } };
-    const { sb, calls } = makeSupabase({
-      campaign_contacts: (ops) => (has(ops, 'update') ? { data: null } : { data: contact }),
-      campaigns: () => ({ data: closed }),
-      contact_consents: () => ({ data: null }),
-    });
-    const r = await applyMessageEventToCampaign({ message_id: 'msg-1', event_type: 'failed', error_code: '131056' }, sb);
-    expect(r).toMatchObject({ applied: true, state: 'pending' });
-    expect(enqueueJob).toHaveBeenCalledTimes(1);
-    const job = enqueueJob.mock.calls[0][0] as { kind: string; payload: Record<string, unknown> };
-    expect(job.kind).toBe('campaign_batch');
-    expect(job.payload).toEqual({ campaign_id: 'camp-1', batch_no: 4 });
-    const reopened = calls.filter((c) => c.table === 'campaigns' && has(c.ops, 'update')).pop()!;
-    expect(opArg<Record<string, unknown>>(reopened.ops, 'update')!.status).toBe('sending');
-  });
-
-  it('B2.4 · una campaña que sigue enviando o está cancelada no se reabre ni encola nada', async () => {
-    const enviando = makeSupabase({ campaigns: () => ({ data: { id: 'camp-1', organization_id: 7, status: 'sending', statistics: {} } }) });
-    expect(await reopenCampaignForRetry('camp-1', new Date(), enviando.sb)).toEqual({ reopened: false });
-    const cancelada = makeSupabase({ campaigns: () => ({ data: { id: 'camp-1', organization_id: 7, status: 'sent', statistics: { state: 'canceled' } } }) });
-    expect(await reopenCampaignForRetry('camp-1', new Date(), cancelada.sb)).toEqual({ reopened: false });
-    expect(enqueueJob).not.toHaveBeenCalled();
-  });
-});
-
 // ─── N-6 · una plantilla importada de Meta se puede ARREGLAR (r4) ───────────────
 
 const IMPORTADA = {
@@ -159,22 +128,6 @@ describe('updateHsm · plantilla importada', () => {
 type ProveedorConAlta = { findOrCreateCustomer: (s: unknown, org: number, ch: string, phone: string, name: string) => Promise<string> };
 
 describe('whatsappCloudService / whatsappQrService', () => {
-  it('B3.F1 · processStatusUpdate no manda event_time (GENERATED ALWAYS) y NO se traga el error del insert', async () => {
-    const { whatsappCloudService } = await import('@/lib/services/integrations/whatsapp/whatsappCloudService');
-    let inserted: Record<string, unknown> | null = null;
-    const { sb } = makeSupabase({
-      messages: (ops) => (has(ops, 'update') ? { data: null } : { data: { id: UUID_A, metadata: {} } }),
-      message_events: (ops) => { inserted = opArg<Record<string, unknown>>(ops, 'insert') ?? null; return { data: null, error: { message: 'cannot insert a non-DEFAULT value into column "event_time"' } }; },
-      campaign_contacts: () => ({ data: [] }),
-    });
-    const errSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    await (whatsappCloudService as unknown as { processStatusUpdate: (s: unknown, org: number, st: unknown) => Promise<void> }).processStatusUpdate(sb, 7, { id: 'wamid.X', status: 'delivered', timestamp: '1757500000', recipient_id: '573109876543' });
-    expect(inserted).not.toBeNull();
-    expect(Object.keys(inserted as unknown as Record<string, unknown>)).not.toContain('event_time');
-    expect(errSpy).toHaveBeenCalled();
-    errSpy.mockRestore();
-  });
-
   const existente = (extra: Record<string, TableResolver> = {}) => {
     const estado = { inserted: false };
     const { sb } = makeSupabase({

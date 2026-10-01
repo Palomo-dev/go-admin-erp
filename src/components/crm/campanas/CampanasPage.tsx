@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/kit/EmptyState";
 import { Pagination } from "@/components/kit/Pagination";
 import { Dialogo } from "@/components/kit/Dialogo";
 import { CampaignRnePanel } from "@/components/crm/agentes/campanas/CampaignRnePanel";
+import { CampaignCompliancePanel } from "./CampaignCompliancePanel";
 import { DialogoMotivo } from "@/components/kit/DialogoMotivo";
 import { clasesBoton } from "@/components/kit/botonClases";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,6 +22,7 @@ import { useCampanasData } from "./useCampanasData";
 import { CampanasTable, type CampanaFila } from "./CampanasTable";
 function CampanasContent() {
   const t = useTranslations("crm.campanasNuevo");
+  const d = useTranslations("crm.campanasDetalle");
   const [channel, setChannel] = useState("all");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
@@ -29,6 +31,7 @@ function CampanasContent() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [rne, setRne] = useState(false);
   const [rneId, setRneId] = useState("");
+  const [rneSource, setRneSource] = useState("voice");
   const [target, setTarget] = useState<{
     row: CampanaFila;
     action: string;
@@ -66,7 +69,7 @@ function CampanasContent() {
   const actions = (
     <>
       <button
-        onClick={() => setRne(true)}
+        onClick={() => { setRneId(""); setRne(true); }}
         className={clasesBoton({ variante: "secundario" })}
       >
         <ShieldCheck className="size-4" aria-hidden="true" />
@@ -185,29 +188,33 @@ function CampanasContent() {
         abierto={rne}
         onAbiertoChange={setRne}
         titulo={t("verificarRne")}
-        descripcion={t("elegirRne")}
+        descripcion={d("elegirCampana")}
         primario={{ etiqueta: t("cerrar"), onClick: () => setRne(false) }}
       >
         <FormField etiqueta={t("campana")}>
           <select
             className={CLASE_CAMPO}
-            value={rneId}
-            onChange={(e) => setRneId(e.target.value)}
+            value={rneId ? `${rneSource}:${rneId}` : ""}
+            onChange={(e) => {
+              const row = data?.rows.find((item) => `${item.source}:${item.id}` === e.target.value);
+              setRneId(row?.id ?? "");
+              setRneSource(row?.source ?? "messages");
+            }}
           >
-            <option value="">{t("elegirRne")}</option>
-            {data?.rows
-              .filter((r) => r.source === "voice")
-              .map((r) => (
-                <option key={r.id} value={r.id}>
+            <option value="">{d("elegirCampana")}</option>
+            {data?.rows.map((r) => (
+                <option key={`${r.source}:${r.id}`} value={`${r.source}:${r.id}`}>
                   {r.name}
                 </option>
               ))}
           </select>
         </FormField>
         {rneId ? (
-          <CampaignRnePanel key={rneId} campaignId={rneId} />
+          rneSource === "voice"
+            ? <CampaignRnePanel key={rneId} campaignId={rneId} />
+            : <CampaignCompliancePanel key={rneId} campaignId={rneId} />
         ) : (
-          <p className="my-3 text-sm text-fg-muted">{t("sinVozPagina")}</p>
+          <p className="my-3 text-sm text-fg-muted">{d(data?.rows.length ? "elegirCampana" : "sinCampanas")}</p>
         )}
         <Link
           className="text-sm text-link underline"

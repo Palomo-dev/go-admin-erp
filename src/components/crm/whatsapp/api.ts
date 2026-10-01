@@ -29,7 +29,7 @@ async function call<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export const post = <T>(url: string, body?: unknown) => call<T>(url, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) });
-export const get = <T>(url: string) => call<T>(url, { method: 'GET', cache: 'no-store' });
+export const get = <T>(url: string, init?: RequestInit) => call<T>(url, { ...init, method: 'GET', cache: 'no-store' });
 
 export interface WindowInfo extends WindowState {
   label: string;
@@ -113,7 +113,7 @@ export interface CampaignStatsResult { counts: CampaignCounts; by_error_code: Re
 
 export const campaignsApi = {
   list: (q: { status?: string; channel?: string; q?: string } = {}) => get<{ data: Campaign[]; can_manage: boolean }>(`/api/crm/campaigns?${new URLSearchParams(Object.entries(q).filter(([, v]) => !!v) as [string, string][]).toString()}`),
-  get: (id: string) => get<{ data: Campaign; can_manage: boolean }>(`/api/crm/campaigns/${id}`),
+  get: (id: string, signal?: AbortSignal) => get<{ data: Campaign; can_manage: boolean }>(`/api/crm/campaigns/${id}`, { signal }),
   create: (body: CreateCampaignBody) => post<{ data: Campaign }>('/api/crm/campaigns', body),
   update: (id: string, body: Partial<CreateCampaignBody>) => call<{ data: Campaign }>(`/api/crm/campaigns/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   remove: (id: string) => call<{ success: boolean }>(`/api/crm/campaigns/${id}`, { method: 'DELETE' }),
@@ -122,8 +122,8 @@ export const campaignsApi = {
   pause: (id: string) => post<{ data: Campaign }>(`/api/crm/campaigns/${id}/pause`),
   resume: (id: string) => post<{ data: Campaign }>(`/api/crm/campaigns/${id}/resume`),
   cancel: (id: string) => post<{ data: Campaign }>(`/api/crm/campaigns/${id}/cancel`),
-  stats: (id: string, sync = false) => get<CampaignStatsResult>(`/api/crm/campaigns/${id}/stats${sync ? '?sync=1' : ''}`),
-  contacts: (id: string, q: { state?: string; q?: string; page?: number; pageSize?: number } = {}) => get<{ data: CampaignContact[]; total: number }>(`/api/crm/campaigns/${id}/contacts?${new URLSearchParams(Object.entries(q).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)])).toString()}`),
+  stats: (id: string, sync = false, signal?: AbortSignal) => get<CampaignStatsResult>(`/api/crm/campaigns/${id}/stats${sync ? '?sync=1' : ''}`, { signal }),
+  contacts: (id: string, q: { state?: string; q?: string; page?: number; pageSize?: number } = {}, signal?: AbortSignal) => get<{ data: CampaignContact[]; total: number }>(`/api/crm/campaigns/${id}/contacts?${new URLSearchParams(Object.entries(q).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)])).toString()}`, { signal }),
   csvUrl: (id: string, state?: string) => `/api/crm/campaigns/${id}/contacts?export=csv${state ? `&state=${state}` : ''}`,
 };
 

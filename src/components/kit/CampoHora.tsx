@@ -6,6 +6,7 @@ import { ChevronDown, Clock } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { buscarPorTexto, etiquetaHora, horasDelDia, indiceInicial, moverIndice, normalizarHora, opcionesConValor } from './horaLogica';
 import { useKitT, useLocaleIntl } from './useIdiomaKit';
+import { PROPS_SCROLL_EN_CAPA } from './scrollEnCapa';
 
 /**
  * Campo de hora del kit. Hermano de `CampoFecha`: mismo disparador (40 px,
@@ -171,6 +172,7 @@ export const CampoHora = React.forwardRef<HTMLButtonElement, CampoHoraProps>(fun
             e.preventDefault();
             refBoton.current?.focus();
           }}
+          {...PROPS_SCROLL_EN_CAPA}
           className="z-[70] w-[var(--radix-popover-trigger-width)] min-w-[160px] rounded-xl border border-line bg-surface p-1 text-fg shadow-md outline-none"
         >
           <ul

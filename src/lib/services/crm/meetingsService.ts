@@ -11,8 +11,8 @@ import { createActivity, RelatedNotFoundError } from '@/lib/services/crm/activit
  *   → calendar_events.status confirmed|confirmed(+metadata.completed_at)|cancelled
  *   y activities.outcome done|canceled.
  *
- * Invitación ICS por email (send_invite): pendiente de F7 (`sendEmail` con
- * attachments). `buildIcs` queda listo; el envío se anota en el informe.
+ * El correo (cliente, si tiene dirección, y responsable) lo manda la ruta
+ * con `notificarReunion` cuando `send_invite` no viene en false.
  */
 
 export const meetingInputSchema = z.object({

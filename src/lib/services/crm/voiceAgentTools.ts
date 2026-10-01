@@ -20,6 +20,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { zonaHorariaOrganizacion } from '@/lib/services/crm/voiceAgent/cumplimiento';
 import { wallTimeToInstant } from '@/lib/utils/dateCore';
 import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
+import { notificarReunion } from '@/lib/services/crm/reunionCorreo.server';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -426,9 +427,22 @@ export async function bookMeeting(
     });
   }
 
+  const fila = event as { id: string; start_at: string; end_at: string };
+  const invite = await notificarReunion(ctx.orgId, { userId: assignedTo }, {
+    id: fila.id,
+    title: args.title || 'Reunión agendada por el agente IA',
+    description: args.notes ?? null,
+    start_at: fila.start_at,
+    end_at: fila.end_at,
+    timezone: zona,
+    assigned_to: assignedTo,
+    customer_id: customerId,
+    opportunity_id: ctx.opportunityId ?? null,
+  }, ctx.supabase);
+
   return {
     success: true,
-    data: { ...(event as Record<string, unknown>), local: cuando, timezone: zona },
+    data: { ...fila, local: cuando, timezone: zona, invite },
     say: `Listo, la reunión quedó agendada para el ${cuando}.`,
   };
 }

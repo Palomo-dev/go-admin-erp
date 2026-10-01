@@ -3691,3 +3691,10 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - El perfil guarda esos cinco interruptores en allowed_types del canal email, sin borrar otros tipos que ya estuvieran. La campana marca leído y descartado solo en member_notices.
 - El cron /api/cron/avisos-miembro corre cada 5 minutos en Vercel y en pg_cron. Migración 20261001180000 aplicada por MCP, con rollback. El archivo coincide con lo aplicado.
 - Jest de las reglas y de guardrails: 197 en verde. npx tsc --noEmit -p tsconfig.json en verde.
+
+
+### Fase: Reunión — correo al cliente y al responsable — 2026-10-01
+- Rama cursor/correo-reunion-e475.
+- Al agendar una reunión, si el cliente tiene correo se le avisa. También se avisa al responsable: el vendedor de la oportunidad, o quien quedó asignado al evento si no hay vendedor. El correo lleva la fecha en la zona de la organización y un archivo de calendario. Si el cliente pidió no recibir correos, a él no se le escribe; el responsable sí. Si el envío falla, la reunión queda agendada.
+- El mismo aviso sale al agendar desde el diálogo y cuando el agente de voz deja la reunión.
+- Jest del texto y de los destinatarios, más el agendado del agente: 8 en verde. npx tsc --noEmit -p tsconfig.json en verde. El build de Next compiló y el proceso murió en su propio chequeo de tipos; el tsc aparte cubre ese chequeo.

@@ -170,6 +170,25 @@ describe.each(IDIOMAS)('Pipeline en %s', (idioma) => {
   });
 });
 
+test('mantener el clic en el vacío corre el tablero hacia las etapas de la derecha', async () => {
+  renderConIdioma(<PipelinePantalla />);
+  await screen.findByText('Renovación licencias 2027');
+  const lienzo = screen.getByRole('region', { name: 'Tablero del pipeline' });
+  expect(lienzo.className).toContain('min-w-0');
+  expect(lienzo.className).toContain('overflow-x-auto');
+  const puntero = (tipo: string, clientX: number) => new MouseEvent(tipo, { bubbles: true, button: 0, clientX });
+  lienzo.dispatchEvent(puntero('pointerdown', 400));
+  lienzo.dispatchEvent(puntero('pointermove', 280));
+  expect(lienzo.scrollLeft).toBe(120);
+  lienzo.dispatchEvent(puntero('pointerup', 280));
+  const tarjeta = screen.getByText('Renovación licencias 2027').closest('[data-kanban-tarjeta]');
+  expect(tarjeta).toBeTruthy();
+  lienzo.scrollLeft = 0;
+  tarjeta!.dispatchEvent(puntero('pointerdown', 400));
+  lienzo.dispatchEvent(puntero('pointermove', 200));
+  expect(lienzo.scrollLeft).toBe(0);
+});
+
 describe('Oportunidades · estados', () => {
   test('vacío con primer paso', async () => {
     rutas['GET /api/crm/opportunities'] = () => ({ body: { success: true, data: [], total: 0 } });
@@ -342,6 +361,22 @@ function Arnes() {
     </div>
   );
 }
+
+describe('movimiento de etapa sin recargar el tablero', () => {
+  test('el arrastre confirmado deja la tarjeta en la columna y no vuelve a pedir las columnas', async () => {
+    rutas['PATCH /api/crm/opportunities/*/stage'] = () => ({ body: { success: true, data: {} } });
+    renderConIdioma(<Arnes />);
+    await screen.findByText('Lead heredado');
+    await waitFor(() => expect(llamadas.filter((l) => l.url.includes('stage_id=')).length).toBe(4));
+    const columnas = llamadas.filter((l) => l.url.includes('/api/crm/opportunities?')).length;
+    const tableros = llamadas.filter((l) => l.url.startsWith('/api/crm/pipelines/p1/board')).length;
+    fireEvent.click(screen.getByRole('button', { name: 'soltar' }));
+    await waitFor(() => expect(llamadas.filter((l) => l.url.startsWith('/api/crm/pipelines/p1/board')).length).toBeGreaterThan(tableros));
+    expect(within(screen.getByRole('region', { name: 's2' })).queryByText('Lead heredado')).toBeTruthy();
+    expect(within(screen.getByRole('region', { name: 's1' })).queryByText('Lead heredado')).toBeNull();
+    expect(llamadas.filter((l) => l.url.includes('/api/crm/opportunities?')).length).toBe(columnas);
+  });
+});
 
 describe('rechazo del servidor', () => {
   test('arrastre optimista: la tarjeta pasa YA a la columna y vuelve si el gate rechaza; se abre el diálogo con los requisitos', async () => {

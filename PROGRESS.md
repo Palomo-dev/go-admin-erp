@@ -3857,3 +3857,7 @@ BEGIN/ROLLBACK pasó STOP→START→STOP antiguo, SID conflictivo, cliente ajeno
 El webhook resuelve teléfonos con la normalización compartida, recorre páginas y envía todos los destinos en una RPC. Propaga fallos para reintentar; elimina INSERT de preferencias y UPDATE de banderas separados. Opt-in exige coincidencia inequívoca; para opt-out conserva el criterio conservador de sufijo. Transmite el teléfono leído y la clave estable del proveedor para CAS/deduplicación. El harness de lectura incorpora range para verificar 405 coincidencias sin simular las mutaciones SQL.
 
 Verificación: 19 suites / 451 pruebas, tipos y lint tocado limpios. La prueba failing del viejo INSERT pasa como contrato normal de STOP/START; su efecto real y la repetición del STOP se verifican por MCP. La suite completa y build posteriores están en curso. Eventos y correo de campañas, cumplimiento compartido y resto del alcance aún pendientes.
+
+### 2026-10-01 — verificación completa tras consentimiento de Twilio
+
+En `4cbad9a9`: 945 suites / 17.054 pruebas pasan, una suite y ocho pruebas omitidas existentes, proceso 0. TypeScript final sin errores y build de producción completo, proceso 0, con comprobación de tipos separada como CI. Lint de los archivos tocados limpio. Base main integrada hasta `8b7a3620`. Este checkpoint valida las reservas y consumidores conectados; eventos de proveedor, correo, cumplimiento compartido y las pantallas restantes siguen en curso. PR 280 continúa en borrador, sin despliegue ni fusión.

@@ -3699,4 +3699,6 @@ Campañas comparte estados canónicos de mensajes y legalidad de voz; 207 filas 
 - Si la sesión no abre, el vencimiento se devuelve para que el siguiente cron reintente.
 - Jest de sesión, cron, programación y remitente: 52 en verde. eslint de los archivos tocados, sin avisos.
 
+### 2026-10-01 — CRM: PR borrador y verificación tras integrar main
 
+PR #280 sobre main; integrado 8ebd05a3 y conservados ambos apéndices. 934 suites / 16.926 pruebas en verde, 8 omisiones previas; tsc 0, lint tocado limpio y compilación de producción completa con el mismo gate separado de tipos que CI. Seis zonas horarias: 804 casos por zona. Dos esperas de integración de POS corregidas sin cambiar producción; 49 casos pasan con detección de recursos abiertos. El plan registra evidencia y límites. Continúan Segmentos, el asistente de Campañas, Plantillas y las olas 4/5/6 restantes; no se declara terminado el CRM completo.

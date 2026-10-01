@@ -160,6 +160,10 @@ describe('customersOutbox', () => {
   });
 
   afterEach(async () => {
+    // La última venta fallida programa un reintento; debe cerrarse antes de desmontar IndexedDB.
+    __resetSalesSyncForTests();
+    __resetCustomersSyncForTests();
+    __resetOutboxForTests();
     await closeCatalogDB();
     uninstallWindow();
   });

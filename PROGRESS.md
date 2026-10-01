@@ -3730,3 +3730,7 @@ PR #280 sobre main; integrado 8ebd05a3 y conservados ambos apéndices. 934 suite
 ### 2026-10-01 — CRM: recuento de segmentos transaccional en cola
 
 Migración `20261001030800_crm_segmentos_recuento_en_cola.sql`, aplicada por MCP, MD5 `b522092310d8cf142542b218ff63f9bb`; rollback versionado conserva datos y barreras de referencias. Jobs locales noop por página, versión/cursor comprobados, productor por CRM activo y referencia de secuencia protegida. BEGIN/ROLLBACK pasó productor, continuación, reintento, versión vieja, cifras imposibles, org ajena y ACL; ninguna activación de módulos ni fixtures persistentes. 64 pruebas focalizadas y lint pasan. API/consumidor/pantallas siguen en verificación; no se declara terminado el alcance completo.
+
+### 2026-10-01 — verificación CRM: cierre del reintento en prueba de outbox
+
+La batería completa aprobaba todas las aserciones pero salía 1 por un log tardío: la última prueba de customersOutbox dejaba activo el reintento de una venta fallida. Su afterEach ahora cierra ambos sincronizadores y el outbox antes de desmontar IndexedDB. Sin cambio en producción. 22 casos focalizados pasan con detectOpenHandles; repetida toda la batería, 940 suites / 16.989 pruebas pasan y el proceso sale 0.

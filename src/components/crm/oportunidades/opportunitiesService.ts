@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { pedirDespachoAvisos } from '@/lib/services/avisos/pedirDespacho';
 import { getOrganizationId as getOrgId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { applyBranchFilterInclusive } from '@/lib/services/branchFilterHelper';
 import { DEFAULT_TIMEZONE, toPlainDate } from '@/lib/utils/timezone';
@@ -799,6 +800,7 @@ class OpportunitiesService {
       related_to_id: opportunityId,
       type: 'crm',
     });
+    if (options?.assigned_to) pedirDespachoAvisos();
     return created as unknown as OpportunityTask;
   }
 
@@ -818,6 +820,7 @@ class OpportunitiesService {
 
     const { error } = await supabase.from('tasks').update(updateData).eq('id', taskId);
     if (error) throw error;
+    if (updates.assigned_to !== undefined || updates.status !== undefined) pedirDespachoAvisos();
   }
 
   async deleteTask(taskId: string): Promise<void> {

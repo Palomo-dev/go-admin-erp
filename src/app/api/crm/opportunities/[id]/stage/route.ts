@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { programarDespachoAvisos } from '@/lib/services/avisos/despacho.server';
 import { z } from 'zod';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
@@ -58,6 +59,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       { opportunityId: id, stageId: b.stage_id, override: b.override, overrideReason: b.override_reason, wonData: b.won_data, lossData: b.loss_data },
       ctx.supabase
     );
+    programarDespachoAvisos(ctx.organizationId);
 
     return respuestaCambioEtapa(result);
   } catch (error: unknown) {

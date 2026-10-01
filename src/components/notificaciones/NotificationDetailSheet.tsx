@@ -111,7 +111,12 @@ function getRedirect(notif: NotificationForSheet): { url: string; accion: string
       return p.opportunity_id ? { url: `/app/crm/oportunidades/${p.opportunity_id}`, accion: 'viewOpportunity' } : { url: '/app/crm/oportunidades', accion: 'viewOpportunities' };
     case 'task_agent': case 'task_rescheduled': case 'task_reschedule_summary':
     case 'task_assigned': case 'task_completed':
+    case 'tarea.asignada': case 'tarea.completada': case 'tarea.atrasada': case 'tarea.vence':
+      if (p.href) return { url: p.href, accion: 'viewTask' };
       return p.task_id ? { url: `/app/pm/tareas?taskId=${p.task_id}`, accion: 'viewTask' } : { url: '/app/pm/tareas', accion: 'viewTasks' };
+    case 'oportunidad.asignada': case 'oportunidad.etapa': case 'oportunidad.vence': case 'oportunidad.atrasada':
+      if (p.href) return { url: p.href, accion: 'viewOpportunity' };
+      return p.opportunity_id ? { url: `/app/crm/oportunidades/${p.opportunity_id}`, accion: 'viewOpportunity' } : { url: '/app/crm/oportunidades', accion: 'viewOpportunities' };
     case 'stock_low': case 'stock_out': case 'stock_low_periodic':
       return p.product_id ? { url: `/app/inventario/productos/${p.product_id}`, accion: 'viewProduct' } : { url: '/app/inventario/stock', accion: 'viewStock' };
     case 'transfer_created': case 'transfer_approved': case 'transfer_rejected':

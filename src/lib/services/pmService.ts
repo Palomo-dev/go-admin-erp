@@ -2,6 +2,7 @@
 
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { pedirDespachoAvisos } from '@/lib/services/avisos/pedirDespacho';
 
 // ─── Types ──────────────────────────────────────────────
 export interface Project {
@@ -533,6 +534,7 @@ export const pmService = {
     const patch = await this.buildCompletionPatch(taskId, status);
     const { error } = await supabase.from('tasks').update({ status, ...patch, updated_at: new Date().toISOString() }).eq('id', taskId);
     if (error) throw error;
+    pedirDespachoAvisos();
     const { data: t } = await supabase.from('tasks').select('project_id, goal_id, key_result_id').eq('id', taskId).single();
     if (t?.key_result_id) await this.recalcKeyResultProgress(t.key_result_id);
     if (t?.project_id) await this.recalcProjectProgress(t.project_id);
@@ -544,6 +546,7 @@ export const pmService = {
     if (updates.status) patch = { ...patch, ...(await this.buildCompletionPatch(taskId, updates.status)) };
     const { error } = await supabase.from('tasks').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', taskId);
     if (error) throw error;
+    if (updates.status !== undefined || updates.assigned_to !== undefined) pedirDespachoAvisos();
     if (updates.status || updates.project_id || updates.goal_id || updates.key_result_id || updates.estimated_hours != null) {
       const { data: t } = await supabase.from('tasks').select('project_id, goal_id, key_result_id').eq('id', taskId).single();
       if (t?.key_result_id) await this.recalcKeyResultProgress(t.key_result_id);
@@ -574,6 +577,7 @@ export const pmService = {
     }
     const { data, error } = await supabase.from('tasks').insert(payload).select().single();
     if (error) throw error;
+    if (payload.assigned_to) pedirDespachoAvisos();
     if (data?.key_result_id) await this.recalcKeyResultProgress(data.key_result_id);
     if (data?.project_id) await this.recalcProjectProgress(data.project_id);
     if (data?.goal_id) await this.recalcGoalProgress(data.goal_id);
@@ -608,6 +612,7 @@ export const pmService = {
     }));
     const { error } = await supabase.from('tasks').insert(rows);
     if (error) throw error;
+    if (rows.some((fila) => fila.assigned_to)) pedirDespachoAvisos();
     await this.recalcKeyResultProgress(keyResultId);
     return rows.length;
   },
@@ -666,6 +671,7 @@ export const pmService = {
       created_by: user?.id,
     }).select().single();
     if (error) throw error;
+    if (data?.assigned_to) pedirDespachoAvisos();
     return data;
   },
 
@@ -875,6 +881,7 @@ export const pmService = {
       const { error } = await supabase.from('tasks').update({ assigned_to: best.user_id, updated_at: new Date().toISOString() }).eq('id', task.id);
       if (!error) { best.load += weightOf(task); assigned += 1; }
     }
+    if (assigned > 0) pedirDespachoAvisos();
     return assigned;
   },
 

@@ -119,7 +119,7 @@ function escenario(e: Escenario = {}) {
         };
       }
       if (op.table === 'voice_campaign_rne_checks') {
-        return { data: e.rne ?? [{ id: 'r', checked_at: '2026-09-01T00:00:00Z', valid_until: '2999-01-01T00:00:00Z' }] };
+        return { data: e.rne ?? [{ id: 'r', checked_at: '2026-09-01T00:00:00Z', valid_until: '2999-01-01T00:00:00Z', numbers_in_file: 2 }] };
       }
       if (op.table === 'crm_excluded_numbers') return { data: e.excluido ? [{ id: 'x', phone_e164: '+573001112233' }] : [] };
       if (op.table === 'voice_agents') return { data: { is_active: true, max_calls_per_day: 50, max_calls_per_hour: 20, retry_policy: {} } };
@@ -179,7 +179,7 @@ describe('Compuertas legales del despachador de voz', () => {
   });
 
   test('sin verificación RNE (o vencida) la campaña no reclama filas', async () => {
-    for (const rne of [[], [{ id: 'r', checked_at: '2026-08-01T00:00:00Z', valid_until: '2026-08-31T00:00:00Z' }]]) {
+    for (const rne of [[], [{ id: 'r', checked_at: '2026-08-01T00:00:00Z', valid_until: '2026-08-31T00:00:00Z', numbers_in_file: 2 }], [{ id: 'r', valid_until: '2999-01-01T00:00:00Z', numbers_in_file: 0 }]]) {
       const { client, rpcs } = escenario({ rne });
       const r = await runCampaignQueue(7, client);
       expect(r.calls_initiated).toBe(0);

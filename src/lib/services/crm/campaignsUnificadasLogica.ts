@@ -2,7 +2,7 @@
 import { effectiveCampaignStatus, type CampaignConfig } from "./whatsapp/types";
 import { TERMINAL_VAC_STATUSES } from "./voiceAgent/callStatusMap";
 import { politicaDatosValida } from "./voiceAgent/cumplimiento";
-import { verificacionRneVigente } from "./voiceAgent/rne";
+import { verificacionRneRegistradaVigente } from "./voiceAgent/rne";
 export interface CampanaUnificadaRaw {
   id: string;
   name: string;
@@ -17,6 +17,7 @@ export interface CampanaUnificadaRaw {
   emergency_stop: boolean;
   stopped_reason: string | null;
   rne_valid_until: string | null;
+  rne_numbers_in_file: number | null;
   voice_counts: Record<string, number>;
   data_policy_url: string | null;
 }
@@ -42,7 +43,8 @@ export function proyectarCampana(c: CampanaUnificadaRaw, now: Date) {
   const reasons =
     c.source === "voice"
       ? [
-          ...(!verificacionRneVigente(c.rne_valid_until, now) ? ["rne"] : []),
+          ...(!verificacionRneRegistradaVigente(c.rne_valid_until && c.rne_numbers_in_file !== null
+            ? { valid_until: c.rne_valid_until, numbers_in_file: c.rne_numbers_in_file } : null, now) ? ["rne"] : []),
           ...(!politicaDatosValida(c.data_policy_url) ? ["policy"] : []),
         ]
       : [];

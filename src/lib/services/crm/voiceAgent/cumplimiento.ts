@@ -20,7 +20,7 @@ import {
   type ConteoSemana,
   type DecisionContacto,
 } from './ley2300';
-import { normalizarNumeroRne, verificacionRneVigente } from './rne';
+import { normalizarNumeroRne, verificacionRneRegistradaVigente } from './rne';
 import { esNumeroPrueba, EXENCION_NUMERO_PRUEBA } from './numerosPrueba';
 import { DEFAULT_TIMEZONE, isUsableTimezone } from '@/lib/utils/dateCore';
 
@@ -133,7 +133,7 @@ export async function campanaConRneVigente(
   ahora: Date = new Date()
 ): Promise<boolean> {
   const v = await ultimaVerificacionRne(supabase, orgId, campaignId);
-  return verificacionRneVigente(v?.valid_until ?? null, ahora);
+  return verificacionRneRegistradaVigente(v, ahora);
 }
 
 /** Solo https y sin espacios (el mismo criterio que el CHECK de la columna). */

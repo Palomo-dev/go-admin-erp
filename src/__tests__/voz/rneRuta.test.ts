@@ -76,6 +76,11 @@ beforeEach(() => {
 });
 
 describe('GET', () => {
+  test('una constancia futura con cero números no habilita llamadas', async () => {
+    ultima.mockResolvedValue({ valid_until: '2999-01-01T00:00:00Z', numbers_in_file: 0 });
+    const res = await GET(new NextRequest(url()), rp());
+    expect((await res.json()).data.vigente).toBe(false);
+  });
   test('sin sesión → 401', async () => {
     sesion.ctx = null;
     const res = await GET(new NextRequest(url()), rp());
@@ -85,7 +90,7 @@ describe('GET', () => {
 
   test('miembro: devuelve la última verificación con la organización de la sesión y el permiso del servidor', async () => {
     sesion.admin = false;
-    ultima.mockResolvedValue({ id: 'c1', valid_until: '2999-01-01T00:00:00Z', checked_at: '2026-09-30T00:00:00Z' });
+    ultima.mockResolvedValue({ id: 'c1', valid_until: '2999-01-01T00:00:00Z', checked_at: '2026-09-30T00:00:00Z', numbers_in_file: 2 });
     const res = await GET(new NextRequest(url()), rp());
     const body = await res.json();
     expect(res.status).toBe(200);

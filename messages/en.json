@@ -12907,7 +12907,8 @@
       "twilio_no_verificable": "Whether the Twilio credentials and the number are active cannot be checked without actually dialing ({cuenta, select, subcuenta_propia {organization's own subaccount} other {platform master account}}).",
       "sin_politica_datos": "The data processing policy URL is missing (Settings › CRM › Telephony). Without it, campaigns do not call.",
       "sin_verificacion_rne": "The campaign has not been checked against the Do-Not-Call Registry (RNE). Upload it on the campaign card.",
-      "verificacion_rne_vencida": "The RNE check has expired. Upload the RNE list again on the campaign card."
+      "verificacion_rne_vencida": "The RNE check has expired. Upload the RNE list again on the campaign card.",
+      "verificacion_rne_incompleta": "This check recorded no numbers. Import the RNE file again before calling."
     },
     "politicaDatos": {
       "titulo": "Data processing policy",
@@ -12956,6 +12957,8 @@
     "estadoVigente": "Checked",
     "estadoVencida": "Expired",
     "estadoSin": "Not checked",
+    "estadoIncompleta": "Incomplete",
+    "reimportar": "This check recorded no numbers. Import the RNE file again before calling.",
     "verificar": "Check against RNE",
     "verificando": "Checking…",
     "resultado": "{n, plural, =0 {No campaign number is on the RNE.} one {# campaign number is on the RNE and was excluded.} other {# campaign numbers are on the RNE and were excluded.}}",

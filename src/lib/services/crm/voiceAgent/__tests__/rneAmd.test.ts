@@ -8,6 +8,7 @@ import {
   leerArchivoRne,
   normalizarNumeroRne,
   verificacionRneVigente,
+  verificacionRneRegistradaVigente,
   vigenciaRneHasta,
   VIGENCIA_RNE_DIAS,
 } from '../rne';
@@ -65,6 +66,16 @@ describe('RNE: filtrado de los objetivos de la campaña', () => {
 });
 
 describe('RNE: vigencia de la verificación', () => {
+  test.each([0, -1, 1.5, NaN, Infinity])('una fecha futura con recuento %p no acredita importación', (numbers_in_file) => {
+    expect(verificacionRneRegistradaVigente({ valid_until: '2999-01-01T00:00:00Z', numbers_in_file })).toBe(false);
+  });
+
+  test('exige números y fecha vigente en el mismo registro', () => {
+    const ahora = new Date('2026-10-01T00:00:00Z');
+    expect(verificacionRneRegistradaVigente(null, ahora)).toBe(false);
+    expect(verificacionRneRegistradaVigente({ valid_until: '2026-10-02T00:00:00Z', numbers_in_file: 2 }, ahora)).toBe(true);
+    expect(verificacionRneRegistradaVigente({ valid_until: ahora.toISOString(), numbers_in_file: 2 }, ahora)).toBe(false);
+  });
   test(`dura ${VIGENCIA_RNE_DIAS} días`, () => {
     const hecha = new Date('2026-09-30T15:00:00Z');
     const hasta = vigenciaRneHasta(hecha);

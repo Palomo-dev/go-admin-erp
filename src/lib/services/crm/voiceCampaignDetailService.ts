@@ -23,6 +23,7 @@ export interface VozCampanaDetalle {
     schedule: Record<string, unknown> | null;
     rne_checked_at: string | null;
     rne_valid_until: string | null;
+    rne_numbers_in_file: number | null;
   };
   stats: {
     targets: number;

@@ -106,7 +106,7 @@ export function CampaignRnePanel({ campaignId }: { campaignId: string }) {
         body: JSON.stringify({ nombre_archivo: archivo.name, contenido }),
       });
       if (!json?.success || !json.data) throw new Error(json?.error || t("errorVerificar"));
-      setVerificacion({ ...json.data, vigente: true });
+      setVerificacion(json.data);
       setRecien(true);
     } catch (err) {
       logError("[CampaignRnePanel] verificar", err);
@@ -117,7 +117,8 @@ export function CampaignRnePanel({ campaignId }: { campaignId: string }) {
     }
   };
 
-  const vigente = verificacion?.vigente === true;
+  const incompleta = verificacion !== null && (!Number.isInteger(verificacion.numbers_in_file) || verificacion.numbers_in_file <= 0);
+  const vigente = verificacion?.vigente === true && !incompleta;
 
   return (
     <section
@@ -131,13 +132,14 @@ export function CampaignRnePanel({ campaignId }: { campaignId: string }) {
         </h4>
         {!cargando && (
           <StatusBadge
-            estado={vigente ? "vigente" : verificacion ? "vencida" : "pendiente"}
-            etiqueta={vigente ? t("estadoVigente") : verificacion ? t("estadoVencida") : t("estadoSin")}
+            estado={incompleta ? "incompleta" : vigente ? "vigente" : verificacion ? "vencida" : "pendiente"}
+            etiqueta={incompleta ? t("estadoIncompleta") : vigente ? t("estadoVigente") : verificacion ? t("estadoVencida") : t("estadoSin")}
             tono={vigente ? "exito" : "advertencia"}
           />
         )}
       </div>
       <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">{t("ayuda", { dias: vigenciaDias })}</p>
+      {incompleta && <p className="mt-2 text-xs text-amber-800 dark:text-amber-200" role="alert">{t("reimportar")}</p>}
 
       {cargando ? (
         <p className="mt-2 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400" role="status">

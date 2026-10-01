@@ -3,7 +3,7 @@ const now = new Date("2026-10-01T00:00:00Z");
 const row = (v: Partial<CampanaUnificadaRaw> = {}): CampanaUnificadaRaw => ({
   id: "x", name: "Campaña", source: "voice", channel: "voice", status: "running",
   created_at: now.toISOString(), scheduled_at: null, stats: null, segment_name: "", content_name: null,
-  emergency_stop: false, stopped_reason: null, rne_valid_until: "2026-10-10T00:00:00Z",
+  emergency_stop: false, stopped_reason: null, rne_valid_until: "2026-10-10T00:00:00Z", rne_numbers_in_file: 2,
   voice_counts: {}, data_policy_url: "https://example.com/politica", ...v,
 });
 test("no cuenta buzones como conversaciones completadas ni como llamadas activas", () => {
@@ -24,4 +24,8 @@ test("los borradores no aparecen como bloqueados aunque falte el RNE", () => {
 test("mensajes usa el estado canónico y tolera contadores históricos parciales", () => {
   const r = proyectarCampana(row({ source: "message", channel: "email", status: "sending", stats: { state: "paused", counts: { sent: 5 } } as CampanaUnificadaRaw["stats"] }), now);
   expect(r.status).toBe("paused"); expect(r.progress.done).toBe(5); expect(Number.isFinite(r.progress.pct)).toBe(true);
+});
+
+test("una constancia futura sin números mantiene bloqueada la campaña", () => {
+  expect(proyectarCampana(row({ rne_numbers_in_file: 0 }), now)).toMatchObject({ status: "blocked", blockedReasons: ["rne"] });
 });

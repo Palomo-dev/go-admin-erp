@@ -12907,7 +12907,8 @@
       "twilio_no_verificable": "Que las credenciales de Twilio y el número estén activos no se puede comprobar sin marcar de verdad ({cuenta, select, subcuenta_propia {subcuenta propia de la organización} other {cuenta maestra de la plataforma}}).",
       "sin_politica_datos": "Falta la URL de la política de tratamiento de datos (Configuración › CRM › Telefonía). Sin ella las campañas no llaman.",
       "sin_verificacion_rne": "La campaña no se ha verificado contra el Registro de Números Excluidos (RNE). Cárgalo en la tarjeta de la campaña.",
-      "verificacion_rne_vencida": "La verificación contra el RNE venció. Vuelve a cargar la lista del RNE en la tarjeta de la campaña."
+      "verificacion_rne_vencida": "La verificación contra el RNE venció. Vuelve a cargar la lista del RNE en la tarjeta de la campaña.",
+      "verificacion_rne_incompleta": "Esta constancia no registró números. Vuelve a importar el archivo del RNE antes de llamar."
     },
     "politicaDatos": {
       "titulo": "Política de tratamiento de datos",
@@ -12956,6 +12957,8 @@
     "estadoVigente": "Verificada",
     "estadoVencida": "Vencida",
     "estadoSin": "Sin verificar",
+    "estadoIncompleta": "Incompleta",
+    "reimportar": "Esta constancia no registró números. Vuelve a importar el archivo del RNE antes de llamar.",
     "verificar": "Verificar contra RNE",
     "verificando": "Verificando…",
     "resultado": "{n, plural, =0 {Ningún número de la campaña está en el RNE.} one {# número de la campaña está en el RNE y quedó excluido.} other {# números de la campaña están en el RNE y quedaron excluidos.}}",

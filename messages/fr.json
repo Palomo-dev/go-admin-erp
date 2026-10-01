@@ -10776,7 +10776,8 @@
       "twilio_no_verificable": "Vérifier que les identifiants Twilio et le numéro sont actifs est impossible sans composer réellement ({cuenta, select, subcuenta_propia {sous-compte propre de l'organisation} other {compte maître de la plateforme}}).",
       "sin_politica_datos": "L'URL de la politique de traitement des données manque (Paramètres › CRM › Téléphonie). Sans elle, les campagnes n'appellent pas.",
       "sin_verificacion_rne": "La campagne n'a pas été vérifiée contre le registre des numéros exclus (RNE). Chargez-le dans la carte de la campagne.",
-      "verificacion_rne_vencida": "La vérification RNE a expiré. Chargez de nouveau la liste du RNE dans la carte de la campagne."
+      "verificacion_rne_vencida": "La vérification RNE a expiré. Chargez de nouveau la liste du RNE dans la carte de la campagne.",
+      "verificacion_rne_incompleta": "Cette vérification n’a enregistré aucun numéro. Importez à nouveau le fichier RNE avant d’appeler."
     },
     "politicaDatos": {
       "titulo": "Politique de traitement des données",
@@ -10825,6 +10826,8 @@
     "estadoVigente": "Vérifiée",
     "estadoVencida": "Expirée",
     "estadoSin": "Non vérifiée",
+    "estadoIncompleta": "Incomplète",
+    "reimportar": "Cette vérification n’a enregistré aucun numéro. Importez à nouveau le fichier RNE avant d’appeler.",
     "verificar": "Vérifier contre le RNE",
     "verificando": "Vérification…",
     "resultado": "{n, plural, =0 {Aucun numéro de la campagne ne figure au RNE.} one {# numéro de la campagne figure au RNE et a été exclu.} other {# numéros de la campagne figurent au RNE et ont été exclus.}}",

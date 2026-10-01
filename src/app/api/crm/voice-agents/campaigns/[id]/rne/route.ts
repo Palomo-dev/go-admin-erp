@@ -19,7 +19,7 @@ import { NextResponse } from 'next/server';
 import { hasOrgAdminOrPermission, withOrg, readOrgBody } from '@/lib/utils/orgContext';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { ultimaVerificacionRne } from '@/lib/services/crm/voiceAgent/cumplimiento';
-import { MAX_BYTES_ARCHIVO_RNE, VIGENCIA_RNE_DIAS, verificacionRneVigente } from '@/lib/services/crm/voiceAgent/rne';
+import { MAX_BYTES_ARCHIVO_RNE, VIGENCIA_RNE_DIAS, verificacionRneRegistradaVigente } from '@/lib/services/crm/voiceAgent/rne';
 import { registrarVerificacionRne, RneValidationError } from '@/lib/services/crm/voiceAgent/rneService';
 
 export const runtime = 'nodejs';
@@ -48,7 +48,7 @@ export const GET = withOrg(async (ctx, _request, routeParams) => {
     return NextResponse.json(
       {
         success: true,
-        data: v ? { ...v, vigente: verificacionRneVigente(v.valid_until) } : null,
+        data: v ? { ...v, vigente: verificacionRneRegistradaVigente(v) } : null,
         vigencia_dias: VIGENCIA_RNE_DIAS,
         puede_verificar: puedeVerificar,
       },
@@ -81,7 +81,7 @@ export const POST = withOrg(
         nombre,
         contenido,
       });
-      return NextResponse.json({ success: true, data }, { status: 200, headers: NO_STORE });
+      return NextResponse.json({ success: true, data: { ...data, vigente: verificacionRneRegistradaVigente(data) } }, { status: 200, headers: NO_STORE });
     } catch (error) {
       if (error instanceof RneValidationError) {
         return NextResponse.json({ success: false, error: error.message }, { status: error.statusCode });

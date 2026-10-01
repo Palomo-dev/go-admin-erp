@@ -6,6 +6,12 @@ export function errorWhatsAppDb(error: { code?: string; message: string }): What
   if (error.code === "P0002") return new WhatsAppError("NOT_FOUND", "No se encontró el registro en la organización", 404);
   if (error.code === "22023" || error.code === "22P02") return new WhatsAppError("VALIDATION", "Revisa los datos de la solicitud", 400);
   if (error.message === "creditos_insuficientes") return new WhatsAppError("NO_CREDITS", "Sin créditos de WhatsApp", 402);
+  if (["rne_required", "contacto_bloqueado:rne_required"].includes(error.message))
+    return new WhatsAppError("RNE_REQUIRED", "Verifica la campaña con un archivo RNE vigente antes de continuar", 409);
+  if (["data_policy_required", "contacto_bloqueado:data_policy_required"].includes(error.message))
+    return new WhatsAppError("DATA_POLICY_REQUIRED", "Configura la URL HTTPS de la política de datos antes de continuar", 409);
+  if (error.message === "audiencia_rne_modificada")
+    return new WhatsAppError("NOT_EDITABLE", "Cambió el teléfono de un contacto. Actualiza la audiencia y vuelve a verificar el RNE", 409);
   if (error.message === "contacto_bloqueado:consent_blocked") return new WhatsAppError("OPTED_OUT", "El contacto no autoriza este envío", 422);
   if (["plantilla_no_aprobada", "contacto_bloqueado:template_not_verified"].includes(error.message))
     return new WhatsAppError("TEMPLATE_NOT_APPROVED", "La plantilla debe estar aprobada para este canal", 409);

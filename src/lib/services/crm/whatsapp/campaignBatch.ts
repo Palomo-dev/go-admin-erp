@@ -63,6 +63,8 @@ export function classifySendError(err: unknown, attempts: number): SendFailureAc
       case 'US_MARKETING_BLOCKED': return { action: 'skip', reason: 'us_marketing' };
       case 'MISSING_VARIABLES': return { action: 'skip', reason: 'missing_variables' };
       case 'CHANNEL_NO_TEMPLATES':
+      case 'RNE_REQUIRED':
+      case 'DATA_POLICY_REQUIRED':
       case 'TEMPLATE_NOT_APPROVED':
       case 'NO_CHANNEL': return { action: 'pause', reason: err.code.toLowerCase() };
       case 'NO_CREDITS': return { action: 'pause', reason: 'no_credits' };

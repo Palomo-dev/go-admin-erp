@@ -25164,6 +25164,7 @@
       "mm80": "Bobina 80 mm",
       "excel": "Excel",
       "vistaPrevia": "Pré-visualizar",
+      "calculando": "Calculando os relatórios do fechamento…",
       "generar": "Gerar fechamento",
       "recalcular": "Recalcular",
       "existente": "Já há um fechamento deste período. Recalcular cria uma versão nova e marca a anterior como substituída.",

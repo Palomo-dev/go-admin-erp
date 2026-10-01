@@ -18,6 +18,8 @@ import { generarCierre, vistaPreviaCierre, type EntradaCierre } from '@/lib/serv
 import { respuestaErrorReportes, sujetoDeContexto } from '@/lib/services/reportes/rutas.server';
 
 export const dynamic = 'force-dynamic';
+/** La vista previa y el guardado corren cada reporte de la plantilla. */
+export const maxDuration = 300;
 const RUTA = 'POST /api/reportes/cierres';
 
 export const POST = withOrg(async (ctx, req) => {

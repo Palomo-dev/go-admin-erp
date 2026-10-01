@@ -25164,6 +25164,7 @@
       "mm80": "Ticket 80 mm",
       "excel": "Excel",
       "vistaPrevia": "Aperçu",
+      "calculando": "Calcul des rapports de la clôture…",
       "generar": "Générer la clôture",
       "recalcular": "Recalculer",
       "existente": "Une clôture existe déjà pour cette période. Recalculer crée une nouvelle version et marque la précédente comme remplacée.",

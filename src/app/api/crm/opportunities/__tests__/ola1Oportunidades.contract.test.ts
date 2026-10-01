@@ -16,6 +16,9 @@ import { fakeSupabase, makeDb, seed, ORG, OTRA, U, YO, type Ola1Db } from '../..
 
 let db: Ola1Db;
 let permisos: Set<string>;
+// after() se ejecuta dentro del contexto de Next; aquí se verifica su frontera.
+const avisos = jest.fn();
+jest.mock('@/lib/services/avisos/despacho.server', () => ({ programarDespachoAvisos: (org: number) => avisos(org) }));
 
 jest.mock('@/lib/utils/orgContext', () => ({
   OrgContextError: RealOrgContextError,
@@ -61,6 +64,7 @@ const json = async (res: Response) => ({ status: res.status, body: (await res.js
 const escrituras = () => db.writes.length + db.rpcCalls.length;
 
 beforeEach(() => {
+  avisos.mockClear();
   db = makeDb(seed());
   permisos = new Set(EMPLEADO);
   changeStageMock.mockReset();
@@ -78,6 +82,7 @@ describe('POST /api/crm/opportunities', () => {
     const { status, body } = await json(await createPost(req('/api/crm/opportunities', 'POST', { ...cuerpo, organization_id: ORG })));
     expect(status).toBe(201);
     expect(body.data).toEqual({ id: U(5), record_type: 'deal' });
+    expect(avisos).toHaveBeenCalledWith(ORG);
     expect(db.rpcCalls).toEqual([{ fn: 'crm_create_opportunity', args: { p_org: ORG, p_data: cuerpo } }]);
   });
 
@@ -85,6 +90,7 @@ describe('POST /api/crm/opportunities', () => {
     (getServerOrgContext as jest.Mock).mockRejectedValueOnce(new RealOrgContextError('No autenticado', 401));
     expect((await createPost(req('/api/crm/opportunities', 'POST', cuerpo))).status).toBe(401);
     expect(escrituras()).toBe(0);
+    expect(avisos).not.toHaveBeenCalled();
   });
 
   it('403 con una organización ajena en el body o en la query, y nada se escribe', async () => {

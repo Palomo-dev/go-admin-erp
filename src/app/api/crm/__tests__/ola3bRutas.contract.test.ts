@@ -14,6 +14,8 @@ import { fakeSupabase, makeDb, seed, ORG, OTRA, U, YO, OTRO_VENDEDOR, type Ola1D
 
 let db: Ola1Db;
 let permisos: Set<string>;
+const avisos = jest.fn();
+jest.mock('@/lib/services/avisos/despacho.server', () => ({ programarDespachoAvisos: (org: number) => avisos(org) }));
 
 jest.mock('@/lib/utils/orgContext', () => ({
   OrgContextError: RealOrgContextError,
@@ -69,6 +71,7 @@ function semilla(): Record<string, Row[]> {
 }
 
 beforeEach(() => {
+  avisos.mockClear();
   db = makeDb(semilla());
   permisos = new Set(EMPLEADO);
   jest.spyOn(console, 'warn').mockImplementation(() => undefined);
@@ -111,6 +114,7 @@ describe('GET /api/crm/opportunities — lista de la ola 3B', () => {
     db.rpc.crm_create_opportunity = { data: { id: U(5) } };
     const cuerpo = { name: 'Evento', spaces: [{ space_id: U(700), nights: 2, unit_price: 100 }] };
     expect((await createPost(req('/api/crm/opportunities', 'POST', cuerpo))).status).toBe(201);
+    expect(avisos).toHaveBeenCalledWith(ORG);
     expect(db.rpcCalls[0].args.p_data).toEqual(cuerpo);
   });
 });

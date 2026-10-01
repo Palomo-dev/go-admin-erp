@@ -15,6 +15,7 @@ import {
   normalizarBusqueda,
   type NodoPlano,
 } from './arbol';
+import { PROPS_SCROLL_EN_CAPA } from './scrollEnCapa';
 
 /**
  * Selección de un nodo sobre el árbol real (Figma: diálogo «Mover a…» y campo
@@ -283,6 +284,7 @@ export function TreeSelect({
       </PopoverPrimitive.Trigger>
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content
+          {...PROPS_SCROLL_EN_CAPA}
           align="start"
           sideOffset={4}
           collisionPadding={16}

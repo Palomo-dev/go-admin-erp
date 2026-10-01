@@ -6,7 +6,8 @@ import { Package, Plus, Trash2 } from 'lucide-react';
 import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { CLASE_CAMPO } from '@/components/crm/kit/camposCrm';
-import { ProductSearchSelect } from '@/components/crm/oportunidades/ProductSearchSelect';
+import { AgregarProductosDocumento } from '@/components/finanzas/documento/productos';
+import { useBranchOpcional } from '@/lib/context/BranchContext';
 import { SpaceSearchSelect } from '@/components/crm/oportunidades/SpaceSearchSelect';
 import { opportunitiesService } from '@/components/crm/oportunidades/opportunitiesService';
 import { formatMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
@@ -18,6 +19,12 @@ import { numeroDeCampo, subtotal, totalLineas, type Lineas } from './lineasLogic
  * `lineasLogica.totalLineas` (único). Reutiliza los buscadores de producto y
  * de espacio del formulario anterior. Se guardan con la oportunidad, en la
  * misma transacción (`crm_create/update_opportunity`).
+ *
+ * Productos: «+ Agregar producto» abre el diálogo «Agregar productos» del kit
+ * (Figma 1042:34652, el mismo de la factura y la orden de compra: buscador,
+ * escáner, precio de la lista y stock de la sucursal) y la fila muestra el
+ * nombre, como el Figma 778:32176. Antes cada fila traía el buscador viejo
+ * `ProductSearchSelect`, cuyo panel desbordaba con nombres largos.
  */
 type Clase = 'products' | 'spaces' | 'custom';
 
@@ -28,25 +35,26 @@ export interface LineasOportunidadProps {
   deshabilitado?: boolean;
 }
 
-type Producto = { id: number; name: string; sku: string; price: number; image?: string };
 type Espacio = { id: string; label: string; floor_zone?: string; status: string; type_name?: string; base_rate: number };
 
 export function LineasOportunidad({ lineas, onCambiar, moneda, deshabilitado }: LineasOportunidadProps) {
   const t = useTranslations('crm.oportunidad.lineas');
   const [clase, setClase] = useState<Clase>('products');
-  const [productos, setProductos] = useState<Producto[]>([]);
+  const [agregandoProductos, setAgregandoProductos] = useState(false);
+  const sucursales = useBranchOpcional();
+  const selectedBranchId = sucursales?.selectedBranchId ?? null;
+  const nombreSucursal = sucursales?.branches.find((b) => b.id === selectedBranchId)?.name ?? null;
   const [espacios, setEspacios] = useState<Espacio[]>([]);
   useEffect(() => {
-    if (clase === 'products' && productos.length === 0) void opportunitiesService.getProducts().then(setProductos, () => setProductos([]));
     if (clase === 'spaces' && espacios.length === 0) void opportunitiesService.getSpaces().then(setEspacios, () => setEspacios([]));
-  }, [clase, productos.length, espacios.length]);
+  }, [clase, espacios.length]);
 
   const num = (valor: number, cambiar: (n: number) => void, etiqueta: string) => (
-    <input aria-label={etiqueta} inputMode="decimal" defaultValue={String(valor)} onBlur={(e) => cambiar(numeroDeCampo(e.target.value))} disabled={deshabilitado} className={`${CLASE_CAMPO} w-24 text-right`} />
+    <input key={String(valor)} aria-label={etiqueta} inputMode="decimal" defaultValue={String(valor)} onBlur={(e) => cambiar(numeroDeCampo(e.target.value))} disabled={deshabilitado} className={`${CLASE_CAMPO} w-24 text-right`} />
   );
   const quitar = (k: Clase, i: number) => onCambiar({ ...lineas, [k]: lineas[k].filter((_, j) => j !== i) });
   const agregar = () => {
-    if (clase === 'products') onCambiar({ ...lineas, products: [...lineas.products, { product_id: 0, quantity: 1, unit_price: 0 }] });
+    if (clase === 'products') setAgregandoProductos(true);
     else if (clase === 'spaces') onCambiar({ ...lineas, spaces: [...lineas.spaces, { space_id: '', nights: 1, unit_price: 0 }] });
     else onCambiar({ ...lineas, custom: [...lineas.custom, { concept: '', quantity: 1, unit_price: 0 }] });
   };
@@ -55,7 +63,7 @@ export function LineasOportunidad({ lineas, onCambiar, moneda, deshabilitado }: 
     clase === 'products'
       ? lineas.products.map((l, i) => ({
           clave: l.id ?? `p${i}`,
-          elegir: <ProductSearchSelect products={productos} selectedProductId={l.product_id} onSelect={(id, p) => onCambiar({ ...lineas, products: lineas.products.map((x, j) => (j === i ? { ...x, product_id: id, nombre: p?.name ?? null, unit_price: x.unit_price || p?.price || 0 } : x)) })} placeholder={l.nombre ?? t('elegirProducto')} />,
+          elegir: <span className="block min-w-0 truncate text-fg" title={l.nombre ?? undefined}>{l.nombre ?? t('elegirProducto')}</span>,
           cantidad: num(l.quantity, (n) => onCambiar({ ...lineas, products: lineas.products.map((x, j) => (j === i ? { ...x, quantity: n } : x)) }), t('cantidad')),
           precio: num(l.unit_price, (n) => onCambiar({ ...lineas, products: lineas.products.map((x, j) => (j === i ? { ...x, unit_price: n } : x)) }), t('precio')),
           total: subtotal(l.quantity, l.unit_price),
@@ -78,6 +86,18 @@ export function LineasOportunidad({ lineas, onCambiar, moneda, deshabilitado }: 
             total: subtotal(l.quantity, l.unit_price),
             i,
           }));
+
+  // Un producto que ya está en las líneas suma una unidad en vez de duplicar la fila.
+  const agregarProducto = (p: { id: number; nombre: string; precio: number }) => {
+    const ya = lineas.products.findIndex((x) => x.product_id === p.id);
+    onCambiar({
+      ...lineas,
+      products:
+        ya >= 0
+          ? lineas.products.map((x, j) => (j === ya ? { ...x, quantity: x.quantity + 1 } : x))
+          : [...lineas.products, { product_id: p.id, nombre: p.nombre, quantity: 1, unit_price: p.precio || 0 }],
+    });
+  };
 
   return (
     <section aria-labelledby="lineas-oportunidad" className="flex flex-col gap-3 border-t border-line pt-4">
@@ -124,6 +144,17 @@ export function LineasOportunidad({ lineas, onCambiar, moneda, deshabilitado }: 
         </button>
         <span className="text-sm font-semibold text-fg">{t('totalGeneral', { total: formatMoneda(totalLineas(lineas), moneda) })}</span>
       </div>
+      <AgregarProductosDocumento
+        abierto={agregandoProductos}
+        onAbiertoChange={setAgregandoProductos}
+        variante="venta"
+        sucursal={selectedBranchId}
+        nombreSucursal={nombreSucursal}
+        moneda={moneda}
+        impuestos={[]}
+        sinCrear
+        onAgregar={agregarProducto}
+      />
     </section>
   );
 }

@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { FilterButton } from './FilterButton';
 import { useEsEscritorio } from './useEsEscritorio';
 import { useFormatoEntero, useKitT } from './useIdiomaKit';
+import { PROPS_SCROLL_EN_CAPA } from './scrollEnCapa';
 
 /**
  * Panel de filtros (Figma `FilterPanel`, PATRONES §3 y §11) con su botón.
@@ -116,6 +117,7 @@ export function FilterPanel({
         </PopoverPrimitive.Trigger>
         <PopoverPrimitive.Portal>
           <PopoverPrimitive.Content
+          {...PROPS_SCROLL_EN_CAPA}
             align="end"
             sideOffset={8}
             collisionPadding={16}

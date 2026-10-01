@@ -4,6 +4,7 @@ import * as React from "react"
 import * as PopoverPrimitive from "@radix-ui/react-popover"
 
 import { cn } from "@/utils/Utils"
+import { PROPS_SCROLL_EN_CAPA } from "@/components/kit/scrollEnCapa"
 
 const Popover = PopoverPrimitive.Root
 
@@ -15,10 +16,23 @@ const PopoverAnchor = PopoverPrimitive.Anchor
 const PopoverContent = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
->(({ className, align = "center", sideOffset = 4, ...props }, ref) => (
+>(({ className, align = "center", sideOffset = 4, onWheel, onTouchStart, onTouchMove, ...props }, ref) => (
   <PopoverPrimitive.Portal>
     <PopoverPrimitive.Content
       ref={ref}
+      // Listas desplazables dentro de un diálogo: ver kit/scrollEnCapa.ts.
+      onWheel={(e) => {
+        PROPS_SCROLL_EN_CAPA.onWheel(e)
+        onWheel?.(e)
+      }}
+      onTouchStart={(e) => {
+        PROPS_SCROLL_EN_CAPA.onTouchStart(e)
+        onTouchStart?.(e)
+      }}
+      onTouchMove={(e) => {
+        PROPS_SCROLL_EN_CAPA.onTouchMove(e)
+        onTouchMove?.(e)
+      }}
       align={align}
       sideOffset={sideOffset}
       className={cn(

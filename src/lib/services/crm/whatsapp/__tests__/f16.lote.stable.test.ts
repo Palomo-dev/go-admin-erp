@@ -34,7 +34,7 @@ test('publicar conserva sent en cero; SQL decide recuento y próximo job', async
   expect(h.rpcCalls.map((r) => r.fn)).toEqual(['crm_claim_campaign_batch', 'crm_finish_campaign_contact', 'crm_campaign_batch_progress']);
   expect(h.rpcCalls[0].args).toEqual({ p_org: 7, p_campaign: CAMP, p_batch: 3, p_limit: 50 });
   expect(h.rpcCalls[1].args).toMatchObject({ p_org: 7, p_campaign: CAMP, p_contact: 'cc-1', p_token: 'token-cc-1', p_action: 'prepared' });
-  expect(d.send.mock.calls[0][0]).toMatchObject({ orgId: 7, source: 'campaign', campaignId: CAMP, force: false, clientRequestId: `campaign:${CAMP}:cust-cc-1` });
+  expect(d.send.mock.calls[0][0]).toMatchObject({ orgId: 7, source: 'campaign', campaignId: CAMP, campaignClaimToken: 'token-cc-1', force: false, clientRequestId: `campaign:${CAMP}:cust-cc-1` });
   expect(writes(h)).toHaveLength(0);
   expect(h.rpcCalls.some((r) => ['deduct_comm_credits', 'fn_campaign_mark_sent'].includes(r.fn))).toBe(false);
 });

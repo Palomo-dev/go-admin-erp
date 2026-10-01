@@ -179,6 +179,7 @@ export async function sendWhatsApp(input: SendWhatsAppInput, supabase: SupabaseC
       recipient, template_id: templateId, category, campaign_id: input.campaignId ?? null,
       client_request_id: input.clientRequestId ?? null, window_open: window.is_open,
       provider: channel.provider, purpose: actualPurpose,
+      ...(input.campaignId && input.campaignClaimToken ? { campaign_claim_token: input.campaignClaimToken } : {}),
     },
   });
   if (error) throw errorWhatsAppDb(error);

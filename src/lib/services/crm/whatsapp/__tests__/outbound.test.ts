@@ -108,6 +108,12 @@ describe('sendWhatsApp (outboundService)', () => {
     await expect(sendWhatsApp({ orgId: 7, customerId: 'cust-1', channelId: 'chan-1', text: 'hola' }, wrong.sb, wrong.sb, NOW)).rejects.toMatchObject({ status: 500 });
   });
 
+  test('el lote transmite su testigo privado y el envío manual no lo inventa', async () => {
+    const h = makeSupabase(baseTables(), rpcOk);
+    await sendWhatsApp({ orgId: 7, customerId: 'cust-1', channelId: 'chan-1', text: 'hola', source: 'campaign', campaignId: 'camp-1', campaignClaimToken: 'token-1', clientRequestId: 'campaign:camp-1:cust-1' }, h.sb, h.sb, NOW);
+    expect(h.rpcCalls.find((r) => r.fn === 'crm_prepare_whatsapp_outbound')?.args.p_request).toMatchObject({ campaign_id: 'camp-1', campaign_claim_token: 'token-1' });
+  });
+
   test('cliente de otra org → 404', async () => {
     const { sb } = makeSupabase(baseTables({ customers: () => ({ data: null }) }), rpcOk);
     await expect(sendWhatsApp({ orgId: 7, customerId: 'cust-x', channelId: 'chan-1', text: 'hola' }, sb, sb, NOW)).rejects.toMatchObject({ code: 'NOT_FOUND', status: 404 });

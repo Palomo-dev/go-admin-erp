@@ -67,7 +67,7 @@ import { SCHEDULED_KINDS, hasScheduledKinds, runScheduledKinds } from '@/lib/job
  * `src/__tests__/voz/` y `voiceAgent/__tests__/`.
  */
 const POLITICA_DATOS = 'https://example.com/politica-de-datos';
-const RNE_VIGENTE = { id: 'rne-1', checked_at: '2026-09-01T00:00:00Z', valid_until: '2999-01-01T00:00:00Z' };
+const RNE_VIGENTE = { id: 'rne-1', checked_at: '2026-09-01T00:00:00Z', valid_until: '2999-01-01T00:00:00Z', numbers_in_file: 2 };
 
 const ROOT = process.cwd();
 const SRC = (rel: string) => fs.readFileSync(path.join(ROOT, rel), 'utf8');

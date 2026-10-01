@@ -173,7 +173,7 @@ export async function runCampaignBatch(payload: { campaign_id: string; batch_no?
         opportunityId: meta.opportunity_id ?? null, text: c.template_id ? null : c.content,
         variables: c.template_id ? null : { ...defaults, ...(meta.variables ?? {}) },
         template: c.template_id ? { templateId: c.template_id, variables: { ...defaults, ...(meta.variables ?? {}) } } : null,
-        source: 'campaign', campaignId, purpose: c.statistics.purpose === 'marketing' ? 'marketing' : 'utility',
+        source: 'campaign', campaignId, campaignClaimToken: meta.claim_token ?? null, purpose: c.statistics.purpose === 'marketing' ? 'marketing' : 'utility',
         role: 'agent', senderUserId: c.created_by, force: false, clientRequestId: campaignClientRequestId(campaignId, row.customer_id),
       }, service);
       if (!result.message_id || result.scheduled || result.customer_id !== row.customer_id) throw new WhatsAppError('INTERNAL', 'Mensaje preparado inválido', 500);

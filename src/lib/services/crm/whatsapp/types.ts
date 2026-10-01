@@ -155,6 +155,8 @@ export interface SendWhatsAppInput {
   role?: 'agent' | 'ai';
   source?: 'crm' | 'campaign' | 'sequence' | 'agent' | 'bulk' | 'platform_send';
   campaignId?: string | null;
+  /** Testigo privado del job; no forma parte del esquema de envío del navegador. */
+  campaignClaimToken?: string | null;
   clientRequestId?: string | null;
   /** Saltar horario permitido (solo utility). */
   force?: boolean;

@@ -61,7 +61,7 @@ import { VOICE_AGENT_TOOL_DEFINITIONS, ALL_TOOL_NAMES } from '@/lib/services/crm
  * `src/__tests__/voz/` y `voiceAgent/__tests__/`.
  */
 const POLITICA_DATOS = 'https://example.com/politica-de-datos';
-const RNE_VIGENTE = { id: 'rne-1', checked_at: '2026-09-01T00:00:00Z', valid_until: '2999-01-01T00:00:00Z' };
+const RNE_VIGENTE = { id: 'rne-1', checked_at: '2026-09-01T00:00:00Z', valid_until: '2999-01-01T00:00:00Z', numbers_in_file: 2 };
 
 // ─── Esquema real (verificado por MCP contra jgmgphmzusbluqhuqihj) ────────────
 

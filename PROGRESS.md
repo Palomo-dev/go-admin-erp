@@ -3839,3 +3839,9 @@ Verificación: 37 suites / 683 pruebas de WhatsApp, jobs y guardarraíles; 21 ca
 Migración `20261001060500_crm_preparacion_con_testigo_vigente.sql` aplicada por MCP, MD5 `5574b75aa489cec4d9c0ec3eba42ec6e`. Preparación privada exige contacto queued sin enviado y testigo actual antes del primer mensaje. Repetir un mensaje existente conserva idempotencia; el testigo transitorio no cambia la huella estable. Callback sin testigo o con el de otro lote no publica ni cobra. Rollback restaura la función anterior y conserva evidencia y saldos.
 
 BEGIN/ROLLBACK repitió los casos de lote y añadió ausencia/testigo ajeno, repetición con token distinto sin segundo débito y reversión; advisors sin hallazgos para la función. El archivo conserva exactamente el SQL aplicado. Consumidor transmite testigo en el siguiente paso.
+
+### 2026-10-01 — testigo del lote en el consumidor
+
+El lote transmite su token a la preparación privada. El esquema del navegador no expone ese campo y la ruta de envío individual fija source=crm, sin permitir suplantar procedencia de campaña. Pruebas de contrato verifican la transmisión; tipos y lint limpios. Se ajustaron dos fixtures de voz para que una constancia vigente traiga números válidos: 17 suites / 321 casos, siete omisiones existentes; 11 casos finales del envío.
+
+Integrada main hasta 8b7a3620 conservando ambas entradas de PROGRESS.md; build completo en 27f47678, proceso 0. Suite completa de ese punto: 942 suites pasan, 22 fallos en tres suites. Diecinueve provenían de los fixtures de RNE sin recuento y pasan tras corregirlos; tres son del mock de orden de Twilio. Esa revisión encontró además el INSERT antiguo de consentimiento de Twilio: se está sustituyendo por la operación canónica. La suite completa se repetirá tras ese arreglo; no se declara verde ni se despliega.

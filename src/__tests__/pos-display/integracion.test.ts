@@ -440,7 +440,10 @@ describe('Caso 1 · extremo a extremo con POSService, transporte y receptor real
     const transport = (getPosDisplayEmitter() as unknown as { transport: { close: (sayBye?: boolean) => void } }).transport;
     transport.close(false);
 
-    await waitFor(() => display.link.snapshot.connected === false, STALE_AFTER_MS + 1500, 'Conectando por silencio');
+    // El enlace y el receptor tienen intervalos independientes: desconectarse
+    // puede ocurrir antes de que el receptor registre su callback de silencio.
+    // Esperar ambos efectos evita depender del orden de esos dos ticks.
+    await waitFor(() => display.link.snapshot.connected === false && display.receiver.lastStaleAt !== null, STALE_AFTER_MS + 1500, 'Conectando y receptor obsoleto por silencio');
     expect(display.view()).toBe('connecting');
     expect(display.link.snapshot.state).toBeNull();
     expect(display.receiver.lastStaleAt).not.toBeNull();

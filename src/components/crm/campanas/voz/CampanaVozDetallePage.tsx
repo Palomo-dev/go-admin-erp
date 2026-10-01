@@ -13,10 +13,11 @@ import { clasesBoton } from "@/components/kit/botonClases";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { CampaignRnePanel } from "@/components/crm/agentes/campanas/CampaignRnePanel";
-import { pedirCrm } from "@/components/crm/acciones/apiCrm";
+import { pedirCrm, ErrorApiCrm } from "@/components/crm/acciones/apiCrm";
 import { useOrganization } from "@/lib/hooks/useOrganization";
 import { useFormatDate } from "@/lib/context/OrganizationTimezoneContext";
 import type { VozCampanaDetalle } from "@/lib/services/crm/voiceCampaignDetailService";
+import { voiceCampaignErrorKey } from "@/lib/services/crm/voiceCampaignWriteLogica";
 import { useCampanasLectura } from "../useCampanasData";
 import { VozCampanaLlamadas } from "./VozCampanaLlamadas";
 function Detalle({ campaignId }: { campaignId: string }) {
@@ -43,18 +44,19 @@ function Detalle({ campaignId }: { campaignId: string }) {
         {
           method: reason ? "POST" : "PATCH",
           cuerpo: reason
-            ? { reason }
+            ? { reason, expected_updated_at: data?.campaign.updated_at }
             : {
                 status:
                   data?.campaign.status === "running" ? "paused" : "running",
                 emergency_stop: false,
+                expected_updated_at: data?.campaign.updated_at,
               },
         },
       );
       setStop(false);
       refresh();
-    } catch {
-      setActionError(c("errorAccion"));
+    } catch (e) {
+      setActionError(c(voiceCampaignErrorKey(e instanceof ErrorApiCrm ? e.codigo : null)));
     } finally {
       setBusy(false);
     }
@@ -71,14 +73,14 @@ function Detalle({ campaignId }: { campaignId: string }) {
       {data?.canManage && (
         <>
           <button
-            disabled={busy}
+            disabled={busy || campaign?.status === "completed"}
             className={clasesBoton({ variante: "secundario" })}
             onClick={() => void act()}
           >
             {t(campaign?.status === "running" ? "pausar" : "reanudar")}
           </button>
           <button
-            disabled={busy || campaign?.emergency_stop}
+            disabled={busy || campaign?.emergency_stop || campaign?.status === "completed"}
             className={clasesBoton({ variante: "destructivo" })}
             onClick={() => {
               setActionError(null);
@@ -237,7 +239,7 @@ function Detalle({ campaignId }: { campaignId: string }) {
                 </p>
                 <p className="text-xs text-fg-muted">{t("buzonNota")}</p>
               </section>
-              <CampaignRnePanel campaignId={campaignId} />
+              <CampaignRnePanel campaignId={campaignId} expectedUpdatedAt={campaign?.updated_at} onChanged={refresh} />
               <Link
                 className="block text-sm text-link hover:underline"
                 href="/app/crm/agentes-ia?tab=campanas"

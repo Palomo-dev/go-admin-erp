@@ -1,193 +1,49 @@
-import { z } from "zod";
-import {
-  createCampaign,
-  updateCampaign,
-  deleteCampaign,
-  type CampaignInput,
-} from "./voiceAgentService";
-import { requireOrgAdminOrPermission } from "@/lib/utils/orgContext";
-import { getServiceClient } from "@/lib/supabase/server-service";
-import {
-  CRM_PERMISOS,
-  CrmHttpError,
-  exigirUuid,
-  type CrmSesion,
-} from "./crmRouteSupport";
-import { voiceCampaignCreateSchema, voiceCampaignUpdateSchema } from "./voiceCampaignWriteLogica";
-export { voiceCampaignCreateSchema, voiceCampaignUpdateSchema } from "./voiceCampaignWriteLogica";
-async function validarReferencias(
-  ctx: CrmSesion,
-  input: Partial<CampaignInput>,
-) {
-  if (input.voice_agent_id) {
-    const { data, error } = await ctx.supabase
-      .from("voice_agents")
-      .select("id")
-      .eq("id", input.voice_agent_id)
-      .eq("organization_id", ctx.organizationId)
-      .maybeSingle();
-    if (error) throw error;
-    if (!data)
-      throw new CrmHttpError(
-        404,
-        "agente_no_encontrado",
-        "Agente no encontrado",
-      );
-  }
-  if (input.max_concurrent !== undefined) {
-    // comm_settings contiene secretos y solo admite service_role. Esta lectura
-    // devuelve únicamente el tope del canal de la organización ya autorizada.
-    const { data, error } = await getServiceClient()
-      .from("comm_settings")
-      .select("voice_max_concurrent_calls")
-      .eq("organization_id", ctx.organizationId)
-      .eq("is_active", true)
-      .maybeSingle();
-    if (error) throw error;
-    if (input.max_concurrent > Number(data?.voice_max_concurrent_calls ?? 0))
-      throw new CrmHttpError(
-        400,
-        "concurrencia_invalida",
-        "Supera el límite de concurrencia del canal",
-      );
-  }
-  if (input.target_source === "segment") {
-    const id = exigirUuid(
-      typeof input.target_config?.segment_id === "string"
-        ? input.target_config.segment_id
-        : "",
-    );
-    const { data, error } = await ctx.supabase
-      .from("segments")
-      .select("id")
-      .eq("id", id)
-      .eq("organization_id", ctx.organizationId)
-      .maybeSingle();
-    if (error) throw error;
-    if (!data)
-      throw new CrmHttpError(
-        404,
-        "segmento_no_encontrado",
-        "Segmento no encontrado",
-      );
-  }
-  if (input.target_source === "pipeline_stage") {
-    const id = exigirUuid(
-      typeof input.target_config?.stage_id === "string"
-        ? input.target_config.stage_id
-        : "",
-    );
-    const { data: stage, error } = await ctx.supabase
-      .from("stages")
-      .select("pipeline_id")
-      .eq("id", id)
-      .maybeSingle();
-    if (error) throw error;
-    if (!stage)
-      throw new CrmHttpError(404, "etapa_no_encontrada", "Etapa no encontrada");
-    const { data: pipeline, error: pe } = await ctx.supabase
-      .from("pipelines")
-      .select("id")
-      .eq("id", stage.pipeline_id)
-      .eq("organization_id", ctx.organizationId)
-      .maybeSingle();
-    if (pe) throw pe;
-    if (!pipeline)
-      throw new CrmHttpError(404, "etapa_no_encontrada", "Etapa no encontrada");
-  }
-  if (
-    input.target_source === "manual_list" &&
-    input.target_config?.customer_ids !== undefined
-  ) {
-    const parsed = z
-      .array(z.string().uuid())
-      .max(500)
-      .safeParse(input.target_config.customer_ids);
-    if (!parsed.success)
-      throw new CrmHttpError(400, "audiencia_invalida", "Audiencia inválida");
-    const ids = [...new Set(parsed.data)];
-    if (ids.length) {
-      const { data, error } = await ctx.supabase
-        .from("customers")
-        .select("id")
-        .eq("organization_id", ctx.organizationId)
-        .in("id", ids);
-      if (error) throw error;
-      if (data?.length !== ids.length)
-        throw new CrmHttpError(
-          404,
-          "cliente_no_encontrado",
-          "Cliente no encontrado",
-        );
-    }
-  }
+/** Voz: una sola escritura transaccional tras autorizar organización y permiso. */
+import { requireOrgAdminOrPermission } from '@/lib/utils/orgContext';
+import { getServiceClient } from '@/lib/supabase/server-service';
+import { CRM_PERMISOS, CrmHttpError, exigirUuid, type CrmSesion } from './crmRouteSupport';
+import { voiceCampaignCreateSchema, voiceCampaignUpdateSchema, voiceCampaignVersionSchema, voiceCampaignStopSchema } from './voiceCampaignWriteLogica';
+import type { VoiceAgentCampaign } from './voiceAgentService';
+export { voiceCampaignCreateSchema, voiceCampaignUpdateSchema } from './voiceCampaignWriteLogica';
+
+async function versionPropia(ctx: CrmSesion, id: string, expected?: string): Promise<string> {
+  const { data, error } = await ctx.supabase.from('voice_agent_campaigns').select('id, updated_at')
+    .eq('id', id).eq('organization_id', ctx.organizationId).is('stats->>archived_at', null).maybeSingle();
+  if (error) throw error;
+  if (!data) throw new CrmHttpError(404, 'campana_no_encontrada', 'Campaña no encontrada');
+  // Compatibilidad con clientes anteriores. Las pantallas nuevas envían la versión que vieron.
+  return expected ?? data.updated_at;
 }
-export async function guardarCampanaVoz(
-  ctx: CrmSesion,
-  body: unknown,
-  id?: string,
-) {
-  await requireOrgAdminOrPermission(ctx, CRM_PERMISOS.campanasGestionar);
-  const parsed = (
-    id ? voiceCampaignUpdateSchema : voiceCampaignCreateSchema
-  ).safeParse(body);
-  if (!parsed.success)
-    throw new CrmHttpError(
-      400,
-      "datos_invalidos",
-      "Datos de campaña inválidos",
-    );
-  const input = parsed.data as CampaignInput;
-  // Un PATCH conserva la fuente y sus referencias: validarlas solo cuando
-  // ambas claves llegan en el cuerpo permitiría cambiar a un segmento ajeno.
-  let effective: Partial<CampaignInput> = input;
-  if (id) {
-    const { data: previous, error } = await ctx.supabase
-      .from("voice_agent_campaigns")
-      .select("voice_agent_id, target_source, target_config, max_concurrent")
-      .eq("id", exigirUuid(id))
-      .eq("organization_id", ctx.organizationId)
-      .maybeSingle();
-    if (error) throw error;
-    if (!previous)
-      throw new CrmHttpError(
-        404,
-        "campana_no_encontrada",
-        "Campaña no encontrada",
-      );
-    effective = { ...previous, ...input };
-    // Pausar o detener sigue disponible si el canal bajó su límite o una
-    // audiencia antigua dejó de existir. Los cambios sí vuelven a validarse.
-    if (input.max_concurrent === undefined)
-      effective.max_concurrent = undefined;
-    if (
-      input.target_source === undefined &&
-      input.target_config === undefined
-    ) {
-      effective.target_source = undefined;
-      effective.target_config = undefined;
-    }
-  } else {
-    effective = { target_source: "manual_list", max_concurrent: 3, ...input };
-  }
-  await validarReferencias(ctx, effective);
-  const result = id
-    ? await updateCampaign(
-        exigirUuid(id),
-        ctx.organizationId,
-        input,
-        ctx.supabase,
-      )
-    : await createCampaign(ctx.organizationId, input, ctx.supabase);
-  if (!result)
-    throw new CrmHttpError(
-      404,
-      "campana_no_encontrada",
-      "Campaña no encontrada",
-    );
-  return result;
+async function mutar(ctx: CrmSesion, fn: string, id: string | null, version: string | null, extra: Record<string, unknown> = {}): Promise<VoiceAgentCampaign> {
+  const { data, error } = await getServiceClient().rpc(fn, {
+    p_org: ctx.organizationId, p_campaign: id, p_version: version, p_actor: ctx.userId, ...extra,
+  });
+  if (error) throw error;
+  if (!data || typeof data !== 'object' || Array.isArray(data) || data.organization_id !== ctx.organizationId ||
+    typeof data.id !== 'string' || (id !== null && data.id !== id) || typeof data.updated_at !== 'string')
+    throw new CrmHttpError(500, 'respuesta_invalida', 'Respuesta inválida de campaña');
+  return data as VoiceAgentCampaign;
 }
-export async function eliminarCampanaVoz(ctx: CrmSesion, id: string) {
+export async function guardarCampanaVoz(ctx: CrmSesion, body: unknown, id?: string): Promise<VoiceAgentCampaign> {
   await requireOrgAdminOrPermission(ctx, CRM_PERMISOS.campanasGestionar);
-  await deleteCampaign(exigirUuid(id), ctx.organizationId, ctx.supabase);
+  const parsed = (id ? voiceCampaignUpdateSchema : voiceCampaignCreateSchema).safeParse(body);
+  if (!parsed.success) throw new CrmHttpError(400, 'datos_invalidos', 'Datos de campaña inválidos');
+  const { expected_updated_at, ...values } = parsed.data as typeof voiceCampaignUpdateSchema._type;
+  const campaignId = id ? exigirUuid(id) : null;
+  const version = campaignId ? await versionPropia(ctx, campaignId, expected_updated_at) : null;
+  return mutar(ctx, 'crm_voice_campaign_save', campaignId, version, { p_values: values });
+}
+export async function eliminarCampanaVoz(ctx: CrmSesion, id: string, body: unknown = {}): Promise<void> {
+  await requireOrgAdminOrPermission(ctx, CRM_PERMISOS.campanasGestionar);
+  const parsed = voiceCampaignVersionSchema.safeParse(body);
+  if (!parsed.success) throw new CrmHttpError(400, 'datos_invalidos', 'Versión de campaña inválida');
+  const campaignId = exigirUuid(id);
+  await mutar(ctx, 'crm_voice_campaign_archive', campaignId, await versionPropia(ctx, campaignId, parsed.data.expected_updated_at));
+}
+export async function detenerCampanaVoz(ctx: CrmSesion, id: string, body: unknown): Promise<VoiceAgentCampaign> {
+  await requireOrgAdminOrPermission(ctx, CRM_PERMISOS.campanasGestionar);
+  const parsed = voiceCampaignStopSchema.safeParse(body);
+  if (!parsed.success) throw new CrmHttpError(400, 'motivo_invalido', 'Escribe el motivo');
+  const campaignId = exigirUuid(id);
+  return mutar(ctx, 'crm_voice_campaign_stop', campaignId, await versionPropia(ctx, campaignId, parsed.data.expected_updated_at), { p_reason: parsed.data.reason });
 }

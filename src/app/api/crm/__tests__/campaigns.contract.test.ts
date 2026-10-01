@@ -18,7 +18,7 @@ const request = (path: string, method = "GET", body?: unknown) => new NextReques
 const params = () => ({ params: Promise.resolve({ id: U(1) }) });
 beforeEach(() => {
   db = makeDb({
-    voice_agent_campaigns: [{ id: U(1), organization_id: ORG, voice_agent_id: U(2), target_source: "segment", target_config: { segment_id: U(3) }, max_concurrent: 3 }],
+    voice_agent_campaigns: [{ id: U(1), organization_id: ORG, voice_agent_id: U(2), target_source: "segment", target_config: { segment_id: U(3) }, max_concurrent: 3, updated_at: "2026-10-01T00:00:00.123456Z" }],
     voice_agents: [{ id: U(2), organization_id: ORG }],
     segments: [{ id: U(3), organization_id: ORG }, { id: U(4), organization_id: OTRA }],
   });
@@ -28,7 +28,8 @@ beforeEach(() => {
     id: U(i + 50), name: `Campaña ${i}`, source: "message", channel: i === 204 ? "email" : "whatsapp", status: "draft", stats: {}, voice_counts: {},
   })) };
   db.rpc.crm_voice_campaign_detail = { data: { campaign: { id: U(1) }, stats: {}, history: [], active: [] } };
-  db.rpc.fn_stop_voice_campaign = { data: true };
+  serviceDb.rpc.crm_voice_campaign_stop = { data: { id: U(1), organization_id: ORG, updated_at: "2026-10-01T00:00:01.123456Z" } };
+  serviceDb.rpc.crm_voice_campaign_save = serviceDb.rpc.crm_voice_campaign_stop;
 });
 test("filtra antes de paginar sobre más de 200 campañas", async () => {
   const r = await GET(request("/api/crm/campaigns/unified?page=9")); const j = await r.json();
@@ -47,18 +48,23 @@ test("lectura y gestión requieren sus permisos respectivos", async () => {
   expect((await stop(request("/voice/stop", "POST", { reason: "Revisar lote" }), params())).status).toBe(403);
 });
 test("un PATCH de solo target_config no admite un segmento ajeno", async () => {
+  serviceDb.rpc.crm_voice_campaign_save = { error: { code: "P0002", message: "segmento_no_encontrado" } };
   expect((await PATCH(request("/voice", "PATCH", { target_config: { segment_id: U(4) } }), params())).status).toBe(404);
   expect(db.writes).toHaveLength(0);
 });
 test("rechaza topes superiores al canal pero permite pausar una campaña antigua", async () => {
+  const own = serviceDb.rpc.crm_voice_campaign_save;
+  serviceDb.rpc.crm_voice_campaign_save = { error: { code: "22023", message: "concurrencia_invalida" } };
   expect((await PATCH(request("/voice", "PATCH", { max_concurrent: 3 }), params())).status).toBe(400);
+  serviceDb.rpc.crm_voice_campaign_save = own;
   expect((await PATCH(request("/voice", "PATCH", { status: "paused" }), params())).status).toBe(200);
 });
 test("la parada exige motivo y usa la RPC, nunca el PATCH de emergency_stop", async () => {
   expect((await stop(request("/voice/stop", "POST", { reason: " " }), params())).status).toBe(400);
   expect((await PATCH(request("/voice", "PATCH", { emergency_stop: true }), params())).status).toBe(400);
   expect((await stop(request("/voice/stop", "POST", { reason: "Revisión del lote" }), params())).status).toBe(200);
-  expect(db.rpcCalls.at(-1)).toMatchObject({ fn: "fn_stop_voice_campaign", args: { p_org: ORG, p_campaign: U(1), p_reason: "Revisión del lote" } });
+  expect(serviceDb.rpcCalls.at(-1)).toMatchObject({ fn: "crm_voice_campaign_stop", args: { p_org: ORG, p_campaign: U(1), p_actor: YO, p_version: "2026-10-01T00:00:00.123456Z", p_reason: "Revisión del lote" } });
+  expect(db.writes).toHaveLength(0);
 });
 test("detalle transmite el tope canónico y convierte SQLSTATE sin filtrar errores internos", async () => {
   const response = await detail(request("/voice?page=2"), params());

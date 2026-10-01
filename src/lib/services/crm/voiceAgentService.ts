@@ -440,90 +440,10 @@ export async function getVoiceAgentCampaigns(
       .from('voice_agent_campaigns')
       .select('*, voice_agents:voice_agent_id(id, name)')
       .eq('organization_id', orgId)
+      .is('stats->>archived_at', null)
       .order('created_at', { ascending: false })
   );
   return (data || []) as VoiceAgentCampaign[];
-}
-
-export async function createCampaign(
-  orgId: number,
-  data: CampaignInput,
-  supabase: SupabaseClient
-): Promise<VoiceAgentCampaign> {
-  const targetSource = data.target_source ?? 'manual_list';
-  if (!CAMPAIGN_TARGET_SOURCES.includes(targetSource)) {
-    throw new Error(`target_source inválido: ${targetSource}`);
-  }
-  const result = unwrap(
-    'createCampaign',
-    await supabase
-      .from('voice_agent_campaigns')
-      .insert({
-        organization_id: orgId,
-        voice_agent_id: data.voice_agent_id,
-        name: data.name,
-        objective: data.objective ?? null,
-        target_source: targetSource,
-        target_config: data.target_config ?? {},
-        schedule: data.schedule ?? {},
-        max_calls_per_day: data.max_calls_per_day ?? 50,
-        max_calls_per_hour: data.max_calls_per_hour ?? 20,
-        max_concurrent: data.max_concurrent ?? 3,
-        status: data.status ?? 'draft',
-        stats: {},
-      })
-      .select('*')
-      .single()
-  );
-  return result as VoiceAgentCampaign;
-}
-
-export async function updateCampaign(
-  id: string,
-  orgId: number,
-  data: CampaignUpdateInput,
-  supabase: SupabaseClient
-): Promise<VoiceAgentCampaign | null> {
-  if (data.target_source && !CAMPAIGN_TARGET_SOURCES.includes(data.target_source)) {
-    throw new Error(`target_source inválido: ${data.target_source}`);
-  }
-  const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  const fields: (keyof CampaignInput)[] = [
-    'voice_agent_id', 'name', 'objective', 'target_source', 'target_config', 'schedule',
-    'max_calls_per_day', 'max_calls_per_hour', 'max_concurrent', 'emergency_stop', 'status',
-  ];
-  for (const field of fields) {
-    if (data[field] !== undefined) updateData[field] = data[field];
-  }
-  // Reanudar una campaña detenida limpia el motivo de parada.
-  if (data.emergency_stop === false) {
-    updateData.stopped_reason = null;
-    updateData.stopped_at = null;
-    updateData.consecutive_failures = 0;
-  }
-
-  const result = unwrap(
-    'updateCampaign',
-    await supabase
-      .from('voice_agent_campaigns')
-      .update(updateData)
-      .eq('id', id)
-      .eq('organization_id', orgId)
-      .select('*')
-      .maybeSingle()
-  );
-  return (result as VoiceAgentCampaign) || null;
-}
-
-export async function deleteCampaign(
-  id: string,
-  orgId: number,
-  supabase: SupabaseClient
-): Promise<void> {
-  unwrap(
-    'deleteCampaign',
-    await supabase.from('voice_agent_campaigns').delete().eq('id', id).eq('organization_id', orgId)
-  );
 }
 
 /** Parada de emergencia manual (UI) o automática (racha de fallos). */
@@ -985,6 +905,7 @@ export async function runCampaignQueue(
       .select('*')
       .eq('organization_id', orgId)
       .eq('status', 'running')
+      .is('stats->>archived_at', null)
       .eq('emergency_stop', false)
   ) || []) as VoiceAgentCampaign[];
 

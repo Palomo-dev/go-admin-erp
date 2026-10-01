@@ -177,6 +177,7 @@ export async function diagnosticarCampanasDeVoz(
     .from('voice_agent_campaigns')
     .select('*')
     .eq('organization_id', orgId)
+    .is('stats->>archived_at', null)
     .order('updated_at', { ascending: false })
     .limit(50);
   if (campRes.error) throw new Error(`voice_agent_campaigns: ${campRes.error.message}`);

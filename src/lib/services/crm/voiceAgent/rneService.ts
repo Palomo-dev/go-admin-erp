@@ -32,6 +32,7 @@ export class RneValidationError extends Error {
 
 export interface ResultadoVerificacionRne {
   check_id: string;
+  campaign_updated_at: string;
   checked_at: string;
   valid_until: string;
   numbers_in_file: number;
@@ -46,7 +47,7 @@ export async function registrarVerificacionRne(
   orgId: number,
   campaignId: string,
   userId: string | null,
-  archivo: { nombre: string | null; contenido: string }
+  archivo: { nombre: string | null; contenido: string; expectedUpdatedAt?: string }
 ): Promise<ResultadoVerificacionRne> {
   if (typeof archivo.contenido !== 'string' || !archivo.contenido.trim()) {
     throw new RneValidationError('El archivo está vacío.');
@@ -60,6 +61,7 @@ export async function registrarVerificacionRne(
     .select('*')
     .eq('id', campaignId)
     .eq('organization_id', orgId)
+    .is('stats->>archived_at', null)
     .maybeSingle();
   if (campRes.error) throw new Error(`voice_agent_campaigns: ${campRes.error.message}`);
   const campaign = campRes.data as VoiceAgentCampaign | null;
@@ -89,9 +91,10 @@ export async function registrarVerificacionRne(
   const { excluidos } = filtrarContraRne(conTelefono, lectura.numeros);
 
   const sha256 = createHash('sha256').update(archivo.contenido, 'utf8').digest('hex');
-  const { data, error } = await supabase.rpc('fn_rne_registrar_verificacion', {
+  const { data, error } = await supabase.rpc('crm_voice_campaign_rne_versioned', {
     p_org: orgId,
     p_campaign: campaignId,
+    p_version: archivo.expectedUpdatedAt ?? campaign.updated_at,
     p_numeros: lectura.numeros,
     p_clientes_excluidos: excluidos.map((e) => e.customer_id),
     p_objetivos_revisados: conTelefono.length,
@@ -100,7 +103,7 @@ export async function registrarVerificacionRne(
     p_usuario: userId,
     p_vigencia_dias: VIGENCIA_RNE_DIAS,
   });
-  if (error) throw new Error(`fn_rne_registrar_verificacion: ${error.message}`);
+  if (error) throw error;
   const r = data as Omit<ResultadoVerificacionRne, 'descartados'>;
   return { ...r, descartados: lectura.descartados };
 }

@@ -25142,13 +25142,20 @@
       },
       "bloqueos": {
         "rne": "Falta verificar o RNE",
-        "policy": "Falta a política de dados"
+        "policy": "Falta a política de dados",
+        "agent": "O agente não está disponível nesta organização.",
+        "channel": "O canal de voz está desativado.",
+        "balance": "Não há minutos de voz disponíveis.",
+        "audience": "Selecione um público antes de ativar.",
+        "audienceLocked": "Este público já tem chamadas ou uma verificação RNE. Crie uma campanha para outro público.",
+        "state": "Esta campanha não permite essa mudança de estado."
       },
       "elegirRne": "Selecione uma campanha de voz nesta página para verificar seus números.",
       "sinVozPagina": "Não há campanhas de voz nesta página.",
       "cerrar": "Fechar",
       "configurar": "Configurar CRM",
-      "confirmarParada": "Parada de emergência"
+      "confirmarParada": "Parada de emergência",
+      "archivoVozConciliacion": "Há chamadas ativas ou créditos aguardando conciliação. Revise o resultado antes de arquivar a campanha."
     },
     "campanasVoz": {
       "titulo": "Campanha de voz",

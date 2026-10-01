@@ -10,6 +10,7 @@ export interface CampanaUnificadaRaw {
   channel: "voice" | "whatsapp" | "email";
   status: string;
   created_at: string;
+  updated_at?: string;
   scheduled_at: string | null;
   stats: CampaignConfig | null;
   segment_name: string;
@@ -66,6 +67,7 @@ export function proyectarCampana(c: CampanaUnificadaRaw, now: Date) {
     contentName: c.content_name,
     scheduledAt: c.scheduled_at,
     createdAt: c.created_at,
+    ...(c.updated_at ? { updatedAt: c.updated_at } : {}),
     stoppedReason: c.stopped_reason,
     blockedReasons: reasons,
     progress: {

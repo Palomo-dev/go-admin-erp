@@ -49,7 +49,7 @@ function makeSupabase(resolve: (op: Op) => Res, resolveRpc: (name: string, args:
         op.head = o?.head;
         return proxy;
       },
-      eq: filtro('eq'), in: filtro('in'), gte: filtro('gte'), lte: filtro('lte'), not: filtro('not'),
+      eq: filtro('eq'), is: filtro('is'), in: filtro('in'), gte: filtro('gte'), lte: filtro('lte'), not: filtro('not'),
       order: filtro('order'), limit: filtro('limit'),
       maybeSingle: async () => settle(),
       single: async () => settle(),
@@ -81,6 +81,7 @@ function makeSupabase(resolve: (op: Op) => Res, resolveRpc: (name: string, args:
 }
 
 interface Escenario {
+  archivada?: boolean;
   politica?: string | null;
   rne?: unknown[];
   excluido?: boolean;
@@ -108,7 +109,10 @@ function escenario(e: Escenario = {}) {
   };
   return makeSupabase(
     (op) => {
-      if (op.table === 'voice_agent_campaigns' && op.verb === 'select') return { data: [campana] };
+      if (op.table === 'voice_agent_campaigns' && op.verb === 'select') {
+        const excluyeArchivadas = op.filters.some(([f, col, value]) => f === 'is' && col === 'stats->>archived_at' && value === null);
+        return { data: e.archivada && excluyeArchivadas ? [] : [campana] };
+      }
       if (op.table === 'comm_settings') {
         return {
           data: {
@@ -329,4 +333,12 @@ describe('Número de prueba interno: exime solo del tope semanal', () => {
       warn.mockRestore();
     }
   });
+});
+
+test('una campaña archivada no vuelve a llamar aunque una integración cambie su estado a running', async () => {
+  const { client, rpcs } = escenario({ archivada: true });
+  const r = await runCampaignQueue(7, client);
+  expect(r.campaigns_processed).toBe(0);
+  expect(twilioCreate).not.toHaveBeenCalled();
+  expect(rpcs.some(c => c.name === 'fn_claim_voice_agent_calls')).toBe(false);
 });

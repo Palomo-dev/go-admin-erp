@@ -9,6 +9,10 @@ import { FAILURE_STREAK_TO_STOP } from "./voiceAgentService";
 export interface VozCampanaDetalle {
   campaign: {
     id: string;
+    updated_at: string;
+    voice_agent_id: string;
+    target_source: string;
+    target_config: Record<string, unknown>;
     name: string;
     status: string;
     agent_name: string;

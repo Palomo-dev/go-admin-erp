@@ -4750,13 +4750,20 @@
       },
       "bloqueos": {
         "rne": "RNE verification required",
-        "policy": "Data policy required"
+        "policy": "Data policy required",
+        "agent": "The agent is unavailable in this organization.",
+        "channel": "The voice channel is disabled.",
+        "balance": "No voice minutes are available.",
+        "audience": "Select an audience before activating.",
+        "audienceLocked": "This audience already has calls or an RNE check. Create a campaign for another audience.",
+        "state": "This campaign does not allow that status change."
       },
       "elegirRne": "Select a voice campaign on this page to verify its numbers.",
       "sinVozPagina": "There are no voice campaigns on this page.",
       "cerrar": "Close",
       "configurar": "Configure CRM",
-      "confirmarParada": "Emergency stop"
+      "confirmarParada": "Emergency stop",
+      "archivoVozConciliacion": "There are active calls or credits awaiting reconciliation. Review their outcome before archiving the campaign."
     },
     "campanasVoz": {
       "titulo": "Voice campaign",

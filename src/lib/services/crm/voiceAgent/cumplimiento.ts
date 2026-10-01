@@ -119,6 +119,7 @@ export async function ultimaVerificacionRne(
     .eq('organization_id', orgId)
     .eq('campaign_id', campaignId)
     .order('checked_at', { ascending: false })
+    .order('id', { ascending: false })
     .limit(1);
   if (error) throw new CumplimientoDbError('voice_campaign_rne_checks', error.message);
   const fila = Array.isArray(data) ? (data[0] as VerificacionRne | undefined) : undefined;

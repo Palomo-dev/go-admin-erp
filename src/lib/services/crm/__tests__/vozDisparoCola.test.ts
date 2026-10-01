@@ -114,7 +114,7 @@ function makeSupabase(resolve: Resolver, resolveRpc?: RpcResolver) {
         op.head = opts?.head;
         return proxy;
       },
-      eq: filter('eq'), neq: filter('neq'), in: filter('in'), gte: filter('gte'),
+      eq: filter('eq'), is: filter('is'), neq: filter('neq'), in: filter('in'), gte: filter('gte'),
       lte: filter('lte'), gt: filter('gt'), lt: filter('lt'), not: filter('not'),
       order: filter('order'), limit: filter('limit'), range: filter('range'),
       maybeSingle: async () => settle(),

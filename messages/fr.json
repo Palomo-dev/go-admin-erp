@@ -25142,13 +25142,20 @@
       },
       "bloqueos": {
         "rne": "Vérification RNE requise",
-        "policy": "Politique de données requise"
+        "policy": "Politique de données requise",
+        "agent": "Cet agent est indisponible dans cette organisation.",
+        "channel": "Le canal vocal est désactivé.",
+        "balance": "Aucune minute vocale n’est disponible.",
+        "audience": "Sélectionnez une audience avant l’activation.",
+        "audienceLocked": "Cette audience a déjà des appels ou une vérification RNE. Créez une campagne pour une autre audience.",
+        "state": "Cette campagne ne permet pas ce changement d’état."
       },
       "elegirRne": "Sélectionnez une campagne vocale sur cette page pour vérifier ses numéros.",
       "sinVozPagina": "Aucune campagne vocale sur cette page.",
       "cerrar": "Fermer",
       "configurar": "Configurer le CRM",
-      "confirmarParada": "Arrêt d’urgence"
+      "confirmarParada": "Arrêt d’urgence",
+      "archivoVozConciliacion": "Des appels sont actifs ou des crédits attendent un rapprochement. Vérifiez leur résultat avant d’archiver la campagne."
     },
     "campanasVoz": {
       "titulo": "Campagne vocale",

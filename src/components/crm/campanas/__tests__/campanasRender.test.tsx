@@ -13,7 +13,7 @@ let state: { loading: boolean; error: boolean; forbidden: boolean; data: Campana
 jest.mock("../useCampanasData", () => ({ useCampanasData: () => state, useCampanasLectura: () => state }));
 jest.mock("../CampanasService", () => ({ CampanasService: {} }));
 const detalle = (): VozCampanaDetalle => ({
-  campaign: { id: "campaign", name: "Campaña de ejemplo", agent_name: "Agente de ejemplo", status: "paused", objective: null, emergency_stop: true, stopped_reason: "Revisar el lote", stopped_at: "2026-09-30T17:00:00Z", consecutive_failures: 10, max_calls_per_day: 50, max_calls_per_hour: 20, max_concurrent: 3, schedule: {}, rne_checked_at: null, rne_valid_until: null, rne_numbers_in_file: null },
+  campaign: { updated_at: "2026-10-01T00:00:00.123456Z", voice_agent_id: "agente", target_source: "manual_list", target_config: {}, id: "campaign", name: "Campaña de ejemplo", agent_name: "Agente de ejemplo", status: "paused", objective: null, emergency_stop: true, stopped_reason: "Revisar el lote", stopped_at: "2026-09-30T17:00:00Z", consecutive_failures: 10, max_calls_per_day: 50, max_calls_per_hour: 20, max_concurrent: 3, schedule: {}, rne_checked_at: null, rne_valid_until: null, rne_numbers_in_file: null },
   stats: { targets: 206, attempts: 206, today: 2, effective: 2, meetings: 1, conversation_minutes: 207, remaining_minutes: 30, active_total: 0, pending: 0, rescheduled: 0, outcomes: { completed: 206 } },
   active: [], history: [{ id: "call", customer_name: "Contacto de ejemplo", status: "completed", started_at: "2026-09-30T17:00:00Z", duration_seconds: 60 }],
   page: 1, timezone: "UTC", canManage: true, failureThreshold: 10,

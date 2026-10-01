@@ -53,8 +53,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 export async function DELETE(request: NextRequest, { params }: Params) {
   try {
     const ctx = await getServerOrgContext(request);
-    await readOrgBody(ctx, request);
-    await eliminarCampanaVoz(ctx, (await params).id);
+    const body = sinClavesDeOrganizacion(await readOrgBody(ctx, request));
+    await eliminarCampanaVoz(ctx, (await params).id, body);
     return NextResponse.json({ success: true });
   } catch (e) {
     return respuestaErrorCrm(e, "DELETE /api/crm/voice-agents/campaigns/[id]");

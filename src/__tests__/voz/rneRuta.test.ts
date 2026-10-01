@@ -13,6 +13,8 @@
  */
 
 import { NextRequest } from 'next/server';
+import { fakeSupabase, makeDb } from '@/app/api/crm/__tests__/ola1Fake';
+let userClient: ReturnType<typeof fakeSupabase>;
 
 const { OrgContextError } = jest.requireActual<typeof import('@/lib/utils/orgContextError')>('@/lib/utils/orgContextError');
 const { readOrgBody } = jest.requireActual<typeof import('@/lib/security/organizationBody')>('@/lib/security/organizationBody');
@@ -22,7 +24,7 @@ const sesion: { ctx: Record<string, unknown> | null; admin: boolean } = { ctx: n
 jest.mock('@/lib/utils/orgContext', () => ({
   OrgContextError,
   readOrgBody,
-  hasOrgAdminOrPermission: jest.fn(async () => sesion.admin),
+  hasOrgAdminOrPermission: jest.fn(async (_ctx: unknown, code: string) => code === 'crm.opportunities.view' || sesion.admin),
   withOrg:
     (handler: (ctx: unknown, req: Request, rp: unknown) => Promise<Response>, opts?: { admin?: boolean }) =>
     async (req: Request, rp: unknown) => {
@@ -69,7 +71,8 @@ const post = (body: unknown, id = CAMPANA) =>
   POST(new NextRequest(url(id), { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } }), rp(id));
 
 beforeEach(() => {
-  sesion.ctx = { organizationId: 7, userId: 'u-1', supabase: { user: true } };
+  userClient = fakeSupabase(makeDb({ voice_agent_campaigns: [{ id: CAMPANA, organization_id: 7 }] }));
+  sesion.ctx = { organizationId: 7, userId: 'u-1', supabase: userClient };
   sesion.admin = true;
   registrar.mockReset();
   ultima.mockReset();
@@ -94,7 +97,7 @@ describe('GET', () => {
     const res = await GET(new NextRequest(url()), rp());
     const body = await res.json();
     expect(res.status).toBe(200);
-    expect(ultima).toHaveBeenCalledWith({ user: true }, 7, CAMPANA);
+    expect(ultima).toHaveBeenCalledWith(userClient, 7, CAMPANA);
     expect(body.data.vigente).toBe(true);
     expect(body.puede_verificar).toBe(false);
   });

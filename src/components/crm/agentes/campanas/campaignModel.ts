@@ -10,6 +10,7 @@ import type { PipelineOption, StageOption } from "@/components/crm/shared/useCrm
 
 export interface CampaignRow {
   id: string;
+  updated_at?: string;
   name: string;
   status: string;
   target_source: string;
@@ -57,7 +58,7 @@ export function campaignStatusView(
 
 /** `true` si la acción disponible es «Activar» (si no, «Parada de emergencia»). */
 export function campaignCanActivate(c: Pick<CampaignRow, "status" | "emergency_stop">): boolean {
-  return c.emergency_stop || c.status !== "running";
+  return c.status !== "completed" && (c.emergency_stop || c.status !== "running");
 }
 
 export function campaignStageId(

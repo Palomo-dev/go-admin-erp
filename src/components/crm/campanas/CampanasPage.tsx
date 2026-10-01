@@ -15,10 +15,11 @@ import { DialogoMotivo } from "@/components/kit/DialogoMotivo";
 import { clasesBoton } from "@/components/kit/botonClases";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CLASE_CAMPO } from "@/components/crm/kit/camposCrm";
-import { pedirCrm } from "@/components/crm/acciones/apiCrm";
+import { pedirCrm, ErrorApiCrm } from "@/components/crm/acciones/apiCrm";
 import { useOrganization } from "@/lib/hooks/useOrganization";
 import { CampanasService } from "./CampanasService";
 import { ApiError } from "@/components/crm/whatsapp/api";
+import { voiceCampaignErrorKey } from "@/lib/services/crm/voiceCampaignWriteLogica";
 import { useCampanasData } from "./useCampanasData";
 import { CampanasTable, type CampanaFila } from "./CampanasTable";
 function CampanasContent() {
@@ -51,7 +52,7 @@ function CampanasContent() {
           `/api/crm/voice-agents/campaigns/${row.id}${action === "stop" ? "/stop" : ""}`,
           {
             method: action === "delete" ? "DELETE" : "POST",
-            cuerpo: action === "stop" ? { reason } : undefined,
+            cuerpo: { ...(action === "stop" ? { reason } : {}), expected_updated_at: row.updatedAt },
           },
         );
       } else if (action === "pause") await CampanasService.pause(row.id);
@@ -62,8 +63,8 @@ function CampanasContent() {
       setTarget(null);
       refresh();
     } catch (error) {
-      const code = error instanceof ApiError ? error.code : null;
-      setActionError(t(code === "RECONCILIATION_REQUIRED" ? "archivoConciliacion" : code === "CAMPAIGN_MODIFIED" ? "archivoConflicto" : "errorAccion"));
+      const code = error instanceof ApiError ? error.code : error instanceof ErrorApiCrm ? error.codigo : null;
+      setActionError(t(row.source === "voice" ? voiceCampaignErrorKey(code) : code === "RECONCILIATION_REQUIRED" ? "archivoConciliacion" : code === "CAMPAIGN_MODIFIED" ? "archivoConflicto" : "errorAccion"));
     } finally {
       setBusy(false);
     }
@@ -213,7 +214,7 @@ function CampanasContent() {
         </FormField>
         {rneId ? (
           rneSource === "voice"
-            ? <CampaignRnePanel key={rneId} campaignId={rneId} />
+            ? <CampaignRnePanel key={rneId} campaignId={rneId} expectedUpdatedAt={data?.rows.find(r => r.id === rneId && r.source === 'voice')?.updatedAt} onChanged={refresh} />
             : <CampaignCompliancePanel key={rneId} campaignId={rneId} />
         ) : (
           <p className="my-3 text-sm text-fg-muted">{d(data?.rows.length ? "elegirCampana" : "sinCampanas")}</p>
@@ -231,7 +232,7 @@ function CampanasContent() {
           if (!open && !busy) setTarget(null);
         }}
         titulo={t(target?.action === "delete" ? "eliminar" : "cancelarCampana")}
-        descripcion={t(target?.action === "delete" && target.row.source === "message" ? "confirmarArchivo" : "confirmarDestructivo")}
+        descripcion={t(target?.action === "delete" ? "confirmarArchivo" : "confirmarDestructivo")}
         primario={{
           etiqueta: t(
             target?.action === "delete" ? "eliminar" : "cancelarCampana",

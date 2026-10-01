@@ -37,6 +37,7 @@ import { CampaignCard } from "./campanas/CampaignCard";
 import { CampaignRunNow } from "./campanas/CampaignRunNow";
 import { DialogoMotivo } from "@/components/kit/DialogoMotivo";
 import { useTranslations } from "next-intl";
+import { voiceCampaignErrorKey } from "@/lib/services/crm/voiceCampaignWriteLogica";
 
 interface Props {
   agents: VoiceAgentListItem[];
@@ -124,7 +125,7 @@ function CampaignsPanelInner({
         body: JSON.stringify(buildCampaignBody({ name, voiceAgentId: effectiveAgentId, stageId })),
       });
       const json = await res.json();
-      if (!res.ok || !json?.success) throw new Error(json?.error || `Error ${res.status}`);
+      if (!res.ok || !json?.success) throw new Error(t(voiceCampaignErrorKey(json?.code ?? null)));
       setName("");
       setStageId(null);
       toast({
@@ -149,10 +150,10 @@ function CampaignsPanelInner({
       const res = await fetch(`/api/crm/voice-agents/campaigns/${id}${body.reason ? "/stop" : ""}`, {
         method: body.reason ? "POST" : "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, expected_updated_at: campaigns.find(c => c.id === id)?.updated_at }),
       });
       const json = await res.json();
-      if (!res.ok || !json?.success) throw new Error(json?.error || `Error ${res.status}`);
+      if (!res.ok || !json?.success) throw new Error(t(voiceCampaignErrorKey(json?.code ?? null)));
       toast({ title: ok });
       setStopId(null);
       void load();
@@ -265,6 +266,7 @@ function CampaignsPanelInner({
               stages={lookups.stages}
               pipelines={lookups.pipelines}
               busy={!canManage || patching === c.id}
+              onRneChanged={() => void load()}
               onActivate={(row) =>
                 void patch(row.id, { status: "running", emergency_stop: false }, "Campaña activada")
               }

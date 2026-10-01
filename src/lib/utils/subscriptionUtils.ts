@@ -67,39 +67,31 @@ export function hasPaidPeriod(subscription: SubscriptionWithMetadata): boolean {
  * Determina si una suscripción es una cortesía aprobada que NO debe congelarse.
  * 
  * @param subscription - Objeto de suscripción con metadata
- * @returns true si tiene metadata.cortesia (truthy) con periodo futuro, O si está
- *          active sin IDs de Stripe con periodo futuro
+ * @returns true si tiene metadata.cortesia (truthy) con periodo futuro
  * 
  * Contexto: Algunas orgs tienen cortesías aprobadas (ej. org 143 TecnoShopping).
- * Estas suscripciones están activas sin stripe_customer_id ni stripe_subscription_id,
- * y pueden tener metadata.cortesia. NO deben congelarse mientras el periodo esté vigente.
+ * La cortesía se detecta SOLO por metadata.cortesia truthy y periodo futuro.
+ * NO se detecta implícitamente por ausencia de IDs de Stripe (hay orgs nuevas
+ * desincronizadas 145, 197-200 que no son cortesías).
  */
 export function isCourtesySubscription(subscription: SubscriptionWithMetadata): boolean {
   if (!subscription || !subscription.current_period_end) {
     return false;
   }
 
+  // Solo cortesías explícitas con metadata.cortesia truthy
+  if (!subscription.metadata?.cortesia) {
+    return false;
+  }
+
+  // Verificar que el periodo sea futuro
   const now = new Date();
   const periodEnd = new Date(subscription.current_period_end);
   if (isNaN(periodEnd.getTime()) || periodEnd <= now) {
     return false;
   }
 
-  // Caso 1: Tiene metadata.cortesia explícita (truthy) con periodo futuro
-  if (subscription.metadata?.cortesia) {
-    return true;
-  }
-
-  // Caso 2: Active sin IDs de Stripe con periodo futuro
-  if (
-    subscription.status === 'active' &&
-    !subscription.stripe_customer_id &&
-    !subscription.stripe_subscription_id
-  ) {
-    return true;
-  }
-
-  return false;
+  return true;
 }
 
 /**

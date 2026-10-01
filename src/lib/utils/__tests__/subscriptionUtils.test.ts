@@ -163,7 +163,7 @@ describe('subscriptionUtils', () => {
       expect(isCourtesySubscription(subscription)).toBe(true);
     });
 
-    it('devuelve true cuando está active sin IDs de Stripe con periodo futuro (org 143)', () => {
+    it('devuelve false cuando está active sin IDs de Stripe sin metadata.cortesia', () => {
       const subscription = {
         status: 'active',
         current_period_end: '2027-09-29T00:00:00Z',
@@ -172,7 +172,8 @@ describe('subscriptionUtils', () => {
         metadata: {},
       };
 
-      expect(isCourtesySubscription(subscription)).toBe(true);
+      // Ya NO es cortesía implícita (orgs 145, 197-200 desincronizadas no son cortesías)
+      expect(isCourtesySubscription(subscription)).toBe(false);
     });
 
     it('devuelve false cuando está active con IDs de Stripe', () => {
@@ -211,7 +212,7 @@ describe('subscriptionUtils', () => {
       expect(isCourtesySubscription(subscription)).toBe(false);
     });
 
-    it('devuelve false cuando metadata.cortesia es falsy pero cumple el caso 2', () => {
+    it('devuelve false cuando metadata.cortesia es falsy', () => {
       const subscription = {
         status: 'active',
         current_period_end: futureDate.toISOString(),
@@ -222,11 +223,10 @@ describe('subscriptionUtils', () => {
         },
       };
 
-      // Aunque cortesia sea falsy, cumple el caso 2 (active sin IDs con periodo futuro)
-      expect(isCourtesySubscription(subscription)).toBe(true);
+      expect(isCourtesySubscription(subscription)).toBe(false);
     });
 
-    it('devuelve false cuando metadata.cortesia es falsy y NO cumple el caso 2', () => {
+    it('devuelve false cuando metadata.cortesia es falsy con IDs de Stripe', () => {
       const subscription = {
         status: 'trialing',
         current_period_end: futureDate.toISOString(),
@@ -275,7 +275,7 @@ describe('subscriptionUtils', () => {
       expect(isExemptFromFreezing(subscription)).toBe(true);
     });
 
-    it('devuelve true cuando es cortesía active sin IDs de Stripe (org 143)', () => {
+    it('devuelve false cuando es active sin IDs de Stripe sin metadata (orgs 145, 197-200)', () => {
       const subscription = {
         status: 'active',
         current_period_end: '2027-09-29T00:00:00Z',
@@ -284,7 +284,8 @@ describe('subscriptionUtils', () => {
         metadata: {},
       };
 
-      expect(isExemptFromFreezing(subscription)).toBe(true);
+      // Ya NO es cortesía implícita, y tampoco tiene pago anual
+      expect(isExemptFromFreezing(subscription)).toBe(false);
     });
 
     it('devuelve false cuando NO cumple ninguna de las condiciones', () => {

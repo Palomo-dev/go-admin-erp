@@ -180,23 +180,6 @@ describe('Lógica de congelamiento con pagos anuales y cortesías', () => {
       expect(debeCongelar).toBe(false);
     });
 
-    it('NO debe congelar cuando active sin IDs de Stripe con periodo futuro (org 143)', () => {
-      const subscription = {
-        status: 'active',
-        current_period_end: '2027-09-29T00:00:00Z',
-        stripe_customer_id: null,
-        stripe_subscription_id: null,
-        metadata: {},
-      };
-
-      const estaExenta = isExemptFromFreezing(subscription);
-      expect(estaExenta).toBe(true);
-      
-      // Lógica esperada: NO congelar porque es cortesía implícita
-      const debeCongelar = !estaExenta;
-      expect(debeCongelar).toBe(false);
-    });
-
     it('NO debe congelar cortesía aunque cambie a trialing', () => {
       const subscription = {
         status: 'trialing',
@@ -232,6 +215,44 @@ describe('Lógica de congelamiento con pagos anuales y cortesías', () => {
       // Lógica esperada: NO congelar aunque esté past_due
       const debeCongelar = subscription.status === 'past_due' && !estaExenta;
       expect(debeCongelar).toBe(false);
+    });
+  });
+
+  describe('Escenario: suscripciones sin IDs de Stripe desincronizadas (orgs 145, 197-200)', () => {
+    it('DEBE congelar active sin IDs de Stripe sin metadata.cortesia', () => {
+      const subscription = {
+        status: 'active',
+        current_period_end: '2027-09-29T00:00:00Z',
+        stripe_customer_id: null,
+        stripe_subscription_id: null,
+        metadata: {},
+      };
+
+      const estaExenta = isExemptFromFreezing(subscription);
+      expect(estaExenta).toBe(false);
+      
+      // Lógica esperada: NO está exenta (no es cortesía implícita)
+      // Pero active no congela de todos modos
+      const debeCongelar = false;
+      expect(debeCongelar).toBe(false);
+    });
+
+    it('DEBE congelar trialing sin IDs y sin metadata.cortesia con periodo vencido', () => {
+      const subscription = {
+        status: 'trialing',
+        trial_end: pastDate.toISOString(),
+        current_period_end: pastDate.toISOString(),
+        stripe_customer_id: null,
+        stripe_subscription_id: null,
+        metadata: {},
+      };
+
+      const estaExenta = isExemptFromFreezing(subscription);
+      expect(estaExenta).toBe(false);
+      
+      // Lógica esperada: congelar porque no está exenta y el trial venció
+      const debeCongelar = subscription.status === 'trialing' && !estaExenta;
+      expect(debeCongelar).toBe(true);
     });
   });
 

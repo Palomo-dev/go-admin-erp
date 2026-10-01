@@ -50,6 +50,12 @@ export interface SendEmailRequest {
   in_reply_to?: string | null;
   /** Prueba: kind 'system', tag test, sin fn_can_contact (la ruta acota el `to`). Sí deja activity. */
   test?: boolean;
+  /**
+   * Aviso a un miembro de la organización. No busca al cliente por el correo
+   * ni aplica fn_can_contact: un miembro que también es cliente dado de baja
+   * igual recibe la asignación.
+   */
+  avisoMiembro?: boolean;
 }
 
 export interface SendEmailResult {
@@ -180,12 +186,12 @@ export async function sendEmail(orgId: number, actor: SendEmailActor, req: SendE
     if (d.getTime() > Date.now() + 60000) scheduledAtIso = d.toISOString();
   }
 
-  let customerId = isUuid(req.to_customer_id) ? req.to_customer_id : null;
-  if (!customerId) {
+  let customerId = req.avisoMiembro ? null : (isUuid(req.to_customer_id) ? req.to_customer_id : null);
+  if (!req.avisoMiembro && !customerId) {
     const { data: c } = await supabase.from('customers').select('id').eq('organization_id', orgId).ilike('email', to[0]).limit(1).maybeSingle();
     if (c) customerId = (c as { id: string }).id;
   }
-  if (customerId && !req.test && !(await canContact(orgId, customerId, supabase, kind))) {
+  if (!req.avisoMiembro && customerId && !req.test && !(await canContact(orgId, customerId, supabase, kind))) {
     throw new EmailError('CONTACT_OPTED_OUT', 'El contacto pidió no recibir correos', 403);
   }
 

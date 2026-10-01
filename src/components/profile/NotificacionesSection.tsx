@@ -5,7 +5,15 @@ import { User } from '@supabase/supabase-js';
 import { Bell, Moon, Clock, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PreferenciasService } from '@/components/notificaciones/preferencias/PreferenciasService';
-import type { UserNotificationPreference } from '@/components/notificaciones/preferencias/types';
+import { fusionarTiposAviso, gruposActivos, type GrupoAviso } from '@/lib/services/avisos/reglas';
+
+const GRUPOS_CORREO: { clave: GrupoAviso; titulo: string; detalle: string }[] = [
+  { clave: 'tarea.asignada', titulo: 'Tarea asignada', detalle: 'Cuando le asignen una tarea' },
+  { clave: 'oportunidad.asignada', titulo: 'Oportunidad asignada', detalle: 'Cuando le asignen una oportunidad' },
+  { clave: 'oportunidad.etapa', titulo: 'Cambio de etapa', detalle: 'Cuando una oportunidad suya cambie de etapa' },
+  { clave: 'tarea.completada', titulo: 'Tarea completada', detalle: 'Cuando se complete una tarea que usted creó o tiene asignada' },
+  { clave: 'vence', titulo: 'Atraso y vencimiento', detalle: 'Cuando una tarea o una oportunidad se atrase o venza hoy' },
+];
 
 interface NotificacionesSectionProps {
   user: User | null;
@@ -24,6 +32,8 @@ export default function NotificacionesSection({
   const [dndEnabled, setDndEnabled] = useState(false);
   const [dndStart, setDndStart] = useState('22:00');
   const [dndEnd, setDndEnd] = useState('08:00');
+  const [gruposCorreo, setGruposCorreo] = useState<Record<GrupoAviso, boolean>>(() => gruposActivos([]));
+  const [tiposPrevios, setTiposPrevios] = useState<string[]>([]);
 
   // Cargar preferencias reales desde la tabla user_notification_preferences
   useEffect(() => {
@@ -36,6 +46,9 @@ export default function NotificacionesSection({
         setEmailEnabled(!find('email')?.mute);
         setPushEnabled(!find('push')?.mute);
         setWhatsappEnabled(!find('whatsapp')?.mute);
+        const tipos = find('email')?.allowed_types ?? [];
+        setTiposPrevios(tipos);
+        setGruposCorreo(gruposActivos(tipos));
         // DND: tomar del primer canal que tenga valores
         const withDnd = prefs.find(p => p.dnd_start && p.dnd_end);
         if (withDnd) {
@@ -74,7 +87,10 @@ export default function NotificacionesSection({
     try {
       // Actualizar mute por canal
       await Promise.all([
-        PreferenciasService.updatePreference(user.id, 'email', { mute: !emailEnabled }),
+        PreferenciasService.updatePreference(user.id, 'email', {
+          mute: !emailEnabled,
+          allowed_types: fusionarTiposAviso(tiposPrevios, gruposCorreo),
+        }),
         PreferenciasService.updatePreference(user.id, 'push', { mute: !pushEnabled }),
         PreferenciasService.updatePreference(user.id, 'whatsapp', { mute: !whatsappEnabled }),
       ]);
@@ -204,6 +220,27 @@ export default function NotificacionesSection({
           </div>
         </div>
         
+        <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800/50">
+          <h3 className="font-medium text-gray-800 dark:text-gray-200 mb-4 flex items-center">
+            <Bell className="w-5 h-5 mr-2 text-gray-500 dark:text-gray-400" />
+            Avisos por correo
+          </h3>
+          <div className="space-y-4">
+            {GRUPOS_CORREO.map((grupo) => (
+              <div key={grupo.clave} className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-gray-700 dark:text-gray-300">{grupo.titulo}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{grupo.detalle}</p>
+                </div>
+                <Toggle
+                  checked={gruposCorreo[grupo.clave]}
+                  onChange={(valor) => setGruposCorreo((actual) => ({ ...actual, [grupo.clave]: valor }))}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Modo No molestar */}
         <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800/50">
           <h3 className="font-medium text-gray-800 dark:text-gray-200 mb-4 flex items-center">

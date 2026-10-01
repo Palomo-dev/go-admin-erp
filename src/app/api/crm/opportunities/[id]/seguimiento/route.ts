@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { programarDespachoAvisos } from '@/lib/services/avisos/despacho.server';
 import { z } from 'zod';
 import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
@@ -43,7 +44,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     await cargarOportunidadEditable(ctx, id, 'PATCH /api/crm/opportunities/[id]/seguimiento');
     const { contact_channel, contact_result, ...editables } = parsed.data;
     let data: Record<string, unknown> | null = null;
-    if (Object.keys(editables).some((k) => k !== 'expected_updated_at')) data = await actualizarOportunidad(ctx, id, editables);
+    if (Object.keys(editables).some((k) => k !== 'expected_updated_at')) {
+      data = await actualizarOportunidad(ctx, id, editables);
+      programarDespachoAvisos(ctx.organizationId);
+    }
     if (contact_channel !== undefined || contact_result !== undefined) {
       const cambios: Record<string, unknown> = {};
       if (contact_channel !== undefined) cambios.contact_channel = contact_channel;

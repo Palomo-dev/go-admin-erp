@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { programarDespachoAvisos } from '@/lib/services/avisos/despacho.server';
 import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import { CRM_PERMISOS, exigirPermisoCrm, respuestaErrorCrm, sinClavesDeOrganizacion } from '@/lib/services/crm/crmRouteSupport';
@@ -48,6 +49,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Datos inválidos', details: parsed.error.flatten() }, { status: 400 });
     }
     const data = await crearOportunidad(ctx, parsed.data);
+    programarDespachoAvisos(ctx.organizationId);
     return NextResponse.json({ success: true, data }, { status: 201 });
   } catch (error) {
     return respuestaErrorCrm(error, 'POST /api/crm/opportunities');

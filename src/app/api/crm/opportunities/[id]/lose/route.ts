@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { programarDespachoAvisos } from '@/lib/services/avisos/despacho.server';
 import { z } from 'zod';
 import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
@@ -48,6 +49,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       { opportunityId: id, stageId, override: b.override, overrideReason: b.override_reason, lossData: b.loss_data },
       ctx.supabase,
     );
+    programarDespachoAvisos(ctx.organizationId);
     return respuestaCambioEtapa(result);
   } catch (error) {
     return respuestaErrorCrm(error, 'POST /api/crm/opportunities/[id]/lose');

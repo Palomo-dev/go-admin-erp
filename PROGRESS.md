@@ -3845,3 +3845,9 @@ BEGIN/ROLLBACK repitió los casos de lote y añadió ausencia/testigo ajeno, rep
 El lote transmite su token a la preparación privada. El esquema del navegador no expone ese campo y la ruta de envío individual fija source=crm, sin permitir suplantar procedencia de campaña. Pruebas de contrato verifican la transmisión; tipos y lint limpios. Se ajustaron dos fixtures de voz para que una constancia vigente traiga números válidos: 17 suites / 321 casos, siete omisiones existentes; 11 casos finales del envío.
 
 Integrada main hasta 8b7a3620 conservando ambas entradas de PROGRESS.md; build completo en 27f47678, proceso 0. Suite completa de ese punto: 942 suites pasan, 22 fallos en tres suites. Diecinueve provenían de los fixtures de RNE sin recuento y pasan tras corregirlos; tres son del mock de orden de Twilio. Esa revisión encontró además el INSERT antiguo de consentimiento de Twilio: se está sustituyendo por la operación canónica. La suite completa se repetirá tras ese arreglo; no se declara verde ni se despliega.
+
+### 2026-10-01 — consentimiento de Twilio en una transacción
+
+Migración `20261001061000_crm_consentimiento_twilio_atomico.sql` aplicada por MCP, MD5 `cf4a0f466663f2c3ff5d7af9839315c0`. RPC privada prevalida todos los clientes propios y el teléfono leído antes de llamar a crm_set_contact_consent. Preferencia, banderas, exclusión de pendientes y devolución canónica comparten transacción. Constancia privada con RLS y sin acceso de navegador impide que un STOP repetido deshaga un START posterior; reutilizar SID con otra evidencia falla.
+
+BEGIN/ROLLBACK pasó STOP→START→STOP antiguo, SID conflictivo, cliente ajeno y teléfono cambiado sin modificación parcial, 405 destinos sin recorte, metadata conservada, SMS independiente, cancelación y devolución única, processing conservado y ACL. Rollback probado; conserva preferencias, saldos y constancias, revoca acceso. Cero fixtures; advisors sin hallazgos para objetos nuevos.

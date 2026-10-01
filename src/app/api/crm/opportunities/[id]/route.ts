@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { programarDespachoAvisos } from '@/lib/services/avisos/despacho.server';
 import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import { CRM_PERMISOS, CrmHttpError, exigirPermisoCrm, exigirUuid, respuestaErrorCrm, sinClavesDeOrganizacion } from '@/lib/services/crm/crmRouteSupport';
@@ -68,6 +69,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       return NextResponse.json({ success: false, error: 'Datos inválidos', details: parsed.error.flatten() }, { status: 400 });
     }
     const data = await actualizarOportunidad(ctx, id, parsed.data);
+    programarDespachoAvisos(ctx.organizationId);
     return NextResponse.json({ success: true, data });
   } catch (error) {
     return respuestaErrorCrm(error, 'PATCH /api/crm/opportunities/[id]');

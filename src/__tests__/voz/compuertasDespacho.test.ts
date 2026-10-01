@@ -52,7 +52,7 @@ function makeSupabase(resolve: (op: Op) => Res, resolveRpc: (name: string, args:
         return proxy;
       },
       eq: filtro('eq'), is: filtro('is'), in: filtro('in'), gte: filtro('gte'), lte: filtro('lte'), not: filtro('not'),
-      order: filtro('order'), limit: filtro('limit'),
+      order: filtro('order'), limit: filtro('limit'), range: filtro('range'),
       maybeSingle: async () => settle(),
       single: async () => settle(),
       then: (ok: (v: unknown) => unknown, ko?: (e: unknown) => unknown) => Promise.resolve(settle()).then(ok, ko),
@@ -75,6 +75,14 @@ function makeSupabase(resolve: (op: Op) => Res, resolveRpc: (name: string, args:
     },
     rpc: jest.fn(async (name: string, args: Record<string, unknown>) => {
       rpcs.push({ name, args });
+      if (name === 'crm_voice_campaign_rne_status') {
+        const r = resolve({ table: 'voice_campaign_rne_checks', verb: 'select', filters: [
+          ['eq', 'organization_id', args.p_org], ['eq', 'campaign_id', args.p_campaign],
+        ] });
+        const row = Array.isArray(r.data) ? r.data[0] : null;
+        return { data: row ? { evidence_available: true, audience_unchanged: true, changed_targets: 0, ...row } : null, error: r.error ?? null };
+      }
+
       const r = resolveRpc(name, args);
       return { data: r.data ?? (r.error ? null : reserva(name, args)) ?? null, error: r.error ?? null };
     }),
@@ -192,6 +200,15 @@ describe('Compuertas legales del despachador de voz', () => {
       expect(r.errors.join(' ')).toMatch(/Registro de Números Excluidos/);
       expect(rpcs.some((c) => c.name === 'fn_claim_voice_agent_calls')).toBe(false);
     }
+    expect(twilioCreate).not.toHaveBeenCalled();
+  });
+  test.each([
+    { evidence_available: false, audience_unchanged: false, changed_targets: 0 },
+    { evidence_available: true, audience_unchanged: false, changed_targets: 1 },
+  ])('la cola no reclama ni reserva con evidencia incompleta o modificada: %j', async evidence => {
+    const { client, rpcs } = escenario({ rne: [{ valid_until: '2999-01-01T00:00:00Z', numbers_in_file: 2, ...evidence }] });
+    expect((await runCampaignQueue(7, client)).calls_initiated).toBe(0);
+    expect(rpcs.some(r => r.name === 'fn_claim_voice_agent_calls' || r.name === 'crm_voice_dispatch_prepare')).toBe(false);
     expect(twilioCreate).not.toHaveBeenCalled();
   });
 

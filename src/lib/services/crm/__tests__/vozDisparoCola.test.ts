@@ -145,6 +145,14 @@ function makeSupabase(resolve: Resolver, resolveRpc?: RpcResolver) {
     },
     rpc: jest.fn(async (name: string, args: Record<string, unknown>) => {
       rpcs.push({ name, args });
+      if (name === 'crm_voice_campaign_rne_status') {
+        const r = resolve({ table: 'voice_campaign_rne_checks', verb: 'select', filters: [
+          ['eq', 'organization_id', args.p_org], ['eq', 'campaign_id', args.p_campaign],
+        ] });
+        const row = Array.isArray(r.data) ? r.data[0] : null;
+        return { data: row ? { evidence_available: true, audience_unchanged: true, changed_targets: 0, ...row } : null, error: r.error ?? null };
+      }
+
       const r = resolveRpc ? resolveRpc({ name, args }) : {};
       return { data: r.data ?? (r.error ? null : reserva(name, args)) ?? null, error: r.error ?? null };
     }),

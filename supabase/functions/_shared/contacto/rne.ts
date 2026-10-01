@@ -130,9 +130,10 @@ export function verificacionRneVigente(validaHasta: string | Date | null | undef
 
 /** La fecha sola no acredita una importación: el registro debe contener números. */
 export function verificacionRneRegistradaVigente(
-  registro: { valid_until: string; numbers_in_file: number } | null | undefined,
+  registro: { valid_until: string; numbers_in_file: number; evidence_available?: boolean; audience_unchanged?: boolean } | null | undefined,
   ahora: Date = new Date(),
 ): boolean {
   return Boolean(registro && Number.isInteger(registro.numbers_in_file) &&
-    registro.numbers_in_file > 0 && verificacionRneVigente(registro.valid_until, ahora));
+    registro.numbers_in_file > 0 && registro.evidence_available !== false && registro.audience_unchanged !== false &&
+    verificacionRneVigente(registro.valid_until, ahora));
 }

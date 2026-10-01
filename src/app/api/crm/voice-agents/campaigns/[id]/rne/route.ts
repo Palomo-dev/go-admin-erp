@@ -17,9 +17,10 @@ async function campaignIdOf(rp?: { params: Promise<Record<string, string | strin
   const p = rp ? await rp.params : {};
   return exigirUuid(typeof p.id === 'string' ? p.id : '');
 }
-export const GET = withOrg(async (ctx, _request, rp) => {
+export const GET = withOrg(async (ctx, request, rp) => {
   try {
     await exigirPermisoCrm(ctx, [CRM_PERMISOS.oportunidadesVer], 'verificación RNE de voz');
+    await readOrgBody(ctx, request, { route: 'GET /api/crm/voice-agents/campaigns/[id]/rne' });
     const id = await campaignIdOf(rp);
     const { data, error } = await ctx.supabase.from('voice_agent_campaigns').select('id').eq('id', id)
       .eq('organization_id', ctx.organizationId).is('stats->>archived_at', null).maybeSingle();
@@ -45,7 +46,8 @@ export const POST = withOrg(async (ctx, request, rp) => {
       nombre: parsed.data.nombre_archivo ?? null, contenido: parsed.data.contenido,
       ...(parsed.data.expected_updated_at ? { expectedUpdatedAt: parsed.data.expected_updated_at } : {}),
     });
-    return NextResponse.json({ success: true, data: { ...data, vigente: verificacionRneRegistradaVigente(data) } }, { headers: NO_STORE });
+    return NextResponse.json({ success: true, data: { ...data, evidence_available: true, audience_unchanged: true,
+      changed_targets: 0, vigente: verificacionRneRegistradaVigente(data) } }, { headers: NO_STORE });
   } catch (e) {
     if (e instanceof RneValidationError) return NextResponse.json({ success: false, error: e.message }, { status: e.statusCode });
     return respuestaErrorCrm(e, 'POST /api/crm/voice-agents/campaigns/[id]/rne');

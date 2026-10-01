@@ -25,6 +25,7 @@ import { useFormatDate } from "@/lib/context/OrganizationTimezoneContext";
 import { describeError, logError } from "@/lib/utils/errorMessage";
 import { fetchJson } from "@/lib/utils/fetchJson";
 import { pedirCrm, ErrorApiCrm } from "@/components/crm/acciones/apiCrm";
+import { estadoConstanciaRne } from './rnePanelLogica';
 
 interface Verificacion {
   checked_at: string;
@@ -36,6 +37,9 @@ interface Verificacion {
   skipped_calls: number;
   vigente?: boolean;
   descartados?: number;
+  evidence_available?: boolean;
+  audience_unchanged?: boolean;
+  changed_targets?: number;
 }
 
 interface RespuestaGet {
@@ -106,15 +110,15 @@ export function CampaignRnePanel({ campaignId, expectedUpdatedAt, onChanged }: {
       onChanged?.();
     } catch (err) {
       logError("[CampaignRnePanel] verificar", err);
-      setError(err instanceof ErrorApiCrm && err.codigo === 'campana_modificada' ? c('archivoConflicto') : describeError(err));
+      setError(err instanceof ErrorApiCrm && err.codigo === 'campana_modificada' ? c('archivoConflicto') :
+        err instanceof ErrorApiCrm && err.codigo === 'rne_audiencia_modificada' ? t('audienciaConflicto') : describeError(err));
     } finally {
       setSubiendo(false);
       if (inputRef.current) inputRef.current.value = "";
     }
   };
 
-  const incompleta = verificacion !== null && (!Number.isInteger(verificacion.numbers_in_file) || verificacion.numbers_in_file <= 0);
-  const vigente = verificacion?.vigente === true && !incompleta;
+  const { incompleta, vigente, aviso } = estadoConstanciaRne(verificacion);
 
   return (
     <section
@@ -135,7 +139,9 @@ export function CampaignRnePanel({ campaignId, expectedUpdatedAt, onChanged }: {
         )}
       </div>
       <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">{t("ayuda", { dias: vigenciaDias })}</p>
-      {incompleta && <p className="mt-2 text-xs text-amber-800 dark:text-amber-200" role="alert">{t("reimportar")}</p>}
+      {aviso && <p className="mt-2 text-xs text-amber-800 dark:text-amber-200" role="alert">{
+        t(aviso, { n: verificacion?.changed_targets ?? 0 })
+      }</p>}
 
       {cargando ? (
         <p className="mt-2 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400" role="status">

@@ -10828,6 +10828,9 @@
     "estadoSin": "Non vérifiée",
     "estadoIncompleta": "Incomplète",
     "reimportar": "Cette vérification n’a enregistré aucun numéro. Importez à nouveau le fichier RNE avant d’appeler.",
+    "sinEvidencia": "Cette attestation ne contient pas les numéros vérifiés. Importez à nouveau le fichier RNE avant de passer des appels.",
+    "audienciaCambiada": "L’audience a changé ou {n, plural, one {# numéro a été modifié} other {# numéros ont été modifiés}} après la vérification. Importez à nouveau le fichier RNE.",
+    "audienciaConflicto": "L’audience a changé pendant la vérification. Actualisez les données et importez à nouveau le fichier.",
     "verificar": "Vérifier contre le RNE",
     "verificando": "Vérification…",
     "resultado": "{n, plural, =0 {Aucun numéro de la campagne ne figure au RNE.} one {# numéro de la campagne figure au RNE et a été exclu.} other {# numéros de la campagne figurent au RNE et ont été exclus.}}",
@@ -10840,7 +10843,7 @@
     "demasiadoGrande": "Le fichier dépasse 8 Mo.",
     "errorCargar": "Impossible de consulter la vérification RNE",
     "errorVerificar": "Impossible de vérifier contre le RNE",
-    "sinPermiso": "Charger la liste du RNE requiert le rôle d'administrateur de l'organisation."
+    "sinPermiso": "L’importation de la liste RNE nécessite l’autorisation de gérer les campagnes."
   },
   "facturacionElectronica": {
     "configuracion": {

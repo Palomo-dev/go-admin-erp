@@ -13104,6 +13104,9 @@
     "estadoSin": "Not checked",
     "estadoIncompleta": "Incomplete",
     "reimportar": "This check recorded no numbers. Import the RNE file again before calling.",
+    "sinEvidencia": "This record did not store the checked phone numbers. Upload the RNE file again before calling.",
+    "audienciaCambiada": "The audience changed or {n, plural, one {# phone number changed} other {# phone numbers changed}} after verification. Upload the RNE file again.",
+    "audienciaConflicto": "The audience changed during verification. Refresh the data and upload the file again.",
     "verificar": "Check against RNE",
     "verificando": "Checking…",
     "resultado": "{n, plural, =0 {No campaign number is on the RNE.} one {# campaign number is on the RNE and was excluded.} other {# campaign numbers are on the RNE and were excluded.}}",
@@ -13116,7 +13119,7 @@
     "demasiadoGrande": "The file is larger than 8 MB.",
     "errorCargar": "Could not load the RNE check",
     "errorVerificar": "Could not check against the RNE",
-    "sinPermiso": "Uploading the RNE list requires the organization administrator role."
+    "sinPermiso": "Uploading the RNE list requires permission to manage campaigns."
   },
   "facturacionElectronica": {
     "configuracion": {

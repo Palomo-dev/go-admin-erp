@@ -16,6 +16,17 @@ const respuesta = (numbers_in_file: number) => ({
     numbers_in_file, checked_targets: 2, excluded_targets: 0, skipped_calls: 0, file_name: "rne.csv", vigente: true },
 });
 describe.each<IdiomaPrueba>(["es", "en", "fr", "pt"])("RNE en %s", idioma => {
+  test.each([
+    { evidence_available: false, audience_unchanged: false, changed_targets: 0 },
+    { evidence_available: true, audience_unchanged: false, changed_targets: 1 },
+  ])('pide verificar de nuevo si no hay evidencia o cambió la audiencia: %j', async evidence => {
+    const r = respuesta(2);
+    jest.mocked(fetchJson).mockResolvedValue({ ...r, data: { ...r.data, ...evidence } });
+    const { container } = renderConIdioma(<CampaignRnePanel campaignId="fixture" />, { idioma });
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(container.textContent).not.toContain('vozRne.');
+    expect((screen.getByRole('button') as HTMLButtonElement).disabled).toBe(false);
+  });
   test("una constancia sin números pide reimportar aunque la fecha sea futura", async () => {
     jest.mocked(fetchJson).mockResolvedValue(respuesta(0));
     const { container } = renderConIdioma(<CampaignRnePanel campaignId="fixture" />, { idioma });

@@ -79,6 +79,21 @@ beforeEach(() => {
 });
 
 describe('GET', () => {
+  test.each(['organization_id=999', 'organizationId=999', 'orgId=999', 'org_id=999', 'organization_id=7&organization_id=999'])('organización ajena en query se rechaza antes de consultar RNE: %s', async query => {
+    const res = await GET(new NextRequest(url() + '?' + query), rp());
+    expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe('FOREIGN_ORGANIZATION');
+    expect(ultima).not.toHaveBeenCalled();
+  });
+  test.each([
+    { evidence_available: false, audience_unchanged: false, changed_targets: 0 },
+    { evidence_available: true, audience_unchanged: false, changed_targets: 1 },
+  ])('una fecha futura no habilita una constancia sin evidencia válida: %j', async evidence => {
+    ultima.mockResolvedValue({ valid_until: '2999-01-01T00:00:00Z', numbers_in_file: 2, ...evidence });
+    const res = await GET(new NextRequest(url()), rp());
+    expect(res.status).toBe(200);
+    expect((await res.json()).data.vigente).toBe(false);
+  });
   test('una constancia futura con cero números no habilita llamadas', async () => {
     ultima.mockResolvedValue({ valid_until: '2999-01-01T00:00:00Z', numbers_in_file: 0 });
     const res = await GET(new NextRequest(url()), rp());

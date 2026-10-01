@@ -597,109 +597,93 @@ export interface CustomerTarget {
 }
 
 /**
- * Construye los objetivos según `target_source` (literales del CHECK real).
- * A-F6-25: el llamador acota cuántos se encolan; aquí se aplica `limit`.
+ * Lector común de cola y RNE. Sin límite devuelve toda la audiencia;
+ * la cola puede acotar su lote sin confundirlo con una verificación completa.
+ * Páginas de 500, orden estable y organización explícita también en secuencias.
  */
 export async function buildCampaignTargets(
   supabase: SupabaseClient,
   orgId: number,
   campaign: VoiceAgentCampaign,
-  limit: number
+  limit = Number.POSITIVE_INFINITY
 ): Promise<CustomerTarget[]> {
+  if (campaign.organization_id !== orgId) throw new Error('Campaña no encontrada');
+  if (Number.isNaN(limit)) throw new Error('Límite de audiencia inválido');
   if (limit <= 0) return [];
   const config = (campaign.target_config || {}) as Record<string, unknown>;
   const targets: CustomerTarget[] = [];
-
-  const pushOpportunityRows = (rows: Array<Record<string, unknown>>) => {
-    for (const opp of rows) {
-      const customerId = opp.customer_id as string | null;
-      if (!customerId) continue;
-      targets.push({
-        customer_id: customerId,
-        opportunity_id: (opp.id as string) || null,
-        stage_id: (opp.stage_id as string) || null,
-      });
-    }
+  const pageSize = 500;
+  const addOpportunity = (opp: { id: string; customer_id: string | null; stage_id: string | null }) => {
+    if (opp.customer_id) targets.push({ customer_id: opp.customer_id, opportunity_id: opp.id, stage_id: opp.stage_id });
   };
 
-  if (campaign.target_source === 'pipeline_stage') {
-    const stageId = config.stage_id as string | undefined;
-    if (!stageId) return [];
-    const rows = unwrap(
-      'buildCampaignTargets.pipeline_stage',
-      await supabase
-        .from('opportunities')
-        .select('id, customer_id, stage_id')
-        .eq('organization_id', orgId)
-        .eq('stage_id', stageId)
-        .eq('status', 'open')
-        .not('customer_id', 'is', null)
-        .limit(limit)
-    ) as Array<Record<string, unknown>> | null;
-    pushOpportunityRows(rows || []);
-  } else if (campaign.target_source === 'manual_list') {
-    const customerIds = (config.customer_ids as string[] | undefined) || [];
-    if (customerIds.length === 0) return [];
-    const rows = unwrap(
-      'buildCampaignTargets.manual_list',
-      await supabase
-        .from('customers')
-        .select('id')
-        .eq('organization_id', orgId)
-        .in('id', customerIds.slice(0, limit))
-        .not('phone', 'is', null)
-    ) as Array<{ id: string }> | null;
-    for (const c of rows || []) {
-      targets.push({ customer_id: c.id, opportunity_id: null, stage_id: null });
-    }
-  } else if (campaign.target_source === 'segment') {
+  if (campaign.target_source === 'segment') {
     const segmentId = config.segment_id as string | undefined;
     if (!segmentId) return [];
-    // Un segmento no es una campaña. Voz y mensajes resuelven la misma
-    // audiencia por sus criterios, con la organización comprobada.
-    const rows = await resolveAudience(orgId, { source: 'segment', segment_id: segmentId }, supabase, limit);
-    for (const r of rows) {
-      targets.push({ customer_id: r.customer_id, opportunity_id: r.opportunity_id, stage_id: null });
+    // El evaluador canónico recorre el segmento completo. Un lote pequeño
+    // de la cola no convierte una audiencia válida en un error 413.
+    const rows = await resolveAudience(orgId, { source: 'segment', segment_id: segmentId }, supabase, Number.MAX_SAFE_INTEGER);
+    return rows.slice(0, limit).map(r => ({ ...r, stage_id: null }));
+  }
+  if (campaign.target_source === 'manual_list') {
+    const ids = [...new Set((config.customer_ids as string[] | undefined) || [])];
+    for (let from = 0; from < ids.length && targets.length < limit; from += pageSize) {
+      const rows = unwrap('buildCampaignTargets.manual_list', await supabase.from('customers')
+        .select('id').eq('organization_id', orgId).neq('status', 'merged')
+        .in('id', ids.slice(from, from + pageSize)).not('phone', 'is', null).order('id')) as Array<{ id: string }> | null;
+      for (const c of rows || []) targets.push({ customer_id: c.id, opportunity_id: null, stage_id: null });
     }
-  } else if (campaign.target_source === 'followup_due') {
-    const rows = unwrap(
-      'buildCampaignTargets.followup_due',
-      await supabase
-        .from('opportunities')
-        .select('id, customer_id, stage_id')
-        .eq('organization_id', orgId)
-        .eq('status', 'open')
-        .not('customer_id', 'is', null)
-        .not('next_contact_at', 'is', null)
-        .lte('next_contact_at', new Date().toISOString())
-        .order('next_contact_at', { ascending: true })
-        .limit(limit)
-    ) as Array<Record<string, unknown>> | null;
-    pushOpportunityRows(rows || []);
-  } else if (campaign.target_source === 'sequence_step') {
+    return targets.slice(0, limit);
+  }
+  if (campaign.target_source === 'pipeline_stage' || campaign.target_source === 'followup_due') {
+    const stageId = config.stage_id as string | undefined;
+    if (campaign.target_source === 'pipeline_stage' && !stageId) return [];
+    const asOf = new Date().toISOString();
+    for (let from = 0; targets.length < limit; from += pageSize) {
+      let query = supabase.from('opportunities').select('id, customer_id, stage_id')
+        .eq('organization_id', orgId).eq('status', 'open').not('customer_id', 'is', null);
+      if (campaign.target_source === 'pipeline_stage') query = query.eq('stage_id', stageId!);
+      else query = query.not('next_contact_at', 'is', null).lte('next_contact_at', asOf).order('next_contact_at');
+      const rows = unwrap('buildCampaignTargets.opportunities', await query.order('id')
+        .range(from, from + pageSize - 1)) as Array<{ id: string; customer_id: string | null; stage_id: string | null }> | null;
+      for (const opp of rows || []) addOpportunity(opp);
+      if (!rows || rows.length < pageSize) break;
+    }
+    return targets.slice(0, limit);
+  }
+  if (campaign.target_source === 'sequence_step') {
     const stepId = config.step_id as string | undefined;
     if (!stepId) return [];
-    const rows = unwrap(
-      'buildCampaignTargets.sequence_step',
-      await supabase
-        .from('sequence_step_runs')
-        .select('enrollment_id, sequence_enrollments:enrollment_id(customer_id, opportunity_id)')
-        .eq('step_id', stepId)
-        .eq('status', 'pending')
-        .limit(limit)
-    ) as Array<Record<string, unknown>> | null;
-    for (const r of rows || []) {
-      const enr = r.sequence_enrollments as { customer_id?: string; opportunity_id?: string } | null;
-      if (enr?.customer_id) {
-        targets.push({
-          customer_id: enr.customer_id,
-          opportunity_id: enr.opportunity_id ?? null,
-          stage_id: null,
-        });
+    const step = unwrap('buildCampaignTargets.sequence_step', await supabase.from('sequence_steps')
+      .select('id').eq('organization_id', orgId).eq('id', stepId).maybeSingle());
+    if (!step) throw new Error('Paso de secuencia no encontrado');
+    for (let from = 0; targets.length < limit; from += pageSize) {
+      const runs = unwrap('buildCampaignTargets.sequence_runs', await supabase.from('sequence_step_runs')
+        .select('id, enrollment_id').eq('organization_id', orgId).eq('step_id', stepId)
+        .eq('status', 'pending').order('id').range(from, from + pageSize - 1)) as Array<{ id: string; enrollment_id: string }> | null;
+      if (!runs?.length) break;
+      const enrollments = unwrap('buildCampaignTargets.sequence_enrollments', await supabase.from('sequence_enrollments')
+        .select('id, customer_id, opportunity_id').eq('organization_id', orgId)
+        .in('id', [...new Set(runs.map(r => r.enrollment_id))])) as Array<{ id: string; customer_id: string | null; opportunity_id: string | null }> | null;
+      const ids = [...new Set((enrollments || []).flatMap(e => e.customer_id ? [e.customer_id] : []))];
+      const customers = ids.length ? unwrap('buildCampaignTargets.sequence_customers', await supabase.from('customers')
+        .select('id').eq('organization_id', orgId).neq('status', 'merged').in('id', ids)) as Array<{ id: string }> | null : [];
+      const ownCustomers = new Set((customers || []).map(c => c.id));
+      const opportunityIds = [...new Set((enrollments || []).flatMap(e => e.opportunity_id ? [e.opportunity_id] : []))];
+      const opportunities = opportunityIds.length ? unwrap('buildCampaignTargets.sequence_opportunities', await supabase.from('opportunities')
+        .select('id, customer_id, stage_id').eq('organization_id', orgId).in('id', opportunityIds)) as Array<{ id: string; customer_id: string | null; stage_id: string | null }> | null : [];
+      const ownOpportunities = new Map((opportunities || []).map(o => [o.id, o]));
+      const byId = new Map((enrollments || []).map(e => [e.id, e]));
+      for (const run of runs) {
+        const e = byId.get(run.enrollment_id);
+        if (!e?.customer_id || !ownCustomers.has(e.customer_id)) continue;
+        const opp = e.opportunity_id ? ownOpportunities.get(e.opportunity_id) : null;
+        if (e.opportunity_id && (!opp || opp.customer_id !== e.customer_id)) continue;
+        targets.push({ customer_id: e.customer_id, opportunity_id: e.opportunity_id, stage_id: opp?.stage_id ?? null });
       }
+      if (runs.length < pageSize) break;
     }
   }
-
   return targets.slice(0, limit);
 }
 

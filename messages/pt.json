@@ -10828,6 +10828,9 @@
     "estadoSin": "Sem verificação",
     "estadoIncompleta": "Incompleta",
     "reimportar": "Esta verificação não registrou números. Importe novamente o arquivo do RNE antes de ligar.",
+    "sinEvidencia": "Este comprovante não registrou os telefones verificados. Carregue novamente o arquivo RNE antes de ligar.",
+    "audienciaCambiada": "O público mudou ou {n, plural, one {# telefone foi alterado} other {# telefones foram alterados}} após a verificação. Carregue novamente o arquivo RNE.",
+    "audienciaConflicto": "O público mudou durante a verificação. Atualize os dados e carregue novamente o arquivo.",
     "verificar": "Verificar contra o RNE",
     "verificando": "Verificando…",
     "resultado": "{n, plural, =0 {Nenhum número da campanha está no RNE.} one {# número da campanha está no RNE e foi excluído.} other {# números da campanha estão no RNE e foram excluídos.}}",
@@ -10840,7 +10843,7 @@
     "demasiadoGrande": "O arquivo tem mais de 8 MB.",
     "errorCargar": "Não foi possível consultar a verificação do RNE",
     "errorVerificar": "Não foi possível verificar contra o RNE",
-    "sinPermiso": "Carregar a lista do RNE requer a função de administrador da organização."
+    "sinPermiso": "Carregar a lista RNE requer permissão para gerenciar campanhas."
   },
   "facturacionElectronica": {
     "configuracion": {

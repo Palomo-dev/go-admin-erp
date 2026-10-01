@@ -3833,3 +3833,9 @@ Verificación: 37 suites / 683 pruebas de WhatsApp, jobs y guardarraíles; 21 ca
 - Rama cursor/vista-previa-cierre-e475.
 - «Vista previa» corría los reportes de la plantilla y, al terminar, solo repetía el conteo de capítulos que ya estaba en el diálogo. Ahora el panel aparece al clic, con el estado de carga, y se llena con los indicadores y los capítulos cuando llega la respuesta. Las consultas no cambian. La ruta tiene el mismo tope de 300 s que el cron de envíos, para que el cálculo completo no se corte.
 
+
+### 2026-10-01 — primer mensaje de campaña exige testigo vigente
+
+Migración `20261001060500_crm_preparacion_con_testigo_vigente.sql` aplicada por MCP, MD5 `5574b75aa489cec4d9c0ec3eba42ec6e`. Preparación privada exige contacto queued sin enviado y testigo actual antes del primer mensaje. Repetir un mensaje existente conserva idempotencia; el testigo transitorio no cambia la huella estable. Callback sin testigo o con el de otro lote no publica ni cobra. Rollback restaura la función anterior y conserva evidencia y saldos.
+
+BEGIN/ROLLBACK repitió los casos de lote y añadió ausencia/testigo ajeno, repetición con token distinto sin segundo débito y reversión; advisors sin hallazgos para la función. El archivo conserva exactamente el SQL aplicado. Consumidor transmite testigo en el siguiente paso.

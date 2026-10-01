@@ -2461,3 +2461,8 @@ BEGIN/ROLLBACK pasó 6.002 contactos y 6.000 números sin recorte, conjunto vac�
 GET /api/crm/campaigns/[id]/rne lee cumplimiento con sesión y permiso de lectura; POST exige crm.campaigns.manage antes de usar service role. Organización ajena en body/query recibe 403 registrado. Carga limitada por bytes incluso sin Content-Length, parser/normalización/vigencia compartidos con voz y audiencia completa en una lectura. Transmite teléfono leído y normalizado para CAS; una RPC guarda constancia, exclusiones y devolución. No conserva contenido del archivo. Resultado inválido o exportación incompleta falla; errores de política/RNE generan mensajes específicos y pausan el lote conservando reservas.
 
 Verificación: 26 suites / 552 pruebas pasan; TypeScript 0 errores y lint tocado limpio. Contratos cubren 6.002 destinatarios sin recorte, SHA y números deduplicados, arreglo de exclusión vacío, sesión/permisos/organización, límites reales del archivo, lectura fallida, teléfono discordante y CAS. Efectos transaccionales se verificaron en SQL real en el paso previo. UI y conexión legal por destinatario siguen pendientes; sin publicación ni mensajes.
+
+
+### 2026-10-01 — índices de las constancias RNE de voz
+
+Migración `20261001083240_crm_rne_indices_de_relaciones.sql` aplicada por MCP, MD5 `83d6e3d38df538f9b55fb1697f181f5b`. Cubre campaign_id y checked_by, las dos FK preexistentes detectadas al reutilizar la importación de voz. Verificación previa: una constancia y 49.152 bytes. BEGIN/ROLLBACK comprobó índices y reversión sin cambiar evidencia ni saldo. Rollback conserva deliberadamente estos índices de soporte, sin DROP. Advisor ya no señala FK sin índice en esta tabla; solo índices aún no usados. SQL archivado exacto. Sin despliegue.

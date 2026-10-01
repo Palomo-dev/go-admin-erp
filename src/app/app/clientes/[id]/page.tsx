@@ -6,7 +6,7 @@
  * «Registrar pago» y el menú «⋯» con las mismas acciones que el listado) y
  * las pestañas de siempre. Estados de carga y error con el kit.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -14,7 +14,6 @@ import { HandCoins, Pencil, User, Building2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/lib/supabase/config';
 import { EmptyState, PageHeader, RowActionsMenu, StatusBadge } from '@/components/kit';
 import { documentoCliente } from '@/lib/services/clientesListadoService';
 import { construirAccionesCliente } from '@/components/clientes/listado/accionesCliente';
@@ -30,39 +29,12 @@ import TareasSidebar from '@/components/clientes/id/TareasSidebar';
 import InfoTab from '@/components/clientes/id/InfoTab';
 import OportunidadesTab from '@/components/clientes/id/OportunidadesTab';
 import { CompanyContactsManager } from '@/components/clientes/CompanyContactsManager';
-import { mensajeError, useFechasFicha } from '@/components/clientes/id/useFechasFicha';
+import { useFechasFicha } from '@/components/clientes/id/useFechasFicha';
+import { useClienteFicha } from '@/components/clientes/id/useClienteFicha';
 import { useFichaClienteCrm } from '@/components/crm/ficha/useFichaClienteCrm';
 import { ClientHealthCard } from '@/components/crm/health/ClientHealthCard';
 import { CustomerFoliosSection } from '@/components/crm/clientes/CustomerFoliosSection';
 import { DocumentUploader } from '@/components/crm/documents/DocumentUploader';
-
-interface Cliente {
-  id: string;
-  organization_id: number;
-  first_name: string;
-  last_name: string;
-  full_name: string;
-  email: string;
-  phone: string | null;
-  address: string;
-  city: string;
-  notes: string;
-  tags: string[];
-  preferences: unknown;
-  created_at: string;
-  updated_at: string;
-  avatar_url?: string | null;
-  customer_type?: string | null;
-  identification_type?: string | null;
-  identification_number?: string | null;
-  dv?: number | null;
-  lifecycle_stage?: string | null;
-  status?: string | null;
-  do_not_call?: boolean | null;
-}
-
-/** Por qué no cargó la ficha: un código que se traduce o el mensaje de Supabase. */
-type ErrorFicha = { codigo: 'sinId' | 'noExiste' | 'carga' } | { mensaje: string };
 
 const PESTANA =
   'min-w-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm text-fg-secondary data-[state=active]:bg-surface data-[state=active]:text-fg data-[state=active]:shadow-sm';
@@ -74,11 +46,10 @@ export default function PerfilCliente() {
   const t = useTranslations('clientes.ficha');
   const tListado = useTranslations('clientes.listado');
   const tCrm = useTranslations('crm.fichaCliente');
+  const te = useTranslations('crm.accionesRapidas.errores');
   const { instante } = useFechasFicha();
-  const [cliente, setCliente] = useState<Cliente | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<ErrorFicha | null>(null);
   const [recarga, setRecarga] = useState(0);
+  const { cliente, loading, error } = useClienteFicha(id, recarga);
   const [eliminarAbierto, setEliminarAbierto] = useState(false);
 
   const recargar = useCallback(() => setRecarga((n) => n + 1), []);
@@ -96,30 +67,6 @@ export default function PerfilCliente() {
         }
       : null,
   );
-
-  useEffect(() => {
-    let cancelado = false;
-    const cargar = async () => {
-      if (!id) {
-        setError({ codigo: 'sinId' });
-        setLoading(false);
-        return;
-      }
-      setError(null);
-      const { data, error: err } = await supabase.from('customers').select('*').eq('id', id).maybeSingle();
-      if (cancelado) return;
-      if (err) {
-        const mensaje = mensajeError(err);
-        setError(mensaje ? { mensaje } : { codigo: 'carga' });
-      } else if (!data) setError({ codigo: 'noExiste' });
-      else setCliente(data as Cliente);
-      setLoading(false);
-    };
-    void cargar();
-    return () => {
-      cancelado = true;
-    };
-  }, [id, recarga]);
 
   if (loading) {
     return (
@@ -144,6 +91,7 @@ export default function PerfilCliente() {
   }
 
   if (error || !cliente) {
+    const reintentable = !!error && !['sinPermiso', 'noEncontrado'].includes(error);
     return (
       <div className="flex min-h-full flex-col gap-4 bg-canvas p-4 lg:p-6">
         <PageHeader
@@ -159,16 +107,12 @@ export default function PerfilCliente() {
         />
         <div className="rounded-xl border border-line bg-surface">
           <EmptyState
-            variante="error"
-            titulo={t('pagina.noEncontrado')}
-            descripcion={
-              !error
-                ? t('pagina.noEncontradoDescripcion')
-                : 'mensaje' in error
-                  ? error.mensaje
-                  : t(`pagina.errores.${error.codigo}`)
-            }
-            accion={{ etiqueta: t('pagina.volverClientes'), href: '/app/clientes' }}
+            variante={error === 'sinPermiso' ? 'forbidden' : 'error'}
+            titulo={error === 'noEncontrado' || !error ? t('pagina.noEncontrado') : undefined}
+            descripcion={error ? te(error) : t('pagina.noEncontradoDescripcion')}
+            onReintentar={reintentable ? recargar : undefined}
+            accion={reintentable ? undefined : { etiqueta: t('pagina.volverClientes'), href: '/app/clientes' }}
+            accionSecundaria={reintentable ? { etiqueta: t('pagina.volverClientes'), href: '/app/clientes' } : undefined}
           />
         </div>
       </div>
@@ -312,4 +256,3 @@ export default function PerfilCliente() {
     </div>
   );
 }
-

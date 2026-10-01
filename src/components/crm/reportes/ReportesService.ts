@@ -1,8 +1,11 @@
 import { supabase } from '@/lib/supabase/config';
 import { applyBranchFilterInclusive } from '@/lib/services/branchFilterHelper';
+import { esOportunidadGanada } from '@/lib/services/crm/estadoOportunidadLogica';
+import { filasACsv } from '@/lib/utils/csv';
+import { todayInTz } from '@/lib/utils/dateDisplay';
+import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 import type { 
   ReportFilters, 
-  ReportData, 
   ConversationStats, 
   ChannelMetrics, 
   PipelineMetrics, 
@@ -153,21 +156,24 @@ class ReportesService {
       pipelineQuery = pipelineQuery.eq('id', filters.pipelineId);
     }
 
-    const { data: pipelines } = await pipelineQuery;
+    const { data: pipelines, error: pipelinesError } = await pipelineQuery;
+    if (pipelinesError) throw pipelinesError;
     if (!pipelines) return [];
 
     const metrics: PipelineMetrics[] = [];
 
     for (const pipeline of pipelines) {
-      const { data: stages } = await supabase
+      const { data: stages, error: stagesError } = await supabase
         .from('stages')
-        .select('id, name, position, color, probability')
+        .select('id, name, position, color, probability, is_won, pipelines!inner(organization_id)')
+        .eq('pipelines.organization_id', this.organizationId)
         .eq('pipeline_id', pipeline.id)
         .order('position');
+      if (stagesError) throw stagesError;
 
       let oppQuery = supabase
         .from('opportunities')
-        .select('id, stage_id, amount')
+        .select('id, stage_id, amount, status')
         .eq('organization_id', this.organizationId)
         .eq('pipeline_id', pipeline.id);
 
@@ -181,7 +187,8 @@ class ReportesService {
         oppQuery = oppQuery.lte('created_at', filters.dateTo);
       }
 
-      const { data: opportunities } = await oppQuery;
+      const { data: opportunities, error: opportunitiesError } = await oppQuery;
+      if (opportunitiesError) throw opportunitiesError;
       const opps = opportunities || [];
       const stageList = stages || [];
 
@@ -199,10 +206,8 @@ class ReportesService {
       });
 
       const totalValue = opps.reduce((acc, o) => acc + (o.amount || 0), 0);
-      const wonStage = stageList.find(s => s.probability >= 0.99);
-      const wonOpps = wonStage 
-        ? opps.filter(o => o.stage_id === wonStage.id).length 
-        : 0;
+      const wonStageIds = new Set(stageList.filter(s => s.is_won === true).map(s => s.id));
+      const wonOpps = opps.filter(o => esOportunidadGanada({ status: o.status, is_won: wonStageIds.has(o.stage_id) })).length;
 
       metrics.push({
         pipelineId: pipeline.id,
@@ -298,34 +303,26 @@ class ReportesService {
       .eq('organization_id', this.organizationId)
       .eq('is_active', true);
     
-    return (data || []).map((m: any) => ({
+    const members = (data || []) as unknown as Array<{ user_id: string; profiles: { full_name: string | null; email: string | null } | null }>;
+    return members.map(m => ({
       id: m.user_id,
       name: m.profiles?.full_name || m.profiles?.email || 'Sin nombre'
     }));
   }
 
-  async exportToCSV(data: any[], filename: string): Promise<void> {
+  async exportToCSV(data: ReadonlyArray<Record<string, string | number | null | undefined>>, filename: string): Promise<void> {
     if (data.length === 0) return;
 
     const headers = Object.keys(data[0]);
-    const csvContent = [
-      headers.join(','),
-      ...data.map(row => 
-        headers.map(h => {
-          const val = row[h];
-          if (typeof val === 'string' && val.includes(',')) {
-            return `"${val}"`;
-          }
-          return val ?? '';
-        }).join(',')
-      )
-    ].join('\n');
+    const csvContent = filasACsv(headers, data.map(row => headers.map(h => row[h])));
+    const timezone = await getOrganizationTimezone(this.organizationId);
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `${filename}_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.download = `${filename}_${todayInTz(timezone)}.csv`;
+    try { link.click(); } finally { URL.revokeObjectURL(url); }
   }
 }
 

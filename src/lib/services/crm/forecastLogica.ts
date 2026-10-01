@@ -5,6 +5,7 @@ import {
   type TasaCambio,
 } from "@/components/crm/kit/monedaCrm";
 import { probabilityToFraction } from "./revenueOs/forecastScenarios";
+import { esOportunidadGanada } from './estadoOportunidadLogica';
 export const FORECAST_CATEGORIES = [
   "commit",
   "best_case",
@@ -121,7 +122,7 @@ export function calcularFilaPronostico(
       !o.is_won &&
       categoriaPronostico(o) !== "omitted",
   );
-  const won = montos(opps.filter((o) => o.status === "won" || o.is_won));
+  const won = montos(opps.filter(esOportunidadGanada));
   const committed = open.filter((o) => categoriaPronostico(o) === "commit");
   const best = open.filter((o) =>
     ["commit", "best_case"].includes(categoriaPronostico(o)),

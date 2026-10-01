@@ -477,7 +477,10 @@ describe('4. Rutas', () => {
     // llama exactamente a esa misma función.
     const http = SRC('src/lib/services/crm/whatsapp/http.ts');
     const orgContext = SRC('src/lib/utils/orgContext.ts');
-    expect(http).toMatch(/requireOrgAdminOrPermission\(ctx\)/);
+    // Campañas puede exigir su permiso específico; el helper canónico sigue
+    // resolviendo roles y pertenencia, sin una segunda implementación.
+    expect(http).toMatch(/requireOrgAdminOrPermission\(ctx, opts\.permission\)/);
+    expect(CODIGO('src/app/api/crm/campaigns/[id]/launch/route.ts')).toMatch(/permission:\s*'crm\.campaigns\.manage'/);
     expect(orgContext).toMatch(/if \(opts\?\.admin\) await requireOrgAdminOrPermission\(ctx\)/);
     // Y el panel no decide el permiso por su cuenta: lo pregunta al servidor.
     const panel = CODIGO('src/components/crm/agentes/campanas/CampaignRunNow.tsx');

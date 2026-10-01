@@ -10,6 +10,10 @@ import { WhatsAppError } from './types';
 
 export function whatsappErrorResponse(err: unknown): NextResponse {
   if (err instanceof WhatsAppError) {
+    if (err.code === 'INTERNAL' && err.status >= 500) {
+      console.error('[crm/whatsapp] error de datos interno');
+      return NextResponse.json({ error: 'Error interno', code: err.code }, { status: err.status });
+    }
     return NextResponse.json({ error: err.message, code: err.code, details: err.details ?? null }, { status: err.status });
   }
   if (err instanceof OrgContextError) {

@@ -2186,3 +2186,10 @@ no se declara cerrado el alcance completo de las olas 4/5/6.
 - API real en org 120 con fixture ficticio: crear 201 → detalle 200 con 0 intentos → detener 200 → motivo/fecha/flag persistidos → organización ajena 403 → eliminar 200. Agente ficticio eliminado por MCP; quedan 0 campañas y 0 agentes de prueba. No llamadas ni mensajes enviados.
 - Revisión real a 1440 y 390: detalle visible, 0 alertas y sin overflow horizontal de raíz. Capturas privadas fuera del repositorio. Se conserva el plan/membresía de la cuenta; alternativa de sesión local documentada anteriormente.
 - Diferencias/pendientes: los indicadores cuentan intentos físicos y contactos efectivos por intento (no personas únicas); reuniones son eventos reales deduplicados. Historial incluye 25 por página; llamadas activas hasta 100 visibles, con total global. No se inventan duración estimada de campaña ni coste exacto antes del proveedor. El asistente de creación, plantillas, adaptación completa de IA y demás olas continúan abiertos. Este avance no declara terminadas las 135 pantallas.
+
+
+### Ola 6 — corrección previa al asistente: audiencia de voz (2026-10-01)
+
+- `buildCampaignTargets` trataba el id de `segments` como `campaign_contacts.campaign_id`; una campaña por segmento quedaba vacía o leía filas incorrectas. Ahora llama a `resolveAudience`, el mismo resolutor de mensajes, con la organización ya validada. No se crea un segundo evaluador de audiencia.
+- Regresión probada con clientes coincidentes/no coincidentes y señuelos de otra organización, más un contacto falso con campaign_id igual al segmento: solo sale el cliente que cumple los criterios de su propia organización. Segmento ajeno → 404. Errores de consulta de segmento se propagan; errores internos de WhatsApp no devuelven texto SQL.
+- 3 suites / 109 pruebas pasan (7 omisiones históricas), lint tocado limpio. El siguiente paso añade la persistencia de segmentos estáticos y el preview con DSL canónico, requeridos por las anotaciones `1384:1741` y `1384:826348`; el resolver actual conserva temporalmente los filtros planos heredados. No se afirma cerrada esa adaptación.

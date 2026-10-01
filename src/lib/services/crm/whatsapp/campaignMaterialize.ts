@@ -101,7 +101,8 @@ export async function resolveAudience(orgId: number, audience: CampaignAudience,
     else if (!cur.opportunity_id && oppId) cur.opportunity_id = oppId;
   };
   if (audience.source === 'segment' && audience.segment_id) {
-    const { data: seg } = await service.from('segments').select('id, filter_json').eq('id', audience.segment_id).eq('organization_id', orgId).maybeSingle();
+    const { data: seg, error: segmentError } = await service.from('segments').select('id, filter_json').eq('id', audience.segment_id).eq('organization_id', orgId).maybeSingle();
+    if (segmentError) throw new WhatsAppError('INTERNAL', `Segmento: ${segmentError.message}`, 500);
     if (!seg) throw new WhatsAppError('NOT_FOUND', 'Segmento no encontrado', 404);
     let q = service.from('customers').select('id').eq('organization_id', orgId);
     const rules = ((seg as { filter_json?: unknown }).filter_json ?? []) as FilterRule[];

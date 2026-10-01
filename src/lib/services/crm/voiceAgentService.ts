@@ -43,6 +43,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { resolveAudience } from './whatsapp/campaignMaterialize';
 import { getActiveProvider } from '@/lib/services/providerRegistry';
 import {
   getMasterClient,
@@ -764,17 +765,11 @@ export async function buildCampaignTargets(
   } else if (campaign.target_source === 'segment') {
     const segmentId = config.segment_id as string | undefined;
     if (!segmentId) return [];
-    const rows = unwrap(
-      'buildCampaignTargets.segment',
-      await supabase
-        .from('campaign_contacts')
-        .select('customer_id')
-        .eq('campaign_id', segmentId)
-        .limit(limit)
-    ) as Array<{ customer_id: string }> | null;
-    // `segments.filter_json` es dinámico; sin materialización previa no hay objetivos.
-    for (const r of rows || []) {
-      targets.push({ customer_id: r.customer_id, opportunity_id: null, stage_id: null });
+    // Un segmento no es una campaña. Voz y mensajes resuelven la misma
+    // audiencia por sus criterios, con la organización comprobada.
+    const rows = await resolveAudience(orgId, { source: 'segment', segment_id: segmentId }, supabase, limit);
+    for (const r of rows) {
+      targets.push({ customer_id: r.customer_id, opportunity_id: r.opportunity_id, stage_id: null });
     }
   } else if (campaign.target_source === 'followup_due') {
     const rows = unwrap(

@@ -21,6 +21,7 @@
  * necesita su clave en es/en/fr/pt: `__tests__/traducciones.test.ts` lo exige.
  */
 import type { LucideIcon } from 'lucide-react';
+import { MOSTRAR_FACTURA_ELECTRONICA } from '@/lib/config/features';
 import {
   Activity,
   ArrowLeftRight,
@@ -397,7 +398,7 @@ export const CATALOGO_NAV: ModuloNav[] = [
       { href: '/app/finanzas/facturas-compra', nombre: 'Facturas de compra', icono: ReceiptText, grupo: 'Documentos' },
       { href: '/app/finanzas/notas-credito', nombre: 'Notas crédito', icono: FileText, grupo: 'Documentos' },
       { href: '/app/finanzas/documentos-soporte', nombre: 'Documentos soporte', icono: FileCheck2, grupo: 'Documentos' },
-      { href: '/app/finanzas/facturacion-electronica', nombre: 'Facturación electrónica', icono: Zap, grupo: 'Documentos' },
+      ...(MOSTRAR_FACTURA_ELECTRONICA ? [{ href: '/app/finanzas/facturacion-electronica', nombre: 'Facturación electrónica', icono: Zap, grupo: 'Documentos' }] : []),
       { href: '/app/finanzas/ingresos', nombre: 'Ingresos', icono: TrendingUp, grupo: 'Tesorería' },
       { href: '/app/finanzas/egresos', nombre: 'Egresos', icono: TrendingDown, grupo: 'Tesorería' },
       { href: '/app/finanzas/transferencias', nombre: 'Transferencias', icono: ArrowLeftRight, grupo: 'Tesorería' },

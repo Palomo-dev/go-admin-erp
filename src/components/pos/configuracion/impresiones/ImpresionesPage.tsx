@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Printer, Receipt, ChefHat, FileText, Monitor, Usb, Package, FileCheck } from 'lucide-react';
 import { cn } from '@/utils/Utils';
+import { MOSTRAR_FACTURA_ELECTRONICA } from '@/lib/config/features';
 import { PreviewViewer } from './PreviewViewer';
 import { usePreviewBusiness } from './usePreviewBusiness';
 import {
@@ -16,13 +17,15 @@ import {
   type PaperOption,
 } from './usePrintPreview';
 
-const DOCUMENTS: Array<{ value: DocumentKind; label: string; description: string; icon: typeof Receipt }> = [
+const DOCUMENTS_BASE: Array<{ value: DocumentKind; label: string; description: string; icon: typeof Receipt }> = [
   { value: 'sale_ticket', label: 'Ticket de venta', description: 'Recibo de caja con pagos', icon: Receipt },
   { value: 'pre_cuenta', label: 'Pre-cuenta', description: 'Cuenta de mesa sin pago', icon: FileText },
   { value: 'kitchen_ticket', label: 'Comanda', description: 'Orden para cocina o bar', icon: ChefHat },
   { value: 'shipment_guide', label: 'Guia de envio', description: 'Guia con corte automatico', icon: Package },
-  { value: 'electronic_invoice', label: 'Factura electronica', description: 'Factura DIAN con CUFE y QR', icon: FileCheck },
+  ...(MOSTRAR_FACTURA_ELECTRONICA ? [{ value: 'electronic_invoice' as DocumentKind, label: 'Factura electronica', description: 'Factura DIAN con CUFE y QR', icon: FileCheck }] : []),
 ];
+
+const DOCUMENTS = DOCUMENTS_BASE;
 
 const PATHS: Array<{ value: RenderPath; label: string; description: string; icon: typeof Monitor }> = [
   { value: 'html', label: 'HTML', description: 'Navegador e impresoras del sistema', icon: Monitor },
@@ -54,7 +57,9 @@ const COURIER_CHAR_ADVANCE_EM = 0.6;
  * gastar papel ni depender de tener una impresora conectada.
  */
 export function ImpresionesPage({ embedded = false }: { embedded?: boolean }) {
-  const [kind, setKind] = useState<DocumentKind>('pre_cuenta');
+  // Si la org tiene 'electronic_invoice' guardada pero la feature está oculta, usar 'sale_ticket'
+  const defaultKind: DocumentKind = DOCUMENTS.length > 0 && DOCUMENTS.some(d => d.value === 'pre_cuenta') ? 'pre_cuenta' : 'sale_ticket';
+  const [kind, setKind] = useState<DocumentKind>(defaultKind);
   const [path, setPath] = useState<RenderPath>('html');
   const [width, setWidth] = useState<PaperOption>('80mm');
 

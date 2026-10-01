@@ -60,6 +60,7 @@ import { BotonImporte, CampoNumero, Dialogo, FilaDato, FormField, KbdButton, Lis
 import { Switch } from '@/components/ui/switch';
 import { EntregaCobro } from '@/components/pos/venta/cobro/EntregaCobro';
 import { leerEstadoFacturaElectronica, type ClienteConfigFactura, type EstadoFacturaElectronica } from '@/lib/pos/venta/cobro/facturaElectronicaCobro';
+import { MOSTRAR_FACTURA_ELECTRONICA } from '@/lib/config/features';
 import { CobroPanel } from '@/components/pos/venta/CobroPanel';
 import { ResumenCobro } from '@/components/pos/venta/cobro/ResumenCobro';
 import { EditorPagoCobro } from '@/components/pos/venta/cobro/EditorPagoCobro';
@@ -2289,7 +2290,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
             </SeccionPlegable>
 
             {/* Factura electrónica: oculta temporalmente (GoAdmin no ofrece el servicio) */}
-            {false && (
+            {MOSTRAR_FACTURA_ELECTRONICA && (
               <SeccionPlegable
                 id="cobro-factura"
                 titulo={tPos('factura.titulo')}

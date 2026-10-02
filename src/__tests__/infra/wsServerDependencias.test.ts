@@ -17,6 +17,8 @@
  *     más `tsx`, que es el runtime. Si alguien añade un import de un paquete
  *     nuevo en algo que el servidor alcanza, este test lo detecta antes de que
  *     el contenedor falle con `Cannot find module` en Railway.
+ *     El script deja fuera el `import()` dinámico de `@sentry/react`: solo
+ *     corre en el navegador y su peer `react` no puede entrar en la imagen.
  *  4. El lockfile está sincronizado con el package.json.
  */
 

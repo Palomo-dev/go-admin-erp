@@ -48,8 +48,10 @@ function describir(ctx: ContextoZonaHoraria): string {
 
 /**
  * Deja rastro en Sentry si el SDK esta cargado. Import dinamico y solo
- * en navegador: en servidor (route handlers, jobs) no hay cliente de
- * Sentry y no debe romperse nada por intentarlo.
+ * en navegador: en servidor (route handlers, jobs, ws-server) no hay
+ * cliente de Sentry y no debe romperse nada por intentarlo.
+ * El especificador tiene que seguir siendo un literal: el cierre de
+ * `ws-server` lo reconoce y lo excluye a proposito (peer `react`).
  */
 function migaDeSentry(ctx: ContextoZonaHoraria): void {
   if (typeof window === 'undefined') return;

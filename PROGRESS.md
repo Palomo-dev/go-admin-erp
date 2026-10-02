@@ -3726,3 +3726,8 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - Mover, ganar o perder ya no enciende el loader ni vacía las columnas. La tarjeta cambia de etapa al momento y solo se refrescan los totales. Crear, borrar o cambiar etapas sigue recargando el tablero.
 - El kanban cabe en el ancho de la página y se desplaza dentro de sí. Mantener el clic en el vacío y mover corre las etapas. Arrastrar una tarjeta contra el borde derecho o izquierdo avanza el lienzo para soltarla en una etapa que no se veía. La barra de desplazamiento sigue siendo del navegador.
 - Jest del desplazamiento y del render del tablero: 34 en verde. npx tsc --noEmit -p tsconfig.json en verde. No se abrió el tablero con sesión: el desplazamiento y el movimiento sin recarga se comprobaron en jsdom.
+
+### Fase: Servidor de llamadas — dependencia resend — 2026-10-02
+- Rama cursor/ws-server-resend-e475.
+- Tras el merge a master, Railway no levantó el servidor de llamadas: faltaba el módulo resend. El correo de reunión lo importa desde el agente de voz. El cierre también alcanza libphonenumber-js, sanitize-html y zod. Esas cuatro versiones son las del lockfile de la web. @sentry/react queda fuera: solo corre en el navegador y su peer es react.
+- npm ci del servidor instala 98 paquetes. npm audit --omit=dev queda en cero. En Node 20.20.2 cargan resend, sanitize-html, zod y libphonenumber-js. Jest del cierre y del aviso de zona: 19 en verde.

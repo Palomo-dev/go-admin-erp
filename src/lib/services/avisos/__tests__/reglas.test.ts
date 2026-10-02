@@ -16,7 +16,11 @@ import {
 describe('avisos al miembro', () => {
   test('el arreglo vacio deja pasar todos los eventos y ninguno los apaga', () => {
     expect(correoPermitido([], 'tarea.asignada', false)).toBe(true);
-    expect(correoPermitido(null, 'tarea.vence', false)).toBe(true);
+    expect(correoPermitido([], 'tarea.completada', false)).toBe(true);
+    expect(correoPermitido(null, 'tarea.vence', false)).toBe(false);
+    expect(correoPermitido([], 'tarea.atrasada', false)).toBe(false);
+    expect(correoPermitido(['tarea.vence', 'tarea.atrasada'], 'tarea.vence', false)).toBe(false);
+    expect(correoPermitido([], 'oportunidad.vence', false)).toBe(true);
     expect(correoPermitido(['ninguno'], 'tarea.asignada', false)).toBe(false);
     expect(correoPermitido(['tarea.asignada'], 'oportunidad.etapa', false)).toBe(false);
     expect(correoPermitido(['tarea.asignada'], 'tarea.asignada', true)).toBe(false);
@@ -48,6 +52,8 @@ describe('avisos al miembro', () => {
     expect(conOtro).toContain('stock_low');
     expect(conOtro).toContain('tarea.asignada');
     expect(correoPermitido(conOtro, 'tarea.asignada', false)).toBe(true);
+    expect(correoPermitido(conOtro, 'tarea.vence', false)).toBe(false);
+    expect(correoPermitido(conOtro, 'tarea.atrasada', false)).toBe(false);
     expect(fusionarTiposAviso(['stock_low'], apagados)).toEqual(['stock_low', 'ninguno']);
     expect(fusionarTiposAviso([], todos)).toEqual([]);
   });

@@ -3731,3 +3731,8 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - Rama cursor/ws-server-resend-e475.
 - Tras el merge a master, Railway no levantó el servidor de llamadas: faltaba el módulo resend. El correo de reunión lo importa desde el agente de voz. El cierre también alcanza libphonenumber-js, sanitize-html y zod. Esas cuatro versiones son las del lockfile de la web. @sentry/react queda fuera: solo corre en el navegador y su peer es react.
 - npm ci del servidor instala 98 paquetes. npm audit --omit=dev queda en cero. En Node 20.20.2 cargan resend, sanitize-html, zod y libphonenumber-js. Jest del cierre y del aviso de zona: 19 en verde.
+
+### Fase: Correo de tarea solo al asignarla — 2026-10-02
+- Rama cursor/correo-tarea-vencimiento-e475.
+- El correo de una tarea sigue saliendo cuando se asigna y cuando se completa. No sale si vence hoy, si ya venció o si la fecha todavía no llega. Esas filas siguen en la campana. En dos días había 475 pendientes de vencimiento; quedaron en omitido y el conteo de pendientes bajó a 0. El cron que corre hoy en producción puede volver a crearlas hasta que este cambio esté en el despliegue.
+- Jest de las reglas de aviso: 8 en verde.

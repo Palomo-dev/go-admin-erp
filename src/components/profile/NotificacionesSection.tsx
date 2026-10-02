@@ -12,7 +12,7 @@ const GRUPOS_CORREO: { clave: GrupoAviso; titulo: string; detalle: string }[] = 
   { clave: 'oportunidad.asignada', titulo: 'Oportunidad asignada', detalle: 'Cuando le asignen una oportunidad' },
   { clave: 'oportunidad.etapa', titulo: 'Cambio de etapa', detalle: 'Cuando una oportunidad suya cambie de etapa' },
   { clave: 'tarea.completada', titulo: 'Tarea completada', detalle: 'Cuando se complete una tarea que usted creó o tiene asignada' },
-  { clave: 'vence', titulo: 'Atraso y vencimiento', detalle: 'Cuando una tarea o una oportunidad se atrase o venza hoy' },
+  { clave: 'vence', titulo: 'Atraso y vencimiento', detalle: 'Cuando una oportunidad se atrase o llegue hoy a su fecha de cierre' },
   { clave: 'oportunidad.cierre', titulo: 'Oportunidad ganada o perdida', detalle: 'Cuando se cierre una oportunidad que usted lleva' },
   { clave: 'oportunidad.contacto', titulo: 'Próximo contacto', detalle: 'El día que toca hacer seguimiento de una oportunidad suya' },
   { clave: 'caja.diferencia', titulo: 'Caja con diferencia', detalle: 'Cuando una caja cierra y el arqueo no queda en cero' },

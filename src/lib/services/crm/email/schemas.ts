@@ -133,6 +133,7 @@ export const zTemplateCreate = z.object({
 }).strict();
 
 export const zTemplateUpdate = z.object({
+  expected_version: z.number().int().positive().optional(),
   name: z.string().trim().min(1).max(120).optional(),
   kind: zTemplateKind.optional(),
   engine: zTemplateEngine.optional(),

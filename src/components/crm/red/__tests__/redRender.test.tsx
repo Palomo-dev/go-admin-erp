@@ -1,6 +1,6 @@
 /** @jest-environment jsdom */
 import {fireEvent,screen} from '@testing-library/react';
-import {createTranslator, type AbstractIntlMessages} from 'next-intl';
+import {createTranslator} from 'next-intl';
 import {renderConIdioma,simularAncho} from '@/test-utils/renderConIdioma';
 import {ReferralTable} from '../../referidos/ReferralTable';
 import {PartnerTable} from '../../partners/PartnerTable';
@@ -20,7 +20,7 @@ let errors:jest.SpyInstance;
 beforeEach(()=>{simularAncho(1440); errors=jest.spyOn(console,'error').mockImplementation(()=>undefined);});
 afterEach(()=>{const intl=errors.mock.calls.map(x=>String(x[0]?.message??x[0])).filter(x=>/MISSING_MESSAGE|FORMATTING_ERROR|INVALID_MESSAGE/.test(x)); errors.mockRestore(); expect(intl).toEqual([]);});
 test.each(['es','en','fr','pt'] as const)('tablas, permisos y toda la copia se resuelven con Intl real en %s', idioma => {
-  const messages={es,en,fr,pt}[idioma];const t=createTranslator({locale:idioma,messages:messages as AbstractIntlMessages,namespace:'crm.red'});
+  const messages={es,en,fr,pt}[idioma];const t=createTranslator({locale:idioma,messages:messages.crm.red as Record<string,string>});
   for(const key of Object.values(RED_COPY_KEYS)) expect(t(key,{p0:'Dato',p1:'Otro',p2:'',count:2,type:'Tipo',amount:' 15',note:'',recipient:'Persona'})).toBeTruthy();
   const onConvert=jest.fn();
   const base={rows:[row],total:1,page:1,size:25,onPage:jest.fn(),onSize:jest.fn(),currency:'COP',canManage:false,canRegister:false,busyId:null,onTransition:jest.fn(),onReject:jest.fn(),onConvert,onPay:jest.fn()};

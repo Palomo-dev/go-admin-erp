@@ -48,10 +48,10 @@ export interface TemplateListParams { channel?: 'email' | 'whatsapp' | 'sms'; ki
 export function listTemplates(params: TemplateListParams = {}) {
   const p = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== '') p.set(k, String(v));
-  return emailFetch<TemplateSummary[], { total: number }>(`/api/email/templates?${p.toString()}`);
+  return emailFetch<TemplateSummary[], { total: number; can_manage?: boolean }>(`/api/email/templates?${p.toString()}`);
 }
 export function getTemplate(id: string, stats = false) {
-  return emailFetch<Template, { stats?: { sent: number; opened: number; clicked: number; bounced: number } }>(`/api/email/templates/${id}${stats ? '?stats=1' : ''}`);
+  return emailFetch<Template, { can_manage?: boolean; stats?: { sent: number; opened: number; clicked: number; bounced: number } }>(`/api/email/templates/${id}${stats ? '?stats=1' : ''}`);
 }
 export function createTemplate(body: Record<string, unknown>) {
   return emailFetch<Template>('/api/email/templates', { method: 'POST', body: j(body) });
@@ -64,6 +64,9 @@ export function duplicateTemplate(id: string, name?: string) {
 }
 export function deleteTemplate(id: string) {
   return emailFetch<{ deleted: boolean; deactivated: boolean }>(`/api/email/templates/${id}`, { method: 'DELETE' });
+}
+export function restoreTemplates() {
+  return emailFetch<{ created: number }>('/api/email/templates/restore', { method: 'POST', body: j({}) });
 }
 
 export interface PreviewResult { html: string; text: string; subject: string; preheader: string; missing_variables: string[]; used_variables: string[] }

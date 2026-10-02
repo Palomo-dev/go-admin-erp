@@ -59,7 +59,7 @@ export function HsmEditorDialog({ open, template, channels, onClose, onSaved, ca
       savedId.current = saved.data.id;
       if (submit) {
         const r = await waApi.submitTemplate(saved.data.id, channelId || null);
-        toast({ title: tr("Enviada a aprobación"), description: `Estado ${r.data.meta.status}` });
+        toast({ title: tr("Enviada a aprobación"), description: `${tr('Estado')}: ${r.data.meta.status}` });
       } else toast({ title: tr("Borrador guardado") });
       onSaved();
     } catch (e) {
@@ -127,7 +127,7 @@ export function HsmEditorDialog({ open, template, channels, onClose, onSaved, ca
               </div>
             )}
           </fieldset>
-          <div className="rounded-lg bg-[#efeae2] dark:bg-[#0b141a] p-3"><BubblePreview header={sub(header) || null} body={sub(body)} footer={footer || null} buttons={buttons.filter((b) => b.text)} status="delivered" /></div>
+          <div className="rounded-lg bg-[#efeae2] dark:bg-[#0b141a] p-3"><BubblePreview header={sub(header) || null} body={sub(body)} footer={footer || null} buttons={buttons.filter((b) => b.text)} previewLabel={tr('Vista previa')} emptyLabel={tr('Sin contenido')} /></div>
         </div>
         <DialogFooter className="gap-2">
           <Button type="button" variant="outline" onClick={onClose} disabled={!!saving}> {tr("Cerrar")} </Button>

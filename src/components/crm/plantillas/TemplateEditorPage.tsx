@@ -17,14 +17,18 @@ import type { TemplateEngine } from '@/lib/services/crm/email/types';
 import { TemplateEditorHeader } from './TemplateEditorHeader';
 import { TestSendDialog } from './TestSendDialog';
 import { useTemplateEditor } from './useTemplateEditor';
+import { Button } from '@/components/ui/button';
+import { TemplateContextPicker } from './TemplateContextPicker';
+import { useTemplateText } from './useTemplateText';
 
 export function TemplateEditorPage({ templateId }: { templateId?: string }) {
   const ed = useTemplateEditor(templateId);
+  const tr = useTemplateText();
   const [testOpen, setTestOpen] = useState(false);
 
   if (ed.loading) {
     return (
-      <div className="space-y-4 p-4" aria-busy="true" aria-label="Cargando plantilla">
+      <div className="space-y-4 p-4" aria-busy="true" aria-label={tr("Cargando plantilla")}>
         <Skeleton className="h-32 w-full" />
         <Skeleton className="h-[60vh] w-full" />
       </div>
@@ -34,8 +38,9 @@ export function TemplateEditorPage({ templateId }: { templateId?: string }) {
     return (
       <div className="p-4">
         <Alert variant="destructive">
-          <AlertTitle>No se pudo cargar la plantilla</AlertTitle>
+          <AlertTitle> {tr("No se pudo cargar la plantilla")} </AlertTitle>
           <AlertDescription>{ed.loadError}</AlertDescription>
+          <Button variant="outline" onClick={ed.retryLoad}>{tr('Reintentar')}</Button>
         </Alert>
       </div>
     );
@@ -62,29 +67,35 @@ export function TemplateEditorPage({ templateId }: { templateId?: string }) {
         isNew={!templateId}
         dirty={ed.dirty}
         saving={ed.saving}
+        canManage={ed.canManage}
         stats={ed.stats}
         onSave={() => void ed.save()}
         onDuplicate={() => void ed.duplicate()}
-        onTestSend={() => setTestOpen(true)}
+        onTestSend={() => { if (ed.canManage && !ed.dirty && !ed.saving && !ed.contextError) setTestOpen(true); }}
       />
-
+      <TemplateContextPicker ids={ed.contextIds} onChange={ed.setContextIds} disabled={ed.saving} />
+      <p className="text-xs text-fg-muted">{ed.sample ? tr('Contexto de ejemplo') : tr('Datos del contexto seleccionado')}</p>
+      {ed.contextError && <div role="alert" className="flex items-center gap-2 rounded-lg border border-line-danger bg-danger-subtle p-3 text-sm text-danger-text">
+        {tr('No se pudieron cargar las variables del contexto.')} <Button variant="outline" onClick={ed.retryContext}>{tr('Reintentar')}</Button>
+      </div>}
       <div className="grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <Tabs value={ed.form.engine} onValueChange={(v) => switchEngine(v as TemplateEngine)}>
-          <TabsList aria-label="Modo de edición">
-            <TabsTrigger value="blocks" className="gap-1"><Blocks className="h-3.5 w-3.5" aria-hidden="true" /> Bloques</TabsTrigger>
-            <TabsTrigger value="html" className="gap-1"><Code2 className="h-3.5 w-3.5" aria-hidden="true" /> HTML</TabsTrigger>
+          <TabsList aria-label={tr("Modo de edición")}>
+            <TabsTrigger value="blocks" className="gap-1"><Blocks className="h-3.5 w-3.5" aria-hidden="true" />  {tr("Bloques")} </TabsTrigger>
+            <TabsTrigger value="html" className="gap-1"><Code2 className="h-3.5 w-3.5" aria-hidden="true" />  {tr("HTML")} </TabsTrigger>
           </TabsList>
           <TabsContent value="blocks" className="mt-3">
-            <EmailBlockEditor value={ed.form.doc} onChange={(doc) => ed.patch({ doc })} context={ed.context} heightClassName="h-[65vh]" />
+            <EmailBlockEditor value={ed.form.doc} onChange={(doc) => ed.patch({ doc })} context={ed.context} readOnly={!ed.canManage || ed.saving} heightClassName="h-[65vh]" />
           </TabsContent>
           <TabsContent value="html" className="mt-3">
-            <EmailHtmlEditor value={ed.form.html} onChange={(html) => ed.patch({ html })} context={ed.context} minHeight={520} />
+            <EmailHtmlEditor value={ed.form.html} onChange={(html) => ed.patch({ html })} context={ed.context} readOnly={!ed.canManage || ed.saving} minHeight={520} text={tr} />
           </TabsContent>
         </Tabs>
-        <EmailPreview data={ed.preview} loading={ed.previewLoading} error={ed.previewError} heightClassName="h-[58vh]" />
+        <EmailPreview data={ed.preview} loading={ed.previewLoading || ed.contextLoading} error={ed.previewError} heightClassName="h-[58vh]" text={tr} />
       </div>
 
-      <TestSendDialog open={testOpen} onOpenChange={setTestOpen} templateId={templateId ?? null} templateName={ed.form.name} />
+      <TestSendDialog open={testOpen && ed.canManage} onOpenChange={setTestOpen} templateId={templateId ?? null} templateName={ed.form.name}
+        canManage={ed.canManage && !ed.dirty && !ed.saving && !ed.contextError} contextIds={ed.contextIds} />
     </div>
   );
 }

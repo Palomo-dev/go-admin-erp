@@ -72,12 +72,13 @@ it('si la llamada cambia de dueño durante el CAS, vuelve a comprobar autoría y
   const client = db.client();
   const rpc = client.rpc.bind(client);
   let transferred = false;
-  client.rpc = (async (name, args) => {
+  // Frontera del doble: estas rutas sólo await RPC, no usan su filter builder.
+  client.rpc = (async (name: string, args?: Record<string, unknown>) => {
     if (name === 'fn_crm_callback_llamada' && !transferred) {
       transferred = true; db.rows('calls')[0].user_id = 'otro';
     }
     return rpc(name, args);
-  }) as typeof client.rpc;
+  }) as unknown as typeof client.rpc;
   jest.mocked(getServiceClient).mockReturnValueOnce(client);
   expect((await PATCH(request({ live_note: 'No debe guardarse' }), params)).status).toBe(403);
   expect(db.rows('calls')[0].metadata).toEqual({});

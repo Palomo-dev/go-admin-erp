@@ -15,23 +15,24 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TabErrorBoundary } from './TabErrorBoundary';
 import { TemplateList } from './TemplateList';
+import { PageHeader } from '@/components/kit/PageHeader';
+import { useTemplateText } from './useTemplateText';
 
 /**
  * Fallback real de error (tester r1 #11): `loading` de next/dynamic es el
  * estado de carga, no el de error. Si F16 renombra el export o el chunk no
  * carga, la pestaña degrada con un aviso en vez de tumbar toda la página.
  */
-function WhatsAppTabUnavailable() {
+function WhatsAppTabUnavailable({ email = false }: { email?: boolean }) {
+  const tr = useTemplateText();
   return (
     <div
       role="alert"
       className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200"
     >
-      <p className="font-medium">No se pudieron cargar las plantillas de WhatsApp</p>
-      <p className="mt-1">
-        Vuelve a intentarlo recargando la página. Si el problema continúa, revisa la configuración del canal de WhatsApp
-        en Configuración → CRM → WhatsApp.
-      </p>
+      <p className="font-medium"> {tr(email ? 'No se pudieron cargar las plantillas.' : 'No se pudieron cargar las plantillas de WhatsApp')} </p>
+      {!email && <p className="mt-1">
+         {tr("Vuelve a intentarlo recargando la página. Si el problema continúa, revisa la configuración del canal de WhatsApp en Configuración → CRM → WhatsApp.")} </p>}
     </div>
   );
 }
@@ -54,6 +55,7 @@ const TABS: { id: Tab; label: string; icon: typeof Mail }[] = [
 ];
 
 export function PlantillasPage() {
+  const tr = useTemplateText();
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -71,20 +73,17 @@ export function PlantillasPage() {
 
   return (
     <div className="space-y-4 p-4">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Plantillas</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">Correos y mensajes reutilizables con variables del CRM.</p>
-      </div>
+      <PageHeader titulo={tr('Plantillas')} subtitulo={tr('Administra tus plantillas de correo y WhatsApp.')} icono={Mail} />
       <Tabs value={active} onValueChange={setTab} className="space-y-4">
-        <TabsList aria-label="Canal de plantillas">
+        <TabsList aria-label={tr("Canal de plantillas")}>
           {TABS.map((t) => (
             <TabsTrigger key={t.id} value={t.id} className="gap-1.5">
-              <t.icon className="h-4 w-4" aria-hidden="true" /> {t.label}
+              <t.icon className="h-4 w-4" aria-hidden="true" strokeWidth={1.5} /> {tr(t.label)}
             </TabsTrigger>
           ))}
         </TabsList>
         <TabsContent value="email" className="focus-visible:outline-none">
-          <TabErrorBoundary label="Email"><TemplateList /></TabErrorBoundary>
+          <TabErrorBoundary label="Email" fallback={<WhatsAppTabUnavailable email />}><TemplateList /></TabErrorBoundary>
         </TabsContent>
         <TabsContent value="whatsapp" className="focus-visible:outline-none">
           {/* Doble red: el `.catch()` del dynamic cubre el fallo de import y el

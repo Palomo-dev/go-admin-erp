@@ -48,7 +48,7 @@ afterEach(() => jest.restoreAllMocks());
 
 describe('GET /api/crm/partners', () => {
   it('lista solo los de la organización con tier, tasa efectiva y resumen de comisiones', async () => {
-    const { status, body } = await json(await listGet());
+    const { status, body } = await json(await listGet(new NextRequest('http://localhost/api/crm/partners')));
     expect(status).toBe(200);
     const rows = body.data as Array<Record<string, unknown>>;
     expect(rows.map((r) => r.id).sort()).toEqual([U(70), U(71)].sort());
@@ -66,7 +66,7 @@ describe('GET /api/crm/partners', () => {
   });
   it('deals en monedas distintas -> currency_mixed=true (la interfaz no suma)', async () => {
     db.tables.opportunities.find((o) => o.id === U(31))!.currency = 'USD';
-    const { body } = await json(await listGet());
+    const { body } = await json(await listGet(new NextRequest('http://localhost/api/crm/partners')));
     const carlos = (body.data as Array<Record<string, unknown>>).find((r) => r.id === U(70))!;
     expect(carlos.currency_mixed).toBe(true);
     expect(carlos.commissions_currency).toBeNull();

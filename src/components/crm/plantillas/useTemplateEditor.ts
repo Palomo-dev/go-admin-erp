@@ -11,9 +11,10 @@ import { useRouter } from 'next/navigation';
 import { toast } from '@/components/ui/use-toast';
 import { emptyDocument, safeParseBlockDocument, type BlockDocument } from '@/lib/services/crm/email/blocks';
 import type { Template, TemplateEngine, TemplateKind } from '@/lib/services/crm/email/types';
-import { sampleContext, type RenderContext } from '@/lib/services/crm/email/variables';
-import { createTemplate, duplicateTemplate, getTemplate, getVariables, previewEmail, updateTemplate } from '@/components/crm/email/emailApi';
-import type { EmailPreviewData } from '@/components/crm/email/EmailPreview';
+import { createTemplate, duplicateTemplate, getTemplate, listTemplates, updateTemplate } from '@/components/crm/email/emailApi';
+import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useTemplatePreview, type TemplateContextIds } from './useTemplatePreview';
+import { useTemplateText } from './useTemplateText';
 
 export interface TemplateForm {
   name: string;
@@ -48,6 +49,15 @@ function fromTemplate(t: Template): TemplateForm {
 
 export function useTemplateEditor(templateId?: string) {
   const router = useRouter();
+  const tr = useTemplateText();
+  const { organization } = useOrganization(); const orgId = organization?.id ?? null;
+  const scope = `${orgId ?? ''}:${templateId ?? 'new'}`;
+  const currentScope = useRef(scope); currentScope.current = scope;
+  const [loadedScope, setLoadedScope] = useState('');
+  const [canManage, setCanManage] = useState(false);
+  const [contextIds, setContextIds] = useState<TemplateContextIds>({});
+  const [reload, setReload] = useState(0);
+  const pending = useRef(false);
   const [template, setTemplate] = useState<Template | null>(null);
   const [form, setForm] = useState<TemplateForm>(EMPTY);
   const [loading, setLoading] = useState(!!templateId);
@@ -55,105 +65,84 @@ export function useTemplateEditor(templateId?: string) {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [stats, setStats] = useState<TemplateStats | null>(null);
-  const [context, setContext] = useState<RenderContext | null>(null);
-  const [preview, setPreview] = useState<EmailPreviewData | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewError, setPreviewError] = useState<string | null>(null);
-  const previewSeq = useRef(0);
+  const previewState = useTemplatePreview(form, loading || loadedScope !== scope, contextIds, orgId ? scope : '');
 
   useEffect(() => {
     let cancelled = false;
-    getVariables().then((r) => { if (!cancelled) setContext(r.data.values); }).catch(() => { if (!cancelled) setContext(sampleContext()); });
-    return () => { cancelled = true; };
-  }, []);
-
-  useEffect(() => {
-    if (!templateId) { setLoading(false); return; }
-    let cancelled = false;
-    setLoading(true);
-    getTemplate(templateId, true)
+    setLoading(true); setLoadError(null); setCanManage(false); setTemplate(null); setStats(null); setForm(EMPTY); setDirty(false);
+    if (!orgId) { setLoading(false); return; }
+    (templateId ? getTemplate(templateId, true) : listTemplates({ channel: 'email', pageSize: 1 }))
       .then((r) => {
         if (cancelled) return;
-        setTemplate(r.data);
-        setForm(fromTemplate(r.data));
-        setStats(r.stats ?? null);
+        setCanManage(r.can_manage === true); setLoadedScope(scope);
+        if (!Array.isArray(r.data)) {
+          setTemplate(r.data); setForm(fromTemplate(r.data));
+          setStats('stats' in r ? r.stats ?? null : null);
+        }
         setDirty(false);
       })
-      .catch((err: Error) => { if (!cancelled) setLoadError(err.message); })
+      .catch((err: Error) => { if (!cancelled) { setLoadedScope(scope); setLoadError(err.message); } })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [templateId]);
+  }, [templateId, orgId, scope, reload]);
+
+  useEffect(() => { setContextIds({}); }, [orgId, templateId]);
 
   const patch = useCallback((p: Partial<TemplateForm>) => {
+    if (!canManage || loadedScope !== scope || pending.current) return;
     setForm((f) => ({ ...f, ...p }));
     setDirty(true);
-  }, []);
+  }, [canManage, loadedScope, scope]);
 
-  // Vista previa con debounce sobre el contenido/asunto/preheader.
-  useEffect(() => {
-    if (loading) return;
-    const seq = ++previewSeq.current;
-    const handle = setTimeout(async () => {
-      setPreviewLoading(true);
-      try {
-        const body = form.engine === 'blocks' ? { blocks: form.doc } : { html: form.html };
-        const r = await previewEmail({ ...body, subject: form.subject, preheader: form.preheader });
-        if (seq !== previewSeq.current) return;
-        setPreview({ html: r.data.html, text: r.data.text, subject: r.data.subject, preheader: r.data.preheader, missing: r.data.missing_variables });
-        setPreviewError(null);
-      } catch (err) {
-        if (seq !== previewSeq.current) return;
-        setPreviewError(err instanceof Error ? err.message : 'No se pudo generar la vista previa');
-      } finally {
-        if (seq === previewSeq.current) setPreviewLoading(false);
-      }
-    }, 600);
-    return () => clearTimeout(handle);
-  }, [form.engine, form.doc, form.html, form.subject, form.preheader, loading]);
-
-  const validate = (): string | null => {
-    if (!form.name.trim()) return 'El nombre es obligatorio';
-    if (!form.subject.trim()) return 'El asunto es obligatorio';
-    if (form.engine === 'blocks' && form.doc.blocks.length === 0) return 'Añade al menos un bloque';
-    if (form.engine === 'html' && !form.html.trim()) return 'El HTML está vacío';
+  const validate = useCallback((): string | null => {
+    if (!form.name.trim()) return tr("El nombre es obligatorio");
+    if (!form.subject.trim()) return tr("El asunto es obligatorio");
+    if (form.engine === 'blocks' && form.doc.blocks.length === 0) return tr("Añade al menos un bloque");
+    if (form.engine === 'html' && !form.html.trim()) return tr("El HTML está vacío");
     return null;
-  };
+  }, [form, tr]);
 
   const save = useCallback(async (): Promise<Template | null> => {
+    if (!canManage || loadedScope !== scope || pending.current) return null;
     const err = validate();
-    if (err) { toast({ title: 'Revisa la plantilla', description: err, variant: 'destructive' }); return null; }
-    setSaving(true);
+    if (err) { toast({ title: tr("Revisa la plantilla"), description: err, variant: 'destructive' }); return null; }
+    pending.current = true; setSaving(true);
     try {
       const body: Record<string, unknown> = {
         name: form.name.trim(), kind: form.kind, subject: form.subject, preheader: form.preheader, description: form.description || null,
         is_active: form.is_active, engine: form.engine, ...(form.engine === 'blocks' ? { blocks_json: form.doc } : { body_html: form.html }),
+        ...(templateId ? { expected_version: template?.version } : {}),
       };
       const r = templateId ? await updateTemplate(templateId, body) : await createTemplate(body);
+      if (currentScope.current !== scope) return null;
       setTemplate(r.data);
       setForm(fromTemplate(r.data));
       setDirty(false);
-      toast({ title: templateId ? 'Plantilla guardada' : 'Plantilla creada', description: `${r.data.name} · v${r.data.version}` });
+      toast({ title: tr(templateId ? 'Plantilla guardada.' : 'Plantilla creada.'), description: `${r.data.name} · v${r.data.version}` });
       if (!templateId) router.replace(`/app/crm/plantillas/${r.data.id}`);
       return r.data;
     } catch (e) {
-      toast({ title: 'No se pudo guardar', description: e instanceof Error ? e.message : 'Error', variant: 'destructive' });
+      toast({ title: tr("No se pudo guardar"), description: e instanceof Error ? e.message : 'Error', variant: 'destructive' });
       return null;
     } finally {
-      setSaving(false);
+      pending.current = false; setSaving(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form, templateId, router]);
+  }, [form, templateId, template, router, canManage, loadedScope, scope, tr, validate]);
 
   const duplicate = useCallback(async () => {
-    if (!templateId) return;
+    if (!templateId || !canManage || loadedScope !== scope || pending.current) return;
+    pending.current = true; setSaving(true);
     try {
       const r = await duplicateTemplate(templateId);
-      toast({ title: 'Plantilla duplicada', description: r.data.name });
+      if (currentScope.current !== scope) return;
+      toast({ title: tr("Plantilla duplicada"), description: r.data.name });
       router.push(`/app/crm/plantillas/${r.data.id}`);
     } catch (e) {
-      toast({ title: 'No se pudo duplicar', description: e instanceof Error ? e.message : 'Error', variant: 'destructive' });
-    }
-  }, [templateId, router]);
+      toast({ title: tr("No se pudo duplicar"), description: e instanceof Error ? e.message : 'Error', variant: 'destructive' });
+    } finally { pending.current = false; setSaving(false); }
+  }, [templateId, router, canManage, loadedScope, scope, tr]);
 
-  return { template, form, patch, loading, loadError, saving, dirty, stats, context, preview, previewLoading, previewError, save, duplicate, isSystem: !!template?.metadata?.is_system };
+  return { template, form, patch, loading: loading || loadedScope !== scope, loadError, saving, dirty, stats, ...previewState,
+    contextIds, setContextIds, canManage: canManage && loadedScope === scope, retryLoad: () => setReload(n => n + 1),
+    save, duplicate, isSystem: !!template?.metadata?.is_system };
 }

@@ -1,163 +1,82 @@
 'use client';
-
-/**
- * WhatsAppTemplatesTab (FASE-16 §5.2): plantillas HSM de la org — estado de
- * aprobación, calidad, crear/editar (DRAFT), enviar a aprobación, sincronizar
- * desde Meta/Twilio. F7 la monta en /app/crm/plantillas (tab WhatsApp) con
- * next/dynamic: import('@/components/crm/whatsapp/WhatsAppTemplatesTab').
- */
-import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, RefreshCw, Send, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { Copy, Eye, MessageCircle, Pencil, Plus, RefreshCw, Send, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DataTable, type ColumnaTabla } from '@/components/kit/DataTable';
+import { SearchInput } from '@/components/kit/SearchInput';
+import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from '@/components/ui/use-toast';
-import { supabase } from '@/lib/supabase/config';
-import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { isRealtimePublished } from '@/components/crm/shared/realtimeTables';
+import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useTemplateText } from '@/components/crm/plantillas/useTemplateText';
 import { waApi, ApiError, type ChannelSummary, type WhatsAppTemplate } from './api';
 import { HsmEditorDialog } from './HsmEditorDialog';
-
-const STATUS: Record<string, { label: string; variant: 'success' | 'warning' | 'destructive' | 'secondary' | 'outline' }> = {
-  APPROVED: { label: 'Aprobada', variant: 'success' },
-  PENDING: { label: 'En revisión', variant: 'warning' },
-  REJECTED: { label: 'Rechazada', variant: 'destructive' },
-  PAUSED: { label: 'Pausada', variant: 'destructive' },
-  DISABLED: { label: 'Deshabilitada', variant: 'destructive' },
-  IN_APPEAL: { label: 'En apelación', variant: 'warning' },
-  DRAFT: { label: 'Borrador', variant: 'secondary' },
-};
-const CATEGORY: Record<string, string> = { utility: 'Utility', marketing: 'Marketing', authentication: 'Autenticación' };
-
-/**
- * `canEdit` opcional: si el contenedor no lo pasa (p. ej. la pestaña WhatsApp de
- * /app/crm/plantillas), se resuelve del backend (`can_manage` = admin de
- * organización), porque el CRUD y la sincronización de plantillas exigen ese
- * rol (tester r1 · fallo 8: se ofrecían a cualquier miembro y devolvían 403).
- */
+const statuses: Record<string, string> = { APPROVED: 'Aprobada', PENDING: 'En revisión', REJECTED: 'Rechazada', PAUSED: 'Pausada', DISABLED: 'Deshabilitada', IN_APPEAL: 'En apelación', DRAFT: 'Borrador' };
 export function WhatsAppTemplatesTab({ canEdit }: { canEdit?: boolean }) {
-  const [canManage, setCanManage] = useState(false);
-  const effectiveCanEdit = canEdit ?? canManage;
-  const [items, setItems] = useState<WhatsAppTemplate[]>([]);
-  const [channels, setChannels] = useState<ChannelSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
-  const [editing, setEditing] = useState<WhatsAppTemplate | null | 'new'>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
-
+  const tr = useTemplateText(); const { organization } = useOrganization(); const orgId = organization?.id ?? null;
+  const currentOrg = useRef(orgId); currentOrg.current = orgId; const revision = useRef(0); const pending = useRef(false);
+  const [scope, setScope] = useState<number | null>(null); const [canManage, setCanManage] = useState(false); const [canManageChannels, setCanManageChannels] = useState(false);
+  const [items, setItems] = useState<WhatsAppTemplate[]>([]); const [channels, setChannels] = useState<ChannelSummary[]>([]);
+  const [loading, setLoading] = useState(true); const [error, setError] = useState<unknown>(null); const [busy, setBusy] = useState(false);
+  const [q, setQ] = useState(''); const [editing, setEditing] = useState<{ template: WhatsAppTemplate | null; clone: boolean } | null>(null);
+  const [deleting, setDeleting] = useState<WhatsAppTemplate | null>(null);
+  const allowed = canManage && canEdit !== false && scope === orgId && !loading && !error;
   const load = useCallback(async () => {
-    setLoading(true);
+    const ticket = ++revision.current; setLoading(true); setError(null);
+    if (!orgId) { setLoading(false); setCanManage(false); return; }
     try {
-      const [t, c] = await Promise.all([waApi.templates({ status: 'ALL', includeInactive: true }), waApi.channels()]);
-      setItems(t.data);
-      setChannels(c.data);
-      setCanManage(c.can_manage === true);
-    } catch (e) {
-      toast({ title: 'No se pudieron cargar las plantillas', description: e instanceof Error ? e.message : 'Error', variant: 'destructive' });
-    } finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { void load(); }, [load]);
-
-  // Realtime: el webhook message_template_status_update actualiza templates.metadata
-  // `templates` no está en la publicación `supabase_realtime`: abrir un canal consume
-  // conexiones del pool sin recibir eventos. Si se publica, agregarla a
-  // REALTIME_PUBLISHED_TABLES.
-  useEffect(() => {
-    if (!isRealtimePublished('templates')) return;
-    const orgId = getOrganizationId();
-    const ch = supabase.channel(`wa-templates-${orgId}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'templates', filter: `organization_id=eq.${orgId}` }, () => void load())
-      .subscribe();
-    return () => { void supabase.removeChannel(ch); };
-  }, [load]);
-
-  const sync = async () => {
-    setSyncing(true);
-    try {
-      const r = await waApi.syncTemplates();
-      toast({ title: 'Sincronizado con el proveedor', description: `${r.created} nuevas · ${r.updated} actualizadas · ${r.total} en el WABA` });
-      await load();
-    } catch (e) {
-      toast({ title: 'No se pudo sincronizar', description: e instanceof Error ? e.message : 'Error', variant: 'destructive' });
-    } finally { setSyncing(false); }
+      const [templates, channel] = await Promise.all([waApi.templates({ status: 'ALL', includeInactive: true }), waApi.channels()]);
+      if (ticket !== revision.current || currentOrg.current !== orgId) return;
+      setItems(templates.data); setChannels(channel.data); setCanManage(templates.can_manage === true); setCanManageChannels(channel.can_manage === true); setScope(orgId);
+    } catch (e) { if (ticket === revision.current && currentOrg.current === orgId) { setError(e); setCanManage(false); } }
+    finally { if (ticket === revision.current && currentOrg.current === orgId) setLoading(false); }
+  }, [orgId]);
+  useEffect(() => { const epoch = revision; setItems([]); setChannels([]); setScope(null); setCanManage(false); setCanManageChannels(false); setEditing(null); setDeleting(null); void load(); return () => { epoch.current++; }; }, [load]);
+  const mutate = async (action: () => Promise<void>) => {
+    if (!allowed || pending.current) return;
+    pending.current = true; setBusy(true);
+    try { await action(); }
+    catch (e) { toast({ title: tr('No se pudo actualizar la plantilla.'), description: e instanceof Error ? e.message : tr('Error'), variant: 'destructive' }); }
+    finally { pending.current = false; setBusy(false); }
   };
-
-  const submit = async (t: WhatsAppTemplate) => {
-    setBusyId(t.id);
-    try {
-      const r = await waApi.submitTemplate(t.id, t.meta.channel_id ?? null);
-      toast({ title: 'Enviada a aprobación', description: `Estado: ${STATUS[r.data.meta.status]?.label ?? r.data.meta.status}. Meta suele responder en minutos u horas.` });
-      await load();
-    } catch (e) {
-      toast({ title: 'No se pudo enviar', description: e instanceof ApiError ? `${e.message} (${e.code})` : String(e), variant: 'destructive' });
-    } finally { setBusyId(null); }
-  };
-
-  const remove = async (t: WhatsAppTemplate) => {
-    if (!confirm(t.meta.meta_template_id ? `"${t.name}" ya existe en Meta: se desactivará aquí (sigue en el WABA). ¿Continuar?` : `¿Eliminar el borrador "${t.name}"?`)) return;
-    setBusyId(t.id);
-    try { await waApi.deleteTemplate(t.id); await load(); } catch (e) { toast({ title: 'No se pudo eliminar', description: e instanceof Error ? e.message : 'Error', variant: 'destructive' }); } finally { setBusyId(null); }
-  };
-
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="text-sm text-gray-600 dark:text-gray-300">
-          <p>Plantillas HSM aprobadas por Meta/Twilio. Solo las <strong>aprobadas</strong> se pueden enviar fuera de la ventana de 24 h.</p>
-          {!effectiveCanEdit && !loading && <p className="text-xs text-gray-500 dark:text-gray-400">Solo lectura: crear, aprobar, eliminar y sincronizar plantillas requiere rol de administrador de la organización.</p>}
-        </div>
-        <div className="flex gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={() => void sync()} disabled={syncing || !effectiveCanEdit}>{syncing ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" aria-hidden="true" />}Sincronizar</Button>
-          <Button type="button" size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setEditing('new')} disabled={!effectiveCanEdit}><Plus className="h-4 w-4 mr-1" aria-hidden="true" />Crear plantilla</Button>
-        </div>
-      </div>
-      <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-x-auto bg-white dark:bg-gray-800">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Categoría</TableHead>
-              <TableHead className="hidden sm:table-cell">Idioma</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead className="hidden md:table-cell">Calidad</TableHead>
-              <TableHead className="hidden lg:table-cell">Proveedor</TableHead>
-              <TableHead className="w-32" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? Array.from({ length: 4 }).map((_, i) => <TableRow key={i}><TableCell colSpan={7}><Skeleton className="h-8 w-full" /></TableCell></TableRow>)
-              : items.length === 0 ? <TableRow><TableCell colSpan={7} className="text-center py-10 text-sm text-gray-500">No hay plantillas. Crea una o sincroniza las de tu WABA.</TableCell></TableRow>
-              : items.map((t) => {
-                const st = STATUS[t.meta.status] ?? STATUS.DRAFT;
-                return (
-                  <TableRow key={t.id} className={!t.is_active ? 'opacity-60' : ''}>
-                    <TableCell>
-                      <button type="button" className="font-mono text-xs text-left hover:underline" onClick={() => setEditing(t)}>{t.name}</button>
-                      {t.description && <p className="text-[11px] text-gray-500 truncate max-w-xs">{t.description}</p>}
-                    </TableCell>
-                    <TableCell><Badge variant={t.meta.category === 'marketing' ? 'warning' : 'secondary'} className="text-[10px]">{CATEGORY[t.meta.category] ?? t.meta.category}</Badge></TableCell>
-                    <TableCell className="hidden sm:table-cell text-xs">{t.meta.language}</TableCell>
-                    <TableCell>
-                      <Badge variant={st.variant} className="text-[10px]">{st.label}</Badge>
-                      {t.meta.status === 'REJECTED' && t.meta.rejected_reason && <p className="text-[10px] text-red-600 dark:text-red-400">{t.meta.rejected_reason}</p>}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell text-xs">{t.meta.quality_score ?? '—'}</TableCell>
-                    <TableCell className="hidden lg:table-cell text-xs">{t.meta.provider === 'twilio' ? 'Twilio' : 'Meta'}</TableCell>
-                    <TableCell className="text-right whitespace-nowrap">
-                      {t.meta.status === 'DRAFT' && effectiveCanEdit && <Button type="button" size="sm" variant="outline" className="h-7 text-xs mr-1" onClick={() => void submit(t)} disabled={busyId === t.id}>{busyId === t.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Send className="h-3 w-3 mr-1" aria-hidden="true" />Aprobar</>}</Button>}
-                      {effectiveCanEdit && <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-red-600" aria-label={`Eliminar ${t.name}`} onClick={() => void remove(t)} disabled={busyId === t.id}><Trash2 className="h-3.5 w-3.5" /></Button>}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-          </TableBody>
-        </Table>
-      </div>
-      {editing !== null && <HsmEditorDialog open template={editing === 'new' ? null : editing} channels={channels} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void load(); }} />}
+  const sync = () => void mutate(async () => { await waApi.syncTemplates(); if (currentOrg.current === orgId) { toast({ title: tr('Plantillas sincronizadas.') }); await load(); } });
+  const submit = (template: WhatsAppTemplate) => void mutate(async () => {
+    if (template.meta.status !== 'DRAFT') return;
+    await waApi.submitTemplate(template.id, template.meta.channel_id ?? null);
+    if (currentOrg.current === orgId) { toast({ title: tr('Plantilla enviada a aprobación.') }); await load(); }
+  });
+  const remove = () => void mutate(async () => {
+    if (!deleting || deleting.meta.status !== 'DRAFT') return;
+    await waApi.deleteTemplate(deleting.id); if (currentOrg.current === orgId) { setDeleting(null); await load(); }
+  });
+  const columns: ColumnaTabla<WhatsAppTemplate>[] = [
+    { id: 'name', encabezado: tr('Nombre'), celda: template => <div><span className="font-medium text-fg">{template.name}</span><p className="max-w-64 truncate text-xs text-fg-muted">{template.description}</p></div> },
+    { id: 'category', encabezado: tr('Categoría'), celda: template => tr(template.meta.category === 'utility' ? 'Transaccional' : template.meta.category === 'marketing' ? 'Marketing' : 'Autenticación') },
+    { id: 'language', encabezado: tr('Idioma'), ocultarDebajo: 'sm', celda: template => template.meta.language },
+    { id: 'status', encabezado: tr('Estado'), celda: template => <div><Badge variant={template.meta.status === 'APPROVED' ? 'success' : template.meta.status === 'REJECTED' ? 'destructive' : template.meta.status === 'PENDING' ? 'warning' : 'secondary'}>{tr(statuses[template.meta.status] ?? 'Borrador')}</Badge>{template.meta.rejected_reason && <p className="max-w-64 text-xs text-danger-text">{template.meta.rejected_reason}</p>}</div> },
+    { id: 'quality', encabezado: tr('Calidad'), ocultarDebajo: 'md', celda: template => template.meta.quality_score ?? '—' },
+    { id: 'provider', encabezado: tr('Proveedor'), ocultarDebajo: 'lg', celda: template => template.meta.provider === 'twilio' ? 'Twilio' : 'Meta' },
+  ];
+  const visible = scope === orgId ? items.filter(template => `${template.name} ${template.body}`.toLowerCase().includes(q.toLowerCase())) : [];
+  const disconnected = error instanceof ApiError && (error.status === 401 || error.code === '190');
+  return <div className="space-y-3">
+    <div className="flex flex-wrap items-center gap-2"><SearchInput value={q} onChange={setQ} placeholder={tr('Buscar plantillas…')} etiqueta={tr('Buscar plantillas…')} className="min-w-48 flex-1" />
+      {allowed && <><Button variant="outline" onClick={sync} disabled={busy}><RefreshCw className="mr-1 size-4" strokeWidth={1.5} aria-hidden="true" />{tr('Sincronizar')}</Button><Button disabled={busy || !channels.some(channel => channel.capabilities.templates)} onClick={() => setEditing({ template: null, clone: false })}><Plus className="mr-1 size-4" strokeWidth={1.5} aria-hidden="true" />{tr('Nueva plantilla')}</Button></>}
     </div>
-  );
+    {!canManage && !loading && !error && <p className="text-xs text-fg-muted">{tr('Sólo lectura')}</p>}
+    {error !== null && <div role="alert" className="rounded-lg border border-line-danger bg-danger-subtle p-3 text-sm text-danger-text"><p>{tr(disconnected ? 'La conexión con WhatsApp necesita atención. Reconecta el canal para sincronizar.' : 'No se pudieron cargar las plantillas.')}</p>{visible.length > 0 && <p>{tr('Mostrando la última información disponible.')}</p>}<Button variant="outline" onClick={() => void load()}>{tr('Reintentar')}</Button>{disconnected && canManageChannels && <Button variant="outline" asChild><Link href="/app/configuracion/crm/whatsapp">{tr('Reconectar WhatsApp')}</Link></Button>}</div>}
+    {!loading && !error && !channels.some(channel => channel.capabilities.templates) && <p className="flex flex-wrap items-center gap-2 text-sm text-fg-secondary">{tr('Conecta un canal de WhatsApp para crear y sincronizar plantillas.')}{canManageChannels && <Button variant="outline" asChild><Link href="/app/configuracion/crm/whatsapp">{tr('Conectar WhatsApp')}</Link></Button>}</p>}
+    <DataTable columnas={columns} filas={visible} obtenerId={template => template.id} etiqueta={tr('Plantillas de WhatsApp')} etiquetaFila={template => template.name}
+      estado={loading ? 'cargando' : visible.length ? 'listo' : error ? 'error' : q ? 'sinResultados' : 'vacio'}
+      vacio={{ titulo: tr('Aún no hay plantillas de WhatsApp.'), icono: MessageCircle }} onReintentar={() => void load()}
+      onFilaClick={template => setEditing({ template, clone: false })}
+      acciones={template => [{ id: 'view', etiqueta: tr(allowed && template.meta.status === 'DRAFT' ? 'Editar' : 'Ver'), icono: allowed && template.meta.status === 'DRAFT' ? Pencil : Eye, onSelect: () => setEditing({ template, clone: false }) },
+        ...(allowed && template.meta.status !== 'PENDING' ? [{ id: 'clone', etiqueta: tr(template.meta.status === 'REJECTED' ? 'Corregir y reenviar' : 'Duplicar como nueva'), icono: Copy, deshabilitada: busy, onSelect: () => setEditing({ template, clone: true }) },
+          ...(template.meta.status === 'DRAFT' ? [{ id: 'submit', etiqueta: tr('Enviar a aprobación'), icono: Send, deshabilitada: busy, onSelect: () => submit(template) },
+            { id: 'delete', etiqueta: tr('Eliminar'), icono: Trash2, destructiva: true, deshabilitada: busy, onSelect: () => setDeleting(template) }] : [])] : [])]} />
+    {editing && <HsmEditorDialog key={`${scope}:${editing.template?.id ?? 'new'}:${editing.clone}`} open template={editing.template} clone={editing.clone} canManage={allowed} channels={channels}
+      onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void load(); }} />}
+    <AlertDialog open={!!deleting} onOpenChange={open => { if (!open && !busy) setDeleting(null); }}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{tr('¿Eliminar esta plantilla?')}</AlertDialogTitle><AlertDialogDescription>{tr('La plantilla dejará de estar disponible para nuevos mensajes.')}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><Button variant="outline" disabled={busy} onClick={() => setDeleting(null)}>{tr('Cancelar')}</Button><Button variant="destructive" disabled={busy || !allowed} onClick={remove}>{tr('Eliminar')}</Button></AlertDialogFooter></AlertDialogContent></AlertDialog>
+  </div>;
 }
-
-export default WhatsAppTemplatesTab;

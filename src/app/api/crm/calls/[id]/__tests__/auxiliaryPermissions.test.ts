@@ -192,13 +192,14 @@ it('link devuelve la denegación atómica si el dueño cambió después de autor
   db.rows('calls')[0].user_id = 'usuario';
   const client = db.client();
   const rpc = client.rpc.bind(client);
-  client.rpc = (async (name, args) => {
+  // Frontera del doble: estas rutas sólo await RPC, no usan su filter builder.
+  client.rpc = (async (name: string, args?: Record<string, unknown>) => {
     if (name === 'fn_crm_vincular_llamada') {
       db.rows('calls')[0].user_id = 'otro';
       return { data: null, error: { code: '42501', message: 'no_es_propia' } };
     }
     return rpc(name, args);
-  }) as typeof client.rpc;
+  }) as unknown as typeof client.rpc;
   const { getServerOrgContext } = await import('@/lib/utils/orgContext');
   jest.mocked(getServerOrgContext).mockResolvedValueOnce({ organizationId: 7, userId: 'usuario', roleId, roleName: 'Administrador', isSuperAdmin: false, supabase: client } as never);
   const response = await linkPost(request('POST', 'link', { idempotency_key: '11111111-1111-4111-8111-111111111119', create_customer: { first_name: 'Contacto', phone: '3001234567' } }), params);

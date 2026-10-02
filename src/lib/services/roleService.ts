@@ -5,6 +5,7 @@ export interface Role {
   name: string;
   description?: string;
   is_system: boolean;
+  organization_id?: number | null;
   created_at?: string;
 }
 
@@ -34,6 +35,7 @@ export interface RolePermission {
 export const roleService = {
   /**
    * Obtener todos los roles disponibles para una organización
+   * Incluye roles del sistema (organization_id = NULL) y roles de la organización
    */
   async getRoles(organizationId: number): Promise<RoleWithPermissions[]> {
     const { data, error } = await supabase
@@ -43,8 +45,10 @@ export const roleService = {
         role_permissions(permission_id),
         organization_members!organization_members_role_id_fkey(id)
       `)
+      .or(`organization_id.is.null,organization_id.eq.${organizationId}`)
       .neq('id', 1) // Excluir Super Admin
       .order('is_system', { ascending: false })
+      .order('organization_id', { ascending: true, nullsFirst: true })
       .order('name', { ascending: true });
     
     if (error) throw error;
@@ -89,15 +93,16 @@ export const roleService = {
   },
 
   /**
-   * Crear un nuevo rol personalizado
+   * Crear un nuevo rol personalizado para una organización
    */
-  async createRole(roleData: Omit<Role, 'id' | 'created_at' | 'is_system'>): Promise<Role> {
+  async createRole(roleData: Omit<Role, 'id' | 'created_at' | 'is_system'> & { organizationId: number }): Promise<Role> {
     const { data, error } = await supabase
       .from('roles')
       .insert({
         name: roleData.name,
         description: roleData.description,
-        is_system: false
+        is_system: false, // Los roles personalizados siempre son is_system = false
+        organization_id: roleData.organizationId
       })
       .select()
       .single();

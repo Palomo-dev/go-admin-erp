@@ -53,6 +53,9 @@ COPY tsconfig.json ./
 COPY src/lib/ ./src/lib/
 COPY src/types/ ./src/types/
 
+# Cumplimiento compartido entre Node y Edge Functions (Ley 2300 y RNE).
+COPY supabase/functions/_shared/contacto/ ./supabase/functions/_shared/contacto/
+
 # Supabase: cliente Node (ws-config) como config.ts
 COPY src/lib/supabase/ws-config.ts ./src/lib/supabase/config.ts
 

@@ -176,4 +176,14 @@ describe('ws-server: dependencias propias, separadas de las de la web (F-78)', (
     // Si sobra en `declarados`: ya nadie lo importa; quítalo.
     expect({ declarados }).toEqual({ declarados: alcanzados });
   });
+
+  test('el Dockerfile copia todos los archivos locales alcanzados por el servidor', () => {
+    const cierre = JSON.parse(execFileSync(process.execPath, [SCRIPT_CIERRE, '--json'], {
+      cwd: REPO_ROOT, encoding: 'utf-8',
+    })) as { archivosLocales: string[] };
+    const origenes = copias.flatMap(c => origenesDeCopy(c.args).map(normalizar));
+    const ausentes = cierre.archivosLocales.filter(archivo =>
+      !origenes.some(origen => archivo === origen || archivo.startsWith(`${origen}/`)));
+    expect(ausentes).toEqual([]);
+  });
 });

@@ -72,7 +72,17 @@ export function PipelinePantalla() {
   const tablero = useTableroPipeline({ pipelineId: pls.sinVentas && !elegido ? null : pipelineId, query, periodo });
   const etapas = useMemo(() => tablero.cabecera?.etapas ?? [], [tablero.cabecera]);
   const etapasFlujo = useMemo(() => etapas.map((e) => ({ ...e, pipeline_id: pipelineId ?? undefined })), [etapas, pipelineId]);
-  const acciones = useAccionesOportunidad({ etapas: etapasFlujo, permisos, usuarioId: cat.usuarioId, onVer: setDrawer, onCambio: (id) => id && tablero.olvidar(id), onRevertir: tablero.revertir });
+  const acciones = useAccionesOportunidad({
+    etapas: etapasFlujo,
+    permisos,
+    usuarioId: cat.usuarioId,
+    onVer: setDrawer,
+    onCambio: (id, destino) => {
+      if (id && destino) tablero.mover(id, destino);
+      if (id) tablero.olvidar(id);
+    },
+    onRevertir: tablero.revertir,
+  });
 
   useEffect(() => {
     if (!pls.sinVentas) return;
@@ -118,7 +128,7 @@ export function PipelinePantalla() {
   const subtitulo = mostrarSinEmbudo ? t('subtituloSinEmbudo') : estado === 'sinPermiso' ? t('subtituloSinPermiso') : t('subtitulo', { embudo: actual?.name ?? '—', n: resumen?.conteos.open ?? 0 });
 
   return (
-    <div className="flex min-h-full flex-col gap-4 bg-canvas p-4 lg:p-6">
+    <div className="flex min-h-full w-full min-w-0 max-w-full flex-col gap-4 bg-canvas p-4 lg:p-6">
       <PageHeader
         titulo={t('titulo')}
         subtitulo={subtitulo}

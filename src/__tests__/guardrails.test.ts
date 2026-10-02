@@ -3372,12 +3372,23 @@ describe('38. get_user_permission_codes: solo los permisos propios', () => {
  *   fn_producto_variante_estado (permiso en el servidor; el disparador hace el resto).
  * - Toda función nueva que lea stock_levels junto con products lleva `pp_elim`
  *   (o entra en la allow-list con su motivo).
+ *
+ * fn_avisos_miembro_stock y fn_avisos_miembro_stock_cero sí excluyen la
+ * variante de un padre eliminado, pero el predicado no usa el alias pp_elim:
+ * el padre tiene que existir y su status no puede ser deleted (alias padre).
+ * El SQL ya está aplicado y el archivo tiene que coincidir con
+ * schema_migrations, así que no se reescribe para cambiar el alias.
  */
 describe('39. Variantes de un padre eliminado: baja en cascada y lecturas sin huérfanas', () => {
   const DIR = path.join(REPO_ROOT, 'supabase', 'migrations');
   const DESDE = '20260930233100';
-  /** Funciones que leen stock y productos y NO deben excluir huérfanas, con motivo. */
-  const PERMITIDAS: Record<string, string> = {};
+  /** Motivo por el que el detector no exige el alias pp_elim. */
+  const PERMITIDAS: Record<string, string> = {
+    fn_avisos_miembro_stock:
+      'Excluye la variante de un padre eliminado con alias padre (status distinto de deleted) en 20261001211901. El detector solo reconoce pp_elim.',
+    fn_avisos_miembro_stock_cero:
+      'La misma exclusión, con alias padre, en 20261001211941. El detector solo reconoce pp_elim.',
+  };
 
   function funcionesSinPredicado(sql: string): string[] {
     const limpio = sql.replace(/--.*$/gm, '');
@@ -3415,6 +3426,16 @@ describe('39. Variantes de un padre eliminado: baja en cascada y lecturas sin hu
       }
     }
     expect(ofensores).toEqual([]);
+  });
+
+  test('el aviso de stock excluye la variante de un padre eliminado', () => {
+    for (const archivo of ['20261001211901_avisos_miembro_stock.sql', '20261001211941_avisos_miembro_resumenes.sql']) {
+      const sql = readFile(path.join(DIR, archivo));
+      expect(sql).toMatch(/parent_product_id = p\.id/);
+      expect(sql).toMatch(/padre\.id = p\.parent_product_id/);
+      expect(sql).toMatch(/padre\.status/);
+      expect(sql).toMatch(/<> 'deleted'/);
+    }
   });
 
   test('src/ no elimina productos por las RPC legadas ni con un UPDATE directo', () => {

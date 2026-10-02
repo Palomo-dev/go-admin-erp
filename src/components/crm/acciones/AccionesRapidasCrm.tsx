@@ -15,6 +15,7 @@ import { useCallModePolicy } from '@/components/voice/hooks/useCallModePolicy';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { claveError, emitirCambioCrm, pedirCrm } from './apiCrm';
 import { cuerpoLlamada, cuerpoNota, cuerpoReunion, cuerpoSeguimiento, cuerpoTarea, type ModoLlamada, type ValoresTarea } from './accionesRapidasLogica';
+import { claveToastReunion } from '@/lib/services/crm/reunionCorreo';
 import { ModoLlamadaDialog } from './ModoLlamadaDialog';
 import { TareaRapidaDialog } from './TareaRapidaDialog';
 
@@ -144,8 +145,13 @@ export function AccionesRapidasCrm(props: AccionesRapidasCrmProps) {
         if (seg) await pedirCrm('/api/crm/tasks', { method: 'POST', cuerpo: seg });
         terminar('llamar', seg ? t('toast.llamadaConSeguimiento') : t('toast.llamada'));
       } else if (d.tipo === 'reunion') {
-        const { data } = await pedirCrm('/api/crm/meetings', { method: 'POST', cuerpo: { ...cuerpoReunion(d.datos), client_key: claveReunion.current } });
-        terminar('reunion', t('toast.reunion'), data);
+        const { data } = await pedirCrm<{ invite?: { cliente?: boolean; responsable?: boolean } }>('/api/crm/meetings', { method: 'POST', cuerpo: { ...cuerpoReunion(d.datos), client_key: claveReunion.current } });
+        const clave = claveToastReunion(data?.invite);
+        const mensaje = clave === 'reunionCorreo' ? t('toast.reunionCorreo')
+          : clave === 'reunionCorreoCliente' ? t('toast.reunionCorreoCliente')
+          : clave === 'reunionCorreoResponsable' ? t('toast.reunionCorreoResponsable')
+          : t('toast.reunion');
+        terminar('reunion', mensaje, data);
       } else if (d.tipo === 'nota') {
         const { data } = await pedirCrm('/api/crm/notes', { method: 'POST', cuerpo: cuerpoNota(d.datos) });
         terminar('nota', t('toast.nota'), data);

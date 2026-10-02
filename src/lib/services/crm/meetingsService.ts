@@ -2,7 +2,10 @@ import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { CrmHttpError } from './crmErrors';
 
-/** Reuniones de ficha: una RPC guarda calendario e historial con la sesión del actor. */
+/**
+ * Una RPC guarda calendario e historial con la sesión del actor.
+ * La ruta envía la invitación después de guardar, salvo send_invite=false.
+ */
 const instantSchema = z.string().datetime({ offset: true }).refine(value => Number.isFinite(Date.parse(value)));
 
 export const meetingInputSchema = z.object({

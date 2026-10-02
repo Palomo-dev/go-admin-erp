@@ -60,6 +60,7 @@ export function cuerpoReunion(d: ReturnType<typeof datosReunion>) {
     customer_id: d.customer_id,
     opportunity_id: d.opportunity_id,
     attendees: participantes.filter((p) => CORREO.test(p.trim())).slice(0, 20),
+    send_invite: true,
   };
 }
 

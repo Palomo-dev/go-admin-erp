@@ -115,6 +115,7 @@ function getRedirect(notif: NotificationForSheet): { url: string; accion: string
       if (p.href) return { url: p.href, accion: 'viewTask' };
       return p.task_id ? { url: `/app/pm/tareas?taskId=${p.task_id}`, accion: 'viewTask' } : { url: '/app/pm/tareas', accion: 'viewTasks' };
     case 'oportunidad.asignada': case 'oportunidad.etapa': case 'oportunidad.vence': case 'oportunidad.atrasada':
+    case 'oportunidad.ganada': case 'oportunidad.perdida': case 'oportunidad.contacto':
       if (p.href) return { url: p.href, accion: 'viewOpportunity' };
       return p.opportunity_id ? { url: `/app/crm/oportunidades/${p.opportunity_id}`, accion: 'viewOpportunity' } : { url: '/app/crm/oportunidades', accion: 'viewOpportunities' };
     case 'stock_low': case 'stock_out': case 'stock_low_periodic':
@@ -123,6 +124,14 @@ function getRedirect(notif: NotificationForSheet): { url: string; accion: string
       return p.transfer_id ? { url: `/app/inventario/transferencias/${p.transfer_id}`, accion: 'viewTransfer' } : { url: '/app/inventario/transferencias', accion: 'viewTransfers' };
     case 'cash_opened': case 'cash_closed':
       return { url: '/app/pos', accion: 'viewPos' };
+    case 'caja.diferencia':
+      return { url: p.href || '/app/pos/cajas', accion: 'viewPos' };
+    case 'cartera.resumen':
+      return { url: p.href || '/app/finanzas/cuentas-por-cobrar', accion: 'viewReceivables' };
+    case 'inventario.cero':
+      return { url: p.href || '/app/inventario/stock', accion: 'viewStock' };
+    case 'inventario.bajo':
+      return { url: p.href || '/app/inventario/stock', accion: 'viewProduct' };
     case 'payroll_approved': case 'payroll_paid':
       return { url: '/app/hrm', accion: 'viewPayroll' };
     case 'shift_assigned':

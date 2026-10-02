@@ -4290,3 +4290,36 @@ Migración aplicada `20261001234746`, archivo `20261001233500_crm_reuniones_atom
 Gates: 990 suites / 17.565 pruebas aprobadas, una suite y ocho casos omitidos existentes, cero fallas; TypeScript completo y lint de archivos tocados sin errores; diff limpio. Build de producción completo con 357 páginas y salida 0; tipos/lint por separado como CI. API sobre ese build: 401 sin sesión, 403 org ajena, 400 fecha imposible/rango/completar futura, dos POST concurrentes 201 con mismo evento/actividad, 409 contenido distinto, PATCH realizada 200 e historial 200 con datos y estado exactos. SQL confirma un evento, una actividad realizada y contacto real no futuro. Fixtures retirados con guardas; cliente, evento y actividad restantes cero. No se enviaron correos ni llamadas.
 
 Navegador abierto inmediatamente tras iniciar el servidor: tras hidratar redirige a `/` y muestra «Entering your organization». Persiste la limitación de lecturas Supabase del entorno; no se acredita E2E visual. Continúan la reparación auditada de cuatro contactos futuros anteriores, las conexiones comerciales, las áreas nuevas y la limpieza. Este bloque no completa las 135 pantallas. Sin merge ni despliegue.
+### Fase: Avisos al miembro — cierre, seguimiento, caja y resúmenes — 2026-10-01
+- Rama cursor/avisos-cierre-stock-e475.
+- Cinco avisos más sobre member_notices, la campana y el mismo correo. No hay cola nueva.
+- Oportunidad ganada o perdida: solo al vendedor, no a quien cierra. Si el mismo update pasa el status a won o lost, no sale también el correo de etapa. El motivo usa loss_reason. El importe solo si hay monto y moneda, con el código, sin símbolo.
+- Seguimiento el día de next_contact_at, al vendedor. Si ese día también vence o ya pasó el cierre esperado, un solo correo cuando los dos interruptores están prendidos. La campana conserva las dos filas. Si solo uno está permitido, sale ese y el otro queda omitido.
+- Caja cerrada con diferencia distinta de cero, a quien puede ver el esperado (pos.cajas.ver_esperado, el mismo atajo de administración que fn_caja_puede). Quien cierra no se avisa. Con cierre ciego el correo no lleva el monto. Cierre en cero o una apertura no escriben.
+- Cartera vencida: un resumen por miembro con finance.view, desde las 07:00 en la zona de la organización. Conteos y saldos, no un correo por factura. La moneda sale de la organización.
+- Stock: la variante avisa por su nombre (el de products.name). El padre con hijas vivas no. El producto simple sí. Fuera: eliminados, variante de un padre eliminado, track_stock en falso y la variante que nunca tuvo fila de stock. Bajo el mínimo, un correo al cruzar y quedar por encima de cero. En cero, solo el resumen de la mañana, uno por miembro, no uno por producto.
+- Caja y stock bajo nacen en triggers. El seguimiento y los resúmenes los arma el cron. La primera pasada después de desplegar este código, si ya pasaron las 07:00 locales, manda el resumen de hoy. No repone cierres ni contactos viejos.
+- Una lista guardada con los ocho eventos anteriores y ninguno nuevo deja prendidos los grupos nuevos. Una lista parcial no.
+- Migraciones aplicadas por MCP, con rollback de la serie: 20261001211353, 20261001211551, 20261001211814, 20261001211901 y 20261001211941. El md5 del archivo coincide con schema_migrations. La segunda quedó registrada como avisos_miembro_cierre_caja y el archivo es avisos_miembro_cierre.sql: el cuerpo es el de la oportunidad.
+- Jest de las reglas y de guardrails: 201 en verde. eslint de los archivos tocados, sin avisos. tsc no reporta esos archivos.
+
+- Corrección de la misma fase: npx tsc --noEmit -p tsconfig.json terminó en verde, 0 errores.
+- npx next build terminó en verde.
+
+### Fase: Reunión — correo al cliente y al responsable — 2026-10-01
+- Rama cursor/correo-reunion-e475.
+- Al agendar una reunión, si el cliente tiene correo se le avisa. También se avisa al responsable: el vendedor de la oportunidad, o quien quedó asignado al evento si no hay vendedor. El correo lleva la fecha en la zona de la organización y un archivo de calendario. Si el cliente pidió no recibir correos, a él no se le escribe; el responsable sí. Si el envío falla, la reunión queda agendada.
+- El mismo aviso sale al agendar desde el diálogo y cuando el agente de voz deja la reunión.
+- Jest del texto y de los destinatarios, más el agendado del agente: 8 en verde. npx tsc --noEmit -p tsconfig.json en verde. El build de Next compiló y el proceso murió en su propio chequeo de tipos; el tsc aparte cubre ese chequeo.
+
+### Fase: Pipeline Ventas B2B igual a la plantilla — 2026-10-01
+- Rama cursor/etapas-ventas-b2b-e475.
+- El pipeline Ventas B2B de la organización 125 tenía cinco etapas (Contacto Inicial, Reunión Agendada, Propuesta Enviada, Ganado y Perdido). Ahora sigue la plantilla de ventas, en este orden: Lead nuevo, Contactado, Calificado, Discovery, Demo, Propuesta, Negociacion, Contrato/pago y Perdido. Las 252 oportunidades del primer paso se quedaron en Lead nuevo. Las 2 de Reunión Agendada pasaron a Contactado y su probabilidad bajó de 30 a 20. Las 2 ganadas quedaron en Contrato/pago y las 2 perdidas en Perdido. No se tocó ningún otro pipeline. Migración 20261001223153 aplicada por MCP, con rollback. El archivo coincide con lo aplicado.
+- En la hoja de etapas, subir y bajar guarda el orden. Una etapa nueva entra antes del cierre, no debajo de Perdido.
+- Jest de la hoja y del kit: 44 en verde. npx tsc --noEmit -p tsconfig.json en verde. No se abrió el tablero con sesión: el reorden se comprobó en la lógica y la base quedó consultada después de la migración.
+
+### Fase: Mover de etapa sin recargar el kanban — 2026-10-01
+- Rama cursor/etapas-ventas-b2b-e475.
+- Mover, ganar o perder ya no enciende el loader ni vacía las columnas. La tarjeta cambia de etapa al momento y solo se refrescan los totales. Crear, borrar o cambiar etapas sigue recargando el tablero.
+- El kanban cabe en el ancho de la página y se desplaza dentro de sí. Mantener el clic en el vacío y mover corre las etapas. Arrastrar una tarjeta contra el borde derecho o izquierdo avanza el lienzo para soltarla en una etapa que no se veía. La barra de desplazamiento sigue siendo del navegador.
+- Jest del desplazamiento y del render del tablero: 34 en verde. npx tsc --noEmit -p tsconfig.json en verde. No se abrió el tablero con sesión: el desplazamiento y el movimiento sin recarga se comprobaron en jsdom.

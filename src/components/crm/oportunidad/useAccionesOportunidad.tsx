@@ -27,8 +27,8 @@ export interface OpcionesAcciones {
   usuarioId: string | null;
   /** «Ver detalle»: el tablero abre el drawer; la lista y el drawer, la página. */
   onVer: (id: string) => void;
-  /** Tras cualquier cambio confirmado por el servidor. */
-  onCambio: (id?: string) => void;
+  /** Tras cualquier cambio confirmado por el servidor. `destinoId` llega al mover de etapa. */
+  onCambio: (id?: string, destinoId?: string) => void;
   onRevertir?: (id: string) => void;
   /** Tras eliminar (el detalle vuelve a la lista). */
   onEliminada?: (id: string) => void;
@@ -38,7 +38,7 @@ export function useAccionesOportunidad(o: OpcionesAcciones) {
   const t = useTranslations('crm.oportunidad.acciones');
   const te = useTranslations('crm.accionesRapidas.errores');
   const router = useRouter();
-  const flujo = useFlujoEtapa({ etapas: o.etapas, permisos: o.permisos, usuarioId: o.usuarioId, onHecho: (id) => o.onCambio(id), onRevertir: o.onRevertir });
+  const flujo = useFlujoEtapa({ etapas: o.etapas, permisos: o.permisos, usuarioId: o.usuarioId, onHecho: (id, destino) => o.onCambio(id, destino), onRevertir: o.onRevertir });
   const [rapida, setRapida] = useState<{ op: OportunidadAcciones; accion: AccionRapidaCrm; clave: number } | null>(null);
   const [aEliminar, setAEliminar] = useState<OportunidadAcciones | null>(null);
   const [ocupado, setOcupado] = useState(false);

@@ -3,18 +3,31 @@
  * el trigger ya validó la organización y el destinatario es un miembro activo.
  * El cron revisa vencimientos; el resto solo manda los correos pendientes.
  */
+import { createHash } from 'crypto';
 import { after } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { sendEmail } from '@/lib/services/crm/email/sendService';
 import { EmailError, type EmailMessageStatus } from '@/lib/services/crm/email/types';
+import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 import { toPlainDate } from '@/lib/utils/dateDisplay';
-import { copiaVencimiento, htmlAviso, textoPlanoAviso, urlAbsoluta } from './correo';
+import { contextoMoneda, formatMoneda, localeDeOrganizacion } from '@/lib/utils/moneda';
+import {
+  copiaVencimiento,
+  htmlAviso,
+  textoCartera,
+  textoContacto,
+  textoInventarioCero,
+  textoPlanoAviso,
+  unirSeguimientoYCierre,
+  urlAbsoluta,
+} from './correo';
 import {
   clasificarVencimiento,
   correoPermitido,
   enNoMolestar,
+  esHoraDeResumen,
   eventoVencimiento,
   minutosEnZona,
   type EventoAviso,
@@ -35,13 +48,14 @@ interface FilaAviso {
   organization_id: number;
   recipient_user_id: string;
   event: EventoAviso;
-  entity_type: 'task' | 'opportunity';
+  entity_type: 'task' | 'opportunity' | 'cash_session' | 'digest' | 'stock';
   entity_id: string;
   title: string;
   body: string;
   href: string;
   idempotency_key: string;
   email_status: 'pendiente';
+  subject_key: string | null;
 }
 
 interface AvisoPendiente {
@@ -49,6 +63,7 @@ interface AvisoPendiente {
   organization_id: number;
   recipient_user_id: string;
   event: string;
+  entity_id: string;
   title: string;
   body: string;
   href: string;
@@ -74,12 +89,206 @@ function diaDate(valor: unknown): string {
   return typeof valor === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(valor) ? valor : '';
 }
 
+function uuidDeLlave(llave: string): string {
+  const hash = createHash('md5').update(llave).digest('hex');
+  return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-${hash.slice(12, 16)}-${hash.slice(16, 20)}-${hash.slice(20, 32)}`;
+}
+
+function filaDe(entrada: Omit<FilaAviso, 'email_status'>): FilaAviso {
+  return { ...entrada, email_status: 'pendiente' };
+}
+
 async function zonaDe(db: SupabaseClient, cache: Map<number, string>, organizationId: number): Promise<string> {
   const guardada = cache.get(organizationId);
   if (guardada) return guardada;
   const zona = await getOrganizationTimezone(organizationId, db);
   cache.set(organizationId, zona);
   return zona;
+}
+
+async function modulosActivos(db: SupabaseClient): Promise<Set<string>> {
+  const { data, error } = await db.from('organization_modules').select('organization_id, module_code').eq('is_active', true);
+  if (error) {
+    console.error('[avisos] modulos', error.message);
+    return new Set();
+  }
+  return new Set((data ?? []).map((fila) => `${fila.organization_id}:${fila.module_code}`));
+}
+
+async function destinatariosDe(
+  db: SupabaseClient,
+  cache: Map<string, string[]>,
+  organizationId: number,
+  permiso: string,
+): Promise<string[]> {
+  const clave = `${organizationId}:${permiso}`;
+  const guardados = cache.get(clave);
+  if (guardados) return guardados;
+  const { data, error } = await db.rpc('fn_avisos_miembro_destinatarios', { p_org: organizationId, p_code: permiso });
+  if (error) {
+    console.error('[avisos] destinatarios', error.message);
+    cache.set(clave, []);
+    return [];
+  }
+  const ids = ((data ?? []) as { user_id: string }[]).map((fila) => fila.user_id).filter((id) => !!id);
+  cache.set(clave, ids);
+  return ids;
+}
+
+async function seguimientosDeHoy(
+  db: SupabaseClient,
+  organizationId: number | undefined,
+  activos: Set<string> | null,
+  zonas: Map<number, string>,
+): Promise<FilaAviso[]> {
+  const desde = new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString();
+  const hasta = new Date(Date.now() + 36 * 60 * 60 * 1000).toISOString();
+  let consulta = db
+    .from('opportunities')
+    .select('id, organization_id, salesperson_id, name, next_contact_at')
+    .eq('status', 'open')
+    .not('salesperson_id', 'is', null)
+    .not('next_contact_at', 'is', null)
+    .gte('next_contact_at', desde)
+    .lte('next_contact_at', hasta);
+  if (organizationId) consulta = consulta.eq('organization_id', organizationId);
+  const { data, error } = await consulta;
+  if (error) {
+    console.error('[avisos] contacto', error.message);
+    return [];
+  }
+  const modulos = await modulosActivos(db);
+  const filas: FilaAviso[] = [];
+  for (const oportunidad of data ?? []) {
+    const org = Number(oportunidad.organization_id);
+    const destinatario = oportunidad.salesperson_id as string | null;
+    const cuando = oportunidad.next_contact_at as string | null;
+    if (!destinatario || !cuando || !modulos.has(`${org}:crm`)) continue;
+    if (activos && !activos.has(`${org}:${destinatario}`)) continue;
+    const zona = await zonaDe(db, zonas, org);
+    const hoy = toPlainDate(new Date(), zona);
+    if (toPlainDate(new Date(cuando), zona) !== hoy) continue;
+    const copia = textoContacto(String(oportunidad.name ?? ''));
+    filas.push(filaDe({
+      organization_id: org,
+      recipient_user_id: destinatario,
+      event: 'oportunidad.contacto',
+      entity_type: 'opportunity',
+      entity_id: String(oportunidad.id),
+      title: copia.titulo,
+      body: copia.cuerpo,
+      href: hrefDe('opportunity', String(oportunidad.id)),
+      idempotency_key: `${org}:oportunidad.contacto:opportunity:${oportunidad.id}:${destinatario}:${hoy}`,
+      subject_key: null,
+    }));
+  }
+  return filas;
+}
+
+async function formatearDinero(db: SupabaseClient, cache: Map<number, (valor: number) => string>, organizationId: number): Promise<(valor: number) => string> {
+  const guardado = cache.get(organizationId);
+  if (guardado) return guardado;
+  const moneda = await resolveOrgCurrency(db, organizationId);
+  const { data } = await db.from('organizations').select('country_code, country').eq('id', organizationId).maybeSingle();
+  const ctx = contextoMoneda(moneda.code, {
+    decimals: moneda.decimals,
+    locale: localeDeOrganizacion(
+      (data as { country_code?: string | null; country?: string | null } | null)?.country_code,
+      (data as { country_code?: string | null; country?: string | null } | null)?.country,
+    ),
+  });
+  const formatear = (valor: number) => formatMoneda(valor, ctx);
+  cache.set(organizationId, formatear);
+  return formatear;
+}
+
+async function resumenesDeLaManana(
+  db: SupabaseClient,
+  organizationId: number | undefined,
+  zonas: Map<number, string>,
+): Promise<FilaAviso[]> {
+  const [stock, cartera, modulos] = await Promise.all([
+    db.rpc('fn_avisos_miembro_stock_cero'),
+    db.rpc('fn_avisos_miembro_cartera'),
+    modulosActivos(db),
+  ]);
+  if (stock.error) console.error('[avisos] stock', stock.error.message);
+  if (cartera.error) console.error('[avisos] cartera', cartera.error.message);
+
+  const filas: FilaAviso[] = [];
+  const personas = new Map<string, string[]>();
+  const dineros = new Map<number, (valor: number) => string>();
+  const porSucursal = new Map<number, Map<string, { sucursal: string; nombres: string[] }>>();
+
+  for (const linea of (stock.data ?? []) as { organization_id: number; branch_id: number; branch_name: string | null; product_name: string | null }[]) {
+    const org = Number(linea.organization_id);
+    if (organizationId && org !== organizationId) continue;
+    if (!modulos.has(`${org}:inventory`)) continue;
+    const zona = await zonaDe(db, zonas, org);
+    if (!esHoraDeResumen(minutosEnZona(new Date(), zona))) continue;
+    const sucursales = porSucursal.get(org) ?? new Map<string, { sucursal: string; nombres: string[] }>();
+    const clave = String(linea.branch_id);
+    const grupo = sucursales.get(clave) ?? { sucursal: (linea.branch_name ?? '').trim() || 'la sucursal', nombres: [] };
+    grupo.nombres.push((linea.product_name ?? '').trim() || 'Sin nombre');
+    sucursales.set(clave, grupo);
+    porSucursal.set(org, sucursales);
+  }
+
+  for (const [org, sucursales] of porSucursal) {
+    const zona = await zonaDe(db, zonas, org);
+    const hoy = toPlainDate(new Date(), zona);
+    const copia = textoInventarioCero([...sucursales.values()]);
+    if (!copia) continue;
+    for (const destinatario of await destinatariosDe(db, personas, org, 'inventory.view')) {
+      const llave = `${org}:inventario.cero:digest:${destinatario}:${hoy}`;
+      filas.push(filaDe({
+        organization_id: org,
+        recipient_user_id: destinatario,
+        event: 'inventario.cero',
+        entity_type: 'digest',
+        entity_id: uuidDeLlave(llave),
+        title: copia.titulo,
+        body: copia.cuerpo,
+        href: '/app/inventario/stock',
+        idempotency_key: llave,
+        subject_key: `inventario:${hoy}`,
+      }));
+    }
+  }
+
+  for (const linea of (cartera.data ?? []) as { organization_id: number; por_cobrar: number; saldo_cobrar: number; por_pagar: number; saldo_pagar: number }[]) {
+    const org = Number(linea.organization_id);
+    if (organizationId && org !== organizationId) continue;
+    if (!modulos.has(`${org}:finance`)) continue;
+    const zona = await zonaDe(db, zonas, org);
+    if (!esHoraDeResumen(minutosEnZona(new Date(), zona))) continue;
+    const dinero = await formatearDinero(db, dineros, org);
+    const copia = textoCartera({
+      porCobrar: Number(linea.por_cobrar) || 0,
+      saldoCobrar: dinero(Number(linea.saldo_cobrar) || 0),
+      porPagar: Number(linea.por_pagar) || 0,
+      saldoPagar: dinero(Number(linea.saldo_pagar) || 0),
+    });
+    if (!copia) continue;
+    const hoy = toPlainDate(new Date(), zona);
+    for (const destinatario of await destinatariosDe(db, personas, org, 'finance.view')) {
+      const llave = `${org}:cartera.resumen:digest:${destinatario}:${hoy}`;
+      filas.push(filaDe({
+        organization_id: org,
+        recipient_user_id: destinatario,
+        event: 'cartera.resumen',
+        entity_type: 'digest',
+        entity_id: uuidDeLlave(llave),
+        title: copia.titulo,
+        body: copia.cuerpo,
+        href: '/app/finanzas/cuentas-por-cobrar',
+        idempotency_key: llave,
+        subject_key: `cartera:${hoy}`,
+      }));
+    }
+  }
+
+  return filas;
 }
 
 async function crearVencimientos(db: SupabaseClient, organizationId?: number): Promise<number> {
@@ -140,6 +349,7 @@ async function crearVencimientos(db: SupabaseClient, organizationId?: number): P
       href: hrefDe('task', String(tarea.id)),
       idempotency_key: `${org}:${evento}:task:${tarea.id}:${destinatario}:${hoy}`,
       email_status: 'pendiente',
+      subject_key: null,
     });
   }
 
@@ -166,8 +376,12 @@ async function crearVencimientos(db: SupabaseClient, organizationId?: number): P
       href: hrefDe('opportunity', String(oportunidad.id)),
       idempotency_key: `${org}:${evento}:opportunity:${oportunidad.id}:${destinatario}:${hoy}`,
       email_status: 'pendiente',
+      subject_key: null,
     });
   }
+
+  filas.push(...(await seguimientosDeHoy(db, organizationId, activos, zonas)));
+  filas.push(...(await resumenesDeLaManana(db, organizationId, zonas)));
 
   for (let i = 0; i < filas.length; i += 100) {
     const lote = filas.slice(i, i + 100);
@@ -236,6 +450,44 @@ async function preferenciaDe(
   return pref;
 }
 
+const PAREJA_AVISO: Record<string, string[]> = {
+  'oportunidad.contacto': ['oportunidad.vence', 'oportunidad.atrasada'],
+  'oportunidad.vence': ['oportunidad.contacto'],
+  'oportunidad.atrasada': ['oportunidad.contacto'],
+};
+
+async function hermanoDe(db: SupabaseClient, fila: AvisoPendiente, hoy: string): Promise<AvisoPendiente | null> {
+  const otros = PAREJA_AVISO[fila.event];
+  if (!otros || !fila.entity_id) return null;
+  const { data, error } = await db
+    .from('member_notices')
+    .select('id, organization_id, recipient_user_id, event, entity_id, title, body, href, idempotency_key')
+    .eq('organization_id', fila.organization_id)
+    .eq('recipient_user_id', fila.recipient_user_id)
+    .eq('entity_id', fila.entity_id)
+    .eq('email_status', 'pendiente')
+    .in('event', otros)
+    .neq('id', fila.id)
+    .limit(5);
+  if (error) {
+    console.error('[avisos] pareja', error.message);
+    return null;
+  }
+  return ((data ?? []) as AvisoPendiente[]).find((candidato) => candidato.idempotency_key.endsWith(`:${hoy}`)) ?? null;
+}
+
+function contenidoPareja(fila: AvisoPendiente, hermano: AvisoPendiente): { titulo: string; cuerpo: string; llave: string; ancla: string } {
+  const contacto = fila.event === 'oportunidad.contacto' ? fila : hermano;
+  const cierre = contacto === fila ? hermano : fila;
+  const clase = cierre.event === 'oportunidad.atrasada' ? 'atrasada' : 'vence';
+  return {
+    titulo: contacto.title,
+    cuerpo: unirSeguimientoYCierre(contacto.body, clase),
+    llave: contacto.idempotency_key,
+    ancla: contacto.id,
+  };
+}
+
 async function nombreOrganizacion(db: SupabaseClient, cache: Map<number, string | undefined>, organizationId: number): Promise<string | undefined> {
   if (cache.has(organizationId)) return cache.get(organizationId);
   const { data } = await db.from('organizations').select('name').eq('id', organizationId).maybeSingle();
@@ -254,7 +506,7 @@ export async function despacharAvisosPendientes(organizationId?: number, db: Sup
 
   let consulta = db
     .from('member_notices')
-    .select('id, organization_id, recipient_user_id, event, title, body, href, idempotency_key')
+    .select('id, organization_id, recipient_user_id, event, entity_id, title, body, href, idempotency_key')
     .eq('email_status', 'pendiente')
     .order('created_at', { ascending: true })
     .limit(LIMITE_CORREO);
@@ -268,74 +520,148 @@ export async function despacharAvisosPendientes(organizationId?: number, db: Sup
   const zonas = new Map<number, string>();
   const preferencias = new Map<string, PreferenciaCorreo | null>();
   const nombres = new Map<number, string | undefined>();
+  const atendidos = new Set<string>();
 
-  for (const fila of (data ?? []) as AvisoPendiente[]) {
-    if (!(await reclamar(db, fila.id))) continue;
-    const org = Number(fila.organization_id);
-    if (!(await miembroActivo(db, org, fila.recipient_user_id))) {
-      await marcar(db, fila.id, 'omitido');
-      resumen.omitidos += 1;
-      continue;
-    }
-
-    const { data: perfil, error: errorPerfil } = await db
-      .from('profiles')
-      .select('email')
-      .eq('id', fila.recipient_user_id)
-      .maybeSingle();
+  async function correoDe(userId: string): Promise<string | null> {
+    const { data: perfil, error: errorPerfil } = await db.from('profiles').select('email').eq('id', userId).maybeSingle();
     if (errorPerfil) {
       console.error('[avisos] perfil', errorPerfil.message);
-      await marcar(db, fila.id, 'fallido');
-      resumen.fallidos += 1;
-      continue;
+      return null;
     }
     const correo = typeof perfil?.email === 'string' ? perfil.email.trim() : '';
-    if (!correo) {
-      await marcar(db, fila.id, 'omitido');
-      resumen.omitidos += 1;
-      continue;
-    }
+    return correo || '';
+  }
 
-    const pref = await preferenciaDe(db, preferencias, fila.recipient_user_id);
-    if (!correoPermitido(pref?.allowed_types, fila.event, pref?.mute === true)) {
-      await marcar(db, fila.id, 'omitido');
-      resumen.omitidos += 1;
-      continue;
-    }
-
-    const zona = await zonaDe(db, zonas, org);
-    if (enNoMolestar(pref?.dnd_start, pref?.dnd_end, minutosEnZona(new Date(), zona))) {
-      await marcar(db, fila.id, 'pendiente');
-      resumen.enPausa += 1;
-      continue;
-    }
-
+  async function enviar(
+    fila: AvisoPendiente,
+    correo: string,
+    titulo: string,
+    cuerpo: string,
+    llave: string,
+    ancla: string,
+  ): Promise<'enviado' | 'fallido'> {
+    const org = Number(fila.organization_id);
     try {
       const enlace = urlAbsoluta(fila.href);
-      const contenido = { titulo: fila.title, cuerpo: fila.body, enlace };
+      const contenido = { titulo, cuerpo, enlace };
       const resultado = await sendEmail(org, { userId: null, orgName: await nombreOrganizacion(db, nombres, org) }, {
         to: [correo],
-        subject: fila.title,
+        subject: titulo,
         content: { html: htmlAviso(contenido), text: textoPlanoAviso(contenido) },
         related_type: 'member_notice',
-        related_id: fila.id,
+        related_id: ancla,
         kind: 'transactional',
-        client_request_id: fila.idempotency_key,
+        client_request_id: llave,
         strict_variables: false,
         avisoMiembro: true,
       }, db);
       const duplicado = resultado.warnings.includes('duplicate_client_request');
-      if (duplicado && ESTADOS_FALLIDOS.has(resultado.message.status)) {
-        await marcar(db, fila.id, 'fallido');
-        resumen.fallidos += 1;
-      } else {
-        await marcar(db, fila.id, 'enviado');
-        resumen.enviados += 1;
-      }
+      if (duplicado && ESTADOS_FALLIDOS.has(resultado.message.status)) return 'fallido';
+      return 'enviado';
     } catch (err) {
+      console.error('[avisos] correo', err instanceof EmailError ? err.code : 'error');
+      return 'fallido';
+    }
+  }
+
+  for (const fila of (data ?? []) as AvisoPendiente[]) {
+    if (atendidos.has(fila.id)) continue;
+    const org = Number(fila.organization_id);
+    const zona = await zonaDe(db, zonas, org);
+    const hoy = toPlainDate(new Date(), zona);
+    const hermano = await hermanoDe(db, fila, hoy);
+    if (hermano) atendidos.add(hermano.id);
+    atendidos.add(fila.id);
+
+    if (!(await reclamar(db, fila.id))) continue;
+    if (!(await miembroActivo(db, org, fila.recipient_user_id))) {
+      await marcar(db, fila.id, 'omitido');
+      resumen.omitidos += 1;
+      if (hermano && (await reclamar(db, hermano.id))) {
+        await marcar(db, hermano.id, 'omitido');
+        resumen.omitidos += 1;
+      }
+      continue;
+    }
+
+    const correo = await correoDe(fila.recipient_user_id);
+    if (correo == null) {
       await marcar(db, fila.id, 'fallido');
       resumen.fallidos += 1;
-      console.error('[avisos] correo', err instanceof EmailError ? err.code : 'error');
+      continue;
+    }
+    if (!correo) {
+      await marcar(db, fila.id, 'omitido');
+      resumen.omitidos += 1;
+      if (hermano && (await reclamar(db, hermano.id))) {
+        await marcar(db, hermano.id, 'omitido');
+        resumen.omitidos += 1;
+      }
+      continue;
+    }
+
+    const pref = await preferenciaDe(db, preferencias, fila.recipient_user_id);
+    const permitido = correoPermitido(pref?.allowed_types, fila.event, pref?.mute === true);
+    const permitidoHermano = hermano
+      ? correoPermitido(pref?.allowed_types, hermano.event, pref?.mute === true)
+      : false;
+    if (!permitido && !permitidoHermano) {
+      await marcar(db, fila.id, 'omitido');
+      resumen.omitidos += 1;
+      if (hermano && (await reclamar(db, hermano.id))) {
+        await marcar(db, hermano.id, 'omitido');
+        resumen.omitidos += 1;
+      }
+      continue;
+    }
+    if (enNoMolestar(pref?.dnd_start, pref?.dnd_end, minutosEnZona(new Date(), zona))) {
+      if (permitido) {
+        await marcar(db, fila.id, 'pendiente');
+        resumen.enPausa += 1;
+      } else {
+        await marcar(db, fila.id, 'omitido');
+        resumen.omitidos += 1;
+      }
+      if (hermano && !permitidoHermano && (await reclamar(db, hermano.id))) {
+        await marcar(db, hermano.id, 'omitido');
+        resumen.omitidos += 1;
+      }
+      continue;
+    }
+
+    if (hermano && permitido && permitidoHermano) {
+      if (!(await reclamar(db, hermano.id))) {
+        const estado = await enviar(fila, correo, fila.title, fila.body, fila.idempotency_key, fila.id);
+        await marcar(db, fila.id, estado);
+        resumen[estado === 'enviado' ? 'enviados' : 'fallidos'] += 1;
+        continue;
+      }
+      const junto = contenidoPareja(fila, hermano);
+      const estado = await enviar(fila, correo, junto.titulo, junto.cuerpo, junto.llave, junto.ancla);
+      await marcar(db, fila.id, estado);
+      await marcar(db, hermano.id, estado);
+      resumen[estado === 'enviado' ? 'enviados' : 'fallidos'] += 1;
+      continue;
+    }
+
+    if (!permitido) {
+      await marcar(db, fila.id, 'omitido');
+      resumen.omitidos += 1;
+    } else {
+      const estado = await enviar(fila, correo, fila.title, fila.body, fila.idempotency_key, fila.id);
+      await marcar(db, fila.id, estado);
+      resumen[estado === 'enviado' ? 'enviados' : 'fallidos'] += 1;
+    }
+
+    if (hermano && permitidoHermano) {
+      if (await reclamar(db, hermano.id)) {
+        const estado = await enviar(hermano, correo, hermano.title, hermano.body, hermano.idempotency_key, hermano.id);
+        await marcar(db, hermano.id, estado);
+        resumen[estado === 'enviado' ? 'enviados' : 'fallidos'] += 1;
+      }
+    } else if (hermano && (await reclamar(db, hermano.id))) {
+      await marcar(db, hermano.id, 'omitido');
+      resumen.omitidos += 1;
     }
   }
 

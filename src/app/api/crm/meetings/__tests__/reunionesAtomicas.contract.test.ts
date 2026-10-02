@@ -3,6 +3,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { createMeeting, updateMeeting, meetingInputSchema, meetingPatchSchema } from '@/lib/services/crm/meetingsService';
 jest.mock('@/lib/utils/orgContext', () => ({ getServerOrgContext: jest.fn(), OrgContextError: jest.requireActual('@/lib/utils/orgContextError').OrgContextError }));
+jest.mock('@/lib/services/crm/reunionCorreo.server', () => ({ notificarReunion: jest.fn() }));
+import { notificarReunion } from '@/lib/services/crm/reunionCorreo.server';
 import { POST } from '../route';
 import { PATCH } from '../[id]/route';
 
@@ -20,6 +22,7 @@ const request = (method: string, payload: unknown, query = '') => new NextReques
 });
 beforeEach(() => {
   jest.clearAllMocks();
+  jest.mocked(notificarReunion).mockResolvedValue({ cliente: true, responsable: false });
   context.mockResolvedValue({ organizationId: 120, userId: user, roleId: 2, isSuperAdmin: false, supabase: sb } as never);
   rpc.mockResolvedValue({ data: { event: { id, metadata: { activity_id: activity } }, activity_id: activity, reused: false }, error: null });
 });
@@ -29,6 +32,27 @@ test('crear usa una sola RPC del usuario y no transmite un actor suplantable', a
   expect(rpc).toHaveBeenCalledTimes(1);
   expect(rpc).toHaveBeenCalledWith('fn_crm_guardar_reunion', { p_org: 120, p_event_id: null, p_payload: body });
   expect(from).not.toHaveBeenCalled();
+});
+test('la invitación usa el evento persistido después del guardado atómico', async () => {
+  const event = { id, ...body, organization_id: 120, customer_id: id, assigned_to: user, timezone: 'Europe/Madrid' };
+  rpc.mockResolvedValue({ data: { event, activity_id: activity, reused: false }, error: null });
+  const response = await POST(request('POST', body));
+  expect(response.status).toBe(201);
+  expect(notificarReunion).toHaveBeenCalledWith(120, expect.objectContaining({ userId: user }),
+    expect.objectContaining({ id, title: body.title, customer_id: id, timezone: 'Europe/Madrid' }), sb);
+  expect(await response.json()).toMatchObject({ data: { activity_id: activity, invite_sent: true } });
+  expect(rpc.mock.invocationCallOrder[0]).toBeLessThan(jest.mocked(notificarReunion).mock.invocationCallOrder[0]);
+});
+test('send_invite=false conserva el guardado y no envía correo', async () => {
+  const response = await POST(request('POST', { ...body, send_invite: false }));
+  expect(response.status).toBe(201);
+  expect(notificarReunion).not.toHaveBeenCalled();
+  expect(await response.json()).toMatchObject({ data: { invite_sent: false } });
+});
+test('si falla la RPC no intenta enviar invitaciones', async () => {
+  rpc.mockResolvedValue({ data: null, error: { code: '42501', message: 'sin_permiso' } });
+  expect((await POST(request('POST', body))).status).toBe(403);
+  expect(notificarReunion).not.toHaveBeenCalled();
 });
 test('actualizar usa la misma RPC y propaga íntegro un error tardío', async () => {
   const error = { code: '23514', message: 'prueba_fallo' };

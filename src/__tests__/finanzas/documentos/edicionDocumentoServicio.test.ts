@@ -4,8 +4,9 @@
  * la sesión simulado.
  *
  * - «Agregar productos»: precio de venta vigente, costo del proveedor antes
- *   que el último costo, stock de la sucursal sumando lotes, sin padres de
- *   variantes, descripción sin HTML, «Solo del proveedor» y «Con stock».
+ *   que el último costo, stock de la sucursal sumando lotes, sin padres que
+ *   tengan variantes (el padre sin variantes sí entra), descripción sin HTML,
+ *   «Solo del proveedor» y «Con stock».
  * - Alta rápida de cliente: la fila de `buildCustomerInsert` (nunca las
  *   columnas GENERATED `full_name` / `doc_type` / `doc_number`), control de
  *   duplicado por documento, organización de la sesión.
@@ -23,7 +24,7 @@ jest.mock('@/lib/supabase/config', () => {
     llamadas.push(reg);
     const res = (): Resultado => ({ data: respuestas[tabla] ?? [], error: null });
     const c: Record<string, unknown> = {};
-    for (const m of ['select', 'eq', 'neq', 'in', 'or', 'order', 'gt', 'not', 'limit', 'abortSignal', 'ilike']) {
+    for (const m of ['select', 'eq', 'neq', 'in', 'or', 'order', 'gt', 'not', 'is', 'limit', 'abortSignal', 'ilike']) {
       c[m] = (...a: unknown[]) => {
         reg.ops.push([m, a]);
         return c;
@@ -49,6 +50,7 @@ jest.mock('@/lib/supabase/config', () => {
 import {
   ClienteDuplicadoError,
   buscarProductosDocumento,
+  idsVendibles,
   crearClienteRapido,
   impuestosOrganizacion,
   metodosPagoOrganizacion,
@@ -61,6 +63,24 @@ beforeEach(() => {
 });
 
 const ops = (tabla: string) => llamadas.filter((l) => l.tabla === tabla).flatMap((l) => l.ops);
+
+describe('idsVendibles', () => {
+  test('deja fuera al padre con variantes y conserva el padre que no tiene y la variante', () => {
+    const ids = idsVendibles(
+      [
+        { id: 2, name: 'AMINO (Mango)' },
+        { id: 3, name: 'Zapatilla' },
+      ],
+      [
+        { id: 1, name: 'AMINO' },
+        { id: 9, name: 'AMINO UNIDAD' },
+      ],
+      new Set([1]),
+      30,
+    );
+    expect(ids).toEqual([2, 9, 3]);
+  });
+});
 
 describe('buscarProductosDocumento', () => {
   const producto = {
@@ -96,9 +116,12 @@ describe('buscarProductosDocumento', () => {
     );
     expect(p.impuestos).toEqual([{ id: 't1', codigo: 'IVA_19', nombre: 'IVA 19%', tarifa: 19, predeterminado: true }]);
     const o = ops('products');
-    expect(o).toEqual(expect.arrayContaining([['eq', ['organization_id', 7]], ['eq', ['status', 'active']], ['not', ['is_parent', 'is', true]]]));
+    expect(o).toEqual(expect.arrayContaining([['eq', ['organization_id', 7]], ['eq', ['status', 'active']], ['eq', ['is_parent', true]], ['is', ['parent_product_id', null]]]));
+    expect(o).toEqual(expect.arrayContaining([['or', ['is_parent.is.null,is_parent.eq.false']]]));
     // Búsqueda literal y entrecomillada en nombre, SKU, código de barras y referencia.
-    expect(o.find(([m]) => m === 'or')?.[1][0]).toBe('name.ilike."%zap%",sku.ilike."%zap%",barcode.ilike."%zap%",reference.ilike."%zap%"');
+    expect(o.find((op) => op[0] === 'or' && String(op[1][0]).includes('name.ilike'))?.[1][0]).toBe(
+      'name.ilike."%zap%",sku.ilike."%zap%",barcode.ilike."%zap%",reference.ilike."%zap%"',
+    );
     expect(ops('stock_levels')).toEqual(expect.arrayContaining([['eq', ['branch_id', 3]]]));
   });
 

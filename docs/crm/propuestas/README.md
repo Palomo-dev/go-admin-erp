@@ -33,3 +33,6 @@ Cada gate comprobó doble aplicación, doble rollback, reaplicación, roles/ACL 
 Red no añadió avisos. Los WARN0029 de contratos authenticated SECURITY DEFINER son intencionales con sesión, permisos, organización y referencias probadas. PHONE mantiene seis tablas privadas con RLS y sin grants API directos: los INFO0008 por ausencia de policies son esperados. La fase 73 elimina el WARN auth_rls_initplan de Objeciones; tres INFO de claves foráneas sin índice permanecen. No se afirma un asesor global sin avisos.
 
 Las activaciones restrictivas de calendario, llamadas y derivados continúan **POSTDEPLOY, sin aplicar**, hasta desplegar los escritores canónicos. No se hicieron llamadas, envíos o cobros reales, merge ni despliegue. El cierre documental local no ejecuta nuevas consultas/pruebas Supabase y no sustituye los gates generales del artefacto final.
+
+
+El delta de recurrencia `crm_conflictos_sqlstate.sql` está aplicado (MCP `20261002131611`, fase 74): 17 conflictos deterministas de nueve RPC ahora usan P0001. Gate acotado 98 aserciones, sin filas comerciales/HTTP. Las policies POSTDEPLOY y el candidato `secuencias_permiso_sucursal.sql` siguen sin aplicar; no se presentan como migraciones instaladas.

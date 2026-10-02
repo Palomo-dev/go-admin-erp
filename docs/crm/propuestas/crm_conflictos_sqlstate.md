@@ -1,0 +1,19 @@
+# Conflictos deterministas sin reintentos de serialización
+
+Estado: aplicada por MCP, versión `20261002131611`, con SQL y metadatos exactos verificados. Es la corrección puntual del riesgo documentado en `../INCIDENTE-SUPABASE-2026-10-02.md`. No habilita la reanudación de pruebas generales en Supabase.
+
+`crm_conflictos_sqlstate.sql`: 5.263 bytes, MD5 `f1761fc00b6173ad2696f340d1d38618`. Reversión: 49.594 bytes, MD5 `89ef8a680f9246785838b7ee85539902`. Copias exactas en `supabase/migrations/20261002131611_crm_conflictos_sqlstate.sql` y `supabase/rollbacks/20261002131611_crm_conflictos_sqlstate.rollback.sql`. El forward aplicado incluye `SET LOCAL lock_timeout='1s'` y `statement_timeout='4s'` para acotar también la aplicación.
+
+Se cambian **17 clasificaciones en nueve RPC**, de `40001` a `P0001`: `crm_objection_catalog_write`, `crm_team_management_write`, `fn_crm_convertir_referido`, `fn_crm_registrar_partner_deal`, `fn_crm_vincular_llamada`, `fn_phone_claim`, `fn_phone_invite`, `fn_phone_reject_invite` y `fn_phone_verify_mobile`. La API existente convierte `P0001` a HTTP 409. Identidades no requiere este delta.
+
+El forward admite sólo los hashes anteriores o los posteriores esperados y rechaza cambios en permisos/configuración/propietario. Compara el catálogo completo salvo `prosrc` y las posiciones del parser en `proargdefaults`: conserva el resto del AST de defaults y los argumentos/defaults deparseados por `pg_get_function_arguments`. La sustitución cambia exclusivamente el literal SQLSTATE en los cuerpos capturados; no cambia mensajes, versiones, locks, idempotencia ni referencias. La operación es transaccional y permite aplicación doble.
+
+La reversión conserva las nueve definiciones originales completas capturadas por MCP, exige el hash posterior o el anterior exacto y restaura metadatos sin modificar filas. **Reintroduce el defecto: no debe utilizarse para recuperar producción.** Se incluye para demostrar la reversibilidad técnica durante el gate aislado.
+
+El primer gate se detuvo al comparar el AST crudo de un default booleano; la transacción se revirtió. Dos diagnósticos posteriores acotados terminaron en rollback y confirmaron que sólo cambiaban posiciones de parser en `proargdefaults`, con argumentos/defaults idénticos en las nueve funciones y los nueve hashes posteriores esperados. Se corrigió el comparador sin omitir ACL, propietario, search_path, tipos, coste, strict, volatilidad ni paralelismo.
+
+El gate privado corregido pasó por MCP en **1,9 segundos: 98 aserciones**, dentro de `BEGIN/ROLLBACK`, con una sola DO, `statement_timeout=4s` y `lock_timeout=1s`: aplicación doble, reversión doble y reaplicación; 81 comparaciones de fuente/definición/catálogo y 17 excepciones instrumentadas en `pg_temp`. Su MD5 era `9f86ec78f15464de296d151abdb35f0d`, 66.048 bytes. No invocó RPC comerciales ni ejecutó HTTP, Twilio, Storage o cambios de clientes. El SQL de prueba se retiró después de registrar esa evidencia y no se incluye en el repositorio.
+
+La aplicación real posterior confirmó los nueve hashes finales, ACL, propietario, SECURITY DEFINER y search_path sin cambios. Los asesores devolvieron cero ERROR, nueve avisos de seguridad y siete de rendimiento; no se presentan los avisos preexistentes como un estado global limpio del proyecto.
+
+Pruebas exclusivamente locales: guardrail para nuevos `RAISE 40001` y mapeo real de `P0001` a 409, 17 casos en dos suites. Los dos casos PHONE de operación pendiente/intención distinta comprueban 409 y una sola llamada de control, dentro del conjunto de nueve suites y 185 casos UTC verificado por su writer. Los archivos históricos sólo se admiten por su SHA-256 original; conservarlos no acredita que sus definiciones sigan activas. El informe de incidente distingue la causa confirmada de la tormenta de errores y la relación temporal no concluyente de Realtime.

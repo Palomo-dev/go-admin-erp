@@ -33,6 +33,7 @@ describe('avisos al miembro', () => {
     expect(guardado).toEqual([
       'tarea.asignada',
       'oportunidad.asignada',
+      'lead.asignado',
       'tarea.completada',
       'oportunidad.ganada',
       'oportunidad.perdida',
@@ -81,8 +82,11 @@ describe('avisos al miembro', () => {
     ];
     const activos = gruposActivos(vieja);
     expect(activos['oportunidad.cierre']).toBe(true);
+    expect(activos['lead.asignado']).toBe(true);
     expect(activos.inventario).toBe(true);
     expect(activos['caja.diferencia']).toBe(true);
+    expect(correoPermitido(vieja, 'lead.asignado', false)).toBe(true);
+    expect(correoPermitido(['tarea.asignada'], 'lead.asignado', false)).toBe(false);
     const guardado = fusionarTiposAviso(vieja, activos);
     expect(guardado).toContain('inventario.cero');
     expect(guardado).toContain('stock_low');

@@ -17,6 +17,11 @@ const sesion = { organizationId: 120, userId: 'u-1', roleId: 4, isSuperAdmin: fa
 const getServerOrgContext = jest.fn(async () => sesion);
 const hasOrgAdminOrPermission = jest.fn(async () => true);
 
+const programarDespachoAvisos = jest.fn();
+jest.mock('@/lib/services/avisos/despacho.server', () => ({
+  programarDespachoAvisos: (...a: unknown[]) => programarDespachoAvisos(...a),
+}));
+
 jest.mock('@/lib/utils/orgContext', () => ({
   OrgContextError: RealOrgContextError,
   getServerOrgContext: () => getServerOrgContext(),
@@ -92,6 +97,7 @@ describe('POST /api/crm/leads/importar', () => {
 
   it('validar e importar reciben la organización de la sesión, nunca la del cliente', async () => {
     expect((await POST(peticion(cuerpo()))).status).toBe(200);
+    expect(programarDespachoAvisos).not.toHaveBeenCalled();
     expect(validarImportacion).toHaveBeenCalledWith(
       { organizationId: 120, userId: 'u-1', supabase: sesion.supabase },
       [{ fila: 2, campos: { nombre: 'Tienda Sintética', telefono: '3001234567' } }],
@@ -99,6 +105,7 @@ describe('POST /api/crm/leads/importar', () => {
     );
     expect((await POST(peticion(cuerpo({ accion: 'importar', organization_id: 120 })))).status).toBe(200);
     expect(importarBloque).toHaveBeenCalledTimes(1);
+    expect(programarDespachoAvisos).toHaveBeenCalledWith(120);
   });
 
   it('un error inesperado del servicio → 500 sin filtrar el mensaje interno', async () => {

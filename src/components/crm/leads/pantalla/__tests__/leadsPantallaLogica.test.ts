@@ -3,7 +3,7 @@
  * React (filtros → parámetros en la zona de la organización, estados, filas,
  * selección, exportación y cuerpos que van a las rutas del servidor).
  */
-import { acumular, aLeadFila, alternar, csvLeads, estadoCasillaPagina, estadoPantallaLeads, filtrosLeadsVacios, parametrosLeads, parametrosResumenLeads, porcentajeContactados, type LeadApi } from '../leadsPantallaLogica';
+import { acumular, aLeadFila, alternar, csvLeads, estadoCasillaPagina, estadoPantallaLeads, filtrosLeadsVacios, idLeadDeQuery, parametrosLeads, parametrosResumenLeads, porcentajeContactados, type LeadApi } from '../leadsPantallaLogica';
 import { cuerpoCalificar } from '../calificarLogica';
 import {
   agruparPorDia,
@@ -40,6 +40,12 @@ describe('Leads · parámetros de GET /api/crm/leads', () => {
     expect(ms(p.get('creado_hasta'))).toBe(Date.parse('2026-10-01T05:00:00Z'));
     expect(p.get('page')).toBe('2');
     expect(p.get('limit')).toBe('25');
+  });
+
+  it('el aviso abre el lead por uuid y descarta cualquier otro valor', () => {
+    expect(idLeadDeQuery('00000000-0000-4000-8000-000000000010')).toBe('00000000-0000-4000-8000-000000000010');
+    expect(idLeadDeQuery('NO-ES-UUID')).toBeNull();
+    expect(idLeadDeQuery(null)).toBeNull();
   });
 
   it('«Sin colocar» fuerza el origen formulario web; responsable «ninguno»; descartados', () => {

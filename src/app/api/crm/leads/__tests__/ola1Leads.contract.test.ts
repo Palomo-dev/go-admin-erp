@@ -15,6 +15,10 @@ import { fakeSupabase, makeDb, seed, ORG, OTRA, U, YO, OTRO_VENDEDOR, type Ola1D
 let db: Ola1Db;
 let permisos: Set<string>;
 
+jest.mock('@/lib/services/avisos/despacho.server', () => ({
+  programarDespachoAvisos: jest.fn(),
+}));
+
 jest.mock('@/lib/utils/orgContext', () => ({
   OrgContextError: RealOrgContextError,
   getServerOrgContext: jest.fn(async () => ({ organizationId: ORG, userId: YO, roleId: 4, roleName: 'Empleado', isSuperAdmin: false, supabase: fakeSupabase(db) })),
@@ -54,6 +58,13 @@ describe('GET /api/crm/leads — clientes en etapa lead (D2)', () => {
     const nombres = (body.data as Array<{ full_name: string }>).map((c) => c.full_name);
     expect(nombres.sort()).toEqual(['Lead ajeno', 'Lead uno']);
     expect(body.total).toBe(2);
+  });
+
+  it('id abre ese lead aunque no tenga origen, y no el de otra organización ni un cliente', async () => {
+    const puntual = await json(await leadsGet(req(`/api/crm/leads?id=${U(12)}`)));
+    expect((puntual.body.data as Array<{ full_name: string }>).map((c) => c.full_name)).toEqual(['Cliente sin origen']);
+    expect(((await json(await leadsGet(req(`/api/crm/leads?id=${U(13)}`)))).body.data as unknown[]).length).toBe(0);
+    expect(((await json(await leadsGet(req(`/api/crm/leads?id=${U(91)}`)))).body.data as unknown[]).length).toBe(0);
   });
 
   it('filtros: origen=todos incluye las fichas sin origen; owner_id=ninguno; descartados ocultos', async () => {

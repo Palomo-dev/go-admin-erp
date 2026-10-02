@@ -19,6 +19,10 @@ const { OrgContextError: RealOrgContextError } = jest.requireActual<typeof impor
 let db: FakeDb;
 const session: { roleId: number; isSuperAdmin: boolean; roleName: string; supabase?: unknown } = { roleId: 4, isSuperAdmin: false, roleName: 'Empleado' };
 
+jest.mock('@/lib/services/avisos/despacho.server', () => ({
+  programarDespachoAvisos: jest.fn(),
+}));
+
 jest.mock('@/lib/utils/orgContext', () => ({
   OrgContextError: RealOrgContextError,
   getServerOrgContext: jest.fn(async () => ({ organizationId: ORG, userId: 'u-1', roleId: session.roleId, roleName: session.roleName, isSuperAdmin: session.isSuperAdmin, supabase: session.supabase ?? fakeSupabase(db) })),

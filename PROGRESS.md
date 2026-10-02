@@ -3731,3 +3731,13 @@ trabaja siempre sobre `main`, sin ramas. Nada mío pendiente de commit antes de 
 - Rama cursor/ws-server-resend-e475.
 - Tras el merge a master, Railway no levantó el servidor de llamadas: faltaba el módulo resend. El correo de reunión lo importa desde el agente de voz. El cierre también alcanza libphonenumber-js, sanitize-html y zod. Esas cuatro versiones son las del lockfile de la web. @sentry/react queda fuera: solo corre en el navegador y su peer es react.
 - npm ci del servidor instala 98 paquetes. npm audit --omit=dev queda en cero. En Node 20.20.2 cargan resend, sanitize-html, zod y libphonenumber-js. Jest del cierre y del aviso de zona: 19 en verde.
+
+### Fase: Aviso al asignar un lead — 2026-10-02
+- Rama cursor/aviso-lead-asignado-e475.
+- Al asignar el responsable de un lead llega el mismo correo y la misma campana que al asignar una oportunidad. Un lead es un cliente en etapa lead, no descartado. El responsable es customers.owner_id.
+- El evento es lead.asignado y la entidad es customer. Quien se asigna el lead a sí mismo no recibe aviso. Quitar el responsable, asignar un cliente que ya no es lead o un lead descartado tampoco.
+- El botón abre /app/crm/leads?lead= con esa ficha, aunque el lead no esté en la primera página.
+- En el perfil hay un interruptor Lead asignado. Una lista guardada con la primera tanda completa deja prendido este aviso, también al enviar el correo.
+- Migración 20261002014500 aplicada por MCP, con rollback. El trigger se probó dentro de una transacción y se revirtió: no quedó ningún aviso ni ficha de prueba.
+- Figma, página 15 Avisos al miembro, frame 13 Lead asignado.
+- Jest de reglas, rutas de leads y la pantalla: 97 en verde. eslint de los archivos tocados, sin avisos. npx tsc --noEmit -p tsconfig.json en verde.

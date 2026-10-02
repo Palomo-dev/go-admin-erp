@@ -14,6 +14,14 @@ import type { OpcionUsuario } from '@/components/crm/kit/camposCrm';
 
 export const TAMANO_PAGINA_LEADS = 25;
 
+const UUID_LEAD = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** `?lead=` del aviso. Solo un uuid; cualquier otro valor se ignora. */
+export function idLeadDeQuery(valor: string | null | undefined): string | null {
+  if (!valor || !UUID_LEAD.test(valor)) return null;
+  return valor;
+}
+
 /** Fila de `GET /api/crm/leads` (columnas de `customers`). */
 export interface LeadApi {
   id: string;

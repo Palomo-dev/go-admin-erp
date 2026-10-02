@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { programarDespachoAvisos } from '@/lib/services/avisos/despacho.server';
 import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import { CRM_PERMISOS, exigirPermisoCrm, respuestaErrorCrm, sinClavesDeOrganizacion } from '@/lib/services/crm/crmRouteSupport';
@@ -27,6 +28,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Datos inválidos', details: parsed.error.flatten() }, { status: 400 });
     }
     const data = await asignarResponsable(ctx, Array.from(new Set(parsed.data.customer_ids)), parsed.data.owner_id);
+    if (data.actualizados > 0) programarDespachoAvisos(ctx.organizationId);
     return NextResponse.json({ success: true, data });
   } catch (error) {
     return respuestaErrorCrm(error, 'POST /api/crm/leads/assign');

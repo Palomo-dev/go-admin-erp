@@ -10,6 +10,7 @@ import { fusionarTiposAviso, gruposActivos, type GrupoAviso } from '@/lib/servic
 const GRUPOS_CORREO: { clave: GrupoAviso; titulo: string; detalle: string }[] = [
   { clave: 'tarea.asignada', titulo: 'Tarea asignada', detalle: 'Cuando le asignen una tarea' },
   { clave: 'oportunidad.asignada', titulo: 'Oportunidad asignada', detalle: 'Cuando le asignen una oportunidad' },
+  { clave: 'lead.asignado', titulo: 'Lead asignado', detalle: 'Cuando le asignen un lead' },
   { clave: 'oportunidad.etapa', titulo: 'Cambio de etapa', detalle: 'Cuando una oportunidad suya cambie de etapa' },
   { clave: 'tarea.completada', titulo: 'Tarea completada', detalle: 'Cuando se complete una tarea que usted creó o tiene asignada' },
   { clave: 'vence', titulo: 'Atraso y vencimiento', detalle: 'Cuando una tarea o una oportunidad se atrase o venza hoy' },

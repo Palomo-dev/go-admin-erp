@@ -1,4 +1,5 @@
 'use client';
+import { useSequenceText } from './useSequenceText';
 
 /**
  * Tarjeta de una secuencia en la lista (brief UX 6.3): nombre, mini-línea de
@@ -16,6 +17,7 @@ import { enrollBlockReason, responseSummary, triggerLabel } from './sequenceOpti
 import type { SequenceView } from './useSequences';
 
 interface Props {
+  canManage?:boolean;
   sequence: SequenceView;
   onToggle: (sequence: SequenceView) => void;
   onEnroll: (sequence: SequenceView) => void;
@@ -24,11 +26,11 @@ interface Props {
   onDelete: (sequence: SequenceView) => void;
 }
 
-function IconAction({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
+function IconAction({ label, onClick, children, disabled=false }: { label: string; onClick: () => void; children: React.ReactNode; disabled?:boolean }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button size="icon" variant="ghost" aria-label={label} onClick={onClick} className="h-8 w-8">
+        <Button disabled={disabled} size="icon" variant="ghost" aria-label={label} onClick={onClick} className="h-8 w-8">
           {children}
         </Button>
       </TooltipTrigger>
@@ -37,40 +39,41 @@ function IconAction({ label, onClick, children }: { label: string; onClick: () =
   );
 }
 
-export function SequenceCard({ sequence, onToggle, onEnroll, onEnrollments, onEdit, onDelete }: Props) {
+export function SequenceCard({ sequence, onToggle, onEnroll, onEnrollments, onEdit, onDelete,canManage=false }: Props) {
+ const tr=useSequenceText();
   const steps = sequence.steps ?? [];
   const stats = sequence.enrollment_stats;
-  const active = stats?.active ?? 0;
+  const active = stats?.active ?? null;
   const headingId = `seq-${sequence.id}-name`;
   // Sin pasos activos o inactiva: el botón lo dice antes de que la RPC lo rechace (tester r3).
-  const blockReason = enrollBlockReason(sequence);
+  const blockReason = enrollBlockReason(sequence, tr);
   const blockId = `seq-${sequence.id}-enroll-block`;
 
   return (
     <article
       aria-labelledby={headingId}
-      className="flex h-full flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-blue-500/40 dark:border-gray-700 dark:bg-gray-900"
+      className="flex h-full flex-col gap-3 rounded-xl border border-line bg-surface p-4 shadow-sm transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-blue-500/40 dark:border-line-strong dark:bg-surface"
     >
       <header className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <h2 id={headingId} className="truncate text-base font-semibold text-gray-900 dark:text-gray-100">
+          <h2 id={headingId} className="truncate text-base font-semibold text-fg dark:text-fg">
             {sequence.name}
           </h2>
-          <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-            {triggerLabel(sequence.trigger_type)} · {totalDurationLabel(steps)}
+          <p className="mt-0.5 text-xs text-fg-muted dark:text-fg-secondary">
+            {tr(triggerLabel(sequence.trigger_type))} · {totalDurationLabel(steps, tr)}
           </p>
         </div>
         <span
           className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
             sequence.is_active
               ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200'
-              : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+              : 'bg-gray-100 text-fg-secondary dark:bg-hover dark:text-fg-secondary'
           }`}
         >
           {sequence.is_active
-            ? <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
-            : <PauseCircle className="h-3.5 w-3.5" aria-hidden="true" />}
-          {sequence.is_active ? 'Activa' : 'Inactiva'}
+            ? <CheckCircle2 strokeWidth={1.5} className="h-3.5 w-3.5" aria-hidden="true" />
+            : <PauseCircle strokeWidth={1.5} className="h-3.5 w-3.5" aria-hidden="true" />}
+          {sequence.is_active ? tr("Activa") : tr("Inactiva")}
         </span>
       </header>
 
@@ -79,22 +82,22 @@ export function SequenceCard({ sequence, onToggle, onEnroll, onEnrollments, onEd
       </div>
 
       <dl className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-        <div className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
-          <Users className="h-4 w-4 text-gray-400 dark:text-gray-500" aria-hidden="true" />
-          <dt className="sr-only">Inscritos activos</dt>
-          <dd><span className="font-semibold text-gray-900 dark:text-gray-100">{active}</span> {active === 1 ? 'inscrito activo' : 'inscritos activos'}</dd>
+        <div className="flex items-center gap-1.5 text-fg-secondary dark:text-fg-secondary">
+          <Users strokeWidth={1.5} className="h-4 w-4 text-fg-secondary dark:text-fg-muted" aria-hidden="true" />
+          <dt className="sr-only">{tr("Inscritos activos")}</dt>
+          <dd><span className="font-semibold text-fg dark:text-fg">{active ?? '—'}</span> {active === 1 ? tr("inscrito activo") : tr("inscritos activos")}</dd>
         </div>
-        <div className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
-          <MessageSquareReply className="h-4 w-4 text-gray-400 dark:text-gray-500" aria-hidden="true" />
-          <dt className="sr-only">Respuestas</dt>
+        <div className="flex items-center gap-1.5 text-fg-secondary dark:text-fg-secondary">
+          <MessageSquareReply strokeWidth={1.5} className="h-4 w-4 text-fg-secondary dark:text-fg-muted" aria-hidden="true" />
+          <dt className="sr-only">{tr("Respuestas")}</dt>
           {/* Etiqueta visible que dice QUÉ cuenta; con `pause_on_reply=false` no hay cero falso (r2 #3). */}
-          <dd title="Inscripciones pausadas porque el cliente respondió. Si se reanudan, dejan de contar.">
-            {responseSummary(stats, sequence.pause_on_reply)}
+          <dd title={tr("Inscripciones pausadas porque el cliente respondió. Si se reanudan, dejan de contar.")}>
+            {stats ? responseSummary(stats, sequence.pause_on_reply, tr) : '—'}
           </dd>
         </div>
       </dl>
 
-      <footer className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3 dark:border-gray-800">
+      <footer className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3 dark:border-line">
         {blockReason && (
           <p id={blockId} className="basis-full text-xs text-amber-800 dark:text-amber-200">
             {blockReason}
@@ -103,33 +106,32 @@ export function SequenceCard({ sequence, onToggle, onEnroll, onEnrollments, onEd
         <div className="flex items-center gap-2">
           <Switch
             id={`seq-${sequence.id}-active`}
-            aria-label={`Activar la secuencia ${sequence.name}`}
-            checked={sequence.is_active}
+            aria-label={tr("Activar la secuencia {p0}",{p0:sequence.name})}
+            disabled={!canManage} checked={sequence.is_active}
             onCheckedChange={() => onToggle(sequence)}
           />
-          <label htmlFor={`seq-${sequence.id}-active`} className="text-xs text-gray-600 dark:text-gray-400">
-            {sequence.is_active ? 'Activa' : 'Inactiva'}
+          <label htmlFor={`seq-${sequence.id}-active`} className="text-xs text-fg-secondary dark:text-fg-secondary">
+            {sequence.is_active ? tr("Activa") : tr("Inactiva")}
           </label>
         </div>
         <div className="flex items-center gap-0.5">
           <Button
             size="sm"
             onClick={() => onEnroll(sequence)}
-            disabled={blockReason !== null}
+            disabled={blockReason !== null || !canManage}
             aria-describedby={blockReason ? blockId : undefined}
-            aria-label={blockReason ? `Inscribir en ${sequence.name}: deshabilitado. ${blockReason}` : undefined}
-            className="mr-1 bg-blue-600 text-white hover:bg-blue-700"
+            aria-label={blockReason ? tr("Inscribir en {p0}: deshabilitado. {p1}",{p0:sequence.name,p1:blockReason}) : undefined}
+            className="mr-1 bg-brand text-white hover:bg-brand-deep"
           >
-            <UserPlus className="mr-1.5 h-4 w-4" aria-hidden="true" /> Inscribir
-          </Button>
-          <IconAction label={`Inscripciones de ${sequence.name}`} onClick={() => onEnrollments(sequence)}>
-            <Users className="h-4 w-4" aria-hidden="true" />
+            <UserPlus strokeWidth={1.5} className="mr-1.5 h-4 w-4" aria-hidden="true" /> {tr("Inscribir")}</Button>
+          <IconAction label={tr("Inscripciones de {p0}",{p0:sequence.name})} onClick={() => onEnrollments(sequence)}>
+            <Users strokeWidth={1.5} className="h-4 w-4" aria-hidden="true" />
           </IconAction>
-          <IconAction label={`Editar ${sequence.name}`} onClick={() => onEdit(sequence)}>
-            <Pencil className="h-4 w-4" aria-hidden="true" />
+          <IconAction disabled={!canManage} label={tr("Editar {p0}",{p0:sequence.name})} onClick={() => onEdit(sequence)}>
+            <Pencil strokeWidth={1.5} className="h-4 w-4" aria-hidden="true" />
           </IconAction>
-          <IconAction label={`Eliminar ${sequence.name}`} onClick={() => onDelete(sequence)}>
-            <Trash2 className="h-4 w-4 text-red-600 dark:text-red-400" aria-hidden="true" />
+          <IconAction disabled={!canManage} label={tr("Eliminar {p0}",{p0:sequence.name})} onClick={() => onDelete(sequence)}>
+            <Trash2 strokeWidth={1.5} className="h-4 w-4 text-danger-text dark:text-danger-text" aria-hidden="true" />
           </IconAction>
         </div>
       </footer>

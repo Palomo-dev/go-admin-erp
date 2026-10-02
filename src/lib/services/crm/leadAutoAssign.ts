@@ -33,6 +33,8 @@ export interface AutoAssignParams {
   opportunityId?: string;
   /** Datos de la oportunidad que aún no existe (para la estrategia `territory`). */
   opportunityData?: OpportunityFacts;
+  /** Ficha preparada para evaluar territorio antes del INSERT atómico. */
+  customerData?: Record<string, unknown>;
 }
 
 /**
@@ -81,7 +83,7 @@ export async function autoAssignLead(
   params: AutoAssignParams,
   supabase: SupabaseClient,
 ): Promise<AutoAssignOutcome> {
-  const { organizationId, customerId, opportunityId, opportunityData } = params;
+  const { organizationId, customerId, opportunityId, opportunityData, customerData } = params;
   try {
     const config = await getLeadAssignmentConfig(organizationId, supabase);
     if (!config.enabled) {
@@ -92,7 +94,7 @@ export async function autoAssignLead(
     if (!team.teamId) return { status: 'unassigned', reason: team.reason ?? 'Sin equipo' };
 
     const result = await assignLead(
-      { organizationId, customerId, opportunityId, strategy: config.strategy, teamId: team.teamId, opportunityData },
+      { organizationId, customerId, opportunityId, strategy: config.strategy, teamId: team.teamId, opportunityData, customerData },
       supabase,
     );
     return {

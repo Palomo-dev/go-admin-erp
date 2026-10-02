@@ -9,7 +9,7 @@
  * - Hay cliente pero no opportunity_id → "Crear oportunidad"
  */
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { UserPlus, Search, Briefcase, X, Check, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,6 +54,14 @@ export function CallLinkPanel({
   const [searching, setSearching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const intent = useRef<{ fingerprint: string; key: string } | null>(null);
+  const saving = useRef(false);
+
+  const payloadWithIntent = (payload: Record<string, unknown>) => {
+    const fingerprint = JSON.stringify({ callId, payload });
+    if (intent.current?.fingerprint !== fingerprint) intent.current = { fingerprint, key: crypto.randomUUID() };
+    return { ...payload, idempotency_key: intent.current.key };
+  };
 
   // Form crear cliente
   const [newFirstName, setNewFirstName] = useState('');
@@ -88,77 +96,87 @@ export function CallLinkPanel({
   };
 
   const linkExisting = async (custId: string) => {
+    if (saving.current) return;
+    saving.current = true;
     setSubmitting(true);
     setError(null);
     try {
       await fetchJson(`/api/crm/calls/${callId}/link`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customer_id: custId }),
+        body: JSON.stringify(payloadWithIntent({ customer_id: custId })),
       });
       setMode('idle');
       onLinked();
+      intent.current = null;
     } catch (err) {
       logError('[CallLinkPanel] vincular', err);
       setError(describeError(err));
     } finally {
+      saving.current = false;
       setSubmitting(false);
     }
   };
 
   const createCustomer = async () => {
-    if (!newFirstName.trim()) return;
+    if (!newFirstName.trim() || saving.current) return;
+    saving.current = true;
     setSubmitting(true);
     setError(null);
     try {
       await fetchJson(`/api/crm/calls/${callId}/link`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: JSON.stringify(payloadWithIntent({
           create_customer: {
             first_name: newFirstName.trim(),
             last_name: newLastName.trim() || null,
             phone: newPhone.trim(),
           },
-        }),
+        })),
       });
       setMode('idle');
       setNewFirstName('');
       setNewLastName('');
       onLinked();
+      intent.current = null;
     } catch (err) {
       logError('[CallLinkPanel] crear cliente', err);
       setError(describeError(err));
     } finally {
+      saving.current = false;
       setSubmitting(false);
     }
   };
 
   const createOpportunity = async () => {
-    if (!oppName.trim() || !oppPipelineId || !oppStageId) return;
+    if (!oppName.trim() || !oppPipelineId || !oppStageId || saving.current) return;
+    saving.current = true;
     setSubmitting(true);
     setError(null);
     try {
       await fetchJson(`/api/crm/calls/${callId}/link`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: JSON.stringify(payloadWithIntent({
           create_opportunity: {
             name: oppName.trim(),
             pipeline_id: oppPipelineId,
             stage_id: oppStageId,
           },
-        }),
+        })),
       });
       setMode('idle');
       setOppName('');
       setOppPipelineId(null);
       setOppStageId(null);
       onLinked();
+      intent.current = null;
     } catch (err) {
       logError('[CallLinkPanel] crear oportunidad', err);
       setError(describeError(err));
     } finally {
+      saving.current = false;
       setSubmitting(false);
     }
   };
@@ -229,7 +247,7 @@ export function CallLinkPanel({
             <Button size="sm" onClick={searchCustomers} disabled={searching || !searchQuery.trim()} className="h-8 shrink-0">
               {searching ? '…' : 'Buscar'}
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setMode('idle')} className="h-8 shrink-0">
+            <Button size="sm" variant="ghost" onClick={() => setMode('idle')} disabled={submitting} className="h-8 shrink-0">
               <X size={14} />
             </Button>
           </div>
@@ -272,6 +290,7 @@ export function CallLinkPanel({
                 id="link-first-name"
                 value={newFirstName}
                 onChange={(e) => setNewFirstName(e.target.value)}
+                disabled={submitting}
                 className="h-8 text-sm"
                 autoFocus
               />
@@ -282,6 +301,7 @@ export function CallLinkPanel({
                 id="link-last-name"
                 value={newLastName}
                 onChange={(e) => setNewLastName(e.target.value)}
+                disabled={submitting}
                 className="h-8 text-sm"
               />
             </div>
@@ -292,13 +312,14 @@ export function CallLinkPanel({
               id="link-phone"
               value={newPhone}
               onChange={setNewPhone}
+              disabled={submitting}
             />
           </div>
           <div className="flex gap-2">
             <Button size="sm" onClick={createCustomer} disabled={submitting || !newFirstName.trim() || !telefonoOpcionalValido(newPhone)} className="h-8">
               {submitting ? 'Guardando…' : 'Crear y vincular'}
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setMode('idle')} className="h-8">
+            <Button size="sm" variant="ghost" onClick={() => setMode('idle')} disabled={submitting} className="h-8">
               Cancelar
             </Button>
           </div>
@@ -314,6 +335,7 @@ export function CallLinkPanel({
               id="opp-name"
               value={oppName}
               onChange={(e) => setOppName(e.target.value)}
+              disabled={submitting}
               placeholder="Ej: Venta Plan Business"
               className="h-8 text-sm"
               autoFocus
@@ -326,6 +348,7 @@ export function CallLinkPanel({
             ) : (
               <EntitySelect
                 value={oppPipelineId}
+                disabled={submitting}
                 onChange={(id) => {
                   setOppPipelineId(id);
                   setOppStageId(null);
@@ -344,6 +367,7 @@ export function CallLinkPanel({
               ) : (
                 <EntitySelect
                   value={oppStageId}
+                  disabled={submitting}
                   onChange={(id) => setOppStageId(id)}
                   options={stagesOfPipeline}
                   placeholder="Selecciona una etapa"
@@ -361,7 +385,7 @@ export function CallLinkPanel({
             >
               {submitting ? 'Guardando…' : 'Crear oportunidad'}
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setMode('idle')} className="h-8">
+            <Button size="sm" variant="ghost" onClick={() => setMode('idle')} disabled={submitting} className="h-8">
               Cancelar
             </Button>
           </div>

@@ -177,18 +177,21 @@ describe('robustez · configuración y estrategias', () => {
     expect(db.reads.sales_team_members).toBeUndefined();
   });
 
-  it('error al leer la última oportunidad (round_robin) → se asigna al primero, no revienta', async () => {
+  it('error al leer la rotación → crea el lead sin inventar un responsable', async () => {
     db.errors['opportunities:select'] = { message: 'boom' };
     const r = await crear();
-    expect(r.assignment).toMatchObject({ status: 'assigned', user_id: VENDEDOR_A });
+    expect(r.assignment).toMatchObject({ status: 'unassigned' });
+    expect(r.data.owner_id).toBeNull();
+    expect((r.assignment as { reason: string }).reason).toContain('boom');
   });
 
-  it('error al leer territorios → cae a round_robin con motivo', async () => {
+  it('error al leer territorios → crea el lead sin confundir error con lista vacía', async () => {
     config({ strategy: 'territory' });
     db.errors['territories:select'] = { message: 'boom' };
     const r = await crear();
-    expect(r.assignment).toMatchObject({ status: 'assigned', user_id: VENDEDOR_A, strategy: 'territory' });
-    expect((r.assignment as { reason: string }).reason).toMatch(/^territory: sin territorios → round_robin/);
+    expect(r.assignment).toMatchObject({ status: 'unassigned' });
+    expect(r.data.owner_id).toBeNull();
+    expect((r.assignment as { reason: string }).reason).toContain('boom');
   });
 
   it('territory sin territorios / sin match → round_robin con motivo; con match y responsable del equipo → directo', async () => {
@@ -291,3 +294,7 @@ describe('contrato', () => {
     expect(db.writes.filter((w) => w.table === 'customers' && w.op === 'delete')).toHaveLength(1);
   });
 });
+
+// Fixtures históricas del transporte heredado; los contratos RPC se verifican por separado.
+beforeEach(() => { process.env.CRM_CALL_ATOMIC_RPC_ENABLED = 'false'; });
+afterAll(() => { delete process.env.CRM_CALL_ATOMIC_RPC_ENABLED; });

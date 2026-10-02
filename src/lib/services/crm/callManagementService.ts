@@ -21,6 +21,8 @@ import {
   type RecordingStatus,
 } from '@/lib/crm/enums';
 import { ilikeAnyOf } from '@/lib/utils/postgrestFilters';
+import { isAtomicCallRpcEnabled, mutateCallFromSnapshot } from './callMutationService';
+import { applyStatusEvent, mergeTerminalOutcome, type CallLeg, type TwilioStatusEvent } from './callStateMachine';
 
 export type { CallDirection, CallMode, CallStatus, BridgeMode, DurationSource, RecordingStatus };
 export type AnsweredBy = 'human' | 'machine' | 'fax' | 'unknown';
@@ -90,6 +92,7 @@ export interface CallCreateInput {
 }
 
 export interface CallUpdateInput {
+  provider_call_sid?: string | null;
   status?: CallStatus;
   answered_by?: AnsweredBy | null;
   started_at?: string | null;
@@ -295,7 +298,7 @@ export async function getCall(
 
   if (error) {
     console.error('[callManagementService.getCall] error:', error.message);
-    return null;
+    throw error;
   }
 
   return data as CallRecord | null;
@@ -309,10 +312,7 @@ export async function createCall(
   data: CallCreateInput,
   supabase: SupabaseClient
 ): Promise<CallRecord | null> {
-  const { data: record, error } = await supabase
-    .from('calls')
-    .insert({
-      organization_id: organizationId,
+  const payload = {
       provider: data.provider,
       provider_call_sid: data.provider_call_sid ?? null,
       parent_call_sid: data.parent_call_sid ?? null,
@@ -340,15 +340,17 @@ export async function createCall(
       agent_leg_sid: data.agent_leg_sid ?? null,
       customer_leg_sid: data.customer_leg_sid ?? null,
       duration_source: data.duration_source ?? 'provider',
-    })
-    .select()
-    .single();
+    };
+  const { data: record, error } = isAtomicCallRpcEnabled()
+    ? await supabase.rpc('fn_crm_crear_llamada', { p_org: organizationId, p_payload: payload })
+    : await supabase.from('calls').insert({ ...payload, organization_id: organizationId }).select().single();
 
   if (error) {
     console.error('[callManagementService.createCall] error:', error.message);
     throw error;
   }
 
+  if (!record || record.organization_id !== organizationId) throw new Error('Respuesta inválida al crear la llamada');
   return record as CallRecord;
 }
 
@@ -358,44 +360,47 @@ export async function createCall(
 export async function updateCall(
   id: string,
   organizationId: number,
-  data: CallUpdateInput,
+  data: CallUpdateInput | ((fresh: CallRecord) => CallUpdateInput | null),
   supabase: SupabaseClient
 ): Promise<CallRecord | null> {
-  const updateData: Record<string, unknown> = {
-    updated_at: new Date().toISOString(),
-  };
+  const initial = await getCall(id, organizationId, supabase);
+  if (!initial) return null;
+  return mutateCallFromSnapshot(supabase, initial, (fresh) => {
+    const input = typeof data === 'function' ? data(fresh) : data;
+    if (!input) return null;
+    const patch: Record<string, unknown> = {};
+    const columns: ReadonlyArray<keyof CallUpdateInput> = [
+      'provider_call_sid', 'status', 'answered_by', 'started_at', 'answered_at',
+      'ended_at', 'duration_seconds', 'ring_seconds', 'recording_enabled',
+      'consent_given', 'cost_amount', 'cost_currency', 'metadata', 'bridge_mode',
+      'agent_leg_sid', 'customer_leg_sid', 'duration_source',
+    ];
+    for (const column of columns) if (input[column] !== undefined) patch[column] = input[column];
+    return Object.keys(patch).length ? patch : null;
+  });
+}
 
-  if (data.status !== undefined) updateData.status = data.status;
-  if (data.answered_by !== undefined) updateData.answered_by = data.answered_by;
-  if (data.started_at !== undefined) updateData.started_at = data.started_at;
-  if (data.answered_at !== undefined) updateData.answered_at = data.answered_at;
-  if (data.ended_at !== undefined) updateData.ended_at = data.ended_at;
-  if (data.duration_seconds !== undefined) updateData.duration_seconds = data.duration_seconds;
-  if (data.ring_seconds !== undefined) updateData.ring_seconds = data.ring_seconds;
-  if (data.recording_enabled !== undefined) updateData.recording_enabled = data.recording_enabled;
-  if (data.consent_given !== undefined) updateData.consent_given = data.consent_given;
-  if (data.cost_amount !== undefined) updateData.cost_amount = data.cost_amount;
-  if (data.cost_currency !== undefined) updateData.cost_currency = data.cost_currency;
-  if (data.metadata !== undefined) updateData.metadata = data.metadata;
-  if (data.bridge_mode !== undefined) updateData.bridge_mode = data.bridge_mode;
-  if (data.agent_leg_sid !== undefined) updateData.agent_leg_sid = data.agent_leg_sid;
-  if (data.customer_leg_sid !== undefined) updateData.customer_leg_sid = data.customer_leg_sid;
-  if (data.duration_source !== undefined) updateData.duration_source = data.duration_source;
-
-  const { data: record, error } = await supabase
-    .from('calls')
-    .update(updateData)
-    .eq('id', id)
-    .eq('organization_id', organizationId)
-    .select()
-    .maybeSingle();
-
-  if (error) {
-    console.error('[callManagementService.updateCall] error:', error.message);
-    throw error;
-  }
-
-  return record as CallRecord | null;
+/** Los escritores de TwiML y puente usan la misma máquina que los callbacks. */
+export async function updateCallFromProviderEvent(
+  id: string, organizationId: number, event: TwilioStatusEvent, leg: CallLeg,
+  supabase: SupabaseClient,
+): Promise<CallRecord | null> {
+  return updateCall(id, organizationId, (fresh) => {
+    const transition = applyStatusEvent({ ...fresh, metadata: fresh.metadata ?? {} }, event, leg);
+    if (!transition) return null;
+    const merged = mergeTerminalOutcome({
+      currentStatus: fresh.status, currentDuration: fresh.duration_seconds,
+      currentAnsweredAt: fresh.answered_at, incomingStatus: transition.status ?? fresh.status,
+      incomingDuration: transition.duration_seconds ?? 0,
+    });
+    return {
+      ...transition,
+      status: merged.status ?? fresh.status,
+      duration_seconds: merged.duration_seconds ?? fresh.duration_seconds,
+      ended_at: fresh.ended_at ?? transition.ended_at,
+      answered_at: fresh.answered_at ?? transition.answered_at,
+    };
+  }, supabase);
 }
 
 // ─── Funciones: call_recordings ──────────────────────────────────────────────

@@ -16,6 +16,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { readOrgBody } from '@/lib/security/organizationBody';
+import { sinClavesDeOrganizacion, respuestaErrorCrm } from '@/lib/services/crm/crmRouteSupport';
+import { CrmHttpError } from '@/lib/services/crm/crmErrors';
 import { initiateBridge, BridgeError } from '@/lib/services/crm/mobileBridgeService';
 
 export const runtime = 'nodejs';
@@ -39,8 +42,8 @@ const BodySchema = z
 
 export async function POST(request: NextRequest) {
   try {
-    const ctx = await getServerOrgContext();
-    const raw = await request.json().catch(() => ({}));
+    const ctx = await getServerOrgContext(request);
+    const raw = sinClavesDeOrganizacion(readOrgBody(ctx, await request.json().catch(() => ({})), { request }));
     const parsed = BodySchema.safeParse(raw);
     if (!parsed.success) {
       return NextResponse.json(
@@ -74,6 +77,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error: unknown) {
+    if (error instanceof CrmHttpError) return respuestaErrorCrm(error, 'bridge_initiate');
     if (error instanceof BridgeError) {
       return NextResponse.json(
         { success: false, code: error.code, error: error.message },

@@ -1,67 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { NextRequest,NextResponse } from 'next/server';
+import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
-import { updateTeamMember, removeTeamMember } from '@/lib/services/crm/salesStructureService';
-
-/**
- * PATCH /api/crm/teams/[id]/members/[memberId] — Actualiza un miembro del equipo.
- */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string; memberId: string }> }
-) {
-  try {
-    const ctx = await getServerOrgContext();
-    const { memberId } = await params;
-    const body = await readOrgBody(ctx, request);
-
-    const member = await updateTeamMember(memberId, ctx.organizationId, body, ctx.supabase);
-
-    if (!member) {
-      return NextResponse.json(
-        { success: false, error: 'Miembro no encontrado' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({ success: true, data: member }, { status: 200 });
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Team Members] PATCH error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
-  }
-}
-
-/**
- * DELETE /api/crm/teams/[id]/members/[memberId] — Elimina un miembro del equipo.
- */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string; memberId: string }> }
-) {
-  try {
-    const ctx = await getServerOrgContext();
-    await readOrgBody(ctx, request);
-    const { memberId } = await params;
-
-    await removeTeamMember(memberId, ctx.organizationId, ctx.supabase);
-
-    return NextResponse.json({ success: true }, { status: 200 });
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Team Members] DELETE error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
-  }
-}
+import { respuestaErrorCrm,sinClavesDeOrganizacion } from '@/lib/services/crm/crmRouteSupport';
+import { compatibleTeamWrite } from '@/lib/services/crm/teamManagementCompatibility';
+type Params={params:Promise<{id:string;memberId:string}>};
+async function write(request:NextRequest,params:Params,archive:boolean){try{const ctx=await getServerOrgContext(request);const {id,memberId}=await params.params;const data=await compatibleTeamWrite(ctx,'member',sinClavesDeOrganizacion(await readOrgBody(ctx,request)),memberId,id,archive);return NextResponse.json({success:true,data});}catch(error){return respuestaErrorCrm(error,'/api/crm/teams/[id]/members/[memberId]');}}
+export async function PATCH(request:NextRequest,params:Params){return write(request,params,false);}
+export async function DELETE(request:NextRequest,params:Params){return write(request,params,true);}

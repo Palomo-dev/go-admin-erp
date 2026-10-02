@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { exigirAccesoLlamada } from '@/lib/services/crm/callAccessService';
+import { respuestaErrorCrm } from '@/lib/services/crm/crmRouteSupport';
+import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { getTranscript, isLiveAttempt, TranscriptionError } from '@/lib/services/crm/transcriptionService';
@@ -24,7 +26,7 @@ export const maxDuration = 60;
  */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     const { id } = await params;
     let body: { force?: boolean; provider?: string } = {};
     try {
@@ -37,14 +39,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const provider = normalizeSttProvider(body.provider) ?? null;
     const sync = request.nextUrl.searchParams.get('sync') === '1';
 
-    const { data: call } = await ctx.supabase.from('calls').select('id').eq('id', id).eq('organization_id', ctx.organizationId).maybeSingle();
-    if (!call) return NextResponse.json({ success: false, error: 'Llamada no encontrada' }, { status: 404 });
+    await exigirAccesoLlamada(ctx, id, 'gestion');
 
     const existing = await getTranscript(id, ctx.organizationId, ctx.supabase, false);
     if (existing && existing.status === 'completed' && !force) {
       return NextResponse.json({ success: true, data: { transcript_id: existing.id, status: existing.status, provider: existing.provider, job_id: null } }, { status: 200 });
     }
-    const { data: rec } = await ctx.supabase.from('call_recordings').select('id').eq('call_id', id).eq('organization_id', ctx.organizationId).eq('status', 'ready').limit(1).maybeSingle();
+    const { data: rec, error: recordingError } = await ctx.supabase.from('call_recordings').select('id').eq('call_id', id).eq('organization_id', ctx.organizationId).eq('status', 'ready').limit(1).maybeSingle();
+    if (recordingError) throw recordingError;
     if (!rec) return NextResponse.json({ success: false, error: 'La llamada no tiene grabación en estado ready', code: 'NO_RECORDING' }, { status: 409 });
 
     if (sync) {
@@ -135,7 +137,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       { status: 202 },
     );
   } catch (error: unknown) {
-    if (error instanceof OrgContextError) return NextResponse.json({ success: false, error: error.message }, { status: error.statusCode });
     if (error instanceof TranscriptionError) {
       const status = error.code === 'INSUFFICIENT_CREDITS' ? 402
         : error.code === 'AUDIO_TOO_LARGE' ? 413
@@ -149,8 +150,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.code === 'INSUFFICIENT_CREDITS' ? 402 : 502 });
     }
     if (error instanceof InsufficientCreditsError) return NextResponse.json({ success: false, error: error.message, code: 'INSUFFICIENT_CREDITS' }, { status: 402 });
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Calls Transcribe] POST error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return respuestaErrorCrm(error, 'llamada_auxiliar');
   }
 }

@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     const ctx = await getServerOrgContext();
     const body = await readJson(request);
     rejectForeignOrganization(TAG, body, ctx, request);
-    requirePartnerManager(ctx); // crear configuración exige el mismo rol que editarla/borrarla
+    await requirePartnerManager(ctx); // crear configuración exige el mismo rol que editarla/borrarla
     const parsed = validateTierInput(body, { partial: false });
     if (!parsed.ok) return validationFail(parsed.errors);
     const v = parsed.value;

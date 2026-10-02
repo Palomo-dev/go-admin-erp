@@ -175,7 +175,8 @@ describe('M32–M35 · cada clave del payload llega a la fila, sin valores fijos
 });
 
 describe('M16 · ENGINE_ROUTED_EVENTS es exactamente lo que el motor desvía', () => {
-  const engineSrc = fs.readFileSync(path.join(process.cwd(), 'src/lib/services/crm/automation/automationEngine.ts'), 'utf8');
+  const engineSrc = fs.readFileSync(path.join(process.cwd(), 'src/lib/services/crm/automation/automationEngine.ts'), 'utf8')
+    + fs.readFileSync(path.join(process.cwd(), 'src/lib/services/crm/automation/triggerTypeForEvent.ts'), 'utf8');
   // Literales `entidad.accion` que aparecen en el motor: son los que enruta a mano.
   const engineLiterals = Array.from(engineSrc.matchAll(/'([a-z_]+\.[a-z_]+)'/g), (m) => m[1]);
   const probe = Array.from(new Set([

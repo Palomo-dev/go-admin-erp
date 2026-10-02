@@ -24,7 +24,7 @@ export function HistorialFusiones({
         <caption className="sr-only">{t('historial')}</caption>
         <thead className="bg-subtle text-fg-secondary">
           <tr>
-            {['fusion', 'movidos', 'quien', 'cuando', 'accion'].map((key) => (
+            {['fusion', 'motivoFusion', 'movidos', 'quien', 'cuando', 'accion'].map((key) => (
               <th
                 key={key}
                 scope="col"
@@ -44,6 +44,7 @@ export function HistorialFusiones({
                   {row.secundario?.full_name ?? t('sinNombre')} →{' '}
                   {row.principal?.full_name ?? t('sinNombre')}
                 </td>
+                <td className="p-4 text-fg-secondary">{t(`motivosFusion.${row.reason ?? 'unknown'}`)}</td>
                 <td className="p-4 text-fg-secondary">
                   {row.moved_counts
                     .filter((c) => c.count > 0)

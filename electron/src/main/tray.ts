@@ -4,6 +4,8 @@ import { APP_NAME } from './constants';
 import { getStatus } from './agentRunner';
 import { readLog } from './crashReporter';
 import { getIconImage } from './icon';
+import { getPhoneSnapshot } from './phoneIpc';
+import { openPhoneWindow } from './windows/phoneWindow';
 
 let tray: Tray | null = null;
 let refreshTimer: NodeJS.Timeout | null = null;
@@ -24,6 +26,8 @@ export function createTray(mainWindow: BrowserWindow): Tray {
         enabled: false,
       },
       { type: 'separator' },
+      { label: 'Teléfono', click: () => { void openPhoneWindow(); } },
+      { label: getPhoneSnapshot()?.incoming ? '☎ Llamada entrante' : getPhoneSnapshot()?.callStatus === 'connected' ? '☎ En llamada' : getPhoneSnapshot()?.deviceState === 'registered' ? 'Teléfono listo' : 'Teléfono desconectado', enabled: false },
       {
         label: `Trabajos impresos: ${status.jobsPrinted}`,
         enabled: false,
@@ -66,6 +70,7 @@ export function createTray(mainWindow: BrowserWindow): Tray {
   refreshMenu();
   if (refreshTimer) clearInterval(refreshTimer);
   refreshTimer = setInterval(refreshMenu, 15_000);
+  tray.on('right-click', refreshMenu);
 
   tray.on('double-click', () => {
     mainWindow.show();

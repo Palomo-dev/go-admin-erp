@@ -74,7 +74,7 @@ beforeEach(() => {
   jest.clearAllMocks(); queries.length = 0; claimWins = true;
   savedMessages.clear(); ownedConversation = true; customerRow = null;
   row = { id, organization_id: 120, user_id: 'autor', tool_name: 'create_customer', risk: 'medium', args: { full_name: 'Persona sintética' }, branch_id: 3, conversation_id: 'hilo', status: 'pending', expires_at: new Date(Date.now() + 600000).toISOString() };
-  caps = { level: 'write_full', enabledTools: null, isAdmin: false, permissions: new Set(['crm.customers.create', 'pos.create', 'inventory.create', 'inventory.transfer', 'inventory.adjust']), activeModules: new Set(['inventory', 'pos']), bulkMaxRows: 500, undoWindowMinutes: 15 };
+  caps = { level: 'write_full', enabledTools: null, isAdmin: false, permissions: new Set(['crm.customers.create', 'crm.opportunities.create', 'pos.create', 'inventory.create', 'inventory.transfer', 'inventory.adjust']), activeModules: new Set(['inventory', 'pos', 'crm']), bulkMaxRows: 500, undoWindowMinutes: 15 };
   jest.mocked(getServerOrgContext).mockResolvedValue({ organizationId: 120, userId: 'autor', supabase: sessionClient } as unknown as Awaited<ReturnType<typeof getServerOrgContext>>);
   jest.mocked(getServiceClient).mockReturnValue({ from: actionFrom } as unknown as ReturnType<typeof getServiceClient>);
   jest.mocked(getAssistantCapabilities).mockImplementation(async () => caps);
@@ -87,6 +87,7 @@ afterEach(() => jest.restoreAllMocks());
 
 const cases: Array<[string, Record<string, unknown>]> = [
   ['create_customer', { full_name: 'Persona sintética', company_name: 'Empresa sintética' }],
+  ['crear_oportunidad', { name: 'Negocio sintético' }],
   ['registrar_venta', { items: [{ product_id: 1, quantity: 2 }] }],
   ['crear_orden_compra', { supplier_id: 2, items: [{ product_id: 1, quantity: 2, unit_cost: 10 }] }],
   ['crear_traslado', { origin_branch_id: 3, dest_branch_id: 4, items: [{ product_id: 1, quantity: 2 }] }],

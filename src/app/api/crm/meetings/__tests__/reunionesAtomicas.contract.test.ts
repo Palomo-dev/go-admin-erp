@@ -25,6 +25,14 @@ beforeEach(() => {
   jest.mocked(notificarReunion).mockResolvedValue({ cliente: true, responsable: false });
   context.mockResolvedValue({ organizationId: 120, userId: user, roleId: 2, isSuperAdmin: false, supabase: sb } as never);
   rpc.mockResolvedValue({ data: { event: { id, metadata: { activity_id: activity } }, activity_id: activity, reused: false }, error: null });
+  from.mockImplementation((table: string) => {
+    const query: Record<string, unknown> = {};
+    for (const method of ['select', 'eq', 'ilike']) query[method] = jest.fn(() => query);
+    query.maybeSingle = jest.fn(async () => ({ data: { id, ...body, organization_id: 120, event_type: 'meeting', status: 'confirmed', created_by: user, opportunity_id: null, metadata: { source: 'crm', activity_id: activity } }, error: null }));
+    query.limit = jest.fn(async () => ({ data: [{ id: activity, activity_type: 'meeting', related_type: 'customer', related_id: id, user_id: user, occurred_at: body.start_at, outcome: 'scheduled', metadata: { event_id: id } }], error: null }));
+    if (!['calendar_events', 'activities', 'customers'].includes(table)) throw new Error('Tabla inesperada');
+    return query;
+  });
 });
 test('crear usa una sola RPC del usuario y no transmite un actor suplantable', async () => {
   const result = await createMeeting(120, user, body, sb);

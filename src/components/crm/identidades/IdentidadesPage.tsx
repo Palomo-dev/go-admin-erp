@@ -18,6 +18,7 @@ import type { GrupoDuplicado } from "@/lib/services/crm/customerDuplicatesLogica
 import { DuplicadosPanel } from "./DuplicadosPanel";
 import { FusionClientesPanel } from "./FusionClientesPanel";
 import { HistorialFusiones } from "./HistorialFusiones";
+import { ExportarFusiones } from "./ExportarFusiones";
 import { IdentidadesCanal } from "./IdentidadesCanal";
 import {
   useIdentidadesData,
@@ -77,6 +78,7 @@ function IdentidadesContenido() {
   };
   const actions = (
     <>
+      {vista === "historial" && !state.forbidden && <ExportarFusiones disabled={busy || state.loading || !!state.error} />}
       {state.duplicates?.canMerge && (
         <button
           className={clasesBoton({ variante: "secundario" })}

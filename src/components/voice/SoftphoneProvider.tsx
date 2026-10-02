@@ -1,24 +1,17 @@
 'use client';
 
-/**
- * SoftphoneProvider — contexto global del softphone (Twilio Voice JS SDK).
- * GO Admin ERP — FASE-03 §5.2 (montado UNA vez en src/app/app/layout.tsx).
- *
- * - El ciclo de vida del `Device` (token, permiso de micrófono, carga perezosa
- *   del SDK, reintentos y renovación) vive en `hooks/useTwilioDevice` desde la
- *   ronda 2; aquí queda solo el estado de la llamada y la API del contexto.
- * - `makeCall` SOLO hace `device.connect({ params: { To, opportunityId, customerId } })`
- *   (la fila `calls` la crea el webhook del TwiML App; sin POST previo, C10).
- * - `useSoftphone()` es SEGURO: sin provider devuelve `{ available: false }`.
- */
+/** Controlador único del Device y las acciones de conferencia verificadas. */
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Call } from '@twilio/voice-sdk';
 import { toast } from '@/components/ui/use-toast';
 import { useCallRealtime } from './hooks/useCallRealtime';
 import { useAudioDevices } from './hooks/useAudioDevices';
 import { useTwilioDevice, describeDeviceError } from './hooks/useTwilioDevice';
 import { microphoneDeniedReason } from './hooks/useCallModePolicy';
+import { useDesktopPhoneController } from './hooks/useDesktopPhoneController';
+import { usePhoneConference } from './hooks/usePhoneConference';
+import { usePhoneShortcuts } from './hooks/usePhoneShortcuts';
 import type { ActiveCallInfo, CallStatus, EndedCallInfo, MakeCallOptions, MakeCallResult, SoftphoneContextValue, SoftphoneValue } from './softphoneTypes';
 
 // ─── Tipos (definidos en ./softphoneTypes, reexportados aquí) ─────────────────
@@ -37,10 +30,9 @@ export type {
 
 const SoftphoneContext = createContext<SoftphoneValue>({ available: false });
 
-// ─── Provider ────────────────────────────────────────────────────────────────
-
-export function SoftphoneProvider({ children, enabled = true }: { children: ReactNode; enabled?: boolean }) {
+export function SoftphoneProvider({ children, enabled = true, organizationId = null }: { children: ReactNode; enabled?: boolean; organizationId?: number | null }) {
   const callRef = useRef<Call | null>(null);
+  const connectingRef = useRef(false);
   const activeRef = useRef<ActiveCallInfo | null>(null);
   const liveNoteRef = useRef('');
 
@@ -51,9 +43,8 @@ export function SoftphoneProvider({ children, enabled = true }: { children: Reac
   const [liveNote, setLiveNoteState] = useState('');
   const [lastEndedCall, setLastEndedCall] = useState<EndedCallInfo | null>(null);
 
-  const { callId: activeCallId, row: activeCallRow } = useCallRealtime(activeCall?.callSid ?? null, callStatus !== 'idle' && callStatus !== 'ended');
+  const { callId: legacyCallId, row: legacyCallRow } = useCallRealtime(activeCall?.callSid ?? null, callStatus !== 'idle' && callStatus !== 'ended');
   const activeCallIdRef = useRef<string | null>(null);
-  activeCallIdRef.current = activeCallId;
 
   const setLiveNote = useCallback((text: string) => {
     liveNoteRef.current = text;
@@ -69,10 +60,14 @@ export function SoftphoneProvider({ children, enabled = true }: { children: Reac
     (reason: 'disconnect' | 'cancel' | 'reject' | 'error') => {
       const info = activeRef.current;
       const call = callRef.current;
+      connectingRef.current = false;
       callRef.current = null;
       setMuted(false);
       setIncoming(null);
       if (call) call.removeAllListeners();
+      if (info?.direction === 'inbound' && !info.connectedAt && (reason === 'cancel' || reason === 'disconnect')) {
+        window.dispatchEvent(new CustomEvent('go-admin:phone-missed', { detail: { number: info.number, displayName: info.displayName } }));
+      }
       if (info && (reason === 'disconnect' || reason === 'error') && info.connectedAt) {
         const durationSeconds = Math.max(0, Math.round((Date.now() - info.connectedAt) / 1000));
         setLastEndedCall({ ...info, callId: activeCallIdRef.current, durationSeconds, liveNote: liveNoteRef.current, endedAt: Date.now() });
@@ -145,6 +140,14 @@ export function SoftphoneProvider({ children, enabled = true }: { children: Reac
 
   const { deviceRef, deviceState, deviceReason, deviceErrorCode, deviceMissing, deviceScope, retry } = useTwilioDevice(handleIncoming, onDeviceDestroy, enabled);
   const audio = useAudioDevices(deviceRef, deviceState === 'registered');
+  const phone = usePhoneConference(activeCall?.callSid ?? null, callStatus !== 'idle' && callStatus !== 'ended', deviceState === 'registered', organizationId);
+  const activeCallId = phone.call?.id ?? legacyCallId;
+  const activeCallRow = phone.call ?? legacyCallRow;
+  activeCallIdRef.current = activeCallId;
+  const observedCall = useMemo(() => activeCall && phone.call ? { ...activeCall, number: phone.call.number,
+    displayName: activeCall.displayName ?? phone.call.displayName, connectedAt: phone.call.answered_at ? Date.parse(phone.call.answered_at) : null } : activeCall, [activeCall, phone.call]);
+  activeRef.current = observedCall;
+  const observedStatus = phone.state.supported && phone.call && !phone.call.answered_at && callStatus === 'connected' ? 'ringing' : callStatus;
 
   // ─── Acciones ──────────────────────────────────────────────────────────────
   const makeCall = useCallback(
@@ -157,12 +160,13 @@ export function SoftphoneProvider({ children, enabled = true }: { children: Reac
         const denied = deviceState === 'no_permission';
         return { ok: false, reason: denied ? 'mic_denied' : 'unavailable', message, settingsHint: denied ? microphoneDeniedReason() : null };
       }
-      if (callRef.current) {
+      if (callRef.current || connectingRef.current) {
         toast({ title: 'Ya hay una llamada en curso', description: 'Finaliza la llamada actual antes de iniciar otra', variant: 'destructive' });
         return { ok: false, reason: 'busy', message: 'Finaliza la llamada actual antes de iniciar otra', settingsHint: null };
       }
       const number = to.trim();
       if (!number) return { ok: false, reason: 'no_number', message: 'Sin número', settingsHint: null };
+      connectingRef.current = true;
       setLiveNote('');
       setLastEndedCall(null);
       setActive({
@@ -176,17 +180,25 @@ export function SoftphoneProvider({ children, enabled = true }: { children: Reac
       });
       setCallStatus('connecting');
       try {
+        const precheck = await fetch('/api/voice/precheck', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ number, customer_id: opts?.customerId ?? null }) });
+        const checked = await precheck.json();
+        if (!precheck.ok || checked.data?.allowed !== true) throw new Error(checked.error ?? checked.data?.code ?? 'Este número no puede recibir llamadas ahora');
+        if (deviceRef.current !== device) throw new Error('La organización o la conexión cambió');
         // Solo device.connect: la fila `calls` la crea /api/voice/twiml/outbound (C10).
         const call = await device.connect({
           params: { To: number, opportunityId: opts?.opportunityId ?? '', customerId: opts?.customerId ?? '' },
         });
+        if (deviceRef.current !== device) { call.disconnect(); throw new Error('La organización o la conexión cambió'); }
         callRef.current = call;
         bindCallEvents(call);
+        connectingRef.current = false;
         // `parameters.CallSid` está disponible tras el handshake inicial.
         const sid = call.parameters?.CallSid ?? null;
         if (sid) setActive({ ...(activeRef.current as ActiveCallInfo), callSid: sid });
         return { ok: true };
       } catch (err) {
+        connectingRef.current = false;
         const d = describeDeviceError(err);
         setCallStatus('idle');
         setActive(null);
@@ -203,18 +215,22 @@ export function SoftphoneProvider({ children, enabled = true }: { children: Reac
     const call = callRef.current;
     if (!call) return;
     if (incoming) call.reject();
+    else if (phone.state.supported) { void phone.command({ action: 'hangup' }).then((result) => {
+      if (!result.ok) toast({ title: 'No se pudo confirmar el cierre', description: result.message, variant: 'destructive' });
+    }); }
     else call.disconnect();
-  }, [incoming]);
+  }, [incoming, phone]);
 
   const mute = useCallback((m: boolean) => {
+    if ((phone.state.held && phone.state.phase !== 'consulting') || phone.state.busy) return;
     callRef.current?.mute(m);
     setMuted(m);
-  }, []);
+  }, [phone.state.held, phone.state.phase, phone.state.busy]);
 
   const sendDigits = useCallback((digits: string) => {
     const clean = digits.replace(/[^0-9*#w]/g, '');
-    if (clean && callRef.current && callRef.current.status() === 'open') callRef.current.sendDigits(clean);
-  }, []);
+    if (clean && callRef.current && !phone.state.held && !phone.state.busy && callRef.current.status() === 'open') callRef.current.sendDigits(clean);
+  }, [phone.state.held, phone.state.busy]);
 
   const acceptIncoming = useCallback(() => {
     if (callRef.current && incoming) callRef.current.accept();
@@ -229,27 +245,7 @@ export function SoftphoneProvider({ children, enabled = true }: { children: Reac
 
   const clearLastEndedCall = useCallback(() => setLastEndedCall(null), []);
 
-  // ─── Atajos globales (fuera de inputs): Ctrl+Shift+D colgar, Ctrl+Shift+M mute, Ctrl+Shift+A aceptar ──
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (!e.ctrlKey || !e.shiftKey) return;
-      const tag = (e.target as HTMLElement | null)?.tagName?.toLowerCase();
-      const editable = tag === 'input' || tag === 'textarea' || (e.target as HTMLElement | null)?.isContentEditable;
-      const key = e.key.toUpperCase();
-      if (key === 'D' && callRef.current) {
-        e.preventDefault();
-        hangup();
-      } else if (key === 'M' && callRef.current && !editable) {
-        e.preventDefault();
-        mute(!muted);
-      } else if (key === 'A' && incoming) {
-        e.preventDefault();
-        acceptIncoming();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [hangup, mute, muted, incoming, acceptIncoming]);
+  usePhoneShortcuts(callRef, { hangup, mute, muted, hasIncoming: Boolean(incoming), acceptIncoming });
 
   const value = useMemo<SoftphoneValue>(
     () => (enabled ? {
@@ -259,11 +255,16 @@ export function SoftphoneProvider({ children, enabled = true }: { children: Reac
       deviceErrorCode,
       deviceMissing,
       deviceScope,
-      callStatus,
-      activeCall,
+      callStatus: observedStatus,
+      activeCall: observedCall,
       activeCallId,
       activeCallRow,
-      muted,
+      muted: muted || (phone.state.held && phone.state.phase !== 'consulting'),
+      phoneControl: phone.state,
+      setHold: phone.setHold,
+      transferCall: phone.transferCall,
+      confirmTransfer: phone.confirmTransfer,
+      cancelTransfer: phone.cancelTransfer,
       hasIncoming: Boolean(incoming),
       incoming,
       liveNote,
@@ -279,13 +280,12 @@ export function SoftphoneProvider({ children, enabled = true }: { children: Reac
       rejectIncoming,
       retry,
     } : { available: false }),
-    [enabled, deviceState, deviceReason, deviceErrorCode, deviceMissing, deviceScope, callStatus, activeCall, activeCallId, activeCallRow, muted, incoming, liveNote, setLiveNote, lastEndedCall, clearLastEndedCall, audio, makeCall, hangup, mute, sendDigits, acceptIncoming, rejectIncoming, retry]
+    [enabled, deviceState, deviceReason, deviceErrorCode, deviceMissing, deviceScope, observedStatus, observedCall, activeCallId, activeCallRow, muted, incoming, liveNote, setLiveNote, lastEndedCall, clearLastEndedCall, audio, makeCall, hangup, mute, sendDigits, acceptIncoming, rejectIncoming, retry, phone]
   );
 
+  useDesktopPhoneController(value, organizationId);
   return <SoftphoneContext.Provider value={value}>{children}</SoftphoneContext.Provider>;
 }
-
-// ─── Hook seguro ─────────────────────────────────────────────────────────────
 
 /** Sin `<SoftphoneProvider>` devuelve `{ available: false }` (nunca lanza). */
 export function useSoftphone(): SoftphoneValue {

@@ -17,6 +17,7 @@ import { useSoftphone } from './SoftphoneProvider';
 import { DockHeader } from './dock/DockHeader';
 import { Keypad } from './dock/Keypad';
 import { CallControls } from './dock/CallControls';
+import { TransferPanel } from './dock/TransferPanel';
 import { LiveNote } from './dock/LiveNote';
 import { CallDispositionDialog } from './CallDispositionDialog';
 import { OPEN_SOFTPHONE_EVENT } from './softphoneUi';
@@ -28,9 +29,16 @@ export function SoftphoneDock() {
   const [dtmf, setDtmf] = useState('');
   const [showKeypad, setShowKeypad] = useState(false);
   const [dispositionOpen, setDispositionOpen] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
+  const displayedSid = sp.available ? sp.activeCall?.callSid : null;
+  useEffect(() => { setShowTransfer(false); }, [displayedSid]);
 
   useEffect(() => {
-    const open = () => setCollapsed(false);
+    const open = (event: Event) => {
+      const candidate = (event as CustomEvent<{ number?: unknown }>).detail?.number;
+      if (typeof candidate === 'string' && /^\+[1-9]\d{6,14}$/.test(candidate)) setNumber(candidate);
+      setCollapsed(false);
+    };
     window.addEventListener(OPEN_SOFTPHONE_EVENT, open);
     return () => window.removeEventListener(OPEN_SOFTPHONE_EVENT, open);
   }, []);
@@ -81,7 +89,7 @@ export function SoftphoneDock() {
   const { deviceState, deviceReason, deviceMissing, deviceScope, callStatus, activeCall, activeCallId, activeCallRow, muted, hasIncoming, incoming, liveNote, setLiveNote, audio } = sp;
   const inCall = callStatus === 'connecting' || callStatus === 'ringing' || callStatus === 'connected';
   const connected = callStatus === 'connected';
-  const recording = Boolean(activeCallRow?.recording_enabled);
+  const recording = Boolean(activeCallRow?.recording_enabled && activeCallRow?.consent_given && activeCallRow?.recording_started);
 
   return (
     <>
@@ -103,7 +111,7 @@ export function SoftphoneDock() {
         </button>
       ) : (
         <AnimatePresence>
-          <SlideUp className="fixed bottom-0 right-0 z-50 w-full max-lg:bottom-[var(--shell-barra-inferior,0px)] sm:bottom-4 sm:right-4 sm:w-[340px] sm:max-lg:bottom-[calc(var(--shell-barra-inferior,0px)+1rem)]">
+          <SlideUp className="fixed bottom-0 right-0 z-50 w-full max-lg:bottom-[var(--shell-barra-inferior,0px)] sm:bottom-4 sm:right-4 sm:w-[360px] sm:max-lg:bottom-[calc(var(--shell-barra-inferior,0px)+1rem)]">
             <Card role="region" aria-label="Softphone" className="rounded-none border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-800 sm:rounded-xl">
               <DockHeader deviceState={deviceState} deviceReason={deviceReason} deviceMissing={deviceMissing} deviceScope={deviceScope} callStatus={callStatus} onMinimize={() => setCollapsed(true)} onRetry={sp.retry} />
 
@@ -137,7 +145,8 @@ export function SoftphoneDock() {
 
                 {inCall && !hasIncoming && (
                   <>
-                    <CallControls
+                    {showTransfer ? <TransferPanel state={sp.phoneControl} onTransfer={sp.transferCall} onConfirm={sp.confirmTransfer}
+                      onCancel={sp.cancelTransfer} onClose={() => setShowTransfer(false)} /> : <CallControls
                       connectedAt={activeCall?.connectedAt ?? null}
                       connected={connected}
                       recording={recording}
@@ -147,9 +156,10 @@ export function SoftphoneDock() {
                       showKeypad={showKeypad}
                       onToggleKeypad={() => setShowKeypad((v) => !v)}
                       audio={audio}
-                    />
-                    {showKeypad && connected && <Keypad value={dtmf} onChange={setDtmf} onSubmit={() => undefined} dtmfMode onDigit={sp.sendDigits} />}
-                    <LiveNote callId={activeCallId} value={liveNote} onChange={setLiveNote} />
+                      control={sp.phoneControl} onHold={sp.setHold} onTransfer={() => setShowTransfer(true)}
+                    />}
+                    {showKeypad && connected && !sp.phoneControl.held && !sp.phoneControl.busy && !showTransfer && <Keypad value={dtmf} onChange={setDtmf} onSubmit={() => undefined} dtmfMode onDigit={sp.sendDigits} />}
+                    {activeCallRow?.can_edit_notes !== false && <LiveNote callId={activeCallId} value={liveNote} onChange={setLiveNote} />}
                   </>
                 )}
 

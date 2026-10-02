@@ -93,19 +93,19 @@ describe('guardas estáticas de la zona', () => {
     }
   });
 
-  // Observación del tester D1/D2 (r2): `useStageFlow.onWonConfirmed` abría WonCloseModal aunque el PATCH de etapa
-  // (`change()`) devolviera false y el modal ejecutaba los pasos sobre una oportunidad NO ganada. Sin DOM en jest: contrato de fuente.
-  it('G2 useStageFlow: onWonConfirmed no abre WonCloseModal si change() devuelve false', () => {
-    const src = read('src/components/crm/oportunidades/detail/useStageFlow.tsx');
-    const body = src.slice(src.indexOf('const onWonConfirmed'), src.indexOf('const dialogs'));
-    expect(body).toMatch(/if \(!\(await change\(wonStage,/);
-    const guard = body.indexOf('if (!(await change(wonStage,');
-    const open = body.indexOf('setWonClose(true)');
-    expect(guard).toBeGreaterThan(-1);
-    expect(open).toBeGreaterThan(guard);
-    expect(body.slice(guard, open)).toMatch(/return;/);
-    // el cambio de etapa nunca se hace «a ciegas» (await change(...) sin mirar el resultado)
-    expect(body).not.toMatch(/\{\s*await change\(wonStage/);
+  // Ola 5: el hook antiguo quedó sin consumidores. El flujo vigente solo
+  // ejecuta pasos comerciales después de confirmar el cierre en el servidor.
+  it('G2 useFlujoEtapa: no ejecuta pasos de cierre si ganarOportunidad rechaza', () => {
+    const src = read('src/components/crm/oportunidad/useFlujoEtapa.tsx');
+    const body = src.slice(src.indexOf('const alGanar'), src.indexOf('const alPerder'));
+    const cerrar = body.indexOf('await ganarOportunidad(op.id, cuerpo)');
+    const capturar = body.indexOf('catch (e)', cerrar);
+    const ejecutar = body.indexOf('await ejecutarPasosGanar(');
+    expect(cerrar).toBeGreaterThan(-1);
+    expect(capturar).toBeGreaterThan(cerrar);
+    expect(ejecutar).toBeGreaterThan(capturar);
+    expect(body.slice(capturar, ejecutar)).toMatch(/throw new Error/);
+    expect(body.slice(cerrar, capturar)).not.toMatch(/ejecutarPasosGanar/);
   });
 
   it('5.4 el modal pinta el error del paso de forma honesta (status error + err.message)', () => {

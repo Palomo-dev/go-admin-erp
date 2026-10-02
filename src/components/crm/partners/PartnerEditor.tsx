@@ -1,5 +1,7 @@
 'use client';
 
+import {useRedText} from '@/components/crm/red/useRedText';
+
 /**
  * Crear/editar un partner en hoja lateral: validación junto al campo con
  * `aria-describedby`, foco al primer error, 409 del servidor (correo repetido)
@@ -33,6 +35,7 @@ interface Props {
 }
 
 export function PartnerEditor({ open, partner, tiers, onOpenChange, onSave, returnFocusFallback }: Props) {
+  const {tr, locale} = useRedText();
   const [form, setForm] = useState<PartnerForm>(() => partnerToForm(null));
   const [errors, setErrors] = useState<FieldError<keyof PartnerForm>[]>([]);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -57,7 +60,7 @@ export function PartnerEditor({ open, partner, tiers, onOpenChange, onSave, retu
     setForm(next);
     if (errors.length) setErrors(validatePartnerForm(next));
   };
-  const errorOf = (f: keyof PartnerForm) => errors.find((e) => e.field === f)?.message;
+  const errorOf = (f: keyof PartnerForm) => tr(errors.find((e) => e.field === f)?.message ?? '');
   const tier = tiers.find((t) => t.id === form.tier_id) ?? null;
 
   const submit = async () => {
@@ -68,10 +71,10 @@ export function PartnerEditor({ open, partner, tiers, onOpenChange, onSave, retu
     setServerError(null);
     try {
       await onSave(partnerFormToPayload(form), partner?.id);
-      toast({ title: partner ? 'Partner actualizado' : 'Partner creado', description: `«${form.name.trim()}»${form.is_active ? '' : ' (inactivo)'}` });
+      toast({ title: partner ? tr("Partner actualizado") : tr("Partner creado"), description: tr('«{p0}»{p1}', {p0:form.name.trim(), p1:form.is_active ? '' : tr(' (inactivo)')}) });
       onOpenChange(false);
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : 'Error desconocido');
+      setServerError(err instanceof Error ? err.message : tr("Error desconocido"));
       setFocusId('partner-server-error');
     } finally {
       setSaving(false);
@@ -83,7 +86,7 @@ export function PartnerEditor({ open, partner, tiers, onOpenChange, onSave, retu
     const id = `partner-${key}`;
     return (
       <div>
-        <Label htmlFor={id} className="text-xs text-gray-700 dark:text-gray-300">{label}</Label>
+        <Label htmlFor={id} className="text-xs text-fg-secondary ">{label}</Label>
         {extra.type === 'tel' ? (
           <PhoneInput id={id} value={String(form[key])} autoComplete="off" aria-invalid={!!err} showValidation={false}
             aria-describedby={err ? `${id}-error` : extra.hint ? `${id}-hint` : undefined} onChange={(v) => update({ ...form, [key]: v })} />
@@ -92,56 +95,56 @@ export function PartnerEditor({ open, partner, tiers, onOpenChange, onSave, retu
           aria-describedby={err ? `${id}-error` : extra.hint ? `${id}-hint` : undefined} onChange={(e) => update({ ...form, [key]: e.target.value })} />
         )}
         {err ? <p id={`${id}-error`} role="alert" className="mt-1 text-xs text-red-700 dark:text-red-300">{err}</p>
-          : extra.hint ? <p id={`${id}-hint`} className="mt-1 text-xs text-gray-600 dark:text-gray-400">{extra.hint}</p> : null}
+          : extra.hint ? <p id={`${id}-hint`} className="mt-1 text-xs text-fg-secondary ">{extra.hint}</p> : null}
       </div>
     );
   };
 
   return (
     <Sheet open={open} onOpenChange={(next) => { if (!saving) onOpenChange(next); }}>
-      <SheetContent side="right" onCloseAutoFocus={onCloseAutoFocus} className="flex w-full flex-col gap-0 bg-gray-50 p-0 dark:bg-gray-950 sm:max-w-xl">
-        <SheetHeader className="text-left border-b border-gray-200 bg-white px-6 pr-8 py-4 dark:border-gray-800 dark:bg-gray-900">
-          <SheetTitle className="text-gray-900 dark:text-gray-100">{partner ? `Editar «${partner.name}»` : 'Nuevo partner'}</SheetTitle>
-          <SheetDescription className="text-gray-600 dark:text-gray-400">Consultor, integrador o revendedor que trae o cierra deals. Su comisión queda registrada por deal; aquí no se paga nada.</SheetDescription>
+      <SheetContent side="right" onCloseAutoFocus={onCloseAutoFocus} className="flex w-full flex-col gap-0 bg-subtle p-0  sm:max-w-xl">
+        <SheetHeader className="text-left border-b border-line bg-surface px-6 pr-8 py-4  ">
+          <SheetTitle className="text-fg ">{partner ? tr("Editar «{p0}»", {p0: partner.name}) : tr("Nuevo partner")}</SheetTitle>
+          <SheetDescription className="text-fg-secondary ">{tr("Consultor, integrador o revendedor que trae o cierra deals. Su comisión queda registrada por deal; aquí no se paga nada.")}</SheetDescription>
         </SheetHeader>
         <form className="flex-1 space-y-4 overflow-y-auto px-6 py-4" noValidate onSubmit={(e) => { e.preventDefault(); void submit(); }}>
-          {field('name', 'Nombre', { placeholder: 'Carlos Consultor' })}
-          {field('company_name', 'Empresa (opcional)')}
+          {field('name', tr("Nombre"), { placeholder: tr("Carlos Consultor") })}
+          {field('company_name', tr("Empresa (opcional)"))}
           <div className="grid gap-4 sm:grid-cols-2">
-            {field('email', 'Correo', { type: 'email', hint: 'Único por organización.' })}
-            {field('phone', 'Teléfono (opcional)', { type: 'tel' })}
+            {field('email', tr("Correo"), { type: 'email', hint: tr("Único por organización.") })}
+            {field('phone', tr("Teléfono (opcional)"), { type: 'tel' })}
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <Label htmlFor="partner-tier_id" className="text-xs text-gray-700 dark:text-gray-300">Tier</Label>
+              <Label htmlFor="partner-tier_id" className="text-xs text-fg-secondary ">{tr("Tier")}</Label>
               <Select value={form.tier_id || NO_TIER} onValueChange={(v) => update({ ...form, tier_id: v === NO_TIER ? '' : v })}>
                 <SelectTrigger id="partner-tier_id" className="text-left [&>span]:line-clamp-1" aria-describedby="partner-tier-hint"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={NO_TIER}>Sin tier</SelectItem>
-                  {tiers.map((t) => <SelectItem key={t.id} value={t.id}>{t.name} · {formatRate(t.commission_rate)}</SelectItem>)}
+                  <SelectItem value={NO_TIER}>{tr("Sin tier")}</SelectItem>
+                  {tiers.map((t) => <SelectItem key={t.id} value={t.id}>{t.name} · {formatRate(t.commission_rate, locale)}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <p id="partner-tier-hint" className="mt-1 text-xs text-gray-600 dark:text-gray-400">Sube solo al registrar deals que cumplan los umbrales; bajar es manual, aquí.</p>
+              <p id="partner-tier-hint" className="mt-1 text-xs text-fg-secondary ">{tr("Sube solo al registrar deals que cumplan los umbrales; bajar es manual, aquí.")}</p>
             </div>
-            {field('commission_rate', 'Comisión propia % (opcional)', { type: 'number', placeholder: tier ? `Hereda ${formatRate(tier.commission_rate)}` : 'Sin tier: 0 %', hint: 'Vacío = usa la tasa del tier. Si se indica, manda sobre la del tier.' })}
+            {field('commission_rate', tr("Comisión propia % (opcional)"), { type: 'number', placeholder: tier ? tr("Hereda {p0}", {p0: formatRate(tier.commission_rate, locale)}) : tr("Sin tier: 0 %"), hint: tr("Vacío = usa la tasa del tier. Si se indica, manda sobre la del tier.") })}
           </div>
           {serverError && (
             <Alert id="partner-server-error" variant="destructive" tabIndex={-1}>
-              <AlertTitle>No se pudo guardar</AlertTitle>
+              <AlertTitle>{tr("No se pudo guardar")}</AlertTitle>
               <AlertDescription>{serverError}</AlertDescription>
             </Alert>
           )}
-          <button type="submit" className="sr-only" tabIndex={-1} aria-hidden="true">Guardar</button>
+          <button type="submit" className="sr-only" tabIndex={-1} aria-hidden="true">{tr("Guardar")}</button>
         </form>
-        <SheetFooter className="gap-3 border-t border-gray-200 bg-white px-6 py-3 dark:border-gray-800 dark:bg-gray-900 sm:justify-between">
+        <SheetFooter className="gap-3 border-t border-line bg-surface px-6 py-3   sm:justify-between">
           <div className="flex items-center gap-2 self-center">
             <Switch id="partner-is_active" checked={form.is_active} disabled={saving} onCheckedChange={(v) => update({ ...form, is_active: v })} />
-            <Label htmlFor="partner-is_active" className="text-sm text-gray-900 dark:text-gray-100">{form.is_active ? 'Activo' : 'Inactivo'}</Label>
+            <Label htmlFor="partner-is_active" className="text-sm text-fg ">{form.is_active ? tr("Activo") : tr("Inactivo")}</Label>
           </div>
           <div className="flex gap-2 [&>button]:h-11 [&>button]:flex-1 sm:[&>button]:h-9 sm:[&>button]:flex-none">
-            <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="button" className="bg-blue-600 text-white hover:bg-blue-700" disabled={saving} onClick={() => void submit()}>
-              {saving ? 'Guardando…' : partner ? 'Guardar cambios' : 'Crear partner'}
+            <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>{tr("Cancelar")}</Button>
+            <Button type="button" className="bg-brand text-white hover:bg-brand-hover" disabled={saving} onClick={() => void submit()}>
+              {saving ? tr("Guardando…") : partner ? tr("Guardar cambios") : tr("Crear partner")}
             </Button>
           </div>
         </SheetFooter>

@@ -35,6 +35,10 @@ export function useObjections() {
   const [error, setError] = useState<string | null>(null);
   // `true` desde la primera carga buena: con `error`, lo que se ve es la última lista conocida.
   const [loaded, setLoaded] = useState(false);
+  const [canManage,setCanManage]=useState(false);
+  const requestVersion=useRef(0);
+  const organizationEpoch=useRef(0);
+  const invalidate=useCallback(()=>{requestVersion.current++;organizationEpoch.current++;},[]);
 
   // Solo la primera carga muestra el esqueleto. Si las recargas desmontaran la
   // lista, el botón que abrió la hoja desaparecería y el foco caería al body.
@@ -43,57 +47,67 @@ export function useObjections() {
   const load = useCallback(async () => {
     if (!loadedOnce.current) setLoading(true);
     setError(null);
+    const version=++requestVersion.current;
     try {
       const { ok, body } = await readJson(await fetch('/api/crm/objections?includeInactive=true', { cache: 'no-store' }));
       if (!ok) throw new Error(messageOf(body, 'No se pudieron cargar las objeciones'));
+      if(version!==requestVersion.current)return;setCanManage(body.canManage===true);
       setObjections(((body.data as Objection[]) ?? []).map(normalizeObjection));
       loadedOnce.current = true;
       setLoaded(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      if(version===requestVersion.current)setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
-      setLoading(false);
+      if(version===requestVersion.current)setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     void load();
-  }, [load]);
+    const switched=()=>{invalidate();setObjections([]);setCanManage(false);setLoaded(false);loadedOnce.current=false;void load();};window.addEventListener('organization-changed',switched);
+    return()=>{invalidate();window.removeEventListener('organization-changed',switched);};
+  }, [load,invalidate]);
 
   const save = useCallback(async (payload: ObjectionInput, id?: string) => {
+    const epoch=organizationEpoch.current;
     const { ok, body } = await readJson(
       await fetch(id ? `/api/crm/objections/${id}` : '/api/crm/objections', {
         method: id ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({...payload,...(id?{expected_updated_at:objections.find(row=>row.id===id)?.updated_at}:{})}),
       }),
     );
     if (!ok) throw new Error(messageOf(body, 'No se pudo guardar la objeción'));
     const row = normalizeObjection(body.data as Objection);
+    if(epoch!==organizationEpoch.current)return row;
     setObjections((prev) => upsert(prev, row));
     await load();
     return row;
-  }, [load]);
+  }, [load,objections]);
 
   const toggle = useCallback(async (objection: Objection) => {
+    const epoch=organizationEpoch.current;
     const { ok, body } = await readJson(
       await fetch(`/api/crm/objections/${objection.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_active: !objection.is_active }),
+        body: JSON.stringify({ is_active: !objection.is_active,expected_updated_at:objection.updated_at }),
       }),
     );
     if (!ok) throw new Error(messageOf(body, 'No se pudo cambiar el estado'));
+    if(epoch!==organizationEpoch.current)return;
     setObjections((prev) => upsert(prev, normalizeObjection(body.data as Objection)));
     await load();
   }, [load]);
 
   const remove = useCallback(async (id: string) => {
+    const epoch=organizationEpoch.current;
     const { ok, body } = await readJson(await fetch(`/api/crm/objections/${id}`, { method: 'DELETE' }));
     if (!ok) throw new Error(messageOf(body, 'No se pudo eliminar la objeción'));
+    if(epoch!==organizationEpoch.current)return;
     setObjections((prev) => prev.filter((o) => o.id !== id));
     await load();
   }, [load]);
 
-  return { objections, loading, loaded, error, reload: load, save, toggle, remove };
+  return { objections, loading, loaded, error, canManage, reload: load, save, toggle, remove };
 }

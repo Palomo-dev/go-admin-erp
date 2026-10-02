@@ -11,11 +11,11 @@ type Params = { params: Promise<{ id: string }> };
 /** PATCH /api/crm/referrals/programs/[id] — solo admin/manager (por id de rol, como el DELETE: cambia la recompensa); edición parcial (404 si es ajeno; 409 nombre repetido). */
 export async function PATCH(request: NextRequest, { params }: Params) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     const { id } = await params;
     const body = await readJson(request);
     rejectForeignOrganization(TAG, body, ctx, request);
-    requirePartnerManager(ctx);
+    await requirePartnerManager(ctx);
     const parsed = validateProgramInput(body, { partial: true });
     if (!parsed.ok) return validationFail(parsed.errors);
     const current = await assertProgramInOrg(id, ctx.organizationId, ctx.supabase);
@@ -36,10 +36,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 /** DELETE /api/crm/referrals/programs/[id] — solo admin/manager (por id de rol); los referidos enlazados quedan con `program_id = NULL` (FK ON DELETE SET NULL). */
 export async function DELETE(request: NextRequest, { params }: Params) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     // Regla dura 5 (b): sin body, pero la query podría traer otra organización.
     await readOrgBody(ctx, request);
-    requirePartnerManager(ctx);
+    await requirePartnerManager(ctx);
     const { id } = await params;
     const deleted = await deleteReferralProgram(id, ctx.organizationId, ctx.supabase);
     if (!deleted) return jsonFail(404, 'Programa no encontrado en esta organización', { code: 'NOT_FOUND' });

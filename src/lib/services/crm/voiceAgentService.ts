@@ -570,23 +570,8 @@ export function isWithinCustomerHours(timezone?: string | null, now: Date = new 
  * `fn_can_contact` lee `customers.do_not_call`, `metadata->>'do_not_call'`
  * y `contact_consents`.
  */
-export async function canCallCustomer(
-  orgId: number,
-  customerId: string,
-  supabase: SupabaseClient
-): Promise<boolean> {
-  const { data, error } = await supabase.rpc('fn_can_contact', {
-    p_org: orgId,
-    p_customer: customerId,
-    p_channel: 'voice',
-    p_purpose: 'utility',
-  });
-  if (error) {
-    console.warn('[voiceAgent] fn_can_contact falló, se bloquea la llamada:', error.message);
-    return false;
-  }
-  return data === true;
-}
+import { canCallCustomer } from './voiceAgent/canContact';
+export { canCallCustomer } from './voiceAgent/canContact';
 
 // ─── Targets de campaña ──────────────────────────────────────────────────────
 

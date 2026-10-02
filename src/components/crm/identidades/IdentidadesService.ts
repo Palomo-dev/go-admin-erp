@@ -18,6 +18,7 @@ export interface FilaFusion {
   secundario: { full_name: string | null } | null;
   autor: { first_name: string | null; last_name: string | null } | null;
   moved_counts: { table: string; count: number }[];
+  reason?: 'document' | 'email' | 'phone' | 'manual' | 'unknown';
 }
 export interface IdentidadReal {
   id: string;

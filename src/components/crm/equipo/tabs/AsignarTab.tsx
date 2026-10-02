@@ -1,191 +1,48 @@
 'use client';
-
-import { useState, useEffect, useCallback } from 'react';
-import { Target, RefreshCw } from 'lucide-react';
+import { useEffect,useState } from 'react';
+import { useTranslations,useFormatter } from 'next-intl';
+import { Shuffle,MapPin,Scale,Play,Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Card, CardContent } from '@/components/ui/card';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import {
-  Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
-} from '@/components/ui/table';
-import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/lib/supabase/config';
-import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
-import { formatMoneda } from '@/lib/utils/moneda';
-import Link from 'next/link';
-import { requireOrgId } from '../useEquipoData';
-import type { Opportunity, SalesTeam, OrgMember } from '../types';
-import { pickEmbedded, profileDisplayName, type EmbeddedProfile } from '@/lib/utils/embeddedProfile';
-import { describeError, logError } from '@/lib/utils/errorMessage';
-import { editarOportunidad } from '@/components/crm/oportunidad/apiOportunidades';
-
-export function AsignarTab() {
-  const { toast } = useToast();
-  const { paraDocumento } = useMonedaOrganizacion();
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-  const [teams, setTeams] = useState<SalesTeam[]>([]);
-  const [orgMembers, setOrgMembers] = useState<OrgMember[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [filterTeam, setFilterTeam] = useState('all');
-  const [filterUnassigned, setFilterUnassigned] = useState(true);
-
-  const load = useCallback(async () => {
-    setIsRefreshing(true);
-    try {
-      const orgId = requireOrgId();
-      const [oppRes, teamsRes, membersRes] = await Promise.all([
-        supabase
-          .from('opportunities')
-          .select('id, name, amount, currency, status, stage_id, salesperson_id, sales_team_id, territory_id, customer_id, expected_close_date, customers(full_name), stages(name, probability)')
-          .eq('organization_id', orgId)
-          .in('status', ['open', 'qualified', 'proposal', 'negotiation'])
-          .order('updated_at', { ascending: false }),
-        supabase.from('sales_teams').select('*, territories(id, name)').eq('organization_id', orgId).eq('is_active', true).order('name'),
-        supabase.from('organization_members').select('user_id, profiles:user_id(id, first_name, last_name, email)').eq('organization_id', orgId).eq('is_active', true),
-      ]);
-      if (oppRes.error) throw oppRes.error;
-      setOpportunities((oppRes.data || []) as unknown as Opportunity[]);
-      setTeams((teamsRes.data || []) as SalesTeam[]);
-      // Embebido a-uno: llega como objeto. Con `profiles[0]` el nombre caia
-      // siempre al identificador del usuario recortado a 8 caracteres.
-      const orgMemberList = ((membersRes.data || []) as { user_id: string; profiles: EmbeddedProfile | EmbeddedProfile[] | null }[]).map((m) => {
-        const p = pickEmbedded(m.profiles);
-        return { id: m.user_id, name: profileDisplayName(m.profiles), email: p?.email || undefined };
-      });
-      setOrgMembers(orgMemberList);
-    } catch (err) {
-      logError('[AsignarTab] cargar oportunidades y equipos', err);
-      toast({ title: 'Error', description: `No se pudieron cargar las oportunidades: ${describeError(err)}`, variant: 'destructive' });
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [toast]);
-
-  useEffect(() => { load(); }, [load]);
-
-  const assignTeam = async (oppId: string, teamId: string | null) => {
-    try {
-      // CRM ola 3B (guardarraíl 36): PATCH por el servidor (`crm_update_opportunity`).
-      await editarOportunidad(oppId, { sales_team_id: teamId });
-      setOpportunities((prev) => prev.map((o) => o.id === oppId ? { ...o, sales_team_id: teamId } : o));
-      toast({ title: 'Equipo asignado' });
-    } catch {
-      toast({ title: 'Error', description: 'No se pudo asignar', variant: 'destructive' });
-    }
-  };
-
-  const assignSeller = async (oppId: string, userId: string | null) => {
-    try {
-      await editarOportunidad(oppId, { salesperson_id: userId });
-      setOpportunities((prev) => prev.map((o) => o.id === oppId ? { ...o, salesperson_id: userId } : o));
-      toast({ title: 'Vendedor asignado' });
-    } catch {
-      toast({ title: 'Error', description: 'No se pudo asignar', variant: 'destructive' });
-    }
-  };
-
-  const filtered = opportunities.filter((o) => {
-    if (filterTeam !== 'all' && o.sales_team_id !== filterTeam) return false;
-    if (filterUnassigned && o.salesperson_id) return false;
-    return true;
-  });
-
-  if (loading) {
-    return (
-      <div className="space-y-2">
-        {[1, 2, 3].map((i) => <div key={i} className="h-16 rounded-lg border animate-pulse bg-gray-100 dark:bg-gray-800" />)}
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      {/* Filtros */}
-      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-3 flex-wrap">
-            <Select value={filterTeam} onValueChange={setFilterTeam}>
-              <SelectTrigger className="w-48 h-9"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los equipos</SelectItem>
-                {teams.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-              <Switch checked={filterUnassigned} onCheckedChange={setFilterUnassigned} />
-              Solo sin asignar
-            </label>
-            <Button variant="outline" size="sm" onClick={load} disabled={isRefreshing}>
-              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            </Button>
-            <span className="text-sm text-gray-500">{filtered.length} oportunidades</span>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Tabla */}
-      {filtered.length === 0 ? (
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-12 pb-12 text-center">
-            <Target className="h-12 w-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-            <p className="text-sm text-gray-500">No hay oportunidades para asignar</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="px-2 sm:px-6">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">Oportunidad</TableHead>
-                  <TableHead className="text-xs">Cliente</TableHead>
-                  <TableHead className="text-xs">Monto</TableHead>
-                  <TableHead className="text-xs">Etapa</TableHead>
-                  <TableHead className="text-xs">Equipo</TableHead>
-                  <TableHead className="text-xs">Vendedor</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((o) => (
-                  <TableRow key={o.id}>
-                    <TableCell className="text-xs">
-                      <Link href={`/app/crm/oportunidades/${o.id}`} className="text-blue-600 dark:text-blue-400 hover:underline font-medium">
-                        {o.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-xs">{o.customers?.[0]?.full_name || '—'}</TableCell>
-                    <TableCell className="text-xs">{o.amount ? formatMoneda(Number(o.amount), paraDocumento(o.currency)) : '—'}</TableCell>
-                    <TableCell className="text-xs">{o.stages?.[0]?.name || '—'}</TableCell>
-                    <TableCell>
-                      <Select value={o.sales_team_id || 'none'} onValueChange={(v) => assignTeam(o.id, v === 'none' ? null : v)}>
-                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Sin equipo</SelectItem>
-                          {teams.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell>
-                      <Select value={o.salesperson_id || 'none'} onValueChange={(v) => assignSeller(o.id, v === 'none' ? null : v)}>
-                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Sin asignar</SelectItem>
-                          {orgMembers.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
+import { FormField,DataTable,EmptyState,type ColumnaTabla } from '@/components/kit';
+import { Progress } from '@/components/ui/progress';
+import type { TeamManagementData,AssignmentSimulation } from '@/lib/services/crm/teamManagementModel';
+import type { LeadAssignmentConfig } from '@/lib/services/crm/leadAssignmentConfig';
+import { saveEquipo,simulateEquipo } from '../apiEquipo';
+import { claveError } from '../../acciones/apiCrm';
+const control='h-10 w-full rounded-lg border border-line-strong bg-surface px-3 text-sm text-fg';
+export function AsignarTab({data,onSaved}:{data:TeamManagementData;onSaved:()=>Promise<void>}) {
+ const t=useTranslations('crm.equipoNuevo'),errors=useTranslations('crm.accionesRapidas.errores'),format=useFormatter();
+ const [config,setConfig]=useState<LeadAssignmentConfig>(data.config),[simulation,setSimulation]=useState<AssignmentSimulation|null>(null),[busy,setBusy]=useState<'save'|'simulate'|null>(null),[error,setError]=useState<string|null>(null),[success,setSuccess]=useState(false);
+ useEffect(()=>{setConfig(data.config);setSimulation(null);setError(null);},[data]);
+ const territories=data.territories.some((territory)=>territory.is_active);
+ const strategies=[{key:'round_robin' as const,icon:Shuffle},{key:'territory' as const,icon:MapPin},{key:'load_balance' as const,icon:Scale}];
+ function update(next:LeadAssignmentConfig){setConfig(next);setSimulation(null);setError(null);setSuccess(false);}
+ async function save(){setBusy('save');setError(null);try{await saveEquipo({kind:'assignment',id:null,expected_updated_at:data.config_updated_at,data:config});setSuccess(true);await onSaved();}catch(cause){setError(errors(claveError(cause)));}finally{setBusy(null);}}
+ async function simulate(){setBusy('simulate');setError(null);setSimulation(null);try{setSimulation(await simulateEquipo(config));}catch(cause){setError(errors(claveError(cause)));}finally{setBusy(null);}}
+ const columns:ColumnaTabla<AssignmentSimulation['distribution'][number]>[]=[
+  {id:'name',encabezado:t('person'),celda:(row)=>row.name},
+  {id:'current',encabezado:t('current'),variante:'importe',celda:(row)=>format.number(row.current)},
+  {id:'proposed',encabezado:t('proposed'),celda:(row)=><div className="flex items-center gap-2"><Progress className="h-1.5" value={simulation?.sample_count?row.proposed/simulation.sample_count*100:0}/><span className="tabular-nums">{format.number(row.proposed)}</span></div>},
+ ];
+ return <div className="space-y-4">
+  <div className="flex justify-end"><Button onClick={()=>void save()} disabled={!data.can_configure||!!busy||config.enabled&&config.strategy==='territory'&&!territories}><Save className="size-4"/>{t('save')}</Button></div>
+  {error&&<div role="alert" className="rounded-lg bg-danger-subtle p-3 text-sm text-danger-text">{error}</div>}
+  {success&&<p role="status" className="text-sm text-success-text">{t('saved')}</p>}
+  <div className="grid gap-4 lg:grid-cols-2">
+   <section className="space-y-4 rounded-xl border border-line bg-surface p-5">
+    <div className="flex items-center justify-between"><h2 className="font-semibold text-fg">{t('automaticAssignment')}</h2><Switch aria-label={t('automaticAssignment')} checked={config.enabled} onCheckedChange={(enabled)=>update({...config,enabled})} disabled={!data.can_configure||!!busy}/></div>
+    <div role="radiogroup" aria-label={t('strategy')} className="space-y-2">{strategies.map(({key,icon:Icon})=><label key={key} title={key==='territory'&&!territories?t('territoryDisabled'):undefined} className={`flex gap-3 rounded-lg border p-4 ${config.strategy===key?'border-line-brand bg-brand-tint':'border-line bg-surface'}`}>
+     <input type="radio" name="lead-assignment" checked={config.strategy===key} onChange={()=>update({...config,strategy:key})} disabled={!data.can_configure||!!busy||key==='territory'&&!territories}/><Icon className="mt-0.5 size-4 shrink-0 text-brand"/><span><span className="block text-sm font-medium text-fg">{t(key)}</span><span className="mt-1 block text-xs text-fg-secondary">{t(`${key}Hint`)}</span></span>
+    </label>)}</div>
+    <FormField etiqueta={t('defaultTeam')}><select className={control} value={config.team_id??''} disabled={!data.can_configure||!!busy} onChange={(event)=>update({...config,team_id:event.target.value||null})}><option value="">{t('firstTeam')}</option>{data.teams.filter((team)=>team.is_active).map((team)=><option key={team.id} value={team.id}>{team.name}</option>)}</select></FormField>
+    <p className="rounded-lg bg-subtle p-3 text-sm text-fg-secondary">{t('assignmentHint')}</p>
+    {!data.can_configure&&<p className="text-sm text-fg-secondary">{t('adminConfiguration')}</p>}
+   </section>
+   <section className="space-y-4 rounded-xl border border-line bg-surface p-5">
+    <div className="flex items-center justify-between gap-2"><div><h2 className="font-semibold text-fg">{t('simulation')}</h2><p className="mt-1 text-xs text-fg-secondary">{t('simulationHint')}</p></div><Button variant="outline" onClick={()=>void simulate()} disabled={!data.can_manage||!!busy}><Play className="size-4"/>{busy==='simulate'?t('simulating'):t('simulate')}</Button></div>
+    {simulation?<><p className="text-sm text-fg-secondary">{t('sampleSummary',{count:simulation.sample_count,preserved:simulation.preserved,unassigned:simulation.unassigned})}</p><DataTable columnas={columns} filas={simulation.distribution} obtenerId={(row)=>row.user_id} etiqueta={t('distribution')} vacio={{titulo:t('noLeads'),descripcion:t('noLeadsHint')}}/><p className="text-xs text-fg-secondary">{t('fallbackSummary',{count:simulation.fallback_count})}</p></>:<EmptyState compacto titulo={t('simulationReady')} descripcion={t('simulationReadyHint')} icono={Play} accion={data.can_manage?{etiqueta:t('simulate'),onClick:()=>void simulate()}:undefined}/>}
+   </section>
+  </div>
+ </div>;
 }

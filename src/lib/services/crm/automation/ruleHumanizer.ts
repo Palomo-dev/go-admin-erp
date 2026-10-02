@@ -10,10 +10,13 @@
  * porque aquí solo hay IDs.
  */
 
+import { interpolateAutomationText, type AutomationText } from './automationText';
 import { isGroup, type ConditionGroup, type ConditionNode, type ConditionRule } from './conditionsDsl';
 import { actionEntry, knownEvent, UPDATE_FIELD_ENTITY_LABELS } from './ruleCatalog';
 
 export interface HumanizerLookups {
+  text?: AutomationText;
+  locale?: string;
   stageName?: (id: string) => string | null;
   pipelineName?: (id: string) => string | null;
   sequenceName?: (id: string) => string | null;
@@ -30,6 +33,10 @@ export interface RuleLike {
 }
 
 export const NO_LOOKUPS: HumanizerLookups = {};
+function tx(lookups: HumanizerLookups, source: string, values?: Record<string, unknown>): string {
+  return lookups.text?.(source, values) ?? interpolateAutomationText(source, values);
+}
+function number(value: number, lookups: HumanizerLookups) { return lookups.locale ? new Intl.NumberFormat(lookups.locale).format(value) : formatNumberEs(value); }
 
 const q = (text: unknown): string => `«${String(text)}»`;
 
@@ -46,34 +53,34 @@ export function describeTrigger(rule: RuleLike, lookups: HumanizerLookups = NO_L
       if (rule.stage_id) {
         const stage = named(lookups.stageName, rule.stage_id);
         return stage
-          ? `Cuando una oportunidad entra en ${q(stage)}`
-          : 'Cuando una oportunidad entra en una etapa (sin nombre)';
+          ? tx(lookups, "Cuando una oportunidad entra en {p0}", { p0: q(stage) })
+          : tx(lookups, "Cuando una oportunidad entra en una etapa (sin nombre)");
       }
       if (rule.pipeline_id) {
         const pipeline = named(lookups.pipelineName, rule.pipeline_id);
         return pipeline
-          ? `Cuando una oportunidad cambia de etapa en ${q(pipeline)}`
-          : 'Cuando una oportunidad cambia de etapa en un pipeline (sin nombre)';
+          ? tx(lookups, "Cuando una oportunidad cambia de etapa en {p0}", { p0: q(pipeline) })
+          : tx(lookups, "Cuando una oportunidad cambia de etapa en un pipeline (sin nombre)");
       }
-      return 'Cuando una oportunidad cambia de etapa';
+      return tx(lookups, "Cuando una oportunidad cambia de etapa");
     }
     case 'event': {
       // El motor acota `event` solo por pipeline (matchesTriggerConfig); la etapa no se menciona.
       const known = rule.event ? knownEvent(rule.event) : undefined;
       const head = known
-        ? `Cuando ${known.label.charAt(0).toLowerCase()}${known.label.slice(1)} (${known.value})`
-        : rule.event ? `Cuando ocurre el evento ${q(rule.event)}` : 'Cuando ocurre un evento del CRM';
+        ? tx(lookups, "Cuando {p0}{p1} ({p2})", { p0: tx(lookups, known.label).charAt(0).toLocaleLowerCase(lookups.locale), p1: tx(lookups, known.label).slice(1), p2: known.value })
+        : rule.event ? tx(lookups, "Cuando ocurre el evento {p0}", { p0: q(rule.event) }) : tx(lookups, "Cuando ocurre un evento del CRM");
       const pipeline = rule.pipeline_id ? named(lookups.pipelineName, rule.pipeline_id) : null;
-      return pipeline ? `${head} en ${q(pipeline)}` : head;
+      return pipeline ? tx(lookups, "{p0} en {p1}", { p0: head, p1: q(pipeline) }) : head;
     }
     case 'field_change':
-      return 'Cuando cambia un dato de una oportunidad';
+      return tx(lookups, "Cuando cambia un dato de una oportunidad");
     case 'schedule':
-      return 'Según la programación del servidor';
+      return tx(lookups, "Según la programación del servidor");
     case 'manual':
-      return 'Cuando alguien la ejecuta a mano';
+      return tx(lookups, "Cuando alguien la ejecuta a mano");
     default:
-      return 'Cuando ocurre un disparador desconocido';
+      return tx(lookups, "Cuando ocurre un disparador desconocido");
   }
 }
 
@@ -155,32 +162,32 @@ export function formatNumberEs(value: number): string {
   return `${value < 0 ? '-' : ''}${grouped}${dec ? `,${dec}` : ''}`;
 }
 
-function joinHuman(parts: string[], last: 'y' | 'o'): string {
+function joinHuman(parts: string[], last: string, lookups: HumanizerLookups = NO_LOOKUPS): string {
   if (parts.length <= 1) return parts.join('');
-  return `${parts.slice(0, -1).join(', ')} ${last} ${parts[parts.length - 1]}`;
+  return tx(lookups, "{p0} {p1} {p2}", { p0: parts.slice(0, -1).join(', '), p1: tx(lookups, last), p2: parts[parts.length - 1] });
 }
 
 function formatValue(field: string, value: unknown, lookups: HumanizerLookups): string {
-  if (Array.isArray(value)) return joinHuman(value.map((v) => formatValue(field, v, lookups)), 'o');
-  if (typeof value === 'boolean') return value ? 'sí' : 'no';
-  if (typeof value === 'number') return formatNumberEs(value);
-  if (value === null || value === undefined) return '(vacío)';
+  if (Array.isArray(value)) return joinHuman(value.map((v) => formatValue(field, v, lookups)), tx(lookups, "o"), lookups);
+  if (typeof value === 'boolean') return value ? tx(lookups, "sí") : tx(lookups, "no");
+  if (typeof value === 'number') return number(value, lookups);
+  if (value === null || value === undefined) return tx(lookups, "(vacío)");
   if (STAGE_ID_FIELDS.has(field)) return q(named(lookups.stageName, value) ?? value);
   if (PIPELINE_ID_FIELDS.has(field)) return q(named(lookups.pipelineName, value) ?? value);
   return q(value);
 }
 
 export function describeCondition(rule: ConditionRule, lookups: HumanizerLookups = NO_LOOKUPS): string {
-  const subject = conditionSubject(rule.field);
+  const subject = tx(lookups, conditionSubject(rule.field));
   const op = String(rule.operator);
-  const phrase = OPERATOR_PHRASES[op] ?? op;
-  if (op === 'is_null' || op === 'is_not_null') return `${subject} ${phrase}`;
+  const phrase = tx(lookups, OPERATOR_PHRASES[op] ?? op);
+  if (op === 'is_null' || op === 'is_not_null') return tx(lookups, "{p0} {p1}", { p0: subject, p1: phrase });
   if (op === 'within_days') {
     const n = typeof rule.value === 'number' ? rule.value : Number(rule.value);
     const days = Number.isFinite(n) ? n : 0;
-    return `${subject} ${phrase} ${formatNumberEs(days)} ${days === 1 ? 'día' : 'días'}`;
+    return tx(lookups, "{p0} {p1} {p2} {p3}", { p0: subject, p1: phrase, p2: number(days, lookups), p3: days === 1 ? 'día' : 'días' });
   }
-  return `${subject} ${phrase} ${formatValue(rule.field, rule.value, lookups)}`;
+  return tx(lookups, "{p0} {p1} {p2}", { p0: subject, p1: phrase, p2: formatValue(rule.field, rule.value, lookups) });
 }
 
 function describeNode(node: ConditionNode, lookups: HumanizerLookups, nested: boolean): string | null {
@@ -189,7 +196,7 @@ function describeNode(node: ConditionNode, lookups: HumanizerLookups, nested: bo
       .map((r) => describeNode(r, lookups, true))
       .filter((p): p is string => !!p);
     if (parts.length === 0) return null;
-    const text = joinHuman(parts, node.op === 'or' ? 'o' : 'y');
+    const text = joinHuman(parts, node.op === 'or' ? tx(lookups, "o") : tx(lookups, "y"), lookups);
     return nested && parts.length > 1 ? `(${text})` : text;
   }
   return describeCondition(node, lookups);
@@ -225,62 +232,62 @@ const NOT_IMPLEMENTED_PHRASES: Record<string, string> = {
 
 export function describeAction(action: { type: string; [key: string]: unknown }, lookups: HumanizerLookups = NO_LOOKUPS): string {
   const entry = actionEntry(action.type);
-  if (!entry) return `acción desconocida ${q(action.type)}`;
+  if (!entry) return tx(lookups, "acción desconocida {p0}", { p0: q(action.type) });
   if (!entry.implemented) {
-    return `${NOT_IMPLEMENTED_PHRASES[entry.type] ?? entry.label.toLowerCase()} (sin implementación todavía)`;
+    return tx(lookups, "{p0} (sin implementación todavía)", { p0: tx(lookups, NOT_IMPLEMENTED_PHRASES[entry.type] ?? entry.label.toLowerCase()) });
   }
 
   switch (entry.type) {
     case 'send_email': {
       const subject = str(action.subject);
       const template = named(lookups.templateName, action.template_id);
-      if (subject) return `enviar un email con asunto ${q(truncate(subject, 60))}`;
-      if (template) return `enviar un email con la plantilla ${q(template)}`;
-      return 'enviar un email';
+      if (subject) return tx(lookups, "enviar un email con asunto {p0}", { p0: q(truncate(subject, 60)) });
+      if (template) return tx(lookups, "enviar un email con la plantilla {p0}", { p0: q(template) });
+      return tx(lookups, "enviar un email");
     }
     case 'send_whatsapp': {
       const template = named(lookups.templateName, action.template_id);
       const text = str(action.text);
-      if (template) return `enviar un WhatsApp con la plantilla ${q(template)}`;
-      if (text) return `enviar un WhatsApp: ${q(truncate(text, 40))}`;
-      return 'enviar un WhatsApp';
+      if (template) return tx(lookups, "enviar un WhatsApp con la plantilla {p0}", { p0: q(template) });
+      if (text) return tx(lookups, "enviar un WhatsApp: {p0}", { p0: q(truncate(text, 40)) });
+      return tx(lookups, "enviar un WhatsApp");
     }
     case 'create_task': {
       const title = str(action.title);
       const due = typeof action.due_in_days === 'number' ? action.due_in_days : null;
-      const base = title ? `crear la tarea ${q(truncate(title, 60))}` : 'crear una tarea';
-      return due === null ? base : `${base} que vence en ${formatNumberEs(due)} ${due === 1 ? 'día' : 'días'}`;
+      const base = title ? tx(lookups, "crear la tarea {p0}", { p0: q(truncate(title, 60)) }) : tx(lookups, "crear una tarea");
+      return due === null ? base : tx(lookups, "{p0} que vence en {p1} {p2}", { p0: base, p1: number(due, lookups), p2: due === 1 ? 'día' : 'días' });
     }
     case 'create_activity': {
       const type = str(action.activity_type);
-      return type ? `registrar una actividad de tipo ${q(type)}` : 'registrar una actividad';
+      return type ? tx(lookups, "registrar una actividad de tipo {p0}", { p0: q(type) }) : tx(lookups, "registrar una actividad");
     }
     case 'update_field': {
       const entity = str(action.entity) || 'opportunities';
       const field = str(action.field_name);
-      const where = UPDATE_FIELD_ENTITY_LABELS[entity] ?? entity;
+      const where = tx(lookups, UPDATE_FIELD_ENTITY_LABELS[entity] ?? entity);
       const value = action.field_value === undefined || action.field_value === null
-        ? '(vacío)' : q(String(action.field_value));
-      return field ? `cambiar ${q(field)} a ${value} en ${where}` : `cambiar un dato en ${where}`;
+        ? tx(lookups, "(vacío)") : q(String(action.field_value));
+      return field ? tx(lookups, "cambiar {p0} a {p1} en {p2}", { p0: q(field), p1: value, p2: where }) : tx(lookups, "cambiar un dato en {p0}", { p0: where });
     }
     case 'enroll_sequence': {
       const name = named(lookups.sequenceName, action.sequence_id);
-      return name ? `inscribir en la secuencia ${q(name)}` : 'inscribir en una secuencia (sin elegir)';
+      return name ? tx(lookups, "inscribir en la secuencia {p0}", { p0: q(name) }) : tx(lookups, "inscribir en una secuencia (sin elegir)");
     }
     case 'unenroll_sequence': {
       const name = named(lookups.sequenceName, action.sequence_id);
-      return name ? `sacar de la secuencia ${q(name)}` : 'sacar de una secuencia (sin elegir)';
+      return name ? tx(lookups, "sacar de la secuencia {p0}", { p0: q(name) }) : tx(lookups, "sacar de una secuencia (sin elegir)");
     }
     case 'notify_user': {
       const title = str(action.title);
-      return title ? `avisar al responsable: ${q(truncate(title, 60))}` : 'avisar al responsable';
+      return title ? tx(lookups, "avisar al responsable: {p0}", { p0: q(truncate(title, 60)) }) : tx(lookups, "avisar al responsable");
     }
     case 'move_stage': {
       const name = named(lookups.stageName, action.stage_id);
-      return name ? `mover la oportunidad a ${q(name)}` : 'mover la oportunidad a otra etapa (sin elegir)';
+      return name ? tx(lookups, "mover la oportunidad a {p0}", { p0: q(name) }) : tx(lookups, "mover la oportunidad a otra etapa (sin elegir)");
     }
     default:
-      return entry.label.toLowerCase();
+      return tx(lookups, entry.label).toLocaleLowerCase(lookups.locale);
   }
 }
 
@@ -288,7 +295,7 @@ export function describeActions(
   actions: { type: string; [key: string]: unknown }[] | null | undefined,
   lookups: HumanizerLookups = NO_LOOKUPS,
 ): string {
-  return joinHuman((actions ?? []).map((a) => describeAction(a, lookups)), 'y');
+  return joinHuman((actions ?? []).map((a) => describeAction(a, lookups)), tx(lookups, "y"), lookups);
 }
 
 /** La frase completa: «Cuando …, si …, entonces ….» */
@@ -296,9 +303,9 @@ export function describeRule(rule: RuleLike, lookups: HumanizerLookups = NO_LOOK
   const trigger = describeTrigger(rule, lookups);
   const conditions = describeConditions(rule.conditions, lookups);
   const actions = describeActions(rule.actions, lookups);
-  const head = conditions ? `${trigger}, si ${conditions}` : trigger;
-  if (!actions) return `${head}, no hará nada: la regla no tiene acciones.`;
-  return `${head}, entonces ${actions}.`;
+  const head = conditions ? tx(lookups, "{p0}, si {p1}", { p0: trigger, p1: conditions }) : trigger;
+  if (!actions) return tx(lookups, "{p0}, no hará nada: la regla no tiene acciones.", { p0: head });
+  return tx(lookups, "{p0}, entonces {p1}.", { p0: head, p1: actions });
 }
 
 // ─── Ejecuciones ────────────────────────────────────────────────────────────
@@ -328,16 +335,16 @@ export function describeRunStatus(status: string): { label: string; tone: RunTon
 }
 
 /** «hace 3 h», «hace 2 días», «nunca». Es un delta: no depende de la zona horaria. */
-export function formatRelativeTime(iso: string | null | undefined, now: Date = new Date()): string {
-  if (!iso) return 'nunca';
+export function formatRelativeTime(iso: string | null | undefined, now: Date = new Date(), lookups: HumanizerLookups = NO_LOOKUPS): string {
+  if (!iso) return tx(lookups, "nunca");
   const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return 'nunca';
+  if (Number.isNaN(then)) return tx(lookups, "nunca");
   const seconds = Math.max(0, Math.floor((now.getTime() - then) / 1000));
-  if (seconds < 60) return 'hace un momento';
+  if (seconds < 60) return tx(lookups, "hace un momento");
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `hace ${minutes} min`;
+  if (minutes < 60) return tx(lookups, "hace {p0} min", { p0: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `hace ${hours} h`;
+  if (hours < 24) return tx(lookups, "hace {p0} h", { p0: hours });
   const days = Math.floor(hours / 24);
-  return `hace ${days} ${days === 1 ? 'día' : 'días'}`;
+  return tx(lookups, "hace {p0} {p1}", { p0: days, p1: days === 1 ? 'día' : 'días' });
 }

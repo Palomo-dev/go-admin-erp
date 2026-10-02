@@ -169,18 +169,8 @@ export function useMobileNative(): UseMobileNativeReturn {
   // ==========================================================================
 
   const registerPushToken = useCallback(async (): Promise<MobilePushToken | null> => {
-    const push = getMobilePlugin('PushNotifications');
-    if (!push?.requestPermissions || !push?.register || !push?.getToken) return null;
-    try {
-      const permResult = await push.requestPermissions();
-      if (permResult.receive !== 'granted') return null;
-      await push.register();
-      const { token } = await push.getToken();
-      return { token, platform: isIOS() ? 'ios' : 'android' };
-    } catch (err) {
-      console.warn('[useMobileNative] Error registerPushToken:', err);
-      return null;
-    }
+    const { requestNativePushToken } = await import('@/lib/utils/mobilePushRegistration');
+    return requestNativePushToken();
   }, []);
 
   // ==========================================================================

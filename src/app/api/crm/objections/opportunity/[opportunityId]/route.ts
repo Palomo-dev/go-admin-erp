@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { getServerOrgContext, OrgContextError, requireOrgAdminOrPermission } from '@/lib/utils/orgContext';
+import { exigirUuid,respuestaErrorCrm,CrmHttpError } from '@/lib/services/crm/crmRouteSupport';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import {
   getOpportunityObjections,
@@ -12,16 +13,22 @@ import {
  * GET /api/crm/objections/opportunity/[opportunityId] — Lista las objections de una oportunidad.
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ opportunityId: string }> }
 ) {
   try {
-    const ctx = await getServerOrgContext();
-    const { opportunityId } = await params;
+    const ctx = await getServerOrgContext(request);
+    readOrgBody(ctx,{}, {request});
+    const { opportunityId } = await params;exigirUuid(opportunityId);
 
+    await requireOrgAdminOrPermission(ctx,'crm.opportunities.view');
+    const opportunity=await ctx.supabase.from('opportunities').select('branch_id,salesperson_id').eq('organization_id',ctx.organizationId).eq('id',opportunityId).maybeSingle();
+    if(opportunity.error)throw opportunity.error;if(!opportunity.data)throw new CrmHttpError(404,'oportunidad_no_encontrada','Oportunidad no encontrada');
+    const branch=await ctx.supabase.rpc('app_branch_access',{p_branch_id:opportunity.data.branch_id});if(branch.error)throw branch.error;if(branch.data!==true)throw new CrmHttpError(403,'sin_permiso','sin_permiso');
+    let canRegister=false;try{await requireOrgAdminOrPermission(ctx,'crm.opportunities.edit');if(opportunity.data.salesperson_id!==ctx.userId)await requireOrgAdminOrPermission(ctx,'crm.opportunities.edit_any');canRegister=true;}catch(error){if(!(error instanceof OrgContextError))throw error;}
     const objections = await getOpportunityObjections(opportunityId, ctx.organizationId, ctx.supabase);
 
-    return NextResponse.json({ success: true, data: objections }, { status: 200 });
+    return NextResponse.json({ success: true, data: objections,canRegister }, { status: 200 });
   } catch (error: unknown) {
     if (error instanceof OrgContextError) {
       return NextResponse.json(
@@ -31,7 +38,7 @@ export async function GET(
     }
     const message = error instanceof Error ? error.message : 'Error desconocido';
     console.error('[CRM Objections Opportunity] GET error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return respuestaErrorCrm(error,'objections.opportunity');
   }
 }
 
@@ -46,14 +53,16 @@ export async function POST(
   { params }: { params: Promise<{ opportunityId: string }> }
 ) {
   try {
-    const ctx = await getServerOrgContext();
-    const { opportunityId } = await params;
+    const ctx = await getServerOrgContext(request);
+    readOrgBody(ctx,{}, {request});
     const body = await readOrgBody(ctx, request);
+    const { opportunityId } = await params;exigirUuid(opportunityId);await requireOrgAdminOrPermission(ctx,'crm.opportunities.edit');
 
 
+    if(body.resolveId&&body.objection_id)return NextResponse.json({success:false,error:'datos_invalidos'},{status:400});
     // Si viene resolveId en el body, resolver en lugar de vincular
-    if (body?.resolveId) {
-      const resolved = await resolveOpportunityObjection(body.resolveId, ctx.organizationId, ctx.supabase);
+    if (body?.resolveId) {exigirUuid(body.resolveId);
+      const resolved = await resolveOpportunityObjection(body.resolveId, ctx.organizationId, ctx.supabase,opportunityId);
       return NextResponse.json({ success: true, data: resolved }, { status: 200 });
     }
 
@@ -64,6 +73,7 @@ export async function POST(
       );
     }
 
+    exigirUuid(body.objection_id);
     const result = await addOpportunityObjection(
       ctx.organizationId,
       opportunityId,
@@ -83,6 +93,6 @@ export async function POST(
     }
     const message = error instanceof Error ? error.message : 'Error desconocido';
     console.error('[CRM Objections Opportunity] POST error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return respuestaErrorCrm(error,'objections.opportunity');
   }
 }

@@ -23,6 +23,7 @@ import { verifyBridgeToken, signBridgeToken } from '@/lib/services/crm/bridgeTok
 import { buildAgentLegTwiml, buildCustomerLegTwiml, buildBridgeHangupTwiml } from '@/lib/services/crm/bridgeTwimlBuilders';
 import { buildWhisper, isTerminalBridgeStatus, type BridgeStatus } from '@/lib/services/crm/mobileBridgeService';
 import { recordingEnabledForCall } from '@/lib/services/crm/consentService';
+import { updateCallFromProviderEvent } from '@/lib/services/crm/callManagementService';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -81,17 +82,16 @@ export async function POST(request: Request) {
 
     // Buzón de voz del propio vendedor (AMD): no se le habla al contestador.
     if (String(params.AnsweredBy || '').startsWith('machine')) {
-      await supabase
+      const { error: updateError } = await supabase
         .from('mobile_call_bridges')
         .update({ status: 'agent_no_answer', last_error: 'agent_voicemail' })
         .eq('id', bridgeId)
         .eq('organization_id', orgId);
+      if (updateError) throw updateError;
       if (bridge.call_id) {
-        await supabase
-          .from('calls')
-          .update({ status: 'no_answer', ended_at: new Date().toISOString(), answered_by: 'machine' })
-          .eq('id', bridge.call_id)
-          .eq('organization_id', orgId);
+        const saved = await updateCallFromProviderEvent(bridge.call_id, orgId,
+          { CallStatus: 'no-answer', AnsweredBy: 'machine' }, 'child', supabase);
+        if (!saved) throw new Error('Llamada no encontrada');
       }
       return xml(buildBridgeHangupTwiml());
     }
@@ -107,7 +107,7 @@ export async function POST(request: Request) {
         })
         .eq('id', bridgeId)
         .eq('organization_id', orgId);
-      if (updateError) console.error('[Agent Leg TwiML] update agent_answered:', updateError.message);
+      if (updateError) throw updateError;
     }
 
     // Contexto del whisper (siempre scoped por organización)
@@ -163,11 +163,12 @@ export async function POST(request: Request) {
     // `record=` sale de la fila `calls`, la misma que lee el whisper (N-1, ronda 6).
     const recordingEnabled = await recordingEnabledForCall(callId, orgId, supabase);
 
-    await supabase
+    const { error: dialError } = await supabase
       .from('mobile_call_bridges')
       .update({ status: 'customer_dialing' })
       .eq('id', bridgeId)
       .eq('organization_id', orgId);
+    if (dialError) throw dialError;
 
     const directDial = buildCustomerLegTwiml({
       to: String(bridge.target_phone),
@@ -183,6 +184,7 @@ export async function POST(request: Request) {
     return xml(buildAgentLegTwiml({ whisper, actionUrl: '', confirmDigit: false, directDial }));
   } catch (error) {
     console.error('[Agent Leg TwiML] Error:', error);
-    return xml(buildBridgeHangupTwiml('Ocurrió un error. Intenta más tarde.'));
+    return new NextResponse(buildBridgeHangupTwiml('Ocurrió un error. Intenta más tarde.'),
+      { status: 500, headers: XML_HEADERS });
   }
 }

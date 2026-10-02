@@ -24,6 +24,8 @@ import { verifyTwilioWebhook, WebhookError } from '@/lib/security/webhookSignatu
 import { accountSidMatchesOrg } from '@/lib/services/crm/voiceContextService';
 import { verifyBridgeToken } from '@/lib/services/crm/bridgeTokens';
 import { applyStatusEvent, isTerminalStatus } from '@/lib/services/crm/callStateMachine';
+import { mutateCallFromSnapshot } from '@/lib/services/crm/callMutationService';
+import { upsertCallActivity, type CallForActivity } from '@/lib/services/crm/callActivitySync';
 import { refundVoiceMinutes } from '@/lib/services/crm/callCreditsService';
 import {
   applyAgentLegEvent,
@@ -37,7 +39,7 @@ import type { CallStatus } from '@/lib/crm/enums';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-interface CallRow {
+interface CallRow extends CallForActivity {
   id: string;
   organization_id: number;
   status: CallStatus;
@@ -45,7 +47,7 @@ interface CallRow {
   started_at: string | null;
   ended_at: string | null;
   duration_seconds: number | null;
-  metadata: Record<string, unknown> | null;
+  metadata: Record<string, unknown>;
 }
 
 /** Estado de `calls` cuando el bridge muere antes de marcar al cliente. */
@@ -141,7 +143,7 @@ export async function POST(request: Request) {
 
     const { data: callData, error: callReadError } = await supabase
       .from('calls')
-      .select('id, organization_id, status, answered_at, started_at, ended_at, duration_seconds, metadata')
+      .select('*')
       .eq('id', callId)
       .eq('organization_id', orgId)
       .maybeSingle();
@@ -149,80 +151,76 @@ export async function POST(request: Request) {
     const call = callData as CallRow | null;
     if (!call) return new NextResponse('OK', { status: 200 });
 
-    const meta: Record<string, unknown> = { ...(call.metadata ?? {}) };
-    const seqRaw = params.SequenceNumber;
-    const seq = seqRaw === undefined || seqRaw === '' ? null : Number(seqRaw);
-    if (seq !== null && Number.isFinite(seq)) {
-      if (seq <= lastSeq(meta, leg)) return new NextResponse('OK', { status: 200 }); // duplicado / fuera de orden
-      meta.last_seq = { ...((meta.last_seq as Record<string, unknown>) ?? {}), [leg]: seq };
-    }
+    const final = await mutateCallFromSnapshot(supabase, call, (fresh) => {
+      const meta: Record<string, unknown> = { ...(fresh.metadata ?? {}) };
+      const seqRaw = params.SequenceNumber;
+      const seq = seqRaw === undefined || seqRaw === '' ? null : Number(seqRaw);
+      if (seq !== null && Number.isFinite(seq)) {
+        if (seq <= lastSeq(meta, leg)) return null; // duplicado / fuera de orden
+        meta.last_seq = { ...((meta.last_seq as Record<string, unknown>) ?? {}), [leg]: seq };
+      }
 
-    const callPatch: Record<string, unknown> = { metadata: meta };
+      const callPatch: Record<string, unknown> = { metadata: meta };
 
-    if (leg === 'customer') {
-      // El leg del cliente es el "hijo": su duración y su respuesta son las de
-      // la conversación. El desenlace final lo confirma `dial-complete`.
-      const update = applyStatusEvent(
-        {
-          status: call.status,
-          answered_at: call.answered_at,
-          started_at: call.started_at,
-          metadata: meta,
-        },
-        {
-          CallStatus: callStatus,
-          CallDuration: params.CallDuration ?? null,
-          AnsweredBy: params.AnsweredBy ?? null,
-        },
-        'child'
-      );
-      if (update) {
-        Object.assign(meta, update.metadata);
-        if (update.status) callPatch.status = update.status;
-        if (update.answered_at) callPatch.answered_at = update.answered_at;
-        if (update.ring_seconds !== undefined) callPatch.ring_seconds = update.ring_seconds;
-        if (update.ended_at && !call.ended_at) callPatch.ended_at = update.ended_at;
-        if (update.duration_seconds !== undefined && update.duration_seconds > (call.duration_seconds ?? 0)) {
-          callPatch.duration_seconds = update.duration_seconds;
-          callPatch.duration_source = 'provider';
+      if (leg === 'customer') {
+        // El leg del cliente es el "hijo": su duración y su respuesta son las de
+        // la conversación. El desenlace final lo confirma `dial-complete`.
+        const update = applyStatusEvent(
+          {
+            status: fresh.status,
+            answered_at: fresh.answered_at,
+            started_at: fresh.started_at,
+            metadata: meta,
+          },
+          {
+            CallStatus: callStatus,
+            CallDuration: params.CallDuration ?? null,
+            AnsweredBy: params.AnsweredBy ?? null,
+          },
+          'child'
+        );
+        if (update) {
+          Object.assign(meta, update.metadata);
+          if (update.status) callPatch.status = update.status;
+          if (update.answered_at) callPatch.answered_at = update.answered_at;
+          if (update.ring_seconds !== undefined) callPatch.ring_seconds = update.ring_seconds;
+          if (update.ended_at && !fresh.ended_at) callPatch.ended_at = update.ended_at;
+          if (update.duration_seconds !== undefined && update.duration_seconds > (fresh.duration_seconds ?? 0)) {
+            callPatch.duration_seconds = update.duration_seconds;
+            callPatch.duration_source = 'provider';
+          }
+        }
+        if (callSid) callPatch.customer_leg_sid = callSid;
+      } else {
+        // Leg del vendedor: su `CallDuration` NO es la conversación.
+        const agentDuration = Number(params.CallDuration);
+        if (Number.isFinite(agentDuration) && agentDuration > 0) {
+          meta.agent_call_duration = Math.round(agentDuration);
+        }
+        if (params.AnsweredBy) meta.agent_answered_by = params.AnsweredBy;
+        const mapped = next ? CALL_STATUS_FOR_BRIDGE[next] : undefined;
+        if (mapped && !isTerminalStatus(fresh.status)) {
+          callPatch.status = mapped;
+          callPatch.ended_at = fresh.ended_at ?? nowIso;
+          meta.reason = next;
         }
       }
-      if (callSid) callPatch.customer_leg_sid = callSid;
-    } else {
-      // Leg del vendedor: su `CallDuration` NO es la conversación.
-      const agentDuration = Number(params.CallDuration);
-      if (Number.isFinite(agentDuration) && agentDuration > 0) {
-        meta.agent_call_duration = Math.round(agentDuration);
-      }
-      if (params.AnsweredBy) meta.agent_answered_by = params.AnsweredBy;
-      const mapped = next ? CALL_STATUS_FOR_BRIDGE[next] : undefined;
-      if (mapped && !isTerminalStatus(call.status)) {
-        callPatch.status = mapped;
-        callPatch.ended_at = call.ended_at ?? nowIso;
-        meta.reason = next;
-      }
-    }
 
-    const { error: callUpdateError } = await supabase
-      .from('calls')
-      .update(callPatch)
-      .eq('id', call.id)
-      .eq('organization_id', orgId);
-    if (callUpdateError) throw new Error(`call update: ${callUpdateError.message}`);
+      return callPatch;
+    });
+    const meta = final.metadata ?? {};
 
     // 3. Reembolso del minuto del cliente si nunca se le marcó (§8)
     if (next && isTerminalBridgeStatus(next) && customerLegNeverDialed(previous, next) && !meta.credits_refunded) {
       const ok = await refundVoiceMinutes(orgId, 1, supabase);
       if (ok) {
-        const { error } = await supabase
-          .from('calls')
-          .update({ metadata: { ...meta, credits_refunded: 1 } })
-          .eq('id', call.id)
-          .eq('organization_id', orgId);
-        if (error) console.error('[Bridge Status] marca de reembolso:', error.message);
+        await mutateCallFromSnapshot(supabase, final, (fresh) => ({
+          metadata: { ...(fresh.metadata ?? {}), credits_refunded: 1 },
+        }));
       }
     }
 
+    if (isTerminalStatus(final.status) && final.ended_at) await upsertCallActivity(final, supabase);
     return new NextResponse('OK', { status: 200 });
   } catch (error) {
     // 500 (no 200): Twilio reintenta y el evento no se pierde en silencio.

@@ -1,4 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { guardarMedicionesSalud } from './healthMutationService';
+import { CrmHttpError } from './crmErrors';
 import { resolverContextoMoneda } from '@/lib/services/monedaOrganizacion';
 import type { ContextoMoneda } from '@/lib/utils/moneda';
 import {
@@ -127,6 +129,7 @@ export interface OrgHealthSettings {
   refreshIntervalHours: number;
   /** `health_score_configs.is_active = false` ⇒ no se mide. */
   active: boolean;
+  configStamp?: string | null;
 }
 
 export interface HealthConfigRowLite {
@@ -134,67 +137,29 @@ export interface HealthConfigRowLite {
   config: unknown;
   refresh_interval_hours?: number | null;
   is_active?: boolean | null;
+  updated_at?: string | null;
 }
 
 export function settingsFromRow(row: HealthConfigRowLite | null): OrgHealthSettings {
-  if (!row) return { config: null, refreshIntervalHours: 24, active: true };
+  if (!row) return { config: null, refreshIntervalHours: 24, active: true, configStamp: null };
   const hours = typeof row.refresh_interval_hours === 'number' && row.refresh_interval_hours > 0 ? row.refresh_interval_hours : 24;
-  return { config: parseHealthConfig(row.config), refreshIntervalHours: hours, active: row.is_active !== false };
+  return { config: parseHealthConfig(row.config), refreshIntervalHours: hours, active: row.is_active !== false, configStamp: row.updated_at ?? null };
 }
 
 export async function getOrgHealthSettings(orgId: number, sb: SupabaseClient): Promise<OrgHealthSettings> {
   const { data, error } = await sb
     .from('health_score_configs')
-    .select('organization_id, config, refresh_interval_hours, is_active')
+    .select('organization_id, config, refresh_interval_hours, is_active, updated_at')
     .eq('organization_id', orgId)
     .maybeSingle();
   if (error) throw new Error(`health_score_configs: ${error.message}`);
   return settingsFromRow((data as HealthConfigRowLite | null) ?? null);
 }
 
-/** Config de la organización (null si no hay fila, está inactiva o falla la lectura). */
+/** Una lectura fallida se propaga; null sólo significa ausencia o configuración inactiva. */
 export async function getOrgHealthConfig(orgId: number, sb: SupabaseClient): Promise<HealthConfigJson | null> {
-  try {
-    const s = await getOrgHealthSettings(orgId, sb);
-    return s.active ? s.config : null;
-  } catch {
-    return null;
-  }
-}
-
-export interface HealthScoreChange {
-  customer_id: string;
-  score: number;
-}
-
-/**
- * Escribe `customers.health_score` por LOTES: una sentencia por valor
- * distinto de score (`update … in(ids)`), nunca una por cliente. Solo debe
- * recibir clientes cuyo score cambió. Propuesta de RPC para una sola
- * sentencia por org en el informe de r2 (`fn_apply_health_scores`).
- */
-export async function applyHealthScores(
-  sb: SupabaseClient,
-  orgId: number,
-  changes: ReadonlyArray<HealthScoreChange>,
-  now: Date,
-): Promise<{ statements: number; updated: number }> {
-  const byScore = new Map<number, string[]>();
-  for (const c of changes) {
-    const list = byScore.get(c.score) ?? [];
-    list.push(c.customer_id);
-    byScore.set(c.score, list);
-  }
-  let statements = 0;
-  let updated = 0;
-  for (const [score, ids] of byScore) {
-    const q = sb.from('customers').update({ health_score: score, health_score_updated_at: now.toISOString() });
-    const { error } = await (ids.length === 1 ? q.eq('id', ids[0]) : q.in('id', ids)).eq('organization_id', orgId);
-    if (error) throw new Error(`customers.health_score: ${error.message}`);
-    statements += 1;
-    updated += ids.length;
-  }
-  return { statements, updated };
+  const s = await getOrgHealthSettings(orgId, sb);
+  return s.active ? s.config : null;
 }
 
 export function indicatorsOf(row: HealthRpcRow): Record<string, number | null> {
@@ -225,36 +190,29 @@ export async function snapshotCustomerHealth(
   customerId: string,
   sb: SupabaseClient,
   now: Date = new Date(),
+  opts: { writer?: SupabaseClient } = {},
 ): Promise<CustomerSnapshotResult | null> {
   const [settings, rpc, customer, lastSnap, moneda] = await Promise.all([
     getOrgHealthSettings(orgId, sb),
     sb.rpc('fn_customer_health', { p_org_id: orgId, p_customer_id: customerId }),
     sb.from('customers').select('id, full_name, health_score').eq('id', customerId).eq('organization_id', orgId).maybeSingle(),
-    sb.from('health_score_snapshots').select('score, created_at').eq('organization_id', orgId).eq('customer_id', customerId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    sb.from('health_score_snapshots').select('id, score, created_at').eq('organization_id', orgId).eq('customer_id', customerId).order('created_at', { ascending: false }).order('id', { ascending: false }).limit(1).maybeSingle(),
     resolverContextoMoneda(sb, orgId),
   ]);
   if (rpc.error) throw new Error(`fn_customer_health: ${rpc.error.message}`);
+  if (customer.error) throw customer.error;
+  if (lastSnap.error) throw lastSnap.error;
+  if (!settings.active) throw new CrmHttpError(409, 'salud_inactiva', 'La medición de salud está desactivada');
   const raw = Array.isArray(rpc.data) ? rpc.data[0] : rpc.data;
-  if (!raw) return null;
-  const cust = customer.data as { full_name: string | null; health_score: number | null } | null;
+  if (!raw || !customer.data) return null;
+  const cust = customer.data as { full_name: string | null; health_score: number | null };
   const row = toHealthRpcRow(raw as Record<string, unknown>);
   const result = composeHealthResult(row, settings.active ? settings.config : null, cust?.full_name || 'Sin nombre', moneda);
 
-  const last = (lastSnap.data as { score: number; created_at: string } | null) ?? null;
-  let snapshotWritten = false;
-  if (shouldWriteSnapshot({ last, score: result.score, now, refreshIntervalHours: settings.refreshIntervalHours })) {
-    const { error } = await sb
-      .from('health_score_snapshots')
-      .insert({ organization_id: orgId, customer_id: customerId, score: result.score, band: result.band, indicators: indicatorsOf(row), created_at: now.toISOString() });
-    if (error) throw new Error(`health_score_snapshots: ${error.message}`);
-    snapshotWritten = true;
-  }
-  let customerUpdated = false;
-  if (cust && cust.health_score !== result.score) {
-    await applyHealthScores(sb, orgId, [{ customer_id: customerId, score: result.score }], now);
-    customerUpdated = true;
-  }
-  return { ...result, snapshot_written: snapshotWritten, customer_updated: customerUpdated, calculated_at: now.toISOString() };
+  const last = (lastSnap.data as { id: string; score: number; created_at: string } | null) ?? null;
+  const write = shouldWriteSnapshot({ last, score: result.score, now, refreshIntervalHours: settings.refreshIntervalHours });
+  const applied = await guardarMedicionesSalud(opts.writer ?? sb, orgId, [{ customer_id: customerId, score: result.score, band: result.band, indicators: indicatorsOf(row), write_snapshot: write, expected_snapshot_id: last?.id ?? null }], settings.configStamp ?? null, now);
+  return { ...result, snapshot_written: applied.snapshots_written > 0, customer_updated: applied.customers_updated > 0, calculated_at: now.toISOString() };
 }
 
 /** Score guardado en `customers.health_score` (sin recalcular). */
@@ -303,34 +261,13 @@ export interface HealthScoreServerResult {
 }
 
 /**
- * Calcula el score de un cliente (RPC + config) y refresca `customers.health_score`
- * solo si cambió. Sin snapshot (para eso, `snapshotCustomerHealth`).
+ * Alias histórico de «Medir ahora»: conserva el resultado público y la misma
+ * escritura atómica de snapshot y score que usa el detalle.
  */
-export async function calculateHealthScore(orgId: number, customerId: string, sb: SupabaseClient): Promise<HealthScoreServerResult | null> {
-  const [settings, rpc, customer] = await Promise.all([
-    getOrgHealthSettings(orgId, sb),
-    sb.rpc('fn_customer_health', { p_org_id: orgId, p_customer_id: customerId }),
-    sb.from('customers').select('id, health_score').eq('id', customerId).eq('organization_id', orgId).maybeSingle(),
-  ]);
-  if (rpc.error) {
-    console.warn('[healthScoreServer.calculateHealthScore] RPC error:', rpc.error.message);
-    return null;
-  }
-  const raw = Array.isArray(rpc.data) ? rpc.data[0] : rpc.data;
-  if (!raw) return null;
-  const row = toHealthRpcRow(raw as Record<string, unknown>);
-  const config = settings.active ? settings.config : null;
-  const composed = composeHealthResult(row, config, '');
-  const now = new Date();
-  const current = (customer.data as { health_score: number | null } | null)?.health_score ?? null;
-  if (current !== composed.score) await applyHealthScores(sb, orgId, [{ customer_id: customerId, score: composed.score }], now);
-  return {
-    customer_id: customerId,
-    score: composed.score,
-    band: composed.band,
-    indicators: indicatorsOf(row),
-    calculated_at: now.toISOString(),
-    alerts: composed.alerts ?? [],
-    dimensions: config && config.indicators.length ? composed.indicators : [],
-  };
+export async function calculateHealthScore(orgId: number, customerId: string, sb: SupabaseClient, opts: { writer?: SupabaseClient } = {}): Promise<HealthScoreServerResult | null> {
+  const result = await snapshotCustomerHealth(orgId, customerId, sb, new Date(), opts);
+  if (!result) return null;
+  return { customer_id: customerId, score: result.score, band: result.band,
+    indicators: indicatorsOf(result.raw!), calculated_at: result.calculated_at,
+    alerts: result.alerts ?? [], dimensions: result.indicators };
 }

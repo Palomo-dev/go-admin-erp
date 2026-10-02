@@ -1,8 +1,9 @@
 import { NextRequest } from 'next/server';
 import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { getPartnerDeals, registerPartnerDeal } from '@/lib/services/crm/partnerService';
+import { CRM_PERMISOS, exigirPermisoCrm, exigirUuid } from '@/lib/services/crm/crmRouteSupport';
 import { validateDealInput } from '@/lib/services/crm/f12Validation';
-import { canManagePartners, jsonOk, readJson, readPage, rejectForeignOrganization, routeError, validationFail } from '@/lib/services/crm/f12RouteSupport';
+import { canManagePartners, canRegisterPartnerDeal, jsonOk, readJson, readPage, rejectForeignOrganization, routeError, validationFail } from '@/lib/services/crm/f12RouteSupport';
 
 const TAG = 'CRM Partner Deals';
 type Params = { params: Promise<{ id: string }> };
@@ -13,7 +14,7 @@ type Params = { params: Promise<{ id: string }> };
  */
 export async function GET(request: NextRequest, { params }: Params) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     const { id } = await params;
     const { searchParams } = new URL(request.url);
     rejectForeignOrganization(TAG, null, ctx, request);
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       commission_status: searchParams.get('commission_status') || undefined,
       ...readPage(searchParams),
     });
-    return jsonOk(result.data, { count: result.count, can_manage: canManagePartners(ctx) });
+    return jsonOk(result.data, { count: result.count, can_manage: await canManagePartners(ctx), can_register: await canRegisterPartnerDeal(ctx) });
   } catch (error) {
     return routeError(error, TAG);
   }
@@ -38,13 +39,15 @@ export async function GET(request: NextRequest, { params }: Params) {
  */
 export async function POST(request: NextRequest, { params }: Params) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     const { id } = await params;
     const body = await readJson(request);
     rejectForeignOrganization(TAG, body, ctx, request);
+    await exigirPermisoCrm(ctx, [CRM_PERMISOS.oportunidadesEditar], TAG);
+    exigirUuid(id, 'partner');
     const parsed = validateDealInput(body);
     if (!parsed.ok) return validationFail(parsed.errors);
-    const result = await registerPartnerDeal(id, ctx.organizationId, parsed.value, ctx.supabase);
+    const result = await registerPartnerDeal(id, ctx.organizationId, parsed.value, ctx.supabase, ctx.userId);
     return jsonOk(result, {}, 201);
   } catch (error) {
     return routeError(error, TAG);

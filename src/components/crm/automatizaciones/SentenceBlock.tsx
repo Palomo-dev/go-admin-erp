@@ -12,8 +12,8 @@ import type { Tone } from './chipClasses';
 
 const TONE: Record<Tone, string> = {
   // Contraste AA verificado: blue-600/blanco 5,2:1; amber-500/gray-950 10:1; emerald-700/blanco 5,5:1.
-  blue: 'bg-blue-600 text-white',
-  amber: 'bg-amber-500 text-gray-950',
+  blue: 'bg-brand text-white',
+  amber: 'bg-warning-subtle0 text-gray-950',
   emerald: 'bg-emerald-700 text-white',
 };
 
@@ -31,7 +31,7 @@ export function SentenceBlock({ id, word, tone, hint, children, aside }: Props) 
   return (
     <section
       aria-labelledby={`${id}-word`}
-      className="relative rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900"
+      className="relative rounded-xl border border-line bg-surface p-4 dark:border-line dark:bg-surface"
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
@@ -41,7 +41,7 @@ export function SentenceBlock({ id, word, tone, hint, children, aside }: Props) 
           >
             {word}
           </span>
-          {hint && <span className="text-xs text-gray-600 dark:text-gray-400">{hint}</span>}
+          {hint && <span className="text-xs text-fg-secondary dark:text-fg-secondary">{hint}</span>}
         </div>
         {aside && <div className="flex items-center gap-1">{aside}</div>}
       </div>

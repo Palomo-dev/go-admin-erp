@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Loader2, MoreVertical, Phone, Video, Search, ArrowLeft, Maximize2, PanelLeftOpen, PanelLeftClose, User, ArrowDown, XCircle, Clock, Circle, Tag, Flag, Plus, X } from 'lucide-react';
+import { Loader2, MoreVertical, Phone, Video, Search, ArrowLeft, Maximize2, PanelLeftOpen, PanelLeftClose, User, ArrowDown, XCircle, Clock, Circle, Flag, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -22,6 +22,7 @@ import CustomerProfilePanel from './CustomerProfilePanel';
 import SearchPanel from './SearchPanel';
 import { supabase } from '@/lib/supabase/config';
 import { Conversation } from '@/lib/services/conversationsService';
+import { CrearOportunidadDesdeOrigen } from '@/components/crm/oportunidad/CrearOportunidadDesdeOrigen';
 
 interface Message {
   id: string;
@@ -45,7 +46,7 @@ interface Message {
       imageUrl?: string | null;
       stock?: number | null;
     }>;
-    order_action?: any;
+    order_action?: unknown;
   };
 }
 
@@ -562,6 +563,7 @@ export default function ChatView({ conversation, onBack, onSendMessage, organiza
 
         {/* Acciones */}
         <div className="flex items-center gap-1 flex-shrink-0">
+          <CrearOportunidadDesdeOrigen tipo="conversacion" id={conversation.id} />
           <Button 
             variant="ghost" 
             size="icon" 

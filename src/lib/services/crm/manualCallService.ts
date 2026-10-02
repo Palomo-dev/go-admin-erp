@@ -1,11 +1,14 @@
+import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { RECORDINGS_BUCKET, STT_MAX_AUDIO_BYTES } from '@/lib/services/crm/transcriptionService';
-import { upsertCallActivity } from '@/lib/services/crm/callActivityService';
+import { ACTIVITY_FILTER_COLUMNS, buildActivityMetadata, upsertCallActivity } from '@/lib/services/crm/callActivityService';
 import { resolveSttSizeLimit } from '@/lib/services/crm/stt';
 import { CALL_MODES, CALL_STATUSES, DURATION_SOURCES, RECORDING_STATUSES } from '@/lib/crm/enums';
 import { assertDbEnum } from '@/lib/services/crm/callAnalysisRules';
 import { recordConsent, manualConsentText, MANUAL_RECORDING_DECLARATION_TEXT } from './consentService';
+import { assertLegacyFilterBudget, CALL_FILTER_COLUMNS } from './callMutationService';
+import { CrmHttpError } from './crmErrors';
 
 /**
  * Llamada manual con audio (FASE-04 §5.3 D / F5). SOLO SERVIDOR.
@@ -164,6 +167,29 @@ export class ManualCallError extends Error {
   }
 }
 
+/** Una grabación completada sin fecha explícita termina al subirla, nunca en el futuro. */
+export function manualCallTimes(occurredAt: string | null | undefined, durationSeconds: number | null, now = Date.now()): { startedAt: string; endedAt: string } {
+  if (durationSeconds != null && (!Number.isInteger(durationSeconds) || durationSeconds < 0 || durationSeconds > 2147483647)) throw new ManualCallError('Duración inválida');
+  const duration = (durationSeconds ?? 0) * 1000;
+  if (occurredAt != null && occurredAt !== '') {
+    const iso = z.string().datetime({ offset: true }).safeParse(occurredAt);
+    const civil = /^(\d{4})-(\d{2})-(\d{2})T/.exec(occurredAt);
+    if (!iso.success || !civil) throw new ManualCallError('Fecha de la llamada inválida');
+    const year = Number(civil[1]);
+    const month = Number(civil[2]);
+    const day = Number(civil[3]);
+    const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+    const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    if (day < 1 || day > days[month - 1]) throw new ManualCallError('Fecha de la llamada inválida');
+  }
+  if (!Number.isFinite(duration) || duration < 0) throw new ManualCallError('Duración inválida');
+  const start = occurredAt == null || occurredAt === '' ? now - duration : Date.parse(occurredAt);
+  const end = start + duration;
+  if (!Number.isFinite(start) || !Number.isFinite(end) || Math.abs(start) > 8.64e15 || Math.abs(end) > 8.64e15) throw new ManualCallError('Fecha de la llamada inválida');
+  if (end > now) throw new ManualCallError('Una llamada completada no puede terminar en el futuro');
+  return { startedAt: new Date(start).toISOString(), endedAt: new Date(end).toISOString() };
+}
+
 /**
  * Crea la llamada manual + grabación lista. NO encola el job (lo hace la ruta).
  */
@@ -189,7 +215,9 @@ export async function createManualCallWithAudio(orgId: number, userId: string | 
     const { data: opp } = await sb.from('opportunities').select('id, customer_id').eq('id', input.opportunityId).eq('organization_id', orgId).maybeSingle();
     if (!opp) throw new ManualCallError('Oportunidad no encontrada en la organización', 404);
     opportunityId = (opp as { id: string }).id;
-    customerId = customerId ?? ((opp as { customer_id: string | null }).customer_id ?? null);
+    const opportunityCustomer = (opp as { customer_id: string | null }).customer_id ?? null;
+    if (customerId && customerId !== opportunityCustomer) throw new ManualCallError('El cliente no corresponde a la oportunidad');
+    customerId = opportunityCustomer;
   }
   let customerPhone: string | null = null;
   if (customerId) {
@@ -199,11 +227,21 @@ export async function createManualCallWithAudio(orgId: number, userId: string | 
   }
 
   const direction = input.direction === 'inbound' ? 'inbound' : 'outbound';
-  const durationSeconds = input.durationSeconds && input.durationSeconds > 0 ? Math.round(input.durationSeconds) : estimateDurationSeconds(input.audio, kind);
-  const startedAt = input.occurredAt && !Number.isNaN(Date.parse(input.occurredAt)) ? new Date(input.occurredAt).toISOString() : new Date().toISOString();
-  const endedAt = durationSeconds ? new Date(Date.parse(startedAt) + durationSeconds * 1000).toISOString() : startedAt;
+  if (input.durationSeconds != null && (!Number.isFinite(input.durationSeconds) || input.durationSeconds < 0)) throw new ManualCallError('Duración inválida');
+  const durationSeconds = input.durationSeconds != null ? Math.round(input.durationSeconds) : estimateDurationSeconds(input.audio, kind);
+  const { startedAt, endedAt } = manualCallTimes(input.occurredAt, durationSeconds);
   const agentNumber = 'manual';
   const customerNumber = customerPhone ?? 'manual';
+  const metadata = { source: input.source ?? 'manual_upload', notes: input.notes ?? null, original_filename: input.originalFilename ?? null, audio_kind: kind, size_bytes: input.audio.length };
+  const budgetCall = { id: '00000000-0000-4000-8000-000000000000', organization_id: orgId, direction, mode: MANUAL_CALL_MODE, status: MANUAL_CALL_STATUS, answered_by: 'human', started_at: startedAt, answered_at: startedAt, ended_at: endedAt, duration_seconds: durationSeconds, customer_id: customerId, opportunity_id: opportunityId, user_id: userId, metadata };
+  // Un rechazo determinista por tamaño debe ocurrir antes de llamadas, actas y Storage.
+  try {
+    assertLegacyFilterBudget(budgetCall, CALL_FILTER_COLUMNS);
+    assertLegacyFilterBudget({ id: budgetCall.id, organization_id: orgId, metadata: buildActivityMetadata(null, budgetCall, { recordingId: budgetCall.id }), notes: input.notes ?? null, outcome: 'answered', duration_seconds: durationSeconds, channel: 'phone', related_type: opportunityId ? 'opportunity' : 'customer', related_id: opportunityId ?? customerId, user_id: userId, occurred_at: startedAt }, ACTIVITY_FILTER_COLUMNS, 'id');
+  } catch (error) {
+    if (error instanceof CrmHttpError) throw new ManualCallError(error.message, error.status);
+    throw error;
+  }
 
   const { data: call, error: callErr } = await sb
     .from('calls')
@@ -229,7 +267,7 @@ export async function createManualCallWithAudio(orgId: number, userId: string | 
       consent_given: false,
       cost_currency: 'USD',
       duration_source: MANUAL_DURATION_SOURCE,
-      metadata: { source: input.source ?? 'manual_upload', notes: input.notes ?? null, original_filename: input.originalFilename ?? null, audio_kind: kind, size_bytes: input.audio.length },
+      metadata,
     })
     .select('id')
     .single();
@@ -303,10 +341,7 @@ export async function createManualCallWithAudio(orgId: number, userId: string | 
     throw new ManualCallError(`No se pudo registrar la grabación: ${recErr?.message ?? 'sin datos'}`, 500);
   }
 
-  const activity = await upsertCallActivity(orgId, callId, { supabase: sb, enrich: { summary: input.notes ?? null, recordingId: (rec as { id: string }).id } }).catch((e) => {
-    console.warn('[manualCallService] activity:', e instanceof Error ? e.message : e);
-    return null;
-  });
+  const activity = await upsertCallActivity(orgId, callId, { supabase: sb, enrich: { summary: input.notes ?? null, recordingId: (rec as { id: string }).id } });
 
   return { callId, recordingId: (rec as { id: string }).id, storagePath, kind, durationSeconds, activityId: activity?.activityId ?? null };
 }

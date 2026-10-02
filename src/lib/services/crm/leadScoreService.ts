@@ -12,7 +12,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { evaluateICP, type OpportunityData } from './icpService';
+import { evaluateICP, type OpportunityData, type ICPEvaluationResult } from './icpService';
 
 export interface LeadScoreContext {
   organizationId: number;
@@ -27,6 +27,10 @@ export interface LeadScore {
 /** Mejor evaluación: la de mayor fit que cumple los requisitos; si ninguna, sin banda. */
 export async function calcularLeadScore(ctx: LeadScoreContext, customerId: string, valor: OpportunityData = {}): Promise<LeadScore> {
   const evaluaciones = await evaluateICP(ctx.organizationId, customerId, ctx.supabase, valor);
+  return scoreDesdeEvaluaciones(evaluaciones);
+}
+
+export function scoreDesdeEvaluaciones(evaluaciones: readonly ICPEvaluationResult[]): LeadScore {
   if (evaluaciones.length === 0) return { lead_score: null, icp_band: null };
   const mejor = evaluaciones.find((e) => e.matched) ?? evaluaciones[0];
   return {

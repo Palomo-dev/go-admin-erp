@@ -17,13 +17,15 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 const { OrgContextError: RealOrgContextError } = jest.requireActual<typeof import('@/lib/utils/orgContextError')>('@/lib/utils/orgContextError');
 
 let db: FakeDb;
+jest.mock('@/lib/supabase/server-service', () => ({ getServiceClient: jest.fn(() => fakeSupabase(db)) }));
 const session: { roleId: number; isSuperAdmin: boolean; roleName: string; supabase?: unknown } = { roleId: 4, isSuperAdmin: false, roleName: 'Empleado' };
 
 jest.mock('@/lib/utils/orgContext', () => ({
+  // Fixture: manager role 5 is assigned admin.full_access in the permission catalog.
+  hasOrgAdminOrPermission: jest.fn(async (ctx, code = 'admin.full_access') => ctx.isSuperAdmin || [1, 2].includes(ctx.roleId) || code !== 'admin.full_access' || ctx.roleId === 5),
   OrgContextError: RealOrgContextError,
   getServerOrgContext: jest.fn(async () => ({ organizationId: ORG, userId: 'u-1', roleId: session.roleId, roleName: session.roleName, isSuperAdmin: session.isSuperAdmin, supabase: session.supabase ?? fakeSupabase(db) })),
-  // POST /api/crm/leads exige crm.leads.create en el servidor; aquí se concede.
-  hasOrgAdminOrPermission: jest.fn(async () => true),
+
 }));
 
 import { POST as leadsPost } from '../../leads/route';
@@ -116,6 +118,7 @@ describe('guardas optimistas con dos llamadas concurrentes de verdad (tester r1 
     expect(['contacted', 'rejected']).toContain(db.tables.referrals.find((r) => r.id === U(20))!.status);
   });
   it('reward: dos «pagar» intercalados sobre el mismo converted -> una 200 y otra 409; la guarda lleva reward_paid=false y status=converted', async () => {
+    session.roleId = 2;
     const p1 = rewardPost(req(`/api/crm/referrals/${U(22)}/reward`, 'POST', {}), params(U(22)));
     const p2 = rewardPost(req(`/api/crm/referrals/${U(22)}/reward`, 'POST', {}), params(U(22)));
     const [r1, r2] = await Promise.all([p1.then(json), p2.then(json)]);
@@ -159,10 +162,11 @@ describe('descartes del body y producto (tester r1 §3/§4)', () => {
     expect(status).toBe(200);
     expect((body.data as Array<{ id: string }>).map((t) => t.id).sort()).toEqual([U(50), U(53)].sort());
   });
-  it('T4.4: convert: si el enlace falla por error de BD, deshace la ficha creada y responde 502 (ola 1: no hay oportunidad que deshacer)', async () => {
+  it('T4.4: convert: si el enlace falla por error de BD, deshace la ficha creada y responde 500 (ola 1: no hay oportunidad que deshacer)', async () => {
     db.errors['referrals:update'] = { code: 'XX000', message: 'boom' };
-    expect((await convertPost(req(`/api/crm/referrals/${U(21)}/convert`, 'POST', {}), params(U(21)))).status).toBe(502);
-    expect(db.writes.filter((w) => w.op === 'delete').map((w) => w.table).sort()).toEqual(['customers']);
+    expect((await convertPost(req(`/api/crm/referrals/${U(21)}/convert`, 'POST', {}), params(U(21)))).status).toBe(500);
+    expect(db.writes).toEqual([]);
+    expect(db.tables.customers).toHaveLength(seed().customers.length);
     expect(db.writes.filter((w) => w.table === 'opportunities')).toHaveLength(0);
   });
 });

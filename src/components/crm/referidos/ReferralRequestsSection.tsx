@@ -1,5 +1,7 @@
 'use client';
 
+import {useRedText} from '@/components/crm/red/useRedText';
+
 /**
  * «Pedir referido»: tareas `type='referido'` abiertas que F10 crea al ganar
  * una oportunidad. Cada una abre el registro con el cliente ganado ya
@@ -22,6 +24,7 @@ export function requestButtonId(requestId: string): string {
 }
 
 export function ReferralRequestsSection({ requests, onRegisterFor }: Props) {
+  const {tr} = useRedText();
   const { formatDate } = useFormatDate();
   if (requests.length === 0) return null;
   return (
@@ -29,17 +32,16 @@ export function ReferralRequestsSection({ requests, onRegisterFor }: Props) {
       <div className="flex items-start gap-3">
         <HandHeart className="mt-0.5 h-5 w-5 shrink-0 text-amber-800 dark:text-amber-200" aria-hidden="true" />
         <div className="min-w-0 flex-1">
-          <h2 id="referral-requests-title" className="font-semibold text-gray-900 dark:text-gray-100">
-            Pedir referido · {requests.length} cliente{requests.length === 1 ? '' : 's'} ganado{requests.length === 1 ? '' : 's'} sin pedir
-          </h2>
-          <p className="text-sm text-gray-700 dark:text-gray-300">Al ganar una oportunidad queda una tarea de pedir referido. Regístralo aquí con el cliente ya elegido.</p>
-          <ul className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3" aria-label="Clientes a los que pedir referido">
+          <h2 id="referral-requests-title" className="font-semibold text-fg ">
+             {tr('Solicitudes pendientes: {count}', {count:requests.length})} </h2>
+          <p className="text-sm text-fg-secondary ">{tr("Al ganar una oportunidad queda una tarea de pedir referido. Regístralo aquí con el cliente ya elegido.")}</p>
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3" aria-label={tr("Clientes a los que pedir referido")}>
             {requests.map((r) => (
-              <li key={r.id} className="flex items-center justify-between gap-2 rounded-lg border border-amber-200/80 bg-white px-3 py-2 dark:border-amber-900/50 dark:bg-gray-900">
+              <li key={r.id} className="flex items-center justify-between gap-2 rounded-lg border border-amber-200/80 bg-surface px-3 py-2 dark:border-amber-900/50 ">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{r.customer?.full_name ?? r.title}</p>
-                  <p className="truncate text-xs text-gray-600 dark:text-gray-400">
-                    {r.due_date ? `Vence el ${formatDate(r.due_date)}` : 'Sin fecha'}
+                  <p className="truncate text-sm font-medium text-fg ">{r.customer?.full_name ?? r.title}</p>
+                  <p className="truncate text-xs text-fg-secondary ">
+                    {r.due_date ? tr("Vence el {p0}", {p0: formatDate(r.due_date)}) : tr("Sin fecha")}
                   </p>
                 </div>
                 <Button
@@ -49,11 +51,10 @@ export function ReferralRequestsSection({ requests, onRegisterFor }: Props) {
                   variant="outline"
                   className="shrink-0"
                   disabled={!r.customer}
-                  aria-label={`Registrar referido de ${r.customer?.full_name ?? r.title}`}
+                  aria-label={tr("Registrar referido de {p0}", {p0: r.customer?.full_name ?? r.title})}
                   onClick={(e) => onRegisterFor(r, e.currentTarget)}
                 >
-                  <Plus className="mr-1 h-4 w-4" aria-hidden="true" /> Registrar
-                </Button>
+                  <Plus className="mr-1 h-4 w-4" aria-hidden="true" />  {tr("Registrar")} </Button>
               </li>
             ))}
           </ul>

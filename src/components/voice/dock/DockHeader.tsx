@@ -6,7 +6,9 @@
  */
 
 import Link from 'next/link';
-import { Minus, PhoneCall, RefreshCw, Settings } from 'lucide-react';
+import { ExternalLink, Minus, PhoneCall, RefreshCw, Settings } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { getDesktopBridge } from '@/lib/utils/desktop';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/utils/Utils';
 import type { CallStatus, DeviceState } from '../SoftphoneProvider';
@@ -65,6 +67,7 @@ interface DockHeaderProps {
 }
 
 export function DockHeader({ deviceState, deviceReason, deviceMissing, deviceScope, callStatus, isAdmin, onMinimize, onRetry }: DockHeaderProps) {
+  const t = useTranslations('phoneMirror');
   const missing = deviceMissing ?? [];
   // Solo cuando las llaves son de la propia organización tiene sentido decirle
   // a alguien qué falta y dónde ponerlo.
@@ -94,6 +97,9 @@ export function DockHeader({ deviceState, deviceReason, deviceMissing, deviceSco
           </div>
         </div>
         <div className="flex items-center gap-1">
+          {getDesktopBridge()?.phone && <button type="button" onClick={() => { void getDesktopBridge()?.phone?.open(); }}
+            className="h-8 w-8 rounded p-1 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+            aria-label={t('openWindow')} title={t('openWindow')}><ExternalLink size={14} aria-hidden="true" /></button>}
           {callStatus !== 'idle' && (
             <Badge variant={CALL_STATUS_VARIANTS[callStatus]} className="text-[10px]" aria-live="assertive">
               {CALL_STATUS_LABELS[callStatus]}

@@ -8,6 +8,7 @@
  * Preferencias: GET/PATCH /api/crm/me/comm-preferences.
  */
 
+import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { CheckCircle2, Loader2, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -26,11 +27,14 @@ interface Prefs {
 }
 
 export function MyMobileSection({ numbers }: { numbers: PhoneNumber[] }) {
+  const t = useTranslations('phoneControl');
+  const [receiptKey, setReceiptKey] = useState<string | null>(null);
   const [prefs, setPrefs] = useState<Prefs | null>(null);
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
   const [step, setStep] = useState<'idle' | 'sent'>('idle');
   const [busy, setBusy] = useState(false);
+  const [approvalReceipt, setApprovalReceipt] = useState<string | null>(null);
   // Twilio Verify y user_comm_preferences trabajan en E.164 («+573101234567»);
   // el campo guarda «+57 3101234567». null = número incompleto o no válido.
   const phoneE164 = aE164(phone);
@@ -41,6 +45,14 @@ export function MyMobileSection({ numbers }: { numbers: PhoneNumber[] }) {
     if (res.ok) {
       setPrefs(body.data);
       setPhone(body.data?.mobile_phone_e164 ?? '');
+      const key = `go-mobile-approval:${body.data?.organization_id}:${body.data?.user_id}`;
+      setReceiptKey(key);
+      try {
+        const stored = JSON.parse(sessionStorage.getItem(key) ?? 'null') as { receipt?: string; phone?: string } | null;
+        if (stored?.receipt && stored.phone && /^\+[1-9]\d{6,14}$/.test(stored.phone)) {
+          setApprovalReceipt(stored.receipt); setPhone(stored.phone); setStep('sent');
+        }
+      } catch { /* El servidor sigue exigiendo su recibo firmado. */ }
     }
   };
   useEffect(() => {
@@ -57,7 +69,9 @@ export function MyMobileSection({ numbers }: { numbers: PhoneNumber[] }) {
     setPrefs(body.data);
   };
 
+  const clearApproval = () => { setApprovalReceipt(null); try { if (receiptKey) sessionStorage.removeItem(receiptKey); } catch { /* La prueba en memoria sigue siendo válida. */ } };
   const sendOtp = async () => {
+    clearApproval();
     setBusy(true);
     try {
       const res = await fetch('/api/integrations/twilio/verify/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: phoneE164 ?? phone.trim(), channel: 'sms', purpose: 'mobile_verification' }) });
@@ -75,15 +89,20 @@ export function MyMobileSection({ numbers }: { numbers: PhoneNumber[] }) {
   const checkOtp = async () => {
     setBusy(true);
     try {
-      const res = await fetch('/api/integrations/twilio/verify/check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: phoneE164 ?? phone.trim(), code, purpose: 'mobile_verification' }) });
+      const res = await fetch('/api/integrations/twilio/verify/check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: phoneE164 ?? phone.trim(), code, purpose: 'mobile_verification', ...(approvalReceipt ? { approval_receipt: approvalReceipt } : {}) }) });
       const body = await res.json().catch(() => ({}));
+      if (body.code === 'mobile_approval_pending' && typeof body.approval_receipt === 'string') {
+        setApprovalReceipt(body.approval_receipt);
+        if (receiptKey) sessionStorage.setItem(receiptKey, JSON.stringify({ receipt: body.approval_receipt, phone: phoneE164 }));
+      }
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+      clearApproval();
       setStep('idle');
       setCode('');
       toast({ title: 'Celular verificado' });
       await load();
     } catch (err) {
-      toast({ title: 'Código incorrecto', description: err instanceof Error ? err.message : 'Error', variant: 'destructive' });
+      toast({ title: t('mobileSaveFailed'), description: err instanceof Error ? err.message : 'Error', variant: 'destructive' });
     } finally {
       setBusy(false);
     }
@@ -96,13 +115,13 @@ export function MyMobileSection({ numbers }: { numbers: PhoneNumber[] }) {
       <h3 id="tel-mobile-title" className="text-base font-semibold text-gray-900 dark:text-gray-100">
         Mi celular
       </h3>
-      <p className="text-xs text-gray-500 dark:text-gray-400">Para "Llamar desde mi celular": Twilio te llama primero y luego marca al cliente con el caller id de la organización.</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400">Para &quot;Llamar desde mi celular&quot;: Twilio te llama primero y luego marca al cliente con el caller id de la organización.</p>
 
       <div className="flex flex-wrap items-end gap-2">
         <div className="space-y-1">
           <Label htmlFor="tel-mobile">Número de celular</Label>
           <div className="flex items-center gap-2">
-            <PhoneInput id="tel-mobile" value={phone} onChange={setPhone} autoComplete="tel" className="w-72" />
+            <PhoneInput id="tel-mobile" value={phone} onChange={(value) => { setPhone(value); clearApproval(); }} autoComplete="tel" className="w-72" />
             {verified && (
               <span className="inline-flex items-center gap-1 text-xs text-green-700 dark:text-green-400">
                 <CheckCircle2 size={14} aria-hidden="true" /> Verificado
@@ -121,9 +140,9 @@ export function MyMobileSection({ numbers }: { numbers: PhoneNumber[] }) {
               <Label htmlFor="tel-otp">Código SMS</Label>
               <Input id="tel-otp" inputMode="numeric" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} className="w-28" maxLength={8} />
             </div>
-            <Button size="sm" onClick={() => void checkOtp()} disabled={busy || code.length < 4}>
+            <Button size="sm" onClick={() => void checkOtp()} disabled={busy || (!approvalReceipt && code.length < 4)}>
               {busy ? <Loader2 size={14} className="mr-1.5 animate-spin" aria-hidden="true" /> : null}
-              Verificar
+              {approvalReceipt ? t('mobileSaveApproval') : 'Verificar'}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setStep('idle')} disabled={busy}>
               Cancelar

@@ -49,8 +49,8 @@ describe('calculateHealthScore (server)', () => {
         { organization_id: DECOY, config: { bands: { green: 1, yellow: 0, red: 0 }, indicators: [] }, refresh_interval_hours: 24, is_active: true },
       ],
       customers: [
-        { id: 'c1', organization_id: ORG, full_name: 'Cliente Uno', health_score: null },
-        { id: 'c1', organization_id: DECOY, full_name: 'Señuelo', health_score: null },
+        { id: 'c1', organization_id: ORG, lifecycle_stage: 'customer', full_name: 'Cliente Uno', health_score: null },
+        { id: 'c1', organization_id: DECOY, lifecycle_stage: 'customer', full_name: 'Señuelo', health_score: null },
       ],
       health_score_snapshots: [
         { id: 's1', organization_id: ORG, customer_id: 'c1', score: 10, band: 'red', indicators: {}, created_at: '2026-08-01T00:00:00Z' },

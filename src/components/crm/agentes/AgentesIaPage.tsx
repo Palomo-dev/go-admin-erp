@@ -1,234 +1,31 @@
-"use client";
-
-/**
- * /app/crm/agentes-ia — catálogo de agentes IA de voz de la organización (FASE 06).
- *
- * Cierra C-F6-16 (no había UI). Tres pestañas: Agentes, Voces y Campañas.
- * Todo pasa por rutas con `getServerOrgContext()`: cero organización en el cliente.
- *
- * UX móvil (UXM-D): pestañas a tres columnas iguales y CTA a ancho completo a
- * 375 px; la pestaña es estado controlado para que el editor pueda llevar a
- * «Voces» desde su estado vacío.
- */
-
-import React, { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { toast } from "@/components/ui/use-toast";
-import { Bot, Loader2, Plus, Mic, Megaphone } from "lucide-react";
-import { LoadErrorState } from "@/components/common/LoadErrorState";
-import { describeError, logError } from "@/lib/utils/errorMessage";
-import { fetchJson } from "@/lib/utils/fetchJson";
-import { AgentEditorDialog, type AgentDraft } from "./AgentEditorDialog";
-import { VoicesPanel } from "./VoicesPanel";
-import { AgentCampaignsPanel } from "./AgentCampaignsPanel";
-
-export interface VoiceAgentListItem {
-  id: string;
-  name: string;
-  purpose_type: string;
-  engine: string;
-  language: string;
-  llm_model: string;
-  voice_id: string | null;
-  voice_ref_id: string | null;
-  is_active: boolean;
-  allowed_tools: string[];
-}
-
-const PURPOSE_LABELS: Record<string, string> = {
-  qualify_lead: "Calificar contacto",
-  confirm_demo: "Confirmar demo",
-  follow_up_proposal: "Seguimiento de propuesta",
-  reactivate_cold: "Reactivar frío",
-  collect_payment: "Cobro",
-  nps_survey: "Encuesta NPS",
-  renewal_reminder: "Renovación",
-  sell_product: "Vender producto",
-  book_meeting: "Agendar reunión",
-  custom: "Personalizado",
-};
-
+'use client';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { Bot, Plus } from 'lucide-react';
+import { PageHeader, EmptyState, StatusBadge } from '@/components/kit';
+import { clasesBoton } from '@/components/kit/botonClases';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { pedirCrm } from '@/components/crm/acciones/apiCrm';
+import { ORGANIZATION_CHANGED_EVENT } from '@/lib/hooks/useOrganization';
+import { AgentEditorDialog, type AgentDraft } from './AgentEditorDialog';
+import { AgentMetricsPanel } from './AgentMetricsPanel';
+import { VoicesPanel } from './VoicesPanel';
+import { AgentCampaignsPanel } from './AgentCampaignsPanel';
+export interface VoiceAgentListItem { id: string; name: string; purpose_type: string; engine: string; language: string; llm_model: string; voice_id: string | null; voice_ref_id: string | null; is_active: boolean; allowed_tools: string[]; }
 export function AgentesIaPage() {
-  const [agents, setAgents] = useState<VoiceAgentListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState<AgentDraft | null>(null);
-  const searchParams = useSearchParams();
-  const [tab, setTab] = useState<"agentes" | "voces" | "campanas">(searchParams?.get("tab") === "campanas" ? "campanas" : "agentes");
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const json = await fetchJson<{ success?: boolean; error?: string; data?: VoiceAgentListItem[] }>(
-        "/api/crm/voice-agents",
-        { cache: "no-store" }
-      );
-      if (!json?.success) throw new Error(json?.error || "La respuesta no indicó éxito");
-      setAgents(json.data ?? []);
-    } catch (err) {
-      logError("[AgentesIaPage] cargar agentes", err);
-      setError(describeError(err));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const toggleActive = async (agent: VoiceAgentListItem) => {
-    try {
-      const json = await fetchJson<{ success?: boolean; error?: string }>(
-        `/api/crm/voice-agents/${agent.id}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ is_active: !agent.is_active }),
-        }
-      );
-      if (!json?.success) throw new Error(json?.error || "La respuesta no indicó éxito");
-      toast({ title: agent.is_active ? "Agente desactivado" : "Agente activado" });
-      void load();
-    } catch (err) {
-      logError("[AgentesIaPage] cambiar estado de agente", err);
-      toast({
-        title: "No se pudo cambiar el estado",
-        description: describeError(err),
-        variant: "destructive",
-      });
-    }
-  };
-
-  return (
-    <div className="space-y-5 p-4 md:space-y-6 md:p-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-start gap-2">
-          <Bot className="mt-1 h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden="true" />
-          <div className="min-w-0">
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Agentes IA de voz</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Quién llama, con qué voz y con qué objetivo. El guion por etapa se configura en el embudo.
-            </p>
-          </div>
-        </div>
-        <Button className="w-full sm:w-auto" onClick={() => setEditing({ mode: "create" })}>
-          <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
-          Nuevo agente
-        </Button>
-      </header>
-
-      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
-        <TabsList className="grid h-auto w-full grid-cols-3 sm:inline-flex sm:w-auto" aria-label="Secciones">
-          <TabsTrigger value="agentes" className="gap-1.5 px-2 sm:px-3">
-            <Bot className="h-4 w-4 shrink-0" aria-hidden="true" />
-            Agentes
-          </TabsTrigger>
-          <TabsTrigger value="voces" className="gap-1.5 px-2 sm:px-3">
-            <Mic className="h-4 w-4 shrink-0" aria-hidden="true" />
-            Voces
-          </TabsTrigger>
-          <TabsTrigger value="campanas" className="gap-1.5 px-2 sm:px-3">
-            <Megaphone className="h-4 w-4 shrink-0" aria-hidden="true" />
-            Campañas
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="agentes" className="pt-4">
-          {loading && (
-            <div className="flex items-center gap-2 py-10 text-gray-500 dark:text-gray-400">
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              Cargando agentes…
-            </div>
-          )}
-
-          {!loading && error && (
-            <LoadErrorState
-              title="No se pudieron cargar los agentes"
-              message={error}
-              onRetry={() => void load()}
-              isRetrying={loading}
-            />
-          )}
-
-          {!loading && !error && agents.length === 0 && (
-            <div className="rounded-lg border border-dashed border-gray-300 p-10 text-center dark:border-gray-700">
-              <Bot className="mx-auto h-8 w-8 text-gray-400" aria-hidden="true" />
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                Todavía no hay agentes. Crea uno y luego dile en cada etapa del embudo qué debe conseguir.
-              </p>
-              <Button className="mt-4" onClick={() => setEditing({ mode: "create" })}>
-                Crear el primer agente
-              </Button>
-            </div>
-          )}
-
-          {!loading && !error && agents.length > 0 && (
-            <ul className="grid grid-cols-1 gap-3 md:grid-cols-2" aria-label="Agentes">
-              {agents.map((a) => (
-                <li
-                  key={a.id}
-                  className="min-w-0 rounded-lg border border-gray-200 p-4 dark:border-gray-700 dark:bg-gray-900"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="break-words font-medium text-gray-900 dark:text-gray-100">{a.name}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {PURPOSE_LABELS[a.purpose_type] ?? a.purpose_type} · {a.llm_model} · {a.language}
-                      </p>
-                    </div>
-                    <Badge variant={a.is_active ? "success" : "secondary"} className="shrink-0">
-                      {a.is_active ? "Activo" : "Inactivo"}
-                    </Badge>
-                  </div>
-                  <p className="mt-2 break-all text-xs text-gray-500 dark:text-gray-400">
-                    {a.voice_ref_id
-                      ? "Voz del catálogo (puede ser la voz clonada del vendedor)"
-                      : a.voice_id
-                        ? `Voz: ${a.voice_id}`
-                        : "Sin voz propia: se usará la voz por defecto"}
-                  </p>
-                  <div className="mt-3 flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => setEditing({ mode: "edit", id: a.id })}>
-                      Editar
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => toggleActive(a)}>
-                      {a.is_active ? "Desactivar" : "Activar"}
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </TabsContent>
-
-        <TabsContent value="voces" className="pt-4">
-          <VoicesPanel />
-        </TabsContent>
-
-        <TabsContent value="campanas" className="pt-4">
-          <AgentCampaignsPanel agents={agents} />
-        </TabsContent>
-      </Tabs>
-
-      {editing && (
-        <AgentEditorDialog
-          draft={editing}
-          onClose={() => setEditing(null)}
-          onSaved={() => {
-            setEditing(null);
-            void load();
-          }}
-          onGoToVoices={() => {
-            setEditing(null);
-            setTab("voces");
-          }}
-        />
-      )}
-    </div>
-  );
+  const t = useTranslations('crm.agentesIa'); const query = useSearchParams(); const [tab, setTab] = useState(query?.get('tab') === 'campanas' ? 'campaigns' : 'agents');
+  const [agents, setAgents] = useState<VoiceAgentListItem[]>([]); const [loading, setLoading] = useState(true); const [error, setError] = useState(false); const [editing, setEditing] = useState<AgentDraft | null>(null); const [metrics, setMetrics] = useState<VoiceAgentListItem | null>(null); const [busy, setBusy] = useState<string | null>(null); const revision = useRef(0); const toggleLock = useRef(false);
+  const load = useCallback(async () => { const current = ++revision.current; setLoading(true); setError(false); try { const result = await pedirCrm<VoiceAgentListItem[]>('/api/crm/voice-agents'); if (!Array.isArray(result.data)) throw new Error('invalid'); if (current === revision.current) setAgents(result.data); } catch { if (current === revision.current) setError(true); } finally { if (current === revision.current) setLoading(false); } }, []);
+  const invalidate = useCallback(() => { revision.current++; }, []);
+  useEffect(() => { void load(); const changed = () => { revision.current++; setAgents([]); setEditing(null); setMetrics(null); setBusy(null); void load(); }; window.addEventListener(ORGANIZATION_CHANGED_EVENT, changed); return () => { invalidate(); window.removeEventListener(ORGANIZATION_CHANGED_EVENT, changed); }; }, [load, invalidate]);
+  const toggle = async (agent: VoiceAgentListItem) => { if (toggleLock.current) return; toggleLock.current = true; const current = revision.current; setBusy(agent.id); try { await pedirCrm(`/api/crm/voice-agents/${agent.id}`, { method: 'PATCH', cuerpo: { is_active: !agent.is_active } }); if (current === revision.current) void load(); } catch { if (current === revision.current) setError(true); } finally { toggleLock.current = false; if (current === revision.current) setBusy(null); } };
+  const action = <button type="button" className={clasesBoton({ variante: 'primario' })} onClick={() => setEditing({ mode: 'create' })}><Plus className="size-4" aria-hidden />{t('new')}</button>;
+  return <div className="space-y-5 bg-canvas p-4 lg:p-6"><PageHeader titulo={t('title')} subtitulo={t('subtitle')} icono={Bot} acciones={action} cargando={loading} movil={{ accion: action }} />
+    <Tabs value={tab} onValueChange={setTab}><TabsList className="grid h-auto w-full grid-cols-3 sm:w-auto sm:inline-flex" aria-label={t('title')}>{(['agents', 'voices', 'campaigns'] as const).map(value => <TabsTrigger key={value} value={value}>{t(value)}</TabsTrigger>)}</TabsList>
+      <TabsContent value="agents" className="pt-4">{loading ? <div role="status" className="grid gap-3 sm:grid-cols-2">{Array.from({ length: 4 }, (_, i) => <div key={i} className="h-40 animate-pulse rounded-xl border border-line bg-subtle motion-reduce:animate-none" />)}<span className="sr-only">{t('loading')}</span></div> : error ? <EmptyState variante="error" titulo={t('loadError')} onReintentar={() => void load()} /> : !agents.length ? <EmptyState icono={Bot} titulo={t('emptyTitle')} descripcion={t('emptyDescription')} accion={{ etiqueta: t('new'), onClick: () => setEditing({ mode: 'create' }) }} /> : <ul aria-label={t('agents')} className="grid gap-4 md:grid-cols-2">{agents.map(agent => <li key={agent.id} className="space-y-4 rounded-xl border border-line bg-surface p-4"><div className="flex items-start justify-between gap-3"><div><h2 className="font-semibold text-fg">{agent.name}</h2><p className="text-sm text-fg-muted">{t.has(`purposes.${agent.purpose_type}`) ? t(`purposes.${agent.purpose_type}`) : agent.purpose_type} · {agent.language}</p></div><StatusBadge estado={agent.is_active ? 'active' : 'inactive'} etiqueta={t(agent.is_active ? 'active' : 'inactive')} tono={agent.is_active ? 'exito' : 'neutro'} /></div><p className="break-all text-xs text-fg-secondary">{agent.llm_model} · {agent.engine}</p><div className="flex flex-wrap gap-2"><button type="button" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })} onClick={() => setMetrics(agent)}>{t('metrics')}</button><button type="button" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })} onClick={() => setEditing({ mode: 'edit', id: agent.id })}>{t('configure')}</button><button type="button" className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })} disabled={busy !== null} onClick={() => void toggle(agent)}>{t(agent.is_active ? 'deactivate' : 'activate')}</button></div></li>)}</ul>}</TabsContent>
+      <TabsContent value="voices" className="pt-4"><VoicesPanel /></TabsContent><TabsContent value="campaigns" className="pt-4"><AgentCampaignsPanel agents={agents} /></TabsContent>
+    </Tabs>{editing && <AgentEditorDialog draft={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void load(); }} onGoToVoices={() => { setEditing(null); setTab('voices'); }} />}{metrics && <AgentMetricsPanel agent={metrics} onClose={() => setMetrics(null)} />}
+  </div>;
 }
+export default AgentesIaPage;

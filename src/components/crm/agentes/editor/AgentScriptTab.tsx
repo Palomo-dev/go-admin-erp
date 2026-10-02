@@ -1,60 +1,34 @@
-"use client";
-
-/**
- * Pestaña «Guion» del editor de agente (UXM-D): primera frase, cómo se
- * identifica como IA e instrucciones. Los guardarraíles no son configurables.
- */
-
-import React from "react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { ShieldCheck } from "lucide-react";
-import type { AgentFormState } from "./useAgentForm";
-
-interface Props {
-  form: AgentFormState;
-  patch: (partial: Partial<AgentFormState>) => void;
+'use client';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { FormSection, EmptyState } from '@/components/kit';
+import { clasesBoton } from '@/components/kit/botonClases';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { pedirCrm } from '@/components/crm/acciones/apiCrm';
+import { STAGE_AGENT_OBJECTIVES, STAGE_AGENT_TRIGGERS, type StageAgent } from '@/lib/services/crm/stageAgentService';
+import { MANDATORY_TOOLS } from '@/lib/services/crm/voiceAgentToolCatalog';
+import type { AgentFormState } from './useAgentForm';
+interface Stage { id: string; name: string; position: number; is_won?: boolean; is_lost?: boolean }
+interface Pipeline { id: string; name: string; stages: Stage[] }
+interface Product { id: number; name: string; sku: string | null }
+export function AgentScriptTab({ form, agentId, onSaveInactive }: { form: AgentFormState; agentId: string | null; onSaveInactive: () => void }) {
+  const t = useTranslations('crm.agentesIa'); const [pipelines, setPipelines] = useState<Pipeline[]>([]); const [products, setProducts] = useState<Product[]>([]); const [pipelineId, setPipeline] = useState(''); const [rows, setRows] = useState<StageAgent[]>([]); const [loading, setLoading] = useState(true); const [error, setError] = useState(false);
+  const revision = useRef(0);
+  const load = useCallback(async () => { const token = ++revision.current; setLoading(true); setError(false); try { const [p, r] = await Promise.all([pedirCrm<{ pipelines: Pipeline[]; products: Product[] }>('/api/crm/voice-agents/editor-context'), pedirCrm<StageAgent[]>('/api/crm/stage-agents')]); if (token !== revision.current) return; setPipelines(p.data.pipelines); setProducts(p.data.products); setRows(r.data); setPipeline(value => value || p.data.pipelines[0]?.id || ''); } catch { if (token === revision.current) setError(true); } finally { if (token === revision.current) setLoading(false); } }, []);
+  useEffect(() => { void load(); return () => { revision.current = -1; }; }, [load]);
+  if (loading) return <p role="status">{t('loading')}</p>;
+  if (error) return <EmptyState variante="error" titulo={t('stageLoadError')} onReintentar={() => void load()} />;
+  if (!agentId) return <EmptyState titulo={t('stageNew')} accion={{ etiqueta: t('saveInactive'), onClick: onSaveInactive }} />;
+  const stages = pipelines.find(p => p.id === pipelineId)?.stages.filter(s => !s.is_won && !s.is_lost).sort((a, b) => a.position - b.position) ?? [];
+  return <div className="space-y-4"><label className="grid gap-1.5 text-sm text-fg">{t('pipeline')}<select className="h-10 rounded-md border border-line bg-surface px-3" value={pipelineId} onChange={e => setPipeline(e.target.value)}>{pipelines.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>{!stages.length && <EmptyState titulo={t('stageEmpty')} />}{stages.map(stage => <StageRow key={`${stage.id}:${agentId}`} stage={stage} current={rows.find(row => row.stage_id === stage.id && row.channel === 'voice')} agentId={agentId} form={form} products={products} onSaved={() => void load()} />)}</div>;
 }
-
-export function AgentScriptTab({ form, patch }: Props) {
-  return (
-    <div className="space-y-4">
-      <p className="flex items-start gap-2 rounded-lg border border-green-200 bg-green-50 p-3 text-xs text-green-900 dark:border-green-900 dark:bg-green-950 dark:text-green-100">
-        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-        <span>
-          Sea cual sea este guion, el agente siempre se identifica como asistente virtual, avisa de
-          la grabación, respeta la baja voluntaria y no cierra ventas por su cuenta.
-        </span>
-      </p>
-      <div className="space-y-1.5">
-        <Label htmlFor="ag-first">Primera frase</Label>
-        <Textarea
-          id="ag-first"
-          rows={2}
-          value={form.first_message}
-          onChange={(e) => patch({ first_message: e.target.value })}
-          placeholder="Le llamo de {{org}} por su solicitud. ¿Tiene un minuto?"
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="ag-identity">Cómo se identifica como IA</Label>
-        <Input
-          id="ag-identity"
-          value={form.identity_disclosure}
-          onChange={(e) => patch({ identity_disclosure: e.target.value })}
-          placeholder="Le atiende un asistente virtual con inteligencia artificial."
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="ag-prompt">Instrucciones del agente</Label>
-        <Textarea
-          id="ag-prompt"
-          rows={6}
-          value={form.system_prompt}
-          onChange={(e) => patch({ system_prompt: e.target.value })}
-        />
-      </div>
-    </div>
-  );
+function StageRow({ stage, current, agentId, form, products, onSaved }: { stage: Stage; current?: StageAgent; agentId: string; form: AgentFormState; products: Product[]; onSaved: () => void }) {
+  const t = useTranslations('crm.agentesIa'); const other = Boolean(current?.voice_agent_id && current.voice_agent_id !== agentId);
+  const [productId, setProduct] = useState(current?.product_id ?? null); const [offerPrice, setPrice] = useState(Number(current?.offer?.price ?? 0));
+  const [objective, setObjective] = useState(current?.objective ?? 'qualify_lead'); const [prompt, setPrompt] = useState(current?.objective_prompt ?? ''); const [trigger, setTrigger] = useState(current?.trigger_on ?? 'enter'); const [policy, setPolicy] = useState(current?.action_policy ?? 'suggest'); const [attempts, setAttempts] = useState(current?.max_attempts ?? 3); const [active, setActive] = useState(current?.is_active ?? false); const [tools, setTools] = useState(current?.allowed_tools ?? [...form.allowed_tools]); const [busy, setBusy] = useState(false); const [error, setError] = useState(false);
+  const save = async () => { if (busy || other) return; setBusy(true); setError(false); try { await pedirCrm('/api/crm/stage-agents', { method: 'POST', cuerpo: { expected_updated_at: current?.updated_at ?? null, product_id: productId, offer: { ...current?.offer, ...(objective === 'sell_product' ? { price: offerPrice } : {}) }, trigger_config: current?.trigger_config ?? {}, config: current?.config ?? {}, stage_id: stage.id, voice_agent_id: agentId, channel: 'voice', objective, objective_prompt: prompt, trigger_on: trigger, action_policy: policy, max_attempts: attempts, is_active: active, allowed_tools: [...new Set([...tools.filter(tool => form.allowed_tools.includes(tool)), ...MANDATORY_TOOLS])] } }); onSaved(); } catch { setError(true); } finally { setBusy(false); } };
+  return <FormSection titulo={stage.name} colapsable abiertaPorDefecto={false} descripcion={other ? t('stageAssigned') : undefined} accion={<label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" aria-label={`${t('active')} · ${stage.name}`} checked={active && !other} disabled={other || busy} onChange={e => setActive(e.target.checked)} />{t('active')}</label>} columnas={2}>
+    {!other && <><label className="grid gap-1.5 text-sm text-fg">{t('objective')}<select className="h-10 rounded-md border border-line bg-surface px-3" value={objective} onChange={e => setObjective(e.target.value as typeof objective)}>{STAGE_AGENT_OBJECTIVES.map(value => <option key={value} value={value}>{t.has(`purposes.${value}`) ? t(`purposes.${value}`) : value}</option>)}</select></label><label className="grid gap-1.5 text-sm text-fg">{t('trigger')}<select className="h-10 rounded-md border border-line bg-surface px-3" value={trigger} onChange={e => setTrigger(e.target.value as typeof trigger)}>{STAGE_AGENT_TRIGGERS.map(value => <option key={value} value={value}>{t(`triggers.${value}`)}</option>)}</select></label><label className="grid gap-1.5 text-sm text-fg">{t('actionPolicy')}<select className="h-10 rounded-md border border-line bg-surface px-3" value={policy} onChange={e => setPolicy(e.target.value as typeof policy)}><option value="suggest">{t('suggest')}</option><option value="auto">{t('auto')}</option></select></label><label className="grid gap-1.5 text-sm text-fg">{t('maxAttempts')}<Input type="number" min={1} max={10} value={attempts} onChange={e => setAttempts(Number(e.target.value))} /></label>{objective === 'sell_product' && <><label className="grid gap-1.5 text-sm text-fg">{t('product')}<select className="h-10 rounded-md border border-line bg-surface px-3" value={productId ?? ''} onChange={e => setProduct(e.target.value ? Number(e.target.value) : null)}><option value="">{t('chooseProduct')}</option>{products.map(product => <option key={product.id} value={product.id}>{product.name} · {product.sku}</option>)}</select></label><label className="grid gap-1.5 text-sm text-fg">{t('offerPrice')}<Input type="number" min={0} step="any" value={offerPrice} onChange={e => setPrice(Number(e.target.value))} /></label></>}<label className="grid gap-1.5 text-sm text-fg md:col-span-2">{t('objectivePrompt')}<Textarea rows={3} value={prompt} onChange={e => setPrompt(e.target.value)} /></label><div className="flex flex-wrap gap-3 md:col-span-2">{[...new Set([...form.allowed_tools, ...MANDATORY_TOOLS])].map(tool => <label key={tool} className="inline-flex min-h-9 items-center gap-2 text-xs"><input type="checkbox" checked={tools.includes(tool) || (MANDATORY_TOOLS as readonly string[]).includes(tool)} disabled={(MANDATORY_TOOLS as readonly string[]).includes(tool)} onChange={e => setTools(value => e.target.checked ? [...value, tool] : value.filter(item => item !== tool))} />{t.has(`tools.${tool}`) ? t(`tools.${tool}`) : tool}</label>)}</div>{error && <div className="md:col-span-2"><EmptyState variante="error" titulo={t('saveError')} onReintentar={() => void save()} /></div>}<button type="button" className={clasesBoton({ variante: 'secundario' })} disabled={busy} onClick={() => void save()}>{busy ? t('loading') : t('stageSave')}</button></>}
+  </FormSection>;
 }

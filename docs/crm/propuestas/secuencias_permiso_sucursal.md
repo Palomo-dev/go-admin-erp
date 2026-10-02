@@ -1,0 +1,13 @@
+# Secuencias: permiso y alcance de sucursal
+
+Estado: **pendiente de gate Postgres acotado y aplicación**. El orquestador suspendió la verificación sobre la base durante la investigación del incidente reportado por el usuario; no se ejecutaron pruebas de base ni se aplicó esta propuesta. Tampoco se llamó a proveedores. Candidato MD5 `ae9bfe032b56c84543ef0cfe8e58c2ec`; reversión `7499353d18576fe74d57f66c902ed43e`.
+
+La propuesta agrega guardas al comienzo de `fn_enroll_in_sequence` y `fn_resume_sequence_enrollment`. Reutiliza `fn_crm_exigir_permiso` con `admin.full_access` o `crm.campaigns.manage`, valida el actor de la sesión y comprueba organización, referencias y sucursales mediante el helper canónico. El worker de servicio conserva su camino nativo mediante ese mismo helper; no se crea otro motor de inscripción o programación.
+
+La comparación automatizada local pasó: al retirar sólo los prefijos agregados después de `BEGIN`, ambas declaraciones y cuerpos coinciden byte a byte con el rollback. Los cuerpos originales tienen MD5 `1969a16b09c89b821cefa31d6f8afb31` y `2657c98e120c0394abd5bee5be237e95`. Los headers son idénticos y no hay `GRANT` ni `REVOKE`; reemplazar funciones existentes conserva sus ACL. Esta comparación no acredita los metadatos actuales de producción ni sustituye un gate transaccional.
+
+En inscripción, el engine original toma primero el cliente de la oportunidad y usa `p_customer_id` sólo si aquél es NULL. Por eso la guarda `coalesce(o.customer_id,p_customer_id)` examina exactamente el cliente efectivo. Una oportunidad inexistente o ajena y un cliente directo inexistente o ajeno se rechazan antes de escribir. El engine anterior no validaba el tenant del fallback de cliente cuando la oportunidad no tenía cliente; la nueva guarda rechaza ese fallback si no existe dentro de la organización.
+
+Para reanudar, la guarda examina `coalesce(e.customer_id,o.customer_id)` junto con la oportunidad y sus sucursales. El archivo local `20260910160100_f08_fix_app_branch_access.sql` permite explícitamente un branch NULL; los predicados `NOT app_branch_access(...)` no obtienen NULL en ese caso. Es evidencia de un archivo histórico local y no una afirmación sobre el cuerpo actual del helper en la base.
+
+Límite pendiente de revisar: las guardas leen referencias y sucursales sin bloquear esas filas. Otra transacción podría cambiarlas entre la comprobación y el write. No se ejecutó una prueba concurrente ni se agregó un lock en esta revisión. El orquestador decidirá el gate acotado y cualquier ajuste antes de acreditar la aplicación; esto no cambia ni bloquea las demás áreas del CRM.

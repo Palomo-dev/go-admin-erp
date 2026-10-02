@@ -18,6 +18,7 @@ import { CaptureBanner } from '@/components/crm/kit/CaptureBanner';
 import type { AccionLead } from '@/components/crm/kit/leadRowLogica';
 import type { AccionRapidaCrm } from '@/components/crm/kit/quickActionLogica';
 import { NewLeadDialog } from '@/components/crm/leads/NewLeadDialog';
+import { usePhoneLeadPrefill } from '@/components/crm/leads/usePhoneLeadPrefill';
 import { AccionesRapidasCrm } from '@/components/crm/acciones/AccionesRapidasCrm';
 import { claveError, emitirCambioCrm, pedirCrm } from '@/components/crm/acciones/apiCrm';
 import { puede } from '@/components/crm/acciones/catalogosCrmLogica';
@@ -71,6 +72,7 @@ export function LeadsPantalla() {
     editar: puede(cat.permisos, 'crm.leads.edit') || puede(cat.permisos, 'crm.leads.assign'),
     crear: puede(cat.permisos, 'crm.leads.create'),
   };
+  const prefill = usePhoneLeadPrefill(cat.cargando, permisos.crear, setNuevo);
   const filas = useMemo(() => d.filas.map((r) => aLeadFila(r, cat.usuarios)), [d.filas, cat.usuarios]);
   const porId = (id: string | null) => (id ? { fila: filas.find((f) => f.id === id) ?? null, api: d.filas.find((f) => f.id === id) ?? null } : { fila: null, api: null });
   const estado = estadoPantallaLeads({ cargando: d.cargando, errorStatus: d.errorStatus, hayError: !!d.error, total: d.total, filtros: d.filtros });
@@ -335,7 +337,7 @@ export function LeadsPantalla() {
         error={errorDialogo}
         icono={XCircle}
       />
-      <NewLeadDialog open={nuevo} onOpenChange={setNuevo} branchId={branchId} onCreated={() => emitirCambioCrm({ entidad: 'lead', accion: 'crear' })} />
+      <NewLeadDialog open={nuevo} initialPhone={prefill.initialPhone} onOpenChange={(value) => { setNuevo(value); if (!value) prefill.clearInitialPhone(); }} branchId={branchId} onCreated={() => emitirCambioCrm({ entidad: 'lead', accion: 'crear' })} />
       {accion && accionLead && (
         <AccionesRapidasCrm
           variante="drawer"

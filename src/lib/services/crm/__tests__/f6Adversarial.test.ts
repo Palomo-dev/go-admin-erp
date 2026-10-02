@@ -887,7 +887,8 @@ describe('E. Multi-tenant, firma y consentimiento', () => {
     expect(svc).not.toContain('do_not_call_list');
     expect(svc).not.toContain('return !!data;');
     // Si la RPC falla, NO se marca.
-    expect(svc).toMatch(/fn_can_contact[\s\S]{0,400}se bloquea la llamada[\s\S]{0,80}return false;/);
+    const canContact = SRC('src/lib/services/crm/voiceAgent/canContact.ts');
+    expect(canContact).toMatch(/fn_can_contact[\s\S]{0,400}se bloquea la llamada[\s\S]{0,80}return false;/);
 
     // Y con la RPC devolviendo false, la llamada se salta.
     const { resolver, rpcResolver } = scenario({ canContact: false });
@@ -1339,7 +1340,7 @@ describe('I. Defectos verificados contra la base real', () => {
     const svc = SRC('src/lib/services/crm/voiceAgentService.ts');
     // Un único punto de comprobación, usado al encolar y al marcar.
     expect((svc.match(/canCallCustomer\(/g) || []).length).toBeGreaterThanOrEqual(3);
-    expect(svc).toContain("p_channel: 'voice'");
+    expect(SRC('src/lib/services/crm/voiceAgent/canContact.ts')).toContain("p_channel: 'voice'");
   });
 });
 
@@ -1518,7 +1519,7 @@ describe('J. Despacho puntual, disparo por etapa y consentimiento (ronda 2)', ()
   });
 
   test('J6 [CORREGIDO r2] el consentimiento NO es desactivable: las tools obligatorias se inyectan siempre', () => {
-    const tools = SRC('src/lib/services/crm/voiceAgentTools.ts');
+    const tools = SRC('src/lib/services/crm/voiceAgentToolCatalog.ts');
     expect(tools).toContain("export const MANDATORY_TOOLS = ['log_consent_opt_out', 'end_call'] as const;");
 
     // El runtime las anade aunque la etapa o el agente no las incluyan.
@@ -1530,8 +1531,9 @@ describe('J. Despacho puntual, disparo por etapa y consentimiento (ronda 2)', ()
     // UXM-D (2026-09-21): el editor se partió en pestañas; la casilla vive en
     // `editor/AgentToolsTab.tsx` y la regla en `editor/useAgentForm.ts`.
     const editor = SRC('src/components/crm/agentes/editor/AgentToolsTab.tsx');
-    expect(editor).toContain('disabled={obligatoria}');
-    expect(editor).toContain('Obligatoria por ley');
+    expect(editor).toContain('disabled={isMandatoryTool(tool)}');
+    // Las etiquetas y bloqueo efectivo se prueban por render Intl en cuatro idiomas.
+    expect(editor).toContain("t('mandatory')");
     const formHook = SRC('src/components/crm/agentes/editor/useAgentForm.ts');
     expect(formHook).toContain('MANDATORY_TOOLS');
     expect(formHook).toMatch(/if \(isMandatoryTool\(tool\)\) return tools;/);

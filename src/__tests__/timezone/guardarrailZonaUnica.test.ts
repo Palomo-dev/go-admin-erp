@@ -59,8 +59,6 @@ const PERMITIDOS_BOGOTA = new Set<string>([
   'src/app/api/crm/whatsapp/settings/route.ts',
   'src/components/calendario/configuracion/types.ts',
   'src/components/configuracion/crm/WhatsAppTab.tsx',
-  'src/components/crm/shared/MeetingDialog.tsx',
-  'src/components/crm/timeline/utils.ts',
   'src/components/organization/branding/editor/GlobalSettingsPanel.tsx',
   'src/lib/ai/agent/systemPrompt.ts',
   'src/lib/context/OrganizationTimezoneContext.tsx',

@@ -18,6 +18,7 @@ import {
   type ConditionOperator,
   type ConditionRule,
 } from './conditionsDsl';
+import { interpolateAutomationText, type AutomationText } from './automationText';
 import { actionEntry, defaultEventFor, isEngineRoutedEvent, triggerOption, type TriggerScope } from './ruleCatalog';
 
 export interface RuleAction {
@@ -166,6 +167,7 @@ export function validateForm(form: RuleFormState): FormError[] {
     if (a.type === 'update_field' && !String(a.field_name ?? '').trim()) {
       errors.push({ field: `actions.${i}.field_name`, message: 'Elige el campo que cambia.' });
     }
+    if (a.type === 'start_ai_agent' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(a.voice_agent_id ?? ''))) errors.push({ field: `actions.${i}.voice_agent_id`, message: 'Elige un agente activo' });
     if (a.type === 'move_stage' && !a.stage_id) {
       errors.push({ field: `actions.${i}.stage_id`, message: 'Elige la etapa destino.' });
     }
@@ -402,11 +404,11 @@ export function primaryLabel(editing: boolean, active: boolean): string {
  * (ya lo dicen el interruptor y el botón); con evento mudo (R-5) lo primero
  * que dice es que la regla no se disparará.
  */
-export function previewNotes(form: RuleFormState): string[] {
+export function previewNotes(form: RuleFormState, text: AutomationText = (source, values) => interpolateAutomationText(source ?? "", values)): string[] {
   const notes: string[] = [];
   const muted = mutedEvent(form);
-  if (muted) notes.push(`no se disparará nunca: «${muted}» va por otro disparador`);
-  if (form.run_once_per_opportunity) notes.push('una sola vez por oportunidad');
-  if (form.cooldown_hours > 0) notes.push(`con al menos ${form.cooldown_hours} h entre ejecuciones`);
+  if (muted) notes.push(text('no se disparará nunca: «{p0}» va por otro disparador', { p0:muted }));
+  if (form.run_once_per_opportunity) notes.push(text('una sola vez por oportunidad'));
+  if (form.cooldown_hours > 0) notes.push(text('con al menos {p0} h entre ejecuciones', { p0:form.cooldown_hours }));
   return notes;
 }

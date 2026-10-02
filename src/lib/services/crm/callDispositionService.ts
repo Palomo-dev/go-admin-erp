@@ -5,14 +5,15 @@
  *  - `calls.metadata.disposition_outcome | disposition_next_action | disposition_note`
  *    (+ `status='voicemail'` si el resultado es buzón y la llamada estaba completed)
  *  - `opportunities.last_contact_at / contact_channel='call' / contact_result / next_contact_at`
- *    (el valor real que escribe `callActivitySync.touchOpportunityAfterCall:184`)
+ *    mediante el trigger canónico de activities (fecha de inicio real)
  *  - `tasks` si `next_action.type === 'task'` (related_to_type 'opportunity'|'customer')
  *  - actividad de la llamada (`callActivitySync.upsertCallActivity`)
  */
 
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { upsertCallActivity, touchOpportunityAfterCall, type CallForActivity } from './callActivitySync';
+import { upsertCallActivity, type CallForActivity } from './callActivitySync';
+import { isAtomicCallRpcEnabled, mutateCallFromSnapshot } from './callMutationService';
 
 /** Mismo vocabulario que `activities.outcome` de F4 (`answered|no_answer|voicemail|busy…`) + extras de disposición. */
 export const DISPOSITION_OUTCOMES = ['answered', 'no_answer', 'voicemail', 'busy', 'wrong_number', 'callback_requested'] as const;
@@ -37,19 +38,21 @@ export const dispositionSchema = z.object({
       due_at: z.string().datetime({ offset: true }).optional().nullable(),
       title: z.string().max(200).optional().nullable(),
     })
+    .strict()
     .optional()
     .nullable(),
   note: z.string().max(20000).optional().nullable(),
-});
+}).strict();
 export type Disposition = z.infer<typeof dispositionSchema>;
 
 export const callPatchSchema = z.object({
+  client_key: z.string().min(1).max(120).optional(),
   disposition: dispositionSchema.optional(),
   live_note: z.string().max(20000).optional().nullable(),
   /** Alias simples (compatibilidad): outcome/notes sin próxima acción. */
   outcome: z.enum(DISPOSITION_OUTCOMES).optional(),
   notes: z.string().max(20000).optional().nullable(),
-});
+}).strict().refine((v) => v.disposition !== undefined || v.live_note !== undefined || v.outcome !== undefined, 'Nada que actualizar');
 export type CallPatchInput = z.infer<typeof callPatchSchema>;
 
 export interface CallRowForDisposition extends CallForActivity {
@@ -60,43 +63,47 @@ export async function applyDisposition(
   call: CallRowForDisposition,
   userId: string,
   d: Disposition,
-  client: SupabaseClient
+  client: SupabaseClient,
+  options: { liveNote?: string | null; assertOwner?: (fresh: CallRowForDisposition) => void; sessionClient?: SupabaseClient; clientKey?: string } = {},
 ): Promise<{ call: CallRowForDisposition; taskId: string | null; activityId: string | null }> {
-  const meta: Record<string, unknown> = {
-    ...(call.metadata ?? {}),
-    disposition_outcome: d.outcome,
-    disposition_note: d.note ?? call.metadata?.disposition_note ?? null,
-    disposition_next_action: d.next_action && d.next_action.type !== 'none' ? d.next_action : null,
-    disposition_by: userId,
-    disposition_at: new Date().toISOString(),
-  };
-  const patch: Record<string, unknown> = { metadata: meta };
-  let status = call.status;
-  if (d.outcome === 'voicemail' && (call.status === 'completed' || call.status === 'no_answer')) {
-    status = 'voicemail';
-    patch.status = status;
+  if (isAtomicCallRpcEnabled()) {
+    if (!options.sessionClient) throw new Error('La disposición necesita la sesión del usuario');
+    const payload = { disposition: d, ...(options.liveNote !== undefined ? { live_note: options.liveNote } : {}) };
+    const digest = options.clientKey ? null : await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(payload)));
+    const key = options.clientKey ?? `compat:${Array.from(new Uint8Array(digest as ArrayBuffer), (v) => v.toString(16).padStart(2, '0')).join('')}`;
+    const { data, error } = await options.sessionClient.rpc('fn_crm_disponer_llamada', {
+      p_org: call.organization_id, p_call: call.id, p_key: key, p_payload: payload,
+    });
+    if (error) throw error;
+    const result = data as { call?: CallRowForDisposition; task_id?: string | null; activity_id?: string | null } | null;
+    if (!result?.call || result.call.id !== call.id || result.call.organization_id !== call.organization_id) throw new Error('Respuesta inválida al guardar la disposición');
+    return { call: result.call, taskId: result.task_id ?? null, activityId: result.activity_id ?? null };
   }
-  // Llamadas aún activas (colgó pero el webhook no llegó): no tocamos status.
-
-  const { data, error } = await client
-    .from('calls')
-    .update(patch)
-    .eq('id', call.id)
-    .eq('organization_id', call.organization_id)
-    .select('*')
-    .single();
-  if (error) throw new Error(`No se pudo guardar la disposición: ${error.message}`);
-  const updated = data as CallRowForDisposition;
+  const updated = await mutateCallFromSnapshot(client, call, (fresh) => {
+    options.assertOwner?.(fresh);
+    const meta: Record<string, unknown> = {
+      ...(fresh.metadata ?? {}),
+      disposition_outcome: d.outcome,
+      disposition_note: d.note !== undefined ? d.note : fresh.metadata?.disposition_note ?? null,
+      disposition_next_action: d.next_action && d.next_action.type !== 'none' ? d.next_action : null,
+      disposition_by: userId,
+      disposition_at: new Date().toISOString(),
+    };
+    if (options.liveNote !== undefined) meta.live_note = options.liveNote;
+    const patch: Record<string, unknown> = { metadata: meta };
+    if (d.outcome === 'voicemail' && (fresh.status === 'completed' || fresh.status === 'no_answer')) patch.status = 'voicemail';
+    return patch;
+  });
 
   let taskId: string | null = null;
   const next = d.next_action;
   if (next && next.type === 'task') {
-    const relatedType = call.opportunity_id ? 'opportunity' : call.customer_id ? 'customer' : null;
-    const relatedId = call.opportunity_id ?? call.customer_id ?? null;
+    const relatedType = updated.opportunity_id ? 'opportunity' : updated.customer_id ? 'customer' : null;
+    const relatedId = updated.opportunity_id ?? updated.customer_id ?? null;
     const { data: task, error: taskErr } = await client
       .from('tasks')
       .insert({
-        organization_id: call.organization_id,
+        organization_id: updated.organization_id,
         title: next.title?.trim() || `Seguimiento de llamada (${d.outcome.replace('_', ' ')})`,
         description: d.note ?? null,
         due_date: next.due_at ?? null,
@@ -106,16 +113,16 @@ export async function applyDisposition(
         status: 'open',
         related_to_id: relatedId,
         related_to_type: relatedType,
-        customer_id: call.customer_id,
+        customer_id: updated.customer_id,
         type: 'call',
       })
       .select('id')
       .single();
-    if (taskErr) console.warn('[callDisposition] tasks insert:', taskErr.message);
-    else taskId = (task as { id: string }).id;
+    if (taskErr) throw taskErr;
+    if (!task) throw new Error('No se pudo crear la tarea de seguimiento');
+    taskId = (task as { id: string }).id;
   }
 
   const activityId = await upsertCallActivity(updated, client);
-  await touchOpportunityAfterCall(updated, client);
   return { call: updated, taskId, activityId };
 }

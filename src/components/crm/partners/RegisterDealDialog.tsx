@@ -1,5 +1,7 @@
 'use client';
 
+import {useRedText} from '@/components/crm/red/useRedText';
+
 /**
  * Registrar un deal de partner: oportunidad de la organización (buscador con
  * RLS, reutiliza `useOpportunitySearch` de Automatizaciones) y tipo. La
@@ -29,6 +31,7 @@ interface Props {
 }
 
 export function RegisterDealDialog({ open, partner, onOpenChange, onRegister, returnFocusFallback }: Props) {
+  const {tr, locale} = useRedText();
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<OpportunityHit | null>(null);
   const [dealType, setDealType] = useState<DealType>('referral');
@@ -59,7 +62,7 @@ export function RegisterDealDialog({ open, partner, onOpenChange, onRegister, re
   const submit = async () => {
     if (!partner) return;
     if (!selected) {
-      setFieldError('Elige la oportunidad del deal');
+      setFieldError(tr("Elige la oportunidad del deal"));
       setFocusId('deal-opportunity');
       return;
     }
@@ -68,12 +71,12 @@ export function RegisterDealDialog({ open, partner, onOpenChange, onRegister, re
     try {
       const result = await onRegister(partner.id, { opportunity_id: selected.id, deal_type: dealType });
       toast({
-        title: 'Deal registrado',
-        description: `Comisión ${formatMoney(result.deal.commission_amount, result.deal.opportunity?.currency ?? null)} (${formatRate(result.commission_rate)}), pendiente de aprobar.${result.promoted_to ? ` ${partner.name} sube al tier ${result.promoted_to.name}.` : ''}`,
+        title: tr("Deal registrado"),
+        description: tr("Comisión {p0} ({p1}), pendiente de aprobar.{p2}", {p0: formatMoney(result.deal.commission_amount, result.deal.opportunity?.currency ?? null, locale), p1: formatRate(result.commission_rate, locale), p2: result.promoted_to ? tr(" {p0} sube al tier {p1}.", {p0: partner.name, p1: result.promoted_to.name}) : ''}),
       });
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setError(err instanceof Error ? err.message : tr("Error desconocido"));
       setFocusId('deal-error');
     } finally {
       setSaving(false);
@@ -82,46 +85,45 @@ export function RegisterDealDialog({ open, partner, onOpenChange, onRegister, re
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!saving) onOpenChange(next); }}>
-      <DialogContent onCloseAutoFocus={onCloseAutoFocus} className="max-h-[90vh] max-w-lg overflow-y-auto bg-white dark:bg-gray-950">
+      <DialogContent onCloseAutoFocus={onCloseAutoFocus} className="max-h-[90vh] max-w-lg overflow-y-auto bg-surface ">
         <DialogHeader className="pr-6 text-left">
-          <DialogTitle className="text-gray-900 dark:text-gray-100">Registrar deal de {partner?.name}</DialogTitle>
-          <DialogDescription className="text-gray-600 dark:text-gray-400">
-            La comisión se calcula con el monto de la oportunidad y la tasa {partner && Number(partner.commission_rate) > 0 ? 'propia del partner' : 'de su tier'} ({partner ? formatRate(partner.effective_rate) : ''}). Queda pendiente de aprobar; no se paga nada aquí.
-          </DialogDescription>
+          <DialogTitle className="text-fg ">{tr("Registrar deal de")} {partner?.name}</DialogTitle>
+          <DialogDescription className="text-fg-secondary ">
+             {tr("La comisión se calcula con el monto de la oportunidad y la tasa")} {partner && Number(partner.commission_rate) > 0 ? tr('propia del partner') : tr('de su tier')} ({partner ? formatRate(partner.effective_rate, locale) : ''}{tr("). Queda pendiente de aprobar; no se paga nada aquí.")} </DialogDescription>
         </DialogHeader>
         <form className="space-y-4" noValidate onSubmit={(e) => { e.preventDefault(); void submit(); }}>
           <EntitySearchList
             id="deal-opportunity"
-            label="Oportunidad"
-            placeholder="Buscar por nombre…"
+            label={tr("Oportunidad")}
+            placeholder={tr("Buscar por nombre…")}
             query={query}
             onQueryChange={setQuery}
-            hits={hits.map((h) => ({ id: h.id, title: h.name, subtitle: [h.customer_name, h.stage_name, h.amount != null ? formatMoney(h.amount, h.currency) : null].filter(Boolean).join(' · ') || null }))}
+            hits={hits.map((h) => ({ id: h.id, title: h.name, subtitle: [h.customer_name, h.stage_name, h.amount != null ? formatMoney(h.amount, h.currency, locale) : null].filter(Boolean).join(' · ') || null }))}
             loading={loading}
             error={searchError}
             selectedId={selected?.id ?? null}
             onSelect={(h) => { setSelected(hits.find((x) => x.id === h.id) ?? null); setFieldError(undefined); }}
-            hint={selected ? `Elegida: ${selected.name}${preview !== null ? ` · comisión estimada ${formatMoney(preview, selected.currency)}` : ''}` : 'Escribe para buscar entre las oportunidades de la organización.'}
+            hint={selected ? tr("Elegida: {p0}{p1}", {p0: selected.name, p1: preview !== null ? tr(" · comisión estimada {p0}", {p0: formatMoney(preview, selected.currency, locale)}) : ''}) : tr("Escribe para buscar entre las oportunidades de la organización.")}
             fieldError={fieldError}
           />
           <div>
-            <Label htmlFor="deal-type" className="text-xs text-gray-700 dark:text-gray-300">Tipo de deal</Label>
+            <Label htmlFor="deal-type" className="text-xs text-fg-secondary ">{tr("Tipo de deal")}</Label>
             <Select value={dealType} onValueChange={(v) => setDealType(v as DealType)}>
               <SelectTrigger id="deal-type" className="text-left [&>span]:line-clamp-1"><SelectValue /></SelectTrigger>
-              <SelectContent>{DEAL_TYPES.map((t) => <SelectItem key={t} value={t}>{DEAL_TYPE_LABELS[t]}</SelectItem>)}</SelectContent>
+              <SelectContent>{DEAL_TYPES.map((t) => <SelectItem key={t} value={t}>{tr(DEAL_TYPE_LABELS[t])}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           {error && (
             <Alert id="deal-error" variant="destructive" tabIndex={-1}>
-              <AlertTitle>No se pudo registrar</AlertTitle>
+              <AlertTitle>{tr("No se pudo registrar")}</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          <button type="submit" className="sr-only" tabIndex={-1} aria-hidden="true">Registrar</button>
+          <button type="submit" className="sr-only" tabIndex={-1} aria-hidden="true">{tr("Registrar")}</button>
         </form>
         <DialogFooter className="gap-2 [&>button]:h-11 sm:[&>button]:h-9">
-          <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button type="button" className="bg-blue-600 text-white hover:bg-blue-700" disabled={saving} onClick={() => void submit()}>{saving ? 'Registrando…' : 'Registrar deal'}</Button>
+          <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>{tr("Cancelar")}</Button>
+          <Button type="button" className="bg-brand text-white hover:bg-brand-hover" disabled={saving} onClick={() => void submit()}>{saving ? tr("Registrando…") : tr("Registrar deal")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

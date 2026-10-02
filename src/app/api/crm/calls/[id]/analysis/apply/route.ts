@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { exigirAccesoLlamada } from '@/lib/services/crm/callAccessService';
+import { respuestaErrorCrm } from '@/lib/services/crm/crmRouteSupport';
 import { z } from 'zod';
-import { getServerOrgContext, OrgContextError, isOrgAdminContext } from '@/lib/utils/orgContext';
+import { getServerOrgContext, isOrgAdminContext } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { applyAnalysis, getAnalysis } from '@/lib/services/crm/callAnalysisService';
@@ -27,7 +29,7 @@ const bodySchema = z.object({
  */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     const { id } = await params;
     let raw: unknown = {};
     try {
@@ -36,6 +38,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       /* body vacío */
     }
     readOrgBody(ctx, raw, { request });
+    await exigirAccesoLlamada(ctx, id, 'gestion');
     const parsed = bodySchema.safeParse(raw ?? {});
     if (!parsed.success) return NextResponse.json({ success: false, error: 'Body inválido', details: parsed.error.flatten() }, { status: 400 });
     const { analysisId: bodyAnalysisId, ignore_gate } = parsed.data;
@@ -51,7 +54,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       if (!existing) return NextResponse.json({ success: false, error: 'No hay análisis para aplicar' }, { status: 404 });
       analysisId = existing.id;
     } else {
-      const { data: owned } = await ctx.supabase.from('call_analyses').select('id').eq('id', analysisId).eq('organization_id', ctx.organizationId).eq('call_id', id).maybeSingle();
+      const { data: owned, error: analysisError } = await ctx.supabase.from('call_analyses').select('id').eq('id', analysisId).eq('organization_id', ctx.organizationId).eq('call_id', id).maybeSingle();
+      if (analysisError) throw analysisError;
       if (!owned) return NextResponse.json({ success: false, error: 'Análisis no encontrado' }, { status: 404 });
     }
 
@@ -63,9 +67,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       { status: gateBlocked ? 409 : 200 },
     );
   } catch (error: unknown) {
-    if (error instanceof OrgContextError) return NextResponse.json({ success: false, error: error.message }, { status: error.statusCode });
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Calls Analysis Apply] POST error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return respuestaErrorCrm(error, 'llamada_auxiliar');
   }
 }

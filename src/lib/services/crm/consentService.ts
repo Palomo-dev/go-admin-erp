@@ -25,6 +25,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { updateCall } from './callManagementService';
+import { isAtomicCallRpcEnabled } from './callMutationService';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -200,6 +201,21 @@ export async function recordConsent(
   if (!consentType) {
     throw new Error('recordConsent: consentType es requerido');
   }
+  if (isAtomicCallRpcEnabled()) {
+    const { data, error } = await supabase.rpc('fn_crm_guardar_consentimiento', {
+      p_org: organizationId, p_call: callId, p_payload: {
+        consent_type: consentType, consent_given: consentGiven, announced_at: announcedAt,
+        method, locale, recorded_announcement_text: consentMessage ?? null,
+      },
+    });
+    if (error) throw error;
+    const result = data as { consent?: CallConsent; call?: { id?: unknown; organization_id?: unknown } } | null;
+    if (!result?.consent?.id || result.consent.call_id !== callId || result.consent.organization_id !== organizationId
+      || result.call?.id !== callId || result.call.organization_id !== organizationId) {
+      throw new Error('Respuesta inválida al guardar el consentimiento');
+    }
+    return result.consent;
+  }
 
   // 1. Acta, una sola por (org, llamada, tipo). En conflicto no se toca la
   //    existente (DO NOTHING) y `data` vuelve vacío: se relee abajo.
@@ -244,7 +260,12 @@ export async function recordConsent(
 
   // 2. Marca en `calls`, filtrada por organización. Sin fila alcanzada → error.
   if (consentGiven) {
-    const updated = await updateCall(callId, organizationId, { consent_given: true }, supabase);
+    const updated = await updateCall(callId, organizationId, (fresh) => {
+      if (consentType === 'recording' && (!fresh.recording_enabled || fresh.metadata?.recording_absent_at)) {
+        throw new Error('recordConsent: la grabación dejó de estar habilitada');
+      }
+      return { consent_given: true };
+    }, supabase);
     if (!updated) {
       throw new Error('recordConsent: la llamada no pertenece a la organización o no existe');
     }
@@ -268,7 +289,18 @@ export async function voidConsentWithoutRecording(
   organizationId: number,
   supabase: SupabaseClient,
   reason: string
-): Promise<void> {
+): Promise<boolean> {
+  if (isAtomicCallRpcEnabled()) {
+    const { data, error } = await supabase.rpc('fn_crm_retirar_consentimiento', {
+      p_org: organizationId, p_call: callId, p_reason: reason,
+    });
+    if (error) throw error;
+    const result = data as { voided?: unknown; call?: { id?: unknown; organization_id?: unknown } } | null;
+    if (typeof result?.voided !== 'boolean' || result.call?.id !== callId || result.call.organization_id !== organizationId) {
+      throw new Error('Respuesta inválida al retirar el consentimiento');
+    }
+    return result.voided;
+  }
   const { data: call, error: readError } = await supabase
     .from('calls')
     .select('id, metadata')
@@ -276,7 +308,7 @@ export async function voidConsentWithoutRecording(
     .eq('organization_id', organizationId)
     .maybeSingle();
   if (readError) throw readError;
-  if (!call) return;
+  if (!call) return false;
 
   const { error: deleteError } = await supabase
     .from('call_consents')
@@ -286,8 +318,13 @@ export async function voidConsentWithoutRecording(
     .eq('consent_type', 'recording');
   if (deleteError) throw deleteError;
 
-  const metadata = { ...(((call as { metadata?: Record<string, unknown> | null }).metadata) ?? {}), recording_absent_at: new Date().toISOString(), recording_absent_reason: reason };
-  await updateCall(callId, organizationId, { consent_given: false, recording_enabled: false, metadata }, supabase);
+  const absentAt = new Date().toISOString();
+  const saved = await updateCall(callId, organizationId, (fresh) => ({
+    consent_given: false, recording_enabled: false,
+    metadata: { ...(fresh.metadata ?? {}), recording_absent_at: absentAt, recording_absent_reason: reason },
+  }), supabase);
+  if (!saved) throw new Error('voidConsentWithoutRecording: llamada no encontrada al guardar');
+  return true;
 }
 
 /**

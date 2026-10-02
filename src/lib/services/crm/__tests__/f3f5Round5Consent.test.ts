@@ -653,3 +653,12 @@ describe('S · recordConsent / voidConsentWithoutRecording', () => {
     expect(fake.rows('calls')[0]).toMatchObject({ consent_given: false, recording_enabled: false });
   });
 });
+
+// Fixtures históricas del transporte heredado; los contratos RPC se verifican por separado.
+beforeEach(() => { process.env.CRM_CALL_ATOMIC_RPC_ENABLED = 'false'; });
+afterAll(() => { delete process.env.CRM_CALL_ATOMIC_RPC_ENABLED; });
+
+// Fixtures Dial anteriores a Conference: escape explícito, sin falsear los contratos nuevos.
+const phoneLegacyEnv = process.env.CRM_PHONE_CONFERENCE_ENABLED;
+beforeAll(() => { process.env.CRM_PHONE_CONFERENCE_ENABLED = 'false'; });
+afterAll(() => { if (phoneLegacyEnv === undefined) delete process.env.CRM_PHONE_CONFERENCE_ENABLED; else process.env.CRM_PHONE_CONFERENCE_ENABLED = phoneLegacyEnv; });

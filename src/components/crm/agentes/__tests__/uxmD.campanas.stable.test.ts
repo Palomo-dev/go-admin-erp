@@ -186,10 +186,7 @@ describe("UXM-D (de tester r1) · useAudioPreview (comportamiento)", () => {
 // ─── 6. Guardas estáticas del tester (móvil) ─────────────────────────────────
 
 describe("UXM-D (de tester r1) · guardas estáticas", () => {
-  test("el editor no bloquea el guardado con el modelo vacío sin avisar", () => {
-    const hook = SRC("src/components/crm/agentes/editor/useAgentForm.ts");
-    expect(hook).toMatch(/if \(!form\.llm_model\.trim\(\)\)/);
-  });
+  // La validación requerida ahora se ejecuta con Intl real en agentsRender.test.tsx.
   test("h-dvh está en la clase de la hoja, no solo en el comentario (mutación M08)", () => {
     const editor = SRC("src/components/crm/agentes/AgentEditorDialog.tsx");
     expect(editor).toMatch(/className="flex h-dvh w-full flex-col/);

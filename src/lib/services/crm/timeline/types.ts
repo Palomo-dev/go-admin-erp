@@ -115,6 +115,8 @@ export interface TimelineNoteData {
 
 export interface TimelineMeetingEvent {
   id: string;
+  title?: string;
+  description?: string | null;
   start_at: string;
   end_at: string | null;
   location: string | null;

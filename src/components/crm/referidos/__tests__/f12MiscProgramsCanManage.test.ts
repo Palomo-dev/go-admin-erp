@@ -26,7 +26,7 @@ describe('GET /api/crm/referrals/programs: expone `can_manage` con la función �
   it('usa `canManagePartners(ctx)` (no una lista de roles propia)', () => {
     const src = read('src/app/api/crm/referrals/programs/route.ts');
     expect(src).toMatch(/import\s*\{[^}]*canManagePartners[^}]*\}\s*from\s*'@\/lib\/services\/crm\/f12RouteSupport'/);
-    expect(src).toMatch(/can_manage:\s*canManagePartners\(ctx\)/);
+    expect(src).toMatch(/can_manage:\s*(?:await\s+)?canManagePartners\(ctx\)/);
     expect(src).not.toMatch(/roleName|role_name|===\s*'admin'|===\s*'manager'/i);
   });
 });
@@ -66,7 +66,7 @@ describe('ReferralProgramsSheet: acciones de escritura condicionadas a `canManag
 
   it('«Editar» y «Eliminar» de cada programa, y su formulario de edición, están tras `canManage`', () => {
     expect(src).toMatch(/\{canManage && \(\s*<div className="flex shrink-0 gap-1">/);
-    expect(src).toMatch(/aria-label=\{`Eliminar programa \$\{p\.name\}`\}/);
+    expect(src).toMatch(/aria-label=\{tr\("Eliminar programa \{p0\}", \{p0: p\.name\}\)\}/);
     expect(src).toMatch(/\{canManage && isEditing && \(/);
   });
 

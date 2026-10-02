@@ -80,7 +80,7 @@ describe('health: un solo score — config real sobre la RPC (tester r1 T1, test
   test('T1.4: recalculateOrgHealth escribe el score de la CONFIG (22), no el de la RPC (58), en snapshots y customers.health_score', async () => {
     const db = makeDb({
       health_score_configs: [{ organization_id: 113, config: REAL_CONFIG, refresh_interval_hours: 24, is_active: true }],
-      health_score_snapshots: [], customers: [{ id: '0bd2a6bc', organization_id: 113 }],
+      health_score_snapshots: [], customers: [{ id: '0bd2a6bc', organization_id: 113, lifecycle_stage: 'customer', health_score: null }],
     }, { fn_customer_health: () => [REAL_ROWS[0]] });
     const r = await recalculateOrgHealth(113, sb(db), NOW);
     expect(r).toMatchObject({ customers: 1, snapshots_written: 1, error: null });
@@ -223,10 +223,10 @@ describe('onboarding: modelo puro del checklist (r2 §4)', () => {
 describe('drawer: la pestaña Onboarding solo se monta en oportunidades de onboarding (tester r1 §7, contrato sobre el fuente)', () => {
   const fs = jest.requireActual('fs') as typeof import('fs');
   const path = jest.requireActual('path') as typeof import('path');
-  const src = fs.readFileSync(path.join(process.cwd(), 'src/components/crm/pipeline/OpportunityDrawer.tsx'), 'utf8');
-  test('ONBOARDING_TAB y OnboardingTab están condicionados por isOnboardingOpportunity(...)', () => {
-    expect(src).toMatch(/const\s+showOnboarding\s*=\s*isOnboardingOpportunity\s*\(/);
-    expect(src).toMatch(/showOnboarding\s*\?\s*\[.*?ONBOARDING_TAB.*?\]\s*:\s*DRAWER_TABS/);
-    expect(src).toMatch(/\{\s*showOnboarding\s*&&\s*<TabsContent value="onboarding"/);
+  const src = fs.readFileSync(path.join(process.cwd(), 'src/components/crm/oportunidad/OportunidadDrawer.tsx'), 'utf8');
+  test('la pestaña y OnboardingTab están condicionados por isOnboardingOpportunity(...)', () => {
+    expect(src).toMatch(/const\s+conOnboarding\s*=\s*isOnboardingOpportunity\s*\(/);
+    expect(src).toMatch(/conOnboarding\s*\?\s*\(\['onboarding'\]\s+as\s+const\)\s*:\s*\[\]/);
+    expect(src).toMatch(/\{\s*conOnboarding\s*&&\s*panel\('onboarding',\s*<OnboardingTab/);
   });
 });

@@ -60,6 +60,7 @@ import { enqueueJob } from '@/lib/jobs/enqueue';
 import { buildStoragePath } from './recordingStorageService';
 import { getTwilioClientForOrg, VoiceNotConfiguredError } from './voiceContextService';
 import { voidConsentWithoutRecording } from './consentService';
+import { updateCall } from './callManagementService';
 
 export const RECONCILE_MIN_AGE_MINUTES = 10;
 export const RECONCILE_MAX_AGE_DAYS = 7;
@@ -156,9 +157,8 @@ export async function reconcileConsentsWithoutRecording(supabase: SupabaseClient
     if (opts.signal?.aborted) break;
     try {
       const outcome = await reconcileOne(supabase, call, log);
-      result[outcome] += 1;
       if (outcome === 'deferred') {
-        const deferrals = await markDeferred(supabase, call, now, log);
+        const deferrals = await markDeferred(supabase, call, now);
         const ageDays = call.ended_at ? (now.getTime() - new Date(call.ended_at).getTime()) / (24 * 3600 * 1000) : 0;
         if (deferrals >= RECONCILE_ALERT_AFTER_DEFERRALS || ageDays >= RECONCILE_ALERT_AFTER_DAYS) {
           // Aviso, nunca retirada a ciegas: sigue candidata hasta que haya
@@ -166,9 +166,10 @@ export async function reconcileConsentsWithoutRecording(supabase: SupabaseClient
           result.stale += 1;
           log.warn('consent_reconcile_stale_candidate', { org_id: call.organization_id, call_id: call.id, deferrals, age_days: Math.floor(ageDays), ended_at: call.ended_at });
         }
-      } else if (outcome === 'recovered' && call.metadata && call.metadata[RECONCILE_DEFERRED_AT_KEY] != null) {
-        await markResolved(supabase, call, now, log);
+      } else if (outcome === 'recovered') {
+        await markResolved(supabase, call, now);
       }
+      result[outcome] += 1;
     } catch (err) {
       result.errors += 1;
       log.warn('consent_reconcile_failed', { call_id: call.id, org_id: call.organization_id, error: err instanceof Error ? err.message : String(err) });
@@ -181,25 +182,27 @@ export async function reconcileConsentsWithoutRecording(supabase: SupabaseClient
 /**
  * Deja constancia del diferimiento en `calls.metadata` (fusionando: la fila
  * lleva otras claves —disposición, costes— que no se tocan). Devuelve el
- * contador acumulado. Un fallo al marcar se registra y NO cuenta como error
- * de la reconciliación: la llamada sigue diferida y, mientras esté en la
- * ventana, la próxima pasada la vuelve a ver.
+ * contador realmente guardado. Relee y recalcula si otro escritor cambia la
+ * llamada; un fallo de persistencia cuenta como error, sin acreditar la marca.
  */
-async function markDeferred(supabase: SupabaseClient, call: CandidateRow, now: Date, log: NonNullable<ReconcileOptions['log']>): Promise<number> {
-  const prev = Number(call.metadata?.[RECONCILE_DEFERRALS_KEY] ?? 0);
-  const deferrals = (Number.isFinite(prev) && prev > 0 ? prev : 0) + 1;
-  const metadata = { ...(call.metadata ?? {}), [RECONCILE_DEFERRED_AT_KEY]: now.toISOString(), [RECONCILE_DEFERRALS_KEY]: deferrals };
-  const { error } = await supabase.from('calls').update({ metadata }).eq('id', call.id).eq('organization_id', call.organization_id);
-  if (error) log.warn('consent_reconcile_defer_mark_failed', { org_id: call.organization_id, call_id: call.id, error: error.message });
-  return deferrals;
+async function markDeferred(supabase: SupabaseClient, call: CandidateRow, now: Date): Promise<number> {
+  const saved = await updateCall(call.id, call.organization_id, (fresh) => {
+    const prev = Number(fresh.metadata?.[RECONCILE_DEFERRALS_KEY] ?? 0);
+    return { metadata: { ...(fresh.metadata ?? {}), [RECONCILE_DEFERRED_AT_KEY]: now.toISOString(),
+      [RECONCILE_DEFERRALS_KEY]: (Number.isFinite(prev) && prev > 0 ? prev : 0) + 1 } };
+  }, supabase);
+  if (!saved) throw new Error('reconcile: llamada no encontrada al diferir');
+  return Number(saved.metadata[RECONCILE_DEFERRALS_KEY]);
 }
 
 /** Retira la marca de diferimiento (conserva el contador como evidencia) al recuperar la grabación. */
-async function markResolved(supabase: SupabaseClient, call: CandidateRow, now: Date, log: NonNullable<ReconcileOptions['log']>): Promise<void> {
-  const { [RECONCILE_DEFERRED_AT_KEY]: _deferredAt, ...rest } = call.metadata ?? {};
-  const metadata = { ...rest, [RECONCILE_RESOLVED_AT_KEY]: now.toISOString() };
-  const { error } = await supabase.from('calls').update({ metadata }).eq('id', call.id).eq('organization_id', call.organization_id);
-  if (error) log.warn('consent_reconcile_resolve_mark_failed', { org_id: call.organization_id, call_id: call.id, error: error.message });
+async function markResolved(supabase: SupabaseClient, call: CandidateRow, now: Date): Promise<void> {
+  const saved = await updateCall(call.id, call.organization_id, (fresh) => {
+    const metadata: Record<string, unknown> = { ...(fresh.metadata ?? {}), [RECONCILE_RESOLVED_AT_KEY]: now.toISOString() };
+    delete metadata[RECONCILE_DEFERRED_AT_KEY];
+    return { metadata };
+  }, supabase);
+  if (!saved) throw new Error('reconcile: llamada no encontrada al resolver');
 }
 
 /** Estados de Twilio que significan «la grabación NO existe» (evidencia positiva de ausencia). */
@@ -246,7 +249,8 @@ async function reconcileOne(supabase: SupabaseClient, call: CandidateRow, log: N
 
   // Evidencia positiva de ausencia (Twilio respondió y no hay grabación real)
   // o nadie a quien preguntar (sin `provider_call_sid`).
-  await voidConsentWithoutRecording(call.id, orgId, supabase, RECONCILE_VOID_REASON);
+  const voided = await voidConsentWithoutRecording(call.id, orgId, supabase, RECONCILE_VOID_REASON);
+  if (!voided) return 'recovered';
   log.warn('consent_reconcile_voided', { org_id: orgId, call_id: call.id });
   return 'voided';
 }

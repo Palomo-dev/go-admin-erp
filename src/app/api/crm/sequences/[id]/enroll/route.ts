@@ -1,5 +1,6 @@
+import { requireSequenceManager } from '@/lib/services/crm/sequenceRouteSupport';
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError, requireOrgAdmin } from '@/lib/utils/orgContext';
+import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import { enrollInSequence } from '@/lib/services/crm/sequenceService';
 
@@ -16,8 +17,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const ctx = await getServerOrgContext();
-    requireOrgAdmin(ctx);
+    const ctx = await getServerOrgContext(request);
+    await requireSequenceManager(ctx);
     const { id } = await params;
     const body = await readOrgBody(ctx, request);
 

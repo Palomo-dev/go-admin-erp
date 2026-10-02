@@ -9,6 +9,7 @@
 
 import type { ConditionTrace } from './conditionsDsl';
 import { upsertRule, withoutRule } from './ruleEditorModel';
+import type { BulkAutomationPreview } from './automationBulkPreview';
 
 export type Fetch = (url: string, init?: RequestInit) => Promise<Response>;
 /** El `fetch` del navegador, sin atar `this` (los tests pasan uno doblado). */
@@ -60,33 +61,39 @@ export interface AutomationRunView {
 // ─── Estado de la lista (reducer puro) ──────────────────────────────────────
 
 export interface RulesState {
+  scope?: number | null;
   rules: AutomationRuleView[];
   loading: boolean;
   /** `true` desde la primera carga buena: con `error`, la lista es la última conocida (R-2). */
   loaded: boolean;
   error: string | null;
+  canManage: boolean;
+  summary: AutomationSummary | null;
 }
+export interface AutomationSummary { active_rules: number; executed_7d: number; skipped_7d: number; failed_7d: number; from: string; until: string }
 
 export type RulesEvent =
+  | { type: 'scope_changed'; scope: number | null }
   | { type: 'load_started' }
-  | { type: 'load_ok'; rows: AutomationRuleView[] }
+  | { type: 'load_ok'; rows: AutomationRuleView[]; canManage?: boolean; summary?: AutomationSummary | null }
   | { type: 'load_failed'; message: string }
   | { type: 'upserted'; row: AutomationRuleView }
   | { type: 'removed'; id: string };
 
-export const INITIAL_RULES_STATE: RulesState = { rules: [], loading: true, loaded: false, error: null };
+export const INITIAL_RULES_STATE: RulesState = { rules: [], loading: true, loaded: false, error: null, canManage: false, summary: null };
 
 export function applyMutation(state: RulesState, event: RulesEvent): RulesState {
   switch (event.type) {
+    case 'scope_changed': return { ...INITIAL_RULES_STATE, scope:event.scope };
     // Solo la primera carga muestra el esqueleto (M26): las recargas tras
     // guardar, activar o borrar mantienen la lista montada, o el botón que
     // abrió la hoja dejaría de existir y el foco caería al body (H1).
     case 'load_started':
       return { ...state, loading: !state.loaded, error: null };
     case 'load_ok':
-      return { rules: event.rows, loading: false, loaded: true, error: null };
+      return { ...state, rules: event.rows, loading: false, loaded: true, error: null, canManage: event.canManage === true, summary: event.summary ?? null };
     case 'load_failed':
-      return { ...state, loading: false, error: event.message };
+      return { ...state, loading: false, error: event.message, canManage: false };
     case 'upserted':
       return { ...state, rules: upsertRule(state.rules, event.row) };
     case 'removed':
@@ -159,10 +166,15 @@ export async function deleteRule(fetchFn: Fetch, id: string): Promise<{ type: 'r
 export async function loadRules(fetchFn: Fetch, dispatch: (e: RulesEvent) => void): Promise<void> {
   dispatch({ type: 'load_started' });
   try {
-    dispatch({ type: 'load_ok', rows: await fetchRules(fetchFn) });
+    const body = await call(fetchFn, BASE, { cache: 'no-store' }, 'No se pudieron cargar las reglas');
+    dispatch({ type: 'load_ok', rows: ((body.data as unknown[]) ?? []).map(viewOf), canManage: body.can_manage === true, summary: (body.summary as AutomationSummary | undefined) ?? null });
   } catch (err) {
     dispatch({ type: 'load_failed', message: err instanceof Error ? err.message : 'Error desconocido' });
   }
+}
+
+export async function bulkDryRunRule(fetchFn: Fetch, id: string): Promise<BulkAutomationPreview> {
+  return (await call(fetchFn, `/api/crm/automations/${encodeURIComponent(id)}/dry-run/bulk`, jsonInit('POST', {}), 'No se pudo simular la regla')).data as BulkAutomationPreview;
 }
 
 /**
@@ -177,7 +189,7 @@ export async function runMutation<E extends RulesEvent>(fetchFn: Fetch, dispatch
 }
 
 export async function dryRunRule(fetchFn: Fetch, id: string, opportunityId: string | null): Promise<DryRunResult> {
-  const body = await call(fetchFn, `${BASE}/${id}/trigger`, jsonInit('POST', { dry_run: true, opportunity_id: opportunityId }), 'No se pudo simular la regla');
+  const body = await call(fetchFn, `/api/crm/automations/${encodeURIComponent(id)}/dry-run`, jsonInit('POST', { opportunity_id: opportunityId }), 'No se pudo simular la regla');
   const data = body.data as Partial<DryRunResult>;
   return {
     matched: !!data.matched,

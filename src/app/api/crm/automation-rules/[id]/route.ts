@@ -1,20 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError, requireOrgAdmin } from '@/lib/utils/orgContext';
+import { getServerOrgContext, requireOrgAdminOrPermission } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import {
   updateAutomationRule,
   deleteAutomationRule,
   validateRuleInput,
 } from '@/lib/services/crm/automationService';
+import { exigirUuid } from '@/lib/services/crm/crmRouteSupport';
+import { automationRouteError } from '@/lib/services/crm/automation/automationRouteErrors';
 
 function errorResponse(error: unknown, tag: string): NextResponse {
-  if (error instanceof OrgContextError) {
-    return NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.statusCode });
-  }
-  const message = error instanceof Error ? error.message : 'Error desconocido';
-  console.error(`[Automation Rules] ${tag}:`, message);
-  const status = /inválida|inválido|requerido/i.test(message) ? 400 : 500;
-  return NextResponse.json({ success: false, error: message }, { status });
+  return automationRouteError(error, `Automation Rules ${tag}`);
 }
 
 /**
@@ -25,10 +21,11 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const ctx = await getServerOrgContext();
-    requireOrgAdmin(ctx);
+    const ctx = await getServerOrgContext(request);
+    await requireOrgAdminOrPermission(ctx);
     const { id } = await params;
     const body = await readOrgBody(ctx, request);
+    exigirUuid(id, 'Regla');
 
     const issues = validateRuleInput(body);
     if (issues.length) {
@@ -59,10 +56,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     await readOrgBody(ctx, request);
-    requireOrgAdmin(ctx);
+    await requireOrgAdminOrPermission(ctx);
     const { id } = await params;
+    exigirUuid(id, 'Regla');
     await deleteAutomationRule(id, ctx.organizationId, ctx.supabase);
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error: unknown) {

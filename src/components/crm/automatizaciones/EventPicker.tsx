@@ -1,4 +1,5 @@
 'use client';
+import { useAutomationText } from './useAutomationText';
 
 /**
  * Selector del evento para el disparador «Ocurre un evento del CRM» (juicio
@@ -25,14 +26,15 @@ interface Props {
 
 const FREE_TEXT = /^[a-z_]+\.[a-z_.]+$/;
 
-export function currentEventLabel(value: string): string {
+export function currentEventLabel(value: string, tr: (source: string) => string = (source) => source): string {
   const trimmed = value.trim();
-  if (!trimmed) return 'Cualquier evento';
+  if (!trimmed) return tr('Cualquier evento');
   const known = knownEvent(trimmed);
-  return known ? `${known.label} (${known.value})` : trimmed;
+  return known ? `${tr(known.label)} (${known.value})` : trimmed;
 }
 
 export function EventPicker({ id, value, describedBy, onChange }: Props) {
+  const tr = useAutomationText();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const trimmedQuery = query.trim();
@@ -58,47 +60,46 @@ export function EventPicker({ id, value, describedBy, onChange }: Props) {
           aria-describedby={describedBy}
           className="h-9 w-full justify-between font-normal"
         >
-          <span className="truncate">{currentEventLabel(value)}</span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-60" aria-hidden="true" />
+          <span className="truncate">{currentEventLabel(value,tr)}</span>
+          <ChevronsUpDown strokeWidth={1.5} className="ml-2 h-4 w-4 shrink-0 opacity-60" aria-hidden="true" />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] min-w-80 p-0">
         <Command>
-          <CommandInput placeholder="Buscar o escribir entidad.accion…" value={query} onValueChange={setQuery} />
+          <CommandInput placeholder={tr("Buscar o escribir entidad.accion…")} value={query} onValueChange={setQuery} />
           {engineRouted && (
-            <p role="alert" className="border-b border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
-              Ese evento va por su propio disparador («cambia de etapa» o «cambia un dato»): una regla de evento con ese nombre no se dispararía.
-            </p>
+            <p role="alert" className="border-b border-line-warning bg-warning-subtle px-3 py-2 text-xs text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+              {tr("Ese evento va por su propio disparador («cambia de etapa» o «cambia un dato»): una regla de evento con ese nombre no se dispararía.")}</p>
           )}
           <CommandList>
             <CommandEmpty>
               {trimmedQuery && !canUseFreeText
-                ? 'Ningún evento coincide. Un nombre libre tiene la forma entidad.accion (minúsculas).'
-                : 'Ningún evento coincide.'}
+                ? tr("Ningún evento coincide. Un nombre libre tiene la forma entidad.accion (minúsculas).")
+                : tr("Ningún evento coincide.")}
             </CommandEmpty>
-            <CommandGroup heading="Eventos conocidos">
+            <CommandGroup heading={tr("Eventos conocidos")}>
               <CommandItem value="cualquier evento *" onSelect={() => pick('')}>
-                <Check className={cn('mr-2 h-4 w-4', value.trim() ? 'opacity-0' : 'opacity-100')} aria-hidden="true" />
+                <Check strokeWidth={1.5} className={cn("mr-2 h-4 w-4", value.trim() ? 'opacity-0' : 'opacity-100')} aria-hidden="true" />
                 <div>
-                  <p className="text-sm">Cualquier evento</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">La regla se evalúa con cualquier evento de este tipo.</p>
+                  <p className="text-sm">{tr("Cualquier evento")}</p>
+                  <p className="text-xs text-fg-secondary dark:text-fg-secondary">{tr("La regla se evalúa con cualquier evento de este tipo.")}</p>
                 </div>
               </CommandItem>
               {KNOWN_EVENTS.map((ev) => (
-                <CommandItem key={ev.value} value={`${ev.label} ${ev.value}`} onSelect={() => pick(ev.value)}>
-                  <Check className={cn('mr-2 h-4 w-4', value.trim() === ev.value ? 'opacity-100' : 'opacity-0')} aria-hidden="true" />
+                <CommandItem key={ev.value} value={tr("{p0} {p1}", { p0: tr(ev.label), p1: ev.value })} onSelect={() => pick(ev.value)}>
+                  <Check strokeWidth={1.5} className={cn("mr-2 h-4 w-4", value.trim() === ev.value ? 'opacity-100' : 'opacity-0')} aria-hidden="true" />
                   <div>
-                    <p className="text-sm">{ev.label} <span className="font-mono text-xs text-gray-600 dark:text-gray-400">{ev.value}</span></p>
-                    <p className="text-xs text-gray-600 dark:text-gray-400">{ev.hint}</p>
+                    <p className="text-sm">{tr(ev.label)} <span className="font-mono text-xs text-fg-secondary dark:text-fg-secondary">{ev.value}</span></p>
+                    <p className="text-xs text-fg-secondary dark:text-fg-secondary">{tr(ev.hint)}</p>
                   </div>
                 </CommandItem>
               ))}
             </CommandGroup>
             {canUseFreeText && (
-              <CommandGroup heading="Nombre libre">
-                <CommandItem value={`usar ${trimmedQuery}`} onSelect={() => pick(trimmedQuery)}>
-                  <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
-                  <span className="text-sm">Usar «{trimmedQuery}»</span>
+              <CommandGroup heading={tr("Nombre libre")}>
+                <CommandItem value={tr("usar {p0}", { p0: trimmedQuery })} onSelect={() => pick(trimmedQuery)}>
+                  <Pencil strokeWidth={1.5} className="mr-2 h-4 w-4" aria-hidden="true" />
+                  <span className="text-sm">{tr("Usar «")}{trimmedQuery}»</span>
                 </CommandItem>
               </CommandGroup>
             )}

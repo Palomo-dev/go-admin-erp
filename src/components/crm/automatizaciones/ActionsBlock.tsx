@@ -1,4 +1,5 @@
 'use client';
+import { useAutomationText } from './useAutomationText';
 
 /**
  * Bloque «entonces»: las acciones como fichas numeradas. «Añadir acción»
@@ -38,6 +39,7 @@ interface Props {
 }
 
 export function ActionsBlock({ form, lookups, errors, selected, onSelect, onChange }: Props) {
+  const tr = useAutomationText();
   const [menuOpen, setMenuOpen] = useState(false);
   // Tester UXM-C: tras reordenar por teclado, el editor se vuelve a montar (clave `editor-${selected}`) y el botón
   // pulsado desaparece; sin esto el foco caía al contenedor de la hoja. `string[]`: el primer id enfocable (no deshabilitado).
@@ -85,9 +87,8 @@ export function ActionsBlock({ form, lookups, errors, selected, onSelect, onChan
   return (
     <div className="space-y-3">
       {actions.length === 0 ? (
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          Sin acciones la regla no hará nada aunque se dispare. Añade al menos una.
-        </p>
+        <p className="text-sm text-fg-secondary dark:text-fg-secondary">
+          {tr("Sin acciones la regla no hará nada aunque se dispare. Añade al menos una.")}</p>
       ) : (
         <div className={CHIP_LIST_CLASS}>
           {/* UX móvil: cada acción es una tarjeta apilada (número + frase que envuelve); en línea desde `sm`. */}
@@ -106,14 +107,14 @@ export function ActionsBlock({ form, lookups, errors, selected, onSelect, onChan
                     className={cn(chipClass(open, 'emerald', true), warn && 'border-amber-500 dark:border-amber-400')}
                     onClick={() => onSelect(open ? null : index)}
                   >
-                    <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-emerald-700 px-1 text-xs font-semibold text-white" aria-label={`Acción ${index + 1}`}>
+                    <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-emerald-700 px-1 text-xs font-semibold text-white" aria-label={tr("Acción {p0}", { p0: index + 1 })}>
                       {index + 1}
                     </span>
                     <span className={CHIP_TEXT_CLASS}>{describeAction(action, lookups.humanizer)}</span>
-                    {warn && <AlertTriangle className={cn(CHIP_ICON_CLASS, 'text-amber-700 dark:text-amber-300')} aria-label="Revisar" />}
+                    {warn && <AlertTriangle strokeWidth={1.5} className={cn(CHIP_ICON_CLASS, 'text-warning-text dark:text-warning-text')} aria-label={tr("Revisar")} />}
                     {open
-                      ? <ChevronUp className={CHIP_ICON_CLASS} aria-hidden="true" />
-                      : <ChevronDown className={CHIP_ICON_CLASS} aria-hidden="true" />}
+                      ? <ChevronUp strokeWidth={1.5} className={CHIP_ICON_CLASS} aria-hidden="true" />
+                      : <ChevronDown strokeWidth={1.5} className={CHIP_ICON_CLASS} aria-hidden="true" />}
                   </button>
                 </Chip>
               );
@@ -153,29 +154,28 @@ export function ActionsBlock({ form, lookups, errors, selected, onSelect, onChan
       <Popover open={menuOpen} onOpenChange={setMenuOpen}>
         <PopoverTrigger asChild>
           <Button id="action-add" type="button" size="sm" variant="outline" className="h-8" aria-haspopup="listbox">
-            <Plus className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> Añadir acción
-          </Button>
+            <Plus strokeWidth={1.5} className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> {tr("Añadir acción")}</Button>
         </PopoverTrigger>
         <PopoverContent align="start" className="w-80 p-0" onCloseAutoFocus={onMenuCloseAutoFocus}>
           <Command>
-            <CommandInput placeholder="Buscar acción…" />
+            <CommandInput placeholder={tr("Buscar acción…")} />
             <CommandList>
-              <CommandEmpty>Ninguna acción coincide.</CommandEmpty>
-              <CommandGroup heading="Disponibles">
+              <CommandEmpty>{tr("Ninguna acción coincide.")}</CommandEmpty>
+              <CommandGroup heading={tr("Disponibles")}>
                 {ACTION_CATALOG.filter((a) => a.implemented).map((a) => (
-                  <CommandItem key={a.type} value={`${a.label} ${a.type}`} onSelect={() => add(a.type)}>
+                  <CommandItem key={a.type} value={tr("{p0} {p1}", { p0: tr(a.label), p1: a.type })} onSelect={() => add(a.type)}>
                     <div>
-                      <p className="text-sm">{a.label}</p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">{a.hint}</p>
+                      <p className="text-sm">{tr(a.label)}</p>
+                      <p className="text-xs text-fg-secondary dark:text-fg-secondary">{tr(a.hint)}</p>
                     </div>
                   </CommandItem>
                 ))}
               </CommandGroup>
-              <CommandGroup heading="Todavía no disponibles">
+              <CommandGroup heading={tr("Todavía no disponibles")}>
                 {ACTION_CATALOG.filter((a) => !a.implemented).map((a) => (
-                  <CommandItem key={a.type} value={`${a.label} ${a.type}`} onSelect={() => add(a.type)}>
-                    <AlertTriangle className="mr-2 h-3.5 w-3.5 text-amber-700 dark:text-amber-300" aria-hidden="true" />
-                    <span className="text-sm">{a.label}</span>
+                  <CommandItem key={a.type} value={tr("{p0} {p1}", { p0: tr(a.label), p1: a.type })} onSelect={() => add(a.type)}>
+                    <AlertTriangle strokeWidth={1.5} className="mr-2 h-3.5 w-3.5 text-warning-text dark:text-warning-text" aria-hidden="true" />
+                    <span className="text-sm">{tr(a.label)}</span>
                   </CommandItem>
                 ))}
               </CommandGroup>

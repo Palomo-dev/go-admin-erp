@@ -139,13 +139,17 @@ it.each([{ customer_id: U(2) }, { opportunity_id: U(3) }])(
   },
 );
 it("registro manual asigna el usuario y organización de la sesión", async () => {
+  db.rpc.fn_crm_crear_llamada = { data: { id: U(10), organization_id: ORG, user_id: YO, mode: "manual", status: "completed" } };
   expect((await POST(post({ ...manual, customer_id: U(1) }))).status).toBe(201);
-  expect(db.writes[0].payload).toEqual(
+  const write = db.rpcCalls.find((call) => call.fn === "fn_crm_crear_llamada");
+  expect(write?.args.p_org).toBe(ORG);
+  expect(write?.args.p_payload).toEqual(
     expect.objectContaining({
-      organization_id: ORG,
       user_id: YO,
       mode: "manual",
       status: "completed",
     }),
   );
+  expect(write?.args.p_payload).not.toHaveProperty("organization_id");
+  expect(db.writes).toHaveLength(0);
 });

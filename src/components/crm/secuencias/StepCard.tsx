@@ -1,4 +1,5 @@
 'use client';
+import { useSequenceText } from './useSequenceText';
 
 /**
  * Tarjeta de un paso en la línea de tiempo vertical (brief UX 6.3): nodo con
@@ -35,62 +36,63 @@ interface Props {
 }
 
 export function StepCard({ step, entry, total, readOnly, templates, lookupsLoading, onPatch, onRemove, onMove, onDragStart }: Props) {
+ const tr=useSequenceText();
   const n = entry.index + 1;
   const meta = channelMeta(step.channel);
   const templateName = templates.find((t) => t.id === step.template_id)?.name ?? null;
   const contentKey = step.channel === 'email' ? 'subject' : 'title';
-  const hoursErr = hoursError(step.delay_hours ?? 0);
+  const hoursErr = hoursError(step.delay_hours ?? 0, tr);
   const setConfig = (key: string, value: string) => onPatch({ action_config: { ...(step.action_config ?? {}), [key]: value } });
 
   return (
     <div className="relative flex gap-3 py-1">
       <div className="flex w-9 shrink-0 justify-center pt-2">
-        <span className="rounded-full bg-white p-0.5 dark:bg-gray-900">
+        <span className="rounded-full bg-surface p-0.5 dark:bg-surface">
           <ChannelIcon channel={step.channel} />
         </span>
       </div>
 
-      <div className={`min-w-0 flex-1 rounded-lg border bg-white p-3 shadow-sm dark:bg-gray-900 ${
-        entry.isBranch ? 'border-amber-300 dark:border-amber-700' : 'border-gray-200 dark:border-gray-700'
+      <div className={`min-w-0 flex-1 rounded-lg border bg-surface p-3 shadow-sm dark:bg-surface ${
+        entry.isBranch ? 'border-amber-300 dark:border-amber-700' : 'border-line dark:border-line-strong'
       }`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
-            <span className="font-medium text-gray-900 dark:text-gray-100">Paso {n} · {meta.label}</span>
-            <span className="text-gray-600 dark:text-gray-400">{entry.delayLabel}</span>
-            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-300">{entry.dayLabel}</span>
+            <span className="font-medium text-fg dark:text-fg">{tr("Paso")}{n} · {tr(meta.label)}</span>
+            <span className="text-fg-secondary dark:text-fg-secondary">{entry.delayLabel}</span>
+            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-fg-secondary dark:bg-hover dark:text-fg-secondary">{entry.dayLabel}</span>
           </div>
           {!readOnly && (
             <div className="flex items-center gap-0.5">
               <Button type="button" size="icon" variant="ghost" className="h-7 w-7" id={`step-${step.uid}-move-up`}
-                aria-label={`Mover el paso ${n} arriba`} disabled={n === 1} onClick={() => onMove(-1)}>
-                <ArrowUp className="h-4 w-4" aria-hidden="true" />
+                aria-label={tr("Mover el paso {p0} arriba",{p0:n})} disabled={n === 1} onClick={() => onMove(-1)}>
+                <ArrowUp strokeWidth={1.5} className="h-4 w-4" aria-hidden="true" />
               </Button>
               <Button type="button" size="icon" variant="ghost" className="h-7 w-7" id={`step-${step.uid}-move-down`}
-                aria-label={`Mover el paso ${n} abajo`} disabled={n === total} onClick={() => onMove(1)}>
-                <ArrowDown className="h-4 w-4" aria-hidden="true" />
+                aria-label={tr("Mover el paso {p0} abajo",{p0:n})} disabled={n === total} onClick={() => onMove(1)}>
+                <ArrowDown strokeWidth={1.5} className="h-4 w-4" aria-hidden="true" />
               </Button>
               <span
                 role="presentation"
                 onPointerDown={onDragStart}
-                title="Arrastrar para reordenar"
-                className="flex h-7 w-7 cursor-grab touch-none items-center justify-center rounded text-gray-400 hover:bg-gray-100 active:cursor-grabbing dark:text-gray-500 dark:hover:bg-gray-800"
+                title={tr("Arrastrar para reordenar")}
+                className="flex h-7 w-7 cursor-grab touch-none items-center justify-center rounded text-fg-secondary hover:bg-gray-100 active:cursor-grabbing dark:text-fg-muted dark:hover:bg-hover"
               >
-                <GripVertical className="h-4 w-4" aria-hidden="true" />
+                <GripVertical strokeWidth={1.5} className="h-4 w-4" aria-hidden="true" />
               </span>
               <Button type="button" size="icon" variant="ghost" className="h-7 w-7" id={`step-${step.uid}-remove`}
-                aria-label={`Eliminar el paso ${n}`} onClick={onRemove}>
-                <Trash2 className="h-4 w-4 text-red-600 dark:text-red-400" aria-hidden="true" />
+                aria-label={tr("Eliminar el paso {p0}",{p0:n})} onClick={onRemove}>
+                <Trash2 strokeWidth={1.5} className="h-4 w-4 text-danger-text dark:text-danger-text" aria-hidden="true" />
               </Button>
             </div>
           )}
         </div>
 
         {readOnly ? (
-          <p className="mt-1.5 text-sm text-gray-700 dark:text-gray-300">{summarizeStep(step, templateName)}</p>
+          <p className="mt-1.5 text-sm text-fg-secondary dark:text-fg-secondary">{summarizeStep(step, templateName, tr)}</p>
         ) : (
           <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
             <div>
-              <Label htmlFor={`step-${step.uid}-channel`} className="text-xs">Canal</Label>
+              <Label htmlFor={`step-${step.uid}-channel`} className="text-xs">{tr("Canal")}</Label>
               <select
                 id={`step-${step.uid}-channel`}
                 className={SELECT_CLASS}
@@ -101,21 +103,21 @@ export function StepCard({ step, entry, total, readOnly, templates, lookupsLoadi
                   condition: e.target.value === 'condition' ? (step.condition ?? { op: 'and', rules: [] }) : undefined,
                 })}
               >
-                {CHANNEL_OPTIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                {CHANNEL_OPTIONS.map((c) => <option key={c.value} value={c.value}>{tr(c.label)}</option>)}
               </select>
-              <p id={`step-${step.uid}-channel-hint`} className="mt-1 text-xs text-gray-500 dark:text-gray-400">{meta.description}</p>
+              <p id={`step-${step.uid}-channel-hint`} className="mt-1 text-xs text-fg-muted dark:text-fg-secondary">{tr(meta.description)}</p>
             </div>
             <div>
-              <Label htmlFor={`step-${step.uid}-days`} className="text-xs">Espera (días)</Label>
+              <Label htmlFor={`step-${step.uid}-days`} className="text-xs">{tr("Espera (días)")}</Label>
               <Input id={`step-${step.uid}-days`} type="number" inputMode="numeric" min={0} max={3650}
                 value={step.delay_days} onChange={(e) => onPatch({ delay_days: Number(e.target.value) })} />
             </div>
             <div>
-              <Label htmlFor={`step-${step.uid}-hours`} className="text-xs">y horas</Label>
+              <Label htmlFor={`step-${step.uid}-hours`} className="text-xs">{tr("y horas")}</Label>
               <Input id={`step-${step.uid}-hours`} type="number" inputMode="numeric" min={0} max={23}
                 value={step.delay_hours ?? 0} onChange={(e) => onPatch({ delay_hours: Number(e.target.value) })}
                 aria-invalid={!!hoursErr} aria-describedby={hoursErr ? `step-${step.uid}-hours-error` : undefined} />
-              {hoursErr && <p id={`step-${step.uid}-hours-error`} className="mt-1 text-xs text-red-700 dark:text-red-300">{hoursErr}</p>}
+              {hoursErr && <p id={`step-${step.uid}-hours-error`} className="mt-1 text-xs text-danger-text dark:text-danger-text">{hoursErr}</p>}
             </div>
           </div>
         )}
@@ -123,26 +125,26 @@ export function StepCard({ step, entry, total, readOnly, templates, lookupsLoadi
         {!readOnly && WITH_CONTENT.has(step.channel) && (
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div>
-              <Label htmlFor={`step-${step.uid}-content`} className="text-xs">{step.channel === 'email' ? 'Asunto' : 'Título'}</Label>
+              <Label htmlFor={`step-${step.uid}-content`} className="text-xs">{step.channel === 'email' ? 'Asunto' : tr("Título")}</Label>
               <Input
                 id={`step-${step.uid}-content`}
-                placeholder={step.channel === 'email' ? 'Asunto del correo' : 'Qué hay que hacer'}
+                placeholder={step.channel === 'email' ? tr("Asunto del correo") : tr("Qué hay que hacer")}
                 value={String((step.action_config ?? {})[contentKey] ?? '')}
                 onChange={(e) => setConfig(contentKey, e.target.value)}
               />
             </div>
             <div>
-              <span className="block text-xs font-medium leading-none text-gray-900 dark:text-gray-100">Plantilla</span>
+              <span className="block text-xs font-medium leading-none text-fg dark:text-fg">{tr("Plantilla")}</span>
               {lookupsLoading ? (
-                <p className="text-xs text-gray-500 dark:text-gray-400">Cargando plantillas…</p>
+                <p className="text-xs text-fg-muted dark:text-fg-secondary">{tr("Cargando plantillas…")}</p>
               ) : (
                 <EntitySelect
                   value={step.template_id ?? null}
                   onChange={(id) => onPatch({ template_id: id })}
                   options={templates}
-                  placeholder="Sin plantilla (contenido libre)"
-                  emptyMessage="No hay plantillas creadas."
-                  ariaLabel={`Plantilla del paso ${n}`}
+                  placeholder={tr("Sin plantilla (contenido libre)")}
+                  emptyMessage={tr("No hay plantillas creadas.")}
+                  ariaLabel={tr("Plantilla del paso {p0}",{p0:n})}
                   renderSubtitle={(t) => (t as { channel?: string | null }).channel ?? null}
                 />
               )}

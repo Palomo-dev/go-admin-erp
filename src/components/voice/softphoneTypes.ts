@@ -7,6 +7,7 @@
 
 import type { AudioDevicesState } from './hooks/useAudioDevices';
 import type { DeviceState } from './hooks/useTwilioDevice';
+import type { PhoneControlState, PhoneControlResult, PhoneTransferMode, PhoneTransferTarget } from '@/lib/services/crm/phoneConferenceTypes';
 
 export type CallStatus = 'idle' | 'connecting' | 'ringing' | 'connected' | 'ended';
 
@@ -65,7 +66,12 @@ export interface SoftphoneContextValue {
   /** `calls.id` de la llamada activa (Realtime por provider_call_sid). */
   activeCallId: string | null;
   /** Fila `calls` en vivo (estado, grabación). */
-  activeCallRow: { id: string; status: string; recording_enabled: boolean; consent_given: boolean } | null;
+  activeCallRow: { id: string; status: string; recording_enabled: boolean; consent_given: boolean; recording_started?: boolean; can_edit_notes?: boolean } | null;
+  phoneControl: PhoneControlState;
+  setHold: (held: boolean) => Promise<PhoneControlResult>;
+  transferCall: (target: PhoneTransferTarget, mode: PhoneTransferMode) => Promise<PhoneControlResult>;
+  confirmTransfer: () => Promise<PhoneControlResult>;
+  cancelTransfer: () => Promise<PhoneControlResult>;
   muted: boolean;
   hasIncoming: boolean;
   incoming: { from: string; callSid: string | null } | null;

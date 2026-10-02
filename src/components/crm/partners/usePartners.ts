@@ -8,6 +8,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PartnerDealView, PartnerTier, PartnerView, RegisterDealResult } from '@/lib/services/crm/partnerService';
+import {readRedPages} from '../red/readRedPages';
+import type {F12Stats} from '@/lib/services/crm/f12ReadService';
 import type { CommissionStatus } from '@/lib/services/crm/partnerCommission';
 
 async function call(url: string, init?: RequestInit): Promise<{ ok: boolean; status: number; body: Record<string, unknown> }> {
@@ -29,6 +31,9 @@ export function usePartners() {
   const [partners, setPartners] = useState<PartnerView[]>([]);
   const [tiers, setTiers] = useState<PartnerTier[]>([]);
   const [canManage, setCanManage] = useState(false);
+  const [canRegister, setCanRegister] = useState(false);
+  const [stats, setStats] = useState<F12Stats | null>(null);
+  const [statsError, setStatsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,11 +43,14 @@ export function usePartners() {
     if (!loadedOnce.current) setLoading(true);
     setError(null);
     try {
-      const [list, tierList] = await Promise.all([call('/api/crm/partners'), call('/api/crm/partners/tiers')]);
+      const [list, tierList, figures] = await Promise.all([call('/api/crm/partners'), call('/api/crm/partners/tiers'), call('/api/crm/partners/stats?period=year')]);
       if (!list.ok) throw new Error(messageOf(list.body, 'No se pudieron cargar los partners'));
       if (!tierList.ok) throw new Error(messageOf(tierList.body, 'No se pudieron cargar los tiers'));
       setPartners((list.body.data as PartnerView[]) ?? []);
       setCanManage(list.body.can_manage === true);
+      setCanRegister(list.body.can_register === true);
+      setStats(figures.ok ? figures.body.data as F12Stats : null);
+      setStatsError(figures.ok ? null : messageOf(figures.body, 'No se pudieron cargar las cifras'));
       setTiers((tierList.body.data as PartnerTier[]) ?? []);
       loadedOnce.current = true;
       setLoaded(true);
@@ -85,9 +93,8 @@ export function usePartners() {
   }, [load]);
 
   const loadDeals = useCallback(async (partnerId: string) => {
-    const { ok, body } = await call(`/api/crm/partners/${partnerId}/deals?limit=200`);
-    if (!ok) throw new Error(messageOf(body, 'No se pudieron cargar los deals'));
-    return (body.data as PartnerDealView[]) ?? [];
+    const result = await readRedPages<PartnerDealView>(`/api/crm/partners/${partnerId}/deals`);
+    return result.data;
   }, []);
 
   const registerDeal = useCallback(async (partnerId: string, payload: { opportunity_id: string; deal_type: string }) => {
@@ -104,5 +111,5 @@ export function usePartners() {
     return body.data as PartnerDealView;
   }, [load]);
 
-  return { partners, tiers, canManage, loading, loaded, error, reload: load, savePartner, deletePartner, saveTier, deleteTier, loadDeals, registerDeal, transitionDeal };
+  return { partners, tiers, canManage, canRegister, stats, statsError, loading, loaded, error, reload: load, savePartner, deletePartner, saveTier, deleteTier, loadDeals, registerDeal, transitionDeal };
 }

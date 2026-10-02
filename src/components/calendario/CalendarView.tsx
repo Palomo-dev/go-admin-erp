@@ -13,6 +13,9 @@ import { AgendaView } from './AgendaView';
 import { EventModal } from './EventModal';
 import { useCalendar } from './useCalendar';
 import { CalendarEvent, EventStatus } from './types';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { instanteDelSlot } from './fechasCalendario';
+import { esReunionCrm } from './reunionesCalendario';
 import { cn } from '@/utils/Utils';
 
 interface CalendarViewProps {
@@ -21,6 +24,7 @@ interface CalendarViewProps {
 }
 
 export function CalendarView({ organizationId, className }: CalendarViewProps) {
+  const { timezone } = useOrgTimezone();
   const router = useRouter();
   const { toast } = useToast();
   
@@ -115,9 +119,9 @@ export function CalendarView({ organizationId, className }: CalendarViewProps) {
       isOpen: true,
       mode: 'create',
       event: null,
-      defaultDate: currentDate,
+      defaultDate: instanteDelSlot(currentDate, 9, timezone),
     });
-  }, [currentDate]);
+  }, [currentDate, timezone]);
 
   const handleCloseModal = useCallback(() => {
     setModalState((prev) => ({ ...prev, isOpen: false }));
@@ -132,6 +136,7 @@ export function CalendarView({ organizationId, className }: CalendarViewProps) {
           description: result.error,
           variant: 'destructive',
         });
+        return false;
       } else {
         toast({
           title: 'Evento creado',
@@ -146,13 +151,15 @@ export function CalendarView({ organizationId, className }: CalendarViewProps) {
           description: result.error,
           variant: 'destructive',
         });
+        return false;
       } else {
         toast({
           title: 'Evento actualizado',
           description: 'El evento se ha actualizado correctamente',
         });
       }
-    }
+    } else return false;
+    return true;
   }, [modalState, createEvent, updateEvent, toast]);
 
   const handleDeleteEvent = useCallback(async (id: string) => {
@@ -163,12 +170,14 @@ export function CalendarView({ organizationId, className }: CalendarViewProps) {
         description: result.error,
         variant: 'destructive',
       });
+      return false;
     } else {
       toast({
         title: 'Evento eliminado',
         description: 'El evento se ha eliminado correctamente',
       });
     }
+    return true;
   }, [deleteEvent, toast]);
 
   const handleNavigateToSource = useCallback((event: CalendarEvent) => {
@@ -232,11 +241,11 @@ export function CalendarView({ organizationId, className }: CalendarViewProps) {
   }, []);
 
   const handleDuplicateEvent = useCallback((event: CalendarEvent) => {
-    if (event.source_type !== 'calendar_event') return;
+    if (event.source_type !== 'calendar_event' || esReunionCrm(event)) return;
     const duplicatedEvent = {
       ...event,
       id: '',
-      title: `${event.title} (copia)`,
+      title: event.title,
     };
     setModalState({
       isOpen: true,
@@ -391,7 +400,9 @@ export function CalendarView({ organizationId, className }: CalendarViewProps) {
         onClose={handleCloseModal}
         onSave={handleSaveEvent}
         onDelete={handleDeleteEvent}
+        onChanged={refreshEvents}
         onNavigateToSource={handleNavigateToSource}
+        onDuplicate={handleDuplicateEvent}
       />
     </div>
   );

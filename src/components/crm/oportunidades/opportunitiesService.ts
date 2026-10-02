@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabase/config';
-import { pedirDespachoAvisos } from '@/lib/services/avisos/pedirDespacho';
 import { getOrganizationId as getOrgId, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { applyBranchFilterInclusive } from '@/lib/services/branchFilterHelper';
 import { DEFAULT_TIMEZONE, toPlainDate } from '@/lib/utils/timezone';
@@ -22,11 +21,8 @@ import {
   CustomerDetails,
   LossReasonData,
 } from './types';
-import {
-  crmTaskService,
-  normalizeTaskPriority,
-  normalizeTaskStatus,
-} from '@/lib/services/crm/taskService';
+import { normalizeTaskStatus } from '@/lib/services/crm/taskService';
+import { pedirCrm } from '@/components/crm/acciones/apiCrm';
 // Cerrar como ganada pasa por el MISMO PATCH del servidor que usan el detalle,
 // el drawer y el tablero. No hay una segunda implementación del cierre.
 import { requestStageChange } from '@/components/crm/pipeline/drawer/StageSelect';
@@ -559,37 +555,6 @@ class OpportunitiesService {
     return Object.values(groupedData).sort((a, b) => a.period.localeCompare(b.period));
   }
 
-  async addProduct(
-    opportunityId: string,
-    productId: number,
-    quantity: number,
-    unitPrice: number
-  ): Promise<OpportunityProduct> {
-    const { data, error } = await supabase
-      .from('opportunity_products')
-      .insert({
-        opportunity_id: opportunityId,
-        product_id: productId,
-        quantity,
-        unit_price: unitPrice,
-        // `total_price` es GENERATED ALWAYS: enviarla devuelve 428C9.
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  }
-
-  async removeProduct(productLineId: string): Promise<void> {
-    const { error } = await supabase
-      .from('opportunity_products')
-      .delete()
-      .eq('id', productLineId);
-
-    if (error) throw error;
-  }
-
   async getProducts(): Promise<{ id: number; name: string; sku: string; price: number; image?: string }[]> {
     try {
       // Paginar porque Supabase devuelve máximo 1000 filas por defecto
@@ -717,36 +682,6 @@ class OpportunitiesService {
     return (data || []) as OpportunitySpace[];
   }
 
-  async addSpace(
-    opportunityId: string,
-    spaceId: string,
-    nights: number,
-    unitPrice: number
-  ): Promise<OpportunitySpace> {
-    const { data, error } = await supabase
-      .from('opportunity_spaces')
-      .insert({
-        opportunity_id: opportunityId,
-        space_id: spaceId,
-        nights,
-        unit_price: unitPrice,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data as OpportunitySpace;
-  }
-
-  async removeSpace(spaceLineId: string): Promise<void> {
-    const { error } = await supabase
-      .from('opportunity_spaces')
-      .delete()
-      .eq('id', spaceLineId);
-
-    if (error) throw error;
-  }
-
   async getOpportunityCustomLines(opportunityId: string): Promise<OpportunityCustomLine[]> {
     const { data, error } = await supabase
       .from('opportunity_custom_lines')
@@ -777,55 +712,12 @@ class OpportunitiesService {
     return data || [];
   }
 
-  async createTask(
-    opportunityId: string,
-    title: string,
-    options?: {
-      description?: string;
-      due_date?: string;
-      priority?: string;
-      assigned_to?: string;
-    }
-  ): Promise<OpportunityTask> {
-    // Delegado en el servicio único de tareas del CRM: allí viven la
-    // validación y la normalización (antes aquí se escribía `priority:
-    // 'medium'`, valor que rechaza el CHECK `tasks_priority_check`).
-    const created = await crmTaskService.createTask({
-      title,
-      description: options?.description ?? null,
-      due_date: options?.due_date ?? null,
-      priority: options?.priority ?? null,
-      assigned_to: options?.assigned_to ?? null,
-      related_to_type: 'opportunity',
-      related_to_id: opportunityId,
-      type: 'crm',
-    });
-    if (options?.assigned_to) pedirDespachoAvisos();
-    return created as unknown as OpportunityTask;
-  }
-
+  /** El cierre lo fecha el servidor; ningún timestamp ni autor sale del navegador. */
   async updateTask(taskId: string, updates: Partial<OpportunityTask>): Promise<void> {
-    const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
-    if (updates.title !== undefined) updateData.title = updates.title;
-    if (updates.description !== undefined) updateData.description = updates.description;
-    if (updates.due_date !== undefined) updateData.due_date = updates.due_date;
-    if (updates.assigned_to !== undefined) updateData.assigned_to = updates.assigned_to;
-    if (updates.status !== undefined) {
-      updateData.status = normalizeTaskStatus(updates.status);
-      if (updateData.status === 'done') {
-        updateData.completed_at = new Date().toISOString();
-      }
-    }
-    if (updates.priority !== undefined) updateData.priority = normalizeTaskPriority(updates.priority);
-
-    const { error } = await supabase.from('tasks').update(updateData).eq('id', taskId);
-    if (error) throw error;
-    if (updates.assigned_to !== undefined || updates.status !== undefined) pedirDespachoAvisos();
-  }
-
-  async deleteTask(taskId: string): Promise<void> {
-    const { error } = await supabase.from('tasks').delete().eq('id', taskId);
-    if (error) throw error;
+    if (updates.status === undefined) throw new Error('Falta el estado de la tarea');
+    await pedirCrm(`/api/crm/tasks/${encodeURIComponent(taskId)}`, {
+      method: 'PATCH', cuerpo: { status: normalizeTaskStatus(updates.status) },
+    });
   }
 
   // ============== NOTAS ==============
@@ -849,37 +741,14 @@ class OpportunitiesService {
     return data || [];
   }
 
-  async createNote(opportunityId: string, body: string): Promise<OpportunityNote> {
-    const { data: userData } = await supabase.auth.getUser();
-
-    const { data, error } = await supabase
-      .from('notes')
-      .insert({
-        organization_id: this.getOrganizationId(),
-        user_id: userData.user?.id,
-        body,
-        related_type: 'opportunity',
-        related_id: opportunityId,
-        is_pinned: false,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  }
-
   async deleteNote(noteId: string): Promise<void> {
-    const { error } = await supabase.from('notes').delete().eq('id', noteId);
-    if (error) throw error;
+    await pedirCrm(`/api/crm/notes/${encodeURIComponent(noteId)}`, { method: 'DELETE' });
   }
 
   async toggleNotePin(noteId: string, isPinned: boolean): Promise<void> {
-    const { error } = await supabase
-      .from('notes')
-      .update({ is_pinned: !isPinned, updated_at: new Date().toISOString() })
-      .eq('id', noteId);
-    if (error) throw error;
+    await pedirCrm(`/api/crm/notes/${encodeURIComponent(noteId)}`, {
+      method: 'PATCH', cuerpo: { is_pinned: !isPinned },
+    });
   }
 
   // ============== CLIENTE DETALLADO ==============

@@ -78,7 +78,8 @@ import { accountSidMatchesOrg } from '@/lib/services/crm/voiceContextService';
 import { escapeXml, buildCallbackUrl, CONSENT_LANGUAGE, CONSENT_VOICE, RECORDING_EVENTS } from '@/lib/services/crm/twimlBuilders';
 import { isBridgeSigningConfigured, signConsentToken, verifyConsentToken } from '@/lib/services/crm/bridgeTokens';
 import { recordConsent, recordingEnabledForCall, voidConsentWithoutRecording } from '@/lib/services/crm/consentService';
-import { updateCall } from '@/lib/services/crm/callManagementService';
+import { updateCall, updateCallFromProviderEvent } from '@/lib/services/crm/callManagementService';
+import { mergeTerminalOutcome } from '@/lib/services/crm/callStateMachine';
 import { cierrePorAmd } from '@/lib/services/crm/voiceAgent/amd';
 import { devolverReservaSinConversacion } from '@/lib/services/crm/voiceAgent/reservaCreditos';
 import { resolveTtsFallback, TTS_FALLBACK_PARAM } from '@/lib/services/crm/voiceAgent/ttsFallback';
@@ -251,7 +252,11 @@ export async function POST(request: Request) {
             await updateCall(
               consentCallId,
               agentOrgId,
-              { status: 'voicemail', answered_by: cierreAmd.outcome === 'fax' ? 'fax' : 'machine', ended_at: ahora },
+              (fresh) => ({
+                ...mergeTerminalOutcome({ currentStatus: fresh.status, currentDuration: fresh.duration_seconds,
+                  currentAnsweredAt: fresh.answered_at, incomingStatus: 'voicemail', incomingDuration: 0 }),
+                answered_by: cierreAmd.outcome === 'fax' ? 'fax' : 'machine', ended_at: fresh.ended_at ?? ahora,
+              }),
               supabase
             );
           }
@@ -377,7 +382,7 @@ export async function POST(request: Request) {
 
         // La llamada ya está contestada y con el agente en línea.
         if (consentCallId) {
-          await updateCall(consentCallId, agentOrgId, { status: 'in_progress', answered_at: new Date().toISOString() }, supabase);
+          await updateCallFromProviderEvent(consentCallId, agentOrgId, { CallStatus: 'in-progress' }, 'child', supabase);
         }
       }
     }

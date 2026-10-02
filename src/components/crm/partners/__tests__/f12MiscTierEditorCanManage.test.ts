@@ -38,7 +38,7 @@ describe('TierEditor: acciones de escritura condicionadas a `canManage`', () => 
 
   it('«Editar» y «Eliminar» de cada tier, y su formulario de edición, están tras `canManage`', () => {
     expect(src).toMatch(/\{canManage && \(\s*<div className="flex shrink-0 gap-1">/);
-    expect(src).toMatch(/aria-label=\{`Eliminar tier \$\{t\.name\}`\}/);
+    expect(src).toMatch(/aria-label=\{tr\("Eliminar tier \{p0\}", \{p0: t\.name\}\)\}/);
     expect(src).toMatch(/\{canManage && isEditing && <div className="mt-4/);
   });
 

@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import { getServiceClient } from '@/lib/supabase/server-service';
+import { sinClavesDeOrganizacion } from '@/lib/services/crm/crmRouteSupport';
+import { phoneConferenceEnabled, phoneRpc } from '@/lib/services/crm/phoneConferenceRepository';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,6 +30,7 @@ export async function GET(request: NextRequest) {
   let ctx;
   try {
     ctx = await getServerOrgContext(request);
+    readOrgBody(ctx, {}, { request });
   } catch (err) {
     if (err instanceof OrgContextError) return NextResponse.json({ success: false, error: err.message }, { status: err.statusCode });
     throw err;
@@ -43,16 +46,25 @@ export async function GET(request: NextRequest) {
   if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   // Fallback de solo lectura al celular verificado en profiles (SEC F0) si aún no hay preferencias.
   let mobile: { mobile_phone_e164: string | null; mobile_verified_at: string | null } | null = null;
-  if (!data) {
+  if (!data && !phoneConferenceEnabled()) {
     const { data: profile } = await sb.from('profiles').select('phone, metadata').eq('id', ctx.userId).maybeSingle();
     const p = profile as { phone?: string | null; metadata?: Record<string, unknown> } | null;
     const verifiedAt = typeof p?.metadata?.mobile_verified_at === 'string' ? (p.metadata.mobile_verified_at as string) : null;
     if (p?.phone && verifiedAt) mobile = { mobile_phone_e164: p.phone, mobile_verified_at: verifiedAt };
   }
+  let safeData: Record<string, unknown> | null = data;
+  if (phoneConferenceEnabled()) {
+    try {
+      const proof = await phoneRpc<{ phone: string | null; verified_at: string | null; requires_verification: boolean }>(ctx.supabase,
+        'fn_phone_mobile_state', { p_org: ctx.organizationId });
+      safeData = data ? { ...data, mobile_verified_at: proof.verified_at, requires_verification: proof.requires_verification } : null;
+      mobile = { mobile_phone_e164: proof.phone, mobile_verified_at: proof.verified_at };
+    } catch { return NextResponse.json({ success: false, error: 'No pudimos comprobar la verificación del celular' }, { status: 503 }); }
+  }
   return NextResponse.json(
     {
       success: true,
-      data: data ?? {
+      data: safeData ?? {
         organization_id: ctx.organizationId,
         user_id: ctx.userId,
         mobile_phone_e164: mobile?.mobile_phone_e164 ?? null,
@@ -71,11 +83,20 @@ export async function PATCH(request: NextRequest) {
   let ctx;
   try {
     ctx = await getServerOrgContext(request);
+    readOrgBody(ctx, {}, { request });
   } catch (err) {
     if (err instanceof OrgContextError) return NextResponse.json({ success: false, error: err.message }, { status: err.statusCode });
     throw err;
   }
-  const parsed = patchSchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null), { request }));
+  let raw: unknown;
+  try { raw = readOrgBody(ctx, await request.json().catch(() => null), { request }); }
+  catch (error) {
+    if (error instanceof OrgContextError) return NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.statusCode });
+    throw error;
+  }
+  const clean = raw && typeof raw === 'object' && !Array.isArray(raw)
+    ? sinClavesDeOrganizacion(raw as Record<string, unknown>) : raw;
+  const parsed = patchSchema.safeParse(clean);
   if (!parsed.success) return NextResponse.json({ success: false, error: 'Body inválido', issues: parsed.error.issues }, { status: 400 });
 
   const sb = getServiceClient();
@@ -107,5 +128,13 @@ export async function PATCH(request: NextRequest) {
     : sb.from('user_comm_preferences').insert({ organization_id: ctx.organizationId, user_id: ctx.userId, ...patch }).select(COLUMNS).single();
   const { data, error } = await q;
   if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  if (phoneConferenceEnabled()) {
+    try {
+      const proof = await phoneRpc<{ phone: string | null; verified_at: string | null; requires_verification: boolean }>(ctx.supabase,
+        'fn_phone_mobile_state', { p_org: ctx.organizationId });
+      return NextResponse.json({ success: true, data: { ...data, mobile_phone_e164: proof.phone,
+        mobile_verified_at: proof.verified_at, requires_verification: proof.requires_verification } });
+    } catch { return NextResponse.json({ success: false, error: 'No pudimos comprobar la verificación del celular' }, { status: 503 }); }
+  }
   return NextResponse.json({ success: true, data });
 }

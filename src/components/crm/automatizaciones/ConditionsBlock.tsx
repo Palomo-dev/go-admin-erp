@@ -1,4 +1,5 @@
 'use client';
+import { useAutomationText } from './useAutomationText';
 
 /**
  * Bloque «si»: las condiciones como fichas. Se pulsa una ficha para editarla
@@ -37,6 +38,7 @@ interface Props {
 }
 
 export function ConditionsBlock({ form, lookups, onChange }: Props) {
+  const tr = useAutomationText();
   const [selected, setSelected] = useState<number | null>(null);
   const [jsonOpen, setJsonOpen] = useState(false);
   const [jsonText, setJsonText] = useState('');
@@ -83,8 +85,8 @@ export function ConditionsBlock({ form, lookups, onChange }: Props) {
   return (
     <div className="space-y-3">
       {rules.length > 1 && (
-        <div role="group" aria-label="Cómo se combinan las condiciones" className="flex items-center gap-1 text-xs">
-          <span className="mr-1 text-gray-600 dark:text-gray-400">Se cumple si</span>
+        <div role="group" aria-label={tr("Cómo se combinan las condiciones")} className="flex items-center gap-1 text-xs">
+          <span className="mr-1 text-fg-secondary dark:text-fg-secondary">{tr("Se cumple si")}</span>
           {([['and', 'todas'], ['or', 'alguna']] as const).map(([op, label]) => (
             <button
               key={op}
@@ -93,16 +95,15 @@ export function ConditionsBlock({ form, lookups, onChange }: Props) {
               className={cn(chipClass(form.conditions.op === op, 'amber'), 'px-2.5 py-1 text-xs')}
               onClick={() => onChange(setConditionsOp(form, op))}
             >
-              {label}
+              {tr(label)}
             </button>
           ))}
         </div>
       )}
 
       {rules.length === 0 ? (
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          Sin condiciones: se dispara siempre que ocurra el disparador. Añade una solo si necesitas filtrar.
-        </p>
+        <p className="text-sm text-fg-secondary dark:text-fg-secondary">
+          {tr("Sin condiciones: se dispara siempre que ocurra el disparador. Añade una solo si necesitas filtrar.")}</p>
       ) : (
         <div className={CHIP_LIST_CLASS}>
           {/* UX móvil: cada condición es una tarjeta apilada cuyo texto envuelve; en línea desde `sm`. */}
@@ -126,13 +127,13 @@ export function ConditionsBlock({ form, lookups, onChange }: Props) {
                     <span className={CHIP_TEXT_CLASS}>
                       {editable
                         ? describeCondition(node as ConditionRule, lookups.humanizer)
-                        : `(${describeConditions(node, lookups.humanizer) ?? 'grupo vacío'})`}
+                        : `(${describeConditions(node, lookups.humanizer) ?? tr("grupo vacío")})`}
                     </span>
                     {/* R-6: el grupo anidado no se edita en ficha; se dice en texto visible, no en `title` (que el teclado y el lector no ven). */}
-                    {!editable && <span className="min-w-0 basis-full text-xs text-gray-600 dark:text-gray-400 sm:shrink-0 sm:basis-auto">· grupo, se edita como JSON</span>}
+                    {!editable && <span className="min-w-0 basis-full text-xs text-fg-secondary dark:text-fg-secondary sm:shrink-0 sm:basis-auto">{tr("· grupo, se edita como JSON")}</span>}
                     {editable && (open
-                      ? <ChevronUp className={CHIP_ICON_CLASS} aria-hidden="true" />
-                      : <ChevronDown className={CHIP_ICON_CLASS} aria-hidden="true" />)}
+                      ? <ChevronUp strokeWidth={1.5} className={CHIP_ICON_CLASS} aria-hidden="true" />
+                      : <ChevronDown strokeWidth={1.5} className={CHIP_ICON_CLASS} aria-hidden="true" />)}
                   </button>
                 </Chip>
               );
@@ -161,22 +162,19 @@ export function ConditionsBlock({ form, lookups, onChange }: Props) {
 
       <div className="flex flex-wrap items-center gap-2">
         <Button id="cond-add" type="button" size="sm" variant="outline" className="h-8" onClick={add}>
-          <Plus className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> Añadir condición
-        </Button>
+          <Plus strokeWidth={1.5} className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> {tr("Añadir condición")}</Button>
         <Button type="button" size="sm" variant="ghost" className="h-8 text-xs" onClick={openJson}>
-          <Code2 className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> Editar como JSON
-        </Button>
+          <Code2 strokeWidth={1.5} className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> {tr("Editar como JSON")}</Button>
       </div>
 
       <Dialog open={jsonOpen} onOpenChange={setJsonOpen}>
-        <DialogContent onCloseAutoFocus={onJsonCloseAutoFocus} className="max-w-xl bg-white dark:bg-gray-950">
+        <DialogContent onCloseAutoFocus={onJsonCloseAutoFocus} className="max-w-xl bg-surface dark:bg-canvas">
           <DialogHeader>
-            <DialogTitle className="text-gray-900 dark:text-gray-100">Condiciones en JSON</DialogTitle>
-            <DialogDescription className="text-gray-600 dark:text-gray-400">
-              Para grupos anidados y casos avanzados. Campos permitidos: opportunity.*, customer.*, stage.*, pipeline.*, consent.*, event.*.
-            </DialogDescription>
+            <DialogTitle className="text-fg dark:text-fg">{tr("Condiciones en JSON")}</DialogTitle>
+            <DialogDescription className="text-fg-secondary dark:text-fg-secondary">
+              {tr("Para grupos anidados y casos avanzados. Campos permitidos: opportunity.*, customer.*, stage.*, pipeline.*, consent.*, event.*.")}</DialogDescription>
           </DialogHeader>
-          <Label htmlFor="cond-json" className="sr-only">JSON de las condiciones</Label>
+          <Label htmlFor="cond-json" className="sr-only">{tr("JSON de las condiciones")}</Label>
           <Textarea
             id="cond-json"
             rows={10}
@@ -187,11 +185,11 @@ export function ConditionsBlock({ form, lookups, onChange }: Props) {
             onChange={(e) => { setJsonText(e.target.value); setJsonError(null); }}
           />
           {jsonError && (
-            <p id="cond-json-error" role="alert" className="text-sm text-red-700 dark:text-red-300">{jsonError}</p>
+            <p id="cond-json-error" role="alert" className="text-sm text-danger-text dark:text-danger-text">{jsonError}</p>
           )}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setJsonOpen(false)}>Cancelar</Button>
-            <Button type="button" className="bg-blue-600 text-white hover:bg-blue-700" onClick={applyJson}>Aplicar</Button>
+            <Button type="button" variant="outline" onClick={() => setJsonOpen(false)}>{tr("Cancelar")}</Button>
+            <Button type="button" className="bg-brand text-white hover:bg-brand-deep" onClick={applyJson}>{tr("Aplicar")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

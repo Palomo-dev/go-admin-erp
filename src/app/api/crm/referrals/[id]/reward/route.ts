@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { markRewardPaid } from '@/lib/services/crm/referralsService';
-import { jsonOk, readJson, rejectForeignOrganization, routeError } from '@/lib/services/crm/f12RouteSupport';
+import { jsonOk, requirePartnerManager, readJson, rejectForeignOrganization, routeError } from '@/lib/services/crm/f12RouteSupport';
 
 const TAG = 'CRM Referrals Reward';
 
@@ -12,10 +12,11 @@ const TAG = 'CRM Referrals Reward';
  */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     const { id } = await params;
     const body = await readJson(request);
     rejectForeignOrganization(TAG, body, ctx, request);
+    await requirePartnerManager(ctx);
     const referral = await markRewardPaid(id, ctx.organizationId, ctx.supabase);
     return jsonOk(referral);
   } catch (error) {

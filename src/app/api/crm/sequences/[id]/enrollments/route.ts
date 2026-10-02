@@ -1,5 +1,6 @@
+import { requireSequenceManager } from '@/lib/services/crm/sequenceRouteSupport';
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError, requireOrgAdmin } from '@/lib/utils/orgContext';
+import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import {
   getEnrollments,
@@ -19,7 +20,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     const { id } = await params;
     const search = request.nextUrl.searchParams;
 
@@ -51,8 +52,8 @@ export async function GET(
  */
 export async function PATCH(request: NextRequest) {
   try {
-    const ctx = await getServerOrgContext();
-    requireOrgAdmin(ctx);
+    const ctx = await getServerOrgContext(request);
+    await requireSequenceManager(ctx);
 
     let body: { enrollment_id?: string; action?: string } = {};
     try {
@@ -84,9 +85,9 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     await readOrgBody(ctx, request);
-    requireOrgAdmin(ctx);
+    await requireSequenceManager(ctx);
     const enrollmentId = request.nextUrl.searchParams.get('enrollment_id');
     if (!enrollmentId) {
       return NextResponse.json({ success: false, error: 'Falta enrollment_id' }, { status: 400 });

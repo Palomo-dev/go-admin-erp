@@ -74,14 +74,17 @@ describe('/api/crm/jobs/run', () => {
     expect(runJobs).toHaveBeenCalledWith(expect.objectContaining({ kinds: ['maintenance'] }));
   });
 
-  it('header x-vercel-cron-schedule del cron diario ⇒ recording_cleanup+maintenance en cola y health_recalculate+renewals_sync en proceso; x-cron-secret también autentica', async () => {
+  it('header del cron diario ⇒ dos kinds de cola y tres tareas en proceso, incluida minería de objeciones; x-cron-secret también autentica', async () => {
     const res = await GET(req('/api/crm/jobs/run', { headers: { 'x-cron-secret': SECRET, 'x-vercel-cron-schedule': '30 8 * * *' } }));
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.kinds).toEqual(['recording_cleanup', 'maintenance']);
-    expect(json.tasks).toEqual(['health_recalculate', 'renewals_sync']);
+    expect(json.tasks).toEqual(['health_recalculate', 'renewals_sync', 'objection_mining']);
     expect(runScheduledKinds).toHaveBeenCalledTimes(1);
-    expect(runScheduledKinds).toHaveBeenCalledWith(expect.objectContaining({ kinds: ['recording_cleanup', 'maintenance', 'health_recalculate', 'renewals_sync'] }));
+    expect(runScheduledKinds).toHaveBeenCalledWith({
+      kinds: ['recording_cleanup', 'maintenance', 'health_recalculate', 'renewals_sync', 'objection_mining'],
+      budgetMs: 20_000, taskBudgetMs: 12_000, totalBudgetMs: 48_000, worker: 'w-test',
+    });
     // el drenador NUNCA recibe las tareas en proceso (no son outbound_jobs.kind)
     expect(runJobs).toHaveBeenCalledWith(expect.objectContaining({ kinds: ['recording_cleanup', 'maintenance'] }));
   });

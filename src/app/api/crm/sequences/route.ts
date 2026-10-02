@@ -1,20 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError, requireOrgAdmin } from '@/lib/utils/orgContext';
+import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import { getSequences, createSequence, validateSequenceInput } from '@/lib/services/crm/sequenceService';
-import { getSequenceStats, type SequenceStats } from '@/lib/services/crm/sequenceStats';
+import { type SequenceStats } from '@/lib/services/crm/sequenceStats';
+import { readSequenceOverview } from '@/lib/services/crm/sequenceOverview';
+import { canManageSequences, requireSequenceManager, sequenceError } from '@/lib/services/crm/sequenceRouteSupport';
 
 const EMPTY_STATS: SequenceStats = { active: 0, total: 0, replied: 0, response_rate: null };
 
-function errorResponse(error: unknown, tag: string): NextResponse {
-  if (error instanceof OrgContextError) {
-    return NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.statusCode });
-  }
-  const message = error instanceof Error ? error.message : 'Error desconocido';
-  console.error(`[Sequences] ${tag}:`, message);
-  const status = /inválida|inválido|requerido/i.test(message) ? 400 : 500;
-  return NextResponse.json({ success: false, error: message }, { status });
-}
+const errorResponse = sequenceError;
 
 /**
  * GET /api/crm/sequences — Lista las secuencias con sus pasos (sesión).
@@ -22,15 +16,17 @@ function errorResponse(error: unknown, tag: string): NextResponse {
  * para las tarjetas de la lista (brief UX 6.3). Se llama `enrollment_stats`
  * y no `stats` porque `sequences.stats` ya es una columna jsonb.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const ctx = await getServerOrgContext();
-    const [sequences, stats] = await Promise.all([
+    const ctx = await getServerOrgContext(request);
+    if (request) readOrgBody(ctx, null, { request });
+    const [sequences, overview, canManage] = await Promise.all([
       getSequences(ctx.organizationId, ctx.supabase),
-      getSequenceStats(ctx.organizationId, ctx.supabase),
+      readSequenceOverview(ctx.organizationId, ctx.supabase),
+      canManageSequences(ctx),
     ]);
-    const data = sequences.map((s) => ({ ...s, enrollment_stats: stats[s.id] ?? EMPTY_STATS }));
-    return NextResponse.json({ success: true, data }, { status: 200 });
+    const data = sequences.map((s) => ({ ...s, enrollment_stats: overview.stats[s.id] ?? EMPTY_STATS }));
+    return NextResponse.json({ success: true, data, can_manage: canManage, summary: overview.summary }, { status: 200 });
   } catch (error: unknown) {
     return errorResponse(error, 'GET error');
   }
@@ -43,8 +39,8 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
-    const ctx = await getServerOrgContext();
-    requireOrgAdmin(ctx);
+    const ctx = await getServerOrgContext(request);
+    await requireSequenceManager(ctx);
     const body = await readOrgBody(ctx, request);
 
     if (!body?.name) {

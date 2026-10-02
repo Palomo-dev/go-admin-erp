@@ -1,4 +1,5 @@
 'use client';
+import { useAutomationText } from './useAutomationText';
 
 /**
  * Búsqueda y filtros de la lista (brief §3: «búsqueda y filtros arriba, chips
@@ -32,12 +33,13 @@ function chipClass(active: boolean): string {
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-950',
     active
       // blue-600 en ambos temas: blue-500/blanco da 3,7:1 y no pasa AA.
-      ? 'border-blue-600 bg-blue-600 text-white'
-      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800',
+      ? 'border-brand bg-brand text-white'
+      : 'border-line-strong bg-surface text-fg-secondary hover:bg-subtle dark:border-line-strong dark:bg-surface dark:text-fg-secondary dark:hover:bg-hover',
   );
 }
 
 export function RulesToolbar({ filters, onChange, total, shown }: Props) {
+  const tr = useAutomationText();
   const active = countActiveFilters(filters);
   const toggleTrigger = (value: string) => {
     const triggers = filters.triggers.includes(value)
@@ -54,11 +56,11 @@ export function RulesToolbar({ filters, onChange, total, shown }: Props) {
           value={filters.query}
           onChange={(v) => onChange({ ...filters, query: v })}
           onValueChange={(v) => onChange({ ...filters, query: v })}
-          placeholder="Buscar por nombre o descripción…"
-          etiqueta="Buscar reglas por nombre"
+          placeholder={tr("Buscar por nombre o descripción…")}
+          etiqueta={tr("Buscar reglas por nombre")}
           className="min-w-[220px] flex-1"
         />
-        <div role="group" aria-label="Filtrar por estado" className="flex gap-1">
+        <div role="group" aria-label={tr("Filtrar por estado")} className="flex gap-1">
           {STATUS.map((s) => (
             <button
               key={s.value}
@@ -67,15 +69,15 @@ export function RulesToolbar({ filters, onChange, total, shown }: Props) {
               className={chipClass(filters.status === s.value)}
               onClick={() => onChange({ ...filters, status: s.value })}
             >
-              {s.label}
+              {tr(s.label)}
             </button>
           ))}
         </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="mr-1 text-xs text-gray-600 dark:text-gray-400">Disparador:</span>
-        <div role="group" aria-label="Filtrar por disparador" className="flex flex-wrap gap-1.5">
+        <span className="mr-1 text-xs text-fg-secondary dark:text-fg-secondary">{tr("Disparador:")}</span>
+        <div role="group" aria-label={tr("Filtrar por disparador")} className="flex flex-wrap gap-1.5">
           {TRIGGER_OPTIONS.map((t) => (
             <button
               key={t.value}
@@ -84,18 +86,18 @@ export function RulesToolbar({ filters, onChange, total, shown }: Props) {
               className={chipClass(filters.triggers.includes(t.value))}
               onClick={() => toggleTrigger(t.value)}
             >
-              {t.label}
+              {tr(t.label)}
             </button>
           ))}
         </div>
         {active > 0 && (
           <Button type="button" size="sm" variant="ghost" className="h-8 text-xs" onClick={() => onChange(EMPTY_FILTERS)}>
-            <X className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-            Quitar filtros ({active})
+            <X strokeWidth={1.5} className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+            {tr("Quitar filtros (")}{active})
           </Button>
         )}
-        <span className="ml-auto text-xs text-gray-600 dark:text-gray-400" aria-live="polite">
-          {shown === total ? `${total} ${total === 1 ? 'regla' : 'reglas'}` : `${shown} de ${total} reglas`}
+        <span className="ml-auto text-xs text-fg-secondary dark:text-fg-secondary" aria-live="polite">
+          {shown === total ? tr("{p0} {p1}", { p0: total, p1: total === 1 ? 'regla' : 'reglas' }) : tr("{p0} de {p1} reglas", { p0: shown, p1: total })}
         </span>
       </div>
     </div>

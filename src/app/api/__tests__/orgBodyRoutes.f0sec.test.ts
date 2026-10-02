@@ -37,10 +37,9 @@ jest.mock('@/lib/services/crm/activityService', () => ({
   RelatedNotFoundError: class extends Error {},
 }));
 
-const deleteSalesTeam = jest.fn(async () => undefined);
-jest.mock('@/lib/services/crm/salesStructureService', () => ({
-  updateSalesTeam: jest.fn(),
-  deleteSalesTeam: (...a: unknown[]) => deleteSalesTeam(...(a as [])),
+const compatibleTeamWrite = jest.fn(async () => ({ id: '11111111-1111-4111-8111-111111111111', is_active: false }));
+jest.mock('@/lib/services/crm/teamManagementCompatibility', () => ({
+  compatibleTeamWrite: (...a: unknown[]) => compatibleTeamWrite(...(a as [])),
 }));
 
 const sendWhatsApp = jest.fn(async () => ({ message_id: 'm-1', conversation_id: 'c-1', activity_id: null, customer_id: 'cu-1', channel_id: 'ch-1', scheduled: false }));
@@ -185,18 +184,18 @@ describe('POST /api/crm/activities (getServerOrgContext + .catch(() => null))', 
 });
 
 describe('DELETE /api/crm/teams/[id] (sin body)', () => {
-  const params = { params: Promise.resolve({ id: 'team-1' }) };
-  test('organización ajena en la QUERY → 403 y no se borra', async () => {
-    const res = await teamDelete(new NextRequest('http://localhost/api/crm/teams/team-1?organization_id=999', { method: 'DELETE' }), params);
+  const params = { params: Promise.resolve({ id: UUID }) };
+  test.each(['organization_id','organizationId','org_id','orgId'])('organización ajena en QUERY (%s) → 403 sin RPC', async alias => {
+    const res = await teamDelete(new NextRequest(`http://localhost/api/crm/teams/${UUID}?${alias}=999`, { method: 'DELETE' }), params);
     expect(res.status).toBe(403);
-    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/organization_id ajeno/), expect.objectContaining({ where: 'query', session: 120 }));
-    expect(deleteSalesTeam).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(new RegExp(`${alias} ajeno`)), expect.objectContaining({ where: 'query', session: 120 }));
+    expect(compatibleTeamWrite).not.toHaveBeenCalled();
   });
 
-  test('sin organización → se borra en la organización de la sesión', async () => {
-    const res = await teamDelete(new NextRequest('http://localhost/api/crm/teams/team-1', { method: 'DELETE' }), params);
+  test('sin organización → se archiva mediante el escritor canónico de la sesión', async () => {
+    const res = await teamDelete(new NextRequest(`http://localhost/api/crm/teams/${UUID}`, { method: 'DELETE' }), params);
     expect(res.status).toBe(200);
-    expect(deleteSalesTeam).toHaveBeenCalledWith('team-1', 120, expect.anything());
+    expect(compatibleTeamWrite).toHaveBeenCalledWith(session,'team',{},UUID,null,true);
   });
 });
 

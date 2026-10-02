@@ -91,7 +91,8 @@ export async function assertRelatedBelongsToOrg(
 ): Promise<{ customer_id: string | null }> {
   const table = type === 'opportunity' ? 'opportunities' : 'customers';
   const select = type === 'opportunity' ? 'id, customer_id' : 'id';
-  const { data } = await supabase.from(table).select(select).eq('id', id).eq('organization_id', orgId).maybeSingle();
+  const { data, error } = await supabase.from(table).select(select).eq('id', id).eq('organization_id', orgId).maybeSingle();
+  if (error) throw error;
   if (!data) throw new RelatedNotFoundError();
   const row = data as unknown as { id: string; customer_id?: string | null };
   return { customer_id: row.customer_id ?? null };

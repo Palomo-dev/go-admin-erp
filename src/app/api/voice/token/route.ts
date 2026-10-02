@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { phoneConferenceEnabled } from '@/lib/services/crm/phoneConferenceRepository';
+import { isBridgeSigningConfigured } from '@/lib/services/crm/bridgeTokens';
+import { readOrgBody } from '@/lib/security/organizationBody';
 import { generateVoiceToken, VoiceNotConfiguredError } from '@/lib/services/crm/voiceTokenService';
 
 export const runtime = 'nodejs';
@@ -18,6 +21,7 @@ async function handle(request: Request) {
   let ctx;
   try {
     ctx = await getServerOrgContext(request);
+    readOrgBody(ctx, {}, { request });
   } catch (err) {
     if (err instanceof OrgContextError) {
       return NextResponse.json({ success: false, error: err.message, code: err.code }, { status: err.statusCode });
@@ -26,6 +30,9 @@ async function handle(request: Request) {
   }
 
   try {
+    if (phoneConferenceEnabled() && !isBridgeSigningConfigured()) {
+      throw new VoiceNotConfiguredError('La conferencia requiere firma de callbacks', ['VOICE_CALLBACK_SECRET'], 'platform');
+    }
     const result = await generateVoiceToken(ctx.organizationId, ctx.userId);
     return NextResponse.json({ success: true, ...result }, { status: 200, headers: { 'Cache-Control': 'no-store' } });
   } catch (error: unknown) {

@@ -106,8 +106,7 @@ export interface MobileGeolocationPlugin {
 export interface MobilePushNotificationsPlugin {
   requestPermissions(): Promise<{ receive: string }>;
   register(): Promise<void>;
-  getToken(): Promise<{ token: string }>;
-  addListener(event: string, callback: (payload: unknown) => void): Promise<void>;
+  addListener(event: string, callback: (payload: unknown) => void): MobilePluginListenerHandle | Promise<MobilePluginListenerHandle>;
   removeAllListeners(): Promise<void>;
 }
 

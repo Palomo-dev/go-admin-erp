@@ -26,7 +26,7 @@ import { isJobKind, type JobKind } from './types';
  *     `/api/crm/jobs/run` ya existe: basta añadir el kind a su tabla en
  *     `schedule.ts` (`VERCEL_SCHEDULE_KINDS`) para que se ejecute sola.
  */
-export const SCHEDULED_TASKS = ['health_recalculate', 'renewals_sync', 'voice_campaigns', 'segment_counts'] as const;
+export const SCHEDULED_TASKS = ['health_recalculate', 'renewals_sync', 'voice_campaigns', 'segment_counts', 'objection_mining'] as const;
 export type ScheduledTask = (typeof SCHEDULED_TASKS)[number];
 export type ScheduledKind = JobKind | ScheduledTask;
 

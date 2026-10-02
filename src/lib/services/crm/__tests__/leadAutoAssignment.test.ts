@@ -220,3 +220,7 @@ describe('configuración por organización (organization_settings.crm_lead_assig
     expect(parseLeadAssignmentConfig('texto')).toEqual({ enabled: true, strategy: 'round_robin', team_id: null });
   });
 });
+
+// Fixtures históricas del transporte heredado; los contratos RPC se verifican por separado.
+beforeEach(() => { process.env.CRM_CALL_ATOMIC_RPC_ENABLED = 'false'; });
+afterAll(() => { delete process.env.CRM_CALL_ATOMIC_RPC_ENABLED; });

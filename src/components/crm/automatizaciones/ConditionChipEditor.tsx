@@ -1,4 +1,6 @@
 'use client';
+import { useAutomationText } from './useAutomationText';
+import { useLocale } from 'next-intl';
 
 /**
  * Editor en sitio de UNA condición (campo · operador · valor). Se abre bajo
@@ -11,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { EntitySelect } from '@/components/crm/shared/EntitySelect';
 import { CONDITION_FIELDS, OPERATORS, type ConditionOperator, type ConditionRule } from '@/lib/services/crm/automation/conditionsDsl';
-import { fieldLabel, groupLabel, operatorLabel } from '@/lib/services/crm/automation/conditionsI18n';
+import { fieldLabel, groupLabel, operatorLabel, type ConditionLocale } from '@/lib/services/crm/automation/conditionsI18n';
 import { conditionValueToText, type ConditionPatch } from '@/lib/services/crm/automation/ruleEditorModel';
 import { SELECT_CLASS } from './TriggerBlock';
 import type { RuleLookups } from './useRuleLookups';
@@ -38,6 +40,9 @@ function valueHint(operator: string): string {
 }
 
 export function ConditionChipEditor({ index, rule, lookups, onChange, onRemove }: Props) {
+  const tr = useAutomationText();
+  const activeLocale = useLocale();
+  const locale = (['es','en','fr','pt'].includes(activeLocale) ? activeLocale : 'es') as ConditionLocale;
   const operator = String(rule.operator);
   const fieldId = `cond-${index}-field`;
   const opId = `cond-${index}-op`;
@@ -48,7 +53,7 @@ export function ConditionChipEditor({ index, rule, lookups, onChange, onRemove }
 
   const renderValue = () => {
     if (NO_VALUE.has(operator)) {
-      return <p className="text-xs text-gray-600 dark:text-gray-400">Este operador no necesita valor.</p>;
+      return <p className="text-xs text-fg-secondary dark:text-fg-secondary">{tr("Este operador no necesita valor.")}</p>;
     }
     if (operator === 'eq' || operator === 'ne') {
       if (STAGE_FIELDS.has(rule.field)) {
@@ -57,9 +62,9 @@ export function ConditionChipEditor({ index, rule, lookups, onChange, onRemove }
             value={typeof rule.value === 'string' ? rule.value : null}
             onChange={(id) => onChange({ value: id ?? '' })}
             options={lookups.stages}
-            placeholder="Elige una etapa"
-            emptyMessage="No hay etapas creadas."
-            ariaLabel={`Valor de la condición ${index + 1}`}
+            placeholder={tr("Elige una etapa")}
+            emptyMessage={tr("No hay etapas creadas.")}
+            ariaLabel={tr("Valor de la condición {p0}", { p0: index + 1 })}
           />
         );
       }
@@ -69,9 +74,9 @@ export function ConditionChipEditor({ index, rule, lookups, onChange, onRemove }
             value={typeof rule.value === 'string' ? rule.value : null}
             onChange={(id) => onChange({ value: id ?? '' })}
             options={lookups.pipelines}
-            placeholder="Elige un pipeline"
-            emptyMessage="No hay pipelines creados."
-            ariaLabel={`Valor de la condición ${index + 1}`}
+            placeholder={tr("Elige un pipeline")}
+            emptyMessage={tr("No hay pipelines creados.")}
+            ariaLabel={tr("Valor de la condición {p0}", { p0: index + 1 })}
           />
         );
       }
@@ -80,7 +85,7 @@ export function ConditionChipEditor({ index, rule, lookups, onChange, onRemove }
       <Input
         id={valueId}
         value={conditionValueToText(rule.value)}
-        placeholder={LIST_VALUE.has(operator) ? 'a, b, c' : 'Valor'}
+        placeholder={LIST_VALUE.has(operator) ? tr("a, b, c") : tr('Valor')}
         aria-describedby={`${valueId}-hint`}
         onChange={(e) => onChange({ value: e.target.value })}
       />
@@ -88,10 +93,10 @@ export function ConditionChipEditor({ index, rule, lookups, onChange, onRemove }
   };
 
   return (
-    <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 dark:border-amber-900/60 dark:bg-amber-950/20">
+    <div className="rounded-lg border border-line-warning bg-warning-subtle/50 p-3 dark:border-amber-900/60 dark:bg-amber-950/20">
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
-          <Label htmlFor={fieldId} className="text-xs text-gray-700 dark:text-gray-300">Campo</Label>
+          <Label htmlFor={fieldId} className="text-xs text-fg-secondary dark:text-fg-secondary">{tr("Campo")}</Label>
           <select
             id={fieldId}
             className={SELECT_CLASS}
@@ -102,38 +107,37 @@ export function ConditionChipEditor({ index, rule, lookups, onChange, onRemove }
             {GROUPS.map((prefix) => {
               const fields = CONDITION_FIELDS.filter((f) => f.startsWith(prefix));
               return (
-                <optgroup key={prefix} label={groupLabel(prefix)}>
-                  {fields.map((f) => <option key={f} value={f}>{fieldLabel(f)}</option>)}
+                <optgroup key={prefix} label={groupLabel(prefix,locale)}>
+                  {fields.map((f) => <option key={f} value={f}>{fieldLabel(f,locale)}</option>)}
                 </optgroup>
               );
             })}
           </select>
         </div>
         <div>
-          <Label htmlFor={opId} className="text-xs text-gray-700 dark:text-gray-300">Operador</Label>
+          <Label htmlFor={opId} className="text-xs text-fg-secondary dark:text-fg-secondary">{tr("Operador")}</Label>
           <select
             id={opId}
             className={SELECT_CLASS}
             value={operator}
             onChange={(e) => onChange({ operator: e.target.value as ConditionOperator })}
           >
-            {OPERATORS.map((op) => <option key={op} value={op}>{operatorLabel(op)}</option>)}
+            {OPERATORS.map((op) => <option key={op} value={op}>{operatorLabel(op,locale)}</option>)}
           </select>
         </div>
         <div>
           {usesEntitySelect
-            ? <span className="block text-xs font-medium text-gray-700 dark:text-gray-300">Valor</span>
-            : <Label htmlFor={valueId} className="text-xs text-gray-700 dark:text-gray-300">Valor</Label>}
+            ? <span className="block text-xs font-medium text-fg-secondary dark:text-fg-secondary">{tr("Valor")}</span>
+            : <Label htmlFor={valueId} className="text-xs text-fg-secondary dark:text-fg-secondary">{tr("Valor")}</Label>}
           {renderValue()}
           {!NO_VALUE.has(operator) && (
-            <p id={`${valueId}-hint`} className="mt-1 text-xs text-gray-600 dark:text-gray-400">{valueHint(operator)}</p>
+            <p id={`${valueId}-hint`} className="mt-1 text-xs text-fg-secondary dark:text-fg-secondary">{tr(valueHint(operator))}</p>
           )}
         </div>
       </div>
       <div className="mt-2 flex justify-end">
-        <Button type="button" size="sm" variant="ghost" className="h-8 text-red-700 hover:text-red-800 dark:text-red-300" onClick={onRemove}>
-          <Trash2 className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> Quitar condición
-        </Button>
+        <Button type="button" size="sm" variant="ghost" className="h-8 text-danger-text hover:text-red-800 dark:text-danger-text" onClick={onRemove}>
+          <Trash2 strokeWidth={1.5} className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> {tr("Quitar condición")}</Button>
       </div>
     </div>
   );

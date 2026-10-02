@@ -10,7 +10,7 @@
  * reintenta resolverlo por CallSid hasta 5 veces antes de deshabilitar Guardar.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
@@ -19,6 +19,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
 import { DISPOSITION_LABELS, DISPOSITION_OUTCOMES, type DispositionOutcome } from '@/lib/services/crm/callDispositionService';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { deFechaHoraLocal, hoyMasDias } from '@/components/crm/kit/fechasCrm';
 import type { EndedCallInfo } from './SoftphoneProvider';
 
 type NextType = 'none' | 'task' | 'meeting' | 'email' | 'whatsapp' | 'call';
@@ -28,12 +30,8 @@ function formatDuration(seconds: number): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
-function defaultDue(): string {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  d.setHours(9, 0, 0, 0);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+function defaultDue(timezone: string): string {
+  return `${hoyMasDias(new Date(), timezone, 1)}T09:00`;
 }
 
 interface CallDispositionDialogProps {
@@ -44,13 +42,28 @@ interface CallDispositionDialogProps {
 }
 
 export function CallDispositionDialog({ open, ended, onClose, onSaved }: CallDispositionDialogProps) {
+  const { timezone, isLoading: timezoneLoading } = useOrgTimezone();
+  const intent = useRef<{ fingerprint: string; key: string } | null>(null);
+  const submitting = useRef(false);
   const [outcome, setOutcome] = useState<DispositionOutcome>(ended.durationSeconds > 0 ? 'answered' : 'no_answer');
   const [nextType, setNextType] = useState<NextType>('none');
-  const [dueAt, setDueAt] = useState(defaultDue());
+  const [dueAt, setDueAt] = useState(() => defaultDue(timezone));
   const [title, setTitle] = useState('');
   const [note, setNote] = useState(ended.liveNote ?? '');
   const [saving, setSaving] = useState(false);
   const [callId, setCallId] = useState<string | null>(ended.callId);
+
+  useEffect(() => {
+    if (!open || submitting.current) return;
+    intent.current = null;
+    setOutcome(ended.durationSeconds > 0 ? 'answered' : 'no_answer');
+    setNextType('none');
+    setTitle('');
+    setNote(ended.liveNote ?? '');
+    setCallId(ended.callId);
+  }, [open, ended.callId, ended.callSid, ended.durationSeconds, ended.liveNote]);
+
+  useEffect(() => { if (open && !submitting.current) setDueAt(defaultDue(timezone)); }, [open, timezone]);
 
   // Resolver calls.id si aún no llegó (webhook del TwiML App tardío).
   useEffect(() => {
@@ -78,23 +91,23 @@ export function CallDispositionDialog({ open, ended, onClose, onSaved }: CallDis
     };
   }, [callId, ended.callSid, open]);
 
-  const canSave = Boolean(callId) && !saving;
+  const canSave = Boolean(callId) && !saving && !timezoneLoading;
   const summary = useMemo(() => `${ended.displayName ?? ended.number} · ${formatDuration(ended.durationSeconds)}`, [ended]);
 
   const save = async () => {
-    if (!callId) return;
+    if (!callId || submitting.current || timezoneLoading) return;
+    submitting.current = true;
     setSaving(true);
     try {
+      const due = nextType !== 'none' && dueAt ? deFechaHoraLocal(dueAt, timezone) : null;
+      if (nextType !== 'none' && dueAt && !due) throw new Error('La fecha de seguimiento no es válida');
+      const disposition = { outcome, note: note.trim() || null, next_action: nextType === 'none' ? null : { type: nextType, due_at: due, title: title.trim() || null } };
+      const fingerprint = JSON.stringify(disposition);
+      if (intent.current?.fingerprint !== fingerprint) intent.current = { fingerprint, key: crypto.randomUUID() };
       const res = await fetch(`/api/crm/calls/${callId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          disposition: {
-            outcome,
-            note: note.trim() || null,
-            next_action: nextType === 'none' ? null : { type: nextType, due_at: dueAt ? new Date(dueAt).toISOString() : null, title: title.trim() || null },
-          },
-        }),
+        body: JSON.stringify({ client_key: intent.current.key, disposition }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `Error ${res.status}`);
@@ -104,12 +117,13 @@ export function CallDispositionDialog({ open, ended, onClose, onSaved }: CallDis
     } catch (err) {
       toast({ title: 'No se pudo guardar el resultado', description: err instanceof Error ? err.message : 'Error', variant: 'destructive' });
     } finally {
+      submitting.current = false;
       setSaving(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o && !submitting.current && !saving) onClose(); }}>
       <DialogContent
         className="sm:max-w-md"
         onKeyDown={(e) => {
@@ -126,7 +140,7 @@ export function CallDispositionDialog({ open, ended, onClose, onSaved }: CallDis
 
         <fieldset className="space-y-2">
           <legend className="mb-1 text-sm font-medium text-gray-900 dark:text-gray-100">¿Cómo terminó?</legend>
-          <RadioGroup value={outcome} onValueChange={(v) => setOutcome(v as DispositionOutcome)} className="grid grid-cols-2 gap-2">
+          <RadioGroup value={outcome} disabled={saving} onValueChange={(v) => setOutcome(v as DispositionOutcome)} className="grid grid-cols-2 gap-2">
             {DISPOSITION_OUTCOMES.map((o) => (
               <div key={o} className="flex items-center gap-2 rounded-md border border-gray-200 px-2 py-1.5 dark:border-gray-700">
                 <RadioGroupItem value={o} id={`disp-${o}`} />
@@ -143,6 +157,7 @@ export function CallDispositionDialog({ open, ended, onClose, onSaved }: CallDis
           <div className="flex gap-2">
             <select
               id="disp-next"
+              disabled={saving}
               value={nextType}
               onChange={(e) => setNextType(e.target.value as NextType)}
               className="h-9 rounded-md border border-gray-200 bg-white px-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
@@ -153,14 +168,14 @@ export function CallDispositionDialog({ open, ended, onClose, onSaved }: CallDis
                 </option>
               ))}
             </select>
-            {nextType !== 'none' && <Input type="datetime-local" value={dueAt} onChange={(e) => setDueAt(e.target.value)} aria-label="Fecha de la próxima acción" className="flex-1" />}
+            {nextType !== 'none' && <Input type="datetime-local" disabled={saving} value={dueAt} onChange={(e) => setDueAt(e.target.value)} aria-label="Fecha de la próxima acción" className="flex-1" />}
           </div>
-          {nextType === 'task' && <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Título de la tarea (opcional)" aria-label="Título de la tarea" />}
+          {nextType === 'task' && <Input disabled={saving} maxLength={200} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Título de la tarea (opcional)" aria-label="Título de la tarea" />}
         </div>
 
         <div className="space-y-1">
           <Label htmlFor="disp-note">Nota</Label>
-          <Textarea id="disp-note" rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Resumen breve de la conversación…" />
+          <Textarea id="disp-note" disabled={saving} maxLength={20000} rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Resumen breve de la conversación…" />
         </div>
 
         {!callId && <p className="text-xs text-yellow-700 dark:text-yellow-300">Esperando el registro de la llamada…</p>}

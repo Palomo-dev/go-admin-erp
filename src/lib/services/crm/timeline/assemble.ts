@@ -107,7 +107,7 @@ export async function hydrate(rows: Raw[], ctx: Ctx): Promise<Hydration> {
     linkedCalls ?? Promise.resolve({ data: [] as Row[] }),
     activityEmailIds.length ? sb.from('email_messages').select('id, subject, to_email, from_email, status, sent_at, created_at, open_count, click_count, body_html_snapshot').eq('organization_id', ctx.orgId).in('id', activityEmailIds) : Promise.resolve({ data: [] as Row[] }),
     vaByCall.length ? sb.from('voice_agent_calls').select('id, call_id, status, outcome, duration_seconds, turns_count, conversation_log, voice_agents(id, name)').eq('organization_id', ctx.orgId).in('call_id', vaByCall) : Promise.resolve({ data: [] as Row[] }),
-    eventIds.length ? sb.from('calendar_events').select('id, start_at, end_at, location, status').eq('organization_id', ctx.orgId).in('id', eventIds) : Promise.resolve({ data: [] as Row[] }),
+    eventIds.length ? sb.from('calendar_events').select('id, title, description, start_at, end_at, location, status').eq('organization_id', ctx.orgId).in('id', eventIds) : Promise.resolve({ data: [] as Row[] }),
   ]);
 
   for (const result of [profiles, stages, events, calls, emails, vaCalls, calEvents]) {
@@ -303,7 +303,7 @@ export function assemble(r: Raw, h: Hydration): TimelineEntry | null {
       const ev = eventId ? h.events_cal.get(eventId) : null;
       return {
         ...base, kind: 'meeting', activity: toActivityRef(r.row),
-        event: ev ? { id: ev.id, start_at: ev.start_at, end_at: ev.end_at ?? null, location: ev.location ?? null, status: ev.status ?? null } : null,
+        event: ev ? { id: ev.id, title: ev.title, description: ev.description ?? null, start_at: ev.start_at, end_at: ev.end_at ?? null, location: ev.location ?? null, status: ev.status ?? null } : null,
       };
     }
     case 'sms':

@@ -18,8 +18,8 @@ export type Tone = 'blue' | 'amber' | 'emerald';
  */
 export function chipClass(selected: boolean, tone: Tone = 'blue', stacked = false): string {
   const selectedTone: Record<Tone, string> = {
-    blue: 'border-blue-600 bg-blue-50 text-blue-900 dark:border-blue-400 dark:bg-blue-950/60 dark:text-blue-100',
-    amber: 'border-amber-600 bg-amber-50 text-amber-900 dark:border-amber-400 dark:bg-amber-950/50 dark:text-amber-100',
+    blue: 'border-brand bg-brand-tint text-blue-900 dark:border-blue-400 dark:bg-blue-950/60 dark:text-blue-100',
+    amber: 'border-amber-600 bg-warning-subtle text-amber-900 dark:border-amber-400 dark:bg-amber-950/50 dark:text-amber-100',
     emerald: 'border-emerald-700 bg-emerald-50 text-emerald-900 dark:border-emerald-400 dark:bg-emerald-950/50 dark:text-emerald-100',
   };
   return cn(
@@ -30,7 +30,7 @@ export function chipClass(selected: boolean, tone: Tone = 'blue', stacked = fals
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900',
     selected
       ? selectedTone[tone]
-      : 'border-gray-300 bg-white text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800',
+      : 'border-line-strong bg-surface text-fg hover:bg-subtle dark:border-line-strong dark:bg-surface dark:text-fg dark:hover:bg-hover',
   );
 }
 

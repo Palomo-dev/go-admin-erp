@@ -210,7 +210,7 @@ export default function PerfilCliente() {
               <TimelineTab key={crm.recarga} clienteId={cliente.id} organizationId={cliente.organization_id} cliente={cliente} />
             </TabsContent>
             <TabsContent value="cuentas">
-              <CuentasTab clienteId={cliente.id} organizationId={cliente.organization_id} />
+              <CuentasTab clienteId={cliente.id} organizationId={cliente.organization_id} mostrarFolios={false} />
               {/* Antes en /app/crm/clientes/[id] (D1): folios del PMS. */}
               <div className="mt-6">
                 <CustomerFoliosSection customerId={cliente.id} />

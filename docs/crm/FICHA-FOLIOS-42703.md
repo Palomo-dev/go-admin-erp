@@ -1,0 +1,15 @@
+# Ficha financiera: columna real y cifras completas
+
+Fecha: 2026-10-02. Diagnóstico del error reportado `42703: reservations_1.code`.
+
+La pestaña Cuentas de `/app/clientes/[id]` monta `CustomerFoliosSection`. Su consulta embebida solicitaba `reservations(code, spaces(label))`; el catálogo real confirma que `reservations.code` no existe y sí existe `metadata jsonb`. Además, el filtro pasaba otro query builder a `eq('reservation_id', ...)`, que PostgREST convierte en una cadena, no en una subconsulta. La consulta defectuosa ya estaba en el componente antes de esta corrección; no se atribuyen los demás errores de Supabase a este flujo sin evidencia de sus respectivos callers.
+
+La lectura corregida usa la FK real `folios.reservation_id → reservations.id`, `reservations!inner` y filtros escalares de organización y cliente sobre la reserva. Folios no tiene `organization_id`. El código visible procede de `metadata.code`, sin crear columnas ni inventar códigos. Los cargos se leen embebidos mediante la FK real `folio_items.folio_id → folios.id`; espacios usa `reservations.space_id → spaces.id`.
+
+Folios y facturas se paginan con orden estable y páginas de 500. Una consulta fallida, una página posterior fallida o un importe inválido rechazan el resultado completo: la interfaz presenta el estado de error del kit con reintento, en los cuatro idiomas. Cambiar cliente u organización invalida respuestas anteriores y cierra los diálogos. Las fechas pasan por el contexto de zona de la organización.
+
+Los totales reutilizan `readF12Money`, `summarizeF12Money` y `ResumenMonedaBase`, las fuentes existentes de moneda base, tasas y día contable. No se agrega otra fórmula de conversión. Una moneda ausente o tasa insuficiente produce «—» y una explicación; los importes individuales de las facturas conservan su moneda. La ficha desactiva únicamente los folios duplicados de `CuentasTab`; otros callers conservan su comportamiento por defecto, mientras esta sección mantiene todos los folios y los diálogos existentes de detalle y pago.
+
+Verificación local: **29/29 pruebas**, cuatro suites. El SDK Supabase/PostgREST real, con `fetch` en memoria, reproduce el `42703` antiguo y el `22P02` de la falsa subconsulta; verifica columnas del catálogo confirmado, señuelos de otro cliente/organización, embeds objeto/arreglo, importes decimales, 1.003 folios y 1.107 facturas sin truncado, fallo de página posterior, conversión vigente frente a tasa futura, moneda/tasa ausentes, reintento y carreras de cliente/organización. Los estados financieros se renderizan con Intl real en es/en/fr/pt.
+
+Logs: `/tmp/customer-folios-tests-freeze.log`, `/tmp/customer-folios-tests-bogota.log`, `/tmp/customer-folios-lint-freeze.log`; manifiesto de fuentes `/tmp/customer-folios-manifest.json`. Todas las pruebas fueron locales. Supabase se utilizó sólo para lecturas acotadas del catálogo: no se ejecutaron escrituras, migraciones ni gates SQL para esta corrección. No se efectuaron cobros ni llamadas a proveedores.

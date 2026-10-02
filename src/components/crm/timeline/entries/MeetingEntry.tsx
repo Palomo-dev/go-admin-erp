@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Calendar, Check, Loader2, MapPin, X } from 'lucide-react';
+import { Calendar, Check, Loader2, MapPin, Pencil, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
@@ -12,6 +12,7 @@ import { formatDateInTz } from '@/lib/utils/dateDisplay';
 import { useLocaleIntl } from '@/components/kit/useIdiomaKit';
 import { claveError, emitirCambioCrm, pedirCrm } from '@/components/crm/acciones/apiCrm';
 import type { EntryAction } from '../TimelineEntryCard';
+import { EditarReunionDialog } from './EditarReunionDialog';
 
 /** MeetingEntry — título, rango horario, ubicación, estado; "Realizada"/"Cancelar" → PATCH /api/crm/meetings/[id]. */
 type MeetingLike = Extract<TimelineEntry, { kind: 'meeting' }>;
@@ -22,7 +23,9 @@ export function MeetingEntry({ entry, onAction }: { entry: MeetingLike; onAction
   const { timezone } = useFormatDate(null);
   const locale = useLocaleIntl();
   const a = entry.activity;
-  const ev = entry.event;
+  const [eventoGuardado, setEventoGuardado] = useState<{ actividad: typeof a; evento: NonNullable<typeof entry.event> } | null>(null);
+  const [editando, setEditando] = useState(false);
+  const ev = eventoGuardado?.actividad === a ? eventoGuardado.evento : entry.event;
   const md = a.metadata as { event_id?: string; end_at?: string; location?: string | null };
   const eventId = ev?.id ?? md.event_id;
   const [estadoGuardado, setEstadoGuardado] = useState<{ actividad: typeof a; estado: string } | null>(null);
@@ -31,7 +34,7 @@ export function MeetingEntry({ entry, onAction }: { entry: MeetingLike; onAction
   const start = ev?.start_at ?? entry.occurred_at;
   const end = ev?.end_at ?? md.end_at ?? null;
   const location = ev?.location ?? md.location ?? null;
-  const title = (a.notes ?? '').split('\n')[0] || t('titulo');
+  const title = ev?.title ?? ((a.notes ?? '').split('\n')[0] || t('titulo'));
   const upcoming = Date.parse(start) > Date.now();
 
   const patch = async (status: 'done' | 'canceled') => {
@@ -62,6 +65,17 @@ export function MeetingEntry({ entry, onAction }: { entry: MeetingLike; onAction
         <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" />{formatDateInTz(start, timezone, { locale, dateStyle: 'short', timeStyle: 'short' })}{end ? ` – ${formatDateInTz(end, timezone, { locale, timeStyle: 'short' })}` : ''}</span>
         {location && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{/^https?:\/\//.test(location) ? <a href={location} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">{location}</a> : location}</span>}
       </div>
+      {ev?.title !== undefined && ev.end_at && (
+        <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditando(true)} disabled={busy !== null}>
+          <Pencil aria-hidden="true" className="h-3 w-3 mr-1" />{t('editar')}
+        </Button>
+      )}
+      {editando && ev && <EditarReunionDialog evento={ev} timezone={timezone} onCerrar={() => setEditando(false)} onGuardada={evento => {
+        setEventoGuardado({ actividad: a, evento }); setEditando(false);
+        toast({ title: t('guardada') });
+        emitirCambioCrm({ entidad: 'activity', id: a.id, accion: 'reunion' });
+        onAction?.('changed', entry);
+      }} />}
       {eventId && outcome === 'scheduled' && (
         <div className="flex gap-1.5 pt-0.5">
           <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => patch('done')} disabled={busy !== null || upcoming} title={upcoming ? t('futura') : undefined}>

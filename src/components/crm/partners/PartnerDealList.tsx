@@ -1,5 +1,7 @@
 'use client';
 
+import {useRedText} from '@/components/crm/red/useRedText';
+
 /**
  * Deals de un partner en hoja lateral: tabla (datos tabulares reales, brief
  * §3) con oportunidad, tipo, comisión y estado, más las transiciones que la
@@ -29,6 +31,7 @@ interface Props {
   open: boolean;
   partner: PartnerView | null;
   canManage: boolean;
+  canRegister?: boolean;
   onOpenChange: (open: boolean) => void;
   loadDeals: (partnerId: string) => Promise<PartnerDealView[]>;
   onRegister: (partnerId: string, payload: { opportunity_id: string; deal_type: string }) => Promise<RegisterDealResult>;
@@ -36,7 +39,8 @@ interface Props {
   returnFocusFallback: () => HTMLElement | null;
 }
 
-export function PartnerDealList({ open, partner, canManage, onOpenChange, loadDeals, onRegister, onTransition, returnFocusFallback }: Props) {
+export function PartnerDealList({ open, partner, canManage, canRegister = true, onOpenChange, loadDeals, onRegister, onTransition, returnFocusFallback }: Props) {
+  const {tr, locale} = useRedText();
   const [deals, setDeals] = useState<PartnerDealView[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,11 +61,11 @@ export function PartnerDealList({ open, partner, canManage, onOpenChange, loadDe
     try {
       setDeals(await loadDeals(partner.id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setError(err instanceof Error ? err.message : tr("Error desconocido"));
     } finally {
       setLoading(false);
     }
-  }, [partner, loadDeals]);
+  }, [partner, loadDeals, tr]);
 
   useEffect(() => {
     if (open) void load();
@@ -75,9 +79,9 @@ export function PartnerDealList({ open, partner, canManage, onOpenChange, loadDe
       setDeals((prev) => prev.map((d) => (d.id === row.id ? row : d)));
       const next = nextCommissionStatuses(row.commission_status)[0];
       nextActionId.current = next ? dealActionId(row.id, next) : null;
-      toast({ title: `Comisión ${COMMISSION_META[confirm.to].label.toLowerCase()}`, description: `${confirm.deal.opportunity?.name ?? 'Deal'} · ${formatMoney(confirm.deal.commission_amount, confirm.deal.opportunity?.currency ?? null)}${confirm.to === 'paid' ? '. Es un registro: aquí no se mueve dinero.' : ''}` });
+      toast({ title: tr("Comisión {p0}", {p0: tr(COMMISSION_META[confirm.to].label).toLowerCase()}), description: tr("{p0} · {p1}{p2}", {p0: confirm.deal.opportunity?.name ?? 'Deal', p1: formatMoney(confirm.deal.commission_amount, confirm.deal.opportunity?.currency ?? null, locale), p2: confirm.to === 'paid' ? tr('. Es un registro: aquí no se mueve dinero.') : ''}) });
     } catch (err) {
-      toast({ title: 'No se pudo cambiar la comisión', description: err instanceof Error ? err.message : 'Error desconocido', variant: 'destructive' });
+      toast({ title: tr("No se pudo cambiar la comisión"), description: err instanceof Error ? err.message : tr("Error desconocido"), variant: 'destructive' });
     } finally {
       setBusyId(null);
     }
@@ -89,39 +93,37 @@ export function PartnerDealList({ open, partner, canManage, onOpenChange, loadDe
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" onCloseAutoFocus={onCloseAutoFocus} className="flex w-full flex-col gap-0 overflow-y-auto bg-gray-50 p-0 dark:bg-gray-950 sm:max-w-2xl">
-        <SheetHeader className="border-b border-gray-200 bg-white px-6 py-4 dark:border-gray-800 dark:bg-gray-900">
-          <SheetTitle className="text-gray-900 dark:text-gray-100">Deals de {partner?.name}</SheetTitle>
-          <SheetDescription className="text-gray-600 dark:text-gray-400">
-            {partner?.tier ? `Tier ${partner.tier.name} · ` : ''}comisión {partner ? formatRate(partner.effective_rate) : ''}. La comisión es un registro por deal; aprobarla o marcarla pagada no mueve dinero.
-          </SheetDescription>
+      <SheetContent side="right" onCloseAutoFocus={onCloseAutoFocus} className="flex w-full flex-col gap-0 overflow-y-auto bg-subtle p-0  sm:max-w-2xl">
+        <SheetHeader className="border-b border-line bg-surface px-6 py-4  ">
+          <SheetTitle className="text-fg ">{tr("Deals de")} {partner?.name}</SheetTitle>
+          <SheetDescription className="text-fg-secondary ">
+            {partner?.tier ? tr("Tier {p0} · ", {p0: partner.tier.name}) : ''}{tr("comisión")} {partner ? formatRate(partner.effective_rate, locale) : ''}{tr(". La comisión es un registro por deal; aprobarla o marcarla pagada no mueve dinero.")} </SheetDescription>
         </SheetHeader>
         <div className="space-y-4 px-6 py-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm text-gray-700 dark:text-gray-300" aria-live="polite">
-              {deals.length} deal{deals.length === 1 ? '' : 's'}
+            <p className="text-sm text-fg-secondary " aria-live="polite">
+              {deals.length}  {tr("deal")}{deals.length === 1 ? '' : 's'}
               {deals.length > 0 && (currencies.length > 1
-                ? ' · comisiones en varias monedas (sin sumar)'
-                : ` · pendiente ${formatMoney(summary.outstanding, summaryCurrency)} · pagada ${formatMoney(summary.paid, summaryCurrency)}`)}
+                ? tr(" · comisiones en varias monedas (sin sumar)")
+                : tr(" · pendiente {p0} · pagada {p1}", {p0: formatMoney(summary.outstanding, summaryCurrency, locale), p1: formatMoney(summary.paid, summaryCurrency, locale)}))}
             </p>
             <div className="flex gap-2">
-              <Button type="button" variant="ghost" size="icon" aria-label="Actualizar deals" disabled={loading} onClick={() => void load()}>
+              <Button type="button" variant="ghost" size="icon" aria-label={tr("Actualizar deals")} disabled={loading} onClick={() => void load()}>
                 <RefreshCw className={cn('h-4 w-4', loading && 'motion-safe:animate-spin')} aria-hidden="true" />
               </Button>
-              <Button ref={registerButtonRef} type="button" size="sm" className="bg-blue-600 text-white hover:bg-blue-700" onClick={() => setRegisterOpen(true)}>
-                <Plus className="mr-1 h-4 w-4" aria-hidden="true" /> Registrar deal
-              </Button>
+              {canRegister && <Button ref={registerButtonRef} type="button" size="sm" className="bg-brand text-white hover:bg-brand-hover" onClick={() => setRegisterOpen(true)}>
+                <Plus className="mr-1 h-4 w-4" aria-hidden="true" />  {tr("Registrar deal")} </Button>}
             </div>
           </div>
           {error && (
-            <Alert variant="destructive"><AlertTitle>No se pudieron cargar los deals</AlertTitle><AlertDescription>{error}. Pulsa «Actualizar deals» para reintentar.</AlertDescription></Alert>
+            <Alert variant="destructive"><AlertTitle>{tr("No se pudieron cargar los deals")}</AlertTitle><AlertDescription>{error}{tr(". Pulsa «Actualizar deals» para reintentar.")}</AlertDescription></Alert>
           )}
           {loading && deals.length === 0 ? (
-            <div className="space-y-2" aria-busy="true" aria-label="Cargando deals">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
+            <div className="space-y-2" aria-busy="true" aria-label={tr("Cargando deals")}>{[0, 1, 2].map((i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
           ) : deals.length === 0 && !error ? (
-            <div className="rounded-xl border border-dashed border-gray-300 p-6 text-center dark:border-gray-700">
-              <p className="font-medium text-gray-900 dark:text-gray-100">Este partner aún no tiene deals</p>
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Registra la oportunidad que trajo o ayudó a cerrar y la comisión quedará calculada.</p>
+            <div className="rounded-xl border border-dashed border-line-strong p-6 text-center ">
+              <p className="font-medium text-fg ">{tr("Este partner aún no tiene deals")}</p>
+              <p className="mt-1 text-sm text-fg-secondary ">{tr("Registra la oportunidad que trajo o ayudó a cerrar y la comisión quedará calculada.")}</p>
             </div>
           ) : (
             <PartnerDealTable deals={deals} canManage={canManage} busyId={busyId} onTransition={(deal, to) => setConfirm({ deal, to })} />
@@ -131,8 +133,8 @@ export function PartnerDealList({ open, partner, canManage, onOpenChange, loadDe
         <ConfirmDialog
           open={confirm !== null}
           onOpenChange={(o) => { if (!o) setConfirm(null); }}
-          title={confirm ? `${COMMISSION_META[confirm.to].action} la comisión` : ''}
-          description={confirm ? `${confirm.deal.opportunity?.name ?? 'Deal'} · ${formatMoney(confirm.deal.commission_amount, confirm.deal.opportunity?.currency ?? null)}. ${confirm.to === 'paid' ? 'Se anota como pagada con fecha de hoy; no se mueve dinero.' : confirm.to === 'rejected' ? 'Quedará rechazada y no contará para el tier.' : 'Quedará aprobada, pendiente de registrar el pago.'}` : ''}
+          title={confirm ? tr("{p0} la comisión", {p0: COMMISSION_META[confirm.to].action}) : ''}
+          description={confirm ? tr("{p0} · {p1}. {p2}", {p0: confirm.deal.opportunity?.name ?? 'Deal', p1: formatMoney(confirm.deal.commission_amount, confirm.deal.opportunity?.currency ?? null, locale), p2: confirm.to === 'paid' ? tr("Se anota como pagada con fecha de hoy; no se mueve dinero.") : confirm.to === 'rejected' ? tr("Quedará rechazada y no contará para el tier.") : tr("Quedará aprobada, pendiente de registrar el pago.")}) : ''}
           confirmLabel={confirm ? COMMISSION_META[confirm.to].action : ''}
           variant={confirm?.to === 'rejected' ? 'destructive' : 'default'}
           onConfirm={apply}

@@ -1,18 +1,9 @@
 "use client";
-
-/**
- * Estado y persistencia del editor de agente IA de voz (FASE 06, UXM-D).
- *
- * Extraído de `AgentEditorDialog` para que cada pestaña sea un componente corto.
- * Las funciones puras (`agentFormFromApi`, `agentFormToBody`, `resolveEffectiveVoice`,
- * `isMandatoryTool`) se prueban sin React.
- */
-
-import { useCallback, useEffect, useState } from "react";
-import { toast } from "@/components/ui/use-toast";
-import { MANDATORY_TOOLS } from "@/lib/services/crm/voiceAgentTools";
-import type { VoiceCatalogRow } from "../useVoiceCatalog";
-
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { MANDATORY_TOOLS } from '@/lib/services/crm/voiceAgentToolCatalog';
+import { pedirCrm } from '@/components/crm/acciones/apiCrm';
+import type { VoiceCatalogRow } from '../useVoiceCatalog';
 export type AgentDraft = { mode: "create" } | { mode: "edit"; id: string };
 
 export interface AgentFormState {
@@ -32,6 +23,13 @@ export interface AgentFormState {
   stt_provider: string;
   allowed_tools: string[];
   is_active: boolean;
+  engine: string;
+  voice_settings: Record<string, unknown>;
+  guardrails: Record<string, unknown>;
+  transfer_to_human_rules: Record<string, unknown>;
+  business_hours: Record<string, unknown>;
+  max_calls_per_day: number;
+  max_calls_per_hour: number;
 }
 
 /**
@@ -54,7 +52,8 @@ export const EMPTY_AGENT_FORM: AgentFormState = {
   voice_provider: "elevenlabs",
   stt_provider: "deepgram",
   allowed_tools: ["get_customer_context", "log_consent_opt_out", "end_call"],
-  is_active: true,
+  is_active: false,
+  engine: "conversation_relay", voice_settings: {}, guardrails: {}, transfer_to_human_rules: {}, business_hours: {}, max_calls_per_day: 60, max_calls_per_hour: 20,
 };
 
 export function agentFormFromApi(d: Record<string, unknown>): AgentFormState {
@@ -78,6 +77,7 @@ export function agentFormFromApi(d: Record<string, unknown>): AgentFormState {
     stt_provider: str(d.stt_provider, "deepgram"),
     allowed_tools: Array.isArray(d.allowed_tools) ? (d.allowed_tools as string[]) : [],
     is_active: d.is_active !== false,
+    engine: str(d.engine, "conversation_relay"), voice_settings: (d.voice_settings ?? {}) as Record<string, unknown>, guardrails: (d.guardrails ?? {}) as Record<string, unknown>, transfer_to_human_rules: (d.transfer_to_human_rules ?? {}) as Record<string, unknown>, business_hours: (d.business_hours ?? {}) as Record<string, unknown>, max_calls_per_day: num(d.max_calls_per_day, 60), max_calls_per_hour: num(d.max_calls_per_hour, 20),
   };
 }
 
@@ -134,86 +134,37 @@ export function resolveEffectiveVoice(
 }
 
 export interface AgentFormApi {
-  form: AgentFormState;
-  setForm: React.Dispatch<React.SetStateAction<AgentFormState>>;
-  patch: (partial: Partial<AgentFormState>) => void;
-  loading: boolean;
-  saving: boolean;
-  save: () => Promise<boolean>;
+  form: AgentFormState; setForm: React.Dispatch<React.SetStateAction<AgentFormState>>;
+  patch: (partial: Partial<AgentFormState>) => void; loading: boolean; saving: boolean;
+  error: string | null; loadFailed: boolean; validate: () => boolean; reload: () => void; persistedId: string | null; save: (inactive?: boolean) => Promise<boolean>;
 }
-
 export function useAgentForm(draft: AgentDraft): AgentFormApi {
+  const t = useTranslations('crm.agentesIa');
   const [form, setForm] = useState<AgentFormState>(EMPTY_AGENT_FORM);
-  const [loading, setLoading] = useState(draft.mode === "edit");
-  const [saving, setSaving] = useState(false);
-
-  const patch = useCallback(
-    (partial: Partial<AgentFormState>) => setForm((f) => ({ ...f, ...partial })),
-    [],
-  );
-
+  const [loading, setLoading] = useState(draft.mode === 'edit');
+  const [loadFailed, setLoadFailed] = useState(false); const [saving, setSaving] = useState(false); const [error, setError] = useState<string | null>(null);
+  const [persistedId, setId] = useState(draft.mode === 'edit' ? draft.id : null);
+  const [reloadKey, setReload] = useState(0); const revision = useRef(0); const lock = useRef(false);
+  const patch = useCallback((partial: Partial<AgentFormState>) => setForm(f => ({ ...f, ...partial })), []);
+  const draftId = draft.mode === 'edit' ? draft.id : null;
   useEffect(() => {
-    if (draft.mode !== "edit") return;
-    let alive = true;
-    (async () => {
-      try {
-        const res = await fetch(`/api/crm/voice-agents/${draft.id}`, { cache: "no-store" });
-        const json = await res.json();
-        if (!res.ok || !json?.success) throw new Error(json?.error || `Error ${res.status}`);
-        if (alive) setForm(agentFormFromApi(json.data ?? {}));
-      } catch (err) {
-        toast({
-          title: "No se pudo cargar el agente",
-          description: err instanceof Error ? err.message : "Error desconocido",
-          variant: "destructive",
-        });
-      } finally {
-        if (alive) setLoading(false);
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [draft]);
-
-  const save = useCallback(async () => {
-    if (!form.name.trim()) {
-      toast({ title: "El agente necesita un nombre", variant: "destructive" });
-      return false;
-    }
-    if (!form.llm_model.trim()) {
-      // Sin modelo la fila quedaría con `""` y el runtime la taparía con uno cableado.
-      toast({
-        title: "Elige el modelo de lenguaje",
-        description: "Está en el paso Propósito. Si el catálogo no cargó, escribe el nombre a mano.",
-        variant: "destructive",
-      });
-      return false;
-    }
-    setSaving(true);
+    const current = ++revision.current; setError(null); setLoadFailed(false); setId(draftId);
+    if (!draftId) { setForm(EMPTY_AGENT_FORM); setLoading(false); return () => { revision.current = current + 1; }; }
+    setLoading(true);
+    pedirCrm<Record<string, unknown>>(`/api/crm/voice-agents/${draftId}`).then(result => { if (current === revision.current) setForm(agentFormFromApi(result.data)); }).catch(() => { if (current === revision.current) { setLoadFailed(true); setError(t('loadError')); } }).finally(() => { if (current === revision.current) setLoading(false); });
+    return () => { revision.current = current + 1; };
+  }, [draftId, reloadKey, t]);
+  const validate = useCallback(() => { const valid = Boolean(form.name.trim() && form.identity_disclosure.trim() && form.llm_model.trim()); setError(valid ? null : t('required')); return valid; }, [form, t]);
+  const save = useCallback(async (inactive = false) => {
+    if (lock.current || loading || loadFailed || !validate()) return false;
+    const current = revision.current; lock.current = true; setSaving(true); setError(null);
     try {
-      const url =
-        draft.mode === "edit" ? `/api/crm/voice-agents/${draft.id}` : "/api/crm/voice-agents";
-      const res = await fetch(url, {
-        method: draft.mode === "edit" ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(agentFormToBody(form)),
-      });
-      const json = await res.json();
-      if (!res.ok || !json?.success) throw new Error(json?.error || `Error ${res.status}`);
-      toast({ title: draft.mode === "edit" ? "Agente actualizado" : "Agente creado" });
-      return true;
-    } catch (err) {
-      toast({
-        title: "No se pudo guardar",
-        description: err instanceof Error ? err.message : "Error desconocido",
-        variant: "destructive",
-      });
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  }, [draft, form]);
-
-  return { form, setForm, patch, loading, saving, save };
+      const body = agentFormToBody(inactive ? { ...form, is_active: false } : form);
+      const result = await pedirCrm<{ id: string }>(persistedId ? `/api/crm/voice-agents/${persistedId}` : '/api/crm/voice-agents', { method: persistedId ? 'PATCH' : 'POST', cuerpo: body });
+      if (current !== revision.current) return false;
+      setId(result.data.id); if (inactive) patch({ is_active: false }); return true;
+    } catch { if (current === revision.current) setError(t('saveError')); return false; }
+    finally { lock.current = false; if (current === revision.current) setSaving(false); }
+  }, [form, loading, loadFailed, persistedId, patch, t, validate]);
+  return { form, setForm, patch, loading, saving, error, loadFailed, validate, persistedId, reload: () => setReload(k => k + 1), save };
 }

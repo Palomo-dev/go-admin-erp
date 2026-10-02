@@ -1,4 +1,7 @@
 'use client';
+import { useLocale } from 'next-intl';
+import type { ConditionLocale } from '@/lib/services/crm/automation/conditionsI18n';
+import { useSequenceText } from './useSequenceText';
 
 /**
  * Alta/edición de una secuencia (FASE-08 §5.3, rediseño UX brief 6.3).
@@ -48,6 +51,8 @@ interface Props {
 }
 
 export function SequenceEditorDialog({ open, sequence, onOpenChange, onSave, returnFocusFallback }: Props) {
+ const tr=useSequenceText();
+ const activeLocale=useLocale(), locale=(['es','en','fr','pt'].includes(activeLocale)?activeLocale:'es') as ConditionLocale;
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [triggerType, setTriggerType] = useState('manual');
@@ -60,6 +65,7 @@ export function SequenceEditorDialog({ open, sequence, onOpenChange, onSave, ret
   const [stepsError, setStepsError] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+ const pendingSave=useRef(false);
   const nameRef = useRef<HTMLInputElement>(null);
   const stepsRef = useRef<HTMLDivElement>(null);
   const readOnlySteps = !!sequence;
@@ -95,9 +101,10 @@ export function SequenceEditorDialog({ open, sequence, onOpenChange, onSave, ret
   }, [open, sequence]);
 
   const submit = async () => {
+    if(pendingSave.current)return;
     setServerError(null);
     if (name.trim().length < 2) {
-      setNameError('Escribe un nombre de al menos 2 caracteres.');
+      setNameError(tr("Escribe un nombre de al menos 2 caracteres."));
       nameRef.current?.focus();
       return;
     }
@@ -106,14 +113,14 @@ export function SequenceEditorDialog({ open, sequence, onOpenChange, onSave, ret
     if (!readOnlySteps) {
       const badDelay = steps.findIndex((s) => !Number.isInteger(s.delay_days) || s.delay_days < 0 || s.delay_days > 3650);
       if (badDelay >= 0) {
-        setStepsError(`El paso ${badDelay + 1} tiene una espera inválida: entre 0 y 3650 días.`);
+        setStepsError(tr("El paso {p0} tiene una espera inválida: entre 0 y 3650 días.",{p0:badDelay + 1}));
         document.getElementById(`step-${steps[badDelay].uid}-days`)?.focus();
         return;
       }
       // Horas 0–23 (R5): el campo ya lo marca; aquí se lleva el foco al primero inválido.
-      const badHours = steps.findIndex((s) => hoursError(s.delay_hours ?? 0) !== null);
+      const badHours = steps.findIndex((s) => hoursError(s.delay_hours ?? 0, tr) !== null);
       if (badHours >= 0) {
-        setStepsError(`El paso ${badHours + 1} tiene horas fuera de rango: entre 0 y 23.`);
+        setStepsError(tr("El paso {p0} tiene horas fuera de rango: entre 0 y 23.",{p0:badHours + 1}));
         document.getElementById(`step-${steps[badHours].uid}-hours`)?.focus();
         return;
       }
@@ -121,14 +128,14 @@ export function SequenceEditorDialog({ open, sequence, onOpenChange, onSave, ret
       // r3 N10). El servidor también lo rechaza; esto evita el viaje.
       const emptyIndex = steps.findIndex((s) => s.channel === 'condition' && isEmptyConditionTree(s.condition));
       if (emptyIndex >= 0) {
-        setStepsError(`El paso ${emptyIndex + 1} es una condición sin reglas: añade al menos una o cambia el canal.`);
+        setStepsError(tr("El paso {p0} es una condición sin reglas: añade al menos una o cambia el canal.",{p0:emptyIndex + 1}));
         stepsRef.current?.focus();
         return;
       }
     }
     setStepsError(null);
 
-    setSaving(true);
+    pendingSave.current=true; setSaving(true);
     try {
       await onSave({
         ...(sequence ? { id: sequence.id } : {}),
@@ -140,38 +147,38 @@ export function SequenceEditorDialog({ open, sequence, onOpenChange, onSave, ret
         exit_conditions: exits,
         ...(readOnlySteps ? {} : { steps: steps.map((s, i) => stripUid({ ...s, step_number: i + 1 })) }),
       } as Partial<SequenceView> & { id?: string; steps?: SequenceStepView[] });
-      toast({ title: sequence ? 'Secuencia actualizada' : 'Secuencia creada' });
+      toast({ title: sequence ? tr("Secuencia actualizada") : tr("Secuencia creada") });
       onOpenChange(false);
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : 'Error desconocido');
+      setServerError(err instanceof Error ? err.message : tr("Error desconocido"));
     } finally {
-      setSaving(false);
+      pendingSave.current=false; setSaving(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={next=>{if(!saving)onOpenChange(next);}}>
       <DialogContent onCloseAutoFocus={onCloseAutoFocus} className="max-h-[92vh] w-[calc(100vw-1rem)] max-w-3xl overflow-y-auto sm:w-full">
         <DialogHeader>
-          <DialogTitle>{sequence ? 'Editar secuencia' : 'Nueva secuencia'}</DialogTitle>
+          <DialogTitle>{sequence ? tr("Editar secuencia") : tr("Nueva secuencia")}</DialogTitle>
           <DialogDescription>
             {sequence
-              ? 'Cambia nombre, disparador y ajustes. Los pasos se muestran pero no se editan para no romper las inscripciones en curso.'
-              : 'Ponle nombre y construye los pasos en la línea de tiempo.'}
+              ? tr("Cambia nombre, disparador y ajustes. Los pasos se muestran pero no se editan para no romper las inscripciones en curso.")
+              : tr("Ponle nombre y construye los pasos en la línea de tiempo.")}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-5">
+        <fieldset disabled={saving} className="min-w-0 space-y-5">
           {serverError && (
             <div role="alert" className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-              <span>No se pudo guardar: {serverError}. Corrige y vuelve a intentarlo.</span>
+              <AlertCircle strokeWidth={1.5} className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>{tr("No se pudo guardar:")}{serverError}{tr(". Corrige y vuelve a intentarlo.")}</span>
             </div>
           )}
 
           <div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto] sm:items-end">
             <div>
-              <Label htmlFor="seq-name">Nombre</Label>
+              <Label htmlFor="seq-name">{tr("Nombre")}</Label>
               <Input
                 id="seq-name"
                 ref={nameRef}
@@ -179,48 +186,47 @@ export function SequenceEditorDialog({ open, sequence, onOpenChange, onSave, ret
                 onChange={(e) => setName(e.target.value)}
                 aria-invalid={!!nameError}
                 aria-describedby={nameError ? 'seq-name-error' : undefined}
-                placeholder="Seguimiento de propuesta"
+                placeholder={tr("Seguimiento de propuesta")}
               />
-              {nameError && <p id="seq-name-error" className="mt-1 text-xs text-red-700 dark:text-red-300">{nameError}</p>}
+              {nameError && <p id="seq-name-error" className="mt-1 text-xs text-danger-text dark:text-danger-text">{nameError}</p>}
             </div>
             <div>
-              <Label htmlFor="seq-trigger">Se dispara</Label>
+              <Label htmlFor="seq-trigger">{tr("Se dispara")}</Label>
               <select id="seq-trigger" className={SELECT_CLASS} value={triggerType} onChange={(e) => setTriggerType(e.target.value)}>
-                {TRIGGER_OPTIONS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                {TRIGGER_OPTIONS.map((t) => <option key={t.value} value={t.value}>{tr(t.label)}</option>)}
               </select>
             </div>
             <div className="flex h-9 items-center gap-2">
               <Switch id="seq-active" checked={isActive} onCheckedChange={setIsActive} />
-              <Label htmlFor="seq-active">Activa</Label>
+              <Label htmlFor="seq-active">{tr("Activa")}</Label>
             </div>
           </div>
 
           <Collapsible open={moreOpen} onOpenChange={setMoreOpen}>
             <CollapsibleTrigger asChild>
-              <button type="button" className="flex items-center gap-1 text-sm font-medium text-blue-700 hover:underline dark:text-blue-300">
-                <ChevronDown className={`h-4 w-4 transition-transform ${moreOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
-                Más ajustes
-                <span className="font-normal text-gray-500 dark:text-gray-400">
-                  {' '}· {pauseOnReply ? 'se pausa si responde' : 'no se pausa'} · sale si {exits.map((c) => exitConditionLabel(c)).join(' o ')}
+              <button type="button" className="flex items-center gap-1 text-sm font-medium text-brand-deep hover:underline dark:text-blue-300">
+                <ChevronDown strokeWidth={1.5} className={`h-4 w-4 transition-transform ${moreOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+                {tr("Más ajustes")}<span className="font-normal text-fg-muted dark:text-fg-secondary">
+                  {' '}· {pauseOnReply ? tr("se pausa si responde") : tr("no se pausa")} {tr("· sale si")}{exits.map((c) => exitConditionLabel(c,locale)).join(tr(" o "))}
                 </span>
               </button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="mt-3 space-y-4 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+            <CollapsibleContent className="mt-3 space-y-4 rounded-lg border border-line p-3 dark:border-line-strong">
               <div>
-                <Label htmlFor="seq-desc">Descripción</Label>
+                <Label htmlFor="seq-desc">{tr("Descripción")}</Label>
                 <Textarea id="seq-desc" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
               </div>
               <div className="flex items-center gap-2">
                 <Switch id="seq-pause" checked={pauseOnReply} onCheckedChange={setPauseOnReply} />
-                <Label htmlFor="seq-pause">Pausar si el cliente responde</Label>
+                <Label htmlFor="seq-pause">{tr("Pausar si el cliente responde")}</Label>
               </div>
               <fieldset>
-                <legend className="text-sm font-medium text-gray-900 dark:text-gray-100">La secuencia termina si…</legend>
+                <legend className="text-sm font-medium text-fg dark:text-fg">{tr("La secuencia termina si…")}</legend>
                 <div className="mt-1 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
                   {EXIT_CONDITION_VALUES.map((c) => {
                     const always = c === ALWAYS_ON_EXIT_CONDITION;
                     return (
-                      <label key={c} className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300">
+                      <label key={c} className="flex items-center gap-1.5 text-sm text-fg-secondary dark:text-fg-secondary">
                         <input
                           type="checkbox"
                           checked={always || exits.includes(c)}
@@ -228,20 +234,18 @@ export function SequenceEditorDialog({ open, sequence, onOpenChange, onSave, ret
                           aria-describedby={always ? 'seq-exit-always' : undefined}
                           onChange={(e) => setExits(e.target.checked ? [...exits, c] : exits.filter((x) => x !== c))}
                         />
-                        {exitConditionLabel(c)}{always ? ' (siempre)' : ''}
+                        {exitConditionLabel(c,locale)}{always ? tr(" (siempre)") : ''}
                       </label>
                     );
                   })}
                 </div>
-                <p id="seq-exit-always" className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                  Cerrar la oportunidad saca siempre de la secuencia; no se puede desactivar.
-                </p>
+                <p id="seq-exit-always" className="mt-1 text-xs text-fg-secondary dark:text-fg-secondary">
+                  {tr("Cerrar la oportunidad saca siempre de la secuencia; no se puede desactivar.")}</p>
                 {droppedExits.length > 0 && (
-                  <p role="status" className="mt-2 flex items-start gap-1.5 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
-                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  <p role="status" className="mt-2 flex items-start gap-1.5 rounded-md border border-amber-300 bg-warning-subtle p-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
+                    <AlertCircle strokeWidth={1.5} className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                     <span>
-                      Esta secuencia tenía guardada la condición {droppedExits.map((c) => `«${exitConditionLabel(c)}»`).join(' y ')}, que el motor no evalúa. Al guardar se quitará.
-                    </span>
+                      {tr("Esta secuencia tenía guardada la condición")}{droppedExits.map((c) => `«${exitConditionLabel(c,locale)}»`).join(tr(" y "))}{tr(", que el motor no evalúa. Al guardar se quitará.")}</span>
                   </p>
                 )}
               </fieldset>
@@ -251,17 +255,17 @@ export function SequenceEditorDialog({ open, sequence, onOpenChange, onSave, ret
           <div ref={stepsRef} tabIndex={-1} aria-describedby={stepsError ? 'seq-steps-error' : undefined} className="outline-none">
             <StepTimelineEditor steps={steps} onChange={setSteps} readOnly={readOnlySteps} />
             {stepsError && (
-              <p id="seq-steps-error" role="alert" className="mt-2 flex items-center gap-1.5 text-sm text-red-700 dark:text-red-300">
-                <AlertCircle className="h-4 w-4" aria-hidden="true" /> {stepsError}
+              <p id="seq-steps-error" role="alert" className="mt-2 flex items-center gap-1.5 text-sm text-danger-text dark:text-danger-text">
+                <AlertCircle strokeWidth={1.5} className="h-4 w-4" aria-hidden="true" /> {stepsError}
               </p>
             )}
           </div>
-        </div>
+        </fieldset>
 
         <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving} className="w-full sm:w-auto">Cancelar</Button>
-          <Button onClick={submit} disabled={saving} className="w-full bg-blue-600 text-white hover:bg-blue-700 sm:w-auto">
-            {saving ? 'Guardando…' : sequence ? 'Guardar cambios' : 'Crear secuencia'}
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving} className="w-full sm:w-auto">{tr("Cancelar")}</Button>
+          <Button onClick={submit} disabled={saving} className="w-full bg-brand text-white hover:bg-brand-deep sm:w-auto">
+            {saving ? tr('Guardando…') : sequence ? tr("Guardar cambios") : tr("Crear secuencia")}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,9 +1,10 @@
 import { supabase } from '@/lib/supabase/config';
+import { pedirCrm } from '@/components/crm/acciones/apiCrm';
 import { pickEmbedded, profileDisplayName, type EmbeddedProfile } from '@/lib/utils/embeddedProfile';
 import { requireOrgId } from './dbRoles';
 import type { OrgMember, SalesTeam, SalesTeamMember } from './types';
 
-/** Capa de datos directa con Supabase cliente (con RLS) — equipos y miembros. */
+/** Reads are scoped to the organization; mutations use the audited server API. */
 export const teamsDb = {
   async getTeams(): Promise<SalesTeam[]> {
     const orgId = requireOrgId();
@@ -45,78 +46,19 @@ export const teamsDb = {
     is_active?: boolean;
     territory_id?: string | null;
   }): Promise<SalesTeam> {
-    const orgId = requireOrgId();
-    const { data, error } = await supabase
-      .from('sales_teams')
-      .insert({
-        organization_id: orgId,
-        name: body.name,
-        description: body.description ?? null,
-        is_active: body.is_active ?? true,
-        territory_id: body.territory_id ?? null,
-      })
-      .select()
-      .single();
-    if (error) throw error;
-    return data as SalesTeam;
+    return (await pedirCrm<SalesTeam>('/api/crm/teams',{method:'POST',cuerpo:body})).data;
   },
   async updateTeam(id: string, body: Partial<SalesTeam>): Promise<SalesTeam> {
-    const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
-    if (body.name !== undefined) updateData.name = body.name;
-    if (body.description !== undefined) updateData.description = body.description;
-    if (body.is_active !== undefined) updateData.is_active = body.is_active;
-    if (body.territory_id !== undefined) updateData.territory_id = body.territory_id;
-    const { data, error } = await supabase
-      .from('sales_teams')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
-    if (error) throw error;
-    return data as SalesTeam;
+    return (await pedirCrm<SalesTeam>(`/api/crm/teams/${encodeURIComponent(id)}`,{method:'PATCH',cuerpo:body})).data;
   },
   async deleteTeam(id: string): Promise<void> {
-    const { error } = await supabase.from('sales_teams').delete().eq('id', id);
-    if (error) throw error;
+    await pedirCrm(`/api/crm/teams/${encodeURIComponent(id)}`,{method:'DELETE'});
   },
-  // ── Team Members ──
-  async addTeamMember(
-    teamId: string,
-    body: {
-      user_id: string;
-      sales_role_id?: string | null;
-      quota_amount?: number | null;
-      quota_currency?: string;
-      is_active?: boolean;
-      territory_id?: string | null;
-    },
-  ): Promise<SalesTeamMember> {
-    const orgId = requireOrgId();
-    const { data, error } = await supabase
-      .from('sales_team_members')
-      .insert({
-        organization_id: orgId,
-        sales_team_id: teamId,
-        user_id: body.user_id,
-        sales_role_id: body.sales_role_id ?? null,
-        quota_amount: body.quota_amount ?? null,
-        // NULL: el trigger `trg_00_moneda_base_por_defecto` pone la moneda base.
-        quota_currency: body.quota_currency ?? null,
-        is_active: body.is_active ?? true,
-        territory_id: body.territory_id ?? null,
-      })
-      .select()
-      .single();
-    if (error) throw error;
-    return data as SalesTeamMember;
+  async addTeamMember(teamId:string,body:{user_id:string;sales_role_id?:string|null;quota_amount?:number|null;quota_currency?:string;is_active?:boolean;territory_id?:string|null}):Promise<SalesTeamMember> {
+    return (await pedirCrm<SalesTeamMember>(`/api/crm/teams/${encodeURIComponent(teamId)}/members`,{method:'POST',cuerpo:body})).data;
   },
-  async removeTeamMember(teamId: string, memberId: string): Promise<void> {
-    const { error } = await supabase
-      .from('sales_team_members')
-      .delete()
-      .eq('id', memberId)
-      .eq('sales_team_id', teamId);
-    if (error) throw error;
+  async removeTeamMember(teamId:string,memberId:string):Promise<void> {
+    await pedirCrm(`/api/crm/teams/${encodeURIComponent(teamId)}/members/${encodeURIComponent(memberId)}`,{method:'DELETE'});
   },
   // ── Org Members ──
   async getOrgMembers(): Promise<OrgMember[]> {

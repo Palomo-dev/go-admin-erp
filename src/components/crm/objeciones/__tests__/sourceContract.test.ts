@@ -42,7 +42,7 @@ const ZONE = [
   ...listTsx('src/components/crm/objeciones'),
   ...listTsx('src/components/crm/pipeline/drawer'),
   ...listTsx('src/components/crm/pipeline/drawer/tabs'),
-  'src/components/crm/oportunidades/detail/DetailSidebar.tsx',
+  'src/components/crm/oportunidad/ResumenOportunidad.tsx',
 ];
 
 /** Archivos que F2 construyó o reescribió: los 300 se miden a 100 columnas. El resto del drawer es de F9. */
@@ -302,7 +302,7 @@ describe('accesibilidad (brief §4)', () => {
     const picker = read('src/components/crm/objeciones/RegisterObjectionDialog.tsx');
     expect(openingTags(picker, 'div').filter((t) => attrLiteral(t, 'aria-live') === 'polite')).toEqual([]);
     expect(openingTags(picker, 'Label').some((t) => hasAttr(t, 'htmlFor'))).toBe(true);
-    expect(picker).toContain('Nota (opcional)');
+    expect(picker).toMatch(/t\(['"]notes['"]\)/);
     // La nota viaja: el picker llama onPick con dos argumentos y el bloque pasa ambos a register (la ruta la prueba ejecutada).
     expect(callArgs(picker, 'onPick').some((args) => args.length === 2)).toBe(true);
     const block = read('src/components/crm/objeciones/OpportunityObjectionsBlock.tsx');

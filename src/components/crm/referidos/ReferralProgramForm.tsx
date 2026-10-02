@@ -1,5 +1,7 @@
 'use client';
 
+import {useRedText} from '@/components/crm/red/useRedText';
+
 /**
  * Formulario de un programa de referidos. Extraído de
  * `configuracion/.../ReferralsProgramCard.tsx` (F12) para que la tarjeta de
@@ -67,6 +69,7 @@ export function validateProgramForm(s: State): { name?: string; reward_amount?: 
 }
 
 export function ReferralProgramForm({ program, currency, idPrefix = 'program', onSave, onCancel, submitLabel }: Props) {
+  const {tr, locale} = useRedText();
   const [s, setS] = useState<State>(() => fromProgram(program));
   const [errors, setErrors] = useState<ReturnType<typeof validateProgramForm>>({});
   const [serverError, setServerError] = useState<string | null>(null);
@@ -104,66 +107,66 @@ export function ReferralProgramForm({ program, currency, idPrefix = 'program', o
         program?.id,
       );
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : 'Error desconocido');
+      setServerError(err instanceof Error ? err.message : tr("Error desconocido"));
       setFocusId(id('server-error'));
     } finally {
       setSaving(false);
     }
   };
 
-  const preview = describeReward({ reward_type: s.reward_type, reward_amount: Number(s.reward_amount) || 0, reward_to: s.reward_to }, currency);
+  const preview = describeReward({ reward_type: s.reward_type, reward_amount: Number(s.reward_amount) || 0, reward_to: s.reward_to }, currency, {locale, translate: tr});
 
   return (
     <form className="space-y-4" noValidate onSubmit={(e) => { e.preventDefault(); void submit(); }}>
       <div className="flex items-center justify-between gap-3">
         <div>
-          <Label htmlFor={id('active')} className="text-sm text-gray-900 dark:text-gray-100">{s.is_active ? 'Programa activo' : 'Programa inactivo'}</Label>
-          <p className="text-xs text-gray-600 dark:text-gray-400">Solo los activos se ofrecen al registrar un referido.</p>
+          <Label htmlFor={id('active')} className="text-sm text-fg ">{s.is_active ? tr("Programa activo") : tr("Programa inactivo")}</Label>
+          <p className="text-xs text-fg-secondary ">{tr("Solo los activos se ofrecen al registrar un referido.")}</p>
         </div>
         <Switch id={id('active')} checked={s.is_active} disabled={saving} onCheckedChange={(v) => update({ ...s, is_active: v })} />
       </div>
       <div>
-        <Label htmlFor={id('name')} className="text-xs text-gray-700 dark:text-gray-300">Nombre del programa</Label>
-        <Input id={id('name')} value={s.name} placeholder="Trae un amigo" autoComplete="off" aria-invalid={!!errors.name} aria-describedby={errors.name ? id('name-error') : undefined} onChange={(e) => update({ ...s, name: e.target.value })} />
+        <Label htmlFor={id('name')} className="text-xs text-fg-secondary ">{tr("Nombre del programa")}</Label>
+        <Input id={id('name')} value={s.name} placeholder={tr("Trae un amigo")} autoComplete="off" aria-invalid={!!errors.name} aria-describedby={errors.name ? id('name-error') : undefined} onChange={(e) => update({ ...s, name: e.target.value })} />
         {errors.name && <p id={id('name-error')} role="alert" className="mt-1 text-xs text-red-700 dark:text-red-300">{errors.name}</p>}
       </div>
       <div>
-        <Label htmlFor={id('description')} className="text-xs text-gray-700 dark:text-gray-300">Descripción (opcional)</Label>
-        <Input id={id('description')} value={s.description} placeholder="10 % de descuento para quien recomienda y para el referido" autoComplete="off" onChange={(e) => update({ ...s, description: e.target.value })} />
+        <Label htmlFor={id('description')} className="text-xs text-fg-secondary ">{tr("Descripción (opcional)")}</Label>
+        <Input id={id('description')} value={s.description} placeholder={tr("10 % de descuento para quien recomienda y para el referido")} autoComplete="off" onChange={(e) => update({ ...s, description: e.target.value })} />
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
         <div>
-          <Label htmlFor={id('type')} className="text-xs text-gray-700 dark:text-gray-300">Tipo de recompensa</Label>
+          <Label htmlFor={id('type')} className="text-xs text-fg-secondary ">{tr("Tipo de recompensa")}</Label>
           <Select value={s.reward_type} onValueChange={(v) => update({ ...s, reward_type: v })}>
             <SelectTrigger id={id('type')} className="text-left [&>span]:line-clamp-1"><SelectValue /></SelectTrigger>
-            <SelectContent>{REWARD_TYPES.map((t) => <SelectItem key={t} value={t}>{REWARD_TYPE_LABELS[t]}</SelectItem>)}</SelectContent>
+            <SelectContent>{REWARD_TYPES.map((t) => <SelectItem key={t} value={t}>{tr(REWARD_TYPE_LABELS[t])}</SelectItem>)}</SelectContent>
           </Select>
         </div>
         <div>
-          <Label htmlFor={id('amount')} className="text-xs text-gray-700 dark:text-gray-300">{s.reward_type === 'discount' ? 'Porcentaje' : 'Valor'}</Label>
+          <Label htmlFor={id('amount')} className="text-xs text-fg-secondary ">{s.reward_type === 'discount' ? tr("Porcentaje") : tr("Valor")}</Label>
           <Input id={id('amount')} type="number" inputMode="decimal" min={0} step="any" value={s.reward_amount} aria-invalid={!!errors.reward_amount}
             aria-describedby={errors.reward_amount ? id('amount-error') : id('preview')} onChange={(e) => update({ ...s, reward_amount: e.target.value })} />
           {errors.reward_amount && <p id={id('amount-error')} role="alert" className="mt-1 text-xs text-red-700 dark:text-red-300">{errors.reward_amount}</p>}
         </div>
         <div>
-          <Label htmlFor={id('to')} className="text-xs text-gray-700 dark:text-gray-300">Recompensa para</Label>
+          <Label htmlFor={id('to')} className="text-xs text-fg-secondary ">{tr("Recompensa para")}</Label>
           <Select value={s.reward_to} onValueChange={(v) => update({ ...s, reward_to: v })}>
             <SelectTrigger id={id('to')} className="text-left [&>span]:line-clamp-1"><SelectValue /></SelectTrigger>
-            <SelectContent>{REWARD_TO.map((t) => <SelectItem key={t} value={t}>{REWARD_TO_LABELS[t]}</SelectItem>)}</SelectContent>
+            <SelectContent>{REWARD_TO.map((t) => <SelectItem key={t} value={t}>{tr(REWARD_TO_LABELS[t])}</SelectItem>)}</SelectContent>
           </Select>
         </div>
       </div>
-      <p id={id('preview')} className="text-xs text-gray-600 dark:text-gray-400" aria-live="polite">{preview ? `Así se verá: ${preview.summary}` : ''}</p>
+      <p id={id('preview')} className="text-xs text-fg-secondary " aria-live="polite">{preview ? tr("Así se verá: {p0}", {p0: preview.summary}) : ''}</p>
       {serverError && (
         <Alert id={id('server-error')} variant="destructive" tabIndex={-1}>
-          <AlertTitle>No se pudo guardar</AlertTitle>
+          <AlertTitle>{tr("No se pudo guardar")}</AlertTitle>
           <AlertDescription>{serverError}</AlertDescription>
         </Alert>
       )}
       <div className="flex flex-wrap justify-end gap-2 [&>button]:h-11 sm:[&>button]:h-9">
-        {onCancel && <Button type="button" variant="outline" disabled={saving} onClick={onCancel}>Cancelar</Button>}
-        <Button type="submit" className="bg-blue-600 text-white hover:bg-blue-700" disabled={saving}>
-          {saving ? 'Guardando…' : submitLabel ?? (program ? 'Guardar cambios' : 'Crear programa')}
+        {onCancel && <Button type="button" variant="outline" disabled={saving} onClick={onCancel}>{tr("Cancelar")}</Button>}
+        <Button type="submit" className="bg-brand text-white hover:bg-brand-hover" disabled={saving}>
+          {saving ? tr("Guardando…") : submitLabel ?? (program ? tr("Guardar cambios") : tr("Crear programa"))}
         </Button>
       </div>
     </form>

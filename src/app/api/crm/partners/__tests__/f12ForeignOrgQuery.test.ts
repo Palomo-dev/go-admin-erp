@@ -14,6 +14,8 @@ const { OrgContextError: RealOrgContextError } = jest.requireActual<typeof impor
 let db: FakeDb;
 
 jest.mock('@/lib/utils/orgContext', () => ({
+  // Fixture: manager role 5 is assigned admin.full_access in the permission catalog.
+  hasOrgAdminOrPermission: jest.fn(async (ctx, code = 'admin.full_access') => ctx.isSuperAdmin || [1, 2].includes(ctx.roleId) || code !== 'admin.full_access' || ctx.roleId === 5),
   OrgContextError: RealOrgContextError,
   getServerOrgContext: jest.fn(async () => ({ organizationId: ORG, userId: 'u-1', roleId: 5, roleName: 'Manager', isSuperAdmin: false, supabase: fakeSupabase(db) })),
 }));

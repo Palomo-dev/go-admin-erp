@@ -13,10 +13,7 @@
 
 const { OrgContextError: RealOrgContextError } = jest.requireActual<typeof import('@/lib/utils/orgContextError')>('@/lib/utils/orgContextError');
 // Extiende la clase real: `readOrgBody` (punto único) lanza la real y las rutas hacen `instanceof`.
-class FakeOrgContextError extends RealOrgContextError {
-  statusCode = 401;
-  code = 'UNAUTHORIZED';
-}
+
 
 const ROWS: Record<string, unknown[]> = {
   sequences: [
@@ -67,6 +64,7 @@ jest.mock('@/lib/services/crm/emailService', () => ({ sendEmail: jest.fn() }));
 
 jest.mock('@/lib/utils/orgContext', () => ({
   OrgContextError: RealOrgContextError, // la clase real: `readOrgBody` lanza la real y las rutas hacen `instanceof`
+  hasOrgAdminOrPermission: jest.fn(async () => false),
   requireOrgAdmin: jest.fn(),
   getServerOrgContext: jest.fn(async () => ({ organizationId: 120, userId: 'u-1', supabase: fakeSupabase() })),
 }));

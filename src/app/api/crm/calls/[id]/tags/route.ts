@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { exigirAccesoLlamada } from '@/lib/services/crm/callAccessService';
+import { respuestaErrorCrm } from '@/lib/services/crm/crmRouteSupport';
+import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import { getCallTagsForCall, tagCall } from '@/lib/services/crm/callTagService';
 import { assertDbEnum, CALL_TAG_SOURCE_VALUES } from '@/lib/services/crm/callAnalysisRules';
@@ -8,26 +10,20 @@ import { assertDbEnum, CALL_TAG_SOURCE_VALUES } from '@/lib/services/crm/callAna
  * GET /api/crm/calls/[id]/tags — Lista los tags vinculados a una llamada.
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     const { id } = await params;
+    readOrgBody(ctx, {}, { request });
+    await exigirAccesoLlamada(ctx, id, 'lectura');
 
     const tags = await getCallTagsForCall(id, ctx.organizationId, ctx.supabase);
 
     return NextResponse.json({ success: true, data: tags }, { status: 200 });
   } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Calls Tags] GET error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return respuestaErrorCrm(error, 'llamada_auxiliar');
   }
 }
 
@@ -40,9 +36,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     const { id } = await params;
     const body = await readOrgBody(ctx, request);
+    await exigirAccesoLlamada(ctx, id, 'gestion');
 
     if (!body?.tagId) {
       return NextResponse.json(
@@ -81,14 +78,6 @@ export async function POST(
 
     return NextResponse.json({ success: true, data: relation }, { status: 201 });
   } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Calls Tags] POST error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return respuestaErrorCrm(error, 'llamada_auxiliar');
   }
 }

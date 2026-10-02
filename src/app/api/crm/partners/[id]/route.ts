@@ -9,9 +9,10 @@ const TAG = 'CRM Partners';
 type Params = { params: Promise<{ id: string }> };
 
 /** GET /api/crm/partners/[id] — un partner de la organización (404 si es ajeno). */
-export async function GET(_request: NextRequest, { params }: Params) {
+export async function GET(request: NextRequest, { params }: Params) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
+    rejectForeignOrganization(TAG, null, ctx, request);
     const { id } = await params;
     const partner = await getPartnerById(id, ctx.organizationId, ctx.supabase);
     if (!partner) return jsonFail(404, 'Partner no encontrado en esta organización', { code: 'NOT_FOUND' });
@@ -24,11 +25,11 @@ export async function GET(_request: NextRequest, { params }: Params) {
 /** PATCH /api/crm/partners/[id] — solo admin/manager (por id de rol); edición parcial (409 correo de otro partner; 404 tier o partner ajeno). */
 export async function PATCH(request: NextRequest, { params }: Params) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     const { id } = await params;
     const body = await readJson(request);
     rejectForeignOrganization(TAG, body, ctx, request);
-    requirePartnerManager(ctx);
+    await requirePartnerManager(ctx);
     const parsed = validatePartnerInput(body, { partial: true });
     if (!parsed.ok) return validationFail(parsed.errors);
     const partner = await updatePartner(id, ctx.organizationId, parsed.value, ctx.supabase);
@@ -42,10 +43,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 /** DELETE /api/crm/partners/[id] — solo admin/manager (por id de rol). Sus deals se borran en cascada (FK). */
 export async function DELETE(request: NextRequest, { params }: Params) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     // Regla dura 5 (b): sin body, pero la query podría traer otra organización.
     await readOrgBody(ctx, request);
-    requirePartnerManager(ctx);
+    await requirePartnerManager(ctx);
     const { id } = await params;
     const deleted = await deletePartner(id, ctx.organizationId, ctx.supabase);
     if (!deleted) return jsonFail(404, 'Partner no encontrado en esta organización', { code: 'NOT_FOUND' });

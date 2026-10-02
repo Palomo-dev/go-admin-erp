@@ -8,6 +8,7 @@ import {
   sinClavesDeOrganizacion,
 } from "@/lib/services/crm/crmRouteSupport";
 import { fusionarClientes } from "@/lib/services/crm/customerMergeService";
+import { readMergeHistoryPage } from "@/lib/services/crm/customerMergeHistory";
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,32 +38,11 @@ export async function GET(request: NextRequest) {
     const sp = new URL(request.url).searchParams;
     const page = Math.max(1, Number.parseInt(sp.get("page") ?? "1", 10) || 1);
     const start = (page - 1) * 25;
-    // El snapshot incluye datos personales: la lista entrega únicamente auditoría.
-    const { data, error, count } = await ctx.supabase
-      .from("customer_merges")
-      .select(
-        "id, primary_customer_id, secondary_customer_id, merged_at, merged_by, undone_at, undone_by, moved_rows, principal:customers!customer_merges_primary_customer_id_fkey(full_name), secundario:customers!customer_merges_secondary_customer_id_fkey(full_name), autor:profiles!customer_merges_merged_by_fkey(first_name,last_name)",
-        { count: "exact" },
-      )
-      .eq("organization_id", ctx.organizationId)
-      .gte("merged_at", new Date(Date.now() - 90 * 86400000).toISOString())
-      .order("merged_at", { ascending: false })
-      .order("id")
-      .range(start, start + 24);
-    if (error) throw error;
-    const rows = (data ?? []).map(({ moved_rows, ...row }) => ({
-      ...row,
-      moved_counts: Array.isArray(moved_rows)
-        ? moved_rows.map((move: { table: string; ids: unknown[] }) => ({
-            table: move.table,
-            count: move.ids.length,
-          }))
-        : [],
-    }));
+    const result = await readMergeHistoryPage(ctx, start, 25);
     return NextResponse.json({
       success: true,
-      data: rows,
-      total: count ?? 0,
+      data: result.data,
+      total: result.total,
       page,
     });
   } catch (error) {

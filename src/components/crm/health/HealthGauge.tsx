@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useReducedMotion } from '@/components/shared/motion';
 import type { HealthBand } from '@/lib/services/crm/healthBands';
 import { BAND_STYLES } from './healthBandStyles';
@@ -26,6 +27,8 @@ const SIZES = {
 } as const;
 
 export function HealthGauge({ score, band, size = 'md', showLabel = true, className = '' }: HealthGaugeProps) {
+  const t = useTranslations('crm.salud');
+  const label = t(`bands.${band}`);
   const reduceMotion = useReducedMotion();
   const s = SIZES[size];
   const style = BAND_STYLES[band];
@@ -39,12 +42,12 @@ export function HealthGauge({ score, band, size = 'md', showLabel = true, classN
     <div className={`inline-flex flex-col items-center gap-1 ${className}`}>
       <div
         role="img"
-        aria-label={`Salud ${value} de 100, ${style.label}`}
+        aria-label={t('gauge', { score: value, band: label })}
         className="relative shrink-0"
         style={{ width: s.box, height: s.box }}
       >
         <svg width={s.box} height={s.box} viewBox={`0 0 ${s.box} ${s.box}`} className="-rotate-90" aria-hidden="true" focusable="false">
-          <circle cx={center} cy={center} r={s.r} fill="none" strokeWidth={s.stroke} className="stroke-gray-200 dark:stroke-gray-700" />
+          <circle cx={center} cy={center} r={s.r} fill="none" strokeWidth={s.stroke} className="stroke-line" />
           <circle
             cx={center}
             cy={center}
@@ -65,7 +68,7 @@ export function HealthGauge({ score, band, size = 'md', showLabel = true, classN
       {showLabel && (
         <span aria-hidden="true" className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${style.badge}`}>
           <Icon className="h-3 w-3" />
-          {style.label}
+          {label}
         </span>
       )}
     </div>

@@ -14,7 +14,7 @@ const TAG = 'CRM Referrals Status';
  */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     const { id } = await params;
     const body = await readJson(request);
     rejectForeignOrganization(TAG, body, ctx, request);

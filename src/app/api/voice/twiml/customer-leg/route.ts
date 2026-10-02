@@ -29,6 +29,7 @@ import { buildCustomerLegTwiml, buildBridgeHangupTwiml } from '@/lib/services/cr
 import { isTerminalBridgeStatus, type BridgeStatus } from '@/lib/services/crm/mobileBridgeService';
 import { refundVoiceMinutes } from '@/lib/services/crm/callCreditsService';
 import { recordingEnabledForCall } from '@/lib/services/crm/consentService';
+import { updateCallFromProviderEvent } from '@/lib/services/crm/callManagementService';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -83,7 +84,6 @@ export async function POST(request: Request) {
 
     const status = bridge.status as BridgeStatus;
     const callId = (bridge.call_id as string | null) ?? null;
-    const nowIso = new Date().toISOString();
 
     if (isTerminalBridgeStatus(status)) {
       return xml(buildBridgeHangupTwiml('Esta llamada ya finalizó.'));
@@ -96,18 +96,18 @@ export async function POST(request: Request) {
         .update({ status: 'agent_rejected' })
         .eq('id', bridgeId)
         .eq('organization_id', orgId);
-      if (updateError) console.error('[Customer Leg TwiML] update agent_rejected:', updateError.message);
+      if (updateError) throw updateError;
 
+      let callSaveError: unknown;
       if (callId) {
-        const { error: callError } = await supabase
-          .from('calls')
-          .update({ status: 'canceled', ended_at: nowIso })
-          .eq('id', callId)
-          .eq('organization_id', orgId);
-        if (callError) console.error('[Customer Leg TwiML] update calls canceled:', callError.message);
+        try {
+          const saved = await updateCallFromProviderEvent(callId, orgId, { CallStatus: 'canceled' }, 'child', supabase);
+          if (!saved) throw new Error('Llamada no encontrada');
+        } catch (error) { callSaveError = error; }
       }
       // El minuto del cliente reservado y nunca usado se devuelve (§8).
       await refundVoiceMinutes(orgId, 1, supabase);
+      if (callSaveError) throw callSaveError;
       return xml(buildBridgeHangupTwiml('Llamada cancelada. Hasta luego.'));
     }
 
@@ -133,15 +133,11 @@ export async function POST(request: Request) {
         .update({ status: 'customer_dialing' })
         .eq('id', bridgeId)
         .eq('organization_id', orgId);
-      if (updateError) console.error('[Customer Leg TwiML] update customer_dialing:', updateError.message);
+      if (updateError) throw updateError;
 
       if (callId) {
-        const { error: callError } = await supabase
-          .from('calls')
-          .update({ status: 'ringing' })
-          .eq('id', callId)
-          .eq('organization_id', orgId);
-        if (callError) console.error('[Customer Leg TwiML] update calls ringing:', callError.message);
+        const saved = await updateCallFromProviderEvent(callId, orgId, { CallStatus: 'ringing' }, 'child', supabase);
+        if (!saved) throw new Error('Llamada no encontrada');
       }
     }
 
@@ -164,6 +160,7 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error('[Customer Leg TwiML] Error:', error);
-    return xml(buildBridgeHangupTwiml('Ocurrió un error. Intenta más tarde.'));
+    return new NextResponse(buildBridgeHangupTwiml('Ocurrió un error. Intenta más tarde.'),
+      { status: 500, headers: XML_HEADERS });
   }
 }

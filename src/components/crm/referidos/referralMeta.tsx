@@ -1,4 +1,5 @@
 'use client';
+import {useRedText} from '@/components/crm/red/useRedText';
 
 /**
  * Estados de referido para la interfaz: icono + texto + colores AA en claro y
@@ -22,13 +23,13 @@ export const REFERRAL_STATUS_META: Record<ReferralStatus, StatusMeta> = {
   pending: {
     label: 'Pendiente',
     icon: CircleDashed,
-    badge: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
+    badge: 'bg-subtle text-fg  ',
     action: 'Volver a pendiente',
   },
   contacted: {
     label: 'Contactado',
     icon: PhoneCall,
-    badge: 'bg-blue-100 text-blue-900 dark:bg-blue-950/70 dark:text-blue-200',
+    badge: 'bg-brand-subtle text-brand-deep  ',
     action: 'Marcar contactado',
   },
   qualified: {
@@ -52,12 +53,13 @@ export const REFERRAL_STATUS_META: Record<ReferralStatus, StatusMeta> = {
 };
 
 export function ReferralStatusBadge({ status }: { status: ReferralStatus }) {
+  const {tr} = useRedText();
   const meta = REFERRAL_STATUS_META[status] ?? REFERRAL_STATUS_META.pending;
   const Icon = meta.icon;
   return (
     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${meta.badge}`}>
       <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-      {meta.label}
+      {tr(meta.label)}
     </span>
   );
 }

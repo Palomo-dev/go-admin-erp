@@ -1,8 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { assertReferralTransition, canTransitionReferral, type ReferralStatus } from './referralStateMachine';
+import { assertReferralTransition, canTransitionReferral } from './referralStateMachine';
 import { checkRewardPayable, rewardPaidPatch } from './referralReward';
 import { F12Error, notFound } from './f12Errors';
-import { createLeadWithCustomer, rollbackCustomer, type LeadCreateContext, type LeadCreateResult } from './leadCreateService';
+import type { LeadCreateContext, LeadCreateResult } from './leadCreateService';
+import { convertReferralAtomic } from './referralAtomicService';
 
 /**
  * Servicio CRM de referidos (F12). Tablas: `referral_programs`, `referrals`
@@ -19,116 +20,8 @@ import { createLeadWithCustomer, rollbackCustomer, type LeadCreateContext, type 
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
-export interface ReferralProgram {
-  id: string;
-  organization_id: number;
-  name: string;
-  description: string | null;
-  reward_type: string;
-  reward_amount: number;
-  reward_to: string;
-  is_active: boolean;
-  created_at: string;
-}
-
-export interface ReferralProgramInput {
-  name: string;
-  description?: string | null;
-  reward_type: string;
-  reward_amount: number;
-  reward_to: string;
-  is_active?: boolean;
-}
-
-export interface ReferralProgramUpdateInput {
-  name?: string;
-  description?: string | null;
-  reward_type?: string;
-  reward_amount?: number;
-  reward_to?: string;
-  is_active?: boolean;
-}
-
-export interface Referral {
-  id: string;
-  organization_id: number;
-  program_id: string | null;
-  referrer_customer_id: string;
-  referred_customer_id: string | null;
-  referred_name: string;
-  referred_email: string | null;
-  referred_phone: string | null;
-  opportunity_id: string | null;
-  status: ReferralStatus;
-  reward_paid: boolean;
-  reward_paid_at: string | null;
-  created_at: string;
-}
-
-export interface ReferralCustomerRef {
-  id: string;
-  full_name: string | null;
-  email?: string | null;
-}
-
-export interface ReferralProgramRef {
-  id: string;
-  name: string;
-  reward_type: string;
-  reward_amount: number;
-  reward_to: string;
-  is_active: boolean;
-}
-
-export interface ReferralOpportunityRef {
-  id: string;
-  name: string;
-  status: string | null;
-  record_type: string | null;
-}
-
-/** Fila con sus enlaces resueltos para la interfaz. */
-export interface ReferralView extends Referral {
-  referrer: ReferralCustomerRef | null;
-  referred: ReferralCustomerRef | null;
-  program: ReferralProgramRef | null;
-  opportunity: ReferralOpportunityRef | null;
-}
-
-export interface ReferralInput {
-  program_id?: string | null;
-  referrer_customer_id: string;
-  referred_name: string;
-  referred_email?: string | null;
-  referred_phone?: string | null;
-}
-
-export interface ReferralPatch {
-  referred_name?: string;
-  referred_email?: string | null;
-  referred_phone?: string | null;
-  program_id?: string | null;
-}
-
-export interface ReferralFilters {
-  status?: string;
-  program_id?: string;
-  referrer_customer_id?: string;
-  reward_paid?: boolean;
-  limit?: number;
-  offset?: number;
-}
-
-/** Tarea «pedir referido» que F10 crea al ganar (`tasks.type='referido'`). */
-export interface ReferralRequest {
-  id: string;
-  title: string;
-  due_date: string | null;
-  status: string | null;
-  customer_id: string | null;
-  related_to_id: string | null;
-  customer: ReferralCustomerRef | null;
-}
+export type { ReferralProgram, ReferralProgramInput, ReferralProgramUpdateInput, Referral, ReferralCustomerRef, ReferralProgramRef, ReferralOpportunityRef, ReferralView, ReferralInput, ReferralPatch, ReferralFilters, ReferralRequest } from './redCommercialTypes';
+import type { ReferralProgram, ReferralProgramInput, ReferralProgramUpdateInput, Referral, ReferralCustomerRef, ReferralProgramRef, ReferralOpportunityRef, ReferralView, ReferralInput, ReferralPatch, ReferralFilters, ReferralRequest } from './redCommercialTypes';
 
 const REFERRAL_SELECT = `*,
   referrer:customers!referrals_referrer_customer_id_fkey(id, full_name, email),
@@ -226,7 +119,8 @@ export async function getReferrals(orgId: number, supabase: SupabaseClient, filt
   query = query.range(offset, offset + limit - 1);
   const { data, error, count } = await query;
   if (error) throw error;
-  return { data: ((data as Record<string, unknown>[] | null) ?? []).map(toView), count: count ?? 0 };
+  if (typeof count !== 'number' || !Number.isSafeInteger(count) || count < 0) throw new Error('La base no devolvió el conteo exacto de referidos');
+  return { data: ((data as Record<string, unknown>[] | null) ?? []).map(toView), count };
 }
 
 export async function getReferralById(id: string, orgId: number, supabase: SupabaseClient): Promise<ReferralView | null> {
@@ -361,7 +255,7 @@ export interface ConvertReferralResult {
  * `lead_source='referral'`, `metadata.lead.deal_type='referral'`), sin
  * oportunidad. El referido pasa a `converted` enlazado al cliente; su
  * `opportunity_id` lo pone `crm_create_opportunity` cuando el lead se califica.
- * Si el enlace no cuaja, se deshace la ficha creada (mejor esfuerzo).
+ * La ficha y el enlace se guardan juntos o se revierten juntos.
  */
 export async function convertReferral(ctx: LeadCreateContext, id: string, body: ConvertReferralBody): Promise<ConvertReferralResult | Exclude<LeadCreateResult, { status: 201 }>> {
   const { supabase, organizationId } = ctx;
@@ -373,38 +267,5 @@ export async function convertReferral(ctx: LeadCreateContext, id: string, body: 
     throw new F12Error(409, 'ALREADY_LINKED', 'El referido ya está enlazado a un lead u oportunidad');
   }
 
-  const email = body.referred_email === undefined ? current.referred_email : body.referred_email;
-  const phone = body.referred_phone === undefined ? current.referred_phone : body.referred_phone;
-  const leadResult = await createLeadWithCustomer(ctx, {
-    name: body.name?.trim() || `Referido: ${current.referred_name}`,
-    customer_id: body.customer_id,
-    new_customer: body.customer_id ? undefined : { full_name: current.referred_name, email: email ?? undefined, phone: phone ?? undefined },
-    pipeline_id: body.pipeline_id,
-    stage_id: body.stage_id,
-    amount: body.amount,
-    currency: body.currency,
-    salesperson_id: body.salesperson_id,
-    source: 'referral',
-    deal_type: 'referral',
-  });
-  if (leadResult.status !== 201) return leadResult;
-
-  const { data, error } = await supabase
-    .from('referrals')
-    .update({ status: 'converted', referred_customer_id: leadResult.customer_id })
-    .eq('id', id)
-    .eq('organization_id', organizationId)
-    .eq('status', current.status)
-    .select(REFERRAL_SELECT)
-    .maybeSingle();
-
-  if (error || !data) {
-    // El lead ya está en la base pero el referido no quedó enlazado: si la
-    // ficha se creó aquí, se borra para no dejar un lead huérfano. Mejor
-    // esfuerzo: si el borrado falla se registra, no se oculta.
-    if (leadResult.created_customer_id) await rollbackCustomer(ctx, leadResult.created_customer_id);
-    if (error) throw error;
-    throw new F12Error(409, 'CONCURRENT_CHANGE', 'El referido cambió mientras se convertía; recarga la lista.');
-  }
-  return { referral: toView(data as Record<string, unknown>), lead: leadResult.data, created_customer_id: leadResult.created_customer_id };
+  return convertReferralAtomic(ctx, current, body);
 }

@@ -9,6 +9,27 @@
  */
 
 export type Row = Record<string, unknown>;
+interface FakeResult {
+  data: Row | Row[] | null;
+  error: { code?: string; message: string } | null;
+  count: number | null;
+}
+interface FakeQuery {
+  select(columns?: string, options?: { count?: string; head?: boolean }): FakeQuery;
+  insert(payload: unknown): FakeQuery;
+  update(payload: unknown): FakeQuery;
+  delete(): FakeQuery;
+  eq(key: string, value: unknown): FakeQuery;
+  neq(key: string, value: unknown): FakeQuery;
+  in(key: string, value: unknown[]): FakeQuery;
+  not(key: string, operator: string, value: unknown): FakeQuery;
+  is(key: string, value: unknown): FakeQuery;
+  order(key: string, options?: { ascending?: boolean }): FakeQuery;
+  limit(size: number): FakeQuery;
+  maybeSingle(): Promise<FakeResult>;
+  single(): Promise<FakeResult>;
+  then(resolve: (value: FakeResult) => unknown, reject?: (error: unknown) => unknown): Promise<unknown>;
+}
 
 export interface Write {
   table: string;
@@ -123,7 +144,7 @@ export function fakeSupabase(db: FakeDb) {
       return { data: shaped, error: null, count: wantCount ? total : null };
     };
 
-    const chain: Record<string, unknown> = {
+    const chain: FakeQuery = {
       select(cols = '*', opts?: { count?: string; head?: boolean }) {
         void cols; // el doble devuelve filas completas: las columnas no se recortan
         if (opts?.count) wantCount = true;
@@ -181,13 +202,20 @@ export function fakeSupabase(db: FakeDb) {
         mode = 'single';
         return run();
       },
-      then(resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) {
+      then(resolve: (v: FakeResult) => unknown, reject?: (e: unknown) => unknown) {
         return Promise.resolve(run()).then(resolve, reject);
       },
     };
     return chain;
   };
-  return { from };
+  return { from, async rpc(name: string, args: Record<string, unknown>) {
+    // El writer preparado conserva los filtros/errores/escrituras del mismo doble.
+    if (name !== 'fn_crm_insertar_cliente_preparado') throw new Error(`RPC inesperada: ${name}`);
+    if (typeof args.p_org !== 'number' || !Number.isSafeInteger(args.p_org) || args.p_data === null || typeof args.p_data !== 'object' || Array.isArray(args.p_data)) {
+      throw new Error('RPC preparada sin organización/datos válidos');
+    }
+    return from('customers').insert({ ...args.p_data, organization_id: args.p_org }).select('*').single();
+  } };
 }
 
 // ─── Datos de partida ────────────────────────────────────────────────────────

@@ -1,0 +1,9 @@
+# Acceso directo a llamadas y sus derivados
+
+Estado: **propuesta congelada, sin aplicación**. Las políticas restrictivas requieren primero desplegar los writers de servidor del PR y después validar la lectura, escritura legítima y reversión de los bytes finales. La ampliación de sucursales del candidato de acceso directo y el candidato de derivados no tienen gate final acreditado. La pausa de pruebas en Supabase permanece vigente.
+
+`llamadas_acceso_directo.sql` restringe lectura por autor o permiso canónico de lectura completa, con pertenencia y acceso nativo a las sucursales de las referencias. Impide escritura directa autenticada de llamadas y de actividades relacionadas con una llamada; preserva las actividades manuales sin vínculo. Los escritores de servicio y las RPC nativas mantienen sus comprobaciones de sesión, permisos, tenant y propietario. Activar las políticas antes de desplegar esos writers rompería el runtime anterior.
+
+`llamadas_derivados_acceso.sql` propone políticas para consentimiento, grabaciones, transcripciones, análisis y segmentos, derivando acceso de la llamada autorizada. Depende del candidato anterior para su alcance de sucursales. Storage limita los objetos del bucket de grabaciones CRM a una grabación vinculada y autorizada y mantiene los demás buckets. La carga manual usa el writer nativo de servicio después del guard de la API; no se habilita escritura directa del navegador.
+
+Los enlaces firmados usan la caducidad nativa de 600 segundos. Las políticas nuevas deben verificarse también al emitir esos enlaces; su activación no acredita revocación instantánea de un enlace ya emitido. El gate pendiente debe comprobar carga manual, lecturas por propietario/administrador, referencias ajenas, segmentos y URL firmada, además de aplicación/reversión y metadatos originales. No se probarán estos casos contra producción mientras continúe la pausa.

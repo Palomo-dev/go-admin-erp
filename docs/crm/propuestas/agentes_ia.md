@@ -17,3 +17,19 @@ El editor incluye los cinco pasos con kit, tokens semánticos, errores/reintento
 `start_ai_agent` deriva agente/actor/destino de regla, ejecución y evento persistidos, verifica versión/actividad/permisos y encola `ai_call`. El worker usa `dispatchAgentCall` con sus barreras de Ley 2300, RNE, presupuesto, consentimiento y créditos. No se añadió otro motor de llamadas o cobro.
 
 Las pruebas de proveedores/cobro y acciones usan dobles locales; las pruebas visuales utilizan Intl real en cuatro idiomas. Las traducciones se entregan en `/tmp/agents-i18n-{es,en,fr,pt}.json` para integración del coordinador. No se ejecuta TSC global mientras hay ediciones simultáneas; el gate final pertenece al coordinador.
+
+
+### Omisiones instaladas y verificación previa a la pausa
+
+Métricas aplicadas por MCP `20261002062822`, SQL MD5 `8da542d01f41446666ad67a6748de532`, rollback `70cf95c5d3c036f0ab36c44eb8138551`. Delta omisiones aplicado `20261002064940`: SQL `a6032bd276f289fb9d7f92c73d6ac2f1`, rollback `630731cccff049326ba2aa1877cffb4c`; prosrc `815735d5ff4d1d1fd57c83ca6749aedd`.
+
+Gate PostgreSQL anterior a la pausa: transacción revertida, doble aplicación/doble reversión/reaplicación y rol authenticated real. Las omisiones RNE=30, Ley reprogramada=15 y otras=1 conservan el total al paginar. Los créditos son11: recibos liquidados2+5 y legado4; pendiente8 excluido, sin contar de nuevo legado99 que ya tiene recibo. La Ley2300 pendiente/reprogramada no se presenta como fallo. Organización, propietario y sucursal probados. Aviso0029 deliberado por lectura de ledger privado con sesión/permisos/scope; sin advertencias de rendimiento. Ningún proveedor ni cobro real y sin repetición de pruebas Supabase tras la pausa.
+
+
+### Cierre local de tipos y alcance PMS heredado
+
+Después de la pausa se hicieron sólo comprobaciones locales. El ajuste final usa `hideCloseButton` del kit, pasa los agentes cargados a `AgentCampaignsPanel` y valida el UUID obligatorio de DELETE antes de usarlo. `stageAgentEditor.test.ts` y `agentsRender.test.tsx`: 2 suites, 13 casos PASS; lint de los cinco archivos revisados y TypeScript focal de las tres entradas limpios. No se repitieron pruebas de Supabase ni se llamó a proveedores.
+
+La implementación CRM actual `src/lib/services/crm/voiceAgentTools.ts` no consulta ni crea reservas PMS. El código antiguo que escribe/consulta `reservations.code` está en `src/lib/services/integrations/twilio/voiceAgent/voiceAgentTools.ts`; `conversationRelayHandler.ts` sólo lo despacha cuando la sesión no tiene runtime CRM. Si el agente CRM no puede cargar su runtime, la sesión termina: no cae silenciosamente a esas herramientas antiguas.
+
+Quedan pendientes fuera del CRM actual dos consumidores PMS heredados: ese catálogo Twilio y `src/lib/services/integrations/booking/bookingReservationService.ts`. El esquema verificado tiene `metadata.code`, no columna `code` ni `nights`, y exige `start_date`/`end_date` timestamptz. Booking escribe ambos campos inexistentes y omite los instantes obligatorios; el catálogo antiguo también usa `code` al crear, buscar y cancelar. Su cierre requiere un escritor de servidor compartido con fechas en la zona de la organización, errores de persistencia propagados y revisión de las escrituras relacionadas. `reservationsService.ts` es un servicio browser con varias escrituras, no una RPC canónica de servidor; importarlo al backend no resuelve esa integridad. Este PR no acredita esos flujos Booking/PMS como completos ni sus operaciones reales con proveedores.

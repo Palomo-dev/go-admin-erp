@@ -78,7 +78,7 @@ export const waApi = {
     if (q.q) p.set('q', q.q);
     if (q.channelId) p.set('channelId', q.channelId);
     if (q.includeInactive) p.set('includeInactive', '1');
-    return get<{ data: WhatsAppTemplate[] }>(`/api/crm/whatsapp/templates?${p.toString()}`);
+    return get<{ data: WhatsAppTemplate[]; can_manage?: boolean }>(`/api/crm/whatsapp/templates?${p.toString()}`);
   },
   template: (id: string) => get<{ data: WhatsAppTemplate }>(`/api/crm/whatsapp/templates/${id}`),
   createTemplate: (input: { name: string; category: HsmCategory; language?: string; description?: string; components: HsmComponent[]; variable_map?: Record<string, string>; examples?: Record<string, string>; channel_id?: string | null }) => post<{ data: WhatsAppTemplate }>('/api/crm/whatsapp/templates', input),

@@ -236,31 +236,33 @@ export async function getOpportunityFinance360(
   supabase: SupabaseClient
 ): Promise<OpportunityFinance360> {
   // 1. Facturas vinculadas a la oportunidad
-  const { data: invoicesData } = await supabase
+  const { data: invoicesData, error: invoicesError } = await supabase
     .from('invoice_sales')
     .select('id, number, customer_id, opportunity_id, total, balance, status, issue_date, due_date, currency')
     .eq('organization_id', orgId)
     .eq('opportunity_id', opportunityId)
     .order('issue_date', { ascending: false });
 
+  if (invoicesError) throw invoicesError;
   const invoices = (invoicesData || []) as unknown as InvoiceSalesRow[];
 
   // 2. Pagos vinculados a esas facturas
   const invoiceIds = invoices.map((inv) => inv.id);
   let payments: PaymentRow[] = [];
   if (invoiceIds.length > 0) {
-    const { data: paymentsData } = await supabase
+    const { data: paymentsData, error: paymentsError } = await supabase
       .from('payments')
       .select('id, source, source_id, amount, currency, reference, status, payment_date, method')
       .eq('organization_id', orgId)
       .eq('source', 'invoice_sales')
       .in('source_id', invoiceIds)
       .order('payment_date', { ascending: false });
+    if (paymentsError) throw paymentsError;
     payments = (paymentsData || []) as unknown as PaymentRow[];
   }
 
   // 3. Comisiones vinculadas a la oportunidad
-  const { data: commData } = await supabase
+  const { data: commData, error: commissionsError } = await supabase
     .from('commissions')
     .select('id, source_type, source_id, payee_id, payee_name, base_amount, commission_rate, commission_amount, status, currency')
     .eq('organization_id', orgId)
@@ -268,16 +270,18 @@ export async function getOpportunityFinance360(
     .eq('source_id', opportunityId)
     .order('created_at', { ascending: false });
 
+  if (commissionsError) throw commissionsError;
   const commissions = (commData || []) as unknown as CommissionRow[];
 
   // 4. Cotizaciones vinculadas a la oportunidad
-  const { data: quotData } = await supabase
+  const { data: quotData, error: quotationsError } = await supabase
     .from('quotations')
     .select('id, number, customer_id, opportunity_id, total, status, payment_link_url, signature_id, issue_date, valid_until')
     .eq('organization_id', orgId)
     .eq('opportunity_id', opportunityId)
     .order('created_at', { ascending: false });
 
+  if (quotationsError) throw quotationsError;
   const quotations = (quotData || []) as unknown as QuotationFinanceRow[];
 
   // 5. Resumen

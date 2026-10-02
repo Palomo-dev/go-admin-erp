@@ -171,6 +171,43 @@ describe('actividades y notas: editar y borrar solo lo propio salvo crm.activiti
     expect((await activityDelete(req(`/api/crm/activities/${U(61)}`, 'DELETE'), params(U(61)))).status).toBe(200);
   });
 
+  it('reunión vinculada: no admite edición ni borrado genérico, incluso con edit_any', async () => {
+    db.t.activities.push({ id: U(63), organization_id: ORG, user_id: YO, activity_type: 'meeting', notes: 'Reunión de prueba', metadata: { event_id: U(64) } });
+    for (const permisosActor of [EMPLEADO, MANAGER]) {
+      permisos = new Set(permisosActor);
+      const edit = await json(await activityPatch(req(`/api/crm/activities/${U(63)}`, 'PATCH', { outcome: 'done', notes: 'Distinta' }), params(U(63))));
+      expect(edit.status).toBe(409);
+      expect(edit.body.code).toBe('reunion_administrada');
+      expect((await activityDelete(req(`/api/crm/activities/${U(63)}`, 'DELETE'), params(U(63)))).status).toBe(409);
+    }
+    expect(db.writes).toEqual([]);
+    expect(db.t.activities.find(a => a.id === U(63))!.notes).toBe('Reunión de prueba');
+  });
+  it('reunión ajena sigue denegada por autoría; la actividad manual sin calendario admite corrección', async () => {
+    db.t.activities.push({ id: U(63), organization_id: ORG, user_id: OTRO_VENDEDOR, activity_type: 'meeting', metadata: { event_id: U(64) } });
+    expect((await activityPatch(req(`/api/crm/activities/${U(63)}`, 'PATCH', { notes: 'Distinta' }), params(U(63)))).status).toBe(403);
+    db.t.activities.push({ id: U(65), organization_id: ORG, user_id: YO, activity_type: 'meeting', outcome: 'held', metadata: {} });
+    expect((await activityPatch(req(`/api/crm/activities/${U(65)}`, 'PATCH', { notes: 'Corrección manual' }), params(U(65)))).status).toBe(200);
+  });
+  it.each([
+    { activity_type: 'call', call_id: U(64), metadata: {} },
+    { activity_type: 'ai_call', call_id: null, metadata: { call_id: U(64) } },
+  ])('llamada vinculada $activity_type se modifica en su ficha, incluso con edit_any', async vinculo => {
+    db.t.activities.push({ id: U(63), organization_id: ORG, user_id: YO, notes: 'Resultado original', ...vinculo });
+    for (const permisosActor of [EMPLEADO, MANAGER]) {
+      permisos = new Set(permisosActor);
+      const edit = await json(await activityPatch(req(`/api/crm/activities/${U(63)}`, 'PATCH', { outcome: 'answered', notes: 'Distinta' }), params(U(63))));
+      expect(edit.status).toBe(409);
+      expect(edit.body.code).toBe('llamada_administrada');
+      expect((await activityDelete(req(`/api/crm/activities/${U(63)}`, 'DELETE'), params(U(63)))).status).toBe(409);
+    }
+    expect(db.writes).toEqual([]);
+    expect(db.t.activities.find(a => a.id === U(63))!.notes).toBe('Resultado original');
+  });
+  it('una llamada manual sin registro de telefonía conserva la edición de su actividad', async () => {
+    db.t.activities.push({ id: U(65), organization_id: ORG, user_id: YO, activity_type: 'call', call_id: null, metadata: {} });
+    expect((await activityPatch(req(`/api/crm/activities/${U(65)}`, 'PATCH', { notes: 'Corrección manual' }), params(U(65)))).status).toBe(200);
+  });
   it('actividad de sistema → 409; de otra organización → 404; cuerpo vacío o con campos extra → 400; fecha futura → 400', async () => {
     expect((await activityPatch(req(`/api/crm/activities/${U(62)}`, 'PATCH', { notes: 'x' }), params(U(62)))).status).toBe(409);
     expect((await activityDelete(req(`/api/crm/activities/${U(69)}`, 'DELETE'), params(U(69)))).status).toBe(404);

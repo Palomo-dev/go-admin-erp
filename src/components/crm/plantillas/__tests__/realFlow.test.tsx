@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from '@t
 import { NextIntlClientProvider, useTranslations } from 'next-intl';
 import es from '../../../../../messages/es.json'; import en from '../../../../../messages/en.json'; import fr from '../../../../../messages/fr.json'; import pt from '../../../../../messages/pt.json';
 import * as api from '@/components/crm/email/emailApi';
-import { waApi } from '@/components/crm/whatsapp/api';
+import { waApi, ApiError } from '@/components/crm/whatsapp/api';
 import { TemplateList } from '../TemplateList';
 import { TemplateEditorPage } from '../TemplateEditorPage';
 import { useTemplateEditor, type TemplateForm } from '../useTemplateEditor';
@@ -20,11 +20,11 @@ jest.mock('next/navigation',()=>({useRouter:()=>mockRouter}));
 jest.mock('@/lib/hooks/useOrganization',()=>({useOrganization:()=>({organization:{id:mockOrg}})}));
 jest.mock('@/lib/context/OrganizationTimezoneContext',()=>({useOrgTimezone:()=>({timezone:'America/Bogota'}),useFormatDate:()=>({formatDate:(value:string)=>`TZ:${value}`,formatDateTime:(value:string)=>`TZ:${value}`})}));
 jest.mock('@/components/crm/email/emailApi',()=>({listTemplates:jest.fn(),getTemplate:jest.fn(),getVariables:jest.fn(),previewEmail:jest.fn(),createTemplate:jest.fn(),updateTemplate:jest.fn(),duplicateTemplate:jest.fn(),deleteTemplate:jest.fn(),restoreTemplates:jest.fn(),testSendTemplate:jest.fn()}));
-jest.mock('@/components/crm/whatsapp/api',()=>({waApi:{templates:jest.fn(),channels:jest.fn(),createTemplate:jest.fn(),updateTemplate:jest.fn(),submitTemplate:jest.fn(),syncTemplates:jest.fn(),deleteTemplate:jest.fn()},ApiError:class extends Error{}}));
+jest.mock('@/components/crm/whatsapp/api',()=>({waApi:{templates:jest.fn(),channels:jest.fn(),createTemplate:jest.fn(),updateTemplate:jest.fn(),submitTemplate:jest.fn(),syncTemplates:jest.fn(),deleteTemplate:jest.fn()},ApiError:jest.requireActual('@/components/crm/whatsapp/api').ApiError}));
 jest.mock('@/components/crm/email/editor/EmailBlockEditor',()=>({EmailBlockEditor:()=>null}));
 const catalogs={es,en,fr,pt},id='11111111-1111-4111-8111-111111111111';
 const row={id,organization_id:120,name:'Plantilla ejemplo',channel:'email',kind:'transactional',version:7,engine:'html',body_html:'Contenido',subject:'Asunto propio',is_active:true,metadata:{},updated_at:'2026-10-02T03:00:00Z'} as Template;
-const hsm={id,organization_id:120,name:'plantilla_ejemplo',body:'Hola {{nombre}}, gracias.',description:'Descripción propia',is_active:true,created_at:row.updated_at,updated_at:row.updated_at,meta:{status:'APPROVED',category:'utility',language:'es',provider:'meta',components:[{type:'BODY',text:'Hola {{nombre}}, gracias.'}],variable_map:{nombre:'contact.first_name'},examples:{nombre:'Contacto'},meta_template_id:'external-existing'}} as WhatsAppTemplate;
+const hsm:WhatsAppTemplate={id,organization_id:120,name:'plantilla_ejemplo',body:'Hola {{nombre}}, gracias.',description:'Descripción propia',is_active:true,created_at:row.updated_at,updated_at:row.updated_at,meta:{status:'APPROVED',category:'utility',language:'es',provider:'meta',parameter_format:'named',components:[{type:'BODY',text:'Hola {{nombre}}, gracias.'}],variable_map:{nombre:'contact.first_name'},examples:{nombre:'Contacto'},meta_template_id:'external-existing'}};
 const form:TemplateForm={name:'Plantilla',kind:'transactional',subject:'Asunto',preheader:'',description:'',is_active:true,engine:'html',doc:emptyDocument(),html:'Contenido'};
 function mount(node:React.ReactNode,locale:keyof typeof catalogs='es',onError=jest.fn()){return render(<NextIntlClientProvider locale={locale} messages={catalogs[locale]} onError={onError}>{node}</NextIntlClientProvider>)}
 const wrapper=({children}:{children:React.ReactNode})=><NextIntlClientProvider locale="es" messages={es}>{children}</NextIntlClientProvider>;
@@ -80,6 +80,22 @@ it('permisos de plantillas conservan sus acciones y no conceden configurar canal
  expect(screen.queryByRole('link',{name:'Conectar WhatsApp'})).toBeNull();
  expect((screen.getByRole('button',{name:'Nueva plantilla'}) as HTMLButtonElement).disabled).toBe(true);
  expect(waApi.createTemplate).not.toHaveBeenCalled();
+});
+it.each([
+ {code:'PROVIDER',status:502,details:{code:190,subcode:463},config:true,reconnect:true},
+ {code:'PROVIDER',status:502,details:{code:'190'},config:true,reconnect:true},
+ {code:'INTERNAL',status:500,details:{code:190},config:true,reconnect:false},
+ {code:'FORBIDDEN',status:403,details:{code:190},config:true,reconnect:false},
+ {code:'PROVIDER',status:503,details:[190],config:true,reconnect:false},
+ {code:'PROVIDER',status:502,details:{code:190},config:false,reconnect:false},
+])('sync conserva tarjetas y clasifica error nativo $code/$status con permiso configuración=$config',async ({code,status,details,config,reconnect})=>{
+ (waApi.templates as jest.Mock).mockResolvedValue({data:[hsm],can_manage:true});(waApi.channels as jest.Mock).mockResolvedValue({data:[],can_manage:config});
+ (waApi.syncTemplates as jest.Mock).mockRejectedValueOnce(new ApiError('Falló la sincronización',code,status,details)).mockResolvedValueOnce({created:0,updated:0,total:1});
+ mount(<WhatsAppTemplatesTab/>);await waitFor(()=>expect(screen.getByRole('button',{name:'Sincronizar'})).toBeTruthy());fireEvent.click(screen.getByRole('button',{name:'Sincronizar'}));
+ await waitFor(()=>expect(screen.getByRole('alert')).toBeTruthy());expect(screen.getByText('plantilla_ejemplo')).toBeTruthy();expect(screen.getByText('Mostrando la última información disponible.')).toBeTruthy();
+ expect(!!screen.queryByRole('link',{name:'Reconectar WhatsApp'})).toBe(reconnect);
+ fireEvent.click(screen.getByRole('button',{name:'Reintentar'}));await waitFor(()=>expect(waApi.syncTemplates).toHaveBeenCalledTimes(2));
+ await waitFor(()=>expect(screen.queryByRole('alert')).toBeNull());expect(screen.getByText('plantilla_ejemplo')).toBeTruthy();
 });
 it.each(['APPROVED','PENDING','REJECTED'] as const)('%s preserva todos los campos del original y no expone guardar ni submit',status=>{
  mount(<HsmEditorDialog open template={{...hsm,meta:{...hsm.meta,status}}} channels={[]} canManage onClose={jest.fn()} onSaved={jest.fn()}/>);

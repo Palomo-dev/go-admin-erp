@@ -23,7 +23,7 @@ import { useTemplateText } from './useTemplateText';
  * estado de carga, no el de error. Si F16 renombra el export o el chunk no
  * carga, la pestaña degrada con un aviso en vez de tumbar toda la página.
  */
-function WhatsAppTabUnavailable({ email = false }: { email?: boolean }) {
+function WhatsAppTabUnavailable({ email = false }: { email?: boolean; canEdit?: boolean }) {
   const tr = useTemplateText();
   return (
     <div
@@ -37,7 +37,7 @@ function WhatsAppTabUnavailable({ email = false }: { email?: boolean }) {
   );
 }
 
-const WhatsAppTemplatesTab = dynamic(
+const WhatsAppTemplatesTab = dynamic<{ canEdit?: boolean }>(
   () =>
     import('@/components/crm/whatsapp/WhatsAppTemplatesTab')
       .then((m) => m.WhatsAppTemplatesTab ?? WhatsAppTabUnavailable)

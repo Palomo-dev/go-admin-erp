@@ -19,11 +19,12 @@ export function WhatsAppTemplatesTab({ canEdit }: { canEdit?: boolean }) {
   const [scope, setScope] = useState<number | null>(null); const [canManage, setCanManage] = useState(false); const [canManageChannels, setCanManageChannels] = useState(false);
   const [items, setItems] = useState<WhatsAppTemplate[]>([]); const [channels, setChannels] = useState<ChannelSummary[]>([]);
   const [loading, setLoading] = useState(true); const [error, setError] = useState<unknown>(null); const [busy, setBusy] = useState(false);
+  const [syncFailed, setSyncFailed] = useState(false);
   const [q, setQ] = useState(''); const [editing, setEditing] = useState<{ template: WhatsAppTemplate | null; clone: boolean } | null>(null);
   const [deleting, setDeleting] = useState<WhatsAppTemplate | null>(null);
   const allowed = canManage && canEdit !== false && scope === orgId && !loading && !error;
   const load = useCallback(async () => {
-    const ticket = ++revision.current; setLoading(true); setError(null);
+    const ticket = ++revision.current; setLoading(true); setError(null); setSyncFailed(false);
     if (!orgId) { setLoading(false); setCanManage(false); return; }
     try {
       const [templates, channel] = await Promise.all([waApi.templates({ status: 'ALL', includeInactive: true }), waApi.channels()]);
@@ -33,14 +34,15 @@ export function WhatsAppTemplatesTab({ canEdit }: { canEdit?: boolean }) {
     finally { if (ticket === revision.current && currentOrg.current === orgId) setLoading(false); }
   }, [orgId]);
   useEffect(() => { const epoch = revision; setItems([]); setChannels([]); setScope(null); setCanManage(false); setCanManageChannels(false); setEditing(null); setDeleting(null); void load(); return () => { epoch.current++; }; }, [load]);
-  const mutate = async (action: () => Promise<void>) => {
-    if (!allowed || pending.current) return;
+  const mutate = async (action: () => Promise<void>, captureSyncError = false) => {
+    const canRetrySync = captureSyncError && canManage && canEdit !== false && scope === orgId && !loading;
+    if ((!allowed && !canRetrySync) || pending.current) return;
     pending.current = true; setBusy(true);
     try { await action(); }
-    catch (e) { toast({ title: tr('No se pudo actualizar la plantilla.'), description: e instanceof Error ? e.message : tr('Error'), variant: 'destructive' }); }
+    catch (e) { if (captureSyncError && currentOrg.current === orgId) { setError(e); setSyncFailed(true); } toast({ title: tr('No se pudo actualizar la plantilla.'), description: e instanceof Error ? e.message : tr('Error'), variant: 'destructive' }); }
     finally { pending.current = false; setBusy(false); }
   };
-  const sync = () => void mutate(async () => { await waApi.syncTemplates(); if (currentOrg.current === orgId) { toast({ title: tr('Plantillas sincronizadas.') }); await load(); } });
+  const sync = () => void mutate(async () => { await waApi.syncTemplates(); if (currentOrg.current === orgId) { toast({ title: tr('Plantillas sincronizadas.') }); await load(); } }, true);
   const submit = (template: WhatsAppTemplate) => void mutate(async () => {
     if (template.meta.status !== 'DRAFT') return;
     await waApi.submitTemplate(template.id, template.meta.channel_id ?? null);
@@ -59,13 +61,14 @@ export function WhatsAppTemplatesTab({ canEdit }: { canEdit?: boolean }) {
     { id: 'provider', encabezado: tr('Proveedor'), ocultarDebajo: 'lg', celda: template => template.meta.provider === 'twilio' ? 'Twilio' : 'Meta' },
   ];
   const visible = scope === orgId ? items.filter(template => `${template.name} ${template.body}`.toLowerCase().includes(q.toLowerCase())) : [];
-  const disconnected = error instanceof ApiError && (error.status === 401 || error.code === '190');
+  const details = error instanceof ApiError && typeof error.details === 'object' && error.details !== null && !Array.isArray(error.details) ? error.details as Record<string, unknown> : null;
+  const disconnected = error instanceof ApiError && (error.status === 401 || error.code === '190' || (error.code === 'PROVIDER' && (details?.code === 190 || details?.code === '190')));
   return <div className="space-y-3">
     <div className="flex flex-wrap items-center gap-2"><SearchInput value={q} onChange={setQ} placeholder={tr('Buscar plantillas…')} etiqueta={tr('Buscar plantillas…')} className="min-w-48 flex-1" />
       {allowed && <><Button variant="outline" onClick={sync} disabled={busy}><RefreshCw className="mr-1 size-4" strokeWidth={1.5} aria-hidden="true" />{tr('Sincronizar')}</Button><Button disabled={busy || !channels.some(channel => channel.capabilities.templates)} onClick={() => setEditing({ template: null, clone: false })}><Plus className="mr-1 size-4" strokeWidth={1.5} aria-hidden="true" />{tr('Nueva plantilla')}</Button></>}
     </div>
     {!canManage && !loading && !error && <p className="text-xs text-fg-muted">{tr('Sólo lectura')}</p>}
-    {error !== null && <div role="alert" className="rounded-lg border border-line-danger bg-danger-subtle p-3 text-sm text-danger-text"><p>{tr(disconnected ? 'La conexión con WhatsApp necesita atención. Reconecta el canal para sincronizar.' : 'No se pudieron cargar las plantillas.')}</p>{visible.length > 0 && <p>{tr('Mostrando la última información disponible.')}</p>}<Button variant="outline" onClick={() => void load()}>{tr('Reintentar')}</Button>{disconnected && canManageChannels && <Button variant="outline" asChild><Link href="/app/configuracion/crm/whatsapp">{tr('Reconectar WhatsApp')}</Link></Button>}</div>}
+    {error !== null && <div role="alert" className="rounded-lg border border-line-danger bg-danger-subtle p-3 text-sm text-danger-text"><p>{tr(disconnected ? 'La conexión con WhatsApp necesita atención. Reconecta el canal para sincronizar.' : syncFailed ? 'No se pudo actualizar la plantilla.' : 'No se pudieron cargar las plantillas.')}</p>{visible.length > 0 && <p>{tr('Mostrando la última información disponible.')}</p>}<Button variant="outline" disabled={busy} onClick={() => syncFailed ? sync() : void load()}>{tr('Reintentar')}</Button>{disconnected && canManageChannels && <Button variant="outline" asChild><Link href="/app/configuracion/crm/whatsapp">{tr('Reconectar WhatsApp')}</Link></Button>}</div>}
     {!loading && !error && !channels.some(channel => channel.capabilities.templates) && <p className="flex flex-wrap items-center gap-2 text-sm text-fg-secondary">{tr('Conecta un canal de WhatsApp para crear y sincronizar plantillas.')}{canManageChannels && <Button variant="outline" asChild><Link href="/app/configuracion/crm/whatsapp">{tr('Conectar WhatsApp')}</Link></Button>}</p>}
     <DataTable columnas={columns} filas={visible} obtenerId={template => template.id} etiqueta={tr('Plantillas de WhatsApp')} etiquetaFila={template => template.name}
       estado={loading ? 'cargando' : visible.length ? 'listo' : error ? 'error' : q ? 'sinResultados' : 'vacio'}

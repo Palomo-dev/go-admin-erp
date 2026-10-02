@@ -31,6 +31,12 @@ const esbuild = createRequire(join(RAIZ, 'package.json'))('esbuild');
 const BUILTINS = new Set(builtinModules.flatMap((m) => [m, `node:${m}`]));
 const WS_CONFIG = join(RAIZ, 'src/lib/supabase/ws-config.ts');
 
+// Imports dinámicos que el grafo ve pero el proceso de Node nunca ejecuta.
+// `@sentry/react` vive detrás de `typeof window === 'undefined'` en
+// `timezoneFallback.ts` y declara peer `react`, prohibido en esta imagen
+// (F-78). Un import estático del mismo paquete sí cuenta y el test lo pide.
+const DINAMICOS_SOLO_NAVEGADOR = new Set(['@sentry/react']);
+
 /** `@scope/pkg/sub` → `@scope/pkg`; `pkg/sub` → `pkg`. */
 function nombrePaquete(especificador) {
   const partes = especificador.split('/');
@@ -57,8 +63,11 @@ const registrarExternos = {
         builtins.add(p.replace(/^node:/, ''));
       } else {
         const nombre = nombrePaquete(p);
-        if (!paquetes.has(nombre)) paquetes.set(nombre, new Set());
-        paquetes.get(nombre).add(`${importador} [${args.kind}]`);
+        const soloNavegador = args.kind === 'dynamic-import' && DINAMICOS_SOLO_NAVEGADOR.has(nombre);
+        if (!soloNavegador) {
+          if (!paquetes.has(nombre)) paquetes.set(nombre, new Set());
+          paquetes.get(nombre).add(`${importador} [${args.kind}]`);
+        }
       }
       return { path: p, external: true };
     });

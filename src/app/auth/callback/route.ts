@@ -500,15 +500,141 @@ export async function completeSignupAfterEmailConfirmation(supabase: SupabaseCli
         }
       }
       
-      // 5. Actualizar la suscripción con los datos reales del plan comprado
-      // NOTA: un trigger de la BD (after_organization_insert_subscription) ya crea
-      // automáticamente una suscripción (plan_id tomado de organizations.plan_id) al
-      // insertar la organización. Aquí solo la actualizamos con período de facturación,
-      // trial y datos de Stripe capturados en el signup.
-      console.log('5️⃣ Updating subscription with real plan data...');
-      const trialDays = planId === 5 ? 30 : (planId === 3 ? 30 : (planId === 2 ? 15 : 0));
-      const periodDays = billingPeriod === 'yearly' ? 365 : 30;
+      // 5. Crear customer y suscripción en Stripe (siempre, incluso si se salta la tarjeta)
+      console.log('5️⃣ Syncing Stripe customer and subscription...');
+
+      let stripeCustomerId = signupData.stripeCustomerId;
+      let stripeSubscriptionId: string | null = null;
+      let trialDays = 15; // default
+      let trialEndTimestamp: number | null = null;
+      let currentPeriodStartTimestamp: number | null = null;
+      let currentPeriodEndTimestamp: number | null = null;
+
+      // Obtener datos del plan de la BD (trial_days, price_ids)
+      const { data: planData } = await supabase
+        .from('plans')
+        .select('code, trial_days, stripe_price_monthly_id, stripe_price_yearly_id')
+        .eq('id', planId)
+        .maybeSingle();
+
+      trialDays = planData?.trial_days || 15;
+      const planCode = planData?.code || (planId === 5 ? 'ultimate' : planId === 3 ? 'business' : 'pro');
+      const priceId = billingPeriod === 'yearly' ? planData?.stripe_price_yearly_id : planData?.stripe_price_monthly_id;
+
+      if (process.env.STRIPE_SECRET_KEY && priceId) {
+        try {
+          // Importar Stripe de forma lazy para no bloquear si no está configurado
+          const Stripe = (await import('stripe')).default;
+          const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+            apiVersion: '2025-09-30.clover',
+          });
+
+          // Caso 1: Usuario saltó la tarjeta -> crear customer y subscription
+          if (!stripeCustomerId) {
+            // Idempotencia: verificar si ya existe una suscripción para esta organización
+            const { data: existingSub } = await supabase
+              .from('subscriptions')
+              .select('stripe_subscription_id, stripe_customer_id')
+              .eq('organization_id', orgData.id)
+              .maybeSingle();
+
+            if (existingSub?.stripe_subscription_id) {
+              console.log('✅ Subscription already exists, reusing:', existingSub.stripe_subscription_id);
+              stripeSubscriptionId = existingSub.stripe_subscription_id;
+              stripeCustomerId = existingSub.stripe_customer_id;
+              
+              // Obtener datos actuales de Stripe para sincronizar fechas
+              const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+              trialEndTimestamp = subscription.trial_end;
+              currentPeriodStartTimestamp = (subscription as unknown as { current_period_start?: number }).current_period_start || null;
+              currentPeriodEndTimestamp = (subscription as unknown as { current_period_end?: number }).current_period_end || null;
+            } else {
+              // Crear customer en Stripe con idempotencyKey
+              const customer = await stripe.customers.create({
+                email: user.email || signupData.organizationEmail || '',
+                name: signupData.organizationName,
+                metadata: {
+                  organizationId: orgData.id.toString(),
+                  userId: user.id,
+                  createdFrom: 'registration',
+                },
+              }, {
+                idempotencyKey: `signup-customer-${orgData.id}`,
+              });
+              stripeCustomerId = customer.id;
+              console.log('✅ Stripe customer created:', stripeCustomerId);
+
+              // Crear suscripción en trial en Stripe con idempotencyKey
+              const subscription = await stripe.subscriptions.create({
+                customer: customer.id,
+                items: [{ price: priceId }],
+                trial_period_days: trialDays,
+                payment_behavior: 'default_incomplete',
+                payment_settings: {
+                  save_default_payment_method: 'on_subscription',
+                },
+                metadata: {
+                  organizationId: orgData.id.toString(),
+                  planCode: planCode,
+                  billingPeriod: billingPeriod,
+                  createdFrom: 'registration',
+                },
+              }, {
+                idempotencyKey: `signup-sub-${orgData.id}`,
+              });
+              stripeSubscriptionId = subscription.id;
+              trialEndTimestamp = subscription.trial_end;
+              currentPeriodStartTimestamp = (subscription as unknown as { current_period_start?: number }).current_period_start || null;
+              currentPeriodEndTimestamp = (subscription as unknown as { current_period_end?: number }).current_period_end || null;
+              console.log('✅ Stripe subscription created in trial:', stripeSubscriptionId);
+            }
+          } 
+          // Caso 2: Usuario proporcionó tarjeta -> buscar la suscripción existente
+          else {
+            console.log('✅ User provided payment method, customer exists:', stripeCustomerId);
+            
+            // Buscar la suscripción del customer en Stripe
+            const subscriptions = await stripe.subscriptions.list({
+              customer: stripeCustomerId,
+              limit: 1,
+              status: 'all',
+            });
+
+            if (subscriptions.data.length > 0) {
+              const subscription = subscriptions.data[0];
+              stripeSubscriptionId = subscription.id;
+              trialEndTimestamp = subscription.trial_end;
+              currentPeriodStartTimestamp = (subscription as unknown as { current_period_start?: number }).current_period_start || null;
+              currentPeriodEndTimestamp = (subscription as unknown as { current_period_end?: number }).current_period_end || null;
+              console.log('✅ Found existing subscription:', stripeSubscriptionId);
+            } else {
+              console.warn('⚠️ Customer has payment method but no subscription found');
+            }
+          }
+        } catch (stripeError) {
+          // No bloquear el registro si falla Stripe, pero registrar el error
+          console.error('⚠️ Error syncing with Stripe (no bloquea registro):', stripeError);
+        }
+      } else {
+        console.warn('⚠️ Stripe not configured or plan without price_id, skipping Stripe sync');
+      }
+
+      // Calcular fechas desde Stripe si están disponibles, sino calcular localmente
+      const trialEnd = trialEndTimestamp 
+        ? new Date(trialEndTimestamp * 1000).toISOString()
+        : new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString();
       
+      const currentPeriodStart = currentPeriodStartTimestamp
+        ? new Date(currentPeriodStartTimestamp * 1000).toISOString()
+        : new Date().toISOString();
+      
+      const periodDays = billingPeriod === 'yearly' ? 365 : 30;
+      const currentPeriodEnd = currentPeriodEndTimestamp
+        ? new Date(currentPeriodEndTimestamp * 1000).toISOString()
+        : new Date(Date.now() + periodDays * 24 * 60 * 60 * 1000).toISOString();
+
+      // Actualizar la suscripción en la BD con los datos de Stripe
+      // Estado siempre 'trialing' durante la prueba, nunca 'active' sin cobro
       const { error: subscriptionError } = await supabase
         .from('subscriptions')
         .update({
@@ -516,10 +642,12 @@ export async function completeSignupAfterEmailConfirmation(supabase: SupabaseCli
           billing_period: billingPeriod,
           skip_trial: !!signupData.skipTrial,
           trial_start: new Date().toISOString(),
-          trial_end: new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString(),
-          current_period_start: new Date().toISOString(),
-          current_period_end: new Date(Date.now() + periodDays * 24 * 60 * 60 * 1000).toISOString(),
-          stripe_customer_id: signupData.stripeCustomerId || null,
+          trial_end: trialEnd,
+          current_period_start: currentPeriodStart,
+          current_period_end: currentPeriodEnd,
+          stripe_customer_id: stripeCustomerId || null,
+          stripe_subscription_id: stripeSubscriptionId || null,
+          status: 'trialing',
           updated_at: new Date().toISOString()
         })
         .eq('organization_id', orgData.id);
@@ -528,7 +656,7 @@ export async function completeSignupAfterEmailConfirmation(supabase: SupabaseCli
         console.error('❌ Error updating subscription:', subscriptionError);
         throw subscriptionError;
       }
-      console.log('✅ Subscription updated successfully');
+      console.log('✅ Subscription synced successfully in database');
       
       console.log('🎉 Complete signup finished successfully!');
     } else {

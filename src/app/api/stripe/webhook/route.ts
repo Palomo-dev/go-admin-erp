@@ -6,6 +6,63 @@
  * Es llamado automáticamente por Stripe cuando ocurren eventos.
  * 
  * URL del webhook: https://app.goadmin.io/api/stripe/webhook
+ * 
+ * PROTECCIÓN DE CORTESÍAS Y PAGOS MANUALES
+ * ========================================
+ * 
+ * El webhook implementa protección para organizaciones con suscripciones especiales:
+ * 
+ * 1. **Cortesías** (metadata.cortesia = true):
+ *    - Ejemplo: Org 143 (TecnoShopping)
+ *    - No se actualiza status, trial_end ni current_period_end desde Stripe
+ *    - No se cancelan ni degradan aunque Stripe lo indique
+ *    - No se envían notificaciones de pago fallido
+ * 
+ * 2. **Pagos anuales manuales** (metadata.pago_anual.pagado_hasta con fecha futura):
+ *    - Ejemplo: Org 199 (Samar), 200 (Max Pollos)
+ *    - Mantienen el periodo pagado local aunque Stripe esté en trial/canceled
+ *    - No se sobrescribe current_period_end si el local es mayor
+ * 
+ * 3. **Detección por diferencia de periodos** (periodo local > Stripe + 30 días):
+ *    - Fallback para detectar pagos manuales sin metadata
+ * 
+ * LOOKUP DE SUSCRIPCIONES
+ * =======================
+ * 
+ * Para encontrar la suscripción local, el webhook intenta en orden:
+ * 
+ * 1. Por stripe_subscription_id (caso normal)
+ * 2. Por organization_id extraído de subscription.metadata.organizationId
+ *    - Este fallback es crítico para org 143, que no tiene stripe_subscription_id
+ *    ni stripe_customer_id en la BD pero sí metadata.organizationId en Stripe
+ * 3. Por stripe_customer_id (si está en metadata pero no subscription_id)
+ * 
+ * La protección se verifica DESPUÉS de encontrar la suscripción por cualquier ruta
+ * y ANTES de cualquier escritura en la base de datos.
+ * 
+ * ESCENARIOS DE PRUEBA CRÍTICOS
+ * ==============================
+ * 
+ * customer.subscription.deleted con cortesía (org 143):
+ *   - Entrada: subscription con metadata.organizationId="143", status="canceled"
+ *   - Lookup: Encuentra suscripción local por organization_id (stripe_subscription_id es null)
+ *   - Protección: shouldProtectManualPayment retorna true (metadata.cortesia=true)
+ *   - Resultado: Status NO se actualiza a "canceled", solo cancel_at y cancel_at_period_end
+ *   - Log: "⚠️ PROTECCIÓN CANCELACIÓN - Org 143: Pago manual vigente detectado"
+ * 
+ * invoice.payment_failed con cortesía (org 143):
+ *   - Entrada: invoice con subscription="sub_cortesia"
+ *   - Lookup: Encuentra suscripción con metadata.cortesia=true
+ *   - Protección: shouldProtectManualPayment retorna true
+ *   - Resultado: NO se insertan notificaciones en tabla notifications
+ *   - Log: "⚠️ PROTECCIÓN - Org 143: Pago fallido ignorado (cortesía/pago manual)"
+ * 
+ * customer.subscription.deleted sin cortesía (org 145):
+ *   - Entrada: subscription con metadata.organizationId="145", status="canceled"
+ *   - Lookup: Encuentra suscripción local sin metadata.cortesia
+ *   - Protección: shouldProtectManualPayment retorna false
+ *   - Resultado: Status se actualiza a "canceled", módulos no-core se desactivan
+ *   - Log: "✅ Suscripción marcada como cancelada en BD"
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -15,6 +72,7 @@ import { StripeEventType } from '@/lib/stripe/types'
 import { createClient } from '@supabase/supabase-js'
 import { getServiceClient } from '@/lib/supabase/server-service'
 import { aplicarCheckoutDePlan } from '@/lib/stripe/aplicarCheckoutDePlan'
+import { shouldProtectManualPayment, getProtectionReason } from '@/lib/stripe/manualPaymentProtection'
 import type Stripe from 'stripe'
 
 /** Campos de la factura de Stripe que se leen (en las versiones nuevas de la API ya no están todos tipados). */
@@ -238,7 +296,10 @@ async function handleCheckoutSessionCompleted(checkoutSession: Stripe.Checkout.S
 }
 
 /**
- * Actualizar suscripción en base de datos
+ * Actualizar suscripción en base de datos (idempotente).
+ * 
+ * Busca primero por stripe_subscription_id, luego por stripe_customer_id + organization_id,
+ * y finalmente por organization_id sola. Siempre guarda stripe_customer_id y stripe_subscription_id.
  */
 async function updateSubscriptionInDatabase(
   subscription: Stripe.Subscription,
@@ -255,16 +316,133 @@ async function updateSubscriptionInDatabase(
       },
     })
 
+    const stripeCustomerId = subscription.customer as string
+    const stripeSubscriptionId = subscription.id
+
     // Obtener organization_id del metadata
-    const organizationId = parseInt(subscription.metadata?.organizationId || '0')
+    let organizationId = parseInt(subscription.metadata?.organizationId || '0')
     
+    // Si no hay organizationId en metadata, intentar buscar por stripe_customer_id
+    if (!organizationId && stripeCustomerId) {
+      const { data: subByCustomer } = await supabase
+        .from('subscriptions')
+        .select('organization_id')
+        .eq('stripe_customer_id', stripeCustomerId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      
+      if (subByCustomer) {
+        organizationId = subByCustomer.organization_id
+        console.log(`✅ OrganizationId recuperado desde stripe_customer_id: ${organizationId}`)
+      }
+    }
+
+    // Si aún no hay organizationId, intentar buscar por stripe_subscription_id
     if (!organizationId) {
-      console.warn('⚠️ Suscripción sin organizationId en metadata:', subscription.id)
+      const { data: subById } = await supabase
+        .from('subscriptions')
+        .select('organization_id')
+        .eq('stripe_subscription_id', stripeSubscriptionId)
+        .maybeSingle()
+      
+      if (subById) {
+        organizationId = subById.organization_id
+        console.log(`✅ OrganizationId recuperado desde stripe_subscription_id: ${organizationId}`)
+      }
+    }
+
+    if (!organizationId) {
+      console.warn('⚠️ Suscripción sin organizationId:', stripeSubscriptionId, '- no se puede sincronizar')
       return
     }
 
     if (action === 'deleted' || subscription.status === 'canceled') {
-      // Actualizar como cancelada
+      // PROTECCIÓN CRÍTICA: No cancelar suscripciones con periodo pagado vigente
+      // Buscar primero la suscripción actual para verificar si tiene pago manual
+      // Intentar por stripe_subscription_id primero, luego por organization_id como fallback
+      let existingSub = null;
+      let metodoLookup: 'stripe_subscription_id' | 'organization_id_fallback' = 'stripe_subscription_id';
+      
+      // Intento 1: Buscar por stripe_subscription_id
+      const { data: subById } = await supabase
+        .from('subscriptions')
+        .select('id, current_period_end, status, metadata, organization_id, stripe_subscription_id')
+        .eq('stripe_subscription_id', stripeSubscriptionId)
+        .maybeSingle()
+      
+      if (subById) {
+        existingSub = subById;
+        metodoLookup = 'stripe_subscription_id';
+      } else if (organizationId) {
+        // Intento 2: Buscar por organization_id (caso org 143 sin stripe_subscription_id)
+        const { data: subByOrg } = await supabase
+          .from('subscriptions')
+          .select('id, current_period_end, status, metadata, organization_id, stripe_subscription_id')
+          .eq('organization_id', organizationId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        
+        if (subByOrg) {
+          existingSub = subByOrg;
+          metodoLookup = 'organization_id_fallback';
+          console.log(`✅ Suscripción encontrada por organization_id: ${organizationId} (sin stripe_subscription_id en lookup)`)
+        }
+      }
+
+      // Importar y usar la función de decisión
+      const { decidirAccionDeleted } = await import('@/lib/stripe/webhookDecisionLogic');
+      const accion = decidirAccionDeleted(
+        {
+          stripeSubscriptionId,
+          stripePeriodEnd: (subscription as unknown as PeriodoSuscripcion).current_period_end,
+        },
+        existingSub,
+        metodoLookup
+      );
+
+      if (accion === 'ignorar') {
+        // Caso: Encontrada por fallback sin protección, o con stripe_subscription_id diferente
+        console.warn(
+          `⚠️ IGNORAR CANCELACIÓN - Org ${existingSub?.organization_id || organizationId}: ` +
+          `Suscripción encontrada por ${metodoLookup}, sin protección. ` +
+          `Event: ${subscription.id}, Local stripe_subscription_id: ${existingSub?.stripe_subscription_id || 'null'}. ` +
+          `NO se cancela (puede ser otra suscripción).`
+        );
+        return; // No hacer nada
+      }
+
+      if (accion === 'proteger') {
+        // Caso: Protegida por cortesía o pago manual
+        const localPeriodEnd = existingSub!.current_period_end ? new Date(existingSub!.current_period_end) : null;
+        const now = new Date();
+        const daysRemaining = localPeriodEnd ? Math.floor((localPeriodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+        
+        console.warn(`⚠️ PROTECCIÓN CANCELACIÓN - Org ${organizationId}: Pago manual vigente detectado`);
+        console.warn(`   Local period_end: ${localPeriodEnd?.toISOString().split('T')[0]} (${daysRemaining} días restantes)`);
+        console.warn(`   NO se cancelará la suscripción, se mantiene el acceso hasta fin de periodo pagado`);
+        
+        // Solo actualizar cancel_at pero NO el status ni el period_end
+        const { error } = await supabase
+          .from('subscriptions')
+          .update({
+            cancel_at: subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString() : null,
+            cancel_at_period_end: true,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingSub!.id)
+
+        if (error) {
+          console.error('❌ Error actualizando cancelación protegida:', error)
+        } else {
+          console.log(`✅ Cancelación protegida registrada (org ${organizationId}): se cancelará al fin del periodo local`)
+        }
+        
+        return; // No continuar con la cancelación inmediata
+      }
+
+      // accion === 'cancelar': Cancelación normal (sin protección, encontrada por stripe_subscription_id)
       const { error } = await supabase
         .from('subscriptions')
         .update({
@@ -272,7 +450,7 @@ async function updateSubscriptionInDatabase(
           cancel_at: subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString() : null,
           updated_at: new Date().toISOString(),
         })
-        .eq('stripe_subscription_id', subscription.id)
+        .eq('stripe_subscription_id', stripeSubscriptionId)
 
       if (error) {
         console.error('❌ Error actualizando suscripción cancelada:', error)
@@ -291,24 +469,73 @@ async function updateSubscriptionInDatabase(
           .from('plans')
           .select('id')
           .eq('code', planCode)
-          .single()
+          .maybeSingle()
         
         planId = planData?.id || null
       }
 
-      // Buscar suscripción existente por organization_id o stripe_subscription_id
+      // Buscar suscripción existente con datos completos para protección de pagos manuales
       const { data: existingSub } = await supabase
         .from('subscriptions')
-        .select('id')
-        .or(`organization_id.eq.${organizationId},stripe_subscription_id.eq.${subscription.id}`)
+        .select('id, plan_id, status, trial_end, current_period_end, billing_period, metadata')
+        .eq('organization_id', organizationId)
+        .order('created_at', { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()
 
+      // PROTECCIÓN CRÍTICA: Pagos anuales manuales (orgs 199, 200, etc.)
+      // Detecta mediante metadata.pago_anual.pagado_hasta o diferencia de periodos > 30 días
+      const isManualPayment = shouldProtectManualPayment(
+        existingSub,
+        subscription as unknown as { current_period_end: number }
+      );
+      
+      if (isManualPayment) {
+        const reason = getProtectionReason(
+          existingSub,
+          subscription as unknown as { current_period_end: number }
+        );
+        console.warn(`⚠️ PROTECCIÓN ACTIVADA - Org ${organizationId}: Pago manual detectado`);
+        console.warn(`   ${reason}`);
+        console.warn(`   NO se sobrescribirá status, trial_end ni current_period_end desde Stripe`);
+      }
+
+      // Estados que indican problema en Stripe
+      const problematicStatuses = ['past_due', 'canceled', 'incomplete', 'incomplete_expired', 'unpaid'];
+      const isProblematicStatus = problematicStatuses.includes(subscription.status);
+
+      // Si hay pago manual y Stripe tiene estado problemático, no degradar el estado local
+      if (isManualPayment && isProblematicStatus && existingSub) {
+        console.warn(`⚠️ PROTECCIÓN - Org ${organizationId}: Stripe status="${subscription.status}" ignorado, manteniendo status local="${existingSub.status}"`);
+        
+        // Solo actualizar IDs de Stripe, no tocar status ni fechas
+        const protectedUpdate = {
+          stripe_subscription_id: stripeSubscriptionId,
+          stripe_customer_id: stripeCustomerId,
+          plan_id: planId || existingSub.plan_id,
+          updated_at: new Date().toISOString(),
+        };
+
+        const result = await supabase
+          .from('subscriptions')
+          .update(protectedUpdate)
+          .eq('id', existingSub.id);
+        
+        if (result.error) {
+          console.error('❌ Error actualizando suscripción (protegida):', result.error);
+        } else {
+          console.log(`✅ Suscripción protegida actualizada (org ${organizationId}): solo IDs de Stripe`);
+        }
+        
+        return; // No continuar con la actualización normal
+      }
+
+      // Actualización normal (sin protección)
       const subscriptionData = {
         organization_id: organizationId,
-        stripe_subscription_id: subscription.id,
-        stripe_customer_id: subscription.customer as string,
-        plan_id: planId,
+        stripe_subscription_id: stripeSubscriptionId,
+        stripe_customer_id: stripeCustomerId,
+        plan_id: planId || existingSub?.plan_id || null,
         status: subscription.status,
         trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
         current_period_start: new Date((subscription as unknown as PeriodoSuscripcion).current_period_start * 1000).toISOString(),
@@ -326,6 +553,9 @@ async function updateSubscriptionInDatabase(
           .update(subscriptionData)
           .eq('id', existingSub.id)
         error = result.error
+        if (!error) {
+          console.log(`✅ Suscripción actualizada (org ${organizationId}): ${stripeSubscriptionId}`)
+        }
       } else {
         // Crear nueva suscripción
         const result = await supabase
@@ -335,12 +565,13 @@ async function updateSubscriptionInDatabase(
             created_at: new Date().toISOString(),
           })
         error = result.error
+        if (!error) {
+          console.log(`✅ Suscripción creada (org ${organizationId}): ${stripeSubscriptionId}`)
+        }
       }
 
       if (error) {
         console.error('❌ Error actualizando suscripción en BD:', error)
-      } else {
-        console.log('✅ Suscripción actualizada en BD')
       }
 
       // También actualizar plan_id en la organización si tenemos planId
@@ -374,15 +605,60 @@ async function notifyPaymentFailed(stripeSubscriptionId: string, invoiceId: stri
       auth: { autoRefreshToken: false, persistSession: false },
     })
 
-    // Obtener organization_id desde la suscripción
-    const { data: sub } = await supabase
+    // Buscar suscripción con fallback por organization_id si es necesario
+    // Primero por stripe_subscription_id
+    let sub = null;
+    const { data: subById } = await supabase
       .from('subscriptions')
-      .select('organization_id')
+      .select('organization_id, metadata, current_period_end')
       .eq('stripe_subscription_id', stripeSubscriptionId)
-      .single()
+      .maybeSingle()
+
+    if (subById) {
+      sub = subById;
+    } else {
+      // Fallback: intentar extraer organizationId de Stripe y buscar por ahí
+      // (Para org 143 que no tiene stripe_subscription_id en BD)
+      const { stripe } = await import('@/lib/stripe/server');
+      if (stripe) {
+        try {
+          const stripeSub = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+          const orgId = parseInt(stripeSub.metadata?.organizationId || '0');
+          
+          if (orgId) {
+            const { data: subByOrg } = await supabase
+              .from('subscriptions')
+              .select('organization_id, metadata, current_period_end')
+              .eq('organization_id', orgId)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle()
+            
+            if (subByOrg) {
+              sub = subByOrg;
+              console.log(`✅ Suscripción para payment_failed encontrada por organization_id: ${orgId}`)
+            }
+          }
+        } catch (err) {
+          console.warn('⚠️ No se pudo obtener suscripción de Stripe para fallback:', err)
+        }
+      }
+    }
 
     if (!sub?.organization_id) {
       console.warn('⚠️ No se encontró organización para suscripción:', stripeSubscriptionId)
+      return
+    }
+
+    // Usar función de decisión para determinar si notificar
+    const { decidirAccionPaymentFailed } = await import('@/lib/stripe/webhookDecisionLogic');
+    const accion = decidirAccionPaymentFailed(
+      sub as { metadata: unknown; current_period_end: string | null },
+      Math.floor(Date.now() / 1000) // Periodo de Stripe (aproximado con ahora)
+    );
+
+    if (accion === 'ignorar') {
+      console.warn(`⚠️ PROTECCIÓN - Org ${sub.organization_id}: Pago fallido ignorado (cortesía/pago manual)`)
       return
     }
 

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { exigirAccesoLlamada } from '@/lib/services/crm/callAccessService';
-import { respuestaErrorCrm } from '@/lib/services/crm/crmRouteSupport';
+import { cargarLlamadaParaGestion, exigirAccesoLlamada } from '@/lib/services/crm/callAccessService';
+import { CrmHttpError, exigirUuid, respuestaErrorCrm } from '@/lib/services/crm/crmRouteSupport';
 import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import { getCallTagsForCall, tagCall } from '@/lib/services/crm/callTagService';
 import { assertDbEnum, CALL_TAG_SOURCE_VALUES } from '@/lib/services/crm/callAnalysisRules';
+import { getServiceClient } from '@/lib/supabase/server-service';
 
 /**
  * GET /api/crm/calls/[id]/tags — Lista los tags vinculados a una llamada.
@@ -39,7 +40,7 @@ export async function POST(
     const ctx = await getServerOrgContext(request);
     const { id } = await params;
     const body = await readOrgBody(ctx, request);
-    await exigirAccesoLlamada(ctx, id, 'gestion');
+    const { serviceClient } = await cargarLlamadaParaGestion(ctx, id);
 
     if (!body?.tagId) {
       return NextResponse.json(
@@ -47,6 +48,11 @@ export async function POST(
         { status: 400 }
       );
     }
+    const tagId = exigirUuid(body.tagId, 'Etiqueta');
+    const tag = await ctx.supabase.from('call_tags').select('id')
+      .eq('id', tagId).eq('organization_id', ctx.organizationId).maybeSingle();
+    if (tag.error) throw tag.error;
+    if (!tag.data) throw new CrmHttpError(404, 'etiqueta_no_encontrada', 'Etiqueta no encontrada');
 
     // `call_tag_relations_source_check` = manual|ia: el valor del body pasa por
     // la comprobación en vez de escribirse suelto (tester r2 nº 5).
@@ -63,9 +69,9 @@ export async function POST(
     const relation = await tagCall(
       ctx.organizationId,
       id,
-      body.tagId,
+      tagId,
       source,
-      ctx.supabase,
+      serviceClient ?? getServiceClient(),
       body.confidence
     );
 

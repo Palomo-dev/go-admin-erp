@@ -35,4 +35,22 @@ Red no añadió avisos. Los WARN0029 de contratos authenticated SECURITY DEFINER
 Las activaciones restrictivas de calendario, llamadas y derivados continúan **POSTDEPLOY, sin aplicar**, hasta desplegar los escritores canónicos. No se hicieron llamadas, envíos o cobros reales, merge ni despliegue. El cierre documental local no ejecuta nuevas consultas/pruebas Supabase y no sustituye los gates generales del artefacto final.
 
 
-El delta de recurrencia `crm_conflictos_sqlstate.sql` está aplicado (MCP `20261002131611`, fase 74): 17 conflictos deterministas de nueve RPC ahora usan P0001. Gate acotado 98 aserciones, sin filas comerciales/HTTP. Las policies POSTDEPLOY y el candidato `secuencias_permiso_sucursal.sql` siguen sin aplicar; no se presentan como migraciones instaladas.
+El delta de recurrencia `crm_conflictos_sqlstate.sql` está aplicado (MCP `20261002131611`, fase 74): 17 conflictos deterministas de nueve RPC ahora usan P0001. Gate acotado 98 aserciones, sin filas comerciales/HTTP.
+
+### Cierre compatible de permisos (fase 77)
+
+| Cambio | Versión MCP real | MD5 SQL | MD5 rollback | Verificación |
+| --- | --- | --- | --- | --- |
+| [Llamadas: tenant, sucursales y referencias](llamadas_sucursal_rpc.md) | `20261002151347` | `54c8693f9f9c175da826951dc06b9752` | `b27955513f6bb619ca95b8614b3e6845` | 12 aserciones de catálogo + 103 de simulación PostgreSQL temporal |
+| [Llamadas: membresía activa](llamadas_listado_miembro_activo.md) | `20261002152633` | `223eb889558c9db5f689acd418e6221f` | `fc97069310ac51fed7b12d22756969ec` | 8 de catálogo + 129 de simulación temporal ampliada |
+| [Secuencias: permisos y salida atómica](secuencias_permiso_sucursal.md) | `20261002152713` | `0563701aa3b8ed9ab71766662fddc19b` | `630f9b20eab65fa7fc1e90dba3b2dbcf` | 26 de catálogo + 47 de simulación temporal |
+
+### Métricas de llamadas por alcance (fase 78)
+
+Los tres lectores nativos de frecuencia de Objeciones, Agentes IA y detalle de campañas comprueban membresía activa, autor/ver-todas, tenant y ambas sucursales. Los objetivos sin llamada conservan su permiso nativo de lectura; las llamadas ocultas no reaparecen como pendientes. El saldo global y el ledger privado mantienen su significado y no se modifican.
+
+| Cambio | Versión MCP real | MD5 SQL | MD5 rollback | Verificación |
+| --- | --- | --- | --- | --- |
+| [Métricas por sucursal y referencias](llamadas_metricas_sucursal.md) | `20261002154537` | `4a19621ed70885561cce11475c68b732` | `c0d98f6a4725b8f206e0277a871fc126` | 18 aserciones de catálogo + 53 de simulación PostgreSQL temporal |
+
+Son 73 migraciones propias aplicadas. Las copias exactas y reversiones usan la versión MCP real; los gates temporales no se versionan. Las simulaciones no acreditan sesión, proveedor o Storage API reales. Las 15 restricciones RLS de Secuencias y las políticas POSTDEPLOY de Calendario, llamadas, derivados y Storage siguen **sin aplicar** hasta comprobar el despliegue compatible de Next y WS.

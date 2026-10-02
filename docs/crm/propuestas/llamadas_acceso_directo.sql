@@ -1,6 +1,8 @@
 -- BORRADOR DE ACTIVACIÓN: no aplicar antes de desplegar los escritores RPC.
 -- Las rutas antiguas crean calls con la sesión y dejarían de poder insertar.
 -- Mantiene las políticas originales; estas restricciones son aditivas.
+SET LOCAL lock_timeout='1s';
+SET LOCAL statement_timeout='4s';
 
 DROP POLICY IF EXISTS crm_calls_lectura_autoria ON public.calls;
 CREATE POLICY crm_calls_lectura_autoria ON public.calls AS RESTRICTIVE
@@ -10,10 +12,14 @@ FOR SELECT TO authenticated USING (
     WHERE om.organization_id=calls.organization_id AND om.user_id=auth.uid() AND om.is_active)
   AND (calls.user_id=auth.uid() OR public.fn_crm_tiene_permiso(calls.organization_id,'crm.calls.view_all'))
   AND (calls.customer_id IS NULL OR EXISTS(SELECT 1 FROM public.customers c
-    WHERE c.id=calls.customer_id AND c.organization_id=calls.organization_id AND public.app_branch_access(c.branch_id::integer)))
+    WHERE c.id=calls.customer_id AND c.organization_id=calls.organization_id
+      AND (c.branch_id IS NULL OR EXISTS(SELECT 1 FROM public.branches b WHERE b.id=c.branch_id AND b.organization_id=calls.organization_id))
+      AND public.app_branch_access(c.branch_id::integer)))
   AND (calls.opportunity_id IS NULL OR EXISTS(SELECT 1 FROM public.opportunities o
     WHERE o.id=calls.opportunity_id AND o.organization_id=calls.organization_id
-      AND o.customer_id IS NOT DISTINCT FROM calls.customer_id AND public.app_branch_access(o.branch_id::integer)))
+      AND o.customer_id IS NOT DISTINCT FROM calls.customer_id
+      AND (o.branch_id IS NULL OR EXISTS(SELECT 1 FROM public.branches b WHERE b.id=o.branch_id AND b.organization_id=calls.organization_id))
+      AND public.app_branch_access(o.branch_id::integer)))
 );
 
 DROP POLICY IF EXISTS crm_calls_insert_solo_servidor ON public.calls;

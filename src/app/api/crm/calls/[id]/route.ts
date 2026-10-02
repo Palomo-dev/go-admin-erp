@@ -6,6 +6,7 @@ import { getCall, getCallRecordings } from '@/lib/services/crm/callManagementSer
 import { applyDisposition, callPatchSchema, type CallRowForDisposition } from '@/lib/services/crm/callDispositionService';
 import { CRM_PERMISOS, CrmHttpError, exigirUuid, respuestaErrorCrm, tienePermisoCrm } from '@/lib/services/crm/crmRouteSupport';
 import { mutateCallFromSnapshot } from '@/lib/services/crm/callMutationService';
+import { cargarLlamadaParaGestion, exigirAlcanceReferenciasLlamada } from '@/lib/services/crm/callAccessService';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -90,23 +91,14 @@ export async function PATCH(
     }
     const body = parsed.data;
     const { id } = await params;
-    exigirUuid(id);
-    const sb = getServiceClient();
-    const { data, error: readError } = await sb.from('calls').select('*').eq('id', id).eq('organization_id', ctx.organizationId).maybeSingle();
-    if (readError) throw readError;
-    const call = data as CallRowForDisposition | null;
-    if (!call) {
-      return NextResponse.json({ success: false, error: 'Llamada no encontrada' }, { status: 404 });
-    }
-    const canEditAny = await tienePermisoCrm(ctx, CRM_PERMISOS.actividadesEditarCualquiera);
-    if (call.user_id !== ctx.userId && !canEditAny) {
-      return NextResponse.json({ success: false, error: 'Solo el dueño de la llamada o un administrador puede editarla' }, { status: 403 });
-    }
-    const assertOwner = (fresh: CallRowForDisposition) => {
+    const { call, canEditAny, serviceClient } = await cargarLlamadaParaGestion<CallRowForDisposition>(ctx, id);
+    const assertOwner = async (fresh: CallRowForDisposition) => {
       if (fresh.user_id !== ctx.userId && !canEditAny) {
         throw new CrmHttpError(403, 'llamada_no_es_propia', 'Solo puedes modificar tus llamadas');
       }
+      await exigirAlcanceReferenciasLlamada(ctx, fresh);
     };
+    const sb = serviceClient ?? getServiceClient();
 
     let current = call;
     const disposition = body.disposition ?? (body.outcome ? { outcome: body.outcome, note: body.notes ?? null, next_action: null } : null);
@@ -120,8 +112,8 @@ export async function PATCH(
       taskId = result.taskId;
       activityId = result.activityId;
     } else if (body.live_note !== undefined) {
-      current = await mutateCallFromSnapshot(sb, current, (fresh) => {
-        assertOwner(fresh);
+      current = await mutateCallFromSnapshot(sb, current, async (fresh) => {
+        await assertOwner(fresh);
         return { metadata: { ...(fresh.metadata ?? {}), live_note: body.live_note ?? null } };
       });
     }

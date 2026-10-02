@@ -1,8 +1,9 @@
-import { requireSequenceManager } from '@/lib/services/crm/sequenceRouteSupport';
+import { requireSequenceManager, sequenceError } from '@/lib/services/crm/sequenceRouteSupport';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import { enrollInSequence } from '@/lib/services/crm/sequenceService';
+import { clasificarErrorCrm } from '@/lib/services/crm/crmRouteSupport';
 
 /**
  * POST /api/crm/sequences/[id]/enroll — Inscribe oportunidades en la secuencia.
@@ -39,7 +40,8 @@ export async function POST(
     }
 
     const enrolled: unknown[] = [];
-    const skipped: { id: string | null; reason: string }[] = [];
+    const skipped: { id: string | null; reason: string; code?: string }[] = [];
+    const failedStatuses: number[] = [];
 
     const targets: (string | null)[] = ids.length > 0 ? ids : [null];
     for (const opportunityId of targets) {
@@ -52,11 +54,15 @@ export async function POST(
         if (result.created) enrolled.push(result);
         else skipped.push({ id: opportunityId, reason: result.reason ?? 'not_created' });
       } catch (err) {
-        skipped.push({ id: opportunityId, reason: err instanceof Error ? err.message : String(err) });
+        const known = clasificarErrorCrm(err);
+        failedStatuses.push(known?.status ?? 500);
+        skipped.push({ id: opportunityId, reason: known?.error ?? 'Error interno', code: known?.code ?? 'error_interno' });
+        if (!known) console.error('[Sequences Enroll] error al inscribir:', err);
       }
     }
 
-    const status = enrolled.length > 0 ? 201 : 400;
+    const failureStatus = [403, 500, 409, 404, 400].find(value => failedStatuses.includes(value)) ?? 400;
+    const status = enrolled.length > 0 ? 201 : failureStatus;
     return NextResponse.json(
       { success: enrolled.length > 0, data: enrolled, enrolled: enrolled.length, skipped },
       { status },
@@ -65,8 +71,6 @@ export async function POST(
     if (error instanceof OrgContextError) {
       return NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.statusCode });
     }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[Sequences Enroll] POST error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return sequenceError(error, 'sequences.enroll');
   }
 }

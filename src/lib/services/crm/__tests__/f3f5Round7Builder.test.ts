@@ -53,7 +53,7 @@ class OrgContextError extends Error {
 }
 jest.mock('@/lib/utils/orgContext', () => ({
   OrgContextError,
-  getServerOrgContext: jest.fn(async () => ({ organizationId: ORG, userId: USER, role: 'admin' })),
+  getServerOrgContext: jest.fn(async () => ({ organizationId: ORG, userId: USER, roleId: 2, isSuperAdmin: false, supabase: fake.client() })),
 }));
 jest.mock('@/lib/services/crm/callAnalysisService', () => ({ AnalysisError: class AnalysisError extends Error {} }));
 jest.mock('@/lib/services/crm/transcriptionService', () => ({ TranscriptionError: class TranscriptionError extends Error {} }));
@@ -99,7 +99,7 @@ function seed(extra: Record<string, Row[]> = {}): FakeDb {
       comm_settings: [commSettings()],
       organization_members: [{ id: 'm1', organization_id: ORG, user_id: USER, is_active: true }],
       customers: [{ id: CUSTOMER_ID, organization_id: ORG, phone: '+573001112233', first_name: 'VOZR7B', last_name: 'Prueba' }],
-      opportunities: [{ id: 'opp-1', organization_id: ORG, customer_id: CUSTOMER_ID }],
+      opportunities: [{ id: 'eeeeeeee-0000-4000-8000-000000000001', organization_id: ORG, customer_id: CUSTOMER_ID }],
       calls: [],
       call_consents: [],
       call_recordings: [],
@@ -274,7 +274,7 @@ describe('VOZR7B-U · unverified_announcement', () => {
 
 describe('VOZR7B-D · declaración de la grabación manual', () => {
   it('D.1 · con `recordingDeclaration: true` la acta recoge la declaración marcada (texto Habeas Data) y sigue diciendo que el sistema no reprodujo aviso', async () => {
-    await createManualCallWithAudio(ORG, USER, { audio: WAV, opportunityId: 'opp-1', maxBytes: 10_000_000, recordingDeclaration: true }, fake.client());
+    await createManualCallWithAudio(ORG, USER, { audio: WAV, opportunityId: 'eeeeeeee-0000-4000-8000-000000000001', maxBytes: 10_000_000, recordingDeclaration: true }, fake.client());
     const text = String(fake.rows('call_consents')[0].recorded_announcement_text);
     expect(text).toContain(USER);
     expect(text).toContain('no reprodujo');
@@ -284,7 +284,7 @@ describe('VOZR7B-D · declaración de la grabación manual', () => {
   });
 
   it('D.2 · sin el campo la acta deja constancia de que NO consta declaración (nunca la inventa)', async () => {
-    await createManualCallWithAudio(ORG, USER, { audio: WAV, opportunityId: 'opp-1', maxBytes: 10_000_000 }, fake.client());
+    await createManualCallWithAudio(ORG, USER, { audio: WAV, opportunityId: 'eeeeeeee-0000-4000-8000-000000000001', maxBytes: 10_000_000 }, fake.client());
     const text = String(fake.rows('call_consents')[0].recorded_announcement_text);
     expect(text).toContain('No consta declaración');
     expect(text).not.toContain(MANUAL_RECORDING_DECLARATION_TEXT);
@@ -292,7 +292,7 @@ describe('VOZR7B-D · declaración de la grabación manual', () => {
   });
 
   it('D.3 · `recordingDeclaration: false` explícito → 400 con el texto que hay que marcar, sin fila `calls` ni audio', async () => {
-    await expect(createManualCallWithAudio(ORG, USER, { audio: WAV, opportunityId: 'opp-1', maxBytes: 10_000_000, recordingDeclaration: false }, fake.client())).rejects.toMatchObject({ status: 400 });
+    await expect(createManualCallWithAudio(ORG, USER, { audio: WAV, opportunityId: 'eeeeeeee-0000-4000-8000-000000000001', maxBytes: 10_000_000, recordingDeclaration: false }, fake.client())).rejects.toMatchObject({ status: 400 });
     expect(fake.rows('calls')).toHaveLength(0);
     expect(fake.storageCalls).toHaveLength(0);
   });
@@ -327,7 +327,7 @@ describe('VOZR7B-D · declaración de la grabación manual', () => {
     ] as const) {
       fake = seed();
       for (const bad of [{}, { recording_declaration: 'yes' }, { recording_declaration: 'false' }] as Record<string, string>[]) {
-        const res = await post(multipart({ opportunity_id: 'opp-1', ...bad }, p));
+        const res = await post(multipart({ opportunity_id: 'eeeeeeee-0000-4000-8000-000000000001', ...bad }, p));
         expect(res.status).toBe(400);
         expect(await res.json()).toMatchObject({ code: 'RECORDING_DECLARATION_REQUIRED' });
       }
@@ -336,7 +336,7 @@ describe('VOZR7B-D · declaración de la grabación manual', () => {
       expect(fake.rows('call_recordings')).toHaveLength(0);
       expect(fake.storageCalls.filter((s) => s.op === 'upload')).toHaveLength(0);
 
-      const ok = await post(multipart({ opportunity_id: 'opp-1', recording_declaration: 'on' }, p));
+      const ok = await post(multipart({ opportunity_id: 'eeeeeeee-0000-4000-8000-000000000001', recording_declaration: 'on' }, p));
       expect(ok.status).toBe(okStatus);
       expect(fake.rows('calls')).toHaveLength(1);
       expect(fake.rows('call_consents')).toHaveLength(1);

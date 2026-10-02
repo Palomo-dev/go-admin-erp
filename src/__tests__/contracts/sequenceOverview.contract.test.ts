@@ -65,4 +65,43 @@ describe('Secuencias: resumen nativo y administración canónica', () => {
     const response = await GET(req('/api/crm/sequences')); expect(response.status).toBe(500);
     const json = await response.json(); expect(json.summary).toBeUndefined(); expect(JSON.stringify(json)).not.toContain('private_database_details');
   });
+  it.each([
+    ['42501', 'sin_permiso', 403],
+    ['P0001', 'registro_cambio', 409],
+    ['P0002', 'enrollment_not_found', 404],
+    ['XX000', 'private_database_details', 500],
+  ] as const)('reanudar conserva SQLSTATE %s sin repetir la RPC ni filtrar detalles', async (code, message, status) => {
+    permissions.add('crm.campaigns.manage');
+    writes.resume.mockRejectedValueOnce(Object.assign(new Error(message), { code }));
+    const response = await resume(req('/api/crm/sequences/x/enrollments', 'PATCH', { enrollment_id: U(101), action: 'resume' }));
+    expect(response.status).toBe(status);
+    expect(writes.resume).toHaveBeenCalledTimes(1);
+    const body = await response.json();
+    expect(body.success).toBe(false);
+    expect(JSON.stringify(body)).not.toContain('private_database_details');
+    if (status !== 500) expect(body.code).toBe(message);
+  });
+  it.each([
+    ['42501', 'sucursal_sin_acceso', 403],
+    ['P0001', 'registro_cambio', 409],
+    ['XX000', 'private_database_details', 500],
+  ] as const)('inscripción denegada %s informa el fallo real y no repite el motor', async (code, message, status) => {
+    permissions.add('crm.campaigns.manage');
+    writes.enroll.mockRejectedValueOnce(Object.assign(new Error(message), { code }));
+    const response = await enroll(req('/api/crm/sequences/x/enroll', 'POST', { customer_id: U(1) }), params);
+    expect(response.status).toBe(status);
+    expect(writes.enroll).toHaveBeenCalledTimes(1);
+    const body = await response.json();
+    expect(body.enrolled).toBe(0);
+    expect(body.skipped[0].code).toBe(status === 500 ? 'error_interno' : message);
+    expect(JSON.stringify(body)).not.toContain('private_database_details');
+  });
+  it('un lote conserva la inscripción lograda y el conflicto de otro elemento', async () => {
+    permissions.add('crm.campaigns.manage');
+    writes.enroll.mockResolvedValueOnce({ created: true }).mockRejectedValueOnce(Object.assign(new Error('registro_cambio'), { code: 'P0001' }));
+    const response = await enroll(req('/api/crm/sequences/x/enroll', 'POST', { opportunity_ids: [U(30), U(31)] }), params);
+    expect(response.status).toBe(201);
+    expect(writes.enroll).toHaveBeenCalledTimes(2);
+    expect(await response.json()).toMatchObject({ success: true, enrolled: 1, skipped: [{ id: U(31), code: 'registro_cambio' }] });
+  });
 });

@@ -49,7 +49,7 @@ class OrgContextError extends Error {
 }
 jest.mock('@/lib/utils/orgContext', () => ({
   OrgContextError,
-  getServerOrgContext: jest.fn(async () => ({ organizationId: ORG, userId: USER, role: 'admin' })),
+  getServerOrgContext: jest.fn(async () => ({ organizationId: ORG, userId: USER, roleId: 2, isSuperAdmin: false, supabase: fake.client() })),
 }));
 // Servicio REAL con espía delante: registra con qué `recordingDeclaration`
 // lo llama la ruta y ejecuta la implementación de verdad (H-3).
@@ -103,7 +103,7 @@ function seed(extra: Record<string, Row[]> = {}): FakeDb {
       organizations: [{ id: ORG, name: 'Org de prueba' }],
       organization_members: [{ id: 'm1', organization_id: ORG, user_id: USER, is_active: true }],
       customers: [{ id: CUSTOMER_ID, organization_id: ORG, phone: '+573001112233', first_name: 'VOZR8B', last_name: 'Prueba' }],
-      opportunities: [{ id: 'opp-1', organization_id: ORG, customer_id: CUSTOMER_ID }],
+      opportunities: [{ id: 'eeeeeeee-0000-4000-8000-000000000001', organization_id: ORG, customer_id: CUSTOMER_ID }],
       voice_agents: [agentRow],
       voices: [],
       calls: [],
@@ -318,7 +318,7 @@ function multipart(fields: Record<string, string>, path = '/api/crm/calls/manual
 
 describe('VOZR8B-H3 · rutas manual/transcribe con el servicio REAL', () => {
   it('D.5 · /api/crm/calls/manual sin casilla → 400, cero filas en calls/call_consents y cero subidas; con `on` → 201 y el servicio recibe `recordingDeclaration: true` leído del formulario', async () => {
-    const no = await manualPOST(multipart({ opportunity_id: 'opp-1' }));
+    const no = await manualPOST(multipart({ opportunity_id: 'eeeeeeee-0000-4000-8000-000000000001' }));
     expect(no.status).toBe(400);
     expect(await no.json()).toMatchObject({ code: 'RECORDING_DECLARATION_REQUIRED' });
     // Defensa en profundidad: si el servicio llegara a ejecutarse, lo haría con
@@ -328,7 +328,7 @@ describe('VOZR8B-H3 · rutas manual/transcribe con el servicio REAL', () => {
     expect(fake.rows('call_consents')).toHaveLength(0);
     expect(fake.storageCalls.filter((s) => s.op === 'upload')).toHaveLength(0);
 
-    const ok = await manualPOST(multipart({ opportunity_id: 'opp-1', recording_declaration: 'on' }));
+    const ok = await manualPOST(multipart({ opportunity_id: 'eeeeeeee-0000-4000-8000-000000000001', recording_declaration: 'on' }));
     expect(ok.status).toBe(201);
     const last = createManualSpy.mock.calls.at(-1) as unknown as [number, string, { recordingDeclaration: boolean }];
     expect(last[2].recordingDeclaration).toBe(true);
@@ -351,11 +351,11 @@ describe('VOZR8B-H3 · rutas manual/transcribe con el servicio REAL', () => {
   });
 
   it('D.5b · /api/crm/transcribe: misma conducta con el servicio real', async () => {
-    const no = await transcribePOST(multipart({ opportunity_id: 'opp-1' }, '/api/crm/transcribe'));
+    const no = await transcribePOST(multipart({ opportunity_id: 'eeeeeeee-0000-4000-8000-000000000001' }, '/api/crm/transcribe'));
     expect(no.status).toBe(400);
     expect(fake.rows('calls')).toHaveLength(0);
     expect(fake.storageCalls.filter((s) => s.op === 'upload')).toHaveLength(0);
-    const ok = await transcribePOST(multipart({ opportunity_id: 'opp-1', recording_declaration: 'true' }, '/api/crm/transcribe'));
+    const ok = await transcribePOST(multipart({ opportunity_id: 'eeeeeeee-0000-4000-8000-000000000001', recording_declaration: 'true' }, '/api/crm/transcribe'));
     expect(ok.status).toBe(200);
     const last = createManualSpy.mock.calls.at(-1) as unknown as [number, string, { recordingDeclaration: boolean }];
     expect(last[2].recordingDeclaration).toBe(true);

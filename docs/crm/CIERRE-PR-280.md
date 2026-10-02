@@ -15,20 +15,20 @@ El trabajo sigue la prioridad acordada: corregir integridad y cifras, completar 
 
 ## Verificación registrada
 
-| Comprobación | Evidencia al redactar este cierre |
+| Comprobación | Evidencia del cierre actual |
 | --- | --- |
-| Jest global | 18.527 pruebas / 1.077 suites aprobadas; una suite y ocho casos omitidos existentes. |
-| Último delta de Plantillas | 58 pruebas / cuatro suites aprobadas después del ajuste Graph 190 y de tipos; incluye seis casos nuevos de errores y permisos. |
-| Fechas y zonas horarias | Seis zonas: 809 pruebas / 26 suites aprobadas por zona. |
-| TypeScript global | **Aprobado, salida 0.** Los dos errores finales de Plantillas fueron corregidos y la nueva ejecución terminó sin errores. |
-| Lint | 901 archivos comprobados, cero errores y cero advertencias. |
-| Build de producción | **Aprobado, salida 0; 367 páginas estáticas**, optimización y trazas completadas. Next 15.5.9 con Node 20.20.2. Tipos y lint comprobados por separado, como en CI. |
-| Servidor de voz local | Node 20, `/health` respondió 200 y 98 dependencias comprobadas. No equivale a una llamada telefónica real. |
-| Base de datos | 69 migraciones propias aplicadas por MCP, con SQL exacto y reversión versionados. Los candidatos pendientes no se cuentan como aplicados. |
+| Jest global | 18.608 pruebas / 1.084 suites aprobadas; una suite y ocho casos omitidos existentes. Incluye acciones móviles y KPI; el último ajuste de la carrera en llamada pasó después 137 pruebas afectadas en UTC y tres diferidas en Bogotá. |
+| TypeScript global | Aprobado, salida 0 tras la congelación de todos los ajustes móviles y de la carrera en llamada. |
+| Lint del delta | 37 archivos TypeScript modificados comprobados, cero errores y advertencias después de la congelación final. |
+| Fechas y zonas horarias | 809 pruebas / 26 suites aprobadas por cada una de seis zonas en el cierre actual; las suites afectadas se comprobaron además en UTC y Bogotá. |
+| Build final | Aprobado, salida 0; 367 páginas estáticas. Copia filtrada como Vercel, Node 24.19.0, heap 6144. Incluye el último ajuste móvil y de la carrera en llamada; tipos y lint se verificaron por separado, como en CI. |
+| Servidor de voz local | Node 20, /health 200, 98 dependencias y diez casos del cierre de imports aprobados. No equivale a una llamada real. |
+| Base de datos | 73 migraciones propias aplicadas exclusivamente por MCP, con SQL exacto y reversión versionados. Los candidatos restrictivos pendientes no se cuentan como aplicados. |
+| Figma | [135 referencias con dimensiones y hashes](VERIFICACION-VISUAL-135.md); 12 estados de componentes renderizados localmente con fixtures; cero pantallas CRM autenticadas acreditadas. |
 
-La batería global corresponde a la instantánea previa al último delta de presentación Graph 190; después se repitieron las cuatro suites afectadas de Plantillas. La corrección posterior de los tipos del cargador dinámico conserva JavaScript emitido idéntico. El build, TypeScript y lint finales incluyen las fuentes corregidas. El build conserva avisos previos sobre `swcMinify`, el `runtime` reexportado del webhook de contratos y el parche opcional del lockfile SWC; ninguno impidió completar el artefacto y no se modificaron las dependencias para ocultarlos.
+Los deltas SQL finales usan simulación PostgreSQL exclusivamente en pg_temp para negocio y gates separados de catálogo: llamadas 12+103, miembro activo 8+129, Secuencias 26+47 y métricas 18+53. El gate de las 35 policies de llamadas, derivados, tags y Storage pasó 31 aserciones de aplicación/reversión en una transacción que terminó en rollback. No se escribieron filas comerciales, se invocaron proveedores ni se reanudaron cargas generales de base.
 
-Los gates SQL de los módulos verificaron sus contratos, permisos, tenant, referencias, fallos tardíos y reversiones con fixtures acotados. No se presume un resultado global limpio de los asesores: el último delta tuvo cero ERROR, con avisos existentes de seguridad y rendimiento. No se ejecutaron cargas ni pruebas generales de base después de la pausa; la recuperación incluyó únicamente los diagnósticos y el gate puntual para el conflicto SQLSTATE.
+Las advertencias previas del build sobre swcMinify, runtime reexportado y parche opcional SWC se registran sin ocultarlas. Los asesores Supabase mantienen nueve categorías de seguridad y siete de rendimiento, cero ERROR; esto no acredita un resultado global sin advertencias. Los contratos authenticated SECURITY DEFINER conservan autorización interna explícita.
 
 ## Incidentes comprobados
 
@@ -40,12 +40,19 @@ La prueba pesada de historial con agregaciones globales y locks a las 04:14 UTC 
 
 **Railway:** el despliegue de `master`, commit `edba4148`, falló el 1 de octubre a las 18:54 de Bogotá: el servidor de voz no pudo cargar `resend` y no superó `/health`. El commit fallido no incluía esa dependencia en `ws-server/package.json`. Railway acredita un despliegue posterior **SUCCESS**, commit `e892e819`, creado a las 19:25 de Bogotá; su mensaje indica la incorporación de ese paquete. La consulta fue sólo de lectura, con una recuperación acotada de logs. Sin el correo original no se asegura que ese fallo sea exactamente el aviso recibido. El historial no acredita un despliegue de los cambios finales locales de este PR.
 
-## Límites y orden de activación
+## Estado funcional y activación pendiente
 
-- **Secuencias:** `propuestas/secuencias_permiso_sucursal.sql` es un candidato sin aplicar. La comparación local confirma que agrega únicamente guardas de permiso, actor, organización y sucursal al engine nativo. Su gate Postgres está pendiente y la carrera de referencias/sucursales sin locks no se probó. Las API comprueban el permiso, pero la RPC autenticada existente aún permite omitir esa comprobación mediante acceso directo. No se presenta ese endurecimiento como instalado; debe cerrarse antes de acreditar el control completo de permisos de Secuencias.
-- **Runtime coordinado:** publicar Next/API y WS desde el mismo cambio, utilizando el package y lockfile propios de WS. Conservar los secretos existentes: `WS_SESSION_SECRET` firma/verifica sesiones entre Next y WS; `VOICE_CALLBACK_SECRET` protege los callbacks y actas y es una variable distinta. No se rotan ni se crean secretos durante este cierre. Mantener las rutas RPC de Calls/PHONE habilitadas y comprobar sus orígenes públicos HTTPS antes de endurecer las policies.
-- **POSTDEPLOY:** las nueve policies restrictivas de Calendario y los candidatos de acceso directo a llamadas, derivados y Storage permanecen sin aplicar. Primero debe desplegarse el runtime con writers canónicos; después se validan y activan sus bytes finales. Activarlos antes rompería caminos legítimos del runtime publicado. El gate final de la ampliación de sucursales/derivados sigue pendiente.
-- **Verificación externa:** no se acreditan llamadas, transferencias, grabaciones, OTP, correos, mensajes, cobros o entregabilidad con proveedores reales; tampoco hardware de audio ni un recorrido completo de navegador autenticado. Las pruebas simuladas y `/health` no sustituyen esas verificaciones.
-- **Publicación:** el cierre acredita la verificación local del artefacto; no acredita merge, despliegue ni activación de cambios staged en Railway. La PR se conserva como borrador por los gates de permisos y activación pendientes.
+- **Secuencias:** aplicada `20261002152713`. Inscripción y reanudación exigen el permiso canónico, actor de sesión y referencias/sucursales coherentes bajo locks sin espera. La salida usa una RPC transaccional que guarda exited y omite solamente pasos pendientes. Las 15 policies que cierran CRUD directo todavía requieren publicar el writer nuevo. No se puede retirar un envío que un proveedor ya inició.
+- **Llamadas:** los escritores comprueban ambas referencias y sucursales antes de subir archivos, encolar trabajos o mutar etiquetas. El permiso edit_any conserva la gestión legítima sin conceder view_all para listas/audio; el servidor resuelve el registro internamente con organización validada. Los lectores de listado, frecuencia, agentes y campañas filtran el mismo alcance en filas y cifras.
+- **Objeciones y Equipo:** catálogo con cuatro indicadores, filtros/orden/CSV, detalle de página y editor compartido; las alternativas se agregan a un borrador que requiere Guardar. Las acciones móviles del shell y las pestañas de Equipo se corrigen sin otro motor de negocio ni rediseñar las páginas previas. El indicador de categoría suma detecciones de su categoría, sin afirmar llamadas únicas.
+- **Runtime coordinado:** publicar Next/API y WS desde el mismo cambio y comprobar /health y callbacks. Conservar WS_SESSION_SECRET; VOICE_CALLBACK_SECRET es distinto y debe coincidir en ambos consumidores. Railway registra `master` 9300b396 como SUCCESS, sin los writers de este cierre. Hay seis variables staged de correo/callbacks; el usuario identifica su cambio manual como VOICE_CALLBACK_SECRET. El diff de resource.update sigue sin exponer su contenido en el conector. La publicación coordinada espera acceso al equipo Vercel y comprobación del secreto en ambos consumidores.
+- **Acceso de Vercel:** el conector devuelve 403 porque está vinculado a otro alcance de equipo; requiere reconectar al equipo/proyecto correctos. No es el permiso del usuario administrador dentro del ERP. No se acredita configuración ni despliegue de producción del último commit. El preview anterior 7edb9fe5 sí obtuvo SUCCESS después de corregir el filtro de archivos de telefonía.
+- **POSTDEPLOY:** 59 policies restrictivas pendientes: Secuencias15, Calendario9 y llamadas/derivados/tags/Storage35. Primero se acredita Next+WS compatibles, se retiran réplicas/clientes anteriores y después se activan sólo los bytes revisados. Las simulaciones no prueban una solicitud real de Storage ni revocan inmediatamente una URL firmada ya emitida (TTL600s).
+- **Verificación externa:** faltan organización elegida y sesión válida para el recorrido real; no se acreditan entregas de correo/WhatsApp, llamadas, transferencias, grabaciones, OTP, cobros ni hardware móvil/Electron. El dominio de correo está verificado, pero la configuración del proveedor no prueba envío desde el CRM. Los destinatarios autorizados permanecen privados.
+- **135 pantallas:** la auditoría identifica cada referencia; los renders simulados no sustituyen el contraste con navegador autenticado ni dispositivos nativos. No se presenta la exportación de referencias como aprobación visual completa.
 
-La propuesta revisable conserva las correcciones aplicadas y distingue los endurecimientos pendientes de las funciones presentes. Las páginas implementadas no se presentan como un recorrido completo de producción ni como una certificación de fidelidad de las 135 pantallas de Figma.
+La PR reúne cambios compatibles y candidatos revisables con sus reversiones. Publicar el código y comprobar CI es independiente de acreditar el despliegue coordinado y activar las policies; este documento conserva esa distinción.
+
+## Revisión visual solicitada después de la congelación
+
+El usuario comprobó una descarga de la rama feat/crm-flujo-completo y señaló diferencias con Figma y el manual de marca. Se abre una revisión concreta de fundamentos, componentes y áreas nuevas; el build y las pruebas anteriores acreditan funcionamiento local, no aprobación de fidelidad. Los ajustes visuales siguientes se registrarán con sus referencias y renders correspondientes.

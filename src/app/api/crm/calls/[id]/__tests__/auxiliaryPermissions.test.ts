@@ -76,7 +76,10 @@ beforeEach(() => {
   jest.clearAllMocks();
   permissions.clear();
   roleId = 3;
-  db = new FakeDb({ tables: { calls: [{ id: CALL_ID, organization_id: 7, user_id: 'otro', customer_id: null, opportunity_id: null }] } });
+  db = new FakeDb({ tables: {
+    calls: [{ id: CALL_ID, organization_id: 7, user_id: 'otro', customer_id: null, opportunity_id: null }],
+    call_tags: [{ id: TAG_ID, organization_id: 7 }],
+  } });
   db.rpcImpl.fn_crm_vincular_llamada = (args) => {
     const call = db.rows('calls').find((row) => row.id === args.p_call && row.organization_id === args.p_org);
     if (!call) throw new Error('llamada inexistente');
@@ -164,7 +167,12 @@ describe.each([...readers.map((entry) => ({ ...entry, method: 'GET' as const, bo
     expect(db.calls).toHaveLength(0);
     db.rows('calls')[0].organization_id = 8;
     expect((await handler(request(method, name, body), params)).status).toBe(404);
-    expect(getServiceClient).not.toHaveBeenCalled();
+    // edit_any admite una lectura interna de gestión de tags id/org, sin
+    // conceder lecturas públicas ni permitir una escritura de otro tenant.
+    if (method === 'POST' && name === 'tags') {
+      expect(tagCall).not.toHaveBeenCalled();
+      expect(db.calls.some(call => call.op !== 'select')).toBe(false);
+    } else expect(getServiceClient).not.toHaveBeenCalled();
   });
 });
 

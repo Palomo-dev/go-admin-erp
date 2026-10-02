@@ -64,7 +64,7 @@ export async function applyDisposition(
   userId: string,
   d: Disposition,
   client: SupabaseClient,
-  options: { liveNote?: string | null; assertOwner?: (fresh: CallRowForDisposition) => void; sessionClient?: SupabaseClient; clientKey?: string } = {},
+  options: { liveNote?: string | null; assertOwner?: (fresh: CallRowForDisposition) => void | Promise<void>; sessionClient?: SupabaseClient; clientKey?: string } = {},
 ): Promise<{ call: CallRowForDisposition; taskId: string | null; activityId: string | null }> {
   if (isAtomicCallRpcEnabled()) {
     if (!options.sessionClient) throw new Error('La disposición necesita la sesión del usuario');
@@ -79,8 +79,8 @@ export async function applyDisposition(
     if (!result?.call || result.call.id !== call.id || result.call.organization_id !== call.organization_id) throw new Error('Respuesta inválida al guardar la disposición');
     return { call: result.call, taskId: result.task_id ?? null, activityId: result.activity_id ?? null };
   }
-  const updated = await mutateCallFromSnapshot(client, call, (fresh) => {
-    options.assertOwner?.(fresh);
+  const updated = await mutateCallFromSnapshot(client, call, async (fresh) => {
+    await options.assertOwner?.(fresh);
     const meta: Record<string, unknown> = {
       ...(fresh.metadata ?? {}),
       disposition_outcome: d.outcome,

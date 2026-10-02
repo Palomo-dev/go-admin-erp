@@ -1,4 +1,4 @@
-import { requireSequenceManager } from '@/lib/services/crm/sequenceRouteSupport';
+import { requireSequenceManager, sequenceError } from '@/lib/services/crm/sequenceRouteSupport';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
@@ -38,9 +38,7 @@ export async function GET(
     if (error instanceof OrgContextError) {
       return NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.statusCode });
     }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[Sequence Enrollments] GET error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return sequenceError(error, 'sequences.enrollments.read');
   }
 }
 
@@ -76,10 +74,7 @@ export async function PATCH(request: NextRequest) {
     if (error instanceof OrgContextError) {
       return NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.statusCode });
     }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[Sequence Enrollments] PATCH error:', message);
-    const status = /enrollment_not_found/.test(message) ? 404 : 500;
-    return NextResponse.json({ success: false, error: message }, { status });
+    return sequenceError(error, 'sequences.resume');
   }
 }
 
@@ -102,8 +97,6 @@ export async function DELETE(request: NextRequest) {
     if (error instanceof OrgContextError) {
       return NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.statusCode });
     }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[Sequence Enrollments] DELETE error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return sequenceError(error, 'sequences.exit');
   }
 }

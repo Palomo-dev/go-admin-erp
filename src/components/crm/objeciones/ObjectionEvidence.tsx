@@ -1,14 +1,19 @@
 'use client';
 import Link from 'next/link';
 import { useTranslations, useFormatter } from 'next-intl';
-import { MessagesSquare, Copy, Phone } from 'lucide-react';
+import { MessagesSquare, Copy, Play } from 'lucide-react';
 import { EmptyState, clasesBoton } from '@/components/kit';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { ErrorApiCrm } from '../acciones/apiCrm';
 import { useObjectionInsights } from './useObjectionInsights';
-import { useState } from 'react';
-export function ObjectionEvidence({ id }: { id: string }) {
+import { useState, type ReactNode } from 'react';
+export function ObjectionEvidence({ id, children, onUseResponse, busy=false }: {
+  id: string;
+  children?: (panels: { responses: ReactNode; activity: ReactNode }) => ReactNode;
+  onUseResponse?: (text:string)=>void;
+  busy?:boolean;
+}) {
   const t = useTranslations('crm.objecionesNuevo'),
     format = useFormatter(),
     dates = useFormatDate();
@@ -24,25 +29,25 @@ export function ObjectionEvidence({ id }: { id: string }) {
       setCopyError(true);
     }
   };
+  const layout = (responses: ReactNode, activity: ReactNode) => children
+    ? children({ responses, activity }) : <div className="space-y-6">{responses}{activity}</div>;
   if (loading)
-    return (
+    return layout(null, (
       <div aria-busy="true" aria-label={t('loadingEvidence')}>
         <Skeleton className="h-24" />
         <Skeleton className="mt-3 h-40" />
       </div>
-    );
+    ));
   if (error)
-    return (
+    return layout(null, (
       <EmptyState
         variante={error instanceof ErrorApiCrm && error.status === 403 ? 'forbidden' : 'error'}
         onReintentar={() => void reload()}
       />
-    );
-  if (!data) return null;
+    ));
+  if (!data) return layout(null, null);
   const max = Math.max(1, ...data.weeks.map((row) => row.call_count));
-  return (
-    <div className="space-y-6">
-      <section>
+  const responses = <section className="rounded-xl border border-line-brand bg-brand-tint p-4">
         <h3 className="font-semibold text-fg">{t('successfulResponses')}</h3>
         <p className="mt-1 text-xs text-fg-secondary">{t('miningHint')}</p>
         {data.responses.length ? (
@@ -56,10 +61,11 @@ export function ObjectionEvidence({ id }: { id: string }) {
                 <button
                   type="button"
                   className={`${clasesBoton({ variante: 'secundario' })} mt-3`}
-                  onClick={() => void copy(row.response_text)}
+                  disabled={busy}
+                  onClick={() => onUseResponse ? onUseResponse(row.response_text) : void copy(row.response_text)}
                 >
                   <Copy className="size-4" />
-                  {t(copied === row.response_text ? 'copied' : 'copy')}
+                  {onUseResponse?t('visual.useAlternative'):t(copied === row.response_text ? 'copied' : 'copy')}
                 </button>
               </div>
             ))}
@@ -71,14 +77,15 @@ export function ObjectionEvidence({ id }: { id: string }) {
             icono={MessagesSquare}
           />
         )}
-      </section>
       {copyError && (
         <p role="alert" className="text-sm text-danger">
           {t('copyError')}
         </p>
       )}
+      </section>;
+  const activity = <div className="space-y-4">
       <section>
-        <h3 className="font-semibold text-fg">{t('frequency')}</h3>
+        <h3 className="font-semibold text-fg">{t('appearsInCalls')}</h3>
         <p className="mt-1 text-xs text-fg-secondary">{t('last90')}</p>
         {data.weeks.length ? (
           <div
@@ -107,15 +114,14 @@ export function ObjectionEvidence({ id }: { id: string }) {
         )}
       </section>
       <section>
-        <h3 className="font-semibold text-fg">{t('appearsInCalls')}</h3>
-        <ul className="mt-3 divide-y divide-line">
+        <ul className="space-y-2">
           {data.calls.map((row) => (
             <li key={row.call_id}>
               <Link
-                className="flex items-start gap-3 rounded-lg py-3 text-sm hover:bg-subtle"
+                className="flex items-start gap-3 rounded-lg border border-line p-3 text-sm hover:bg-subtle"
                 href={`/app/crm/llamadas?call=${encodeURIComponent(row.call_id)}${row.start_ms === null ? '' : `&start_ms=${row.start_ms}`}`}
               >
-                <Phone className="mt-1 size-4 text-brand" />
+                <Play className="mt-1 size-4 shrink-0 text-brand" />
                 <div className="flex-1">
                   <p className="text-fg">
                     {row.customer_name} ·{' '}
@@ -134,6 +140,6 @@ export function ObjectionEvidence({ id }: { id: string }) {
         </ul>
         {data.calls.length === 100 && <p className="text-xs text-fg-secondary">{t('recent100')}</p>}
       </section>
-    </div>
-  );
+    </div>;
+  return layout(responses, activity);
 }

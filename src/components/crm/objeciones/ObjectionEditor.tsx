@@ -1,5 +1,4 @@
 'use client';
-import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Dialogo, FormField } from '@/components/kit';
 import { Input } from '@/components/ui/input';
@@ -8,11 +7,9 @@ import { Switch } from '@/components/ui/switch';
 import type { Objection, ObjectionInput } from '@/lib/services/crm/objectionService';
 import {
   OBJECTION_CATEGORIES,
-  objectionToForm,
-  formToPayload,
-  validateForm,
   TITLE_MAX,
 } from '@/lib/services/crm/objectionModel';
+import { useObjectionEditor } from './useObjectionEditor';
 export function ObjectionEditor({
   open,
   row,
@@ -25,33 +22,7 @@ export function ObjectionEditor({
   onSave: (data: ObjectionInput, id?: string) => Promise<unknown>;
 }) {
   const t = useTranslations('crm.objecionesNuevo');
-  const [form, setForm] = useState(() => objectionToForm(row)),
-    [saving, setSaving] = useState(false),
-    [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    if (open) {
-      setForm(objectionToForm(row));
-      setError(null);
-    }
-  }, [open, row]);
-  const submit = async () => {
-    const problems = validateForm(form);
-    if (problems.length) {
-      setError(t(problems[0].field === 'title' ? 'invalidTitle' : 'invalidCategory'));
-      document.getElementById(`objection-${problems[0].field}`)?.focus();
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    try {
-      await onSave(formToPayload(form), row?.id);
-      onClose();
-    } catch {
-      setError(t('saveError'));
-    } finally {
-      setSaving(false);
-    }
-  };
+  const {form,setForm,saving,error,submit}=useObjectionEditor({open,row,onSave,onSaved:onClose});
   return (
     <Dialogo
       abierto={open}

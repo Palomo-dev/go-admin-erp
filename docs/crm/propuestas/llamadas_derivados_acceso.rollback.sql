@@ -9,6 +9,10 @@ BEGIN
  END LOOP;
 END;
 $$;
+DROP POLICY IF EXISTS crm_call_tag_relacion_lectura ON public.call_tag_relations;
+DROP POLICY IF EXISTS crm_call_tag_relacion_insert ON public.call_tag_relations;
+DROP POLICY IF EXISTS crm_call_tag_relacion_update ON public.call_tag_relations;
+DROP POLICY IF EXISTS crm_call_tag_relacion_delete ON public.call_tag_relations;
 DROP POLICY IF EXISTS crm_call_storage_lectura ON storage.objects;
 DROP POLICY IF EXISTS crm_call_storage_insert ON storage.objects;
 DROP POLICY IF EXISTS crm_call_storage_update ON storage.objects;

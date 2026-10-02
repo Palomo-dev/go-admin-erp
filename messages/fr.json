@@ -26310,7 +26310,31 @@
       "preview": "Aperçu",
       "moreSignals": "+{count} de plus",
       "howToRespond": "Comment répondre",
-      "noSignals": "Ajoutez des phrases du client pour détecter cette objection."
+      "noSignals": "Ajoutez des phrases du client pour détecter cette objection.",
+      "visual": {
+        "export": "Exporter",
+        "exportError": "Impossible d’exporter. Réessayez.",
+        "libraryCount": "Objections dans la bibliothèque",
+        "categoriesCount": "Dans {count} catégories",
+        "detectedCount": "Détectées dans les appels (90 jours)",
+        "detectionHint": "Détections sur la période",
+        "mostFrequent": "La plus fréquente",
+        "noneFrequent": "Aucune détection",
+        "frequencyDetail": "{count} fois · {share}",
+        "advancedPercent": "Surmontées",
+        "advancedHint": "Progression de l’étape après l’appel",
+        "order": "Ordre",
+        "mostFrequentOrder": "Les plus fréquentes",
+        "advancedOrder": "Les plus surmontées",
+        "alphabeticalOrder": "Alphabétique",
+        "frequencyHeader": "Fréquence dans les appels (90 jours)",
+        "advancedHeader": "Surmontée",
+        "addSignal": "Ajouter un signal",
+        "removeSignal": "Retirer {signal}",
+        "useAlternative": "Ajouter au brouillon de réponse",
+        "alternativeDraft": "Alternative ajoutée au brouillon. Enregistrez pour la conserver.",
+        "saveBeforeStatus": "Enregistrez vos modifications avant de changer le statut."
+      }
     },
     "automatizaciones": {
       "sin_plantilla_contenido_libre_1srp13v": "Sans modèle (contenu libre)",

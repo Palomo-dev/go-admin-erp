@@ -450,7 +450,7 @@ export async function enrollInSequence(
     p_start_at: startAt.toISOString(),
   });
 
-  if (error) throw new Error(`enrollInSequence: ${error.message}`);
+  if (error) throw Object.assign(new Error(error.message), { code: error.code });
   const result = (data ?? {}) as {
     created?: boolean;
     reason?: string;
@@ -502,24 +502,12 @@ export async function unenrollFromSequence(
   supabase: SupabaseClient,
   reason = 'manual_unenroll',
 ): Promise<SequenceEnrollment | null> {
-  const { data, error } = await supabase
-    .from('sequence_enrollments')
-    .update({ status: 'exited', exited_at: new Date().toISOString(), exit_reason: reason })
-    .eq('id', enrollmentId)
-    .eq('organization_id', orgId)
-    .in('status', ['active', 'paused'])
-    .select()
-    .maybeSingle();
-  if (error) throw new Error(`unenrollFromSequence: ${error.message}`);
-
-  if (data) {
-    await supabase
-      .from('sequence_step_runs')
-      .update({ status: 'skipped', result: { reason: `enrollment_${reason}` } })
-      .eq('organization_id', orgId)
-      .eq('enrollment_id', enrollmentId)
-      .eq('status', 'pending');
-  }
+  const { data, error } = await supabase.rpc('fn_exit_sequence_enrollment', {
+    p_org: orgId,
+    p_enrollment_id: enrollmentId,
+    p_reason: reason,
+  });
+  if (error) throw Object.assign(new Error(error.message), { code: error.code });
   return (data as SequenceEnrollment | null) ?? null;
 }
 
@@ -550,7 +538,7 @@ export async function resumeEnrollment(
     p_org: orgId,
     p_enrollment_id: enrollmentId,
   });
-  if (error) throw new Error(`resumeEnrollment: ${error.message}`);
+  if (error) throw Object.assign(new Error(error.message), { code: error.code });
 
   const result = (data ?? {}) as {
     resumed?: boolean;

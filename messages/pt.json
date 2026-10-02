@@ -26310,7 +26310,31 @@
       "preview": "Prévia",
       "moreSignals": "+{count} mais",
       "howToRespond": "Como responder",
-      "noSignals": "Adicione frases do cliente para detectar esta objeção."
+      "noSignals": "Adicione frases do cliente para detectar esta objeção.",
+      "visual": {
+        "export": "Exportar",
+        "exportError": "Não foi possível exportar. Tente novamente.",
+        "libraryCount": "Objeções na biblioteca",
+        "categoriesCount": "Em {count} categorias",
+        "detectedCount": "Detectadas em chamadas (90 dias)",
+        "detectionHint": "Detecções no período",
+        "mostFrequent": "A mais frequente",
+        "noneFrequent": "Sem detecções",
+        "frequencyDetail": "{count} vezes · {share}",
+        "advancedPercent": "Superadas",
+        "advancedHint": "Avanço de etapa após a chamada",
+        "order": "Ordem",
+        "mostFrequentOrder": "Mais frequentes",
+        "advancedOrder": "Mais superadas",
+        "alphabeticalOrder": "Alfabética",
+        "frequencyHeader": "Frequência nas chamadas (90 dias)",
+        "advancedHeader": "Superada",
+        "addSignal": "Adicionar sinal",
+        "removeSignal": "Remover {signal}",
+        "useAlternative": "Adicionar ao rascunho de resposta",
+        "alternativeDraft": "Alternativa adicionada ao rascunho. Salve para mantê-la.",
+        "saveBeforeStatus": "Salve as alterações antes de mudar o estado."
+      }
     },
     "automatizaciones": {
       "sin_plantilla_contenido_libre_1srp13v": "Sem modelo (conteúdo livre)",

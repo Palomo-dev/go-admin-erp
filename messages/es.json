@@ -5813,7 +5813,31 @@
       "preview": "Vista previa",
       "moreSignals": "+{count} más",
       "howToRespond": "Cómo responder",
-      "noSignals": "Añade frases que diga el cliente para detectar esta objeción."
+      "noSignals": "Añade frases que diga el cliente para detectar esta objeción.",
+      "visual": {
+        "export": "Exportar",
+        "exportError": "No se pudo exportar. Reintenta.",
+        "libraryCount": "Objeciones en la biblioteca",
+        "categoriesCount": "En {count} categorías",
+        "detectedCount": "Detectadas en llamadas (90 días)",
+        "detectionHint": "Detecciones en el periodo",
+        "mostFrequent": "La más frecuente",
+        "noneFrequent": "Sin detecciones",
+        "frequencyDetail": "{count} veces · {share}",
+        "advancedPercent": "Superadas",
+        "advancedHint": "Avance de etapa después de la llamada",
+        "order": "Orden",
+        "mostFrequentOrder": "Más frecuentes",
+        "advancedOrder": "Más superadas",
+        "alphabeticalOrder": "Alfabético",
+        "frequencyHeader": "Frecuencia en llamadas (90 días)",
+        "advancedHeader": "Superada",
+        "addSignal": "Agregar señal",
+        "removeSignal": "Quitar {signal}",
+        "useAlternative": "Agregar al borrador de respuesta",
+        "alternativeDraft": "Alternativa añadida al borrador. Guarda para conservarla.",
+        "saveBeforeStatus": "Guarda los cambios antes de cambiar el estado."
+      }
     },
     "automatizaciones": {
       "sin_plantilla_contenido_libre_1srp13v": "Sin plantilla (contenido libre)",

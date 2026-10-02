@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { TeamTerritory,TeamManagementData } from '@/lib/services/crm/teamManagementModel';
 import { readTerritorios } from '../apiEquipo';
 import { TerritoryEditor } from '../TerritoryEditor';
+import { TerritoryRules } from '../TerritoryRules';
 import { ErrorApiCrm } from '../../acciones/apiCrm';
 export function TerritoriosTab({data,onSaved}:{data:TeamManagementData;onSaved:()=>Promise<void>}) {
  const t=useTranslations('crm.equipoNuevo'),format=useFormatter();
@@ -19,6 +20,7 @@ export function TerritoriosTab({data,onSaved}:{data:TeamManagementData;onSaved:(
   {state.loading?<div aria-busy="true" aria-label={t('loading')} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{[0,1,2].map((key)=><Skeleton key={key} className="h-48"/>)}</div>:state.error?<EmptyState variante={state.error instanceof ErrorApiCrm&&state.error.status===403?'forbidden':'error'} onReintentar={()=>setRevision((value)=>value+1)}/>:!state.territories.length?<EmptyState titulo={t('noTerritories')} descripcion={t('noTerritoriesHint')} icono={MapPin} accion={data.can_manage?{etiqueta:t('newTerritory'),onClick:()=>setEditing(null)}:undefined}/>:<>
    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{state.territories.map((territory)=><article key={territory.id} className="space-y-4 rounded-xl border border-line bg-surface p-4">
     <div className="flex items-start gap-2"><MapPin className="size-5 shrink-0 text-brand"/><div className="min-w-0 flex-1"><h2 className="font-semibold text-fg">{territory.name}</h2><p className="mt-1 text-xs text-fg-secondary">{t('priorityValue',{order:territory.sort_order})} · {t(territory.is_active?'active':'inactive')}</p></div>{data.can_manage&&<RowActionsMenu titulo={territory.name} acciones={[{id:'edit',etiqueta:t('editTerritory'),icono:Pencil,onSelect:()=>setEditing(territory)}]}/>}</div>
+    <TerritoryRules criteria={territory.criteria}/>
     <p className="text-sm text-fg-secondary">{data.teams.filter((team)=>team.territory_id===territory.id).map((team)=>team.name).join(' · ')||t('noTeam')}</p>
     <div className="grid grid-cols-2 gap-2 border-t border-line pt-3"><div><p className="text-xs text-fg-secondary">{t('customers')}</p><p className="mt-1 text-lg font-semibold tabular-nums">{format.number(territory.customer_count)}</p></div><div><p className="text-xs text-fg-secondary">{t('opportunities')}</p><p className="mt-1 text-lg font-semibold tabular-nums">{format.number(territory.opportunity_count)}</p></div></div>
     {territory.overlap_count>0&&<p className="text-xs text-warning-text">{t('overlapCount',{count:territory.overlap_count})}</p>}

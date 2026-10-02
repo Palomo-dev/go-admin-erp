@@ -68,11 +68,11 @@ export function isAtomicCallRpcEnabled(): boolean {
 export async function mutateCallFromSnapshot<T extends CallMutationSnapshot>(
   client: SupabaseClient,
   initial: T,
-  buildPatch: (fresh: T) => Record<string, unknown> | null,
+  buildPatch: (fresh: T) => Record<string, unknown> | null | Promise<Record<string, unknown> | null>,
 ): Promise<T> {
   let current = initial;
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    const patch = buildPatch(current);
+    const patch = await buildPatch(current);
     if (patch === null) return current;
     if (isAtomicCallRpcEnabled()) {
       const expected = callMutationExpected(current);

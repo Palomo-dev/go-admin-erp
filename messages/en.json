@@ -5813,7 +5813,31 @@
       "preview": "Preview",
       "moreSignals": "+{count} more",
       "howToRespond": "How to respond",
-      "noSignals": "Add customer phrases to detect this objection."
+      "noSignals": "Add customer phrases to detect this objection.",
+      "visual": {
+        "export": "Export",
+        "exportError": "Could not export. Try again.",
+        "libraryCount": "Objections in the library",
+        "categoriesCount": "In {count} categories",
+        "detectedCount": "Detected in calls (90 days)",
+        "detectionHint": "Detections in the period",
+        "mostFrequent": "Most frequent",
+        "noneFrequent": "No detections",
+        "frequencyDetail": "{count} times · {share}",
+        "advancedPercent": "Overcome",
+        "advancedHint": "Stage advancement after the call",
+        "order": "Order",
+        "mostFrequentOrder": "Most frequent",
+        "advancedOrder": "Most overcome",
+        "alphabeticalOrder": "Alphabetical",
+        "frequencyHeader": "Frequency in calls (90 days)",
+        "advancedHeader": "Overcome",
+        "addSignal": "Add signal",
+        "removeSignal": "Remove {signal}",
+        "useAlternative": "Add to the response draft",
+        "alternativeDraft": "Alternative added to the draft. Save to keep it.",
+        "saveBeforeStatus": "Save your changes before changing the status."
+      }
     },
     "automatizaciones": {
       "sin_plantilla_contenido_libre_1srp13v": "No template (free content)",

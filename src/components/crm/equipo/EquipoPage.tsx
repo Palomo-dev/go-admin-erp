@@ -16,10 +16,10 @@ export function EquipoPage() {
  const {data,error,loading,reload}=useEquipo();
  return <div className="space-y-5 p-4 lg:p-6">
   <PageHeader titulo={t('title')} subtitulo={t('subtitle')} icono={Users} cargando={loading}
-   debajo={<SegmentedControl valor={tab} onValorChange={setTab} etiqueta={t('views')} opciones={[
+   debajo={<div className="w-full min-w-0 overflow-x-auto lg:w-auto"><SegmentedControl valor={tab} onValorChange={setTab} etiqueta={t('views')} opciones={[
     {valor:'equipos',etiqueta:t('teams'),icono:Users},{valor:'territorios',etiqueta:t('territories'),icono:MapPin},
     {valor:'asignar',etiqueta:t('assignment'),icono:Shuffle},{valor:'performance',etiqueta:t('performance'),icono:ChartNoAxesCombined},
-   ]}/>}/>
+   ]}/></div>}/>
   {loading?<div aria-busy="true" aria-label={t('loading')} className="grid gap-4 lg:grid-cols-[280px_1fr]"><Skeleton className="h-60"/><Skeleton className="h-60"/></div>:
    error?<EmptyState variante={error instanceof ErrorApiCrm&&error.status===403?'forbidden':'error'} onReintentar={()=>void reload()}/>:
    data?<>

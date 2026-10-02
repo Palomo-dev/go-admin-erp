@@ -12,3 +12,5 @@ Los archivos de esta carpeta conservan candidatos revisables; la copia exacta ap
 - Telefonía, métricas de agentes y Objeciones: propuestas en elaboración o gate, sin aplicación acreditada.
 
 La conexión se recuperó el 2026-10-02. La evidencia y versiones están en [PLAN-FIGMA-A-CODIGO.md](../PLAN-FIGMA-A-CODIGO.md). Todas las aplicaciones se realizan únicamente por MCP y dejan SQL exacto, rollback, MD5 y versión real conforme a [POLITICA-MIGRACIONES.md](../../POLITICA-MIGRACIONES.md). Las activaciones restrictivas se separan del cambio compatible para preservar el runtime actualmente publicado.
+
+- Agentes IA / métricas: aplicada `20261002062822` (archivo `20261002064500_crm_agentes_ia_metricas.sql`), SQL MD5 `8da542d01f41446666ad67a6748de532`; rollback `70cf95c5d3c036f0ab36c44eb8138551`. Gate real de ledger y permisos, asesor WARN0029 intencional; [evidencia](agentes_ia.md).

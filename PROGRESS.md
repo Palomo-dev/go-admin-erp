@@ -4565,3 +4565,19 @@ Fuentes finales congeladas de ficha, relaciones comerciales, Red, Equipo/territo
 Jest general: 18.527 casos / 1.077 suites aprobados, una suite y ocho casos omitidos existentes. La batería precede al último delta Graph 190; sus cuatro suites afectadas aprobaron 58 casos después del cambio. Seis zonas horarias: 809 casos / 26 suites aprobados por zona. TypeScript global salida 0. ESLint final: 901 archivos, cero errores/advertencias. Build Next 15.5.9 / Node 20.20.2: salida 0, 367 páginas estáticas, optimización y trazas completas; tipos/lint por separado como CI. El ajuste final de tipos del dynamic conserva JavaScript emitido idéntico. WS aislado: /health 200, 70 archivos locales, 98 paquetes exactos de lockfile y nueve pruebas de dependencias; cero llamadas a base/proveedor.
 
 PR 280 queda revisable en borrador. Pendientes de activación: guarda SQL de permiso/sucursal de Secuencias y su gate/carrera de referencias; nueve policies de Calendario y acceso directo/derivados/Storage de llamadas tras el despliegue coordinado de writers Next/WS. La API de Secuencias está protegida; la RPC autenticada existente aún conserva el bypass directo. No se acredita navegador autenticado completo ni correo/WhatsApp/audio/OTP/hardware/cobros reales. No se reanudaron pruebas generales de Supabase, ni se hizo merge/despliegue. [Cierre, incidentes y orden de activación](docs/crm/CIERRE-PR-280.md).
+### Fase: Servidor de llamadas — dependencia resend — 2026-10-02
+- Rama cursor/ws-server-resend-e475.
+- Tras el merge a master, Railway no levantó el servidor de llamadas: faltaba el módulo resend. El correo de reunión lo importa desde el agente de voz. El cierre también alcanza libphonenumber-js, sanitize-html y zod. Esas cuatro versiones son las del lockfile de la web. @sentry/react queda fuera: solo corre en el navegador y su peer es react.
+- npm ci del servidor instala 98 paquetes. npm audit --omit=dev queda en cero. En Node 20.20.2 cargan resend, sanitize-html, zod y libphonenumber-js. Jest del cierre y del aviso de zona: 19 en verde.
+
+### Fase: Correo de tarea solo al asignarla — 2026-10-02
+- Rama cursor/correo-tarea-vencimiento-e475.
+- El correo de una tarea sigue saliendo cuando se asigna y cuando se completa. No sale si vence hoy, si ya venció o si la fecha todavía no llega. Esas filas siguen en la campana. En dos días había 475 pendientes de vencimiento; quedaron en omitido y el conteo de pendientes bajó a 0. El cron que corre hoy en producción puede volver a crearlas hasta que este cambio esté en el despliegue.
+- Jest de las reglas de aviso: 8 en verde.
+
+
+### 76. Integración de main para el cierre de producción — 2026-10-02
+
+Se incorpora main `34f1b347`: conserva la corrección de dependencias de voz y la supresión de correos por vencimiento de tareas. Los conflictos afectaban únicamente el registro de progreso y comentarios del Dockerfile; se conservan ambos registros y el COPY del núcleo compartido de contacto. El cierre de imports mantiene la evaluación real para Node: se retira una excepción global por paquete, de modo que un import dinámico ejecutable de Sentry vuelve a detectarse mientras la rama exclusivamente de navegador queda fuera. Un caso mutante aislado verifica esa diferencia.
+
+Verificación: 21 pruebas focalizadas de la integración, lint limpio y TypeScript global con salida 0. El guard de dependencias ampliado pasa 10 casos; instalación/disposición aisladas del lockfile propio con 98 paquetes y Node 20.20.2 arrancan con /health 200, sin llamadas ni correos. El usuario autorizó el cierre y despliegue coordinado de producción; este commit integra fuentes, sin acreditar todavía publicación de Next/WS ni activación de policies. La conexión de Vercel devuelve 403 por alcance del equipo y requiere reconexión; Railway conserva pendientes de configuración de correo y falta el secreto de callbacks en sus variables efectivas.

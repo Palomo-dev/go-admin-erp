@@ -57,6 +57,8 @@ const registrarExternos = {
         builtins.add(p.replace(/^node:/, ''));
       } else {
         const nombre = nombrePaquete(p);
+        // Registrar también import(): sólo el código eliminado por el runtime
+        // Node se filtra después con el metafile, nunca un paquete completo.
         if (!paquetes.has(nombre)) paquetes.set(nombre, new Set());
         paquetes.get(nombre).add(`${importador} [${args.kind}]`);
       }

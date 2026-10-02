@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import { toast } from '@/components/ui/use-toast';
@@ -71,6 +71,7 @@ export function AccionesRapidasCrm(props: AccionesRapidasCrmProps) {
   const [abierto, setAbierto] = useState<Abierto>(null);
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const claveReunion = useRef<string | null>(null);
 
   const clienteId = props.clienteId ?? cliente?.id ?? null;
   const nombre = cliente?.full_name?.trim() || t('sinNombre');
@@ -79,6 +80,7 @@ export function AccionesRapidasCrm(props: AccionesRapidasCrmProps) {
   const estados = estadoAccionesRapidas({ cliente, tieneDestino: Boolean(clienteId || oportunidadId), paisPorDefecto: pais });
 
   const abrir = (a: Abierto) => {
+    if (a === 'reunion') claveReunion.current = crypto.randomUUID();
     setError(null);
     setAbierto(a);
   };
@@ -142,7 +144,7 @@ export function AccionesRapidasCrm(props: AccionesRapidasCrmProps) {
         if (seg) await pedirCrm('/api/crm/tasks', { method: 'POST', cuerpo: seg });
         terminar('llamar', seg ? t('toast.llamadaConSeguimiento') : t('toast.llamada'));
       } else if (d.tipo === 'reunion') {
-        const { data } = await pedirCrm('/api/crm/meetings', { method: 'POST', cuerpo: cuerpoReunion(d.datos) });
+        const { data } = await pedirCrm('/api/crm/meetings', { method: 'POST', cuerpo: { ...cuerpoReunion(d.datos), client_key: claveReunion.current } });
         terminar('reunion', t('toast.reunion'), data);
       } else if (d.tipo === 'nota') {
         const { data } = await pedirCrm('/api/crm/notes', { method: 'POST', cuerpo: cuerpoNota(d.datos) });

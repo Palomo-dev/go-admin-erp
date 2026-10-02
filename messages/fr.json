@@ -23127,6 +23127,18 @@
   },
   "crm": {
     "historial": {
+      "reunion": {
+        "titulo": "Réunion",
+        "realizada": "Terminée",
+        "cancelada": "Annulée",
+        "programada": "Planifiée",
+        "pendiente": "À confirmer",
+        "cancelar": "Annuler",
+        "guardadaRealizada": "Réunion marquée comme terminée",
+        "guardadaCancelada": "Réunion annulée",
+        "errorActualizar": "Impossible de modifier la réunion",
+        "futura": "Une réunion future ne peut pas être marquée comme terminée."
+      },
       "agregarNota": "Ajouter une note",
       "catalogosError": "Impossible de charger les filtres.",
       "actividad": "Activité",

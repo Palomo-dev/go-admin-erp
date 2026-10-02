@@ -2630,6 +2630,18 @@
   },
   "crm": {
     "historial": {
+      "reunion": {
+        "titulo": "Meeting",
+        "realizada": "Completed",
+        "cancelada": "Canceled",
+        "programada": "Scheduled",
+        "pendiente": "Pending confirmation",
+        "cancelar": "Cancel",
+        "guardadaRealizada": "Meeting marked as completed",
+        "guardadaCancelada": "Meeting canceled",
+        "errorActualizar": "Could not update the meeting",
+        "futura": "A future meeting cannot be marked as completed."
+      },
       "agregarNota": "Add note",
       "catalogosError": "Could not load filters.",
       "actividad": "Activity",

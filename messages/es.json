@@ -2630,6 +2630,18 @@
   },
   "crm": {
     "historial": {
+      "reunion": {
+        "titulo": "Reunión",
+        "realizada": "Realizada",
+        "cancelada": "Cancelada",
+        "programada": "Programada",
+        "pendiente": "Pendiente de confirmar",
+        "cancelar": "Cancelar",
+        "guardadaRealizada": "Reunión marcada como realizada",
+        "guardadaCancelada": "Reunión cancelada",
+        "errorActualizar": "No se pudo actualizar la reunión",
+        "futura": "Una reunión futura no puede marcarse como realizada."
+      },
       "agregarNota": "Agregar nota",
       "catalogosError": "No se pudieron cargar los filtros.",
       "actividad": "Actividad",

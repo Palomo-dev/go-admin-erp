@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ACTIVITY_TYPES } from '@/lib/crm/enums';
+import { seguimientoSchema } from './tareaRapidaService';
 
 /**
  * activityService — creación server-side de actividades CRM (FASE-09 §4.2).
@@ -12,11 +13,11 @@ import { ACTIVITY_TYPES } from '@/lib/crm/enums';
  * - `related_id` debe pertenecer a la org (404 si no).
  * - Si `call_id` ya tiene actividad → 409 (la fila canónica es una sola).
  * - `metadata.client_key` opcional: idempotencia (devuelve la existente).
- * - Para tipos de contacto actualiza `opportunities.last_contact_at/contact_channel`.
+ * - Una RPC guarda historial y contacto juntos; deriva el autor de la sesión.
  */
 
 export const activityInputSchema = z.object({
-  activity_type: z.enum(ACTIVITY_TYPES),
+  activity_type: z.enum(ACTIVITY_TYPES).refine(type => !['system', 'ai_call', 'task'].includes(type), { message: 'Ese tipo se registra desde su flujo correspondiente' }),
   related_type: z.enum(['opportunity', 'customer']),
   related_id: z.string().uuid(),
   notes: z.string().max(20000).optional().nullable(),
@@ -33,12 +34,16 @@ export const activityInputSchema = z.object({
       message: 'occurred_at no puede estar en el futuro',
     })
     .optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.unknown()).refine(metadata =>
+    !['event_id', 'activity_id', 'completed_at', 'voice_agent_call_id', 'request_fingerprint', 'follow_up_id'].some(key => key in metadata)
+    && (metadata.client_key === undefined || (typeof metadata.client_key === 'string' && metadata.client_key.length > 0 && metadata.client_key.length <= 120)),
+  { message: 'Metadata reservada o clave de reintento inválida' }).optional(),
+  follow_up: seguimientoSchema.optional(),
   call_id: z.string().uuid().optional().nullable(),
   email_message_id: z.string().uuid().optional().nullable(),
   message_id: z.string().uuid().optional().nullable(),
   conversation_id: z.string().uuid().optional().nullable(),
-});
+}).strict().refine(input => !input.follow_up || input.activity_type === 'call', { message: 'El seguimiento requiere una llamada' });
 
 export type ActivityInput = z.infer<typeof activityInputSchema>;
 
@@ -78,8 +83,6 @@ export class DuplicateActivityError extends Error {
   }
 }
 
-const CONTACT_TYPES = new Set(['call', 'email', 'whatsapp', 'sms', 'meeting', 'visit', 'ai_call']);
-
 export async function assertRelatedBelongsToOrg(
   orgId: number,
   type: 'opportunity' | 'customer',
@@ -94,102 +97,23 @@ export async function assertRelatedBelongsToOrg(
   return { customer_id: row.customer_id ?? null };
 }
 
-/**
- * F9-16: `call_id` / `email_message_id` / `message_id` deben ser de la misma
- * organización. Solo había FK: se podía enlazar una activity a una llamada
- * ajena, lo que corrompe el de-duplicado del timeline y los informes.
- */
-async function assertRefsBelongToOrg(orgId: number, input: ActivityInput, supabase: SupabaseClient): Promise<void> {
-  const refs: Array<[string, string | null | undefined]> = [
-    ['calls', input.call_id],
-    ['email_messages', input.email_message_id],
-    ['messages', input.message_id],
-    ['conversations', input.conversation_id],
-  ];
-  for (const [table, id] of refs) {
-    if (!id) continue;
-    const { data } = await supabase.from(table).select('id').eq('id', id).eq('organization_id', orgId).maybeSingle();
-    if (!data) throw new RelatedNotFoundError();
-  }
-}
-
+/** Autor y organización se comprueban nuevamente dentro de la transacción. */
 export async function createActivity(
   orgId: number,
-  userId: string,
+  _userId: string,
   input: ActivityInput,
   supabase: SupabaseClient
 ): Promise<ActivityRow> {
-  await assertRelatedBelongsToOrg(orgId, input.related_type, input.related_id, supabase);
-  await assertRefsBelongToOrg(orgId, input, supabase);
-
-  // Idempotencia por client_key
-  const clientKey = input.metadata?.client_key;
-  if (typeof clientKey === 'string' && clientKey) {
-    const { data: existing } = await supabase
-      .from('activities')
-      .select('*')
-      .eq('organization_id', orgId)
-      .eq('related_id', input.related_id)
-      .contains('metadata', { client_key: clientKey })
-      .limit(1)
-      .maybeSingle();
-    if (existing) return existing as ActivityRow;
+  const { data, error } = await supabase.rpc('fn_crm_registrar_actividad', {
+    p_org: orgId, p_payload: input,
+  });
+  if (error) {
+    if (error.code === 'P0002') throw new RelatedNotFoundError();
+    throw error;
   }
-
-  // Una sola actividad por llamada
-  if (input.call_id) {
-    const { data: dup } = await supabase
-      .from('activities')
-      .select('*')
-      .eq('organization_id', orgId)
-      .eq('call_id', input.call_id)
-      .limit(1)
-      .maybeSingle();
-    if (dup) throw new DuplicateActivityError(dup as ActivityRow);
+  if (!data || typeof data !== 'object' || !data.activity?.id) {
+    throw new Error('La actividad no devolvió su historial');
   }
-
-  const occurredAt = input.occurred_at ?? new Date().toISOString();
-  const { data, error } = await supabase
-    .from('activities')
-    .insert({
-      organization_id: orgId,
-      user_id: userId,
-      activity_type: input.activity_type,
-      related_type: input.related_type,
-      related_id: input.related_id,
-      notes: input.notes ?? null,
-      channel: input.channel ?? null,
-      outcome: input.outcome ?? null,
-      duration_seconds: input.duration_seconds ?? null,
-      occurred_at: occurredAt,
-      metadata: { source: 'quick_actions', ...(input.metadata ?? {}) },
-      call_id: input.call_id ?? null,
-      email_message_id: input.email_message_id ?? null,
-      message_id: input.message_id ?? null,
-      conversation_id: input.conversation_id ?? null,
-    })
-    .select('*')
-    .single();
-
-  if (error || !data) throw new Error(`No se pudo crear la actividad: ${error?.message ?? 'sin datos'}`);
-
-  if (input.related_type === 'opportunity' && CONTACT_TYPES.has(input.activity_type)) {
-    // Pasada de gemelos (ronda 3): el resultado de este UPDATE se ignoraba. La
-    // actividad ya está creada, así que un fallo aquí no debe tumbar la
-    // petición, pero desincroniza `last_contact_at` y tiene que quedar registro.
-    const { error: touchError } = await supabase
-      .from('opportunities')
-      .update({
-        last_contact_at: occurredAt,
-        contact_channel: input.channel ?? input.activity_type,
-        ...(input.outcome ? { contact_result: input.outcome } : {}),
-      })
-      .eq('id', input.related_id)
-      .eq('organization_id', orgId);
-    if (touchError) {
-      console.error(`[activityService] no se pudo actualizar el último contacto de la oportunidad ${input.related_id}: ${touchError.message}`);
-    }
-  }
-
-  return data as ActivityRow;
+  if (data.duplicate === true) throw new DuplicateActivityError(data.activity as ActivityRow);
+  return data.activity as ActivityRow;
 }

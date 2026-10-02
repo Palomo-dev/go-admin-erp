@@ -73,6 +73,7 @@ export function AccionesRapidasCrm(props: AccionesRapidasCrmProps) {
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const claveReunion = useRef<string | null>(null);
+  const claveActividad = useRef<string | null>(null);
 
   const clienteId = props.clienteId ?? cliente?.id ?? null;
   const nombre = cliente?.full_name?.trim() || t('sinNombre');
@@ -82,6 +83,7 @@ export function AccionesRapidasCrm(props: AccionesRapidasCrmProps) {
 
   const abrir = (a: Abierto) => {
     if (a === 'reunion') claveReunion.current = crypto.randomUUID();
+    if (a === 'llamada' || a === 'tarea') claveActividad.current = crypto.randomUUID();
     setError(null);
     setAbierto(a);
   };
@@ -140,9 +142,12 @@ export function AccionesRapidasCrm(props: AccionesRapidasCrmProps) {
   const guardarActividad = (d: DatosActividad) =>
     ejecutar(async () => {
       if (d.tipo === 'llamada') {
-        await pedirCrm('/api/crm/activities', { method: 'POST', cuerpo: cuerpoLlamada(d.datos) });
+        const actividad = cuerpoLlamada(d.datos);
         const seg = cuerpoSeguimiento(d.datos, destino, timezone, t('llamar.tituloSeguimiento', { nombre }));
-        if (seg) await pedirCrm('/api/crm/tasks', { method: 'POST', cuerpo: seg });
+        await pedirCrm('/api/crm/activities', { method: 'POST', cuerpo: {
+          ...actividad, metadata: { ...actividad.metadata, client_key: claveActividad.current },
+          ...(seg ? { follow_up: { title: seg.title, description: seg.description, due_date: seg.due_date } } : {}),
+        } });
         terminar('llamar', seg ? t('toast.llamadaConSeguimiento') : t('toast.llamada'));
       } else if (d.tipo === 'reunion') {
         const { data } = await pedirCrm<{ invite?: { cliente?: boolean; responsable?: boolean } }>('/api/crm/meetings', { method: 'POST', cuerpo: { ...cuerpoReunion(d.datos), client_key: claveReunion.current } });
@@ -160,7 +165,7 @@ export function AccionesRapidasCrm(props: AccionesRapidasCrmProps) {
 
   const guardarTarea = (v: ValoresTarea) =>
     ejecutar(async () => {
-      const { data } = await pedirCrm('/api/crm/tasks', { method: 'POST', cuerpo: cuerpoTarea(v, destino, timezone) });
+      const { data } = await pedirCrm('/api/crm/tasks', { method: 'POST', cuerpo: { ...cuerpoTarea(v, destino, timezone), client_key: claveActividad.current } });
       terminar('tarea', t('toast.tarea'), data);
     });
 

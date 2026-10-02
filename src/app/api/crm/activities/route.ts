@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import {
   activityInputSchema,
@@ -7,7 +7,7 @@ import {
   DuplicateActivityError,
   RelatedNotFoundError,
 } from '@/lib/services/crm/activityService';
-import { respuestaErrorCrm } from '@/lib/services/crm/crmRouteSupport';
+import { respuestaErrorCrm, sinClavesDeOrganizacion } from '@/lib/services/crm/crmRouteSupport';
 import { leerFiltrosFeed, listarActividadesOrg } from '@/lib/services/crm/actividadesOrgService';
 
 /**
@@ -48,24 +48,19 @@ export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext(request);
     const json = readOrgBody(ctx, await request.json().catch(() => null), { request });
-    const parsed = activityInputSchema.safeParse(json);
+    const parsed = activityInputSchema.safeParse(json === null ? null : sinClavesDeOrganizacion(json));
     if (!parsed.success) {
       return NextResponse.json({ success: false, error: 'Datos inválidos', details: parsed.error.flatten() }, { status: 400 });
     }
     const activity = await createActivity(ctx.organizationId, ctx.userId, parsed.data, ctx.supabase);
     return NextResponse.json({ success: true, data: activity }, { status: 201 });
   } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json({ success: false, error: error.message }, { status: error.statusCode });
-    }
     if (error instanceof RelatedNotFoundError) {
       return NextResponse.json({ success: false, error: error.message }, { status: 404 });
     }
     if (error instanceof DuplicateActivityError) {
       return NextResponse.json({ success: false, error: error.message, data: error.existing }, { status: 409 });
     }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Activities] POST error:', message);
-    return NextResponse.json({ success: false, error: 'Error interno' }, { status: 500 });
+    return respuestaErrorCrm(error, 'POST /api/crm/activities');
   }
 }

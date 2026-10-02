@@ -1,32 +1,27 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import {
-  Clock,
   Download,
+  Package,
   Phone,
   RefreshCw,
-  UserCheck,
-  Mic,
 } from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { DataTable, type ColumnaTabla, type EstadoTabla } from "@/components/kit/DataTable";
+import { PageHeader } from "@/components/kit/PageHeader";
+import { RowActionsMenu } from "@/components/kit/RowActionsMenu";
 import { KpiStrip } from "@/components/kit/KpiStrip";
 import { StatCard } from "@/components/kit/StatCard";
 import { EmptyState } from "@/components/kit/EmptyState";
 import { Pagination } from "@/components/kit/Pagination";
-import { Skeleton } from "@/components/ui/skeleton";
 import { clasesBoton } from "@/components/kit/botonClases";
 import { useOrganization } from "@/lib/hooks/useOrganization";
 import { useFormatDate } from "@/lib/context/OrganizationTimezoneContext";
 import { addPlainDays } from "@/lib/utils/dateCore";
-import { CallRow, STATUS_LABELS } from "./CallRow";
+import { STATUS_LABELS } from "./CallRow";
+import type { CallListRow } from "@/lib/services/crm/callManagementService";
+import { ClienteLlamada, TipoLlamada, ResultadoLlamada, SentimientoLlamada, GrabacionLlamada, TarjetaLlamada, datosContactoLlamada } from "./CallsListCells";
+import { CallDeepLinkDialog } from "./CallDeepLinkDialog";
 import { CallsFilters } from "./CallsFilters";
 import { useCallsData, leerLlamadas, type CallsResponse } from "./useCallsData";
 import {
@@ -45,6 +40,8 @@ interface CallsTableProps {
   limit?: number;
   openCallId?: string | null;
   refreshKey?: number;
+  cabecera?: { titulo: string; subtitulo: string; accion: ReactNode; accionMovil: ReactNode };
+  onAbrirLlamada?: (id: string) => void;
 }
 
 /** Una consulta aplica el mismo ámbito a filas, indicadores y paginación. */
@@ -53,13 +50,15 @@ function CallsTableContenido({
   limit = 25,
   openCallId,
   refreshKey = 0,
+  cabecera,
+  onAbrirLlamada,
 }: CallsTableProps) {
   const t = useTranslations("crm.llamadas");
   const { getToday, formatDateTime } = useFormatDate(null);
+  const [defaultRange] = useState(() => ({ fromDate: addPlainDays(getToday(), -29), toDate: getToday() }));
   const [filters, setFilters] = useState<CallsTableFilters>(() => ({
     ...EMPTY_FILTERS,
-    fromDate: addPlainDays(getToday(), -29),
-    toDate: getToday(),
+    ...defaultRange,
     ...initialFilters,
   }));
   const [page, setPage] = useState(1);
@@ -68,13 +67,17 @@ function CallsTableContenido({
   const [expanded, setExpanded] = useState<string | null>(openCallId ?? null);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState(false);
+  const exportAbort = useRef<AbortController | null>(null);
+  useEffect(() => () => exportAbort.current?.abort(), []);
   const { result, loading, error, forbidden } = useCallsData(
     parametrosLlamadas(filters, page, size).toString(),
     revision + refreshKey,
   );
   const stats = result?.stats;
   const count = result?.count ?? 0;
-  const filtered = Object.values(filters).some(Boolean);
+  const filtered = Object.entries(filters).some(([key, value]) =>
+    key !== 'fromDate' && key !== 'toDate' && !!(typeof value === 'string' ? value.trim() : value),
+  ) || !!(filters.fromDate || filters.toDate) && (filters.fromDate !== defaultRange.fromDate || filters.toDate !== defaultRange.toDate);
   useEffect(() => {
     if (openCallId) setExpanded(openCallId);
   }, [openCallId]);
@@ -89,6 +92,9 @@ function CallsTableContenido({
   };
   const refresh = () => setRevision((n) => n + 1);
   const exportCalls = async () => {
+    if (exportAbort.current) return;
+    const abort = new AbortController();
+    exportAbort.current = abort;
     setExporting(true);
     setExportError(false);
     try {
@@ -96,10 +102,13 @@ function CallsTableContenido({
       for (let n = 1; ; n++) {
         const response = await leerLlamadas(
           parametrosLlamadas(filters, n, 200).toString(),
+          abort.signal,
         );
+        if (abort.signal.aborted) return;
         rows.push(...response.data);
         if (rows.length >= response.count || response.data.length === 0) break;
       }
+      if (abort.signal.aborted) return;
       const csv = csvLlamadas(
         rows,
         [
@@ -124,19 +133,38 @@ function CallsTableContenido({
       link.click();
       URL.revokeObjectURL(url);
     } catch {
-      setExportError(true);
+      if (!abort.signal.aborted) setExportError(true);
     } finally {
-      setExporting(false);
+      if (!abort.signal.aborted) setExporting(false);
+      if (exportAbort.current === abort) exportAbort.current = null;
     }
   };
+  const abrir = (call: CallListRow) => onAbrirLlamada ? onAbrirLlamada(call.id) : setExpanded(call.id);
+  const columnas: ColumnaTabla<CallListRow>[] = [
+    { id: "fecha", encabezado: t("columnas.fecha"), ancho: "11%", celda: (call) => formatDateTime(call.started_at ?? call.created_at), className: "text-[13px] leading-[18px] text-fg-secondary" },
+    { id: "cliente", encabezado: t("columnas.cliente"), ancho: "21%", celda: (call) => <ClienteLlamada call={call} /> },
+    { id: "tipo", encabezado: t("columnas.tipo"), ancho: "14%", celda: (call) => <TipoLlamada call={call} /> },
+    { id: "usuario", encabezado: t("columnas.usuario"), ancho: "14%", celda: (call) => [call.user?.first_name, call.user?.last_name].filter(Boolean).join(" ") || call.user?.email || "—", className: "text-[13px] leading-[18px]" },
+    { id: "duracion", encabezado: t("columnas.duracion"), ancho: "7%", celda: (call) => formatDuration(call.duration_seconds), className: "tabular-nums text-[13px] leading-[18px]" },
+    { id: "resultado", encabezado: t("columnas.resultado"), ancho: "14%", celda: (call) => <ResultadoLlamada call={call} /> },
+    { id: "sentimiento", encabezado: t("columnas.sentimiento"), ancho: "10%", celda: (call) => <SentimientoLlamada call={call} /> },
+    { id: "grabacion", encabezado: t("columnas.grabacion"), ancho: "9%", celda: (call) => <GrabacionLlamada call={call} /> },
+  ];
+  const estado: EstadoTabla = error ? forbidden ? "sinPermiso" : "error" : loading ? "cargando" : count ? "listo" : filtered ? "sinResultados" : "vacio";
+  const exportButton = <button type="button" className={clasesBoton({ variante: "secundario", patron: "button" })} disabled={loading || error || !count || exporting} onClick={() => void exportCalls()}><Download className="size-4" aria-hidden="true" strokeWidth={1.5} />{t(exporting ? "exportando" : "exportar")}</button>;
+  const menu = <RowActionsMenu orientacion="horizontal" tamano="md" titulo={t("titulo")} acciones={[
+    { id: "refresh", etiqueta: t("actualizar"), icono: RefreshCw, onSelect: refresh, deshabilitada: loading },
+    { id: "export", etiqueta: t(exporting ? "exportando" : "exportar"), icono: Download, onSelect: () => void exportCalls(), deshabilitada: loading || error || !count || exporting, oculta: false },
+  ]} />;
   return (
-    <div className="space-y-5">
-      <KpiStrip etiqueta={t("resumen")}>
+    <div className="flex min-w-0 flex-col gap-4">
+      {cabecera && <PageHeader titulo={cabecera.titulo} subtitulo={cabecera.subtitulo} icono={Phone} migas={[{ etiqueta: "CRM", href: "/app/crm" }, { etiqueta: cabecera.titulo }]} acciones={<>{exportButton}{cabecera.accion}<RowActionsMenu orientacion="horizontal" tamano="md" titulo={cabecera.titulo} acciones={[{ id: "refresh", etiqueta: t("actualizar"), icono: RefreshCw, onSelect: refresh, deshabilitada: loading }]} /></>} movil={{ accion: <>{cabecera.accionMovil}{menu}</> }} />}
+      {!error && (loading || count > 0 || filtered) && <KpiStrip etiqueta={t("resumen")}>
         <StatCard
           etiqueta={t("total")}
           valor={stats?.totalToday ?? "—"}
-          icono={Phone}
           cargando={loading}
+          varianteCarga="compacta"
           detalle={t("periodo")}
         />
         <StatCard
@@ -146,22 +174,22 @@ function CallsTableContenido({
               ? `${stats.totalToday ? Math.round((100 * stats.answered) / stats.totalToday) : 0}%`
               : "—"
           }
-          icono={UserCheck}
           cargando={loading}
+          varianteCarga="compacta"
           detalle={t("humano")}
         />
         <StatCard
           etiqueta={t("promedio")}
           valor={stats ? formatDuration(stats.avgDuration) : "—"}
-          icono={Clock}
           cargando={loading}
+          varianteCarga="compacta"
           detalle={t("contestadas")}
         />
         <StatCard
           etiqueta={t("voz")}
           valor={stats ? Math.ceil(stats.voiceSeconds / 60) : "—"}
-          icono={Mic}
           cargando={loading}
+          varianteCarga="compacta"
           detalle={
             !stats?.voiceConfigured
               ? t("sinPlan")
@@ -170,101 +198,44 @@ function CallsTableContenido({
                 : t("saldo", { n: stats.remainingVoiceMinutes })
           }
         />
-      </KpiStrip>
-      <div className="flex flex-wrap items-center gap-3">
+      </KpiStrip>}
+      <div className="flex flex-wrap items-start gap-2">
         <div className="min-w-0 flex-1">
           <CallsFilters filters={filters} onChange={changeFilters} />
         </div>
-        <button
+        {!cabecera && <button
           className={clasesBoton({ variante: "secundario" })}
           disabled={loading}
           onClick={refresh}
           aria-label={t("actualizar")}
         >
           <RefreshCw className="size-4" aria-hidden="true" />
-        </button>
-        <button
-          className={clasesBoton({ variante: "secundario" })}
-          disabled={loading || error || !count || exporting}
-          onClick={() => void exportCalls()}
-        >
-          <Download className="size-4" aria-hidden="true" />
-          {t(exporting ? "exportando" : "exportar")}
-        </button>
+        </button>}
+        {!cabecera && exportButton}
       </div>
       {exportError && (
         <p role="alert" className="text-sm text-danger-text">
           {t("errorExportar")}
         </p>
       )}
-      <div className="overflow-hidden rounded-xl border border-line bg-surface">
-        {error ? (
-          <EmptyState
-            variante={forbidden ? "forbidden" : "error"}
-            titulo={t(forbidden ? "sinPermiso" : "error")}
-            onReintentar={refresh}
-          />
-        ) : !loading && !count ? (
-          <EmptyState
-            variante={filtered ? "search" : "empty"}
-            titulo={t(filtered ? "sinResultados" : "vacio")}
-            descripcion={t("vacioDetalle")}
-            onLimpiarFiltros={() => changeFilters(EMPTY_FILTERS)}
-            accion={
-              !filtered
-                ? { etiqueta: t("llamar"), onClick: abrirMarcador }
-                : undefined
-            }
-          />
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-8">
-                      <span className="sr-only">{t("detalle")}</span>
-                    </TableHead>
-                    {[
-                      "fecha",
-                      "tipo",
-                      "cliente",
-                      "usuario",
-                      "duracion",
-                      "resultado",
-                      "estado",
-                      "sentimiento",
-                      "grabacion",
-                    ].map((key) => (
-                      <TableHead key={key}>{t(`columnas.${key}`)}</TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading
-                    ? Array.from({ length: 5 }, (_, i) => (
-                        <TableRow key={i}>
-                          {Array.from({ length: 10 }, (_, j) => (
-                            <TableCell key={j}>
-                              <Skeleton className="h-4 w-20" />
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      ))
-                    : result?.data.map((call) => (
-                        <CallRow
-                          key={call.id}
-                          call={call}
-                          isOpen={expanded === call.id}
-                          onToggle={() =>
-                            setExpanded(expanded === call.id ? null : call.id)
-                          }
-                        />
-                      ))}
-                </TableBody>
-              </Table>
-            </div>
-            <Pagination
+      {estado !== 'listo' && estado !== 'cargando' ? <div className="overflow-hidden rounded-xl border border-line bg-surface">
+        <EmptyState variante={estado === 'vacio' ? 'empty' : estado === 'sinResultados' ? 'search' : estado === 'sinPermiso' ? 'forbidden' : 'error'}
+          titulo={t(estado === 'vacio' ? 'vacio' : estado === 'sinResultados' ? 'sinResultados' : estado === 'sinPermiso' ? 'sinPermiso' : 'error')}
+          descripcion={estado === 'vacio' || estado === 'sinResultados' ? t('vacioDetalle') : undefined}
+          icono={estado === 'vacio' ? Package : undefined}
+          accion={estado === 'vacio' ? { etiqueta: t('llamar'), onClick: abrirMarcador, icono: Phone } : undefined}
+          accionSecundaria={estado === 'vacio' ? { etiqueta: t('configurarTelefonia'), href: '/app/configuracion?modulo=crm&tab=proveedores' } : undefined}
+          accionPrimaria={estado === 'error' ? true : undefined}
+          onReintentar={refresh} onLimpiarFiltros={() => changeFilters(EMPTY_FILTERS)}
+          className={estado === 'vacio' ? 'min-h-[300px] lg:min-h-[394px]' : 'min-h-[300px] lg:min-h-[374px]'} />
+      </div> : <DataTable columnas={columnas} filas={result?.data ?? []} obtenerId={(call) => call.id} etiqueta={t("titulo")} estado={estado} onFilaClick={abrir} pieFuera
+        atributosFila={(call) => ({ "data-phone": datosContactoLlamada(call).numero, "data-customer-id": call.customer?.id, "data-opportunity-id": call.opportunity_id ?? undefined, "data-display-name": datosContactoLlamada(call).nombre ?? undefined })}
+        tarjetaMovil={(call) => <TarjetaLlamada call={call} onAbrir={() => abrir(call)} />}
+        vacio={{ titulo: t("vacio"), descripcion: t("vacioDetalle"), accion: { etiqueta: t("llamar"), onClick: abrirMarcador } }}
+        sinResultados={{ titulo: t("sinResultados"), descripcion: t("vacioDetalle") }} error={{ titulo: t("error") }} sinPermiso={{ titulo: t("sinPermiso") }}
+        onReintentar={refresh} onLimpiarFiltros={() => changeFilters(EMPTY_FILTERS)} filasEsqueleto={8}
+        mostrarCabeceraCargando={false} altoFilaEsqueleto={48} varianteEsqueleto="figma"
+        pie={count > 0 ? <Pagination
               pagina={page}
               tamano={size}
               total={count}
@@ -274,11 +245,12 @@ function CallsTableContenido({
                 setPage(1);
               }}
               cargando={loading}
-              className="border-t border-line p-4"
-            />
-          </>
-        )}
-      </div>
+              opcionesTamano={[25, 50, 100]}
+              densidad="compacta"
+            /> : undefined
+        }
+      />}
+      {expanded && <CallDeepLinkDialog id={expanded} startMs={null} onClose={() => setExpanded(null)} />}
     </div>
   );
 }

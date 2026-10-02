@@ -50,6 +50,6 @@ describe('TierEditor: acciones de escritura condicionadas a `canManage`', () => 
 describe('PartnersPage: propaga el mismo `canManage` de `usePartners` a `TierEditor`', () => {
   it('pasa `canManage={canManage}` (no un valor fijo ni otro booleano)', () => {
     const src = read('src/components/crm/partners/PartnersPage.tsx');
-    expect(src).toMatch(/<TierEditor open=\{tiersOpen\} tiers=\{tiers\} canManage=\{canManage\}/);
+    expect(src).toMatch(/<TierEditor\s+open=\{tiersOpen\}\s+tiers=\{tiers\}\s+canManage=\{canManage\}/);
   });
 });

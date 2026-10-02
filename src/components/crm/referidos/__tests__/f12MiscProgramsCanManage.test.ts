@@ -78,7 +78,7 @@ describe('ReferralProgramsSheet: acciones de escritura condicionadas a `canManag
 describe('ReferidosPage: propaga el mismo `canManage` de `useReferrals` a `ReferralProgramsSheet`', () => {
   it('pasa `canManage={canManage}` (no un valor fijo ni otro booleano)', () => {
     const src = read('src/components/crm/referidos/ReferidosPage.tsx');
-    expect(src).toMatch(/const \{ referrals, programs, requests, currency, canManage,/);
-    expect(src).toMatch(/<ReferralProgramsSheet open=\{programsOpen\} programs=\{programs\} currency=\{currency\} canManage=\{canManage\}/);
+    expect(src).toMatch(/const \{\s*referrals,\s*programs,\s*requests,\s*currency,\s*canManage,/);
+    expect(src).toMatch(/<ReferralProgramsSheet\s+open=\{programsOpen\}\s+programs=\{programs\}\s+currency=\{currency\}\s+canManage=\{canManage\}/);
   });
 });

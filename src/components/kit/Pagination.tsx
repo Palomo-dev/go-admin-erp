@@ -33,6 +33,8 @@ export interface PaginationProps {
   sustantivo?: Sustantivo;
   cargando?: boolean;
   layout?: 'auto' | 'full' | 'compact';
+  /** Selector 32 px y resumen Small13 del listado de Llamadas. */
+  densidad?: 'normal' | 'compacta';
   className?: string;
 }
 
@@ -49,6 +51,7 @@ function PaginationFull({
   opcionesTamano = TAMANOS_PAGINA,
   sustantivo: sustantivoProp,
   cargando,
+  densidad = 'normal',
   className,
 }: Omit<PaginationProps, 'layout'>) {
   const t = useKitT();
@@ -64,7 +67,7 @@ function PaginationFull({
         {cargando ? (
           <Skeleton className="h-4 w-48" />
         ) : (
-          <span className="text-sm text-fg-secondary tabular-nums" aria-live="polite">
+          <span className={cn('text-fg-secondary tabular-nums', densidad === 'compacta' ? 'text-[13px] leading-[18px]' : 'text-sm')} aria-live="polite">
             {r.total === 0
               ? t('paginacion.vacio', { sustantivo: sustantivo.plural })
               : t('paginacion.resumen', {
@@ -79,7 +82,7 @@ function PaginationFull({
           <Select value={String(tamano)} onValueChange={(v) => onTamanoChange(Number(v))} disabled={cargando}>
             <SelectTrigger
               aria-label={t('paginacion.porPaginaEtiqueta')}
-              className="h-10 w-[150px] rounded-lg border-line-strong bg-surface text-sm text-fg focus:ring-brand"
+              className={cn('w-[150px] rounded-lg border-line-strong bg-surface text-fg focus:ring-brand', densidad === 'compacta' ? 'h-8 text-[13px] leading-[18px]' : 'h-10 text-sm')}
             >
               <SelectValue />
             </SelectTrigger>
@@ -172,12 +175,12 @@ function PaginationFull({
   );
 }
 
-export function Pagination({ layout = 'auto', className, ...props }: PaginationProps) {
-  if (layout === 'full') return <PaginationFull {...props} className={className} />;
+export function Pagination({ layout = 'auto', className, densidad = 'normal', ...props }: PaginationProps) {
+  if (layout === 'full') return <PaginationFull {...props} densidad={densidad} className={className} />;
   if (layout === 'compact') return <PaginationCompact {...props} className={className} />;
   return (
     <>
-      <PaginationFull {...props} className={cn('hidden lg:flex', className)} />
+      <PaginationFull {...props} densidad={densidad} className={cn('hidden lg:flex', className)} />
       <PaginationCompact {...props} className={cn('lg:hidden', className)} />
     </>
   );

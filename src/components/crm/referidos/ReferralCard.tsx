@@ -10,7 +10,7 @@ import {useRedText} from '@/components/crm/red/useRedText';
 
 import Link from 'next/link';
 import { ArrowRight, Gift, Mail, Phone, User, XCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/crm/red/RedButton';
 import { StaggerItem } from '@/components/shared/motion';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { describeReward } from '@/lib/services/crm/referralReward';
@@ -115,21 +115,21 @@ export function ReferralCard({ referral, currency, busy, canManage = true, canRe
         {(next.length > 0 || canPay) && (
           <footer className="mt-auto flex flex-wrap gap-2 border-t border-line pt-3 ">
             {forward && canManage && (
-              <Button id={referralActionId(referral.id, forward)} type="button" size="sm" className="bg-brand text-white hover:bg-brand-hover" disabled={busy} onClick={() => onTransition(referral, forward)}>
+              <Button id={referralActionId(referral.id, forward)} type="button" size="sm" className="" disabled={busy} onClick={() => onTransition(referral, forward)}>
                 {tr(REFERRAL_STATUS_META[forward].action)}
               </Button>
             )}
             {next.includes('converted') && canRegister && (
-              <Button id={referralActionId(referral.id, 'converted')} type="button" size="sm" className="bg-brand text-white hover:bg-brand-hover" disabled={busy} onClick={() => onConvert(referral)}>
+              <Button id={referralActionId(referral.id, 'converted')} type="button" size="sm" className="" disabled={busy} onClick={() => onConvert(referral)}>
                  {tr("Convertir en lead")} </Button>
             )}
             {canPay && canManage && (
               <Button id={referralActionId(referral.id, 'reward')} type="button" size="sm" variant="outline" disabled={busy} onClick={() => onMarkPaid(referral)}>
-                <Gift className="mr-1.5 h-4 w-4" aria-hidden="true" />  {tr("Registrar recompensa pagada")} </Button>
+                <Gift className="h-4 w-4" aria-hidden="true" />  {tr("Registrar recompensa pagada")} </Button>
             )}
             {next.includes('rejected') && canManage && (
               <Button id={referralActionId(referral.id, 'rejected')} type="button" size="sm" variant="ghost" className="text-red-700 hover:text-red-800 dark:text-red-300 dark:hover:text-red-200" disabled={busy} onClick={() => onReject(referral)}>
-                <XCircle className="mr-1.5 h-4 w-4" aria-hidden="true" />  {tr("Rechazar")} </Button>
+                <XCircle className="h-4 w-4" aria-hidden="true" />  {tr("Rechazar")} </Button>
             )}
           </footer>
         )}

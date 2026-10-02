@@ -15,14 +15,16 @@ export function ObjectionEditor({
   row,
   onClose,
   onSave,
+  initialTitle,
 }: {
   open: boolean;
   row: Objection | null;
   onClose: () => void;
   onSave: (data: ObjectionInput, id?: string) => Promise<unknown>;
+  initialTitle?: string;
 }) {
   const t = useTranslations('crm.objecionesNuevo');
-  const {form,setForm,saving,error,submit}=useObjectionEditor({open,row,onSave,onSaved:onClose});
+  const {form,setForm,saving,error,submit}=useObjectionEditor({open,row,onSave,onSaved:onClose,initialTitle});
   return (
     <Dialogo
       abierto={open}

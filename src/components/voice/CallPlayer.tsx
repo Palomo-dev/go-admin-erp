@@ -17,6 +17,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Play, Pause, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useTranslations } from 'next-intl';
+import { CallPlayerControls } from './CallPlayerControls';
+import { useRecordingWaveform } from './useRecordingWaveform';
+import { downloadCallRecording } from './recordingDownload';
 import { useToast } from '@/components/ui/use-toast';
 import { clampRecordingSeek } from './callDeepLink';
 import { cn } from '@/utils/Utils';
@@ -28,15 +32,20 @@ interface CallPlayerProps {
   className?: string;
   /** Instante (ms) al que saltar; cada cambio de valor dispara el seek. */
   seekToMs?: number | null;
+  seekVersion?: number;
   onTimeUpdate?: (ms: number) => void;
   variant?: 'icon' | 'full';
   /** `call_consents.method` de la acta de grabación (ver cabecera, F-4). */
   consentMethod?: string | null;
+  etiqueta?: string;
+  initialRecordings?: Recording[];
+  initialConsents?: Consent[];
 }
 
 interface Recording {
   id: string;
   status: string;
+  duration_seconds?: number | null;
 }
 
 interface Consent {
@@ -44,34 +53,40 @@ interface Consent {
   method: string;
 }
 
-function fmt(ms: number): string {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-}
-
 export function CallPlayer({
   callId,
   recordingEnabled,
   className,
   seekToMs,
+  seekVersion,
   onTimeUpdate,
   variant = 'icon',
   consentMethod = null,
+  etiqueta,
+  initialRecordings,
+  initialConsents,
 }: CallPlayerProps) {
   const { toast } = useToast();
+  const t = useTranslations('crm.llamadas.ficha');
+  const seed = initialRecordings?.filter((recording) => recording.status === 'ready' || recording.status === 'completed');
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const mounted = useRef(true);
-  const [recordings, setRecordings] = useState<Recording[]>([]);
+  const [recordings, setRecordings] = useState<Recording[]>(seed ?? []);
   /** La acta leída del detalle manda sobre la prop (F-4). */
-  const [fetchedMethod, setFetchedMethod] = useState<string | null>(null);
+  const [fetchedMethod, setFetchedMethod] = useState<string | null>(initialConsents?.find((consent) => consent.consent_type === 'recording')?.method ?? null);
   const unverified = isUnverifiedConsent(fetchedMethod ?? consentMethod);
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasError, setHasError] = useState(false);
-  const [fetched, setFetched] = useState(false);
+  const [fetched, setFetched] = useState(initialRecordings !== undefined);
   const [currentMs, setCurrentMs] = useState(0);
-  const [durationMs, setDurationMs] = useState(0);
+  const [durationMs, setDurationMs] = useState((seed?.[0]?.duration_seconds ?? 0) * 1000);
+  const [rate, setRate] = useState(1);
+  const [waveRecording, setWaveRecording] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+  const peaks = useRecordingWaveform(variant === 'full' ? waveRecording : null);
   const pendingSeek = useRef<number | null>(null);
+  const lastSeekVersion = useRef<number | undefined>(undefined);
   const lastRequestedSeek = useRef<number | null>(null);
 
   const fetchRecordings = useCallback(async (): Promise<Recording[]> => {
@@ -107,14 +122,16 @@ export function CallPlayer({
     if (audioRef.current) return audioRef.current;
     if (recs.length === 0) {
       toast({
-        title: 'Sin grabación',
-        description: 'Esta llamada no tiene grabaciones disponibles',
+        title: t('sinGrabacion'),
+        description: t('sinGrabacionDescripcion'),
         variant: 'destructive',
       });
       return null;
     }
     const audio = new Audio(`/api/voice/recording/${recs[0].id}/stream`);
     audio.preload = 'metadata';
+    audio.playbackRate = rate;
+    setWaveRecording(recs[0].id);
     audio.onplay = () => setIsPlaying(true);
     audio.onpause = () => setIsPlaying(false);
     audio.onended = () => setIsPlaying(false);
@@ -144,7 +161,7 @@ export function CallPlayer({
     };
     audioRef.current = audio;
     return audio;
-  }, [fetchRecordings, onTimeUpdate, toast]);
+  }, [fetchRecordings, onTimeUpdate, toast, t, rate]);
 
   const play = useCallback(async () => {
     const audio = await ensureAudio();
@@ -169,10 +186,11 @@ export function CallPlayer({
       seekToMs === undefined ||
       !Number.isFinite(seekToMs) ||
       seekToMs < 0 ||
-      seekToMs === lastRequestedSeek.current
+      (seekToMs === lastRequestedSeek.current && seekVersion === lastSeekVersion.current)
     )
       return;
     lastRequestedSeek.current = seekToMs;
+    lastSeekVersion.current = seekVersion;
     pendingSeek.current = seekToMs;
     (async () => {
       const audio = await ensureAudio();
@@ -185,7 +203,7 @@ export function CallPlayer({
       pendingSeek.current = null;
       audio.play().catch(() => setHasError(true));
     })();
-  }, [seekToMs, ensureAudio, recordingEnabled, onTimeUpdate]);
+  }, [seekToMs, seekVersion, ensureAudio, recordingEnabled, onTimeUpdate]);
 
   useEffect(() => {
     mounted.current = true;
@@ -201,39 +219,40 @@ export function CallPlayer({
 
   if (!recordingEnabled) {
     return (
-      <span className="text-xs text-gray-400 dark:text-gray-600" title="Grabación deshabilitada">
-        —
+      <span className="text-xs text-fg-muted" title={t('grabacionDeshabilitada')}>
+        {variant === 'full' ? t('sinGrabacion') : '—'}
       </span>
     );
   }
   if (hasError) {
     return (
       <span
-        className="inline-flex items-center gap-1 text-xs text-red-500 dark:text-red-400"
-        title="Error al cargar grabación"
+        className="inline-flex items-center gap-1 text-xs text-danger-text"
+        title={t('errorGrabacion')}
       >
-        <AlertCircle size={14} /> {variant === 'full' && 'Grabación no disponible'}
+        <AlertCircle size={14} /> {variant === 'full' && t('sinGrabacion')}
       </span>
     );
   }
 
   const button = (
     <Button
-      size="icon"
+      size={etiqueta && variant === 'icon' ? 'sm' : 'icon'}
       variant="ghost"
       onClick={isPlaying ? pause : play}
       disabled={isLoading}
-      className={cn(variant === 'icon' && className)}
-      title={isPlaying ? 'Pausar grabación' : 'Reproducir grabación'}
-      aria-label={isPlaying ? 'Pausar grabación' : 'Reproducir grabación'}
+      className={cn(variant === 'full' ? 'size-9 shrink-0 rounded-full bg-brand-action p-0 text-fg-on-brand hover:bg-brand-action-hover' : className)}
+      title={isPlaying ? t('pausar') : t('reproducir')}
+      aria-label={isPlaying ? t('pausar') : t('reproducir')}
     >
       {isLoading ? (
         <Loader2 size={16} className="animate-spin" />
       ) : isPlaying ? (
-        <Pause size={16} className="text-blue-600 dark:text-blue-400" />
+        <Pause size={16} className={variant === 'full' ? 'text-fg-on-brand' : 'text-brand'} />
       ) : (
-        <Play size={16} className="text-gray-600 dark:text-gray-300" />
+        <Play size={16} className={variant === 'full' ? 'text-fg-on-brand' : 'text-fg-secondary'} />
       )}
+      {etiqueta && variant === 'icon' && <span>{etiqueta}</span>}
     </Button>
   );
 
@@ -249,43 +268,9 @@ export function CallPlayer({
     );
   }
 
-  const pct = durationMs > 0 ? Math.min(100, (currentMs / durationMs) * 100) : 0;
-  return (
-    <div
-      className={cn(
-        'flex flex-wrap items-center gap-3 rounded-md border border-gray-200 bg-white px-2 py-1.5 dark:border-gray-700 dark:bg-gray-800',
-        unverified && 'border-amber-400 dark:border-amber-500',
-        className,
-      )}
-    >
-      {unverified && (
-        <UnverifiedConsentBadge
-          method="unverified_announcement"
-          variant="full"
-          className="basis-full"
-        />
-      )}
-      {button}
-      <input
-        type="range"
-        min={0}
-        max={Math.max(1, Math.round(durationMs))}
-        value={Math.round(currentMs)}
-        aria-label="Posición de la grabación"
-        onChange={(e) => {
-          const ms = Number(e.target.value);
-          setCurrentMs(ms);
-          if (audioRef.current) audioRef.current.currentTime = ms / 1000;
-        }}
-        onMouseDown={() => {
-          if (!audioRef.current) void ensureAudio();
-        }}
-        className="h-1.5 flex-1 cursor-pointer accent-blue-600"
-        style={{ backgroundSize: `${pct}% 100%` }}
-      />
-      <span className="w-[84px] text-right text-xs tabular-nums text-gray-500 dark:text-gray-400">
-        {fmt(currentMs)} / {durationMs ? fmt(durationMs) : '--:--'}
-      </span>
-    </div>
-  );
+  return <CallPlayerControls button={button} className={className} currentMs={currentMs} durationMs={durationMs} rate={rate} peaks={peaks}
+    consent={unverified ? <UnverifiedConsentBadge method="unverified_announcement" variant="full" className="basis-full" /> : null}
+    onSeek={(ms) => { setCurrentMs(ms); onTimeUpdate?.(ms); if (audioRef.current) audioRef.current.currentTime = ms / 1000; else { pendingSeek.current = ms; void ensureAudio(); } }}
+    onRate={() => { const next = rate === 1 ? 1.5 : rate === 1.5 ? 2 : 1; setRate(next); if (audioRef.current) audioRef.current.playbackRate = next; }}
+    downloading={downloading} onDownload={() => { setDownloading(true); void fetchRecordings().then(async (recs) => { if (!recs[0]) throw new Error('recording_unavailable'); await downloadCallRecording(recs[0].id); }).catch(() => toast({ title: t('errorDescargar'), variant: 'destructive' })).finally(() => { if (mounted.current) setDownloading(false); }); }} />;
 }

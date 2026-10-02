@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useTranslations, useFormatter } from 'next-intl';
-import { MessagesSquare, Copy, Play } from 'lucide-react';
+import { MessagesSquare, Copy, Play,Sparkles,Check } from 'lucide-react';
 import { EmptyState, clasesBoton } from '@/components/kit';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
@@ -48,25 +48,25 @@ export function ObjectionEvidence({ id, children, onUseResponse, busy=false }: {
   if (!data) return layout(null, null);
   const max = Math.max(1, ...data.weeks.map((row) => row.call_count));
   const responses = <section className="rounded-xl border border-line-brand bg-brand-tint p-4">
-        <h3 className="font-semibold text-fg">{t('successfulResponses')}</h3>
-        <p className="mt-1 text-xs text-fg-secondary">{t('miningHint')}</p>
+        <h3 className="flex items-center gap-2 text-base font-semibold leading-[22px] text-fg"><Sparkles className="size-4 shrink-0 text-brand"/>{t('successfulResponses')}</h3>
+        <span className="sr-only">{t('miningHint')}</span>
         {data.responses.length ? (
-          <div className="mt-3 space-y-3">
+          <div className="mt-2.5 space-y-2.5">
             {data.responses.map((row) => (
-              <div key={row.response_text} className="rounded-xl border border-line bg-surface p-4">
-                <p className="text-sm text-fg">«{row.response_text}»</p>
-                <p className="mt-2 text-xs text-fg-secondary">
+              <div key={row.response_text} className="rounded-lg bg-surface p-3">
+                <p className="text-[13px] leading-[18px] text-fg">«{row.response_text}»</p>
+                <div className="mt-2 flex flex-wrap items-end justify-between gap-2"><p className="text-xs leading-4 text-fg-secondary">
                   {t('responseCounts', { used: row.used_count, advanced: row.advanced_count })}
                 </p>
                 <button
                   type="button"
-                  className={`${clasesBoton({ variante: 'secundario' })} mt-3`}
+                  className={clasesBoton({ variante: 'secundario',tamano:'sm',patron:'button' })}
                   disabled={busy}
                   onClick={() => onUseResponse ? onUseResponse(row.response_text) : void copy(row.response_text)}
                 >
-                  <Copy className="size-4" />
+                  {onUseResponse?<Check className="size-4"/>:<Copy className="size-4"/>}
                   {onUseResponse?t('visual.useAlternative'):t(copied === row.response_text ? 'copied' : 'copy')}
-                </button>
+                </button></div>
               </div>
             ))}
           </div>
@@ -85,11 +85,10 @@ export function ObjectionEvidence({ id, children, onUseResponse, busy=false }: {
       </section>;
   const activity = <div className="space-y-4">
       <section>
-        <h3 className="font-semibold text-fg">{t('appearsInCalls')}</h3>
-        <p className="mt-1 text-xs text-fg-secondary">{t('last90')}</p>
+        <h3 className="text-base font-semibold leading-[22px] text-fg">{t('appearsInCalls')}</h3>
         {data.weeks.length ? (
           <div
-            className="mt-3 flex h-28 items-end gap-1 rounded-xl border border-line bg-surface p-3"
+            className="mt-2.5 flex h-16 items-end gap-1"
             role="img"
             aria-label={t('weeklyFrequency')}
           >
@@ -100,7 +99,7 @@ export function ObjectionEvidence({ id, children, onUseResponse, busy=false }: {
                 title={`${dates.formatPlain(row.week)}: ${format.number(row.call_count)}`}
               >
                 <div
-                  className="min-h-px rounded-t bg-brand"
+                  className="min-h-px rounded bg-brand"
                   style={{ height: `${(row.call_count / max) * 100}%` }}
                 />
                 <span className="sr-only">
@@ -112,6 +111,7 @@ export function ObjectionEvidence({ id, children, onUseResponse, busy=false }: {
         ) : (
           <p className="mt-3 text-sm text-fg-secondary">{t('noCalls')}</p>
         )}
+        <p className="mt-2 text-xs leading-4 text-fg-secondary">{t('last90')}</p>
       </section>
       <section>
         <ul className="space-y-2">

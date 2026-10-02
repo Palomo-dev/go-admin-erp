@@ -7,14 +7,15 @@
  * (gate → GateWarningDialog), etiquetas, "Analizar" / "Re-analizar".
  */
 
-import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { Sparkles, Loader2, RefreshCw, AlertTriangle, CheckCircle2, ArrowRight, ListChecks, Flame, Snowflake, Thermometer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { toast } from '@/components/ui/use-toast';
 import { cn } from '@/utils/Utils';
 import { GateWarningDialog } from '@/components/crm/pipeline/GateWarningDialog';
 import { useCallIntelligence, ERROR_LABELS, providerLabel, type CallIntelligenceState } from './useCallIntelligence';
+import { CallAnalysisCards } from './CallAnalysisCards';
+import { useCallAnalysisActions } from './useCallAnalysisActions';
 import { AnalysisScore, AnalysisObjections, AnalysisDiscovery } from './CallAnalysisSections';
 
 export interface CallAnalysisPanelProps {
@@ -23,9 +24,11 @@ export interface CallAnalysisPanelProps {
   state?: CallIntelligenceState;
   onApplied?: () => void;
   className?: string;
+  variante?: 'panel' | 'ficha';
+  linkedContent?: ReactNode;
+  mobileCallback?: ReactNode;
+  onSeek?: (ms: number) => void;
 }
-
-type ApplyActions = { stage?: boolean; tasks?: number[] | 'all'; tags?: boolean; discovery?: boolean; objections?: boolean };
 
 const SENTIMENT: Record<string, { label: string; variant: 'success' | 'secondary' | 'destructive' | 'warning' }> = {
   positive: { label: 'Positivo', variant: 'success' },
@@ -34,80 +37,13 @@ const SENTIMENT: Record<string, { label: string; variant: 'success' | 'secondary
   mixed: { label: 'Mixto', variant: 'warning' },
 };
 
-export function CallAnalysisPanel({ callId, opportunityId, state, onApplied, className }: CallAnalysisPanelProps) {
+export function CallAnalysisPanel({ callId, opportunityId, state, onApplied, className, variante = 'panel', linkedContent, mobileCallback, onSeek }: CallAnalysisPanelProps) {
   const own = useCallIntelligence(callId, !state);
   const s = state ?? own;
   const bundle = s.analysis;
   const analysis = bundle?.analysis ?? null;
   const transcriptReady = s.transcript?.status === 'completed';
-  const [running, setRunning] = useState(false);
-  const [applying, setApplying] = useState<string | null>(null);
-  const [gate, setGate] = useState<{ missing: string[]; stageName: string } | null>(null);
-
-  const applied = new Set(bundle?.applied_actions ?? analysis?.raw_response?.applied_actions ?? []);
-  const temperature = analysis?.raw_response?.temperature ?? null;
-  const analyzeJobWorking = bundle?.job && (bundle.job.status === 'queued' || bundle.job.status === 'running');
-
-  const runAnalyze = async (force: boolean) => {
-    setRunning(true);
-    s.setBusy(true);
-    try {
-      const res = await fetch(`/api/crm/calls/${callId}/analyze`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ force }) });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error ?? 'No se pudo analizar');
-      // Igual que en el panel de transcripción (ronda 6, tester r5 N1): si la ruta
-      // devolvió el job que ya estaba vivo, no se anuncia uno nuevo.
-      const deduped = json.data?.deduped === true;
-      // Ronda 7 (tester r6 F1): igual que en el panel de transcripción, si la
-      // ruta publica `dedupe_checked:false` es que NO pudo comprobar si ya había
-      // otro trabajo vivo; se dice, en vez de prometer un análisis nuevo limpio.
-      const unchecked = json.data?.dedupe_checked === false;
-      const queued = res.status === 202;
-      toast({
-        title: deduped ? 'Ya había un análisis en curso' : queued ? 'Análisis en cola' : 'Análisis listo',
-        description: deduped
-          ? 'Se reutiliza el trabajo que ya estaba encolado; no se cobra dos veces.'
-          : unchecked
-            ? 'No se pudo comprobar si ya había otro análisis en curso, así que podría duplicarse.'
-            : queued
-              ? 'Se procesará en el próximo minuto.'
-              : undefined,
-      });
-      await s.refetch();
-    } catch (e) {
-      toast({ title: 'Error', description: e instanceof Error ? e.message : 'Error', variant: 'destructive' });
-    } finally {
-      setRunning(false);
-      s.setBusy(false);
-    }
-  };
-
-  const apply = async (actions: ApplyActions, key: string, ignoreGate = false) => {
-    if (!analysis) return;
-    setApplying(key);
-    try {
-      const res = await fetch(`/api/crm/calls/${callId}/analysis/apply`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ analysisId: analysis.id, actions, ignore_gate: ignoreGate }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (res.status === 409 && json.data?.gate) {
-        setGate({ missing: (json.data.gate.missing ?? []).map((m: { label?: string; detail?: string }) => m.detail ?? m.label ?? ''), stageName: bundle?.suggested_stage?.name ?? 'la etapa sugerida' });
-        return;
-      }
-      if (!res.ok) throw new Error(json.error ?? 'No se pudo aplicar');
-      const done: string[] = json.data?.applied ?? [];
-      const skipped: Array<{ action: string; reason: string }> = json.data?.skipped ?? [];
-      toast({ title: done.length ? `Aplicado: ${done.join(', ')}` : 'Nada nuevo que aplicar', description: skipped.length ? skipped.map((x) => `${x.action}: ${x.reason}`).join(' · ') : undefined });
-      await s.refetch();
-      onApplied?.();
-    } catch (e) {
-      toast({ title: 'Error', description: e instanceof Error ? e.message : 'Error', variant: 'destructive' });
-    } finally {
-      setApplying(null);
-    }
-  };
+  const { running, applying, gate, setGate, confirmGate, applied, temperature, analyzeJobWorking, runAnalyze, apply } = useCallAnalysisActions(callId, s, onApplied);
 
   const header = (
     <header className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 px-3 py-2 dark:border-gray-700">
@@ -129,6 +65,11 @@ export function CallAnalysisPanel({ callId, opportunityId, state, onApplied, cla
       )}
     </header>
   );
+
+  if (variante === 'ficha') return <>
+    <CallAnalysisCards key={analysis?.id ?? 'pending'} state={s} actions={{ running, applying, applied, analyzeJobWorking: Boolean(analyzeJobWorking), runAnalyze, apply }} opportunityId={opportunityId} linkedContent={linkedContent} mobileCallback={mobileCallback} onSeek={onSeek} />
+    <GateWarningDialog open={!!gate} onClose={() => setGate(null)} onConfirm={confirmGate} missing={gate?.missing ?? []} stageName={gate?.stageName ?? ''} />
+  </>;
 
   return (
     <section className={cn('flex flex-col rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800', className)} aria-label="Análisis IA de la llamada">
@@ -241,7 +182,7 @@ export function CallAnalysisPanel({ callId, opportunityId, state, onApplied, cla
       <GateWarningDialog
         open={!!gate}
         onClose={() => setGate(null)}
-        onConfirm={() => { setGate(null); void apply({ stage: true }, 'stage', true); }}
+        onConfirm={confirmGate}
         missing={gate?.missing ?? []}
         stageName={gate?.stageName ?? ''}
       />

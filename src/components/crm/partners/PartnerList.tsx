@@ -10,7 +10,7 @@ import {useRedText} from '@/components/crm/red/useRedText';
  */
 
 import { Award, BadgeCheck, CircleOff, Handshake, Mail, Pencil, Phone, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/crm/red/RedButton';
 import { AnimatePresence, StaggerItem, StaggerList } from '@/components/shared/motion';
 import type { PartnerView } from '@/lib/services/crm/partnerService';
 import { formatMoney, formatRate } from '@/lib/services/crm/partnerModel';
@@ -77,12 +77,12 @@ export function PartnerList({ partners, canManage, onEdit, onDeals, onDelete }: 
               </dl>
 
               <footer className="mt-auto flex flex-wrap gap-2 border-t border-line pt-3 ">
-                <Button id={partnerButtonId(p.id, 'deals')} type="button" size="sm" className="bg-brand text-white hover:bg-brand-hover" onClick={() => onDeals(p)}>
-                  <Handshake className="mr-1.5 h-4 w-4" aria-hidden="true" />  {tr("Deals")} </Button>
+                <Button id={partnerButtonId(p.id, 'deals')} type="button" size="sm" className="" onClick={() => onDeals(p)}>
+                  <Handshake className="h-4 w-4" aria-hidden="true" />  {tr("Deals")} </Button>
                 {/* F12-misc: PATCH exige admin/manager; a un Empleado el botón solo le daría un 403. */}
                 {canManage && (
                   <Button id={partnerButtonId(p.id, 'edit')} type="button" size="sm" variant="outline" onClick={() => onEdit(p)}>
-                    <Pencil className="mr-1.5 h-4 w-4" aria-hidden="true" />  {tr("Editar")} </Button>
+                    <Pencil className="h-4 w-4" aria-hidden="true" />  {tr("Editar")} </Button>
                 )}
                 {canManage && (
                   <Button id={partnerButtonId(p.id, 'delete')} type="button" size="icon" variant="ghost" className="ml-auto text-red-700 hover:text-red-800 dark:text-red-300" aria-label={tr("Eliminar partner {p0}", {p0: p.name})} onClick={() => onDelete(p)}>

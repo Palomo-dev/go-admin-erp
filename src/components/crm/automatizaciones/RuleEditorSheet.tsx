@@ -9,12 +9,12 @@ import { useAutomationText } from './useAutomationText';
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
+import { FlaskConical, Save, Zap } from 'lucide-react';
+import { PageHeader } from '@/components/kit/PageHeader';
+import { clasesBoton } from '@/components/kit/botonClases';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { cn } from '@/utils/Utils';
 import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { toast } from '@/components/ui/use-toast';
@@ -40,6 +40,7 @@ import { BulkDryRunPreview } from './BulkDryRunPreview';
 
 interface Props {
   open: boolean;
+  onBusyChange?: (busy: boolean) => void;
   /** Regla a editar; `null` para crear. */
   rule: AutomationRuleView | null;
   /** Formulario inicial al crear (por ejemplo, el ejemplo del estado vacío). */
@@ -52,20 +53,33 @@ interface Props {
   returnFocusFallback?: () => HTMLElement | null;
 }
 
-export function RuleEditorSheet({ open, rule, initialForm, lookups, onOpenChange, onSave, onBulkDryRun, returnFocusFallback }: Props) {
+export function RuleEditorSheet({ open, rule, onBusyChange, initialForm, lookups, onOpenChange, onSave, onBulkDryRun, returnFocusFallback }: Props) {
   const tr = useAutomationText();
   const [form, setForm] = useState<RuleFormState>(() => ruleToForm(null));
   const [errors, setErrors] = useState<FormError[]>([]);
   const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const busyChange = useRef(onBusyChange); busyChange.current = onBusyChange;
+  useEffect(() => { busyChange.current?.(saving); }, [saving]);
+  useEffect(() => () => busyChange.current?.(false), []);
   const savingRef = useRef(false), testVersion = useRef(0), testPending = useRef(false);
   const [bulk, setBulk] = useState<BulkAutomationPreview | null>(null), [bulkLoading, setBulkLoading] = useState(false), [bulkError, setBulkError] = useState<string | null>(null), [showBulk, setShowBulk] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(true);
   const [selectedAction, setSelectedAction] = useState<number | null>(null);
   // Ids a enfocar tras el próximo commit (el primero que exista). Efecto, no
   // requestAnimationFrame: con la ventana ocluida rAF no dispara (R-4).
   const [focusIds, setFocusIds] = useState<string[] | null>(null);
   const onCloseAutoFocus = useReturnFocus(open, returnFocusFallback); // H1/R-1: vuelve a «Nueva regla» o al lápiz de la tarjeta.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.key !== 'Escape' || savingRef.current) return;
+      event.preventDefault(); onOpenChange(false);
+      setTimeout(() => onCloseAutoFocus(new Event('close')), 0);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, onOpenChange, onCloseAutoFocus]);
 
   useEffect(() => {
     if (!focusIds) return;
@@ -81,7 +95,7 @@ export function RuleEditorSheet({ open, rule, initialForm, lookups, onOpenChange
     setForm(initialForm ?? ruleToForm(rule));
     setErrors([]);
     setServerError(null);
-    setSettingsOpen(false);
+    setSettingsOpen(true);
     setSelectedAction(null);
     testVersion.current++; testPending.current = false; setBulk(null); setBulkError(null); setBulkLoading(false); setShowBulk(false);
   }, [open, rule, initialForm]);
@@ -119,6 +133,7 @@ export function RuleEditorSheet({ open, rule, initialForm, lookups, onOpenChange
       await onSave(formToPayload(form, rule?.id));
       toast({ title: rule ? tr("Regla actualizada") : tr("Regla creada"), description: form.is_active ? tr("Ya está activa.") : tr("Está desactivada: actívala cuando quieras.") });
       onOpenChange(false);
+      setTimeout(() => onCloseAutoFocus(new Event('close')), 0);
     } catch (err) {
       setServerError(err instanceof Error ? err.message : tr("Error desconocido"));
       setFocusIds(['rule-server-error']);
@@ -138,37 +153,38 @@ export function RuleEditorSheet({ open, rule, initialForm, lookups, onOpenChange
     finally { if (testVersion.current === version) { testPending.current = false; setBulkLoading(false); } }
   };
 
+  if (!open) return null;
+  const closeEditor = () => {
+    if (savingRef.current) return;
+    onOpenChange(false);
+    // El listado se vuelve a montar al salir del lienzo; devuelve el foco después.
+    setTimeout(() => onCloseAutoFocus(new Event('close')), 0);
+  };
   return (
-    <Sheet open={open} onOpenChange={(next) => { if (!saving) onOpenChange(next); }}>
-      {/*
-        UX móvil (ronda 1): la hoja mide `h-dvh` y NO se desplaza como un todo
-        (`overflow-hidden` sustituye al `overflow-y-auto` del Sheet base); solo
-        el cuerpo (`flex-1 min-h-0 overflow-y-auto`) hace scroll. Sin `min-h-0`
-        el formulario no encogía, la hoja entera se desplazaba y el pie quedaba
-        descolgado bajo un hueco vacío.
-      */}
-      <SheetContent
-        side="right"
-        onCloseAutoFocus={onCloseAutoFocus}
-        className="flex h-dvh w-full flex-col gap-0 overflow-hidden bg-canvas p-0 sm:max-w-5xl"
-      >
-        <SheetHeader className="border-b border-line bg-surface px-4 py-4 pr-12 dark:border-line dark:bg-surface sm:px-6">
-          <SheetTitle className="text-fg dark:text-fg">{rule ? tr("Editar regla") : tr("Nueva regla")}</SheetTitle>
-          <SheetDescription className="text-fg-secondary dark:text-fg-secondary">
-            {tr("Arma la frase: cuándo se dispara, con qué condiciones y qué hace. Abajo verás cómo queda antes de guardar.")}</SheetDescription>
-          {onBulkDryRun && <div className="mt-2 flex flex-wrap items-center gap-2"><Button variant="outline" disabled={saving || dirty || bulkLoading} onClick={() => void test()}>{tr("Probar en seco")}</Button>{dirty && <p className="text-xs text-fg-muted">{tr("Guarda los cambios antes de simular esta regla.")}</p>}</div>}
-        </SheetHeader>
-
-        {/* `relative`: el botón de envío `sr-only` es absoluto; sin esto se posicionaba respecto a la hoja y alargaba su scroll. */}
+    <div className="space-y-5 bg-canvas p-4 sm:p-6" data-figma-node="1375:17">
+      <PageHeader titulo={rule?.name ?? tr("Nueva regla")} subtitulo={tr("Arma la frase: cuándo se dispara, con qué condiciones y qué hace. Abajo verás cómo queda antes de guardar.")}
+        icono={Zap} variante="form" volverA="/app/crm/automatizaciones" onVolver={() => { if (!saving) closeEditor(); }}
+        migas={[{ etiqueta: 'CRM' }, { etiqueta: tr('Automatizaciones') }, { etiqueta: rule?.name ?? tr('Nueva regla') }]}
+        movil={{ ocultarBarra: true, accion: <div className="flex gap-1"><button type="button" className={clasesBoton({ patron: 'button', variante: 'fantasma', tamano: 'sm' })} disabled={saving} onClick={closeEditor}>{tr('Cancelar')}</button><button type="submit" form="automation-rule-form" className={clasesBoton({ patron: 'button' })} disabled={saving}>{tr('Guardar')}</button></div> }}
+        acciones={<>
+          <button type="button" className={clasesBoton({ patron: 'button', variante: 'secundario' })} disabled={saving} onClick={closeEditor}>{tr('Cancelar')}</button>
+          {onBulkDryRun && <button type="button" className={clasesBoton({ patron: 'button', variante: 'secundario' })} disabled={saving || dirty || bulkLoading} onClick={() => void test()}><FlaskConical className="size-4" strokeWidth={1.5} aria-hidden />{tr('Probar en seco')}</button>}
+          <button type="submit" form="automation-rule-form" className={clasesBoton({ patron: 'button' })} disabled={saving}><Save className="size-4" strokeWidth={1.5} aria-hidden />{saving ? tr('Guardando…') : tr(primaryLabel(rule !== null, form.is_active))}</button>
+        </>} />
+      <div className="flex flex-wrap items-center gap-2">
+        <Switch id="rule-active" checked={form.is_active} disabled={saving} onCheckedChange={(v) => update({ ...form, is_active: v })} />
+        <Label htmlFor="rule-active" className="text-sm text-fg">{form.is_active ? tr('Activa') : tr('Desactivada')}</Label>
+        {dirty && onBulkDryRun && <p className="text-xs text-fg-muted">{tr('Guarda los cambios antes de simular esta regla.')}</p>}
+      </div>
         <form
-          className="relative min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6"
+          id="automation-rule-form" className="relative space-y-4"
           noValidate
           onSubmit={(e) => { e.preventDefault(); void submit(); }}
         >
-          <fieldset disabled={saving} className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"><div className="min-w-0 space-y-4">
+          <fieldset disabled={saving} className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]"><div className="min-w-0 space-y-4">
           <div>
             <Label htmlFor="rule-name" className="text-xs text-fg-secondary dark:text-fg-secondary">{tr("Nombre de la regla")}</Label>
-            <Input
+            <Input className="h-10 rounded-lg border-line-strong bg-surface text-fg dark:border-line-strong dark:bg-surface dark:text-fg"
               id="rule-name"
               value={form.name}
               placeholder={tr("Seguimiento de propuesta")}
@@ -180,15 +196,15 @@ export function RuleEditorSheet({ open, rule, initialForm, lookups, onOpenChange
             {nameError && <p id="rule-name-error" role="alert" className="mt-1 text-xs text-danger-text dark:text-danger-text">{tr(nameError)}</p>}
           </div>
 
-          <SentenceBlock id="blk-trigger" word={tr("Cuando")} tone="blue">
+          <SentenceBlock id="blk-trigger" word={`1 · ${tr("Cuando")}`} tone="blue">
             <TriggerBlock form={form} lookups={lookups} onChange={update} />
           </SentenceBlock>
           <SentenceConnector />
-          <SentenceBlock id="blk-conditions" word={tr("si")} tone="amber" hint={tr("opcional")}>
+          <SentenceBlock id="blk-conditions" word={`2 · ${tr("Si se cumple")}`} tone="amber" hint={tr("opcional")}>
             <ConditionsBlock form={form} lookups={lookups} onChange={update} />
           </SentenceBlock>
           <SentenceConnector />
-          <SentenceBlock id="blk-actions" word={tr("entonces")} tone="emerald">
+          <SentenceBlock id="blk-actions" word={`3 · ${tr("Entonces")}`} tone="emerald">
             <ActionsBlock
               form={form}
               lookups={lookups}
@@ -214,37 +230,7 @@ export function RuleEditorSheet({ open, rule, initialForm, lookups, onOpenChange
           <button type="submit" className="sr-only" tabIndex={-1} aria-hidden="true">{tr("Guardar")}</button>
         </form>
 
-        {/*
-          Pie (UX móvil ronda 1): el SheetFooter base apila en columna INVERSA
-          bajo `sm` y el interruptor caía descolgado bajo los botones. A 375 px
-          no caben interruptor + «Desactivada» + dos botones en una fila (395 px
-          frente a 342), así que en móvil el interruptor va arriba alineado a la
-          izquierda y los dos botones debajo a mitades iguales; desde `sm`, una
-          fila con el interruptor a la izquierda y los botones a la derecha.
-          `env(safe-area-inset-bottom)` para el iPhone.
-        */}
-        <SheetFooter
-          className={cn(
-            'flex-col gap-2 border-t border-line bg-surface px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6',
-            'pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-line dark:bg-surface',
-          )}
-        >
-          {/* Juicio (d): el estado inicial estaba plegado en Ajustes y toda regla nacía desactivada sin verse. Va junto a guardar. */}
-          <div className="flex min-w-0 items-center gap-2">
-            <Switch id="rule-active" checked={form.is_active} disabled={saving} onCheckedChange={(v) => update({ ...form, is_active: v })} />
-            {/* El estado se dice aquí y en el botón; la tercera vez (frase larga) sobraba. */}
-            <Label htmlFor="rule-active" className="text-sm text-fg dark:text-fg">
-              {form.is_active ? tr("Activa") : tr("Desactivada")}
-            </Label>
-          </div>
-          <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
-            <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>{tr("Cancelar")}</Button>
-            <Button type="button" className="bg-brand text-white hover:bg-brand-deep" disabled={saving} onClick={() => void submit()}>
-              {saving ? tr('Guardando…') : tr(primaryLabel(rule !== null, form.is_active))}
-            </Button>
-          </div>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+
+    </div>
   );
 }

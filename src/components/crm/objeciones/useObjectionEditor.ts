@@ -4,13 +4,13 @@ import {useTranslations} from 'next-intl';
 import type {Objection,ObjectionInput} from '@/lib/services/crm/objectionService';
 import {objectionToForm,formToPayload,validateForm} from '@/lib/services/crm/objectionModel';
 
-export function useObjectionEditor({open,row,onSave,onSaved}:{
-  open:boolean;row:Objection|null;onSave:(data:ObjectionInput,id?:string)=>Promise<unknown>;onSaved:()=>void;
+export function useObjectionEditor({open,row,onSave,onSaved,initialTitle=''}:{
+  open:boolean;row:Objection|null;onSave:(data:ObjectionInput,id?:string)=>Promise<unknown>;onSaved:()=>void;initialTitle?:string;
 }) {
   const t=useTranslations('crm.objecionesNuevo');
   const [form,setForm]=useState(()=>objectionToForm(row));
   const [saving,setSaving]=useState(false),[error,setError]=useState<string|null>(null);
-  useEffect(()=>{if(open){setForm(objectionToForm(row));setError(null);}},[open,row]);
+  useEffect(()=>{if(open){setForm({...objectionToForm(row),...(!row?{title:initialTitle}: {})});setError(null);}},[open,row,initialTitle]);
   const submit=async()=>{
     if(saving)return;
     const problems=validateForm(form);

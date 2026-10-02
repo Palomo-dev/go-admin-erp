@@ -46,6 +46,10 @@ export interface StatCardProps {
   resaltada?: boolean;
   icono?: LucideIcon;
   cargando?: boolean;
+  /** `sm`: KPI móvil de Equipo, padding12, Caption12/16 y valor16/22. */
+  tamano?: 'sm' | 'md';
+  /** Esqueleto horizontal de 72 px de Objeciones; no cambia la tarjeta lista. */
+  varianteCarga?: 'normal' | 'compacta';
   /** La tarjeta entera navega (p. ej. al listado filtrado). */
   href?: string;
   onClick?: () => void;
@@ -62,6 +66,8 @@ export function StatCard({
   resaltada,
   icono: Icono,
   cargando,
+  tamano = 'md',
+  varianteCarga = 'normal',
   href,
   onClick,
   className,
@@ -69,8 +75,10 @@ export function StatCard({
   const t = useTranslations('kit.comun');
   const Flecha = iconoDetalle ?? (tendencia === 'sube' ? ArrowUp : tendencia === 'baja' ? ArrowDown : null);
   const interactiva = !!href || !!onClick;
+  const cargaCompacta = cargando && varianteCarga === 'compacta';
   const clases = cn(
-    'flex min-w-0 flex-col gap-2 rounded-xl border bg-surface p-4 text-left',
+    'flex min-w-0 rounded-xl border bg-surface text-left',
+    cargaCompacta ? 'h-[72px] items-center gap-3 p-3' : tamano === 'sm' ? 'flex-col gap-0.5 p-3' : 'flex-col gap-2 p-4',
     resaltada ? BORDE_RESALTADO[tono] : 'border-line',
     interactiva &&
       cn(
@@ -80,7 +88,16 @@ export function StatCard({
     className,
   );
 
-  const contenido = (
+  const contenido = cargaCompacta ? (
+    <>
+      <Skeleton className="size-12 shrink-0 rounded-lg bg-pressed" />
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+        <Skeleton className="h-3 w-full rounded bg-pressed" />
+        <Skeleton className="h-2.5 w-2/3 rounded bg-pressed" />
+      </div>
+      <span className="sr-only">{t('cargandoDe', { etiqueta })}</span>
+    </>
+  ) : (
     <>
       <div className="flex items-center justify-between gap-2">
         <span className="truncate text-xs font-medium leading-4 text-fg-secondary">{etiqueta}</span>
@@ -88,11 +105,11 @@ export function StatCard({
       </div>
       {cargando ? (
         <>
-          <Skeleton className="h-9 w-24" />
+          <Skeleton className={cn('w-24', tamano === 'sm' ? 'h-[22px]' : 'h-9')} />
           <span className="sr-only">{t('cargandoDe', { etiqueta })}</span>
         </>
       ) : (
-        <span className="truncate text-[28px] font-semibold leading-9 tracking-[-0.4px] text-fg tabular-nums">{valor}</span>
+        <span className={cn('truncate font-semibold text-fg tabular-nums', tamano === 'sm' ? 'text-base leading-[22px]' : 'text-[28px] leading-9 tracking-[-0.4px]')}>{valor}</span>
       )}
       {detalle !== undefined &&
         (cargando ? (

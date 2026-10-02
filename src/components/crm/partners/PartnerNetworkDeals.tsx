@@ -2,7 +2,7 @@
 import {useEffect, useState} from 'react';
 import {Alert, AlertDescription} from '@/components/ui/alert';
 import {ConfirmDialog} from '@/components/ui/confirm-dialog';
-import {Button} from '@/components/ui/button';
+import {Button} from '@/components/crm/red/RedButton';
 import {Pagination} from '@/components/kit';
 import type {PartnerDealView, PartnerView} from '@/lib/services/crm/partnerService';
 import type {CommissionStatus} from '@/lib/services/crm/partnerCommission';

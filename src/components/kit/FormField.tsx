@@ -47,6 +47,8 @@ export interface PropsCampo {
 
 export interface FormFieldProps {
   etiqueta: string;
+  /** `sm`: etiqueta Caption 12/16 de Figma; `md` conserva la escala anterior 14/20. */
+  tamanoEtiqueta?: 'sm' | 'md';
   children: React.ReactElement | ((campo: PropsCampo) => React.ReactNode);
   ayuda?: React.ReactNode;
   error?: string | null;
@@ -65,6 +67,7 @@ const CLASE_ERROR =
 
 export function FormField({
   etiqueta,
+  tamanoEtiqueta = 'md',
   children,
   ayuda,
   error,
@@ -110,7 +113,7 @@ export function FormField({
   return (
     <div className={cn('flex min-w-0 flex-col gap-1.5', className)}>
       <div className={cn('flex items-center justify-between gap-2', etiquetaOculta && 'sr-only')}>
-        <label id={idEtiqueta} htmlFor={id} className="text-sm font-medium text-fg">
+        <label id={idEtiqueta} htmlFor={id} className={cn('font-medium text-fg', tamanoEtiqueta === 'sm' ? 'text-xs leading-4' : 'text-sm')}>
           {etiqueta}
           {obligatorio && (
             <>

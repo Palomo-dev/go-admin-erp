@@ -16,15 +16,15 @@ import { AgentTestTab } from './editor/AgentTestTab';
 export type { AgentDraft } from './editor/useAgentForm';
 const STEPS = ['purpose', 'script', 'voice', 'tools', 'test'] as const;
 type Step = typeof STEPS[number];
-export function AgentEditorDialog({ draft, onClose, onSaved, onGoToVoices }: { draft: AgentDraft; onClose: () => void; onSaved: () => void; onGoToVoices?: () => void }) {
-  const t = useTranslations('crm.agentesIa'); const api = useAgentForm(draft); const catalog = useVoiceCatalog(); const [step, setStep] = useState<Step>('purpose'); const [tested, setTested] = useState(false); const [invalidJson, setInvalidJson] = useState<string[]>([]); const onCloseAutoFocus = useReturnFocus(true);
+export function AgentEditorDialog({ draft, initialStep = 'purpose', onClose, onSaved, onGoToVoices }: { draft: AgentDraft; initialStep?: Step; onClose: () => void; onSaved: () => void; onGoToVoices?: () => void }) {
+  const t = useTranslations('crm.agentesIa'); const api = useAgentForm(draft); const catalog = useVoiceCatalog(); const [step, setStep] = useState<Step>(initialStep); const [tested, setTested] = useState(false); const [invalidJson, setInvalidJson] = useState<string[]>([]); const onCloseAutoFocus = useReturnFocus(true);
   const index = STEPS.indexOf(step); const configKey = JSON.stringify({ ...api.form, is_active: undefined });
   useEffect(() => { setTested(false); }, [configKey]);
   const next = () => { if (!api.validate()) return; if (!invalidJson.length) setStep(STEPS[Math.min(index + 1, 4)]); };
   const saveInactive = async () => { if (await api.save(true)) setStep('script'); };
   const save = async () => { if (invalidJson.length) return; if (await api.save()) onSaved(); };
   return <Sheet open onOpenChange={open => !open && onClose()}><SheetContent side="right" hideCloseButton onCloseAutoFocus={onCloseAutoFocus} className="flex h-dvh w-full flex-col gap-0 overflow-hidden bg-surface p-0 sm:max-w-2xl">
-    <SheetHeader className="relative border-b border-line px-5 py-4 pr-12 text-left"><SheetTitle>{draft.mode === 'edit' ? t('edit') : t('new')}</SheetTitle><SheetDescription>{t('subtitle')}</SheetDescription><SheetClose className={clasesBoton({ variante: 'fantasma', tamano: 'sm', className: 'absolute right-3 top-3' })} aria-label={t('close')}><X className="size-4" aria-hidden /></SheetClose></SheetHeader>
+    <SheetHeader className="relative border-b border-line px-5 py-4 pr-12 text-left"><SheetTitle>{draft.mode === 'edit' ? t('edit') : t('new')}</SheetTitle><SheetDescription>{t('subtitle')}</SheetDescription><SheetClose className={clasesBoton({ variante: 'fantasma', tamano: 'sm', className: 'absolute right-3 top-3' })} aria-label={t('close')}><X className="size-4" strokeWidth={1.5} aria-hidden /></SheetClose></SheetHeader>
     {api.loading ? <p role="status" className="p-6 text-fg-muted">{t('loading')}</p> : api.loadFailed ? <div className="flex-1 p-5"><EmptyState variante="error" titulo={api.error ?? t('loadError')} onReintentar={api.reload} /></div> : <><div className="border-b border-line px-5 py-3"><Stepper pasos={STEPS.map(value => ({ valor: value, etiqueta: t(`steps.${value}`) }))} actual={step} onPasoClick={value => { if (!api.saving && !invalidJson.length) setStep(value as Step); }} etiqueta={t('edit')} resumenMovil={(number, total, label) => t('step', { number, total, label })} /></div>
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">{api.error && <p role="alert" className="rounded-lg bg-danger-subtle p-3 text-sm text-danger-text">{api.error}</p>}
         {step === 'purpose' && <AgentPurposeTab form={api.form} patch={api.patch} isNew={!api.persistedId} />}

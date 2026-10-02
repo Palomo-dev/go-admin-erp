@@ -7,14 +7,15 @@
  * `?tab=` (email | whatsapp).
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Mail, MessageCircle } from 'lucide-react';
+import { FileText, Mail, MessageCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TabErrorBoundary } from './TabErrorBoundary';
 import { TemplateList } from './TemplateList';
+import { useEsEscritorio } from '@/components/kit/useEsEscritorio';
 import { PageHeader } from '@/components/kit/PageHeader';
 import { useTemplateText } from './useTemplateText';
 
@@ -37,7 +38,7 @@ function WhatsAppTabUnavailable({ email = false }: { email?: boolean; canEdit?: 
   );
 }
 
-const WhatsAppTemplatesTab = dynamic<{ canEdit?: boolean }>(
+const WhatsAppTemplatesTab = dynamic<{ canEdit?: boolean; actionsHost?: HTMLElement | null; toolbarHost?: HTMLElement | null }>(
   () =>
     import('@/components/crm/whatsapp/WhatsAppTemplatesTab')
       .then((m) => m.WhatsAppTemplatesTab ?? WhatsAppTabUnavailable)
@@ -55,6 +56,9 @@ const TABS: { id: Tab; label: string; icon: typeof Mail }[] = [
 ];
 
 export function PlantillasPage() {
+  const desktop = useEsEscritorio();
+  const [actionsHost, setActionsHost] = useState<HTMLDivElement | null>(null);
+  const [toolbarHost, setToolbarHost] = useState<HTMLDivElement | null>(null);
   const tr = useTemplateText();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -72,23 +76,21 @@ export function PlantillasPage() {
   }, [searchParams, router, pathname]);
 
   return (
-    <div className="space-y-4 p-4">
-      <PageHeader titulo={tr('Plantillas')} subtitulo={tr('Administra tus plantillas de correo y WhatsApp.')} icono={Mail} />
+    <div className="space-y-5 bg-canvas p-4 sm:p-6" data-figma-node="1404:831575">
       <Tabs value={active} onValueChange={setTab} className="space-y-4">
-        <TabsList aria-label={tr("Canal de plantillas")}>
-          {TABS.map((t) => (
-            <TabsTrigger key={t.id} value={t.id} className="gap-1.5">
-              <t.icon className="h-4 w-4" aria-hidden="true" strokeWidth={1.5} /> {tr(t.label)}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        <PageHeader titulo={tr('Plantillas')} subtitulo={tr('Administra tus plantillas de correo y WhatsApp.')} icono={FileText}
+          migas={[{ etiqueta: 'CRM', href: '/app/crm' }, { etiqueta: tr('Plantillas') }]} acciones={<div ref={setActionsHost} className="flex flex-wrap items-center gap-2" />}
+          debajo={<div className="flex w-full flex-wrap items-center justify-between gap-3">
+            <TabsList aria-label={tr('Canal de plantillas')} className="h-9 rounded-lg border border-line bg-subtle p-1">
+              {TABS.map(t => <TabsTrigger key={t.id} value={t.id} className="h-7 rounded-md px-3 text-[13px] text-fg-secondary data-[state=active]:bg-surface data-[state=active]:text-fg dark:bg-transparent dark:text-fg-secondary dark:data-[state=active]:bg-surface">{tr(t.label)}</TabsTrigger>)}
+            </TabsList>
+            {desktop && <div ref={setToolbarHost} className="flex min-w-0 flex-1 items-center justify-end gap-2" />}
+          </div>} />
         <TabsContent value="email" className="focus-visible:outline-none">
-          <TabErrorBoundary label="Email" fallback={<WhatsAppTabUnavailable email />}><TemplateList /></TabErrorBoundary>
+          <TabErrorBoundary label="Email" fallback={<WhatsAppTabUnavailable email />}><TemplateList actionsHost={desktop ? actionsHost : null} toolbarHost={desktop ? toolbarHost : null} /></TabErrorBoundary>
         </TabsContent>
         <TabsContent value="whatsapp" className="focus-visible:outline-none">
-          {/* Doble red: el `.catch()` del dynamic cubre el fallo de import y el
-              límite de error cubre un throw en tiempo de render (tester r2 #11). */}
-          <TabErrorBoundary label="WhatsApp" fallback={<WhatsAppTabUnavailable />}><WhatsAppTemplatesTab /></TabErrorBoundary>
+          <TabErrorBoundary label="WhatsApp" fallback={<WhatsAppTabUnavailable />}><WhatsAppTemplatesTab actionsHost={desktop ? actionsHost : null} toolbarHost={desktop ? toolbarHost : null} /></TabErrorBoundary>
         </TabsContent>
       </Tabs>
     </div>

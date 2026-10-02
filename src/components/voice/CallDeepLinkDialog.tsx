@@ -1,10 +1,10 @@
 'use client';
-import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Dialogo, EmptyState } from '@/components/kit';
 import { Skeleton } from '@/components/ui/skeleton';
-import { pedirCrm, ErrorApiCrm } from '@/components/crm/acciones/apiCrm';
-import { CallRowDetail, type HistoricalCallDetail } from './CallRowDetail';
+import { ErrorApiCrm } from '@/components/crm/acciones/apiCrm';
+import { CallRowDetail } from './CallRowDetail';
+import { useHistoricalCall } from './useHistoricalCall';
 export function CallDeepLinkDialog({
   id,
   startMs,
@@ -15,24 +15,7 @@ export function CallDeepLinkDialog({
   onClose: () => void;
 }) {
   const t = useTranslations('crm.objecionesNuevo');
-  const [data, setData] = useState<HistoricalCallDetail | null>(null),
-    [error, setError] = useState<unknown>(null),
-    [revision, setRevision] = useState(0);
-  useEffect(() => {
-    const abort = new AbortController();
-    setData(null);
-    setError(null);
-    void pedirCrm<HistoricalCallDetail>(`/api/crm/calls/${id}`, { signal: abort.signal })
-      .then((result) => {
-        if (!Array.isArray(result.data?.recordings) || result.data.id !== id)
-          throw new Error('call_detail_invalid');
-        if (!abort.signal.aborted) setData(result.data);
-      })
-      .catch((error) => {
-        if (!abort.signal.aborted) setError(error);
-      });
-    return () => abort.abort();
-  }, [id, revision]);
+  const { data, error, reload } = useHistoricalCall(id);
   return (
     <Dialogo
       abierto
@@ -44,10 +27,10 @@ export function CallDeepLinkDialog({
       {error ? (
         <EmptyState
           variante={error instanceof ErrorApiCrm && error.status === 403 ? 'forbidden' : 'error'}
-          onReintentar={() => setRevision((value) => value + 1)}
+          onReintentar={reload}
         />
       ) : data ? (
-        <CallRowDetail key={id} call={data} initialSeekMs={startMs} />
+        <CallRowDetail key={id} call={data} initialSeekMs={startMs} onLinked={reload} />
       ) : (
         <Skeleton className="h-64" />
       )}

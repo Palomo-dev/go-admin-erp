@@ -26,10 +26,10 @@ export function RulePreview({ form, lookups }: Props) {
   return (
     <section
       aria-labelledby="rule-preview-title"
-      className="rounded-xl border border-line bg-subtle p-4 dark:border-line dark:bg-surface/60"
+      className="rounded-xl border border-line-brand bg-brand-tint p-4"
     >
-      <h3 id="rule-preview-title" className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-fg-secondary dark:text-fg-secondary">
-        <Eye strokeWidth={1.5} className="h-3.5 w-3.5" aria-hidden="true" /> {tr("Así funcionará")}</h3>
+      <h3 id="rule-preview-title" className="flex items-center gap-2 text-base font-semibold leading-[22px] text-brand-deep">
+        <Eye strokeWidth={1.5} className="h-3.5 w-3.5" aria-hidden="true" /> {tr("En palabras")}</h3>
       {/* `break-words`: los marcadores «{{opportunity_name}}» no tienen espacios y en móvil no cabían en una línea. */}
       <p aria-live="polite" className="mt-2 min-w-0 break-words text-sm leading-relaxed text-fg dark:text-fg">{sentence}</p>
       {notes.length > 0 && (

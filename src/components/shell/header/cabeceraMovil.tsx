@@ -48,6 +48,8 @@ export interface CabeceraMovilPagina {
   accion?: ReactNode;
   /** A dónde vuelve «←» si no hay historial (por defecto, la página padre del menú). */
   volverA?: string;
+  /** Opt-in: el flujo controla su salida (por ejemplo, un editor dentro de la ruta). */
+  onVolver?: () => void;
   /** Modo POS: chip de estado de la caja/turno. */
   estadoPos?: EstadoPos | null;
   /**
@@ -134,6 +136,13 @@ export function useBarraInferiorPropia<T extends HTMLElement = HTMLDivElement>(a
 
 export function useCabeceraMovilActual(): CabeceraMovilPagina | null {
   return useContext(ContextoValor);
+}
+
+/** El callback es opt-in; las páginas restantes conservan Atrás y la ruta padre. */
+export function volverCabeceraMovil(pagina: CabeceraMovilPagina | null, historial: number, router: { back: () => void; push: (href: string) => void }, padre: string): void {
+  if (pagina?.onVolver) { pagina.onVolver(); return; }
+  if (historial > 1) router.back();
+  else router.push(pagina?.volverA ?? padre);
 }
 
 /**

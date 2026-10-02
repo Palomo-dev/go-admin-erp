@@ -12,7 +12,7 @@ import {useRedText} from '@/components/crm/red/useRedText';
 import { useEffect, useRef, useState } from 'react';
 import { Award, Plus, Trash2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/crm/red/RedButton';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from '@/components/ui/use-toast';
 import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
@@ -69,7 +69,7 @@ export function TierEditor({ open, tiers, canManage, onOpenChange, onSave, onDel
             <h3 className="text-sm font-semibold text-fg ">{tiers.length}  {tr("tier")}{tiers.length === 1 ? '' : 's'}, de menor a mayor</h3>
             {canManage && (
               <Button ref={newButtonRef} type="button" size="sm" variant={creating ? 'secondary' : 'outline'} onClick={() => { setEditingId(null); setCreating(true); }}>
-                <Plus className="mr-1 h-4 w-4" aria-hidden="true" />  {tr("Nuevo tier")} </Button>
+                <Plus className="h-4 w-4" aria-hidden="true" />  {tr("Nuevo tier")} </Button>
             )}
           </div>
           {canManage && creating && (

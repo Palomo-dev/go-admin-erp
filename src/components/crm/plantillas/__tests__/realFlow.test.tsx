@@ -42,7 +42,8 @@ afterEach(()=>{cleanup();jest.useRealTimers();jest.restoreAllMocks();});
 it.each(['es','en','fr','pt'] as const)('lista, editor y catálogo realIntl sin mutaciones en %s',async locale=>{
  const onError=jest.fn();mount(<><Probe/><TemplateList/><TemplateEditorPage templateId={id}/></>,locale,onError);
  await waitFor(()=>expect(screen.getByText('Asunto propio')).toBeTruthy());
- expect(screen.getByRole('table')).toBeTruthy();for(const control of screen.getAllByRole('switch') as HTMLButtonElement[]){expect(control.disabled||control.closest('fieldset')?.disabled).toBe(true);fireEvent.click(control);}
+ expect(screen.getByRole('list', { name: /Plantillas|Templates|Modèles|Modelos/ })).toBeTruthy();
+ expect(screen.queryByRole('table')).toBeNull();for(const control of screen.getAllByRole('switch') as HTMLButtonElement[]){expect(control.disabled||control.closest('fieldset')?.disabled).toBe(true);fireEvent.click(control);}
  expect(api.updateTemplate).not.toHaveBeenCalled();expect(api.restoreTemplates).not.toHaveBeenCalled();
  expect(screen.queryByRole('button',{name:{es:'Guardar',en:'Save',fr:'Enregistrer',pt:'Salvar'}[locale]})).toBeNull();
  expect(onError).not.toHaveBeenCalled();

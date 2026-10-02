@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Fingerprint, History, RefreshCw } from "lucide-react";
+import { Merge, History, RefreshCw } from "lucide-react";
 import { useOrganization } from "@/lib/hooks/useOrganization";
 import { PageHeader } from "@/components/kit/PageHeader";
 import { EmptyState } from "@/components/kit/EmptyState";
@@ -78,10 +78,12 @@ function IdentidadesContenido() {
   };
   const actions = (
     <>
-      {vista === "historial" && !state.forbidden && <ExportarFusiones disabled={busy || state.loading || !!state.error} />}
+      {vista === "historial" && !state.forbidden && (
+        <ExportarFusiones disabled={busy || state.loading || !!state.error} />
+      )}
       {state.duplicates?.canMerge && (
         <button
-          className={clasesBoton({ variante: "secundario" })}
+          className={clasesBoton({ patron: "button", variante: "secundario" })}
           disabled={busy}
           onClick={() =>
             changeView(vista === "historial" ? "duplicados" : "historial")
@@ -94,6 +96,7 @@ function IdentidadesContenido() {
       {!selected && (
         <button
           className={clasesBoton({
+            patron: "button",
             variante: state.duplicates?.canMerge ? "primario" : "secundario",
           })}
           disabled={busy || scanRunning}
@@ -111,19 +114,27 @@ function IdentidadesContenido() {
   );
   return (
     <div className="space-y-4 p-4 md:p-6">
-      <PageHeader
-        titulo={t(
-          selected
-            ? "comparar"
-            : vista === "historial"
-              ? "historial"
-              : "titulo",
-        )}
-        subtitulo={t(vista === "historial" ? "avisoHistorial" : "subtitulo")}
-        icono={Fingerprint}
-        acciones={actions}
-        debajo={<div className="flex flex-wrap gap-2 lg:hidden">{actions}</div>}
-      />
+      {!selected && (
+        <PageHeader
+          titulo={t(
+            selected
+              ? "comparar"
+              : vista === "historial"
+                ? "historial"
+                : "titulo",
+          )}
+          subtitulo={t(vista === "historial" ? "avisoHistorial" : "subtitulo")}
+          icono={Merge}
+          migas={[
+            { etiqueta: "CRM", href: "/app/crm" },
+            { etiqueta: t("titulo") },
+          ]}
+          acciones={actions}
+          debajo={
+            <div className="flex flex-wrap gap-2 lg:hidden">{actions}</div>
+          }
+        />
+      )}
       {actionError && (
         <p
           role="alert"
@@ -171,7 +182,7 @@ function IdentidadesContenido() {
                   <StatCard
                     key={kind}
                     etiqueta={t(`tipos.${kind}`)}
-                    valor={state.duplicates?.stats[kind] ?? 0}
+                    valor={state.duplicates?.stats[kind] ?? "—"}
                     cargando={state.loading}
                   />
                 ))}

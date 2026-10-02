@@ -38,7 +38,7 @@ export {
 } from './rangoFechas';
 
 // Tabla, tarjetas y acciones
-export { DataTable, type DataTableProps, type ColumnaTabla, type EstadoTabla, type ContextoTarjeta } from './DataTable';
+export { DataTable, type DataTableProps, type ColumnaTabla, type EstadoTabla, type ContextoTarjeta, type AtributosDatosFila } from './DataTable';
 export { RowActionsMenu, type RowActionsMenuProps } from './RowActionsMenu';
 export { ActionSheet, type ActionSheetProps } from './ActionSheet';
 export { BulkActionBar, aplanarMenuMasivo, type BulkActionBarProps, type AccionMasiva, type GrupoMenuMasivo } from './BulkActionBar';
@@ -64,6 +64,7 @@ export {
 
 // Badges
 export { StatusBadge, type StatusBadgeProps } from './StatusBadge';
+export { BadgeTono, type BadgeTonoProps } from './BadgeTono';
 export { BranchBadge, BranchBadgeActiva, type BranchBadgeProps, type AlcanceSucursal } from './BranchBadge';
 export { resolverEstado, etiquetaEstado, type TonoBadge, type AparienciaBadge } from './estadoTono';
 
@@ -147,7 +148,7 @@ export {
 } from './resumenTotalesLogica';
 export { Kbd, useNombresTecla, type KbdProps } from './Kbd';
 export { KbdButton, type KbdButtonProps } from './KbdButton';
-export { clasesBoton, temaKbdDe, type VarianteBoton, type TamanoBoton, type TemaKbd } from './botonClases';
+export { clasesBoton, temaKbdDe, type VarianteBoton, type TamanoBoton, type PatronBoton, type TemaKbd } from './botonClases';
 export { partesAtajo, etiquetaAtajo, ariaAtajo, claveAtajo, claveDeEvento, type EventoTecla } from './teclas';
 export { useAtajos, resolverAtajo, agruparAtajos, type Atajo, type ContextoAtajo, type OpcionesAtajos } from './useAtajos';
 export { BotonImporte, type BotonImporteProps } from './BotonImporte';

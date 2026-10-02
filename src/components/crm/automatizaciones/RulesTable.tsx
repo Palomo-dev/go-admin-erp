@@ -1,9 +1,8 @@
 'use client';
 import { useAutomationText } from './useAutomationText';
-import { FlaskConical, History, Pencil, Trash2 } from 'lucide-react';
+import { FlaskConical, History, Pencil, Trash2, Zap, Play } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
-import { RowActionsMenu } from '@/components/kit/RowActionsMenu';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DataTable, type ColumnaTabla } from '@/components/kit/DataTable';
 import { describeActions, describeTrigger, type HumanizerLookups } from '@/lib/services/crm/automation/ruleHumanizer';
 import type { AutomationRuleView } from './useAutomationRules';
 interface Props {
@@ -13,21 +12,20 @@ interface Props {
 }
 export function RulesTable({ rules, lookups, canManage, togglingId, formatDate, onToggle, onEdit, onDryRun, onHistory, onDelete }: Props) {
   const tr = useAutomationText();
-  return <div className="overflow-x-auto rounded-xl border border-line bg-surface"><Table>
-    <TableHeader className="bg-subtle"><TableRow>{['Regla','Cuando','Acciones','Última ejecución','Ejecuciones','Activa',''].map((label,i) => <TableHead key={i}>{tr(label)}</TableHead>)}</TableRow></TableHeader>
-    <TableBody>{rules.map(rule => <TableRow key={rule.id}>
-      <TableCell className="max-w-64"><button type="button" disabled={!canManage} className="block max-w-full truncate text-left font-medium text-fg hover:text-brand disabled:opacity-100" onClick={() => onEdit(rule)}>{rule.name}</button>{rule.description && <p className="truncate text-xs text-fg-secondary">{rule.description}</p>}</TableCell>
-      <TableCell className="max-w-64"><p className="line-clamp-2 text-xs text-fg-secondary">{describeTrigger(rule,lookups)}</p></TableCell>
-      <TableCell className="max-w-64"><p className="line-clamp-2 text-xs text-fg-secondary">{describeActions(rule.actions,lookups)}</p></TableCell>
-      <TableCell className="whitespace-nowrap text-xs text-fg-secondary">{rule.last_run_at ? formatDate(rule.last_run_at) : tr('Nunca')}</TableCell>
-      <TableCell className="text-right tabular-nums">{rule.runs_count ?? 0}</TableCell>
-      <TableCell><Switch id={`rule-active-${rule.id}`} checked={rule.is_active} disabled={!canManage || togglingId !== null} aria-label={tr("Activar o pausar {p0}", { p0: rule.name })} onCheckedChange={() => onToggle(rule)} /></TableCell>
-      <TableCell><RowActionsMenu titulo={rule.name} acciones={[
-        { id:'history',etiqueta:tr('Historial'),icono:History,onSelect:() => onHistory(rule) },
-        { id:'test',etiqueta:tr("Probar en seco"),icono:FlaskConical,onSelect:() => onDryRun(rule),deshabilitada:!canManage },
-        { id:'edit',etiqueta:tr('Editar'),icono:Pencil,onSelect:() => onEdit(rule),deshabilitada:!canManage },
-        { id:'delete',etiqueta:tr('Eliminar'),icono:Trash2,onSelect:() => onDelete(rule),deshabilitada:!canManage,destructiva:true },
-      ]} /></TableCell>
-    </TableRow>)}</TableBody>
-  </Table></div>;
+  const columns: ColumnaTabla<AutomationRuleView>[] = [
+    { id: 'name', encabezado: tr('Regla'), celda: rule => <div className="min-w-44"><button type="button" disabled={!canManage} className="block max-w-full truncate text-left text-sm font-medium text-fg hover:text-brand-deep disabled:opacity-100" onClick={() => onEdit(rule)}>{rule.name}</button>{rule.description && <p className="truncate text-[13px] leading-[18px] text-fg-secondary">{rule.description}</p>}</div> },
+    { id: 'trigger', encabezado: tr('Cuando'), celda: rule => <span className="flex max-w-56 items-start gap-2 text-[13px] leading-[18px] text-fg-secondary"><Zap className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} aria-hidden />{describeTrigger(rule, lookups)}</span> },
+    { id: 'actions', encabezado: tr('Acciones'), celda: rule => <span className="flex max-w-56 items-start gap-2 text-[13px] leading-[18px] text-fg-secondary"><Play className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} aria-hidden />{describeActions(rule.actions, lookups)}</span> },
+    { id: 'last', encabezado: tr('Última ejecución'), celda: rule => <span className="whitespace-nowrap text-[13px] leading-[18px] text-fg-secondary">{rule.last_run_at ? formatDate(rule.last_run_at) : tr('Nunca')}</span> },
+    { id: 'runs', encabezado: tr('Ejecuciones'), variante: 'importe', celda: rule => rule.runs_count ?? 0 },
+    { id: 'active', encabezado: tr('Activa'), ancho: 70, celda: rule => <Switch id={`rule-active-${rule.id}`} checked={rule.is_active} disabled={!canManage || togglingId !== null} aria-label={tr('Activar o pausar {p0}', { p0: rule.name })} onCheckedChange={() => onToggle(rule)} /> },
+  ];
+  return <DataTable columnas={columns} filas={rules} obtenerId={rule => rule.id} etiqueta={tr('Reglas de automatización')} etiquetaFila={rule => rule.name} densidad="compacta"
+    className="[&_thead_th]:h-9 [&_thead_th]:font-semibold"
+    acciones={rule => [
+      { id: 'history', etiqueta: tr('Historial'), icono: History, onSelect: () => onHistory(rule) },
+      { id: 'test', etiqueta: tr('Probar en seco'), icono: FlaskConical, onSelect: () => onDryRun(rule), deshabilitada: !canManage },
+      { id: 'edit', etiqueta: tr('Editar'), icono: Pencil, onSelect: () => onEdit(rule), deshabilitada: !canManage },
+      { id: 'delete', etiqueta: tr('Eliminar'), icono: Trash2, onSelect: () => onDelete(rule), deshabilitada: !canManage, destructiva: true },
+    ]} />;
 }

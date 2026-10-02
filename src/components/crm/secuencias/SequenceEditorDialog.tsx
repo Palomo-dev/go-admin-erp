@@ -6,8 +6,8 @@ import { useSequenceText } from './useSequenceText';
 /**
  * Alta/edición de una secuencia (FASE-08 §5.3, rediseño UX brief 6.3).
  *
- * Arriba lo esencial (nombre, disparador, activa); lo secundario plegado en
- * «Más ajustes»; debajo la línea de tiempo vertical de pasos
+ * Lienzo de página (Figma 1407:17): nombre y línea de tiempo a la izquierda,
+ * condiciones de salida y ajustes siempre visibles a la derecha. Los pasos usan
  * (`StepTimelineEditor`). Errores junto al campo con `aria-describedby` y
  * foco al primero. La validación de fondo sigue en `validateSequenceSteps`.
  *
@@ -16,14 +16,14 @@ import { useSequenceText } from './useSequenceText';
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { AlertCircle, ChevronDown } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { AlertCircle, GitBranch, Save, Settings2 } from 'lucide-react';
+import { PageHeader } from '@/components/kit/PageHeader';
+import { Tarjeta } from '@/components/kit/Tarjeta';
+import { clasesBoton } from '@/components/kit/botonClases';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from '@/components/ui/use-toast';
 import { isEmptyConditionTree } from '@/lib/services/crm/automation/conditionsDsl';
 import { exitConditionLabel } from '@/lib/services/crm/automation/conditionsI18n';
@@ -43,6 +43,8 @@ function stripUid(step: EditorStep): SequenceStepView {
 
 interface Props {
   open: boolean;
+  timezone?: string | null;
+  onBusyChange?: (busy: boolean) => void;
   sequence: SequenceView | null;
   onOpenChange: (open: boolean) => void;
   onSave: (input: Partial<SequenceView> & { id?: string; steps?: SequenceStepView[] }) => Promise<unknown>;
@@ -50,7 +52,7 @@ interface Props {
   returnFocusFallback?: () => HTMLElement | null;
 }
 
-export function SequenceEditorDialog({ open, sequence, onOpenChange, onSave, returnFocusFallback }: Props) {
+export function SequenceEditorDialog({ open, sequence, timezone, onBusyChange, onOpenChange, onSave, returnFocusFallback }: Props) {
  const tr=useSequenceText();
  const activeLocale=useLocale(), locale=(['es','en','fr','pt'].includes(activeLocale)?activeLocale:'es') as ConditionLocale;
   const [name, setName] = useState('');
@@ -60,16 +62,28 @@ export function SequenceEditorDialog({ open, sequence, onOpenChange, onSave, ret
   const [pauseOnReply, setPauseOnReply] = useState(true);
   const [exits, setExits] = useState<string[]>(['won_lost']);
   const [steps, setSteps] = useState<EditorStep[]>([]);
-  const [moreOpen, setMoreOpen] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
   const [stepsError, setStepsError] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const busyChange = useRef(onBusyChange); busyChange.current = onBusyChange;
+  useEffect(() => { busyChange.current?.(saving); }, [saving]);
+  useEffect(() => () => busyChange.current?.(false), []);
  const pendingSave=useRef(false);
   const nameRef = useRef<HTMLInputElement>(null);
   const stepsRef = useRef<HTMLDivElement>(null);
   const readOnlySteps = !!sequence;
   const onCloseAutoFocus = useReturnFocus(open, returnFocusFallback);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.key !== 'Escape' || pendingSave.current) return;
+      event.preventDefault(); onOpenChange(false);
+      setTimeout(() => onCloseAutoFocus(new Event('close')), 0);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, onOpenChange, onCloseAutoFocus]);
   // Condiciones guardadas que el motor no evalúa (`stage_changed`, `replied`):
   // al guardar se pierden; se avisa en vez de borrarlas en silencio (r2).
   const droppedExits = unsupportedExitConditions(sequence?.exit_conditions);
@@ -94,7 +108,6 @@ export function SequenceEditorDialog({ open, sequence, onOpenChange, onSave, ret
         ? sequence.steps.map((s, i) => ({ ...s, uid: s.id ?? `s-${i}` }))
         : [newEditorStep(1, 0)],
     );
-    setMoreOpen(!!sequence?.description || unsupportedExitConditions(sequence?.exit_conditions).length > 0);
     setNameError(null);
     setStepsError(null);
     setServerError(null);
@@ -149,6 +162,7 @@ export function SequenceEditorDialog({ open, sequence, onOpenChange, onSave, ret
       } as Partial<SequenceView> & { id?: string; steps?: SequenceStepView[] });
       toast({ title: sequence ? tr("Secuencia actualizada") : tr("Secuencia creada") });
       onOpenChange(false);
+      setTimeout(() => onCloseAutoFocus(new Event('close')), 0);
     } catch (err) {
       setServerError(err instanceof Error ? err.message : tr("Error desconocido"));
     } finally {
@@ -156,30 +170,29 @@ export function SequenceEditorDialog({ open, sequence, onOpenChange, onSave, ret
     }
   };
 
+  const closeEditor = () => {
+    if (pendingSave.current) return;
+    onOpenChange(false);
+    setTimeout(() => onCloseAutoFocus(new Event('close')), 0);
+  };
+  if (!open) return null;
+  const saveLabel = saving ? tr('Guardando…') : sequence ? tr('Guardar cambios') : tr('Crear secuencia');
+  const saveButton = <button type="submit" form="sequence-editor-form" className={clasesBoton({ patron: 'button' })} disabled={saving}><Save className="size-4" strokeWidth={1.5} aria-hidden />{saveLabel}</button>;
   return (
-    <Dialog open={open} onOpenChange={next=>{if(!saving)onOpenChange(next);}}>
-      <DialogContent onCloseAutoFocus={onCloseAutoFocus} className="max-h-[92vh] w-[calc(100vw-1rem)] max-w-3xl overflow-y-auto sm:w-full">
-        <DialogHeader>
-          <DialogTitle>{sequence ? tr("Editar secuencia") : tr("Nueva secuencia")}</DialogTitle>
-          <DialogDescription>
-            {sequence
-              ? tr("Cambia nombre, disparador y ajustes. Los pasos se muestran pero no se editan para no romper las inscripciones en curso.")
-              : tr("Ponle nombre y construye los pasos en la línea de tiempo.")}
-          </DialogDescription>
-        </DialogHeader>
-
-        <fieldset disabled={saving} className="min-w-0 space-y-5">
-          {serverError && (
-            <div role="alert" className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
-              <AlertCircle strokeWidth={1.5} className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-              <span>{tr("No se pudo guardar:")}{serverError}{tr(". Corrige y vuelve a intentarlo.")}</span>
-            </div>
-          )}
-
+    <div className="space-y-5 bg-canvas p-4 sm:p-6" data-figma-node="1407:17">
+      <PageHeader titulo={sequence?.name ?? tr('Nueva secuencia')} subtitulo={sequence ? tr('Cambia nombre, disparador y ajustes. Los pasos se muestran pero no se editan para no romper las inscripciones en curso.') : tr('Ponle nombre y construye los pasos en la línea de tiempo.')}
+        icono={GitBranch} variante="form" volverA="/app/crm/secuencias" onVolver={() => { if (!saving) closeEditor(); }}
+        migas={[{ etiqueta: 'CRM' }, { etiqueta: tr('Secuencias') }, { etiqueta: sequence?.name ?? tr('Nueva secuencia') }]}
+        movil={{ ocultarBarra: true, accion: <div className="flex gap-1"><button type="button" className={clasesBoton({ patron: 'button', variante: 'fantasma', tamano: 'sm' })} disabled={saving} onClick={closeEditor}>{tr('Cancelar')}</button>{saveButton}</div> }} acciones={<><button type="button" className={clasesBoton({ patron: 'button', variante: 'secundario' })} disabled={saving} onClick={closeEditor}>{tr('Cancelar')}</button>{saveButton}</>} />
+      {serverError && <p role="alert" className="rounded-lg border border-line-danger bg-danger-subtle p-3 text-sm text-danger-text">{serverError}</p>}
+      <form id="sequence-editor-form" onSubmit={event => { event.preventDefault(); void submit(); }}>
+      <fieldset disabled={saving} className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
+        <div className="min-w-0 space-y-4">
+          <Tarjeta titulo={tr('Secuencia')} icono={GitBranch}>
           <div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto] sm:items-end">
             <div>
               <Label htmlFor="seq-name">{tr("Nombre")}</Label>
-              <Input
+              <Input className="h-10 rounded-lg border-line-strong bg-surface text-fg dark:border-line-strong dark:bg-surface dark:text-fg"
                 id="seq-name"
                 ref={nameRef}
                 value={name}
@@ -202,24 +215,14 @@ export function SequenceEditorDialog({ open, sequence, onOpenChange, onSave, ret
             </div>
           </div>
 
-          <Collapsible open={moreOpen} onOpenChange={setMoreOpen}>
-            <CollapsibleTrigger asChild>
-              <button type="button" className="flex items-center gap-1 text-sm font-medium text-brand-deep hover:underline dark:text-blue-300">
-                <ChevronDown strokeWidth={1.5} className={`h-4 w-4 transition-transform ${moreOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
-                {tr("Más ajustes")}<span className="font-normal text-fg-muted dark:text-fg-secondary">
-                  {' '}· {pauseOnReply ? tr("se pausa si responde") : tr("no se pausa")} {tr("· sale si")}{exits.map((c) => exitConditionLabel(c,locale)).join(tr(" o "))}
-                </span>
-              </button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-3 space-y-4 rounded-lg border border-line p-3 dark:border-line-strong">
-              <div>
-                <Label htmlFor="seq-desc">{tr("Descripción")}</Label>
-                <Textarea id="seq-desc" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch id="seq-pause" checked={pauseOnReply} onCheckedChange={setPauseOnReply} />
-                <Label htmlFor="seq-pause">{tr("Pausar si el cliente responde")}</Label>
-              </div>
+          </Tarjeta>
+          <div ref={stepsRef} tabIndex={-1} aria-describedby={stepsError ? 'seq-steps-error' : undefined} className="outline-none">
+            <StepTimelineEditor steps={steps} onChange={setSteps} readOnly={readOnlySteps} />
+            {stepsError && <p id="seq-steps-error" role="alert" className="mt-2 flex items-center gap-1.5 text-sm text-danger-text"><AlertCircle strokeWidth={1.5} className="size-4" aria-hidden />{stepsError}</p>}
+          </div>
+        </div>
+        <aside className="min-w-0 space-y-4">
+          <Tarjeta titulo={tr('Condiciones de salida')} icono={Settings2}>
               <fieldset>
                 <legend className="text-sm font-medium text-fg dark:text-fg">{tr("La secuencia termina si…")}</legend>
                 <div className="mt-1 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
@@ -249,26 +252,17 @@ export function SequenceEditorDialog({ open, sequence, onOpenChange, onSave, ret
                   </p>
                 )}
               </fieldset>
-            </CollapsibleContent>
-          </Collapsible>
-
-          <div ref={stepsRef} tabIndex={-1} aria-describedby={stepsError ? 'seq-steps-error' : undefined} className="outline-none">
-            <StepTimelineEditor steps={steps} onChange={setSteps} readOnly={readOnlySteps} />
-            {stepsError && (
-              <p id="seq-steps-error" role="alert" className="mt-2 flex items-center gap-1.5 text-sm text-danger-text dark:text-danger-text">
-                <AlertCircle strokeWidth={1.5} className="h-4 w-4" aria-hidden="true" /> {stepsError}
-              </p>
-            )}
-          </div>
-        </fieldset>
-
-        <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving} className="w-full sm:w-auto">{tr("Cancelar")}</Button>
-          <Button onClick={submit} disabled={saving} className="w-full bg-brand text-white hover:bg-brand-deep sm:w-auto">
-            {saving ? tr('Guardando…') : sequence ? tr("Guardar cambios") : tr("Crear secuencia")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </Tarjeta>
+          <Tarjeta titulo={tr('Configuración de envío')} icono={Settings2}>
+            <div className="space-y-4">
+              <div className="flex items-center gap-2"><Switch id="seq-pause" checked={pauseOnReply} onCheckedChange={setPauseOnReply} /><Label htmlFor="seq-pause">{tr('Pausar si el cliente responde')}</Label></div>
+              <p className="text-[13px] leading-[18px] text-fg-secondary">{tr('Hora de la organización')}: <span className="font-medium text-fg">{timezone ?? '—'}</span></p>
+              <div><Label htmlFor="seq-desc" className="text-xs">{tr('Descripción')}</Label><Textarea id="seq-desc" rows={2} value={description} onChange={event => setDescription(event.target.value)} /></div>
+            </div>
+          </Tarjeta>
+        </aside>
+      </fieldset>
+      </form>
+    </div>
   );
 }

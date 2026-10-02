@@ -1,4 +1,5 @@
 'use client';
+import {StatusBadge} from '@/components/kit/StatusBadge';
 import {useRedText} from '@/components/crm/red/useRedText';
 
 /** Estados de comisión y tipos de deal para la interfaz: icono + texto, AA en ambos temas. */
@@ -24,13 +25,7 @@ export const COMMISSION_META: Record<CommissionStatus, Meta> = {
 export function CommissionStatusBadge({ status }: { status: CommissionStatus }) {
   const {tr} = useRedText();
   const meta = COMMISSION_META[status] ?? COMMISSION_META.pending;
-  const Icon = meta.icon;
-  return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${meta.badge}`}>
-      <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-      {tr(meta.label)}
-    </span>
-  );
+  return <StatusBadge estado={status} etiqueta={tr(meta.label)} tono={status === 'paid' ? 'exito' : status === 'rejected' ? 'peligro' : status === 'approved' ? 'marca' : 'neutro'} icono={meta.icon}/>;
 }
 
 export function dealTypeLabel(type: DealType | string): string {

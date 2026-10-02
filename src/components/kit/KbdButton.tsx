@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { Loader2, type LucideIcon } from 'lucide-react';
 import { cn } from '@/utils/Utils';
-import { clasesBoton, TAMANO_ICONO, temaKbdDe, type TamanoBoton, type VarianteBoton } from './botonClases';
+import { clasesBoton, TAMANO_ICONO, temaKbdDe, type PatronBoton, type TamanoBoton, type VarianteBoton } from './botonClases';
 import { Kbd } from './Kbd';
 import { ariaAtajo } from './teclas';
 
@@ -20,6 +20,8 @@ import { ariaAtajo } from './teclas';
 export interface KbdButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variante?: VarianteBoton;
   tamano?: TamanoBoton;
+  /** Opt-in a la escala de texto del KbdButton de Figma. */
+  patron?: PatronBoton;
   /** «F9», «Ctrl+N», «Alt+1», «Esc». */
   atajo?: string;
   icono?: LucideIcon;
@@ -36,6 +38,7 @@ export const KbdButton = React.forwardRef<HTMLButtonElement, KbdButtonProps>(fun
   {
     variante = 'primario',
     tamano = 'md',
+    patron,
     atajo,
     icono: Icono,
     ocultarIconoEnMovil,
@@ -58,7 +61,7 @@ export const KbdButton = React.forwardRef<HTMLButtonElement, KbdButtonProps>(fun
       disabled={disabled || cargando}
       aria-busy={cargando || undefined}
       aria-keyshortcuts={aria || undefined}
-      className={clasesBoton({ variante, tamano, anchoCompleto, className })}
+      className={clasesBoton({ variante, tamano, patron, anchoCompleto, className })}
       {...resto}
     >
       {cargando ? (

@@ -68,7 +68,7 @@ export function IdentidadesCanal({
                     <div className="flex gap-2">
                       <button
                         disabled={ocupado}
-                        className={clasesBoton({
+                        className={clasesBoton({ patron: 'button',
                           variante: 'secundario',
                           tamano: 'sm',
                         })}
@@ -82,7 +82,7 @@ export function IdentidadesCanal({
                       </button>
                       <button
                         disabled={ocupado}
-                        className={clasesBoton({
+                        className={clasesBoton({ patron: 'button',
                           variante: 'fantasma',
                           tamano: 'sm',
                         })}
@@ -105,7 +105,7 @@ export function IdentidadesCanal({
         titulo={t('editarIdentidad')}
         pie={
           <button
-            className={clasesBoton()}
+            className={clasesBoton({patron: 'button'})}
             disabled={ocupado || !value.trim()}
             onClick={async () => {
               if (editing && (await onEditar(editing.id, value, verified)))

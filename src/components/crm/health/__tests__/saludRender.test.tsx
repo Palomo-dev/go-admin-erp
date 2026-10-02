@@ -102,7 +102,7 @@ test('detalle se abre por Enter en fila nativa y devuelve foco al cerrar', async
   await screen.findAllByText('Cliente de prueba');
   const tableRow = screen.getAllByRole('row').find(element => element.hasAttribute('tabindex'))!;
   tableRow.focus(); fireEvent.keyDown(tableRow, { key: 'Enter' });
-  const dialog = await screen.findByRole('dialog');
+  const dialog = await screen.findByRole('region', {name:'Cliente de prueba'});
   await within(dialog).findByText(es.crm.salud.currentHealth);
   fireEvent.click(within(dialog).getByRole('button', { name: es.crm.salud.trend.showTable }));
   const historyTable = within(dialog).getByRole('table');

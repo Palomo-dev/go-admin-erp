@@ -11,7 +11,7 @@ import {useRedText} from '@/components/crm/red/useRedText';
 import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/crm/red/RedButton';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/components/ui/use-toast';
@@ -123,7 +123,7 @@ export function RegisterDealDialog({ open, partner, onOpenChange, onRegister, re
         </form>
         <DialogFooter className="gap-2 [&>button]:h-11 sm:[&>button]:h-9">
           <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>{tr("Cancelar")}</Button>
-          <Button type="button" className="bg-brand text-white hover:bg-brand-hover" disabled={saving} onClick={() => void submit()}>{saving ? tr("Registrando…") : tr("Registrar deal")}</Button>
+          <Button type="button" className="" disabled={saving} onClick={() => void submit()}>{saving ? tr("Registrando…") : tr("Registrar deal")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

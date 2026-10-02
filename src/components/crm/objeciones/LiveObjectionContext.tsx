@@ -2,7 +2,7 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {useTranslations} from 'next-intl';
 import {Phone,Copy} from 'lucide-react';
-import {SearchInput,EmptyState,clasesBoton} from '@/components/kit';
+import {SearchInput,EmptyState,clasesBoton,BadgeTono} from '@/components/kit';
 import {useSoftphone} from '@/components/voice';
 import {CallLinkPanel} from '@/components/voice/CallLinkPanel';
 import type {Objection} from '@/lib/services/crm/objectionService';
@@ -41,21 +41,21 @@ export function LiveObjectionContext({objections}:{objections:Objection[]}){
  const copy=async()=>{if(!row?.recommended_response)return;try{await navigator.clipboard.writeText(row.recommended_response);}catch{setState('error');}};
  const select=(id:string|null)=>{revision.current++;setSelected(id);setState('idle');};
  const search=(value:string)=>{setQuery(value);select(null);};
- const category=row?(t.has(`categories.${row.category}`)?t(`categories.${row.category}`):row.category):null;
+ const category=row?(row.category?(t.has(`categories.${row.category}`)?t(`categories.${row.category}`):row.category):t('noCategory')):null;
  return <section className="space-y-3 lg:rounded-xl lg:border lg:border-line-brand lg:bg-brand-tint lg:p-4">
   <p className="flex items-center gap-2 rounded-lg bg-brand-tint px-3 py-2 text-xs text-brand-deep"><Phone className="size-4"/>
    {t('inCall',{name:active.displayName??active.number,time:`${Math.floor(elapsed/60)}:${String(elapsed%60).padStart(2,'0')}`})}
   </p>
-  <SearchInput value={query} onChange={search} onValueChange={search} etiqueta={t('quickConsult')} placeholder={t('searchHint')}/>
+  <SearchInput value={query} onChange={search} onValueChange={search} etiqueta={t('quickConsult')} placeholder={t('searchHint')} tamano="sm" pistaAtajo={false}/>
   {row?<article className="rounded-xl border border-line bg-surface p-3">
-   <div className="flex items-start justify-between gap-2"><h2 className="text-sm font-medium text-fg">{row.title}</h2><span className="shrink-0 rounded-full border border-line px-2 py-0.5 text-xs text-fg-secondary">{category}</span></div>
-   <p className="mt-3 whitespace-pre-wrap text-sm text-fg">{row.recommended_response??t('noResponse')}</p>
-   <div className="mt-3 flex flex-wrap gap-2"><button type="button" className={clasesBoton({variante:'secundario'})} disabled={!row.recommended_response} onClick={()=>void copy()}><Copy className="size-4"/>{t('copy')}</button>
-    <button type="button" className={clasesBoton({variante:'primario'})} disabled={!opportunity||pending.current.has(intention)||state==='done'} onClick={()=>void register()}>{t(state==='done'?'registered':'register')}</button>
+   <div className="flex items-start justify-between gap-2"><h2 className="text-sm font-medium leading-5 text-fg">{row.title}</h2><BadgeTono tono={row.category==='precio'?'advertencia':'neutro'} tamano="sm">{category}</BadgeTono></div>
+   <p className="mt-2 whitespace-pre-wrap text-[13px] leading-[18px] text-fg">{row.recommended_response??t('noResponse')}</p>
+   <div className="mt-2 flex flex-wrap gap-2"><button type="button" className={clasesBoton({variante:'secundario',tamano:'sm',patron:'button'})} disabled={!row.recommended_response} onClick={()=>void copy()}><Copy className="size-4"/>{t('copy')}</button>
+    <button type="button" className={clasesBoton({variante:'primario',tamano:'sm',patron:'button'})} disabled={!opportunity||pending.current.has(intention)||state==='done'} onClick={()=>void register()}>{t(state==='done'?'registered':'register')}</button>
    </div>
   </article>:<EmptyState compacto titulo={t('noResults')} descripcion={t('noResultsHint')} accion={query?{etiqueta:t('clearFilters'),onClick:()=>search('')}:undefined}/>}
   {candidates.filter(candidate=>candidate.id!==row?.id).slice(0,6).map(candidate=><button key={candidate.id} type="button" onClick={()=>select(candidate.id)}
-   className="block w-full rounded-xl border border-line bg-surface p-3 text-left hover:bg-subtle"><span className="block text-sm font-medium text-fg">{candidate.title}</span><span className="mt-2 block line-clamp-3 text-xs text-fg-secondary">{candidate.recommended_response??t('noResponse')}</span></button>)}
+   className="block w-full rounded-xl border border-line bg-surface p-3 text-left hover:bg-subtle"><span className="block text-sm font-medium leading-5 text-fg">{candidate.title}</span><span className="mt-2 block line-clamp-3 text-[13px] leading-[18px] text-fg-secondary">{candidate.recommended_response??t('noResponse')}</span></button>)}
   {!opportunity&&<><p className="text-xs text-fg-secondary">{t('linkOpportunity')}</p>{callId&&<CallLinkPanel callId={callId} customerId={active.customerId} opportunityId={null} phoneNumber={active.number} customerName={active.displayName} onLinked={()=>void reloadLink()}/>}</>}
   {state==='error'&&<p role="alert" className="text-sm text-danger">{t('actionError')}</p>}
  </section>;

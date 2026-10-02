@@ -206,4 +206,21 @@ describe('DateRangeButton con calendario (render)', () => {
     });
     expect(onCambio).toHaveBeenCalledWith({ desde: '2026-09-28', hasta: '2026-09-28' });
   });
+
+  test.each([
+    ['es', 'Rango de fechas'], ['en', 'Date range'], ['fr', 'Période'], ['pt', 'Período'],
+  ] as const)('un rango vacío en %s no inventa un filtro ni selecciona un preset', (idioma, placeholder) => {
+    const onCambio = jest.fn();
+    renderConIdioma(<DateRangeButton valor={null} hoy="2026-09-28" onValorChange={onCambio} />, { idioma });
+    const boton = screen.getByRole('button', { name: placeholder });
+    expect(boton.textContent).toBe(placeholder);
+    act(() => fireEvent.click(boton));
+    expect(onCambio).not.toHaveBeenCalled();
+    expect(document.querySelector('[aria-pressed="true"]')).toBeNull();
+    expect(document.body.textContent).not.toMatch(/NaN|undefined/);
+    act(() => fireEvent.click(dia('2026-09-10')));
+    expect(onCambio).not.toHaveBeenCalled();
+    act(() => fireEvent.click(dia('2026-09-15')));
+    expect(onCambio).toHaveBeenCalledWith({ desde: '2026-09-10', hasta: '2026-09-15' });
+  });
 });

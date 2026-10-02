@@ -1,13 +1,15 @@
 'use client';
+import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Copy, Eye, FileText, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { KbdButton as Button } from '@/components/kit/KbdButton';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { DataTable, type ColumnaTabla } from '@/components/kit/DataTable';
+import { Tarjeta, EmptyState, StatusBadge } from '@/components/kit';
+import { RowActionsMenu } from '@/components/kit/RowActionsMenu';
+import { Skeleton } from '@/components/ui/skeleton';
 import { SearchInput } from '@/components/kit/SearchInput';
 import { toast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
@@ -18,7 +20,7 @@ import type { TemplateKind, TemplateSummary } from '@/lib/services/crm/email/typ
 import { useTemplateText } from './useTemplateText';
 
 const kinds: TemplateKind[] = ['transactional', 'marketing', 'sequence', 'onboarding'];
-export function TemplateList() {
+export function TemplateList({ actionsHost, toolbarHost }: { actionsHost?: HTMLElement | null; toolbarHost?: HTMLElement | null } = {}) {
   const router = useRouter(); const tr = useTemplateText(); const { organization } = useOrganization(); const orgId = organization?.id ?? null; const { formatDate } = useFormatDate();
   const currentOrg = useRef(orgId); currentOrg.current = orgId;
   const revision = useRef(0); const pending = useRef(false);
@@ -67,30 +69,32 @@ export function TemplateList() {
     });
   };
   const restore = () => void mutate(async () => { await restoreTemplates(); if (currentOrg.current === orgId) { toast({ title: tr('Plantillas base restauradas.') }); await load(); } });
-  const columns: ColumnaTabla<TemplateSummary>[] = [
-    { id: 'name', encabezado: tr('Nombre'), celda: row => <div><span className="font-medium text-fg">{row.name}</span> {row.metadata?.is_system && <Badge variant="outline">{tr('Base')}</Badge>}<p className="text-xs text-fg-muted">v{row.version}</p></div> },
-    { id: 'kind', encabezado: tr('Tipo'), celda: row => tr(TEMPLATE_KIND_LABELS[(row.kind ?? 'transactional') as TemplateKind] ?? row.kind) },
-    { id: 'subject', encabezado: tr('Asunto'), ocultarDebajo: 'md', celda: row => <span className="block max-w-64 truncate text-fg-secondary">{row.subject}</span> },
-    { id: 'engine', encabezado: tr('Editor'), ocultarDebajo: 'lg', celda: row => row.engine === 'html' ? 'HTML' : tr('Bloques') },
-    { id: 'uses', encabezado: tr('Usos'), variante: 'importe', ocultarDebajo: 'lg', celda: row => row.metadata?.usage_count ?? '—' },
-    { id: 'active', encabezado: tr('Activa'), celda: row => <Switch checked={row.is_active} disabled={!allowed || busy} onCheckedChange={active => toggle(row, active)} aria-label={tr('Activar {p0}', { p0: row.name })} /> },
-    { id: 'updated', encabezado: tr('Actualizada'), ocultarDebajo: 'md', celda: row => formatDate(row.updated_at) },
-  ];
   const visible = scope === orgId ? rows : [];
-  return <div className="space-y-3">
-    <div className="flex flex-wrap items-center gap-2">
-      <SearchInput value={q} onChange={setQ} placeholder={tr('Buscar plantillas…')} etiqueta={tr('Buscar plantillas…')} className="min-w-48 flex-1" />
-      <Select value={kind} onValueChange={value => { setKind(value as 'all' | TemplateKind); setPage(1); }}><SelectTrigger className="w-48" aria-label={tr('Tipo')}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{tr('Todos los tipos')}</SelectItem>{kinds.map(value => <SelectItem key={value} value={value}>{tr(TEMPLATE_KIND_LABELS[value])}</SelectItem>)}</SelectContent></Select>
-      {allowed && <><Button variant="outline" onClick={restore} disabled={busy}><RotateCcw className="mr-1 size-4" strokeWidth={1.5} aria-hidden="true" />{tr('Restaurar plantillas base')}</Button><Button onClick={() => router.push('/app/crm/plantillas/nueva')} disabled={busy}><Plus className="mr-1 size-4" strokeWidth={1.5} aria-hidden="true" />{tr('Nueva plantilla')}</Button></>}
-    </div>
+  const actions = allowed && <><Button patron="button" variante="secundario" onClick={restore} disabled={busy} icono={RotateCcw}>{tr('Restaurar plantillas base')}</Button><Button patron="button" onClick={() => router.push('/app/crm/plantillas/nueva')} disabled={busy} icono={Plus}>{tr('Nueva plantilla')}</Button></>;
+  const toolbar = <><SearchInput value={q} onChange={setQ} placeholder={tr('Buscar plantillas…')} etiqueta={tr('Buscar plantillas…')} className="min-w-48 max-w-sm flex-1" />
+    <Select value={kind} onValueChange={value => { setKind(value as 'all' | TemplateKind); setPage(1); }}><SelectTrigger className="h-10 w-44 rounded-lg border-line-strong bg-surface text-fg" aria-label={tr('Tipo')}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{tr('Todos los tipos')}</SelectItem>{kinds.map(value => <SelectItem key={value} value={value}>{tr(TEMPLATE_KIND_LABELS[value])}</SelectItem>)}</SelectContent></Select></>;
+  return <div className="space-y-4">
+    {actionsHost ? createPortal(actions, actionsHost) : <div className="flex flex-wrap justify-end gap-2">{actions}</div>}
+    {toolbarHost ? createPortal(toolbar, toolbarHost) : <div className="flex flex-wrap items-center gap-2">{toolbar}</div>}
     {!canManage && !loading && !error && <p className="text-xs text-fg-muted">{tr('Sólo lectura')}</p>}
-    <DataTable columnas={columns} filas={visible} obtenerId={row => row.id} etiqueta={tr('Plantillas')} etiquetaFila={row => row.name}
-      estado={loading ? 'cargando' : error ? 'error' : !visible.length ? (search || kind !== 'all' ? 'sinResultados' : 'vacio') : 'listo'}
-      vacio={{ titulo: tr('Aún no hay plantillas.'), icono: FileText }} error={{ titulo: tr('No se pudieron cargar las plantillas.'), descripcion: error ?? '' }}
-      onReintentar={() => void load()} onFilaClick={row => router.push(`/app/crm/plantillas/${row.id}`)}
-      acciones={row => [{ id: 'view', etiqueta: tr(allowed ? 'Editar' : 'Ver'), icono: allowed ? Pencil : Eye, onSelect: () => router.push(`/app/crm/plantillas/${row.id}`) },
-        ...(allowed ? [{ id: 'duplicate', etiqueta: tr('Duplicar'), icono: Copy, deshabilitada: busy, onSelect: () => duplicate(row) }, { id: 'delete', etiqueta: tr('Eliminar'), icono: Trash2, destructiva: true, deshabilitada: busy || !!row.metadata?.is_system, onSelect: () => setPendingDelete(row) }] : [])]}
-      pie={<div className="flex items-center justify-between p-3 text-sm text-fg-secondary"><span>{tr('{p0} plantillas', { p0: total })}</span><div className="flex gap-2"><Button variant="outline" disabled={loading || page <= 1} onClick={() => setPage(value => value - 1)}>{tr('Anterior')}</Button><Button variant="outline" disabled={loading || page * 50 >= total} onClick={() => setPage(value => value + 1)}>{tr('Siguiente')}</Button></div></div>} />
-    <AlertDialog open={!!pendingDelete} onOpenChange={open => { if (!open && !busy) setPendingDelete(null); }}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{tr('¿Eliminar esta plantilla?')}</AlertDialogTitle><AlertDialogDescription>{tr('La plantilla dejará de estar disponible para nuevos mensajes.')}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><Button variant="outline" disabled={busy} onClick={() => setPendingDelete(null)}>{tr('Cancelar')}</Button><Button variant="destructive" disabled={busy || !allowed} onClick={() => void remove()}>{tr('Eliminar')}</Button></AlertDialogFooter></AlertDialogContent></AlertDialog>
+    {loading ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" aria-busy="true">{Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-60 rounded-xl" />)}</div>
+      : error ? <EmptyState variante="error" titulo={tr('No se pudieron cargar las plantillas.')} descripcion={error} onReintentar={() => void load()} />
+      : !visible.length ? <EmptyState variante={search || kind !== 'all' ? 'search' : undefined} titulo={tr('Aún no hay plantillas.')} icono={FileText} />
+      : <ul aria-label={tr('Plantillas')} className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{visible.map(row => <li key={row.id}>
+        <Tarjeta titulo={row.name} icono={FileText} descripcion={tr(TEMPLATE_KIND_LABELS[(row.kind ?? 'transactional') as TemplateKind] ?? row.kind)}
+          accion={<RowActionsMenu titulo={row.name} acciones={[
+            { id: 'view', etiqueta: tr(allowed ? 'Editar' : 'Ver'), icono: allowed ? Pencil : Eye, onSelect: () => router.push(`/app/crm/plantillas/${row.id}`) },
+            ...(allowed ? [{ id: 'duplicate', etiqueta: tr('Duplicar'), icono: Copy, deshabilitada: busy, onSelect: () => duplicate(row) }, { id: 'delete', etiqueta: tr('Eliminar'), icono: Trash2, destructiva: true, deshabilitada: busy || !!row.metadata?.is_system, onSelect: () => setPendingDelete(row) }] : []),
+          ]} />}
+          pie={<div className="flex items-center justify-between gap-2 text-xs text-fg-secondary"><span>{tr('Usos')}: {row.metadata?.usage_count ?? '—'} · v{row.version}</span><Switch checked={row.is_active} disabled={!allowed || busy} onCheckedChange={active => toggle(row, active)} aria-label={tr('Activar {p0}', { p0: row.name })} /></div>}>
+          <div className="space-y-3"><StatusBadge estado={row.is_active ? 'active' : 'inactive'} etiqueta={tr(row.is_active ? 'Activa' : 'Inactiva')} tono={row.is_active ? 'exito' : 'neutro'} />
+            <button type="button" onClick={() => router.push(`/app/crm/plantillas/${row.id}`)} className="block min-h-24 w-full rounded-lg bg-subtle p-3 text-left text-[13px] leading-[18px] text-fg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"><span className="font-medium text-fg">{row.subject}</span>{row.description && <span className="mt-2 line-clamp-3 block">{row.description}</span>}</button>
+            {row.variables?.length ? <p className="truncate text-xs text-fg-muted">{row.variables.join(' · ')}</p> : null}
+            <p className="text-xs text-fg-muted">{formatDate(row.updated_at)}{row.metadata?.is_system ? ` · ${tr('Base')}` : ''}</p>
+          </div>
+        </Tarjeta>
+      </li>)}</ul>}
+    {!error && <div className="flex items-center justify-between gap-2 text-[13px] text-fg-secondary"><span>{tr('{p0} plantillas', { p0: total })}</span><div className="flex gap-2"><Button patron="button" variante="secundario" tamano="sm" disabled={loading || page <= 1} onClick={() => setPage(value => value - 1)}>{tr('Anterior')}</Button><Button patron="button" variante="secundario" tamano="sm" disabled={loading || page * 50 >= total} onClick={() => setPage(value => value + 1)}>{tr('Siguiente')}</Button></div></div>}
+    <AlertDialog open={!!pendingDelete} onOpenChange={open => { if (!open && !busy) setPendingDelete(null); }}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{tr('¿Eliminar esta plantilla?')}</AlertDialogTitle><AlertDialogDescription>{tr('La plantilla dejará de estar disponible para nuevos mensajes.')}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><Button patron="button" variante="secundario" disabled={busy} onClick={() => setPendingDelete(null)}>{tr('Cancelar')}</Button><Button patron="button" variante="destructivo" disabled={busy || !allowed} onClick={() => void remove()}>{tr('Eliminar')}</Button></AlertDialogFooter></AlertDialogContent></AlertDialog>
   </div>;
 }

@@ -55,6 +55,7 @@ import {
   rutaPadre,
   useBarrasInferioresPropias,
   useCabeceraMovilActual,
+  volverCabeceraMovil,
   useTecladoAbierto,
   type CabeceraMovilPagina,
 } from './cabeceraMovil';
@@ -251,10 +252,8 @@ function MobileHeader({
 
   // «←» de los modos página y POS: atrás si hay historial; si no, a donde diga
   // la página o a la página padre del menú (en el POS, /app/inicio).
-  const volver = () => {
-    if (window.history.length > 1) router.back();
-    else router.push(pagina?.volverA ?? rutaPadre(pathname));
-  };
+  const volver = () => volverCabeceraMovil(pagina, window.history.length, router, rutaPadre(pathname));
+
   const botonVolver = (
     <button
       type="button"

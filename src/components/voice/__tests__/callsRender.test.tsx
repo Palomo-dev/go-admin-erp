@@ -11,6 +11,8 @@ let loading = false;
 let error = false;
 let forbidden = false;
 let count = 0;
+let rows: CallListRow[] = [];
+let parametros = '';
 jest.mock("@/lib/hooks/useOrganization", () => ({
   useOrganization: () => ({ organization: { id: 120 } }),
 }));
@@ -18,17 +20,18 @@ jest.mock("@/lib/context/OrganizationTimezoneContext", () => ({
   useFormatDate: () => ({
     getToday: () => "2026-09-30",
     formatDateTime: () => "30/09/2026 20:00",
+    formatPlain: () => "30/09/2026",
   }),
 }));
 jest.mock("../useCallsData", () => ({
-  useCallsData: () => ({
+  useCallsData: (params: string) => { parametros = params; return ({
     loading,
     error,
     forbidden,
     result: error
       ? null
       : {
-          data: [],
+          data: rows,
           count,
           stats: {
             totalToday: 205,
@@ -40,7 +43,7 @@ jest.mock("../useCallsData", () => ({
             voiceConfigured: true,
           },
         },
-  }),
+  }); },
 }));
 jest.mock("../CallRowDetail", () => ({
   CallRowDetail: () => <div>detail</div>,
@@ -60,7 +63,56 @@ beforeEach(() => {
   error = false;
   forbidden = false;
   count = 0;
+  rows = [];
   errors = jest.spyOn(console, "error").mockImplementation(() => undefined);
+});
+it('abre el detalle por fila y conserva los datos del atajo sin una columna de expansión', () => {
+  const abrir = jest.fn();
+  count = 1;
+  rows = [{
+    id: '10000000-0000-4000-8000-000000000001', created_at: '2026-10-01T01:00:00Z',
+    mode: 'browser', direction: 'outbound', to_number: '+12025550197',
+    status: 'completed', duration_seconds: 120, recordings: [], recording_enabled: false,
+    customer: { id: '20000000-0000-4000-8000-000000000001', full_name: 'Contacto de prueba' },
+    opportunity_id: '30000000-0000-4000-8000-000000000001', disposition_outcome: 'answered',
+    analysis: { sentiment: 'positive' },
+  } as unknown as CallListRow];
+  renderConIdioma(<CallsTable onAbrirLlamada={abrir} />);
+  expect(screen.getAllByRole('columnheader').map((el) => el.textContent)).toEqual(['Fecha', 'Cliente', 'Tipo', 'Quién', 'Duración', 'Resultado', 'Sentimiento', 'Grabación']);
+  const row = screen.getAllByRole('row')[1];
+  expect(row.dataset.phone).toBe('+12025550197');
+  expect(row.dataset.customerId).toBe(rows[0].customer?.id);
+  fireEvent.keyDown(row, { key: 'Enter' });
+  expect(abrir).toHaveBeenCalledWith(rows[0].id);
+  fireEvent.click(screen.getByRole('button', { name: 'Llamada con Contacto de prueba' }));
+  expect(abrir).toHaveBeenCalledTimes(2);
+});
+it('un intervalo vacío conserva la consulta sin fechas y muestra un selector válido', () => {
+  renderConIdioma(<CallsTable initialFilters={{ fromDate: '', toDate: '' }} />);
+  const params = new URLSearchParams(parametros);
+  expect(params.has('from_date')).toBe(false);
+  expect(params.has('to_date')).toBe(false);
+  expect(screen.getByRole('button', { name: /Período filtrado/ }).textContent).not.toMatch(/NaN|undefined/);
+});
+it('una fecha parcial permanece visible y se puede quitar sin inventar otro límite', () => {
+  renderConIdioma(<CallsTable initialFilters={{ fromDate: '2026-09-30', toDate: '' }} />);
+  expect(new URLSearchParams(parametros).get('from_date')).toBe('2026-09-30');
+  expect(screen.getByText('Desde: 30/09/2026')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: /Quitar.*Desde/ }));
+  expect(new URLSearchParams(parametros).has('from_date')).toBe(false);
+});
+it('el periodo inicial no convierte la ausencia de llamadas en un resultado filtrado', () => {
+  renderConIdioma(<CallsTable />);
+  expect(screen.getByText('Aún no hay llamadas')).toBeTruthy();
+  expect(screen.getByRole('link', { name: 'Configurar telefonía' }).getAttribute('href')).toBe('/app/configuracion?modulo=crm&tab=proveedores');
+  expect(screen.queryByRole('columnheader')).toBeNull();
+  expect(screen.queryByRole('region', { name: 'Resumen de llamadas' })).toBeNull();
+});
+it('la carga inicial no muestra cabecera de columnas ni cifras anteriores', () => {
+  loading = true;
+  renderConIdioma(<CallsTable />);
+  expect(screen.queryByRole('columnheader')).toBeNull();
+  expect(screen.queryByText('205')).toBeNull();
 });
 afterEach(() => {
   const intl = errors.mock.calls.filter((c) =>

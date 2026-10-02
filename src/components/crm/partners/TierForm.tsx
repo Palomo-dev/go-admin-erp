@@ -6,7 +6,7 @@ import {useRedText} from '@/components/crm/red/useRedText';
 
 import { useEffect, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/crm/red/RedButton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -94,7 +94,7 @@ export function TierForm({ tier, onSave, onCancel }: Props) {
       )}
       <div className="flex justify-end gap-2 [&>button]:h-11 sm:[&>button]:h-8">
         <Button type="button" variant="outline" size="sm" disabled={saving} onClick={onCancel}>{tr("Cancelar")}</Button>
-        <Button type="submit" size="sm" className="bg-brand text-white hover:bg-brand-hover" disabled={saving}>{saving ? tr("Guardando…") : tier ? tr("Guardar") : tr("Crear tier")}</Button>
+        <Button type="submit" size="sm" className="" disabled={saving}>{saving ? tr("Guardando…") : tier ? tr("Guardar") : tr("Crear tier")}</Button>
       </div>
     </form>
   );

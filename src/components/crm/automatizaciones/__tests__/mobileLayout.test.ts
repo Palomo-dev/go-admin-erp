@@ -32,21 +32,6 @@ const read = (rel: string) => fs.readFileSync(path.join(ROOT, DIR, rel), 'utf8')
 const classes = (s: string) => s.split(/\s+/).filter(Boolean);
 const hasAll = (list: string[], ...wanted: string[]) => wanted.every((w) => list.includes(w));
 
-/** Etiqueta JSX de apertura `<Name …>` completa (llaves balanceadas), la n-ésima. */
-function openingTag(src: string, name: string, nth = 0): string {
-  const re = new RegExp(`<${name}\\b`, 'g');
-  let m: RegExpExecArray | null;
-  let i = -1;
-  for (let k = 0; k <= nth; k += 1) { m = re.exec(src); if (!m) return ''; i = m.index; }
-  let depth = 0;
-  for (let j = i; j < src.length; j += 1) {
-    if (src[j] === '{') depth += 1;
-    else if (src[j] === '}') depth -= 1;
-    else if (src[j] === '>' && depth === 0) return src.slice(i, j + 1);
-  }
-  return '';
-}
-
 describe('fichas apiladas en móvil (chipClass ejecutada)', () => {
   it('stacked: tarjeta a ancho completo y texto arriba en móvil; píldora en línea desde sm', () => {
     const cls = classes(chipClass(false, 'emerald', true));
@@ -93,24 +78,22 @@ describe('cableado: acciones, condiciones y Chip', () => {
   });
 });
 
-describe('hoja «Nueva regla»: h-dvh, cuerpo con scroll propio, pie alineado', () => {
-  const sheet = read('RuleEditorSheet.tsx');
-
-  it('la hoja mide h-dvh y no se desplaza como un todo; el formulario es el único con scroll', () => {
-    const content = classes((openingTag(sheet, 'SheetContent').match(/className="([^"]+)"/) ?? [])[1] ?? '');
-    expect(hasAll(content, 'flex', 'flex-col', 'h-dvh', 'overflow-hidden', 'w-full', 'p-0', 'gap-0')).toBe(true);
-    expect(content).not.toContain('overflow-y-auto');
-    const form = classes((openingTag(sheet, 'form').match(/className="([^"]+)"/) ?? [])[1] ?? '');
-    expect(hasAll(form, 'relative', 'min-h-0', 'flex-1', 'overflow-y-auto')).toBe(true);
+describe('constructor de regla a pantalla completa (Figma 1375:17)', () => {
+  const source = read('RuleEditorSheet.tsx');
+  it('el editor usa el scroll de la página y mantiene un único formulario enviable', () => {
+    // El antiguo Sheet h-dvh desaparece; el shell es el dueño de viewport/teclado.
+    expect(source).not.toContain('<SheetContent');
+    expect(source).not.toContain('h-dvh');
+    expect(source).toContain('id="automation-rule-form"');
+    expect(source).toContain('form="automation-rule-form"');
+    expect(source).toContain('onSubmit={(e) => { e.preventDefault(); void submit(); }}');
+    expect(source).toContain('lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]');
   });
-
-  it('el pie: interruptor arriba alineado y botones a mitades en móvil; una fila desde sm; safe-area', () => {
-    const tag = openingTag(sheet, 'SheetFooter');
-    const cls = classes([...tag.matchAll(/'([^']+)'/g)].map((m) => m[1]).join(' '));
-    expect(hasAll(cls, 'flex-col', 'sm:flex-row', 'sm:items-center', 'sm:justify-between')).toBe(true);
-    expect(cls).not.toContain('flex-col-reverse');
-    expect(cls.some((c) => c.startsWith('pb-[') && c.includes('env(safe-area-inset-bottom)'))).toBe(true);
-    expect(sheet).toMatch(/className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0"/);
+  it('guardar y volver pertenecen a la cabecera; los controles se bloquean en vuelo', () => {
+    expect(source).toContain('<PageHeader');
+    expect(source).toContain('onVolver={() => { if (!saving) closeEditor(); }}');
+    expect(source).toContain('<fieldset disabled={saving}');
+    expect(source).toContain('savingRef.current');
   });
 });
 

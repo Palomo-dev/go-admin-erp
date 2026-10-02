@@ -3,11 +3,11 @@ import {useEffect,useMemo,useState} from 'react';
 import {useTranslations,useFormatter,useLocale} from 'next-intl';
 import {TriangleAlert,Plus,RefreshCw,List,CheckCircle,XCircle} from 'lucide-react';
 import {StaggerList} from '@/components/shared/motion';
-import {PageHeader,SearchInput,EmptyState,RowActionsMenu,clasesBoton} from '@/components/kit';
+import {PageHeader,EmptyState,RowActionsMenu,clasesBoton} from '@/components/kit';
 import type {AccionFila} from '@/components/kit/acciones';
 import {useSoftphone} from '@/components/voice';
 import type {Objection} from '@/lib/services/crm/objectionService';
-import {EMPTY_FILTERS,filterObjections,type ObjectionFilters,OBJECTION_CATEGORIES} from '@/lib/services/crm/objectionModel';
+import {EMPTY_FILTERS,filterObjections,type ObjectionFilters} from '@/lib/services/crm/objectionModel';
 import {ObjectionEditor} from './ObjectionEditor';
 import {ObjectionDetail} from './ObjectionDetail';
 import {LiveObjectionContext} from './LiveObjectionContext';
@@ -17,12 +17,13 @@ import {libraryRows,orderLibraryRows,type ObjectionOrder} from './objectionLibra
 import {ObjectionStats} from './ObjectionStats';
 import {ObjectionLibrary} from './ObjectionLibrary';
 import {ExportObjections} from './ExportObjections';
+import {ObjectionLibraryToolbar} from './ObjectionLibraryToolbar';
 
 export function ObjecionesPage(){
  const t=useTranslations('crm.objecionesNuevo'),format=useFormatter(),locale=useLocale();
  const{objections,loading,error,reload,save,toggle,canManage}=useObjections(),insights=useObjectionInsights(),phone=useSoftphone();
  const[filters,setFilters]=useState<ObjectionFilters>(EMPTY_FILTERS),[order,setOrder]=useState<ObjectionOrder>('frequency');
- const[editor,setEditor]=useState<{row:Objection|null}|null>(null),[detail,setDetail]=useState<Objection|null>(null);
+ const[editor,setEditor]=useState<{row:Objection|null;initialTitle?:string}|null>(null),[detail,setDetail]=useState<Objection|null>(null);
  const[busy,setBusy]=useState<string|null>(null),[actionError,setActionError]=useState(false);
  const availableInsights=!insights.loading&&!insights.error?insights.data:null;
  const allRows=useMemo(()=>libraryRows(objections,availableInsights),[objections,availableInsights]);
@@ -33,11 +34,10 @@ export function ObjecionesPage(){
  const currentDetail=detail&&objections.find(row=>row.id===detail.id);
  if(currentDetail&&!loading&&!error)return <>
   <ObjectionDetail key={currentDetail.id} canManage={canManage} objection={currentDetail} busy={busy===currentDetail.id}
-   onClose={()=>setDetail(null)} onEdit={row=>setEditor({row})} onSave={save} onToggle={()=>onToggle(currentDetail)}/>
+   onClose={()=>setDetail(null)} onEdit={row=>setEditor({row})} onSave={save} onToggle={()=>onToggle(currentDetail)} metrics={allRows.find(row=>row.objection.id===currentDetail.id)}/>
   {actionError&&<p role="alert" className="mx-4 text-sm text-danger-text lg:mx-6">{t('actionError')}</p>}
   <ObjectionEditor open={!!editor} row={editor?.row??null} onClose={()=>setEditor(null)} onSave={save}/>
  </>;
- const category=(value:string)=>t.has(`categories.${value}`)?t(`categories.${value}`):value;
  const newButton=<button type="button" className={clasesBoton({variante:'primario'})} disabled={!canManage||loading||!!error} onClick={()=>setEditor({row:null})}><Plus className="size-4"/>{t('new')}</button>;
  const menu:AccionFila[]=[
   {id:'refresh',etiqueta:t('refresh'),icono:RefreshCw,onSelect:()=>{void reload();void insights.reload();}},
@@ -45,8 +45,7 @@ export function ObjecionesPage(){
   {id:'active',etiqueta:t('active'),icono:CheckCircle,onSelect:()=>setFilters({...filters,status:'active'})},
   {id:'inactive',etiqueta:t('inactive'),icono:XCircle,onSelect:()=>setFilters({...filters,status:'inactive'})},
  ];
- const control='h-10 rounded-lg border border-line bg-surface px-3 text-sm text-fg';
- return <div className="space-y-4 p-4 lg:p-6">
+ return <div className="p-4 lg:p-6">
   <PageHeader titulo={t('title')} subtitulo={t('subtitle')} icono={TriangleAlert} cargando={loading}
    migas={[{etiqueta:'CRM',href:'/app/crm'},{etiqueta:t('title')}]}
    movil={{accion:<RowActionsMenu titulo={t('title')} acciones={[
@@ -55,31 +54,23 @@ export function ObjecionesPage(){
    acciones={<div className="flex gap-2">
     <ExportObjections rows={shown} disabled={loading||!!error||insights.loading||!!insights.error}/>
     {newButton}
-    <RowActionsMenu titulo={t('title')} acciones={menu}/>
+    <RowActionsMenu titulo={t('title')} acciones={menu} orientacion="horizontal" tamano="md"/>
    </div>}/>
-  <LiveObjectionContext objections={objections}/>
-  <div className={inCall?'hidden space-y-4 lg:block':'space-y-4'}>
+  <div className={inCall?'lg:mt-4':'hidden'}><LiveObjectionContext objections={objections}/></div>
+  <div className={inCall?'hidden space-y-4 lg:mt-4 lg:block':'space-y-4 lg:mt-4'}>
    {error?<EmptyState variante="error" onReintentar={()=>void reload()}/>:<>
     <StaggerList><ObjectionStats rows={allRows} insights={availableInsights} loading={loading||insights.loading}/></StaggerList>
-    <div className="flex flex-wrap gap-2">
-     <div className="lg:hidden"><ExportObjections rows={shown} disabled={loading||!!error||insights.loading||!!insights.error}/></div>
-     <SearchInput value={filters.query} onChange={query=>setFilters({...filters,query})}
-      onValueChange={query=>setFilters({...filters,query})} etiqueta={t('search')} placeholder={t('searchHint')} className="min-w-48 flex-1"/>
-     <select className={control} aria-label={t('category')} value={filters.category} onChange={event=>setFilters({...filters,category:event.target.value})}>
-      <option value="all">{t('allCategories')}</option>{OBJECTION_CATEGORIES.map(row=><option key={row.value} value={row.value}>{category(row.value)}</option>)}
-     </select>
-     <select className={control} aria-label={t('visual.order')} value={order} onChange={event=>setOrder(event.target.value as ObjectionOrder)}>
-      <option value="frequency">{t('visual.mostFrequentOrder')}</option><option value="advanced">{t('visual.advancedOrder')}</option><option value="alphabetical">{t('visual.alphabeticalOrder')}</option>
-     </select>
-    </div>
+    <ObjectionLibraryToolbar filters={filters} onFiltersChange={setFilters} order={order} onOrderChange={setOrder} rows={shown}
+     exportDisabled={loading||!!error||insights.loading||!!insights.error}/>
     {insights.error&&<p role="alert" className="text-sm text-warning-text">{t('frequencyUnavailable')} <button type="button" className="underline" onClick={()=>void insights.reload()}>{t('retry')}</button></p>}
     {actionError&&<p role="alert" className="text-sm text-danger-text">{t('actionError')}</p>}
     {loading?<div aria-busy="true" aria-label={t('loading')}><ObjectionLibrary rows={[]} canManage={false} busy={null} onOpen={()=>{}} onEdit={()=>{}} onToggle={()=>{}} onClear={()=>{}} filtered={false} loading/></div>:
      <ObjectionLibrary rows={shown} canManage={canManage} busy={busy} onOpen={setDetail} onEdit={row=>setEditor({row})} onToggle={row=>void onToggle(row)}
-      onClear={()=>setFilters(EMPTY_FILTERS)} filtered={!!objections.length}/>}
+      onClear={()=>setFilters(EMPTY_FILTERS)} filtered={!!objections.length} query={filters.query}
+      onCreate={canManage?()=>setEditor({row:null,initialTitle:filters.query.trim()}):undefined}/>}
     {!loading&&<p className="text-xs text-fg-secondary" aria-live="polite">{t('resultCount',{count:shown.length,total:format.number(objections.length)})}</p>}
    </>}
   </div>
-  <ObjectionEditor open={!!editor} row={editor?.row??null} onClose={()=>setEditor(null)} onSave={save}/>
+  <ObjectionEditor open={!!editor} row={editor?.row??null} initialTitle={editor?.initialTitle} onClose={()=>setEditor(null)} onSave={save}/>
  </div>;
 }

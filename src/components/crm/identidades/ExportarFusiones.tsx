@@ -32,7 +32,7 @@ export function ExportarFusiones({ disabled }: { disabled: boolean }) {
     }
   };
   return <div className="flex flex-col gap-1">
-    <button type="button" className={clasesBoton({ variante: 'secundario' })} disabled={disabled || busy} onClick={() => void download()}>
+    <button type="button" className={clasesBoton({ patron: 'button', variante: 'secundario' })} disabled={disabled || busy} onClick={() => void download()}>
       <Download className="size-4" aria-hidden="true" />{t(busy ? 'exportando' : 'exportar')}
     </button>
     {error && <span role="alert" className="max-w-64 text-xs text-danger-text">{t('errorExportar')}</span>}

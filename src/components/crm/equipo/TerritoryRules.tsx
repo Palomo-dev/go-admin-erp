@@ -15,11 +15,11 @@ export function TerritoryRules({criteria}:{criteria:TeamTerritory['criteria']}){
  };
  let lines:string[]=[];
  try{
-  if(criteria.filter){const filter=normalizarFiltroSegmento(criteria.filter);lines=filter.rules.length?[node(filter)]:[];}
+  if(criteria.filter){const filter=normalizarFiltroSegmento(criteria.filter);lines=filter.rules.length?[filter.rules.length===1?node(filter.rules[0]):node(filter)]:[];}
   else if(criteria.rules)lines=criteria.rules.flatMap(rule=>typeof rule.field_key==='string'&&typeof rule.operator==='string'?[[legacyField(rule.field_key),operatorLabel(rule.operator,locale),value(rule.value)].filter(Boolean).join(' ')]:[]);
  }catch{lines=[];}
- return <div className="space-y-1"><p className="text-xs font-medium text-fg-secondary">{t('criteria')}</p>
-  <p className="break-words text-sm text-fg">{lines.length?lines.join(' · '):'—'}</p>
+ return <div className="space-y-2"><p className="text-xs font-medium text-fg-secondary">{t('visual.rules')}</p>
+  <p className="break-words text-[13px] leading-[18px] text-fg">{lines.length?lines.join(' · '):'—'}</p>
   {criteria.rules&&!criteria.filter&&<p className="text-xs text-fg-secondary">{t('legacyCriteria')}</p>}
  </div>;
 }

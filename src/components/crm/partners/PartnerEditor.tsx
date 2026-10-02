@@ -12,7 +12,7 @@ import {useRedText} from '@/components/crm/red/useRedText';
 import { useEffect, useState } from 'react';
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/crm/red/RedButton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PhoneInput } from '@/components/ui/phone-input';
@@ -143,7 +143,7 @@ export function PartnerEditor({ open, partner, tiers, onOpenChange, onSave, retu
           </div>
           <div className="flex gap-2 [&>button]:h-11 [&>button]:flex-1 sm:[&>button]:h-9 sm:[&>button]:flex-none">
             <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>{tr("Cancelar")}</Button>
-            <Button type="button" className="bg-brand text-white hover:bg-brand-hover" disabled={saving} onClick={() => void submit()}>
+            <Button type="button" className="" disabled={saving} onClick={() => void submit()}>
               {saving ? tr("Guardando…") : partner ? tr("Guardar cambios") : tr("Crear partner")}
             </Button>
           </div>

@@ -12,7 +12,7 @@ import {useRedText} from '@/components/crm/red/useRedText';
 
 import { useEffect, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/crm/red/RedButton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -165,7 +165,7 @@ export function ReferralProgramForm({ program, currency, idPrefix = 'program', o
       )}
       <div className="flex flex-wrap justify-end gap-2 [&>button]:h-11 sm:[&>button]:h-9">
         {onCancel && <Button type="button" variant="outline" disabled={saving} onClick={onCancel}>{tr("Cancelar")}</Button>}
-        <Button type="submit" className="bg-brand text-white hover:bg-brand-hover" disabled={saving}>
+        <Button type="submit" className="" disabled={saving}>
           {saving ? tr("Guardando…") : submitLabel ?? (program ? tr("Guardar cambios") : tr("Crear programa"))}
         </Button>
       </div>

@@ -70,7 +70,7 @@ export function HistorialFusiones({
                     </span>
                   ) : canUndo ? (
                     <button
-                      className={clasesBoton({
+                      className={clasesBoton({ patron: 'button',
                         variante: 'secundario',
                         tamano: 'sm',
                       })}

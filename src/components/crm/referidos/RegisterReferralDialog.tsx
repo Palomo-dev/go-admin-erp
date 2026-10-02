@@ -12,7 +12,7 @@ import {useRedText} from '@/components/crm/red/useRedText';
 import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/crm/red/RedButton';
 import { toast } from '@/components/ui/use-toast';
 import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
 import type { ReferralProgram, ReferralView } from '@/lib/services/crm/referralsService';
@@ -100,7 +100,7 @@ export function RegisterReferralDialog({ open, preset, programs, currency, onOpe
           {preset ? (
             <div>
               <p className="text-xs text-fg-secondary ">{tr("Cliente que recomienda")}</p>
-              <p className="mt-1 rounded-lg border border-blue-200 bg-brand-subtle px-3 py-2 text-sm font-medium text-brand-deep dark:border-blue-900  dark:text-blue-100">{preset.name}</p>
+              <p className="mt-1 rounded-lg border border-brand bg-brand-tint px-3 py-2 text-sm font-medium text-brand-deep">{preset.name}</p>
             </div>
           ) : (
             <EntitySearchList
@@ -131,7 +131,7 @@ export function RegisterReferralDialog({ open, preset, programs, currency, onOpe
         </form>
         <DialogFooter className="gap-2 [&>button]:h-11 sm:[&>button]:h-9">
           <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>{tr("Cancelar")}</Button>
-          <Button type="button" className="bg-brand text-white hover:bg-brand-hover" disabled={saving} onClick={() => void submit()}>
+          <Button type="button" className="" disabled={saving} onClick={() => void submit()}>
             {saving ? tr("Registrando…") : tr("Registrar referido")}
           </Button>
         </DialogFooter>

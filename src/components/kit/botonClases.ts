@@ -11,6 +11,8 @@ import { cn } from '@/utils/Utils';
 export type VarianteBoton = 'primario' | 'secundario' | 'fantasma' | 'destructivo' | 'tinte';
 /** sm 32 · md 40 · lg 48 px. */
 export type TamanoBoton = 'sm' | 'md' | 'lg';
+/** Escalas verificadas en Figma; compatibilidad conserva los consumidores anteriores. */
+export type PatronBoton = 'compatibilidad' | 'button' | 'kbd';
 export type TemaKbd = 'claro' | 'oscuro' | 'marca';
 
 const BASE =
@@ -32,24 +34,40 @@ const TAMANO: Record<TamanoBoton, string> = {
   lg: 'h-12 gap-2 px-5 text-base',
 };
 
+const TAMANO_BUTTON: Record<TamanoBoton, string> = {
+  sm: 'h-8 gap-2 px-3 text-xs leading-4',
+  md: 'h-10 gap-2 px-4 text-sm leading-5',
+  lg: 'h-12 gap-2 px-5 text-sm leading-5',
+};
+
+const TAMANO_KBD: Record<TamanoBoton, string> = {
+  sm: 'h-8 gap-2 px-3 text-sm leading-5',
+  md: 'h-10 gap-2 px-4 text-sm leading-5',
+  lg: 'h-12 gap-2 px-5 text-base leading-[22px]',
+};
+
 /** Tamaño del icono según el botón. */
 export const TAMANO_ICONO: Record<TamanoBoton, string> = { sm: 'size-4', md: 'size-4', lg: 'size-5' };
 
 export function clasesBoton({
   variante = 'primario',
   tamano = 'md',
+  patron = 'compatibilidad',
   anchoCompleto,
   className,
 }: {
   variante?: VarianteBoton;
   tamano?: TamanoBoton;
+  /** Button 9:343 o KbdButton 237:76798; no cambia la escala por defecto. */
+  patron?: PatronBoton;
   anchoCompleto?: boolean;
   className?: string;
 } = {}): string {
   // Ancho completo también se encoge: con `shrink-0` de la base, un botón al 100 %
   // junto a otro («Volver» + «Continuar») medía 100 % + el vecino y desbordaba el
   // contenedor (en el móvil el diálogo de nueva organización quedaba corrido).
-  return cn(BASE, VARIANTE[variante], TAMANO[tamano], anchoCompleto && 'w-full min-w-0 shrink', className);
+  const escala = patron === 'button' ? TAMANO_BUTTON : patron === 'kbd' ? TAMANO_KBD : TAMANO;
+  return cn(BASE, VARIANTE[variante], escala[tamano], anchoCompleto && 'w-full min-w-0 shrink', className);
 }
 
 /** Tema del `Kbd` que va dentro de un botón: sobre color de marca o peligro, `marca`; si no, `claro`. */

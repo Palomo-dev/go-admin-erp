@@ -7,7 +7,7 @@ import {useRedText} from '@/components/crm/red/useRedText';
 import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/crm/red/RedButton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PhoneInput } from '@/components/ui/phone-input';
@@ -143,7 +143,7 @@ export function ConvertReferralDialog({ open, referral, onOpenChange, onConvert,
         </form>
         <DialogFooter className="gap-2 [&>button]:h-11 sm:[&>button]:h-9">
           <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>{tr("Cancelar")}</Button>
-          <Button type="button" className="bg-brand text-white hover:bg-brand-hover" disabled={saving} onClick={() => void submit()}>
+          <Button type="button" className="" disabled={saving} onClick={() => void submit()}>
             {saving ? tr("Convirtiendo…") : tr(useExisting ? "Vincular ficha" : "Crear lead")}
           </Button>
         </DialogFooter>

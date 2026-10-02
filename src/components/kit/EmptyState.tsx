@@ -34,6 +34,8 @@ export interface EmptyStateProps {
   icono?: LucideIcon;
   /** Acción principal. En `search` y `error` se arma sola con `onLimpiarFiltros` / `onReintentar`. */
   accion?: AccionEmptyState;
+  /** Opt-in al botón principal de Figma; omitir conserva el estilo de cada variante. */
+  accionPrimaria?: boolean;
   accionSecundaria?: AccionEmptyState;
   onLimpiarFiltros?: () => void;
   onReintentar?: () => void;
@@ -87,6 +89,7 @@ export function EmptyState({
   descripcion,
   icono,
   accion,
+  accionPrimaria,
   accionSecundaria,
   onLimpiarFiltros,
   onReintentar,
@@ -111,7 +114,7 @@ export function EmptyState({
     principal = { etiqueta: t('vacio.volverInicio'), href: '/app/inicio' };
   }
   // En «sin resultados» y «sin permiso» la acción es secundaria (contorno), como en Figma.
-  const principalEsPrimaria = variante === 'empty' || variante === 'sinSucursal';
+  const principalEsPrimaria = accionPrimaria ?? (variante === 'empty' || variante === 'sinSucursal');
 
   return (
     <div

@@ -12,7 +12,7 @@ import {useRedText} from '@/components/crm/red/useRedText';
 import { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, CircleOff, Plus, Trash2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/crm/red/RedButton';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from '@/components/ui/use-toast';
 import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
@@ -78,7 +78,7 @@ export function ReferralProgramsSheet({ open, programs, currency, canManage, onO
             <h3 className="text-sm font-semibold text-fg ">{programs.length}  {tr("programa")}{programs.length === 1 ? '' : 's'}</h3>
             {canManage && (
               <Button ref={newButtonRef} type="button" size="sm" variant={creating ? 'secondary' : 'outline'} onClick={() => { setEditing(null); setCreating(true); }}>
-                <Plus className="mr-1 h-4 w-4" aria-hidden="true" />  {tr("Nuevo programa")} </Button>
+                <Plus className="h-4 w-4" aria-hidden="true" />  {tr("Nuevo programa")} </Button>
             )}
           </div>
           {canManage && creating && (

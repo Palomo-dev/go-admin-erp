@@ -14,7 +14,7 @@ import { useAutomationText } from './useAutomationText';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, History, RefreshCw, Zap, Sparkles } from 'lucide-react';
 import { PageHeader, StatCard, useEsEscritorio } from '@/components/kit';
-import { Button } from '@/components/ui/button';
+import { KbdButton as Button } from '@/components/kit/KbdButton';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { RuleDeleteDialog } from './RuleDeleteDialog';
@@ -28,6 +28,8 @@ import { EMPTY_FILTERS, EXAMPLE_FORM, filterRules, type RuleFilters, type RuleFo
 import { RuleCard } from './RuleCard';
 import { RulesToolbar } from './RulesToolbar';
 import { RulesEmptyState } from './RulesEmptyState';
+import { KpiStrip } from '@/components/kit/KpiStrip';
+import { useInPageEditorNavigation } from '@/components/crm/acciones/useInPageEditorNavigation';
 import { RuleEditorSheet } from './RuleEditorSheet';
 import { RunsSheet } from './RunsSheet';
 import { useAutomationRules, type AutomationRuleView } from './useAutomationRules';
@@ -78,11 +80,21 @@ export function AutomatizacionesPage() {
 
   const shown = useMemo(() => filterRules(rules, filters), [rules, filters]);
 
+  const editorBusy = useRef(false);
+  const editorScope = useRef(organizationId); editorScope.current = organizationId;
+  useEffect(() => { editorBusy.current = false; }, [organizationId]);
+  const editorNavigation = useInPageEditorNavigation({ pathname: '/app/crm/automatizaciones', ready: !loading, canManage, scope: organizationId,
+    blocked: () => editorBusy.current,
+    onTarget: target => {
+      if (!target) { setEditorOpen(false); return; }
+      const rule = target === 'new' || target === 'example' ? null : rules.find(r => r.id === target);
+      if (rule === undefined) { setEditorOpen(false); return; }
+      setEditing(rule); setInitialForm(target === 'example' ? EXAMPLE_FORM : null); setEditorOpen(true);
+    },
+  });
   const openEditor = (rule: AutomationRuleView | null, form: RuleFormState | null = null) => {
     if (!canManage) return;
-    setEditing(rule);
-    setInitialForm(form);
-    setEditorOpen(true);
+    editorNavigation.open(rule?.id ?? (form ? 'example' : 'new'));
   };
 
   const onToggle = async (rule: AutomationRuleView) => {
@@ -134,25 +146,37 @@ export function AutomatizacionesPage() {
     }
   };
 
+  if (editorOpen && canManage) return <TooltipProvider delayDuration={300}><RuleEditorSheet
+          open={editorOpen && canManage}
+          rule={editing}
+          initialForm={initialForm}
+          lookups={lookups}
+          onOpenChange={open => { if (!open && organizationId === editorScope.current) editorNavigation.close(); }}
+          onBusyChange={busy => { if (organizationId === editorScope.current) editorBusy.current = busy; }}
+          onSave={save}
+          onBulkDryRun={bulkDryRun}
+          returnFocusFallback={() => newButtonRef.current}
+        /></TooltipProvider>;
+
   return (
     <TooltipProvider delayDuration={300}>
       <div className="space-y-5 bg-canvas p-4 sm:p-6">
         <PageHeader titulo={tr("Automatizaciones")} subtitulo={tr("Reglas cuando pasa X, si se cumple Y, haz Z sobre oportunidades, llamadas, correos y tareas")} icono={Zap} migas={[{ etiqueta: 'CRM', href: '/app/crm' },{ etiqueta: tr('Automatizaciones') }]} acciones={<div className="flex flex-wrap gap-2">
-            <Button type="button" variant="ghost" size="icon" aria-label={tr("Actualizar lista")} disabled={refreshing} onClick={() => void refresh()}>
+            <Button patron="button" type="button" variante="fantasma" className="size-10 px-0" aria-label={tr("Actualizar lista")} disabled={refreshing} onClick={() => void refresh()}>
               <RefreshCw strokeWidth={1.5} className={cn("h-4 w-4", refreshing && 'motion-safe:animate-spin')} aria-hidden="true" />
             </Button>
-            <Button type="button" variant="outline" onClick={() => setRunsTarget({ ruleId: null, ruleName: null })}>
+            <Button patron="button" type="button" variante="secundario" onClick={() => setRunsTarget({ ruleId: null, ruleName: null })}>
               <History strokeWidth={1.5} className="mr-1.5 h-4 w-4" aria-hidden="true" /> {tr("Historial")}</Button>
-            {canManage && <Button type="button" variant="outline" onClick={() => openEditor(null, EXAMPLE_FORM)}><Sparkles strokeWidth={1.5} className="mr-1.5 h-4 w-4" />{tr("Desde plantilla")}</Button>}
-            {canManage && <Button ref={newButtonRef} type="button" className="bg-brand text-white hover:bg-brand-deep" onClick={() => openEditor(null)}>
+            {canManage && <Button patron="button" type="button" variante="secundario" onClick={() => openEditor(null, EXAMPLE_FORM)}><Sparkles strokeWidth={1.5} className="mr-1.5 h-4 w-4" />{tr("Desde plantilla")}</Button>}
+            {canManage && <Button patron="button" ref={newButtonRef} type="button" onClick={() => openEditor(null)}>
               <Plus strokeWidth={1.5} className="mr-1.5 h-4 w-4" aria-hidden="true" /> {tr("Nueva regla")}</Button>}
           </div>} />
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <KpiStrip>
           <StatCard etiqueta={tr("Reglas activas")} valor={summary ? tr("{p0} de {p1}", { p0: summary.active_rules, p1: rules.length }) : '—'} cargando={loading} />
           <StatCard etiqueta={tr("Ejecuciones (7 días)")} valor={summary?.executed_7d ?? '—'} cargando={loading} />
           <StatCard etiqueta={tr("Omitidas (7 días)")} valor={summary?.skipped_7d ?? '—'} cargando={loading} />
           <StatCard etiqueta={tr("Con error (7 días)")} valor={summary?.failed_7d ?? '—'} cargando={loading} tono="peligro" onClick={() => setRunsTarget({ ruleId:null, ruleName:null })} />
-        </div>
+        </KpiStrip>
 
         {error && (
           <Alert variant="destructive">
@@ -212,16 +236,7 @@ export function AutomatizacionesPage() {
           </>
         )}
 
-        <RuleEditorSheet
-          open={editorOpen && canManage}
-          rule={editing}
-          initialForm={initialForm}
-          lookups={lookups}
-          onOpenChange={setEditorOpen}
-          onSave={save}
-          onBulkDryRun={bulkDryRun}
-          returnFocusFallback={() => newButtonRef.current}
-        />
+
 
         <BulkDryRunDialog
           open={dryRunTarget !== null && canManage}

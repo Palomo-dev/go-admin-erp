@@ -307,5 +307,21 @@
   "Ficha vinculada": "ficha_vinculada",
   "«{p0}» quedó vinculado al referido.": "ficha_vinculada_descripcion",
   "Vincular ficha": "vincular_ficha",
-  " · comisiones en varias monedas (sin sumar)": "comisiones_varias_monedas_sin_sumar"
+  " · comisiones en varias monedas (sin sumar)": "comisiones_varias_monedas_sin_sumar",
+  "Clientes que recomiendan a otros y la recompensa que se les debe": "referrals_subtitle",
+  "Todos los programas": "all_programs",
+  "Estado final": "final_status",
+  "Del nivel": "from_level",
+  "Propia": "custom_rate",
+  "Nivel": "level",
+  "Sin beneficios registrados": "no_benefits",
+  "Progreso al siguiente nivel": "next_level_progress",
+  "Nivel más alto": "highest_level",
+  "Sin niveles configurados": "no_levels",
+  "El nivel se actualiza al registrar un deal que cumpla ambos mínimos.": "level_progress_description",
+  "No hay un nivel superior configurado.": "no_next_level",
+  "Datos del partner": "partner_data",
+  "Estado: todos": "all_statuses",
+  "Partner no encontrado": "partner_not_found",
+  "Consultores, integradores y revendedores que traen deals.": "partners_subtitle"
 }

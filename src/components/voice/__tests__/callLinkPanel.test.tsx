@@ -1,6 +1,7 @@
 /** @jest-environment jsdom */
 /// <reference types="jest" />
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { renderConIdioma as render } from '@/test-utils/renderConIdioma';
 import { CallLinkPanel } from '../CallLinkPanel';
 import { fetchJson } from '@/lib/utils/fetchJson';
 

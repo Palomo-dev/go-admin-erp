@@ -73,16 +73,28 @@ const resultado = await esbuild.build({
   platform: 'node',
   format: 'esm',
   target: 'node20',
+  // Railway ejecuta Node, sin window. Excluye ramas exclusivamente de
+  // navegador (p. ej. la miga de Sentry) del cierre realmente ejecutable.
+  define: { window: 'undefined' },
+  minifySyntax: true,
   tsconfig: join(RAIZ, 'tsconfig.json'),
   metafile: true,
   logLevel: 'silent',
   plugins: [registrarExternos],
 });
 
+// onResolve también visita imports eliminados por tree shaking. El metafile
+// de salida conserva los que sí sobreviven para este runtime de Node.
+const usados = new Set(Object.values(resultado.metafile.outputs)
+  .flatMap((salida) => salida.imports)
+  .filter((entrada) => entrada.external)
+  .map((entrada) => nombrePaquete(entrada.path)));
+
 const salida = {
   archivosLocales: Object.keys(resultado.metafile.inputs).sort(),
   paquetes: Object.fromEntries(
-    [...paquetes.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([n, s]) => [n, [...s].sort()]),
+    [...paquetes.entries()].filter(([n]) => usados.has(n))
+      .sort(([a], [b]) => a.localeCompare(b)).map(([n, s]) => [n, [...s].sort()]),
   ),
   builtins: [...builtins].sort(),
   avisos: resultado.warnings.map((w) => w.text),

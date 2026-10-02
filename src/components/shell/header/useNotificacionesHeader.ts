@@ -57,7 +57,9 @@ function avisoANotificacion(fila: AvisoMiembroFila): NotificacionHeader {
     ? { task_id: fila.entity_id }
     : fila.entity_type === 'opportunity'
       ? { opportunity_id: fila.entity_id }
-      : {};
+      : fila.entity_type === 'customer'
+        ? { customer_id: fila.entity_id }
+        : {};
   return {
     id: fila.id,
     organization_id: fila.organization_id,

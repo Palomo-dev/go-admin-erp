@@ -47,7 +47,7 @@ export function getTypeTone(type: string): Tono {
   if (type === 'ar_overdue' || type === 'ap_overdue' || type === 'stock_out' || type === 'payment_failed' || type.endsWith('_cancelled') || type === 'no_show' || type === 'opportunity_lost') return 'peligro';
   if (type.startsWith('stock_') || type === 'trial_expiring' || type === 'ai_credits_low' || type === 'transfer_rejected') return 'advertencia';
   if (type.includes('invoice') || type.includes('payment') || type.startsWith('cash_') || type.startsWith('payroll')) return 'info';
-  if (type.startsWith('task_') || type.startsWith('opportunity_') || type.startsWith('reservation') || type.startsWith('calendar_')) return 'marca';
+  if (type.startsWith('task_') || type.startsWith('opportunity_') || type.startsWith('lead.') || type.startsWith('reservation') || type.startsWith('calendar_')) return 'marca';
   return 'neutro';
 }
 
@@ -66,7 +66,7 @@ export function getTypeIcon(type: string) {
   if (type.includes('opportunity') || type.includes('task_')) return ClipboardList;
   if (type.includes('stock') || type.includes('transfer')) return Package;
   if (type.includes('cash_')) return CreditCard;
-  if (type.includes('payroll') || type.includes('shift') || type.includes('member') || type.includes('role')) return UserPlus;
+  if (type.startsWith('lead.') || type.includes('payroll') || type.includes('shift') || type.includes('member') || type.includes('role')) return UserPlus;
   if (type.includes('calendar')) return Calendar;
   if (type.includes('subscription') || type.includes('trial') || type.includes('ai_credits')) return AlertTriangle;
   return Bell;
@@ -118,6 +118,9 @@ function getRedirect(notif: NotificationForSheet): { url: string; accion: string
     case 'oportunidad.ganada': case 'oportunidad.perdida': case 'oportunidad.contacto':
       if (p.href) return { url: p.href, accion: 'viewOpportunity' };
       return p.opportunity_id ? { url: `/app/crm/oportunidades/${p.opportunity_id}`, accion: 'viewOpportunity' } : { url: '/app/crm/oportunidades', accion: 'viewOpportunities' };
+    case 'lead.asignado':
+      if (p.href) return { url: p.href, accion: 'viewLead' };
+      return p.customer_id ? { url: `/app/crm/leads?lead=${p.customer_id}`, accion: 'viewLead' } : { url: '/app/crm/leads', accion: 'viewLead' };
     case 'stock_low': case 'stock_out': case 'stock_low_periodic':
       return p.product_id ? { url: `/app/inventario/productos/${p.product_id}`, accion: 'viewProduct' } : { url: '/app/inventario/stock', accion: 'viewStock' };
     case 'transfer_created': case 'transfer_approved': case 'transfer_rejected':

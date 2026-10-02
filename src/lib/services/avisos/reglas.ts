@@ -7,6 +7,7 @@
 export const EVENTOS_AVISO = [
   'tarea.asignada',
   'oportunidad.asignada',
+  'lead.asignado',
   'oportunidad.etapa',
   'tarea.completada',
   'tarea.atrasada',
@@ -39,6 +40,7 @@ const EVENTOS_ANTERIORES: readonly EventoAviso[] = [
 export const GRUPOS_AVISO = {
   'tarea.asignada': ['tarea.asignada'],
   'oportunidad.asignada': ['oportunidad.asignada'],
+  'lead.asignado': ['lead.asignado'],
   'oportunidad.etapa': ['oportunidad.etapa'],
   'tarea.completada': ['tarea.completada'],
   vence: ['tarea.atrasada', 'tarea.vence', 'oportunidad.vence', 'oportunidad.atrasada'],
@@ -55,6 +57,17 @@ export type ClaseVencimiento = 'vence' | 'atrasada';
 
 const CENTINELA_NINGUNO = 'ninguno';
 
+function esEventoNuevo(tipo: string): boolean {
+  return (EVENTOS_AVISO as readonly string[]).includes(tipo) && !(EVENTOS_ANTERIORES as readonly string[]).includes(tipo);
+}
+
+/** Lista guardada con la primera tanda completa y sin eventos posteriores: los avisos nuevos siguen prendidos. */
+function anteriorCompleta(lista: readonly string[]): boolean {
+  if (lista.includes(CENTINELA_NINGUNO)) return false;
+  if (lista.some(esEventoNuevo)) return false;
+  return EVENTOS_ANTERIORES.every((evento) => lista.includes(evento));
+}
+
 export function correoPermitido(
   allowed: string[] | null | undefined,
   evento: string,
@@ -63,7 +76,8 @@ export function correoPermitido(
   if (mute) return false;
   if (!allowed || allowed.length === 0) return true;
   if (allowed.includes(CENTINELA_NINGUNO)) return false;
-  return allowed.includes(evento);
+  if (allowed.includes(evento)) return true;
+  return esEventoNuevo(evento) && anteriorCompleta(allowed);
 }
 
 export function gruposActivos(allowed: string[] | null | undefined): Record<GrupoAviso, boolean> {
@@ -72,10 +86,7 @@ export function gruposActivos(allowed: string[] | null | undefined): Record<Grup
   const lista = allowed ?? [];
   const apagado = lista.includes(CENTINELA_NINGUNO);
   const todos = lista.length === 0;
-  const nuevosYaElegidos = lista.some(
-    (tipo) => (EVENTOS_AVISO as readonly string[]).includes(tipo) && !(EVENTOS_ANTERIORES as readonly string[]).includes(tipo),
-  );
-  const anteriorCompleta = !apagado && !nuevosYaElegidos && EVENTOS_ANTERIORES.every((evento) => lista.includes(evento));
+  const listaViejaCompleta = anteriorCompleta(lista);
   for (const clave of claves) {
     const eventos = GRUPOS_AVISO[clave];
     if (todos) {
@@ -86,7 +97,7 @@ export function gruposActivos(allowed: string[] | null | undefined): Record<Grup
       activos[clave] = true;
     } else if (eventos.some((evento) => lista.includes(evento))) {
       activos[clave] = false;
-    } else if (anteriorCompleta && eventos.every((evento) => !(EVENTOS_ANTERIORES as readonly string[]).includes(evento))) {
+    } else if (listaViejaCompleta && eventos.every((evento) => !(EVENTOS_ANTERIORES as readonly string[]).includes(evento))) {
       activos[clave] = true;
     } else {
       activos[clave] = false;

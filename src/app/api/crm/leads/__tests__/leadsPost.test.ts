@@ -93,6 +93,10 @@ function fakeSupabase() {
   return { from: (tabla: string) => make(tabla) };
 }
 
+jest.mock('@/lib/services/avisos/despacho.server', () => ({
+  programarDespachoAvisos: jest.fn(),
+}));
+
 jest.mock('@/lib/utils/orgContext', () => ({
   OrgContextError: RealOrgContextError, // la clase real: `readOrgBody` lanza la real y las rutas hacen `instanceof`
   getServerOrgContext: jest.fn(async () => ({

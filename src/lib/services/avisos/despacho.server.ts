@@ -48,7 +48,7 @@ interface FilaAviso {
   organization_id: number;
   recipient_user_id: string;
   event: EventoAviso;
-  entity_type: 'task' | 'opportunity' | 'cash_session' | 'digest' | 'stock';
+  entity_type: 'task' | 'opportunity' | 'cash_session' | 'digest' | 'stock' | 'customer';
   entity_id: string;
   title: string;
   body: string;

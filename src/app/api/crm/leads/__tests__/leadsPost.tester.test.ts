@@ -23,6 +23,10 @@ import {
 
 let db: FakeDb;
 
+jest.mock('@/lib/services/avisos/despacho.server', () => ({
+  programarDespachoAvisos: jest.fn(),
+}));
+
 jest.mock('@/lib/utils/orgContext', () => ({
   OrgContextError: RealOrgContextError,
   getServerOrgContext: jest.fn(async () => ({ organizationId: ORG, userId: U(200), supabase: fakeSupabase(db) })),

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { programarDespachoAvisos } from '@/lib/services/avisos/despacho.server';
 import { getServerOrgContext, hasOrgAdminOrPermission, OrgContextError } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import { createLeadWithCustomer, LEADS_CREATE_PERMISSION, type CreateLeadBody } from '@/lib/services/crm/leadCreateService';
@@ -21,6 +22,8 @@ import { LEAD_SOURCES } from '@/lib/crm/enums';
  *   descartados  `1` para verlos (por defecto se ocultan)
  *   creado_desde / creado_hasta  instantes ISO 8601 (la interfaz los calcula
  *                en la zona de la organización)
+ *   id           uuid: un solo lead de la organización, aunque no tenga origen
+ *                o esté descartado. Lo usa el enlace del aviso «lead asignado».
  *   page (1…), limit (≤ 100, por defecto 25)
  *
  * Las oportunidades 'lead' heredadas están en `GET /api/crm/leads/heredados`.
@@ -45,15 +48,21 @@ export async function GET(request: NextRequest) {
       .eq('lifecycle_stage', 'lead')
       .neq('status', 'merged');
 
-    const origen = sp.get('origen');
-    if (origen && (LEAD_SOURCES as readonly string[]).includes(origen)) q = q.eq('lead_source', origen);
-    else if (origen !== 'todos') q = q.not('lead_source', 'is', null);
+    const idPuntual = sp.get('id');
+    const busquedaPuntual = !!idPuntual && UUID_RE.test(idPuntual);
+    if (busquedaPuntual) q = q.eq('id', idPuntual);
 
-    const owner = sp.get('owner_id');
-    if (owner === 'ninguno') q = q.is('owner_id', null);
-    else if (owner && UUID_RE.test(owner)) q = q.eq('owner_id', owner);
+    if (!busquedaPuntual) {
+      const origen = sp.get('origen');
+      if (origen && (LEAD_SOURCES as readonly string[]).includes(origen)) q = q.eq('lead_source', origen);
+      else if (origen !== 'todos') q = q.not('lead_source', 'is', null);
 
-    if (sp.get('descartados') !== '1') q = q.is('lead_discarded_at', null);
+      const owner = sp.get('owner_id');
+      if (owner === 'ninguno') q = q.is('owner_id', null);
+      else if (owner && UUID_RE.test(owner)) q = q.eq('owner_id', owner);
+
+      if (sp.get('descartados') !== '1') q = q.is('lead_discarded_at', null);
+    }
 
     for (const [param, op] of [['creado_desde', 'gte'], ['creado_hasta', 'lt']] as const) {
       const v = sp.get(param);
@@ -134,6 +143,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: result.error, ...(result.extra ?? {}) }, { status: result.status });
     }
 
+    programarDespachoAvisos(ctx.organizationId);
     return NextResponse.json(
       {
         success: true,

@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Download, Plus, RefreshCw, Tags, TrendingUp, Upload, UserPlus, UserRoundPlus, XCircle } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
@@ -25,7 +25,7 @@ import { useCatalogosCrm } from '@/components/crm/acciones/useCatalogosCrm';
 import { useBranchOpcional } from '@/lib/context/BranchContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { MAX_LOTE_CALIFICAR } from '@/lib/services/crm/calificarLoteLogica';
-import { alternar, aLeadFila, csvLeads, estadoPantallaLeads, filtrosLeadsVacios, hayFiltrosLeads } from './leadsPantallaLogica';
+import { alternar, aLeadFila, csvLeads, estadoPantallaLeads, filtrosLeadsVacios, hayFiltrosLeads, idLeadDeQuery, type LeadApi } from './leadsPantallaLogica';
 import { useLeadsPantalla } from './useLeadsPantalla';
 import { LeadsKpis } from './LeadsKpis';
 import { LeadsFiltros, LeadsFiltrosChips } from './LeadsFiltros';
@@ -56,6 +56,9 @@ export function LeadsPantalla() {
   const [seleccion, setSeleccion] = useState<Set<string>>(new Set());
   const [modoSeleccion, setModoSeleccion] = useState(false);
   const [detalleId, setDetalleId] = useState<string | null>(null);
+  const [enlace, setEnlace] = useState<LeadApi | null>(null);
+  const pedidoEnlace = useRef(false);
+  const leadQuery = idLeadDeQuery(useSearchParams()?.get('lead'));
   const [calificarId, setCalificarId] = useState<string | null>(null);
   const [loteIds, setLoteIds] = useState<string[] | null>(null);
   const [asignarIds, setAsignarIds] = useState<string[] | null>(null);
@@ -75,8 +78,33 @@ export function LeadsPantalla() {
   const porId = (id: string | null) => (id ? { fila: filas.find((f) => f.id === id) ?? null, api: d.filas.find((f) => f.id === id) ?? null } : { fila: null, api: null });
   const estado = estadoPantallaLeads({ cargando: d.cargando, errorStatus: d.errorStatus, hayError: !!d.error, total: d.total, filtros: d.filtros });
   const total = d.total ?? 0;
-  const detalle = porId(detalleId);
+  const detalleLista = porId(detalleId);
+  const apiDetalle = detalleLista.api ?? (enlace && enlace.id === detalleId ? enlace : null);
+  const filaDetalle = detalleLista.fila ?? (apiDetalle ? aLeadFila(apiDetalle, cat.usuarios) : null);
   const aCalificar = porId(calificarId).fila;
+
+  useEffect(() => {
+    if (!leadQuery || pedidoEnlace.current) return;
+    if (d.filas.some((f) => f.id === leadQuery)) {
+      pedidoEnlace.current = true;
+      setDetalleId(leadQuery);
+      return;
+    }
+    if (d.cargando && d.filas.length === 0) return;
+    pedidoEnlace.current = true;
+    let vivo = true;
+    pedirCrm<LeadApi[]>(`/api/crm/leads?id=${leadQuery}`)
+      .then(({ data }) => {
+        const fila = (data ?? []).find((f) => f.id === leadQuery);
+        if (!vivo || !fila) return;
+        setEnlace(fila);
+        setDetalleId(fila.id);
+      })
+      .catch(() => undefined);
+    return () => {
+      vivo = false;
+    };
+  }, [leadQuery, d.filas, d.cargando]);
 
   const limpiarSeleccion = () => {
     setSeleccion(new Set());
@@ -277,10 +305,10 @@ export function LeadsPantalla() {
         />
       )}
 
-      {detalle.fila && detalle.api && (
+      {filaDetalle && apiDetalle && (
         <LeadDetalleHoja
-          lead={detalle.fila}
-          api={detalle.api}
+          lead={filaDetalle}
+          api={apiDetalle}
           onCerrar={() => setDetalleId(null)}
           onCalificar={setCalificarId}
           onAsignar={(id) => setAsignarIds([id])}

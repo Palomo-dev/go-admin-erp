@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { programarDespachoAvisos } from '@/lib/services/avisos/despacho.server';
 import { getServerOrgContext, hasOrgAdminOrPermission, OrgContextError, readOrgBody } from '@/lib/utils/orgContext';
 import { leerEntradaImportacion, maxFilasPorArchivo } from '@/lib/crm/importacionLeads/entrada';
 import { importarBloque, LEADS_CREATE_PERMISSION, validarImportacion } from '@/lib/services/crm/leadsImportService';
@@ -46,6 +47,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, ...r }, { status: 200 });
     }
     const r = await importarBloque(importCtx, entrada.filas, entrada.opciones);
+    programarDespachoAvisos(ctx.organizationId);
     return NextResponse.json({ success: true, ...r }, { status: 200 });
   } catch (error: unknown) {
     if (error instanceof OrgContextError) {

@@ -41,7 +41,9 @@ export const GRUPOS_AVISO = {
   'oportunidad.asignada': ['oportunidad.asignada'],
   'oportunidad.etapa': ['oportunidad.etapa'],
   'tarea.completada': ['tarea.completada'],
-  vence: ['tarea.atrasada', 'tarea.vence', 'oportunidad.vence', 'oportunidad.atrasada'],
+  // El vencimiento de una tarea no sale por correo: ni el día, ni atrasada, ni cerca.
+  // La campana sí. El correo de la tarea queda en la asignación y en la completada.
+  vence: ['oportunidad.vence', 'oportunidad.atrasada'],
   'oportunidad.cierre': ['oportunidad.ganada', 'oportunidad.perdida'],
   'oportunidad.contacto': ['oportunidad.contacto'],
   'caja.diferencia': ['caja.diferencia'],
@@ -55,11 +57,15 @@ export type ClaseVencimiento = 'vence' | 'atrasada';
 
 const CENTINELA_NINGUNO = 'ninguno';
 
+/** Una tarea que vence, ya venció o está por vencer no gasta correo. La asignación sí. */
+const EVENTOS_TAREA_SIN_CORREO = new Set<string>(['tarea.vence', 'tarea.atrasada']);
+
 export function correoPermitido(
   allowed: string[] | null | undefined,
   evento: string,
   mute: boolean,
 ): boolean {
+  if (EVENTOS_TAREA_SIN_CORREO.has(evento)) return false;
   if (mute) return false;
   if (!allowed || allowed.length === 0) return true;
   if (allowed.includes(CENTINELA_NINGUNO)) return false;

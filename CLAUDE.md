@@ -35,7 +35,7 @@ comentarios, commits y UI.
 ## Convenciones
 
 - Commits: `feat(GO-<id>): <desc>` · PR: `GO-<id> – <título>` · revisores
-  @santycano y @Palomo-dev.
+  @Palomo-dev.
 - Servicios en `src/lib/services/`, uno por dominio. Los que tocan varias tablas
   lo hacen en una RPC transaccional, no en N llamadas desde Node.
 - Clientes Supabase:

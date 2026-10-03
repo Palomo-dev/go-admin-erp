@@ -14,8 +14,10 @@ jest.mock('../../../electron/src/main/windows/mainWindow', () => ({
 }));
 jest.mock('../../../electron/src/main/windows/phoneWindow', () => ({
   getPhoneWindow: () => ({ webContents: mirror, setAlwaysOnTop: jest.fn(), minimize: jest.fn() }),
-  openPhoneWindow: jest.fn().mockResolvedValue(true), closePhoneWindow: jest.fn(),
+  openPhoneWindow: jest.fn().mockResolvedValue(true), closePhoneWindow: jest.fn(), resizePhoneWindow: jest.fn(),
 }));
+
+jest.mock('../../../electron/src/main/icon', () => ({ getIconImage: () => undefined }));
 
 import { clearPhoneController, getPhoneSnapshot, registerPhoneIpc, attachPhoneControllerLifecycle } from '../../../electron/src/main/phoneIpc';
 import { parsePhoneCommand, parsePhoneSnapshot, type PhoneSnapshot } from '../../../electron/src/shared/phoneProtocol';
@@ -55,7 +57,7 @@ it.each([['es', 'Llamada perdida'], ['en', 'Missed call'], ['fr', 'Appel manqué
   listeners['phone:missed'](ownEvent(), { ...notice, token: 'secreto' });
   expect(mockNotifications).toHaveLength(0);
   listeners['phone:missed'](ownEvent(), notice); listeners['phone:missed'](ownEvent(), notice);
-  expect(mockNotifications).toHaveLength(1); expect(mockNotifications[0].options.title).toBe(title);
+  expect(mockNotifications).toHaveLength(1); expect(mockNotifications[0].options.title).toBe(`${title} · ${notice.displayName}`);
   expect(getPhoneSnapshot()?.missed).toEqual(notice);
   mockNotifications[0].events.action({}, 1);
   expect(owner.send).toHaveBeenCalledWith('phone:missed-action', { id, scope, number: notice.number, action: 'create_lead' });
@@ -125,4 +127,25 @@ it('recargar la vista propietaria limpia identidad y estado del espejo', () => {
   callback({}, 'https://app.example/login', false, true);
   expect(getPhoneSnapshot()).toBeNull();
   expect(mirror.send).toHaveBeenLastCalledWith('phone:state', null);
+});
+
+it('notificación entrante nativa identifica el número y despacha respuesta sólo al owner actual', async () => {
+  jest.requireMock('electron').Notification.isSupported.mockReturnValue(true);
+  const incoming: PhoneSnapshot = { ...state, locale: 'es', callStatus: 'ringing', incoming: true, call: { number: '+573001234567', displayName: 'Contacto de prueba', connectedAt: null } };
+  listeners['phone:publish'](ownEvent(), incoming);
+  expect(mockNotifications).toHaveLength(1);
+  expect(mockNotifications[0].options).toMatchObject({ title: 'Llamada entrante · Contacto de prueba', body: '+573001234567', actions: [{ type: 'button', text: 'Contestar' }, { type: 'button', text: 'Rechazar' }] });
+  mockNotifications[0].events.action({}, 0);
+  const dispatched = owner.send.mock.calls.find(([event]) => event === 'phone:dispatch')?.[1];
+  expect(dispatched).toMatchObject({ scope, revision: 1, action: 'accept' });
+  listeners['phone:reply'](ownEvent(), { id: dispatched.id, scope, ok: true }); await Promise.resolve();
+  owner.send.mockClear(); listeners['phone:publish'](ownEvent(), { ...incoming, revision: 2, incoming: false });
+  mockNotifications[0].events.action({}, 1); expect(owner.send).not.toHaveBeenCalledWith('phone:dispatch', expect.anything());
+});
+it('contrato de nota y timbre rechaza datos extra y nunca expone tokens en la presentación', () => {
+  expect(parsePhoneCommand({ ...cmd, action: 'note', value: 'Nota en vivo' })).toMatchObject({ action: 'note' });
+  expect(parsePhoneCommand({ ...cmd, action: 'ringtone', value: true })).toMatchObject({ action: 'ringtone', value: true });
+  expect(() => parsePhoneCommand({ ...cmd, action: 'note', value: 'x'.repeat(10001) })).toThrow();
+  expect(() => parsePhoneCommand({ ...cmd, action: 'ringtone', value: 'true' })).toThrow();
+  expect(() => parsePhoneSnapshot({ ...state, presentation: { inputLabel: 'Micrófono', liveNote: '', canEditNote: true, token: 'secreto' } })).toThrow();
 });

@@ -1,5 +1,6 @@
 "use client";
 
+import { useLocaleIntl } from "@/components/kit/useIdiomaKit";
 import { useRedText } from "@/components/crm/red/useRedText";
 
 /**
@@ -11,7 +12,7 @@ import { useRedText } from "@/components/crm/red/useRedText";
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Award, Plus, RefreshCw, Download } from "lucide-react";
+import { Plus, RefreshCw, Download } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/crm/red/RedButton";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -27,7 +28,12 @@ import {
   DataTable,
   EmptyState,
 } from "@/components/kit";
-import { RedStats } from "../red/RedStats";
+import { sortPartnerDirectory } from "./partnerDirectorySort";
+import type { OrdenListado } from "@/components/kit/listadoUrl";
+import { PartnersStats } from "./PartnersStats";
+import { PartnersFilters } from "./PartnersFilters";
+import { PartnersDirectoryState } from "./PartnersDirectoryState";
+import { useTranslations } from "next-intl";
 import { PartnerTable } from "./PartnerTable";
 import { PartnerNetworkDeals } from "./PartnerNetworkDeals";
 import { filasACsv } from "@/lib/utils/csv";
@@ -43,14 +49,15 @@ import { PartnerDealList } from "./PartnerDealList";
 import { PartnerEditor } from "./PartnerEditor";
 import { TierEditor } from "./TierEditor";
 import { usePartners } from "./usePartners";
-import { SearchInput } from "@/components/kit/SearchInput";
 
 export function PartnersPage({
   partnerId,
   initialRegisterDeal = false,
 }: { partnerId?: string; initialRegisterDeal?: boolean } = {}) {
   const router = useRouter();
-  const { tr, locale } = useRedText();
+  const { tr } = useRedText();
+  const locale = useLocaleIntl();
+  const tv = useTranslations("crm.partnersVisual");
   const {
     partners,
     tiers,
@@ -74,10 +81,11 @@ export function PartnersPage({
     "partners" | "deals" | "commissions" | "levels"
   >("partners");
   const [page, setPage] = useState(1);
+  const [order, setOrder] = useState<OrdenListado | null>(null);
   const [size, setSize] = useState(25);
   const [statusFilter, setStatusFilter] = useState<
     "all" | "active" | "inactive"
-  >("all");
+  >("active");
   const [tierFilter, setTierFilter] = useState("all");
   const [filters, setFilters] = useState<PartnerListFilters>(
     EMPTY_PARTNER_FILTERS,
@@ -94,14 +102,18 @@ export function PartnersPage({
 
   const shown = useMemo(
     () =>
-      filterPartners(partners, filters)
-        .filter((p) => tierFilter === "all" || p.tier_id === tierFilter)
-        .filter(
-          (p) =>
-            statusFilter === "all" ||
-            p.is_active === (statusFilter === "active"),
-        ),
-    [partners, filters, tierFilter, statusFilter],
+      sortPartnerDirectory(
+        filterPartners(partners, filters)
+          .filter((p) => tierFilter === "all" || p.tier_id === tierFilter)
+          .filter(
+            (p) =>
+              statusFilter === "all" ||
+              p.is_active === (statusFilter === "active"),
+          ),
+        order,
+        locale,
+      ),
+    [partners, filters, tierFilter, statusFilter, order, locale],
   );
   useEffect(() => {
     setPage(1);
@@ -204,9 +216,7 @@ export function PartnersPage({
           { etiqueta: tr("Partners") },
         ]}
         cargando={loading || refreshing}
-        subtitulo={tr(
-          "Consultores, integradores y revendedores que traen deals.",
-        )}
+        subtitulo={tv("subtitulo")}
         movil={{
           accion: canManage ? (
             <Button
@@ -305,44 +315,41 @@ export function PartnersPage({
           />
         }
       />
-      <RedStats
-        kind="partners"
-        stats={stats}
-        loading={loading}
-        error={statsError}
-      />
-      {statsError && (
+      {tab === "partners" && (loading || (loaded && partners.length > 0)) && (
+        <PartnersStats stats={stats} loading={loading} />
+      )}
+      {statsError && loaded && partners.length > 0 && (
         <Alert variant="destructive">
           <AlertDescription>
             {tr("No se pudieron cargar las cifras")}
           </AlertDescription>
         </Alert>
       )}
-
-      {error &&
-        (!loaded ? (
-          <EmptyState
-            variante="error"
-            titulo={tr("No se pudieron cargar los partners")}
-            descripcion={error}
-            onReintentar={() => void refresh()}
+      {error && loaded && (
+        <Alert variant="destructive">
+          <AlertTitle>{tr("No se pudo actualizar la lista")}</AlertTitle>
+          <AlertDescription>
+            {error}. {tr("Se muestra la última lista conocida; pulsa")}{" "}
+            {tr("«Actualizar» para reintentar.")}
+          </AlertDescription>
+        </Alert>
+      )}
+      {tab === "partners" &&
+        (loading || (!loaded && !!error) || partners.length > 0) && (
+          <PartnersFilters
+            query={filters.q}
+            onQuery={(v) => setFilters({ ...filters, q: v })}
+            status={statusFilter}
+            onStatus={(v) => {
+              setFilters({ ...filters, onlyActive: false });
+              setStatusFilter(v);
+            }}
+            tier={tierFilter}
+            onTier={setTierFilter}
+            tiers={tiers}
+            disabled={loading || (!loaded && !!error)}
           />
-        ) : (
-          <Alert variant="destructive">
-            <AlertTitle>
-              {loaded
-                ? tr("No se pudo actualizar la lista")
-                : tr("No se pudieron cargar los partners")}
-            </AlertTitle>
-            <AlertDescription>
-              {error}.{" "}
-              {loaded
-                ? tr("Se muestra la última lista conocida; pulsa")
-                : tr("Pulsa")}{" "}
-              {tr("«Actualizar» para reintentar.")}
-            </AlertDescription>
-          </Alert>
-        ))}
+        )}
 
       <div
         role="tabpanel"
@@ -353,6 +360,9 @@ export function PartnersPage({
           <PartnerNetworkDeals
             partners={partners}
             commissionsOnly={tab === "commissions"}
+            tiers={tiers}
+            baseCurrency={stats?.base_currency ?? null}
+            onTiers={() => setTiersOpen(true)}
             canManage={canManage}
             loadDeals={loadDeals}
             transition={transitionDeal}
@@ -396,100 +406,16 @@ export function PartnersPage({
               {tr(canManage ? "Editar" : "Niveles")}
             </Button>
           </div>
-        ) : loading ? (
-          <div
-            className="space-y-4"
-            aria-busy="true"
-            aria-label={tr("Cargando partners")}
-          >
-            <Skeleton className="h-9 w-full max-w-md" />
-            <div className="overflow-hidden rounded-xl border border-line bg-surface">
-              <Skeleton className="h-10 w-full rounded-none" />
-              {[0, 1, 2, 3, 4, 5].map((i) => (
-                <div
-                  key={i}
-                  className="grid h-16 grid-cols-3 items-center gap-6 border-t border-line px-4"
-                >
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-4 w-2/3" />
-                  <Skeleton className="h-4 w-1/2" />
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : partners.length === 0 && (loaded || !error) ? (
-          <FadeIn className="mx-auto max-w-xl rounded-xl border border-line bg-surface p-8 text-center shadow-sm  ">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-subtle ">
-              <Award className="h-7 w-7 text-brand " aria-hidden="true" />
-            </div>
-            <h2 className="mt-4 text-lg font-semibold text-fg ">
-              {tr("Vende con quien ya vende")}
-            </h2>
-            <p className="mt-1 text-sm text-fg-secondary ">
-              {tr(
-                "Da de alta a un consultor o integrador, asígnale un tier y registra los deals que trae: la comisión se calcula sola y el tier sube con los resultados.",
-              )}
-            </p>
-            <Button
-              type="button"
-              className="mt-5 "
-              disabled={!canManage}
-              onClick={() => openEditor(null)}
-            >
-              <Plus className="h-4 w-4" aria-hidden="true" />{" "}
-              {tr("Crear el primer partner")}
-            </Button>
-          </FadeIn>
-        ) : partners.length === 0 ? null : (
+        ) : loading || (!loaded && !!error) || partners.length === 0 ? (
+          <PartnersDirectoryState
+            state={loading ? "loading" : !loaded && error ? "error" : "empty"}
+            canManage={canManage}
+            onCreate={() => openEditor(null)}
+            onTiers={() => setTiersOpen(true)}
+            onRetry={() => void refresh()}
+          />
+        ) : (
           <>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <div className="min-w-0 flex-1">
-                <SearchInput
-                  value={filters.q}
-                  onChange={(v) => setFilters({ ...filters, q: v })}
-                  onValueChange={(v) => setFilters({ ...filters, q: v })}
-                  placeholder={tr("Nombre, empresa, correo o tier")}
-                  id="partners-search"
-                />
-              </div>
-              <select
-                className="h-10 rounded-lg border border-line-strong bg-surface px-3 text-sm"
-                aria-label={tr("Estado")}
-                value={statusFilter}
-                onChange={(e) => {
-                  setFilters({ ...filters, onlyActive: false });
-                  setStatusFilter(e.target.value as typeof statusFilter);
-                }}
-              >
-                <option value="all">{tr("Estado: todos")}</option>
-                <option value="active">{tr("Activo")}</option>
-                <option value="inactive">{tr("Inactivo")}</option>
-              </select>
-              <select
-                className="h-10 rounded-lg border border-line-strong bg-surface px-3 text-sm"
-                aria-label={tr("Tier")}
-                value={tierFilter}
-                onChange={(e) => setTierFilter(e.target.value)}
-              >
-                <option value="all">{tr("Nivel: todos")}</option>
-                {tiers.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-              <p className="sr-only" aria-live="polite">
-                {shown.length === partners.length
-                  ? tr("{p0} partner{p1}", {
-                      p0: partners.length,
-                      p1: partners.length === 1 ? "" : "s",
-                    })
-                  : tr("{p0} de {p1} partners", {
-                      p0: shown.length,
-                      p1: partners.length,
-                    })}
-              </p>
-            </div>
             {shown.length === 0 ? (
               <FadeIn className="rounded-xl border border-dashed border-line-strong p-8 text-center ">
                 <p className="font-medium text-fg ">
@@ -510,6 +436,18 @@ export function PartnersPage({
               </FadeIn>
             ) : (
               <PartnerTable
+                tiers={tiers}
+                order={order}
+                onSort={(field) => {
+                  setOrder((previous) => ({
+                    campo: field,
+                    direccion:
+                      previous?.campo === field && previous.direccion === "asc"
+                        ? "desc"
+                        : "asc",
+                  }));
+                  setPage(1);
+                }}
                 rows={shown.slice((currentPage - 1) * size, currentPage * size)}
                 total={shown.length}
                 page={currentPage}

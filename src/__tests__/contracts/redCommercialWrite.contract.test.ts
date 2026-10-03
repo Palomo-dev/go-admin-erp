@@ -46,13 +46,23 @@ describe('red comercial: permiso canónico y preparación privada', () => {
     expect(db.writes).toEqual([]); permissions.add('admin.full_access');
     expect((await reward(req('/api/crm/referrals/x/reward', {}), params(U(22)))).status).toBe(200);
   });
-  it('datos de score, owner y comisión enviados por el navegador no sustituyen la preparación nativa', async () => {
+  it('el cliente conserva preparación nativa y el ajuste de comisión exige administración', async () => {
     permissions.add('crm.leads.create'); permissions.add('crm.opportunities.edit');
     const referral = await convert(req('/api/crm/referrals/x/convert', { lead_score: 100, owner_id: U(999), lead_source: 'manual' }), params(U(21)));
     expect(referral.status).toBe(201);
     const customer = db.tables.customers.at(-1)!; expect(customer.lead_source).toBe('referral'); expect(customer.lead_score).not.toBe(100); expect(customer.owner_id).not.toBe(U(999));
-    const deal = await register(req('/api/crm/partners/x/deals', { opportunity_id: U(30), deal_type: 'referral', commission_amount: 999999999, tier_id: U(62), commission_status: 'paid' }), params(U(71)));
-    expect(deal.status).toBe(201); expect(db.tables.partner_deals.at(-1)).toMatchObject({ commission_amount: 100000, commission_status: 'pending' });
+    const beforeDeals = structuredClone(db.tables.partner_deals);
+    const beforeWrites = db.writes.length;
+    service.mockClear();
+    const adjusted = await register(req('/api/crm/partners/x/deals', { opportunity_id: U(30), deal_type: 'referral', idempotency_key: U(900), commission_amount: 999999999, tier_id: U(62), commission_status: 'paid' }), params(U(71)));
+    expect(adjusted.status).toBe(403);
+    expect(service).not.toHaveBeenCalled();
+    expect(db.tables.partner_deals).toEqual(beforeDeals);
+    expect(db.writes).toHaveLength(beforeWrites);
+    const deal = await register(req('/api/crm/partners/x/deals', { opportunity_id: U(30), deal_type: 'referral', tier_id: U(62), commission_status: 'paid' }), params(U(71)));
+    expect(deal.status).toBe(201);
+    expect(db.tables.partner_deals.at(-1)).toMatchObject({ commission_amount: 100000, commission_status: 'pending' });
+    expect(db.tables.partners.find(p => p.id === U(71))!.tier_id).not.toBe(U(62));
   });
   it('fracaso tardío al promocionar no deja un deal pendiente', async () => {
     permissions.add('crm.opportunities.edit'); db.errors['partners:update'] = { code: 'XX000', message: 'private_database_detail' };

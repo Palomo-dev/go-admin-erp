@@ -2,21 +2,23 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { ArrowRightLeft, Phone, X } from 'lucide-react';
+import { ArrowLeft, ArrowRightLeft, Phone, X } from 'lucide-react';
 import { SegmentedControl, SearchInput, EmptyState } from '@/components/kit';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { fetchJson } from '@/lib/utils/fetchJson';
+import { cn } from '@/utils/Utils';
 import type { PhoneControlState, PhoneControlResult, PhoneTransferMode, PhoneTransferTarget } from '@/lib/services/crm/phoneConferenceTypes';
 
 interface Teammate { id: string; name: string; available: boolean; busy: boolean; mode: 'browser' | 'mobile' }
 export interface TransferPanelProps {
+  diseno?: 'heredado' | 'kit';
   state: PhoneControlState; onTransfer(target: PhoneTransferTarget, mode: PhoneTransferMode): Promise<PhoneControlResult>;
   onConfirm(): Promise<PhoneControlResult>; onCancel(): Promise<PhoneControlResult>; onClose(): void;
 }
 /** Mismo panel para dock y espejo. Las acciones siempre llegan al controlador. */
-export function TransferPanel({ state, onTransfer, onConfirm, onCancel, onClose }: TransferPanelProps) {
+export function TransferPanel({ state, onTransfer, onConfirm, onCancel, onClose, diseno = 'heredado' }: TransferPanelProps) {
   const t = useTranslations('phoneControl'); const searchRef = useRef<HTMLInputElement>(null); const running = useRef(false);
   const [query, setQuery] = useState(''); const [mode, setMode] = useState<PhoneTransferMode>('direct');
   const [team, setTeam] = useState<Teammate[]>([]); const [loading, setLoading] = useState(true);
@@ -47,9 +49,9 @@ export function TransferPanel({ state, onTransfer, onConfirm, onCancel, onClose 
     catch { setError(t('failed')); }
     finally { running.current = false; setPending(false); }
   };
-  return <section className="space-y-3 rounded-xl border border-line bg-surface p-3" aria-label={t('transferTitle')}>
-    <div className="flex items-center gap-2"><ArrowRightLeft size={16} strokeWidth={1.5} className="text-brand" /><h3 className="flex-1 text-sm font-semibold">{t('transferTitle')}</h3>
-      <Button variant="ghost" size="icon" className="h-8 w-8" disabled={locked || activeTransfer} aria-label={t('close')} onClick={onClose}><X size={16} /></Button></div>
+  return <section className={cn('space-y-3 rounded-xl border border-line bg-surface p-3', diseno === 'kit' && 'rounded-none border-0 p-0')} aria-label={t('transferTitle')}>
+    <div className="flex items-center gap-2">{diseno === 'kit' ? <Button variant="ghost" size="icon" className="size-6 text-fg-secondary" disabled={locked || activeTransfer} aria-label={t('close')} onClick={onClose}><ArrowLeft size={16} /></Button> : <ArrowRightLeft size={16} strokeWidth={1.5} className="text-brand" />}<h3 className="flex-1 text-sm font-semibold">{t('transferTitle')}</h3>
+      {diseno !== 'kit' && <Button variant="ghost" size="icon" className="h-8 w-8" disabled={locked || activeTransfer} aria-label={t('close')} onClick={onClose}><X size={16} /></Button>}</div>
     {error && <p role="alert" className="rounded-lg bg-danger-subtle p-2 text-xs text-danger-text">{error}</p>}
     {activeTransfer ? <>
       <p className="text-sm" role="status">{t(`transferStatus.${state.transfer!.status}`, { name: state.transfer!.toName })}</p>
@@ -58,7 +60,7 @@ export function TransferPanel({ state, onTransfer, onConfirm, onCancel, onClose 
     </> : <>
       <SegmentedControl valor={mode} onValorChange={setMode} etiqueta={t('transferMode')} anchoCompleto deshabilitado={locked}
         opciones={[{ valor: 'direct', etiqueta: t('direct') }, { valor: 'consult', etiqueta: t('consult') }]} />
-      <p className="text-xs text-fg-secondary">{t(mode === 'direct' ? 'directHint' : 'consultHint')}</p>
+      <p className={cn('text-xs text-fg-secondary', diseno === 'kit' && 'sr-only')}>{t(mode === 'direct' ? 'directHint' : 'consultHint')}</p>
       <fieldset disabled={locked}><SearchInput ref={searchRef} value={query} onChange={value => { setQuery(value); setSelected(null); }} onValueChange={value => { setQuery(value); setSelected(null); }}
         etiqueta={t('search')} placeholder={t('search')} atajo={false} pistaAtajo={false} debounceMs={0} /></fieldset>
       {external ? <div className="flex items-center gap-2 rounded-lg border border-brand bg-brand-tint p-3 text-sm"><Phone size={16} /><span className="font-mono">{query.trim()}</span></div>
@@ -69,10 +71,11 @@ export function TransferPanel({ state, onTransfer, onConfirm, onCancel, onClose 
                 {visible.map(member => <button key={member.id} type="button" disabled={locked || !member.available || member.busy} aria-pressed={member.id === selected}
                   className={`flex w-full items-center gap-3 rounded-lg border p-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50 ${member.id === selected ? 'border-brand bg-brand-tint' : 'border-transparent hover:bg-hover'}`}
                   onClick={() => setSelected(member.id)}><Avatar className="h-8 w-8"><AvatarFallback className="bg-brand-tint text-xs text-brand">{member.name.slice(0, 2).toUpperCase()}</AvatarFallback></Avatar>
-                  <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{member.name}</span><span className="block text-xs text-fg-secondary">{t(member.busy ? 'busy' : member.available ? 'available' : 'unavailable')}</span></span>
+                  <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{member.name}</span>{diseno !== 'kit' && <span className="block text-xs text-fg-secondary">{t(member.busy ? 'busy' : member.available ? 'available' : 'unavailable')}</span>}</span>
+                  {diseno === 'kit' && <span className={cn('rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-3', member.busy ? 'bg-warning-subtle text-warning-text' : member.available ? 'bg-success-subtle text-success-text' : 'bg-subtle text-fg-secondary')}>{t(member.busy ? 'busy' : member.available ? 'available' : 'unavailable')}</span>}
                 </button>)}
               </div>}
-      <Button disabled={locked || !target || !state.supported} className="w-full" onClick={() => { if (target) void run(() => onTransfer(target, mode)); }}><ArrowRightLeft size={16} className="mr-2" />{t(mode === 'direct' ? 'transfer' : 'startConsult')}</Button>
+      <Button disabled={locked || !target || !state.supported} className={cn('w-full', diseno === 'kit' && 'h-10 bg-brand-action text-fg-on-brand hover:bg-brand-action-hover')} onClick={() => { if (target) void run(() => onTransfer(target, mode)); }}><ArrowRightLeft size={16} className="mr-2" />{t(mode === 'direct' ? 'transfer' : 'startConsult')}{diseno === 'kit' && teammate ? ` · ${teammate.name}` : ''}</Button>
     </>}
   </section>;
 }

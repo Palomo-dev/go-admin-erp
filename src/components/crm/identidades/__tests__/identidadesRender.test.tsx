@@ -25,13 +25,14 @@ let loading: boolean;
 let total: number;
 let error: unknown;
 let forbidden: boolean;
+let scan: { id: string; status: string; processed: number; total: number } | null;
 jest.mock('../useIdentidadesData', () => ({
   useIdentidadesData: () => ({
     duplicates: {
       data: [],
       total,
       stats: { phone: 0, email: 0, document: 0 },
-      scan: null,
+      scan,
       canMerge: false,
       canUndo: false,
     },
@@ -71,6 +72,7 @@ beforeEach(() => {
   total = 0;
   error = null;
   forbidden = false;
+  scan = null;
   errors = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 });
 afterEach(() => {
@@ -100,6 +102,15 @@ describe.each(['es', 'en', 'fr', 'pt'] as IdiomaPrueba[])(
         else expect(screen.getAllByRole('button').length).toBeGreaterThan(0);
       },
     );
+    it('muestra el avance real del barrido y no inventa un porcentaje sin total', () => {
+      loading = true;
+      scan = { id: 'scan', status: 'running', processed: 31, total: 50 };
+      const { rerender } = renderConIdioma(<IdentidadesPage />, { idioma });
+      expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('62');
+      scan = { ...scan, total: 0 };
+      rerender(<IdentidadesPage />);
+      expect(screen.queryByRole('progressbar')).toBeNull();
+    });
     it('comparación selecciona principal y campos, y entrega un solo par', () => {
       const onFusionar = jest.fn();
       renderConIdioma(

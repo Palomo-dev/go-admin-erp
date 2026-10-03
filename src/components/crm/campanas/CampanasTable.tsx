@@ -50,7 +50,7 @@ export function CampanasTable({
               "resultado",
               "acciones",
             ].map((k) => (
-              <TableHead key={k}>{t(k)}</TableHead>
+              <TableHead key={k} className="h-9 bg-canvas px-4 text-xs font-medium leading-4 text-fg-secondary">{k === 'acciones' ? <span className="sr-only">{t(k)}</span> : t(k)}</TableHead>
             ))}
           </TableRow>
         </TableHeader>
@@ -63,33 +63,33 @@ export function CampanasTable({
                   ? Mail
                   : MessageSquare;
             return (
-              <TableRow key={`${c.source}-${c.id}`}>
+              <TableRow key={`${c.source}-${c.id}`} className="h-[59px] border-line hover:bg-hover [&>td]:px-4 [&>td]:py-3">
                 <TableCell>
                   <Link
-                    className="font-medium text-fg hover:text-link hover:underline focus-visible:ring-2 focus-visible:ring-brand"
+                    className="block min-w-48 whitespace-nowrap font-medium text-fg hover:text-link hover:underline focus-visible:ring-2 focus-visible:ring-brand"
                     href={hrefCampana(c)}
                   >
                     {c.name}
                   </Link>
                   {c.contentName && (
-                    <p className="mt-0.5 text-xs text-fg-muted">
+                    <p className="mt-0.5 truncate text-[13px] leading-[18px] text-fg-secondary">
                       {t(c.source === "voice" ? "agente" : "plantilla")} ·{" "}
                       {c.contentName}
                     </p>
                   )}
                 </TableCell>
                 <TableCell>
-                  <span className="flex items-center gap-2 whitespace-nowrap text-xs text-fg-secondary">
+                  <span className="flex items-center gap-2 whitespace-nowrap text-[13px] leading-[18px] text-fg-secondary">
                     <Icon className="size-4" aria-hidden="true" />
                     {t(`canales.${c.channel}`)}
                   </span>
                 </TableCell>
-                <TableCell className="text-xs text-fg-secondary">
+                <TableCell className="whitespace-nowrap text-[13px] leading-[18px] text-fg-secondary">
                   {c.segmentName || "—"}
                 </TableCell>
                 <TableCell>
                   <StatusBadge
-                    estado={c.status}
+                    estado={c.status} tipografia="figma"
                     etiqueta={t(`estados.${c.status}`)}
                   />
                   {c.stoppedReason && (
@@ -120,7 +120,7 @@ export function CampanasTable({
                       done: c.progress.done,
                       total: c.progress.total,
                     })}
-                    className="h-1.5"
+                    className="h-2 bg-subtle [&>div]:bg-brand"
                   />
                 </TableCell>
                 <TableCell className="min-w-40 text-xs text-fg-secondary">
@@ -164,15 +164,14 @@ export function CampanasTable({
                                 {t("detener")}
                               </DropdownMenuItem>
                             )}
-                          {c.source === "message" &&
-                            ["sending", "scheduled"].includes(c.status) && (
+                          {((c.source === "message" && ["sending", "scheduled"].includes(c.status)) || (c.source === "voice" && c.status === "running")) && (
                               <DropdownMenuItem
                                 onSelect={() => onAction(c, "pause")}
                               >
                                 {t("pausar")}
                               </DropdownMenuItem>
                             )}
-                          {c.source === "message" && c.status === "paused" && (
+                          {((c.source === "message" && c.status === "paused") || (c.source === "voice" && ["paused", "stopped"].includes(c.status))) && (
                             <DropdownMenuItem
                               onSelect={() => onAction(c, "resume")}
                             >

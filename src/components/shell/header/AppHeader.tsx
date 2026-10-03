@@ -25,6 +25,7 @@
  * evento `go-asistente:estado` (`useEstadoAsistente`), sin acoplar el header al
  * panel.
  */
+import { PhoneHeaderAction } from '@/components/voice/PhoneHeaderAction';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -140,6 +141,7 @@ export function AppHeader({
             sinPlan={compacto}
           />
           <div className="flex-1" />
+          {!minimo && <PhoneHeaderAction />}
           {/* SearchTrigger (Figma 54:2970): abre la paleta; también Ctrl K / ⌘ K y «/».
               Variant=button normalmente; icon-outline con el asistente abierto. */}
           {compacto ? (

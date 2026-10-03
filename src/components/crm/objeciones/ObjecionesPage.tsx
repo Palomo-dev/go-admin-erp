@@ -48,7 +48,7 @@ export function ObjecionesPage(){
  return <div className="p-4 lg:p-6">
   <PageHeader titulo={t('title')} subtitulo={t('subtitle')} icono={TriangleAlert} cargando={loading}
    migas={[{etiqueta:'CRM',href:'/app/crm'},{etiqueta:t('title')}]}
-   movil={{accion:<RowActionsMenu titulo={t('title')} acciones={[
+   movil={{subtitulo:inCall?'':undefined,accion:<RowActionsMenu titulo={t('title')} acciones={[
     {id:'new',etiqueta:t('new'),icono:Plus,onSelect:()=>setEditor({row:null}),deshabilitada:!canManage||loading||!!error},...menu,
    ]}/>}}
    acciones={<div className="flex gap-2">

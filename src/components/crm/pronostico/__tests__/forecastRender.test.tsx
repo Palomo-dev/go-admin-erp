@@ -6,6 +6,7 @@ import {
 } from "@/test-utils/renderConIdioma";
 import { ForecastDashboard } from "../ForecastDashboard";
 import { ForecastAdjustmentDialog } from "../ForecastAdjustmentDialog";
+import { calcularPronosticoMensual } from "@/lib/services/crm/forecastMensualLogica";
 import {
   calcularPronostico,
   type ForecastSnapshot,
@@ -22,7 +23,7 @@ jest.mock("@/lib/context/OrganizationTimezoneContext", () => ({
   useFormatDate: () => ({
     getToday: () => "2026-09-30",
     formatDateTime: () => "30/09/2026 12:00",
-    formatPlainDate: (v: string) => v,
+    formatPlain: (v: string) => v,
   }),
 }));
 let loading: boolean;
@@ -53,6 +54,8 @@ const s: ForecastSnapshot = {
 };
 const response = (): ForecastResponse => ({
   ...calcularPronostico(s),
+  monthly: calcularPronosticoMensual(s),
+  currentUserId: "u",
   moneda: contextoMoneda("USD"),
   sellers: s.users,
   teams: [],

@@ -37,7 +37,7 @@ export interface ChannelMeta {
 export const CHANNEL_META: Record<string, ChannelMeta> = {
   email: {
     value: 'email',
-    label: 'Email',
+    label: 'Correo',
     description: 'Envía un correo al cliente',
     icon: Mail,
     tone: 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-100',

@@ -1,6 +1,7 @@
-'use client';
+"use client";
 
-import {useRedText} from '@/components/crm/red/useRedText';
+import { localeIntl } from "@/components/kit/idioma";
+import { useRedText } from "@/components/crm/red/useRedText";
 
 /**
  * Programas de referidos en hoja lateral: lista (activo/inactivo con icono +
@@ -9,17 +10,27 @@ import {useRedText} from '@/components/crm/red/useRedText';
  * tarjeta de configuración).
  */
 
-import { useEffect, useRef, useState } from 'react';
-import { CheckCircle2, CircleOff, Plus, Trash2 } from 'lucide-react';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Button } from '@/components/crm/red/RedButton';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { toast } from '@/components/ui/use-toast';
-import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
-import type { ReferralProgram } from '@/lib/services/crm/referralsService';
-import { describeReward } from '@/lib/services/crm/referralReward';
-import { cn } from '@/utils/Utils';
-import { ReferralProgramForm, type ProgramFormPayload } from './ReferralProgramForm';
+import { useEffect, useRef, useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Button } from "@/components/crm/red/RedButton";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { toast } from "@/components/ui/use-toast";
+import { useReturnFocus } from "@/lib/hooks/useReturnFocus";
+import type { ReferralProgram } from "@/lib/services/crm/referralsService";
+import { describeReward } from "@/lib/services/crm/referralReward";
+import { cn } from "@/utils/Utils";
+import { StatusBadge, RowActionsMenu } from "@/components/kit";
+import {
+  ReferralProgramForm,
+  type ProgramFormPayload,
+} from "./ReferralProgramForm";
 
 interface Props {
   open: boolean;
@@ -27,20 +38,38 @@ interface Props {
   currency: string | null;
   /** F12-misc: `can_manage` del GET de programas (misma función que partners); un Empleado solo lee. */
   canManage: boolean;
+  referralCounts?: Record<string, number>;
   onOpenChange: (open: boolean) => void;
   onSave: (payload: ProgramFormPayload, id?: string) => Promise<unknown>;
   onDelete: (id: string) => Promise<void>;
   returnFocusFallback: () => HTMLElement | null;
 }
 
-export function ReferralProgramsSheet({ open, programs, currency, canManage, onOpenChange, onSave, onDelete, returnFocusFallback }: Props) {
-  const {tr, locale} = useRedText();
+export function ReferralProgramsSheet({
+  open,
+  programs,
+  currency,
+  canManage,
+  referralCounts = {},
+  onOpenChange,
+  onSave,
+  onDelete,
+  returnFocusFallback,
+}: Props) {
+  const { tr, locale: language } = useRedText();
+  const locale = localeIntl(language);
+  const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState<ReferralProgram | null>(null);
   const [creating, setCreating] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<ReferralProgram | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ReferralProgram | null>(
+    null,
+  );
   const newButtonRef = useRef<HTMLButtonElement>(null);
   const onCloseAutoFocus = useReturnFocus(open, returnFocusFallback);
-  const onDeleteClose = useReturnFocus(deleteTarget !== null, () => newButtonRef.current);
+  const onDeleteClose = useReturnFocus(
+    deleteTarget !== null,
+    () => newButtonRef.current,
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -50,7 +79,10 @@ export function ReferralProgramsSheet({ open, programs, currency, canManage, onO
 
   const save = async (payload: ProgramFormPayload, id?: string) => {
     await onSave(payload, id);
-    toast({ title: id ? tr("Programa actualizado") : tr("Programa creado"), description: `«${payload.name}»${payload.is_active ? '' : ' (inactivo)'}` });
+    toast({
+      title: id ? tr("Programa actualizado") : tr("Programa creado"),
+      description: `«${payload.name}»${payload.is_active ? "" : " (inactivo)"}`,
+    });
     setEditing(null);
     setCreating(false);
   };
@@ -59,75 +91,183 @@ export function ReferralProgramsSheet({ open, programs, currency, canManage, onO
     if (!deleteTarget) return;
     try {
       await onDelete(deleteTarget.id);
-      toast({ title: tr("«{p0}» eliminado", {p0: deleteTarget.name}) });
+      toast({ title: tr("«{p0}» eliminado", { p0: deleteTarget.name }) });
       if (editing?.id === deleteTarget.id) setEditing(null);
     } catch (err) {
-      toast({ title: tr("No se pudo eliminar"), description: err instanceof Error ? err.message : tr("Error desconocido"), variant: 'destructive' });
+      toast({
+        title: tr("No se pudo eliminar"),
+        description:
+          err instanceof Error ? err.message : tr("Error desconocido"),
+        variant: "destructive",
+      });
     }
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" onCloseAutoFocus={onCloseAutoFocus} className="flex w-full flex-col gap-0 overflow-y-auto bg-subtle p-0  sm:max-w-xl">
-        <SheetHeader className="text-left border-b border-line bg-surface px-6 pr-8 py-4  ">
-          <SheetTitle className="text-fg ">{tr("Programas de referidos")}</SheetTitle>
-          <SheetDescription className="text-fg-secondary ">{tr("Qué recompensa se da, a quién, y si el programa está activo.")}</SheetDescription>
+    <Sheet open={open} onOpenChange={(o) => !saving && onOpenChange(o)}>
+      <SheetContent
+        side="right"
+        onCloseAutoFocus={onCloseAutoFocus}
+        overlayClassName="bg-black/40 backdrop-blur-none"
+        className="flex w-full flex-col gap-0 overflow-y-auto bg-surface p-0 sm:max-w-[520px]"
+      >
+        <SheetHeader className="text-left border-b border-transparent bg-surface px-6 pr-8 py-4 pt-6 pb-4">
+          <SheetTitle className="text-lg leading-[25px] text-fg">
+            {tr("Programas de referidos")}
+          </SheetTitle>
+          <SheetDescription className="max-w-[400px] text-fg-secondary">
+            {tr("Qué recompensa se da, a quién, y si el programa está activo.")}
+          </SheetDescription>
         </SheetHeader>
-        <div className="space-y-4 px-6 py-4">
+        <div className="flex flex-1 flex-col gap-4 px-6 pb-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-fg ">{programs.length}  {tr("programa")}{programs.length === 1 ? '' : 's'}</h3>
+            <h3 className="text-sm font-semibold text-fg ">
+              {programs.length} {tr("programa")}
+              {programs.length === 1 ? "" : "s"}
+            </h3>
             {canManage && (
-              <Button ref={newButtonRef} type="button" size="sm" variant={creating ? 'secondary' : 'outline'} onClick={() => { setEditing(null); setCreating(true); }}>
-                <Plus className="h-4 w-4" aria-hidden="true" />  {tr("Nuevo programa")} </Button>
+              <Button
+                ref={newButtonRef}
+                type="button"
+                size="sm"
+                variant={creating ? "secondary" : "outline"}
+                disabled={saving}
+                onClick={() => {
+                  setEditing(null);
+                  setCreating(true);
+                }}
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />{" "}
+                {tr("Nuevo programa")}{" "}
+              </Button>
             )}
           </div>
           {canManage && creating && (
-            <section aria-label={tr("Nuevo programa")} className="rounded-xl border border-blue-200 bg-surface p-4 dark:border-blue-900 ">
-              <ReferralProgramForm program={null} currency={currency} idPrefix="program-new" onSave={save} onCancel={() => setCreating(false)} />
+            <section
+              aria-label={tr("Nuevo programa")}
+              className="flex flex-1 flex-col pt-4"
+            >
+              <ReferralProgramForm
+                program={null}
+                currency={currency}
+                diseno="kit"
+                onSavingChange={setSaving}
+                idPrefix="program-new"
+                onSave={save}
+                onCancel={() => setCreating(false)}
+              />
             </section>
           )}
-          <ul className="space-y-2" aria-label={tr("Programas")}>
+          <ul className="space-y-4" aria-label={tr("Programas")}>
             {programs.map((p) => {
-              const reward = describeReward(p, currency, {locale, translate: tr});
+              const reward = describeReward(p, currency, {
+                locale,
+                translate: tr,
+              });
               const isEditing = editing?.id === p.id;
-              return (
-                <li key={p.id} className={cn('rounded-xl border bg-surface p-4 ', isEditing ? 'border-blue-300 dark:border-blue-800' : 'border-line ')}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-fg ">{p.name}</p>
-                      <p className="text-xs text-fg-secondary ">{reward?.summary}</p>
-                      <p className={cn('mt-1 inline-flex items-center gap-1 text-xs font-medium', p.is_active ? 'text-emerald-800 dark:text-emerald-200' : 'text-fg-secondary ')}>
-                        {p.is_active ? <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> : <CircleOff className="h-3.5 w-3.5" aria-hidden="true" />}
-                        {p.is_active ? tr("Activo") : tr("Inactivo")}
-                      </p>
-                    </div>
-                    {/* F12-misc: PATCH/DELETE de programa exige admin/manager; a un Empleado los botones solo le darían un 403. */}
-                    {canManage && (
-                      <div className="flex shrink-0 gap-1">
-                        <Button type="button" size="sm" variant={isEditing ? 'secondary' : 'outline'} aria-expanded={isEditing} onClick={() => { setCreating(false); setEditing(isEditing ? null : p); }}>
-                          {isEditing ? tr("Cerrar") : tr("Editar")}
-                        </Button>
-                        <Button type="button" size="icon" variant="ghost" aria-label={tr("Eliminar programa {p0}", {p0: p.name})} className="text-red-700 hover:text-red-800 dark:text-red-300" onClick={() => setDeleteTarget(p)}>
-                          <Trash2 className="h-4 w-4" aria-hidden="true" />
-                        </Button>
-                      </div>
-                    )}
+              const content = (
+                <>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-fg">
+                      {p.name}
+                    </p>
+                    <p className="mt-0.5 truncate text-sm text-fg-secondary">
+                      {reward?.summary}
+                    </p>
                   </div>
-                  {canManage && isEditing && (
-                    <div className="mt-4 border-t border-line pt-4 ">
-                      <ReferralProgramForm program={p} currency={currency} idPrefix={`program-${p.id}`} onSave={save} onCancel={() => setEditing(null)} />
+                  <span className="shrink-0 text-xs text-fg-secondary">
+                    {referralCounts[p.id] ?? 0} {tr("referidos")}
+                  </span>
+                  <StatusBadge
+                    estado={p.is_active ? "active" : "inactive"}
+                    etiqueta={tr(p.is_active ? "Activo" : "Inactivo")}
+                    tipografia="figma"
+                    apariencia={p.is_active ? "contorno" : "suave"}
+                  />
+                </>
+              );
+              return (
+                <li
+                  key={p.id}
+                  className={cn(
+                    "relative rounded-lg border",
+                    isEditing
+                      ? "border-line-brand bg-brand-tint"
+                      : "border-line bg-surface",
+                  )}
+                >
+                  {canManage ? (
+                    <button
+                      type="button"
+                      aria-label={tr("Editar {p0}", { p0: p.name })}
+                      aria-expanded={isEditing}
+                      disabled={saving}
+                      onClick={() => {
+                        setCreating(false);
+                        setEditing(isEditing ? null : p);
+                      }}
+                      className="flex h-[66px] w-full items-center gap-3 rounded-lg px-3.5 pr-9 text-left outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    >
+                      {content}
+                    </button>
+                  ) : (
+                    <div className="flex h-[66px] items-center gap-3 px-3.5">
+                      {content}
+                    </div>
+                  )}
+                  {canManage && (
+                    <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                      <RowActionsMenu
+                        titulo={p.name}
+                        acciones={[
+                          {
+                            id: "delete",
+                            etiqueta: tr("Eliminar programa {p0}", {
+                              p0: p.name,
+                            }),
+                            icono: Trash2,
+                            destructiva: true,
+                            deshabilitada: saving,
+                            onSelect: () => setDeleteTarget(p),
+                          },
+                        ]}
+                      />
                     </div>
                   )}
                 </li>
               );
             })}
           </ul>
+          {canManage && editing && (
+            <section
+              className="flex flex-1 flex-col gap-4 pt-4"
+              aria-label={`${tr("Editar")} ${editing.name}`}
+            >
+              <h3 className="text-base font-semibold text-fg">
+                {tr("Editar")} «{editing.name}»
+              </h3>
+              <ReferralProgramForm
+                program={editing}
+                currency={currency}
+                diseno="kit"
+                onSavingChange={setSaving}
+                idPrefix={`program-${editing.id}`}
+                onSave={save}
+                onCancel={() => setEditing(null)}
+              />
+            </section>
+          )}
         </div>
         <ConfirmDialog
           open={deleteTarget !== null}
-          onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}
+          onOpenChange={(o) => {
+            if (!o) setDeleteTarget(null);
+          }}
           title={tr("Eliminar programa")}
-          description={tr("Se eliminará «{p0}». Los referidos que ya lo tenían quedan sin programa (y sin recompensa que registrar). Esta acción no se puede deshacer.", {p0: deleteTarget?.name ?? ''})}
+          description={tr(
+            "Se eliminará «{p0}». Los referidos que ya lo tenían quedan sin programa (y sin recompensa que registrar). Esta acción no se puede deshacer.",
+            { p0: deleteTarget?.name ?? "" },
+          )}
           confirmLabel={tr("Eliminar")}
           variant="destructive"
           onConfirm={remove}

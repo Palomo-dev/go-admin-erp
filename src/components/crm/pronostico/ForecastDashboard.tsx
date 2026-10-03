@@ -1,13 +1,14 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Download, History, RefreshCw, TrendingUp } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { moduloPorCodigo } from "@/lib/navigation/catalog";
+import { useNombresNav } from "@/lib/navigation/useNombresNav";
+import { TrendingUp } from "lucide-react";
 import { PageHeader } from "@/components/kit/PageHeader";
-import { EmptyState } from "@/components/kit/EmptyState";
 import { Dialogo } from "@/components/kit/Dialogo";
 import { DialogoMotivo } from "@/components/kit/DialogoMotivo";
-import { clasesBoton } from "@/components/kit/botonClases";
-import { Skeleton } from "@/components/ui/skeleton";
+
 import { useOrganization } from "@/lib/hooks/useOrganization";
 import { useFormatDate } from "@/lib/context/OrganizationTimezoneContext";
 import {
@@ -15,32 +16,38 @@ import {
   type ForecastCategory,
 } from "@/lib/services/crm/forecastLogica";
 import { pedirCrm, ErrorApiCrm } from "@/components/crm/acciones/apiCrm";
-import { filasACsv } from "@/lib/utils/csv";
+import { formatMoneda } from "@/lib/utils/moneda";
 import { useForecastData } from "./useForecastData";
 import { ForecastFilters } from "./ForecastFilters";
-import {
-  ForecastSellers,
-  ForecastOpportunities,
-  type ForecastRow,
-} from "./ForecastTables";
-import { ForecastSummary } from "./ForecastSummary";
+import type { ForecastRow } from "./ForecastTables";
 import { ForecastAdjustmentDialog } from "./ForecastAdjustmentDialog";
 import { ForecastHistory } from "./ForecastHistory";
+import { ForecastBody } from "./ForecastBody";
+import { ForecastHeaderActions, ForecastMenu } from "./ForecastActions";
 interface ForecastDashboardProps {
   currency: string | null;
+  onAnalytics?: () => void;
 }
-function ForecastContent() {
+function ForecastContent({ onAnalytics }: { onAnalytics?: () => void }) {
   const t = useTranslations("crm.pronostico");
+  const tNav = useTranslations("nav");
+  const navNames = useNombresNav();
+  const pathname = usePathname();
+  const navModule = moduloPorCodigo("crm");
+  const navPage = navModule?.paginas.find((page) => page.href === pathname);
   const { getToday } = useFormatDate(null);
   const [period, setPeriod] = useState(() => trimestreDelDia(getToday()));
   const [team, setTeam] = useState("");
   const [seller, setSeller] = useState("");
+  const [view, setView] = useState<"sellers" | "months">("sellers");
+  const [mobile, setMobile] = useState(false);
   const [page, setPage] = useState(1);
   const [revision, setRevision] = useState(0);
   const [adjust, setAdjust] = useState<ForecastRow | null>(null);
   const [history, setHistory] = useState(false);
   const [undo, setUndo] = useState<{ id: string; user: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const actionLatch = useRef(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const params = new URLSearchParams({
     period,
@@ -53,7 +60,38 @@ function ForecastContent() {
     revision,
   );
   const refresh = () => setRevision((n) => n + 1);
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 1023px)");
+    const update = () => setMobile(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  useEffect(() => {
+    if (mobile && data?.canViewAll && data.currentUserId && !seller) {
+      setSeller(data.currentUserId);
+      setPage(1);
+    }
+  }, [mobile, data, seller]);
+  const periodParts = /^(\d{4})-Q([1-4])$/.exec(period);
+  const periodLabel = periodParts
+    ? t("trimestreEtiqueta", {
+        n: Number(periodParts[2]),
+        year: periodParts[1],
+      })
+    : period;
+  const selectedSeller = data?.sellers.find((row) => row.id === seller);
+  const selectedName = [selectedSeller?.first_name, selectedSeller?.last_name]
+    .filter(Boolean)
+    .join(" ");
+  const waitingForPersonal = mobile && data?.canViewAll && !seller;
+  const metadata =
+    selectedName && data
+      ? `${periodLabel} · ${t("cuota")} ${formatMoneda(data.summary.quota.total, data.moneda)} · ${t("compromiso")} ${formatMoneda(data.summary.commit.total, data.moneda)}`
+      : periodLabel;
   const mutate = async (operation: () => Promise<unknown>) => {
+    if (actionLatch.current) return;
+    actionLatch.current = true;
     setBusy(true);
     setActionError(null);
     try {
@@ -74,6 +112,7 @@ function ForecastContent() {
         ),
       );
     } finally {
+      actionLatch.current = false;
       setBusy(false);
     }
   };
@@ -88,74 +127,45 @@ function ForecastContent() {
         cuerpo: { category, expected_updated_at: updatedAt },
       }),
     );
-  const exportData = () => {
-    if (!data) return;
-    const csv = filasACsv(
-      [
-        t("vendedor"),
-        t("cuota"),
-        t("ganado"),
-        t("compromiso"),
-        t("mejorCaso"),
-        t("ponderado"),
-        t("moneda"),
-      ],
-      data.rows.map((r) => [
-        [r.name?.first_name, r.name?.last_name].filter(Boolean).join(" ") ||
-          t("sinVendedor"),
-        r.quota.total,
-        r.won.total,
-        r.commit.total,
-        r.bestCase.total,
-        r.weighted.total,
-        data.moneda.code,
-      ]),
-    );
-    const url = URL.createObjectURL(
-      new Blob([csv], { type: "text/csv;charset=utf-8" }),
-    );
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `forecast-${period}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+  const actionProps = {
+    data,
+    loading,
+    busy,
+    period,
+    refresh,
+    setPeriod,
+    setPage,
+    onHistory: () => setHistory(true),
+    onAnalytics,
   };
-  const actions = (
-    <>
-      <button
-        className={clasesBoton({ variante: "secundario" })}
-        onClick={() => setHistory(true)}
-        disabled={!data}
-      >
-        <History className="size-4" aria-hidden="true" />
-        {t("historial")}
-      </button>
-      <button
-        className={clasesBoton({ variante: "secundario" })}
-        onClick={exportData}
-        disabled={!data || loading}
-      >
-        <Download className="size-4" aria-hidden="true" />
-        {t("exportar")}
-      </button>
-      <button
-        className={clasesBoton({ variante: "fantasma" })}
-        onClick={refresh}
-        disabled={loading}
-        aria-label={t("actualizar")}
-      >
-        <RefreshCw className="size-4" aria-hidden="true" />
-      </button>
-    </>
-  );
   return (
-    <div className="space-y-5">
+    <div className="flex flex-col gap-4">
       <PageHeader
-        titulo={t("titulo")}
-        subtitulo={period}
+        className="contents lg:flex"
+        migas={
+          navModule && navPage
+            ? [
+                {
+                  etiqueta: tNav(navModule.etiqueta),
+                  href: navModule.rutas[0],
+                },
+                { etiqueta: navNames.pagina(navPage) },
+              ]
+            : undefined
+        }
+        titulo={
+          selectedName
+            ? t("tituloVendedor", { nombre: selectedName })
+            : t("titulo")
+        }
+        subtitulo={metadata}
         icono={TrendingUp}
-        acciones={actions}
-        debajo={<div className="flex flex-wrap gap-2 lg:hidden">{actions}</div>}
+        acciones={<ForecastHeaderActions {...actionProps} />}
+        movil={{
+          titulo: t("miPronostico"),
+          subtitulo: "",
+          accion: <ForecastMenu {...actionProps} />,
+        }}
       />
       <ForecastFilters
         data={data}
@@ -167,6 +177,8 @@ function ForecastContent() {
         setTeam={setTeam}
         setSeller={setSeller}
         setPage={setPage}
+        view={view}
+        onView={setView}
       />
       {actionError && (
         <p
@@ -176,46 +188,30 @@ function ForecastContent() {
           {actionError}
         </p>
       )}
-      {error ? (
-        <EmptyState
-          variante={forbidden ? "forbidden" : "error"}
-          titulo={t(forbidden ? "sinPermiso" : "error")}
-          onReintentar={refresh}
-        />
-      ) : (
-        <>
-          <ForecastSummary data={data} loading={loading} />
-          {loading ? (
-            <Skeleton className="h-64" />
-          ) : (
-            data &&
-            (seller || !data.canViewAll ? (
-              <ForecastOpportunities
-                data={data}
-                page={page}
-                onPage={setPage}
-                onCategory={category}
-                busy={busy}
-              />
-            ) : (
-              <ForecastSellers
-                data={data}
-                onSeller={(id) => {
-                  setSeller(id);
-                  setPage(1);
-                }}
-                onAdjust={setAdjust}
-              />
-            ))
-          )}
-        </>
-      )}
+      <ForecastBody
+        data={data}
+        loading={loading}
+        error={error}
+        forbidden={forbidden}
+        refresh={refresh}
+        busy={busy}
+        seller={seller}
+        view={view}
+        page={page}
+        setPage={setPage}
+        setSeller={setSeller}
+        category={category}
+        setAdjust={setAdjust}
+        periodLabel={periodLabel}
+        waitingForPersonal={Boolean(waitingForPersonal)}
+      />
       {adjust && data && (
         <ForecastAdjustmentDialog
           key={adjust.userId}
           row={adjust}
           moneda={data.moneda}
-          period={period}
+          period={periodLabel}
+          error={actionError}
           busy={busy}
           onClose={() => setAdjust(null)}
           onSave={(values) =>
@@ -282,8 +278,16 @@ function ForecastContent() {
     </div>
   );
 }
-export function ForecastDashboard({ currency }: ForecastDashboardProps) {
+export function ForecastDashboard({
+  currency,
+  onAnalytics,
+}: ForecastDashboardProps) {
   void currency; // Compatibilidad de Revenue OS: la nueva lectura resuelve su moneda en servidor.
   const { organization } = useOrganization();
-  return <ForecastContent key={organization?.id ?? "sin-organizacion"} />;
+  return (
+    <ForecastContent
+      key={organization?.id ?? "sin-organizacion"}
+      onAnalytics={onAnalytics}
+    />
+  );
 }

@@ -1,6 +1,8 @@
 import { ipcMain, Notification, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
 import { getWebContents, getMainWindow, getLoadUrl, isInternalUrl } from './windows/mainWindow';
-import { getPhoneWindow, openPhoneWindow, closePhoneWindow } from './windows/phoneWindow';
+import { randomUUID } from 'node:crypto';
+import { getIconImage } from './icon';
+import { getPhoneWindow, openPhoneWindow, closePhoneWindow, resizePhoneWindow } from './windows/phoneWindow';
 import { parsePhoneCommand, parsePhoneControl, parsePhoneSnapshot, parsePhoneMissedNotice, PHONE_PATH, type PhoneSnapshot, type PhoneReply, type PhoneMissedNotice } from '../shared/phoneProtocol';
 import { phoneLabels } from './phoneLabels';
 
@@ -25,7 +27,7 @@ function isMirror(event: Event): boolean {
 function authorize(event: Event, mirror = false) {
   if (!(mirror ? isMirror(event) : isOwner(event))) throw new Error('sin_permiso');
 }
-function publish() { getPhoneWindow()?.webContents.send('phone:state', getPhoneSnapshot()); }
+function publish() { resizePhoneWindow(getPhoneSnapshot()); getPhoneWindow()?.webContents.send('phone:state', getPhoneSnapshot()); }
 function missedAction(notice: PhoneMissedNotice, action: 'callback' | 'create_lead') {
   if (!snapshot || notice.scope !== snapshot.scope || missed?.id !== notice.id) return false;
   getMainWindow()?.show(); getMainWindow()?.focus();
@@ -49,8 +51,12 @@ export function registerPhoneIpc() {
     snapshot = next; publish();
     if (newIncoming && Notification.isSupported()) {
       const labels = phoneLabels(next.locale);
-      const notification = new Notification({ title: labels.title, body: next.call?.displayName ?? next.call?.number ?? labels.incoming });
-      notification.on('click', () => { void openPhoneWindow(); }); notification.show();
+      const notification = new Notification({ title: `${labels.incoming} · ${next.call?.displayName ?? next.call?.number ?? labels.title}`, body: next.call?.number ?? labels.incoming,
+        icon: getIconImage() ?? undefined, actions: [{ type: 'button', text: labels.answer }, { type: 'button', text: labels.reject }] });
+      notification.on('click', () => { if (snapshot?.scope === next.scope) void openPhoneWindow(getPhoneSnapshot()); });
+      notification.on('action', (_event, index) => { if ((index !== 0 && index !== 1) || !snapshot?.incoming || snapshot.scope !== next.scope) return;
+        void dispatchPhoneCommand({ id: randomUUID(), scope: next.scope, revision: next.revision, action: index === 0 ? 'accept' : 'reject' }).then(reply => { if (!reply.ok && snapshot?.scope === next.scope && snapshot.incoming) void openPhoneWindow(getPhoneSnapshot()); }); });
+      notification.show();
     }
   });
   ipcMain.on('phone:missed', (event, raw: unknown) => {
@@ -62,9 +68,9 @@ export function registerPhoneIpc() {
     missed = notice; publish();
     if (!Notification.isSupported()) return;
     const labels = phoneLabels(snapshot.locale);
-    const notification = new Notification({ title: labels.missed, body: notice.displayName ?? notice.number,
+    const notification = new Notification({ title: `${labels.missed} · ${notice.displayName ?? notice.number}`, body: notice.displayName ? notice.number : labels.missed, icon: getIconImage() ?? undefined,
       actions: [{ type: 'button', text: labels.callback }, { type: 'button', text: labels.lead }] });
-    notification.on('click', () => { if (notice.scope === snapshot?.scope) void openPhoneWindow(); });
+    notification.on('click', () => { if (notice.scope === snapshot?.scope) void openPhoneWindow(getPhoneSnapshot()); });
     notification.on('action', (_event, index) => { if (index === 0 || index === 1) missedAction(notice, index === 0 ? 'callback' : 'create_lead'); });
     notification.show();
   });
@@ -76,7 +82,7 @@ export function registerPhoneIpc() {
     if (!missed || value.id !== missed.id || value.scope !== missed.scope) return { ok: false };
     return { ok: missedAction(missed, value.action as 'callback' | 'create_lead') };
   });
-  ipcMain.handle('phone:open', async event => { authorize(event); return { ok: await openPhoneWindow() }; });
+  ipcMain.handle('phone:open', async event => { authorize(event); return { ok: await openPhoneWindow(getPhoneSnapshot()) }; });
   ipcMain.handle('phone:state', event => {
     if (!isMirror(event) && !isOwner(event)) throw new Error('sin_permiso'); return getPhoneSnapshot();
   });
@@ -87,24 +93,7 @@ export function registerPhoneIpc() {
     getPhoneWindow()?.setAlwaysOnTop(value); return value;
   });
   ipcMain.handle('phone:open-main', event => { authorize(event, true); getMainWindow()?.show(); getMainWindow()?.focus(); });
-  ipcMain.handle('phone:command', async (event, raw: unknown): Promise<PhoneReply> => {
-    authorize(event, true); const command = parsePhoneCommand(raw);
-    if (!snapshot || command.scope !== snapshot.scope || command.revision !== snapshot.revision) return { id: command.id, ok: false, error: 'estado_desactualizado' };
-    const body = JSON.stringify(command); const old = settled.get(command.id);
-    if (old) return old.body === body ? old.reply : { id: command.id, ok: false, error: 'clave_reutilizada' };
-    if (pending.size > 0) return { id: command.id, ok: false, error: 'accion_en_curso' };
-    const owner = getWebContents();
-    if (!owner || owner.isDestroyed()) return { id: command.id, ok: false, error: 'controlador_desconectado' };
-    return new Promise(resolve => {
-      const finish = (reply: PhoneReply) => {
-        pending.delete(command.id); settled.set(command.id, { body, reply });
-        if (settled.size > 100) settled.delete(settled.keys().next().value as string);
-        resolve(reply);
-      };
-      const timer = setTimeout(() => finish({ id: command.id, ok: false, error: 'sin_respuesta' }), 10000);
-      pending.set(command.id, { scope: command.scope, finish, timer }); owner.send('phone:dispatch', command);
-    });
-  });
+  ipcMain.handle('phone:command', async (event, raw: unknown) => { authorize(event, true); return dispatchPhoneCommand(raw); });
   ipcMain.on('phone:reply', (event, raw: unknown) => {
     if (!isOwner(event) || !raw || typeof raw !== 'object') return;
     const reply = raw as PhoneReply & { scope?: string };
@@ -120,4 +109,22 @@ export function attachPhoneControllerLifecycle() {
   const wc = getWebContents();
   wc?.on('did-start-navigation', (_event, _url, inPlace, mainFrame) => { if (mainFrame && !inPlace) clearPhoneController(); });
   wc?.once('destroyed', clearPhoneController);
+}
+export function dispatchPhoneCommand(raw: unknown): Promise<PhoneReply> {
+  const command = parsePhoneCommand(raw);
+    if (!snapshot || command.scope !== snapshot.scope || command.revision !== snapshot.revision) return Promise.resolve({ id: command.id, ok: false, error: 'estado_desactualizado' });
+    const body = JSON.stringify(command); const old = settled.get(command.id);
+    if (old) return Promise.resolve(old.body === body ? old.reply : { id: command.id, ok: false, error: 'clave_reutilizada' });
+    if (pending.size > 0) return Promise.resolve({ id: command.id, ok: false, error: 'accion_en_curso' });
+    const owner = getWebContents();
+    if (!owner || owner.isDestroyed()) return Promise.resolve({ id: command.id, ok: false, error: 'controlador_desconectado' });
+    return new Promise(resolve => {
+      const finish = (reply: PhoneReply) => {
+        pending.delete(command.id); settled.set(command.id, { body, reply });
+        if (settled.size > 100) settled.delete(settled.keys().next().value as string);
+        resolve(reply);
+      };
+      const timer = setTimeout(() => finish({ id: command.id, ok: false, error: 'sin_respuesta' }), 10000);
+      pending.set(command.id, { scope: command.scope, finish, timer }); owner.send('phone:dispatch', command);
+    });
 }

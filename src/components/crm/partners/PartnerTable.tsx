@@ -2,13 +2,22 @@
 import { Pencil, Trash2 } from "lucide-react";
 import { DataTable, Pagination, StatusBadge } from "@/components/kit";
 import { Button } from "@/components/crm/red/RedButton";
-import type { PartnerView } from "@/lib/services/crm/partnerService";
+import type {
+  PartnerView,
+  PartnerTier,
+} from "@/lib/services/crm/partnerService";
+import type { OrdenListado } from "@/components/kit/listadoUrl";
+import { partnerTierTone } from "./partnerTierTone";
 import { formatMoney, formatRate } from "@/lib/services/crm/partnerModel";
+import { useLocaleIntl } from "@/components/kit/useIdiomaKit";
 import { useRedText } from "../red/useRedText";
 import { PartnerList } from "./PartnerList";
 
 interface Props {
   rows: PartnerView[];
+  tiers: PartnerTier[];
+  order: OrdenListado | null;
+  onSort: (field: string) => void;
   total: number;
   page: number;
   size: number;
@@ -22,10 +31,14 @@ interface Props {
   onDelete: (p: PartnerView) => void;
 }
 export function PartnerTable(p: Props) {
-  const { tr, locale } = useRedText();
+  const { tr } = useRedText();
+  const locale = useLocaleIntl();
   return (
     <DataTable
       etiqueta={tr("Partners")}
+      orden={p.order}
+      onOrdenar={p.onSort}
+      className="[&_tbody_td]:py-5"
       filas={p.rows}
       obtenerId={(r) => r.id}
       etiquetaFila={(r) => r.name}
@@ -33,7 +46,8 @@ export function PartnerTable(p: Props) {
       columnas={[
         {
           id: "name",
-          encabezado: tr("Nombre"),
+          encabezado: tr("Partner"),
+          ordenable: true,
           celda: (r) => (
             <div>
               <p className="font-medium">{r.name}</p>
@@ -45,12 +59,12 @@ export function PartnerTable(p: Props) {
         },
         {
           id: "tier",
-          encabezado: tr("Tier"),
+          encabezado: tr("Nivel"),
           celda: (r) => (
             <StatusBadge
               estado={r.tier?.name}
               etiqueta={r.tier?.name ?? tr("Sin tier")}
-              tono={r.tier ? "marca" : "neutro"}
+              tono={partnerTierTone(r.tier_id, p.tiers)}
             />
           ),
         },
@@ -70,12 +84,14 @@ export function PartnerTable(p: Props) {
         {
           id: "deals",
           encabezado: tr("Deals"),
+          ordenable: true,
           variante: "importe",
           celda: (r) => r.deals_count,
         },
         {
           id: "revenue",
           encabezado: tr("Revenue atribuido"),
+          ordenable: true,
           variante: "importe",
           celda: (r) =>
             r.revenue && !r.revenue.sinTasa.length
@@ -108,7 +124,7 @@ export function PartnerTable(p: Props) {
         },
         {
           id: "next",
-          encabezado: tr("Siguiente paso"),
+          encabezado: "",
           celda: (r) => (
             <Button
               size="sm"

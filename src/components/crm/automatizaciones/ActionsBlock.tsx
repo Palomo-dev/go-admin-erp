@@ -8,7 +8,7 @@ import { useAutomationText } from './useAutomationText';
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { Plus, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, AlertTriangle, GripVertical, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -25,8 +25,8 @@ import {
   type RuleFormState,
 } from '@/lib/services/crm/automation/ruleEditorModel';
 import { ActionChipEditor } from './ActionChipEditor';
-import { CHIP_ICON_CLASS, CHIP_LIST_CLASS, CHIP_TEXT_CLASS, chipClass } from './SentenceBlock';
-import { AnimatePresence, Chip, Expand } from '@/components/shared/motion';
+import { CHIP_ICON_CLASS } from './SentenceBlock';
+import { AnimatePresence, Expand } from '@/components/shared/motion';
 import type { RuleLookups } from './useRuleLookups';
 
 interface Props {
@@ -90,7 +90,7 @@ export function ActionsBlock({ form, lookups, errors, selected, onSelect, onChan
         <p className="text-sm text-fg-secondary dark:text-fg-secondary">
           {tr("Sin acciones la regla no hará nada aunque se dispare. Añade al menos una.")}</p>
       ) : (
-        <div className={CHIP_LIST_CLASS}>
+        <div className="space-y-3">
           {/* UX móvil: cada acción es una tarjeta apilada (número + frase que envuelve); en línea desde `sm`. */}
           <AnimatePresence initial={false}>
             {actions.map((action, index) => {
@@ -98,25 +98,25 @@ export function ActionsBlock({ form, lookups, errors, selected, onSelect, onChan
               const entry = actionEntry(action.type);
               const warn = hasError(index) || (entry && !entry.implemented);
               return (
-                <Chip key={index}>
+                <div key={index} className="flex min-w-0 items-center gap-2 rounded-lg border border-line p-3">
                   <button
                     type="button"
                     id={`action-chip-${index}`}
                     aria-expanded={open}
                     aria-controls={`action-editor-${index}`}
-                    className={cn(chipClass(open, 'emerald', true), warn && 'border-amber-500 dark:border-amber-400')}
+                    className={cn('flex min-w-0 flex-1 items-center gap-3 rounded-md text-left text-[13px] leading-[18px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand', warn && 'text-warning-text')}
                     onClick={() => onSelect(open ? null : index)}
                   >
-                    <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-emerald-700 px-1 text-xs font-semibold text-white" aria-label={tr("Acción {p0}", { p0: index + 1 })}>
+                    <GripVertical className="size-4 shrink-0 text-fg-muted" strokeWidth={1.5} aria-hidden /><span className="sr-only" aria-label={tr("Acción {p0}", { p0: index + 1 })}>
                       {index + 1}
                     </span>
-                    <span className={CHIP_TEXT_CLASS}>{describeAction(action, lookups.humanizer)}</span>
+                    <span className="min-w-0 flex-1 break-words">{describeAction(action, lookups.humanizer)}</span>
                     {warn && <AlertTriangle strokeWidth={1.5} className={cn(CHIP_ICON_CLASS, 'text-warning-text dark:text-warning-text')} aria-label={tr("Revisar")} />}
                     {open
                       ? <ChevronUp strokeWidth={1.5} className={CHIP_ICON_CLASS} aria-hidden="true" />
                       : <ChevronDown strokeWidth={1.5} className={CHIP_ICON_CLASS} aria-hidden="true" />}
-                  </button>
-                </Chip>
+                  </button><Button type="button" size="sm" variant="ghost" className="size-8 p-0 text-fg-secondary" aria-label={tr("Quitar acción {p0}", { p0: index + 1 })} onClick={() => { onChange(removeAction(form, index)); onSelect(null); setFocusTarget('add'); }}><Trash2 className="size-4" strokeWidth={1.5} aria-hidden /></Button>
+                </div>
               );
             })}
           </AnimatePresence>

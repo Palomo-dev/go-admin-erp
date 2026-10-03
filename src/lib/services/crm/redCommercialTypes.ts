@@ -188,6 +188,10 @@ export interface PartnerDealView extends PartnerDeal {
 export interface PartnerDealInput {
   opportunity_id: string;
   deal_type: DealType;
+  /** Opcional: omitir conserva la comisión calculada; sólo administración puede ajustarla. */
+  commission_amount?: number;
+  /** Testigo de este intento: reintentos iguales recuperan el registro confirmado. */
+  idempotency_key?: string;
 }
 
 export interface PartnerDealFilters {

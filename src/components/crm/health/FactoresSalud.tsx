@@ -49,16 +49,15 @@ export function FactoresSalud({ scores, onClose, onSaved }: { scores: HealthList
     finally { lock.current = false; if (alive.current) setSaving(false); }
   };
   const actions = <><button type="button" className={clasesBoton({ patron: 'button', variante: 'fantasma' })} disabled={saving || !draft} onClick={() => setDraft(structuredClone(DEFAULT_HEALTH_CONFIG))}>{t('restore')}</button><button type="submit" form="health-factors" className={clasesBoton({patron: 'button'})} disabled={!valid || saving || loading}><Save aria-hidden className="size-4" />{t(saving ? 'saving' : 'saveRecalculate')}</button></>;
-  return <div className="space-y-5 bg-canvas p-4 lg:p-6"><PageHeader titulo={t('factorsTitle')} subtitulo={t('factorsSubtitle')} icono={Settings} acciones={actions} volverA="/app/crm/salud" onVolver={onClose} variante="form" movil={{ accion: actions }} />
-    <button type="button" className={clasesBoton({ patron: 'button', variante: 'fantasma', tamano: 'sm' })} disabled={saving} onClick={onClose}>{t('back')}</button>
+  return <div className="space-y-5 bg-canvas p-4 lg:p-6"><PageHeader titulo={t('factorsTitle')} subtitulo={t('factorsSubtitle')} icono={Settings} acciones={actions} migas={[{ etiqueta: "CRM", href: "/app/crm" }, { etiqueta: t("title"), href: "/app/crm/salud" }, { etiqueta: t("factorsTitle") }]} volverA="/app/crm/salud" onVolver={onClose} variante="form" movil={{ accion: actions }} />
     {loading ? <div aria-busy="true"><Skeleton className="h-72 w-full" /><span className="sr-only">{t('loading')}</span></div> : !draft ? <EmptyState variante="error" titulo={t('configError')} descripcion={error ?? ''} onReintentar={() => setAttempt(value => value + 1)} /> : <form id="health-factors" className="grid gap-4 xl:grid-cols-[2fr_1fr]" onSubmit={e => { e.preventDefault(); void save(); }}>
-      <FormSection titulo={t('indicators')} accion={<span role="status" className={weights === 100 ? 'text-xs text-success-text' : 'text-xs text-danger-text'}>{t('weightSum', { total: weights })}</span>}>
+      <FormSection densidad="compacta" titulo={t('indicators')} accion={<span role="status" className={weights === 100 ? 'text-xs text-success-text' : 'text-xs text-danger-text'}>{t('weightSum', { total: weights })}</span>}>
         {draft.indicators.map((indicator, index) => <HealthFactorRow key={indicator.key} indicator={indicator} disabled={saving} onChange={next => setDraft({ ...draft, indicators: draft.indicators.map((i, n) => n === index ? next : i) })} />)}
       </FormSection>
-      <FormSection titulo={t('bandsTitle')}>
-        <FormField etiqueta={t('healthyFrom')}><CampoNumero valor={draft.bands.green} decimales={0} minimo={1} maximo={100} disabled={saving} onValorChange={value => setDraft({ ...draft, bands: { ...draft.bands, green: value ?? 0 } })} /></FormField>
-        <FormField etiqueta={t('observationFrom')}><CampoNumero valor={draft.bands.yellow} decimales={0} minimo={0} maximo={99} disabled={saving} onValorChange={value => setDraft({ ...draft, bands: { ...draft.bands, yellow: value ?? 0 } })} /></FormField>
-        <FormField etiqueta={t('riskBelow')}><CampoNumero valor={draft.bands.yellow} decimales={0} disabled onValorChange={() => undefined} /></FormField>
+      <FormSection densidad="compacta" titulo={t('bandsTitle')}>
+        <FormField tamanoEtiqueta="sm" etiqueta={t('healthyFrom')}><CampoNumero valor={draft.bands.green} decimales={0} minimo={1} maximo={100} disabled={saving} onValorChange={value => setDraft({ ...draft, bands: { ...draft.bands, green: value ?? 0 } })} /></FormField>
+        <FormField tamanoEtiqueta="sm" etiqueta={t('observationFrom')}><CampoNumero valor={draft.bands.yellow} decimales={0} minimo={0} maximo={99} disabled={saving} onValorChange={value => setDraft({ ...draft, bands: { ...draft.bands, yellow: value ?? 0 } })} /></FormField>
+        <FormField tamanoEtiqueta="sm" etiqueta={t('riskBelow')}><CampoNumero valor={draft.bands.yellow} decimales={0} disabled onValorChange={() => undefined} /></FormField>
         <div className="rounded-lg bg-subtle p-3 text-xs text-fg-secondary"><p className="mb-1 font-medium">{t('preview')}</p>{valid ? scores.some(row => row.snapshot_raw) ? (['green', 'yellow', 'red'] as const).map(band => <p key={band}>{t(`bands.${band}`)} {previous[band]} → {preview[band]}</p>) : <p>{t('previewEmpty')}</p> : <p>{t('invalidConfig')}</p>}</div>
         <p className="text-xs text-fg-secondary">{t('queuedDescription')}</p>
       </FormSection>

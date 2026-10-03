@@ -160,6 +160,8 @@ it("página 9 vacía conserva el total de las 205 oportunidades", async () => {
   expect(data.opportunities).toHaveLength(5);
   expect(data.opportunityCount).toBe(205);
   expect(data.summary.commit.total).toBe(20500);
+  expect(data.monthly.months[2].summary.commit.total).toBe(20500);
+  expect(data.currentUserId).toBe(YO);
 });
 it.each([
   "/api/crm/forecast?organization_id=121",

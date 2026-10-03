@@ -301,12 +301,12 @@ export function HealthDetailDrawer({
           )}
           <div className="grid items-start gap-4 lg:grid-cols-3">
             <div className="space-y-4">
-              <FormSection titulo={t("currentHealth")}>
+              <FormSection densidad="compacta" titulo={t("currentHealth")}>
                 <div className="flex justify-center">
                   <HealthGauge
                     score={health.score}
                     band={health.band}
-                    size="lg"
+                    size="xl"
                   />
                 </div>
                 <p className="text-xs text-fg-secondary">
@@ -322,8 +322,8 @@ export function HealthDetailDrawer({
                       })
                     : t("measurementPending")}
                 </p>
-              </FormSection>
-              <FormSection titulo={t("trend.title")}>
+                <div className="space-y-3 border-t border-line pt-4">
+                <h3 className="text-xs font-medium text-fg-secondary">{t("trend.title")}</h3>
                 {data?.history_error ? (
                   <EmptyState
                     variante="error"
@@ -336,14 +336,16 @@ export function HealthDetailDrawer({
                     band={health.band}
                   />
                 )}
+                </div>
               </FormSection>
             </div>
-            <FormSection titulo={t("indicators")}>
+            <FormSection densidad="compacta" titulo={t("indicators")}>
               <HealthDimensions indicators={health.indicators} />
               <HealthAlerts alerts={health.alerts ?? []} raw={health.raw} />
             </FormSection>
             <div className="space-y-4">
               <FormSection
+                densidad="compacta"
                 titulo={t("whatToDo")}
                 descripcion={t("actionDescription")}
               >
@@ -365,7 +367,7 @@ export function HealthDetailDrawer({
                   </button>
                 ))}
               </FormSection>
-              <FormSection titulo={t("recentMeasurements")}>
+              <FormSection densidad="compacta" titulo={t("recentMeasurements")}>
                 {data?.history_error ? (
                   <p className="text-xs text-danger-text">{t("trend.error")}</p>
                 ) : data?.history.length ? (

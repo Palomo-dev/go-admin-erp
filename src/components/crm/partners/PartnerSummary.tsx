@@ -1,7 +1,7 @@
 "use client";
 
-import { Check, Award } from "lucide-react";
-import { StatCard, StatusBadge } from "@/components/kit";
+import { CheckCircle2, Crown } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type {
   PartnerView,
   PartnerTier,
@@ -19,8 +19,10 @@ export function PartnerSummary({
   partner: PartnerView;
   tiers: PartnerTier[];
 }) {
-  const { tr, locale } = useRedText();
+  const { tr } = useRedText();
+  const t = useTranslations("crm.partnersVisual");
   const moneyLocale = useLocaleIntl();
+  const locale = moneyLocale;
   const compactMoney = (value: number, currency: string) => {
     try {
       return new Intl.NumberFormat(moneyLocale, {
@@ -46,17 +48,24 @@ export function PartnerSummary({
   const revenue = partner.revenue;
   const revenueKnown = !!revenue?.base && !revenue.sinTasa.length;
   const moneyKnown = !partner.currency_mixed && !!partner.commissions_currency;
-  const progress = (value: number, goal: number, label: string) => (
+  const progress = (
+    value: number,
+    goal: number,
+    label: string,
+    monetary = false,
+  ) => (
     <div className="space-y-1.5">
       <div className="flex justify-between gap-3 text-xs">
         <span className="text-fg-secondary">{label}</span>
         <span className="font-medium tabular-nums">
-          {value.toLocaleString(locale)} / {goal.toLocaleString(locale)}
+          {monetary && revenue
+            ? `${formatMoney(value, revenue.base, locale)} / ${formatMoney(goal, revenue.base, locale)}`
+            : `${value.toLocaleString(locale)} / ${goal.toLocaleString(locale)}`}
         </span>
       </div>
       <progress
         aria-label={label}
-        className="h-1.5 w-full overflow-hidden rounded-full [&::-webkit-progress-bar]:bg-subtle [&::-webkit-progress-value]:bg-brand [&::-moz-progress-bar]:bg-brand"
+        className={`h-1.5 w-full overflow-hidden rounded-full [&::-webkit-progress-bar]:bg-subtle ${monetary ? "[&::-webkit-progress-value]:bg-warning [&::-moz-progress-bar]:bg-warning" : "[&::-webkit-progress-value]:bg-brand [&::-moz-progress-bar]:bg-brand"}`}
         max={Math.max(1, goal)}
         value={goal === 0 ? 1 : Math.min(value, goal)}
       />
@@ -66,21 +75,22 @@ export function PartnerSummary({
     <>
       <div className="hidden gap-4 lg:grid lg:grid-cols-2">
         <section className="space-y-3 rounded-xl border border-line bg-surface p-4">
-          <h2 className="flex items-center gap-2 text-sm font-semibold">
-            <Award className="size-4 text-brand-deep" />
-            {tr("Nivel")}: {current?.name ?? tr("Sin tier")}
-            <StatusBadge
-              estado={partner.is_active ? "active" : "inactive"}
-              etiqueta={tr(partner.is_active ? "Activo" : "Inactivo")}
-              tono={partner.is_active ? "exito" : "neutro"}
-            />
-          </h2>
-          <p className="text-sm text-fg-secondary">
-            {tr("Comisión")}:{" "}
-            <strong className="font-medium text-fg">
-              {formatRate(partner.effective_rate, locale)}
-            </strong>
-          </p>
+          <div className="flex items-center gap-3">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-warning-subtle text-warning-text">
+              <Crown className="size-6" strokeWidth={1.5} />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold">
+                {tr("Nivel")} {current?.name ?? tr("Sin tier")}
+              </h2>
+              <p className="mt-1 text-xs text-fg-secondary">
+                {tr("Comisión")} {formatRate(partner.effective_rate, locale)}
+                {current && revenue?.base
+                  ? ` · ${t("umbral", { count: current.min_deals, amount: formatMoney(current.min_revenue, revenue.base, locale) })}`
+                  : ""}
+              </p>
+            </div>
+          </div>
           {benefits.length ? (
             <ul className="space-y-2">
               {benefits.map((benefit, i) => (
@@ -88,7 +98,7 @@ export function PartnerSummary({
                   key={i}
                   className="flex items-start gap-2 text-xs text-fg-secondary"
                 >
-                  <Check
+                  <CheckCircle2
                     aria-hidden
                     className="size-3.5 shrink-0 text-success-text"
                   />
@@ -105,7 +115,10 @@ export function PartnerSummary({
         <section className="space-y-3 rounded-xl border border-line bg-surface p-4">
           <h2 className="text-sm font-semibold">
             {next
-              ? tr("Progreso al siguiente nivel") + ` · ${next.name}`
+              ? t("caminoNivel", {
+                  name: next.name,
+                  rate: formatRate(next.commission_rate, locale),
+                })
               : tr(
                   ranked.length ? "Nivel más alto" : "Sin niveles configurados",
                 )}
@@ -122,6 +135,7 @@ export function PartnerSummary({
                   revenue.total,
                   Number(next.min_revenue),
                   `${tr("Revenue atribuido")} · ${revenue.base}`,
+                  true,
                 )
               ) : (
                 <p className="text-xs text-fg-secondary">
@@ -149,7 +163,7 @@ export function PartnerSummary({
             full: partner.deals_count.toLocaleString(locale),
           },
           {
-            label: tr("Revenue atribuido"),
+            label: t("atribuido"),
             value: revenueKnown
               ? compactMoney(revenue.total, revenue.base)
               : "—",
@@ -191,41 +205,53 @@ export function PartnerSummary({
           </div>
         ))}
       </dl>
-      <div className="hidden gap-4 lg:grid lg:grid-cols-4">
-        <StatCard etiqueta={tr("Deals")} valor={partner.deals_count} />
-        <StatCard
-          etiqueta={tr("Revenue atribuido")}
-          valor={
-            revenueKnown
+      <dl className="hidden grid-cols-4 gap-4 lg:grid">
+        {[
+          {
+            label: t("dealsRegistrados"),
+            value: partner.deals_count,
+            tone: "text-fg",
+          },
+          {
+            label: tr("Revenue atribuido"),
+            value: revenueKnown
               ? formatMoney(revenue.total, revenue.base, locale)
-              : "—"
-          }
-        />
-        <StatCard
-          etiqueta={tr("Por pagar")}
-          valor={
-            moneyKnown
+              : "—",
+            tone: "text-fg",
+          },
+          {
+            label: tr("Comisiones por pagar"),
+            value: moneyKnown
               ? formatMoney(
                   partner.commissions.outstanding,
                   partner.commissions_currency,
                   locale,
                 )
-              : "—"
-          }
-        />
-        <StatCard
-          etiqueta={tr("Pagadas")}
-          valor={
-            moneyKnown
+              : "—",
+            tone: "text-warning-text",
+          },
+          {
+            label: t("comisionPagada"),
+            value: moneyKnown
               ? formatMoney(
                   partner.commissions.paid,
                   partner.commissions_currency,
                   locale,
                 )
-              : "—"
-          }
-        />
-      </div>
+              : "—",
+            tone: "text-success-text",
+          },
+        ].map((metric) => (
+          <div key={metric.label}>
+            <dt className="text-xs text-fg-secondary">{metric.label}</dt>
+            <dd
+              className={`mt-1 text-sm font-semibold tabular-nums ${metric.tone}`}
+            >
+              {metric.value}
+            </dd>
+          </div>
+        ))}
+      </dl>
     </>
   );
 }

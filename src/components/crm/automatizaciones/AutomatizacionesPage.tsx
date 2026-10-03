@@ -12,18 +12,17 @@ import { useAutomationText } from './useAutomationText';
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, History, RefreshCw, Zap, Sparkles } from 'lucide-react';
-import { PageHeader, StatCard, useEsEscritorio } from '@/components/kit';
+import { Plus, History, RefreshCw, Zap, Sparkles, MoreHorizontal } from 'lucide-react';
+import { PageHeader, StatCard, EmptyState, useEsEscritorio } from '@/components/kit';
 import { KbdButton as Button } from '@/components/kit/KbdButton';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { RuleDeleteDialog } from './RuleDeleteDialog';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { toast } from '@/components/ui/use-toast';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
 import { AnimatePresence, StaggerList } from '@/components/shared/motion';
-import { cn } from '@/utils/Utils';
 import { EMPTY_FILTERS, EXAMPLE_FORM, filterRules, type RuleFilters, type RuleFormState } from '@/lib/services/crm/automation/ruleEditorModel';
 import { RuleCard } from './RuleCard';
 import { RulesToolbar } from './RulesToolbar';
@@ -35,6 +34,7 @@ import { RunsSheet } from './RunsSheet';
 import { useAutomationRules, type AutomationRuleView } from './useAutomationRules';
 import { useRuleLookups } from './useRuleLookups';
 import { RulesTable } from './RulesTable';
+import { useRulesWithErrors } from './useRulesWithErrors';
 import { BulkDryRunDialog } from './BulkDryRunDialog';
 
 type Target = { rule: AutomationRuleView } | null;
@@ -48,6 +48,9 @@ export function AutomatizacionesPage() {
   const lookups = useRuleLookups();
   const { formatDateTime } = useFormatDate();
 
+  const [errorOnly, setErrorOnly] = useState(false), [errorRevision, setErrorRevision] = useState(0);
+  const failedRules = useRulesWithErrors(errorOnly, organizationId, summary?.from, summary?.until, errorRevision);
+  const pendingTemplate = useRef<RuleFormState | null>(null);
   const [filters, setFilters] = useState<RuleFilters>(EMPTY_FILTERS);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<AutomationRuleView | null>(null);
@@ -58,7 +61,7 @@ export function AutomatizacionesPage() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [refocusSwitchId, setRefocusSwitchId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  useEffect(() => { setEditorOpen(false); setEditing(null); setInitialForm(null); setDryRunTarget(null); setRunsTarget(null); setDeleteTarget(null); setFilters(EMPTY_FILTERS); }, [organizationId]);
+  useEffect(() => { setEditorOpen(false); setEditing(null); setInitialForm(null); setDryRunTarget(null); setRunsTarget(null); setDeleteTarget(null); setFilters(EMPTY_FILTERS); setErrorOnly(false); pendingTemplate.current = null; }, [organizationId]);
   // «Nueva regla» es el fallback de foco de la hoja y del diálogo de borrar:
   // el botón que abrió puede haberse desmontado (estado vacío tras crear la
   // primera regla, R-1; tarjeta borrada, H5).
@@ -78,7 +81,7 @@ export function AutomatizacionesPage() {
     returnDeleteFocus(event);
   };
 
-  const shown = useMemo(() => filterRules(rules, filters), [rules, filters]);
+  const shown = useMemo(() => filterRules(rules, filters).filter(rule => !errorOnly || failedRules.ids.has(rule.id)), [rules, filters, errorOnly, failedRules.ids]);
 
   const editorBusy = useRef(false);
   const editorScope = useRef(organizationId); editorScope.current = organizationId;
@@ -89,11 +92,12 @@ export function AutomatizacionesPage() {
       if (!target) { setEditorOpen(false); return; }
       const rule = target === 'new' || target === 'example' ? null : rules.find(r => r.id === target);
       if (rule === undefined) { setEditorOpen(false); return; }
-      setEditing(rule); setInitialForm(target === 'example' ? EXAMPLE_FORM : null); setEditorOpen(true);
+      setEditing(rule); setInitialForm(target === 'example' ? pendingTemplate.current ?? EXAMPLE_FORM : null); pendingTemplate.current = null; setEditorOpen(true);
     },
   });
   const openEditor = (rule: AutomationRuleView | null, form: RuleFormState | null = null) => {
     if (!canManage) return;
+    pendingTemplate.current = form;
     editorNavigation.open(rule?.id ?? (form ? 'example' : 'new'));
   };
 
@@ -138,13 +142,15 @@ export function AutomatizacionesPage() {
   };
 
   const refresh = async () => {
-    setRefreshing(true);
+    setRefreshing(true); setErrorRevision(value => value + 1);
     try {
       await Promise.all([reload(), lookups.reload()]);
     } finally {
       setRefreshing(false);
     }
   };
+
+  if (runsTarget) return <TooltipProvider delayDuration={300}><RunsSheet open rules={rules} ruleId={runsTarget.ruleId} ruleName={runsTarget.ruleName} onOpenChange={open => { if (!open) setRunsTarget(null); }} /></TooltipProvider>;
 
   if (editorOpen && canManage) return <TooltipProvider delayDuration={300}><RuleEditorSheet
           open={editorOpen && canManage}
@@ -160,25 +166,21 @@ export function AutomatizacionesPage() {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="space-y-5 bg-canvas p-4 sm:p-6">
+      <div className="space-y-4 bg-canvas p-4 sm:p-6">
         <PageHeader titulo={tr("Automatizaciones")} subtitulo={tr("Reglas cuando pasa X, si se cumple Y, haz Z sobre oportunidades, llamadas, correos y tareas")} icono={Zap} migas={[{ etiqueta: 'CRM', href: '/app/crm' },{ etiqueta: tr('Automatizaciones') }]} acciones={<div className="flex flex-wrap gap-2">
-            <Button patron="button" type="button" variante="fantasma" className="size-10 px-0" aria-label={tr("Actualizar lista")} disabled={refreshing} onClick={() => void refresh()}>
-              <RefreshCw strokeWidth={1.5} className={cn("h-4 w-4", refreshing && 'motion-safe:animate-spin')} aria-hidden="true" />
-            </Button>
-            <Button patron="button" type="button" variante="secundario" onClick={() => setRunsTarget({ ruleId: null, ruleName: null })}>
-              <History strokeWidth={1.5} className="mr-1.5 h-4 w-4" aria-hidden="true" /> {tr("Historial")}</Button>
-            {canManage && <Button patron="button" type="button" variante="secundario" onClick={() => openEditor(null, EXAMPLE_FORM)}><Sparkles strokeWidth={1.5} className="mr-1.5 h-4 w-4" />{tr("Desde plantilla")}</Button>}
-            {canManage && <Button patron="button" ref={newButtonRef} type="button" onClick={() => openEditor(null)}>
-              <Plus strokeWidth={1.5} className="mr-1.5 h-4 w-4" aria-hidden="true" /> {tr("Nueva regla")}</Button>}
+            {(canManage || !loaded) && <Button patron="button" type="button" icono={Sparkles} disabled={!canManage || loading} variante="secundario" onClick={() => openEditor(null, EXAMPLE_FORM)}>{tr("Desde plantilla")}</Button>}
+            {(canManage || !loaded) && <Button patron="button" icono={Plus} disabled={!canManage || loading} ref={newButtonRef} type="button" onClick={() => openEditor(null)}>
+              {tr("Nueva regla")}</Button>}
+            <DropdownMenu><DropdownMenuTrigger asChild><Button patron="button" variante="secundario" icono={MoreHorizontal} className="size-10 px-0" aria-label={tr('Más opciones')} /></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => setRunsTarget({ ruleId: null, ruleName: null })}><History className="mr-2 size-4" strokeWidth={1.5} aria-hidden />{tr('Historial')}</DropdownMenuItem><DropdownMenuItem disabled={refreshing} onSelect={() => void refresh()}><RefreshCw className="mr-2 size-4" strokeWidth={1.5} aria-hidden />{tr('Actualizar lista')}</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
           </div>} />
-        <KpiStrip>
-          <StatCard etiqueta={tr("Reglas activas")} valor={summary ? tr("{p0} de {p1}", { p0: summary.active_rules, p1: rules.length }) : '—'} cargando={loading} />
-          <StatCard etiqueta={tr("Ejecuciones (7 días)")} valor={summary?.executed_7d ?? '—'} cargando={loading} />
-          <StatCard etiqueta={tr("Omitidas (7 días)")} valor={summary?.skipped_7d ?? '—'} cargando={loading} />
-          <StatCard etiqueta={tr("Con error (7 días)")} valor={summary?.failed_7d ?? '—'} cargando={loading} tono="peligro" onClick={() => setRunsTarget({ ruleId:null, ruleName:null })} />
-        </KpiStrip>
+        {(loading || rules.length > 0) && <KpiStrip>
+          <StatCard etiqueta={tr("Reglas activas")} valor={summary ? tr("{p0} de {p1}", { p0: summary.active_rules, p1: rules.length }) : '—'} cargando={loading} varianteCarga="compacta" />
+          <StatCard etiqueta={tr("Ejecuciones (7 días)")} valor={summary?.executed_7d ?? '—'} cargando={loading} varianteCarga="compacta" />
+          <StatCard etiqueta={tr("Omitidas (7 días)")} valor={summary?.skipped_7d ?? '—'} cargando={loading} varianteCarga="compacta" />
+          <StatCard etiqueta={tr("Con error (7 días)")} valor={summary?.failed_7d ?? '—'} cargando={loading} varianteCarga="compacta" tono="peligro" onClick={() => setRunsTarget({ ruleId:null, ruleName:null })} />
+        </KpiStrip>}
 
-        {error && (
+        {error && loaded && (
           <Alert variant="destructive">
             <AlertTitle>{loaded ? tr("No se pudo actualizar la lista") : tr("No se pudieron cargar las reglas")}</AlertTitle>
             <AlertDescription>
@@ -187,30 +189,29 @@ export function AutomatizacionesPage() {
         )}
 
         {loading ? (
-          <div className="space-y-4" aria-busy="true" aria-label={tr("Cargando reglas")}>
-            <Skeleton className="h-9 w-full max-w-md" />
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {[0, 1, 2].map((i) => <Skeleton key={i} className="h-44 w-full rounded-xl" />)}
-            </div>
-          </div>
+          <><RulesToolbar filters={filters} onChange={setFilters} total={0} shown={0} /><RulesTable estado="cargando" rules={[]} lookups={lookups.humanizer} canManage={false} togglingId={null} formatDate={formatDateTime} onToggle={() => {}} onEdit={() => {}} onDryRun={() => {}} onHistory={() => {}} onDelete={() => {}} /></>
         ) : rules.length === 0 && (loaded || !error) ? (
           <RulesEmptyState
             canManage={canManage}
             filtered={false}
             onCreate={() => openEditor(null)}
             onUseExample={() => openEditor(null, EXAMPLE_FORM)}
-            onClearFilters={() => setFilters(EMPTY_FILTERS)}
+            onUseTemplate={form => openEditor(null, form)}
+            onClearFilters={() => { setFilters(EMPTY_FILTERS); setErrorOnly(false); }}
           />
-        ) : rules.length === 0 ? null : (
+        ) : rules.length === 0 ? <><RulesToolbar filters={filters} onChange={setFilters} total={0} shown={0} /><div className="rounded-xl border border-line bg-surface py-16"><EmptyState variante="error" icono={Zap} titulo={tr('No se pudieron cargar las reglas')} descripcion={tr('Intenta nuevamente. Si el problema continúa, contacta a soporte.')} onReintentar={() => void refresh()} accionPrimaria /></div></> : (
           <>
-            <RulesToolbar filters={filters} onChange={setFilters} total={rules.length} shown={shown.length} />
+            <RulesToolbar filters={filters} onChange={setFilters} total={rules.length} shown={shown.length} errorOnly={errorOnly} onErrorOnlyChange={setErrorOnly} errorFilterAvailable={summary !== null} />
+            {failedRules.error && <Alert variant="destructive"><AlertTitle>{tr('No se pudieron cargar los errores')}</AlertTitle><AlertDescription>{failedRules.error}<Button patron="button" variante="fantasma" tamano="sm" onClick={() => setErrorRevision(value => value + 1)}>{tr('Reintentar')}</Button></AlertDescription></Alert>}
+            {failedRules.loading && <p role="status" className="text-xs text-fg-secondary">{tr('Cargando reglas con error…')}</p>}
             {shown.length === 0 ? (
               <RulesEmptyState
                 canManage={canManage}
                 filtered
                 onCreate={() => openEditor(null)}
                 onUseExample={() => openEditor(null, EXAMPLE_FORM)}
-                onClearFilters={() => setFilters(EMPTY_FILTERS)}
+            onUseTemplate={form => openEditor(null, form)}
+                onClearFilters={() => { setFilters(EMPTY_FILTERS); setErrorOnly(false); }}
               />
             ) : desktop ? <RulesTable rules={shown} lookups={lookups.humanizer} canManage={canManage} togglingId={togglingId} formatDate={formatDateTime} onToggle={r => void onToggle(r)} onEdit={openEditor} onDryRun={r => { if (canManage) setDryRunTarget({ rule:r }); }} onHistory={r => setRunsTarget({ ruleId:r.id, ruleName:r.name })} onDelete={r => { if (canManage) setDeleteTarget({ rule:r }); }} /> : (
               <StaggerList as="ul" aria-label={tr("Reglas de automatización")} className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -244,13 +245,6 @@ export function AutomatizacionesPage() {
           name={dryRunTarget?.rule.name ?? null}
           onOpenChange={(open) => { if (!open) setDryRunTarget(null); }}
           onRun={bulkDryRun}
-        />
-
-        <RunsSheet
-          open={runsTarget !== null}
-          ruleId={runsTarget?.ruleId ?? null}
-          ruleName={runsTarget?.ruleName ?? null}
-          onOpenChange={(open) => { if (!open) setRunsTarget(null); }}
         />
 
         <RuleDeleteDialog

@@ -6,11 +6,14 @@ import { getOrgSettings } from './channelService';
 import { rowToCampaign } from './campaignStore';
 import { sendWhatsApp } from './outboundService';
 import { WhatsAppError, type Campaign, type CampaignContactMeta, type SendWhatsAppInput, type SendWhatsAppResult } from './types';
+import { runEmailCampaignBatch, type EmailCampaignBatchDeps } from '../email/campaignBatch';
 
 export const PER_RECIPIENT_MIN_MS = 6000;
 export const MAX_THROTTLE_MPS = 80;
 
 export interface BatchDeps {
+  /** Inyección de escritor nativo para pruebas del canal correo, sin proveedor real. */
+  email?: Pick<EmailCampaignBatchDeps, 'prepare' | 'sendBatch'>;
   send?: (input: SendWhatsAppInput, service: SupabaseClient) => Promise<SendWhatsAppResult>;
   sleep?: (ms: number) => Promise<void>;
   now?: () => number;
@@ -128,7 +131,8 @@ export async function runCampaignBatch(payload: { campaign_id: string; batch_no?
   let c = await loadCampaign(org, campaignId, service);
   if (!c) return { ...base, finished: true, reason: 'campaign_not_found' };
   if (c.organization_id !== org) throw new WhatsAppError('INTERNAL', 'Campaña discordante con el job', 500);
-  if (c.channel !== 'whatsapp') return { ...base, finished: true, reason: 'not_whatsapp' };
+  if (c.channel === 'email') return runEmailCampaignBatch(payload, service, { ...deps, ...deps.email, deadlineMs: Math.max(0, deadline - now()) }, c);
+  if (c.channel !== 'whatsapp') return { ...base, finished: true, reason: 'unsupported_channel' };
   if (!['sending', 'scheduled'].includes(c.effective_status)) return { ...base, finished: true, reason: `status_${c.effective_status}` };
   const progress = async (notBefore?: Date): Promise<BatchResult> => {
     const r = await rpc<ProgressResult>(service, 'crm_campaign_batch_progress', { p_org: org, p_campaign: campaignId, p_batch: batchNo, p_not_before: notBefore?.toISOString() ?? null });

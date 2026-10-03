@@ -5,7 +5,7 @@ import {
   type TasaCambio,
 } from "@/components/crm/kit/monedaCrm";
 import { probabilityToFraction } from "./revenueOs/forecastScenarios";
-import { esOportunidadGanada } from './estadoOportunidadLogica';
+import { esOportunidadGanada } from "./estadoOportunidadLogica";
 export const FORECAST_CATEGORIES = [
   "commit",
   "best_case",
@@ -57,6 +57,9 @@ export interface ForecastSnapshot {
     period: string;
     target_amount: number | string;
     target_currency: string;
+    /** Fechas planas que ya devuelve el snapshot de sales_targets. */
+    period_start?: string;
+    period_end?: string;
   }[];
   teamQuotas: {
     id: string;

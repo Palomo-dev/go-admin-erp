@@ -18,6 +18,7 @@ import { Reorder, useDragControls, useReducedMotion } from 'motion/react';
 import { Flag, Plus, UserPlus } from 'lucide-react';
 import { buildTimeline, insertStepAt, moveStep, removeStepAt, type TimelineEntry } from '@/lib/services/crm/sequenceTimeline';
 import { useCrmLookups } from '@/components/crm/shared/useCrmLookups';
+import { SequenceReadOnlyTimeline } from './SequenceReadOnlyTimeline';
 import { StepCard } from './StepCard';
 import type { SequenceStepView } from './useSequences';
 
@@ -156,6 +157,8 @@ export function StepTimelineEditor({ steps, onChange, readOnly }: Props) {
   const patch = (index: number, p: Partial<EditorStep>) => {
     onChange(steps.map((s, i) => (i === index ? { ...s, ...p } : s)));
   };
+
+  if (readOnly) return <SequenceReadOnlyTimeline steps={steps} templates={templates} />;
 
   return (
     <section aria-labelledby="seq-steps-title">

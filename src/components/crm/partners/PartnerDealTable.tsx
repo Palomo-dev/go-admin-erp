@@ -1,5 +1,6 @@
 "use client";
 
+import { useLocaleIntl } from "@/components/kit/useIdiomaKit";
 import { useRedText } from "@/components/crm/red/useRedText";
 
 /**
@@ -9,6 +10,8 @@ import { useRedText } from "@/components/crm/red/useRedText";
  */
 
 import { Button } from "@/components/crm/red/RedButton";
+import { Badge } from "@/components/ui/badge";
+import { useTranslations } from "next-intl";
 import {
   Table,
   TableBody,
@@ -48,8 +51,30 @@ export function PartnerDealTable({
   busyId,
   onTransition,
 }: Props) {
-  const { tr, locale } = useRedText();
+  const { tr } = useRedText();
+  const locale = useLocaleIntl();
+  const t = useTranslations("crm.partnersVisual");
   const { formatDate, formatDateTime } = useFormatDate();
+  const business = (d: PartnerDealView) => (
+    <Badge
+      tono={
+        d.opportunity?.status === "won"
+          ? "exito"
+          : d.opportunity?.status === "lost"
+            ? "peligro"
+            : "marca"
+      }
+      tamano="sm"
+    >
+      {t(
+        d.opportunity?.status === "won"
+          ? "ganado"
+          : d.opportunity?.status === "lost"
+            ? "perdido"
+            : "abierto",
+      )}
+    </Badge>
+  );
   return (
     <>
       <div className="hidden overflow-x-auto rounded-xl border border-line bg-surface lg:block">
@@ -58,10 +83,14 @@ export function PartnerDealTable({
             <TableRow>
               <TableHead scope="col">{tr("Oportunidad")}</TableHead>
               <TableHead scope="col">{tr("Tipo")}</TableHead>
+              <TableHead scope="col">{t("negocio")}</TableHead>
+              <TableHead scope="col" className="text-right">
+                {t("monto")}
+              </TableHead>
               <TableHead scope="col" className="text-right">
                 {tr("Comisión")}
               </TableHead>
-              <TableHead scope="col">{tr("Estado")}</TableHead>
+              <TableHead scope="col">{t("estadoComision")}</TableHead>
               {canManage && <TableHead scope="col">{tr("Acciones")}</TableHead>}
             </TableRow>
           </TableHeader>
@@ -73,18 +102,32 @@ export function PartnerDealTable({
                     {d.opportunity?.name ?? tr("Oportunidad no disponible")}
                   </span>
                   <span className="block text-xs text-fg-secondary ">
-                    {d.opportunity?.amount != null
-                      ? formatMoney(
-                          d.opportunity.amount,
-                          d.opportunity.currency,
-                          locale,
-                        )
-                      : tr("Sin monto")}{" "}
-                    · {formatDate(d.created_at)}
+                    {formatDate(d.created_at)}
                   </span>
                 </TableCell>
                 <TableCell className="text-fg ">
-                  {tr(dealTypeLabel(d.deal_type))}
+                  <Badge
+                    tono={
+                      d.deal_type === "referral"
+                        ? "informacion"
+                        : d.deal_type === "co_sell"
+                          ? "marca"
+                          : "neutro"
+                    }
+                    tamano="sm"
+                  >
+                    {tr(dealTypeLabel(d.deal_type))}
+                  </Badge>
+                </TableCell>
+                <TableCell>{business(d)}</TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {d.opportunity?.amount != null
+                    ? formatMoney(
+                        d.opportunity.amount,
+                        d.opportunity.currency,
+                        locale,
+                      )
+                    : "—"}
                 </TableCell>
                 <TableCell className="text-right font-medium text-fg ">
                   {formatMoney(
@@ -138,7 +181,11 @@ export function PartnerDealTable({
               <p className="min-w-0 text-sm font-medium text-fg">
                 {d.opportunity?.name ?? tr("Oportunidad no disponible")}
               </p>
-              <CommissionStatusBadge status={d.commission_status} />
+              {d.commission_status === "rejected" ? (
+                <CommissionStatusBadge status={d.commission_status} />
+              ) : (
+                business(d)
+              )}
             </div>
             <p className="text-xs text-fg-secondary">
               {tr("Comisión")}{" "}

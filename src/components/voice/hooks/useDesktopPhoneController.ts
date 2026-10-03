@@ -45,6 +45,8 @@ export function useDesktopPhoneController(value: SoftphoneValue, organizationId:
           }
           case 'mute': if (sp.callStatus !== 'connected' || (sp.phoneControl?.held && sp.phoneControl.phase !== 'consulting') || sp.phoneControl?.busy) throw new Error('estado_desactualizado'); sp.mute(Boolean(command.value)); break;
           case 'digits': if (sp.callStatus !== 'connected' || sp.phoneControl?.held || sp.phoneControl?.busy) throw new Error('estado_desactualizado'); sp.sendDigits(String(command.value)); break;
+          case 'ringtone': if (!sp.setRingtoneMuted || sp.deviceState !== 'registered') throw new Error('estado_desactualizado'); sp.setRingtoneMuted(Boolean(command.value)); break;
+          case 'note': if (!sp.activeCall || sp.activeCallRow?.can_edit_notes === false) throw new Error('estado_desactualizado'); sp.setLiveNote(String(command.value)); break;
           case 'accept': if (!sp.hasIncoming) throw new Error('estado_desactualizado'); sp.acceptIncoming(); break;
           case 'reject': if (!sp.hasIncoming) throw new Error('estado_desactualizado'); sp.rejectIncoming(); break;
           case 'hangup': if (!sp.activeCall) throw new Error('estado_desactualizado'); sp.hangup(); break;
@@ -88,7 +90,10 @@ export function useDesktopPhoneController(value: SoftphoneValue, organizationId:
       scope: scope.current, revision: ++revision.current, organizationId,
       deviceState: value.deviceState, reason: value.deviceReason?.slice(0, 400) ?? null,
       callStatus: value.callStatus, incoming: value.hasIncoming, muted: value.muted,
-      recording: Boolean(value.activeCallRow?.recording_enabled),
+      recording: Boolean(value.activeCallRow?.recording_enabled && value.activeCallRow?.consent_given && value.activeCallRow?.recording_started),
+      ...(value.ringtoneMuted === undefined ? {} : { ringtoneMuted: value.ringtoneMuted }),
+      presentation: { inputLabel: value.audio?.inputs?.find(input => input.deviceId === value.audio.inputId)?.label.slice(0, 200) ?? null,
+        liveNote: value.liveNote?.slice(0, 10000) ?? '', canEditNote: value.activeCallRow?.can_edit_notes !== false },
       locale: ['es', 'en', 'fr', 'pt'].includes(locale) ? locale as 'es' | 'en' | 'fr' | 'pt' : 'es',
       call: value.activeCall ? { number: value.activeCall.number.slice(0, 80), displayName: value.activeCall.displayName?.slice(0, 200) ?? null, connectedAt: value.activeCall.connectedAt } : null,
     };

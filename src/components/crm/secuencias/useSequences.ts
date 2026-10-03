@@ -76,6 +76,8 @@ export interface EnrollmentView {
   exit_reason: string | null;
   paused_reason?: string | null;
   next_run_at?: string | null;
+  /** ID del paso que programa el motor; el GET ya devuelve la columna real. */
+  current_step_id?: string | null;
   /** Resueltos en el GET para no mostrar UUIDs. */
   opportunity_name?: string | null;
   customer_name?: string | null;

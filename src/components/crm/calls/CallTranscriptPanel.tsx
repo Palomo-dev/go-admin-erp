@@ -8,7 +8,7 @@
  */
 
 import { useMemo, useState } from 'react';
-import { Copy, Loader2, RefreshCw, AlertTriangle, FileText, Mic } from 'lucide-react';
+import { Copy, Loader2, RefreshCw, AlertTriangle, FileText, Mic, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslations } from 'next-intl';
 import { SearchInput, AvatarIniciales, EmptyState, RowActionsMenu } from '@/components/kit';
@@ -151,6 +151,7 @@ export function CallTranscriptPanel({ callId, onSeek, currentMs, state, classNam
           )}
         </div>
         <div className="flex items-center gap-1">
+          {variante === 'ficha' && transcript?.status === 'completed' && !mobileExpanded && <button type="button" aria-label={t('verTranscripcionCompleta')} aria-expanded={false} onClick={() => setMobileExpanded(true)} className="inline-flex size-6 items-center justify-center rounded text-fg-secondary focus-visible:ring-2 focus-visible:ring-brand lg:hidden"><ChevronDown size={16} strokeWidth={1.5} /></button>}
           {variante === 'ficha' && transcript?.status === 'completed' && <span className="hidden text-xs leading-4 text-fg-secondary lg:inline">{[transcript.language, typeof transcript.speaker_count === 'number' ? t('hablantes', { n: transcript.speaker_count }) : null].filter(Boolean).join(' · ')}</span>}
           {transcript?.status === 'completed' && <RowActionsMenu titulo={calls('transcripcion')} orientacion="horizontal" className={variante === 'ficha' && !mobileExpanded ? 'hidden lg:flex' : undefined} acciones={[
             { id: 'copy', etiqueta: t('copiarTranscripcion'), icono: Copy, onSelect: () => void copyAll() },
@@ -159,7 +160,7 @@ export function CallTranscriptPanel({ callId, onSeek, currentMs, state, classNam
         </div>
       </header>
 
-      <div className={variante === 'ficha' ? "p-4" : "p-3"} aria-live="polite">
+      <div className={variante === 'ficha' ? "px-4 pb-4 pt-2" : "p-3"} aria-live="polite">
         {s.loading && !transcript && (
           <div className="space-y-2">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -184,6 +185,7 @@ export function CallTranscriptPanel({ callId, onSeek, currentMs, state, classNam
             <p className="flex items-center gap-2 text-sm text-brand-deep">
               <Loader2 size={16} className="animate-spin" /> {transcript.provider === 'pending' ? calls('procesando') : `Transcribiendo con ${providerLabel(transcript.provider)}… (≈ 1-2 min)`}
             </p>
+            {variante === 'ficha' && <div className="grid w-full gap-3" aria-hidden="true">{Array.from({ length: 5 }, (_, index) => <div key={index} className="h-3 w-full animate-pulse rounded bg-subtle" />)}</div>}
             {stuck && (
               <div className="flex flex-col items-start gap-2 rounded-md border border-line-warning bg-warning-subtle p-2 text-sm text-warning-text">
                 <p className="flex items-center gap-2">
@@ -247,7 +249,7 @@ export function CallTranscriptPanel({ callId, onSeek, currentMs, state, classNam
                         <AvatarIniciales nombre={name} tamano="xs" tono={isAgent ? 'marcaSuave' : 'neutro'} />
                         <span className="min-w-0 flex-1">
                           <span className="mb-0.5 flex flex-wrap items-center gap-2 text-xs leading-4"><span className={cn('font-semibold', isAgent ? 'text-brand-deep' : 'text-fg')}>{name}</span><span className="font-medium tabular-nums text-fg-secondary">{fmtMs(seg.start_ms)}</span></span>
-                          <span className={cn("text-fg", variante === 'ficha' && !mobileExpanded && "line-clamp-3 lg:line-clamp-none")}>{highlight(seg.text, query)}</span>
+                          <span className={cn("text-fg", variante === 'ficha' && !mobileExpanded && "line-clamp-2 lg:line-clamp-none")}>{highlight(seg.text, query)}</span>
                         </span>
                       </button>
                     </li>
@@ -255,7 +257,6 @@ export function CallTranscriptPanel({ callId, onSeek, currentMs, state, classNam
                 })}
               </ol>
             )}
-            {variante === 'ficha' && !mobileExpanded && <Button size="sm" variant="ghost" className="mt-2 w-full text-xs text-brand lg:hidden" onClick={() => setMobileExpanded(true)}>{t('verTranscripcionCompleta')}</Button>}
             {filtered.length > limit && (
               <Button size="sm" variant="ghost" className="mt-2 w-full text-xs" onClick={() => setLimit((l) => l + pageSize)}>
                 {t('mostrarMas', { n: Math.min(pageSize, filtered.length - limit) })}

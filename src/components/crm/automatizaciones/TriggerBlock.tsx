@@ -9,6 +9,7 @@ import { useAutomationText } from './useAutomationText';
  * pantalla; nunca se borra en silencio (R1). Nunca más de tres campos.
  */
 
+import { CrmSelectControl } from '../agentes/CrmSelectControl';
 import { Label } from '@/components/ui/label';
 import { EntitySelect } from '@/components/crm/shared/EntitySelect';
 import { stagesOfPipeline } from '@/components/crm/shared/useCrmLookups';
@@ -19,8 +20,8 @@ import { EventPicker } from './EventPicker';
 import type { RuleLookups } from './useRuleLookups';
 
 export const SELECT_CLASS =
-  'h-9 w-full rounded-md border border-line-strong bg-surface px-2 text-sm text-fg '
-  + 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 '
+  'h-10 w-full rounded-lg border border-line-strong bg-surface px-2 text-sm text-fg '
+  + 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand '
   + 'dark:border-line-strong dark:bg-surface dark:text-fg';
 
 interface Props {
@@ -50,33 +51,25 @@ export function TriggerBlock({ form, lookups, onChange }: Props) {
   const muted = mutedEvent(form);
 
   return (
-    <div className="space-y-3">
+    <div className="grid gap-2 sm:grid-cols-3 [&>div]:min-w-0">
       <div>
-        <Label htmlFor="rule-trigger" className="text-xs text-fg-secondary dark:text-fg-secondary">{tr("Disparador")}</Label>
-        <select
-          id="rule-trigger"
-          className={SELECT_CLASS}
-          value={form.trigger_type}
-          aria-describedby="rule-trigger-hint"
-          onChange={(e) => onChange(setTrigger(form, e.target.value))}
-        >
-          {TRIGGER_OPTIONS.map((t) => <option key={t.value} value={t.value}>{tr(t.label)}</option>)}
-        </select>
-        <p id="rule-trigger-hint" className="mt-1 text-xs text-fg-secondary dark:text-fg-secondary">{tr(option?.hint)}</p>
+        <Label htmlFor="rule-trigger" className="sr-only">{tr("Disparador")}</Label>
+        <CrmSelectControl id="rule-trigger" className={SELECT_CLASS} aria-label={tr('Disparador')} value={form.trigger_type} aria-describedby="rule-trigger-hint" onChange={value => onChange(setTrigger(form, value))} options={TRIGGER_OPTIONS.map(option => ({ value: option.value, label: tr(option.label) }))} />
+        <p id="rule-trigger-hint" className="sr-only">{tr(option?.hint)}</p>
       </div>
 
       <AnimatePresence initial={false}>
         {form.trigger_type === 'event' && (
           <Expand key="event">
             <div>
-              <Label htmlFor="rule-event" className="text-xs text-fg-secondary dark:text-fg-secondary">{tr("Evento")}</Label>
+              <Label htmlFor="rule-event" className="sr-only">{tr("Evento")}</Label>
               <EventPicker
                 id="rule-event"
                 value={form.event}
                 describedBy={muted ? 'rule-event-hint rule-event-muted' : 'rule-event-hint'}
                 onChange={(event) => onChange({ ...form, event })}
               />
-              <p id="rule-event-hint" className="mt-1 text-xs text-fg-secondary dark:text-fg-secondary">
+              <p id="rule-event-hint" className="sr-only">
                 {tr("Elige uno conocido o escribe otro con la forma entidad.accion. Vacío = cualquier evento.")}</p>
               {/* R-5: también para el evento heredado de una regla ya guardada, no solo el que se escribe. */}
               {muted && (
@@ -87,13 +80,13 @@ export function TriggerBlock({ form, lookups, onChange }: Props) {
           </Expand>
         )}
         {scope !== 'none' && (
-          <Expand key="scope">
+          <Expand key="scope" className={scope === 'pipeline_stage' ? "sm:col-span-2" : "sm:col-span-1"}>
             <div className={scope === 'pipeline_stage' ? 'grid gap-3 sm:grid-cols-2' : "grid gap-3"}>
               <div>
                 {/* EntitySelect es compartido y no expone `id`: el nombre accesible va en `ariaLabel`. */}
-                <span className="block text-xs font-medium text-fg-secondary dark:text-fg-secondary">{tr("En el pipeline")}</span>
+                <span className="sr-only">{tr("En el pipeline")}</span>
                 {lookups.loading ? (
-                  <p className="text-xs text-fg-secondary dark:text-fg-secondary">{tr("Cargando pipelines…")}</p>
+                  <p className="sr-only">{tr("Cargando pipelines…")}</p>
                 ) : (
                   <EntitySelect
                     value={form.pipeline_id || null}
@@ -108,9 +101,9 @@ export function TriggerBlock({ form, lookups, onChange }: Props) {
               </div>
               {scope === 'pipeline_stage' && (
                 <div>
-                  <span className="block text-xs font-medium text-fg-secondary dark:text-fg-secondary">{tr("Al entrar en la etapa")}</span>
+                  <span className="sr-only">{tr("Al entrar en la etapa")}</span>
                   {lookups.loading ? (
-                    <p className="text-xs text-fg-secondary dark:text-fg-secondary">{tr("Cargando etapas…")}</p>
+                    <p className="sr-only">{tr("Cargando etapas…")}</p>
                   ) : (
                     <EntitySelect
                       value={form.stage_id || null}

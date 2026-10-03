@@ -14,7 +14,7 @@ import { BAND_STYLES } from "./healthBandStyles";
 export interface HealthGaugeProps {
   score: number;
   band: HealthBand;
-  size?: "inline" | "sm" | "md" | "lg";
+  size?: "inline" | "sm" | "md" | "lg" | "xl";
   /** Muestra la banda debajo del anillo (por defecto sí). */
   showLabel?: boolean;
   className?: string;
@@ -25,6 +25,7 @@ const SIZES = {
   sm: { box: 64, r: 26, stroke: 5, text: "text-base" },
   md: { box: 88, r: 36, stroke: 6, text: "text-xl" },
   lg: { box: 112, r: 46, stroke: 7, text: "text-2xl" },
+  xl: { box: 128, r: 54, stroke: 7, text: "text-[28px]" },
 } as const;
 
 export function HealthGauge({

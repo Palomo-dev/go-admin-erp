@@ -1,199 +1,163 @@
 'use client';
 
-/**
- * SoftphoneDock — widget flotante del softphone (FASE-03 §5.2, shell).
- * Estados: colapsado / marcador / llamando / en llamada / finalizada.
- * Subcomponentes: dock/DockHeader, dock/Keypad, dock/CallControls, dock/LiveNote.
- * Al colgar abre `CallDispositionDialog`. Debe vivir bajo <SoftphoneProvider>.
- * Atajos: Ctrl+Shift+C llamar a la entidad enfocada (`data-phone`), Ctrl+Shift+D colgar.
- */
-
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
+import { Loader2, Phone, PhoneCall, PhoneOff, Smartphone } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { AnimatePresence, SlideUp } from '@/components/shared/motion';
-import { Phone, PhoneCall, PhoneIncoming, PhoneOff } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { useOrganization } from '@/lib/hooks/useOrganization';
+import { queryMicrophonePermission, requestMicrophone, type MicrophonePermission } from '@/lib/services/voice/platformCapabilities';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { aFechaHoraLocal } from '@/components/crm/kit/fechasCrm';
+import { useCallModePolicy } from './hooks/useCallModePolicy';
+import { useMobilePhoneViewport } from './mobile/useMobilePhoneViewport';
+import { MobilePhoneLauncher } from './mobile/MobilePhoneLauncher';
 import { useSoftphone } from './SoftphoneProvider';
 import { DockHeader } from './dock/DockHeader';
 import { Keypad } from './dock/Keypad';
 import { CallControls } from './dock/CallControls';
 import { TransferPanel } from './dock/TransferPanel';
 import { LiveNote } from './dock/LiveNote';
+import { PhoneContact } from './dock/PhoneContact';
+import { RegisterPhoneCallDialog } from './dock/RegisterPhoneCallDialog';
+import { usePhoneContext } from './dock/usePhoneContext';
+import { PhoneAccessNotice, PhonePreflightNotice, PHONE_ACTION } from './dock/PhoneNotice';
 import { CallDispositionDialog } from './CallDispositionDialog';
-import { OPEN_SOFTPHONE_EVENT } from './softphoneUi';
+import { OPEN_SOFTPHONE_EVENT, SOFTPHONE_VISIBILITY_EVENT } from './softphoneUi';
+import { cn } from '@/utils/Utils';
 
+const MobileCallDialog = dynamic(() => import('@/components/crm/shared/MobileCallDialog').then(module => module.MobileCallDialog), { ssr: false });
+const TaskDialog = dynamic(() => import('@/components/crm/shared/TaskDialog').then(module => module.TaskDialog), { ssr: false });
+const ComposeEmailDialog = dynamic(() => import('@/components/crm/shared/ComposeEmailDialog').then(module => module.ComposeEmailDialog), { ssr: false });
+const AccionesRapidasCrm = dynamic(() => import('@/components/crm/acciones/AccionesRapidasCrm').then(module => module.AccionesRapidasCrm), { ssr: false });
+
+/** Un único teléfono: la presentación consume el provider y los formularios canónicos del CRM. */
 export function SoftphoneDock() {
+  const mobile = useMobilePhoneViewport();
+  const { decision } = useCallModePolicy();
+  return mobile && decision?.mode === 'mobile' ? <MobilePhoneLauncher /> : <BrowserPhoneDock />;
+}
+
+export function BrowserPhoneDock() {
   const sp = useSoftphone();
+  const t = useTranslations('phoneBrowser');
+  const { organization } = useOrganization();
+  const organizationId = organization?.id ?? null;
+  const { timezone } = useFormatDate();
   const [number, setNumber] = useState('');
   const [collapsed, setCollapsed] = useState(true);
   const [dtmf, setDtmf] = useState('');
   const [showKeypad, setShowKeypad] = useState(false);
   const [dispositionOpen, setDispositionOpen] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
-  const displayedSid = sp.available ? sp.activeCall?.callSid : null;
-  useEffect(() => { setShowTransfer(false); }, [displayedSid]);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [taskOpen, setTaskOpen] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [registerKey, setRegisterKey] = useState<number | null>(null);
+  const [permission, setPermission] = useState<MicrophonePermission>('unknown');
+  const [requesting, setRequesting] = useState(false);
+  const permissionAttempt = useRef(0);
+  const permissionScope = useRef(organizationId);
+  permissionScope.current = organizationId;
+  const activeCall = sp.available ? sp.activeCall : null;
+  const blocked = sp.available ? sp.blockedCall ?? null : null;
+  const targetNumber = activeCall?.number ?? blocked?.number ?? number;
+  const context = usePhoneContext(targetNumber, activeCall, !collapsed && sp.available);
+  const contact = context.contact ?? { id: blocked?.customerId ?? null, name: blocked?.displayName ?? activeCall?.displayName ?? null, number: targetNumber };
+  const displayedSid = activeCall?.callSid;
+  const deviceState = sp.available ? sp.deviceState : null;
+  const callStatus = sp.available ? sp.callStatus : null;
+  const hasIncoming = sp.available && sp.hasIncoming;
+  const makeCall = sp.available ? sp.makeCall : null;
+  const lastEnded = sp.available ? sp.lastEndedCall : null;
 
+  useEffect(() => { setShowTransfer(false); setShowKeypad(false); setDtmf(''); }, [displayedSid]);
+  useEffect(() => { permissionAttempt.current += 1; setRequesting(false); setNumber(''); setMobileOpen(false); setTaskOpen(false); setEmailOpen(false); setRegisterKey(null); setPermission('unknown'); }, [organizationId]);
   useEffect(() => {
     const open = (event: Event) => {
-      const candidate = (event as CustomEvent<{ number?: unknown }>).detail?.number;
+      const detail = (event as CustomEvent<{ number?: unknown; toggle?: unknown }>).detail;
+      const candidate = detail?.number;
       if (typeof candidate === 'string' && /^\+[1-9]\d{6,14}$/.test(candidate)) setNumber(candidate);
-      setCollapsed(false);
+      setCollapsed(value => detail?.toggle === true ? !value : false);
     };
     window.addEventListener(OPEN_SOFTPHONE_EVENT, open);
     return () => window.removeEventListener(OPEN_SOFTPHONE_EVENT, open);
   }, []);
-
-  const makeCall = sp.available ? sp.makeCall : null;
-  const lastEnded = sp.available ? sp.lastEndedCall : null;
-
-  // Abre el diálogo de disposición al terminar una llamada (con fila `calls` o no).
   useEffect(() => {
-    if (lastEnded) setDispositionOpen(true);
-  }, [lastEnded]);
-
-  // Ctrl+Shift+C: llama a la entidad enfocada (elemento con data-phone) o expande el dock.
+    window.dispatchEvent(new CustomEvent(SOFTPHONE_VISIBILITY_EVENT, { detail: { visible: sp.available && !collapsed && !hasIncoming } }));
+    return () => { window.dispatchEvent(new CustomEvent(SOFTPHONE_VISIBILITY_EVENT, { detail: { visible: false } })); };
+  }, [collapsed, hasIncoming, sp.available]);
+  useEffect(() => { if (lastEnded) setDispositionOpen(true); }, [lastEnded]);
+  useEffect(() => { if (callStatus === 'connecting' || blocked) setCollapsed(false); }, [callStatus, blocked]);
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (!(e.ctrlKey && e.shiftKey && e.key.toUpperCase() === 'C')) return;
-      const el = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>('[data-phone]');
-      const phone = el?.dataset.phone;
-      e.preventDefault();
-      // Política de modo (F15-B): si el botón de la tarjeta decidió «desde mi celular»
-      // (micrófono bloqueado o preferencia), el atajo abre ese mismo flujo.
-      if (el?.dataset.callMode === 'mobile') {
-        el.click();
-        return;
-      }
-      if (phone && makeCall) {
-        void makeCall(phone, { opportunityId: el?.dataset.opportunityId ?? null, customerId: el?.dataset.customerId ?? null, displayName: el?.dataset.displayName ?? null });
-      } else {
-        setCollapsed(false);
-      }
+    if (collapsed || !deviceState) return;
+    let current = true;
+    void queryMicrophonePermission().then(value => { if (current) setPermission(value); });
+    return () => { current = false; };
+  }, [collapsed, deviceState, organizationId]);
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey && event.shiftKey && event.key.toUpperCase() === 'C')) return;
+      const element = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>('[data-phone]');
+      event.preventDefault();
+      if (element?.dataset.callMode === 'mobile') { element.click(); return; }
+      if (element?.dataset.phone && makeCall) void makeCall(element.dataset.phone, { opportunityId: element.dataset.opportunityId ?? null, customerId: element.dataset.customerId ?? null, displayName: element.dataset.displayName ?? null });
+      else setCollapsed(false);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [makeCall]);
 
   const handleCall = useCallback(() => {
-    const trimmed = number.trim();
-    if (!trimmed || !makeCall) return;
-    void makeCall(trimmed);
-  }, [number, makeCall]);
-
-  useEffect(() => {
-    if (sp.available && (sp.callStatus === 'connecting' || sp.hasIncoming)) setCollapsed(false);
-  }, [sp]);
+    if (!number.trim() || !makeCall) return;
+    void makeCall(number.trim(), { customerId: context.contact?.id ?? undefined, displayName: context.contact?.name ?? undefined });
+  }, [number, makeCall, context.contact]);
+  const grant = async () => {
+    if (requesting || !sp.available) return;
+    const attempt = ++permissionAttempt.current;
+    const scope = organizationId;
+    setRequesting(true);
+    try { const result = await requestMicrophone(); if (permissionAttempt.current !== attempt || permissionScope.current !== scope) return; setPermission(result.granted ? 'granted' : result.reason === 'denied' ? 'denied' : 'unknown'); if (result.granted) sp.retry(); }
+    finally { if (permissionAttempt.current === attempt && permissionScope.current === scope) setRequesting(false); }
+  };
 
   if (!sp.available) return null;
-
-  const { deviceState, deviceReason, deviceMissing, deviceScope, callStatus, activeCall, activeCallId, activeCallRow, muted, hasIncoming, incoming, liveNote, setLiveNote, audio } = sp;
   const inCall = callStatus === 'connecting' || callStatus === 'ringing' || callStatus === 'connected';
   const connected = callStatus === 'connected';
-  const recording = Boolean(activeCallRow?.recording_enabled && activeCallRow?.consent_given && activeCallRow?.recording_started);
+  const recording = Boolean(sp.activeCallRow?.recording_enabled && sp.activeCallRow?.consent_given && sp.activeCallRow?.recording_started);
+  const access = !inCall && !blocked && (deviceState === 'no_permission' || permission === 'denied' ? 'denied' : permission === 'prompt' && deviceState === 'registered' ? 'prompt' : deviceState === 'not_configured' || deviceState === 'error' || deviceState === 'unregistered' ? 'unavailable' : null);
+  const inputName = sp.audio.inputs.find(input => input.deviceId === sp.audio.inputId)?.label;
+  const subtitle = blocked ? t(blocked.code === 'numero_excluido' || blocked.code === 'contacto_no_autorizado' ? 'excludedTitle' : blocked.code === 'tope_canal_semana' || blocked.code === 'tope_total_semana' ? 'weeklyTitle' : 'outsideHoursTitle') : access === 'denied' ? t('microphoneBlocked') : access === 'prompt' ? t('withoutMicrophone') : callStatus === 'connecting' ? t('connecting') : callStatus === 'ringing' ? t('ringing') : connected ? [t(sp.muted ? 'muted' : 'connected'), inputName].filter(Boolean).join(' · ') : inputName ? `${t('ready')} · ${t('microphone')}: ${inputName}` : undefined;
+  const register = () => setRegisterKey(Date.now());
 
-  return (
-    <>
-      {collapsed ? (
-        <button
-          type="button"
-          onClick={() => setCollapsed(false)}
-          className="fixed bottom-4 right-4 z-50 max-lg:bottom-[calc(var(--shell-barra-inferior,0px)+1rem)] flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
-          aria-label={`Abrir softphone (${deviceState === 'registered' ? 'listo' : deviceReason ?? deviceState})`}
-          title={deviceState === 'registered' ? 'Softphone listo' : deviceReason ?? 'Softphone'}
-        >
-          <PhoneCall size={22} aria-hidden="true" />
-          <span
-            className={`absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-gray-900 ${
-              connected ? 'bg-green-500 motion-safe:animate-pulse' : hasIncoming ? 'bg-yellow-400 motion-safe:animate-ping' : deviceState === 'registered' ? 'bg-green-500' : deviceState === 'not_configured' ? 'bg-gray-400' : 'bg-red-500'
-            }`}
-            aria-hidden="true"
-          />
-        </button>
-      ) : (
-        <AnimatePresence>
-          <SlideUp className="fixed bottom-0 right-0 z-50 w-full max-lg:bottom-[var(--shell-barra-inferior,0px)] sm:bottom-4 sm:right-4 sm:w-[360px] sm:max-lg:bottom-[calc(var(--shell-barra-inferior,0px)+1rem)]">
-            <Card role="region" aria-label="Softphone" className="rounded-none border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-800 sm:rounded-xl">
-              <DockHeader deviceState={deviceState} deviceReason={deviceReason} deviceMissing={deviceMissing} deviceScope={deviceScope} callStatus={callStatus} onMinimize={() => setCollapsed(true)} onRetry={sp.retry} />
-
-              <div className="space-y-3 p-4">
-                {hasIncoming && incoming && (
-                  <div className="space-y-2 rounded-lg border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-900/20">
-                    <div className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
-                      <PhoneIncoming size={16} aria-hidden="true" />
-                      <span className="text-sm font-medium">Llamada entrante · {incoming.from}</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button onClick={sp.acceptIncoming} size="sm" className="flex-1 bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700">
-                        <Phone size={14} className="mr-1" aria-hidden="true" />
-                        Aceptar
-                      </Button>
-                      <Button onClick={sp.rejectIncoming} size="sm" variant="destructive" className="flex-1">
-                        <PhoneOff size={14} className="mr-1" aria-hidden="true" />
-                        Rechazar
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {inCall && !hasIncoming && activeCall && (
-                  <div className="text-center" aria-live="assertive">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{activeCall.displayName ?? activeCall.number}</p>
-                    {activeCall.displayName && <p className="text-xs text-gray-500 dark:text-gray-400">{activeCall.number}</p>}
-                    {!connected && <p className="text-xs text-yellow-700 dark:text-yellow-300 motion-safe:animate-pulse">{callStatus === 'ringing' ? 'Timbrando…' : 'Conectando…'}</p>}
-                  </div>
-                )}
-
-                {inCall && !hasIncoming && (
-                  <>
-                    {showTransfer ? <TransferPanel state={sp.phoneControl} onTransfer={sp.transferCall} onConfirm={sp.confirmTransfer}
-                      onCancel={sp.cancelTransfer} onClose={() => setShowTransfer(false)} /> : <CallControls
-                      connectedAt={activeCall?.connectedAt ?? null}
-                      connected={connected}
-                      recording={recording}
-                      muted={muted}
-                      onMute={sp.mute}
-                      onHangup={sp.hangup}
-                      showKeypad={showKeypad}
-                      onToggleKeypad={() => setShowKeypad((v) => !v)}
-                      audio={audio}
-                      control={sp.phoneControl} onHold={sp.setHold} onTransfer={() => setShowTransfer(true)}
-                    />}
-                    {showKeypad && connected && !sp.phoneControl.held && !sp.phoneControl.busy && !showTransfer && <Keypad value={dtmf} onChange={setDtmf} onSubmit={() => undefined} dtmfMode onDigit={sp.sendDigits} />}
-                    {activeCallRow?.can_edit_notes !== false && <LiveNote callId={activeCallId} value={liveNote} onChange={setLiveNote} />}
-                  </>
-                )}
-
-                {!inCall && !hasIncoming && (
-                  <>
-                    <Keypad value={number} onChange={setNumber} onSubmit={handleCall} disabled={deviceState !== 'registered'} />
-                    <Button
-                      onClick={handleCall}
-                      disabled={!number.trim() || deviceState !== 'registered'}
-                      className="w-full bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
-                    >
-                      <Phone size={16} className="mr-2" aria-hidden="true" />
-                      Llamar
-                    </Button>
-                  </>
-                )}
-              </div>
-            </Card>
-          </SlideUp>
-        </AnimatePresence>
-      )}
-
-      {lastEnded && (
-        <CallDispositionDialog
-          open={dispositionOpen}
-          ended={lastEnded}
-          onClose={() => {
-            setDispositionOpen(false);
-            sp.clearLastEndedCall();
-            setDtmf('');
-            setShowKeypad(false);
-          }}
-        />
-      )}
-    </>
-  );
+  return <>
+    {!hasIncoming && (collapsed ? <button type="button" onClick={() => setCollapsed(false)} className="fixed bottom-4 right-4 z-50 flex size-12 items-center justify-center rounded-full bg-brand-action text-fg-on-brand shadow-lg hover:bg-brand-action-hover max-lg:bottom-[calc(var(--shell-barra-inferior,0px)+1rem)]" aria-label={t('openPhone')}>
+      <PhoneCall size={22} strokeWidth={1.5} /><span className={cn('absolute -right-0.5 -top-0.5 size-3 rounded-full border-2 border-surface', connected || deviceState === 'registered' ? 'bg-success' : 'bg-fg-muted')} />
+    </button> : <AnimatePresence><SlideUp className="fixed bottom-4 right-4 z-50 w-[360px] max-w-[calc(100vw-32px)] max-lg:bottom-[calc(var(--shell-barra-inferior,0px)+1rem)]">
+      <Card role="region" aria-label="Softphone" className="max-h-[calc(100dvh-32px)] overflow-y-auto rounded-2xl border-line bg-surface text-fg shadow-[0px_2px_6px_0px_rgba(15,23,42,0.06),0px_12px_32px_-4px_rgba(15,23,42,0.14)] dark:border-line dark:bg-surface">
+        <DockHeader diseno="kit" held={sp.phoneControl.held} deviceState={sp.deviceState} deviceReason={sp.deviceReason} deviceMissing={sp.deviceMissing} deviceScope={sp.deviceScope} callStatus={sp.callStatus} subtitle={subtitle} onMinimize={() => setCollapsed(true)} onRetry={sp.retry} />
+        {blocked ? <PhonePreflightNotice blocked={blocked} contact={contact} onCancel={() => sp.clearBlockedCall?.()} onSchedule={blocked.nextAt ? () => setTaskOpen(true) : undefined} onEmail={contact.email ? () => setEmailOpen(true) : undefined} />
+          : access ? <PhoneAccessNotice kind={access} reason={sp.deviceReason} busy={requesting} configurationScope={sp.deviceScope} onRetry={access === 'prompt' ? () => { void grant(); } : sp.retry} onMobile={() => setMobileOpen(true)} onRegister={access === 'unavailable' ? register : undefined} />
+            : <div className="space-y-4 p-4">
+              {inCall && activeCall ? <>
+                <PhoneContact contact={contact} centered={!connected} card={connected} reduced={showKeypad || showTransfer || sp.phoneControl.held} pulse={callStatus === 'ringing'} />
+                {!connected && <><p className="flex items-center justify-center" role="status"><span className="inline-flex items-center gap-1.5 rounded-full border border-line-warning bg-warning-subtle px-2 py-0.5 text-xs font-medium leading-4 text-warning-text">{callStatus === 'ringing' ? <PhoneCall size={13} strokeWidth={1.5} /> : <Loader2 size={13} strokeWidth={1.5} className="animate-spin" />}{t(callStatus === 'ringing' ? 'ringing' : 'connecting')}</span></p><p className="rounded-lg bg-subtle px-3 py-2 text-center text-xs leading-4 text-fg-secondary">{t(callStatus === 'ringing' ? 'ringingHint' : sp.activeCallRow?.recording_enabled ? 'recordingPendingHint' : 'recordingOffHint')}</p></>}
+                {connected && (showTransfer ? <TransferPanel diseno="kit" state={sp.phoneControl} onTransfer={sp.transferCall} onConfirm={sp.confirmTransfer} onCancel={sp.cancelTransfer} onClose={() => setShowTransfer(false)} /> : <CallControls diseno="kit" sinColgar connectedAt={activeCall.connectedAt} connected recording={recording} muted={sp.muted} onMute={sp.mute} onHangup={sp.hangup} showKeypad={showKeypad} onToggleKeypad={() => setShowKeypad(value => !value)} audio={sp.audio} control={sp.phoneControl} onHold={sp.setHold} onTransfer={() => setShowTransfer(true)} teclado={showKeypad && !sp.phoneControl.held && !sp.phoneControl.busy ? <Keypad diseno="kit" value={dtmf} onChange={setDtmf} onSubmit={() => undefined} dtmfMode onDigit={sp.sendDigits} /> : undefined} />)}
+                {connected && !showKeypad && !showTransfer && !sp.phoneControl.held && sp.activeCallRow?.can_edit_notes !== false && <LiveNote diseno="kit" callId={sp.activeCallId} value={sp.liveNote} onChange={sp.setLiveNote} />}
+                {!showTransfer && <button type="button" onClick={sp.hangup} className={cn(PHONE_ACTION, 'bg-danger hover:bg-danger-hover')}><PhoneOff size={18} strokeWidth={1.5} />{t(connected ? 'hangup' : 'cancel')}</button>}
+              </> : <>
+                <Keypad diseno="kit" value={number} onChange={value => { setNumber(value); sp.clearBlockedCall?.(); }} onSubmit={handleCall} disabled={deviceState !== 'registered'} despuesNumero={context.contact ? <PhoneContact compact contact={context.contact} /> : undefined} />
+                <button type="button" onClick={handleCall} disabled={!number.trim() || deviceState !== 'registered'} className={PHONE_ACTION}><Phone size={18} strokeWidth={1.5} />{t('dial')}</button>
+              </>}
+            </div>}
+        {!inCall && !blocked && !access && <div className="flex items-center gap-2 border-t border-line px-4 py-3 text-xs font-medium leading-4"><div className="min-w-0 flex-1"><p className="text-fg-secondary">{t('callerId')}</p><p className="truncate text-fg">{context.line?.e164 ?? t('configuredLine')}{context.line?.label ? ` · ${context.line.label}` : ''}</p></div><button type="button" disabled={!number.trim()} onClick={() => setMobileOpen(true)} className="flex items-center gap-1.5 text-brand-action disabled:opacity-50"><Smartphone size={14} strokeWidth={1.5} />{t('fromMobileShort')}</button></div>}
+      </Card>
+    </SlideUp></AnimatePresence>)}
+    {lastEnded && <CallDispositionDialog open={dispositionOpen} ended={lastEnded} onClose={() => { setDispositionOpen(false); sp.clearLastEndedCall(); setDtmf(''); setShowKeypad(false); }} />}
+    {mobileOpen && <MobileCallDialog open allowNumberEdit={!targetNumber.trim()} targetPhone={targetNumber} customerId={contact.id ?? undefined} customerName={contact.name ?? undefined} opportunityId={activeCall?.opportunityId ?? blocked?.opportunityId ?? undefined} onOpenChange={setMobileOpen} />}
+    {taskOpen && blocked?.nextAt && <TaskDialog open onOpenChange={setTaskOpen} relatedType={blocked.opportunityId ? 'opportunity' : contact.id ? 'customer' : undefined} relatedId={blocked.opportunityId ?? contact.id ?? undefined} customerId={contact.id ?? undefined} defaultTitle={`${t('dial')}: ${contact.name ?? targetNumber}`} defaultDueDate={aFechaHoraLocal(blocked.nextAt, timezone)} />}
+    {emailOpen && contact.id && <ComposeEmailDialog open customerId={contact.id} customer={{ id: contact.id, full_name: contact.name, email: contact.email ?? null }} onOpenChange={setEmailOpen} />}
+    {registerKey && (contact.id ? <AccionesRapidasCrm variante="cliente" clienteId={contact.id} cliente={{ id: contact.id, full_name: contact.name, phone: targetNumber }} sinBarra abrirAccion={{ accion: 'llamar', clave: registerKey, modoLlamada: 'registrar' }} onCerrado={() => setRegisterKey(null)} /> : <RegisterPhoneCallDialog onClose={() => setRegisterKey(null)} />)}
+  </>;
 }

@@ -49,9 +49,9 @@ describe.each<IdiomaPrueba>(['es', 'en', 'fr', 'pt'])('archivo de voz en %s', id
     expect(screen.getByRole('dialog').textContent).toContain(labels[idioma][1]);
     fireEvent.click(screen.getByRole('button', { name: labels[idioma][0] }));
     await waitFor(() => expect(screen.getByRole('alert').textContent).toContain(labels[idioma][code === 'campana_modificada' ? 3 : 2]));
-    expect(pedirCrm).toHaveBeenCalledWith('/api/crm/voice-agents/campaigns/fixture', {
-      method: 'DELETE', cuerpo: { expected_updated_at: '2026-10-01T00:00:00.123456+00:00' },
-    });
+    expect(pedirCrm).toHaveBeenCalledWith('/api/crm/voice-agents/campaigns/fixture', expect.objectContaining({
+      method: 'DELETE', cuerpo: { expected_updated_at: '2026-10-01T00:00:00.123456+00:00' }, signal: expect.any(AbortSignal),
+    }));
     expect(screen.getByRole('dialog')).toBeTruthy();
     expect(screen.getByRole('alert').textContent).not.toContain('detalle interno');
   });

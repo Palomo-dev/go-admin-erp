@@ -5,7 +5,7 @@ import type { CifrasSegmento } from '@/lib/services/crm/segmentosAudiencia';
 export function SegmentoCifras({ counts, loading }: { counts: CifrasSegmento | null; loading?: boolean }) {
   const t = useTranslations('crm.segmentosNuevo');
   const formatter = useFormatter();
-  const number = (n: number | undefined) => n === undefined ? '—' : formatter.number(n);
+  const number = (n: number | undefined) => n === undefined ? '—' : formatter.number(n, { useGrouping: true });
   return <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
     <StatCard etiqueta={t('total')} valor={number(counts?.total)} cargando={loading}
       detalle={counts ? `${formatter.number(counts.base > 0 ? counts.total / counts.base : 0, { style: 'percent', maximumFractionDigits: 2 })} · ${t('base')}` : undefined} />

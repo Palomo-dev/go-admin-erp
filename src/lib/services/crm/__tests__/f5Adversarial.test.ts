@@ -1123,10 +1123,21 @@ describe('8d. UI — MobileCallDialog', () => {
   });
 
   test('F5-61 exige `mobile_verified_at`, filtra por organización y no cae a `profiles.phone`', () => {
-    expect(ui()).toContain("select('mobile_phone_e164, mobile_verified_at')");
-    expect(ui()).toContain('mobile_verified_at');
+    const preferencesGet = SRC('src/app/api/crm/me/comm-preferences/route.ts').split('export async function PATCH')[0];
+    const columns = preferencesGet.match(/const COLUMNS = '([^']+)'/)?.[1].split(',').map(column => column.trim()) ?? [];
+    const verifiedMobileReader = SRC(BRIDGE_SVC_SRC).split('export async function getVerifiedMobile(')[1].split('export async function getActiveBridgeForUser(')[0];
+    // La UI usa el lector autenticado existente; no duplica su proyección de preferencias.
+    expect(ui()).toContain("fetch('/api/crm/me/comm-preferences'");
+    expect(ui()).toMatch(/row\?\.mobile_phone_e164\s*&&\s*row\.mobile_verified_at\s*&&\s*row\.requires_verification !== true/);
     expect(ui()).not.toContain("from('profiles')");
-    expect(ui()).toMatch(/from\('user_comm_preferences'\)[\s\S]{0,240}?\.eq\('organization_id', orgId\)/);
+    expect(columns).toEqual(expect.arrayContaining(['organization_id', 'user_id', 'mobile_phone_e164', 'mobile_verified_at']));
+    expect(preferencesGet).toContain('getServerOrgContext(request)');
+    expect(preferencesGet).toMatch(/from\('user_comm_preferences'\)[\s\S]*?\.select\(COLUMNS\)[\s\S]*?\.eq\('organization_id', ctx\.organizationId\)[\s\S]*?\.eq\('user_id', ctx\.userId\)/);
+    // El escritor comprueba OTP también en el camino legacy y nunca usa profiles.phone.
+    expect(verifiedMobileReader).toContain(".eq('user_id', userId)");
+    expect(verifiedMobileReader).toContain(".eq('organization_id', orgId)");
+    expect(verifiedMobileReader).toContain('!row.mobile_verified_at');
+    expect(verifiedMobileReader).not.toContain("from('profiles')");
   });
 
   test('F5-62 el progreso llega por Realtime (la tabla ya está publicada) con respaldo HTTP', () => {

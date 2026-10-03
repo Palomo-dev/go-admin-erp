@@ -19,9 +19,9 @@ export function EquipoPage() {
  const subtitulo={equipos:'teamsSubtitle',territorios:'territoriesSubtitle',asignar:'assignmentSubtitle',performance:'performanceSubtitle'}[tab];
  const cabecera:CabeceraEquipo=(acciones,accionMovil)=><PageHeader titulo={t(tab==='performance'?'visual.performanceTitle':'title')} subtitulo={t(`visual.${subtitulo}`)} icono={icono} cargando={loading}
   migas={[{etiqueta:'CRM',href:'/app/crm'},{etiqueta:t('title')}]}
-  acciones={acciones} movil={{accion:accionMovil,...(tab==='performance'?{titulo:t('visual.personalTitle')}:{})}}
+  acciones={acciones} movil={{accion:accionMovil,...(tab==='performance'?{titulo:t('visual.personalTitle'),subtitulo:''}:{})}}
   volverA={tab==='performance'?'/app/crm/equipo':undefined} onVolver={tab==='performance'?()=>setTab('equipos'):undefined}
-  debajo={<div className={`${tab==='performance'?'hidden lg:block ':''}w-full min-w-0 overflow-x-auto lg:w-auto`}><SegmentedControl valor={tab} onValorChange={setTab} etiqueta={t('views')} opciones={[
+  debajo={tab==='performance'?undefined:<div className={`w-full min-w-0 overflow-x-auto lg:w-auto`}><SegmentedControl valor={tab} onValorChange={setTab} etiqueta={t('views')} opciones={[
    {valor:'equipos',etiqueta:t('teams')},{valor:'territorios',etiqueta:t('territories')},
    {valor:'asignar',etiqueta:t('assignment')},{valor:'performance',etiqueta:t('performance')},
   ]}/></div>}/>;

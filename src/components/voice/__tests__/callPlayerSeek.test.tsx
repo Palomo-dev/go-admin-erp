@@ -21,3 +21,60 @@ test('closing a historical call while recordings load cannot create or play a de
  const view=renderConIdioma(<CallPlayer callId="call" recordingEnabled seekToMs={1000}/>);view.unmount();
  await act(async()=>resolve({ok:true,json:async()=>({data:{recordings:[{id:'recording',status:'ready'}]}})}));expect(FakeAudio.instances).toHaveLength(0);
 });
+
+test('processing recording polls at five seconds without creating audio and accepts only this call', async () => {
+ jest.useFakeTimers();
+ try {
+  const aborts: AbortSignal[] = [];
+  global.fetch = jest.fn(async (_url, init) => { aborts.push(init?.signal as AbortSignal); return { ok: true, json: async () => ({ data: { id: 'call', recordings: [{ id: 'recording', status: 'ready', duration_seconds: 10 }] } }) }; }) as unknown as typeof fetch;
+  const view = renderConIdioma(<CallPlayer callId="call" recordingEnabled processing initialRecordings={[]} variant="full" />);
+  expect(global.fetch).not.toHaveBeenCalled(); expect(FakeAudio.instances).toHaveLength(0);
+  await act(async () => { jest.advanceTimersByTime(4999); }); expect(global.fetch).not.toHaveBeenCalled();
+  await act(async () => { jest.advanceTimersByTime(1); }); expect(global.fetch).toHaveBeenCalledTimes(1); expect(FakeAudio.instances).toHaveLength(0);
+  view.unmount(); expect(aborts[0].aborted).toBe(true);
+ } finally { jest.useRealTimers(); }
+});
+
+test('organization change cancels pending recording polling and discards a late response', async () => {
+ jest.useFakeTimers();
+ try {
+  let resolve!:(value:unknown)=>void;
+  global.fetch = jest.fn(()=>new Promise(done=>{resolve=done;})) as unknown as typeof fetch;
+  const view=renderConIdioma(<CallPlayer callId="call" recordingEnabled processing initialRecordings={[]} variant="full" seekToMs={1000}/>);
+  await act(async()=>{jest.advanceTimersByTime(5000);});
+  await act(async()=>{window.dispatchEvent(new Event('organization-changed'));resolve({ok:true,json:async()=>({data:{id:'call',recordings:[{id:'recording',status:'ready',duration_seconds:10}]}})});});
+  await act(async()=>{jest.advanceTimersByTime(15000);});expect(global.fetch).toHaveBeenCalledTimes(1);expect(FakeAudio.instances).toHaveLength(0);view.unmount();
+ } finally {jest.useRealTimers();}
+});
+
+test.each([401, 403, 404])('processing poll stops after HTTP %s without repeating reads', async status => {
+ jest.useFakeTimers();
+ try {
+  global.fetch=jest.fn(async()=>({ok:false,status,json:async()=>({})})) as unknown as typeof fetch;
+  const view=renderConIdioma(<CallPlayer callId="call" recordingEnabled processing initialRecordings={[]} variant="full"/>);
+  await act(async()=>{jest.advanceTimersByTime(5000);});await act(async()=>{jest.advanceTimersByTime(20000);});
+  expect(global.fetch).toHaveBeenCalledTimes(1);expect(FakeAudio.instances).toHaveLength(0);view.unmount();
+ } finally {jest.useRealTimers();}
+});
+
+test('failed persisted recording stops automatic reads and offers a manual refresh', async () => {
+ jest.useFakeTimers();
+ try {
+  global.fetch=jest.fn(async()=>({ok:true,status:200,json:async()=>({data:{id:'call',recordings:[{id:'recording',status:'failed'}]}})})) as unknown as typeof fetch;
+  const view=renderConIdioma(<CallPlayer callId="call" recordingEnabled processing initialRecordings={[]} variant="full"/>);
+  await act(async()=>{jest.advanceTimersByTime(5000);});await act(async()=>{jest.advanceTimersByTime(20000);});
+  expect(global.fetch).toHaveBeenCalledTimes(1);expect(FakeAudio.instances).toHaveLength(0);view.unmount();
+ } finally {jest.useRealTimers();}
+});
+
+test('five-minute deadline cancels a hanging recording read and ignores its eventual result', async () => {
+ jest.useFakeTimers();
+ try {
+  let resolve!:(value:unknown)=>void;let signal:AbortSignal|undefined;
+  global.fetch=jest.fn((_url,init)=>{signal=init?.signal as AbortSignal;return new Promise(done=>{resolve=done;});}) as unknown as typeof fetch;
+  const view=renderConIdioma(<CallPlayer callId="call" recordingEnabled processing initialRecordings={[]} variant="full"/>);
+  await act(async()=>{jest.advanceTimersByTime(5000);});await act(async()=>{jest.advanceTimersByTime(295000);});expect(signal?.aborted).toBe(true);
+  await act(async()=>{resolve({ok:true,json:async()=>({data:{id:'call',recordings:[{id:'recording',status:'ready',duration_seconds:10}]}})});});
+  expect(FakeAudio.instances).toHaveLength(0);expect(global.fetch).toHaveBeenCalledTimes(1);view.unmount();
+ } finally {jest.useRealTimers();}
+});

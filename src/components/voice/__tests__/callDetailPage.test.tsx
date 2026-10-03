@@ -148,3 +148,36 @@ test('transcripción fallida ofrece el reintento del escritor nativo sin anuncia
   fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
   await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(`/api/crm/calls/${ID}/transcribe`, expect.objectContaining({ method: 'POST' })));
 });
+
+test('sin audio ni inteligencia histórica muestra notas reales y conserva los vínculos', async () => {
+  mockState.transcript = null; mockState.analysis = null;
+  (global.fetch as jest.Mock).mockResolvedValue({ ok: true, status: 200, json: async () => ({ success: true, data: { ...getCall(), recording_enabled: false, recordings: [], metadata: { live_note: 'Nota real guardada' } } }) });
+  renderConIdioma(<CallDetailPage id={ID} />);
+  expect(await screen.findByText('Nota real guardada')).toBeTruthy();
+  expect(screen.queryByRole('region', { name: 'Transcripción' })).toBeNull();
+  expect(screen.queryByRole('heading', { name: 'Resumen' })).toBeNull();
+  expect(screen.getByRole('link', { name: /Renovación/ })).toBeTruthy();
+  expect(FakeAudio.instances).toHaveLength(0);
+});
+
+test('sin grabación disponible conserva una transcripción y análisis históricos existentes', async () => {
+  (global.fetch as jest.Mock).mockResolvedValue({ ok: true, status: 200, json: async () => ({ success: true, data: { ...getCall(), recording_enabled: false, recordings: [], metadata: { live_note: 'Nota conservada' } } }) });
+  renderConIdioma(<CallDetailPage id={ID} />);
+  expect(await screen.findByText('Resumen real de prueba.')).toBeTruthy();
+  expect(screen.getByRole('region', { name: 'Transcripción' })).toBeTruthy();
+  expect(FakeAudio.instances).toHaveLength(0);
+});
+
+test('habilitar grabación sin consentimiento ni archivo persistido no inventa procesamiento ni hace polling', async () => {
+  jest.useFakeTimers();
+  try {
+    mockState.transcript = null; mockState.analysis = null;
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: true, status: 200, json: async () => ({ success: true, data: { ...getCall(), recording_enabled: true, consent_given: false, consents: [], recordings: [], metadata: {} } }) });
+    renderConIdioma(<CallDetailPage id={ID} />);
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    expect(screen.getByText('Esta llamada no tiene grabaciones disponibles')).toBeTruthy();
+    expect(screen.queryByText('Procesando la grabación…')).toBeNull();
+    await act(async () => { jest.advanceTimersByTime(20000); });
+    expect(global.fetch).toHaveBeenCalledTimes(1); expect(FakeAudio.instances).toHaveLength(0);
+  } finally { jest.useRealTimers(); }
+});

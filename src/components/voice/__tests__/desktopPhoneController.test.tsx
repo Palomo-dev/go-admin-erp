@@ -55,3 +55,19 @@ it('durante consulta permite hablar con el destino y mantiene DTMF bloqueado', a
   await act(async()=>{await command({id:crypto.randomUUID(),scope:s.scope,revision:s.revision,action:'mute',value:true});await command({id:crypto.randomUUID(),scope:s.scope,revision:s.revision,action:'digits',value:'1'});});
   expect(mute).toHaveBeenCalledWith(true);expect(sendDigits).not.toHaveBeenCalled();
 });
+
+it('notas y timbre siguen al Device dueño; una nota ajena o el Device desconectado se rechazan', async () => {
+  const setLiveNote = jest.fn(), setRingtoneMuted = jest.fn();
+  const connected = value({ callStatus: 'connected', activeCall: { number: '+573001234567', displayName: 'Contacto', connectedAt: 1 }, activeCallRow: { id: 'call-a', can_edit_notes: true }, liveNote: '', setLiveNote, setRingtoneMuted });
+  const rendered = renderHook(({ sp }) => useDesktopPhoneController(sp, 1), { wrapper, initialProps: { sp: connected } }); let s = latest();
+  await act(async () => { await command({ id: crypto.randomUUID(), scope: s.scope, revision: s.revision, action: 'note', value: 'Nota real' }); await command({ id: crypto.randomUUID(), scope: s.scope, revision: s.revision, action: 'ringtone', value: true }); });
+  expect(setLiveNote).toHaveBeenCalledWith('Nota real'); expect(setRingtoneMuted).toHaveBeenCalledWith(true);
+  setLiveNote.mockClear(); setRingtoneMuted.mockClear(); rendered.rerender({ sp: value({ ...connected, deviceState: 'unregistered', activeCallRow: { id: 'call-a', can_edit_notes: false } }) }); s = latest();
+  await act(async () => { await command({ id: crypto.randomUUID(), scope: s.scope, revision: s.revision, action: 'note', value: 'No permitido' }); await command({ id: crypto.randomUUID(), scope: s.scope, revision: s.revision, action: 'ringtone', value: false }); });
+  expect(setLiveNote).not.toHaveBeenCalled(); expect(setRingtoneMuted).not.toHaveBeenCalled();
+});
+it('REC requiere confirmación de inicio además de autorización', () => {
+  const rendered = renderHook(({ row }) => useDesktopPhoneController(value({ activeCallRow: row }), 1), { wrapper, initialProps: { row: { recording_enabled: true, consent_given: true, recording_started: false } } });
+  expect(latest().recording).toBe(false); rendered.rerender({ row: { recording_enabled: true, consent_given: true, recording_started: true } }); expect(latest().recording).toBe(true);
+  rendered.rerender({ row: { recording_enabled: true, consent_given: false, recording_started: true } }); expect(latest().recording).toBe(false);
+});

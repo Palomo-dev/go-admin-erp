@@ -1,36 +1,58 @@
 # Cierre de revisión del PR 280 — CRM Go Admin
 
-Fecha: 2 de octubre de 2026. [PR 280](https://github.com/Palomo-dev/go-admin-erp/pull/280). Este documento resume el cambio para revisión; las fases, evidencias SQL y versiones exactas están en `PLAN-FIGMA-A-CODIGO.md` y `propuestas/README.md`.
+Registro: 3 de octubre de 2026, UTC. [PR 280](https://github.com/Palomo-dev/go-admin-erp/pull/280), rama `feat/crm-flujo-completo`.
 
-El trabajo sigue la prioridad acordada: corregir integridad y cifras, completar la ficha y sus conexiones comerciales y adaptar las áreas nuevas al sistema visual de Figma. El código conserva los servicios, permisos y motores nativos. Usa **`stages.probability`**, la tabla existente aprobada por el usuario; no introduce `pipeline_stages`.
+La revisión anterior de 50 referencias no cubría el alcance visual solicitado. Este cierre incluye **los 135 IDs del inventario**, con comparación de **132 renders locales de componentes reales** y **tres contratos de interfaz del sistema operativo**. El [registro individual](VERIFICACION-VISUAL-135.md) y su [manifiesto de hashes](VERIFICACION-VISUAL-135.json) identifican las referencias, capturas, fuentes y límites. Las tres notificaciones/menú de Electron necesitan comprobación visual en un sistema operativo real; los contratos no sustituyen esa comprobación.
 
-## Comportamiento resultante
+## Cambios para revisión
 
-- **Cifras y pronóstico:** la probabilidad se interpreta como porcentaje de 0 a 100; una oportunidad de 1.000 al 50 % pondera 500. Los cierres usan el estado y las banderas reales de las etapas: una etapa abierta al 100 % no se registra como venta ganada. Las lecturas fallidas no se publican como cifras vacías válidas.
-- **Reuniones y actividades:** evento, actividad relacionada y seguimiento se escriben mediante núcleos transaccionales. El último contacto corresponde a una interacción realizada y conserva el más reciente; agendar una reunión futura no cuenta como contacto efectuado. El formulario distingue sesión vencida de falta de permiso, conserva sus datos y usa el criterio canónico de administración.
-- **Ficha y conexiones comerciales:** los lectores validan la organización de sesión y sus alias, permisos y referencias. La ficha reúne historial y relaciones comerciales, utiliza folios/navegación nativos y descarta respuestas obsoletas al cambiar de cliente u organización. Facturas, cotizaciones, Chat, referidos y partners reutilizan los núcleos existentes para crear o enlazar entidades.
-- **Llamadas y PHONE:** CAS de 20 campos, vínculo comercial, consentimiento, historial y contacto se actualizan de forma coherente. Las sesiones privadas coordinan espera, consulta, cancelación y transferencia; conservan al iniciador como autor del historial y asignan control a la pata actual. Un resultado incierto del proveedor se reconcilia antes de permitir otra intención. Las reservas de grabación protegen el retiro del consentimiento y requieren evidencia verificada.
-- **Identidades:** la fusión permite tipos de cliente distintos y cadenas de fusiones, conserva auditoría y clasificación del principal y obliga a deshacer dependencias activas en orden. El historial expone el motivo seguro y no el snapshot privado completo.
-- **Áreas y presentación:** Equipo/territorios, Salud, Objeciones, Agentes IA, Automatizaciones, Plantillas y Secuencias usan las conexiones nativas y el kit visual compartido, con estados de carga/error y traducciones en español, inglés, francés y portugués. Las vistas previas y pruebas locales no acreditan entrega ni ejecución real de un proveedor.
+- **Sistema visual:** jerarquía, tipografía Inter, espaciado, colores semánticos, controles, tablas, tarjetas, paneles y estados de carga/vacío/error adaptados al manual de Figma. Se reutilizan el kit y el shell existentes con variantes optativas. Las traducciones cubren español, inglés, francés y portugués. Esta ronda conserva los layouts previamente trabajados de Pipeline, Oportunidades, Leads y el encabezado de Clientes.
+- **Telefonía web, móvil y Electron:** estados, teclado, permisos, contexto y cierre único de llamada; el resultado se guarda mediante el escritor canónico. La opción «no volver a llamar» queda en la misma transacción que la disposición y el historial. El puente móvil exige organización/sesión vigentes y prueba de inicio de grabación; la caché se separa por organización, usuario y sucursal.
+- **Llamadas:** listado de ocho columnas y ficha con audio, notas, transcripción y análisis independientes. La reproducción móvil conserva el segmento real. El polling sólo empieza con una grabación persistida en procesamiento, se cancela al cambiar de contexto y se detiene ante 401/403/404, estados terminales o cinco minutos; permite actualizar manualmente. Una grabación habilitada sin inicio no aparece como trabajo pendiente.
+- **Agentes IA y Automatizaciones:** editores completos con borrador, guardado, herramientas obligatorias y prueba en seco sobre la revisión guardada. Los guiones por etapas conservan cambios al navegar. Las métricas agregadas tienen caché y concurrencia limitada y no presentan lecturas parciales como totales. Las plantillas de automatización describen la regla efectiva que entregan al editor.
+- **Plantillas y Secuencias:** editor, catálogo, versiones, aprobación y vista de inscripciones usan los motores existentes. El paso actual se resuelve desde `current_step_id` contra el catálogo de la misma secuencia; un paso histórico desconocido permanece sin nombre inventado.
+- **Segmentos y Campañas:** constructor de reglas, vista previa y asistente multicanal conectados a los contratos existentes. Las campañas de correo preparan contacto, correo y actividad de forma atómica, verifican permisos y sucursales actuales y mantienen una clave estable por correo ante timeout. Cambios de remitente/contenido o resultados inciertos fuerzan conciliación antes de otro efecto. Los correos manuales asociados a una campaña conservan su recorrido habitual.
+- **Referidos y Partners:** formularios, detalle, tablas y acciones comerciales coherentes con el núcleo existente. Los ajustes de comisión requieren permiso administrativo, UUID de intención y recibo auditable; la sugerencia y el importe confirmado quedan separados. Repetir la misma intención no duplica el deal. Registrar una recompensa pagada no ejecuta una transferencia de dinero.
+- **Equipo, Objeciones, Salud e Identidades:** filtros, selección, asignación, catálogo, detalle, configuración y estados móviles adaptados sin inventar estadísticas. Las alternativas de objeciones siguen siendo un borrador que requiere Guardar. La fusión conserva campos editables, errores y auditoría del motor actual.
+- **Pronóstico:** usa la tabla aprobada `stages` y su `probability` como porcentaje. El mensual lee el alcance completo y las categorías distinguen una oportunidad abierta al 100 % de una venta ganada. Los ajustes y metas trimestrales conservan su período.
 
-## Verificación registrada
+## Verificación de este cierre
 
-| Comprobación | Evidencia del cierre actual |
+| Comprobación | Resultado actual |
 | --- | --- |
-| Jest global | 18.704 pruebas y 1.093 suites pasaron en la ejecución global. Su único fallo era la guarda estática de deduplicación tras extraer el controlador: se conservó su contrato y la suite corregida pasó 9/9. Resultado compuesto: 18.705 casos y 1.094 suites verificados, una suite y ocho casos omitidos existentes. Los dos ajustes finales de tipos con efecto en runtime pasaron además 99 casos de ficha y 38 de Equipo en UTC y Bogotá. |
-| TypeScript global | Aprobado, salida 0 después de las correcciones finales, Node 24.19.0 y heap 8192. Los intentos con memoria insuficiente o en paralelo no se cuentan como verificación. |
-| Lint del delta | 136 archivos TypeScript/TSX del delta, cero errores y advertencias; el último ajuste exclusivamente de fixture se volvió a comprobar por separado. |
-| Fechas y zonas horarias | Focales del delta visual en UTC y Bogotá: IA174, Red97, ficha99, listado33 y Equipo38, más variantes del kit y consulta de Objeciones. La matriz canónica anterior conserva 809/26 por cada una de seis zonas; no se presenta como repetida después de este delta. |
-| Build final | Aprobado, salida 0; 367 páginas estáticas. Copia filtrada como Vercel, Next 15.5.9 / Node 24.19.0 / heap 6144. Incluye las rutas de ficha de llamada y partner y todos los ajustes visuales de producción; tipos y lint se comprobaron por separado, como en CI. |
-| Servidor de voz local | Node 20, /health 200, 98 dependencias y diez casos del cierre de imports aprobados. No equivale a una llamada real. |
-| Base de datos | 73 migraciones propias aplicadas exclusivamente por MCP, con SQL exacto y reversión versionados. Los candidatos restrictivos pendientes no se cuentan como aplicados. |
-| Figma | [135 referencias con dimensiones y hashes](VERIFICACION-VISUAL-135.md); 50 referencias renderizadas localmente y cinco estados adicionales con fixtures; cero pantallas CRM autenticadas acreditadas. |
+| Jest global UTC | 18.906 casos y 1.118 suites aprobados; ocho casos y una suite omitidos existentes. Salida 0, 124,856 s. |
+| TypeScript global | Salida 0 después de los últimos ajustes; Node 24.19.0, heap 8192. |
+| ESLint del delta | 240 archivos TypeScript/TSX, cero errores y advertencias. |
+| Matriz de fechas | 809 casos y 26 suites por zona; UTC, Bogotá, México, Madrid, Santiago y Katmandú aprobadas. |
+| Build de publicación | Salida 0, 367 páginas estáticas; copia filtrada como Vercel, Next 15.5.9 / Node 24.19.0 / heap 6144. Código de producción idéntico por SHA-256 a la fuente final; sólo documentos se completaron después. |
+| Figma | 135 IDs inventariados individualmente; 132 PNG comparados y tres contratos OS; cero sesión autenticada. Sin referencias faltantes, duplicadas, hashes inconsistentes ni errores de ejecución inesperados. |
 
-Los deltas SQL finales usan simulación PostgreSQL exclusivamente en pg_temp para negocio y gates separados de catálogo: llamadas 12+103, miembro activo 8+129, Secuencias 26+47 y métricas 18+53. El gate de las 35 policies de llamadas, derivados, tags y Storage pasó 31 aserciones de aplicación/reversión en una transacción que terminó en rollback. No se escribieron filas comerciales, se invocaron proveedores ni se reanudaron cargas generales de base.
+Jest conserva un aviso de worker forzado a cerrar tras finalizar, y las advertencias de npm/deprecación de cifrado de las pruebas. La compilación registra las advertencias conocidas de configuración/runtime y del parche opcional SWC. Estos avisos no se presentan como corregidos.
 
-Las advertencias previas del build sobre swcMinify, runtime reexportado y parche opcional SWC se registran sin ocultarlas. Los asesores Supabase mantienen nueve categorías de seguridad y siete de rendimiento, cero ERROR; esto no acredita un resultado global sin advertencias. Los contratos authenticated SECURITY DEFINER conservan autorización interna explícita.
+La evidencia visual usa datos sintéticos y transportes simulados en los componentes reales; no contiene una sesión CRM autenticada ni acredita entrega de correo/WhatsApp, llamadas externas o dispositivos físicos. Doce referencias usadas tienen export reducido y conservan también el hash/dimensiones del export canónico. Los deltas de fuente posteriores a una captura se documentan por separado, sin sustituir hashes históricos ni afirmar igualdad píxel a píxel.
+
+## SQL compatible aplicado en esta ronda
+
+Aplicación exclusiva por MCP, con SQL exacto y rollback en el mismo cambio. Las comprobaciones DDL/catálogo no invocaron RPC comerciales ni crearon clientes, llamadas o envíos de prueba. No se activaron las 59 policies restrictivas pendientes.
+
+| Versión real | Cambio | SHA-256 SQL | SHA-256 rollback |
+| --- | --- | --- | --- |
+| `20261002230703` | Disposición y baja humana atómicas | `c14fc62039d195fae12cdf73c2409fe63185fc2859db00d5719972003e9e25c3` | `bb117458092a09c76d86f0fa1a01b233f5c2a1b14968b776a3d502d4473a6401` |
+| `20261002233747` | Deal y comisión auditables | `736431a099c5ba028be7734f18c58e24780942a56a8a1eba144fa93ea4bf20c8` | `f229cce21119ed5465f8ed9a27043a73a6462ce9c06c343304f7688f7d52b0b1` |
+| `20261003000008` | Puente atómico de campañas de correo | `d3c71bcc1f56a0d4ba74e5824ed4d02365e1a674e1d62ac39deccae30f0a1a81` | `5c6712bb4809d3691805b5bd4052ab50096ed910bc74af4f27eea05900b76529` |
+
+La RPC de disposición autenticada conserva autorización interna. Las RPC de comisión y campañas son exclusivamente de servicio, con organización validada y `search_path` explícito; se verificaron los grants posteriores. La conciliación de correo evita bloquear/reescribir recibos terminales idénticos; el conteo canónico todavía lee los contactos de la campaña. El rollback de comisiones/correo conserva recibos e historia publicados y exige revertir el runtime coordinadamente.
+
+## Publicación e integración real
+
+El código del PR y sus checks se distinguen del despliegue coordinado de producción. El conector Vercel devuelve 403 por alcance de equipo, no por el rol administrador dentro del ERP; todavía no se acredita configuración del secreto de callbacks en Next y WS ni publicación de ambos consumidores desde este cierre. Railway conserva un runtime anterior y cambios staged; el usuario identificó su cambio manual como `VOICE_CALLBACK_SECRET`.
+
+Las restricciones de Secuencias15, Calendario9 y llamadas/derivados/tags/Storage35 se activan después de publicar y acreditar los escritores compatibles y retirar clientes/réplicas anteriores. Las guardas compatibles de Secuencias ya están aplicadas; este orden no requiere una nueva autorización del usuario.
+
+Quedan por acreditar la sesión real con organización elegida, el recorrido contra proveedores y los dispositivos. El dominio de correo verificado no prueba un envío desde el CRM. El Portal del partner sigue definido como propuesta sin backend/enlace revocable; SMS y algunas condiciones de salida/planificación de Figma no existen en el motor de Secuencias. Los [límites por módulo](VERIFICACION-VISUAL-135.md) explican esas diferencias funcionales sin presentar controles inertes como capacidades disponibles.
 
 ## Incidentes comprobados
+
 
 **Supabase:** las pruebas de API de Actividades de la fase 59 provocaron 52.811 errores `40001` entre el 1 de octubre, 20:40:47.325 y 20:49:35.511 en America/Bogota. Una colisión deliberada de clave se había clasificado como serialización transitoria y PostgREST multiplicó las transacciones. Los scripts eran finitos; la inspección local posterior encontró cero procesos vivos ejecutándolos. La corrección inicial permitió devolver 409. La revisión posterior encontró otros **17 RAISE deterministas en nueve RPC** y los cambió a `P0001`, mapeado por la API a 409.
 
@@ -39,26 +61,3 @@ Ese delta está aplicado por MCP como **`20261002131611`**, SQL MD5 `f1761fc00b6
 La prueba pesada de historial con agregaciones globales y locks a las 04:14 UTC precedió a errores de Realtime desde las 04:16 UTC. Puede haber contribuido a la carga o los bloqueos; faltan métricas históricas para demostrar causalidad. Se retiraron las agregaciones globales. El detalle y la atribución parcial de los errores posteriores constan en `INCIDENTE-SUPABASE-2026-10-02.md`.
 
 **Railway:** el despliegue de `master`, commit `edba4148`, falló el 1 de octubre a las 18:54 de Bogotá: el servidor de voz no pudo cargar `resend` y no superó `/health`. El commit fallido no incluía esa dependencia en `ws-server/package.json`. Railway acredita un despliegue posterior **SUCCESS**, commit `e892e819`, creado a las 19:25 de Bogotá; su mensaje indica la incorporación de ese paquete. La consulta fue sólo de lectura, con una recuperación acotada de logs. Sin el correo original no se asegura que ese fallo sea exactamente el aviso recibido. El historial no acredita un despliegue de los cambios finales locales de este PR.
-
-## Estado funcional y activación pendiente
-
-- **Secuencias:** aplicada `20261002152713`. Inscripción y reanudación exigen el permiso canónico, actor de sesión y referencias/sucursales coherentes bajo locks sin espera. La salida usa una RPC transaccional que guarda exited y omite solamente pasos pendientes. Las 15 policies que cierran CRUD directo todavía requieren publicar el writer nuevo. No se puede retirar un envío que un proveedor ya inició.
-- **Llamadas:** los escritores comprueban ambas referencias y sucursales antes de subir archivos, encolar trabajos o mutar etiquetas. El permiso edit_any conserva la gestión legítima sin conceder view_all para listas/audio; el servidor resuelve el registro internamente con organización validada. Los lectores de listado, frecuencia, agentes y campañas filtran el mismo alcance en filas y cifras.
-- **Objeciones y Equipo:** catálogo con cuatro indicadores, filtros/orden/CSV, detalle de página y editor compartido; las alternativas se agregan a un borrador que requiere Guardar. Las acciones móviles del shell y las pestañas de Equipo se corrigen sin otro motor de negocio ni rediseñar las páginas previas. El indicador de categoría suma detecciones de su categoría, sin afirmar llamadas únicas.
-- **Runtime coordinado:** publicar Next/API y WS desde el mismo cambio y comprobar /health y callbacks. Conservar WS_SESSION_SECRET; VOICE_CALLBACK_SECRET es distinto y debe coincidir en ambos consumidores. Railway registra `master` 9300b396 como SUCCESS, sin los writers de este cierre. Hay seis variables staged de correo/callbacks; el usuario identifica su cambio manual como VOICE_CALLBACK_SECRET. El diff de resource.update sigue sin exponer su contenido en el conector. La publicación coordinada espera acceso al equipo Vercel y comprobación del secreto en ambos consumidores.
-- **Acceso de Vercel:** el conector devuelve 403 porque está vinculado a otro alcance de equipo; requiere reconectar al equipo/proyecto correctos. No es el permiso del usuario administrador dentro del ERP. No se acredita configuración ni despliegue de producción del último commit. El preview publicado f8612b1c obtuvo SUCCESS después de corregir el filtro de archivos de telefonía; no acredita producción ni la nueva corrección visual.
-- **POSTDEPLOY:** 59 policies restrictivas pendientes: Secuencias15, Calendario9 y llamadas/derivados/tags/Storage35. Primero se acredita Next+WS compatibles, se retiran réplicas/clientes anteriores y después se activan sólo los bytes revisados. Las simulaciones no prueban una solicitud real de Storage ni revocan inmediatamente una URL firmada ya emitida (TTL600s).
-- **Verificación externa:** faltan organización elegida y sesión válida para el recorrido real; no se acreditan entregas de correo/WhatsApp, llamadas, transferencias, grabaciones, OTP, cobros ni hardware móvil/Electron. El dominio de correo está verificado, pero la configuración del proveedor no prueba envío desde el CRM. Los destinatarios autorizados permanecen privados.
-- **135 pantallas:** la auditoría identifica cada referencia; los renders simulados no sustituyen el contraste con navegador autenticado ni dispositivos nativos. No se presenta la exportación de referencias como aprobación visual completa.
-
-La PR reúne cambios compatibles y candidatos revisables con sus reversiones. Publicar el código y comprobar CI es independiente de acreditar el despliegue coordinado y activar las policies; este documento conserva esa distinción.
-
-## Corrección visual de la rama descargada — 2026-10-02
-
-Se corrigieron discrepancias reales de las áreas nuevas: Llamadas/ficha, Objeciones, Equipo, Referidos, Partners, Salud, Identidades, Agentes IA, Automatizaciones, Plantillas y Secuencias. La revisión adapta jerarquía, tablas/tarjetas, estados, controles y móvil al kit y al manual de marca mediante variantes optativas. Los tokens primitivos y semánticos ya concordaban con Figma. Esta corrección no rediseña Pipeline, Oportunidades ni Leads.
-
-La ficha de llamada usa los lectores y acciones existentes. Corrige errores independientes de transcripción/análisis, confirma el análisis que se muestra y no simula un trabajo pendiente por tener grabación disponible. Los editores de la misma ruta conservan el guardado y el borrador al volver, usar Escape o cambiar de organización; las fechas calendario usan el formato canónico sin cambiar de día.
-
-Los 55 estados simulados corresponden a 50 referencias y cinco casos adicionales: Equipo7, Objeciones5, Red30, listado4 y ficha4. Los controles nuevos de IA se contrastaron con ocho contextos y PNG originales y con pruebas DOM funcionales. Estos renders no acreditan sesión, proveedores, shell completo ni igualdad píxel a píxel de las 135 pantallas. No se ejecutaron SQL, pruebas de estrés ni acciones de proveedor en esta ronda.
-
-El manifiesto privado de build compara los archivos de producción con la fuente final. El único archivo de código divergente es un fixture de test actualizado después de iniciar el build; ese fixture se verificó con TypeScript/Jest/lint en el árbol actual y no participa en el bundle de producción. Los documentos de cierre se completaron después del build.

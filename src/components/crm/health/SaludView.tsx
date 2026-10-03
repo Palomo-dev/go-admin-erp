@@ -7,6 +7,8 @@ import { PageHeader } from "@/components/kit/PageHeader";
 import { StatCard } from "@/components/kit/StatCard";
 import { ChipsOpcion } from "@/components/kit/ChipsOpcion";
 import { PanelAdaptable } from "@/components/kit/PanelAdaptable";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EmptyState } from "@/components/kit/EmptyState";
 import { clasesBoton } from "@/components/kit/botonClases";
 import { useMonedaOrganizacion } from "@/lib/hooks/useOrgCurrency";
@@ -233,6 +235,8 @@ export function SaludView({ organizationId }: { organizationId: number }) {
         ) : !loading && !measurable.length ? (
           <div className="rounded-xl border border-line bg-surface">
             <EmptyState
+              className="min-h-[340px]"
+              accionPrimaria={false}
               icono={CheckCircle2}
               titulo={t("emptyTitle")}
               descripcion={t("emptyDescription")}
@@ -251,6 +255,7 @@ export function SaludView({ organizationId }: { organizationId: number }) {
                   etiqueta={t(`bands.${band}`)}
                   valor={counts[band]}
                   cargando={loading}
+                  varianteCarga="compacta"
                   tono={
                     band === "green"
                       ? "exito"
@@ -281,7 +286,7 @@ export function SaludView({ organizationId }: { organizationId: number }) {
                   onClick={() => setFilter(band)}
                 />
               ))}
-              <div className="rounded-xl border border-line bg-surface p-4">
+              {loading ? <div className="flex h-[72px] items-center gap-3 rounded-xl border border-line bg-surface p-4" aria-hidden="true"><Skeleton className="size-9 rounded-lg" /><div className="flex-1 space-y-2"><Skeleton className="h-3 w-2/3" /><Skeleton className="h-4 w-1/3" /></div></div> : <div className="rounded-xl border border-line bg-surface p-4">
                 <p className="mb-2 text-xs text-fg-secondary">
                   {t("meanTrend")}
                 </p>
@@ -297,7 +302,7 @@ export function SaludView({ organizationId }: { organizationId: number }) {
                     band={data?.trend.at(-1)?.band ?? "yellow"}
                   />
                 )}
-              </div>
+              </div>}
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <ChipsOpcion
@@ -312,16 +317,12 @@ export function SaludView({ organizationId }: { organizationId: number }) {
                   etiqueta: t(`filtersLabels.${value}`),
                 }))}
               />
-              <select
-                aria-label={t("change")}
-                className="hidden h-8 rounded-lg border border-line-strong bg-surface px-3 text-xs lg:block"
-                value={sort}
-                onChange={(e) => setSort(e.target.value as typeof sort)}
-              >
-                <option value="revenue">{t("revenue")}</option>
-                <option value="score">{t("score")}</option>
-                <option value="decline">{t("change")}</option>
-              </select>
+              <div className="hidden lg:block">
+                <Select value={sort} onValueChange={(value) => setSort(value as typeof sort)}>
+                  <SelectTrigger aria-label={t("change")} className="h-8 w-[180px] text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>{(["revenue", "score", "decline"] as const).map((value) => <SelectItem key={value} value={value}>{t(value === "decline" ? "change" : value)}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
             </div>
             <HealthRiskTable
               rows={filtered}

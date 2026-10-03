@@ -64,13 +64,12 @@ describe('cableado: acciones, condiciones y Chip', () => {
   const conditions = read('ConditionsBlock.tsx');
   const motion = fs.readFileSync(path.join(ROOT, 'src/components/shared/motion/chip.tsx'), 'utf8');
 
-  it('ActionsBlock y ConditionsBlock usan la ficha apilada y el texto que envuelve', () => {
-    for (const [src, tone] of [[actions, 'emerald'], [conditions, 'amber']] as const) {
-      expect(src).toMatch(new RegExp(`chipClass\\(\\s*open\\s*,\\s*'${tone}'\\s*,\\s*true\\s*\\)`));
-      expect(src).toMatch(/className=\{CHIP_LIST_CLASS\}/);
-      expect(src).toMatch(/<span className=\{CHIP_TEXT_CLASS\}>/);
-      expect(src).not.toMatch(/<span className="truncate">/);
-    }
+  it('las acciones envuelven su frase y las condiciones se editan en filas que encogen', () => {
+    expect(actions).toContain('min-w-0 flex-1 break-words');
+    expect(actions).not.toContain('<span className="truncate">');
+    expect(conditions).toContain('flex min-w-0 items-start');
+    expect(conditions).toContain('<ConditionChipEditor compacto');
+    expect(conditions).toContain('[overflow-wrap:anywhere]');
   });
 
   it('Chip (motion.div, elemento flex) nunca mide más que su contenedor', () => {
@@ -87,7 +86,7 @@ describe('constructor de regla a pantalla completa (Figma 1375:17)', () => {
     expect(source).toContain('id="automation-rule-form"');
     expect(source).toContain('form="automation-rule-form"');
     expect(source).toContain('onSubmit={(e) => { e.preventDefault(); void submit(); }}');
-    expect(source).toContain('lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]');
+    expect(source).toContain('lg:grid-cols-[minmax(0,1fr)_360px]');
   });
   it('guardar y volver pertenecen a la cabecera; los controles se bloquean en vuelo', () => {
     expect(source).toContain('<PageHeader');
@@ -124,10 +123,11 @@ describe('editor de una acción, vista previa, tarjeta, prueba en seco e histori
     expect(src.match(/<li[^>]*className="min-w-0 max-w-full"/g)?.length).toBe(2);
   });
 
-  it('RunsSheet: la columna Fecha se oculta bajo sm y la fecha va bajo el estado', () => {
+  it('el historial reutiliza la tabla responsive del kit y no añade scroll propio de una hoja', () => {
     const src = read('RunsSheet.tsx');
-    expect(src).toMatch(/<TableHead scope="col" className="hidden sm:table-cell">\{tr\("Fecha"\)\}<\/TableHead>/);
-    expect(src).toMatch(/className="hidden whitespace-nowrap align-top [^"]*sm:table-cell"/);
-    expect(src).toMatch(/className="mt-0\.5 block text-xs font-normal [^"]*sm:hidden"/);
+    expect(src).toContain('<DataTable');
+    expect(src).not.toContain('<SheetContent');
+    expect(src).toContain('formatDateTime(run.created_at)');
+    expect(src).toContain('[overflow-wrap:anywhere]');
   });
 });

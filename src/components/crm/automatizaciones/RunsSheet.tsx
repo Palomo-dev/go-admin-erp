@@ -1,162 +1,74 @@
 'use client';
-import { useAutomationText } from './useAutomationText';
 
-/**
- * Historial de ejecuciones (`automation_runs`) en una hoja lateral. Es dato
- * tabular real, así que va en tabla (brief §3). Muestra también los `failed`
- * y `skipped`, con el motivo en lenguaje humano.
- */
-
-import { useEffect, useState } from 'react';
-import { CheckCircle2, XCircle, MinusCircle, Loader2, Clock, RefreshCw } from 'lucide-react';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
-import { cn } from '@/utils/Utils';
-import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
-import { describeRunStatus, describeSkipReason, type RunTone } from '@/lib/services/crm/automation/ruleHumanizer';
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { CrmSelectControl } from '../agentes/CrmSelectControl';
+import { ArrowLeft, Download, History, RefreshCw } from 'lucide-react';
+import { DataTable, type ColumnaTabla } from '@/components/kit/DataTable';
+import { PageHeader } from '@/components/kit/PageHeader';
+import { ChipsOpcion } from '@/components/kit/ChipsOpcion';
+import { DateRangeButton } from '@/components/kit/DateRangeButton';
+import { StatusBadge } from '@/components/kit/StatusBadge';
+import { clasesBoton } from '@/components/kit/botonClases';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { addPlainDays, toPlainDate } from '@/lib/utils/dateDisplay';
+import { filasACsv } from '@/lib/utils/csv';
+import { describeRunStatus, describeSkipReason } from '@/lib/services/crm/automation/ruleHumanizer';
 import { actionEntry } from '@/lib/services/crm/automation/ruleCatalog';
-import { fetchRuns, type AutomationRunView } from './useAutomationRules';
+import { fetchRuns, type AutomationRunView, type AutomationRuleView } from './useAutomationRules';
+import { useAutomationText } from './useAutomationText';
+import type { RangoFechas } from '@/components/kit/rangoFechas';
 
+type RunRow = AutomationRunView & { opportunity_id?: string | null; trigger_payload?: Record<string, unknown> | null };
 interface Props {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  /** `null` = todas las reglas. */
-  ruleId: string | null;
-  ruleName: string | null;
+  open: boolean; onOpenChange(open: boolean): void; ruleId: string | null; ruleName: string | null;
+  rules?: AutomationRuleView[];
 }
 
-const TONE_CLASS: Record<RunTone, string> = {
-  success: 'text-success-text dark:text-success-text',
-  danger: 'text-danger-text dark:text-danger-text',
-  neutral: 'text-fg-secondary dark:text-fg-secondary',
-  info: 'text-brand-deep dark:text-blue-300',
-  warning: 'text-warning-text dark:text-warning-text',
-};
-
-function StatusIcon({ tone }: { tone: RunTone }) {
-  const cls = "h-4 w-4 shrink-0";
-  switch (tone) {
-    case 'success': return <CheckCircle2 strokeWidth={1.5} className={cls} aria-hidden="true" />;
-    case 'danger': return <XCircle strokeWidth={1.5} className={cls} aria-hidden="true" />;
-    case 'info': return <Loader2 strokeWidth={1.5} className={cn(cls, 'motion-safe:animate-spin')} aria-hidden="true" />;
-    case 'warning': return <Clock strokeWidth={1.5} className={cls} aria-hidden="true" />;
-    default: return <MinusCircle strokeWidth={1.5} className={cls} aria-hidden="true" />;
-  }
-}
-
-export function RunsSheet({ open, onOpenChange, ruleId, ruleName }: Props) {
+/** El historial es un lienzo completo; sólo lee ejecuciones reales, nunca pruebas en seco. */
+export function RunsSheet({ open, onOpenChange, ruleId, ruleName, rules = [] }: Props) {
   const tr = useAutomationText();
-  const [runs, setRuns] = useState<AutomationRunView[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [tick, setTick] = useState(0);
-  const { formatDateTime } = useFormatDate();
-  const onCloseAutoFocus = useReturnFocus(open); // H1: vuelve a «Historial» (cabecera o tarjeta).
-
+  const { formatDateTime, getToday } = useFormatDate();
+  const { timezone } = useOrgTimezone();
+  const [runs, setRuns] = useState<RunRow[]>([]), [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null), [tick, setTick] = useState(0);
+  const [selectedRule, setSelectedRule] = useState(ruleId ?? '');
+  const [status, setStatus] = useState('all');
+  const [range, setRange] = useState<RangoFechas>(() => ({ desde: addPlainDays(getToday(), -6), hasta: getToday() }));
+  useEffect(() => { setSelectedRule(ruleId ?? ''); }, [ruleId]);
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    setLoading(true);
-    setError(null);
-    fetchRuns(ruleId ?? undefined)
-      .then((data) => { if (!cancelled) setRuns(data); })
-      .catch((err: unknown) => { if (!cancelled) setError(err instanceof Error ? err.message : 'Error desconocido'); })
+    setLoading(true); setError(null); setRuns([]);
+    fetchRuns(selectedRule || undefined)
+      .then(data => { if (!cancelled) setRuns(data); })
+      .catch(err => { if (!cancelled) setError(err instanceof Error ? err.message : tr('Error desconocido')); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [open, ruleId, tick]);
-
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" onCloseAutoFocus={onCloseAutoFocus} className="w-full bg-surface dark:bg-canvas sm:max-w-2xl">
-        <SheetHeader className="pr-8">
-          <SheetTitle className="break-words text-fg dark:text-fg">
-            {ruleName ? tr("Historial de «{p0}»", { p0: ruleName }) : tr("Historial de todas las reglas")}
-          </SheetTitle>
-          <SheetDescription className="text-fg-secondary dark:text-fg-secondary">
-            {tr("Últimas 50 ejecuciones reales del servidor. Las pruebas en seco no se registran aquí.")}</SheetDescription>
-        </SheetHeader>
-
-        <div className="mt-4 flex justify-end">
-          <Button type="button" size="sm" variant="ghost" onClick={() => setTick((t) => t + 1)} disabled={loading}>
-            <RefreshCw strokeWidth={1.5} className={cn("mr-1.5 h-4 w-4", loading && 'motion-safe:animate-spin')} aria-hidden="true" /> {tr("Actualizar")}</Button>
-        </div>
-
-        {error && (
-          <Alert variant="destructive" className="mt-2">
-            <AlertTitle>{tr("No se pudo cargar el historial")}</AlertTitle>
-            <AlertDescription>{error} {tr("— pulsa «Actualizar» para reintentar.")}</AlertDescription>
-          </Alert>
-        )}
-
-        {loading ? (
-          <div className="mt-2 space-y-2" aria-busy="true" aria-label={tr("Cargando historial")}>
-            {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full" />)}
-          </div>
-        ) : runs.length === 0 && !error ? (
-          <p className="mt-6 text-center text-sm text-fg-secondary dark:text-fg-secondary">
-            {tr("Todavía no hay ejecuciones. Cuando la regla se dispare, aparecerán aquí.")}</p>
-        ) : (
-          <div className="mt-2 overflow-x-auto rounded-lg border border-line dark:border-line">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead scope="col">{tr("Estado")}</TableHead>
-                  {/* UX móvil: bajo `sm` la fecha va debajo del estado (misma celda) y la tabla cabe en 375 px sin scroll lateral. */}
-                  <TableHead scope="col" className="hidden sm:table-cell">{tr("Fecha")}</TableHead>
-                  <TableHead scope="col">{tr("Detalle")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {runs.map((run) => {
-                  const status = describeRunStatus(run.status);
-                  const results = run.result?.results ?? [];
-                  return (
-                    <TableRow key={run.id}>
-                      <TableCell className={cn("align-top font-medium", TONE_CLASS[status.tone])}>
-                        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                          <StatusIcon tone={status.tone} />
-                          {tr(status.label)}
-                        </span>
-                        <span className="mt-0.5 block text-xs font-normal text-fg-secondary dark:text-fg-secondary sm:hidden">
-                          {formatDateTime(run.created_at) || '—'}
-                        </span>
-                      </TableCell>
-                      <TableCell className="hidden whitespace-nowrap align-top text-fg-secondary dark:text-fg-secondary sm:table-cell">
-                        {formatDateTime(run.created_at) || '—'}
-                      </TableCell>
-                      {/* Tester UXM-C: `overflow-wrap: anywhere` (no `break-words`): en una celda de tabla `break-word` no reduce el
-                          ancho mínimo y un error de 120 caracteres sin espacios ensanchaba la tabla a 1146 px (scroll lateral a 375). */}
-                      <TableCell className="min-w-0 align-top text-fg-secondary [overflow-wrap:anywhere] dark:text-fg-secondary">
-                        {run.skip_reason && <p>{tr(describeSkipReason(run.skip_reason))}</p>}
-                        {run.error_message && (
-                          <p className="text-danger-text [overflow-wrap:anywhere] dark:text-danger-text">{run.error_message}</p>
-                        )}
-                        {results.length > 0 && (
-                          <ul className="mt-1 space-y-0.5 text-xs">
-                            {results.map((r) => (
-                              <li key={r.index} className={r.status === 'failed' ? 'text-danger-text dark:text-danger-text' : ''}>
-                                {r.index + 1}. {tr(actionEntry(r.type)?.label ?? r.type)}
-                                {r.status === 'failed' ? tr(" — error: {p0}", { p0: r.error ?? 'sin detalle' }) : tr(" — ok")}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                        {!run.skip_reason && !run.error_message && results.length === 0 && (
-                          <span className="text-fg-muted dark:text-fg-secondary">{tr("Sin detalle")}</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </SheetContent>
-    </Sheet>
-  );
+  }, [open, selectedRule, tick, tr]);
+  const shown = useMemo(() => runs.filter(run => {
+    const day = toPlainDate(new Date(run.created_at), timezone);
+    return day >= range.desde && day <= range.hasta && (status === 'all' || run.status === status);
+  }), [runs, range, status, timezone]);
+  const ruleLabel = (run: AutomationRunView) => rules.find(rule => rule.id === run.automation_rule_id)?.name ?? (run.automation_rule_id === ruleId ? ruleName : null) ?? tr('Regla no disponible');
+  const detail = (run: AutomationRunView) => run.error_message ?? (run.skip_reason ? tr(describeSkipReason(run.skip_reason)) : (run.result?.results ?? []).map(result => `${tr(actionEntry(result.type)?.label ?? result.type)}${result.status === 'failed' ? tr(' — error: {p0}', { p0: result.error ?? tr('Sin detalle') }) : tr(' — ok')}`).join(' · ') || tr('Sin detalle'));
+  const columns: ColumnaTabla<RunRow>[] = [
+    { id: 'when', encabezado: tr('Cuándo'), ancho: 132, celda: run => <span className="whitespace-nowrap text-[13px]">{formatDateTime(run.created_at)}</span> },
+    { id: 'rule', encabezado: tr('Regla'), celda: run => <span className="text-sm font-medium">{ruleLabel(run)}</span> },
+    { id: 'record', encabezado: tr('Registro'), ancho: 160, celda: run => run.opportunity_id ? <Link className="text-sm text-fg hover:text-brand-deep" href={`/app/crm/oportunidades/${encodeURIComponent(run.opportunity_id)}`}>{typeof run.trigger_payload?.opportunity_name === 'string' ? run.trigger_payload.opportunity_name : tr('Oportunidad {p0}', { p0: run.opportunity_id.slice(0, 8) })}</Link> : <span className="text-fg-muted">—</span> },
+    { id: 'status', encabezado: tr('Resultado'), ancho: 142, celda: run => { const value = describeRunStatus(run.status); return <StatusBadge estado={run.status} etiqueta={tr(value.label)} tono={value.tone === 'success' ? 'exito' : value.tone === 'danger' ? 'peligro' : value.tone === 'info' ? 'informacion' : value.tone === 'warning' ? 'advertencia' : 'neutro'} />; } },
+    { id: 'detail', encabezado: tr('Detalle'), celda: run => <span className="block min-w-0 text-[13px] leading-[18px] text-fg-secondary [overflow-wrap:anywhere]">{detail(run)}</span> },
+  ];
+  const download = () => {
+    const blob = new Blob([filasACsv(columns.map(column => column.encabezado), shown.map(run => [formatDateTime(run.created_at), ruleLabel(run), '', tr(describeRunStatus(run.status).label), detail(run)]))], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob), link = document.createElement('a');
+    link.href = url; link.download = 'automation-runs.csv'; link.click(); URL.revokeObjectURL(url);
+  };
+  if (!open) return null;
+  return <div className="space-y-4 bg-canvas p-4 sm:p-6" data-figma-node="1373:1161">
+    <PageHeader titulo={tr('Historial de ejecuciones')} subtitulo={tr('Qué hizo cada regla y por qué se omitió o falló')} icono={History} volverA="/app/crm/automatizaciones" onVolver={() => onOpenChange(false)} migas={[{ etiqueta: 'CRM' }, { etiqueta: tr('Automatizaciones') }]} movil={{ ocultarBarra: true }} acciones={<><button type="button" className={clasesBoton({ patron: 'button', variante: 'fantasma' })} onClick={() => onOpenChange(false)}><ArrowLeft className="size-4" strokeWidth={1.5} aria-hidden />{tr('Volver')}</button><button type="button" aria-label={tr('Actualizar')} disabled={loading} className={clasesBoton({ patron: 'button', variante: 'fantasma', className: 'size-10 px-0' })} onClick={() => setTick(value => value + 1)}><RefreshCw className="size-4" strokeWidth={1.5} aria-hidden /></button><button type="button" disabled={loading || !shown.length} className={clasesBoton({ patron: 'button', variante: 'secundario' })} onClick={download}><Download className="size-4" strokeWidth={1.5} aria-hidden />{tr('Exportar')}</button></>} />
+    <div className="flex flex-wrap items-center gap-2"><CrmSelectControl aria-label={tr('Regla')} className="min-w-52 flex-1" value={selectedRule} onChange={setSelectedRule} options={[{ value: '', label: tr('Regla: todas') }, ...rules.map(rule => ({ value: rule.id, label: rule.name }))]} /><DateRangeButton hoy={getToday()} valor={range} onValorChange={setRange} etiqueta={tr('Periodo')} className="min-w-52 flex-1" /><ChipsOpcion etiqueta={tr('Filtrar por estado')} opciones={[{ valor: 'all', etiqueta: tr('Todas') }, { valor: 'completed', etiqueta: tr('Ejecutadas') }, { valor: 'skipped', etiqueta: tr('Omitidas') }, { valor: 'failed', etiqueta: tr('Con error') }]} valor={status} onValorChange={setStatus} /></div>
+    <DataTable columnas={columns} filas={shown} obtenerId={run => run.id} etiqueta={tr('Historial de ejecuciones')} estado={loading ? 'cargando' : error ? 'error' : undefined} error={{ titulo: tr("No se pudo cargar el historial"), descripcion: error ?? undefined, accionPrimaria: true }} onReintentar={() => setTick(value => value + 1)} vacio={{ titulo: tr("Todavía no hay ejecuciones. Cuando la regla se dispare, aparecerán aquí.") }} densidad="compacta" className="[&_thead_th]:h-9 [&_thead_th]:font-semibold [&_tbody_td]:h-[59px]" mostrarCabeceraCargando={false} />
+    <p className="text-xs text-fg-muted">{tr('Últimas 50 ejecuciones reales del servidor. Las pruebas en seco no se registran aquí.')}</p>
+  </div>;
 }

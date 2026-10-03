@@ -15,11 +15,12 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Play, Pause, Loader2, AlertCircle } from 'lucide-react';
+import { Play, Pause, Loader2, AlertCircle, MicOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslations } from 'next-intl';
 import { CallPlayerControls } from './CallPlayerControls';
 import { useRecordingWaveform } from './useRecordingWaveform';
+import { usePendingRecording, type PendingRecordingAsset as Recording } from './usePendingRecording';
 import { downloadCallRecording } from './recordingDownload';
 import { useToast } from '@/components/ui/use-toast';
 import { clampRecordingSeek } from './callDeepLink';
@@ -40,12 +41,8 @@ interface CallPlayerProps {
   etiqueta?: string;
   initialRecordings?: Recording[];
   initialConsents?: Consent[];
-}
-
-interface Recording {
-  id: string;
-  status: string;
-  duration_seconds?: number | null;
+  /** Archivo esperado: conserva el estado pendiente hasta recibir el audio real. */
+  processing?: boolean;
 }
 
 interface Consent {
@@ -65,9 +62,11 @@ export function CallPlayer({
   etiqueta,
   initialRecordings,
   initialConsents,
+  processing = false,
 }: CallPlayerProps) {
   const { toast } = useToast();
   const t = useTranslations('crm.llamadas.ficha');
+  const calls = useTranslations('crm.llamadas');
   const seed = initialRecordings?.filter((recording) => recording.status === 'ready' || recording.status === 'completed');
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const mounted = useRef(true);
@@ -82,12 +81,20 @@ export function CallPlayer({
   const [currentMs, setCurrentMs] = useState(0);
   const [durationMs, setDurationMs] = useState((seed?.[0]?.duration_seconds ?? 0) * 1000);
   const [rate, setRate] = useState(1);
-  const [waveRecording, setWaveRecording] = useState<string | null>(null);
+  const [waveRecording, setWaveRecording] = useState<string | null>(seed?.[0]?.id ?? null);
   const [downloading, setDownloading] = useState(false);
   const peaks = useRecordingWaveform(variant === 'full' ? waveRecording : null);
   const pendingSeek = useRef<number | null>(null);
   const lastSeekVersion = useRef<number | undefined>(undefined);
   const lastRequestedSeek = useRef<number | null>(null);
+  const waitingForRecording = processing && recordings.length === 0;
+  const acceptReadyRecordings = useCallback((ready: Recording[]) => {
+    setRecordings(ready);
+    setFetched(true);
+    setDurationMs((ready[0].duration_seconds ?? 0) * 1000);
+    setWaveRecording(ready[0].id);
+  }, []);
+  const { stopped: pollStopped, refresh: refreshPendingRecording } = usePendingRecording(callId, waitingForRecording, acceptReadyRecordings);
 
   const fetchRecordings = useCallback(async (): Promise<Recording[]> => {
     if (fetched) return recordings;
@@ -182,6 +189,7 @@ export function CallPlayer({
   useEffect(() => {
     if (
       !recordingEnabled ||
+      waitingForRecording ||
       seekToMs === null ||
       seekToMs === undefined ||
       !Number.isFinite(seekToMs) ||
@@ -203,7 +211,7 @@ export function CallPlayer({
       pendingSeek.current = null;
       audio.play().catch(() => setHasError(true));
     })();
-  }, [seekToMs, seekVersion, ensureAudio, recordingEnabled, onTimeUpdate]);
+  }, [seekToMs, seekVersion, ensureAudio, recordingEnabled, waitingForRecording, onTimeUpdate]);
 
   useEffect(() => {
     mounted.current = true;
@@ -218,12 +226,15 @@ export function CallPlayer({
   }, []);
 
   if (!recordingEnabled) {
+    if (variant === 'full') return <div className="flex items-center gap-3 rounded-xl border border-line bg-surface p-3"><span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-subtle text-fg-muted"><MicOff size={18} strokeWidth={1.5} /></span><p className="text-sm leading-5 text-fg">{t('sinGrabacionDescripcion')}</p></div>;
     return (
       <span className="text-xs text-fg-muted" title={t('grabacionDeshabilitada')}>
-        {variant === 'full' ? t('sinGrabacion') : '—'}
+        —
       </span>
     );
   }
+  if (waitingForRecording && pollStopped && variant === 'full') return <div className="flex items-center gap-3 rounded-xl border border-line bg-surface p-3" role="status"><MicOff size={18} strokeWidth={1.5} className="shrink-0 text-fg-muted" /><p className="min-w-0 flex-1 text-sm text-fg-secondary">{t('sinGrabacion')}</p><Button size="sm" variant="outline" onClick={refreshPendingRecording}>{calls('actualizar')}</Button></div>;
+  if (waitingForRecording && variant === 'full') return <div className="flex items-center gap-3 rounded-xl border border-line bg-surface p-3" role="status"><span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-subtle text-fg-muted"><Loader2 size={18} strokeWidth={1.5} className="animate-spin" /></span><div><p className="text-sm leading-5 text-fg">{t('audioProcesando')}</p><p className="text-xs leading-4 text-fg-secondary">{t('audioProcesandoDetalle')}</p></div></div>;
   if (hasError) {
     return (
       <span

@@ -102,10 +102,25 @@ describe('f12Validation · referido', () => {
 });
 
 describe('f12Validation · deal', () => {
-  it('opportunity_id uuid y deal_type del CHECK; commission_amount del body se ignora', () => {
+  it('opportunity_id uuid y deal_type del CHECK; importe opcional exige testigo y no acepta estados del body', () => {
     expect(validateDealInput({ opportunity_id: 'x', deal_type: 'referral' }).ok).toBe(false);
     expect(validateDealInput({ opportunity_id: U1, deal_type: 'partner' }).ok).toBe(false);
-    expect(validateDealInput({ opportunity_id: U1, deal_type: 'co_sell', commission_amount: 999999 }))
+    expect(validateDealInput({ opportunity_id: U1, deal_type: 'co_sell', commission_status: 'paid' }))
       .toEqual({ ok: true, value: { opportunity_id: U1, deal_type: 'co_sell' } });
+  });
+});
+
+
+describe('comisión ajustada de partner', () => {
+  const base = { opportunity_id: U1, deal_type: 'referral', idempotency_key: U1 };
+  it('acepta cero como ajuste y conserva el testigo, sin estado enviado', () => {
+    expect(validateDealInput({...base, commission_amount:0, commission_status:'paid'})).toEqual({ok:true,value:{...base,commission_amount:0}});
+  });
+  it.each([-1, NaN, Infinity, 'x', 1.234, 1e13])('rechaza importe inválido %s', amount => {
+    expect(validateDealInput({...base, commission_amount:amount}).ok).toBe(false);
+  });
+  it('rechaza importe ajustado sin testigo y testigo mal formado', () => {
+    expect(validateDealInput({opportunity_id:U1,deal_type:'referral',commission_amount:12}).ok).toBe(false);
+    expect(validateDealInput({...base,idempotency_key:'x'}).ok).toBe(false);
   });
 });

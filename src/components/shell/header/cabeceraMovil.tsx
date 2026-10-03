@@ -65,6 +65,8 @@ type Fijar = (c: CabeceraMovilPagina | null) => void;
 // vuelven a renderizar cuando cambia la cabecera; solo la cabecera lee el valor.
 const ContextoValor = createContext<CabeceraMovilPagina | null>(null);
 const ContextoFijar = createContext<Fijar>(() => undefined);
+type RegistrarCabeceraTemporal = (id: symbol, c: CabeceraMovilPagina | null) => void;
+const ContextoCabeceraTemporal = createContext<RegistrarCabeceraTemporal>(() => undefined);
 
 /** Barras inferiores propias abiertas y el alto (px) de la más alta. */
 export interface BarrasInferiores {
@@ -84,6 +86,13 @@ export function resumirBarras(barras: ReadonlyMap<symbol, number>): BarrasInferi
 
 export function CabeceraMovilProvider({ children }: { children: ReactNode }) {
   const [pagina, fijar] = useState<CabeceraMovilPagina | null>(null);
+  const [temporal, setTemporal] = useState<CabeceraMovilPagina | null>(null);
+  const cabecerasTemporales = useRef(new Map<symbol, CabeceraMovilPagina>());
+  const registrarCabeceraTemporal = useCallback<RegistrarCabeceraTemporal>((id, c) => {
+    if (c === null) cabecerasTemporales.current.delete(id);
+    else cabecerasTemporales.current.set(id, c);
+    setTemporal(Array.from(cabecerasTemporales.current.values()).at(-1) ?? null);
+  }, []);
   const [resumen, setResumen] = useState<BarrasInferiores>(SIN_BARRAS);
   const barras = useRef(new Map<symbol, number>());
   // Registrar es estable: las piezas no se vuelven a renderizar por él, y el
@@ -95,13 +104,15 @@ export function CabeceraMovilProvider({ children }: { children: ReactNode }) {
     setResumen((previo) => (previo.cantidad === r.cantidad && previo.alto === r.alto ? previo : r));
   }, []);
   return (
+    <ContextoCabeceraTemporal.Provider value={registrarCabeceraTemporal}>
     <ContextoFijar.Provider value={fijar}>
       <ContextoRegistrarBarra.Provider value={registrar}>
         <ContextoBarras.Provider value={resumen}>
-          <ContextoValor.Provider value={pagina}>{children}</ContextoValor.Provider>
+          <ContextoValor.Provider value={temporal ?? pagina}>{children}</ContextoValor.Provider>
         </ContextoBarras.Provider>
       </ContextoRegistrarBarra.Provider>
     </ContextoFijar.Provider>
+    </ContextoCabeceraTemporal.Provider>
   );
 }
 
@@ -156,6 +167,14 @@ export function useCabeceraMovil(c: CabeceraMovilPagina): void {
     fijar(c);
   });
   useEffect(() => () => fijar(null), [fijar]);
+}
+
+/** Un panel temporal conserva la cabecera de la página, incluso si cambia mientras está abierto. */
+export function useCabeceraMovilTemporal(c: CabeceraMovilPagina): void {
+  const registrar = useContext(ContextoCabeceraTemporal);
+  const id = useRef(Symbol('cabecera-temporal')).current;
+  useEffect(() => { registrar(id, c); });
+  useEffect(() => () => registrar(id, null), [id, registrar]);
 }
 
 // ─── Modo por ruta ──────────────────────────────────────────────────────────

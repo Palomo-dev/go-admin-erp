@@ -7,6 +7,7 @@ import es from '../../../../messages/es.json';
 import en from '../../../../messages/en.json';
 import fr from '../../../../messages/fr.json';
 import pt from '../../../../messages/pt.json';
+jest.mock('../dock/usePhoneContext', () => ({ usePhoneContext: () => ({ key: '', contact: null, line: null }) }));
 const state: PhoneSnapshot = { scope: '11111111-1111-4111-8111-111111111111', revision: 1, organizationId: 1,
   deviceState: 'registered', reason: null, callStatus: 'idle', call: null, incoming: false, muted: false, recording: false };
 let receive: (next: PhoneSnapshot | null) => void;
@@ -49,6 +50,7 @@ it('REC depende de estado real y DTMF no se anuncia si el controlador rechaza', 
   act(() => receive({ ...state, callStatus: 'connected', recording: true, call: { number: '+573000000000', displayName: null, connectedAt: Date.now() } }));
   expect(screen.getByText('REC')).toBeTruthy();
   command.mockResolvedValue({ id: 'prueba', ok: false, error: 'estado_desactualizado' });
+  fireEvent.click(screen.getByRole('button', { name: 'Teclado DTMF' }));
   fireEvent.click(screen.getByRole('button', { name: 'Enviar 1' }));
   await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
   expect((screen.getByLabelText('Dígitos enviados') as HTMLInputElement).value).toBe('');

@@ -195,7 +195,7 @@ describe("UXM-D (de tester r1) · guardas estáticas", () => {
   test("la pestaña Voz declara min-w-0 en la tarjeta y la lista de radios usa grid-cols-1", () => {
     const tab = SRC("src/components/crm/agentes/editor/AgentVoiceTab.tsx");
     expect(tab).toContain('role="radiogroup"');
-    expect(tab).toContain("grid grid-cols-1 gap-2 sm:grid-cols-2");
+    expect(tab).toContain("grid grid-cols-1 gap-3 sm:grid-cols-2");
     const card = SRC("src/components/crm/agentes/voces/VoicePickCard.tsx");
     expect(card).toContain('<label htmlFor={id}');
     expect(card).toContain("min-w-0 flex-1");

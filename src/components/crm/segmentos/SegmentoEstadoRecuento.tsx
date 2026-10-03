@@ -7,8 +7,10 @@ import type { SegmentoRegistro } from "@/lib/services/crm/segmentosAudiencia";
 
 export function SegmentoEstadoRecuento({
   segment,
+  onlyChannels = false,
 }: {
   segment: SegmentoRegistro;
+  onlyChannels?: boolean;
 }) {
   const t = useTranslations("crm.segmentosNuevo"),
     formatter = useFormatter();
@@ -37,11 +39,11 @@ export function SegmentoEstadoRecuento({
           <span
             key={label}
             className="inline-flex items-center gap-1"
-            title={`${label}: ${count === undefined ? "—" : formatter.number(count)}${segment.counted_at ? ` · ${formatDateTime(segment.counted_at)}` : ""}`}
+            title={`${label}: ${count === undefined ? "—" : formatter.number(count, { useGrouping: true })}${segment.counted_at ? ` · ${formatDateTime(segment.counted_at)}` : ""}`}
           >
             <Icon className="size-3.5" aria-hidden="true" />
             <span className="sr-only">{label}: </span>
-            {count === undefined ? "—" : formatter.number(count)}
+            {count === undefined ? "—" : formatter.number(count, { useGrouping: true })}
           </span>
         ))}
       </div>
@@ -53,7 +55,7 @@ export function SegmentoEstadoRecuento({
       ) : segment.count_error ? (
         <p className="text-danger-text">{t("countFailed")}</p>
       ) : null}
-      {segment.usage && (
+      {!onlyChannels && segment.usage && (
         <p>
           {t("usedIn")}:{" "}
           <Link className="text-link hover:underline" href="/app/crm/campanas">

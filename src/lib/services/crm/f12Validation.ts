@@ -256,16 +256,54 @@ export function validateReferralPatch(body: Body): Validation<ReferralPatchValue
 export interface DealValues {
   opportunity_id: string;
   deal_type: DealType;
+  commission_amount?: number;
+  idempotency_key?: string;
 }
 
-/** La comisión NUNCA viene del body: la calcula el servidor (monto × tasa efectiva). */
+/** El servidor mantiene el cálculo sugerido; un ajuste explícito exige administración en la ruta. */
 export function validateDealInput(body: Body): Validation<DealValues> {
   const errors: FieldError[] = [];
   const out: Body = {};
-  if (!isUuid(body.opportunity_id)) errors.push({ field: 'opportunity_id', message: 'Elige la oportunidad del deal' });
+  if (!isUuid(body.opportunity_id))
+    errors.push({
+      field: "opportunity_id",
+      message: "Elige la oportunidad del deal",
+    });
   else out.opportunity_id = body.opportunity_id;
-  if (!(DEAL_TYPES as readonly unknown[]).includes(body.deal_type)) errors.push({ field: 'deal_type', message: `Tipo de deal inválido. Valores: ${DEAL_TYPES.join(', ')}` });
+  if (!(DEAL_TYPES as readonly unknown[]).includes(body.deal_type))
+    errors.push({
+      field: "deal_type",
+      message: `Tipo de deal inválido. Valores: ${DEAL_TYPES.join(", ")}`,
+    });
   else out.deal_type = body.deal_type;
+  if ("idempotency_key" in body) {
+    if (!isUuid(body.idempotency_key))
+      errors.push({
+        field: "idempotency_key",
+        message: "Testigo del registro inválido",
+      });
+    else out.idempotency_key = body.idempotency_key;
+  }
+  if ("commission_amount" in body) {
+    const value = number(body.commission_amount);
+    if (
+      value === null ||
+      value < 0 ||
+      value > 1e12 ||
+      Math.abs(value * 100 - Math.round(value * 100)) > 0.001
+    )
+      errors.push({
+        field: "commission_amount",
+        message:
+          "La comisión debe ser un importe válido con hasta dos decimales",
+      });
+    else out.commission_amount = value;
+    if (!isUuid(body.idempotency_key))
+      errors.push({
+        field: "idempotency_key",
+        message: "El ajuste requiere un testigo del registro válido",
+      });
+  }
   return finish<DealValues>(errors, out, { partial: false });
 }
 

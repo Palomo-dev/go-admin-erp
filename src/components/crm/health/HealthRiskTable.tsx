@@ -27,6 +27,7 @@ export function HealthRiskTable({
   const badge = (row: HealthListRow, mobile = false) => (
     <StatusBadge
       estado={row.band}
+      tipografia="figma"
       tono={
         row.band === "green"
           ? "exito"
@@ -134,6 +135,10 @@ export function HealthRiskTable({
       filas={rows}
       obtenerId={(row) => row.customer_id}
       etiqueta={t("monitored")}
+      filasEsqueleto={6}
+      mostrarCabeceraCargando={false}
+      altoFilaEsqueleto={48}
+      varianteEsqueleto="figma"
       estado={loading ? "cargando" : rows.length ? "listo" : "sinResultados"}
       onFilaClick={(row) => onSelect(row.customer_id)}
       onLimpiarFiltros={onClearFilter}
@@ -142,7 +147,7 @@ export function HealthRiskTable({
         descripcion: t("filterEmptyDescription"),
       }}
       tarjetaMovil={(row) => (
-        <article className="space-y-2 rounded-xl border border-line bg-surface p-4">
+        <article className="space-y-1.5 rounded-xl border border-line bg-surface p-3">
           <button
             type="button"
             className="flex w-full items-center justify-between gap-2 text-left focus-visible:ring-2 focus-visible:ring-brand"
@@ -153,7 +158,7 @@ export function HealthRiskTable({
           </button>
           <HealthAlerts alerts={row.alerts ?? []} raw={row.raw} compact />
           <div className="flex items-center justify-between gap-2">
-            <span className="text-sm text-fg-secondary">
+            <span className="text-xs text-fg-secondary">
               {t("revenueValue", {
                 revenue: formatear(row.raw?.revenue_12m ?? 0),
               })}

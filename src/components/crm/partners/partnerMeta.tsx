@@ -17,7 +17,7 @@ interface Meta {
 
 export const COMMISSION_META: Record<CommissionStatus, Meta> = {
   pending: { label: COMMISSION_STATUS_LABELS.pending, icon: CircleDashed, badge: 'bg-subtle text-fg  ', action: 'Pendiente' },
-  approved: { label: COMMISSION_STATUS_LABELS.approved, icon: BadgeCheck, badge: 'bg-brand-subtle text-brand-deep  ', action: 'Aprobar' },
+  approved: { label: COMMISSION_STATUS_LABELS.approved, icon: BadgeCheck, badge: 'bg-brand-tint text-brand-deep  ', action: 'Aprobar' },
   paid: { label: COMMISSION_STATUS_LABELS.paid, icon: Coins, badge: 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950/70 dark:text-emerald-200', action: 'Registrar pago' },
   rejected: { label: COMMISSION_STATUS_LABELS.rejected, icon: XCircle, badge: 'bg-red-100 text-red-900 dark:bg-red-950/70 dark:text-red-200', action: 'Rechazar' },
 };
@@ -25,7 +25,7 @@ export const COMMISSION_META: Record<CommissionStatus, Meta> = {
 export function CommissionStatusBadge({ status }: { status: CommissionStatus }) {
   const {tr} = useRedText();
   const meta = COMMISSION_META[status] ?? COMMISSION_META.pending;
-  return <StatusBadge estado={status} etiqueta={tr(meta.label)} tono={status === 'paid' ? 'exito' : status === 'rejected' ? 'peligro' : status === 'approved' ? 'marca' : 'neutro'} icono={meta.icon}/>;
+  return <StatusBadge estado={status} etiqueta={tr(meta.label)} tono={status === 'paid' ? 'exito' : status === 'rejected' ? 'peligro' : status === 'approved' ? 'informacion' : 'advertencia'}/>;
 }
 
 export function dealTypeLabel(type: DealType | string): string {

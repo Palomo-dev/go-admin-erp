@@ -42,7 +42,11 @@ export const dispositionSchema = z.object({
     .optional()
     .nullable(),
   note: z.string().max(20000).optional().nullable(),
-}).strict();
+  do_not_call: z.boolean().optional(),
+}).strict().refine(
+  (value) => !value.do_not_call || !value.next_action || value.next_action.type === 'none',
+  { message: 'Una exclusión no puede programar un nuevo contacto', path: ['next_action'] },
+);
 export type Disposition = z.infer<typeof dispositionSchema>;
 
 export const callPatchSchema = z.object({
@@ -66,6 +70,9 @@ export async function applyDisposition(
   client: SupabaseClient,
   options: { liveNote?: string | null; assertOwner?: (fresh: CallRowForDisposition) => void | Promise<void>; sessionClient?: SupabaseClient; clientKey?: string } = {},
 ): Promise<{ call: CallRowForDisposition; taskId: string | null; activityId: string | null }> {
+  if (d.do_not_call && !isAtomicCallRpcEnabled()) {
+    throw new Error('La exclusión necesita el guardado atómico de llamadas');
+  }
   if (isAtomicCallRpcEnabled()) {
     if (!options.sessionClient) throw new Error('La disposición necesita la sesión del usuario');
     const payload = { disposition: d, ...(options.liveNote !== undefined ? { live_note: options.liveNote } : {}) };
@@ -77,6 +84,7 @@ export async function applyDisposition(
     if (error) throw error;
     const result = data as { call?: CallRowForDisposition; task_id?: string | null; activity_id?: string | null } | null;
     if (!result?.call || result.call.id !== call.id || result.call.organization_id !== call.organization_id) throw new Error('Respuesta inválida al guardar la disposición');
+    if (d.do_not_call && result.call.metadata?.disposition_do_not_call !== true) throw new Error('La respuesta no confirma la exclusión del número');
     return { call: result.call, taskId: result.task_id ?? null, activityId: result.activity_id ?? null };
   }
   const updated = await mutateCallFromSnapshot(client, call, async (fresh) => {

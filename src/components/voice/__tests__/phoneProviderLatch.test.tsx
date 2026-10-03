@@ -38,3 +38,15 @@ it('bloqueo legal no conecta Device; el siguiente intento puede pasar después d
   await act(async () => { await phone.makeCall('+573001234567'); });
   expect(sdkConnect).toHaveBeenCalledTimes(1);
 });
+
+it('una respuesta de precheck de la organización anterior no abre el aviso ni conecta', async () => {
+  let resolve!: (value: Response) => void;
+  global.fetch = jest.fn(() => new Promise<Response>(done => { resolve = done; }));
+  const view = render(<SoftphoneProvider organizationId={7}><Read /></SoftphoneProvider>);
+  let pending!: ReturnType<SoftphoneContextValue['makeCall']>;
+  await act(async () => { pending = phone.makeCall('+12025550197'); });
+  view.rerender(<SoftphoneProvider organizationId={8}><Read /></SoftphoneProvider>);
+  await act(async () => { resolve({ ok: true, json: async () => ({ data: { allowed: false, code: 'fuera_horario', nextAt: '2026-10-03T15:00:00Z', timezone: 'America/Bogota' } }) } as Response); await pending; });
+  expect(phone.blockedCall).toBeNull();
+  expect(sdkConnect).not.toHaveBeenCalled();
+});

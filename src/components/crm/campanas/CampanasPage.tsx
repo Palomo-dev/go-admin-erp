@@ -1,8 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Plus, RefreshCw, Send, ShieldCheck } from "lucide-react";
+import { useMigasAreaCrm } from './migasCrm';
 import { PageHeader } from "@/components/kit/PageHeader";
 import { SegmentedControl } from "@/components/kit/SegmentedControl";
 import { FormField } from "@/components/kit/FormField";
@@ -13,7 +14,8 @@ import { CampaignRnePanel } from "@/components/crm/agentes/campanas/CampaignRneP
 import { CampaignCompliancePanel } from "./CampaignCompliancePanel";
 import { DialogoMotivo } from "@/components/kit/DialogoMotivo";
 import { clasesBoton } from "@/components/kit/botonClases";
-import { Skeleton } from "@/components/ui/skeleton";
+import { DataTable } from "@/components/kit/DataTable";
+import { SearchInput } from "@/components/kit/SearchInput";
 import { CLASE_CAMPO } from "@/components/crm/kit/camposCrm";
 import { pedirCrm, ErrorApiCrm } from "@/components/crm/acciones/apiCrm";
 import { useOrganization } from "@/lib/hooks/useOrganization";
@@ -23,6 +25,7 @@ import { voiceCampaignErrorKey } from "@/lib/services/crm/voiceCampaignWriteLogi
 import { useCampanasData } from "./useCampanasData";
 import { CampanasTable, type CampanaFila } from "./CampanasTable";
 function CampanasContent() {
+  const migas = useMigasAreaCrm('/app/crm/campanas');
   const t = useTranslations("crm.campanasNuevo");
   const d = useTranslations("crm.campanasDetalle");
   const [channel, setChannel] = useState("all");
@@ -43,7 +46,11 @@ function CampanasContent() {
     revision,
   );
   const refresh = () => setRevision((n) => n + 1);
+  const intent = useRef<AbortController | null>(null);
+  useEffect(() => () => intent.current?.abort(), []);
   const act = async (row: CampanaFila, action: string, reason?: string) => {
+    if (!data?.canManage || intent.current) return;
+    const controller = new AbortController(); intent.current = controller;
     setBusy(true);
     setActionError(null);
     try {
@@ -51,8 +58,9 @@ function CampanasContent() {
         await pedirCrm(
           `/api/crm/voice-agents/campaigns/${row.id}${action === "stop" ? "/stop" : ""}`,
           {
-            method: action === "delete" ? "DELETE" : "POST",
-            cuerpo: { ...(action === "stop" ? { reason } : {}), expected_updated_at: row.updatedAt },
+            method: action === "delete" ? "DELETE" : action === "stop" ? "POST" : "PATCH",
+            signal: controller.signal,
+            cuerpo: { ...(action === "stop" ? { reason } : action === "pause" ? { status: "paused" } : action === "resume" ? { status: "running", emergency_stop: false } : {}), expected_updated_at: row.updatedAt },
           },
         );
       } else if (action === "pause") await CampanasService.pause(row.id);
@@ -60,13 +68,12 @@ function CampanasContent() {
       else if (action === "cancel") await CampanasService.cancel(row.id);
       else if (action === "delete")
         await CampanasService.deleteCampaign(row.id);
-      setTarget(null);
-      refresh();
+      if (!controller.signal.aborted) { setTarget(null); refresh(); }
     } catch (error) {
       const code = error instanceof ApiError ? error.code : error instanceof ErrorApiCrm ? error.codigo : null;
-      setActionError(t(row.source === "voice" ? voiceCampaignErrorKey(code) : code === "RECONCILIATION_REQUIRED" ? "archivoConciliacion" : code === "CAMPAIGN_MODIFIED" ? "archivoConflicto" : "errorAccion"));
+      if (!controller.signal.aborted) setActionError(t(row.source === "voice" ? voiceCampaignErrorKey(code) : code === "RECONCILIATION_REQUIRED" ? "archivoConciliacion" : code === "CAMPAIGN_MODIFIED" ? "archivoConflicto" : "errorAccion"));
     } finally {
-      setBusy(false);
+      intent.current = null; if (!controller.signal.aborted) setBusy(false);
     }
   };
   const actions = (
@@ -98,13 +105,12 @@ function CampanasContent() {
     </>
   );
   return (
-    <div className="space-y-5 bg-canvas p-4 sm:p-6 lg:p-8">
-      <PageHeader
+    <div className="space-y-4 bg-canvas p-4 sm:p-6">
+      <PageHeader migas={migas}
         titulo={t("titulo")}
         subtitulo={t("subtitulo")}
         icono={Send}
         acciones={actions}
-        debajo={<div className="flex flex-wrap gap-2 lg:hidden">{actions}</div>}
       />
       <div className="flex flex-wrap items-end gap-3">
         <SegmentedControl
@@ -119,19 +125,7 @@ function CampanasContent() {
             etiqueta: t(`filtros.${valor}`),
           }))}
         />
-        <div className="w-full sm:max-w-xs">
-          <FormField etiqueta={t("buscar")}>
-            <input
-              className={CLASE_CAMPO}
-              value={q}
-              onChange={(e) => {
-                setQ(e.target.value);
-                setPage(1);
-              }}
-              type="search"
-            />
-          </FormField>
-        </div>
+        {(loading || error || (data?.rows.length ?? 0) > 0) && <SearchInput className="ml-auto w-full sm:max-w-xs" value={q} onChange={v => { setQ(v); setPage(1); }} pistaAtajo={false} etiqueta={t("buscar")} placeholder={t("buscar")} />}
       </div>
       {actionError && !target && (
         <p
@@ -142,15 +136,22 @@ function CampanasContent() {
         </p>
       )}
       {loading ? (
-        <Skeleton className="h-72" />
+        <DataTable columnas={["name", "channel", "audience", "progress", "status", "created", "actions"].map(id => ({ id, encabezado: "", celda: () => null }))} filas={[]} obtenerId={() => ""} etiqueta={t("titulo")} estado="cargando" filasEsqueleto={6} mostrarCabeceraCargando={false} altoFilaEsqueleto={48} varianteEsqueleto="figma" />
       ) : error ? (
         <EmptyState
+          className="rounded-xl border border-line bg-surface min-h-[410px] pt-24 pb-12 [&>div:last-child]:mt-12"
+          accionPrimaria
           variante={forbidden ? "forbidden" : "error"}
           titulo={t(forbidden ? "sinPermiso" : "error")}
+          descripcion={forbidden ? undefined : t("errorDetalle")}
           onReintentar={refresh}
         />
       ) : !data?.rows.length ? (
         <EmptyState
+          className="rounded-xl border border-line bg-surface min-h-[410px] pt-24 pb-12 [&>div:last-child]:mt-12"
+          accionPrimaria
+          variante={q ? "search" : "empty"}
+          icono={Send}
           titulo={t(q ? "sinResultados" : "vacio")}
           descripcion={t("vacioDetalle")}
           accion={
@@ -163,7 +164,7 @@ function CampanasContent() {
                   },
                 }
               : data?.canManage
-                ? { etiqueta: t("nueva"), href: "/app/crm/campanas/nuevo" }
+                ? { etiqueta: t("nueva"), href: "/app/crm/campanas/nuevo", icono: Plus }
                 : { etiqueta: t("actualizar"), onClick: refresh }
           }
         />
@@ -179,14 +180,16 @@ function CampanasContent() {
               } else void act(row, action);
             }}
           />
-          <Pagination
+          {data.total > 25 && <Pagination
+            layout="compact" densidad="compacta"
             pagina={page}
             tamano={25}
             total={data.total}
             onPaginaChange={setPage}
-          />
+          />}
         </>
       )}
+      <div className="flex flex-wrap gap-2 lg:hidden">{actions}</div>
       <Dialogo
         abierto={rne}
         onAbiertoChange={setRne}

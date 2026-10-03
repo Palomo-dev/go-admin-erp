@@ -24,12 +24,12 @@ interface Props {
 }
 
 export function SentenceBlock({ id, word, tone, hint, children, aside }: Props) {
-  return <Tarjeta id={id} titulo={word} icono={ICON[tone]} descripcion={hint} accion={aside}>{children}</Tarjeta>;
+  return <Tarjeta id={id} titulo={word} icono={ICON[tone]} descripcion={hint} accion={aside} className="[&>div]:sm:px-4 [&>div:first-child]:sm:pt-4 [&>div:first-child]:sm:pb-0 [&>div:nth-child(2)]:sm:pt-3 [&>div:nth-child(2)]:sm:pb-4 [&_h3]:text-base">{children}</Tarjeta>;
 }
 
 /** Conector visual entre bloques (decorativo). */
 export function SentenceConnector() {
-  return <div aria-hidden="true" className="mx-auto h-4 w-px bg-line-strong" />;
+  return <div aria-hidden="true" className="mx-auto h-5 w-px bg-line-strong" />;
 }
 
 /** Fichas: clases sin JSX en `chipClasses.ts` (se prueban ejecutadas); se reexportan aquí. */

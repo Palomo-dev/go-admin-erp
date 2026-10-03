@@ -9,7 +9,7 @@ import { useAutomationText } from './useAutomationText';
  */
 
 import { useEffect, useState } from 'react';
-import { Plus, Code2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Code2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/utils/Utils';
 import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
 import { isGroup, type ConditionRule } from '@/lib/services/crm/automation/conditionsDsl';
-import { describeCondition, describeConditions } from '@/lib/services/crm/automation/ruleHumanizer';
+import { describeConditions } from '@/lib/services/crm/automation/ruleHumanizer';
 import {
   addCondition,
   removeCondition,
@@ -27,8 +27,7 @@ import {
   type RuleFormState,
 } from '@/lib/services/crm/automation/ruleEditorModel';
 import { ConditionChipEditor } from './ConditionChipEditor';
-import { CHIP_ICON_CLASS, CHIP_LIST_CLASS, CHIP_TEXT_CLASS, chipClass } from './SentenceBlock';
-import { AnimatePresence, Chip, Expand } from '@/components/shared/motion';
+import { chipClass } from './SentenceBlock';
 import type { RuleLookups } from './useRuleLookups';
 
 interface Props {
@@ -39,7 +38,7 @@ interface Props {
 
 export function ConditionsBlock({ form, lookups, onChange }: Props) {
   const tr = useAutomationText();
-  const [selected, setSelected] = useState<number | null>(null);
+  const [, setSelected] = useState<number | null>(null);
   const [jsonOpen, setJsonOpen] = useState(false);
   const [jsonText, setJsonText] = useState('');
   const [jsonError, setJsonError] = useState<string | null>(null);
@@ -105,60 +104,8 @@ export function ConditionsBlock({ form, lookups, onChange }: Props) {
         <p className="text-sm text-fg-secondary dark:text-fg-secondary">
           {tr("Sin condiciones: se dispara siempre que ocurra el disparador. Añade una solo si necesitas filtrar.")}</p>
       ) : (
-        <div className={CHIP_LIST_CLASS}>
-          {/* UX móvil: cada condición es una tarjeta apilada cuyo texto envuelve; en línea desde `sm`. */}
-          <AnimatePresence initial={false}>
-            {rules.map((node, index) => {
-              const editable = !isGroup(node);
-              const open = selected === index;
-              return (
-                <Chip key={index}>
-                  {/* Grupo (tester UXM-C): en móvil la nota baja a su propia línea (`flex-wrap` + `basis-full`);
-                      en línea con el texto lo estrangulaba a 163 px y la ficha medía 194 px de alto (374 a 320 px). */}
-                  <button
-                    type="button"
-                    id={`cond-chip-${index}`}
-                    aria-expanded={editable ? open : undefined}
-                    aria-controls={editable ? `cond-editor-${index}` : undefined}
-                    aria-disabled={!editable || undefined}
-                    className={cn(chipClass(open, 'amber', true), !editable && 'cursor-default flex-wrap sm:flex-nowrap')}
-                    onClick={() => { if (editable) setSelected(open ? null : index); }}
-                  >
-                    <span className={CHIP_TEXT_CLASS}>
-                      {editable
-                        ? describeCondition(node as ConditionRule, lookups.humanizer)
-                        : `(${describeConditions(node, lookups.humanizer) ?? tr("grupo vacío")})`}
-                    </span>
-                    {/* R-6: el grupo anidado no se edita en ficha; se dice en texto visible, no en `title` (que el teclado y el lector no ven). */}
-                    {!editable && <span className="min-w-0 basis-full text-xs text-fg-secondary dark:text-fg-secondary sm:shrink-0 sm:basis-auto">{tr("· grupo, se edita como JSON")}</span>}
-                    {editable && (open
-                      ? <ChevronUp strokeWidth={1.5} className={CHIP_ICON_CLASS} aria-hidden="true" />
-                      : <ChevronDown strokeWidth={1.5} className={CHIP_ICON_CLASS} aria-hidden="true" />)}
-                  </button>
-                </Chip>
-              );
-            })}
-          </AnimatePresence>
-        </div>
+        <div className="space-y-3">{rules.map((node, index) => <div key={index} className="flex min-w-0 items-start gap-3"><span className="flex h-10 w-9 shrink-0 items-center text-xs font-medium text-fg-secondary">{index === 0 ? tr('Si') : form.conditions.op === 'or' ? tr('o') : tr('y')}</span>{isGroup(node) ? <button type="button" id={`cond-chip-${index}`} className="min-w-0 flex-1 break-words rounded-lg border border-line p-3 text-left text-sm [overflow-wrap:anywhere]" onClick={openJson}>{describeConditions(node, lookups.humanizer)}<span className="block text-xs text-fg-secondary">{tr('· grupo, se edita como JSON')}</span></button> : <ConditionChipEditor compacto index={index} rule={node as ConditionRule} lookups={lookups} onChange={patch => onChange(updateCondition(form, index, patch))} onRemove={() => { onChange(removeCondition(form, index)); setSelected(null); setFocusIndex('add'); }} />}</div>)}</div>
       )}
-
-      <AnimatePresence initial={false}>
-        {selected !== null && rules[selected] && !isGroup(rules[selected]) && (
-          <Expand key={`editor-${selected}`} id={`cond-editor-${selected}`}>
-            <ConditionChipEditor
-              index={selected}
-              rule={rules[selected] as ConditionRule}
-              lookups={lookups}
-              onChange={(patch) => onChange(updateCondition(form, selected, patch))}
-              onRemove={() => {
-                onChange(removeCondition(form, selected));
-                setSelected(null);
-                setFocusIndex('add');
-              }}
-            />
-          </Expand>
-        )}
-      </AnimatePresence>
 
       <div className="flex flex-wrap items-center gap-2">
         <Button id="cond-add" type="button" size="sm" variant="outline" className="h-8" onClick={add}>

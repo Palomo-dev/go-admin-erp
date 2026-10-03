@@ -5,6 +5,8 @@ import { useTranslations } from 'next-intl';
 import { Phone } from 'lucide-react';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { Skeleton } from '@/components/ui/skeleton';
+import { MobileCallsHistory } from '@/components/voice/mobile/MobileCallsHistory';
+import { useMobilePhoneViewportState } from '@/components/voice/mobile/useMobilePhoneViewport';
 import { CallsTable } from '@/components/voice/CallsTable';
 import { useSoftphone } from '@/components/voice/SoftphoneProvider';
 import { parseCallDeepLink } from '@/components/voice/callDeepLink';
@@ -13,6 +15,7 @@ import { abrirMarcador } from '@/components/voice/softphoneUi';
 
 function LlamadasContent() {
   const t = useTranslations('crm.llamadas');
+  const { mobile: mobileView, ready: viewportReady } = useMobilePhoneViewportState();
   const searchParams = useSearchParams();
   const sp = useSoftphone();
   const router = useRouter(),
@@ -55,11 +58,12 @@ function LlamadasContent() {
       {t('llamar')}
     </button>
   );
+  if (!viewportReady) return <Skeleton className="m-4 h-32" />;
   return (
-    <div className="min-w-0 bg-canvas p-4 lg:p-6">
-      <CallsTable refreshKey={revision} cabecera={{ titulo: t('titulo'), subtitulo: t('subtitulo'), accion: action,
+    <div className={mobileView ? "min-w-0 bg-canvas" : "min-w-0 bg-canvas p-4 lg:p-6"}>
+      {mobileView ? <MobileCallsHistory revision={revision} onOpen={(id) => router.push(`/app/crm/llamadas/${id}`)} /> : <CallsTable refreshKey={revision} cabecera={{ titulo: t('titulo'), subtitulo: t('subtitulo'), accion: action,
         accionMovil: <button type="button" aria-label={t('llamar')} className={clasesBoton({ variante: 'primario', patron: 'button', className: 'size-10 p-0' })} onClick={abrirMarcador} disabled={!sp.available}><Phone className="size-5" aria-hidden="true" strokeWidth={1.5} /></button> }}
-        onAbrirLlamada={(id) => router.push(`/app/crm/llamadas/${id}`)} />
+        onAbrirLlamada={(id) => router.push(`/app/crm/llamadas/${id}`)} />}
       {deepLink && (
         <CallDeepLinkDialog
           id={deepLink.id}

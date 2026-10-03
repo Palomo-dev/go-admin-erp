@@ -65,3 +65,14 @@ it('no muestra controles PSTN para una invitación browser ni una llamada termin
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   expect(screen.queryByRole('button', { name: 'Contestar en celular' })).toBeNull();
 });
+it('un rechazo tardío de otra organización no cierra una nueva invitación', async () => {
+  let finish: (value: unknown) => void = () => {};
+  const rendered = render(view()); await act(async () => events.pushNotificationReceived(push()));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Rechazar' })).toBeTruthy());
+  (fetchJson as jest.Mock).mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  fireEvent.click(screen.getByRole('button', { name: 'Rechazar' })); rendered.rerender(view(es, 'es', 2));
+  await act(async () => events.pushNotificationReceived(push(2)));
+  await waitFor(() => expect(screen.getByText(context.from_number)).toBeTruthy());
+  await act(async () => finish({ success: true }));
+  expect(screen.getByText(context.from_number)).toBeTruthy(); expect(screen.getByRole('dialog')).toBeTruthy();
+});

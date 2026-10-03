@@ -28,8 +28,8 @@ beforeEach(() => {
 afterEach(() => { const messages = errors.mock.calls.map(call => String(call[0] instanceof Error ? call[0].message : call[0])).filter(message => /MISSING_MESSAGE|FORMATTING_ERROR|INVALID_MESSAGE/.test(message)); errors.mockRestore(); expect(messages).toEqual([]); });
 test.each(['es','en','fr','pt'] as const)('lista, métricas y cinco pasos con Intl real %s', async idioma => {
   const m = { es, en, fr, pt }[idioma].crm.agentesIa;
-  const page = renderConIdioma(<AgentesIaPage />, { idioma }); await screen.findByText('Agente de prueba'); fireEvent.click(screen.getByRole('button', { name: m.metrics })); await screen.findByText('Cliente de prueba');
-  expect(screen.getByRole('link', { name: m.openCall }).getAttribute('href')).toBe(`/app/crm/llamadas?call=${ID}`); page.unmount();
+  const page = renderConIdioma(<AgentesIaPage />, { idioma }); await screen.findByText('Agente de prueba'); fireEvent.click(screen.getByRole('button', { name: m.detailAction })); await screen.findByText('Cliente de prueba');
+  expect(screen.getByRole('link', { name: new RegExp(m.openCall) }).getAttribute('href')).toBe(`/app/crm/llamadas/${ID}`); page.unmount();
   renderConIdioma(<AgentEditorDialog draft={{ mode: 'edit', id: ID }} onClose={jest.fn()} onSaved={jest.fn()} />, { idioma });
   await screen.findByDisplayValue('Agente de prueba');
   for (let step = 0; step < 4; step++) { fireEvent.click(screen.getByRole('button', { name: m.next })); await waitFor(() => expect(screen.getByRole('button', { name: step === 3 ? m.save : m.next })).toBeTruthy()); if (step === 2) expect((screen.getByRole('checkbox', { name: new RegExp(m.tools.end_call) }) as HTMLInputElement).disabled).toBe(true); }

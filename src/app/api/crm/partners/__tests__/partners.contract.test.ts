@@ -219,13 +219,20 @@ describe('/api/crm/partners/[id]/deals', () => {
     expect((await dealsPost(req(`/api/crm/partners/${U(98)}/deals`, 'POST', { opportunity_id: U(31), deal_type: 'referral' }), params({ id: U(98) }))).status).toBe(404);
     expect(db.writes).toEqual([]);
   });
-  it('POST: la comisión se calcula en servidor (monto x tasa del partner), nunca del body; nace pending', async () => {
+  it('POST: la comisión sugerida se calcula en servidor y nace pending; el estado del body se ignora', async () => {
     db.tables.partner_deals = db.tables.partner_deals.filter((d) => d.id !== U(81));
-    const { status, body } = await json(await dealsPost(req(`/api/crm/partners/${U(70)}/deals`, 'POST', { opportunity_id: U(31), deal_type: 'co_sell', commission_amount: 999999, commission_status: 'paid' }), params({ id: U(70) })));
+    const { status, body } = await json(await dealsPost(req(`/api/crm/partners/${U(70)}/deals`, 'POST', { opportunity_id: U(31), deal_type: 'co_sell', commission_status: 'paid' }), params({ id: U(70) })));
     expect(status).toBe(201);
     const data = body.data as Record<string, unknown>;
     expect(data.commission_rate).toBe(12.5);
     expect(data.deal as Record<string, unknown>).toMatchObject({ organization_id: ORG, partner_id: U(70), commission_amount: 31250.06, commission_status: 'pending', deal_type: 'co_sell' });
+  });
+  it('POST: ajuste exige administración canónica y testigo; no confía en rol del body', async () => {
+    const forbidden=await json(await dealsPost(req(`/api/crm/partners/${U(70)}/deals`,'POST',{opportunity_id:U(31),deal_type:'referral',commission_amount:25,idempotency_key:U(99),role:'admin'}),params({id:U(70)})));
+    expect(forbidden.status).toBe(403);expect(forbidden.body.code).toBe('MANAGER_REQUIRED');expect(db.writes).toEqual([]);
+    session.roleId=2;
+    expect((await dealsPost(req(`/api/crm/partners/${U(70)}/deals`,'POST',{opportunity_id:U(31),deal_type:'referral',commission_amount:25}),params({id:U(70)}))).status).toBe(400);
+    expect(db.writes).toEqual([]);
   });
   it('POST: partner con tasa 0 usa la del tier; y sube de tier al cumplir umbrales (Bronce -> Plata)', async () => {
     // Hereda Tier (Bronce, 10 %) registra 2 deals: 1.000.000 + 250.000,5 >= 1.000.000 y >= 2 deals => Plata.

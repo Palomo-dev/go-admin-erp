@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, UsersRound } from "lucide-react";
+import { Plus, Upload, UserPlus } from "lucide-react";
 import { EmptyState } from "@/components/kit/EmptyState";
 import { useRedText } from "@/components/crm/red/useRedText";
 
@@ -10,6 +10,7 @@ interface Props {
   hasProgram: boolean;
   onRegister: () => void;
   onClearFilters: () => void;
+  onCreateProgram?: () => void;
 }
 export function ReferralsEmptyState({
   filtered,
@@ -17,35 +18,46 @@ export function ReferralsEmptyState({
   hasProgram,
   onRegister,
   onClearFilters,
+  onCreateProgram,
 }: Props) {
   const { tr } = useRedText();
   return (
-    <div className="rounded-xl border border-line bg-surface">
+    <div>
       <EmptyState
         variante={filtered ? "search" : "empty"}
-        icono={filtered ? undefined : UsersRound}
+        icono={filtered ? undefined : UserPlus}
+        className="pt-12 [&>div]:gap-3 [&_p]:max-w-[400px]"
         titulo={tr(
           filtered
             ? "Ningún referido coincide con los filtros"
-            : "Tus mejores leads los traen tus clientes",
+            : "Aún no hay referidos",
         )}
         descripcion={
           filtered
             ? undefined
             : tr(
-                "Registra a quién recomendó cada cliente, sigue el contacto hasta convertirlo en lead y deja constancia de la recompensa del programa.",
+                "Cuando un cliente te recomiende a alguien, regístralo aquí.",
               ) +
               (!hasProgram
                 ? tr(
-                    " Aún no hay un programa activo: puedes registrar referidos igual y crear el programa cuando quieras.",
+                    " Define primero un programa para saber qué recompensa se debe.",
                   )
                 : "")
         }
         onLimpiarFiltros={onClearFilters}
+        accionSecundaria={
+          !filtered && onCreateProgram
+            ? {
+                etiqueta: tr("Crear programa"),
+                icono: Upload,
+                onClick: onCreateProgram,
+              }
+            : undefined
+        }
         accion={
           !filtered && canRegister
             ? {
-                etiqueta: tr("Registrar el primer referido"),
+                etiqueta: tr("Registrar referido"),
                 icono: Plus,
                 onClick: onRegister,
               }

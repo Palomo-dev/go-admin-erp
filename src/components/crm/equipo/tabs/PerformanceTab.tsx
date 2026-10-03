@@ -1,7 +1,8 @@
 'use client';
 import { useTranslations,useFormatter } from 'next-intl';
-import { ChartNoAxesCombined,Calendar,Trophy } from 'lucide-react';
+import { ChartNoAxesCombined,Calendar,Trophy,Users } from 'lucide-react';
 import { DataTable,StatCard,EmptyState,AvatarIniciales,BadgeTono,type ColumnaTabla } from '@/components/kit';
+import {PerformanceExport} from '../PerformanceExport';
 import { Progress } from '@/components/ui/progress';
 import type { TeamManagementData,TeamPerformance } from '@/lib/services/crm/teamManagementModel';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
@@ -33,11 +34,11 @@ export function PerformanceTab({data,cabecera}:{data:TeamManagementData;cabecera
   {id:'cycle',encabezado:t('cycle'),celda:row=><span className="text-[13px] text-fg-secondary">{row.cycle_days===null?t('notAvailable'):t('days',{count:Math.round(row.cycle_days)})}</span>},
  ];
  return <div>
-  {cabecera?.()}
+  {cabecera?.(<PerformanceExport rows={rows} start={data.period_start} end={data.period_end}/>) }
   <div className="flex flex-col gap-4 lg:mt-4">
-  <p className="hidden items-center gap-2 text-sm text-fg-secondary lg:flex"><Calendar aria-hidden="true" className="size-4"/>{t('period',{start:date(data.period_start),end:date(data.period_end),timezone:data.timezone})}</p>
+  <div className="hidden gap-2 lg:flex"><span className="inline-flex h-10 w-80 items-center gap-2 rounded-lg border border-line-strong bg-surface px-3 text-sm text-fg"><Users aria-hidden="true" className="size-4 text-fg-secondary"/>{t('visual.allTeams')}</span><span className="inline-flex h-10 items-center gap-2 rounded-lg border border-line-strong bg-surface px-3 text-sm text-fg-secondary"><Calendar aria-hidden="true" className="size-4"/>{t('period',{start:date(data.period_start),end:date(data.period_end),timezone:data.timezone})}</span></div>
   {data.performance.length>0&&<div className="hidden gap-4 sm:grid-cols-2 lg:grid lg:grid-cols-4">
-   <StatCard etiqueta={t('won')} valor={money(won,data.base_currency)} detalle={!comparable?t('missingRate'):average?.quota_pct!==null&&average?.quota_pct!==undefined?`${t('quota')}: ${percent(average.quota_pct)} · ${t('average')}`:t('noQuota')} tono={!comparable?'advertencia':'neutro'}/>
+   <StatCard etiqueta={t('won')} valor={won===null?t('notAvailable'):format.number(won,{style:'currency',currency:data.base_currency,notation:'compact',maximumFractionDigits:1})} detalle={!comparable?t('missingRate'):average?.quota_pct!==null&&average?.quota_pct!==undefined?`${t('quota')}: ${percent(average.quota_pct)} · ${t('average')}`:t('noQuota')} tono={!comparable?'advertencia':'neutro'}/>
    <StatCard etiqueta={t('calls')} valor={format.number(calls)}/>
    <StatCard etiqueta={t('meetings')} valor={format.number(meetings)}/>
    <StatCard etiqueta={t('visual.teamConversion')} valor={percent(average?.conversion??null)} detalle={t('average')}/>
@@ -48,6 +49,7 @@ export function PerformanceTab({data,cabecera}:{data:TeamManagementData;cabecera
     <p className="text-[28px] font-semibold leading-9 tracking-[-0.4px] tabular-nums text-fg">{own.money_missing?t('missingRate'):money(own.won,own.currency)}</p>
     <div className="flex items-center justify-between gap-2 text-[13px] text-fg-secondary"><span>{t('visual.quotaOf',{amount:money(ownQuota,own.currency)})}</span><span className="text-xs text-fg">{percent(own.quota_pct)}</span></div>
     {own.quota_pct!==null&&<Progress aria-label={t('quota')} className="h-2 bg-subtle" indicatorClassName="bg-brand" value={Math.min(100,own.quota_pct)}/>}
+    {own.quota_pct!==null&&<p className={`text-xs leading-4 ${own.quota_pct>=100?'text-success-text':'text-fg-secondary'}`}>{t(own.quota_pct>=100?'visual.quotaReached':'visual.quotaProgress')}{data.ranking_enabled&&rank.has(own.user_id)?` · ${t('visual.rankPosition',{rank:rank.get(own.user_id)!,count:data.ranking.length})}`:''}</p>}
    </div>
    <div className="grid grid-cols-3 gap-2"><StatCard tamano="sm" etiqueta={t('calls')} valor={format.number(own.calls)}/><StatCard tamano="sm" etiqueta={t('meetings')} valor={format.number(own.meetings)}/><StatCard tamano="sm" etiqueta={t('conversion')} valor={percent(own.conversion)}/></div>
   </div>}

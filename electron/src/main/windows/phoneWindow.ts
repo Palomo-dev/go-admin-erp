@@ -2,20 +2,27 @@ import { BrowserWindow } from 'electron';
 import { getLoadUrl, getMainWindow, getWebContents, isInternalUrl } from './mainWindow';
 import { getWindowIcon } from '../icon';
 import path from 'node:path';
-import { PHONE_PATH } from '../../shared/phoneProtocol';
+import { PHONE_PATH, type PhoneSnapshot } from '../../shared/phoneProtocol';
 
 let phoneWindow: BrowserWindow | null = null;
+let lastMode = '';
+export function resizePhoneWindow(snapshot: PhoneSnapshot | null) {
+  const win = getPhoneWindow(); if (!win) return;
+  const mode = snapshot?.deviceState === 'registered' ? snapshot.callStatus === 'connected' ? 'call' : 'dial' : 'offline';
+  if (mode === lastMode) return; lastMode = mode;
+  const [width] = win.getSize(); win.setSize(width, mode === 'call' ? 537 : mode === 'offline' ? 410 : 621, false);
+}
 export function getPhoneWindow() { return phoneWindow?.isDestroyed() ? null : phoneWindow; }
 export function closePhoneWindow() { getPhoneWindow()?.close(); }
 /** Espejo sin Device ni acceso a APIs de impresión, sesión o secretos del agente. */
-export async function openPhoneWindow(): Promise<boolean> {
+export async function openPhoneWindow(initialState: PhoneSnapshot | null = null): Promise<boolean> {
   const owner = getWebContents();
   if (!owner || owner.isDestroyed() || !isInternalUrl(owner.getURL(), getLoadUrl())) return false;
   const existing = getPhoneWindow();
-  if (existing) { existing.show(); existing.focus(); return true; }
+  if (existing) { resizePhoneWindow(initialState); existing.show(); existing.focus(); return true; }
   const origin = new URL(owner.getURL()).origin;
   const win = new BrowserWindow({
-    width: 380, height: 640, minWidth: 340, minHeight: 460, maxWidth: 520,
+    width: 380, height: 621, minWidth: 340, minHeight: 410, maxWidth: 520,
     title: 'GO Admin · Teléfono', icon: getWindowIcon(), show: false, frame: false,
     webPreferences: {
       preload: path.join(__dirname, '../../preload/phone.js'),
@@ -23,7 +30,9 @@ export async function openPhoneWindow(): Promise<boolean> {
       session: owner.session,
     },
   });
-  phoneWindow = win;
+  phoneWindow = win; lastMode = 'dial';
+  // El dueño pasa su snapshot: sin ciclo de imports ni otro lector de sesión.
+  resizePhoneWindow(initialState);
   const expected = origin + PHONE_PATH;
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', (event, url) => { if (url !== expected) event.preventDefault(); });

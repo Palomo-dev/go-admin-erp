@@ -49,6 +49,10 @@ function IdentidadesContenido() {
   const scanRunning =
     state.duplicates?.scan?.status === "queued" ||
     state.duplicates?.scan?.status === "running";
+  const scan = state.duplicates?.scan;
+  const scanPercent = scan && scan.total > 0
+    ? Math.min(100, Math.max(0, Math.round((scan.processed / scan.total) * 100)))
+    : null;
   useEffect(() => {
     if (!scanRunning || vista !== "duplicados") return;
     const timer = setInterval(() => setRevision((n) => n + 1), 4000);
@@ -124,7 +128,7 @@ function IdentidadesContenido() {
                 : "titulo",
           )}
           subtitulo={t(vista === "historial" ? "avisoHistorial" : "subtitulo")}
-          icono={Merge}
+          icono={vista === "historial" ? History : Merge}
           migas={[
             { etiqueta: "CRM", href: "/app/crm" },
             { etiqueta: t("titulo") },
@@ -135,7 +139,7 @@ function IdentidadesContenido() {
           }
         />
       )}
-      {actionError && (
+      {actionError && !selected && (
         <p
           role="alert"
           className="rounded-lg border border-line-danger bg-danger-subtle p-3 text-sm text-danger-text"
@@ -156,6 +160,7 @@ function IdentidadesContenido() {
           key={selected.customers.map((c) => c.id).join(":")}
           group={selected}
           ocupado={busy}
+          error={actionError}
           onCancelar={() => setSelected(null)}
           onFusionar={async (p, s, choices) => {
             if (await mutate(() => fusionarClientes(p, s, choices)))
@@ -177,13 +182,27 @@ function IdentidadesContenido() {
           )}
           {vista === "duplicados" && (
             <>
+              {scanRunning && (
+                <div role="status" className="rounded-lg border border-line-brand bg-brand-tint p-3 text-sm text-brand">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span>{t("buscando")}</span>
+                    {scanPercent !== null && <span className="tabular-nums">{t("progresoBusqueda", { processed: scan?.processed ?? 0, total: scan?.total ?? 0, percent: scanPercent })}</span>}
+                  </div>
+                  {scanPercent !== null && (
+                    <div role="progressbar" aria-label={t("buscarAhora")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={scanPercent} className="mt-2 h-1.5 overflow-hidden rounded-full bg-brand/10">
+                      <div className="h-full rounded-full bg-brand" style={{ width: `${scanPercent}%` }} />
+                    </div>
+                  )}
+                </div>
+              )}
               <KpiStrip columnas={3}>
                 {(["phone", "email", "document"] as const).map((kind) => (
                   <StatCard
                     key={kind}
                     etiqueta={t(`tipos.${kind}`)}
                     valor={state.duplicates?.stats[kind] ?? "—"}
-                    cargando={state.loading}
+                    cargando={state.loading && !state.duplicates}
+                    varianteCarga="compacta"
                   />
                 ))}
               </KpiStrip>
@@ -196,14 +215,6 @@ function IdentidadesContenido() {
                 etiqueta={t("buscar")}
                 placeholder={t("buscar")}
               />
-              {scanRunning && (
-                <p
-                  role="status"
-                  className="rounded-lg bg-info-subtle p-3 text-sm text-info-text"
-                >
-                  {t("buscando")}
-                </p>
-              )}
               {state.duplicates?.scan?.status === "failed" && (
                 <p role="alert" className="text-sm text-danger-text">
                   {t("errorBusqueda")}
@@ -212,9 +223,12 @@ function IdentidadesContenido() {
             </>
           )}
           {state.loading ? (
-            <div aria-label={t("cargando")} className="space-y-3">
-              {[1, 2, 3].map((n) => (
-                <Skeleton key={n} className="h-24 rounded-xl" />
+            <div aria-label={t("cargando")} className="space-y-2">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <div key={n} className="flex h-12 items-center gap-4 rounded-md px-4">
+                  <Skeleton className="h-4 w-48 shrink-0 bg-pressed" />
+                  {[1, 2].map((customer) => <div key={customer} className="flex min-w-0 flex-1 items-center gap-2.5"><Skeleton className="size-8 shrink-0 rounded-full bg-pressed" /><div className="min-w-0 flex-1 space-y-2"><Skeleton className="h-3 w-3/4 bg-pressed" /><Skeleton className="h-2 w-1/2 bg-pressed" /></div></div>)}
+                </div>
               ))}
             </div>
           ) : state.error ? (
@@ -232,6 +246,8 @@ function IdentidadesContenido() {
                     ? "sinFusiones"
                     : "sinIdentidades",
               )}
+              descripcion={vista === "duplicados" && !search ? t("sinDuplicadosDetalle") : undefined}
+              className="min-h-[340px] rounded-xl border border-line bg-surface"
               onLimpiarFiltros={() => setSearch("")}
               accion={
                 vista === "duplicados"

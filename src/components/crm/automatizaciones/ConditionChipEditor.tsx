@@ -7,6 +7,7 @@ import { useLocale } from 'next-intl';
  * la ficha seleccionada. Tres campos, cada uno con su `<label>`.
  */
 
+import { CrmSelectControl } from '../agentes/CrmSelectControl';
 import { Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,7 +23,6 @@ const NO_VALUE = new Set<string>(['is_null', 'is_not_null']);
 const LIST_VALUE = new Set<string>(['in', 'not_in']);
 const STAGE_FIELDS = new Set<string>(['opportunity.stage_id', 'stage.id']);
 const PIPELINE_FIELDS = new Set<string>(['opportunity.pipeline_id', 'pipeline.id']);
-const GROUPS = ['opportunity.', 'customer.', 'stage.', 'pipeline.', 'consent.', 'event.'];
 
 interface Props {
   index: number;
@@ -30,6 +30,7 @@ interface Props {
   lookups: RuleLookups;
   onChange: (patch: ConditionPatch) => void;
   onRemove: () => void;
+  compacto?: boolean;
 }
 
 function valueHint(operator: string): string {
@@ -39,7 +40,7 @@ function valueHint(operator: string): string {
   return 'Texto, número, true o false. Los IDs de etapa se eligen por nombre.';
 }
 
-export function ConditionChipEditor({ index, rule, lookups, onChange, onRemove }: Props) {
+export function ConditionChipEditor({ index, rule, lookups, onChange, onRemove, compacto = false }: Props) {
   const tr = useAutomationText();
   const activeLocale = useLocale();
   const locale = (['es','en','fr','pt'].includes(activeLocale) ? activeLocale : 'es') as ConditionLocale;
@@ -53,7 +54,7 @@ export function ConditionChipEditor({ index, rule, lookups, onChange, onRemove }
 
   const renderValue = () => {
     if (NO_VALUE.has(operator)) {
-      return <p className="text-xs text-fg-secondary dark:text-fg-secondary">{tr("Este operador no necesita valor.")}</p>;
+      return <p className={compacto ? "sr-only" : "text-xs text-fg-secondary"}>{tr("Este operador no necesita valor.")}</p>;
     }
     if (operator === 'eq' || operator === 'ne') {
       if (STAGE_FIELDS.has(rule.field)) {
@@ -93,51 +94,29 @@ export function ConditionChipEditor({ index, rule, lookups, onChange, onRemove }
   };
 
   return (
-    <div className="rounded-lg border border-line-warning bg-warning-subtle/50 p-3 dark:border-amber-900/60 dark:bg-amber-950/20">
-      <div className="grid gap-3 sm:grid-cols-3">
+    <div className={compacto ? "flex min-w-0 flex-1 items-start gap-3" : "rounded-lg border border-line-warning bg-warning-subtle/50 p-3 dark:border-amber-900/60 dark:bg-amber-950/20"}>
+      <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-3">
         <div>
-          <Label htmlFor={fieldId} className="text-xs text-fg-secondary dark:text-fg-secondary">{tr("Campo")}</Label>
-          <select
-            id={fieldId}
-            className={SELECT_CLASS}
-            value={rule.field}
-            onChange={(e) => onChange({ field: e.target.value })}
-          >
-            {isCustomField && <option value={rule.field}>{rule.field}</option>}
-            {GROUPS.map((prefix) => {
-              const fields = CONDITION_FIELDS.filter((f) => f.startsWith(prefix));
-              return (
-                <optgroup key={prefix} label={groupLabel(prefix,locale)}>
-                  {fields.map((f) => <option key={f} value={f}>{fieldLabel(f,locale)}</option>)}
-                </optgroup>
-              );
-            })}
-          </select>
+          <Label htmlFor={fieldId} className={compacto ? "sr-only" : "text-xs text-fg-secondary"}>{tr("Campo")}</Label>
+          <CrmSelectControl id={fieldId} aria-label={tr('Campo')} className={SELECT_CLASS} value={rule.field} onChange={value => onChange({ field: value })} options={[...(isCustomField ? [{ value: rule.field, label: rule.field }] : []), ...CONDITION_FIELDS.map(value => ({ value, label: `${groupLabel(value.split('.')[0] + '.', locale)} · ${fieldLabel(value, locale)}` }))]} />
         </div>
         <div>
-          <Label htmlFor={opId} className="text-xs text-fg-secondary dark:text-fg-secondary">{tr("Operador")}</Label>
-          <select
-            id={opId}
-            className={SELECT_CLASS}
-            value={operator}
-            onChange={(e) => onChange({ operator: e.target.value as ConditionOperator })}
-          >
-            {OPERATORS.map((op) => <option key={op} value={op}>{operatorLabel(op,locale)}</option>)}
-          </select>
+          <Label htmlFor={opId} className={compacto ? "sr-only" : "text-xs text-fg-secondary"}>{tr("Operador")}</Label>
+          <CrmSelectControl id={opId} aria-label={tr('Operador')} className={SELECT_CLASS} value={operator} onChange={value => onChange({ operator: value as ConditionOperator })} options={OPERATORS.map(value => ({ value, label: operatorLabel(value, locale) }))} />
         </div>
         <div>
           {usesEntitySelect
-            ? <span className="block text-xs font-medium text-fg-secondary dark:text-fg-secondary">{tr("Valor")}</span>
-            : <Label htmlFor={valueId} className="text-xs text-fg-secondary dark:text-fg-secondary">{tr("Valor")}</Label>}
+            ? <span className={compacto ? "sr-only" : "block text-xs font-medium text-fg-secondary"}>{tr("Valor")}</span>
+            : <Label htmlFor={valueId} className={compacto ? "sr-only" : "text-xs text-fg-secondary"}>{tr("Valor")}</Label>}
           {renderValue()}
           {!NO_VALUE.has(operator) && (
-            <p id={`${valueId}-hint`} className="mt-1 text-xs text-fg-secondary dark:text-fg-secondary">{tr(valueHint(operator))}</p>
+            <p id={`${valueId}-hint`} className={compacto ? "sr-only" : "mt-1 text-xs text-fg-secondary"}>{tr(valueHint(operator))}</p>
           )}
         </div>
       </div>
-      <div className="mt-2 flex justify-end">
-        <Button type="button" size="sm" variant="ghost" className="h-8 text-danger-text hover:text-red-800 dark:text-danger-text" onClick={onRemove}>
-          <Trash2 strokeWidth={1.5} className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> {tr("Quitar condición")}</Button>
+      <div className={compacto ? "flex justify-end" : "mt-2 flex justify-end"}>
+        <Button type="button" size="sm" variant="ghost" className={compacto ? "size-10 p-0 text-fg-secondary" : "h-8 text-danger-text"} aria-label={tr("Quitar condición")} onClick={onRemove}>
+          <Trash2 strokeWidth={1.5} className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> {!compacto && tr("Quitar condición")}</Button>
       </div>
     </div>
   );

@@ -17,8 +17,10 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/crm/red/RedButton";
-import { PageHeader, EmptyState } from "@/components/kit";
-import { RedStats } from "../red/RedStats";
+import { PageHeader, EmptyState, TabBar } from "@/components/kit";
+import { ReferralStats } from "./ReferralStats";
+import { ReferralRewards } from "./ReferralRewards";
+import { ReferralRewardDialog } from "./ReferralRewardDialog";
 import { ReferralTable } from "./ReferralTable";
 import { useReturnFocus } from "@/lib/hooks/useReturnFocus";
 import type {
@@ -63,6 +65,7 @@ export function ReferidosPage() {
     saveProgram,
     deleteProgram,
   } = useReferrals();
+  const [view, setView] = useState<"referrals" | "rewards">("referrals");
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(25);
   const [programFilter, setProgramFilter] = useState("all");
@@ -180,6 +183,7 @@ export function ReferidosPage() {
           p0: payTarget.referred_name,
         }),
       });
+      setPayTarget(null);
     } catch (err) {
       fail(tr("No se pudo registrar la recompensa"), err);
     } finally {
@@ -197,9 +201,10 @@ export function ReferidosPage() {
   };
 
   return (
-    <div className="space-y-4 p-4 lg:p-6">
+    <div className="space-y-0 p-4 lg:space-y-4 lg:p-6 max-lg:pb-[calc(var(--shell-barra-inferior,0px)+16px)]">
       <PageHeader
         titulo={tr("Referidos")}
+        className="[&_h1]:text-2xl [&_h1]:leading-8"
         migas={[
           { etiqueta: "CRM", href: "/app/crm" },
           { etiqueta: tr("Referidos") },
@@ -209,6 +214,7 @@ export function ReferidosPage() {
           "Clientes que recomiendan a otros y la recompensa que se les debe",
         )}
         movil={{
+          subtitulo: "",
           accion: canRegister ? (
             <Button
               size="icon"
@@ -250,12 +256,39 @@ export function ReferidosPage() {
           </div>
         }
       />
-      <RedStats
-        kind="referrals"
-        stats={stats}
-        loading={loading}
-        error={statsError}
-      />
+      {view === "rewards" && (
+        <TabBar
+          className="flex"
+          id="referral-views"
+          valor={view}
+          onValorChange={setView}
+          etiqueta={tr("Referidos y recompensas")}
+          pestanas={[
+            {
+              valor: "referrals",
+              etiqueta: tr("Referidos"),
+              contador: referrals.length,
+            },
+            {
+              valor: "rewards",
+              etiqueta: tr("Recompensas"),
+              contador: referrals.filter(
+                (r) =>
+                  r.status === "converted" && r.program_id && !r.reward_paid,
+              ).length,
+            },
+          ]}
+        />
+      )}
+      {view === "referrals" &&
+        (loading || (loaded && referrals.length > 0)) && (
+          <ReferralStats
+            stats={stats}
+            loading={loading}
+            error={statsError}
+            onOpenRewards={() => setView("rewards")}
+          />
+        )}
       {statsError && (
         <Alert variant="destructive">
           <AlertDescription>
@@ -276,7 +309,10 @@ export function ReferidosPage() {
           <EmptyState
             variante="error"
             titulo={tr("No se pudieron cargar los referidos")}
-            descripcion={error}
+            descripcion={tr(
+              "Revisa tu conexión e inténtalo de nuevo. Si ya tenías la lista abierta, se muestra la última versión conocida.",
+            )}
+            className="pt-12 [&>div]:gap-3"
             onReintentar={() => void refresh()}
           />
         ) : (
@@ -296,23 +332,36 @@ export function ReferidosPage() {
           </Alert>
         ))}
 
-      {loading ? (
+      {view === "rewards" && loaded ? (
+        <ReferralRewards
+          referrals={referrals}
+          currency={currency}
+          stats={stats}
+          canManage={canManage}
+          busyId={busyId}
+          onPay={setPayTarget}
+        />
+      ) : loading ? (
         <div
-          className="space-y-4"
+          className="space-y-4 pt-8"
           aria-busy="true"
           aria-label={tr("Cargando referidos")}
         >
-          <Skeleton className="h-9 w-full max-w-md" />
-          <div className="overflow-hidden rounded-xl border border-line bg-surface">
-            <Skeleton className="h-10 w-full rounded-none" />
-            {[0, 1, 2, 3, 4, 5].map((i) => (
-              <div
-                key={i}
-                className="grid h-16 grid-cols-3 items-center gap-6 border-t border-line px-4"
-              >
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-4 w-2/3" />
-                <Skeleton className="h-4 w-1/2" />
+          <Skeleton className="mb-6 h-3 w-[min(420px,75%)] rounded bg-line" />
+          <div className="space-y-6" aria-hidden="true">
+            {Array.from({ length: 8 }, (_, i) => (
+              <div key={i} className="flex h-10 items-center gap-4 px-3">
+                <Skeleton className="size-[18px] shrink-0 rounded bg-line" />
+                <Skeleton className="size-10 shrink-0 rounded bg-line" />
+                <Skeleton className="h-3 w-20 shrink-0 rounded bg-line" />
+                <Skeleton className="h-3 flex-1 rounded bg-line" />
+                {[120, 100, 90, 60, 120, 70].map((w, j) => (
+                  <Skeleton
+                    key={j}
+                    className="hidden h-3 shrink-0 rounded bg-line lg:block"
+                    style={{ width: w }}
+                  />
+                ))}
               </div>
             ))}
           </div>
@@ -331,6 +380,9 @@ export function ReferidosPage() {
               canRegister={canRegister}
               hasProgram={hasProgram}
               onRegister={() => openRegister(null)}
+              onCreateProgram={
+                canManage ? () => setProgramsOpen(true) : undefined
+              }
               onClearFilters={() => {
                 setFilters(EMPTY_REFERRAL_FILTERS);
                 setProgramFilter("all");
@@ -344,9 +396,18 @@ export function ReferidosPage() {
                 total={referrals.length}
                 shown={shown.length}
                 onChange={setFilters}
+                cifrasMoviles={
+                  <ReferralStats
+                    stats={stats}
+                    loading={false}
+                    error={statsError}
+                    soloMovil
+                    onOpenRewards={() => setView("rewards")}
+                  />
+                }
                 programa={
                   <select
-                    className="h-10 rounded-lg border border-line-strong bg-surface px-3 text-sm sm:w-64"
+                    className="hidden h-10 rounded-lg border border-line-strong bg-surface px-3 text-sm lg:block lg:w-80"
                     aria-label={tr("Programa")}
                     value={programFilter}
                     onChange={(e) => setProgramFilter(e.target.value)}
@@ -428,6 +489,7 @@ export function ReferidosPage() {
           if (!o) setConvertTarget(null);
         }}
         onConvert={convert}
+        currency={currency}
         returnFocusFallback={fallback}
       />
       <ReferralProgramsSheet
@@ -435,6 +497,12 @@ export function ReferidosPage() {
         programs={programs}
         currency={currency}
         canManage={canManage}
+        referralCounts={Object.fromEntries(
+          programs.map((p) => [
+            p.id,
+            referrals.filter((r) => r.program_id === p.id).length,
+          ]),
+        )}
         onOpenChange={setProgramsOpen}
         onSave={saveProgram}
         onDelete={deleteProgram}
@@ -457,20 +525,14 @@ export function ReferidosPage() {
         }}
         onCloseAutoFocus={onRejectClose}
       />
-      <ConfirmDialog
+      <ReferralRewardDialog
         open={payTarget !== null}
+        referral={payTarget}
+        currency={currency}
+        busy={busyId === payTarget?.id}
         onOpenChange={(o) => {
-          if (!o) setPayTarget(null);
+          if (!o && !busyId) setPayTarget(null);
         }}
-        title={tr("Registrar recompensa pagada")}
-        description={tr(
-          "Se anotará que la recompensa de «{p0}» ({p1}) ya se entregó, con fecha de hoy. Es un registro: aquí no se mueve dinero.",
-          {
-            p0: payTarget?.referred_name ?? "",
-            p1: payTarget?.program?.name ?? "programa",
-          },
-        )}
-        confirmLabel={tr("Registrar")}
         onConfirm={onPay}
         onCloseAutoFocus={onPayClose}
       />

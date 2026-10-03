@@ -2,10 +2,13 @@
 import { fireEvent, screen } from '@testing-library/react';
 import { renderConIdioma, type IdiomaPrueba } from '@/test-utils/renderConIdioma';
 import { SegmentosPage } from '../SegmentosPage';
+import { SegmentoEditor } from '../SegmentoEditor';
+import { SegmentoDetallePage } from '../id/SegmentoDetallePage';
 import { ConditionBuilder, textToValue } from '@/components/crm/shared/ConditionBuilder';
 import { ConditionValue } from '@/components/crm/shared/ConditionValue';
 import type { SegmentoRegistro } from '@/lib/services/crm/segmentosAudiencia';
 import { ErrorApiCrm } from '@/components/crm/acciones/apiCrm';
+jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn(), refresh: jest.fn() }), useSearchParams: () => null }));
 jest.mock('@/lib/hooks/useOrganization', () => ({ useOrganization: () => ({ organization: { id: 120 } }) }));
 jest.mock('@/components/shell/header/cabeceraMovil', () => ({ useCabeceraMovil: () => undefined }));
 jest.mock('@/lib/context/OrganizationTimezoneContext', () => ({ useFormatDate: () => ({ timezone: 'America/Bogota', getToday: () => '2026-10-01', formatDateTime: () => '01/10/2026 12:00' }) }));
@@ -42,6 +45,15 @@ test('teléfono y etiquetas numéricas conservan texto; números de salud se con
   expect(textToValue('0300123456', 'eq', 'customer.phone')).toBe('0300123456');
   expect(textToValue('001', 'contains', 'customer.tags')).toBe('001');
   expect(textToValue('55', 'gte', 'customer.health_score')).toBe(55);
+});
+test('parámetros de búsqueda null mantienen editor y detalle funcionales', () => {
+  const editor = renderConIdioma(<SegmentoEditor />);
+  expect(editor.container.querySelector('details')?.open).toBe(false);
+  expect(editor.container.querySelector('input[maxlength="120"]')).toBeTruthy();
+  editor.unmount();
+  state = { data: null, loading: true, error: null, canManage: false };
+  const detail = renderConIdioma(<SegmentoDetallePage segmentId="private-segment" />);
+  expect(detail.container.querySelector('input[maxlength="120"]')).toBeNull();
 });
 test('fecha de contacto usa el día y la hora de la organización; plazo relativo sigue numérico', () => {
   const next = jest.fn();

@@ -48,8 +48,18 @@ export interface EndedCallInfo extends ActiveCallInfo {
   endedAt: number;
 }
 
+export interface BlockedCallInfo {
+  number: string; code: string; nextAt: string | null; timezone: string;
+  customerId?: string | null; opportunityId?: string | null; displayName?: string | null;
+}
+
 export interface SoftphoneContextValue {
   available: true;
+  /** Respuesta de la compuerta canónica; solo se presenta, no se reinterpreta la regla legal. */
+  blockedCall?: BlockedCallInfo | null;
+  clearBlockedCall?: () => void;
+  ringtoneMuted?: boolean;
+  setRingtoneMuted?: (muted: boolean) => void;
   deviceState: DeviceState;
   /** Motivo legible del estado error/no_permission/not_configured. */
   deviceReason: string | null;

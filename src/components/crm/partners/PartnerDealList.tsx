@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+import { useLocaleIntl } from "@/components/kit/useIdiomaKit";
 import { useRedText } from "@/components/crm/red/useRedText";
 
 /**
@@ -11,7 +13,7 @@ import { useRedText } from "@/components/crm/red/useRedText";
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Plus, RefreshCw, Pencil } from "lucide-react";
+import { Briefcase, Plus, RefreshCw, Pencil } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -27,10 +29,10 @@ import { toast } from "@/components/ui/use-toast";
 import { useReturnFocus } from "@/lib/hooks/useReturnFocus";
 import {
   nextCommissionStatuses,
-  summarizeCommissions,
   type CommissionStatus,
 } from "@/lib/services/crm/partnerCommission";
 import type {
+  PartnerDealInput,
   PartnerDealView,
   PartnerView,
   RegisterDealResult,
@@ -57,7 +59,7 @@ interface Props {
   loadDeals: (partnerId: string) => Promise<PartnerDealView[]>;
   onRegister: (
     partnerId: string,
-    payload: { opportunity_id: string; deal_type: string },
+    payload: PartnerDealInput,
   ) => Promise<RegisterDealResult>;
   onTransition: (
     partnerId: string,
@@ -82,7 +84,9 @@ export function PartnerDealList({
   onEdit,
   initialRegister = false,
 }: Props) {
-  const { tr, locale } = useRedText();
+  const { tr } = useRedText();
+  const tv = useTranslations("crm.partnersVisual");
+  const locale = useLocaleIntl();
   const canRegisterDeal = canRegister && !!partner?.is_active;
   const [tab, setTab] = useState<"deals" | "commissions" | "data">("deals");
   const [deals, setDeals] = useState<PartnerDealView[]>([]);
@@ -174,22 +178,12 @@ export function PartnerDealList({
     }
   };
 
-  const currencies = Array.from(
-    new Set(
-      deals.map((d) => d.opportunity?.currency).filter((c): c is string => !!c),
-    ),
-  );
-  const summary = summarizeCommissions(deals);
-  const summaryCurrency =
-    currencies.length === 1 && deals.every((d) => !!d.opportunity?.currency)
-      ? currencies[0]
-      : null;
-
   const content = (
     <>
       {presentation === "page" && partner && (
         <>
           <PageHeader
+            className="contents lg:flex"
             titulo={partner.name}
             subtitulo={[partner.company_name, partner.email, partner.phone]
               .filter(Boolean)
@@ -200,6 +194,9 @@ export function PartnerDealList({
               { etiqueta: partner.name },
             ]}
             movil={{
+              subtitulo: [partner.company_name, partner.tier?.name]
+                .filter(Boolean)
+                .join(" · "),
               accion: canRegisterDeal ? (
                 <Button
                   size="icon"
@@ -213,6 +210,22 @@ export function PartnerDealList({
             }}
             acciones={
               <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label={tr("Actualizar deals")}
+                  disabled={loading}
+                  onClick={() => void load()}
+                >
+                  <RefreshCw
+                    className={cn(
+                      "h-4 w-4",
+                      loading && "motion-safe:animate-spin",
+                    )}
+                    aria-hidden="true"
+                  />
+                </Button>
                 {canManage && onEdit && (
                   <Button variant="outline" onClick={onEdit}>
                     <Pencil className="size-4" />
@@ -224,7 +237,7 @@ export function PartnerDealList({
                     ref={registerButtonRef}
                     onClick={() => setRegisterOpen(true)}
                   >
-                    <Plus className="size-4" />
+                    <Briefcase className="size-4" />
                     {tr("Registrar deal")}
                   </Button>
                 )}
@@ -293,25 +306,10 @@ export function PartnerDealList({
           </dl>
         ) : (
           <>
-            <div className="hidden flex-wrap items-center justify-between gap-2 lg:flex">
-              <p
-                className="hidden text-sm text-fg-secondary lg:block"
-                aria-live="polite"
-              >
-                {deals.length} {tr("deal")}
-                {deals.length === 1 ? "" : "s"}
-                {deals.length > 0 &&
-                  (!summaryCurrency
-                    ? tr(" · comisiones en varias monedas (sin sumar)")
-                    : tr(" · pendiente {p0} · pagada {p1}", {
-                        p0: formatMoney(
-                          summary.outstanding,
-                          summaryCurrency,
-                          locale,
-                        ),
-                        p1: formatMoney(summary.paid, summaryCurrency, locale),
-                      }))}
-              </p>
+            <h2 className="text-sm font-medium lg:hidden">
+              {tv("dealsRegistrados")}
+            </h2>
+            <div className={presentation === "page" ? "hidden" : "hidden flex-wrap items-center justify-end gap-2 lg:flex"}>
               <div className="flex gap-2">
                 <Button
                   type="button"
@@ -348,6 +346,7 @@ export function PartnerDealList({
                 <AlertDescription>
                   {error}
                   {tr(". Pulsa «Actualizar deals» para reintentar.")}
+                  <Button className="mt-2 lg:hidden" size="sm" variant="outline" disabled={loading} onClick={() => void load()}>{tr("Actualizar deals")}</Button>
                 </AlertDescription>
               </Alert>
             )}
@@ -393,6 +392,7 @@ export function PartnerDealList({
           return r;
         }}
         returnFocusFallback={() => registerButtonRef.current}
+        canAdjust={canManage}
       />
       <ConfirmDialog
         open={confirm !== null}
@@ -432,7 +432,7 @@ export function PartnerDealList({
     </>
   );
   if (presentation === "page")
-    return <section className="space-y-4">{content}</section>;
+    return <section className="flex flex-col gap-4">{content}</section>;
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent

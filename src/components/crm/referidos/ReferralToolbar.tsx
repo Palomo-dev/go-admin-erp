@@ -17,6 +17,7 @@ interface Props {
   shown: number;
   onChange: (next: ReferralListFilters) => void;
   programa?: ReactNode;
+  cifrasMoviles?: ReactNode;
 }
 
 export function ReferralToolbar({
@@ -26,6 +27,7 @@ export function ReferralToolbar({
   shown,
   onChange,
   programa,
+  cifrasMoviles,
 }: Props) {
   const { tr } = useRedText();
   const opciones = [
@@ -39,7 +41,7 @@ export function ReferralToolbar({
   const cambiar = (status: ReferralListFilters["status"]) =>
     onChange({ ...filters, status });
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-3 lg:block lg:space-y-4">
       <TabBar
         className="hidden lg:flex"
         id="referrals"
@@ -49,7 +51,7 @@ export function ReferralToolbar({
         pestanas={opciones}
       />
       <ChipsOpcion
-        className="flex-nowrap overflow-x-auto pb-1 lg:hidden [&>button]:shrink-0 [&>button]:whitespace-nowrap"
+        className="flex-nowrap overflow-x-auto lg:hidden [&>button]:h-7 [&>button]:px-2.5 [&>button]:text-xs [&>button]:shrink-0 [&>button]:whitespace-nowrap"
         etiqueta={tr("Filtrar por estado")}
         valor={filters.status}
         onValorChange={cambiar}
@@ -66,16 +68,17 @@ export function ReferralToolbar({
           ),
         ].map((o) => ({
           valor: o.valor,
-          etiqueta: `${o.etiqueta} ${o.contador}`,
+          etiqueta: `${o.etiqueta} · ${o.contador}`,
         }))}
       />
+      {cifrasMoviles}
       <div className="flex flex-col gap-3 sm:flex-row">
         <SearchInput
           className="min-w-0 flex-none sm:flex-1"
           value={filters.q}
           onChange={(q) => onChange({ ...filters, q })}
           onValueChange={(q) => onChange({ ...filters, q })}
-          placeholder={tr("Nombre, correo, teléfono o referidor")}
+          placeholder={tr("Buscar por nombre, correo, teléfono o referidor")}
           id="referrals-search"
           etiqueta={tr("Buscar")}
         />

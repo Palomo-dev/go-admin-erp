@@ -118,7 +118,6 @@ export function CallButton({ phoneNumber, customerId, opportunityId, displayName
           customerId={customerId ?? undefined}
           targetPhone={normalizePhone(phoneNumber, defaultCountry) ?? phoneNumber}
           customerName={displayName ?? undefined}
-          onStarted={() => setMobileOpen(false)}
         />
       )}
     </>

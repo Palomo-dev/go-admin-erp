@@ -13,6 +13,7 @@ export function FusionClientesPanel({
   ocupado,
   onFusionar,
   onCancelar,
+  error,
 }: {
   group: GrupoDuplicado;
   ocupado: boolean;
@@ -22,6 +23,7 @@ export function FusionClientesPanel({
     choices: Record<string, string>,
   ) => void;
   onCancelar: () => void;
+  error?: string | null;
 }) {
   const t = useTranslations("crm.identidades");
   const [primary, setPrimary] = useState(group.customers[0].id);
@@ -59,21 +61,22 @@ export function FusionClientesPanel({
         acciones={actions}
         debajo={<div className="lg:hidden">{actions}</div>}
       />
+      {error && <p role="alert" className="rounded-lg border border-line-danger bg-danger-subtle p-3 text-sm text-danger-text">{error}</p>}
       <div className="overflow-x-auto rounded-xl border border-line bg-surface">
-        <table className="w-full min-w-[540px] text-sm">
+        <table className="w-full min-w-[540px] text-[13px] leading-[18px]">
           <caption className="sr-only">{t("comparar")}</caption>
           <thead>
             <tr className="border-b border-line bg-subtle">
-              <th scope="col" className="p-4 text-left text-fg-secondary">
+              <th scope="col" className="w-1/5 p-3 text-left font-medium text-fg-secondary">
                 {t("campo")}
               </th>
               {group.customers.map((c) => (
                 <th
                   key={c.id}
                   scope="col"
-                  className={`p-4 text-left text-fg ${primary === c.id ? "bg-brand-tint ring-1 ring-inset ring-brand" : ""}`}
+                  className="w-2/5 p-3 text-left text-fg"
                 >
-                  <label className="flex cursor-pointer items-center gap-2">
+                  <label className={`flex min-h-[60px] cursor-pointer items-center gap-2 rounded-lg border p-3 ${primary === c.id ? 'border-brand bg-brand-tint' : 'border-line bg-surface'}`}>
                     <input
                       type="radio"
                       name="principal"
@@ -92,6 +95,7 @@ export function FusionClientesPanel({
                         {t(primary === c.id ? "principal" : "secundario")}
                       </small>
                     </span>
+                    {primary === c.id && <StatusBadge estado="principal" etiqueta={t("principal")} tono="marca" apariencia="contorno" tipografia="figma" className="ml-auto" />}
                   </label>
                 </th>
               ))}
@@ -105,16 +109,16 @@ export function FusionClientesPanel({
                 <tr key={field} className="border-b border-line last:border-0">
                   <th
                     scope="row"
-                    className="p-4 text-left font-normal text-fg-secondary"
+                    className="p-3 text-left font-normal text-fg-secondary"
                   >
                     {t(`campos.${field}`)}
                   </th>
                   {group.customers.map((c) => (
                     <td
                       key={c.id}
-                      className={`p-4 text-fg ${!equal && (choices[field] ?? primary) === c.id ? "bg-brand-tint" : ""}`}
+                      className="p-3 text-fg"
                     >
-                      <label className="flex cursor-pointer items-center gap-2">
+                      <label className={`flex min-h-7 cursor-pointer items-center gap-2 rounded-md px-2 py-1 ${!equal && (choices[field] ?? primary) === c.id ? 'bg-brand-tint' : ''}`}>
                         {!equal && (
                           <input
                             type="radio"
@@ -140,6 +144,7 @@ export function FusionClientesPanel({
                               estado="igual"
                               etiqueta={t("igual")}
                               tono="neutro"
+                              tipografia="figma"
                             />
                           )}
                         </span>

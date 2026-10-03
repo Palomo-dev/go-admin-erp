@@ -32,6 +32,7 @@ import {
   type CallsTableFilters,
 } from "./callsListadoLogica";
 import { abrirMarcador } from "./softphoneUi";
+import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
 export { STATUS_LABELS };
 export type { CallsTableFilters } from "./callsListadoLogica";
 
@@ -54,6 +55,7 @@ function CallsTableContenido({
   onAbrirLlamada,
 }: CallsTableProps) {
   const t = useTranslations("crm.llamadas");
+  const formatNumber = useFormatoEntero();
   const { getToday, formatDateTime } = useFormatDate(null);
   const [defaultRange] = useState(() => ({ fromDate: addPlainDays(getToday(), -29), toDate: getToday() }));
   const [filters, setFilters] = useState<CallsTableFilters>(() => ({
@@ -162,7 +164,7 @@ function CallsTableContenido({
       {!error && (loading || count > 0 || filtered) && <KpiStrip etiqueta={t("resumen")}>
         <StatCard
           etiqueta={t("total")}
-          valor={stats?.totalToday ?? "—"}
+          valor={stats ? formatNumber(stats.totalToday) : "—"}
           cargando={loading}
           varianteCarga="compacta"
           detalle={t("periodo")}
@@ -171,7 +173,7 @@ function CallsTableContenido({
           etiqueta={t("contacto")}
           valor={
             stats
-              ? `${stats.totalToday ? Math.round((100 * stats.answered) / stats.totalToday) : 0}%`
+              ? `${formatNumber(stats.totalToday ? Math.round((100 * stats.answered) / stats.totalToday) : 0)} %`
               : "—"
           }
           cargando={loading}
@@ -187,7 +189,7 @@ function CallsTableContenido({
         />
         <StatCard
           etiqueta={t("voz")}
-          valor={stats ? Math.ceil(stats.voiceSeconds / 60) : "—"}
+          valor={stats ? formatNumber(Math.ceil(stats.voiceSeconds / 60)) : "—"}
           cargando={loading}
           varianteCarga="compacta"
           detalle={

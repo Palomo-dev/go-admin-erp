@@ -1,87 +1,46 @@
 'use client';
 
-/**
- * IncomingCallToast — aviso de llamada entrante (FASE-03 §5.2, §5.6).
- * `role="alertdialog"`, foco inicial en Aceptar, `Esc` rechaza, `Enter` acepta.
- * Muestra quién llama (cliente resuelto por GET /api/crm/calls?provider_call_sid=).
- */
-
-import { useEffect, useRef, useState } from 'react';
-import { PhoneIncoming, Phone, PhoneOff } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useEffect, useRef } from 'react';
+import { Briefcase, PhoneIncoming, Phone, PhoneOff, StickyNote, UserPlus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useSoftphone } from './SoftphoneProvider';
+import { PhoneContact } from './dock/PhoneContact';
+import { usePhoneContext } from './dock/usePhoneContext';
+import { cn } from '@/utils/Utils';
 
+/** Aviso único de llamada: Enter/Esc y botones comparten la misma intención nativa. */
 export function IncomingCallToast() {
   const sp = useSoftphone();
+  const t = useTranslations('phoneBrowser');
   const acceptRef = useRef<HTMLButtonElement | null>(null);
-  const [caller, setCaller] = useState<{ name: string | null; opportunity: string | null } | null>(null);
-
+  const action = useRef<string | null>(null);
   const incoming = sp.available ? sp.incoming : null;
-  const callSid = incoming?.callSid ?? null;
-
-  useEffect(() => {
-    if (!incoming) {
-      setCaller(null);
-      return;
-    }
-    acceptRef.current?.focus();
-    if (!callSid) return;
-    let cancelled = false;
-    fetch(`/api/crm/calls?provider_call_sid=${encodeURIComponent(callSid)}&limit=1`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((body) => {
-        const row = body?.data?.[0];
-        if (row && !cancelled) setCaller({ name: row.customer?.full_name ?? null, opportunity: row.opportunity?.name ?? null });
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [incoming, callSid]);
-
+  const active = sp.available ? sp.activeCall : null;
+  const context = usePhoneContext(incoming?.from ?? '', active, Boolean(incoming));
+  useEffect(() => { action.current = null; if (incoming) acceptRef.current?.focus(); }, [incoming]);
   if (!sp.available || !incoming) return null;
-
-  return (
-    <div
-      className="fixed top-4 right-4 z-[60] animate-in slide-in-from-top-5 duration-300"
-      role="alertdialog"
-      aria-modal="false"
-      aria-labelledby="incoming-call-title"
-      aria-describedby="incoming-call-desc"
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') sp.rejectIncoming();
-        if (e.key === 'Enter') sp.acceptIncoming();
-      }}
-    >
-      <div className="w-80 overflow-hidden rounded-xl border border-yellow-300 bg-white shadow-2xl dark:border-yellow-700 dark:bg-gray-800">
-        <div className="h-1 bg-yellow-500 motion-safe:animate-pulse" />
-        <div className="space-y-3 p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-100 dark:bg-yellow-900/30">
-              <PhoneIncoming size={20} className="text-yellow-600 dark:text-yellow-400 motion-safe:animate-bounce" aria-hidden="true" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p id="incoming-call-title" className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Llamada entrante
-              </p>
-              <p id="incoming-call-desc" className="truncate text-xs text-gray-600 dark:text-gray-300" aria-live="assertive">
-                {caller?.name ? `${caller.name} · ${incoming.from}` : incoming.from}
-                {caller?.opportunity ? ` · ${caller.opportunity}` : ''}
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Button ref={acceptRef} onClick={sp.acceptIncoming} size="sm" className="flex-1 bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700">
-              <Phone size={14} className="mr-1.5" aria-hidden="true" />
-              Aceptar (⏎)
-            </Button>
-            <Button onClick={sp.rejectIncoming} size="sm" variant="destructive" className="flex-1">
-              <PhoneOff size={14} className="mr-1.5" aria-hidden="true" />
-              Rechazar (Esc)
-            </Button>
-          </div>
-        </div>
+  const run = (type: 'accept' | 'reject') => {
+    const key = incoming.callSid ?? incoming.from;
+    if (action.current === key) return;
+    action.current = key;
+    if (type === 'accept') sp.acceptIncoming(); else sp.rejectIncoming();
+  };
+  const contact = context.contact ?? { id: active?.customerId ?? null, name: active?.displayName ?? null, number: incoming.from };
+  return <div className="fixed right-4 top-4 z-[60] w-[360px] max-w-[calc(100vw-32px)] overflow-hidden rounded-2xl border border-line-warning border-t-4 border-t-warning bg-surface text-fg shadow-[0px_2px_6px_0px_rgba(15,23,42,0.06),0px_12px_32px_-4px_rgba(15,23,42,0.14)]"
+    role="alertdialog" aria-modal="false" aria-labelledby="incoming-call-title" aria-describedby="incoming-call-desc"
+    onKeyDown={event => {
+      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); run('reject'); }
+      if (event.key === 'Enter' && !(event.target instanceof HTMLElement && event.target.closest('button,a'))) { event.preventDefault(); run('accept'); }
+    }}>
+    <div className="flex items-center justify-center gap-1.5 px-4 pb-1 pt-4"><PhoneIncoming size={13} strokeWidth={1.5} className="text-warning-text" /><p id="incoming-call-title" className="text-xs font-medium leading-4 text-warning-text">{context.line ? t('incomingLine', { number: context.line.e164 }) : t('incomingTitle')}</p></div>
+    <div className="space-y-5 p-5">
+      <PhoneContact contact={contact} centered pulse />
+      <div id="incoming-call-desc" className={cn('space-y-2', contact.id && 'rounded-xl border border-line bg-canvas p-3')}>
+        {contact.opportunity?.name && <p className="flex items-start gap-2 text-xs font-medium leading-4 text-fg-secondary"><Briefcase size={14} strokeWidth={1.5} className="shrink-0" />{contact.opportunity.name}</p>}
+        {contact.note ? <p className="flex items-center gap-2 text-xs font-medium leading-4 text-fg-secondary"><StickyNote size={14} strokeWidth={1.5} className="shrink-0" />{contact.note}</p>
+          : !contact.id && <p className="flex gap-2 rounded-lg bg-subtle p-3 text-[13px] leading-[18px] text-fg-secondary"><UserPlus size={16} className="shrink-0" strokeWidth={1.5} />{t('unknownIncomingHint')}</p>}
       </div>
+      <div className="flex justify-center gap-12">{(['reject', 'accept'] as const).map(type => <div key={type} className="flex flex-col items-center gap-1.5"><button ref={type === 'accept' ? acceptRef : undefined} type="button" onClick={() => run(type)} aria-label={t(type)} className={cn('flex size-14 items-center justify-center rounded-full text-fg-on-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2', type === 'accept' ? 'bg-success hover:bg-success/90' : 'bg-danger hover:bg-danger-hover')}>{type === 'accept' ? <Phone size={22} strokeWidth={1.5} /> : <PhoneOff size={22} strokeWidth={1.5} />}</button><span className="text-xs font-medium leading-4 text-fg">{t(type)}</span><kbd className="rounded border border-line bg-subtle px-1.5 py-0.5 text-xs leading-4 text-fg-secondary">{type === 'accept' ? 'Enter' : 'Esc'}</kbd></div>)}</div>
     </div>
-  );
+  </div>;
 }

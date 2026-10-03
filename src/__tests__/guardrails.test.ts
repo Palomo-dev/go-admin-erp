@@ -45,6 +45,9 @@ import { COMPRAS_TOOLS } from '@/lib/ai/agent/tools/compras';
 import { CARGA_MASIVA_TOOLS } from '@/lib/ai/agent/tools/cargaMasiva';
 import { FACTURAS_TOOLS } from '@/lib/ai/agent/tools/facturas';
 import { ACTION_CATALOG } from '@/lib/ai/assistant/actionCatalog';
+import { ruleTemplates } from '@/components/crm/automatizaciones/ruleTemplates';
+import { EXAMPLE_FORM } from '@/lib/services/crm/automation/ruleEditorModel';
+import { describeRule, describeTrigger } from '@/lib/services/crm/automation/ruleHumanizer';
 
 const SRC_ROOT = path.resolve(__dirname, '..');
 const REPO_ROOT = path.resolve(SRC_ROOT, '..');
@@ -1314,9 +1317,25 @@ describe('F0 Guardarraíles', () => {
       expect(page).toMatch(/newButtonRef\s*\.\s*current/);
     });
 
-    test('R-3: el estado vacío describe lo que el ejemplo hace de verdad (no promete una etapa que no lleva)', () => {
+    test('R-3: las plantillas pausadas describen el formulario efectivo y el botón entrega ese mismo formulario', () => {
       const empty = readFile(path.join(dir, 'RulesEmptyState.tsx'));
-      expect(empty).toMatch(/describeRule\s*\(\s*\{\s*\.\.\.EXAMPLE_FORM/);
+      const templates = ruleTemplates();
+      expect(templates).toHaveLength(3);
+      expect(templates[0]).toEqual({ ...EXAMPLE_FORM, is_active: false });
+      expect(templates.every(template => !template.is_active)).toBe(true);
+      expect(templates.map(template => [template.trigger_type, template.event])).toEqual([
+        ['stage_change', ''], ['event', 'opportunity.created'], ['event', 'task.overdue'],
+      ]);
+      expect(templates[0].stage_id).toBe('');
+      expect(describeTrigger(templates[0])).toBe('Cuando una oportunidad cambia de etapa');
+      expect(describeRule(templates[0])).not.toContain('entra en «Propuesta enviada»');
+      // Cableado del texto y del clic al MISMO objeto de la lista: no basta con
+      // importar el humanizador o describir otro ejemplo que nunca se abre.
+      expect(empty).toMatch(/ruleTemplates\s*\(\s*\)/);
+      expect(empty).toMatch(/templates\s*\.\s*map\s*\(\s*\(\s*template\s*,/);
+      expect(empty).toMatch(/describeRule\s*\(\s*template\s*,/);
+      expect(empty).toMatch(/onUseTemplate\s*\(\s*template\s*\)/);
+      expect(empty).not.toMatch(/tr\s*\(\s*template\s*\.\s*description\s*\)/);
       expect(empty).not.toContain('entra en «Propuesta enviada»');
     });
 

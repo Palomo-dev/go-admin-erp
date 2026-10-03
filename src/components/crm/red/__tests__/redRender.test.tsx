@@ -24,7 +24,7 @@ test.each(['es','en','fr','pt'] as const)('tablas, permisos y toda la copia se r
   for(const key of Object.values(RED_COPY_KEYS)) expect(t(key,{p0:'Dato',p1:'Otro',p2:'',count:2,type:'Tipo',amount:' 15',note:'',recipient:'Persona'})).toBeTruthy();
   const onConvert=jest.fn();
   const base={rows:[row],total:1,page:1,size:25,onPage:jest.fn(),onSize:jest.fn(),currency:'COP',canManage:false,canRegister:false,busyId:null,onTransition:jest.fn(),onReject:jest.fn(),onConvert,onPay:jest.fn()};
-  const view=renderConIdioma(<><ReferralTable {...base}/><PartnerTable rows={[partner]} total={1} page={1} size={25} onPage={jest.fn()} onSize={jest.fn()} canManage={false} canRegister={false} onEdit={jest.fn()} onDeals={jest.fn()} onDelete={jest.fn()}/></>,{idioma});
+  const view=renderConIdioma(<><ReferralTable {...base}/><PartnerTable rows={[partner]} tiers={[]} order={null} onSort={jest.fn()} total={1} page={1} size={25} onPage={jest.fn()} onSize={jest.fn()} canManage={false} canRegister={false} onEdit={jest.fn()} onDeals={jest.fn()} onDelete={jest.fn()}/></>,{idioma});
   expect(screen.getByRole('columnheader',{name:t(RED_COPY_KEYS['Referido'])})).toBeTruthy();
   expect(screen.queryByRole('button',{name:t(RED_COPY_KEYS['Convertir en lead'])})).toBeNull();
   expect(screen.queryByRole('button',{name:t(RED_COPY_KEYS['Eliminar partner'])})).toBeNull();

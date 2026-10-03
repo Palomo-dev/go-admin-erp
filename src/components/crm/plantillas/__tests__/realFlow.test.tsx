@@ -1,5 +1,5 @@
 /** @jest-environment jsdom */
-import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react';
 import { NextIntlClientProvider, useTranslations } from 'next-intl';
 import es from '../../../../../messages/es.json'; import en from '../../../../../messages/en.json'; import fr from '../../../../../messages/fr.json'; import pt from '../../../../../messages/pt.json';
 import * as api from '@/components/crm/email/emailApi';
@@ -47,7 +47,13 @@ it.each(['es','en','fr','pt'] as const)('lista, editor y catálogo realIntl sin 
  expect(api.updateTemplate).not.toHaveBeenCalled();expect(api.restoreTemplates).not.toHaveBeenCalled();
  expect(screen.queryByRole('button',{name:{es:'Guardar',en:'Save',fr:'Enregistrer',pt:'Salvar'}[locale]})).toBeNull();
  expect(onError).not.toHaveBeenCalled();
- expect(screen.getByText(/Meta exige|Meta requires|Meta exige|La Meta/)).toBeTruthy();
+ const approvedTemplateGuidance={
+  es:'Meta exige plantillas aprobadas para escribir primero a un cliente. Crea una o sincroniza las que ya tienes en tu cuenta de WhatsApp Business.',
+  en:'Meta requires approved templates to start a conversation with a customer. Create one or sync the templates in your WhatsApp Business account.',
+  fr:'Meta exige des modèles approuvés pour contacter un client en premier. Créez-en un ou synchronisez ceux de votre compte WhatsApp Business.',
+  pt:'A Meta exige modelos aprovados para iniciar uma conversa com um cliente. Crie um ou sincronize os modelos da sua conta do WhatsApp Business.',
+ };
+ expect(within(screen.getByRole('complementary')).getByText(approvedTemplateGuidance[locale])).toBeTruthy();
 });
 it('una vista previa antigua no reaparece después de fallar nuevas variables y el spinner queda cerrado',async()=>{
  jest.useFakeTimers();let finish:(value:unknown)=>void=()=>{};
@@ -123,4 +129,23 @@ it('corregir rechazada crea un nuevo draft y retry de submit conserva su ID',asy
 it('no pide aprobación cuando falta el ejemplo de una variable',()=>{
  mount(<HsmEditorDialog open template={{...hsm,meta:{...hsm.meta,status:'DRAFT',examples:{}}}} canManage channels={[]} onClose={jest.fn()} onSaved={jest.fn()}/>);
  fireEvent.click(screen.getByRole('button',{name:'Enviar a aprobación'}));expect(waApi.createTemplate).not.toHaveBeenCalled();expect(waApi.updateTemplate).not.toHaveBeenCalled();expect(waApi.submitTemplate).not.toHaveBeenCalled();
+});
+
+it('editor de WhatsApp en página conserva estado de Meta y navegación sin conceder mutaciones', () => {
+ const close=jest.fn(),duplicate=jest.fn();
+ mount(<HsmEditorDialog open presentacion="pagina" template={{...hsm,meta:{...hsm.meta,status:'PENDING'}}} canManage={false} channels={[]} onClose={close} onSaved={jest.fn()} onDuplicate={duplicate}/>);
+ expect(screen.queryByRole('dialog')).toBeNull();
+ expect(screen.getByRole('status').textContent).toContain('Meta está revisando');
+ expect(screen.queryByRole('button',{name:'Duplicar como nueva'})).toBeNull();
+ expect((screen.getByRole('button',{name:'Enviar a aprobación'}) as HTMLButtonElement).disabled).toBe(true);
+ fireEvent.keyDown(document,{key:'Escape'});expect(close).toHaveBeenCalledTimes(1);
+ expect(waApi.submitTemplate).not.toHaveBeenCalled();expect(waApi.updateTemplate).not.toHaveBeenCalled();
+});
+it('guardar un HSM en página mantiene el bloqueo al cerrar hasta la respuesta y no repite la mutación', async () => {
+ let finish:(value:unknown)=>void=()=>{};const draft={...hsm,meta:{...hsm.meta,status:'DRAFT' as const}};
+ (waApi.updateTemplate as jest.Mock).mockImplementation(()=>new Promise(resolve=>{finish=resolve;}));
+ const close=jest.fn(),done=jest.fn();mount(<HsmEditorDialog open presentacion="pagina" template={draft} canManage channels={[]} onClose={close} onSaved={done}/>);
+ const save=screen.getByRole('button',{name:'Guardar borrador'});fireEvent.click(save);fireEvent.click(save);
+ expect(waApi.updateTemplate).toHaveBeenCalledTimes(1);fireEvent.keyDown(document,{key:'Escape'});expect(close).not.toHaveBeenCalled();
+ await act(async()=>{finish({data:draft});});expect(done).toHaveBeenCalledTimes(1);
 });

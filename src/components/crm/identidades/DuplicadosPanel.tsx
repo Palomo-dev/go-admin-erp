@@ -34,14 +34,15 @@ export function DuplicadosPanel({
             key={group.customers.map((c) => c.id).join(":")}
             className="flex flex-col gap-4 rounded-xl border border-line bg-surface p-4 xl:flex-row xl:items-center"
           >
-            <div className="xl:w-64 xl:shrink-0">
-              <p className="flex items-center gap-2 text-sm font-medium text-fg">
+            <div className="xl:w-[280px] xl:shrink-0">
+              <p className="flex items-center gap-2 text-[13px] leading-[18px] font-medium text-fg">
                 <Icono className="size-4 shrink-0" aria-hidden="true" />
                 {t(`tipos.${group.identity_type}`)}{" "}
                 <span className="break-all">{group.identity_value}</span>
               </p>
               <StatusBadge
                 className="mt-1"
+                tipografia="figma"
                 estado={group.identity_type === "document" ? "alta" : "media"}
                 etiqueta={t(
                   group.identity_type === "document" ? "alta" : "media",
@@ -58,7 +59,7 @@ export function DuplicadosPanel({
               >
                 <AvatarIniciales nombre={c.full_name ?? t("sinNombre")} />
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-fg">
+                  <p className="truncate text-[13px] leading-[18px] font-medium text-fg">
                     {c.full_name ?? t("sinNombre")}
                   </p>
                   <p className="text-xs text-fg-secondary">

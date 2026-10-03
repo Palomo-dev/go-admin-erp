@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { calcularPronosticoMensual } from "./forecastMensualLogica";
 import { getServiceClient } from "@/lib/supabase/server-service";
 import { resolverContextoMoneda } from "@/lib/services/monedaOrganizacion";
 import { sumarEnMonedaBase } from "@/components/crm/kit/monedaCrm";
@@ -167,6 +168,8 @@ export async function listarPronostico(
   // El navegador recibe solo la página visible; los totales incluyen todas las filas.
   return {
     ...result,
+    monthly: calcularPronosticoMensual(snapshot),
+    currentUserId: ctx.userId,
     sellers,
     moneda,
     teams: teams.data,

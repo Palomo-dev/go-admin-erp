@@ -1,9 +1,9 @@
 "use client";
 import { useTranslations } from "next-intl";
-import { FormField } from "@/components/kit/FormField";
-import { CLASE_CAMPO } from "@/components/crm/kit/camposCrm";
 import { useFormatDate } from "@/lib/context/OrganizationTimezoneContext";
+import { SegmentedControl } from "@/components/kit/SegmentedControl";
 import { opcionesTrimestre } from "./forecastVistaLogica";
+import { ForecastSelect } from "./ForecastSelect";
 import type { ForecastResponse } from "./useForecastData";
 interface Props {
   data: ForecastResponse | null;
@@ -15,6 +15,8 @@ interface Props {
   setTeam: (value: string) => void;
   setSeller: (value: string) => void;
   setPage: (value: number) => void;
+  view: "sellers" | "months";
+  onView: (value: "sellers" | "months") => void;
 }
 export function ForecastFilters({
   data,
@@ -26,67 +28,79 @@ export function ForecastFilters({
   setTeam,
   setSeller,
   setPage,
+  view,
+  onView,
 }: Props) {
   const t = useTranslations("crm.pronostico");
   const { getToday } = useFormatDate(null);
   return (
-    <div className="grid gap-3 sm:grid-cols-3">
-      <FormField etiqueta={t("trimestre")}>
-        <select
-          className={CLASE_CAMPO}
+    <div className="hidden flex-wrap items-center gap-2 lg:flex">
+      <div className="w-80 max-w-full">
+        <ForecastSelect
+          label={t("trimestre")}
           value={period}
           disabled={busy}
-          onChange={(e) => {
-            setPeriod(e.target.value);
+          onChange={(next) => {
+            setPeriod(next);
             setPage(1);
           }}
-        >
-          {opcionesTrimestre(getToday()).map((o) => (
-            <option key={o.period} value={o.period}>
-              {t("trimestreEtiqueta", { n: o.n, year: o.year })}
-            </option>
-          ))}
-        </select>
-      </FormField>
-      <FormField etiqueta={t("equipo")}>
-        <select
-          className={CLASE_CAMPO}
+          options={opcionesTrimestre(getToday()).map((o) => ({
+            value: o.period,
+            label: t("trimestreEtiqueta", { n: o.n, year: o.year }),
+          }))}
+        />
+      </div>
+      <div className="w-80 max-w-full">
+        <ForecastSelect
+          label={t("equipo")}
           value={team}
           disabled={busy}
-          onChange={(e) => {
-            setTeam(e.target.value);
+          onChange={(next) => {
+            setTeam(next);
             setSeller("");
             setPage(1);
           }}
-        >
-          <option value="">{t("todosEquipos")}</option>
-          {data?.teams?.map((team) => (
-            <option key={team.id} value={team.id}>
-              {team.name}
-            </option>
-          ))}
-        </select>
-      </FormField>
+          options={[
+            { value: "", label: t("todosEquipos") },
+            ...(data?.teams ?? []).map((row) => ({
+              value: row.id,
+              label: row.name,
+            })),
+          ]}
+        />
+      </div>
       {data?.canViewAll && (
-        <FormField etiqueta={t("vendedor")}>
-          <select
-            className={CLASE_CAMPO}
+        <SegmentedControl
+          etiqueta={t("agrupacion")}
+          valor={view}
+          onValorChange={onView}
+          opciones={[
+            { valor: "sellers", etiqueta: t("porVendedor") },
+            { valor: "months", etiqueta: t("porMes") },
+          ]}
+        />
+      )}
+      {data?.canViewAll && seller && (
+        <div className="w-64 max-w-full">
+          <ForecastSelect
+            label={t("vendedor")}
             value={seller}
             disabled={busy}
-            onChange={(e) => {
-              setSeller(e.target.value);
+            onChange={(next) => {
+              setSeller(next);
               setPage(1);
             }}
-          >
-            <option value="">{t("todosVendedores")}</option>
-            {data.sellers.map((r) => (
-              <option key={r.id} value={r.id}>
-                {[r.first_name, r.last_name].filter(Boolean).join(" ") ||
-                  t("vendedorInactivo")}
-              </option>
-            ))}
-          </select>
-        </FormField>
+            options={[
+              { value: "", label: t("todosVendedores") },
+              ...data.sellers.map((row) => ({
+                value: row.id,
+                label:
+                  [row.first_name, row.last_name].filter(Boolean).join(" ") ||
+                  t("vendedorInactivo"),
+              })),
+            ]}
+          />
+        </div>
       )}
     </div>
   );

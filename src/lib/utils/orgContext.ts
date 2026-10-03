@@ -264,8 +264,8 @@ export async function getBearerOrgContext(req: Request, token: string): Promise<
   return contextForOrg(supabase, user, organizationId);
 }
 
-export async function getServerOrgContext(req?: Request): Promise<ServerOrgContext> {
-  const supabase = await getServerUserClient();
+export async function getServerOrgContext(req?: Request, options?: { signal?: AbortSignal }): Promise<ServerOrgContext> {
+  const supabase = options ? await getServerUserClient(options) : await getServerUserClient();
 
   const user = await requireSessionUser(supabase);
 

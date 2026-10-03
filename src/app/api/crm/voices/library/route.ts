@@ -16,15 +16,20 @@ import { readOrgBody } from '@/lib/security/organizationBody';
 import { describeLibraryError, sanitizeAddLibraryInput } from '@/lib/services/crm/voiceLibrary';
 import { addLibraryVoiceToCatalog, searchLibraryVoices } from '@/lib/services/crm/voiceLibraryService';
 import { ElevenLabsError } from '@/lib/services/integrations/elevenlabs/voiceCloneClient';
+import { RequestDeadlineError, withRequestDeadline } from '@/lib/utils/requestDeadline';
 
 export const runtime = 'nodejs';
 
 function fail(error: unknown) {
+  if (error instanceof RequestDeadlineError) {
+    return NextResponse.json({ success: false, error: error.code === 'REQUEST_TIMEOUT'
+      ? 'No se pudo completar la consulta de voces a tiempo. Vuelve a intentarlo.' : 'Petición cancelada.' }, { status: error.status });
+  }
   if (error instanceof OrgContextError) {
     return NextResponse.json({ success: false, error: error.message }, { status: error.statusCode });
   }
   if (error instanceof ElevenLabsError) {
-    const status = error.status === 401 || error.status === 403 ? 502 : error.status < 500 ? 400 : 502;
+    const status = error.status === 504 ? 504 : error.status === 503 ? 503 : error.status === 401 || error.status === 403 ? 502 : error.status < 500 ? 400 : 502;
     return NextResponse.json(
       { success: false, error: describeLibraryError(error), provider_code: error.code ?? null },
       { status }
@@ -37,15 +42,17 @@ function fail(error: unknown) {
 
 export async function GET(request: NextRequest) {
   try {
-    const ctx = await getServerOrgContext();
-    const p = request.nextUrl.searchParams;
-    const data = await searchLibraryVoices(ctx.organizationId, {
-      search: p.get('search') ?? undefined,
-      language: p.get('language') ?? undefined,
-      gender: p.get('gender') ?? undefined,
-      use_case: p.get('use_case') ?? undefined,
-      page: Number(p.get('page') ?? 0),
-    });
+    const data = await withRequestDeadline(async (signal) => {
+      const ctx = await getServerOrgContext(request, { signal });
+      const p = request.nextUrl.searchParams;
+      return searchLibraryVoices(ctx.organizationId, {
+        search: p.get('search') ?? undefined,
+        language: p.get('language') ?? undefined,
+        gender: p.get('gender') ?? undefined,
+        use_case: p.get('use_case') ?? undefined,
+        page: Number(p.get('page') ?? 0),
+      }, signal);
+    }, { timeoutMs: 18_000, signal: request.signal });
     return NextResponse.json({ success: true, data }, { status: 200 });
   } catch (error) {
     return fail(error);

@@ -14,6 +14,7 @@ const mockListVoices = jest.fn();
 const mockCreateVoice = jest.fn();
 const mockDeleteVoice = jest.fn();
 const mockClient = {
+  cacheKey: 'test-credential',
   listVoices: jest.fn(),
   listSharedVoices: jest.fn(),
   addSharedVoice: jest.fn(),
@@ -173,16 +174,14 @@ describe('searchLibraryVoices: caché de 5 minutos', () => {
     expect(mockClient.listSharedVoices).toHaveBeenCalledTimes(2);
   });
 
-  test('DOCUMENTA: la caché de la biblioteca es global al proceso, no por organización', async () => {
-    // Es aceptable porque /v1/shared-voices es público y no depende de la clave,
-    // pero conviene saberlo: la organización 2 recibe lo que cargó la 1, y con
-    // la clave de la org 2 no se llama al proveedor.
+  test('la misma consulta y credencial conservan la autorización de cada organización', async () => {
     mockClient.listSharedVoices.mockResolvedValue(page);
     await searchLibraryVoices(1, { search: 'uno' });
     await searchLibraryVoices(2, { search: 'uno' });
-    expect(mockClient.listSharedVoices).toHaveBeenCalledTimes(1);
-    expect(mockGetClient).toHaveBeenCalledTimes(1);
-    expect(mockGetClient).toHaveBeenCalledWith(1);
+    expect(mockClient.listSharedVoices).toHaveBeenCalledTimes(2);
+    expect(mockGetClient).toHaveBeenCalledTimes(2);
+    expect(mockGetClient).toHaveBeenCalledWith(1, { signal: undefined });
+    expect(mockGetClient).toHaveBeenCalledWith(2, { signal: undefined });
   });
 
   test('un error del proveedor no se cachea', async () => {

@@ -9,12 +9,22 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-export async function getServerUserClient(): Promise<SupabaseClient> {
+export async function getServerUserClient(options?: { signal?: AbortSignal }): Promise<SupabaseClient> {
   const cookieStore = await cookies();
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      ...(options?.signal ? {
+        global: {
+          fetch: (input: RequestInfo | URL, init?: RequestInit) => fetch(input, {
+            ...init,
+            signal: init?.signal
+              ? AbortSignal.any([options.signal!, init.signal])
+              : options.signal,
+          }),
+        },
+      } : {}),
       cookies: {
         getAll: () => cookieStore.getAll(),
         setAll: (cookiesToSet) => {

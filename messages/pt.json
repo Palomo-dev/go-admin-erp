@@ -24900,6 +24900,8 @@
       "detalle": "Ver detalhes",
       "sinPermiso": "Sem permissão para consultar chamadas",
       "error": "Não foi possível carregar as chamadas",
+      "errorTiempo": "O carregamento demorou mais do que o esperado. Tente novamente.",
+      "errorDetalle": "Não foi possível obter o histórico de chamadas. Tente novamente.",
       "sinResultados": "Nenhuma chamada para estes filtros",
       "vacio": "Ainda não há chamadas",
       "vacioDetalle": "Ligue pelo pipeline, pela oportunidade ou pelo discador.",

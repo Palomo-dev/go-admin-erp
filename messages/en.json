@@ -4505,6 +4505,8 @@
       "detalle": "View details",
       "sinPermiso": "You cannot view calls",
       "error": "Calls could not be loaded",
+      "errorTiempo": "Loading took longer than expected. Please try again.",
+      "errorDetalle": "We could not retrieve your call history. Please try again.",
       "sinResultados": "No calls match these filters",
       "vacio": "No calls yet",
       "vacioDetalle": "Call from the pipeline, opportunity or dialer.",

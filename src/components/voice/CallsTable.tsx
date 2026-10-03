@@ -53,7 +53,8 @@ function CallsTableContenido({
   refreshKey = 0,
   cabecera,
   onAbrirLlamada,
-}: CallsTableProps) {
+  organizationId,
+}: CallsTableProps & { organizationId: number | null }) {
   const t = useTranslations("crm.llamadas");
   const formatNumber = useFormatoEntero();
   const { getToday, formatDateTime } = useFormatDate(null);
@@ -71,9 +72,10 @@ function CallsTableContenido({
   const [exportError, setExportError] = useState(false);
   const exportAbort = useRef<AbortController | null>(null);
   useEffect(() => () => exportAbort.current?.abort(), []);
-  const { result, loading, error, forbidden } = useCallsData(
+  const { result, loading, error, forbidden, errorCode } = useCallsData(
     parametrosLlamadas(filters, page, size).toString(),
     revision + refreshKey,
+    { enabled: !!organizationId && organizationId > 0, scope: organizationId ?? 0 },
   );
   const stats = result?.stats;
   const count = result?.count ?? 0;
@@ -223,7 +225,7 @@ function CallsTableContenido({
       {estado !== 'listo' && estado !== 'cargando' ? <div className="overflow-hidden rounded-xl border border-line bg-surface">
         <EmptyState variante={estado === 'vacio' ? 'empty' : estado === 'sinResultados' ? 'search' : estado === 'sinPermiso' ? 'forbidden' : 'error'}
           titulo={t(estado === 'vacio' ? 'vacio' : estado === 'sinResultados' ? 'sinResultados' : estado === 'sinPermiso' ? 'sinPermiso' : 'error')}
-          descripcion={estado === 'vacio' || estado === 'sinResultados' ? t('vacioDetalle') : undefined}
+          descripcion={estado === 'vacio' || estado === 'sinResultados' ? t('vacioDetalle') : estado === 'error' ? t(errorCode === 'REQUEST_TIMEOUT' ? 'errorTiempo' : 'errorDetalle') : undefined}
           icono={estado === 'vacio' ? Package : undefined}
           accion={estado === 'vacio' ? { etiqueta: t('llamar'), onClick: abrirMarcador, icono: Phone } : undefined}
           accionSecundaria={estado === 'vacio' ? { etiqueta: t('configurarTelefonia'), href: '/app/configuracion?modulo=crm&tab=proveedores' } : undefined}
@@ -263,6 +265,7 @@ export function CallsTable(props: CallsTableProps) {
     <CallsTableContenido
       key={organization?.id ?? "sin-organizacion"}
       {...props}
+      organizationId={organization?.id ?? null}
     />
   );
 }

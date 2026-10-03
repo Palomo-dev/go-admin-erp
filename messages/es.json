@@ -4505,6 +4505,8 @@
       "detalle": "Ver detalle",
       "sinPermiso": "Sin permiso para consultar llamadas",
       "error": "No se pudieron cargar las llamadas",
+      "errorTiempo": "La carga tardó más de lo esperado. Vuelve a intentarlo.",
+      "errorDetalle": "No pudimos obtener el historial de llamadas. Vuelve a intentarlo.",
       "sinResultados": "Sin llamadas para estos filtros",
       "vacio": "Aún no hay llamadas",
       "vacioDetalle": "Llama desde el pipeline, la oportunidad o el marcador.",

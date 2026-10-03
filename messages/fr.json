@@ -24900,6 +24900,8 @@
       "detalle": "Voir les détails",
       "sinPermiso": "Vous ne pouvez pas consulter les appels",
       "error": "Impossible de charger les appels",
+      "errorTiempo": "Le chargement a pris plus de temps que prévu. Réessayez.",
+      "errorDetalle": "Impossible de récupérer l’historique des appels. Réessayez.",
       "sinResultados": "Aucun appel pour ces filtres",
       "vacio": "Aucun appel",
       "vacioDetalle": "Appelez depuis le pipeline, l’opportunité ou le clavier.",

@@ -10,6 +10,7 @@ import type { CallListRow } from "@/lib/services/crm/callManagementService";
 let loading = false;
 let error = false;
 let forbidden = false;
+let errorCode: string | null = null;
 let count = 0;
 let rows: CallListRow[] = [];
 let parametros = '';
@@ -28,6 +29,7 @@ jest.mock("../useCallsData", () => ({
     loading,
     error,
     forbidden,
+    errorCode,
     result: error
       ? null
       : {
@@ -62,6 +64,7 @@ beforeEach(() => {
   loading = false;
   error = false;
   forbidden = false;
+  errorCode = null;
   count = 0;
   rows = [];
   errors = jest.spyOn(console, "error").mockImplementation(() => undefined);
@@ -124,11 +127,12 @@ afterEach(() => {
 describe.each(["es", "en", "fr", "pt"] as IdiomaPrueba[])(
   "Llamadas %s",
   (idioma) => {
-    it.each(["empty", "loading", "error", "forbidden", "ready"])(
+    it.each(["empty", "loading", "error", "timeout", "forbidden", "ready"])(
       "estado %s",
       (state) => {
         loading = state === "loading";
-        error = ["error", "forbidden"].includes(state);
+        error = ["error", "timeout", "forbidden"].includes(state);
+        errorCode = state === "timeout" ? "REQUEST_TIMEOUT" : null;
         forbidden = state === "forbidden";
         count = state === "ready" ? 205 : 0;
         const { container } = renderConIdioma(<CallsTable />, { idioma });
@@ -142,6 +146,14 @@ describe.each(["es", "en", "fr", "pt"] as IdiomaPrueba[])(
     );
   },
 );
+it('un timeout muestra el motivo de espera y conserva el reintento', () => {
+  error = true;
+  errorCode = 'REQUEST_TIMEOUT';
+  renderConIdioma(<CallsTable />);
+  expect(screen.getByText('La carga tardó más de lo esperado. Vuelve a intentarlo.')).toBeTruthy();
+  expect(screen.queryByText('Revisa tu conexión e inténtalo de nuevo.')).toBeNull();
+  expect(screen.getByRole('button', { name: 'Reintentar' })).toBeTruthy();
+});
 it("Enter en un botón hijo no abre la fila; Enter en la fila sí", () => {
   const toggle = jest.fn();
   const call = {

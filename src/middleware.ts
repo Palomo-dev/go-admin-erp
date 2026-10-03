@@ -748,8 +748,9 @@ async function checkOrgAndSubscriptionStatus(ctx: GateContext, pathname: string)
     current_period_end: string | null;
     stripe_subscription_id: string | null;
     stripe_customer_id: string | null;
+    metadata: Record<string, unknown> | null;
   }>(
-    `subscriptions?select=status,trial_end,current_period_end,stripe_subscription_id,stripe_customer_id` +
+    `subscriptions?select=status,trial_end,current_period_end,stripe_subscription_id,stripe_customer_id,metadata` +
       `&organization_id=eq.${orgId}&order=created_at.desc&limit=1`,
     { deadline: ctx.deadline, accessToken: ctx.accessToken }
   );
@@ -759,39 +760,61 @@ async function checkOrgAndSubscriptionStatus(ctx: GateContext, pathname: string)
 
   const now = new Date();
 
-  // Suscripcion cancelada
+  // Verificar si debe estar exenta de congelamiento (pago anual vigente o cortesía)
+  const { isExemptFromFreezing } = await import('@/lib/utils/subscriptionUtils');
+  const estaExenta = isExemptFromFreezing({
+    status: subData.status,
+    current_period_end: subData.current_period_end,
+    stripe_customer_id: subData.stripe_customer_id,
+    stripe_subscription_id: subData.stripe_subscription_id,
+    metadata: subData.metadata,
+  });
+
+  // Suscripcion cancelada (incluso con pago anual o cortesía, si se cancela debe congelar)
   if (subData.status === 'canceled') {
     const redirectUrl = new URL('/app/cuenta-congelada', request.url);
     redirectUrl.searchParams.set('reason', 'canceled');
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Pago pendiente (past_due)
+  // Pago pendiente (past_due) - permitir si está exenta
   if (subData.status === 'past_due') {
-    const redirectUrl = new URL('/app/cuenta-congelada', request.url);
-    redirectUrl.searchParams.set('reason', 'payment_failed');
-    return NextResponse.redirect(redirectUrl);
+    if (estaExenta) {
+      console.warn(`[middleware] Org ${orgId}: past_due exenta de congelamiento (pago anual vigente o cortesía) - permitiendo acceso`);
+    } else {
+      const redirectUrl = new URL('/app/cuenta-congelada', request.url);
+      redirectUrl.searchParams.set('reason', 'payment_failed');
+      return NextResponse.redirect(redirectUrl);
+    }
   }
 
   // Trial expirado: si el status sigue "trialing" y la fecha ya paso, bloquear
-  // sin importar si tiene stripe_subscription_id (el webhook actualizaria a "active" si pago)
+  // (salvo que esté exenta)
   if (subData.status === 'trialing') {
     const trialEnd = subData.trial_end
       ? new Date(subData.trial_end)
       : (subData.current_period_end ? new Date(subData.current_period_end) : null);
 
     if (trialEnd && trialEnd < now) {
+      if (estaExenta) {
+        console.warn(`[middleware] Org ${orgId}: trialing vencido exento de congelamiento (pago anual vigente o cortesía) - permitiendo acceso`);
+      } else {
+        const redirectUrl = new URL('/app/cuenta-congelada', request.url);
+        redirectUrl.searchParams.set('reason', 'trial_expired');
+        return NextResponse.redirect(redirectUrl);
+      }
+    }
+  }
+
+  // Suscripcion inactiva sin trial vigente - permitir si está exenta
+  if (subData.status === 'incomplete' || subData.status === 'incomplete_expired') {
+    if (estaExenta) {
+      console.warn(`[middleware] Org ${orgId}: ${subData.status} exento de congelamiento (pago anual vigente o cortesía) - permitiendo acceso`);
+    } else {
       const redirectUrl = new URL('/app/cuenta-congelada', request.url);
       redirectUrl.searchParams.set('reason', 'trial_expired');
       return NextResponse.redirect(redirectUrl);
     }
-  }
-
-  // Suscripcion inactiva sin trial vigente
-  if (subData.status === 'incomplete' || subData.status === 'incomplete_expired') {
-    const redirectUrl = new URL('/app/cuenta-congelada', request.url);
-    redirectUrl.searchParams.set('reason', 'trial_expired');
-    return NextResponse.redirect(redirectUrl);
   }
 
   return null; // Todo en orden

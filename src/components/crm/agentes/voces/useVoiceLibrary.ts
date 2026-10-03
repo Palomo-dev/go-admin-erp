@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { LibraryVoice } from "@/lib/services/crm/voiceLibrary";
 import { fetchJson } from "@/lib/utils/fetchJson";
+import { tiempoLecturaCrm } from "@/lib/utils/crmReadTimeout";
 import { describeError } from "@/lib/utils/errorMessage";
 import { getOrganizationId, ORGANIZATION_CHANGED_EVENT } from "@/lib/hooks/useOrganization";
 
@@ -87,7 +88,7 @@ export function useVoiceLibrary(): VoiceLibraryState {
     const read = async () => {
       try {
         const json = await fetchJson<LibraryResponse>(`/api/crm/voices/library?${params.toString()}`, {
-          cache: "no-store", signal: controller.signal,
+          cache: "no-store", signal: controller.signal, timeoutMs: tiempoLecturaCrm(),
         });
         if (!active()) return;
         if (!json?.success || !json.data || !Array.isArray(json.data.voices)) throw new Error(json?.error || "La respuesta no indicó éxito");

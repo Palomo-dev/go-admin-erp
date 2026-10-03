@@ -11,6 +11,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { pedirCrm } from '@/components/crm/acciones/apiCrm';
 import { ORGANIZATION_CHANGED_EVENT } from '@/lib/hooks/useOrganization';
+import { withRequestDeadline } from '@/lib/utils/requestDeadline';
+import { tiempoLecturaCrm } from '@/lib/utils/crmReadTimeout';
 import type { StageAgent } from '@/lib/services/crm/stageAgentService';
 import { AgentEditorDialog, type AgentDraft } from './AgentEditorDialog';
 import { AgentMetricsPanel } from './AgentMetricsPanel';
@@ -19,31 +21,56 @@ import { VoicesPanel } from './VoicesPanel';
 import { useAgentSummary, completeAgentSummary, bookedMeetings } from './useAgentSummary';
 import { AgentCampaignsPanel } from './AgentCampaignsPanel';
 export interface VoiceAgentListItem { id: string; name: string; purpose_type: string; engine: string; language: string; llm_model: string; voice_id: string | null; voice_ref_id: string | null; is_active: boolean; allowed_tools: string[]; }
+type LecturaComplementaria = 'scripts' | 'voices' | 'context';
 export function AgentesIaPage() {
-  const t = useTranslations('crm.agentesIa'); const query = useSearchParams();
+  const t = useTranslations('crm.agentesIa'), common = useTranslations('common'); const query = useSearchParams();
   const [startStep, setStartStep] = useState<'purpose' | 'voice' | 'test'>('purpose'); const [tab, setTab] = useState(query?.get('tab') === 'campanas' ? 'campaigns' : 'agents');
   const [agents, setAgents] = useState<VoiceAgentListItem[]>([]), [stages, setStages] = useState<StageAgent[] | null>(null), [voices, setVoices] = useState<VoiceCatalogRow[] | null>(null);
   const [loading, setLoading] = useState(true), [error, setError] = useState(false), [editing, setEditing] = useState<AgentDraft | null>(null), [metrics, setMetrics] = useState<VoiceAgentListItem | null>(null), [busy, setBusy] = useState<string | null>(null);
   const [stageNames, setStageNames] = useState<Record<string, string>>({});
-  const revision = useRef(0), toggleLock = useRef(false);
-  const invalidate = useCallback(() => { revision.current++; }, []);
+  const [detailFailures, setDetailFailures] = useState<LecturaComplementaria[]>([]);
+  const revision = useRef(0), toggleLock = useRef(false), readController = useRef<AbortController | null>(null);
+  const invalidate = useCallback(() => { revision.current++; readController.current?.abort(); readController.current = null; }, []);
   const ids = agents.map(agent => agent.id), summary = useAgentSummary(ids, revision.current), totals = completeAgentSummary(ids, summary.summaries);
   const locale = useLocale(), number = (value: number) => new Intl.NumberFormat(locale).format(value);
   const load = useCallback(async () => {
-    const current = ++revision.current; setLoading(true); setError(false); setStages(null); setVoices(null); setStageNames({});
-    const results = await Promise.allSettled([
-      pedirCrm<VoiceAgentListItem[]>('/api/crm/voice-agents'),
-      pedirCrm<StageAgent[]>('/api/crm/stage-agents'),
-      pedirCrm<VoiceCatalogRow[]>('/api/crm/voices'),
-      pedirCrm<{ pipelines: { stages: { id: string; name: string }[] }[] }>('/api/crm/voice-agents/editor-context'),
+    readController.current?.abort();
+    const controller = new AbortController(), current = ++revision.current;
+    readController.current = controller;
+    const active = () => current === revision.current && !controller.signal.aborted;
+    setLoading(true); setError(false); setStages(null); setVoices(null); setStageNames({}); setDetailFailures([]);
+    const failed = (detail: LecturaComplementaria) => setDetailFailures(previous => [...previous, detail]);
+    // El plazo cubre también la resincronización de sesión y la lectura del
+    // cuerpo. Una respuesta tardía nunca actualiza otra carga u organización.
+    async function read<T>(url: string, accept: (data: T) => void, reject: () => void) {
+      try {
+        const result = await withRequestDeadline(signal => pedirCrm<T>(url, { signal }), {
+          timeoutMs: tiempoLecturaCrm(), signal: controller.signal,
+        });
+        if (active()) accept(result.data);
+      } catch {
+        if (active()) reject();
+      }
+    }
+    const list = read<VoiceAgentListItem[]>('/api/crm/voice-agents', data => {
+      if (!Array.isArray(data)) throw new Error('Lista de agentes inválida');
+      setAgents(data);
+    }, () => { setAgents([]); setError(true); }).finally(() => { if (active()) setLoading(false); });
+    // Los detalles enriquecen las tarjetas; su demora no oculta la lista.
+    await Promise.all([
+      list,
+      read<StageAgent[]>('/api/crm/stage-agents', data => {
+        if (!Array.isArray(data)) throw new Error('Guiones de etapas inválidos');
+        setStages(data);
+      }, () => failed('scripts')),
+      read<VoiceCatalogRow[]>('/api/crm/voices', data => {
+        if (!Array.isArray(data)) throw new Error('Catálogo de voces inválido');
+        setVoices(data);
+      }, () => failed('voices')),
+      read<{ pipelines: { stages: { id: string; name: string }[] }[] }>('/api/crm/voice-agents/editor-context', data => {
+        setStageNames(Object.fromEntries((data.pipelines ?? []).flatMap(pipeline => pipeline.stages.map(stage => [stage.id, stage.name]))));
+      }, () => failed('context')),
     ]);
-    if (current !== revision.current) return;
-    const [list, scripts, catalog, context] = results;
-    if (list.status === 'fulfilled' && Array.isArray(list.value.data)) setAgents(list.value.data); else { setAgents([]); setError(true); }
-    if (scripts.status === 'fulfilled' && Array.isArray(scripts.value.data)) setStages(scripts.value.data);
-    if (catalog.status === 'fulfilled' && Array.isArray(catalog.value.data)) setVoices(catalog.value.data);
-    if (context.status === 'fulfilled') setStageNames(Object.fromEntries((context.value.data.pipelines ?? []).flatMap(pipeline => pipeline.stages.map(stage => [stage.id, stage.name]))));
-    setLoading(false);
   }, []);
   useEffect(() => {
     void load();
@@ -54,7 +81,7 @@ export function AgentesIaPage() {
   const toggle = async (agent: VoiceAgentListItem) => {
     if (toggleLock.current) return;
     toggleLock.current = true; const current = revision.current; setBusy(agent.id);
-    try { await pedirCrm(`/api/crm/voice-agents/${agent.id}`, { method: 'PATCH', cuerpo: { is_active: !agent.is_active } }); if (current === revision.current) void load(); }
+    try { await pedirCrm(`/api/crm/voice-agents/${agent.id}`, { method: 'PATCH', cuerpo: { is_active: !agent.is_active } }); if (current === revision.current) { setBusy(null); void load(); } }
     catch { if (current === revision.current) setError(true); }
     finally { toggleLock.current = false; if (current === revision.current) setBusy(null); }
   };
@@ -74,6 +101,10 @@ export function AgentesIaPage() {
         {(['agents', 'voices', 'campaigns'] as const).map(value => <TabsTrigger key={value} value={value} className="h-8 rounded-md px-3 text-sm leading-5 text-fg-secondary data-[state=active]:bg-surface data-[state=active]:text-fg dark:bg-transparent dark:text-fg-secondary dark:data-[state=active]:bg-surface">{t(value)}</TabsTrigger>)}
       </TabsList>
       <TabsContent value="agents" className="space-y-4">
+        {!loading && !error && detailFailures.length > 0 && <div role="alert" className="flex items-center justify-between gap-3 rounded-lg border border-line bg-danger-subtle p-3 text-sm text-danger-text">
+          <p>{common('error')}: {detailFailures.map(detail => t(detail === 'voices' ? 'steps.voice' : detail === 'scripts' ? 'stageScript' : 'stage')).join(' · ')}</p>
+          <button type="button" className={clasesBoton({ patron: 'button', variante: 'secundario', tamano: 'sm' })} onClick={() => void load()}>{t('retry')}</button>
+        </div>}
         {/* El resumen usa periodos completos de la RPC; una lectura incompleta conserva el guion. */}
         {(loading || (!error && agents.length > 0)) && <KpiStrip>{[
           { label: `${t('calls')} (${t('period7')})`, value: totals ? number(totals.calls) : '—', hint: t('metricsCallsHint') },

@@ -45,6 +45,7 @@ import {
   type JWTPayload,
 } from 'jose';
 import { readRealSecret } from '@/lib/security/secrets';
+import { withRequestDeadline } from '@/lib/utils/requestDeadline';
 
 /** Variable de entorno (solo servidor) con el secreto JWT del proyecto. */
 export const SUPABASE_JWT_SECRET_ENV = 'SUPABASE_JWT_SECRET';
@@ -254,37 +255,42 @@ async function consultarAuth(token: string, payload: JWTPayload, huella: string)
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
   if (!base || !anon) return { estado: 'no_verificable', motivo: 'sin_config_supabase' };
 
-  let res: Response;
   try {
-    res = await fetch(`${base}/auth/v1/user`, {
-      method: 'GET',
-      headers: { apikey: anon, Authorization: `Bearer ${token}` },
-      cache: 'no-store',
-      signal: AbortSignal.timeout(TIMEOUT_VERIFICACION_RED_MS),
-    });
+    const veredicto = await withRequestDeadline<VeredictoToken>(async (signal) => {
+      const res = await fetch(`${base}/auth/v1/user`, {
+        method: 'GET',
+        headers: { apikey: anon, Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+        signal,
+      });
+      if (res.status === 401 || res.status === 403) {
+        return { estado: 'invalido', motivo: `auth_${res.status}` };
+      }
+      if (!res.ok) return { estado: 'no_verificable', motivo: `auth_${res.status}` };
+
+      let usuario: { id?: unknown } | null = null;
+      try {
+        usuario = (await res.json()) as { id?: unknown };
+      } catch {
+        return { estado: 'no_verificable', motivo: 'auth_respuesta_no_json' };
+      }
+
+      // Auth aceptó ESTE token: el usuario debe coincidir con su sub y rol.
+      const claims = claimsDeUsuario(payload);
+      if (!claims || usuario?.id !== claims.sub) return { estado: 'invalido', motivo: 'auth_usuario_distinto' };
+      return { estado: 'valido', claims, metodo: 'servidor-auth' };
+    }, { timeoutMs: TIMEOUT_VERIFICACION_RED_MS });
+
+    // Sólo el resultado que ganó el plazo puede dar sesión o alimentar la
+    // caché. Una respuesta tardía de un transporte no cooperativo se descarta.
+    if (veredicto.estado === 'valido') {
+      if (veredicto.claims.exp <= ahoraSegundos()) return { estado: 'vencido' };
+      guardarEnCache(huella, veredicto.claims);
+    }
+    return veredicto;
   } catch {
     return { estado: 'no_verificable', motivo: 'auth_sin_respuesta' };
   }
-
-  if (res.status === 401 || res.status === 403) {
-    return { estado: 'invalido', motivo: `auth_${res.status}` };
-  }
-  if (!res.ok) return { estado: 'no_verificable', motivo: `auth_${res.status}` };
-
-  let usuario: { id?: unknown } | null = null;
-  try {
-    usuario = (await res.json()) as { id?: unknown };
-  } catch {
-    return { estado: 'no_verificable', motivo: 'auth_respuesta_no_json' };
-  }
-
-  // Auth aceptó ESTE token: su payload ya es de fiar. Aun así, el usuario que
-  // devuelve Auth tiene que ser el `sub` del token.
-  const claims = claimsDeUsuario(payload);
-  if (!claims || usuario?.id !== claims.sub) return { estado: 'invalido', motivo: 'auth_usuario_distinto' };
-
-  guardarEnCache(huella, claims);
-  return { estado: 'valido', claims, metodo: 'servidor-auth' };
 }
 
 async function verificarConServidorAuth(token: string): Promise<VeredictoToken> {

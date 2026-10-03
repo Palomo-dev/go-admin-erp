@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest, NextFetchEvent } from 'next/server';
+import { createCrmReadTrace, isCrmReadTraceRoute, CRM_READ_TRACE_HEADER } from '@/lib/utils/crmReadTrace';
 import {
   verificarTokenAcceso,
   esServidorEmbebidoEscritorio,
@@ -250,14 +251,31 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
     return NextResponse.next();
   }
 
+  // Sólo estas lecturas necesitan correlación. Nunca registrar cookies, tokens
+  // ni la búsqueda del usuario; el identificador no interviene en permisos.
+  const readTrace = request.method === 'GET' && isCrmReadTraceRoute(pathname)
+    ? createCrmReadTrace(pathname) : null;
+  const forwardedHeaders = readTrace ? new Headers(request.headers) : undefined;
+  if (readTrace && forwardedHeaders) forwardedHeaders.set(CRM_READ_TRACE_HEADER, readTrace.id);
+  readTrace?.step('middleware-start');
+  const finishRead = (response: NextResponse) => {
+    if (readTrace) {
+      readTrace.step('middleware-end');
+      readTrace.finish(response.status);
+      response.headers.set(CRM_READ_TRACE_HEADER, readTrace.id);
+    }
+    return response;
+  };
+
   // Limpiar cookie OAuth stale en rutas que no son select-organization.
   // Esta cookie contiene tokens completos y si no se borra causa HTTP 431.
   if (pathname !== '/auth/select-organization') {
     const oauthCookie = request.cookies.get('go-admin-oauth-session');
     if (oauthCookie) {
-      const response = NextResponse.next();
+      const response = forwardedHeaders
+        ? NextResponse.next({ request: { headers: forwardedHeaders } }) : NextResponse.next();
       response.cookies.delete('go-admin-oauth-session');
-      return response;
+      return finishRead(response);
     }
   }
   
@@ -330,6 +348,7 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
   let session = null;
   let isAuthenticated = false;
   let isExpired = false;
+  readTrace?.step('auth-start');
   
   if (!authCookie?.value) {
     // No hay cookie de autenticación
@@ -359,7 +378,8 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
         response.cookies.delete(cookieName);
       });
       
-      return response;
+      readTrace?.step('auth-end');
+      return finishRead(response);
     }
     
     // Validar sesión verificando la firma del JWT (sin refresh)
@@ -369,6 +389,7 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
     isExpired = sessionResult.isExpired;
     
   }
+  readTrace?.step('auth-end');
 
   // Registrar actividad del usuario como mucho una vez cada 10 minutos.
   // La cookie de throttle se escribe sobre la respuesta final; antes se leia
@@ -378,7 +399,7 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
   const activityAccessToken = isAuthenticated ? session?.access_token ?? null : null;
   const touchActivity = !!activityUserId && needsActivityUpdate(request);
 
-  const response = await handleRouteProtection(request, isAuthenticated, isExpired, activityUserId, activityAccessToken);
+  const response = await handleRouteProtection(request, isAuthenticated, isExpired, activityUserId, activityAccessToken, forwardedHeaders);
 
   if (touchActivity && activityUserId) {
     // waitUntil: la escritura corre despues de responder, sin retrasar al usuario
@@ -392,7 +413,7 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
     });
   }
 
-  return response;
+  return finishRead(response);
 }
 
 /**
@@ -908,9 +929,12 @@ async function handleRouteProtection(
   isAuthenticated: boolean,
   isExpired: boolean,
   userId: string | null,
-  accessToken: string | null
+  accessToken: string | null,
+  forwardedHeaders?: Headers
 ) {
   const { pathname } = request.nextUrl;
+  const next = () => forwardedHeaders
+    ? NextResponse.next({ request: { headers: forwardedHeaders } }) : NextResponse.next();
 
   // Cookie de veredicto (ya firmada) a escribir sobre la respuesta final.
   let pendingGateCookie: string | null = null;
@@ -954,7 +978,7 @@ async function handleRouteProtection(
 
   // Permitir acceso a API de Supabase
   if (pathname.includes('/auth/v1/')) {
-    return NextResponse.next();
+    return next();
   }
 
   // APIs sin sesión verificada: 401 JSON, no una redirección al login. Una
@@ -1053,7 +1077,7 @@ async function handleRouteProtection(
   
   // Si es localhost (desarrollo)
   if (hostname.includes('localhost')) {
-    return finalize(NextResponse.next());
+    return finalize(next());
   }
   
   // Si tiene 4 partes o más, es un subdominio de tercer nivel (organización)
@@ -1062,7 +1086,7 @@ async function handleRouteProtection(
     const orgSubdomain = parts[0]; // El primer segmento es la organización
     
     if (orgSubdomain !== 'www') {
-      const response = NextResponse.next();
+      const response = next();
       response.cookies.set('organization', orgSubdomain, { 
         path: '/',
         sameSite: 'lax',
@@ -1079,7 +1103,7 @@ async function handleRouteProtection(
     console.log('✅ [MIDDLEWARE] Permitiendo acceso a la ruta');
   }
   
-  return finalize(NextResponse.next());
+  return finalize(next());
 }
 
 // See "Matching Paths" below to learn more

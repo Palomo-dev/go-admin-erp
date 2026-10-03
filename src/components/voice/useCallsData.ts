@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { pedirCrm, ErrorApiCrm } from "@/components/crm/acciones/apiCrm";
 import { RequestDeadlineError, withRequestDeadline } from "@/lib/utils/requestDeadline";
+import { tiempoLecturaCrm } from "@/lib/utils/crmReadTimeout";
 import type {
   CallListRow,
   CallStats,
@@ -16,7 +17,7 @@ export interface CallsResponse {
 
 /** Next dev compila la ruta en su primer uso; producción ya está compilada. */
 export function tiempoCargaLlamadas(): number {
-  return process.env.NODE_ENV === "development" ? 60_000 : 20_000;
+  return tiempoLecturaCrm();
 }
 
 export async function leerLlamadas(

@@ -22,6 +22,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getOrganizationId, ORGANIZATION_CHANGED_EVENT } from "@/lib/hooks/useOrganization";
 import { fetchJson } from "@/lib/utils/fetchJson";
+import { tiempoLecturaCrm } from "@/lib/utils/crmReadTimeout";
 import { describeError } from "@/lib/utils/errorMessage";
 import { libraryLabel, type LibraryTagKey } from "@/lib/services/crm/voiceLibrary";
 
@@ -124,7 +125,7 @@ export function useVoiceCatalog(): VoiceCatalogState {
     readFailed.current = false;
     setError(null);
     setTtsLoading(true);
-    const options = { cache: "no-store" as const, credentials: "include" as const, signal: controller.signal };
+    const options = { cache: "no-store" as const, credentials: "include" as const, signal: controller.signal, timeoutMs: tiempoLecturaCrm() };
     const catalog = async () => {
       try {
         const json = await fetchJson<{ success?: boolean; error?: string; data?: VoiceCatalogRow[]; account?: VoiceAccountInfo | null }>("/api/crm/voices", options);

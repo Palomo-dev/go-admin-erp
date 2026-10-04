@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  AudioLines,
   Bot,
   Check,
   Headphones,
@@ -247,8 +246,7 @@ export function VocesPropuesta({
       genero: "Personal",
       estilo: "Personal",
       uso: "Conversación",
-      descripcion:
-        "Ficha de voz personal creada en la propuesta. El entrenamiento en ElevenLabs se realiza al integrar el flujo.",
+      descripcion: "Ficha de voz personal.",
       guardada: true,
       clonada: true,
     };
@@ -261,9 +259,7 @@ export function VocesPropuesta({
     setConsentimiento(false);
     setNombreClon("Mi voz");
     setErrorClon("");
-    onAviso(
-      "Ficha de voz añadida a la propuesta. No se ha entrenado ni enviado audio a ElevenLabs.",
-    );
+    onAviso("Ficha de voz añadida a Mis voces.");
   };
 
   return (
@@ -308,12 +304,7 @@ export function VocesPropuesta({
             className={fantasma}
           >
             <Headphones className="size-4" strokeWidth={1.5} />
-            ElevenLabs{" "}
-            <StatusBadge
-              estado="ready"
-              etiqueta="Configuración demo"
-              tono="neutro"
-            />
+            ElevenLabs
           </button>
         </div>
         <ListToolbar
@@ -484,7 +475,7 @@ export function VocesPropuesta({
                             onSelect: () => {
                               onPredeterminada(voz.id);
                               onAviso(
-                                `${voz.nombre} es la voz por defecto de la propuesta.`,
+                                `${voz.nombre} es la voz por defecto.`,
                               );
                             },
                             oculta: !voz.guardada || predeterminada === voz.id,
@@ -565,10 +556,6 @@ export function VocesPropuesta({
                 {visibles.length} {visibles.length === 1 ? "voz" : "voces"} ·
                 Español
               </p>
-              <p className="flex items-center gap-1.5 text-xs text-fg-secondary">
-                <AudioLines className="size-3.5 shrink-0" strokeWidth={1.5} />
-                Muestras ilustrativas con la voz del dispositivo.
-              </p>
             </div>
           </>
         ) : (
@@ -629,10 +616,6 @@ export function VocesPropuesta({
             >
               <p className="rounded-lg bg-subtle p-3 text-[13px] leading-5 text-fg">
                 “{TEXTO_MUESTRA}”
-              </p>
-              <p className="mt-2 text-xs text-fg-secondary">
-                En esta propuesta, la muestra usa una voz del dispositivo; no
-                representa la calidad ni el timbre de ElevenLabs.
               </p>
             </Tarjeta>
             <div>
@@ -720,7 +703,7 @@ export function VocesPropuesta({
                 v.id === quitar.id ? { ...v, guardada: false } : v,
               ),
             );
-            onAviso("Voz retirada de Mis voces en la propuesta.");
+            onAviso("Voz retirada de Mis voces.");
             setQuitarId(null);
           },
         }}
@@ -731,9 +714,8 @@ export function VocesPropuesta({
         onAbiertoChange={setClonar}
         titulo="Clonar mi voz"
         icono={Mic}
-        descripcion="Prepara una voz personal para tus agentes. El audio permanece en tu navegador."
+        descripcion="Prepara una voz personal para tus agentes."
         ancho={672}
-        pie="Propuesta: no se envía audio al proveedor."
         secundarios={
           pasoClon !== "consentimiento"
             ? [
@@ -868,9 +850,8 @@ export function VocesPropuesta({
                 Muestra: {archivo?.name} · autorización confirmada.
               </p>
               <p className="mt-3 text-[13px] leading-5 text-fg-secondary">
-                Se creará una ficha local en Mis voces. El entrenamiento y la
-                asignación de una voz válida de ElevenLabs se realizarán cuando
-                apruebes la integración.
+                La ficha quedará disponible en Mis voces para asignarla a tus
+                agentes.
               </p>
             </Tarjeta>
           </div>

@@ -33,8 +33,9 @@ fuente embebidos, sin servidor ni conexión. Los archivos generados se ignoran e
 - Nueva campaña: audiencia → agente y voz → cumplimiento/horario → revisión.
   Guardar y reabrir el borrador conserva los datos; programar requiere fecha
   válida y los tres requisitos simulados. Pausar y reanudar conservan resultados.
-- Revisión: marcar aprobación o descarte y escribir notas en la demostración.
-  Comunicar la decisión por el chat autoriza la siguiente fase de integración.
+
+La aprobación o el descarte se comunican por el chat o el PR. El contexto de la
+propuesta queda en esta documentación; las pantallas muestran contenido del CRM.
 
 La campaña usa la voz del agente; no hay una segunda selección de voz por campaña.
 Las relaciones abren ejemplos locales y no llevan identificadores ficticios al CRM.
@@ -42,7 +43,7 @@ Las relaciones abren ejemplos locales y no llevan identificadores ficticios al C
 ## Límites de la demostración
 
 Todos los nombres, conteos y comprobaciones son ficticios. Los cambios viven en
-memoria y se restablecen al recargar o usar «Restablecer propuesta». No hay sesión
+memoria y se restablecen al recargar. No hay sesión
 real, verificación RNE, entrenamiento de voces, consumo de minutos ni llamadas.
 Las muestras utilizan síntesis del dispositivo cuando existe una voz en español;
 no representan el timbre ni la calidad de ElevenLabs. La ficha personal no crea
@@ -73,8 +74,8 @@ No utiliza APIs ni bases de datos.
 
 Validación de esta versión: build del prototipo, TypeScript aislado y ESLint
 correctos; recorridos de navegador sin errores ni solicitudes externas en
-1440, 390 y 375 px. La revisión adicional cubrió la ficha personal, la decisión
-local y la conservación del borrador al cambiar de agente.
+1440, 390 y 375 px. La revisión adicional cubrió la ficha personal y la
+conservación del borrador al cambiar de agente.
 
 La compilación Next de la rama base completó las 367 páginas, con la comprobación
 de tipos ejecutada aparte. Jest completó 19.104 pruebas: un proceso fue terminado

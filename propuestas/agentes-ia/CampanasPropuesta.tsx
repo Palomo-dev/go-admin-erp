@@ -384,11 +384,11 @@ export function CampanasPropuesta({
       return "Asigna una voz guardada al agente antes de programar.";
     const requisitos = requisitosCampana(campana);
     if (!requisitos.rne)
-      return "Falta verificar el RNE de la audiencia en esta demostración.";
+      return "Falta verificar el RNE de la audiencia.";
     if (!requisitos.datos)
-      return "Falta marcar la política de datos como disponible en esta simulación.";
+      return "Falta confirmar la política de datos disponible.";
     if (!requisitos.minutos)
-      return "Falta marcar los minutos como disponibles en esta simulación.";
+      return "Falta confirmar los minutos disponibles.";
     return null;
   };
   const bloqueadas = campanas.filter(
@@ -444,7 +444,7 @@ export function CampanasPropuesta({
     );
     setConfirmacion(null);
     onAviso(
-      `${nuevoEstado === "paused" ? "Campaña pausada" : "Campaña reanudada"} en la propuesta. No se realizará ninguna llamada.`,
+      `${nuevoEstado === "paused" ? "Campaña pausada" : "Campaña reanudada"}.`,
     );
   };
 
@@ -457,7 +457,7 @@ export function CampanasPropuesta({
       ),
     );
     onAviso(
-      "RNE verificado en la simulación. Revisa la programación y los demás requisitos antes de programar. Esta comprobación no tiene validez real.",
+      "RNE verificado. Revisa la programación y los demás requisitos antes de programar.",
     );
   };
 
@@ -633,8 +633,8 @@ export function CampanasPropuesta({
     limpiar();
     onAviso(
       programar
-        ? "Campaña programada en la propuesta. No se realizarán llamadas."
-        : "Borrador guardado en la propuesta. Puedes revisarlo desde el listado.",
+        ? "Campaña programada."
+        : "Borrador guardado. Puedes revisarlo desde el listado.",
     );
   };
 
@@ -650,7 +650,7 @@ export function CampanasPropuesta({
   return (
     <div className="min-w-0 space-y-4">
       <KpiStrip
-        etiqueta="Resumen de campañas de demostración"
+        etiqueta="Resumen de campañas"
         className="grid-flow-row grid-cols-2 overflow-visible sm:grid-cols-2 lg:grid-cols-4"
       >
         <StatCard
@@ -663,7 +663,7 @@ export function CampanasPropuesta({
         <StatCard
           etiqueta="Intentos"
           valor={entero(campanas.reduce((n, c) => n + c.procesados, 0))}
-          detalle="Acumulado de la demostración"
+          detalle="Acumulado de campañas"
           icono={AudioLines}
           tamano="sm"
         />
@@ -740,7 +740,7 @@ export function CampanasPropuesta({
               setFiltroAgente("");
             }}
             textoVerResultados={`Ver ${filas.length} campañas`}
-            nota="Los filtros se aplican a las campañas de esta propuesta."
+            nota=""
           >
             <FormField etiqueta="Estado" tamanoEtiqueta="sm">
               <SelectCrm
@@ -792,7 +792,6 @@ export function CampanasPropuesta({
         <span>
           {entero(filas.length)} {filas.length === 1 ? "campaña" : "campañas"}
         </span>
-        <BadgeTono tono="neutro">Datos de demostración</BadgeTono>
       </div>
       <DataTable
         columnas={columnas}
@@ -869,7 +868,7 @@ export function CampanasPropuesta({
         }}
         titulo={detalle?.nombre ?? "Campaña"}
         insignia={detalle ? <Estado campana={detalle} /> : undefined}
-        subtitulo="Campaña de voz · demostración"
+        subtitulo="Campaña de voz"
         ancho={560}
         pie={
           detalle && (
@@ -1037,7 +1036,6 @@ export function CampanasPropuesta({
             </Tarjeta>
             <Tarjeta
               titulo="Cumplimiento"
-              descripcion="Verificaciones simuladas para esta propuesta."
               icono={ShieldCheck}
             >
               <div className="flex items-start gap-3">
@@ -1061,7 +1059,7 @@ export function CampanasPropuesta({
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-fg">
                     {requisitosCampana(detalle).rne
-                      ? "RNE verificado en la simulación"
+                      ? "RNE verificado"
                       : "Falta verificar el RNE"}
                   </p>
                   <p className="mt-1 text-xs leading-4 text-fg-secondary">
@@ -1085,7 +1083,7 @@ export function CampanasPropuesta({
                         strokeWidth={1.5}
                         aria-hidden="true"
                       />
-                      Simular verificación
+                      Verificar RNE
                     </button>
                   )}
                 </div>
@@ -1156,10 +1154,6 @@ export function CampanasPropuesta({
             ? "La campaña dejará de aparecer en marcha. Se conservarán su avance y sus resultados."
             : "La campaña volverá al estado En marcha con el mismo agente, audiencia y límites."}
         </p>
-        <p className="rounded-lg bg-info-subtle p-3 text-xs leading-4 text-info-text">
-          Esta acción sólo cambia la demostración. No se realizarán llamadas ni
-          se programarán tareas reales.
-        </p>
       </Dialogo>
 
       <Dialogo
@@ -1177,7 +1171,7 @@ export function CampanasPropuesta({
                 onClick: () => guardar(true),
                 deshabilitada: !sePuedeProgramar,
                 motivo: !sePuedeProgramar
-                  ? "Completa los requisitos simulados y la programación antes de continuar."
+                  ? "Completa los requisitos y la programación antes de continuar."
                   : undefined,
               }
             : { etiqueta: "Continuar", onClick: siguiente }
@@ -1211,11 +1205,6 @@ export function CampanasPropuesta({
                 : undefined,
           },
         ]}
-        pie={
-          <span className="text-xs leading-4 text-fg-secondary">
-            Cambios sólo en la propuesta
-          </span>
-        }
       >
         <div className="min-w-0 space-y-5">
           <Stepper
@@ -1298,8 +1287,7 @@ export function CampanasPropuesta({
                     ))}
                   </div>
                   <p className="mt-4 text-xs leading-4 text-fg-secondary">
-                    El ejemplo excluye contactos sin teléfono o consentimiento.
-                    El recuento y las exclusiones son simulados.
+                    Se excluyen contactos sin teléfono o consentimiento.
                   </p>
                   <button
                     type="button"
@@ -1386,8 +1374,7 @@ export function CampanasPropuesta({
                     </span>
                   </div>
                   <p className="mt-3 text-xs leading-4 text-fg-secondary">
-                    La campaña usa la voz del agente. Puedes cambiarla en Voces
-                    y la propuesta se actualizará.
+                    La campaña usa la voz del agente. Puedes cambiarla en Voces.
                   </p>
                   {!vozForm && (
                     <p role="alert" className="mt-2 text-xs text-danger-text">
@@ -1472,10 +1459,6 @@ export function CampanasPropuesta({
 
           {paso === "cumplimiento" && (
             <div className="space-y-4">
-              <div className="flex items-center gap-2 text-xs leading-4 text-fg-secondary">
-                <BadgeTono tono="informacion">Simulación</BadgeTono>
-                <span>Estos requisitos se validan sólo en la propuesta.</span>
-              </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <Tarjeta titulo="Requisitos para programar" icono={ShieldCheck}>
                   <div className="space-y-4">
@@ -1498,7 +1481,7 @@ export function CampanasPropuesta({
                       </p>
                       <p className="mt-1 text-xs leading-4 text-fg-secondary">
                         {form.rne
-                          ? "Audiencia verificada en esta simulación."
+                          ? "Audiencia verificada."
                           : "Revisa la audiencia antes de programar."}
                       </p>
                       <button
@@ -1526,22 +1509,19 @@ export function CampanasPropuesta({
                           />
                         )}
                         {form.rne
-                          ? "Verificación simulada lista"
-                          : "Simular verificación RNE"}
+                          ? "Verificación lista"
+                          : "Verificar RNE"}
                       </button>
                     </div>
                     <label className="flex cursor-pointer items-start gap-2.5 text-sm leading-5 text-fg">
                       <Checkbox
                         checked={form.datos}
                         onCheckedChange={(v) => actualizar("datos", v === true)}
-                        aria-label="Simular política de datos disponible"
+                        aria-label="Política de datos disponible"
                         className="mt-0.5"
                       />
                       <span>
                         Política de datos disponible
-                        <span className="mt-0.5 block text-xs leading-4 text-fg-secondary">
-                          Marcar como lista para esta simulación.
-                        </span>
                       </span>
                     </label>
                     <label className="flex cursor-pointer items-start gap-2.5 text-sm leading-5 text-fg">
@@ -1550,14 +1530,11 @@ export function CampanasPropuesta({
                         onCheckedChange={(v) =>
                           actualizar("minutos", v === true)
                         }
-                        aria-label="Simular minutos disponibles"
+                        aria-label="Minutos disponibles"
                         className="mt-0.5"
                       />
                       <span>
                         Minutos disponibles
-                        <span className="mt-0.5 block text-xs leading-4 text-fg-secondary">
-                          Marcar como listos para esta simulación.
-                        </span>
                       </span>
                     </label>
                   </div>
@@ -1607,7 +1584,7 @@ export function CampanasPropuesta({
               {!cumplimientoValido && (
                 <p className="rounded-lg bg-warning-subtle p-3 text-xs leading-4 text-warning-text">
                   Puedes avanzar a la revisión y guardar un borrador. Para
-                  programar, completa los tres requisitos simulados y elige una
+                  programar, completa los tres requisitos y elige una
                   fecha válida.
                 </p>
               )}
@@ -1622,7 +1599,7 @@ export function CampanasPropuesta({
                 </h3>
                 <BadgeTono tono={sePuedeProgramar ? "exito" : "advertencia"}>
                   {sePuedeProgramar
-                    ? "Lista en la simulación"
+                    ? "Lista para programar"
                     : "Preparada como borrador"}
                 </BadgeTono>
               </div>
@@ -1693,15 +1670,6 @@ export function CampanasPropuesta({
                   </button>
                 </div>
               )}
-              <p className="flex gap-2 rounded-lg bg-info-subtle p-3 text-xs leading-4 text-info-text">
-                <Info
-                  className="size-4 shrink-0"
-                  strokeWidth={1.5}
-                  aria-hidden="true"
-                />
-                Guardar o programar actualiza sólo esta propuesta. Los
-                contactos, resultados y verificaciones son ficticios.
-              </p>
             </div>
           )}
         </div>

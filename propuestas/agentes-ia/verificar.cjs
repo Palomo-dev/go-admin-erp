@@ -27,7 +27,12 @@ const url = process.env.PROPUESTA_URL || 'http://127.0.0.1:4318';
     };
     const contiene = async texto => assert((await page.evaluate(() => document.body.innerText.replace(/\s+/g, ' '))).includes(texto), `Falta contenido: ${texto}`);
     const llenar = async (selector, valor) => { await page.waitForSelector(selector, { visible: true }); await page.click(selector, { clickCount: 3 }); await page.type(selector, valor); await esperar(); };
-    const captura = async nombre => { await esperar(); await page.screenshot({ path: path.join(salida, nombre), fullPage: false }); };
+    const captura = async nombre => {
+      await esperar();
+      const texto = await page.evaluate(() => document.body.innerText);
+      assert(!/Propuesta · v1|Datos de demostración|Revisar propuesta|Restablecer propuesta|simulaci[oó]n|simulados?|Configuración demo/i.test(texto), 'La pantalla contiene explicaciones de la propuesta');
+      await page.screenshot({ path: path.join(salida, nombre), fullPage: false });
+    };
     const cerrar = async () => { await click('Cerrar', '[role="dialog"] button'); };
     const sinDesborde = async () => assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'Desborde horizontal');
 
@@ -62,14 +67,14 @@ const url = process.env.PROPUESTA_URL || 'http://127.0.0.1:4318';
     await click('Continuar', '[role="dialog"] button');
     const leerInicio = () => page.evaluate(() => { const etiqueta = [...document.querySelectorAll('[role="dialog"] label')].find(el => el.textContent.startsWith('Fecha y hora de inicio')); const fecha = etiqueta && document.getElementById(etiqueta.htmlFor); const hora = document.querySelector('[role="dialog"] [aria-label^="Hora:"]'); return [fecha?.textContent.trim(), hora?.textContent.trim()]; });
     const inicio = await leerInicio(); assert(inicio[0] && inicio[1], 'Controles de fecha y hora de marca no disponibles');
-    await click('Simular verificación RNE', '[role="dialog"] button');
+    await click('Verificar RNE', '[role="dialog"] button');
     await click('Guardar borrador', '[role="dialog"] button'); await contiene('Política pendiente'); await contiene('Minutos pendientes');
     await click('Revisar programación', '[role="dialog"] button');
     assert.deepEqual(await leerInicio(), inicio, 'Se perdió la fecha elegida');
     await click('Continuar', '[role="dialog"] button');
-    assert.equal(await page.$eval('[role="dialog"] button[title="Completa los requisitos simulados y la programación antes de continuar."]', el => el.disabled), true, 'Programó sin política y minutos');
+    assert.equal(await page.$eval('[role="dialog"] button[title="Completa los requisitos y la programación antes de continuar."]', el => el.disabled), true, 'Programó sin política y minutos');
     await click('Atrás', '[role="dialog"] button');
-    await click('Simular política de datos disponible', '[role="dialog"] button'); await click('Simular minutos disponibles', '[role="dialog"] button');
+    await click('Política de datos disponible', '[role="dialog"] button'); await click('Minutos disponibles', '[role="dialog"] button');
     await captura('04-asistente-campana.png'); await click('Continuar', '[role="dialog"] button');
     await click('Programar campaña', '[role="dialog"] button'); await contiene('Programada'); await cerrar();
     assert.equal(await page.evaluate(() => [...document.querySelectorAll('tbody tr')].filter(el => el.innerText.includes('Campaña de revisión')).length), 1, 'Duplicó el borrador');
@@ -80,11 +85,11 @@ const url = process.env.PROPUESTA_URL || 'http://127.0.0.1:4318';
     await click('Reanudar', '[role="dialog"] button'); await click('Reanudar campaña', '[role="dialog"] button'); await contiene('En marcha'); await cerrar();
     comprobaciones.push('Pausar y reanudar conserva avance');
 
-    await click('Restablecer propuesta'); await click('Restablecer propuesta', '[role="dialog"] button');
+    await page.reload({ waitUntil: 'networkidle0' });
     await contiene('6 voces'); await click('Mis voces2'); await contiene('Valentina');
     await click('Biblioteca'); await click('Clonar mi voz'); await click('Siguiente', '[role="dialog"] button');
     await contiene('Confirma que esta es tu voz'); await page.click('[role="dialog"] input[type="checkbox"]'); await click('Siguiente', '[role="dialog"] button');
-    await contiene('Añade una muestra'); await cerrar(); comprobaciones.push('Restablecer y consentimiento antes de audio');
+    await contiene('Añade una muestra'); await cerrar(); comprobaciones.push('Recarga y consentimiento antes de audio');
 
     await page.setViewport({ width: 390, height: 844 }); await page.reload({ waitUntil: 'networkidle0' }); await sinDesborde();
     await captura('05-voces-movil.png'); await click('Filtros'); await contiene('Filtrar voces'); await captura('06-filtros-movil.png'); await page.keyboard.press('Escape'); await esperar();

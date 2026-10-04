@@ -8,18 +8,14 @@ import {
   ChevronRight,
   GitBranch,
   Headphones,
-  Info,
   Mic,
   Phone,
   Plus,
-  RotateCcw,
   Send,
   Users,
   X,
 } from "lucide-react";
 import { AvatarIniciales } from "@/components/kit/AvatarIniciales";
-import { Dialogo } from "@/components/kit/Dialogo";
-import { FormField } from "@/components/kit/FormField";
 import { HojaDetalle } from "@/components/kit/HojaDetalle";
 import { PageHeader } from "@/components/kit/PageHeader";
 import { RelatedLinkCard } from "@/components/kit/RelatedLinkCard";
@@ -27,7 +23,6 @@ import { SegmentedControl } from "@/components/kit/SegmentedControl";
 import { StatusBadge } from "@/components/kit/StatusBadge";
 import { Tarjeta } from "@/components/kit/Tarjeta";
 import { clasesBoton } from "@/components/kit/botonClases";
-import { CLASE_AREA } from "@/components/crm/kit/camposCrm";
 import { CampanasPropuesta } from "./CampanasPropuesta";
 import { VocesPropuesta } from "./VocesPropuesta";
 import {
@@ -74,13 +69,6 @@ export function AppPropuesta() {
   const [agenteInicial, setAgenteInicial] = useState<string>();
   const [relacion, setRelacion] = useState<RelacionDemo | null>(null);
   const [aviso, setAviso] = useState("");
-  const [revisar, setRevisar] = useState(false);
-  const [decision, setDecision] = useState<
-    "pendiente" | "aprobada" | "descartada"
-  >("pendiente");
-  const [comentario, setComentario] = useState("");
-  const [reiniciar, setReiniciar] = useState(false);
-  const [revision, setRevision] = useState(0);
   const agente = agentes.find((a) => a.id === relacion?.id) ?? agentes[0];
   const vozAgente = voces.find((v) => v.id === agente.vozId);
   const segmento =
@@ -124,24 +112,6 @@ export function AppPropuesta() {
     setAviso("");
     setTab(v);
   };
-  const reset = () => {
-    window.speechSynthesis?.cancel();
-    setVoces(VOCES_INICIALES);
-    setAgentes(AGENTES_INICIALES);
-    setCampanas(CAMPANAS_INICIALES);
-    setPredeterminada("valentina");
-    setRelacion(null);
-    setDecision("pendiente");
-    setComentario("");
-    setSolicitudClonar(0);
-    setSolicitudMisVoces(0);
-    setSolicitudNueva(0);
-    setAgenteInicial(undefined);
-    setRevision((v) => v + 1);
-    setTab("voces");
-    setReiniciar(false);
-    setAviso("Propuesta restablecida a los datos iniciales.");
-  };
   const accion =
     tab === "campanas" ? (
       <button type="button" className={primario} onClick={() => nuevaCampana()}>
@@ -170,36 +140,6 @@ export function AppPropuesta() {
 
   return (
     <div className="flex min-w-0 flex-col gap-6 p-4 pb-8 lg:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line-brand bg-brand-tint px-3 py-2 text-xs leading-4 text-brand-deep">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold">Propuesta · v1</span>
-          <span aria-hidden>·</span>
-          <span>Datos de demostración</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className="flex h-7 items-center gap-1 rounded px-1.5 font-medium hover:bg-brand-tint-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            onClick={() => setRevisar(true)}
-          >
-            {decision === "pendiente"
-              ? "Revisar propuesta"
-              : decision === "aprobada"
-                ? "Marcada como aprobada"
-                : "Marcada para descartar"}
-            <ChevronRight className="size-3.5" strokeWidth={1.5} />
-          </button>
-          <button
-            type="button"
-            onClick={() => setReiniciar(true)}
-            aria-label="Restablecer propuesta"
-            title="Restablecer propuesta"
-            className="flex size-7 items-center justify-center rounded hover:bg-brand-tint-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-          >
-            <RotateCcw className="size-3.5" strokeWidth={1.5} />
-          </button>
-        </div>
-      </div>
       <PageHeader
         className="max-lg:hidden"
         titulo="Agentes IA de voz"
@@ -240,7 +180,6 @@ export function AppPropuesta() {
       )}
       <div hidden={tab !== "voces"}>
         <VocesPropuesta
-          key={`voces-${revision}`}
           activo={tab === "voces"}
           voces={voces}
           agentes={agentes}
@@ -256,7 +195,6 @@ export function AppPropuesta() {
       </div>
       <div hidden={tab !== "campanas"}>
         <CampanasPropuesta
-          key={`campanas-${revision}`}
           activo={tab === "campanas"}
           voces={voces}
           agentes={agentes}
@@ -348,7 +286,6 @@ export function AppPropuesta() {
         abierto={!!relacion}
         onAbiertoChange={(a) => !a && setRelacion(null)}
         titulo={relacion ? TITULOS_RELACION[relacion.tipo] : ""}
-        subtitulo="Recorrido conectado · datos de demostración"
         ancho={560}
       >
         {relacion?.tipo === "agente" && (
@@ -449,14 +386,9 @@ export function AppPropuesta() {
               </div>
             </Tarjeta>
             <p className="rounded-lg bg-subtle p-3 text-[13px] leading-5 text-fg-secondary">
-              Ejemplo de audiencia: teléfono válido, consentimiento y
-              exclusiones RNE. Estos conteos son ilustrativos.
+              Contactos con teléfono válido, consentimiento y exclusiones RNE.
             </p>
-            {[
-              "Contacto de muestra A",
-              "Contacto de muestra B",
-              "Contacto de muestra C",
-            ].map((n, i) => (
+            {["Contacto A", "Contacto B", "Contacto C"].map((n, i) => (
               <RelatedLinkCard
                 key={n}
                 icono={Users}
@@ -470,7 +402,7 @@ export function AppPropuesta() {
             ))}
             <RelatedLinkCard
               icono={GitBranch}
-              etiqueta="Cómo se conecta"
+              etiqueta="Pipeline relacionado"
               valor="Pipeline comercial"
               onAccion={() => setRelacion({ tipo: "pipeline" })}
             />
@@ -479,28 +411,23 @@ export function AppPropuesta() {
         {relacion?.tipo === "llamadas" && (
           <div className="flex flex-col gap-4">
             <Tarjeta
-              titulo="Cada llamada conserva su contexto"
+              titulo="Historial de llamadas"
               icono={Phone}
               descripcion="Campaña, agente, cliente y oportunidad en el mismo historial."
-            >
-              <p className="text-[13px] leading-5 text-fg-secondary">
-                Ejemplos del recorrido. No se han realizado llamadas desde esta
-                propuesta.
-              </p>
-            </Tarjeta>
+            />
             {[
               {
-                nombre: "Contacto de muestra A",
+                nombre: "Contacto A",
                 estado: "Reunión agendada",
                 duracion: "3 min 20 s",
               },
               {
-                nombre: "Contacto de muestra B",
+                nombre: "Contacto B",
                 estado: "Contacto efectivo",
                 duracion: "2 min 10 s",
               },
               {
-                nombre: "Contacto de muestra C",
+                nombre: "Contacto C",
                 estado: "No contestó",
                 duracion: "0 min",
               },
@@ -540,12 +467,12 @@ export function AppPropuesta() {
             <div className="mt-4 rounded-lg border border-line p-3">
               <p className="text-sm font-medium">Demostración del producto</p>
               <p className="mt-1 text-xs text-fg-secondary">
-                Contacto de muestra A · 6 oct, 10:00 a. m.
+                Contacto A · 6 oct, 10:00 a. m.
               </p>
               <StatusBadge
                 className="mt-2"
                 estado="scheduled"
-                etiqueta="Ejemplo agendado"
+                etiqueta="Agendada"
               />
             </div>
           </Tarjeta>
@@ -596,82 +523,10 @@ export function AppPropuesta() {
                   valor="Telefonía de la organización"
                 />
               </div>
-              <p className="mt-4 text-[13px] leading-5 text-fg-secondary">
-                Esta vista explica la relación con Configuración. La propuesta
-                no comprueba claves, saldo ni disponibilidad reales.
-              </p>
             </Tarjeta>
-            <p className="flex items-start gap-2 rounded-lg bg-subtle p-3 text-[13px] text-fg-secondary">
-              <Info className="size-4 shrink-0" strokeWidth={1.5} />
-              Al integrar, se reutilizan los proveedores y permisos ya
-              configurados en el CRM.
-            </p>
           </div>
         )}
       </HojaDetalle>
-
-      <Dialogo
-        abierto={revisar}
-        onAbiertoChange={setRevisar}
-        titulo="Revisar propuesta"
-        descripcion="Tu elección queda sólo en esta vista. La integración se hará cuando la apruebes en el chat."
-        ancho={560}
-        primario={{
-          etiqueta: "Marcar como aprobada",
-          onClick: () => {
-            setDecision("aprobada");
-            setRevisar(false);
-            setAviso(
-              "Propuesta marcada como aprobada en esta vista. Comparte tu decisión en el chat para integrarla.",
-            );
-          },
-        }}
-        secundarios={[
-          {
-            etiqueta: "Marcar para descartar",
-            onClick: () => {
-              setDecision("descartada");
-              setRevisar(false);
-              setAviso(
-                "Propuesta marcada para descartar. El CRM actual sigue intacto.",
-              );
-            },
-          },
-        ]}
-      >
-        <div className="flex flex-col gap-2 text-[13px] text-fg-secondary">
-          <p className="flex items-center gap-2">
-            <Check className="size-4 text-success-text" strokeWidth={1.5} />
-            Marca y componentes actuales del ERP.
-          </p>
-          <p className="flex items-center gap-2">
-            <Check className="size-4 text-success-text" strokeWidth={1.5} />
-            Recorrido voz → agente → campaña → audiencia.
-          </p>
-          <p className="flex items-center gap-2">
-            <Check className="size-4 text-success-text" strokeWidth={1.5} />
-            Propuesta separada y descartable.
-          </p>
-        </div>
-        <FormField
-          etiqueta="Notas de revisión"
-          ayuda="Puedes copiar estas notas y enviarlas por el chat."
-        >
-          <textarea
-            className={CLASE_AREA}
-            value={comentario}
-            onChange={(e) => setComentario(e.target.value)}
-            placeholder="Qué te gusta y qué cambiarías…"
-          />
-        </FormField>
-      </Dialogo>
-      <Dialogo
-        abierto={reiniciar}
-        onAbiertoChange={setReiniciar}
-        titulo="¿Restablecer la propuesta?"
-        descripcion="Se quitarán tus cambios de esta demostración y volverán los datos iniciales."
-        primario={{ etiqueta: "Restablecer propuesta", onClick: reset }}
-      />
     </div>
   );
 }

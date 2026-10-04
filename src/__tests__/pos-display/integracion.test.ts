@@ -214,8 +214,8 @@ interface DisplaySide {
   close: () => void;
 }
 
-function openDisplay(terminalId: string, opts: { staleAfterMs?: number } = {}): DisplaySide {
-  const receiver = new BroadcastChannelReceiver({ terminalId, staleAfterMs: opts.staleAfterMs });
+function openDisplay(terminalId: string, opts: { staleAfterMs?: number; now?: () => number; healthIntervalMs?: number } = {}): DisplaySide {
+  const receiver = new BroadcastChannelReceiver({ terminalId, staleAfterMs: opts.staleAfterMs, now: opts.now });
   const accepted: DownMessage[] = [];
   const snapshots: DisplayLinkSnapshot[] = [];
   receiver.onDown((m) => accepted.push(m));
@@ -224,6 +224,8 @@ function openDisplay(terminalId: string, opts: { staleAfterMs?: number } = {}): 
     capabilities: () => CAPS,
     onChange: (s) => snapshots.push(s),
     staleAfterMs: opts.staleAfterMs,
+    now: opts.now,
+    healthIntervalMs: opts.healthIntervalMs,
   });
   const side: DisplaySide = {
     receiver,
@@ -440,15 +442,80 @@ describe('Caso 1 · extremo a extremo con POSService, transporte y receptor real
     const transport = (getPosDisplayEmitter() as unknown as { transport: { close: (sayBye?: boolean) => void } }).transport;
     transport.close(false);
 
-    // El enlace y el receptor tienen intervalos independientes: desconectarse
-    // puede ocurrir antes de que el receptor registre su callback de silencio.
-    // Esperar ambos efectos evita depender del orden de esos dos ticks.
-    await waitFor(() => display.link.snapshot.connected === false && display.receiver.lastStaleAt !== null, STALE_AFTER_MS + 1500, 'Conectando y receptor obsoleto por silencio');
+    // Si el enlace detecta el silencio primero, releaseActiveInstance cancela
+    // el watchdog: lastStaleAt puede permanecer null. El contrato es olvidar
+    // la caja y el pedido, independientemente de cuál temporizador venza primero.
+    await waitFor(() => display.link.snapshot.connected === false, STALE_AFTER_MS + 1500, 'Conectando por silencio');
     expect(display.view()).toBe('connecting');
     expect(display.link.snapshot.state).toBeNull();
-    expect(display.receiver.lastStaleAt).not.toBeNull();
+    expect(display.link.snapshot.hello).toBeNull();
+    expect(display.receiver.activeInstanceId).toBeNull();
+    expect(display.receiver.lastByeAt).toBeNull();
     display.close();
   }, 8000);
+
+  it.each(['enlace', 'watchdog'] as const)('silencio con %s primero: mantiene el pedido a 2999 ms y lo olvida a 3000 ms', async primero => {
+    expect(STALE_AFTER_MS).toBe(3000);
+    const terminalId = await bootCashier(true);
+    const cart = await POSService.createCart(BRANCH);
+    getPosDisplayEmitter().setActiveCart(cart);
+    await POSService.addItemToCart(cart.id, product(1, 'Café americano'), 1);
+    await drain();
+    const transport = (getPosDisplayEmitter() as unknown as { transport: {
+      close: (sayBye?: boolean) => void; stopHeartbeat: () => void;
+    } }).transport;
+    // Su temporizador nació con reloj real: se cancela antes de sustituirlo.
+    transport.stopHeartbeat();
+
+    // BroadcastChannel sigue siendo real. Sólo se controlan los temporizadores
+    // y el reloj que receptor y enlace ya admiten por sus opciones públicas.
+    jest.useFakeTimers({ doNotFake: ['performance', 'setImmediate', 'nextTick', 'queueMicrotask'] });
+    let clock = 10_000;
+    // La salud se evalúa explícitamente justo a 3 s para elegir el orden,
+    // antes del siguiente tick automático; el umbral de silencio no cambia.
+    const display = openDisplay(terminalId, { now: () => clock, healthIntervalMs: STALE_AFTER_MS + 1 });
+    const start = performance.now();
+    while (display.view() !== 'order') {
+      if (performance.now() - start > 2000) throw new Error('Tiempo agotado esperando: pedido por BroadcastChannel');
+      await drainImmediates(1);
+    }
+    transport.close(false);
+    const receivedAt = display.receiver.lastReceivedAt;
+    expect(receivedAt).toBe(clock);
+
+    clock = receivedAt! + STALE_AFTER_MS - 1;
+    jest.advanceTimersByTime(STALE_AFTER_MS - 1);
+    display.link.evaluateHealth();
+    expect(display.link.snapshot.connected).toBe(true);
+    expect(display.view()).toBe('order');
+    expect(display.link.snapshot.state?.cart?.lines).toHaveLength(1);
+    expect(display.link.snapshot.hello).not.toBeNull();
+    expect(display.receiver.activeInstanceId).not.toBeNull();
+    expect(display.receiver.lastStaleAt).toBeNull();
+
+    clock += 1;
+    if (primero === 'enlace') {
+      display.link.evaluateHealth();
+      // La evaluación cancela el watchdog antes de que corra su callback.
+      expect(display.receiver.activeInstanceId).toBeNull();
+      expect(display.receiver.lastStaleAt).toBeNull();
+      jest.advanceTimersByTime(1);
+      expect(display.receiver.lastStaleAt).toBeNull();
+    } else {
+      jest.advanceTimersByTime(1);
+      expect(display.receiver.activeInstanceId).toBeNull();
+      expect(display.receiver.lastStaleAt).toBe(clock);
+      display.link.evaluateHealth();
+    }
+    expect(display.link.snapshot.connected).toBe(false);
+    expect(display.view()).toBe('connecting');
+    expect(display.link.snapshot.state).toBeNull();
+    expect(display.link.snapshot.hello).toBeNull();
+    expect(display.receiver.activeInstanceId).toBeNull();
+    expect(display.receiver.lastReceivedAt).toBe(receivedAt);
+    expect(display.receiver.lastByeAt).toBeNull();
+    display.close();
+  });
 });
 
 // ---------------------------------------------------------------------------

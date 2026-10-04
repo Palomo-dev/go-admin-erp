@@ -103,7 +103,7 @@ no se declara limpio el legado global. Se verifican fuentes estables,
 configuración sin cambios y checkout limpio en Actions. Seis tests del gate
 comprueban movimientos de líneas, duplicados y diagnósticos inválidos.
 
-Resultados locales sobre la fuente final (Node 24.19.0):
+Resultados locales de la integración `d800d7e6` (Node 24.19.0):
 
 | Comprobación | Resultado |
 | --- | --- |
@@ -129,6 +129,30 @@ runtime/configuración y el parche opcional SWC fallido por DNS no impidieron
 compilar. Sólo documentación y workflow cambiaron después de congelar esa
 fuente. La ejecución local no sustituye GitHub Actions; el estado del commit
 publicado se comprueba después del push y se registra en el PR.
+
+### Primera corrida real y corrección de una carrera en la prueba
+
+[CI Web 37218924925](https://github.com/Palomo-dev/go-admin-erp/actions/runs/37218924925)
+ejecutó los 12 jobs con Node 22.23.3. Once pasaron: TypeScript sin errores,
+ESLint sin regresiones, seis zonas con 809 pruebas cada una y suite UTC con
+19.195 aprobadas / 8 omitidas. En Bogotá hubo una única aserción fallida en
+la prueba de integración del POS; no se oculta ese resultado ni se usa el
+preview aprobado para atribuirle un pase.
+
+La prueba exigía desconexión y `lastStaleAt` del watchdog. Cuando el enlace
+desconecta primero libera la instancia y cancela ese watchdog: la marca puede
+quedar null aunque la pantalla olvide correctamente el pedido. Se corrige
+sólo la prueba para exigir Conectando, pedido/saludo borrados, instancia
+liberada y ausencia de bye. Dos regresiones con BroadcastChannel real,
+temporizadores controlados y reloj inyectado prueban ambos órdenes y el
+límite exacto: pedido conservado a 2.999 ms y olvidado a 3.000 ms.
+
+El archivo completo pasa 22/22 pruebas en UTC y Bogotá, con ESLint limpio.
+TypeScript global vuelve a pasar después del arreglo. No se modifica el
+producto POS, su plazo ni el código del CRM. El build aprobado de `d800d7e6`
+conserva el mismo código de producto; el commit de cierre cambia exclusivamente
+esta prueba y su documentación. La nueva corrida global de Actions debe
+confirmar ese commit; sus resultados se registran en el PR al terminar.
 
 ## Cierre pendiente de producción
 

@@ -32,9 +32,9 @@
  *      · Ley 2300 de 2023: horario del destinatario (L-V 7–19, sáb 8–15, nunca
  *        domingos ni festivos de Colombia) y tope semanal de contactos
  *        efectivos; fuera de eso la fila se reprograma a la siguiente ventana.
- *      · Registro de Números Excluidos: un número de `crm_excluded_numbers` no
- *        se marca. La cola exige además una verificación RNE vigente por
- *        campaña y la URL de la política de tratamiento de datos.
+ *      · La campaña no exige el Registro de Números Excluidos: cada
+ *        organización decide qué números carga. Sigue haciendo falta la URL
+ *        de la política de tratamiento de datos.
  *      · Contestadora: AMD de Twilio (ver `voiceAgent/amd.ts`); si contesta una
  *        máquina, `twiml/ai-agent` cuelga y registra `buzon`.
  *
@@ -60,12 +60,7 @@ import { describirMotivoLey2300, ventanaLey2300Abierta, ZONA_COLOMBIA } from '@/
 import { parametrosAmd } from '@/lib/services/crm/voiceAgent/amd';
 import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 import { normalizarNumeroRne } from '@/lib/services/crm/voiceAgent/rne';
-import {
-  campanaConRneVigente,
-  evaluarLey2300Cliente,
-  numeroExcluido,
-  politicaDatosValida,
-} from '@/lib/services/crm/voiceAgent/cumplimiento';
+import { evaluarLey2300Cliente, politicaDatosValida } from '@/lib/services/crm/voiceAgent/cumplimiento';
 
 // ─── Tipos: Voice Agents ─────────────────────────────────────────────────────
 
@@ -1047,15 +1042,6 @@ export async function runCampaignQueue(
       continue;
     }
 
-    // Compuerta RNE: ningún lote de la campaña sale sin una verificación contra
-    // el Registro de Números Excluidos vigente (`voice_campaign_rne_checks`).
-    if (!(await campanaConRneVigente(supabase, orgId, campaign.id))) {
-      result.errors.push(
-        `Campaña ${campaign.id}: sin verificación vigente contra el Registro de Números Excluidos (RNE). Verifícala en la campaña antes de llamar`
-      );
-      continue;
-    }
-
     // Barrera 1: ventana horaria de la campaña.
     const schedule = (campaign.schedule as ScheduleConfig | null) ?? null;
     if (!isWithinSchedule(schedule, schedule?.timezone)) continue;
@@ -1208,15 +1194,12 @@ async function enqueueCampaignTargets(
   ) || []) as Array<{ customer_id: string }>;
   const alreadyQueued = new Set(existing.map((r) => r.customer_id));
   const yaAtendidos = await clientesYaAtendidosPorCampana(supabase, orgId, campaign, customerIds);
-  const excluidos = await customersInExclusionList(supabase, orgId, customerIds);
 
   const rows: Record<string, unknown>[] = [];
   for (const target of targets) {
     if (rows.length >= room) break;
     if (alreadyQueued.has(target.customer_id)) continue;
     if (yaAtendidos.has(target.customer_id)) continue;
-    // RNE: un número excluido no llega ni a la cola.
-    if (excluidos.has(target.customer_id)) continue;
     // C-F6-10: baja voluntaria antes incluso de encolar.
     if (!(await canCallCustomer(orgId, target.customer_id, supabase))) continue;
 
@@ -1320,40 +1303,6 @@ async function clientesYaAtendidosPorCampana(
   if (filas.length === 0) return new Set();
   const retry = await getRetryPolicy(supabase, orgId, campaign.voice_agent_id);
   return clientesNoReencolables(filas, campaign.target_source, retry);
-}
-
-/**
- * Clientes (de `customerIds`) cuyo teléfono está en `crm_excluded_numbers`.
- * Falla cerrado: si la lectura falla, se propaga y no se encola nada.
- */
-async function customersInExclusionList(
-  supabase: SupabaseClient,
-  orgId: number,
-  customerIds: string[]
-): Promise<Set<string>> {
-  const fuera = new Set<string>();
-  if (customerIds.length === 0) return fuera;
-  const clientes = (unwrap(
-    'customersInExclusionList.customers',
-    await supabase.from('customers').select('id, phone').eq('organization_id', orgId).in('id', customerIds)
-  ) || []) as Array<{ id: string; phone: string | null }>;
-  const porNumero = new Map<string, string[]>();
-  for (const c of clientes) {
-    const n = normalizarNumeroRne(c.phone);
-    if (!n) continue;
-    porNumero.set(n, [...(porNumero.get(n) ?? []), c.id]);
-  }
-  if (porNumero.size === 0) return fuera;
-  const filas = (unwrap(
-    'customersInExclusionList.excluded',
-    await supabase
-      .from('crm_excluded_numbers')
-      .select('phone_e164')
-      .eq('organization_id', orgId)
-      .in('phone_e164', Array.from(porNumero.keys()))
-  ) || []) as Array<{ phone_e164: string }>;
-  for (const f of filas) for (const id of porNumero.get(f.phone_e164) ?? []) fuera.add(id);
-  return fuera;
 }
 
 async function findStageAgentId(
@@ -1514,7 +1463,7 @@ interface DialOutcome {
 
 /**
  * Marca una fila ya reclamada. Orden: cliente → consentimiento → teléfono marcable →
- * RNE → Ley 2300 (horario + tope semanal) → crédito → fila en `calls` → proveedor →
+ * Ley 2300 (horario + tope semanal) → crédito → fila en `calls` → proveedor →
  * correlación. Es el punto ÚNICO por donde sale toda llamada del agente.
  * Un número de prueba interno salta solo el tope semanal (lo decide
  * `evaluarLey2300Cliente`) y la llamada queda marcada en `calls.metadata`.
@@ -1560,13 +1509,6 @@ async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
   if (!dialableTo) {
     await releaseCall(supabase, vac.id, 'skipped', `Teléfono no marcable: ${customer.phone}`, null);
     return { initiated: false, reason: 'teléfono no marcable' };
-  }
-
-  // Registro de Números Excluidos (CRC): un número inscrito no se marca nunca,
-  // venga de campaña o de despacho puntual. Es definitivo: no se reprograma.
-  if (await numeroExcluido(supabase, orgId, dialableTo)) {
-    await releaseCall(supabase, vac.id, 'skipped', 'Número inscrito en el Registro de Números Excluidos (RNE)', 'RNE');
-    return { initiated: false, reason: 'número en el RNE' };
   }
 
   // Ley 2300 de 2023: horario del DESTINATARIO (+57 → Colombia), festivos y
@@ -1967,9 +1909,6 @@ export async function dispatchAgentCall(
   if (!cliente) throw new Error('Cliente no encontrado');
   const telefono = normalizarNumeroRne(cliente.phone) ?? normalizeDialableE164(cliente.phone);
   if (telefono) {
-    if (await numeroExcluido(supabase, orgId, telefono)) {
-      throw new VoiceDispatchBlocked('rne', 'El número está inscrito en el Registro de Números Excluidos (RNE). No se llama.');
-    }
     const ley2300 = await evaluarLey2300Cliente(supabase, orgId, { id: cliente.id, phone: telefono, timezone: cliente.timezone });
     if (ley2300.accion === 'reprogramar') {
       throw new VoiceDispatchBlocked(

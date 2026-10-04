@@ -3,10 +3,10 @@
  * camino REAL (`runCampaignQueue` → `dialClaimedCall`) con un doble de Supabase
  * y Twilio doblado. Ninguna llamada sale si:
  *  1. falta la URL de la política de tratamiento de datos;
- *  2. la campaña no tiene verificación RNE vigente;
- *  3. el número está en `crm_excluded_numbers`;
- *  4. es fuera del horario de la Ley 2300 (se reprograma a la ventana siguiente);
- *  5. ya hubo un contacto efectivo esta semana (se reprograma a la semana siguiente).
+ *  2. es fuera del horario de la Ley 2300 (se reprograma a la ventana siguiente);
+ *  3. ya hubo un contacto efectivo esta semana (se reprograma a la semana siguiente).
+ * El Registro de Números Excluidos no frena la campaña: la organización decide
+ * qué números carga.
  * Y cuando sí sale, la llamada lleva AMD.
  */
 
@@ -178,25 +178,25 @@ describe('Compuertas legales del despachador de voz', () => {
     expect((await runCampaignQueue(7, client)).calls_initiated).toBe(0);
   });
 
-  test('sin verificación RNE (o vencida) la campaña no reclama filas', async () => {
+  test('sin verificación RNE la campaña igual reclama y marca', async () => {
     for (const rne of [[], [{ id: 'r', checked_at: '2026-08-01T00:00:00Z', valid_until: '2026-08-31T00:00:00Z' }]]) {
       const { client, rpcs } = escenario({ rne });
       const r = await runCampaignQueue(7, client);
-      expect(r.calls_initiated).toBe(0);
-      expect(r.errors.join(' ')).toMatch(/Registro de Números Excluidos/);
-      expect(rpcs.some((c) => c.name === 'fn_claim_voice_agent_calls')).toBe(false);
+      expect(r.calls_initiated).toBe(1);
+      expect(r.errors.join(' ')).not.toMatch(/Registro de Números Excluidos/);
+      expect(rpcs.some((c) => c.name === 'fn_claim_voice_agent_calls')).toBe(true);
     }
-    expect(twilioCreate).not.toHaveBeenCalled();
+    expect(twilioCreate).toHaveBeenCalled();
   });
 
-  test('un número del RNE se omite para siempre (skipped, RNE), sin gastar crédito', async () => {
+  test('un número que estaba en la lista de excluidos se marca igual', async () => {
     const { client, ops, rpcs } = escenario({ excluido: true });
     const r = await runCampaignQueue(7, client);
-    expect(r.calls_initiated).toBe(0);
-    const cierre = ops.find((o) => o.table === 'voice_agent_calls' && o.verb === 'update' && (o.payload as Record<string, unknown>).status === 'skipped');
-    expect(cierre?.payload).toMatchObject({ last_error_code: 'RNE' });
-    expect(rpcs.some((c) => c.name === 'deduct_comm_credits')).toBe(false);
-    expect(twilioCreate).not.toHaveBeenCalled();
+    expect(r.calls_initiated).toBe(1);
+    const cierre = ops.find((o) => o.table === 'voice_agent_calls' && o.verb === 'update' && (o.payload as Record<string, unknown>).last_error_code === 'RNE');
+    expect(cierre).toBeUndefined();
+    expect(rpcs.some((c) => c.name === 'deduct_comm_credits')).toBe(true);
+    expect(twilioCreate).toHaveBeenCalled();
   });
 
   test('fuera del horario de la Ley 2300 (sábado 15:30) se reprograma al martes 07:00: el lunes 12 de octubre es festivo', async () => {
@@ -278,11 +278,11 @@ describe('Número de prueba interno: exime solo del tope semanal', () => {
     expect(reprogramacion(ops)).toMatchObject({ last_error_code: 'LEY2300', scheduled_at: '2026-10-13T12:00:00.000Z' });
   });
 
-  test('NO exime del RNE / excluidos: se omite para siempre', async () => {
+  test('un número de prueba que estaba en la lista de excluidos se marca: el RNE ya no frena', async () => {
     const { client, ops } = escenario({ numeroPrueba: true, excluido: true });
-    expect((await runCampaignQueue(7, client)).calls_initiated).toBe(0);
-    expect(cierre(ops)).toMatchObject({ last_error_code: 'RNE' });
-    expect(twilioCreate).not.toHaveBeenCalled();
+    expect((await runCampaignQueue(7, client)).calls_initiated).toBe(1);
+    expect(cierre(ops)).toBeUndefined();
+    expect(twilioCreate).toHaveBeenCalled();
   });
 
   test('NO exime de la baja voluntaria (fn_can_contact)', async () => {
@@ -305,13 +305,12 @@ describe('Número de prueba interno: exime solo del tope semanal', () => {
     expect(twilioCreate).not.toHaveBeenCalled();
   });
 
-  test('NO exime de la verificación RNE de la campaña ni de la política de datos', async () => {
-    for (const e of [{ rne: [] as unknown[] }, { politica: null }]) {
-      const { client, rpcs } = escenario({ numeroPrueba: true, ...e });
-      expect((await runCampaignQueue(7, client)).calls_initiated).toBe(0);
-      expect(rpcs.some((c) => c.name === 'fn_claim_voice_agent_calls')).toBe(false);
-    }
-    expect(twilioCreate).not.toHaveBeenCalled();
+  test('sin verificación RNE un número de prueba se marca; sin política de datos no', async () => {
+    const sinRne = escenario({ numeroPrueba: true, rne: [] });
+    expect((await runCampaignQueue(7, sinRne.client)).calls_initiated).toBe(1);
+    const sinPolitica = escenario({ numeroPrueba: true, politica: null });
+    expect((await runCampaignQueue(7, sinPolitica.client)).calls_initiated).toBe(0);
+    expect(sinPolitica.rpcs.some((c) => c.name === 'fn_claim_voice_agent_calls')).toBe(false);
   });
 
   test('si la base no puede decir si es de prueba, se aplica el tope semanal (falla hacia lo restrictivo)', async () => {

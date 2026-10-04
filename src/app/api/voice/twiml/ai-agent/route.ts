@@ -78,10 +78,13 @@ import { accountSidMatchesOrg } from '@/lib/services/crm/voiceContextService';
 import { escapeXml, buildCallbackUrl, CONSENT_LANGUAGE, CONSENT_VOICE, RECORDING_EVENTS } from '@/lib/services/crm/twimlBuilders';
 import { isBridgeSigningConfigured, signConsentToken, verifyConsentToken } from '@/lib/services/crm/bridgeTokens';
 import { recordConsent, recordingEnabledForCall, voidConsentWithoutRecording } from '@/lib/services/crm/consentService';
-import { updateCall } from '@/lib/services/crm/callManagementService';
+import { updateCall, updateCallFromProviderEvent } from '@/lib/services/crm/callManagementService';
+import { mergeTerminalOutcome } from '@/lib/services/crm/callStateMachine';
 import { cierrePorAmd } from '@/lib/services/crm/voiceAgent/amd';
 import { devolverReservaSinConversacion } from '@/lib/services/crm/voiceAgent/reservaCreditos';
 import { resolveTtsFallback, TTS_FALLBACK_PARAM } from '@/lib/services/crm/voiceAgent/ttsFallback';
+import { aplicarCallbackVoz, buscarReservaVoz, confirmarEnvioVoz, VoiceCreditPendingError } from '@/lib/services/crm/voiceAgent/creditosVoz';
+import { CrmHttpError } from '@/lib/services/crm/crmErrors';
 
 export const runtime = 'nodejs';
 
@@ -117,6 +120,7 @@ export async function POST(request: Request) {
   const search = new URL(request.url).searchParams;
   const agentId = search.get('agentId') || '';
   const callId = search.get('callId') || '';
+  const reservationId = search.get('reservationId');
   const callSid = params.CallSid || null;
 
   if (!agentId) {
@@ -166,6 +170,7 @@ export async function POST(request: Request) {
   }
 
   type VacRow = {
+    attempts: number;
     started_at: string | null;
     provider_call_sid: string | null;
     call_id: string | null;
@@ -177,7 +182,7 @@ export async function POST(request: Request) {
   if (callId) {
     const { data: existing, error: readError } = await supabase
       .from('voice_agent_calls')
-      .select('id, started_at, provider_call_sid, call_id, customer_id, credits_reserved, credits_settled_at')
+      .select('id, attempts, started_at, provider_call_sid, call_id, customer_id, credits_reserved, credits_settled_at')
       .eq('id', callId)
       .eq('organization_id', agentOrgId)
       .eq('voice_agent_id', agentId)
@@ -188,6 +193,28 @@ export async function POST(request: Request) {
     }
     row = (existing as VacRow | null) ?? null;
   }
+  let reservation: Awaited<ReturnType<typeof buscarReservaVoz>> = null;
+  try {
+    if (callId) {
+      if (!row || !callSid) throw new CrmHttpError(403, 'llamada_voz_invalida', 'Llamada inválida.');
+      reservation = await buscarReservaVoz(supabase, agentOrgId, callId, reservationId, callSid);
+      if (reservation) {
+        // Una petición tardía del intento anterior nunca abre otra sesión.
+        if (row.call_id !== reservation.call_id || row.attempts !== reservation.attempt_no || reservation.state !== 'reserved')
+          throw new CrmHttpError(403, 'intento_voz_anterior', 'El intento ya no está activo.');
+        await confirmarEnvioVoz(supabase, agentOrgId, reservation.id, callSid);
+        row.provider_call_sid = callSid;
+      } else {
+        if (row.provider_call_sid !== callSid) throw new CrmHttpError(403, 'sid_voz_conflictivo', 'La llamada no corresponde.');
+        if ((row.credits_reserved ?? 0) > 0 && !row.credits_settled_at) throw new VoiceCreditPendingError();
+      }
+    } else if (reservationId) throw new CrmHttpError(403, 'reserva_voz_invalida', 'Reserva inválida.');
+  } catch (error) {
+    console.warn('[AI Agent TwiML] No se pudo verificar el intento:', error instanceof CrmHttpError ? error.code : 'correlacion_no_disponible');
+    return new NextResponse(sayHangup('El agente no está disponible en este momento.'), {
+      status: error instanceof CrmHttpError && error.status === 403 ? 403 : 503, headers: XML_HEADERS,
+    });
+  }
   /** Fila `calls` donde colgar el acta. Sin ella no hay acta posible (V-2). */
   const consentCallId = row?.call_id ?? null;
 
@@ -196,35 +223,43 @@ export async function POST(request: Request) {
   if (cierreAmd) {
     try {
       if (callId && row && (!row.provider_call_sid || !callSid || row.provider_call_sid === callSid)) {
-        const ahora = new Date().toISOString();
-        const patch: Record<string, unknown> = {
-          status: cierreAmd.status,
-          outcome: cierreAmd.outcome,
-          completed_at: ahora,
-          locked_by: null,
-          updated_at: ahora,
-        };
-        if (callSid && !row.provider_call_sid) patch.provider_call_sid = callSid;
-        const devolucion = await devolverReservaSinConversacion(supabase, {
-          organization_id: agentOrgId,
-          credits_reserved: row.credits_reserved,
-          credits_settled_at: row.credits_settled_at,
-        });
-        if (devolucion) Object.assign(patch, devolucion);
-        const { error: amdError } = await supabase
-          .from('voice_agent_calls')
-          .update(patch)
-          .eq('id', callId)
-          .eq('organization_id', agentOrgId)
-          .eq('voice_agent_id', agentId);
-        if (amdError) throw amdError;
-        if (consentCallId) {
-          await updateCall(
-            consentCallId,
-            agentOrgId,
-            { status: 'voicemail', answered_by: cierreAmd.outcome === 'fax' ? 'fax' : 'machine', ended_at: ahora },
-            supabase
-          );
+        if (reservation && callSid) {
+          await aplicarCallbackVoz(supabase, agentOrgId, reservation.id, callSid, cierreAmd.status, null, cierreAmd.outcome);
+        } else {
+          const ahora = new Date().toISOString();
+          const patch: Record<string, unknown> = {
+            status: cierreAmd.status,
+            outcome: cierreAmd.outcome,
+            completed_at: ahora,
+            locked_by: null,
+            updated_at: ahora,
+          };
+          if (callSid && !row.provider_call_sid) patch.provider_call_sid = callSid;
+          const devolucion = await devolverReservaSinConversacion(supabase, {
+            organization_id: agentOrgId,
+            credits_reserved: row.credits_reserved,
+            credits_settled_at: row.credits_settled_at,
+          });
+          if (devolucion) Object.assign(patch, devolucion);
+          const { error: amdError } = await supabase
+            .from('voice_agent_calls')
+            .update(patch)
+            .eq('id', callId)
+            .eq('organization_id', agentOrgId)
+            .eq('voice_agent_id', agentId);
+          if (amdError) throw amdError;
+          if (consentCallId) {
+            await updateCall(
+              consentCallId,
+              agentOrgId,
+              (fresh) => ({
+                ...mergeTerminalOutcome({ currentStatus: fresh.status, currentDuration: fresh.duration_seconds,
+                  currentAnsweredAt: fresh.answered_at, incomingStatus: 'voicemail', incomingDuration: 0 }),
+                answered_by: cierreAmd.outcome === 'fax' ? 'fax' : 'machine', ended_at: fresh.ended_at ?? ahora,
+              }),
+              supabase
+            );
+          }
         }
       }
     } catch (err) {
@@ -276,7 +311,7 @@ export async function POST(request: Request) {
   // abre todavía el ConversationRelay. Quien cuelgue durante el aviso no deja
   // un consentimiento registrado que nunca existió.
   if (recordingEnabled && !announced && config.consentMessage) {
-    const back = buildCallbackUrl(origin, '/api/voice/twiml/ai-agent', { agentId, callId: callId || undefined, ct: signConsentToken(callSid ?? '') });
+    const back = buildCallbackUrl(origin, '/api/voice/twiml/ai-agent', { agentId, callId: callId || undefined, reservationId: reservation?.id, ct: signConsentToken(callSid ?? '') });
     return new NextResponse(
       `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
@@ -317,26 +352,38 @@ export async function POST(request: Request) {
     // D5 (idempotencia): solo se marca el inicio la primera vez. Si ya hay
     // `provider_call_sid` de OTRA llamada, este POST no toca la fila.
     if (callId && row && (!row.provider_call_sid || !callSid || row.provider_call_sid === callSid)) {
-      const patch: Record<string, unknown> = {
-        status: 'in_progress',
-        updated_at: new Date().toISOString(),
-      };
-      if (!row.started_at) patch.started_at = new Date().toISOString();
-      if (callSid && !row.provider_call_sid) patch.provider_call_sid = callSid;
-      // Solo con acta escrita (arriba): el aviso YA sonó y el token lo acredita.
-      if (recordingEnabled) patch.consent_given = true;
+      if (reservation && callSid) {
+        await aplicarCallbackVoz(supabase, agentOrgId, reservation.id, callSid, 'in_progress', null, null);
+        if (recordingEnabled) {
+          // El acta ya se escribió con recordConsent; este flag pertenece solo al agente.
+          const patch: Record<string, unknown> = {};
+          patch.consent_given = true;
+          const { error } = await supabase.from('voice_agent_calls').update(patch)
+            .eq('id', callId).eq('organization_id', agentOrgId).eq('provider_call_sid', callSid).eq('attempts', reservation.attempt_no);
+          if (error) throw error;
+        }
+      } else {
+        const patch: Record<string, unknown> = {
+          status: 'in_progress',
+          updated_at: new Date().toISOString(),
+        };
+        if (!row.started_at) patch.started_at = new Date().toISOString();
+        if (callSid && !row.provider_call_sid) patch.provider_call_sid = callSid;
+        // Solo con acta escrita (arriba): el aviso YA sonó y el token lo acredita.
+        if (recordingEnabled) patch.consent_given = true;
 
-      const { error: updError } = await supabase
-        .from('voice_agent_calls')
-        .update(patch)
-        .eq('id', callId)
-        .eq('organization_id', agentOrgId)
-        .eq('voice_agent_id', agentId);
-      if (updError) throw updError;
+        const { error: updError } = await supabase
+          .from('voice_agent_calls')
+          .update(patch)
+          .eq('id', callId)
+          .eq('organization_id', agentOrgId)
+          .eq('voice_agent_id', agentId);
+        if (updError) throw updError;
 
-      // La llamada ya está contestada y con el agente en línea.
-      if (consentCallId) {
-        await updateCall(consentCallId, agentOrgId, { status: 'in_progress', answered_at: new Date().toISOString() }, supabase);
+        // La llamada ya está contestada y con el agente en línea.
+        if (consentCallId) {
+          await updateCallFromProviderEvent(consentCallId, agentOrgId, { CallStatus: 'in-progress' }, 'child', supabase);
+        }
       }
     }
 
@@ -394,7 +441,7 @@ export async function POST(request: Request) {
 
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>${startRecording}
-  <Connect action="${escapeXml(`${origin}/api/voice/ai-agent/status?callId=${encodeURIComponent(callId)}&handoff=1`)}">
+  <Connect action="${escapeXml(buildCallbackUrl(origin, '/api/voice/ai-agent/status', { callId: callId || undefined, reservationId: reservation?.id, handoff: '1' }))}">
     <ConversationRelay${relayAttrs}
     >${fallbackNodes}
       <Parameter name="agentId" value="${escapeXml(agentId)}" />

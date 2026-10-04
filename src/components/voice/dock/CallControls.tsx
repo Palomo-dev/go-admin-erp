@@ -2,12 +2,13 @@
 
 /**
  * CallControls — timer, indicador REC, mute, DTMF, audio y colgar
- * (FASE-03 §5.2). Sin "hold": Twilio Voice JS SDK no ofrece hold nativo
- * (requeriría <Enqueue>/conferencia, fuera de alcance de F3).
+ * Los controles de espera/transferencia confirman el estado nativo del servidor.
  */
 
-import { useEffect, useState } from 'react';
-import { Headphones, Mic, MicOff, PhoneOff, Grid3x3 } from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Headphones, Mic, MicOff, PhoneOff, Grid3x3, Pause, Play, ArrowRightLeft } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import type { PhoneControlState, PhoneControlResult } from '@/lib/services/crm/phoneConferenceTypes';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/utils/Utils';
 import type { AudioDevicesState } from '../hooks/useAudioDevices';
@@ -19,6 +20,9 @@ function formatDuration(seconds: number): string {
 }
 
 interface CallControlsProps {
+  diseno?: 'heredado' | 'kit';
+  teclado?: ReactNode;
+  sinColgar?: boolean;
   connectedAt: number | null;
   connected: boolean;
   recording: boolean;
@@ -28,10 +32,18 @@ interface CallControlsProps {
   showKeypad: boolean;
   onToggleKeypad: () => void;
   audio: AudioDevicesState;
+  control: PhoneControlState;
+  onHold: (held: boolean) => Promise<PhoneControlResult>;
+  onTransfer: () => void;
 }
 
-export function CallControls({ connectedAt, connected, recording, muted, onMute, onHangup, showKeypad, onToggleKeypad, audio }: CallControlsProps) {
+export function CallControls({ connectedAt, connected, recording, muted, onMute, onHangup, showKeypad, onToggleKeypad, audio, control, onHold, onTransfer, diseno = 'heredado', teclado, sinColgar }: CallControlsProps) {
+  const t = useTranslations('phoneControl');
   const [seconds, setSeconds] = useState(0);
+  const [heldSeconds, setHeldSeconds] = useState(0);
+  const [holdError, setHoldError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const locked = pending || control.busy;
   const [showAudio, setShowAudio] = useState(false);
 
   useEffect(() => {
@@ -45,9 +57,23 @@ export function CallControls({ connectedAt, connected, recording, muted, onMute,
     return () => window.clearInterval(t);
   }, [connectedAt]);
 
+  useEffect(() => {
+    const tick = () => setHeldSeconds(control.heldAt ? Math.max(0, Math.floor((Date.now() - control.heldAt) / 1000)) : 0);
+    tick();
+    const timer = window.setInterval(tick, 1000);
+    return () => window.clearInterval(timer);
+  }, [control.heldAt]);
+  const hold = async () => {
+    if (locked) return;
+    setPending(true); setHoldError(null);
+    try { const result = await onHold(!control.held); if (!result.ok) setHoldError(result.message); }
+    finally { setPending(false); }
+  };
+
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-center gap-3">
+      <div className="relative flex items-center justify-center gap-3">
+        {diseno === 'kit' && <Button type="button" onClick={() => setShowAudio(value => !value)} size="icon" variant="ghost" className="absolute right-0 size-7 text-fg-secondary" aria-pressed={showAudio} aria-label={t('audioDevices')}><Headphones size={14} strokeWidth={1.5} /></Button>}
         {recording && connected && (
           <span
             className="inline-flex items-center gap-1 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700 dark:bg-red-900/40 dark:text-red-300 motion-safe:animate-pulse"
@@ -57,52 +83,42 @@ export function CallControls({ connectedAt, connected, recording, muted, onMute,
             REC
           </span>
         )}
-        <span className="text-2xl font-mono font-bold tabular-nums text-gray-900 dark:text-gray-100" aria-live={seconds % 30 === 0 ? 'polite' : 'off'}>
+        <span className={cn('text-2xl font-mono font-bold tabular-nums text-gray-900 dark:text-gray-100', diseno === 'kit' && 'font-sans text-[28px] font-semibold leading-9 text-fg dark:text-fg')} aria-live={seconds % 30 === 0 ? 'polite' : 'off'}>
           {formatDuration(seconds)}
         </span>
       </div>
 
-      <div className="flex items-center justify-center gap-2">
-        <Button
-          type="button"
-          onClick={() => onMute(!muted)}
-          size="icon"
-          variant={muted ? 'destructive' : 'outline'}
-          disabled={!connected}
-          aria-pressed={muted}
-          aria-label={muted ? 'Activar micrófono (Ctrl+Shift+M)' : 'Silenciar (Ctrl+Shift+M)'}
-          title={muted ? 'Activar micrófono' : 'Silenciar'}
-        >
-          {muted ? <MicOff size={16} /> : <Mic size={16} />}
-        </Button>
-        <Button
-          type="button"
-          onClick={onToggleKeypad}
-          size="icon"
-          variant={showKeypad ? 'secondary' : 'outline'}
-          disabled={!connected}
-          aria-pressed={showKeypad}
-          aria-label="Teclado DTMF"
-          title="Teclado DTMF"
-        >
-          <Grid3x3 size={16} />
-        </Button>
-        <Button
-          type="button"
-          onClick={() => setShowAudio((v) => !v)}
-          size="icon"
-          variant={showAudio ? 'secondary' : 'outline'}
-          aria-pressed={showAudio}
-          aria-label="Dispositivos de audio"
-          title="Micrófono / altavoz"
-        >
-          <Headphones size={16} />
-        </Button>
-        <Button type="button" onClick={onHangup} variant="destructive" className="flex-1" aria-label="Colgar (Ctrl+Shift+D)">
-          <PhoneOff size={16} className="mr-2" aria-hidden="true" />
-          Colgar
-        </Button>
+      {control.held && (
+        <div role="status" className="rounded-lg border border-line-warning bg-warning-subtle p-3 text-xs text-warning-text">
+          <p className="font-semibold">{t('heldDuration', { duration: formatDuration(heldSeconds) })}</p>
+          <p className="mt-1">{t(control.phase === 'consulting' ? 'consultHint' : heldSeconds >= 180 ? 'heldReminder' : 'heldExplanation')}</p>
+        </div>
+      )}
+      {(holdError || control.error) && <p role="alert" className="text-xs text-danger-text">{holdError ?? t('controlUncertain')}</p>}
+      {teclado}
+      <div className={cn('grid grid-cols-4 gap-2 text-center text-[11px]', diseno === 'kit' && 'gap-1 text-xs font-medium leading-4 text-fg-secondary')}>
+        <div><Button type="button" size="icon" variant={muted ? 'secondary' : 'outline'} className={cn('h-12 w-12 rounded-full', diseno === 'kit' && 'border-line bg-subtle text-fg shadow-none dark:border-line dark:bg-subtle dark:text-fg', diseno === 'kit' && muted && 'border-brand bg-brand text-fg-on-brand dark:bg-brand dark:text-fg-on-brand')}
+          onClick={() => onMute(!muted)} disabled={!connected || (control.held && control.phase !== 'consulting') || locked} aria-pressed={muted}
+          aria-label={t(muted ? 'unmute' : 'mute')}><>{muted ? <MicOff size={20} strokeWidth={1.5} /> : <Mic size={20} strokeWidth={1.5} />}</></Button>
+          <p className="mt-1">{t(diseno === 'kit' ? 'mute' : muted ? 'unmute' : 'mute')}</p></div>
+        <div><Button type="button" size="icon" variant={control.held ? 'default' : 'outline'} className={cn('h-12 w-12 rounded-full', diseno === 'kit' && 'border-line bg-subtle text-fg shadow-none dark:border-line dark:bg-subtle dark:text-fg', diseno === 'kit' && control.held && 'border-brand bg-brand text-fg-on-brand dark:bg-brand dark:text-fg-on-brand')}
+          onClick={() => void hold()} disabled={!connected || !control.supported || locked} aria-pressed={control.held}
+          aria-label={t(control.held ? 'resume' : 'hold')}><>{control.held ? <Play size={20} strokeWidth={1.5} /> : <Pause size={20} strokeWidth={1.5} />}</></Button>
+          <p className="mt-1">{t(control.held ? 'resume' : 'hold')}</p></div>
+        <div><Button type="button" size="icon" variant={showKeypad ? 'secondary' : 'outline'} className={cn('h-12 w-12 rounded-full', diseno === 'kit' && 'border-line bg-subtle text-fg shadow-none dark:border-line dark:bg-subtle dark:text-fg', diseno === 'kit' && showKeypad && 'border-brand bg-brand text-fg-on-brand dark:bg-brand dark:text-fg-on-brand')}
+          onClick={onToggleKeypad} disabled={!connected || control.held || locked} aria-pressed={showKeypad} aria-label={t('keypad')}>
+          <Grid3x3 size={20} strokeWidth={1.5} /></Button><p className="mt-1">{t('keypad')}</p></div>
+        <div><Button type="button" size="icon" variant="outline" className={cn('h-12 w-12 rounded-full', diseno === 'kit' && 'border-line bg-subtle text-fg shadow-none dark:border-line dark:bg-subtle dark:text-fg')}
+          onClick={onTransfer} disabled={!connected || !control.supported || locked} aria-label={t('transfer')}>
+          <ArrowRightLeft size={20} strokeWidth={1.5} /></Button><p className="mt-1">{t('transfer')}</p></div>
       </div>
+      {!control.supported && connected && <p className="text-xs text-fg-secondary">{t('legacyCapability')}</p>}
+      {(diseno !== 'kit' || !sinColgar) && <div className="flex items-center gap-2">
+        {diseno !== 'kit' && <Button type="button" onClick={() => setShowAudio((value) => !value)} size="icon" variant="outline" aria-pressed={showAudio} aria-label={t('audioDevices')}>
+          <Headphones size={16} strokeWidth={1.5} /></Button>}
+        {!sinColgar && <Button type="button" onClick={onHangup} variant="destructive" className="flex-1" aria-label={t('hangup')}>
+          <PhoneOff size={16} strokeWidth={1.5} className="mr-2" aria-hidden="true" />{t('hangup')}</Button>}
+      </div>}
 
       {showAudio && (
         <div className="space-y-2 rounded-lg border border-gray-200 p-2 text-xs dark:border-gray-700">

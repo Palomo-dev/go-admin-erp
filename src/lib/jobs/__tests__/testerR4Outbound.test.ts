@@ -1,9 +1,7 @@
 /**
  * Tester F0-JOBS r4 — `sendWhatsApp` REAL (F16) con la harness de sus tests:
- * el handler `whatsapp` delega en él con `clientRequestId`, y allí se repite
- * `findByClientRequestId` ANTES de descontar créditos. Si esa segunda consulta
- * falla, el envío debe abortar (fail-closed): ni `deduct_comm_credits` ni
- * INSERT en `messages`. Y si encuentra el previo, `duplicate:true` sin cobrar.
+ * el handler delega la clave al envío. SQL prepara la reserva y el mensaje
+ * juntos; cualquier fallo debe propagarse y el duplicado conservar su ID.
  */
 import { sendWhatsApp } from '@/lib/services/crm/whatsapp/outboundService';
 import { makeSupabase, has, opArg, type TableResolver } from '@/lib/services/crm/whatsapp/__tests__/mockSupabase';
@@ -35,37 +33,32 @@ function baseTables(overrides: Partial<Record<string, TableResolver>> = {}): Rec
     ...overrides,
   };
 }
-const rpcOk = (fn: string) => ({ data: fn === 'fn_can_contact' ? true : fn === 'deduct_comm_credits' ? true : null });
-const isIdemQuery = (ops: Parameters<TableResolver>[0]) => has(ops, 'eq', 'metadata->>client_request_id');
+const resultado = { message_id: 'msg-1', conversation_id: 'conv-1', activity_id: null, customer_id: 'cust-1', channel_id: 'chan-1', scheduled: false };
+const rpcOk = (fn: string) => ({ data: fn === 'fn_can_contact' ? true : fn === 'crm_prepare_whatsapp_outbound' ? resultado : null });
 
-describe('tester r4 — sendWhatsApp real: la comprobación de idempotencia es fail-closed también en F16', () => {
-  it('la consulta por client_request_id falla ⇒ rechaza con "findByClientRequestId:", SIN deduct_comm_credits ni INSERT en messages', async () => {
-    const { sb, calls, rpcCalls } = makeSupabase(
-      baseTables({ messages: (ops) => (isIdemQuery(ops) ? { data: null, error: { message: 'canceling statement due to statement timeout' } } : has(ops, 'insert') ? { data: { id: 'msg-1' } } : { data: null, count: 0 }) }),
-      rpcOk,
-    );
-    await expect(sendWhatsApp({ orgId: 7, customerId: 'cust-1', channelId: 'chan-1', text: 'hola', clientRequestId: 'job:job-1' }, sb, sb, NOW)).rejects.toThrow('findByClientRequestId: canceling statement due to statement timeout');
+describe('tester r4 — sendWhatsApp real: preparación e idempotencia privadas', () => {
+  it('timeout de preparación ⇒ falla sin publicación ni débito separados', async () => {
+    const { sb, calls, rpcCalls } = makeSupabase(baseTables(), (fn) => fn === 'crm_prepare_whatsapp_outbound'
+      ? { error: { message: 'canceling statement due to statement timeout' } } : rpcOk(fn));
+    await expect(sendWhatsApp({ orgId: 7, customerId: 'cust-1', channelId: 'chan-1', text: 'hola', clientRequestId: 'job:job-1' }, sb, sb, NOW)).rejects.toThrow('canceling statement due to statement timeout');
     expect(rpcCalls.some((r) => r.fn === 'deduct_comm_credits')).toBe(false);
-    expect(calls.some((c) => c.table === 'messages' && has(c.ops, 'insert'))).toBe(false);
+    expect(calls.some((c) => has(c.ops, 'insert'))).toBe(false);
   });
 
-  it('la consulta encuentra el previo ⇒ duplicate:true con el message_id original, sin cobrar ni insertar', async () => {
-    const { sb, calls, rpcCalls } = makeSupabase(
-      baseTables({ messages: (ops) => (isIdemQuery(ops) ? { data: { id: 'msg-previo', conversation_id: 'conv-1' } } : { data: null, count: 0 }) }),
-      rpcOk,
-    );
+  it('SQL encuentra el previo ⇒ devuelve duplicate y el mensaje original', async () => {
+    const { sb, calls, rpcCalls } = makeSupabase(baseTables(), (fn) => fn === 'crm_prepare_whatsapp_outbound'
+      ? { data: { ...resultado, message_id: 'msg-previo', duplicate: true } } : rpcOk(fn));
     const r = await sendWhatsApp({ orgId: 7, customerId: 'cust-1', channelId: 'chan-1', text: 'hola', clientRequestId: 'job:job-1' }, sb, sb, NOW);
     expect(r).toMatchObject({ message_id: 'msg-previo', duplicate: true });
     expect(rpcCalls.some((r) => r.fn === 'deduct_comm_credits')).toBe(false);
-    expect(calls.some((c) => c.table === 'messages' && has(c.ops, 'insert'))).toBe(false);
+    expect(calls.some((c) => has(c.ops, 'insert'))).toBe(false);
   });
 
-  it('sin previo ⇒ cobra e inserta con metadata.client_request_id (camino feliz)', async () => {
+  it('camino nuevo ⇒ prepara la clave de job en una RPC con organización', async () => {
     const { sb, calls, rpcCalls } = makeSupabase(baseTables(), rpcOk);
     const r = await sendWhatsApp({ orgId: 7, customerId: 'cust-1', channelId: 'chan-1', text: 'hola', clientRequestId: 'job:job-1' }, sb, sb, NOW);
     expect(r).toMatchObject({ message_id: 'msg-1', scheduled: false });
-    expect(rpcCalls.some((r) => r.fn === 'deduct_comm_credits')).toBe(true);
-    const ins = calls.find((c) => c.table === 'messages' && has(c.ops, 'insert'))!;
-    expect((opArg<Record<string, unknown>>(ins.ops, 'insert')!.metadata as Record<string, unknown>).client_request_id).toBe('job:job-1');
+    expect(rpcCalls.filter((r) => r.fn === 'crm_prepare_whatsapp_outbound')).toEqual([{ fn: 'crm_prepare_whatsapp_outbound', args: { p_org: 7, p_request: expect.objectContaining({ client_request_id: 'job:job-1' }) } }]);
+    expect(calls.some((c) => has(c.ops, 'insert'))).toBe(false);
   });
 });

@@ -1,4 +1,5 @@
 'use client';
+import { useSequenceText } from './useSequenceText';
 
 /**
  * Línea de tiempo vertical del editor (brief UX 6.3).
@@ -17,6 +18,7 @@ import { Reorder, useDragControls, useReducedMotion } from 'motion/react';
 import { Flag, Plus, UserPlus } from 'lucide-react';
 import { buildTimeline, insertStepAt, moveStep, removeStepAt, type TimelineEntry } from '@/lib/services/crm/sequenceTimeline';
 import { useCrmLookups } from '@/components/crm/shared/useCrmLookups';
+import { SequenceReadOnlyTimeline } from './SequenceReadOnlyTimeline';
 import { StepCard } from './StepCard';
 import type { SequenceStepView } from './useSequences';
 
@@ -39,20 +41,20 @@ interface Props {
 
 /** `group` va en el contenedor: la pista «insertar aquí» es hermana del botón, no hija (R7). */
 function InsertButton({ index, onInsert }: { index: number; onInsert: (index: number) => void }) {
+ const tr=useSequenceText();
   return (
     <div className="group relative flex h-8 items-center pl-[1.125rem]">
       <button
         type="button"
         id={`seq-insert-${index}`}
         onClick={() => onInsert(index)}
-        aria-label={`Insertar un paso en la posición ${index + 1}`}
-        className="relative -ml-3 flex h-6 w-6 items-center justify-center rounded-full border border-dashed border-gray-400 bg-white text-gray-500 transition-colors hover:border-blue-600 hover:text-blue-700 focus-visible:border-blue-600 focus-visible:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-gray-500 dark:bg-gray-900 dark:text-gray-400 dark:hover:text-blue-300"
+        aria-label={tr("Insertar un paso en la posición {p0}",{p0:index + 1})}
+        className="relative -ml-3 flex h-6 w-6 items-center justify-center rounded-full border border-dashed border-gray-400 bg-surface text-fg-muted transition-colors hover:border-brand hover:text-brand-deep focus-visible:border-brand focus-visible:text-brand-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-gray-500 dark:bg-surface dark:text-fg-secondary dark:hover:text-blue-300"
       >
-        <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+        <Plus strokeWidth={1.5} className="h-3.5 w-3.5" aria-hidden="true" />
       </button>
-      <span className="ml-2 text-xs text-gray-600 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 dark:text-gray-400" aria-hidden="true">
-        insertar aquí
-      </span>
+      <span className="ml-2 text-xs text-fg-secondary opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 dark:text-fg-secondary" aria-hidden="true">
+        {tr("insertar aquí")}</span>
     </div>
   );
 }
@@ -106,10 +108,11 @@ function TimelineItem({ step, entry, total, readOnly, templates, lookupsLoading,
 }
 
 export function StepTimelineEditor({ steps, onChange, readOnly }: Props) {
+ const tr=useSequenceText();
   const { templates, loading: lookupsLoading } = useCrmLookups();
   const [announce, setAnnounce] = useState('');
   const [pendingFocus, setPendingFocus] = useState<string | null>(null);
-  const timeline = buildTimeline(steps);
+  const timeline = buildTimeline(steps, tr);
 
   // Tras mover con teclado, el botón pulsado cambia de sitio en el DOM y el
   // foco se perdería: se devuelve al mismo botón del mismo paso. Si al llegar
@@ -131,14 +134,14 @@ export function StepTimelineEditor({ steps, onChange, readOnly }: Props) {
     if (next === steps) return;
     const uid = steps[index].uid;
     onChange(next);
-    setAnnounce(`Paso ${index + 1} movido a la posición ${index + 1 + dir} de ${steps.length}.`);
+    setAnnounce(tr("Paso {p0} movido a la posición {p1} de {p2}.",{p0:index + 1,p1:index + 1 + dir,p2:steps.length}));
     setPendingFocus(`step-${uid}-move-${dir === -1 ? 'up' : 'down'}`);
   };
 
   const insert = (index: number) => {
     const fresh = newEditorStep(index + 1, index === 0 ? 0 : 1);
     onChange(insertStepAt(steps, index, fresh));
-    setAnnounce(`Paso nuevo insertado en la posición ${index + 1}.`);
+    setAnnounce(tr("Paso nuevo insertado en la posición {p0}.",{p0:index + 1}));
     setPendingFocus(`step-${fresh.uid}-channel`);
   };
 
@@ -146,7 +149,7 @@ export function StepTimelineEditor({ steps, onChange, readOnly }: Props) {
   // paso que ocupa su sitio (o del anterior) y, sin pasos, al «+» inicial.
   const remove = (index: number) => {
     onChange(removeStepAt(steps, index));
-    setAnnounce(`Paso ${index + 1} eliminado. Quedan ${steps.length - 1}.`);
+    setAnnounce(tr("Paso {p0} eliminado. Quedan {p1}.",{p0:index + 1,p1:steps.length - 1}));
     const neighbour = steps[index + 1] ?? steps[index - 1];
     setPendingFocus(neighbour ? `step-${neighbour.uid}-remove` : 'seq-insert-0');
   };
@@ -155,14 +158,16 @@ export function StepTimelineEditor({ steps, onChange, readOnly }: Props) {
     onChange(steps.map((s, i) => (i === index ? { ...s, ...p } : s)));
   };
 
+  if (readOnly) return <SequenceReadOnlyTimeline steps={steps} templates={templates} />;
+
   return (
     <section aria-labelledby="seq-steps-title">
       <div className="mb-2 flex items-center justify-between">
-        <h3 id="seq-steps-title" className="text-sm font-medium text-gray-900 dark:text-gray-100">
-          Pasos ({steps.length})
+        <h3 id="seq-steps-title" className="text-sm font-medium text-fg dark:text-fg">
+          {tr("Pasos (")}{steps.length})
         </h3>
         {!readOnly && (
-          <p className="text-xs text-gray-500 dark:text-gray-400">Arrastra por el asa o usa las flechas para reordenar.</p>
+          <p className="text-xs text-fg-muted dark:text-fg-secondary">{tr("Arrastra por el asa o usa las flechas para reordenar.")}</p>
         )}
       </div>
       <p className="sr-only" aria-live="polite" role="status">{announce}</p>
@@ -171,10 +176,10 @@ export function StepTimelineEditor({ steps, onChange, readOnly }: Props) {
         <span className="absolute bottom-3 left-[1.125rem] top-3 w-0.5 bg-gray-200 dark:bg-gray-700" aria-hidden="true" />
 
         <div className="relative flex items-center gap-3 py-1">
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white ring-4 ring-white dark:ring-gray-900">
-            <UserPlus className="h-3.5 w-3.5" aria-hidden="true" />
+          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand text-white ring-4 ring-white dark:ring-gray-900">
+            <UserPlus strokeWidth={1.5} className="h-3.5 w-3.5" aria-hidden="true" />
           </span>
-          <span className="text-sm text-gray-700 dark:text-gray-300">Inscripción <span className="text-gray-500 dark:text-gray-400">· Día 0</span></span>
+          <span className="text-sm text-fg-secondary dark:text-fg-secondary">{tr("Inscripción")}<span className="text-fg-muted dark:text-fg-secondary">{tr("· Día 0")}</span></span>
         </div>
         {!readOnly && <InsertButton index={0} onInsert={insert} />}
 
@@ -197,11 +202,11 @@ export function StepTimelineEditor({ steps, onChange, readOnly }: Props) {
         </Reorder.Group>
 
         <div className="relative flex items-center gap-3 py-1">
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gray-200 text-gray-700 ring-4 ring-white dark:bg-gray-700 dark:text-gray-200 dark:ring-gray-900">
-            <Flag className="h-3.5 w-3.5" aria-hidden="true" />
+          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gray-200 text-fg-secondary ring-4 ring-white dark:bg-gray-700 dark:text-fg dark:ring-gray-900">
+            <Flag strokeWidth={1.5} className="h-3.5 w-3.5" aria-hidden="true" />
           </span>
-          <span className="text-sm text-gray-700 dark:text-gray-300">
-            Fin{steps.length > 0 ? <span className="text-gray-500 dark:text-gray-400"> · {timeline[timeline.length - 1].dayLabel}</span> : null}
+          <span className="text-sm text-fg-secondary dark:text-fg-secondary">
+            {tr("Fin")}{steps.length > 0 ? <span className="text-fg-muted dark:text-fg-secondary"> · {timeline[timeline.length - 1].dayLabel}</span> : null}
           </span>
         </div>
       </div>

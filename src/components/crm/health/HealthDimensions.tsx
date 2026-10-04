@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { HealthScoreResult } from '@/lib/services/crm/healthScoreService';
 import { bandForScore } from '@/lib/services/crm/healthBands';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
@@ -24,39 +25,42 @@ export function formatDimensionValue(
   value: number,
   /** Formateador en la moneda base de la organización (nunca 'COP' cableado). */
   formatearImporte: (valor: number) => string,
+  text: { noData: string; days: (days: number) => string } = { noData: 'Sin datos', days: days => `${days} días` },
 ): string {
-  if (value < 0) return 'Sin datos';
+  if (value < 0) return text.noData;
   if (MONEY_KEYS.has(key)) return formatearImporte(value);
   if (RATIO_KEYS.has(key)) return `${(value * 100).toFixed(1)} %`;
-  if (DAY_KEYS.has(key)) return `${Math.round(value)} días`;
+  if (DAY_KEYS.has(key)) return text.days(Math.round(value));
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
 export function HealthDimensions({ indicators, className = '' }: HealthDimensionsProps) {
+  const t = useTranslations('crm.salud');
   const weighted = indicators.some((i) => i.weight > 0);
   const { formatear } = useMonedaOrganizacion();
   return (
-    <ul className={`divide-y divide-gray-100 dark:divide-gray-700/60 ${className}`} aria-label="Dimensiones del health score">
+    <ul className={`divide-y divide-line ${className}`} aria-label={t('indicators')}>
       {indicators.map((ind) => {
+        const label = t.has(`indicatorLabels.${ind.key}`) ? t(`indicatorLabels.${ind.key}`) : ind.label;
         const st = BAND_STYLES[bandForScore(ind.score)];
         return (
           <li key={ind.key} className="py-2 first:pt-0 last:pb-0">
             <div className="flex items-center justify-between gap-3">
-              <span className="text-xs text-gray-700 dark:text-gray-300 truncate">
-                {ind.label}
-                {weighted && <span className="text-gray-500 dark:text-gray-400"> · peso {ind.weight}</span>}
+              <span className="text-xs text-fg-secondary truncate">
+                {label}
+                {weighted && <span className="text-fg-muted"> · {t('weight', { weight: ind.weight })}</span>}
               </span>
-              <span className="text-xs font-medium text-gray-900 dark:text-gray-100 shrink-0 tabular-nums">{formatDimensionValue(ind.key, ind.value, formatear)}</span>
+              <span className="text-xs font-medium text-fg shrink-0 tabular-nums">{formatDimensionValue(ind.key, ind.value, formatear, { noData: t('noData'), days: days => t('days', { days }) })}</span>
             </div>
             {weighted && (
               <div className="mt-1 flex items-center gap-2">
                 <div
                   role="progressbar"
-                  aria-label={`${ind.label}: ${ind.score} de 100`}
+                  aria-label={`${label}: ${ind.score} de 100`}
                   aria-valuemin={0}
                   aria-valuemax={100}
                   aria-valuenow={ind.score}
-                  className="h-1.5 flex-1 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden"
+                  className="h-1.5 flex-1 rounded-full bg-subtle overflow-hidden"
                 >
                   <div className={`h-full rounded-full ${st.bar}`} style={{ width: `${ind.score}%` }} />
                 </div>

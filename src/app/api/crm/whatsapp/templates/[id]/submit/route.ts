@@ -11,4 +11,4 @@ export const POST = withWhatsAppRoute(async (ctx, req, params) => {
   const b = parseWith(zChannelIdBody, await readOrgBody<unknown>(ctx, req));
   const data = await submitHsm(ctx.organizationId, params.id, b.channelId ?? null, ctx.supabase);
   return NextResponse.json({ data });
-}, { admin: true });
+}, { admin: true, permission: 'crm.campaigns.manage' });

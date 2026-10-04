@@ -63,15 +63,15 @@ describe('Electron (electron/)', () => {
 });
 
 describe('App: el error de micrófono no se traga', () => {
-  it('SoftphoneProvider.makeCall devuelve mic_denied con la ruta de Ajustes; QuickActionsBar y CallButton ofrecen el bridge', () => {
+  it('SoftphoneProvider.makeCall devuelve mic_denied con la ruta de Ajustes; AccionesRapidasCrm y CallButton ofrecen el bridge', () => {
     const provider = read('src/components/voice/SoftphoneProvider.tsx');
     expect(provider).toMatch(/reason: denied \? 'mic_denied' : 'unavailable'/);
     expect(provider).toMatch(/reason: settingsHint \? 'mic_denied' : 'error'/);
     expect(provider).toMatch(/microphoneDeniedReason\(\)/);
 
-    const bar = read('src/components/crm/shared/QuickActionsBar.tsx');
-    expect(bar).toMatch(/result\.reason === 'mic_denied'/);
-    expect(bar).toMatch(/setOpenDialog\('mobile'\)/);
+    const bar = read('src/components/crm/acciones/AccionesRapidasCrm.tsx');
+    expect(bar).toMatch(/r\.reason === 'mic_denied'/);
+    expect(bar).toMatch(/abrir\('movil'\)/);
     expect(bar).toMatch(/useCallModePolicy\(\)/);
 
     const button = read('src/components/voice/CallButton.tsx');

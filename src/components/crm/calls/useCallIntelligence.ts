@@ -91,6 +91,8 @@ export interface CallIntelligenceState {
   analysis: AnalysisBundle | null;
   loading: boolean;
   error: string | null;
+  transcriptError?: string | null;
+  analysisError?: string | null;
   busy: boolean;
   refetch: () => Promise<void>;
   setBusy: (b: boolean) => void;
@@ -98,9 +100,17 @@ export interface CallIntelligenceState {
 
 const POLL_MS = 5000;
 
+function missingTranscript(data: { jobs?: JobDto[]; recording?: TranscriptDto['recording'] } | null): TranscriptDto | null {
+  const jobs = data?.jobs ?? [];
+  const active = jobs.find((job) => job.kind === 'transcribe' && ['queued', 'running'].includes(job.status));
+  const latest = jobs.find((job) => job.kind === 'transcribe');
+  if (!active && latest?.status !== 'failed') return null;
+  return { id: '', status: active ? 'pending' : 'failed', provider: 'pending', provider_model: null, language: '', full_text: null, speaker_count: null, duration_seconds: null, cost_amount: null, error_code: active ? null : latest?.last_error?.split(':')[0] ?? null, error_message: active ? null : latest?.last_error ?? null, completed_at: null, raw_response: null, segments: [], jobs, recording: data?.recording ?? null };
+}
+
 function isWorking(t: TranscriptDto | null, a: AnalysisBundle | null): boolean {
   if (t && (t.status === 'pending' || t.status === 'processing')) return true;
-  if (t?.jobs?.some((j) => j.status === 'queued' || j.status === 'running')) return true;
+  if (t?.jobs?.some((j) => j.kind === 'transcribe' && (j.status === 'queued' || j.status === 'running'))) return true;
   if (a?.job && (a.job.status === 'queued' || a.job.status === 'running')) return true;
   return false;
 }
@@ -110,40 +120,89 @@ export function useCallIntelligence(callId: string, enabled = true): CallIntelli
   const [analysis, setAnalysis] = useState<AnalysisBundle | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [transcriptError, setTranscriptError] = useState<string | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const loadedCall = useRef<string | null>(null);
   const [busy, setBusy] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const alive = useRef(true);
+  const generation = useRef(0);
+  const inFlight = useRef<AbortController | null>(null);
+  const cancelRead = useCallback(() => { generation.current++; inFlight.current?.abort(); }, []);
 
   const refetch = useCallback(async () => {
     if (!enabled) return;
+    const version = ++generation.current;
+    inFlight.current?.abort();
+    const abort = new AbortController();
+    inFlight.current = abort;
     setLoading(true);
     try {
-      const [tRes, aRes] = await Promise.all([fetch(`/api/crm/calls/${callId}/transcript`), fetch(`/api/crm/calls/${callId}/analysis`)]);
-      const tJson = await tRes.json().catch(() => ({}));
-      const aJson = await aRes.json().catch(() => ({}));
-      if (!alive.current) return;
+      const [tRes, aRes] = await Promise.all([
+        fetch(`/api/crm/calls/${callId}/transcript`, { signal: abort.signal }),
+        fetch(`/api/crm/calls/${callId}/analysis`, { signal: abort.signal }),
+      ]);
+      const [tJson, aJson] = await Promise.all([tRes.json().catch(() => ({})), aRes.json().catch(() => ({}))]);
+      if (!alive.current || abort.signal.aborted || version !== generation.current) return;
+      loadedCall.current = callId;
+      const hasTranscriptError = !tRes.ok && tRes.status !== 404;
+      const hasAnalysisError = !aRes.ok && aRes.status !== 404;
       if (tRes.ok) setTranscript(tJson.data as TranscriptDto);
-      else if (tRes.status === 404) setTranscript(tJson.data?.jobs?.length || tJson.data?.recording ? ({ id: '', status: 'pending', provider: 'pending', provider_model: null, language: 'spa', full_text: null, speaker_count: null, duration_seconds: null, cost_amount: null, error_code: null, error_message: null, completed_at: null, raw_response: null, segments: [], jobs: tJson.data?.jobs ?? [], recording: tJson.data?.recording ?? null, __missing: true } as TranscriptDto & { __missing: boolean }) : null);
-      else setError(tJson.error ?? 'Error cargando transcripción');
+      else if (tRes.status === 404) setTranscript(missingTranscript(tJson.data));
+      else setTranscript(null);
       if (aRes.ok) setAnalysis(aJson.data as AnalysisBundle);
       else if (aRes.status === 404) setAnalysis({ analysis: null, tags: [], objections: [], suggested_stage: null, applied_actions: [], policy: 'suggest', job: aJson.data?.job ?? null });
-      else setError(aJson.error ?? 'Error cargando análisis');
-      if (tRes.ok || tRes.status === 404) setError(null);
-    } catch (e) {
-      if (alive.current) setError(e instanceof Error ? e.message : 'Error de red');
+      else setAnalysis(null);
+      const transcriptFailure = hasTranscriptError ? tJson.error ?? 'Error cargando transcripción' : null;
+      const analysisFailure = hasAnalysisError ? aJson.error ?? 'Error cargando análisis' : null;
+      setTranscriptError(transcriptFailure);
+      setAnalysisError(analysisFailure);
+      setError(transcriptFailure ?? analysisFailure);
+    } catch (failure) {
+      if (alive.current && !abort.signal.aborted && version === generation.current) {
+        setTranscript(null);
+        setAnalysis(null);
+        loadedCall.current = callId;
+        const message = failure instanceof Error ? failure.message : 'Error de red';
+        setError(message);
+        setTranscriptError(message);
+        setAnalysisError(message);
+      }
     } finally {
-      if (alive.current) setLoading(false);
+      if (alive.current && !abort.signal.aborted && version === generation.current) setLoading(false);
     }
   }, [callId, enabled]);
 
   useEffect(() => {
     alive.current = true;
-    if (enabled) void refetch();
+    loadedCall.current = null;
+    setTranscriptError(null);
+    setAnalysisError(null);
+    setTranscript(null);
+    setAnalysis(null);
+    setError(null);
+    const changedOrganization = () => {
+      cancelRead();
+      loadedCall.current = null;
+      setTranscriptError(null);
+      setAnalysisError(null);
+      setTranscript(null);
+      setAnalysis(null);
+      setError(null);
+      setBusy(false);
+      if (enabled) void refetch();
+    };
+    if (enabled) {
+      void refetch();
+      window.addEventListener('organization-changed', changedOrganization);
+    }
     return () => {
       alive.current = false;
+      cancelRead();
       if (timer.current) clearTimeout(timer.current);
+      window.removeEventListener('organization-changed', changedOrganization);
     };
-  }, [enabled, refetch]);
+  }, [enabled, refetch, cancelRead]);
 
   // Polling mientras hay trabajo en curso
   useEffect(() => {
@@ -157,7 +216,8 @@ export function useCallIntelligence(callId: string, enabled = true): CallIntelli
     };
   }, [transcript, analysis, busy, enabled, refetch]);
 
-  return { transcript, analysis, loading, error, busy, refetch, setBusy };
+  const currentCall = loadedCall.current === callId;
+  return { transcript: currentCall ? transcript : null, analysis: currentCall ? analysis : null, loading, error: currentCall ? error : null, transcriptError: currentCall ? transcriptError : null, analysisError: currentCall ? analysisError : null, busy, refetch, setBusy };
 }
 
 export const ERROR_LABELS: Record<string, string> = {

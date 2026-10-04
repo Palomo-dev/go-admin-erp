@@ -66,16 +66,16 @@ export interface RewardDescription {
   summary: string;
 }
 
-function formatMoney(amount: number, currency: string | null): string {
+function formatMoney(amount: number, currency: string | null, locale: string): string {
   if (currency) {
     try {
-      return new Intl.NumberFormat('es-CO', { style: 'currency', currency, maximumFractionDigits: 2 }).format(amount);
+      return new Intl.NumberFormat(locale, { style: 'currency', currency, maximumFractionDigits: 2 }).format(amount);
     } catch {
       // Código de moneda no ISO: cifra + código, sin inventar símbolo.
-      return `${new Intl.NumberFormat('es-CO', { maximumFractionDigits: 2 }).format(amount)} ${currency}`;
+      return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(amount)} ${currency}`;
     }
   }
-  return new Intl.NumberFormat('es-CO', { maximumFractionDigits: 2 }).format(amount);
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(amount);
 }
 
 /**
@@ -83,25 +83,29 @@ function formatMoney(amount: number, currency: string | null): string {
  * moneda base de la organización (`null` si no está configurada: la cifra va
  * sin símbolo y el resumen lo dice). Nunca se cablea una moneda.
  */
-export function describeReward(program: RewardLike | null | undefined, currency: string | null): RewardDescription | null {
+export function describeReward(program: RewardLike | null | undefined, currency: string | null, options: {locale?: string; translate?: (source: string, values?: Record<string,string|number>) => string} = {}): RewardDescription | null {
   if (!program) return null;
+  const locale = options.locale ?? 'es-CO';
+  const translate = options.translate ?? ((source: string) => source);
   const amountNumber = Number(program.reward_amount);
   const amount = Number.isFinite(amountNumber) ? amountNumber : 0;
-  const type = (REWARD_TYPE_LABELS as Record<string, string>)[program.reward_type] ?? program.reward_type;
-  const to = (REWARD_TO_LABELS as Record<string, string>)[program.reward_to] ?? program.reward_to;
+  const type = translate((REWARD_TYPE_LABELS as Record<string, string>)[program.reward_type] ?? program.reward_type);
+  const to = translate((REWARD_TO_LABELS as Record<string, string>)[program.reward_to] ?? program.reward_to);
 
   let amountText = '';
   let noCurrencyNote = '';
   if (program.reward_type === 'discount') {
-    amountText = `${new Intl.NumberFormat('es-CO', { maximumFractionDigits: 2 }).format(amount)} %`;
+    amountText = `${new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(amount)} %`;
   } else if (program.reward_type === 'gift') {
-    amountText = amount > 0 ? formatMoney(amount, currency) : '';
-    if (amount > 0 && !currency) noCurrencyNote = ' (sin moneda configurada)';
+    amountText = amount > 0 ? formatMoney(amount, currency, locale) : '';
+    if (amount > 0 && !currency) noCurrencyNote = translate(' (sin moneda configurada)');
   } else {
-    amountText = formatMoney(amount, currency);
-    if (!currency) noCurrencyNote = ' (sin moneda configurada)';
+    amountText = formatMoney(amount, currency, locale);
+    if (!currency) noCurrencyNote = translate(' (sin moneda configurada)');
   }
 
-  const summary = `${type}${amountText ? ` ${amountText}` : ''}${noCurrencyNote} · para ${to.toLowerCase()}`;
+  const summary = options.translate
+    ? translate('{type}{amount}{note} · para {recipient}', {type, amount: amountText ? ` ${amountText}` : '', note: noCurrencyNote, recipient: to.toLowerCase()})
+    : `${type}${amountText ? ` ${amountText}` : ''}${noCurrencyNote} · para ${to.toLowerCase()}`;
   return { type, amount: amountText, to, summary };
 }

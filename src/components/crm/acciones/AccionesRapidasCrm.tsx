@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import { toast } from '@/components/ui/use-toast';
@@ -48,11 +48,13 @@ export interface AccionesRapidasCrmProps {
   onPropuesta?: () => void;
   onNuevaOportunidad?: () => void;
   puedeCrearOportunidad?: boolean;
+  /** Subconjunto en un contexto como la llamada móvil; conserva los mismos escritores y permisos. */
+  acciones?: readonly AccionRapidaCrm[];
   /**
    * Abre una acción sin pulsar la barra («Nueva actividad» de Actividades, el
    * vacío de la ficha). `clave` distinta = abrir otra vez.
    */
-  abrirAccion?: { accion: AccionRapidaCrm; clave: number } | null;
+  abrirAccion?: { accion: AccionRapidaCrm; clave: number; modoLlamada?: 'registrar' } | null;
   /** Solo los diálogos, sin la barra. */
   sinBarra?: boolean;
   /** Se cerró el diálogo (con o sin guardar). */
@@ -72,14 +74,19 @@ export function AccionesRapidasCrm(props: AccionesRapidasCrmProps) {
   const [abierto, setAbierto] = useState<Abierto>(null);
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [anclaLlamada, setAnclaLlamada] = useState<HTMLElement | null>(null);
+  const claveReunion = useRef<string | null>(null);
+  const claveActividad = useRef<string | null>(null);
 
   const clienteId = props.clienteId ?? cliente?.id ?? null;
   const nombre = cliente?.full_name?.trim() || t('sinNombre');
   const telefono = normalizePhone(cliente?.phone, pais);
   const destino = { clienteId: clienteId ?? '', clienteNombre: nombre, oportunidadId: oportunidadId ?? null, oportunidadNombre: oportunidadNombre ?? null };
-  const estados = estadoAccionesRapidas({ cliente, tieneDestino: Boolean(clienteId || oportunidadId), paisPorDefecto: pais });
+  const estados = estadoAccionesRapidas({ cliente, tieneDestino: Boolean(clienteId || oportunidadId), paisPorDefecto: pais }, props.acciones);
 
   const abrir = (a: Abierto) => {
+    if (a === 'reunion') claveReunion.current = crypto.randomUUID();
+    if (a === 'llamada' || a === 'tarea') claveActividad.current = crypto.randomUUID();
     setError(null);
     setAbierto(a);
   };
@@ -107,7 +114,8 @@ export function AccionesRapidasCrm(props: AccionesRapidasCrmProps) {
   };
   const claveApertura = props.abrirAccion?.clave;
   useEffect(() => {
-    if (props.abrirAccion) alPulsar(props.abrirAccion.accion);
+    if (props.abrirAccion?.accion === 'llamar' && props.abrirAccion.modoLlamada === 'registrar') abrir('llamada');
+    else if (props.abrirAccion) alPulsar(props.abrirAccion.accion);
     // Solo cuando cambia la clave: es un «abrir ahora», no un estado.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [claveApertura]);
@@ -125,25 +133,28 @@ export function AccionesRapidasCrm(props: AccionesRapidasCrmProps) {
     if (modo === 'registrar') return abrir('llamada');
     if (modo === 'mobile') return abrir('movil');
     if (modo !== 'browser' || !softphone.available || !telefono) return;
-    const r = await softphone.makeCall(telefono, { customerId: clienteId ?? undefined, opportunityId: oportunidadId ?? undefined });
+    const r = await softphone.makeCall(telefono, { customerId: clienteId ?? undefined, opportunityId: oportunidadId ?? undefined, displayName: nombre });
     if (!r.ok) {
       if (r.reason === 'mic_denied') abrir('movil');
       return;
     }
     toast({ title: t('llamar.llamando'), description: telefono });
-    // La llamada sigue en el softphone: se abre el registro para anotar el resultado.
-    abrir('llamada');
+    // El provider abre el único cierre de esta llamada cuando termina.
+    setAbierto(null);
   };
 
   const guardarActividad = (d: DatosActividad) =>
     ejecutar(async () => {
       if (d.tipo === 'llamada') {
-        await pedirCrm('/api/crm/activities', { method: 'POST', cuerpo: cuerpoLlamada(d.datos) });
+        const actividad = cuerpoLlamada(d.datos);
         const seg = cuerpoSeguimiento(d.datos, destino, timezone, t('llamar.tituloSeguimiento', { nombre }));
-        if (seg) await pedirCrm('/api/crm/tasks', { method: 'POST', cuerpo: seg });
+        await pedirCrm('/api/crm/activities', { method: 'POST', cuerpo: {
+          ...actividad, metadata: { ...actividad.metadata, client_key: claveActividad.current },
+          ...(seg ? { follow_up: { title: seg.title, description: seg.description, due_date: seg.due_date } } : {}),
+        } });
         terminar('llamar', seg ? t('toast.llamadaConSeguimiento') : t('toast.llamada'));
       } else if (d.tipo === 'reunion') {
-        const { data } = await pedirCrm<{ invite?: { cliente?: boolean; responsable?: boolean } }>('/api/crm/meetings', { method: 'POST', cuerpo: cuerpoReunion(d.datos) });
+        const { data } = await pedirCrm<{ invite?: { cliente?: boolean; responsable?: boolean } }>('/api/crm/meetings', { method: 'POST', cuerpo: { ...cuerpoReunion(d.datos), client_key: claveReunion.current } });
         const clave = claveToastReunion(data?.invite);
         const mensaje = clave === 'reunionCorreo' ? t('toast.reunionCorreo')
           : clave === 'reunionCorreoCliente' ? t('toast.reunionCorreoCliente')
@@ -158,7 +169,7 @@ export function AccionesRapidasCrm(props: AccionesRapidasCrmProps) {
 
   const guardarTarea = (v: ValoresTarea) =>
     ejecutar(async () => {
-      const { data } = await pedirCrm('/api/crm/tasks', { method: 'POST', cuerpo: cuerpoTarea(v, destino, timezone) });
+      const { data } = await pedirCrm('/api/crm/tasks', { method: 'POST', cuerpo: { ...cuerpoTarea(v, destino, timezone), client_key: claveActividad.current } });
       terminar('tarea', t('toast.tarea'), data);
     });
 
@@ -167,7 +178,10 @@ export function AccionesRapidasCrm(props: AccionesRapidasCrmProps) {
 
   return (
     <>
-      {!props.sinBarra && <QuickActionsBarCrm
+      {!props.sinBarra && <div className="contents" onClickCapture={event => {
+        const button = (event.target as HTMLElement).closest<HTMLElement>('button[data-accion="llamar"]');
+        if (button && event.currentTarget.contains(button)) setAnclaLlamada(button);
+      }}><QuickActionsBarCrm
         variante={variante}
         estados={estados}
         onAccion={alPulsar}
@@ -176,7 +190,7 @@ export function AccionesRapidasCrm(props: AccionesRapidasCrmProps) {
         onNuevaOportunidad={props.onNuevaOportunidad}
         puedeCrearOportunidad={props.puedeCrearOportunidad}
         className={props.className}
-      />}
+      /></div>}
       <ModoLlamadaDialog
         abierto={abierto === 'modos'}
         onAbiertoChange={(x) => !x && setAbierto(null)}
@@ -185,6 +199,8 @@ export function AccionesRapidasCrm(props: AccionesRapidasCrmProps) {
         softphoneListo={softphone.available && softphone.deviceState === 'registered'}
         predeterminado={decision?.mode ?? null}
         onElegir={(m) => void elegirModo(m)}
+        variante={variante === 'cliente' && !props.sinBarra ? 'menu' : 'dialogo'}
+        ancla={anclaLlamada}
       />
       {tipoDialogo && (
         <ActivityDialog
@@ -222,7 +238,6 @@ export function AccionesRapidasCrm(props: AccionesRapidasCrmProps) {
           customerId={clienteId ?? undefined}
           targetPhone={telefono ?? ''}
           customerName={nombre}
-          onStarted={() => abrir('llamada')}
         />
       )}
     </>

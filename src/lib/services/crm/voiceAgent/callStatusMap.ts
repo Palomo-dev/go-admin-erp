@@ -5,6 +5,8 @@
  * `/api/voice/ai-agent/status` y las pruebas usen exactamente la misma tabla.
  */
 
+import type { CallStatus } from '@/lib/crm/enums';
+
 export type VoiceAgentCallLiveStatus =
   | 'in_progress'
   | 'completed'
@@ -50,7 +52,7 @@ export function mapTwilioCallStatus(
 }
 
 /** CallStatus de Twilio → estado de `calls` (CHECK real). */
-export function mapTwilioToCallsStatus(callStatus: string, answeredBy?: string | null): string | null {
+export function mapTwilioToCallsStatus(callStatus: string, answeredBy?: string | null): CallStatus | null {
   if (answeredBy && /^machine/.test(answeredBy) && callStatus === 'completed') return 'voicemail';
   switch (callStatus) {
     case 'queued':

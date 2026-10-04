@@ -73,7 +73,8 @@ export async function listHsm(orgId: number, filters: HsmFilters, supabase: Supa
 }
 
 export async function getHsm(orgId: number, id: string, supabase: SupabaseClient): Promise<WhatsAppTemplate | null> {
-  const { data } = await supabase.from('templates').select(COLS).eq('organization_id', orgId).eq('channel', 'whatsapp').eq('id', id).maybeSingle();
+  const { data, error } = await supabase.from('templates').select(COLS).eq('organization_id', orgId).eq('channel', 'whatsapp').eq('id', id).maybeSingle();
+  if (error) throw new WhatsAppError('INTERNAL', error.message, 500);
   return data ? rowToTemplate(data as Record<string, unknown>) : null;
 }
 
@@ -150,6 +151,7 @@ export async function createHsm(orgId: number, userId: string | null, input: Cre
 
 export async function updateHsm(orgId: number, id: string, input: UpdateHsmInput, supabase: SupabaseClient): Promise<WhatsAppTemplate> {
   const current = await requireHsm(orgId, id, supabase);
+  if (current.meta.status === 'PENDING') throw new WhatsAppError('NOT_EDITABLE', 'El proveedor está revisando esta plantilla', 409);
   const components = input.components ?? current.meta.components;
   const name = (input.name ?? current.name).trim().toLowerCase();
   const language = input.language ?? current.meta.language;
@@ -194,6 +196,7 @@ export async function updateHsm(orgId: number, id: string, input: UpdateHsmInput
 /** Borra si es DRAFT; si ya está en Meta, la desactiva (sigue existiendo en el WABA). */
 export async function deleteHsm(orgId: number, id: string, supabase: SupabaseClient): Promise<{ deleted: boolean; deactivated: boolean }> {
   const t = await requireHsm(orgId, id, supabase);
+  if (t.meta.status === 'PENDING') throw new WhatsAppError('NOT_EDITABLE', 'El proveedor está revisando esta plantilla', 409);
   if (t.meta.status === 'DRAFT' || !t.meta.meta_template_id) {
     const { error } = await supabase.from('templates').delete().eq('id', id).eq('organization_id', orgId);
     if (error) throw new WhatsAppError('INTERNAL', error.message, 500);
@@ -206,6 +209,13 @@ export async function deleteHsm(orgId: number, id: string, supabase: SupabaseCli
 /** Envía a aprobación (Meta o Twilio según el canal). Idempotente: si ya tiene id externo no reenvía. */
 export async function submitHsm(orgId: number, id: string, channelId: string | null, supabase: SupabaseClient, service: SupabaseClient = getServiceClient(), fetchImpl: typeof fetch = fetch): Promise<WhatsAppTemplate> {
   const t = await requireHsm(orgId, id, supabase);
+  if (!t.meta.meta_template_id && !t.meta.twilio?.content_sid) {
+    const params = new Set(t.meta.components.flatMap(component => [...extractParams(component.text), ...(component.buttons ?? []).flatMap(button => extractParams(button.url))]));
+    const examples = (t.meta.examples ?? {}) as Record<string, unknown>;
+    if ([...params].some(param => typeof examples[param] !== 'string' || !String(examples[param]).trim())) {
+      throw new WhatsAppError('VALIDATION', 'Completa un ejemplo para cada variable antes de enviar.', 422);
+    }
+  }
   const channel = await resolveChannel(orgId, channelId ?? t.meta.channel_id ?? null, supabase, service);
   if (!channel.capabilities.templates) throw new WhatsAppError('CHANNEL_NO_TEMPLATES', 'El canal QR no admite plantillas HSM', 422);
   if (t.meta.meta_template_id || t.meta.twilio?.content_sid) return t;

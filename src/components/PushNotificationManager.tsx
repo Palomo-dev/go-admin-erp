@@ -23,7 +23,7 @@ export function PushNotificationManager() {
   // Pantalla del cliente del POS (/pos-display): no se pide permiso de
   // notificaciones delante del cliente (docs/pos-doble-pantalla/PLAN.md
   // §4.1.4 «cero navegación, no hay menús»). La caja, bajo /app, ya lo pidió.
-  const isCustomerDisplay = isCustomerDisplayPath(pathname);
+  const isCustomerDisplay = isCustomerDisplayPath(pathname) || pathname === '/telefono';
   const { session } = useSession();
   const user = session?.user;
   const { isSupported, permission, isSubscribed, subscription, requestPermission, subscribe } = usePushNotifications();
@@ -70,11 +70,12 @@ export function PushNotificationManager() {
 
   // Guardar suscripción en Supabase cuando cambia
   useEffect(() => {
+    if (isCustomerDisplay) return;
     if (!user || !subscription || saved) return;
     saveWebPushSubscription(user.id, subscription).then((ok) => {
       if (ok) setSaved(true);
     });
-  }, [user, subscription, saved]);
+  }, [isCustomerDisplay, user, subscription, saved]);
 
   // Eliminar suscripción de Supabase al desuscribir
   useEffect(() => {

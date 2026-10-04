@@ -11,6 +11,8 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { EmailError } from './types';
+import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 import type { RenderContext } from './variables';
 import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 
@@ -34,18 +36,22 @@ export function emptyContext(): RenderContext {
  * Carga contact/opportunity/org/user/quote de la BD (siempre filtrando por
  * `orgId`). Cualquier entidad que no pertenezca a la org se ignora.
  */
-export async function buildContext(orgId: number, refs: ContextRefs, supabase: SupabaseClient): Promise<RenderContext> {
+export async function buildContext(orgId: number, refs: ContextRefs, supabase: SupabaseClient, options: { strict?: boolean } = {}): Promise<RenderContext> {
+  const strict = options.strict === true;
+  const assertData = (error: unknown, data: unknown, required = false) => { if (!strict) return; if (error) throw new EmailError('DB', 'No se pudo cargar el contexto', 500); if (required && !data) throw new EmailError('NOT_FOUND', 'Entidad de contexto no encontrada', 404); };
+  const assertBranch = async (branch: number | null) => { if (!strict) return; const result = await supabase.rpc('app_branch_access', { p_branch_id: branch }); if (result.error) throw new EmailError('DB', 'No se pudo comprobar la sucursal', 500); if (result.data !== true) throw new EmailError('FORBIDDEN', 'Sucursal no permitida', 403); };
   const ctx = emptyContext();
   ctx.custom = { ...(refs.custom ?? {}) };
   const base = appUrl();
   // Moneda base de la organización: respaldo de oportunidad y cotización (nunca 'COP' cableado).
   const monedaBase = (await resolveOrgCurrency(supabase, orgId)).code;
 
-  const { data: org } = await supabase
+  const { data: org, error: orgError } = await supabase
     .from('organizations')
     .select('id, name, logo_url, address, city, phone, website, email, primary_color')
     .eq('id', orgId)
     .maybeSingle();
+  assertData(orgError, org, true);
   if (org) {
     const o = org as Record<string, string | null>;
     ctx.org = {
@@ -57,7 +63,7 @@ export async function buildContext(orgId: number, refs: ContextRefs, supabase: S
       website: o.website ?? '',
       email: o.email ?? '',
       currency: monedaBase,
-      timezone: 'America/Bogota',
+      timezone: strict ? await getOrganizationTimezone(orgId, supabase) : 'America/Bogota',
       primary_color: o.primary_color ?? '#2563eb',
     };
   }
@@ -65,13 +71,16 @@ export async function buildContext(orgId: number, refs: ContextRefs, supabase: S
   let customerId = refs.customerId ?? null;
 
   if (refs.opportunityId) {
-    const { data: opp } = await supabase
+    const { data: opp, error: oppError } = await supabase
       .from('opportunities')
-      .select('id, name, amount, currency, expected_close_date, next_action, status, customer_id, stages(name), pipelines(name)')
+      .select('id, name, amount, currency, expected_close_date, next_action, status, customer_id, branch_id, stages(name), pipelines(name)')
       .eq('id', refs.opportunityId)
       .eq('organization_id', orgId)
       .maybeSingle();
+    assertData(oppError, opp, true);
     if (opp) {
+      await assertBranch(opp.branch_id);
+      if (strict && customerId && opp.customer_id && customerId !== opp.customer_id) throw new EmailError('VALIDATION', 'Cliente y oportunidad no corresponden', 400);
       const o = opp as Record<string, unknown>;
       const stage = o.stages as { name?: string } | { name?: string }[] | null;
       const pipe = o.pipelines as { name?: string } | { name?: string }[] | null;
@@ -92,13 +101,15 @@ export async function buildContext(orgId: number, refs: ContextRefs, supabase: S
   }
 
   if (customerId) {
-    const { data: c } = await supabase
+    const { data: c, error: customerError } = await supabase
       .from('customers')
-      .select('id, first_name, last_name, full_name, email, phone, company_name, timezone')
+      .select('id, first_name, last_name, full_name, email, phone, company_name, timezone, branch_id')
       .eq('id', customerId)
       .eq('organization_id', orgId)
       .maybeSingle();
+    assertData(customerError, c, true);
     if (c) {
+      await assertBranch(c.branch_id);
       const r = c as Record<string, string | null>;
       const full = r.full_name || [r.first_name, r.last_name].filter(Boolean).join(' ') || r.company_name || '';
       ctx.contact = {
@@ -114,11 +125,12 @@ export async function buildContext(orgId: number, refs: ContextRefs, supabase: S
   }
 
   if (refs.userId) {
-    const { data: p } = await supabase
+    const { data: p, error: profileError } = await supabase
       .from('profiles')
       .select('id, first_name, last_name, email, phone, metadata')
       .eq('id', refs.userId)
       .maybeSingle();
+    assertData(profileError, p);
     if (p) {
       const r = p as Record<string, unknown>;
       const meta = (r.metadata as Record<string, unknown>) ?? {};
@@ -139,11 +151,13 @@ export async function buildContext(orgId: number, refs: ContextRefs, supabase: S
   if (quoteId || refs.opportunityId) {
     let q = supabase
       .from('quotations')
-      .select('id, number, total, currency, valid_until, quotation_items(description, qty, unit_price, total_line)')
+      .select('id, number, total, currency, valid_until, branch_id, quotation_items(description, qty, unit_price, total_line)')
       .eq('organization_id', orgId);
     q = quoteId ? q.eq('id', quoteId) : q.eq('opportunity_id', refs.opportunityId as string).order('created_at', { ascending: false });
-    const { data: quote } = await q.limit(1).maybeSingle();
+    const { data: quote, error: quoteError } = await q.limit(1).maybeSingle();
+    assertData(quoteError, quote, Boolean(quoteId));
     if (quote) {
+      await assertBranch(quote.branch_id);
       const r = quote as Record<string, unknown>;
       const items = ((r.quotation_items as Array<Record<string, unknown>>) ?? []).map((it) => ({
         description: String(it.description ?? ''),

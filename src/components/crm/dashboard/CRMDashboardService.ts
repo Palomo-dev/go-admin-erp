@@ -19,6 +19,7 @@ import { describeError, logError } from '@/lib/utils/errorMessage';
 // Inclusivo: conversaciones, mensajes, actividades y oportunidades NO llevan
 // sucursal (100 % nulo medido el 2026-09-11); con `eq` el panel salía en blanco.
 import { applyBranchFilterInclusive } from '@/lib/services/branchFilterHelper';
+import { probabilityToFraction } from '@/lib/services/crm/revenueOs/forecastScenarios';
 
 /**
  * Corta la ejecución si la consulta falló.
@@ -127,7 +128,7 @@ class CRMDashboardService {
 
     const monthForecast = forecastData?.reduce((sum, o) => {
       const probability = (o.stages as unknown as EtapaEmbebida)?.probability || 0;
-      return sum + ((o.amount || 0) * (probability || 0));
+      return sum + ((o.amount || 0) * probabilityToFraction(probability));
     }, 0) || 0;
 
     // Campañas activas
@@ -262,7 +263,7 @@ class CRMDashboardService {
     });
 
     const totalValue = stagesData.reduce((sum, s) => sum + s.value, 0);
-    const weightedValue = stagesData.reduce((sum, s) => sum + s.value * ((s.probability || 0) / 100), 0);
+    const weightedValue = stagesData.reduce((sum, s) => sum + s.value * probabilityToFraction(s.probability), 0);
 
     return { stages: stagesData, totalValue, weightedValue };
   }

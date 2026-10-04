@@ -108,6 +108,7 @@ function seed(extra: Record<string, Row[]> = {}): FakeDb {
       organizations: [{ id: ORG, name: 'Org de prueba' }],
       organization_members: [{ id: 'm1', organization_id: ORG, user_id: USER, is_active: true }],
       customers: [{ id: CUSTOMER_ID, organization_id: ORG, phone: '+573001112233', first_name: 'VOZR7T', last_name: 'Prueba' }],
+      opportunities: [{ id: 'eeeeeeee-0000-4000-8000-000000000001', organization_id: ORG, customer_id: CUSTOMER_ID, branch_id: null }],
       voice_agents: [agentRow],
       voices: [],
       phone_numbers: [],
@@ -170,7 +171,7 @@ function seedAgent(p: { linked: boolean; rowRecording?: boolean | null; orgRecor
   fake = seed({
     comm_settings: [commSettings({ voice_recording_enabled: p.orgRecording ?? true })],
     voice_agent_calls: [
-      { id: VAC, organization_id: ORG, voice_agent_id: 'ag-7', call_id: p.linked ? CALL_ID : null, provider_call_sid: null, status: 'dialing', started_at: null, consent_given: false, customer_id: null, opportunity_id: null, stage_agent_id: null },
+      { id: VAC, organization_id: ORG, voice_agent_id: 'ag-7', call_id: p.linked ? CALL_ID : null, provider_call_sid: 'CAr7tagent01', status: 'dialing', started_at: null, consent_given: false, customer_id: null, opportunity_id: null, stage_agent_id: null },
     ],
     calls: p.linked ? [callRow({ provider_call_sid: 'CAr7tagent01', mode: 'ai_agent', status: 'dialing', consent_given: false, ended_at: null, recording_enabled: p.rowRecording === undefined ? true : p.rowRecording })] : [],
   });
@@ -501,7 +502,7 @@ class OrgContextError extends Error {
 }
 jest.mock('@/lib/utils/orgContext', () => ({
   OrgContextError,
-  getServerOrgContext: jest.fn(async () => ({ organizationId: ORG, userId: USER, role: 'admin' })),
+  getServerOrgContext: jest.fn(async () => ({ organizationId: ORG, userId: USER, roleId: 2, isSuperAdmin: false, supabase: fake.client() })),
 }));
 // La ruta importa `callAnalysisService` → `stageGateService` → cliente de
 // NAVEGADOR (`@/lib/supabase/config`), que crea el cliente al importar (deuda
@@ -528,26 +529,26 @@ function multipart(fields: Record<string, string>, path = '/api/crm/calls/manual
 
 describe('VOZR7T-M · rutas manuales: la casilla se exige de verdad (no solo en el fuente)', () => {
   it('M.1 · /api/crm/calls/manual sin `recording_declaration` → 400 RECORDING_DECLARATION_REQUIRED y NO se crea nada', async () => {
-    const res = await manualPOST(multipart({ opportunity_id: 'opp-1' }));
+    const res = await manualPOST(multipart({ opportunity_id: 'eeeeeeee-0000-4000-8000-000000000001' }));
     expect(res.status).toBe(400);
     expect(await res.json()).toMatchObject({ code: 'RECORDING_DECLARATION_REQUIRED' });
     expect(createManualCallWithAudio).not.toHaveBeenCalled();
   });
   it('M.2 · `yes` y `false` tampoco valen; `on` sí y llega al servicio como `recordingDeclaration: true`', async () => {
-    expect((await manualPOST(multipart({ opportunity_id: 'opp-1', recording_declaration: 'yes' }))).status).toBe(400);
-    expect((await manualPOST(multipart({ opportunity_id: 'opp-1', recording_declaration: 'false' }))).status).toBe(400);
+    expect((await manualPOST(multipart({ opportunity_id: 'eeeeeeee-0000-4000-8000-000000000001', recording_declaration: 'yes' }))).status).toBe(400);
+    expect((await manualPOST(multipart({ opportunity_id: 'eeeeeeee-0000-4000-8000-000000000001', recording_declaration: 'false' }))).status).toBe(400);
     expect(createManualCallWithAudio).not.toHaveBeenCalled();
-    const ok = await manualPOST(multipart({ opportunity_id: 'opp-1', recording_declaration: 'on' }));
+    const ok = await manualPOST(multipart({ opportunity_id: 'eeeeeeee-0000-4000-8000-000000000001', recording_declaration: 'on' }));
     expect(ok.status).toBe(201);
     expect(createManualCallWithAudio).toHaveBeenCalledTimes(1);
     expect((createManualCallWithAudio.mock.calls[0] as unknown as [number, string, { recordingDeclaration: boolean }])[2].recordingDeclaration).toBe(true);
   });
   it('M.3 · /api/crm/transcribe: misma exigencia', async () => {
-    const res = await transcribePOST(multipart({ opportunity_id: 'opp-1' }, '/api/crm/transcribe'));
+    const res = await transcribePOST(multipart({ opportunity_id: 'eeeeeeee-0000-4000-8000-000000000001' }, '/api/crm/transcribe'));
     expect(res.status).toBe(400);
     expect(await res.json()).toMatchObject({ code: 'RECORDING_DECLARATION_REQUIRED' });
     expect(createManualCallWithAudio).not.toHaveBeenCalled();
-    expect((await transcribePOST(multipart({ opportunity_id: 'opp-1', recording_declaration: 'true' }, '/api/crm/transcribe'))).status).toBe(200);
+    expect((await transcribePOST(multipart({ opportunity_id: 'eeeeeeee-0000-4000-8000-000000000001', recording_declaration: 'true' }, '/api/crm/transcribe'))).status).toBe(200);
     expect(createManualCallWithAudio).toHaveBeenCalledTimes(1);
   });
 });
@@ -564,3 +565,12 @@ describe('VOZR7T-B · consent_method por conducta (timeline)', () => {
     expect(e2.call.consent_method).toBeNull();
   });
 });
+
+// Fixtures históricas del transporte heredado; los contratos RPC se verifican por separado.
+beforeEach(() => { process.env.CRM_CALL_ATOMIC_RPC_ENABLED = 'false'; });
+afterAll(() => { delete process.env.CRM_CALL_ATOMIC_RPC_ENABLED; });
+
+// Fixtures Dial anteriores a Conference: escape explícito, sin falsear los contratos nuevos.
+const phoneLegacyEnv = process.env.CRM_PHONE_CONFERENCE_ENABLED;
+beforeAll(() => { process.env.CRM_PHONE_CONFERENCE_ENABLED = 'false'; });
+afterAll(() => { if (phoneLegacyEnv === undefined) delete process.env.CRM_PHONE_CONFERENCE_ENABLED; else process.env.CRM_PHONE_CONFERENCE_ENABLED = phoneLegacyEnv; });

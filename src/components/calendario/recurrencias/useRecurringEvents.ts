@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { esReunionCrm } from '../reunionesCalendario';
 import { supabase } from '@/lib/supabase/config';
 
 export interface RecurringEvent {
@@ -72,7 +73,7 @@ export function useRecurringEvents({ organizationId }: UseRecurringEventsProps) 
 
       // Obtener conteo de excepciones para cada evento
       const eventsWithExceptions = await Promise.all(
-        (eventsData || []).map(async (event) => {
+        (eventsData || []).filter(event => !esReunionCrm(event)).map(async (event) => {
           const { count } = await supabase
             .from('calendar_exceptions')
             .select('*', { count: 'exact', head: true })
@@ -99,6 +100,21 @@ export function useRecurringEvents({ organizationId }: UseRecurringEventsProps) 
     fetchRecurringEvents();
   }, [fetchRecurringEvents]);
 
+  const exigirEventoManual = useCallback(async (eventId: string) => {
+    if (!organizationId) throw new Error('Organización no seleccionada');
+    const { data, error } = await supabase.from('calendar_events').select('id,metadata')
+      .eq('organization_id', organizationId).eq('id', eventId).maybeSingle();
+    if (error) throw error;
+    if (!data || esReunionCrm(data)) throw new Error('La recurrencia de reuniones CRM no se modifica desde calendario');
+  }, [organizationId]);
+
+  const exigirExcepcionManual = useCallback(async (id: string) => {
+    const { data, error } = await supabase.from('calendar_exceptions').select('calendar_event_id').eq('id', id).maybeSingle();
+    if (error) throw error;
+    if (!data) throw new Error('Excepción no encontrada');
+    await exigirEventoManual(data.calendar_event_id);
+  }, [exigirEventoManual]);
+
   const getExceptions = useCallback(async (eventId: string): Promise<CalendarException[]> => {
     const { data, error } = await supabase
       .from('calendar_exceptions')
@@ -115,6 +131,7 @@ export function useRecurringEvents({ organizationId }: UseRecurringEventsProps) 
   }, []);
 
   const createException = useCallback(async (exception: Omit<CalendarException, 'id' | 'created_at'>) => {
+    await exigirEventoManual(exception.calendar_event_id);
     const { data, error } = await supabase
       .from('calendar_exceptions')
       .insert(exception)
@@ -127,9 +144,11 @@ export function useRecurringEvents({ organizationId }: UseRecurringEventsProps) 
     }
 
     return data;
-  }, []);
+  }, [exigirEventoManual]);
 
   const updateException = useCallback(async (id: string, updates: Partial<CalendarException>) => {
+    await exigirExcepcionManual(id);
+    if (updates.calendar_event_id) await exigirEventoManual(updates.calendar_event_id);
     const { data, error } = await supabase
       .from('calendar_exceptions')
       .update(updates)
@@ -143,9 +162,10 @@ export function useRecurringEvents({ organizationId }: UseRecurringEventsProps) 
     }
 
     return data;
-  }, []);
+  }, [exigirExcepcionManual, exigirEventoManual]);
 
   const deleteException = useCallback(async (id: string) => {
+    await exigirExcepcionManual(id);
     const { error } = await supabase
       .from('calendar_exceptions')
       .delete()
@@ -155,12 +175,15 @@ export function useRecurringEvents({ organizationId }: UseRecurringEventsProps) 
       console.error('Error deleting exception:', error);
       throw error;
     }
-  }, []);
+  }, [exigirExcepcionManual]);
 
   const updateEvent = useCallback(async (id: string, updates: Partial<RecurringEvent>) => {
+    await exigirEventoManual(id);
+    if (updates.metadata && esReunionCrm(updates)) throw new Error('No se puede convertir un evento manual en reunión CRM');
     const { data, error } = await supabase
       .from('calendar_events')
       .update(updates)
+      .eq('organization_id', organizationId)
       .eq('id', id)
       .select()
       .single();
@@ -172,9 +195,10 @@ export function useRecurringEvents({ organizationId }: UseRecurringEventsProps) 
 
     await fetchRecurringEvents();
     return data;
-  }, [fetchRecurringEvents]);
+  }, [fetchRecurringEvents, exigirEventoManual, organizationId]);
 
   const deleteEvent = useCallback(async (id: string) => {
+    await exigirEventoManual(id);
     // Primero eliminar excepciones
     await supabase
       .from('calendar_exceptions')
@@ -185,6 +209,7 @@ export function useRecurringEvents({ organizationId }: UseRecurringEventsProps) 
     const { error } = await supabase
       .from('calendar_events')
       .delete()
+      .eq('organization_id', organizationId)
       .eq('id', id);
 
     if (error) {
@@ -193,7 +218,7 @@ export function useRecurringEvents({ organizationId }: UseRecurringEventsProps) 
     }
 
     await fetchRecurringEvents();
-  }, [fetchRecurringEvents]);
+  }, [fetchRecurringEvents, exigirEventoManual, organizationId]);
 
   return {
     events,

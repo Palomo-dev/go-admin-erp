@@ -105,7 +105,7 @@ export function isEngineRoutedEvent(value: unknown): boolean {
   return ENGINE_ROUTED_EVENTS.includes(String(value));
 }
 
-export type FieldKind = 'text' | 'number' | 'textarea' | 'template' | 'sequence' | 'stage' | 'entity' | 'field_name' | 'activity_type';
+export type FieldKind = 'text' | 'number' | 'textarea' | 'template' | 'sequence' | 'stage' | 'agent' | 'entity' | 'field_name' | 'activity_type';
 
 export interface ActionFieldDef {
   key: string;
@@ -223,7 +223,7 @@ export const ACTION_CATALOG: readonly ActionCatalogEntry[] = [
     defaults: {},
   },
   { type: 'send_sms', label: 'Enviar SMS', hint: 'Todavía no disponible.', implemented: false, fields: [], defaults: {} },
-  { type: 'start_ai_agent', label: 'Lanzar agente IA', hint: 'Todavía no disponible.', implemented: false, fields: [], defaults: {} },
+  { type: 'start_ai_agent', label: 'Lanzar agente IA', hint: 'Llama al cliente con el agente de voz activo elegido; respeta permisos, consentimiento, horario y créditos.', implemented: true, fields: [{ key: 'voice_agent_id', label: 'Agente de voz', kind: 'agent' }], defaults: {} },
   { type: 'ai_draft_email', label: 'Redactar email con IA', hint: 'Todavía no disponible.', implemented: false, fields: [], defaults: {} },
   { type: 'book_meeting_request', label: 'Solicitar reunión', hint: 'Todavía no disponible.', implemented: false, fields: [], defaults: {} },
   { type: 'webhook_out', label: 'Webhook saliente', hint: 'Todavía no disponible.', implemented: false, fields: [], defaults: {} },

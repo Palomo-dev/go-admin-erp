@@ -1,98 +1,87 @@
-'use client';
-
+"use client";
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { contactState } from '@/lib/services/crm/whatsapp/types';
-import { ERROR_CODE_LABELS, SKIP_REASON_LABELS } from '@/components/crm/whatsapp/api';
-import { CampanasService } from '../CampanasService';
-import { CONTACT_STATE_LABEL, type CampaignContact, type ContactState } from '../types';
-import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
-import { formatTimeInTz } from '@/lib/utils/dateDisplay';
+import { useTranslations } from 'next-intl';
+import { DataTable, type ColumnaTabla } from '@/components/kit/DataTable';
+import { FormField } from '@/components/kit/FormField';
+import { Pagination } from '@/components/kit/Pagination';
 import { SearchInput } from '@/components/kit/SearchInput';
+import { StatusBadge } from '@/components/kit/StatusBadge';
+import { CLASE_CAMPO } from '@/components/crm/kit/camposCrm';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { contactState } from '@/lib/services/crm/whatsapp/types';
+import { ApiError } from '@/components/crm/whatsapp/api';
+import { CampanasService } from '../CampanasService';
+import type { CampaignContact, ContactState } from '../types';
 
 const PAGE = 50;
-const VARIANT: Partial<Record<ContactState, 'success' | 'warning' | 'destructive' | 'secondary' | 'outline'>> = { sent: 'secondary', delivered: 'success', read: 'success', replied: 'success', failed: 'destructive', skipped: 'outline', pending: 'warning', queued: 'warning' };
-
-export function CampaignContactsTable({ campaignId, refreshKey }: { campaignId: string; refreshKey?: number }) {
-  const { timezone } = useOrgTimezone();
-  const fmt = (iso: string | null | undefined) => (iso ? formatTimeInTz(iso, timezone) : '—');
+const STATES: ContactState[] = ['pending', 'queued', 'sent', 'delivered', 'read', 'opened', 'clicked', 'replied', 'bounced', 'failed', 'skipped'];
+export function CampaignContactsTable({ campaignId, refreshKey }: { campaignId: string; refreshKey?: string | number }) {
+  const t = useTranslations('crm.campanasDetalle');
+  const { formatDateTime } = useFormatDate(null);
   const [rows, setRows] = useState<CampaignContact[]>([]);
   const [total, setTotal] = useState(0);
   const [state, setState] = useState('all');
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
+  const [revision, setRevision] = useState(0);
   const [loading, setLoading] = useState(true);
-
+  const [error, setError] = useState(false);
+  const [forbidden, setForbidden] = useState(false);
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    const t = setTimeout(() => {
-      CampanasService.contacts(campaignId, { state: state === 'all' ? undefined : state, q: q || undefined, page, pageSize: PAGE })
-        .then((r) => { if (!cancelled) { setRows(r.data); setTotal(r.total); } })
-        .catch(() => undefined)
-        .finally(() => !cancelled && setLoading(false));
+    const request = new AbortController();
+    let current = true;
+    setLoading(true); setRows([]); setTotal(0); setError(false); setForbidden(false);
+    const timer = setTimeout(() => {
+      const timeout = setTimeout(() => request.abort(), 20000);
+      void CampanasService.contacts(campaignId, { state: state === 'all' ? undefined : state, q: q || undefined, page, pageSize: PAGE }, request.signal)
+        .then(r => { if (current) { setRows(r.data); setTotal(r.total); } })
+        .catch(e => { if (current) { setError(true); setForbidden(e instanceof ApiError && [401, 403].includes(e.status)); } })
+        .finally(() => { clearTimeout(timeout); if (current) setLoading(false); });
     }, 250);
-    return () => { cancelled = true; clearTimeout(t); };
-  }, [campaignId, state, q, page, refreshKey]);
-
-  return (
-    <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-      <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <CardTitle className="text-base">Contactos ({total})</CardTitle>
-        <div className="flex gap-2">
-          <SearchInput
-            value={q}
-            onChange={(v) => { setQ(v); setPage(1); }}
-            placeholder="Buscar nombre, teléfono…"
-            etiqueta="Buscar contacto"
-            tamano="sm"
-            className="w-48"
-          />
-          <Select value={state} onValueChange={(v) => { setState(v); setPage(1); }}>
-            <SelectTrigger className="h-8 w-36 text-xs bg-gray-50 dark:bg-gray-900" aria-label="Filtrar por estado"><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="all">Todos</SelectItem>{(Object.keys(CONTACT_STATE_LABEL) as ContactState[]).map((s) => <SelectItem key={s} value={s}>{CONTACT_STATE_LABEL[s]}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-      </CardHeader>
-      <CardContent className="p-0 overflow-x-auto">
-        <Table>
-          <TableHeader><TableRow><TableHead>Cliente</TableHead><TableHead>Estado</TableHead><TableHead className="hidden md:table-cell">Enviado</TableHead><TableHead className="hidden md:table-cell">Entregado</TableHead><TableHead className="hidden md:table-cell">Leído</TableHead><TableHead className="hidden lg:table-cell">Respondió</TableHead><TableHead className="hidden lg:table-cell">Detalle</TableHead></TableRow></TableHeader>
-          <TableBody>
-            {loading && rows.length === 0 ? <TableRow><TableCell colSpan={7} className="text-center py-6 text-sm text-gray-500">Cargando…</TableCell></TableRow>
-              : rows.length === 0 ? <TableRow><TableCell colSpan={7} className="text-center py-8 text-sm text-gray-500">Sin contactos. Calcula la audiencia para materializar la campaña.</TableCell></TableRow>
-              : rows.map((r) => {
-                const s = contactState(r);
-                const m = r.metadata ?? {};
-                return (
-                  <TableRow key={r.id}>
-                    <TableCell><p className="text-sm font-medium text-gray-900 dark:text-gray-100">{r.customer?.full_name ?? 'Sin nombre'}</p><p className="text-xs text-gray-500">{r.customer?.phone ?? r.customer?.email ?? m.recipient ?? ''}</p></TableCell>
-                    <TableCell><Badge variant={VARIANT[s] ?? 'outline'} className="text-[10px]">{CONTACT_STATE_LABEL[s]}</Badge></TableCell>
-                    <TableCell className="hidden md:table-cell text-xs text-gray-500">{fmt(r.sent_at)}</TableCell>
-                    <TableCell className="hidden md:table-cell text-xs text-gray-500">{fmt(m.delivered_at)}</TableCell>
-                    <TableCell className="hidden md:table-cell text-xs text-gray-500">{fmt(m.read_at)}</TableCell>
-                    <TableCell className="hidden lg:table-cell text-xs text-gray-500">{fmt(r.replied_at)}</TableCell>
-                    <TableCell className="hidden lg:table-cell text-xs text-gray-500">
-                      {s === 'skipped' && (SKIP_REASON_LABELS[String(m.skipped_reason)] ?? m.skipped_reason)}
-                      {s === 'failed' && (ERROR_CODE_LABELS[String(m.error_code)] ?? m.error_message ?? m.error_code)}
-                      {m.opportunity_id && <Link href={`/app/crm/oportunidades/${m.opportunity_id}`} className="ml-1 text-blue-600 dark:text-blue-400 hover:underline">→ oportunidad</Link>}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-          </TableBody>
-        </Table>
-        {total > PAGE && (
-          <div className="flex items-center justify-between p-3 text-xs">
-            <span>Página {page} de {Math.ceil(total / PAGE)}</span>
-            <div className="flex gap-2"><Button size="sm" variant="outline" className="h-7" disabled={page <= 1} onClick={() => setPage(page - 1)}>Anterior</Button><Button size="sm" variant="outline" className="h-7" disabled={page * PAGE >= total} onClick={() => setPage(page + 1)}>Siguiente</Button></div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
+    return () => { current = false; request.abort(); clearTimeout(timer); };
+  }, [campaignId, state, q, page, refreshKey, revision]);
+  const clear = () => { setState('all'); setQ(''); setPage(1); };
+  const reasonLabel = (code: string) => t.has(`razones.${code}`) ? t(`razones.${code}`) : t('otraExclusion');
+  const detail = (row: CampaignContact) => <div className="space-y-1 text-xs text-fg-secondary">
+    {contactState(row) === 'failed' && <p>{row.metadata?.error_code ? t('errorProveedor', { code: row.metadata.error_code }) : t('estadosContacto.failed')}</p>}
+    {contactState(row) === 'skipped' && <p>{reasonLabel(String(row.metadata?.skipped_reason ?? ''))}</p>}
+    {row.metadata?.opportunity_id && <Link className="text-link hover:underline" href={`/app/crm/oportunidades/${row.metadata.opportunity_id}`}>{t('oportunidad')}</Link>}
+  </div>;
+  const customer = (row: CampaignContact) => <div className="min-w-0">
+    <p className="break-words font-medium text-fg">{row.customer?.full_name || t('sinNombre')}</p>
+    <p className="break-all text-xs text-fg-secondary">{row.customer?.phone || row.customer?.email || row.metadata?.recipient || '—'}</p>
+  </div>;
+  const status = (row: CampaignContact) => <StatusBadge estado={contactState(row)} etiqueta={t(`estadosContacto.${contactState(row)}`)} />;
+  const columns: ColumnaTabla<CampaignContact>[] = [
+    { id: 'customer', encabezado: t('cliente'), celda: customer },
+    { id: 'state', encabezado: t('filtro'), celda: status },
+    { id: 'sent', encabezado: t('enviado'), celda: row => formatDateTime(row.sent_at), ocultarDebajo: 'md' },
+    { id: 'delivered', encabezado: t('entregado'), celda: row => formatDateTime(row.metadata?.delivered_at), ocultarDebajo: 'lg' },
+    { id: 'read', encabezado: t('leido'), celda: row => formatDateTime(row.metadata?.read_at), ocultarDebajo: 'lg' },
+    { id: 'replied', encabezado: t('respondio'), celda: row => formatDateTime(row.replied_at), ocultarDebajo: 'xl' },
+    { id: 'detail', encabezado: t('detalle'), celda: detail },
+  ];
+  const hasFilters = !!q || state !== 'all';
+  return <section className="space-y-3 rounded-xl border border-line bg-surface p-4">
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      <h2 className="text-base font-semibold text-fg">{t('contactos', { n: total })}</h2>
+      <div className="flex w-full flex-wrap items-end gap-3 sm:w-auto">
+        <SearchInput value={q} onChange={value => { setQ(value); setPage(1); }} etiqueta={t('buscar')} placeholder={t('buscarAyuda')} className="w-full sm:w-56" />
+        <FormField etiqueta={t('filtro')}><select className={CLASE_CAMPO} value={state} onChange={event => { setState(event.target.value); setPage(1); }}>
+          <option value="all">{t('todos')}</option>{STATES.map(key => <option key={key} value={key}>{t(`estadosContacto.${key}`)}</option>)}
+        </select></FormField>
+      </div>
+    </div>
+    <DataTable columnas={columns} filas={rows} obtenerId={row => row.id} etiqueta={t('contactos', { n: total })}
+      estado={loading ? 'cargando' : error ? forbidden ? 'sinPermiso' : 'error' : !rows.length ? hasFilters ? 'sinResultados' : 'vacio' : 'listo'}
+      error={{ titulo: t('errorContactos') }} sinPermiso={{ titulo: t('sinPermiso') }}
+      vacio={{ titulo: t('sinContactos'), descripcion: t('sinContactosDetalle') }} sinResultados={{ titulo: t('sinResultados') }}
+      onReintentar={() => setRevision(n => n + 1)} onLimpiarFiltros={clear}
+      tarjetaMovil={row => <article className="space-y-2 rounded-lg border border-line bg-surface p-3">
+        <div className="flex items-start justify-between gap-2">{customer(row)}{status(row)}</div>
+        <p className="text-xs text-fg-secondary">{t('enviado')} · {formatDateTime(row.sent_at)}</p>{detail(row)}
+      </article>}
+      pie={<Pagination pagina={page} tamano={PAGE} total={total} onPaginaChange={setPage} cargando={loading} />} />
+  </section>;
 }

@@ -29,7 +29,7 @@ async function call<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export const post = <T>(url: string, body?: unknown) => call<T>(url, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) });
-export const get = <T>(url: string) => call<T>(url, { method: 'GET', cache: 'no-store' });
+export const get = <T>(url: string, init?: RequestInit) => call<T>(url, { ...init, method: 'GET', cache: 'no-store' });
 
 export interface WindowInfo extends WindowState {
   label: string;
@@ -78,7 +78,7 @@ export const waApi = {
     if (q.q) p.set('q', q.q);
     if (q.channelId) p.set('channelId', q.channelId);
     if (q.includeInactive) p.set('includeInactive', '1');
-    return get<{ data: WhatsAppTemplate[] }>(`/api/crm/whatsapp/templates?${p.toString()}`);
+    return get<{ data: WhatsAppTemplate[]; can_manage?: boolean }>(`/api/crm/whatsapp/templates?${p.toString()}`);
   },
   template: (id: string) => get<{ data: WhatsAppTemplate }>(`/api/crm/whatsapp/templates/${id}`),
   createTemplate: (input: { name: string; category: HsmCategory; language?: string; description?: string; components: HsmComponent[]; variable_map?: Record<string, string>; examples?: Record<string, string>; channel_id?: string | null }) => post<{ data: WhatsAppTemplate }>('/api/crm/whatsapp/templates', input),
@@ -108,22 +108,22 @@ export interface CreateCampaignBody {
   description?: string | null;
 }
 
-export interface MaterializeResult { total: number; pending: number; skipped: number; skipped_by_reason: Record<string, number>; estimated_cost: number | null }
-export interface CampaignStatsResult { counts: CampaignCounts; by_error_code: Record<string, number>; by_skip_reason: Record<string, number>; timeline: Array<{ minute: string; sent: number; delivered: number; read: number; failed: number }>; estimated_cost: number | null; actual_cost: number }
+export interface MaterializeResult { campaign_updated_at?: string; total: number; pending: number; skipped: number; skipped_by_reason: Record<string, number>; estimated_cost: number | null }
+export interface CampaignStatsResult { counts: CampaignCounts; by_error_code: Record<string, number>; by_skip_reason: Record<string, number>; timeline: Array<{ minute: string; sent: number; delivered: number; read: number; failed: number }>; estimated_cost: number | null; actual_cost: number | null; known_actual_cost: number; actual_cost_complete: boolean; unpriced_contacts: number }
 
 export const campaignsApi = {
   list: (q: { status?: string; channel?: string; q?: string } = {}) => get<{ data: Campaign[]; can_manage: boolean }>(`/api/crm/campaigns?${new URLSearchParams(Object.entries(q).filter(([, v]) => !!v) as [string, string][]).toString()}`),
-  get: (id: string) => get<{ data: Campaign; can_manage: boolean }>(`/api/crm/campaigns/${id}`),
+  get: (id: string, signal?: AbortSignal) => get<{ data: Campaign; can_manage: boolean }>(`/api/crm/campaigns/${id}`, { signal }),
   create: (body: CreateCampaignBody) => post<{ data: Campaign }>('/api/crm/campaigns', body),
-  update: (id: string, body: Partial<CreateCampaignBody>) => call<{ data: Campaign }>(`/api/crm/campaigns/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  update: (id: string, body: Partial<CreateCampaignBody> & { expected_updated_at?: string }) => call<{ data: Campaign }>(`/api/crm/campaigns/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   remove: (id: string) => call<{ success: boolean }>(`/api/crm/campaigns/${id}`, { method: 'DELETE' }),
-  materialize: (id: string) => post<MaterializeResult & { success: boolean }>(`/api/crm/campaigns/${id}/materialize`),
-  launch: (id: string, body: { scheduled_at?: string | null; force?: boolean } = {}) => post<{ data: Campaign }>(`/api/crm/campaigns/${id}/launch`, body),
+  materialize: (id: string, body: { expected_updated_at?: string } = {}) => post<MaterializeResult & { success: boolean }>(`/api/crm/campaigns/${id}/materialize`, body),
+  launch: (id: string, body: { scheduled_at?: string | null; force?: boolean; expected_updated_at?: string } = {}) => post<{ data: Campaign }>(`/api/crm/campaigns/${id}/launch`, body),
   pause: (id: string) => post<{ data: Campaign }>(`/api/crm/campaigns/${id}/pause`),
   resume: (id: string) => post<{ data: Campaign }>(`/api/crm/campaigns/${id}/resume`),
   cancel: (id: string) => post<{ data: Campaign }>(`/api/crm/campaigns/${id}/cancel`),
-  stats: (id: string, sync = false) => get<CampaignStatsResult>(`/api/crm/campaigns/${id}/stats${sync ? '?sync=1' : ''}`),
-  contacts: (id: string, q: { state?: string; q?: string; page?: number; pageSize?: number } = {}) => get<{ data: CampaignContact[]; total: number }>(`/api/crm/campaigns/${id}/contacts?${new URLSearchParams(Object.entries(q).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)])).toString()}`),
+  stats: (id: string, sync = false, signal?: AbortSignal) => get<CampaignStatsResult>(`/api/crm/campaigns/${id}/stats${sync ? '?sync=1' : ''}`, { signal }),
+  contacts: (id: string, q: { state?: string; q?: string; page?: number; pageSize?: number } = {}, signal?: AbortSignal) => get<{ data: CampaignContact[]; total: number }>(`/api/crm/campaigns/${id}/contacts?${new URLSearchParams(Object.entries(q).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)])).toString()}`, { signal }),
   csvUrl: (id: string, state?: string) => `/api/crm/campaigns/${id}/contacts?export=csv${state ? `&state=${state}` : ''}`,
 };
 

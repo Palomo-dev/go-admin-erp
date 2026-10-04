@@ -28,7 +28,7 @@ import {
   validateConditions,
   type ConditionNode,
 } from './automation/conditionsDsl';
-import { emptyRuleContext, loadRuleContext, type RuleContext } from './automation/ruleContext';
+import { emptyRuleContext, loadRuleContext, enriquecerContextoCompras, type RuleContext } from './automation/ruleContext';
 import { defaultEventFor } from './automation/ruleCatalog';
 
 /** Evento por defecto según el disparador. Vive en `ruleCatalog` (puro) para que el editor use la misma función. */
@@ -194,14 +194,16 @@ export async function getAutomationRules(
   orgId: number,
   supabase: SupabaseClient,
 ): Promise<AutomationRule[]> {
-  const { data, error } = await supabase
-    .from('automation_rules')
-    .select('*')
-    .eq('organization_id', orgId)
-    .order('priority', { ascending: true });
-
-  if (error) throw new Error(`getAutomationRules: ${error.message}`);
-  return (data ?? []) as AutomationRule[];
+  const rules: AutomationRule[] = [];
+  for (let offset = 0; ; offset += 500) {
+    const { data, error } = await supabase.from('automation_rules').select('*')
+      .eq('organization_id', orgId).order('priority', { ascending: true })
+      .order('id', { ascending: true }).range(offset, offset + 499);
+    if (error) throw new Error(`getAutomationRules: ${error.message}`);
+    if (!Array.isArray(data)) throw new Error('getAutomationRules: respuesta inválida');
+    rules.push(...data as AutomationRule[]);
+    if (data.length < 500) return rules;
+  }
 }
 
 export async function createAutomationRule(
@@ -328,6 +330,7 @@ export async function evaluateTrigger(
   for (const rule of (rules ?? []) as AutomationRule[]) {
     if (options?.eventType && rule.event && rule.event !== options.eventType) continue;
     if (!matchesTriggerConfig(rule, triggerType, triggerPayload)) continue;
+    await enriquecerContextoCompras(ctx, rule.conditions, supabase);
     if (!evaluateConditionTree(rule.conditions, ctx).result) continue;
     matching.push(rule);
   }
@@ -499,19 +502,16 @@ export async function executeAutomationRule(
   );
 
   // 3. Condiciones.
+  await enriquecerContextoCompras(ctx, automationRule.conditions, supabase);
   const evaluated = evaluateConditionTree(automationRule.conditions, ctx);
   if (!evaluated.result) {
     return skip('conditions_not_met', { trace: evaluated.trace });
   }
 
-  // 4. run_once / cooldown.
-  if (opportunityId && automationRule.run_once_per_opportunity) {
-    if (await alreadyRan(supabase, orgId, ruleId, opportunityId)) return skip('run_once_per_opportunity');
-  }
-  if (opportunityId && (automationRule.cooldown_hours ?? 0) > 0) {
-    const since = new Date(now.getTime() - automationRule.cooldown_hours * 3_600_000).toISOString();
-    if (await alreadyRan(supabase, orgId, ruleId, opportunityId, since)) return skip('cooldown');
-  }
+  // 4. Same guard for live execution and previews.
+  const gate = await automationRepeatGate(automationRule, opportunityId, now,
+    since => alreadyRan(supabase, orgId, ruleId, opportunityId!, since));
+  if (gate) return skip(gate);
 
   const actions = (automationRule.actions || []) as AutomationAction[];
   const run = await insertRun(supabase, {
@@ -586,8 +586,32 @@ export async function testRunAutomationRule(
   if (!rule) throw new Error('Regla de automatización no encontrada');
 
   const r = rule as AutomationRule;
-  const ctx = await loadRuleContext({ orgId, opportunityId }, supabase);
+  const ctx = await loadRuleContext({ orgId, opportunityId, conditions: r.conditions }, supabase);
+  if (opportunityId && !ctx.opportunity) throw new Error('Oportunidad no encontrada');
+  return previewAutomationRule(r, ctx, supabase);
+}
+
+export async function automationRepeatGate(
+  rule: Pick<AutomationRule, 'run_once_per_opportunity' | 'cooldown_hours'>,
+  opportunityId: string | null,
+  now: Date,
+  hasRun: (since?: string) => Promise<boolean>,
+): Promise<string | null> {
+  if (!opportunityId) return null;
+  if (rule.run_once_per_opportunity && await hasRun()) return 'run_once_per_opportunity';
+  if (rule.cooldown_hours > 0 && await hasRun(new Date(now.getTime() - rule.cooldown_hours * 3_600_000).toISOString())) return 'cooldown';
+  return null;
+}
+
+export async function previewAutomationRule(
+  r: AutomationRule, ctx: RuleContext, supabase: SupabaseClient,
+  hasRun?: (since?: string) => Promise<boolean>,
+  gateAt = ctx.now,
+): Promise<{ matched: boolean; skip_reason: string | null; trace: unknown[]; actions_plan: unknown[] }> {
   const evaluated = evaluateConditionTree(r.conditions, ctx);
+  const opportunityId = typeof ctx.opportunity?.id === 'string' ? ctx.opportunity.id : null;
+  const gate = r.is_active && evaluated.result ? await automationRepeatGate(r, opportunityId, gateAt,
+    hasRun ?? (since => alreadyRan(supabase, ctx.orgId, r.id, opportunityId!, since))) : null;
   const plan = (r.actions || []).map((a, i) => ({
     index: i,
     type: a?.type ?? null,
@@ -596,8 +620,8 @@ export async function testRunAutomationRule(
   }));
 
   return {
-    matched: r.is_active && evaluated.result,
-    skip_reason: !r.is_active ? 'rule_inactive' : evaluated.result ? null : 'conditions_not_met',
+    matched: r.is_active && evaluated.result && !gate,
+    skip_reason: !r.is_active ? 'rule_inactive' : !evaluated.result ? 'conditions_not_met' : gate,
     trace: evaluated.trace,
     actions_plan: plan,
   };
@@ -626,5 +650,6 @@ export async function getAutomationRuns(
 
   const { data, error, count } = await query;
   if (error) throw new Error(`getAutomationRuns: ${error.message}`);
-  return { data: (data || []) as AutomationRun[], count: count || 0 };
+  if (!Array.isArray(data) || typeof count !== 'number') throw new Error('getAutomationRuns: respuesta inválida');
+  return { data: data as AutomationRun[], count };
 }

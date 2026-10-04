@@ -1,5 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getServiceClient } from '@/lib/supabase/server-service';
+import { isTerminalStatus } from './callStateMachine';
+import { assertLegacyFilterBudget, isAtomicCallRpcEnabled } from './callMutationService';
+import { CrmHttpError } from './crmErrors';
 import { ACTIVITY_TYPES } from '@/lib/crm/enums';
 import { assertDbEnum, NOTIFICATION_CHANNEL_VALUES } from '@/lib/services/crm/callAnalysisRules';
 
@@ -11,7 +14,7 @@ import { assertDbEnum, NOTIFICATION_CHANNEL_VALUES } from '@/lib/services/crm/ca
  * outcome desde calls.status/answered_by, duration_seconds, user_id,
  * occurred_at = calls.started_at, related_type/related_id desde la
  * oportunidad (o el cliente), notes = resumen del análisis, metadata con ids.
- * También actualiza `opportunities.last_contact_at/contact_channel/contact_result/temperature`
+ * El trigger canónico actualiza contacto en cliente y oportunidad con occurred_at
  * y notifica al vendedor con `fn_create_org_notification`.
  */
 
@@ -26,6 +29,7 @@ import { assertDbEnum, NOTIFICATION_CHANNEL_VALUES } from '@/lib/services/crm/ca
  */
 export const CALL_ACTIVITY_TYPE = assertDbEnum('call', ACTIVITY_TYPES, 'activities.activity_type');
 export const CALL_NOTIFICATION_CHANNEL = assertDbEnum('app', NOTIFICATION_CHANNEL_VALUES, 'notifications.channel');
+export const ACTIVITY_FILTER_COLUMNS = ['id', 'organization_id', 'metadata', 'notes', 'outcome', 'duration_seconds', 'channel', 'related_type', 'related_id', 'user_id', 'occurred_at', 'updated_at'] as const;
 
 export interface CallActivityEnrichment {
   summary?: string | null;
@@ -54,6 +58,7 @@ export interface CallRowForActivity {
   opportunity_id: string | null;
   user_id: string | null;
   branch_id?: number | null;
+  metadata?: Record<string, unknown> | null;
 }
 
 export type CallOutcome = 'answered' | 'voicemail' | 'no_answer' | 'busy' | 'failed' | 'canceled' | 'in_progress' | 'unknown';
@@ -119,7 +124,7 @@ export function buildActivityMetadata(existing: Record<string, unknown> | null |
 export interface UpsertCallActivityOptions {
   supabase?: SupabaseClient;
   enrich?: CallActivityEnrichment;
-  /** Fila de la llamada ya cargada (evita el SELECT). */
+  /** Snapshot inicial compatible con consumidores antiguos; se relee la fila antes de escribir. */
   call?: CallRowForActivity;
 }
 
@@ -144,7 +149,15 @@ const activityLocks = new Map<string, Promise<{ activityId: string; created: boo
 export async function upsertCallActivity(orgId: number, callId: string, opts: UpsertCallActivityOptions = {}): Promise<{ activityId: string; created: boolean } | null> {
   const key = `${orgId}:${callId}`;
   const previous = activityLocks.get(key);
-  const run = (previous ? previous.catch(() => null) : Promise.resolve(null)).then(() => upsertCallActivityUnlocked(orgId, callId, opts));
+  const run = (previous ? previous.catch(() => null) : Promise.resolve(null)).then(async () => {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try { return await upsertCallActivityUnlocked(orgId, callId, opts); }
+      catch (error) {
+        if (!(error instanceof CrmHttpError) || error.code !== 'actividad_de_llamada_cambiada' || attempt === 2) throw error;
+      }
+    }
+    return null;
+  });
   activityLocks.set(key, run);
   try {
     return await run;
@@ -155,34 +168,62 @@ export async function upsertCallActivity(orgId: number, callId: string, opts: Up
 
 async function upsertCallActivityUnlocked(orgId: number, callId: string, opts: UpsertCallActivityOptions = {}): Promise<{ activityId: string; created: boolean } | null> {
   const sb = opts.supabase ?? getServiceClient();
-  let call = opts.call ?? null;
-  if (!call) {
-    const { data } = await sb
-      .from('calls')
-      .select('id, organization_id, direction, mode, status, answered_by, started_at, ended_at, duration_seconds, customer_id, opportunity_id, user_id')
-      .eq('id', callId)
-      .eq('organization_id', orgId)
-      .maybeSingle();
-    call = (data as CallRowForActivity | null) ?? null;
-  }
-  if (!call) return null;
   const enrich = opts.enrich ?? {};
+  if (isAtomicCallRpcEnabled()) {
+    const { data, error } = await sb.rpc('fn_crm_sync_llamada_servicio', {
+      p_org: orgId, p_call: callId, p_enrich: enrich,
+    });
+    if (error) throw error;
+    const result = data as { activity_id?: unknown; created?: unknown } | null;
+    if (result?.activity_id === null) return null;
+    if (typeof result?.activity_id !== 'string' || typeof result.created !== 'boolean') throw new Error('Respuesta inválida al sincronizar la llamada');
+    return { activityId: result.activity_id, created: result.created };
+  }
 
-  const { data: existingRow } = await sb.from('activities').select('id, notes, metadata').eq('organization_id', orgId).eq('call_id', callId).order('created_at', { ascending: true }).limit(1).maybeSingle();
-  const existing = existingRow as { id: string; notes: string | null; metadata: Record<string, unknown> | null } | null;
+  // La disposición actual proviene de la fila persistida, nunca del snapshot de un job.
+  const { data: storedCall, error: callError } = await sb.from('calls')
+    .select('id, organization_id, direction, mode, status, answered_by, started_at, ended_at, duration_seconds, customer_id, opportunity_id, user_id, metadata')
+    .eq('id', callId).eq('organization_id', orgId).maybeSingle();
+  if (callError) throw callError;
+  const call = storedCall as CallRowForActivity | null;
+  if (!call || !isTerminalStatus(call.status) || !call.ended_at) return null;
+  const started = Date.parse(call.started_at ?? '');
+  const ended = Date.parse(call.ended_at);
+  if (!Number.isFinite(started) || !Number.isFinite(ended) || ended < started || ended > Date.now()) {
+    throw new CrmHttpError(400, 'fecha_llamada_invalida', 'La llamada completada debe tener un inicio y un final válidos en el pasado');
+  }
+
+  const { data: existingRow, error: activityError } = await sb.from('activities').select('*').eq('organization_id', orgId).eq('call_id', callId).order('created_at', { ascending: true }).limit(1).maybeSingle();
+  if (activityError) throw activityError;
+  const existing = existingRow as ({ id: string; notes: string | null; metadata: Record<string, unknown> | null } & Record<string, unknown>) | null;
 
   // F3: una disposición manual (metadata.disposition_outcome) no se pisa por el análisis IA.
-  const dispositionOutcome = typeof existing?.metadata?.disposition_outcome === 'string' ? (existing.metadata.disposition_outcome as string) : null;
-  const outcome = enrich.outcome ?? dispositionOutcome ?? mapCallStatusToOutcome(call.status, call.answered_by);
+  const callDisposition = typeof call.metadata?.disposition_outcome === 'string' ? call.metadata.disposition_outcome : null;
+  const activityDisposition = typeof existing?.metadata?.disposition_outcome === 'string' ? existing.metadata.disposition_outcome : null;
+  const callDispositionAt = Date.parse(String(call.metadata?.disposition_at ?? ''));
+  const activityDispositionAt = Date.parse(String(existing?.metadata?.disposition_at ?? ''));
+  const useActivityDisposition = Boolean(activityDisposition) && (!callDisposition ||
+    (Number.isFinite(activityDispositionAt) && (!Number.isFinite(callDispositionAt) || activityDispositionAt > callDispositionAt)));
+  const dispositionOutcome = useActivityDisposition ? activityDisposition : callDisposition ?? activityDisposition;
+  const outcome = dispositionOutcome ?? enrich.outcome ?? mapCallStatusToOutcome(call.status, call.answered_by);
   const relatedType = call.opportunity_id ? 'opportunity' : call.customer_id ? 'customer' : null;
   const relatedId = call.opportunity_id ?? call.customer_id ?? null;
   const metadata = buildActivityMetadata(existing?.metadata, call, enrich);
-  const notes = enrich.summary ?? existing?.notes ?? defaultNotes(call, outcome as CallOutcome);
+  const dispositionNote = typeof call.metadata?.disposition_note === 'string' ? call.metadata.disposition_note : null;
+  if (callDisposition && !useActivityDisposition) {
+    metadata.disposition_outcome = callDisposition;
+    metadata.disposition_at = call.metadata?.disposition_at;
+    metadata.disposition_next_action = call.metadata?.disposition_next_action;
+  }
+  const manualNotes = useActivityDisposition ? existing?.notes : dispositionNote;
+  const liveNote = typeof call.metadata?.live_note === 'string' ? call.metadata.live_note : null;
+  const uploadedNote = typeof call.metadata?.notes === 'string' ? call.metadata.notes : null;
+  const notes = manualNotes ?? enrich.summary ?? liveNote ?? uploadedNote ?? existing?.notes ?? defaultNotes(call, outcome as CallOutcome);
 
+  if (existing) assertLegacyFilterBudget({ ...existing, organization_id: orgId }, ACTIVITY_FILTER_COLUMNS, 'id');
+  assertLegacyFilterBudget({ ...existing, id: existing?.id ?? callId, organization_id: orgId, metadata, notes, outcome, duration_seconds: call.duration_seconds, channel: callChannel(call.mode), related_type: relatedType, related_id: relatedId, user_id: call.user_id, occurred_at: call.started_at }, ACTIVITY_FILTER_COLUMNS, 'id');
   if (existing) {
-    const { error } = await sb
-      .from('activities')
-      .update({
+    let update = sb.from('activities').update({
         notes,
         metadata,
         outcome,
@@ -196,7 +237,15 @@ async function upsertCallActivityUnlocked(orgId: number, callId: string, opts: U
       })
       .eq('id', existing.id)
       .eq('organization_id', orgId);
-    if (error) throw new Error(`activities update falló: ${error.message}`);
+    // Otro proceso puede haber enriquecido la misma fila entre lectura y escritura.
+    for (const column of ACTIVITY_FILTER_COLUMNS.filter((column) => column !== 'id' && column !== 'organization_id')) {
+      const value = existing[column];
+      if (value === undefined) continue;
+      update = value === null ? update.is(column, null) : update.eq(column, column === 'metadata' ? JSON.stringify(value) : value);
+    }
+    const { data: saved, error } = await update.select('id').maybeSingle();
+    if (error) throw error;
+    if (!saved) throw new CrmHttpError(409, 'actividad_de_llamada_cambiada', 'El historial de la llamada cambió mientras se guardaba');
     return { activityId: existing.id, created: false };
   }
 
@@ -222,7 +271,7 @@ async function upsertCallActivityUnlocked(orgId: number, callId: string, opts: U
     // Carrera entre procesos (o el UNIQUE de call_id ya aplicado por DB): si otro
     // insert ganó, se reutiliza su fila en vez de propagar el error.
     const { data: again } = await sb.from('activities').select('id').eq('organization_id', orgId).eq('call_id', callId).order('created_at', { ascending: true }).limit(1).maybeSingle();
-    if (again) return { activityId: (again as { id: string }).id, created: false };
+    if (again) throw new CrmHttpError(409, 'actividad_de_llamada_cambiada', 'Se creó el historial en otro proceso');
     throw new Error(`activities insert falló: ${error?.message ?? 'sin datos'}`);
   }
   return { activityId: (created as { id: string }).id, created: true };
@@ -233,33 +282,6 @@ function defaultNotes(call: CallRowForActivity, outcome: CallOutcome): string {
   const dur = call.duration_seconds ? ` · ${Math.floor(call.duration_seconds / 60)}:${String(call.duration_seconds % 60).padStart(2, '0')}` : '';
   const out: Record<CallOutcome, string> = { answered: 'contestada', voicemail: 'buzón de voz', no_answer: 'sin respuesta', busy: 'ocupado', failed: 'fallida', canceled: 'cancelada', in_progress: 'en curso', unknown: '' };
   return `${dir}${dur}${out[outcome] ? ` · ${out[outcome]}` : ''}`;
-}
-
-/**
- * Actualiza la oportunidad tras la llamada: último contacto, canal, resultado
- * y temperatura (solo si viene definida). No pisa discovery aquí (lo hace applyAnalysis).
- */
-export async function touchOpportunityFromCall(
-  orgId: number,
-  call: CallRowForActivity,
-  patch: { contactResult: string; temperature?: string | null },
-  supabase?: SupabaseClient,
-): Promise<boolean> {
-  if (!call.opportunity_id) return false;
-  const sb = supabase ?? getServiceClient();
-  const update: Record<string, unknown> = {
-    last_contact_at: call.ended_at ?? call.started_at ?? new Date().toISOString(),
-    contact_channel: 'call',
-    contact_result: patch.contactResult,
-    updated_at: new Date().toISOString(),
-  };
-  if (patch.temperature && ['cold', 'warm', 'hot'].includes(patch.temperature)) update.temperature = patch.temperature;
-  const { error } = await sb.from('opportunities').update(update).eq('id', call.opportunity_id).eq('organization_id', orgId);
-  if (error) {
-    console.warn('[callActivityService] touchOpportunityFromCall:', error.message);
-    return false;
-  }
-  return true;
 }
 
 /**

@@ -59,7 +59,7 @@ jest.mock('@supabase/supabase-js', () => ({
       }),
       then: (ok: (v: unknown) => unknown) => Promise.resolve({ error: null }).then(ok),
     });
-    return { from: () => q, rpc: async () => ({ error: null }) };
+    return { from: () => q, rpc: async (name: string) => ({ error: null, data: name === 'crm_voice_session_open' ? '20000000-0000-4000-8000-000000000001' : { settled: true, applied: true, minutes_charged: 1, minutes_due: 0 } }) };
   },
 }));
 

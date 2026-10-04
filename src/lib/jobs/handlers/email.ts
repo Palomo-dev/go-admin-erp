@@ -20,9 +20,8 @@ import { isEmailError } from '@/lib/services/crm/email/types';
  * r4 (tester r3 T-1): en el envío programado el handler comprueba primero que
  * `email_message_id` pertenezca a `orgId` (el payload nunca decide la org;
  * `dispatchScheduledEmail` busca solo por id) y vuelve a mirar `signal` justo
- * antes del efecto. Ni `dispatchScheduledEmail` ni `sendPendingBatch` admiten
- * `signal` (F7): un abort DURANTE el envío no lo cancela; lo cubre el estado
- * de la fila (`status_sent` / `provider_message_id`) en la siguiente ejecución.
+ * antes del efecto. Los lotes de campaña reciben signal y conservan un recibo
+ * cuando el proveedor tarda; una respuesta tardía confirma la misma fila.
  */
 export const emailJobHandler: JobHandler = async ({ job, supabase, orgId, log, signal }) => {
   const p = job.payload ?? {};
@@ -30,7 +29,7 @@ export const emailJobHandler: JobHandler = async ({ job, supabase, orgId, log, s
   try {
     if (p.batch === true) {
       const ids = Array.isArray(p.email_message_ids) ? (p.email_message_ids as string[]) : [];
-      const r = await sendPendingBatch(orgId, ids, supabase);
+      const r = await sendPendingBatch(orgId, ids, supabase, { signal });
       // `sendPendingBatch` ya no lanza a mitad de lote: devuelve SIEMPRE el
       // resultado parcial (tester r2 #3). Se registra antes de decidir el
       // reintento para que el resultado no se pierda con la excepción.

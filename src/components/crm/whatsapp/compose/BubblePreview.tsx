@@ -15,13 +15,15 @@ export interface BubbleProps {
   time?: string;
   className?: string;
   outbound?: boolean;
+  previewLabel?: string;
+  emptyLabel?: string;
 }
 
 /** Vista previa tipo burbuja de WhatsApp (fondo #e7ffdb / dark #005c4b). Los botones no son interactivos. */
-export function BubblePreview({ header, body, footer, buttons = [], media, status, time, className, outbound = true }: BubbleProps) {
+export function BubblePreview({ header, body, footer, buttons = [], media, status, time, className, outbound = true, previewLabel = 'Vista previa del mensaje', emptyLabel = 'Escribe un mensaje…' }: BubbleProps) {
   const { timezone } = useOrgTimezone();
   return (
-    <div className={cn('w-full max-w-sm', className)} aria-label="Vista previa del mensaje" role="img">
+    <div className={cn('w-full max-w-sm', className)} aria-label={previewLabel} role="img">
       <div className={cn('rounded-2xl px-3 py-2 text-sm shadow-sm', outbound ? 'bg-[#e7ffdb] dark:bg-[#005c4b] text-gray-900 dark:text-gray-50 rounded-br-sm ml-auto' : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 rounded-bl-sm')}>
         {media && (
           <div className="mb-1.5 flex items-center gap-2 rounded-lg bg-black/5 dark:bg-white/10 px-2 py-1.5 text-xs">
@@ -30,7 +32,7 @@ export function BubblePreview({ header, body, footer, buttons = [], media, statu
           </div>
         )}
         {header && <p className="font-semibold mb-1">{header}</p>}
-        <p className="whitespace-pre-wrap break-words">{body || <span className="text-gray-400">Escribe un mensaje…</span>}</p>
+        <p className="whitespace-pre-wrap break-words">{body || <span className="text-gray-400">{emptyLabel}</span>}</p>
         {footer && <p className="text-[11px] text-gray-500 dark:text-gray-300 mt-1">{footer}</p>}
         <p className="text-[10px] text-gray-500 dark:text-gray-300 mt-1 text-right inline-flex w-full justify-end items-center gap-1">
           {time ?? formatTimeInTz(new Date().toISOString(), timezone)}

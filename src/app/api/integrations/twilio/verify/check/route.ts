@@ -16,6 +16,9 @@ import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { checkRateLimits, getClientIp } from '@/lib/security/rateLimit';
 import { getRateLimitStore } from '@/lib/security/rateLimitStore';
 import { getServiceClient } from '@/lib/supabase/server-service';
+import { readOrgBody } from '@/lib/security/organizationBody';
+import { phoneConferenceEnabled } from '@/lib/services/crm/phoneConferenceRepository';
+import { mobileApprovalReceipt, readMobileApprovalReceipt } from '@/lib/services/crm/mobileVerificationReceipt';
 
 /** 5 / 10 min por IP, usuario y destino (cifra única: FASE-00 §7 y §7.1). Persistente y atómico con RATE_LIMIT_STORE=db; si el store falla, se bloquea. */
 const VERIFY_LIMIT = { limit: 5, windowMs: 10 * 60 * 1000 };
@@ -32,10 +35,10 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json();
-    const { to, code, purpose } = body as { to?: string; code?: string; purpose?: string };
+    const body = readOrgBody(ctx, await request.json(), { request });
+    const { to, code, purpose, approval_receipt: receipt } = body as { to?: string; code?: string; purpose?: string; approval_receipt?: string };
 
-    if (!to || !code) {
+    if (!to || (!code && !receipt)) {
       return NextResponse.json(
         { error: 'Faltan campos requeridos: to, code' },
         { status: 400 }
@@ -43,7 +46,7 @@ export async function POST(request: NextRequest) {
     }
 
     const e164 = formatE164(String(to));
-    if (!/^\+[1-9]\d{6,14}$/.test(e164) || !/^\d{4,10}$/.test(String(code))) {
+    if (!/^\+[1-9]\d{6,14}$/.test(e164) || (!receipt && !/^\d{4,10}$/.test(String(code)))) {
       return NextResponse.json({ error: 'Parámetros inválidos' }, { status: 400 });
     }
 
@@ -62,6 +65,33 @@ export async function POST(request: NextRequest) {
 
     // El número debe pertenecer al usuario (solicitado por él en verify/send)
     const service = getServiceClient();
+    if (purpose === 'mobile_verification' && phoneConferenceEnabled()) {
+      let approval = readMobileApprovalReceipt(receipt, ctx.organizationId, ctx.userId, e164);
+      let durableReceipt = typeof receipt === 'string' ? receipt : null;
+      if (receipt && !approval) return NextResponse.json({ error: 'La aprobación pendiente caducó o no corresponde a esta sesión' }, { status: 400 });
+      if (!approval) {
+        const { data: profile, error: profileError } = await service.from('profiles').select('metadata').eq('id', ctx.userId).maybeSingle();
+        if (profileError) throw profileError;
+        const pending = (profile?.metadata as Record<string, unknown> | undefined)?.pending_mobile_verification as { phone?: string; organization_id?: number } | undefined;
+        if (pending?.phone !== e164 || pending.organization_id !== ctx.organizationId) {
+          return NextResponse.json({ error: 'El número no coincide con el solicitado en esta organización' }, { status: 403 });
+        }
+        const result = await twilioVerifyService.checkCode({ to: e164, code: String(code) });
+        if (!result.success || result.status !== 'approved') return NextResponse.json({ error: 'Código inválido', status: result.status }, { status: 400 });
+        durableReceipt = mobileApprovalReceipt(ctx.organizationId, ctx.userId, e164, result.sid ?? '');
+        approval = readMobileApprovalReceipt(durableReceipt, ctx.organizationId, ctx.userId, e164);
+        if (!approval) throw new Error('No pudimos acreditar la aprobación del celular');
+      }
+      const { data: saved, error: saveError } = await service.rpc('fn_phone_verify_mobile', {
+        p_org: ctx.organizationId, p_user: ctx.userId, p_phone: e164, p_proof: approval,
+      });
+      if (saveError || saved?.phone !== e164 || typeof saved.verified_at !== 'string') {
+        console.warn('[verify/check] aprobación pendiente de persistir', { org: ctx.organizationId, code: saveError?.code });
+        return NextResponse.json({ success: false, code: 'mobile_approval_pending', approval_receipt: durableReceipt,
+          error: 'El código fue aprobado. Reintenta guardar la verificación sin solicitar otro código.' }, { status: 503 });
+      }
+      return NextResponse.json({ success: true, status: 'approved', verified_at: saved.verified_at });
+    }
     let profileMetadata: Record<string, unknown> = {};
     if (purpose === 'mobile_verification') {
       const { data: profile } = await service.from('profiles').select('metadata').eq('id', ctx.userId).maybeSingle();
@@ -115,6 +145,7 @@ export async function POST(request: NextRequest) {
       status: result.status,
     });
   } catch (error) {
+    if (error instanceof OrgContextError) return NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.statusCode });
     console.error('[API] Error verificando OTP:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },

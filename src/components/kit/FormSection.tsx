@@ -27,6 +27,10 @@ export interface FormSectionProps {
   /** Estado inicial si es `colapsable` (por defecto, abierta). */
   abiertaPorDefecto?: boolean;
   columnas?: 1 | 2 | 3;
+  /** Tarjeta de detalle: 16 px de padding y separación de 10 px. */
+  densidad?: 'normal' | 'compacta';
+  /** En móvil muestra sólo el contenido; escritorio conserva la tarjeta y cabecera. */
+  formatoMovil?: 'tarjeta' | 'contenido';
   children: ReactNode;
   id?: string;
   className?: string;
@@ -42,6 +46,8 @@ export function FormSection({
   colapsable,
   abiertaPorDefecto = true,
   columnas = 1,
+  densidad = 'normal',
+  formatoMovil = 'tarjeta',
   children,
   id,
   className,
@@ -51,6 +57,7 @@ export function FormSection({
   const idCuerpo = `${id ?? `seccion-${generado}`}-cuerpo`;
   const [abierta, setAbierta] = useState(abiertaPorDefecto);
   const visible = !colapsable || abierta;
+  const soloContenidoMovil = formatoMovil === 'contenido';
 
   const encabezado = (
     <div className="flex min-w-0 items-start gap-3">
@@ -60,7 +67,7 @@ export function FormSection({
         </span>
       )}
       <div className="min-w-0">
-        <h2 id={idTitulo} className="text-base font-semibold text-fg">
+        <h2 id={idTitulo} className={cn('text-base font-semibold text-fg', densidad === 'compacta' && 'leading-[22px]')}>
           {titulo}
         </h2>
         {descripcion && <p className="mt-0.5 text-[13px] leading-[18px] text-fg-secondary">{descripcion}</p>}
@@ -73,9 +80,13 @@ export function FormSection({
       id={id}
       aria-labelledby={idTitulo}
       aria-label={idTitulo ? undefined : titulo}
-      className={cn('rounded-xl border border-line bg-surface p-4 sm:p-6', className)}
+      className={cn(
+        soloContenidoMovil ? 'border-0 border-line bg-transparent p-0 lg:rounded-xl lg:border lg:bg-surface lg:p-4' : 'rounded-xl border border-line bg-surface p-4',
+        densidad === 'normal' && (soloContenidoMovil ? 'lg:p-6' : 'sm:p-6'),
+        className,
+      )}
     >
-      <div className={cn('flex items-start justify-between gap-3', visible && 'mb-4 sm:mb-5')}>
+      <div className={cn('flex items-start justify-between gap-3', soloContenidoMovil && 'hidden lg:flex', visible && (densidad === 'compacta' ? 'mb-2.5' : 'mb-4 sm:mb-5'))}>
         {colapsable ? (
           <button
             type="button"
@@ -97,7 +108,7 @@ export function FormSection({
         {accion && <div className="shrink-0">{accion}</div>}
       </div>
       {/* `hidden` como clase: el atributo perdería contra `grid`. */}
-      <div id={idCuerpo} className={visible ? cn('grid grid-cols-1 gap-4', COLUMNAS[columnas]) : 'hidden'}>
+      <div id={idCuerpo} className={visible || soloContenidoMovil ? cn('grid grid-cols-1', densidad === 'compacta' ? 'gap-2.5' : 'gap-4', COLUMNAS[columnas], !visible && 'lg:hidden') : 'hidden'}>
         {children}
       </div>
     </section>

@@ -1,4 +1,6 @@
-'use client';
+"use client";
+
+import { useRedText } from "@/components/crm/red/useRedText";
 
 /**
  * /app/crm/referidos — referidos de la organización (FASE-12, brief UX).
@@ -8,31 +10,72 @@
  * `/api/crm/referrals/**`; el navegador no escribe en la base.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Gift, Plus } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from '@/components/ui/use-toast';
-import { AnimatePresence, StaggerList } from '@/components/shared/motion';
-import { CrmPageHeader } from '@/components/crm/shared/CrmPageHeader';
-import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
-import type { ReferralRequest, ReferralView } from '@/lib/services/crm/referralsService';
-import { EMPTY_REFERRAL_FILTERS, countByStatus, filterReferrals, type ReferralListFilters } from '@/lib/services/crm/referralModel';
-import { ConvertReferralDialog } from './ConvertReferralDialog';
-import { ReferralCard, referralActionId } from './ReferralCard';
-import { ReferralProgramsSheet } from './ReferralProgramsSheet';
-import { ReferralRequestsSection } from './ReferralRequestsSection';
-import { ReferralToolbar } from './ReferralToolbar';
-import { ReferralsEmptyState } from './ReferralsEmptyState';
-import { RegisterReferralDialog } from './RegisterReferralDialog';
-import { useReferrals } from './useReferrals';
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Gift, Plus, RefreshCw, UserPlus } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "@/components/ui/use-toast";
+import { Button } from "@/components/crm/red/RedButton";
+import { PageHeader, EmptyState, TabBar } from "@/components/kit";
+import { ReferralStats } from "./ReferralStats";
+import { ReferralRewards } from "./ReferralRewards";
+import { ReferralRewardDialog } from "./ReferralRewardDialog";
+import { ReferralTable } from "./ReferralTable";
+import { useReturnFocus } from "@/lib/hooks/useReturnFocus";
+import type {
+  ReferralRequest,
+  ReferralView,
+} from "@/lib/services/crm/referralsService";
+import {
+  EMPTY_REFERRAL_FILTERS,
+  countByStatus,
+  filterReferrals,
+  type ReferralListFilters,
+} from "@/lib/services/crm/referralModel";
+import { ConvertReferralDialog } from "./ConvertReferralDialog";
+import { referralActionId } from "./ReferralCard";
+import { ReferralProgramsSheet } from "./ReferralProgramsSheet";
+import { ReferralRequestsSection } from "./ReferralRequestsSection";
+import { ReferralToolbar } from "./ReferralToolbar";
+import { ReferralsEmptyState } from "./ReferralsEmptyState";
+import { RegisterReferralDialog } from "./RegisterReferralDialog";
+import { useReferrals } from "./useReferrals";
 
 export function ReferidosPage() {
-  const { referrals, programs, requests, currency, canManage, loading, loaded, error, reload, register, transition, markPaid, convert, saveProgram, deleteProgram } = useReferrals();
-  const [filters, setFilters] = useState<ReferralListFilters>(EMPTY_REFERRAL_FILTERS);
+  const { tr } = useRedText();
+  const {
+    referrals,
+    programs,
+    requests,
+    currency,
+    canManage,
+    canRegister,
+    stats,
+    statsError,
+    requestsError,
+    loading,
+    loaded,
+    error,
+    reload,
+    register,
+    transition,
+    markPaid,
+    convert,
+    saveProgram,
+    deleteProgram,
+  } = useReferrals();
+  const [view, setView] = useState<"referrals" | "rewards">("referrals");
+  const [page, setPage] = useState(1);
+  const [size, setSize] = useState(25);
+  const [programFilter, setProgramFilter] = useState("all");
+  const [filters, setFilters] = useState<ReferralListFilters>(
+    EMPTY_REFERRAL_FILTERS,
+  );
   const [registerOpen, setRegisterOpen] = useState(false);
-  const [preset, setPreset] = useState<{ id: string; name: string } | null>(null);
+  const [preset, setPreset] = useState<{ id: string; name: string } | null>(
+    null,
+  );
   const [programsOpen, setProgramsOpen] = useState(false);
   const [convertTarget, setConvertTarget] = useState<ReferralView | null>(null);
   const [rejectTarget, setRejectTarget] = useState<ReferralView | null>(null);
@@ -45,7 +88,20 @@ export function ReferidosPage() {
   const onRejectClose = useReturnFocus(rejectTarget !== null, fallback);
   const onPayClose = useReturnFocus(payTarget !== null, fallback);
 
-  const shown = useMemo(() => filterReferrals(referrals, filters), [referrals, filters]);
+  const shown = useMemo(
+    () =>
+      filterReferrals(referrals, filters).filter(
+        (r) => programFilter === "all" || r.program_id === programFilter,
+      ),
+    [referrals, filters, programFilter],
+  );
+  useEffect(() => {
+    setPage(1);
+  }, [filters, programFilter, size]);
+  const currentPage = Math.min(
+    page,
+    Math.max(1, Math.ceil(shown.length / size)),
+  );
   const counts = useMemo(() => countByStatus(referrals), [referrals]);
   const hasProgram = programs.some((p) => p.is_active);
 
@@ -54,19 +110,41 @@ export function ReferidosPage() {
     setRegisterOpen(true);
   };
   const registerFor = (r: ReferralRequest) => {
-    if (r.customer) openRegister({ id: r.customer.id, name: r.customer.full_name ?? 'Cliente sin nombre' });
+    if (r.customer)
+      openRegister({
+        id: r.customer.id,
+        name: r.customer.full_name ?? tr("Cliente sin nombre"),
+      });
   };
 
-  const fail = (title: string, err: unknown) => toast({ title, description: err instanceof Error ? err.message : 'Error desconocido', variant: 'destructive' });
+  const fail = (title: string, err: unknown) =>
+    toast({
+      title,
+      description: err instanceof Error ? err.message : tr("Error desconocido"),
+      variant: "destructive",
+    });
 
-  const onTransition = async (r: ReferralView, to: 'contacted' | 'qualified' | 'rejected') => {
+  const onTransition = async (
+    r: ReferralView,
+    to: "contacted" | "qualified" | "rejected",
+  ) => {
     setBusyId(r.id);
     try {
       await transition(r.id, to);
-      toast({ title: `«${r.referred_name}» ${to === 'contacted' ? 'marcado como contactado' : to === 'qualified' ? 'marcado como calificado' : 'rechazado'}` });
+      toast({
+        title: tr("«{p0}» {p1}", {
+          p0: r.referred_name,
+          p1:
+            to === "contacted"
+              ? tr("marcado como contactado")
+              : to === "qualified"
+                ? tr("marcado como calificado")
+                : tr("rechazado"),
+        }),
+      });
       return true;
     } catch (err) {
-      fail('No se pudo cambiar el estado', err);
+      fail(tr("No se pudo cambiar el estado"), err);
       return false;
     } finally {
       setBusyId(null);
@@ -79,19 +157,35 @@ export function ReferidosPage() {
   const [refocusId, setRefocusId] = useState<string | null>(null);
   useEffect(() => {
     if (!refocusId) return;
-    (document.getElementById(refocusId) ?? registerButtonRef.current)?.focus();
+    const row = document.getElementById(
+      refocusId.replace("referral-", "referral-row-"),
+    );
+    const card = document.getElementById(refocusId);
+    (row?.offsetParent
+      ? row
+      : card?.offsetParent
+        ? card
+        : registerButtonRef.current
+    )?.focus();
     setRefocusId(null);
   }, [refocusId]);
-  const focusAfter = (r: ReferralView, nextAction: string) => setRefocusId(referralActionId(r.id, nextAction));
+  const focusAfter = (r: ReferralView, nextAction: string) =>
+    setRefocusId(referralActionId(r.id, nextAction));
 
   const onPay = async () => {
     if (!payTarget) return;
     setBusyId(payTarget.id);
     try {
       await markPaid(payTarget.id);
-      toast({ title: 'Recompensa registrada como pagada', description: `«${payTarget.referred_name}». Es un registro: aquí no se mueve dinero.` });
+      toast({
+        title: tr("Recompensa registrada como pagada"),
+        description: tr("«{p0}». Es un registro: aquí no se mueve dinero.", {
+          p0: payTarget.referred_name,
+        }),
+      });
+      setPayTarget(null);
     } catch (err) {
-      fail('No se pudo registrar la recompensa', err);
+      fail(tr("No se pudo registrar la recompensa"), err);
     } finally {
       setBusyId(null);
     }
@@ -107,80 +201,338 @@ export function ReferidosPage() {
   };
 
   return (
-    <div className="space-y-5 p-4 sm:p-6">
-      <CrmPageHeader
-        title="Referidos"
-        description="Quién recomendó a quién, en qué punto va cada uno y qué recompensa toca. Los mejores leads los traen tus clientes."
-        refreshing={refreshing}
-        onRefresh={() => void refresh()}
-        secondary={{ label: `Programas${programs.length ? ` (${programs.length})` : ''}`, icon: Gift, onClick: () => setProgramsOpen(true), buttonRef: programsButtonRef }}
-        primary={{ label: 'Registrar referido', icon: Plus, onClick: () => openRegister(null), buttonRef: registerButtonRef }}
+    <div className="space-y-0 p-4 lg:space-y-4 lg:p-6 max-lg:pb-[calc(var(--shell-barra-inferior,0px)+16px)]">
+      <PageHeader
+        titulo={tr("Referidos")}
+        className="[&_h1]:text-2xl [&_h1]:leading-8"
+        migas={[
+          { etiqueta: "CRM", href: "/app/crm" },
+          { etiqueta: tr("Referidos") },
+        ]}
+        cargando={loading || refreshing}
+        subtitulo={tr(
+          "Clientes que recomiendan a otros y la recompensa que se les debe",
+        )}
+        movil={{
+          subtitulo: "",
+          accion: canRegister ? (
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label={tr("Registrar referido")}
+              onClick={() => openRegister(null)}
+            >
+              <Plus className="size-5" />
+            </Button>
+          ) : undefined,
+        }}
+        acciones={
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              aria-label={tr("Actualizar")}
+              disabled={refreshing}
+              onClick={() => void refresh()}
+            >
+              <RefreshCw className="size-4" />
+            </Button>
+            <Button
+              variant="outline"
+              ref={programsButtonRef}
+              onClick={() => setProgramsOpen(true)}
+            >
+              <Gift className="size-4" />
+              {tr("Programas")}
+            </Button>
+            {canRegister && (
+              <Button
+                ref={registerButtonRef}
+                onClick={() => openRegister(null)}
+              >
+                <UserPlus className="size-4" />
+                {tr("Registrar referido")}
+              </Button>
+            )}
+          </div>
+        }
       />
-
-      {error && (
+      {view === "rewards" && (
+        <TabBar
+          className="flex"
+          id="referral-views"
+          valor={view}
+          onValorChange={setView}
+          etiqueta={tr("Referidos y recompensas")}
+          pestanas={[
+            {
+              valor: "referrals",
+              etiqueta: tr("Referidos"),
+              contador: referrals.length,
+            },
+            {
+              valor: "rewards",
+              etiqueta: tr("Recompensas"),
+              contador: referrals.filter(
+                (r) =>
+                  r.status === "converted" && r.program_id && !r.reward_paid,
+              ).length,
+            },
+          ]}
+        />
+      )}
+      {view === "referrals" &&
+        (loading || (loaded && referrals.length > 0)) && (
+          <ReferralStats
+            stats={stats}
+            loading={loading}
+            error={statsError}
+            onOpenRewards={() => setView("rewards")}
+          />
+        )}
+      {statsError && (
         <Alert variant="destructive">
-          <AlertTitle>{loaded ? 'No se pudo actualizar la lista' : 'No se pudieron cargar los referidos'}</AlertTitle>
-          <AlertDescription>{error}. {loaded ? 'Se muestra la última lista conocida; pulsa' : 'Pulsa'} «Actualizar» para reintentar.</AlertDescription>
+          <AlertDescription>
+            {tr("No se pudieron cargar las cifras")}
+          </AlertDescription>
+        </Alert>
+      )}
+      {requestsError && (
+        <Alert variant="destructive">
+          <AlertDescription>
+            {tr("No se pudieron cargar las solicitudes")}
+          </AlertDescription>
         </Alert>
       )}
 
-      {loading ? (
-        <div className="space-y-4" aria-busy="true" aria-label="Cargando referidos">
-          <Skeleton className="h-9 w-full max-w-md" />
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-52 w-full rounded-xl" />)}</div>
+      {error &&
+        (!loaded ? (
+          <EmptyState
+            variante="error"
+            titulo={tr("No se pudieron cargar los referidos")}
+            descripcion={tr(
+              "Revisa tu conexión e inténtalo de nuevo. Si ya tenías la lista abierta, se muestra la última versión conocida.",
+            )}
+            className="pt-12 [&>div]:gap-3"
+            onReintentar={() => void refresh()}
+          />
+        ) : (
+          <Alert variant="destructive">
+            <AlertTitle>
+              {loaded
+                ? tr("No se pudo actualizar la lista")
+                : tr("No se pudieron cargar los referidos")}
+            </AlertTitle>
+            <AlertDescription>
+              {error}.{" "}
+              {loaded
+                ? tr("Se muestra la última lista conocida; pulsa")
+                : tr("Pulsa")}{" "}
+              {tr("«Actualizar» para reintentar.")}
+            </AlertDescription>
+          </Alert>
+        ))}
+
+      {view === "rewards" && loaded ? (
+        <ReferralRewards
+          referrals={referrals}
+          currency={currency}
+          stats={stats}
+          canManage={canManage}
+          busyId={busyId}
+          onPay={setPayTarget}
+        />
+      ) : loading ? (
+        <div
+          className="space-y-4 pt-8"
+          aria-busy="true"
+          aria-label={tr("Cargando referidos")}
+        >
+          <Skeleton className="mb-6 h-3 w-[min(420px,75%)] rounded bg-line" />
+          <div className="space-y-6" aria-hidden="true">
+            {Array.from({ length: 8 }, (_, i) => (
+              <div key={i} className="flex h-10 items-center gap-4 px-3">
+                <Skeleton className="size-[18px] shrink-0 rounded bg-line" />
+                <Skeleton className="size-10 shrink-0 rounded bg-line" />
+                <Skeleton className="h-3 w-20 shrink-0 rounded bg-line" />
+                <Skeleton className="h-3 flex-1 rounded bg-line" />
+                {[120, 100, 90, 60, 120, 70].map((w, j) => (
+                  <Skeleton
+                    key={j}
+                    className="hidden h-3 shrink-0 rounded bg-line lg:block"
+                    style={{ width: w }}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       ) : (
         <>
-          <ReferralRequestsSection requests={requests} onRegisterFor={registerFor} />
+          {canRegister && (
+            <ReferralRequestsSection
+              requests={requests}
+              onRegisterFor={registerFor}
+            />
+          )}
           {referrals.length === 0 && (loaded || !error) ? (
-            <ReferralsEmptyState filtered={false} hasProgram={hasProgram} onRegister={() => openRegister(null)} onClearFilters={() => setFilters(EMPTY_REFERRAL_FILTERS)} />
+            <ReferralsEmptyState
+              filtered={false}
+              canRegister={canRegister}
+              hasProgram={hasProgram}
+              onRegister={() => openRegister(null)}
+              onCreateProgram={
+                canManage ? () => setProgramsOpen(true) : undefined
+              }
+              onClearFilters={() => {
+                setFilters(EMPTY_REFERRAL_FILTERS);
+                setProgramFilter("all");
+              }}
+            />
           ) : referrals.length === 0 ? null : (
             <>
-              <ReferralToolbar filters={filters} counts={counts} total={referrals.length} shown={shown.length} onChange={setFilters} />
-              {shown.length === 0 ? (
-                <ReferralsEmptyState filtered hasProgram={hasProgram} onRegister={() => openRegister(null)} onClearFilters={() => setFilters(EMPTY_REFERRAL_FILTERS)} />
-              ) : (
-                <StaggerList as="ul" aria-label="Referidos" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  <AnimatePresence initial={false}>
-                    {shown.map((r) => (
-                      <ReferralCard
-                        key={r.id}
-                        referral={r}
-                        currency={currency}
-                        busy={busyId === r.id}
-                        onTransition={(x, to) => void onTransition(x, to).then((ok) => ok && focusAfter(x, to === 'contacted' ? 'qualified' : 'converted'))}
-                        onReject={(x) => setRejectTarget(x)}
-                        onConvert={(x) => setConvertTarget(x)}
-                        onMarkPaid={(x) => setPayTarget(x)}
-                      />
+              <ReferralToolbar
+                filters={filters}
+                counts={counts}
+                total={referrals.length}
+                shown={shown.length}
+                onChange={setFilters}
+                cifrasMoviles={
+                  <ReferralStats
+                    stats={stats}
+                    loading={false}
+                    error={statsError}
+                    soloMovil
+                    onOpenRewards={() => setView("rewards")}
+                  />
+                }
+                programa={
+                  <select
+                    className="hidden h-10 rounded-lg border border-line-strong bg-surface px-3 text-sm lg:block lg:w-80"
+                    aria-label={tr("Programa")}
+                    value={programFilter}
+                    onChange={(e) => setProgramFilter(e.target.value)}
+                  >
+                    <option value="all">{tr("Todos los programas")}</option>
+                    {programs.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
                     ))}
-                  </AnimatePresence>
-                </StaggerList>
-              )}
+                  </select>
+                }
+              />
+              <div
+                role="tabpanel"
+                id={`referrals-panel-${filters.status}`}
+                aria-labelledby={`referrals-tab-${filters.status}`}
+              >
+                {shown.length === 0 ? (
+                  <ReferralsEmptyState
+                    filtered
+                    canRegister={canRegister}
+                    hasProgram={hasProgram}
+                    onRegister={() => openRegister(null)}
+                    onClearFilters={() => {
+                      setFilters(EMPTY_REFERRAL_FILTERS);
+                      setProgramFilter("all");
+                    }}
+                  />
+                ) : (
+                  <ReferralTable
+                    rows={shown.slice(
+                      (currentPage - 1) * size,
+                      currentPage * size,
+                    )}
+                    total={shown.length}
+                    page={currentPage}
+                    size={size}
+                    onPage={setPage}
+                    onSize={setSize}
+                    currency={currency}
+                    canManage={canManage}
+                    canRegister={canRegister}
+                    busyId={busyId}
+                    onTransition={(x, to) =>
+                      void onTransition(x, to).then(
+                        (ok) =>
+                          ok &&
+                          focusAfter(
+                            x,
+                            to === "contacted" ? "qualified" : "converted",
+                          ),
+                      )
+                    }
+                    onReject={setRejectTarget}
+                    onConvert={setConvertTarget}
+                    onPay={setPayTarget}
+                  />
+                )}
+              </div>
             </>
           )}
         </>
       )}
 
-      <RegisterReferralDialog open={registerOpen} preset={preset} programs={programs} currency={currency} onOpenChange={setRegisterOpen} onRegister={register} returnFocusFallback={fallback} />
-      <ConvertReferralDialog open={convertTarget !== null} referral={convertTarget} onOpenChange={(o) => { if (!o) setConvertTarget(null); }} onConvert={convert} returnFocusFallback={fallback} />
-      <ReferralProgramsSheet open={programsOpen} programs={programs} currency={currency} canManage={canManage} onOpenChange={setProgramsOpen} onSave={saveProgram} onDelete={deleteProgram} returnFocusFallback={() => programsButtonRef.current} />
-      <ConfirmDialog
-        open={rejectTarget !== null}
-        onOpenChange={(o) => { if (!o) setRejectTarget(null); }}
-        title="Rechazar referido"
-        description={`«${rejectTarget?.referred_name ?? ''}» quedará como rechazado y no se podrá volver a mover ni registrar recompensa.`}
-        confirmLabel="Rechazar"
-        variant="destructive"
-        onConfirm={async () => { if (rejectTarget) await onTransition(rejectTarget, 'rejected'); }}
-        onCloseAutoFocus={onRejectClose}
+      <RegisterReferralDialog
+        open={registerOpen}
+        preset={preset}
+        programs={programs}
+        currency={currency}
+        onOpenChange={setRegisterOpen}
+        onRegister={register}
+        returnFocusFallback={fallback}
+      />
+      <ConvertReferralDialog
+        open={convertTarget !== null}
+        referral={convertTarget}
+        onOpenChange={(o) => {
+          if (!o) setConvertTarget(null);
+        }}
+        onConvert={convert}
+        currency={currency}
+        returnFocusFallback={fallback}
+      />
+      <ReferralProgramsSheet
+        open={programsOpen}
+        programs={programs}
+        currency={currency}
+        canManage={canManage}
+        referralCounts={Object.fromEntries(
+          programs.map((p) => [
+            p.id,
+            referrals.filter((r) => r.program_id === p.id).length,
+          ]),
+        )}
+        onOpenChange={setProgramsOpen}
+        onSave={saveProgram}
+        onDelete={deleteProgram}
+        returnFocusFallback={() => programsButtonRef.current}
       />
       <ConfirmDialog
+        open={rejectTarget !== null}
+        onOpenChange={(o) => {
+          if (!o) setRejectTarget(null);
+        }}
+        title={tr("Rechazar referido")}
+        description={tr(
+          "«{p0}» quedará como rechazado y no se podrá volver a mover ni registrar recompensa.",
+          { p0: rejectTarget?.referred_name ?? "" },
+        )}
+        confirmLabel={tr("Rechazar")}
+        variant="destructive"
+        onConfirm={async () => {
+          if (rejectTarget) await onTransition(rejectTarget, "rejected");
+        }}
+        onCloseAutoFocus={onRejectClose}
+      />
+      <ReferralRewardDialog
         open={payTarget !== null}
-        onOpenChange={(o) => { if (!o) setPayTarget(null); }}
-        title="Registrar recompensa pagada"
-        description={`Se anotará que la recompensa de «${payTarget?.referred_name ?? ''}» (${payTarget?.program?.name ?? 'programa'}) ya se entregó, con fecha de hoy. Es un registro: aquí no se mueve dinero.`}
-        confirmLabel="Registrar"
+        referral={payTarget}
+        currency={currency}
+        busy={busyId === payTarget?.id}
+        onOpenChange={(o) => {
+          if (!o && !busyId) setPayTarget(null);
+        }}
         onConfirm={onPay}
         onCloseAutoFocus={onPayClose}
       />

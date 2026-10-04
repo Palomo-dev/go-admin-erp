@@ -174,10 +174,15 @@
     ],
     "voice_agent_calls.status": [
       "pending",
+      "queued",
       "in_progress",
       "completed",
       "failed",
-      "transferred"
+      "transferred",
+      "no_answer",
+      "voicemail",
+      "canceled",
+      "skipped"
     ],
     "voice_agents.engine": [
       "conversation_relay",

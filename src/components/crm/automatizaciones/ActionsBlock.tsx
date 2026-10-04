@@ -1,4 +1,5 @@
 'use client';
+import { useAutomationText } from './useAutomationText';
 
 /**
  * Bloque «entonces»: las acciones como fichas numeradas. «Añadir acción»
@@ -7,7 +8,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { Plus, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, AlertTriangle, GripVertical, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -24,8 +25,8 @@ import {
   type RuleFormState,
 } from '@/lib/services/crm/automation/ruleEditorModel';
 import { ActionChipEditor } from './ActionChipEditor';
-import { CHIP_ICON_CLASS, CHIP_LIST_CLASS, CHIP_TEXT_CLASS, chipClass } from './SentenceBlock';
-import { AnimatePresence, Chip, Expand } from '@/components/shared/motion';
+import { CHIP_ICON_CLASS } from './SentenceBlock';
+import { AnimatePresence, Expand } from '@/components/shared/motion';
 import type { RuleLookups } from './useRuleLookups';
 
 interface Props {
@@ -38,6 +39,7 @@ interface Props {
 }
 
 export function ActionsBlock({ form, lookups, errors, selected, onSelect, onChange }: Props) {
+  const tr = useAutomationText();
   const [menuOpen, setMenuOpen] = useState(false);
   // Tester UXM-C: tras reordenar por teclado, el editor se vuelve a montar (clave `editor-${selected}`) y el botón
   // pulsado desaparece; sin esto el foco caía al contenedor de la hoja. `string[]`: el primer id enfocable (no deshabilitado).
@@ -85,11 +87,10 @@ export function ActionsBlock({ form, lookups, errors, selected, onSelect, onChan
   return (
     <div className="space-y-3">
       {actions.length === 0 ? (
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          Sin acciones la regla no hará nada aunque se dispare. Añade al menos una.
-        </p>
+        <p className="text-sm text-fg-secondary dark:text-fg-secondary">
+          {tr("Sin acciones la regla no hará nada aunque se dispare. Añade al menos una.")}</p>
       ) : (
-        <div className={CHIP_LIST_CLASS}>
+        <div className="space-y-3">
           {/* UX móvil: cada acción es una tarjeta apilada (número + frase que envuelve); en línea desde `sm`. */}
           <AnimatePresence initial={false}>
             {actions.map((action, index) => {
@@ -97,25 +98,25 @@ export function ActionsBlock({ form, lookups, errors, selected, onSelect, onChan
               const entry = actionEntry(action.type);
               const warn = hasError(index) || (entry && !entry.implemented);
               return (
-                <Chip key={index}>
+                <div key={index} className="flex min-w-0 items-center gap-2 rounded-lg border border-line p-3">
                   <button
                     type="button"
                     id={`action-chip-${index}`}
                     aria-expanded={open}
                     aria-controls={`action-editor-${index}`}
-                    className={cn(chipClass(open, 'emerald', true), warn && 'border-amber-500 dark:border-amber-400')}
+                    className={cn('flex min-w-0 flex-1 items-center gap-3 rounded-md text-left text-[13px] leading-[18px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand', warn && 'text-warning-text')}
                     onClick={() => onSelect(open ? null : index)}
                   >
-                    <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-emerald-700 px-1 text-xs font-semibold text-white" aria-label={`Acción ${index + 1}`}>
+                    <GripVertical className="size-4 shrink-0 text-fg-muted" strokeWidth={1.5} aria-hidden /><span className="sr-only" aria-label={tr("Acción {p0}", { p0: index + 1 })}>
                       {index + 1}
                     </span>
-                    <span className={CHIP_TEXT_CLASS}>{describeAction(action, lookups.humanizer)}</span>
-                    {warn && <AlertTriangle className={cn(CHIP_ICON_CLASS, 'text-amber-700 dark:text-amber-300')} aria-label="Revisar" />}
+                    <span className="min-w-0 flex-1 break-words">{describeAction(action, lookups.humanizer)}</span>
+                    {warn && <AlertTriangle strokeWidth={1.5} className={cn(CHIP_ICON_CLASS, 'text-warning-text dark:text-warning-text')} aria-label={tr("Revisar")} />}
                     {open
-                      ? <ChevronUp className={CHIP_ICON_CLASS} aria-hidden="true" />
-                      : <ChevronDown className={CHIP_ICON_CLASS} aria-hidden="true" />}
-                  </button>
-                </Chip>
+                      ? <ChevronUp strokeWidth={1.5} className={CHIP_ICON_CLASS} aria-hidden="true" />
+                      : <ChevronDown strokeWidth={1.5} className={CHIP_ICON_CLASS} aria-hidden="true" />}
+                  </button><Button type="button" size="sm" variant="ghost" className="size-8 p-0 text-fg-secondary" aria-label={tr("Quitar acción {p0}", { p0: index + 1 })} onClick={() => { onChange(removeAction(form, index)); onSelect(null); setFocusTarget('add'); }}><Trash2 className="size-4" strokeWidth={1.5} aria-hidden /></Button>
+                </div>
               );
             })}
           </AnimatePresence>
@@ -153,29 +154,28 @@ export function ActionsBlock({ form, lookups, errors, selected, onSelect, onChan
       <Popover open={menuOpen} onOpenChange={setMenuOpen}>
         <PopoverTrigger asChild>
           <Button id="action-add" type="button" size="sm" variant="outline" className="h-8" aria-haspopup="listbox">
-            <Plus className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> Añadir acción
-          </Button>
+            <Plus strokeWidth={1.5} className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> {tr("Añadir acción")}</Button>
         </PopoverTrigger>
         <PopoverContent align="start" className="w-80 p-0" onCloseAutoFocus={onMenuCloseAutoFocus}>
           <Command>
-            <CommandInput placeholder="Buscar acción…" />
+            <CommandInput placeholder={tr("Buscar acción…")} />
             <CommandList>
-              <CommandEmpty>Ninguna acción coincide.</CommandEmpty>
-              <CommandGroup heading="Disponibles">
+              <CommandEmpty>{tr("Ninguna acción coincide.")}</CommandEmpty>
+              <CommandGroup heading={tr("Disponibles")}>
                 {ACTION_CATALOG.filter((a) => a.implemented).map((a) => (
-                  <CommandItem key={a.type} value={`${a.label} ${a.type}`} onSelect={() => add(a.type)}>
+                  <CommandItem key={a.type} value={tr("{p0} {p1}", { p0: tr(a.label), p1: a.type })} onSelect={() => add(a.type)}>
                     <div>
-                      <p className="text-sm">{a.label}</p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">{a.hint}</p>
+                      <p className="text-sm">{tr(a.label)}</p>
+                      <p className="text-xs text-fg-secondary dark:text-fg-secondary">{tr(a.hint)}</p>
                     </div>
                   </CommandItem>
                 ))}
               </CommandGroup>
-              <CommandGroup heading="Todavía no disponibles">
+              <CommandGroup heading={tr("Todavía no disponibles")}>
                 {ACTION_CATALOG.filter((a) => !a.implemented).map((a) => (
-                  <CommandItem key={a.type} value={`${a.label} ${a.type}`} onSelect={() => add(a.type)}>
-                    <AlertTriangle className="mr-2 h-3.5 w-3.5 text-amber-700 dark:text-amber-300" aria-hidden="true" />
-                    <span className="text-sm">{a.label}</span>
+                  <CommandItem key={a.type} value={tr("{p0} {p1}", { p0: tr(a.label), p1: a.type })} onSelect={() => add(a.type)}>
+                    <AlertTriangle strokeWidth={1.5} className="mr-2 h-3.5 w-3.5 text-warning-text dark:text-warning-text" aria-hidden="true" />
+                    <span className="text-sm">{tr(a.label)}</span>
                   </CommandItem>
                 ))}
               </CommandGroup>

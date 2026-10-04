@@ -1,3 +1,4 @@
+import { f12AtomicRpc } from './f12AtomicDouble';
 /**
  * F12 — doble del cliente de Supabase para las pruebas de contrato de rutas.
  *
@@ -217,7 +218,7 @@ export function fakeSupabase(db: FakeDb) {
     };
     return chain;
   };
-  return { from };
+  return { from, rpc: async (name: string, args: Record<string, unknown>) => f12AtomicRpc(db, name, args) };
 }
 
 // ─── Datos de partida ────────────────────────────────────────────────────────

@@ -6,7 +6,9 @@
  */
 
 import Link from 'next/link';
-import { Minus, PhoneCall, RefreshCw, Settings } from 'lucide-react';
+import { ExternalLink, Minus, PhoneCall, RefreshCw, Settings } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { getDesktopBridge } from '@/lib/utils/desktop';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/utils/Utils';
 import type { CallStatus, DeviceState } from '../SoftphoneProvider';
@@ -54,6 +56,9 @@ export const DEVICE_LABELS: Record<DeviceState, string> = {
 
 interface DockHeaderProps {
   deviceState: DeviceState;
+  diseno?: 'heredado' | 'kit';
+  subtitle?: string;
+  held?: boolean;
   deviceReason: string | null;
   /** Nombres (no valores) de las credenciales que faltan. */
   deviceMissing?: string[];
@@ -64,7 +69,9 @@ interface DockHeaderProps {
   onRetry: () => void;
 }
 
-export function DockHeader({ deviceState, deviceReason, deviceMissing, deviceScope, callStatus, isAdmin, onMinimize, onRetry }: DockHeaderProps) {
+export function DockHeader({ deviceState, deviceReason, deviceMissing, deviceScope, callStatus, isAdmin, onMinimize, onRetry, diseno = 'heredado', subtitle, held }: DockHeaderProps) {
+  const t = useTranslations('phoneMirror');
+  const controls = useTranslations('phoneControl');
   const missing = deviceMissing ?? [];
   // Solo cuando las llaves son de la propia organización tiene sentido decirle
   // a alguien qué falta y dónde ponerlo.
@@ -79,30 +86,33 @@ export function DockHeader({ deviceState, deviceReason, deviceMissing, deviceSco
           : 'bg-red-500';
 
   return (
-    <div className="border-b border-gray-200 dark:border-gray-700">
-      <div className="flex items-center justify-between p-3">
+    <div className={cn('border-b border-gray-200 dark:border-gray-700', diseno === 'kit' && 'border-line dark:border-line') }>
+      <div className={cn('flex items-center justify-between p-3', diseno === 'kit' && 'gap-3 py-3 pl-4 pr-3')}>
         <div className="flex items-center gap-2 min-w-0">
-          <div className="relative shrink-0">
+          <div className={cn('relative shrink-0', diseno === 'kit' && 'flex size-8 items-center justify-center rounded-full bg-brand-tint')}>
             <PhoneCall size={18} className="text-blue-600 dark:text-blue-400" aria-hidden="true" />
             <span className={cn('absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full', dotClass)} aria-hidden="true" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-tight">Softphone</p>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate" aria-live="polite">
-              {DEVICE_LABELS[deviceState]}
+            <p className={cn('text-sm font-semibold text-gray-900 dark:text-gray-100 leading-tight', diseno === 'kit' && 'font-medium leading-5 text-fg dark:text-fg')}>{diseno === 'kit' ? t('title') : 'Softphone'}</p>
+            <p className={cn('text-[11px] text-gray-500 dark:text-gray-400 truncate', diseno === 'kit' && 'text-xs font-medium leading-4 text-fg-secondary dark:text-fg-secondary')} aria-live="polite">
+              {subtitle ?? (diseno === 'kit' ? t(`device.${deviceState}`) : DEVICE_LABELS[deviceState])}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-1">
+          {getDesktopBridge()?.phone && <button type="button" onClick={() => { void getDesktopBridge()?.phone?.open(); }}
+            className="h-8 w-8 rounded p-1 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+            aria-label={t('openWindow')} title={t('openWindow')}><ExternalLink size={14} aria-hidden="true" /></button>}
           {callStatus !== 'idle' && (
-            <Badge variant={CALL_STATUS_VARIANTS[callStatus]} className="text-[10px]" aria-live="assertive">
-              {CALL_STATUS_LABELS[callStatus]}
+            <Badge variant={diseno === 'kit' && held ? 'warning' : CALL_STATUS_VARIANTS[callStatus]} className={cn('text-[10px]', diseno === 'kit' && 'shrink-0 whitespace-nowrap rounded-full border px-1.5 py-0 text-xs font-medium leading-5', diseno === 'kit' && callStatus === 'connected' && !held && 'border-line-success bg-success-subtle text-success-text', diseno === 'kit' && held && 'border-line-warning bg-warning-subtle text-warning-text')} aria-live="assertive">
+              {diseno === 'kit' && held ? controls('hold') : diseno === 'kit' ? t(`call.${callStatus}`) : CALL_STATUS_LABELS[callStatus]}
             </Badge>
           )}
           <button
             type="button"
             onClick={onMinimize}
-            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
+            className={cn('p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400', diseno === 'kit' && 'flex size-8 items-center justify-center rounded-lg text-fg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand')}
             aria-label="Minimizar softphone"
           >
             <Minus size={14} />
@@ -110,7 +120,7 @@ export function DockHeader({ deviceState, deviceReason, deviceMissing, deviceSco
         </div>
       </div>
 
-      {(deviceState === 'error' || deviceState === 'no_permission' || deviceState === 'not_configured' || deviceState === 'unregistered') && (
+      {diseno !== 'kit' && (deviceState === 'error' || deviceState === 'no_permission' || deviceState === 'not_configured' || deviceState === 'unregistered') && (
         <div
           className={cn(
             'px-3 pb-2 text-xs',

@@ -44,6 +44,14 @@ function subscribe(channel: string, handler: (payload: unknown) => void): () => 
 try {
   contextBridge.exposeInMainWorld('goAdminDesktop', {
   // Agente
+  phone: {
+    open: () => ipcRenderer.invoke('phone:open'),
+    publish: (snapshot: unknown) => ipcRenderer.send('phone:publish', snapshot),
+    reply: (response: unknown) => ipcRenderer.send('phone:reply', response),
+    onCommand: (handler: (command: unknown) => void) => subscribe('phone:dispatch', handler),
+    missed: (notice: unknown) => ipcRenderer.send('phone:missed', notice),
+    onMissedAction: (handler: (action: unknown) => void) => subscribe('phone:missed-action', handler),
+  },
   startAgent: (
     refreshToken: string,
     orgId: number,

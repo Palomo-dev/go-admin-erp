@@ -1,11 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-// @ts-ignore: Deno URL import (resolves at runtime in Supabase Edge Functions)
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-// @ts-ignore: Deno URL import (resolves at runtime in Supabase Edge Functions)
 import OpenAI from "https://esm.sh/openai@4";
 // Logica pura compartida (primer ladrillo del nucleo de la Fase 1). Se importa
 // con extension .ts porque lo exige Deno; Jest la testea importandola sin ella.
 import { decidirSilencio, secretosCoinciden } from "../_shared/ai-chat/politicaRespuesta.ts";
+import { cargarSecretoInterno, evaluarContactoPersistido } from "../_shared/contacto/puerta.ts";
+import { computeWindow } from "../_shared/contacto/ventana.ts";
 import { decidirBusquedaCatalogo, pareceSeguimientoDeVariante } from "../_shared/ai-chat/intencionConsulta.ts";
 import { GUIA_TALLAS, ResumenVariantes, extraerMedidas, resumirVariantes } from "../_shared/ai-chat/variantesCatalogo.ts";
 import { MAXIMO_PEDIDOS_MOSTRADOS, correoParaBuscar, decidirCorreoDelChat, escaparLike, esCorreoDelWidget, extraerNumeroDePedido, formatearFacturas, formatearPedidosWeb } from "../_shared/ai-chat/pedidosCliente.ts";
@@ -35,21 +35,40 @@ const openai = new OpenAI({ apiKey: openaiKey });
 let cachedInternalSecret: string | null = null;
 async function getInternalSecret(): Promise<string | null> {
   if (cachedInternalSecret) return cachedInternalSecret;
-  const fromEnv = Deno.env.get('AI_INTERNAL_SECRET');
-  if (fromEnv) {
-    cachedInternalSecret = fromEnv;
-    return cachedInternalSecret;
-  }
-  const { data, error } = await supabase.rpc('get_ai_internal_secret');
-  if (error || !data) {
-    console.error('No se pudo leer AI_INTERNAL_SECRET:', error?.message);
-    return null;
-  }
-  cachedInternalSecret = data as string;
+  cachedInternalSecret = await cargarSecretoInterno(supabase, Deno.env.get('AI_INTERNAL_SECRET'));
   return cachedInternalSecret;
 }
 
+interface ProductoChat {
+  id: number | string; name: string; sku?: string; price: number; comparePrice?: number | null;
+  imageUrl?: string | null; stock?: number | null; presentaciones?: number;
+}
+interface ProductoBusqueda {
+  id: number; nombre: string; sku: string; precio: number | string | null; precio_anterior: number | string | null;
+  imagen: string | null; stock: number | null; presentaciones?: number;
+}
+interface RespuestaResponses {
+  output_text?: string; model?: string; output?: { content?: { text?: string }[] }[];
+  usage?: { input_tokens?: number; output_tokens?: number; total_tokens?: number; input_tokens_details?: { cached_tokens?: number } };
+}
+interface ConfiguracionCompra {
+  enable_shipping?: boolean; available_delivery_types?: string[]; shipping_flat_rate?: number;
+  shipping_flat_rate_title?: string; free_shipping_threshold?: number; tax_rate?: number; tax_name?: string; tax_included?: boolean;
+}
+function relacionUnica<T>(valor: T | T[] | null): T | null {
+  return Array.isArray(valor) ? (valor.length === 1 ? valor[0] : null) : valor;
+}
+function detalleError(error: unknown): { status?: number; code?: string; message: string } {
+  const fila = error && typeof error === 'object' ? error as Record<string, unknown> : {};
+  const response = fila.response && typeof fila.response === 'object' ? fila.response as Record<string, unknown> : {};
+  const status = fila.status ?? response.status;
+  return { status: typeof status === 'number' ? status : undefined,
+    code: typeof fila.code === 'string' ? fila.code : undefined,
+    message: typeof fila.message === 'string' ? fila.message : String(error) };
+}
+
 interface AiSettingsRow {
+  provider?: string; credits_remaining?: number | null; max_respuestas_ia_por_conversacion_dia?: number;
   model?: string;
   temperature?: string | number;
   max_tokens?: number;
@@ -124,7 +143,7 @@ function usaResponsesApi(model: string): boolean {
 
 async function generarConChatCompletions(
   model: string,
-  chatMessages: Array<any>,
+  chatMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
   temperature: number,
   maxTokens: number
 ): Promise<RespuestaLlm> {
@@ -143,7 +162,7 @@ async function generarConChatCompletions(
 
 async function generarConResponses(
   model: string,
-  chatMessages: Array<any>,
+  chatMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
   temperature: number,
   maxTokens: number
 ): Promise<RespuestaLlm> {
@@ -163,7 +182,7 @@ async function generarConResponses(
       })),
   ].filter((m) => m.content.length > 0);
 
-  const respuesta: any = await (openai as any).responses.create({
+  const respuesta = await (openai as unknown as { responses: { create(input: Record<string, unknown>): Promise<RespuestaResponses> } }).responses.create({
     model,
     instructions: system ? String(system.content) : undefined,
     input: resto,
@@ -176,8 +195,8 @@ async function generarConResponses(
   });
 
   const texto = respuesta?.output_text
-    ?? respuesta?.output?.flatMap((o: any) => o?.content ?? [])
-         ?.map((c: any) => c?.text ?? '')
+    ?? respuesta?.output?.flatMap((o: { content?: { text?: string }[] }) => o?.content ?? [])
+         ?.map((c: { text?: string }) => c?.text ?? '')
          ?.join('')
     ?? '';
 
@@ -206,7 +225,7 @@ const MODELO_DE_EMERGENCIA = 'gpt-4o-mini';
  */
 async function generarConOpenAI(
   model: string,
-  chatMessages: Array<any>,
+  chatMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
   temperature: number,
   maxTokens: number
 ): Promise<RespuestaLlm> {
@@ -215,9 +234,9 @@ async function generarConOpenAI(
   }
   try {
     return await generarConResponses(model, chatMessages, temperature, maxTokens);
-  } catch (e: any) {
+  } catch (e) {
     console.error(
-      `Responses API fallo con ${model} (${e?.status ?? '?'}: ${e?.message}); ` +
+      `Responses API fallo con ${model} (${detalleError(e).status ?? '?'}: ${detalleError(e).message}); ` +
       `se responde con ${MODELO_DE_EMERGENCIA}. Revisar acceso al modelo.`
     );
     return await generarConChatCompletions(
@@ -234,7 +253,7 @@ async function generarConOpenAI(
 async function generarConGoogle(
   apiKey: string,
   model: string,
-  chatMessages: Array<any>,
+  chatMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
   temperature: number,
   maxTokens: number
 ): Promise<RespuestaLlm> {
@@ -260,14 +279,13 @@ async function generarConGoogle(
 
   if (!respuesta.ok) {
     const detalle = await respuesta.text();
-    const error: any = new Error(`Google devolvio ${respuesta.status}: ${detalle.slice(0, 300)}`);
-    error.status = respuesta.status;
+    const error = Object.assign(new Error(`Google devolvio ${respuesta.status}: ${detalle.slice(0, 300)}`), { status: respuesta.status });
     throw error;
   }
 
   const json = await respuesta.json();
   const texto = json?.candidates?.[0]?.content?.parts
-    ?.map((p: any) => p?.text || '')
+    ?.map((p: { text?: string }) => p?.text || '')
     .join('') || '';
   const uso = json?.usageMetadata || {};
 
@@ -296,13 +314,13 @@ async function finalizarJob(
 
 /** Reintento con backoff para errores 5xx / timeout del proveedor. */
 async function conReintentos<T>(fn: () => Promise<T>, intentos = 3): Promise<T> {
-  let ultimoError: any;
+  let ultimoError: unknown;
   for (let i = 0; i < intentos; i++) {
     try {
       return await fn();
-    } catch (e: any) {
+    } catch (e) {
       ultimoError = e;
-      const status = e?.status ?? e?.response?.status;
+      const status = detalleError(e).status;
       const recuperable = status === undefined || status >= 500 || status === 429;
       if (!recuperable || i === intentos - 1) throw e;
       await new Promise((r) => setTimeout(r, 500 * Math.pow(2, i)));
@@ -458,7 +476,7 @@ async function medidasDeProductos(organizationId: number, ids: number[]): Promis
   return salida;
 }
 
-async function searchProducts(organizationId: number, keywords: string[]): Promise<{text: string, products: any[], hayTallas?: boolean}> {
+async function searchProducts(organizationId: number, keywords: string[]): Promise<{text: string, products: ProductoChat[], hayTallas?: boolean}> {
   if (keywords.length === 0) return { text: '', products: [] };
 
   try {
@@ -472,7 +490,7 @@ async function searchProducts(organizationId: number, keywords: string[]): Promi
     if (errorVocab) console.error('Error consultando vocabulario:', errorVocab.message);
 
     const tokens: string[] = (reconocidas || [])
-      .map((r: any) => r.palabra_catalogo)
+      .map((r: { palabra_catalogo: string }) => r.palabra_catalogo)
       .filter(Boolean);
 
     // Ninguna palabra del cliente existe en este catalogo: no hay nada que buscar.
@@ -490,7 +508,7 @@ async function searchProducts(organizationId: number, keywords: string[]): Promi
     }
     if (!encontrados || encontrados.length === 0) return { text: '', products: [] };
 
-    const products = encontrados.map((p: any) => ({
+    const products = encontrados.map((p: ProductoBusqueda) => ({
       id: p.id,
       name: p.nombre,
       sku: p.sku,
@@ -504,8 +522,8 @@ async function searchProducts(organizationId: number, keywords: string[]): Promi
     // Paso 3: las variantes reales (tallas, colores, presentaciones) de lo
     // encontrado.
     const [variantes, medidas] = await Promise.all([
-      detalleDeVariantes(organizationId, products.map((p: any) => Number(p.id))),
-      medidasDeProductos(organizationId, products.map((p: any) => Number(p.id))),
+      detalleDeVariantes(organizationId, products.map((p: ProductoChat) => Number(p.id))),
+      medidasDeProductos(organizationId, products.map((p: ProductoChat) => Number(p.id))),
     ]);
 
     let text = '';
@@ -656,8 +674,8 @@ async function getCheckoutConfig(organizationId: number): Promise<{deliveryTypes
       supabase.from('website_settings').select('enable_shipping, available_delivery_types, shipping_flat_rate, shipping_flat_rate_title, free_shipping_threshold, tax_rate, tax_name, tax_included').eq('organization_id', organizationId).single(),
       supabase.from('organization_payment_methods').select('payment_method_code, website_display_name').eq('organization_id', organizationId).eq('is_active', true).eq('show_on_website', true),
     ]);
-    const ws = wsResult.data as any || {};
-    const methods = (pmResult.data || []).map((m: any) => ({ code: m.payment_method_code, name: m.website_display_name || m.payment_method_code }));
+    const ws = wsResult.data as ConfiguracionCompra || {};
+    const methods = (pmResult.data || []).map((m: { payment_method_code: string; website_display_name?: string }) => ({ code: m.payment_method_code, name: m.website_display_name || m.payment_method_code }));
     let taxRate = Number(ws.tax_rate || 0);
     if (taxRate === 0) {
       const { data: defaultTax } = await supabase.from('organization_taxes').select('rate, name').eq('organization_id', organizationId).eq('is_active', true).eq('is_default', true).maybeSingle();
@@ -727,17 +745,18 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const { data: conv } = await supabase
+    const { data: convRow } = await supabase
       .from('conversations')
       .select('id, channel_id, customer_id, organization_id, organization:organizations(timezone), customer:customers(id, first_name, last_name, full_name, email, metadata)')
       .eq('id', conversationId)
       .single();
-    if (!conv) {
+    if (!convRow) {
       return new Response(JSON.stringify({ error: 'Conversacion no encontrada' }), {
         status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    const conv = { ...convRow, customer: relacionUnica(convRow.customer), organization: relacionUnica(convRow.organization), channel: null as { type: string } | null };
     // Fase 0.1: la organizacion SIEMPRE sale de la fila real. El valor del body
     // es meramente informativo y, si no coincide, se rechaza la llamada.
     organizationId = conv.organization_id;
@@ -760,6 +779,30 @@ Deno.serve(async (req: Request) => {
       });
     }
     conv.channel = channelData;
+
+    // WhatsApp usa la misma puerta SQL; relectura de ventana en cada punto sensible.
+    const contactoPermitido = async (): Promise<boolean> => {
+      if (channelData.type !== 'whatsapp') return true;
+      const gate = await evaluarContactoPersistido(supabase, organizationId, messageId);
+      if (!gate.allowed) return false;
+      const { data: ventana, error: ventanaError } = await supabase.from('conversations').select('last_inbound_at')
+        .eq('organization_id', organizationId).eq('id', conversationId).maybeSingle();
+      return !ventanaError && computeWindow(ventana?.last_inbound_at).is_open;
+    };
+    const omitirContacto = async () => {
+      await finalizarJob(jobId, { status: 'skipped', error_code: 'contact_blocked', completed_at: new Date().toISOString() });
+      return new Response(JSON.stringify({ skipped: true, reason: 'contact_blocked' }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    };
+    if (channelData.type === 'whatsapp') {
+      if (!messageId) return await omitirContacto();
+      const { data: disparador, error: disparadorError } = await supabase.from('messages').select('id')
+        .eq('organization_id', organizationId).eq('conversation_id', conversationId).eq('id', messageId)
+        .eq('direction', 'inbound').eq('role', 'customer').maybeSingle();
+      if (disparadorError || !disparador || !await contactoPermitido()) return await omitirContacto();
+    }
+
 
     // --- Fase 0.3: semantica real de ai_mode --------------------------------
     // El enum es ai_only | hybrid | manual. La comparacion anterior era contra
@@ -805,12 +848,12 @@ Deno.serve(async (req: Request) => {
         .single();
       if (jobError) {
         // 23505 = ya hay un job para este mensaje: otra invocacion se nos adelanto.
-        if ((jobError as any).code === '23505') {
+        if (jobError.code === '23505') {
           return new Response(JSON.stringify({ skipped: true, reason: 'job_duplicado' }), {
             status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
-        console.error('No se pudo crear ai_jobs:', jobError.message);
+        return new Response(JSON.stringify({ error: 'No se pudo reservar la respuesta' }), { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       } else {
         jobId = job?.id ?? null;
       }
@@ -826,6 +869,8 @@ Deno.serve(async (req: Request) => {
       const { data: msgDisparador } = await supabase
         .from('messages')
         .select('created_at')
+        .eq('organization_id', organizationId)
+        .eq('conversation_id', conversationId)
         .eq('id', messageId)
         .single();
 
@@ -833,6 +878,7 @@ Deno.serve(async (req: Request) => {
         const { data: posteriores } = await supabase
           .from('messages')
           .select('id')
+          .eq('organization_id', organizationId)
           .eq('conversation_id', conversationId)
           .eq('role', 'customer')
           .gt('created_at', msgDisparador.created_at)
@@ -851,9 +897,11 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    if (!await contactoPermitido()) return await omitirContacto();
     const { data: messages } = await supabase
       .from('messages')
       .select('id, content, content_type, direction, role, created_at, metadata')
+      .eq('organization_id', organizationId)
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: false })
       .limit(20);
@@ -912,7 +960,7 @@ Deno.serve(async (req: Request) => {
     // porque cuenta por conversacion. Dimensionado con el trafico real (881
     // conversaciones en 30 dias): mediana 3 mensajes, p99 = 32, maximo historico
     // 62. Con el default de 60 no toca a ningun cliente legitimo.
-    const topeDiario = (settings as any).max_respuestas_ia_por_conversacion_dia ?? 60;
+    const topeDiario = settings.max_respuestas_ia_por_conversacion_dia ?? 60;
     if (topeDiario > 0) {
       const inicioDelDia = new Date();
       inicioDelDia.setUTCHours(0, 0, 0, 0);
@@ -944,10 +992,11 @@ Deno.serve(async (req: Request) => {
     }
 
     // --- Fase 0.2: sin creditos no se llama al modelo -------------------------
-    const creditosDisponibles = (aiSettings as any)?.credits_remaining ?? null;
+    const creditosDisponibles = settings.credits_remaining ?? null;
     if (creditosDisponibles !== null && creditosDisponibles <= 0) {
       let mensajeEnviado = false;
       if (settings.reply_fallback_on_no_credits === true && settings.fallback_message) {
+        if (!await contactoPermitido()) return await omitirContacto();
         await supabase.from('messages').insert({
           organization_id: organizationId,
           conversation_id: conversationId,
@@ -987,7 +1036,7 @@ Deno.serve(async (req: Request) => {
         const phoneMatch = msgNorm.match(/\b(?:57)?3\d{9}\b/) || msgNorm.match(/\b\d{7,10}\b/);
         if (emailMatch || phoneMatch) {
           const parts = msg.split(/[,\n]+/).map((s: string) => s.trim()).filter((s: string) => s.length > 0);
-          const updateData: any = {};
+          const updateData: Record<string, unknown> = {};
           let nameCandidate = '';
           let detectedEmail = '';
           for (const part of parts) {
@@ -1027,7 +1076,7 @@ Deno.serve(async (req: Request) => {
             if (realCustomer && realCustomer.id !== conv.customer_id) {
               updateData.metadata = { ...(conv.customer?.metadata || {}), real_email: detectedEmail, linked_customer_id: realCustomer.id };
               // Sync data to real customer
-              const realUpd: any = { last_seen_at: new Date().toISOString() };
+              const realUpd: Record<string, unknown> = { last_seen_at: new Date().toISOString() };
               if (updateData.first_name) { realUpd.first_name = updateData.first_name; realUpd.last_name = updateData.last_name || ''; }
               if (updateData.phone) realUpd.phone = updateData.phone;
               if (updateData.address) realUpd.address = updateData.address;
@@ -1111,7 +1160,7 @@ Deno.serve(async (req: Request) => {
     const customerId = conv.customer?.id || null;
     
     // Detect if conversation is in order-taking phase (collecting customer data)
-    const lastUserMsg = (lastCustomerMessage?.content || '').toLowerCase().trim();
+    const lastUserMsg = String(lastCustomerMessage?.content || '').toLowerCase().trim();
     const last4 = recentMessages.slice(-4);
 
     // Detect product selection: user sends a product name from previously shown cards
@@ -1120,13 +1169,13 @@ Deno.serve(async (req: Request) => {
       const aiWithProducts = last4.filter(m => m.direction === 'outbound' && m.metadata?.products?.length > 0);
       if (aiWithProducts.length === 0) return false;
       for (const aiMsg of aiWithProducts) {
-        const productNames = aiMsg.metadata.products.map((p: any) => (p.name || '').toLowerCase());
+        const productNames = aiMsg.metadata.products.map((p: ProductoChat) => (p.name || '').toLowerCase());
         if (productNames.some((name: string) => lastUserMsg.includes(name) || name.includes(lastUserMsg))) return true;
       }
       if (lastUserMsg.includes(',')) {
         const parts = lastUserMsg.split(',').map(s => s.trim()).filter(s => s.length > 5);
         for (const aiMsg of aiWithProducts) {
-          const productNames = aiMsg.metadata.products.map((p: any) => (p.name || '').toLowerCase());
+          const productNames = aiMsg.metadata.products.map((p: ProductoChat) => (p.name || '').toLowerCase());
           if (parts.some(part => productNames.some((name: string) => name.includes(part) || part.includes(name)))) return true;
         }
       }
@@ -1135,7 +1184,7 @@ Deno.serve(async (req: Request) => {
       if (decisionPhrase) {
         const userWords = lastUserMsg.normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/\s+/).filter(w => w.length > 3);
         for (const aiMsg of aiWithProducts) {
-          const productNames = aiMsg.metadata.products.map((p: any) => (p.name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+          const productNames = aiMsg.metadata.products.map((p: ProductoChat) => (p.name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
           if (userWords.some(w => productNames.some((name: string) => name.includes(w)))) return true;
         }
         // Ordinal selection ("la primera", "opción 2") without product words also counts
@@ -1233,7 +1282,7 @@ Deno.serve(async (req: Request) => {
     }
     
     // When user is selecting a product, reuse products from previous AI message metadata
-    let productsFromPreviousCards: {text: string, products: any[], hayTallas?: boolean} | null = null;
+    let productsFromPreviousCards: {text: string, products: ProductoChat[], hayTallas?: boolean} | null = null;
     if (userSelectingProduct || esSeguimientoDeVariante) {
       const aiWithProducts = recentMessages.filter(m => m.direction === 'outbound' && m.metadata?.products?.length > 0);
       const lastAiWithProducts = aiWithProducts[aiWithProducts.length - 1];
@@ -1241,7 +1290,7 @@ Deno.serve(async (req: Request) => {
         const prods = lastAiWithProducts.metadata.products;
         // El cliente esta eligiendo talla/presentacion de una tarjeta anterior:
         // aqui es donde mas falta hacen las variantes reales.
-        const idsPrevios = prods.map((p: any) => Number(p.id)).filter((n: number) => !Number.isNaN(n));
+        const idsPrevios = prods.map((p: { id: number | string }) => Number(p.id)).filter((n: number) => !Number.isNaN(n));
         const [variantesPrevias, medidasPrevias] = await Promise.all([
           detalleDeVariantes(organizationId, idsPrevios),
           medidasDeProductos(organizationId, idsPrevios),
@@ -1442,7 +1491,7 @@ Deno.serve(async (req: Request) => {
     // `systemPrompt` ya solo contiene lo estable de la organizacion: es el
     // prefijo que el proveedor puede cachear. El contexto del mensaje va como
     // un turno aparte, DESPUES del prefijo, para no romperlo.
-    const chatMessages: Array<any> = [
+    const chatMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
       { role: 'system', content: systemPrompt }
     ];
     if (contextoDinamico.trim()) {
@@ -1498,7 +1547,7 @@ Deno.serve(async (req: Request) => {
 
     // La vision va SIEMPRE por gpt-4o, independientemente del proveedor elegido:
     // es el unico modelo del catalogo con soporte de imagen confirmado.
-    let proveedor = hasImage ? 'openai' : ((settings as any).provider || 'openai');
+    let proveedor = hasImage ? 'openai' : (settings.provider || 'openai');
     let model = hasImage ? 'gpt-4o' : (settings.model || 'gpt-5.6-luna');
 
     let respuesta: RespuestaLlm;
@@ -1555,12 +1604,12 @@ Deno.serve(async (req: Request) => {
     };
 
     // Detect [PEDIDO_LISTO] marker and build checkout redirect
-    let orderAction: any = undefined;
+    let orderAction: Record<string, unknown> | undefined = undefined;
     if (responseContent.includes('[PEDIDO_LISTO]')) {
       responseContent = responseContent.replace('[PEDIDO_LISTO]', '').trim();
 
       // Parse [DATOS_CLIENTE:nombre|telefono|email|direccion|ciudad]
-      let customerInfo: any = {};
+      let customerInfo: Record<string, string> = {};
       const clienteMatch = responseContent.match(/\[DATOS_CLIENTE:([^\]]*)\]/);
       if (clienteMatch) {
         const parts = clienteMatch[1].split('|');
@@ -1580,9 +1629,9 @@ Deno.serve(async (req: Request) => {
       // Only match against the CURRENT response (the one with PEDIDO_LISTO that has the order summary)
       // Do NOT include previous AI messages as they contain full product listings that cause false matches
       const responseLower = responseContent.toLowerCase();
-      const cartItems: any[] = [];
+      const cartItems: { productId: string | number; name: string; price: number; comparePrice?: number | null; imageUrl?: string | null; quantity: number }[] = [];
       const seenIds = new Set();
-      const allProducts: any[] = [];
+      const allProducts: ProductoChat[] = [];
       for (const msg of recentMessages) {
         if (msg.direction === 'outbound' && msg.metadata?.products?.length > 0) {
           for (const p of msg.metadata.products) {
@@ -1624,7 +1673,7 @@ Deno.serve(async (req: Request) => {
       }
       // Update customer + merge with real customer if email matches
       if (conv.customer_id && (customerInfo.firstName || customerInfo.phone || customerInfo.address)) {
-        const upd: any = {};
+        const upd: Record<string, unknown> = {};
         if (customerInfo.firstName) { upd.first_name = customerInfo.firstName; upd.last_name = customerInfo.lastName || ''; }
         if (customerInfo.phone) upd.phone = customerInfo.phone;
         if (customerInfo.address) upd.address = customerInfo.address;
@@ -1635,7 +1684,7 @@ Deno.serve(async (req: Request) => {
             .eq('email', customerInfo.email).maybeSingle();
           if (realCust && realCust.id !== conv.customer_id) {
             upd.metadata = { ...(conv.customer?.metadata || {}), real_email: customerInfo.email, linked_customer_id: realCust.id };
-            const rUpd: any = { last_seen_at: new Date().toISOString() };
+            const rUpd: Record<string, unknown> = { last_seen_at: new Date().toISOString() };
             if (customerInfo.firstName) { rUpd.first_name = customerInfo.firstName; rUpd.last_name = customerInfo.lastName || ''; }
             if (customerInfo.phone) rUpd.phone = customerInfo.phone;
             if (customerInfo.address) rUpd.address = customerInfo.address;
@@ -1664,7 +1713,7 @@ Deno.serve(async (req: Request) => {
     // --- Fase 0.2: cobro explicito de creditos ------------------------------
     // Unica fuente de verdad desde la Fase 0 (el trigger trg_consume_ai_credits_on_message
     // se elimino). decrement_ai_credits es atomico: hace SELECT ... FOR UPDATE.
-    const creditosAntes = (aiSettings as any)?.credits_remaining ?? null;
+    const creditosAntes = settings.credits_remaining ?? null;
     const { data: cobrado, error: errorCobro } = await supabase.rpc('decrement_ai_credits', {
       p_org_id: organizationId,
       p_cost: 1,
@@ -1726,7 +1775,8 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const { data: aiMessage } = await supabase
+    if (!await contactoPermitido()) return await omitirContacto();
+    const { data: aiMessage, error: aiMessageError } = await supabase
       .from('messages')
       .insert({
         organization_id: organizationId,
@@ -1756,6 +1806,8 @@ Deno.serve(async (req: Request) => {
       })
       .select()
       .single();
+
+    if (aiMessageError || !aiMessage) throw new Error('No se pudo registrar la respuesta generada');
 
     // El job ya existe (se creo como candado antes de generar): aqui se cierra.
     if (jobId) {
@@ -1792,13 +1844,13 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ success: true, messageId: aiMessage?.id, version: 20 }), {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
-  } catch (error: any) {
+  } catch (error) {
     // Fase 0.4: los fallos dejaban de existir (ai_jobs solo se escribia al triunfar).
     console.error('Error en ai-auto-response:', error);
     await finalizarJob(jobId, {
       status: 'failed',
-      error_code: String(error?.status ?? error?.code ?? 'error_interno'),
-      error_message: String(error?.message ?? error).slice(0, 1000),
+      error_code: String(detalleError(error).status ?? detalleError(error).code ?? 'error_interno'),
+      error_message: String(detalleError(error).message).slice(0, 1000),
       completed_at: new Date().toISOString(),
     });
     if (!jobId && conversationId && organizationId) {
@@ -1809,8 +1861,8 @@ Deno.serve(async (req: Request) => {
           trigger_message_id: messageId,
           job_type: 'auto_response',
           status: 'failed',
-          error_code: String(error?.status ?? error?.code ?? 'error_interno'),
-          error_message: String(error?.message ?? error).slice(0, 1000),
+          error_code: String(detalleError(error).status ?? detalleError(error).code ?? 'error_interno'),
+          error_message: String(detalleError(error).message).slice(0, 1000),
           completed_at: new Date().toISOString(),
         });
       } catch (e) {

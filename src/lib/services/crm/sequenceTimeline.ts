@@ -1,3 +1,5 @@
+import { interpolateAutomationText, type AutomationText } from '@/lib/services/crm/automation/automationText';
+const defaultSequenceText:AutomationText=(source,values)=>interpolateAutomationText(source ?? '',values);
 /**
  * Lógica pura de la línea de tiempo de una secuencia (brief UX 6.3).
  *
@@ -52,18 +54,18 @@ export function channelLabel(channel: string): string {
 /** Canales que llegan a una persona real (para la advertencia de inscripción). */
 export const CUSTOMER_FACING_CHANNELS: ReadonlySet<string> = new Set(['email', 'whatsapp', 'sms']);
 
-function plural(n: number, one: string, many: string): string {
-  return `${n} ${n === 1 ? one : many}`;
+function plural(n: number, one: string, many: string, text: AutomationText = defaultSequenceText): string {
+  return text("{p0} {p1}",{p0:n,p1:text(n === 1 ? one : many)});
 }
 
 /** Espera relativa al paso anterior, en lenguaje humano. */
-export function describeDelay(step: Pick<TimelineStepInput, 'delay_days' | 'delay_hours'>): string {
+export function describeDelay(step: Pick<TimelineStepInput, 'delay_days' | 'delay_hours'>, text: AutomationText = defaultSequenceText): string {
   const days = Math.max(0, Number(step.delay_days) || 0);
   const hours = Math.max(0, Number(step.delay_hours) || 0);
-  if (days === 0 && hours === 0) return 'Inmediato';
-  if (hours === 0) return `${plural(days, 'día', 'días')} después`;
-  if (days === 0) return `${plural(hours, 'hora', 'horas')} después`;
-  return `${plural(days, 'día', 'días')} y ${hours} h después`;
+  if (days === 0 && hours === 0) return text('Inmediato');
+  if (hours === 0) return text("{p0} después",{p0:plural(days, 'día', 'días', text)});
+  if (days === 0) return text("{p0} después",{p0:plural(hours, 'hora', 'horas', text)});
+  return text("{p0} y {p1} h después",{p0:plural(days, 'día', 'días', text),p1:hours});
 }
 
 function configText(step: TimelineStepInput, key: string): string {
@@ -72,43 +74,43 @@ function configText(step: TimelineStepInput, key: string): string {
 }
 
 /** Contenido resumido de un paso, para la tarjeta de la línea de tiempo. */
-export function summarizeStep(step: TimelineStepInput, templateName?: string | null): string {
+export function summarizeStep(step: TimelineStepInput, templateName?: string | null, text: AutomationText = defaultSequenceText): string {
   switch (step.channel) {
     case 'email': {
       const subject = configText(step, 'subject');
       if (subject) return subject;
-      if (step.template_id) return `Plantilla: ${templateName ?? 'seleccionada'}`;
-      return 'Sin contenido todavía';
+      if (step.template_id) return text("Plantilla: {p0}",{p0:templateName ?? text('seleccionada')});
+      return text("Sin contenido todavía");
     }
     case 'whatsapp':
     case 'task':
     case 'call': {
       const title = configText(step, 'title') || configText(step, 'subject');
       if (title) return title;
-      if (step.template_id) return `Plantilla: ${templateName ?? 'seleccionada'}`;
-      return 'Sin contenido todavía';
+      if (step.template_id) return text("Plantilla: {p0}",{p0:templateName ?? text('seleccionada')});
+      return text("Sin contenido todavía");
     }
     case 'wait': {
       const days = Number(step.delay_days) || 0;
       const hours = Number(step.delay_hours) || 0;
-      if (days === 0 && hours === 0) return 'Espera sin duración';
-      return `Espera ${describeDelay(step).replace(' después', '')}`;
+      if (days === 0 && hours === 0) return text("Espera sin duración");
+      return text("Espera {p0}",{p0:describeDelay(step, text).replace(text('{p0} después',{p0:''}), '')});
     }
     case 'condition': {
       const rules = countConditionRules(step.condition);
-      if (rules === 0) return 'Sin reglas: no se puede guardar';
-      const op = (step.condition as { op?: string } | null)?.op === 'or' ? ' (alguna)' : '';
-      return `${plural(rules, 'regla', 'reglas')}${op}`;
+      if (rules === 0) return text("Sin reglas: no se puede guardar");
+      const op = (step.condition as { op?: string } | null)?.op === 'or' ? text(" (alguna)") : '';
+      return `${plural(rules, text("regla"), text("reglas"), text)}${op}`;
     }
     case 'sms':
-      return 'Sin proveedor de SMS: fallará';
+      return text("Sin proveedor de SMS: fallará");
     default:
       return step.name?.trim() || channelLabel(step.channel);
   }
 }
 
 /** Línea de tiempo acumulada desde la inscripción. */
-export function buildTimeline(steps: TimelineStepInput[]): TimelineEntry[] {
+export function buildTimeline(steps: TimelineStepInput[], text: AutomationText = defaultSequenceText): TimelineEntry[] {
   let offset = 0;
   return steps.map((step, index) => {
     const days = Math.max(0, Number(step.delay_days) || 0);
@@ -119,20 +121,20 @@ export function buildTimeline(steps: TimelineStepInput[]): TimelineEntry[] {
       step_number: step.step_number,
       channel: step.channel,
       dayOffset: offset,
-      dayLabel: `Día ${Math.floor(offset)}`,
-      delayLabel: describeDelay(step),
+      dayLabel: text("Día {p0}",{p0:Math.floor(offset)}),
+      delayLabel: describeDelay(step, text),
       isBranch: step.channel === 'condition',
     };
   });
 }
 
 /** «Dura 5 días» / «Todo el mismo día» / «Sin pasos». */
-export function totalDurationLabel(steps: TimelineStepInput[]): string {
-  if (steps.length === 0) return 'Sin pasos';
-  const timeline = buildTimeline(steps);
+export function totalDurationLabel(steps: TimelineStepInput[], text: AutomationText = defaultSequenceText): string {
+  if (steps.length === 0) return text("Sin pasos");
+  const timeline = buildTimeline(steps, text);
   const days = Math.floor(timeline[timeline.length - 1].dayOffset);
-  if (days === 0) return 'Todo el mismo día';
-  return `Dura ${plural(days, 'día', 'días')}`;
+  if (days === 0) return text("Todo el mismo día");
+  return text("Dura {p0}",{p0:plural(days, 'día', 'días', text)});
 }
 
 // ─── Reordenación e inserción (inmutables, renumeran 1..n) ───────────────────

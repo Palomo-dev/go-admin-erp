@@ -54,14 +54,16 @@ interface SheetContentProps
     VariantProps<typeof sheetVariants> {
   /** Oculta la X de la esquina cuando el contenido trae su propio cierre (igual que `DialogContent`). */
   hideCloseButton?: boolean;
+  /** Receta de velo opt-in; conserva el tratamiento previo de otros módulos. */
+  overlayClassName?: string;
 }
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, hideCloseButton, ...props }, ref) => (
+>(({ side = "right", className, children, hideCloseButton, overlayClassName, ...props }, ref) => (
   <SheetPortal>
-    <SheetOverlay />
+    <SheetOverlay className={overlayClassName} />
     <SheetPrimitive.Content
       ref={ref}
       className={cn(sheetVariants({ side }), className)}

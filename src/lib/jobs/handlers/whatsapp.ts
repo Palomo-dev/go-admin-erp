@@ -1,6 +1,7 @@
 import { JobFatalError, JobRetryableError, type JobHandler } from '../types';
 import { findByClientRequestId, sendWhatsApp } from '@/lib/services/crm/whatsapp/outboundService';
 import { WhatsAppError, type SendWhatsAppInput } from '@/lib/services/crm/whatsapp/types';
+import { whatsappDispatchHandler } from './whatsappDispatch';
 
 /**
  * Handler kind 'whatsapp' (FASE-16 §4.4): envío programado
@@ -38,6 +39,7 @@ export function whatsappJobClientRequestId(jobId: string, req: Pick<SendWhatsApp
 }
 
 export const whatsappJobHandler: JobHandler = async ({ job, supabase, orgId, log, signal }) => {
+  if (job.payload?.dispatch_message_id !== undefined) return whatsappDispatchHandler({ job, supabase, orgId, log, signal });
   const req = job.payload?.message_request as SendWhatsAppInput | undefined;
   if (!req) throw new JobFatalError('payload.message_request requerido');
   if (Number(req.orgId) !== orgId) throw new JobFatalError('message_request.orgId no coincide con el job');

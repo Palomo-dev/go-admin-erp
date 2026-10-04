@@ -16,6 +16,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { readAllF12 as readOrganizationRows } from './f12ReadService';
 
 export interface EnrollmentStatRow {
   sequence_id?: string;
@@ -66,12 +67,8 @@ export async function getSequenceStats(
   orgId: number,
   supabase: SupabaseClient,
 ): Promise<Record<string, SequenceStats>> {
-  const { data, error } = await supabase
-    .from('sequence_enrollments')
-    .select('sequence_id, status, paused_reason, exit_reason')
-    .eq('organization_id', orgId);
-  if (error) throw new Error(`getSequenceStats: ${error.message}`);
-  return summarizeEnrollmentRows((data ?? []) as (EnrollmentStatRow & { sequence_id: string })[]);
+  const rows = await readOrganizationRows<EnrollmentStatRow & { sequence_id: string }>(supabase, 'sequence_enrollments', 'id, sequence_id, status, paused_reason, exit_reason', orgId);
+  return summarizeEnrollmentRows(rows);
 }
 
 // ─── Nombres para la lista de inscripciones ──────────────────────────────────

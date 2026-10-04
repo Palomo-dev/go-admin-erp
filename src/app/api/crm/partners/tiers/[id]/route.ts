@@ -11,11 +11,11 @@ type Params = { params: Promise<{ id: string }> };
 /** PATCH /api/crm/partners/tiers/[id] — solo admin/manager (por id de rol); umbrales, tasa, beneficios, nombre (404 ajeno; 409 nombre repetido). */
 export async function PATCH(request: NextRequest, { params }: Params) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     const { id } = await params;
     const body = await readJson(request);
     rejectForeignOrganization(TAG, body, ctx, request);
-    requirePartnerManager(ctx);
+    await requirePartnerManager(ctx);
     const parsed = validateTierInput(body, { partial: true });
     if (!parsed.ok) return validationFail(parsed.errors);
     const tier = await updatePartnerTier(id, ctx.organizationId, parsed.value, ctx.supabase);
@@ -29,10 +29,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 /** DELETE /api/crm/partners/tiers/[id] — solo admin/manager (por id de rol, como el PATCH); 409 si algún partner lo usa (no hay FK que lo impida). */
 export async function DELETE(request: NextRequest, { params }: Params) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     // Regla dura 5 (b): sin body, pero la query podría traer otra organización.
     await readOrgBody(ctx, request);
-    requirePartnerManager(ctx);
+    await requirePartnerManager(ctx);
     const { id } = await params;
     const deleted = await deletePartnerTier(id, ctx.organizationId, ctx.supabase);
     if (!deleted) return jsonFail(404, 'Tier no encontrado en esta organización', { code: 'NOT_FOUND' });

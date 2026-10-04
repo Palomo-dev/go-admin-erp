@@ -2,6 +2,7 @@
 
 import type { LucideIcon } from 'lucide-react';
 import { Badge, type TamanoBadge } from '@/components/ui/badge';
+import { cn } from '@/utils/Utils';
 import { resolverEstado, type AparienciaBadge, type TonoBadge } from './estadoTono';
 import { useEtiquetaEstado } from './useIdiomaKit';
 
@@ -23,6 +24,8 @@ export interface StatusBadgeProps {
   etiqueta?: string;
   /** `sm` 22 px en tablas y tarjetas densas; `md` 24 px en cabeceras. */
   tamano?: TamanoBadge;
+  /** Opt-in al texto 12/16 de Figma sin modificar la altura ni la receta de color. */
+  tipografia?: 'actual' | 'figma';
   icono?: LucideIcon;
   /** Solo para excepciones documentadas en SISTEMA-BADGES.md. */
   tono?: TonoBadge;
@@ -30,7 +33,7 @@ export interface StatusBadgeProps {
   className?: string;
 }
 
-export function StatusBadge({ estado, etiqueta, tamano = 'sm', icono, tono, apariencia, className }: StatusBadgeProps) {
+export function StatusBadge({ estado, etiqueta, tamano = 'sm', tipografia = 'actual', icono, tono, apariencia, className }: StatusBadgeProps) {
   const etiquetaEstado = useEtiquetaEstado();
   const r = resolverEstado(estado);
   return (
@@ -40,7 +43,7 @@ export function StatusBadge({ estado, etiqueta, tamano = 'sm', icono, tono, apar
       tamano={tamano}
       punto={r.punto}
       icono={icono}
-      className={className}
+      className={cn(tipografia === 'figma' && 'text-xs leading-4', className)}
     >
       {etiqueta ?? etiquetaEstado(estado)}
     </Badge>

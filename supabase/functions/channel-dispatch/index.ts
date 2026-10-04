@@ -21,6 +21,10 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { secretosCoinciden } from "../_shared/ai-chat/politicaRespuesta.ts";
+import { cargarSecretoInterno, evaluarContactoPersistido } from "../_shared/contacto/puerta.ts";
+import { normalizePhoneDigits, resolverIndicativo } from "../_shared/contacto/telefono.ts";
+import { reservarContactoLegal } from "../_shared/contacto/despachoLegal.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -51,6 +55,7 @@ function cleanText(text: string): string {
 
 interface SendResult {
   ok: boolean;
+  uncertain?: boolean;
   externalId?: string;
   error?: string;
   errorCode?: string;
@@ -72,6 +77,7 @@ async function graphPost(creds: Creds, body: Record<string, unknown>): Promise<S
   const msg = data?.messages?.[0];
   return {
     ok: res.ok,
+    uncertain: res.status >= 500,
     externalId: msg?.id,
     error: data?.error?.error_user_msg || data?.error?.message,
     errorCode: data?.error?.code != null ? String(data.error.code) : undefined,
@@ -134,6 +140,7 @@ async function sendTwilioWhatsApp(creds: Creds, to: string, msg: { content: stri
   const data = await res.json().catch(() => ({}));
   return {
     ok: res.ok,
+    uncertain: res.status >= 500,
     externalId: data?.sid,
     error: data?.message,
     errorCode: data?.code != null ? String(data.code) : undefined,
@@ -154,6 +161,7 @@ async function sendMeta(type: string, creds: Creds, recipientId: string, text: s
   const data = await res.json().catch(() => ({}));
   return {
     ok: res.ok,
+    uncertain: res.status >= 500,
     externalId: data?.message_id,
     error: data?.error?.message,
     errorCode: data?.error?.code != null ? String(data.error.code) : undefined,
@@ -162,69 +170,47 @@ async function sendMeta(type: string, creds: Creds, recipientId: string, text: s
 }
 
 /** Resolver el destinatario (teléfono o PSID/IGSID) del customer */
-async function resolveRecipient(channelType: string, channelId: string, customerId: string, preferred?: string | null): Promise<string> {
-  if (channelType === "whatsapp" && preferred) return preferred.replace(/\D/g, "");
+async function resolveRecipient(orgId: number, channelType: string, channelId: string, customerId: string): Promise<string> {
   const identityTypeByChannel: Record<string, string> = { facebook: "facebook_psid", instagram: "instagram_user", whatsapp: "whatsapp_phone" };
-  const identityType = identityTypeByChannel[channelType];
-  const { data: ident } = await supabase
-    .from("customer_channel_identities")
-    .select("identity_value")
-    .eq("channel_id", channelId)
-    .eq("customer_id", customerId)
-    .eq("identity_type", identityType)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (ident?.identity_value) return ident.identity_value as string;
-  if (channelType === "whatsapp") {
-    const { data: customer } = await supabase.from("customers").select("phone").eq("id", customerId).single();
-    return ((customer?.phone as string) || "").replace(/\D/g, "");
-  }
-  return "";
+  const { data: ident, error: identityError } = await supabase.from("customer_channel_identities")
+    .select("identity_value").eq("organization_id", orgId).eq("channel_id", channelId).eq("customer_id", customerId)
+    .eq("identity_type", identityTypeByChannel[channelType]).order("created_at", { ascending: false }).order("id").limit(1).maybeSingle();
+  if (identityError) throw new Error("No se pudo resolver la identidad propia");
+  if (ident?.identity_value) return channelType === "whatsapp" ? normalizePhoneDigits(ident.identity_value) || "" : ident.identity_value;
+  if (channelType !== "whatsapp") return "";
+  const { data: customer, error: customerError } = await supabase.from("customers").select("phone")
+    .eq("organization_id", orgId).eq("id", customerId).single();
+  if (customerError) throw new Error("No se pudo resolver el cliente propio");
+  const { data: config, error: configError } = await supabase.from("provider_configs").select("settings")
+    .eq("organization_id", orgId).eq("category", "whatsapp").order("priority").order("id").limit(1).maybeSingle();
+  if (configError) throw new Error("No se pudo resolver el indicativo propio");
+  const cc = resolverIndicativo(config?.settings?.default_country_code, Deno.env.get("WHATSAPP_DEFAULT_COUNTRY_CODE"));
+  return customer?.phone ? normalizePhoneDigits(customer.phone, cc) || "" : "";
 }
 
-async function recordResult(msg: { id: string; organization_id: number; metadata: Record<string, unknown> | null }, result: SendResult, dispatchChannel: string) {
-  // `event_time` es GENERATED ALWAYS AS (created_at) en la BD: incluirla hace
-  // fallar el INSERT entero con 428C9 y, sin comprobar el error, todos los
-  // eventos de despacho se perdían en silencio (tester F16 r2 · F-1).
-  const { error: eventError } = await supabase.from("message_events").insert({
-    organization_id: msg.organization_id,
-    message_id: msg.id,
-    event_type: result.ok ? "sent" : "failed",
-    provider_payload: result.raw || {},
-    error_code: result.ok ? null : (result.errorCode ?? null),
-    error_message: result.ok ? null : (result.error || "Error desconocido"),
+interface MensajeReservado { id: string; organization_id: number; dispatchToken: string }
+async function recordResult(msg: MensajeReservado, result: SendResult, dispatchChannel: string, status?: string) {
+  // Sin ID del proveedor una respuesta 2xx no demuestra entrega: requiere conciliación.
+  const finalStatus = status || (result.uncertain ? "uncertain" : result.ok && result.externalId ? "sent" : result.ok ? "uncertain" : "failed");
+  const { error } = await supabase.rpc("crm_finish_message_dispatch", {
+    p_org: msg.organization_id, p_message: msg.id, p_token: msg.dispatchToken, p_status: finalStatus,
+    p_channel: dispatchChannel, p_external_id: result.externalId || null, p_error_code: result.errorCode || null,
+    p_error: result.error || null, p_payload: result.raw && typeof result.raw === "object" ? result.raw : {},
   });
-  if (eventError) {
-    console.error("[channel-dispatch] message_events NO PERSISTIDO", {
-      organization_id: msg.organization_id,
-      message_id: msg.id,
-      error: eventError.message,
-    });
-  }
-  await supabase
-    .from("messages")
-    .update({
-      external_message_id: result.externalId || null,
-      metadata: {
-        ...(msg.metadata || {}),
-        dispatched: result.ok,
-        dispatch_channel: dispatchChannel,
-        external_message_id: result.externalId || null,
-        dispatch_error: result.ok ? null : (result.error || "Error desconocido"),
-        dispatch_error_code: result.ok ? null : (result.errorCode ?? null),
-        dispatched_at: new Date().toISOString(),
-      },
-    })
-    .eq("id", msg.id);
+  if (error) throw new Error("No se pudo persistir el resultado de despacho");
 }
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  if (req.method !== "POST") return json({ error: "Método no permitido" }, 405);
+  const secret = await cargarSecretoInterno(supabase, Deno.env.get("AI_INTERNAL_SECRET"));
+  if (!secret || !secretosCoinciden(req.headers.get("x-internal-secret") || "", secret)) return json({ error: "No autorizado" }, 401);
+  let reserved: MensajeReservado | null = null;
+  let providerStarted = false;
   try {
-    const { messageId } = await req.json();
-    if (!messageId) return json({ error: "messageId requerido" }, 400);
+    const { messageId, organizationId, conversationId } = await req.json();
+    if (typeof messageId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(messageId)) return json({ error: "messageId inválido" }, 400);
 
     // 1. Cargar el mensaje (payload + related_opportunity_id)
     const { data: msg } = await supabase
@@ -233,24 +219,38 @@ Deno.serve(async (req: Request) => {
       .eq("id", messageId)
       .single();
     if (!msg) return json({ error: "Mensaje no encontrado" }, 404);
+    if ((organizationId !== undefined && organizationId !== msg.organization_id)
+      || (conversationId !== undefined && conversationId !== msg.conversation_id)) {
+      console.warn("[channel-dispatch] Contexto de despacho no coincide", { messageId });
+      return json({ error: "Contexto de despacho no coincide" }, 403);
+    }
 
     if (msg.direction !== "outbound" || !["agent", "ai"].includes(msg.role)) return json({ skipped: "no es saliente de agente/ia" });
     if (msg.metadata?.dispatched) return json({ skipped: "ya despachado" });
 
     // 2. Canal + tipo
-    const { data: channel } = await supabase.from("channels").select("id, type").eq("id", msg.channel_id).single();
+    const { data: channel } = await supabase.from("channels").select("id, type").eq("organization_id", msg.organization_id).eq("id", msg.channel_id).single();
     if (!channel || !DISPATCH_TYPES.includes(channel.type)) return json({ skipped: "canal no despachable" });
+
+    const { data: claim, error: claimError } = await supabase.rpc("crm_claim_message_dispatch", { p_org: msg.organization_id, p_message: msg.id });
+    if (claimError) throw new Error("No se pudo reservar el mensaje");
+    if (claim?.claimed !== true) return json({ skipped: claim?.reason || "contact_blocked" });
+    if (typeof claim.token !== "string") throw new Error("Reserva sin token");
+    reserved = { id: msg.id, organization_id: msg.organization_id, dispatchToken: claim.token };
 
     // 3. Credenciales / proveedor.
     // `channel_credentials` es UNIQUE (channel_id, provider), NO (channel_id):
     // un canal con credenciales `meta` y `twilio` haría fallar `maybeSingle()`
     // y todos sus envíos morirían con NO_CREDENTIALS sin aviso (tester r1 · 11).
-    const { data: credRows } = await supabase
+    const { data: credRows, error: credError } = await supabase
       .from("channel_credentials")
-      .select("credentials, provider")
+      .select("credentials, provider, channels!inner(organization_id)")
+      .eq("channels.organization_id", msg.organization_id)
+      .eq("is_valid", true)
       .eq("channel_id", msg.channel_id)
       .order("updated_at", { ascending: false })
       .limit(5);
+    if (credError) throw new Error("No se pudieron resolver las credenciales propias");
     const rows = (credRows || []) as Array<{ credentials?: Record<string, unknown>; provider?: string }>;
     const withToken = rows.find((r) => {
       const c = (r.credentials || {}) as Record<string, unknown>;
@@ -260,34 +260,54 @@ Deno.serve(async (req: Request) => {
     const creds = (credRow?.credentials || {}) as Creds;
     const provider = (credRow?.provider as string | undefined) || "meta";
 
-    // 4. Destinatario (metadata.to del CRM tiene prioridad para WhatsApp)
-    const { data: conv } = await supabase.from("conversations").select("customer_id").eq("id", msg.conversation_id).single();
-    if (!conv?.customer_id) return json({ error: "Conversación sin customer" }, 400);
-    const recipient = await resolveRecipient(channel.type, msg.channel_id, conv.customer_id, (msg.metadata?.to as string | undefined) ?? null);
+    // 4. Destinatario de la identidad/cliente propios; metadata.to no puede sustituirlo.
+    const { data: conv } = await supabase.from("conversations").select("customer_id").eq("organization_id", msg.organization_id).eq("channel_id", msg.channel_id).eq("id", msg.conversation_id).single();
+    if (!conv?.customer_id) throw new Error("Conversación propia no disponible");
+    const recipient = await resolveRecipient(msg.organization_id, channel.type, msg.channel_id, conv.customer_id);
     if (!recipient) {
-      await recordResult(msg, { ok: false, error: "No se encontró destinatario", errorCode: "NO_RECIPIENT" }, channel.type);
+      await recordResult(reserved, { ok: false, error: "No se encontró destinatario", errorCode: "NO_RECIPIENT" }, channel.type);
       return json({ error: "No se encontró destinatario" }, 400);
     }
 
+    // Revalidar tras consultas: una baja posterior al claim también impide llamar al proveedor.
+    const gate = await evaluarContactoPersistido(supabase, msg.organization_id, msg.id);
+    if (!gate.allowed) {
+      await recordResult(reserved, { ok: false, error: "Contacto bloqueado antes del envío", errorCode: gate.reason }, channel.type);
+      return json({ skipped: gate.reason });
+    }
+    const legal = await reservarContactoLegal(supabase, msg.organization_id, msg.id, reserved.dispatchToken, recipient, Deno.env.get("WHATSAPP_DEFAULT_COUNTRY_CODE"));
+    if (!legal.allowed) {
+      if (legal.retryAt) {
+        const { data, error } = await supabase.rpc("crm_defer_message_legal", {
+          p_org: msg.organization_id, p_message: msg.id, p_token: reserved.dispatchToken,
+          p_at: legal.retryAt, p_reason: legal.reason,
+        });
+        if (error || !data?.job_id) throw new Error("No se pudo reprogramar el contacto");
+        return json({ deferred: true, run_at: legal.retryAt, reason: legal.reason });
+      }
+      await recordResult(reserved, { ok: false, error: "Compuerta legal bloqueó el envío", errorCode: legal.reason }, channel.type, legal.uncertain ? "uncertain" : "failed");
+      return json({ skipped: legal.reason, ...(legal.uncertain ? { pendingReconciliation: true } : {}) });
+    }
     const payload = (msg.payload || {}) as Record<string, unknown>;
     const text = cleanText(msg.content || "");
 
     // 5a. Canal QR (Baileys) → Evolution API (solo texto)
     if (channel.type === "whatsapp" && provider === "baileys") {
       if (msg.content_type === "template") {
-        await recordResult(msg, { ok: false, error: "El canal QR no admite plantillas", errorCode: "CHANNEL_NO_TEMPLATES" }, "baileys");
+        await recordResult(reserved, { ok: false, error: "El canal QR no admite plantillas", errorCode: "CHANNEL_NO_TEMPLATES" }, "baileys");
         return json({ success: false, error: "CHANNEL_NO_TEMPLATES" }, 200);
       }
       const evolutionUrl = Deno.env.get("EVOLUTION_API_URL") || "";
       const evolutionKey = Deno.env.get("EVOLUTION_API_KEY") || "";
       if (!evolutionUrl) {
-        await supabase.from("messages").update({ metadata: { ...(msg.metadata || {}), dispatch_pending: true, dispatch_method: "baileys" } }).eq("id", msg.id);
+        await recordResult(reserved, { ok: false }, "baileys", "deferred");
         return json({ skipped: "baileys_pending_dispatch", channel: channel.type });
       }
       const instanceName = `wa-qr-${msg.channel_id}`;
       const number = recipient.replace(/@(s\.whatsapp\.net|lid)$/, "");
       const media = (payload.media ?? null) as { url?: string; mime?: string; filename?: string | null; caption?: string | null } | null;
       const isMedia = ["image", "file"].includes(msg.content_type) && media?.url;
+      providerStarted = true;
       const sendRes = await fetch(`${evolutionUrl}/message/${isMedia ? "sendMedia" : "sendText"}/${instanceName}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", apikey: evolutionKey },
@@ -296,13 +316,14 @@ Deno.serve(async (req: Request) => {
           : { number, text }),
       });
       const sendData = await sendRes.json().catch(() => ({}));
-      const result: SendResult = { ok: sendRes.ok, externalId: sendData?.key?.id || sendData?.messageId, error: sendRes.ok ? undefined : (sendData?.error || sendData?.message || "Error Baileys"), errorCode: sendRes.ok ? undefined : String(sendRes.status), raw: sendData };
-      await recordResult(msg, result, "baileys");
-      return json({ success: result.ok, channel: "baileys", externalId: result.externalId, error: result.error });
+      const result: SendResult = { ok: sendRes.ok, uncertain: sendRes.status >= 500, externalId: sendData?.key?.id || sendData?.messageId, error: sendRes.ok ? undefined : (sendData?.error || sendData?.message || "Error Baileys"), errorCode: sendRes.ok ? undefined : String(sendRes.status), raw: sendData };
+      await recordResult(reserved, result, "baileys");
+      return json({ success: result.ok && !!result.externalId, pendingReconciliation: result.uncertain || (result.ok && !result.externalId), channel: "baileys", externalId: result.externalId, error: result.error });
     }
 
     // 5b. Enviar
     let result: SendResult;
+    providerStarted = true;
     if (channel.type !== "whatsapp") {
       result = await sendMeta(channel.type, creds, recipient, text);
     } else if (provider === "twilio") {
@@ -316,12 +337,18 @@ Deno.serve(async (req: Request) => {
     }
 
     // 6. Registrar resultado
-    await recordResult(msg, result, channel.type === "whatsapp" ? provider : channel.type);
+    await recordResult(reserved, result, channel.type === "whatsapp" ? provider : channel.type);
 
+    if (result.uncertain || (result.ok && !result.externalId)) return json({ success: false, pendingReconciliation: true }, 202);
     if (!result.ok) return json({ success: false, error: result.error, errorCode: result.errorCode }, 200);
     return json({ success: true, externalId: result.externalId, channel: channel.type, provider });
   } catch (error) {
-    console.error("[channel-dispatch] Error:", error);
-    return json({ error: error instanceof Error ? error.message : "Error interno" }, 500);
+    if (reserved) {
+      try {
+        await recordResult(reserved, { ok: false, error: providerStarted ? "Entrega no confirmada; conciliar antes de reenviar" : "No se inició el envío", errorCode: providerStarted ? "PROVIDER_UNCERTAIN" : "DISPATCH_PREPARATION_FAILED" }, "dispatcher", providerStarted ? "uncertain" : "failed");
+      } catch { console.error("[channel-dispatch] Resultado pendiente de conciliación", { messageId: reserved.id }); }
+    }
+    console.error("[channel-dispatch] Falló el despacho", { messageId: reserved?.id, detail: error instanceof Error ? error.message : "Error interno" });
+    return json({ error: "No se pudo completar el despacho" }, 500);
   }
 });

@@ -490,7 +490,7 @@ describe('V-3 · inbound falla cerrado cuando el acta no se puede escribir', () 
 function seedAgent(patch: { vac?: Row; call?: Row | null } = {}) {
   fake = seed({
     voice_agent_calls: [
-      { id: VAC, organization_id: ORG, voice_agent_id: 'ag-1', call_id: CALL_ID, provider_call_sid: null, status: 'dialing', started_at: null, consent_given: false, customer_id: null, ...(patch.vac ?? {}) },
+      { id: VAC, organization_id: ORG, voice_agent_id: 'ag-1', call_id: CALL_ID, provider_call_sid: 'CAr5agent01', status: 'dialing', started_at: null, consent_given: false, customer_id: null, ...(patch.vac ?? {}) },
     ],
     calls: patch.call === null ? [] : [callRow({ provider_call_sid: 'CAr5agent01', mode: 'ai_agent', ...(patch.call ?? {}) })],
   });
@@ -653,3 +653,12 @@ describe('S · recordConsent / voidConsentWithoutRecording', () => {
     expect(fake.rows('calls')[0]).toMatchObject({ consent_given: false, recording_enabled: false });
   });
 });
+
+// Fixtures históricas del transporte heredado; los contratos RPC se verifican por separado.
+beforeEach(() => { process.env.CRM_CALL_ATOMIC_RPC_ENABLED = 'false'; });
+afterAll(() => { delete process.env.CRM_CALL_ATOMIC_RPC_ENABLED; });
+
+// Fixtures Dial anteriores a Conference: escape explícito, sin falsear los contratos nuevos.
+const phoneLegacyEnv = process.env.CRM_PHONE_CONFERENCE_ENABLED;
+beforeAll(() => { process.env.CRM_PHONE_CONFERENCE_ENABLED = 'false'; });
+afterAll(() => { if (phoneLegacyEnv === undefined) delete process.env.CRM_PHONE_CONFERENCE_ENABLED; else process.env.CRM_PHONE_CONFERENCE_ENABLED = phoneLegacyEnv; });

@@ -8,9 +8,10 @@ const TAG = 'CRM Referrals';
 type Params = { params: Promise<{ id: string }> };
 
 /** GET /api/crm/referrals/[id] — un referido de la organización (404 si es ajeno). */
-export async function GET(_request: NextRequest, { params }: Params) {
+export async function GET(request: NextRequest, { params }: Params) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
+    rejectForeignOrganization(TAG, null, ctx, request);
     const { id } = await params;
     const referral = await getReferralById(id, ctx.organizationId, ctx.supabase);
     if (!referral) return jsonFail(404, 'Referido no encontrado en esta organización', { code: 'NOT_FOUND' });
@@ -27,7 +28,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
  */
 export async function PATCH(request: NextRequest, { params }: Params) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     const { id } = await params;
     const body = await readJson(request);
     rejectForeignOrganization(TAG, body, ctx, request);

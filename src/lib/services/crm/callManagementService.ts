@@ -21,6 +21,8 @@ import {
   type RecordingStatus,
 } from '@/lib/crm/enums';
 import { ilikeAnyOf } from '@/lib/utils/postgrestFilters';
+import { isAtomicCallRpcEnabled, mutateCallFromSnapshot } from './callMutationService';
+import { applyStatusEvent, mergeTerminalOutcome, type CallLeg, type TwilioStatusEvent } from './callStateMachine';
 
 export type { CallDirection, CallMode, CallStatus, BridgeMode, DurationSource, RecordingStatus };
 export type AnsweredBy = 'human' | 'machine' | 'fax' | 'unknown';
@@ -90,6 +92,7 @@ export interface CallCreateInput {
 }
 
 export interface CallUpdateInput {
+  provider_call_sid?: string | null;
   status?: CallStatus;
   answered_by?: AnsweredBy | null;
   started_at?: string | null;
@@ -123,6 +126,8 @@ export interface CallFilters {
   q?: string;
   from_date?: string;
   to_date?: string;
+  /** Fin exclusivo al convertir un día calendario de la organización. */
+  to_date_exclusive?: boolean;
   limit?: number;
   offset?: number;
 }
@@ -293,7 +298,7 @@ export async function getCall(
 
   if (error) {
     console.error('[callManagementService.getCall] error:', error.message);
-    return null;
+    throw error;
   }
 
   return data as CallRecord | null;
@@ -307,10 +312,7 @@ export async function createCall(
   data: CallCreateInput,
   supabase: SupabaseClient
 ): Promise<CallRecord | null> {
-  const { data: record, error } = await supabase
-    .from('calls')
-    .insert({
-      organization_id: organizationId,
+  const payload = {
       provider: data.provider,
       provider_call_sid: data.provider_call_sid ?? null,
       parent_call_sid: data.parent_call_sid ?? null,
@@ -338,15 +340,17 @@ export async function createCall(
       agent_leg_sid: data.agent_leg_sid ?? null,
       customer_leg_sid: data.customer_leg_sid ?? null,
       duration_source: data.duration_source ?? 'provider',
-    })
-    .select()
-    .single();
+    };
+  const { data: record, error } = isAtomicCallRpcEnabled()
+    ? await supabase.rpc('fn_crm_crear_llamada', { p_org: organizationId, p_payload: payload })
+    : await supabase.from('calls').insert({ ...payload, organization_id: organizationId }).select().single();
 
   if (error) {
     console.error('[callManagementService.createCall] error:', error.message);
     throw error;
   }
 
+  if (!record || record.organization_id !== organizationId) throw new Error('Respuesta inválida al crear la llamada');
   return record as CallRecord;
 }
 
@@ -356,44 +360,47 @@ export async function createCall(
 export async function updateCall(
   id: string,
   organizationId: number,
-  data: CallUpdateInput,
+  data: CallUpdateInput | ((fresh: CallRecord) => CallUpdateInput | null),
   supabase: SupabaseClient
 ): Promise<CallRecord | null> {
-  const updateData: Record<string, unknown> = {
-    updated_at: new Date().toISOString(),
-  };
+  const initial = await getCall(id, organizationId, supabase);
+  if (!initial) return null;
+  return mutateCallFromSnapshot(supabase, initial, (fresh) => {
+    const input = typeof data === 'function' ? data(fresh) : data;
+    if (!input) return null;
+    const patch: Record<string, unknown> = {};
+    const columns: ReadonlyArray<keyof CallUpdateInput> = [
+      'provider_call_sid', 'status', 'answered_by', 'started_at', 'answered_at',
+      'ended_at', 'duration_seconds', 'ring_seconds', 'recording_enabled',
+      'consent_given', 'cost_amount', 'cost_currency', 'metadata', 'bridge_mode',
+      'agent_leg_sid', 'customer_leg_sid', 'duration_source',
+    ];
+    for (const column of columns) if (input[column] !== undefined) patch[column] = input[column];
+    return Object.keys(patch).length ? patch : null;
+  });
+}
 
-  if (data.status !== undefined) updateData.status = data.status;
-  if (data.answered_by !== undefined) updateData.answered_by = data.answered_by;
-  if (data.started_at !== undefined) updateData.started_at = data.started_at;
-  if (data.answered_at !== undefined) updateData.answered_at = data.answered_at;
-  if (data.ended_at !== undefined) updateData.ended_at = data.ended_at;
-  if (data.duration_seconds !== undefined) updateData.duration_seconds = data.duration_seconds;
-  if (data.ring_seconds !== undefined) updateData.ring_seconds = data.ring_seconds;
-  if (data.recording_enabled !== undefined) updateData.recording_enabled = data.recording_enabled;
-  if (data.consent_given !== undefined) updateData.consent_given = data.consent_given;
-  if (data.cost_amount !== undefined) updateData.cost_amount = data.cost_amount;
-  if (data.cost_currency !== undefined) updateData.cost_currency = data.cost_currency;
-  if (data.metadata !== undefined) updateData.metadata = data.metadata;
-  if (data.bridge_mode !== undefined) updateData.bridge_mode = data.bridge_mode;
-  if (data.agent_leg_sid !== undefined) updateData.agent_leg_sid = data.agent_leg_sid;
-  if (data.customer_leg_sid !== undefined) updateData.customer_leg_sid = data.customer_leg_sid;
-  if (data.duration_source !== undefined) updateData.duration_source = data.duration_source;
-
-  const { data: record, error } = await supabase
-    .from('calls')
-    .update(updateData)
-    .eq('id', id)
-    .eq('organization_id', organizationId)
-    .select()
-    .maybeSingle();
-
-  if (error) {
-    console.error('[callManagementService.updateCall] error:', error.message);
-    throw error;
-  }
-
-  return record as CallRecord | null;
+/** Los escritores de TwiML y puente usan la misma máquina que los callbacks. */
+export async function updateCallFromProviderEvent(
+  id: string, organizationId: number, event: TwilioStatusEvent, leg: CallLeg,
+  supabase: SupabaseClient,
+): Promise<CallRecord | null> {
+  return updateCall(id, organizationId, (fresh) => {
+    const transition = applyStatusEvent({ ...fresh, metadata: fresh.metadata ?? {} }, event, leg);
+    if (!transition) return null;
+    const merged = mergeTerminalOutcome({
+      currentStatus: fresh.status, currentDuration: fresh.duration_seconds,
+      currentAnsweredAt: fresh.answered_at, incomingStatus: transition.status ?? fresh.status,
+      incomingDuration: transition.duration_seconds ?? 0,
+    });
+    return {
+      ...transition,
+      status: merged.status ?? fresh.status,
+      duration_seconds: merged.duration_seconds ?? fresh.duration_seconds,
+      ended_at: fresh.ended_at ?? transition.ended_at,
+      answered_at: fresh.answered_at ?? transition.answered_at,
+    };
+  }, supabase);
 }
 
 // ─── Funciones: call_recordings ──────────────────────────────────────────────
@@ -613,6 +620,7 @@ export interface CallListRow extends CallRecord {
   user: { id: string; first_name: string | null; last_name: string | null; email: string | null } | null;
   recordings: { id: string; status: RecordingStatus; duration_seconds: number | null; channels: string }[];
   disposition_outcome: string | null;
+  analysis?: { summary: string | null; sentiment: string | null; detected_objections: unknown } | null;
   /**
    * `call_consents.method` de la acta de grabación (F-4, ronda 7 de voz):
    * `unverified_announcement` = grabación sin aviso acreditado; la UI la marca.
@@ -625,75 +633,25 @@ export interface CallListRow extends CallRecord {
  * Lista llamadas con cliente, oportunidad, usuario (profiles) y grabaciones.
  * Los filtros son los de `CallFilters`; `user_id` acepta 'me' resuelto por el llamador.
  */
+export interface CallStats {
+  totalToday: number;
+  avgDuration: number;
+  missed: number;
+  answered: number;
+  voiceSeconds: number;
+  remainingVoiceMinutes: number | null;
+  voiceConfigured: boolean;
+}
+
 export async function listCallsWithRelations(
   organizationId: number,
   supabase: SupabaseClient,
-  filters?: CallFilters
-): Promise<{ data: CallListRow[]; count: number }> {
-  let query = supabase
-    .from('calls')
-    .select(
-      '*, customers:customer_id(id, full_name, first_name, last_name, phone), opportunities:opportunity_id(id, name), call_recordings(id, status, duration_seconds, channels), call_consents(consent_type, method)',
-      { count: 'exact' }
-    )
-    .eq('organization_id', organizationId)
-    .order('started_at', { ascending: false, nullsFirst: false });
-
-  if (filters?.status) query = query.eq('status', filters.status);
-  if (filters?.direction) query = query.eq('direction', filters.direction);
-  if (filters?.mode) query = query.eq('mode', filters.mode);
-  if (filters?.customer_id) query = query.eq('customer_id', filters.customer_id);
-  if (filters?.user_id) query = query.eq('user_id', filters.user_id);
-  if (filters?.opportunity_id) query = query.eq('opportunity_id', filters.opportunity_id);
-  if (filters?.provider_call_sid) query = query.eq('provider_call_sid', filters.provider_call_sid);
-  if (filters?.outcome) query = query.eq('metadata->>disposition_outcome', filters.outcome);
-  if (filters?.q) {
-    const filter = ilikeAnyOf(['to_number', 'from_number'], filters.q);
-    if (filter) query = query.or(filter);
-  }
-  if (filters?.from_date) query = query.gte('started_at', filters.from_date);
-  if (filters?.to_date) query = query.lte('started_at', filters.to_date);
-  if (filters?.has_recording === true) query = query.eq('recording_enabled', true);
-
-  const limit = Math.min(200, Math.max(1, filters?.limit ?? 50));
-  const offset = Math.max(0, filters?.offset ?? 0);
-  query = query.range(offset, offset + limit - 1);
-
-  const { data, error, count } = await query;
-  if (error) {
-    console.error('[callManagementService.listCallsWithRelations] error:', error.message);
-    return { data: [], count: 0 };
-  }
-
-  type Raw = CallRecord & {
-    customers?: CallListRow['customer'] | CallListRow['customer'][] | null;
-    opportunities?: CallListRow['opportunity'] | CallListRow['opportunity'][] | null;
-    call_recordings?: CallListRow['recordings'] | null;
-    call_consents?: { consent_type: string; method: string }[] | null;
-  };
-  const rows = (data ?? []) as Raw[];
-  const userIds = Array.from(new Set(rows.map((r) => r.user_id).filter((u): u is string => Boolean(u))));
-  const users = new Map<string, CallListRow['user']>();
-  if (userIds.length > 0) {
-    const { data: profiles } = await supabase.from('profiles').select('id, first_name, last_name, email').in('id', userIds);
-    for (const p of (profiles ?? []) as NonNullable<CallListRow['user']>[]) users.set(p.id, p);
-  }
-
-  const first = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? v[0] ?? null : v ?? null);
-  const mapped: CallListRow[] = rows.map((r) => {
-    const { customers, opportunities, call_recordings, call_consents, ...rest } = r;
-    const recordings = (call_recordings ?? []).filter((x) => x.status !== 'deleted');
-    return {
-      ...(rest as CallRecord),
-      customer: first(customers),
-      opportunity: first(opportunities),
-      user: r.user_id ? users.get(r.user_id) ?? null : null,
-      recordings,
-      disposition_outcome: (r.metadata?.disposition_outcome as string | undefined) ?? null,
-      consent_method: (call_consents ?? []).find((c) => c.consent_type === 'recording')?.method ?? null,
-    };
+  filters: CallFilters = {},
+): Promise<{ data: CallListRow[]; count: number; stats: CallStats; canViewAll: boolean }> {
+  const { data, error } = await supabase.rpc('crm_calls_list', {
+    p_org: organizationId,
+    p_filters: filters,
   });
-
-  const filtered = filters?.has_recording === true ? mapped.filter((m) => m.recordings.some((x) => x.status === 'ready')) : mapped;
-  return { data: filtered, count: count ?? filtered.length };
+  if (error) throw error;
+  return data as { data: CallListRow[]; count: number; stats: CallStats; canViewAll: boolean };
 }

@@ -16,10 +16,12 @@ import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import { isOrgAdmin } from '@/lib/utils/rbac';
 import { PROVIDER_CATEGORIES, type ProviderCategory } from '@/lib/crm/providerCatalog';
+import { RequestDeadlineError, withRequestDeadline } from '@/lib/utils/requestDeadline';
 import {
   listProviderConfigsSafe,
   upsertProviderConfig,
   ProviderValidationError,
+  ProviderReadError,
 } from '@/lib/services/providerCredentials.server';
 
 export const dynamic = 'force-dynamic';
@@ -43,28 +45,39 @@ function orgError(err: unknown): NextResponse | null {
 }
 
 export async function GET(request: NextRequest) {
-  let ctx;
+  const raw = request.nextUrl.searchParams.get('category');
+  const parsed = raw ? categorySchema.safeParse(raw) : null;
+  const category = parsed?.success ? parsed.data : undefined;
+  const read = async (signal?: AbortSignal) => {
+    const ctx = signal ? await getServerOrgContext(request, { signal }) : await getServerOrgContext();
+    if (raw && parsed && !parsed.success) {
+      return NextResponse.json({ success: false, error: 'Categoría inválida' }, { status: 400 });
+    }
+    const canEdit = isOrgAdmin(ctx);
+    try {
+      const options = category === 'tts' ? { seed: canEdit, timeoutMs: 4_000, strict: true, signal } : { seed: canEdit };
+      const items = await listProviderConfigsSafe(ctx.organizationId, category, options);
+      return NextResponse.json({ success: true, items, can_edit: canEdit });
+    } catch (err) {
+      if (err instanceof ProviderReadError) {
+        return NextResponse.json({ success: false, error: err.message, code: err.code, retryable: err.retryable }, { status: err.status });
+      }
+      console.error('[config/providers GET]', err);
+      return NextResponse.json({ success: false, error: 'No se pudo listar la configuración' }, { status: 500 });
+    }
+  };
   try {
-    ctx = await getServerOrgContext();
+    // Contexto + lectura concluyen antes del timeout de pantalla (20 s).
+    return category === 'tts'
+      ? await withRequestDeadline(read, { timeoutMs: 18_000, signal: request.signal })
+      : await read();
   } catch (err) {
     const res = orgError(err);
     if (res) return res;
+    if (err instanceof RequestDeadlineError) {
+      return NextResponse.json({ success: false, error: err.code === 'REQUEST_TIMEOUT' ? 'La configuración tardó demasiado. Inténtalo de nuevo.' : 'Se canceló la lectura de configuración.', code: err.code, retryable: true }, { status: err.status });
+    }
     throw err;
-  }
-
-  const raw = request.nextUrl.searchParams.get('category');
-  const parsed = raw ? categorySchema.safeParse(raw) : null;
-  if (raw && parsed && !parsed.success) {
-    return NextResponse.json({ success: false, error: 'Categoría inválida' }, { status: 400 });
-  }
-
-  try {
-    const canEdit = isOrgAdmin(ctx);
-    const items = await listProviderConfigsSafe(ctx.organizationId, parsed?.success ? parsed.data : undefined, { seed: canEdit });
-    return NextResponse.json({ success: true, items, can_edit: canEdit });
-  } catch (err) {
-    console.error('[config/providers GET]', err);
-    return NextResponse.json({ success: false, error: 'No se pudo listar la configuración' }, { status: 500 });
   }
 }
 

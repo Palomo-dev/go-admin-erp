@@ -15,7 +15,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { renderVariables, emptyContext } from '@/lib/services/crm/email/variables';
 import { resolveParam, renderTemplateComponents, validateHsm } from '../templateRender';
-import { classifySendError, planDelay, PER_RECIPIENT_MIN_MS, claimableAt, campaignClientRequestId, CLAIMABLE_STATE_FILTER, STALE_CLAIM_MS } from '../campaignBatch';
+import { classifySendError, planDelay, PER_RECIPIENT_MIN_MS, campaignClientRequestId } from '../campaignBatch';
 import { providerErrorAction } from '../campaignEvents';
 import { countContacts } from '../campaignService';
 import { estimateCampaignCost } from '../campaignMaterialize';
@@ -130,27 +130,9 @@ describe('estados y clasificación del lote', () => {
 // ─── Claves y filtro de reclamación (r4 N-2/N-5 · r6 T11) ───────────────────────
 
 describe('campaignBatch · claves y filtro de reclamación', () => {
-  const NOW_MS = Date.parse('2026-09-10T15:00:00.000Z');
-
-  it('B4.N2 · claimableAt es el único juez: pendiente sin backoff = ya; enviado = nunca; queued = claimed_at + STALE', () => {
-    expect(claimableAt({ state: null, metadata: { state: 'pending' } })).toBe(0);
-    expect(claimableAt({ state: null, metadata: { state: 'sent' } })).toBeNull();
-    expect(claimableAt({ state: null, metadata: { state: 'queued', claimed_at: new Date(NOW_MS).toISOString() } })).toBe(NOW_MS + STALE_CLAIM_MS);
-  });
-
   it('B4.N5 · la clave de idempotencia es la misma para (campaña, cliente) sea cual sea el intento', () => {
     expect(campaignClientRequestId(UUID_C, 'cust-1')).toBe(`campaign:${UUID_C}:cust-1`);
     expect(campaignClientRequestId(UUID_C, 'cust-1')).not.toMatch(/:\d+$/);
-  });
-
-  it('B6.T11 · el filtro de reclamación conserva la rama `metadata->>state.is.null`: `{}` (DEFAULT) y NULL pasan; skipped no', () => {
-    expect(CLAIMABLE_STATE_FILTER).toContain('metadata->>state.in.(pending,queued)');
-    expect(CLAIMABLE_STATE_FILTER).toContain('metadata->>state.is.null');
-    const ops = [{ method: 'or', args: [CLAIMABLE_STATE_FILTER] }];
-    const base = (metadata: unknown): Row => ({ id: 'a', campaign_id: UUID_C, customer_id: 'cust-a', state: null, replied_at: null, created_at: '', metadata });
-    expect(rowPasses(base({}), ops)).toBe(true);
-    expect(rowPasses(base(null), ops)).toBe(true);
-    expect(rowPasses(base({ state: 'skipped' }), ops)).toBe(false);
   });
 
   it('B6.N5 · fakeTable.filter() evalúa match/imatch y LANZA con cualquier otro operador (no se traga filtros)', () => {
@@ -199,9 +181,10 @@ describe('estimateCampaignCost', () => {
 describe('channel-dispatch (Edge Function, Deno) · message_events.event_time es GENERATED ALWAYS', () => {
   it('T2.F1 · el INSERT no lleva event_time y se comprueba el error', () => {
     const src = fs.readFileSync(path.join(ROOT, 'supabase/functions/channel-dispatch/index.ts'), 'utf8');
-    const i = src.indexOf('from("message_events").insert(');
-    expect(i).toBeGreaterThan(-1);
-    expect(src.slice(i, i + 400)).not.toMatch(/^\s*event_time:/m);
-    expect(src.slice(i - 60, i)).toContain('error');
+    expect(src).toContain('rpc("crm_finish_message_dispatch"');
+    expect(src).toContain('if (error) throw');
+    const sql = fs.readFileSync(path.join(ROOT, 'supabase/migrations/20261001040341_crm_despacho_claim_y_resultado.sql'), 'utf8');
+    expect(sql).toContain('insert into public.message_events(organization_id,message_id,event_type,provider_payload,error_code,error_message)');
+    expect(sql).not.toContain('event_time');
   });
 });

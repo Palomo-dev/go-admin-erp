@@ -1,3 +1,4 @@
+import { dobleReservaVoz } from '@/lib/services/crm/__tests__/dobles/reservaVoz';
 /**
  * F6 · r-voz 2026-09-23 — «la campaña se crea y no llama nadie, nunca».
  *
@@ -67,7 +68,7 @@ import { SCHEDULED_KINDS, hasScheduledKinds, runScheduledKinds } from '@/lib/job
  * `src/__tests__/voz/` y `voiceAgent/__tests__/`.
  */
 const POLITICA_DATOS = 'https://example.com/politica-de-datos';
-const RNE_VIGENTE = { id: 'rne-1', checked_at: '2026-09-01T00:00:00Z', valid_until: '2999-01-01T00:00:00Z' };
+const RNE_VIGENTE = { id: 'rne-1', checked_at: '2026-09-01T00:00:00Z', valid_until: '2999-01-01T00:00:00Z', numbers_in_file: 2 };
 
 const ROOT = process.cwd();
 const SRC = (rel: string) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
@@ -97,6 +98,7 @@ interface RpcResolver {
 }
 
 function makeSupabase(resolve: Resolver, resolveRpc?: RpcResolver) {
+  const reserva = dobleReservaVoz();
   const ops: Op[] = [];
   const rpcs: { name: string; args: Record<string, unknown> }[] = [];
 
@@ -114,7 +116,7 @@ function makeSupabase(resolve: Resolver, resolveRpc?: RpcResolver) {
         op.head = opts?.head;
         return proxy;
       },
-      eq: filter('eq'), neq: filter('neq'), in: filter('in'), gte: filter('gte'),
+      eq: filter('eq'), is: filter('is'), neq: filter('neq'), in: filter('in'), gte: filter('gte'),
       lte: filter('lte'), gt: filter('gt'), lt: filter('lt'), not: filter('not'),
       order: filter('order'), limit: filter('limit'), range: filter('range'),
       maybeSingle: async () => settle(),
@@ -143,8 +145,16 @@ function makeSupabase(resolve: Resolver, resolveRpc?: RpcResolver) {
     },
     rpc: jest.fn(async (name: string, args: Record<string, unknown>) => {
       rpcs.push({ name, args });
+      if (name === 'crm_voice_campaign_rne_status') {
+        const r = resolve({ table: 'voice_campaign_rne_checks', verb: 'select', filters: [
+          ['eq', 'organization_id', args.p_org], ['eq', 'campaign_id', args.p_campaign],
+        ] });
+        const row = Array.isArray(r.data) ? r.data[0] : null;
+        return { data: row ? { evidence_available: true, audience_unchanged: true, changed_targets: 0, ...row } : null, error: r.error ?? null };
+      }
+
       const r = resolveRpc ? resolveRpc({ name, args }) : {};
-      return { data: r.data ?? null, error: r.error ?? null };
+      return { data: r.data ?? (r.error ? null : reserva(name, args)) ?? null, error: r.error ?? null };
     }),
   } as unknown as SupabaseClient;
 
@@ -163,7 +173,7 @@ function campaignRow(over: Record<string, unknown> = {}) {
   };
 }
 
-function pendingRow(id = 'vac-1') {
+function pendingRow(id = '20000000-0000-4000-8000-000000000001') {
   return {
     id, organization_id: ORG, voice_agent_id: 'agent-1', campaign_id: 'camp-1',
     customer_id: 'cust-1', opportunity_id: null, status: 'in_progress', attempts: 1,
@@ -222,7 +232,6 @@ function escenario(o: EscenarioOpts = {}) {
   const rpcResolver: RpcResolver = ({ name }) => {
     if (name === 'fn_claim_voice_agent_calls') return { data: claimedRows };
     if (name === 'fn_can_contact') return { data: true };
-    if (name === 'deduct_comm_credits') return { data: true };
     return { data: null };
   };
   return makeSupabase(resolver, rpcResolver);
@@ -349,7 +358,7 @@ describe('2. Lo que el disparo automático sigue respetando', () => {
   test('V10 · dos ejecuciones solapadas no marcan dos veces la misma fila: las filas salen SOLO del claim atómico', async () => {
     // La primera pasada recibe la fila; la segunda, nada (la RPC ya la reservó
     // con FOR UPDATE SKIP LOCKED). El despachador no tiene otra fuente de filas.
-    const a = escenario({ claimed: [pendingRow('vac-1')] });
+    const a = escenario({ claimed: [pendingRow('20000000-0000-4000-8000-000000000001')] });
     const b = escenario({ claimed: [] });
     const [r1, r2] = await Promise.all([
       runCampaignQueue(ORG, a.client, { worker: 'w1' }),
@@ -477,7 +486,10 @@ describe('4. Rutas', () => {
     // llama exactamente a esa misma función.
     const http = SRC('src/lib/services/crm/whatsapp/http.ts');
     const orgContext = SRC('src/lib/utils/orgContext.ts');
-    expect(http).toMatch(/requireOrgAdminOrPermission\(ctx\)/);
+    // Campañas puede exigir su permiso específico; el helper canónico sigue
+    // resolviendo roles y pertenencia, sin una segunda implementación.
+    expect(http).toMatch(/requireOrgAdminOrPermission\(ctx, opts\.permission\)/);
+    expect(CODIGO('src/app/api/crm/campaigns/[id]/launch/route.ts')).toMatch(/permission:\s*'crm\.campaigns\.manage'/);
     expect(orgContext).toMatch(/if \(opts\?\.admin\) await requireOrgAdminOrPermission\(ctx\)/);
     // Y el panel no decide el permiso por su cuenta: lo pregunta al servidor.
     const panel = CODIGO('src/components/crm/agentes/campanas/CampaignRunNow.tsx');

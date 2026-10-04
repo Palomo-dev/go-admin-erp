@@ -1,32 +1,37 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { classifyDestinationSku, billableMinutes, computeSettlement, reserveVoiceMinutes, settleVoiceCall } from '../callCreditsService';
+import { FakeDb, type FakeMutationBuilder } from './fixtures/fakeSupabase';
+
+// Estas sondas FIFO/UNIQUE caracterizan el escape REST histórico. Las sondas
+// positivas de RPC en esta misma batería activan explícitamente el modo real.
+const originalCallRpcFlag = process.env.CRM_CALL_ATOMIC_RPC_ENABLED;
+beforeEach(() => { process.env.CRM_CALL_ATOMIC_RPC_ENABLED = 'false'; });
+afterAll(() => {
+  if (originalCallRpcFlag === undefined) delete process.env.CRM_CALL_ATOMIC_RPC_ENABLED;
+  else process.env.CRM_CALL_ATOMIC_RPC_ENABLED = originalCallRpcFlag;
+});
 
 function fakeClient(opts: { deduct?: boolean; costs?: Record<string, number> }) {
   const inserts: Record<string, unknown>[] = [];
   const updates: Record<string, unknown>[] = [];
-  const rpc = jest.fn(async (fn: string, args: Record<string, unknown>) => {
-    if (fn === 'deduct_comm_credits') return { data: opts.deduct ?? true, error: null };
-    if (fn === 'fn_unit_cost') return { data: opts.costs?.[String(args.p_sku)] ?? null, error: null };
-    return { data: null, error: { message: 'unknown rpc' } };
-  });
-  const client = {
-    rpc,
-    from: (table: string) => ({
-      insert: async (row: Record<string, unknown>) => {
-        inserts.push({ table, ...row });
-        return { error: null };
-      },
-      update: (row: Record<string, unknown>) => ({
-        eq: () => ({
-          eq: async () => {
-            updates.push({ table, ...row });
-            return { error: null };
-          },
-        }),
-      }),
-    }),
-  };
-  return { client: client as unknown as SupabaseClient, rpc, inserts, updates };
+  const db = new FakeDb({ tables: { calls: ['c1', 'c2', 'c3', 'c4'].map((id) => ({ id, organization_id: id === 'c2' ? 1 : 120, status: 'completed', metadata: {} })) }, rpc: {
+    deduct_comm_credits: () => opts.deduct ?? true,
+    fn_unit_cost: (args) => opts.costs?.[String(args.p_sku)] ?? null,
+  } });
+  const client = db.client();
+  const rpc = jest.spyOn(client, 'rpc');
+  const from = client.from.bind(client);
+  client.from = ((table: string) => {
+    const builder = from(table) as unknown as FakeMutationBuilder;
+    const insert = builder.insert.bind(builder);
+    const update = builder.update.bind(builder);
+    builder.insert = (row: object) => { inserts.push({ table, ...row }); return insert(row); };
+    builder.update = (row: object) => { updates.push({ table, ...row }); return update(row); };
+    return builder;
+  }) as unknown as SupabaseClient['from'];
+  return { client, rpc, inserts, updates };
 }
 
 describe('callCreditsService (FASE-03 §8, D6)', () => {
@@ -120,4 +125,25 @@ describe('callCreditsService (FASE-03 §8, D6)', () => {
     expect((inserts[0].metadata as Record<string, unknown>).credits_overrun).toBe(true);
     expect((updates[0].metadata as Record<string, unknown>).credits_overrun).toBe(true);
   });
+});
+
+it('la liquidación final usa BODY RPC compatible con la propuesta y conserva metadata manual fresca', async () => {
+  process.env.CRM_CALL_ATOMIC_RPC_ENABLED = 'true';
+  try {
+    const call = { id: '11111111-1111-4111-8111-111111111111', organization_id: 7, direction: 'outbound' as const, mode: 'browser' as const, to_number: '+573001234567', from_number: 'manual', duration_seconds: 60, recording_enabled: false, metadata: { credits_reserved_min: 1 } };
+    const stored = { ...call, status: 'completed', metadata: { ...call.metadata, disposition_outcome: 'callback_requested', live_note: 'Nota conservada', last_seq: { child: 3 } } };
+    const db = new FakeDb({ tables: { calls: [stored] }, rpc: {
+      fn_unit_cost: () => 0.04,
+      fn_crm_callback_llamada: (args) => ({ stale: false, call: { ...stored, ...args.p_patch } }),
+    } });
+    await settleVoiceCall(call, db.client());
+    const request = db.rpcCalls.find((entry) => entry.name === 'fn_crm_callback_llamada');
+    expect(request?.args.p_patch).toMatchObject({ cost_amount: expect.any(Number), cost_currency: 'USD', metadata: { disposition_outcome: 'callback_requested', live_note: 'Nota conservada', last_seq: { child: 3 }, credits_final_min: 1, settled_at: expect.any(String) } });
+    expect(db.calls.filter((entry) => entry.table === 'calls' && entry.op === 'update')).toHaveLength(0);
+    const proposal = readFileSync(join(process.cwd(), 'docs/crm/propuestas/llamadas_atomicas.sql'), 'utf8');
+    const callback = proposal.slice(proposal.indexOf('CREATE OR REPLACE FUNCTION public.fn_crm_callback_llamada'));
+    const whitelist = callback.match(/k NOT IN\s*\(([^)]+)\)/)?.[1] ?? '';
+    for (const field of Object.keys(request?.args.p_patch ?? {})) expect(whitelist).toContain(`'${field}'`);
+    expect(callback).toContain('cost_amount=v_new.cost_amount,cost_currency=v_new.cost_currency');
+  } finally { process.env.CRM_CALL_ATOMIC_RPC_ENABLED = 'false'; }
 });

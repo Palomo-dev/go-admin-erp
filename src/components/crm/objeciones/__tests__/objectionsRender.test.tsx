@@ -1,0 +1,64 @@
+/** @jest-environment jsdom */
+/// <reference types="jest" />
+import {fireEvent,screen,waitFor,within} from '@testing-library/react';
+import {renderConIdioma,type IdiomaPrueba} from '@/test-utils/renderConIdioma';
+import {ObjecionesPage} from '../ObjecionesPage';
+import {LiveObjectionContext} from '../LiveObjectionContext';
+import {ErrorApiCrm,pedirCrm} from '../../acciones/apiCrm';
+import type {Objection} from '@/lib/services/crm/objectionService';
+import type {ObjectionInsights} from '@/lib/services/crm/objectionInsightsService';
+const ID='10000000-0000-4000-8000-000000000001',CALL='20000000-0000-4000-8000-000000000001',OP='30000000-0000-4000-8000-000000000001';
+let catalog:{objections:Objection[];loading:boolean;error:unknown;canManage:boolean;reload:jest.Mock;save:jest.Mock;toggle:jest.Mock};
+let evidence:{data:ObjectionInsights|null;loading:boolean;error:unknown;reload:jest.Mock};let phone:Record<string,unknown>;
+jest.mock('../useObjections',()=>({useObjections:()=>catalog}));
+jest.mock('../useObjectionInsights',()=>({useObjectionInsights:()=>evidence}));
+jest.mock('@/components/voice',()=>({useSoftphone:()=>phone}));
+jest.mock('@/components/voice/CallLinkPanel',()=>({CallLinkPanel:()=>null}));
+jest.mock('@/components/shell/header/cabeceraMovil',()=>({useCabeceraMovil:()=>undefined}));
+jest.mock('../../acciones/apiCrm',()=>({...jest.requireActual('../../acciones/apiCrm'),pedirCrm:jest.fn()}));
+const row=():Objection=>({id:ID,organization_id:120,title:'Price concern',category:'precio',detection_signals:['too expensive'],recommended_response:'Measure the return',discovery_questions:['What would help?'],related_case_studies:null,vertical_id:null,is_active:true,sort_order:0,created_at:'2026-10-01T00:00:00Z',updated_at:'2026-10-01T00:00:00Z'});
+const data=():ObjectionInsights=>({frequencies:[{objection_id:ID,call_count:2,advanced_count:1,opportunity_count:2,advanced_opportunity_count:1}],weeks:[{week:'2026-09-28',call_count:2}],calls:[{call_id:CALL,started_at:'2026-10-01T15:00:00Z',advanced:true,start_ms:12500,customer_name:'Synthetic customer',seller_name:'Synthetic seller'}],responses:[{response_text:'An evidenced response',used_count:1,advanced_count:1}]});
+beforeEach(()=>{catalog={objections:[row()],loading:false,error:null,canManage:true,reload:jest.fn(),save:jest.fn(async()=>row()),toggle:jest.fn()};evidence={data:data(),loading:false,error:null,reload:jest.fn()};phone={available:false};Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:jest.fn(async()=>{})}});jest.mocked(pedirCrm).mockReset().mockResolvedValue({data:{},extra:{}});});
+describe.each<IdiomaPrueba>(['es','en','fr','pt'])('Objections in %s',idioma=>{
+ test('library, detail, evidence, copy and exact call link are translated',async()=>{const {container}=renderConIdioma(<ObjecionesPage/>,{idioma});expect(container.textContent).not.toContain('crm.objecionesNuevo');fireEvent.click(screen.getAllByRole('button',{name:'Price concern'})[0]);const dialog=screen.getByRole('region',{name:'Price concern'});expect(dialog.textContent).toContain('An evidenced response');expect(dialog.querySelector('a[href*="/app/crm/llamadas?"]')?.getAttribute('href')).toBe(`/app/crm/llamadas?call=${CALL}&start_ms=12500`);fireEvent.keyDown(dialog.querySelector('button[aria-haspopup="menu"]')!,{key:'Enter'});const menu=await screen.findByRole('menu');fireEvent.click(within(menu).getByRole('menuitem',{name:({es:'Copiar',en:'Copy',fr:'Copier',pt:'Copiar'}[idioma])}));await waitFor(()=>expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Measure the return'));expect(dialog.textContent).not.toContain('crm.objecionesNuevo');});
+ test('members without catalog management cannot create, edit or toggle from either view',()=>{catalog.canManage=false;renderConIdioma(<ObjecionesPage/>,{idioma});const newLabel={es:'Nueva objeción',en:'New objection',fr:'Nouvelle objection',pt:'Nova objeção'}[idioma];expect(screen.getByRole('button',{name:newLabel}).hasAttribute('disabled')).toBe(true);expect(screen.queryByRole('switch')).toBeNull();expect(screen.queryByRole('menuitem',{name:/Desactivar|Deactivate|Désactiver|Desativar/})).toBeNull();fireEvent.click(screen.getAllByRole('button',{name:'Price concern'})[0]);expect([...screen.getByRole('region',{name:'Price concern'}).querySelectorAll('button')].some(button=>button.textContent===({es:'Editar objeción',en:'Edit objection',fr:'Modifier l’objection',pt:'Editar objeção'}[idioma]))).toBe(false);});
+ test.each(['loading','error','empty'])('explicit %s state is translated',mode=>{catalog.loading=mode==='loading';catalog.error=mode==='error'?new Error('down'):null;catalog.objections=mode==='empty'?[]:[row()];const {container}=renderConIdioma(<ObjecionesPage/>,{idioma});expect(container.textContent).not.toContain('crm.objecionesNuevo');expect(container.querySelector('ul[aria-label]')).toBeNull();if(mode==='loading')expect(container.querySelector('[aria-busy="true"]')).toBeTruthy();});
+ test('no-results search offers clear filters, returning the existing rows',()=>{renderConIdioma(<ObjecionesPage/>,{idioma});fireEvent.change(screen.getByRole('searchbox'),{target:{value:'missing response'}});expect(screen.queryByRole('button',{name:'Price concern'})).toBeNull();fireEvent.click(screen.getAllByRole('button',{name:{es:'Quitar filtros',en:'Clear filters',fr:'Effacer les filtres',pt:'Limpar filtros'}[idioma]})[0]);expect(screen.getAllByRole('button',{name:'Price concern'})[0]).toBeTruthy();});
+});
+test('frequency failure remains an error with retry and does not render zero frequency',()=>{evidence.error=new ErrorApiCrm(500,'down','down');evidence.data=null;renderConIdioma(<ObjecionesPage/>);expect(screen.getByRole('alert').textContent).toContain('No se pudo consultar');expect(screen.queryByText('0 llamadas en 90 días')).toBeNull();fireEvent.click(screen.getByRole('button',{name:'Reintentar'}));expect(evidence.reload).toHaveBeenCalled();});
+test('unknown quote timestamp links to the call without fabricating a start time',()=>{evidence.data!.calls[0].start_ms=null;renderConIdioma(<ObjecionesPage/>);fireEvent.click(screen.getAllByRole('button',{name:'Price concern'})[0]);const link=screen.getByRole('region',{name:'Price concern'}).querySelector('a[href*="/app/crm/llamadas?"]');expect(link?.getAttribute('href')).toBe(`/app/crm/llamadas?call=${CALL}`);expect(link?.textContent).toContain('Sin momento identificado');});
+test('mobile live consultation registers through the same audited opportunity API',async()=>{phone={available:true,callStatus:'connected',activeCallId:CALL,activeCall:{callSid:'provider',number:'+000',connectedAt:Date.now()-5000,opportunityId:OP,displayName:'Synthetic customer'}};renderConIdioma(<LiveObjectionContext objections={[row()]}/>);fireEvent.change(screen.getByRole('searchbox'),{target:{value:'Price concern'}});fireEvent.click(screen.getByRole('button',{name:'Registrar objeción'}));await waitFor(()=>expect(pedirCrm).toHaveBeenCalledWith(`/api/crm/objections/opportunity/${OP}`,{method:'POST',cuerpo:{objection_id:ID}}));expect(await screen.findByRole('button',{name:'Objeción registrada'})).toBeTruthy();});
+test('editor validates required fields then submits existing canonical payload',async()=>{renderConIdioma(<ObjecionesPage/>);fireEvent.click(screen.getByRole('button',{name:'Nueva objeción'}));fireEvent.click(screen.getByRole('button',{name:'Crear objeción'}));expect(screen.getByRole('alert').textContent).toContain('título');expect(catalog.save).not.toHaveBeenCalled();fireEvent.change(screen.getByRole('textbox',{name:/Título/}),{target:{value:'Synthetic edited'}});fireEvent.change(screen.getAllByRole('combobox').find(el=>el.id==='objection-category')!,{target:{value:'precio'}});fireEvent.click(screen.getByRole('button',{name:'Crear objeción'}));await waitFor(()=>expect(catalog.save).toHaveBeenCalledWith(expect.objectContaining({title:'Synthetic edited',category:'precio',detection_signals:[],discovery_questions:[]}),undefined));});
+test.each<IdiomaPrueba>(['es','en','fr','pt'])('a mined response in %s stays in a draft until the human saves through the existing writer',async idioma=>{
+ renderConIdioma(<ObjecionesPage/>,{idioma});fireEvent.click(screen.getAllByRole('button',{name:'Price concern'})[0]);
+ const add={es:'Agregar al borrador de respuesta',en:'Add to the response draft',fr:'Ajouter au brouillon de réponse',pt:'Adicionar ao rascunho de resposta'}[idioma];
+ fireEvent.click(screen.getByRole('button',{name:add}));fireEvent.click(screen.getByRole('button',{name:add}));
+ expect(catalog.save).not.toHaveBeenCalled();expect((screen.getAllByRole('textbox').find(el=>el instanceof HTMLTextAreaElement&&el.hasAttribute('aria-label')) as HTMLTextAreaElement).value).toBe('Measure the return\n\nAn evidenced response');
+ const save={es:'Guardar cambios',en:'Save changes',fr:'Enregistrer les modifications',pt:'Salvar alterações'}[idioma];
+ fireEvent.click(screen.getByRole('button',{name:save}));
+ await waitFor(()=>expect(catalog.save).toHaveBeenCalledTimes(1));
+ expect(catalog.save).toHaveBeenCalledWith(expect.objectContaining({recommended_response:'Measure the return\n\nAn evidenced response',detection_signals:['too expensive'],discovery_questions:['What would help?']}),ID);
+});
+test('a failed versioned save preserves the imported draft and allows an explicit retry',async()=>{
+ catalog.save.mockRejectedValueOnce(new Error('conflicto_version'));renderConIdioma(<ObjecionesPage/>);fireEvent.click(screen.getAllByRole('button',{name:'Price concern'})[0]);
+ fireEvent.click(screen.getByRole('button',{name:'Agregar al borrador de respuesta'}));fireEvent.click(screen.getByRole('button',{name:'Guardar cambios'}));
+ await screen.findByRole('alert');expect((screen.getAllByRole('textbox').find(el=>el instanceof HTMLTextAreaElement&&el.hasAttribute('aria-label')) as HTMLTextAreaElement).value).toBe('Measure the return\n\nAn evidenced response');
+ fireEvent.click(screen.getByRole('button',{name:'Guardar cambios'}));await waitFor(()=>expect(catalog.save).toHaveBeenCalledTimes(2));
+});
+
+test('creating from a no-results search opens a translated human draft and does not write before explicit submission',async()=>{
+ renderConIdioma(<ObjecionesPage/>);fireEvent.change(screen.getByRole('searchbox'),{target:{value:'Synthetic new concern'}});
+ fireEvent.click(screen.getByRole('button',{name:'Crear «Synthetic new concern»'}));
+ const dialog=screen.getByRole('dialog',{name:'Nueva objeción'});expect((within(dialog).getByRole('textbox',{name:/Título/}) as HTMLInputElement).value).toBe('Synthetic new concern');expect(catalog.save).not.toHaveBeenCalled();
+ fireEvent.change(within(dialog).getByRole('combobox'),{target:{value:'precio'}});fireEvent.click(within(dialog).getByRole('button',{name:'Crear objeción'}));
+ await waitFor(()=>expect(catalog.save).toHaveBeenCalledTimes(1));expect(catalog.save).toHaveBeenCalledWith(expect.objectContaining({title:'Synthetic new concern',category:'precio'}),undefined);
+});
+test('the catalog menu changes status through the original writer and exposes no write action to a read-only actor',async()=>{
+ const view=renderConIdioma(<ObjecionesPage/>);
+ fireEvent.keyDown(view.container.querySelector('tbody button[aria-haspopup="menu"]')!,{key:'Enter'});
+ fireEvent.click(within(await screen.findByRole('menu')).getByRole('menuitem',{name:'Desactivar Price concern'}));
+ await waitFor(()=>expect(catalog.toggle).toHaveBeenCalledTimes(1));expect(catalog.toggle).toHaveBeenCalledWith(row());
+ view.unmount();catalog.canManage=false;catalog.toggle.mockClear();
+ const readOnly=renderConIdioma(<ObjecionesPage/>);fireEvent.keyDown(readOnly.container.querySelector('tbody button[aria-haspopup="menu"]')!,{key:'Enter'});
+ const menu=await screen.findByRole('menu');expect(within(menu).queryByRole('menuitem',{name:/Desactivar|Editar/})).toBeNull();expect(catalog.toggle).not.toHaveBeenCalled();
+});

@@ -17,6 +17,8 @@ let db: FakeDb;
 const session = { roleId: 4, isSuperAdmin: false, roleName: 'Empleado' };
 
 jest.mock('@/lib/utils/orgContext', () => ({
+  // Fixture: manager role 5 is assigned admin.full_access in the permission catalog.
+  hasOrgAdminOrPermission: jest.fn(async (ctx, code = 'admin.full_access') => ctx.isSuperAdmin || [1, 2].includes(ctx.roleId) || code !== 'admin.full_access' || ctx.roleId === 5),
   OrgContextError: RealOrgContextError,
   getServerOrgContext: jest.fn(async () => ({ organizationId: ORG, userId: 'u-1', roleId: session.roleId, roleName: session.roleName, isSuperAdmin: session.isSuperAdmin, supabase: fakeSupabase(db) })),
 }));

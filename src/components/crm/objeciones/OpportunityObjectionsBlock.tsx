@@ -8,6 +8,8 @@
  * negocio aquí.
  */
 
+import { useTranslations } from 'next-intl';
+import { EmptyState } from '@/components/kit';
 import { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, CircleAlert, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -27,36 +29,71 @@ interface Props {
   onChanged?: () => void;
 }
 
-function LinkedItem({ item, justRegistered, resolving, onResolve }: { item: OpportunityObjection; justRegistered: boolean; resolving: boolean; onResolve: () => void }) {
+function LinkedItem({
+  item,
+  justRegistered,
+  resolving,
+  onResolve,
+  canRegister,
+}: {
+  item: OpportunityObjection;
+  justRegistered: boolean;
+  resolving: boolean;
+  canRegister: boolean;
+  onResolve: () => void;
+}) {
+  const t = useTranslations('crm.objecionesNuevo');
   const obj = item.objection;
   return (
     <li
       id={`opportunity-objection-${item.id}`}
       tabIndex={-1}
       className={cn(
-        'rounded-lg border bg-white p-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:bg-gray-900',
-        item.resolved ? 'border-gray-200 dark:border-gray-800' : 'border-amber-200 dark:border-amber-900/60',
+        'rounded-lg border bg-surface p-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
+        item.resolved ? 'border-line' : 'border-amber-200 dark:border-amber-900/60',
       )}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 space-y-1">
-          <p className="flex items-center gap-1.5 text-sm font-medium text-gray-900 dark:text-gray-100">
-            {item.resolved
-              ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-              : <CircleAlert className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />}
-            <span className="truncate">{obj?.title ?? 'Objeción eliminada del catálogo'}</span>
+          <p className="flex items-center gap-1.5 text-sm font-medium text-fg">
+            {item.resolved ? (
+              <CheckCircle2
+                className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400"
+                aria-hidden="true"
+              />
+            ) : (
+              <CircleAlert
+                className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400"
+                aria-hidden="true"
+              />
+            )}
+            <span className="truncate">{obj?.title ?? t('removed')}</span>
           </p>
           <div className="flex flex-wrap items-center gap-1.5 text-xs">
             {obj && <CategoryBadge value={obj.category} />}
-            <span className={cn('font-medium', item.resolved ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300')}>
-              {item.resolved ? 'Resuelta' : 'Pendiente'}
+            <span
+              className={cn(
+                'font-medium',
+                item.resolved
+                  ? 'text-emerald-700 dark:text-emerald-300'
+                  : 'text-amber-700 dark:text-amber-300',
+              )}
+            >
+              {t(item.resolved ? 'resolved' : 'pending')}
             </span>
           </div>
-          {item.notes && <p className="text-xs text-gray-600 dark:text-gray-400">{item.notes}</p>}
+          {item.notes && <p className="text-xs text-fg-secondary">{item.notes}</p>}
         </div>
         {!item.resolved && (
-          <Button type="button" size="sm" variant="outline" className="h-7 shrink-0 text-xs" disabled={resolving} onClick={onResolve}>
-            {resolving ? 'Guardando…' : 'Marcar resuelta'}
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 shrink-0 text-xs"
+            disabled={resolving || !canRegister}
+            onClick={onResolve}
+          >
+            {t(resolving ? 'saving' : 'markResolved')}
           </Button>
         )}
       </div>
@@ -70,7 +107,9 @@ function LinkedItem({ item, justRegistered, resolving, onResolve }: { item: Oppo
 }
 
 export function OpportunityObjectionsBlock({ opportunityId, onChanged }: Props) {
-  const { linked, catalog, loading, error, register, resolve } = useOpportunityObjections(opportunityId);
+  const t = useTranslations('crm.objecionesNuevo');
+  const { linked, catalog, loading, error, register, resolve, reload, canRegister } =
+    useOpportunityObjections(opportunityId);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [registering, setRegistering] = useState<string | null>(null);
   const [resolvingId, setResolvingId] = useState<string | null>(null);
@@ -83,7 +122,12 @@ export function OpportunityObjectionsBlock({ opportunityId, onChanged }: Props) 
   // la página: al terminar, si nadie movió el foco, va al ítem resuelto.
   useEffect(() => {
     if (!refocusId) return;
-    focusAfterResolve(document.activeElement, document.body, document.getElementById(`opportunity-objection-${refocusId}`), registerButtonRef.current)?.focus();
+    focusAfterResolve(
+      document.activeElement,
+      document.body,
+      document.getElementById(`opportunity-objection-${refocusId}`),
+      registerButtonRef.current,
+    )?.focus();
     setRefocusId(null);
   }, [refocusId]);
 
@@ -96,10 +140,13 @@ export function OpportunityObjectionsBlock({ opportunityId, onChanged }: Props) 
       const id = await register(objection.id, notes);
       setJustRegisteredId(id);
       setPickerOpen(false);
-      toast({ title: `«${objection.title}» registrada`, description: 'Abajo tienes la respuesta recomendada y las preguntas.' });
+      toast({
+        title: t('registeredTitle', { title: objection.title }),
+        description: t('guidanceAfterRegister'),
+      });
       onChanged?.();
-    } catch (err) {
-      toast({ title: 'No se pudo registrar', description: err instanceof Error ? err.message : 'Error desconocido', variant: 'destructive' });
+    } catch {
+      toast({ title: t('registerFailed'), description: t('actionError'), variant: 'destructive' });
     } finally {
       setRegistering(null);
     }
@@ -109,9 +156,9 @@ export function OpportunityObjectionsBlock({ opportunityId, onChanged }: Props) 
     setResolvingId(item.id);
     try {
       await resolve(item.id);
-      toast({ title: `«${item.objection?.title ?? 'Objeción'}» resuelta` });
-    } catch (err) {
-      toast({ title: 'No se pudo marcar como resuelta', description: err instanceof Error ? err.message : 'Error desconocido', variant: 'destructive' });
+      toast({ title: t('resolvedTitle', { title: item.objection?.title ?? t('title') }) });
+    } catch {
+      toast({ title: t('resolveFailed'), description: t('actionError'), variant: 'destructive' });
     } finally {
       setResolvingId(null);
       setRefocusId(item.id);
@@ -121,34 +168,53 @@ export function OpportunityObjectionsBlock({ opportunityId, onChanged }: Props) 
   return (
     <section aria-labelledby={`objections-heading-${opportunityId}`} className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 id={`objections-heading-${opportunityId}`} className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
+        <h3
+          id={`objections-heading-${opportunityId}`}
+          className="flex items-center gap-2 text-sm font-semibold text-fg-secondary"
+        >
           <CircleAlert className="h-4 w-4 text-blue-500" aria-hidden="true" />
-          Objeciones
+          {t('title')}
           {linked.length > 0 && (
-            <span className="text-xs font-normal text-gray-600 dark:text-gray-400">
-              {pending === 0 ? `${linked.length} resuelta${linked.length === 1 ? '' : 's'}` : `${pending} pendiente${pending === 1 ? '' : 's'}`}
+            <span className="text-xs font-normal text-fg-secondary">
+              {t(pending === 0 ? 'resolvedCount' : 'pendingCount', {
+                count: pending === 0 ? linked.length : pending,
+              })}
             </span>
           )}
         </h3>
-        <Button ref={registerButtonRef} type="button" size="sm" className="h-7 bg-blue-600 text-xs text-white hover:bg-blue-700" onClick={() => setPickerOpen(true)}>
-          <Plus className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> Registrar objeción
+        <Button
+          ref={registerButtonRef}
+          type="button"
+          size="sm"
+          className="h-7 bg-blue-600 text-xs text-white hover:bg-blue-700"
+          disabled={!canRegister || loading || !!error}
+          onClick={() => setPickerOpen(true)}
+        >
+          <Plus className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> {t('register')}
         </Button>
       </div>
 
       {loading ? (
-        <div className="space-y-2" aria-busy="true" aria-label="Cargando objeciones">
+        <div className="space-y-2" aria-busy="true" aria-label={t('loading')}>
           <Skeleton className="h-16 w-full rounded-lg" />
         </div>
       ) : error ? (
-        <p role="alert" className="text-xs text-red-700 dark:text-red-300">{error}.</p>
+        <EmptyState variante="error" onReintentar={() => void reload()} />
       ) : linked.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-gray-300 p-3 text-xs text-gray-600 dark:border-gray-700 dark:text-gray-400">
-          Ninguna todavía. Cuando el cliente diga «es muy caro» o «tengo que consultarlo», regístrala aquí y tendrás la respuesta a mano.
+        <p className="rounded-lg border border-dashed border-line-strong p-3 text-xs text-gray-600 dark:text-gray-400">
+          {t('noLinked')}
         </p>
       ) : (
-        <ul className="space-y-2" aria-label="Objeciones registradas">
+        <ul className="space-y-2" aria-label={t('registeredList')}>
           {linked.map((item) => (
-            <LinkedItem key={item.id} item={item} justRegistered={item.id === justRegisteredId} resolving={resolvingId === item.id} onResolve={() => void onResolve(item)} />
+            <LinkedItem
+              key={item.id}
+              item={item}
+              canRegister={canRegister}
+              justRegistered={item.id === justRegisteredId}
+              resolving={resolvingId === item.id}
+              onResolve={() => void onResolve(item)}
+            />
           ))}
         </ul>
       )}

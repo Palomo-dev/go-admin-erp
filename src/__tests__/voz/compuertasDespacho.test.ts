@@ -1,3 +1,4 @@
+import { dobleReservaVoz } from '@/lib/services/crm/__tests__/dobles/reservaVoz';
 /**
  * Compuertas legales del despachador de voz (2026-09-30), ejercitadas por el
  * camino REAL (`runCampaignQueue` → `dialClaimedCall`) con un doble de Supabase
@@ -30,11 +31,12 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { runCampaignQueue } from '@/lib/services/crm/voiceAgentService';
 
 type Op = { table: string; verb: string; payload?: unknown; filters: Array<[string, string, unknown]>; head?: boolean };
-type Res = { data?: unknown; count?: number; error?: { message: string } | null };
+type Res = { data?: unknown; count?: number; error?: { message: string; code?: string } | null };
 
 function makeSupabase(resolve: (op: Op) => Res, resolveRpc: (name: string, args: Record<string, unknown>) => Res) {
   const ops: Op[] = [];
   const rpcs: Array<{ name: string; args: Record<string, unknown> }> = [];
+  const reserva = dobleReservaVoz();
   const builder = (op: Op) => {
     const filtro = (n: string) => (c: string, v?: unknown) => {
       op.filters.push([n, c, v]);
@@ -49,8 +51,8 @@ function makeSupabase(resolve: (op: Op) => Res, resolveRpc: (name: string, args:
         op.head = o?.head;
         return proxy;
       },
-      eq: filtro('eq'), in: filtro('in'), gte: filtro('gte'), lte: filtro('lte'), not: filtro('not'),
-      order: filtro('order'), limit: filtro('limit'),
+      eq: filtro('eq'), is: filtro('is'), in: filtro('in'), gte: filtro('gte'), lte: filtro('lte'), not: filtro('not'),
+      order: filtro('order'), limit: filtro('limit'), range: filtro('range'),
       maybeSingle: async () => settle(),
       single: async () => settle(),
       then: (ok: (v: unknown) => unknown, ko?: (e: unknown) => unknown) => Promise.resolve(settle()).then(ok, ko),
@@ -73,14 +75,23 @@ function makeSupabase(resolve: (op: Op) => Res, resolveRpc: (name: string, args:
     },
     rpc: jest.fn(async (name: string, args: Record<string, unknown>) => {
       rpcs.push({ name, args });
+      if (name === 'crm_voice_campaign_rne_status') {
+        const r = resolve({ table: 'voice_campaign_rne_checks', verb: 'select', filters: [
+          ['eq', 'organization_id', args.p_org], ['eq', 'campaign_id', args.p_campaign],
+        ] });
+        const row = Array.isArray(r.data) ? r.data[0] : null;
+        return { data: row ? { evidence_available: true, audience_unchanged: true, changed_targets: 0, ...row } : null, error: r.error ?? null };
+      }
+
       const r = resolveRpc(name, args);
-      return { data: r.data ?? null, error: r.error ?? null };
+      return { data: r.data ?? (r.error ? null : reserva(name, args)) ?? null, error: r.error ?? null };
     }),
   } as unknown as SupabaseClient;
   return { client, ops, rpcs };
 }
 
 interface Escenario {
+  archivada?: boolean;
   politica?: string | null;
   rne?: unknown[];
   excluido?: boolean;
@@ -103,12 +114,15 @@ function escenario(e: Escenario = {}) {
     emergency_stop: false, consecutive_failures: 0, status: 'running',
   };
   const fila = {
-    id: 'vac-1', organization_id: 7, voice_agent_id: 'agent-1', campaign_id: 'camp-1',
+    id: '20000000-0000-4000-8000-000000000001', organization_id: 7, voice_agent_id: 'agent-1', campaign_id: 'camp-1',
     customer_id: 'cust-1', opportunity_id: null, status: 'in_progress', attempts: 1,
   };
   return makeSupabase(
     (op) => {
-      if (op.table === 'voice_agent_campaigns' && op.verb === 'select') return { data: [campana] };
+      if (op.table === 'voice_agent_campaigns' && op.verb === 'select') {
+        const excluyeArchivadas = op.filters.some(([f, col, value]) => f === 'is' && col === 'stats->>archived_at' && value === null);
+        return { data: e.archivada && excluyeArchivadas ? [] : [campana] };
+      }
       if (op.table === 'comm_settings') {
         return {
           data: {
@@ -119,7 +133,7 @@ function escenario(e: Escenario = {}) {
         };
       }
       if (op.table === 'voice_campaign_rne_checks') {
-        return { data: e.rne ?? [{ id: 'r', checked_at: '2026-09-01T00:00:00Z', valid_until: '2999-01-01T00:00:00Z' }] };
+        return { data: e.rne ?? [{ id: 'r', checked_at: '2026-09-01T00:00:00Z', valid_until: '2999-01-01T00:00:00Z', numbers_in_file: 2 }] };
       }
       if (op.table === 'crm_excluded_numbers') return { data: e.excluido ? [{ id: 'x', phone_e164: '+573001112233' }] : [] };
       if (op.table === 'voice_agents') return { data: { is_active: true, max_calls_per_day: 50, max_calls_per_hour: 20, retry_policy: {} } };
@@ -134,7 +148,7 @@ function escenario(e: Escenario = {}) {
     (name) => {
       if (name === 'fn_claim_voice_agent_calls') return { data: [fila] };
       if (name === 'fn_can_contact') return { data: !e.sinConsentimiento };
-      if (name === 'deduct_comm_credits') return { data: !e.sinCreditos };
+      if (name === 'crm_voice_dispatch_prepare' && e.sinCreditos) return { error: { code: 'P0001', message: 'creditos_insuficientes' } };
       if (name === 'fn_voz_es_numero_prueba') return { data: e.numeroPrueba === true };
       if (name === 'fn_contactos_efectivos_semana') return { data: e.contactosSemana ?? [] };
       return { data: null };
@@ -147,7 +161,7 @@ const MARTES_10_BOG = new Date('2026-09-29T15:00:00Z');
 beforeEach(() => {
   jest.useFakeTimers({ now: MARTES_10_BOG, doNotFake: ['setTimeout', 'setImmediate', 'nextTick', 'queueMicrotask'] });
   twilioCreate.mockReset();
-  twilioCreate.mockResolvedValue({ sid: 'CA0001' });
+  twilioCreate.mockResolvedValue({ sid: `CA${'1'.repeat(32)}` });
 });
 afterEach(() => jest.useRealTimers());
 
@@ -179,13 +193,22 @@ describe('Compuertas legales del despachador de voz', () => {
   });
 
   test('sin verificación RNE (o vencida) la campaña no reclama filas', async () => {
-    for (const rne of [[], [{ id: 'r', checked_at: '2026-08-01T00:00:00Z', valid_until: '2026-08-31T00:00:00Z' }]]) {
+    for (const rne of [[], [{ id: 'r', checked_at: '2026-08-01T00:00:00Z', valid_until: '2026-08-31T00:00:00Z', numbers_in_file: 2 }], [{ id: 'r', valid_until: '2999-01-01T00:00:00Z', numbers_in_file: 0 }]]) {
       const { client, rpcs } = escenario({ rne });
       const r = await runCampaignQueue(7, client);
       expect(r.calls_initiated).toBe(0);
       expect(r.errors.join(' ')).toMatch(/Registro de Números Excluidos/);
       expect(rpcs.some((c) => c.name === 'fn_claim_voice_agent_calls')).toBe(false);
     }
+    expect(twilioCreate).not.toHaveBeenCalled();
+  });
+  test.each([
+    { evidence_available: false, audience_unchanged: false, changed_targets: 0 },
+    { evidence_available: true, audience_unchanged: false, changed_targets: 1 },
+  ])('la cola no reclama ni reserva con evidencia incompleta o modificada: %j', async evidence => {
+    const { client, rpcs } = escenario({ rne: [{ valid_until: '2999-01-01T00:00:00Z', numbers_in_file: 2, ...evidence }] });
+    expect((await runCampaignQueue(7, client)).calls_initiated).toBe(0);
+    expect(rpcs.some(r => r.name === 'fn_claim_voice_agent_calls' || r.name === 'crm_voice_dispatch_prepare')).toBe(false);
     expect(twilioCreate).not.toHaveBeenCalled();
   });
 
@@ -195,7 +218,7 @@ describe('Compuertas legales del despachador de voz', () => {
     expect(r.calls_initiated).toBe(0);
     const cierre = ops.find((o) => o.table === 'voice_agent_calls' && o.verb === 'update' && (o.payload as Record<string, unknown>).status === 'skipped');
     expect(cierre?.payload).toMatchObject({ last_error_code: 'RNE' });
-    expect(rpcs.some((c) => c.name === 'deduct_comm_credits')).toBe(false);
+    expect(rpcs.some((c) => c.name === 'crm_voice_dispatch_prepare')).toBe(false);
     expect(twilioCreate).not.toHaveBeenCalled();
   });
 
@@ -248,13 +271,13 @@ describe('Número de prueba interno: exime solo del tope semanal', () => {
       ?.payload as Record<string, unknown> | undefined;
 
   test('con la semana llena, un número de prueba se marca, no se cuentan contactos y la llamada queda marcada', async () => {
-    const { client, ops, rpcs } = escenario({ numeroPrueba: true, contactosSemana: SEMANA_LLENA });
+    const { client, rpcs } = escenario({ numeroPrueba: true, contactosSemana: SEMANA_LLENA });
     const r = await runCampaignQueue(7, client);
     expect(r.calls_initiated).toBe(1);
     expect(twilioCreate).toHaveBeenCalledTimes(1);
     expect(rpcs.find((c) => c.name === 'fn_voz_es_numero_prueba')?.args).toEqual({ p_org: 7, p_phone: '+573001112233' });
     expect(rpcs.some((c) => c.name === 'fn_contactos_efectivos_semana')).toBe(false);
-    expect((insertCalls(ops)?.metadata as Record<string, unknown>).ley2300_exencion).toBe('numero_prueba');
+    expect(rpcs.find(c => c.name === 'crm_voice_dispatch_prepare')?.args.p_metadata).toMatchObject({ ley2300_exencion: 'numero_prueba' });
   });
 
   test('la misma semana llena con un número que NO es de prueba sigue reprogramándose, sin marca', async () => {
@@ -265,9 +288,9 @@ describe('Número de prueba interno: exime solo del tope semanal', () => {
   });
 
   test('una llamada normal (sin exención) no lleva la marca', async () => {
-    const { client, ops } = escenario();
+    const { client, rpcs } = escenario();
     expect((await runCampaignQueue(7, client)).calls_initiated).toBe(1);
-    expect(insertCalls(ops)?.metadata).not.toHaveProperty('ley2300_exencion');
+    expect(rpcs.find(c => c.name === 'crm_voice_dispatch_prepare')?.args.p_metadata).not.toHaveProperty('ley2300_exencion');
   });
 
   test('NO exime de la franja horaria: sábado 15:30 se reprograma al martes 07:00', async () => {
@@ -329,4 +352,12 @@ describe('Número de prueba interno: exime solo del tope semanal', () => {
       warn.mockRestore();
     }
   });
+});
+
+test('una campaña archivada no vuelve a llamar aunque una integración cambie su estado a running', async () => {
+  const { client, rpcs } = escenario({ archivada: true });
+  const r = await runCampaignQueue(7, client);
+  expect(r.campaigns_processed).toBe(0);
+  expect(twilioCreate).not.toHaveBeenCalled();
+  expect(rpcs.some(c => c.name === 'fn_claim_voice_agent_calls')).toBe(false);
 });

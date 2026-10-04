@@ -217,14 +217,14 @@ describe('orgTimezone helpers', () => {
 });
 
 describe('schedule.ts — contrato único (N-3)', () => {
-  it('drenaje total cada DRAIN_INTERVAL_MIN y el cron diario pide los 4 kinds programados', () => {
+  it('drenaje total cada DRAIN_INTERVAL_MIN y el cron diario pide los 5 kinds programados', () => {
     expect(DRAIN_SCHEDULE).toBe(`*/${DRAIN_INTERVAL_MIN} * * * *`);
-    expect(VERCEL_SCHEDULE_KINDS['30 8 * * *']).toEqual(['recording_cleanup', 'maintenance', 'health_recalculate', 'renewals_sync']);
+    expect(VERCEL_SCHEDULE_KINDS['30 8 * * *']).toEqual(['recording_cleanup', 'maintenance', 'health_recalculate', 'renewals_sync', 'objection_mining']);
     // r-voz 2026-09-23: la cola de campañas del agente de voz (`voice_campaigns`,
     // F6) viaja en ESTE cron, que ya existía, para no añadir una entrada más a
     // `crons` de `vercel.json`. `splitScheduledKinds` la aparta de los kinds de
     // cola, así que el drenaje de `campaign_batch` no cambia.
-    expect(VERCEL_SCHEDULE_KINDS['*/5 * * * *']).toEqual(['campaign_batch', 'voice_campaigns']);
+    expect(VERCEL_SCHEDULE_KINDS['*/5 * * * *']).toEqual(['campaign_batch', 'voice_campaigns', 'segment_counts']);
     expect(JOBS_RUN_SCHEDULES).toEqual([DRAIN_SCHEDULE, '*/5 * * * *', '30 8 * * *']);
   });
 });

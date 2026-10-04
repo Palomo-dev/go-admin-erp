@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError, requireOrgAdmin } from '@/lib/utils/orgContext';
+import { z } from 'zod';
+import { getServerOrgContext, requireOrgAdminOrPermission } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import { executeAutomationRule, testRunAutomationRule } from '@/lib/services/crm/automationService';
+import { CrmHttpError, exigirUuid, sinClavesDeOrganizacion } from '@/lib/services/crm/crmRouteSupport';
+import { automationRouteError } from '@/lib/services/crm/automation/automationRouteErrors';
+
+const schema = z.object({ opportunity_id: z.string().uuid().nullable().optional(), dry_run: z.boolean().optional() }).strict();
 
 /**
  * POST /api/crm/automation-rules/[id]/trigger — Ejecuta una regla a mano (admin).
@@ -20,20 +25,13 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const ctx = await getServerOrgContext();
-    requireOrgAdmin(ctx);
+    const ctx = await getServerOrgContext(request);
+    await requireOrgAdminOrPermission(ctx);
     const { id } = await params;
-
-    let body: { opportunity_id?: string; dry_run?: boolean; force?: boolean } = {};
-    try {
-      body = await request.json();
-    } catch {
-      // Sin body — ejecución sin oportunidad asociada.
-    }
-    readOrgBody(ctx, body, { request });
-
-    const opportunityId = typeof body.opportunity_id === 'string' ? body.opportunity_id : null;
-
+    const raw: unknown = await readOrgBody(ctx, request);
+    exigirUuid(id, 'Regla');
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new CrmHttpError(400, 'prueba_invalida', 'Body inválido');
+    const body = sinClavesDeOrganizacion(raw as Record<string, unknown>);
     if (body.force !== undefined) {
       return NextResponse.json(
         {
@@ -44,8 +42,11 @@ export async function POST(
         { status: 400 },
       );
     }
+    const parsed = schema.safeParse(body);
+    if (!parsed.success) throw new CrmHttpError(400, 'prueba_invalida', 'Revisa la oportunidad y el modo de prueba');
+    const opportunityId = parsed.data.opportunity_id ?? null;
 
-    if (body.dry_run) {
+    if (parsed.data.dry_run === true) {
       const preview = await testRunAutomationRule(id, ctx.organizationId, opportunityId, ctx.supabase);
       return NextResponse.json({ success: true, data: preview }, { status: 200 });
     }
@@ -60,12 +61,6 @@ export async function POST(
 
     return NextResponse.json({ success: true, data: run }, { status: 201 });
   } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.statusCode });
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[Automation Rules Trigger] POST error:', message);
-    const status = /no encontrada/i.test(message) ? 404 : 500;
-    return NextResponse.json({ success: false, error: message }, { status });
+    return automationRouteError(error, 'POST /api/crm/automation-rules/[id]/trigger');
   }
 }

@@ -77,7 +77,13 @@ const INSTANCE_B = '22222222-2222-4222-8222-222222222222';
 const CAPS = { touch: true, width: 1280, height: 800 } as const;
 
 async function flush(rounds = 3): Promise<void> {
-  for (let i = 0; i < rounds; i += 1) await new Promise<void>((r) => setImmediate(r));
+  for (let i = 0; i < rounds; i += 1) {
+    await new Promise<void>((r) => setImmediate(r));
+    // El emisor programa su state con setTimeout(0). Solo setImmediate
+    // puede terminar el drenaje antes de esa publicación y dejarla pendiente
+    // para un receptor creado después, además del snapshot que solicita.
+    await new Promise<void>((r) => setTimeout(r, 0));
+  }
 }
 async function waitFor(pred: () => boolean, timeoutMs = 1500): Promise<void> {
   const start = Date.now();

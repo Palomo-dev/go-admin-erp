@@ -8,7 +8,11 @@ import { reserveVoiceMinutes } from '@/lib/services/crm/callCreditsService';
 import { normalizeDialableE164 } from '@/lib/services/integrations/twilio/twilioConfig';
 import { isBridgeSigningConfigured, signConsentToken, verifyConsentToken } from '@/lib/services/crm/bridgeTokens';
 import { recordConsent } from '@/lib/services/crm/consentService';
+import { updateCall } from '@/lib/services/crm/callManagementService';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { phoneConferenceEnabled, readPhonePack } from '@/lib/services/crm/phoneConferenceRepository';
+import { startOutboundPhoneConference } from '@/lib/services/crm/phoneConferenceStart';
+import { requireHumanCallCompliance } from '@/lib/services/crm/humanCallCompliance';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -124,6 +128,7 @@ async function handleClientOriginated(input: {
     .maybeSingle();
   if (existing) {
     const ex = existing as { id: string; recording_enabled: boolean; from_number: string; to_number: string };
+    if (phoneConferenceEnabled() && await readPhonePack(sb, orgId, ex.id)) return xmlResponse(await startOutboundPhoneConference(sb, orgId, ex.id));
     return xmlResponse(
       buildOutboundBrowserTwiml({
         origin,
@@ -161,6 +166,10 @@ async function handleClientOriginated(input: {
   const { customerId, opportunityId } = refs;
   if (refs.rejected.length) console.warn('[TwiML Outbound] ids de otra organización descartados', { orgId, rejected: refs.rejected.length });
   const recordingEnabled = settings.voice_recording_enabled === true;
+  if (phoneConferenceEnabled()) {
+    if (!isBridgeSigningConfigured()) return xmlResponse(buildHangupTwiml('La telefonía aún no está disponible. Contacte al administrador.'));
+    await requireHumanCallCompliance(sb, orgId, to, customerId);
+  }
 
   // Créditos: reserva de 1 minuto antes de marcar (D6). NULL en BD = ilimitado → true.
   const hasCredits = await reserveVoiceMinutes(orgId, 1, sb);
@@ -185,6 +194,7 @@ async function handleClientOriginated(input: {
       ...(refs.rejected.length ? { rejected_refs: refs.rejected } : {}),
     },
   });
+  if (phoneConferenceEnabled()) return xmlResponse(await startOutboundPhoneConference(sb, orgId, callId));
 
   // Sin acta aquí a propósito (V-4): la escribe `consent-whisper` cuando el
   // cliente contesta y oye el aviso. Una llamada no contestada no deja acta.
@@ -269,7 +279,8 @@ async function handleRestOriginated(input: { params: Record<string, string>; acc
     } catch (err) {
       console.error('[TwiML Outbound] REST: sin acta no se graba:', err instanceof Error ? err.message : err, { orgId });
       recordingEnabled = false;
-      await sb.from('calls').update({ recording_enabled: false }).eq('id', call.id).eq('organization_id', orgId);
+      const saved = await updateCall(call.id, orgId, { recording_enabled: false }, sb);
+      if (!saved) throw new Error('La llamada dejó de estar disponible al desactivar la grabación');
     }
   }
 

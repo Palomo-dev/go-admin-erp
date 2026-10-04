@@ -314,11 +314,14 @@ describe('N-1 · bridge: `record=` sale de la fila `calls`, la misma que lee el 
     expect(xml).not.toContain('consent-whisper');
   });
 
-  it('N-1.4 · si la fila `calls` no se puede leer, el puente conecta SIN grabar (fallo cerrado)', async () => {
+  it('N-1.4 · si `calls` no se puede leer/guardar, no marca al cliente ni acredita éxito', async () => {
     const { bridgeId } = await bridgeFromInitiate({ voice_recording_enabled: true });
     fake.failOn['calls:select'] = 'VOZR6T caída simulada';
-    const xml = await (await customerLeg(bridgeId)).text();
-    expect(xml).toContain('<Dial ');
+    const response = await customerLeg(bridgeId);
+    expect(response.status).toBe(500);
+    const xml = await response.text();
+    expect(xml).not.toContain('<Dial ');
+    expect(xml).toContain('<Hangup/>');
     expect(xml).not.toContain('record=');
   });
 
@@ -350,7 +353,7 @@ describe('N-1 · bridge: `record=` sale de la fila `calls`, la misma que lee el 
 function seedAgent(patch: { vac?: Row; call?: Row | null } = {}) {
   fake = seed({
     voice_agent_calls: [
-      { id: VAC, organization_id: ORG, voice_agent_id: 'ag-1', call_id: CALL_ID, provider_call_sid: null, status: 'dialing', started_at: null, consent_given: false, customer_id: null, ...(patch.vac ?? {}) },
+      { id: VAC, organization_id: ORG, voice_agent_id: 'ag-1', call_id: CALL_ID, provider_call_sid: 'CAr6agent01', status: 'dialing', started_at: null, consent_given: false, customer_id: null, ...(patch.vac ?? {}) },
     ],
     calls: patch.call === null ? [] : [callRow({ provider_call_sid: 'CAr6agent01', mode: 'ai_agent', ...(patch.call ?? {}) })],
   });
@@ -643,6 +646,25 @@ describe('(a) · recording completed sin acta: se registra y queda dicho que el 
     expect(fake.rows('call_consents')).toHaveLength(1);
     expect(fake.rows('call_recordings')).toHaveLength(1);
   });
+
+  it.each(['in-progress', 'absent', 'completed'])('a.4 · fallo leyendo calls en %s responde 500 sin acreditar un callback procesado', async (status) => {
+    fake = seed({ calls: [callRow({ provider_call_sid: 'CAr6failedRead' })] });
+    fake.failOn['calls:select'] = 'Caída de lectura sintética';
+    const response = await recordingCallback({ CallSid: 'CAr6failedRead', RecordingSid: 'REfailedRead',
+      RecordingStatus: status, RecordingUrl: 'https://api.twilio.com/rec/REfailedRead' });
+    expect(response.status).toBe(500);
+    expect(fake.rows('call_recordings')).toHaveLength(0);
+    expect(fake.rows('call_consents')).toHaveLength(0);
+    expect(enqueueJob).not.toHaveBeenCalled();
+  });
+
+  it('a.5 · un fallo leyendo grabaciones tampoco crea/encola una grabación adicional', async () => {
+    fake = seed({ calls: [callRow({ provider_call_sid: 'CAr6failedRecording' })] });
+    fake.failOn['call_recordings:select'] = 'Caída de lectura sintética';
+    expect((await completed('CAr6failedRecording')).status).toBe(500);
+    expect(fake.rows('call_recordings')).toHaveLength(0);
+    expect(enqueueJob).not.toHaveBeenCalled();
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -710,3 +732,12 @@ describe('N-9 · agentRuntime falla cerrado como getTelephonySettings', () => {
     expect((await realBuildRuntimeConfig(fake.client(), { agentId: 'ag-9', callId: null })).recordingEnabled).toBe(false);
   });
 });
+
+// Fixtures históricas del transporte heredado; los contratos RPC se verifican por separado.
+beforeEach(() => { process.env.CRM_CALL_ATOMIC_RPC_ENABLED = 'false'; });
+afterAll(() => { delete process.env.CRM_CALL_ATOMIC_RPC_ENABLED; });
+
+// Fixtures Dial anteriores a Conference: escape explícito, sin falsear los contratos nuevos.
+const phoneLegacyEnv = process.env.CRM_PHONE_CONFERENCE_ENABLED;
+beforeAll(() => { process.env.CRM_PHONE_CONFERENCE_ENABLED = 'false'; });
+afterAll(() => { if (phoneLegacyEnv === undefined) delete process.env.CRM_PHONE_CONFERENCE_ENABLED; else process.env.CRM_PHONE_CONFERENCE_ENABLED = phoneLegacyEnv; });

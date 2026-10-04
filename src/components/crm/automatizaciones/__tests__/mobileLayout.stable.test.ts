@@ -48,47 +48,34 @@ describe('1. el texto de la ficha encoge desde sm (sm:truncate vivo)', () => {
   });
 });
 
-describe('2. ficha de grupo anidado: la nota baja a su línea en móvil', () => {
+describe('2. grupo anidado conservado en móvil', () => {
   const src = read('ConditionsBlock.tsx');
-
-  it('el botón del grupo envuelve en móvil y no desde sm', () => {
-    expect(src).toMatch(/!editable && 'cursor-default flex-wrap sm:flex-nowrap'/);
-  });
-
-  it('la nota ocupa toda la línea en móvil y vuelve en línea (basis-auto, shrink-0) desde sm', () => {
-    const m = src.match(/<span className="([^"]+)">· grupo, se edita como JSON<\/span>/);
-    expect(m).not.toBeNull();
-    const cls = classes(m![1]);
-    expect(cls).toEqual(expect.arrayContaining(['min-w-0', 'basis-full', 'sm:basis-auto', 'sm:shrink-0']));
-    expect(cls).not.toContain('shrink-0');
+  it('el resumen encoge y rompe incluso IDs largos; el grupo mantiene su editor JSON', () => {
+    expect(src).toContain('min-w-0 flex-1 break-words');
+    expect(src).toContain('[overflow-wrap:anywhere]');
+    expect(src).toContain('onClick={openJson}');
+    expect(src).toContain('· grupo, se edita como JSON');
   });
 });
 
 describe('3. DryRunDialog: el nombre largo no ensancha el diálogo', () => {
   it('el título flex lleva el texto en un span min-w-0 break-words y el icono shrink-0', () => {
     const src = read('DryRunDialog.tsx');
-    expect(src).toMatch(/<span className="min-w-0 break-words">Probar en seco «\{rule\?\.name\}»<\/span>/);
-    expect(src).toMatch(/<FlaskConical className="h-5 w-5 shrink-0/);
+    expect(src).toMatch(/<span className="min-w-0 break-words">\{tr\("Probar en seco «"\)\}\{rule\?\.name\}»<\/span>/);
+    expect(src).toMatch(/<FlaskConical(?: strokeWidth=\{1\.5\})? className="h-5 w-5 shrink-0/);
   });
 });
 
-describe('4. RunsSheet: la celda Detalle rompe en cualquier punto', () => {
+describe('4. historial responsive nativo', () => {
   const src = read('RunsSheet.tsx');
-
-  it('la celda Detalle y el mensaje de error usan overflow-wrap: anywhere, no break-words', () => {
-    const cell = src.match(/<TableCell className="([^"]*)">\s*\{run\.skip_reason/);
-    expect(cell).not.toBeNull();
-    expect(classes(cell![1])).toContain('[overflow-wrap:anywhere]');
-    expect(classes(cell![1])).not.toContain('break-words');
-    const err = src.match(/<p className="([^"]*)">\{run\.error_message\}<\/p>/);
-    expect(err).not.toBeNull();
-    expect(classes(err![1])).toContain('[overflow-wrap:anywhere]');
-    expect(classes(err![1])).not.toContain('break-words');
+  it('los errores del servidor rompen en cualquier punto dentro de la celda del kit', () => {
+    expect(src).toContain('[overflow-wrap:anywhere]');
+    expect(src).toContain('run.error_message');
+    expect(src).toContain('<DataTable');
   });
-
-  it('la columna Fecha sigue oculta bajo sm y la fecha se repite bajo el estado', () => {
-    expect(src).toMatch(/<TableHead scope="col" className="hidden sm:table-cell">Fecha<\/TableHead>/);
-    expect(src).toMatch(/className="mt-0\.5 block text-xs font-normal [^"]*sm:hidden"/);
+  it('la fecha usa el timezone de la organización al filtrar y al presentar', () => {
+    expect(src).toContain('toPlainDate(new Date(run.created_at), timezone)');
+    expect(src).toContain('formatDateTime(run.created_at)');
   });
 });
 
@@ -101,7 +88,7 @@ describe('5. foco tras reordenar una acción por teclado', () => {
 
   it('los botones Subir/Bajar llevan id action-N-move-up / action-N-move-down', () => {
     const src = read('ActionChipEditor.tsx');
-    expect(src).toMatch(/<Button id=\{id\('move-up'\)\}[^>]*aria-label=\{`Subir la acción/);
-    expect(src).toMatch(/<Button id=\{id\('move-down'\)\}[^>]*aria-label=\{`Bajar la acción/);
+    expect(src).toMatch(/<Button id=\{id\('move-up'\)\}[^>]*aria-label=\{tr\("Subir la acción/);
+    expect(src).toMatch(/<Button id=\{id\('move-down'\)\}[^>]*aria-label=\{tr\("Bajar la acción/);
   });
 });

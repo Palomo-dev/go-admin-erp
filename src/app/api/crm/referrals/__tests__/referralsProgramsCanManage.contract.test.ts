@@ -15,20 +15,13 @@ import { fakeSupabase, makeDb, seed, ORG, type FakeDb } from './f12Fake';
 
 const { OrgContextError: RealOrgContextError } = jest.requireActual<typeof import('@/lib/utils/orgContextError')>('@/lib/utils/orgContextError');
 // Extiende la clase real: `readOrgBody` (punto único) lanza la real y las rutas hacen `instanceof`.
-class FakeOrgContextError extends RealOrgContextError {
-  statusCode: number;
-  code: string;
-  constructor(message: string, statusCode = 401, code = 'X') {
-    super(message, statusCode, code);
-    this.statusCode = statusCode;
-    this.code = code;
-  }
-}
 
 let db: FakeDb;
 const session = { roleId: 4, isSuperAdmin: false };
 
 jest.mock('@/lib/utils/orgContext', () => ({
+  // Fixture: manager role 5 is assigned admin.full_access in the permission catalog.
+  hasOrgAdminOrPermission: jest.fn(async (ctx, code = 'admin.full_access') => ctx.isSuperAdmin || [1, 2].includes(ctx.roleId) || code !== 'admin.full_access' || ctx.roleId === 5),
   OrgContextError: RealOrgContextError, // la clase real: `readOrgBody` lanza la real y las rutas hacen `instanceof`
   getServerOrgContext: jest.fn(async () => ({ organizationId: ORG, userId: 'u-1', roleId: session.roleId, roleName: 'Empleado', isSuperAdmin: session.isSuperAdmin, supabase: fakeSupabase(db) })),
 }));

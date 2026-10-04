@@ -23,6 +23,7 @@ import { getAccountCapabilities, listVoicesEnriched, removeVoice } from '@/lib/s
 import { describeLibraryError } from '@/lib/services/crm/voiceLibrary';
 import { ElevenLabsError } from '@/lib/services/integrations/elevenlabs/voiceCloneClient';
 import { getServiceClient } from '@/lib/supabase/server-service';
+import { RequestDeadlineError, withRequestDeadline } from '@/lib/utils/requestDeadline';
 
 export const runtime = 'nodejs';
 
@@ -32,6 +33,10 @@ export const runtime = 'nodejs';
  */
 
 function fail(error: unknown) {
+  if (error instanceof RequestDeadlineError) {
+    return NextResponse.json({ success: false, error: error.code === 'REQUEST_TIMEOUT'
+      ? 'No se pudo completar la consulta de voces a tiempo. Vuelve a intentarlo.' : 'Petición cancelada.' }, { status: error.status });
+  }
   if (error instanceof OrgContextError) {
     return NextResponse.json({ success: false, error: error.message }, { status: error.statusCode });
   }
@@ -44,14 +49,16 @@ function fail(error: unknown) {
   return NextResponse.json({ success: false, error: message }, { status: status && status < 600 ? status : 500 });
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const ctx = await getServerOrgContext();
-    const [data, account] = await Promise.all([
-      listVoicesEnriched(ctx.supabase, ctx.organizationId),
-      // Plan del proveedor (solo lectura) para avisar antes del clic; `null` si no se sabe.
-      getAccountCapabilities(ctx.organizationId),
-    ]);
+    const [data, account] = await withRequestDeadline(async (signal) => {
+      const ctx = await getServerOrgContext(request, { signal });
+      return Promise.all([
+        listVoicesEnriched(ctx.supabase, ctx.organizationId, signal),
+        // El plan desconocido no bloquea el catálogo nativo.
+        getAccountCapabilities(ctx.organizationId, signal),
+      ]);
+    }, { timeoutMs: 18_000, signal: request.signal });
     return NextResponse.json({ success: true, data, account }, { status: 200 });
   } catch (error) {
     return fail(error);

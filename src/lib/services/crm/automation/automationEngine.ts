@@ -17,22 +17,15 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { onCrmEvent, type CrmEventListener } from '@/lib/jobs/dispatch/eventDispatcher';
 import { enqueueJob } from '@/lib/jobs/enqueue';
 import type { CrmEvent } from '@/lib/jobs/types';
-import { evaluateTrigger, type AutomationTriggerType } from '@/lib/services/crm/automationService';
+import { evaluateTrigger } from '@/lib/services/crm/automationService';
 import { checkExitConditions } from '@/lib/services/crm/sequenceService';
 import { loadRuleContext } from './ruleContext';
 import type { EnqueueFn } from './actions';
+import { triggerTypeForEvent } from './triggerTypeForEvent';
+export { triggerTypeForEvent } from './triggerTypeForEvent';
 
 export const AUTOMATION_LISTENER_NAME = 'automation_rules_engine';
 export const SEQUENCE_LISTENER_NAME = 'sequence_reactions';
-
-/** Traduce el tipo de evento del outbox al `trigger_type` de las reglas. */
-export function triggerTypeForEvent(eventType: string): AutomationTriggerType {
-  if (eventType === 'opportunity.stage_changed' || eventType === 'opportunity.won' || eventType === 'opportunity.lost') {
-    return 'stage_change';
-  }
-  if (eventType === 'opportunity.updated' || eventType === 'opportunity.field_changed') return 'field_change';
-  return 'event';
-}
 
 export interface EvaluateResult {
   event_type: string;

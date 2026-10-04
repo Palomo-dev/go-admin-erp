@@ -38,6 +38,7 @@ import { evaluateConditionTree, isEmptyConditionTree, validateConditions } from 
 import { loadRuleContext, qualifyVarsForEmail } from './automation/ruleContext';
 import { enqueueJob } from '@/lib/jobs/enqueue';
 import { scheduleSequenceSweep } from './sequenceSweep';
+import { readAllF12 as readOrganizationRows } from './f12ReadService';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -287,24 +288,11 @@ export function validateSequenceInput(input: Partial<CreateSequenceInput>): stri
 // ─── CRUD ────────────────────────────────────────────────────────────────────
 
 export async function getSequences(orgId: number, supabase: SupabaseClient): Promise<Sequence[]> {
-  const { data: sequences, error } = await supabase
-    .from('sequences')
-    .select('*')
-    .eq('organization_id', orgId)
-    .order('created_at', { ascending: false });
-
-  if (error) throw new Error(`getSequences: ${error.message}`);
-  if (!sequences || sequences.length === 0) return [];
-
-  const seqIds = (sequences as Sequence[]).map((s) => s.id);
-  const { data: steps, error: stepsError } = await supabase
-    .from('sequence_steps')
-    .select('*')
-    .eq('organization_id', orgId)
-    .in('sequence_id', seqIds)
-    .order('step_number', { ascending: true });
-
-  if (stepsError) throw new Error(`getSequences(steps): ${stepsError.message}`);
+  const sequences = await readOrganizationRows<Sequence>(supabase, 'sequences', '*', orgId).catch((error: {message?: string}) => { throw new Error(`getSequences: ${error.message ?? 'lectura incompleta'}`); });
+  if (!sequences.length) return [];
+  const ids = new Set(sequences.map(s => s.id));
+  const steps = (await readOrganizationRows<SequenceStep>(supabase, 'sequence_steps', '*', orgId).catch((error: {message?: string}) => { throw new Error(`getSequences(steps): ${error.message ?? 'lectura incompleta'}`); }))
+    .filter(step => ids.has(step.sequence_id)).sort((a, b) => a.step_number - b.step_number);
 
   const stepsMap = new Map<string, SequenceStep[]>();
   for (const s of (steps || []) as SequenceStep[]) {
@@ -313,7 +301,7 @@ export async function getSequences(orgId: number, supabase: SupabaseClient): Pro
     stepsMap.set(s.sequence_id, list);
   }
 
-  return (sequences as Sequence[]).map((seq) => ({ ...seq, steps: stepsMap.get(seq.id) || [] }));
+  return sequences.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || a.id.localeCompare(b.id)).map((seq) => ({ ...seq, steps: stepsMap.get(seq.id) || [] }));
 }
 
 export async function createSequence(
@@ -462,7 +450,7 @@ export async function enrollInSequence(
     p_start_at: startAt.toISOString(),
   });
 
-  if (error) throw new Error(`enrollInSequence: ${error.message}`);
+  if (error) throw Object.assign(new Error(error.message), { code: error.code });
   const result = (data ?? {}) as {
     created?: boolean;
     reason?: string;
@@ -514,24 +502,12 @@ export async function unenrollFromSequence(
   supabase: SupabaseClient,
   reason = 'manual_unenroll',
 ): Promise<SequenceEnrollment | null> {
-  const { data, error } = await supabase
-    .from('sequence_enrollments')
-    .update({ status: 'exited', exited_at: new Date().toISOString(), exit_reason: reason })
-    .eq('id', enrollmentId)
-    .eq('organization_id', orgId)
-    .in('status', ['active', 'paused'])
-    .select()
-    .maybeSingle();
-  if (error) throw new Error(`unenrollFromSequence: ${error.message}`);
-
-  if (data) {
-    await supabase
-      .from('sequence_step_runs')
-      .update({ status: 'skipped', result: { reason: `enrollment_${reason}` } })
-      .eq('organization_id', orgId)
-      .eq('enrollment_id', enrollmentId)
-      .eq('status', 'pending');
-  }
+  const { data, error } = await supabase.rpc('fn_exit_sequence_enrollment', {
+    p_org: orgId,
+    p_enrollment_id: enrollmentId,
+    p_reason: reason,
+  });
+  if (error) throw Object.assign(new Error(error.message), { code: error.code });
   return (data as SequenceEnrollment | null) ?? null;
 }
 
@@ -562,7 +538,7 @@ export async function resumeEnrollment(
     p_org: orgId,
     p_enrollment_id: enrollmentId,
   });
-  if (error) throw new Error(`resumeEnrollment: ${error.message}`);
+  if (error) throw Object.assign(new Error(error.message), { code: error.code });
 
   const result = (data ?? {}) as {
     resumed?: boolean;
@@ -1020,7 +996,7 @@ export async function processStepRun(
           );
         }
         const ctx = await loadRuleContext(
-          { orgId, opportunityId: enrollment.opportunity_id, customerId: enrollment.customer_id },
+          { orgId, opportunityId: enrollment.opportunity_id, customerId: enrollment.customer_id, conditions: definition },
           supabase,
         );
         const evaluated = evaluateConditionTree(definition, ctx);

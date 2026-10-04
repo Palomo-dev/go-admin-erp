@@ -1,4 +1,7 @@
 'use client';
+import { useLocale } from 'next-intl';
+import type { ConditionLocale } from '@/lib/services/crm/automation/conditionsI18n';
+import { useSequenceText } from './useSequenceText';
 
 /**
  * Editor de la condición de un paso `condition` (FASE-08 §2.4).
@@ -47,8 +50,8 @@ const FIELD_GROUPS: { prefix: string }[] = [
   { prefix: 'consent.' },
 ];
 
-const SELECT_CLASS = 'h-9 w-full rounded-md border border-gray-300 bg-white px-2 text-sm '
-  + 'text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100';
+const SELECT_CLASS = 'h-9 w-full rounded-md border border-line-strong bg-surface px-2 text-sm '
+  + 'text-fg dark:border-line-strong dark:bg-surface dark:text-fg';
 
 /** Lee el valor guardado y lo devuelve como texto editable. */
 function valueToText(value: unknown): string {
@@ -98,6 +101,8 @@ interface Props {
 }
 
 export function ConditionEditor({ value, onChange, stepLabel, disabled }: Props) {
+ const tr=useSequenceText();
+ const activeLocale=useLocale(), locale=(['es','en','fr','pt'].includes(activeLocale)?activeLocale:'es') as ConditionLocale;
   const group = toEditableGroup(value);
   const rules = group.rules as ConditionRule[];
 
@@ -110,21 +115,20 @@ export function ConditionEditor({ value, onChange, stepLabel, disabled }: Props)
   };
 
   return (
-    <div className="mt-2 rounded-md border border-dashed border-gray-300 p-3 dark:border-gray-600">
+    <div className="mt-2 rounded-md border border-dashed border-line-strong p-3 dark:border-gray-600">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-            Se cumple si
-          </span>
+          <span className="text-xs font-medium text-fg-secondary dark:text-fg-secondary">
+            {tr("Se cumple si")}</span>
           <select
-            aria-label={`Combinación de las reglas del ${stepLabel}`}
-            className="h-8 rounded-md border border-gray-300 bg-white px-2 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+            aria-label={tr("Combinación de las reglas del {p0}",{p0:stepLabel})}
+            className="h-8 rounded-md border border-line-strong bg-surface px-2 text-xs dark:border-line-strong dark:bg-surface dark:text-fg"
             value={group.op}
             disabled={disabled}
             onChange={(e) => emit({ op: e.target.value === 'or' ? 'or' : 'and' })}
           >
-            <option value="and">se cumplen TODAS las reglas</option>
-            <option value="or">se cumple ALGUNA regla</option>
+            <option value="and">{tr("se cumplen TODAS las reglas")}</option>
+            <option value="or">{tr("se cumple ALGUNA regla")}</option>
           </select>
         </div>
         {!disabled && (
@@ -136,16 +140,13 @@ export function ConditionEditor({ value, onChange, stepLabel, disabled }: Props)
               rules: [...rules, { field: 'opportunity.amount', operator: 'gte', value: 0 }],
             })}
           >
-            <Plus className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> Añadir regla
-          </Button>
+            <Plus strokeWidth={1.5} className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> {tr("Añadir regla")}</Button>
         )}
       </div>
 
       {rules.length === 0 && (
-        <p className="mt-2 text-xs text-amber-700 dark:text-amber-400" role="status">
-          Sin reglas no se puede guardar: una condición vacía dejaría pasar el paso siguiente en vez
-          de cortar la secuencia.
-        </p>
+        <p className="mt-2 text-xs text-warning-text dark:text-amber-400" role="status">
+          {tr("Sin reglas no se puede guardar: una condición vacía dejaría pasar el paso siguiente en vez de cortar la secuencia.")}</p>
       )}
 
       <div className="mt-2 space-y-2">
@@ -154,7 +155,7 @@ export function ConditionEditor({ value, onChange, stepLabel, disabled }: Props)
           return (
             <div key={index} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
               <select
-                aria-label={`Campo de la regla ${index + 1} del ${stepLabel}`}
+                aria-label={tr("Campo de la regla {p0} del {p1}",{p0:index + 1,p1:stepLabel})}
                 className={SELECT_CLASS}
                 value={String(rule.field ?? '')}
                 disabled={disabled}
@@ -164,9 +165,9 @@ export function ConditionEditor({ value, onChange, stepLabel, disabled }: Props)
                   const fields = CONDITION_FIELDS.filter((f) => f.startsWith(grp.prefix));
                   if (fields.length === 0) return null;
                   return (
-                    <optgroup key={grp.prefix} label={groupLabel(grp.prefix)}>
+                    <optgroup key={grp.prefix} label={groupLabel(grp.prefix,locale)}>
                       {fields.map((f) => (
-                        <option key={f} value={f}>{fieldLabel(f)}</option>
+                        <option key={f} value={f}>{fieldLabel(f,locale)}</option>
                       ))}
                     </optgroup>
                   );
@@ -174,7 +175,7 @@ export function ConditionEditor({ value, onChange, stepLabel, disabled }: Props)
               </select>
 
               <select
-                aria-label={`Operador de la regla ${index + 1} del ${stepLabel}`}
+                aria-label={tr("Operador de la regla {p0} del {p1}",{p0:index + 1,p1:stepLabel})}
                 className={SELECT_CLASS}
                 value={operator}
                 disabled={disabled}
@@ -187,18 +188,17 @@ export function ConditionEditor({ value, onChange, stepLabel, disabled }: Props)
                 }}
               >
                 {OPERATORS.map((op) => (
-                  <option key={op} value={op}>{operatorLabel(op)}</option>
+                  <option key={op} value={op}>{operatorLabel(op,locale)}</option>
                 ))}
               </select>
 
               {NO_VALUE.has(operator) ? (
-                <span className="self-center text-xs text-gray-500 dark:text-gray-400">
-                  (sin valor)
-                </span>
+                <span className="self-center text-xs text-fg-muted dark:text-fg-secondary">
+                  {tr("(sin valor)")}</span>
               ) : (
                 <Input
-                  aria-label={`Valor de la regla ${index + 1} del ${stepLabel}`}
-                  placeholder={LIST_VALUE.has(operator) ? 'a, b, c' : 'Valor'}
+                  aria-label={tr("Valor de la regla {p0} del {p1}",{p0:index + 1,p1:stepLabel})}
+                  placeholder={LIST_VALUE.has(operator) ? tr("a, b, c") : tr("Valor")}
                   value={valueToText(rule.value)}
                   disabled={disabled}
                   onChange={(e) => updateRule(index, { value: textToValue(e.target.value, operator) })}
@@ -210,10 +210,10 @@ export function ConditionEditor({ value, onChange, stepLabel, disabled }: Props)
                   type="button"
                   size="icon"
                   variant="ghost"
-                  aria-label={`Eliminar la regla ${index + 1} del ${stepLabel}`}
+                  aria-label={tr("Eliminar la regla {p0} del {p1}",{p0:index + 1,p1:stepLabel})}
                   onClick={() => emit({ rules: rules.filter((_, i) => i !== index) })}
                 >
-                  <Trash2 className="h-4 w-4" aria-hidden="true" />
+                  <Trash2 strokeWidth={1.5} className="h-4 w-4" aria-hidden="true" />
                 </Button>
               )}
             </div>
@@ -221,10 +221,8 @@ export function ConditionEditor({ value, onChange, stepLabel, disabled }: Props)
         })}
       </div>
 
-      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-        Si la condición no se cumple, la secuencia se corta y los pasos siguientes no se ejecutan.
-        Si no se puede evaluar (error de lectura), también se corta: nunca continúa a ciegas.
-      </p>
+      <p className="mt-2 text-xs text-fg-muted dark:text-fg-secondary">
+        {tr("Si la condición no se cumple, la secuencia se corta y los pasos siguientes no se ejecutan. Si no se puede evaluar (error de lectura), también se corta: nunca continúa a ciegas.")}</p>
     </div>
   );
 }

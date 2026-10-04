@@ -10,7 +10,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import type { SupabaseClient } from '@supabase/supabase-js';
+
 
 // `sendEmail` real arrastra Resend + F7 entero: se dobla para contar envíos.
 const sendEmailMock = jest.fn();
@@ -18,25 +18,9 @@ jest.mock('@/lib/services/crm/emailService', () => ({
   sendEmail: (...args: any[]) => sendEmailMock(...args),
 }));
 
-import {
-  executeAutomationRule,
-  validateUpdateField,
-  UPDATE_FIELD_ALLOWLIST,
-} from '@/lib/services/crm/automationService';
-import {
-  enrollInSequence,
-  createSequence,
-  processStepRun,
-  processPendingStepRuns,
-  checkExitConditions,
-  resumeEnrollment,
-  validateSequenceSteps,
-  MAX_DELAY_DAYS,
-} from '@/lib/services/crm/sequenceService';
-import {
-  COLUMNS, CHECKS, OUTBOUND_JOB_KINDS, validateRow, makeDb, ORG, OTHER_ORG, readSrc,
-  baseTables, addRule, addSequence, drainQueue, silentLog, fakeEnqueue,
-} from './f8FakeDb';
+import { executeAutomationRule } from '@/lib/services/crm/automationService';
+import { enrollInSequence, processStepRun, resumeEnrollment } from '@/lib/services/crm/sequenceService';
+import { makeDb, ORG, readSrc, baseTables, addRule, addSequence, drainQueue } from './f8FakeDb';
 
 beforeEach(() => {
   sendEmailMock.mockReset();
@@ -101,14 +85,14 @@ describe('N. Ronda 2: reanudar, destinatario fijo, regla desactivada y residuos'
   });
 
   it('N3d: la ruta de inscripciones expone PATCH resume y exige rol de administrador', () => {
-    const fs = require('fs');
-    const path = require('path');
+    const fs = jest.requireActual('fs');
+    const path = jest.requireActual('path');
     const route = fs.readFileSync(
       path.join(process.cwd(), 'src/app/api/crm/sequences/[id]/enrollments/route.ts'), 'utf8') as string;
     expect(route).toContain('export async function PATCH');
     expect(route).toContain('resumeEnrollment');
     const patch = route.slice(route.indexOf('export async function PATCH'), route.indexOf('export async function DELETE'));
-    expect(patch).toContain('requireOrgAdmin(ctx)');
+    expect(patch).toContain('await requireSequenceManager(ctx)');
     expect(patch).toContain("action !== 'resume'");
   });
 
@@ -148,8 +132,8 @@ describe('N. Ronda 2: reanudar, destinatario fijo, regla desactivada y residuos'
     expect(run.status).toBe('skipped');
     expect(tables.automation_runs[0].skip_reason).toBe('rule_inactive');
 
-    const fs = require('fs');
-    const path = require('path');
+    const fs = jest.requireActual('fs');
+    const path = jest.requireActual('path');
     const route = fs.readFileSync(
       path.join(process.cwd(), 'src/app/api/crm/automation-rules/[id]/trigger/route.ts'), 'utf8') as string;
     expect(route).toContain('FORCE_REMOVED');
@@ -164,8 +148,8 @@ describe('N. Ronda 2: reanudar, destinatario fijo, regla desactivada y residuos'
   });
 
   it('N7: inscribir ya no es pegar un UUID: hay selector, previsualización y confirmación', () => {
-    const fs = require('fs');
-    const path = require('path');
+    const fs = jest.requireActual('fs');
+    const path = jest.requireActual('path');
     const page = fs.readFileSync(
       path.join(process.cwd(), 'src/components/crm/secuencias/SecuenciasPage.tsx'), 'utf8') as string;
     expect(page).not.toContain('Id de la oportunidad');
@@ -197,7 +181,7 @@ describe('N. Ronda 2: reanudar, destinatario fijo, regla desactivada y residuos'
   });
 
   it('N8b: las variables ya cualificadas de F7 no se tocan', () => {
-    const { qualifyVarsForEmail } = require('@/lib/services/crm/automation/ruleContext');
+    const { qualifyVarsForEmail } = jest.requireActual('@/lib/services/crm/automation/ruleContext');
     const vars = { customer_name: 'Ana', amount: '100' };
     expect(qualifyVarsForEmail('{{contact.first_name}}', vars)).toBe('{{contact.first_name}}');
     expect(qualifyVarsForEmail('{{org.name}}', vars)).toBe('{{org.name}}');
@@ -207,8 +191,8 @@ describe('N. Ronda 2: reanudar, destinatario fijo, regla desactivada y residuos'
   });
 
   it('N-UI: la vista del pipeline solo enlaza la página si el menú la habilita', () => {
-    const fs = require('fs');
-    const path = require('path');
+    const fs = jest.requireActual('fs');
+    const path = jest.requireActual('path');
     const view = fs.readFileSync(
       path.join(process.cwd(), 'src/components/crm/pipeline/AutomationsView.tsx'), 'utf8') as string;
     expect(view).toContain('AUTOMATIONS_PAGE_ENABLED');

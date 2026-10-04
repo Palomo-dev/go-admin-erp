@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
-import { readOrgBody } from '@/lib/security/organizationBody';
-import { isOrgAdmin } from '@/lib/utils/rbac';
+import { ORG_BODY_KEYS, readOrgBody } from '@/lib/security/organizationBody';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { getCall, getCallRecordings } from '@/lib/services/crm/callManagementService';
 import { applyDisposition, callPatchSchema, type CallRowForDisposition } from '@/lib/services/crm/callDispositionService';
+import { CRM_PERMISOS, CrmHttpError, exigirUuid, respuestaErrorCrm, tienePermisoCrm } from '@/lib/services/crm/crmRouteSupport';
+import { mutateCallFromSnapshot } from '@/lib/services/crm/callMutationService';
+import { cargarLlamadaParaGestion, exigirAlcanceReferenciasLlamada } from '@/lib/services/crm/callAccessService';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,10 +29,15 @@ export async function GET(
   }
 
   try {
+    readOrgBody(ctx, {}, { request });
     const { id } = await params;
+    exigirUuid(id);
     const call = await getCall(id, ctx.organizationId, ctx.supabase);
     if (!call) {
       return NextResponse.json({ success: false, error: 'Llamada no encontrada' }, { status: 404 });
+    }
+    if (call.user_id !== ctx.userId && !(await tienePermisoCrm(ctx, CRM_PERMISOS.llamadasVerTodas))) {
+      return NextResponse.json({ success: false, error: 'No tienes permiso para consultar esta llamada' }, { status: 403 });
     }
     const [recordings, consentsRes] = await Promise.all([
       getCallRecordings(id, ctx.organizationId, ctx.supabase),
@@ -40,14 +47,13 @@ export async function GET(
         .eq('organization_id', ctx.organizationId)
         .eq('call_id', id),
     ]);
+    if (consentsRes.error) throw consentsRes.error;
     return NextResponse.json(
       { success: true, data: { ...call, recordings, consents: consentsRes.data ?? [] } },
       { status: 200, headers: { 'Cache-Control': 'private, no-store' } }
     );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Calls] GET [id] error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return respuestaErrorCrm(error, 'GET llamada');
   }
 }
 
@@ -75,51 +81,45 @@ export async function PATCH(
     throw err;
   }
 
-  const parsed = callPatchSchema.safeParse(readOrgBody(ctx, await request.json().catch(() => null), { request }));
-  if (!parsed.success) {
-    return NextResponse.json({ success: false, error: 'Body inválido', issues: parsed.error.issues }, { status: 400 });
-  }
-  const body = parsed.data;
-
   try {
+    const raw = readOrgBody(ctx, await request.json().catch(() => null), { request });
+    const input = raw && typeof raw === 'object' && !Array.isArray(raw) ? { ...raw } : raw;
+    if (input && typeof input === 'object' && !Array.isArray(input)) for (const key of ORG_BODY_KEYS) delete input[key];
+    const parsed = callPatchSchema.safeParse(input);
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, error: 'Body inválido', issues: parsed.error.issues }, { status: 400 });
+    }
+    const body = parsed.data;
     const { id } = await params;
-    const sb = getServiceClient();
-    const { data } = await sb.from('calls').select('*').eq('id', id).eq('organization_id', ctx.organizationId).maybeSingle();
-    const call = data as CallRowForDisposition | null;
-    if (!call) {
-      return NextResponse.json({ success: false, error: 'Llamada no encontrada' }, { status: 404 });
-    }
-    if (call.user_id && call.user_id !== ctx.userId && !isOrgAdmin(ctx) && !ctx.isSuperAdmin) {
-      return NextResponse.json({ success: false, error: 'Solo el dueño de la llamada o un administrador puede editarla' }, { status: 403 });
-    }
+    const { call, canEditAny, serviceClient } = await cargarLlamadaParaGestion<CallRowForDisposition>(ctx, id);
+    const assertOwner = async (fresh: CallRowForDisposition) => {
+      if (fresh.user_id !== ctx.userId && !canEditAny) {
+        throw new CrmHttpError(403, 'llamada_no_es_propia', 'Solo puedes modificar tus llamadas');
+      }
+      await exigirAlcanceReferenciasLlamada(ctx, fresh);
+    };
+    const sb = serviceClient ?? getServiceClient();
 
     let current = call;
-    if (body.live_note !== undefined) {
-      const { data: saved, error } = await sb
-        .from('calls')
-        .update({ metadata: { ...(current.metadata ?? {}), live_note: body.live_note ?? null } })
-        .eq('id', id)
-        .eq('organization_id', ctx.organizationId)
-        .select('*')
-        .single();
-      if (error) throw new Error(error.message);
-      current = saved as CallRowForDisposition;
-    }
-
     const disposition = body.disposition ?? (body.outcome ? { outcome: body.outcome, note: body.notes ?? null, next_action: null } : null);
     let taskId: string | null = null;
     let activityId: string | null = null;
     if (disposition) {
-      const result = await applyDisposition(current, ctx.userId, disposition, sb);
+      const result = await applyDisposition(current, ctx.userId, disposition, sb, {
+        liveNote: body.live_note, assertOwner, sessionClient: ctx.supabase, clientKey: body.client_key,
+      });
       current = result.call;
       taskId = result.taskId;
       activityId = result.activityId;
+    } else if (body.live_note !== undefined) {
+      current = await mutateCallFromSnapshot(sb, current, async (fresh) => {
+        await assertOwner(fresh);
+        return { metadata: { ...(fresh.metadata ?? {}), live_note: body.live_note ?? null } };
+      });
     }
 
     return NextResponse.json({ success: true, data: current, task_id: taskId, activity_id: activityId }, { status: 200 });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Calls] PATCH [id] error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return respuestaErrorCrm(error, 'PATCH llamada');
   }
 }

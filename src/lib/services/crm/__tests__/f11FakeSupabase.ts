@@ -1,3 +1,4 @@
+import { healthRpcDouble } from './healthRpcDouble';
 /**
  * F11 — doble de Supabase para servicios y tareas programadas.
  *
@@ -96,7 +97,7 @@ export function createFakeSupabase(db: FakeDb) {
     let single = false;
     let head = false;
     let wantCount = false;
-    let orderArg: { col: string; asc: boolean } | null = null;
+    const orderArgs: { col: string; asc: boolean }[] = [];
     let limitArg: number | null = null;
     let rangeArg: [number, number] | null = null;
     const chain: Record<string, unknown> = {};
@@ -106,7 +107,7 @@ export function createFakeSupabase(db: FakeDb) {
       if (opts?.head) head = true;
       return chain;
     };
-    chain.order = (col: string, o?: { ascending?: boolean }) => { orderArg = { col, asc: o?.ascending !== false }; return chain; };
+    chain.order = (col: string, o?: { ascending?: boolean }) => { orderArgs.push({ col, asc: o?.ascending !== false }); return chain; };
     chain.limit = (n: number) => { limitArg = n; return chain; };
     chain.range = (a: number, b: number) => { rangeArg = [a, b]; return chain; };
     chain.eq = (col: string, value: unknown) => { preds.push((r) => r[col] === value); filters[col] = value; return chain; };
@@ -174,10 +175,7 @@ export function createFakeSupabase(db: FakeDb) {
           return;
         }
         let data = all.filter((r) => preds.every((p) => p(r)));
-        if (orderArg) {
-          const { col, asc } = orderArg;
-          data = [...data].sort((a, b) => (asc ? cmp(a[col], b[col]) : cmp(b[col], a[col])));
-        }
+        if (orderArgs.length) data = [...data].sort((a,b) => { for (const { col, asc } of orderArgs) { const comparison = asc ? cmp(a[col],b[col]) : cmp(b[col],a[col]); if (comparison) return comparison; } return 0; });
         const count = wantCount ? data.length : null;
         if (rangeArg) data = data.slice(rangeArg[0], rangeArg[1] + 1);
         else if (limitArg != null) data = data.slice(0, limitArg);
@@ -194,9 +192,8 @@ export function createFakeSupabase(db: FakeDb) {
     tick(db);
     db.rpcCalls.push({ fn, args });
     const handler = db.rpc?.[fn];
-    if (!handler) return { data: null, error: { message: `rpc ${fn} no definida en el doble` } };
     try {
-      return { data: handler(args), error: null };
+      return { data: handler ? handler(args) : healthRpcDouble(db, fn, args), error: null };
     } catch (e) {
       return { data: null, error: { message: e instanceof Error ? e.message : String(e) } };
     }

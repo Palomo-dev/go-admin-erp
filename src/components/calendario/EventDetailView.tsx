@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { format, addDays, addWeeks, addMonths, addYears, isBefore, isAfter, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
   Calendar as CalendarIcon,
-  Clock,
   MapPin,
   User,
   Building2,
@@ -36,6 +35,9 @@ import {
 import { CalendarEvent, SOURCE_TYPE_LABELS, EventStatus } from './types';
 import { rruleToRecurrence, RecurrenceRule } from './RecurrenceSelector';
 import { ExceptionsPanel, CalendarException } from './ExceptionsPanel';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz, toPlainDate } from '@/lib/utils/dateDisplay';
+import { horaEnZona } from '@/components/crm/kit/fechasCrm';
 import { cn } from '@/utils/Utils';
 
 interface EventDetailViewProps {
@@ -149,11 +151,11 @@ export function EventDetailView({
   onMoveOccurrence,
   onExceptionsChange,
 }: EventDetailViewProps) {
+  const { timezone } = useFormatDate(null);
   const [recurrenceOpen, setRecurrenceOpen] = useState(false);
   const [exceptionsOpen, setExceptionsOpen] = useState(false);
   const [exceptionsPanelOpen, setExceptionsPanelOpen] = useState(false);
   const [cancelOccurrenceDate, setCancelOccurrenceDate] = useState<Date | null>(null);
-  const [moveOccurrenceDate, setMoveOccurrenceDate] = useState<Date | null>(null);
 
   const isManualEvent = event.source_type === 'calendar_event';
   const eventColor = event.color || '#3B82F6';
@@ -222,7 +224,7 @@ export function EventDetailView({
             <div className="flex justify-between text-sm">
               <span className="text-gray-500 dark:text-gray-400">Fecha</span>
               <span className="text-gray-900 dark:text-white font-medium">
-                {format(new Date(event.start_at), "EEE, d MMM yyyy", { locale: es })}
+                {formatDateInTz(event.start_at, timezone, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
               </span>
             </div>
             <div className="flex justify-between text-sm">
@@ -230,7 +232,7 @@ export function EventDetailView({
               <span className="text-gray-900 dark:text-white font-medium">
                 {event.all_day
                   ? 'Todo el día'
-                  : `${format(new Date(event.start_at), 'HH:mm')}${event.end_at ? ` - ${format(new Date(event.end_at), 'HH:mm')}` : ''}`}
+                  : `${horaEnZona(event.start_at, timezone)}${event.end_at ? ` - ${horaEnZona(event.end_at, timezone)}` : ''}`}
               </span>
             </div>
             {event.end_at && !event.all_day && (
@@ -357,7 +359,7 @@ export function EventDetailView({
                   Próximas ocurrencias:
                 </p>
                 {upcomingOccurrences.map((date, index) => {
-                  const dateStr = format(date, 'yyyy-MM-dd');
+                  const dateStr = toPlainDate(date, timezone);
                   const isCancelled = cancelledDates.includes(dateStr);
 
                   return (
@@ -369,7 +371,7 @@ export function EventDetailView({
                       )}
                     >
                       <span className="text-gray-700 dark:text-gray-300">
-                        {format(date, "EEE d MMM yyyy", { locale: es })}
+                        {formatDateInTz(date, timezone, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
                       </span>
                       {isManualEvent && !isCancelled && onCancelOccurrence && (
                         <div className="flex gap-1">
@@ -387,7 +389,7 @@ export function EventDetailView({
                               variant="ghost"
                               size="sm"
                               className="h-6 px-2 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700"
-                              onClick={() => setMoveOccurrenceDate(date)}
+                              onClick={() => onMoveOccurrence?.(date)}
                             >
                               <MoveHorizontal className="h-3 w-3 mr-1" />
                               Mover
@@ -519,7 +521,7 @@ export function EventDetailView({
             <AlertDialogTitle>¿Cancelar esta ocurrencia?</AlertDialogTitle>
             <AlertDialogDescription>
               Solo se cancelará la ocurrencia del{' '}
-              {cancelOccurrenceDate && format(cancelOccurrenceDate, "d 'de' MMMM yyyy", { locale: es })}.
+              {cancelOccurrenceDate && formatDateInTz(cancelOccurrenceDate, timezone, { day: 'numeric', month: 'long', year: 'numeric' })}.
               Las demás ocurrencias del evento recurrente no se verán afectadas.
             </AlertDialogDescription>
           </AlertDialogHeader>

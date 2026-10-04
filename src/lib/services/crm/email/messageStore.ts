@@ -23,6 +23,20 @@ export async function insertMessage(row: Record<string, unknown>, supabase: Supa
   return data as EmailMessage;
 }
 
+/** El sendService conserva su render/validación; esta transacción publica su vínculo una sola vez. */
+export async function prepareCampaignMessage(row: Record<string, unknown>, claim: { campaignId: string; contactId: string; token: string }, supabase: SupabaseClient): Promise<EmailMessage> {
+  const { data, error } = await supabase.rpc('crm_prepare_email_campaign_contact', {
+    p_org: row.organization_id, p_campaign: claim.campaignId, p_contact: claim.contactId,
+    p_token: claim.token, p_message: row,
+  });
+  if (error || !data) throw new EmailError('DB', `Preparación de campaña: ${error?.message ?? 'sin datos'}`, 503);
+  const msg = data as EmailMessage;
+  if (msg.organization_id !== row.organization_id || msg.to_customer_id !== row.to_customer_id || msg.metadata?.campaign_id !== claim.campaignId || !isUuid(msg.id)) {
+    throw new EmailError('DB', 'Preparación de otra organización o contacto', 503);
+  }
+  return msg;
+}
+
 export async function updateMessage(id: string, patch: Record<string, unknown>, supabase: SupabaseClient): Promise<EmailMessage | null> {
   const { data, error } = await supabase.from('email_messages').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id).select('*').maybeSingle();
   if (error) {

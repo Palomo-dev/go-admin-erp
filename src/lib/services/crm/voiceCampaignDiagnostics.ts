@@ -37,7 +37,7 @@ import {
 } from './voiceAgentService';
 import { getMasterPhoneNumber } from '@/lib/services/integrations/twilio/twilioConfig';
 import { ultimaVerificacionRne } from './voiceAgent/cumplimiento';
-import { verificacionRneVigente } from './voiceAgent/rne';
+import { verificacionRneRegistradaVigente } from './voiceAgent/rne';
 
 /** Código estable del motivo; la UI traduce por él, nunca por el texto. */
 export type MotivoCodigo =
@@ -61,7 +61,8 @@ export type MotivoCodigo =
   | 'twilio_no_verificable'
   | 'sin_politica_datos'
   | 'sin_verificacion_rne'
-  | 'verificacion_rne_vencida';
+  | 'verificacion_rne_vencida'
+  | 'verificacion_rne_incompleta';
 
 export interface Motivo {
   codigo: MotivoCodigo;
@@ -176,6 +177,7 @@ export async function diagnosticarCampanasDeVoz(
     .from('voice_agent_campaigns')
     .select('*')
     .eq('organization_id', orgId)
+    .is('stats->>archived_at', null)
     .order('updated_at', { ascending: false })
     .limit(50);
   if (campRes.error) throw new Error(`voice_agent_campaigns: ${campRes.error.message}`);
@@ -223,7 +225,8 @@ async function diagnosticarUna(
   // RNE: la cola no marca una campaña sin verificación vigente.
   const rne = await ultimaVerificacionRne(supabase, orgId, campaign.id);
   if (!rne) motivos.push({ codigo: 'sin_verificacion_rne', bloquea: true });
-  else if (!verificacionRneVigente(rne.valid_until)) motivos.push({ codigo: 'verificacion_rne_vencida', bloquea: true });
+  else if (!Number.isInteger(rne.numbers_in_file) || rne.numbers_in_file <= 0) motivos.push({ codigo: 'verificacion_rne_incompleta', bloquea: true });
+  else if (!verificacionRneRegistradaVigente(rne)) motivos.push({ codigo: 'verificacion_rne_vencida', bloquea: true });
 
   const schedule = (campaign.schedule as ScheduleLike | null) ?? null;
   const tz = schedule?.timezone || DEFAULT_TIMEZONE;

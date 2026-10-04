@@ -1,383 +1,113 @@
-import { supabase } from '@/lib/supabase/config';
-import { ilikeAnyOf } from '@/lib/utils/postgrestFilters';
-import type { ChannelIdentity, DuplicateGroup, IdentityFilters, MergeResult } from './types';
+/** Todas las lecturas y escrituras de identidades pasan por el servidor. */
+import { emitirCambioCrm, pedirCrm } from '@/components/crm/acciones/apiCrm';
+import type { GrupoDuplicado } from '@/lib/services/crm/customerDuplicatesLogica';
 
-class IdentidadesService {
-  private organizationId: number;
-
-  constructor(organizationId: number) {
-    this.organizationId = organizationId;
-  }
-
-  async getIdentities(filters: IdentityFilters): Promise<ChannelIdentity[]> {
-    // Obtener customers y generar identidades virtuales desde email/phone
-    let query = supabase
-      .from('customers')
-      .select('id, full_name, email, phone, created_at, updated_at, last_seen_at')
-      .eq('organization_id', this.organizationId)
-      .order('created_at', { ascending: false });
-
-    // Filtro de búsqueda
-    if (filters.search) {
-      // Término entrecomillado (helper único): comas, paréntesis o comillas no rompen el `or`.
-      const filter = ilikeAnyOf(['email', 'phone', 'full_name'], filters.search);
-      if (filter) query = query.or(filter);
-    }
-
-    const { data: customers, error } = await query.limit(300);
-
-    if (error) {
-      console.error('Error fetching customers:', error);
-      return [];
-    }
-
-    // Generar identidades virtuales desde customers
-    const identities: ChannelIdentity[] = [];
-    
-    for (const customer of customers || []) {
-      // Identidad de email (si no es visitor_session)
-      if (customer.email && !customer.email.includes('@widget.local')) {
-        if (!filters.identityType || filters.identityType === 'email') {
-          identities.push({
-            id: `email_${customer.id}`,
-            organization_id: this.organizationId,
-            customer_id: customer.id,
-            channel_id: '',
-            identity_type: 'email',
-            identity_value: customer.email,
-            verified: true,
-            metadata: null,
-            first_seen_at: customer.created_at,
-            last_seen_at: customer.last_seen_at || customer.updated_at,
-            created_at: customer.created_at,
-            updated_at: customer.updated_at,
-            customer: {
-              id: customer.id,
-              full_name: customer.full_name,
-              email: customer.email,
-              phone: customer.phone
-            }
-          });
-        }
-      }
-
-      // Identidad de teléfono
-      if (customer.phone) {
-        if (!filters.identityType || filters.identityType === 'phone') {
-          identities.push({
-            id: `phone_${customer.id}`,
-            organization_id: this.organizationId,
-            customer_id: customer.id,
-            channel_id: '',
-            identity_type: 'phone',
-            identity_value: customer.phone,
-            verified: true,
-            metadata: null,
-            first_seen_at: customer.created_at,
-            last_seen_at: customer.last_seen_at || customer.updated_at,
-            created_at: customer.created_at,
-            updated_at: customer.updated_at,
-            customer: {
-              id: customer.id,
-              full_name: customer.full_name,
-              email: customer.email,
-              phone: customer.phone
-            }
-          });
-        }
-      }
-
-      // WhatsApp (basado en el teléfono con formato internacional)
-      if (customer.phone && customer.phone.startsWith('+')) {
-        if (!filters.identityType || filters.identityType === 'whatsapp_id') {
-          identities.push({
-            id: `whatsapp_${customer.id}`,
-            organization_id: this.organizationId,
-            customer_id: customer.id,
-            channel_id: '',
-            identity_type: 'whatsapp_id',
-            identity_value: customer.phone,
-            verified: false,
-            metadata: null,
-            first_seen_at: customer.created_at,
-            last_seen_at: customer.last_seen_at || customer.updated_at,
-            created_at: customer.created_at,
-            updated_at: customer.updated_at,
-            customer: {
-              id: customer.id,
-              full_name: customer.full_name,
-              email: customer.email,
-              phone: customer.phone
-            }
-          });
-        }
-      }
-    }
-
-    return identities;
-  }
-
-  async getDuplicates(): Promise<DuplicateGroup[]> {
-    // Obtener todos los customers con email o phone
-    const { data: customers, error } = await supabase
-      .from('customers')
-      .select('id, full_name, email, phone, created_at')
-      .eq('organization_id', this.organizationId);
-
-    if (error || !customers) {
-      console.error('Error fetching customers for duplicates:', error);
-      return [];
-    }
-
-    // Buscar duplicados por email
-    const emailGroups: Record<string, DuplicateGroup> = {};
-    const phoneGroups: Record<string, DuplicateGroup> = {};
-
-    for (const customer of customers) {
-      // Agrupar por email (excluyendo widget.local)
-      if (customer.email && !customer.email.includes('@widget.local')) {
-        const emailKey = customer.email.toLowerCase();
-        if (!emailGroups[emailKey]) {
-          emailGroups[emailKey] = {
-            identity_type: 'email',
-            identity_value: customer.email,
-            customers: []
-          };
-        }
-        emailGroups[emailKey].customers.push({
-          id: customer.id,
-          full_name: customer.full_name,
-          email: customer.email,
-          phone: customer.phone,
-          conversations_count: 0,
-          opportunities_count: 0,
-          last_activity: null
-        });
-      }
-
-      // Agrupar por teléfono
-      if (customer.phone) {
-        const phoneKey = customer.phone.replace(/\D/g, '');
-        if (!phoneGroups[phoneKey]) {
-          phoneGroups[phoneKey] = {
-            identity_type: 'phone',
-            identity_value: customer.phone,
-            customers: []
-          };
-        }
-        phoneGroups[phoneKey].customers.push({
-          id: customer.id,
-          full_name: customer.full_name,
-          email: customer.email,
-          phone: customer.phone,
-          conversations_count: 0,
-          opportunities_count: 0,
-          last_activity: null
-        });
-      }
-    }
-
-    // Filtrar solo duplicados (más de 1 cliente)
-    const duplicates: DuplicateGroup[] = [
-      ...Object.values(emailGroups).filter(g => g.customers.length > 1),
-      ...Object.values(phoneGroups).filter(g => g.customers.length > 1)
-    ];
-
-    // Obtener conteos para duplicados
-    for (const group of duplicates) {
-      for (const customer of group.customers) {
-        const [convResult, oppResult] = await Promise.all([
-          supabase
-            .from('conversations')
-            .select('id', { count: 'exact' })
-            .eq('customer_id', customer.id),
-          supabase
-            .from('opportunities')
-            .select('id', { count: 'exact' })
-            .eq('customer_id', customer.id)
-        ]);
-        customer.conversations_count = convResult.count || 0;
-        customer.opportunities_count = oppResult.count || 0;
-      }
-    }
-
-    return duplicates;
-  }
-
-  async updateIdentity(
-    id: string, 
-    updates: Partial<Pick<ChannelIdentity, 'identity_value' | 'verified'>>
-  ): Promise<boolean> {
-    const { error } = await supabase
-      .from('customer_channel_identities')
-      .update({ ...updates, updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .eq('organization_id', this.organizationId);
-
-    if (error) {
-      console.error('Error updating identity:', error);
-      return false;
-    }
-
-    return true;
-  }
-
-  async verifyIdentity(id: string): Promise<boolean> {
-    return this.updateIdentity(id, { verified: true });
-  }
-
-  async deleteIdentity(id: string): Promise<boolean> {
-    const { error } = await supabase
-      .from('customer_channel_identities')
-      .delete()
-      .eq('id', id)
-      .eq('organization_id', this.organizationId);
-
-    if (error) {
-      console.error('Error deleting identity:', error);
-      return false;
-    }
-
-    return true;
-  }
-
-  async mergeCustomers(
-    primaryCustomerId: string, 
-    secondaryCustomerIds: string[]
-  ): Promise<MergeResult> {
-    try {
-      // Actualizar conversaciones
-      for (const secondaryId of secondaryCustomerIds) {
-        await supabase
-          .from('conversations')
-          .update({ customer_id: primaryCustomerId })
-          .eq('customer_id', secondaryId)
-          .eq('organization_id', this.organizationId);
-
-        // Actualizar oportunidades
-        await supabase
-          .from('opportunities')
-          .update({ customer_id: primaryCustomerId })
-          .eq('customer_id', secondaryId)
-          .eq('organization_id', this.organizationId);
-
-        // Actualizar campaign_contacts
-        await supabase
-          .from('campaign_contacts')
-          .update({ customer_id: primaryCustomerId })
-          .eq('customer_id', secondaryId);
-
-        // Actualizar activities (la tabla NO tiene customer_id; usa related_type + related_id)
-        await supabase
-          .from('activities')
-          .update({ related_id: primaryCustomerId })
-          .eq('related_type', 'customer')
-          .eq('related_id', secondaryId)
-          .eq('organization_id', this.organizationId);
-
-        // Actualizar identidades
-        await supabase
-          .from('customer_channel_identities')
-          .update({ customer_id: primaryCustomerId })
-          .eq('customer_id', secondaryId)
-          .eq('organization_id', this.organizationId);
-
-        // Marcar cliente secundario como inactivo
-        await supabase
-          .from('customers')
-          .update({ 
-            is_active: false,
-            metadata: { merged_into: primaryCustomerId, merged_at: new Date().toISOString() }
-          })
-          .eq('id', secondaryId)
-          .eq('organization_id', this.organizationId);
-      }
-
-      return {
-        success: true,
-        message: `${secondaryCustomerIds.length} cliente(s) fusionado(s) correctamente`,
-        mergedCustomerId: primaryCustomerId
-      };
-    } catch (error) {
-      console.error('Error merging customers:', error);
-      return {
-        success: false,
-        message: 'Error al fusionar clientes'
-      };
-    }
-  }
-
-  async getChannels() {
-    const { data } = await supabase
-      .from('channels')
-      .select('id, name, type')
-      .eq('organization_id', this.organizationId)
-      .order('name');
-    return data || [];
-  }
-
-  async getStats() {
-    // Obtener customers y calcular stats desde email/phone
-    const { data: customers } = await supabase
-      .from('customers')
-      .select('id, email, phone')
-      .eq('organization_id', this.organizationId);
-
-    const list = customers || [];
-    
-    // Contar emails válidos (no widget.local)
-    const emailCount = list.filter(c => c.email && !c.email.includes('@widget.local')).length;
-    const phoneCount = list.filter(c => c.phone).length;
-    const whatsappCount = list.filter(c => c.phone && c.phone.startsWith('+')).length;
-    
-    // Total de identidades (cada customer puede tener email + phone + whatsapp)
-    const total = emailCount + phoneCount + whatsappCount;
-
-    return {
-      total,
-      phone: phoneCount,
-      email: emailCount,
-      whatsapp: whatsappCount,
-      verified: emailCount + phoneCount, // emails y phones se consideran verificados
-      unverified: whatsappCount // whatsapp no verificado
-    };
-  }
-
-  async exportToCSV(data: ChannelIdentity[]): Promise<void> {
-    const csvData = data.map(i => ({
-      'Tipo': i.identity_type,
-      'Valor': i.identity_value,
-      'Verificado': i.verified ? 'Sí' : 'No',
-      'Cliente': i.customer?.full_name || 'Sin nombre',
-      'Email Cliente': i.customer?.email || '',
-      'Teléfono Cliente': i.customer?.phone || '',
-      'Canal': i.channel?.name || '',
-      'Primera vez': i.first_seen_at || '',
-      'Última vez': i.last_seen_at || '',
-      'Creado': i.created_at
-    }));
-
-    const headers = Object.keys(csvData[0] || {});
-    const csvContent = [
-      headers.join(','),
-      ...csvData.map(row => 
-        headers.map(h => {
-          const val = row[h as keyof typeof row];
-          if (typeof val === 'string' && val.includes(',')) {
-            return `"${val}"`;
-          }
-          return val ?? '';
-        }).join(',')
-      )
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `identidades_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-  }
+export interface ListaDuplicados {
+  data: GrupoDuplicado[];
+  total: number;
+  canMerge: boolean;
+  canUndo: boolean;
+  stats: Record<'phone' | 'email' | 'document', number>;
+  scan: { id: string; status: string; processed: number; total: number } | null;
 }
-
-export const createIdentidadesService = (organizationId: number) => new IdentidadesService(organizationId);
-export default IdentidadesService;
+export interface FilaFusion {
+  id: string;
+  merged_at: string;
+  undone_at: string | null;
+  principal: { full_name: string | null } | null;
+  secundario: { full_name: string | null } | null;
+  autor: { first_name: string | null; last_name: string | null } | null;
+  moved_counts: { table: string; count: number }[];
+  reason?: 'document' | 'email' | 'phone' | 'manual' | 'unknown';
+}
+export interface IdentidadReal {
+  id: string;
+  identity_type: string;
+  identity_value: string;
+  verified: boolean;
+  last_seen_at: string | null;
+  customer: {
+    id: string;
+    full_name: string | null;
+    email: string | null;
+    phone: string | null;
+  } | null;
+  channel: { id: string; name: string; type: string } | null;
+}
+export async function leerDuplicados(
+  page: number,
+  q: string,
+  signal?: AbortSignal,
+): Promise<ListaDuplicados> {
+  const { data, extra } = await pedirCrm<GrupoDuplicado[]>(
+    `/api/crm/customer-duplicates?${new URLSearchParams({ page: String(page), q })}`,
+    { signal },
+  );
+  return { data, ...extra } as unknown as ListaDuplicados;
+}
+export async function leerFusiones(page: number, signal?: AbortSignal) {
+  const { data, extra } = await pedirCrm<FilaFusion[]>(
+    `/api/crm/customer-merges?page=${page}`,
+    { signal },
+  );
+  return { data, total: Number(extra.total ?? 0) };
+}
+export async function leerIdentidades(page: number, signal?: AbortSignal) {
+  const { data, extra } = await pedirCrm<IdentidadReal[]>(
+    `/api/crm/customer-identities?page=${page}`,
+    { signal },
+  );
+  return {
+    data,
+    total: Number(extra.total ?? 0),
+    canEdit: extra.canEdit === true,
+  };
+}
+export async function fusionarClientes(
+  primary: string,
+  secondary: string,
+  choices: Record<string, string>,
+) {
+  const result = await pedirCrm('/api/crm/customer-merges', {
+    method: 'POST',
+    cuerpo: {
+      primary_customer_id: primary,
+      secondary_customer_ids: [secondary],
+      choices,
+    },
+  });
+  emitirCambioCrm({ entidad: 'customer', id: primary, accion: 'fusionar' });
+  return result;
+}
+export async function deshacerFusion(id: string) {
+  const result = await pedirCrm(
+    `/api/crm/customer-merges/${encodeURIComponent(id)}/undo`,
+    { method: 'POST', cuerpo: {} },
+  );
+  emitirCambioCrm({ entidad: 'customer', accion: 'deshacerFusion' });
+  return result;
+}
+export function excluirPar(a: string, b: string) {
+  return pedirCrm('/api/crm/customer-duplicates', {
+    method: 'DELETE',
+    cuerpo: { customer_a: a, customer_b: b },
+  });
+}
+export function iniciarBusqueda() {
+  return pedirCrm('/api/crm/customer-duplicates', {
+    method: 'POST',
+    cuerpo: {},
+  });
+}
+export function editarIdentidad(id: string, value: string, verified: boolean) {
+  return pedirCrm(`/api/crm/customer-identities/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    cuerpo: { identity_value: value, verified },
+  });
+}
+export function eliminarIdentidad(id: string) {
+  return pedirCrm(`/api/crm/customer-identities/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    cuerpo: {},
+  });
+}

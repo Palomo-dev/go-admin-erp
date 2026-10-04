@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
-import { format, getHours, getMinutes, differenceInMinutes, isToday, isSameDay } from 'date-fns';
+import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
   DndContext,
@@ -18,6 +18,9 @@ import { CalendarEvent, SOURCE_TYPE_COLORS, SOURCE_TYPE_LABELS } from './types';
 import { EventCard } from './EventCard';
 import { DraggableEventBar } from './DraggableEventBar';
 import { DroppableSlot } from './DroppableSlot';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { plainDateToInstant, todayInTz } from '@/lib/utils/dateDisplay';
+import { diaDelCursor, instanteDelSlot, ocupaDia, ocupaSlot } from './fechasCalendario';
 import { cn } from '@/utils/Utils';
 
 interface DayViewProps {
@@ -47,6 +50,7 @@ export function DayView({
   onEventMove,
   onEventResize,
 }: DayViewProps) {
+  const { timezone } = useOrgTimezone();
   const [activeEvent, setActiveEvent] = useState<CalendarEvent | null>(null);
   const [selection, setSelection] = useState<TimeSelection | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
@@ -55,8 +59,9 @@ export function DayView({
   // Ref para mantener el valor actualizado de selection (evita stale closure)
   const selectionRef = useRef<TimeSelection | null>(null);
   
-  const allDayEvents = useMemo(() => events.filter((e) => e.all_day), [events]);
-  const timedEvents = useMemo(() => events.filter((e) => !e.all_day), [events]);
+  const dayEvents = useMemo(() => events.filter(e => ocupaDia(e.start_at, e.end_at, currentDate, timezone)), [events, timezone, currentDate]);
+  const allDayEvents = useMemo(() => dayEvents.filter((e) => e.all_day), [dayEvents]);
+  const timedEvents = useMemo(() => dayEvents.filter((e) => !e.all_day), [dayEvents]);
 
   // Handlers para selección de rango de tiempo
   const handleSelectionStart = useCallback((hour: number) => {
@@ -86,18 +91,15 @@ export function DayView({
       const minHour = Math.min(startHour, endHour);
       const maxHour = Math.max(startHour, endHour) + 1;
 
-      const startDate = new Date(currentDate);
-      startDate.setHours(minHour, 0, 0, 0);
-
-      const endDate = new Date(currentDate);
-      endDate.setHours(maxHour, 0, 0, 0);
+      const startDate = instanteDelSlot(currentDate, minHour, timezone);
+      const endDate = instanteDelSlot(currentDate, maxHour, timezone);
 
       onTimeRangeSelect(startDate, endDate);
     }
     setIsSelecting(false);
     setSelection(null);
     selectionRef.current = null;
-  }, [isSelecting, onTimeRangeSelect, currentDate]);
+  }, [isSelecting, onTimeRangeSelect, currentDate, timezone]);
 
   // Listener global para mouseup
   useEffect(() => {
@@ -155,7 +157,7 @@ export function DayView({
         return;
       }
 
-      const newDate = new Date(targetDate);
+      const newDate = new Date(plainDateToInstant(targetDate, timezone));
       await onEventMove(eventId, newDate, targetHour);
     }
   };
@@ -166,30 +168,10 @@ export function DayView({
     }
   };
 
-  const hasEventAtSlot = (hour: number) => {
-    return timedEvents.some((e) => {
-      const startAt = new Date(e.start_at);
-      const endAt = e.end_at ? new Date(e.end_at) : new Date(startAt.getTime() + 3600000);
-      const startHour = startAt.getHours();
-      const endHour = endAt.getHours() + (endAt.getMinutes() > 0 ? 1 : 0);
-      return hour >= startHour && hour < endHour;
-    });
-  };
+  const hasEventAtSlot = (hour: number) => events.some(e => !e.all_day && ocupaSlot(e.start_at, e.end_at, currentDate, hour, timezone));
 
-  const getEventPosition = (event: CalendarEvent) => {
-    const startDate = new Date(event.start_at);
-    const endDate = event.end_at ? new Date(event.end_at) : new Date(startDate.getTime() + 3600000);
-    
-    const startMinutes = getHours(startDate) * 60 + getMinutes(startDate);
-    const duration = differenceInMinutes(endDate, startDate);
-    
-    return {
-      top: (startMinutes / 60) * HOUR_HEIGHT,
-      height: Math.max((duration / 60) * HOUR_HEIGHT, 30),
-    };
-  };
 
-  const isTodayDate = isToday(currentDate);
+  const isTodayDate = diaDelCursor(currentDate) === todayInTz(timezone);
 
   return (
     <DndContext
@@ -291,8 +273,7 @@ export function DayView({
                         if (selection && isSelecting) {
                           handleSelectionEnd();
                         } else if (isEmpty && !isSelecting) {
-                          const date = new Date(currentDate);
-                          date.setHours(hour, 0, 0, 0);
+                          const date = instanteDelSlot(currentDate, hour, timezone);
                           onTimeSlotClick(date);
                         }
                       }}
@@ -316,13 +297,14 @@ export function DayView({
                   <div key={`${event.id || event.source_id}-${index}`} style={{ pointerEvents: 'auto' }}>
                     <DraggableEventBar
                       event={event}
+                      displayDate={currentDate}
                       hours={HOURS}
                       cellHeight={HOUR_HEIGHT}
                       onClick={() => onEventClick(event)}
                       onResizeEnd={handleResizeEnd}
                       onResizeStart={() => setIsResizingEvent(true)}
                       onResizeFinish={() => setTimeout(() => setIsResizingEvent(false), 100)}
-                      canDrag={event.source_type === 'calendar_event'}
+                      canDrag={event.source_type === 'calendar_event' && !event.metadata?.is_recurrence_instance}
                     />
                   </div>
                 ))}

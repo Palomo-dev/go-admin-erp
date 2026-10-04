@@ -1,10 +1,12 @@
 'use client';
 
 import { useMemo } from 'react';
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameMonth, isSameDay, isToday } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameMonth } from 'date-fns';
 import { CalendarEvent } from './types';
 import { EventCard } from './EventCard';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { todayInTz } from '@/lib/utils/dateDisplay';
+import { diaDelCursor, ocupaDia } from './fechasCalendario';
 import { cn } from '@/utils/Utils';
 
 interface MonthViewProps {
@@ -15,6 +17,7 @@ interface MonthViewProps {
 }
 
 export function MonthView({ currentDate, events, onEventClick, onDateClick }: MonthViewProps) {
+  const { timezone } = useOrgTimezone();
   const weeks = useMemo(() => {
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(currentDate);
@@ -39,8 +42,7 @@ export function MonthView({ currentDate, events, onEventClick, onDateClick }: Mo
 
   const getEventsForDay = (date: Date) => {
     return events.filter((event) => {
-      const eventDate = new Date(event.start_at);
-      return isSameDay(eventDate, date);
+      return ocupaDia(event.start_at, event.end_at, date, timezone);
     });
   };
 
@@ -71,7 +73,7 @@ export function MonthView({ currentDate, events, onEventClick, onDateClick }: Mo
               const dayEvents = getEventsForDay(day);
               const isCurrentMonth = isSameMonth(day, currentDate);
               const isWeekend = dayIndex >= 5;
-              const isTodayDate = isToday(day);
+              const isTodayDate = diaDelCursor(day) === todayInTz(timezone);
               const maxVisibleEvents = 3;
               const hasMore = dayEvents.length > maxVisibleEvents;
 

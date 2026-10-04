@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useDroppable } from '@dnd-kit/core';
+import { diaDelCursor } from './fechasCalendario';
 import { cn } from '@/utils/Utils';
 
 interface DroppableSlotProps {
@@ -31,7 +32,7 @@ export function DroppableSlot({
   className,
   cellHeight,
 }: DroppableSlotProps) {
-  const dateStr = date.toISOString().split('T')[0];
+  const dateStr = diaDelCursor(date);
   const slotId = `slot-${dateStr}-${hour}`;
 
   const { isOver, setNodeRef } = useDroppable({

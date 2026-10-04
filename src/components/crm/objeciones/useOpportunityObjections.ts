@@ -31,6 +31,10 @@ function normalizeLinked(row: OpportunityObjection): OpportunityObjection {
 export function useOpportunityObjections(opportunityId: string) {
   const [linked, setLinked] = useState<OpportunityObjection[]>([]);
   const [catalog, setCatalog] = useState<Objection[]>([]);
+  const [canRegister,setCanRegister]=useState(false);
+  const version=useRef(0);
+  const epoch=useRef(0);
+  const invalidate=useCallback(()=>{version.current++;epoch.current++;},[]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const loadedOnce = useRef(false);
@@ -38,29 +42,34 @@ export function useOpportunityObjections(opportunityId: string) {
   const load = useCallback(async () => {
     if (!loadedOnce.current) setLoading(true);
     setError(null);
+    const current=++version.current;
     try {
       const [linkedRes, catalogRes] = await Promise.all([
-        readJson(await fetch(`/api/crm/objections/opportunity/${opportunityId}`, { cache: 'no-store' })),
-        readJson(await fetch('/api/crm/objections', { cache: 'no-store' })),
+        fetch(`/api/crm/objections/opportunity/${opportunityId}`, { cache: 'no-store' }).then(readJson),
+        fetch('/api/crm/objections', { cache: 'no-store' }).then(readJson),
       ]);
       if (!linkedRes.ok) throw new Error(messageOf(linkedRes.body, 'No se pudieron cargar las objeciones'));
       if (!catalogRes.ok) throw new Error(messageOf(catalogRes.body, 'No se pudo cargar el catálogo'));
+      if(current!==version.current)return;
+      setCanRegister(linkedRes.body.canRegister===true);
       setLinked(((linkedRes.body.data as OpportunityObjection[]) ?? []).map(normalizeLinked));
       setCatalog(((catalogRes.body.data as Objection[]) ?? []).map(normalizeObjection));
       loadedOnce.current = true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      if(current===version.current)setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
-      setLoading(false);
+      if(current===version.current)setLoading(false);
     }
   }, [opportunityId]);
 
   useEffect(() => {
     loadedOnce.current = false;
     void load();
-  }, [load]);
+    const switched=()=>{invalidate();loadedOnce.current=false;setLinked([]);setCatalog([]);setCanRegister(false);void load();};window.addEventListener('organization-changed',switched);return()=>{invalidate();window.removeEventListener('organization-changed',switched);};
+  }, [load,invalidate]);
 
   const register = useCallback(async (objectionId: string, notes?: string) => {
+    const context=epoch.current;
     const { ok, body } = await readJson(
       await fetch(`/api/crm/objections/opportunity/${opportunityId}`, {
         method: 'POST',
@@ -69,11 +78,12 @@ export function useOpportunityObjections(opportunityId: string) {
       }),
     );
     if (!ok) throw new Error(messageOf(body, 'No se pudo registrar la objeción'));
-    await load();
+    if(context===epoch.current)await load();
     return (body.data as OpportunityObjection).id;
   }, [opportunityId, load]);
 
   const resolve = useCallback(async (id: string) => {
+    const context=epoch.current;
     const { ok, body } = await readJson(
       await fetch(`/api/crm/objections/opportunity/${opportunityId}`, {
         method: 'POST',
@@ -82,9 +92,11 @@ export function useOpportunityObjections(opportunityId: string) {
       }),
     );
     if (!ok) throw new Error(messageOf(body, 'No se pudo marcar como resuelta'));
-    setLinked((prev) => prev.map((l) => (l.id === id ? { ...l, resolved: true, resolved_at: new Date().toISOString() } : l)));
+    if(context!==epoch.current)return;
+    const confirmed=body.data as OpportunityObjection;
+    setLinked((prev) => prev.map((l) => (l.id === id ? { ...l, resolved:confirmed.resolved,resolved_at:confirmed.resolved_at } : l)));
     await load();
   }, [opportunityId, load]);
 
-  return { linked, catalog, loading, error, reload: load, register, resolve };
+  return { linked, catalog, canRegister,loading, error, reload: load, register, resolve };
 }

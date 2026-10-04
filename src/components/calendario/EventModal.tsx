@@ -1,24 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { 
-  Calendar as CalendarIcon, 
-  Clock, 
-  MapPin, 
-  User, 
-  FileText,
-  Trash2,
-  Edit3,
-  ExternalLink,
-  Copy,
-  Building2,
-  Users,
-  Tag,
-  Save,
-  Plus,
-} from 'lucide-react';
+import { Edit3, ExternalLink, Copy, Save, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
@@ -60,6 +43,11 @@ import { RecurrenceSelector, RecurrenceRule, DEFAULT_RECURRENCE, recurrenceToRRu
 import { EventDetailView } from './EventDetailView';
 import { CalendarException } from './ExceptionsPanel';
 import { cn } from '@/utils/Utils';
+import { esReunionCrm } from './reunionesCalendario';
+import { ReunionCalendarioModal } from './ReunionCalendarioModal';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { aFechaHoraLocal, deFechaHoraLocal } from '@/components/crm/kit/fechasCrm';
+import { toPlainDate } from '@/lib/utils/dateDisplay';
 
 type SaveAction = 'save' | 'save-duplicate' | 'save-new';
 
@@ -70,9 +58,11 @@ interface EventModalProps {
   defaultDate?: Date;
   organizationId?: number | null;
   onClose: () => void;
-  onSave: (eventData: Partial<CalendarEvent>, action?: SaveAction) => Promise<void>;
-  onDelete?: (id: string) => Promise<void>;
+  onSave: (eventData: Partial<CalendarEvent>, action?: SaveAction) => Promise<boolean>;
+  onDelete?: (id: string) => Promise<boolean>;
+  onChanged?: () => Promise<void>;
   onNavigateToSource?: (event: CalendarEvent) => void;
+  onDuplicate?: (event: CalendarEvent) => void;
 }
 
 interface Branch {
@@ -87,7 +77,7 @@ interface Member {
 
 interface Customer {
   id: string;
-  name: string;
+  full_name: string;
 }
 
 const EVENT_TYPES = [
@@ -116,7 +106,14 @@ const COLORS = [
   { value: '#F97316', label: 'Naranja' },
 ];
 
-export function EventModal({
+export function EventModal(props: EventModalProps) {
+  if (props.isOpen && props.event && props.mode !== 'create' && esReunionCrm(props.event)) return <ReunionCalendarioModal
+    key={props.event.id || props.event.source_id} id={props.event.id || props.event.source_id} mode={props.mode}
+    initialEvent={props.event} onClose={props.onClose} onChanged={props.onChanged ?? (async () => undefined)} />;
+  return <ManualEventModal {...props} />;
+}
+
+function ManualEventModal({
   event,
   isOpen,
   mode,
@@ -126,16 +123,18 @@ export function EventModal({
   onSave,
   onDelete,
   onNavigateToSource,
+  onDuplicate,
 }: EventModalProps) {
+  const { timezone } = useOrgTimezone();
   const [isEditing, setIsEditing] = useState(mode === 'create' || mode === 'edit');
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   // Un fallo al cargar miembros dejaba el desplegable vacío sin decir nada.
   const [membersError, setMembersError] = useState<string | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [exceptions, setExceptions] = useState<CalendarException[]>([]);
   const [assignedUser, setAssignedUser] = useState<{ first_name: string; last_name: string } | null>(null);
   const [customerInfo, setCustomerInfo] = useState<{ name: string } | null>(null);
@@ -144,8 +143,8 @@ export function EventModal({
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    start_at: format(defaultDate, "yyyy-MM-dd'T'HH:mm"),
-    end_at: format(new Date(defaultDate.getTime() + 3600000), "yyyy-MM-dd'T'HH:mm"),
+    start_at: aFechaHoraLocal(defaultDate, timezone),
+    end_at: aFechaHoraLocal(new Date(defaultDate.getTime() + 3600000), timezone),
     all_day: false,
     location: '',
     color: '#3B82F6',
@@ -177,9 +176,9 @@ export function EventModal({
           .eq('is_active', true),
         supabase
           .from('customers')
-          .select('id, name')
+          .select('id, full_name')
           .eq('organization_id', organizationId)
-          .eq('is_active', true)
+          .eq('status', 'active')
           .limit(100),
       ]);
 
@@ -219,8 +218,8 @@ export function EventModal({
       setFormData({
         title: event.title || '',
         description: event.description || '',
-        start_at: event.start_at ? format(new Date(event.start_at), "yyyy-MM-dd'T'HH:mm") : '',
-        end_at: event.end_at ? format(new Date(event.end_at), "yyyy-MM-dd'T'HH:mm") : '',
+        start_at: event.start_at ? aFechaHoraLocal(event.start_at, timezone) : '',
+        end_at: event.end_at ? aFechaHoraLocal(event.end_at, timezone) : '',
         all_day: event.all_day || false,
         location: event.location || '',
         color: event.color || '#3B82F6',
@@ -240,8 +239,8 @@ export function EventModal({
       setFormData({
         title: event?.title ? `${event.title} (copia)` : '',
         description: event?.description || '',
-        start_at: format(startDate, "yyyy-MM-dd'T'HH:mm"),
-        end_at: format(endDate, "yyyy-MM-dd'T'HH:mm"),
+        start_at: aFechaHoraLocal(startDate, timezone),
+        end_at: aFechaHoraLocal(endDate, timezone),
         all_day: event?.all_day || false,
         location: event?.location || '',
         color: event?.color || '#3B82F6',
@@ -255,7 +254,7 @@ export function EventModal({
       setRecurrence(DEFAULT_RECURRENCE);
       setIsEditing(true);
     }
-  }, [event, mode, defaultDate]);
+  }, [event, mode, defaultDate, timezone]);
 
   // Cargar excepciones y relaciones cuando hay un evento
   useEffect(() => {
@@ -286,10 +285,11 @@ export function EventModal({
       if (event.customer_id) {
         const { data: custData } = await supabase
           .from('customers')
-          .select('name')
+          .select('full_name')
+          .eq('organization_id', organizationId)
           .eq('id', event.customer_id)
           .single();
-        if (custData) setCustomerInfo(custData);
+        if (custData) setCustomerInfo({ name: custData.full_name });
       }
 
       // Cargar sucursal
@@ -297,6 +297,7 @@ export function EventModal({
         const { data: branchData } = await supabase
           .from('branches')
           .select('name')
+          .eq('organization_id', organizationId)
           .eq('id', event.branch_id)
           .single();
         if (branchData) setBranchInfo(branchData);
@@ -304,7 +305,7 @@ export function EventModal({
     };
 
     loadEventDetails();
-  }, [event, isOpen, mode]);
+  }, [event, isOpen, mode, organizationId]);
 
   // Handler para cancelar una ocurrencia específica
   const handleCancelOccurrence = async (date: Date) => {
@@ -312,7 +313,7 @@ export function EventModal({
 
     const { error } = await supabase.from('calendar_exceptions').insert({
       calendar_event_id: event.id || event.source_id,
-      original_date: format(date, 'yyyy-MM-dd'),
+      original_date: toPlainDate(date, timezone),
       exception_type: 'cancelled',
     });
 
@@ -322,7 +323,7 @@ export function EventModal({
         {
           id: crypto.randomUUID(),
           calendar_event_id: event.id || event.source_id,
-          original_date: format(date, 'yyyy-MM-dd'),
+          original_date: toPlainDate(date, timezone),
           exception_type: 'cancelled',
           created_at: new Date().toISOString(),
         },
@@ -333,31 +334,30 @@ export function EventModal({
   // Handler para cancelar todo el evento
   const handleCancelEvent = async () => {
     if (!event) return;
-    await onSave({ ...event, status: 'cancelled' }, 'save');
-    onClose();
+    if (await onSave({ status: 'cancelled' }, 'save')) onClose();
   };
 
   // Handler para duplicar
   const handleDuplicate = () => {
     if (!event) return;
-    setFormData({
-      ...formData,
-      title: `${event.title} (copia)`,
-    });
-    setIsEditing(true);
+    if (onDuplicate) onDuplicate(event);
   };
 
   const handleSave = async (action: SaveAction = 'save') => {
     if (!formData.title.trim()) return;
 
-    setIsSaving(true);
+    if (isSaving) return;
+    setIsSaving(true); setSaveError(null);
     try {
+      const start = deFechaHoraLocal(formData.all_day ? `${formData.start_at.slice(0, 10)}T00:00` : formData.start_at, timezone);
+      const end = deFechaHoraLocal(formData.all_day ? `${formData.end_at.slice(0, 10)}T23:59` : formData.end_at, timezone);
+      if (!start || !end || Date.parse(end) <= Date.parse(start)) { setSaveError('El fin debe ser posterior al inicio'); return; }
       const rrule = recurrenceToRRule(recurrence);
       const eventData: Partial<CalendarEvent> = {
         title: formData.title,
         description: formData.description || null,
-        start_at: new Date(formData.start_at).toISOString(),
-        end_at: formData.end_at ? new Date(formData.end_at).toISOString() : null,
+        start_at: start,
+        end_at: end,
         all_day: formData.all_day,
         location: formData.location || null,
         color: formData.color,
@@ -373,9 +373,11 @@ export function EventModal({
         },
       };
 
-      await onSave(eventData, action);
+      if (!(await onSave(eventData, action))) return;
       
-      if (action === 'save-new') {
+      if (action === 'save-duplicate') {
+        setFormData({ ...formData, title: `${formData.title} (copia)` });
+      } else if (action === 'save-new') {
         // Resetear formulario para nuevo evento
         setFormData({
           ...formData,
@@ -386,6 +388,8 @@ export function EventModal({
       } else {
         onClose();
       }
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'No se pudo guardar el evento');
     } finally {
       setIsSaving(false);
     }
@@ -393,7 +397,7 @@ export function EventModal({
 
   const handleDelete = async () => {
     if (!event || !onDelete) return;
-    await onDelete(event.id || event.source_id);
+    if (!(await onDelete(event.id || event.source_id))) return;
     setDeleteDialogOpen(false);
     onClose();
   };
@@ -404,7 +408,7 @@ export function EventModal({
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={onClose}>
+      <Dialog open={isOpen} onOpenChange={open => { if (!open && !isSaving) onClose(); }}>
         <DialogContent className="sm:max-w-[700px] lg:max-w-[800px] max-h-[90vh] overflow-y-auto dark:bg-gray-900 dark:border-gray-800">
           <DialogHeader>
             <div className="flex items-center justify-between">
@@ -430,6 +434,7 @@ export function EventModal({
           </DialogHeader>
 
           <div className="space-y-4 py-4">
+            {saveError && <p role="alert" className="text-destructive">{saveError}</p>}
             {isEditing ? (
               <>
                 <div className="space-y-2">
@@ -472,9 +477,11 @@ export function EventModal({
                       value={formData.all_day ? formData.start_at.split('T')[0] : formData.start_at}
                       onChange={(e) => {
                         const newStart = e.target.value;
-                        const newStartDate = new Date(newStart);
+                        const instant = deFechaHoraLocal(formData.all_day ? `${newStart}T00:00` : newStart, timezone);
+                        if (!instant) { setFormData({ ...formData, start_at: newStart }); return; }
+                        const newStartDate = new Date(instant);
                         const newEnd = new Date(newStartDate.getTime() + 3600000);
-                        const endStr = format(newEnd, "yyyy-MM-dd'T'HH:mm");
+                        const endStr = aFechaHoraLocal(newEnd, timezone);
                         setFormData({ ...formData, start_at: newStart, end_at: endStr });
                       }}
                       className="dark:bg-gray-800 dark:border-gray-700"
@@ -649,7 +656,7 @@ export function EventModal({
                           <SelectItem value="none">Sin cliente</SelectItem>
                           {customers.map((customer) => (
                             <SelectItem key={customer.id} value={customer.id}>
-                              {customer.name}
+                              {customer.full_name}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -662,7 +669,7 @@ export function EventModal({
                 <RecurrenceSelector
                   value={recurrence}
                   onChange={setRecurrence}
-                  startDate={formData.start_at ? new Date(formData.start_at) : new Date()}
+                  startDate={new Date(deFechaHoraLocal(formData.start_at, timezone) ?? Date.now())}
                 />
               </>
             ) : event ? (
@@ -698,7 +705,7 @@ export function EventModal({
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" onClick={onClose}>
+              <Button variant="outline" onClick={onClose} disabled={isSaving}>
                 {isEditing ? 'Cancelar' : 'Cerrar'}
               </Button>
               {isEditing ? (

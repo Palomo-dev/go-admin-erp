@@ -10,6 +10,10 @@ import { WhatsAppError } from './types';
 
 export function whatsappErrorResponse(err: unknown): NextResponse {
   if (err instanceof WhatsAppError) {
+    if (err.code === 'INTERNAL' && err.status >= 500) {
+      console.error('[crm/whatsapp] error de datos interno');
+      return NextResponse.json({ error: 'Error interno', code: err.code }, { status: err.status });
+    }
     return NextResponse.json({ error: err.message, code: err.code, details: err.details ?? null }, { status: err.status });
   }
   if (err instanceof OrgContextError) {
@@ -17,19 +21,19 @@ export function whatsappErrorResponse(err: unknown): NextResponse {
   }
   const message = err instanceof Error ? err.message : 'Error interno';
   console.error('[crm/whatsapp]', message);
-  return NextResponse.json({ error: message, code: 'INTERNAL' }, { status: 500 });
+  return NextResponse.json({ error: 'Error interno', code: 'INTERNAL' }, { status: 500 });
 }
 
 type Params = { params: Promise<Record<string, string>> };
 export type WaHandler = (ctx: ServerOrgContext, req: Request, params: Record<string, string>) => Promise<Response>;
 
-export function withWhatsAppRoute(handler: WaHandler, opts: { admin?: boolean } = {}) {
+export function withWhatsAppRoute(handler: WaHandler, opts: { admin?: boolean; permission?: string } = {}) {
   // El validador de rutas de Next exige el segundo parametro no opcional
   return async (req: Request, route: Params): Promise<Response> => {
     try {
       const ctx = await getServerOrgContext(req);
       // F0-SEC r2: admin por id de rol o por permiso (`admin.full_access`), nunca por nombre.
-      if (opts.admin) await requireOrgAdminOrPermission(ctx);
+      if (opts.admin) await requireOrgAdminOrPermission(ctx, opts.permission);
       const params = route?.params ? await route.params : {};
       return await handler(ctx, req, params);
     } catch (err) {

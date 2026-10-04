@@ -1,30 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError, requireOrgAdmin } from '@/lib/utils/orgContext';
+import { getServerOrgContext, hasOrgAdminOrPermission, requireOrgAdminOrPermission } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import {
   getAutomationRules,
   createAutomationRule,
   validateRuleInput,
 } from '@/lib/services/crm/automationService';
+import { getAutomationSummary } from '@/lib/services/crm/automation/automationSummary';
+import { automationRouteError } from '@/lib/services/crm/automation/automationRouteErrors';
 
 function errorResponse(error: unknown, tag: string): NextResponse {
-  if (error instanceof OrgContextError) {
-    return NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.statusCode });
-  }
-  const message = error instanceof Error ? error.message : 'Error desconocido';
-  console.error(`[Automation Rules] ${tag}:`, message);
-  const status = /inválida|inválido|requerido/i.test(message) ? 400 : 500;
-  return NextResponse.json({ success: false, error: message }, { status });
+  return automationRouteError(error, `Automation Rules ${tag}`);
 }
 
 /**
  * GET /api/crm/automation-rules — Lista las reglas de la organización (sesión).
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const ctx = await getServerOrgContext();
-    const rules = await getAutomationRules(ctx.organizationId, ctx.supabase);
-    return NextResponse.json({ success: true, data: rules }, { status: 200 });
+    const ctx = await getServerOrgContext(request);
+    await readOrgBody(ctx, request);
+    const [rules, summary, canManage] = await Promise.all([
+      getAutomationRules(ctx.organizationId, ctx.supabase),
+      getAutomationSummary(ctx.organizationId, ctx.supabase),
+      hasOrgAdminOrPermission(ctx),
+    ]);
+    return NextResponse.json({ success: true, data: rules, summary, can_manage: canManage }, { status: 200 });
   } catch (error: unknown) {
     return errorResponse(error, 'GET error');
   }
@@ -36,8 +37,8 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
-    const ctx = await getServerOrgContext();
-    requireOrgAdmin(ctx);
+    const ctx = await getServerOrgContext(request);
+    await requireOrgAdminOrPermission(ctx);
     const body = await readOrgBody(ctx, request);
 
     if (!body?.name || !body?.trigger_type) {

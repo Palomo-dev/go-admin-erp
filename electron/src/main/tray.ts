@@ -4,6 +4,9 @@ import { APP_NAME } from './constants';
 import { getStatus } from './agentRunner';
 import { readLog } from './crashReporter';
 import { getIconImage } from './icon';
+import { randomUUID } from 'node:crypto';
+import { getPhoneSnapshot, dispatchPhoneCommand } from './phoneIpc';
+import { openPhoneWindow } from './windows/phoneWindow';
 
 let tray: Tray | null = null;
 let refreshTimer: NodeJS.Timeout | null = null;
@@ -16,14 +19,20 @@ export function createTray(mainWindow: BrowserWindow): Tray {
 
   const refreshMenu = () => {
     const status = getStatus();
+    const phone = getPhoneSnapshot();
     const menu = Menu.buildFromTemplate([
-      {
-        label: status.running
-          ? `● Conectado — ${status.organizationName || ''}`
-          : '○ Desconectado',
-        enabled: false,
-      },
+      { label: 'Teléfono', enabled: false },
+      { label: phone?.incoming ? '● Llamada entrante' : phone?.callStatus === 'connected' ? '● En llamada' : phone?.deviceState === 'registered' ? '● Disponible' : '○ Desconectado', enabled: false },
+      { label: 'Abrir marcador', accelerator: 'CommandOrControl+Shift+L', click: () => { void openPhoneWindow(getPhoneSnapshot()); } },
+      { label: 'Estado', submenu: [{ label: phone?.deviceState === 'registered' ? 'Disponible' : 'Desconectado', type: 'radio', checked: true, enabled: false }] },
+      ...(phone?.missed ? [{ label: 'Última llamada perdida', click: () => { void openPhoneWindow(getPhoneSnapshot()); } }] : []),
+      { label: 'Silenciar timbre', type: 'checkbox', checked: Boolean(phone?.ringtoneMuted), enabled: phone?.deviceState === 'registered', click: () => {
+        const current = getPhoneSnapshot(); if (!current || current.scope !== phone?.scope) return;
+        void dispatchPhoneCommand({ id: randomUUID(), scope: current.scope, revision: current.revision, action: 'ringtone', value: !current.ringtoneMuted });
+      } },
       { type: 'separator' },
+      { label: 'Impresión', enabled: false },
+      { label: status.running ? `● Conectado — ${status.organizationName || ''}` : '○ Desconectado', enabled: false },
       {
         label: `Trabajos impresos: ${status.jobsPrinted}`,
         enabled: false,
@@ -37,7 +46,7 @@ export function createTray(mainWindow: BrowserWindow): Tray {
         : []),
       { type: 'separator' },
       {
-        label: 'Abrir',
+        label: 'Abrir GO Admin',
         click: () => {
           mainWindow.show();
           mainWindow.focus();
@@ -66,6 +75,7 @@ export function createTray(mainWindow: BrowserWindow): Tray {
   refreshMenu();
   if (refreshTimer) clearInterval(refreshTimer);
   refreshTimer = setInterval(refreshMenu, 15_000);
+  tray.on('right-click', refreshMenu);
 
   tray.on('double-click', () => {
     mainWindow.show();

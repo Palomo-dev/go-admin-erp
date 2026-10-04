@@ -31,12 +31,6 @@ const esbuild = createRequire(join(RAIZ, 'package.json'))('esbuild');
 const BUILTINS = new Set(builtinModules.flatMap((m) => [m, `node:${m}`]));
 const WS_CONFIG = join(RAIZ, 'src/lib/supabase/ws-config.ts');
 
-// Imports dinámicos que el grafo ve pero el proceso de Node nunca ejecuta.
-// `@sentry/react` vive detrás de `typeof window === 'undefined'` en
-// `timezoneFallback.ts` y declara peer `react`, prohibido en esta imagen
-// (F-78). Un import estático del mismo paquete sí cuenta y el test lo pide.
-const DINAMICOS_SOLO_NAVEGADOR = new Set(['@sentry/react']);
-
 /** `@scope/pkg/sub` → `@scope/pkg`; `pkg/sub` → `pkg`. */
 function nombrePaquete(especificador) {
   const partes = especificador.split('/');
@@ -63,11 +57,10 @@ const registrarExternos = {
         builtins.add(p.replace(/^node:/, ''));
       } else {
         const nombre = nombrePaquete(p);
-        const soloNavegador = args.kind === 'dynamic-import' && DINAMICOS_SOLO_NAVEGADOR.has(nombre);
-        if (!soloNavegador) {
-          if (!paquetes.has(nombre)) paquetes.set(nombre, new Set());
-          paquetes.get(nombre).add(`${importador} [${args.kind}]`);
-        }
+        // Registrar también import(): sólo el código eliminado por el runtime
+        // Node se filtra después con el metafile, nunca un paquete completo.
+        if (!paquetes.has(nombre)) paquetes.set(nombre, new Set());
+        paquetes.get(nombre).add(`${importador} [${args.kind}]`);
       }
       return { path: p, external: true };
     });
@@ -82,16 +75,28 @@ const resultado = await esbuild.build({
   platform: 'node',
   format: 'esm',
   target: 'node20',
+  // Railway ejecuta Node, sin window. Excluye ramas exclusivamente de
+  // navegador (p. ej. la miga de Sentry) del cierre realmente ejecutable.
+  define: { window: 'undefined' },
+  minifySyntax: true,
   tsconfig: join(RAIZ, 'tsconfig.json'),
   metafile: true,
   logLevel: 'silent',
   plugins: [registrarExternos],
 });
 
+// onResolve también visita imports eliminados por tree shaking. El metafile
+// de salida conserva los que sí sobreviven para este runtime de Node.
+const usados = new Set(Object.values(resultado.metafile.outputs)
+  .flatMap((salida) => salida.imports)
+  .filter((entrada) => entrada.external)
+  .map((entrada) => nombrePaquete(entrada.path)));
+
 const salida = {
   archivosLocales: Object.keys(resultado.metafile.inputs).sort(),
   paquetes: Object.fromEntries(
-    [...paquetes.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([n, s]) => [n, [...s].sort()]),
+    [...paquetes.entries()].filter(([n]) => usados.has(n))
+      .sort(([a], [b]) => a.localeCompare(b)).map(([n, s]) => [n, [...s].sort()]),
   ),
   builtins: [...builtins].sort(),
   avisos: resultado.warnings.map((w) => w.text),

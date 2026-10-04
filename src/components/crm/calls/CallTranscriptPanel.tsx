@@ -8,9 +8,10 @@
  */
 
 import { useMemo, useState } from 'react';
-import { Copy, Loader2, RefreshCw, Search, AlertTriangle, FileText, Mic } from 'lucide-react';
+import { Copy, Loader2, RefreshCw, AlertTriangle, FileText, Mic, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useTranslations } from 'next-intl';
+import { SearchInput, AvatarIniciales, EmptyState, RowActionsMenu } from '@/components/kit';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/use-toast';
 import { cn } from '@/utils/Utils';
@@ -26,6 +27,9 @@ export interface CallTranscriptPanelProps {
   state?: CallIntelligenceState;
   className?: string;
   pageSize?: number;
+  variante?: 'panel' | 'ficha';
+  customerName?: string | null;
+  agentName?: string | null;
 }
 
 function fmtMs(ms: number): string {
@@ -46,17 +50,21 @@ function highlight(text: string, q: string) {
   return (
     <>
       {text.slice(0, idx)}
-      <mark className="rounded bg-yellow-200 px-0.5 dark:bg-yellow-600/60 dark:text-white">{text.slice(idx, idx + q.length)}</mark>
+      <mark className="rounded bg-warning-subtle px-0.5 text-warning-text">{text.slice(idx, idx + q.length)}</mark>
       {text.slice(idx + q.length)}
     </>
   );
 }
 
-export function CallTranscriptPanel({ callId, onSeek, currentMs, state, className, pageSize = 100 }: CallTranscriptPanelProps) {
+export function CallTranscriptPanel({ callId, onSeek, currentMs, state, className, pageSize = 100, variante = 'panel', customerName, agentName }: CallTranscriptPanelProps) {
+  const t = useTranslations('crm.llamadas.ficha');
+  const calls = useTranslations('crm.llamadas');
   const own = useCallIntelligence(callId, !state);
   const s = state ?? own;
   const { transcript, refetch } = s;
+  const readError = s.transcriptError !== undefined ? s.transcriptError : s.error;
   const [query, setQuery] = useState('');
+  const [mobileExpanded, setMobileExpanded] = useState(false);
   const [limit, setLimit] = useState(pageSize);
   const [retrying, setRetrying] = useState(false);
 
@@ -67,6 +75,8 @@ export function CallTranscriptPanel({ callId, onSeek, currentMs, state, classNam
     const seg = segments.find((x) => currentMs >= x.start_ms && currentMs < x.end_ms) ?? null;
     return seg?.id ?? null;
   }, [segments, currentMs]);
+
+  const previewId = activeId ?? filtered[0]?.id;
 
   const retry = async (force = true) => {
     setRetrying(true);
@@ -117,79 +127,67 @@ export function CallTranscriptPanel({ callId, onSeek, currentMs, state, classNam
   const working = transcript && (transcript.status === 'pending' || transcript.status === 'processing' || transcript.jobs?.some((j) => j.kind === 'transcribe' && (j.status === 'queued' || j.status === 'running')));
   const method = transcript?.raw_response?.channel_role_map?.method;
 
-  /**
-   * Una transcripción puede quedarse en `processing` para siempre (webhook de
-   * Scribe que nunca llega, worker muerto, `?sync=1` cortado por timeout). Pasados
-   * STUCK_MS se ofrece reintentar en vez de dejar el spinner eterno (tester r1 nº 7).
-   *
-   * Ronda 3 (tester r2 nº 6): eran 3 min, la mitad de la ventana en la que el
-   * servicio considera vivo un envío (`STALE_PROCESSING_MS` = 10 min en
-   * `transcriptionService.ts`). El botón aparecía mientras el primer envío seguía
-   * en curso y, con `force`, disparaba un segundo cobro. Ahora es EL MISMO
-   * umbral, así que el botón sólo sale cuando el servicio ya daría el intento por
-   * perdido. (Constante duplicada a propósito: `transcriptionService` es
-   * server-only y no puede importarse desde un componente cliente.)
-   */
+  // Mismo umbral que transcriptionService: antes de 10 min el job sigue vivo.
+  // No ofrecer un segundo intento que pueda duplicar el cobro del proveedor.
   const STUCK_MS = 10 * 60 * 1000;
   const startedMs = transcript ? Date.parse(transcript.started_at ?? transcript.updated_at ?? transcript.created_at ?? '') : NaN;
   const stuck = !!working && Number.isFinite(startedMs) && Date.now() - startedMs > STUCK_MS;
 
   return (
-    <section className={cn('flex flex-col rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800', className)} aria-label="Transcripción de la llamada">
-      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 px-3 py-2 dark:border-gray-700">
-        <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-          <FileText size={16} className="text-blue-600 dark:text-blue-400" /> Transcripción
-          {transcript?.status === 'completed' && (
+    <section className={cn('flex flex-col rounded-xl border border-line bg-surface', className)} aria-label={calls('transcripcion')}>
+      <header className={cn("flex flex-wrap items-center justify-between gap-2", variante === 'ficha' ? "px-4 pt-4" : "border-b border-line px-3 py-2")}>
+        <div className={cn("flex items-center gap-2", variante === 'ficha' ? "text-[13px] font-medium leading-[18px] text-fg-secondary lg:text-base lg:font-semibold lg:leading-[22px] lg:text-fg" : "text-base font-semibold text-fg")}>
+          {variante !== 'ficha' && <FileText size={16} className="text-brand" />} {calls('transcripcion')}
+          {variante !== 'ficha' && transcript?.status === 'completed' && (
             <Badge variant="secondary" className="text-[10px] font-normal">
               {providerLabel(transcript.provider)}
               {transcript.raw_response?.fell_back ? ' (fallback)' : ''}
             </Badge>
           )}
-          {transcript?.status === 'completed' && method && (
+          {variante !== 'ficha' && transcript?.status === 'completed' && method && (
             <Badge variant={method === 'channel' ? 'success' : 'warning'} className="text-[10px] font-normal" title={method === 'channel' ? 'Roles asignados por canal de la grabación' : 'Roles estimados por heurística'}>
               {method === 'channel' ? 'Roles por canal' : method === 'single' ? '1 hablante' : 'Roles estimados'}
             </Badge>
           )}
         </div>
         <div className="flex items-center gap-1">
-          {transcript?.status === 'completed' && (
-            <>
-              <Button size="sm" variant="ghost" onClick={copyAll} aria-label="Copiar transcripción" title="Copiar">
-                <Copy size={14} />
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => retry(true)} disabled={retrying} aria-label="Volver a transcribir" title="Volver a transcribir">
-                <RefreshCw size={14} className={retrying ? 'animate-spin' : ''} />
-              </Button>
-            </>
-          )}
+          {variante === 'ficha' && transcript?.status === 'completed' && !mobileExpanded && <button type="button" aria-label={t('verTranscripcionCompleta')} aria-expanded={false} onClick={() => setMobileExpanded(true)} className="inline-flex size-6 items-center justify-center rounded text-fg-secondary focus-visible:ring-2 focus-visible:ring-brand lg:hidden"><ChevronDown size={16} strokeWidth={1.5} /></button>}
+          {variante === 'ficha' && transcript?.status === 'completed' && <span className="hidden text-xs leading-4 text-fg-secondary lg:inline">{[transcript.language, typeof transcript.speaker_count === 'number' ? t('hablantes', { n: transcript.speaker_count }) : null].filter(Boolean).join(' · ')}</span>}
+          {transcript?.status === 'completed' && <RowActionsMenu titulo={calls('transcripcion')} orientacion="horizontal" className={variante === 'ficha' && !mobileExpanded ? 'hidden lg:flex' : undefined} acciones={[
+            { id: 'copy', etiqueta: t('copiarTranscripcion'), icono: Copy, onSelect: () => void copyAll() },
+            { id: 'retry', etiqueta: t('volverTranscribir'), icono: RefreshCw, onSelect: () => void retry(true), deshabilitada: retrying, motivo: calls('procesando') },
+          ]} />}
         </div>
       </header>
 
-      <div className="p-3" aria-live="polite">
+      <div className={variante === 'ficha' ? "px-4 pb-4 pt-2" : "p-3"} aria-live="polite">
         {s.loading && !transcript && (
           <div className="space-y-2">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-4 animate-pulse rounded bg-gray-200 dark:bg-gray-700" style={{ width: `${70 + (i % 3) * 10}%` }} />
+              <div key={i} className="h-4 animate-pulse rounded bg-subtle" style={{ width: `${70 + (i % 3) * 10}%` }} />
             ))}
           </div>
         )}
 
-        {!s.loading && !transcript && (
-          <div className="flex flex-col items-start gap-2 text-sm text-gray-600 dark:text-gray-300">
-            <p className="flex items-center gap-2"><Mic size={16} className="opacity-60" /> Esta llamada aún no tiene transcripción.</p>
+        {!s.loading && !transcript && !readError && (
+          <div className="flex flex-col items-start gap-2 text-sm text-fg-secondary">
+            <p className="flex items-center gap-2"><Mic size={16} className="opacity-60" /> {t('sinTranscripcion')}</p>
             <Button size="sm" variant="outline" onClick={() => retry(false)} disabled={retrying}>
-              {retrying ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Mic size={14} className="mr-1" />} Transcribir ahora
+              {retrying ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Mic size={14} className="mr-1" />} {t('transcribirAhora')}
             </Button>
           </div>
         )}
 
+        {!s.loading && !transcript && readError && <EmptyState variante="error" onReintentar={() => void refetch()} />}
+
         {transcript && working && (
           <div className="flex flex-col items-start gap-2">
-            <p className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
-              <Loader2 size={16} className="animate-spin" /> Transcribiendo con {providerLabel(transcript.provider === 'pending' ? 'elevenlabs' : transcript.provider)}… (≈ 1-2 min)
+            <p className="flex items-center gap-2 text-sm text-brand-deep">
+              <Loader2 size={16} className="animate-spin" /> {transcript.provider === 'pending' ? calls('procesando') : `Transcribiendo con ${providerLabel(transcript.provider)}… (≈ 1-2 min)`}
             </p>
+            {variante === 'ficha' && <div className="grid w-full gap-3" aria-hidden="true">{Array.from({ length: 5 }, (_, index) => <div key={index} className="h-3 w-full animate-pulse rounded bg-subtle" />)}</div>}
             {stuck && (
-              <div className="flex flex-col items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+              <div className="flex flex-col items-start gap-2 rounded-md border border-line-warning bg-warning-subtle p-2 text-sm text-warning-text">
                 <p className="flex items-center gap-2">
                   <AlertTriangle size={14} /> Está tardando más de lo normal. Puedes volver a lanzarla.
                 </p>
@@ -202,7 +200,7 @@ export function CallTranscriptPanel({ callId, onSeek, currentMs, state, classNam
         )}
 
         {transcript && !working && transcript.status === 'failed' && (
-          <div className="flex flex-col items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-200">
+          <div className="flex flex-col items-start gap-2 rounded-md border border-line-danger bg-danger-subtle p-3 text-sm text-danger-text">
             <p className="flex items-center gap-2"><AlertTriangle size={16} /> {ERROR_LABELS[transcript.error_code ?? ''] ?? 'La transcripción falló'}</p>
             {transcript.error_message && <p className="text-xs opacity-80">{transcript.error_message}</p>}
             {transcript.error_code === 'INSUFFICIENT_CREDITS' ? (
@@ -217,43 +215,42 @@ export function CallTranscriptPanel({ callId, onSeek, currentMs, state, classNam
 
         {transcript && !working && transcript.status === 'completed' && (
           <>
-            <div className="mb-2 flex items-center gap-2">
-              <div className="relative flex-1">
-                <Search size={14} className="absolute left-2 top-2.5 text-gray-400" />
-                <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar en la transcripción" className="h-8 pl-7 text-sm" aria-label="Buscar en la transcripción" />
-              </div>
-              {query && <span className="text-xs text-gray-500 dark:text-gray-400">{filtered.length} coincidencia{filtered.length === 1 ? '' : 's'}</span>}
+            <div className={cn("mb-2 items-center gap-2", variante === 'ficha' && !mobileExpanded ? "hidden lg:flex" : "flex")}>
+              <SearchInput value={query} onChange={setQuery} onValueChange={setQuery} placeholder={t('buscarTranscripcion')} etiqueta={t('buscarTranscripcion')} tamano="sm" atajo={false} pistaAtajo={false} className="flex-1" />
+              {query && <span className="text-xs text-fg-secondary">{t('coincidencias', { n: filtered.length })}</span>}
+
             </div>
             {segments.length === 0 ? (
               transcript.full_text?.trim() ? (
-                <p className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200">{transcript.full_text}</p>
+                <p className="whitespace-pre-wrap text-sm text-fg-secondary">{transcript.full_text}</p>
               ) : (
-                <p className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+                <p className="flex items-center gap-2 rounded-md border border-line-warning bg-warning-subtle p-2 text-sm text-warning-text">
                   <AlertTriangle size={14} /> No se detectó voz en la grabación (silencio o buzón vacío); no hay nada que analizar.
                 </p>
               )
             ) : (
-              <ol className="max-h-80 space-y-1 overflow-y-auto pr-1" role="list">
+              <ol className={cn("space-y-1 overflow-y-auto", variante === 'ficha' ? "max-h-[640px]" : "max-h-80 pr-1")} role="list">
                 {filtered.slice(0, limit).map((seg) => {
                   const isAgent = seg.speaker_role === 'agent';
                   const active = seg.id === activeId;
+                  const name = isAgent ? agentName || t('agente') : seg.speaker_role === 'customer' ? customerName || t('cliente') : seg.speaker_label || t('hablante');
                   return (
-                    <li key={seg.id}>
+                    <li key={seg.id} className={variante === 'ficha' && !mobileExpanded && seg.id !== previewId ? "hidden lg:block" : undefined}>
                       <button
                         type="button"
                         onClick={() => onSeek?.(seg.start_ms)}
                         aria-current={active ? 'true' : undefined}
-                        aria-label={`Ir a ${fmtMs(seg.start_ms)}, ${roleLabel(seg.speaker_role, seg.speaker_label).toLowerCase()}`}
+                        aria-label={t('irSegmento', { tiempo: fmtMs(seg.start_ms), nombre: name })}
                         className={cn(
-                          'flex w-full gap-2 rounded px-2 py-1 text-left text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
-                          active ? 'bg-blue-50 dark:bg-blue-900/30' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50',
+                          'flex w-full gap-3 rounded-lg py-2 pl-2 pr-3 text-left text-sm leading-5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                          active ? 'bg-brand-tint' : 'hover:bg-hover',
                         )}
                       >
-                        <span className="w-11 shrink-0 font-mono text-[11px] text-gray-400 dark:text-gray-500">{fmtMs(seg.start_ms)}</span>
-                        <span className={cn('w-16 shrink-0 text-[11px] font-semibold', isAgent ? 'text-blue-700 dark:text-blue-300' : seg.speaker_role === 'customer' ? 'text-emerald-700 dark:text-emerald-300' : 'text-gray-500 dark:text-gray-400')}>
-                          {roleLabel(seg.speaker_role, seg.speaker_label)}
+                        <AvatarIniciales nombre={name} tamano="xs" tono={isAgent ? 'marcaSuave' : 'neutro'} />
+                        <span className="min-w-0 flex-1">
+                          <span className="mb-0.5 flex flex-wrap items-center gap-2 text-xs leading-4"><span className={cn('font-semibold', isAgent ? 'text-brand-deep' : 'text-fg')}>{name}</span><span className="font-medium tabular-nums text-fg-secondary">{fmtMs(seg.start_ms)}</span></span>
+                          <span className={cn("text-fg", variante === 'ficha' && !mobileExpanded && "line-clamp-2 lg:line-clamp-none")}>{highlight(seg.text, query)}</span>
                         </span>
-                        <span className="text-gray-800 dark:text-gray-100">{highlight(seg.text, query)}</span>
                       </button>
                     </li>
                   );
@@ -262,13 +259,13 @@ export function CallTranscriptPanel({ callId, onSeek, currentMs, state, classNam
             )}
             {filtered.length > limit && (
               <Button size="sm" variant="ghost" className="mt-2 w-full text-xs" onClick={() => setLimit((l) => l + pageSize)}>
-                Mostrar {Math.min(pageSize, filtered.length - limit)} más
+                {t('mostrarMas', { n: Math.min(pageSize, filtered.length - limit) })}
               </Button>
             )}
-            <p className="mt-2 text-[11px] text-gray-400 dark:text-gray-500">
+            {variante !== 'ficha' && <p className="mt-2 text-[11px] text-fg-muted">
               {transcript.speaker_count ?? '?'} hablante(s) · {transcript.duration_seconds ? fmtMs(transcript.duration_seconds * 1000) : '--:--'}
               {typeof transcript.cost_amount === 'number' && ` · $${transcript.cost_amount.toFixed(4)}`}
-            </p>
+            </p>}
           </>
         )}
       </div>

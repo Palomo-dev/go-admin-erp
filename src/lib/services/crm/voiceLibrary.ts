@@ -264,6 +264,9 @@ export interface ProviderErrorLike {
 }
 
 export function describeLibraryError(err: ProviderErrorLike): string {
+  if (err.code === 'provider_timeout' || err.code === 'provider_unavailable' || err.code === 'credentials_unavailable') {
+    return err.message || 'No se pudo consultar ElevenLabs. Vuelve a intentarlo.';
+  }
   switch (err.code) {
     case 'paid_plan_required':
     case 'free_users_not_allowed':

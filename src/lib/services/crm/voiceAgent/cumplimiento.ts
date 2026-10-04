@@ -20,7 +20,7 @@ import {
   type ConteoSemana,
   type DecisionContacto,
 } from './ley2300';
-import { normalizarNumeroRne, verificacionRneVigente } from './rne';
+import { normalizarNumeroRne, verificacionRneRegistradaVigente } from './rne';
 import { esNumeroPrueba, EXENCION_NUMERO_PRUEBA } from './numerosPrueba';
 import { DEFAULT_TIMEZONE, isUsableTimezone } from '@/lib/utils/dateCore';
 
@@ -105,6 +105,9 @@ export interface VerificacionRne {
   checked_targets: number;
   excluded_targets: number;
   skipped_calls: number;
+  evidence_available: boolean;
+  audience_unchanged: boolean;
+  changed_targets: number;
 }
 
 /** Última verificación RNE de la campaña (vigente o no). */
@@ -113,16 +116,13 @@ export async function ultimaVerificacionRne(
   orgId: number,
   campaignId: string
 ): Promise<VerificacionRne | null> {
-  const { data, error } = await supabase
-    .from('voice_campaign_rne_checks')
-    .select('id, checked_at, valid_until, file_name, numbers_in_file, checked_targets, excluded_targets, skipped_calls')
-    .eq('organization_id', orgId)
-    .eq('campaign_id', campaignId)
-    .order('checked_at', { ascending: false })
-    .limit(1);
-  if (error) throw new CumplimientoDbError('voice_campaign_rne_checks', error.message);
-  const fila = Array.isArray(data) ? (data[0] as VerificacionRne | undefined) : undefined;
-  return fila ?? null;
+  const { data, error } = await supabase.rpc('crm_voice_campaign_rne_status', { p_org: orgId, p_campaign: campaignId });
+  if (error) throw new CumplimientoDbError('crm_voice_campaign_rne_status', error.message);
+  if (data === null) return null;
+  if (typeof data !== 'object' || Array.isArray(data) || typeof data.evidence_available !== 'boolean' ||
+    typeof data.audience_unchanged !== 'boolean' || !Number.isInteger(data.changed_targets))
+    throw new CumplimientoDbError('crm_voice_campaign_rne_status', 'Respuesta de evidencia RNE inválida');
+  return data as VerificacionRne;
 }
 
 /** ¿La campaña tiene una verificación RNE vigente? Falla cerrado. */
@@ -133,7 +133,7 @@ export async function campanaConRneVigente(
   ahora: Date = new Date()
 ): Promise<boolean> {
   const v = await ultimaVerificacionRne(supabase, orgId, campaignId);
-  return verificacionRneVigente(v?.valid_until ?? null, ahora);
+  return verificacionRneRegistradaVigente(v, ahora);
 }
 
 /** Solo https y sin espacios (el mismo criterio que el CHECK de la columna). */

@@ -70,8 +70,8 @@ export interface PageHeaderProps {
   className?: string;
 }
 
-function PublicarCabeceraMovil({ titulo, subtitulo, accion, ocultarBarra, volverA }: PageHeaderMovil & { volverA?: string }) {
-  useCabeceraMovil({ modo: 'page', titulo, subtitulo, accion, ocultarBarra, volverA });
+function PublicarCabeceraMovil({ titulo, subtitulo, accion, ocultarBarra, volverA, onVolver }: PageHeaderMovil & { volverA?: string; onVolver?: () => void }) {
+  useCabeceraMovil({ modo: 'page', titulo, subtitulo, accion, ocultarBarra, volverA, onVolver });
   return null;
 }
 
@@ -104,6 +104,7 @@ export function PageHeader({
           accion={movil.accion}
           ocultarBarra={movil.ocultarBarra}
           volverA={volverA}
+          onVolver={onVolver}
         />
       )}
 

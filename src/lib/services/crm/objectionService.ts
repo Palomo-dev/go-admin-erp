@@ -131,8 +131,7 @@ export async function getObjections(
   const { data, error } = await query.order('sort_order', { ascending: true });
 
   if (error) {
-    console.warn('objectionService.getObjections - error:', error.message);
-    return [];
+    throw error;
   }
 
   return (data || []) as Objection[];
@@ -141,85 +140,16 @@ export async function getObjections(
 /**
  * Crea una nueva objection.
  */
-export async function createObjection(
-  organizationId: number,
-  data: ObjectionInput,
-  supabase: SupabaseClient
-): Promise<Objection | null> {
-  const { data: result, error } = await supabase
-    .from('objections')
-    .insert({
-      organization_id: organizationId,
-      title: data.title,
-      category: data.category,
-      // jsonb NOT NULL DEFAULT '[]' (verificado por MCP el 2026-09-15): null → 500.
-      detection_signals: data.detection_signals ?? [],
-      recommended_response: data.recommended_response ?? null,
-      discovery_questions: data.discovery_questions ?? [],
-      related_case_studies: data.related_case_studies ?? null,
-      vertical_id: data.vertical_id ?? null,
-      is_active: data.is_active ?? true,
-      sort_order: data.sort_order ?? 0,
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-
-  return result as Objection;
+export async function createObjection(organizationId:number,data:ObjectionInput,supabase:SupabaseClient):Promise<Objection|null>{
+ const {data:row,error}=await supabase.rpc('crm_objection_catalog_write',{p_org:organizationId,p_id:null,p_expected:null,p_data:data,p_archive:false});if(error)throw error;return row as Objection;
 }
-
-/**
- * Actualiza una objection existente.
- */
-export async function updateObjection(
-  id: string,
-  organizationId: number,
-  data: ObjectionUpdateInput,
-  supabase: SupabaseClient
-): Promise<Objection | null> {
-  const updateData: Record<string, unknown> = {
-    updated_at: new Date().toISOString(),
-  };
-
-  if (data.title !== undefined) updateData.title = data.title;
-  if (data.category !== undefined) updateData.category = data.category;
-  if (data.detection_signals !== undefined) updateData.detection_signals = data.detection_signals;
-  if (data.recommended_response !== undefined) updateData.recommended_response = data.recommended_response;
-  if (data.discovery_questions !== undefined) updateData.discovery_questions = data.discovery_questions;
-  if (data.related_case_studies !== undefined) updateData.related_case_studies = data.related_case_studies;
-  if (data.vertical_id !== undefined) updateData.vertical_id = data.vertical_id;
-  if (data.is_active !== undefined) updateData.is_active = data.is_active;
-  if (data.sort_order !== undefined) updateData.sort_order = data.sort_order;
-
-  const { data: result, error } = await supabase
-    .from('objections')
-    .update(updateData)
-    .eq('id', id)
-    .eq('organization_id', organizationId)
-    .select()
-    .single();
-
-  if (error) throw error;
-
-  return result as Objection;
+export async function updateObjection(id:string,organizationId:number,data:ObjectionUpdateInput,supabase:SupabaseClient,expectedUpdatedAt?:string):Promise<Objection|null>{
+ const clean=Object.fromEntries(Object.entries(data).filter(([,value])=>value!==undefined));
+ const {data:row,error}=await supabase.rpc('crm_objection_catalog_write',{p_org:organizationId,p_id:id,p_expected:expectedUpdatedAt??null,p_data:clean,p_archive:false});if(error)throw error;return row as Objection;
 }
-
-/**
- * Elimina una objection.
- */
-export async function deleteObjection(
-  id: string,
-  organizationId: number,
-  supabase: SupabaseClient
-): Promise<void> {
-  const { error } = await supabase
-    .from('objections')
-    .delete()
-    .eq('id', id)
-    .eq('organization_id', organizationId);
-
-  if (error) throw error;
+/** Archived to preserve opportunity and mined-response history. */
+export async function deleteObjection(id:string,organizationId:number,supabase:SupabaseClient):Promise<void>{
+ const {error}=await supabase.rpc('crm_objection_catalog_write',{p_org:organizationId,p_id:id,p_expected:null,p_data:{},p_archive:true});if(error)throw error;
 }
 
 /**
@@ -241,8 +171,7 @@ export async function getOpportunityObjections(
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.warn('objectionService.getOpportunityObjections - error:', error.message);
-    return [];
+    throw error;
   }
 
   return (data || []) as OpportunityObjection[];
@@ -255,74 +184,13 @@ export async function getOpportunityObjections(
  * id de otra organización. Lanza `ObjectionNotFoundError` (404) o
  * `ObjectionValidationError` (400) si la nota supera `NOTES_MAX`.
  */
-export async function addOpportunityObjection(
-  organizationId: number,
-  opportunityId: string,
-  objectionId: string,
-  data: OpportunityObjectionInput,
-  supabase: SupabaseClient
-): Promise<OpportunityObjection | null> {
-  // El tope se comprueba antes de tocar la BD: por la API entraban 281 caracteres (ronda 2).
-  const notes = typeof data.notes === 'string' ? data.notes.trim() : '';
-  if (notes.length > NOTES_MAX) {
-    throw new ObjectionValidationError(`La nota no puede superar ${NOTES_MAX} caracteres (tiene ${notes.length})`);
-  }
-
-  const [opportunity, objection] = await Promise.all([
-    supabase.from('opportunities').select('id').eq('id', opportunityId).eq('organization_id', organizationId).maybeSingle(),
-    supabase.from('objections').select('id').eq('id', objectionId).eq('organization_id', organizationId).maybeSingle(),
-  ]);
-  if (opportunity.error) throw opportunity.error;
-  if (objection.error) throw objection.error;
-  if (!opportunity.data) throw new ObjectionNotFoundError('Oportunidad no encontrada');
-  if (!objection.data) throw new ObjectionNotFoundError('Objeción no encontrada');
-
-  const { data: result, error } = await supabase
-    .from('opportunity_objections')
-    .insert({
-      organization_id: organizationId,
-      opportunity_id: opportunityId,
-      objection_id: objectionId,
-      notes: notes || null,
-      // NOT NULL con CHECK ('manual','ia'): nunca null.
-      detected_by: data.detected_by ?? 'manual',
-      resolved: false,
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-
-  // Actualizar el objection_id en la oportunidad (referencia directa)
-  await supabase
-    .from('opportunities')
-    .update({ objection_id: objectionId, updated_at: new Date().toISOString() })
-    .eq('id', opportunityId)
-    .eq('organization_id', organizationId);
-
-  return result as OpportunityObjection;
+export async function addOpportunityObjection(organizationId:number,opportunityId:string,objectionId:string,data:OpportunityObjectionInput,supabase:SupabaseClient):Promise<OpportunityObjection|null>{
+ if(data.notes!=null&&typeof data.notes!=='string')throw new ObjectionValidationError('Nota inválida.');
+ const notes=data.notes?.trim()||null;
+ if(notes&&notes.length>NOTES_MAX)throw new ObjectionValidationError(`Máximo ${NOTES_MAX} caracteres.`);
+ const {data:row,error}=await supabase.rpc('crm_objection_register',{p_org:organizationId,p_opportunity:opportunityId,p_objection:objectionId,p_resolve:null,p_notes:notes});
+ if(error)throw error;return row as OpportunityObjection;
 }
-
-/**
- * Marca una opportunity_objection como resuelta.
- */
-export async function resolveOpportunityObjection(
-  id: string,
-  organizationId: number,
-  supabase: SupabaseClient
-): Promise<OpportunityObjection | null> {
-  const { data: result, error } = await supabase
-    .from('opportunity_objections')
-    .update({
-      resolved: true,
-      resolved_at: new Date().toISOString(),
-    })
-    .eq('id', id)
-    .eq('organization_id', organizationId)
-    .select()
-    .single();
-
-  if (error) throw error;
-
-  return result as OpportunityObjection;
+export async function resolveOpportunityObjection(id:string,organizationId:number,supabase:SupabaseClient,opportunityId:string):Promise<OpportunityObjection|null>{
+ const {data:row,error}=await supabase.rpc('crm_objection_register',{p_org:organizationId,p_opportunity:opportunityId,p_objection:null,p_resolve:id,p_notes:null});if(error)throw error;return row as OpportunityObjection;
 }

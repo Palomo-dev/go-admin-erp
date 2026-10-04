@@ -18,7 +18,7 @@ import type { PartnerView } from '../partnerService';
 
 const P = (id: string, extra: Partial<PartnerView> = {}): PartnerView => ({
   id, organization_id: 120, name: 'Carlos', company_name: 'Consultoría', email: 'carlos@x.co', phone: null, tier_id: 't1', commission_rate: 12.5, is_active: true, created_at: '2026-09-01T00:00:00Z',
-  tier: { id: 't1', name: 'Oro', commission_rate: 20 }, effective_rate: 12.5, deals_count: 1, commissions: { count: 1, pending: 10, approved: 0, paid: 0, rejected: 0, outstanding: 10 }, commissions_currency: 'COP', currency_mixed: false, ...extra,
+  tier: { id: 't1', name: 'Oro', commission_rate: 20 }, effective_rate: 12.5, deals_count: 1, commissions: { count: 1, pending: 10, approved: 0, paid: 0, rejected: 0, outstanding: 10 }, commissions_currency: 'COP', currency_mixed: false, revenue: null, ...extra,
 });
 
 describe('partnerModel · formulario de partner', () => {

@@ -1,197 +1,293 @@
-'use client';
+"use client";
+import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
+import { usePathname } from "next/navigation";
+import { moduloPorCodigo } from "@/lib/navigation/catalog";
+import { useNombresNav } from "@/lib/navigation/useNombresNav";
+import { TrendingUp } from "lucide-react";
+import { PageHeader } from "@/components/kit/PageHeader";
+import { Dialogo } from "@/components/kit/Dialogo";
+import { DialogoMotivo } from "@/components/kit/DialogoMotivo";
 
-import { useState, useEffect, useCallback } from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
-import { opportunitiesService } from '@/components/crm/oportunidades/opportunitiesService';
+import { useOrganization } from "@/lib/hooks/useOrganization";
+import { useFormatDate } from "@/lib/context/OrganizationTimezoneContext";
 import {
-  Pipeline,
-  Stage,
-  Opportunity,
-  ForecastData,
-} from '@/components/crm/oportunidades/types';
-import { ForecastFilters } from './ForecastFilters';
-import { GoalProgress } from './GoalProgress';
-import { ForecastByStage } from './ForecastByStage';
-import { ForecastChart } from './ForecastChart';
-import { ForecastScenarios } from './ForecastScenarios';
-import { weightedOpenAmount } from '@/lib/services/crm/revenueOs/forecastScenarios';
-import { LoadErrorState } from '@/components/common/LoadErrorState';
-import { describeError, logError } from '@/lib/utils/errorMessage';
-
+  trimestreDelDia,
+  type ForecastCategory,
+} from "@/lib/services/crm/forecastLogica";
+import { pedirCrm, ErrorApiCrm } from "@/components/crm/acciones/apiCrm";
+import { formatMoneda } from "@/lib/utils/moneda";
+import { useForecastData } from "./useForecastData";
+import { ForecastFilters } from "./ForecastFilters";
+import type { ForecastRow } from "./ForecastTables";
+import { ForecastAdjustmentDialog } from "./ForecastAdjustmentDialog";
+import { ForecastHistory } from "./ForecastHistory";
+import { ForecastBody } from "./ForecastBody";
+import { ForecastHeaderActions, ForecastMenu } from "./ForecastActions";
 interface ForecastDashboardProps {
-  /** Moneda base de la organización (`dashboard.currency` de Revenue OS); null → cifras sin símbolo. */
   currency: string | null;
+  onAnalytics?: () => void;
 }
-
-export function ForecastDashboard({ currency }: ForecastDashboardProps) {
-  const [isLoading, setIsLoading] = useState(true);
-  // Con la base intermitente esta pantalla se quedaba en el esqueleto de carga
-  // (isLoading && pipelines.length === 0) para siempre.
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  const [pipelines, setPipelines] = useState<Pipeline[]>([]);
-  const [selectedPipelineId, setSelectedPipelineId] = useState<string>('');
-  const [selectedPipeline, setSelectedPipeline] = useState<Pipeline | null>(null);
-  const [period, setPeriod] = useState<'weekly' | 'monthly' | 'quarterly'>('monthly');
-
-  const [stages, setStages] = useState<Stage[]>([]);
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-  const [forecastData, setForecastData] = useState<ForecastData[]>([]);
-
-  // Estadísticas calculadas
-  const [wonAmount, setWonAmount] = useState(0);
-  const [openAmount, setOpenAmount] = useState(0);
-  const [weightedAmount, setWeightedAmount] = useState(0);
-
-  const loadInitialData = useCallback(async () => {
-    setIsLoading(true);
-    setLoadError(null);
-    try {
-      const pipelinesData = await opportunitiesService.getPipelines();
-      setPipelines(pipelinesData);
-
-      if (pipelinesData.length > 0) {
-        const defaultPipeline = pipelinesData.find((p) => p.is_default) || pipelinesData[0];
-        setSelectedPipelineId(defaultPipeline.id);
-        setSelectedPipeline(defaultPipeline);
-      }
-    } catch (error) {
-      logError('[ForecastDashboard] cargar pipelines', error);
-      setLoadError(describeError(error));
-    } finally {
-      setIsLoading(false);
-    }
+function ForecastContent({ onAnalytics }: { onAnalytics?: () => void }) {
+  const t = useTranslations("crm.pronostico");
+  const tNav = useTranslations("nav");
+  const navNames = useNombresNav();
+  const pathname = usePathname();
+  const navModule = moduloPorCodigo("crm");
+  const navPage = navModule?.paginas.find((page) => page.href === pathname);
+  const { getToday } = useFormatDate(null);
+  const [period, setPeriod] = useState(() => trimestreDelDia(getToday()));
+  const [team, setTeam] = useState("");
+  const [seller, setSeller] = useState("");
+  const [view, setView] = useState<"sellers" | "months">("sellers");
+  const [mobile, setMobile] = useState(false);
+  const [page, setPage] = useState(1);
+  const [revision, setRevision] = useState(0);
+  const [adjust, setAdjust] = useState<ForecastRow | null>(null);
+  const [history, setHistory] = useState(false);
+  const [undo, setUndo] = useState<{ id: string; user: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const actionLatch = useRef(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const params = new URLSearchParams({
+    period,
+    page: String(page),
+    ...(team ? { team_id: team } : {}),
+    ...(seller ? { user_id: seller } : {}),
+  });
+  const { data, loading, error, forbidden } = useForecastData(
+    params.toString(),
+    revision,
+  );
+  const refresh = () => setRevision((n) => n + 1);
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 1023px)");
+    const update = () => setMobile(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
   }, []);
-
-  const loadPipelineData = useCallback(async () => {
-    if (!selectedPipelineId) return;
-
-    setIsLoading(true);
-    setLoadError(null);
+  useEffect(() => {
+    if (mobile && data?.canViewAll && data.currentUserId && !seller) {
+      setSeller(data.currentUserId);
+      setPage(1);
+    }
+  }, [mobile, data, seller]);
+  const periodParts = /^(\d{4})-Q([1-4])$/.exec(period);
+  const periodLabel = periodParts
+    ? t("trimestreEtiqueta", {
+        n: Number(periodParts[2]),
+        year: periodParts[1],
+      })
+    : period;
+  const selectedSeller = data?.sellers.find((row) => row.id === seller);
+  const selectedName = [selectedSeller?.first_name, selectedSeller?.last_name]
+    .filter(Boolean)
+    .join(" ");
+  const waitingForPersonal = mobile && data?.canViewAll && !seller;
+  const metadata =
+    selectedName && data
+      ? `${periodLabel} · ${t("cuota")} ${formatMoneda(data.summary.quota.total, data.moneda)} · ${t("compromiso")} ${formatMoneda(data.summary.commit.total, data.moneda)}`
+      : periodLabel;
+  const mutate = async (operation: () => Promise<unknown>) => {
+    if (actionLatch.current) return;
+    actionLatch.current = true;
+    setBusy(true);
+    setActionError(null);
     try {
-      const [stagesData, oppsData, forecastDataResult] = await Promise.all([
-        opportunitiesService.getStages(selectedPipelineId),
-        opportunitiesService.getOpportunities({ pipelineId: selectedPipelineId }),
-        opportunitiesService.getForecastByPeriod(selectedPipelineId, period),
-      ]);
-
-      setStages(stagesData);
-      setOpportunities(oppsData);
-      setForecastData(forecastDataResult);
-
-      // Calcular estadísticas
-      const won = oppsData
-        .filter((o) => o.status === 'won')
-        .reduce((sum, o) => sum + (o.amount || 0), 0);
-
-      const open = oppsData
-        .filter((o) => o.status === 'open')
-        .reduce((sum, o) => sum + (o.amount || 0), 0);
-
-      // `stages.probability` es 0–100: el ponderado sale del módulo puro de
-      // F14 (antes se multiplicaba sin dividir por 100 y salía 100× inflado).
-      const weighted = weightedOpenAmount(oppsData, stagesData);
-
-      setWonAmount(won);
-      setOpenAmount(open);
-      setWeightedAmount(weighted);
-
-      // Actualizar pipeline seleccionado
-      const pipeline = pipelines.find((p) => p.id === selectedPipelineId);
-      setSelectedPipeline(pipeline || null);
-    } catch (error) {
-      logError('[ForecastDashboard] cargar datos del pipeline', error);
-      setLoadError(describeError(error));
+      await operation();
+      setAdjust(null);
+      setUndo(null);
+      refresh();
+    } catch (e) {
+      setActionError(
+        t(
+          e instanceof ErrorApiCrm && e.codigo === "sin_tasa"
+            ? "errores.sinTasa"
+            : e instanceof ErrorApiCrm && e.status === 409
+              ? "errores.conflicto"
+              : e instanceof ErrorApiCrm && e.status === 403
+                ? "errores.sinPermiso"
+                : "errores.generico",
+        ),
+      );
     } finally {
-      setIsLoading(false);
+      actionLatch.current = false;
+      setBusy(false);
     }
-  }, [selectedPipelineId, period, pipelines]);
-
-  useEffect(() => {
-    loadInitialData();
-  }, [loadInitialData]);
-
-  useEffect(() => {
-    if (selectedPipelineId) {
-      loadPipelineData();
-    }
-  }, [selectedPipelineId, period, loadPipelineData]);
-
-  const handlePipelineChange = (id: string) => {
-    setSelectedPipelineId(id);
   };
-
-  const handlePeriodChange = (newPeriod: 'weekly' | 'monthly' | 'quarterly') => {
-    setPeriod(newPeriod);
+  const category = (
+    id: string,
+    category: ForecastCategory,
+    updatedAt: string | null,
+  ) =>
+    void mutate(() =>
+      pedirCrm(`/api/crm/opportunities/${id}/forecast-category`, {
+        method: "PATCH",
+        cuerpo: { category, expected_updated_at: updatedAt },
+      }),
+    );
+  const actionProps = {
+    data,
+    loading,
+    busy,
+    period,
+    refresh,
+    setPeriod,
+    setPage,
+    onHistory: () => setHistory(true),
+    onAnalytics,
   };
-
-  // El error manda sobre el esqueleto: si la carga falló hay que decirlo.
-  if (loadError) {
-    return (
-      <div className="p-4">
-        <LoadErrorState
-          title="No se pudo cargar el pronóstico"
-          message={loadError}
-          onRetry={() => {
-            if (selectedPipelineId) void loadPipelineData();
-            else void loadInitialData();
-          }}
-          isRetrying={isLoading}
-        />
-      </div>
-    );
-  }
-
-  if (isLoading && pipelines.length === 0) {
-    return (
-      <div className="space-y-4 p-4">
-        <Skeleton className="h-8 w-1/2" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-32 w-full" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      {/* Filtros */}
-      <ForecastFilters
-        pipelines={pipelines}
-        selectedPipelineId={selectedPipelineId}
-        period={period}
-        onPipelineChange={handlePipelineChange}
-        onPeriodChange={handlePeriodChange}
+    <div className="flex flex-col gap-4">
+      <PageHeader
+        className="contents lg:flex"
+        migas={
+          navModule && navPage
+            ? [
+                {
+                  etiqueta: tNav(navModule.etiqueta),
+                  href: navModule.rutas[0],
+                },
+                { etiqueta: navNames.pagina(navPage) },
+              ]
+            : undefined
+        }
+        titulo={
+          selectedName
+            ? t("tituloVendedor", { nombre: selectedName })
+            : t("titulo")
+        }
+        subtitulo={metadata}
+        icono={TrendingUp}
+        acciones={<ForecastHeaderActions {...actionProps} />}
+        movil={{
+          titulo: t("miPronostico"),
+          subtitulo: "",
+          accion: <ForecastMenu {...actionProps} />,
+        }}
       />
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Progreso de meta */}
-        <GoalProgress
-          pipeline={selectedPipeline}
-          wonAmount={wonAmount}
-          openAmount={openAmount}
-          weightedAmount={weightedAmount}
-          isLoading={isLoading}
-          currency={currency}
+      <ForecastFilters
+        data={data}
+        period={period}
+        team={team}
+        seller={seller}
+        busy={busy}
+        setPeriod={setPeriod}
+        setTeam={setTeam}
+        setSeller={setSeller}
+        setPage={setPage}
+        view={view}
+        onView={setView}
+      />
+      {actionError && (
+        <p
+          role="alert"
+          className="rounded-lg bg-danger-subtle p-3 text-sm text-danger-text"
+        >
+          {actionError}
+        </p>
+      )}
+      <ForecastBody
+        data={data}
+        loading={loading}
+        error={error}
+        forbidden={forbidden}
+        refresh={refresh}
+        busy={busy}
+        seller={seller}
+        view={view}
+        page={page}
+        setPage={setPage}
+        setSeller={setSeller}
+        category={category}
+        setAdjust={setAdjust}
+        periodLabel={periodLabel}
+        waitingForPersonal={Boolean(waitingForPersonal)}
+      />
+      {adjust && data && (
+        <ForecastAdjustmentDialog
+          key={adjust.userId}
+          row={adjust}
+          moneda={data.moneda}
+          period={periodLabel}
+          error={actionError}
+          busy={busy}
+          onClose={() => setAdjust(null)}
+          onSave={(values) =>
+            void mutate(() =>
+              pedirCrm("/api/crm/forecast/adjustments", {
+                method: "POST",
+                cuerpo: {
+                  ...values,
+                  period,
+                  user_id: adjust.userId,
+                  expected_before: adjust.commit.total,
+                  expected_adjustment_id: adjust.latestAdjustment?.id ?? null,
+                },
+              }),
+            )
+          }
         />
-
-        {/* Gráfico de tendencia */}
-        <div className="lg:col-span-2">
-          <ForecastChart data={forecastData} isLoading={isLoading} currency={currency} />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Escenarios (F14): mejor / esperado / peor sobre las abiertas */}
-        <ForecastScenarios stages={stages} opportunities={opportunities} isLoading={isLoading} currency={currency} />
-
-        {/* Pronóstico por etapa */}
-        <div className="lg:col-span-2">
-          <ForecastByStage stages={stages} opportunities={opportunities} isLoading={isLoading} currency={currency} />
-        </div>
-      </div>
+      )}
+      <Dialogo
+        abierto={history}
+        onAbiertoChange={setHistory}
+        titulo={t("historial")}
+        primario={{ etiqueta: t("cerrar"), onClick: () => setHistory(false) }}
+      >
+        {data && (
+          <ForecastHistory
+            data={data}
+            busy={busy}
+            onUndo={(id, user) => setUndo({ id, user })}
+          />
+        )}
+      </Dialogo>
+      <DialogoMotivo
+        abierto={Boolean(undo)}
+        onAbiertoChange={(v) => {
+          if (!v && !busy) setUndo(null);
+        }}
+        titulo={t("revertir")}
+        textoConfirmar={t("revertir")}
+        descripcion={t("notaReversion")}
+        minimo={3}
+        maximo={2000}
+        cargando={busy}
+        error={actionError}
+        onConfirmar={(reason) => {
+          const row = data?.rows.find((r) => r.userId === undo?.user);
+          if (!row || !undo) return;
+          return mutate(() =>
+            pedirCrm("/api/crm/forecast/adjustments", {
+              method: "POST",
+              cuerpo: {
+                period,
+                user_id: undo.user,
+                expected_before: row.commit.total,
+                expected_adjustment_id: row.latestAdjustment?.id ?? null,
+                reason_code: "reversal",
+                reason_text: reason,
+                reverses_id: undo.id,
+              },
+            }),
+          );
+        }}
+      />
     </div>
+  );
+}
+export function ForecastDashboard({
+  currency,
+  onAnalytics,
+}: ForecastDashboardProps) {
+  void currency; // Compatibilidad de Revenue OS: la nueva lectura resuelve su moneda en servidor.
+  const { organization } = useOrganization();
+  return (
+    <ForecastContent
+      key={organization?.id ?? "sin-organizacion"}
+      onAnalytics={onAnalytics}
+    />
   );
 }

@@ -2,7 +2,8 @@
  * F4 — guarda de «trabajo vivo» contra el doble cobro: `forceRetryBucket` y
  * `findLiveCallJob` (callIntelligenceService) más los CONTRATOS sobre el fuente
  * de las rutas `POST /api/crm/calls/[id]/{transcribe,analyze}` y de los dos
- * paneles (`CallTranscriptPanel`, `CallAnalysisPanel`). Consolidado el
+ * paneles (`CallTranscriptPanel`, `CallAnalysisPanel`) y su controlador
+ * compartido `useCallAnalysisActions`. Consolidado el
  * 2026-09-21 a partir de `f4Round4Builder` (B9-B11), `f4Round4Tester` (U12),
  * `f4Round5Builder` (C4, C5), `f4Round5Tester` (V7, V7b), `f4Round6Builder`
  * (D4, D4b, D5), `f4Round6Tester` (W5-W7) y `f4Round7Builder` (E3, E4).
@@ -29,13 +30,23 @@ const ROUTE_T = 'src/app/api/crm/calls/[id]/transcribe/route.ts';
 const ROUTE_A = 'src/app/api/crm/calls/[id]/analyze/route.ts';
 const PANEL_T = 'src/components/crm/calls/CallTranscriptPanel.tsx';
 const PANEL_A = 'src/components/crm/calls/CallAnalysisPanel.tsx';
+const ACTIONS_A = 'src/components/crm/calls/useCallAnalysisActions.ts';
+
+interface JobsBuilder {
+  select(): JobsBuilder;
+  eq(col: string, val: unknown): JobsBuilder;
+  in(col: string, vals: unknown[]): JobsBuilder;
+  like(col: string, pattern: string): JobsBuilder;
+  limit(n: number): JobsBuilder;
+  then(res: (value: unknown) => unknown, rej: (error: unknown) => unknown): Promise<unknown>;
+}
 
 /** Cliente mínimo para `findLiveCallJob`: select/eq/in/like/limit sobre outbound_jobs (de builder r4). */
 function stubJobsClient(rows: Array<Record<string, unknown>>, failWith?: string): SupabaseClient {
   return {
-    from: (_t: string) => {
+    from: () => {
       let out = [...rows];
-      const b: any = {
+      const b: JobsBuilder = {
         select: () => b,
         eq: (col: string, val: unknown) => { out = out.filter((r) => String(r[col]) === String(val)); return b; },
         in: (col: string, vals: unknown[]) => { out = out.filter((r) => vals.map(String).includes(String(r[col]))); return b; },
@@ -145,8 +156,12 @@ describe('CONTRATOS sobre las rutas: la guarda va en los DOS caminos (sync y col
     expect(a.slice(0, a.indexOf('enqueueAnalyze('))).toContain("findLiveCallJob(ctx.organizationId, id, 'analyze', sb)");
   });
 
-  it('E3/D5/W5 · los DOS paneles leen `deduped` y `dedupe_checked`, y el texto degradado no promete lo que no se pudo comprobar', () => {
-    for (const p of [SRC(PANEL_T), SRC(PANEL_A)]) {
+  it('E3/D5/W5 · ambos controladores leen `deduped` y `dedupe_checked`, y el texto degradado no promete lo que no se pudo comprobar', () => {
+    const analysisPanel = SRC(PANEL_A);
+    expect(analysisPanel).toContain("import { useCallAnalysisActions } from './useCallAnalysisActions';");
+    expect(analysisPanel).toContain('useCallAnalysisActions(callId, s, onApplied)');
+    expect(analysisPanel).toContain('onClick={() => runAnalyze(!!analysis)}');
+    for (const p of [SRC(PANEL_T), SRC(ACTIONS_A)]) {
       expect(p).toContain('json.data?.deduped');
       expect(p).toContain('json.data?.dedupe_checked');
       expect(p).toMatch(/ya (hab[íi]a|hay)/i);

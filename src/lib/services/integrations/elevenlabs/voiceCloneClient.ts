@@ -14,6 +14,7 @@
  */
 
 import type { SharedVoiceRaw } from '@/lib/services/crm/voiceLibrary';
+import { RequestDeadlineError, withRequestDeadline } from '@/lib/utils/requestDeadline';
 
 const BASE_URL = 'https://api.elevenlabs.io/v1';
 
@@ -64,6 +65,9 @@ export interface ElevenLabsSubscription {
 interface ElevenLabsClientOptions {
   apiKey: string;
   fetchImpl?: typeof fetch;
+  readTimeoutMs?: number;
+  /** Identidad de caché sólo servidor; nunca llega al proveedor ni al navegador. */
+  cacheKey?: string;
 }
 
 interface ProviderDetail {
@@ -73,6 +77,8 @@ interface ProviderDetail {
 export class ElevenLabsVoiceClient {
   private readonly apiKey: string;
   private readonly fetchImpl: typeof fetch;
+  private readonly readTimeoutMs: number;
+  readonly cacheKey: string | undefined;
 
   constructor(options: ElevenLabsClientOptions) {
     if (isPlaceholderKey(options.apiKey)) {
@@ -83,6 +89,8 @@ export class ElevenLabsVoiceClient {
     }
     this.apiKey = options.apiKey;
     this.fetchImpl = options.fetchImpl ?? fetch;
+    this.readTimeoutMs = options.readTimeoutMs ?? 10_000;
+    this.cacheKey = options.cacheKey;
   }
 
   private async raw(path: string, init: RequestInit = {}): Promise<Response> {
@@ -108,19 +116,36 @@ export class ElevenLabsVoiceClient {
     return res;
   }
 
-  private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const res = await this.raw(path, init);
-    const text = await res.text();
+  private async perform<T>(path: string, init: RequestInit, consume: (res: Response) => Promise<T>, timeoutMs?: number): Promise<T> {
     try {
-      return (text ? JSON.parse(text) : null) as T;
-    } catch {
-      return text as unknown as T;
+      return await withRequestDeadline(async (signal) => consume(await this.raw(path, { ...init, signal })), {
+        timeoutMs: timeoutMs ?? (!init.method || init.method === 'GET' ? this.readTimeoutMs : 30_000),
+        signal: init.signal ?? undefined,
+      });
+    } catch (error) {
+      if (error instanceof RequestDeadlineError) {
+        if (error.code === 'REQUEST_ABORTED') throw error;
+        throw new ElevenLabsError(504, 'ElevenLabs no respondió a tiempo. Vuelve a intentarlo.', undefined, 'provider_timeout');
+      }
+      if (error instanceof ElevenLabsError) throw error;
+      throw new ElevenLabsError(503, 'No se pudo conectar con ElevenLabs. Vuelve a intentarlo.', undefined, 'provider_unavailable');
     }
   }
 
+  private async request<T>(path: string, init: RequestInit = {}, timeoutMs?: number): Promise<T> {
+    return this.perform(path, init, async (res) => {
+      const text = await res.text();
+      try {
+        return (text ? JSON.parse(text) : null) as T;
+      } catch {
+        return text as unknown as T;
+      }
+    }, timeoutMs);
+  }
+
   /** GET /v1/voices — catálogo del workspace (incluye las voces clonadas y las añadidas). */
-  async listVoices(): Promise<ElevenLabsVoiceSummary[]> {
-    const data = await this.request<{ voices?: ElevenLabsVoiceSummary[] }>('/voices');
+  async listVoices(signal?: AbortSignal): Promise<ElevenLabsVoiceSummary[]> {
+    const data = await this.request<{ voices?: ElevenLabsVoiceSummary[] }>('/voices', { signal });
     return data.voices ?? [];
   }
 
@@ -130,8 +155,8 @@ export class ElevenLabsVoiceClient {
   }
 
   /** GET /v1/shared-voices — biblioteca pública. `query` ya viene saneada. */
-  async listSharedVoices(query: URLSearchParams): Promise<SharedVoicesPage> {
-    const data = await this.request<Partial<SharedVoicesPage>>(`/shared-voices?${query.toString()}`);
+  async listSharedVoices(query: URLSearchParams, signal?: AbortSignal): Promise<SharedVoicesPage> {
+    const data = await this.request<Partial<SharedVoicesPage>>(`/shared-voices?${query.toString()}`, { signal });
     return {
       voices: data.voices ?? [],
       has_more: data.has_more === true,
@@ -166,8 +191,8 @@ export class ElevenLabsVoiceClient {
   }
 
   /** GET /v1/user/subscription — plan de la cuenta (solo lectura; no gasta créditos). */
-  async getSubscription(): Promise<ElevenLabsSubscription> {
-    const data = await this.request<Partial<ElevenLabsSubscription>>('/user/subscription');
+  async getSubscription(signal?: AbortSignal): Promise<ElevenLabsSubscription> {
+    const data = await this.request<Partial<ElevenLabsSubscription>>('/user/subscription', { signal });
     return {
       tier: typeof data.tier === 'string' ? data.tier : 'unknown',
       can_use_instant_voice_cloning: data.can_use_instant_voice_cloning === true,
@@ -178,12 +203,11 @@ export class ElevenLabsVoiceClient {
 
   /** POST /v1/text-to-speech/{id} — audio MP3 de una frase corta (para «Escuchar»). */
   async synthesize(voiceId: string, text: string, modelId = 'eleven_flash_v2_5'): Promise<ArrayBuffer> {
-    const res = await this.raw(`/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_64`, {
+    return this.perform(`/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_64`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', accept: 'audio/mpeg' },
       body: JSON.stringify({ text, model_id: modelId }),
-    });
-    return res.arrayBuffer();
+    }, (res) => res.arrayBuffer(), 60_000);
   }
 
   /**
@@ -210,14 +234,24 @@ export class ElevenLabsVoiceClient {
     return this.request<{ voice_id: string; requires_verification?: boolean }>('/voices/add', {
       method: 'POST',
       body: form,
-    });
+    }, 120_000);
   }
 }
 
 /** Crea el cliente desde el registro de proveedores (org) con fallback a env. */
-export async function getElevenLabsClientForOrg(orgId: number): Promise<ElevenLabsVoiceClient> {
-  const { getProviderCredentials } = await import('@/lib/services/providerCredentials.server');
-  const cfg = await getProviderCredentials(orgId, 'tts', 'elevenlabs');
+export async function getElevenLabsClientForOrg(orgId: number, options?: { signal?: AbortSignal }): Promise<ElevenLabsVoiceClient> {
+  const { getProviderCredentials, ProviderReadError } = await import('@/lib/services/providerCredentials.server');
+  let cfg;
+  try {
+    cfg = await getProviderCredentials(orgId, 'tts', 'elevenlabs', { timeoutMs: 4_000, strict: true, signal: options?.signal });
+  } catch (error) {
+    if (error instanceof ProviderReadError) {
+      throw new ElevenLabsError(error.status, error.message, undefined, 'credentials_unavailable');
+    }
+    throw error;
+  }
   const key = cfg.credentials.ELEVENLABS_API_KEY || process.env.ELEVENLABS_API_KEY || '';
-  return new ElevenLabsVoiceClient({ apiKey: key });
+  const { createHash } = await import('node:crypto');
+  const cacheKey = createHash('sha256').update(key).digest('hex');
+  return new ElevenLabsVoiceClient({ apiKey: key, cacheKey });
 }

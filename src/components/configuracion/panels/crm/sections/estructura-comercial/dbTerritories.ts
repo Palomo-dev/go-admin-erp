@@ -1,8 +1,9 @@
 import { supabase } from '@/lib/supabase/config';
+import { pedirCrm } from '@/components/crm/acciones/apiCrm';
 import { requireOrgId } from './dbRoles';
 import type { Territory } from './types';
 
-/** Capa de datos directa con Supabase cliente (con RLS) — territorios. */
+/** Reads remain scoped; mutations use the audited server API. */
 export const territoriesDb = {
   async getTerritories(): Promise<Territory[]> {
     const orgId = requireOrgId();
@@ -19,36 +20,12 @@ export const territoriesDb = {
     criteria?: Record<string, unknown>;
     is_active?: boolean;
   }): Promise<Territory> {
-    const orgId = requireOrgId();
-    const { data, error } = await supabase
-      .from('territories')
-      .insert({
-        organization_id: orgId,
-        name: body.name,
-        criteria: body.criteria ?? {},
-        is_active: body.is_active ?? true,
-      })
-      .select()
-      .single();
-    if (error) throw error;
-    return data as Territory;
+    return (await pedirCrm<Territory>('/api/crm/territories',{method:'POST',cuerpo:body})).data;
   },
-  async updateTerritory(id: string, body: Partial<Territory>): Promise<Territory> {
-    const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
-    if (body.name !== undefined) updateData.name = body.name;
-    if (body.criteria !== undefined) updateData.criteria = body.criteria;
-    if (body.is_active !== undefined) updateData.is_active = body.is_active;
-    const { data, error } = await supabase
-      .from('territories')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
-    if (error) throw error;
-    return data as Territory;
+  async updateTerritory(id:string,body:Partial<Territory>):Promise<Territory> {
+    return (await pedirCrm<Territory>(`/api/crm/territories/${encodeURIComponent(id)}`,{method:'PATCH',cuerpo:body})).data;
   },
-  async deleteTerritory(id: string): Promise<void> {
-    const { error } = await supabase.from('territories').delete().eq('id', id);
-    if (error) throw error;
+  async deleteTerritory(id:string):Promise<void> {
+    await pedirCrm(`/api/crm/territories/${encodeURIComponent(id)}`,{method:'DELETE'});
   },
 };

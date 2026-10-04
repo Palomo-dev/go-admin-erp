@@ -10,6 +10,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { createHash } from 'crypto';
 import { enqueueJob } from '@/lib/jobs/enqueue';
 import { EmailError, MAX_RECIPIENTS, MAX_SCHEDULE_DAYS, RESEND_SCHEDULE_WINDOW_MS, type EmailKind, type EmailMessage, type EmailMessageMeta } from './types';
 import { resolveSender, type ResolvedSender } from './domainsService';
@@ -18,8 +19,9 @@ import { renderEmail, type RenderOutput } from './render';
 import { buildContext, type RenderContext } from './variables';
 import { loadAttachments, refsToInputs, toRefs, type AttachmentInput, type LoadedAttachment } from './attachments';
 import { signUnsubscribeToken, unsubscribeUrl } from './unsubscribe';
-import { buildIdempotencyKey, findByClientRequestId, insertMessage, isUuid, markFailed, mergeMeta, messageId, requireMessage, upsertEmailActivity } from './messageStore';
+import { buildIdempotencyKey, findByClientRequestId, insertMessage, isUuid, markFailed, mergeMeta, messageId, prepareCampaignMessage, requireMessage, upsertEmailActivity } from './messageStore';
 import { requireTemplate, touchTemplateUsage } from './templatesService';
+import { campaignDispatch, checkDeliveryBudget, isCampaignBridgeMessage, withinDeliveryBudget, type DeliveryBudget } from './campaignDispatch';
 
 export type SendContent =
   | { template_id: string; variables?: Record<string, unknown> }
@@ -56,6 +58,9 @@ export interface SendEmailRequest {
    * igual recibe la asignación.
    */
   avisoMiembro?: boolean;
+  /** Sólo worker interno: renderizar/publicar en la transacción de su contacto, sin proveedor. */
+  prepare_only?: boolean;
+  campaign_claim?: { contact_id: string; token: string };
 }
 
 export interface SendEmailResult {
@@ -112,7 +117,8 @@ async function renderContent(orgId: number, req: SendEmailRequest, ctx: RenderCo
 /** Construye el payload de Resend (nombres camelCase del SDK 6.26). */
 export function buildResendPayload(msg: EmailMessage, sender: ResolvedSender, attachments: LoadedAttachment[], scheduledAt?: string) {
   const meta = msg.metadata ?? {};
-  const domainHost = sender.receivingDomain ?? sender.domain?.domain ?? null;
+  const hasCampaignSnapshot = isCampaignBridgeMessage(msg);
+  const domainHost = hasCampaignSnapshot && Object.hasOwn(meta, 'sender_receiving_domain_snapshot') ? typeof meta.sender_receiving_domain_snapshot === 'string' ? meta.sender_receiving_domain_snapshot : null : sender.receivingDomain ?? sender.domain?.domain ?? null;
   const headers: Record<string, string> = { 'Message-ID': msgIdHeader(msg.id, domainHost), 'X-Email-Message-Id': msg.id };
   if (meta.in_reply_to) {
     headers['In-Reply-To'] = msgIdHeader(meta.in_reply_to, domainHost);
@@ -131,7 +137,7 @@ export function buildResendPayload(msg: EmailMessage, sender: ResolvedSender, at
     ...(meta.test ? [{ name: 'test', value: 'true' }] : []),
   ];
   return {
-    from: sender.from,
+    from: hasCampaignSnapshot && typeof meta.sender_from_snapshot === 'string' ? meta.sender_from_snapshot : sender.from,
     to: [msg.to_email, ...((msg.metadata?.extra_to as string[] | undefined) ?? [])],
     cc: msg.cc ?? undefined,
     bcc: msg.bcc ?? undefined,
@@ -146,13 +152,61 @@ export function buildResendPayload(msg: EmailMessage, sender: ResolvedSender, at
   };
 }
 
+export function resendPayloadHash(payload: unknown): string { return createHash('sha256').update(JSON.stringify(payload)).digest('hex'); }
+
 /** Llama a Resend con rate limit y actualiza la fila. Lanza EmailError('PROVIDER') si falla. */
-export async function deliver(msg: EmailMessage, sender: ResolvedSender, attachments: LoadedAttachment[], supabase: SupabaseClient, scheduledAt?: string): Promise<EmailMessage> {
+export async function deliver(msg: EmailMessage, sender: ResolvedSender, attachments: LoadedAttachment[], supabase: SupabaseClient, scheduledAt?: string, budget: DeliveryBudget = {}): Promise<EmailMessage> {
+  checkDeliveryBudget(budget);
   const resend = getResendClient(sender.apiKey);
-  await getResendRateLimiter().wait();
+  await getResendRateLimiter().wait(budget.signal);
+  checkDeliveryBudget(budget);
+  const campaign = isCampaignBridgeMessage(msg);
   const payload = buildResendPayload(msg, sender, attachments, scheduledAt);
-  const { data, error } = await resend.emails.send(payload as Parameters<typeof resend.emails.send>[0], { idempotencyKey: buildIdempotencyKey(msg.id) });
+  let token: string | undefined;
+  if (campaign) {
+    const domain = sender.receivingDomain ?? sender.domain?.domain ?? null;
+    const senderChanged = msg.from_email !== sender.fromEmail || msg.metadata.sender_mode !== sender.mode || (msg.metadata.email_domain_id ?? null) !== (sender.domain?.id ?? null) || msg.metadata.sender_receiving_domain_snapshot !== domain || msg.metadata.sender_key_fingerprint !== resendPayloadHash(sender.apiKey);
+    const payloadChanged = msg.metadata.campaign_payload_hash !== resendPayloadHash(payload);
+    if (senderChanged || payloadChanged) {
+      const reason = senderChanged ? 'email_sender_changed' : 'email_payload_changed';
+      const receipt = await campaignDispatch(msg, 'blocked', supabase, undefined, undefined, reason);
+      if (receipt.reason === 'already_sent' && receipt.message?.provider_message_id) return receipt.message;
+      throw new EmailError('CAMPAIGN_NOT_READY', reason, 409);
+    }
+    const gate = await campaignDispatch(msg, 'begin', supabase);
+    if (!gate.allowed) {
+      if (gate.reason === 'already_sent' && gate.message?.provider_message_id) return gate.message;
+      throw new EmailError('CAMPAIGN_NOT_READY', gate.reason ?? 'Campaña no disponible para enviar', 409);
+    }
+    if (!gate.token) throw new EmailError('DB', 'Falta testigo de envío', 503);
+    token = gate.token;
+  }
+  checkDeliveryBudget(budget);
+  // La respuesta tardía también deja su recibo. El timeout no crea otro email/idempotency key.
+  const effect = resend.emails.send(payload as Parameters<typeof resend.emails.send>[0], { idempotencyKey: buildIdempotencyKey(msg.id) }).then(async ({ data, error }) => {
+    if (campaign && data?.id && !error) {
+      const receipt = await campaignDispatch(msg, 'sent', supabase, token, data.id);
+      if (!receipt.message?.provider_message_id || receipt.message.provider_message_id !== data.id) throw new EmailError('DB', 'Confirmación de proveedor no persistida', 503);
+      return { data, error, confirmed: receipt.message };
+    }
+    return { data, error, confirmed: undefined };
+  });
+  const hasBudget = campaign || budget.signal || budget.deadlineAt !== undefined || budget.timeoutMs !== undefined;
+  const { data, error, confirmed } = await (hasBudget ? withinDeliveryBudget(effect, budget) : effect);
+  if (confirmed) return confirmed;
   if (error || !data) {
+    if (campaign) {
+      const rawStatus = error && 'statusCode' in error ? error.statusCode : null;
+      const status = typeof rawStatus === 'number' && Number.isFinite(rawStatus) ? rawStatus : null;
+      if (status === 409) {
+        await campaignDispatch(msg, 'blocked', supabase, undefined, undefined, 'email_idempotency_conflict');
+        throw new EmailError('PROVIDER_RETRYABLE', 'El proveedor exige conciliar la clave de envío', 503);
+      }
+      // 429/5xx y transporte conservan la misma fila/recibo para reintentar con clave estable.
+      if (status === 429 || status === null || status >= 500) throw new EmailError('PROVIDER_RETRYABLE', 'El proveedor no confirmó el envío', 503);
+      await campaignDispatch(msg, 'failed', supabase, token, undefined, `Resend: ${error?.name ?? ''} ${error?.message ?? 'sin respuesta'}`.trim());
+      throw new EmailError('PROVIDER', `Resend: ${error?.message ?? 'sin respuesta'}`, 502);
+    }
     const failed = await markFailed(msg, `Resend: ${error?.name ?? ''} ${error?.message ?? 'sin respuesta'}`.trim(), supabase);
     throw new EmailError('PROVIDER', `Resend: ${error?.message ?? 'sin respuesta'}`, 502, { message: failed });
   }
@@ -168,12 +222,15 @@ export async function sendEmail(orgId: number, actor: SendEmailActor, req: SendE
   const to = cleanEmails(req.to, 'to');
   const cc = cleanEmails(req.cc, 'cc');
   const bcc = cleanEmails(req.bcc, 'bcc');
+  if (req.prepare_only && (!isUuid(req.campaign_id) || !isUuid(req.campaign_claim?.contact_id) || !isUuid(req.campaign_claim?.token) || to.length !== 1 || cc.length || bcc.length || req.attachments?.length || req.scheduled_at || req.test || req.avisoMiembro)) {
+    throw new EmailError('VALIDATION', 'Preparación de campaña inválida', 400);
+  }
   if (to.length === 0) throw new EmailError('VALIDATION', 'Se requiere al menos un destinatario', 400);
   if (to.length + cc.length + bcc.length > MAX_RECIPIENTS) throw new EmailError('TOO_MANY_RECIPIENTS', `Máximo ${MAX_RECIPIENTS} destinatarios`, 400);
   const kind: EmailKind = req.test ? 'system' : (req.kind ?? 'transactional');
   const userId = req.from_user_id ?? actor.userId;
 
-  if (req.client_request_id) {
+  if (req.client_request_id && !req.prepare_only) {
     const dup = await findByClientRequestId(orgId, req.client_request_id, supabase);
     if (dup) return { message: dup, scheduled: !!dup.metadata?.scheduled, warnings: ['duplicate_client_request'], missing: [] };
   }
@@ -220,14 +277,25 @@ export async function sendEmail(orgId: number, actor: SendEmailActor, req: SendE
     list_unsubscribe_token: unsubToken ?? undefined, from_user_id: userId, email_domain_id: sender.domain?.id ?? null, sender_mode: sender.mode,
     body_text_snapshot: rendered.text, client_request_id: req.client_request_id ?? undefined, reply_to: replyTo ?? undefined,
     scheduled: !!scheduledAtIso, missing_variables: hardMissing.length ? hardMissing : undefined, test: req.test || undefined,
-    campaign_id: req.campaign_id ?? undefined, extra_to: to.length > 1 ? to.slice(1) : undefined, attachments: [],
+    campaign_id: req.campaign_id ?? undefined, campaign_contact_id: req.campaign_claim?.contact_id,
+    extra_to: to.length > 1 ? to.slice(1) : undefined, attachments: [],
+    ...(req.prepare_only ? { sender_from_snapshot: sender.from, sender_receiving_domain_snapshot: sender.receivingDomain ?? sender.domain?.domain ?? null, sender_key_fingerprint: resendPayloadHash(sender.apiKey) } : {}),
   };
-  const message = await insertMessage({
+  const row = {
     id, organization_id: orgId, provider: 'resend', template_id: templateId, to_email: to[0], to_customer_id: customerId, cc: cc.length ? cc : null, bcc: bcc.length ? bcc : null,
     from_email: sender.fromEmail, subject: rendered.subject, body_html_snapshot: rendered.html, related_type: req.related_type ?? null, related_id: req.related_id ?? null,
     sequence_step_run_id: req.sequence_step_run_id ?? null, status: 'pending', scheduled_at: scheduledAtIso, idempotency_key: buildIdempotencyKey(id), metadata: meta,
-  }, supabase);
+  };
+  if (req.prepare_only) meta.campaign_payload_hash = resendPayloadHash(buildResendPayload(row as EmailMessage, sender, []));
+  const message = req.prepare_only && req.campaign_id && req.campaign_claim
+    ? await prepareCampaignMessage(row, { campaignId: req.campaign_id, contactId: req.campaign_claim.contact_id, token: req.campaign_claim.token }, supabase)
+    : await insertMessage(row, supabase);
 
+  // La preparación ya publicó mensaje/activity/vínculo en una transacción.
+  if (req.prepare_only) {
+    if (templateId) touchTemplateUsage(orgId, templateId, supabase).catch(() => undefined);
+    return { message, scheduled: false, warnings, missing: hardMissing };
+  }
   // También se registra la activity de los envíos de prueba (tester r1 #8).
   await upsertEmailActivity(
     message,

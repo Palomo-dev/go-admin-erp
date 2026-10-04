@@ -1,82 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { NextRequest,NextResponse } from 'next/server';
+import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
-import {
-  getTeamMembers,
-  addTeamMember,
-} from '@/lib/services/crm/salesStructureService';
-
-/**
- * GET /api/crm/teams/[id]/members — Lista los miembros de un equipo.
- */
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const ctx = await getServerOrgContext();
-    const { id } = await params;
-
-    const members = await getTeamMembers(id, ctx.supabase);
-
-    return NextResponse.json({ success: true, data: members }, { status: 200 });
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Team Members] GET error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
-  }
-}
-
-/**
- * POST /api/crm/teams/[id]/members — Añade un miembro al equipo.
- * Body: { user_id, sales_role_id?, quota_amount?, quota_currency?, is_active? }
- */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const ctx = await getServerOrgContext();
-    const { id } = await params;
-    const body = await readOrgBody(ctx, request);
-
-    if (!body?.user_id) {
-      return NextResponse.json(
-        { success: false, error: 'Falta el campo obligatorio: user_id' },
-        { status: 400 }
-      );
-    }
-
-    const member = await addTeamMember(
-      ctx.organizationId,
-      id,
-      {
-        user_id: body.user_id,
-        sales_role_id: body.sales_role_id,
-        quota_amount: body.quota_amount,
-        quota_currency: body.quota_currency,
-        is_active: body.is_active,
-        territory_id: body.territory_id || null,
-      },
-      ctx.supabase
-    );
-
-    return NextResponse.json({ success: true, data: member }, { status: 201 });
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Team Members] POST error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
-  }
-}
+import { CRM_PERMISOS,exigirPermisoCrm,respuestaErrorCrm,sinClavesDeOrganizacion,exigirUuid,CrmHttpError } from '@/lib/services/crm/crmRouteSupport';
+import { compatibleTeamWrite } from '@/lib/services/crm/teamManagementCompatibility';
+type Params={params:Promise<{id:string}>};
+export async function GET(request:NextRequest,params:Params){try{const ctx=await getServerOrgContext(request);readOrgBody(ctx,{}, {request});await exigirPermisoCrm(ctx,[CRM_PERMISOS.oportunidadesVer],'leer miembros');const {id}=await params.params;exigirUuid(id);const team=await ctx.supabase.from('sales_teams').select('id').eq('organization_id',ctx.organizationId).eq('id',id).maybeSingle();if(team.error)throw team.error;if(!team.data)throw new CrmHttpError(404,'equipo_no_encontrado','Equipo no encontrado');const result=await ctx.supabase.from('sales_team_members').select('*,sales_roles:sales_role_id(id,name,code),profiles:user_id(id,first_name,last_name,email),territories:territory_id(id,name)').eq('organization_id',ctx.organizationId).eq('sales_team_id',id).order('created_at');if(result.error)throw result.error;return NextResponse.json({success:true,data:result.data});}catch(error){return respuestaErrorCrm(error,'GET /api/crm/teams/[id]/members');}}
+export async function POST(request:NextRequest,params:Params){try{const ctx=await getServerOrgContext(request);const {id}=await params.params;const data=await compatibleTeamWrite(ctx,'member',sinClavesDeOrganizacion(await readOrgBody(ctx,request)),null,id);return NextResponse.json({success:true,data},{status:201});}catch(error){return respuestaErrorCrm(error,'POST /api/crm/teams/[id]/members');}}

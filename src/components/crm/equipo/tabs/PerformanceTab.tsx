@@ -1,216 +1,63 @@
 'use client';
+import { useTranslations,useFormatter } from 'next-intl';
+import { ChartNoAxesCombined,Calendar,Trophy,Users } from 'lucide-react';
+import { DataTable,StatCard,EmptyState,AvatarIniciales,BadgeTono,type ColumnaTabla } from '@/components/kit';
+import {PerformanceExport} from '../PerformanceExport';
+import { Progress } from '@/components/ui/progress';
+import type { TeamManagementData,TeamPerformance } from '@/lib/services/crm/teamManagementModel';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import type { CabeceraEquipo } from '../cabeceraEquipo';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Gauge, RefreshCw, TrendingUp, Trophy, Target } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import {
-  Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
-} from '@/components/ui/table';
-import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/lib/supabase/config';
-import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
-import { formatMoneda } from '@/lib/utils/moneda';
-import Link from 'next/link';
-import { requireOrgId } from '../useEquipoData';
-import { memberName } from '../types';
-import type { SalesTeamMember, Opportunity } from '../types';
-
-interface PerfRow {
-  member: SalesTeamMember;
-  active: number;
-  won: number;
-  lost: number;
-  pipelineAmount: number;
-  wonAmount: number;
-  quota: number;
-  currency: string;
-}
-
-export function PerformanceTab() {
-  const { toast } = useToast();
-  const { code: monedaBase, formatear, paraDocumento } = useMonedaOrganizacion();
-  const [members, setMembers] = useState<SalesTeamMember[]>([]);
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const load = useCallback(async () => {
-    setIsRefreshing(true);
-    try {
-      const orgId = requireOrgId();
-      const [membersRes, oppRes] = await Promise.all([
-        supabase
-          .from('sales_team_members')
-          .select(`*, sales_roles:sales_role_id(id, name, code), profiles:user_id(id, first_name, last_name, email), territories:territory_id(id, name)`)
-          .eq('organization_id', orgId)
-          .eq('is_active', true),
-        supabase
-          .from('opportunities')
-          .select('id, name, amount, currency, status, salesperson_id, stage_id, stages(name, probability)')
-          .eq('organization_id', orgId),
-      ]);
-      if (membersRes.error) throw membersRes.error;
-      if (oppRes.error) throw oppRes.error;
-      setMembers((membersRes.data || []) as SalesTeamMember[]);
-      setOpportunities((oppRes.data || []) as unknown as Opportunity[]);
-    } catch (err) {
-      console.error('Error:', err);
-      toast({ title: 'Error', description: 'No se pudo cargar performance', variant: 'destructive' });
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [toast]);
-
-  useEffect(() => { load(); }, [load]);
-
-  const rows: PerfRow[] = members.map((m) => {
-    const memberOpps = opportunities.filter((o) => o.salesperson_id === m.user_id);
-    const active = memberOpps.filter((o) => !['won', 'lost'].includes(o.status || '')).length;
-    const won = memberOpps.filter((o) => o.status === 'won').length;
-    const lost = memberOpps.filter((o) => o.status === 'lost').length;
-    const pipelineAmount = memberOpps.filter((o) => !['won', 'lost'].includes(o.status || '')).reduce((s, o) => s + (Number(o.amount) || 0), 0);
-    const wonAmount = memberOpps.filter((o) => o.status === 'won').reduce((s, o) => s + (Number(o.amount) || 0), 0);
-    return { member: m, active, won, lost, pipelineAmount, wonAmount, quota: Number(m.quota_amount) || 0, currency: m.quota_currency || monedaBase };
-  });
-
-  // Stats agregadas
-  const totalActive = rows.reduce((s, r) => s + r.active, 0);
-  const totalWon = rows.reduce((s, r) => s + r.won, 0);
-  const totalPipeline = rows.reduce((s, r) => s + r.pipelineAmount, 0);
-  const totalWonAmount = rows.reduce((s, r) => s + r.wonAmount, 0);
-
-  if (loading) {
-    return (
-      <div className="space-y-2">
-        {[1, 2, 3].map((i) => <div key={i} className="h-20 rounded-lg border animate-pulse bg-gray-100 dark:bg-gray-800" />)}
-      </div>
-    );
-  }
-
-  if (members.length === 0) {
-    return (
-      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-        <CardContent className="pt-12 pb-12 text-center">
-          <Gauge className="h-12 w-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-          <p className="text-sm text-gray-500">No hay miembros en equipos para mostrar performance</p>
-          <Link href="/app/crm/equipo" className="text-sm text-blue-600 hover:underline mt-2 inline-block">Asigna miembros desde la tab Equipos</Link>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      {/* Stats cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="p-3 sm:pt-4 sm:px-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
-                <Target className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">{totalActive}</div>
-                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Activas</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="p-3 sm:pt-4 sm:px-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0">
-                <Trophy className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 dark:text-green-400" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-lg sm:text-2xl font-bold text-green-600 dark:text-green-400">{totalWon}</div>
-                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Ganadas</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="p-3 sm:pt-4 sm:px-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center shrink-0">
-                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600 dark:text-purple-400" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white truncate">
-                  {formatear(totalPipeline)}
-                </div>
-                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Pipeline</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 col-span-2 sm:col-span-1">
-          <CardContent className="p-3 sm:pt-4 sm:px-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0">
-                <Trophy className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 dark:text-green-400" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-xs sm:text-sm font-bold text-green-600 dark:text-green-400 truncate">
-                  {formatear(totalWonAmount)}
-                </div>
-                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Ganado</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Header con acciones */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-600 dark:text-gray-400">{members.length} vendedores</p>
-        <Button variant="outline" size="sm" onClick={load} disabled={isRefreshing}>
-          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-        </Button>
-      </div>
-
-      {/* Tabla */}
-      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-        <CardContent className="px-2 sm:px-6">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-xs">Vendedor</TableHead>
-                <TableHead className="text-xs">Rol</TableHead>
-                <TableHead className="text-xs">Activas</TableHead>
-                <TableHead className="text-xs">Ganadas</TableHead>
-                <TableHead className="text-xs">Perdidas</TableHead>
-                <TableHead className="text-xs">Pipeline</TableHead>
-                <TableHead className="text-xs">Ganado</TableHead>
-                <TableHead className="text-xs">Cuota</TableHead>
-                <TableHead className="text-xs">%</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((r) => {
-                const pct = r.quota > 0 ? Math.round((r.wonAmount / r.quota) * 100) : 0;
-                const pctColor = pct >= 100 ? 'text-green-600' : pct >= 50 ? 'text-blue-600' : 'text-gray-500';
-                return (
-                  <TableRow key={r.member.id}>
-                    <TableCell className="text-xs font-medium">{memberName(r.member)}</TableCell>
-                    <TableCell className="text-xs">{r.member.sales_roles?.name || '—'}</TableCell>
-                    <TableCell className="text-xs"><Badge variant="secondary">{r.active}</Badge></TableCell>
-                    <TableCell className="text-xs"><span className="text-green-600">{r.won}</span></TableCell>
-                    <TableCell className="text-xs"><span className="text-red-500">{r.lost}</span></TableCell>
-                    <TableCell className="text-xs">{formatMoneda(r.pipelineAmount, paraDocumento(r.currency))}</TableCell>
-                    <TableCell className="text-xs font-medium text-green-600">{formatMoneda(r.wonAmount, paraDocumento(r.currency))}</TableCell>
-                    <TableCell className="text-xs">{r.quota > 0 ? formatMoneda(r.quota, paraDocumento(r.currency)) : '—'}</TableCell>
-                    <TableCell className={`text-xs font-bold ${pctColor}`}>{r.quota > 0 ? `${pct}%` : '—'}</TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
-  );
+/** Las métricas de dinero y conversión proceden del servicio, sin convertir monedas aquí. */
+export function PerformanceTab({data,cabecera}:{data:TeamManagementData;cabecera?:CabeceraEquipo}) {
+ const t=useTranslations('crm.equipoNuevo'),format=useFormatter();
+ const dates=useFormatDate();
+ const own=data.performance.find(row=>row.user_id===data.current_user);
+ const money=(value:number|null,currency:string)=>value===null?t('notAvailable'):format.number(value,{style:'currency',currency});
+ const percent=(value:number|null)=>value===null?t('notAvailable'):format.number(value/100,{style:'percent',maximumFractionDigits:1});
+ const date=(value:string)=>dates.formatPlain(value);
+ const comparable=data.performance.length>0&&data.performance.every(row=>!row.money_missing&&row.won!==null&&row.currency===data.base_currency);
+ const won=comparable?data.performance.reduce((sum,row)=>sum+row.won!,0):null;
+ const calls=data.performance.reduce((sum,row)=>sum+row.calls,0),meetings=data.performance.reduce((sum,row)=>sum+row.meetings,0);
+ const average=data.performance_average??(data.performance.length===1?data.performance[0]:null);
+ const ownQuotas=data.members.filter(member=>member.user_id===data.current_user&&member.is_active&&member.quota_amount!==null);
+ const ownQuota=own&&ownQuotas.length===1&&ownQuotas[0].quota_currency===own.currency?ownQuotas[0].quota_amount:null;
+ const rank=new Map(data.ranking.map((row,index)=>[row.user_id,index+1]));
+ const rows=data.ranking_enabled?[...data.performance].sort((a,b)=>(rank.get(a.user_id)??Infinity)-(rank.get(b.user_id)??Infinity)):data.performance;
+ const columns:ColumnaTabla<TeamPerformance>[]=[
+  {id:'name',encabezado:t('person'),celda:row=><span className="flex items-center gap-2">{row.user_id!=='average'&&<>{data.ranking_enabled&&<span className="w-3 text-xs text-fg-muted">{rank.get(row.user_id)??'—'}</span>}<AvatarIniciales nombre={row.name} tamano="sm"/></>}<span className="font-medium">{row.name}</span>{data.ranking_enabled&&rank.get(row.user_id)===1&&<Trophy aria-hidden="true" className="size-4 text-warning"/>}</span>},
+  {id:'won',encabezado:t('won'),variante:'importe',celda:row=>row.money_missing?t('missingRate'):money(row.won,row.currency)},
+  {id:'quota',encabezado:t('quota'),celda:row=>row.quota_pct===null?<span className="text-xs text-fg-secondary">{t('noQuota')}</span>:<BadgeTono tono={row.quota_pct>=90?'exito':row.quota_pct>=50?'advertencia':'peligro'} tamano="sm">{percent(row.quota_pct)}</BadgeTono>},
+  {id:'calls',encabezado:t('calls'),celda:row=><span className="text-[13px] text-fg-secondary">{format.number(row.calls)}</span>},
+  {id:'meetings',encabezado:t('meetings'),celda:row=><span className="text-[13px] text-fg-secondary">{format.number(row.meetings)}</span>},
+  {id:'conversion',encabezado:t('conversion'),celda:row=><span className="text-[13px] text-fg-secondary">{percent(row.conversion)}</span>},
+  {id:'cycle',encabezado:t('cycle'),celda:row=><span className="text-[13px] text-fg-secondary">{row.cycle_days===null?t('notAvailable'):t('days',{count:Math.round(row.cycle_days)})}</span>},
+ ];
+ return <div>
+  {cabecera?.(<PerformanceExport rows={rows} start={data.period_start} end={data.period_end}/>) }
+  <div className="flex flex-col gap-4 lg:mt-4">
+  <div className="hidden gap-2 lg:flex"><span className="inline-flex h-10 w-80 items-center gap-2 rounded-lg border border-line-strong bg-surface px-3 text-sm text-fg"><Users aria-hidden="true" className="size-4 text-fg-secondary"/>{t('visual.allTeams')}</span><span className="inline-flex h-10 items-center gap-2 rounded-lg border border-line-strong bg-surface px-3 text-sm text-fg-secondary"><Calendar aria-hidden="true" className="size-4"/>{t('period',{start:date(data.period_start),end:date(data.period_end),timezone:data.timezone})}</span></div>
+  {data.performance.length>0&&<div className="hidden gap-4 sm:grid-cols-2 lg:grid lg:grid-cols-4">
+   <StatCard etiqueta={t('won')} valor={won===null?t('notAvailable'):format.number(won,{style:'currency',currency:data.base_currency,notation:'compact',maximumFractionDigits:1})} detalle={!comparable?t('missingRate'):average?.quota_pct!==null&&average?.quota_pct!==undefined?`${t('quota')}: ${percent(average.quota_pct)} · ${t('average')}`:t('noQuota')} tono={!comparable?'advertencia':'neutro'}/>
+   <StatCard etiqueta={t('calls')} valor={format.number(calls)}/>
+   <StatCard etiqueta={t('meetings')} valor={format.number(meetings)}/>
+   <StatCard etiqueta={t('visual.teamConversion')} valor={percent(average?.conversion??null)} detalle={t('average')}/>
+  </div>}
+  {own&&<div className="space-y-3 lg:hidden">
+   <div className="space-y-2 rounded-xl border border-line bg-surface p-4">
+    <p className="text-xs font-medium text-fg-secondary">{t('visual.quotaForPeriod')}</p>
+    <p className="text-[28px] font-semibold leading-9 tracking-[-0.4px] tabular-nums text-fg">{own.money_missing?t('missingRate'):money(own.won,own.currency)}</p>
+    <div className="flex items-center justify-between gap-2 text-[13px] text-fg-secondary"><span>{t('visual.quotaOf',{amount:money(ownQuota,own.currency)})}</span><span className="text-xs text-fg">{percent(own.quota_pct)}</span></div>
+    {own.quota_pct!==null&&<Progress aria-label={t('quota')} className="h-2 bg-subtle" indicatorClassName="bg-brand" value={Math.min(100,own.quota_pct)}/>}
+    {own.quota_pct!==null&&<p className={`text-xs leading-4 ${own.quota_pct>=100?'text-success-text':'text-fg-secondary'}`}>{t(own.quota_pct>=100?'visual.quotaReached':'visual.quotaProgress')}{data.ranking_enabled&&rank.has(own.user_id)?` · ${t('visual.rankPosition',{rank:rank.get(own.user_id)!,count:data.ranking.length})}`:''}</p>}
+   </div>
+   <div className="grid grid-cols-3 gap-2"><StatCard tamano="sm" etiqueta={t('calls')} valor={format.number(own.calls)}/><StatCard tamano="sm" etiqueta={t('meetings')} valor={format.number(own.meetings)}/><StatCard tamano="sm" etiqueta={t('conversion')} valor={percent(own.conversion)}/></div>
+  </div>}
+  {data.ranking_enabled&&data.ranking.length>0&&<section aria-label={t('ranking')} className="overflow-hidden rounded-xl border border-line bg-surface lg:hidden">
+   <h2 className="sr-only">{t('ranking')}</h2>
+   <ol>{data.ranking.map((row,index)=><li key={row.user_id} className={`flex min-h-11 items-center gap-2 px-3 py-2 ${row.user_id===data.current_user?'bg-brand-tint':'text-fg'}`}><span className="w-3 text-xs tabular-nums text-fg-muted">{index+1}</span><span className="min-w-0 flex-1 truncate text-sm">{row.name}{row.user_id===data.current_user?` (${t('you')})`:''}</span><span className="text-sm tabular-nums">{row.quota_pct===null?t('noQuota'):percent(row.quota_pct)}</span></li>)}</ol>
+  </section>}
+  {data.performance.length?<div className="hidden lg:block"><DataTable columnas={columns} filas={[...rows,...(data.performance_average?[{...data.performance_average,user_id:'average',name:t('average')}]:[])]} obtenerId={row=>row.user_id} etiqueta={t('performance')}/></div>:<EmptyState titulo={t('noPerformance')} descripcion={t('noPerformanceHint')} icono={ChartNoAxesCombined}/>}
+  </div>
+ </div>;
 }

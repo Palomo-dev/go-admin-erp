@@ -17,6 +17,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
 import type { TelephonySettingsDto } from './useTelephonySettings';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   settings: TelephonySettingsDto;
@@ -27,12 +28,14 @@ interface Props {
 const MIN_CONSENT = 20;
 
 export function RecordingConsentSection({ settings, canEdit, onPatchSettings }: Props) {
+  const t = useTranslations('phoneControl');
   const [form, setForm] = useState({
     voice_recording_enabled: settings.voice_recording_enabled,
     voice_consent_message: settings.voice_consent_message,
     voice_recording_retention_days: settings.voice_recording_retention_days,
     voice_ring_timeout_seconds: settings.voice_ring_timeout_seconds,
     voice_max_concurrent_calls: settings.voice_max_concurrent_calls,
+    hold_url: settings.hold_url ?? '',
   });
   const [saving, setSaving] = useState(false);
   const [previewing, setPreviewing] = useState(false);
@@ -46,6 +49,7 @@ export function RecordingConsentSection({ settings, canEdit, onPatchSettings }: 
     voice_recording_retention_days: settings.voice_recording_retention_days,
     voice_ring_timeout_seconds: settings.voice_ring_timeout_seconds,
     voice_max_concurrent_calls: settings.voice_max_concurrent_calls,
+    hold_url: settings.hold_url ?? '',
   });
 
   const save = async () => {
@@ -144,6 +148,12 @@ export function RecordingConsentSection({ settings, canEdit, onPatchSettings }: 
         </div>
       </div>
 
+      <div className="space-y-1">
+        <Label htmlFor="tel-hold-music">{t('holdMusicLabel')}</Label>
+        <Input id="tel-hold-music" type="url" value={form.hold_url} disabled={!canEdit} maxLength={500}
+          placeholder="https://" onChange={(event) => setForm((previous) => ({ ...previous, hold_url: event.target.value }))} />
+        <p className="text-xs text-gray-500 dark:text-gray-400">{t('holdMusicHint')}</p>
+      </div>
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="space-y-1">
           <Label htmlFor="tel-retention">Retención (días)</Label>

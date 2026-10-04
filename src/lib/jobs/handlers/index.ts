@@ -11,6 +11,7 @@ import { recordingCleanupHandler } from './recordingCleanup';
 import { whatsappJobHandler } from './whatsapp';
 import { campaignBatchHandler } from './campaignBatch';
 import { registerStageChangedActivityListener } from '../dispatch/listeners/stageChangedActivity';
+import { registerHealthRecalculationListener } from '../dispatch/listeners/healthRecalculation';
 // F6: productor de `ai_call` al ENTRAR en una etapa con `stage_agents.trigger_on='enter'`.
 import { registerStageAgentAiCallListener } from '@/lib/services/crm/voiceAgent/stageAgentTrigger';
 import './f8Automations'; // F8: handlers `automation` y `sequence_step` + listeners del outbox
@@ -91,6 +92,7 @@ registerJobHandler('ai_call', async ({ job }) => {
 for (const kind of PLACEHOLDER_KINDS) registerJobHandler(kind, placeholderHandler, { placeholder: true });
 
 registerStageChangedActivityListener();
+registerHealthRecalculationListener();
 registerStageAgentAiCallListener(); // F6
 
 export { noopHandler, crmEventHandler, maintenanceHandler, placeholderHandler, transcribeHandler, analyzeHandler, recordingFetchHandler, recordingCleanupHandler, whatsappJobHandler, campaignBatchHandler };

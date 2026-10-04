@@ -48,6 +48,8 @@ export interface TaskDialogProps {
   /** Cliente de la oportunidad, para prellenar el campo Cliente del modo completo. */
   customerId?: string;
   defaultTitle?: string;
+  /** Ventana de seguimiento ya resuelta por el servidor, en hora local de la organización. */
+  defaultDueDate?: string;
   editTask?: PMTask | null;
   /** Tareas hermanas, para el selector de dependencias del modo completo. */
   siblingTasks?: Array<{ id: string; title: string; status: string }>;
@@ -69,6 +71,7 @@ export function TaskDialog({
   relatedId,
   customerId,
   defaultTitle,
+  defaultDueDate,
   editTask,
   siblingTasks = [],
   onCreated,
@@ -77,7 +80,7 @@ export function TaskDialog({
   const isEdit = Boolean(editTask);
   const [expanded, setExpanded] = useState(mode === 'full' || isEdit);
   const [title, setTitle] = useState(defaultTitle ?? '');
-  const [dueDate, setDueDate] = useState('');
+  const [dueDate, setDueDate] = useState(defaultDueDate ?? '');
   const [priority, setPriority] = useState<TaskPriority>('med');
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
@@ -91,11 +94,11 @@ export function TaskDialog({
     if (!open) return;
     setExpanded(mode === 'full' || isEdit);
     setTitle(defaultTitle ?? '');
-    setDueDate('');
+    setDueDate(defaultDueDate ?? '');
     setPriority('med');
     setDescription('');
     setSaving(false);
-  }, [open, mode, isEdit, defaultTitle]);
+  }, [open, mode, isEdit, defaultTitle, defaultDueDate]);
 
   /**
    * Proyectos y usuarios solo se piden cuando hace falta el modo completo.

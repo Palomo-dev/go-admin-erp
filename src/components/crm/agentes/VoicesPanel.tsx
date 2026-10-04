@@ -24,6 +24,7 @@ import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { AlertTriangle, Library, Mic, UserRound } from "lucide-react";
 import { PROVIDERS_SETTINGS_HREF, useVoiceCatalog } from "./useVoiceCatalog";
 import { VoiceLibraryGrid } from "./voces/VoiceLibraryGrid";
@@ -35,7 +36,7 @@ type View = "biblioteca" | "mias" | "clonar";
 export function VoicesPanel() {
   const catalog = useVoiceCatalog();
   const [view, setView] = useState<View>("biblioteca");
-  const { voices, tts, account, reload } = catalog;
+  const { voices, tts, ttsLoading, account, reload } = catalog;
 
   const ownedVoiceIds = useMemo(
     () => new Set(voices.filter((v) => v.provider === "elevenlabs").map((v) => v.provider_voice_id)),
@@ -44,7 +45,7 @@ export function VoicesPanel() {
 
   return (
     <div className="space-y-4">
-      {!tts.unknown && !tts.ready && (
+      {!ttsLoading && !tts.unknown && !tts.ready && (
         <div
           role="status"
           className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100"
@@ -60,7 +61,7 @@ export function VoicesPanel() {
           </p>
         </div>
       )}
-      {tts.unknown && (
+      {!ttsLoading && tts.unknown && (
         <div
           role="status"
           className="flex items-start gap-2 rounded-lg border border-gray-300 bg-gray-50 p-3 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
@@ -68,7 +69,8 @@ export function VoicesPanel() {
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>
             No se pudo comprobar si hay clave de ElevenLabs configurada (falló la lectura de Proveedores e IA).
-            Añadir, clonar o escuchar pueden fallar con el error del proveedor.
+            Añadir, clonar o escuchar pueden fallar con el error del proveedor.{" "}
+            <Button type="button" variant="link" onClick={() => void reload()} className="h-auto p-0 text-xs">Reintentar comprobación</Button>
           </span>
         </div>
       )}
@@ -103,7 +105,7 @@ export function VoicesPanel() {
         </TabsList>
 
         <TabsContent value="biblioteca" className="pt-4">
-          <VoiceLibraryGrid ownedVoiceIds={ownedVoiceIds} onAdded={() => void reload()} account={account} />
+          <VoiceLibraryGrid ownedVoiceIds={ownedVoiceIds} onAdded={() => void reload({ force: true })} account={account} />
         </TabsContent>
 
         <TabsContent value="mias" className="pt-4">
@@ -114,7 +116,7 @@ export function VoicesPanel() {
           <CloneVoiceWizard
             account={account}
             onCreated={() => {
-              void reload();
+              void reload({ force: true });
             }}
           />
         </TabsContent>

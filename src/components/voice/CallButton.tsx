@@ -17,6 +17,7 @@ import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Phone, PhoneCall, Loader2, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { KbdButton } from '@/components/kit/KbdButton';
 import { useSoftphone } from './SoftphoneProvider';
 import { useCallModePolicy } from './hooks/useCallModePolicy';
 import { toast } from '@/components/ui/use-toast';
@@ -36,9 +37,11 @@ interface CallButtonProps {
   label?: string;
   className?: string;
   disabled?: boolean;
+  /** Las páginas nuevas usan la escala del manual; los consumidores previos conservan su aspecto. */
+  diseno?: 'heredado' | 'kit';
 }
 
-export function CallButton({ phoneNumber, customerId, opportunityId, displayName, variant = 'ghost', size = 'icon', label, className, disabled }: CallButtonProps) {
+export function CallButton({ phoneNumber, customerId, opportunityId, displayName, variant = 'ghost', size = 'icon', label, className, disabled, diseno = 'heredado' }: CallButtonProps) {
   const sp = useSoftphone();
   const { decision } = useCallModePolicy();
   const defaultCountry = useOrgDefaultCountry() ?? undefined;
@@ -85,26 +88,28 @@ export function CallButton({ phoneNumber, customerId, opportunityId, displayName
 
   const who = displayName ?? phoneNumber;
   const title = !phoneNumber ? 'Sin número' : reason ? `${reason}` : useBridge ? `Llamar a ${who} desde mi celular` : `Llamar a ${who} (Ctrl+Shift+C)`;
+  const atributos = {
+    onClick: handleClick, disabled: isDisabled, className, title, 'aria-label': title,
+    'data-phone': phoneNumber ?? undefined,
+    'data-opportunity-id': opportunityId ?? undefined,
+    'data-customer-id': customerId ?? undefined,
+    'data-display-name': displayName ?? undefined,
+    'data-call-mode': decision?.mode ?? undefined,
+  };
 
   return (
     <>
-      <Button
-        onClick={handleClick}
-        disabled={isDisabled}
+      {diseno === 'kit' ? <KbdButton {...atributos} patron="button" tamano={size === 'sm' ? 'sm' : 'md'}
+        variante={variant === 'default' ? 'primario' : variant === 'ghost' ? 'fantasma' : 'secundario'}
+        cargando={isCalling} icono={isBusy ? PhoneCall : useBridge ? Smartphone : Phone}
+      >{label}</KbdButton> : <Button
+        {...atributos}
         variant={variant}
         size={size}
-        className={className}
-        title={title}
-        aria-label={title}
-        data-phone={phoneNumber ?? undefined}
-        data-opportunity-id={opportunityId ?? undefined}
-        data-customer-id={customerId ?? undefined}
-        data-display-name={displayName ?? undefined}
-        data-call-mode={decision?.mode ?? undefined}
       >
         {isCalling ? <Loader2 size={16} className="animate-spin" /> : isBusy ? <PhoneCall size={16} className="text-green-600 dark:text-green-400" /> : useBridge ? <Smartphone size={16} /> : <Phone size={16} />}
         {label && <span className="ml-1.5">{label}</span>}
-      </Button>
+      </Button>}
       {mobileOpen && phoneNumber && (
         <MobileCallDialog
           open
@@ -113,7 +118,6 @@ export function CallButton({ phoneNumber, customerId, opportunityId, displayName
           customerId={customerId ?? undefined}
           targetPhone={normalizePhone(phoneNumber, defaultCountry) ?? phoneNumber}
           customerName={displayName ?? undefined}
-          onStarted={() => setMobileOpen(false)}
         />
       )}
     </>

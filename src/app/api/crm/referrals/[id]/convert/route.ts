@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { convertReferral } from '@/lib/services/crm/referralsService';
+import { CRM_PERMISOS, exigirPermisoCrm, exigirUuid } from '@/lib/services/crm/crmRouteSupport';
 import { isUuid } from '@/lib/services/crm/f12Validation';
 import { jsonFail, jsonOk, readJson, rejectForeignOrganization, routeError } from '@/lib/services/crm/f12RouteSupport';
 
@@ -10,21 +11,18 @@ function text(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined;
 }
 
-/**
- * POST /api/crm/referrals/[id]/convert — convierte un referido `qualified`
- * en lead: ficha de cliente (`lifecycle_stage='lead'`) y oportunidad
- * (`record_type='lead'`, `source='referral'`, `deal_type='referral'`) con el
- * MISMO alta que `POST /api/crm/leads`; el referido pasa a `converted` con
- * `opportunity_id` y `referred_customer_id`.
- * Body (todo opcional): { customer_id, referred_email, referred_phone, name,
- *   pipeline_id, stage_id, amount, currency, salesperson_id }
- */
+/** Convierte un referido calificado en ficha de lead y enlaza ambos en una transacción. */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     const { id } = await params;
     const body = await readJson(request);
     rejectForeignOrganization(TAG, body, ctx, request);
+    await exigirPermisoCrm(ctx, [CRM_PERMISOS.leadsCrear], TAG);
+    exigirUuid(id, 'referido');
+    if (body.amount !== undefined && (typeof body.amount !== 'number' || !Number.isFinite(body.amount))) return jsonFail(400, 'amount inválido', { code: 'VALIDATION' });
+    const owner = text(body.salesperson_id);
+    if (owner && !isUuid(owner)) return jsonFail(400, 'salesperson_id inválido', { code: 'VALIDATION' });
     const customerId = text(body.customer_id);
     if (customerId && !isUuid(customerId)) {
       return jsonFail(400, 'customer_id no es un identificador válido', { code: 'VALIDATION' });

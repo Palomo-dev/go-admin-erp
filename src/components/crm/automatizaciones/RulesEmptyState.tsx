@@ -1,63 +1,47 @@
 'use client';
+import { useLocale } from 'next-intl';
+import { describeRule } from '@/lib/services/crm/automation/ruleHumanizer';
+import { useAutomationText } from './useAutomationText';
 
 /**
  * Estado vacío con propósito (brief §3): ilustración ligera, una frase y la
  * acción principal, con un ejemplo real que se puede usar tal cual.
  */
 
-import { Sparkles, Zap, ArrowRight } from 'lucide-react';
+import { Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { describeRule } from '@/lib/services/crm/automation/ruleHumanizer';
-import { EXAMPLE_FORM } from '@/lib/services/crm/automation/ruleEditorModel';
+import { type RuleFormState } from '@/lib/services/crm/automation/ruleEditorModel';
+import { ruleTemplates } from './ruleTemplates';
 import { FadeIn } from '@/components/shared/motion';
 
 interface Props {
+  canManage?: boolean;
   /** `true` cuando hay reglas pero ninguna pasa los filtros. */
   filtered: boolean;
   onCreate: () => void;
   onUseExample: () => void;
   onClearFilters: () => void;
+  onUseTemplate?: (form: RuleFormState) => void;
 }
 
-export function RulesEmptyState({ filtered, onCreate, onUseExample, onClearFilters }: Props) {
+export function RulesEmptyState({ filtered, onCreate, onUseExample, onClearFilters, onUseTemplate, canManage = false }: Props) {
+  const tr = useAutomationText();
+  const locale = useLocale();
   if (filtered) {
     return (
-      <FadeIn className="rounded-xl border border-dashed border-gray-300 p-8 text-center dark:border-gray-700">
-        <p className="font-medium text-gray-900 dark:text-gray-100">Ninguna regla coincide con los filtros</p>
-        <Button type="button" variant="outline" className="mt-3" onClick={onClearFilters}>Quitar filtros</Button>
+      <FadeIn className="rounded-xl border border-dashed border-line-strong p-8 text-center dark:border-line-strong">
+        <p className="font-medium text-fg dark:text-fg">{tr("Ninguna regla coincide con los filtros")}</p>
+        <Button type="button" variant="outline" className="mt-3" onClick={onClearFilters}>{tr("Quitar filtros")}</Button>
       </FadeIn>
     );
   }
 
-  return (
-    <FadeIn className="mx-auto max-w-2xl rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-950/60">
-        <Sparkles className="h-7 w-7 text-blue-600 dark:text-blue-400" aria-hidden="true" />
-      </div>
-      <h2 className="mt-4 text-lg font-semibold text-gray-900 dark:text-gray-100">Deja que el CRM trabaje solo</h2>
-      <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-        Una regla vigila el pipeline y actúa por ti: escribe, crea tareas, mueve etapas. Esta es una de las más usadas:
-      </p>
-
-      <div className="mt-5 rounded-lg border border-blue-100 bg-blue-50/60 p-4 text-left dark:border-blue-900/60 dark:bg-blue-950/30">
-        <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-300">
-          <Zap className="h-3.5 w-3.5" aria-hidden="true" /> Ejemplo: {EXAMPLE_FORM.name}
-        </p>
-        {/* R-3: la misma frase que el ejemplo produce de verdad (sin etapa fija); la etapa se elige en el editor. */}
-        <p className="mt-1.5 text-sm text-gray-800 dark:text-gray-200">
-          {describeRule({ ...EXAMPLE_FORM, pipeline_id: null, stage_id: null, event: null })}
-        </p>
-        <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-          En el editor eliges la etapa que la dispara (por ejemplo, «Propuesta enviada»).
-        </p>
-      </div>
-
-      <div className="mt-5 flex flex-wrap justify-center gap-2">
-        <Button type="button" className="bg-blue-600 text-white hover:bg-blue-700" onClick={onUseExample}>
-          Usar este ejemplo <ArrowRight className="ml-1.5 h-4 w-4" aria-hidden="true" />
-        </Button>
-        <Button type="button" variant="outline" onClick={onCreate}>Empezar desde cero</Button>
-      </div>
-    </FadeIn>
-  );
+  const templates = ruleTemplates();
+  return <FadeIn className="rounded-xl border border-line bg-surface px-6 pb-12 pt-20 text-center">
+    <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-brand-tint"><Zap className="size-6 text-brand-deep" strokeWidth={1.5} aria-hidden /></div>
+    <h2 className="mt-4 text-base font-semibold text-fg">{tr('Aún no tienes automatizaciones')}</h2>
+    <p className="mx-auto mt-3 max-w-md text-sm leading-5 text-fg-secondary">{tr('Empieza con una plantilla probada: se crea pausada para que la revises y la pruebes en seco.')}</p>
+    <div className="mx-auto mt-16 grid max-w-3xl gap-3 text-left md:grid-cols-3">{templates.map((template, index) => <div key={template.name} className="rounded-xl border border-line p-4"><h3 className="text-sm font-medium text-fg">{tr(template.name)}</h3><p className="mt-1.5 min-h-8 line-clamp-2 text-xs leading-4 text-fg-secondary">{describeRule(template, { text: tr, locale }).replace(` (${template.event})`, '')}</p>{canManage && <Button type="button" size="sm" variant="outline" className="mt-2 h-8 text-xs" onClick={() => onUseTemplate ? onUseTemplate(template) : index === 0 ? onUseExample() : onCreate()}>{tr('Usar plantilla')}</Button>}</div>)}</div>
+    {canManage && <button type="button" onClick={onCreate} className="sr-only focus:not-sr-only">{tr('Empezar desde cero')}</button>}
+  </FadeIn>;
 }

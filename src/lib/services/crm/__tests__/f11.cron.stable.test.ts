@@ -5,7 +5,7 @@
  * Vienen de `f11Round1Tester` (tester r1 §4), `f11Round2` (constructor r2 §2)
  * y `f11Round2Tester` (tester r2 §1/§2). Cubre: aislamiento por org, aborto
  * (antes y a mitad), presupuesto con reloj virtual, rotación por snapshot,
- * lotes de 200, una sentencia de update por score distinto, `pending_org_ids`
+ * lotes de 200, una RPC por lote de score + snapshot, `pending_org_ids`
  * honesto, `taskBudgetMs` propio y nada en `outbound_jobs`.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -22,7 +22,7 @@ jest.mock('@/lib/jobs/handlers/maintenance', () => ({ runMaintenance: jest.fn(as
 jest.mock('@/lib/supabase/server-service', () => ({ getServiceClient: () => { throw new Error('no service client in test'); } }));
 
 import { enqueueJob } from '@/lib/jobs/enqueue';
-import { applyHealthScores } from '../healthScoreServer';
+import { guardarMedicionesSalud } from '../healthMutationService';
 import { type HealthRpcRow } from '../healthBands';
 import { orderOrgsByLeastRecentlyProcessed, recalculateOrgHealth, runHealthRecalculate } from '@/lib/jobs/scheduled/healthRecalculate';
 import { runRenewalsSync } from '@/lib/jobs/scheduled/renewalsSync';
@@ -63,7 +63,7 @@ function threeOrgsDb(): FakeDb {
       { organization_id: 4, module_code: 'crm', is_active: null }, { organization_id: 5, module_code: 'crm', is_active: false },
       { organization_id: 1, module_code: 'crm', is_active: true }, { organization_id: 6, module_code: 'inventory', is_active: true },
     ],
-    health_score_configs: [], health_score_snapshots: [], customers: [],
+    health_score_configs: [], health_score_snapshots: [], customers: [1,2,3].map(id => ({ id: `c-${id}`, organization_id: id, lifecycle_stage: 'customer', health_score: null })),
   }, {
     fn_customer_health: (args) => {
       if (args.p_org_id === 2) throw new Error('canceling statement due to statement timeout');
@@ -178,16 +178,17 @@ describe('scheduledOrgs y aislamiento por org (tester r1 T4.1–T4.6)', () => {
 });
 
 describe('cron que cabe: lotes, solo si cambió, rotación y presupuesto (r2 §2, tester r2 §1/§2)', () => {
-  test('r2 2.1: applyHealthScores hace una sentencia por valor distinto de score (no una por cliente), filtrada por organización; vacío → 0', async () => {
-    const db = makeDb({ customers: [] });
-    const r = await applyHealthScores(sb(db), ORG, [{ customer_id: 'a', score: 22 }, { customer_id: 'b', score: 22 }, { customer_id: 'c', score: 40 }], NOW);
-    expect(r).toEqual({ statements: 2, updated: 3 });
-    const upd = writesTo(db, 'customers', 'update');
-    expect(upd.map((u) => [u.rows[0].health_score, u.filters.organization_id, u.filters.id__in ?? u.filters.id])).toEqual([[22, ORG, ['a', 'b']], [40, ORG, 'c']]);
-    expect(upd[0].rows[0]).toEqual({ health_score: 22, health_score_updated_at: NOW.toISOString() });
-    expect(await applyHealthScores(sb(makeDb()), ORG, [], NOW)).toEqual({ statements: 0, updated: 0 });
+  test('Ola 5: scores distintos y snapshots viajan juntos en una sola RPC; vacío no llama la base', async () => {
+    const db = makeDb({ customers: ['a','b','c'].map(id => ({ id, organization_id: ORG, lifecycle_stage: 'customer', health_score: null })) });
+    const rows = ['a','b','c'].map((id,i) => ({ customer_id: id, score: i===2?40:22, band: i===2?'yellow' as const:'red' as const, indicators: {}, write_snapshot: true, expected_snapshot_id: null }));
+    expect(await guardarMedicionesSalud(sb(db), ORG, rows, null, NOW)).toEqual({ snapshots_written: 3, customers_updated: 3, skipped_unchanged: 0 });
+    expect(db.rpcCalls).toHaveLength(1);
+    expect(db.rows.customers.map(c => c.health_score)).toEqual([22,22,40]);
+    expect(db.rows.health_score_snapshots.map(s => s.score)).toEqual([22,22,40]);
+    expect(await guardarMedicionesSalud(sb(db), ORG, [], null, NOW)).toEqual({ snapshots_written: 0, customers_updated: 0, skipped_unchanged: 0 });
+    expect(db.rpcCalls).toHaveLength(1);
   });
-  test('r2 2.2: 219 clientes, 3 cambian → inserts por lote (200 + 19) y 1 update por score cambiado (no 219); ≤ 8 llamadas', async () => {
+  test('Ola 5: 219 clientes, 3 cambian → dos RPC atómicas (200 + 19); ≤ 8 llamadas', async () => {
     const rows = Array.from({ length: 219 }, (_, i) => row(`c-${i}`, i < 3 ? 7 : 1));
     const db = makeDb({
       health_score_configs: [{ organization_id: ORG, config: REAL_CONFIG, refresh_interval_hours: 24, is_active: true }],
@@ -195,24 +196,24 @@ describe('cron que cabe: lotes, solo si cambió, rotación y presupuesto (r2 §2
       health_score_snapshots: rows.map((r) => ({ id: `s-${r.customer_id}`, organization_id: ORG, customer_id: r.customer_id, score: 22, created_at: new Date(NOW.getTime() - 25 * 3600e3).toISOString() })),
     }, { fn_customer_health: () => rows });
     const r = await recalculateOrgHealth(ORG, sb(db), NOW);
-    expect(r).toMatchObject({ customers: 219, snapshots_written: 219, customers_updated: 3, update_statements: 1, error: null });
+    expect(r).toMatchObject({ customers: 219, snapshots_written: 219, customers_updated: 3, update_statements: 2, error: null });
     expect(writesTo(db, 'health_score_snapshots', 'insert').length).toBe(2);
-    expect(writesTo(db, 'customers', 'update')).toHaveLength(1);
-    expect(writesTo(db, 'customers', 'update')[0].filters.id__in).toEqual(['c-0', 'c-1', 'c-2']);
+    expect(writesTo(db, 'customers', 'update').map(w => w.filters.id)).toEqual(['c-0', 'c-1', 'c-2']);
+    expect(db.rpcCalls.filter(c => c.fn === 'fn_crm_guardar_mediciones_salud').map(c => (c.args.p_rows as unknown[]).length)).toEqual([200,19]);
     expect(db.calls).toBeLessThanOrEqual(8);
   });
-  test('r2 2.3: nada cambió y el intervalo no venció → 0 escrituras, skipped_unchanged y 4 llamadas (config + RPC/snapshots/customers)', async () => {
+  test('Ola 5: nada cambió y el intervalo no venció → 0 escrituras y cuatro llamadas (config, métricas, base, writer)', async () => {
     const db = makeDb({
       health_score_configs: [{ organization_id: ORG, config: REAL_CONFIG, refresh_interval_hours: 24, is_active: true }],
       customers: [{ id: 'c-1', organization_id: ORG, lifecycle_stage: 'customer', health_score: 22 }],
       health_score_snapshots: [{ id: 's0', organization_id: ORG, customer_id: 'c-1', score: 22, band: 'red', created_at: new Date(NOW.getTime() - 3600e3).toISOString() }],
     }, { fn_customer_health: () => [RPC_ROW] });
     const r = await recalculateOrgHealth(ORG, sb(db), NOW);
-    expect(r).toMatchObject({ customers: 1, snapshots_written: 0, skipped_unchanged: 1, customers_updated: 0, update_statements: 0 });
+    expect(r).toMatchObject({ customers: 1, snapshots_written: 0, skipped_unchanged: 1, customers_updated: 0, update_statements: 1 });
     expect(db.writes).toEqual([]);
     expect(db.calls).toBe(4);
   });
-  test('tester r2 1.2: con las 5 filas reales el cron escribe 22/28/10/42/40 y agrupa los updates por score (5 distintos → 5 sentencias, filtradas por org)', async () => {
+  test('tester r2 1.2: con las 5 filas reales el cron escribe 22/28/10/42/40 en una RPC con filas filtradas por org', async () => {
     const db = makeDb({
       organization_modules: [{ organization_id: ORG, module_code: 'crm', is_active: true }],
       health_score_configs: [{ organization_id: ORG, config: REAL_CONFIG, refresh_interval_hours: 24, is_active: true }],

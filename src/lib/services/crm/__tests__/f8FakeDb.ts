@@ -21,6 +21,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { processStepRun } from '@/lib/services/crm/sequenceService';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -226,7 +228,7 @@ function makeDb(tables: Record<string, Record<string, any>[]>, opts: DbOpts = {}
     let limitN: number | null = null;
     let sortCol: string | null = null;
     let sortAsc = true;
-    let error: PgError | null = null;
+    const error: PgError | null = null;
 
     const matched = () => all(table).filter((r) => preds.every((p) => p(r)));
 
@@ -469,6 +471,25 @@ function makeDb(tables: Record<string, Record<string, any>[]>, opts: DbOpts = {}
     };
   };
 
+  /** Retira la inscripción y sus pasos pendientes en la misma operación. */
+  const exitRpc = (p: Record<string, any>): { data: any; error: PgError | null } => {
+    const enrollment = all('sequence_enrollments').find((e) => e.id === p.p_enrollment_id
+      && e.organization_id === p.p_org && ['active', 'paused'].includes(e.status));
+    if (!enrollment) return { data: null, error: null };
+    const enrollmentPatch = { status: 'exited', exited_at: new Date().toISOString(), exit_reason: p.p_reason ?? 'manual_unenroll' };
+    const runPatch = { status: 'skipped', result: { reason: `enrollment_${enrollmentPatch.exit_reason}` } };
+    const enrollmentUpdate = updateCounts.sequence_enrollments = (updateCounts.sequence_enrollments ?? 0) + 1;
+    const runUpdate = updateCounts.sequence_step_runs = (updateCounts.sequence_step_runs ?? 0) + 1;
+    const failure = opts.failUpdate?.('sequence_enrollments', enrollmentPatch, enrollmentUpdate)
+      ?? opts.failUpdate?.('sequence_step_runs', runPatch, runUpdate) ?? null;
+    if (failure) return { data: null, error: failure };
+    Object.assign(enrollment, enrollmentPatch);
+    for (const run of all('sequence_step_runs')) {
+      if (run.organization_id === p.p_org && run.enrollment_id === enrollment.id && run.status === 'pending') Object.assign(run, runPatch);
+    }
+    return { data: { ...enrollment }, error: null };
+  };
+
   const rpc = (name: string, params: Record<string, any>) => {
     const result = name === 'fn_enroll_in_sequence'
       ? enrollRpc(params)
@@ -476,7 +497,9 @@ function makeDb(tables: Record<string, Record<string, any>[]>, opts: DbOpts = {}
         ? enqueueRpc(params)
         : name === 'fn_resume_sequence_enrollment'
           ? resumeRpc(params)
-          : name === 'fn_create_org_notification'
+          : name === 'fn_exit_sequence_enrollment'
+            ? exitRpc(params)
+            : name === 'fn_create_org_notification'
             ? { data: nextId(), error: null }
             : name === 'fn_pause_sequences_on_reply'
               ? { data: 0, error: null }
@@ -491,7 +514,7 @@ const ORG = 125;
 const OTHER_ORG = 999;
 
 const readSrc = (file: string) =>
-  require('fs').readFileSync(require('path').join(process.cwd(), 'src/lib/services/crm', file), 'utf8') as string;
+  readFileSync(join(process.cwd(), 'src/lib/services/crm', file), 'utf8');
 
 function baseTables() {
   return {

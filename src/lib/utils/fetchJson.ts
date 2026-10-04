@@ -9,6 +9,7 @@
  */
 
 import { describeError } from './errorMessage';
+import { RequestDeadlineError, withRequestDeadline } from './requestDeadline';
 
 /** Tiempo máximo por defecto para una petición de lectura de pantalla. */
 export const DEFAULT_FETCH_TIMEOUT_MS = 20_000;
@@ -32,33 +33,23 @@ export async function fetchJson<T = unknown>(
 ): Promise<T> {
   const { timeoutMs = DEFAULT_FETCH_TIMEOUT_MS, signal, ...init } = options;
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  // Respetar también un signal externo (desmontaje del componente).
-  const onExternalAbort = () => controller.abort();
-  if (signal) {
-    if (signal.aborted) controller.abort();
-    else signal.addEventListener('abort', onExternalAbort, { once: true });
-  }
-
   let response: Response;
+  let raw: string;
   try {
-    response = await fetch(url, { ...init, signal: controller.signal });
+    ({ response, raw } = await withRequestDeadline(async (requestSignal) => {
+      const response = await fetch(url, { ...init, signal: requestSignal });
+      return { response, raw: await response.text() };
+    }, { timeoutMs, signal: signal ?? undefined }));
   } catch (err) {
-    if (controller.signal.aborted) {
+    if (err instanceof RequestDeadlineError && err.code === 'REQUEST_ABORTED') throw err;
+    if (err instanceof RequestDeadlineError) {
       throw new Error(
         `La petición a ${url} superó los ${Math.round(timeoutMs / 1000)} s. ` +
           'El servidor o la base de datos no respondieron.'
       );
     }
     throw new Error(`No se pudo contactar con ${url}: ${describeError(err)}`);
-  } finally {
-    clearTimeout(timer);
-    if (signal) signal.removeEventListener('abort', onExternalAbort);
   }
-
-  const raw = await response.text();
 
   let parsed: unknown = null;
   let parseFailed = false;

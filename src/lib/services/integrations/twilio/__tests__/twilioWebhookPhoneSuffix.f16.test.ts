@@ -13,11 +13,12 @@
  * (`phoneSuffixPattern` con `imatch`) y compara en memoria con
  * `normalizePhoneDigits` y el indicativo de la organización.
  *
- * `fakeTable` evalúa DE VERDAD el `filter(imatch)` y el `eq(organization_id)`:
+ * Verifica los destinos transmitidos a la RPC (preferencias/ledger probados por MCP).
+ * `fakeTable` evalúa el `filter(imatch)` y el `eq(organization_id)`:
  * volver al `ilike` pone en rojo el primer caso.
  */
 import { fakeTable, type Row } from '@/lib/services/crm/whatsapp/__tests__/fakeTable';
-import { makeSupabase, type TableResolver } from '@/lib/services/crm/whatsapp/__tests__/mockSupabase';
+import { makeSupabase, has, type TableResolver } from '@/lib/services/crm/whatsapp/__tests__/mockSupabase';
 
 const ctx: { sb: unknown } = { sb: null };
 jest.mock('@/lib/supabase/server-service', () => ({ getServiceClient: () => ctx.sb }));
@@ -32,11 +33,11 @@ function cliente(id: string, phone: string | null, organization_id = ORG): Row {
 
 function setup(customersRows: Row[], defaultCountry: string | null = '57') {
   const customers = fakeTable(customersRows);
-  const consents = fakeTable([]);
   const providerConfigs: TableResolver = () => ({ data: defaultCountry ? { settings: { default_country_code: defaultCountry } } : null });
-  const { sb, calls } = makeSupabase({ customers: customers.resolver, contact_consents: consents.resolver, provider_configs: providerConfigs });
+  const { sb, calls, rpcCalls } = makeSupabase({ customers: customers.resolver, provider_configs: providerConfigs }, (_fn, args) => ({ data: { updated: (args.p_targets as unknown[]).length, already_applied: false } }));
+  const targets = { get rows() { return rpcCalls.flatMap((c) => c.args.p_targets as Array<{ customer_id: string }>); } };
   ctx.sb = sb;
-  return { customers, consents, calls };
+  return { customers, targets, calls, rpcCalls };
 }
 
 const optOut = (phone: string, orgId = ORG) => recordConsentChange({ orgId, phone, channel: 'whatsapp', status: 'opted_out', messageSid: 'SM1', body: 'STOP' });
@@ -45,11 +46,13 @@ describe('F16 r5 · T-2 · recordConsentChange encuentra al cliente aunque el te
   beforeEach(() => { delete process.env.WHATSAPP_DEFAULT_COUNTRY_CODE; });
 
   it('«+57 310 987 65 43» (espacio dentro de los últimos 10 dígitos): la baja SE APUNTA', async () => {
-    const { customers, consents } = setup([cliente('c-1', '+57 310 987 65 43')]);
+    const { customers, targets, calls, rpcCalls } = setup([cliente('c-1', '+57 310 987 65 43')]);
     await optOut('+573109876543');
-    expect(consents.rows).toHaveLength(1);
-    expect(consents.rows[0]).toMatchObject({ organization_id: ORG, customer_id: 'c-1', channel: 'whatsapp', status: 'opted_out', source: 'inbound_keyword' });
-    expect((customers.rows[0].metadata as Record<string, unknown>).do_not_whatsapp).toBe(true);
+    expect(targets.rows).toHaveLength(1);
+    expect(targets.rows[0]).toMatchObject({ customer_id: 'c-1' });
+    expect(rpcCalls[0].args).toMatchObject({ p_org: ORG, p_channel: 'whatsapp', p_status: 'opted_out' });
+    expect(calls.some((c) => has(c.ops, 'update') || has(c.ops, 'insert'))).toBe(false);
+    expect((customers.rows[0].metadata as Record<string, unknown>).do_not_whatsapp).toBeUndefined();
   });
 
   it.each([
@@ -62,44 +65,44 @@ describe('F16 r5 · T-2 · recordConsentChange encuentra al cliente aunque el te
     ['+573109876543'],
     ['310 9876543<|'],      // basura al final
   ])('formato guardado %p → la baja se apunta', async (guardado) => {
-    const { consents } = setup([cliente('c-1', guardado)]);
+    const { targets } = setup([cliente('c-1', guardado)]);
     await optOut('+573109876543');
-    expect(consents.rows).toHaveLength(1);
-    expect(consents.rows[0].customer_id).toBe('c-1');
+    expect(targets.rows).toHaveLength(1);
+    expect(targets.rows[0].customer_id).toBe('c-1');
   });
 
   it('un cliente de OTRA organización con el mismo teléfono NO recibe la baja', async () => {
-    const { consents, customers } = setup([cliente('c-otra', '+57 310 987 65 43', ORG + 1)]);
+    const { targets, customers } = setup([cliente('c-otra', '+57 310 987 65 43', ORG + 1)]);
     await optOut('+573109876543');
-    expect(consents.rows).toHaveLength(0);
+    expect(targets.rows).toHaveLength(0);
     expect((customers.rows[0].metadata as Record<string, unknown>).do_not_whatsapp).toBeUndefined();
   });
 
   it('un número de OTRO país que comparte los últimos 10 dígitos («+1 310 987 6543») NO recibe la baja: la normalización decide, no el sufijo', async () => {
-    const { consents, customers } = setup([cliente('c-us', '+1 310 987 6543'), cliente('c-co', '+57 310 987 6543')]);
+    const { targets, customers } = setup([cliente('c-us', '+1 310 987 6543'), cliente('c-co', '+57 310 987 6543')]);
     await optOut('+573109876543');
-    expect(consents.rows.map((r) => r.customer_id)).toEqual(['c-co']);
+    expect(targets.rows.map((r) => r.customer_id)).toEqual(['c-co']);
     expect((customers.rows[0].metadata as Record<string, unknown>).do_not_whatsapp).toBeUndefined();
   });
 
   it('un teléfono guardado que NO normaliza («3109876543» sin indicativo en una org sin indicativo válido) cae a la red ancha del sufijo', async () => {
     // Con indicativo '999' (sin patrón nacional) `normalizePhoneDigits` devuelve
     // null para el nacional de 10 dígitos; ante la duda, la baja se apunta.
-    const { consents } = setup([cliente('c-1', '3109876543')], '999');
+    const { targets } = setup([cliente('c-1', '3109876543')], '999');
     await optOut('+573109876543');
-    expect(consents.rows).toHaveLength(1);
+    expect(targets.rows).toHaveLength(1);
   });
 
   it('otro número que solo comparte los últimos 4 dígitos NO recibe la baja', async () => {
-    const { consents } = setup([cliente('c-1', '+57 311 000 6543'), cliente('c-2', '+52 55 1234 6543')]);
+    const { targets } = setup([cliente('c-1', '+57 311 000 6543'), cliente('c-2', '+52 55 1234 6543')]);
     await optOut('+573109876543');
-    expect(consents.rows).toHaveLength(0);
+    expect(targets.rows).toHaveLength(0);
   });
 
   it('varios clientes con el mismo teléfono en la org: la baja se apunta a TODOS (ante la duda, ancho)', async () => {
-    const { consents } = setup([cliente('c-1', '+57 310 987 65 43'), cliente('c-2', '3109876543'), cliente('c-3', '+57 311 987 6543')]);
+    const { targets } = setup([cliente('c-1', '+57 310 987 65 43'), cliente('c-2', '3109876543'), cliente('c-3', '+57 311 987 6543')]);
     await optOut('+573109876543');
-    expect(consents.rows.map((r) => r.customer_id).sort()).toEqual(['c-1', 'c-2']);
+    expect(targets.rows.map((r) => r.customer_id).sort()).toEqual(['c-1', 'c-2']);
   });
 
   it('el prefiltro va EN la consulta: `filter(phone, imatch, …)` y `eq(organization_id)`, nunca `ilike`', async () => {
@@ -116,24 +119,37 @@ describe('F16 r5 · T-2 · recordConsentChange encuentra al cliente aunque el te
   });
 
   it('sin indicativo en la org y sin variable de entorno, el nacional se completa con 57 (último recurso)', async () => {
-    const { consents } = setup([cliente('c-1', '310 987 6543')], null);
+    const { targets } = setup([cliente('c-1', '310 987 6543')], null);
     await optOut('+573109876543');
-    expect(consents.rows).toHaveLength(1);
+    expect(targets.rows).toHaveLength(1);
   });
 
   it('el indicativo de la ORG decide el nacional: con indicativo 1, «310 987 6543» es +1 310…, no recibe la baja del +57 y sí la del +1', async () => {
     const a = setup([cliente('c-us', '310 987 6543')], '1');
     await optOut('+573109876543');
-    expect(a.consents.rows).toHaveLength(0);
+    expect(a.targets.rows).toHaveLength(0);
     const b = setup([cliente('c-us', '310 987 6543')], '1');
     await optOut('+13109876543');
-    expect(b.consents.rows.map((r) => r.customer_id)).toEqual(['c-us']);
+    expect(b.targets.rows.map((r) => r.customer_id)).toEqual(['c-us']);
   });
 
   it('con indicativo 52 en la org, «55 1234 5678» nacional es +52 y la baja de +525512345678 lo encuentra', async () => {
-    const { consents } = setup([cliente('c-mx', '55 1234 5678')], '52');
+    const { targets } = setup([cliente('c-mx', '55 1234 5678')], '52');
     await optOut('+525512345678');
-    expect(consents.rows).toHaveLength(1);
-    expect(consents.rows[0].customer_id).toBe('c-mx');
+    expect(targets.rows).toHaveLength(1);
+    expect(targets.rows[0].customer_id).toBe('c-mx');
   });
 });
+
+  it('no concede alta por una coincidencia de sufijo ambigua', async () => {
+    const { targets } = setup([cliente('c-1', '3109876543')], '999');
+    await recordConsentChange({ orgId: ORG, phone: '+573109876543', channel: 'whatsapp', status: 'opted_in', messageSid: 'SM_START' });
+    expect(targets.rows).toHaveLength(0);
+  });
+
+  it('recorre todas las páginas y publica el grupo una sola vez', async () => {
+    const { targets, rpcCalls } = setup(Array.from({ length: 405 }, (_, i) => cliente(`c-${i}`, '+57 310 987 65 43')));
+    await optOut('+573109876543');
+    expect(targets.rows).toHaveLength(405);
+    expect(rpcCalls).toHaveLength(1);
+  });

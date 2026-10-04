@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Card } from '@/components/ui/card';
@@ -26,6 +27,7 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { CotizacionesService, type Quotation } from '@/lib/services/cotizacionesService';
 import { abrirDocumento, imprimirDocumento } from '@/lib/documents/cliente';
+import { CrearOportunidadDesdeOrigen } from '@/components/crm/oportunidad/CrearOportunidadDesdeOrigen';
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -198,6 +200,7 @@ export function DetalleCotizacion({ cotizacion }: DetalleCotizacionProps) {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          <CrearOportunidadDesdeOrigen tipo="cotizacion" id={cotActual.id} />
           <Button variant="outline" size="sm" onClick={handleImprimir}>
             <Printer className="h-4 w-4 mr-2" /> {ta('imprimir')}
           </Button>
@@ -253,9 +256,12 @@ export function DetalleCotizacion({ cotizacion }: DetalleCotizacionProps) {
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0">
               {cotActual.customers?.avatar_url ? (
-                <img
+                <Image
                   src={cotActual.customers.avatar_url}
                   alt={cotActual.customers?.full_name || 'Cliente'}
+                  width={40}
+                  height={40}
+                  unoptimized
                   className="h-10 w-10 rounded-full object-cover border-2 border-gray-200 dark:border-gray-600"
                 />
               ) : (

@@ -13,6 +13,7 @@ import fs from "fs";
 import path from "path";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolveVoice } from "@/lib/services/crm/voiceAgent/agentRuntime";
+import { parseVoiceAgentConfig } from '@/lib/services/crm/voiceAgentConfig';
 import { MANDATORY_TOOLS } from "@/lib/services/crm/voiceAgentTools";
 import type { CatalogoModelos } from "@/lib/services/aiSettingsService";
 import {
@@ -26,7 +27,6 @@ import { defaultModel, resolveModelOptions } from "../editor/agentModels";
 import type { VoiceCatalogRow } from "../useVoiceCatalog";
 
 const ROOT = process.cwd();
-const SRC = (rel: string) => fs.readFileSync(path.join(ROOT, rel), "utf8");
 const ZONE = path.join(ROOT, "src", "components", "crm", "agentes");
 
 const voice = (over: Partial<VoiceCatalogRow>): VoiceCatalogRow => ({
@@ -134,18 +134,6 @@ describe("UXM-D (de tester r1) · resolveEffectiveVoice ejecuta lo mismo que res
 
 // ─── 2. Ida y vuelta API → formulario → cuerpo, contra lo que aceptan las rutas ──
 
-/** Claves `body.xxx` que la ruta POST copia al servicio. */
-function bodyKeysAcceptedByPost(): Set<string> {
-  const src = SRC("src/app/api/crm/voice-agents/route.ts");
-  return new Set(Array.from(src.matchAll(/^\s+(\w+): body\.\1,?$/gm)).map((m) => m[1]));
-}
-/** Campos que `updateVoiceAgent` copia del PATCH. */
-function fieldsAcceptedByUpdate(): Set<string> {
-  const src = SRC("src/lib/services/crm/voiceAgentService.ts");
-  const block = src.slice(src.indexOf("export async function updateVoiceAgent"), src.indexOf("export async function deleteVoiceAgent"));
-  return new Set(Array.from(block.matchAll(/'(\w+)'/g)).map((m) => m[1]));
-}
-
 const FULL_AGENT = {
   id: "a1", organization_id: 120, name: "Ana", slug: "ana", description: "d", engine: "conversation_relay",
   purpose_type: "sell_product", system_prompt: "Vende", first_message: "Hola", voice_provider: "elevenlabs",
@@ -168,13 +156,9 @@ describe("UXM-D (de tester r1) · ida y vuelta del agente completo", () => {
   });
 
   test("toda clave del cuerpo la acepta POST y PATCH: ninguna se descarta en silencio", () => {
-    const body = agentFormToBody(agentFormFromApi(FULL_AGENT));
-    const post = bodyKeysAcceptedByPost();
-    const patch = fieldsAcceptedByUpdate();
-    expect(post.size).toBeGreaterThan(15);
-    for (const key of Object.keys(body)) {
-      expect({ key, post: post.has(key), patch: patch.has(key) }).toEqual({ key, post: true, patch: true });
-    }
+    const body = { ...agentFormToBody(agentFormFromApi(FULL_AGENT)), voice_ref_id: '10000000-0000-4000-8000-000000000001' };
+    expect(parseVoiceAgentConfig(body, true)).toEqual(body);
+    expect(parseVoiceAgentConfig(body)).toEqual(body);
   });
 
   test("las herramientas obligatorias viajan en el cuerpo aunque el agente guardado no las tuviera", () => {

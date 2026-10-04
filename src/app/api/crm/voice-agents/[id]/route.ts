@@ -1,102 +1,43 @@
-/**
- * GET /api/crm/voice-agents/[id] — Obtiene un agente de voz.
- * PATCH /api/crm/voice-agents/[id] — Actualiza un agente de voz.
- * DELETE /api/crm/voice-agents/[id] — Elimina un agente de voz.
- */
-
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
-import {
-  getVoiceAgent,
-  updateVoiceAgent,
-  deleteVoiceAgent,
-} from '@/lib/services/crm/voiceAgentService';
-
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+import { getVoiceAgent, updateVoiceAgent, deleteVoiceAgent } from '@/lib/services/crm/voiceAgentService';
+import { CRM_PERMISOS, CrmHttpError, exigirUuid, exigirPermisoCrm, respuestaErrorCrm, sinClavesDeOrganizacion } from '@/lib/services/crm/crmRouteSupport';
+import { parseVoiceAgentConfig, validateAgentReferences } from '@/lib/services/crm/voiceAgentConfig';
+type Params = { params: Promise<{ id: string }> };
+export async function GET(request: NextRequest, { params }: Params) {
   try {
-    const ctx = await getServerOrgContext();
-    const { id } = await params;
-
-    const agent = await getVoiceAgent(id, ctx.organizationId, ctx.supabase);
-
-    if (!agent) {
-      return NextResponse.json(
-        { success: false, error: 'Agente no encontrado' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({ success: true, data: agent }, { status: 200 });
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[Voice Agents] GET [id] error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
-  }
+    const ctx = await getServerOrgContext(request);
+    readOrgBody(ctx, new URL(request.url).searchParams, { request });
+    await exigirPermisoCrm(ctx, [CRM_PERMISOS.campanasGestionar], 'GET agente IA');
+    const { id } = await params; exigirUuid(id, 'agente');
+    const data = await getVoiceAgent(id, ctx.organizationId, ctx.supabase);
+    if (!data) throw new CrmHttpError(404, 'agente_no_encontrado', 'Agente no encontrado');
+    return NextResponse.json({ success: true, data }, { headers: { 'Cache-Control': 'private, no-store' } });
+  } catch (error) { return respuestaErrorCrm(error, 'GET agente IA'); }
 }
-
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: NextRequest, { params }: Params) {
   try {
-    const ctx = await getServerOrgContext();
-    const { id } = await params;
-    const body = await readOrgBody(ctx, request);
-
-    const agent = await updateVoiceAgent(id, ctx.organizationId, body, ctx.supabase);
-
-    if (!agent) {
-      return NextResponse.json(
-        { success: false, error: 'Agente no encontrado' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({ success: true, data: agent }, { status: 200 });
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[Voice Agents] PATCH [id] error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
-  }
+    const ctx = await getServerOrgContext(request);
+    const raw = await readOrgBody(ctx, request);
+    await exigirPermisoCrm(ctx, [CRM_PERMISOS.campanasGestionar], 'PATCH agente IA');
+    const { id } = await params; exigirUuid(id, 'agente');
+    const current = await getVoiceAgent(id, ctx.organizationId, ctx.supabase);
+    if (!current) throw new CrmHttpError(404, 'agente_no_encontrado', 'Agente no encontrado');
+    const body = parseVoiceAgentConfig(sinClavesDeOrganizacion(raw));
+    await validateAgentReferences(ctx, body, current);
+    const data = await updateVoiceAgent(id, ctx.organizationId, { ...body, voice_id: body.voice_id === null ? '' : body.voice_id }, ctx.supabase);
+    if (!data) throw new CrmHttpError(404, 'agente_no_encontrado', 'Agente no encontrado');
+    return NextResponse.json({ success: true, data });
+  } catch (error) { return respuestaErrorCrm(error, 'PATCH agente IA'); }
 }
-
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(request: NextRequest, { params }: Params) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     await readOrgBody(ctx, request);
-    const { id } = await params;
-
+    await exigirPermisoCrm(ctx, [CRM_PERMISOS.campanasGestionar], 'DELETE agente IA');
+    const { id } = await params; exigirUuid(id, 'agente');
     await deleteVoiceAgent(id, ctx.organizationId, ctx.supabase);
-
-    return NextResponse.json({ success: true }, { status: 200 });
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[Voice Agents] DELETE [id] error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
-  }
+    return NextResponse.json({ success: true });
+  } catch (error) { return respuestaErrorCrm(error, 'DELETE agente IA'); }
 }

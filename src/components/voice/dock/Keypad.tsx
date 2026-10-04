@@ -9,10 +9,11 @@
  * Después de 1.5s sin presionar, se confirma el carácter y se puede escribir el siguiente.
  */
 
-import { useRef, useCallback, useEffect } from 'react';
+import { useRef, useCallback, useEffect, type ReactNode } from 'react';
 import { Delete, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/utils/Utils';
+import { useTranslations } from 'next-intl';
 
 const DIAL_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'];
 
@@ -51,15 +52,19 @@ interface KeypadProps {
   dtmfMode?: boolean;
   onDigit?: (digit: string) => void;
   disabled?: boolean;
+  diseno?: 'heredado' | 'kit';
+  despuesNumero?: ReactNode;
 }
 
-export function Keypad({ value, onChange, onSubmit, dtmfMode = false, onDigit, disabled }: KeypadProps) {
+export function Keypad({ value, onChange, onSubmit, dtmfMode = false, onDigit, disabled, diseno = 'heredado', despuesNumero }: KeypadProps) {
+  const t = useTranslations('phoneBrowser');
   // Estado del multi-tap T9
   const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cycleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cycleIndexRef = useRef(0);
   const activeKeyRef = useRef<string | null>(null);
   const isLongPressRef = useRef(false);
+  const consumedMouseClick = useRef(false);
 
   const press = useCallback((key: string) => {
     if (dtmfMode) {
@@ -106,6 +111,7 @@ export function Keypad({ value, onChange, onSubmit, dtmfMode = false, onDigit, d
   // Manejo de presión en tecla (mouse y touch)
   const handlePressStart = useCallback((key: string) => {
     if (disabled || dtmfMode) return;
+    consumedMouseClick.current = false;
 
     activeKeyRef.current = key;
     isLongPressRef.current = false;
@@ -165,8 +171,9 @@ export function Keypad({ value, onChange, onSubmit, dtmfMode = false, onDigit, d
   }, [clearTimers]);
 
   return (
-    <div className="space-y-2" role="group" aria-label={dtmfMode ? 'Teclado DTMF' : 'Marcador'}>
-      <div className="flex items-center gap-1">
+    <div className={cn(diseno === 'kit' ? 'space-y-3' : 'space-y-2')} role="group" aria-label={dtmfMode ? 'Teclado DTMF' : 'Marcador'}>
+      <div className={cn('flex items-center gap-1', diseno === 'kit' && 'relative rounded-[10px] border border-line-strong bg-surface focus-within:border-brand focus-within:ring-1 focus-within:ring-brand')}>
+        {diseno === 'kit' && dtmfMode && <span className="absolute left-3 top-1 text-[10px] leading-3 text-fg-secondary">{t('sentTones')}</span>}
         <Input
           type="tel"
           inputMode="tel"
@@ -183,14 +190,15 @@ export function Keypad({ value, onChange, onSubmit, dtmfMode = false, onDigit, d
           }}
           placeholder={dtmfMode ? 'Dígitos enviados' : '+57 300 123 4567'}
           aria-label={dtmfMode ? 'Dígitos DTMF' : 'Número a llamar'}
-          className="text-center font-mono text-lg"
+          className={cn('text-center font-mono text-lg', diseno === 'kit' && 'h-[52px] border-0 bg-transparent pl-3.5 pr-10 text-left font-sans text-xl font-medium leading-7 shadow-none focus-visible:ring-0', diseno === 'kit' && dtmfMode && 'h-12 rounded-lg bg-subtle pt-3')}
           disabled={disabled}
           readOnly={dtmfMode}
         />
-        {value && !dtmfMode && (
+        {value && (!dtmfMode || diseno === 'kit') && (
           <>
             <button
               type="button"
+              hidden={diseno === 'kit' || dtmfMode}
               onClick={() => onChange(value.slice(0, -1))}
               className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
               aria-label="Borrar último dígito"
@@ -203,7 +211,7 @@ export function Keypad({ value, onChange, onSubmit, dtmfMode = false, onDigit, d
                 clearTimers();
                 onChange('');
               }}
-              className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
+              className={cn('p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400', diseno === 'kit' && 'absolute right-2 flex size-8 items-center justify-center rounded-lg text-fg-secondary')}
               aria-label="Limpiar número"
             >
               <X size={16} />
@@ -211,13 +219,15 @@ export function Keypad({ value, onChange, onSubmit, dtmfMode = false, onDigit, d
           </>
         )}
       </div>
-      <div className="grid grid-cols-3 gap-1.5">
+      {despuesNumero}
+      <div className={cn('grid grid-cols-3', diseno === 'kit' ? 'gap-2' : 'gap-1.5')}>
         {DIAL_KEYS.map((key) => (
           <button
             key={key}
             type="button"
             // Tap normal (mouse)
             onClick={() => {
+              if (consumedMouseClick.current) { consumedMouseClick.current = false; return; }
               // El click se maneja con mousedown/mouseup para detectar long-press.
               // Pero si es un click rápido (sin mousedown detectado), manejarlo aquí.
               if (!disabled && !dtmfMode && !isLongPressRef.current) {
@@ -240,6 +250,7 @@ export function Keypad({ value, onChange, onSubmit, dtmfMode = false, onDigit, d
             onMouseUp={(e) => {
               e.preventDefault();
               handlePressEnd();
+              if (!disabled && !dtmfMode) consumedMouseClick.current = true;
             }}
             onMouseLeave={() => {
               if (pressTimerRef.current) {
@@ -252,10 +263,12 @@ export function Keypad({ value, onChange, onSubmit, dtmfMode = false, onDigit, d
             // Long-press detection (touch)
             onTouchStart={(e) => {
               e.preventDefault();
+              if (dtmfMode) activeKeyRef.current = key;
               handlePressStart(key);
             }}
             onTouchEnd={(e) => {
               e.preventDefault();
+              if (dtmfMode && !disabled && activeKeyRef.current === key) { press(key); activeKeyRef.current = null; }
               handlePressEnd();
             }}
             onTouchCancel={() => {
@@ -268,12 +281,13 @@ export function Keypad({ value, onChange, onSubmit, dtmfMode = false, onDigit, d
             className={cn(
               'relative h-12 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700',
               'text-lg font-mono font-semibold text-gray-900 dark:text-gray-100 transition-colors disabled:opacity-50',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 select-none touch-manipulation'
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 select-none touch-manipulation',
+              diseno === 'kit' && 'flex h-[52px] flex-col items-center justify-center rounded-xl border-0 bg-subtle font-sans text-[22px] leading-7 tracking-[-0.2px] text-fg hover:bg-hover active:bg-brand-tint dark:bg-subtle dark:text-fg dark:hover:bg-hover'
             )}
           >
             {key}
             {KEY_LETTERS[key] && (
-              <span className="absolute bottom-0.5 left-0 right-0 text-[8px] font-sans font-normal text-gray-400 dark:text-gray-500 leading-none">
+              <span className={cn('absolute bottom-0.5 left-0 right-0 text-[8px] font-sans font-normal text-gray-400 dark:text-gray-500 leading-none', diseno === 'kit' && 'static text-xs font-medium leading-4 text-fg-secondary dark:text-fg-secondary')}>
                 {KEY_LETTERS[key]}
               </span>
             )}
@@ -281,7 +295,7 @@ export function Keypad({ value, onChange, onSubmit, dtmfMode = false, onDigit, d
         ))}
       </div>
       {/* Botón + para marcado internacional (E.164) */}
-      {!dtmfMode && (
+      {!dtmfMode && diseno !== 'kit' && (
         <button
           type="button"
           onClick={() => press('+')}

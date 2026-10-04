@@ -4,7 +4,8 @@ import { enqueueJob } from '@/lib/jobs/enqueue';
 import { getCallAiPolicy } from '@/lib/services/crm/callAiPolicy';
 import { transcribeCall, type CallTranscript, type TranscribeOptions } from '@/lib/services/crm/transcriptionService';
 import { analyzeCall, runPostAnalysisActions, type CallAnalysis, type ApplyResult, type AnalyzeOptions } from '@/lib/services/crm/callAnalysisService';
-import { upsertCallActivity, touchOpportunityFromCall, notifyCallAnalyzed, mapCallStatusToOutcome, type CallRowForActivity } from '@/lib/services/crm/callActivityService';
+import { upsertCallActivity, notifyCallAnalyzed, type CallRowForActivity } from '@/lib/services/crm/callActivityService';
+import { CrmHttpError } from './crmErrors';
 
 /**
  * Orquestación grabación → transcripción → análisis → actividad (FASE-04 §2).
@@ -137,13 +138,15 @@ export async function runAnalysisPipeline(orgId: number, callId: string, opts: A
   const analysis = await analyzeCall(orgId, callId, { ...opts, supabase: sb });
   const policy = await getCallAiPolicy(orgId);
 
-  const { data: callRow } = await sb
+  const { data: callRow, error: callReadError } = await sb
     .from('calls')
-    .select('id, organization_id, direction, mode, status, answered_by, started_at, ended_at, duration_seconds, customer_id, opportunity_id, user_id')
+    .select('id, organization_id, direction, mode, status, answered_by, started_at, ended_at, duration_seconds, customer_id, opportunity_id, user_id, metadata')
     .eq('id', callId)
     .eq('organization_id', orgId)
     .maybeSingle();
+  if (callReadError) throw callReadError;
   const call = callRow as CallRowForActivity | null;
+  if (!call) throw new CrmHttpError(404, 'llamada_no_encontrada', 'Llamada no encontrada');
 
   let activityId: string | null = null;
   let apply: ApplyResult | null = null;
@@ -164,13 +167,10 @@ export async function runAnalysisPipeline(orgId: number, callId: string, opts: A
         tags: raw.suggested_tags ?? null,
         recordingId: (raw.recording_id as string) ?? null,
       },
-    }).catch((e) => {
-      console.error('[callIntelligence] upsertCallActivity:', e instanceof Error ? e.message : e);
-      return null;
     });
     activityId = act?.activityId ?? null;
 
-    await touchOpportunityFromCall(orgId, call, { contactResult: mapCallStatusToOutcome(call.status, call.answered_by), temperature: raw.temperature ?? null }, sb);
+    // El trigger de activities conserva una misma evidencia temporal para cliente y oportunidad.
 
     // Acciones según política (solo si el análisis es nuevo o no se aplicó nada aún).
     const alreadyApplied = (raw.applied_actions ?? []).length > 0;

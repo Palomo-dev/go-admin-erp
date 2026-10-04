@@ -16,11 +16,13 @@
  *  - Toda ejecución queda registrada en `voice_agent_tool_runs`.
  */
 
+import { OPPORTUNITY_WRITABLE_FIELDS } from './voiceAgentToolCatalog';
+export { ALL_TOOL_NAMES, OPPORTUNITY_WRITABLE_FIELDS, MANDATORY_TOOLS, VOICE_AGENT_TOOL_DEFINITIONS, toolDefinitionsFor } from './voiceAgentToolCatalog';
+export type { ChatToolDefinition } from './voiceAgentToolCatalog';
+
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { zonaHorariaOrganizacion } from '@/lib/services/crm/voiceAgent/cumplimiento';
-import { wallTimeToInstant } from '@/lib/utils/dateCore';
-import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
-import { notificarReunion } from '@/lib/services/crm/reunionCorreo.server';
+import { bookMeeting } from './voiceAgent/reuniones';
+export { bookMeeting, resolverInicioReunion } from './voiceAgent/reuniones';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -53,15 +55,7 @@ export interface CreateTaskInput {
 }
 
 /** Campos de `opportunities` que el agente puede escribir (allow-list, D7). */
-export const OPPORTUNITY_WRITABLE_FIELDS = [
-  'amount',
-  'expected_close_date',
-  'next_contact_at',
-  'temperature',
-  'contact_result',
-  'next_action',
-  'competitor_name',
-] as const;
+
 export type OpportunityWritableField = (typeof OPPORTUNITY_WRITABLE_FIELDS)[number];
 
 // ─── Registro de ejecuciones ─────────────────────────────────────────────────
@@ -319,134 +313,6 @@ export async function createTask(ctx: ToolContext, data: CreateTaskInput): Promi
   return { success: true, data: task };
 }
 
-// ─── Tool: book_meeting ──────────────────────────────────────────────────────
-
-/**
- * Inicio de la reunión tal como lo manda el modelo → instante.
- *
- * Con desfase o `Z` (`2026-10-02T10:00:00-05:00`) se respeta tal cual. Sin
- * desfase (`2026-10-02T10:00`, `2026-10-02 10:00`) es la hora de pared de la
- * ORGANIZACIÓN, no la del servidor: el ws-server corre en UTC y `Date.parse`
- * de una hora sin zona la leía como UTC, con lo que «las 10» quedaban a las
- * 5 de la mañana en Colombia. Devuelve `null` si no se entiende.
- */
-export function resolverInicioReunion(valor: string | null | undefined, zona: string): Date | null {
-  const texto = (valor ?? '').trim();
-  if (!texto) return null;
-  const conZona = /(Z|[+-]\d{2}:?\d{2})$/i.test(texto);
-  if (conZona) {
-    const t = Date.parse(texto);
-    return Number.isFinite(t) ? new Date(t) : null;
-  }
-  const m = texto.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{1,2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?$/);
-  if (!m) return null;
-  const hora = Number(m[2]);
-  const minuto = Number(m[3]);
-  if (hora > 23 || minuto > 59) return null;
-  const inst = wallTimeToInstant(m[1], `${String(hora).padStart(2, '0')}:${m[3]}:${m[4] ?? '00'}`, zona);
-  return Number.isFinite(inst.getTime()) ? inst : null;
-}
-
-/**
- * Agenda la reunión en `calendar_events`.
- *
- * Causa raíz de «agendar falla» (2026-09-29, reproducido en la base en una
- * transacción revertida): el INSERT mandaba `status: 'scheduled'` y el CHECK
- * real `calendar_events_status_check` solo admite `confirmed`, `tentative` y
- * `cancelled` → 23514 en TODAS las llamadas; el agente recibía el error y no
- * podía agendar nunca. `meetingsService.createMeeting` (ficha 360) ya usaba
- * `confirmed`. Además: la zona salía cableada a Bogotá y una hora sin desfase
- * se interpretaba en UTC (ver `resolverInicioReunion`).
- */
-export async function bookMeeting(
-  ctx: ToolContext,
-  args: { start_at: string; duration_minutes?: number; title?: string; notes?: string }
-): Promise<ToolResult> {
-  const zona = await zonaHorariaOrganizacion(ctx.supabase, ctx.orgId);
-  const inicio = resolverInicioReunion(args.start_at, zona);
-  if (!inicio) {
-    return {
-      success: false,
-      error: 'Fecha de inicio inválida: usa ISO 8601 con desfase, por ejemplo 2026-10-02T10:00:00-05:00',
-    };
-  }
-  const start = inicio.getTime();
-  if (start < Date.now()) return { success: false, error: 'La reunión no puede ser en el pasado' };
-
-  const minutes = Math.min(Math.max(Number(args.duration_minutes) || 30, 15), 180);
-  const endIso = new Date(start + minutes * 60 * 1000).toISOString();
-
-  let assignedTo: string | null = null;
-  let customerId = ctx.customerId ?? null;
-  if (ctx.opportunityId) {
-    const { data: opp, error } = await ctx.supabase
-      .from('opportunities')
-      .select('salesperson_id, customer_id')
-      .eq('id', ctx.opportunityId)
-      .eq('organization_id', ctx.orgId)
-      .maybeSingle();
-    if (error) return { success: false, error: error.message };
-    assignedTo = (opp as { salesperson_id: string | null } | null)?.salesperson_id ?? null;
-    customerId = customerId ?? ((opp as { customer_id: string | null } | null)?.customer_id ?? null);
-  }
-
-  const { data: event, error: evError } = await ctx.supabase
-    .from('calendar_events')
-    .insert({
-      organization_id: ctx.orgId,
-      title: args.title || 'Reunión agendada por el agente IA',
-      description: args.notes ?? null,
-      start_at: new Date(start).toISOString(),
-      end_at: endIso,
-      all_day: false,
-      timezone: zona,
-      assigned_to: assignedTo,
-      customer_id: customerId,
-      event_type: 'meeting',
-      // CHECK real: confirmed | tentative | cancelled (verificado por MCP).
-      status: 'confirmed',
-      metadata: {
-        source: 'voice_agent',
-        voice_agent_call_id: ctx.voiceAgentCallId ?? null,
-        opportunity_id: ctx.opportunityId ?? null,
-      },
-    })
-    .select('id, start_at, end_at')
-    .single();
-  if (evError) return { success: false, error: evError.message };
-
-  const cuando = formatDateTimeInTz(new Date(start), zona, { locale: 'es-CO' });
-  const relatedId = ctx.opportunityId ?? customerId;
-  if (relatedId) {
-    await logActivity(ctx, {
-      relatedType: ctx.opportunityId ? 'opportunity' : 'customer',
-      relatedId,
-      notes: `Reunión agendada por el agente IA para el ${cuando} (${zona}).`,
-      outcome: 'meeting_booked',
-      metadata: { calendar_event_id: (event as { id: string }).id },
-    });
-  }
-
-  const fila = event as { id: string; start_at: string; end_at: string };
-  const invite = await notificarReunion(ctx.orgId, { userId: assignedTo }, {
-    id: fila.id,
-    title: args.title || 'Reunión agendada por el agente IA',
-    description: args.notes ?? null,
-    start_at: fila.start_at,
-    end_at: fila.end_at,
-    timezone: zona,
-    assigned_to: assignedTo,
-    customer_id: customerId,
-    opportunity_id: ctx.opportunityId ?? null,
-  }, ctx.supabase);
-
-  return {
-    success: true,
-    data: { ...fila, local: cuando, timezone: zona, invite },
-    say: `Listo, la reunión quedó agendada para el ${cuando}.`,
-  };
-}
-
 // ─── Tool: schedule_callback ─────────────────────────────────────────────────
 
 export async function scheduleCallback(
@@ -652,123 +518,6 @@ export async function endCall(ctx: ToolContext, args: { outcome?: string }): Pro
     .eq('organization_id', ctx.orgId);
   if (error) return { success: false, error: error.message };
   return { success: true, data: { end: true } };
-}
-
-// ─── Definiciones para el LLM (forma de chat.completions) ────────────────────
-
-export interface ChatToolDefinition {
-  type: 'function';
-  function: { name: string; description: string; parameters: Record<string, unknown> };
-}
-
-const fn = (
-  name: string,
-  description: string,
-  parameters: Record<string, unknown>
-): ChatToolDefinition => ({ type: 'function', function: { name, description, parameters } });
-
-/**
- * M-F6-29: forma anidada `{type:'function', function:{...}}`, la que exige
- * `chat.completions`. La forma plana anterior era la de la Responses API.
- */
-export const VOICE_AGENT_TOOL_DEFINITIONS: ChatToolDefinition[] = [
-  fn('get_customer_context', 'Obtiene datos del cliente, sus oportunidades abiertas, actividades y tareas.', {
-    type: 'object',
-    properties: { customer_id: { type: 'string', description: 'ID del cliente' } },
-    required: [],
-  }),
-  fn('move_opportunity_stage', 'Mueve la oportunidad a otra etapa del embudo. No puede cerrar (ganada/perdida).', {
-    type: 'object',
-    properties: {
-      opportunity_id: { type: 'string' },
-      stage_id: { type: 'string' },
-    },
-    required: ['stage_id'],
-  }),
-  fn('update_opportunity_field', 'Actualiza un dato de la oportunidad averiguado en la llamada.', {
-    type: 'object',
-    properties: {
-      field: { type: 'string', enum: [...OPPORTUNITY_WRITABLE_FIELDS] },
-      value: { type: 'string' },
-    },
-    required: ['field', 'value'],
-  }),
-  fn('create_task', 'Crea una tarea de seguimiento para el vendedor.', {
-    type: 'object',
-    properties: {
-      title: { type: 'string' },
-      description: { type: 'string' },
-      due_date: { type: 'string', description: 'ISO 8601' },
-    },
-    required: ['title'],
-  }),
-  fn('book_meeting', 'Agenda una reunión (demo) con el vendedor en la fecha y hora que el cliente aceptó. Confirma antes el día y la hora en voz alta.', {
-    type: 'object',
-    properties: {
-      start_at: {
-        type: 'string',
-        description:
-          'Inicio en ISO 8601 CON el desfase de la zona horaria indicada en las instrucciones, p. ej. 2026-10-02T10:00:00-05:00. Calcúlalo a partir de la fecha y hora actuales que te dieron, nunca de tu conocimiento.',
-      },
-      duration_minutes: { type: 'number' },
-      title: { type: 'string' },
-      notes: { type: 'string' },
-    },
-    required: ['start_at'],
-  }),
-  fn('schedule_callback', 'Programa devolver la llamada más tarde.', {
-    type: 'object',
-    properties: {
-      when: { type: 'string', description: 'Momento en ISO 8601' },
-      reason: { type: 'string' },
-    },
-    required: ['when'],
-  }),
-  fn('log_objection', 'Registra la objeción o el motivo por el que el cliente no avanza.', {
-    type: 'object',
-    properties: { objection: { type: 'string' }, detail: { type: 'string' } },
-    required: ['objection'],
-  }),
-  fn('send_payment_link', 'Deja preparado el envío del enlace de pago al cliente.', {
-    type: 'object',
-    properties: { amount: { type: 'number' }, concept: { type: 'string' } },
-    required: [],
-  }),
-  fn('log_consent_opt_out', 'El cliente pide no recibir más llamadas: registra la baja voluntaria.', {
-    type: 'object',
-    properties: {
-      channel: { type: 'string', enum: ['voice', 'email', 'whatsapp', 'sms'] },
-      reason: { type: 'string' },
-    },
-    required: [],
-  }),
-  fn('transfer_to_human', 'Transfiere la llamada a una persona del equipo.', {
-    type: 'object',
-    properties: { reason: { type: 'string' } },
-    required: [],
-  }),
-  fn('end_call', 'Termina la llamada dejando registrado el desenlace.', {
-    type: 'object',
-    properties: { outcome: { type: 'string' } },
-    required: [],
-  }),
-];
-
-export const ALL_TOOL_NAMES = VOICE_AGENT_TOOL_DEFINITIONS.map((t) => t.function.name);
-
-/**
- * Herramientas OBLIGATORIAS en toda llamada (F-NEW-7 · D9 · Ley 1581 de 2012).
- * No se pueden desmarcar en la UI ni acotar desde la etapa del embudo: sin
- * `log_consent_opt_out` el agente no puede registrar un «no me vuelva a llamar»,
- * y sin `end_call` no puede colgar después de registrarlo.
- * `agentRuntime.buildRuntimeConfig` las añade siempre a `allowedTools`.
- */
-export const MANDATORY_TOOLS = ['log_consent_opt_out', 'end_call'] as const;
-
-/** Definiciones filtradas por las tools permitidas del agente/etapa. */
-export function toolDefinitionsFor(allowed: string[]): ChatToolDefinition[] {
-  if (!allowed || allowed.length === 0) return [];
-  return VOICE_AGENT_TOOL_DEFINITIONS.filter((t) => allowed.includes(t.function.name));
 }
 
 // ─── Despacho ────────────────────────────────────────────────────────────────

@@ -8,7 +8,8 @@
 #   @supabase/supabase-js · dotenv · libphonenumber-js · openai · resend ·
 #   sanitize-html · svix · twilio · ws · zod · tsx (runtime)
 # `@sentry/react` aparece como import dinámico de timezoneFallback.ts, solo
-# si hay `window`. No se instala: su peer es react, prohibido en esta imagen.
+# si hay `window`. El grafo de Node elimina esa rama; un import ejecutable
+# sí se detecta. No se instala: su peer es react, prohibido en esta imagen.
 # Antes: ~1.600 paquetes (Next, puppeteer, antd, sharp, xlsx…) y 32 avisos de
 # `npm audit` (2 críticos, 18 altos); Railway bloqueaba la imagen en
 # BUILD_IMAGE. Ahora: el cierre propio, sin esos paquetes de la web.
@@ -16,6 +17,9 @@
 # a 2.50.5 (auth-js 2.70.0; GHSA-8r88-6cj9-9fh5 afectaba ≤ 2.69.1) y `tsx` a
 # 4.23.15 (esbuild 0.28.2; GHSA-g7r4-m6w7-qqqr afectaba 0.27.3–0.28.0). Arranque
 # verificado con esta misma disposición de archivos (/health responde).
+# 2026-10-02: reuniones desde voz alcanzan correo, teléfono y bloques; sus
+# dependencias se incluyen en el lockfile propio. Arranque aislado comprobado
+# con Node 20.20.2 y /health 200, sin depender del node_modules de la web.
 # 2026-10-02: el correo de reunión alcanzó resend, sanitize-html, zod y
 # libphonenumber-js. `npm ci` instala 98 paquetes. `npm audit --omit=dev` = 0.
 # En Node 20.20.2 (la imagen de Railway) esos cuatro módulos cargan.
@@ -56,6 +60,9 @@ COPY tsconfig.json ./
 # Código compartido con Next.js
 COPY src/lib/ ./src/lib/
 COPY src/types/ ./src/types/
+
+# Cumplimiento compartido entre Node y Edge Functions (Ley 2300 y RNE).
+COPY supabase/functions/_shared/contacto/ ./supabase/functions/_shared/contacto/
 
 # Supabase: cliente Node (ws-config) como config.ts
 COPY src/lib/supabase/ws-config.ts ./src/lib/supabase/config.ts

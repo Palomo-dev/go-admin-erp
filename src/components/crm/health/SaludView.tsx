@@ -1,191 +1,382 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { toast } from '@/components/ui/use-toast';
-import { healthScoreService } from '@/lib/services/crm/healthScoreService';
-import type { HealthScoreResult, HealthBand } from '@/lib/services/crm/healthScoreService';
-import { RefreshCw, HeartPulse, AlertTriangle, CheckCircle2, CircleDot, Users, type LucideIcon } from 'lucide-react';
-import { LoadErrorState } from '@/components/common/LoadErrorState';
-import { describeError, logError } from '@/lib/utils/errorMessage';
-import { HealthCustomerGrid } from './HealthCustomerGrid';
-import { HealthDetailDrawer } from './HealthDetailDrawer';
-import { BAND_STYLES } from './healthBandStyles';
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslations } from "next-intl";
+import { CheckCircle2, Download, RefreshCw, Settings } from "lucide-react";
+import { PageHeader } from "@/components/kit/PageHeader";
+import { StatCard } from "@/components/kit/StatCard";
+import { ChipsOpcion } from "@/components/kit/ChipsOpcion";
+import { PanelAdaptable } from "@/components/kit/PanelAdaptable";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { EmptyState } from "@/components/kit/EmptyState";
+import { clasesBoton } from "@/components/kit/botonClases";
+import { useMonedaOrganizacion } from "@/lib/hooks/useOrgCurrency";
+import { filasACsv } from "@/lib/utils/csv";
+import { ORGANIZATION_CHANGED_EVENT } from "@/lib/hooks/useOrganization";
+import { healthScoreService } from "@/lib/services/crm/healthScoreService";
+import type {
+  HealthDashboard,
+  HealthListRow,
+} from "@/lib/services/crm/healthReadService";
+import { claveError } from "@/components/crm/acciones/apiCrm";
+import { AccionesRapidasCrm } from "@/components/crm/acciones/AccionesRapidasCrm";
+import { HealthDetailDrawer } from "./HealthDetailDrawer";
+import { HealthTrend } from "./HealthTrend";
+import { HealthRiskTable } from "./HealthRiskTable";
+import { FactoresSalud } from "./FactoresSalud";
 
-/**
- * /app/crm/salud (F11): salud de clientes. Score y banda salen de
- * `fn_customer_health` + `health_score_configs.config` (dimensiones
- * configurables); alertas y tendencia en el detalle (`HealthDetailDrawer`).
- * «Recalcular» (r2) va por `POST /api/crm/health/refresh` con sesión: misma
- * pasada que el cron (snapshot solo si cambió o venció el intervalo).
- */
-interface SaludViewProps {
-  organizationId: number;
-}
-
-type FilterType = 'all' | HealthBand;
-
-const STAT_CARDS: Array<{ key: FilterType; label: string; icon: LucideIcon; iconBox: string; text: string }> = [
-  { key: 'all', label: 'Total monitoreados', icon: Users, iconBox: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400', text: 'text-gray-900 dark:text-white' },
-  { key: 'green', label: BAND_STYLES.green.label, icon: CheckCircle2, iconBox: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400', text: BAND_STYLES.green.text },
-  { key: 'yellow', label: BAND_STYLES.yellow.label, icon: CircleDot, iconBox: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400', text: BAND_STYLES.yellow.text },
-  { key: 'red', label: BAND_STYLES.red.label, icon: AlertTriangle, iconBox: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400', text: BAND_STYLES.red.text },
-];
-
-export function SaludView({ organizationId }: SaludViewProps) {
-  const [scores, setScores] = useState<HealthScoreResult[]>([]);
+type Filter = "all" | "red" | "yellow" | "green" | "declined" | "mine";
+export function SaludView({ organizationId }: { organizationId: number }) {
+  const t = useTranslations("crm.salud");
+  const errors = useTranslations("crm.accionesRapidas.errores");
+  const { formatear } = useMonedaOrganizacion();
+  const [data, setData] = useState<HealthDashboard | null>(null);
   const [loading, setLoading] = useState(true);
-  // El toast desaparece; sin esto la pantalla quedaba en «0 clientes» como si
-  // no hubiera datos cuando en realidad la carga había fallado.
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [filter, setFilter] = useState<FilterType>('all');
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
-  const isFirstLoadRef = useRef(true);
-
-  const loadScores = useCallback(async () => {
-    if (isFirstLoadRef.current) setLoading(true);
-    setIsRefreshing(true);
-    setLoadError(null);
-    try {
-      const data = await healthScoreService.getAllHealthScores(organizationId);
-      setScores(data);
-    } catch (err) {
-      logError('[SaludView] cargar scores de salud', err);
-      setLoadError(describeError(err));
-    } finally {
-      isFirstLoadRef.current = false;
-      setLoading(false);
-      setIsRefreshing(false);
+  const [error, setError] = useState<string | null>(null);
+  const [explanation, setExplanation] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [sort, setSort] = useState<"revenue" | "score" | "decline">("revenue");
+  const detailTrigger = useRef<HTMLElement | null>(null);
+  const [filter, setFilter] = useState<Filter>("red");
+  const [detail, setDetail] = useState<string | null>(null);
+  useEffect(() => {
+    if (!detail && detailTrigger.current?.isConnected) {
+      detailTrigger.current.focus();
+      detailTrigger.current = null;
     }
-  }, [organizationId]);
-
-  useEffect(() => { void loadScores(); }, [loadScores]);
-
-  const handleRecalculate = async () => {
-    setIsRefreshing(true);
+  }, [detail]);
+  const [factors, setFactors] = useState(false);
+  const [call, setCall] = useState<{ row: HealthListRow; key: number } | null>(
+    null,
+  );
+  const revision = useRef(0);
+  const load = useCallback(async () => {
+    const current = ++revision.current;
+    setLoading(true);
+    setError(null);
     try {
-      const r = await healthScoreService.refreshAllHealthScores();
-      const description = r.reason === 'config_inactive'
-        ? 'La medición de salud está desactivada en la configuración de tu organización.'
-        : `${r.customers} clientes medidos · ${r.customers_updated} cambiaron de score · ${r.snapshots_written} puntos nuevos en la tendencia`;
-      toast({ title: 'Recálculo completado', description });
-      await loadScores();
-    } catch (err) {
-      logError('[SaludView] recalcular', err);
-      toast({ title: 'No se pudo recalcular', description: describeError(err), variant: 'destructive' });
+      const result = await healthScoreService.getDashboard();
+      if (current === revision.current) setData(result);
+    } catch (e) {
+      if (current === revision.current) setError(errors(claveError(e)));
     } finally {
-      setIsRefreshing(false);
+      if (current === revision.current) setLoading(false);
+    }
+  }, [errors]);
+  useEffect(() => {
+    setData(null);
+    setDetail(null);
+    setFactors(false);
+    setCall(null);
+    setFilter("red");
+    setBusy(false);
+    setNotice(null);
+    void load();
+    return () => {
+      revision.current += 1;
+    };
+  }, [organizationId, load]);
+  useEffect(() => {
+    const change = () => {
+      revision.current += 1;
+      setData(null);
+      setDetail(null);
+      setFactors(false);
+      setCall(null);
+      setBusy(false);
+      setNotice(null);
+    };
+    window.addEventListener(ORGANIZATION_CHANGED_EVENT, change);
+    return () => window.removeEventListener(ORGANIZATION_CHANGED_EVENT, change);
+  }, []);
+  const recalculate = async () => {
+    if (busy) return;
+    const current = revision.current;
+    setBusy(true);
+    setError(null);
+    try {
+      await healthScoreService.refreshAllHealthScores();
+      if (current === revision.current) setNotice(t("recalculationQueued"));
+    } catch (e) {
+      if (current === revision.current) setError(errors(claveError(e)));
+    } finally {
+      setBusy(false);
     }
   };
-
-  const counts: Record<FilterType, number> = {
-    all: scores.length,
-    red: scores.filter((s) => s.band === 'red').length,
-    yellow: scores.filter((s) => s.band === 'yellow').length,
-    green: scores.filter((s) => s.band === 'green').length,
+  const rows = data?.scores ?? [];
+  const measurable = rows.filter(
+    (row) =>
+      row.raw &&
+      (row.raw.invoices_12m > 0 || row.raw.days_since_last_activity !== null),
+  );
+  const counts = {
+    green: measurable.filter((row) => row.band === "green").length,
+    yellow: measurable.filter((row) => row.band === "yellow").length,
+    red: measurable.filter((row) => row.band === "red").length,
   };
-  const filteredScores = filter === 'all' ? scores : scores.filter((s) => s.band === filter);
-  const filters: Array<{ key: FilterType; label: string; icon: LucideIcon; color: string }> = [
-    { key: 'all', label: 'Todos', icon: HeartPulse, color: 'text-blue-700 dark:text-blue-400' },
-    { key: 'red', label: 'Críticos', icon: AlertTriangle, color: BAND_STYLES.red.text },
-    { key: 'yellow', label: 'Atención', icon: CircleDot, color: BAND_STYLES.yellow.text },
-    { key: 'green', label: 'Saludables', icon: CheckCircle2, color: BAND_STYLES.green.text },
-  ];
-  const emptyText = filter === 'all'
-    ? 'Todavía no hay clientes con datos de salud. Pulsa «Recalcular» para medir a todos los clientes activos.'
-    : `No hay clientes en estado ${filters.find((f) => f.key === filter)?.label.toLowerCase()}.`;
-
-  return (
-    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-rose-100 dark:bg-rose-900/30 rounded-lg shrink-0">
-            <HeartPulse className="h-6 w-6 text-rose-600 dark:text-rose-400" aria-hidden="true" />
-          </div>
-          <div>
-            <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">Salud de clientes</h1>
-            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-0.5">
-              Detecta a tiempo a quién debes llamar antes de que se pierda.
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => void loadScores()} disabled={isRefreshing}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin motion-reduce:animate-none' : ''}`} aria-hidden="true" />
-            Actualizar
-          </Button>
-          <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleRecalculate} disabled={isRefreshing}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin motion-reduce:animate-none' : ''}`} aria-hidden="true" />
-            Recalcular
-          </Button>
-        </div>
-      </div>
-
-      {loadError && (
-        <LoadErrorState title="No se pudo cargar la salud de clientes" message={loadError} onRetry={() => void loadScores()} isRetrying={isRefreshing} />
+  const filtered = measurable
+    .filter(
+      (row) =>
+        filter === "all" ||
+        (filter === "mine"
+          ? row.owner_id === data?.user_id
+          : filter === "declined"
+            ? row.previous_score !== null && row.score < row.previous_score
+            : row.band === filter),
+    )
+    .sort((a, b) =>
+      sort === "score"
+        ? a.score - b.score
+        : sort === "decline"
+          ? a.score -
+            (a.previous_score ?? a.score) -
+            (b.score - (b.previous_score ?? b.score))
+          : (b.raw?.revenue_12m ?? 0) - (a.raw?.revenue_12m ?? 0),
+    );
+  const exportCsv = () => {
+    const csv = filasACsv(
+      [t("customer"), t("score"), t("revenue")],
+      filtered.map((row) => [
+        row.customer_name,
+        row.score,
+        row.raw?.revenue_12m,
+      ]),
+    );
+    const url = URL.createObjectURL(
+      new Blob([csv], { type: "text/csv;charset=utf-8" }),
+    );
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "health.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  if (factors && data?.can_manage)
+    return (
+      <FactoresSalud
+        scores={rows}
+        onClose={() => setFactors(false)}
+        onSaved={() => {
+          setFactors(false);
+          setNotice(t("recalculationQueued"));
+          void load();
+        }}
+      />
+    );
+  const actions = (
+    <>
+      {data?.can_manage && (
+        <button
+          type="button"
+          className={clasesBoton({ patron: "button", variante: "secundario" })}
+          onClick={() => setFactors(true)}
+        >
+          <Settings aria-hidden className="size-4" />
+          {t("factors")}
+        </button>
       )}
-
-      <dl className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
-        {STAT_CARDS.map((c) => {
-          const Icon = c.icon;
-          return (
-            <Card key={c.key} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-              <CardContent className="p-3 sm:pt-4 sm:px-4">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <div className={`h-8 w-8 sm:h-10 sm:w-10 rounded-lg flex items-center justify-center shrink-0 ${c.iconBox}`}>
-                    <Icon className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
-                  </div>
-                  <div className="min-w-0">
-                    <dd className={`text-lg sm:text-2xl font-bold tabular-nums ${c.text}`}>{counts[c.key]}</dd>
-                    <dt className="text-[11px] sm:text-xs text-gray-600 dark:text-gray-400">{c.label}</dt>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </dl>
-
-      <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700 overflow-x-auto" role="group" aria-label="Filtrar por banda de salud">
-        {filters.map((f) => {
-          const Icon = f.icon;
-          const isActive = filter === f.key;
-          return (
-            <button
-              key={f.key}
-              type="button"
-              aria-pressed={isActive}
-              onClick={() => setFilter(f.key)}
-              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded-t ${
-                isActive ? 'border-blue-600 text-blue-700 dark:text-blue-400' : 'border-transparent text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
-              }`}
-            >
-              <Icon className={`h-3.5 w-3.5 ${f.color}`} aria-hidden="true" />
-              {f.label}
-              {counts[f.key] > 0 && <Badge variant="secondary" className="text-[10px] h-4 px-1.5">{counts[f.key]}</Badge>}
-            </button>
-          );
-        })}
+      <button
+        type="button"
+        className={clasesBoton({ patron: "button", variante: "secundario" })}
+        disabled={loading || !filtered.length}
+        onClick={exportCsv}
+      >
+        <Download aria-hidden className="size-4" />
+        {t("export")}
+      </button>
+      <button
+        type="button"
+        className={clasesBoton({ patron: "button", variante: "fantasma" })}
+        disabled={loading || busy || !data?.can_manage}
+        onClick={() => void recalculate()}
+        aria-label={t("recalculate")}
+      >
+        <RefreshCw
+          aria-hidden
+          className={`size-4 ${busy ? "animate-spin" : ""}`}
+        />
+      </button>
+    </>
+  );
+  return (
+    <>
+      <div
+        className={`min-h-full space-y-4 bg-canvas p-4 lg:p-6 ${detail ? "hidden" : ""}`}
+      >
+        <PageHeader
+          titulo={t("title")}
+          subtitulo={t("subtitle")}
+          icono={CheckCircle2}
+          migas={[
+            { etiqueta: "CRM", href: "/app/crm" },
+            { etiqueta: t("title") },
+          ]}
+          cargando={loading}
+          acciones={actions}
+          movil={detail ? false : {}}
+        />
+        {notice && (
+          <p
+            role="status"
+            className="rounded-lg bg-success-subtle p-3 text-sm text-success-text"
+          >
+            {notice}
+          </p>
+        )}
+        {error ? (
+          <EmptyState
+            variante="error"
+            titulo={t("loadError")}
+            descripcion={error}
+            onReintentar={() => void load()}
+          />
+        ) : !loading && !measurable.length ? (
+          <div className="rounded-xl border border-line bg-surface">
+            <EmptyState
+              className="min-h-[340px]"
+              accionPrimaria={false}
+              icono={CheckCircle2}
+              titulo={t("emptyTitle")}
+              descripcion={t("emptyDescription")}
+              accion={{
+                etiqueta: t("howCalculated"),
+                onClick: () => setExplanation(true),
+              }}
+            />
+          </div>
+        ) : (
+          <>
+            <div className="hidden gap-4 lg:grid lg:grid-cols-4">
+              {(["green", "yellow", "red"] as const).map((band) => (
+                <StatCard
+                  key={band}
+                  etiqueta={t(`bands.${band}`)}
+                  valor={counts[band]}
+                  cargando={loading}
+                  varianteCarga="compacta"
+                  tono={
+                    band === "green"
+                      ? "exito"
+                      : band === "yellow"
+                        ? "advertencia"
+                        : "peligro"
+                  }
+                  detalle={
+                    band === "red"
+                      ? t("riskRevenue", {
+                          revenue: formatear(
+                            measurable
+                              .filter((row) => row.band === "red")
+                              .reduce(
+                                (sum, row) => sum + (row.raw?.revenue_12m ?? 0),
+                                0,
+                              ),
+                          ),
+                        })
+                      : t("percentage", {
+                          percentage: measurable.length
+                            ? Math.round(
+                                (counts[band] / measurable.length) * 100,
+                              )
+                            : 0,
+                        })
+                  }
+                  onClick={() => setFilter(band)}
+                />
+              ))}
+              {loading ? <div className="flex h-[72px] items-center gap-3 rounded-xl border border-line bg-surface p-4" aria-hidden="true"><Skeleton className="size-9 rounded-lg" /><div className="flex-1 space-y-2"><Skeleton className="h-3 w-2/3" /><Skeleton className="h-4 w-1/3" /></div></div> : <div className="rounded-xl border border-line bg-surface p-4">
+                <p className="mb-2 text-xs text-fg-secondary">
+                  {t("meanTrend")}
+                </p>
+                {data?.trend_error ? (
+                  <EmptyState
+                    variante="error"
+                    titulo={t("trend.error")}
+                    onReintentar={() => void load()}
+                  />
+                ) : (
+                  <HealthTrend
+                    snapshots={data?.trend ?? []}
+                    band={data?.trend.at(-1)?.band ?? "yellow"}
+                  />
+                )}
+              </div>}
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <ChipsOpcion
+                className="[&>button:nth-child(n+3)]:hidden lg:[&>button:nth-child(n+3)]:inline-flex"
+                etiqueta={t("filters")}
+                valor={filter}
+                onValorChange={setFilter}
+                opciones={(
+                  ["red", "yellow", "declined", "mine", "all"] as const
+                ).map((value) => ({
+                  valor: value,
+                  etiqueta: t(`filtersLabels.${value}`),
+                }))}
+              />
+              <div className="hidden lg:block">
+                <Select value={sort} onValueChange={(value) => setSort(value as typeof sort)}>
+                  <SelectTrigger aria-label={t("change")} className="h-8 w-[180px] text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>{(["revenue", "score", "decline"] as const).map((value) => <SelectItem key={value} value={value}>{t(value === "decline" ? "change" : value)}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            </div>
+            <HealthRiskTable
+              rows={filtered}
+              loading={loading}
+              onClearFilter={() => setFilter("all")}
+              onSelect={(id) => {
+                detailTrigger.current =
+                  document.activeElement instanceof HTMLElement
+                    ? document.activeElement
+                    : null;
+                setDetail(id);
+              }}
+              onCall={(row) => setCall({ row, key: Date.now() })}
+            />
+          </>
+        )}
+        <PanelAdaptable
+          abierto={explanation}
+          onAbiertoChange={setExplanation}
+          titulo={t("howCalculated")}
+          icono={CheckCircle2}
+        >
+          <p className="text-sm text-fg-secondary">
+            {t("calculationDescription")}
+          </p>
+        </PanelAdaptable>
+        {call && (
+          <AccionesRapidasCrm
+            sinBarra
+            variante="tarjetaMovil"
+            clienteId={call.row.customer_id}
+            cliente={{
+              id: call.row.customer_id,
+              full_name: call.row.customer_name,
+              phone: call.row.phone,
+              email: call.row.email,
+              do_not_call: call.row.do_not_call,
+            }}
+            abrirAccion={{ accion: "llamar", clave: call.key }}
+            onCerrado={() => setCall(null)}
+            onAccionCompletada={() => {
+              setCall(null);
+              void load();
+            }}
+          />
+        )}
       </div>
-
-      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-        <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
-          <CardTitle className="text-sm sm:text-lg text-gray-900 dark:text-white">
-            Clientes monitoreados
-            <span className="text-xs sm:text-sm font-normal text-gray-600 dark:text-gray-400 ml-2">({filteredScores.length} resultados)</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="px-2 sm:px-6">
-          <HealthCustomerGrid scores={filteredScores} loading={loading} dimmed={isRefreshing} emptyText={emptyText} onSelect={setSelectedCustomerId} />
-        </CardContent>
-      </Card>
-
-      <HealthDetailDrawer customerId={selectedCustomerId} open={!!selectedCustomerId} onOpenChange={(open) => !open && setSelectedCustomerId(null)} />
-    </div>
+      <HealthDetailDrawer
+        presentation="page"
+        customerId={detail}
+        open={Boolean(detail)}
+        onOpenChange={(open) => !open && setDetail(null)}
+      />
+    </>
   );
 }
-
 export default SaludView;

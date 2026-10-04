@@ -15,11 +15,11 @@ const TAG = 'CRM Partner Deal Status';
  */
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string; dealId: string }> }) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     const { id, dealId } = await params;
     const body = await readJson(request);
     rejectForeignOrganization(TAG, body, ctx, request);
-    requirePartnerManager(ctx);
+    await requirePartnerManager(ctx);
     const deal = await transitionPartnerDeal(dealId, id, ctx.organizationId, body.commission_status, ctx.supabase);
     return jsonOk(deal);
   } catch (error) {

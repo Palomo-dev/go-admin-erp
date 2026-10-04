@@ -124,11 +124,8 @@ export const VOICE_AGENT_PURPOSES = [
 export type VoiceAgentPurpose = (typeof VOICE_AGENT_PURPOSES)[number];
 
 export const VOICE_AGENT_CALL_STATUSES = [
-  'pending',
-  'in_progress',
-  'completed',
-  'failed',
-  'transferred',
+  'pending', 'queued', 'in_progress', 'completed', 'failed',
+  'transferred', 'no_answer', 'voicemail', 'canceled', 'skipped',
 ] as const;
 export type VoiceAgentCallStatus = (typeof VOICE_AGENT_CALL_STATUSES)[number];
 

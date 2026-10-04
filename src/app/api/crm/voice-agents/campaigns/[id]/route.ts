@@ -1,69 +1,62 @@
-/**
- * PATCH /api/crm/voice-agents/campaigns/[id] — Actualiza una campaña.
- * DELETE /api/crm/voice-agents/campaigns/[id] — Elimina una campaña.
- */
-
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
-import { readOrgBody } from '@/lib/security/organizationBody';
+import { NextRequest, NextResponse } from "next/server";
+import { getServerOrgContext } from "@/lib/utils/orgContext";
+import { readOrgBody } from "@/lib/security/organizationBody";
+import { obtenerCampanaVoz } from "@/lib/services/crm/voiceCampaignDetailService";
+import { z } from "zod";
 import {
-  updateCampaign,
-  deleteCampaign,
-} from '@/lib/services/crm/voiceAgentService';
-
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+  guardarCampanaVoz,
+  eliminarCampanaVoz,
+} from "@/lib/services/crm/voiceCampaignWriteService";
+import {
+  respuestaErrorCrm,
+  sinClavesDeOrganizacion,
+} from "@/lib/services/crm/crmRouteSupport";
+type Params = { params: Promise<{ id: string }> };
+export async function GET(request: NextRequest, { params }: Params) {
   try {
-    const ctx = await getServerOrgContext();
-    const { id } = await params;
-    const body = await readOrgBody(ctx, request);
-
-    const campaign = await updateCampaign(id, ctx.organizationId, body, ctx.supabase);
-
-    if (!campaign) {
+    const ctx = await getServerOrgContext(request);
+    readOrgBody(ctx, {}, { request });
+    const page = z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(100000)
+      .safeParse(request.nextUrl.searchParams.get("page") ?? 1);
+    if (!page.success)
       return NextResponse.json(
-        { success: false, error: 'Campaña no encontrada' },
-        { status: 404 }
+        { success: false, error: "Página inválida" },
+        { status: 400 },
       );
-    }
-
-    return NextResponse.json({ success: true, data: campaign }, { status: 200 });
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[Voice Agent Campaigns] PATCH [id] error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: true,
+        data: await obtenerCampanaVoz(ctx, (await params).id, page.data),
+      },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  } catch (e) {
+    return respuestaErrorCrm(e, "GET /api/crm/voice-agents/campaigns/[id]");
   }
 }
-
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: NextRequest, { params }: Params) {
   try {
-    const ctx = await getServerOrgContext();
-    await readOrgBody(ctx, request);
-    const { id } = await params;
-
-    await deleteCampaign(id, ctx.organizationId, ctx.supabase);
-
-    return NextResponse.json({ success: true }, { status: 200 });
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[Voice Agent Campaigns] DELETE [id] error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    const ctx = await getServerOrgContext(request);
+    const body = sinClavesDeOrganizacion(await readOrgBody(ctx, request));
+    return NextResponse.json({
+      success: true,
+      data: await guardarCampanaVoz(ctx, body, (await params).id),
+    });
+  } catch (e) {
+    return respuestaErrorCrm(e, "PATCH /api/crm/voice-agents/campaigns/[id]");
+  }
+}
+export async function DELETE(request: NextRequest, { params }: Params) {
+  try {
+    const ctx = await getServerOrgContext(request);
+    const body = sinClavesDeOrganizacion(await readOrgBody(ctx, request));
+    await eliminarCampanaVoz(ctx, (await params).id, body);
+    return NextResponse.json({ success: true });
+  } catch (e) {
+    return respuestaErrorCrm(e, "DELETE /api/crm/voice-agents/campaigns/[id]");
   }
 }

@@ -143,28 +143,11 @@ describe("UXM-D · guardas estáticas (375 px)", () => {
     expect(panel).toContain("useCrmLookups");
     expect(panel).toContain("CampaignTargetPicker");
   });
-  test("el editor es una hoja h-dvh con cuerpo desplazable, pie sobre el área segura y 4 pasos", () => {
-    const editor = read("AgentEditorDialog.tsx");
-    expect(editor).toContain("h-dvh");
-    expect(editor).toContain("min-h-0 flex-1 overflow-y-auto");
-    expect(editor).toContain("env(safe-area-inset-bottom)");
-    expect(editor).toContain("grid-cols-4");
-    for (const t of ["AgentPurposeTab", "AgentScriptTab", "AgentVoiceTab", "AgentToolsTab"]) expect(editor).toContain(t);
-  });
-  test("la pestaña Voz reutiliza tarjetas, avatar y reproductor compartidos", () => {
-    const tab = read("editor/AgentVoiceTab.tsx");
-    expect(tab).toContain("useAudioPreview");
-    expect(tab).toContain("VoicePickCard");
-    expect(tab).toContain("Añade una voz del catálogo");
-    expect(tab).toContain("Avanzado");
-    const card = read("voces/VoicePickCard.tsx");
-    expect(card).toContain("VoiceAvatar");
-    expect(card).toContain("VoicePreviewButton");
-    expect(card).toContain('type="radio"');
-    for (const f of ["voces/VoiceCard.tsx", "voces/MyVoiceCard.tsx"]) expect(read(f)).toContain("VoicePreviewButton");
-  });
+  // El editor de cinco pasos y su navegación se verifican mediante render real
+  // ES/EN/FR/PT en agentsRender.test.tsx; las clases del editor anterior ya no
+  // forman parte de su contrato. Los reproductores de biblioteca siguen abajo.
   test("las cuadrículas declaran grid-cols-1 y las pestañas internas no son inline-flex sueltas", () => {
-    for (const f of ["voces/VoiceLibraryGrid.tsx", "voces/MyVoicesPanel.tsx", "AgentesIaPage.tsx"]) {
+    for (const f of ["voces/VoiceLibraryGrid.tsx", "voces/MyVoicesPanel.tsx"]) {
       expect({ f, ok: /grid grid-cols-1 gap-3/.test(read(f)) }).toEqual({ f, ok: true });
     }
     expect(read("VoicesPanel.tsx")).toContain("grid h-auto w-full grid-cols-3");

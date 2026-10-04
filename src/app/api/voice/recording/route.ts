@@ -7,6 +7,7 @@ import { EMPTY_TWIML, xmlResponse } from '@/lib/services/crm/twimlBuilders';
 import { voidConsentWithoutRecording, recordConsent, unverifiedAnnouncementText, UNVERIFIED_ANNOUNCED_AT_NOTE } from '@/lib/services/crm/consentService';
 import { getTelephonySettings } from '@/lib/services/crm/voiceContextService';
 import { updateCall } from '@/lib/services/crm/callManagementService';
+import { resolvePhoneRecordingScope, confirmPhoneRecordingScope, type PhoneRecordingScope } from '@/lib/services/crm/phoneConferenceRecording';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -58,20 +59,34 @@ export async function POST(request: Request) {
   const callSid = params.CallSid || '';
   const status = params.RecordingStatus || '';
   const recordingUrl = params.RecordingUrl || '';
-  if (callSid && status === 'absent') return handleAbsent(callSid, accountSid);
-  if (callSid && status === 'in-progress') return handleInProgress(callSid, accountSid, recordingSid);
+  let phoneScope: PhoneRecordingScope | null = null;
+  try {
+    phoneScope = await resolvePhoneRecordingScope(request, params, accountSid, getServiceClient());
+    if (callSid && status === 'absent') return await handleAbsent(callSid, accountSid, phoneScope);
+    if (callSid && status === 'in-progress') {
+      const result = await handleInProgress(callSid, accountSid, recordingSid, phoneScope);
+      if (result.ok) await confirmPhoneRecordingScope(getServiceClient(), phoneScope, status);
+      return result;
+    }
+  } catch (error) {
+    if (error instanceof WebhookError) return new Response('Forbidden', { status: error.statusCode });
+    console.error('[Voice Recording] scope no confirmado:', error instanceof Error ? error.message : 'error');
+    return xmlResponse(EMPTY_TWIML, 500);
+  }
   if (!callSid || !recordingSid || status !== 'completed' || !recordingUrl) {
     return xmlResponse(EMPTY_TWIML);
   }
 
   try {
     const sb = getServiceClient();
-    const { data } = await sb
+    let lookup = sb
       .from('calls')
-      .select('id, organization_id, started_at, metadata')
-      .eq('provider_call_sid', callSid)
+      .select('id, organization_id, started_at, metadata');
+    lookup = phoneScope ? lookup.eq('id', phoneScope.callId).eq('organization_id', phoneScope.org) : lookup.eq('provider_call_sid', callSid);
+    const { data, error: callError } = await lookup
       .limit(1)
       .maybeSingle();
+    if (callError) throw callError;
     const call = data as { id: string; organization_id: number; started_at: string | null; metadata: Record<string, unknown> | null } | null;
     if (!call) {
       console.warn('[Voice Recording] Llamada no encontrada para CallSid', callSid);
@@ -87,17 +102,24 @@ export async function POST(request: Request) {
     const duration = params.RecordingDuration ? parseInt(params.RecordingDuration, 10) : null;
     const startedAt = call.started_at ? new Date(call.started_at) : new Date();
 
-    const { data: existing } = await sb
+    const { data: existing, error: recordingError } = await sb
       .from('call_recordings')
       .select('id, status')
       .eq('provider_recording_sid', recordingSid)
+      .eq('organization_id', call.organization_id)
+      .eq('call_id', call.id)
       .limit(1)
       .maybeSingle();
+    if (recordingError) throw recordingError;
 
     let recordingId: string;
     if (existing) {
       recordingId = (existing as { id: string }).id;
-      if ((existing as { status: string }).status === 'ready') return xmlResponse(EMPTY_TWIML);
+      if ((existing as { status: string }).status === 'ready') {
+        await reconcileCompletedWithoutConsent(sb, call);
+        await confirmPhoneRecordingScope(sb, phoneScope, status);
+        return xmlResponse(EMPTY_TWIML);
+      }
     } else {
       const { data: created, error } = await sb
         .from('call_recordings')
@@ -115,7 +137,11 @@ export async function POST(request: Request) {
         .single();
       if (error) {
         // Carrera con otro callback: releer
-        const { data: again } = await sb.from('call_recordings').select('id').eq('provider_recording_sid', recordingSid).maybeSingle();
+        if (error.code !== '23505') throw error;
+        const { data: again, error: retryError } = await sb.from('call_recordings').select('id')
+          .eq('provider_recording_sid', recordingSid).eq('organization_id', call.organization_id)
+          .eq('call_id', call.id).maybeSingle();
+        if (retryError) throw retryError;
         if (!again) throw new Error(error.message);
         recordingId = (again as { id: string }).id;
       } else {
@@ -133,6 +159,7 @@ export async function POST(request: Request) {
     });
 
     await reconcileCompletedWithoutConsent(sb, call);
+    await confirmPhoneRecordingScope(sb, phoneScope, status);
 
     return xmlResponse(EMPTY_TWIML);
   } catch (error: unknown) {
@@ -170,7 +197,7 @@ async function reconcileCompletedWithoutConsent(
   // sonara (antes copiaba el aviso configurado como si se hubiera reproducido)
   // y `announced_at` (NOT NULL en la tabla) es la hora de ESTE callback, no la
   // de un aviso: queda aclarado en `calls.metadata`.
-  await recordConsent(
+  const consent = await recordConsent(
     call.organization_id,
     {
       callId: call.id,
@@ -182,28 +209,37 @@ async function reconcileCompletedWithoutConsent(
     },
     sb
   );
-  const metadata = {
-    ...(call.metadata ?? {}),
-    consent_unverified_at: now,
-    consent_unverified_reason: 'recording_completed_without_consent',
-    consent_unverified_announced_at_note: UNVERIFIED_ANNOUNCED_AT_NOTE,
-  };
-  await updateCall(call.id, call.organization_id, { consent_given: false, metadata }, sb);
+  // Una acta real pudo llegar entre la lectura y el guardado idempotente.
+  if (consent.method !== 'unverified_announcement') return;
+  const saved = await updateCall(call.id, call.organization_id, (fresh) => ({
+    consent_given: false,
+    metadata: { ...(fresh.metadata ?? {}), consent_unverified_at: now,
+      consent_unverified_reason: 'recording_completed_without_consent',
+      consent_unverified_announced_at_note: UNVERIFIED_ANNOUNCED_AT_NOTE },
+  }), sb);
+  if (!saved) throw new Error('Llamada no encontrada al acreditar la grabación');
 }
 
 /** `RecordingStatus=in-progress`: evidencia positiva de que la grabación arrancó. */
-async function handleInProgress(callSid: string, accountSid: string, recordingSid: string): Promise<Response> {
+async function handleInProgress(callSid: string, accountSid: string, recordingSid: string, scope: PhoneRecordingScope | null = null): Promise<Response> {
   try {
     const sb = getServiceClient();
-    const { data } = await sb.from('calls').select('id, organization_id, metadata').eq('provider_call_sid', callSid).limit(1).maybeSingle();
+    let lookup = sb.from('calls').select('id, organization_id, metadata');
+    lookup = scope ? lookup.eq('id', scope.callId).eq('organization_id', scope.org) : lookup.eq('provider_call_sid', callSid);
+    const { data, error } = await lookup.limit(1).maybeSingle();
+    if (error) throw error;
     const call = data as { id: string; organization_id: number; metadata: Record<string, unknown> | null } | null;
     if (!call) return xmlResponse(EMPTY_TWIML);
     if (!(await accountSidMatchesOrg(call.organization_id, accountSid, sb))) {
       console.warn('[Voice Recording] in-progress: AccountSid ajeno a la org de la llamada', { org: call.organization_id });
       return new Response('Forbidden', { status: 403 });
     }
-    const metadata = { ...(call.metadata ?? {}), recording_started_at: new Date().toISOString(), ...(recordingSid ? { recording_started_sid: recordingSid } : {}) };
-    await updateCall(call.id, call.organization_id, { metadata }, sb);
+    const startedAt = new Date().toISOString();
+    const saved = await updateCall(call.id, call.organization_id, (fresh) => ({ metadata: {
+      ...(fresh.metadata ?? {}), recording_started_at: fresh.metadata?.recording_started_at ?? startedAt,
+      ...(recordingSid ? { recording_started_sid: recordingSid } : {}),
+    } }), sb);
+    if (!saved) throw new Error('Llamada no encontrada al iniciar la grabación');
     return xmlResponse(EMPTY_TWIML);
   } catch (err) {
     console.error('[Voice Recording] in-progress error:', err instanceof Error ? err.message : err);
@@ -212,10 +248,13 @@ async function handleInProgress(callSid: string, accountSid: string, recordingSi
 }
 
 /** `RecordingStatus=absent`: sin ninguna grabación registrada, retirar acta y flags. */
-async function handleAbsent(callSid: string, accountSid: string): Promise<Response> {
+async function handleAbsent(callSid: string, accountSid: string, scope: PhoneRecordingScope | null = null): Promise<Response> {
   try {
     const sb = getServiceClient();
-    const { data } = await sb.from('calls').select('id, organization_id').eq('provider_call_sid', callSid).limit(1).maybeSingle();
+    let lookup = sb.from('calls').select('id, organization_id');
+    lookup = scope ? lookup.eq('id', scope.callId).eq('organization_id', scope.org) : lookup.eq('provider_call_sid', callSid);
+    const { data, error: callError } = await lookup.limit(1).maybeSingle();
+    if (callError) throw callError;
     const call = data as { id: string; organization_id: number } | null;
     if (!call) return xmlResponse(EMPTY_TWIML);
     if (!(await accountSidMatchesOrg(call.organization_id, accountSid, sb))) {
@@ -230,8 +269,8 @@ async function handleAbsent(callSid: string, accountSid: string): Promise<Respon
       .limit(1);
     if (error) throw new Error(error.message);
     if ((recordings ?? []).length > 0) return xmlResponse(EMPTY_TWIML);
-    await voidConsentWithoutRecording(call.id, call.organization_id, sb, 'twilio_recording_absent');
-    console.warn('[Voice Recording] grabación ausente: acta y flags retirados', { org: call.organization_id, callId: call.id });
+    const voided = await voidConsentWithoutRecording(call.id, call.organization_id, sb, 'twilio_recording_absent');
+    if (voided) console.warn('[Voice Recording] grabación ausente: acta y flags retirados', { org: call.organization_id, callId: call.id });
     return xmlResponse(EMPTY_TWIML);
   } catch (err) {
     console.error('[Voice Recording] absent error:', err instanceof Error ? err.message : err);

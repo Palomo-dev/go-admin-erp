@@ -143,7 +143,10 @@ describe('UI: brief y accesibilidad', () => {
   it('el forecast usa los escenarios puros y el ponderado corregido (probabilidad / 100)', () => {
     expect(read(UI.scenarios)).toMatch(/computeForecastScenarios/);
     const fd = read(UI.forecastDashboard);
-    expect(fd).toMatch(/weightedOpenAmount/);
+    expect(fd).toMatch(/useForecastData/);
+    const logic = read('src/lib/services/crm/forecastLogica.ts');
+    expect(logic).toMatch(/probabilityToFraction/);
+    expect(logic).toMatch(/sumarEnMonedaBase/);
     expect(fd).not.toMatch(/\(o\.amount \|\| 0\) \* \(stage\?\.probability \|\| 0\)/);
   });
   it('la matemática comercial se lee del servidor (math) y los insumos se guardan por PUT /api/crm/revenue/inputs', () => {

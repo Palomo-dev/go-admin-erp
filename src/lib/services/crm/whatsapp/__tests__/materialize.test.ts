@@ -1,5 +1,5 @@
 import { validateAudience } from '../campaignStore';
-import { classifyCandidate, applySegmentRule, resolveAudience } from '../campaignMaterialize';
+import { classifyCandidate, resolveAudience } from '../campaignMaterialize';
 import { makeSupabase, has } from './mockSupabase';
 
 jest.mock('@/lib/supabase/server-service', () => ({ getServiceClient: () => { throw new Error('no service client en tests'); } }));
@@ -36,22 +36,6 @@ describe('classifyCandidate (razones de exclusión)', () => {
   });
 });
 
-describe('applySegmentRule (misma semántica que SegmentosService.applyFilter)', () => {
-  test('tags contains usa contains; ilike para texto; campos fuera de allow-list se ignoran', () => {
-    const { sb, calls } = makeSupabase({ customers: () => ({ data: [] }) });
-    let q = sb.from('customers').select('id');
-    q = applySegmentRule(q, { field: 'tags', operator: 'contains', value: 'vip' });
-    q = applySegmentRule(q, { field: 'city', operator: 'contains', value: 'Bog' });
-    q = applySegmentRule(q, { field: 'password', operator: 'equals', value: 'x' });
-    q = applySegmentRule(q, { field: 'health_score', operator: 'between', value: [10, 50] });
-    const ops = calls[0].ops;
-    expect(has(ops, 'contains', 'tags')).toBe(true);
-    expect(has(ops, 'ilike', 'city', '%Bog%')).toBe(true);
-    expect(has(ops, 'eq', 'password')).toBe(false);
-    expect(has(ops, 'gte', 'health_score', 10) && has(ops, 'lte', 'health_score', 50)).toBe(true);
-  });
-});
-
 describe('resolveAudience', () => {
   test('etapas: oportunidades abiertas de la org, dedupe por cliente conservando la oportunidad', async () => {
     const { sb, calls } = makeSupabase({
@@ -78,7 +62,7 @@ describe('resolveAudience', () => {
 
   test('segmento de otra org → 404', async () => {
     const { sb } = makeSupabase({ segments: () => ({ data: null }) });
-    await expect(resolveAudience(7, { source: 'segment', segment_id: 'seg-x' }, sb)).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    await expect(resolveAudience(7, { source: 'segment', segment_id: '00000000-0000-4000-8000-000000000123' }, sb)).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
 });
 

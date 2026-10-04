@@ -9,6 +9,10 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { renderConIdioma } from '@/test-utils/renderConIdioma';
 import { contextoMoneda } from '@/lib/utils/moneda';
+import es from '../../../../../messages/es.json';
+import en from '../../../../../messages/en.json';
+import fr from '../../../../../messages/fr.json';
+import pt from '../../../../../messages/pt.json';
 
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }), usePathname: () => '/app/clientes/c1' }));
 const FECHAS = { timezone: 'America/Bogota', getToday: () => '2026-09-23', formatDate: (v: string) => v, formatDateTime: (v: string) => v, formatTime: (v: string) => v, formatPlain: (v: string) => v };
@@ -63,6 +67,50 @@ afterEach(() => {
 const CLIENTE = { id: 'c1', full_name: 'Ana Gómez', email: 'ana@correo-ejemplo.com', phone: '3005550142', do_not_call: true };
 
 describe('Acciones rápidas (Variant=cliente)', () => {
+  test.each(['es', 'en', 'fr', 'pt'] as const)('reunión conserva los campos y distingue sesión vencida en %s', async idioma => {
+    const m = { es, en, fr, pt }[idioma];
+    global.fetch = jest.fn(async () => ({ ok: false, status: 401,
+      json: async () => ({ success: false, code: 'UNAUTHENTICATED', error: 'No hay sesión activa' }) }) as Response);
+    renderConIdioma(<AccionesRapidasCrm variante="cliente" clienteId="c1" cliente={CLIENTE} sinBarra abrirAccion={{ accion: 'reunion', clave: 1 }} />, { idioma });
+    const d = await screen.findByRole('dialog');
+    const title = within(d).getByRole('textbox', { name: new RegExp(m.crm.kit.actividad.reunion.titulo) });
+    fireEvent.change(title, { target: { value: 'Reunión de prueba' } });
+    fireEvent.click(within(d).getByRole('button', { name: m.crm.kit.actividad.primario.reunion }));
+    expect(await screen.findByText(m.crm.accionesRapidas.errores.sesionVencida)).toBeTruthy();
+    expect(screen.queryByText(m.crm.accionesRapidas.errores.sinPermiso)).toBeNull();
+    expect((title as HTMLInputElement).value).toBe('Reunión de prueba');
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+  test.each(['es', 'en', 'fr', 'pt'] as const)('llamada y seguimiento usan una petición y conservan la clave al reintentar en %s', async idioma => {
+    const m = { es, en, fr, pt }[idioma];
+    let intento = 0;
+    global.fetch = jest.fn(async (entrada: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(entrada);
+      llamadas.push({ url, method: init?.method ?? 'GET', body: init?.body ? JSON.parse(String(init.body)) : undefined });
+      intento++;
+      return { ok: intento > 1, status: intento > 1 ? 201 : 500,
+        json: async () => intento > 1 ? { success: true, data: { id: 'actividad' } } : { success: false, error: 'Error interno' } } as Response;
+    });
+    renderConIdioma(<AccionesRapidasCrm variante="cliente" clienteId="c1" cliente={{ ...CLIENTE, do_not_call: false }} sinBarra abrirAccion={{ accion: 'llamar', clave: 1 }} />, { idioma });
+    const modos = await screen.findByRole('dialog');
+    fireEvent.click(within(modos).getByRole('button', { name: new RegExp(m.crm.accionesRapidas.llamar.modo.registrar) }));
+    const d = await screen.findByRole('dialog');
+    fireEvent.click(within(d).getByRole('radio', { name: m.crm.kit.actividad.llamada.resultados.answered }));
+    fireEvent.click(within(d).getByRole('combobox', { name: new RegExp(m.crm.kit.actividad.llamada.fechaSeguimiento) }));
+    const dia = document.querySelector<HTMLButtonElement>('[data-dia="2026-09-24"]');
+    expect(dia).not.toBeNull();
+    fireEvent.click(dia!);
+    fireEvent.click(within(d).getByRole('button', { name: m.crm.kit.actividad.primario.llamada }));
+    await screen.findByRole('alert');
+    fireEvent.click(within(d).getByRole('button', { name: m.crm.kit.actividad.primario.llamada }));
+    await waitFor(() => expect(llamadas).toHaveLength(2));
+    expect(llamadas.map(l => l.url)).toEqual(['/api/crm/activities', '/api/crm/activities']);
+    expect(llamadas[0].body).toEqual(llamadas[1].body);
+    expect(llamadas[0].body).toMatchObject({ activity_type: 'call', metadata: { client_key: expect.any(String) }, follow_up: { due_date: expect.any(String) } });
+    expect(Date.parse(String((llamadas[0].body!.follow_up as Record<string, unknown>).due_date))).toBe(Date.parse('2026-09-24T15:00:00Z'));
+    expect(llamadas[0].body!.follow_up).not.toHaveProperty('assigned_to');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
   test('Llamar deshabilitada con su motivo visible (do_not_call) y «Nueva oportunidad»', () => {
     renderConIdioma(<AccionesRapidasCrm variante="cliente" clienteId="c1" cliente={CLIENTE} onNuevaOportunidad={() => undefined} />);
     expect(screen.getByText('Pidió no ser llamado')).toBeTruthy();

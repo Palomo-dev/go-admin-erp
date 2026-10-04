@@ -12,6 +12,10 @@ const call = (kind: 'call' | 'call_live', id: string, at: string): TimelineEntry
 });
 
 describe('mergeEntries', () => {
+  test('conserva microsegundos y el desempate SQL, aunque el id ordene al revés', () => {
+    const out = mergeEntries([note('z', '2026-10-01T10:00:00.000001Z')], [note('a', '2026-10-01T10:00:00.000002Z')]);
+    expect(out.map(e => e.id)).toEqual(['a', 'z']);
+  });
   test('no duplica, sustituye versiones nuevas y reordena descendente', () => {
     const prev = [note('n1', '2026-09-08T10:00:00Z'), note('n2', '2026-09-08T09:00:00Z')];
     const next = [{ ...note('n2', '2026-09-08T09:00:00Z'), note: { id: 'n2', body: 'editada', is_pinned: true } } as TimelineEntry, note('n3', '2026-09-08T11:00:00Z')];
@@ -28,6 +32,10 @@ describe('mergeEntries', () => {
 });
 
 describe('groupByDay', () => {
+  test.each([['2026-03-29T22:30:00Z', '2026-03-29T11:00:00Z'], ['2026-10-25T22:30:00Z', '2026-10-24T11:00:00Z']])('Ayer es el día calendario anterior al cruzar el horario de verano %s', (ahora, ayer) => {
+    const groups = groupByDay([note('ayer', ayer)], 'Europe/Madrid', new Date(ahora), 'en', { hoy: 'Today', ayer: 'Yesterday' });
+    expect(groups[0].label).toMatch(/^Yesterday/);
+  });
   test('23:30 UTC-5 cae en el día local correcto y etiqueta Hoy/Ayer', () => {
     const now = new Date('2026-09-09T12:00:00-05:00');
     const entries = [

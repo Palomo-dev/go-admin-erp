@@ -10,6 +10,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReferralProgram, ReferralRequest, ReferralView } from '@/lib/services/crm/referralsService';
+import {readRedPages} from '../red/readRedPages';
+import type {F12Stats} from '@/lib/services/crm/f12ReadService';
 import type { ReferralStatus } from '@/lib/services/crm/referralStateMachine';
 
 async function call(url: string, init?: RequestInit): Promise<{ ok: boolean; status: number; body: Record<string, unknown> }> {
@@ -47,6 +49,10 @@ export function useReferrals() {
   const [requests, setRequests] = useState<ReferralRequest[]>([]);
   const [currency, setCurrency] = useState<string | null>(null);
   const [canManage, setCanManage] = useState(false);
+  const [canRegister, setCanRegister] = useState(false);
+  const [stats, setStats] = useState<F12Stats | null>(null);
+  const [statsError, setStatsError] = useState<string | null>(null);
+  const [requestsError, setRequestsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,18 +62,21 @@ export function useReferrals() {
     if (!loadedOnce.current) setLoading(true);
     setError(null);
     try {
-      const [list, progs, reqs] = await Promise.all([
-        call('/api/crm/referrals?limit=200'),
+      const [list, progs, reqs, figures] = await Promise.all([
+        readRedPages<ReferralView>('/api/crm/referrals'),
         call('/api/crm/referrals/programs'),
         call('/api/crm/referrals/requests'),
+        call('/api/crm/referrals/stats?period=month'),
       ]);
-      if (!list.ok) throw new Error(messageOf(list.body, 'No se pudieron cargar los referidos'));
       if (!progs.ok) throw new Error(messageOf(progs.body, 'No se pudieron cargar los programas'));
-      setReferrals((list.body.data as ReferralView[]) ?? []);
+      setReferrals(list.data);
+      setCanRegister(list.body.can_register === true);
+      setStats(figures.ok ? figures.body.data as F12Stats : null);
+      setStatsError(figures.ok ? null : messageOf(figures.body, 'No se pudieron cargar las cifras'));
       setPrograms((progs.body.data as ReferralProgram[]) ?? []);
       setCurrency((progs.body.currency as string | null) ?? null);
       setCanManage(progs.body.can_manage === true);
-      // Las tareas de F10 son un complemento: si fallan, la página sigue.
+      setRequestsError(reqs.ok ? null : messageOf(reqs.body, 'No se pudieron cargar las solicitudes'));
       setRequests(reqs.ok ? ((reqs.body.data as ReferralRequest[]) ?? []) : []);
       loadedOnce.current = true;
       setLoaded(true);
@@ -87,32 +96,36 @@ export function useReferrals() {
     if (!ok) throw new Error(messageOf(body, 'No se pudo registrar el referido'));
     const row = body.data as ReferralView;
     setReferrals((prev) => upsert(prev, row));
+    await load();
     return row;
-  }, []);
+  }, [load]);
 
   const transition = useCallback(async (id: string, status: ReferralStatus) => {
     const { ok, body } = await call(`/api/crm/referrals/${id}/status`, { method: 'POST', body: JSON.stringify({ status }) });
     if (!ok) throw new Error(messageOf(body, 'No se pudo cambiar el estado'));
     const row = body.data as ReferralView;
     setReferrals((prev) => upsert(prev, row));
+    await load();
     return row;
-  }, []);
+  }, [load]);
 
   const markPaid = useCallback(async (id: string) => {
     const { ok, body } = await call(`/api/crm/referrals/${id}/reward`, { method: 'POST', body: '{}' });
     if (!ok) throw new Error(messageOf(body, 'No se pudo registrar la recompensa'));
     const row = body.data as ReferralView;
     setReferrals((prev) => upsert(prev, row));
+    await load();
     return row;
-  }, []);
+  }, [load]);
 
   const convert = useCallback(async (id: string, payload: Record<string, unknown>) => {
     const { ok, body } = await call(`/api/crm/referrals/${id}/convert`, { method: 'POST', body: JSON.stringify(payload) });
     if (!ok) throw new Error(messageOf(body, 'No se pudo convertir el referido'));
     const data = body.data as { referral: ReferralView; lead: { id: string; name: string } };
     setReferrals((prev) => upsert(prev, data.referral));
+    await load();
     return data;
-  }, []);
+  }, [load]);
 
   const saveProgram = useCallback(async (payload: ProgramPayload, id?: string) => {
     const { ok, body } = await call(id ? `/api/crm/referrals/programs/${id}` : '/api/crm/referrals/programs', {
@@ -133,5 +146,5 @@ export function useReferrals() {
     await load();
   }, [load]);
 
-  return { referrals, programs, requests, currency, canManage, loading, loaded, error, reload: load, register, transition, markPaid, convert, saveProgram, deleteProgram };
+  return { referrals, programs, requests, currency, canManage, canRegister, stats, statsError, requestsError, loading, loaded, error, reload: load, register, transition, markPaid, convert, saveProgram, deleteProgram };
 }

@@ -1,10 +1,28 @@
-import { NextRequest } from 'next/server';
-import { getServerOrgContext } from '@/lib/utils/orgContext';
-import { getPartnerDeals, registerPartnerDeal } from '@/lib/services/crm/partnerService';
-import { validateDealInput } from '@/lib/services/crm/f12Validation';
-import { canManagePartners, jsonOk, readJson, readPage, rejectForeignOrganization, routeError, validationFail } from '@/lib/services/crm/f12RouteSupport';
+import { NextRequest } from "next/server";
+import { getServerOrgContext } from "@/lib/utils/orgContext";
+import {
+  getPartnerDeals,
+  registerPartnerDeal,
+} from "@/lib/services/crm/partnerService";
+import {
+  CRM_PERMISOS,
+  exigirPermisoCrm,
+  exigirUuid,
+} from "@/lib/services/crm/crmRouteSupport";
+import { validateDealInput } from "@/lib/services/crm/f12Validation";
+import {
+  canManagePartners,
+  canRegisterPartnerDeal,
+  requirePartnerManager,
+  jsonOk,
+  readJson,
+  readPage,
+  rejectForeignOrganization,
+  routeError,
+  validationFail,
+} from "@/lib/services/crm/f12RouteSupport";
 
-const TAG = 'CRM Partner Deals';
+const TAG = "CRM Partner Deals";
 type Params = { params: Promise<{ id: string }> };
 
 /**
@@ -13,16 +31,20 @@ type Params = { params: Promise<{ id: string }> };
  */
 export async function GET(request: NextRequest, { params }: Params) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     const { id } = await params;
     const { searchParams } = new URL(request.url);
     rejectForeignOrganization(TAG, null, ctx, request);
     const result = await getPartnerDeals(id, ctx.organizationId, ctx.supabase, {
-      deal_type: searchParams.get('deal_type') || undefined,
-      commission_status: searchParams.get('commission_status') || undefined,
+      deal_type: searchParams.get("deal_type") || undefined,
+      commission_status: searchParams.get("commission_status") || undefined,
       ...readPage(searchParams),
     });
-    return jsonOk(result.data, { count: result.count, can_manage: canManagePartners(ctx) });
+    return jsonOk(result.data, {
+      count: result.count,
+      can_manage: await canManagePartners(ctx),
+      can_register: await canRegisterPartnerDeal(ctx),
+    });
   } catch (error) {
     return routeError(error, TAG);
   }
@@ -31,20 +53,30 @@ export async function GET(request: NextRequest, { params }: Params) {
 /**
  * POST /api/crm/partners/[id]/deals — registra un deal. La comisión se
  * calcula en servidor (monto de la oportunidad × tasa efectiva del partner o
- * del tier) y nace `pending`; `commission_amount`/`commission_status` del body
- * se ignoran. Evalúa la promoción automática de tier.
- * Body: { opportunity_id, deal_type (referral|co_sell|reseller) }
+ * del tier) y nace `pending`. Un importe ajustado opcional exige administración,
+ * queda auditado y usa un testigo idempotente. El estado no viene del body.
+ * Body: { opportunity_id, deal_type, commission_amount?, idempotency_key? }
  * 404 partner u oportunidad ajenos · 409 oportunidad ya registrada para el partner.
  */
 export async function POST(request: NextRequest, { params }: Params) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     const { id } = await params;
     const body = await readJson(request);
     rejectForeignOrganization(TAG, body, ctx, request);
+    await exigirPermisoCrm(ctx, [CRM_PERMISOS.oportunidadesEditar], TAG);
+    exigirUuid(id, "partner");
     const parsed = validateDealInput(body);
     if (!parsed.ok) return validationFail(parsed.errors);
-    const result = await registerPartnerDeal(id, ctx.organizationId, parsed.value, ctx.supabase);
+    if (parsed.value.commission_amount !== undefined)
+      await requirePartnerManager(ctx);
+    const result = await registerPartnerDeal(
+      id,
+      ctx.organizationId,
+      parsed.value,
+      ctx.supabase,
+      ctx.userId,
+    );
     return jsonOk(result, {}, 201);
   } catch (error) {
     return routeError(error, TAG);

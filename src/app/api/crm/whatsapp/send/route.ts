@@ -37,7 +37,7 @@ export const POST = withWhatsAppRoute(async (ctx, req) => {
     purpose: b.purpose === 'marketing' ? 'marketing' : 'utility',
     senderMemberId: ctx.memberId,
     senderUserId: ctx.userId,
-    source: b.source ?? 'crm',
+    source: 'crm',
     role: 'agent',
   };
   const r = await sendWhatsApp(input, ctx.supabase);

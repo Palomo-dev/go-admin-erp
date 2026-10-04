@@ -21,7 +21,8 @@ import { useEtiquetaRango, useKitT, useLocaleIntl } from './useIdiomaKit';
  * instantes con `toInstant` al consultar (ver `rangoFechas.ts`).
  */
 export interface DateRangeButtonProps {
-  valor: RangoFechas;
+  /** `null` muestra el placeholder sin aplicar un periodo implícito. */
+  valor: RangoFechas | null;
   onValorChange: (rango: RangoFechas) => void;
   /** «Hoy» en la zona de la organización (YYYY-MM-DD). */
   hoy: string;
@@ -77,8 +78,10 @@ export function DateRangeButton({
     }
   }, [abierto]);
 
-  const presetActivo = presetDe(valor, hoy);
-  const rangoVisible = ancla ? normalizarRango({ desde: ancla, hasta: activo ?? ancla }) : normalizarRango(valor);
+  const rangoActual = valor ? normalizarRango(valor) : null;
+  const textoRango = rangoActual ? etiquetaRango(rangoActual) : etiqueta;
+  const presetActivo = rangoActual ? presetDe(rangoActual, hoy) : null;
+  const rangoVisible = ancla ? normalizarRango({ desde: ancla, hasta: activo ?? ancla }) : rangoActual;
 
   const aplicar = (rango: RangoFechas) => {
     onValorChange(normalizarRango(rango));
@@ -103,7 +106,7 @@ export function DateRangeButton({
           type="button"
           disabled={deshabilitado}
           aria-haspopup="dialog"
-          aria-label={`${etiqueta}: ${etiquetaRango(valor)}`}
+          aria-label={rangoActual ? `${etiqueta}: ${textoRango}` : etiqueta}
           className={cn(
             'inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border border-line-strong bg-surface px-3 text-sm font-medium text-fg transition-colors hover:bg-hover',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50 data-[state=open]:border-brand',
@@ -111,7 +114,7 @@ export function DateRangeButton({
           )}
         >
           <CalendarDays aria-hidden="true" className="size-4 shrink-0 text-fg-secondary" strokeWidth={1.5} />
-          <span className="whitespace-nowrap tabular-nums">{etiquetaRango(valor)}</span>
+          <span className="whitespace-nowrap tabular-nums">{textoRango}</span>
           <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-fg-secondary" strokeWidth={1.5} />
         </button>
       </PopoverPrimitive.Trigger>
@@ -155,7 +158,7 @@ export function DateRangeButton({
           </div>
           <CalendarioMes
             rango={rangoVisible}
-            diaInicial={normalizarRango(valor).hasta}
+            diaInicial={rangoActual?.hasta ?? hoy}
             onElegir={elegir}
             onDiaActivo={(d) => {
               if (ancla) setActivo(d);
@@ -169,10 +172,10 @@ export function DateRangeButton({
             <p aria-live="polite" className="text-fg-secondary">
               {ancla
                 ? t('calendario.eligeFin', { desde: etiquetaDiaCorta(ancla, locale) })
-                : t('calendario.pieRango', {
+                : rangoVisible ? t('calendario.pieRango', {
                     desde: etiquetaDiaCorta(rangoVisible.desde, locale),
                     hasta: etiquetaDiaCorta(rangoVisible.hasta, locale),
-                  })}
+                  }) : etiqueta}
             </p>
             {onLimpiar && (
               <button

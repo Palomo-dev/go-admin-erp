@@ -1,4 +1,5 @@
 'use client';
+import { useSequenceText } from './useSequenceText';
 
 /**
  * Catálogo visual de los canales de un paso (brief UX 6.3).
@@ -36,7 +37,7 @@ export interface ChannelMeta {
 export const CHANNEL_META: Record<string, ChannelMeta> = {
   email: {
     value: 'email',
-    label: 'Email',
+    label: 'Correo',
     description: 'Envía un correo al cliente',
     icon: Mail,
     tone: 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-100',
@@ -71,7 +72,7 @@ export const CHANNEL_META: Record<string, ChannelMeta> = {
     label: 'Espera',
     description: 'No hace nada: solo deja pasar el tiempo',
     icon: Clock,
-    tone: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200',
+    tone: 'bg-gray-100 text-fg-secondary dark:bg-hover dark:text-fg',
     ring: 'ring-gray-300 dark:ring-gray-600',
   },
   condition: {
@@ -101,7 +102,7 @@ const FALLBACK: ChannelMeta = {
   label: 'Paso',
   description: '',
   icon: CheckSquare,
-  tone: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200',
+  tone: 'bg-gray-100 text-fg-secondary dark:bg-hover dark:text-fg',
   ring: 'ring-gray-300 dark:ring-gray-600',
 };
 
@@ -124,6 +125,7 @@ interface ChannelIconProps {
 
 /** Nodo redondo con el icono del canal. Una condición se dibuja como rombo. */
 export function ChannelIcon({ channel, size = 'md', labelled = false, className = '' }: ChannelIconProps) {
+ const tr=useSequenceText();
   const meta = channelMeta(channel);
   const Icon = meta.icon;
   const s = SIZES[size];
@@ -132,11 +134,11 @@ export function ChannelIcon({ channel, size = 'md', labelled = false, className 
     <span
       className={`inline-flex shrink-0 items-center justify-center ring-2 ${shape} ${s.box} ${meta.tone} ${meta.ring} ${className}`}
       role={labelled ? 'img' : undefined}
-      aria-label={labelled ? meta.label : undefined}
+      aria-label={labelled ? tr(meta.label) : undefined}
       aria-hidden={labelled ? undefined : true}
-      title={meta.label}
+      title={tr(meta.label)}
     >
-      <Icon className={`${s.icon} ${channel === 'condition' ? '-rotate-45' : ''}`} aria-hidden="true" />
+      <Icon className={`${s.icon} ${channel === 'condition' ? '-rotate-45' : ''}`} strokeWidth={1.5} aria-hidden="true" />
     </span>
   );
 }

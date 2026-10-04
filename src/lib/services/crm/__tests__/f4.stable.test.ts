@@ -27,12 +27,21 @@ import { buildRoleMap, assignSpeakerRoles, channelRoleMap } from '@/lib/services
 import { upsertCallActivity, callChannel } from '@/lib/services/crm/callActivityService';
 import { activityChannelForMode } from '@/lib/services/crm/callActivitySync';
 import { STT_MAX_AUDIO_BYTES } from '@/lib/services/crm/transcriptionService';
-import { detectAudioKind, estimateDurationSeconds, createManualCallWithAudio, MANUAL_AUDIO_MAX_BYTES } from '@/lib/services/crm/manualCallService';
+import { detectAudioKind, estimateDurationSeconds, createManualCallWithAudio, manualCallTimes, MANUAL_AUDIO_MAX_BYTES } from '@/lib/services/crm/manualCallService';
+
+// Estas sondas FIFO/UNIQUE caracterizan el escape REST histórico. Las sondas
+// positivas de RPC en esta misma batería activan explícitamente el modo real.
+const originalCallRpcFlag = process.env.CRM_CALL_ATOMIC_RPC_ENABLED;
+beforeEach(() => { process.env.CRM_CALL_ATOMIC_RPC_ENABLED = 'false'; });
+afterAll(() => {
+  if (originalCallRpcFlag === undefined) delete process.env.CRM_CALL_ATOMIC_RPC_ENABLED;
+  else process.env.CRM_CALL_ATOMIC_RPC_ENABLED = originalCallRpcFlag;
+});
 
 const ACTIVITY_TYPES = ['call', 'email', 'whatsapp', 'sms', 'meeting', 'visit', 'note', 'system', 'ai_call', 'task'];
 const CALL = { id: 'call-1', organization_id: 7, direction: 'outbound', mode: 'browser', status: 'completed', answered_by: 'human', started_at: '2026-09-01T10:00:00Z', ended_at: '2026-09-01T10:01:00Z', duration_seconds: 60, customer_id: 'cus-1', opportunity_id: 'opp-1', user_id: 'usr-1' };
 
-function actDb(call: Record<string, unknown> = CALL, activities: any[] = []) {
+function actDb(call: Record<string, unknown> = CALL, activities: Record<string, unknown>[] = []) {
   return new FakeDb({ tables: { calls: [call], activities }, checks: { activities: { activity_type: ACTIVITY_TYPES } }, unique: { activities: ['call_id'] } });
 }
 
@@ -72,7 +81,7 @@ describe('actividad idempotente con el UNIQUE real por call_id (adversarial D4, 
   it('R22 · conflicto de UNIQUE entre procesos: el INSERT perdedor relee y reutiliza la fila ganadora', async () => {
     const db = actDb(CALL, [{ id: 'act-ganadora', organization_id: 7, call_id: 'call-1', activity_type: 'call', metadata: {}, notes: null, created_at: '2026-09-01T09:00:00Z' }]);
     db.failOn['activities:insert'] = 'duplicate key value violates unique constraint "activities_call_id_uidx"';
-    expect(await upsertCallActivity(7, 'call-1', { supabase: db.client(), call: db.tables.calls[0] as any })).toEqual({ activityId: 'act-ganadora', created: false });
+    expect(await upsertCallActivity(7, 'call-1', { supabase: db.client() })).toEqual({ activityId: 'act-ganadora', created: false });
     expect(db.tables.activities).toHaveLength(1);
   });
 
@@ -122,7 +131,15 @@ describe('llamada manual con audio (adversarial F1-F16)', () => {
       checks: { activities: { activity_type: ACTIVITY_TYPES } },
     });
   }
-  const create = (db: FakeDb, orgId: number, input: Record<string, unknown>) => createManualCallWithAudio(orgId, 'usr-1', { audio: WAV, ...input } as any, db.client());
+  const create = (db: FakeDb, orgId: number, input: Record<string, unknown>) => createManualCallWithAudio(orgId, 'usr-1', { audio: WAV, ...input }, db.client());
+
+  it.each(["'".repeat(5900), 'é'.repeat(20000)])('rechaza notas sin presupuesto antes de insertar llamadas, actas o audio', async (notes) => {
+    const db = manualDb();
+    await expect(create(db, 7, { opportunityId: 'opp-1', notes, maxBytes: MANUAL_AUDIO_MAX_BYTES })).rejects.toMatchObject({ status: 503 });
+    expect(db.calls.filter((call) => call.op !== 'select')).toHaveLength(0);
+    expect(db.storageCalls).toHaveLength(0);
+    expect(db.rpcCalls).toHaveLength(0);
+  });
 
   it('F1 · magic bytes: .txt renombrado a .wav → 415 y no crea nada', async () => {
     const fake = Buffer.from('esto es texto plano, no audio, aunque se llame call.wav');
@@ -201,5 +218,21 @@ describe('llamada manual con audio (adversarial F1-F16)', () => {
     expect(db.rows('call_recordings')).toHaveLength(0);
     expect(db.storageCalls).toHaveLength(0);
     expect(chargeAiCredits).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('fechas de llamadas manuales completadas', () => {
+  const now = Date.parse('2026-09-01T15:00:00Z');
+  it('sin fecha explícita termina ahora y conserva toda la duración en el pasado', () => {
+    expect(manualCallTimes(null, 300, now)).toEqual({ startedAt: '2026-09-01T14:55:00.000Z', endedAt: '2026-09-01T15:00:00.000Z' });
+  });
+  it('rechaza una fecha inválida, duración no finita y cualquier final futuro', () => {
+    expect(() => manualCallTimes('fecha inválida', 60, now)).toThrow('Fecha');
+    expect(() => manualCallTimes('2026-02-30T10:00:00Z', 60, now)).toThrow('Fecha');
+    expect(() => manualCallTimes('2026-02-01T10:00:00', 60, now)).toThrow('Fecha');
+    expect(() => manualCallTimes(null, 1e15, now)).toThrow('Duración');
+    expect(() => manualCallTimes(null, Infinity, now)).toThrow('Duración');
+    expect(() => manualCallTimes('2026-09-01T15:00:00Z', 1, now)).toThrow('futuro');
   });
 });

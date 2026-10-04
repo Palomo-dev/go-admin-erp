@@ -39,7 +39,7 @@ export interface CreateTemplateInput {
   is_active?: boolean;
   metadata?: Record<string, unknown>;
 }
-export type UpdateTemplateInput = Partial<CreateTemplateInput>;
+export type UpdateTemplateInput = Partial<CreateTemplateInput> & { expected_version?: number };
 
 const SUMMARY_COLS = 'id, organization_id, name, channel, kind, engine, subject, preheader, description, variables, is_active, version, created_by, metadata, created_at, updated_at';
 
@@ -118,6 +118,12 @@ export async function requireTemplate(orgId: number, id: string, supabase: Supab
   return t;
 }
 
+export async function requireEmailTemplate(orgId: number, id: string, supabase: SupabaseClient): Promise<Template> {
+  const template = await requireTemplate(orgId, id, supabase);
+  if (template.channel !== 'email') throw new EmailError('NOT_FOUND', 'Plantilla no encontrada', 404);
+  return template;
+}
+
 export async function createTemplate(orgId: number, userId: string | null, input: CreateTemplateInput, supabase: SupabaseClient): Promise<Template> {
   const name = normalizeName(input.name);
   const engine: TemplateEngine = input.engine === 'html' ? 'html' : 'blocks';
@@ -153,7 +159,13 @@ export async function createTemplate(orgId: number, userId: string | null, input
 }
 
 export async function updateTemplate(orgId: number, userId: string | null, id: string, input: UpdateTemplateInput, supabase: SupabaseClient): Promise<Template> {
-  const current = await requireTemplate(orgId, id, supabase);
+  if (input.expected_version !== undefined && (!Number.isInteger(input.expected_version) || input.expected_version <= 0)) {
+    throw new EmailError('VALIDATION', 'Versión inválida', 400);
+  }
+  const current = await requireEmailTemplate(orgId, id, supabase);
+  if (input.expected_version !== undefined && input.expected_version !== current.version) {
+    throw new EmailError('CONFLICT', 'La plantilla cambió. Vuelve a cargarla antes de guardar.', 409);
+  }
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString(), version: (current.version ?? 1) + 1 };
   if (input.name !== undefined) {
     patch.name = normalizeName(input.name);
@@ -182,13 +194,15 @@ export async function updateTemplate(orgId: number, userId: string | null, id: s
   }
   Object.assign(patch, await buildContentColumns(contentInput, engine, subject, preheader));
   void userId;
-  const { data, error } = await supabase.from('templates').update(patch).eq('id', id).eq('organization_id', orgId).select('*').single();
-  if (error || !data) throw new EmailError('DB', error?.message ?? 'No se pudo actualizar la plantilla', 500);
+  const { data, error } = await supabase.from('templates').update(patch).eq('id', id).eq('organization_id', orgId)
+    .eq('channel', 'email').eq('version', current.version).select('*').maybeSingle();
+  if (error) throw new EmailError('DB', error.message, 500);
+  if (!data) throw new EmailError('CONFLICT', 'La plantilla cambió. Vuelve a cargarla antes de guardar.', 409);
   return data as Template;
 }
 
 export async function duplicateTemplate(orgId: number, userId: string | null, id: string, name: string | undefined, supabase: SupabaseClient): Promise<Template> {
-  const src = await requireTemplate(orgId, id, supabase);
+  const src = await requireEmailTemplate(orgId, id, supabase);
   let newName = (name ?? `${src.name} (copia)`).trim();
   for (let i = 2; i < 50; i++) {
     const { data } = await supabase.from('templates').select('id').eq('organization_id', orgId).eq('channel', 'email').ilike('name', newName).limit(1);
@@ -210,7 +224,7 @@ export async function duplicateTemplate(orgId: number, userId: string | null, id
 
 /** 409 si es de sistema; soft-delete (is_active=false) si tiene uso; borrado real si no. */
 export async function deleteTemplate(orgId: number, id: string, supabase: SupabaseClient): Promise<{ deleted: boolean; deactivated: boolean }> {
-  const t = await requireTemplate(orgId, id, supabase);
+  const t = await requireEmailTemplate(orgId, id, supabase);
   if (t.metadata?.is_system) throw new EmailError('SYSTEM_TEMPLATE', 'Las plantillas base no se pueden eliminar (puedes desactivarlas o duplicarlas)', 409);
   const used = (t.metadata?.usage_count ?? 0) > 0;
   if (used) {

@@ -15,6 +15,7 @@ import { LoadErrorState } from "@/components/common/LoadErrorState";
 import { FadeIn } from "@/components/shared/motion";
 import { fetchJson } from "@/lib/utils/fetchJson";
 import { describeError } from "@/lib/utils/errorMessage";
+import { getOrganizationId, ORGANIZATION_CHANGED_EVENT } from "@/lib/hooks/useOrganization";
 import type { LibraryVoice } from "@/lib/services/crm/voiceLibrary";
 import type { VoiceAccountInfo } from "../useVoiceCatalog";
 import { useVoiceLibrary } from "./useVoiceLibrary";
@@ -35,7 +36,9 @@ const SKELETONS = Array.from({ length: 8 }, (_, i) => i);
 export function VoiceLibraryGrid({ ownedVoiceIds, onAdded, account }: Props) {
   const lib = useVoiceLibrary();
   const player = useAudioPreview();
-  const [adding, setAdding] = useState<string | null>(null);
+  const [adding, setAdding] = useState<Set<string>>(new Set());
+  const additions = useRef(new Map<string, AbortController>());
+  const generation = useRef(0);
   const [justAdded, setJustAdded] = useState<Set<string>>(new Set());
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
@@ -45,26 +48,44 @@ export function VoiceLibraryGrid({ ownedVoiceIds, onAdded, account }: Props) {
     }
   }, [player.status, player.error]);
 
+  useEffect(() => {
+    const pendingAdditions = additions.current;
+    const cancel = () => {
+      generation.current++;
+      pendingAdditions.forEach(controller => controller.abort());
+      pendingAdditions.clear();
+    };
+    const changed = () => { cancel(); setAdding(new Set()); setJustAdded(new Set()); };
+    window.addEventListener(ORGANIZATION_CHANGED_EVENT, changed);
+    return () => { cancel(); window.removeEventListener(ORGANIZATION_CHANGED_EVENT, changed); };
+  }, []);
+
   // Scroll incremental: cuando el centinela entra en pantalla, pide la página siguiente.
-  const { hasMore, loadMore } = lib;
+  const { hasMore, loadMore, loading, loadingMore, error } = lib;
   useEffect(() => {
     const el = sentinelRef.current;
-    if (!el || !hasMore || typeof IntersectionObserver === "undefined") return;
+    if (!el || !hasMore || loading || loadingMore || error || typeof IntersectionObserver === "undefined") return;
+    let active = true;
     const io = new IntersectionObserver((entries) => {
-      if (entries.some((e) => e.isIntersecting)) loadMore();
+      if (active && entries.some((e) => e.isIntersecting)) loadMore();
     }, { rootMargin: "400px 0px" });
     io.observe(el);
-    return () => io.disconnect();
-  }, [hasMore, loadMore]);
+    return () => { active = false; io.disconnect(); };
+  }, [hasMore, loadMore, loading, loadingMore, error]);
 
   const add = useCallback(
     async (voice: LibraryVoice) => {
-      setAdding(voice.voice_id);
+      if (additions.current.has(voice.voice_id)) return;
+      const controller = new AbortController(), scope = getOrganizationId(), current = generation.current;
+      additions.current.set(voice.voice_id, controller);
+      const active = () => current === generation.current && !controller.signal.aborted && scope === getOrganizationId();
+      setAdding(prev => new Set(prev).add(voice.voice_id));
       try {
         const json = await fetchJson<{ success?: boolean; error?: string; data?: { already_in_catalog: boolean } }>(
           "/api/crm/voices/library",
           {
             method: "POST",
+            signal: controller.signal,
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               voice_id: voice.voice_id,
@@ -75,6 +96,7 @@ export function VoiceLibraryGrid({ ownedVoiceIds, onAdded, account }: Props) {
             }),
           }
         );
+        if (!active()) return;
         if (!json?.success) throw new Error(json?.error || "La respuesta no indicó éxito");
         setJustAdded((prev) => new Set(prev).add(voice.voice_id));
         toast({
@@ -83,9 +105,10 @@ export function VoiceLibraryGrid({ ownedVoiceIds, onAdded, account }: Props) {
         });
         onAdded();
       } catch (err) {
-        toast({ title: "No se pudo añadir la voz", description: describeError(err), variant: "destructive" });
+        if (active()) toast({ title: "No se pudo añadir la voz", description: describeError(err), variant: "destructive" });
       } finally {
-        setAdding(null);
+        if (additions.current.get(voice.voice_id) === controller) additions.current.delete(voice.voice_id);
+        if (active()) setAdding(prev => { const next = new Set(prev); next.delete(voice.voice_id); return next; });
       }
     },
     [onAdded]
@@ -149,7 +172,7 @@ export function VoiceLibraryGrid({ ownedVoiceIds, onAdded, account }: Props) {
                   previewStatus={player.statusFor(v.voice_id)}
                   onPreview={(voice) => voice.preview_url && player.toggle(voice.voice_id, voice.preview_url)}
                   added={ownedVoiceIds.has(v.voice_id) || justAdded.has(v.voice_id)}
-                  adding={adding === v.voice_id}
+                  adding={adding.has(v.voice_id)}
                   onAdd={add}
                   accountIsFree={account ? account.free_tier : null}
                 />

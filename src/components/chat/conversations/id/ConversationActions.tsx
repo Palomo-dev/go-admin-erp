@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { 
-  Tag, 
   User, 
   AlertCircle, 
   CheckCircle2, 
@@ -29,6 +28,7 @@ import {
 } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { ConversationDetail } from '@/lib/services/conversationDetailService';
+import { CrearOportunidadDesdeOrigen } from '@/components/crm/oportunidad/CrearOportunidadDesdeOrigen';
 
 interface ConversationActionsProps {
   conversation: ConversationDetail | null;
@@ -335,6 +335,7 @@ export default function ConversationActions({
 
         {/* Acciones rápidas */}
         <div className="space-y-2">
+          <CrearOportunidadDesdeOrigen tipo="conversacion" id={conversation.id} />
           <Button
             variant="outline"
             size="sm"

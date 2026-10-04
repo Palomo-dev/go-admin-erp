@@ -41,26 +41,10 @@ export async function setConsent(
   evidence: Record<string, unknown>,
   supabase: SupabaseClient,
 ): Promise<void> {
-  const now = new Date().toISOString();
-  const { error } = await supabase
-    .from('contact_consents')
-    .upsert(
-      { organization_id: orgId, customer_id: customerId, channel, status, source, evidence, changed_at: now },
-      { onConflict: 'organization_id,customer_id,channel' },
-    );
-  if (error) throw new Error(`contact_consents upsert: ${error.message}`);
-
-  const flag = channel === 'whatsapp' ? 'do_not_whatsapp' : channel === 'sms' ? 'do_not_sms' : channel === 'email' ? 'do_not_email' : 'do_not_call';
-  const { data: c } = await supabase.from('customers').select('metadata').eq('id', customerId).eq('organization_id', orgId).maybeSingle();
-  const meta = { ...(((c as { metadata?: Record<string, unknown> } | null)?.metadata) ?? {}) } as Record<string, unknown>;
-  if (status === 'opted_out') {
-    meta[flag] = true;
-    meta[`${channel}_optout_at`] = now;
-  } else {
-    delete meta[flag];
-    if (status === 'opted_in') meta[`${channel}_optin_at`] = now;
-  }
-  await supabase.from('customers').update({ metadata: meta }).eq('id', customerId).eq('organization_id', orgId);
+  const { error } = await supabase.rpc('crm_set_contact_consent', {
+    p_org: orgId, p_customer: customerId, p_channel: channel, p_status: status, p_source: source, p_evidence: evidence,
+  });
+  if (error) throw error;
 }
 
 export interface ContactConsent {
@@ -73,12 +57,13 @@ export interface ContactConsent {
 }
 
 export async function listConsents(orgId: number, customerId: string, supabase: SupabaseClient): Promise<ContactConsent[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('contact_consents')
     .select('id, channel, status, source, evidence, changed_at')
     .eq('organization_id', orgId)
     .eq('customer_id', customerId)
     .order('changed_at', { ascending: false });
+  if (error) throw error;
   return (data ?? []) as ContactConsent[];
 }
 
@@ -105,50 +90,17 @@ export function isOptInKeyword(text: string, keywords: string[] = DEFAULT_OPTIN_
   return keywords.some((k) => normalizeKeyword(k) === norm);
 }
 
-/**
- * Procesa un inbound de WhatsApp: baja/alta por palabra clave o, si es el
- * primer contacto, opt-in implícito (Habeas Data: evidencia = el mensaje).
- * Devuelve la acción aplicada.
- */
+/** Mensaje persistido y propio: SQL verifica identidad, contenido y configuración del canal. */
 export async function applyInboundConsent(
-  params: { orgId: number; customerId: string; messageId: string; text: string; optoutKeywords?: string[]; optinKeywords?: string[] },
+  params: { orgId: number; customerId: string; messageId: string },
   supabase: SupabaseClient,
-): Promise<'opted_out' | 'opted_in' | 'implicit_opt_in' | 'none'> {
-  const { orgId, customerId, messageId, text } = params;
-  try {
-    if (isOptOutKeyword(text, params.optoutKeywords ?? DEFAULT_OPTOUT_KEYWORDS)) {
-      await setConsent(orgId, customerId, 'whatsapp', 'opted_out', 'inbound_keyword', { message_id: messageId, text }, supabase);
-      // Contactos pendientes de campañas → skipped (metadata.state; CHECK actual no admite 'skipped')
-      await skipPendingCampaignContacts(orgId, customerId, 'opted_out', supabase);
-      return 'opted_out';
-    }
-    if (isOptInKeyword(text, params.optinKeywords ?? DEFAULT_OPTIN_KEYWORDS)) {
-      await setConsent(orgId, customerId, 'whatsapp', 'opted_in', 'inbound_keyword', { message_id: messageId }, supabase);
-      return 'opted_in';
-    }
-    const { data: existing } = await supabase
-      .from('contact_consents')
-      .select('id')
-      .eq('organization_id', orgId)
-      .eq('customer_id', customerId)
-      .eq('channel', 'whatsapp')
-      .maybeSingle();
-    if (!existing) {
-      await supabase.from('contact_consents').insert({
-        organization_id: orgId,
-        customer_id: customerId,
-        channel: 'whatsapp',
-        status: 'opted_in',
-        source: 'inbound_message',
-        evidence: { message_id: messageId },
-        changed_at: new Date().toISOString(),
-      });
-      return 'implicit_opt_in';
-    }
-  } catch (err) {
-    console.warn('[whatsapp/consent] applyInboundConsent:', err instanceof Error ? err.message : err);
-  }
-  return 'none';
+): Promise<'opted_out' | 'opted_in' | 'none'> {
+  const { data, error } = await supabase.rpc('crm_apply_inbound_contact_consent', {
+    p_org: params.orgId, p_message: params.messageId,
+  });
+  if (error) throw error;
+  if (!['opted_out', 'opted_in', 'none'].includes(String(data))) throw new Error('Respuesta de consentimiento inválida');
+  return data as 'opted_out' | 'opted_in' | 'none';
 }
 
 export interface AutoReplyGate {
@@ -191,22 +143,4 @@ export async function canAutoReply(
     return { allowed: false, reason: 'window_closed', message: 'La ventana de 24 h de WhatsApp está cerrada: fuera de ella solo se puede enviar una plantilla aprobada' };
   }
   return { allowed: true };
-}
-
-async function skipPendingCampaignContacts(orgId: number, customerId: string, reason: string, supabase: SupabaseClient): Promise<void> {
-  const { data: rows } = await supabase
-    .from('campaign_contacts')
-    .select('id, metadata, campaigns!inner(organization_id)')
-    .eq('customer_id', customerId)
-    .is('state', null)
-    .eq('campaigns.organization_id', orgId)
-    .limit(200);
-  for (const r of (rows ?? []) as Array<{ id: string; metadata: Record<string, unknown> | null }>) {
-    const st = (r.metadata?.state as string | undefined) ?? 'pending';
-    if (st !== 'pending' && st !== 'queued') continue;
-    await supabase
-      .from('campaign_contacts')
-      .update({ metadata: { ...(r.metadata ?? {}), state: 'skipped', skipped_reason: reason }, updated_at: new Date().toISOString() })
-      .eq('id', r.id);
-  }
 }

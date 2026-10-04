@@ -104,18 +104,19 @@ describe('runHealthRecalculate', () => {
     expect(rows.map((r) => r.customer_id).sort()).toEqual(['c2', 'c3', 'c4']);
     for (const r of rows) expect(r).toMatchObject({ organization_id: 120, score: 100, band: 'green' });
     expect((rows[0].indicators as Record<string, unknown>)).toMatchObject({ invoices_12m: 6, days_since_last_invoice: 3 });
-    // r2: customers.health_score se actualiza SOLO para los que cambian y por LOTES (una sentencia por score distinto), filtrado por org
+    // r2: customers.health_score se actualiza sólo para los que cambian dentro de la RPC del lote, filtrado por org
     const cu = writesTo(db, 'customers', 'update');
-    expect(cu).toHaveLength(1);
-    expect(cu[0].filters).toMatchObject({ organization_id: 120, id__in: ['c2', 'c3', 'c4'] });
+    expect(cu).toHaveLength(3);
+    expect(cu.map(w => w.filters.id)).toEqual(['c2','c3','c4']);
+    expect(cu.every(w => w.filters.organization_id === 120)).toBe(true);
     expect(cu[0].rows[0]).toMatchObject({ health_score: 100 });
     expect(o120).toMatchObject({ customers_updated: 3, update_statements: 1 });
     // cero encolados
     expect(writesTo(db, 'outbound_jobs')).toHaveLength(0);
     expect(db.rpcCalls.filter((c) => c.fn === 'fn_enqueue_job')).toHaveLength(0);
     // la RPC se llamó con p_customer_id null (modo lote) y nunca para 121
-    expect(db.rpcCalls.map((c) => c.args.p_org_id).sort()).toEqual([120, 140]); // 130: config inactiva, ni se llama a la RPC
-    expect(db.rpcCalls.every((c) => c.args.p_customer_id === null)).toBe(true);
+    expect(db.rpcCalls.filter(c => c.fn === 'fn_customer_health').map((c) => c.args.p_org_id).sort()).toEqual([120, 140]); // 130: config inactiva, ni se llama a la RPC
+    expect(db.rpcCalls.filter(c => c.fn === 'fn_customer_health').every((c) => c.args.p_customer_id === null)).toBe(true);
     expect(db.rpcCalls.some((c) => c.args.p_org_id === 121)).toBe(false);
   });
 

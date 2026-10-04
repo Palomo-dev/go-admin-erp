@@ -1,4 +1,6 @@
 'use client';
+import {StatusBadge} from '@/components/kit/StatusBadge';
+import {useRedText} from '@/components/crm/red/useRedText';
 
 /** Estados de comisión y tipos de deal para la interfaz: icono + texto, AA en ambos temas. */
 
@@ -14,21 +16,16 @@ interface Meta {
 }
 
 export const COMMISSION_META: Record<CommissionStatus, Meta> = {
-  pending: { label: COMMISSION_STATUS_LABELS.pending, icon: CircleDashed, badge: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200', action: 'Pendiente' },
-  approved: { label: COMMISSION_STATUS_LABELS.approved, icon: BadgeCheck, badge: 'bg-blue-100 text-blue-900 dark:bg-blue-950/70 dark:text-blue-200', action: 'Aprobar' },
+  pending: { label: COMMISSION_STATUS_LABELS.pending, icon: CircleDashed, badge: 'bg-subtle text-fg  ', action: 'Pendiente' },
+  approved: { label: COMMISSION_STATUS_LABELS.approved, icon: BadgeCheck, badge: 'bg-brand-tint text-brand-deep  ', action: 'Aprobar' },
   paid: { label: COMMISSION_STATUS_LABELS.paid, icon: Coins, badge: 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950/70 dark:text-emerald-200', action: 'Registrar pago' },
   rejected: { label: COMMISSION_STATUS_LABELS.rejected, icon: XCircle, badge: 'bg-red-100 text-red-900 dark:bg-red-950/70 dark:text-red-200', action: 'Rechazar' },
 };
 
 export function CommissionStatusBadge({ status }: { status: CommissionStatus }) {
+  const {tr} = useRedText();
   const meta = COMMISSION_META[status] ?? COMMISSION_META.pending;
-  const Icon = meta.icon;
-  return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${meta.badge}`}>
-      <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-      {meta.label}
-    </span>
-  );
+  return <StatusBadge estado={status} etiqueta={tr(meta.label)} tono={status === 'paid' ? 'exito' : status === 'rejected' ? 'peligro' : status === 'approved' ? 'informacion' : 'advertencia'}/>;
 }
 
 export function dealTypeLabel(type: DealType | string): string {

@@ -7,6 +7,7 @@
  */
 
 const mockClient = {
+  cacheKey: 'test-credential',
   getSubscription: jest.fn(),
   listSharedVoices: jest.fn(),
 };

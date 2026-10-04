@@ -1,5 +1,7 @@
+import { assertTemplateQuery, requireTemplateRead, requireTemplateWrite, canManageTemplates, readTemplateBody } from '@/lib/services/crm/email/templateAccess';
+import { EmailError } from '@/lib/services/crm/email/types';
 import { NextRequest } from 'next/server';
-import { emailErrorResponse, getServerOrgContext, ok, readJson } from '@/lib/services/crm/email/http';
+import { emailErrorResponse, getServerOrgContext, ok } from '@/lib/services/crm/email/http';
 import { deleteTemplate, requireTemplate, updateTemplate, type UpdateTemplateInput } from '@/lib/services/crm/email/templatesService';
 import { parseWith, zTemplateUpdate, zUuid } from '@/lib/services/crm/email/schemas';
 import { templateStats } from '@/lib/services/crm/email/messagesService';
@@ -12,10 +14,13 @@ type Params = { params: Promise<{ id: string }> };
 export async function GET(request: NextRequest, { params }: Params) {
   try {
     const ctx = await getServerOrgContext(request);
+    assertTemplateQuery(ctx, request);
+    await requireTemplateRead(ctx);
     const { id } = await params;
-    const t = await requireTemplate(ctx.organizationId, id, ctx.supabase);
-    const stats = request.nextUrl.searchParams.get('stats') === '1' ? await templateStats(ctx.organizationId, id, ctx.supabase) : undefined;
-    return ok(t, 200, stats ? { stats } : {});
+    const t = await requireTemplate(ctx.organizationId, parseWith(zUuid, id, 'id'), ctx.supabase);
+    if (t.channel !== 'email') throw new EmailError('NOT_FOUND', 'Plantilla de correo no encontrada', 404);
+    const stats = request.nextUrl.searchParams.get('stats') === '1' ? await templateStats(ctx.organizationId, parseWith(zUuid, id, 'id'), ctx.supabase) : undefined;
+    return ok(t, 200, { ...(stats ? { stats } : {}), can_manage: await canManageTemplates(ctx) });
   } catch (err) {
     return emailErrorResponse(err, 'email/templates/[id] GET');
   }
@@ -25,8 +30,10 @@ export async function GET(request: NextRequest, { params }: Params) {
 export async function PATCH(request: NextRequest, { params }: Params) {
   try {
     const ctx = await getServerOrgContext(request);
+    assertTemplateQuery(ctx, request);
+    await requireTemplateWrite(ctx);
     const { id } = await params;
-    const body = parseWith(zTemplateUpdate, await readJson<unknown>(request), 'body de PATCH /api/email/templates/[id]');
+    const body = parseWith(zTemplateUpdate, await readTemplateBody(ctx, request), 'body de PATCH /api/email/templates/[id]');
     const t = await updateTemplate(ctx.organizationId, ctx.userId, parseWith(zUuid, id, 'id'), body as UpdateTemplateInput, ctx.supabase);
     return ok(t);
   } catch (err) {
@@ -38,8 +45,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 export async function DELETE(request: NextRequest, { params }: Params) {
   try {
     const ctx = await getServerOrgContext(request);
+    assertTemplateQuery(ctx, request);
+    await requireTemplateWrite(ctx);
     const { id } = await params;
-    const r = await deleteTemplate(ctx.organizationId, id, ctx.supabase);
+    const r = await deleteTemplate(ctx.organizationId, parseWith(zUuid, id, 'id'), ctx.supabase);
     return ok(r);
   } catch (err) {
     return emailErrorResponse(err, 'email/templates/[id] DELETE');

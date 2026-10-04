@@ -15,18 +15,26 @@ export interface AvatarInicialesProps {
   nombre: string;
   /** Foto; si falla al cargar vuelve a las iniciales. */
   src?: string | null;
-  /** `sm` 32 px (tablas) · `md` 40 px · `lg` 64 px (ficha). */
-  tamano?: 'sm' | 'md' | 'lg';
+  /** `xs` 28 px (segmentos) · `sm` 32 px (tablas) · `md` 40 px · `lg` 64 px (ficha). */
+  tamano?: 'xs' | 'sm' | 'md' | 'lg';
+  tono?: 'marca' | 'marcaSuave' | 'neutro';
   className?: string;
 }
 
 const TAMANO = {
+  xs: 'size-7 text-xs leading-4',
   sm: 'size-8 text-xs',
   md: 'size-10 text-sm',
   lg: 'size-16 text-xl',
 } as const;
 
-export function AvatarIniciales({ nombre, src, tamano = 'sm', className }: AvatarInicialesProps) {
+const TONO = {
+  marca: 'bg-brand-action text-fg-on-brand',
+  marcaSuave: 'bg-brand-tint text-brand-deep',
+  neutro: 'bg-subtle text-fg-secondary',
+} as const;
+
+export function AvatarIniciales({ nombre, src, tamano = 'sm', tono = 'marca', className }: AvatarInicialesProps) {
   const [fallo, setFallo] = React.useState(false);
   React.useEffect(() => setFallo(false), [src]);
   const conFoto = !!src && !fallo;
@@ -35,8 +43,9 @@ export function AvatarIniciales({ nombre, src, tamano = 'sm', className }: Avata
     <span
       aria-hidden="true"
       className={cn(
-        'inline-flex shrink-0 select-none items-center justify-center overflow-hidden rounded-full bg-brand-action font-semibold text-fg-on-brand',
+        'inline-flex shrink-0 select-none items-center justify-center overflow-hidden rounded-full font-semibold',
         TAMANO[tamano],
+        TONO[tono],
         className,
       )}
     >

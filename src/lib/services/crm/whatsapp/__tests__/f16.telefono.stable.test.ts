@@ -111,6 +111,19 @@ describe('findCustomerIdByPhone', () => {
   const clientes = (rows: Row[]) => makeSupabase({ customers: fakeTable(rows).resolver });
   const fila = (id: string, phone: string, created_at: string, organization_id = 7): Row => ({ id, organization_id, phone, created_at });
 
+  it('no pierde una coincidencia después de 200 candidatos con el mismo sufijo', async () => {
+    const rows = Array.from({ length: 250 }, (_, i) => fila(`c-${String(i).padStart(3, '0')}`, '+573200006543', '2020-01-01T00:00:00Z'));
+    rows.push(fila('c-250', '+57 310 987 6543', '2020-01-01T00:00:00Z'));
+    const { sb, calls } = clientes(rows);
+    await expect(findCustomerIdByPhone(7, '573109876543', sb, { defaultCountry: '57' })).resolves.toBe('c-250');
+    expect(calls.map((c) => c.ops.find((o) => o.method === 'range')?.args)).toEqual([[0, 199], [200, 399]]);
+  });
+
+  it('propaga un fallo de lectura en lugar de interpretar que el cliente no existe', async () => {
+    const { sb } = makeSupabase({ customers: () => ({ error: { message: 'lectura fallida' } }) });
+    await expect(findCustomerIdByPhone(7, '573109876543', sb)).rejects.toThrow('lectura fallida');
+  });
+
   it('B4.N4 · encuentra al cliente guardado con separadores usando el prefiltro `imatch` (la igualdad exacta NO acierta)', async () => {
     const { sb, calls } = clientes([fila('c-1', '+57 310 987 6543', '2021-01-01T00:00:00Z')]);
     await expect(findCustomerIdByPhone(7, '573109876543', sb, { defaultCountry: '57' })).resolves.toBe('c-1');

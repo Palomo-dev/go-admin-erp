@@ -5,6 +5,8 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { SequenceOverview } from '@/lib/services/crm/sequenceOverview';
+import { useOrganization } from '@/lib/hooks/useOrganization';
 import { enrollErrorText } from './sequenceOptions';
 
 export interface SequenceStepView {
@@ -74,6 +76,8 @@ export interface EnrollmentView {
   exit_reason: string | null;
   paused_reason?: string | null;
   next_run_at?: string | null;
+  /** ID del paso que programa el motor; el GET ya devuelve la columna real. */
+  current_step_id?: string | null;
   /** Resueltos en el GET para no mostrar UUIDs. */
   opportunity_name?: string | null;
   customer_name?: string | null;
@@ -95,7 +99,11 @@ function messageOf(body: Record<string, unknown>, fallback: string): string {
   return [error || fallback, issues].filter(Boolean).join(' — ');
 }
 
+export type SequenceSummary=SequenceOverview;
 export function useSequences() {
+  const {organization}=useOrganization();const orgId=organization?.id??null;
+  const currentOrg=useRef(orgId);currentOrg.current=orgId;
+  const [scope,setScope]=useState<number|null>(null),[canManage,setCanManage]=useState(false),[summary,setSummary]=useState<SequenceSummary|null>(null);
   const [sequences, setSequences] = useState<SequenceView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -107,21 +115,23 @@ export function useSequences() {
   const loadedOnce = useRef(false);
 
   const load = useCallback(async () => {
+    if(!orgId)return;
     if (!loadedOnce.current) setLoading(true);
     setError(null);
     try {
       const { ok, body } = await readJson(await fetch('/api/crm/sequences', { cache: 'no-store' }));
       if (!ok) throw new Error(messageOf(body, 'No se pudieron cargar las secuencias'));
-      setSequences((body.data as SequenceView[]) ?? []);
+      if(currentOrg.current!==orgId)return;
+      setSequences((body.data as SequenceView[]) ?? []);setScope(orgId);setCanManage(body.can_manage===true);setSummary((body.summary as SequenceSummary|undefined)??null);
       loadedOnce.current = true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      if(currentOrg.current===orgId){setError(err instanceof Error ? err.message : 'Error desconocido');setCanManage(false);}
     } finally {
-      setLoading(false);
+      if(currentOrg.current===orgId)setLoading(false);
     }
-  }, []);
+  }, [orgId]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {loadedOnce.current=false;setSequences([]);setScope(orgId);setCanManage(false);setSummary(null);setError(null);setLoading(true);if(orgId)void load();}, [load,orgId]);
 
   const save = useCallback(async (input: Partial<SequenceView> & { id?: string; steps?: SequenceStepView[] }) => {
     const isEdit = !!input.id;
@@ -133,9 +143,10 @@ export function useSequences() {
       }),
     );
     if (!ok) throw new Error(messageOf(body, 'No se pudo guardar la secuencia'));
+    if(currentOrg.current===orgId && body.data){const row=body.data as SequenceView;setSequences(items=>items.some(item=>item.id===row.id)?items.map(item=>item.id===row.id?{...item,...row,steps:row.steps??item.steps,enrollment_stats:row.enrollment_stats??item.enrollment_stats}:item):[...items,{...row,steps:row.steps??input.steps}]);}
     await load();
     return body.data as SequenceView;
-  }, [load]);
+  }, [load,orgId]);
 
   const toggle = useCallback(async (sequence: SequenceView) => {
     const { ok, body } = await readJson(
@@ -146,14 +157,16 @@ export function useSequences() {
       }),
     );
     if (!ok) throw new Error(messageOf(body, 'No se pudo cambiar el estado'));
+    if(currentOrg.current===orgId && body.data){const row=body.data as SequenceView;setSequences(items=>items.map(item=>item.id===row.id?{...item,...row}:item));}
     await load();
-  }, [load]);
+  }, [load,orgId]);
 
   const remove = useCallback(async (id: string) => {
     const { ok, body } = await readJson(await fetch(`/api/crm/sequences/${id}`, { method: 'DELETE' }));
     if (!ok) throw new Error(messageOf(body, 'No se pudo eliminar la secuencia'));
+    if(currentOrg.current===orgId)setSequences(items=>items.filter(item=>item.id!==id));
     await load();
-  }, [load]);
+  }, [load,orgId]);
 
   const enroll = useCallback(async (id: string, opportunityId: string) => {
     const { ok, body } = await readJson(
@@ -170,7 +183,7 @@ export function useSequences() {
     return { enrolled: Number(body.enrolled ?? 0), skipped };
   }, []);
 
-  return { sequences, loading, error, reload: load, save, toggle, remove, enroll };
+  return { sequences:scope===orgId?sequences:[], loading:scope===orgId?loading:true, error:scope===orgId?error:null, canManage:scope===orgId&&canManage, summary:scope===orgId?summary:null, organizationId:orgId, reload: load, save, toggle, remove, enroll };
 }
 
 export async function fetchEnrollments(sequenceId: string): Promise<EnrollmentView[]> {

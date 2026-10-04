@@ -49,7 +49,7 @@ class OrgContextError extends Error {
 }
 jest.mock('@/lib/utils/orgContext', () => ({
   OrgContextError,
-  getServerOrgContext: jest.fn(async () => ({ organizationId: ORG, userId: USER, role: 'admin' })),
+  getServerOrgContext: jest.fn(async () => ({ organizationId: ORG, userId: USER, roleId: 2, isSuperAdmin: false, supabase: fake.client() })),
 }));
 // Servicio REAL con espía delante: registra con qué `recordingDeclaration`
 // lo llama la ruta y ejecuta la implementación de verdad (H-3).
@@ -76,7 +76,6 @@ import type { NextRequest } from 'next/server';
 import {
   reconcileConsentsWithoutRecording,
   RECONCILE_ALERT_AFTER_DEFERRALS,
-  RECONCILE_ALERT_AFTER_DAYS,
   RECONCILE_DEFERRED_AT_KEY,
   RECONCILE_DEFERRALS_KEY,
 } from '@/lib/services/crm/consentReconcileService';
@@ -104,7 +103,7 @@ function seed(extra: Record<string, Row[]> = {}): FakeDb {
       organizations: [{ id: ORG, name: 'Org de prueba' }],
       organization_members: [{ id: 'm1', organization_id: ORG, user_id: USER, is_active: true }],
       customers: [{ id: CUSTOMER_ID, organization_id: ORG, phone: '+573001112233', first_name: 'VOZR8B', last_name: 'Prueba' }],
-      opportunities: [{ id: 'opp-1', organization_id: ORG, customer_id: CUSTOMER_ID }],
+      opportunities: [{ id: 'eeeeeeee-0000-4000-8000-000000000001', organization_id: ORG, customer_id: CUSTOMER_ID }],
       voice_agents: [agentRow],
       voices: [],
       calls: [],
@@ -319,7 +318,7 @@ function multipart(fields: Record<string, string>, path = '/api/crm/calls/manual
 
 describe('VOZR8B-H3 · rutas manual/transcribe con el servicio REAL', () => {
   it('D.5 · /api/crm/calls/manual sin casilla → 400, cero filas en calls/call_consents y cero subidas; con `on` → 201 y el servicio recibe `recordingDeclaration: true` leído del formulario', async () => {
-    const no = await manualPOST(multipart({ opportunity_id: 'opp-1' }));
+    const no = await manualPOST(multipart({ opportunity_id: 'eeeeeeee-0000-4000-8000-000000000001' }));
     expect(no.status).toBe(400);
     expect(await no.json()).toMatchObject({ code: 'RECORDING_DECLARATION_REQUIRED' });
     // Defensa en profundidad: si el servicio llegara a ejecutarse, lo haría con
@@ -329,7 +328,7 @@ describe('VOZR8B-H3 · rutas manual/transcribe con el servicio REAL', () => {
     expect(fake.rows('call_consents')).toHaveLength(0);
     expect(fake.storageCalls.filter((s) => s.op === 'upload')).toHaveLength(0);
 
-    const ok = await manualPOST(multipart({ opportunity_id: 'opp-1', recording_declaration: 'on' }));
+    const ok = await manualPOST(multipart({ opportunity_id: 'eeeeeeee-0000-4000-8000-000000000001', recording_declaration: 'on' }));
     expect(ok.status).toBe(201);
     const last = createManualSpy.mock.calls.at(-1) as unknown as [number, string, { recordingDeclaration: boolean }];
     expect(last[2].recordingDeclaration).toBe(true);
@@ -352,11 +351,11 @@ describe('VOZR8B-H3 · rutas manual/transcribe con el servicio REAL', () => {
   });
 
   it('D.5b · /api/crm/transcribe: misma conducta con el servicio real', async () => {
-    const no = await transcribePOST(multipart({ opportunity_id: 'opp-1' }, '/api/crm/transcribe'));
+    const no = await transcribePOST(multipart({ opportunity_id: 'eeeeeeee-0000-4000-8000-000000000001' }, '/api/crm/transcribe'));
     expect(no.status).toBe(400);
     expect(fake.rows('calls')).toHaveLength(0);
     expect(fake.storageCalls.filter((s) => s.op === 'upload')).toHaveLength(0);
-    const ok = await transcribePOST(multipart({ opportunity_id: 'opp-1', recording_declaration: 'true' }, '/api/crm/transcribe'));
+    const ok = await transcribePOST(multipart({ opportunity_id: 'eeeeeeee-0000-4000-8000-000000000001', recording_declaration: 'true' }, '/api/crm/transcribe'));
     expect(ok.status).toBe(200);
     const last = createManualSpy.mock.calls.at(-1) as unknown as [number, string, { recordingDeclaration: boolean }];
     expect(last[2].recordingDeclaration).toBe(true);
@@ -379,20 +378,20 @@ describe('VOZR8B-H4 · consent_method por conducta', () => {
     expect(isUnverifiedConsent('')).toBe(false);
   });
 
-  it('B.3 · listCallsWithRelations mapea `consent_method` de la acta de grabación del embed (y null sin acta o con acta de otro tipo)', async () => {
-    fake = seed({
-      calls: [
-        callRow({ id: CALL_ID, user_id: null, call_consents: [{ consent_type: 'marketing', method: 'sms' }, { consent_type: 'recording', method: 'unverified_announcement' }], call_recordings: [] }),
-        callRow({ id: CALL_B, user_id: null, call_consents: [{ consent_type: 'marketing', method: 'sms' }], call_recordings: [] }),
-        callRow({ id: 'cccccccc-0000-4000-8000-000000000105', user_id: null, call_consents: null, call_recordings: [] }),
-      ],
+  it('B.3 · el listado conserva el acta no acreditada devuelta por la RPC', async () => {
+    fake = seed({});
+    fake.rpcImpl.crm_calls_list = () => ({
+      data: [
+        callRow({ id: CALL_ID, consent_method: 'unverified_announcement', recordings: [] }),
+        callRow({ id: CALL_B, consent_method: null, recordings: [] }),
+      ], count: 2, canViewAll: false, stats: { totalToday: 2, avgDuration: 0, missed: 0 },
     });
     const { data } = await listCallsWithRelations(ORG, fake.client());
-    const byId = new Map(data.map((r) => [r.id, r.consent_method]));
+    const byId = new Map(data.map(r => [r.id, r.consent_method]));
     expect(byId.get(CALL_ID)).toBe('unverified_announcement');
     expect(byId.get(CALL_B)).toBeNull();
-    expect(byId.get('cccccccc-0000-4000-8000-000000000105')).toBeNull();
     expect(isUnverifiedConsent(byId.get(CALL_ID))).toBe(true);
+    expect(fake.rpcCalls).toEqual([{ name: 'crm_calls_list', args: { p_org: ORG, p_filters: {} } }]);
   });
 });
 
@@ -414,3 +413,12 @@ describe('VOZR8B-N6 · importar callAnalysisService no crea el cliente de navega
     });
   });
 });
+
+// Fixtures históricas del transporte heredado; los contratos RPC se verifican por separado.
+beforeEach(() => { process.env.CRM_CALL_ATOMIC_RPC_ENABLED = 'false'; });
+afterAll(() => { delete process.env.CRM_CALL_ATOMIC_RPC_ENABLED; });
+
+// Fixtures Dial anteriores a Conference: escape explícito, sin falsear los contratos nuevos.
+const phoneLegacyEnv = process.env.CRM_PHONE_CONFERENCE_ENABLED;
+beforeAll(() => { process.env.CRM_PHONE_CONFERENCE_ENABLED = 'false'; });
+afterAll(() => { if (phoneLegacyEnv === undefined) delete process.env.CRM_PHONE_CONFERENCE_ENABLED; else process.env.CRM_PHONE_CONFERENCE_ENABLED = phoneLegacyEnv; });

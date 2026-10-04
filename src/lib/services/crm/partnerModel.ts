@@ -139,7 +139,7 @@ export function filterPartners(list: PartnerView[], f: PartnerListFilters): Part
  * Entero → sin decimales; con fracción → dos decimales fijos («250.000,50»,
  * nunca «250.000,5»). Se redondea a centésimas antes de decidir.
  */
-export function formatMoney(value: number | string | null | undefined, currency: string | null): string {
+export function formatMoney(value: number | string | null | undefined, currency: string | null, locale = 'es-CO'): string {
   const n = Number(value);
   // `toFixed` redondea sobre el decimal exacto (sin el error de `n * 100`) y no pierde
   // precisión con cifras ≥ 1e21; el `+ 0` convierte el `-0` de «-0.001» en 0 («$ 0», no «-$ 0»).
@@ -148,15 +148,15 @@ export function formatMoney(value: number | string | null | undefined, currency:
   const opts = { minimumFractionDigits: digits, maximumFractionDigits: digits };
   if (currency) {
     try {
-      return new Intl.NumberFormat('es-CO', { style: 'currency', currency, ...opts }).format(amount);
+      return new Intl.NumberFormat(locale, { style: 'currency', currency, ...opts }).format(amount);
     } catch {
-      return `${new Intl.NumberFormat('es-CO', opts).format(amount)} ${currency}`;
+      return `${new Intl.NumberFormat(locale, opts).format(amount)} ${currency}`;
     }
   }
-  return new Intl.NumberFormat('es-CO', opts).format(amount);
+  return new Intl.NumberFormat(locale, opts).format(amount);
 }
 
-export function formatRate(rate: number | string | null | undefined): string {
+export function formatRate(rate: number | string | null | undefined, locale = 'es-CO'): string {
   const n = Number(rate);
-  return `${new Intl.NumberFormat('es-CO', { maximumFractionDigits: 2 }).format(Number.isFinite(n) ? n : 0)} %`;
+  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(Number.isFinite(n) ? n : 0)} %`;
 }

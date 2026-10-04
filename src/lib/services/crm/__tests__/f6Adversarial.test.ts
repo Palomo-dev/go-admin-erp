@@ -57,7 +57,7 @@ import { VOICE_AGENT_TOOL_DEFINITIONS, ALL_TOOL_NAMES } from '@/lib/services/crm
 
 /**
  * Compuertas legales (2026-09-30): la cola exige la URL de la política de
- * tratamiento de datos y una verificación RNE vigente por campaña. Los
+ * tratamiento de datos. No exige verificación RNE. Los
  * escenarios de despacho las traen cumplidas; sus casos propios viven en
  * `src/__tests__/voz/` y `voiceAgent/__tests__/`.
  */

@@ -17,8 +17,6 @@ import {
   describeCampaignTarget,
   type CampaignRow,
 } from "./campaignModel";
-import { CampaignRnePanel } from "./CampaignRnePanel";
-
 interface Props {
   campaign: CampaignRow;
   stages: StageOption[];
@@ -26,10 +24,9 @@ interface Props {
   busy: boolean;
   onActivate: (c: CampaignRow) => void;
   onStop: (c: CampaignRow) => void;
-  onRneChanged?: () => void;
 }
 
-export function CampaignCard({ campaign: c, stages, pipelines, busy, onActivate, onStop, onRneChanged }: Props) {
+export function CampaignCard({ campaign: c, stages, pipelines, busy, onActivate, onStop }: Props) {
   const status = campaignStatusView(c);
   const canActivate = campaignCanActivate(c);
   return (
@@ -73,8 +70,6 @@ export function CampaignCard({ campaign: c, stages, pipelines, busy, onActivate,
           {status.detail}
         </p>
       )}
-      {/* RNE (CRC): la cola no marca un lote de la campaña sin verificación vigente. */}
-      <CampaignRnePanel campaignId={c.id} expectedUpdatedAt={c.updated_at} onChanged={onRneChanged} />
       <div className="mt-3">
         {canActivate ? (
           <Button

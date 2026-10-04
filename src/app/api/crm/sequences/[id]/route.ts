@@ -2,7 +2,7 @@ import { requireSequenceManager, sequenceError } from '@/lib/services/crm/sequen
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
-import { updateSequence, deleteSequence, validateSequenceInput } from '@/lib/services/crm/sequenceService';
+import { updateSequence, deleteSequence, validateSequenceUpdateInput } from '@/lib/services/crm/sequenceService';
 
 const errorResponse = sequenceError;
 
@@ -19,7 +19,7 @@ export async function PATCH(
     const { id } = await params;
     const body = await readOrgBody(ctx, request);
 
-    const issues = validateSequenceInput(body);
+    const issues = validateSequenceUpdateInput(body);
     if (issues.length) {
       return NextResponse.json({ success: false, error: 'Secuencia inválida', issues }, { status: 400 });
     }
@@ -36,7 +36,7 @@ export async function PATCH(
 
 /**
  * DELETE /api/crm/sequences/[id] — Elimina una secuencia (admin).
- * 409 si quedan inscripciones vivas.
+ * 409 si existe cualquier inscripción: se conserva el historial completo.
  */
 export async function DELETE(
   request: NextRequest,

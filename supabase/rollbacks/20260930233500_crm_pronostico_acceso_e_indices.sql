@@ -1,3 +1,9 @@
--- Reversión administrativa: restituye la ACL previa, que permite lectura sin aislamiento.
--- Aplicar solo si se acepta expresamente esa exposición. No elimina datos ni índices.
-grant select on public.mv_crm_forecast to anon, authenticated;
+-- Reversión técnica bloqueada: la ACL anterior expone datos de otros tenants.
+-- Recuperar el runtime con la RPC autorizada y conservar la vista privada.
+-- No restaura datos ni elimina índices. Nunca concede SELECT a anon/authenticated.
+DO $reversion_privacidad$
+BEGIN
+  RAISE EXCEPTION 'reversion_insegura_mv_crm_forecast: conservar el acceso mediante la RPC autorizada'
+    USING ERRCODE='P0001';
+END;
+$reversion_privacidad$;

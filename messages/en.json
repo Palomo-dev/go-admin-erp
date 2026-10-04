@@ -4754,7 +4754,53 @@
       "importeCalculado": "{periodo} · opportunities total: {monto}",
       "detalleAuditoria": "Recorded in the history with your name and date. The seller can see it.",
       "notaAjusteCalculado": "The adjustment keeps opportunities unchanged: shown as “Adjusted {monto}” on top of the calculated commitment.",
-      "omitidasNota": "{n} omitted opportunities. They do not count toward commitment, best case or weighted forecast, and do not change quota."
+      "omitidasNota": "{n} omitted opportunities. They do not count toward commitment, best case or weighted forecast, and do not change quota.",
+      "pipelineAnalitica": {
+        "errorTitulo": "Forecast could not be loaded",
+        "errorCarga": "The forecast could not be loaded. Check exchange rates and try again.",
+        "sinOrganizacion": "Select an organization to view the forecast.",
+        "reintentar": "Try again",
+        "sinFecha": "No date",
+        "trimestreEtiqueta": "Q{n} {year}",
+        "vacio": "No open opportunities",
+        "vacioDetalle": "Add open opportunities to view the pipeline forecast.",
+        "total": "Total",
+        "pronostico": "Forecast",
+        "objetivo": "Goal",
+        "tituloGrafico": "Cumulative forecast",
+        "mensual": "Monthly",
+        "trimestral": "Quarterly",
+        "totalBruto": "Gross open amount",
+        "ponderado": "Weighted forecast",
+        "sinMeta": "No goal defined",
+        "sinMetaDetalle": "Set a sales goal in the pipeline settings.",
+        "tituloMeta": "Projected coverage of the {periodo} goal",
+        "progreso": "Projected coverage",
+        "deBruto": "Of {monto} gross open amount",
+        "metaEnCamino": "On track to meet the goal",
+        "metaCerca": "Approaching the goal",
+        "metaDebajo": "Below the goal",
+        "periodos": {
+          "monthly": "monthly",
+          "quarterly": "quarterly",
+          "yearly": "annual"
+        },
+        "vistaGrafico": "Forecast chart",
+        "grafico": "Chart",
+        "vistaMensual": "Monthly forecast",
+        "vistaTabla": "Opportunities table",
+        "tabla": "Table",
+        "oportunidadesMes": "Open opportunities by month",
+        "nombre": "Name",
+        "cliente": "Customer",
+        "fechaEsperada": "Expected date",
+        "etapa": "Stage",
+        "monto": "Amount",
+        "probabilidad": "Probability",
+        "embudoTitulo": "Weighted funnel",
+        "porcentajeDelPronostico": "{n}% of the total forecast",
+        "oportunidades": "Opportunities"
+      }
     },
     "campanasCumplimiento": {
       "titulo": "Requirements to activate",
@@ -6687,6 +6733,9 @@
       "notifica_al_responsable_cuando_vence_una_tarea_1yqsh9o": "Notifies the owner when a task becomes overdue."
     },
     "secuencias": {
+      "p0_no_disponible_k5k75t": "{p0} (unavailable)",
+      "esta_secuencia_tiene_historial_desactivala_para_conserv_ex7fa6": "This sequence has history. Deactivate it to preserve that history.",
+      "se_borra_la_secuencia_y_sus_pasos_solo_se_pueden_elimin_1r0xpkx": "The sequence and its steps will be deleted. Only sequences without enrollments can be deleted. This action cannot be undone.",
       "email_13xh18": "Email *",
       "whatsapp_x2dyfm": "WhatsApp",
       "sms_1rg9": "SMS",
@@ -7299,7 +7348,9 @@
       "selectSegment": "Select segment",
       "pipeline": "Pipeline",
       "stagesHelp": "Includes open opportunities from selected stages, once per customer.",
-      "beforeExclusions": "{n} customers before exclusions."
+      "beforeExclusions": "{n} customers before exclusions.",
+      "concurrentMax": "Organization maximum: {n}.",
+      "concurrentUnknown": "The simultaneous call limit could not be checked. Refresh the requirements."
     },
     "partnersVisual": {
       "subtitulo": "Partners who bring or close business with you and their commission",

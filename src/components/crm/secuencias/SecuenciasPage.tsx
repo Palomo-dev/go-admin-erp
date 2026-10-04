@@ -151,7 +151,7 @@ export function SecuenciasPage() {
       toast({
         title: tr("Operación no realizada"),
         description:
-          err instanceof Error ? err.message : tr("Error desconocido"),
+          err instanceof Error ? tr(err.message) : tr("Error desconocido"),
         variant: "destructive",
       });
       return false;
@@ -450,7 +450,7 @@ export function SecuenciasPage() {
           onCloseAutoFocus={onDeleteCloseAutoFocus}
           title={tr("Eliminar «{p0}»", { p0: deleting?.name ?? "" })}
           description={tr(
-            "Se borra la secuencia y sus pasos. Las inscripciones en curso dejan de avanzar. Esta acción no se puede deshacer.",
+            "Se borra la secuencia y sus pasos. Sólo se pueden eliminar secuencias sin inscripciones. Esta acción no se puede deshacer.",
           )}
           confirmLabel={tr("Eliminar")}
           variant="destructive"

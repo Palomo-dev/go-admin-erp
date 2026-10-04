@@ -13,7 +13,6 @@ import { DialogoMotivo } from "@/components/kit/DialogoMotivo";
 import { clasesBoton } from "@/components/kit/botonClases";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
-import { CampaignRnePanel } from "@/components/crm/agentes/campanas/CampaignRnePanel";
 import { pedirCrm, ErrorApiCrm } from "@/components/crm/acciones/apiCrm";
 import { useOrganization } from "@/lib/hooks/useOrganization";
 import { useFormatDate } from "@/lib/context/OrganizationTimezoneContext";
@@ -238,7 +237,6 @@ function Detalle({ campaignId }: { campaignId: string }) {
                 </p>
                 <p className="text-xs text-fg-muted">{t("buzonNota")}</p>
               </section>
-              <details className="rounded-xl border border-line bg-surface p-4"><summary className="cursor-pointer text-sm font-semibold text-fg">{c("verificarRne")}</summary><div className="mt-3"><CampaignRnePanel campaignId={campaignId} expectedUpdatedAt={campaign?.updated_at} onChanged={refresh} /></div></details>
               <Link
                 className="block text-sm text-link hover:underline"
                 href="/app/crm/agentes-ia?tab=campanas"

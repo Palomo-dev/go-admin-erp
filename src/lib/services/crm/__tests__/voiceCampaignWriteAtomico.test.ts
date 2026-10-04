@@ -27,16 +27,24 @@ test('sin permiso no lee referencias ni eleva privilegios', async () => {
 test('creación solo transmite campos validados y el actor de la sesión', async () => {
   await guardarCampanaVoz(ctx, { name: 'Fixture', voice_agent_id: U(2) });
   expect(serviceDb.rpcCalls).toEqual([{ fn: 'crm_voice_campaign_save', args: {
-    p_org: ORG, p_campaign: null, p_version: null, p_actor: YO, p_values: { name: 'Fixture', voice_agent_id: U(2) },
+    p_org: ORG, p_campaign: null, p_version: null, p_actor: YO, p_values: { name: 'Fixture', voice_agent_id: U(2), max_calls_per_day: 120, max_calls_per_hour: 40, max_concurrent: 5 },
   } }]);
   expect(userDb.writes).toEqual([]); expect(serviceDb.writes).toEqual([]);
+});
+test('los topes elegidos por la organización se transmiten sin sustituirlos por los iniciales', async () => {
+  await guardarCampanaVoz(ctx, { name: 'Fixture', voice_agent_id: U(2), max_calls_per_day: 80, max_calls_per_hour: 15, max_concurrent: 2 });
+  expect(serviceDb.rpcCalls[0].args.p_values).toMatchObject({ max_calls_per_day: 80, max_calls_per_hour: 15, max_concurrent: 2 });
+});
+test.each([{ max_concurrent: 0 }, { max_calls_per_day: 501 }, { max_calls_per_hour: 1.5 }])('rechaza topes fuera del contrato antes de acceder al servicio: %j', async limits => {
+  await expect(guardarCampanaVoz(ctx, { name: 'Fixture', voice_agent_id: U(2), ...limits })).rejects.toMatchObject({ status: 400 });
+  expect(elevate).not.toHaveBeenCalled();
 });
 test.each(['save', 'archive', 'stop'])('%s conserva la versión del cliente con microsegundos', async action => {
   if (action === 'save') await guardarCampanaVoz(ctx, { name: 'Fixture editada', expected_updated_at: older }, U(1));
   if (action === 'archive') await eliminarCampanaVoz(ctx, U(1), { expected_updated_at: older });
   if (action === 'stop') await detenerCampanaVoz(ctx, U(1), { reason: 'Revisar lote', expected_updated_at: older });
   expect(serviceDb.rpcCalls[0].args).toMatchObject({ p_org: ORG, p_actor: YO, p_version: older });
-  if (action === 'save') expect(serviceDb.rpcCalls[0].args.p_values).not.toHaveProperty('expected_updated_at');
+  if (action === 'save') expect(serviceDb.rpcCalls[0].args.p_values).toEqual({ name: 'Fixture editada' });
   expect(userDb.writes).toEqual([]); expect(serviceDb.writes).toEqual([]);
 });
 test('cliente anterior toma una versión propia, sin escribir directamente', async () => {

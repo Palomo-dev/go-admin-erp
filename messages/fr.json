@@ -25149,7 +25149,53 @@
       "importeCalculado": "{periodo} · total des opportunités : {monto}",
       "detalleAuditoria": "Enregistré dans l’historique avec votre nom et la date. Le vendeur peut le consulter.",
       "notaAjusteCalculado": "L’ajustement conserve les opportunités : affiché comme « Ajusté {monto} » sur l’engagement calculé.",
-      "omitidasNota": "{n} opportunités omises. Elles ne comptent ni dans l’engagement, ni dans le meilleur cas, ni dans les prévisions pondérées, et ne modifient pas le quota."
+      "omitidasNota": "{n} opportunités omises. Elles ne comptent ni dans l’engagement, ni dans le meilleur cas, ni dans les prévisions pondérées, et ne modifient pas le quota.",
+      "pipelineAnalitica": {
+        "errorTitulo": "Impossible de charger les prévisions",
+        "errorCarga": "Impossible de charger les prévisions. Vérifiez les taux de change et réessayez.",
+        "sinOrganizacion": "Sélectionnez une organisation pour consulter les prévisions.",
+        "reintentar": "Réessayer",
+        "sinFecha": "Sans date",
+        "trimestreEtiqueta": "T{n} {year}",
+        "vacio": "Aucune opportunité ouverte",
+        "vacioDetalle": "Ajoutez des opportunités ouvertes pour consulter les prévisions du pipeline.",
+        "total": "Total",
+        "pronostico": "Prévisions",
+        "objetivo": "Objectif",
+        "tituloGrafico": "Prévisions cumulées",
+        "mensual": "Mensuel",
+        "trimestral": "Trimestriel",
+        "totalBruto": "Montant brut ouvert",
+        "ponderado": "Prévisions pondérées",
+        "sinMeta": "Aucun objectif défini",
+        "sinMetaDetalle": "Définissez un objectif de ventes dans les paramètres du pipeline.",
+        "tituloMeta": "Couverture prévue de l’objectif {periodo}",
+        "progreso": "Couverture prévue",
+        "deBruto": "Sur {monto} de montant brut ouvert",
+        "metaEnCamino": "En bonne voie pour atteindre l’objectif",
+        "metaCerca": "Proche de l’objectif",
+        "metaDebajo": "En dessous de l’objectif",
+        "periodos": {
+          "monthly": "mensuel",
+          "quarterly": "trimestriel",
+          "yearly": "annuel"
+        },
+        "vistaGrafico": "Graphique des prévisions",
+        "grafico": "Graphique",
+        "vistaMensual": "Prévisions mensuelles",
+        "vistaTabla": "Tableau des opportunités",
+        "tabla": "Tableau",
+        "oportunidadesMes": "Opportunités ouvertes par mois",
+        "nombre": "Nom",
+        "cliente": "Client",
+        "fechaEsperada": "Date prévue",
+        "etapa": "Étape",
+        "monto": "Montant",
+        "probabilidad": "Probabilité",
+        "embudoTitulo": "Entonnoir pondéré",
+        "porcentajeDelPronostico": "{n}% des prévisions totales",
+        "oportunidades": "Opportunités"
+      }
     },
     "campanasCumplimiento": {
       "titulo": "Conditions d’activation",
@@ -27184,6 +27230,9 @@
       "notifica_al_responsable_cuando_vence_una_tarea_1yqsh9o": "Informe le responsable lorsqu’une tâche est en retard."
     },
     "secuencias": {
+      "p0_no_disponible_k5k75t": "{p0} (indisponible)",
+      "esta_secuencia_tiene_historial_desactivala_para_conserv_ex7fa6": "Cette séquence a un historique. Désactivez-la pour le conserver.",
+      "se_borra_la_secuencia_y_sus_pasos_solo_se_pueden_elimin_1r0xpkx": "La séquence et ses étapes seront supprimées. Seules les séquences sans inscription peuvent être supprimées. Cette action est irréversible.",
       "email_13xh18": "Email *",
       "whatsapp_x2dyfm": "WhatsApp",
       "sms_1rg9": "SMS",
@@ -27796,7 +27845,9 @@
       "selectSegment": "Choisir un segment",
       "pipeline": "Pipeline",
       "stagesHelp": "Inclut les opportunités ouvertes des étapes sélectionnées, une fois par client.",
-      "beforeExclusions": "{n} clients avant exclusions."
+      "beforeExclusions": "{n} clients avant exclusions.",
+      "concurrentMax": "Maximum de l’organisation : {n}.",
+      "concurrentUnknown": "Impossible de vérifier la limite d’appels simultanés. Actualisez les conditions."
     },
     "partnersVisual": {
       "subtitulo": "Partenaires qui apportent ou concluent des affaires et leur commission",

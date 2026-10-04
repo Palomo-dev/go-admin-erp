@@ -31,16 +31,16 @@ Los guards de migración exigen hashes y contratos conocidos, preservan owner, `
 
 ## Restricciones posteriores al despliegue
 
-La lectura del MCP confirmó que las cuatro tablas tenían políticas permisivas para miembros activos y ACL amplias. Por ello proteger sólo las RPC deja abiertas las escrituras directas. `secuencias_permiso_sucursal.rls.sql` agrega **15 políticas restrictivas** sin reemplazar las originales:
+La lectura del MCP confirmó que las cuatro tablas tenían políticas permisivas para miembros activos y ACL amplias. Por ello proteger sólo las RPC deja abiertas las escrituras directas. `secuencias_permiso_sucursal.rls.sql` agrega **15 políticas restrictivas** sin reemplazar las originales. La versión inicial se revisó de nuevo el 4 de octubre para cerrar la creación, eliminación y modificación de pasos por SDK; ver el delta de configuración al final:
 
-- La configuración de `sequences` y `sequence_steps` exige permiso canónico de gestión para INSERT/UPDATE/DELETE. Los pasos deben pertenecer a una secuencia de la misma organización.
+- El UPDATE del padre conserva el permiso canónico de gestión. INSERT y DELETE directos de `sequences`, e INSERT, UPDATE y DELETE de `sequence_steps`, se deniegan a `authenticated`: se usan las RPC de configuración atómica y se evita saltar su validación de pasos mediante SDK.
 - La lectura de secuencias y pasos conserva el acceso del viewer, cuyo `can_manage` puede ser false. La lectura de pasos comprueba su padre.
 - La lectura de inscripciones exige referencias coherentes, mismo tenant y acceso a las sucursales del cliente y de la oportunidad. La de runs exige además que step e inscripción pertenezcan a la misma secuencia/organización.
 - INSERT/UPDATE/DELETE directos de inscripciones y runs se deniegan a `authenticated`. Las RPC y workers de servicio mantienen el camino nativo autorizado. Esta restricción requiere que la salida de la aplicación ya use una única RPC.
 
 El helper de lectura `fn_sequence_enrollment_scope` devuelve sólo un booleano de alcance ligado a `auth.uid()`, sin datos ni destinos ajenos. Usa los helpers canónicos, fija `search_path` y revoca `PUBLIC`/`anon`. No crea otro engine ni ejecuta mutaciones. Las políticas sólo agregan restricciones; la reversión retira esas políticas y el helper, dejando los originales y las ACL de tablas intactos.
 
-| Artefacto posterior al despliegue | Bytes | MD5 |
+| Artefacto inicial posterior al despliegue (evidencia histórica) | Bytes | MD5 |
 |---|---:|---|
 | SQL RLS | 15.041 | `7fbbdcd2999f571f89f433fd42f7a0dc` |
 | Rollback RLS | 8.844 | `bfce4121b17ca9da3d71b8bccaa3f754` |
@@ -53,3 +53,56 @@ Hash del helper esperado: `6725e015a9cfd72d365169cf952c3590`. Las 15 políticas 
 La revisión independiente local confirmó orden de locks, firma/DTO de salida, conservación de lectura de viewers y del worker y aislamiento del gate: sólo referencias LIKE a metadatos públicos, IDs seriales explícitos, helpers/queue privados y trigger temporal. Los dos gates PostgreSQL acabaron en ROLLBACK. El orquestador confirmó después de la aplicación los tres hashes de cuerpos, ACL, `search_path` y `SECURITY DEFINER`. Los advisors no reportaron categorías ERROR: nueve categorías de seguridad y siete de rendimiento conservan advertencias/avisos, incluida la elevación intencional de la RPC con guardas. Esto no acredita una base libre de warnings. La prueba funcional no escribió filas públicas. Siguen pendientes el despliegue y la activación real de las restricciones.
 
 La salida impide que un worker que vuelva a leer `exited` ejecute sus runs pendientes. No rescinde instantáneamente una operación externa que otro worker haya comenzado antes de la salida. Los permisos se evalúan con los helpers nativos; esta expansión no promete revocación instantánea de autorizaciones en transacciones ya iniciadas. No se realizó una prueba de carga, una prueba entre dos conexiones, ni una prueba real de entrega al proveedor.
+
+## Delta de configuración del 4 de octubre de 2026
+
+La inspección de API y FKs detectó que el alta confirmaba padre y pasos en dos
+peticiones, y que borrar una secuencia podía ejecutar cascadas de historial
+terminal. El [delta de configuración atómica](secuencias_configuracion_atomica.md)
+instalado como `20261004164911` añade dos RPC de sesión: alta de padre/pasos en
+una transacción y eliminación
+exclusiva de configuración sin ninguna inscripción ni run. Una secuencia con
+historial se desactiva; no se borra su rastro.
+
+La candidatura de 15 policies ahora cierra también cinco entradas directas de
+configuración: INSERT/DELETE del padre e INSERT/UPDATE/DELETE de los pasos.
+Su dependencia exige las dos RPC nuevas y sus hashes instalados. Las policies
+originales, lecturas, helper de alcance,
+inscripción/reanudación/salida y worker se conservan. SQL candidato actualizado:
+14.362 bytes, MD5 `6fefc3a7a330006a69b90cfb9864c77c`, SHA-256
+`4a1569d3bc55ef6f37484cb689878a50311ff09148d90fab1ef432eded0a55c1`.
+El rollback RLS no cambia: 8.844 bytes, MD5
+`bfce4121b17ca9da3d71b8bccaa3f754`.
+
+Este delta de RLS todavía está **sin aplicar**. Los gates funcionales históricos
+del SQL inicial no acreditan sus cinco expresiones nuevas. Las RPC compatibles
+ya están instaladas y su gate TEMP pasó 39 comprobaciones; esto no activa RLS.
+Publicar el runtime de Next que las usa, comprobar
+las sesiones y luego activar las restricciones con su gate actualizado. No se
+realizan aquí tests comerciales ni nuevas políticas en producción.
+
+## Gate de catálogo de la candidatura actualizada
+
+El coordinador revisó y ejecutó un único dry run MCP con BEGIN/ROLLBACK:
+candidato dos veces, comprobaciones por catálogo, rollback dos veces y
+verificación de restauración. Lleva límites de lock de un segundo y de statement
+de cuatro segundos. El candidato y rollback se incorporan byte a byte; no
+invoca RPC comerciales ni escribe filas públicas. Los snapshots y contadores
+del gate son TEMP. El archivo temporal tenía 61.766 bytes, MD5
+`f392fa7ee824f88458fcfc992bfb57bb` y SHA-256
+`fe0b8df637143450bf7bacf06d2490187cbdd4fbca2fa341b07d455e7710c6e6`.
+
+Pasaron **17 comprobaciones de catálogo**: número de 15 policies RESTRICTIVE,
+sus roles, las cinco expresiones de configuración false, definición/ACL del
+helper de alcance, policies originales, ACL de las cuatro tablas y metadatos de
+los RPC preservados, doble aplicación idéntica y restauración tras cada
+rollback. El resultado fue `sequence_rls_updated_catalog_dryrun_ok`. El
+postcheck confirmó `restricciones_instaladas=0` y
+`helper_candidato_ausente=true` después del ROLLBACK: la candidatura sigue sin
+activación persistente.
+
+Este gate no evalúa filas bajo RLS, autorización de una sesión real, dispositivos
+ni dos conexiones concurrentes. **No autoriza activar las políticas** hasta
+publicar y acreditar Next y el servidor de llamadas compatibles, comprobar las
+sesiones y ejecutar el gate funcional correspondiente. El archivo temporal y
+su generador se retiraron al concluir la comprobación, conforme a AGENTS.md.

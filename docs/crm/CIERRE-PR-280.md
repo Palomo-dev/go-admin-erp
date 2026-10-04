@@ -2,6 +2,12 @@
 
 Registro: 3 de octubre de 2026, UTC. [PR 280](https://github.com/Palomo-dev/go-admin-erp/pull/280), rama `feat/crm-flujo-completo`.
 
+Actualización del 4 de octubre: las [correcciones de la revisión](CORRECCIONES-REVISION-PR-280.md)
+registran integración de main, cifras de las vistas montadas, campañas sin RNE,
+configuración atómica de Secuencias y CI de borradores. Sus resultados locales
+finales sustituyen el conteo de pruebas de este cierre histórico, sin convertir
+las capturas anteriores en una nueva verificación visual.
+
 La revisión anterior de 50 referencias no cubría el alcance visual solicitado. Este cierre incluye **los 135 IDs del inventario**, con comparación de **132 renders locales de componentes reales** y **tres contratos de interfaz del sistema operativo**. El [registro individual](VERIFICACION-VISUAL-135.md) y su [manifiesto de hashes](VERIFICACION-VISUAL-135.json) identifican las referencias, capturas, fuentes y límites. Las tres notificaciones/menú de Electron necesitan comprobación visual en un sistema operativo real; los contratos no sustituyen esa comprobación.
 
 ## Cambios para revisión

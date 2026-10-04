@@ -139,8 +139,9 @@ type FilaProducto = {
 };
 
 /**
- * Productos para «Agregar productos». Sin padres de variantes (se agregan
- * las variantes, que son las que tienen stock y precio).
+ * Productos para «Agregar productos». Un padre con variantes activas no entra
+ * (se agregan las variantes, que son las que tienen stock y precio). Un padre
+ * sin variantes sí entra: el catálogo lo muestra y su precio y stock están en él.
  */
 export async function buscarProductosDocumento(org: number, c: CriteriosProductosDocumento, senal?: AbortSignal): Promise<ProductoParaDocumento[]> {
   const limite = Math.min(Math.max(c.limite ?? 30, 1), 60);
@@ -183,6 +184,86 @@ export async function buscarProductosDocumento(org: number, c: CriteriosProducto
 const SELECT_PRODUCTO_DOCUMENTO =
   `id, name, sku, barcode, description, product_type, track_stock, track_serial, ${COLUMNAS_CANTIDAD_PRODUCTO}, product_prices(price, effective_from, effective_to), product_costs(cost, effective_from, effective_to), product_tax_relations(organization_taxes(id, name, rate, is_default, is_active, kind, tax_templates(code))), product_images(storage_path, is_primary, display_order)`;
 
+type FilaIdNombre = { id: number; name: string };
+
+/**
+ * Ids que se pueden agregar, en orden de nombre: variantes, simples y padres
+ * sin variantes activas. El padre que sí tiene variantes queda fuera.
+ */
+export function idsVendibles(
+  noPadres: readonly FilaIdNombre[],
+  padres: readonly FilaIdNombre[],
+  padresConVariantes: ReadonlySet<number>,
+  limite: number,
+): number[] {
+  const vistos = new Set<number>();
+  const filas: FilaIdNombre[] = [];
+  for (const p of [...noPadres, ...padres]) {
+    if (vistos.has(p.id) || padresConVariantes.has(p.id)) continue;
+    vistos.add(p.id);
+    filas.push(p);
+  }
+  filas.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : a.id - b.id));
+  return filas.slice(0, Math.max(0, limite)).map((p) => p.id);
+}
+
+type ConsultaIds = { filtroTexto: string; ids: number[] | null; limite: number; senal?: AbortSignal };
+
+function consultaIds(org: number, f: ConsultaIds) {
+  let q = supabase.from('products').select('id, name').eq('organization_id', org).eq('status', 'active');
+  if (f.filtroTexto) q = q.or(f.filtroTexto);
+  if (f.ids) q = q.in('id', f.ids.slice(0, 1000));
+  if (f.senal) q = q.abortSignal(f.senal);
+  return q;
+}
+
+/** Padres del lote que tienen al menos una variante activa. */
+async function padresConVariantesActivas(org: number, ids: readonly number[], senal?: AbortSignal): Promise<Set<number>> {
+  const hallados = new Set<number>();
+  let pendientes = [...new Set(ids)];
+  for (let i = 0; i < 8 && pendientes.length > 0; i++) {
+    let q = supabase.from('products').select('parent_product_id').eq('organization_id', org).eq('status', 'active').in('parent_product_id', pendientes).limit(1000);
+    if (senal) q = q.abortSignal(senal);
+    const { data, error } = await q;
+    if (error) throw error;
+    const filas = (data ?? []) as { parent_product_id: number | null }[];
+    const nuevos = new Set<number>();
+    for (const r of filas) {
+      if (r.parent_product_id != null) nuevos.add(r.parent_product_id);
+    }
+    for (const id of nuevos) hallados.add(id);
+    if (filas.length < 1000 || nuevos.size === 0) break;
+    pendientes = pendientes.filter((id) => !hallados.has(id));
+  }
+  return hallados;
+}
+
+async function idsSinPadreConVariantes(org: number, f: ConsultaIds): Promise<number[]> {
+  // El padre con variantes ocupa cupo del límite y luego se descarta: se piden
+  // más padres para que los que no tienen variantes alcancen a salir.
+  const topePadres = Math.min(Math.max(f.limite, 1) * 5, 200);
+  const [noPadresRes, padresRes] = await Promise.all([
+    consultaIds(org, f).or('is_parent.is.null,is_parent.eq.false').order('name').order('id').limit(f.limite),
+    consultaIds(org, f).eq('is_parent', true).is('parent_product_id', null).order('name').order('id').limit(topePadres),
+  ]);
+  if (noPadresRes.error) throw noPadresRes.error;
+  if (padresRes.error) throw padresRes.error;
+  const noPadres = (noPadresRes.data ?? []) as FilaIdNombre[];
+  const padres = (padresRes.data ?? []) as FilaIdNombre[];
+  const conVariantes = padres.length === 0 ? new Set<number>() : await padresConVariantesActivas(org, padres.map((p) => p.id), f.senal);
+  return idsVendibles(noPadres, padres, conVariantes, f.limite);
+}
+
+async function idsConPadres(org: number, f: ConsultaIds): Promise<number[]> {
+  let q = supabase.from('products').select('id').eq('organization_id', org).order('name').order('id').limit(f.limite);
+  if (f.filtroTexto) q = q.or(f.filtroTexto);
+  if (f.ids) q = q.in('id', f.ids.slice(0, 1000));
+  if (f.senal) q = q.abortSignal(f.senal);
+  const { data, error } = await q;
+  if (error) throw error;
+  return ((data ?? []) as { id: number }[]).map((r) => r.id);
+}
+
 /**
  * Dos pasos: primero los ids (filtro, orden y límite sobre `products` solo),
  * después las relaciones de ESOS ids. En una sola consulta, PostgREST resolvía
@@ -190,18 +271,15 @@ const SELECT_PRODUCTO_DOCUMENTO =
  * la organización antes de ordenar por nombre y cortar: con ~24.000 productos
  * se pasaba del statement_timeout y el diálogo decía «No pudimos buscar los
  * productos» (2026-09-30).
+ *
+ * El corte no puede ser `is_parent = true`: hay productos marcados como padre
+ * que no tienen variantes y el catálogo los vende con su propio stock.
  */
 async function consultarProductos(org: number, f: { texto?: string; ids: number[] | null; limite: number; conPadres?: boolean }, senal?: AbortSignal): Promise<FilaProducto[]> {
-  let q = supabase.from('products').select('id').eq('organization_id', org);
-  if (!f.conPadres) q = q.eq('status', 'active').not('is_parent', 'is', true);
-  q = q.order('name').order('id').limit(f.limite);
   const filtroTexto = ilikeAnyOf(['name', 'sku', 'barcode', 'reference'], f.texto ?? '');
-  if (filtroTexto) q = q.or(filtroTexto);
-  if (f.ids) q = q.in('id', f.ids.slice(0, 1000));
-  if (senal) q = q.abortSignal(senal);
-  const { data: idsData, error: idsError } = await q;
-  if (idsError) throw idsError;
-  const orden = ((idsData ?? []) as { id: number }[]).map((r) => r.id);
+  const orden = f.conPadres
+    ? await idsConPadres(org, { filtroTexto, ids: f.ids, limite: f.limite, senal })
+    : await idsSinPadreConVariantes(org, { filtroTexto, ids: f.ids, limite: f.limite, senal });
   if (orden.length === 0) return [];
 
   let qd = supabase.from('products').select(SELECT_PRODUCTO_DOCUMENTO).eq('organization_id', org).in('id', orden);

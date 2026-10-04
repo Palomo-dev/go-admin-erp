@@ -36,8 +36,9 @@ import { ScheduleStep } from './ScheduleStep';
 import { evaluarProgramacion, type ModoProgramacion } from './programacionCampanaLogica';
 import { useBorradorCampana } from './useBorradorCampana';
 import { useBorradorCampanaVoz } from './useBorradorCampanaVoz';
-import { CampanaVozRequisitos } from './CampanaVozRequisitos';
 import { CampaignCompliancePanel } from '../CampaignCompliancePanel';
+import { DEFAULT_VOICE_CAMPAIGN_LIMITS, voiceCampaignLimitsValid } from '@/lib/crm/voiceCampaignLimits';
+import { VoiceCampaignLimitsFields } from '@/components/crm/agentes/campanas/VoiceCampaignLimitsFields';
 
 type Canal = 'voice' | 'whatsapp' | 'email';
 const PASOS = ['audience', 'content', 'compliance', 'review'] as const;
@@ -60,19 +61,18 @@ function AsistenteCampana() {
   const [agentId, setAgentId] = useState('');
   const [objective, setObjective] = useState('');
   const [emailText, setEmailText] = useState('');
-  const [daily, setDaily] = useState(50);
-  const [hourly, setHourly] = useState(20);
-  const [concurrent, setConcurrent] = useState(3);
+  const [daily, setDaily] = useState<number>(DEFAULT_VOICE_CAMPAIGN_LIMITS.max_calls_per_day);
+  const [hourly, setHourly] = useState<number>(DEFAULT_VOICE_CAMPAIGN_LIMITS.max_calls_per_hour);
+  const [concurrent, setConcurrent] = useState<number>(DEFAULT_VOICE_CAMPAIGN_LIMITS.max_concurrent);
   const [voiceHours, setVoiceHours] = useState('business');
   const [scheduleMode, setScheduleMode] = useState<ModoProgramacion>('now');
   const [scheduleLocal, setScheduleLocal] = useState('');
   const [throttle, setThrottle] = useState(10);
   const [allowed, setAllowed] = useState(false);
   const [rneBusy, setRneBusy] = useState(false);
-  const [rneValid, setRneValid] = useState(false);
   const [optin, setOptin] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [catalog, setCatalog] = useState<{ loading: boolean; error: boolean; canManage: boolean; agents: VoiceAgent[]; policy: boolean | null; minutes: number | null }>({ loading: true, error: false, canManage: false, agents: [], policy: null, minutes: null });
+  const [catalog, setCatalog] = useState<{ loading: boolean; error: boolean; canManage: boolean; agents: VoiceAgent[]; policy: boolean | null; minutes: number | null; maxConcurrent: number | null }>({ loading: true, error: false, canManage: false, agents: [], policy: null, minutes: null, maxConcurrent: null });
   const [revision, setRevision] = useState(0);
   const mounted = useRef(true);
   const segments = useSegmentosData<SegmentoRegistro[]>('/api/crm/segments');
@@ -80,7 +80,7 @@ function AsistenteCampana() {
   useEffect(() => {
     mounted.current = true;
     const abort = new AbortController();
-    setCatalog({ loading: true, error: false, canManage: false, agents: [], policy: null, minutes: null });
+    setCatalog({ loading: true, error: false, canManage: false, agents: [], policy: null, minutes: null, maxConcurrent: null });
     void Promise.allSettled([
       pedirCrm<unknown[]>('/api/crm/voice-agents/campaigns', { signal: abort.signal }),
       pedirCrm<VoiceAgent[]>('/api/crm/voice-agents', { signal: abort.signal }),
@@ -91,6 +91,7 @@ function AsistenteCampana() {
       setCatalog({ loading: false, error: permission.status === 'rejected', canManage: permission.status === 'fulfilled' && permission.value.extra.can_manage === true,
         agents: agents.status === 'fulfilled' ? agents.value.data.filter(a => a.is_active) : [],
         policy: diagnosis.status === 'fulfilled' ? !diagnosis.value.data.organizacion.some(m => ['sin_politica_datos', 'sin_comm_settings'].includes(m.codigo)) : null,
+        maxConcurrent: diagnosis.status === 'fulfilled' && Number.isInteger(diagnosis.value.data.maxConcurrentCalls) && diagnosis.value.data.maxConcurrentCalls! > 0 ? diagnosis.value.data.maxConcurrentCalls! : null,
         minutes: credits.status === 'fulfilled' && typeof credits.value?.comm?.voice_minutes_remaining === 'number' ? credits.value.comm.voice_minutes_remaining : null });
     });
     return () => { mounted.current = false; abort.abort(); };
@@ -117,9 +118,9 @@ function AsistenteCampana() {
   const voice = useBorradorCampanaVoz(voiceBody);
   const busy = voice.busy || !!draft.busy || rneBusy;
   const audienceOk = !!name.trim() && (audience.source === 'segment' ? !!segment : audience.stage_ids.length > 0) && (channel !== 'voice' || audience.source === 'segment' || audience.stage_ids.length === 1);
-  const contentOk = channel === 'voice' ? !!agent && !!objective.trim() && [daily, hourly].every(n => Number.isInteger(n) && n > 0 && n <= 500) && Number.isInteger(concurrent) && concurrent > 0 && concurrent <= 100
+  const contentOk = channel === 'voice' ? !!agent && !!objective.trim() && voiceCampaignLimitsValid({ max_calls_per_day: daily, max_calls_per_hour: hourly, max_concurrent: concurrent }) && catalog.maxConcurrent !== null && concurrent <= catalog.maxConcurrent
     : channel === 'email' ? !!emailText.trim() : !!c.channelId && (c.tab === 'template' ? !!c.templateId && !!c.preview && c.preview.status === 'APPROVED' && c.preview.missing.length === 0 : !!c.text.trim());
-  const canActivate = channel === 'voice' ? voice.unchanged && rneValid && catalog.policy === true && catalog.minutes !== null && catalog.minutes > 0
+  const canActivate = channel === 'voice' ? audienceOk && contentOk && catalog.policy === true && catalog.minutes !== null && catalog.minutes > 0
     : !!draft.mat?.pending && allowed && (!marketing || optin) && !schedule.error;
   const explain = (e: unknown) => e instanceof ErrorApiCrm ? tc(voiceCampaignErrorKey(e.codigo)) : e instanceof ApiError && e.code === 'CAMPAIGN_MODIFIED' ? tc('archivoConflicto') : tc('errorAccion');
   const save = async (activate = false, stay = false) => {
@@ -157,7 +158,9 @@ function AsistenteCampana() {
         {channel === 'voice' ? <><FormField etiqueta={t('agent')} tamanoEtiqueta="sm">{campo => <div role="radiogroup" aria-labelledby={campo.idEtiqueta} className="grid gap-3 md:grid-cols-2">{catalog.agents.map(a => <button key={a.id} type="button" role="radio" aria-checked={a.id === agentId} className={`rounded-xl border p-4 text-left focus-visible:ring-2 focus-visible:ring-brand ${a.id === agentId ? 'border-brand bg-brand-tint ring-1 ring-brand' : 'border-line'}`} onClick={() => setAgentId(a.id)}><span className="flex items-center gap-2 text-base font-semibold leading-[22px] text-fg"><Bot className="size-4 text-brand" strokeWidth={1.5} />{a.name}{a.id === agentId && <Check className="ml-auto size-4 text-brand" />}</span><span className="mt-2 block text-[13px] leading-[18px] text-fg-secondary">{a.description || a.language}</span></button>)}{!catalog.agents.length && <EmptyState compacto titulo={t('noAgents')} accion={{ etiqueta: t('createAgent'), href: '/app/crm/agentes-ia?editor=new' }} />}</div>}</FormField>
           <FormField etiqueta={t('objective')} obligatorio tamanoEtiqueta="sm" ayuda={t('objectiveHelp')}><input className={CLASE_CAMPO} value={objective} maxLength={2000} onChange={e => setObjective(e.target.value)} /></FormField>
           {agent && <section className="space-y-3 rounded-xl border border-line bg-canvas p-4"><h3 className="text-xs font-semibold text-fg-secondary">{t('opening')}</h3><p className="text-[13px] leading-[18px] text-fg">{agent.first_message || '—'}</p><p className="text-xs text-fg-secondary">{agent.identity_disclosure || t('openingHelp')}</p></section>}
-          <div className="grid gap-3 md:grid-cols-3">{[{ label: t('daily'), value: daily, set: setDaily, max: 500 }, { label: t('hourly'), value: hourly, set: setHourly, max: 500 }, { label: t('concurrent'), value: concurrent, set: setConcurrent, max: 100 }].map(field => <FormField key={field.label} etiqueta={field.label} tamanoEtiqueta="sm"><input type="number" min={1} max={field.max} className={`${CLASE_CAMPO} text-right tabular-nums`} value={field.value} onChange={e => field.set(Number(e.target.value))} /></FormField>)}</div>
+          <VoiceCampaignLimitsFields limits={{ max_calls_per_day: daily, max_calls_per_hour: hourly, max_concurrent: concurrent }}
+            onChange={limits => { setDaily(limits.max_calls_per_day); setHourly(limits.max_calls_per_hour); setConcurrent(limits.max_concurrent); }}
+            orgConcurrencyLimit={catalog.maxConcurrent} disabled={busy} />
         </> : channel === 'email' ? <FormField etiqueta={t('emailContent')} obligatorio tamanoEtiqueta="sm" ayuda={t('emailContentHelp')}><textarea className={CLASE_AREA} rows={8} maxLength={4096} value={emailText} onChange={e => setEmailText(e.target.value)} /></FormField> : <><ChannelSelect channels={c.channels} value={c.channelId} onChange={c.setChannelId} loading={c.loadingChannels} /><SegmentedControl valor={c.tab} onValorChange={v => c.setTab(v === 'template' ? 'template' : 'text')} opciones={[{ valor: 'template', etiqueta: t('approvedTemplate'), deshabilitada: !c.capabilities.templates }, { valor: 'text', etiqueta: t('freeText') }]} />{c.error && <p role="alert" className="text-xs text-danger-text">{ta('errorCompositor')}</p>}{c.tab === 'template' ? <TemplatePicker templates={c.templates} loading={c.loadingTemplates} value={c.templateId} onChange={c.setTemplateId} variables={c.variables} onVariable={c.setVariable} preview={c.preview} previewing={c.previewing} onCreateTemplate={() => router.push('/app/crm/plantillas?tab=whatsapp')} /> : <MessageForm value={c.text} onChange={c.setText} media={null} onMedia={() => undefined} allowMedia={false} scheduledAt={null} onScheduledAt={() => undefined} />}</>}
       </div>}
       {step === 2 && <div className="space-y-4"><div className="grid items-start gap-4 lg:grid-cols-2">
@@ -165,7 +168,7 @@ function AsistenteCampana() {
           {channel === 'voice' ? <FormField etiqueta={t('withinWindow')} tamanoEtiqueta="sm" ayuda={t('timezone', { zona: timezone })}><SelectCrm valor={voiceHours} onValorChange={setVoiceHours} opciones={[{ valor: 'business', etiqueta: t('businessHours') }, { valor: 'morning', etiqueta: t('morningHours') }]} /></FormField> : <ScheduleStep mode={scheduleMode} onMode={setScheduleMode} local={scheduleLocal} onLocal={setScheduleLocal} error={schedule.error} throttle={throttle} onThrottle={setThrottle} disabled={busy} />}
         </section>
         <section className="space-y-3 rounded-xl border border-line p-4"><h2 className="flex items-center gap-2 text-base font-semibold leading-[22px] text-fg"><ShieldCheck className="size-4 text-brand" strokeWidth={1.5} />{t('requirements')}</h2>
-          {channel === 'voice' ? <>{voice.saved && voice.unchanged ? <CampanaVozRequisitos campaignId={voice.saved.id} expectedUpdatedAt={voice.saved.updated_at} disabled={voice.busy} onVersion={voice.applyRneVersion} onValid={setRneValid} onBusy={setRneBusy} /> : <div className="space-y-2 rounded-lg border border-line-danger bg-danger-subtle p-3"><h3 className="flex gap-2 text-sm font-medium text-danger-text"><CircleX className="size-4" />{tc('verificarRne')}</h3><p className="text-xs text-fg-secondary">{t('saveForRne')}</p><button className={clasesBoton({ variante: 'secundario', tamano: 'sm' })} type="button" disabled={busy} onClick={() => void save(false, true)}><Save className="size-4" />{t('saveDraft')}</button></div>}
+          {channel === 'voice' ? <>
             <div className={`space-y-2 rounded-lg border p-3 ${catalog.policy === true ? 'border-line-success bg-success-subtle' : catalog.policy === false ? 'border-line-danger bg-danger-subtle' : 'border-line bg-subtle'}`}><h3 className={`flex items-center gap-2 text-sm font-medium ${catalog.policy === true ? 'text-success-text' : catalog.policy === false ? 'text-danger-text' : 'text-fg-secondary'}`}>{catalog.policy === true ? <CircleCheck className="size-4" /> : <CircleX className="size-4" />}{t('policy')}</h3><p className="text-xs text-fg-secondary">{t(catalog.policy === true ? 'policyReady' : catalog.policy === false ? 'policyMissing' : 'requirementUnknown')}</p><Link className={clasesBoton({ variante: 'secundario', tamano: 'sm' })} href="/app/configuracion?modulo=crm&tab=telefonia">{tc('configurar')}</Link></div>
             <div className={`space-y-2 rounded-lg border p-3 ${catalog.minutes !== null && catalog.minutes > 0 ? 'border-line-success bg-success-subtle' : 'border-line bg-subtle'}`}><h3 className="text-sm font-medium text-fg">{t('credits')}</h3><p className="text-xs text-fg-secondary">{catalog.minutes === null ? t('requirementUnknown') : t('minutes', { n: formatter.number(catalog.minutes) })}</p></div>
           </> : <><button type="button" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })} disabled={busy || !!schedule.error} onClick={() => void materialize()}>{t(draft.mat ? 'recalculate' : 'calculate')}</button>{draft.mat && <p className="text-xs text-fg-secondary">{t('audienceCounts', { pending: draft.mat.pending, skipped: draft.mat.skipped, total: draft.mat.total })}</p>}{draft.saved && <CampaignCompliancePanel key={draft.saved.id} campaignId={draft.saved.id} expectedUpdatedAt={draft.saved.updated_at} onChanged={draft.actualizarRne} refreshKey={draft.calculationKey} disabled={!draft.mat} onAllowed={setAllowed} onUploadingChange={setRneBusy} />}{marketing && <label className="flex items-center gap-2 text-xs text-fg-secondary"><Checkbox checked={optin} onCheckedChange={v => setOptin(v === true)} />{t('optin')}</label>}</>}

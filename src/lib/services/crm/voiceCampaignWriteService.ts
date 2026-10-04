@@ -4,6 +4,7 @@ import { getServiceClient } from '@/lib/supabase/server-service';
 import { CRM_PERMISOS, CrmHttpError, exigirUuid, type CrmSesion } from './crmRouteSupport';
 import { voiceCampaignCreateSchema, voiceCampaignUpdateSchema, voiceCampaignVersionSchema, voiceCampaignStopSchema } from './voiceCampaignWriteLogica';
 import type { VoiceAgentCampaign } from './voiceAgentService';
+import { DEFAULT_VOICE_CAMPAIGN_LIMITS } from '@/lib/crm/voiceCampaignLimits';
 export { voiceCampaignCreateSchema, voiceCampaignUpdateSchema } from './voiceCampaignWriteLogica';
 
 async function versionPropia(ctx: CrmSesion, id: string, expected?: string): Promise<string> {
@@ -31,7 +32,9 @@ export async function guardarCampanaVoz(ctx: CrmSesion, body: unknown, id?: stri
   const { expected_updated_at, ...values } = parsed.data as typeof voiceCampaignUpdateSchema._type;
   const campaignId = id ? exigirUuid(id) : null;
   const version = campaignId ? await versionPropia(ctx, campaignId, expected_updated_at) : null;
-  return mutar(ctx, 'crm_voice_campaign_save', campaignId, version, { p_values: values });
+  return mutar(ctx, 'crm_voice_campaign_save', campaignId, version, {
+    p_values: campaignId ? values : { ...DEFAULT_VOICE_CAMPAIGN_LIMITS, ...values },
+  });
 }
 export async function eliminarCampanaVoz(ctx: CrmSesion, id: string, body: unknown = {}): Promise<void> {
   await requireOrgAdminOrPermission(ctx, CRM_PERMISOS.campanasGestionar);

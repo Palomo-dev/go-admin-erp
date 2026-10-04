@@ -62,10 +62,9 @@ import { JOBS_RUN_PATH, JOBS_RUN_SCHEDULES, VERCEL_SCHEDULE_KINDS } from '@/lib/
 import { SCHEDULED_KINDS, hasScheduledKinds, runScheduledKinds } from '@/lib/jobs/scheduler';
 
 /**
- * Compuertas legales (2026-09-30): la cola exige la URL de la política de
- * tratamiento de datos y una verificación RNE vigente por campaña. Los
- * escenarios de despacho las traen cumplidas; sus casos propios viven en
- * `src/__tests__/voz/` y `voiceAgent/__tests__/`.
+ * Compuertas legales: la cola exige la URL de la política de tratamiento de
+ * datos. No exige el RNE. Los escenarios de despacho traen la política; sus
+ * casos propios viven en `src/__tests__/voz/` y `voiceAgent/__tests__/`.
  */
 const POLITICA_DATOS = 'https://example.com/politica-de-datos';
 const RNE_VIGENTE = { id: 'rne-1', checked_at: '2026-09-01T00:00:00Z', valid_until: '2999-01-01T00:00:00Z', numbers_in_file: 2 };

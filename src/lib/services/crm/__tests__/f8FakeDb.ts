@@ -490,8 +490,38 @@ function makeDb(tables: Record<string, Record<string, any>[]>, opts: DbOpts = {}
     return { data: { ...enrollment }, error: null };
   };
 
+  /** Transporte de configuración atómica; la autorización y los locks SQL tienen un gate aislado propio. */
+  const createSequenceRpc = (p: Record<string, any>): { data: any; error: PgError | null } => {
+    const { steps = [], ...input } = p.p_input;
+    const sequence = withDefaults('sequences', { ...input, id: nextId(), organization_id: p.p_org });
+    const rows = steps.map((step: Record<string, unknown>) => withDefaults('sequence_steps', {
+      ...step, id: nextId(), sequence_id: sequence.id, organization_id: p.p_org,
+    }));
+    const error = validateRow('sequences', sequence)
+      ?? rows.map((row: Record<string, unknown>) => validateRow('sequence_steps', row)).find(Boolean) ?? null;
+    if (error) return { data: null, error };
+    all('sequences').push(sequence);
+    all('sequence_steps').push(...rows);
+    return { data: { ...sequence, steps: rows.sort((a: Record<string, any>, b: Record<string, any>) => a.step_number - b.step_number) }, error: null };
+  };
+
+  const deleteSequenceRpc = (p: Record<string, any>): { data: any; error: PgError | null } => {
+    const sequence = all('sequences').find((row) => row.id === p.p_sequence_id && row.organization_id === p.p_org);
+    if (!sequence) return { data: false, error: null };
+    if (all('sequence_enrollments').some((row) => row.sequence_id === sequence.id)) {
+      return { data: null, error: raisedException('secuencia_con_historial') };
+    }
+    tables.sequence_steps = all('sequence_steps').filter((row) => row.sequence_id !== sequence.id);
+    tables.sequences = all('sequences').filter((row) => row.id !== sequence.id);
+    return { data: true, error: null };
+  };
+
   const rpc = (name: string, params: Record<string, any>) => {
-    const result = name === 'fn_enroll_in_sequence'
+    const result = name === 'fn_crm_create_sequence'
+      ? createSequenceRpc(params)
+      : name === 'fn_crm_delete_sequence'
+        ? deleteSequenceRpc(params)
+      : name === 'fn_enroll_in_sequence'
       ? enrollRpc(params)
       : name === 'fn_enqueue_job'
         ? enqueueRpc(params)

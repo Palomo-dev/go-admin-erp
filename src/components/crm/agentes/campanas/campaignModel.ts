@@ -7,6 +7,7 @@
  */
 
 import type { PipelineOption, StageOption } from "@/components/crm/shared/useCrmLookups";
+import { DEFAULT_VOICE_CAMPAIGN_LIMITS, type VoiceCampaignLimits } from '@/lib/crm/voiceCampaignLimits';
 
 export interface CampaignRow {
   id: string;
@@ -83,7 +84,7 @@ export function describeCampaignTarget(
   return pipeline ? `Etapa ${stage.name} · ${pipeline.name}` : `Etapa ${stage.name}`;
 }
 
-export interface NewCampaignInput {
+export interface NewCampaignInput extends Partial<VoiceCampaignLimits> {
   name: string;
   voiceAgentId: string;
   stageId: string | null;
@@ -96,9 +97,9 @@ export function buildCampaignBody(input: NewCampaignInput): Record<string, unkno
     voice_agent_id: input.voiceAgentId,
     target_source: stageId ? "pipeline_stage" : "manual_list",
     target_config: stageId ? { stage_id: stageId } : {},
-    max_calls_per_day: 50,
-    max_calls_per_hour: 20,
-    max_concurrent: 3,
+    max_calls_per_day: input.max_calls_per_day ?? DEFAULT_VOICE_CAMPAIGN_LIMITS.max_calls_per_day,
+    max_calls_per_hour: input.max_calls_per_hour ?? DEFAULT_VOICE_CAMPAIGN_LIMITS.max_calls_per_hour,
+    max_concurrent: input.max_concurrent ?? DEFAULT_VOICE_CAMPAIGN_LIMITS.max_concurrent,
     status: "draft",
   };
 }

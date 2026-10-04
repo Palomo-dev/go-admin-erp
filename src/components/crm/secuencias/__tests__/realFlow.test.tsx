@@ -136,6 +136,24 @@ afterEach(() => {
   cleanup();
   jest.restoreAllMocks();
 });
+it.each([
+  ["es", "SMS (no disponible)"],
+  ["en", "SMS (unavailable)"],
+  ["fr", "SMS (indisponible)"],
+  ["pt", "SMS (indisponível)"],
+] as const)("no permite elegir SMS para un paso nuevo en %s", (locale, label) => {
+  const onError = jest.fn();
+  mount(<SequenceEditorDialog open sequence={null} onOpenChange={jest.fn()} onSave={jest.fn()} />, locale, onError);
+  const option = screen.getByRole("option", { name: label }) as HTMLOptionElement;
+  expect(option.disabled).toBe(true);
+  expect(screen.getByRole("option", { name: "WhatsApp" })).toHaveProperty("disabled", false);
+  expect(onError).not.toHaveBeenCalled();
+});
+it("conserva la lectura de pasos SMS históricos sin ofrecer edición", () => {
+  mount(<SequenceEditorDialog open sequence={{ ...row, steps: [{ step_number: 1, delay_days: 0, channel: "sms" }] }} onOpenChange={jest.fn()} onSave={jest.fn()} />);
+  expect(screen.getByText(/1\. SMS.*Sin proveedor de SMS: fallará/)).toBeTruthy();
+  expect(screen.queryByRole("option", { name: "SMS (no disponible)" })).toBeNull();
+});
 it.each(["es", "en", "fr", "pt"] as const)(
   "muestra cifras canónicas, reunión desconocida y readonly en %s",
   (locale) => {

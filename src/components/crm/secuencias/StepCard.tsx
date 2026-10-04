@@ -19,6 +19,7 @@ import { CHANNEL_OPTIONS, ChannelIcon, channelMeta } from './channelMeta';
 import { StepBranch } from './StepBranch';
 import { SELECT_CLASS, hoursError } from './sequenceOptions';
 import type { SequenceStepView } from './useSequences';
+import { isExecutableSequenceChannel } from '@/lib/crm/sequenceCapabilities';
 
 const WITH_CONTENT: ReadonlySet<string> = new Set(['email', 'whatsapp', 'task', 'call']);
 
@@ -103,7 +104,9 @@ export function StepCard({ step, entry, total, readOnly, templates, lookupsLoadi
                   condition: e.target.value === 'condition' ? (step.condition ?? { op: 'and', rules: [] }) : undefined,
                 })}
               >
-                {CHANNEL_OPTIONS.map((c) => <option key={c.value} value={c.value}>{tr(c.label)}</option>)}
+                {CHANNEL_OPTIONS.map((c) => <option key={c.value} value={c.value} disabled={!isExecutableSequenceChannel(c.value)}>
+                  {isExecutableSequenceChannel(c.value) ? tr(c.label) : tr('{p0} (no disponible)', { p0: tr(c.label) })}
+                </option>)}
               </select>
               <p id={`step-${step.uid}-channel-hint`} className="mt-1 text-xs text-fg-muted dark:text-fg-secondary">{tr(meta.description)}</p>
             </div>

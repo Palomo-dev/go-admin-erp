@@ -38,6 +38,8 @@ import { CampaignRunNow } from "./campanas/CampaignRunNow";
 import { DialogoMotivo } from "@/components/kit/DialogoMotivo";
 import { useTranslations } from "next-intl";
 import { voiceCampaignErrorKey } from "@/lib/services/crm/voiceCampaignWriteLogica";
+import { DEFAULT_VOICE_CAMPAIGN_LIMITS, voiceCampaignLimitsValid, type VoiceCampaignLimits } from '@/lib/crm/voiceCampaignLimits';
+import { VoiceCampaignLimitsFields } from './campanas/VoiceCampaignLimitsFields';
 
 interface Props {
   agents: VoiceAgentListItem[];
@@ -77,6 +79,9 @@ function CampaignsPanelInner({
   const [pipelineId, setPipelineId] = useState<string | null>(null);
   const [stageId, setStageId] = useState<string | null>(null);
   const [agentId, setAgentId] = useState<string>("");
+  const [limits, setLimits] = useState<VoiceCampaignLimits>({ ...DEFAULT_VOICE_CAMPAIGN_LIMITS });
+  const [orgConcurrencyLimit, setOrgConcurrencyLimit] = useState<number | null>(null);
+  const limitsValid = voiceCampaignLimitsValid(limits) && orgConcurrencyLimit !== null && limits.max_concurrent <= orgConcurrencyLimit;
   const activeAgents = agents.filter((a) => a.is_active);
   const selectableAgents = activeAgents.length > 0 ? activeAgents : agents;
   const effectiveAgentId = agentId || selectableAgents[0]?.id || "";
@@ -117,12 +122,13 @@ function CampaignsPanelInner({
       });
       return;
     }
+    if (!limitsValid) return;
     setBusy(true);
     try {
       const res = await fetch("/api/crm/voice-agents/campaigns", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildCampaignBody({ name, voiceAgentId: effectiveAgentId, stageId })),
+        body: JSON.stringify(buildCampaignBody({ name, voiceAgentId: effectiveAgentId, stageId, ...limits })),
       });
       const json = await res.json();
       if (!res.ok || !json?.success) throw new Error(t(voiceCampaignErrorKey(json?.code ?? null)));
@@ -176,7 +182,7 @@ function CampaignsPanelInner({
         (`ScheduledTask 'voice_campaigns'`) y este bloque permite forzarla y, sobre
         todo, ver POR QUÉ no marca cuando falta algo.
       */}
-      <CampaignRunNow onRan={() => void load()} />
+      <CampaignRunNow onRan={() => void load()} onConcurrencyLimit={setOrgConcurrencyLimit} />
 
       <section
         aria-labelledby="c-new-title"
@@ -218,6 +224,8 @@ function CampaignsPanelInner({
               </Select>
             </div>
           )}
+          <VoiceCampaignLimitsFields limits={limits} onChange={setLimits}
+            orgConcurrencyLimit={orgConcurrencyLimit} disabled={busy} />
           {selectableAgents.length === 0 && (
             <p role="status" className="text-xs text-amber-800 dark:text-amber-200">
               No hay agentes: crea uno en la pestaña «Agentes» antes de lanzar una campaña.
@@ -236,7 +244,7 @@ function CampaignsPanelInner({
         <Button
           className="mt-4 w-full sm:w-auto"
           onClick={() => void create()}
-          disabled={busy || !canManage || selectableAgents.length === 0}
+          disabled={busy || !canManage || selectableAgents.length === 0 || !limitsValid}
         >
           {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : null}
           Crear campaña
@@ -266,7 +274,6 @@ function CampaignsPanelInner({
               stages={lookups.stages}
               pipelines={lookups.pipelines}
               busy={!canManage || patching === c.id}
-              onRneChanged={() => void load()}
               onActivate={(row) =>
                 void patch(row.id, { status: "running", emergency_stop: false }, "Campaña activada")
               }

@@ -26,6 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/use-toast";
 import { isEmptyConditionTree } from "@/lib/services/crm/automation/conditionsDsl";
+import { MAX_SEQUENCE_NAME_LENGTH } from "@/lib/crm/sequenceCapabilities";
 import { exitConditionLabel } from "@/lib/services/crm/automation/conditionsI18n";
 import { useReturnFocus } from "@/lib/hooks/useReturnFocus";
 import {
@@ -383,6 +384,7 @@ export function SequenceEditorDialog({
                     <Input
                       className="h-10 rounded-lg border-line-strong bg-surface text-fg dark:border-line-strong dark:bg-surface dark:text-fg"
                       id="seq-name"
+                      maxLength={MAX_SEQUENCE_NAME_LENGTH}
                       ref={nameRef}
                       value={name}
                       onChange={(e) => setName(e.target.value)}

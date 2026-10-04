@@ -36,8 +36,7 @@ import {
   type VoiceAgentCampaign,
 } from './voiceAgentService';
 import { getMasterPhoneNumber } from '@/lib/services/integrations/twilio/twilioConfig';
-import { ultimaVerificacionRne } from './voiceAgent/cumplimiento';
-import { verificacionRneRegistradaVigente } from './voiceAgent/rne';
+import { DEFAULT_VOICE_CAMPAIGN_LIMITS } from '@/lib/crm/voiceCampaignLimits';
 
 /** Código estable del motivo; la UI traduce por él, nunca por el texto. */
 export type MotivoCodigo =
@@ -59,10 +58,7 @@ export type MotivoCodigo =
   | 'objetivos_sin_telefono'
   | 'objetivos_sin_consentimiento'
   | 'twilio_no_verificable'
-  | 'sin_politica_datos'
-  | 'sin_verificacion_rne'
-  | 'verificacion_rne_vencida'
-  | 'verificacion_rne_incompleta';
+  | 'sin_politica_datos';
 
 export interface Motivo {
   codigo: MotivoCodigo;
@@ -81,6 +77,8 @@ export interface DiagnosticoCampana {
 }
 
 export interface DiagnosticoVoz {
+  /** Cupo configurado en la organización; nunca se cambia al crear una campaña. */
+  maxConcurrentCalls?: number;
   /** Motivos de la organización: bloquean TODAS las campañas. */
   organizacion: Motivo[];
   campanas: DiagnosticoCampana[];
@@ -200,7 +198,7 @@ export async function diagnosticarCampanasDeVoz(
   const puedeLlamar =
     !organizacion.some((m) => m.bloquea) && campanas.some((c) => c.motivos.every((m) => !m.bloquea));
 
-  return { organizacion, campanas, puedeLlamar };
+  return { organizacion, campanas, puedeLlamar, maxConcurrentCalls: settings.maxConcurrentCalls };
 }
 
 async function diagnosticarUna(
@@ -221,12 +219,6 @@ async function diagnosticarUna(
   const caps = await getAgentCaps(supabase, orgId, campaign.voice_agent_id);
   if (!caps) motivos.push({ codigo: 'agente_no_encontrado', bloquea: true });
   else if (!caps.is_active) motivos.push({ codigo: 'agente_inactivo', bloquea: true });
-
-  // RNE: la cola no marca una campaña sin verificación vigente.
-  const rne = await ultimaVerificacionRne(supabase, orgId, campaign.id);
-  if (!rne) motivos.push({ codigo: 'sin_verificacion_rne', bloquea: true });
-  else if (!Number.isInteger(rne.numbers_in_file) || rne.numbers_in_file <= 0) motivos.push({ codigo: 'verificacion_rne_incompleta', bloquea: true });
-  else if (!verificacionRneRegistradaVigente(rne)) motivos.push({ codigo: 'verificacion_rne_vencida', bloquea: true });
 
   const schedule = (campaign.schedule as ScheduleLike | null) ?? null;
   const tz = schedule?.timezone || DEFAULT_TIMEZONE;
@@ -249,8 +241,8 @@ async function diagnosticarUna(
     countAttempts(supabase, campaign.id, diaIso),
     countAttempts(supabase, campaign.id, horaIso),
   ]);
-  const topeDia = campaign.max_calls_per_day || 50;
-  const topeHora = campaign.max_calls_per_hour || 20;
+  const topeDia = campaign.max_calls_per_day ?? DEFAULT_VOICE_CAMPAIGN_LIMITS.max_calls_per_day;
+  const topeHora = campaign.max_calls_per_hour ?? DEFAULT_VOICE_CAMPAIGN_LIMITS.max_calls_per_hour;
   if (hoy >= topeDia) motivos.push({ codigo: 'tope_diario', bloquea: true, datos: { hechos: hoy, tope: topeDia } });
   if (ultimaHora >= topeHora)
     motivos.push({ codigo: 'tope_hora', bloquea: true, datos: { hechos: ultimaHora, tope: topeHora } });

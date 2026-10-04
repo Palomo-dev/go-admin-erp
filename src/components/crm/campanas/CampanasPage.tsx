@@ -10,7 +10,6 @@ import { FormField } from "@/components/kit/FormField";
 import { EmptyState } from "@/components/kit/EmptyState";
 import { Pagination } from "@/components/kit/Pagination";
 import { Dialogo } from "@/components/kit/Dialogo";
-import { CampaignRnePanel } from "@/components/crm/agentes/campanas/CampaignRnePanel";
 import { CampaignCompliancePanel } from "./CampaignCompliancePanel";
 import { DialogoMotivo } from "@/components/kit/DialogoMotivo";
 import { clasesBoton } from "@/components/kit/botonClases";
@@ -36,7 +35,7 @@ function CampanasContent() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [rne, setRne] = useState(false);
   const [rneId, setRneId] = useState("");
-  const [rneSource, setRneSource] = useState("voice");
+  const [rneSource, setRneSource] = useState("messages");
   const [target, setTarget] = useState<{
     row: CampanaFila;
     action: string;
@@ -78,13 +77,13 @@ function CampanasContent() {
   };
   const actions = (
     <>
-      <button
+      {channel !== "voice" && <button
         onClick={() => { setRneId(""); setRne(true); }}
         className={clasesBoton({ variante: "secundario" })}
       >
         <ShieldCheck className="size-4" aria-hidden="true" />
         {t("verificarRne")}
-      </button>
+      </button>}
       {data?.canManage && (
         <Link
           href="/app/crm/campanas/nuevo"
@@ -208,7 +207,7 @@ function CampanasContent() {
             }}
           >
             <option value="">{d("elegirCampana")}</option>
-            {data?.rows.map((r) => (
+            {data?.rows.filter(r => r.source !== "voice").map((r) => (
                 <option key={`${r.source}:${r.id}`} value={`${r.source}:${r.id}`}>
                   {r.name}
                 </option>
@@ -216,9 +215,7 @@ function CampanasContent() {
           </select>
         </FormField>
         {rneId ? (
-          rneSource === "voice"
-            ? <CampaignRnePanel key={rneId} campaignId={rneId} expectedUpdatedAt={data?.rows.find(r => r.id === rneId && r.source === 'voice')?.updatedAt} onChanged={refresh} />
-            : <CampaignCompliancePanel key={rneId} campaignId={rneId} />
+          <CampaignCompliancePanel key={rneId} campaignId={rneId} />
         ) : (
           <p className="my-3 text-sm text-fg-muted">{d(data?.rows.length ? "elegirCampana" : "sinCampanas")}</p>
         )}

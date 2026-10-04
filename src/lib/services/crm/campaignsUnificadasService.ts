@@ -40,9 +40,8 @@ export async function listarCampanasUnificadas(
     p_org: ctx.organizationId,
   });
   if (error) throw error;
-  const now = new Date();
   const rows = (data as CampanaUnificadaRaw[])
-    .map((r) => proyectarCampana(r, now))
+    .map((r) => proyectarCampana(r))
     .filter(
       (c) =>
         (filters.channel === "all" ||

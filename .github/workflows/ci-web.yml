@@ -7,69 +7,137 @@ on:
     paths:
       - 'src/**'
       - 'print-agent/**'
+      - 'electron/src/**'
+      - 'electron/package*.json'
+      - 'electron/tsconfig.json'
+      - 'ws-server/**'
+      - 'ws-server.ts'
+      - 'scripts/**'
+      - 'messages/**'
+      - 'supabase/migrations/**'
+      - 'supabase/rollbacks/**'
+      - '.github/workflows/ci-web.yml'
+      - '.npmrc'
       - '.eslintrc.json'
       - 'jest.config.js'
-      - 'jest.setup.tz.ts'
-      - 'package.json'
-      - 'tsconfig.json'
+      - 'jest.setup.*'
+      - 'package*.json'
+      - 'tsconfig*.json'
   push:
     branches: [main]
     paths:
       - 'src/**'
       - 'print-agent/**'
+      - 'electron/src/**'
+      - 'electron/package*.json'
+      - 'electron/tsconfig.json'
+      - 'ws-server/**'
+      - 'ws-server.ts'
+      - 'scripts/**'
+      - 'messages/**'
+      - 'supabase/migrations/**'
+      - 'supabase/rollbacks/**'
+      - '.github/workflows/ci-web.yml'
+      - '.npmrc'
       - '.eslintrc.json'
       - 'jest.config.js'
-      - 'jest.setup.tz.ts'
-      - 'package.json'
-      - 'tsconfig.json'
+      - 'jest.setup.*'
+      - 'package*.json'
+      - 'tsconfig*.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # setup-node instala el último Node 22 LTS: los lockfiles exigen >=22.13
+  # (@napi-rs/wasm-runtime), >=22.12 (sanitize-html) y >=22 (svix/Supabase).
+  # Las pruebas usan fixtures y mocks. Este workflow no recibe secretos ni
+  # credenciales de proveedores o de la base de producción.
+  NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: clave-anonima-de-pruebas
+  # Valor ficticio para reproducir la construcción lazy de clientes server y
+  # la firma de fixtures; no corresponde a ningún proyecto Supabase.
+  SUPABASE_SERVICE_ROLE_KEY: clave-servicio-fixture
+  PUPPETEER_SKIP_DOWNLOAD: 'true'
+  ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
 
 # Ahorro de minutos de Actions (2026-09-30: se agotaron con los PR del bot):
 # en un PR, un commit nuevo cancela la corrida anterior de ese mismo PR; en
-# main no se cancela nada (cada commit conserva su resultado). Los PR en
-# borrador no corren: el CI arranca al marcarlos «listo para revisión».
+# main no se cancela nada (cada commit conserva su resultado). Los borradores
+# también se comprueban: conservar el borrador no debe ocultar un fallo.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   lint:
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
-    name: ESLint
+    name: ESLint (sin regresiones frente a base)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
+          check-latest: true
           cache: 'npm'
       - run: npm ci
-      - run: npm run lint
-        continue-on-error: true
-        # Las reglas de fecha estan en 'warn' para lo no migrado.
-        # Cuando P1-3 termine, quitar continue-on-error para que rompa el build.
+      - name: Comprobar el gate de regresiones ESLint
+        run: node --test scripts/ci/eslint.test.mjs
+      - name: Auditar ESLint completo y bloquear regresiones frente a la base
+        run: node scripts/ci/eslint.mjs
+        env:
+          CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+      - name: Publicar resumen de ESLint
+        if: always()
+        run: node scripts/ci/resumen.mjs eslint-regresiones evidencias/ci/eslint-comparacion.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ci-eslint
+          path: evidencias/ci/
+          retention-days: 14
 
   typecheck:
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     name: TypeScript (tsc --noEmit)
     # Compuerta de tipos del repo. Vercel y el build del desktop no la hacen
     # dentro de `next build` (NEXT_SKIP_TYPECHECK=1): necesita ~8 GB de heap.
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
+          check-latest: true
           cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            electron/package-lock.json
       - run: npm ci
       # `electron/src/**` entra en el tsconfig raíz (y los tests de permisos lo
       # importan): sin las dependencias de electron/ salen 99 «Cannot find module 'electron'».
       - run: npm ci --prefix electron
-      - run: npx tsc --noEmit -p tsconfig.json
+      - name: Comprobar todos los tipos y guardar el diagnóstico
+        run: |
+          mkdir -p evidencias/ci
+          npx tsc --noEmit -p tsconfig.json --pretty false > evidencias/ci/typescript.log 2>&1
         env:
           NODE_OPTIONS: --max-old-space-size=8192
+      - name: Publicar resumen de TypeScript
+        if: always()
+        run: node scripts/ci/resumen.mjs typescript evidencias/ci/typescript.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ci-typescript
+          path: evidencias/ci/
+          retention-days: 14
 
   timezone-tests:
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     # Matriz multi-pais (fase A2). Las seis zonas cubren los casos que
     # rompian el codigo: sin DST y offset entero (Bogota), sin DST pero
     # otro offset (Ciudad de Mexico, sin DST desde 2022), DST del
@@ -78,6 +146,7 @@ jobs:
     # runtime de produccion (UTC, que es lo que usa Vercel).
     name: Timezone tests (TZ=${{ matrix.tz }})
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -92,15 +161,30 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
+          check-latest: true
           cache: 'npm'
       - run: npm ci
-      - run: npm run test:tz
+      - name: Comprobar zonas horarias y guardar el resultado
+        run: |
+          mkdir -p evidencias/ci
+          node scripts/ci/jest.mjs src/__tests__/timezone src/__tests__/guardrails.test.ts --ci --json --outputFile=evidencias/ci/jest.json > evidencias/ci/jest.log 2>&1
         env:
           TZ: ${{ matrix.tz }}
+          NODE_OPTIONS: --max-old-space-size=3072
+      - name: Publicar resumen de zonas horarias
+        if: always()
+        run: node scripts/ci/resumen.mjs jest evidencias/ci/jest.json
+        env:
+          TZ: ${{ matrix.tz }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ci-timezone-${{ strategy.job-index }}
+          path: evidencias/ci/
+          retention-days: 14
 
   full-suite-tz:
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     # La suite COMPLETA solo en dos zonas. Ver
     # docs/adr/ADR-002-dst-y-matriz-de-zonas.md: correrla en las seis
     # multiplicaria por tres el tiempo de CI y metaria en la matriz
@@ -108,26 +192,47 @@ jobs:
     # latencia y es sensible a la carga del runner), sin anadir un solo
     # caso de zona horaria: los tests que dependen del TZ del runtime
     # estan en src/__tests__/timezone/ y ya corren en las seis.
-    name: Suite completa (TZ=${{ matrix.tz }})
+    # Cada zona recorre TODOS los archivos: Jest reparte de forma estable
+    # sus dos particiones. El límite recicla workers que retienen los programas
+    # de ts-jest; no excluye suites ni cambia sus aserciones.
+    name: Suite completa (TZ=${{ matrix.tz }}, parte ${{ matrix.shard }}/2)
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
         tz: ['UTC', 'America/Bogota']
+        shard: [1, 2]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
+          check-latest: true
           cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            electron/package-lock.json
       - run: npm ci
-      - run: npx jest
-        continue-on-error: true
-        # Informativo, todavia no bloqueante: la suite completa tiene dos
-        # rojos preexistentes ajenos a las fechas (sectionContract, fase
-        # F2.6 del editor web, y una asercion de latencia de pos-display
-        # sensible a la carga del runner). Quitar continue-on-error en
-        # cuanto esos dos esten en verde; el job de zonas de arriba SI
-        # bloquea desde ya.
+      # Estas suites importan código y tipos del main process. El binario del
+      # desktop no hace falta: los objetos nativos se sustituyen por mocks.
+      - run: npm ci --prefix electron
+      - name: Comprobar la suite completa y guardar el resultado
+        run: |
+          mkdir -p evidencias/ci
+          node scripts/ci/jest.mjs --ci --shard=${{ matrix.shard }}/2 --json --outputFile=evidencias/ci/jest.json > evidencias/ci/jest.log 2>&1
         env:
           TZ: ${{ matrix.tz }}
+          NODE_OPTIONS: --max-old-space-size=3072
+      - name: Publicar resumen de la suite completa
+        if: always()
+        run: node scripts/ci/resumen.mjs jest evidencias/ci/jest.json
+        env:
+          TZ: ${{ matrix.tz }}
+          CI_SHARD: ${{ matrix.shard }}/2
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ci-suite-${{ strategy.job-index }}
+          path: evidencias/ci/
+          retention-days: 14

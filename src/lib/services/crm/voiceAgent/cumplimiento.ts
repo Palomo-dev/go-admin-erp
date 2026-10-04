@@ -60,8 +60,8 @@ export async function leerConteosSemana(
  * PUNTO ÚNICO de la exención por número de prueba (`numerosPrueba.ts`): si el
  * número es de prueba vigente de la organización, no se cuentan los contactos
  * de la semana y la decisión sale con `exencion: 'numero_prueba'`. El horario
- * legal se evalúa igual. Nada más (excluidos, baja voluntaria, topes diarios,
- * créditos, RNE de la campaña) pasa por aquí: siguen aplicando en su sitio.
+ * legal se evalúa igual. Nada más (baja voluntaria, topes diarios, créditos)
+ * pasa por aquí: sigue aplicando en su sitio. La campaña no exige el RNE.
  */
 export async function evaluarLey2300Cliente(
   supabase: SupabaseClient,

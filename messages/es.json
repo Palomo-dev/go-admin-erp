@@ -4754,7 +4754,53 @@
       "importeCalculado": "{periodo} · lo que suman sus oportunidades: {monto}",
       "detalleAuditoria": "Queda en el historial con tu nombre y la fecha. El vendedor lo ve.",
       "notaAjusteCalculado": "El ajuste conserva las oportunidades: se muestra como «Ajustado {monto}» sobre el compromiso calculado.",
-      "omitidasNota": "{n} oportunidades omitidas. No suman al compromiso, al mejor caso ni al ponderado, y no cambian la cuota."
+      "omitidasNota": "{n} oportunidades omitidas. No suman al compromiso, al mejor caso ni al ponderado, y no cambian la cuota.",
+      "pipelineAnalitica": {
+        "errorTitulo": "Error al cargar el pronóstico",
+        "errorCarga": "No se pudo cargar el pronóstico. Comprueba las tasas de cambio e inténtalo de nuevo.",
+        "sinOrganizacion": "Selecciona una organización para consultar el pronóstico.",
+        "reintentar": "Reintentar",
+        "sinFecha": "Sin fecha",
+        "trimestreEtiqueta": "T{n} {year}",
+        "vacio": "Sin oportunidades abiertas",
+        "vacioDetalle": "Registra oportunidades abiertas para consultar el pronóstico del pipeline.",
+        "total": "Total",
+        "pronostico": "Pronóstico",
+        "objetivo": "Objetivo",
+        "tituloGrafico": "Pronóstico acumulado",
+        "mensual": "Mensual",
+        "trimestral": "Trimestral",
+        "totalBruto": "Total bruto abierto",
+        "ponderado": "Pronóstico ponderado",
+        "sinMeta": "Sin objetivo definido",
+        "sinMetaDetalle": "Configura un objetivo de ventas en la configuración del pipeline.",
+        "tituloMeta": "Cobertura prevista del objetivo {periodo}",
+        "progreso": "Cobertura prevista",
+        "deBruto": "De {monto} bruto abierto",
+        "metaEnCamino": "En camino a cumplir el objetivo",
+        "metaCerca": "Acercándose al objetivo",
+        "metaDebajo": "Por debajo del objetivo",
+        "periodos": {
+          "monthly": "mensual",
+          "quarterly": "trimestral",
+          "yearly": "anual"
+        },
+        "vistaGrafico": "Gráfico de pronóstico",
+        "grafico": "Gráfico",
+        "vistaMensual": "Pronóstico mensual",
+        "vistaTabla": "Tabla de oportunidades",
+        "tabla": "Tabla",
+        "oportunidadesMes": "Oportunidades abiertas por mes",
+        "nombre": "Nombre",
+        "cliente": "Cliente",
+        "fechaEsperada": "Fecha esperada",
+        "etapa": "Etapa",
+        "monto": "Monto",
+        "probabilidad": "Probabilidad",
+        "embudoTitulo": "Embudo ponderado",
+        "porcentajeDelPronostico": "{n}% del pronóstico total",
+        "oportunidades": "Oportunidades"
+      }
     },
     "campanasCumplimiento": {
       "titulo": "Requisitos para activar",
@@ -6687,6 +6733,9 @@
       "notifica_al_responsable_cuando_vence_una_tarea_1yqsh9o": "Notifica al responsable cuando vence una tarea."
     },
     "secuencias": {
+      "p0_no_disponible_k5k75t": "{p0} (no disponible)",
+      "esta_secuencia_tiene_historial_desactivala_para_conserv_ex7fa6": "Esta secuencia tiene historial. Desactívala para conservarlo.",
+      "se_borra_la_secuencia_y_sus_pasos_solo_se_pueden_elimin_1r0xpkx": "Se borra la secuencia y sus pasos. Sólo se pueden eliminar secuencias sin inscripciones. Esta acción no se puede deshacer.",
       "email_13xh18": "Email",
       "whatsapp_x2dyfm": "WhatsApp",
       "sms_1rg9": "SMS",
@@ -7299,7 +7348,9 @@
       "selectSegment": "Seleccionar segmento",
       "pipeline": "Pipeline",
       "stagesHelp": "Se incluyen las oportunidades abiertas de las etapas marcadas, una por cliente.",
-      "beforeExclusions": "{n} clientes antes de exclusiones."
+      "beforeExclusions": "{n} clientes antes de exclusiones.",
+      "concurrentMax": "Máximo de la organización: {n}.",
+      "concurrentUnknown": "No se pudo comprobar el máximo de llamadas simultáneas. Actualiza los requisitos."
     },
     "partnersVisual": {
       "subtitulo": "Aliados que traen o cierran negocios contigo y su comisión",

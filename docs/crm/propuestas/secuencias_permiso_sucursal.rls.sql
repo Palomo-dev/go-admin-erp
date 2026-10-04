@@ -1,4 +1,4 @@
--- ACTIVAR SOLO DESPUÉS de publicar unenroll RPC + workers service_role.
+-- ACTIVAR SOLO DESPUÉS de publicar create/delete/unenroll RPC + workers service_role.
 -- Conserva políticas permisivas/ACL originales; agrega restricciones, no un motor.
 SET LOCAL lock_timeout='1s';
 SET LOCAL statement_timeout='4s';
@@ -12,6 +12,14 @@ END $rls_pre$;
 DO $rls_dependency$ BEGIN
   IF to_regprocedure('public.fn_exit_sequence_enrollment(integer,uuid,text)') IS NULL THEN
     RAISE EXCEPTION 'rpc_exit_secuencias_pendiente' USING ERRCODE='P0001';
+  END IF;
+  IF to_regprocedure('public.fn_crm_create_sequence(integer,jsonb)') IS NULL
+     OR to_regprocedure('public.fn_crm_delete_sequence(integer,uuid)') IS NULL THEN
+    RAISE EXCEPTION 'rpc_configuracion_secuencias_pendiente' USING ERRCODE='P0001';
+  END IF;
+  IF (SELECT md5(prosrc) FROM pg_proc WHERE oid=to_regprocedure('public.fn_crm_create_sequence(integer,jsonb)'))<>'e25f34b6cc65dc56a570c89fc00c79b5'
+     OR (SELECT md5(prosrc) FROM pg_proc WHERE oid=to_regprocedure('public.fn_crm_delete_sequence(integer,uuid)'))<>'02f758864eb2cad36225b980e97cfc82' THEN
+    RAISE EXCEPTION 'rpc_configuracion_secuencias_cambio' USING ERRCODE='P0001';
   END IF;
 END $rls_dependency$;
 DO $scope_pre$ BEGIN
@@ -43,17 +51,17 @@ $function$;
 REVOKE ALL ON FUNCTION public.fn_sequence_enrollment_scope(integer,uuid,uuid,uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.fn_sequence_enrollment_scope(integer,uuid,uuid,uuid) TO authenticated,service_role;
 DROP POLICY IF EXISTS crm_sequence_guard_sequences_insert ON public.sequences;
-CREATE POLICY crm_sequence_guard_sequences_insert ON public.sequences AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK ((public.fn_crm_tiene_permiso(organization_id,'admin.full_access') OR public.fn_crm_tiene_permiso(organization_id,'crm.campaigns.manage')));
+CREATE POLICY crm_sequence_guard_sequences_insert ON public.sequences AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (false);
 DROP POLICY IF EXISTS crm_sequence_guard_sequences_update ON public.sequences;
 CREATE POLICY crm_sequence_guard_sequences_update ON public.sequences AS RESTRICTIVE FOR UPDATE TO authenticated USING ((public.fn_crm_tiene_permiso(organization_id,'admin.full_access') OR public.fn_crm_tiene_permiso(organization_id,'crm.campaigns.manage'))) WITH CHECK ((public.fn_crm_tiene_permiso(organization_id,'admin.full_access') OR public.fn_crm_tiene_permiso(organization_id,'crm.campaigns.manage')));
 DROP POLICY IF EXISTS crm_sequence_guard_sequences_delete ON public.sequences;
-CREATE POLICY crm_sequence_guard_sequences_delete ON public.sequences AS RESTRICTIVE FOR DELETE TO authenticated USING ((public.fn_crm_tiene_permiso(organization_id,'admin.full_access') OR public.fn_crm_tiene_permiso(organization_id,'crm.campaigns.manage')));
+CREATE POLICY crm_sequence_guard_sequences_delete ON public.sequences AS RESTRICTIVE FOR DELETE TO authenticated USING (false);
 DROP POLICY IF EXISTS crm_sequence_guard_sequence_steps_insert ON public.sequence_steps;
-CREATE POLICY crm_sequence_guard_sequence_steps_insert ON public.sequence_steps AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (((public.fn_crm_tiene_permiso(organization_id,'admin.full_access') OR public.fn_crm_tiene_permiso(organization_id,'crm.campaigns.manage')) AND EXISTS(SELECT 1 FROM public.sequences s WHERE s.id=sequence_steps.sequence_id AND s.organization_id=sequence_steps.organization_id)));
+CREATE POLICY crm_sequence_guard_sequence_steps_insert ON public.sequence_steps AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (false);
 DROP POLICY IF EXISTS crm_sequence_guard_sequence_steps_update ON public.sequence_steps;
-CREATE POLICY crm_sequence_guard_sequence_steps_update ON public.sequence_steps AS RESTRICTIVE FOR UPDATE TO authenticated USING (((public.fn_crm_tiene_permiso(organization_id,'admin.full_access') OR public.fn_crm_tiene_permiso(organization_id,'crm.campaigns.manage')) AND EXISTS(SELECT 1 FROM public.sequences s WHERE s.id=sequence_steps.sequence_id AND s.organization_id=sequence_steps.organization_id))) WITH CHECK (((public.fn_crm_tiene_permiso(organization_id,'admin.full_access') OR public.fn_crm_tiene_permiso(organization_id,'crm.campaigns.manage')) AND EXISTS(SELECT 1 FROM public.sequences s WHERE s.id=sequence_steps.sequence_id AND s.organization_id=sequence_steps.organization_id)));
+CREATE POLICY crm_sequence_guard_sequence_steps_update ON public.sequence_steps AS RESTRICTIVE FOR UPDATE TO authenticated USING (false) WITH CHECK (false);
 DROP POLICY IF EXISTS crm_sequence_guard_sequence_steps_delete ON public.sequence_steps;
-CREATE POLICY crm_sequence_guard_sequence_steps_delete ON public.sequence_steps AS RESTRICTIVE FOR DELETE TO authenticated USING (((public.fn_crm_tiene_permiso(organization_id,'admin.full_access') OR public.fn_crm_tiene_permiso(organization_id,'crm.campaigns.manage')) AND EXISTS(SELECT 1 FROM public.sequences s WHERE s.id=sequence_steps.sequence_id AND s.organization_id=sequence_steps.organization_id)));
+CREATE POLICY crm_sequence_guard_sequence_steps_delete ON public.sequence_steps AS RESTRICTIVE FOR DELETE TO authenticated USING (false);
 DROP POLICY IF EXISTS crm_sequence_guard_steps_read ON public.sequence_steps;
 CREATE POLICY crm_sequence_guard_steps_read ON public.sequence_steps AS RESTRICTIVE FOR SELECT TO authenticated USING (EXISTS(SELECT 1 FROM public.sequences s WHERE s.id=sequence_steps.sequence_id AND s.organization_id=sequence_steps.organization_id));
 DROP POLICY IF EXISTS crm_sequence_guard_sequence_enrollments_read ON public.sequence_enrollments;

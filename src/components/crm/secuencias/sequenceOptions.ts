@@ -14,6 +14,7 @@ const defaultSequenceText:AutomationText=(source,values)=>interpolateAutomationT
  */
 
 import { CUSTOMER_FACING_CHANNELS, channelLabel } from '@/lib/services/crm/sequenceTimeline';
+import { SEQUENCE_EXIT_CONDITIONS } from '@/lib/crm/sequenceCapabilities';
 
 export const TRIGGER_OPTIONS = [
   { value: 'manual', label: 'Manual', hint: 'Se inscribe a mano desde la lista' },
@@ -33,7 +34,7 @@ export function triggerLabel(value: string): string {
  * el motor no las evalúa y ofrecerlas prometía algo que no pasaba.
  * `won_lost` se aplica siempre, esté marcada o no.
  */
-export const EXIT_CONDITION_VALUES = ['won_lost', 'opted_out'] as const;
+export const EXIT_CONDITION_VALUES = SEQUENCE_EXIT_CONDITIONS;
 export const ALWAYS_ON_EXIT_CONDITION = 'won_lost';
 
 /**

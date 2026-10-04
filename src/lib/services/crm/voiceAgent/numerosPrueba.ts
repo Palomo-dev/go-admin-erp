@@ -7,10 +7,10 @@
  * quien prueba el agente con su celular queda bloqueado hasta el lunes.
  *
  * NO exime de: la franja horaria legal (L-V 7–19, sáb 8–15, nunca domingos ni
- * festivos), la lista de excluidos (`crm_excluded_numbers`), la baja voluntaria
- * (`fn_can_contact`), los topes diarios/horarios del agente y de la campaña, el
- * tope diario por cliente, la concurrencia, los créditos ni la verificación RNE
- * de la campaña. La exención se aplica en UN punto: `evaluarLey2300Cliente`
+ * festivos), la baja voluntaria (`fn_can_contact`), los topes diarios/horarios
+ * del agente y de la campaña, el tope diario por cliente, la concurrencia ni
+ * los créditos. La campaña no exige el RNE. La exención se aplica en UN punto:
+ * `evaluarLey2300Cliente`
  * (`cumplimiento.ts`), por donde pasan el despacho de campañas y el puntual.
  *
  * Datos en `crm_voice_test_numbers` (migración 20260930235500_voz_numeros_prueba):

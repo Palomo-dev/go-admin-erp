@@ -6,13 +6,9 @@
  * 2300 de 2023, llamadas comerciales o publicitarias). Quien hace prospección
  * está obligado a consultarlo antes de contactar.
  *
- * Flujo en el producto:
- *  1. El dueño descarga del RNE la lista de números excluidos (CSV o TXT).
- *  2. En la campaña pulsa «Verificar contra RNE» y la carga.
- *  3. El servidor normaliza los números, los guarda como excluidos de la
- *     organización, marca como omitidas las llamadas pendientes de esos
- *     números y deja constancia de la verificación con su vigencia.
- *  4. La cola se niega a marcar un lote de una campaña sin verificación vigente.
+ * Las campañas no exigen esta lista para llamar: cada organización decide qué
+ * números carga. Estas funciones siguen sirviendo para leer un archivo si
+ * alguien lo sube por la ruta de verificación; la cola no las consulta.
  *
  * Vigencia: `VIGENCIA_RNE_DIAS` = 30 días. Es una decisión de producto, no una
  * cifra de la norma: el RNE cambia a diario y la obligación es consultarlo antes

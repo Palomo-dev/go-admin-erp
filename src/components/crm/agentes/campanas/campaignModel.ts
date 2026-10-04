@@ -95,9 +95,9 @@ export function buildCampaignBody(input: NewCampaignInput): Record<string, unkno
     voice_agent_id: input.voiceAgentId,
     target_source: stageId ? "pipeline_stage" : "manual_list",
     target_config: stageId ? { stage_id: stageId } : {},
-    max_calls_per_day: 50,
-    max_calls_per_hour: 20,
-    max_concurrent: 3,
+    max_calls_per_day: 120,
+    max_calls_per_hour: 40,
+    max_concurrent: 5,
     status: "draft",
   };
 }

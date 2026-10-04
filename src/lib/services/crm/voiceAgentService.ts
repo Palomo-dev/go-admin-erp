@@ -460,9 +460,9 @@ export async function createCampaign(
         target_source: targetSource,
         target_config: data.target_config ?? {},
         schedule: data.schedule ?? {},
-        max_calls_per_day: data.max_calls_per_day ?? 50,
-        max_calls_per_hour: data.max_calls_per_hour ?? 20,
-        max_concurrent: data.max_concurrent ?? 3,
+        max_calls_per_day: data.max_calls_per_day ?? 120,
+        max_calls_per_hour: data.max_calls_per_hour ?? 40,
+        max_concurrent: data.max_concurrent ?? 5,
         status: data.status ?? 'draft',
         stats: {},
       })
@@ -1066,9 +1066,9 @@ export async function runCampaignQueue(
         countAgentAttempts(supabase, orgId, campaign.voice_agent_id, hourAgoIso),
       ]);
 
-    const maxConcurrent = campaign.max_concurrent || 3;
-    const maxPerDay = campaign.max_calls_per_day || 50;
-    const maxPerHour = campaign.max_calls_per_hour || 20;
+    const maxConcurrent = campaign.max_concurrent || 5;
+    const maxPerDay = campaign.max_calls_per_day || 120;
+    const maxPerHour = campaign.max_calls_per_hour || 40;
 
     /** Lo que aún cabe hoy sin pasarse de NINGUNO de los dos saldos. */
     const dayRoom = Math.min(

@@ -237,8 +237,8 @@ async function diagnosticarUna(
     countAttempts(supabase, campaign.id, diaIso),
     countAttempts(supabase, campaign.id, horaIso),
   ]);
-  const topeDia = campaign.max_calls_per_day || 50;
-  const topeHora = campaign.max_calls_per_hour || 20;
+  const topeDia = campaign.max_calls_per_day || 120;
+  const topeHora = campaign.max_calls_per_hour || 40;
   if (hoy >= topeDia) motivos.push({ codigo: 'tope_diario', bloquea: true, datos: { hechos: hoy, tope: topeDia } });
   if (ultimaHora >= topeHora)
     motivos.push({ codigo: 'tope_hora', bloquea: true, datos: { hechos: ultimaHora, tope: topeHora } });

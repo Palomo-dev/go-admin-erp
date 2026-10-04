@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { pedirCrm } from '@/components/crm/acciones/apiCrm';
+import { ErrorApiCrm, pedirCrm } from '@/components/crm/acciones/apiCrm';
 import { ORGANIZATION_CHANGED_EVENT } from '@/lib/hooks/useOrganization';
 import { withRequestDeadline } from '@/lib/utils/requestDeadline';
 import { tiempoLecturaCrm } from '@/lib/utils/crmReadTimeout';
@@ -22,13 +22,14 @@ import { useAgentSummary, completeAgentSummary, bookedMeetings } from './useAgen
 import { AgentCampaignsPanel } from './AgentCampaignsPanel';
 export interface VoiceAgentListItem { id: string; name: string; purpose_type: string; engine: string; language: string; llm_model: string; voice_id: string | null; voice_ref_id: string | null; is_active: boolean; allowed_tools: string[]; }
 type LecturaComplementaria = 'scripts' | 'voices' | 'context';
+interface FalloLectura { detail: LecturaComplementaria; forbidden: boolean }
 export function AgentesIaPage() {
-  const t = useTranslations('crm.agentesIa'), common = useTranslations('common'); const query = useSearchParams();
+  const t = useTranslations('crm.agentesIa'); const query = useSearchParams();
   const [startStep, setStartStep] = useState<'purpose' | 'voice' | 'test'>('purpose'); const [tab, setTab] = useState(query?.get('tab') === 'campanas' ? 'campaigns' : 'agents');
   const [agents, setAgents] = useState<VoiceAgentListItem[]>([]), [stages, setStages] = useState<StageAgent[] | null>(null), [voices, setVoices] = useState<VoiceCatalogRow[] | null>(null);
   const [loading, setLoading] = useState(true), [error, setError] = useState(false), [editing, setEditing] = useState<AgentDraft | null>(null), [metrics, setMetrics] = useState<VoiceAgentListItem | null>(null), [busy, setBusy] = useState<string | null>(null);
   const [stageNames, setStageNames] = useState<Record<string, string>>({});
-  const [detailFailures, setDetailFailures] = useState<LecturaComplementaria[]>([]);
+  const [detailFailures, setDetailFailures] = useState<FalloLectura[]>([]);
   const revision = useRef(0), toggleLock = useRef(false), readController = useRef<AbortController | null>(null);
   const invalidate = useCallback(() => { revision.current++; readController.current?.abort(); readController.current = null; }, []);
   const ids = agents.map(agent => agent.id), summary = useAgentSummary(ids, revision.current), totals = completeAgentSummary(ids, summary.summaries);
@@ -38,18 +39,18 @@ export function AgentesIaPage() {
     const controller = new AbortController(), current = ++revision.current;
     readController.current = controller;
     const active = () => current === revision.current && !controller.signal.aborted;
-    setLoading(true); setError(false); setStages(null); setVoices(null); setStageNames({}); setDetailFailures([]);
-    const failed = (detail: LecturaComplementaria) => setDetailFailures(previous => [...previous, detail]);
+    setLoading(true); setError(false); setDetailFailures([]);
+    const failed = (detail: LecturaComplementaria, error: unknown) => setDetailFailures(previous => [...previous, { detail, forbidden: error instanceof ErrorApiCrm && error.status === 403 }]);
     // El plazo cubre también la resincronización de sesión y la lectura del
     // cuerpo. Una respuesta tardía nunca actualiza otra carga u organización.
-    async function read<T>(url: string, accept: (data: T) => void, reject: () => void) {
+    async function read<T>(url: string, accept: (data: T) => void, reject: (error: unknown) => void) {
       try {
         const result = await withRequestDeadline(signal => pedirCrm<T>(url, { signal }), {
           timeoutMs: tiempoLecturaCrm(), signal: controller.signal,
         });
         if (active()) accept(result.data);
-      } catch {
-        if (active()) reject();
+      } catch (error) {
+        if (active()) reject(error);
       }
     }
     const list = read<VoiceAgentListItem[]>('/api/crm/voice-agents', data => {
@@ -62,19 +63,19 @@ export function AgentesIaPage() {
       read<StageAgent[]>('/api/crm/stage-agents', data => {
         if (!Array.isArray(data)) throw new Error('Guiones de etapas inválidos');
         setStages(data);
-      }, () => failed('scripts')),
+      }, error => failed('scripts', error)),
       read<VoiceCatalogRow[]>('/api/crm/voices', data => {
         if (!Array.isArray(data)) throw new Error('Catálogo de voces inválido');
         setVoices(data);
-      }, () => failed('voices')),
+      }, error => failed('voices', error)),
       read<{ pipelines: { stages: { id: string; name: string }[] }[] }>('/api/crm/voice-agents/editor-context', data => {
         setStageNames(Object.fromEntries((data.pipelines ?? []).flatMap(pipeline => pipeline.stages.map(stage => [stage.id, stage.name]))));
-      }, () => failed('context')),
+      }, error => failed('context', error)),
     ]);
   }, []);
   useEffect(() => {
     void load();
-    const changed = () => { invalidate(); setAgents([]); setStages(null); setVoices(null); setEditing(null); setMetrics(null); setBusy(null); void load(); };
+    const changed = () => { invalidate(); setAgents([]); setStages(null); setVoices(null); setStageNames({}); setEditing(null); setMetrics(null); setBusy(null); void load(); };
     window.addEventListener(ORGANIZATION_CHANGED_EVENT, changed);
     return () => { invalidate(); window.removeEventListener(ORGANIZATION_CHANGED_EVENT, changed); };
   }, [load, invalidate]);
@@ -102,7 +103,7 @@ export function AgentesIaPage() {
       </TabsList>
       <TabsContent value="agents" className="space-y-4">
         {!loading && !error && detailFailures.length > 0 && <div role="alert" className="flex items-center justify-between gap-3 rounded-lg border border-line bg-danger-subtle p-3 text-sm text-danger-text">
-          <p>{common('error')}: {detailFailures.map(detail => t(detail === 'voices' ? 'steps.voice' : detail === 'scripts' ? 'stageScript' : 'stage')).join(' · ')}</p>
+          <div>{detailFailures.map(({ detail, forbidden }) => <p key={detail}>{t(forbidden ? 'detailPermissionError' : 'detailLoadError', { detail: t(detail === 'voices' ? 'steps.voice' : detail === 'scripts' ? 'stageScript' : 'editorContext') })}</p>)}</div>
           <button type="button" className={clasesBoton({ patron: 'button', variante: 'secundario', tamano: 'sm' })} onClick={() => void load()}>{t('retry')}</button>
         </div>}
         {/* El resumen usa periodos completos de la RPC; una lectura incompleta conserva el guion. */}
@@ -118,7 +119,7 @@ export function AgentesIaPage() {
           : <ul aria-label={t('agents')} className="grid gap-4 md:grid-cols-2">{agents.map(agent => {
             const voice = voices?.find(row => row.id === agent.voice_ref_id && row.is_active) ?? (!agent.voice_ref_id ? voices?.find(row => row.is_default && row.is_active) : undefined);
             const metrics = summary.summaries[agent.id]?.period;
-            const scripts = stages?.filter(row => row.voice_agent_id === agent.id && row.is_active) ?? [];
+            const scripts = stages?.filter(row => row.channel === 'voice' && row.voice_agent_id === agent.id && row.is_active) ?? [];
             return <li key={agent.id}><Tarjeta titulo={agent.name} descripcion={`${purpose(agent)} · ${agent.language} · ${agent.engine === 'conversation_relay' ? 'Conversation Relay' : agent.engine}`} icono={Bot}
               className="[&>div]:sm:px-4 [&>div:last-child]:!border-t-0 [&>div:last-child]:!pt-0 [&>div:last-child]:pb-4 [&>div:first-child>div>span]:!size-10"
               accion={<StatusBadge estado={agent.is_active ? 'active' : 'inactive'} etiqueta={t(agent.is_active ? 'active' : 'inactive')} tono={agent.is_active ? 'exito' : 'neutro'} />}

@@ -15,6 +15,8 @@ jest.mock('@/lib/context/OrganizationTimezoneContext', () => ({ useOrgTimezone: 
 import { AgentesIaPage } from '../AgentesIaPage';
 import { AgentEditorDialog } from '../AgentEditorDialog';
 import { AgentTestTab } from '../editor/AgentTestTab';
+import { AgentScriptTab } from '../editor/AgentScriptTab';
+import { AgentToolsTab } from '../editor/AgentToolsTab';
 import { EMPTY_AGENT_FORM } from '../editor/useAgentForm';
 const ID = '10000000-0000-4000-8000-000000000001';
 const form = { ...EMPTY_AGENT_FORM, name: 'Agente de prueba', identity_disclosure: 'Asistente IA', llm_model: 'modelo-catálogo' };
@@ -63,4 +65,31 @@ test('validación de campos requeridos avisa sin crear un agente ni perder borra
   await screen.findByText(es.crm.agentesIa.required);
   expect(screen.getByDisplayValue('Borrador')).toBeTruthy();
   expect(fetchMock.mock.calls.some(call => call[1]?.method === 'POST')).toBe(false);
+});
+
+test.each(['es','en','fr','pt'] as const)('contexto y permisos muestran mensajes propios del editor con Intl real %s', async idioma => {
+  const m = { es, en, fr, pt }[idioma].crm.agentesIa;
+  let status = 503;
+  fetchMock.mockImplementation(async (url: string) => ({ ok: !url.endsWith('/editor-context'), status: url.endsWith('/editor-context') ? status : 200, json: async () => ({ success: !url.endsWith('/editor-context'), data: url.includes('/metrics?') ? metrics : url.endsWith('/stage-agents') ? [] : [{ id: ID, ...form }], code: status === 403 ? 'sin_permiso' : 'fallo_lectura' }) }));
+  const page = renderConIdioma(<AgentesIaPage />, { idioma });
+  await screen.findByText(m.detailLoadError.replace('{detail}', m.editorContext));
+  expect(screen.getByText('Agente de prueba')).toBeTruthy();
+  page.unmount();
+  status = 403;
+  renderConIdioma(<AgentScriptTab form={form} agentId={ID} onSaveInactive={jest.fn()} />, { idioma });
+  await screen.findByText(m.detailPermissionError.replace('{detail}', m.editorContext));
+  expect(screen.getByText(m.editorPermissionErrorDescription)).toBeTruthy();
+  expect(screen.queryByLabelText(m.pipeline)).toBeNull();
+});
+
+test('reintentar la política restaura el enlace de contexto sin escribir el agente', async () => {
+  let unavailable = true;
+  fetchMock.mockImplementation(async () => ({ ok: !unavailable, status: unavailable ? 403 : 200, json: async () => ({ success: !unavailable, data: unavailable ? null : { pipelines: [], products: [], data_policy_url: 'https://example.com/politica-datos' }, code: unavailable ? 'sin_permiso' : undefined }) }));
+  renderConIdioma(<AgentToolsTab form={form} patch={jest.fn()} onJsonValidity={jest.fn()} />);
+  await screen.findByRole('alert');
+  unavailable = false;
+  fireEvent.click(screen.getByRole('button', { name: es.crm.agentesIa.retry }));
+  expect((await screen.findByRole('link', { name: 'https://example.com/politica-datos' })).getAttribute('href')).toBe('https://example.com/politica-datos');
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+  expect(fetchMock.mock.calls.every(([, options]) => options?.method === 'GET')).toBe(true);
 });

@@ -24,7 +24,7 @@ const VOICE_ID = '10000000-0000-4000-8000-000000000003';
 const agent = (name = 'Agente de prueba') => ({ id: AGENT_ID, name, purpose_type: 'sales', engine: 'conversation_relay', language: 'es', llm_model: 'modelo-de-prueba', voice_id: null, voice_ref_id: VOICE_ID, is_active: true, allowed_tools: [] });
 function fixture(url: string, name?: string) {
   if (url === '/api/crm/voice-agents') return [agent(name)];
-  if (url === '/api/crm/stage-agents') return [{ id: 'guion-de-prueba', stage_id: STAGE_ID, voice_agent_id: AGENT_ID, is_active: true, action_policy: 'suggest' }];
+  if (url === '/api/crm/stage-agents') return [{ id: 'guion-de-prueba', stage_id: STAGE_ID, voice_agent_id: AGENT_ID, channel: 'voice', is_active: true, action_policy: 'suggest' }];
   if (url === '/api/crm/voices') return [{ id: VOICE_ID, name: 'Voz de prueba', is_active: true }];
   return { pipelines: [{ stages: [{ id: STAGE_ID, name: 'Etapa de prueba' }] }] };
 }
@@ -63,7 +63,7 @@ it('publica la lista sin esperar contexto; el timeout complementario muestra err
   expect(screen.queryByRole('alert')).toBeNull();
   await act(async () => jest.advanceTimersByTimeAsync(TIMEOUT));
   expect(screen.getByText('Agente de prueba')).toBeTruthy();
-  expect(screen.getByRole('alert').textContent).toContain(es.crm.agentesIa.stage);
+  expect(screen.getByRole('alert').textContent).toContain(es.crm.agentesIa.editorContext);
   expect(screen.getByRole('button', { name: es.crm.agentesIa.retry })).toBeTruthy();
   context.resolve(response(fixture('/api/crm/voice-agents/editor-context'))); await flush();
   expect(screen.queryByText('Etapa de prueba')).toBeNull();
@@ -72,6 +72,16 @@ it('publica la lista sin esperar contexto; el timeout complementario muestra err
   fireEvent.click(screen.getByRole('button', { name: es.crm.agentesIa.retry })); await flush();
   expect(screen.getByText('Etapa de prueba')).toBeTruthy();
   expect(screen.queryByRole('alert')).toBeNull();
+});
+
+it('un contexto sin permiso identifica la lectura fallida y conserva la lista válida', async () => {
+  jest.mocked(fetch).mockImplementation(async url => String(url).endsWith('/editor-context') ? response(null, 403, 'sin_permiso') : response(fixture(String(url))));
+  renderConIdioma(<AgentesIaPage />); await flush();
+  expect(screen.getByText('Agente de prueba')).toBeTruthy();
+  expect(screen.getByRole('alert').textContent).toContain(es.crm.agentesIa.detailPermissionError.replace('{detail}', es.crm.agentesIa.editorContext));
+  expect(screen.queryByText(es.crm.agentesIa.loadErrorDescription)).toBeNull();
+  expect(ensureSessionSynced).not.toHaveBeenCalled();
+  expect(fetch).toHaveBeenCalledTimes(4);
 });
 
 it.each(['fetch', 'body'] as const)('un %s no cooperativo de la lista termina en error a los 20 s, sin reintento automático', async phase => {

@@ -11,6 +11,7 @@ import { POSService } from '@/lib/services/posService';
 import { cartLinesSignature } from '@/lib/pos/display/emitter';
 import { Cart } from './types';
 import { etiquetaSelectorImpuestos, impuestosAplicadosIniciales, resumenImpuestos } from '@/lib/pos/venta/resumenImpuestos';
+import { guardarPreferenciaImpuestos, impuestosDePreferencia, leerPreferenciaImpuestos } from '@/lib/pos/venta/preferenciaImpuestos';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { 
   calculateCartTaxes, 
@@ -54,6 +55,11 @@ interface TaxSummaryProps {
    * líneas ya cambiaron.
    */
   onTotalsChange?: (totals: { subtotal: number; totalTaxAmount: number; finalTotal: number; cartId: string; linesSignature: string }) => void;
+  /**
+   * POS: recordar los impuestos elegidos por organización y sucursal y
+   * aplicarlos a los carritos nuevos (`preferenciaImpuestos.ts`).
+   */
+  recordarPreferencia?: boolean;
   className?: string;
 }
 
@@ -66,6 +72,7 @@ export function TaxSummary({
   onTaxIncludedChange, 
   onAppliedTaxesChange,
   onTotalsChange,
+  recordarPreferencia = false,
   className 
 }: TaxSummaryProps) {
   const moneda = useMonedaOrganizacion();
@@ -100,10 +107,20 @@ export function TaxSummary({
         
         // Inicializar impuestos aplicados: usar los del carrito si existen, sino los predeterminados
         // (src/lib/pos/venta/resumenImpuestos.ts).
-        const { aplicados, predeterminadosAGuardar } = impuestosAplicadosIniciales(taxes as OrganizationTax[], cart.applied_tax_ids);
+        // Carrito sin selección propia en el POS: arranca con la última elección
+        // del cajero en esta sucursal, si la hay.
+        const deLaPreferencia = !cart.applied_tax_ids && recordarPreferencia
+          ? impuestosDePreferencia(leerPreferenciaImpuestos(cart.organization_id, cart.branch_id), taxes.map((t: OrganizationTax) => t.id))
+          : null;
+        const { aplicados, predeterminadosAGuardar } = impuestosAplicadosIniciales(
+          taxes as OrganizationTax[],
+          cart.applied_tax_ids ?? deLaPreferencia ?? undefined,
+        );
         setAppliedTaxes(aplicados);
-        // Si el carrito aún no tiene selección, persistir los predeterminados
-        if (predeterminadosAGuardar) {
+        // Si el carrito aún no tiene selección, persistir la de la preferencia o los predeterminados
+        if (deLaPreferencia) {
+          onAppliedTaxesChange?.(deLaPreferencia);
+        } else if (predeterminadosAGuardar) {
           onAppliedTaxesChange?.(predeterminadosAGuardar);
         }
         
@@ -115,6 +132,8 @@ export function TaxSummary({
     };
 
     loadOrganizationTaxes();
+    // Una sola vez por carrito: CartView monta TaxSummary con key={cart.id}.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Calcular desglose de impuestos usando la utilidad
@@ -308,6 +327,9 @@ export function TaxSummary({
                   setAppliedTaxes(next);
                   const selectedIds = Object.keys(next).filter(id => next[id]);
                   onAppliedTaxesChange?.(selectedIds);
+                  if (recordarPreferencia) {
+                    guardarPreferenciaImpuestos(cart.organization_id, cart.branch_id, { impuestos: selectedIds });
+                  }
                 }}
                 className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >

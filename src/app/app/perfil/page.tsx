@@ -3,89 +3,57 @@
 /**
  * «Mi perfil» (Figma `03 Navegación y shell` › «Perfil de usuario», 344:9278).
  *
- * Contenedor del diseño: cabecera con avatar, nombre, cargo, correo · alta y
+ * Escritorio (344:9281): cabecera con avatar, nombre, cargo, correo · alta y
  * la organización activa con sus sucursales; debajo, la navegación de
- * secciones (texto, en el orden del frame) y el contenido. En móvil la lista
- * es la entrada y cada sección se abre con «Volver».
+ * secciones y la sección abierta. Móvil (348:12239): la lista de secciones es
+ * la entrada y cada sección se abre a pantalla completa con «←».
  *
- * Cambios frente al contenedor anterior (docs/design/SHELL-FIGMA-A-CODIGO.md):
- * - «Organización por defecto» y «Roles asignados» son una sola sección,
- *   «Organización y roles», como en el frame 346:21440.
- * - Sección nueva «Preferencias» (346:20440): tema, idioma y zona horaria.
- * - Ya no se consultaba nada con la lista de `user_devices` que cargaba esta
- *   página (la sección de sesiones lee la suya): se quitó esa consulta.
- * - Textos del contenedor en los cuatro idiomas (`perfil.*`).
+ * - La sección vive en la URL (`?seccion=seguridad`, `useParametrosUrl` del
+ *   kit): sobrevive a recargar, se comparte y «atrás» la recorre. En móvil,
+ *   sin `?seccion=` se ve la lista.
+ * - Estados del diseño: cargando (344:9761, Skeleton), error (344:10460,
+ *   EmptyState con «Reintentar») y sin organización (344:10091, dentro de
+ *   «Organización y roles»).
+ * - Avisos con `sonner` (el único `Toaster` montado): los de `react-hot-toast`
+ *   que usaba el perfil nunca se veían porque su contenedor no estaba montado.
+ *
+ * La organización activa solo decide qué se resalta (cabecera, permisos);
+ * los permisos los resuelve el servidor en `/api/me/permisos`.
  */
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase/config';
+import { Suspense, useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import type { User } from '@supabase/supabase-js';
-import { ChevronLeft, TrendingUp, ExternalLink } from 'lucide-react';
+import { ExternalLink, LogOut, TrendingUp } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { Skeleton } from '@/components/ui/skeleton';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/kit/EmptyState';
+import { PageHeader } from '@/components/kit/PageHeader';
+import { clasesBoton } from '@/components/kit/botonClases';
+import { useParametrosUrl } from '@/components/kit/useParametroUrl';
 
-// Componentes para las diferentes secciones
-import DatosPersonalesSection from '../../../components/profile/DatosPersonalesSection';
-import SeguridadSection from '../../../components/profile/SeguridadSection';
-import { DeviceSessions } from '../../../components/profile/DeviceSessions';
-import OrganizacionDefaultSection from '../../../components/profile/OrganizacionDefaultSection';
-import NotificacionesSection from '../../../components/profile/NotificacionesSection';
-import RolesSection from '../../../components/profile/RolesSection';
-import EliminarCuentaSection from '../../../components/profile/EliminarCuentaSection';
-import PreferenciasSection from '../../../components/profile/PreferenciasSection';
-import PermisosEfectivos from '../../../components/profile/PermisosEfectivos';
-import { CabeceraPerfil } from '../../../components/profile/CabeceraPerfil';
-import { NavPerfil, type SeccionPerfil } from '../../../components/profile/NavPerfil';
+import DatosPersonalesSection from '@/components/profile/DatosPersonalesSection';
+import SeguridadSection from '@/components/profile/SeguridadSection';
+import { DeviceSessions } from '@/components/profile/DeviceSessions';
+import NotificacionesSection from '@/components/profile/NotificacionesSection';
+import EliminarCuentaSection from '@/components/profile/EliminarCuentaSection';
+import PreferenciasSection from '@/components/profile/PreferenciasSection';
+import OrganizacionRolesSection, { type MembresiaPerfil } from '@/components/profile/OrganizacionRolesSection';
+import { CabeceraPerfil } from '@/components/profile/CabeceraPerfil';
+import { NavPerfil } from '@/components/profile/NavPerfil';
+import { DialogoFotoPerfil } from '@/components/profile/DialogoFotoPerfil';
+import { nombreCompleto, PARAMETRO_SECCION, seccionPerfilDe, vistaMovil, type SeccionPerfil } from '@/components/profile/perfilLogica';
 
-// Interfaces para los tipos de datos
-interface Profile {
+interface Perfil {
   id: string;
   email: string;
-  full_name?: string;
-  first_name?: string;
-  last_name?: string;
-  phone?: string;
-  avatar_url?: string;
-  lang?: string;
-  last_org_id?: string;
-  status: string;
-  created_at: string;
-}
-
-interface UserRole {
-  id: string;
-  role_name: string;
-  /** Decide «admin» con `is_super_admin` en RolesSection (nunca el nombre del rol). */
-  role_id?: number | null;
-  is_super_admin?: boolean | null;
-  description: string;
-  organization_id: string;
-  organization?: {
-    id: string;
-    name: string;
-    slug: string;
-    logo_url?: string;
-  };
-}
-
-interface SucursalMiembro {
-  id: number;
-  name: string;
-  organization_id: number;
-  is_active: boolean;
-}
-
-interface OrganizacionMiembro {
-  id: string;
-  name: string;
-  slug: string;
-}
-
-interface MfaMethod {
-  id: string;
-  factor_type: string;
-  status: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  phone?: string | null;
+  avatar_url?: string | null;
+  last_org_id?: number | null;
   created_at: string;
 }
 
@@ -94,8 +62,8 @@ interface FilaMiembro {
   role_id: number | null;
   is_super_admin?: boolean | null;
   organization_id: number;
-  roles?: { name?: string | null; description?: string | null } | null;
-  organizations?: { id?: number; name?: string | null } | null;
+  roles?: { name?: string | null } | null;
+  organizations?: { id?: number; name?: string | null; logo_url?: string | null } | null;
   member_branches?: { branch_id: number; branches?: { id: number; name: string; is_active: boolean } | null }[] | null;
   job_positions?: { name?: string | null } | null;
 }
@@ -106,296 +74,276 @@ function uno<T>(valor: T | T[] | null | undefined): T | null {
   return valor ?? null;
 }
 
-export default function PerfilUsuarioPage() {
-  const t = useTranslations('perfil');
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [userRoles, setUserRoles] = useState<UserRole[]>([]);
-  const [userBranches, setUserBranches] = useState<SucursalMiembro[]>([]);
-  const [organizations, setOrganizations] = useState<OrganizacionMiembro[]>([]);
-  const [cargo, setCargo] = useState<string | null>(null);
-  const [orgActivaId, setOrgActivaId] = useState<number | null>(null);
-  const [mfaMethods, setMfaMethods] = useState<MfaMethod[]>([]);
-  const [isSeller, setIsSeller] = useState<boolean>(false);
-  const [currentSection, setCurrentSection] = useState<SeccionPerfil>('datos-personales');
-  // En móvil controla si se muestra la lista de secciones o el contenido
-  const [mobileShowContent, setMobileShowContent] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(true);
+interface DatosPerfil {
+  user: User;
+  perfil: Perfil | null;
+  membresias: MembresiaPerfil[];
+  /** Todas, también las inactivas: «Eliminar cuenta» las necesita. */
+  organizaciones: { id: string; name: string; slug: string }[];
+  esVendedor: boolean;
+}
 
-  // Obtener los datos del usuario al cargar la página
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        setLoading(true);
+async function cargarDatosPerfil(sinNombre: string): Promise<DatosPerfil | null> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return null;
+  const userId = session.user.id;
 
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          toast.error(t('errores.sinSesion'));
-          return;
-        }
+  const [perfilRes, miembrosRes, orgsRes, vendedorRes] = await Promise.all([
+    supabase.from('profiles').select('id, email, first_name, last_name, phone, avatar_url, last_org_id, created_at').eq('id', userId).maybeSingle(),
+    supabase
+      .from('organization_members')
+      .select(
+        `role_id, is_super_admin, organization_id,
+         roles(name),
+         organizations(id, name, logo_url),
+         member_branches(branch_id, branches!inner(id, name, is_active)),
+         job_positions(name)`,
+      )
+      .eq('user_id', userId)
+      .eq('is_active', true),
+    supabase.from('organization_members').select('organizations(id, name)').eq('user_id', userId),
+    supabase.from('sellers').select('id').eq('auth_user_id', userId).maybeSingle(),
+  ]);
+  // Sin perfil ni membresías no hay pantalla que mostrar: es el estado de error.
+  if (perfilRes.error) throw perfilRes.error;
+  if (miembrosRes.error) throw miembrosRes.error;
 
-        setUser(session.user);
-        const orgActiva = getOrganizationId() || null;
-        setOrgActivaId(orgActiva);
-
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-
-        if (profileError) {
-          console.error('Error al obtener perfil:', profileError);
-          toast.error(t('errores.cargarPerfil'));
-        } else {
-          // `profiles` NO tiene `full_name` ni `lang`: los nombres reales son
-          // `first_name`/`last_name` y `preferred_language`. La página leía
-          // `profile.lang`, que llegaba siempre `undefined`, así que el
-          // selector de idioma arrancaba en «Español» aunque el usuario
-          // hubiera guardado otro (auditoría de perfil y cajas, 2026-09-22).
-          setProfile(
-            profileData
-              ? {
-                  ...profileData,
-                  lang: (profileData as { preferred_language?: string }).preferred_language,
-                  full_name:
-                    (profileData as { full_name?: string }).full_name ||
-                    [profileData.first_name, profileData.last_name]
-                      .filter(Boolean)
-                      .join(' ')
-                      .trim() ||
-                    undefined,
-                }
-              : profileData
-          );
-        }
-
-        // Membresías activas: rol, organización, sucursales asignadas y cargo,
-        // en una sola consulta (antes eran dos sobre la misma tabla).
-        const { data: miembros, error: miembrosError } = await supabase
-          .from('organization_members')
-          .select(`
-            role_id,
-            is_super_admin,
-            organization_id,
-            roles(name, description),
-            organizations(id, name),
-            member_branches(branch_id, branches!inner(id, name, is_active)),
-            job_positions(name)
-          `)
-          .eq('user_id', session.user.id)
-          .eq('is_active', true);
-
-        if (miembrosError) {
-          console.error('Error al obtener roles:', miembrosError);
-        } else {
-          const filas = (miembros ?? []) as unknown as FilaMiembro[];
-          // Solo las membresías con rol (antes, `roles!inner` en su propia consulta).
-          setUserRoles(
-            filas.filter((m) => !!uno(m.roles)).map((m, i) => {
-              const rol = uno(m.roles);
-              const org = uno(m.organizations);
-              const orgId = String(m.organization_id ?? '');
-              return {
-                id: `${m.role_id}_${m.organization_id}_${i}`,
-                role_name: rol?.name || t('sinNombre'),
-                role_id: m.role_id,
-                is_super_admin: m.is_super_admin === true,
-                description: rol?.description || '',
-                organization_id: orgId,
-                organization: { id: orgId, name: org?.name || t('sinNombre'), slug: orgId },
-              };
-            })
-          );
-          setUserBranches(
-            filas.flatMap((m) =>
-              (m.member_branches ?? []).flatMap((mb) => {
-                const b = uno(mb.branches);
-                return b ? [{ id: b.id, name: b.name, organization_id: m.organization_id, is_active: b.is_active }] : [];
-              })
-            )
-          );
-          const activa = filas.find((m) => m.organization_id === orgActiva) ?? null;
-          setCargo(uno(activa?.job_positions)?.name ?? null);
-        }
-
-        // Organizaciones a las que pertenece (también las inactivas: la
-        // sección «Eliminar cuenta» las necesita todas).
-        const { data: orgs, error: orgsError } = await supabase
-          .from('organization_members')
-          .select('organizations(id, name)')
-          .eq('user_id', session.user.id);
-        if (orgsError) {
-          console.error('Error al obtener organizaciones:', orgsError);
-        } else {
-          setOrganizations(
-            ((orgs ?? []) as unknown as { organizations?: { id?: number; name?: string | null } | null }[])
-              .map((o) => uno(o.organizations))
-              .filter((o): o is { id: number; name: string } => !!o?.id && !!o.name)
-              .map((o) => ({ id: String(o.id), name: o.name, slug: String(o.id) }))
-          );
-        }
-
-        // Métodos MFA configurados
-        try {
-          const { data } = await supabase.auth.mfa.listFactors();
-          const allFactors = [...(data?.totp || []), ...(data?.phone || [])];
-          setMfaMethods(
-            allFactors.map((factor) => ({
-              id: factor.id,
-              factor_type: factor.factor_type || 'totp',
-              status: factor.status || 'verified',
-              created_at: factor.created_at || new Date().toISOString(),
-            }))
-          );
-        } catch (mfaError) {
-          console.error('Error al obtener métodos MFA:', mfaError);
-        }
-
-        // ¿Es vendedor?
-        try {
-          const { data: sellerData } = await supabase
-            .from('sellers')
-            .select('id, status')
-            .eq('auth_user_id', session.user.id)
-            .single();
-          setIsSeller(!!sellerData);
-        } catch {
-          setIsSeller(false);
-        }
-      } catch (error) {
-        console.error('Error al cargar datos:', error);
-        toast.error(t('errores.cargarDatos'));
-      } finally {
-        setLoading(false);
-      }
+  const filas = (miembrosRes.data ?? []) as unknown as FilaMiembro[];
+  const membresias: MembresiaPerfil[] = filas.map((m) => {
+    const org = uno(m.organizations);
+    return {
+      organizacionId: m.organization_id,
+      nombre: org?.name || sinNombre,
+      logoUrl: org?.logo_url ?? null,
+      rol: uno(m.roles)?.name ?? null,
+      roleId: m.role_id,
+      esSuperAdmin: m.is_super_admin === true,
+      cargo: uno(m.job_positions)?.name ?? null,
+      sucursales: (m.member_branches ?? [])
+        .map((mb) => uno(mb.branches))
+        .filter((b): b is { id: number; name: string; is_active: boolean } => !!b && b.is_active !== false)
+        .map((b) => b.name),
     };
+  });
 
-    fetchUserData();
-    // Solo al montar: `t` cambia de identidad con el idioma y no debe recargar.
+  const organizaciones = orgsRes.error
+    ? []
+    : ((orgsRes.data ?? []) as unknown as { organizations?: { id?: number; name?: string | null } | null }[])
+        .map((o) => uno(o.organizations))
+        .filter((o): o is { id: number; name: string } => !!o?.id && !!o.name)
+        .map((o) => ({ id: String(o.id), name: o.name, slug: String(o.id) }));
+
+  return {
+    user: session.user,
+    perfil: (perfilRes.data as Perfil | null) ?? null,
+    membresias,
+    organizaciones,
+    esVendedor: !vendedorRes.error && !!vendedorRes.data,
+  };
+}
+
+function PerfilUsuario() {
+  const t = useTranslations('perfil');
+  const { leer, fijar } = useParametrosUrl();
+  const crudo = leer(PARAMETRO_SECCION);
+  const seccion = seccionPerfilDe(crudo);
+  const vista = vistaMovil(crudo);
+
+  const [estado, setEstado] = useState<'cargando' | 'error' | 'listo'>('cargando');
+  const [datos, setDatos] = useState<DatosPerfil | null>(null);
+  const [orgActivaId, setOrgActivaId] = useState<number | null>(null);
+  const [foto, setFoto] = useState(false);
+
+  const cargar = useCallback(async () => {
+    setEstado('cargando');
+    try {
+      setOrgActivaId(getOrganizationId() || null);
+      const d = await cargarDatosPerfil(t('sinNombre'));
+      if (!d) {
+        setEstado('error');
+        return;
+      }
+      setDatos(d);
+      setEstado('listo');
+    } catch (e) {
+      console.error('[perfil] no se pudo cargar', e);
+      setEstado('error');
+    }
+    // `t` cambia de identidad con el idioma y no debe recargar.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleSectionChange = (section: SeccionPerfil) => {
-    setCurrentSection(section);
-    // En móvil, al seleccionar una sección mostramos solo el contenido
-    setMobileShowContent(true);
-  };
+  useEffect(() => {
+    void cargar();
+  }, [cargar]);
 
-  const nombre = profile?.full_name || `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim();
-  const organizacionActiva = organizations.find((o) => Number(o.id) === orgActivaId)?.name ?? null;
-  const sucursalesActivas = userBranches.filter((b) => b.organization_id === orgActivaId && b.is_active !== false).map((b) => b.name);
+  const elegir = (s: SeccionPerfil) => fijar({ [PARAMETRO_SECCION]: s });
+  const actualizarPerfil = (cambios: Partial<Perfil>) =>
+    setDatos((d) => (d ? { ...d, perfil: d.perfil ? { ...d.perfil, ...cambios } : d.perfil } : d));
 
-  if (loading) {
+  const user = datos?.user ?? null;
+  const perfil = datos?.perfil ?? null;
+  const nombre = nombreCompleto(perfil?.first_name, perfil?.last_name);
+  const activa = datos?.membresias.find((m) => m.organizacionId === orgActivaId) ?? datos?.membresias[0] ?? null;
+  const tituloMovil = vista === 'seccion' ? t(`secciones.${seccion}`) : t('titulo');
+
+  const cabeceraMovil = (
+    <PageHeader titulo={tituloMovil} variante={vista === 'seccion' ? 'form' : 'list'} volverA={vista === 'seccion' ? '/app/perfil' : undefined} className="lg:hidden" />
+  );
+
+  if (estado === 'cargando') {
     return (
-      <div className="w-full space-y-4 bg-canvas p-3 sm:p-4 md:p-6" aria-busy="true">
-        <div className="flex items-center gap-4 rounded-xl border border-line bg-surface p-5">
-          <Skeleton className="h-20 w-20 rounded-full" />
+      <div className="w-full space-y-4 bg-canvas p-4 lg:space-y-5 lg:p-6" aria-busy="true">
+        {cabeceraMovil}
+        <span className="sr-only" role="status">
+          {t('cargando')}
+        </span>
+        <div className="flex items-center gap-4 rounded-xl border border-line bg-surface p-4 sm:p-5">
+          <Skeleton className="size-12 rounded-full sm:size-20" />
           <div className="flex-1 space-y-2">
             <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-4 w-72" />
+            <Skeleton className="h-4 w-full max-w-72" />
             <Skeleton className="h-5 w-56" />
           </div>
         </div>
-        <div className="flex flex-col gap-4 lg:flex-row">
-          <div className="w-full shrink-0 space-y-2 rounded-xl border border-line bg-surface p-2 lg:w-64">
+        <div className="flex flex-col gap-4 lg:flex-row lg:gap-5">
+          <div className="w-full shrink-0 space-y-2 rounded-xl border border-line bg-surface p-2 lg:w-[260px]">
             {Array.from({ length: 8 }).map((_, i) => (
               <Skeleton key={i} className="h-10 w-full rounded-lg" />
             ))}
           </div>
-          <div className="flex-1 space-y-4 rounded-xl border border-line bg-surface p-6">
-            <Skeleton className="h-7 w-48" />
+          <div className="hidden flex-1 space-y-4 rounded-xl border border-line bg-surface p-6 lg:block">
+            <Skeleton className="h-6 w-48" />
             <Skeleton className="h-4 w-72" />
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-14 w-full rounded-lg" />
-            ))}
+            <div className="grid grid-cols-2 gap-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full rounded-lg" />
+              ))}
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
+  if (estado === 'error' || !datos) {
+    return (
+      <div className="w-full bg-canvas p-4 lg:p-6">
+        {cabeceraMovil}
+        <div className="rounded-xl border border-line bg-surface">
+          <EmptyState variante="error" titulo={t('errorTitulo')} descripcion={t('errorDesc')} onReintentar={() => void cargar()} />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full space-y-4 bg-canvas p-3 sm:p-4 md:p-6">
-      <div className={mobileShowContent ? 'hidden lg:block' : 'block'}>
+    <div className="w-full space-y-4 bg-canvas p-4 lg:space-y-5 lg:p-6">
+      {cabeceraMovil}
+
+      <div className={vista === 'seccion' ? 'hidden lg:block' : 'block'}>
         <CabeceraPerfil
           nombre={nombre}
-          correo={user?.email ?? profile?.email ?? null}
-          avatarUrl={profile?.avatar_url}
-          creadoEn={profile?.created_at}
-          cargo={cargo}
-          organizacion={organizacionActiva}
-          sucursales={sucursalesActivas}
-          onEditar={() => handleSectionChange('datos-personales')}
+          correo={user?.email ?? perfil?.email ?? null}
+          avatarUrl={perfil?.avatar_url}
+          creadoEn={perfil?.created_at}
+          cargo={activa?.cargo ?? null}
+          organizacion={activa ? { id: activa.organizacionId, nombre: activa.nombre, logoUrl: activa.logoUrl } : null}
+          sucursales={activa?.sucursales ?? []}
+          onEditar={() => elegir('datos-personales')}
+          onCambiarFoto={() => setFoto(true)}
         />
       </div>
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-        <aside className={`w-full shrink-0 lg:w-64 ${mobileShowContent ? 'hidden lg:block' : 'block'}`}>
-          <NavPerfil activa={currentSection} onElegir={handleSectionChange} />
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-5">
+        <aside className={`w-full shrink-0 lg:w-[260px] ${vista === 'seccion' ? 'hidden lg:block' : 'block'}`}>
+          <NavPerfil activa={seccion} onElegir={elegir} />
+          <Link href="/auth/logout" className={clasesBoton({ variante: 'secundario', tamano: 'lg', anchoCompleto: true, className: 'mt-4 lg:hidden' })}>
+            <LogOut aria-hidden="true" className="size-5" strokeWidth={1.5} />
+            {t('cerrarSesion')}
+          </Link>
         </aside>
 
-        <main className={`min-w-0 flex-grow rounded-xl border border-line bg-surface p-4 sm:p-6 ${mobileShowContent ? 'block' : 'hidden lg:block'}`}>
-          {/* Volver a la lista de secciones (solo móvil) */}
-          <button
-            type="button"
-            onClick={() => setMobileShowContent(false)}
-            className="mb-4 flex items-center gap-1 rounded-md text-sm font-medium text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand lg:hidden"
-          >
-            <ChevronLeft aria-hidden="true" size={18} />
-            {t('volver')}
-          </button>
-
-          {currentSection === 'datos-personales' && (
-            <DatosPersonalesSection profile={profile} user={user} onProfileUpdated={setProfile} />
+        <main className={`min-w-0 flex-1 ${vista === 'seccion' ? 'block' : 'hidden lg:block'}`} aria-label={t(`secciones.${seccion}`)}>
+          {seccion === 'datos-personales' && (
+            <DatosPersonalesSection profile={perfil} user={user} cargo={activa?.cargo ?? null} onProfileUpdated={actualizarPerfil} />
           )}
 
-          {currentSection === 'seguridad' && (
-            <SeguridadSection user={user} mfaMethods={mfaMethods} onMfaUpdated={setMfaMethods} />
+          {seccion === 'seguridad' && <SeguridadSection user={user} />}
+
+          {seccion === 'preferencias' && <PreferenciasSection onIrANotificaciones={() => elegir('notificaciones')} />}
+
+          {seccion === 'sesiones' && <DeviceSessions />}
+
+          {seccion === 'organizacion-roles' && (
+            <OrganizacionRolesSection
+              userId={user?.id ?? null}
+              membresias={datos.membresias}
+              predeterminadaId={perfil?.last_org_id ?? null}
+              organizacionActiva={activa?.nombre ?? null}
+              onPredeterminada={(id) => actualizarPerfil({ last_org_id: id })}
+              onEditarDatos={() => elegir('datos-personales')}
+            />
           )}
 
-          {currentSection === 'preferencias' && <PreferenciasSection />}
-
-          {currentSection === 'sesiones' && <DeviceSessions />}
-
-          {currentSection === 'organizacion-roles' && (
-            <div className="flex flex-col gap-6">
-              <OrganizacionDefaultSection
-                user={user}
-                profile={profile}
-                organizations={organizations}
-                onProfileUpdated={setProfile}
-              />
-              <div className="border-t border-line" aria-hidden="true" />
-              <PermisosEfectivos organizacion={organizacionActiva} />
-              <div className="border-t border-line" aria-hidden="true" />
-              <RolesSection roles={userRoles} user={user} branches={userBranches} />
+          {seccion === 'notificaciones' && (
+            <div className="rounded-xl border border-line bg-surface p-4 sm:p-6">
+              <NotificacionesSection user={user} />
             </div>
           )}
 
-          {currentSection === 'notificaciones' && <NotificacionesSection user={user} />}
-
-          {currentSection === 'eliminar-cuenta' && (
-            <EliminarCuentaSection user={user} organizations={organizations} profileName={nombre || undefined} />
+          {seccion === 'eliminar-cuenta' && (
+            <div className="rounded-xl border border-line bg-surface p-4 sm:p-6">
+              <EliminarCuentaSection user={user} organizations={datos.organizaciones} profileName={nombre || undefined} />
+            </div>
           )}
 
-          {currentSection === 'panel-vendedor' && (
-            <PanelVendedor user={user} profile={profile} isSeller={isSeller} onBecameSeller={() => setIsSeller(true)} />
+          {seccion === 'panel-vendedor' && (
+            <div className="rounded-xl border border-line bg-surface p-4 sm:p-6">
+              <PanelVendedor
+                user={user}
+                perfil={perfil}
+                nombre={nombre}
+                isSeller={datos.esVendedor}
+                onBecameSeller={() => setDatos((d) => (d ? { ...d, esVendedor: true } : d))}
+              />
+            </div>
           )}
         </main>
       </div>
+
+      <DialogoFotoPerfil
+        abierto={foto}
+        onAbiertoChange={setFoto}
+        userId={user?.id ?? null}
+        nombre={nombre}
+        correo={user?.email ?? null}
+        fotoActual={perfil?.avatar_url ?? null}
+        onGuardada={({ avatar_url }) => actualizarPerfil({ avatar_url })}
+      />
     </div>
+  );
+}
+
+export default function PerfilUsuarioPage() {
+  // `useSearchParams` (sección en la URL) necesita un límite de Suspense en el App Router.
+  return (
+    <Suspense fallback={null}>
+      <PerfilUsuario />
+    </Suspense>
   );
 }
 
 function PanelVendedor({
   user,
-  profile,
+  perfil,
+  nombre,
   isSeller,
   onBecameSeller,
 }: {
   user: User | null;
-  profile: Profile | null;
+  perfil: Perfil | null;
+  nombre: string;
   isSeller: boolean;
   onBecameSeller: () => void;
 }) {
@@ -432,11 +380,7 @@ function PanelVendedor({
             <div className="flex-1">
               <h3 className="mb-1 text-base font-medium text-success-text">{t('yaEresTitulo')}</h3>
               <p className="mb-4 text-sm text-fg-secondary">{t('yaEresDesc')}</p>
-              <button
-                type="button"
-                onClick={abrirPanel}
-                className="inline-flex items-center gap-2 rounded-lg bg-brand-action px-4 py-2 text-sm font-medium text-fg-on-brand transition-colors hover:bg-brand-action-hover"
-              >
+              <button type="button" onClick={abrirPanel} className={clasesBoton({ variante: 'primario', tamano: 'md' })}>
                 {t('abrir')}
                 <ExternalLink aria-hidden="true" className="h-4 w-4" />
               </button>
@@ -444,17 +388,13 @@ function PanelVendedor({
           </div>
         </div>
       ) : (
-        <BecomeSellerSection user={user} profile={profile} onBecameSeller={onBecameSeller} />
+        <BecomeSellerSection user={user} perfil={perfil} nombre={nombre} onBecameSeller={onBecameSeller} />
       )}
     </div>
   );
 }
 
-function BecomeSellerSection({ user, profile, onBecameSeller }: {
-  user: User | null;
-  profile: Profile | null;
-  onBecameSeller: () => void;
-}) {
+function BecomeSellerSection({ user, perfil, nombre, onBecameSeller }: { user: User | null; perfil: Perfil | null; nombre: string; onBecameSeller: () => void }) {
   const t = useTranslations('perfil.vendedor');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -473,10 +413,10 @@ function BecomeSellerSection({ user, profile, onBecameSeller }: {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           auth_user_id: user.id,
-          name: profile?.full_name || `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || user.email.split('@')[0],
+          name: nombre || user.email.split('@')[0],
           email: user.email,
-          phone: profile?.phone || null,
-          avatar_url: profile?.avatar_url || null,
+          phone: perfil?.phone || null,
+          avatar_url: perfil?.avatar_url || null,
         }),
       });
 
@@ -507,12 +447,7 @@ function BecomeSellerSection({ user, profile, onBecameSeller }: {
           <h3 className="mb-1 text-base font-medium text-brand-deep">{t('convierteteTitulo')}</h3>
           <p className="mb-4 text-sm text-fg-secondary">{t('convierteteDesc')}</p>
           {error && <p className="mb-3 text-sm text-danger-text">{error}</p>}
-          <button
-            type="button"
-            onClick={handleBecomeSeller}
-            disabled={loading}
-            className="inline-flex items-center gap-2 rounded-lg bg-brand-action px-4 py-2 text-sm font-medium text-fg-on-brand transition-colors hover:bg-brand-action-hover disabled:cursor-not-allowed disabled:opacity-60"
-          >
+          <button type="button" onClick={handleBecomeSeller} disabled={loading} className={clasesBoton({ variante: 'primario', tamano: 'md' })}>
             {loading ? t('activando') : t('activar')}
             {!loading && <TrendingUp aria-hidden="true" className="h-4 w-4" />}
           </button>

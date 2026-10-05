@@ -2,6 +2,8 @@ import { supabase, ensureSessionSynced } from '@/lib/supabase/config';
 import { saveBiometricCredentials } from '@/lib/services/biometricService';
 import { guardarOrganizacionActiva, invalidateBranchIdCache } from '@/lib/hooks/useOrganization';
 import { destinoTrasLogin } from '@/lib/auth/recuperacionSesion';
+import { huellaDispositivo } from '@/lib/auth/huellaDispositivo';
+import { sesionAuthDeToken } from '@/lib/auth/sesionAuth';
 
 // Define Organization type
 export interface Organization {
@@ -451,6 +453,10 @@ export const registerUserDevice = async (sessionOrUserId: string | { user?: { id
       return;
     }
 
+    // Id de la sesión de Auth (claim `session_id`): permite cerrar la sesión de
+    // este dispositivo desde «Mi perfil › Sesiones». Sin él, el valor de siempre.
+    const sesionAuth = sesionAuthDeToken(currentSession.access_token) ?? userId;
+
     // Buscar si ya existe un dispositivo con esta huella digital
     const { data: existingDevice } = await supabase
       .from('user_devices')
@@ -465,6 +471,7 @@ export const registerUserDevice = async (sessionOrUserId: string | { user?: { id
         .from('user_devices')
         .update({
           last_active_at: new Date().toISOString(),
+          session_id: sesionAuth,
           is_active: true,
           revoked_at: null,
           user_agent: userAgent,
@@ -483,7 +490,7 @@ export const registerUserDevice = async (sessionOrUserId: string | { user?: { id
         .from('user_devices')
         .insert({
           user_id: userId,
-          session_id: userId,
+          session_id: sesionAuth,
           device_name: deviceName,
           device_type: deviceType,
           device_fingerprint: deviceFingerprint,
@@ -610,34 +617,5 @@ const detectBrowserInfo = () => {
   return browserInfo;
 };
 
-// Generar huella digital simple del dispositivo
-const generateDeviceFingerprint = async (): Promise<string> => {
-  const components = [
-    window.navigator.userAgent,
-    window.navigator.language,
-    window.screen.colorDepth,
-    window.screen.width + 'x' + window.screen.height,
-    new Date().getTimezoneOffset(),
-    !!window.sessionStorage,
-    !!window.localStorage,
-    !!window.indexedDB,
-  ];
-  
-  const fingerprint = components.join('###');
-  
-  // Crear hash usando SubtleCrypto si está disponible
-  if (window.crypto && window.crypto.subtle) {
-    try {
-      const msgBuffer = new TextEncoder().encode(fingerprint);
-      const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    } catch {
-      // Fallback si falla la API de Crypto
-      return btoa(fingerprint).substring(0, 64);
-    }
-  } else {
-    // Fallback para navegadores que no soportan SubtleCrypto
-    return btoa(fingerprint).substring(0, 64);
-  }
-};
+// La huella vive en `huellaDispositivo.ts` (la comparte «Mi perfil › Sesiones»).
+const generateDeviceFingerprint = huellaDispositivo;

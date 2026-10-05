@@ -4,18 +4,18 @@
  * Ficha del cliente (Figma 06 Clientes, DET-*): cabecera del kit
  * (PageHeader `detail` con migas reales, badge de estado, «Editar»,
  * «Registrar pago» y el menú «⋯» con las mismas acciones que el listado) y
- * las pestañas de siempre. Estados de carga y error con el kit.
+ * las pestañas de siempre en el `TabBar` del kit, con la elegida en
+ * `?pestana=` (sin ella, «Resumen»). Estados de carga y error con el kit.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { HandCoins, Pencil, User, Building2 } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase/config';
-import { EmptyState, PageHeader, RowActionsMenu, StatusBadge } from '@/components/kit';
+import { EmptyState, PageHeader, RowActionsMenu, StatusBadge, TabBar, idPanel, idPestana, useOpcionUrl, type PestanaTab } from '@/components/kit';
 import { documentoCliente } from '@/lib/services/clientesListadoService';
 import { construirAccionesCliente } from '@/components/clientes/listado/accionesCliente';
 import { useOperacionesClientes } from '@/components/clientes/listado/useOperacionesClientes';
@@ -64,8 +64,11 @@ interface Cliente {
 /** Por qué no cargó la ficha: un código que se traduce o el mensaje de Supabase. */
 type ErrorFicha = { codigo: 'sinId' | 'noExiste' | 'carga' } | { mensaje: string };
 
-const PESTANA =
-  'min-w-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm text-fg-secondary data-[state=active]:bg-surface data-[state=active]:text-fg data-[state=active]:shadow-sm';
+const PESTANAS = ['resumen', 'info', 'oportunidades', 'timeline', 'cuentas', 'notas', 'contactos'] as const;
+type Pestana = (typeof PESTANAS)[number];
+/** Clave de cada pestaña en `clientes.ficha.pestanas` (la de la URL `timeline` se llama «actividad»). */
+const ETIQUETA: Record<Pestana, string> = { resumen: 'resumen', info: 'info', oportunidades: 'oportunidades', timeline: 'actividad', cuentas: 'cuentas', notas: 'notas', contactos: 'contactos' };
+const ID_PESTANAS = 'ficha-cliente';
 
 export default function PerfilCliente() {
   const params = useParams();
@@ -80,6 +83,7 @@ export default function PerfilCliente() {
   const [error, setError] = useState<ErrorFicha | null>(null);
   const [recarga, setRecarga] = useState(0);
   const [eliminarAbierto, setEliminarAbierto] = useState(false);
+  const [pestanaUrl, setPestana] = useOpcionUrl<Pestana>('pestana', PESTANAS, 'resumen');
 
   const recargar = useCallback(() => setRecarga((n) => n + 1), []);
   const idsCliente = useMemo(() => (id ? [id] : []), [id]);
@@ -185,6 +189,10 @@ export default function PerfilCliente() {
   const desde = instante(cliente.created_at, { day: 'numeric', month: 'short', year: 'numeric' });
   const subtitulo = [desde && t('pagina.clienteDesde', { fecha: desde }), documento].filter(Boolean).join(' · ');
 
+  // «Contactos» solo existe en empresas: en una persona, `?pestana=contactos` abre «Resumen».
+  const pestana: Pestana = pestanaUrl === 'contactos' && !esEmpresa ? 'resumen' : pestanaUrl;
+  const pestanas: PestanaTab<Pestana>[] = PESTANAS.filter((p) => p !== 'contactos' || esEmpresa).map((p) => ({ valor: p, etiqueta: t(`pestanas.${ETIQUETA[p]}`) }));
+
   const acciones = construirAccionesCliente(
     { id: cliente.id, nombre, phone: cliente.phone, status: cliente.status ?? 'active' },
     {
@@ -240,51 +248,35 @@ export default function PerfilCliente() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="col-span-1 min-w-0 lg:col-span-2">
-          <Tabs defaultValue="resumen" className="w-full">
-            <TabsList className="mb-6 flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-lg border border-line bg-subtle p-1">
-              <TabsTrigger value="resumen" className={PESTANA}>{t('pestanas.resumen')}</TabsTrigger>
-              <TabsTrigger value="info" className={PESTANA}>{t('pestanas.info')}</TabsTrigger>
-              <TabsTrigger value="oportunidades" className={PESTANA}>{t('pestanas.oportunidades')}</TabsTrigger>
-              <TabsTrigger value="timeline" className={PESTANA}>{t('pestanas.actividad')}</TabsTrigger>
-              <TabsTrigger value="cuentas" className={PESTANA}>{t('pestanas.cuentas')}</TabsTrigger>
-              <TabsTrigger value="notas" className={PESTANA}>{t('pestanas.notas')}</TabsTrigger>
-              {esEmpresa && (
-                <TabsTrigger value="contactos" className={PESTANA}>{t('pestanas.contactos')}</TabsTrigger>
-              )}
-            </TabsList>
-
-            <TabsContent value="resumen">
-              <ResumenTab clienteId={cliente.id} organizationId={cliente.organization_id} vacio={crm.vacioResumen} />
-            </TabsContent>
-            <TabsContent value="info">
-              <InfoTab clienteId={cliente.id} organizationId={cliente.organization_id} />
-            </TabsContent>
-            <TabsContent value="oportunidades">
+          <TabBar id={ID_PESTANAS} etiqueta={t('pestanasAria')} valor={pestana} onValorChange={setPestana} pestanas={pestanas} className="mb-6" />
+          <div role="tabpanel" id={idPanel(ID_PESTANAS, pestana)} aria-labelledby={idPestana(ID_PESTANAS, pestana)} tabIndex={0} className="focus-visible:outline-none">
+            {/* Solo se monta la pestaña activa (como hacía Radix): cada una pide sus datos al abrirse. */}
+            {pestana === 'resumen' && <ResumenTab clienteId={cliente.id} organizationId={cliente.organization_id} vacio={crm.vacioResumen} />}
+            {pestana === 'info' && <InfoTab clienteId={cliente.id} organizationId={cliente.organization_id} />}
+            {pestana === 'oportunidades' && (
               <OportunidadesTab clienteId={cliente.id} organizationId={cliente.organization_id} onNuevaOportunidad={crm.onNuevaOportunidad} recarga={crm.recarga} />
-            </TabsContent>
-            <TabsContent value="timeline">
-              <TimelineTab key={crm.recarga} clienteId={cliente.id} organizationId={cliente.organization_id} />
-            </TabsContent>
-            <TabsContent value="cuentas">
-              <CuentasTab clienteId={cliente.id} organizationId={cliente.organization_id} />
-              {/* Antes en /app/crm/clientes/[id] (D1): folios del PMS. */}
-              <div className="mt-6">
-                <CustomerFoliosSection customerId={cliente.id} />
-              </div>
-            </TabsContent>
-            <TabsContent value="notas">
-              <NotasArchivosTab clienteId={cliente.id} organizationId={cliente.organization_id} />
-              {/* Antes en /app/crm/clientes/[id] (D1): documentos del CRM. */}
-              <div className="mt-6">
-                <DocumentUploader organizationId={cliente.organization_id} relatedType="customer" relatedId={cliente.id} title={tCrm('documentos')} />
-              </div>
-            </TabsContent>
-            {esEmpresa && (
-              <TabsContent value="contactos">
-                <CompanyContactsManager companyId={cliente.id} organizationId={cliente.organization_id} />
-              </TabsContent>
             )}
-          </Tabs>
+            {pestana === 'timeline' && <TimelineTab key={crm.recarga} clienteId={cliente.id} organizationId={cliente.organization_id} />}
+            {pestana === 'cuentas' && (
+              <>
+                <CuentasTab clienteId={cliente.id} organizationId={cliente.organization_id} />
+                {/* Antes en /app/crm/clientes/[id] (D1): folios del PMS. */}
+                <div className="mt-6">
+                  <CustomerFoliosSection customerId={cliente.id} />
+                </div>
+              </>
+            )}
+            {pestana === 'notas' && (
+              <>
+                <NotasArchivosTab clienteId={cliente.id} organizationId={cliente.organization_id} />
+                {/* Antes en /app/crm/clientes/[id] (D1): documentos del CRM. */}
+                <div className="mt-6">
+                  <DocumentUploader organizationId={cliente.organization_id} relatedType="customer" relatedId={cliente.id} title={tCrm('documentos')} />
+                </div>
+              </>
+            )}
+            {pestana === 'contactos' && <CompanyContactsManager companyId={cliente.id} organizationId={cliente.organization_id} />}
+          </div>
         </div>
 
         <div className="col-span-1">

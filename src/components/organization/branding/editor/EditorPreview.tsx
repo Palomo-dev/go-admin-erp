@@ -14,10 +14,16 @@ interface EditorPreviewProps {
   refreshKey?: number;
   /** Secciones actuales del editor (para preview vivo por postMessage). */
   liveSections?: WebsitePageSection[];
-  /** ID de sección activa (para scroll automático en el iframe). */
+  /**
+   * ID de sección activa (para scroll automático en el iframe). También puede
+   * ser una zona global (`header` / `footer`): el sitio la resalta.
+   */
   activeSectionId?: string | null;
-  /** Callback cuando el usuario clickea una sección dentro del iframe. */
-  onSelectSectionFromCanvas?: (sectionId: string) => void;
+  /**
+   * Callback cuando el usuario clickea una sección dentro del iframe. En las
+   * zonas globales llega `enlace: true` si el clic cayó en un enlace.
+   */
+  onSelectSectionFromCanvas?: (sectionId: string, detalle: { enlace: boolean }) => void;
 }
 
 const DEVICE_WIDTHS: Record<DevicePreview, string> = {
@@ -27,13 +33,27 @@ const DEVICE_WIDTHS: Record<DevicePreview, string> = {
   mobile: '375px',
 };
 
-/** Orígenes del sitio permitidos para recibir postMessage. */
+/**
+ * Orígenes de desarrollo permitidos para recibir postMessage. En producción el
+ * sitio vive en el dominio de la organización (`{subdominio}.goadmin.io` o un
+ * dominio propio): se acepta además el origen del `previewUrl` del lienzo.
+ */
 const ALLOWED_SITE_ORIGINS = [
   'http://localhost:3002',
   'http://localhost:3000',
   'https://erp.goadmin.io',
   'https://go-admin-erp.vercel.app',
 ];
+
+/** Origen del sitio que pinta el lienzo (`null` si la URL no es válida). */
+function origenLienzo(previewUrl: string | null): string | null {
+  if (!previewUrl) return null;
+  try {
+    return new URL(previewUrl).origin;
+  } catch {
+    return null;
+  }
+}
 
 export default function EditorPreview({
   previewUrl,
@@ -49,6 +69,11 @@ export default function EditorPreview({
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSentSections = useRef<string>('');
+  // Selección vigente, para volver a resaltarla cuando el iframe recarga.
+  const seleccionActual = useRef<string | null>(activeSectionId ?? null);
+  useEffect(() => {
+    seleccionActual.current = activeSectionId ?? null;
+  }, [activeSectionId]);
 
   const width = DEVICE_WIDTHS[devicePreview];
 
@@ -101,16 +126,23 @@ export default function EditorPreview({
     };
   }, [liveSections, sendPreviewMessage]);
 
-  // Scroll a la sección activa
+  // Scroll a la sección activa y aviso de la selección (el sitio resalta la
+  // zona global seleccionada; con `null` quita el resaltado).
   useEffect(() => {
     const iframe = iframeRef.current;
-    if (!iframe || !iframe.contentWindow || !activeSectionId) return;
+    if (!iframe || !iframe.contentWindow) return;
     try {
       const targetOrigin = previewUrl ? new URL(previewUrl).origin : '*';
       iframe.contentWindow.postMessage(
-        { type: 'goadmin:scroll', sectionId: activeSectionId },
+        { type: 'goadmin:select', sectionId: activeSectionId ?? null },
         targetOrigin,
       );
+      if (activeSectionId) {
+        iframe.contentWindow.postMessage(
+          { type: 'goadmin:scroll', sectionId: activeSectionId },
+          targetOrigin,
+        );
+      }
     } catch { /* noop */ }
   }, [activeSectionId, previewUrl]);
 
@@ -119,15 +151,15 @@ export default function EditorPreview({
     if (!onSelectSectionFromCanvas) return;
     const handler = (e: MessageEvent) => {
       if (!e.data || typeof e.data !== 'object') return;
-      // Validar origen si es posible
-      if (e.origin && !ALLOWED_SITE_ORIGINS.includes(e.origin)) return;
+      // Validar origen si es posible: el del sitio del lienzo o uno de desarrollo
+      if (e.origin && e.origin !== origenLienzo(previewUrl) && !ALLOWED_SITE_ORIGINS.includes(e.origin)) return;
       if (e.data.type === 'goadmin:select' && typeof e.data.sectionId === 'string') {
-        onSelectSectionFromCanvas(e.data.sectionId);
+        onSelectSectionFromCanvas(e.data.sectionId, { enlace: e.data.enlace === true });
       }
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
-  }, [onSelectSectionFromCanvas]);
+  }, [onSelectSectionFromCanvas, previewUrl]);
 
   // Construir URL con ?preview=1 para activar el PreviewBridge del sitio
   const previewUrlWithFlag = previewUrl
@@ -226,7 +258,16 @@ export default function EditorPreview({
               setHasError(false);
               // Reenviar secciones tras recarga del iframe
               lastSentSections.current = '';
-              setTimeout(() => sendPreviewMessage(), 200);
+              setTimeout(() => {
+                sendPreviewMessage();
+                const seleccion = seleccionActual.current;
+                if (seleccion && iframeRef.current?.contentWindow) {
+                  try {
+                    const targetOrigin = previewUrl ? new URL(previewUrl).origin : '*';
+                    iframeRef.current.contentWindow.postMessage({ type: 'goadmin:select', sectionId: seleccion }, targetOrigin);
+                  } catch { /* noop */ }
+                }
+              }, 200);
             }}
             onError={() => {
               setIsLoading(false);

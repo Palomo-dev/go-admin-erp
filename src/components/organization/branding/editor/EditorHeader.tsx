@@ -20,6 +20,7 @@ import {
   Globe,
 } from 'lucide-react';
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import { cn } from '@/utils/Utils';
 import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
@@ -54,6 +55,17 @@ interface EditorHeaderProps {
   selectedBranch?: Branch | null;
   // Indica si la página actual es global (para advertencia al editar desde outlet)
   currentPageIsGlobal?: boolean;
+  /**
+   * Sitios V2 (aditivo; sin estas props el encabezado es el de siempre):
+   * `controlSitio` = selector «Editando: …», `accionesSitio` = estado del borrador, historial y
+   * publicar, `banda` = aviso bajo el encabezado, `etiquetaGuardar` = texto del botón guardar.
+   * `ocultarIndicadorOutlet` quita el chip legacy «Global / outlet» cuando manda el selector V2.
+   */
+  controlSitio?: ReactNode;
+  accionesSitio?: ReactNode;
+  banda?: ReactNode;
+  etiquetaGuardar?: string;
+  ocultarIndicadorOutlet?: boolean;
 }
 
 export default function EditorHeader({
@@ -74,9 +86,13 @@ export default function EditorHeader({
   onOutletChange,
   selectedBranch,
   currentPageIsGlobal,
+  controlSitio,
+  accionesSitio,
+  banda,
+  etiquetaGuardar,
+  ocultarIndicadorOutlet,
 }: EditorHeaderProps) {
   const t = useTranslations('branding.editor.header');
-  const currentPage = pages.find((p) => p.id === currentPageId);
 
   // F9.4 — Agrupar páginas por tipo: Páginas · Plantillas de detalle · Flujo de compra
   const regularPages = pages.filter((p) => !DETAIL_TYPES.has(p.page_type) && !FLOW_TYPES.has(p.page_type));
@@ -142,8 +158,10 @@ export default function EditorHeader({
           </Select>
         </div>
 
+        {controlSitio}
+
         {/* Fase 4 — Indicador visual del outlet activo */}
-        {selectedBranch ? (
+        {ocultarIndicadorOutlet ? null : selectedBranch ? (
           <Badge variant="outline" className="gap-1 bg-white/10 border-white/20 text-white dark:bg-gray-800/10 dark:border-gray-700/20 dark:text-gray-200">
             {selectedBranch.name}
             {selectedBranch.branch_type && (
@@ -209,6 +227,8 @@ export default function EditorHeader({
           />
         )}
 
+        {accionesSitio}
+
         {previewUrl && (
           <a
             href={previewUrl}
@@ -237,7 +257,7 @@ export default function EditorHeader({
           ) : (
             <Save className="h-3.5 w-3.5 mr-1.5" />
           )}
-          {t('save')}
+          {etiquetaGuardar ?? t('save')}
         </Button>
       </div>
 
@@ -248,6 +268,8 @@ export default function EditorHeader({
           todos los outlets de la organización.
         </div>
       )}
+
+      {banda}
     </div>
   );
 }

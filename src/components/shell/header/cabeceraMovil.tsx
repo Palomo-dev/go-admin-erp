@@ -44,6 +44,13 @@ export interface CabeceraMovilPagina {
   modo?: ModoCabeceraMovil;
   titulo?: string;
   subtitulo?: string;
+  /**
+   * Modo página: el título se vuelve un botón «Título ▾» que abre un selector
+   * de la página (Pipeline: elegir embudo). Sin él, el título es texto.
+   */
+  onTitulo?: () => void;
+  /** Nombre accesible del botón del título («Cambiar de embudo: Ventas»). */
+  tituloAria?: string;
   /** Acción a la derecha en modo página («⋯», «Guardar», filtros…) y en modo POS («⋯ Caja y dispositivo»). */
   accion?: ReactNode;
   /** A dónde vuelve «←» si no hay historial (por defecto, la página padre del menú). */

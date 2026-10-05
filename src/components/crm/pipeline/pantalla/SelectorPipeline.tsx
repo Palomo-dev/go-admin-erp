@@ -36,7 +36,8 @@ export interface SelectorPipelineProps {
   className?: string;
 }
 
-const TIPO: Record<string, 'ventas' | 'onboarding' | 'renovacion'> = { sales: 'ventas', onboarding: 'onboarding', renewal: 'renovacion' };
+/** Tipo del pipeline → clave de `crm.oportunidad.selector.tipos` (también lo usa la hoja móvil). */
+export const TIPO: Record<string, 'ventas' | 'onboarding' | 'renovacion'> = { sales: 'ventas', onboarding: 'onboarding', renewal: 'renovacion' };
 
 export function SelectorPipeline(p: SelectorPipelineProps) {
   const t = useTranslations('crm.oportunidad.selector');

@@ -29,7 +29,6 @@ import {
   Layout,
   Palette,
   Search,
-  Menu,
   LayoutPanelLeft,
   Database,
   GalleryHorizontalEnd,
@@ -42,6 +41,8 @@ import {
   Layers,
   Bookmark,
   PaintRoller,
+  Lock,
+  type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { useTranslations } from 'next-intl';
@@ -66,9 +67,10 @@ import { getSectionSyncStatus, type SectionManifest } from '@/lib/services/websi
 import { getDefaultSectionsForPageType } from '@/lib/services/website/defaultProductDetailSections';
 import FieldRenderer from './fields/FieldRenderer';
 import type { ThemePalette, Viewport } from './fields/types';
+import { ETIQUETA_FILA_ZONA, type ZonaGlobal } from './inspector/zonaGlobal';
 
 // Mapa de iconos por nombre (para SectionListItem)
-const ICON_MAP: Record<string, any> = {
+const ICON_MAP: Record<string, LucideIcon> = {
   Image: Layout,
   BedDouble: Layout,
   Sparkles: Layout,
@@ -99,7 +101,7 @@ const ICON_MAP: Record<string, any> = {
 };
 
 // Orden y etiquetas de los grupos del editor (F0.4)
-const GROUP_ORDER: { id: FieldGroup; label: string; icon: any }[] = [
+const GROUP_ORDER: { id: FieldGroup; label: string; icon: LucideIcon }[] = [
   { id: 'content', label: 'Contenido', icon: Type },
   { id: 'data', label: 'Datos', icon: Database },
   { id: 'layout', label: 'Diseño', icon: Layout },
@@ -114,7 +116,7 @@ const GROUP_ORDER: { id: FieldGroup; label: string; icon: any }[] = [
  */
 function isFieldVisible(
   field: ContentFieldDef,
-  content: Record<string, any>,
+  content: Record<string, unknown>,
   variant: string,
 ): boolean {
   const c = field.showIf;
@@ -132,7 +134,7 @@ interface EditorSidebarProps {
   sections: WebsitePageSection[];
   activeSectionId: string | null;
   onSelectSection: (sectionId: string | null) => void;
-  onUpdateSectionContent: (sectionId: string, content: Record<string, any>) => void;
+  onUpdateSectionContent: (sectionId: string, content: Record<string, unknown>) => void;
   onUpdateSectionVariant: (sectionId: string, variant: string) => void;
   onToggleVisibility: (sectionId: string, visible: boolean) => void;
   onDeleteSection: (sectionId: string) => void;
@@ -144,12 +146,10 @@ interface EditorSidebarProps {
   showPageSEO: boolean;
   onTogglePageSEO: () => void;
   pageSEOContent?: React.ReactNode;
-  showMenuConfig: boolean;
-  onToggleMenuConfig: () => void;
-  menuConfigContent?: React.ReactNode;
-  showFooterConfig: boolean;
-  onToggleFooterConfig: () => void;
-  footerConfigContent?: React.ReactNode;
+  /** Zona global seleccionada (encabezado o pie): su ajuste vive en el inspector. */
+  zonaGlobalActiva?: ZonaGlobal | null;
+  /** Selecciona el encabezado o el pie (filas fijas de la lista). */
+  onSelectZonaGlobal?: (zona: ZonaGlobal) => void;
   organizationId?: number;
   /** Paleta del tema activo para ColorField (F0.3). */
   themePalette?: ThemePalette;
@@ -178,6 +178,11 @@ interface EditorSidebarProps {
   // F9.2 — Secciones por defecto (materialización)
   pageType?: string;
   onMaterializeDefaultSections?: () => void;
+  /**
+   * Sitios V2 de sede (aditivo): contenido bajo cada sección de la lista, por ejemplo el chip
+   * «Hereda / Propia» y «Restablecer». Sin la prop la lista es la de siempre.
+   */
+  renderExtraSeccion?: (section: WebsitePageSection, activa: boolean) => React.ReactNode;
 }
 
 export default function EditorSidebar({
@@ -196,12 +201,8 @@ export default function EditorSidebar({
   showPageSEO,
   onTogglePageSEO,
   pageSEOContent,
-  showMenuConfig,
-  onToggleMenuConfig,
-  menuConfigContent,
-  showFooterConfig,
-  onToggleFooterConfig,
-  footerConfigContent,
+  zonaGlobalActiva = null,
+  onSelectZonaGlobal,
   organizationId,
   themePalette,
   activeViewport,
@@ -222,6 +223,7 @@ export default function EditorSidebar({
   pageLayoutContent,
   pageType,
   onMaterializeDefaultSections,
+  renderExtraSeccion,
 }: EditorSidebarProps) {
   const t = useTranslations('branding.editor.sidebar');
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -349,20 +351,6 @@ export default function EditorSidebar({
           t('pageSEO'),
           pageSEOContent,
         )}
-        {renderCollapsiblePanel(
-          showMenuConfig,
-          onToggleMenuConfig,
-          <Menu className="h-4 w-4 text-gray-500 dark:text-gray-400" />,
-          t('menuConfig'),
-          menuConfigContent,
-        )}
-        {renderCollapsiblePanel(
-          showFooterConfig,
-          onToggleFooterConfig,
-          <LayoutPanelLeft className="h-4 w-4 text-gray-500 dark:text-gray-400" />,
-          'Footer',
-          footerConfigContent,
-        )}
         {showPageLayout !== undefined && onTogglePageLayout &&
           renderCollapsiblePanel(
             showPageLayout,
@@ -414,11 +402,20 @@ export default function EditorSidebar({
           );
         })()}
 
+        {/* Encabezado fijo arriba: global, no se arrastra (Figma «05 Editor»). */}
+        {onSelectZonaGlobal && (
+          <FilaZonaGlobal
+            zona="header"
+            activa={zonaGlobalActiva === 'header'}
+            onSelect={() => onSelectZonaGlobal('header')}
+          />
+        )}
+
         {filteredSections.map((section, index) => {
           const def = getSectionDefinition(section.section_type);
           const isActive = activeSectionId === section.id;
           const IconComponent = def ? ICON_MAP[def.icon] || Layout : Layout;
-          return (
+          const item = (
             <SectionListItem
               key={section.id}
               section={section}
@@ -445,7 +442,23 @@ export default function EditorSidebar({
               onDragEnd={handleDragEnd}
             />
           );
+          if (!renderExtraSeccion) return item;
+          return (
+            <div key={section.id}>
+              {item}
+              {renderExtraSeccion(section, isActive)}
+            </div>
+          );
         })}
+
+        {/* Pie fijo abajo: global, no se arrastra. */}
+        {onSelectZonaGlobal && (
+          <FilaZonaGlobal
+            zona="footer"
+            activa={zonaGlobalActiva === 'footer'}
+            onSelect={() => onSelectZonaGlobal('footer')}
+          />
+        )}
       </div>
 
       <div className="p-3 border-t border-gray-200 dark:border-gray-700/50">
@@ -464,17 +477,65 @@ export default function EditorSidebar({
 }
 
 // ============================================================
+// FILA FIJA DE ZONA GLOBAL (encabezado / pie)
+// ============================================================
+
+function FilaZonaGlobal({
+  zona,
+  activa,
+  onSelect,
+}: {
+  zona: ZonaGlobal;
+  activa: boolean;
+  onSelect: () => void;
+}) {
+  const etiqueta = ETIQUETA_FILA_ZONA[zona];
+  return (
+    <div className="border-b border-gray-200 dark:border-gray-700/50" data-zona-global={zona}>
+      <button
+        type="button"
+        onClick={onSelect}
+        aria-pressed={activa}
+        aria-label={`${etiqueta}: aparece en todas las páginas${activa ? ', seleccionado' : ''}`}
+        className={cn(
+          'w-full flex items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-gray-100 dark:hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-400',
+          activa && 'bg-blue-50 dark:bg-white/10',
+        )}
+      >
+        {/* Sin asa: el encabezado y el pie no se reordenan. */}
+        <span className="w-3.5 shrink-0" aria-hidden="true" />
+        <Lock
+          aria-hidden="true"
+          className={cn('h-4 w-4 shrink-0', activa ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500')}
+        />
+        <span
+          className={cn(
+            'flex-1 min-w-0 truncate text-sm font-medium',
+            activa ? 'text-blue-700 dark:text-blue-300' : 'text-gray-800 dark:text-white',
+          )}
+        >
+          {etiqueta}
+        </span>
+        <span className="shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-white/10 dark:text-gray-400">
+          Global
+        </span>
+      </button>
+    </div>
+  );
+}
+
+// ============================================================
 // SECTION LIST ITEM (Collapsible) — usa FieldRenderer + Accordion
 // ============================================================
 
 interface SectionListItemProps {
   section: WebsitePageSection;
   definition: SectionTypeDefinition | undefined;
-  IconComponent: any;
+  IconComponent: LucideIcon;
   isActive: boolean;
   index: number;
   onSelect: () => void;
-  onUpdateContent: (content: Record<string, any>) => void;
+  onUpdateContent: (content: Record<string, unknown>) => void;
   onUpdateVariant: (variant: string) => void;
   onToggleVisibility: (visible: boolean) => void;
   onDelete: () => void;
@@ -549,10 +610,10 @@ function SectionListItem({
   const handleFieldChange = (field: ContentFieldDef, v: unknown) => {
     // `spacing` escribe múltiples keys: v es el content mergeado completo.
     if (field.type === 'spacing') {
-      onUpdateContent(v as Record<string, any>);
+      onUpdateContent(v as Record<string, unknown>);
       return;
     }
-    const next = { ...section.content, [field.key]: v };
+    const next: Record<string, unknown> = { ...section.content, [field.key]: v };
     // Exclusión mutua: show_icon y show_image en categories_grid.
     // Al activar uno, se desactiva el otro para evitar conflictos de media_source.
     if (field.key === 'show_icon' && v === true) {

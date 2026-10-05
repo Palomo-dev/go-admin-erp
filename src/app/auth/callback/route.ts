@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { parseCodigoTarifaPorDefecto, setOrganizationDefaultTaxByCode } from '@/lib/services/defaultTaxService';
+import { getServiceClient } from '@/lib/supabase/server-service';
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
@@ -509,7 +510,10 @@ export async function completeSignupAfterEmailConfirmation(supabase: SupabaseCli
       const trialDays = planId === 5 ? 30 : (planId === 3 ? 30 : (planId === 2 ? 15 : 0));
       const periodDays = billingPeriod === 'yearly' ? 365 : 30;
       
-      const { error: subscriptionError } = await supabase
+      // `subscriptions` ya no admite escritura con la sesión del usuario (bloque 1 de
+      // seguridad de organización): la escribe el servidor. La organización es la recién
+      // creada arriba en esta misma función, nunca un dato del navegador.
+      const { error: subscriptionError } = await getServiceClient()
         .from('subscriptions')
         .update({
           plan_id: planId,

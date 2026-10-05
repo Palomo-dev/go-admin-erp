@@ -13,6 +13,16 @@ import {
 } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Plus, X, GripVertical } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
+/**
+ * Grupo de ajustes que pinta el panel. Sin grupo pinta todo, como siempre; el
+ * inspector del encabezado lo parte en pestañas (Figma «05 Editor»):
+ * - `diseno`: posición del logo y apertura del menú del diseño «Minimal».
+ * - `contenido`: menú, buscador, categorías, barra superior, botón y acciones.
+ * - `estilo`: colores, iconos y forma del botón de acción.
+ */
+export type GrupoHeaderOptions = 'diseno' | 'contenido' | 'estilo';
 
 interface HeaderOptionsPanelProps {
   settings: {
@@ -62,16 +72,29 @@ interface HeaderOptionsPanelProps {
   };
   onUpdate: (updates: Record<string, string | number | boolean | null | string[]>) => void;
   availableMenus?: { id: string; name: string }[];
+  /** Solo un grupo de ajustes (pestañas del inspector). Sin él, todos. */
+  grupo?: GrupoHeaderOptions;
+  /** Abre el constructor del menú del encabezado (botón «Editar menú»). */
+  onEditarMenu?: () => void;
 }
 
 export default function HeaderOptionsPanel({
   settings,
   onUpdate,
   availableMenus = [],
+  grupo,
+  onEditarMenu,
 }: HeaderOptionsPanelProps) {
+  const ver = (g: GrupoHeaderOptions) => grupo === undefined || grupo === g;
+  const botonEditarMenu = onEditarMenu ? (
+    <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 text-xs" onClick={onEditarMenu}>
+      Editar menú
+    </Button>
+  ) : null;
   return (
     <div className="space-y-3">
       {/* Posición del Logo */}
+      {ver('diseno') && (
       <div className="space-y-2">
         <Label className="text-xs font-medium dark:text-gray-200">
           Posición del Logo
@@ -90,7 +113,24 @@ export default function HeaderOptionsPanel({
           </SelectContent>
         </Select>
       </div>
+      )}
 
+      {/* Apertura del menú del diseño «Minimal» (en el inspector, pestaña Diseño) */}
+      {grupo === 'diseno' && renderMinimalMenuStyle()}
+
+      {/* Menú del encabezado sin menús nombrados: el header pinta las páginas
+          marcadas «en el header»; «Editar menú» abre ese árbol. */}
+      {ver('contenido') && onEditarMenu && availableMenus.length === 0 && (
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <Label className="text-xs font-medium dark:text-gray-200">Menú del encabezado</Label>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">Páginas del sitio</p>
+          </div>
+          {botonEditarMenu}
+        </div>
+      )}
+
+      {ver('contenido') && (<>
       {/* Estilo del Buscador */}
       <div className="space-y-2">
         <Label className="text-xs font-medium dark:text-gray-200">
@@ -313,10 +353,12 @@ export default function HeaderOptionsPanel({
         </div>
       )}
 
+      </>)}
+
       {/* ============================================================
           SELECTORES DE MENÚ NOMBRADO (Fase 2)
           ============================================================ */}
-      {availableMenus.length > 0 && (
+      {ver('contenido') && availableMenus.length > 0 && (
         <div className="pt-3 border-t border-gray-200 dark:border-gray-700 space-y-3">
           <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
             Menús Nombrados
@@ -327,6 +369,7 @@ export default function HeaderOptionsPanel({
             <Label className="text-xs font-medium dark:text-gray-200">
               Menú del Header
             </Label>
+            <div className="flex items-center gap-2">
             <Select
               value={settings.header_menu_id ?? '__none'}
               onValueChange={(v) => onUpdate({ header_menu_id: v === '__none' ? null : v })}
@@ -341,6 +384,8 @@ export default function HeaderOptionsPanel({
                 ))}
               </SelectContent>
             </Select>
+            {botonEditarMenu}
+            </div>
           </div>
 
           {/* Menú del mega menu: solo lo pinta el layout «Mega» */}
@@ -372,6 +417,7 @@ export default function HeaderOptionsPanel({
           COLORES DEL HEADER (Fase 11)
           El texto se ajusta automáticamente según la luminancia del fondo.
           ============================================================ */}
+      {ver('estilo') && (
       <div className="pt-3 border-t border-gray-200 dark:border-gray-700 space-y-3">
         <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
           Colores del Header
@@ -505,40 +551,27 @@ export default function HeaderOptionsPanel({
         </div>
       </div>
 
+      )}
+
+      {/* Orden de las acciones (en el inspector, pestaña Contenido) */}
+      {grupo === 'contenido' && renderActionsOrder()}
+
       {/* ============================================================
           FASE 12: HEADER MINIMAL DRAWER + ICONOS + CTA
           ============================================================ */}
+      {ver('estilo') && (
       <div className="pt-3 border-t border-gray-200 dark:border-gray-700 space-y-3">
         <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
           Personalización Avanzada
         </h4>
 
         {/* Sub-Fase 12A: Minimal menu style */}
-        <div className="space-y-1.5">
-          <Label className="text-xs font-medium dark:text-gray-200">
-            Apertura del menú (Header Minimal)
-          </Label>
-          <Select
-            value={settings.minimal_menu_style ?? 'drawer'}
-            onValueChange={(v) => onUpdate({ minimal_menu_style: v })}
-          >
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="drawer">Drawer lateral (default)</SelectItem>
-              <SelectItem value="dropdown">Dropdown compacto</SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400">
-            Solo aplica cuando el estilo del header es «Minimal».
-          </p>
-        </div>
+        {grupo === undefined && renderMinimalMenuStyle()}
 
         {/* Sub-Fase 12B: Iconos y orden de acciones */}
         <div className="space-y-2 pl-3 border-l-2 border-gray-200 dark:border-gray-700">
           <h5 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-            Iconos y Orden de Acciones
+            {grupo === undefined ? 'Iconos y Orden de Acciones' : 'Iconos de las acciones'}
           </h5>
 
           {/* Icono del carrito */}
@@ -610,18 +643,7 @@ export default function HeaderOptionsPanel({
           </div>
 
           {/* Orden de acciones */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium dark:text-gray-200">
-              Orden de las acciones
-            </Label>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400">
-              Arrastra para reordenar. El orden afecta todos los headers.
-            </p>
-            <ActionsOrderEditor
-              order={settings.actions_order ?? ['search', 'currency', 'cart', 'auth']}
-              onChange={(order) => onUpdate({ actions_order: order })}
-            />
-          </div>
+          {grupo === undefined && renderActionsOrder()}
         </div>
 
         {/* Sub-Fase 12C: Personalización del botón CTA */}
@@ -847,8 +869,51 @@ export default function HeaderOptionsPanel({
           )}
         </div>
       </div>
+      )}
     </div>
   );
+
+  function renderMinimalMenuStyle() {
+    return (
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium dark:text-gray-200">
+            Apertura del menú (Header Minimal)
+          </Label>
+          <Select
+            value={settings.minimal_menu_style ?? 'drawer'}
+            onValueChange={(v) => onUpdate({ minimal_menu_style: v })}
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="drawer">Drawer lateral (default)</SelectItem>
+              <SelectItem value="dropdown">Dropdown compacto</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-[11px] text-gray-500 dark:text-gray-400">
+            Solo aplica cuando el estilo del header es «Minimal».
+          </p>
+        </div>
+    );
+  }
+
+  function renderActionsOrder() {
+    return (
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium dark:text-gray-200">
+              Orden de las acciones
+            </Label>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">
+              Arrastra para reordenar. El orden afecta todos los headers.
+            </p>
+            <ActionsOrderEditor
+              order={settings.actions_order ?? ['search', 'currency', 'cart', 'auth']}
+              onChange={(order) => onUpdate({ actions_order: order })}
+            />
+          </div>
+    );
+  }
 }
 
 // ============================================================

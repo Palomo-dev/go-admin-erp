@@ -1152,11 +1152,92 @@
       "tabs": {
         "theme": "Theme",
         "pages": "Pages",
+        "menuByBranch": "Menu by location",
         "checkout": "Checkout",
         "seo": "SEO",
         "content": "Content",
         "advanced": "Advanced",
         "publish": "Publish"
+      },
+      "cartaSede": {
+        "titulo": "Menu by location",
+        "descripcion": "Decide, for each location, which products appear on the website, at what price and which are sold out.",
+        "sede": "Location",
+        "elegirSede": "Choose a location",
+        "principal": "main",
+        "categoria": "Category",
+        "todasCategorias": "All categories",
+        "buscar": "Search product or SKU",
+        "filtrar": "Filter products",
+        "filtros": {
+          "todos": "All",
+          "personalizados": "Customized",
+          "agotados": "Sold out",
+          "ocultos": "Hidden"
+        },
+        "leyenda": "Inherited from main = uses the Inventory price",
+        "aviso": "The base price comes from Inventory. Here you only decide, for this location, whether the product is sold online, whether its price changes and whether it is sold out. \"Reset\" makes it match the main site.",
+        "soloLectura": "You can view the menu but not change it: ask an administrator for the \"Edit site\" permission.",
+        "errorCargar": "We couldn't load this location's menu",
+        "errorCargarDesc": "The site keeps showing the last saved version.",
+        "cargando": "Loading menu",
+        "vacio": "There are no active products",
+        "vacioDesc": "Create products in Inventory to build the location's menu.",
+        "sinCategoria": "No category",
+        "categoriaN": "Category {id}",
+        "enPagina": "{n, plural, one {# product} other {# products}}",
+        "lote": {
+          "titulo": "Whole category",
+          "boton": "Edit the whole {categoria} category",
+          "mostrar": "Show all on the website",
+          "ocultar": "Hide all from the website",
+          "agotar": "Mark all sold out",
+          "disponible": "Mark all available",
+          "restablecer": "Reset to main",
+          "confirmar": {
+            "mostrar": "Show the whole category?",
+            "ocultar": "Hide the whole category?",
+            "agotar": "Mark the whole category as sold out?",
+            "disponible": "Mark the whole category as available?",
+            "restablecer": "Reset the category to main?"
+          },
+          "confirmarDesc": "Applies to every active product in \"{categoria}\" at {sede}, including those not on this page.",
+          "aplicar": "Apply"
+        },
+        "col": {
+          "producto": "Product",
+          "enWeb": "On website",
+          "precio": "Web price",
+          "origen": "Price source",
+          "agotado": "Sold out"
+        },
+        "pie": "A sold-out item with a date becomes available again at the start of the next day, in the organization's time zone.",
+        "cambios": "{n, plural, one {# unsaved change} other {# unsaved changes}}",
+        "descartar": "Discard",
+        "guardar": "Save",
+        "guardando": "Saving…",
+        "guardado": "Menu saved",
+        "guardadoDesc": "{n, plural, one {# product updated} other {# products updated}}",
+        "errorGuardar": "Couldn't save",
+        "cancelar": "Cancel",
+        "sinSedes": "There are no active locations",
+        "sinSedesDesc": "Create or activate a location in Organization › Branches.",
+        "sinPrecio": "No price",
+        "editado": "unsaved",
+        "aria": {
+          "enWeb": "{producto}: on website",
+          "precio": "{producto}: web price",
+          "restablecer": "Reset {producto}",
+          "agotado": "{producto}: sold out",
+          "hasta": "{producto}: sold out until"
+        },
+        "base": "base {precio}",
+        "heredado": "Inherited from main",
+        "personalizado": "Customized",
+        "restablecer": "Reset",
+        "agotado": "Sold out",
+        "disponible": "Available",
+        "hastaOpcional": "Until (optional)"
       }
     },
     "domains": {
@@ -7933,6 +8014,7 @@
           "carga": "Error loading customer data"
         }
       },
+      "pestanasAria": "Customer sections",
       "pestanas": {
         "resumen": "Summary",
         "info": "Details",
@@ -19376,13 +19458,16 @@
     "tarjeta": {
       "personas": "{n} / {capacidad} guests",
       "enCocina": "{n} in the kitchen",
-      "revisar": "Check"
+      "revisar": "Check",
+      "reserva": "{hora} · {n} ppl",
+      "reservaDe": "Reserved for {nombre}"
     },
     "zona": {
       "sinZona": "No area",
       "mesas": "{n, plural, one {# table} other {# tables}}",
       "libres": "{n} free",
-      "porCobrar": "{n} to charge"
+      "porCobrar": "{n} to charge",
+      "reservadas": "{n} reserved"
     },
     "acciones": {
       "actualizar": "Refresh",
@@ -19550,6 +19635,52 @@
       "porItems": "By items",
       "equitativo": "Equal",
       "personalizado": "Custom"
+    },
+    "reserva": {
+      "detalle": "Reservation details",
+      "subtitulo": "Confirmed reservation · {fuente}",
+      "fuentes": {
+        "admin": "Admin",
+        "website": "Website",
+        "phone": "Phone",
+        "whatsapp": "WhatsApp"
+      },
+      "cliente": "Guest",
+      "personas": "Party size",
+      "personasValor": "{n, plural, one {# person} other {# people}}",
+      "hora": "Time",
+      "horaValor": "{hora} ({min} min)",
+      "llegaEn": "Arrives in {m} min",
+      "tarde": "{m} min late",
+      "ahora": "Reservation time is now",
+      "telefono": "Phone",
+      "nota": "Note",
+      "solicitudes": "Special requests",
+      "sentar": "Seat and open tab",
+      "cambiarMesa": "Change table",
+      "noShow": "No-show",
+      "cambiarTitulo": "Change reservation table",
+      "cambiarDescripcion": "Free tables at the same location that seat {n} people at {hora}.",
+      "cambiarConfirmar": "Change table",
+      "mesaDestino": "New table",
+      "elegirMesa": "Choose a table",
+      "cargandoMesas": "Looking for tables…",
+      "sinMesas": "No other free table fits this reservation at that time.",
+      "opcionMesa": "{mesa} · {zona} · {n} ppl",
+      "noShowTitulo": "Mark as no-show?",
+      "noShowDescripcion": "The reservation for {nombre} becomes «No-show» and table {mesa} is freed.",
+      "noShowConfirmar": "Mark no-show",
+      "avisos": {
+        "error": "Error",
+        "errorSentar": "Could not open the table tab",
+        "sentadaTitulo": "Table occupied",
+        "sentada": "{mesa}: reservation for {nombre} seated",
+        "sentadaSinMarcar": "The tab was opened, but the reservation was not marked as seated. Mark it in Reservations.",
+        "mesaCambiada": "Reservation moved to {mesa}",
+        "errorCambiar": "Could not change the reservation table",
+        "noShow": "Reservation for {nombre} marked as no-show",
+        "errorNoShow": "Could not update the reservation"
+      }
     }
   },
   "posReservasMesas": {

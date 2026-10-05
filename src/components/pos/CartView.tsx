@@ -35,6 +35,7 @@ import { aplicarNotaALinea, type CambioNotaLinea } from '@/lib/pos/cocina/lineas
 import type { DestinoNota } from '@/components/pos/cocina/ChipsNotasRapidas';
 import { lineasParaAviso } from '@/lib/pos/venta/lineasSinImpuesto';
 import { estadoBotonCobrar, puedeConfirmarDeuda, puedeRegistrarDeuda } from '@/lib/pos/venta/requisitosCarrito';
+import { guardarPreferenciaImpuestos, leerPreferenciaImpuestos } from '@/lib/pos/venta/preferenciaImpuestos';
 // `CartProduct` y `requiresPreparation` se movieron literales a lineaCarrito.ts (paso 6): las usa también la línea.
 import { requiresPreparation, type CartProduct } from '@/lib/pos/venta/lineaCarrito';
 import { LineasCarrito } from '@/components/pos/venta/carrito/LineasCarrito';
@@ -126,6 +127,27 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
   const [holdReason, setHoldReason] = useState('');
   const [taxIncluded, setTaxIncluded] = useState(cart.tax_included ?? false);
 
+  // Cada carrito muestra su propio «Impuestos incluidos». Uno nuevo (sin valor)
+  // arranca con la última elección del cajero en esta sucursal y la guarda en
+  // el carrito, para que las líneas y el cobro usen lo mismo que se ve.
+  useEffect(() => {
+    if (cart.tax_included != null) {
+      setTaxIncluded(cart.tax_included);
+      return;
+    }
+    const preferido = leerPreferenciaImpuestos(cart.organization_id, cart.branch_id)?.incluidos;
+    if (preferido === undefined) {
+      setTaxIncluded(false);
+      return;
+    }
+    setTaxIncluded(preferido);
+    POSService.updateCartTaxSettings(cart.id, { tax_included: preferido })
+      .then((recalculado) => onCartUpdate(recalculado))
+      .catch((err) => console.error('Error aplicando la preferencia de impuestos:', err));
+    // Solo al cambiar de carrito: el resto de cambios llega por el interruptor.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart.id]);
+
   // Sincronizar taxIncluded cuando cambian los items del carrito
   useEffect(() => {
     if (cart.items.length > 0 && cart.items.every(item => item.tax_included)) {
@@ -138,6 +160,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
   // Sincronizar el flag con el carrito (memoria + storage) para que persista y el diálogo de pago lo refleje
   const handleTaxIncludedChange = async (value: boolean) => {
     setTaxIncluded(value);
+    guardarPreferenciaImpuestos(cart.organization_id, cart.branch_id, { incluidos: value });
     try {
       const recalculatedCart = await POSService.updateCartTaxSettings(cart.id, { tax_included: value });
       onCartUpdate(recalculatedCart);
@@ -806,6 +829,8 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
         <div className="flex shrink-0 flex-col gap-3 border-t border-line pt-3">
           {/* Resumen de impuestos y totales: el cálculo es de TaxSummary; el dibujo, ResumenTotales del kit. */}
           <TaxSummary
+            key={cart.id}
+            recordarPreferencia
             cart={cart}
             taxIncluded={taxIncluded}
             onTaxIncludedChange={handleTaxIncludedChange}

@@ -60,6 +60,39 @@ export function importePrecioVigente(filas: readonly FilaPrecio[] | null | undef
   return typeof n === 'number' && Number.isFinite(n) ? n : null;
 }
 
+/** De dónde salió el precio resuelto para una sede. */
+export type OrigenPrecioSede = 'sede' | 'general';
+
+/**
+ * Precio por sede (docs/inventario/PRECIOS-POR-SEDE.md): la fila vigente de
+ * la sede (`product_branch_prices`) y, si no hay, la general
+ * (`product_prices`). Cada lista se resuelve con `precioVigente`: la regla de
+ * vigencia es una sola. Es el espejo en el cliente de
+ * `fn_precios_vigentes_lote` (sin herencia del padre: el POS no la tiene).
+ *
+ * Sin filas de sede devuelve exactamente `precioVigente(general)`.
+ */
+export function precioVigenteEnSede<S extends FilaPrecio, G extends FilaPrecio>(
+  filasSede: readonly S[] | null | undefined,
+  filasGenerales: readonly G[] | null | undefined,
+  ahora: Date = new Date(),
+): { fila: S | G; origen: OrigenPrecioSede } | null {
+  const deSede = precioVigente(filasSede, ahora);
+  if (deSede) return { fila: deSede, origen: 'sede' };
+  const general = precioVigente(filasGenerales, ahora);
+  return general ? { fila: general, origen: 'general' } : null;
+}
+
+/** Importe del precio por sede (sede → general), o null si no hay ninguno vigente. */
+export function importePrecioVigenteEnSede(
+  filasSede: readonly FilaPrecio[] | null | undefined,
+  filasGenerales: readonly FilaPrecio[] | null | undefined,
+  ahora: Date = new Date(),
+): number | null {
+  const r = precioVigenteEnSede(filasSede, filasGenerales, ahora);
+  return r ? importePrecioVigente([r.fila], ahora) : null;
+}
+
 /** Error que no deja entrar un producto sin precio vigente (antes entraba gratis). */
 export class ProductoSinPrecioError extends Error {
   readonly productId: number;

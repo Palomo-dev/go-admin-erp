@@ -13,6 +13,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
+/**
+ * Grupo de ajustes que pinta el panel. Sin grupo pinta todo, como siempre; el
+ * inspector del pie lo parte en pestañas (Figma «05 Editor»):
+ * - `diseno`: número de columnas.
+ * - `contenido`: qué se muestra, boletín, «Powered by» y texto legal.
+ * - `estilo`: fondo del pie.
+ */
+export type GrupoFooterOptions = 'diseno' | 'contenido' | 'estilo';
+
 interface FooterOptionsPanelProps {
   settings: {
     footer_style: string;
@@ -31,18 +40,22 @@ interface FooterOptionsPanelProps {
     show_powered_by: boolean;
   };
   onUpdate: (updates: Record<string, string | number | boolean | null>) => void;
+  /** Solo un grupo de ajustes (pestañas del inspector). Sin él, todos. */
+  grupo?: GrupoFooterOptions;
 }
 
 export default function FooterOptionsPanel({
   settings,
   onUpdate,
+  grupo,
 }: FooterOptionsPanelProps) {
   const showColumnsSlider = ['default', 'three_columns', 'split'].includes(settings.footer_style);
+  const ver = (g: GrupoFooterOptions) => grupo === undefined || grupo === g;
 
   return (
     <div className="space-y-3">
       {/* Número de columnas */}
-      {showColumnsSlider && (
+      {ver('diseno') && showColumnsSlider && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label className="text-xs font-medium dark:text-gray-200">
@@ -62,6 +75,7 @@ export default function FooterOptionsPanel({
         </div>
       )}
 
+      {ver('estilo') && (<>
       {/* Fondo del footer */}
       <div className="space-y-2">
         <Label className="text-xs font-medium dark:text-gray-200">
@@ -116,8 +130,11 @@ export default function FooterOptionsPanel({
         </div>
       )}
 
+      </>)}
+
+      {ver('contenido') && (<>
       {/* Switches de secciones */}
-      <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+      <div className={grupo === undefined ? 'space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700' : 'space-y-2'}>
         <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
           Secciones del footer
         </h4>
@@ -218,7 +235,7 @@ export default function FooterOptionsPanel({
       {/* Mostrar "Powered by" */}
       <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
         <Label className="text-xs font-medium dark:text-gray-200">
-          Mostrar "Powered by GO Admin"
+          Mostrar «Powered by GO Admin»
         </Label>
         <Switch
           checked={settings.show_powered_by}
@@ -239,6 +256,7 @@ export default function FooterOptionsPanel({
           onChange={(e) => onUpdate({ footer_text: e.target.value })}
         />
       </div>
+      </>)}
     </div>
   );
 }

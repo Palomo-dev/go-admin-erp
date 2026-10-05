@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Plus, Settings, GitMerge, MoveRight, RefreshCw, Layers, LogOut, Users, UtensilsCrossed, LayoutGrid, Map as MapIcon, Receipt, History } from 'lucide-react';
@@ -47,6 +47,11 @@ import { useBranch } from '@/lib/context/BranchContext';
 import type { TableWithSession, MesaFormData, RestaurantTable } from '@/components/pos/mesas/types';
 import { LiberarMesaDialog, useAvisoLiberacion } from '@/components/pos/mesas/LiberarMesaDialog';
 import type { ResultadoLiberacion } from '@/components/pos/mesas/liberacionMesaCliente';
+import { useReservasMesas } from '@/components/pos/mesas/useReservasMesas';
+import { estadoVisualMesa, mesaOcupada, type ReservaActivaMesa } from '@/components/pos/mesas/reservasProximas';
+import { ReservaMesaPanel } from '@/components/pos/mesas/ReservaMesaPanel';
+import { CambiarMesaReservaDialog } from '@/components/pos/mesas/CambiarMesaReservaDialog';
+import { reservasMesasService } from '@/components/pos/reservas-mesas/reservasMesasService';
 
 export default function MesasPage() {
   const avisoLiberacion = useAvisoLiberacion();
@@ -86,6 +91,20 @@ export default function MesasPage() {
   const [mesasParaCombinar, setMesasParaCombinar] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
+  // Reservas confirmadas que apartan una mesa ahora (ventana de 60 min, zona de la sede)
+  const { activas: reservasActivas, recargar: recargarReservas } = useReservasMesas(mesas, branchFilter);
+  const [mesaReservada, setMesaReservada] = useState<TableWithSession | null>(null);
+  const [showCambiarMesaReserva, setShowCambiarMesaReserva] = useState(false);
+  const [confirmarNoShow, setConfirmarNoShow] = useState(false);
+  const [accionReservaEnCurso, setAccionReservaEnCurso] = useState(false);
+  const reservaDelPanel: ReservaActivaMesa | undefined = mesaReservada ? reservasActivas.get(mesaReservada.id) : undefined;
+  const estadoDe = (m: TableWithSession) => estadoVisualMesa(m, reservasActivas.get(m.id));
+  // Mesas que no pueden recibir una reserva movida ahora mismo (ocupadas o ya apartadas)
+  const mesasNoDisponibles = useMemo(
+    () => new Set(mesas.filter((m) => estadoVisualMesa(m, reservasActivas.get(m.id)) !== 'free').map((m) => m.id)),
+    [mesas, reservasActivas],
+  );
+
   // Cargar datos iniciales y al cambiar de sucursal
   useEffect(() => {
     if (!branchLoading) {
@@ -109,6 +128,7 @@ export default function MesasPage() {
       setMesas(mesasData);
       setZonas(zonasData);
       setZoneLayouts(zoneLayoutsData);
+      recargarReservas();
     } catch (error) {
       console.error('Error cargando datos:', error);
       toast({
@@ -135,7 +155,9 @@ export default function MesasPage() {
     .filter((m) => {
       if (estadoFiltro === 'todos') return true;
       if (estadoFiltro === 'bill_requested') return m.session?.status === 'bill_requested';
-      return m.state === estadoFiltro;
+      if (estadoFiltro === 'occupied') return mesaOcupada(m);
+      // «Libre» y «Reservada» salen del estado derivado: la reserva de la ventana manda.
+      return estadoDe(m) === estadoFiltro;
     })
     .filter((m) =>
       busqueda.trim() === '' ? true : m.name.toLowerCase().includes(busqueda.trim().toLowerCase())
@@ -373,14 +395,96 @@ export default function MesasPage() {
       handleToggleMesaCombinar(mesa.id);
       return;
     }
-    
-    if (mesa.state === 'free' && !mesa.session) {
+
+    const estado = estadoDe(mesa);
+    if (estado === 'reserved') {
+      // Mesa reservada: panel resumen con «Sentar y abrir cuenta» (paso 6 del storyboard)
+      setMesaReservada(mesa);
+      return;
+    }
+
+    if (estado === 'free') {
       // Mesa libre - preguntar si desea abrir sesión
       setMesaParaAbrirSesion(mesa);
       setComensalesNuevaSesion(2);
     } else {
       // Mesa ocupada - ir a detalle
       router.push(`/app/pos/mesas/${mesa.id}`);
+    }
+  };
+
+  // «Sentar y abrir cuenta»: el mismo flujo de abrir sesión de mesa
+  // (MesasService.abrirSesion) y la reserva pasa a «seated» con el servicio
+  // de reservas (reservasMesasService.changeStatus). Sin lógica duplicada.
+  const handleSentarReserva = async () => {
+    const mesa = mesaReservada;
+    const activa = reservaDelPanel;
+    if (!mesa || !activa) return;
+    setAccionReservaEnCurso(true);
+    try {
+      await MesasService.abrirSesion(mesa.id, { customers: activa.reserva.party_size });
+    } catch (error) {
+      console.error('Error abriendo sesión de mesa reservada:', error);
+      toast({
+        title: t('reserva.avisos.error'),
+        description: (error as { message?: string } | null)?.message || t('reserva.avisos.errorSentar'),
+        variant: 'destructive',
+      });
+      setAccionReservaEnCurso(false);
+      return;
+    }
+    try {
+      await reservasMesasService.changeStatus(activa.reserva.id, 'seated');
+      toast({
+        title: t('reserva.avisos.sentadaTitulo'),
+        description: t('reserva.avisos.sentada', { mesa: mesa.name, nombre: activa.reserva.customer_name }),
+      });
+    } catch (error) {
+      // La cuenta ya está abierta: no se deshace; se avisa para marcarla a mano.
+      console.error('Error marcando la reserva como sentada:', error);
+      toast({
+        title: t('reserva.avisos.sentadaTitulo'),
+        description: t('reserva.avisos.sentadaSinMarcar'),
+        variant: 'destructive',
+      });
+    }
+    setAccionReservaEnCurso(false);
+    setMesaReservada(null);
+    router.push(`/app/pos/mesas/${mesa.id}`);
+    cargarDatos();
+  };
+
+  const handleCambiarMesaReserva = async (mesaDestinoId: string, mesaDestinoNombre: string) => {
+    const activa = reservaDelPanel;
+    if (!activa) return;
+    try {
+      await reservasMesasService.updateReservation(activa.reserva.id, { restaurant_table_id: mesaDestinoId });
+      toast({ title: t('reserva.avisos.mesaCambiada', { mesa: mesaDestinoNombre }) });
+      setShowCambiarMesaReserva(false);
+      setMesaReservada(null);
+      recargarReservas();
+    } catch (error) {
+      console.error('Error cambiando la mesa de la reserva:', error);
+      toast({ title: t('reserva.avisos.error'), description: t('reserva.avisos.errorCambiar'), variant: 'destructive' });
+    }
+  };
+
+  const handleNoSePresento = async () => {
+    const mesa = mesaReservada;
+    const activa = reservaDelPanel;
+    if (!mesa || !activa) return;
+    setAccionReservaEnCurso(true);
+    try {
+      await reservasMesasService.changeStatus(activa.reserva.id, 'no_show');
+      toast({ title: t('reserva.avisos.noShow', { nombre: activa.reserva.customer_name }) });
+      setConfirmarNoShow(false);
+      setMesaReservada(null);
+      await cargarDatos();
+    } catch (error) {
+      console.error('Error marcando la reserva como no presentada:', error);
+      toast({ title: t('reserva.avisos.error'), description: t('reserva.avisos.errorNoShow'), variant: 'destructive' });
+    } finally {
+      setAccionReservaEnCurso(false);
     }
   };
 
@@ -465,10 +569,10 @@ export default function MesasPage() {
   }
 
   // Conteos de la leyenda-filtro (interina hasta `LeyendaEstadosMesa`).
-  const nLibres = mesas.filter((m) => m.state === 'free').length;
-  const nOcupadas = mesas.filter((m) => m.state === 'occupied').length;
+  const nLibres = mesas.filter((m) => estadoDe(m) === 'free').length;
+  const nOcupadas = mesas.filter((m) => mesaOcupada(m)).length;
   const nCuenta = mesas.filter((m) => m.session?.status === 'bill_requested').length;
-  const nReservadas = mesas.filter((m) => m.state === 'reserved').length;
+  const nReservadas = mesas.filter((m) => estadoDe(m) === 'reserved').length;
 
   const hayFiltros = busqueda.trim() !== '' || zonaFiltro !== 'todas' || estadoFiltro !== 'todos';
   const limpiarFiltros = () => {
@@ -501,6 +605,7 @@ export default function MesasPage() {
       <MesaCardWithMenu
         key={mesa.id}
         mesa={mesa}
+        reserva={reservasActivas.get(mesa.id)}
         onEdit={() => {
           setMesaEditar(mesa);
           setShowMesaForm(true);
@@ -690,6 +795,7 @@ export default function MesasPage() {
           onSaveZoneLayouts={handleSaveZoneLayouts}
           onMesaClick={(mesa) => handleMesaClick(mesa)}
           initialZoneLayouts={zoneLayouts}
+          reservas={reservasActivas}
         />
       )}
 
@@ -714,7 +820,7 @@ export default function MesasPage() {
                 {/* Mesas sin zona */}
                 {mesasFiltradas.some((m) => !m.zone) && (
                   <section>
-                    <ZonaHeader zona={null} mesas={mesasFiltradas.filter((m) => !m.zone)} />
+                    <ZonaHeader zona={null} mesas={mesasFiltradas.filter((m) => !m.zone)} reservas={reservasActivas} />
                     <div className={CLASES_GRILLA}>{tarjetasDe(mesasFiltradas.filter((m) => !m.zone))}</div>
                   </section>
                 )}
@@ -725,7 +831,7 @@ export default function MesasPage() {
                   if (mesasZona.length === 0) return null;
                   return (
                     <section key={zona}>
-                      <ZonaHeader zona={zona} mesas={mesasZona} />
+                      <ZonaHeader zona={zona} mesas={mesasZona} reservas={reservasActivas} />
                       <div className={CLASES_GRILLA}>{tarjetasDe(mesasZona)}</div>
                     </section>
                   );
@@ -812,6 +918,40 @@ export default function MesasPage() {
         onLiberada={handleMesaLiberada}
       />
 
+      {/* Mesa reservada: panel resumen (paso 6 del storyboard de reserva) */}
+      <ReservaMesaPanel
+        mesa={mesaReservada}
+        activa={reservaDelPanel}
+        onAbiertoChange={(open) => !open && setMesaReservada(null)}
+        onSentar={handleSentarReserva}
+        onCambiarMesa={() => setShowCambiarMesaReserva(true)}
+        onNoSePresento={() => setConfirmarNoShow(true)}
+        ocupado={accionReservaEnCurso}
+      />
+
+      <CambiarMesaReservaDialog
+        activa={reservaDelPanel}
+        abierto={showCambiarMesaReserva && !!reservaDelPanel}
+        onAbiertoChange={setShowCambiarMesaReserva}
+        mesasNoDisponibles={mesasNoDisponibles}
+        onConfirmar={handleCambiarMesaReserva}
+      />
+
+      <ConfirmDialog
+        open={confirmarNoShow && !!reservaDelPanel}
+        onOpenChange={(open) => !open && setConfirmarNoShow(false)}
+        title={t('reserva.noShowTitulo')}
+        description={t('reserva.noShowDescripcion', {
+          nombre: reservaDelPanel?.reserva.customer_name ?? '',
+          mesa: mesaReservada?.name ?? '',
+        })}
+        confirmLabel={t('reserva.noShowConfirmar')}
+        cancelLabel={t('comun.cancelar')}
+        variant="destructive"
+        loading={accionReservaEnCurso}
+        onConfirm={handleNoSePresento}
+      />
+
       {/* Editar comensales */}
       <Dialogo
         abierto={!!mesaParaComensales}
@@ -868,6 +1008,7 @@ export default function MesasPage() {
 // Componente para Mesa con menú contextual
 interface MesaCardWithMenuProps {
   mesa: TableWithSession;
+  reserva?: ReservaActivaMesa;
   onClick: () => void;
   onEdit: () => void;
   onLiberar: () => void;
@@ -881,6 +1022,7 @@ interface MesaCardWithMenuProps {
 
 function MesaCardWithMenu({
   mesa,
+  reserva,
   onClick,
   onEdit,
   onLiberar,
@@ -928,7 +1070,7 @@ function MesaCardWithMenu({
       className={`relative ${modoCombinar && mesa.session ? 'cursor-pointer' : ''} ${isSelected ? 'rounded-lg ring-2 ring-brand ring-offset-2' : ''}`}
       onClick={handleClick}
     >
-      <MesaCard mesa={mesa} onClick={!modoCombinar ? onClick : undefined} />
+      <MesaCard mesa={mesa} reserva={reserva} onClick={!modoCombinar ? onClick : undefined} />
 
       {/* Casilla en modo combinar */}
       {modoCombinar && mesa.session && (

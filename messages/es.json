@@ -1152,11 +1152,92 @@
       "tabs": {
         "theme": "Tema",
         "pages": "Páginas",
+        "menuByBranch": "Carta por sede",
         "checkout": "Checkout",
         "seo": "SEO",
         "content": "Contenido",
         "advanced": "Avanzado",
         "publish": "Publicación"
+      },
+      "cartaSede": {
+        "titulo": "Carta por sede",
+        "descripcion": "Decide, para cada sede, qué productos salen en la web, a qué precio y cuáles están agotados.",
+        "sede": "Sede",
+        "elegirSede": "Elige una sede",
+        "principal": "principal",
+        "categoria": "Categoría",
+        "todasCategorias": "Todas las categorías",
+        "buscar": "Buscar producto o SKU",
+        "filtrar": "Filtrar productos",
+        "filtros": {
+          "todos": "Todos",
+          "personalizados": "Personalizados",
+          "agotados": "Agotados",
+          "ocultos": "Ocultos"
+        },
+        "leyenda": "Heredado de la principal = usa el precio de Inventario",
+        "aviso": "El precio base viene de Inventario. Aquí solo decides, para esta sede, si el producto se vende en la web, si su precio cambia y si está agotado. «Restablecer» lo deja como en el sitio principal.",
+        "soloLectura": "Puedes ver la carta, pero no cambiarla: pide el permiso «Editar sitio» a un administrador.",
+        "errorCargar": "No pudimos cargar la carta de la sede",
+        "errorCargarDesc": "El sitio sigue mostrando la última versión guardada.",
+        "cargando": "Cargando carta",
+        "vacio": "No hay productos activos",
+        "vacioDesc": "Crea productos en Inventario para armar la carta de la sede.",
+        "sinCategoria": "Sin categoría",
+        "categoriaN": "Categoría {id}",
+        "enPagina": "{n, plural, one {# producto} other {# productos}}",
+        "lote": {
+          "titulo": "Toda la categoría",
+          "boton": "Editar toda la categoría {categoria}",
+          "mostrar": "Mostrar todo en la web",
+          "ocultar": "Ocultar todo de la web",
+          "agotar": "Marcar todo agotado",
+          "disponible": "Marcar todo disponible",
+          "restablecer": "Volver a como el principal",
+          "confirmar": {
+            "mostrar": "¿Mostrar toda la categoría?",
+            "ocultar": "¿Ocultar toda la categoría?",
+            "agotar": "¿Marcar toda la categoría como agotada?",
+            "disponible": "¿Marcar toda la categoría como disponible?",
+            "restablecer": "¿Volver la categoría a como el principal?"
+          },
+          "confirmarDesc": "Se aplica a todos los productos activos de «{categoria}» en {sede}, también a los que no están en esta página.",
+          "aplicar": "Aplicar"
+        },
+        "col": {
+          "producto": "Producto",
+          "enWeb": "En la web",
+          "precio": "Precio web",
+          "origen": "Origen del precio",
+          "agotado": "Agotado"
+        },
+        "pie": "Un agotado con fecha vuelve a estar disponible solo al empezar el día siguiente, en la zona horaria de la organización.",
+        "cambios": "{n, plural, one {# cambio sin guardar} other {# cambios sin guardar}}",
+        "descartar": "Descartar",
+        "guardar": "Guardar",
+        "guardando": "Guardando…",
+        "guardado": "Carta guardada",
+        "guardadoDesc": "{n, plural, one {# producto actualizado} other {# productos actualizados}}",
+        "errorGuardar": "No se pudo guardar",
+        "cancelar": "Cancelar",
+        "sinSedes": "No hay sedes activas",
+        "sinSedesDesc": "Crea o activa una sede en Organización › Sucursales.",
+        "sinPrecio": "Sin precio",
+        "editado": "sin guardar",
+        "aria": {
+          "enWeb": "{producto}: en la web",
+          "precio": "{producto}: precio web",
+          "restablecer": "Restablecer {producto}",
+          "agotado": "{producto}: agotado",
+          "hasta": "{producto}: agotado hasta"
+        },
+        "base": "base {precio}",
+        "heredado": "Heredado de la principal",
+        "personalizado": "Personalizado",
+        "restablecer": "Restablecer",
+        "agotado": "Agotado",
+        "disponible": "Disponible",
+        "hastaOpcional": "Hasta (opcional)"
       }
     },
     "domains": {
@@ -7933,6 +8014,7 @@
           "carga": "Error al cargar datos del cliente"
         }
       },
+      "pestanasAria": "Secciones del cliente",
       "pestanas": {
         "resumen": "Resumen",
         "info": "Información",
@@ -19376,13 +19458,16 @@
     "tarjeta": {
       "personas": "{n} / {capacidad} personas",
       "enCocina": "{n} en cocina",
-      "revisar": "Revisar"
+      "revisar": "Revisar",
+      "reserva": "{hora} · {n} pers.",
+      "reservaDe": "Reserva de {nombre}"
     },
     "zona": {
       "sinZona": "Sin zona",
       "mesas": "{n, plural, one {# mesa} other {# mesas}}",
       "libres": "{n, plural, one {# libre} other {# libres}}",
-      "porCobrar": "{n} por cobrar"
+      "porCobrar": "{n} por cobrar",
+      "reservadas": "{n, plural, one {# reservada} other {# reservadas}}"
     },
     "acciones": {
       "actualizar": "Actualizar",
@@ -19550,6 +19635,52 @@
       "porItems": "Por ítems",
       "equitativo": "Equitativo",
       "personalizado": "Personalizado"
+    },
+    "reserva": {
+      "detalle": "Datos de la reserva",
+      "subtitulo": "Reserva confirmada · {fuente}",
+      "fuentes": {
+        "admin": "Admin",
+        "website": "Sitio web",
+        "phone": "Teléfono",
+        "whatsapp": "WhatsApp"
+      },
+      "cliente": "Cliente",
+      "personas": "Personas",
+      "personasValor": "{n, plural, one {# persona} other {# personas}}",
+      "hora": "Hora",
+      "horaValor": "{hora} ({min} min)",
+      "llegaEn": "Llega en {m} min",
+      "tarde": "Va {m} min tarde",
+      "ahora": "Es la hora de la reserva",
+      "telefono": "Teléfono",
+      "nota": "Nota",
+      "solicitudes": "Solicitudes especiales",
+      "sentar": "Sentar y abrir cuenta",
+      "cambiarMesa": "Cambiar de mesa",
+      "noShow": "No se presentó",
+      "cambiarTitulo": "Cambiar mesa de la reserva",
+      "cambiarDescripcion": "Mesas libres de la misma sede con capacidad para {n} personas a las {hora}.",
+      "cambiarConfirmar": "Cambiar mesa",
+      "mesaDestino": "Mesa nueva",
+      "elegirMesa": "Elige una mesa",
+      "cargandoMesas": "Buscando mesas…",
+      "sinMesas": "No hay otra mesa libre con capacidad para esta reserva a esa hora.",
+      "opcionMesa": "{mesa} · {zona} · {n} pers.",
+      "noShowTitulo": "¿Marcar que no se presentó?",
+      "noShowDescripcion": "La reserva de {nombre} pasa a «No se presentó» y la mesa {mesa} queda libre.",
+      "noShowConfirmar": "Marcar no se presentó",
+      "avisos": {
+        "error": "Error",
+        "errorSentar": "No se pudo abrir la cuenta de la mesa",
+        "sentadaTitulo": "Mesa ocupada",
+        "sentada": "{mesa}: la reserva de {nombre} quedó sentada",
+        "sentadaSinMarcar": "La cuenta se abrió, pero la reserva no quedó como sentada. Márcala en Reservas.",
+        "mesaCambiada": "Reserva movida a {mesa}",
+        "errorCambiar": "No se pudo cambiar la mesa de la reserva",
+        "noShow": "Reserva de {nombre} marcada como no presentada",
+        "errorNoShow": "No se pudo actualizar la reserva"
+      }
     }
   },
   "posReservasMesas": {

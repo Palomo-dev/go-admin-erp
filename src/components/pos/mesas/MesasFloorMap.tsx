@@ -3,9 +3,10 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Users, Clock, Save, Lock, Unlock, ZoomIn, ZoomOut, Maximize2, Crosshair, User as UserIcon, DollarSign, ChefHat, RotateCw } from 'lucide-react';
+import { Users, Clock, Save, Lock, Unlock, ZoomIn, ZoomOut, Maximize2, Crosshair, User as UserIcon, DollarSign, ChefHat, RotateCw, CalendarClock } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import type { TableWithSession } from './types';
+import { estadoVisualMesa, horaDeReserva, type ReservaActivaMesa } from './reservasProximas';
 
 export interface ZoneLayout {
   x: number;
@@ -20,6 +21,8 @@ interface MesasFloorMapProps {
   onSaveZoneLayouts?: (layouts: { zone_name: string; position_x: number; position_y: number; width: number; height: number }[]) => Promise<void>;
   onMesaClick: (mesa: TableWithSession) => void;
   initialZoneLayouts?: Record<string, ZoneLayout>;
+  /** Reservas confirmadas que apartan cada mesa ahora (por id de mesa). */
+  reservas?: ReadonlyMap<string, ReservaActivaMesa>;
 }
 
 const TABLE_W = 120;
@@ -116,7 +119,7 @@ function loadStoredView(): { zoom: number; panOffset: { x: number; y: number } }
   }
 }
 
-export function MesasFloorMap({ mesas, onSavePositions, onSaveZoneLayouts, onMesaClick, initialZoneLayouts }: MesasFloorMapProps) {
+export function MesasFloorMap({ mesas, onSavePositions, onSaveZoneLayouts, onMesaClick, initialZoneLayouts, reservas }: MesasFloorMapProps) {
   const [editMode, setEditMode] = useState(false);
   const [positions, setPositions] = useState<Record<string, { x: number; y: number }>>({});
   const [rotations, setRotations] = useState<Record<string, number>>({});
@@ -467,27 +470,30 @@ export function MesasFloorMap({ mesas, onSavePositions, onSaveZoneLayouts, onMes
     setPanOffset({ x: targetX, y: targetY });
   };
 
-  // Color por estado
+  // Color por estado (mismo orden que la grilla: la ocupación manda sobre la reserva)
   const getTableColors = (mesa: TableWithSession) => {
-    if (mesa.session?.status === 'bill_requested') {
+    const estado = estadoVisualMesa(mesa, reservas?.get(mesa.id));
+    if (estado === 'bill_requested') {
       return {
         bg: 'bg-orange-100 dark:bg-orange-900/40',
         border: 'border-orange-400 dark:border-orange-600',
         text: 'text-orange-700 dark:text-orange-300',
       };
     }
-    if (mesa.state === 'occupied') {
+    if (estado === 'occupied') {
       return {
         bg: 'bg-red-100 dark:bg-red-900/40',
         border: 'border-red-400 dark:border-red-600',
         text: 'text-red-700 dark:text-red-300',
       };
     }
-    if (mesa.state === 'reserved') {
+    if (estado === 'reserved') {
+      // Tono «información» como la MesaPlano de Figma (680:410764), no amarillo:
+      // el amarillo es «por cobrar».
       return {
-        bg: 'bg-yellow-100 dark:bg-yellow-900/40',
-        border: 'border-yellow-400 dark:border-yellow-600',
-        text: 'text-yellow-700 dark:text-yellow-300',
+        bg: 'bg-info-subtle',
+        border: 'border-line-info',
+        text: 'text-info-text',
       };
     }
     return {
@@ -644,6 +650,8 @@ export function MesasFloorMap({ mesas, onSavePositions, onSaveZoneLayouts, onMes
             const isDragging = dragging === mesa.id;
             const rotation = rotations[mesa.id] ?? 0;
             const chairs = getChairPositions(mesa.capacity, size.w, size.h, size.shape);
+            const reservaActiva = reservas?.get(mesa.id);
+            const reservada = estadoVisualMesa(mesa, reservaActiva) === 'reserved' ? reservaActiva : undefined;
 
             return (
               <div
@@ -723,15 +731,21 @@ export function MesasFloorMap({ mesas, onSavePositions, onSaveZoneLayouts, onMes
                     </div>
                   )}
 
-                  {/* Nombre */}
+                  {/* Nombre (con el icono de reserva delante, Figma MesaPlano 680:410764) */}
                   <span
-                    className={cn('font-bold leading-tight text-center', colors.text)}
+                    className={cn('flex items-center gap-1 font-bold leading-tight text-center', colors.text)}
                     style={{ fontSize: 14 * zoom }}
                   >
+                    {reservada && <CalendarClock aria-hidden="true" style={{ width: 12 * zoom, height: 12 * zoom }} />}
                     {mesa.name}
                   </span>
 
-                  {/* Info compacta */}
+                  {/* Info compacta: hora y personas de la reserva, o comensales y tiempo */}
+                  {reservada ? (
+                    <div className={cn('mt-0.5 tabular-nums', colors.text)} style={{ fontSize: 10 * zoom }}>
+                      {horaDeReserva(reservada)} · {reservada.reserva.party_size} pers.
+                    </div>
+                  ) : (
                   <div className="flex items-center gap-1 mt-0.5" style={{ fontSize: 10 * zoom }}>
                     <Users style={{ width: 10 * zoom, height: 10 * zoom }} className={colors.text} />
                     <span className={colors.text}>
@@ -744,6 +758,7 @@ export function MesasFloorMap({ mesas, onSavePositions, onSaveZoneLayouts, onMes
                       </>
                     )}
                   </div>
+                  )}
                 </div>
 
                 {/* Botón de rotación en modo edición */}

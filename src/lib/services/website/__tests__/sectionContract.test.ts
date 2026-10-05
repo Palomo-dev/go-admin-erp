@@ -34,7 +34,7 @@ jest.mock('@/lib/utils/offlineCache', () => ({
 }))
 
 import { SECTION_CATALOG } from '@/lib/services/websitePageBuilderService'
-import { verifySectionContract, type ContractIssue } from '../sectionContract'
+import { verifySectionContract } from '../sectionContract'
 import { siteManifestFixture } from './siteManifest.fixture'
 
 describe('Contrato editor ↔ sitio (F0.6)', () => {
@@ -83,6 +83,17 @@ describe('Contrato editor ↔ sitio (F0.6)', () => {
       expect(warnedKeys).not.toContain('images')
 
       console.log('Warnings residuales de galería:', warnedKeys.length ? warnedKeys : 'ninguno')
+    })
+  })
+
+  // ---- Carta completa: primer tipo con contentKeys declaradas en el sitio ----
+  describe('menu_full', () => {
+    it('catálogo y sitio coinciden en variantes y claves de contenido', () => {
+      const issues = [...result.errors, ...result.warnings].filter((i) => i.type === 'menu_full')
+      expect(issues).toEqual([])
+
+      const entry = SECTION_CATALOG.find((s) => s.type === 'menu_full')
+      expect(entry?.variants.map((v) => v.id).sort()).toEqual(['anchors', 'per_category', 'tabs'])
     })
   })
 

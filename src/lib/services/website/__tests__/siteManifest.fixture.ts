@@ -50,6 +50,23 @@ export const siteManifestFixture: SectionManifest = {
     { type: 'map', variants: ['default', 'embedded', 'full_width', 'with_directions'], contentKeys: [] },
     { type: 'membership_plans', variants: ['pricing_table'], contentKeys: [] },
     { type: 'menu_preview', variants: ['tabs'], contentKeys: [] },
+    {
+      type: 'menu_full',
+      variants: ['anchors', 'per_category', 'tabs'],
+      // MenuFull expone CONTENT_KEYS como estática: el manifiesto vivo las publica.
+      contentKeys: [
+        'columns',
+        'eyebrow',
+        'menus',
+        'pdf_url',
+        'selected_category_ids',
+        'show_description',
+        'show_photos',
+        'size',
+        'subtitle',
+        'title',
+      ],
+    },
     { type: 'newsletter', variants: ['banner', 'simple', 'with_image'], contentKeys: [] },
     { type: 'offers', variants: ['grid'], contentKeys: [] },
     { type: 'parking_availability', variants: ['summary'], contentKeys: [] },

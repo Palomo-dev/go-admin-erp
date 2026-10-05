@@ -28,6 +28,10 @@ export interface PageHeaderMovil {
   /** Por defecto, el título y el subtítulo (si es texto) de la cabecera. */
   titulo?: string;
   subtitulo?: string;
+  /** El título se vuelve «Título ▾» y abre un selector de la página (Pipeline: elegir embudo). */
+  onTitulo?: () => void;
+  /** Nombre accesible del botón del título. */
+  tituloAria?: string;
   /**
    * Override explícito del MobileTabBar (`true` lo oculta, `false` lo
    * muestra). Casi nunca hace falta: la regla central de
@@ -70,8 +74,8 @@ export interface PageHeaderProps {
   className?: string;
 }
 
-function PublicarCabeceraMovil({ titulo, subtitulo, accion, ocultarBarra, volverA }: PageHeaderMovil & { volverA?: string }) {
-  useCabeceraMovil({ modo: 'page', titulo, subtitulo, accion, ocultarBarra, volverA });
+function PublicarCabeceraMovil({ titulo, subtitulo, accion, ocultarBarra, volverA, onTitulo, tituloAria }: PageHeaderMovil & { volverA?: string }) {
+  useCabeceraMovil({ modo: 'page', titulo, subtitulo, accion, ocultarBarra, volverA, onTitulo, tituloAria });
   return null;
 }
 
@@ -103,6 +107,8 @@ export function PageHeader({
           subtitulo={movil.subtitulo ?? (typeof subtitulo === 'string' ? subtitulo : undefined)}
           accion={movil.accion}
           ocultarBarra={movil.ocultarBarra}
+          onTitulo={movil.onTitulo}
+          tituloAria={movil.tituloAria}
           volverA={volverA}
         />
       )}

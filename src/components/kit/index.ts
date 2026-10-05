@@ -85,6 +85,8 @@ export {
   type EstadoListado,
   type OrdenListado,
 } from './listadoUrl';
+export { useOpcionUrl, useParametrosUrl, type HistorialUrl } from './useParametroUrl';
+export { leerOpcionUrl, escribirParametrosUrl, urlConParametros } from './parametroUrl';
 export { estadoCasillaCabecera, alternarPagina, alternarId } from './seleccion';
 export { useEsEscritorio } from './useEsEscritorio';
 

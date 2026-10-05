@@ -15,7 +15,44 @@ import { renderConIdioma, simularAncho, type IdiomaPrueba } from '@/test-utils/r
 import { contextoMoneda } from '@/lib/utils/moneda';
 
 const push = jest.fn();
-jest.mock('next/navigation', () => ({ useRouter: () => ({ push, replace: jest.fn(), back: jest.fn(), prefetch: jest.fn() }), usePathname: () => '/app/crm/pipeline', useSearchParams: () => new URLSearchParams() }));
+const replace = jest.fn();
+/**
+ * Navegación simulada con URL de verdad: `push`/`replace` cambian los
+ * `searchParams` y re-renderizan a quien los lea, y `irA` hace de «atrás» /
+ * «adelante» del navegador (cambia la URL sin pasar por la pantalla).
+ */
+const nav = { ruta: '/app/crm/pipeline', params: new URLSearchParams(), oyentes: new Set<() => void>() };
+function irA(url: string) {
+  const [ruta, qs = ''] = url.split('?');
+  nav.ruta = ruta;
+  nav.params = new URLSearchParams(qs);
+  nav.oyentes.forEach((f) => f());
+}
+jest.mock('next/navigation', () => {
+  const { useSyncExternalStore } = jest.requireActual<typeof import('react')>('react');
+  const suscribir = (f: () => void) => {
+    nav.oyentes.add(f);
+    return () => {
+      nav.oyentes.delete(f);
+    };
+  };
+  return {
+    useRouter: () => ({
+      push: (...a: [string, unknown?]) => {
+        push(...a);
+        irA(a[0]);
+      },
+      replace: (...a: [string, unknown?]) => {
+        replace(...a);
+        irA(a[0]);
+      },
+      back: jest.fn(),
+      prefetch: jest.fn(),
+    }),
+    usePathname: () => useSyncExternalStore(suscribir, () => nav.ruta),
+    useSearchParams: () => useSyncExternalStore(suscribir, () => nav.params),
+  };
+});
 const FECHAS = { timezone: 'America/Bogota', getToday: () => '2026-09-30', formatDate: (v: string) => v, formatDateTime: (v: string) => v, formatTime: (v: string) => v, formatPlain: (v: string) => v };
 jest.mock('@/lib/context/OrganizationTimezoneContext', () => ({ useFormatDate: () => FECHAS, useOrgTimezone: () => ({ timezone: 'America/Bogota' }) }));
 const COP = { ...contextoMoneda('COP', { locale: 'es-CO' }), formatear: String, paraDocumento: () => contextoMoneda('COP', { locale: 'es-CO' }), resuelta: true };
@@ -55,6 +92,7 @@ import { useAccionesOportunidad } from '../useAccionesOportunidad';
 import { permisosPantalla } from '../oportunidadLogica';
 import { useTableroPipeline } from '@/components/crm/pipeline/pantalla/useTableroPipeline';
 import { invalidarCatalogosCrm } from '@/components/crm/acciones/useCatalogosCrm';
+import { CabeceraMovilProvider, useCabeceraMovilActual } from '@/components/shell/header/cabeceraMovil';
 
 type Llamada = { url: string; method: string; body: unknown };
 let llamadas: Llamada[];
@@ -110,6 +148,9 @@ beforeEach(() => {
   invalidarCatalogosCrm();
   simularAncho(1440);
   push.mockReset();
+  replace.mockReset();
+  nav.ruta = '/app/crm/pipeline';
+  nav.params = new URLSearchParams();
   ejecutarPasos.mockClear();
   permisos = MANAGER;
   llamadas = [];
@@ -448,5 +489,145 @@ describe('drawer y móvil', () => {
     await screen.findByRole('tab', { name: /Calificación · 1/ });
     fireEvent.click(screen.getByRole('tab', { name: /Propuesta · 1/ }));
     await screen.findByText('Renovación licencias 2027');
+  });
+});
+
+describe('pestañas en la URL (regla de pestañas 2026-10-05)', () => {
+  const seleccionada = (nombre: RegExp) => screen.getByRole('tab', { name: nombre }).getAttribute('aria-selected');
+  const pidio = (estado: string) => llamadas.some((l) => l.url.startsWith('/api/crm/opportunities?') && l.url.includes(`status=${estado}`));
+
+  test('Oportunidades: sin `?estado=` abre «Abiertas»; la pestaña va a la URL y «atrás» la devuelve', async () => {
+    irA('/app/crm/oportunidades');
+    renderConIdioma(<OportunidadesPantalla />);
+    await screen.findByText('Renovación licencias 2027');
+    expect(seleccionada(/^Abiertas/)).toBe('true');
+    expect(pidio('open')).toBe(true);
+
+    fireEvent.click(screen.getByRole('tab', { name: /^Ganadas/ }));
+    expect(push).toHaveBeenLastCalledWith('/app/crm/oportunidades?estado=won', { scroll: false });
+    await waitFor(() => expect(seleccionada(/^Ganadas/)).toBe('true'));
+    await waitFor(() => expect(pidio('won')).toBe(true));
+
+    // «Abiertas» es el valor por defecto: no se escribe.
+    fireEvent.click(screen.getByRole('tab', { name: /^Abiertas/ }));
+    expect(push).toHaveBeenLastCalledWith('/app/crm/oportunidades', { scroll: false });
+
+    // «Atrás» / «adelante» del navegador cambian la URL sin pasar por la pantalla.
+    act(() => irA('/app/crm/oportunidades?estado=won'));
+    await waitFor(() => expect(seleccionada(/^Ganadas/)).toBe('true'));
+    act(() => irA('/app/crm/oportunidades'));
+    await waitFor(() => expect(seleccionada(/^Abiertas/)).toBe('true'));
+  });
+
+  test('Oportunidades: un enlace con `?estado=lost` abre «Perdidas»; un valor desconocido, «Abiertas»', async () => {
+    irA('/app/crm/oportunidades?estado=lost&otra=1');
+    const { unmount } = renderConIdioma(<OportunidadesPantalla />);
+    await screen.findByText('Renovación licencias 2027');
+    expect(seleccionada(/^Perdidas/)).toBe('true');
+    expect(pidio('lost')).toBe(true);
+    // Cambiar de pestaña conserva el resto de la URL.
+    fireEvent.click(screen.getByRole('tab', { name: /^Todas/ }));
+    expect(push).toHaveBeenLastCalledWith('/app/crm/oportunidades?estado=all&otra=1', { scroll: false });
+    unmount();
+
+    irA('/app/crm/oportunidades?estado=borrada');
+    renderConIdioma(<OportunidadesPantalla />);
+    await screen.findByText('Renovación licencias 2027');
+    expect(seleccionada(/^Abiertas/)).toBe('true');
+  });
+
+  const DOS = [PIPELINES[0], { id: 'p2', name: 'Renovaciones', pipeline_type: 'renewal', is_default: false, stages: ETAPAS.slice(0, 2) }];
+
+  test('Pipeline: `?vista=` y `?pipeline=` en la URL; sin ellos, Kanban y el embudo por defecto', async () => {
+    rutas['GET /api/crm/pipelines'] = () => ({ body: { success: true, data: DOS } });
+    renderConIdioma(<PipelinePantalla />);
+    await screen.findByText('Renovación licencias 2027');
+    expect(seleccionada(/^Kanban/)).toBe('true');
+    expect(llamadas.some((l) => l.url.startsWith('/api/crm/pipelines/p1/board?'))).toBe(true);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Tabla' }));
+    expect(push).toHaveBeenLastCalledWith('/app/crm/pipeline?vista=tabla', { scroll: false });
+    await waitFor(() => expect(seleccionada(/^Tabla/)).toBe('true'));
+
+    // El selector de escritorio escribe el embudo en la URL y el tablero lo sigue.
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Embudo: Ventas' }), { key: 'Enter' });
+    fireEvent.click(await screen.findByRole('menuitem', { name: /Renovaciones/ }));
+    expect(push).toHaveBeenLastCalledWith('/app/crm/pipeline?vista=tabla&pipeline=p2', { scroll: false });
+    await waitFor(() => expect(llamadas.some((l) => l.url.startsWith('/api/crm/pipelines/p2/board?'))).toBe(true));
+
+    // «Atrás» vuelve a Kanban y al embudo por defecto.
+    act(() => irA('/app/crm/pipeline'));
+    await waitFor(() => expect(seleccionada(/^Kanban/)).toBe('true'));
+    expect(screen.getByRole('button', { name: 'Embudo: Ventas' })).toBeTruthy();
+  });
+
+  test('Pipeline: un enlace con `?pipeline=` abre ese embudo; uno que no existe cae al por defecto', async () => {
+    rutas['GET /api/crm/pipelines'] = () => ({ body: { success: true, data: DOS } });
+    irA('/app/crm/pipeline?pipeline=p2&vista=pronostico');
+    const { unmount } = renderConIdioma(<PipelinePantalla />);
+    await screen.findByRole('button', { name: 'Embudo: Renovaciones' });
+    expect(seleccionada(/^Pronóstico/)).toBe('true');
+    unmount();
+
+    irA('/app/crm/pipeline?pipeline=no-existe');
+    renderConIdioma(<PipelinePantalla />);
+    await screen.findByRole('button', { name: 'Embudo: Ventas' });
+    await waitFor(() => expect(llamadas.some((l) => l.url.startsWith('/api/crm/pipelines/p1/board?'))).toBe(true));
+    expect(llamadas.some((l) => l.url.startsWith('/api/crm/pipelines/no-existe'))).toBe(false);
+  });
+
+  /** Hace de MobileHeader: pinta el título que publica la página y, si es tocable, como botón. */
+  function CabeceraDePrueba() {
+    const c = useCabeceraMovilActual();
+    if (!c?.onTitulo) return <p data-testid="titulo-movil">{c?.titulo}</p>;
+    return (
+      <button type="button" data-testid="titulo-movil" aria-label={c.tituloAria} onClick={c.onTitulo}>
+        {c.titulo} ▾ {c.subtitulo}
+      </button>
+    );
+  }
+
+  test('Pipeline móvil: «<pipeline> ▾» abre la hoja de embudos con ✓ en el actual, por defecto y «Editar etapas»', async () => {
+    simularAncho(390);
+    rutas['GET /api/crm/pipelines'] = () => ({ body: { success: true, data: DOS } });
+    renderConIdioma(
+      <CabeceraMovilProvider>
+        <CabeceraDePrueba />
+        <PipelinePantalla />
+      </CabeceraMovilProvider>,
+    );
+    await screen.findByRole('tab', { name: /Calificación · 1/ });
+    // El selector de escritorio sigue en el DOM (oculto por CSS): se busca el de la cabecera móvil.
+    const titulo = await screen.findByTestId('titulo-movil');
+    expect(titulo.getAttribute('aria-label')).toBe('Embudo: Ventas');
+    expect(titulo.textContent).toContain('Ventas ▾');
+    // En móvil no hay pestañas de vista: el tablero es una columna a la vez.
+    expect(screen.queryByRole('tablist', { name: 'Vista del pipeline' })).toBeNull();
+
+    fireEvent.click(titulo);
+    const hoja = await screen.findByRole('dialog', { name: 'Pipelines de la organización' });
+    const ventas = within(hoja).getByRole('button', { name: /Ventas.*Por defecto/ });
+    expect(ventas.getAttribute('aria-current')).toBe('true');
+    expect(within(hoja).getByRole('button', { name: /Renovaciones/ }).getAttribute('aria-current')).toBeNull();
+    expect(within(hoja).getByRole('button', { name: /Editar etapas/ })).toBeTruthy();
+    expect(within(hoja).getByRole('button', { name: /Nuevo pipeline/ })).toBeTruthy();
+    expect((within(hoja).getByRole('button', { name: /como por defecto/ }) as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.click(within(hoja).getByRole('button', { name: /Renovaciones/ }));
+    await waitFor(() => expect(push).toHaveBeenLastCalledWith('/app/crm/pipeline?pipeline=p2', { scroll: false }));
+    await waitFor(() => expect(screen.getByTestId('titulo-movil').getAttribute('aria-label')).toBe('Embudo: Renovaciones'));
+  });
+
+  test('Pipeline móvil sin permiso de ver: el título no abre selector', async () => {
+    simularAncho(390);
+    permisos = { 'crm.opportunities.view': false };
+    renderConIdioma(
+      <CabeceraMovilProvider>
+        <CabeceraDePrueba />
+        <PipelinePantalla />
+      </CabeceraMovilProvider>,
+    );
+    await screen.findByText('No tienes acceso al pipeline');
+    expect(screen.queryByTestId('titulo-movil')?.tagName ?? 'P').toBe('P');
   });
 });

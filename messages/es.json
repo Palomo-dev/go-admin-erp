@@ -7933,6 +7933,7 @@
           "carga": "Error al cargar datos del cliente"
         }
       },
+      "pestanasAria": "Secciones del cliente",
       "pestanas": {
         "resumen": "Resumen",
         "info": "Información",

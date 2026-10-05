@@ -29,7 +29,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { ArrowLeft, Bell, Bot, Home, Menu, Search, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, Bell, Bot, ChevronDown, Home, Menu, Search, ShoppingCart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -287,11 +287,28 @@ function MobileHeader({
     return (
       <div className="flex h-14 items-center gap-1 pl-1 pr-2 lg:hidden">
         {botonVolver}
-        <div className="flex min-w-0 flex-1 flex-col">
-          {/* <p> y no <h1>: el título principal sigue siendo el de la página. */}
-          <p className="truncate text-base font-semibold leading-[22px] text-fg">{titulo}</p>
-          {subtitulo && <p className="truncate text-xs font-medium leading-4 text-fg-secondary">{subtitulo}</p>}
-        </div>
+        {pagina?.onTitulo ? (
+          // «Título ▾»: la página pone un selector detrás del título (Pipeline: elegir embudo).
+          <button
+            type="button"
+            onClick={pagina.onTitulo}
+            aria-label={pagina.tituloAria}
+            aria-haspopup="dialog"
+            className="flex min-w-0 flex-1 flex-col items-start rounded-lg px-1 text-left outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-brand"
+          >
+            <span className="flex min-w-0 max-w-full items-center gap-1">
+              <span className="truncate text-base font-semibold leading-[22px] text-fg">{titulo}</span>
+              <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-fg-secondary" strokeWidth={1.75} />
+            </span>
+            {subtitulo && <span className="max-w-full truncate text-xs font-medium leading-4 text-fg-secondary">{subtitulo}</span>}
+          </button>
+        ) : (
+          <div className="flex min-w-0 flex-1 flex-col">
+            {/* <p> y no <h1>: el título principal sigue siendo el de la página. */}
+            <p className="truncate text-base font-semibold leading-[22px] text-fg">{titulo}</p>
+            {subtitulo && <p className="truncate text-xs font-medium leading-4 text-fg-secondary">{subtitulo}</p>}
+          </div>
+        )}
         {pagina?.accion ?? null}
       </div>
     );

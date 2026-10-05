@@ -7933,6 +7933,7 @@
           "carga": "Error loading customer data"
         }
       },
+      "pestanasAria": "Customer sections",
       "pestanas": {
         "resumen": "Summary",
         "info": "Details",

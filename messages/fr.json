@@ -6232,6 +6232,7 @@
           "carga": "Erreur lors du chargement des données du client"
         }
       },
+      "pestanasAria": "Sections du client",
       "pestanas": {
         "resumen": "Résumé",
         "info": "Informations",

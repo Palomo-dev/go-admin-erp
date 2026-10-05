@@ -6232,6 +6232,7 @@
           "carga": "Erro ao carregar os dados do cliente"
         }
       },
+      "pestanasAria": "Seções do cliente",
       "pestanas": {
         "resumen": "Resumo",
         "info": "Informações",

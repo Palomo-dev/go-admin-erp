@@ -11,6 +11,7 @@ import { TabBar } from '@/components/kit/TabBar';
 import { Dialogo } from '@/components/kit/Dialogo';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { useEsEscritorio } from '@/components/kit/useEsEscritorio';
+import { useOpcionUrl, useParametrosUrl } from '@/components/kit/useParametroUrl';
 import { claveError, emitirCambioCrm, pedirCrm } from '@/components/crm/acciones/apiCrm';
 import { useCatalogosCrm, invalidarCatalogosCrm } from '@/components/crm/acciones/useCatalogosCrm';
 import { parametrosResumenLeads } from '@/components/crm/leads/pantalla/leadsPantallaLogica';
@@ -30,6 +31,7 @@ import { KanbanTablero } from './KanbanTablero';
 import { PipelineMovil } from './PipelineMovil';
 import { TablaPipeline } from './TablaPipeline';
 import { SelectorPipeline } from './SelectorPipeline';
+import { SelectorPipelineMovil } from './SelectorPipelineMovil';
 import { NuevoPipelineAsistente } from './NuevoPipelineAsistente';
 import { EtapasPipeline } from './EtapasPipeline';
 import { EstadoTablero, SinEmbudoVentas } from './EstadosPipeline';
@@ -43,11 +45,18 @@ import { useTableroPipeline } from './useTableroPipeline';
  * filtros con chips, 4 KPI en moneda base, kanban con arrastre (optimista y
  * con reversión) y drawer. Estados: cargando, vacío, sin resultados, error,
  * sin permiso y sin embudo de ventas. Todo por `/api/crm/**`.
+ *
+ * La vista y el embudo van en la URL (`?vista=` y `?pipeline=<id>`): sin
+ * `pipeline`, o con uno que ya no existe, abre el POR DEFECTO, si no el
+ * primero de ventas, si no el primero (`elegirPipeline`). En móvil el título
+ * «<pipeline> ▾» de la cabecera abre `SelectorPipelineMovil`.
  */
 type Vista = 'kanban' | 'tabla' | 'pronostico' | 'clientes' | 'automatizacion';
+const VISTAS: readonly Vista[] = ['kanban', 'tabla', 'pronostico', 'clientes', 'automatizacion'];
 
 export function PipelinePantalla() {
   const t = useTranslations('crm.oportunidad.pipeline');
+  const tSelector = useTranslations('crm.oportunidad.selector');
   const router = useRouter();
   const escritorio = useEsEscritorio();
   const { getToday, timezone } = useFormatDate();
@@ -56,9 +65,16 @@ export function PipelinePantalla() {
   const cat = useCatalogosCrm();
   const permisos = permisosPantalla(cat.permisos);
   const pls = usePipelines();
-  const [elegido, setElegido] = useState<string | null>(null);
+  const url = useParametrosUrl();
+  const pipelineUrl = url.leer('pipeline');
+  // Un id de la URL que no está en la lista (borrado, de otra organización) no cuenta como elegido.
+  const elegido = pipelineUrl && (pls.lista === null || pls.lista.some((p) => p.id === pipelineUrl)) ? pipelineUrl : null;
+  const setElegido = (id: string | null) => url.fijar({ pipeline: id });
   const pipelineId = elegirPipeline(pls.lista ?? [], elegido);
-  const [vista, setVista] = useState<Vista>('kanban');
+  const [vistaUrl, setVista] = useOpcionUrl('vista', VISTAS, 'kanban');
+  // En móvil no hay pestañas de vista (PATRONES §3): un enlace con `?vista=` no deja a nadie sin salida.
+  const vista: Vista = escritorio ? vistaUrl : 'kanban';
+  const [selectorMovil, setSelectorMovil] = useState(false);
   const [filtros, setFiltros] = useState<Filtros>(filtrosVacios);
   const [drawer, setDrawer] = useState<string | null>(null);
   const [nueva, setNueva] = useState<{ etapaId: string | null } | null>(null);
@@ -111,7 +127,7 @@ export function PipelinePantalla() {
     try {
       await pedirCrm(`/api/crm/pipelines/${pipelineId}`, { method: 'DELETE' });
       setBorrarPipeline(false);
-      setElegido(null);
+      url.fijar({ pipeline: null }, 'replace');
       invalidarCatalogosCrm();
       emitirCambioCrm({ entidad: 'opportunity', accion: 'pipeline' });
     } catch (e) {
@@ -162,7 +178,13 @@ export function PipelinePantalla() {
             </>
           )
         }
-        movil={{ titulo: t('titulo'), subtitulo: actual?.name, accion: permisos.crear && !mostrarSinEmbudo ? <button type="button" aria-label={t('nueva')} onClick={() => setNueva({ etapaId: null })} className="flex size-10 items-center justify-center rounded-lg text-fg hover:bg-hover"><Plus aria-hidden="true" className="size-5" /></button> : undefined }}
+        movil={{
+          titulo: actual && !mostrarSinEmbudo ? actual.name : t('titulo'),
+          subtitulo: actual && !mostrarSinEmbudo ? t('subtitulo', { embudo: t('titulo'), n: resumen?.conteos.open ?? 0 }) : undefined,
+          // Antes el selector solo vivía en las acciones de escritorio: en móvil no se podía cambiar de embudo.
+          onTitulo: estado !== 'sinPermiso' && pls.lista && pls.lista.length > 0 ? () => setSelectorMovil(true) : undefined,
+          tituloAria: tSelector('aria', { nombre: actual?.name ?? '' }),
+          accion: permisos.crear && !mostrarSinEmbudo ? <button type="button" aria-label={t('nueva')} onClick={() => setNueva({ etapaId: null })} className="flex size-10 items-center justify-center rounded-lg text-fg hover:bg-hover"><Plus aria-hidden="true" className="size-5" /></button> : undefined }}
       />
 
       {mostrarSinEmbudo ? (
@@ -175,7 +197,7 @@ export function PipelinePantalla() {
             {/* En móvil no hay pestañas: sin el espaciador, el buscador ocupa el ancho (PATRONES §3). */}
             {escritorio && (
               <>
-                <TabBar id="pipeline-vista" etiqueta={t('vistas.aria')} valor={vista} onValorChange={setVista} pestanas={(['kanban', 'tabla', 'pronostico', 'clientes', 'automatizacion'] as const).map((v) => ({ valor: v, etiqueta: t(`vistas.${v}`) }))} />
+                <TabBar id="pipeline-vista" etiqueta={t('vistas.aria')} valor={vista} onValorChange={setVista} pestanas={VISTAS.map((v) => ({ valor: v, etiqueta: t(`vistas.${v}`) }))} />
                 <span className="flex-1" />
               </>
             )}
@@ -214,6 +236,20 @@ export function PipelinePantalla() {
       <NuevaOportunidadDialogo abierto={!!nueva} onAbiertoChange={(a) => !a && setNueva(null)} pipelineId={pipelineId} etapaId={nueva?.etapaId ?? null} pipelines={cat.pipelines} etapas={cat.etapas} usuarios={cat.usuarios} usuarioId={cat.usuarioId} onCreada={setDrawer} onPaginaCompleta={() => router.push(`/app/crm/oportunidades/nuevo?pipeline=${pipelineId ?? ''}&etapa=${nueva?.etapaId ?? ''}`)} />
       <NuevoPipelineAsistente abierto={asistente !== null} onAbiertoChange={(a) => !a && setAsistente(null)} existentes={pls.lista ?? []} plantillaInicial={asistente ?? undefined} onCreado={(id) => { setElegido(id); pls.recargar(); }} />
       {pipelineId && <EtapasPipeline pipelineId={pipelineId} etapas={etapas} abierto={etapasAbierto} onAbiertoChange={setEtapasAbierto} editarId={editarEtapa} onEditarId={setEditarEtapa} cantidadPorEtapa={(id) => resumen?.por_etapa[id]?.cantidad ?? 0} />}
+      {!escritorio && pls.lista && (
+        <SelectorPipelineMovil
+          abierto={selectorMovil}
+          onAbiertoChange={setSelectorMovil}
+          pipelines={pls.lista}
+          actualId={mostrarSinEmbudo ? null : pipelineId}
+          onElegir={setElegido}
+          puedeGestionar={permisos.gestionarPipelines}
+          puedeGestionarEtapas={permisos.gestionarEtapas}
+          onNuevo={() => setAsistente(undefined)}
+          onPorDefecto={() => void porDefecto()}
+          onEditarEtapas={() => setEtapasAbierto(true)}
+        />
+      )}
       <Dialogo abierto={borrarPipeline} onAbiertoChange={setBorrarPipeline} titulo={t('eliminarTitulo', { nombre: actual?.name ?? '' })} descripcion={t('eliminarDescripcion')} primario={{ etiqueta: t('eliminar'), onClick: () => void eliminarPipeline(), destructiva: true }} textoCancelar={t('cancelar')} ancho={440} />
       {acciones.dialogos}
     </div>

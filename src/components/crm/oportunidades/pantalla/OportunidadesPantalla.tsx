@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -11,6 +11,7 @@ import { SearchInput } from '@/components/kit/SearchInput';
 import { TabBar } from '@/components/kit/TabBar';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { useEsEscritorio } from '@/components/kit/useEsEscritorio';
+import { useOpcionUrl } from '@/components/kit/useParametroUrl';
 import { SelectCrm } from '@/components/crm/kit/SelectCrm';
 import { useCatalogosCrm } from '@/components/crm/acciones/useCatalogosCrm';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
@@ -32,6 +33,8 @@ import { alternarSeleccion, csvOportunidades, estadoPantalla, permisosPantalla, 
  * heredadas llevan la etiqueta «Lead» (D2). Toda escritura, por `/api/crm/**`.
  */
 const ORDENES: OrdenOportunidades[] = ['cierre', 'creada', 'monto', 'proximo', 'nombre'];
+/** Pestañas de estado. La elegida va en `?estado=` (la misma clave de los listados del kit); sin ella, «Abiertas». */
+const ESTADOS: readonly PestanaEstado[] = ['open', 'won', 'lost', 'all'];
 
 export function OportunidadesPantalla() {
   const t = useTranslations('crm.oportunidad.lista');
@@ -42,10 +45,12 @@ export function OportunidadesPantalla() {
   const cat = useCatalogosCrm();
   const permisos = permisosPantalla(cat.permisos);
   const [filtros, setFiltros] = useState<Filtros>(filtrosVacios);
-  const [estado, setEstado] = useState<PestanaEstado>('open');
+  const [estado, setEstado] = useOpcionUrl('estado', ESTADOS, 'open');
   const [orden, setOrden] = useState<OrdenOportunidades>('cierre');
   const [asc, setAsc] = useState(true);
   const [seleccion, setSeleccion] = useState<Set<string>>(new Set());
+  // Otra pestaña (por clic o por «atrás» / «adelante») es otra lista: la selección no se arrastra.
+  useEffect(() => setSeleccion(new Set()), [estado]);
   const query = parametrosFiltros(filtros, hoy, cat.usuarioId).toString();
   const periodo = parametrosPeriodo(hoy, timezone).toString();
   const d = useListaOportunidades({ query, estado, orden, ascendente: asc, periodo, acumular: !escritorio });
@@ -122,11 +127,8 @@ export function OportunidadesPantalla() {
             id="oportunidades-estado"
             etiqueta={t('pestanas.aria')}
             valor={estado}
-            onValorChange={(v) => {
-              setEstado(v);
-              setSeleccion(new Set());
-            }}
-            pestanas={(['open', 'won', 'lost', 'all'] as const).map((v) => ({ valor: v, etiqueta: t(`pestanas.${v}`), contador: c ? (v === 'all' ? c.total : c[v]) : undefined }))}
+            onValorChange={setEstado}
+            pestanas={ESTADOS.map((v) => ({ valor: v, etiqueta: t(`pestanas.${v}`), contador: c ? (v === 'all' ? c.total : c[v]) : undefined }))}
           />
           <KpisOportunidades resumen={d.resumen} hoy={hoy} cargando={!d.resumen && !d.errorResumen} error={d.errorResumen ? t('errorKpi') : null} onReintentar={d.recargar} />
           <div className="flex flex-wrap items-center gap-2">

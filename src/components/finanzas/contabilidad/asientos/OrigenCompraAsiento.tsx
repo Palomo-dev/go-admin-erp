@@ -103,6 +103,7 @@ export function OrigenCompraAsiento({ facturaId }: { facturaId: string }) {
           proveedorId={f.proveedor.id}
           proveedorNombre={f.proveedor.name}
           rangoInicial={f.issue_date ? rangoMesDe(toDate(new Date(f.issue_date)), getToday()) : undefined}
+          sucursalId={f.branch_id ?? null}
         />
       )}
     </>

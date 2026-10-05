@@ -141,6 +141,16 @@ export const planCuotasSchema = z
 
 export const estadoCuentaQuerySchema = z.object({ desde: DIA.nullable().optional(), hasta: DIA.nullable().optional() });
 
+/** POST /api/proveedores/[id]/certificado-retenciones: periodo (días de la organización) y sucursal del documento de origen. */
+export const expedirCertificadoSchema = z
+  .object({
+    desde: DIA,
+    hasta: DIA,
+    sucursalId: z.number().int().positive().nullable().optional(),
+  })
+  .strict()
+  .refine((v) => v.desde <= v.hasta, { path: ['hasta'] });
+
 // ─── Errores ─────────────────────────────────────────────────────────────────
 
 export const ERRORES_COMPRA = [

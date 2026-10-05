@@ -132,7 +132,7 @@ tfoot td { font-weight: 700; border-top: 2px solid ${tema.bordeFuerte}; }
 .totales .fila.pagado { color: ${tema.exito}; font-weight: 600; }
 .totales .fila.informativo { color: ${tema.textoSecundario}; font-style: italic; }
 .nota { border: 1px solid ${tema.borde}; border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; white-space: pre-wrap; font-size: 8pt; }
-.firmas { display: flex; gap: 40px; margin-top: 28px; break-inside: avoid; }
+.firmas { display: flex; gap: 40px; margin-top: 28px; align-items: flex-end; break-inside: avoid; }
 .firma { flex: 1; }
 .firma .linea { border-top: 1px solid ${tema.texto}; padding-top: 4px; font-size: 7.5pt; color: ${tema.textoSecundario}; }
 .firma .datos { font-size: 7pt; color: ${tema.textoTenue}; margin-top: 2px; }
@@ -291,8 +291,8 @@ function firmasHtml(doc: DocumentoPayload, t: Traductor): string {
     const documento = documentoLegible(f.parte.tipoDocumento, f.parte.numeroDocumento, f.parte.dv, t);
     return `<div class="preimpreso">${e(f.parte.nombre)}${documento ? ` · ${e(documento)}` : ''}</div>`;
   };
-  const caja = (rotulo: string, datos: string, lado?: 'entrega' | 'recibe') =>
-    `<div class="firma">${lado ? preimpreso(lado) : ''}<div class="linea">${e(rotulo)}</div><div class="datos">${e(datos)}</div></div>`;
+  const caja = (rotulo: string, datos: string, lado?: 'entrega' | 'recibe', sobreLaRaya?: string) =>
+    `<div class="firma">${lado ? preimpreso(lado) : ''}${sobreLaRaya ? `<div class="preimpreso">${e(sobreLaRaya)}</div>` : ''}<div class="linea">${e(rotulo)}</div><div class="datos">${e(datos)}</div></div>`;
   switch (doc.firma) {
     case 'recibido':
       cajas.push(caja(t('firmas.recibido'), t('firmas.datosRecibe')));
@@ -306,9 +306,16 @@ function firmasHtml(doc: DocumentoPayload, t: Traductor): string {
     case 'entregaRecibe':
       cajas.push(caja(t('firmas.entrega'), t('firmas.datosNombre'), 'entrega'), caja(t('firmas.recibe'), t('firmas.datosRecibe'), 'recibe'));
       break;
-    case 'retenedorContador':
-      cajas.push(caja(t('firmas.agenteRetenedor'), t('firmas.datosNombre')), caja(t('firmas.contador'), t('firmas.datosContador')));
+    case 'retenedorContador': {
+      // El agente retenedor es la organización: su nombre y NIT van impresos bajo la raya.
+      const nit = nitEmisor(doc.emisor.nit, doc.emisor.dv);
+      const retenedor = [doc.emisor.nombre, nit ? t('emisor.nit', { nit }) : null].filter(Boolean).join(' · ') || t('firmas.datosNombre');
+      cajas.push(
+        caja(t('firmas.agenteRetenedor'), retenedor),
+        caja(t('firmas.contador'), t('firmas.datosContador'), undefined, t('firmas.firmaAutorizada')),
+      );
       break;
+    }
     case 'cierrePeriodo':
       cajas.push(
         caja(t('firmas.elaboro'), t('firmas.datosNombre')),

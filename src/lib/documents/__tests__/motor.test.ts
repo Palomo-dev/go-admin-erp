@@ -54,6 +54,20 @@ const CERTIFICADO = {
   totales: { retenido: 16.64, retefuente: 12, reteiva: 0, reteica: 4.64 },
 };
 let respuestaCertificado: unknown = CERTIFICADO;
+const CR1 = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const CR_ANULADO = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+const CR_AJENO = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+/** Foto de un certificado expedido (datos sintéticos del diseño): enero a septiembre, 9 facturas. */
+const CONCEPTOS_EXPEDIDOS = [
+  { clase: 'reteica', concepto: 'ReteICA Medellín', cuenta: '2368', tarifa: 0.7, base: 18400000, valor: 128800 },
+  { clase: 'retefuente', concepto: 'Retención en la fuente · compras', cuenta: '2365', tarifa: 2.5, base: 18400000, valor: 460000 },
+  { clase: 'reteiva', concepto: 'ReteIVA · IVA de las compras', cuenta: '2367', tarifa: 15, base: 3496000, valor: 524400 },
+];
+const CERTIFICADOS_EXPEDIDOS = [
+  { id: CR1, organization_id: ORG, branch_id: 2, supplier_id: 5, number: 'CR-2026-0012', period_from: '2026-01-01', period_to: '2026-09-30', invoice_count: 9, concepts: CONCEPTOS_EXPEDIDOS, status: 'issued', issued_at: '2026-09-30T23:05:00Z' },
+  { id: CR_ANULADO, organization_id: ORG, branch_id: null, supplier_id: 5, number: 'CR-2026-0013', period_from: '2026-09-01', period_to: '2026-09-15', invoice_count: 1, concepts: [], status: 'void', issued_at: '2026-09-16T15:00:00Z' },
+  { id: CR_AJENO, organization_id: AJENA, branch_id: 3, supplier_id: 6, number: 'CR-2026-0001', period_from: '2026-01-01', period_to: '2026-09-30', invoice_count: 1, concepts: CONCEPTOS_EXPEDIDOS, status: 'issued', issued_at: '2026-09-30T23:05:00Z' },
+];
 
 const cliente = { full_name: `Cliente ${XSS}`, doc_type: 'CC', doc_number: '1234', dv: null, fiscal_responsibilities: [] };
 const item = { description: 'Servicio', qty: 1, unit_price: 100, discount_amount: 0, tax_code: 'IVA_19', tax_rate: 19, tax_included: false, total_line: 100, impuesto: { name: 'IVA 19 %' } };
@@ -61,7 +75,11 @@ const item = { description: 'Servicio', qty: 1, unit_price: 100, discount_amount
 function datos() {
   return {
     organizations: [{ id: ORG, name: 'Mi empresa', legal_name: 'Mi empresa S.A.S.', nit: '900123456', dv: 7, timezone: 'America/Bogota', logo_url: null, primary_color: '#1d4ed8', fiscal_responsibilities: ['O-13'] }],
-    branches: [{ id: 1, organization_id: ORG, name: 'Sucursal Norte', timezone: null }],
+    branches: [
+      { id: 1, organization_id: ORG, name: 'Sucursal Norte', timezone: null },
+      { id: 2, organization_id: ORG, name: 'Sucursal Centro', address: 'Calle 45 # 12-30', city: 'Medellín', phone: '(604) 444 55 67', timezone: null },
+      { id: 3, organization_id: AJENA, name: 'Sucursal Ajena', city: 'Cali', timezone: null },
+    ],
     customers: [{ id: C1, organization_id: ORG, branch_id: 1, ...cliente }],
     invoice_sales: [
       { id: F1, organization_id: ORG, branch_id: 1, sale_id: null, number: 'FV-10', issue_date: '2026-09-24T03:00:00Z', due_date: '2026-08-01T15:00:00Z', currency: 'USD', subtotal: 100, tax_total: 19, total: 119, balance: 50, status: 'partial', xml_uuid: null, notes: 'Gracias', document_type: 'invoice', customer_id: C1, customer: cliente, items: [item] },
@@ -83,6 +101,7 @@ function datos() {
     invoice_purchase: [{ id: FC1, organization_id: ORG, branch_id: 1, number_ext: 'PROV-77', issue_date: '2026-09-10T15:00:00Z', due_date: '2026-10-10T15:00:00Z', currency: 'COP', subtotal: 500, tax_total: 0, total: 500, balance: 0, status: 'paid', supplier: { name: 'Proveedor Uno', nit: '800', bank_name: 'Banco', bank_account: '1234567890', account_type: 'Ahorros', credit_days: 30 }, items: [{ ...item, discount_amount: 20 }] }],
     invoice_purchase_withholdings: [{ organization_id: ORG, invoice_id: FC1, concept: 'Retención en la fuente', base: 480, rate: 2.5, amount: 12, created_at: '2026-09-10T15:00:00Z' }],
     suppliers: [{ id: 5, organization_id: ORG, name: 'Proveedor Uno', nit: '800', dv: '1' }, { id: 6, organization_id: AJENA, name: 'Proveedor Ajeno' }],
+    withholding_certificates: CERTIFICADOS_EXPEDIDOS.map((c) => ({ ...c })),
     cash_sessions: [
       { id: 10, organization_id: ORG, branch_id: 1, opened_by: 'cajero-1', opened_at: '2026-09-24T13:00:00Z', closed_at: '2026-09-24T23:00:00Z', closed_by: 'cajero-1', initial_amount: 100, final_amount: 480, difference: -20, status: 'closed', notes: null },
     ],
@@ -298,29 +317,89 @@ describe('certificado de retenciones', () => {
     respuestaCertificado = CERTIFICADO;
   });
 
-  it('sale de fn_certificado_retenciones_proveedor: del 1 de enero del año del corte a hoy en la zona de la organización', async () => {
+  it('expedido: número de la serie CR, «Expedido», sucursal, periodo en meses y la foto guardada (sin recalcular)', async () => {
+    permisos.add('finance.view');
+    const { payload, html } = await pedir(sesion(), 'certificado-retenciones', CR1);
+    expect(llamadasCertificado).toEqual([]);
+    expect(payload.numero).toBe('CR-2026-0012');
+    expect(payload.estado).toEqual({ codigo: 'certificado.issued', tono: 'exito' });
+    expect(payload.marcaAgua).toBeNull();
+    expect(payload.sucursal).toEqual({ nombre: 'Sucursal Centro', direccion: 'Calle 45 # 12-30', ciudad: 'Medellín', telefono: '(604) 444 55 67' });
+    expect(payload.contraparte).toMatchObject({ rol: 'proveedor', nombre: 'Proveedor Uno' });
+    expect(payload.referencia.map((c) => c.clave)).toEqual(['periodoCertificado', 'facturasIncluidas']);
+    expect(payload.referencia[0].valor).toEqual({ tipo: 'texto', v: 'Enero a septiembre de 2026' });
+    expect(payload.metadatos.map((c) => c.clave)).toEqual(['fechaExpedicion', 'ciudadRetencion', 'moneda', 'declaradoEn']);
+    expect(payload.metadatos[0].valor).toEqual({ tipo: 'instante', v: '2026-09-30T23:05:00Z' });
+    expect(payload.metadatos.find((c) => c.clave === 'declaradoEn')?.valor).toEqual({ tipo: 'clave', v: 'certificado.declarado350EIca' });
+    // Fuente → IVA → ICA; la tarifa del ICA por mil.
+    expect(payload.secciones).toHaveLength(1);
+    expect(payload.secciones[0].filas).toEqual([
+      ['Retención en la fuente · compras', '2365', 18400000, '2,5 %', 460000],
+      ['ReteIVA · IVA de las compras', '2367', 3496000, '15 %', 524400],
+      ['ReteICA Medellín', '2368', 18400000, '7 ‰', 128800],
+    ]);
+    expect(payload.secciones[0].pie).toEqual(['Total retenido', null, null, null, 1113200]);
+    expect(payload.totales).toEqual([]);
+    expect(payload.firma).toBe('retenedorContador');
+
+    expect(html).toContain('CR-2026-0012');
+    expect(html).toContain('Expedido');
+    expect(html).toContain('Sucursal Centro');
+    expect(html).toContain('Enero a septiembre de 2026');
+    expect(html).toContain('9 facturas de compra');
+    expect(html).toContain('Ciudad de la retención');
+    expect(html).toContain('30/09/2026');
+    expect(html).toContain('Formulario 350 e ICA');
+    expect(html).toContain('Valores retenidos · enero a septiembre de 2026');
+    expect(html).toContain('7 ‰');
+    expect(html).toContain('$ 1.113.200');
+    expect(html).toContain('declarados por Mi empresa: retención en la fuente e IVA en el formulario 350 (mensual), e ICA en la declaración del municipio de Medellín.');
+    expect(html).toContain('Agente retenedor');
+    expect(html).toContain('Mi empresa · NIT 900.123.456-7');
+    expect(html).toContain('Firma autorizada');
+    expect(html).toContain('Contador público');
+    expect(html).toMatch(/artículo 381 del Estatuto Tributario/);
+  });
+
+  it('anulado: estado y marca de agua de anulado', async () => {
+    permisos.add('finance.view');
+    const { payload } = await pedir(sesion(), 'certificado-retenciones', CR_ANULADO);
+    expect(payload.estado).toEqual({ codigo: 'certificado.void', tono: 'peligro' });
+    expect(payload.marcaAgua).toBe('anulada');
+    expect(payload.sucursal).toBeNull();
+    expect(payload.referencia[0].valor).toEqual({ tipo: 'texto', v: '01/09/2026 a 15/09/2026' });
+  });
+
+  it('un certificado de otra organización o inexistente es 404', async () => {
+    permisos.add('finance.view');
+    expect(await codigoDe(pedir(sesion(), 'certificado-retenciones', CR_AJENO))).toBe('404 NOT_FOUND');
+    expect(await codigoDe(pedir(sesion(), 'certificado-retenciones', 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'))).toBe('404 NOT_FOUND');
+  });
+
+  it('vista previa por proveedor: sin número, «Borrador», del 1 de enero del año del corte a hoy en la zona de la organización', async () => {
     permisos.add('finance.view');
     const { payload, html } = await pedir(sesion(), 'certificado-retenciones', '5');
     expect(llamadasCertificado).toEqual([{ p_organization_id: ORG, p_supplier_id: 5, p_desde: '2026-01-01', p_hasta: '2026-09-27' }]);
-    expect(payload.numero).toBe('CR-2026-0005');
-    expect(payload.contraparte).toMatchObject({ rol: 'proveedor', nombre: 'Proveedor Uno' });
+    expect(payload.numero).toBeNull();
+    expect(payload.estado).toEqual({ codigo: 'certificado.preview', tono: 'neutro' });
+    expect(payload.marcaAgua).toBe('borrador');
     expect(payload.sucursal).toBeNull();
-    expect(payload.metadatos.map((c) => c.clave)).toEqual(['periodoDesde', 'periodoHasta', 'facturasIncluidas', 'fechaExpedicion', 'moneda', 'declaradoEn']);
-    expect(payload.metadatos.find((c) => c.clave === 'declaradoEn')?.valor).toEqual({ tipo: 'clave', v: 'certificado.declarado350EIca' });
+    // Hasta hoy (día de expedición): enero a septiembre.
+    expect(payload.referencia[0].valor).toEqual({ tipo: 'texto', v: 'Enero a septiembre de 2026' });
     expect(payload.secciones[0].filas).toEqual([
-      ['Retención en la fuente', '236540', 480, 2.5, 12],
-      ['ReteICA', '236801', 480, 0.966, 4.64],
+      ['Retención en la fuente', '236540', 480, '2,5 %', 12],
+      ['ReteICA', '236801', 480, '9,66 ‰', 4.64],
     ]);
-    expect(payload.secciones[0].pie).toEqual(['Total retenido', null, null, null, 16.64]);
-    expect(payload.secciones[1].filas).toEqual([['2026-09-10', 'PROV-77', 16.64]]);
-    // Sin ReteIVA en el periodo no se pinta su fila.
-    expect(payload.totales.map((t) => [t.clave, t.valor])).toEqual([['retefuente', 12], ['reteica', 4.64], ['totalRetenido', 16.64]]);
-    expect(payload.firma).toBe('retenedorContador');
-    expect(payload.pieLegal.textos[0]).toMatch(/artículo 381 del Estatuto Tributario/);
-    expect(html).toContain('Certificado de retenciones');
-    expect(html).toContain('Agente retenedor');
-    expect(html).toContain('Contador público');
-    expect(html).toContain('Mi empresa S.A.S., como agente retenedor');
+    expect(html).toContain('BORRADOR');
+    expect(html).toContain('1 factura de compra');
+  });
+
+  it('vista previa: la sucursal de ?sucursal= solo si es de la organización', async () => {
+    permisos.add('finance.view');
+    const propia = await pedir(sesion(), 'certificado-retenciones', '5', { parametros: { sucursal: '2' } });
+    expect(propia.payload.sucursal?.nombre).toBe('Sucursal Centro');
+    const ajena = await pedir(sesion(), 'certificado-retenciones', '5', { parametros: { sucursal: '3' } });
+    expect(ajena.payload.sucursal).toBeNull();
   });
 
   it('respeta desde/hasta válidos; un hasta futuro se recorta a hoy y un desde posterior cae al 1 de enero', async () => {
@@ -335,12 +414,12 @@ describe('certificado de retenciones', () => {
     ]);
   });
 
-  it('sin retenciones en el periodo: la tabla dice que no hubo y el total es cero', async () => {
+  it('sin retenciones en el periodo: la tabla dice que no hubo y no hay fila de total', async () => {
     permisos.add('finance.view');
     respuestaCertificado = { conceptos: [], facturas: [], totales: { retenido: 0, retefuente: 0, reteiva: 0, reteica: 0 } };
     const { payload, html } = await pedir(sesion(), 'certificado-retenciones', '5');
     expect(payload.secciones[0].pie).toBeUndefined();
-    expect(payload.totales).toEqual([{ clave: 'totalRetenido', valor: 0, estilo: 'total' }]);
+    expect(payload.totales).toEqual([]);
     expect(html).toContain('No se practicaron retenciones a este proveedor en el periodo.');
   });
 
@@ -352,12 +431,22 @@ describe('certificado de retenciones', () => {
     permisos.clear();
     permisos.add('pos.view');
     expect(await codigoDe(pedir(sesion(), 'certificado-retenciones', '5'))).toBe('403 PERMISSION_REQUIRED');
+    expect(await codigoDe(pedir(sesion(), 'certificado-retenciones', CR1))).toBe('403 PERMISSION_REQUIRED');
   });
 
   it('no se imprime en rollo de 80 mm', async () => {
     permisos.add('finance.view');
     const s = sesion();
-    expect(await codigoDe(armarDocumento(s.ctx, { tipo: 'certificado-retenciones', id: '5', papel: '80mm', idioma: 'es' }))).toBe('400 PAPEL_NO_DISPONIBLE');
+    expect(await codigoDe(armarDocumento(s.ctx, { tipo: 'certificado-retenciones', id: CR1, papel: '80mm', idioma: 'es' }))).toBe('400 PAPEL_NO_DISPONIBLE');
+  });
+
+  it('el mismo certificado sale en inglés con sus textos', async () => {
+    permisos.add('finance.view');
+    const { html } = await pedir(sesion(), 'certificado-retenciones', CR1, { idioma: 'en' });
+    expect(html).toContain('January to September 2026');
+    expect(html).toContain('9 purchase invoices');
+    expect(html).toContain('Authorized signature');
+    expect(html).toContain('Issued');
   });
 });
 

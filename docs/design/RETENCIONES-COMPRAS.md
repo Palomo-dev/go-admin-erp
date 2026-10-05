@@ -154,8 +154,12 @@ previo del disparador real y el certificado de la misma RPC que el documento.
 - Por proveedor y periodo (días calendario de la organización). Sin periodo: 1 de enero del año
   de «hasta» a hoy; «hasta» nunca pasa de hoy (`periodoCertificado`). Desde una factura, CxP o
   asiento abre en el mes de la factura (`rangoMesDe`); desde el proveedor, en el año en curso.
-- Número `CR-<año>-<id del proveedor en 4 dígitos>`: se puede volver a expedir, no es un
-  consecutivo de la DIAN.
+- Número de la serie **CR por organización y año** (`CR-2026-0012`), con consecutivo atómico
+  (`fn_certificado_retenciones_expedir`, migración 20261005182650). Cada certificado expedido se
+  guarda en `withholding_certificates` con la foto de sus conceptos, así que reimprimirlo da lo
+  mismo; volver a expedir el mismo proveedor, periodo y sucursal con los mismos valores devuelve
+  el mismo número. Antes de expedir hay «Vista previa» sin número y con marca BORRADOR. No es un
+  consecutivo de la DIAN. (Hasta el 2026-10-05 era `CR-<año>-<id del proveedor>`, sin guardar.)
 - Toda la organización: el agente retenedor es la organización, no la sucursal. Moneda: la base.
 - Solo carta (80 mm responde 400 `PAPEL_NO_DISPONIBLE`). Firma del agente retenedor y del
   contador; texto legal del artículo 381 del Estatuto Tributario y del artículo 10 del Decreto 836

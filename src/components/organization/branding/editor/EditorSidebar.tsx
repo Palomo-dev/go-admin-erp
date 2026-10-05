@@ -178,6 +178,11 @@ interface EditorSidebarProps {
   // F9.2 — Secciones por defecto (materialización)
   pageType?: string;
   onMaterializeDefaultSections?: () => void;
+  /**
+   * Sitios V2 de sede (aditivo): contenido bajo cada sección de la lista, por ejemplo el chip
+   * «Hereda / Propia» y «Restablecer». Sin la prop la lista es la de siempre.
+   */
+  renderExtraSeccion?: (section: WebsitePageSection, activa: boolean) => React.ReactNode;
 }
 
 export default function EditorSidebar({
@@ -218,6 +223,7 @@ export default function EditorSidebar({
   pageLayoutContent,
   pageType,
   onMaterializeDefaultSections,
+  renderExtraSeccion,
 }: EditorSidebarProps) {
   const t = useTranslations('branding.editor.sidebar');
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -409,7 +415,7 @@ export default function EditorSidebar({
           const def = getSectionDefinition(section.section_type);
           const isActive = activeSectionId === section.id;
           const IconComponent = def ? ICON_MAP[def.icon] || Layout : Layout;
-          return (
+          const item = (
             <SectionListItem
               key={section.id}
               section={section}
@@ -435,6 +441,13 @@ export default function EditorSidebar({
               onDragOver={(e) => handleDragOver(e, index)}
               onDragEnd={handleDragEnd}
             />
+          );
+          if (!renderExtraSeccion) return item;
+          return (
+            <div key={section.id}>
+              {item}
+              {renderExtraSeccion(section, isActive)}
+            </div>
           );
         })}
 

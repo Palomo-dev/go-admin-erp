@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
@@ -37,9 +37,44 @@ import { websiteMenuGroupService, type MenuGroup } from '@/lib/services/websiteM
 import type { SectionManifest } from '@/lib/services/website/sectionContract';
 import { getDefaultSectionsForPageType } from '@/lib/services/website/defaultProductDetailSections';
 import { getAllowedSectionTypes } from '@/lib/services/website/sectionsByBranchType';
+
+/**
+ * Activar V2 bloquea el guardado legacy del sitio. Hasta que goadmin-websites lea la
+ * revisión publicada, activarlo dejaría la web congelada: se habilita con
+ * NEXT_PUBLIC_WEBSITE_V2_LECTOR=1 cuando ese lector esté desplegado.
+ */
+const LECTOR_PUBLICO_V2_LISTO = process.env.NEXT_PUBLIC_WEBSITE_V2_LECTOR === '1';
 import { branchService } from '@/lib/services/branchService';
 import type { Branch } from '@/types/branch';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import {
+  SelectorSitio,
+  DialogoPublicar,
+  PanelHistorial,
+  DialogoConflicto,
+  AccionesSitioV2,
+  BandaSitioV2,
+  PanelHerencia,
+  AvisoSeccionSede,
+  type EstadoGuardadoV2,
+  type SucursalSelector,
+} from '@/components/organization/branding/editor/v2';
+import type { DocumentoSitio } from '@/lib/website/contrato/documentoSitio';
+import { clienteSitiosV2, ErrorApiSitio } from '@/lib/website/v2/clienteSitiosV2';
+import type { BasePrincipal, RevisionResumen, SitioResumen } from '@/lib/website/v2/tipos';
+import { columnaVaAlDocumento } from '@/lib/website/v2/mapeoAjustes';
+import {
+  ajustesDesdeDocumento,
+  aplicarAjustesAlDocumento,
+  aplicarPaginaAlDocumento,
+  contarPersonalizados,
+  estadoSecciones,
+  fijarModoCampo,
+  nuevoIdSeccion,
+  paginaAVista,
+  paginasDesdeDocumento,
+  restablecerSeccion,
+} from '@/lib/website/v2/vistaEditor';
 
 /** Campos de la página que el editor guarda con `updatePage`. */
 type PageUpdates = Parameters<typeof websitePageBuilderService.updatePage>[1];
@@ -54,6 +89,21 @@ const mensajeError = (error: unknown): string | undefined => {
   }
   return undefined;
 };
+
+const UUID_MENU = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Sitio V2 que se edita (ADR-002 D1/D4). `null` en el estado del editor = modo legacy: el editor
+ * y su guardado son exactamente los de siempre. Solo se entra en V2 para un sitio que ya tiene
+ * borrador (creado por una acción explícita del usuario).
+ */
+interface EditorV2 {
+  sitio: SitioResumen;
+  version: number;
+  actualizadoEn: string;
+  basePrincipal: BasePrincipal | null;
+  erroresContrato: number;
+}
 
 export default function PageEditorPage() {
   const params = useParams();
@@ -126,6 +176,30 @@ export default function PageEditorPage() {
   // Cambios pendientes del MenuTreeEditor (header_order, menu_icon, etc.)
   const pendingMenuUpdates = useRef<Map<string, Record<string, unknown>>>(new Map());
 
+  // ---- Sitios V2: borrador → Publicar → historial, y sedes con herencia ----
+  const [sitiosV2, setSitiosV2] = useState<SitioResumen[]>([]);
+  const [sucursalesV2, setSucursalesV2] = useState<SucursalSelector[]>([]);
+  const [apiV2Disponible, setApiV2Disponible] = useState(false);
+  const [cargandoV2, setCargandoV2] = useState(false);
+  const [editorV2, setEditorV2] = useState<EditorV2 | null>(null);
+  const [docV2, setDocV2] = useState<DocumentoSitio | null>(null);
+  const [ajustesLegacyPrincipal, setAjustesLegacyPrincipal] = useState<WebsiteSettings | null>(null);
+  const [estadoGuardadoV2, setEstadoGuardadoV2] = useState<EstadoGuardadoV2>('guardado');
+  const [sitioPorCrear, setSitioPorCrear] = useState<number | null | undefined>(undefined);
+  const [creandoSitio, setCreandoSitio] = useState(false);
+  const [mostrarPublicar, setMostrarPublicar] = useState(false);
+  const [publicando, setPublicando] = useState(false);
+  const [mostrarHistorial, setMostrarHistorial] = useState(false);
+  const [mostrarHerencia, setMostrarHerencia] = useState(false);
+  const [conflictoV2, setConflictoV2] = useState<{ versionServidor: number | null } | null>(null);
+  const [adopcionPendiente, setAdopcionPendiente] = useState<boolean | null>(null);
+  const [cambiandoAdopcion, setCambiandoAdopcion] = useState(false);
+  /** El usuario eligió «Editar el sitio actual (sin V2)» en un sitio principal no adoptado. */
+  const forzarLegacy = useRef(false);
+  const inicializarV2Ref = useRef<(paginaId: string, branchDePagina: number | null) => Promise<void>>(async () => {});
+  const enV2 = editorV2 !== null && docV2 !== null;
+  const esSedeV2 = enV2 && editorV2.sitio.branchId !== null;
+
   // ---- LOAD DATA ----
   const loadData = useCallback(async () => {
     if (!organizationId) return;
@@ -164,6 +238,11 @@ export default function PageEditorPage() {
       // Fase 4 §2.3 — Cargar outlets publicables (branches con is_web_published=true Y branch_type válido)
       try {
         const allBranches = await branchService.getBranches(organizationId);
+        setSucursalesV2(
+          allBranches
+            .filter((b) => typeof b.id === 'number')
+            .map((b) => ({ id: b.id as number, nombre: b.name, activa: b.is_active !== false })),
+        );
         const validPublished = allBranches.filter(
           (b) => b.is_web_published === true && !!b.branch_type,
         );
@@ -208,6 +287,9 @@ export default function PageEditorPage() {
           // Los menús pueden no existir aún, es seguro ignorar
         }
       }
+
+      // Sitios V2: solo cambia el editor si el sitio ya tiene borrador V2.
+      await inicializarV2Ref.current(pageId, initialBranchId);
     } catch (error) {
       console.error('Error loading editor data:', error);
       toast({
@@ -369,7 +451,7 @@ export default function PageEditorPage() {
   // enlace abre su menú (chip «clic en un enlace para editar el menú»).
   const handleSelectFromCanvas = (id: string, detalle: { enlace: boolean }) => {
     if (esZonaGlobal(id)) {
-      if (detalle.enlace && zonaGlobal === id) setHojaMenuAbierta(true);
+      if (detalle.enlace && zonaGlobal === id) abrirHojaMenu(id);
       seleccionarZonaGlobal(id);
       return;
     }
@@ -382,6 +464,14 @@ export default function PageEditorPage() {
   const handleHojaMenuChange = async (abierta: boolean) => {
     setHojaMenuAbierta(abierta);
     if (abierta || !organizationId) return;
+    if (enV2) {
+      // V2: la hoja editó la biblioteca de menús; el borrador conserva su copia hasta traerla.
+      toast({
+        title: 'Menú guardado en la biblioteca',
+        description: 'Para llevar estos cambios al borrador usa «…» → «Actualizar menú en el borrador».',
+      });
+      return;
+    }
     if (zonaGlobal === 'footer' || settings?.header_menu_id) {
       setPreviewRefreshKey((k) => k + 1);
       try {
@@ -392,13 +482,432 @@ export default function PageEditorPage() {
     }
   };
 
+  // ============================================================
+  // SITIOS V2 — borrador, publicar, historial, sedes con herencia
+  // ============================================================
+
+  /** Ajustes que ve el editor para el documento (operación y columnas sin destino: fila legacy). */
+  const vistaAjustesV2 = useCallback(
+    (doc: DocumentoSitio, base: BasePrincipal | null, legacy: WebsiteSettings | null) =>
+      ajustesDesdeDocumento(doc, legacy ?? ({} as WebsiteSettings), base?.documento ?? null),
+    [],
+  );
+
+  const limpiarPendientes = () => {
+    pendingSectionUpdates.current.clear();
+    pendingSettingsUpdates.current = {};
+    pendingPageUpdates.current = {};
+    pendingPageSettings.current = null;
+    pendingMenuUpdates.current.clear();
+    setHasChanges(false);
+  };
+
+  /** Carga el borrador de un sitio y pone el editor en modo V2 sobre él. */
+  const entrarV2 = async (sitio: SitioResumen, paginaPreferida?: string | null) => {
+    if (!organizationId) return;
+    setCargandoV2(true);
+    try {
+      const [borrador, legacy] = await Promise.all([
+        clienteSitiosV2.borrador(sitio.id),
+        ajustesLegacyPrincipal
+          ? Promise.resolve(ajustesLegacyPrincipal)
+          : websiteSettingsService.getSettings(organizationId, null),
+      ]);
+      setAjustesLegacyPrincipal(legacy);
+      const ctx = { organizationId, branchId: sitio.branchId };
+      const paginasVista = paginasDesdeDocumento(borrador.documento, ctx);
+      const pagina =
+        paginasVista.find((p) => p.id === paginaPreferida) ??
+        paginasVista.find((p) => p.slug === 'home') ??
+        paginasVista[0] ??
+        null;
+
+      limpiarPendientes();
+      setDocV2(borrador.documento);
+      setEditorV2({
+        sitio: borrador.sitio,
+        version: borrador.version,
+        actualizadoEn: borrador.actualizadoEn,
+        basePrincipal: borrador.basePrincipal,
+        erroresContrato: borrador.erroresContrato.length,
+      });
+      setPages(paginasVista);
+      setSettings(vistaAjustesV2(borrador.documento, borrador.basePrincipal, legacy).ajustes);
+      setAvailableMenus(
+        borrador.documento.menus.map((m) => ({ id: m.id, name: m.nombre }) as unknown as MenuGroup),
+      );
+      setSelectedBranchId(sitio.branchId);
+      // Tipo de negocio de la sede para filtrar las secciones permitidas (como en legacy).
+      setSelectedBranch(publishedBranches.find((b) => b.id === sitio.branchId) ?? null);
+      setActiveSectionId(null);
+      setZonaGlobal(null);
+      setEstadoGuardadoV2(borrador.sitio.cambiosSinPublicar ? 'guardado' : 'publicado');
+      setCurrentPage(pagina);
+      if (pagina) {
+        resetSections(pagina.sections);
+        window.history.replaceState(null, '', `/organizacion/branding/editor/${pagina.id}`);
+      }
+      setPreviewRefreshKey((k) => k + 1);
+    } catch (error) {
+      toast({
+        title: 'No se pudo abrir el borrador V2',
+        description: error instanceof ErrorApiSitio ? error.message : 'Seguirás en el editor actual.',
+        variant: 'destructive',
+      });
+    } finally {
+      setCargandoV2(false);
+    }
+  };
+
+  /** Vuelve al editor de siempre (legacy) recargando todo desde las tablas actuales. */
+  const salirDeV2 = async () => {
+    forzarLegacy.current = true;
+    setEditorV2(null);
+    setDocV2(null);
+    limpiarPendientes();
+    await loadData();
+  };
+
+  const recargarSitiosV2 = async (): Promise<SitioResumen[]> => {
+    const lista = await clienteSitiosV2.listar();
+    setSitiosV2(lista);
+    return lista;
+  };
+
+  // Al cargar el editor: lista de sitios V2 y, si la página es del sitio principal y ese sitio
+  // ya tiene borrador V2, se abre el borrador. Si la API falla, el editor sigue en legacy.
+  inicializarV2Ref.current = async (paginaId: string, branchDePagina: number | null) => {
+    try {
+      const lista = await recargarSitiosV2();
+      setApiV2Disponible(true);
+      const principal = lista.find((s) => s.branchId === null);
+      if (principal && branchDePagina === null && (!forzarLegacy.current || principal.v2Adoptado)) {
+        await entrarV2(principal, paginaId);
+      }
+    } catch {
+      setApiV2Disponible(false);
+    }
+  };
+
+  /** Documento con la página abierta ya incorporada (las secciones se editan sobre la vista). */
+  const documentoActualV2 = (): DocumentoSitio | null => {
+    if (!docV2) return null;
+    return currentPage ? aplicarPaginaAlDocumento(docV2, currentPage) : docV2;
+  };
+
+  /**
+   * Guarda el borrador con compare-and-swap. Devuelve la versión nueva o `null` si no se guardó
+   * (conflicto, documento inválido o error de red: los cambios siguen en el editor).
+   */
+  const guardarV2 = async (versionForzada?: number): Promise<number | null> => {
+    if (!editorV2 || !organizationId) return null;
+    const documento = documentoActualV2();
+    if (!documento) return null;
+    setIsSaving(true);
+    setEstadoGuardadoV2('guardando');
+    try {
+      const resultado = await clienteSitiosV2.guardar(editorV2.sitio.id, documento, versionForzada ?? editorV2.version);
+      setDocV2(documento);
+      setEditorV2((prev) =>
+        prev
+          ? {
+              ...prev,
+              version: resultado.version,
+              actualizadoEn: resultado.actualizadoEn,
+              erroresContrato: 0,
+              sitio: { ...prev.sitio, versionBorrador: resultado.version, cambiosSinPublicar: true },
+            }
+          : prev,
+      );
+
+      // Operación (envío, contador, botones…): no va al documento (D12). En el sitio principal
+      // se sigue guardando en su fila legacy, como hoy; una sede todavía no tiene capa propia.
+      const operacion = { ...pendingSettingsUpdates.current };
+      if (Object.keys(operacion).length > 0) {
+        if (editorV2.sitio.branchId === null) {
+          await websiteSettingsService.updateSettings(organizationId, operacion, null);
+        } else {
+          toast({
+            title: 'Ajustes de operación sin guardar en la sede',
+            description: 'Envío, contador y botones de compra se configuran en el sitio principal por ahora.',
+          });
+        }
+      }
+
+      pendingSectionUpdates.current.clear();
+      pendingSettingsUpdates.current = {};
+      pendingPageUpdates.current = {};
+      pendingPageSettings.current = null;
+      pendingMenuUpdates.current.clear();
+      setHasChanges(false);
+      setEstadoGuardadoV2('guardado');
+      setPreviewRefreshKey((k) => k + 1);
+      void recargarSitiosV2().catch(() => undefined);
+      return resultado.version;
+    } catch (error) {
+      if (error instanceof ErrorApiSitio && error.esConflicto) {
+        const actual = (error.detalles as { actual?: number } | undefined)?.actual ?? null;
+        setConflictoV2({ versionServidor: typeof actual === 'number' ? actual : null });
+        setEstadoGuardadoV2('conflicto');
+        return null;
+      }
+      setEstadoGuardadoV2('error');
+      const detalle =
+        error instanceof ErrorApiSitio && error.codigo === 'documento_invalido' && Array.isArray(error.detalles)
+          ? ` (${(error.detalles as { ruta: string; codigo: string }[]).slice(0, 2).map((e) => `${e.ruta}: ${e.codigo}`).join('; ')})`
+          : '';
+      toast({
+        title: 'No se guardó el borrador',
+        description: `${error instanceof ErrorApiSitio ? error.message : 'Revisa tu conexión.'}${detalle} Tus cambios siguen en el editor.`,
+        variant: 'destructive',
+      });
+      return null;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const publicarV2 = async (nota: string | null) => {
+    if (!editorV2) return;
+    setPublicando(true);
+    try {
+      const version = hasChanges ? await guardarV2() : editorV2.version;
+      if (version === null) return;
+      const r = await clienteSitiosV2.publicar(editorV2.sitio.id, version, nota);
+      const lista = await recargarSitiosV2().catch(() => sitiosV2);
+      const sitio = lista.find((s) => s.id === editorV2.sitio.id);
+      setEditorV2((prev) => (prev ? { ...prev, sitio: sitio ?? { ...prev.sitio, revisionPublicadaId: r.revisionId, cambiosSinPublicar: false } } : prev));
+      setEstadoGuardadoV2('publicado');
+      setMostrarPublicar(false);
+      toast({
+        title: r.idempotente ? 'Esta versión ya estaba publicada' : `Versión ${r.numero} publicada`,
+        description: editorV2.sitio.v2Adoptado
+          ? 'Tus clientes la verán en cuanto se actualice la caché.'
+          : 'Queda guardada en el historial. La web sigue mostrando el sitio actual hasta que actives V2.',
+      });
+    } catch (error) {
+      if (error instanceof ErrorApiSitio && error.esConflicto) {
+        setMostrarPublicar(false);
+        setConflictoV2({ versionServidor: (error.detalles as { actual?: number } | undefined)?.actual ?? null });
+        setEstadoGuardadoV2('conflicto');
+        return;
+      }
+      toast({
+        title: 'No se pudo publicar',
+        description: error instanceof ErrorApiSitio ? error.message : 'Revisa tu conexión e inténtalo de nuevo.',
+        variant: 'destructive',
+      });
+    } finally {
+      setPublicando(false);
+    }
+  };
+
+  const restaurarV2 = async (revision: RevisionResumen) => {
+    if (!editorV2) return;
+    try {
+      await clienteSitiosV2.restaurar(editorV2.sitio.id, revision.id, editorV2.version);
+      await entrarV2(editorV2.sitio, currentPage?.id);
+      toast({ title: `Versión ${revision.numero} restaurada en el borrador`, description: 'Revísala y publica cuando esté lista.' });
+    } catch (error) {
+      if (error instanceof ErrorApiSitio && error.esConflicto) {
+        setConflictoV2({ versionServidor: (error.detalles as { actual?: number } | undefined)?.actual ?? null });
+        setEstadoGuardadoV2('conflicto');
+        return;
+      }
+      toast({
+        title: 'No se pudo restaurar',
+        description: error instanceof ErrorApiSitio ? error.message : 'Inténtalo de nuevo.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const cambiarAdopcionV2 = async (adoptado: boolean) => {
+    if (!editorV2) return;
+    setCambiandoAdopcion(true);
+    try {
+      const sitio = await clienteSitiosV2.adopcion(editorV2.sitio.id, adoptado);
+      setEditorV2((prev) => (prev ? { ...prev, sitio } : prev));
+      await recargarSitiosV2().catch(() => undefined);
+      toast({
+        title: adoptado ? 'V2 activo en la web' : 'V2 desactivado',
+        description: adoptado
+          ? 'La web de este sitio pasa a servir la versión publicada.'
+          : 'La web vuelve al sitio anterior. El borrador y las versiones se conservan.',
+      });
+    } catch (error) {
+      toast({
+        title: 'No se pudo cambiar la activación de V2',
+        description: error instanceof ErrorApiSitio ? error.message : 'Inténtalo de nuevo.',
+        variant: 'destructive',
+      });
+    } finally {
+      setCambiandoAdopcion(false);
+      setAdopcionPendiente(null);
+    }
+  };
+
+  /** Copia un menú del principal a la sede (`fn_website_copiar_menu_a_sede`) o lo refresca en el borrador. */
+  const llevarMenuV2 = async (menuId: string) => {
+    if (!editorV2) return;
+    if (hasChanges) {
+      toast({ title: 'Guarda primero', description: 'Guarda el borrador antes de traer un menú.' });
+      return;
+    }
+    try {
+      const r = await clienteSitiosV2.llevarMenu(editorV2.sitio.id, menuId, editorV2.version);
+      await entrarV2(editorV2.sitio, currentPage?.id);
+      toast({
+        title: r.copiado ? 'Menú copiado a esta sede' : 'Menú actualizado en el borrador',
+        description: r.copiado ? 'Es una copia propia: los cambios del menú del principal ya no llegan aquí.' : undefined,
+      });
+    } catch (error) {
+      if (error instanceof ErrorApiSitio && error.esConflicto) {
+        setConflictoV2({ versionServidor: (error.detalles as { actual?: number } | undefined)?.actual ?? null });
+        return;
+      }
+      toast({
+        title: 'No se pudo traer el menú',
+        description: error instanceof ErrorApiSitio ? error.message : 'Inténtalo de nuevo.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  /** Selector «Editando: …». Una sede sin sitio pide confirmación antes de crearlo. */
+  const elegirSitio = async (branchId: number | null) => {
+    if (hasChanges) {
+      toast({ title: 'Tienes cambios sin guardar', description: 'Guarda antes de cambiar de sitio.' });
+      return;
+    }
+    const sitio = sitiosV2.find((s) => s.branchId === branchId);
+    if (sitio) {
+      forzarLegacy.current = false;
+      await entrarV2(sitio, currentPage?.id);
+      return;
+    }
+    // Sin sitio V2: se pide confirmación explícita antes de crearlo (nada cambia sin ella).
+    setSitioPorCrear(branchId);
+  };
+
+  const crearSitioV2 = async () => {
+    if (sitioPorCrear === undefined) return;
+    setCreandoSitio(true);
+    try {
+      const r = await clienteSitiosV2.crear(sitioPorCrear);
+      await recargarSitiosV2();
+      forzarLegacy.current = false;
+      setSitioPorCrear(undefined);
+      await entrarV2(r.sitio, currentPage?.id);
+      toast({
+        title: sitioPorCrear === null ? 'Borrador V2 creado' : 'Sitio de la sede creado',
+        description: 'Nada cambió en la web. Publica y activa V2 cuando esté listo.',
+      });
+    } catch (error) {
+      toast({
+        title: 'No se pudo crear el sitio',
+        description: error instanceof ErrorApiSitio ? error.message : 'Inténtalo de nuevo.',
+        variant: 'destructive',
+      });
+    } finally {
+      setCreandoSitio(false);
+    }
+  };
+
+  // Herencia de la sede: origen de cada campo y estado de cada sección frente al principal.
+  const origenesV2 = useMemo(
+    () => (docV2 && editorV2 ? vistaAjustesV2(docV2, editorV2.basePrincipal, ajustesLegacyPrincipal).origenes : {}),
+    [docV2, editorV2, ajustesLegacyPrincipal, vistaAjustesV2],
+  );
+  const estadosSeccionV2 = useMemo(() => {
+    if (!esSedeV2 || !docV2 || !editorV2?.basePrincipal) return {};
+    const doc = currentPage ? aplicarPaginaAlDocumento(docV2, currentPage) : docV2;
+    return estadoSecciones(doc, editorV2.basePrincipal.documento);
+  }, [esSedeV2, docV2, editorV2, currentPage]);
+
+  const fijarHerenciaCampo = (columna: string, modo: 'inherit' | 'clear') => {
+    if (!docV2 || !editorV2) return;
+    const doc = fijarModoCampo(docV2, columna, modo);
+    setDocV2(doc);
+    setSettings(vistaAjustesV2(doc, editorV2.basePrincipal, ajustesLegacyPrincipal).ajustes);
+    setHasChanges(true);
+    setEstadoGuardadoV2('cambios');
+  };
+
+  const restablecerSeccionV2 = (sectionId: string) => {
+    if (!docV2 || !editorV2?.basePrincipal || !currentPage || !organizationId) return;
+    const doc = restablecerSeccion(
+      aplicarPaginaAlDocumento(docV2, currentPage),
+      editorV2.basePrincipal.documento,
+      currentPage.id,
+      sectionId,
+    );
+    const pagina = doc.paginas.find((p) => p.id === currentPage.id);
+    if (!pagina) return;
+    const vista = paginaAVista(pagina, { organizationId, branchId: editorV2.sitio.branchId });
+    setDocV2(doc);
+    setCurrentPage(vista);
+    setSectionsState(vista.sections);
+    setHasChanges(true);
+    setEstadoGuardadoV2('cambios');
+  };
+
+  /**
+   * En V2 la hoja del menú edita la biblioteca de menús (se guarda al momento, como siempre).
+   * En una sede solo se permite sobre su copia propia: editar el menú del principal desde la sede
+   * cambiaría el principal.
+   */
+  const puedeHojaMenuV2 = (zona: ZonaGlobal | null): boolean => {
+    if (!enV2) return true;
+    if (zona === 'footer') return !esSedeV2;
+    const id = settings?.header_menu_id ?? null;
+    if (!id || !UUID_MENU.test(id)) return false;
+    if (!esSedeV2) return true;
+    return !(editorV2?.basePrincipal?.documento.menus ?? []).some((m) => m.id === id);
+  };
+
+  const abrirHojaMenu = (zona: ZonaGlobal | null) => {
+    if (puedeHojaMenuV2(zona)) {
+      setHojaMenuAbierta(true);
+      return;
+    }
+    toast({
+      title: esSedeV2 ? 'Primero copia el menú a esta sede' : 'Este menú no se edita aquí',
+      description: esSedeV2
+        ? 'Usa «…» → «Copiar menú a esta sede». Así los cambios no tocan el menú del sitio principal.'
+        : 'Asigna un menú nombrado al encabezado para editarlo.',
+    });
+  };
+
   // ---- PAGE CHANGE ----
   const handlePageChange = async (newPageId: string) => {
+    if (enV2) {
+      cambiarPaginaV2(newPageId);
+      return;
+    }
     if (hasChanges) {
       setPendingPageChange(newPageId);
       return;
     }
     await doPageChange(newPageId);
+  };
+
+  /** V2: la página abierta se incorpora al borrador en memoria; cambiar de página no pierde nada. */
+  const cambiarPaginaV2 = (newPageId: string) => {
+    if (!docV2 || !editorV2 || !organizationId) return;
+    const doc = currentPage ? aplicarPaginaAlDocumento(docV2, currentPage) : docV2;
+    const pagina = doc.paginas.find((p) => p.id === newPageId);
+    if (!pagina) return;
+    const vista = paginaAVista(pagina, { organizationId, branchId: editorV2.sitio.branchId });
+    pendingSectionUpdates.current.clear();
+    setDocV2(doc);
+    setPages(paginasDesdeDocumento(doc, { organizationId, branchId: editorV2.sitio.branchId }));
+    setCurrentPage(vista);
+    resetSections(vista.sections);
+    setActiveSectionId(null);
+    setShowGlobalSettings(false);
+    setPreviewRefreshKey((k) => k + 1);
+    window.history.replaceState(null, '', `/organizacion/branding/editor/${newPageId}`);
   };
 
   const doPageChange = async (newPageId: string) => {
@@ -547,6 +1056,17 @@ export default function PageEditorPage() {
   const doDeleteSection = async () => {
     const sectionId = pendingDeleteSection;
     if (!sectionId || !currentPage) return;
+    if (enV2) {
+      // V2: se quita del borrador; la sección publicada no se toca.
+      const restantes = currentPage.sections.filter((s) => s.id !== sectionId);
+      setCurrentPage((prev) => (prev ? { ...prev, sections: restantes } : prev));
+      setSectionsState(restantes);
+      pendingSectionUpdates.current.delete(sectionId);
+      if (activeSectionId === sectionId) setActiveSectionId(null);
+      setHasChanges(true);
+      setEstadoGuardadoV2('cambios');
+      return;
+    }
     try {
       await websitePageBuilderService.deleteSection(sectionId);
       const newSections = currentPage.sections.filter((s) => s.id !== sectionId);
@@ -568,6 +1088,31 @@ export default function PageEditorPage() {
   // ---- ADD SECTION ----
   const handleAddSection = async (sectionType: string, sectionVariant: string) => {
     if (!currentPage || !organizationId) return;
+
+    if (enV2) {
+      const nueva: WebsitePageSection = {
+        id: nuevoIdSeccion(),
+        page_id: currentPage.id,
+        organization_id: organizationId,
+        section_type: sectionType,
+        section_variant: sectionVariant,
+        content: {},
+        settings: {},
+        sort_order: currentPage.sections.length,
+        is_visible: true,
+        created_at: '',
+        updated_at: '',
+        branch_id: editorV2?.sitio.branchId ?? null,
+      };
+      const conNueva = [...currentPage.sections, nueva];
+      setCurrentPage((prev) => (prev ? { ...prev, sections: conNueva } : prev));
+      setSectionsState(conNueva);
+      setActiveSectionId(nueva.id);
+      setHasChanges(true);
+      setEstadoGuardadoV2('cambios');
+      toast({ title: 'Sección agregada al borrador', description: `${sectionType}/${sectionVariant}` });
+      return;
+    }
 
     try {
       const newSection = await websitePageBuilderService.addSection({
@@ -613,6 +1158,27 @@ export default function PageEditorPage() {
   // ---- F12.4: DUPLICATE SECTION ----
   const handleDuplicateSection = async (sectionId: string) => {
     if (!currentPage || !organizationId) return;
+    if (enV2) {
+      const idx = currentPage.sections.findIndex((s) => s.id === sectionId);
+      if (idx < 0) return;
+      const original = currentPage.sections[idx];
+      const copia: WebsitePageSection = {
+        ...original,
+        id: nuevoIdSeccion(),
+        content: JSON.parse(JSON.stringify(original.content ?? {})),
+        settings: JSON.parse(JSON.stringify(original.settings ?? {})),
+      };
+      const conCopia = [...currentPage.sections];
+      conCopia.splice(idx + 1, 0, copia);
+      const ordenadas = conCopia.map((s, i) => ({ ...s, sort_order: i }));
+      setCurrentPage((prev) => (prev ? { ...prev, sections: ordenadas } : prev));
+      setSectionsState(ordenadas);
+      setActiveSectionId(copia.id);
+      setHasChanges(true);
+      setEstadoGuardadoV2('cambios');
+      toast({ title: 'Sección duplicada en el borrador' });
+      return;
+    }
     try {
       const newSection = await websitePageBuilderService.duplicateSection(sectionId);
       // Reordenar: insertar después de la original
@@ -698,6 +1264,30 @@ export default function PageEditorPage() {
     const defaultSections = getDefaultSectionsForPageType(currentPage.page_type);
     if (defaultSections.length === 0) return;
 
+    if (enV2) {
+      if (currentPage.sections.length > 0) return;
+      const nuevas: WebsitePageSection[] = defaultSections.map((d, i) => ({
+        id: nuevoIdSeccion(),
+        page_id: currentPage.id,
+        organization_id: organizationId,
+        section_type: d.section_type,
+        section_variant: d.section_variant,
+        content: {},
+        settings: {},
+        sort_order: i,
+        is_visible: true,
+        created_at: '',
+        updated_at: '',
+        branch_id: editorV2?.sitio.branchId ?? null,
+      }));
+      setCurrentPage((prev) => (prev ? { ...prev, sections: nuevas } : prev));
+      setSectionsState(nuevas);
+      setHasChanges(true);
+      setEstadoGuardadoV2('cambios');
+      toast({ title: 'Secciones agregadas al borrador', description: `${nuevas.length} secciones por defecto.` });
+      return;
+    }
+
     try {
       const created = await websitePageBuilderService.materializeDefaultSections(
         currentPage.id,
@@ -748,6 +1338,25 @@ export default function PageEditorPage() {
   const handleUpdateGlobalSettings = (updates: Partial<WebsiteSettings>) => {
     if (!settings) return;
 
+    if (enV2 && docV2) {
+      // V2: lo que tiene destino en el documento va al borrador; la operación (D12) queda
+      // pendiente para la fila legacy del sitio principal.
+      const delDocumento: Record<string, unknown> = {};
+      const operacion: Record<string, unknown> = {};
+      for (const [clave, valor] of Object.entries(updates)) {
+        if (columnaVaAlDocumento(clave)) delDocumento[clave] = valor;
+        else operacion[clave] = valor;
+      }
+      if (Object.keys(delDocumento).length > 0) {
+        setDocV2(aplicarAjustesAlDocumento(docV2, delDocumento).documento);
+      }
+      pendingSettingsUpdates.current = { ...pendingSettingsUpdates.current, ...(operacion as Partial<WebsiteSettings>) };
+      setSettings((prev) => (prev ? { ...prev, ...updates } : prev));
+      setHasChanges(true);
+      setEstadoGuardadoV2('cambios');
+      return;
+    }
+
     setSettings((prev) => (prev ? { ...prev, ...updates } : prev));
     pendingSettingsUpdates.current = {
       ...pendingSettingsUpdates.current,
@@ -758,6 +1367,13 @@ export default function PageEditorPage() {
 
   // ---- TOGGLE PAGE IN HEADER ----
   const handleTogglePageHeader = async (pageId: string, show: boolean) => {
+    if (enV2) {
+      toast({
+        title: 'En V2 el encabezado usa los menús del borrador',
+        description: 'Edita el menú del encabezado desde el inspector del encabezado.',
+      });
+      return;
+    }
     try {
       await websitePageBuilderService.updatePage(pageId, { show_in_header: show });
       setPages((prev) =>
@@ -774,6 +1390,22 @@ export default function PageEditorPage() {
   // ---- SAVE ALL CHANGES ----
   const handleSave = async () => {
     if (!organizationId || !currentPage) return;
+
+    if (enV2) {
+      await guardarV2();
+      return;
+    }
+
+    // Un sitio principal con V2 activo en la web ya no se edita por el camino legacy (ETAPA-1 §3):
+    // sus cambios no llegarían a la web. Solo aplica a sitios adoptados; el resto no cambia.
+    if (selectedBranchId === null && sitiosV2.some((s) => s.branchId === null && s.v2Adoptado)) {
+      toast({
+        title: 'Este sitio usa V2',
+        description: 'Edita su borrador V2 desde «Editando: Sitio principal» y publica para ver los cambios en la web.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -982,6 +1614,52 @@ export default function PageEditorPage() {
   // Fase 4 §3.3 — Secciones permitidas según branch_type del outlet seleccionado
   const allowedSectionTypes = getAllowedSectionTypes(selectedBranch?.branch_type);
 
+  // ---- Sitios V2: datos derivados para el encabezado ----
+  const nombreSitioV2 =
+    editorV2?.sitio.branchId == null
+      ? 'Sitio principal'
+      : sucursalesV2.find((s) => s.id === editorV2.sitio.branchId)?.nombre ?? `Sede ${editorV2.sitio.branchId}`;
+  const estadoMostradoV2: EstadoGuardadoV2 = isSaving
+    ? 'guardando'
+    : estadoGuardadoV2 === 'conflicto' || estadoGuardadoV2 === 'error'
+      ? estadoGuardadoV2
+      : hasChanges
+        ? 'cambios'
+        : estadoGuardadoV2;
+  const accionesMenuV2 = (() => {
+    if (!enV2 || !editorV2) return [];
+    const acciones: { id: string; texto: string; onSelect: () => void; deshabilitada?: boolean; peligro?: boolean }[] = [];
+    if (esSedeV2) {
+      acciones.push({ id: 'herencia', texto: 'Ver lo que se hereda del principal', onSelect: () => setMostrarHerencia(true) });
+      const menusSede = new Set(docV2.menus.map((m) => m.id));
+      for (const m of editorV2.basePrincipal?.documento.menus ?? []) {
+        if (!UUID_MENU.test(m.id) || !menusSede.has(m.id)) continue;
+        acciones.push({ id: `copiar-${m.id}`, texto: `Copiar menú «${m.nombre}» a esta sede`, onSelect: () => void llevarMenuV2(m.id), deshabilitada: hasChanges });
+      }
+    } else {
+      for (const m of docV2.menus) {
+        if (!UUID_MENU.test(m.id)) continue;
+        acciones.push({ id: `menu-${m.id}`, texto: `Actualizar menú «${m.nombre}» en el borrador`, onSelect: () => void llevarMenuV2(m.id), deshabilitada: hasChanges });
+      }
+    }
+    if (editorV2.sitio.v2Adoptado) {
+      acciones.push({ id: 'desactivar', texto: 'Desactivar V2 en la web', onSelect: () => setAdopcionPendiente(false), peligro: true });
+    } else {
+      acciones.push({
+        id: 'activar',
+        texto: !LECTOR_PUBLICO_V2_LISTO
+          ? 'Activar V2 en la web (la web aún no lee V2)'
+          : editorV2.sitio.revisionPublicadaId ? 'Activar V2 en la web' : 'Activar V2 en la web (publica primero)',
+        onSelect: () => setAdopcionPendiente(true),
+        deshabilitada: !LECTOR_PUBLICO_V2_LISTO || !editorV2.sitio.revisionPublicadaId,
+      });
+      if (!esSedeV2) {
+        acciones.push({ id: 'legacy', texto: 'Editar el sitio actual (sin V2)', onSelect: () => void salirDeV2(), deshabilitada: hasChanges });
+      }
+    }
+    return acciones;
+  })();
+
   // ---- LOADING STATE ----
   if (isLoading || !organization) {
     return (
@@ -1023,11 +1701,51 @@ export default function PageEditorPage() {
         previewEntities={previewEntities}
         previewEntityId={previewEntityId}
         onPreviewEntityChange={setPreviewEntityId}
-        outletOptions={outletOptions}
+        outletOptions={enV2 ? undefined : outletOptions}
         selectedBranchId={selectedBranchId}
-        onOutletChange={handleOutletChange}
+        onOutletChange={enV2 ? undefined : handleOutletChange}
         selectedBranch={selectedBranch}
-        currentPageIsGlobal={currentPage.branch_id === null || currentPage.branch_id === undefined}
+        currentPageIsGlobal={enV2 ? false : currentPage.branch_id === null || currentPage.branch_id === undefined}
+        ocultarIndicadorOutlet={enV2}
+        etiquetaGuardar={enV2 ? 'Guardar borrador' : undefined}
+        controlSitio={
+          apiV2Disponible ? (
+            <SelectorSitio
+              sitios={sitiosV2}
+              sucursales={sucursalesV2}
+              branchActivo={enV2 ? editorV2.sitio.branchId : undefined}
+              cargando={cargandoV2}
+              onElegir={(branchId) => void elegirSitio(branchId)}
+            />
+          ) : null
+        }
+        accionesSitio={
+          enV2 ? (
+            <AccionesSitioV2
+              estado={estadoMostradoV2}
+              nombrePublicar={esSedeV2 ? `Publicar ${nombreSitioV2}` : 'Publicar'}
+              publicando={publicando}
+              puedePublicar={editorV2.erroresContrato === 0 || hasChanges}
+              onHistorial={() => setMostrarHistorial(true)}
+              onPublicar={() => setMostrarPublicar(true)}
+              acciones={accionesMenuV2}
+            />
+          ) : null
+        }
+        banda={
+          enV2 ? (
+            <BandaSitioV2
+              esSede={esSedeV2}
+              nombreSitio={nombreSitioV2}
+              v2Adoptado={editorV2.sitio.v2Adoptado}
+              personalizados={contarPersonalizados(origenesV2)}
+              baseDesdeLegacy={editorV2.basePrincipal?.origen === 'legacy'}
+              erroresContrato={editorV2.erroresContrato}
+              onVerPersonalizado={() => setMostrarHerencia(true)}
+              onIrPrincipal={() => void elegirSitio(null)}
+            />
+          ) : null
+        }
       />
 
       {/* Main Content: Sidebar + Preview */}
@@ -1080,8 +1798,20 @@ export default function PageEditorPage() {
           }
           zonaGlobalActiva={zonaGlobal}
           onSelectZonaGlobal={seleccionarZonaGlobal}
-          showPageLayout={showPageLayout}
-          onTogglePageLayout={() => setShowPageLayout(!showPageLayout)}
+          // V2: `page_settings` no tiene destino en el contrato del documento (se reporta).
+          showPageLayout={enV2 ? undefined : showPageLayout}
+          onTogglePageLayout={enV2 ? undefined : () => setShowPageLayout(!showPageLayout)}
+          renderExtraSeccion={
+            esSedeV2
+              ? (section, activa) => (
+                  <AvisoSeccionSede
+                    estado={estadosSeccionV2[section.id]}
+                    activa={activa}
+                    onRestablecer={() => restablecerSeccionV2(section.id)}
+                  />
+                )
+              : undefined
+          }
           pageLayoutContent={
             <PageLayoutPanel
               pageType={currentPage.page_type}
@@ -1123,7 +1853,7 @@ export default function PageEditorPage() {
             onUpdate={handleUpdateGlobalSettings}
             availableMenus={availableMenus.map((m) => ({ id: m.id, name: m.name }))}
             devicePreview={devicePreview}
-            onEditarMenu={() => setHojaMenuAbierta(true)}
+            onEditarMenu={() => abrirHojaMenu('header')}
             onCerrar={() => setZonaGlobal(null)}
           />
         )}
@@ -1133,7 +1863,7 @@ export default function PageEditorPage() {
             settings={settings}
             onUpdate={handleUpdateGlobalSettings}
             devicePreview={devicePreview}
-            onEditarMenus={() => setHojaMenuAbierta(true)}
+            onEditarMenus={() => abrirHojaMenu('footer')}
             onCerrar={() => setZonaGlobal(null)}
           />
         )}
@@ -1189,7 +1919,11 @@ export default function PageEditorPage() {
         open={pendingDeleteSection !== null}
         onOpenChange={(open) => { if (!open) setPendingDeleteSection(null); }}
         title="Eliminar sección"
-        description="¿Seguro que deseas eliminar esta sección? Esta acción no se puede deshacer."
+        description={
+          enV2
+            ? '¿Quitar esta sección del borrador? Lo publicado no cambia hasta que publiques.'
+            : '¿Seguro que deseas eliminar esta sección? Esta acción no se puede deshacer.'
+        }
         confirmLabel="Eliminar"
         variant="destructive"
         onConfirm={async () => { await doDeleteSection(); }}
@@ -1211,6 +1945,87 @@ export default function PageEditorPage() {
           }
         }}
       />
+
+      {/* ---- Sitios V2 ---- */}
+      <ConfirmDialog
+        open={sitioPorCrear !== undefined}
+        onOpenChange={(open) => { if (!open && !creandoSitio) setSitioPorCrear(undefined); }}
+        title={sitioPorCrear === null ? 'Crear el borrador V2 del sitio principal' : `Crear el sitio de ${sucursalesV2.find((s) => s.id === sitioPorCrear)?.nombre ?? 'la sede'}`}
+        description={
+          sitioPorCrear === null
+            ? 'Se copia el sitio actual (páginas, secciones, estilo, encabezado, pie y menús) a un borrador. La web no cambia: sigue mostrando el sitio actual hasta que publiques y actives V2.'
+            : 'La sede tendrá su propio borrador y su propia publicación. Hereda del sitio principal todo lo que no personalices. Nada se publica hasta que lo decidas.'
+        }
+        confirmLabel={sitioPorCrear === null ? 'Crear borrador' : 'Crear sitio de la sede'}
+        loading={creandoSitio}
+        onConfirm={crearSitioV2}
+      />
+
+      {enV2 && (
+        <>
+          <DialogoPublicar
+            abierto={mostrarPublicar}
+            onAbiertoChange={setMostrarPublicar}
+            nombreSitio={nombreSitioV2}
+            esSede={esSedeV2}
+            principalConCambiosSinPublicar={editorV2.basePrincipal?.principalConCambiosSinPublicar}
+            v2Adoptado={editorV2.sitio.v2Adoptado}
+            publicando={publicando}
+            onPublicar={publicarV2}
+          />
+          <PanelHistorial
+            abierto={mostrarHistorial}
+            onAbiertoChange={setMostrarHistorial}
+            sitioId={editorV2.sitio.id}
+            branchId={editorV2.sitio.branchId}
+            hayCambiosLocales={hasChanges}
+            borradorActualizadoEn={editorV2.actualizadoEn}
+            onRestaurar={restaurarV2}
+          />
+          <DialogoConflicto
+            abierto={conflictoV2 !== null}
+            onAbiertoChange={(open) => { if (!open) setConflictoV2(null); }}
+            versionLocal={editorV2.version}
+            versionServidor={conflictoV2?.versionServidor ?? null}
+            onCargarNueva={async () => {
+              setConflictoV2(null);
+              await entrarV2(editorV2.sitio, currentPage.id);
+            }}
+            onSobrescribir={async () => {
+              const actual = await clienteSitiosV2.borrador(editorV2.sitio.id);
+              setConflictoV2(null);
+              await guardarV2(actual.version);
+            }}
+          />
+          {esSedeV2 && (
+            <PanelHerencia
+              abierto={mostrarHerencia}
+              onAbiertoChange={setMostrarHerencia}
+              nombreSede={nombreSitioV2}
+              origenes={origenesV2}
+              valores={(settings ?? {}) as unknown as Record<string, unknown>}
+              onHeredar={(columna) => fijarHerenciaCampo(columna, 'inherit')}
+              onVaciar={(columna) => fijarHerenciaCampo(columna, 'clear')}
+            />
+          )}
+          <ConfirmDialog
+            open={adopcionPendiente !== null}
+            onOpenChange={(open) => { if (!open && !cambiandoAdopcion) setAdopcionPendiente(null); }}
+            title={adopcionPendiente ? `Activar V2 en la web de ${nombreSitioV2}` : `Desactivar V2 en ${nombreSitioV2}`}
+            description={
+              adopcionPendiente
+                ? 'La web de este sitio pasará a mostrar su última versión publicada en V2. Puedes desactivarlo después sin perder nada.'
+                : esSedeV2
+                  ? 'La web de esta sede dejará de mostrarse (no vuelve al sitio principal). El borrador y las versiones se conservan.'
+                  : 'La web vuelve a mostrar el sitio anterior. El borrador y las versiones se conservan.'
+            }
+            confirmLabel={adopcionPendiente ? 'Activar V2' : 'Desactivar V2'}
+            variant={adopcionPendiente ? 'default' : 'destructive'}
+            loading={cambiandoAdopcion}
+            onConfirm={() => cambiarAdopcionV2(Boolean(adopcionPendiente))}
+          />
+        </>
+      )}
     </div>
   );
 }

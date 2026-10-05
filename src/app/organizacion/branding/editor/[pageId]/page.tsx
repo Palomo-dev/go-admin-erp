@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
@@ -23,16 +23,11 @@ import {
   GlobalSettingsPanel,
   PageSEOPanel,
   PageLayoutPanel,
-  HeaderLayoutSelector,
-  HeaderOptionsPanel,
-  MobileHeaderPanel,
-  MenuTreeEditor,
-  HeaderPreviewMockup,
-  FooterLayoutSelector,
-  FooterOptionsPanel,
-  MobileFooterPanel,
-  FooterPreviewMockup,
-  MenuGroupManager,
+  HeaderInspector,
+  FooterInspector,
+  HojaMenu,
+  esZonaGlobal,
+  type ZonaGlobal,
   type OutletOption,
   type DevicePreview,
 } from '@/components/organization/branding/editor';
@@ -46,9 +41,22 @@ import { branchService } from '@/lib/services/branchService';
 import type { Branch } from '@/types/branch';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
+/** Campos de la página que el editor guarda con `updatePage`. */
+type PageUpdates = Parameters<typeof websitePageBuilderService.updatePage>[1];
+/**
+ * Mensaje de un error capturado, si lo trae. Los errores de Supabase
+ * (`PostgrestError`) son objetos con `message`, no instancias de `Error`.
+ */
+const mensajeError = (error: unknown): string | undefined => {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+    return error.message;
+  }
+  return undefined;
+};
+
 export default function PageEditorPage() {
   const params = useParams();
-  const router = useRouter();
   const { organization } = useOrganization();
   const organizationId = organization?.id;
   const { toast } = useToast();
@@ -68,8 +76,9 @@ export default function PageEditorPage() {
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const [showGlobalSettings, setShowGlobalSettings] = useState(false);
   const [showPageSEO, setShowPageSEO] = useState(false);
-  const [showMenuConfig, setShowMenuConfig] = useState(false);
-  const [showFooterConfig, setShowFooterConfig] = useState(false);
+  // Encabezado / pie seleccionados (inspector derecho) y hoja del menú
+  const [zonaGlobal, setZonaGlobal] = useState<ZonaGlobal | null>(null);
+  const [hojaMenuAbierta, setHojaMenuAbierta] = useState(false);
   const [showPageLayout, setShowPageLayout] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
   // Diálogos de confirmación (reemplazan window.confirm)
@@ -103,7 +112,7 @@ export default function PageEditorPage() {
   } = useHistory<WebsitePageSection[]>([]);
 
   // F12.4 — Portapapeles interno de estilo (copiar/pegar estilo entre secciones)
-  const styleClipboard = useRef<Record<string, any> | null>(null);
+  const styleClipboard = useRef<ReturnType<typeof extractStyle> | null>(null);
 
   // F12.4 — Filtro de búsqueda de secciones en el sidebar
   const [sectionSearch, setSectionSearch] = useState('');
@@ -111,9 +120,9 @@ export default function PageEditorPage() {
   // Pending changes (batched for save)
   const pendingSectionUpdates = useRef<Map<string, Partial<WebsitePageSection>>>(new Map());
   const pendingSettingsUpdates = useRef<Partial<WebsiteSettings>>({});
-  const pendingPageUpdates = useRef<Record<string, string>>({});
+  const pendingPageUpdates = useRef<PageUpdates>({});
   // F9.3 — Cambios pendientes de page_settings (layout de página)
-  const pendingPageSettings = useRef<Record<string, any> | null>(null);
+  const pendingPageSettings = useRef<Record<string, unknown> | null>(null);
   // Cambios pendientes del MenuTreeEditor (header_order, menu_icon, etc.)
   const pendingMenuUpdates = useRef<Map<string, Record<string, unknown>>>(new Map());
 
@@ -216,9 +225,10 @@ export default function PageEditorPage() {
   }, [loadData]);
 
   // F9.4 — Cargar entidades para el selector de contexto de plantillas de detalle
+  const currentPageType = currentPage?.page_type;
   useEffect(() => {
-    if (!organizationId || !currentPage) return;
-    const pageType = currentPage.page_type;
+    if (!organizationId || !currentPageType) return;
+    const pageType = currentPageType;
     if (!['product_detail', 'category_detail', 'space_detail'].includes(pageType)) {
       setPreviewEntities([]);
       setPreviewEntityId(null);
@@ -231,21 +241,23 @@ export default function PageEditorPage() {
         if (cancelled) return;
         setPreviewEntities(entities);
         // Auto-seleccionar la primera entidad si no hay una seleccionada
-        if (entities.length > 0 && !previewEntityId) {
-          setPreviewEntityId(entities[0].id);
+        if (entities.length > 0) {
+          setPreviewEntityId((actual) => actual ?? entities[0].id);
         }
       })
       .catch(() => {
         if (!cancelled) setPreviewEntities([]);
       });
     return () => { cancelled = true; };
-  }, [organizationId, currentPage?.page_type]);
+  }, [organizationId, currentPageType]);
 
   // F12.3 — Sincronizar la pila de undo/redo cuando se carga una página nueva.
   useEffect(() => {
     if (currentPage?.sections) {
       resetSections(currentPage.sections);
     }
+    // Solo al cambiar de página: reiniciar el historial con cada edición lo vaciaría.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage?.id, resetSections]);
 
   // F12.3 — Cuando undo/redo cambia sectionsState, reflejarlo en currentPage.
@@ -314,8 +326,10 @@ export default function PageEditorPage() {
       if (e.key === 'Escape' && !isCtrl) {
         // Solo si el foco no está en un input/textarea
         const tag = (e.target as HTMLElement)?.tagName;
-        if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') {
+        // Con la hoja del menú abierta, Esc solo la cierra (Radix).
+        if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT' && !hojaMenuAbierta) {
           setActiveSectionId(null);
+          setZonaGlobal(null);
         }
         return;
       }
@@ -333,7 +347,50 @@ export default function PageEditorPage() {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canUndo, canRedo, undoSections, redoSections, hasChanges, isSaving, activeSectionId]);
+  }, [canUndo, canRedo, undoSections, redoSections, hasChanges, isSaving, activeSectionId, hojaMenuAbierta]);
+
+  // ---- SELECCIÓN: sección de la página o zona global (encabezado / pie) ----
+  // Son excluyentes: una sección se edita en el sidebar; el encabezado y el
+  // pie, en el inspector derecho.
+  const seleccionarSeccion = (sectionId: string | null) => {
+    setActiveSectionId(sectionId);
+    if (sectionId) {
+      setZonaGlobal(null);
+      setHojaMenuAbierta(false);
+    }
+  };
+
+  const seleccionarZonaGlobal = (zona: ZonaGlobal) => {
+    setZonaGlobal(zona);
+    setActiveSectionId(null);
+  };
+
+  // Clic en el lienzo. En una zona global ya seleccionada, el clic en un
+  // enlace abre su menú (chip «clic en un enlace para editar el menú»).
+  const handleSelectFromCanvas = (id: string, detalle: { enlace: boolean }) => {
+    if (esZonaGlobal(id)) {
+      if (detalle.enlace && zonaGlobal === id) setHojaMenuAbierta(true);
+      seleccionarZonaGlobal(id);
+      return;
+    }
+    seleccionarSeccion(id);
+  };
+
+  // Al cerrar la hoja: los menús nombrados se guardan al momento, así que se
+  // recargan la lista de menús y el lienzo. El árbol de páginas queda
+  // pendiente hasta «Guardar».
+  const handleHojaMenuChange = async (abierta: boolean) => {
+    setHojaMenuAbierta(abierta);
+    if (abierta || !organizationId) return;
+    if (zonaGlobal === 'footer' || settings?.header_menu_id) {
+      setPreviewRefreshKey((k) => k + 1);
+      try {
+        setAvailableMenus(await websiteMenuGroupService.getMenus(organizationId));
+      } catch {
+        // La lista se vuelve a cargar con el editor; no bloquea.
+      }
+    }
+  };
 
   // ---- PAGE CHANGE ----
   const handlePageChange = async (newPageId: string) => {
@@ -433,7 +490,7 @@ export default function PageEditorPage() {
   };
 
   // ---- SECTION UPDATES (local state, batch for save) ----
-  const handleUpdateSectionContent = (sectionId: string, content: Record<string, any>) => {
+  const handleUpdateSectionContent = (sectionId: string, content: Record<string, unknown>) => {
     if (!currentPage) return;
 
     const newSections = currentPage.sections.map((s) =>
@@ -460,7 +517,7 @@ export default function PageEditorPage() {
     pendingSectionUpdates.current.set(sectionId, {
       ...existing,
       section_variant: variant,
-    } as any);
+    });
     setHasChanges(true);
   };
 
@@ -570,8 +627,8 @@ export default function PageEditorPage() {
       // F4 R3 (Issue 4) — Marcar hasChanges para que el reorden se persista al guardar
       setHasChanges(true);
       toast({ title: 'Sección duplicada' });
-    } catch (error: any) {
-      toast({ title: 'Error', description: error?.message || 'No se pudo duplicar', variant: 'destructive' });
+    } catch (error) {
+      toast({ title: 'Error', description: mensajeError(error) || 'No se pudo duplicar', variant: 'destructive' });
     }
   };
 
@@ -630,8 +687,8 @@ export default function PageEditorPage() {
         section.content || {},
       );
       toast({ title: 'Plantilla guardada', description: name });
-    } catch (error: any) {
-      toast({ title: 'Error', description: error?.message || 'No se pudo guardar la plantilla', variant: 'destructive' });
+    } catch (error) {
+      toast({ title: 'Error', description: mensajeError(error) || 'No se pudo guardar la plantilla', variant: 'destructive' });
     }
   };
 
@@ -661,11 +718,11 @@ export default function PageEditorPage() {
       if (pageData?.sections) resetSections(pageData.sections);
       setPreviewRefreshKey((k) => k + 1);
       toast({ title: 'Secciones materializadas', description: `${created.length} secciones por defecto creadas.` });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error materializing default sections:', error);
       toast({
         title: 'Error',
-        description: error?.message || 'No se pudieron materializar las secciones por defecto.',
+        description: mensajeError(error) || 'No se pudieron materializar las secciones por defecto.',
         variant: 'destructive',
       });
     }
@@ -680,7 +737,7 @@ export default function PageEditorPage() {
   };
 
   // ---- F9.3 — PAGE LAYOUT SETTINGS UPDATE ----
-  const handleUpdatePageSettings = (settings: Record<string, any>) => {
+  const handleUpdatePageSettings = (settings: Record<string, unknown>) => {
     if (!currentPage) return;
     setCurrentPage((prev) => (prev ? { ...prev, page_settings: settings } : prev));
     pendingPageSettings.current = settings;
@@ -721,7 +778,7 @@ export default function PageEditorPage() {
     setIsSaving(true);
     try {
       // 1. Save section updates
-      const sectionPromises: Promise<any>[] = [];
+      const sectionPromises: Promise<unknown>[] = [];
       pendingSectionUpdates.current.forEach((updates, sectionId) => {
         sectionPromises.push(
           websitePageBuilderService.updateSection(sectionId, updates)
@@ -735,12 +792,12 @@ export default function PageEditorPage() {
 
       // 3. Save page SEO updates
       if (Object.keys(pendingPageUpdates.current).length > 0) {
-        await websitePageBuilderService.updatePage(currentPage.id, pendingPageUpdates.current as any);
+        await websitePageBuilderService.updatePage(currentPage.id, pendingPageUpdates.current);
       }
 
       // 3b. F9.3 — Save page_settings (layout de página)
       if (pendingPageSettings.current !== null) {
-        await websitePageBuilderService.updatePage(currentPage.id, { page_settings: pendingPageSettings.current } as any);
+        await websitePageBuilderService.updatePage(currentPage.id, { page_settings: pendingPageSettings.current });
       }
 
       // 4. Save global settings
@@ -750,7 +807,7 @@ export default function PageEditorPage() {
         if (selectedBranchId !== null && !outletSettingsExists) {
           const upserted = await websiteSettingsService.updateSettings(
             organizationId,
-            pendingSettingsUpdates.current as any,
+            pendingSettingsUpdates.current,
             selectedBranchId,
           );
           setSettings(upserted);
@@ -780,8 +837,8 @@ export default function PageEditorPage() {
           'mobile_footer_style', 'mobile_footer_show_social', 'mobile_footer_show_hours',
           'header_menu_id', 'header_mega_menu_id',
         ];
-        const themeUpdates: Record<string, any> = {};
-        const headerUpdates: Record<string, any> = {};
+        const themeUpdates: Record<string, unknown> = {};
+        const headerUpdates: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(pendingSettingsUpdates.current)) {
           if (headerConfigKeys.includes(key)) {
             headerUpdates[key] = value;
@@ -794,7 +851,7 @@ export default function PageEditorPage() {
         if (Object.keys(themeUpdates).length > 0) {
           updatedSettings = await websiteSettingsService.updateTheme(
             organizationId,
-            themeUpdates as any,
+            themeUpdates as Parameters<typeof websiteSettingsService.updateTheme>[1],
             selectedBranchId,
           );
         }
@@ -808,8 +865,8 @@ export default function PageEditorPage() {
             'mobile_footer_style', 'mobile_footer_show_social', 'mobile_footer_show_hours',
             'header_menu_id', 'header_mega_menu_id',
           ];
-          const footerUpdates: Record<string, any> = {};
-          const pureHeaderUpdates: Record<string, any> = {};
+          const footerUpdates: Record<string, unknown> = {};
+          const pureHeaderUpdates: Record<string, unknown> = {};
           for (const [key, value] of Object.entries(headerUpdates)) {
             if (footerKeys.includes(key)) {
               footerUpdates[key] = value;
@@ -821,14 +878,14 @@ export default function PageEditorPage() {
           if (Object.keys(pureHeaderUpdates).length > 0) {
             updatedSettings = await websiteSettingsService.updateHeaderConfig(
               organizationId,
-              pureHeaderUpdates as any,
+              pureHeaderUpdates as Parameters<typeof websiteSettingsService.updateHeaderConfig>[1],
               selectedBranchId,
             );
           }
           if (Object.keys(footerUpdates).length > 0) {
             updatedSettings = await websiteSettingsService.updateFooterConfig(
               organizationId,
-              footerUpdates as any,
+              footerUpdates as Parameters<typeof websiteSettingsService.updateFooterConfig>[1],
               selectedBranchId,
             );
           }
@@ -838,7 +895,7 @@ export default function PageEditorPage() {
       }
 
       // 5. Sync gallery/testimonials/FAQ items to website_settings
-      const contentSync: Record<string, any> = {};
+      const contentSync: Parameters<typeof websiteSettingsService.updateContent>[1] = {};
       for (const section of currentPage.sections) {
         // F2.2: gallery usa clave canónica `images` con fallback `items` (retrocompatibilidad)
         const sectionItems = section.section_type === 'gallery'
@@ -869,7 +926,7 @@ export default function PageEditorPage() {
         const menuPromises: Promise<unknown>[] = [];
         pendingMenuUpdates.current.forEach((updates, pageId) => {
           menuPromises.push(
-            websitePageBuilderService.updatePageMenu(pageId, updates as any)
+            websitePageBuilderService.updatePageMenu(pageId, updates as Parameters<typeof websitePageBuilderService.updatePageMenu>[1])
           );
         });
         await Promise.all(menuPromises);
@@ -888,11 +945,11 @@ export default function PageEditorPage() {
         title: 'Cambios guardados',
         description: 'Todos los cambios se han guardado correctamente',
       });
-    } catch (error: any) {
-      console.error('Error saving:', error?.message || error);
+    } catch (error) {
+      console.error('Error saving:', mensajeError(error) || error);
       toast({
         title: 'Error al guardar',
-        description: error?.message || 'No se pudieron guardar los cambios. Verifica permisos.',
+        description: mensajeError(error) || 'No se pudieron guardar los cambios. Verifica permisos.',
         variant: 'destructive',
       });
     } finally {
@@ -979,7 +1036,7 @@ export default function PageEditorPage() {
         <EditorSidebar
           sections={currentPage.sections}
           activeSectionId={activeSectionId}
-          onSelectSection={setActiveSectionId}
+          onSelectSection={seleccionarSeccion}
           onUpdateSectionContent={handleUpdateSectionContent}
           onUpdateSectionVariant={handleUpdateSectionVariant}
           onToggleVisibility={handleToggleVisibility}
@@ -1021,165 +1078,8 @@ export default function PageEditorPage() {
               onUpdate={handleUpdatePageSEO}
             />
           }
-          showMenuConfig={showMenuConfig}
-          onToggleMenuConfig={() => setShowMenuConfig(!showMenuConfig)}
-          menuConfigContent={
-            settings ? (
-              <div className="space-y-4">
-                <HeaderLayoutSelector
-                  currentLayout={settings.header_style || 'default'}
-                  onSelect={(layout) => handleUpdateGlobalSettings({ header_style: layout })}
-                />
-                <HeaderPreviewMockup
-                  layout={settings.header_style || 'default'}
-                  logoPosition={settings.logo_position || 'left'}
-                  menuPosition={settings.menu_position || 'inline'}
-                  searchStyle={settings.search_style || 'icon'}
-                  showTopbar={settings.show_topbar ?? false}
-                  showCart={settings.show_header_cart ?? false}
-                  showAuth={settings.show_header_auth ?? false}
-                  ctaText={settings.header_cta_text || null}
-                  isMobile={devicePreview === 'mobile'}
-                  mobileMenuStyle={settings.mobile_menu_style || 'drawer'}
-                  headerOpacity={settings.header_opacity ?? 95}
-                />
-                <HeaderOptionsPanel
-                  settings={{
-                    header_style: settings.header_style || 'default',
-                    logo_position: settings.logo_position || 'left',
-                    menu_position: settings.menu_position || 'inline',
-                    search_style: settings.search_style || 'icon',
-                    show_categories_in_header: settings.show_categories_in_header ?? false,
-                    categories_menu_style: settings.categories_menu_style || 'dropdown',
-                    mega_menu_columns: settings.mega_menu_columns ?? 4,
-                    header_cta_text: settings.header_cta_text,
-                    header_cta_url: settings.header_cta_url,
-                    show_header_cart: settings.show_header_cart ?? false,
-                    show_header_auth: settings.show_header_auth ?? false,
-                    show_topbar: settings.show_topbar ?? false,
-                    header_opacity: settings.header_opacity ?? 95,
-                    header_bg_color: settings.header_bg_color ?? null,
-                    topbar_bg_color: settings.topbar_bg_color ?? null,
-                    nav_bg_color: settings.nav_bg_color ?? null,
-                    accent_color: settings.accent_color ?? null,
-                    topbar_show_email: settings.topbar_show_email ?? true,
-                    topbar_show_phone: settings.topbar_show_phone ?? true,
-                    topbar_announcement: settings.topbar_announcement ?? null,
-                    topbar_contact_position: settings.topbar_contact_position ?? 'left',
-                    header_menu_id: settings.header_menu_id ?? null,
-                    header_mega_menu_id: settings.header_mega_menu_id ?? null,
-                    minimal_menu_style: settings.minimal_menu_style ?? 'drawer',
-                    cart_icon: settings.cart_icon ?? 'shopping-bag',
-                    search_icon: settings.search_icon ?? 'search',
-                    auth_icon: settings.auth_icon ?? 'user',
-                    currency_icon: settings.currency_icon ?? 'globe',
-                    actions_order: settings.actions_order ?? ['search', 'currency', 'cart', 'auth'],
-                    cta_padding_x: settings.cta_padding_x ?? 16,
-                    cta_padding_y: settings.cta_padding_y ?? 8,
-                    cta_border_radius: settings.cta_border_radius ?? 8,
-                    cta_full_width: settings.cta_full_width ?? false,
-                    cta_border_width: settings.cta_border_width ?? 0,
-                    cta_border_color: settings.cta_border_color ?? null,
-                    cta_shadow: settings.cta_shadow ?? 'none',
-                    cta_bg_color: settings.cta_bg_color ?? null,
-                    cta_text_color: settings.cta_text_color ?? null,
-                    cta_margin_top: settings.cta_margin_top ?? 0,
-                    cta_margin_bottom: settings.cta_margin_bottom ?? 0,
-                  }}
-                  onUpdate={handleUpdateGlobalSettings}
-                  availableMenus={availableMenus.map(m => ({ id: m.id, name: m.name }))}
-                />
-                <MobileHeaderPanel
-                  settings={{
-                    mobile_menu_style: settings.mobile_menu_style || 'drawer',
-                    mobile_search_style: settings.mobile_search_style || 'icon',
-                    mobile_show_topbar: settings.mobile_show_topbar ?? false,
-                    mobile_sticky_header: settings.mobile_sticky_header ?? true,
-                    mobile_breakpoint: settings.mobile_breakpoint ?? 768,
-                  }}
-                  onUpdate={handleUpdateGlobalSettings}
-                />
-                {/* Con un menú nombrado asignado, el sitio pinta ese menú y este
-                    árbol (show_in_header, orden, iconos de las páginas) no se ve. */}
-                {organizationId && settings.header_menu_id && (
-                  <p className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
-                    El header usa el menú nombrado elegido arriba. Los cambios de este árbol no se verán en el sitio mientras ese menú esté asignado: edita ese menú en «Footer › Menús Nombrados».
-                  </p>
-                )}
-                {organizationId && (
-                  <MenuTreeEditor
-                    organizationId={organizationId}
-                    pendingUpdatesRef={pendingMenuUpdates}
-                    onPendingChanges={(hasPending) => {
-                      if (hasPending) setHasChanges(true);
-                    }}
-                  />
-                )}
-              </div>
-            ) : null
-          }
-          showFooterConfig={showFooterConfig}
-          onToggleFooterConfig={() => setShowFooterConfig(!showFooterConfig)}
-          footerConfigContent={
-            settings ? (
-              <div className="space-y-4">
-                <FooterLayoutSelector
-                  currentLayout={settings.footer_style || 'default'}
-                  onSelect={(layout) => handleUpdateGlobalSettings({ footer_style: layout })}
-                />
-                <FooterPreviewMockup
-                  layout={settings.footer_style || 'default'}
-                  columns={settings.footer_columns ?? 4}
-                  background={settings.footer_background ?? 'dark'}
-                  customBgColor={settings.footer_custom_bg_color ?? null}
-                  showContact={settings.footer_show_contact ?? true}
-                  showHours={settings.footer_show_hours ?? false}
-                  showSocial={settings.footer_show_social ?? true}
-                  showNewsletter={settings.footer_show_newsletter ?? false}
-                  showCategories={settings.footer_show_categories ?? false}
-                  showPoweredBy={settings.show_powered_by ?? true}
-                  footerText={settings.footer_text ?? null}
-                  newsletterTitle={settings.footer_newsletter_title ?? null}
-                  newsletterPlaceholder={settings.footer_newsletter_placeholder ?? null}
-                  newsletterButtonText={settings.footer_newsletter_button_text ?? null}
-                  isMobile={devicePreview === 'mobile'}
-                  mobileStyle={settings.mobile_footer_style ?? 'accordion'}
-                  mobileShowSocial={settings.mobile_footer_show_social ?? true}
-                  mobileShowHours={settings.mobile_footer_show_hours ?? false}
-                />
-                <FooterOptionsPanel
-                  settings={{
-                    footer_style: settings.footer_style || 'default',
-                    footer_columns: settings.footer_columns ?? 4,
-                    footer_background: settings.footer_background ?? 'dark',
-                    footer_custom_bg_color: settings.footer_custom_bg_color ?? null,
-                    footer_show_contact: settings.footer_show_contact ?? true,
-                    footer_show_hours: settings.footer_show_hours ?? false,
-                    footer_show_social: settings.footer_show_social ?? true,
-                    footer_show_categories: settings.footer_show_categories ?? false,
-                    footer_show_newsletter: settings.footer_show_newsletter ?? false,
-                    footer_newsletter_title: settings.footer_newsletter_title ?? null,
-                    footer_newsletter_placeholder: settings.footer_newsletter_placeholder ?? null,
-                    footer_newsletter_button_text: settings.footer_newsletter_button_text ?? null,
-                    footer_text: settings.footer_text ?? null,
-                    show_powered_by: settings.show_powered_by ?? true,
-                  }}
-                  onUpdate={handleUpdateGlobalSettings}
-                />
-                <MobileFooterPanel
-                  settings={{
-                    mobile_footer_style: settings.mobile_footer_style ?? 'accordion',
-                    mobile_footer_show_social: settings.mobile_footer_show_social ?? true,
-                    mobile_footer_show_hours: settings.mobile_footer_show_hours ?? false,
-                  }}
-                  onUpdate={handleUpdateGlobalSettings}
-                />
-                {organizationId && (
-                  <MenuGroupManager organizationId={organizationId} />
-                )}
-              </div>
-            ) : null
-          }
+          zonaGlobalActiva={zonaGlobal}
+          onSelectZonaGlobal={seleccionarZonaGlobal}
           showPageLayout={showPageLayout}
           onTogglePageLayout={() => setShowPageLayout(!showPageLayout)}
           pageLayoutContent={
@@ -1211,10 +1111,55 @@ export default function PageEditorPage() {
           devicePreview={devicePreview}
           refreshKey={previewRefreshKey}
           liveSections={currentPage.sections}
-          activeSectionId={activeSectionId}
-          onSelectSectionFromCanvas={(sectionId) => setActiveSectionId(sectionId)}
+          activeSectionId={activeSectionId ?? zonaGlobal}
+          onSelectSectionFromCanvas={handleSelectFromCanvas}
         />
+
+        {/* Inspector derecho del encabezado / pie (Figma «05 Editor») */}
+        {settings && zonaGlobal === 'header' && (
+          <HeaderInspector
+            key="header"
+            settings={settings}
+            onUpdate={handleUpdateGlobalSettings}
+            availableMenus={availableMenus.map((m) => ({ id: m.id, name: m.name }))}
+            devicePreview={devicePreview}
+            onEditarMenu={() => setHojaMenuAbierta(true)}
+            onCerrar={() => setZonaGlobal(null)}
+          />
+        )}
+        {settings && zonaGlobal === 'footer' && (
+          <FooterInspector
+            key="footer"
+            settings={settings}
+            onUpdate={handleUpdateGlobalSettings}
+            devicePreview={devicePreview}
+            onEditarMenus={() => setHojaMenuAbierta(true)}
+            onCerrar={() => setZonaGlobal(null)}
+          />
+        )}
       </div>
+
+      {/* Constructor del menú en hoja lateral: el lienzo sigue a la vista */}
+      {organizationId && zonaGlobal && (
+        <HojaMenu
+          abierto={hojaMenuAbierta}
+          onAbiertoChange={handleHojaMenuChange}
+          zona={zonaGlobal}
+          organizationId={organizationId}
+          menuEncabezado={
+            settings?.header_menu_id
+              ? {
+                  id: settings.header_menu_id,
+                  name: availableMenus.find((m) => m.id === settings.header_menu_id)?.name ?? 'Menú asignado',
+                }
+              : null
+          }
+          pendingMenuUpdatesRef={pendingMenuUpdates}
+          onPendingChanges={(hayPendientes) => {
+            if (hayPendientes) setHasChanges(true);
+          }}
+        />
+      )}
 
       {/* Add Section Dialog */}
       <AddSectionDialog

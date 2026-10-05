@@ -4,8 +4,11 @@
  * `website.sites.edit`). La organización llega del contexto de la sesión,
  * nunca del cliente.
  *
- * - Precio vigente: `importePrecioVigente` (`@/lib/pos/precioVigente`), la
- *   única regla de vigencia de `product_prices`. Aquí no se reimplementa.
+ * - Precio de referencia: el de la SEDE (docs/inventario/PRECIOS-POR-SEDE.md):
+ *   `product_branch_prices` vigente y, si no hay, el general de
+ *   `product_prices` (`importePrecioVigenteEnSede`, la única regla de
+ *   vigencia; aquí no se reimplementa). `web_price` es un precio SOLO web,
+ *   opcional, por encima de ese.
  * - Escritura: UN upsert por lote (`onConflict: branch_id,product_id`, la PK;
  *   ninguna columna admite NULL ahí, así que sí deduplica). Antes de escribir
  *   se comprueba que la sede y TODOS los productos son de la organización: un
@@ -15,7 +18,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { OrgContextError } from '@/lib/utils/orgContextError';
-import { importePrecioVigente } from '@/lib/pos/precioVigente';
+import { precioVigenteEnSede, importePrecioVigente } from '@/lib/pos/precioVigente';
+import { filasDeSede, type FilaPrecioSede } from '@/lib/services/inventario/preciosSede';
 import { ilikeAnyOf } from '@/lib/utils/postgrestFilters';
 import { todayInTz } from '@/lib/utils/dateCore';
 import {
@@ -217,7 +221,7 @@ export async function guardarCartaSede(ctx: ContextoCartaSede, entrada: Escritur
 
 const SELECT_PRODUCTO = 'id, name, sku, category_id';
 
-/** Listado paginado de una sede con su ajuste y el precio vigente. */
+/** Listado paginado de una sede con su ajuste y el precio vigente EN LA SEDE. */
 export async function listarCartaSede(ctx: ContextoCartaSede, params: ListadoCartaSede): Promise<RespuestaListadoCartaSede> {
   await exigirSedeDeLaOrganizacion(ctx, params.branch_id);
   const tamano = TAMANO_PAGINA_CARTA_SEDE;
@@ -276,7 +280,7 @@ export async function listarCartaSede(ctx: ContextoCartaSede, params: ListadoCar
     total = count ?? 0;
   }
 
-  // Precio vigente: la regla única de product_prices (no se reimplementa).
+  // Precio general vigente: la regla única de product_prices (no se reimplementa).
   const precios = new Map<number, { price: number | string | null; effective_from: string | null; effective_to: string | null }[]>();
   const ahora = new Date();
   for (const trozo of trozos(productos.map((p) => p.id))) {
@@ -293,14 +297,24 @@ export async function listarCartaSede(ctx: ContextoCartaSede, params: ListadoCar
     }
   }
 
+  // Precio propio de la sede (sin fila → el general, exactamente como antes).
+  let preciosSede: Map<number, FilaPrecioSede[]>;
+  try {
+    preciosSede = await filasDeSede(ctx.supabase, 'precio', params.branch_id, productos.map((p) => p.id), { ahora });
+  } catch (error) {
+    falla('precios_sede', error as { message?: string; code?: string });
+  }
+
   const salida: ProductoCartaSede[] = productos.map((p) => {
     const a = ajustes.get(p.id) ?? null;
+    const resuelto = precioVigenteEnSede(preciosSede.get(p.id), precios.get(p.id), ahora);
     return {
       id: p.id,
       name: p.name,
       sku: p.sku,
       category_id: p.category_id,
-      precio_vigente: importePrecioVigente(precios.get(p.id), ahora),
+      precio_vigente: resuelto ? importePrecioVigente([resuelto.fila], ahora) : null,
+      precio_origen: resuelto?.origen ?? null,
       ajuste: a
         ? { ...a, agotado_hasta: diaAgotadoHasta(a.sold_out_until, ctx.timezone), agotado_ahora: agotadoAhora(a, ahora) }
         : null,

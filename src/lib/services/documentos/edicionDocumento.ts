@@ -6,7 +6,9 @@
  *   organización (Tesorería › Impuestos), separados por su clase `kind`.
  * - `buscarProductosDocumento`: búsqueda en el servidor para «Agregar
  *   productos» con precio de venta vigente (`product_prices`) o costo
- *   (`product_suppliers` del proveedor → `product_costs` vigente), stock de la
+ *   (`product_suppliers` del proveedor → `product_costs` vigente), ambos
+ *   primero los propios de la sucursal del documento si los tiene
+ *   (docs/inventario/PRECIOS-POR-SEDE.md), stock de la
  *   sucursal (`stock_levels.qty_on_hand`, la misma cuenta que usa
  *   `fn_invoice_stock_shortages` al emitir) e impuestos del producto.
  * - `buscarClientesDocumento` / `buscarProveedoresDocumento`: sobre las RPC
@@ -31,6 +33,7 @@ import { ilikeAnyOf } from '@/lib/utils/postgrestFilters';
 import { getStorageImageUrl } from '@/lib/utils/storageImageUrl';
 import { textoSinHtml } from '@/lib/utils/textoPlano';
 import { vigente } from './vigencia';
+import { filasDeSede, type FilaCostoSede, type FilaPrecioSede } from '@/lib/services/inventario/preciosSede';
 import { COLUMNAS_CANTIDAD_PRODUCTO, cantidadLineaDeProducto } from './cantidadLinea';
 
 export { vigente };
@@ -312,10 +315,22 @@ async function mapearProductos(
     }
   }
 
+  // Precio (venta) o costo (compra) propios de la sucursal del documento; sin
+  // ellos, los generales de siempre. Sin sucursal no se consulta nada.
+  const ids = productos.map((p) => p.id);
+  let preciosSede = new Map<number, FilaPrecioSede[]>();
+  let costosSede = new Map<number, FilaCostoSede[]>();
+  if (c.sucursal && ids.length > 0) {
+    [preciosSede, costosSede] = await Promise.all([
+      filasDeSede(supabase, 'precio', c.sucursal, ids, { senal }),
+      c.variante === 'compra' ? filasDeSede(supabase, 'costo', c.sucursal, ids, { senal }) : Promise.resolve(costosSede),
+    ]);
+  }
+
   return productos.map((p) => {
-    const precioVenta = Number(vigente(p.product_prices)?.price) || 0;
+    const precioVenta = Number((vigente(preciosSede.get(p.id)) ?? vigente(p.product_prices))?.price) || 0;
     const prov = delProveedor.get(p.id);
-    const costo = prov && prov.cost > 0 ? prov.cost : Number(vigente(p.product_costs)?.cost) || 0;
+    const costo = prov && prov.cost > 0 ? prov.cost : Number((vigente(costosSede.get(p.id)) ?? vigente(p.product_costs))?.cost) || 0;
     const s = stock.get(p.id);
     const impuestos = (p.product_tax_relations ?? [])
       .map((r) => (Array.isArray(r.organization_taxes) ? r.organization_taxes[0] : r.organization_taxes))

@@ -23,6 +23,8 @@ interface Mundo {
   productos: Array<{ id: number; organization_id: number; category_id: number | null; name?: string; sku?: string }>;
   ajustes: Array<Record<string, unknown>>;
   precios?: Array<Record<string, unknown>>;
+  /** Filas de product_branch_prices (precio propio de una sede). */
+  preciosSede?: Array<Record<string, unknown>>;
   permiso?: boolean;
   errorUpsert?: { message: string; code: string } | null;
 }
@@ -57,6 +59,11 @@ function dobleSupabase(mundo: Mundo) {
     if (c.tabla === 'product_prices') {
       const ids = (valor(c, 'product_id', 'in') as number[]) ?? [];
       return { data: (mundo.precios ?? []).filter((p) => ids.includes(p.product_id as number)), error: null };
+    }
+    if (c.tabla === 'product_branch_prices') {
+      const ids = (valor(c, 'product_id', 'in') as number[]) ?? [];
+      const sede = valor(c, 'branch_id');
+      return { data: (mundo.preciosSede ?? []).filter((p) => ids.includes(p.product_id as number) && p.branch_id === sede), error: null };
     }
     return { data: null, error: { message: 'tabla no doblada' } };
   }
@@ -263,6 +270,50 @@ describe('listarCartaSede', () => {
     expect(p2.ajuste).toMatchObject({ is_listed: false, web_price: 26000, is_sold_out: true, agotado_ahora: true });
     expect(r.productos.some((p) => p.id === 50)).toBe(false);
     expect(r.puedeEditar).toBe(true);
+  });
+
+  test('el placeholder es el precio DE LA SEDE; sin precio de sede, el general (como antes)', async () => {
+    const mundo: Mundo = {
+      ...MUNDO_BASE(),
+      precios: [
+        { product_id: 1, price: '32000', effective_from: '2026-01-01T00:00:00Z', effective_to: null },
+        { product_id: 3, price: '15000', effective_from: '2026-01-01T00:00:00Z', effective_to: null },
+      ],
+      preciosSede: [
+        { branch_id: SEDE, product_id: 1, price: '34000', compare_price: null, effective_from: '2026-02-01T00:00:00Z', effective_to: null },
+        // De otra sede: no cuenta.
+        { branch_id: 8, product_id: 3, price: '99999', compare_price: null, effective_from: '2026-02-01T00:00:00Z', effective_to: null },
+      ],
+    };
+    const { ctx, consultas } = ctxCon(mundo);
+    const r = await listarCartaSede(ctx, { branch_id: SEDE, filtro: 'todos', pagina: 1 });
+    expect(r.productos.find((p) => p.id === 1)).toMatchObject({ precio_vigente: 34000, precio_origen: 'sede' });
+    expect(r.productos.find((p) => p.id === 3)).toMatchObject({ precio_vigente: 15000, precio_origen: 'general' });
+    expect(r.productos.find((p) => p.id === 2)).toMatchObject({ precio_vigente: null, precio_origen: null });
+    const sede = consultas.find((c) => c.tabla === 'product_branch_prices')!;
+    expect(sede.filtros).toContainEqual(['branch_id', 'eq', SEDE]);
+  });
+
+  test('si la tabla de sede aún no existe (migración sin aplicar), se usa el general sin fallar', async () => {
+    const mundo: Mundo = {
+      ...MUNDO_BASE(),
+      precios: [{ product_id: 1, price: '32000', effective_from: '2026-01-01T00:00:00Z', effective_to: null }],
+    };
+    const doble = ctxCon(mundo);
+    const original = doble.supabase.from.getMockImplementation()!;
+    let consultada = false;
+    doble.supabase.from.mockImplementation((t: string) => {
+      if (t !== 'product_branch_prices') return original(t);
+      consultada = true;
+      const fallo = { data: null, error: { code: 'PGRST205', message: "Could not find the table 'public.product_branch_prices'" } };
+      const cadena: Record<string, unknown> = {};
+      for (const m of ['select', 'eq', 'in', 'lte', 'or']) cadena[m] = () => cadena;
+      cadena.then = (ok: (v: unknown) => unknown) => Promise.resolve(fallo).then(ok);
+      return cadena as never;
+    });
+    const r = await listarCartaSede(doble.ctx, { branch_id: SEDE, filtro: 'todos', pagina: 1 });
+    expect(consultada).toBe(true);
+    expect(r.productos.find((p) => p.id === 1)).toMatchObject({ precio_vigente: 32000, precio_origen: 'general' });
   });
 
   test('una sede ajena es 404', async () => {

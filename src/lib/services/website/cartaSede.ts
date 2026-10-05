@@ -2,8 +2,9 @@
  * Carta por sede (website V2, ADR-002 D3): contrato y reglas PURAS.
  *
  * Tabla: `website_branch_products` (migración 20261005214525). Por sede, si el
- * producto sale en la web (`is_listed`), su precio web (`web_price`, NULL = el
- * precio vigente de `product_prices`) y si está agotado (`is_sold_out`, hasta
+ * producto sale en la web (`is_listed`), su precio SOLO web (`web_price`, NULL
+ * = el precio vigente de la sede: `product_branch_prices` o, sin él, el general
+ * de `product_prices`) y si está agotado (`is_sold_out`, hasta
  * `sold_out_until` si se fija). Sin fila = el producto sale como en el sitio
  * principal. La tabla NO admite DELETE: «volver a como el principal» escribe
  * la fila neutra (`is_listed` true, `web_price` NULL, `is_sold_out` false).
@@ -57,8 +58,14 @@ export interface ProductoCartaSede {
   name: string;
   sku: string;
   category_id: number | null;
-  /** Precio vigente de Inventario (product_prices), o null si no tiene. */
+  /**
+   * Precio vigente de Inventario EN LA SEDE (product_branch_prices) o, si la
+   * sede no tiene uno propio, el general (product_prices); null si no hay.
+   * Es el placeholder de `web_price`: con `web_price` NULL la web cobra este.
+   */
   precio_vigente: number | null;
+  /** De dónde salió `precio_vigente`: precio propio de la sede o general. */
+  precio_origen?: 'sede' | 'general' | null;
   /** Ajuste guardado de la sede, o null si no hay fila (= como el principal). */
   ajuste: (AjusteSede & { agotado_hasta: string | null; agotado_ahora: boolean }) | null;
 }

@@ -36,7 +36,8 @@ import {
 import { getStorageImageUrl } from '@/lib/utils/storageImageUrl';
 import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 import { nombreVisibleMetodo, ordenarMetodosDeLaOrganizacion } from '@/lib/finanzas/metodosPagoOrganizacion';
-import { precioVigente, importePrecioVigente, ProductoSinPrecioError } from '@/lib/pos/precioVigente';
+import { precioVigenteEnSede, importePrecioVigente, importePrecioVigenteEnSede, ProductoSinPrecioError } from '@/lib/pos/precioVigente';
+import { filasDeSede, type FilaPrecioSede } from '@/lib/services/inventario/preciosSede';
 import { agotadoPorStock } from '@/lib/pos/stockDisponible';
 import { calcularLineaVenta, totalesDeLineas } from '@/lib/pos/lineaVenta';
 import { anularVentaEnServidor } from '@/lib/pos/anularVenta';
@@ -85,6 +86,29 @@ export class POSService {
    */
   static usesLocalCatalog(): boolean {
     return isDesktop() && !isAppOnline();
+  }
+
+  /**
+   * Precios propios de la sede (docs/inventario/PRECIOS-POR-SEDE.md). Sin
+   * sede («Todas») o sin filas de sede → mapa vacío: todo queda exactamente
+   * como antes (precio general). Las pantallas (grilla, variantes, detalle)
+   * caen al general si la lectura falla; el carrito no (`estricto`): el
+   * servidor valida contra el precio de la sede y cobrar otro sería peor que
+   * avisar. Sin red (catálogo local) no se llama: el escritorio aún no
+   * replica precios de sede y `pos_checkout_v1` acepta el general offline.
+   */
+  private static async preciosDeSede(
+    branchId: number | null | undefined,
+    productIds: number[],
+    estricto = false,
+  ): Promise<Map<number, FilaPrecioSede[]>> {
+    try {
+      return await filasDeSede(supabase, 'precio', branchId, productIds);
+    } catch (error) {
+      if (estricto) throw error;
+      console.warn('[POS] precios de sede no disponibles; se muestra el general', error);
+      return new Map();
+    }
   }
 
   // Obtener branch_id dinámicamente (con detección de cambio de sucursal)
@@ -453,6 +477,9 @@ export class POSService {
         pricesMap[price.product_id].push(price);
       });
 
+      // Precios propios de la sucursal que vende (sin sucursal: ninguno).
+      const preciosSede = await this.preciosDeSede(currentBranchId, productIds);
+
       // Procesar recetas: mapear product_id -> { id, name } (receta activa)
       (recipesResult.data || []).forEach((r: any) => {
         if (!recipeMap[r.product_id]) {
@@ -496,7 +523,8 @@ export class POSService {
         const isOutOfStock = agotadoPorStock(product.track_stock, stockQty);
         // Precio vigente (effective_from <= ahora < effective_to), no el último
         // registrado: un precio vencido o programado a futuro no se muestra.
-        const vigente = precioVigente(pricesMap[product.id] || []);
+        // El de la sucursal manda; sin él, el general (PRECIOS-POR-SEDE.md).
+        const vigente = precioVigenteEnSede(preciosSede.get(product.id), pricesMap[product.id] || [])?.fila ?? null;
         return {
           ...product,
           category: categoriesMap[product.category_id] || null,
@@ -622,6 +650,11 @@ export class POSService {
 
       const parentImage = parentImages?.find((img: any) => img.is_primary) || parentImages?.[0];
 
+      // Precio de la sucursal que vende: la del filtro de la grilla o, sin
+      // filtro, la actual. «Todas» (null) = precio general.
+      const sucursalPrecio = opciones?.branchFilter !== undefined ? opciones.branchFilter : getCurrentBranchId();
+      const preciosSede = await this.preciosDeSede(sucursalPrecio, variantIds);
+
       return data?.map((variant: any) => {
         const ownImages = variantImagesMap[variant.id] || [];
         const primaryOwnImage = ownImages.find((img: any) => img.is_primary) || ownImages[0];
@@ -634,7 +667,7 @@ export class POSService {
         const stock = stockPorVariante[variant.id] ?? { qty_on_hand: 0, qty_reserved: 0 };
         return {
           ...variant,
-          price: precioVigente(variant.product_prices || [])?.price || null,
+          price: precioVigenteEnSede(preciosSede.get(variant.id), variant.product_prices || [])?.fila.price || null,
           product_images: ownImages.length > 0 ? ownImages : (parentImages || []),
           image: resolvedImage,
           ...(conStock
@@ -2104,6 +2137,7 @@ export class POSService {
 
       if (error) throw error;
       if (!data) return null;
+      const preciosSede = await this.preciosDeSede(getCurrentBranchId(), [data.id]);
 
       return {
         id: data.id,
@@ -2114,7 +2148,8 @@ export class POSService {
         barcode: data.barcode,
         // Vigencia real (antes `.eq('effective_to', null)`, que es `= null` y
         // nunca coincide: con el `!inner` el producto no se encontraba).
-        price: importePrecioVigente(data.product_prices) ?? 0,
+        // Precio de la sucursal actual; sin él, el general.
+        price: importePrecioVigenteEnSede(preciosSede.get(data.id), data.product_prices) ?? 0,
         cost: 0, // TODO: Implementar desde product_costs
         stock_quantity: 0, // TODO: Implementar desde stock_levels
         min_stock_level: 0,
@@ -2155,6 +2190,12 @@ export class POSService {
       if (this.usesLocalCatalog()) {
         precio = importePrecioVigente(await posOfflineReads.getProductPriceRows(this.organizationId, productId));
       } else {
+        // Precio propio de la sucursal actual (PRECIOS-POR-SEDE.md): manda si
+        // está vigente; si no, la regla de siempre sobre el general.
+        const propio = importePrecioVigente(
+          (await this.preciosDeSede(getCurrentBranchId(), [productId], true)).get(productId),
+        );
+        if (propio !== null) return propio;
         // La vigencia la filtra la consulta; la fila más reciente es la que rige.
         const ahora = new Date().toISOString();
         const { data, error } = await supabase

@@ -24,6 +24,8 @@ interface MemberProps {
   branch_id: string | null;
   branch_name: string;
   branch_names: string[];
+  /** Ids (como texto) de TODAS las sucursales del miembro, para el filtro. */
+  branch_ids: string[];
   job_position_name: string;
   created_at: string;
 }
@@ -51,7 +53,8 @@ interface FilaPerfilMiembro {
   role_name: string | null;
   is_super_admin: boolean | null;
   is_active: boolean | null;
-  branch_id: string | null;
+  // La RPC devuelve el id numérico; se normaliza a texto al agrupar.
+  branch_id: string | number | null;
   branch_name: string | null;
   job_position_name: string | null;
   created_at: string;
@@ -174,6 +177,7 @@ export default function MembersTab({ orgId }: { orgId: number }) {
             branch_id: member.branch_id,
             branch_name: member.branch_name || t('noBranch'),
             branch_names: [], // Array to store all branch names
+            branch_ids: [],
             job_position_name: member.job_position_name || t('noJobPosition'),
             created_at: new Date(member.created_at).toLocaleDateString()
           });
@@ -185,6 +189,8 @@ export default function MembersTab({ orgId }: { orgId: number }) {
           if (!existingMember.branch_names.includes(member.branch_name)) {
             existingMember.branch_names.push(member.branch_name);
           }
+          const idTexto = String(member.branch_id);
+          if (!existingMember.branch_ids.includes(idTexto)) existingMember.branch_ids.push(idTexto);
         }
       });
 
@@ -346,7 +352,10 @@ export default function MembersTab({ orgId }: { orgId: number }) {
       const nameMatches = !nameFilter || member.full_name.toLowerCase().includes(nameFilter.toLowerCase());
       const emailMatches = !emailFilter || member.email.toLowerCase().includes(emailFilter.toLowerCase());
       const roleMatches = !roleFilter || member.role === roleFilter;
-      const branchMatches = !localBranchFilter || member.branch_id === localBranchFilter;
+      // El id llega numérico de la RPC y el filtro es texto: antes `===` nunca
+      // coincidía y filtrar por cualquier sucursal dejaba la lista vacía. Además
+      // se mira cada sucursal del miembro, no solo la primera.
+      const branchMatches = !localBranchFilter || member.branch_ids.includes(String(localBranchFilter));
       const statusMatches = statusFilter === 'all' || 
         (statusFilter === 'active' && member.status === t('active')) ||
         (statusFilter === 'inactive' && member.status === t('inactive'));

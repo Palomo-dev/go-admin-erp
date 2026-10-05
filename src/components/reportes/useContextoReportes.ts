@@ -155,8 +155,6 @@ export function useContextoReportes() {
 
   return {
     orgId,
-    /** Nombre de la organización activa (para el asistente de reportes). */
-    nombreOrganizacion: organization?.name,
     grupos,
     codigos,
     accesoTotal,

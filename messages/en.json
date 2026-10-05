@@ -14182,12 +14182,22 @@
       "total": "Total withheld",
       "alcance": "{facturas, plural, =0 {No invoices} one {# invoice} other {# invoices}} · {conceptos, plural, =0 {no items} one {# item} other {# items}}",
       "sinRetenciones": "No withholdings were applied in this period; the certificate will show zero.",
-      "nota": "Covers every branch: the withholding agent is the organization.",
+      "nota": "Covers every branch: the withholding agent is the organization. Issuing it takes the next number of the CR series.",
       "descargar": "Download PDF",
       "imprimir": "Print",
       "ver": "View",
       "cerrar": "Close",
-      "errorDescarga": "Could not download the certificate"
+      "errorDescarga": "Could not download the certificate",
+      "desdeMes": "From",
+      "hastaMes": "To",
+      "periodoInvalido": "Choose a valid period: the first month cannot be after the last one or after the current month.",
+      "expedir": "Issue certificate",
+      "vistaPrevia": "Preview",
+      "numero": "Number",
+      "expedido": "Issued",
+      "reexpedido": "It was already issued for this period with the same amounts: the number is kept.",
+      "errorExpedir": "The certificate could not be issued",
+      "errorPermiso": "You do not have permission to issue withholding certificates."
     }
   },
   "documentos": {
@@ -14294,6 +14304,11 @@
         "emitido": "Issued",
         "firmado": "Signed · period closed",
         "reemplazado": "Superseded"
+      },
+      "certificado": {
+        "issued": "Issued",
+        "void": "Voided",
+        "preview": "Preview"
       }
     },
     "qr": {
@@ -14371,7 +14386,6 @@
       "periodoHasta": "Period to",
       "facturasIncluidas": "Invoices included",
       "fechaExpedicion": "Issue date",
-      "ciudadExpedicion": "City of issue",
       "declaradoEn": "Filed in",
       "tipoCierre": "Close type",
       "franja": "Time window",
@@ -14381,7 +14395,9 @@
       "emitidoPor": "Issued by",
       "firmadoEn": "Signed",
       "firmadoPor": "Signed by",
-      "kpi": "Indicator"
+      "kpi": "Indicator",
+      "periodoCertificado": "Certified period",
+      "ciudadRetencion": "City of withholding"
     },
     "formasPago": {
       "contado": "Cash",
@@ -14423,11 +14439,11 @@
       "arqueos": "Cash counts",
       "denominaciones": "Denominations",
       "retenciones": "Withholdings applied to the supplier",
-      "conceptosRetenidos": "Withholdings applied",
-      "facturasIncluidas": "Invoices included",
       "indiceCapitulos": "Chapter index",
       "reportesConError": "Reports not included (calculation error)",
-      "reporte": "Report"
+      "reporte": "Report",
+      "valoresRetenidos": "Amounts withheld",
+      "valoresRetenidosPeriodo": "Amounts withheld · {periodo}"
     },
     "columnas": {
       "descripcion": "Description",
@@ -14467,7 +14483,8 @@
       "valorRetenido": "Amount withheld",
       "capitulo": "Chapter",
       "reportes": "Reports",
-      "reporte": "Report"
+      "reporte": "Report",
+      "tarifaRetencion": "Rate"
     },
     "vacios": {
       "lineas": "No lines.",
@@ -14527,7 +14544,8 @@
       "contador": "Public accountant",
       "datosContador": "Name · Professional license",
       "elaboro": "Prepared by",
-      "representanteLegal": "Legal representative"
+      "representanteLegal": "Legal representative",
+      "firmaAutorizada": "Authorized signature"
     },
     "legal": {
       "resolucion": "DIAN resolution no. {numero} dated {fecha}, prefix {prefijo}, authorized numbering from {desde} to {hasta}, valid until {vigencia}.",
@@ -14632,7 +14650,18 @@
       "declarado350": "Form 350",
       "declaradoIca": "ICA return",
       "declarado350EIca": "Form 350 and ICA",
-      "constancia": "{emisor}, as withholding agent, certifies that during the stated period it applied to {proveedor} the withholdings detailed below, on the payments or credits of the invoices included."
+      "vistaPrevia": "Preview",
+      "periodoMes": "{mes} {anio}",
+      "periodoMeses": "{desde} to {hasta} {anio}",
+      "periodoMesesAnios": "{desde} {anioDesde} to {hasta} {anioHasta}",
+      "periodoDias": "{desde} to {hasta}",
+      "facturaCompra": "{n} purchase invoice",
+      "facturasCompra": "{n} purchase invoices",
+      "constancia350": "Amounts withheld from the supplier on its purchase invoices for the period and reported by {emisor}: income tax and VAT withholding on form 350 (monthly). Each amount comes from the withholdings recorded on the invoices; none is typed in.",
+      "constanciaIca": "Amounts withheld from the supplier on its purchase invoices for the period and reported by {emisor} on the ICA return of the municipality {municipio}. Each amount comes from the withholdings recorded on the invoices; none is typed in.",
+      "constancia350EIca": "Amounts withheld from the supplier on its purchase invoices for the period and reported by {emisor}: income tax and VAT withholding on form 350 (monthly), and ICA on the return of the municipality {municipio}. Each amount comes from the withholdings recorded on the invoices; none is typed in.",
+      "municipioDe": "of {ciudad}",
+      "municipioSinCiudad": "where it was withheld"
     },
     "reportes": {
       "truncado": "Showing {mostradas} of {total} rows. Totals include all of them. See the full report in the app.",
@@ -24831,6 +24860,36 @@
     "pie": {
       "aviso": "It can make mistakes: check what matters",
       "permisos": "Assistant permissions"
+    },
+    "reporte": {
+      "chip": "Report: {reporte} · {detalle}",
+      "chipCentro": "Reports · {detalle}",
+      "centro": "Reports",
+      "todasSucursales": "All branches",
+      "bienvenida": "I answer about {reporte} with the filters you have applied. Before saving or sending anything I ask you to confirm.",
+      "preguntas": "Questions about this report",
+      "sugerencias": {
+        "mejorDia": "Which day did we sell the most, and why?",
+        "vendedorTicket": "Which salesperson raised their average ticket the most?",
+        "compararSucursal": "Compare this period with the previous one by branch",
+        "comparar": "Compare this period with the previous one",
+        "porSucursal": "How is this result split by branch?",
+        "agotarse": "Which products will run out first?",
+        "sinRotacion": "Which products barely moved this period?",
+        "proveedor": "Which supplier did we buy the most from, and how much?",
+        "variacion": "Which item explains the biggest change?",
+        "vencimientos": "What is due first, and for how much?",
+        "destaca": "What is the most important thing in this report?",
+        "revisar": "What should I check first here?",
+        "fueraDeLoNormal": "Is anything out of the ordinary in this report?",
+        "resumen": "Summarize this report in 3 points for the manager"
+      },
+      "tendencia": "{serie} trend in {periodo}",
+      "filasMostradas": "Showing {n} of {total} rows; the full report is in the viewer.",
+      "exportar": "Export",
+      "programar": "Schedule delivery",
+      "irAlReporte": "Go to report",
+      "errorExportar": "The report could not be exported."
     }
   },
   "analiticaWeb": {
@@ -24975,7 +25034,8 @@
     "actualizar": "Refresh",
     "programarEnvios": "Schedule deliveries",
     "generarCierre": "Generate closing",
-    "preguntar": "Ask the AI",
+    "preguntar": "Ask GO Assistant",
+    "preguntarDescripcion": "With this report and its filters",
     "masAcciones": "More actions",
     "pestanas": {
       "etiqueta": "Report sections",

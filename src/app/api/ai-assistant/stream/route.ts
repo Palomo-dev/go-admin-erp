@@ -17,6 +17,8 @@ import {
 import { resolveOrgCurrency } from '@/lib/ai/assistant/orgCurrency';
 import type { ToolContext } from '@/lib/ai/agent/types';
 import { loadCorrection } from '@/lib/ai/assistant/correction';
+import { resolverAlcanceSucursal, type AlcanceSucursal } from '@/lib/security/alcanceSucursal';
+import { leerReporteAbierto } from '@/lib/ai/agent/tools/reportes';
 
 /**
  * POST /api/ai-assistant/stream  →  Server-Sent Events
@@ -151,6 +153,7 @@ export async function POST(request: NextRequest) {
     return errorStream('No encuentro la propuesta cancelada en este hilo. Pídeme de nuevo lo que necesitas crear.', 'INVALID_CORRECTION');
   }
   const startedAt = Date.now();
+  let alcance: Promise<AlcanceSucursal> | null = null;
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -246,7 +249,13 @@ export async function POST(request: NextRequest) {
           currency: currency.code,
           channel: 'text',
           conversationId: conversation.id,
+          // Una sola lectura del alcance por turno, y solo si una herramienta
+          // lo pide (reportes). Es el de la SESIÓN, nunca uno del cliente.
+          alcanceSucursal: () => (alcance ??= resolverAlcanceSucursal(ctx)),
         };
+
+        // Reporte abierto en la página (Figma Reportes §22): dato, no permiso.
+        const reporteAbierto = await leerReporteAbierto(clientContext.reporte);
 
         const tools = resolveTools(caps, 'text');
         const systemPrompt = buildSystemPrompt(
@@ -258,6 +267,7 @@ export async function POST(request: NextRequest) {
             currentPath: typeof clientContext.currentPath === 'string' ? clientContext.currentPath : null,
             timezone: typeof clientContext.timezone === 'string' ? clientContext.timezone : null,
             currency: currency.code,
+            reporteAbierto,
           },
           caps,
           tools,

@@ -518,6 +518,7 @@ export default function CuentaPorPagarDetalle({ id }: { id: string }) {
           proveedorId={c.proveedor.id}
           proveedorNombre={c.proveedor.name}
           rangoInicial={c.factura?.issue_date ? rangoMesDe(toDate(new Date(c.factura.issue_date)), hoy) : undefined}
+          sucursalId={c.branch_id ?? null}
         />
       )}
     </div>

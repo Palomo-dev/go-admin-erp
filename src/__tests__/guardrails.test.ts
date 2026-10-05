@@ -1433,7 +1433,9 @@ describe('F0 Guardarraíles', () => {
       'app/api/chat/ai/generate-response/route.ts',
       'app/api/chat/ai/generate-summary/route.ts',
       'app/api/chat/ai/lab-test/route.ts',
-      'lib/services/reportes/reportAgentService.ts',
+      // 'lib/services/reportes/reportAgentService.ts' salió de la lista al
+      // retirarse con `/api/ai-assistant/reportes` (Figma Reportes §22): las
+      // preguntas de reportes las cobra el GO Asistente con `chargeAiCredits`.
     ]);
 
     test('solo los llamadores V3 de la allow-list importan consumeAICredits', () => {

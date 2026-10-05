@@ -11,6 +11,7 @@
  */
 
 import type { BulkPreviewRow, PendingAction, PendingQuestion } from './clientTypes';
+import { parsearTarjetaReporte, type TarjetaReporte } from './tarjetaReporte';
 
 export interface ToolStep {
   name: string;
@@ -30,6 +31,8 @@ export interface StreamHandlers {
   onError(error: { message: string; code?: string }): void;
   /** Aviso que no corta el turno (hoy: `FORBIDDEN_TOOL`). Opcional: los llamadores viejos lo ignoran. */
   onNotice?(notice: { code: string; tool?: string }): void;
+  /** Resultado de un reporte para pintar en la respuesta (ya validado). Opcional. */
+  onReporte?(tarjeta: TarjetaReporte): void;
 }
 
 export interface StreamResult {
@@ -236,6 +239,11 @@ export async function streamAssistant(
               handlers.onNotice?.({ code: payload.code, tool: typeof payload.tool === 'string' ? payload.tool : undefined });
             }
             break;
+          case 'reporte': {
+            const tarjeta = parsearTarjetaReporte(payload.tarjeta);
+            if (tarjeta) handlers.onReporte?.(tarjeta);
+            break;
+          }
           case 'error':
             fail(String(payload.message ?? 'No pude responder.'), payload.code ? String(payload.code) : undefined);
             break;

@@ -21,10 +21,11 @@
  * lógica pura en `@/lib/ai/assistant/panelUi`.
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
+import { MapPin } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import type { AssistantContext } from '@/lib/services/aiAssistantService';
 import type { ActionOutcome, AssistantCreditsState, PendingAction, PendingQuestion } from '@/lib/ai/assistant/clientTypes';
@@ -33,15 +34,24 @@ import { streamAssistant, type ToolStep } from '@/lib/ai/assistant/streamClient'
 import {
   accionAtajo,
   avisoPorCodigo,
+  contextoDesdeEvento,
+  contextoParaServidor,
+  contextoTrasEvento,
+  contextoVigente,
   esAtajoAsistente,
+  esSoloActualizacion,
+  EVENTO_ABRIR_ASISTENTE,
   EVENTO_ESTADO_ASISTENTE,
   faseDelTurno,
   guardarModo,
   leerModo,
   respuestasEstimadas,
+  sugerenciasReporte,
+  type ContextoAsistente,
   type ModoPanel,
   type TipoAviso,
 } from '@/lib/ai/assistant/panelUi';
+import type { TarjetaReporte } from '@/lib/ai/assistant/tarjetaReporte';
 import { useBranch } from '@/lib/context/BranchContext';
 import Composer, { type ComposerAttachment } from './assistant/Composer';
 import ConversationHistory from './assistant/ConversationHistory';
@@ -130,6 +140,12 @@ function AssistantSession({
   const [modo, setModoState] = useState<ModoPanel>('acoplado');
   /** Mandar la página actual como contexto (chip del composer). */
   const [usarContexto, setUsarContexto] = useState(true);
+  /**
+   * Contexto que una pantalla entregó al abrir el asistente (hoy, un reporte
+   * con su periodo, sucursal y vista; Figma Reportes §22). Es dato de la
+   * página, no permiso: el servidor revalida todo. Caduca al salir de la ruta.
+   */
+  const [contextoPagina, setContextoPagina] = useState<ContextoAsistente | null>(null);
   /** Texto del atajo según el sistema: «Ctrl+J» o «⌘J». */
   const [atajo, setAtajo] = useState('Ctrl+J');
   /** Anuncio para lectores de pantalla: la fase, no cada token. */
@@ -193,6 +209,29 @@ function AssistantSession({
       /* sin CustomEvent: nada que avisar */
     }
   }, [isOpen, modo]);
+
+  // Una pantalla abre el asistente con su contexto (`abrirAsistente`). El shell
+  // abre el panel con el mismo evento; aquí solo se guarda el contexto.
+  useEffect(() => {
+    const alAbrir = (e: Event) => {
+      const detalle = (e as CustomEvent).detail;
+      if (!contextoDesdeEvento(detalle)) return;
+      setContextoPagina((actual) => contextoTrasEvento(actual, detalle));
+      if (!esSoloActualizacion(detalle)) setUsarContexto(true);
+    };
+    window.addEventListener(EVENTO_ABRIR_ASISTENTE, alAbrir);
+    return () => window.removeEventListener(EVENTO_ABRIR_ASISTENTE, alAbrir);
+  }, []);
+
+  // Al salir de la pantalla desde la que se abrió, el contexto deja de valer.
+  useEffect(() => {
+    setContextoPagina((actual) => (actual && !contextoVigente(actual, pagina.ruta) ? null : actual));
+  }, [pagina.ruta]);
+  const contextoReporte = contextoVigente(contextoPagina, pagina.ruta) ? contextoPagina : null;
+  const sugerenciasContexto = useMemo(
+    () => (usarContexto ? sugerenciasReporte(contextoReporte).map((s) => ({ texto: t(`reporte.sugerencias.${s.clave}`), icono: s.icono })) : []),
+    [usarContexto, contextoReporte, t]
+  );
 
   // La organización no activó la voz: «Escuchar» no se ofrece (antes se
   // descubría al primer clic fallido).
@@ -346,9 +385,12 @@ function AssistantSession({
   // pantalla, pero solo mientras se ve la bienvenida (con un hilo abierto no
   // se muestran y pedirlas sería una consulta por navegación para nada).
   const enBienvenida = messages.length === 0 && !pendingAction;
+  // Con un reporte abierto, las sugerencias salen del propio reporte
+  // (`sugerenciasReporte`): sin petición ni créditos.
+  const conSugerenciasPropias = sugerenciasContexto.length > 0;
   useEffect(() => {
-    if (isOpen && enBienvenida) void loadSuggestions();
-  }, [isOpen, enBienvenida, loadSuggestions, pagina.ruta]);
+    if (isOpen && enBienvenida && !conSugerenciasPropias) void loadSuggestions();
+  }, [isOpen, enBienvenida, conSugerenciasPropias, loadSuggestions, pagina.ruta]);
 
   // Sin créditos, al volver a la pestaña (quizá los compró en otra) se relee.
   useEffect(() => {
@@ -399,8 +441,10 @@ function AssistantSession({
       branchName: context.branchName,
       currentPath: rutaContexto(),
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      // Reporte, periodo, sucursal y vista de la página: el servidor los valida.
+      reporte: usarContexto && contextoReporte ? contextoParaServidor(contextoReporte) : undefined,
     }),
-    [context.userName, context.branchName, rutaContexto]
+    [context.userName, context.branchName, rutaContexto, usarContexto, contextoReporte]
   );
 
   /**
@@ -477,11 +521,13 @@ function AssistantSession({
       question: PendingQuestion | null;
       error: { message: string; code?: string } | null;
       forbidden: boolean;
+      tarjetas: TarjetaReporte[];
     } = {
       action: null,
       question: null,
       error: null,
       forbidden: false,
+      tarjetas: [],
     };
 
     try {
@@ -525,6 +571,9 @@ function AssistantSession({
           onNotice: (notice) => {
             if (notice.code === 'FORBIDDEN_TOOL') captured.forbidden = true;
           },
+          onReporte: (tarjeta) => {
+            captured.tarjetas.push(tarjeta);
+          },
         },
         controller.signal
       );
@@ -542,7 +591,8 @@ function AssistantSession({
         setTurnoFallido(content);
         if (captured.action) setPendingAction(captured.action);
         if (result.content) {
-          setMessages((previous) => [...previous, { id: `partial-${Date.now()}`, role: 'assistant', content: result.content }]);
+          const tarjetas = captured.tarjetas.length ? captured.tarjetas : undefined;
+          setMessages((previous) => [...previous, { id: `partial-${Date.now()}`, role: 'assistant', content: result.content, tarjetas }]);
         }
         const cancelada = captured.error?.code === 'STREAM_ABORTED';
         if (!cancelada) {
@@ -570,7 +620,8 @@ function AssistantSession({
       const finalText = result.content || captured.error?.message || '';
       if (finalText) {
         const assistantId = `assistant-${Date.now()}`;
-        setMessages((prev) => [...prev, { id: assistantId, role: 'assistant', content: finalText }]);
+        const tarjetas = captured.tarjetas.length && !captured.error ? captured.tarjetas : undefined;
+        setMessages((prev) => [...prev, { id: assistantId, role: 'assistant', content: finalText, tarjetas }]);
         // R2: la respuesta también en audio, si el usuario lo pidió. No se
         // lee un error del sistema en voz alta.
         if (speakReplies && result.content && !captured.error) void speak(assistantId, result.content);
@@ -832,6 +883,18 @@ function AssistantSession({
   };
 
   const sinCreditos = credits?.level === 'empty';
+  /** Chip del composer: el reporte (o el centro de reportes) en vez del nombre de la página. */
+  const nombreContexto = contextoReporte ? (contextoReporte.reporte?.titulo ?? pagina.nombre ?? t('reporte.centro')) : pagina.nombre;
+  /** Chip superior (Figma 22-02): «Reporte: Ventas por día · 1–30 sep · Sucursal Principal». */
+  const chipReporte = contextoReporte
+    ? (() => {
+        const sucursal = contextoReporte.sucursal.nombre ?? (contextoReporte.sucursal.id === null ? t('reporte.todasSucursales') : null);
+        const partes = [contextoReporte.periodo.etiqueta, sucursal].filter(Boolean).join(' · ');
+        return contextoReporte.reporte
+          ? t('reporte.chip', { reporte: contextoReporte.reporte.titulo, detalle: partes })
+          : t('reporte.chipCentro', { detalle: partes });
+      })()
+    : null;
   const hayHilo = messages.length > 0 || Boolean(pendingAction);
   const ampliado = modo === 'ampliado';
 
@@ -886,12 +949,20 @@ function AssistantSession({
       ) : (
         <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto p-4">
           <div className={cn('flex flex-col gap-4', ampliado && 'mx-auto max-w-[680px]')}>
+            {chipReporte && usarContexto && (
+              <p className="flex max-w-full items-center gap-1.5 self-start rounded-full bg-subtle px-2.5 py-1 text-xs font-medium text-fg-secondary">
+                <MapPin aria-hidden className="size-3 shrink-0" strokeWidth={1.5} />
+                <span className="min-w-0 truncate" title={chipReporte}>{chipReporte}</span>
+              </p>
+            )}
             {!hayHilo ? (
               <WelcomeView
                 nombre={context.userName}
-                pagina={usarContexto ? pagina.nombre : null}
-                sugerencias={suggestions}
-                cargando={loadingSuggestions}
+                pagina={usarContexto ? nombreContexto : null}
+                sugerencias={conSugerenciasPropias ? sugerenciasContexto : suggestions}
+                cargando={!conSugerenciasPropias && loadingSuggestions}
+                texto={usarContexto && contextoReporte ? t('reporte.bienvenida', { reporte: nombreContexto ?? '' }) : undefined}
+                tituloSugerencias={conSugerenciasPropias ? t('reporte.preguntas') : undefined}
                 deshabilitado={ocupado || sinCreditos}
                 onSugerencia={(s) => void sendMessage(s)}
               />
@@ -1011,7 +1082,7 @@ function AssistantSession({
         onRemoveAttachment={handleRemoveAttachment}
         attachmentsEnabled={true}
         credits={credits}
-        contexto={{ pagina: pagina.nombre, activo: usarContexto, onAlternar: () => setUsarContexto((v) => !v) }}
+        contexto={{ pagina: nombreContexto, activo: usarContexto, onAlternar: () => setUsarContexto((v) => !v) }}
       />
 
       {/* Sin el nombre del modelo: es un dato del proveedor, no del cliente. */}

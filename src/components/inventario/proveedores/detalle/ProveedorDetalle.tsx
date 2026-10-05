@@ -43,7 +43,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useOrgCurrency } from '@/lib/hooks/useOrgCurrency';
-import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { getCurrentBranchId, getOrganizationId } from '@/lib/hooks/useOrganization';
 import {
   supplierService,
   type AccountPayableSummary,
@@ -951,6 +951,7 @@ export function ProveedorDetalle({ supplierUuid }: ProveedorDetalleProps) {
           onAbiertoChange={setCertificado}
           proveedorId={supplier.id}
           proveedorNombre={supplier.name}
+          sucursalId={getCurrentBranchId()}
         />
       )}
     </div>

@@ -2,8 +2,8 @@
  * Alcance de sucursal de la persona en la organización de la sesión.
  *
  * Una sola definición para el servidor: la usan `GET /api/me/capacidades`
- * (qué ofrece la UI) y las rutas que ejecutan reportes con una sucursal que
- * llega del cliente (`/api/ai-assistant/reportes`). Es la misma regla que
+ * (qué ofrece la UI) y quien ejecuta reportes con una sucursal que llega del
+ * cliente o del modelo (`consultar_reporte` del GO Asistente). Es la misma regla que
  * `reporte_exigir_alcance_sucursal` en la base, que es la barrera final.
  *
  * - Admin (`is_super_admin` o `role_id` 1/2, nunca por el nombre del rol): todas.

@@ -5,8 +5,9 @@
  *
  * - Usuario: burbuja en Azul acción a la derecha (radio 12, texto hasta 280 px
  *   en el panel acoplado), con los adjuntos que se mandaron en ese turno.
- * - Asistente: burbuja en Fondo suave a todo el ancho, markdown, y debajo
- *   «Escuchar» (solo si la organización activó la voz) y «Copiar».
+ * - Asistente: burbuja en Fondo suave a todo el ancho, markdown (y, si el
+ *   turno consultó un reporte, su tarjeta con gráfico, tabla y accesos), y
+ *   debajo «Escuchar» (solo si la organización activó la voz) y «Copiar».
  * - Sin avatares: en 400 px el ancho es para el contenido.
  *
  * `React.memo`: mientras llega una respuesta el panel se vuelve a pintar en
@@ -18,7 +19,9 @@ import React, { memo } from 'react';
 import { useTranslations } from 'next-intl';
 import { Check, Copy, FileSpreadsheet, FileText, ImageIcon, Loader2, Volume2 } from 'lucide-react';
 import { cn } from '@/utils/Utils';
+import type { TarjetaReporte } from '@/lib/ai/assistant/tarjetaReporte';
 import MarkdownRenderer from '../MarkdownRenderer';
+import ReportAnswerCard from './ReportAnswerCard';
 
 export interface AdjuntoMensaje {
   nombre: string;
@@ -31,6 +34,8 @@ export interface MensajeHilo {
   role: 'user' | 'assistant';
   content: string;
   adjuntos?: AdjuntoMensaje[];
+  /** Resultados de reportes de este turno (Figma Reportes 22-03): gráfico, tabla y accesos. */
+  tarjetas?: TarjetaReporte[];
 }
 
 export interface MessageBubbleProps {
@@ -88,6 +93,9 @@ function MessageBubble({ mensaje, ampliado, puedeEscuchar, leyendo, copiado, onC
     <div className="flex flex-col gap-1.5">
       <div className="w-full rounded-xl bg-subtle px-3 py-2.5 text-fg">
         <MarkdownRenderer content={texto} />
+        {mensaje.tarjetas?.map((tarjeta, i) => (
+          <ReportAnswerCard key={`${tarjeta.reporteId}-${i}`} tarjeta={tarjeta} />
+        ))}
       </div>
       {texto.trim() && (
         <div className="flex items-center gap-3 px-1">

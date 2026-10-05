@@ -8,6 +8,7 @@ import { AppHeader } from '@/components/shell/header/AppHeader';
 import { CabeceraMovilProvider } from '@/components/shell/header/cabeceraMovil';
 import type { PaginaBuscable } from './Header/GlobalSearch';
 import AIAssistantPanel from './Header/AIAssistantPanel';
+import { contextoDesdeEvento, esSoloActualizacion, EVENTO_ABRIR_ASISTENTE } from '@/lib/ai/assistant/panelUi';
 import { SidebarShell } from '@/components/shell/sidebar/SidebarShell';
 import { CATALOGO_NAV } from '@/lib/navigation/catalog';
 import { filtrarNavegacion, rutaActiva } from '@/lib/navigation/filtrar';
@@ -115,6 +116,18 @@ export const AppLayout = ({
   
   // Estado para controlar el panel del Asistente de IA
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
+
+  // Una pantalla pide abrir el GO Asistente con su contexto (p. ej. «Preguntar
+  // a GO Asistente» en Reportes). El shell solo abre el panel; el contexto lo
+  // valida y lo guarda el propio panel, que escucha el mismo evento.
+  useEffect(() => {
+    const abrir = (e: Event) => {
+      const detalle = (e as CustomEvent).detail;
+      if (contextoDesdeEvento(detalle) && !esSoloActualizacion(detalle)) setAiAssistantOpen(true);
+    };
+    window.addEventListener(EVENTO_ABRIR_ASISTENTE, abrir);
+    return () => window.removeEventListener(EVENTO_ABRIR_ASISTENTE, abrir);
+  }, []);
   
   // Estado para almacenar el ID de la organización
   const [orgId, setOrgId] = useState<string | null>(null);

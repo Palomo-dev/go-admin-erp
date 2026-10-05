@@ -100,3 +100,21 @@ it('signal ya abortado no envía la petición', async () => {
   expect(await streamAssistant({ message: 'Hola' }, handlers(), controller.signal)).toMatchObject({ ok: false, canFallback: false });
   expect(fetchMock).not.toHaveBeenCalled();
 });
+
+it('evento reporte (Figma Reportes 22-03): la tarjeta válida llega a onReporte; una rota se ignora sin cortar el turno', async () => {
+  const tarjeta = {
+    reporteId: 'ventas-periodo', grupo: 'ventas', titulo: 'Ventas del periodo',
+    periodo: { tipo: 'mensual', fechaInicio: '2026-09-01', fechaFin: '2026-09-30', horaInicio: null, horaFin: null, etiqueta: 'Septiembre 2026' },
+    sucursalId: 3, vista: null, columnas: [{ key: 'sucursal', titulo: 'Sucursal', tipo: 'texto' }],
+    filas: [{ sucursal: 'Norte' }], serie: [], serieTitulo: null, totalFilas: 1,
+  };
+  jest.spyOn(globalThis, 'fetch').mockResolvedValue(response(
+    frame('reporte', { tarjeta }) + frame('reporte', { tarjeta: { ...tarjeta, reporteId: '../x' } }) + frame('token', { delta: 'Listo' }) + frame('done')
+  ));
+  const events = handlers();
+  const onReporte = jest.fn();
+  expect(await streamAssistant({ message: 'Hola' }, { ...events, onReporte })).toMatchObject({ ok: true, content: 'Listo' });
+  expect(onReporte).toHaveBeenCalledTimes(1);
+  expect(onReporte).toHaveBeenCalledWith(tarjeta);
+  expect(events.onError).not.toHaveBeenCalled();
+});

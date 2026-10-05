@@ -12,6 +12,8 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AssistantCapabilities } from '@/lib/ai/assistant/capabilities';
+import type { TarjetaReporte } from '@/lib/ai/assistant/tarjetaReporte';
+import type { AlcanceSucursal } from '@/lib/security/alcanceSucursal';
 
 export type ToolRisk = 'low' | 'medium' | 'high';
 
@@ -35,6 +37,13 @@ export interface ToolContext {
   /** Algunas herramientas se bloquean en voz (§5.5.2). */
   channel: 'text' | 'voice';
   conversationId: string | null;
+  /**
+   * Alcance de sucursal de la sesión (`resolverAlcanceSucursal`), resuelto en
+   * el servidor una sola vez por turno. Lo usan las herramientas que reciben
+   * una sucursal del modelo o de la página (reportes). Sin él, fallan
+   * cerradas: nunca se asume «todas las sucursales».
+   */
+  alcanceSucursal?: () => Promise<AlcanceSucursal>;
 }
 
 /** Una línea del resumen que ve el usuario antes de confirmar. */
@@ -87,6 +96,12 @@ export interface ToolResult {
   data?: unknown;
   /** Código estable para el cliente. */
   errorCode?: string;
+  /**
+   * Tarjeta con el resultado de un reporte (gráfico pequeño + tabla corta).
+   * La arma la herramienta con los datos reales; `runAgent` la emite al panel
+   * como evento `reporte`. No viaja al modelo (ya tiene `data`).
+   */
+  tarjetaReporte?: TarjetaReporte;
 }
 
 /**

@@ -1,70 +1,166 @@
 /**
- * Certificado de retenciones practicadas a un proveedor (art. 381 E.T.).
+ * Certificado de retenciones practicadas a un proveedor (art. 381 E.T.),
+ * Figma 09 · «Certificado de retenciones (Nuevo · propuesta)» 1491:126182.
  *
- * El cálculo NO se repite aquí: sale de `fn_certificado_retenciones_proveedor`,
- * que lee las mismas filas que el reporte de retenciones practicadas
- * (`fn_retenciones_practicadas_filas`): retenciones de facturas de compra
- * confirmadas, con la cuenta del asiento real (o la que resolvería el asiento)
- * y la clase de `fn_clase_retencion`. La función exige `finance.view` en la
- * base; el motor lo exige antes en el servidor.
+ * Dos entradas por la misma ruta del motor:
+ * - `id` = uuid de `withholding_certificates`: el certificado EXPEDIDO. Número
+ *   de la serie CR de la organización (`CR-<año>-<consecutivo>`), estado
+ *   «Expedido» y la foto de conceptos que guardó
+ *   `fn_certificado_retenciones_expedir`: reimprimirlo da siempre lo mismo.
+ * - `id` = id del proveedor (entero): VISTA PREVIA del periodo `desde`/`hasta`,
+ *   sin número y con marca de agua «Borrador», calculada al vuelo.
  *
- * El agente retenedor es la organización, no la sucursal: el certificado
- * cubre todas las sucursales. El periodo son días calendario de la zona de la
- * organización; por defecto, del 1 de enero del año del corte hasta hoy.
+ * El cálculo NO se repite aquí: los conceptos salen de
+ * `fn_certificado_retenciones_proveedor` (retenciones de facturas de compra
+ * confirmadas, agrupadas por concepto, con la cuenta del asiento de cada
+ * factura). La función exige `finance.view` en la base; el motor lo exige
+ * antes en el servidor.
  *
- * El número (`CR-<año>-<proveedor>`) es determinista y se puede reexpedir: no
- * es un consecutivo de la DIAN.
+ * El agente retenedor es la organización: el certificado cubre todas las
+ * sucursales. La sucursal (la del documento de origen) solo da la tarjeta
+ * «Sucursal» y la «Ciudad de la retención».
  */
 
 import { resolverContextoMoneda } from '@/lib/services/monedaOrganizacion';
 import { toPlainDate } from '@/lib/utils/dateCore';
+import {
+  capitalizar,
+  claveConstancia,
+  claveDeclaradoEn,
+  resumirValoresRetenidos,
+  textoPeriodo,
+  textoTarifa,
+  type ConceptoRetenido,
+} from '../../certificadoRetenciones';
+import { crearFormateador } from '../../formato';
 import type { Traductor } from '../../textos';
-import type { Campo, CeldaTabla, DocumentoPayload, FilaTotal } from '../../tipos';
+import type { Campo, CeldaTabla, DocumentoPayload, MarcaAgua, Tono } from '../../tipos';
 import {
   SELECT_PROVEEDOR,
   cargarBase,
   contraparteProveedor,
+  esUuid,
   exigirEntero,
   fallaLectura,
   nombreArchivoBase,
   noEncontrado,
   num,
   textoLegal,
-  texto,
   type FilaProveedor,
   type OpcionesCarga,
   type SesionDocumento,
 } from '../base';
 
 const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
-const CLASES = ['retefuente', 'reteiva', 'reteica'] as const;
-
-interface ConceptoCertificado {
-  clase: string | null;
-  concepto: string | null;
-  cuenta: string | null;
-  tarifa: number | string | null;
-  base: number | string | null;
-  valor: number | string | null;
-}
-
-interface FacturaCertificado {
-  numero: string | null;
-  dia: string | null;
-  valor: number | string | null;
-}
 
 interface RespuestaCertificado {
-  conceptos?: ConceptoCertificado[] | null;
-  facturas?: FacturaCertificado[] | null;
-  totales?: Partial<Record<'retenido' | (typeof CLASES)[number], number | string | null>> | null;
+  conceptos?: ConceptoRetenido[] | null;
+  facturas?: unknown[] | null;
 }
 
-/** Periodo del certificado: `hasta` ≤ hoy; `desde` ≤ `hasta`, o el 1 de enero del año de `hasta`. */
+interface FilaCertificado {
+  id: string;
+  organization_id: number;
+  branch_id: number | null;
+  supplier_id: number;
+  number: string;
+  period_from: string;
+  period_to: string;
+  invoice_count: number | null;
+  concepts: ConceptoRetenido[] | null;
+  status: string;
+  issued_at: string;
+}
+
+/** Periodo de la vista previa: `hasta` ≤ hoy; `desde` ≤ `hasta`, o el 1 de enero del año de `hasta`. */
 export function periodoCertificado(opciones: Pick<OpcionesCarga, 'desde' | 'hasta'>, hoy: string): { desde: string; hasta: string } {
   const hasta = opciones.hasta && FECHA_RE.test(opciones.hasta) && opciones.hasta <= hoy ? opciones.hasta : hoy;
   const desde = opciones.desde && FECHA_RE.test(opciones.desde) && opciones.desde <= hasta ? opciones.desde : `${hasta.slice(0, 4)}-01-01`;
   return { desde, hasta };
+}
+
+/** Sucursal de la vista previa (`?sucursal=`): entero o nada. `cargarBase` la filtra por la organización. */
+function sucursalDeParametros(opciones: OpcionesCarga): number | null {
+  const crudo = opciones.parametros?.sucursal;
+  return crudo && /^\d{1,9}$/.test(crudo) && Number(crudo) > 0 ? Number(crudo) : null;
+}
+
+async function leerProveedor(sesion: SesionDocumento, id: number): Promise<FilaProveedor> {
+  const { data, error } = await sesion.supabase
+    .from('suppliers')
+    .select(`id, organization_id, ${SELECT_PROVEEDOR}`)
+    .eq('id', id)
+    .eq('organization_id', sesion.organizationId)
+    .maybeSingle();
+  if (error) fallaLectura('suppliers', error);
+  const proveedor = data as (FilaProveedor & { id: number; organization_id: number }) | null;
+  if (!proveedor || proveedor.organization_id !== sesion.organizationId) throw noEncontrado();
+  return proveedor;
+}
+
+interface DatosCertificado {
+  numero: string | null;
+  estado: { codigo: string; tono: Tono };
+  marcaAgua: MarcaAgua | null;
+  proveedorId: number;
+  /** Solo el expedido la guarda; la vista previa la toma de `?sucursal=`. */
+  sucursalId?: number | null;
+  desde: string | null;
+  hasta: string | null;
+  facturas: number;
+  conceptos: ConceptoRetenido[];
+  /** Expedido: instante de expedición. Vista previa: null (se expide hoy). */
+  expedidoEn: string | null;
+}
+
+async function datosExpedido(sesion: SesionDocumento, id: string): Promise<DatosCertificado> {
+  const { data, error } = await sesion.supabase
+    .from('withholding_certificates')
+    .select('id, organization_id, branch_id, supplier_id, number, period_from, period_to, invoice_count, concepts, status, issued_at')
+    .eq('id', id)
+    .eq('organization_id', sesion.organizationId)
+    .maybeSingle();
+  if (error) fallaLectura('withholding_certificates', error);
+  const c = data as FilaCertificado | null;
+  if (!c || c.organization_id !== sesion.organizationId) throw noEncontrado();
+  const anulado = c.status === 'void';
+  return {
+    numero: c.number,
+    estado: anulado ? { codigo: 'certificado.void', tono: 'peligro' } : { codigo: 'certificado.issued', tono: 'exito' },
+    marcaAgua: anulado ? 'anulada' : null,
+    proveedorId: c.supplier_id,
+    sucursalId: c.branch_id,
+    desde: c.period_from,
+    hasta: c.period_to,
+    facturas: num(c.invoice_count),
+    conceptos: Array.isArray(c.concepts) ? c.concepts : [],
+    expedidoEn: c.issued_at,
+  };
+}
+
+async function datosVistaPrevia(sesion: SesionDocumento, proveedorId: number, desde: string, hasta: string): Promise<DatosCertificado> {
+  const { data, error } = await sesion.supabase.rpc('fn_certificado_retenciones_proveedor', {
+    p_organization_id: sesion.organizationId,
+    p_supplier_id: proveedorId,
+    p_desde: desde,
+    p_hasta: hasta,
+  });
+  if (error) {
+    if ((error as { code?: string }).code === 'P0002') throw noEncontrado();
+    fallaLectura('fn_certificado_retenciones_proveedor', error);
+  }
+  const r = (data ?? {}) as RespuestaCertificado;
+  return {
+    numero: null,
+    estado: { codigo: 'certificado.preview', tono: 'neutro' },
+    marcaAgua: 'borrador',
+    proveedorId,
+    desde,
+    hasta,
+    facturas: Array.isArray(r.facturas) ? r.facturas.length : 0,
+    conceptos: r.conceptos ?? [],
+    expedidoEn: null,
+  };
 }
 
 export async function cargarCertificadoRetenciones(
@@ -73,111 +169,91 @@ export async function cargarCertificadoRetenciones(
   opciones: OpcionesCarga,
   t: Traductor,
 ): Promise<DocumentoPayload> {
-  const id = exigirEntero(idCrudo);
-  const db = sesion.supabase;
-  const { data: fila, error } = await db
-    .from('suppliers')
-    .select(`id, organization_id, ${SELECT_PROVEEDOR}`)
-    .eq('id', id)
-    .eq('organization_id', sesion.organizationId)
-    .maybeSingle();
-  if (error) fallaLectura('suppliers', error);
-  const proveedor = fila as (FilaProveedor & { id: number; organization_id: number }) | null;
-  if (!proveedor || proveedor.organization_id !== sesion.organizationId) throw noEncontrado();
-
-  const base = await cargarBase(sesion, null);
   const ahora = opciones.ahora ?? new Date();
-  const hoy = toPlainDate(ahora, base.zonaHoraria);
-  const { desde, hasta } = periodoCertificado(opciones, hoy);
-
-  const { data: rpc, error: errorRpc } = await db.rpc('fn_certificado_retenciones_proveedor', {
-    p_organization_id: sesion.organizationId,
-    p_supplier_id: id,
-    p_desde: desde,
-    p_hasta: hasta,
-  });
-  if (errorRpc) {
-    if ((errorRpc as { code?: string }).code === 'P0002') throw noEncontrado();
-    fallaLectura('fn_certificado_retenciones_proveedor', errorRpc);
+  let datos: DatosCertificado;
+  let proveedor: FilaProveedor;
+  let base: Awaited<ReturnType<typeof cargarBase>>;
+  if (esUuid(idCrudo)) {
+    datos = await datosExpedido(sesion, idCrudo.toLowerCase());
+    proveedor = await leerProveedor(sesion, datos.proveedorId);
+    base = await cargarBase(sesion, datos.sucursalId ?? null);
+  } else {
+    const proveedorId = exigirEntero(idCrudo);
+    proveedor = await leerProveedor(sesion, proveedorId);
+    base = await cargarBase(sesion, sucursalDeParametros(opciones));
+    const { desde, hasta } = periodoCertificado(opciones, toPlainDate(ahora, base.zonaHoraria));
+    datos = await datosVistaPrevia(sesion, proveedorId, desde, hasta);
   }
-  const r = (rpc ?? {}) as RespuestaCertificado;
-  // Las retenciones se declaran en la moneda base de la organización.
-  const moneda = await resolverContextoMoneda(db, sesion.organizationId, null);
 
-  const conceptos = r.conceptos ?? [];
-  const facturas = r.facturas ?? [];
-  const totales = r.totales ?? {};
-  const retenido = num(totales.retenido);
-  const clasesPresentes = new Set(conceptos.map((c) => texto(c.clase)).filter(Boolean));
-  const declaradoEn = clasesPresentes.has('reteica')
-    ? clasesPresentes.size > 1 ? 'certificado.declarado350EIca' : 'certificado.declaradoIca'
-    : 'certificado.declarado350';
+  // Las retenciones se practican y declaran en la moneda base de la organización.
+  const moneda = await resolverContextoMoneda(sesion.supabase, sesion.organizationId, null);
+  const f = crearFormateador({ moneda, zonaHoraria: base.zonaHoraria, idioma: opciones.idioma });
+  const diaExpedicion = toPlainDate(datos.expedidoEn ? new Date(datos.expedidoEn) : ahora, base.zonaHoraria);
+  const desde = datos.desde ?? diaExpedicion;
+  const hasta = datos.hasta ?? diaExpedicion;
+  const periodo = textoPeriodo(desde, hasta, opciones.idioma, t, f, diaExpedicion);
 
-  const metadatos: Campo[] = [
-    { clave: 'periodoDesde', valor: { tipo: 'fecha', v: desde } },
-    { clave: 'periodoHasta', valor: { tipo: 'fecha', v: hasta } },
-    { clave: 'facturasIncluidas', valor: { tipo: 'numero', v: facturas.length, decimales: 0 } },
-    { clave: 'fechaExpedicion', valor: { tipo: 'fecha', v: hoy } },
+  const resumen = resumirValoresRetenidos(datos.conceptos);
+  const ciudad = base.sucursal?.ciudad ?? base.emisor.ciudad;
+  const contraparte = contraparteProveedor(proveedor);
+
+  const referencia: Campo[] = [
+    { clave: 'periodoCertificado', valor: { tipo: 'texto', v: capitalizar(periodo) } },
+    {
+      clave: 'facturasIncluidas',
+      valor: { tipo: 'clave', v: datos.facturas === 1 ? 'certificado.facturaCompra' : 'certificado.facturasCompra', vars: { n: f.numero(datos.facturas, 0) } },
+    },
   ];
-  if (base.emisor.ciudad) metadatos.push({ clave: 'ciudadExpedicion', valor: { tipo: 'texto', v: base.emisor.ciudad } });
+  const metadatos: Campo[] = [
+    datos.expedidoEn
+      ? { clave: 'fechaExpedicion', valor: { tipo: 'instante', v: datos.expedidoEn } }
+      : { clave: 'fechaExpedicion', valor: { tipo: 'fecha', v: diaExpedicion } },
+  ];
+  if (ciudad) metadatos.push({ clave: 'ciudadRetencion', valor: { tipo: 'texto', v: ciudad } });
   metadatos.push(
     { clave: 'moneda', valor: { tipo: 'texto', v: moneda.code } },
-    { clave: 'declaradoEn', valor: { tipo: 'clave', v: declaradoEn } },
+    { clave: 'declaradoEn', valor: { tipo: 'clave', v: claveDeclaradoEn(resumen.clases) } },
   );
 
-  const filasTotales: FilaTotal[] = CLASES.filter((clase) => num(totales[clase]) !== 0).map((clase) => ({
-    clave: clase,
-    valor: num(totales[clase]),
-  }));
-  filasTotales.push({ clave: 'totalRetenido', valor: retenido, estilo: 'total' });
-
-  const contraparte = contraparteProveedor(proveedor);
-  const numero = `${t('certificado.prefijo')}-${hasta.slice(0, 4)}-${String(id).padStart(4, '0')}`;
+  const emisor = base.emisor.nombre || base.emisor.razonSocial || '';
 
   return {
     tipo: 'certificado-retenciones',
     tituloClave: 'certificado-retenciones',
     idioma: opciones.idioma,
-    numero,
-    estado: null,
-    marcaAgua: null,
+    numero: datos.numero,
+    estado: datos.estado,
+    marcaAgua: datos.marcaAgua,
     bandas: [],
     emisor: base.emisor,
-    sucursal: null,
+    sucursal: base.sucursal,
     contraparte,
-    referencia: [],
+    referencia,
     metadatos,
     resumen: [],
     lineas: null,
     secciones: [
       {
-        titulo: 'conceptosRetenidos',
+        titulo: 'valoresRetenidos',
+        tituloTexto: t('secciones.valoresRetenidosPeriodo', { periodo }),
         columnas: [
           { clave: 'concepto', tipo: 'texto' },
           { clave: 'cuenta', tipo: 'texto' },
           { clave: 'base', tipo: 'dinero' },
-          { clave: 'tarifa', tipo: 'numero' },
+          // Texto ya formateado: «2,5 %» o, en el ICA, «7 ‰».
+          { clave: 'tarifaRetencion', tipo: 'texto', alinear: 'derecha' },
           { clave: 'valorRetenido', tipo: 'dinero' },
         ],
-        filas: conceptos.map((c) => [texto(c.concepto), texto(c.cuenta), num(c.base), num(c.tarifa), num(c.valor)] as CeldaTabla[]),
-        pie: conceptos.length > 0 ? [t('certificado.totalRetenido'), null, null, null, retenido] : undefined,
+        filas: resumen.filas.map((r) => [r.concepto, r.cuenta, r.base, textoTarifa(r.clase, r.tarifa, f), r.valor] as CeldaTabla[]),
+        pie: resumen.filas.length > 0 ? [t('certificado.totalRetenido'), null, null, null, resumen.total] : undefined,
         vacio: 'retencionesPeriodo',
       },
-      {
-        titulo: 'facturasIncluidas',
-        columnas: [
-          // `dia`: el día de emisión ya resuelto en la zona de la organización.
-          { clave: 'fecha', tipo: 'fecha' },
-          { clave: 'documento', tipo: 'texto' },
-          { clave: 'valorRetenido', tipo: 'dinero' },
-        ],
-        filas: facturas.map((f) => [f.dia, texto(f.numero), num(f.valor)] as CeldaTabla[]),
-      },
     ],
-    totales: filasTotales,
-    notas: t('certificado.constancia', {
-      emisor: base.emisor.razonSocial ?? base.emisor.nombre,
-      proveedor: contraparte?.nombre ?? '',
+    // El total va en la fila «Total retenido» de la tabla (diseño): sin bloque de totales aparte.
+    totales: [],
+    notas: t(claveConstancia(resumen.clases), {
+      emisor,
+      municipio: ciudad ? t('certificado.municipioDe', { ciudad }) : t('certificado.municipioSinCiudad'),
     }),
     terminos: null,
     firma: 'retenedorContador',
@@ -186,6 +262,6 @@ export async function cargarCertificadoRetenciones(
     moneda,
     zonaHoraria: base.zonaHoraria,
     generadoEn: ahora.toISOString(),
-    nombreArchivo: nombreArchivoBase(t, 'certificado-retenciones', numero),
+    nombreArchivo: nombreArchivoBase(t, 'certificado-retenciones', datos.numero ?? t('certificado.vistaPrevia')),
   };
 }

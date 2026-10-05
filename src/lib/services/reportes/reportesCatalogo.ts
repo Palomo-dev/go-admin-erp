@@ -34,6 +34,7 @@ import { pmReports } from './modulos/pmReports';
 import { operacionesReports } from './modulos/operacionesReports';
 import { serialTrackingReports } from './modulos/serialTrackingReports';
 import { comprasFinanzasReports, comprasInventarioReports } from './modulos/comprasReports';
+import { reportePermitido } from './alcanceSucursal';
 
 // ============================================================
 // Metadatos de módulos (nombre visible + icono lucide)
@@ -283,6 +284,18 @@ export function getReportesVisibles(activeModuleCodes: string[]): ModuloReportes
   }
 
   return resultado;
+}
+
+/**
+ * Reportes que una persona puede ejecutar: los de los módulos activos del plan
+ * y, sin acceso a todas las sucursales, solo los que se filtran por sucursal.
+ * Es la lista blanca del GO Asistente (`consultar_reporte`): los módulos los
+ * resuelve el SERVIDOR (`organization_modules`), nunca el cliente.
+ */
+export function getReportesPermitidos(activeModuleCodes: string[], accesoTotal: boolean): ModuloReportes[] {
+  return getReportesVisibles(activeModuleCodes)
+    .map((m) => ({ ...m, reportes: m.reportes.filter((r) => reportePermitido(r, accesoTotal)) }))
+    .filter((m) => m.reportes.length > 0);
 }
 
 export interface GrupoConReportes {

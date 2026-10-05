@@ -12481,12 +12481,22 @@
       "total": "Total retenu",
       "alcance": "{facturas, plural, =0 {Aucune facture} one {# facture} other {# factures}} · {conceptos, plural, =0 {aucun concept} one {# concept} other {# concepts}}",
       "sinRetenciones": "Aucune retenue pendant cette période ; le certificat sera à zéro.",
-      "nota": "Couvre toutes les succursales : l'agent de retenue est l'organisation.",
+      "nota": "Couvre toutes les succursales : l'agent de retenue est l'organisation. L'émettre prend le numéro suivant de la série CR.",
       "descargar": "Télécharger le PDF",
       "imprimir": "Imprimer",
       "ver": "Voir",
       "cerrar": "Fermer",
-      "errorDescarga": "Impossible de télécharger le certificat"
+      "errorDescarga": "Impossible de télécharger le certificat",
+      "desdeMes": "Du",
+      "hastaMes": "Au",
+      "periodoInvalido": "Choisissez une période valide : le premier mois ne peut pas être postérieur au dernier ni au mois en cours.",
+      "expedir": "Émettre le certificat",
+      "vistaPrevia": "Aperçu",
+      "numero": "Numéro",
+      "expedido": "Émis",
+      "reexpedido": "Il avait déjà été émis pour cette période avec les mêmes montants : le numéro est conservé.",
+      "errorExpedir": "Le certificat n'a pas pu être émis",
+      "errorPermiso": "Vous n'avez pas l'autorisation d'émettre des certificats de retenues."
     }
   },
   "documentos": {
@@ -12593,6 +12603,11 @@
         "emitido": "Émis",
         "firmado": "Signé · période clôturée",
         "reemplazado": "Remplacé"
+      },
+      "certificado": {
+        "issued": "Émis",
+        "void": "Annulé",
+        "preview": "Aperçu"
       }
     },
     "qr": {
@@ -12670,7 +12685,6 @@
       "periodoHasta": "Période au",
       "facturasIncluidas": "Factures incluses",
       "fechaExpedicion": "Date d'émission",
-      "ciudadExpedicion": "Ville d'émission",
       "declaradoEn": "Déclaré dans",
       "tipoCierre": "Type de clôture",
       "franja": "Plage horaire",
@@ -12680,7 +12694,9 @@
       "emitidoPor": "Émis par",
       "firmadoEn": "Signé le",
       "firmadoPor": "Signé par",
-      "kpi": "Indicateur"
+      "kpi": "Indicateur",
+      "periodoCertificado": "Période certifiée",
+      "ciudadRetencion": "Ville de la retenue"
     },
     "formasPago": {
       "contado": "Comptant",
@@ -12722,11 +12738,11 @@
       "arqueos": "Comptages",
       "denominaciones": "Coupures",
       "retenciones": "Retenues appliquées au fournisseur",
-      "conceptosRetenidos": "Retenues pratiquées",
-      "facturasIncluidas": "Factures incluses",
       "indiceCapitulos": "Index des chapitres",
       "reportesConError": "Rapports non inclus (erreur de calcul)",
-      "reporte": "Rapport"
+      "reporte": "Rapport",
+      "valoresRetenidos": "Montants retenus",
+      "valoresRetenidosPeriodo": "Montants retenus · {periodo}"
     },
     "columnas": {
       "descripcion": "Désignation",
@@ -12766,7 +12782,8 @@
       "valorRetenido": "Montant retenu",
       "capitulo": "Chapitre",
       "reportes": "Rapports",
-      "reporte": "Rapport"
+      "reporte": "Rapport",
+      "tarifaRetencion": "Taux"
     },
     "vacios": {
       "lineas": "Aucune ligne.",
@@ -12826,7 +12843,8 @@
       "contador": "Expert-comptable",
       "datosContador": "Nom · Carte professionnelle",
       "elaboro": "Établi par",
-      "representanteLegal": "Représentant légal"
+      "representanteLegal": "Représentant légal",
+      "firmaAutorizada": "Signature autorisée"
     },
     "legal": {
       "resolucion": "Résolution DIAN n° {numero} du {fecha}, préfixe {prefijo}, numérotation autorisée du {desde} au {hasta}, valable jusqu’au {vigencia}.",
@@ -12931,7 +12949,18 @@
       "declarado350": "Formulaire 350",
       "declaradoIca": "Déclaration d'ICA",
       "declarado350EIca": "Formulaire 350 et ICA",
-      "constancia": "{emisor}, en qualité d'agent de retenue, certifie avoir pratiqué sur {proveedor}, pendant la période indiquée, les retenues détaillées ci-dessous, sur les paiements ou crédits des factures incluses."
+      "vistaPrevia": "Aperçu",
+      "periodoMes": "{mes} {anio}",
+      "periodoMeses": "{desde} à {hasta} {anio}",
+      "periodoMesesAnios": "{desde} {anioDesde} à {hasta} {anioHasta}",
+      "periodoDias": "du {desde} au {hasta}",
+      "facturaCompra": "{n} facture d'achat",
+      "facturasCompra": "{n} factures d'achat",
+      "constancia350": "Montants retenus au fournisseur sur ses factures d'achat de la période et déclarés par {emisor} : retenue à la source et retenue de TVA sur le formulaire 350 (mensuel). Chaque montant provient des retenues enregistrées sur les factures ; aucun n'est saisi.",
+      "constanciaIca": "Montants retenus au fournisseur sur ses factures d'achat de la période et déclarés par {emisor} dans la déclaration d'ICA de la commune {municipio}. Chaque montant provient des retenues enregistrées sur les factures ; aucun n'est saisi.",
+      "constancia350EIca": "Montants retenus au fournisseur sur ses factures d'achat de la période et déclarés par {emisor} : retenue à la source et retenue de TVA sur le formulaire 350 (mensuel), et ICA dans la déclaration de la commune {municipio}. Chaque montant provient des retenues enregistrées sur les factures ; aucun n'est saisi.",
+      "municipioDe": "de {ciudad}",
+      "municipioSinCiudad": "où elle a été pratiquée"
     },
     "reportes": {
       "truncado": "{mostradas} lignes affichées sur {total}. Les totaux les incluent toutes. Consultez le rapport complet dans l'application.",
@@ -23130,6 +23159,36 @@
     "pie": {
       "aviso": "Il peut se tromper : vérifiez l’essentiel",
       "permisos": "Autorisations de l’assistant"
+    },
+    "reporte": {
+      "chip": "Rapport : {reporte} · {detalle}",
+      "chipCentro": "Rapports · {detalle}",
+      "centro": "Rapports",
+      "todasSucursales": "Toutes les succursales",
+      "bienvenida": "Je réponds à vos questions sur {reporte} avec les filtres que vous avez appliqués. Avant d’enregistrer ou d’envoyer quoi que ce soit, je vous demande de confirmer.",
+      "preguntas": "Questions sur ce rapport",
+      "sugerencias": {
+        "mejorDia": "Quel jour avons-nous le plus vendu, et pourquoi ?",
+        "vendedorTicket": "Quel vendeur a le plus augmenté son panier moyen ?",
+        "compararSucursal": "Compare cette période avec la précédente par succursale",
+        "comparar": "Compare cette période avec la précédente",
+        "porSucursal": "Comment ce résultat se répartit-il par succursale ?",
+        "agotarse": "Quels produits seront épuisés en premier ?",
+        "sinRotacion": "Quels produits ont à peine bougé sur cette période ?",
+        "proveedor": "Auprès de quel fournisseur avons-nous le plus acheté, et combien ?",
+        "variacion": "Quel poste explique la plus forte variation ?",
+        "vencimientos": "Qu’est-ce qui arrive à échéance en premier, et pour combien ?",
+        "destaca": "Quel est le point le plus important de ce rapport ?",
+        "revisar": "Que devrais-je vérifier en premier ici ?",
+        "fueraDeLoNormal": "Y a-t-il quelque chose d’inhabituel dans ce rapport ?",
+        "resumen": "Résume ce rapport en 3 points pour le responsable"
+      },
+      "tendencia": "Tendance de {serie} sur {periodo}",
+      "filasMostradas": "{n} lignes affichées sur {total} ; le rapport complet est dans la visionneuse.",
+      "exportar": "Exporter",
+      "programar": "Planifier l’envoi",
+      "irAlReporte": "Aller au rapport",
+      "errorExportar": "Le rapport n’a pas pu être exporté."
     }
   },
   "crm": {
@@ -24872,7 +24931,8 @@
     "actualizar": "Actualiser",
     "programarEnvios": "Planifier les envois",
     "generarCierre": "Générer la clôture",
-    "preguntar": "Demander à l'IA",
+    "preguntar": "Demander à GO Assistant",
+    "preguntarDescripcion": "Avec ce rapport et ses filtres",
     "masAcciones": "Plus d'actions",
     "pestanas": {
       "etiqueta": "Sections des rapports",

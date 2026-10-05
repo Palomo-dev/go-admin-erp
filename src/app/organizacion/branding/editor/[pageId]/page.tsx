@@ -1099,6 +1099,13 @@ export default function PageEditorPage() {
                   }}
                   onUpdate={handleUpdateGlobalSettings}
                 />
+                {/* Con un menú nombrado asignado, el sitio pinta ese menú y este
+                    árbol (show_in_header, orden, iconos de las páginas) no se ve. */}
+                {organizationId && settings.header_menu_id && (
+                  <p className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
+                    El header usa el menú nombrado elegido arriba. Los cambios de este árbol no se verán en el sitio mientras ese menú esté asignado: edita ese menú en «Footer › Menús Nombrados».
+                  </p>
+                )}
                 {organizationId && (
                   <MenuTreeEditor
                     organizationId={organizationId}

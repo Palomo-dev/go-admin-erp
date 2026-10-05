@@ -38,7 +38,6 @@ export default function MobileFooterPanel({
           <SelectContent>
             <SelectItem value="accordion">Acordeón (expandible)</SelectItem>
             <SelectItem value="stacked">Apilado (una columna)</SelectItem>
-            <SelectItem value="tabs">Pestañas horizontales</SelectItem>
             <SelectItem value="hidden">Oculto en móvil</SelectItem>
           </SelectContent>
         </Select>

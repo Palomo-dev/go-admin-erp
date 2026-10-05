@@ -5,14 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  GripVertical,
   Plus,
   Trash2,
   ChevronRight,
@@ -20,8 +12,11 @@ import {
   FileText,
   Tag,
   Link as LinkIcon,
-  Layers,
   Loader2,
+  ArrowUp,
+  ArrowDown,
+  IndentIncrease,
+  IndentDecrease,
 } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import {
@@ -30,6 +25,7 @@ import {
   type MenuItemType,
 } from '@/lib/services/websiteMenuGroupService';
 import { websitePageBuilderService, type WebsitePage } from '@/lib/services/websitePageBuilderService';
+import { websiteMenuService, type AvailableCategory } from '@/lib/services/websiteMenuService';
 
 interface MenuGroupEditorProps {
   menuId: string;
@@ -50,6 +46,8 @@ export default function MenuGroupEditor({ menuId, organizationId }: MenuGroupEdi
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [addType, setAddType] = useState<MenuItemType>('page');
   const [availablePages, setAvailablePages] = useState<WebsitePage[]>([]);
+  const [availableCategories, setAvailableCategories] = useState<AvailableCategory[] | null>(null);
+  const [moviendo, setMoviendo] = useState(false);
   const [customLabel, setCustomLabel] = useState('');
   const [customUrl, setCustomUrl] = useState('');
 
@@ -132,14 +130,103 @@ export default function MenuGroupEditor({ menuId, organizationId }: MenuGroupEdi
     }
   };
 
-  const handleNestItem = async (itemId: string, parentId: string | null) => {
+  const loadCategories = useCallback(async () => {
     try {
-      await websiteMenuGroupService.nestMenuItem(itemId, parentId);
+      setAvailableCategories(null);
+      setAvailableCategories(await websiteMenuService.getAvailableCategories(organizationId));
+    } catch (error) {
+      console.error('Error loading categories:', error);
+      setAvailableCategories([]);
+    }
+  }, [organizationId]);
+
+  const handleAddCategory = async (categoryId: number) => {
+    try {
+      await websiteMenuGroupService.addMenuItem({
+        menu_id: menuId,
+        organization_id: organizationId,
+        item_type: 'category',
+        category_id: categoryId,
+        display_order: items.length,
+      });
+      setShowAddDialog(false);
       loadItems();
     } catch (error) {
-      console.error('Error nesting item:', error);
+      console.error('Error adding category item:', error);
     }
   };
+
+  /** Hermanos de un ítem (raíz o hijos de su padre) y su padre, si lo tiene. */
+  const ubicar = (id: string, lista: MenuGroupItem[] = items, padre: MenuGroupItem | null = null): { hermanos: MenuGroupItem[]; padre: MenuGroupItem | null } | null => {
+    if (lista.some((i) => i.id === id)) return { hermanos: lista, padre };
+    for (const i of lista) {
+      const r = i.children?.length ? ubicar(id, i.children, i) : null;
+      if (r) return r;
+    }
+    return null;
+  };
+
+  /** Escribe display_order 0..N de una lista de hermanos (un update por ítem). */
+  const guardarOrden = async (ordenados: MenuGroupItem[]) => {
+    for (let n = 0; n < ordenados.length; n++) {
+      if (ordenados[n].display_order !== n) {
+        await websiteMenuGroupService.updateMenuItem(ordenados[n].id, { display_order: n });
+      }
+    }
+  };
+
+  const conMovimiento = async (accion: () => Promise<void>) => {
+    if (moviendo) return;
+    setMoviendo(true);
+    try {
+      await accion();
+    } catch (error) {
+      console.error('Error moving menu item:', error);
+    } finally {
+      setMoviendo(false);
+      loadItems();
+    }
+  };
+
+  const handleMove = (itemId: string, delta: -1 | 1) =>
+    conMovimiento(async () => {
+      const u = ubicar(itemId);
+      if (!u) return;
+      const i = u.hermanos.findIndex((h) => h.id === itemId);
+      const j = i + delta;
+      if (j < 0 || j >= u.hermanos.length) return;
+      const ordenados = [...u.hermanos];
+      [ordenados[i], ordenados[j]] = [ordenados[j], ordenados[i]];
+      await guardarOrden(ordenados);
+    });
+
+  /** Anida bajo el hermano anterior (queda de último entre sus hijos). */
+  const handleIndent = (itemId: string) =>
+    conMovimiento(async () => {
+      const u = ubicar(itemId);
+      if (!u) return;
+      const i = u.hermanos.findIndex((h) => h.id === itemId);
+      if (i <= 0) return;
+      const nuevoPadre = u.hermanos[i - 1];
+      await websiteMenuGroupService.nestMenuItem(itemId, nuevoPadre.id);
+      await websiteMenuGroupService.updateMenuItem(itemId, { display_order: nuevoPadre.children?.length ?? 0 });
+      await guardarOrden(u.hermanos.filter((h) => h.id !== itemId));
+    });
+
+  /** Sube un nivel: queda justo después de su padre. */
+  const handleOutdent = (itemId: string) =>
+    conMovimiento(async () => {
+      const u = ubicar(itemId);
+      if (!u?.padre) return;
+      const delPadre = ubicar(u.padre.id);
+      if (!delPadre) return;
+      await websiteMenuGroupService.nestMenuItem(itemId, u.padre.parent_item_id ?? null);
+      const item = u.hermanos.find((h) => h.id === itemId)!;
+      const destino = [...delPadre.hermanos];
+      destino.splice(destino.findIndex((h) => h.id === u.padre!.id) + 1, 0, item);
+      await guardarOrden(destino.map((h) => (h.id === itemId ? { ...h, display_order: -1 } : h)));
+      await guardarOrden(u.hermanos.filter((h) => h.id !== itemId));
+    });
 
   const renderItem = (item: MenuGroupItem, level: number = 0): React.ReactNode => {
     const config = itemTypeConfig[item.item_type] || itemTypeConfig.custom_link;
@@ -157,7 +244,6 @@ export default function MenuGroupEditor({ menuId, organizationId }: MenuGroupEdi
           )}
           style={{ marginLeft: level * 16 }}
         >
-          <GripVertical className="h-3 w-3 text-gray-300 dark:text-gray-600 cursor-grab shrink-0 opacity-0 group-hover:opacity-100" />
 
           {hasChildren ? (
             <button onClick={() => toggleExpand(item.id)} className="shrink-0">
@@ -184,21 +270,53 @@ export default function MenuGroupEditor({ menuId, organizationId }: MenuGroupEdi
             </span>
           )}
 
-          {/* Acciones */}
-          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-            {level === 0 && (
+          {/* Acciones: orden, nivel y eliminar */}
+          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0">
+            <button
+              onClick={() => handleMove(item.id, -1)}
+              disabled={moviendo}
+              className="p-0.5 text-gray-400 hover:text-blue-500 disabled:opacity-40"
+              title="Subir"
+              aria-label={`Subir ${label}`}
+            >
+              <ArrowUp className="h-3 w-3" />
+            </button>
+            <button
+              onClick={() => handleMove(item.id, 1)}
+              disabled={moviendo}
+              className="p-0.5 text-gray-400 hover:text-blue-500 disabled:opacity-40"
+              title="Bajar"
+              aria-label={`Bajar ${label}`}
+            >
+              <ArrowDown className="h-3 w-3" />
+            </button>
+            {level < 2 && (
               <button
-                onClick={() => handleNestItem(item.id, null)}
-                className="p-0.5 text-gray-400 hover:text-blue-500"
-                title="Mover al nivel raíz"
+                onClick={() => handleIndent(item.id)}
+                disabled={moviendo}
+                className="p-0.5 text-gray-400 hover:text-blue-500 disabled:opacity-40"
+                title="Anidar bajo el anterior"
+                aria-label={`Anidar ${label} bajo el ítem anterior`}
               >
-                <Layers className="h-3 w-3" />
+                <IndentIncrease className="h-3 w-3" />
+              </button>
+            )}
+            {level > 0 && (
+              <button
+                onClick={() => handleOutdent(item.id)}
+                disabled={moviendo}
+                className="p-0.5 text-gray-400 hover:text-blue-500 disabled:opacity-40"
+                title="Subir un nivel"
+                aria-label={`Subir ${label} un nivel`}
+              >
+                <IndentDecrease className="h-3 w-3" />
               </button>
             )}
             <button
               onClick={() => handleDeleteItem(item.id)}
               className="p-0.5 text-gray-400 hover:text-red-500"
               title="Eliminar"
+              aria-label={`Eliminar ${label}`}
             >
               <Trash2 className="h-3 w-3" />
             </button>
@@ -249,6 +367,19 @@ export default function MenuGroupEditor({ menuId, organizationId }: MenuGroupEdi
             variant="outline"
             className="h-7 text-xs"
             onClick={() => {
+              setAddType('category');
+              loadCategories();
+              setShowAddDialog(true);
+            }}
+          >
+            <Plus className="h-3 w-3 mr-1" />
+            Categoría
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            onClick={() => {
               setAddType('custom_link');
               setShowAddDialog(true);
             }}
@@ -266,7 +397,7 @@ export default function MenuGroupEditor({ menuId, organizationId }: MenuGroupEdi
         </div>
       ) : (
         <div className="text-center py-6 text-xs text-gray-400 dark:text-gray-500">
-          No hay items en este menú. Agrega páginas o enlaces para comenzar.
+          No hay items en este menú. Agrega páginas, categorías o enlaces para comenzar.
         </div>
       )}
 
@@ -278,7 +409,7 @@ export default function MenuGroupEditor({ menuId, organizationId }: MenuGroupEdi
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-sm font-semibold mb-3 text-gray-800 dark:text-gray-200">
-              {addType === 'page' ? 'Agregar Página' : 'Agregar Enlace'}
+              {addType === 'page' ? 'Agregar Página' : addType === 'category' ? 'Agregar Categoría' : 'Agregar Enlace'}
             </h3>
 
             {addType === 'page' && (
@@ -297,6 +428,37 @@ export default function MenuGroupEditor({ menuId, organizationId }: MenuGroupEdi
                       <span className="text-[9px] text-gray-400">/{page.slug}</span>
                     </button>
                   ))
+                )}
+              </div>
+            )}
+
+            {addType === 'category' && (
+              <div className="space-y-1">
+                {availableCategories === null ? (
+                  <p className="text-xs text-gray-400">Cargando categorías...</p>
+                ) : availableCategories.length === 0 ? (
+                  <p className="text-xs text-gray-400">No hay categorías activas en el inventario.</p>
+                ) : (
+                  <>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 pb-1">
+                      Lleva a la página de la categoría; sus subcategorías se muestran debajo en el sitio.
+                    </p>
+                    {(function filas(lista: AvailableCategory[], nivel: number): React.ReactNode[] {
+                      return lista.flatMap((cat) => [
+                        <button
+                          key={cat.id}
+                          onClick={() => handleAddCategory(cat.id)}
+                          className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs hover:bg-gray-100 dark:hover:bg-white/5 text-left"
+                          style={{ paddingLeft: 8 + nivel * 14 }}
+                        >
+                          <Tag className="h-3 w-3 text-gray-400 shrink-0" />
+                          <span className="flex-1 truncate text-gray-700 dark:text-gray-200">{cat.name}</span>
+                          <span className="text-[9px] text-gray-400">/{cat.slug}</span>
+                        </button>,
+                        ...filas(cat.children, nivel + 1),
+                      ]);
+                    })(availableCategories, 0)}
+                  </>
                 )}
               </div>
             )}

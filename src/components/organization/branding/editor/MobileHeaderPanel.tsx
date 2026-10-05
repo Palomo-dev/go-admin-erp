@@ -9,7 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
 
 interface MobileHeaderPanelProps {
   settings: {
@@ -80,31 +79,9 @@ export default function MobileHeaderPanel({ settings, onUpdate }: MobileHeaderPa
         />
       </div>
 
-      {/* Header fijo al scroll */}
-      <div className="flex items-center justify-between">
-        <Label className="text-xs">Header fijo al scroll</Label>
-        <Switch
-          checked={settings.mobile_sticky_header}
-          onCheckedChange={(v) => onUpdate({ mobile_sticky_header: v })}
-        />
-      </div>
-
-      {/* Breakpoint desktop/móvil */}
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">Breakpoint desktop/móvil</Label>
-          <span className="text-xs text-muted-foreground">
-            {settings.mobile_breakpoint}px
-          </span>
-        </div>
-        <Slider
-          min={640}
-          max={1024}
-          step={64}
-          value={[settings.mobile_breakpoint]}
-          onValueChange={(v) => onUpdate({ mobile_breakpoint: v[0] })}
-        />
-      </div>
+      {/* «Header fijo al scroll» y el breakpoint se quitaron: el sitio deja el
+          header siempre fijo y cambia a móvil en 768 px (con otro valor quedaba
+          una franja sin header). */}
 
       {/* Mockup móvil visual */}
       <div className="pt-2">

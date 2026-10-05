@@ -1,15 +1,18 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { FileBarChart, MessageCircle, Plus, RefreshCw } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { PageHeader, RowActionsMenu, TabBar, clasesBoton, idPanel, idPestana, type AccionFila, type Miga } from '@/components/kit';
 import { Skeleton } from '@/components/ui/skeleton';
+import { abrirAsistente, type ContextoAsistente } from '@/lib/ai/assistant/panelUi';
 import { clienteReportes } from '@/lib/services/reportes/clienteReportes';
-import { contarCierresVigentes, listarGuardados, usuarioDeSesion } from '@/lib/services/reportes/lecturasReportes';
-import { ProveedorAccionesReportes, type PedidoCierreUi, type PedidoEnvioUi } from './accionesReportes';
+import { filtrosEfectivos } from '@/lib/services/reportes/filtrosUrl';
+import { contarCierresVigentes, listarGuardados } from '@/lib/services/reportes/lecturasReportes';
+import { getReporteById } from '@/lib/services/reportes/reportesCatalogo';
+import { ProveedorAccionesReportes, type PedidoAsistenteUi, type PedidoCierreUi, type PedidoEnvioUi } from './accionesReportes';
 import { BarraFiltros } from './BarraFiltros';
 import { InicioReportes } from './InicioReportes';
 import { useEtiquetaPeriodo } from './SelectorPeriodo';
@@ -18,8 +21,8 @@ import { useContextoReportes, type ContextoReportes } from './useContextoReporte
 import { useFiltrosReportes } from './useFiltrosReportes';
 
 // Lo que no se ve en la primera pintura del inicio se descarga cuando hace
-// falta: las otras pestañas, los dos diálogos y el asistente (que arrastra
-// recharts por las gráficas de sus respuestas).
+// falta: las otras pestañas y los dos diálogos. Las preguntas van al GO
+// Asistente del shell (Figma Reportes §22), no a un chat de reportes aparte.
 function EsqueletoPestana() {
   return (
     <div role="status" aria-busy="true" className="flex flex-col gap-3">
@@ -35,7 +38,6 @@ const ProgramadosTab = dynamic(() => import('./ProgramadosTab').then((m) => m.Pr
 const HistorialTab = dynamic(() => import('./HistorialTab').then((m) => m.HistorialTab), { loading: EsqueletoPestana });
 const GenerarCierreDialog = dynamic(() => import('./GenerarCierreDialog').then((m) => m.GenerarCierreDialog));
 const ProgramarEnvioDialog = dynamic(() => import('./ProgramarEnvioDialog').then((m) => m.ProgramarEnvioDialog));
-const ReportesChatSheet = dynamic(() => import('./chat/ReportesChatSheet').then((m) => m.ReportesChatSheet));
 
 const PESTANAS = ['inicio', 'favoritos', 'cierres', 'programados', 'historial'] as const;
 export type PestanaReportes = (typeof PESTANAS)[number];
@@ -45,6 +47,8 @@ function pestanaDe(valor: string | null): PestanaReportes {
 }
 
 interface PropsCentro {
+  /** Reporte abierto en el visor: es el que se le pasa al GO Asistente. */
+  reporteId?: string;
   titulo?: string;
   subtitulo?: string;
   migas?: Miga[];
@@ -64,19 +68,20 @@ function CentroConContexto(props: PropsCentro) {
   return <CuerpoCentro {...props} ctx={ctx} />;
 }
 
-function CuerpoCentro({ titulo, subtitulo, migas, children, ctx }: PropsCentro & { ctx: ContextoReportes }) {
+function CuerpoCentro({ reporteId, titulo, subtitulo, migas, children, ctx }: PropsCentro & { ctx: ContextoReportes }) {
   const t = useTranslations('reportes');
   const router = useRouter();
+  // La misma ruta con la que el panel decide si el contexto sigue vigente.
+  const ruta = usePathname() ?? '';
   const { filtros, hoy, cambiar, cambiarParametro, queryFiltros, parametro } = useFiltrosReportes();
   const etiqueta = useEtiquetaPeriodo();
   const pestana = pestanaDe(parametro('pestana'));
   const [recarga, setRecarga] = useState(0);
   const [cierre, setCierre] = useState<PedidoCierreUi | null>(null);
   const [envio, setEnvio] = useState<PedidoEnvioUi | null>(null);
-  const [chat, setChat] = useState(false);
-  // Los diálogos y el asistente se montan la primera vez que se abren y se
-  // quedan montados (conservan su estado y su animación de cierre).
-  const [montados, setMontados] = useState({ cierre: false, envio: false, chat: false });
+  // Los diálogos se montan la primera vez que se abren y se quedan montados
+  // (conservan su estado y su animación de cierre).
+  const [montados, setMontados] = useState({ cierre: false, envio: false });
   const abrirCierre = useCallback((pedido?: PedidoCierreUi) => {
     setMontados((m) => (m.cierre ? m : { ...m, cierre: true }));
     setCierre(pedido ?? {});
@@ -85,11 +90,60 @@ function CuerpoCentro({ titulo, subtitulo, migas, children, ctx }: PropsCentro &
     setMontados((m) => (m.envio ? m : { ...m, envio: true }));
     setEnvio(pedido ?? {});
   }, []);
-  const abrirChat = useCallback(() => {
-    setMontados((m) => (m.chat ? m : { ...m, chat: true }));
-    setChat(true);
+  /** Contexto del asistente con el reporte, el periodo, la sucursal y la vista vigentes. */
+  const contextoParaAsistente = (pedido: PedidoAsistenteUi): ContextoAsistente => {
+    const def = getReporteById(pedido.reporteId ?? reporteId ?? '');
+    const sucursalElegida = ctx.resolverSucursal(filtros);
+    const efectivos = def ? filtrosEfectivos(def, filtros, sucursalElegida) : { ...filtros, sucursal: sucursalElegida };
+    return {
+      origen: 'reportes',
+      reporte: def
+        ? {
+            id: def.id,
+            titulo: def.titulo,
+            grupo: def.grupo,
+            comparativo: def.filtros.includes('comparativo'),
+            porSucursal: def.alcance === 'sucursal' && def.filtros.includes('sucursal') && ctx.sucursales.length > 1,
+          }
+        : null,
+      periodo: {
+        tipo: efectivos.periodo.tipo,
+        fechaInicio: efectivos.periodo.fechaInicio,
+        fechaFin: efectivos.periodo.fechaFin,
+        horaInicio: efectivos.periodo.horaInicio ?? null,
+        horaFin: efectivos.periodo.horaFin ?? null,
+        etiqueta: etiqueta.periodo(efectivos.periodo),
+      },
+      sucursal: { id: efectivos.sucursal, nombre: ctx.nombreSucursal(efectivos.sucursal) },
+      vista: pedido.vista !== undefined ? pedido.vista : efectivos.vista,
+      ruta,
+    };
+  };
+  const armarContexto = useRef(contextoParaAsistente);
+  armarContexto.current = contextoParaAsistente;
+  const pedidoAsistente = useRef<PedidoAsistenteUi | null>(null);
+  const claveAsistente = useRef('');
+  /**
+   * «Preguntar a GO Asistente» (Figma Reportes 22-01): abre el asistente del
+   * shell con este reporte y sus filtros. Es dato de la página: el servidor
+   * revalida la sucursal y la lista blanca de reportes.
+   */
+  const abrirAsistenteReporte = useCallback((pedido: PedidoAsistenteUi = {}) => {
+    pedidoAsistente.current = pedido;
+    const contexto = armarContexto.current(pedido);
+    claveAsistente.current = JSON.stringify(contexto);
+    abrirAsistente(contexto);
   }, []);
-  const [usuario, setUsuario] = useState('');
+  // Abierto desde aquí, si cambian el periodo, la sucursal o la vista, el chip
+  // del asistente se actualiza sin volver a abrir un panel que se cerró.
+  useEffect(() => {
+    if (!pedidoAsistente.current) return;
+    const contexto = contextoParaAsistente(pedidoAsistente.current);
+    const clave = JSON.stringify(contexto);
+    if (clave === claveAsistente.current) return;
+    claveAsistente.current = clave;
+    abrirAsistente(contexto, { abrir: false });
+  });
   const [contadores, setContadores] = useState({ favoritos: 0, cierres: 0, programados: 0 });
 
   const recargar = () => setRecarga((n) => n + 1);
@@ -97,22 +151,23 @@ function CuerpoCentro({ titulo, subtitulo, migas, children, ctx }: PropsCentro &
     () => ({
       abrirCierre,
       abrirEnvio,
-      abrirChat,
+      abrirAsistente: abrirAsistenteReporte,
       recarga,
       recargar,
     }),
-    [recarga, abrirCierre, abrirEnvio, abrirChat],
+    [recarga, abrirCierre, abrirEnvio, abrirAsistenteReporte],
   );
 
+  // «Programar envío» desde una respuesta del asistente llega como
+  // `?programar=1` en la ruta del reporte: se abre el diálogo y se limpia.
+  const pedirProgramar = parametro('programar') === '1';
   useEffect(() => {
-    let vivo = true;
-    void usuarioDeSesion()
-      .then((u) => vivo && setUsuario((u?.user_metadata?.full_name as string | undefined) || u?.email || ''))
-      .catch(() => undefined);
-    return () => {
-      vivo = false;
-    };
-  }, []);
+    if (!pedirProgramar) return;
+    abrirEnvio(reporteId ? { reportId: reporteId } : undefined);
+    cambiarParametro('programar', null);
+    // Solo al llegar con el parámetro.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pedirProgramar]);
 
   useEffect(() => {
     if (!ctx.orgId) return;
@@ -130,7 +185,9 @@ function CuerpoCentro({ titulo, subtitulo, migas, children, ctx }: PropsCentro &
     else cambiarParametro('pestana', p === 'inicio' ? null : p);
   };
 
-  const mas: AccionFila[] = [{ id: 'chat', etiqueta: t('preguntar'), icono: MessageCircle, onSelect: abrirChat }];
+  const mas: AccionFila[] = [
+    { id: 'preguntar', etiqueta: t('preguntar'), descripcion: t('preguntarDescripcion'), icono: MessageCircle, onSelect: () => abrirAsistenteReporte() },
+  ];
   const query = queryFiltros();
 
   return (
@@ -199,19 +256,6 @@ function CuerpoCentro({ titulo, subtitulo, migas, children, ctx }: PropsCentro &
         <GenerarCierreDialog pedido={cierre} onCerrar={() => setCierre(null)} ctx={ctx} periodoInicial={filtros.periodo} hoy={hoy} onListo={recargar} />
       )}
       {montados.envio && <ProgramarEnvioDialog pedido={envio} onCerrar={() => setEnvio(null)} ctx={ctx} onListo={recargar} />}
-      {ctx.orgId && montados.chat && (
-        <ReportesChatSheet
-          open={chat}
-          onOpenChange={setChat}
-          organizationId={ctx.orgId}
-          organizationName={ctx.nombreOrganizacion}
-          userName={usuario || t('historial.usuario')}
-          userRole="usuario"
-          periodoActual={filtros.periodo}
-          modulosActivos={ctx.codigos}
-          branchId={ctx.resolverSucursal(filtros)}
-        />
-      )}
     </ProveedorAccionesReportes>
   );
 }

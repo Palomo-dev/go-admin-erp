@@ -20,7 +20,7 @@
 
 import React from 'react';
 import { useTranslations } from 'next-intl';
-import { FileSpreadsheet, FileText, Package, Settings, Sparkles, TrendingUp, UserPlus, MessageCircle } from 'lucide-react';
+import { ClipboardList, FileSpreadsheet, FileText, Package, Settings, Sparkles, Store, TrendingUp, UserPlus, Users, MessageCircle } from 'lucide-react';
 import { iconoSugerencia, type IconoSugerencia } from '@/lib/ai/assistant/panelUi';
 
 const ICONOS: Record<IconoSugerencia, React.ComponentType<{ className?: string; strokeWidth?: number; 'aria-hidden'?: boolean | 'true' }>> = {
@@ -30,20 +30,34 @@ const ICONOS: Record<IconoSugerencia, React.ComponentType<{ className?: string; 
   facturas: FileText,
   configuracion: Settings,
   archivo: FileSpreadsheet,
+  sucursal: Store,
+  personas: Users,
+  resumen: ClipboardList,
   general: MessageCircle,
 };
+
+/** Sugerencia con su icono ya decidido (las del contexto de un reporte). */
+export interface SugerenciaConIcono {
+  texto: string;
+  icono: IconoSugerencia;
+}
 
 export interface WelcomeViewProps {
   nombre: string;
   /** Página actual («Inicio», «Productos»…) o `null` si no se reconoce. */
   pagina: string | null;
-  sugerencias: string[];
+  /** Texto del servidor (el icono se deduce) o con su icono (contexto de un reporte). */
+  sugerencias: Array<string | SugerenciaConIcono>;
   cargando: boolean;
   deshabilitado?: boolean;
+  /** Sustituye el texto de bienvenida (p. ej. «Respondo sobre Ventas por día…»). */
+  texto?: string;
+  /** Sustituye el encabezado de la lista (p. ej. «Preguntas sobre este reporte»). */
+  tituloSugerencias?: string;
   onSugerencia(texto: string): void;
 }
 
-export default function WelcomeView({ nombre, pagina, sugerencias, cargando, deshabilitado, onSugerencia }: WelcomeViewProps) {
+export default function WelcomeView({ nombre, pagina, sugerencias, cargando, deshabilitado, texto, tituloSugerencias, onSugerencia }: WelcomeViewProps) {
   const t = useTranslations('asistente.bienvenida');
   return (
     <div className="flex flex-col items-center px-1 pt-6 text-center">
@@ -51,11 +65,11 @@ export default function WelcomeView({ nombre, pagina, sugerencias, cargando, des
         <Sparkles className="h-8 w-8 text-brand" strokeWidth={1.5} aria-hidden="true" />
       </div>
       <h3 className="mb-1 text-lg font-semibold text-fg">{t('saludo', { nombre })}</h3>
-      <p className="mb-6 text-sm leading-5 text-fg-secondary">{t('texto')}</p>
+      <p className="mb-6 text-sm leading-5 text-fg-secondary">{texto ?? t('texto')}</p>
 
       <div className="w-full text-left">
         <p className="mb-2 text-xs font-semibold uppercase leading-4 text-fg-muted">
-          {pagina ? t('sugerenciasPara', { pagina }) : t('sugerencias')}
+          {tituloSugerencias ?? (pagina ? t('sugerenciasPara', { pagina }) : t('sugerencias'))}
         </p>
         {cargando && sugerencias.length === 0 ? (
           <ul className="space-y-2" aria-hidden="true">
@@ -65,8 +79,9 @@ export default function WelcomeView({ nombre, pagina, sugerencias, cargando, des
           </ul>
         ) : (
           <ul className="space-y-2">
-            {sugerencias.map((s, i) => {
-              const Icono = ICONOS[iconoSugerencia(s)];
+            {sugerencias.map((sugerencia, i) => {
+              const s = typeof sugerencia === 'string' ? sugerencia : sugerencia.texto;
+              const Icono = ICONOS[typeof sugerencia === 'string' ? iconoSugerencia(s) : sugerencia.icono];
               return (
                 <li key={`${i}-${s}`}>
                   <button

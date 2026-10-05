@@ -12481,12 +12481,22 @@
       "total": "Total retido",
       "alcance": "{facturas, plural, =0 {Sem faturas} one {# fatura} other {# faturas}} · {conceptos, plural, =0 {sem conceitos} one {# conceito} other {# conceitos}}",
       "sinRetenciones": "Nenhuma retenção foi praticada neste período; o certificado sairá zerado.",
-      "nota": "Abrange todas as filiais: o agente retentor é a organização.",
+      "nota": "Abrange todas as filiais: o agente retentor é a organização. Ao emiti-lo, usa o próximo número da série CR.",
       "descargar": "Baixar PDF",
       "imprimir": "Imprimir",
       "ver": "Ver",
       "cerrar": "Fechar",
-      "errorDescarga": "Não foi possível baixar o certificado"
+      "errorDescarga": "Não foi possível baixar o certificado",
+      "desdeMes": "De",
+      "hastaMes": "Até",
+      "periodoInvalido": "Escolha um período válido: o mês inicial não pode ser posterior ao final nem ao mês atual.",
+      "expedir": "Emitir certificado",
+      "vistaPrevia": "Pré-visualização",
+      "numero": "Número",
+      "expedido": "Emitido",
+      "reexpedido": "Já estava emitido para este período com os mesmos valores: o número é mantido.",
+      "errorExpedir": "Não foi possível emitir o certificado",
+      "errorPermiso": "Você não tem permissão para emitir certificados de retenções."
     }
   },
   "documentos": {
@@ -12593,6 +12603,11 @@
         "emitido": "Emitido",
         "firmado": "Assinado · período fechado",
         "reemplazado": "Substituído"
+      },
+      "certificado": {
+        "issued": "Emitido",
+        "void": "Anulado",
+        "preview": "Pré-visualização"
       }
     },
     "qr": {
@@ -12670,7 +12685,6 @@
       "periodoHasta": "Período até",
       "facturasIncluidas": "Faturas incluídas",
       "fechaExpedicion": "Data de emissão",
-      "ciudadExpedicion": "Cidade de emissão",
       "declaradoEn": "Declarado em",
       "tipoCierre": "Tipo de fechamento",
       "franja": "Faixa horária",
@@ -12680,7 +12694,9 @@
       "emitidoPor": "Emitido por",
       "firmadoEn": "Assinado",
       "firmadoPor": "Assinado por",
-      "kpi": "Indicador"
+      "kpi": "Indicador",
+      "periodoCertificado": "Período certificado",
+      "ciudadRetencion": "Cidade da retenção"
     },
     "formasPago": {
       "contado": "À vista",
@@ -12722,11 +12738,11 @@
       "arqueos": "Conferências",
       "denominaciones": "Cédulas e moedas",
       "retenciones": "Retenções aplicadas ao fornecedor",
-      "conceptosRetenidos": "Retenções praticadas",
-      "facturasIncluidas": "Faturas incluídas",
       "indiceCapitulos": "Índice de capítulos",
       "reportesConError": "Relatórios não incluídos (erro de cálculo)",
-      "reporte": "Relatório"
+      "reporte": "Relatório",
+      "valoresRetenidos": "Valores retidos",
+      "valoresRetenidosPeriodo": "Valores retidos · {periodo}"
     },
     "columnas": {
       "descripcion": "Descrição",
@@ -12766,7 +12782,8 @@
       "valorRetenido": "Valor retido",
       "capitulo": "Capítulo",
       "reportes": "Relatórios",
-      "reporte": "Relatório"
+      "reporte": "Relatório",
+      "tarifaRetencion": "Alíquota"
     },
     "vacios": {
       "lineas": "Sem linhas.",
@@ -12826,7 +12843,8 @@
       "contador": "Contador público",
       "datosContador": "Nome · Registro profissional",
       "elaboro": "Elaborado por",
-      "representanteLegal": "Representante legal"
+      "representanteLegal": "Representante legal",
+      "firmaAutorizada": "Assinatura autorizada"
     },
     "legal": {
       "resolucion": "Resolução DIAN n.º {numero} de {fecha}, prefixo {prefijo}, numeração autorizada de {desde} a {hasta}, válida até {vigencia}.",
@@ -12931,7 +12949,18 @@
       "declarado350": "Formulário 350",
       "declaradoIca": "Declaração de ICA",
       "declarado350EIca": "Formulário 350 e ICA",
-      "constancia": "{emisor}, como agente retentor, certifica que durante o período indicado praticou a {proveedor} as retenções detalhadas, sobre os pagamentos ou créditos das faturas incluídas."
+      "vistaPrevia": "Pré-visualização",
+      "periodoMes": "{mes} de {anio}",
+      "periodoMeses": "{desde} a {hasta} de {anio}",
+      "periodoMesesAnios": "{desde} de {anioDesde} a {hasta} de {anioHasta}",
+      "periodoDias": "{desde} a {hasta}",
+      "facturaCompra": "{n} fatura de compra",
+      "facturasCompra": "{n} faturas de compra",
+      "constancia350": "Valores retidos do fornecedor nas suas faturas de compra do período e declarados por {emisor}: retenção na fonte e de IVA no formulário 350 (mensal). Cada valor vem das retenções registradas nas faturas; nenhum é digitado.",
+      "constanciaIca": "Valores retidos do fornecedor nas suas faturas de compra do período e declarados por {emisor} na declaração de ICA do município {municipio}. Cada valor vem das retenções registradas nas faturas; nenhum é digitado.",
+      "constancia350EIca": "Valores retidos do fornecedor nas suas faturas de compra do período e declarados por {emisor}: retenção na fonte e de IVA no formulário 350 (mensal), e ICA na declaração do município {municipio}. Cada valor vem das retenções registradas nas faturas; nenhum é digitado.",
+      "municipioDe": "de {ciudad}",
+      "municipioSinCiudad": "onde foi praticada"
     },
     "reportes": {
       "truncado": "Mostrando {mostradas} de {total} linhas. Os totais incluem todas. Consulte o relatório completo no aplicativo.",
@@ -23130,6 +23159,36 @@
     "pie": {
       "aviso": "Pode errar: revise o que é importante",
       "permisos": "Permissões do assistente"
+    },
+    "reporte": {
+      "chip": "Relatório: {reporte} · {detalle}",
+      "chipCentro": "Relatórios · {detalle}",
+      "centro": "Relatórios",
+      "todasSucursales": "Todas as filiais",
+      "bienvenida": "Respondo sobre {reporte} com os filtros que você aplicou. Antes de salvar ou enviar algo, peço sua confirmação.",
+      "preguntas": "Perguntas sobre este relatório",
+      "sugerencias": {
+        "mejorDia": "Em que dia vendemos mais e por quê?",
+        "vendedorTicket": "Qual vendedor mais aumentou o ticket médio?",
+        "compararSucursal": "Compare este período com o anterior por filial",
+        "comparar": "Compare este período com o anterior",
+        "porSucursal": "Como este resultado se divide por filial?",
+        "agotarse": "Quais produtos vão acabar primeiro?",
+        "sinRotacion": "Quais produtos quase não giraram neste período?",
+        "proveedor": "De qual fornecedor compramos mais e quanto?",
+        "variacion": "Qual item explica a maior variação?",
+        "vencimientos": "O que vence primeiro e de quanto é?",
+        "destaca": "Qual é o ponto mais importante deste relatório?",
+        "revisar": "O que devo revisar primeiro aqui?",
+        "fueraDeLoNormal": "Há algo fora do normal neste relatório?",
+        "resumen": "Resuma este relatório em 3 pontos para o gerente"
+      },
+      "tendencia": "Tendência de {serie} em {periodo}",
+      "filasMostradas": "Mostrando {n} de {total} linhas; o relatório completo está no visualizador.",
+      "exportar": "Exportar",
+      "programar": "Agendar envio",
+      "irAlReporte": "Ir ao relatório",
+      "errorExportar": "Não foi possível exportar o relatório."
     }
   },
   "crm": {
@@ -24872,7 +24931,8 @@
     "actualizar": "Atualizar",
     "programarEnvios": "Agendar envios",
     "generarCierre": "Gerar fechamento",
-    "preguntar": "Perguntar à IA",
+    "preguntar": "Perguntar ao GO Assistente",
+    "preguntarDescripcion": "Com este relatório e seus filtros",
     "masAcciones": "Mais ações",
     "pestanas": {
       "etiqueta": "Seções de relatórios",

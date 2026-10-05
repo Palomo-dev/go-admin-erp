@@ -29,6 +29,7 @@ import { actionFieldsFor } from './catalogTools';
 import type { ActionFieldDef } from '@/lib/ai/assistant/actionCatalog';
 import { resolveModel, type OrgModelSettings } from './modelRouter';
 import type { ToolContext, ToolDefinition, ToolPreview } from './types';
+import type { TarjetaReporte } from '@/lib/ai/assistant/tarjetaReporte';
 import { QUESTION_TOOL, preguntaComoTexto, type PreguntaArgs } from './tools/pregunta';
 
 /** Eventos que el bucle emite hacia el transporte (SSE hoy, WebSocket en F5). */
@@ -53,6 +54,12 @@ export type AgentEvent =
       options: Array<{ key: string; label: string; value?: string }>;
       allowOther: boolean;
     }
+  /**
+   * Resultado de un reporte para pintarlo en la respuesta (gráfico pequeño,
+   * tabla corta y accesos «Exportar · Programar envío · Ir al reporte»). Sale
+   * de los datos reales de la herramienta, no de lo que escriba el modelo.
+   */
+  | { type: 'reporte'; tarjeta: TarjetaReporte }
   | { type: 'usage'; model: string; promptTokens: number; completionTokens: number; credits: number }
   | { type: 'error'; message: string; code?: string }
   /**
@@ -114,6 +121,8 @@ function stepLabel(toolName: string): string {
     estado_configuracion: 'Revisando tu configuración…',
     listar_modulos_activos: 'Consultando tus módulos…',
     explicar_configuracion: 'Revisando la configuración…',
+    listar_reportes: 'Consultando tus reportes…',
+    consultar_reporte: 'Ejecutando el reporte…',
   };
   return labels[toolName] ?? 'Preparando la acción…';
 }
@@ -258,6 +267,7 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentOutput> {
         const result = await tool.execute(ctx, parsed);
         toolCalls.push({ name: call.name, ok: result.ok });
         await emit({ type: 'tool_end', name: call.name, summary: result.message, ok: result.ok });
+        if (result.ok && result.tarjetaReporte) await emit({ type: 'reporte', tarjeta: result.tarjetaReporte });
         messages.push({
           role: 'tool',
           toolCallId: call.id,

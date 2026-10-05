@@ -279,6 +279,26 @@ describe('Bienvenida', () => {
     fireEvent.click(sugerencia);
     expect(onSugerencia).toHaveBeenCalledWith('¿Cómo van las ventas de hoy?');
   });
+
+  test('con un reporte abierto (Figma Reportes 22-02): texto y encabezado propios, sugerencias con su icono', () => {
+    const onSugerencia = jest.fn();
+    renderConIdioma(
+      <WelcomeView
+        nombre="Ana"
+        pagina="Ventas del periodo"
+        texto="Respondo sobre Ventas del periodo con los filtros que tienes aplicados."
+        tituloSugerencias="Preguntas sobre este reporte"
+        sugerencias={[{ texto: 'Compara este periodo con el anterior por sucursal', icono: 'sucursal' }, '¿Qué día vendimos más y por qué?']}
+        cargando={false}
+        onSugerencia={onSugerencia}
+      />
+    );
+    expect(screen.getByText('Respondo sobre Ventas del periodo con los filtros que tienes aplicados.')).toBeTruthy();
+    expect(screen.getByText('Preguntas sobre este reporte')).toBeTruthy();
+    expect(screen.queryByText(/Sugerencias para/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Compara este periodo con el anterior por sucursal' }));
+    expect(onSugerencia).toHaveBeenCalledWith('Compara este periodo con el anterior por sucursal');
+  });
 });
 
 describe('Composer', () => {

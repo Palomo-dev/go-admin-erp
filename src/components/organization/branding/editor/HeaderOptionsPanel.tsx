@@ -91,25 +91,6 @@ export default function HeaderOptionsPanel({
         </Select>
       </div>
 
-      {/* Posición del Menú */}
-      <div className="space-y-2">
-        <Label className="text-xs font-medium dark:text-gray-200">
-          Posición del Menú
-        </Label>
-        <Select
-          value={settings.menu_position}
-          onValueChange={(v) => onUpdate({ menu_position: v })}
-        >
-          <SelectTrigger className="h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="inline">Inline con logo</SelectItem>
-            <SelectItem value="below">Debajo del logo</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
       {/* Estilo del Buscador */}
       <div className="space-y-2">
         <Label className="text-xs font-medium dark:text-gray-200">
@@ -143,29 +124,18 @@ export default function HeaderOptionsPanel({
         />
       </div>
 
-      {/* Estilo del menú de categorías */}
-      {settings.show_categories_in_header && (
-        <div className="space-y-2">
-          <Label className="text-xs font-medium dark:text-gray-200">
-            Estilo del menú de categorías
-          </Label>
-          <Select
-            value={settings.categories_menu_style}
-            onValueChange={(v) => onUpdate({ categories_menu_style: v })}
-          >
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="dropdown">Dropdown simple</SelectItem>
-              <SelectItem value="mega">Mega menú multi-columna</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      {/* «Posición del menú» y «Estilo del menú de categorías» se quitaron:
+          el sitio no los aplica (el layout fija ambas cosas). Las categorías
+          salen como mega menú en el layout «Mega», en el cajón del «Minimal»
+          y en el menú móvil. */}
+      {settings.show_categories_in_header && settings.header_style !== 'mega' && (
+        <p className="text-[11px] text-gray-500 dark:text-gray-400">
+          En escritorio, las categorías se ven como mega menú solo con el diseño «Mega». En móvil se ven con cualquier diseño.
+        </p>
       )}
 
       {/* Columnas del mega menú */}
-      {settings.categories_menu_style === 'mega' &&
+      {settings.header_style === 'mega' &&
         settings.show_categories_in_header && (
           <div className="space-y-2">
             <Label className="text-xs font-medium dark:text-gray-200">
@@ -373,7 +343,8 @@ export default function HeaderOptionsPanel({
             </Select>
           </div>
 
-          {/* Menú del mega menu */}
+          {/* Menú del mega menu: solo lo pinta el layout «Mega» */}
+          {settings.header_style === 'mega' && (
           <div className="space-y-1.5">
             <Label className="text-xs font-medium dark:text-gray-200">
               Menú del Mega Menu
@@ -393,6 +364,7 @@ export default function HeaderOptionsPanel({
               </SelectContent>
             </Select>
           </div>
+          )}
         </div>
       )}
 
@@ -559,7 +531,7 @@ export default function HeaderOptionsPanel({
             </SelectContent>
           </Select>
           <p className="text-[11px] text-gray-500 dark:text-gray-400">
-            Solo aplica cuando el estilo del header es "Minimal".
+            Solo aplica cuando el estilo del header es «Minimal».
           </p>
         </div>
 

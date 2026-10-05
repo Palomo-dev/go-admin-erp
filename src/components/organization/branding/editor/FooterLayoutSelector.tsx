@@ -171,7 +171,11 @@ export default function FooterLayoutSelector({
 }: FooterLayoutSelectorProps) {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      {layouts.map((layout) => {
+      {/* «Split» se pinta en el sitio, pero el CHECK website_settings_footer_style_check
+          de la base no lo admite y guardarlo fallaba a mitad del guardado. Se oculta
+          hasta ampliar el CHECK (requiere una migración con DROP CONSTRAINT que hay
+          que confirmar a mano); un sitio que ya lo tuviera lo sigue viendo marcado. */}
+      {layouts.filter((layout) => layout.id !== 'split' || currentLayout === 'split').map((layout) => {
         const isSelected = currentLayout === layout.id;
         const Icon = layout.icon;
         return (

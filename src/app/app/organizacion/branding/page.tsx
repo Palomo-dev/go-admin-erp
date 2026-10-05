@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Palette, Search, FileText, Code, Globe,
-  ArrowLeft, RefreshCw, FileEdit, ShoppingCart,
+  ArrowLeft, RefreshCw, FileEdit, ShoppingCart, Store,
   type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -28,11 +28,13 @@ import {
   BrandingPagesTab,
   BrandingCheckoutTab,
 } from '@/components/organization/branding';
+import CartaPorSedePanel from '@/components/organization/branding/carta-sede/CartaPorSedePanel';
 
-const TAB_IDS = ['theme', 'pages', 'checkout', 'seo', 'content', 'advanced', 'publish'] as const;
+const TAB_IDS = ['theme', 'pages', 'menuByBranch', 'checkout', 'seo', 'content', 'advanced', 'publish'] as const;
 const TAB_ICONS: Record<string, LucideIcon> = {
   theme: Palette,
   pages: FileEdit,
+  menuByBranch: Store,
   checkout: ShoppingCart,
   seo: Search,
   content: FileText,
@@ -327,6 +329,10 @@ export default function BrandingPage() {
                   organizationId={organizationId ?? null}
                   subdomain={organization?.subdomain ?? null}
                 />
+              </TabsContent>
+
+              <TabsContent value="menuByBranch">
+                <CartaPorSedePanel />
               </TabsContent>
 
               <TabsContent value="checkout">

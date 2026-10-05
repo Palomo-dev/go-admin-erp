@@ -231,6 +231,54 @@ function shouldSkipRoute(pathname: string): boolean {
 }
 
 /**
+ * Valor de la cookie de sesión como JSON, o null si no se entiende.
+ * Acepta el JSON plano (cliente del navegador, `config.ts`) y el formato de
+ * `@supabase/ssr`: «base64-» + base64url del JSON.
+ */
+function sesionEnJson(valor: string): string | null {
+  const v = valor.trim();
+  if (v.startsWith('{')) return v;
+  if (!v.startsWith('base64-')) return null;
+  try {
+    const json = new TextDecoder().decode(base64UrlToBytes(v.slice('base64-'.length)));
+    return json.trim().startsWith('{') ? json : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Borra las cookies de sesión de verdad. `response.cookies.delete(nombre)` solo
+ * borraba la variante sin dominio y sin trozos: la cookie con
+ * `domain=.goadmin.io` y los trozos `.0`, `.1`… seguían ahí, así que la
+ * petición siguiente volvía a traer la misma cookie rota.
+ */
+function borrarCookiesDeSesion(response: NextResponse, request: NextRequest, projectRef: string): void {
+  const bases = [
+    `sb-${projectRef}-auth-token`,
+    `sb-${projectRef}-auth-token-code-verifier`,
+    'sb-auth-token',
+    'supabase-auth-token',
+  ];
+  const nombres = new Set<string>();
+  for (const base of bases) nombres.add(base);
+  for (const c of request.cookies.getAll()) {
+    if (bases.some((b) => c.name === b || c.name.startsWith(`${b}.`))) nombres.add(c.name);
+  }
+  const host = request.nextUrl.hostname;
+  const dominios = host === 'goadmin.io' || host.endsWith('.goadmin.io') ? ['', '; Domain=.goadmin.io'] : [''];
+  const seguro = request.nextUrl.protocol === 'https:' ? '; Secure' : '';
+  for (const nombre of nombres) {
+    for (const dominio of dominios) {
+      response.headers.append(
+        'Set-Cookie',
+        `${nombre}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${seguro}${dominio}`,
+      );
+    }
+  }
+}
+
+/**
  * Middleware para manejar autenticación y autorización
  * Verifica sesiones, maneja redirecciones y actualiza actividad de usuario
  */
@@ -318,12 +366,22 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
   // pero Next.js middleware no decodifica automáticamente los valores.
   if (authCookie?.value) {
     try {
-      if (authCookie.value.startsWith('%7B') || authCookie.value.startsWith('%5B')) {
+      if (authCookie.value.startsWith('%7B') || authCookie.value.startsWith('%5B') || authCookie.value.startsWith('base64-')) {
         authCookie = { name: authCookie.name, value: decodeURIComponent(authCookie.value) };
       }
     } catch {
       // Si falla la decodificación, mantener el valor original
     }
+  }
+
+  // El cliente de servidor (@supabase/ssr, getServerUserClient) escribía la
+  // MISMA cookie en su formato «base64-<base64url del JSON>» cuando renovaba la
+  // sesión en un route handler. Este middleware solo entendía JSON y la tomaba
+  // por corrupta: redirigía al login, y como en el login volvía a encontrarla,
+  // entraba en bucle (ERR_TOO_MANY_REDIRECTS). Se entienden los dos formatos.
+  if (authCookie?.value) {
+    const legible = sesionEnJson(authCookie.value);
+    if (legible) authCookie = { name: authCookie.name, value: legible };
   }
 
   // Usar la nueva función optimizada para validar sesión
@@ -341,24 +399,13 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
         authCookie.value === 'null' ||
         !authCookie.value.trim().startsWith('{')) {
       
-      // Cookie corrupta detectada
-      
-      // Limpiar cookie corrupta y redirigir a login
-      const response = NextResponse.redirect(new URL('/auth/login?error=corrupted-session', request.url));
-      response.cookies.delete(authCookieName);
-      
-      // También limpiar otras cookies relacionadas
-      const allSupabaseCookies = [
-        `sb-${projectRef}-auth-token`,
-        `sb-${projectRef}-auth-token-code-verifier`,
-        'sb-auth-token',
-        'supabase-auth-token'
-      ];
-      
-      allSupabaseCookies.forEach(cookieName => {
-        response.cookies.delete(cookieName);
-      });
-      
+      // Cookie corrupta: se borra (con y sin dominio compartido, con sus
+      // trozos) y se va al login. En las páginas de /auth/ NO se redirige:
+      // redirigir al mismo login con la cookie todavía puesta era el bucle.
+      const response = pathname.startsWith('/auth/')
+        ? NextResponse.next()
+        : NextResponse.redirect(new URL('/auth/login?error=corrupted-session', request.url));
+      borrarCookiesDeSesion(response, request, projectRef);
       return response;
     }
     

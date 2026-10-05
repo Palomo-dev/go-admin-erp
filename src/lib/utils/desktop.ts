@@ -10,6 +10,15 @@
  * con elegancia. Las funciones de este módulo son seguras en SSR.
  */
 
+export interface DesktopPhoneControllerBridge {
+  open: () => Promise<{ ok: boolean }>;
+  publish: (snapshot: unknown) => void;
+  reply: (response: unknown) => void;
+  onCommand: (handler: (command: unknown) => void) => () => void;
+  missed?: (notice: unknown) => void;
+  onMissedAction?: (handler: (action: unknown) => void) => () => void;
+}
+
 export interface DesktopSystemPrinter {
   name: string;
   isDefault: boolean;
@@ -184,6 +193,7 @@ export interface DesktopScaleBridge {
 }
 
 export interface GoAdminDesktopBridge {
+  phone?: DesktopPhoneControllerBridge;
   // Agente
   startAgent?: (
     refreshToken: string,

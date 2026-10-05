@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { exigirAccesoLlamada } from '@/lib/services/crm/callAccessService';
+import { respuestaErrorCrm } from '@/lib/services/crm/crmRouteSupport';
+import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { getAnalysis, AnalysisError } from '@/lib/services/crm/callAnalysisService';
@@ -19,7 +21,7 @@ export const maxDuration = 60;
  */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     const { id } = await params;
     let body: { force?: boolean } = {};
     try {
@@ -31,8 +33,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const force = body.force === true;
     const sync = request.nextUrl.searchParams.get('sync') === '1';
 
-    const { data: call } = await ctx.supabase.from('calls').select('id').eq('id', id).eq('organization_id', ctx.organizationId).maybeSingle();
-    if (!call) return NextResponse.json({ success: false, error: 'Llamada no encontrada' }, { status: 404 });
+    await exigirAccesoLlamada(ctx, id, 'gestion');
 
     const existing = await getAnalysis(id, ctx.organizationId, ctx.supabase);
     if (existing && existing.summary && !force) {
@@ -122,30 +123,26 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       { status: 202 },
     );
   } catch (error: unknown) {
-    if (error instanceof OrgContextError) return NextResponse.json({ success: false, error: error.message }, { status: error.statusCode });
     if (error instanceof AnalysisError) {
       const status = error.code === 'INSUFFICIENT_CREDITS' ? 402 : error.code === 'NO_TRANSCRIPT' ? 409 : error.code === 'CALL_NOT_FOUND' ? 404 : error.code === 'PERSIST_ERROR' ? 500 : 502;
       return NextResponse.json({ success: false, error: error.message, code: error.code }, { status });
     }
     if (error instanceof InsufficientCreditsError) return NextResponse.json({ success: false, error: error.message, code: 'INSUFFICIENT_CREDITS' }, { status: 402 });
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Calls Analyze] POST error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return respuestaErrorCrm(error, 'llamada_auxiliar');
   }
 }
 
 /** GET /api/crm/calls/[id]/analyze — Último análisis de la llamada. */
-export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     const { id } = await params;
+    readOrgBody(ctx, {}, { request });
+    await exigirAccesoLlamada(ctx, id, 'lectura');
     const analysis = await getAnalysis(id, ctx.organizationId, ctx.supabase);
     if (!analysis) return NextResponse.json({ success: false, error: 'Análisis no encontrado' }, { status: 404 });
     return NextResponse.json({ success: true, data: analysis }, { status: 200 });
   } catch (error: unknown) {
-    if (error instanceof OrgContextError) return NextResponse.json({ success: false, error: error.message }, { status: error.statusCode });
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Calls Analyze] GET error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return respuestaErrorCrm(error, 'llamada_auxiliar');
   }
 }

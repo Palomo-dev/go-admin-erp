@@ -56,7 +56,7 @@ function harness(initial: RulesState) {
 const GET_500 = { GET: { status: 500, body: { error: 'boom' } } };
 const old = row({ id: 'a', is_active: true, updated_at: 't0' });
 const other = row({ id: 'b', priority: 20 });
-const loadedWith = (rules: AutomationRuleView[]): RulesState => ({ rules, loading: false, loaded: true, error: null });
+const loadedWith = (rules: AutomationRuleView[]): RulesState => ({ ...INITIAL_RULES_STATE, rules, loading: false, loaded: true, error: null });
 
 describe('R-2 ejecutado · mutación OK + recarga fallida (la respuesta de la mutación manda)', () => {
   it('PATCH OK + GET 500 → el interruptor muestra la fila que devolvió el servidor, no la vieja (M-A5)', async () => {
@@ -125,4 +125,14 @@ describe('loadRules · esqueleto solo en la primera carga (M26) y última lista 
     await p2;
     expect(h.state).toEqual({ ...loadedWith([old]), error: 'boom' });
   });
+});
+
+it('summary y capacidad vienen del GET canónico; cambiar organización borra todos los datos previos',async()=>{
+ const h=harness(INITIAL_RULES_STATE), summary={active_rules:2,executed_7d:7,skipped_7d:3,failed_7d:1,from:'2026-09-25T00:00:00Z',until:'2026-10-02T00:00:00Z'};
+ await loadRules(fakeFetch({GET:{status:200,body:{data:[old],can_manage:true,summary}}}).fetch,h.dispatch);
+ expect(h.state).toMatchObject({canManage:true,summary});h.dispatch({type:'scope_changed',scope:2});expect(h.state).toMatchObject({rules:[],summary:null,canManage:false,scope:2});
+});
+it('simulación masiva llama sólo endpoint read-only y body vacío',async()=>{
+ const {bulkDryRunRule}=await import('../ruleMutations'),result={total:307,matched:91,skipped:214,unavailable:0,sample:[],data_basis:'current_records'};
+ const f=fakeFetch({POST:{status:200,body:{data:result}}});expect(await bulkDryRunRule(f.fetch,'a')).toEqual(result);expect(f.calls).toEqual([{url:'/api/crm/automations/a/dry-run/bulk',method:'POST',body:{}}]);
 });

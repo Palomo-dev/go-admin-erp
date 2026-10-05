@@ -1,24 +1,18 @@
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { createActivity, RelatedNotFoundError } from '@/lib/services/crm/activityService';
+import { CrmHttpError } from './crmErrors';
+import type { CrmSesion } from './crmRouteSupport';
 
 /**
- * meetingsService — reuniones desde la ficha 360 (FASE-09 §4.2).
- *
- * createMeeting: INSERT calendar_events (status CHECK real: confirmed|tentative|cancelled)
- *   + activity 'meeting' (related_type/id, occurred_at = start_at, metadata.event_id).
- * updateMeeting: PATCH de campos + status API 'scheduled'|'done'|'canceled'
- *   → calendar_events.status confirmed|confirmed(+metadata.completed_at)|cancelled
- *   y activities.outcome done|canceled.
- *
- * El correo (cliente, si tiene dirección, y responsable) lo manda la ruta
- * con `notificarReunion` cuando `send_invite` no viene en false.
+ * Una RPC guarda calendario e historial con la sesión del actor.
+ * La ruta envía la invitación después de guardar, salvo send_invite=false.
  */
+const instantSchema = z.string().datetime({ offset: true }).refine(value => Number.isFinite(Date.parse(value)));
 
 export const meetingInputSchema = z.object({
-  title: z.string().min(1).max(200),
-  start_at: z.string().datetime({ offset: true }),
-  end_at: z.string().datetime({ offset: true }),
+  title: z.string().trim().min(1).max(200),
+  start_at: instantSchema,
+  end_at: instantSchema,
   timezone: z.string().max(60).optional(),
   location: z.string().max(500).optional().nullable(),
   description: z.string().max(5000).optional().nullable(),
@@ -27,18 +21,18 @@ export const meetingInputSchema = z.object({
   assigned_to: z.string().uuid().optional().nullable(),
   attendees: z.array(z.string().email()).max(20).optional(),
   send_invite: z.boolean().optional(),
-  client_key: z.string().max(120).optional(),
-});
+  client_key: z.string().min(1).max(120).optional(),
+}).strict();
 export type MeetingInput = z.infer<typeof meetingInputSchema>;
 
 export const meetingPatchSchema = z.object({
-  title: z.string().min(1).max(200).optional(),
-  start_at: z.string().datetime({ offset: true }).optional(),
-  end_at: z.string().datetime({ offset: true }).optional(),
+  title: z.string().trim().min(1).max(200).optional(),
+  start_at: instantSchema.optional(),
+  end_at: instantSchema.optional(),
   location: z.string().max(500).optional().nullable(),
   description: z.string().max(5000).optional().nullable(),
   status: z.enum(['scheduled', 'done', 'canceled']).optional(),
-});
+}).strict().refine(value => Object.keys(value).length > 0, { message: 'Se requiere un cambio' });
 export type MeetingPatch = z.infer<typeof meetingPatchSchema>;
 
 export interface CalendarEventRow {
@@ -52,203 +46,105 @@ export interface CalendarEventRow {
   timezone: string | null;
   assigned_to: string | null;
   customer_id: string | null;
+  opportunity_id: string | null;
   event_type: string | null;
   status: string | null;
   metadata: Record<string, unknown> | null;
   created_by: string | null;
 }
 
-export class MeetingNotFoundError extends Error {
-  constructor() {
-    super('Reunión no encontrada');
-    this.name = 'MeetingNotFoundError';
+/** Lectura completa con RLS; el calendario unificado omite lugar y oportunidad. */
+export async function getMeetingForCalendar(ctx: CrmSesion, id: string): Promise<{ event: CalendarEventRow; can_edit: boolean; outcome: 'scheduled' | 'done' | 'canceled' }> {
+  const { data, error } = await ctx.supabase.from('calendar_events')
+    .select('id,organization_id,title,description,location,start_at,end_at,timezone,assigned_to,customer_id,opportunity_id,event_type,status,metadata,created_by')
+    .eq('organization_id', ctx.organizationId).eq('id', id).maybeSingle();
+  if (error) throw error;
+  const event = data as CalendarEventRow | null;
+  if (!event || event.organization_id !== ctx.organizationId || event.event_type !== 'meeting' || !(event.metadata?.source === 'crm' || event.metadata?.source === 'voice_agent' || event.metadata?.activity_id)) {
+    throw new CrmHttpError(404, 'no_encontrado', 'Reunión no encontrada');
   }
+  if (!event.customer_id && !event.opportunity_id) throw new CrmHttpError(409, 'entidad_incoherente', 'La reunión no tiene una entidad relacionada');
+  if (event.opportunity_id) {
+    const { data: opportunity, error: opportunityError } = await ctx.supabase.from('opportunities').select('id,organization_id,customer_id')
+      .eq('organization_id', ctx.organizationId).eq('id', event.opportunity_id).maybeSingle();
+    if (opportunityError) throw opportunityError;
+    if (!opportunity || opportunity.organization_id !== ctx.organizationId || opportunity.id !== event.opportunity_id
+      || opportunity.customer_id !== event.customer_id) throw new CrmHttpError(409, 'entidad_incoherente', 'La relación comercial de la reunión requiere revisión');
+  }
+  if (event.customer_id) {
+    const { data: customer, error: customerError } = await ctx.supabase.from('customers').select('id,organization_id')
+      .eq('organization_id', ctx.organizationId).eq('id', event.customer_id).maybeSingle();
+    if (customerError) throw customerError;
+    if (!customer || customer.organization_id !== ctx.organizationId || customer.id !== event.customer_id)
+      throw new CrmHttpError(409, 'entidad_incoherente', 'El cliente relacionado requiere revisión');
+  }
+  const { data: activities, error: activityError } = await ctx.supabase.from('activities')
+    .select('id,activity_type,related_type,related_id,user_id,occurred_at,outcome,metadata')
+    .eq('organization_id', ctx.organizationId).ilike('metadata->>event_id', event.id).limit(2);
+  if (activityError) throw activityError;
+  const activity = activities?.length === 1 ? activities[0] : null;
+  if (!activity || activity.metadata?.event_id !== event.id || activity.activity_type !== 'meeting' || activity.related_type !== (event.opportunity_id ? 'opportunity' : 'customer')
+    || activity.related_id !== (event.opportunity_id ?? event.customer_id) || activity.user_id !== event.created_by
+    || Date.parse(activity.occurred_at) !== Date.parse(event.start_at)
+    || (event.metadata?.activity_id && event.metadata.activity_id !== activity.id)
+    || !['scheduled', 'done', 'canceled'].includes(activity.outcome)
+    || event.status !== (activity.outcome === 'canceled' ? 'cancelled' : 'confirmed')) {
+    throw new CrmHttpError(409, 'historial_incoherente', 'La reunión requiere reparar su historial antes de editarla');
+  }
+  // Mantener validaciones/ICS como módulos puros; la autorización se carga
+  // únicamente en esta lectura de servidor, después de validar el historial.
+  const { CRM_PERMISOS, tienePermisoCrm } = await import('./crmRouteSupport');
+  const can_edit = event.created_by === ctx.userId || await tienePermisoCrm(ctx, CRM_PERMISOS.actividadesEditarCualquiera);
+  return { event, can_edit, outcome: activity.outcome as 'scheduled' | 'done' | 'canceled' };
+}
+
+interface MeetingRpcResult {
+  event: CalendarEventRow;
+  activity_id: string;
+  reused: boolean;
+}
+
+async function guardarReunion(
+  orgId: number,
+  id: string | null,
+  payload: MeetingInput | MeetingPatch,
+  supabase: SupabaseClient,
+): Promise<MeetingRpcResult> {
+  const { data, error } = await supabase.rpc('fn_crm_guardar_reunion', {
+    p_org: orgId, p_event_id: id, p_payload: payload,
+  });
+  if (error) throw error;
+  if (!data || typeof data !== 'object' || !data.event || !data.activity_id) {
+    throw new Error('La reunión no devolvió su historial');
+  }
+  return data as MeetingRpcResult;
 }
 
 export async function createMeeting(
   orgId: number,
-  userId: string,
+  _userId: string,
   input: MeetingInput,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
 ): Promise<{ event: CalendarEventRow; activityId: string }> {
+  // La RPC obtiene autor de auth.uid(); el argumento de sesión se conserva
+  // por compatibilidad y nunca se transmite como identidad de confianza.
   if (Date.parse(input.end_at) <= Date.parse(input.start_at)) {
-    throw new Error('end_at debe ser posterior a start_at');
+    throw new CrmHttpError(400, 'rango_invalido', 'end_at debe ser posterior a start_at');
   }
   if (!input.opportunity_id && !input.customer_id) {
-    throw new Error('Se requiere opportunity_id o customer_id');
+    throw new CrmHttpError(400, 'entidad_requerida', 'Se requiere opportunity_id o customer_id');
   }
-  // F9-14: `assigned_to` debe ser miembro de la organización
-  let assignedTo = userId;
-  if (input.assigned_to && input.assigned_to !== userId) {
-    const { data: member } = await supabase
-      .from('organization_members')
-      .select('user_id')
-      .eq('organization_id', orgId)
-      .eq('user_id', input.assigned_to)
-      .eq('is_active', true)
-      .maybeSingle();
-    if (!member) throw new RelatedNotFoundError();
-    assignedTo = input.assigned_to;
-  }
-  const relatedType = input.opportunity_id ? 'opportunity' : 'customer';
-  const relatedId = (input.opportunity_id ?? input.customer_id) as string;
-
-  // Validar pertenencia y resolver customer_id de la oportunidad
-  let customerId = input.customer_id ?? null;
-  if (input.opportunity_id) {
-    const { data: opp } = await supabase
-      .from('opportunities')
-      .select('id, customer_id')
-      .eq('id', input.opportunity_id)
-      .eq('organization_id', orgId)
-      .maybeSingle();
-    if (!opp) throw new RelatedNotFoundError();
-    customerId = customerId ?? (opp as { customer_id: string | null }).customer_id ?? null;
-  } else if (customerId) {
-    const { data: cust } = await supabase.from('customers').select('id').eq('id', customerId).eq('organization_id', orgId).maybeSingle();
-    if (!cust) throw new RelatedNotFoundError();
-  }
-
-  const { data: event, error } = await supabase
-    .from('calendar_events')
-    .insert({
-      organization_id: orgId,
-      title: input.title,
-      description: input.description ?? null,
-      location: input.location ?? null,
-      start_at: input.start_at,
-      end_at: input.end_at,
-      all_day: false,
-      timezone: input.timezone ?? 'America/Bogota',
-      assigned_to: assignedTo,
-      customer_id: customerId,
-      // CRM ola 1 (M3): columna con FK e índice; `metadata.opportunity_id` se
-      // conserva por compatibilidad con lectores anteriores.
-      opportunity_id: input.opportunity_id ?? null,
-      event_type: 'meeting',
-      status: 'confirmed',
-      created_by: userId,
-      metadata: {
-        source: 'crm',
-        opportunity_id: input.opportunity_id ?? null,
-        attendees: input.attendees ?? [],
-        send_invite: Boolean(input.send_invite),
-        client_key: input.client_key ?? null,
-      },
-    })
-    .select('*')
-    .single();
-  if (error || !event) throw new Error(`No se pudo crear la reunión: ${error?.message ?? 'sin datos'}`);
-  const ev = event as CalendarEventRow;
-
-  // F9-15: sin transacción en PostgREST; si la activity falla se compensa
-  // borrando el `calendar_events` para no dejar un evento huérfano.
-  let activity;
-  try {
-    activity = await createActivity(
-    orgId,
-    userId,
-    {
-      activity_type: 'meeting',
-      related_type: relatedType,
-      related_id: relatedId,
-      notes: [input.title, input.location ? `Lugar: ${input.location}` : null, input.description ?? null].filter(Boolean).join('\n'),
-      channel: 'meeting',
-      outcome: 'scheduled',
-      occurred_at: input.start_at,
-      metadata: { event_id: ev.id, end_at: input.end_at, location: input.location ?? null, client_key: input.client_key ? `meeting:${input.client_key}` : undefined },
-    },
-    supabase
-    );
-  } catch (err) {
-    // Compensación de F9-15: si el borrado del evento huérfano falla hay que
-    // decirlo, no tragarlo — queda una reunión sin actividad en el calendario.
-    const { error: delError } = await supabase.from('calendar_events').delete().eq('id', ev.id).eq('organization_id', orgId);
-    if (delError) {
-      console.error(
-        `[meetingsService] la actividad de la reunión ${ev.id} falló y la compensación tampoco pudo borrar el evento: ${delError.message}. ` +
-        'Queda un calendar_event huérfano.'
-      );
-    }
-    throw err;
-  }
-
-  // Pasada de gemelos (ronda 3): este UPDATE ignoraba su resultado. Si falla, el
-  // evento se queda sin `metadata.activity_id` y `updateMeeting` deja de
-  // sincronizar la actividad, en silencio.
-  const { error: linkError } = await supabase
-    .from('calendar_events')
-    .update({ metadata: { ...(ev.metadata ?? {}), activity_id: activity.id } })
-    .eq('id', ev.id)
-    .eq('organization_id', orgId);
-  if (linkError) {
-    console.error(`[meetingsService] no se pudo enlazar la actividad ${activity.id} con el evento ${ev.id}: ${linkError.message}`);
-  }
-
-  return { event: { ...ev, metadata: { ...(ev.metadata ?? {}), activity_id: activity.id } }, activityId: activity.id };
+  const result = await guardarReunion(orgId, null, input, supabase);
+  return { event: result.event, activityId: result.activity_id };
 }
 
 export async function updateMeeting(
   orgId: number,
   id: string,
   patch: MeetingPatch,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
 ): Promise<CalendarEventRow> {
-  const { data: existing } = await supabase
-    .from('calendar_events')
-    .select('*')
-    .eq('id', id)
-    .eq('organization_id', orgId)
-    .maybeSingle();
-  if (!existing) throw new MeetingNotFoundError();
-  const ev = existing as CalendarEventRow;
-
-  const update: Record<string, unknown> = {};
-  if (patch.title !== undefined) update.title = patch.title;
-  if (patch.start_at !== undefined) update.start_at = patch.start_at;
-  if (patch.end_at !== undefined) update.end_at = patch.end_at;
-  if (patch.location !== undefined) update.location = patch.location;
-  if (patch.description !== undefined) update.description = patch.description;
-  const md = { ...(ev.metadata ?? {}) } as Record<string, unknown>;
-  if (patch.status === 'canceled') {
-    update.status = 'cancelled';
-    md.completed_at = null;
-  } else if (patch.status === 'done') {
-    update.status = 'confirmed';
-    md.completed_at = new Date().toISOString();
-  } else if (patch.status === 'scheduled') {
-    update.status = 'confirmed';
-    md.completed_at = null;
-  }
-  update.metadata = md;
-
-  const { data: updated, error } = await supabase
-    .from('calendar_events')
-    .update(update)
-    .eq('id', id)
-    .eq('organization_id', orgId)
-    .select('*')
-    .single();
-  if (error || !updated) throw new Error(`No se pudo actualizar la reunión: ${error?.message ?? 'sin datos'}`);
-
-  const activityId = md.activity_id as string | undefined;
-  if (activityId) {
-    const actUpdate: Record<string, unknown> = {};
-    if (patch.status === 'done') actUpdate.outcome = 'done';
-    if (patch.status === 'canceled') actUpdate.outcome = 'canceled';
-    if (patch.status === 'scheduled') actUpdate.outcome = 'scheduled';
-    if (patch.start_at) actUpdate.occurred_at = patch.start_at;
-    if (patch.title) actUpdate.notes = patch.title;
-    if (Object.keys(actUpdate).length) {
-      // Mismo criterio: el resultado no se ignora. Si falla, la reunión queda
-      // actualizada y su entrada del timeline no, y hay que poder verlo.
-      const { error: actError } = await supabase.from('activities').update(actUpdate).eq('id', activityId).eq('organization_id', orgId);
-      if (actError) {
-        console.error(`[meetingsService] la reunión ${id} se actualizó pero su actividad ${activityId} no: ${actError.message}`);
-      }
-    }
-  }
-  return updated as CalendarEventRow;
+  return (await guardarReunion(orgId, id, patch, supabase)).event;
 }
 
 export { buildIcs, foldIcsLine } from './meetingsIcs';

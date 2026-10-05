@@ -54,7 +54,7 @@ function message(over: Partial<EmailMessage> = {}): EmailMessage {
 
 /** BD en memoria mínima: un mensaje, eventos con UNIQUE(provider_event_id). */
 function db(initial: EmailMessage) {
-  const state = { msg: initial, events: new Set<string>(), consents: [] as unknown[], activities: [] as unknown[], rpc: [] as string[] };
+  const state = { msg: initial, events: new Set<string>(), consents: [] as unknown[], activities: [] as unknown[], rpc: [] as string[], progressError: false };
   const handler = (c: FakeCall) => {
     if (c.table === 'email_messages') {
       if (c.op === 'select') {
@@ -81,7 +81,7 @@ function db(initial: EmailMessage) {
     if (c.table === 'activities') { if (c.op === 'select') return { data: { id: 'act-1', metadata: {} }, error: null }; state.activities.push(c.args[0]); return { data: null, error: null }; }
     return { data: null, error: null };
   };
-  const { client } = fakeSupabase(handler, async (fn) => { state.rpc.push(fn); return { data: null, error: null }; });
+  const { client } = fakeSupabase(handler, async (fn) => { state.rpc.push(fn); return { data: null, error: fn === 'crm_email_campaign_batch_progress' && state.progressError ? { message: 'Fallo simulado' } : null }; });
   return { client, state };
 }
 
@@ -114,6 +114,26 @@ describe('computeTransition (máquina de estados monótona)', () => {
 
 describe('handleEmailWebhook', () => {
   const body = (type: string, extra: Record<string, unknown> = {}) => JSON.stringify({ type, created_at: '2026-09-08T11:00:00Z', data: { email_id: 're_abc', tags: { tenant_id: '5', email_message_id: MSG_ID }, ...extra } });
+
+  it('campaña vinculada reconcilia sent y delivered sin incrementar legado dos veces', async () => {
+    const { client, state } = db(message({ metadata: { kind: 'marketing', campaign_id: 'camp-1', campaign_contact_id: 'contact-1', campaign_batch_no: 3 } }));
+    const sent = body('email.sent'), delivered = body('email.delivered');
+    await handleEmailWebhook(sent, sign(sent, 'bridge-sent'), client);
+    await handleEmailWebhook(delivered, sign(delivered, 'bridge-delivered'), client);
+    expect(state.msg.status).toBe('delivered');
+    expect(state.rpc).toEqual(['crm_email_campaign_batch_progress', 'crm_email_campaign_batch_progress']);
+  });
+
+  it('retry de conciliación fallida no repite aperturas del evento ya aplicado', async () => {
+    const { client, state } = db(message({ metadata: { kind: 'marketing', campaign_id: 'camp-1', campaign_contact_id: 'contact-1', campaign_batch_no: 3 } }));
+    const raw = body('email.opened'), headers = sign(raw, 'bridge-retry');
+    state.progressError = true;
+    await expect(handleEmailWebhook(raw, headers, client)).rejects.toMatchObject({ code: 'campaign_reconciliation_failed', statusCode: 503 });
+    expect(state.msg.open_count).toBe(1);
+    state.progressError = false;
+    expect(await handleEmailWebhook(raw, headers, client)).toMatchObject({ duplicate: true });
+    expect(state.msg.open_count).toBe(1); expect(state.rpc).toHaveLength(2);
+  });
 
   it('fail-closed: sin secreto → 401; firma inválida → 401; sin insertar nada', async () => {
     const { client, state } = db(message());

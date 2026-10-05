@@ -720,7 +720,8 @@ export async function applyAutoTags(orgId: number, callId: string, analysis: Cal
 
 export async function getAnalysis(callId: string, orgId: number, supabase: SupabaseClient): Promise<CallAnalysis | null> {
   const { data, error } = await supabase.from('call_analyses').select('*').eq('call_id', callId).eq('organization_id', orgId).order('created_at', { ascending: false }).limit(1).maybeSingle();
-  if (error || !data) return null;
+  if (error) throw error;
+  if (!data) return null;
   return data as CallAnalysis;
 }
 

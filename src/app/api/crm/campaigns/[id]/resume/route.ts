@@ -6,6 +6,6 @@ import { readOrgBody } from '@/lib/security/organizationBody';
 /** POST /api/crm/campaigns/[id]/resume (admin) → { data } (sending + job campaign_batch). */
 export const POST = withWhatsAppRoute(async (ctx, req, params) => {
   await readOrgBody(ctx, req);
-  const data = await resumeCampaign(ctx.organizationId, params.id, ctx.supabase);
+  const data = await resumeCampaign(ctx.organizationId, params.id, ctx.supabase, undefined, ctx.userId);
   return NextResponse.json({ data });
-}, { admin: true });
+}, { admin: true, permission: 'crm.campaigns.manage' });

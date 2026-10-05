@@ -10,20 +10,14 @@ import { fakeSupabase, makeDb, seed, ORG, OTHER, U, type FakeDb } from './f12Fak
 
 const { OrgContextError: RealOrgContextError } = jest.requireActual<typeof import('@/lib/utils/orgContextError')>('@/lib/utils/orgContextError');
 // Extiende la clase real: `readOrgBody` (punto único) lanza la real y las rutas hacen `instanceof`.
-class FakeOrgContextError extends RealOrgContextError {
-  statusCode: number;
-  code: string;
-  constructor(message: string, statusCode = 401, code = 'X') {
-    super(message, statusCode, code);
-    this.statusCode = statusCode;
-    this.code = code;
-  }
-}
 
 let db: FakeDb;
+jest.mock('@/lib/supabase/server-service', () => ({ getServiceClient: jest.fn(() => fakeSupabase(db)) }));
 const session = { roleId: 4, isSuperAdmin: false };
 
 jest.mock('@/lib/utils/orgContext', () => ({
+  // Fixture: manager role 5 is assigned admin.full_access in the permission catalog.
+  hasOrgAdminOrPermission: jest.fn(async (ctx, code = 'admin.full_access') => ctx.isSuperAdmin || [1, 2].includes(ctx.roleId) || code !== 'admin.full_access' || ctx.roleId === 5),
   OrgContextError: RealOrgContextError, // la clase real: `readOrgBody` lanza la real y las rutas hacen `instanceof`
   getServerOrgContext: jest.fn(async () => ({ organizationId: ORG, userId: 'u-1', roleId: session.roleId, roleName: 'Empleado', isSuperAdmin: session.isSuperAdmin, supabase: fakeSupabase(db) })),
 }));
@@ -167,6 +161,7 @@ describe('POST /api/crm/referrals/[id]/status', () => {
 });
 
 describe('POST /api/crm/referrals/[id]/reward', () => {
+  beforeEach(() => { session.roleId = 2; });
   it('pending -> 409 NOT_CONVERTED', async () => {
     const { status, body } = await json(await rewardPost(req(`/api/crm/referrals/${U(20)}/reward`, 'POST'), params(U(20))));
     expect(status).toBe(409);
@@ -225,21 +220,22 @@ describe('POST /api/crm/referrals/[id]/convert', () => {
     expect(String(body.error)).toMatch(/correo o teléfono/);
     expect(db.writes).toEqual([]);
   });
-  it('con customer_id existente de la organización no crea ficha; de otra organización -> 400 sin escribir', async () => {
+  it('con customer_id existente de la organización no crea ficha; de otra organización -> 404 sin escribir', async () => {
     const ok = await json(await convertPost(req(`/api/crm/referrals/${U(21)}/convert`, 'POST', { customer_id: U(2) }), params(U(21))));
     expect(ok.status).toBe(201);
     expect(db.writes.some((w) => w.table === 'customers' && w.op === 'insert')).toBe(false);
     db = makeDb(seed());
     const bad = await json(await convertPost(req(`/api/crm/referrals/${U(21)}/convert`, 'POST', { customer_id: U(91) }), params(U(21))));
-    expect(bad.status).toBe(400);
+    expect(bad.status).toBe(404);
     expect(db.writes).toEqual([]);
   });
   it('si el enlace del referido pierde la carrera, deshace el cliente creado -> 409 (ola 1: no hay oportunidad)', async () => {
     db.updateAffectsNone = ['referrals'];
     const { status, body } = await json(await convertPost(req(`/api/crm/referrals/${U(21)}/convert`, 'POST', {}), params(U(21))));
     expect(status).toBe(409);
-    expect(body.code).toBe('CONCURRENT_CHANGE');
-    expect(db.writes.filter((w) => w.op === 'delete').map((w) => w.table).sort()).toEqual(['customers']);
+    expect(body.code).toBe('referido_contexto_modificado');
+    expect(db.tables.customers).toHaveLength(seed().customers.length);
+    expect(db.writes).toEqual([]);
   });
   it('referido ajeno -> 404; organization_id ajeno -> 403', async () => {
     expect((await convertPost(req(`/api/crm/referrals/${U(93)}/convert`, 'POST', {}), params(U(93)))).status).toBe(404);

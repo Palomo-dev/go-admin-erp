@@ -103,7 +103,7 @@ export function MyVoicesPanel({ catalog, onGoToLibrary, onGoToClone }: Props) {
     try {
       await patchJson("/api/crm/voices", { id: voice.id, is_default: true });
       toast({ title: `«${voice.name}» es ahora la voz por defecto`, description: "La usarán los agentes que no tengan una voz propia." });
-      void reload();
+      void reload({ force: true });
     } catch (err) {
       toast({ title: "No se pudo marcar por defecto", description: describeError(err), variant: "destructive" });
     }
@@ -142,7 +142,7 @@ export function MyVoicesPanel({ catalog, onGoToLibrary, onGoToClone }: Props) {
             : undefined,
       });
       // Se espera a la recarga (en sitio, sin esqueleto) para que la tarjeta vecina exista al devolver el foco.
-      await reload();
+      await reload({ force: true });
     } catch (err) {
       toast({ title: "No se pudo borrar la voz", description: describeError(err), variant: "destructive" });
     } finally {
@@ -256,7 +256,7 @@ export function MyVoicesPanel({ catalog, onGoToLibrary, onGoToClone }: Props) {
           </Button>
         </CollapsibleTrigger>
         <CollapsibleContent className="pt-3">
-          <VoiceAddForms tts={tts} onChanged={() => void reload()} />
+          <VoiceAddForms tts={tts} onChanged={() => void reload({ force: true })} />
         </CollapsibleContent>
       </Collapsible>
 

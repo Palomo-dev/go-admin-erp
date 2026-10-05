@@ -8,6 +8,7 @@
 import fs from "fs";
 import path from "path";
 import { buildCampaignBody, describeCampaignTarget, targetStagesOf } from "../campanas/campaignModel";
+import { voiceCampaignCreateSchema } from "@/lib/services/crm/voiceCampaignWriteLogica";
 
 const ROOT = process.cwd();
 const SRC = (rel: string) => fs.readFileSync(path.join(ROOT, rel), "utf8");
@@ -24,10 +25,10 @@ describe("UXM-D (de tester r1) · campañas", () => {
   });
 
   test("toda clave del cuerpo de la campaña la acepta POST /campaigns (max_calls_per_hour incluido)", () => {
-    const route = SRC("src/app/api/crm/voice-agents/campaigns/route.ts");
-    const accepted = new Set(Array.from(route.matchAll(/^\s+(\w+): body\.\1,?$/gm)).map((m) => m[1]));
-    const body = buildCampaignBody({ name: "C", voiceAgentId: "a", stageId: null });
-    for (const key of Object.keys(body)) expect({ key, ok: accepted.has(key) }).toEqual({ key, ok: true });
+    // El contrato se valida ahora en el servicio; se comprueba el cuerpo real,
+    // no el formato del antiguo mapeo del route handler.
+    const body = buildCampaignBody({ name: "C", voiceAgentId: "00000000-0000-4000-8000-000000000001", stageId: null });
+    expect(voiceCampaignCreateSchema.safeParse(body).success).toBe(true);
   });
 
   test("embudo sin etapas → lista vacía; etapa borrada → texto claro, no rompe", () => {
@@ -185,10 +186,7 @@ describe("UXM-D (de tester r1) · useAudioPreview (comportamiento)", () => {
 // ─── 6. Guardas estáticas del tester (móvil) ─────────────────────────────────
 
 describe("UXM-D (de tester r1) · guardas estáticas", () => {
-  test("el editor no bloquea el guardado con el modelo vacío sin avisar", () => {
-    const hook = SRC("src/components/crm/agentes/editor/useAgentForm.ts");
-    expect(hook).toMatch(/if \(!form\.llm_model\.trim\(\)\)/);
-  });
+  // La validación requerida ahora se ejecuta con Intl real en agentsRender.test.tsx.
   test("h-dvh está en la clase de la hoja, no solo en el comentario (mutación M08)", () => {
     const editor = SRC("src/components/crm/agentes/AgentEditorDialog.tsx");
     expect(editor).toMatch(/className="flex h-dvh w-full flex-col/);
@@ -197,7 +195,7 @@ describe("UXM-D (de tester r1) · guardas estáticas", () => {
   test("la pestaña Voz declara min-w-0 en la tarjeta y la lista de radios usa grid-cols-1", () => {
     const tab = SRC("src/components/crm/agentes/editor/AgentVoiceTab.tsx");
     expect(tab).toContain('role="radiogroup"');
-    expect(tab).toContain("grid grid-cols-1 gap-2 sm:grid-cols-2");
+    expect(tab).toContain("grid grid-cols-1 gap-3 sm:grid-cols-2");
     const card = SRC("src/components/crm/agentes/voces/VoicePickCard.tsx");
     expect(card).toContain('<label htmlFor={id}');
     expect(card).toContain("min-w-0 flex-1");

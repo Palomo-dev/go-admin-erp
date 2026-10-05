@@ -1,156 +1,72 @@
-/**
- * Servicio para registro de tokens de push notifications en Go Admin Mobile.
- *
- * Flujo:
- * 1. Al montar AppLayout (si isMobile()), se llama registerPushToken()
- * 2. Se solicita permiso con PushNotifications.requestPermissions()
- * 3. Se registra con PushNotifications.register() para obtener token FCM/APNs
- * 4. Se inserta/actualiza el token en la tabla `device_push_tokens`
- * 5. Al logout, se llama unregisterPushToken() para limpiar
- *
- * En web/desktop, todas las funciones son no-ops.
- */
-
+/** Registro Capacitor real: el token llega por registration, no por getToken(). */
 import { supabase } from '@/lib/supabase/config';
-import {
-  isMobile,
-  isIOS,
-  getMobilePlugin,
-} from '@/lib/utils/mobile';
+import { isMobile } from '@/lib/utils/mobile';
+import { requestNativePushToken } from '@/lib/utils/mobilePushRegistration';
+import { getMobileStorage, setMobileStorage, removeMobileStorage } from '@/lib/utils/mobileStorage';
 
-// ============================================================================
-// Tipos
-// ============================================================================
-
-// ============================================================================
-// Registro de push token
-// ============================================================================
-
-/**
- * Registra el token de push notifications del dispositivo en la base de datos.
- *
- * @param userId - ID del usuario autenticado
- * @param appVersion - Versión de la app (opcional)
- * @returns true si se registró correctamente, false si no aplica o falló
- */
-export async function registerPushToken(
-  userId: string,
-  appVersion?: string,
-): Promise<boolean> {
-  if (!isMobile() || !userId) return false;
-
-  const push = getMobilePlugin('PushNotifications');
-  if (!push?.requestPermissions || !push?.register || !push?.getToken) {
-    console.warn('[pushToken] Plugin PushNotifications no disponible');
-    return false;
-  }
-
+const TOKEN_KEY = 'goAdminPushRegistration';
+const registrations = new Map<string, Promise<boolean>>();
+interface Registration { userId: string; token: string }
+async function cachedRegistration(): Promise<Registration | null> {
   try {
-    // 1. Solicitar permiso
-    const permResult = await push.requestPermissions();
-    if (permResult.receive !== 'granted') {
-      console.log('[pushToken] Permiso de notificaciones denegado');
-      return false;
-    }
+    const raw = await getMobileStorage(TOKEN_KEY); if (!raw) return null;
+    const parsed = JSON.parse(raw) as Registration;
+    return typeof parsed.userId === 'string' && typeof parsed.token === 'string' ? parsed : null;
+  } catch { return null; }
+}
 
-    // 2. Registrar para obtener token
-    await push.register();
-
-    // 3. Obtener token (puede tardar un momento tras register())
-    let token: string | null = null;
-    for (let i = 0; i < 5; i++) {
-      try {
-        const result = await push.getToken();
-        if (result?.token) {
-          token = result.token;
-          break;
-        }
-      } catch {
-        // Token puede no estar listo inmediatamente
-      }
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
-
-    if (!token) {
-      console.warn('[pushToken] No se pudo obtener token tras 5 intentos');
-      return false;
-    }
-
-    // 4. Determinar plataforma
-    const platform: 'ios' | 'android' = isIOS() ? 'ios' : 'android';
-
-    // 5. Insertar o actualizar en device_push_tokens (upsert)
-    const { error } = await supabase
-      .from('device_push_tokens')
-      .upsert(
-        {
-          user_id: userId,
-          platform,
-          token,
-          app_version: appVersion || null,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id,token' },
-      );
-
-    if (error) {
-      console.error('[pushToken] Error guardando token en BD:', error.message);
-      return false;
-    }
-
-    console.log(`[pushToken] Token registrado para usuario ${userId} (${platform})`);
+async function register(userId: string, appVersion?: string): Promise<boolean> {
+  try {
+    const registration = await requestNativePushToken(); if (!registration) return false;
+    const { token, platform } = registration;
+    const { data } = await supabase.auth.getSession();
+    if (data.session?.user?.id !== userId) return false;
+    const saved = await supabase.from('device_push_tokens').upsert({
+      user_id: userId, platform, token,
+      app_version: appVersion ?? null, updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,token' });
+    if (saved.error) throw saved.error;
+    await setMobileStorage(TOKEN_KEY, JSON.stringify({ userId, token }));
     return true;
-  } catch (err) {
-    console.error('[pushToken] Error registerPushToken:', err);
+  } catch (error) {
+    console.warn('[pushToken] No se pudo registrar el dispositivo:', error instanceof Error ? error.message : 'error');
     return false;
   }
 }
 
-// ============================================================================
-// Desregistro de push token (al logout)
-// ============================================================================
+export async function registerPushToken(userId: string, appVersion?: string): Promise<boolean> {
+  if (!isMobile() || !userId) return false;
+  const current = registrations.get(userId); if (current) return current;
+  const task = register(userId, appVersion).finally(() => registrations.delete(userId));
+  registrations.set(userId, task); return task;
+}
 
-/**
- * Elimina el token del dispositivo de la base de datos.
- * Debe llamarse al cerrar sesión.
- *
- * @param userId - ID del usuario
- */
+/** Antes de cerrar sesión, elimina solamente el token de este dispositivo. */
 export async function unregisterPushToken(userId: string): Promise<void> {
   if (!isMobile() || !userId) return;
-
-  const push = getMobilePlugin('PushNotifications');
-  if (!push?.getToken) return;
-
-  try {
-    const { token } = await push.getToken();
-    if (!token) return;
-
-    await supabase
-      .from('device_push_tokens')
-      .delete()
-      .eq('user_id', userId)
-      .eq('token', token);
-
-    console.log(`[pushToken] Token eliminado para usuario ${userId}`);
-  } catch (err) {
-    console.error('[pushToken] Error unregisterPushToken:', err);
-  }
+  const stored = await cachedRegistration();
+  if (!stored || stored.userId !== userId) return;
+  const result = await supabase.from('device_push_tokens').delete().eq('user_id', userId).eq('token', stored.token);
+  if (result.error) throw result.error;
+  await removeMobileStorage(TOKEN_KEY);
 }
 
-// ============================================================================
-// Limpieza de tokens huérfanos
-// ============================================================================
-
-/**
- * Elimina todos los tokens de un usuario (útil al cambiar de dispositivo).
- * Solo debe usarse desde contexto administrativo o cleanup.
- */
 export async function removeAllUserTokens(userId: string): Promise<void> {
   if (!userId) return;
+  const result = await supabase.from('device_push_tokens').delete().eq('user_id', userId);
+  if (result.error) throw result.error;
+}
+
+/** Limpieza acotada antes de invalidar sesión; un fallo de red no atrapa el logout. */
+export async function cleanupPushTokenBeforeLogout(): Promise<void> {
+  if (!isMobile()) return;
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    await supabase.from('device_push_tokens').delete().eq('user_id', userId);
-  } catch (err) {
-    console.error('[pushToken] Error removeAllUserTokens:', err);
-  }
+    const cleanup = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session?.user?.id) await unregisterPushToken(data.session.user.id);
+    };
+    await Promise.race([cleanup(), new Promise<void>(resolve => { timer = setTimeout(resolve, 1500); })]);
+  } catch { console.warn('[pushToken] No se pudo revocar el token antes de salir'); }
+  finally { if (timer) clearTimeout(timer); }
 }

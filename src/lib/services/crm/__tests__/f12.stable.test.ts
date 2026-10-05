@@ -19,8 +19,10 @@ import { formatMoney } from '@/lib/services/crm/partnerModel';
 import { summarizeCommissions } from '@/lib/services/crm/partnerCommission';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+jest.mock('svix', () => ({ Webhook: class {} }));
+jest.mock('twilio', () => ({ __esModule: true, default: {} }));
 jest.mock('@/lib/utils/orgContext', () => ({
-  OrgContextError: jest.requireActual<typeof import('@/lib/utils/orgContextError')>('@/lib/utils/orgContextError').OrgContextError,
+  ...jest.requireActual('@/lib/utils/orgContext'),
   getServerOrgContext: jest.fn(),
 }));
 import { canManagePartners, requirePartnerManager } from '@/lib/services/crm/f12RouteSupport';
@@ -168,14 +170,14 @@ describe('requirePartnerManager — cierra ante contextos malformados (regla dur
   afterEach(() => jest.restoreAllMocks());
   const denied: Array<[string, unknown, unknown]> = [
     ['roleId ausente', undefined, false], ['roleId null', null, false], ['roleId NaN', Number.NaN, false], ['roleId string "2"', '2', false],
-    ['roleId 0', 0, false], ['roleId -2', -2, false], ['roleId 4 Empleado', 4, false], ['roleId 3 Cliente', 3, false],
+    ['roleId 5 sin permiso administrativo', 5, false], ['roleId 0', 0, false], ['roleId -2', -2, false], ['roleId 4 Empleado', 4, false], ['roleId 3 Cliente', 3, false],
     ['isSuperAdmin string "true"', 4, 'true'], ['isSuperAdmin 1', 4, 1], ['isSuperAdmin objeto', 4, {}],
   ];
-  it.each(denied)('%s -> 403 MANAGER_REQUIRED y registro solo del roleId', (_n, roleId, isSuperAdmin) => {
-    const ctx = { roleId, isSuperAdmin } as unknown as { roleId: number; isSuperAdmin: boolean };
-    expect(canManagePartners(ctx)).toBe(false);
+  it.each(denied)('%s -> 403 MANAGER_REQUIRED y registro solo del roleId', async (_n, roleId, isSuperAdmin) => {
+    const ctx = { roleId, isSuperAdmin, organizationId: ORG, userId: 'u-1', supabase: { rpc: jest.fn(async () => ({ data: false, error: null })) } } as unknown as Parameters<typeof canManagePartners>[0];
+    expect(await canManagePartners(ctx)).toBe(false);
     let err: unknown;
-    try { requirePartnerManager(ctx); } catch (e) { err = e; }
+    try { await requirePartnerManager(ctx); } catch (e) { err = e; }
     expect(err).toBeInstanceOf(RealOrgContextError);
     expect((err as { statusCode: number; code: string }).statusCode).toBe(403);
     expect((err as { code: string }).code).toBe('MANAGER_REQUIRED');
@@ -183,8 +185,9 @@ describe('requirePartnerManager — cierra ante contextos malformados (regla dur
     expect(JSON.stringify(warn)).not.toMatch(/u-1|@|userId|email|roleName/);
     expect(warn?.[1]).toEqual({ roleId });
   });
-  it.each([[1, false], [2, false], [5, false], [4, true], [99, true]])('roleId %s / isSuperAdmin %s -> permitido sin registro', (roleId, isSuperAdmin) => {
-    expect(() => requirePartnerManager({ roleId, isSuperAdmin })).not.toThrow();
+  it.each([[1, false], [2, false], [4, true], [99, true]])('roleId %s / isSuperAdmin %s -> permitido sin registro', async (roleId, isSuperAdmin) => {
+    const ctx = { roleId, isSuperAdmin } as Parameters<typeof canManagePartners>[0];
+    await expect(requirePartnerManager(ctx)).resolves.toBeUndefined();
     expect(console.warn).not.toHaveBeenCalled();
   });
 });

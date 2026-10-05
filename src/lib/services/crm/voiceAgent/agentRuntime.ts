@@ -569,9 +569,10 @@ export async function persistConversation(
   orgId: number,
   voiceAgentCallId: string,
   turns: ConversationTurn[],
-  patch: Record<string, unknown> = {}
+  patch: Record<string, unknown> = {},
+  expectedCallSid?: string
 ): Promise<void> {
-  const { error } = await supabase
+  let query = supabase
     .from('voice_agent_calls')
     .update({
       conversation_log: turns,
@@ -581,5 +582,7 @@ export async function persistConversation(
     })
     .eq('id', voiceAgentCallId)
     .eq('organization_id', orgId);
+  if (expectedCallSid) query = query.eq('provider_call_sid', expectedCallSid);
+  const { error } = await query;
   if (error) console.error('[agentRuntime] no se pudo guardar la conversación:', error.message);
 }

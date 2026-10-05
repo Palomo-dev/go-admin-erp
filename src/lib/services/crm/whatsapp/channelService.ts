@@ -9,6 +9,7 @@
  *   (desviación documentada: `comm_settings` no tiene esas columnas).
  */
 
+import { errorWhatsAppDb } from './erroresDbLogica';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { normalizePhoneDigits, phoneSuffixPattern, resolveDefaultCountry } from '@/lib/services/crm/phoneNormalize';
 import { getServiceClient } from '@/lib/supabase/server-service';
@@ -40,14 +41,15 @@ function normalizeProvider(p: string | null | undefined): WhatsAppProvider {
 }
 
 export async function getOrgSettings(orgId: number, service: SupabaseClient = getServiceClient()): Promise<WhatsAppOrgSettings> {
-  const { data } = await service
+  const { data, error } = await service
     .from('provider_configs')
     .select('settings')
     .eq('organization_id', orgId)
     .eq('category', 'whatsapp')
-    .order('priority', { ascending: true })
+    .order('priority', { ascending: true }).order('id')
     .limit(1)
     .maybeSingle();
+  if (error) throw errorWhatsAppDb(error);
   const s = ((data as { settings?: Record<string, unknown> } | null)?.settings ?? {}) as Record<string, unknown>;
   return {
     default_channel_id: (s.default_channel_id as string) ?? null,
@@ -203,20 +205,24 @@ export async function getChannelCredentials(orgId: number, channelId: string, se
  * silencio es un mal parámetro: ahora omitirlo hace lo correcto.
  */
 export async function resolveRecipient(orgId: number, customerId: string, channelId: string, supabase: SupabaseClient, defaultCountry?: string | null): Promise<string | null> {
-  const { data: ident } = await supabase
+  const { data: ident, error: identityError } = await supabase
     .from('customer_channel_identities')
     .select('identity_value')
+    .eq('organization_id', orgId)
     .eq('channel_id', channelId)
     .eq('customer_id', customerId)
     .eq('identity_type', 'whatsapp_phone')
     .order('created_at', { ascending: false })
+    .order('id')
     .limit(1)
     .maybeSingle();
+  if (identityError) throw errorWhatsAppDb(identityError);
   const fromIdentity = (ident as { identity_value?: string } | null)?.identity_value;
   // La identidad del canal la escribe el proveedor (wa_id): ya viene
   // cualificada y NO se le completa indicativo.
   if (fromIdentity) return normalizePhoneDigits(fromIdentity);
-  const { data: c } = await supabase.from('customers').select('phone').eq('id', customerId).eq('organization_id', orgId).maybeSingle();
+  const { data: c, error: customerError } = await supabase.from('customers').select('phone').eq('id', customerId).eq('organization_id', orgId).maybeSingle();
+  if (customerError) throw errorWhatsAppDb(customerError);
   const phone = (c as { phone?: string | null } | null)?.phone;
   if (!phone) return null;
   // Solo se consultan los ajustes si de verdad hacen falta: un teléfono ya
@@ -262,13 +268,13 @@ export function defaultCountryOf(settings: Pick<WhatsAppOrgSettings, 'default_co
  * igual `created_at` (una importación masiva escribe el mismo `now()` en todas
  * sus filas), el `id` menor.
  *
- * **Una sola consulta** (F16 r5 · T-4). Hasta la ronda 4 había un «camino
+ * **Un solo orden de búsqueda** (F16 r5 · T-4). Hasta la ronda 4 había un «camino
  * rápido» previo por igualdad exacta (`phone in (digits, +digits)`) que
  * cortocircuitaba: si la ficha NUEVA estaba en E.164 exacto y la VIEJA con
  * separadores, ganaba la nueva y «siempre el más antiguo» era falso (2 grupos
  * reales de los 276, medido el 2026-09-14). El prefiltro por sufijo es
- * superconjunto de la igualdad exacta, así que una única consulta ordenada
- * basta; el índice de `organization_id` acota el barrido y la regex se evalúa
+ * superconjunto de la igualdad exacta. Las páginas conservan ese orden y no
+ * recortan los candidatos a 200; el índice de `organization_id` acota el barrido y la regex se evalúa
  * solo sobre los clientes de la organización.
  */
 export async function findCustomerIdByPhone(
@@ -277,16 +283,18 @@ export async function findCustomerIdByPhone(
   supabase: SupabaseClient,
   opts: { defaultCountry?: string | null } = {},
 ): Promise<string | null> {
-  const { data: candidatos } = await supabase
-    .from('customers')
-    .select('id, phone')
-    .eq('organization_id', orgId)
-    .filter('phone', 'imatch', phoneSuffixPattern(digits))
-    .order('created_at', { ascending: true })
-    .order('id', { ascending: true })
-    .limit(200);
-  for (const c of (candidatos ?? []) as Array<{ id: string; phone: string | null }>) {
-    if (c.phone && normalizePhoneDigits(c.phone, opts.defaultCountry ?? null) === digits) return c.id;
+  const pageSize = 200;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await supabase
+      .from('customers').select('id, phone').eq('organization_id', orgId)
+      .filter('phone', 'imatch', phoneSuffixPattern(digits))
+      .order('created_at', { ascending: true }).order('id', { ascending: true })
+      .range(offset, offset + pageSize - 1);
+    if (error) throw errorWhatsAppDb(error);
+    if (!Array.isArray(data)) throw new WhatsAppError('INTERNAL', 'No se pudo leer los candidatos por teléfono', 500);
+    for (const c of data as Array<{ id: string; phone: string | null }>) {
+      if (c.phone && normalizePhoneDigits(c.phone, opts.defaultCountry ?? null) === digits) return c.id;
+    }
+    if (data.length < pageSize) return null;
   }
-  return null;
 }

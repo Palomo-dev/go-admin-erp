@@ -33,7 +33,7 @@ export function TaskEntry({ entry, onAction }: { entry: TaskLike; onAction?: (a:
     setSaving(true);
     setStatus(next);
     try {
-      await opportunitiesService.updateTask(entry.task.id, { status: next, completed_at: next === 'done' ? new Date().toISOString() : null });
+      await opportunitiesService.updateTask(entry.task.id, { status: next });
       onAction?.('changed', entry);
     } catch (e) {
       setStatus(status);

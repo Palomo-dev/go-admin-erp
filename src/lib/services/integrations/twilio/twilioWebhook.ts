@@ -78,9 +78,8 @@ export function isOptInMessage(body: string): boolean {
 }
 
 /**
- * Registra el opt-out/opt-in de un contacto por canal:
- * - `contact_consents` (F0; si la tabla aún no existe, se ignora el error)
- * - `customers.metadata.do_not_whatsapp` / `do_not_sms` (enforced por sendEmail/secuencias/campañas)
+ * Resuelve teléfonos propios con la normalización compartida y registra todo el
+ * grupo por RPC: preferencia, banderas, pendientes, créditos y constancia del webhook.
  */
 export async function recordConsentChange(params: {
   orgId: number;
@@ -120,50 +119,35 @@ export async function recordConsentChange(params: {
   // últimos 10 dígitos con «+57 310 987 6543» y es otra persona, no una
   // duda). Solo cuando no normaliza (formato raro) se cae a la red ancha del
   // sufijo de 10 dígitos.
-  const { data: customers } = await supabase
-    .from('customers')
-    .select('id, phone, metadata')
-    .eq('organization_id', orgId)
-    .filter('phone', 'imatch', phoneSuffixPattern(digits))
-    .limit(200);
-
-  const matched = (customers || []).filter((c: { phone?: string | null }) => {
-    if (!c.phone) return false;
-    const normalizado = normalizePhoneDigits(c.phone, defaultCountry);
-    if (normalizado !== null) return normalizado === digits;
-    const raw = c.phone.replace(/\D/g, '');
-    return raw.length >= 10 && raw.endsWith(last10);
-  }) as Array<{ id: string; metadata?: Record<string, unknown> | null }>;
-
-  const flag = channel === 'whatsapp' ? 'do_not_whatsapp' : 'do_not_sms';
-  const now = new Date().toISOString();
-
-  for (const c of matched) {
-    const metadata = { ...(c.metadata || {}) } as Record<string, unknown>;
-    metadata[flag] = status === 'opted_out';
-    metadata[`${flag}_changed_at`] = now;
-    await supabase.from('customers').update({ metadata }).eq('id', c.id).eq('organization_id', orgId);
-
-    // contact_consents (tabla de F0; try/catch por si la migración no ha corrido)
-    try {
-      const { error } = await supabase.from('contact_consents').insert({
-        organization_id: orgId,
-        customer_id: c.id,
-        channel,
-        status,
-        source: 'inbound_keyword',
-        evidence: { phone, message_sid: params.messageSid ?? null, body: params.body ?? null },
-        changed_at: now,
-      });
-      if (error) console.warn('[TwilioWebhook] contact_consents no disponible:', error.message);
-    } catch (err) {
-      console.warn('[TwilioWebhook] contact_consents no disponible:', err instanceof Error ? err.message : err);
+  const matched: Array<{ customer_id: string; expected_phone: string }> = [];
+  for (let start = 0; ; start += 200) {
+    const { data, error } = await supabase.from('customers').select('id, phone').eq('organization_id', orgId)
+      .filter('phone', 'imatch', phoneSuffixPattern(digits)).order('id').range(start, start + 199);
+    if (error) throw error;
+    const rows = (data ?? []) as Array<{ id: string; phone: string | null }>;
+    for (const customer of rows) {
+      if (!customer.phone) continue;
+      const normalized = normalizePhoneDigits(customer.phone, defaultCountry);
+      const raw = customer.phone.replace(/\D/g, '');
+      // Una baja admite coincidencia conservadora; conceder alta exige un número inequívoco.
+      const matches = normalized !== null ? normalized === digits : status === 'opted_out' && raw.length >= 10 && raw.endsWith(last10);
+      if (matches) matched.push({ customer_id: customer.id, expected_phone: customer.phone });
     }
+    if (rows.length < 200) break;
   }
+  if (!matched.length) {
+    console.warn('[TwilioWebhook] Preferencia sin coincidencias propias', { org: orgId, channel, status });
+    return;
+  }
+  const { data, error } = await supabase.rpc('crm_record_twilio_contact_consent', {
+    p_org: orgId, p_targets: matched, p_channel: channel, p_status: status,
+    p_evidence: { phone, message_sid: params.messageSid ?? null, body: params.body ?? null,
+      ...(params.messageSid ? { message_id: `twilio:${params.messageSid}` } : {}),
+    },
+  });
+  if (error) throw error;
+  if (!data || typeof data.updated !== 'number' || typeof data.already_applied !== 'boolean') throw new Error('Resultado de consentimiento inválido');
 
-  if (matched.length === 0) {
-    console.warn(`[TwilioWebhook] Opt-${status === 'opted_out' ? 'out' : 'in'} de ${phone} sin cliente asociado en org ${orgId}`);
-  }
 }
 
 // ─── Mensajes ────────────────────────────────────────────────────────────────

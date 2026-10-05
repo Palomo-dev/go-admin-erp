@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { useFormatDate } from "@/lib/context/OrganizationTimezoneContext";
 import { 
   Card, 
   CardContent, 
@@ -34,6 +36,9 @@ interface MonthlyForecastViewProps {
 }
 
 const MonthlyForecastView: React.FC<MonthlyForecastViewProps> = ({ pipelineId }) => {
+  const locale = useLocale();
+  const t = useTranslations("crm.pronostico.pipelineAnalitica");
+  const { getToday } = useFormatDate();
   const [loading, setLoading] = useState<boolean>(true);
   const [monthlyForecasts, setMonthlyForecasts] = useState<MonthlyForecast[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
@@ -42,7 +47,7 @@ const MonthlyForecastView: React.FC<MonthlyForecastViewProps> = ({ pipelineId })
   const { paraDocumento } = useMonedaOrganizacion();
   const [organizationId, setOrganizationId] = useState<number | null>(null);
   const [availableCurrencies, setAvailableCurrencies] = useState<string[]>([]);
-  const [includeWon, setIncludeWon] = useState<boolean>(true);
+  const [includeWon, setIncludeWon] = useState<boolean>(false);
   const [includeLost, setIncludeLost] = useState<boolean>(false);
   const [totalBruto, setTotalBruto] = useState<number>(0);
   const [totalPonderado, setTotalPonderado] = useState<number>(0);
@@ -83,6 +88,8 @@ const MonthlyForecastView: React.FC<MonthlyForecastViewProps> = ({ pipelineId })
       try {
         const forecastData = await getMonthlyForecast(pipelineId, {
           baseCurrency,
+          locale,
+          noDateLabel: t("sinFecha"),
           includeWon,
           includeLost
         });
@@ -94,8 +101,7 @@ const MonthlyForecastView: React.FC<MonthlyForecastViewProps> = ({ pipelineId })
           
           // Seleccionar el mes actual por defecto si no hay mes seleccionado
           if (!selectedMonth && forecastData.monthlyForecasts.length > 0) {
-            const currentDate = new Date();
-            const currentMonthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`;
+            const currentMonthKey = getToday().slice(0, 7);
             
             // Buscar el mes actual en los pronósticos
             const currentMonth = forecastData.monthlyForecasts.find(m => m.month === currentMonthKey);
@@ -114,7 +120,7 @@ const MonthlyForecastView: React.FC<MonthlyForecastViewProps> = ({ pipelineId })
     loadForecastData();
     // `selectedMonth` solo se lee para el valor inicial: no debe recargar el pronóstico.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pipelineId, organizationId, baseCurrency, includeWon, includeLost, refreshTrigger]);
+  }, [pipelineId, organizationId, baseCurrency, includeWon, includeLost, refreshTrigger, locale, getToday, t]);
 
   // Obtener los datos del mes seleccionado
   const selectedMonthData = selectedMonth

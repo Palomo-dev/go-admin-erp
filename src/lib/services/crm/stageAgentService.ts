@@ -12,6 +12,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { CrmHttpError } from './crmErrors';
 
 export const STAGE_AGENT_OBJECTIVES = [
   'sell_product',
@@ -193,7 +194,8 @@ export async function upsertStageAgent(
   supabase: SupabaseClient,
   orgId: number,
   input: StageAgentInput,
-  createdBy?: string | null
+  createdBy?: string | null,
+  options?: { preventReassignment: true; expectedUpdatedAt?: string | null }
 ): Promise<StageAgent> {
   if (!STAGE_AGENT_OBJECTIVES.includes(input.objective)) {
     throw new Error(`Objetivo inválido: ${input.objective}`);
@@ -231,6 +233,22 @@ export async function upsertStageAgent(
     updated_at: new Date().toISOString(),
   };
   if (createdBy) row.created_by = createdBy;
+
+  // El editor de agentes no puede reemplazar el agente de otra persona entre
+  // la lectura y la escritura: INSERT conserva UNIQUE y UPDATE compara la fila.
+  if (options?.preventReassignment) {
+    const current = await getStageAgent(supabase, orgId, input.stage_id, channel);
+    if (!current && options.expectedUpdatedAt) throw new CrmHttpError(409, 'etapa_cambiada', 'La configuración de la etapa cambió');
+    if (current?.voice_agent_id && current.voice_agent_id !== input.voice_agent_id) throw new CrmHttpError(409, 'etapa_otro_agente', 'La etapa está asignada a otro agente');
+    if (current && options.expectedUpdatedAt !== undefined && options.expectedUpdatedAt !== current.updated_at) throw new CrmHttpError(409, 'etapa_cambiada', 'La configuración de la etapa cambió');
+    let query = current ? supabase.from('stage_agents').update(row).eq('organization_id', orgId).eq('id', current.id).eq('updated_at', current.updated_at) : supabase.from('stage_agents').insert(row);
+    if (current) query = current.voice_agent_id ? query.eq('voice_agent_id', current.voice_agent_id) : query.is('voice_agent_id', null);
+    const result = await query.select('*').maybeSingle();
+    if (result.error?.code === '23505') throw new CrmHttpError(409, 'etapa_cambiada', 'La configuración de la etapa cambió');
+    const data = unwrap('upsertStageAgent.editor', result);
+    if (!data) throw new CrmHttpError(409, 'etapa_cambiada', 'La configuración de la etapa cambió');
+    return data as StageAgent;
+  }
 
   const data = unwrap(
     'upsertStageAgent',

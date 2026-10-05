@@ -1,191 +1,82 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase/config';
+import React, { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { formatMoneda } from '@/lib/utils/moneda';
 import { Filter } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from "@/components/ui/use-toast";
-import { 
-  PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend
-} from 'recharts';
-import { getOrganizationId as getOrganizationIdFromContext } from '@/lib/hooks/useOrganization';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { usePipelineForecast } from './usePipelineForecast';
+import { agruparEtapasPronostico, type DatosEtapaPronostico } from './forecastEtapasPresentacion';
 
 interface ForecastByStageChartProps {
   pipelineId: string;
   className?: string;
 }
 
-/** Fila de `opportunities` con su etapa embebida. */
-interface FilaOportunidadEtapa {
-  stage_id: string;
-  amount: number | string | null;
-  status: string;
-  stages: { name: string; color: string; probability: number } | null;
+interface TooltipProps {
+  baseCurrency?: string;
+  active?: boolean;
+  payload?: Array<{
+    payload: DatosEtapaPronostico & { value: number };
+  }>;
 }
 
-interface StageData {
-  id: string;
-  name: string;
-  color: string;
-  probability: number;
-  amount: number;
-  forecastAmount: number;
-  percentage: number;
-}
+const CustomTooltip: React.FC<TooltipProps> = ({ active, payload, baseCurrency }) => {
+  const t = useTranslations('crm.pronostico.pipelineAnalitica');
+  const { paraDocumento } = useMonedaOrganizacion();
+  const formatear = (importe: number) => formatMoneda(importe, paraDocumento(baseCurrency));
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700 rounded-md shadow-md">
+        <p className="font-medium text-gray-800 dark:text-gray-200">{data.name}</p>
+        <p className="text-sm text-gray-600 dark:text-gray-300">
+          {t('probabilidad')}: {Math.round(Number(data.probability))}%
+        </p>
+        <p className="text-sm text-gray-600 dark:text-gray-300">
+          {t('total')}: {formatear(data.amount)}
+        </p>
+        <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
+          {t('pronostico')}: {formatear(data.forecastAmount)}
+        </p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          {t('porcentajeDelPronostico', { n: data.percentage.toFixed(1) })}
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
 
 const ForecastByStageChart: React.FC<ForecastByStageChartProps> = ({ pipelineId, className }) => {
-  // Importes agregados: moneda base de la organización (nunca 'COP' cableado).
-  const { formatear } = useMonedaOrganizacion();
-  const [loading, setLoading] = useState(true);
-  const [stageData, setStageData] = useState<StageData[]>([]);
-  const [organizationId, setOrganizationId] = useState<number | null>(null);
-  const [totalForecast, setTotalForecast] = useState(0);
-
-  // Obtener el ID de organización usando la función canónica
-  useEffect(() => {
-    const orgId = getOrganizationIdFromContext();
-    if (orgId) {
-      setOrganizationId(orgId);
-    }
-  }, []);
-
-  // Cargar datos de pronóstico por etapa
-  useEffect(() => {
-    const fetchStageData = async () => {
-      if (!organizationId || !pipelineId) return;
-
-      setLoading(true);
-      try {
-        // 1. Consultar directamente las oportunidades agrupadas por etapa
-        const { data: opportunitiesData, error: opportunitiesError } = await supabase
-          .from('opportunities')
-          .select(`
-            stage_id,
-            amount,
-            status,
-            stages:stage_id (
-              name,
-              probability,
-              color
-            )
-          `)
-          .eq('pipeline_id', pipelineId)
-          .in('status', ['open', 'won']);
-
-        if (opportunitiesError) {
-          toast({
-            title: "Error",
-            description: "Error al cargar datos de pronóstico por etapa",
-            variant: "destructive"
-          });
-          setLoading(false);
-          return;
-        }
-
-        // 2. Agrupar y procesar los datos por etapa
-        const stagesMap = new Map<string, StageData>();
-        let totalForecastAmount = 0;
-
-        // Procesar cada oportunidad y agregarla a su etapa correspondiente
-        (opportunitiesData as unknown as FilaOportunidadEtapa[] | null)?.forEach((item) => {
-          const stageId = item.stage_id;
-          const amount = parseFloat(String(item.amount)) || 0;
-          
-          // Calcular el valor ponderado usando la probabilidad de la etapa (escala 0-100)
-          const probability = item.stages?.probability ?? 100;
-          const forecastAmount = amount * (probability / 100);
-          totalForecastAmount += forecastAmount;
-          
-          if (!stagesMap.has(stageId)) {
-            // Acceder correctamente a los datos de la etapa
-            const stageInfo = item.stages;
-            const stageName = stageInfo?.name || 'Sin etapa';
-            const stageColor = stageInfo?.color || '#94a3b8'; // color predeterminado
-            const probability = stageInfo?.probability || 0;
-            
-            stagesMap.set(stageId, {
-              id: stageId,
-              name: stageName,
-              color: stageColor,
-              probability: probability,
-              amount: amount,
-              forecastAmount: forecastAmount,
-              percentage: 0 // se calculará después
-            });
-          } else {
-            const existingStage = stagesMap.get(stageId)!;
-            existingStage.amount += amount;
-            existingStage.forecastAmount += forecastAmount;
-          }
-        });
-
-        // 3. Calcular porcentajes y ordenar las etapas por probabilidad
-        const processedStages = Array.from(stagesMap.values()).map(stage => ({
-          ...stage,
-          percentage: totalForecastAmount > 0 
-            ? (stage.forecastAmount / totalForecastAmount) * 100 
-            : 0
-        }));
-
-        // Ordenar por probabilidad (de mayor a menor)
-        const sortedStages = processedStages.sort((a, b) => b.probability - a.probability);
-        
-        setStageData(sortedStages);
-        setTotalForecast(totalForecastAmount);
-
-      } catch {
-        toast({
-          title: "Error",
-          description: "Error al procesar datos de etapas",
-          variant: "destructive"
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStageData();
-  }, [pipelineId, organizationId]);
-
-  // Funciones auxiliares para los tooltips
-  interface TooltipProps {
-    active?: boolean;
-    payload?: Array<{
-      payload: StageData & { value: number };
-    }>;
-  }
-
-  const CustomTooltip: React.FC<TooltipProps> = ({ active, payload }) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700 rounded-md shadow-md">
-          <p className="font-medium text-gray-800 dark:text-gray-200">{data.name}</p>
-          <p className="text-sm text-gray-600 dark:text-gray-300">
-            Probabilidad: {Math.round(Number(data.probability))}%
-          </p>
-          <p className="text-sm text-gray-600 dark:text-gray-300">
-            Total: {formatear(data.amount)}
-          </p>
-          <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
-            Pronóstico: {formatear(data.forecastAmount)}
-          </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {data.percentage.toFixed(1)}% del pronóstico total
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
+  const t = useTranslations('crm.pronostico.pipelineAnalitica');
+  const { paraDocumento } = useMonedaOrganizacion();
+  const { loading, error, forecast, retry } = usePipelineForecast(pipelineId);
+  const stageData = useMemo(
+    () => agruparEtapasPronostico(forecast?.monthlyForecasts ?? [], 'probability'),
+    [forecast],
+  );
+  const totalForecast = forecast?.totals.weightedAmount ?? 0;
+  const formatear = (importe: number) => formatMoneda(importe, paraDocumento(forecast?.baseCurrency));
 
   if (loading) {
     return (
       <Card className={`p-4 space-y-4 h-80 ${className}`}>
         <Skeleton className="h-5 w-1/2" />
         <Skeleton className="h-60 w-full" />
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className={`p-6 h-80 flex flex-col items-center justify-center gap-3 ${className ?? ''}`} role="alert">
+        <p>{t(error === 'organization' ? 'sinOrganizacion' : 'errorCarga')}</p>
+        <Button variant="outline" onClick={retry}>{t('reintentar')}</Button>
       </Card>
     );
   }
@@ -197,9 +88,9 @@ const ForecastByStageChart: React.FC<ForecastByStageChartProps> = ({ pipelineId,
         <div className="flex items-center justify-center h-80 text-center">
           <div>
             <Filter className="h-8 w-8 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
-            <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200">Sin datos por etapa</h3>
+            <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200">{t('vacio')}</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              No se encontraron oportunidades abiertas en este pipeline.
+              {t('vacioDetalle')}
             </p>
           </div>
         </div>
@@ -219,7 +110,7 @@ const ForecastByStageChart: React.FC<ForecastByStageChartProps> = ({ pipelineId,
         <div className="flex items-center">
           <Filter className="h-5 w-5 text-blue-500 dark:text-blue-400 mr-2" />
           <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200">
-            Embudo ponderado
+            {t('embudoTitulo')}
           </h3>
         </div>
         <div className="text-sm font-medium text-blue-600 dark:text-blue-400">
@@ -240,21 +131,21 @@ const ForecastByStageChart: React.FC<ForecastByStageChartProps> = ({ pipelineId,
               dataKey="value"
               nameKey="name"
             >
-              {chartData.map((entry, index) => (
+              {chartData.map((entry) => (
                 <Cell 
-                  key={`cell-${index}`}
+                  key={entry.id}
                   fill={entry.color}
                   className="dark:opacity-80"
                 />
               ))}
             </Pie>
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={<CustomTooltip baseCurrency={forecast?.baseCurrency} />} />
             <Legend 
               layout="vertical" 
               verticalAlign="middle" 
               align="right"
               formatter={(value, entry) => {
-                const payload = entry?.payload as StageData | undefined;
+                const payload = entry?.payload as DatosEtapaPronostico | undefined;
                 return (
                   <span className="text-xs text-gray-600 dark:text-gray-300">
                     {value} ({payload ? Math.round(Number(payload.probability)) : 0}%)
@@ -271,8 +162,8 @@ const ForecastByStageChart: React.FC<ForecastByStageChartProps> = ({ pipelineId,
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-gray-500 dark:text-gray-400">
-              <th className="pb-2">Etapa</th>
-              <th className="pb-2 text-right">Pronóstico</th>
+              <th className="pb-2">{t('etapa')}</th>
+              <th className="pb-2 text-right">{t('pronostico')}</th>
               <th className="pb-2 text-right">%</th>
             </tr>
           </thead>

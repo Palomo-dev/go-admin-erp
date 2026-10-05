@@ -52,6 +52,7 @@ export function atOr(v: string | null | undefined): string {
 export interface FilterableQuery {
   gte(col: string, v: string): FilterableQuery;
   lte(col: string, v: string): FilterableQuery;
+  lt(col: string, v: string): FilterableQuery;
   or(filter: string): FilterableQuery;
 }
 
@@ -59,15 +60,20 @@ export interface FilterableQuery {
  * Filtro `or=()` equivalente a `(col, id) < (at, id)` tratando NULL como epoch.
  * Si el cursor ya está en epoch, las filas NULL se desempatan por id.
  */
-export function cursorFilter(col: string, cursor: { at: string; id: string }): string {
+export function cursorFilter(col: string, cursor: { at: string; id: string }, idType: 'uuid' | 'text' = 'uuid'): string {
   const at = isoUtc(cursor.at);
+  // Los ids financieros tienen prefijo ASCII r/s/w y collation C. En un
+  // empate TODOS los UUID (0–9/a–f) van antes: no castear el prefijo a UUID.
+  if (idType === 'uuid' && /^(sale|reservation|web_order)_/.test(cursor.id)) {
+    return [`${col}.lt.${at}`, `${col}.eq.${at}`, ...(Date.parse(at) >= 0 ? [`${col}.is.null`] : [])].join(',');
+  }
   const parts = [`${col}.lt.${at}`, `and(${col}.eq.${at},id.lt.${cursor.id})`];
   parts.push(Date.parse(at) <= 0 ? `and(${col}.is.null,id.lt.${cursor.id})` : `${col}.is.null`);
   return parts.join(',');
 }
 
 /** `from`/`to` del filtro + cursor, coherentes con "NULL == epoch". */
-export function applyRange<Q extends FilterableQuery>(query: Q, col: string, ctx: Ctx): Q {
+export function applyRange<Q extends FilterableQuery>(query: Q, col: string, ctx: Ctx, idType: 'uuid' | 'text' = 'uuid'): Q {
   let qq: FilterableQuery = query;
   if (ctx.q.from) {
     const from = isoUtc(ctx.q.from);
@@ -76,9 +82,11 @@ export function applyRange<Q extends FilterableQuery>(query: Q, col: string, ctx
   }
   if (ctx.q.to) {
     const to = isoUtc(ctx.q.to);
-    qq = Date.parse(to) >= 0 ? qq.or(`${col}.lte.${to},${col}.is.null`) : qq.lte(col, to);
+    const exclusive = ctx.q.toExclusive;
+    const incluyeNull = exclusive ? Date.parse(to) > 0 : Date.parse(to) >= 0;
+    qq = incluyeNull ? qq.or(`${col}.${exclusive ? 'lt' : 'lte'}.${to},${col}.is.null`) : exclusive ? qq.lt(col, to) : qq.lte(col, to);
   }
-  if (ctx.cursor) qq = qq.or(cursorFilter(col, ctx.cursor));
+  if (ctx.cursor) qq = qq.or(cursorFilter(col, ctx.cursor, idType));
   return qq as Q;
 }
 
@@ -114,27 +122,4 @@ export function finish(
     return { rows: list, tail: read[read.length - 1] };
   }
   return { rows: list, tail: null };
-}
-
-// ─── Día comercial (America/Bogota, UTC-5 sin DST) ───────────────────────────
-
-const BOGOTA_OFFSET_MS = 5 * 3600 * 1000;
-
-/** `yyyy-mm-dd` del día de Bogotá al que pertenece el instante. */
-export function bogotaDay(iso: string): string {
-  return new Date(Date.parse(iso) - BOGOTA_OFFSET_MS).toISOString().slice(0, 10);
-}
-
-/** Instante (ISO UTC) en que empieza el día de Bogotá al que pertenece `iso`. */
-export function bogotaDayStart(iso: string): string {
-  const local = new Date(Date.parse(iso) - BOGOTA_OFFSET_MS);
-  const start = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate());
-  return new Date(start + BOGOTA_OFFSET_MS).toISOString();
-}
-
-/** Instante (ISO UTC) en que empieza el día siguiente al de `iso` en Bogotá. */
-export function bogotaNextDayStart(iso: string): string {
-  const local = new Date(Date.parse(iso) - BOGOTA_OFFSET_MS);
-  const next = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate() + 1);
-  return new Date(next + BOGOTA_OFFSET_MS).toISOString();
 }

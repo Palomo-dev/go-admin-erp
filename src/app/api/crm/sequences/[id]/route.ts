@@ -1,19 +1,10 @@
+import { requireSequenceManager, sequenceError } from '@/lib/services/crm/sequenceRouteSupport';
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError, requireOrgAdmin } from '@/lib/utils/orgContext';
+import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
-import { updateSequence, deleteSequence, validateSequenceInput } from '@/lib/services/crm/sequenceService';
+import { updateSequence, deleteSequence, validateSequenceUpdateInput } from '@/lib/services/crm/sequenceService';
 
-function errorResponse(error: unknown, tag: string): NextResponse {
-  if (error instanceof OrgContextError) {
-    return NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.statusCode });
-  }
-  const message = error instanceof Error ? error.message : 'Error desconocido';
-  console.error(`[Sequences] ${tag}:`, message);
-  const status = /inscripciones activas/i.test(message) ? 409
-    : /inválida|inválido|requerido/i.test(message) ? 400
-    : 500;
-  return NextResponse.json({ success: false, error: message }, { status });
-}
+const errorResponse = sequenceError;
 
 /**
  * PATCH /api/crm/sequences/[id] — Actualiza una secuencia (admin).
@@ -23,12 +14,12 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const ctx = await getServerOrgContext();
-    requireOrgAdmin(ctx);
+    const ctx = await getServerOrgContext(request);
+    await requireSequenceManager(ctx);
     const { id } = await params;
     const body = await readOrgBody(ctx, request);
 
-    const issues = validateSequenceInput(body);
+    const issues = validateSequenceUpdateInput(body);
     if (issues.length) {
       return NextResponse.json({ success: false, error: 'Secuencia inválida', issues }, { status: 400 });
     }
@@ -45,16 +36,16 @@ export async function PATCH(
 
 /**
  * DELETE /api/crm/sequences/[id] — Elimina una secuencia (admin).
- * 409 si quedan inscripciones vivas.
+ * 409 si existe cualquier inscripción: se conserva el historial completo.
  */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     await readOrgBody(ctx, request);
-    requireOrgAdmin(ctx);
+    await requireSequenceManager(ctx);
     const { id } = await params;
     await deleteSequence(id, ctx.organizationId, ctx.supabase);
     return NextResponse.json({ success: true }, { status: 200 });

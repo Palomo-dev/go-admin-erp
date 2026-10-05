@@ -11,15 +11,15 @@ import { esSesionMuerta, limpiarSesionMuerta } from '@/lib/auth/deadSession';
 
 // Constants for session management
 // TEMPORALMENTE DESHABILITADO: Conflicto con middleware
-// 
+//
 // PROBLEMA: Había conflicto entre dos sistemas de expiración:
 // 1. Middleware: Verifica expiración real de sesión de Supabase
 // 2. SessionContext: Verifica inactividad del usuario (10 min)
-// 
+//
 // SÍNTOMA: Usuario inactivo → SessionContext redirige a /auth/session-expired
 //          → Middleware detecta sesión válida → Permite acceso a /app/inicio
 //          → App queda en "stand by" sin redirección clara
-// 
+//
 // SOLUCIÓN TEMPORAL: Deshabilitar inactividad hasta implementar solución unificada
 // const INACTIVITY_THRESHOLD = 10 * 60 * 1000; // 10 minutes in milliseconds
 const INACTIVITY_THRESHOLD = Infinity; // Deshabilitar inactividad temporalmente
@@ -82,7 +82,7 @@ export const useSession = () => {
 
 export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const router = useRouter();
-  
+
   // Session state
   const [state, setState] = useState<SessionState>({
     session: null,
@@ -93,13 +93,13 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     countdown: COUNTDOWN_DURATION,
     isActive: true,
   });
-  
+
   // User activity tracking
   const updateLastActivityTime = useCallback(() => {
     const now = Date.now();
     if (typeof window !== 'undefined') {
       sessionStorage.setItem(LOCAL_STORAGE_LAST_ACTIVITY, now.toString());
-      
+
       // Update state
       setState(prev => ({
         ...prev,
@@ -110,46 +110,46 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }));
     }
   }, []);
-  
+
   // Setup activity listeners
   useEffect(() => {
     // Initialize last activity time if not set
     if (typeof window !== 'undefined' && !sessionStorage.getItem(LOCAL_STORAGE_LAST_ACTIVITY)) {
       updateLastActivityTime();
     }
-    
+
     // Add event listeners for user activity
     const activityEvents = ['mousedown', 'keydown', 'touchstart', 'scroll'];
     const trackActivity = () => updateLastActivityTime();
-    
+
     activityEvents.forEach(event => {
       window.addEventListener(event, trackActivity, { passive: true });
     });
-    
+
     return () => {
       activityEvents.forEach(event => {
         window.removeEventListener(event, trackActivity);
       });
     };
   }, [updateLastActivityTime]);
-  
+
   // Check for inactivity
   useEffect(() => {
     if (!state.session) return;
-    
+
     const checkInactivity = () => {
       if (typeof window === 'undefined') return;
-      
+
       const lastActivityStr = sessionStorage.getItem(LOCAL_STORAGE_LAST_ACTIVITY);
       if (!lastActivityStr) {
         updateLastActivityTime();
         return;
       }
-      
+
       const lastActivity = parseInt(lastActivityStr, 10);
       const now = Date.now();
       const inactiveTime = now - lastActivity;
-      
+
       setState(prev => ({
         ...prev,
         inactivityTime: inactiveTime,
@@ -158,18 +158,60 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         showRenewalPopup: inactiveTime >= INACTIVITY_THRESHOLD && !prev.showRenewalPopup ? true : prev.showRenewalPopup,
       }));
     };
-    
+
     // Check inactivity every 30 seconds
     const intervalId = setInterval(checkInactivity, 30000);
     return () => clearInterval(intervalId);
   }, [state.session, updateLastActivityTime]);
-  
+
+  // Function to handle logout
+  const handleLogout = useCallback(async () => {
+    try {
+      setState(prev => ({ ...prev, loading: true }));
+
+      const { cleanupPushTokenBeforeLogout } = await import('@/lib/services/pushTokenService');
+      await cleanupPushTokenBeforeLogout();
+      // Clear session cache and sign out from Supabase
+      await clearSessionCache();
+
+      // Update state immediately
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        session: null,
+        showRenewalPopup: false,
+        countdown: COUNTDOWN_DURATION,
+      }));
+
+      // Dispatch session expiration event
+      const sessionExpiredEvent = new CustomEvent('session:expired', {
+        detail: { reason: 'logout' }
+      });
+      window.dispatchEvent(sessionExpiredEvent);
+
+      // Redirect to login page
+      router.push('/auth/login');
+
+    } catch (err) {
+      logError('[SessionContext] error cerrando sesión', err);
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        session: null,
+        showRenewalPopup: false,
+        countdown: COUNTDOWN_DURATION,
+      }));
+      // Still redirect to login even on error
+      router.push('/auth/login');
+    }
+  }, [router]);
+
   // Countdown timer for session expiry
   useEffect(() => {
     if (!state.showRenewalPopup) return;
-    
+
     let countdownTimer: NodeJS.Timeout;
-    
+
     if (state.countdown > 0) {
       countdownTimer = setInterval(() => {
         setState(prev => ({
@@ -181,24 +223,24 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // Logout when countdown reaches zero
       handleLogout();
     }
-    
+
     return () => {
       if (countdownTimer) clearInterval(countdownTimer);
     };
-  }, [state.showRenewalPopup, state.countdown]);
-  
+  }, [state.showRenewalPopup, state.countdown, handleLogout]);
+
   // Refrescar sesión cuando el usuario vuelve a la pestaña (visibilitychange / focus)
   // Los browsers throttlean timers en pestañas inactivas, así que autoRefreshToken puede no ejecutarse
   useEffect(() => {
     if (!state.session) return;
-    
+
     let isRefreshing = false;
-    
+
     const handleVisibilityOrFocus = async () => {
       // Solo actuar cuando la pestaña se vuelve visible o recibe foco
       if (document.visibilityState === 'hidden') return;
       if (isRefreshing) return;
-      
+
       // Solo refrescar si la sesión está próxima a expirar (menos de 30 min)
       if (state.session) {
         const expiresAt = (state.session.expires_at || 0) * 1000;
@@ -207,7 +249,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
           return; // La sesión aún tiene más de 30 min, no refrescar
         }
       }
-      
+
       isRefreshing = true;
       try {
         const result = await refreshSessionToken();
@@ -220,16 +262,16 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         isRefreshing = false;
       }
     };
-    
+
     document.addEventListener('visibilitychange', handleVisibilityOrFocus);
     window.addEventListener('focus', handleVisibilityOrFocus);
-    
+
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
       window.removeEventListener('focus', handleVisibilityOrFocus);
     };
   }, [state.session]);
-  
+
   // Fetch initial session
   // `initAttempt` permite reintentar desde la interfaz sin recargar la página.
   const [initAttempt, setInitAttempt] = useState(0);
@@ -326,14 +368,14 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       subscription.unsubscribe();
     };
   }, [router]);
-  
+
   // Function to refresh session
   const refreshSession = async () => {
     setState(prev => ({ ...prev, loading: true }));
-    
+
     try {
       const { session, error } = await refreshSessionToken();
-      
+
       if (error) {
         logError('[SessionContext] refrescar sesión', error);
         toast({
@@ -343,10 +385,10 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         });
         return;
       }
-      
+
       // Reset inactivity tracking
       updateLastActivityTime();
-      
+
       // Update session state
       setState(prev => ({
         ...prev,
@@ -355,7 +397,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         showRenewalPopup: false,
         countdown: COUNTDOWN_DURATION,
       }));
-      
+
       toast({
         title: 'Sesión renovada',
         description: 'Su sesión ha sido renovada exitosamente.',
@@ -371,47 +413,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       });
     }
   };
-  
-  // Function to handle logout
-  const handleLogout = async () => {
-    try {
-      setState(prev => ({ ...prev, loading: true }));
-      
-      // Clear session cache and sign out from Supabase
-      await clearSessionCache();
-      
-      // Update state immediately
-      setState(prev => ({ 
-        ...prev, 
-        loading: false,
-        session: null,
-        showRenewalPopup: false,
-        countdown: COUNTDOWN_DURATION,
-      }));
-      
-      // Dispatch session expiration event
-      const sessionExpiredEvent = new CustomEvent('session:expired', {
-        detail: { reason: 'logout' }
-      });
-      window.dispatchEvent(sessionExpiredEvent);
-      
-      // Redirect to login page
-      router.push('/auth/login');
-      
-    } catch (err) {
-      logError('[SessionContext] error cerrando sesión', err);
-      setState(prev => ({ 
-        ...prev, 
-        loading: false,
-        session: null,
-        showRenewalPopup: false,
-        countdown: COUNTDOWN_DURATION,
-      }));
-      // Still redirect to login even on error
-      router.push('/auth/login');
-    }
-  };
-  
+
   // Function to dismiss renewal popup and renew session
   const dismissRenewalPopup = () => {
     setState(prev => ({
@@ -419,11 +421,11 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       showRenewalPopup: false,
       countdown: COUNTDOWN_DURATION,
     }));
-    
+
     // Renew session
     refreshSession();
   };
-  
+
   // Context value
   const value = {
     session: state.session,
@@ -438,12 +440,12 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     updateLastActivityTime,
     dismissRenewalPopup,
   };
-  
+
   return (
     <SessionContext.Provider value={value}>
       {children}
-      {state.showRenewalPopup && <SessionRenewalPopup 
-        countdown={state.countdown} 
+      {state.showRenewalPopup && <SessionRenewalPopup
+        countdown={state.countdown}
         onRenew={dismissRenewalPopup}
         onCancel={handleLogout}
       />}
@@ -464,7 +466,7 @@ export const SessionRenewalPopup: React.FC<{
         <p className="mb-4">
           Por inactividad, su sesión expirará en <span className="font-bold text-red-500">{countdown}</span> segundos.
         </p>
-        
+
         <div className="flex gap-2 justify-end">
           <button
             onClick={onCancel}

@@ -33,9 +33,10 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { compareDesc, decodeCursor, encodeCursor, isBefore, type Ctx, type Raw, type SourceResult, type TimelineEntityType, type TimelineEntry, type TimelineKind, type TimelineQuery, type TimelineResult } from './timeline/types';
+import { compareDesc, decodeCursor, encodeCursor, isBefore, type Ctx, type Raw, type SourceResult, type TimelineAccess, type TimelineEntityType, type TimelineEntry, type TimelineKind, type TimelineQuery, type TimelineResult } from './timeline/types';
 import { fetchActivities, fetchCalls, fetchEmails, fetchNotes, fetchStageHistory, fetchTasks, fetchVoiceAgentCalls, fetchWhatsApp, resolveKinds } from './timeline/sources';
 import { assemble, dedupeRaw, hydrate } from './timeline/assemble';
+import { fetchFinancialHistory } from './timeline/financialSource';
 
 export * from './timeline/types';
 export { dedupeRaw } from './timeline/assemble';
@@ -51,6 +52,7 @@ const SOURCE_KINDS: Record<string, TimelineKind[]> = {
   whatsapp: ['whatsapp'],
   voice_agent_calls: ['ai_call'],
   stage_history: ['system'],
+  financial: ['sale', 'reservation', 'web_order'],
 };
 
 /** Reintentos internos cuando el corte seguro deja la página vacía. */
@@ -69,23 +71,26 @@ export class TimelineEntityNotFoundError extends Error {
 
 async function loadEntity(ctx: Omit<Ctx, 'customerId' | 'windowFrom'>): Promise<{ customerId: string | null; windowFrom: string | null }> {
   if (ctx.entityType === 'opportunity') {
-    const { data } = await ctx.supabase
+    const { data, error } = await ctx.supabase
       .from('opportunities')
       .select('id, customer_id, created_at')
       .eq('id', ctx.entityId)
       .eq('organization_id', ctx.orgId)
       .maybeSingle();
+    if (error) throw error;
     if (!data) throw new TimelineEntityNotFoundError();
     const created = data.created_at ? Date.parse(data.created_at) : Date.now();
     // Ventana: 7 días antes de crear la oportunidad (conversaciones que la originaron)
     return { customerId: data.customer_id ?? null, windowFrom: new Date(created - 7 * 86400_000).toISOString() };
   }
-  const { data } = await ctx.supabase
+  let query = ctx.supabase
     .from('customers')
     .select('id')
     .eq('id', ctx.entityId)
-    .eq('organization_id', ctx.orgId)
-    .maybeSingle();
+    .eq('organization_id', ctx.orgId);
+  if (ctx.access?.onlyLeads) query = query.eq('lifecycle_stage', 'lead');
+  const { data, error } = await query.maybeSingle();
+  if (error) throw error;
   if (!data) throw new TimelineEntityNotFoundError();
   return { customerId: ctx.entityId, windowFrom: null };
 }
@@ -110,6 +115,7 @@ async function collectRound(ctx: Ctx, kinds: Set<TimelineKind>): Promise<RoundRe
     wants('whatsapp') ? fetchWhatsApp(ctx) : empty,
     wants('voice_agent_calls') ? fetchVoiceAgentCalls(ctx) : empty,
     wants('stage_history') ? fetchStageHistory(ctx) : empty,
+    wants('financial') ? fetchFinancialHistory(ctx) : empty,
   ]);
 
   const deduped = dedupeRaw(results.flatMap((r) => r.rows)).filter((r) => kinds.has(r.kind));
@@ -140,12 +146,13 @@ export async function getTimeline(
   entityType: TimelineEntityType,
   entityId: string,
   supabase: SupabaseClient,
-  q: TimelineQuery = {}
+  q: TimelineQuery = {},
+  access: TimelineAccess = {},
 ): Promise<TimelineResult> {
   const limit = Math.min(Math.max(q.limit ?? 30, 1), 50);
   const kinds = resolveKinds(q);
   let cursor = q.cursor ? decodeCursor(q.cursor) : null;
-  const partial = { orgId, entityType, entityId, supabase, limit, cursor, q };
+  const partial = { orgId, entityType, entityId, supabase, limit, cursor, q, access };
   const entity = await loadEntity(partial);
 
   let page: Raw[] = [];

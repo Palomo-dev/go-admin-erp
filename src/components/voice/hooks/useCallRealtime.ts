@@ -18,6 +18,8 @@ export interface LiveCallRow {
   status: string;
   recording_enabled: boolean;
   consent_given: boolean;
+  recording_started?: boolean;
+  can_edit_notes?: boolean;
 }
 
 export function useCallRealtime(callSid: string | null, active: boolean): { callId: string | null; row: LiveCallRow | null } {
@@ -42,7 +44,8 @@ export function useCallRealtime(callSid: string | null, active: boolean): { call
         const body = await res.json();
         const r = body?.data?.[0];
         if (r && !cancelled) {
-          const next = { id: r.id, status: r.status, recording_enabled: !!r.recording_enabled, consent_given: !!r.consent_given };
+          const next = { id: r.id, status: r.status, recording_enabled: !!r.recording_enabled, consent_given: !!r.consent_given,
+            recording_started: Boolean(r.metadata?.recording_started_at) };
           rowRef.current = next;
           setRow(next);
           return true;
@@ -67,9 +70,10 @@ export function useCallRealtime(callSid: string | null, active: boolean): { call
     const channel = supabase
       .channel(`call:${callSid}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'calls', filter: `provider_call_sid=eq.${callSid}` }, (payload) => {
-        const r = payload.new as Partial<LiveCallRow> & { id: string };
+        const r = payload.new as Partial<LiveCallRow> & { id: string; metadata?: Record<string, unknown> };
         if (!r?.id || cancelled) return;
-        const next = { id: r.id, status: String(r.status ?? rowRef.current?.status ?? ''), recording_enabled: !!r.recording_enabled, consent_given: !!r.consent_given };
+        const next = { id: r.id, status: String(r.status ?? rowRef.current?.status ?? ''), recording_enabled: !!r.recording_enabled, consent_given: !!r.consent_given,
+          recording_started: Boolean(r.metadata?.recording_started_at) };
         rowRef.current = next;
         setRow(next);
       })

@@ -20,13 +20,13 @@ describe('«Inscribir» deshabilitado con motivo (tester r3: la RPC lanza sequen
   ])('%s: el botón se deshabilita por `enrollBlockReason` y lo describe con aria-describedby', (rel) => {
     const src = read(rel);
     expect(src).toMatch(/enrollBlockReason\(/);
-    expect(src).toMatch(/disabled=\{blockReason !== null\}/);
+    expect(src).toMatch(/disabled=\{blockReason !== null \|\| !canManage\}/);
     expect(src).toMatch(/aria-describedby=\{blockReason \? /);
     expect(src).not.toMatch(/disabled=\{!hasSteps\}/);
   });
   it('EnrollDialog: la confirmación exige el preview sin bloqueo (`is_active` del servidor + pasos activos)', () => {
     const src = read('src/components/crm/secuencias/EnrollDialog.tsx');
-    expect(src).toMatch(/enrollBlockReason\(\{ is_active: previewActive, steps \}\)/);
+    expect(src).toMatch(/enrollBlockReason\(\{ is_active: previewActive, steps \}, tr\)/);
     expect(src).toMatch(/const canConfirm = !!selected && blockReason === null/);
     expect(src).toMatch(/setPreviewActive\(preview\.sequence\.is_active\)/);
   });

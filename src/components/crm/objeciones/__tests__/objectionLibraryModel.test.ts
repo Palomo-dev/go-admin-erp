@@ -1,0 +1,15 @@
+/// <reference types="jest" />
+import {libraryRows,librarySummary,orderLibraryRows} from '../objectionLibraryModel';
+import type {Objection} from '@/lib/services/crm/objectionService';
+import type {ObjectionInsights} from '@/lib/services/crm/objectionInsightsService';
+const objections=[{id:'a',title:'Zeta',category:'precio'},{id:'b',title:'Álpha',category:'competencia'},{id:'c',title:'Beta',category:'precio'}] as Objection[];
+const insights:ObjectionInsights={frequencies:[{objection_id:'a',call_count:6,advanced_count:3,opportunity_count:4,advanced_opportunity_count:2},{objection_id:'b',call_count:2,advanced_count:2,opportunity_count:2,advanced_opportunity_count:2},{objection_id:'other-org-invisible',call_count:100,advanced_count:100,opportunity_count:100,advanced_opportunity_count:100}],weeks:[],calls:[],responses:[]};
+test('unavailable insights stay unknown in rows and all aggregated numbers',()=>{const rows=libraryRows(objections,null);expect(rows.every(row=>row.calls===null&&row.share===null&&row.advancedRate===null)).toBe(true);expect(librarySummary(rows,null)).toMatchObject({count:3,categories:2,callCount:null,advancedRate:null,frequent:null});});
+test('shares and advancement use visible catalog detections and never count unrelated frequency IDs',()=>{const rows=libraryRows(objections,insights);expect(rows.map(row=>[row.calls,row.share,row.advancedRate])).toEqual([[6,.75,.5],[2,.25,1],[0,0,null]]);expect(librarySummary(rows,insights)).toMatchObject({count:3,categories:2,callCount:8,advancedRate:5/8,frequent:{category:'precio',calls:6,share:.75}});});
+test('the leading category sums all its objections even when the leading individual objection belongs to another category',()=>{
+ const data={...insights,frequencies:insights.frequencies.slice(0,2).map(row=>({...row,call_count:row.objection_id==='b'?3:2,advanced_count:0})).concat([{objection_id:'c',call_count:2,advanced_count:0,opportunity_count:2,advanced_opportunity_count:0}])};
+ const rows=libraryRows(objections,data);expect(orderLibraryRows(rows,'frequency','es')[0].objection.category).toBe('competencia');
+ expect(librarySummary(rows,data)).toMatchObject({callCount:7,frequent:{category:'precio',calls:4,share:4/7}});
+});
+test('a successful empty history reports zero detections with unknown percentages',()=>{const data={...insights,frequencies:[]};const rows=libraryRows(objections,data);expect(rows.every(row=>row.calls===0&&row.share===null&&row.advancedRate===null)).toBe(true);expect(librarySummary(rows,data)).toMatchObject({callCount:0,advancedRate:null,frequent:null});});
+test('each order uses its real metric, locale tie breakers and leaves the original view intact',()=>{const rows=libraryRows(objections,insights),ids=(mode:'frequency'|'advanced'|'alphabetical')=>orderLibraryRows(rows,mode,'es').map(row=>row.objection.id);expect(ids('frequency')).toEqual(['a','b','c']);expect(ids('advanced')).toEqual(['b','a','c']);expect(ids('alphabetical')).toEqual(['b','c','a']);expect(rows.map(row=>row.objection.id)).toEqual(['a','b','c']);});

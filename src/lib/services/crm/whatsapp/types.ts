@@ -22,11 +22,15 @@ export type WhatsAppErrorCode =
   | 'CHANNEL_NO_TEMPLATES'
   | 'US_MARKETING_BLOCKED'
   | 'OUTSIDE_HOURS'
+  | 'RNE_REQUIRED'
+  | 'DATA_POLICY_REQUIRED'
   | 'MISSING_VARIABLES'
   | 'DAILY_LIMIT'
   | 'NO_CREDITS'
   | 'NAME_EXISTS'
   | 'INVALID_COMPONENTS'
+  | 'CAMPAIGN_MODIFIED'
+  | 'RECONCILIATION_REQUIRED'
   | 'NOT_EDITABLE'
   | 'NOT_MATERIALIZED'
   | 'TIER_EXCEEDED'
@@ -155,6 +159,8 @@ export interface SendWhatsAppInput {
   role?: 'agent' | 'ai';
   source?: 'crm' | 'campaign' | 'sequence' | 'agent' | 'bulk' | 'platform_send';
   campaignId?: string | null;
+  /** Testigo privado del job; no forma parte del esquema de envío del navegador. */
+  campaignClaimToken?: string | null;
   clientRequestId?: string | null;
   /** Saltar horario permitido (solo utility). */
   force?: boolean;

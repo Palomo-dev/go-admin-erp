@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { LeadsPantalla } from '@/components/crm/leads/pantalla/LeadsPantalla';
 
 /**
@@ -8,5 +9,5 @@ import { LeadsPantalla } from '@/components/crm/leads/pantalla/LeadsPantalla';
  * 'lead' heredadas: esas se ven en Oportunidades con la etiqueta «Lead».
  */
 export default function LeadsPage() {
-  return <LeadsPantalla />;
+  return <Suspense fallback={null}><LeadsPantalla /></Suspense>;
 }

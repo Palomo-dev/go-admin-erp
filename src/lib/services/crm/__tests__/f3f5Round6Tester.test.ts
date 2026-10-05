@@ -200,7 +200,7 @@ const completed = (callSid: string, sid = 'REr6tdone') =>
 function seedAgent(callPatch: Row = {}) {
   fake = seed({
     voice_agent_calls: [
-      { id: VAC, organization_id: ORG, voice_agent_id: 'ag-1', call_id: CALL_ID, provider_call_sid: null, status: 'dialing', started_at: null, consent_given: false, customer_id: null },
+      { id: VAC, organization_id: ORG, voice_agent_id: 'ag-1', call_id: CALL_ID, provider_call_sid: 'CAr6tagent01', status: 'dialing', started_at: null, consent_given: false, customer_id: null },
     ],
     calls: [callRow({ provider_call_sid: 'CAr6tagent01', mode: 'ai_agent', status: 'dialing', consent_given: false, ended_at: null, ...callPatch })],
   });
@@ -441,3 +441,12 @@ function walk(dir: string, out: string[] = []): string[] {
   }
   return out;
 }
+
+// Fixtures históricas del transporte heredado; los contratos RPC se verifican por separado.
+beforeEach(() => { process.env.CRM_CALL_ATOMIC_RPC_ENABLED = 'false'; });
+afterAll(() => { delete process.env.CRM_CALL_ATOMIC_RPC_ENABLED; });
+
+// Fixtures Dial anteriores a Conference: escape explícito, sin falsear los contratos nuevos.
+const phoneLegacyEnv = process.env.CRM_PHONE_CONFERENCE_ENABLED;
+beforeAll(() => { process.env.CRM_PHONE_CONFERENCE_ENABLED = 'false'; });
+afterAll(() => { if (phoneLegacyEnv === undefined) delete process.env.CRM_PHONE_CONFERENCE_ENABLED; else process.env.CRM_PHONE_CONFERENCE_ENABLED = phoneLegacyEnv; });

@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server';
 import { withWhatsAppRoute } from '@/lib/services/crm/whatsapp/http';
 import { parseWith, searchParamsToObject, zCampaignListQuery, zCreateCampaignBody } from '@/lib/services/crm/whatsapp/schemas';
 import { createCampaign, listCampaigns, type CreateCampaignInput } from '@/lib/services/crm/whatsapp/campaignStore';
-import { isOrgAdminContext } from '@/lib/utils/orgContext';
+import { hasOrgAdminOrPermission } from '@/lib/utils/orgContext';
 
 import { readOrgBody } from '@/lib/security/organizationBody';
+import { exigirPermisoCrm, CRM_PERMISOS } from '@/lib/services/crm/crmRouteSupport';
 /**
  * GET  /api/crm/campaigns?status=&channel=&q= → { data: Campaign[], can_manage }
  * POST /api/crm/campaigns CreateCampaignInput → 201 { data }
@@ -16,13 +17,15 @@ import { readOrgBody } from '@/lib/security/organizationBody';
  * que van a devolver 403 (tester r1 · fallo 8).
  */
 export const GET = withWhatsAppRoute(async (ctx, req) => {
+  readOrgBody(ctx, {}, { request: req });
+  await exigirPermisoCrm(ctx, [CRM_PERMISOS.oportunidadesVer], 'Consultar campañas');
   const q = parseWith(zCampaignListQuery, searchParamsToObject(new URL(req.url).searchParams), 'query');
   const data = await listCampaigns(ctx.organizationId, q, ctx.supabase);
-  return NextResponse.json({ data, can_manage: isOrgAdminContext(ctx) });
+  return NextResponse.json({ data, can_manage: await hasOrgAdminOrPermission(ctx, 'crm.campaigns.manage') });
 });
 
 export const POST = withWhatsAppRoute(async (ctx, req) => {
   const b = parseWith(zCreateCampaignBody, await readOrgBody<unknown>(ctx, req));
   const data = await createCampaign(ctx.organizationId, ctx.userId, b as CreateCampaignInput, ctx.supabase);
   return NextResponse.json({ data }, { status: 201 });
-});
+}, { admin: true, permission: 'crm.campaigns.manage' });

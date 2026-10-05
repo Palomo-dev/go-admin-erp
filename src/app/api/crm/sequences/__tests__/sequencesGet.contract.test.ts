@@ -13,10 +13,7 @@
 
 const { OrgContextError: RealOrgContextError } = jest.requireActual<typeof import('@/lib/utils/orgContextError')>('@/lib/utils/orgContextError');
 // Extiende la clase real: `readOrgBody` (punto único) lanza la real y las rutas hacen `instanceof`.
-class FakeOrgContextError extends RealOrgContextError {
-  statusCode = 401;
-  code = 'UNAUTHORIZED';
-}
+
 
 const ROWS: Record<string, unknown[]> = {
   sequences: [
@@ -67,6 +64,7 @@ jest.mock('@/lib/services/crm/emailService', () => ({ sendEmail: jest.fn() }));
 
 jest.mock('@/lib/utils/orgContext', () => ({
   OrgContextError: RealOrgContextError, // la clase real: `readOrgBody` lanza la real y las rutas hacen `instanceof`
+  hasOrgAdminOrPermission: jest.fn(async () => false),
   requireOrgAdmin: jest.fn(),
   getServerOrgContext: jest.fn(async () => ({ organizationId: 120, userId: 'u-1', supabase: fakeSupabase() })),
 }));
@@ -77,7 +75,7 @@ import { GET as getEnrollments } from '../[id]/enrollments/route';
 
 describe('GET /api/crm/sequences — contrato de enrollment_stats', () => {
   it('cada secuencia lleva enrollment_stats con la forma exacta', async () => {
-    const res = await getList();
+    const res = await getList(new NextRequest('http://localhost/api/crm/sequences'));
     const json = await res.json();
     expect(res.status).toBe(200);
     expect(json.success).toBe(true);
@@ -88,7 +86,7 @@ describe('GET /api/crm/sequences — contrato de enrollment_stats', () => {
   });
 
   it('las estadísticas y los pasos no cuentan filas de otra organización aunque compartan sequence_id', async () => {
-    const json = await (await getList()).json();
+    const json = await (await getList(new NextRequest('http://localhost/api/crm/sequences'))).json();
     // Con el señuelo e9 (org 121) contado, saldría active: 3 / total: 3.
     expect(json.data[0].enrollment_stats.total).toBe(2);
     expect(json.data[0].steps).toHaveLength(1);

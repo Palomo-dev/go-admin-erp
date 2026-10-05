@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { LEAD_SOURCES, type LeadSource } from '@/lib/crm/enums';
+import { prepararDatosLead } from './leadPreparation';
+export { MANUAL_LEAD_SOURCE, normalizarOrigenLead } from './leadPreparation';
 import { autoAssignLead, type LeadAssignmentOutcome } from './leadAutoAssign';
 import { clean, resolveLeadCustomer, rollbackCustomer, type LeadCreateFailure, type LeadCustomerExtras, type NewCustomerInput } from './leadCustomer';
 import { guardarLeadScore } from './leadScoreService';
@@ -37,9 +38,6 @@ export type { LeadCustomerExtras, NewCustomerInput } from './leadCustomer';
  *   ignoran.
  */
 
-/** Origen por defecto de un lead creado a mano desde el ERP (`customers.lead_source`). */
-export const MANUAL_LEAD_SOURCE: LeadSource = 'manual';
-
 /**
  * Permiso de crear leads (`permissions.code`). Lo exigen POST /api/crm/leads y la
  * importación, resuelto en el servidor con `hasOrgAdminOrPermission` (super admin
@@ -47,8 +45,9 @@ export const MANUAL_LEAD_SOURCE: LeadSource = 'manual';
  */
 export const LEADS_CREATE_PERMISSION = 'crm.leads.create';
 
-export const OPPORTUNITY_DEAL_TYPES = ['new', 'renewal', 'expansion', 'referral', 'partner'] as const;
-export type OpportunityDealType = (typeof OPPORTUNITY_DEAL_TYPES)[number];
+export { OPPORTUNITY_DEAL_TYPES } from './opportunityDealTypes';
+export type { OpportunityDealType } from './opportunityDealTypes';
+import { OPPORTUNITY_DEAL_TYPES } from './opportunityDealTypes';
 
 export interface CreateLeadBody {
   /** Título del lead («Distribuidora · Cali»); queda en `metadata.lead.titulo`. */
@@ -108,32 +107,6 @@ const LEAD_COLUMNS =
   'id, full_name, email, phone, lifecycle_stage, lead_source, owner_id, lead_score, icp_band, last_contact_at, lead_discarded_at, metadata, created_at, updated_at';
 
 const bad = (error: string): LeadCreateResult => ({ status: 400, error });
-
-const ALIAS_ORIGEN: Record<string, LeadSource> = {
-  manual_erp: 'manual',
-  website: 'web_form',
-  web: 'web_form',
-  formulario_web: 'web_form',
-  referido: 'referral',
-  importacion: 'import',
-  whatsapp_qr: 'whatsapp',
-  llamada_entrante: 'inbound_call',
-  evento: 'event',
-  correo: 'email',
-  otro: 'other',
-};
-
-/** Texto libre de origen → valor del CHECK `customers_lead_source_check` ('other' si no casa). */
-export function normalizarOrigenLead(source: string | null | undefined): LeadSource {
-  const s = (source ?? '').trim().toLowerCase();
-  if (!s) return MANUAL_LEAD_SOURCE;
-  if ((LEAD_SOURCES as readonly string[]).includes(s)) return s as LeadSource;
-  return ALIAS_ORIGEN[s] ?? 'other';
-}
-
-function sinNulos(o: Record<string, unknown>): Record<string, unknown> {
-  return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== null && v !== undefined && v !== ''));
-}
 
 interface FichaLead {
   id: string;
@@ -226,31 +199,7 @@ export async function createLeadWithCustomer(
     const nuevoOwner = assignment.status === 'assigned' || assignment.status === 'explicit' ? assignment.user_id : null;
 
     // ── 5. Datos del lead en la ficha (una sola escritura) ─────────────────
-    const metadata = f.metadata ?? {};
-    const leadPrevio = (metadata.lead && typeof metadata.lead === 'object' ? metadata.lead : {}) as Record<string, unknown>;
-    const leadNuevo = {
-      ...leadPrevio,
-      ...sinNulos({
-        titulo: clean(body.name),
-        valor_estimado: amount !== null ? sinNulos({ monto: amount, moneda: currency }) : null,
-        deal_type: dealType,
-        temperatura: temperature,
-        proximo_contacto: clean(body.next_contact_at),
-        cierre_esperado: clean(body.expected_close_date),
-        origen_texto: clean(body.source),
-        capturado_por: ctx.userId,
-      }),
-      ...(extras?.lead?.metadata ?? {}),
-    };
-    const cambios: Record<string, unknown> = {
-      lead_source: f.lead_source ?? normalizarOrigenLead(body.source),
-      owner_id: f.owner_id ?? nuevoOwner,
-      metadata: { ...metadata, lead: leadNuevo },
-      lead_discarded_at: null,
-      lead_discard_reason: null,
-      lead_discarded_by: null,
-      updated_at: new Date().toISOString(),
-    };
+    const cambios = prepararDatosLead(f, body, ctx.userId, nuevoOwner, extras);
     const { data: guardado, error: updError } = await supabase
       .from('customers')
       .update(cambios)

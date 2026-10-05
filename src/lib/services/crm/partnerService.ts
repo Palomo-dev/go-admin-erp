@@ -1,17 +1,16 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
-  computePartnerCommission,
   effectiveCommissionRate,
   summarizeCommissions,
   checkCommissionTransition,
   CommissionTransitionError,
   commissionPatch,
   type CommissionStatus,
-  type CommissionSummary,
-  type DealType,
 } from './partnerCommission';
-import { partnerStats, tierPromotion } from './partnerTierFor';
+import { registerPartnerDealAtomic, type PromotionBlock } from './partnerDealAtomicService';
+import type { ResumenMonedaBase } from '@/components/crm/kit/monedaCrm';
 import { F12Error, notFound } from './f12Errors';
+import { readAllF12, readF12Money, summarizeF12Money } from './f12ReadService';
 
 /**
  * Servicio CRM de partners (F12). Tablas: `partners`, `partner_tiers`,
@@ -31,100 +30,8 @@ import { F12Error, notFound } from './f12Errors';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
-export interface Partner {
-  id: string;
-  organization_id: number;
-  name: string;
-  company_name: string | null;
-  email: string;
-  phone: string | null;
-  tier_id: string | null;
-  /** 0 = hereda la tasa del tier. */
-  commission_rate: number;
-  is_active: boolean;
-  created_at: string;
-}
-
-export interface PartnerInput {
-  name: string;
-  email: string;
-  company_name?: string | null;
-  phone?: string | null;
-  tier_id?: string | null;
-  commission_rate?: number;
-  is_active?: boolean;
-}
-
-export type PartnerUpdateInput = Partial<PartnerInput>;
-
-export interface PartnerTier {
-  id: string;
-  organization_id: number;
-  name: string;
-  min_deals: number;
-  min_revenue: number;
-  commission_rate: number;
-  benefits: unknown;
-  created_at: string;
-}
-
-export interface PartnerTierInput {
-  name: string;
-  min_deals?: number;
-  min_revenue?: number;
-  commission_rate?: number;
-  benefits?: string[];
-}
-
-export type PartnerTierUpdateInput = Partial<PartnerTierInput>;
-
-export interface PartnerDeal {
-  id: string;
-  organization_id: number;
-  partner_id: string;
-  opportunity_id: string;
-  deal_type: DealType;
-  commission_amount: number | null;
-  commission_status: CommissionStatus;
-  commission_paid_at: string | null;
-  created_at: string;
-}
-
-export interface DealOpportunityRef {
-  id: string;
-  name: string;
-  amount: number | null;
-  currency: string | null;
-  status: string | null;
-}
-
-export interface PartnerDealView extends PartnerDeal {
-  opportunity: DealOpportunityRef | null;
-}
-
-export interface PartnerDealInput {
-  opportunity_id: string;
-  deal_type: DealType;
-}
-
-export interface PartnerDealFilters {
-  deal_type?: string;
-  commission_status?: string;
-  limit?: number;
-  offset?: number;
-}
-
-/** Partner con su tier resuelto y el resumen de comisiones (para la lista). */
-export interface PartnerView extends Partner {
-  tier: Pick<PartnerTier, 'id' | 'name' | 'commission_rate'> | null;
-  effective_rate: number;
-  deals_count: number;
-  commissions: CommissionSummary;
-  /** Moneda de las comisiones (la de las oportunidades); null sin deals. */
-  commissions_currency: string | null;
-  /** true si los deals mezclan monedas: la suma no se muestra. */
-  currency_mixed: boolean;
-}
+export type { Partner, PartnerInput, PartnerUpdateInput, PartnerTier, PartnerTierInput, PartnerTierUpdateInput, PartnerDeal, DealOpportunityRef, PartnerDealView, PartnerDealInput, PartnerDealFilters, PartnerView } from './redCommercialTypes';
+import type { Partner, PartnerInput, PartnerUpdateInput, PartnerTier, PartnerTierInput, PartnerTierUpdateInput, PartnerDeal, DealOpportunityRef, PartnerDealView, PartnerDealInput, PartnerDealFilters, PartnerView } from './redCommercialTypes';
 
 const DEAL_SELECT = '*, opportunity:opportunities(id, name, amount, currency, status)';
 
@@ -172,15 +79,14 @@ export async function assertEmailFree(email: string, orgId: number, supabase: Su
 // ─── Partners ────────────────────────────────────────────────────────────────
 
 export async function getPartners(orgId: number, supabase: SupabaseClient): Promise<PartnerView[]> {
-  const [{ data: partners, error: e1 }, tiers, { data: deals, error: e3 }] = await Promise.all([
-    supabase.from('partners').select('*').eq('organization_id', orgId).order('created_at', { ascending: false }),
+  const [partners, tiers, deals, money] = await Promise.all([
+    readAllF12<Partner>(supabase, 'partners', '*', orgId),
     getPartnerTiers(orgId, supabase),
-    supabase.from('partner_deals').select('partner_id, commission_status, commission_amount, opportunity:opportunities(currency)').eq('organization_id', orgId),
+    readAllF12<Record<string, unknown>>(supabase, 'partner_deals', 'id, partner_id, commission_status, commission_amount, opportunity:opportunities(amount,currency)', orgId),
+    readF12Money(orgId, supabase, new Date()),
   ]);
-  if (e1) throw e1;
-  if (e3) throw e3;
   const tierById = new Map(tiers.map((t) => [t.id, t]));
-  type DealRow = { partner_id: string; commission_status: string; commission_amount: number | null; opportunity: { currency: string | null } | { currency: string | null }[] | null };
+  type DealRow = { partner_id: string; commission_status: string; commission_amount: number | null; opportunity: { currency: string | null; amount: number | null } | { currency: string | null; amount: number | null }[] | null };
   const dealsByPartner = new Map<string, DealRow[]>();
   for (const d of (deals as DealRow[] | null) ?? []) {
     const list = dealsByPartner.get(d.partner_id) ?? [];
@@ -198,7 +104,8 @@ export async function getPartners(orgId: number, supabase: SupabaseClient): Prom
       deals_count: own.filter((d) => d.commission_status !== 'rejected').length,
       commissions: summarizeCommissions(own),
       commissions_currency: currencies.length === 1 ? currencies[0] : null,
-      currency_mixed: currencies.length > 1,
+      currency_mixed: currencies.length > 1 || own.some(d => !one(d.opportunity)?.currency),
+      revenue: summarizeF12Money(own.filter(d => d.commission_status !== 'rejected').map(d => ({ monto: one(d.opportunity)?.amount, moneda: one(d.opportunity)?.currency?.trim().toUpperCase() ?? null })), money),
     };
   });
 }
@@ -244,14 +151,8 @@ export async function deletePartner(id: string, orgId: number, supabase: Supabas
 // ─── Tiers ───────────────────────────────────────────────────────────────────
 
 export async function getPartnerTiers(orgId: number, supabase: SupabaseClient): Promise<PartnerTier[]> {
-  const { data, error } = await supabase
-    .from('partner_tiers')
-    .select('*')
-    .eq('organization_id', orgId)
-    .order('min_revenue', { ascending: true })
-    .order('min_deals', { ascending: true });
-  if (error) throw error;
-  return (data || []) as PartnerTier[];
+  const tiers = await readAllF12<PartnerTier>(supabase, 'partner_tiers', '*', orgId);
+  return tiers.sort((a, b) => Number(a.min_revenue) - Number(b.min_revenue) || Number(a.min_deals) - Number(b.min_deals));
 }
 
 export async function createPartnerTier(orgId: number, data: PartnerTierInput, supabase: SupabaseClient): Promise<PartnerTier> {
@@ -306,7 +207,8 @@ export async function getPartnerDeals(partnerId: string, orgId: number, supabase
   query = query.range(offset, offset + limit - 1);
   const { data, error, count } = await query;
   if (error) throw error;
-  return { data: ((data as Record<string, unknown>[] | null) ?? []).map(toDealView), count: count ?? 0 };
+  if (typeof count !== 'number' || !Number.isSafeInteger(count) || count < 0) throw new Error('La base no devolvió el conteo exacto de deals');
+  return { data: ((data as Record<string, unknown>[] | null) ?? []).map(toDealView), count };
 }
 
 export interface RegisterDealResult {
@@ -314,82 +216,19 @@ export interface RegisterDealResult {
   commission_rate: number;
   /** Tier al que subió el partner con este deal, si subió. */
   promoted_to: Pick<PartnerTier, 'id' | 'name' | 'commission_rate'> | null;
+  promotion_blocked: PromotionBlock;
+  revenue: ResumenMonedaBase | null;
 }
 
 /**
  * Registra un deal: la oportunidad debe ser de la organización (404), la
  * comisión se calcula en servidor (monto × tasa efectiva) y luego se evalúa la
  * promoción de tier con todos los deals no rechazados del partner.
- * Dos escrituras (deal, tier): si la promoción falla, el deal queda y se
- * reevalúa en el siguiente; se registra el fallo.
+ * Comisión y promoción se guardan en una transacción; una tasa ausente bloquea
+ * la promoción y se informa sin sumar monedas distintas.
  */
-export async function registerPartnerDeal(partnerId: string, orgId: number, input: PartnerDealInput, supabase: SupabaseClient): Promise<RegisterDealResult> {
-  const partner = await requirePartner(partnerId, orgId, supabase);
-  const { data: opp, error: eOpp } = await supabase
-    .from('opportunities')
-    .select('id, name, amount, currency, status')
-    .eq('id', input.opportunity_id)
-    .eq('organization_id', orgId)
-    .maybeSingle();
-  if (eOpp) throw eOpp;
-  if (!opp) throw notFound('Oportunidad');
-
-  const { data: dup, error: eDup } = await supabase
-    .from('partner_deals')
-    .select('id')
-    .eq('organization_id', orgId)
-    .eq('partner_id', partnerId)
-    .eq('opportunity_id', input.opportunity_id)
-    .neq('commission_status', 'rejected')
-    .limit(1);
-  if (eDup) throw eDup;
-  if (((dup as unknown[] | null) ?? []).length > 0) {
-    throw new F12Error(409, 'DUPLICATE_DEAL', 'Esta oportunidad ya está registrada como deal de este partner');
-  }
-
-  const tiers = await getPartnerTiers(orgId, supabase);
-  const tier = partner.tier_id ? tiers.find((t) => t.id === partner.tier_id) ?? null : null;
-  const rate = effectiveCommissionRate(partner, tier);
-  const commission = computePartnerCommission((opp as { amount: unknown }).amount, rate);
-
-  const { data: deal, error } = await supabase
-    .from('partner_deals')
-    .insert({
-      organization_id: orgId,
-      partner_id: partnerId,
-      opportunity_id: input.opportunity_id,
-      deal_type: input.deal_type,
-      commission_amount: commission,
-      commission_status: 'pending',
-    })
-    .select(DEAL_SELECT)
-    .single();
-  if (error) throw error;
-
-  let promotedTo: RegisterDealResult['promoted_to'] = null;
-  const { data: all, error: eAll } = await supabase
-    .from('partner_deals')
-    .select('commission_status, opportunity:opportunities(amount)')
-    .eq('organization_id', orgId)
-    .eq('partner_id', partnerId);
-  if (eAll) {
-    console.error('[partnerService.registerPartnerDeal] no se pudo evaluar la promoción:', eAll.message);
-  } else {
-    const stats = partnerStats(
-      ((all as Array<{ commission_status: string; opportunity: { amount: unknown } | { amount: unknown }[] | null }> | null) ?? []).map((d) => ({
-        commission_status: d.commission_status,
-        amount: one(d.opportunity)?.amount as number | string | null | undefined,
-      })),
-    );
-    const promotion = tierPromotion(partner.tier_id, stats, tiers);
-    if (promotion) {
-      const { error: eTier } = await supabase.from('partners').update({ tier_id: promotion.tierId }).eq('id', partnerId).eq('organization_id', orgId);
-      if (eTier) console.error('[partnerService.registerPartnerDeal] no se pudo promocionar el tier:', eTier.message);
-      else promotedTo = { id: promotion.tier.id, name: promotion.tier.name, commission_rate: promotion.tier.commission_rate };
-    }
-  }
-
-  return { deal: toDealView(deal as Record<string, unknown>), commission_rate: rate, promoted_to: promotedTo };
+export async function registerPartnerDeal(partnerId: string, orgId: number, input: PartnerDealInput, supabase: SupabaseClient, actor: string): Promise<RegisterDealResult> {
+  return registerPartnerDealAtomic(partnerId, orgId, input, actor, supabase);
 }
 
 /** Transición de comisión por la máquina pura, con guarda optimista: dos «pagar» concurrentes → uno gana, el otro 409. */

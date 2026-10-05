@@ -1,3 +1,5 @@
+import { interpolateAutomationText, type AutomationText } from '@/lib/services/crm/automation/automationText';
+const defaultSequenceText:AutomationText=(source,values)=>interpolateAutomationText(source ?? '',values);
 /**
  * Catálogos y funciones puras de la interfaz de secuencias: disparadores,
  * condiciones de salida, motivos de salida, tasa de respuesta, advertencia de
@@ -12,6 +14,7 @@
  */
 
 import { CUSTOMER_FACING_CHANNELS, channelLabel } from '@/lib/services/crm/sequenceTimeline';
+import { SEQUENCE_EXIT_CONDITIONS } from '@/lib/crm/sequenceCapabilities';
 
 export const TRIGGER_OPTIONS = [
   { value: 'manual', label: 'Manual', hint: 'Se inscribe a mano desde la lista' },
@@ -31,7 +34,7 @@ export function triggerLabel(value: string): string {
  * el motor no las evalúa y ofrecerlas prometía algo que no pasaba.
  * `won_lost` se aplica siempre, esté marcada o no.
  */
-export const EXIT_CONDITION_VALUES = ['won_lost', 'opted_out'] as const;
+export const EXIT_CONDITION_VALUES = SEQUENCE_EXIT_CONDITIONS;
 export const ALWAYS_ON_EXIT_CONDITION = 'won_lost';
 
 /**
@@ -53,15 +56,15 @@ export const EXIT_REASON_LABELS: Record<string, string> = {
 };
 
 /** Texto humano del motivo (pausa o salida). Desconocido → se muestra en crudo. */
-export function reasonText(reason: string | null | undefined): string {
+export function reasonText(reason: string | null | undefined, text: AutomationText = defaultSequenceText): string {
   if (!reason) return '';
-  if (reason.startsWith('customer_replied')) return 'el cliente respondió';
-  return EXIT_REASON_LABELS[reason] ?? reason;
+  if (reason.startsWith('customer_replied')) return text("el cliente respondió");
+  return text(EXIT_REASON_LABELS[reason] ?? reason);
 }
 
 /** Nombre visible de una inscripción; sin nombre, un id corto: dos «sin nombre» eran indistinguibles (R4). */
-export function enrollmentTitle(e: { id: string; opportunity_name?: string | null; customer_name?: string | null }): string {
-  return e.opportunity_name ?? e.customer_name ?? `Oportunidad sin nombre · ${e.id.slice(0, 8)}`;
+export function enrollmentTitle(e: { id: string; opportunity_name?: string | null; customer_name?: string | null }, text: AutomationText = defaultSequenceText): string {
+  return e.opportunity_name ?? e.customer_name ?? text("Oportunidad sin nombre · {p0}",{p0:e.id.slice(0, 8)});
 }
 
 /**
@@ -74,13 +77,13 @@ export function enrollmentTitle(e: { id: string; opportunity_name?: string | nul
  */
 export function responseSummary(
   stats: { replied: number; total: number } | null | undefined,
-  pauseOnReply: boolean | undefined,
+  pauseOnReply: boolean | undefined, text: AutomationText = defaultSequenceText
 ): string {
-  if (!stats || stats.total <= 0) return 'sin inscritos';
+  if (!stats || stats.total <= 0) return text("sin inscritos");
   if (pauseOnReply === false) {
-    return stats.replied > 0 ? `pausadas por respuesta: ${stats.replied} de ${stats.total} · ya no se registran` : 'no se registran respuestas';
+    return stats.replied > 0 ? text("pausadas por respuesta: {p0} de {p1} · ya no se registran",{p0:stats.replied,p1:stats.total}) : text("no se registran respuestas");
   }
-  return `pausadas por respuesta: ${stats.replied} de ${stats.total}`;
+  return text("pausadas por respuesta: {p0} de {p1}",{p0:stats.replied,p1:stats.total});
 }
 
 /** Condiciones de salida guardadas que el formulario ya no ofrece (el motor no las evalúa): se avisa antes de perderlas al guardar. */
@@ -95,8 +98,8 @@ export function unsupportedExitConditions(saved: unknown[] | null | undefined): 
 }
 
 /** «1 paso» / «2 pasos» para el `aria-label` de la lista de pasos del diálogo de inscripción. */
-export function stepsCountLabel(n: number): string {
-  return `${n} paso${n === 1 ? '' : 's'}, empezando por el primero`;
+export function stepsCountLabel(n: number, text: AutomationText = defaultSequenceText): string {
+  return text("{p0} paso{p1}, empezando por el primero",{p0:n,p1:n === 1 ? '' : 's'});
 }
 
 /**
@@ -105,20 +108,20 @@ export function stepsCountLabel(n: number): string {
  */
 export function enrollWarning(
   steps: { channel: string }[],
-  candidate: { customer_email: string | null },
+  candidate: { customer_email: string | null }, text: AutomationText = defaultSequenceText
 ): { sendsToCustomer: boolean; channelNames: string; needsEmail: boolean; contactNote: string } {
   const channels = Array.from(new Set(steps.map((s) => s.channel).filter((c) => CUSTOMER_FACING_CHANNELS.has(c))));
   const needsEmail = channels.includes('email');
   const contactNote = candidate.customer_email
-    ? ` (${candidate.customer_email})`
-    : needsEmail ? ' (sin email: los correos fallarán)' : '';
-  return { sendsToCustomer: channels.length > 0, channelNames: joinChannelNames(channels.map(channelLabel)), needsEmail, contactNote };
+    ? text(" ({p0})",{p0:candidate.customer_email})
+    : needsEmail ? text(" (sin email: los correos fallarán)") : '';
+  return { sendsToCustomer: channels.length > 0, channelNames: joinChannelNames(channels.map(channel=>text(channelLabel(channel))), text), needsEmail, contactNote };
 }
 
 /** «Email, WhatsApp y SMS»: comas y una sola «y» (antes `join(' y ')`). */
-export function joinChannelNames(names: string[]): string {
+export function joinChannelNames(names: string[], text: AutomationText = defaultSequenceText): string {
   if (names.length <= 1) return names[0] ?? '';
-  return `${names.slice(0, -1).join(', ')} y ${names[names.length - 1]}`;
+  return text("{p0} y {p1}",{p0:names.slice(0, -1).join(', '),p1:names[names.length - 1]});
 }
 
 /** Pasos que el preview y `fn_enroll_in_sequence` tienen en cuenta: solo los activos (`is_active` ausente cuenta, como el default de la BD). */
@@ -133,9 +136,9 @@ export function activeStepCount(steps: { is_active?: boolean }[] | null | undefi
  * prometa lo que la RPC va a rechazar después de marcar la casilla de envíos
  * reales (tester r3). Sin pasos manda: activar no bastaría.
  */
-export function enrollBlockReason(sequence: { is_active: boolean; steps?: { is_active?: boolean }[] | null }): string | null {
-  if (activeStepCount(sequence.steps) === 0) return 'Sin pasos no hay nada que enviar: edítala y añade pasos para poder inscribir.';
-  if (!sequence.is_active) return 'Activa la secuencia para inscribir.';
+export function enrollBlockReason(sequence: { is_active: boolean; steps?: { is_active?: boolean }[] | null }, text: AutomationText = defaultSequenceText): string | null {
+  if (activeStepCount(sequence.steps) === 0) return text("Sin pasos no hay nada que enviar: edítala y añade pasos para poder inscribir.");
+  if (!sequence.is_active) return text("Activa la secuencia para inscribir.");
   return null;
 }
 
@@ -173,8 +176,8 @@ export const SELECT_CLASS = 'h-9 w-full rounded-md border border-gray-300 bg-whi
   + 'dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100';
 
 /** Espera en horas dentro del día: la BD la limita a 0–23 (R5, validación en cliente). */
-export function hoursError(hours: unknown): string | null {
+export function hoursError(hours: unknown, text: AutomationText = defaultSequenceText): string | null {
   const h = Number(hours);
-  if (!Number.isInteger(h) || h < 0 || h > 23) return 'Entre 0 y 23 horas.';
+  if (!Number.isInteger(h) || h < 0 || h > 23) return text("Entre 0 y 23 horas.");
   return null;
 }

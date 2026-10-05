@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { getPartners, createPartner } from '@/lib/services/crm/partnerService';
 import { validatePartnerInput } from '@/lib/services/crm/f12Validation';
-import { canManagePartners, jsonOk, readJson, rejectForeignOrganization, requirePartnerManager, routeError, validationFail } from '@/lib/services/crm/f12RouteSupport';
+import { canManagePartners, canRegisterPartnerDeal, jsonOk, readJson, rejectForeignOrganization, requirePartnerManager, routeError, validationFail } from '@/lib/services/crm/f12RouteSupport';
 
 const TAG = 'CRM Partners';
 
@@ -11,11 +11,12 @@ const TAG = 'CRM Partners';
  * y resumen de comisiones (registro, no dinero). `can_manage` dice si la
  * sesión puede aprobar/pagar/rechazar comisiones y borrar partners.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
+    if (request) rejectForeignOrganization(TAG, null, ctx, request);
     const partners = await getPartners(ctx.organizationId, ctx.supabase);
-    return jsonOk(partners, { can_manage: canManagePartners(ctx) });
+    return jsonOk(partners, { can_manage: await canManagePartners(ctx), can_register: await canRegisterPartnerDeal(ctx) });
   } catch (error) {
     return routeError(error, TAG);
   }
@@ -28,10 +29,10 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     const body = await readJson(request);
     rejectForeignOrganization(TAG, body, ctx, request);
-    requirePartnerManager(ctx); // crear configuración exige el mismo rol que editarla/borrarla
+    await requirePartnerManager(ctx); // crear configuración exige el mismo rol que editarla/borrarla
     const parsed = validatePartnerInput(body, { partial: false });
     if (!parsed.ok) return validationFail(parsed.errors);
     const v = parsed.value;

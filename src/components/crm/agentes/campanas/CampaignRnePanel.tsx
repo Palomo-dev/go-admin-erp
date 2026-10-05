@@ -24,6 +24,8 @@ import { FilaDato, ListaDatos } from "@/components/kit/FilaDato";
 import { useFormatDate } from "@/lib/context/OrganizationTimezoneContext";
 import { describeError, logError } from "@/lib/utils/errorMessage";
 import { fetchJson } from "@/lib/utils/fetchJson";
+import { pedirCrm, ErrorApiCrm } from "@/components/crm/acciones/apiCrm";
+import { estadoConstanciaRne } from './rnePanelLogica';
 
 interface Verificacion {
   checked_at: string;
@@ -35,6 +37,9 @@ interface Verificacion {
   skipped_calls: number;
   vigente?: boolean;
   descartados?: number;
+  evidence_available?: boolean;
+  audience_unchanged?: boolean;
+  changed_targets?: number;
 }
 
 interface RespuestaGet {
@@ -45,18 +50,13 @@ interface RespuestaGet {
   puede_verificar?: boolean;
 }
 
-interface RespuestaPost {
-  success?: boolean;
-  error?: string;
-  data?: Verificacion;
-}
-
 /** Igual que el servidor (`MAX_BYTES_ARCHIVO_RNE`): se avisa antes de subir. */
 const MAX_BYTES = 8 * 1024 * 1024;
 
-export function CampaignRnePanel({ campaignId }: { campaignId: string }) {
+export function CampaignRnePanel({ campaignId, expectedUpdatedAt, onChanged }: { campaignId: string; expectedUpdatedAt?: string; onChanged?: () => void }) {
   const t = useTranslations("vozRne");
-  const { formatDateTime } = useFormatDate();
+  const c = useTranslations("crm.campanasNuevo");
+  const { formatDateTime } = useFormatDate(null);
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [verificacion, setVerificacion] = useState<Verificacion | null>(null);
@@ -100,24 +100,25 @@ export function CampaignRnePanel({ campaignId }: { campaignId: string }) {
     setSubiendo(true);
     try {
       const contenido = await archivo.text();
-      const json = await fetchJson<RespuestaPost>(`/api/crm/voice-agents/campaigns/${campaignId}/rne`, {
+      const json = await pedirCrm<Verificacion>(`/api/crm/voice-agents/campaigns/${campaignId}/rne`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre_archivo: archivo.name, contenido }),
+        cuerpo: { nombre_archivo: archivo.name, contenido, expected_updated_at: expectedUpdatedAt },
       });
-      if (!json?.success || !json.data) throw new Error(json?.error || t("errorVerificar"));
-      setVerificacion({ ...json.data, vigente: true });
+      if (!json.data) throw new Error(t("errorVerificar"));
+      setVerificacion(json.data);
       setRecien(true);
+      onChanged?.();
     } catch (err) {
       logError("[CampaignRnePanel] verificar", err);
-      setError(describeError(err));
+      setError(err instanceof ErrorApiCrm && err.codigo === 'campana_modificada' ? c('archivoConflicto') :
+        err instanceof ErrorApiCrm && err.codigo === 'rne_audiencia_modificada' ? t('audienciaConflicto') : describeError(err));
     } finally {
       setSubiendo(false);
       if (inputRef.current) inputRef.current.value = "";
     }
   };
 
-  const vigente = verificacion?.vigente === true;
+  const { incompleta, vigente, aviso } = estadoConstanciaRne(verificacion);
 
   return (
     <section
@@ -131,13 +132,16 @@ export function CampaignRnePanel({ campaignId }: { campaignId: string }) {
         </h4>
         {!cargando && (
           <StatusBadge
-            estado={vigente ? "vigente" : verificacion ? "vencida" : "pendiente"}
-            etiqueta={vigente ? t("estadoVigente") : verificacion ? t("estadoVencida") : t("estadoSin")}
+            estado={incompleta ? "incompleta" : vigente ? "vigente" : verificacion ? "vencida" : "pendiente"}
+            etiqueta={incompleta ? t("estadoIncompleta") : vigente ? t("estadoVigente") : verificacion ? t("estadoVencida") : t("estadoSin")}
             tono={vigente ? "exito" : "advertencia"}
           />
         )}
       </div>
       <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">{t("ayuda", { dias: vigenciaDias })}</p>
+      {aviso && <p className="mt-2 text-xs text-amber-800 dark:text-amber-200" role="alert">{
+        t(aviso, { n: verificacion?.changed_targets ?? 0 })
+      }</p>}
 
       {cargando ? (
         <p className="mt-2 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400" role="status">

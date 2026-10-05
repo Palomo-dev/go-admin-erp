@@ -200,7 +200,7 @@ describe('F9 · timeline v2 — casos adversarios (de tester r1, corregidos en r
       'opportunities',
       'activities', 'tasks', 'notes', 'calls', 'email_messages', 'messages', 'messages',
       'voice_agent_calls', 'opportunity_stage_history',
-      'profiles', 'calls',
+      'calls', 'organization_members',
     ]);
     expect(log.length).toBe(12);
   });

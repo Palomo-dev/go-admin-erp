@@ -145,7 +145,7 @@ export interface ICPAssignmentResult {
 
 // ─── Datos de cliente/oportunidad para evaluación ────────────────────────────
 
-interface CustomerData {
+export interface CustomerData {
   company_size?: string | null;
   branches_count?: number | null;
   current_software?: string | null;
@@ -551,7 +551,11 @@ export async function evaluateICP(
     opportunityData = (opp as OpportunityData) || {};
   }
 
-  // 4. Evaluar contra cada profile
+  return evaluateICPProfiles(profiles, customerData, opportunityData);
+}
+
+/** Mismo motor ICP para datos preparados aún no insertados. */
+export function evaluateICPProfiles(profiles: readonly ICPProfile[], customerData: CustomerData, opportunityData: OpportunityData): ICPEvaluationResult[] {
   const evaluations: ICPEvaluationResult[] = [];
 
   for (const profile of profiles) {

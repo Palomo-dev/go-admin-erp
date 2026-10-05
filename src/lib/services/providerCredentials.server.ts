@@ -15,6 +15,7 @@
 
 import { getServiceClient, assertServerOnly } from '@/lib/supabase/server-service';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { RequestDeadlineError, withRequestDeadline } from '@/lib/utils/requestDeadline';
 import {
   type ProviderCategory,
   SUPPORTED_PROVIDERS,
@@ -54,14 +55,52 @@ function client(): SupabaseClient {
   return clientOverride ?? getServiceClient();
 }
 
-async function readRows(orgId: number, category?: ProviderCategory): Promise<ProviderRow[]> {
-  let q = client()
-    .from('provider_configs')
-    .select('id, category, provider, credentials, settings, is_active, priority, updated_at')
-    .eq('organization_id', orgId);
-  if (category) q = q.eq('category', category);
-  const { data, error } = await q.order('priority', { ascending: true });
+export interface ProviderReadOptions {
+  /** Opt-in: las llamadas existentes conservan su contrato de lectura. */
+  timeoutMs?: number;
+  strict?: boolean;
+  signal?: AbortSignal;
+}
+
+/** Sin mensaje de BD, URL ni valores de credenciales en el error público. */
+export class ProviderReadError extends Error {
+  readonly status: 503 | 504;
+  readonly retryable = true;
+  constructor(readonly code: 'PROVIDER_READ_FAILED' | 'PROVIDER_READ_TIMEOUT' | 'PROVIDER_READ_CANCELLED' = 'PROVIDER_READ_FAILED') {
+    super(code === 'PROVIDER_READ_TIMEOUT'
+      ? 'La configuración del proveedor tardó demasiado. Inténtalo de nuevo.'
+      : code === 'PROVIDER_READ_CANCELLED'
+        ? 'Se canceló la lectura de la configuración del proveedor.'
+        : 'No se pudo comprobar la configuración del proveedor. Inténtalo de nuevo.');
+    this.name = 'ProviderReadError';
+    this.status = code === 'PROVIDER_READ_TIMEOUT' ? 504 : 503;
+  }
+}
+
+async function readRows(orgId: number, category?: ProviderCategory, options: ProviderReadOptions = {}): Promise<ProviderRow[]> {
+  const read = async (signal?: AbortSignal) => {
+    let q = client()
+      .from('provider_configs')
+      .select('id, category, provider, credentials, settings, is_active, priority, updated_at')
+      .eq('organization_id', orgId);
+    if (category) q = q.eq('category', category);
+    const ordered = q.order('priority', { ascending: true });
+    return await (signal ? ordered.abortSignal(signal) : ordered);
+  };
+  const bounded = options.timeoutMs !== undefined || options.signal !== undefined || options.strict === true;
+  let result: Awaited<ReturnType<typeof read>>;
+  try {
+    result = bounded
+      ? await withRequestDeadline(read, { timeoutMs: options.timeoutMs ?? 4_000, signal: options.signal })
+      : await read();
+  } catch (err) {
+    if (err instanceof RequestDeadlineError) throw new ProviderReadError(err.code === 'REQUEST_TIMEOUT' ? 'PROVIDER_READ_TIMEOUT' : 'PROVIDER_READ_CANCELLED');
+    if (options.strict) throw new ProviderReadError();
+    throw err;
+  }
+  const { data, error } = result;
   if (error) {
+    if (options.strict) throw new ProviderReadError();
     console.error('[providerCredentials] Error leyendo provider_configs:', error.message);
     return [];
   }
@@ -80,8 +119,9 @@ export async function getProviderCredentials(
   orgId: number,
   category: ProviderCategory,
   provider?: string,
+  options: ProviderReadOptions = {},
 ): Promise<ProviderConfig> {
-  const rows = (await readRows(orgId, category)).filter((r) => r.is_active && (!provider || r.provider === provider));
+  const rows = (await readRows(orgId, category, options)).filter((r) => r.is_active && (!provider || r.provider === provider));
 
   for (const row of rows) {
     const own = sanitizeCredentials(row.credentials);
@@ -123,12 +163,12 @@ export async function getProviderSettings(
 export async function listProviderConfigsSafe(
   orgId: number,
   category?: ProviderCategory,
-  opts: { seed?: boolean } = { seed: true },
+  opts: { seed?: boolean } & ProviderReadOptions = { seed: true },
 ): Promise<ProviderConfigSafe[]> {
-  let rows = await readRows(orgId, category);
+  let rows = await readRows(orgId, category, opts);
   if (rows.length === 0 && !category && opts.seed !== false) {
     const { error } = await client().rpc('fn_seed_provider_configs', { p_org: orgId });
-    if (!error) rows = await readRows(orgId);
+    if (!error) rows = await readRows(orgId, undefined, opts);
   }
 
   const items: ProviderConfigSafe[] = rows.map((r) => {

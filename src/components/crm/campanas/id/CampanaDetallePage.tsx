@@ -1,121 +1,103 @@
-'use client';
-
-/** /app/crm/campanas/[id] (FASE-16 §5.1): progreso en vivo, pausa/reanuda/cancela, errores por código, contactos y CSV. */
-import { useCallback, useEffect, useState } from 'react';
+"use client";
+import { useCallback, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, Download, Loader2, Megaphone, Pause, Play, RefreshCw, Rocket, XCircle } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useFormatter, useTranslations } from 'next-intl';
+import { Download, RefreshCw, Send } from 'lucide-react';
+import { PageHeader } from '@/components/kit/PageHeader';
+import { EmptyState } from '@/components/kit/EmptyState';
+import { StatCard } from '@/components/kit/StatCard';
+import { StatusBadge } from '@/components/kit/StatusBadge';
+import { Dialogo } from '@/components/kit/Dialogo';
+import { FilaDato, ListaDatos } from '@/components/kit/FilaDato';
+import { clasesBoton } from '@/components/kit/botonClases';
 import { Progress } from '@/components/ui/progress';
-import { PageHeaderSkeleton, StatsSkeleton } from '@/components/common/PageSkeletons';
-import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/lib/supabase/config';
-import { isRealtimePublished } from '@/components/crm/shared/realtimeTables';
-import { ERROR_CODE_LABELS, SKIP_REASON_LABELS, type CampaignStatsResult } from '@/components/crm/whatsapp/api';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { useOrganization } from '@/lib/hooks/useOrganization';
 import { CampanasService } from '../CampanasService';
-import { CAMPAIGN_STATUS_CONFIG, type Campaign } from '../types';
+import { CampaignCompliancePanel } from '../CampaignCompliancePanel';
 import { CampaignContactsTable } from './CampaignContactsTable';
+import { resumenCampana, campaignPauseKey } from './campanaDetalleLogica';
+import { useDetalleCampana } from './useDetalleCampana';
 
-export function CampanaDetallePage({ campaignId }: { campaignId: string }) {
-  const router = useRouter();
-  const { toast } = useToast();
-  const [campaign, setCampaign] = useState<Campaign | null>(null);
-  const [stats, setStats] = useState<CampaignStatsResult | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState<string | null>(null);
-  /** Lanzar/pausar/reanudar/cancelar exigen admin de organización (tester r1 · fallo 8). */
-  const [canManage, setCanManage] = useState(false);
-
-  const load = useCallback(async (sync = false) => {
-    try {
-      const [r, s] = await Promise.all([CampanasService.getCampaignWithPermissions(campaignId), CampanasService.stats(campaignId, sync)]);
-      const c = r?.data ?? null;
-      if (!c) { toast({ title: 'Campaña no encontrada', variant: 'destructive' }); router.push('/app/crm/campanas'); return; }
-      setCanManage(r?.can_manage === true);
-      setCampaign(c);
-      setStats(s);
-    } catch (e) {
-      toast({ title: 'No se pudo cargar', description: e instanceof Error ? e.message : 'Error', variant: 'destructive' });
-    } finally { setLoading(false); }
-  }, [campaignId, router, toast]);
-
-  useEffect(() => { void load(); }, [load]);
-  useEffect(() => {
-    // `campaigns` no está publicada en `supabase_realtime`: el canal consume
-    // conexiones del pool sin recibir eventos. El polling de 15 s de abajo
-    // cubre el refresco mientras se envía. Si se publica, agregarla a
-    // REALTIME_PUBLISHED_TABLES y este canal empezará a funcionar.
-    if (!isRealtimePublished('campaigns')) {
-      const t = setInterval(() => { if (campaign?.effective_status === 'sending') void load(true); }, 15_000);
-      return () => clearInterval(t);
-    }
-    const ch = supabase.channel(`campaign-${campaignId}`).on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'campaigns', filter: `id=eq.${campaignId}` }, () => void load()).subscribe();
-    const t = setInterval(() => { if (campaign?.effective_status === 'sending') void load(true); }, 15_000);
-    return () => { void supabase.removeChannel(ch); clearInterval(t); };
-  }, [campaignId, load, campaign?.effective_status]);
-
-  const act = async (key: string, fn: () => Promise<unknown>, ok: string) => {
-    setBusy(key);
-    try { await fn(); toast({ title: ok }); await load(); } catch (e) { toast({ title: 'No se pudo completar', description: e instanceof Error ? e.message : 'Error', variant: 'destructive' }); } finally { setBusy(null); }
+function Detalle({ campaignId }: { campaignId: string }) {
+  const t = useTranslations('crm.campanasDetalle');
+  const c = useTranslations('crm.campanasNuevo');
+  const f = useFormatter();
+  const { formatDateTime } = useFormatDate(null);
+  const { campaign, stats, canManage, loading, error, forbidden, notFound, load } = useDetalleCampana(campaignId);
+  const [busy, setBusy] = useState(false);
+  const [cancel, setCancel] = useState(false);
+  const [allowed, setAllowed] = useState(false);
+  const [actionError, setActionError] = useState(false);
+  const refresh = useCallback(() => { void load(true); }, [load]);
+  const act = async (fn: () => Promise<unknown>) => {
+    setBusy(true); setActionError(false);
+    try { await fn(); setCancel(false); await load(); } catch { setActionError(true); } finally { setBusy(false); }
   };
-
-  if (loading || !campaign) return <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen"><PageHeaderSkeleton /><StatsSkeleton count={6} /></div>;
-
-  const es = campaign.effective_status;
-  const st = CAMPAIGN_STATUS_CONFIG[es] ?? CAMPAIGN_STATUS_CONFIG.draft;
-  const k = stats?.counts ?? campaign.statistics.counts ?? { total: 0, pending: 0, queued: 0, sent: 0, delivered: 0, read: 0, replied: 0, failed: 0, skipped: 0, cost: 0 };
-  const total = campaign.statistics.total_contacts ?? k.total;
-  const done = k.sent + k.failed + k.skipped;
-  const pct = total ? Math.min(100, Math.round((done / total) * 100)) : 0;
-  const throttle = campaign.statistics.throttle_mps ?? 10;
-  const etaMin = k.pending + k.queued > 0 ? Math.ceil((k.pending + k.queued) / throttle / 60) : 0;
-
-  return (
-    <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link href="/app/crm/campanas"><Button variant="ghost" size="icon" aria-label="Volver"><ArrowLeft className="h-5 w-5" /></Button></Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3"><div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl"><Megaphone className="h-6 w-6 text-emerald-600" /></div>{campaign.name}<Badge className={`${st.bgColor} ${st.color}`}>{st.label}</Badge></h1>
-            <p className="text-gray-500 dark:text-gray-400 text-sm">{campaign.channel === 'email' ? 'Email' : 'WhatsApp'} · {campaign.template_id ? 'plantilla HSM' : 'texto libre'} · {throttle} msg/s{campaign.scheduled_at ? ` · programada ${new Date(campaign.scheduled_at).toLocaleString('es-CO')}` : ''}</p>
+  const es = campaign?.effective_status;
+  const k = stats ? resumenCampana(stats) : null;
+  const reasonLabel = (code: string) => t.has(`razones.${code}`) ? t(`razones.${code}`) : t('otraExclusion');
+  const money = (value: number | null) => value === null ? t('precioPendiente') : f.number(value, { style: 'currency', currency: 'USD', minimumFractionDigits: 4, maximumFractionDigits: 4 });
+  const navigation = <>
+    <Link href="/app/crm/campanas" className={clasesBoton({ variante: 'secundario' })}>{t('volver')}</Link>
+    <button className={clasesBoton({ variante: 'fantasma' })} onClick={refresh} disabled={busy || loading} aria-label={t('actualizar')}><RefreshCw className="size-4" aria-hidden="true" /></button>
+    {campaign && <a className={clasesBoton({ variante: 'secundario' })} href={CampanasService.csvUrl(campaignId)} download><Download className="size-4" aria-hidden="true" />{t('exportar')}</a>}
+  </>;
+  const management = canManage && campaign && <>
+      {es === 'draft' && <>
+        <button className={clasesBoton({ variante: 'secundario' })} disabled={busy} onClick={() => void act(() => CampanasService.materialize(campaignId))}>{t('calcular')}</button>
+        <button className={clasesBoton()} disabled={busy || !allowed || !campaign.statistics.materialized_at || !k?.remaining} onClick={() => void act(() => CampanasService.launch(campaignId))}>{t('lanzar')}</button>
+      </>}
+      {['sending', 'scheduled'].includes(es ?? '') && <button className={clasesBoton({ variante: 'secundario' })} disabled={busy} onClick={() => void act(() => CampanasService.pause(campaignId))}>{t('pausar')}</button>}
+      {es === 'paused' && <button className={clasesBoton({ variante: 'secundario' })} disabled={busy || !allowed} onClick={() => void act(() => CampanasService.resume(campaignId))}>{t('reanudar')}</button>}
+      {['draft', 'sending', 'scheduled', 'paused'].includes(es ?? '') && <button className={clasesBoton({ variante: 'destructivo' })} disabled={busy} onClick={() => { setActionError(false); setCancel(true); }}>{t('cancelar')}</button>}
+  </>;
+  return <div className="space-y-5 bg-canvas p-4 sm:p-6 lg:p-8">
+    <PageHeader variante="detail" titulo={campaign?.name ?? t('titulo')} icono={Send}
+      badge={es && <StatusBadge estado={es} etiqueta={c(`estados.${es}`)} />}
+      subtitulo={campaign && `${t(campaign.channel === 'email' ? 'email' : 'whatsapp')} · ${campaign.scheduled_at ? t('programada', { fecha: formatDateTime(campaign.scheduled_at) }) : t('sinProgramar')}`}
+      acciones={navigation} debajo={<><div className="flex flex-wrap gap-2 lg:hidden">{navigation}</div>{management}</>} />
+    {loading ? <Skeleton className="h-72" /> : error || !campaign || !stats || !k ? <EmptyState variante={forbidden ? 'forbidden' : 'error'} titulo={t(forbidden ? 'sinPermiso' : notFound ? 'noEncontrada' : 'error')} onReintentar={refresh} /> : <>
+      {actionError && !cancel && <p role="alert" className="rounded-lg bg-danger-subtle p-3 text-sm text-danger-text">{t('errorAccion')}</p>}
+      {!canManage && <p className="text-sm text-fg-secondary">{t('sinGestion')}</p>}
+      {es === 'paused' && <p role="status" className="rounded-lg bg-warning-subtle p-3 text-sm text-warning-text">{t(`pausas.${campaignPauseKey(campaign.statistics.template_paused ? 'template_paused' : campaign.statistics.pause_reason)}`)}</p>}
+      <section className="space-y-2 rounded-xl border border-line bg-surface p-4">
+        <Progress value={k.percentage} aria-label={t('progresoEtiqueta', { n: k.percentage })} />
+        <p className="text-sm text-fg">{t('progreso', { n: k.processed, total: k.total })}</p>
+        <p className="text-xs text-fg-secondary">{t('pendientes', { n: k.remaining })}</p>
+      </section>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
+        {(['sent', 'delivered', 'read', 'replied', 'failed', 'skipped', 'pending'] as const).map(key => <StatCard key={key} etiqueta={t(`estadosContacto.${key}`)} valor={f.number(key === 'pending' ? k.remaining : k.counts[key])} />)}
+      </div>
+      <div className="grid items-start gap-4 lg:grid-cols-[2fr_1fr]">
+        <div className="space-y-4">
+          <section className="space-y-3 rounded-xl border border-line bg-surface p-4">
+            <h2 className="text-base font-semibold text-fg">{t('costo')}</h2>
+            <ListaDatos><FilaDato etiqueta={t('estimado')} valor={money(k.estimatedCost)} /><FilaDato etiqueta={t('real')} valor={money(k.actualCost)} />
+              {k.actualCost === null && <FilaDato etiqueta={t('subtotal')} valor={money(k.knownCost)} />}
+            </ListaDatos>
+            {k.unpriced > 0 && <p className="text-xs text-warning-text">{t('sinPrecio', { n: k.unpriced })}</p>}
+            <p className="text-xs text-fg-secondary">{t('costoNota')}</p>
+          </section>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {(['by_error_code', 'by_skip_reason'] as const).map(key => <section key={key} className="space-y-2 rounded-xl border border-line bg-surface p-4">
+              <h2 className="text-base font-semibold text-fg">{t(key === 'by_error_code' ? 'errores' : 'exclusiones')}</h2>
+              {Object.entries(stats[key]).length ? <ListaDatos>{Object.entries(stats[key]).map(([code, n]) => <FilaDato key={code} etiqueta={key === 'by_error_code' ? t('errorProveedor', { code }) : reasonLabel(code)} valor={f.number(n)} />)}</ListaDatos> : <p className="text-xs text-fg-secondary">{t(key === 'by_error_code' ? 'sinErrores' : 'sinExclusiones')}</p>}
+            </section>)}
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="icon" aria-label="Actualizar" onClick={() => void load(true)}><RefreshCw className="h-4 w-4" /></Button>
-          {canManage && es === 'draft' && <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" disabled={!!busy} onClick={() => void act('launch', async () => { if (!campaign.statistics.materialized_at) await CampanasService.materialize(campaignId); await CampanasService.launch(campaignId); }, 'Campaña lanzada')}>{busy === 'launch' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Rocket className="h-4 w-4 mr-2" />}Lanzar</Button>}
-          {canManage && (es === 'sending' || es === 'scheduled') && <Button variant="outline" disabled={!!busy} onClick={() => void act('pause', () => CampanasService.pause(campaignId), 'Campaña pausada')}><Pause className="h-4 w-4 mr-2" />Pausar</Button>}
-          {canManage && es === 'paused' && <Button variant="outline" disabled={!!busy} onClick={() => void act('resume', () => CampanasService.resume(campaignId), 'Campaña reanudada')}><Play className="h-4 w-4 mr-2" />Reanudar</Button>}
-          {canManage && ['sending', 'scheduled', 'paused', 'draft'].includes(es) && <Button variant="outline" className="text-red-600" disabled={!!busy} onClick={() => { if (confirm('Los pendientes se omiten y los créditos reservados se devuelven. ¿Cancelar la campaña?')) void act('cancel', () => CampanasService.cancel(campaignId), 'Campaña cancelada'); }}><XCircle className="h-4 w-4 mr-2" />Cancelar</Button>}
-          <a href={CampanasService.csvUrl(campaignId)} download><Button variant="outline"><Download className="h-4 w-4 mr-2" />Exportar CSV</Button></a>
-          {!canManage && !loading && <span className="text-xs text-gray-500 dark:text-gray-400">Lanzar, pausar o cancelar requiere rol de administrador de la organización.</span>}
-        </div>
+        <CampaignCompliancePanel key={campaignId} campaignId={campaignId} onChanged={refresh} onAllowed={setAllowed} />
       </div>
-
-      {campaign.statistics.pause_reason && es === 'paused' && <p role="alert" className="rounded-md bg-amber-50 dark:bg-amber-900/30 text-amber-900 dark:text-amber-200 text-sm p-3">Pausada automáticamente: {campaign.statistics.pause_reason === 'no_credits' ? 'sin créditos de WhatsApp' : campaign.statistics.template_paused ? 'Meta pausó/rechazó la plantilla' : campaign.statistics.pause_reason}.</p>}
-      {campaign.statistics.messaging_limit?.warning && <p className="rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-900 dark:text-blue-200 text-xs p-2">{campaign.statistics.messaging_limit.warning}</p>}
-
-      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-        <CardContent className="pt-5 space-y-2">
-          <Progress value={pct} className="h-3 [&>div]:transition-[width] [&>div]:duration-700 [&>div]:ease-out" aria-label={`Progreso ${pct}%`} />
-          <p className="text-sm text-gray-700 dark:text-gray-200">{done} / {total} procesados · {k.sent} enviados{es === 'sending' && etaMin > 0 ? ` · termina ≈ ${etaMin} min` : ''}</p>
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-        {[['Enviados', k.sent, 'text-blue-600'], ['Entregados', k.delivered, 'text-green-600'], ['Leídos', k.read, 'text-sky-600'], ['Respondieron', k.replied, 'text-teal-600'], ['Fallidos', k.failed, 'text-red-600'], ['Omitidos', k.skipped, 'text-gray-500'], ['Pendientes', k.pending + k.queued, 'text-amber-600']].map(([l, n, c]) => (
-          <Card key={String(l)} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"><CardContent className="pt-4 text-center"><p className={`text-2xl font-bold ${c}`}>{n}</p><p className="text-xs text-gray-500">{l}</p></CardContent></Card>
-        ))}
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"><CardHeader><CardTitle className="text-base">Costo</CardTitle></CardHeader><CardContent className="text-sm space-y-1"><p>Estimado: {campaign.statistics.estimated_cost != null ? `$${Number(campaign.statistics.estimated_cost).toFixed(4)} USD` : '—'}</p><p>Real: ${k.cost.toFixed(4)} USD</p><p className="text-xs text-gray-500">El costo real llega con los eventos de entrega (pricing de Meta).</p></CardContent></Card>
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"><CardHeader><CardTitle className="text-base">Errores</CardTitle></CardHeader><CardContent className="text-xs space-y-1">{stats && Object.keys(stats.by_error_code).length ? Object.entries(stats.by_error_code).map(([code, n]) => <p key={code}><span className="font-mono">{code}</span> {ERROR_CODE_LABELS[code] ?? ''} <Badge variant="outline">{n}</Badge></p>) : <p className="text-gray-500">Sin errores del proveedor.</p>}</CardContent></Card>
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"><CardHeader><CardTitle className="text-base">Exclusiones</CardTitle></CardHeader><CardContent className="text-xs space-y-1">{stats && Object.keys(stats.by_skip_reason).length ? Object.entries(stats.by_skip_reason).map(([r, n]) => <p key={r}>{SKIP_REASON_LABELS[r] ?? r} <Badge variant="outline">{n}</Badge></p>) : <p className="text-gray-500">Sin exclusiones.</p>}</CardContent></Card>
-      </div>
-
-      <CampaignContactsTable campaignId={campaignId} refreshKey={done} />
-    </div>
-  );
+      <CampaignContactsTable campaignId={campaignId} refreshKey={JSON.stringify(stats.counts)} />
+    </>}
+    <Dialogo abierto={cancel} onAbiertoChange={setCancel} titulo={t('confirmar')} descripcion={t('confirmarDetalle')}
+      primario={{ etiqueta: t('cancelar'), destructiva: true, cargando: busy, onClick: () => void act(() => CampanasService.cancel(campaignId)) }}>
+      {actionError && <p role="alert" className="text-sm text-danger-text">{t('errorAccion')}</p>}
+    </Dialogo>
+  </div>;
+}
+export function CampanaDetallePage({ campaignId }: { campaignId: string }) {
+  const { organization } = useOrganization();
+  return <Detalle key={`${organization?.id ?? ''}:${campaignId}`} campaignId={campaignId} />;
 }

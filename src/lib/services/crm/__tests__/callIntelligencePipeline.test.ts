@@ -26,7 +26,6 @@ jest.mock('@/lib/services/crm/callAnalysisService', () => {
 });
 jest.mock('@/lib/services/crm/callActivityService', () => ({
   upsertCallActivity: jest.fn(async () => ({ activityId: 'act-1', created: true })),
-  touchOpportunityFromCall: jest.fn(async () => true),
   notifyCallAnalyzed: jest.fn(async () => 'notif-1'),
   mapCallStatusToOutcome: jest.fn(() => 'answered'),
 }));
@@ -35,7 +34,7 @@ import { enqueueJob } from '@/lib/jobs/enqueue';
 import { getCallAiPolicy } from '@/lib/services/crm/callAiPolicy';
 import { transcribeCall, TranscriptionError } from '@/lib/services/crm/transcriptionService';
 import { analyzeCall, runPostAnalysisActions, AnalysisError } from '@/lib/services/crm/callAnalysisService';
-import { upsertCallActivity, touchOpportunityFromCall, notifyCallAnalyzed } from '@/lib/services/crm/callActivityService';
+import { upsertCallActivity, notifyCallAnalyzed } from '@/lib/services/crm/callActivityService';
 import { runTranscribePipeline, runAnalysisPipeline, enqueueTranscribe, enqueueAnalyze, isEmptyTranscript, TRANSCRIBE_DEDUPE, ANALYZE_DEDUPE } from '../callIntelligenceService';
 import { transcribeHandler } from '@/lib/jobs/handlers/transcribe';
 import { analyzeHandler } from '@/lib/jobs/handlers/analyze';
@@ -46,11 +45,11 @@ const completed = { id: 'tr-1', call_id: 'call-1', organization_id: 7, status: '
 const callRow = { id: 'call-1', organization_id: 7, direction: 'outbound', mode: 'browser', status: 'completed', answered_by: 'human', started_at: 't', ended_at: 't', duration_seconds: 120, customer_id: 'cus-1', opportunity_id: 'opp-1', user_id: 'user-1' };
 const analysisRow = { id: 'an-1', call_id: 'call-1', transcript_id: 'tr-1', summary: 'Resumen', sentiment: 'mixed', quality_score: 70, next_steps: [], suggested_tasks: [{ title: 'x' }], suggested_stage_id: 'st-2', raw_response: { temperature: 'warm', suggested_tags: ['Tibio'], applied_actions: [] } };
 
-function makeSb(rows: Record<string, unknown[]>): SupabaseClient {
+function makeSb(rows: Record<string, unknown[]>, errors: Record<string, string> = {}): SupabaseClient {
   const from = jest.fn((table: string) => {
     const b: Record<string, unknown> = {};
     for (const m of ['select', 'eq', 'order', 'limit']) b[m] = () => b;
-    b.maybeSingle = async () => ({ data: rows[table]?.shift() ?? null, error: null });
+    b.maybeSingle = async () => ({ data: rows[table]?.shift() ?? null, error: errors[table] ? { message: errors[table] } : null });
     return b;
   });
   return { from } as unknown as SupabaseClient;
@@ -113,7 +112,7 @@ describe('runTranscribePipeline', () => {
 });
 
 describe('runAnalysisPipeline', () => {
-  it('analiza → actividad única enriquecida → last_contact/temperatura → acciones según política → notificación', async () => {
+  it('analiza → actividad única enriquecida → contacto por trigger → acciones según política → notificación', async () => {
     const sb = makeSb({ calls: [callRow], opportunities: [{ salesperson_id: 'user-sales', customers: { full_name: 'Juan Pérez', company_name: null } }] });
     const out = await runAnalysisPipeline(7, 'call-1', { supabase: sb, jobId: 'job-2' });
     expect(analyzeCall).toHaveBeenCalledWith(7, 'call-1', expect.objectContaining({ supabase: sb, jobId: 'job-2' }));
@@ -121,7 +120,7 @@ describe('runAnalysisPipeline', () => {
       supabase: sb, call: callRow,
       enrich: expect.objectContaining({ summary: 'Resumen', sentiment: 'mixed', qualityScore: 70, temperature: 'warm', transcriptId: 'tr-1', analysisId: 'an-1', tags: ['Tibio'] }),
     }));
-    expect(touchOpportunityFromCall).toHaveBeenCalledWith(7, callRow, { contactResult: 'answered', temperature: 'warm' }, sb);
+    // Este doble no implementa UPDATE: el pipeline no vuelve a escribir el contacto por Node.
     expect(runPostAnalysisActions).toHaveBeenCalledWith(7, analysisRow, policy, sb);
     expect(notifyCallAnalyzed).toHaveBeenCalledWith(7, callRow, expect.objectContaining({ analysisId: 'an-1', suggestions: 2, policy: 'suggest', customerName: 'Juan Pérez', salespersonId: 'user-sales', movedStage: false }), sb);
     expect(out).toMatchObject({ activityId: 'act-1', notificationId: 'notif-1', apply: { applied: ['tags', 'discovery'] } });
@@ -136,11 +135,27 @@ describe('runAnalysisPipeline', () => {
     expect(out.apply).toBeNull();
   });
 
-  it('fallo al escribir la actividad no rompe el pipeline (se loguea)', async () => {
+  it('un fallo del historial detiene acciones y notificaciones y deja el job reintentable', async () => {
     (upsertCallActivity as jest.Mock).mockRejectedValueOnce(new Error('activities insert falló'));
-    const out = await runAnalysisPipeline(7, 'call-1', { supabase: makeSb({ calls: [callRow], opportunities: [{ salesperson_id: null, customers: null }] }) });
-    expect(out.activityId).toBeNull();
-    expect(out.analysis.id).toBe('an-1');
+    await expect(runAnalysisPipeline(7, 'call-1', { supabase: makeSb({ calls: [callRow] }) })).rejects.toThrow('activities insert falló');
+    expect(runPostAnalysisActions).not.toHaveBeenCalled();
+    expect(notifyCallAnalyzed).not.toHaveBeenCalled();
+  });
+
+  it('un error al releer calls después del análisis detiene historial, acciones y notificaciones', async () => {
+    const error = 'lectura de calls falló';
+    await expect(runAnalysisPipeline(7, 'call-1', { supabase: makeSb({ calls: [callRow] }, { calls: error }) })).rejects.toMatchObject({ message: error });
+    expect(analyzeCall).toHaveBeenCalledTimes(1);
+    expect(upsertCallActivity).not.toHaveBeenCalled();
+    expect(runPostAnalysisActions).not.toHaveBeenCalled();
+    expect(notifyCallAnalyzed).not.toHaveBeenCalled();
+  });
+
+  it('una llamada ausente en la relectura devuelve404 y no completa el flujo con historia nula', async () => {
+    await expect(runAnalysisPipeline(7, 'call-1', { supabase: makeSb({ calls: [] }) })).rejects.toMatchObject({ status: 404, code: 'llamada_no_encontrada' });
+    expect(upsertCallActivity).not.toHaveBeenCalled();
+    expect(runPostAnalysisActions).not.toHaveBeenCalled();
+    expect(notifyCallAnalyzed).not.toHaveBeenCalled();
   });
 });
 

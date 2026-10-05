@@ -1,9 +1,11 @@
+import { assertTemplateQuery, requireTemplateWrite, readTemplateBody } from '@/lib/services/crm/email/templateAccess';
 import { NextRequest } from 'next/server';
-import { emailErrorResponse, getServerOrgContext, ok, readJson } from '@/lib/services/crm/email/http';
+import { emailErrorResponse, getServerOrgContext, ok } from '@/lib/services/crm/email/http';
 import { sendEmail } from '@/lib/services/crm/email/sendService';
 import { orgOwnsDomain } from '@/lib/services/crm/email/domainsService';
 import { parseWith, zTestSend, zUuid } from '@/lib/services/crm/email/schemas';
 import { EmailError } from '@/lib/services/crm/email/types';
+import { requireEmailTemplate } from '@/lib/services/crm/email/templatesService';
 
 export const runtime = 'nodejs';
 
@@ -21,9 +23,12 @@ export const runtime = 'nodejs';
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const ctx = await getServerOrgContext(request);
+    assertTemplateQuery(ctx, request);
+    await requireTemplateWrite(ctx);
     const { id } = await params;
     const templateId = parseWith(zUuid, id, 'id de plantilla');
-    const body = parseWith(zTestSend, await readJson<unknown>(request), 'body de test-send');
+    await requireEmailTemplate(ctx.organizationId, templateId, ctx.supabase);
+    const body = parseWith(zTestSend, await readTemplateBody(ctx, request), 'body de test-send');
     const userEmail = (ctx.userEmail ?? '').trim().toLowerCase();
     const to = (body.to ?? userEmail).trim().toLowerCase();
     if (!to) throw new EmailError('VALIDATION', 'Indica el correo de prueba', 400);

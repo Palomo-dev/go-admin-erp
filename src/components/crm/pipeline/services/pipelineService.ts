@@ -1,3 +1,4 @@
+import { pedirCrm } from '@/components/crm/acciones/apiCrm';
 import { supabase } from "@/lib/supabase/config";
 import { Customer, CustomerInteraction, EditFormData, Opportunity, PipelineStage } from "../types";
 import { getOrganizationId } from "../utils/pipelineUtils";
@@ -132,29 +133,30 @@ export const loadCustomerInteractions = async (customerId: string): Promise<Cust
  * Actualizar datos de un cliente
  */
 export const updateCustomer = async (
-  customerId: string, 
-  formData: EditFormData
-): Promise<{ success: boolean; error?: unknown }> => {
+  customerId: string,
+  formData: EditFormData,
+  expectedUpdatedAt?: string | null,
+): Promise<{ success: true; customer: Pick<Customer, 'id' | 'full_name' | 'email' | 'phone' | 'address' | 'notes' | 'updated_at'> } | { success: false; error: unknown }> => {
   try {
-    console.log(`Actualizando cliente con ID: ${customerId}`);
-    
-    const { error } = await supabase
-      .from("customers")
-      .update({
+    const { data } = await pedirCrm<{
+      id: string; full_name: string | null; email: string | null; phone: string | null;
+      address: string | null; notes: string | null; updated_at: string | null;
+    }>(`/api/crm/customers/${encodeURIComponent(customerId)}`, {
+      method: 'PATCH',
+      cuerpo: {
         full_name: formData.full_name,
         email: formData.email,
         phone: formData.phone,
         address: formData.address,
         notes: formData.notes,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", customerId);
-
-    if (error) {
-      console.error("Error de Supabase al actualizar cliente:", JSON.stringify(error));
-      throw error;
-    }
-    return { success: true };
+        expected_updated_at: expectedUpdatedAt,
+      },
+    });
+    return { success: true, customer: {
+      id: data.id, full_name: data.full_name ?? '', email: data.email ?? undefined,
+      phone: data.phone ?? undefined, address: data.address ?? undefined,
+      notes: data.notes ?? undefined, updated_at: data.updated_at ?? undefined,
+    } };
   } catch (error: unknown) {
     console.error("Error al actualizar cliente:", 
       mensajeError(error));

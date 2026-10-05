@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { evaluateICPCriteria, type ICPCriterion, type ICPOperator } from './icpService';
+import { type ICPOperator } from './icpService';
+import { matchingTerritories, type AssignmentTerritory } from './territoryAssignment';
 
 /**
  * Servicio CRM - Motor de asignación automática de leads.
@@ -26,6 +27,9 @@ export interface AssignmentParams {
    * estrategia `territory` los usa en vez de leer `opportunities`.
    */
   opportunityData?: OpportunityFacts;
+  /** Read-only simulation advances the same canonical rotation/load counters. */
+  simulation?: AssignmentSimulationState;
+  customerData?: Record<string, unknown>;
 }
 
 /** Campos de `opportunities` que evalúan los criterios de territorio. */
@@ -33,6 +37,12 @@ export interface OpportunityFacts {
   amount?: number | null;
   currency?: string | null;
   deal_type?: string | null;
+}
+
+export interface AssignmentSimulationState {
+  lastUserId?: string | null;
+  loads?: Record<string, number>;
+  fallbackCount: number;
 }
 
 export interface AssignmentResult {
@@ -85,7 +95,7 @@ async function getActiveTeamMembers(
 
   if (error) {
     console.warn('assignmentService.getActiveTeamMembers - error:', error.message);
-    return [];
+    throw new AssignmentError(error.message);
   }
 
   const members = (data || []) as { user_id: string; sales_role_id: string | null; created_at: string }[];
@@ -104,7 +114,7 @@ async function getActiveTeamMembers(
     .in('user_id', members.map((m) => m.user_id));
   if (errorPertenencia) {
     console.warn('assignmentService.getActiveTeamMembers - pertenencia:', errorPertenencia.message);
-    return [];
+    throw new AssignmentError(errorPertenencia.message);
   }
   const propios = new Set(((pertenencia || []) as { user_id: string }[]).map((m) => m.user_id));
   return members.filter((m) => propios.has(m.user_id));
@@ -169,9 +179,16 @@ async function assignRoundRobin(
   orgId: number,
   teamId: string,
   members: { user_id: string }[],
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  simulation?: AssignmentSimulationState,
 ): Promise<AssignmentResult> {
   const memberUserIds = members.map((m) => m.user_id);
+
+  if (simulation && 'lastUserId' in simulation) {
+    const index = memberUserIds.indexOf(simulation.lastUserId ?? '');
+    const next = (index + 1) % members.length;
+    return { userId: members[next].user_id, assignmentReason: 'round_robin' };
+  }
 
   // Buscar la oportunidad más reciente asignada a algún miembro del team
   const { data: lastOpp, error } = await supabase
@@ -185,7 +202,7 @@ async function assignRoundRobin(
     .maybeSingle();
 
   if (error) {
-    console.warn('assignmentService.assignRoundRobin - last assigned error:', error.message);
+    throw new AssignmentError(error.message);
   }
 
   // CRM ola 1 (D2): un lead ya no crea oportunidad; su responsable vive en
@@ -203,7 +220,7 @@ async function assignRoundRobin(
     .maybeSingle();
 
   if (leadError) {
-    console.warn('assignmentService.assignRoundRobin - last lead error:', leadError.message);
+    throw new AssignmentError(leadError.message);
   }
 
   const opp = lastOpp as { salesperson_id: string | null; created_at: string | null } | null;
@@ -240,94 +257,35 @@ async function assignTerritory(
   opportunityId: string | undefined,
   members: { user_id: string }[],
   supabase: SupabaseClient,
-  opportunityFacts?: OpportunityFacts
+  opportunityFacts?: OpportunityFacts,
+  simulation?: AssignmentSimulationState,
+  suppliedCustomer?: Record<string, unknown>,
 ): Promise<AssignmentResult> {
-  // 1. Cargar territories activas de la org
-  const { data: territories, error } = await supabase
-    .from('territories')
-    .select('id, name, criteria')
-    .eq('organization_id', orgId)
-    .eq('is_active', true)
-    .order('name', { ascending: true });
-
-  if (error || !territories || territories.length === 0) {
-    console.warn('assignmentService.assignTerritory - no territories found:', error?.message);
-    // Fallback a round_robin
-    const fallback = await assignRoundRobin(orgId, teamId, members, supabase);
-    return {
-      ...fallback,
-      assignmentReason: `territory: sin territorios → ${fallback.assignmentReason}`,
-    };
+  const { data, error } = await supabase.from('territories')
+    .select('id,name,criteria,sort_order').eq('organization_id', orgId)
+    .eq('is_active', true).order('sort_order').order('id');
+  if (error) throw new AssignmentError(error.message);
+  const customer = suppliedCustomer ?? await loadCustomerData(orgId, customerId, supabase);
+  if (!customer) throw new AssignmentError('Customer no encontrado');
+  // The segment context includes consent/purchases/derived fields; legacy ICP keeps its facts.
+  let context = customer;
+  if ((data ?? []).some((territory) => territory.criteria?.filter) && !suppliedCustomer) {
+    const result = await supabase.rpc('crm_segment_context_page', {
+      p_org: orgId, p_customers: [customerId], p_limit: 1,
+    });
+    if (result.error) throw new AssignmentError(result.error.message);
+    if (!Array.isArray(result.data) || !result.data[0]) throw new AssignmentError('Customer no encontrado');
+    context = { ...customer, ...result.data[0] };
   }
-
-  // 2. Cargar datos del customer y oportunidad
-  const customerData = await loadCustomerData(orgId, customerId, supabase);
-  if (!customerData) {
-    throw new AssignmentError(`Customer no encontrado: ${customerId}`);
+  const facts = opportunityFacts ?? await loadOpportunityData(orgId, opportunityId, supabase);
+  const territory = matchingTerritories((data ?? []) as AssignmentTerritory[], context, { ...facts }, orgId, new Date())[0];
+  const responsible = territory?.criteria.assigned_user_id;
+  if (typeof responsible === 'string' && members.some((member) => member.user_id === responsible)) {
+    return { userId: responsible, assignmentReason: `territory: "${territory!.name}" → user asignado directamente` };
   }
-
-  const opportunityData = opportunityFacts ?? (await loadOpportunityData(orgId, opportunityId, supabase));
-
-  // 3. Evaluar cada territorio y quedarse con el de mayor fit_score que matchee
-  let bestTerritory: { id: string; name: string; assigned_user_id?: string; fitScore: number } | null = null;
-
-  for (const t of territories as { id: string; name: string; criteria: TerritoryCriteria }[]) {
-    const criteria = t.criteria || {};
-    const rules = criteria.rules || [];
-
-    if (rules.length === 0) continue;
-
-    // Adaptar rules al formato ICPCriterion que espera evaluateICPCriteria
-    const icpCriteria: ICPCriterion[] = rules.map((r, idx) => ({
-      id: `territory-${t.id}-${idx}`,
-      organization_id: orgId,
-      icp_profile_id: t.id,
-      field_key: r.field_key,
-      operator: r.operator,
-      value: r.value,
-      weight: r.weight ?? 1,
-      is_required: r.is_required ?? false,
-      created_at: '',
-      updated_at: '',
-    }));
-
-    const result = evaluateICPCriteria(icpCriteria, customerData, opportunityData);
-
-    if (result.matched && (!bestTerritory || result.fit_score > bestTerritory.fitScore)) {
-      bestTerritory = {
-        id: t.id,
-        name: t.name,
-        assigned_user_id: criteria.assigned_user_id,
-        fitScore: result.fit_score,
-      };
-    }
-  }
-
-  // 4. Si no hay territorio que matchee → fallback round_robin
-  if (!bestTerritory) {
-    const fallback = await assignRoundRobin(orgId, teamId, members, supabase);
-    return {
-      ...fallback,
-      assignmentReason: `territory: sin match → ${fallback.assignmentReason}`,
-    };
-  }
-
-  // 5. Si el territorio tiene assigned_user_id y es miembro activo del team → asignar
-  const memberUserIds = new Set(members.map((m) => m.user_id));
-
-  if (bestTerritory.assigned_user_id && memberUserIds.has(bestTerritory.assigned_user_id)) {
-    return {
-      userId: bestTerritory.assigned_user_id,
-      assignmentReason: `territory: "${bestTerritory.name}" (fit ${bestTerritory.fitScore}%) → user asignado directamente`,
-    };
-  }
-
-  // 6. Si no hay assigned_user_id o no es miembro del team → fallback round_robin
-  const fallback = await assignRoundRobin(orgId, teamId, members, supabase);
-  return {
-    ...fallback,
-    assignmentReason: `territory: "${bestTerritory.name}" matcheó (fit ${bestTerritory.fitScore}%) pero sin responsable válido → ${fallback.assignmentReason}`,
-  };
+  if (simulation) simulation.fallbackCount++;
+  const fallback = await assignRoundRobin(orgId, teamId, members, supabase, simulation);
+  return { ...fallback, assignmentReason: territory ? `territory: "${territory.name}" sin responsable válido → ${fallback.assignmentReason}` : `territory: ${(data ?? []).length ? 'sin match' : 'sin territorios'} → ${fallback.assignmentReason}` };
 }
 
 /**
@@ -336,8 +294,13 @@ async function assignTerritory(
 async function assignLoadBalance(
   orgId: number,
   members: { user_id: string }[],
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  simulation?: AssignmentSimulationState,
 ): Promise<AssignmentResult> {
+  if (simulation?.loads) {
+    const selected = [...members].sort((a, b) => simulation.loads![a.user_id] - simulation.loads![b.user_id])[0];
+    return { userId: selected.user_id, assignmentReason: 'load_balance' };
+  }
   const counts = await Promise.all(
     members.map(async (m) => {
       const { count, error } = await supabase
@@ -348,7 +311,7 @@ async function assignLoadBalance(
         .eq('status', 'open');
 
       if (error) {
-        console.warn('assignmentService.assignLoadBalance - count error for', m.user_id, error.message);
+        throw new AssignmentError(error.message);
       }
 
       // CRM ola 1 (D2): los leads activos (clientes en etapa lead con origen y
@@ -363,12 +326,14 @@ async function assignLoadBalance(
         .is('lead_discarded_at', null);
 
       if (leadError) {
-        console.warn('assignmentService.assignLoadBalance - lead count error for', m.user_id, leadError.message);
+        throw new AssignmentError(leadError.message);
       }
 
       return { userId: m.user_id, count: (count ?? 0) + (leads ?? 0) };
     })
   );
+
+  if (simulation) simulation.loads = Object.fromEntries(counts.map((row) => [row.userId, row.count]));
 
   // Ordenar por menor carga, desempate por orden de membresía (estable)
   counts.sort((a, b) => a.count - b.count);
@@ -439,7 +404,7 @@ export async function assignLead(
 
   switch (strategy) {
     case 'round_robin':
-      result = await assignRoundRobin(organizationId, teamIdResolved, members, supabase);
+      result = await assignRoundRobin(organizationId, teamIdResolved, members, supabase, params.simulation);
       break;
 
     case 'territory':
@@ -450,20 +415,25 @@ export async function assignLead(
         opportunityId,
         members,
         supabase,
-        opportunityData
+        opportunityData, params.simulation, params.customerData,
       );
       break;
 
     case 'load_balance':
-      result = await assignLoadBalance(organizationId, members, supabase);
+      result = await assignLoadBalance(organizationId, members, supabase, params.simulation);
       break;
 
     default:
       throw new AssignmentError(`Estrategia no soportada: ${strategy}`);
   }
 
+  if (params.simulation) {
+    params.simulation.lastUserId = result.userId;
+    if (params.simulation.loads) params.simulation.loads[result.userId]++;
+  }
+
   // ── Persistir asignación en la oportunidad (si se proporcionó opportunityId) ──
-  if (opportunityId) {
+  if (opportunityId && !params.simulation) {
     const { error: updateError } = await supabase
       .from('opportunities')
       .update({

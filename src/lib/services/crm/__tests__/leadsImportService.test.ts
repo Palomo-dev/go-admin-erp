@@ -319,3 +319,7 @@ describe('importarBloque', () => {
     expect((ficha.metadata as { lead: Row }).lead).toMatchObject({ valor_estimado: { monto: 600, moneda: 'USD' } });
   });
 });
+
+// Fixtures históricas del transporte heredado; los contratos RPC se verifican por separado.
+beforeEach(() => { process.env.CRM_CALL_ATOMIC_RPC_ENABLED = 'false'; });
+afterAll(() => { delete process.env.CRM_CALL_ATOMIC_RPC_ENABLED; });

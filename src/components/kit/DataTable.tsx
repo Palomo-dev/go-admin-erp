@@ -54,6 +54,11 @@ export interface ContextoTarjeta {
   alternar: (seleccionado: boolean) => void;
 }
 
+/** Datos de la fila para acciones del shell; no permite alterar eventos o foco. */
+export type AtributosDatosFila = Readonly<{
+  [nombre: `data-${string}`]: string | number | boolean | undefined;
+}>;
+
 export interface DataTableProps<T> {
   columnas: readonly ColumnaTabla<T>[];
   filas: readonly T[];
@@ -69,6 +74,7 @@ export interface DataTableProps<T> {
   seleccion?: ReadonlySet<string>;
   onSeleccionChange?: (seleccion: Set<string>) => void;
   onFilaClick?: (fila: T) => void;
+  atributosFila?: (fila: T) => AtributosDatosFila;
   /** Nombre del registro para las casillas y el menú («Ferretería de ejemplo S.A.S.»). */
   etiquetaFila?: (fila: T) => string;
   acciones?: (fila: T) => readonly AccionFila[];
@@ -87,12 +93,22 @@ export interface DataTableProps<T> {
   termino?: string;
   /** Normalmente `<Pagination />`. */
   pie?: React.ReactNode;
+  /** Paginación fuera del panel, como el listado de Llamadas. */
+  pieFuera?: boolean;
+  /** Tabla dentro de una tarjeta que ya aporta borde y radio. */
+  marco?: 'panel' | 'integrado';
   virtualizar?: boolean | 'auto';
   /** Alto de fila para la virtualización (por defecto el de la densidad). */
   altoFila?: number;
   /** Alto máximo del área con scroll cuando se virtualiza. */
   altoMaximo?: string;
   filasEsqueleto?: number;
+  /** Estados de carga sin columnas visibles, como Objeciones. */
+  mostrarCabeceraCargando?: boolean;
+  /** La altura del esqueleto no altera filas listas ni virtualización. */
+  altoFilaEsqueleto?: number;
+  /** Tinte neutro bg/pressed de los estados de carga de Figma. */
+  varianteEsqueleto?: 'actual' | 'figma';
   className?: string;
 }
 
@@ -116,6 +132,15 @@ function estiloAncho(ancho: ColumnaTabla<unknown>['ancho']): React.CSSProperties
   return { width: w, minWidth: w };
 }
 
+function soloDatosFila(atributos: AtributosDatosFila | undefined): AtributosDatosFila {
+  // También filtra valores de JavaScript sin tipos: el shell puede leer datos,
+  // pero no sustituir onClick/onKeyDown, tabIndex, role ni aria-selected.
+  return Object.fromEntries(Object.entries(atributos ?? {}).filter(([nombre, valor]) =>
+    /^data-[a-z0-9_.:-]+$/i.test(nombre) &&
+    (valor === undefined || ['string', 'number', 'boolean'].includes(typeof valor)),
+  ));
+}
+
 export function DataTable<T>({
   columnas,
   filas,
@@ -128,6 +153,7 @@ export function DataTable<T>({
   seleccion,
   onSeleccionChange,
   onFilaClick,
+  atributosFila,
   etiquetaFila,
   acciones,
   accionesRapidas,
@@ -141,10 +167,15 @@ export function DataTable<T>({
   onLimpiarFiltros,
   termino,
   pie,
+  pieFuera = false,
+  marco = 'panel',
   virtualizar = 'auto',
   altoFila,
   altoMaximo = '70vh',
   filasEsqueleto = 8,
+  mostrarCabeceraCargando = true,
+  altoFilaEsqueleto,
+  varianteEsqueleto = 'actual',
   className,
 }: DataTableProps<T>) {
   const t = useKitT();
@@ -195,6 +226,7 @@ export function DataTable<T>({
     }
   };
   const mostrarPie = (estado === 'listo' || estado === 'cargando') && pie;
+  const clasesEsqueleto = varianteEsqueleto === 'figma' ? 'rounded bg-pressed' : undefined;
 
   // ── Cabecera ─────────────────────────────────────────────────────────────
   const cabecera = (
@@ -263,15 +295,15 @@ export function DataTable<T>({
     <tbody>
       {estado === 'cargando' &&
         Array.from({ length: filasEsqueleto }, (_, i) => (
-          <tr key={`esq-${i}`} className="border-b border-line last:border-b-0" style={{ height: alto }}>
+          <tr key={`esq-${i}`} className="border-b border-line last:border-b-0" style={{ height: altoFilaEsqueleto ?? alto }}>
             {seleccionable && (
               <td className="pl-4">
-                <Skeleton className="size-[18px] rounded" />
+                <Skeleton className={cn('size-[18px] rounded', clasesEsqueleto)} />
               </td>
             )}
             {columnas.map((c) => (
               <td key={c.id} className={cn('px-3 first:pl-4', c.ocultarDebajo && OCULTAR[c.ocultarDebajo])}>
-                <Skeleton className={cn('h-4', c.variante === 'importe' ? 'ml-auto w-16' : 'w-3/4')} />
+                <Skeleton className={cn(varianteEsqueleto === 'figma' ? 'h-3' : 'h-4', c.variante === 'importe' ? 'ml-auto w-16' : 'w-3/4', clasesEsqueleto)} />
               </td>
             ))}
             {conAcciones && <td className="sticky right-0 bg-surface" />}
@@ -298,6 +330,7 @@ export function DataTable<T>({
           return (
             <tr
               key={id}
+              {...soloDatosFila(atributosFila?.(fila))}
               aria-rowindex={usarVirtual ? indice + 2 : undefined}
               aria-selected={seleccionable ? marcada : undefined}
               tabIndex={onFilaClick ? 0 : undefined}
@@ -381,12 +414,12 @@ export function DataTable<T>({
       {estado === 'cargando' &&
         Array.from({ length: Math.min(filasEsqueleto, 5) }, (_, i) => (
           <div key={`esq-t-${i}`} className="flex items-center gap-3 rounded-xl border border-line bg-surface p-3">
-            <Skeleton className="size-10 rounded-lg" />
+            <Skeleton className={cn('size-10 rounded-lg', varianteEsqueleto === 'figma' && 'bg-pressed')} />
             <div className="flex flex-1 flex-col gap-2">
-              <Skeleton className="h-4 w-2/3" />
-              <Skeleton className="h-3 w-1/2" />
+              <Skeleton className={cn('h-4 w-2/3', clasesEsqueleto)} />
+              <Skeleton className={cn('h-3 w-1/2', clasesEsqueleto)} />
             </div>
-            <Skeleton className="h-4 w-12" />
+            <Skeleton className={cn('h-4 w-12', clasesEsqueleto)} />
           </div>
         ))}
       {estado !== 'listo' && estado !== 'cargando' && (
@@ -408,14 +441,14 @@ export function DataTable<T>({
           })}
         </ul>
       )}
-      {mostrarPie && <div>{pie}</div>}
+      {mostrarPie && !pieFuera && <div>{pie}</div>}
     </div>
   );
 
   return (
     <div className={cn('flex flex-col gap-3', className)}>
       {tarjetas}
-      <div className={cn('overflow-hidden rounded-xl border border-line bg-surface', tarjetaMovil && 'hidden lg:block')}>
+      <div className={cn('overflow-hidden bg-surface', marco === 'panel' && 'rounded-xl border border-line', tarjetaMovil && 'hidden lg:block')}>
         <div
           ref={scrollRef}
           onScroll={usarVirtual ? (e) => setScroll({ top: e.currentTarget.scrollTop, alto: e.currentTarget.clientHeight }) : undefined}
@@ -428,12 +461,13 @@ export function DataTable<T>({
             aria-rowcount={usarVirtual ? filas.length + 1 : undefined}
             className="w-full border-collapse"
           >
-            {cabecera}
+            {(estado !== 'cargando' || mostrarCabeceraCargando) && cabecera}
             {cuerpo}
           </table>
         </div>
-        {mostrarPie && <div className="border-t border-line px-4 py-3">{pie}</div>}
+        {mostrarPie && !pieFuera && <div className="border-t border-line px-4 py-3">{pie}</div>}
       </div>
+      {mostrarPie && pieFuera && <div>{pie}</div>}
     </div>
   );
 }

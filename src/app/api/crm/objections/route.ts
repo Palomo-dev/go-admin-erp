@@ -1,5 +1,7 @@
+import { respuestaErrorCrm } from '@/lib/services/crm/crmRouteSupport';
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { getServerOrgContext, OrgContextError, requireOrgAdminOrPermission } from '@/lib/utils/orgContext';
+import { objectionCatalogSchema } from '@/lib/services/crm/objectionCatalogSchema';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import {
   getObjections,
@@ -12,7 +14,7 @@ import {
  */
 export async function GET(request: NextRequest) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     const { searchParams } = new URL(request.url);
 
     const filters = {
@@ -21,9 +23,11 @@ export async function GET(request: NextRequest) {
       includeInactive: searchParams.get('includeInactive') === 'true',
     };
 
+    readOrgBody(ctx,{}, {request});
+    let canManage=false;try{await requireOrgAdminOrPermission(ctx);canManage=true;}catch(error){if(!(error instanceof OrgContextError))throw error;}
     const objections = await getObjections(ctx.organizationId, ctx.supabase, filters);
 
-    return NextResponse.json({ success: true, data: objections }, { status: 200 });
+    return NextResponse.json({ success: true, data: objections,canManage }, { status: 200 });
   } catch (error: unknown) {
     if (error instanceof OrgContextError) {
       return NextResponse.json(
@@ -33,7 +37,7 @@ export async function GET(request: NextRequest) {
     }
     const message = error instanceof Error ? error.message : 'Error desconocido';
     console.error('[CRM Objections] GET error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return respuestaErrorCrm(error,'objections.catalog');
   }
 }
 
@@ -43,8 +47,13 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const ctx = await getServerOrgContext();
-    const body = await readOrgBody(ctx, request);
+    const ctx = await getServerOrgContext(request);
+    const raw = await readOrgBody(ctx, request);
+    await requireOrgAdminOrPermission(ctx);
+    const clean={...raw};for(const key of ['organization_id','organizationId','org_id','orgId'])delete clean[key];
+    const parsed=objectionCatalogSchema.safeParse(clean);
+    if(!parsed.success)return NextResponse.json({success:false,error:'datos_invalidos'},{status:400});
+    const body=parsed.data;
 
 
     if (!body?.title || typeof body.title !== 'string' || !body?.category || typeof body.category !== 'string') {
@@ -80,6 +89,6 @@ export async function POST(request: NextRequest) {
     }
     const message = error instanceof Error ? error.message : 'Error desconocido';
     console.error('[CRM Objections] POST error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return respuestaErrorCrm(error,'objections.catalog');
   }
 }

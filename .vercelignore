@@ -1,7 +1,15 @@
 # Excluir sub-proyectos que no son parte del build web de Vercel
 # NOTA: print-agent/ NO se excluye porque src/ lo importa via alias @printing
-mobile/
-electron/
+/mobile/
+
+# El build web importa el contrato de telefonía compartido con Electron.
+# Conservar sólo ese archivo; el runtime y los recursos desktop se excluyen.
+/electron/*
+!/electron/src/
+/electron/src/*
+!/electron/src/shared/
+/electron/src/shared/*
+!/electron/src/shared/phoneProtocol.ts
 
 # Archivos temporales
 build_output.txt

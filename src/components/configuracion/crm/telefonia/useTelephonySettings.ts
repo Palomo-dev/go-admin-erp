@@ -26,6 +26,7 @@ export interface TelephonySettingsDto {
   has_subaccount: boolean;
   consent_voice: string;
   consent_language: string;
+  hold_url?: string | null;
 }
 
 export interface TelephonyConfigured {

@@ -32,6 +32,7 @@ import { ModuleProvider } from '@/lib/context/ModuleContext';
 // al usuario si el CRM no está activo, y cuando lo está, no lo pide en cada
 // carga (solo cuando el usuario hace/recibe una llamada).
 import { SoftphoneProvider } from '@/components/voice/SoftphoneProvider';
+import { IncomingMobileCall } from '@/components/voice/mobile/IncomingMobileCall';
 
 /**
  * Wrapper con reintentos para `dynamic()`: en dev, los chunks grandes (ej.
@@ -217,8 +218,8 @@ export const AppLayout = ({
 
       try {
         const { registerPushToken } = await import('@/lib/services/pushTokenService');
-        await registerPushToken(userId);
-        console.log('✅ [AppLayout] Push token registrado');
+        const registered = await registerPushToken(userId);
+        if (registered) console.log('✅ [AppLayout] Push token registrado');
       } catch (e) {
         console.warn('⚠️ [AppLayout] Error registrando push token:', e);
       }
@@ -791,6 +792,8 @@ export const AppLayout = ({
       setLoading(true);
       
       console.log('Cerrando sesión...');
+      const { cleanupPushTokenBeforeLogout } = await import('@/lib/services/pushTokenService');
+      await cleanupPushTokenBeforeLogout();
       
       // Limpiar TODO el estado relacionado con la organización y el usuario
       localStorage.removeItem(USER_CACHE_KEY);
@@ -916,7 +919,7 @@ export const AppLayout = ({
 
   return (
     <ModuleProvider>
-      <SoftphoneProvider enabled={activeModuleCodes?.includes('crm') ?? false}>
+      <SoftphoneProvider key={orgId ?? 'sin-org'} enabled={activeModuleCodes?.includes('crm') ?? false} organizationId={orgId ? Number(orgId) : null}>
       <BranchProvider>
       {/* Barra de progreso de navegación - feedback visual inmediato */}
       <NavigationProgress />
@@ -1006,6 +1009,7 @@ export const AppLayout = ({
         <>
           <SoftphoneDock />
           <IncomingCallToast />
+          <React.Suspense fallback={null}><IncomingMobileCall organizationId={orgId ? Number(orgId) : null} /></React.Suspense>
         </>
       )}
 

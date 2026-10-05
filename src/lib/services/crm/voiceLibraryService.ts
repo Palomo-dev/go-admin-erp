@@ -19,6 +19,7 @@ import {
 } from './voiceLibrary';
 import { createVoice, deleteVoice, listVoices, type VoiceRow } from './voiceCatalogService';
 import { ElevenLabsError, getElevenLabsClientForOrg } from '@/lib/services/integrations/elevenlabs/voiceCloneClient';
+import { RequestDeadlineError } from '@/lib/utils/requestDeadline';
 
 export interface LibraryPage {
   voices: LibraryVoice[];
@@ -40,9 +41,90 @@ interface CacheEntry<T> {
 const ACCOUNT_TTL_MS = 10 * 60 * 1000;
 
 const libraryCache = new Map<string, CacheEntry<LibraryPage>>();
-const workspaceCache = new Map<number, CacheEntry<Map<string, WorkspaceVoiceInfo>>>();
+const workspaceCache = new Map<string, CacheEntry<Map<string, WorkspaceVoiceInfo>>>();
 const previewCache = new Map<string, CacheEntry<ArrayBuffer>>();
-const accountCache = new Map<number, CacheEntry<VoiceAccountCapabilities>>();
+const accountCache = new Map<string, CacheEntry<VoiceAccountCapabilities>>();
+
+interface ReadFlight<T> {
+  controller: AbortController;
+  promise: Promise<T>;
+  subscribers: number;
+  settled: boolean;
+}
+const libraryFlights = new Map<string, ReadFlight<LibraryPage>>();
+const workspaceFlights = new Map<string, ReadFlight<Map<string, WorkspaceVoiceInfo>>>();
+const accountFlights = new Map<string, ReadFlight<VoiceAccountCapabilities>>();
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw new RequestDeadlineError('REQUEST_ABORTED');
+}
+
+/** La huella es opaca; nunca contiene la credencial. Dobles antiguos pueden omitirla. */
+function configurationKey(orgId: number, client: { cacheKey?: string }): string {
+  return `${orgId}:${client.cacheKey ?? 'sin-huella'}`;
+}
+
+/** Sólo lecturas: cada consumidor cancela su espera, el último cancela la red compartida. */
+function cachedRead<T>(
+  cache: Map<string, CacheEntry<T>>, flights: Map<string, ReadFlight<T>>,
+  key: string, ttl: number, signal: AbortSignal | undefined,
+  load: (signal: AbortSignal) => Promise<T>,
+): Promise<T> {
+  throwIfAborted(signal);
+  const cached = readCache(cache, key, ttl);
+  if (cached !== null) return Promise.resolve(cached);
+  let flight = flights.get(key);
+  if (!flight) {
+    const created: ReadFlight<T> = { controller: new AbortController(), subscribers: 0, settled: false, promise: Promise.resolve().then(() => {
+      throwIfAborted(created.controller.signal);
+      return load(created.controller.signal);
+    }).then(value => {
+      created.settled = true;
+      throwIfAborted(created.controller.signal);
+      // Una lectura retirada o invalidada nunca repuebla la caché ni reemplaza la nueva.
+      if (flights.get(key) === created && created.subscribers > 0) writeCache(cache, key, value);
+      return value;
+    }, error => { created.settled = true; throw error; }).finally(() => {
+      if (flights.get(key) === created) flights.delete(key);
+    }) };
+    flights.set(key, created); flight = created;
+  }
+  const current = flight;
+  current.subscribers++;
+  return new Promise<T>((resolve, reject) => {
+    let finished = false;
+    const finish = (success: boolean, value: unknown) => {
+      if (finished) return;
+      finished = true;
+      signal?.removeEventListener('abort', cancel);
+      current.controller.signal.removeEventListener('abort', cancel);
+      current.subscribers--;
+      if (!current.settled && current.subscribers === 0) {
+        if (flights.get(key) === current) flights.delete(key);
+        current.controller.abort();
+      }
+      if (success) resolve(value as T); else reject(value);
+    };
+    const cancel = () => finish(false, new RequestDeadlineError('REQUEST_ABORTED'));
+    signal?.addEventListener('abort', cancel, { once: true });
+    current.controller.signal.addEventListener('abort', cancel, { once: true });
+    if (signal?.aborted || current.controller.signal.aborted) cancel();
+    current.promise.then(value => finish(true, value), error => finish(false, error));
+  });
+}
+
+function invalidateWorkspace(orgId: number): void {
+  const prefix = `${orgId}:`;
+  for (const key of workspaceCache.keys()) if (key.startsWith(prefix)) workspaceCache.delete(key);
+  for (const [key, flight] of workspaceFlights) if (key.startsWith(prefix)) {
+    workspaceFlights.delete(key); flight.controller.abort();
+  }
+}
+
+function propagateCancellation(error: unknown, signal?: AbortSignal): void {
+  throwIfAborted(signal);
+  if (error instanceof RequestDeadlineError && error.code === 'REQUEST_ABORTED') throw error;
+}
 
 function readCache<K, V>(map: Map<K, CacheEntry<V>>, key: K, ttl: number): V | null {
   const hit = map.get(key);
@@ -68,6 +150,10 @@ export function clearVoiceLibraryCaches(): void {
   workspaceCache.clear();
   previewCache.clear();
   accountCache.clear();
+  for (const flights of [libraryFlights, workspaceFlights, accountFlights]) {
+    for (const flight of flights.values()) flight.controller.abort();
+    flights.clear();
+  }
 }
 
 // ─── Plan de la cuenta del proveedor ─────────────────────────────────────────
@@ -84,20 +170,16 @@ export interface VoiceAccountCapabilities {
  * clic (voces solo de pago, clonación). `null` si no hay clave o el proveedor
  * no responde: la UI no bloquea nada que no sepa con certeza.
  */
-export async function getAccountCapabilities(orgId: number): Promise<VoiceAccountCapabilities | null> {
-  const cached = readCache(accountCache, orgId, ACCOUNT_TTL_MS);
-  if (cached) return cached;
+export async function getAccountCapabilities(orgId: number, signal?: AbortSignal): Promise<VoiceAccountCapabilities | null> {
+  throwIfAborted(signal);
   try {
-    const client = await getElevenLabsClientForOrg(orgId);
-    const sub = await client.getSubscription();
-    const value: VoiceAccountCapabilities = {
-      tier: sub.tier,
-      free_tier: sub.tier === 'free',
-      can_clone: sub.can_use_instant_voice_cloning,
-    };
-    writeCache(accountCache, orgId, value);
-    return value;
+    const client = await getElevenLabsClientForOrg(orgId, { signal });
+    return await cachedRead(accountCache, accountFlights, configurationKey(orgId, client), ACCOUNT_TTL_MS, signal, async sharedSignal => {
+      const sub = await client.getSubscription(sharedSignal);
+      return { tier: sub.tier, free_tier: sub.tier === 'free', can_clone: sub.can_use_instant_voice_cloning };
+    });
   } catch (err) {
+    propagateCancellation(err, signal);
     console.warn('[voiceLibrary] sin datos del plan:', err instanceof Error ? err.message : err);
     return null;
   }
@@ -105,22 +187,15 @@ export async function getAccountCapabilities(orgId: number): Promise<VoiceAccoun
 
 // ─── Biblioteca pública ──────────────────────────────────────────────────────
 
-export async function searchLibraryVoices(orgId: number, filters: LibraryFilters): Promise<LibraryPage> {
+export async function searchLibraryVoices(orgId: number, filters: LibraryFilters, signal?: AbortSignal): Promise<LibraryPage> {
+  throwIfAborted(signal);
   const query = buildSharedVoicesQuery(filters);
-  const key = query.toString();
-  const cached = readCache(libraryCache, key, LIBRARY_TTL_MS);
-  if (cached) return cached;
-
-  const client = await getElevenLabsClientForOrg(orgId);
-  const page = await client.listSharedVoices(query);
-  const result: LibraryPage = {
-    voices: page.voices.map(normalizeSharedVoice),
-    has_more: page.has_more,
-    total_count: page.total_count,
-    page: Number(query.get('page') ?? 0),
-  };
-  writeCache(libraryCache, key, result);
-  return result;
+  const client = await getElevenLabsClientForOrg(orgId, { signal });
+  const key = JSON.stringify([configurationKey(orgId, client), query.toString()]);
+  return cachedRead(libraryCache, libraryFlights, key, LIBRARY_TTL_MS, signal, async sharedSignal => {
+    const page = await client.listSharedVoices(query, sharedSignal);
+    return { voices: page.voices.map(normalizeSharedVoice), has_more: page.has_more, total_count: page.total_count, page: Number(query.get('page') ?? 0) };
+  });
 }
 
 export type AddLibraryVoiceInput = Pick<AddLibraryVoiceBody, 'voice_id' | 'public_owner_id' | 'name'> &
@@ -156,7 +231,7 @@ export async function addLibraryVoiceToCatalog(
     const already = err instanceof ElevenLabsError && /already|ya existe|exists/i.test(err.message);
     if (!already) throw err;
   }
-  workspaceCache.delete(orgId);
+  invalidateWorkspace(orgId);
 
   const voice = await createVoice(
     supabase,
@@ -188,17 +263,15 @@ export type VoiceRowEnriched = VoiceRow & {
   provider_category: string | null;
 };
 
-async function loadWorkspaceMap(orgId: number): Promise<Map<string, WorkspaceVoiceInfo>> {
-  const cached = readCache(workspaceCache, orgId, WORKSPACE_TTL_MS);
-  if (cached) return cached;
-  const client = await getElevenLabsClientForOrg(orgId);
-  const list = await client.listVoices();
-  const map = new Map<string, WorkspaceVoiceInfo>();
-  for (const v of list) {
-    map.set(v.voice_id, { preview_url: v.preview_url || null, labels: v.labels ?? {}, category: v.category ?? null });
-  }
-  writeCache(workspaceCache, orgId, map);
-  return map;
+async function loadWorkspaceMap(orgId: number, signal?: AbortSignal, resolvedClient?: Awaited<ReturnType<typeof getElevenLabsClientForOrg>>): Promise<Map<string, WorkspaceVoiceInfo>> {
+  throwIfAborted(signal);
+  const client = resolvedClient ?? await getElevenLabsClientForOrg(orgId, { signal });
+  return cachedRead(workspaceCache, workspaceFlights, configurationKey(orgId, client), WORKSPACE_TTL_MS, signal, async sharedSignal => {
+    const list = await client.listVoices(sharedSignal);
+    const map = new Map<string, WorkspaceVoiceInfo>();
+    for (const v of list) map.set(v.voice_id, { preview_url: v.preview_url || null, labels: v.labels ?? {}, category: v.category ?? null });
+    return map;
+  });
 }
 
 /**
@@ -206,13 +279,16 @@ async function loadWorkspaceMap(orgId: number): Promise<Map<string, WorkspaceVoi
  * Si el proveedor falla o no hay clave, devuelve las filas sin enriquecer:
  * la pantalla no se queda en blanco por un problema de ElevenLabs.
  */
-export async function listVoicesEnriched(supabase: SupabaseClient, orgId: number): Promise<VoiceRowEnriched[]> {
+export async function listVoicesEnriched(supabase: SupabaseClient, orgId: number, signal?: AbortSignal): Promise<VoiceRowEnriched[]> {
+  throwIfAborted(signal);
   const rows = await listVoices(supabase, orgId);
+  throwIfAborted(signal);
   let workspace: Map<string, WorkspaceVoiceInfo> | null = null;
   if (rows.some((r) => r.provider === 'elevenlabs')) {
     try {
-      workspace = await loadWorkspaceMap(orgId);
+      workspace = await loadWorkspaceMap(orgId, signal);
     } catch (err) {
+      propagateCancellation(err, signal);
       console.warn('[voiceLibrary] sin datos del workspace:', err instanceof Error ? err.message : err);
     }
   }
@@ -253,7 +329,7 @@ export async function removeVoice(
     if ((await countOtherReferences(row.provider_voice_id)) > 0) return { removed_from_provider: false };
     const client = await getElevenLabsClientForOrg(orgId);
     await client.deleteVoice(row.provider_voice_id);
-    workspaceCache.delete(orgId);
+    invalidateWorkspace(orgId);
     return { removed_from_provider: true };
   } catch (err) {
     console.warn('[voiceLibrary] no se pudo borrar en el proveedor:', err instanceof Error ? err.message : err);
@@ -280,16 +356,17 @@ export async function previewCatalogVoice(supabase: SupabaseClient, orgId: numbe
   if (!row) throw new Error('La voz no existe en el catálogo de la organización');
   if (row.provider !== 'elevenlabs') throw new Error('Solo se pueden previsualizar voces de ElevenLabs');
 
-  const workspace = await loadWorkspaceMap(orgId);
+  const client = await getElevenLabsClientForOrg(orgId);
+  const workspace = await loadWorkspaceMap(orgId, undefined, client);
   const info = workspace.get(row.provider_voice_id);
   if (info?.preview_url) return { kind: 'url', url: info.preview_url };
 
-  const key = `${orgId}:${row.provider_voice_id}`;
+  const modelId = row.model_id || 'eleven_flash_v2_5';
+  const key = JSON.stringify([configurationKey(orgId, client), row.provider_voice_id, modelId]);
   const cached = readCache(previewCache, key, PREVIEW_TTL_MS);
   if (cached) return { kind: 'audio', audio: cached, contentType: 'audio/mpeg' };
 
-  const client = await getElevenLabsClientForOrg(orgId);
-  const audio = await client.synthesize(row.provider_voice_id, PREVIEW_PHRASE_ES, row.model_id || 'eleven_flash_v2_5');
+  const audio = await client.synthesize(row.provider_voice_id, PREVIEW_PHRASE_ES, modelId);
   writeCache(previewCache, key, audio);
   return { kind: 'audio', audio, contentType: 'audio/mpeg' };
 }

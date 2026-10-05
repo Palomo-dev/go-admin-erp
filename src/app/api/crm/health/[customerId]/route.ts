@@ -1,93 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
+import { getServerOrgContext } from '@/lib/utils/orgContext';
+import { CRM_PERMISOS, exigirPermisoCrm, respuestaErrorCrm, CrmHttpError } from '@/lib/services/crm/crmRouteSupport';
+import { readHealthCustomer } from '@/lib/services/crm/healthReadService';
+import { getServiceClient } from '@/lib/supabase/server-service';
+import { exigirClienteMedible } from '@/lib/services/crm/healthMutationService';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import {
-  getHealthScore,
   calculateHealthScore,
-  getHealthTrend,
 } from '@/lib/services/crm/healthScoreServer';
 
 /**
  * GET /api/crm/health/[customerId] — Obtiene el health score actual de un cliente.
- * Query: ?trend=true&months=6 — incluye la tendencia de snapshots.
+ * Query: ?limit=30 (1–200) — mediciones recientes, con error de historial aislado.
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ customerId: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ customerId: string }> }) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
+    const query = new URL(request.url).searchParams;
+    readOrgBody(ctx, query, { request });
+    await exigirPermisoCrm(ctx, [CRM_PERMISOS.clientesVer], 'GET /api/crm/health/customer');
     const { customerId } = await params;
-    const { searchParams } = new URL(request.url);
-
-    const health = await getHealthScore(ctx.organizationId, customerId, ctx.supabase);
-
-    if (!health) {
-      return NextResponse.json(
-        { success: false, error: 'Cliente no encontrado' },
-        { status: 404 }
-      );
-    }
-
-    const response: Record<string, unknown> = { ...health };
-
-    // Incluir tendencia si se solicita
-    if (searchParams.get('trend') === 'true') {
-      const months = searchParams.get('months')
-        ? parseInt(searchParams.get('months')!, 10)
-        : 6;
-      const trend = await getHealthTrend(ctx.organizationId, customerId, ctx.supabase, months);
-      response.trend = trend;
-    }
-
-    return NextResponse.json({ success: true, data: response }, { status: 200 });
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Health] GET error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
-  }
+    const limit = Number(query.get('limit') ?? 30);
+    if (!Number.isInteger(limit) || limit < 1 || limit > 200) throw new CrmHttpError(400, 'datos_invalidos', 'Límite inválido');
+    return NextResponse.json({ success: true, data: await readHealthCustomer(ctx, customerId, limit) }, { headers: { 'Cache-Control': 'private, no-store' } });
+  } catch (error) { return respuestaErrorCrm(error, 'GET /api/crm/health/customer'); }
 }
 
-/**
- * POST /api/crm/health/[customerId] — Recalcula el health score de un cliente
- * (RPC + config; `customers.health_score` solo si cambió; sin snapshot: para
- * eso, `POST …/snapshot`).
- */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ customerId: string }> }
-) {
+/** Alias histórico de «Medir ahora», con las mismas barreras y escritura atómica. */
+export async function POST(request: NextRequest, { params }: { params: Promise<{ customerId: string }> }) {
   try {
-    const ctx = await getServerOrgContext();
-    // Regla dura 5 (b): sin body, pero la query podría traer otra organización.
+    const ctx = await getServerOrgContext(request);
     await readOrgBody(ctx, request);
     const { customerId } = await params;
-
-    const result = await calculateHealthScore(ctx.organizationId, customerId, ctx.supabase);
-
-    if (!result) {
-      return NextResponse.json(
-        { success: false, error: 'No se pudo calcular el health score' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({ success: true, data: result }, { status: 200 });
-  } catch (error: unknown) {
-    if (error instanceof OrgContextError) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[CRM Health] POST error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
-  }
+    await exigirClienteMedible(ctx, customerId);
+    const data = await calculateHealthScore(ctx.organizationId, customerId, ctx.supabase, { writer: getServiceClient() });
+    if (!data) throw new CrmHttpError(404, 'cliente_no_encontrado', 'La salud se mide sólo para clientes de tu organización');
+    return NextResponse.json({ success: true, data }, { headers: { 'Cache-Control': 'private, no-store' } });
+  } catch (error) { return respuestaErrorCrm(error, 'POST /api/crm/health/customer'); }
 }

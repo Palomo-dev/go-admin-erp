@@ -99,14 +99,15 @@ export function OpportunityForm(props: OpportunityFormProps) {
     if (props.clienteId !== undefined && !estaBloqueado(origen, 'customer_id')) setV((x) => ({ ...x, customer_id: props.clienteId ?? '' }));
   }, [props.clienteId, origen]);
   useEffect(() => {
-    if (typeof props.montoCalculado === 'number' && props.montoCalculado > 0) setV((x) => ({ ...x, amount: String(props.montoCalculado) }));
+    if (typeof props.montoCalculado === 'number' && Number.isFinite(props.montoCalculado) && props.montoCalculado >= 0) setV((x) => ({ ...x, amount: String(props.montoCalculado) }));
   }, [props.montoCalculado]);
 
   const codigos = validarOportunidad(v);
   const errores = Object.fromEntries(Object.entries(codigos).map(([k, c]) => [k, intentado && c ? t(`error.${c}`) : null]));
-  const cambiar = (p: Partial<ValoresOportunidad>) => setV((x) => ({ ...x, ...p }));
+  const cambiar = (p: Partial<ValoresOportunidad>) => { if (!ocupado) setV((x) => ({ ...x, ...p })); };
   const cerrar = () => (onAbiertoChange ? onAbiertoChange(false) : props.onCancelar?.());
   const enviar = () => {
+    if (ocupado) return;
     setIntentado(true);
     if (Object.keys(codigos).length) return;
     props.onEnviar(modo === 'edit' ? cuerpoEdicion(v, { zona: timezone, expectedUpdatedAt: props.updatedAt }) : cuerpoAlta(v, { origen, zona: timezone, origenRef: props.origenRef }));
@@ -123,7 +124,7 @@ export function OpportunityForm(props: OpportunityFormProps) {
   const etapa = props.etapas.find((x) => x.id === v.stage_id)?.name;
 
   const cuerpo = (
-    <>
+    <fieldset disabled={ocupado} className="contents">
       {error && <p role="alert" className="rounded-lg bg-danger-subtle px-3 py-2 text-[13px] text-danger-text">{error}</p>}
       {props.contextoOrigen && (
         <div className="flex items-start gap-2 rounded-lg bg-subtle px-3 py-2">
@@ -154,7 +155,7 @@ export function OpportunityForm(props: OpportunityFormProps) {
       />
       {props.lineasFactura && <LineasCopiadas numero={props.lineasFactura.numero} lineas={props.lineasFactura.lineas} moneda={props.monedaBase} />}
       {layout === 'page' && props.seccionesPagina}
-    </>
+    </fieldset>
   );
 
   const pie = (

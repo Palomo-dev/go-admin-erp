@@ -34,7 +34,15 @@ describe('F9 · rutas de la Ficha 360', () => {
   test.each(ROUTES.map((r) => [r.name, r] as const))('%s toma organization_id de sesión', (_n, r) => {
     const src = read(r.file);
     expect(src).toMatch(/getServerOrgContext/);
-    expect(src).toMatch(/OrgContextError/);
+    // Reuniones usa el traductor canónico de CRM; los contratos runtime
+    // comprueban 401/403 sin perder el código de sesión. No exige duplicarlo.
+    expect(src).toMatch(/OrgContextError|respuestaErrorCrm/);
+    if (src.includes('respuestaErrorCrm')) {
+      const soporte = fs.readFileSync(path.join(process.cwd(), 'src/lib/services/crm/crmRouteSupport.ts'), 'utf8');
+      expect(soporte).toMatch(/error instanceof OrgContextError/);
+      expect(soporte).toMatch(/status: error.statusCode/);
+      expect(soporte).toMatch(/code: error.code/);
+    }
     // organization_id nunca se lee del body (regla 3)
     expect(src).not.toMatch(/body\.organization_id|json\.organization_id|parsed\.data\.organization_id/);
   });

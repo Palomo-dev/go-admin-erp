@@ -23,7 +23,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     const { id } = await params;
     const orgId = ctx.organizationId;
     const q = (request.nextUrl.searchParams.get('q') ?? '').trim().slice(0, 120);

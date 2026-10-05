@@ -17,13 +17,13 @@ const TAG = 'CRM Referral Programs';
  */
 export async function GET(request: NextRequest) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     const { searchParams } = new URL(request.url);
     const [programs, currency] = await Promise.all([
       getReferralPrograms(ctx.organizationId, ctx.supabase, { activeOnly: searchParams.get('active') === 'true' }),
       getOrgBaseCurrency(ctx.organizationId, ctx.supabase),
     ]);
-    return jsonOk(programs, { currency, can_manage: canManagePartners(ctx) });
+    return jsonOk(programs, { currency, can_manage: await canManagePartners(ctx) });
   } catch (error) {
     return routeError(error, TAG);
   }
@@ -36,10 +36,10 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     const body = await readJson(request);
     rejectForeignOrganization(TAG, body, ctx, request);
-    requirePartnerManager(ctx); // crear configuración exige el mismo rol que editarla/borrarla
+    await requirePartnerManager(ctx); // crear configuración exige el mismo rol que editarla/borrarla
     const parsed = validateProgramInput(body, { partial: false });
     if (!parsed.ok) return validationFail(parsed.errors);
     const v = parsed.value;

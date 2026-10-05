@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
-import { format, startOfWeek, addDays, isSameDay, isToday, getHours, getMinutes, differenceInMinutes } from 'date-fns';
+import { format, startOfWeek, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
   DndContext,
@@ -17,6 +17,9 @@ import {
 import { CalendarEvent, SOURCE_TYPE_COLORS, SOURCE_TYPE_LABELS } from './types';
 import { DraggableEventBar } from './DraggableEventBar';
 import { DroppableSlot } from './DroppableSlot';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { toPlainDate, plainDateToInstant, todayInTz } from '@/lib/utils/dateDisplay';
+import { diaDelCursor, instanteDelSlot, ocupaDia, ocupaSlot } from './fechasCalendario';
 import { cn } from '@/utils/Utils';
 
 interface WeekViewProps {
@@ -47,6 +50,7 @@ export function WeekView({
   onEventMove,
   onEventResize,
 }: WeekViewProps) {
+  const { timezone } = useOrgTimezone();
   const [activeEvent, setActiveEvent] = useState<CalendarEvent | null>(null);
   const [selection, setSelection] = useState<TimeSelection | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
@@ -89,18 +93,15 @@ export function WeekView({
       const maxHour = Math.max(startHour, endHour) + 1;
 
       const day = weekDays[dayIndex];
-      const startDate = new Date(day);
-      startDate.setHours(minHour, 0, 0, 0);
-
-      const endDate = new Date(day);
-      endDate.setHours(maxHour, 0, 0, 0);
+      const startDate = instanteDelSlot(day, minHour, timezone);
+      const endDate = instanteDelSlot(day, maxHour, timezone);
 
       onTimeRangeSelect(startDate, endDate);
     }
     setIsSelecting(false);
     setSelection(null);
     selectionRef.current = null;
-  }, [isSelecting, onTimeRangeSelect, weekDays]);
+  }, [isSelecting, onTimeRangeSelect, weekDays, timezone]);
 
   // Listener global para mouseup
   useEffect(() => {
@@ -158,7 +159,7 @@ export function WeekView({
         return;
       }
 
-      const newDate = new Date(targetDate);
+      const newDate = new Date(plainDateToInstant(targetDate, timezone));
       await onEventMove(eventId, newDate, targetHour);
     }
   };
@@ -171,38 +172,14 @@ export function WeekView({
 
   const getEventsForDay = (date: Date) => {
     return events.filter((event) => {
-      const eventDate = new Date(event.start_at);
-      return isSameDay(eventDate, date);
+      return ocupaDia(event.start_at, event.end_at, date, timezone);
     });
   };
 
-  const getEventPosition = (event: CalendarEvent) => {
-    const startDate = new Date(event.start_at);
-    const endDate = event.end_at ? new Date(event.end_at) : new Date(startDate.getTime() + 3600000);
-    
-    const startMinutes = getHours(startDate) * 60 + getMinutes(startDate);
-    const duration = differenceInMinutes(endDate, startDate);
-    
-    return {
-      top: (startMinutes / 60) * HOUR_HEIGHT,
-      height: Math.max((duration / 60) * HOUR_HEIGHT, 20),
-    };
-  };
 
   const allDayEvents = events.filter((e) => e.all_day);
-  const timedEvents = events.filter((e) => !e.all_day);
 
-  const hasEventAtSlot = (date: Date, hour: number) => {
-    return events.some((e) => {
-      if (e.all_day) return false;
-      const startAt = new Date(e.start_at);
-      const endAt = e.end_at ? new Date(e.end_at) : new Date(startAt.getTime() + 3600000);
-      if (!isSameDay(startAt, date)) return false;
-      const startHour = startAt.getHours();
-      const endHour = endAt.getHours() + (endAt.getMinutes() > 0 ? 1 : 0);
-      return hour >= startHour && hour < endHour;
-    });
-  };
+  const hasEventAtSlot = (date: Date, hour: number) => events.some(e => !e.all_day && ocupaSlot(e.start_at, e.end_at, date, hour, timezone));
 
   return (
     <DndContext
@@ -216,7 +193,7 @@ export function WeekView({
         <div className="flex border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
           <div className="w-16 flex-shrink-0" />
           {weekDays.map((day, i) => {
-            const isTodayDate = isToday(day);
+            const isTodayDate = diaDelCursor(day) === todayInTz(timezone);
             return (
               <div
                 key={day.toISOString()}
@@ -248,7 +225,7 @@ export function WeekView({
               Todo el día
             </div>
             {weekDays.map((day) => {
-              const dayAllDayEvents = allDayEvents.filter((e) => isSameDay(new Date(e.start_at), day));
+              const dayAllDayEvents = allDayEvents.filter((e) => toPlainDate(new Date(e.start_at), timezone) === diaDelCursor(day));
               return (
                 <div
                   key={day.toISOString()}
@@ -332,8 +309,7 @@ export function WeekView({
                           if (selection && isSelecting) {
                             handleSelectionEnd();
                           } else if (isEmpty && !isSelecting) {
-                            const date = new Date(day);
-                            date.setHours(hour, 0, 0, 0);
+                            const date = instanteDelSlot(day, hour, timezone);
                             onTimeSlotClick(date);
                           }
                         }}
@@ -341,7 +317,7 @@ export function WeekView({
                         <DroppableSlot
                           date={day}
                           hour={hour}
-                          isToday={isToday(day)}
+                          isToday={diaDelCursor(day) === todayInTz(timezone)}
                           isEmpty={isEmpty}
                           cellHeight={HOUR_HEIGHT}
                           className="w-full h-full pointer-events-none"
@@ -356,13 +332,14 @@ export function WeekView({
                       <div key={`${event.id || event.source_id}-${index}`} style={{ pointerEvents: 'auto' }}>
                         <DraggableEventBar
                           event={event}
+                          displayDate={day}
                           hours={HOURS}
                           cellHeight={HOUR_HEIGHT}
                           onClick={() => onEventClick(event)}
                           onResizeEnd={handleResizeEnd}
                           onResizeStart={() => setIsResizingEvent(true)}
                           onResizeFinish={() => setTimeout(() => setIsResizingEvent(false), 100)}
-                          canDrag={event.source_type === 'calendar_event'}
+                          canDrag={event.source_type === 'calendar_event' && !event.metadata?.is_recurrence_instance}
                         />
                       </div>
                     ))}

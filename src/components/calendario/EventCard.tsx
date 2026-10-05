@@ -1,7 +1,7 @@
 'use client';
 
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { horaEnZona } from '@/components/crm/kit/fechasCrm';
 import { Clock, MapPin, User, ExternalLink } from 'lucide-react';
 import { CalendarEvent, SOURCE_TYPE_LABELS, SOURCE_TYPE_COLORS } from './types';
 import { cn } from '@/utils/Utils';
@@ -13,6 +13,7 @@ interface EventCardProps {
 }
 
 export function EventCard({ event, variant = 'compact', onClick }: EventCardProps) {
+  const { timezone } = useOrgTimezone();
   const eventColor = event.color || SOURCE_TYPE_COLORS[event.source_type] || '#3B82F6';
   const isManual = event.source_type === 'calendar_event';
 
@@ -36,7 +37,7 @@ export function EventCard({ event, variant = 'compact', onClick }: EventCardProp
       >
         {!event.all_day && (
           <span className="font-medium mr-1">
-            {format(new Date(event.start_at), 'HH:mm')}
+            {horaEnZona(event.start_at, timezone)}
           </span>
         )}
         {event.title}
@@ -77,8 +78,8 @@ export function EventCard({ event, variant = 'compact', onClick }: EventCardProp
             'Todo el día'
           ) : (
             <>
-              {format(new Date(event.start_at), 'HH:mm', { locale: es })}
-              {event.end_at && ` - ${format(new Date(event.end_at), 'HH:mm', { locale: es })}`}
+              {horaEnZona(event.start_at, timezone)}
+              {event.end_at && ` - ${horaEnZona(event.end_at, timezone)}`}
             </>
           )}
         </div>

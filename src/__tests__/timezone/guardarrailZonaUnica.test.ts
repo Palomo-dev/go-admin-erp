@@ -37,7 +37,7 @@ function archivos(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-const FUENTES = archivos(SRC).map((ruta) => ({
+const FUENTES = [...archivos(SRC), ...archivos(join(RAIZ, 'supabase/functions/_shared/contacto'))].map((ruta) => ({
   ruta: relative(RAIZ, ruta).split('\\').join('/'),
   texto: readFileSync(ruta, 'utf8'),
 }));
@@ -59,8 +59,6 @@ const PERMITIDOS_BOGOTA = new Set<string>([
   'src/app/api/crm/whatsapp/settings/route.ts',
   'src/components/calendario/configuracion/types.ts',
   'src/components/configuracion/crm/WhatsAppTab.tsx',
-  'src/components/crm/shared/MeetingDialog.tsx',
-  'src/components/crm/timeline/utils.ts',
   'src/components/organization/branding/editor/GlobalSettingsPanel.tsx',
   'src/lib/ai/agent/systemPrompt.ts',
   'src/lib/context/OrganizationTimezoneContext.tsx',
@@ -68,11 +66,10 @@ const PERMITIDOS_BOGOTA = new Set<string>([
   'src/lib/services/aiAssistantService.ts',
   'src/lib/services/crm/email/variables.ts',
   'src/lib/services/crm/email/variablesContext.ts',
-  'src/lib/services/crm/meetingsService.ts',
   'src/lib/services/crm/renewalMilestones.ts',
-  'src/lib/services/crm/voiceAgent/ley2300.ts',
+  // Misma regla de +57 trasladada para compartirla con Edge; no añade un fallback.
+  'supabase/functions/_shared/contacto/ley2300.ts',
   'src/lib/services/crm/voiceAgentService.ts',
-  'src/lib/services/crm/whatsapp/allowedHours.ts',
   'src/lib/services/mobilePrintService.ts',
   'src/lib/services/openexchangerates.ts',
   'src/lib/services/organizationTimezoneService.ts',

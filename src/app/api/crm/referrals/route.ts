@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { getReferrals, createReferral } from '@/lib/services/crm/referralsService';
 import { validateReferralInput } from '@/lib/services/crm/f12Validation';
-import { jsonOk, readJson, readPage, rejectForeignOrganization, routeError, validationFail } from '@/lib/services/crm/f12RouteSupport';
+import { canManagePartners, canConvertReferral, jsonOk, readJson, readPage, rejectForeignOrganization, routeError, validationFail } from '@/lib/services/crm/f12RouteSupport';
 
 const TAG = 'CRM Referrals';
 
@@ -13,7 +13,7 @@ const TAG = 'CRM Referrals';
  */
 export async function GET(request: NextRequest) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     const { searchParams } = new URL(request.url);
     rejectForeignOrganization(TAG, null, ctx, request);
     const rewardPaid = searchParams.get('reward_paid');
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       reward_paid: rewardPaid !== null ? rewardPaid === 'true' : undefined,
       ...readPage(searchParams),
     });
-    return jsonOk(result.data, { count: result.count });
+    return jsonOk(result.data, { count: result.count, can_manage: await canManagePartners(ctx), can_register: await canConvertReferral(ctx) });
   } catch (error) {
     return routeError(error, TAG);
   }
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     const body = await readJson(request);
     rejectForeignOrganization(TAG, body, ctx, request);
     const parsed = validateReferralInput(body);

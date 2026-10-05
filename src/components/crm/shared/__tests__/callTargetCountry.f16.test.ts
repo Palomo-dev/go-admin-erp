@@ -3,19 +3,19 @@
  * llamadas de `normalizePhone` que deciden A QUIÉN SE LLAMA.
  *
  * En la ronda 5 el tester quitó `defaultCountry` de las tres llamadas de
- * `QuickActionsBar` / `MobileCallDialog` y las 333 pruebas siguieron verdes:
+ * `AccionesRapidasCrm` / `MobileCallDialog` y las 333 pruebas siguieron verdes:
  * T-3 estaba «cerrado» solo por `tsc`. El destino de una llamada REAL no puede
  * quedar sin red.
  *
  * No hay @testing-library en el repo (jest en `node`), así que se sigue el
  * precedente de la zona de voz (A-2.4/A-2.6, «se mira el CÓDIGO, no lo que
  * dice de sí mismo»): se lee el fuente sin comentarios y se afirma sobre la
- * forma de cada llamada. Quitar `defaultCountry` de CUALQUIERA de las tres
+ * forma de cada llamada. Quitar el indicativo de cualquier destino
  * pone esta suite en rojo.
  */
 import fs from 'fs';
 
-const QUICK_ACTIONS_BAR = 'src/components/crm/shared/QuickActionsBar.tsx';
+const ACCIONES_RAPIDAS = 'src/components/crm/acciones/AccionesRapidasCrm.tsx';
 const MOBILE_CALL_DIALOG = 'src/components/crm/shared/MobileCallDialog.tsx';
 
 /** Fuente sin líneas de comentario. */
@@ -40,41 +40,39 @@ function normalizePhoneCalls(code: string): Call[] {
   return out;
 }
 
-/**
- * El celular del VENDEDOR (`user_comm_preferences.mobile_phone_e164`) ya es
- * E.164 verificado por OTP: no es el destino de la llamada y no necesita
- * indicativo. Es la única llamada exenta.
- */
+/** El celular verificado del vendedor ya es E.164 y no es el destino. */
 const EXENTAS = new Set(['row.mobile_phone_e164']);
 
-describe('T19/T20 · QuickActionsBar: el destino de la llamada lleva el indicativo de la organización', () => {
-  const code = stripped(QUICK_ACTIONS_BAR);
+// Ola 5: QuickActionsBar fue sustituido por AccionesRapidasCrm. Se protege
+// el consumidor vigente: una normalización compartida por navegador y puente.
+describe('T19/T20 · AccionesRapidasCrm: el destino lleva el indicativo de la organización', () => {
+  const code = stripped(ACCIONES_RAPIDAS);
 
-  it('lee el indicativo con useOrgDefaultCountry (no un valor fijo)', () => {
-    expect(code).toMatch(/import\s*\{\s*useOrgDefaultCountry\s*\}\s*from\s*'\.\/useOrgDefaultCountry'/);
-    expect(code).toMatch(/const defaultCountry = useOrgDefaultCountry\(\)/);
+  it('lee el indicativo con useOrgDefaultCountry y no escribe uno fijo', () => {
+    expect(code).toMatch(/import\s*\{\s*useOrgDefaultCountry\s*\}\s*from\s*'@\/components\/crm\/shared\/useOrgDefaultCountry'/);
+    expect(code).toMatch(/const pais = useOrgDefaultCountry\(\) \?\? undefined/);
     expect(code).not.toMatch(/normalizePhone\([^()]*,\s*'\d+'\s*\)/);
   });
 
-  it('las DOS llamadas con el teléfono del cliente (llamada desde navegador y targetPhone del diálogo) pasan defaultCountry', () => {
-    const calls = normalizePhoneCalls(code).filter((c) => c.args[0] === 'customer?.phone');
-    expect(calls).toHaveLength(2);
-    for (const c of calls) expect(c.args).toEqual(['customer?.phone', 'defaultCountry']);
+  it('normaliza el teléfono del cliente una sola vez con el indicativo', () => {
+    const calls = normalizePhoneCalls(code);
+    expect(calls.map((c) => c.args)).toEqual([['cliente?.phone', 'pais']]);
+    expect(code).toMatch(/const telefono = normalizePhone\(cliente\?\.phone,\s*pais\)/);
   });
 
-  it('el `to` de softphone.makeCall es el normalizado con indicativo', () => {
-    expect(code).toMatch(/const to = normalizePhone\(customer\?\.phone,\s*defaultCountry\)/);
-    expect(code).toMatch(/softphone\.makeCall\(to,/);
+  it('el destino del softphone es el teléfono ya normalizado', () => {
+    expect(code).toMatch(/softphone\.makeCall\(telefono,/);
+    expect(code).not.toMatch(/softphone\.makeCall\(cliente\?\.phone,/);
   });
 
-  it('el targetPhone que recibe MobileCallDialog es el normalizado con indicativo', () => {
-    expect(code).toMatch(/targetPhone=\{normalizePhone\(customer\?\.phone,\s*defaultCountry\)/);
+  it('el puente recibe el mismo teléfono normalizado', () => {
+    expect(code).toMatch(/<MobileCallDialog[\s\S]*?targetPhone=\{telefono(?:\s*\?\?\s*'')?\}/);
   });
 
-  it('ninguna llamada a normalizePhone queda sin indicativo salvo las exentas', () => {
+  it('ninguna normalización omite el indicativo de la organización', () => {
     for (const c of normalizePhoneCalls(code)) {
       if (EXENTAS.has(c.args[0])) continue;
-      expect(c.args[1]).toBe('defaultCountry');
+      expect(c.args[1]).toBe('pais');
     }
   });
 });

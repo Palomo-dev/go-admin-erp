@@ -43,6 +43,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { resolveAudience } from './whatsapp/campaignMaterialize';
 import { getActiveProvider } from '@/lib/services/providerRegistry';
 import {
   getMasterClient,
@@ -57,9 +58,12 @@ import {
   type VoiceAgentEngine as EnumVoiceAgentEngine,
 } from '@/lib/crm/enums';
 import { describirMotivoLey2300, ventanaLey2300Abierta, ZONA_COLOMBIA } from '@/lib/services/crm/voiceAgent/ley2300';
-import { parametrosAmd } from '@/lib/services/crm/voiceAgent/amd';
+import { despacharVozConReserva, preparacionVozRechazada } from '@/lib/services/crm/voiceAgent/despachoConReserva';
+import { VoiceCreditPendingError } from '@/lib/services/crm/voiceAgent/creditosVoz';
+import { CrmHttpError } from './crmErrors';
 import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 import { normalizarNumeroRne } from '@/lib/services/crm/voiceAgent/rne';
+import { DEFAULT_VOICE_CAMPAIGN_LIMITS } from '@/lib/crm/voiceCampaignLimits';
 import { evaluarLey2300Cliente, politicaDatosValida } from '@/lib/services/crm/voiceAgent/cumplimiento';
 
 // ─── Tipos: Voice Agents ─────────────────────────────────────────────────────
@@ -434,90 +438,10 @@ export async function getVoiceAgentCampaigns(
       .from('voice_agent_campaigns')
       .select('*, voice_agents:voice_agent_id(id, name)')
       .eq('organization_id', orgId)
+      .is('stats->>archived_at', null)
       .order('created_at', { ascending: false })
   );
   return (data || []) as VoiceAgentCampaign[];
-}
-
-export async function createCampaign(
-  orgId: number,
-  data: CampaignInput,
-  supabase: SupabaseClient
-): Promise<VoiceAgentCampaign> {
-  const targetSource = data.target_source ?? 'manual_list';
-  if (!CAMPAIGN_TARGET_SOURCES.includes(targetSource)) {
-    throw new Error(`target_source inválido: ${targetSource}`);
-  }
-  const result = unwrap(
-    'createCampaign',
-    await supabase
-      .from('voice_agent_campaigns')
-      .insert({
-        organization_id: orgId,
-        voice_agent_id: data.voice_agent_id,
-        name: data.name,
-        objective: data.objective ?? null,
-        target_source: targetSource,
-        target_config: data.target_config ?? {},
-        schedule: data.schedule ?? {},
-        max_calls_per_day: data.max_calls_per_day ?? 50,
-        max_calls_per_hour: data.max_calls_per_hour ?? 20,
-        max_concurrent: data.max_concurrent ?? 3,
-        status: data.status ?? 'draft',
-        stats: {},
-      })
-      .select('*')
-      .single()
-  );
-  return result as VoiceAgentCampaign;
-}
-
-export async function updateCampaign(
-  id: string,
-  orgId: number,
-  data: CampaignUpdateInput,
-  supabase: SupabaseClient
-): Promise<VoiceAgentCampaign | null> {
-  if (data.target_source && !CAMPAIGN_TARGET_SOURCES.includes(data.target_source)) {
-    throw new Error(`target_source inválido: ${data.target_source}`);
-  }
-  const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  const fields: (keyof CampaignInput)[] = [
-    'voice_agent_id', 'name', 'objective', 'target_source', 'target_config', 'schedule',
-    'max_calls_per_day', 'max_calls_per_hour', 'max_concurrent', 'emergency_stop', 'status',
-  ];
-  for (const field of fields) {
-    if (data[field] !== undefined) updateData[field] = data[field];
-  }
-  // Reanudar una campaña detenida limpia el motivo de parada.
-  if (data.emergency_stop === false) {
-    updateData.stopped_reason = null;
-    updateData.stopped_at = null;
-    updateData.consecutive_failures = 0;
-  }
-
-  const result = unwrap(
-    'updateCampaign',
-    await supabase
-      .from('voice_agent_campaigns')
-      .update(updateData)
-      .eq('id', id)
-      .eq('organization_id', orgId)
-      .select('*')
-      .maybeSingle()
-  );
-  return (result as VoiceAgentCampaign) || null;
-}
-
-export async function deleteCampaign(
-  id: string,
-  orgId: number,
-  supabase: SupabaseClient
-): Promise<void> {
-  unwrap(
-    'deleteCampaign',
-    await supabase.from('voice_agent_campaigns').delete().eq('id', id).eq('organization_id', orgId)
-  );
 }
 
 /** Parada de emergencia manual (UI) o automática (racha de fallos). */
@@ -526,13 +450,14 @@ export async function stopCampaign(
   campaignId: string,
   reason: string,
   supabase: SupabaseClient
-): Promise<void> {
-  const { error } = await supabase.rpc('fn_stop_voice_campaign', {
+): Promise<boolean> {
+  const { data, error } = await supabase.rpc('fn_stop_voice_campaign', {
     p_org: orgId,
     p_campaign: campaignId,
     p_reason: reason,
   });
   if (error) throw new VoiceAgentDbError('stopCampaign', error);
+  return data === true;
 }
 
 // ─── Voice Agent Calls ───────────────────────────────────────────────────────
@@ -641,55 +566,8 @@ export function isWithinCustomerHours(timezone?: string | null, now: Date = new 
  * `fn_can_contact` lee `customers.do_not_call`, `metadata->>'do_not_call'`
  * y `contact_consents`.
  */
-export async function canCallCustomer(
-  orgId: number,
-  customerId: string,
-  supabase: SupabaseClient
-): Promise<boolean> {
-  const { data, error } = await supabase.rpc('fn_can_contact', {
-    p_org: orgId,
-    p_customer: customerId,
-    p_channel: 'voice',
-    p_purpose: 'utility',
-  });
-  if (error) {
-    console.warn('[voiceAgent] fn_can_contact falló, se bloquea la llamada:', error.message);
-    return false;
-  }
-  return data === true;
-}
-
-/** Reserva de crédito de voz ANTES del proveedor (D6). Devuelve false si no alcanza. */
-async function reserveVoiceCredits(
-  orgId: number,
-  minutes: number,
-  supabase: SupabaseClient
-): Promise<boolean> {
-  const { data, error } = await supabase.rpc('deduct_comm_credits', {
-    p_org_id: orgId,
-    p_channel: 'voice',
-    p_amount: minutes,
-  });
-  if (error) {
-    console.warn('[voiceAgent] deduct_comm_credits falló:', error.message);
-    return false; // fail-closed
-  }
-  return data === true;
-}
-
-/** Devuelve la reserva si el proveedor rechazó la llamada. */
-async function refundVoiceCredits(
-  orgId: number,
-  minutes: number,
-  supabase: SupabaseClient
-): Promise<void> {
-  const { error } = await supabase.rpc('deduct_comm_credits', {
-    p_org_id: orgId,
-    p_channel: 'voice',
-    p_amount: -minutes,
-  });
-  if (error) console.warn('[voiceAgent] reembolso de créditos falló:', error.message);
-}
+import { canCallCustomer } from './voiceAgent/canContact';
+export { canCallCustomer } from './voiceAgent/canContact';
 
 // ─── Targets de campaña ──────────────────────────────────────────────────────
 
@@ -700,115 +578,93 @@ export interface CustomerTarget {
 }
 
 /**
- * Construye los objetivos según `target_source` (literales del CHECK real).
- * A-F6-25: el llamador acota cuántos se encolan; aquí se aplica `limit`.
+ * Lector común de cola y RNE. Sin límite devuelve toda la audiencia;
+ * la cola puede acotar su lote sin confundirlo con una verificación completa.
+ * Páginas de 500, orden estable y organización explícita también en secuencias.
  */
 export async function buildCampaignTargets(
   supabase: SupabaseClient,
   orgId: number,
   campaign: VoiceAgentCampaign,
-  limit: number
+  limit = Number.POSITIVE_INFINITY
 ): Promise<CustomerTarget[]> {
+  if (campaign.organization_id !== orgId) throw new Error('Campaña no encontrada');
+  if (Number.isNaN(limit)) throw new Error('Límite de audiencia inválido');
   if (limit <= 0) return [];
   const config = (campaign.target_config || {}) as Record<string, unknown>;
   const targets: CustomerTarget[] = [];
-
-  const pushOpportunityRows = (rows: Array<Record<string, unknown>>) => {
-    for (const opp of rows) {
-      const customerId = opp.customer_id as string | null;
-      if (!customerId) continue;
-      targets.push({
-        customer_id: customerId,
-        opportunity_id: (opp.id as string) || null,
-        stage_id: (opp.stage_id as string) || null,
-      });
-    }
+  const pageSize = 500;
+  const addOpportunity = (opp: { id: string; customer_id: string | null; stage_id: string | null }) => {
+    if (opp.customer_id) targets.push({ customer_id: opp.customer_id, opportunity_id: opp.id, stage_id: opp.stage_id });
   };
 
-  if (campaign.target_source === 'pipeline_stage') {
-    const stageId = config.stage_id as string | undefined;
-    if (!stageId) return [];
-    const rows = unwrap(
-      'buildCampaignTargets.pipeline_stage',
-      await supabase
-        .from('opportunities')
-        .select('id, customer_id, stage_id')
-        .eq('organization_id', orgId)
-        .eq('stage_id', stageId)
-        .eq('status', 'open')
-        .not('customer_id', 'is', null)
-        .limit(limit)
-    ) as Array<Record<string, unknown>> | null;
-    pushOpportunityRows(rows || []);
-  } else if (campaign.target_source === 'manual_list') {
-    const customerIds = (config.customer_ids as string[] | undefined) || [];
-    if (customerIds.length === 0) return [];
-    const rows = unwrap(
-      'buildCampaignTargets.manual_list',
-      await supabase
-        .from('customers')
-        .select('id')
-        .eq('organization_id', orgId)
-        .in('id', customerIds.slice(0, limit))
-        .not('phone', 'is', null)
-    ) as Array<{ id: string }> | null;
-    for (const c of rows || []) {
-      targets.push({ customer_id: c.id, opportunity_id: null, stage_id: null });
-    }
-  } else if (campaign.target_source === 'segment') {
+  if (campaign.target_source === 'segment') {
     const segmentId = config.segment_id as string | undefined;
     if (!segmentId) return [];
-    const rows = unwrap(
-      'buildCampaignTargets.segment',
-      await supabase
-        .from('campaign_contacts')
-        .select('customer_id')
-        .eq('campaign_id', segmentId)
-        .limit(limit)
-    ) as Array<{ customer_id: string }> | null;
-    // `segments.filter_json` es dinámico; sin materialización previa no hay objetivos.
-    for (const r of rows || []) {
-      targets.push({ customer_id: r.customer_id, opportunity_id: null, stage_id: null });
+    // El evaluador canónico recorre el segmento completo. Un lote pequeño
+    // de la cola no convierte una audiencia válida en un error 413.
+    const rows = await resolveAudience(orgId, { source: 'segment', segment_id: segmentId }, supabase, Number.MAX_SAFE_INTEGER);
+    return rows.slice(0, limit).map(r => ({ ...r, stage_id: null }));
+  }
+  if (campaign.target_source === 'manual_list') {
+    const ids = [...new Set((config.customer_ids as string[] | undefined) || [])];
+    for (let from = 0; from < ids.length && targets.length < limit; from += pageSize) {
+      const rows = unwrap('buildCampaignTargets.manual_list', await supabase.from('customers')
+        .select('id').eq('organization_id', orgId).neq('status', 'merged')
+        .in('id', ids.slice(from, from + pageSize)).not('phone', 'is', null).order('id')) as Array<{ id: string }> | null;
+      for (const c of rows || []) targets.push({ customer_id: c.id, opportunity_id: null, stage_id: null });
     }
-  } else if (campaign.target_source === 'followup_due') {
-    const rows = unwrap(
-      'buildCampaignTargets.followup_due',
-      await supabase
-        .from('opportunities')
-        .select('id, customer_id, stage_id')
-        .eq('organization_id', orgId)
-        .eq('status', 'open')
-        .not('customer_id', 'is', null)
-        .not('next_contact_at', 'is', null)
-        .lte('next_contact_at', new Date().toISOString())
-        .order('next_contact_at', { ascending: true })
-        .limit(limit)
-    ) as Array<Record<string, unknown>> | null;
-    pushOpportunityRows(rows || []);
-  } else if (campaign.target_source === 'sequence_step') {
+    return targets.slice(0, limit);
+  }
+  if (campaign.target_source === 'pipeline_stage' || campaign.target_source === 'followup_due') {
+    const stageId = config.stage_id as string | undefined;
+    if (campaign.target_source === 'pipeline_stage' && !stageId) return [];
+    const asOf = new Date().toISOString();
+    for (let from = 0; targets.length < limit; from += pageSize) {
+      let query = supabase.from('opportunities').select('id, customer_id, stage_id')
+        .eq('organization_id', orgId).eq('status', 'open').not('customer_id', 'is', null);
+      if (campaign.target_source === 'pipeline_stage') query = query.eq('stage_id', stageId!);
+      else query = query.not('next_contact_at', 'is', null).lte('next_contact_at', asOf).order('next_contact_at');
+      const rows = unwrap('buildCampaignTargets.opportunities', await query.order('id')
+        .range(from, from + pageSize - 1)) as Array<{ id: string; customer_id: string | null; stage_id: string | null }> | null;
+      for (const opp of rows || []) addOpportunity(opp);
+      if (!rows || rows.length < pageSize) break;
+    }
+    return targets.slice(0, limit);
+  }
+  if (campaign.target_source === 'sequence_step') {
     const stepId = config.step_id as string | undefined;
     if (!stepId) return [];
-    const rows = unwrap(
-      'buildCampaignTargets.sequence_step',
-      await supabase
-        .from('sequence_step_runs')
-        .select('enrollment_id, sequence_enrollments:enrollment_id(customer_id, opportunity_id)')
-        .eq('step_id', stepId)
-        .eq('status', 'pending')
-        .limit(limit)
-    ) as Array<Record<string, unknown>> | null;
-    for (const r of rows || []) {
-      const enr = r.sequence_enrollments as { customer_id?: string; opportunity_id?: string } | null;
-      if (enr?.customer_id) {
-        targets.push({
-          customer_id: enr.customer_id,
-          opportunity_id: enr.opportunity_id ?? null,
-          stage_id: null,
-        });
+    const step = unwrap('buildCampaignTargets.sequence_step', await supabase.from('sequence_steps')
+      .select('id').eq('organization_id', orgId).eq('id', stepId).maybeSingle());
+    if (!step) throw new Error('Paso de secuencia no encontrado');
+    for (let from = 0; targets.length < limit; from += pageSize) {
+      const runs = unwrap('buildCampaignTargets.sequence_runs', await supabase.from('sequence_step_runs')
+        .select('id, enrollment_id').eq('organization_id', orgId).eq('step_id', stepId)
+        .eq('status', 'pending').order('id').range(from, from + pageSize - 1)) as Array<{ id: string; enrollment_id: string }> | null;
+      if (!runs?.length) break;
+      const enrollments = unwrap('buildCampaignTargets.sequence_enrollments', await supabase.from('sequence_enrollments')
+        .select('id, customer_id, opportunity_id').eq('organization_id', orgId)
+        .in('id', [...new Set(runs.map(r => r.enrollment_id))])) as Array<{ id: string; customer_id: string | null; opportunity_id: string | null }> | null;
+      const ids = [...new Set((enrollments || []).flatMap(e => e.customer_id ? [e.customer_id] : []))];
+      const customers = ids.length ? unwrap('buildCampaignTargets.sequence_customers', await supabase.from('customers')
+        .select('id').eq('organization_id', orgId).neq('status', 'merged').in('id', ids)) as Array<{ id: string }> | null : [];
+      const ownCustomers = new Set((customers || []).map(c => c.id));
+      const opportunityIds = [...new Set((enrollments || []).flatMap(e => e.opportunity_id ? [e.opportunity_id] : []))];
+      const opportunities = opportunityIds.length ? unwrap('buildCampaignTargets.sequence_opportunities', await supabase.from('opportunities')
+        .select('id, customer_id, stage_id').eq('organization_id', orgId).in('id', opportunityIds)) as Array<{ id: string; customer_id: string | null; stage_id: string | null }> | null : [];
+      const ownOpportunities = new Map((opportunities || []).map(o => [o.id, o]));
+      const byId = new Map((enrollments || []).map(e => [e.id, e]));
+      for (const run of runs) {
+        const e = byId.get(run.enrollment_id);
+        if (!e?.customer_id || !ownCustomers.has(e.customer_id)) continue;
+        const opp = e.opportunity_id ? ownOpportunities.get(e.opportunity_id) : null;
+        if (e.opportunity_id && (!opp || opp.customer_id !== e.customer_id)) continue;
+        targets.push({ customer_id: e.customer_id, opportunity_id: e.opportunity_id, stage_id: opp?.stage_id ?? null });
       }
+      if (runs.length < pageSize) break;
     }
   }
-
   return targets.slice(0, limit);
 }
 
@@ -824,10 +680,7 @@ export interface RunCampaignQueueResult {
 }
 
 /** Racha de fallos consecutivos que dispara la parada de emergencia. */
-export const FAILURE_STREAK_TO_STOP = 5;
-
-/** Minutos reservados por llamada antes de marcar (se ajusta al colgar). */
-export const CREDITS_RESERVED_PER_CALL = 1;
+export const FAILURE_STREAK_TO_STOP = 10;
 
 /** Desfase en minutos de una zona horaria respecto a UTC en un instante dado. */
 function tzOffsetMinutes(timezone: string, at: Date): number | null {
@@ -984,6 +837,7 @@ export async function runCampaignQueue(
       .select('*')
       .eq('organization_id', orgId)
       .eq('status', 'running')
+      .is('stats->>archived_at', null)
       .eq('emergency_stop', false)
   ) || []) as VoiceAgentCampaign[];
 
@@ -1066,9 +920,9 @@ export async function runCampaignQueue(
         countAgentAttempts(supabase, orgId, campaign.voice_agent_id, hourAgoIso),
       ]);
 
-    const maxConcurrent = campaign.max_concurrent || 3;
-    const maxPerDay = campaign.max_calls_per_day || 50;
-    const maxPerHour = campaign.max_calls_per_hour || 20;
+    const maxConcurrent = campaign.max_concurrent ?? DEFAULT_VOICE_CAMPAIGN_LIMITS.max_concurrent;
+    const maxPerDay = campaign.max_calls_per_day ?? DEFAULT_VOICE_CAMPAIGN_LIMITS.max_calls_per_day;
+    const maxPerHour = campaign.max_calls_per_hour ?? DEFAULT_VOICE_CAMPAIGN_LIMITS.max_calls_per_hour;
 
     /** Lo que aún cabe hoy sin pasarse de NINGUNO de los dos saldos. */
     const dayRoom = Math.min(
@@ -1137,7 +991,8 @@ export async function runCampaignQueue(
         result.calls_skipped++;
         streak++;
         result.errors.push(`Llamada ${vac.id}: ${message}`);
-        await releaseCall(supabase, vac.id, 'failed', message, null);
+        if (err instanceof VoiceCreditPendingError) orgConcurrencyRoom--;
+        else await releaseCall(supabase, orgId, vac.id, 'failed', message, null);
       }
 
       if (streak >= FAILURE_STREAK_TO_STOP) {
@@ -1417,7 +1272,7 @@ export async function getOrgVoiceSettings(
       'Esta llamada será grabada con fines de calidad y quedará registrada en nuestro sistema.',
     // Sin fila de `comm_settings` no hay canal configurado: fail-closed.
     agentEnabled: data ? data.voice_agent_enabled !== false && data.is_active !== false : false,
-    maxConcurrentCalls: Number(data?.voice_max_concurrent_calls) > 0 ? Number(data?.voice_max_concurrent_calls) : 3,
+    maxConcurrentCalls: Number(data?.voice_max_concurrent_calls) > 0 ? Number(data?.voice_max_concurrent_calls) : DEFAULT_VOICE_CAMPAIGN_LIMITS.max_concurrent,
     dataPolicyUrl: politicaDatosValida(data?.data_policy_url) ? (data?.data_policy_url as string) : null,
   };
 }
@@ -1425,6 +1280,7 @@ export async function getOrgVoiceSettings(
 /** Libera/cierra una fila reclamada sin dejar el estado colgado. */
 async function releaseCall(
   supabase: SupabaseClient,
+  orgId: number,
   vacId: string,
   status: VoiceAgentCallStatus,
   errorMessage: string | null,
@@ -1436,11 +1292,12 @@ async function releaseCall(
       status,
       error_message: errorMessage,
       last_error_code: errorCode,
-      completed_at: new Date().toISOString(),
+      completed_at: status === 'pending' || status === 'queued' ? null : new Date().toISOString(),
       locked_by: null,
       updated_at: new Date().toISOString(),
     })
-    .eq('id', vacId);
+    .eq('id', vacId)
+    .eq('organization_id', orgId);
   if (res.error) throw new VoiceAgentDbError('releaseCall', res.error);
 }
 
@@ -1469,10 +1326,10 @@ interface DialOutcome {
  * `evaluarLey2300Cliente`) y la llamada queda marcada en `calls.metadata`.
  */
 async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
-  const { supabase, orgId, campaign, vac, twilioClient, fromNumber, webhookBase, recording } = p;
+  const { supabase, orgId, vac, twilioClient, fromNumber, webhookBase, recording } = p;
 
   if (!vac.customer_id) {
-    await releaseCall(supabase, vac.id, 'skipped', 'La llamada no tiene cliente asociado', null);
+    await releaseCall(supabase, orgId, vac.id, 'skipped', 'La llamada no tiene cliente asociado', null);
     return { initiated: false, reason: 'sin cliente' };
   }
 
@@ -1488,17 +1345,17 @@ async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
   }
   const customer = customerRes.data as { id: string; phone: string | null; timezone: string | null } | null;
   if (!customer) {
-    await releaseCall(supabase, vac.id, 'skipped', 'Cliente no encontrado', null);
+    await releaseCall(supabase, orgId, vac.id, 'skipped', 'Cliente no encontrado', null);
     return { initiated: false, reason: 'cliente no encontrado' };
   }
 
   if (!(await canCallCustomer(orgId, vac.customer_id, supabase))) {
-    await releaseCall(supabase, vac.id, 'skipped', 'Cliente con baja voluntaria de llamadas (do_not_call)', null);
+    await releaseCall(supabase, orgId, vac.id, 'skipped', 'Cliente con baja voluntaria de llamadas (do_not_call)', null);
     return { initiated: false, reason: 'baja voluntaria' };
   }
 
   if (!customer.phone) {
-    await releaseCall(supabase, vac.id, 'skipped', 'Cliente sin teléfono', null);
+    await releaseCall(supabase, orgId, vac.id, 'skipped', 'Cliente sin teléfono', null);
     return { initiated: false, reason: 'sin teléfono' };
   }
 
@@ -1507,7 +1364,7 @@ async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
   // gastando el minuto de Twilio. Se comprueba ANTES de reservar créditos.
   const dialableTo = normalizarNumeroRne(customer.phone) ?? normalizeDialableE164(customer.phone);
   if (!dialableTo) {
-    await releaseCall(supabase, vac.id, 'skipped', `Teléfono no marcable: ${customer.phone}`, null);
+    await releaseCall(supabase, orgId, vac.id, 'skipped', `Teléfono no marcable: ${customer.phone}`, null);
     return { initiated: false, reason: 'teléfono no marcable' };
   }
 
@@ -1534,7 +1391,8 @@ async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
         last_error_code: 'LEY2300',
         updated_at: new Date().toISOString(),
       })
-      .eq('id', vac.id);
+      .eq('id', vac.id)
+      .eq('organization_id', orgId);
     if (res.error) throw new VoiceAgentDbError('dialClaimedCall.reschedule', res.error);
     return {
       initiated: false,
@@ -1554,167 +1412,20 @@ async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
     });
   }
 
-  // D6: crédito reservado ANTES de gastar en el proveedor.
-  const reserved = await reserveVoiceCredits(orgId, CREDITS_RESERVED_PER_CALL, supabase);
-  if (!reserved) {
-    await releaseCall(supabase, vac.id, 'skipped', 'Sin minutos de voz disponibles', null);
-    return { initiated: false, reason: 'sin créditos' };
-  }
-  // F-NEW-6: la reserva queda anotada en la fila para que al colgar se cobre
-  // SOLO la diferencia (antes se cobraban los minutos completos encima).
-  unwrap(
-    'dialClaimedCall.reserveCredits',
-    await supabase
-      .from('voice_agent_calls')
-      .update({ credits_reserved: CREDITS_RESERVED_PER_CALL, credits_settled_at: null, updated_at: new Date().toISOString() })
-      .eq('id', vac.id)
-      .eq('organization_id', orgId)
-  );
-
-  const toNumber = dialableTo;
-  const startedAt = new Date().toISOString();
-
-  // C-F6-03: fila en `calls` con las columnas reales y todos los NOT NULL.
-  const callRow = unwrap(
-    'dialClaimedCall.calls.insert',
-    await supabase
-      .from('calls')
-      .insert({
-        organization_id: orgId,
-        provider: 'twilio',
-        direction: 'outbound',
-        mode: 'ai_agent',
-        from_number: fromNumber,
-        to_number: toNumber,
-        status: 'dialing',
-        started_at: startedAt,
-        customer_id: vac.customer_id,
-        opportunity_id: vac.opportunity_id,
-        voice_agent_id: vac.voice_agent_id,
-        recording_enabled: recording.enabled,
-        consent_given: false,
-        duration_source: 'provider',
-        metadata: {
-          source: 'voice_agent_campaign',
-          campaign_id: campaign.id,
-          voice_agent_call_id: vac.id,
-          // Auditoría: la llamada salió eximida del tope semanal de la Ley 2300
-          // por ser a un número de prueba interno (`crm_voice_test_numbers`).
-          ...marcaExencion,
-        },
-      })
-      .select('id')
-      .single()
-  ) as { id: string };
-
-  // C-F6-04: el UUID de `calls` va en call_id; el CallSid, en provider_call_sid.
-  unwrap(
-    'dialClaimedCall.link',
-    await supabase
-      .from('voice_agent_calls')
-      .update({ call_id: callRow.id, updated_at: new Date().toISOString() })
-      .eq('id', vac.id)
-      .eq('organization_id', orgId)
-  );
-
-  const agentTwimlUrl =
-    `${webhookBase}/api/voice/twiml/ai-agent` +
-    `?agentId=${encodeURIComponent(vac.voice_agent_id)}&callId=${encodeURIComponent(vac.id)}`;
-  const statusUrl = `${webhookBase}/api/voice/ai-agent/status?callId=${encodeURIComponent(vac.id)}`;
-
   try {
-    const call = await twilioClient.calls.create({
-      to: toNumber,
-      from: fromNumber,
-      url: agentTwimlUrl,
-      statusCallback: statusUrl,
-      statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
-      statusCallbackMethod: 'POST',
-      timeout: 30,
-      // AMD síncrono (`voiceAgent/amd.ts`): Twilio espera el veredicto y lo
-      // manda como `AnsweredBy` al TwiML; si es una máquina, `twiml/ai-agent`
-      // cuelga sin abrir la conversación y registra `buzon`.
-      ...parametrosAmd(),
-      // C-F6-09 / A-2: la grabación dual-channel NO se pide aquí. `record: true`
-      // en el `calls.create` arranca a grabar en cuanto contestan, es decir
-      // ANTES de que suene el aviso: el acta quedaba bien fechada pero la
-      // grabación ya existía sin consentimiento. La inicia `twiml/ai-agent`
-      // con `<Start><Recording>` (ronda 5; ya NO por REST), en la segunda
-      // pasada, después del aviso y solo con el acta escrita.
+    return await despacharVozConReserva({
+      supabase, organizationId: orgId, agentId: vac.voice_agent_id, webhookBase, provider: twilioClient,
+      preparation: {
+        callId: vac.id, attempt: vac.attempts, from: fromNumber, to: dialableTo, recording: recording.enabled,
+        customerPhone: customer.phone, customerTimezone: customer.timezone, metadata: marcaExencion,
+      },
     });
-
-    unwrap(
-      'dialClaimedCall.correlate',
-      await supabase
-        .from('voice_agent_calls')
-        .update({
-          provider_call_sid: call.sid,
-          started_at: startedAt,
-          error_message: null,
-          last_error_code: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', vac.id)
-        .eq('organization_id', orgId)
-    );
-    unwrap(
-      'dialClaimedCall.calls.sid',
-      await supabase
-        .from('calls')
-        .update({ provider_call_sid: call.sid, updated_at: new Date().toISOString() })
-        .eq('id', callRow.id)
-        .eq('organization_id', orgId)
-    );
-
-    return { initiated: true };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Error desconocido';
-    const code = (err as { code?: number | string })?.code;
-    await refundVoiceCredits(orgId, CREDITS_RESERVED_PER_CALL, supabase);
-    // La reserva se devolvió: la fila deja de tener crédito pendiente de conciliar.
-    unwrap(
-      'dialClaimedCall.releaseReserve',
-      await supabase
-        .from('voice_agent_calls')
-        .update({ credits_reserved: 0, credits_settled_at: new Date().toISOString() })
-        .eq('id', vac.id)
-        .eq('organization_id', orgId)
-    );
-
-    const failRes = await supabase
-      .from('calls')
-      .update({
-        status: 'failed',
-        ended_at: new Date().toISOString(),
-        metadata: { source: 'voice_agent_campaign', error: message, ...marcaExencion },
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', callRow.id)
-      .eq('organization_id', orgId);
-    if (failRes.error) throw new VoiceAgentDbError('dialClaimedCall.callsFail', failRes.error);
-
-    // A-F6-23: reintento según `retry_policy` del agente.
-    const retry = await getRetryPolicy(supabase, orgId, vac.voice_agent_id);
-    const attempts = vac.attempts ?? 1;
-    if (attempts < retry.maxAttempts) {
-      const res = await supabase
-        .from('voice_agent_calls')
-        .update({
-          status: 'pending',
-          claimed_at: null,
-          locked_by: null,
-          error_message: message,
-          last_error_code: code != null ? String(code) : null,
-          scheduled_at: new Date(Date.now() + retry.backoffMinutes * 60 * 1000).toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', vac.id);
-      if (res.error) throw new VoiceAgentDbError('dialClaimedCall.retry', res.error);
-    } else {
-      await releaseCall(supabase, vac.id, 'failed', message, code != null ? String(code) : null);
-    }
-
-    return { initiated: false, reason: message, providerFailure: true };
+  } catch (error) {
+    if (!preparacionVozRechazada(error)) throw error;
+    // La RPC revirtió antes de reservar. Conservar la fila para la próxima compuerta válida.
+    const code = String((error as { message: string }).message);
+    await releaseCall(supabase, orgId, vac.id, 'pending', code === 'creditos_insuficientes' ? 'Sin minutos de voz disponibles' : 'La llamada no cumple las condiciones de envío.', code);
+    return { initiated: false, reason: code === 'creditos_insuficientes' ? 'Sin minutos de voz disponibles.' : 'La llamada no cumple las condiciones de envío.' };
   }
 }
 
@@ -1793,8 +1504,8 @@ export async function dispatchAgentCall(
   input: DispatchAgentCallInput
 ): Promise<DispatchAgentCallResult> {
   const agent = await getVoiceAgent(input.voiceAgentId, orgId, supabase);
-  if (!agent) throw new Error('Agente no encontrado');
-  if (!agent.is_active) throw new Error('El agente está desactivado');
+  if (!agent) throw new CrmHttpError(404, 'agente_no_encontrado', 'Agente no encontrado');
+  if (!agent.is_active) throw new CrmHttpError(409, 'agente_inactivo', 'El agente está desactivado');
 
   const orgSettings = await getOrgVoiceSettings(orgId, supabase);
   if (!orgSettings.agentEnabled) {
@@ -1817,7 +1528,8 @@ export async function dispatchAgentCall(
         .eq('organization_id', orgId)
         .maybeSingle()
     ) as { id: string; customer_id: string | null; stage_id: string } | null;
-    if (!opp) throw new Error('Oportunidad no encontrada');
+    if (!opp) throw new CrmHttpError(404, 'oportunidad_no_encontrada', 'Oportunidad no encontrada');
+    if (customerId && customerId !== opp.customer_id) throw new CrmHttpError(400, 'cliente_oportunidad_invalido', 'El cliente no corresponde a la oportunidad.');
     customerId = customerId ?? opp.customer_id;
     stageId = opp.stage_id;
   }

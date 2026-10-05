@@ -21,6 +21,7 @@
  * Las tareas se editan en su propio módulo: aquí no son editables.
  */
 
+import { esActividadAdministrada } from './actividadAdministrada';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { CRM_PERMISOS, CrmHttpError, tienePermisoCrm, UUID_RE, type CrmSesion } from './crmRouteSupport';
 
@@ -129,7 +130,7 @@ const COLUMNAS: Record<Fuente, { tabla: string; instante: string; select: string
   activity: {
     tabla: 'activities',
     instante: 'occurred_at',
-    select: 'id, activity_type, notes, user_id, occurred_at, related_type, related_id, channel, outcome, duration_seconds, metadata',
+    select: 'id, activity_type, call_id, notes, user_id, occurred_at, related_type, related_id, channel, outcome, duration_seconds, metadata',
     usuario: 'user_id',
   },
   note: { tabla: 'notes', instante: 'created_at', select: 'id, body, user_id, created_at, related_type, related_id, is_pinned', usuario: 'user_id' },
@@ -276,7 +277,7 @@ export function aEntrada(r: Fila, n: Nombres, sesion: { usuarioId: string; edita
     tarea: fuente === 'task' ? { estado: (r.status as string) ?? null, prioridad: (r.priority as string) ?? null, vence: (r.due_date as string) ?? null } : null,
     cliente: clienteId ? { id: clienteId, nombre: n.clientes.get(clienteId) ?? null } : null,
     oportunidad: opp && idRel ? { id: idRel, nombre: opp.nombre } : null,
-    editable: fuente !== 'task' && tipo !== 'system' && (propia || sesion.editarCualquiera),
+    editable: fuente !== 'task' && tipo !== 'system' && !esActividadAdministrada(r) && (propia || sesion.editarCualquiera),
   };
 }
 

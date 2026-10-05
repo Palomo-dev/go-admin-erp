@@ -10,7 +10,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import type { SupabaseClient } from '@supabase/supabase-js';
+
 
 // `sendEmail` real arrastra Resend + F7 entero: se dobla para contar envíos.
 const sendEmailMock = jest.fn();
@@ -23,20 +23,8 @@ import {
   validateUpdateField,
   UPDATE_FIELD_ALLOWLIST,
 } from '@/lib/services/crm/automationService';
-import {
-  enrollInSequence,
-  createSequence,
-  processStepRun,
-  processPendingStepRuns,
-  checkExitConditions,
-  resumeEnrollment,
-  validateSequenceSteps,
-  MAX_DELAY_DAYS,
-} from '@/lib/services/crm/sequenceService';
-import {
-  COLUMNS, CHECKS, OUTBOUND_JOB_KINDS, validateRow, makeDb, ORG, OTHER_ORG, readSrc,
-  baseTables, addRule, addSequence, drainQueue, silentLog, fakeEnqueue,
-} from './f8FakeDb';
+import { processStepRun, processPendingStepRuns } from '@/lib/services/crm/sequenceService';
+import { CHECKS, OUTBOUND_JOB_KINDS, validateRow, makeDb, ORG, readSrc, baseTables, addRule, addSequence } from './f8FakeDb';
 
 beforeEach(() => {
   sendEmailMock.mockReset();
@@ -138,10 +126,10 @@ describe('A. Concurrencia: dos trabajadores sobre el mismo step_run', () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL ||= 'https://test.supabase.co';
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||= 'test-anon-key';
     process.env.SUPABASE_SERVICE_ROLE_KEY ||= 'test-service-key';
-    require('@/lib/jobs/handlers');
+    jest.requireActual('@/lib/jobs/handlers');
     // Registro de F8 (el índice compartido solo tiene que importar este módulo).
-    require('@/lib/jobs/handlers/f8Automations');
-    const { getJobHandler } = require('@/lib/jobs/registry');
+    jest.requireActual('@/lib/jobs/handlers/f8Automations');
+    const { getJobHandler } = jest.requireActual('@/lib/jobs/registry');
     expect(OUTBOUND_JOB_KINDS).toEqual(expect.arrayContaining(['automation', 'sequence_step']));
     expect(getJobHandler('automation')).toBeDefined();
     expect(getJobHandler('sequence_step')).toBeDefined();
@@ -149,8 +137,8 @@ describe('A. Concurrencia: dos trabajadores sobre el mismo step_run', () => {
   });
 
   it('A6: el motor de F8 encola en `outbound_jobs` y escucha el outbox `crm_events`', () => {
-    const engine = require('fs').readFileSync(
-      require('path').join(process.cwd(), 'src/lib/services/crm/automation/automationEngine.ts'), 'utf8') as string;
+    const engine = jest.requireActual('fs').readFileSync(
+      jest.requireActual('path').join(process.cwd(), 'src/lib/services/crm/automation/automationEngine.ts'), 'utf8') as string;
     expect(engine).toMatch(/onCrmEvent/);
     expect(engine).toMatch(/enqueueJob/);
     expect(engine).toMatch(/evaluateTrigger/);
@@ -225,8 +213,8 @@ describe('B. Reglas: interruptor, idempotencia y run_once', () => {
   });
 
   it('B7: las 6 rutas de F8 exigen rol de administrador para mutar', () => {
-    const fs = require('fs');
-    const path = require('path');
+    const fs = jest.requireActual('fs');
+    const path = jest.requireActual('path');
     const routes = [
       'src/app/api/crm/automation-rules/route.ts',
       'src/app/api/crm/automation-rules/[id]/route.ts',
@@ -238,7 +226,7 @@ describe('B. Reglas: interruptor, idempotencia y run_once', () => {
     for (const r of routes) {
       const src = fs.readFileSync(path.join(process.cwd(), r), 'utf8') as string;
       expect(src).toContain('getServerOrgContext');
-      expect(src).toMatch(/requireOrgAdmin\(ctx\)/);
+      expect(src).toMatch(r.includes('automation-rules') ? /await requireOrgAdminOrPermission\(ctx\)/ : /await requireSequenceManager\(ctx\)/);
     }
     expect(fs.readFileSync(path.join(process.cwd(), 'src/lib/utils/orgContext.ts'), 'utf8')).toContain('requireOrgAdmin');
   });

@@ -165,6 +165,12 @@ async function applyTransition(msg: EmailMessage, t: Transition, occurredAt: str
   return { status: msg.status, applied: false };
 }
 
+async function reconcileEmailCampaign(msg: EmailMessage, service: SupabaseClient): Promise<void> {
+  const rawBatch = Number(msg.metadata?.campaign_batch_no);
+  const { error } = await service.rpc('crm_email_campaign_batch_progress', { p_org: msg.organization_id, p_campaign: msg.metadata?.campaign_id, p_batch: Number.isInteger(rawBatch) && rawBatch > 0 ? rawBatch : 1, p_not_before: null });
+  if (error) throw new WebhookError(503, 'campaign_reconciliation_failed');
+}
+
 async function postEffects(msg: EmailMessage, t: Transition, status: EmailMessageStatus, evt: ResendWebhookEvent, service: SupabaseClient): Promise<void> {
   if (t.optOut && msg.to_customer_id) {
     await applyEmailOptOut(msg.organization_id, msg.to_customer_id, t.optOut, { email_message_id: msg.id, to_email: msg.to_email, bounce: evt.data.bounce ?? null }, service).catch((e) => console.warn('[emailWebhook] opt-out falló', e));
@@ -172,6 +178,12 @@ async function postEffects(msg: EmailMessage, t: Transition, status: EmailMessag
   await syncActivityStatus(msg.id, status, service).catch(() => undefined);
   const campaignId = msg.metadata?.campaign_id;
   if (campaignId && msg.to_customer_id) {
+    if (msg.metadata?.campaign_contact_id) {
+      // El puente reconcilia estados y cifras desde email_messages. No sumar por
+      // cada evento sent/delivered: ambos pueden referir al mismo envío.
+      await reconcileEmailCampaign(msg, service);
+      return;
+    }
     const fn = evt.type === 'email.delivered' || evt.type === 'email.sent' ? 'fn_campaign_mark_sent' : evt.type === 'email.opened' ? 'fn_campaign_mark_opened' : evt.type === 'email.clicked' ? 'fn_campaign_mark_clicked' : evt.type === 'email.bounced' ? 'fn_campaign_mark_bounced' : null;
     if (fn) await service.rpc(fn, { p_campaign_id: campaignId, p_customer_id: msg.to_customer_id }).then(() => undefined, () => undefined);
   }
@@ -221,7 +233,12 @@ export async function handleEmailWebhook(rawBody: string, headers: Record<string
     .select('id')
     .maybeSingle();
   if (evErr) {
-    if (evErr.code === '23505') return { processed: false, duplicate: true, reason: 'duplicate_event' };
+    if (evErr.code === '23505') {
+      // El evento ya aplicado no incrementa aperturas/clics otra vez. Si falló
+      // su conciliación posterior, el reintento completa sólo ese paso.
+      if (msg.metadata?.campaign_contact_id && msg.metadata.campaign_id) await reconcileEmailCampaign(msg, service);
+      return { processed: false, duplicate: true, reason: 'duplicate_event' };
+    }
     throw new Error(`email_events insert: ${evErr.message}`);
   }
 

@@ -26,6 +26,7 @@ import type { DiagnosticoVoz, Motivo } from "@/lib/services/crm/voiceCampaignDia
 interface Props {
   /** Se llama tras ejecutar la cola para que la lista de campañas se recargue. */
   onRan?: () => void;
+  onConcurrencyLimit?: (limit: number | null) => void;
 }
 
 interface DiagnosticoRespuesta {
@@ -57,7 +58,7 @@ function textoMotivo(t: ReturnType<typeof useTranslations>, m: Motivo): string {
   }
 }
 
-export function CampaignRunNow({ onRan }: Props) {
+export function CampaignRunNow({ onRan, onConcurrencyLimit }: Props) {
   const t = useTranslations("vozCampanasDisparo");
   const [diag, setDiag] = useState<DiagnosticoVoz | null>(null);
   const [puedeEjecutar, setPuedeEjecutar] = useState(false);
@@ -75,14 +76,16 @@ export function CampaignRunNow({ onRan }: Props) {
       );
       if (!json?.success || !json.data) throw new Error(json?.error || t("errorDiagnostico"));
       setDiag(json.data);
+      onConcurrencyLimit?.(Number.isInteger(json.data.maxConcurrentCalls) && json.data.maxConcurrentCalls! > 0 ? json.data.maxConcurrentCalls! : null);
       setPuedeEjecutar(json.puede_ejecutar === true);
     } catch (err) {
       logError("[CampaignRunNow] diagnóstico", err);
       setError(describeError(err));
+      onConcurrencyLimit?.(null);
     } finally {
       setCargando(false);
     }
-  }, [t]);
+  }, [t, onConcurrencyLimit]);
 
   useEffect(() => {
     void cargar();

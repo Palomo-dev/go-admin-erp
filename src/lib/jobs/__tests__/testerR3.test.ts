@@ -48,7 +48,7 @@ import { transcribeHandler } from '../handlers/transcribe';
 import { clearJobHandlers, registerJobHandler } from '../registry';
 import { enqueueRecordingCleanup, runScheduledKinds } from '../scheduler';
 import { makeJobLogger } from '../runner';
-import { DRAIN_SCHEDULE, VERCEL_SCHEDULE_KINDS } from '../schedule';
+import { DRAIN_SCHEDULE } from '../schedule';
 import { JobRetryableError, type JobContext, type OutboundJob } from '../types';
 import { canRetryJobs, canViewJobs, retryJob } from '@/lib/services/crm/jobsService';
 import { whatsappJobClientRequestId } from '../handlers/whatsapp';
@@ -425,15 +425,20 @@ describe('tester r3 (volteado en r5) — canViewJobs/canRetryJobs frente al crit
   });
 });
 
-describe('tester r3 — migración pendiente crm_v4_f00_41 ↔ schedule.ts', () => {
+describe('tester r3 — contrato histórico de la migración crm_v4_f00_41', () => {
   const repo = path.resolve(__dirname, '../../../..');
   const mig = fs.readFileSync(path.join(repo, 'supabase/migrations/20260915233000_crm_v4_f00_41_pg_cron_alineado_con_vercel.sql'), 'utf8');
   const rb = fs.readFileSync(path.join(repo, 'supabase/rollbacks/20260915233000_crm_v4_f00_41_pg_cron_alineado_con_vercel_rollback.sql'), 'utf8');
 
-  it('el job 17 pasa exactamente a DRAIN_SCHEDULE y el 19 pide exactamente VERCEL_SCHEDULE_KINDS["30 8 * * *"] en el mismo orden', () => {
+  it('el job 17 pasa a DRAIN_SCHEDULE y el 19 conserva los cuatro kinds declarados el 2026-09-15', () => {
     expect(mig).toContain(`schedule => '${DRAIN_SCHEDULE}'`);
-    const kinds = JSON.stringify(VERCEL_SCHEDULE_KINDS['30 8 * * *']);
-    expect(mig).toContain(`'{"kinds":${kinds}}'::jsonb`);
+    // La migración es histórica: las tareas añadidas después se verifican en
+    // schedule.ts y su ejecución actual, sin reescribir este SQL ya publicado.
+    const payloads = [...mig.matchAll(/'({"kinds":\[[^\]]*\]})'::jsonb/g)]
+      .map((match) => JSON.parse(match[1]));
+    expect(payloads).toEqual([
+      { kinds: ['recording_cleanup', 'maintenance', 'health_recalculate', 'renewals_sync'] },
+    ]);
   });
 
   it('no activa nada ni toca el 18; el rollback deshace 17 y 19 al estado actual de la BD y tampoco toca `active`', () => {

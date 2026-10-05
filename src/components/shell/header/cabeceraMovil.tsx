@@ -48,6 +48,8 @@ export interface CabeceraMovilPagina {
   accion?: ReactNode;
   /** A dónde vuelve «←» si no hay historial (por defecto, la página padre del menú). */
   volverA?: string;
+  /** Opt-in: el flujo controla su salida (por ejemplo, un editor dentro de la ruta). */
+  onVolver?: () => void;
   /** Modo POS: chip de estado de la caja/turno. */
   estadoPos?: EstadoPos | null;
   /**
@@ -63,6 +65,8 @@ type Fijar = (c: CabeceraMovilPagina | null) => void;
 // vuelven a renderizar cuando cambia la cabecera; solo la cabecera lee el valor.
 const ContextoValor = createContext<CabeceraMovilPagina | null>(null);
 const ContextoFijar = createContext<Fijar>(() => undefined);
+type RegistrarCabeceraTemporal = (id: symbol, c: CabeceraMovilPagina | null) => void;
+const ContextoCabeceraTemporal = createContext<RegistrarCabeceraTemporal>(() => undefined);
 
 /** Barras inferiores propias abiertas y el alto (px) de la más alta. */
 export interface BarrasInferiores {
@@ -82,6 +86,13 @@ export function resumirBarras(barras: ReadonlyMap<symbol, number>): BarrasInferi
 
 export function CabeceraMovilProvider({ children }: { children: ReactNode }) {
   const [pagina, fijar] = useState<CabeceraMovilPagina | null>(null);
+  const [temporal, setTemporal] = useState<CabeceraMovilPagina | null>(null);
+  const cabecerasTemporales = useRef(new Map<symbol, CabeceraMovilPagina>());
+  const registrarCabeceraTemporal = useCallback<RegistrarCabeceraTemporal>((id, c) => {
+    if (c === null) cabecerasTemporales.current.delete(id);
+    else cabecerasTemporales.current.set(id, c);
+    setTemporal(Array.from(cabecerasTemporales.current.values()).at(-1) ?? null);
+  }, []);
   const [resumen, setResumen] = useState<BarrasInferiores>(SIN_BARRAS);
   const barras = useRef(new Map<symbol, number>());
   // Registrar es estable: las piezas no se vuelven a renderizar por él, y el
@@ -93,13 +104,15 @@ export function CabeceraMovilProvider({ children }: { children: ReactNode }) {
     setResumen((previo) => (previo.cantidad === r.cantidad && previo.alto === r.alto ? previo : r));
   }, []);
   return (
+    <ContextoCabeceraTemporal.Provider value={registrarCabeceraTemporal}>
     <ContextoFijar.Provider value={fijar}>
       <ContextoRegistrarBarra.Provider value={registrar}>
         <ContextoBarras.Provider value={resumen}>
-          <ContextoValor.Provider value={pagina}>{children}</ContextoValor.Provider>
+          <ContextoValor.Provider value={temporal ?? pagina}>{children}</ContextoValor.Provider>
         </ContextoBarras.Provider>
       </ContextoRegistrarBarra.Provider>
     </ContextoFijar.Provider>
+    </ContextoCabeceraTemporal.Provider>
   );
 }
 
@@ -136,6 +149,13 @@ export function useCabeceraMovilActual(): CabeceraMovilPagina | null {
   return useContext(ContextoValor);
 }
 
+/** El callback es opt-in; las páginas restantes conservan Atrás y la ruta padre. */
+export function volverCabeceraMovil(pagina: CabeceraMovilPagina | null, historial: number, router: { back: () => void; push: (href: string) => void }, padre: string): void {
+  if (pagina?.onVolver) { pagina.onVolver(); return; }
+  if (historial > 1) router.back();
+  else router.push(pagina?.volverA ?? padre);
+}
+
 /**
  * Para las páginas: declara título, acción o que la barra inferior se oculte.
  * Se publica tras cada render de la página, así `accion` nunca queda con un
@@ -147,6 +167,14 @@ export function useCabeceraMovil(c: CabeceraMovilPagina): void {
     fijar(c);
   });
   useEffect(() => () => fijar(null), [fijar]);
+}
+
+/** Un panel temporal conserva la cabecera de la página, incluso si cambia mientras está abierto. */
+export function useCabeceraMovilTemporal(c: CabeceraMovilPagina): void {
+  const registrar = useContext(ContextoCabeceraTemporal);
+  const id = useRef(Symbol('cabecera-temporal')).current;
+  useEffect(() => { registrar(id, c); });
+  useEffect(() => () => registrar(id, null), [id, registrar]);
 }
 
 // ─── Modo por ruta ──────────────────────────────────────────────────────────

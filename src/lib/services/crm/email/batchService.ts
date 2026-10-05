@@ -8,8 +8,9 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { EmailError, type EmailMessage } from './types';
 import { resolveSender } from './domainsService';
 import { getResendClient, getResendRateLimiter } from './resendClient';
-import { buildResendPayload, canContact } from './sendService';
+import { buildResendPayload, canContact, deliver } from './sendService';
 import { markFailed, mergeMeta } from './messageStore';
+import { campaignDispatch, checkDeliveryBudget, isCampaignBridgeMessage, type DeliveryBudget } from './campaignDispatch';
 
 export interface BatchResult {
   sent: string[];
@@ -26,17 +27,20 @@ export interface BatchResult {
  * Envía filas `email_messages` ya creadas (status pending, sin adjuntos) en un
  * solo `batch.send`. Ids con adjuntos → skipped (deben ir por `email`).
  */
-export async function sendPendingBatch(orgId: number, emailMessageIds: string[], service: SupabaseClient): Promise<BatchResult> {
+export async function sendPendingBatch(orgId: number, emailMessageIds: string[], service: SupabaseClient, budget: DeliveryBudget = {}): Promise<BatchResult> {
   if (emailMessageIds.length === 0) return { sent: [], failed: [], skipped: [] };
   if (emailMessageIds.length > 100) throw new EmailError('VALIDATION', 'Máximo 100 correos por lote', 400);
-  const { data } = await service.from('email_messages').select('*').eq('organization_id', orgId).in('id', emailMessageIds);
+  checkDeliveryBudget(budget);
+  const { data, error } = await service.from('email_messages').select('*').eq('organization_id', orgId).in('id', emailMessageIds);
+  if (error) throw new EmailError('DB', `Lote de correo: ${error.message}`, 503);
   const rows = (data ?? []) as EmailMessage[];
   const result: BatchResult = { sent: [], failed: [], skipped: [] };
   const ready: EmailMessage[] = [];
   for (const m of rows) {
+    if (m.organization_id !== orgId) throw new EmailError('DB', 'Correo de otra organización en el lote', 503);
     if (m.status !== 'pending' || m.provider_message_id) { result.skipped.push({ email_message_id: m.id, reason: `status_${m.status}` }); continue; }
     if ((m.metadata?.attachments ?? []).length > 0) { result.skipped.push({ email_message_id: m.id, reason: 'has_attachments' }); continue; }
-    if (m.to_customer_id && !(await canContact(orgId, m.to_customer_id, service, m.metadata?.kind ?? 'marketing'))) {
+    if (!isCampaignBridgeMessage(m) && m.to_customer_id && !(await canContact(orgId, m.to_customer_id, service, m.metadata?.kind ?? 'marketing'))) {
       await markFailed(m, 'CONTACT_OPTED_OUT', service);
       result.skipped.push({ email_message_id: m.id, reason: 'opted_out' });
       continue;
@@ -63,11 +67,33 @@ export async function sendPendingBatch(orgId: number, emailMessageIds: string[],
   // idempotente: lo ya enviado sale por `status_sent` en `skipped`.
   for (const [key, group] of groupBySender(ready)) {
     try {
-      await sendOneGroup(orgId, group, service, result);
+      checkDeliveryBudget(budget);
+      const regular = group.filter(m => !isCampaignBridgeMessage(m));
+      if (regular.length) await sendOneGroup(orgId, regular, service, result);
+      // La clave de un lote cambia al reintentar sólo parte de él. Una campaña usa
+      // deliver individual nativo (email/{id}) para recuperar timeouts sin duplicar.
+      for (const message of group.filter(isCampaignBridgeMessage)) {
+        try {
+          checkDeliveryBudget(budget);
+          const sender = await resolveSender(orgId, { domainId: message.metadata?.email_domain_id ?? null, userId: message.metadata?.from_user_id ?? null, kind: message.metadata?.kind ?? 'marketing' }, service);
+          const delivered = await deliver(message, sender, [], service, undefined, budget);
+          if (!delivered.provider_message_id) throw new EmailError('DB', 'Entrega de correo sin recibo de proveedor', 503);
+          result.sent.push(message.id);
+        } catch (err) {
+          if (err instanceof EmailError && err.code === 'NO_SENDER') {
+            await campaignDispatch(message, 'blocked', service, undefined, undefined, 'email_sender_unavailable');
+            result.skipped.push({ email_message_id: message.id, reason: 'email_sender_unavailable' });
+          }
+          else if (err instanceof EmailError && err.code === 'CAMPAIGN_NOT_READY') result.skipped.push({ email_message_id: message.id, reason: err.message });
+          else result.failed.push({ email_message_id: message.id, error: err instanceof Error ? err.message : String(err), retryable: !(err instanceof EmailError && err.code === 'PROVIDER') });
+        }
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       console.error('[emailBatch] grupo fallido, se reintentará', { orgId, group: key, ids: group.map((m) => m.id), error: message });
-      for (const m of group) result.failed.push({ email_message_id: m.id, error: message, retryable: true });
+      for (const m of group) {
+        if (!result.sent.includes(m.id) && !result.skipped.some(r => r.email_message_id === m.id) && !result.failed.some(r => r.email_message_id === m.id)) result.failed.push({ email_message_id: m.id, error: message, retryable: true });
+      }
     }
   }
   return result;

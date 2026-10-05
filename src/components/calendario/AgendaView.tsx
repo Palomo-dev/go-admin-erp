@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { format, isToday, isTomorrow, isThisWeek, startOfDay, differenceInMinutes, parseISO } from 'date-fns';
+import { format, differenceInMinutes } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
   Calendar,
@@ -36,6 +36,11 @@ import {
   SOURCE_TYPE_LABELS,
   SOURCE_TYPE_COLORS,
 } from './types';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { toPlainDate, todayInTz, addPlainDays } from '@/lib/utils/dateDisplay';
+import { horaEnZona } from '@/components/crm/kit/fechasCrm';
+import { cursorDelDia, diaDelCursor } from './fechasCalendario';
+import { esReunionCrm } from './reunionesCalendario';
 import { cn } from '@/utils/Utils';
 
 interface AgendaViewProps {
@@ -81,6 +86,7 @@ export function AgendaView({
   onUpdateStatus,
   onNavigateToSource,
 }: AgendaViewProps) {
+  const { timezone } = useOrgTimezone();
   const [quickFilter, setQuickFilter] = useState<AgendaQuickFilter>('all');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
@@ -92,10 +98,10 @@ export function AgendaView({
         filtered = filtered.filter((e) => e.assigned_to === currentUserId);
         break;
       case 'today':
-        filtered = filtered.filter((e) => isToday(new Date(e.start_at)));
+        filtered = filtered.filter((e) => toPlainDate(new Date(e.start_at), timezone) === todayInTz(timezone));
         break;
       case 'week':
-        filtered = filtered.filter((e) => isThisWeek(new Date(e.start_at), { weekStartsOn: 1 }));
+        filtered = filtered.filter((e) => format(cursorDelDia(toPlainDate(new Date(e.start_at), timezone)), 'RRRR-II') === format(cursorDelDia(todayInTz(timezone)), 'RRRR-II'));
         break;
       case 'pending':
         filtered = filtered.filter((e) => e.status === 'pending' || e.status === 'tentative');
@@ -106,20 +112,20 @@ export function AgendaView({
     }
 
     return filtered.sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
-  }, [events, quickFilter, currentUserId]);
+  }, [events, quickFilter, currentUserId, timezone]);
 
   const groupedEvents = useMemo((): GroupedEvents[] => {
     const groups: Map<string, GroupedEvents> = new Map();
 
     filteredEvents.forEach((event) => {
-      const eventDate = startOfDay(new Date(event.start_at));
+      const eventDate = cursorDelDia(toPlainDate(new Date(event.start_at), timezone));
       const dateKey = format(eventDate, 'yyyy-MM-dd');
 
       if (!groups.has(dateKey)) {
         let dateLabel = format(eventDate, "EEEE, d 'de' MMMM", { locale: es });
-        if (isToday(eventDate)) {
+        if (diaDelCursor(eventDate) === todayInTz(timezone)) {
           dateLabel = `Hoy - ${dateLabel}`;
-        } else if (isTomorrow(eventDate)) {
+        } else if (diaDelCursor(eventDate) === addPlainDays(todayInTz(timezone), 1)) {
           dateLabel = `Mañana - ${dateLabel}`;
         }
 
@@ -134,7 +140,7 @@ export function AgendaView({
     });
 
     return Array.from(groups.values());
-  }, [filteredEvents]);
+  }, [filteredEvents, timezone]);
 
   const toggleGroup = useCallback((dateKey: string) => {
     setExpandedGroups((prev) => {
@@ -207,7 +213,7 @@ export function AgendaView({
             {groupedEvents.map((group) => {
               const dateKey = format(group.date, 'yyyy-MM-dd');
               const isExpanded = !expandedGroups.has(dateKey);
-              const isTodayGroup = isToday(group.date);
+              const isTodayGroup = diaDelCursor(group.date) === todayInTz(timezone);
 
               return (
                 <div key={dateKey} className="bg-white dark:bg-gray-900">
@@ -255,11 +261,11 @@ export function AgendaView({
                               ) : (
                                 <>
                                   <div className="text-lg font-semibold text-gray-900 dark:text-white">
-                                    {format(new Date(event.start_at), 'HH:mm')}
+                                    {horaEnZona(event.start_at, timezone)}
                                   </div>
                                   {event.end_at && (
                                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                                      {format(new Date(event.end_at), 'HH:mm')}
+                                      {horaEnZona(event.end_at, timezone)}
                                     </div>
                                   )}
                                 </>
@@ -372,7 +378,7 @@ export function AgendaView({
                                           </DropdownMenuItem>
                                         )}
 
-                                        {onDuplicateEvent && (
+                                        {onDuplicateEvent && !esReunionCrm(event) && (
                                           <DropdownMenuItem onClick={() => onDuplicateEvent(event)}>
                                             <Copy className="h-4 w-4 mr-2" />
                                             Duplicar
@@ -381,7 +387,7 @@ export function AgendaView({
 
                                         <DropdownMenuSeparator />
 
-                                        {onUpdateStatus && (
+                                        {onUpdateStatus && !esReunionCrm(event) && (
                                           <>
                                             <DropdownMenuItem onClick={() => onUpdateStatus(event.id || event.source_id, 'confirmed')}>
                                               <CheckCircle className="h-4 w-4 mr-2 text-green-600 dark:text-green-400" />

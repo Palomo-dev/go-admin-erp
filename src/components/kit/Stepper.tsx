@@ -32,11 +32,25 @@ export interface StepperProps<V extends string = string> {
   /** A la derecha en escritorio («Origen: archivo · Sucursal destino: Centro»). */
   extra?: React.ReactNode;
   className?: string;
+  /** Pasos del editor IA: píldoras numeradas que envuelven sin cortar etiquetas. */
+  formato?: 'lineal' | 'chips';
+  deshabilitado?: boolean;
 }
 
-export function Stepper<V extends string>({ pasos, actual, onPasoClick, resumenMovil, etiqueta, extra, className }: StepperProps<V>) {
+export function Stepper<V extends string>({ pasos, actual, onPasoClick, resumenMovil, etiqueta, extra, className, formato = 'lineal', deshabilitado = false }: StepperProps<V>) {
   const indice = Math.max(0, pasos.findIndex((p) => p.valor === actual));
   const total = pasos.length;
+  if (formato === 'chips') return <div className={cn('flex flex-wrap items-center gap-1.5', className)}>
+    <ol aria-label={etiqueta} className="flex flex-wrap gap-1.5">
+      {pasos.map((p, i) => {
+        const hecho = i < indice, actual = i === indice, clicable = hecho && !!onPasoClick;
+        const contenido = <><span aria-hidden className={cn('flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold', actual ? 'bg-brand-action text-fg-on-brand' : hecho ? 'bg-success-subtle text-success-text' : 'bg-subtle text-fg-secondary')}>{hecho ? <Check className="size-3" strokeWidth={1.5} /> : i + 1}</span><span>{p.etiqueta}</span></>;
+        const clases = cn('inline-flex min-h-[33px] items-center gap-1.5 rounded-full border px-2.5 py-1 text-[13px] leading-[18px]', actual ? 'border-line-brand bg-brand-tint text-brand-deep' : 'border-line bg-surface text-fg-secondary');
+        return <li key={p.valor} className="flex items-center gap-1.5" aria-current={actual ? 'step' : undefined}>{clicable ? <button type="button" disabled={deshabilitado} onClick={() => onPasoClick?.(p.valor)} className={cn(clases, 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50')}>{contenido}</button> : <span className={clases}>{contenido}</span>}{i === total - 1 && <p className="text-xs text-fg-secondary" aria-live="polite">{resumenMovil(indice + 1, total, pasos[indice]?.etiqueta ?? '')}</p>}</li>;
+      })}
+    </ol>
+    {extra}
+  </div>;
   return (
     <div className={cn('flex flex-col gap-2', className)}>
       {/* Móvil */}
@@ -78,6 +92,7 @@ export function Stepper<V extends string>({ pasos, actual, onPasoClick, resumenM
                 {clicable ? (
                   <button
                     type="button"
+                    disabled={deshabilitado}
                     onClick={() => onPasoClick?.(p.valor)}
                     className="flex min-w-0 items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   >

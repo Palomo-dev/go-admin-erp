@@ -3,8 +3,9 @@
 import React, { useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { horaEnZona } from '@/components/crm/kit/fechasCrm';
+import { minutosEnZona, limitesDelDia } from './fechasCalendario';
 import { ExternalLink, GripVertical } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { CalendarEvent, SOURCE_TYPE_COLORS, SOURCE_TYPE_LABELS } from './types';
@@ -18,6 +19,7 @@ interface DraggableEventBarProps {
   onResizeStart?: () => void;
   onResizeFinish?: () => void;
   canDrag?: boolean;
+  displayDate?: Date;
 }
 
 export function DraggableEventBar({
@@ -29,11 +31,13 @@ export function DraggableEventBar({
   onResizeStart,
   onResizeFinish,
   canDrag = true,
+  displayDate,
 }: DraggableEventBarProps) {
+  const { timezone } = useOrgTimezone();
   const [isResizing, setIsResizing] = useState(false);
 
   const isManualEvent = event.source_type === 'calendar_event';
-  const canResize = isManualEvent && onResizeEnd;
+  const canResize = isManualEvent && canDrag && !event.metadata?.is_recurrence_instance && onResizeEnd;
   const dragEnabled = canDrag && isManualEvent;
 
   const eventId = event.id || event.source_id;
@@ -50,15 +54,17 @@ export function DraggableEventBar({
   const startAt = new Date(event.start_at);
   const endAt = event.end_at ? new Date(event.end_at) : new Date(startAt.getTime() + 3600000);
   
-  const startHour = startAt.getHours();
-  const startMinutes = startAt.getMinutes();
-  const endHour = endAt.getHours();
-  const endMinutes = endAt.getMinutes();
+  const bounds = displayDate ? limitesDelDia(displayDate, timezone) : null;
+  const clippedStart = !!bounds && startAt.getTime() < bounds.start;
+  const clippedEnd = !!bounds && endAt.getTime() > bounds.end;
+  const wallMinutes = clippedStart ? 0 : minutosEnZona(event.start_at, timezone);
+  const startHour = Math.floor(wallMinutes / 60);
+  const startMinutes = wallMinutes % 60;
   
   const firstVisibleHour = hours[0];
   const topOffset = ((startHour - firstVisibleHour) * 60 + startMinutes) * (cellHeight / 60);
   
-  const durationMinutes = (endHour * 60 + endMinutes) - (startHour * 60 + startMinutes);
+  const durationMinutes = bounds ? (clippedEnd ? 1440 : minutosEnZona(endAt.toISOString(), timezone)) - wallMinutes : (endAt.getTime() - startAt.getTime()) / 60000;
   const height = durationMinutes * (cellHeight / 60);
 
   const eventColor = event.color || SOURCE_TYPE_COLORS[event.source_type] || '#3B82F6';
@@ -96,9 +102,9 @@ export function DraggableEventBar({
         const newEndAt = event.end_at ? new Date(event.end_at) : new Date(startAt.getTime() + 3600000);
         
         if (edge === 'top') {
-          newStartAt.setMinutes(newStartAt.getMinutes() + deltaMinutes);
+          newStartAt.setTime(newStartAt.getTime() + deltaMinutes * 60000);
         } else {
-          newEndAt.setMinutes(newEndAt.getMinutes() + deltaMinutes);
+          newEndAt.setTime(newEndAt.getTime() + deltaMinutes * 60000);
         }
         
         if (newStartAt < newEndAt && (newEndAt.getTime() - newStartAt.getTime()) >= 15 * 60 * 1000 && eventId) {
@@ -135,7 +141,7 @@ export function DraggableEventBar({
       {...(dragEnabled ? { ...attributes, ...listeners } : {})}
     >
       {/* Top resize handle - solo eventos manuales */}
-      {canResize && (
+      {canResize && !clippedStart && (
         <div
           className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 bg-white/30 hover:bg-white/50 transition-opacity z-20"
           onMouseDown={(e) => handleResizeMouseDown(e, 'top')}
@@ -164,8 +170,8 @@ export function DraggableEventBar({
         
         {height > 50 && (
           <span className="text-[10px] opacity-80">
-            {format(startAt, 'HH:mm', { locale: es })}
-            {event.end_at && ` - ${format(endAt, 'HH:mm', { locale: es })}`}
+            {horaEnZona(startAt, timezone)}
+            {event.end_at && ` - ${horaEnZona(endAt, timezone)}`}
           </span>
         )}
         
@@ -177,7 +183,7 @@ export function DraggableEventBar({
       </div>
       
       {/* Bottom resize handle - solo eventos manuales */}
-      {canResize && (
+      {canResize && !clippedEnd && (
         <div
           className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 bg-white/30 hover:bg-white/50 transition-opacity z-20"
           onMouseDown={(e) => handleResizeMouseDown(e, 'bottom')}

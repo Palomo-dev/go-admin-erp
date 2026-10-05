@@ -22,6 +22,9 @@
  * - `customer_id`/`opportunity_id` se validan contra la organización.
  */
 
+import { getServiceClient } from '@/lib/supabase/server-service';
+import { phoneConferenceEnabled, phoneRpc } from './phoneConferenceRepository';
+import { requireHumanCallCompliance } from './humanCallCompliance';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   getTelephonySettings,
@@ -34,6 +37,7 @@ import { reserveVoiceMinutes, refundVoiceMinutes } from './callCreditsService';
 import { isBridgeSigningConfigured, signBridgeToken } from './bridgeTokens';
 import { getTwilioWebhookOrigin } from '@/lib/security/webhookSignatures';
 import type { CallStatus } from '@/lib/crm/enums';
+import { updateCall, updateCallFromProviderEvent } from './callManagementService';
 import {
   ACTIVE_BRIDGE_STATUSES,
   BRIDGE_RESERVED_MINUTES,
@@ -124,6 +128,10 @@ export async function getVerifiedMobile(
   orgId: number,
   client: SupabaseClient
 ): Promise<string | null> {
+  if (phoneConferenceEnabled()) {
+    const proof = await phoneRpc<{ phone: string | null; verified_at: string | null }>(client, 'fn_phone_mobile_state', { p_org: orgId });
+    return proof.verified_at && proof.phone ? normalizeE164(proof.phone) : null;
+  }
   const { data, error } = await client
     .from('user_comm_preferences')
     .select('mobile_phone_e164, mobile_verified_at')
@@ -234,6 +242,8 @@ export async function initiateBridge(
     { customerId: input.customerId ?? null, opportunityId: input.opportunityId ?? null },
     supabase
   );
+
+  if (phoneConferenceEnabled()) await requireHumanCallCompliance(getServiceClient(), orgId, targetPhone, refs.customerId);
 
   // 5. Contexto de telefonía de la org (nunca el número global de la plataforma)
   const settings = await getTelephonySettings(orgId);
@@ -373,12 +383,19 @@ export async function initiateBridge(
 
   // 12. Correlación: sin `provider_call_sid` la grabación de F3 no encuentra la
   //     llamada, así que un fallo aquí se registra (no se traga) en `last_error`.
-  const { error: callUpdateError } = await supabase
-    .from('calls')
-    .update({ provider_call_sid: agentLegSid, agent_leg_sid: agentLegSid })
-    .eq('id', callId)
-    .eq('organization_id', orgId);
-  if (callUpdateError) {
+  let callUpdateError: Error | null = null;
+  try {
+    const saved = await updateCall(callId, orgId, (fresh) => {
+      if ((fresh.provider_call_sid && fresh.provider_call_sid !== agentLegSid)
+        || (fresh.agent_leg_sid && fresh.agent_leg_sid !== agentLegSid)) {
+        throw new BridgeError('CALL_LEG_CONFLICT', 409, 'La llamada ya está vinculada a otra conexión');
+      }
+      return { provider_call_sid: fresh.provider_call_sid ?? agentLegSid,
+        agent_leg_sid: fresh.agent_leg_sid ?? agentLegSid };
+    }, supabase);
+    if (!saved) throw new Error('Llamada no encontrada al vincular la conexión');
+  } catch (error) {
+    callUpdateError = error instanceof Error ? error : new Error(String(error));
     console.error('[mobileBridge] calls.provider_call_sid:', callUpdateError.message);
   }
 
@@ -387,7 +404,10 @@ export async function initiateBridge(
     status: 'agent_ringing',
     ...(callUpdateError ? { last_error: `calls_update: ${callUpdateError.message}`.slice(0, 500) } : {}),
   });
-  if (bridgeUpdateError) console.error('[mobileBridge] bridge agent_leg_sid:', bridgeUpdateError.message);
+  if (bridgeUpdateError || callUpdateError) {
+    throw new BridgeError('CALL_CORRELATION_FAILED', 500,
+      'La conexión se inició, pero no se pudo guardar. Revisa la llamada antes de intentarlo de nuevo');
+  }
 
   bridge.agent_leg_sid = agentLegSid;
   bridge.status = 'agent_ringing';
@@ -422,12 +442,14 @@ async function markCallFailed(
   callId: string,
   reason: string
 ): Promise<void> {
-  const { error } = await client
-    .from('calls')
-    .update({ status: 'failed' as CallStatus, ended_at: new Date().toISOString() })
-    .eq('id', callId)
-    .eq('organization_id', orgId);
-  if (error) console.error('[mobileBridge] markCallFailed:', error.message, reason);
+  // El flujo de fallo debe continuar hasta el reembolso existente aunque esta
+  // escritura falle; initiateBridge siempre responde error en estas ramas.
+  try {
+    const saved = await updateCallFromProviderEvent(callId, orgId, { CallStatus: 'failed' }, 'child', client);
+    if (!saved) throw new Error('Llamada no encontrada');
+  } catch (error) {
+    console.error('[mobileBridge] markCallFailed:', error instanceof Error ? error.message : String(error), reason);
+  }
 }
 
 // ─── Cancelación ─────────────────────────────────────────────────────────────
@@ -468,7 +490,8 @@ export async function cancelBridge(
   // cliente se devuelve.
   const previousStatus = bridge.status;
   const nowIso = new Date().toISOString();
-  await updateBridgeRow(client, orgId, bridgeId, { cancel_requested_at: nowIso });
+  const { error: requestError } = await updateBridgeRow(client, orgId, bridgeId, { cancel_requested_at: nowIso });
+  if (requestError) throw new BridgeError('BRIDGE_UPDATE_FAILED', 500, requestError.message);
 
   const legs = [bridge.agent_leg_sid, bridge.customer_leg_sid].filter(Boolean) as string[];
   const canceledLegs: string[] = [];
@@ -512,19 +535,19 @@ export async function cancelBridge(
   });
   if (error) throw new BridgeError('BRIDGE_UPDATE_FAILED', 500, error.message);
 
+  let callSaveError: unknown;
   if (bridge.call_id) {
-    const { error: callError } = await client
-      .from('calls')
-      .update({ status: 'canceled' as CallStatus, ended_at: nowIso })
-      .eq('id', bridge.call_id)
-      .eq('organization_id', orgId);
-    if (callError) console.error('[mobileBridge] cancel calls update:', callError.message);
+    try {
+      const saved = await updateCallFromProviderEvent(bridge.call_id, orgId, { CallStatus: 'canceled' }, 'child', client);
+      if (!saved) throw new Error('Llamada no encontrada al cancelar');
+    } catch (error) { callSaveError = error; }
   }
 
   // El minuto del cliente reservado y no usado se devuelve (§8).
   if (customerLegNeverDialed(previousStatus, 'failed')) {
     await refundVoiceMinutes(orgId, 1, client);
   }
+  if (callSaveError) throw callSaveError;
 
   return { status: 'failed', canceledLegs };
 }

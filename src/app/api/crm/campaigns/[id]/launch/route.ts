@@ -9,6 +9,6 @@ export const runtime = 'nodejs';
 
 export const POST = withWhatsAppRoute(async (ctx, req, params) => {
   const b = parseWith(zLaunchBody, await readOrgBody<unknown>(ctx, req));
-  const data = await launchCampaign(ctx.organizationId, ctx.userId, params.id, { scheduledAt: b.scheduled_at ?? b.scheduledAt ?? null, force: b.force === true }, ctx.supabase);
+  const data = await launchCampaign(ctx.organizationId, ctx.userId, params.id, { scheduledAt: b.scheduled_at ?? b.scheduledAt, force: b.force === true, expectedUpdatedAt: b.expected_updated_at }, ctx.supabase);
   return NextResponse.json({ data });
-}, { admin: true });
+}, { admin: true, permission: 'crm.campaigns.manage' });

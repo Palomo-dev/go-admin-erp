@@ -1,6 +1,6 @@
 # CRM en Figma — pantallas nuevas pendientes de aprobación
 
-> **Estado: propuesta para revisión del dueño. No se implementa en código hasta que se apruebe.**
+> **Estado: alcance aprobado por el dueño para implementación en el PR 280.** El orden acordado es integridad y cifras, ficha y conexiones comerciales, y adaptación de las áreas nuevas al sistema visual. El estado de implementación y verificación se registra en [PLAN-FIGMA-A-CODIGO.md](PLAN-FIGMA-A-CODIGO.md).
 > Archivo Figma `EAvjINVRnlzFM70GVoWXgl` (GO Admin), página «11 CRM» (`759:17`).
 > Actualizado el 2026-09-30. Datos de ejemplo inventados («Mi empresa», clientes ficticios); ningún nombre de organización cliente.
 

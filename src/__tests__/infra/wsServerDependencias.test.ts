@@ -17,13 +17,14 @@
  *     más `tsx`, que es el runtime. Si alguien añade un import de un paquete
  *     nuevo en algo que el servidor alcanza, este test lo detecta antes de que
  *     el contenedor falle con `Cannot find module` en Railway.
- *     El script deja fuera el `import()` dinámico de `@sentry/react`: solo
- *     corre en el navegador y su peer `react` no puede entrar en la imagen.
+ *     Sólo se omiten ramas eliminadas por el runtime Node; un `import()` sin
+ *     guarda cuenta aunque ese mismo paquete también se use en navegador.
  *  4. El lockfile está sincronizado con el package.json.
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 import { execFileSync } from 'child_process';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
@@ -177,5 +178,45 @@ describe('ws-server: dependencias propias, separadas de las de la web (F-78)', (
     // (versión del package-lock.json raíz) y regenera ws-server/package-lock.json.
     // Si sobra en `declarados`: ya nadie lo importa; quítalo.
     expect({ declarados }).toEqual({ declarados: alcanzados });
+  });
+
+  test('el Dockerfile copia todos los archivos locales alcanzados por el servidor', () => {
+    const cierre = JSON.parse(execFileSync(process.execPath, [SCRIPT_CIERRE, '--json'], {
+      cwd: REPO_ROOT, encoding: 'utf-8',
+    })) as { archivosLocales: string[] };
+    const origenes = copias.flatMap(c => origenesDeCopy(c.args).map(normalizar));
+    const ausentes = cierre.archivosLocales.filter(archivo =>
+      !origenes.some(origen => archivo === origen || archivo.startsWith(`${origen}/`)));
+    expect(ausentes).toEqual([]);
+  });
+
+  test('un import dinámico de servidor no se oculta por compartir paquete con una rama de navegador', () => {
+    // Copia privada: no muta el script, el entrypoint ni los imports del repo.
+    const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'ws-graph-regression-'));
+    try {
+      fs.mkdirSync(path.join(fixture, 'scripts'));
+      fs.mkdirSync(path.join(fixture, 'src/lib/utils'), { recursive: true });
+      fs.copyFileSync(SCRIPT_CIERRE, path.join(fixture, 'scripts/ws-server-cierre-dependencias.mjs'));
+      for (const file of ['timezoneFallback.ts', 'dateCore.ts']) {
+        fs.copyFileSync(path.join(REPO_ROOT, 'src/lib/utils', file), path.join(fixture, 'src/lib/utils', file));
+      }
+      fs.writeFileSync(path.join(fixture, 'package.json'), '{}');
+      fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(fixture, 'node_modules'), 'junction');
+      fs.writeFileSync(path.join(fixture, 'tsconfig.json'), JSON.stringify({
+        compilerOptions: { module: 'esnext', moduleResolution: 'bundler', paths: { '@/*': ['./src/*'] } },
+      }));
+      const guarded = "import { avisarFallbackZonaHoraria } from './src/lib/utils/timezoneFallback'; avisarFallbackZonaHoraria({ donde: 'fixture' });";
+      const graph = (entrypoint: string): { paquetes: Record<string, string[]> } => {
+        fs.writeFileSync(path.join(fixture, 'ws-server.ts'), entrypoint);
+        return JSON.parse(execFileSync(process.execPath, [path.join(fixture, 'scripts/ws-server-cierre-dependencias.mjs'), '--json'], {
+          cwd: fixture, encoding: 'utf8',
+        })) as { paquetes: Record<string, string[]> };
+      };
+      expect(graph(guarded).paquetes['@sentry/react']).toBeUndefined();
+      expect(graph(`${guarded}\nvoid import('@sentry/react');`).paquetes['@sentry/react'])
+        .toContain('ws-server.ts [dynamic-import]');
+    } finally {
+      fs.rmSync(fixture, { recursive: true, force: true });
+    }
   });
 });

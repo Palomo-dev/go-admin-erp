@@ -1,3 +1,6 @@
+import { compareDesc } from '@/lib/services/crm/timeline/types';
+import { addPlainDays, toPlainDate } from '@/lib/utils/dateDisplay';
+import { DEFAULT_TIMEZONE } from '@/lib/utils/dateCore';
 import type { TimelineEntry, TimelineKind } from '@/lib/services/crm/timelineService';
 
 /**
@@ -7,13 +10,6 @@ import type { TimelineEntry, TimelineKind } from '@/lib/services/crm/timelineSer
 
 export function entryKey(e: Pick<TimelineEntry, 'kind' | 'id'>): string {
   return `${e.kind}:${e.id}`;
-}
-
-function cmpDesc(a: TimelineEntry, b: TimelineEntry): number {
-  const ta = Date.parse(a.occurred_at);
-  const tb = Date.parse(b.occurred_at);
-  if (ta !== tb) return tb - ta;
-  return b.id.localeCompare(a.id);
 }
 
 /**
@@ -29,7 +25,7 @@ export function mergeEntries(prev: TimelineEntry[], next: TimelineEntry[]): Time
     if (e.kind === 'call_live') map.delete(`call:${e.id}`);
     map.set(entryKey(e), e);
   }
-  return [...map.values()].sort(cmpDesc);
+  return [...map.values()].sort(compareDesc);
 }
 
 export interface DayGroup {
@@ -40,12 +36,12 @@ export interface DayGroup {
 
 const DAY_MS = 86_400_000;
 
-/** Agrupa por día en la zona horaria (por defecto America/Bogota) con etiquetas Hoy/Ayer. */
-export function groupByDay(entries: TimelineEntry[], tz = 'America/Bogota', now: Date = new Date()): DayGroup[] {
+/** Agrupa por día en la zona de la organización con etiquetas Hoy/Ayer. */
+export function groupByDay(entries: TimelineEntry[], tz = DEFAULT_TIMEZONE, now: Date = new Date(), locale = 'es-CO', relativos = { hoy: 'Hoy', ayer: 'Ayer' }): DayGroup[] {
   const keyFmt = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' });
-  const labelFmt = new Intl.DateTimeFormat('es-CO', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long' });
+  const labelFmt = new Intl.DateTimeFormat(locale, { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long' });
   const todayKey = keyFmt.format(now);
-  const yesterdayKey = keyFmt.format(new Date(now.getTime() - DAY_MS));
+  const yesterdayKey = addPlainDays(toPlainDate(now, tz), -1);
   const groups = new Map<string, DayGroup>();
   for (const e of entries) {
     const d = new Date(e.occurred_at);
@@ -53,7 +49,7 @@ export function groupByDay(entries: TimelineEntry[], tz = 'America/Bogota', now:
     let g = groups.get(key);
     if (!g) {
       const base = labelFmt.format(d);
-      const label = key === todayKey ? `Hoy · ${base}` : key === yesterdayKey ? `Ayer · ${base}` : base;
+      const label = key === todayKey ? `${relativos.hoy} · ${base}` : key === yesterdayKey ? `${relativos.ayer} · ${base}` : base;
       g = { day: key, label: label.charAt(0).toUpperCase() + label.slice(1), entries: [] };
       groups.set(key, g);
     }
@@ -74,6 +70,9 @@ export const KIND_LABELS: Record<TimelineKind, string> = {
   meeting: 'Reunión',
   system: 'Sistema',
   activity: 'Actividad',
+  sale: 'Venta',
+  reservation: 'Reserva',
+  web_order: 'Pedido web',
 };
 
 /** Chips de filtro (agrupan kinds relacionados). */
@@ -96,7 +95,7 @@ export function formatDuration(seconds?: number | null): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-export function formatTime(iso: string, tz = 'America/Bogota'): string {
+export function formatTime(iso: string, tz = DEFAULT_TIMEZONE): string {
   try {
     return new Intl.DateTimeFormat('es-CO', { timeZone: tz, hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
   } catch {
@@ -104,7 +103,7 @@ export function formatTime(iso: string, tz = 'America/Bogota'): string {
   }
 }
 
-export function formatDateTime(iso: string, tz = 'America/Bogota'): string {
+export function formatDateTime(iso: string, tz = DEFAULT_TIMEZONE): string {
   try {
     return new Intl.DateTimeFormat('es-CO', { timeZone: tz, day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
   } catch {

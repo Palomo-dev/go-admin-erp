@@ -234,8 +234,7 @@ export async function getSalesTeams(
     .order('name', { ascending: true });
 
   if (error) {
-    console.warn('salesStructureService.getSalesTeams - error:', error.message);
-    return [];
+    throw error;
   }
 
   const teams = (data || []) as SalesTeam[];
@@ -252,10 +251,11 @@ export async function getSalesTeams(
       territories:territory_id(id, name)
     `)
     .in('sales_team_id', teamIds)
+    .eq('organization_id', orgId)
     .eq('is_active', true);
 
   if (memberError) {
-    console.warn('salesStructureService.getSalesTeams - members error:', memberError.message);
+    throw memberError;
   }
 
   const membersMap = new Map<string, SalesTeamMember[]>();

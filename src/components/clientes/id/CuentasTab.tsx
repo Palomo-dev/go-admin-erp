@@ -26,6 +26,8 @@ interface CuentaPorCobrar {
 interface CuentasTabProps {
   clienteId: string;
   organizationId: number;
+  /** La ficha completa presenta folios y cobros en CustomerFoliosSection. */
+  mostrarFolios?: boolean;
 }
 
 // Interfaces para folios PMS
@@ -74,7 +76,7 @@ const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
 
 const DIA_MES: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
 
-export default function CuentasTab({ clienteId, organizationId }: CuentasTabProps) {
+export default function CuentasTab({ clienteId, organizationId, mostrarFolios = true }: CuentasTabProps) {
   const t = useTranslations('clientes.ficha');
   // Ventas, folios y cartera no traen moneda propia: la base de la organización.
   const { formatear } = useMonedaOrganizacion();
@@ -126,6 +128,7 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
       try {
         setLoading(true);
         setError(false);
+        setFolios([]);
 
         // La tabla accounts_receivable usa UUID como customer_id, no INTEGER
         // Usamos directamente el clienteId que ya es un UUID
@@ -197,6 +200,7 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
         });
 
         // 2. Cargar folios PMS con saldo pendiente del cliente
+        if (!mostrarFolios) return;
         try {
           const { data: reservationsData } = await supabase
             .from('reservations')
@@ -283,7 +287,7 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
     };
 
     fetchCuentas();
-  }, [clienteId, organizationId]);
+  }, [clienteId, organizationId, mostrarFolios]);
 
   // Función para determinar el color de estado
   const getStatusColor = (status: string, daysOverdue: number) => {
@@ -337,6 +341,7 @@ export default function CuentasTab({ clienteId, organizationId }: CuentasTabProp
 
   // Mostrar mensaje si no hay cuentas ni folios
   if (cuentas.length === 0 && folios.length === 0) {
+    if (!mostrarFolios) return null;
     return (
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
         <div className="w-16 h-16 mx-auto bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">

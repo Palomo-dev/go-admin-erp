@@ -22,7 +22,7 @@ process.env.TWILIO_WEBHOOK_BASE_URL = 'https://app.goadmin.io';
 const twilioCreate = jest.fn();
 const twilioCallUpdate = jest.fn();
 const twilioCallFetch = jest.fn();
-const twilioCallsFn = jest.fn((_sid: string) => ({ update: twilioCallUpdate, fetch: twilioCallFetch }));
+const twilioCallsFn = jest.fn<{ update: typeof twilioCallUpdate; fetch: typeof twilioCallFetch }, [string]>(() => ({ update: twilioCallUpdate, fetch: twilioCallFetch }));
 const masterClient = Object.assign(twilioCallsFn, { calls: Object.assign(twilioCallsFn, { create: twilioCreate }) });
 
 jest.mock('@/lib/services/integrations/twilio/twilioConfig', () => ({
@@ -126,7 +126,6 @@ import {
   initiateBridge,
   cancelBridge,
   getBridge,
-  BridgeError,
   normalizeE164,
   buildWhisper,
   applyAgentLegEvent,
@@ -174,6 +173,14 @@ interface Op {
 
 type Row = Record<string, unknown>;
 
+function jsonbValue(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(jsonbValue).join(',')}]`;
+  if (value !== null && typeof value === 'object') {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${jsonbValue(Reflect.get(value, key))}`).join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'null';
+}
+
 class FakeSupabase {
   ops: Op[] = [];
   rpcCalls: { fn: string; args: Record<string, unknown> }[] = [];
@@ -186,7 +193,7 @@ class FakeSupabase {
   creditsOk = true;
 
   seed(table: string, rows: Row[]) {
-    this.tables[table] = rows.map((r) => ({ ...r }));
+    this.tables[table] = structuredClone(rows);
     return this;
   }
 
@@ -223,24 +230,35 @@ class FakeSupabase {
   }
 
   from(table: string) {
-    const self = this;
+    const tables = this.tables;
+    const ops = this.ops;
+    const failOn = this.failOn;
+    const validate = this.validate.bind(this);
     const filters: Record<string, unknown> = {};
     const inFilters: { col: string; values: unknown[] }[] = [];
     let payload: Row | undefined;
     let kind: 'insert' | 'update' | 'select' = 'select';
 
-    const rows = () => (self.tables[table] ??= []);
+    const rows = () => (tables[table] ??= []);
     const matching = () =>
       rows().filter(
         (r) =>
-          Object.entries(filters).every(([k, v]) => r[k] === v) &&
+          Object.entries(filters).every(([k, v]) => {
+            // PostgREST recibe JSONB como texto en eq; compara estructura, no
+            // identidad del objeto ni orden de sus claves.
+            if (k === 'metadata' && r[k] !== null && typeof r[k] === 'object') {
+              const expected = typeof v === 'string' ? JSON.parse(v) : v;
+              return jsonbValue(r[k]) === jsonbValue(expected);
+            }
+            return r[k] === v;
+          }) &&
           inFilters.every((f) => f.values.includes(r[f.col]))
       );
 
     const result = () => {
-      const forced = self.failOn.find((f) => f.table === table && f.kind === kind);
+      const forced = failOn.find((f) => f.table === table && f.kind === kind);
       if (forced) return { data: null, error: { message: `forced-${kind}-error` } };
-      const bad = payload ? self.validate(table, payload, kind as 'insert' | 'update') : null;
+      const bad = payload ? validate(table, payload, kind as 'insert' | 'update') : null;
       if (bad) return { data: null, error: { message: bad, code: '42703' } };
       if (kind === 'insert') {
         const row = { id: `${table === 'calls' ? 'call' : 'row'}-${rows().length + 1}`, created_at: 'T0', updated_at: 'T0', ...payload };
@@ -256,17 +274,18 @@ class FakeSupabase {
     };
 
     const builder: Record<string, unknown> = {
-      insert(p: Row) { kind = 'insert'; payload = p; self.ops.push({ table, kind, payload: p, filters: { ...filters } }); return builder; },
-      update(p: Row) { kind = 'update'; payload = p; self.ops.push({ table, kind, payload: p, filters }); return builder; },
-      select() { if (kind === 'select') self.ops.push({ table, kind, filters }); return builder; },
+      insert(p: Row) { kind = 'insert'; payload = p; ops.push({ table, kind, payload: p, filters: { ...filters } }); return builder; },
+      update(p: Row) { kind = 'update'; payload = p; ops.push({ table, kind, payload: p, filters }); return builder; },
+      select() { if (kind === 'select') ops.push({ table, kind, filters }); return builder; },
       eq(col: string, val: unknown) { filters[col] = val; return builder; },
+      is(col: string, val: null) { filters[col] = val; return builder; },
       in(col: string, values: unknown[]) { inFilters.push({ col, values }); return builder; },
       order() { return builder; },
       limit() { return builder; },
       range() { return builder; },
-      single: async () => result(),
-      maybeSingle: async () => result(),
-      then: (res: (v: unknown) => unknown) => Promise.resolve(result()).then(res),
+      single: async () => structuredClone(result()),
+      maybeSingle: async () => structuredClone(result()),
+      then: (res: (v: unknown) => unknown) => Promise.resolve(structuredClone(result())).then(res),
     };
     return builder as never;
   }
@@ -1104,10 +1123,21 @@ describe('8d. UI — MobileCallDialog', () => {
   });
 
   test('F5-61 exige `mobile_verified_at`, filtra por organización y no cae a `profiles.phone`', () => {
-    expect(ui()).toContain("select('mobile_phone_e164, mobile_verified_at')");
-    expect(ui()).toContain('mobile_verified_at');
+    const preferencesGet = SRC('src/app/api/crm/me/comm-preferences/route.ts').split('export async function PATCH')[0];
+    const columns = preferencesGet.match(/const COLUMNS = '([^']+)'/)?.[1].split(',').map(column => column.trim()) ?? [];
+    const verifiedMobileReader = SRC(BRIDGE_SVC_SRC).split('export async function getVerifiedMobile(')[1].split('export async function getActiveBridgeForUser(')[0];
+    // La UI usa el lector autenticado existente; no duplica su proyección de preferencias.
+    expect(ui()).toContain("fetch('/api/crm/me/comm-preferences'");
+    expect(ui()).toMatch(/row\?\.mobile_phone_e164\s*&&\s*row\.mobile_verified_at\s*&&\s*row\.requires_verification !== true/);
     expect(ui()).not.toContain("from('profiles')");
-    expect(ui()).toMatch(/from\('user_comm_preferences'\)[\s\S]{0,240}?\.eq\('organization_id', orgId\)/);
+    expect(columns).toEqual(expect.arrayContaining(['organization_id', 'user_id', 'mobile_phone_e164', 'mobile_verified_at']));
+    expect(preferencesGet).toContain('getServerOrgContext(request)');
+    expect(preferencesGet).toMatch(/from\('user_comm_preferences'\)[\s\S]*?\.select\(COLUMNS\)[\s\S]*?\.eq\('organization_id', ctx\.organizationId\)[\s\S]*?\.eq\('user_id', ctx\.userId\)/);
+    // El escritor comprueba OTP también en el camino legacy y nunca usa profiles.phone.
+    expect(verifiedMobileReader).toContain(".eq('user_id', userId)");
+    expect(verifiedMobileReader).toContain(".eq('organization_id', orgId)");
+    expect(verifiedMobileReader).toContain('!row.mobile_verified_at');
+    expect(verifiedMobileReader).not.toContain("from('profiles')");
   });
 
   test('F5-62 el progreso llega por Realtime (la tabla ya está publicada) con respaldo HTTP', () => {
@@ -1209,3 +1239,12 @@ describe('9. Máquina de estados del bridge', () => {
     expect(verifyBridgeToken('b1', null)).toBe(false);
   });
 });
+
+// Fixtures históricas del transporte heredado; los contratos RPC se verifican por separado.
+beforeEach(() => { process.env.CRM_CALL_ATOMIC_RPC_ENABLED = 'false'; });
+afterAll(() => { delete process.env.CRM_CALL_ATOMIC_RPC_ENABLED; });
+
+// Los bridges Dial heredados se verifican con su escape explícito.
+const phoneLegacyEnv = process.env.CRM_PHONE_CONFERENCE_ENABLED;
+beforeAll(() => { process.env.CRM_PHONE_CONFERENCE_ENABLED = 'false'; });
+afterAll(() => { if (phoneLegacyEnv === undefined) delete process.env.CRM_PHONE_CONFERENCE_ENABLED; else process.env.CRM_PHONE_CONFERENCE_ENABLED = phoneLegacyEnv; });

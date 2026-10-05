@@ -61,6 +61,7 @@ import { SendToFactusButton } from '@/components/finanzas/facturacion-electronic
 import { NotaCreditoVentaDialog } from './NotaCreditoVentaDialog';
 import { EnviarFacturaDialog } from './EnviarFacturaDialog';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { CrearOportunidadDesdeOrigen } from '@/components/crm/oportunidad/CrearOportunidadDesdeOrigen';
 
 const RUTA_LISTADO = '/app/finanzas/facturas-venta';
 
@@ -309,6 +310,7 @@ export function DetalleFacturaVenta({ id }: { id: string }) {
         </button>
       )}
       <RowActionsMenu acciones={menu} titulo={numero} orientacion="horizontal" tamano="md" />
+      <CrearOportunidadDesdeOrigen tipo="factura" id={factura.id} />
     </div>
   ) : null;
 

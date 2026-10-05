@@ -22,10 +22,14 @@ import {
   mapTwilioCallStatus,
   mapTwilioToCallsStatus,
   TERMINAL_VAC_STATUSES,
-  ENDED_CALL_STATUSES,
   type VoiceAgentCallLiveStatus,
 } from '@/lib/services/crm/voiceAgent/callStatusMap';
 import { devolverReservaSinConversacion, sinConversacion } from '@/lib/services/crm/voiceAgent/reservaCreditos';
+import { aplicarCallbackVoz, buscarReservaVoz } from '@/lib/services/crm/voiceAgent/creditosVoz';
+import { mutateCallFromSnapshot } from '@/lib/services/crm/callMutationService';
+import { mergeTerminalOutcome, isTerminalStatus } from '@/lib/services/crm/callStateMachine';
+import { upsertCallActivity, type CallForActivity } from '@/lib/services/crm/callActivitySync';
+import { CrmHttpError } from '@/lib/services/crm/crmErrors';
 
 export const runtime = 'nodejs';
 
@@ -53,14 +57,16 @@ export async function POST(request: Request) {
 
   try {
     const supabase = getServiceClient();
-    const callId = new URL(request.url).searchParams.get('callId') || '';
+    const search = new URL(request.url).searchParams;
+    const callId = search.get('callId') || '';
+    const reservationId = search.get('reservationId');
     const callSid = params.CallSid || '';
 
     // La org sale de la fila persistida, jamás del cuerpo.
     let query = supabase
       .from('voice_agent_calls')
       .select(
-        'id, organization_id, call_id, status, started_at, outcome, customer_id, opportunity_id, credits_reserved, credits_settled_at'
+        'id, organization_id, call_id, provider_call_sid, status, started_at, completed_at, outcome, customer_id, opportunity_id, credits_reserved, credits_settled_at'
       );
     query = callId ? query.eq('id', callId) : query.eq('provider_call_sid', callSid);
     const { data, error } = await query.maybeSingle();
@@ -70,14 +76,17 @@ export async function POST(request: Request) {
       id: string;
       organization_id: number;
       call_id: string | null;
+      provider_call_sid: string | null;
       status: VoiceAgentCallLiveStatus;
       started_at: string | null;
+      completed_at: string | null;
       outcome: string | null;
       credits_reserved: number | null;
       credits_settled_at: string | null;
     } | null;
 
     if (!vac) {
+      if (reservationId) return new NextResponse('Forbidden', { status: 403 });
       console.warn('[AI Agent status] Sin correlación para', callId || callSid);
       return new NextResponse(EMPTY_TWIML, { status: 200, headers: XML_HEADERS });
     }
@@ -96,6 +105,17 @@ export async function POST(request: Request) {
       parseInt(params.CallDuration || params.SessionDuration || '0', 10) || null;
 
     const nextStatus = mapTwilioCallStatus(callStatus, answeredBy);
+    const reservation = await buscarReservaVoz(supabase, vac.organization_id, vac.id, reservationId, callSid);
+    if (reservation) {
+      if (nextStatus) await aplicarCallbackVoz(
+        supabase, vac.organization_id, reservation.id, callSid, nextStatus, durationSeconds,
+        params.HandoffData ? String(params.HandoffData).slice(0, 500) : answeredBy ? `answered_by_${answeredBy}` : callStatus
+      );
+      await syncAgentCallActivity(supabase, vac.organization_id, vac.call_id);
+      return new NextResponse(EMPTY_TWIML, { status: 200, headers: XML_HEADERS });
+    }
+    // El escritor de compatibilidad solo admite un SID ya correlacionado.
+    if (!callSid || vac.provider_call_sid !== callSid) return new NextResponse('Forbidden', { status: 403 });
     // Una llamada transferida no vuelve atrás cuando llega el `completed` del
     // tramo, y una que el TwiML ya cerró como buzón (AMD) tampoco: el
     // `completed` posterior puede llegar sin `AnsweredBy` y la convertiría en
@@ -105,7 +125,7 @@ export async function POST(request: Request) {
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (nextStatus && !keepTerminal) patch.status = nextStatus;
     if (nextStatus && TERMINAL_VAC_STATUSES.includes(nextStatus)) {
-      patch.completed_at = new Date().toISOString();
+      if (!vac.completed_at) patch.completed_at = new Date().toISOString();
       patch.locked_by = null;
       if (durationSeconds) patch.duration_seconds = durationSeconds;
       if (!vac.outcome) patch.outcome = answeredBy ? `answered_by_${answeredBy}` : callStatus;
@@ -114,10 +134,8 @@ export async function POST(request: Request) {
       patch.outcome = String(params.HandoffData).slice(0, 500);
     }
 
-    // F-NEW-6: si la llamada no llegó a hablar (nadie contestó, comunicaba, falló,
-    // se canceló o contestó un buzón), el ws-server nunca concilia y la reserva de
-    // crédito se quedaba cobrada. Aquí se devuelve, una sola vez
-    // (`credits_settled_at`), con la MISMA función que usa el TwiML del agente.
+    // Compatibilidad: una reserva antigua sin prueba privada no se devuelve
+    // desde banderas públicas. El helper exige conciliación antes de escribir.
     const efectivo = keepTerminal ? vac.status : nextStatus;
     if (sinConversacion(efectivo)) {
       const devolucion = await devolverReservaSinConversacion(supabase, vac);
@@ -134,26 +152,49 @@ export async function POST(request: Request) {
     // Espejo en `calls` para que la llamada del agente entre en el timeline,
     // en la grabación y en el pipeline de transcripción/análisis de F4.
     if (vac.call_id) {
-      const callsStatus = mapTwilioToCallsStatus(callStatus, answeredBy);
-      const callsPatch: Record<string, unknown> = { updated_at: new Date().toISOString() };
-      if (callsStatus) callsPatch.status = callsStatus;
-      if (answeredBy) callsPatch.answered_by = answeredBy;
-      if (durationSeconds) callsPatch.duration_seconds = durationSeconds;
-      if (callsStatus && ENDED_CALL_STATUSES.includes(callsStatus)) {
-        callsPatch.ended_at = new Date().toISOString();
-      }
-      const { error: callErr } = await supabase
-        .from('calls')
-        .update(callsPatch)
-        .eq('id', vac.call_id)
-        .eq('organization_id', vac.organization_id);
-      if (callErr) throw callErr;
+      const { data: stored, error: readError } = await supabase.from('calls').select('*')
+        .eq('id', vac.call_id).eq('organization_id', vac.organization_id).maybeSingle();
+      if (readError) throw readError;
+      if (!stored) throw new Error('Llamada del agente no encontrada');
+      const eventTime = new Date().toISOString();
+      const final = await mutateCallFromSnapshot(supabase, stored as AgentCallSnapshot, (fresh) => {
+        const incoming = mapTwilioToCallsStatus(callStatus, answeredBy);
+        if (!incoming) return null;
+        const merged = mergeTerminalOutcome({
+          currentStatus: fresh.status, currentDuration: fresh.duration_seconds,
+          currentAnsweredAt: fresh.answered_at, incomingStatus: incoming,
+          incomingDuration: durationSeconds ?? 0,
+        });
+        const callsPatch: Record<string, unknown> = {};
+        if (merged.status) callsPatch.status = merged.status;
+        if (answeredBy && !fresh.answered_by) callsPatch.answered_by = answeredBy;
+        if (merged.duration_seconds !== undefined) callsPatch.duration_seconds = merged.duration_seconds;
+        // AMD por sí solo no prueba que haya terminado la conversación.
+        if (isTerminalStatus(incoming) && !fresh.ended_at && ['completed', 'failed', 'busy', 'no-answer', 'canceled'].includes(callStatus)) callsPatch.ended_at = eventTime;
+        return callsPatch;
+      });
+      if (isTerminalStatus(final.status) && final.ended_at) await upsertCallActivity(final, supabase);
     }
 
     return new NextResponse(EMPTY_TWIML, { status: 200, headers: XML_HEADERS });
   } catch (error) {
+    if (error instanceof CrmHttpError && error.status === 403) return new NextResponse('Forbidden', { status: 403 });
     console.error('[AI Agent status] Error:', error instanceof Error ? error.message : error);
     // Twilio reintenta ante 5xx: no se traga el fallo con un 200 mentiroso.
     return new NextResponse('Error', { status: 500 });
   }
+}
+
+interface AgentCallSnapshot extends CallForActivity {
+  status: import('@/lib/crm/enums').CallStatus;
+  answered_at: string | null;
+}
+
+async function syncAgentCallActivity(client: ReturnType<typeof getServiceClient>, orgId: number, callId: string | null): Promise<void> {
+  if (!callId) return;
+  const { data, error } = await client.from('calls').select('*').eq('id', callId).eq('organization_id', orgId).maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error('Llamada del agente no encontrada');
+  const call = data as AgentCallSnapshot;
+  if (isTerminalStatus(call.status) && call.ended_at) await upsertCallActivity(call, client);
 }

@@ -5,20 +5,19 @@
  * en una llamada que no los tenía registrados.
  *
  * Se muestra en CallRowDetail cuando:
- * - No hay customer_id → "Vincular cliente" o "Crear cliente"
- * - Hay cliente pero no opportunity_id → "Crear oportunidad"
+ * - No hay customer_id → {t('vincularCliente')} o {t('crearCliente')}
+ * - Hay cliente pero no opportunity_id → {t('crearOportunidad')}
  */
 
-import { useState } from 'react';
-import { UserPlus, Search, Briefcase, X, Check, ChevronRight } from 'lucide-react';
+import { useCallLinkForm } from './useCallLinkForm';
+import { useTranslations } from 'next-intl';
+import { CallLinkedEntities } from './CallLinkedEntities';
+import { UserPlus, Search, Briefcase, X, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PhoneInput } from '@/components/ui/phone-input';
 import { telefonoOpcionalValido } from '@/lib/utils/telefono';
-import { describeError, logError } from '@/lib/utils/errorMessage';
-import { fetchJson } from '@/lib/utils/fetchJson';
-import { useCrmLookups } from '@/components/crm/shared/useCrmLookups';
 import { EntitySelect } from '@/components/crm/shared/EntitySelect';
 
 interface CallLinkPanelProps {
@@ -30,14 +29,10 @@ interface CallLinkPanelProps {
   /** Display name del cliente si ya existe (para mostrarlo). */
   customerName?: string | null;
   onLinked: () => void;
-}
-
-interface CustomerSearchResult {
-  id: string;
-  first_name: string | null;
-  last_name: string | null;
-  phone: string | null;
-  email: string | null;
+  opportunityName?: string | null;
+  opportunityStage?: string | null;
+  opportunityAmount?: string | null;
+  embedded?: boolean;
 }
 
 export function CallLinkPanel({
@@ -47,166 +42,33 @@ export function CallLinkPanel({
   phoneNumber,
   customerName,
   onLinked,
+  opportunityName, opportunityStage, opportunityAmount, embedded = false,
 }: CallLinkPanelProps) {
-  const [mode, setMode] = useState<'idle' | 'search' | 'create' | 'createOpp'>('idle');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<CustomerSearchResult[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Form crear cliente
-  const [newFirstName, setNewFirstName] = useState('');
-  const [newLastName, setNewLastName] = useState('');
-  const [newPhone, setNewPhone] = useState(phoneNumber);
-
-  // Form crear oportunidad
-  const [oppName, setOppName] = useState('');
-  const [oppPipelineId, setOppPipelineId] = useState<string | null>(null);
-  const [oppStageId, setOppStageId] = useState<string | null>(null);
-  const { pipelines, stages, loading: lookupsLoading } = useCrmLookups();
-
-  const stagesOfPipeline = stages.filter((s) => s.pipeline_id === oppPipelineId);
-
-  const searchCustomers = async () => {
-    if (!searchQuery.trim()) return;
-    setSearching(true);
-    setError(null);
-    try {
-      // Buscar en customers por nombre o teléfono
-      const params = new URLSearchParams({ q: searchQuery.trim(), limit: '10' });
-      const data = await fetchJson<{ data?: CustomerSearchResult[] }>(
-        `/api/crm/customers/search?${params.toString()}`
-      );
-      setSearchResults(data.data ?? []);
-    } catch (err) {
-      logError('[CallLinkPanel] buscar clientes', err);
-      setError(describeError(err));
-    } finally {
-      setSearching(false);
-    }
-  };
-
-  const linkExisting = async (custId: string) => {
-    setSubmitting(true);
-    setError(null);
-    try {
-      await fetchJson(`/api/crm/calls/${callId}/link`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customer_id: custId }),
-      });
-      setMode('idle');
-      onLinked();
-    } catch (err) {
-      logError('[CallLinkPanel] vincular', err);
-      setError(describeError(err));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const createCustomer = async () => {
-    if (!newFirstName.trim()) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      await fetchJson(`/api/crm/calls/${callId}/link`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          create_customer: {
-            first_name: newFirstName.trim(),
-            last_name: newLastName.trim() || null,
-            phone: newPhone.trim(),
-          },
-        }),
-      });
-      setMode('idle');
-      setNewFirstName('');
-      setNewLastName('');
-      onLinked();
-    } catch (err) {
-      logError('[CallLinkPanel] crear cliente', err);
-      setError(describeError(err));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const createOpportunity = async () => {
-    if (!oppName.trim() || !oppPipelineId || !oppStageId) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      await fetchJson(`/api/crm/calls/${callId}/link`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          create_opportunity: {
-            name: oppName.trim(),
-            pipeline_id: oppPipelineId,
-            stage_id: oppStageId,
-          },
-        }),
-      });
-      setMode('idle');
-      setOppName('');
-      setOppPipelineId(null);
-      setOppStageId(null);
-      onLinked();
-    } catch (err) {
-      logError('[CallLinkPanel] crear oportunidad', err);
-      setError(describeError(err));
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const t = useTranslations('crm.llamadas.ficha');
+  const { mode, setMode, searchQuery, setSearchQuery, searchResults, searching, submitting, error, newFirstName, setNewFirstName, newLastName, setNewLastName, newPhone, setNewPhone, oppName, setOppName, oppPipelineId, setOppPipelineId, oppStageId, setOppStageId, pipelines, lookupsLoading, stagesOfPipeline, searchCustomers, linkExisting, createCustomer, createOpportunity } = useCallLinkForm(callId, phoneNumber, onLinked);
 
   // Si ya hay cliente y oportunidad, no mostrar nada
-  if (customerId && opportunityId) return null;
+  if (customerId && opportunityId) return <CallLinkedEntities customerId={customerId} opportunityId={opportunityId} customerName={customerName} opportunityName={opportunityName} opportunityStage={opportunityStage} opportunityAmount={opportunityAmount} />;
 
   return (
-    <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-950/30">
-      {/* Resumen de estado */}
-      <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
-        <span className="font-medium text-blue-800 dark:text-blue-300">Vinculación:</span>
-        {customerId ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-green-700 dark:bg-green-900/30 dark:text-green-300">
-            <Check size={10} /> {customerName || 'Cliente vinculado'}
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-            <X size={10} /> Sin cliente
-          </span>
-        )}
-        {opportunityId ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-green-700 dark:bg-green-900/30 dark:text-green-300">
-            <Check size={10} /> Oportunidad
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-            <X size={10} /> Sin oportunidad
-          </span>
-        )}
-      </div>
-
+    <div className={embedded ? 'space-y-2.5' : 'rounded-xl border border-line bg-surface p-4'}>
+      <CallLinkedEntities customerId={customerId} opportunityId={opportunityId} customerName={customerName} opportunityName={opportunityName} opportunityStage={opportunityStage} opportunityAmount={opportunityAmount} />
       {/* Botones de acción (modo idle) */}
       {mode === 'idle' && (
         <div className="flex flex-wrap gap-2">
           {!customerId && (
             <>
               <Button size="sm" variant="outline" onClick={() => setMode('search')} className="text-xs">
-                <Search size={12} className="mr-1" /> Vincular cliente
+                <Search size={12} className="mr-1" /> {t('vincularCliente')}
               </Button>
               <Button size="sm" variant="outline" onClick={() => setMode('create')} className="text-xs">
-                <UserPlus size={12} className="mr-1" /> Crear cliente
+                <UserPlus size={12} className="mr-1" /> {t('crearCliente')}
               </Button>
             </>
           )}
           {customerId && !opportunityId && (
             <Button size="sm" variant="outline" onClick={() => setMode('createOpp')} className="text-xs">
-              <Briefcase size={12} className="mr-1" /> Crear oportunidad
+              <Briefcase size={12} className="mr-1" /> {t('crearOportunidad')}
             </Button>
           )}
         </div>
@@ -221,15 +83,15 @@ export function CallLinkPanel({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && searchCustomers()}
-              placeholder="Nombre o teléfono…"
-              aria-label="Buscar cliente"
+              placeholder={t('nombreTelefono')}
+              aria-label={t('buscarCliente')}
               className="h-8 text-sm"
               autoFocus
             />
             <Button size="sm" onClick={searchCustomers} disabled={searching || !searchQuery.trim()} className="h-8 shrink-0">
-              {searching ? '…' : 'Buscar'}
+              {searching ? '…' : t('buscar')}
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setMode('idle')} className="h-8 shrink-0">
+            <Button size="sm" variant="ghost" onClick={() => setMode('idle')} disabled={submitting} className="h-8 shrink-0" aria-label={t('cerrar')}>
               <X size={14} />
             </Button>
           </div>
@@ -241,22 +103,22 @@ export function CallLinkPanel({
                   type="button"
                   onClick={() => linkExisting(c.id)}
                   disabled={submitting}
-                  className="flex w-full items-center justify-between rounded-md border border-gray-200 bg-white px-2 py-1.5 text-left text-xs hover:bg-blue-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-blue-950/30"
+                  className="flex w-full items-center justify-between rounded-md border border-line bg-surface px-2 py-1.5 text-left text-xs hover:bg-hover"
                 >
                   <div>
-                    <span className="font-medium text-gray-900 dark:text-gray-100">
-                      {[c.first_name, c.last_name].filter(Boolean).join(' ') || 'Sin nombre'}
+                    <span className="font-medium text-fg">
+                      {[c.first_name, c.last_name].filter(Boolean).join(' ') || t('sinNombre')}
                     </span>
-                    {c.phone && <span className="ml-2 font-mono text-gray-500 dark:text-gray-400">{c.phone}</span>}
+                    {c.phone && <span className="ml-2 font-mono text-fg-secondary">{c.phone}</span>}
                   </div>
-                  <ChevronRight size={12} className="text-gray-400" />
+                  <ChevronRight size={12} className="text-fg-muted" />
                 </button>
               ))}
             </div>
           )}
           {searchResults.length === 0 && searchQuery && !searching && (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Sin resultados. <button onClick={() => setMode('create')} className="text-blue-600 underline">Crear cliente nuevo</button>
+            <p className="text-xs text-fg-secondary">
+              {t('sinResultados')} <button onClick={() => setMode('create')} className="text-brand underline">{t('crearClienteNuevo')}</button>
             </p>
           )}
         </div>
@@ -267,39 +129,42 @@ export function CallLinkPanel({
         <div className="space-y-2">
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <Label htmlFor="link-first-name" className="text-xs">Nombre</Label>
+              <Label htmlFor="link-first-name" className="text-xs">{t('nombre')}</Label>
               <Input
                 id="link-first-name"
                 value={newFirstName}
                 onChange={(e) => setNewFirstName(e.target.value)}
+                disabled={submitting}
                 className="h-8 text-sm"
                 autoFocus
               />
             </div>
             <div>
-              <Label htmlFor="link-last-name" className="text-xs">Apellido</Label>
+              <Label htmlFor="link-last-name" className="text-xs">{t('apellido')}</Label>
               <Input
                 id="link-last-name"
                 value={newLastName}
                 onChange={(e) => setNewLastName(e.target.value)}
+                disabled={submitting}
                 className="h-8 text-sm"
               />
             </div>
           </div>
           <div>
-            <Label htmlFor="link-phone" className="text-xs">Teléfono</Label>
+            <Label htmlFor="link-phone" className="text-xs">{t('telefono')}</Label>
             <PhoneInput
               id="link-phone"
               value={newPhone}
               onChange={setNewPhone}
+              disabled={submitting}
             />
           </div>
           <div className="flex gap-2">
             <Button size="sm" onClick={createCustomer} disabled={submitting || !newFirstName.trim() || !telefonoOpcionalValido(newPhone)} className="h-8">
-              {submitting ? 'Guardando…' : 'Crear y vincular'}
+              {submitting ? t('guardando') : t('crearVincular')}
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setMode('idle')} className="h-8">
-              Cancelar
+            <Button size="sm" variant="ghost" onClick={() => setMode('idle')} disabled={submitting} className="h-8">
+              {t('cancelar')}
             </Button>
           </div>
         </div>
@@ -309,45 +174,48 @@ export function CallLinkPanel({
       {mode === 'createOpp' && (
         <div className="space-y-2">
           <div>
-            <Label htmlFor="opp-name" className="text-xs">Nombre de la oportunidad</Label>
+            <Label htmlFor="opp-name" className="text-xs">{t('nombreOportunidad')}</Label>
             <Input
               id="opp-name"
               value={oppName}
               onChange={(e) => setOppName(e.target.value)}
-              placeholder="Ej: Venta Plan Business"
+              disabled={submitting}
+              placeholder={t('ejemploOportunidad')}
               className="h-8 text-sm"
               autoFocus
             />
           </div>
           <div>
-            <Label className="text-xs">Pipeline</Label>
+            <Label className="text-xs">{t('pipeline')}</Label>
             {lookupsLoading ? (
-              <p className="text-xs text-gray-500">Cargando pipelines…</p>
+              <p className="text-xs text-fg-secondary">{t('cargandoPipelines')}</p>
             ) : (
               <EntitySelect
                 value={oppPipelineId}
+                disabled={submitting}
                 onChange={(id) => {
                   setOppPipelineId(id);
                   setOppStageId(null);
                 }}
                 options={pipelines}
-                placeholder="Selecciona un pipeline"
-                emptyMessage="No hay pipelines creados."
+                placeholder={t('seleccionarPipeline')}
+                emptyMessage={t('sinPipelines')}
               />
             )}
           </div>
           {oppPipelineId && (
             <div>
-              <Label className="text-xs">Etapa</Label>
+              <Label className="text-xs">{t('etapaCampo')}</Label>
               {lookupsLoading ? (
-                <p className="text-xs text-gray-500">Cargando etapas…</p>
+                <p className="text-xs text-fg-secondary">{t('cargandoEtapas')}</p>
               ) : (
                 <EntitySelect
                   value={oppStageId}
+                  disabled={submitting}
                   onChange={(id) => setOppStageId(id)}
                   options={stagesOfPipeline}
-                  placeholder="Selecciona una etapa"
-                  emptyMessage="No hay etapas en este pipeline."
+                  placeholder={t('seleccionarEtapa')}
+                  emptyMessage={t('sinEtapas')}
                 />
               )}
             </div>
@@ -359,17 +227,17 @@ export function CallLinkPanel({
               disabled={submitting || !oppName.trim() || !oppPipelineId || !oppStageId}
               className="h-8"
             >
-              {submitting ? 'Guardando…' : 'Crear oportunidad'}
+              {submitting ? t('guardando') : t('crearOportunidad')}
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setMode('idle')} className="h-8">
-              Cancelar
+            <Button size="sm" variant="ghost" onClick={() => setMode('idle')} disabled={submitting} className="h-8">
+              {t('cancelar')}
             </Button>
           </div>
         </div>
       )}
 
       {error && (
-        <p className="mt-2 text-xs text-red-600 dark:text-red-400">{error}</p>
+        <p className="mt-2 text-xs text-danger-text">{error}</p>
       )}
     </div>
   );

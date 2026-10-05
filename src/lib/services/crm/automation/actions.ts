@@ -5,7 +5,7 @@
  *  - Una acción que no se puede ejecutar LANZA `ActionError`; el llamador marca
  *    la ejecución como `failed`. Nunca se devuelve `{status:'unknown_action'}`
  *    como éxito.
- *  - Las acciones que aún no existen (`send_sms`, `start_ai_agent`,
+ *  - Las acciones que aún no existen (`send_sms`,
  *    `ai_draft_email`, `book_meeting_request`, `webhook_out`) lanzan
  *    `action_not_implemented`: se ven en rojo en el historial, no en verde.
  *  - Los destinatarios NUNCA salen del cuerpo de la petición: se resuelven del
@@ -23,6 +23,7 @@ import { sendEmail } from '@/lib/services/crm/emailService';
 import { ACTIVITY_TYPES, TASK_PRIORITIES, type JobKind } from '@/lib/crm/enums';
 import { enqueueJob } from '@/lib/jobs/enqueue';
 import { contextVariables, qualifyVarsForEmail, renderVars, type RuleContext } from './ruleContext';
+import { UUID_RE } from '../crmErrors';
 
 export const AUTOMATION_ACTION_TYPES = [
   'send_email',
@@ -45,7 +46,6 @@ export type AutomationActionType = (typeof AUTOMATION_ACTION_TYPES)[number];
 /** Acciones declaradas en el catálogo pero todavía sin implementación real. */
 export const NOT_IMPLEMENTED_ACTIONS: readonly AutomationActionType[] = [
   'send_sms',
-  'start_ai_agent',
   'ai_draft_email',
   'book_meeting_request',
   'webhook_out',
@@ -99,6 +99,8 @@ export interface AutomationAction {
   reason?: string;
   // move_stage
   stage_id?: string;
+  // start_ai_agent: referencia a un agente activo de la organización.
+  voice_agent_id?: string;
   // notify_user
   content?: string;
 }
@@ -122,6 +124,11 @@ export interface ActionRunContext {
   userId?: string | null;
   /** Inyectable en tests; por defecto la cola real (`fn_enqueue_job`). */
   enqueue?: EnqueueFn;
+}
+
+export function validateStartAiAgentAction(action: AutomationAction): string {
+  if (typeof action.voice_agent_id !== 'string' || !UUID_RE.test(action.voice_agent_id)) throw new ActionError('start_ai_agent', 'agent_required', 'elige un agente válido');
+  return action.voice_agent_id;
 }
 
 
@@ -283,6 +290,11 @@ export async function executeAction(
   }
 
   switch (type) {
+    case 'start_ai_agent': {
+      validateStartAiAgentAction(action);
+      const { enqueueAutomationAgent } = await import('./startAiAgentAction');
+      return enqueueAutomationAgent(action, run, enqueue);
+    }
     case 'send_email': {
       // El destinatario se resuelve SIEMPRE del cliente del contexto: nunca del
       // payload del disparador (tester r1 #8). `action.to` (fija por un admin)

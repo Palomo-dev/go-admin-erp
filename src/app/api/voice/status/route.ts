@@ -1,11 +1,14 @@
 import { verifyTwilioWebhook, WebhookError } from '@/lib/security/webhookSignatures';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { applyStatusEvent, isTerminalStatus, type CallLeg } from '@/lib/services/crm/callStateMachine';
-import { upsertCallActivity, touchOpportunityAfterCall } from '@/lib/services/crm/callActivitySync';
+import { upsertCallActivity } from '@/lib/services/crm/callActivitySync';
+import { mutateCallFromSnapshot } from '@/lib/services/crm/callMutationService';
 import { settleVoiceCall } from '@/lib/services/crm/callCreditsService';
 import { accountSidMatchesOrg } from '@/lib/services/crm/voiceContextService';
 import { EMPTY_TWIML, xmlResponse } from '@/lib/services/crm/twimlBuilders';
 import type { CallStatus } from '@/lib/crm/enums';
+import { phoneConferenceEnabled } from '@/lib/services/crm/phoneConferenceRepository';
+import { handlePhoneLegacyLeg } from '@/lib/services/crm/phoneConferenceWebhook';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -68,11 +71,13 @@ export async function POST(request: Request) {
     const leg: CallLeg = parentSid ? 'child' : 'parent';
     const lookupSid = parentSid || callSid;
 
-    let { data } = await sb.from('calls').select('*').eq('provider_call_sid', lookupSid).limit(1).maybeSingle();
+    let { data, error: readError } = await sb.from('calls').select('*').eq('provider_call_sid', lookupSid).limit(1).maybeSingle();
+    if (readError) throw readError;
     // Legs de bridge (F5) pueden identificarse por customer_leg_sid/agent_leg_sid
     if (!data && !parentSid) {
-      ({ data } = await sb.from('calls').select('*').or(`customer_leg_sid.eq.${callSid},agent_leg_sid.eq.${callSid}`).limit(1).maybeSingle());
+      ({ data, error: readError } = await sb.from('calls').select('*').or(`customer_leg_sid.eq.${callSid},agent_leg_sid.eq.${callSid}`).limit(1).maybeSingle());
     }
+    if (readError) throw readError;
     const call = data as CallRow | null;
     if (!call) {
       console.warn('[Voice Status] Llamada no encontrada para', lookupSid);
@@ -84,56 +89,53 @@ export async function POST(request: Request) {
       console.warn('[Voice Status] AccountSid ajeno a la org de la llamada', { org: call.organization_id });
       return new Response('Forbidden', { status: 403 });
     }
-
-    const update = applyStatusEvent(
-      { status: call.status, answered_at: call.answered_at, started_at: call.started_at, metadata: call.metadata ?? {} },
-      {
-        CallStatus: params.CallStatus || '',
-        SequenceNumber: params.SequenceNumber ?? null,
-        CallDuration: params.CallDuration ?? null,
-        AnsweredBy: params.AnsweredBy ?? null,
-        SipResponseCode: params.SipResponseCode ?? null,
-        Timestamp: params.Timestamp ?? null,
-      },
-      leg
-    );
-    if (!update) return xmlResponse(EMPTY_TWIML);
-
-    const patch: Record<string, unknown> = { metadata: update.metadata };
-    if (update.status) patch.status = update.status;
-    if (update.answered_at) patch.answered_at = update.answered_at;
-    if (update.ring_seconds !== undefined) patch.ring_seconds = update.ring_seconds;
-    if (update.ended_at && !call.ended_at) patch.ended_at = update.ended_at;
-    if (update.duration_seconds !== undefined && (call.duration_seconds === null || call.duration_seconds === undefined)) {
-      patch.duration_seconds = update.duration_seconds;
-      patch.duration_source = 'provider';
+    if (phoneConferenceEnabled() && await handlePhoneLegacyLeg(sb, call.organization_id, call.id, callSid, params.CallStatus, accountSid)) {
+      return xmlResponse(EMPTY_TWIML);
     }
-    if (update.answered_by) patch.answered_by = update.answered_by;
-    if (leg === 'child' && !call.customer_leg_sid && call.direction === 'outbound') patch.customer_leg_sid = callSid;
 
-    const { data: saved, error } = await sb
-      .from('calls')
-      .update(patch)
-      .eq('id', call.id)
-      .eq('organization_id', call.organization_id)
-      .select('*')
-      .single();
-    if (error) throw new Error(error.message);
-    const final = saved as CallRow;
+    const eventTime = new Date();
+    const final = await mutateCallFromSnapshot(sb, call, (fresh) => {
+      const update = applyStatusEvent(
+        { status: fresh.status, answered_at: fresh.answered_at, started_at: fresh.started_at, metadata: fresh.metadata ?? {} },
+        {
+          CallStatus: params.CallStatus || '',
+          SequenceNumber: params.SequenceNumber ?? null,
+          CallDuration: params.CallDuration ?? null,
+          AnsweredBy: params.AnsweredBy ?? null,
+          SipResponseCode: params.SipResponseCode ?? null,
+          Timestamp: params.Timestamp ?? null,
+        },
+        leg, eventTime
+      );
+      if (!update) return null;
+
+      const patch: Record<string, unknown> = { metadata: update.metadata };
+      if (update.status) patch.status = update.status;
+      if (update.answered_at) patch.answered_at = update.answered_at;
+      if (update.ring_seconds !== undefined) patch.ring_seconds = update.ring_seconds;
+      if (update.ended_at && !fresh.ended_at) patch.ended_at = update.ended_at;
+      if (update.duration_seconds !== undefined && (fresh.duration_seconds === null || fresh.duration_seconds === undefined)) {
+        patch.duration_seconds = update.duration_seconds;
+        patch.duration_source = 'provider';
+      }
+      if (update.answered_by) patch.answered_by = update.answered_by;
+      if (leg === 'child' && !fresh.customer_leg_sid && fresh.direction === 'outbound') patch.customer_leg_sid = callSid;
+
+      return patch;
+    });
 
     // Se liquida cuando la llamada está terminal Y realmente ha terminado
     // (`ended_at`). El buzón detectado por AMD marca `voicemail` al contestar
     // pero la llamada sigue viva: liquidar ahí cobraba 0 minutos y, por
     // idempotencia, el cierre real ya no cobraba los minutos consumidos (A3).
     const settled = Boolean((final.metadata as Record<string, unknown> | null)?.settled_at);
-    if (isTerminalStatus(final.status) && final.ended_at && !settled) {
-      await settleVoiceCall(final, sb).catch((e) => console.warn('[Voice Status] settle:', e instanceof Error ? e.message : e));
+    if (isTerminalStatus(final.status) && final.ended_at) {
+      if (!settled) await settleVoiceCall(final, sb).catch((e) => console.warn('[Voice Status] settle:', e instanceof Error ? e.message : e));
       await upsertCallActivity(final, sb);
-      await touchOpportunityAfterCall(final, sb);
     }
     return xmlResponse(EMPTY_TWIML);
   } catch (error: unknown) {
     console.error('[Voice Status] error:', error instanceof Error ? error.message : error);
-    return xmlResponse(EMPTY_TWIML);
+    return new Response('Error', { status: 500 });
   }
 }

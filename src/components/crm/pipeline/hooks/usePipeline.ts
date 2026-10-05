@@ -92,9 +92,9 @@ export const usePipeline = (pipelineId: string) => {
         // Procesar clientes con sus estadísticas de oportunidades
         const processedCustomers = processCustomersWithOpportunities(customers, opportunities);
         setCustomers(processedCustomers);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error al cargar datos del pipeline:', err);
-        const errorMessage = err?.message || 'Error desconocido al cargar datos';
+        const errorMessage = err instanceof Error ? err.message : 'Error desconocido al cargar datos';
         setError(errorMessage);
         // Mostrar mensaje al usuario si es necesario
         // toast.error(errorMessage);
@@ -178,9 +178,9 @@ export const usePipeline = (pipelineId: string) => {
 
     try {
       // Actualizar cliente en la base de datos
-      const result = await pipelineService.updateCustomer(selectedCustomer.id, editFormData);
+      const result = await pipelineService.updateCustomer(selectedCustomer.id, editFormData, selectedCustomer.updated_at ?? null);
       
-      if (!result.success) throw new Error("Error al actualizar cliente");
+      if (!result.success) throw result.error;
 
       // Actualizar estado local
       setCustomers((prev) =>
@@ -188,15 +188,12 @@ export const usePipeline = (pipelineId: string) => {
           customer.id === selectedCustomer.id
             ? {
                 ...customer,
-                full_name: editFormData.full_name,
-                email: editFormData.email,
-                phone: editFormData.phone,
-                address: editFormData.address,
-                notes: editFormData.notes,
+                ...result.customer,
               }
             : customer
         )
       );
+      setSelectedCustomer((actual) => actual?.id === result.customer.id ? { ...actual, ...result.customer } : actual);
 
       setFormMessage({
         type: "success",
@@ -210,7 +207,7 @@ export const usePipeline = (pipelineId: string) => {
       }, 1500);
     } catch (error) {
       console.error("Error al actualizar cliente:", error);
-      setFormMessage({ type: "error", text: "Error al guardar los cambios" });
+      setFormMessage({ type: "error", text: error instanceof Error ? error.message : "Error al guardar los cambios" });
     } finally {
       setIsSaving(false);
     }
@@ -284,12 +281,12 @@ export const usePipeline = (pipelineId: string) => {
         setIsCreateOpportunityOpen(false);
         setFormMessage({ type: "", text: "" });
       }, 1500);
-    } catch (error: any) {
-      console.error("Error al crear oportunidad:", 
-        error?.message || error?.error_description || JSON.stringify(error));
+    } catch (error: unknown) {
+      const mensaje = error instanceof Error ? error.message : 'Verifica tu conexión a Supabase';
+      console.error("Error al crear oportunidad:", mensaje);
       setFormMessage({
         type: "error",
-        text: `Error al crear la oportunidad: ${error?.message || 'Verifica tu conexión a Supabase'}`
+        text: `Error al crear la oportunidad: ${mensaje}`
       });
     } finally {
       setIsSaving(false);

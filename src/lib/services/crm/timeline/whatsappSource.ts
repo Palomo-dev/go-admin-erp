@@ -20,9 +20,11 @@
  */
 import { compareDesc, isBefore, type Ctx, type Raw, type Row, type SourceResult } from './types';
 import {
-  applyRange, atOr, bogotaDay, bogotaDayStart, bogotaNextDayStart,
+  applyRange, atOr,
   DESC_NULLS_LAST, ID_DESC, isoUtc,
 } from './cursor';
+import { nextPlainDay, plainDateToInstant, toPlainDate } from '@/lib/utils/dateDisplay';
+import { DEFAULT_TIMEZONE } from '@/lib/utils/timezone';
 
 const MSG_SELECT =
   'id, conversation_id, channel_id, direction, role, content, content_type, created_at, related_opportunity_id, ' +
@@ -44,6 +46,7 @@ type MsgResult = { data: Row[] | null; error: { message: string } | null };
  */
 export async function fetchWhatsApp(ctx: Ctx): Promise<SourceResult> {
   if (ctx.q.userId) return { rows: [], tail: null };
+  const zona = ctx.access?.timezone ?? DEFAULT_TIMEZONE;
 
   /** Consultas de una variante de ventana (ancha o "días anteriores"). */
   const buildQueries = (variant: Ctx): Promise<MsgResult>[] => {
@@ -77,11 +80,11 @@ export async function fetchWhatsApp(ctx: Ctx): Promise<SourceResult> {
 
   // Con cursor la ventana se ensancha hasta el final de su día (máx. 24 h de más)
   const wideCtx: Ctx = ctx.cursor
-    ? { ...ctx, cursor: null, q: { ...ctx.q, to: minIso(ctx.q.to, bogotaNextDayStart(ctx.cursor.at)) } }
+    ? acotar(ctx, plainDateToInstant(nextPlainDay(toPlainDate(new Date(ctx.cursor.at), zona)), zona))
     : ctx;
   // …y se añade la ventana "estrictamente antes del día del cursor" (F9-33)
   const olderCtx: Ctx | null = ctx.cursor
-    ? { ...ctx, cursor: null, q: { ...ctx.q, to: minIso(ctx.q.to, bogotaDayStart(ctx.cursor.at)) } }
+    ? acotar(ctx, plainDateToInstant(toPlainDate(new Date(ctx.cursor.at), zona), zona))
     : null;
 
   const queries = [...buildQueries(wideCtx), ...(olderCtx ? buildQueries(olderCtx) : [])];
@@ -101,7 +104,7 @@ export async function fetchWhatsApp(ctx: Ctx): Promise<SourceResult> {
 
   const groups = new Map<string, Row[]>();
   for (const m of msgs) {
-    const key = `${m.conversation_id}:${bogotaDay(atOr(m.created_at))}`;
+    const key = `${m.conversation_id}:${toPlainDate(new Date(atOr(m.created_at)), zona)}`;
     const g = groups.get(key);
     if (g) g.push(m);
     else groups.set(key, [m]);
@@ -132,7 +135,9 @@ export async function fetchWhatsApp(ctx: Ctx): Promise<SourceResult> {
   return { rows: list, tail: null };
 }
 
-function minIso(a: string | undefined, b: string): string {
-  if (!a) return b;
-  return isoUtc(a) <= isoUtc(b) ? isoUtc(a) : isoUtc(b);
+function acotar(ctx: Ctx, limite: string): Ctx {
+  const previo = ctx.q.to;
+  const anterior = previo && isoUtc(previo) < isoUtc(limite);
+  return { ...ctx, cursor: null, q: { ...ctx.q, to: anterior ? previo : limite,
+    toExclusive: anterior ? ctx.q.toExclusive : true } };
 }

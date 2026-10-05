@@ -9,6 +9,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { mutateCallFromSnapshot, type CallMutationSnapshot } from './callMutationService';
 
 export type VoiceSku = 'voice_out_co_mobile' | 'voice_out_co_landline' | 'voice_in_local_co';
 
@@ -200,7 +201,6 @@ export async function settleVoiceCall(
   }
 
   const meta = {
-    ...(call.metadata ?? {}),
     settled_at: new Date().toISOString(),
     credits_final_min: s.minutes,
     cost_breakdown: s.breakdown,
@@ -214,11 +214,13 @@ export async function settleVoiceCall(
         }
       : {}),
   };
-  await client
-    .from('calls')
-    .update({ cost_amount: s.costUsd, cost_currency: 'USD', metadata: meta })
-    .eq('id', call.id)
-    .eq('organization_id', call.organization_id);
+  const { data: current, error: readError } = await client.from('calls').select('*')
+    .eq('id', call.id).eq('organization_id', call.organization_id).maybeSingle();
+  if (readError) throw readError;
+  if (!current) throw new Error('No se encontró la llamada al guardar la liquidación');
+  await mutateCallFromSnapshot(client, current as CallMutationSnapshot, (fresh) => ({
+    cost_amount: s.costUsd, cost_currency: 'USD', metadata: { ...(fresh.metadata ?? {}), ...meta },
+  }));
 
   return s;
 }

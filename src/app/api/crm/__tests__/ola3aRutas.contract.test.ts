@@ -105,6 +105,28 @@ describe('GET /api/crm/activities — línea de tiempo de la organización', () 
     expect(e[U(603)]).toBe(false);
   });
 
+  it('reunión de calendario no ofrece el menú genérico; las manuales conservan edición', async () => {
+    db.t.activities.push({ id: U(605), organization_id: ORG, user_id: YO, activity_type: 'meeting', occurred_at: '2026-09-23T15:00:00Z', related_type: 'customer', related_id: U(10), metadata: { event_id: U(606) } });
+    db.t.activities.push({ id: U(607), organization_id: ORG, user_id: YO, activity_type: 'meeting', occurred_at: '2026-09-23T14:55:00Z', related_type: 'customer', related_id: U(10), metadata: {} });
+    for (const permiso of [false, true]) {
+      if (permiso) permisos.add('crm.activities.edit_any');
+      const e = Object.fromEntries(datos((await json(await feedGet(req('/api/crm/activities')))).body).map(x => [x.id, x.editable]));
+      expect(e[U(605)]).toBe(false);
+      expect(e[U(607)]).toBe(true);
+    }
+  });
+  it('llamadas vinculadas usan su ficha; llamadas manuales sin registro mantienen edición', async () => {
+    db.t.activities.push({ id: U(605), organization_id: ORG, user_id: YO, activity_type: 'call', occurred_at: '2026-09-23T15:00:00Z', related_type: 'customer', related_id: U(10), call_id: U(606), metadata: {} });
+    db.t.activities.push({ id: U(607), organization_id: ORG, user_id: YO, activity_type: 'ai_call', occurred_at: '2026-09-23T14:55:00Z', related_type: 'customer', related_id: U(10), metadata: { call_id: U(606) } });
+    db.t.activities.push({ id: U(608), organization_id: ORG, user_id: YO, activity_type: 'call', occurred_at: '2026-09-23T14:50:00Z', related_type: 'customer', related_id: U(10), call_id: null, metadata: {} });
+    for (const permiso of [false, true]) {
+      if (permiso) permisos.add('crm.activities.edit_any');
+      const e = Object.fromEntries(datos((await json(await feedGet(req('/api/crm/activities')))).body).map(x => [x.id, x.editable]));
+      expect(e[U(605)]).toBe(false);
+      expect(e[U(607)]).toBe(false);
+      expect(e[U(608)]).toBe(true);
+    }
+  });
   it('hidrata autor, cliente y oportunidad (la oportunidad trae a su cliente)', async () => {
     const [primera, , correo] = datos((await json(await feedGet(req('/api/crm/activities')))).body);
     expect(primera.autor).toBe('Carlos Ruiz');

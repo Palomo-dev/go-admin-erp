@@ -1,0 +1,29 @@
+# Sucursales en las RPC nativas de llamadas
+
+Estado: **delta compatible aplicado por MCP**, versión `20261002151347`, nombre `crm_llamadas_rpc_sucursal_coherencia`. No se han activado las restricciones de acceso directo. El código exacto está en `supabase/migrations/20261002151347_crm_llamadas_rpc_sucursal_coherencia.sql` (MD5 `54c8693f9f9c175da826951dc06b9752`) y su reversión en `supabase/rollbacks/20261002151347_crm_llamadas_rpc_sucursal_coherencia_rollback.sql` (MD5 `b27955513f6bb619ca95b8614b3e6845`). Aplicación a las 15:13:47 UTC del 2 de octubre de 2026 (10:13:47 en Bogotá). El delta adicional aplicado de [miembro activo](llamadas_listado_miembro_activo.md), versión `20261002152633`, exige miembro activo incluso cuando `fn_assert_acceso_org` acepta al propietario o creador de la organización. La fuente final del listado después de ese delta es `d687303712bed32ba1d17ec07bfe35cc`.
+
+El delta conserva cinco funciones existentes: creación, disposición, vinculación, el guard privado de PHONE y el listado. No crea otro motor, no cambia firmas, argumentos, defaults, ACL, propietario ni `SECURITY DEFINER`, y no modifica filas. Creación y vinculación verifican las sucursales de las referencias que ya bloqueaba la transacción original. Disposición y vinculación reutilizan el guard privado de PHONE; la creación y la vinculación también lo ejecutan sobre el resultado antes de sincronizar el historial.
+
+La lectura conserva autor o `crm.calls.view_all`; la gestión conserva autor o `crm.activities.edit_any`. Tener permiso de lectura completa no autoriza editar. Se verifica tanto la sucursal del cliente como la de la oportunidad, el tenant de esas sucursales y la coincidencia entre ambos registros. El listado es `SECURITY DEFINER`, por lo que incorpora el mismo alcance en el CTE compartido por filas, total e indicadores. Su resumen de análisis excluye una transcripción vinculada a otra llamada.
+
+| Fuente `prosrc` | Antes (MD5) | Después (MD5) |
+| --- | --- | --- |
+| `fn_crm_crear_llamada(integer,jsonb)` | `21743883b30fd74b2a889b013e54c5be` | `0e1c215728752de9776d4bb52eeec41b` |
+| `fn_crm_disponer_llamada(integer,uuid,text,jsonb)` | `9c05b0939261d6947aa00f653c43869f` | `d350a2461a311bbbad390beb2df756fc` |
+| `fn_crm_vincular_llamada(integer,uuid,text,jsonb)` | `2dea24acc694be4888da41f910a8ef09` | `d26a992174382fe47ee25de954f860d0` |
+| `fn_phone_assert_call_scope_core(integer,uuid)` | `2336f1f9756da0912195a814676627ae` | `475b735c4d46b89955435574601195de` |
+| `crm_calls_list(integer,jsonb)` | `e98a3b20121ffaa1f808d324a42f26ce` | `2645f28d3f4335dca1af203e17ae963b` |
+
+Los archivos candidatos son `llamadas_sucursal_rpc.sql` (MD5 `54c8693f9f9c175da826951dc06b9752`) y `llamadas_sucursal_rpc.rollback.sql` (MD5 `b27955513f6bb619ca95b8614b3e6845`). El forward falla ante drift de cuerpo, ACL, configuración o propietario; tras cada reemplazo comprueba que sólo cambió `prosrc`. Los offsets del parser de defaults se normalizan para comparar el contrato de forma estable.
+
+La verificación funcional se prepara sobre tablas temporales vacías con columnas del esquema real y sin triggers ni datos de clientes. Usa roles PostgreSQL `authenticated` y `service_role`, `auth.uid()` real y clones de los helpers canónicos. El resolver de grants y la sincronización del historial se sustituyen por fixtures para no invocar jobs ni servicios. Esta prueba acredita las expresiones SQL y los guards bajo casos controlados; no acredita una sesión de navegador real, envío a proveedores ni firma de un enlace Storage. La comprobación independiente del DDL compila los bytes exactos contra las funciones reales, prueba idempotencia y reversión y termina con `ROLLBACK` sin invocar RPC de negocio.
+
+Resultado acreditado del primer gate funcional: **103/103** comprobaciones SQL, transacción con `ROLLBACK`, tiempo total MCP 3,8 segundos y hash del SQL temporal `391d29630d32f89331ccea7dfa86d561`. Incluye siete perfiles, roles reales PostgreSQL, tenants y sucursales distintos, análisis con referencias incoherentes, estados/rutas/proveedor Storage, denegaciones de escritura directa y operación legítima de los clones. Un primer intento abortó por el alias `pg_temp` en `GRANT USAGE`; se corrigió el grant al nombre real del namespace temporal. No se tocaron filas ni objetos permanentes de negocio.
+
+El gate del DDL exacto pasó **12/12** comprobaciones en 1,6 segundos: dos aplicaciones, dos reversiones y una reaplicación/reversión. Conservó atributos, hashes de fuente, argumentos/defaults, ACL, helpers base y políticas originales; el hash de esa prueba temporal fue `3152e265a13d213514b9c01cd4eb1c83`. La aplicación real terminó correctamente en 3,6 segundos; la comprobación posterior confirmó los cinco hashes y sus ACL. Los advisors fueron consultados durante el cierre. Estas evidencias no acreditan emisión de URL firmada ni integraciones con proveedores.
+
+La pausa de pruebas generales o de carga en producción sigue vigente. Sólo se ejecutan los gates acotados revisados, con timeout y sin HTTP de colisión ni snapshots globales. Los `.sql` temporales de prueba se eliminan tras guardar el resultado y su hash.
+
+Orden de reversión: primero `20261002152633_crm_llamadas_listado_miembro_activo_rollback.sql` y después `20261002151347_crm_llamadas_rpc_sucursal_coherencia_rollback.sql`. La reversión de sucursales exige el hash del listado anterior al delta de miembro activo; ejecutarla antes falla por drift y la transacción se revierte.
+
+La reversión restaura los cuerpos capturados después de la corrección de SQLSTATE de la fase 74: mantiene `P0001` y no reintroduce `40001`. No revierte datos, pero reabre el acceso de sucursal que este delta cierra. Las políticas restrictivas de llamadas, derivados y Storage se activan sólo después del despliegue coordinado de sus escritores.

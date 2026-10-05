@@ -80,7 +80,7 @@ export function resolveModelOptions(
 
 /** Modelo con el que nace un agente nuevo: el recomendado utilizable; si no, el primero utilizable. */
 export function defaultModel(catalog: CatalogoModelos | null): string | null {
-  const options = resolveModelOptions(catalog, "");
+  const options = resolveModelOptions(catalog, "").filter(option => option.provider === "openai");
   return (options.find((o) => o.recomendado) ?? options[0])?.value ?? null;
 }
 
@@ -90,15 +90,17 @@ export interface AgentModelsState {
   /** El catálogo no se pudo leer: el campo pasa a texto libre. */
   error: string | null;
   defaultValue: string | null;
+  reload: () => void;
 }
 
 export function useAgentModels(current: string): AgentModelsState {
+  const [revision, setRevision] = useState(0);
   const [catalog, setCatalog] = useState<CatalogoModelos | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let alive = true;
+    let alive = true; setLoading(true); setError(null);
     fetchCatalogoModelos()
       .then((c) => {
         if (alive) setCatalog(c);
@@ -112,12 +114,13 @@ export function useAgentModels(current: string): AgentModelsState {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [revision]);
 
   return {
     options: resolveModelOptions(catalog, current),
     loading,
     error,
     defaultValue: defaultModel(catalog),
+    reload: () => setRevision(value => value + 1),
   };
 }

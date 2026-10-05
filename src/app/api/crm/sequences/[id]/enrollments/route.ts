@@ -1,5 +1,6 @@
+import { requireSequenceManager, sequenceError } from '@/lib/services/crm/sequenceRouteSupport';
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError, requireOrgAdmin } from '@/lib/utils/orgContext';
+import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import {
   getEnrollments,
@@ -19,7 +20,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     const { id } = await params;
     const search = request.nextUrl.searchParams;
 
@@ -37,9 +38,7 @@ export async function GET(
     if (error instanceof OrgContextError) {
       return NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.statusCode });
     }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[Sequence Enrollments] GET error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return sequenceError(error, 'sequences.enrollments.read');
   }
 }
 
@@ -51,8 +50,8 @@ export async function GET(
  */
 export async function PATCH(request: NextRequest) {
   try {
-    const ctx = await getServerOrgContext();
-    requireOrgAdmin(ctx);
+    const ctx = await getServerOrgContext(request);
+    await requireSequenceManager(ctx);
 
     let body: { enrollment_id?: string; action?: string } = {};
     try {
@@ -75,18 +74,15 @@ export async function PATCH(request: NextRequest) {
     if (error instanceof OrgContextError) {
       return NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.statusCode });
     }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[Sequence Enrollments] PATCH error:', message);
-    const status = /enrollment_not_found/.test(message) ? 404 : 500;
-    return NextResponse.json({ success: false, error: message }, { status });
+    return sequenceError(error, 'sequences.resume');
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     await readOrgBody(ctx, request);
-    requireOrgAdmin(ctx);
+    await requireSequenceManager(ctx);
     const enrollmentId = request.nextUrl.searchParams.get('enrollment_id');
     if (!enrollmentId) {
       return NextResponse.json({ success: false, error: 'Falta enrollment_id' }, { status: 400 });
@@ -101,8 +97,6 @@ export async function DELETE(request: NextRequest) {
     if (error instanceof OrgContextError) {
       return NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.statusCode });
     }
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[Sequence Enrollments] DELETE error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return sequenceError(error, 'sequences.exit');
   }
 }

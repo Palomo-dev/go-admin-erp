@@ -1,0 +1,82 @@
+-- ACTIVAR SOLO DESPUÉS de publicar create/delete/unenroll RPC + workers service_role.
+-- Conserva políticas permisivas/ACL originales; agrega restricciones, no un motor.
+SET LOCAL lock_timeout='1s';
+SET LOCAL statement_timeout='4s';
+DO $rls_pre$ BEGIN
+  IF (SELECT jsonb_agg(to_jsonb(p) ORDER BY p.tablename,p.policyname) FROM pg_policies p
+      WHERE p.schemaname='public' AND p.tablename IN ('sequences','sequence_steps','sequence_enrollments','sequence_step_runs')
+        AND NOT p.policyname=ANY(ARRAY['crm_sequence_guard_sequences_insert','crm_sequence_guard_sequences_update','crm_sequence_guard_sequences_delete','crm_sequence_guard_sequence_steps_insert','crm_sequence_guard_sequence_steps_update','crm_sequence_guard_sequence_steps_delete','crm_sequence_guard_steps_read','crm_sequence_guard_sequence_enrollments_read','crm_sequence_guard_sequence_enrollments_insert','crm_sequence_guard_sequence_enrollments_update','crm_sequence_guard_sequence_enrollments_delete','crm_sequence_guard_sequence_step_runs_read','crm_sequence_guard_sequence_step_runs_insert','crm_sequence_guard_sequence_step_runs_update','crm_sequence_guard_sequence_step_runs_delete'])) IS DISTINCT FROM $original$[{"cmd":"DELETE","qual":"(organization_id IN ( SELECT om.organization_id\n   FROM organization_members om\n  WHERE ((om.user_id = auth.uid()) AND (om.is_active = true))))","roles":["authenticated"],"tablename":"sequence_enrollments","permissive":"PERMISSIVE","policyname":"se_delete","schemaname":"public","with_check":null},{"cmd":"INSERT","qual":null,"roles":["authenticated"],"tablename":"sequence_enrollments","permissive":"PERMISSIVE","policyname":"se_insert","schemaname":"public","with_check":"(organization_id IN ( SELECT om.organization_id\n   FROM organization_members om\n  WHERE ((om.user_id = auth.uid()) AND (om.is_active = true))))"},{"cmd":"SELECT","qual":"(organization_id IN ( SELECT om.organization_id\n   FROM organization_members om\n  WHERE ((om.user_id = auth.uid()) AND (om.is_active = true))))","roles":["authenticated"],"tablename":"sequence_enrollments","permissive":"PERMISSIVE","policyname":"se_select","schemaname":"public","with_check":null},{"cmd":"UPDATE","qual":"(organization_id IN ( SELECT om.organization_id\n   FROM organization_members om\n  WHERE ((om.user_id = auth.uid()) AND (om.is_active = true))))","roles":["authenticated"],"tablename":"sequence_enrollments","permissive":"PERMISSIVE","policyname":"se_update","schemaname":"public","with_check":"(organization_id IN ( SELECT om.organization_id\n   FROM organization_members om\n  WHERE ((om.user_id = auth.uid()) AND (om.is_active = true))))"},{"cmd":"DELETE","qual":"(organization_id IN ( SELECT om.organization_id\n   FROM organization_members om\n  WHERE ((om.user_id = auth.uid()) AND (om.is_active = true))))","roles":["public"],"tablename":"sequence_step_runs","permissive":"PERMISSIVE","policyname":"sequence_step_runs_delete","schemaname":"public","with_check":null},{"cmd":"INSERT","qual":null,"roles":["authenticated"],"tablename":"sequence_step_runs","permissive":"PERMISSIVE","policyname":"ssr_insert","schemaname":"public","with_check":"(organization_id IN ( SELECT om.organization_id\n   FROM organization_members om\n  WHERE ((om.user_id = auth.uid()) AND (om.is_active = true))))"},{"cmd":"SELECT","qual":"(organization_id IN ( SELECT om.organization_id\n   FROM organization_members om\n  WHERE ((om.user_id = auth.uid()) AND (om.is_active = true))))","roles":["authenticated"],"tablename":"sequence_step_runs","permissive":"PERMISSIVE","policyname":"ssr_select","schemaname":"public","with_check":null},{"cmd":"UPDATE","qual":"(organization_id IN ( SELECT om.organization_id\n   FROM organization_members om\n  WHERE ((om.user_id = auth.uid()) AND (om.is_active = true))))","roles":["authenticated"],"tablename":"sequence_step_runs","permissive":"PERMISSIVE","policyname":"ssr_update","schemaname":"public","with_check":"(organization_id IN ( SELECT om.organization_id\n   FROM organization_members om\n  WHERE ((om.user_id = auth.uid()) AND (om.is_active = true))))"},{"cmd":"DELETE","qual":"(organization_id IN ( SELECT om.organization_id\n   FROM organization_members om\n  WHERE ((om.user_id = auth.uid()) AND (om.is_active = true))))","roles":["authenticated"],"tablename":"sequence_steps","permissive":"PERMISSIVE","policyname":"ss_delete","schemaname":"public","with_check":null},{"cmd":"INSERT","qual":null,"roles":["authenticated"],"tablename":"sequence_steps","permissive":"PERMISSIVE","policyname":"ss_insert","schemaname":"public","with_check":"(organization_id IN ( SELECT om.organization_id\n   FROM organization_members om\n  WHERE ((om.user_id = auth.uid()) AND (om.is_active = true))))"},{"cmd":"SELECT","qual":"(organization_id IN ( SELECT om.organization_id\n   FROM organization_members om\n  WHERE ((om.user_id = auth.uid()) AND (om.is_active = true))))","roles":["authenticated"],"tablename":"sequence_steps","permissive":"PERMISSIVE","policyname":"ss_select","schemaname":"public","with_check":null},{"cmd":"UPDATE","qual":"(organization_id IN ( SELECT om.organization_id\n   FROM organization_members om\n  WHERE ((om.user_id = auth.uid()) AND (om.is_active = true))))","roles":["authenticated"],"tablename":"sequence_steps","permissive":"PERMISSIVE","policyname":"ss_update","schemaname":"public","with_check":"(organization_id IN ( SELECT om.organization_id\n   FROM organization_members om\n  WHERE ((om.user_id = auth.uid()) AND (om.is_active = true))))"},{"cmd":"DELETE","qual":"(organization_id IN ( SELECT om.organization_id\n   FROM organization_members om\n  WHERE ((om.user_id = auth.uid()) AND (om.is_active = true))))","roles":["authenticated"],"tablename":"sequences","permissive":"PERMISSIVE","policyname":"seq_delete","schemaname":"public","with_check":null},{"cmd":"INSERT","qual":null,"roles":["authenticated"],"tablename":"sequences","permissive":"PERMISSIVE","policyname":"seq_insert","schemaname":"public","with_check":"(organization_id IN ( SELECT om.organization_id\n   FROM organization_members om\n  WHERE ((om.user_id = auth.uid()) AND (om.is_active = true))))"},{"cmd":"SELECT","qual":"(organization_id IN ( SELECT om.organization_id\n   FROM organization_members om\n  WHERE ((om.user_id = auth.uid()) AND (om.is_active = true))))","roles":["authenticated"],"tablename":"sequences","permissive":"PERMISSIVE","policyname":"seq_select","schemaname":"public","with_check":null},{"cmd":"UPDATE","qual":"(organization_id IN ( SELECT om.organization_id\n   FROM organization_members om\n  WHERE ((om.user_id = auth.uid()) AND (om.is_active = true))))","roles":["authenticated"],"tablename":"sequences","permissive":"PERMISSIVE","policyname":"seq_update","schemaname":"public","with_check":"(organization_id IN ( SELECT om.organization_id\n   FROM organization_members om\n  WHERE ((om.user_id = auth.uid()) AND (om.is_active = true))))"}]$original$::jsonb THEN
+    RAISE EXCEPTION 'politicas_secuencias_cambiaron' USING ERRCODE='P0001';
+  END IF;
+END $rls_pre$;
+DO $rls_dependency$ BEGIN
+  IF to_regprocedure('public.fn_exit_sequence_enrollment(integer,uuid,text)') IS NULL THEN
+    RAISE EXCEPTION 'rpc_exit_secuencias_pendiente' USING ERRCODE='P0001';
+  END IF;
+  IF to_regprocedure('public.fn_crm_create_sequence(integer,jsonb)') IS NULL
+     OR to_regprocedure('public.fn_crm_delete_sequence(integer,uuid)') IS NULL THEN
+    RAISE EXCEPTION 'rpc_configuracion_secuencias_pendiente' USING ERRCODE='P0001';
+  END IF;
+  IF (SELECT md5(prosrc) FROM pg_proc WHERE oid=to_regprocedure('public.fn_crm_create_sequence(integer,jsonb)'))<>'e25f34b6cc65dc56a570c89fc00c79b5'
+     OR (SELECT md5(prosrc) FROM pg_proc WHERE oid=to_regprocedure('public.fn_crm_delete_sequence(integer,uuid)'))<>'02f758864eb2cad36225b980e97cfc82' THEN
+    RAISE EXCEPTION 'rpc_configuracion_secuencias_cambio' USING ERRCODE='P0001';
+  END IF;
+END $rls_dependency$;
+DO $scope_pre$ BEGIN
+  IF to_regprocedure('public.fn_sequence_enrollment_scope(integer,uuid,uuid,uuid)') IS NOT NULL AND
+     (SELECT md5(prosrc) FROM pg_proc WHERE oid=to_regprocedure('public.fn_sequence_enrollment_scope(integer,uuid,uuid,uuid)'))<>'6725e015a9cfd72d365169cf952c3590' THEN
+    RAISE EXCEPTION 'scope_secuencias_cambio' USING ERRCODE='P0001';
+  END IF;
+END $scope_pre$;
+CREATE OR REPLACE FUNCTION public.fn_sequence_enrollment_scope(p_org integer,p_sequence_id uuid,p_opportunity_id uuid,p_customer_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO public,pg_temp
+AS $function$
+  WITH target AS (
+    SELECT o.id AS opportunity_id,o.customer_id AS opportunity_customer,o.branch_id::integer AS opportunity_branch,
+           coalesce(p_customer_id,o.customer_id) AS customer_id
+    FROM (SELECT 1) seed LEFT JOIN public.opportunities o ON o.id=p_opportunity_id AND o.organization_id=p_org
+  )
+  SELECT auth.uid() IS NOT NULL
+    AND EXISTS(SELECT 1 FROM public.organization_members m WHERE m.organization_id=p_org AND m.user_id=auth.uid() AND m.is_active)
+    AND EXISTS(SELECT 1 FROM public.sequences s WHERE s.id=p_sequence_id AND s.organization_id=p_org)
+    AND (p_opportunity_id IS NULL OR t.opportunity_id IS NOT NULL)
+    AND (p_customer_id IS NULL OR t.opportunity_customer IS NULL OR p_customer_id=t.opportunity_customer)
+    AND public.app_branch_access(t.opportunity_branch) IS TRUE
+    AND (t.opportunity_branch IS NULL OR EXISTS(SELECT 1 FROM public.branches b WHERE b.id=t.opportunity_branch AND b.organization_id=p_org))
+    AND (t.customer_id IS NULL OR EXISTS(SELECT 1 FROM public.customers c WHERE c.id=t.customer_id AND c.organization_id=p_org
+      AND public.app_branch_access(c.branch_id) IS TRUE
+      AND (c.branch_id IS NULL OR EXISTS(SELECT 1 FROM public.branches b WHERE b.id=c.branch_id AND b.organization_id=p_org))))
+  FROM target t;
+$function$;
+REVOKE ALL ON FUNCTION public.fn_sequence_enrollment_scope(integer,uuid,uuid,uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.fn_sequence_enrollment_scope(integer,uuid,uuid,uuid) TO authenticated,service_role;
+DROP POLICY IF EXISTS crm_sequence_guard_sequences_insert ON public.sequences;
+CREATE POLICY crm_sequence_guard_sequences_insert ON public.sequences AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (false);
+DROP POLICY IF EXISTS crm_sequence_guard_sequences_update ON public.sequences;
+CREATE POLICY crm_sequence_guard_sequences_update ON public.sequences AS RESTRICTIVE FOR UPDATE TO authenticated USING ((public.fn_crm_tiene_permiso(organization_id,'admin.full_access') OR public.fn_crm_tiene_permiso(organization_id,'crm.campaigns.manage'))) WITH CHECK ((public.fn_crm_tiene_permiso(organization_id,'admin.full_access') OR public.fn_crm_tiene_permiso(organization_id,'crm.campaigns.manage')));
+DROP POLICY IF EXISTS crm_sequence_guard_sequences_delete ON public.sequences;
+CREATE POLICY crm_sequence_guard_sequences_delete ON public.sequences AS RESTRICTIVE FOR DELETE TO authenticated USING (false);
+DROP POLICY IF EXISTS crm_sequence_guard_sequence_steps_insert ON public.sequence_steps;
+CREATE POLICY crm_sequence_guard_sequence_steps_insert ON public.sequence_steps AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (false);
+DROP POLICY IF EXISTS crm_sequence_guard_sequence_steps_update ON public.sequence_steps;
+CREATE POLICY crm_sequence_guard_sequence_steps_update ON public.sequence_steps AS RESTRICTIVE FOR UPDATE TO authenticated USING (false) WITH CHECK (false);
+DROP POLICY IF EXISTS crm_sequence_guard_sequence_steps_delete ON public.sequence_steps;
+CREATE POLICY crm_sequence_guard_sequence_steps_delete ON public.sequence_steps AS RESTRICTIVE FOR DELETE TO authenticated USING (false);
+DROP POLICY IF EXISTS crm_sequence_guard_steps_read ON public.sequence_steps;
+CREATE POLICY crm_sequence_guard_steps_read ON public.sequence_steps AS RESTRICTIVE FOR SELECT TO authenticated USING (EXISTS(SELECT 1 FROM public.sequences s WHERE s.id=sequence_steps.sequence_id AND s.organization_id=sequence_steps.organization_id));
+DROP POLICY IF EXISTS crm_sequence_guard_sequence_enrollments_read ON public.sequence_enrollments;
+CREATE POLICY crm_sequence_guard_sequence_enrollments_read ON public.sequence_enrollments AS RESTRICTIVE FOR SELECT TO authenticated USING (public.fn_sequence_enrollment_scope(organization_id,sequence_id,opportunity_id,customer_id));
+DROP POLICY IF EXISTS crm_sequence_guard_sequence_enrollments_insert ON public.sequence_enrollments;
+CREATE POLICY crm_sequence_guard_sequence_enrollments_insert ON public.sequence_enrollments AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (false);
+DROP POLICY IF EXISTS crm_sequence_guard_sequence_enrollments_update ON public.sequence_enrollments;
+CREATE POLICY crm_sequence_guard_sequence_enrollments_update ON public.sequence_enrollments AS RESTRICTIVE FOR UPDATE TO authenticated USING (false) WITH CHECK (false);
+DROP POLICY IF EXISTS crm_sequence_guard_sequence_enrollments_delete ON public.sequence_enrollments;
+CREATE POLICY crm_sequence_guard_sequence_enrollments_delete ON public.sequence_enrollments AS RESTRICTIVE FOR DELETE TO authenticated USING (false);
+DROP POLICY IF EXISTS crm_sequence_guard_sequence_step_runs_read ON public.sequence_step_runs;
+CREATE POLICY crm_sequence_guard_sequence_step_runs_read ON public.sequence_step_runs AS RESTRICTIVE FOR SELECT TO authenticated USING (EXISTS(SELECT 1 FROM public.sequence_enrollments e JOIN public.sequence_steps s ON s.id=sequence_step_runs.step_id AND s.organization_id=e.organization_id AND s.sequence_id=e.sequence_id WHERE e.id=sequence_step_runs.enrollment_id AND e.organization_id=sequence_step_runs.organization_id));
+DROP POLICY IF EXISTS crm_sequence_guard_sequence_step_runs_insert ON public.sequence_step_runs;
+CREATE POLICY crm_sequence_guard_sequence_step_runs_insert ON public.sequence_step_runs AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK (false);
+DROP POLICY IF EXISTS crm_sequence_guard_sequence_step_runs_update ON public.sequence_step_runs;
+CREATE POLICY crm_sequence_guard_sequence_step_runs_update ON public.sequence_step_runs AS RESTRICTIVE FOR UPDATE TO authenticated USING (false) WITH CHECK (false);
+DROP POLICY IF EXISTS crm_sequence_guard_sequence_step_runs_delete ON public.sequence_step_runs;
+CREATE POLICY crm_sequence_guard_sequence_step_runs_delete ON public.sequence_step_runs AS RESTRICTIVE FOR DELETE TO authenticated USING (false);

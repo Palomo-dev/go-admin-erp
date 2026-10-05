@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { isAtomicCallRpcEnabled } from './callMutationService';
 
 /**
  * F1 (cierre) — ficha de cliente del alta de leads. Extraído de
@@ -118,6 +119,26 @@ const bad = (error: string): LeadCreateFailure => ({ status: 400, error });
 const conflict = (error: string, extra: Record<string, unknown> = {}): LeadCreateFailure => ({ status: 409, error, extra });
 const fail = (result: LeadCreateFailure): LeadCustomerResolution => ({ ok: false, result });
 
+/** Misma normalización para el alta de lead y la vinculación de una llamada. */
+export function prepareLeadCustomerInsert(
+  input: NewCustomerInput, branchId: number | null, extras?: LeadCustomerExtras,
+): { ok: true; payload: Record<string, unknown> } | { ok: false; result: LeadCreateFailure } {
+  const email = clean(input.email);
+  const phone = clean(input.phone);
+  const companyName = clean(input.company_name);
+  const customerType = clean(input.customer_type) || 'person';
+  const { first, last } = splitPersonName(input);
+  if (customerType === 'company') {
+    if (!companyName) return { ok: false, result: bad('Un cliente de tipo empresa necesita razón social') };
+  } else if (!first) return { ok: false, result: bad('El nombre del cliente nuevo es obligatorio') };
+  if (!email && !phone) return { ok: false, result: bad('El cliente nuevo necesita al menos correo o teléfono') };
+  return { ok: true, payload: {
+    ...customerExtrasPayload(extras), branch_id: branchId,
+    first_name: first, last_name: last, email, phone, company_name: companyName,
+    customer_type: customerType, lifecycle_stage: 'lead',
+  } };
+}
+
 /**
  * Resuelve la ficha del lead: `customer_id` existente (validado contra la
  * organización) o `new_customer` (se crea). Errores de BD inesperados se lanzan.
@@ -143,38 +164,14 @@ export async function resolveLeadCustomer(
     if (error) throw error;
     if (!customer) return fail(bad('El cliente no pertenece a la organización'));
   } else if (body.new_customer) {
+    const prepared = prepareLeadCustomerInsert(body.new_customer, branchId, extras);
+    if (!prepared.ok) return fail(prepared.result);
     const email = clean(body.new_customer.email);
-    const phone = clean(body.new_customer.phone);
-    const companyName = clean(body.new_customer.company_name);
-    const customerType = clean(body.new_customer.customer_type) || 'person';
-    const { first, last } = splitPersonName(body.new_customer);
-
-    if (customerType === 'company') {
-      if (!companyName) return fail(bad('Un cliente de tipo empresa necesita razón social'));
-    } else if (!first) {
-      return fail(bad('El nombre del cliente nuevo es obligatorio'));
-    }
-    // Un lead sin forma de contacto es exactamente el registro inútil que este
-    // alta viene a evitar.
-    if (!email && !phone) return fail(bad('El cliente nuevo necesita al menos correo o teléfono'));
-
     // `full_name` NO se envía: es columna generada (ver splitPersonName).
-    const { data: customer, error } = await supabase
-      .from('customers')
-      .insert({
-        ...customerExtrasPayload(extras),
-        organization_id: organizationId,
-        branch_id: branchId,
-        first_name: first,
-        last_name: last,
-        email,
-        phone,
-        company_name: companyName,
-        customer_type: customerType,
-        lifecycle_stage: 'lead',
-      })
-      .select('id, full_name')
-      .single();
+    const { data: customer, error } = isAtomicCallRpcEnabled()
+      ? await supabase.rpc('fn_crm_insertar_cliente_preparado', { p_org: organizationId, p_data: prepared.payload })
+      : await supabase.from('customers').insert({ ...prepared.payload, organization_id: organizationId })
+        .select('id, full_name').single();
     if (error) {
       // Correo ya usado en esta organización: se devuelve el cliente que ya
       // existe para que la interfaz pueda ofrecer «usar el existente».

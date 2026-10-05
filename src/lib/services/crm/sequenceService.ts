@@ -33,11 +33,13 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendEmail } from '@/lib/services/crm/emailService';
 import { SEQUENCE_STEP_CHANNELS } from '@/lib/crm/enums';
+import { isExecutableSequenceChannel, isSupportedSequenceExit, MAX_SEQUENCE_NAME_LENGTH } from '@/lib/crm/sequenceCapabilities';
 import { dueDateFrom, insertAutomationTask, type EnqueueFn } from './automation/actions';
 import { evaluateConditionTree, isEmptyConditionTree, validateConditions } from './automation/conditionsDsl';
 import { loadRuleContext, qualifyVarsForEmail } from './automation/ruleContext';
 import { enqueueJob } from '@/lib/jobs/enqueue';
 import { scheduleSequenceSweep } from './sequenceSweep';
+import { readAllF12 as readOrganizationRows } from './f12ReadService';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -229,6 +231,8 @@ export function validateSequenceSteps(steps: unknown): string[] {
     }
     if (!(SEQUENCE_STEP_CHANNELS as readonly string[]).includes(String(s.channel))) {
       issues.push(`steps[${i}].channel no permitido: ${String(s.channel)}`);
+    } else if (!isExecutableSequenceChannel(s.channel)) {
+      issues.push(`steps[${i}].channel: ${String(s.channel)} no está disponible para pasos nuevos`);
     }
     const delay = s.delay_days;
     if (!Number.isInteger(delay) || (delay as number) < 0 || (delay as number) > MAX_DELAY_DAYS) {
@@ -271,40 +275,41 @@ export function validateSequenceSteps(steps: unknown): string[] {
 
 export function validateSequenceInput(input: Partial<CreateSequenceInput>): string[] {
   const issues: string[] = [];
-  if (input.name !== undefined && (typeof input.name !== 'string' || input.name.trim().length < 2)) {
-    issues.push('name: mínimo 2 caracteres');
+  if (input.name !== undefined && (typeof input.name !== 'string' || input.name.trim().length < 2 || input.name.trim().length > MAX_SEQUENCE_NAME_LENGTH)) {
+    issues.push(`name: entre 2 y ${MAX_SEQUENCE_NAME_LENGTH} caracteres`);
   }
   if (input.trigger_type !== undefined && !SEQUENCE_TRIGGER_TYPES.includes(input.trigger_type)) {
     issues.push(`trigger_type: debe ser ${SEQUENCE_TRIGGER_TYPES.join('|')}`);
   }
   if (input.exit_conditions !== undefined && !Array.isArray(input.exit_conditions)) {
     issues.push('exit_conditions: debe ser un arreglo');
+  } else if (Array.isArray(input.exit_conditions)) {
+    input.exit_conditions.forEach((condition, index) => {
+      if (!isSupportedSequenceExit(condition)) {
+        issues.push(`exit_conditions[${index}]: sólo se admiten won_lost y opted_out`);
+      }
+    });
   }
   issues.push(...validateSequenceSteps(input.steps));
   return issues;
 }
 
+/** Los pasos guardados son inmutables: no se acepta un cambio que el motor ignoraría. */
+export function validateSequenceUpdateInput(input: UpdateSequenceInput): string[] {
+  if (Object.prototype.hasOwnProperty.call(input, 'steps')) {
+    return ['steps: los pasos de una secuencia existente son de sólo lectura'];
+  }
+  return validateSequenceInput(input);
+}
+
 // ─── CRUD ────────────────────────────────────────────────────────────────────
 
 export async function getSequences(orgId: number, supabase: SupabaseClient): Promise<Sequence[]> {
-  const { data: sequences, error } = await supabase
-    .from('sequences')
-    .select('*')
-    .eq('organization_id', orgId)
-    .order('created_at', { ascending: false });
-
-  if (error) throw new Error(`getSequences: ${error.message}`);
-  if (!sequences || sequences.length === 0) return [];
-
-  const seqIds = (sequences as Sequence[]).map((s) => s.id);
-  const { data: steps, error: stepsError } = await supabase
-    .from('sequence_steps')
-    .select('*')
-    .eq('organization_id', orgId)
-    .in('sequence_id', seqIds)
-    .order('step_number', { ascending: true });
-
-  if (stepsError) throw new Error(`getSequences(steps): ${stepsError.message}`);
+  const sequences = await readOrganizationRows<Sequence>(supabase, 'sequences', '*', orgId).catch((error: {message?: string}) => { throw new Error(`getSequences: ${error.message ?? 'lectura incompleta'}`); });
+  if (!sequences.length) return [];
+  const ids = new Set(sequences.map(s => s.id));
+  const steps = (await readOrganizationRows<SequenceStep>(supabase, 'sequence_steps', '*', orgId).catch((error: {message?: string}) => { throw new Error(`getSequences(steps): ${error.message ?? 'lectura incompleta'}`); }))
+    .filter(step => ids.has(step.sequence_id)).sort((a, b) => a.step_number - b.step_number);
 
   const stepsMap = new Map<string, SequenceStep[]>();
   for (const s of (steps || []) as SequenceStep[]) {
@@ -313,7 +318,7 @@ export async function getSequences(orgId: number, supabase: SupabaseClient): Pro
     stepsMap.set(s.sequence_id, list);
   }
 
-  return (sequences as Sequence[]).map((seq) => ({ ...seq, steps: stepsMap.get(seq.id) || [] }));
+  return sequences.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || a.id.localeCompare(b.id)).map((seq) => ({ ...seq, steps: stepsMap.get(seq.id) || [] }));
 }
 
 export async function createSequence(
@@ -324,57 +329,37 @@ export async function createSequence(
   const issues = validateSequenceInput(data);
   if (issues.length) throw new Error(`Secuencia inválida: ${issues.join('; ')}`);
 
-  const { data: sequence, error } = await supabase
-    .from('sequences')
-    .insert({
-      organization_id: orgId,
-      name: data.name,
+  const { data: sequence, error } = await supabase.rpc('fn_crm_create_sequence', {
+    p_org: orgId,
+    p_input: {
+      name: data.name.trim(),
       description: data.description ?? null,
-      trigger_type: data.trigger_type || 'manual',
-      trigger_config: data.trigger_config || {},
-      exit_conditions: data.exit_conditions || [],
+      trigger_type: data.trigger_type ?? 'manual',
+      trigger_config: data.trigger_config ?? {},
+      exit_conditions: data.exit_conditions ?? [],
       is_active: data.is_active ?? true,
       pause_on_reply: data.pause_on_reply ?? true,
       pipeline_id: data.pipeline_id ?? null,
       stage_id: data.stage_id ?? null,
       created_by: data.created_by ?? null,
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-  const createdSequence = sequence as Sequence;
-
-  if (data.steps && data.steps.length > 0) {
-    const stepRows = data.steps.map((s) => ({
-      organization_id: orgId,
-      sequence_id: createdSequence.id,
-      step_number: s.step_number,
-      delay_days: s.delay_days,
-      delay_hours: s.delay_hours ?? 0,
-      channel: s.channel,
-      template_id: s.template_id || null,
-      action_config: s.action_config || {},
-      condition: s.condition ?? (s.action_config as Record<string, unknown> | undefined)?.condition ?? null,
-      // `continue_on_error` es `true` por defecto en la BD, lo cual para un paso
-      // de condición significaba «si la condición revienta, manda el correo
-      // igual» (tester r3 N11). Un paso de condición se guarda siempre en
-      // `false`; el CHECK de BD lo respalda.
-      continue_on_error: String(s.channel) === 'condition' ? false : (s.continue_on_error ?? true),
-      name: s.name ?? null,
-      is_active: s.is_active ?? true,
-    }));
-
-    const { error: stepsError } = await supabase.from('sequence_steps').insert(stepRows);
-    if (stepsError) {
-      // Sin pasos la secuencia no sirve: se deshace para no dejar basura.
-      await supabase.from('sequences').delete().eq('id', createdSequence.id).eq('organization_id', orgId);
-      throw new Error(`No se pudieron crear los pasos: ${stepsError.message}`);
-    }
-  }
-
-  const sequences = await getSequences(orgId, supabase);
-  return sequences.find((s) => s.id === createdSequence.id) || createdSequence;
+      steps: (data.steps ?? []).map((s) => ({
+        step_number: s.step_number,
+        delay_days: s.delay_days,
+        delay_hours: s.delay_hours ?? 0,
+        channel: s.channel,
+        template_id: s.template_id || null,
+        action_config: s.action_config || {},
+        condition: s.condition ?? (s.action_config as Record<string, unknown> | undefined)?.condition ?? null,
+        // La condición no puede continuar ante un fallo de evaluación.
+        continue_on_error: s.channel === 'condition' ? false : (s.continue_on_error ?? true),
+        name: s.name ?? null,
+        is_active: s.is_active ?? true,
+      })),
+    },
+  });
+  if (error) throw Object.assign(new Error(error.message), { code: error.code });
+  if (!sequence?.id || !Array.isArray(sequence.steps)) throw new Error('createSequence: la RPC no devolvió la secuencia con sus pasos');
+  return sequence as Sequence;
 }
 
 export async function updateSequence(
@@ -383,7 +368,7 @@ export async function updateSequence(
   data: UpdateSequenceInput,
   supabase: SupabaseClient,
 ): Promise<Sequence | null> {
-  const issues = validateSequenceInput(data);
+  const issues = validateSequenceUpdateInput(data);
   if (issues.length) throw new Error(`Secuencia inválida: ${issues.join('; ')}`);
 
   const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -410,22 +395,10 @@ export async function updateSequence(
 }
 
 export async function deleteSequence(id: string, orgId: number, supabase: SupabaseClient): Promise<void> {
-  const { data: live, error: liveError } = await supabase
-    .from('sequence_enrollments')
-    .select('id')
-    .eq('organization_id', orgId)
-    .eq('sequence_id', id)
-    .in('status', ['active', 'paused'])
-    .limit(1);
-  if (liveError) throw new Error(`deleteSequence: ${liveError.message}`);
-  if ((live ?? []).length > 0) {
-    throw new Error('La secuencia tiene inscripciones activas: desinscríbelas o pausa la secuencia antes de borrarla');
-  }
-
-  await supabase.from('sequence_steps').delete().eq('sequence_id', id).eq('organization_id', orgId);
-
-  const { error } = await supabase.from('sequences').delete().eq('id', id).eq('organization_id', orgId);
-  if (error) throw error;
+  const { data, error } = await supabase.rpc('fn_crm_delete_sequence', { p_org: orgId, p_sequence_id: id });
+  if (error) throw Object.assign(new Error(error.message), { code: error.code });
+  // false conserva la semántica idempotente de borrar un registro que ya no existe.
+  if (typeof data !== 'boolean') throw new Error('deleteSequence: la RPC no devolvió el resultado de la eliminación');
 }
 
 // ─── Inscripción atómica ────────────────────────────────────────────────────
@@ -462,7 +435,7 @@ export async function enrollInSequence(
     p_start_at: startAt.toISOString(),
   });
 
-  if (error) throw new Error(`enrollInSequence: ${error.message}`);
+  if (error) throw Object.assign(new Error(error.message), { code: error.code });
   const result = (data ?? {}) as {
     created?: boolean;
     reason?: string;
@@ -514,24 +487,12 @@ export async function unenrollFromSequence(
   supabase: SupabaseClient,
   reason = 'manual_unenroll',
 ): Promise<SequenceEnrollment | null> {
-  const { data, error } = await supabase
-    .from('sequence_enrollments')
-    .update({ status: 'exited', exited_at: new Date().toISOString(), exit_reason: reason })
-    .eq('id', enrollmentId)
-    .eq('organization_id', orgId)
-    .in('status', ['active', 'paused'])
-    .select()
-    .maybeSingle();
-  if (error) throw new Error(`unenrollFromSequence: ${error.message}`);
-
-  if (data) {
-    await supabase
-      .from('sequence_step_runs')
-      .update({ status: 'skipped', result: { reason: `enrollment_${reason}` } })
-      .eq('organization_id', orgId)
-      .eq('enrollment_id', enrollmentId)
-      .eq('status', 'pending');
-  }
+  const { data, error } = await supabase.rpc('fn_exit_sequence_enrollment', {
+    p_org: orgId,
+    p_enrollment_id: enrollmentId,
+    p_reason: reason,
+  });
+  if (error) throw Object.assign(new Error(error.message), { code: error.code });
   return (data as SequenceEnrollment | null) ?? null;
 }
 
@@ -562,7 +523,7 @@ export async function resumeEnrollment(
     p_org: orgId,
     p_enrollment_id: enrollmentId,
   });
-  if (error) throw new Error(`resumeEnrollment: ${error.message}`);
+  if (error) throw Object.assign(new Error(error.message), { code: error.code });
 
   const result = (data ?? {}) as {
     resumed?: boolean;
@@ -1020,7 +981,7 @@ export async function processStepRun(
           );
         }
         const ctx = await loadRuleContext(
-          { orgId, opportunityId: enrollment.opportunity_id, customerId: enrollment.customer_id },
+          { orgId, opportunityId: enrollment.opportunity_id, customerId: enrollment.customer_id, conditions: definition },
           supabase,
         );
         const evaluated = evaluateConditionTree(definition, ctx);

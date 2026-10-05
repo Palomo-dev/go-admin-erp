@@ -36,6 +36,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import * as ts from 'typescript';
 import { DB_CHECK_ENUMS } from '@/lib/crm/enums';
 import { DRAIN_INTERVAL_MIN, DRAIN_SCHEDULE, JOBS_RUN_PATH, JOBS_RUN_SCHEDULES, VERCEL_SCHEDULE_KINDS } from '@/lib/jobs/schedule';
 import { ORIGENES_MOVIMIENTO_STOCK, esOrigenMovimientoValido } from '@/lib/inventario/origenesMovimientoStock';
@@ -44,6 +45,9 @@ import { COMPRAS_TOOLS } from '@/lib/ai/agent/tools/compras';
 import { CARGA_MASIVA_TOOLS } from '@/lib/ai/agent/tools/cargaMasiva';
 import { FACTURAS_TOOLS } from '@/lib/ai/agent/tools/facturas';
 import { ACTION_CATALOG } from '@/lib/ai/assistant/actionCatalog';
+import { ruleTemplates } from '@/components/crm/automatizaciones/ruleTemplates';
+import { EXAMPLE_FORM } from '@/lib/services/crm/automation/ruleEditorModel';
+import { describeRule, describeTrigger } from '@/lib/services/crm/automation/ruleHumanizer';
 
 const SRC_ROOT = path.resolve(__dirname, '..');
 const REPO_ROOT = path.resolve(SRC_ROOT, '..');
@@ -68,6 +72,55 @@ function walkDir(dir: string, files: string[] = []): string[] {
 
 function readFile(filePath: string): string {
   return fs.readFileSync(filePath, 'utf-8');
+}
+
+/**
+ * PHONE delega controles y callbacks en entradas únicas del servidor. Se reconoce
+ * la importación exacta y el cuerpo con su puerta real; nunca una carpeta exenta
+ * ni una mención/importación sin ejecución. Sus negativas ejecutables viven en
+ * phoneControlApi.test y phoneWebhookGuard.test.
+ */
+function phoneServerDelegates(content: string, sourceFor = (moduleName: string) => readFile(path.join(SRC_ROOT, 'lib/services/crm', `${moduleName}.ts`))): string[] {
+  const exportedBody = (source: string, name: string): string => {
+    const tree = ts.createSourceFile('phone.ts', source, ts.ScriptTarget.Latest, true);
+    const fn = tree.statements.find((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && node.name?.text === name);
+    return fn?.body?.getText(tree) ?? '';
+  };
+  const call = (body: string, name: string) => new RegExp(`\\b${name}\\s*\\(`).test(stripAllComments(body));
+  const source = ts.createSourceFile('route.ts', content, ts.ScriptTarget.Latest, true);
+  const descriptors: Record<string, string[]> = {
+    phoneConferenceApi: ['phoneControlRequest'],
+    phoneConferenceJoin: ['joinPhoneConference'],
+    phoneConferenceWebhook: ['conferenceStatus', 'conferenceLegStatus', 'conferenceLeave', 'conferenceMusic'],
+  };
+  const names: string[] = [];
+  for (const node of source.statements) {
+    if (!ts.isImportDeclaration(node) || !ts.isStringLiteral(node.moduleSpecifier)) continue;
+    const moduleName = /^@\/lib\/services\/crm\/(phoneConferenceApi|phoneConferenceJoin|phoneConferenceWebhook)$/.exec(node.moduleSpecifier.text)?.[1];
+    const bindings = node.importClause?.namedBindings;
+    if (!moduleName || !bindings || !ts.isNamedImports(bindings)) continue;
+    const moduleSource = sourceFor(moduleName);
+    for (const binding of bindings.elements) {
+      const exported = (binding.propertyName ?? binding.name).text;
+      if (!descriptors[moduleName].includes(exported)) continue;
+      const body = exportedBody(moduleSource, exported);
+      if (moduleName === 'phoneConferenceApi') {
+        if (!call(body, 'getServerOrgContext') || !call(body, 'readOrgBody')) continue;
+      } else {
+        if (!call(body, 'phoneWebhookContext')) continue;
+        const gateSource = sourceFor('phoneConferenceWebhookContext');
+        const gate = exportedBody(gateSource, 'phoneWebhookContext');
+        if (!/from\s+['"]@\/lib\/security\/webhookSignatures['"]/.test(gateSource)
+          || !call(gate, 'verifyTwilioWebhook') || !call(gate, 'verifyBridgeToken') || !call(gate, 'accountSidMatchesOrg')) continue;
+      }
+      names.push(binding.name.text);
+    }
+  }
+  return names;
+}
+
+function executesPhoneServerDelegate(content: string, names = phoneServerDelegates(content)): boolean {
+  return names.some((name) => new RegExp(`\\b${name}\\s*\\(|\\bexport\\s+const\\s+(?:GET|POST|PUT|PATCH|DELETE)\\s*=\\s*${name}\\s*(?:;|$)`, 'm').test(content));
 }
 
 function rel(filePath: string): string {
@@ -753,7 +806,6 @@ describe('F0 Guardarraíles', () => {
       'lib/services/crm/discoveryTemplateService.ts',
       'lib/services/crm/expansionService.ts',
       'lib/services/crm/followupService.ts',
-      'lib/services/crm/healthScoreService.ts',
       'lib/services/crm/inventoryCrmLink.ts',
       'lib/services/crm/leadCaptureService.ts',
       'lib/services/crm/lossReasonsService.ts',
@@ -856,7 +908,7 @@ describe('F0 Guardarraíles', () => {
         const importsVerify = /from\s+['"]@\/lib\/security\/webhookSignatures['"]/.test(content) &&
           /\b(verifyTwilioWebhook|verifyTwilioRequest|verifyMetaSignature|verifyResendWebhook|verifyCronSecret)\b/.test(content);
         const isSessionRoute = /getServerOrgContext|withOrg\(/.test(content);
-        if (!importsVerify && !isSessionRoute) violations.push(r);
+        if (!importsVerify && !isSessionRoute && !executesPhoneServerDelegate(content)) violations.push(r);
       }
     });
 
@@ -1238,13 +1290,19 @@ describe('F0 Guardarraíles', () => {
     // R-2 / M26: el hook no hace red ni estado por su cuenta; todo pasa por
     // ruleMutations (PATCH OK + GET 500, esqueleto solo en la primera carga…).
     const DIRECT_FETCH = /\bfetch\s*\(/;
-    const OWN_STATE = /\b(useState|useRef)\s*\(/;
+    const OWN_STATE = /\buseState\s*\(/;
+    // La única ref conserva la organización vigente; el estado de reglas sigue
+    // exclusivamente en el reducer y las respuestas tardías no cruzan tenants.
+    const SCOPE_REF = /useRef\s*\(\s*orgId\s*\)/;
     const REDUCER = /useReducer\s*\(\s*applyMutation\b/;
 
     test('R-2/M26: el hook delega en ruleMutations (probado ejecutado) y no reimplementa red ni estado', () => {
       expect(hook).toMatch(REDUCER);
       expect(hook).not.toMatch(DIRECT_FETCH);
       expect(hook).not.toMatch(OWN_STATE);
+      expect(hook).toMatch(SCOPE_REF);
+      expect(hook.match(/\buseRef\s*\(/g)).toHaveLength(1);
+      expect(hook).toContain('activeScope.current === orgId');
       expect(hook.match(/\brunMutation\s*\(/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
       expect(hook).not.toMatch(/\bviewOf\b|\bupsertRule\b|\bwithoutRule\b/);
     });
@@ -1259,9 +1317,25 @@ describe('F0 Guardarraíles', () => {
       expect(page).toMatch(/newButtonRef\s*\.\s*current/);
     });
 
-    test('R-3: el estado vacío describe lo que el ejemplo hace de verdad (no promete una etapa que no lleva)', () => {
+    test('R-3: las plantillas pausadas describen el formulario efectivo y el botón entrega ese mismo formulario', () => {
       const empty = readFile(path.join(dir, 'RulesEmptyState.tsx'));
-      expect(empty).toMatch(/describeRule\s*\(\s*\{\s*\.\.\.EXAMPLE_FORM/);
+      const templates = ruleTemplates();
+      expect(templates).toHaveLength(3);
+      expect(templates[0]).toEqual({ ...EXAMPLE_FORM, is_active: false });
+      expect(templates.every(template => !template.is_active)).toBe(true);
+      expect(templates.map(template => [template.trigger_type, template.event])).toEqual([
+        ['stage_change', ''], ['event', 'opportunity.created'], ['event', 'task.overdue'],
+      ]);
+      expect(templates[0].stage_id).toBe('');
+      expect(describeTrigger(templates[0])).toBe('Cuando una oportunidad cambia de etapa');
+      expect(describeRule(templates[0])).not.toContain('entra en «Propuesta enviada»');
+      // Cableado del texto y del clic al MISMO objeto de la lista: no basta con
+      // importar el humanizador o describir otro ejemplo que nunca se abre.
+      expect(empty).toMatch(/ruleTemplates\s*\(\s*\)/);
+      expect(empty).toMatch(/templates\s*\.\s*map\s*\(\s*\(\s*template\s*,/);
+      expect(empty).toMatch(/describeRule\s*\(\s*template\s*,/);
+      expect(empty).toMatch(/onUseTemplate\s*\(\s*template\s*\)/);
+      expect(empty).not.toMatch(/tr\s*\(\s*template\s*\.\s*description\s*\)/);
       expect(empty).not.toContain('entra en «Propuesta enviada»');
     });
 
@@ -2813,6 +2887,7 @@ describe('31. Toda ruta de src/app/api pasa por una puerta del servidor', () => 
     const todos = bloques(content);
     const helpers = todos.filter((b) => !b.metodo && b.nombre);
     const conPuerta = helpers.filter((b) => tienePuerta(b.texto)).map((b) => b.nombre);
+    const phoneDelegates = phoneServerDelegates(content);
     for (let cambio = true; cambio; ) {
       cambio = false;
       for (const b of helpers) {
@@ -2826,7 +2901,7 @@ describe('31. Toda ruta de src/app/api pasa por una puerta del servidor', () => 
     }
     const fallos: string[] = [];
     for (const h of todos.filter((b) => b.metodo)) {
-      const directo = tienePuerta(h.texto) || CERRADO_SIN_ENTRADA_RE.test(h.texto);
+      const directo = tienePuerta(h.texto) || executesPhoneServerDelegate(h.texto, phoneDelegates) || CERRADO_SIN_ENTRADA_RE.test(h.texto);
       const porHelper = conPuerta.some((n) => new RegExp(`\\b${n}\\b`).test(h.texto.replace(/^[^=({]*/, '')));
       if (!directo && !porHelper) fallos.push(`${relPath} ${h.metodo}`);
     }
@@ -2882,6 +2957,20 @@ describe('31. Toda ruta de src/app/api pasa por una puerta del servidor', () => 
     ].join('\n');
     expect(sinPuertaEn('y/route.ts', porHelper)).toEqual([]);
     expect(sinPuertaEn('z/route.ts', "export { POST } from '../otra/route';")).toEqual(['z/route.ts REEXPORT']);
+  });
+
+
+  test('PHONE acredita el delegado importado y su puerta; importaciones vacías, nombres falsos o firmas retiradas no eximen', () => {
+    const control = "import { phoneControlRequest } from '@/lib/services/crm/phoneConferenceApi';\nexport async function POST(request: Request) { return phoneControlRequest(request, 'sid'); }";
+    const webhook = "import { conferenceStatus } from '@/lib/services/crm/phoneConferenceWebhook';\nexport const POST = conferenceStatus;";
+    expect(sinPuertaEn('phone/route.ts', control)).toEqual([]);
+    expect(sinPuertaEn('phone/route.ts', webhook)).toEqual([]);
+    expect(sinPuertaEn('phone/route.ts', control.replace('return phoneControlRequest(request, \'sid\')', 'return Response.json({ok:true})'))).toEqual(['phone/route.ts POST']);
+    expect(sinPuertaEn('phone/route.ts', control.replace('/phoneConferenceApi', '/inventado'))).toEqual(['phone/route.ts POST']);
+    const withoutSignature = (module: string) => readFile(path.join(SRC_ROOT, 'lib/services/crm', `${module}.ts`)).replace('await verifyTwilioWebhook(request)', 'await unverified(request)');
+    expect(phoneServerDelegates(webhook, withoutSignature)).toEqual([]);
+    const withoutSession = (module: string) => readFile(path.join(SRC_ROOT, 'lib/services/crm', `${module}.ts`)).replace('await getServerOrgContext(request)', 'await unverified(request)');
+    expect(phoneServerDelegates(control, withoutSession)).toEqual([]);
   });
 
   test('el middleware ya no excluye rutas borradas ni super-admin-cleanup, y los handlers borrados no vuelven', () => {
@@ -3227,11 +3316,9 @@ describe('35. Miembros: rol, cargo, estado y retiro solo por las RPC fn_miembro_
 // `/api/crm/opportunities/**` (RPC `crm_create/update/delete_opportunity`,
 // `opportunityStageService`) y `/api/crm/activities/**`, con la organización de
 // la sesión y los permisos `crm.*`. Desde el navegador (`src/components/crm/**`)
-// no hay transacción, ni permiso, ni autoría. La allow-list es la DEUDA que
-// existía al abrir la ola 1 (2026-09-29): se congeló aquí y la ola 3B la vació
-// (pipeline, drawer, oportunidades, equipo y el código muerto `ImportLeadsCsv`).
-// Solo queda la fusión de identidades. Prohibido añadir entradas; quitar las
-// que se migren.
+// no hay transacción, ni permiso, ni autoría. Las olas posteriores retiraron
+// toda la deuda de estas dos tablas, incluida la fusión de identidades.
+// No se admiten excepciones.
 //
 // 36b. D2 (dueño, 2026-09-29): un lead ES un cliente con lifecycle_stage='lead'.
 // No se crean oportunidades `record_type='lead'` nuevas: ni desde TypeScript
@@ -3241,19 +3328,6 @@ describe('36. CRM ola 1: escrituras de oportunidades/actividades por el servidor
   const esPrueba = (f: string) => /[\/]__tests__[\/]|\.test\.tsx?$/.test(f);
   const ESCRITURA = /from\(\s*['"](opportunities|activities)['"]\s*\)\s*\.(insert|update|delete|upsert)\(/;
   const CRM_COMPONENTES = path.join(SRC_ROOT, 'components', 'crm');
-  const DEUDA_NAVEGADOR = new Map<string, string>([
-    // `components/crm/actividades/ActividadesService.ts` salió en la ola 3A: edita y borra por PATCH/DELETE /api/crm/activities/[id].
-    // Ola 3B (2026-09-30) vació la deuda del pipeline, el drawer, Oportunidades y Equipo:
-    //  - `oportunidades/opportunitiesService.ts` → POST, PATCH (+ …/stage y …/seguimiento) y DELETE /api/crm/opportunities/**;
-    //  - `pipeline/TableView.tsx` → DELETE /api/crm/opportunities/[id];
-    //  - `pipeline/drawer/SalesTeamTerritorySelectors.tsx` y `equipo/tabs/AsignarTab.tsx` → PATCH /api/crm/opportunities/[id];
-    //  - `oportunidades/ScoringSection.tsx` → PUT /api/crm/opportunities/[id]/score (cálculo en el servidor);
-    //  - `pipeline/services/pipelineService.ts` → POST /api/crm/opportunities;
-    //  - `oportunidades/ImportLeadsCsv.tsx` era código muerto (sin importadores): se borró.
-    // Queda UNA entrada, fuera de la 3B: la fusión de identidades no es una pantalla del plan.
-    ['components/crm/identidades/IdentidadesService.ts', 'fusión de identidades (re-apunta related_id): pendiente de RPC propia'],
-  ]);
-
   const ofensoresNavegador = (): string[] =>
     walkDir(CRM_COMPONENTES)
       .filter((f) => !esPrueba(f) && /\.(ts|tsx)$/.test(f))
@@ -3261,16 +3335,96 @@ describe('36. CRM ola 1: escrituras de oportunidades/actividades por el servidor
       .map(rel)
       .sort();
 
-  test('ningún archivo nuevo de src/components/crm/** escribe opportunities o activities con el cliente del navegador', () => {
-    const nuevos = ofensoresNavegador().filter((f) => !DEUDA_NAVEGADOR.has(f));
-    if (nuevos.length > 0) console.error('Escriben opportunities/activities desde el navegador (usar /api/crm/**):\n' + nuevos.join('\n'));
-    expect(nuevos).toEqual([]);
+  test('ningún archivo de src/components/crm/** escribe opportunities o activities con el cliente del navegador', () => {
+    expect(ofensoresNavegador()).toEqual([]);
+    // Controles: el detector no depende del nombre de la instancia cliente.
+    expect(ESCRITURA.test("cliente.from('opportunities').update({ name: 'prueba' })")).toBe(true);
+    expect(ESCRITURA.test("cliente.from('activities')\n  .insert({ type: 'call' })")).toBe(true);
+    expect(ESCRITURA.test("cliente.from('activities').select('id')")).toBe(false);
   });
 
-  test('la deuda congelada no tiene entradas obsoletas', () => {
-    const actuales = new Set(ofensoresNavegador());
-    const obsoletas = Array.from(DEUDA_NAVEGADOR.keys()).filter((f) => !actuales.has(f));
-    expect(obsoletas).toEqual([]);
+  test('pipeline, oportunidades, actividades, leads y kit no escriben ninguna tabla desde el navegador', () => {
+    // AST: también detecta una consulta guardada en una variable y tablas
+    // dinámicas; comentarios, objetos Set y métodos de las API no son SQL.
+    const escribe = (codigo: string): boolean => {
+      const fuente = ts.createSourceFile('crm.tsx', codigo, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+      const consultas = new Set<string>();
+      const esConsulta = (n: ts.Node): boolean => {
+        if (ts.isIdentifier(n)) return consultas.has(n.text);
+        if (ts.isCallExpression(n)) {
+          const expr = n.expression;
+          if (ts.isPropertyAccessExpression(expr) && expr.name.text === 'from') return true;
+          return esConsulta(expr);
+        }
+        return ts.isPropertyAccessExpression(n) ? esConsulta(n.expression) : false;
+      };
+      let cambio = true;
+      while (cambio) {
+        cambio = false;
+        const registrar = (n: ts.Node): void => {
+          if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.initializer
+            && esConsulta(n.initializer) && !consultas.has(n.name.text)) {
+            consultas.add(n.name.text);
+            cambio = true;
+          }
+          ts.forEachChild(n, registrar);
+        };
+        registrar(fuente);
+      }
+      let encontrado = false;
+      const visitar = (n: ts.Node): void => {
+        if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression)
+          && ['insert', 'update', 'delete', 'upsert'].includes(n.expression.name.text)
+          && esConsulta(n.expression.expression)) encontrado = true;
+        ts.forEachChild(n, visitar);
+      };
+      visitar(fuente);
+      return encontrado;
+    };
+    expect(escribe("cliente.from('notes').insert({ body: 'prueba' })")).toBe(true);
+    expect(escribe("const q = cliente.from(tabla); const alias = q; alias.update({ status: 'done' })")).toBe(true);
+    expect(escribe("const q = cliente.from('customers').select('id'); q.delete()" )).toBe(true);
+    expect(escribe("const q = new Set(); q.delete('id'); api.update('id', {})")).toBe(false);
+    expect(escribe("// cliente.from('notes').delete()\ncliente.from('notes').select('id')")).toBe(false);
+    const carpetas = ['pipeline', 'oportunidades', 'actividades', 'leads', 'kit'];
+    const infractores = carpetas.flatMap((dir) => walkDir(path.join(CRM_COMPONENTES, dir)))
+      .filter((f) => !esPrueba(f)).filter((f) => escribe(readFile(f))).map(rel);
+    expect(infractores).toEqual([]);
+  });
+
+  test('los componentes CRM usan el fallback canónico y no escriben zonas fijas', () => {
+    const infractores = walkDir(CRM_COMPONENTES)
+      .filter((f) => !esPrueba(f))
+      .filter((f) => /['"`]America\/Bogota['"`]/.test(stripAllComments(readFile(f))))
+      .map(rel);
+    expect(infractores).toEqual([]);
+  });
+
+  test('ningún componente CRM decide permisos por el nombre del rol', () => {
+    const patron = /\brole_?name\b\s*(?:===?|!==?)|(?:===?|!==?)\s*\brole_?name\b|(?:===?|!==?)\s*['"`](?:super admin|admin de organización|administrador|admin|owner|propietario)['"`]/i;
+    expect(patron.test("roleName === 'Empleado'")).toBe(true);
+    expect(patron.test("'Super Admin' === role_name")).toBe(true);
+    expect(patron.test("ctx.role === 'Admin'")).toBe(true);
+    expect(patron.test("message.role === 'user'")).toBe(false);
+    const infractores = walkDir(CRM_COMPONENTES)
+      .filter((f) => !esPrueba(f))
+      .filter((f) => patron.test(stripAllComments(readFile(f))))
+      .map(rel);
+    expect(infractores).toEqual([]);
+  });
+
+  test('todo crm.* tiene exactamente las mismas claves en los cuatro idiomas', () => {
+    type Arbol = { [clave: string]: string | Arbol };
+    const claves = (arbol: Arbol, prefijo = ''): string[] => Object.entries(arbol).flatMap(([clave, valor]) =>
+      typeof valor === 'string' ? [`${prefijo}${clave}`] : claves(valor, `${prefijo}${clave}.`));
+    const porIdioma = ['es', 'en', 'fr', 'pt'].map((idioma) => {
+      const mensajes = JSON.parse(readFile(path.join(REPO_ROOT, 'messages', `${idioma}.json`))) as { crm: Arbol };
+      return { idioma, claves: claves(mensajes.crm).sort() };
+    });
+    expect(porIdioma[0].claves.length).toBeGreaterThan(0);
+    for (const actual of porIdioma.slice(1)) {
+      expect({ idioma: actual.idioma, claves: actual.claves }).toEqual({ idioma: actual.idioma, claves: porIdioma[0].claves });
+    }
   });
 
   test('ningún archivo de src/ escribe una oportunidad con record_type = "lead" (D2)', () => {
@@ -3671,18 +3825,25 @@ describe('42. Voz: la exención por número de prueba vive en un solo punto y no
       if (/\besNumeroPrueba\s*\(/.test(src)) uso.push(rel(f));
     }
     expect(rpc).toEqual(['lib/services/crm/voiceAgent/numerosPrueba.ts']);
-    expect(uso.sort()).toEqual(['lib/services/crm/voiceAgent/cumplimiento.ts', 'lib/services/crm/voiceAgent/numerosPrueba.ts']);
+    // El adaptador humano reutiliza la misma decisión pura y la misma exención
+    // exclusivamente semanal; sus tests prueban que nunca salta horario ni baja.
+    expect(uso.sort()).toEqual(['lib/services/crm/humanCallCompliance.ts', 'lib/services/crm/voiceAgent/cumplimiento.ts', 'lib/services/crm/voiceAgent/numerosPrueba.ts']);
   });
 
   test('evaluarTopeSemanal solo se invoca desde decidirContactoLey2300, que siempre evalúa la franja horaria', () => {
     const llamadas: string[] = [];
-    for (const f of produccion()) {
+    // La regla también se distribuye al consumidor Edge: se revisa el módulo
+    // compartido, sin permitir una segunda evaluación fuera de la decisión única.
+    const compartidos = walkDir(path.join(REPO_ROOT, 'supabase/functions/_shared/contacto'));
+    for (const f of [...produccion(), ...compartidos]) {
       const src = stripAllComments(readFile(f));
       llamadas.push(...Array.from(src.matchAll(/\bevaluarTopeSemanal\s*\(/g), () => rel(f)));
     }
-    // La definición y la única invocación, ambas en ley2300.ts.
-    expect(llamadas).toEqual(['lib/services/crm/voiceAgent/ley2300.ts', 'lib/services/crm/voiceAgent/ley2300.ts']);
-    const ley = stripAllComments(readFile(path.join(SRC_ROOT, 'lib/services/crm/voiceAgent/ley2300.ts')));
+    const canonico = '../supabase/functions/_shared/contacto/ley2300.ts';
+    expect(llamadas).toEqual([canonico, canonico]);
+    const compatibilidad = stripAllComments(readFile(path.join(SRC_ROOT, 'lib/services/crm/voiceAgent/ley2300.ts')));
+    expect(compatibilidad).toMatch(/export \* from .*supabase\/functions\/_shared\/contacto\/ley2300/);
+    const ley = stripAllComments(readFile(path.join(REPO_ROOT, 'supabase/functions/_shared/contacto/ley2300.ts')));
     const cuerpo = ley.slice(ley.indexOf('export function decidirContactoLey2300'), ley.indexOf('export function describirMotivoLey2300'));
     // La franja se evalúa FUERA del bloque condicionado a la exención.
     expect(cuerpo).toMatch(/\n  if \(!ventanaLey2300Abierta\(p\.ahora, zona\)\)/);

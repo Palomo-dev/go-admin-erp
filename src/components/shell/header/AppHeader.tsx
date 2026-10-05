@@ -25,6 +25,7 @@
  * evento `go-asistente:estado` (`useEstadoAsistente`), sin acoplar el header al
  * panel.
  */
+import { PhoneHeaderAction } from '@/components/voice/PhoneHeaderAction';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -55,6 +56,7 @@ import {
   rutaPadre,
   useBarrasInferioresPropias,
   useCabeceraMovilActual,
+  volverCabeceraMovil,
   useTecladoAbierto,
   type CabeceraMovilPagina,
 } from './cabeceraMovil';
@@ -139,6 +141,7 @@ export function AppHeader({
             sinPlan={compacto}
           />
           <div className="flex-1" />
+          {!minimo && <PhoneHeaderAction />}
           {/* SearchTrigger (Figma 54:2970): abre la paleta; también Ctrl K / ⌘ K y «/».
               Variant=button normalmente; icon-outline con el asistente abierto. */}
           {compacto ? (
@@ -251,10 +254,8 @@ function MobileHeader({
 
   // «←» de los modos página y POS: atrás si hay historial; si no, a donde diga
   // la página o a la página padre del menú (en el POS, /app/inicio).
-  const volver = () => {
-    if (window.history.length > 1) router.back();
-    else router.push(pagina?.volverA ?? rutaPadre(pathname));
-  };
+  const volver = () => volverCabeceraMovil(pagina, window.history.length, router, rutaPadre(pathname));
+
   const botonVolver = (
     <button
       type="button"

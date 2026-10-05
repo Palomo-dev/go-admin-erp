@@ -19,7 +19,7 @@ const OPPORTUNITY_FIELDS =
 
 const CUSTOMER_FIELDS =
   'id, organization_id, first_name, last_name, full_name, company_name, email, phone, customer_type, ' +
-  'lifecycle_stage, health_score, tags, company_size';
+  'lifecycle_stage, health_score, tags, company_size, city, status, created_at, last_contact_at, last_seen_at, vertical_id';
 
 export interface LoadContextInput {
   orgId: number;
@@ -27,6 +27,7 @@ export interface LoadContextInput {
   customerId?: string | null;
   event?: { event_type: string; payload: Record<string, unknown> } | null;
   now?: Date;
+  conditions?: unknown;
 }
 
 /** Contexto vacío (evento sin oportunidad asociada). */
@@ -99,7 +100,23 @@ export async function loadRuleContext(
     }
   }
 
+  await enriquecerContextoCompras(ctx, input.conditions, supabase);
   return ctx;
+}
+
+/** Campos derivados del mismo contexto paginado que segmentos, sin otra lógica de compras. */
+export async function enriquecerContextoCompras(ctx: RuleContext, conditions: unknown, supabase: SupabaseClient): Promise<void> {
+  if (!ctx.customer?.id || 'last_purchase_at' in ctx.customer) return;
+  const serialized = JSON.stringify(conditions ?? null);
+  if (!serialized.includes('customer.last_purchase_at') && !serialized.includes('customer.purchased_category_ids')) return;
+  const { data, error } = await supabase.rpc('crm_segment_context_page', {
+    p_org: ctx.orgId, p_customers: [ctx.customer.id], p_limit: 1, p_as_of: ctx.now.toISOString(),
+  });
+  if (error) throw new Error(`loadRuleContext(compras): ${error.message}`);
+  if (!Array.isArray(data) || data.length !== 1 || data[0].id !== ctx.customer.id)
+    throw new Error('loadRuleContext(compras): cliente no disponible');
+  ctx.customer = { ...ctx.customer, last_purchase_at: data[0].last_purchase_at,
+    purchased_category_ids: data[0].purchased_category_ids };
 }
 
 /** Variables básicas para plantillas y textos de acción. */

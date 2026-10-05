@@ -1,3 +1,4 @@
+import { dobleReservaVoz, RESERVA_VOZ_DOBLE } from '@/lib/services/crm/__tests__/dobles/reservaVoz';
 /**
  * F6 adversarial (tester, ronda 1 · actualizado por el builder en la ronda 1).
  * FASE-06 "Agente IA de voz — propósito por etapa del embudo".
@@ -61,7 +62,7 @@ import { VOICE_AGENT_TOOL_DEFINITIONS, ALL_TOOL_NAMES } from '@/lib/services/crm
  * `src/__tests__/voz/` y `voiceAgent/__tests__/`.
  */
 const POLITICA_DATOS = 'https://example.com/politica-de-datos';
-const RNE_VIGENTE = { id: 'rne-1', checked_at: '2026-09-01T00:00:00Z', valid_until: '2999-01-01T00:00:00Z' };
+const RNE_VIGENTE = { id: 'rne-1', checked_at: '2026-09-01T00:00:00Z', valid_until: '2999-01-01T00:00:00Z', numbers_in_file: 2 };
 
 // ─── Esquema real (verificado por MCP contra jgmgphmzusbluqhuqihj) ────────────
 
@@ -133,6 +134,7 @@ interface RpcResolver {
 function makeSupabase(resolve: Resolver, resolveRpc?: RpcResolver) {
   const ops: Op[] = [];
   const rpcs: RpcCall[] = [];
+  const reserva = dobleReservaVoz();
   /** Orden global de efectos, para comprobar QUÉ pasa antes de QUÉ. */
   const trace: string[] = [];
 
@@ -151,7 +153,7 @@ function makeSupabase(resolve: Resolver, resolveRpc?: RpcResolver) {
         op.head = opts?.head;
         return proxy;
       },
-      eq: filter('eq'), neq: filter('neq'), in: filter('in'), gte: filter('gte'),
+      eq: filter('eq'), is: filter('is'), neq: filter('neq'), in: filter('in'), gte: filter('gte'),
       lte: filter('lte'), gt: filter('gt'), lt: filter('lt'), not: filter('not'),
       order: filter('order'), limit: filter('limit'), range: filter('range'),
       maybeSingle: async () => settle(),
@@ -183,9 +185,17 @@ function makeSupabase(resolve: Resolver, resolveRpc?: RpcResolver) {
     },
     rpc: jest.fn(async (name: string, args: Record<string, unknown>) => {
       rpcs.push({ name, args });
+      if (name === 'crm_voice_campaign_rne_status') {
+        const r = resolve({ table: 'voice_campaign_rne_checks', verb: 'select', filters: [
+          ['eq', 'organization_id', args.p_org], ['eq', 'campaign_id', args.p_campaign],
+        ] });
+        const row = Array.isArray(r.data) ? r.data[0] : null;
+        return { data: row ? { evidence_available: true, audience_unchanged: true, changed_targets: 0, ...row } : null, error: r.error ?? null };
+      }
+
       trace.push(`rpc:${name}`);
       const r = resolveRpc ? resolveRpc({ name, args }) : {};
-      return { data: r.data ?? null, error: r.error ?? null };
+      return { data: r.data ?? (r.error ? null : reserva(name, args)) ?? null, error: r.error ?? null };
     }),
   } as unknown as SupabaseClient & { rpc: jest.Mock };
 
@@ -203,7 +213,7 @@ function scenario(
   }> = {}
 ) {
   const pending = {
-    id: 'vac-1', organization_id: 7, voice_agent_id: 'agent-1', campaign_id: 'camp-1',
+    id: '20000000-0000-4000-8000-000000000001', organization_id: 7, voice_agent_id: 'agent-1', campaign_id: 'camp-1',
     customer_id: 'cust-1', opportunity_id: 'opp-1', status: 'in_progress', attempts: 1,
     scheduled_at: '2020-01-01T00:00:00.000Z',
   };
@@ -244,7 +254,7 @@ function scenario(
   const rpcResolver: RpcResolver = ({ name }) => {
     if (name === 'fn_claim_voice_agent_calls') return { data: overrides.claimed ?? [pending] };
     if (name === 'fn_can_contact') return { data: overrides.canContact ?? true };
-    if (name === 'deduct_comm_credits') return { data: overrides.credits ?? true };
+    if (name === 'crm_voice_dispatch_prepare' && overrides.credits === false) return { error: { code: 'P0001', message: 'creditos_insuficientes' } };
     return { data: null };
   };
   return { resolver, rpcResolver, pending, campaign };
@@ -411,7 +421,7 @@ describe('B. Concurrencia y topes del despachador de campañas', () => {
     expect(ra.calls_initiated + rb.calls_initiated).toBe(1);
     // Una sola marcación real: el mismo cliente NO recibe dos llamadas simultáneas.
     expect(twilioCreate).toHaveBeenCalledTimes(1);
-    expect(twilioCreate.mock.calls[0][0].url).toContain('callId=vac-1');
+    expect(new URL(twilioCreate.mock.calls[0][0].url).searchParams.get('callId')).toBe('20000000-0000-4000-8000-000000000001');
   });
 
   test('B2 [CORREGIDO r1] la fila se RESERVA antes de marcar (fn_claim_voice_agent_calls precede a Twilio)', async () => {
@@ -423,7 +433,7 @@ describe('B. Concurrencia y topes del despachador de campañas', () => {
     expect(claim!.args).toMatchObject({ p_org: 7, p_campaign: 'camp-1' });
     // El claim ocurre antes de cualquier escritura de la llamada.
     const idxClaim = trace.indexOf('rpc:fn_claim_voice_agent_calls');
-    const idxInsertCall = trace.indexOf('insert:calls');
+    const idxInsertCall = trace.indexOf('rpc:crm_voice_dispatch_prepare');
     expect(idxClaim).toBeGreaterThanOrEqual(0);
     expect(idxClaim).toBeLessThan(idxInsertCall);
     // Y la RPC hace el UPDATE condicional en la base (SQL verificado en la migración).
@@ -496,7 +506,7 @@ describe('B. Concurrencia y topes del despachador de campañas', () => {
     // servicio. Con el conteo por `claimed_at` de la ronda 1 este caso se pone ROJO.
     twilioCreate.mockRejectedValue(new Error('21211 invalid To number'));
     const pendings = Array.from({ length: 3 }, (_, i) => ({
-      id: `vac-${i}`, organization_id: 7, voice_agent_id: 'agent-1', campaign_id: 'camp-1',
+      id: `20000000-0000-4000-8000-${String(i + 10).padStart(12, '0')}`, organization_id: 7, voice_agent_id: 'agent-1', campaign_id: 'camp-1',
       customer_id: `cust-${i}`, opportunity_id: null, status: 'in_progress', attempts: 1,
       scheduled_at: '2020-01-01T00:00:00.000Z',
     }));
@@ -555,8 +565,7 @@ describe('B. Concurrencia y topes del despachador de campañas', () => {
         return { data: lote };
       }
       if (name === 'fn_can_contact') return { data: true };
-      if (name === 'deduct_comm_credits') return { data: true };
-      return { data: null };
+        return { data: null };
     };
     const { client } = makeSupabase(resolver, rpc);
 
@@ -599,10 +608,17 @@ describe('B. Concurrencia y topes del despachador de campañas', () => {
     expect(twilioCreate).not.toHaveBeenCalled();
   });
 
-  test('B7 [NUEVO r1] racha de fallos consecutivos detiene la campaña sola', () => {
-    const src = SRC('src/lib/services/crm/voiceAgentService.ts');
-    expect(src).toContain('export const FAILURE_STREAK_TO_STOP = 5;');
-    expect(src).toMatch(/streak >= FAILURE_STREAK_TO_STOP[\s\S]{0,300}stopCampaign\(/);
+  test.each([8, 9])('B7 la racha persistida %i se detiene al décimo fallo de proveedor', async (previous) => {
+    const { resolver, rpcResolver, campaign } = scenario();
+    campaign.consecutive_failures = previous;
+    twilioCreate.mockRejectedValue(new Error('Proveedor no disponible'));
+    const { client, rpcs } = makeSupabase(resolver, rpcResolver);
+    const result = await runCampaignQueue(7, client);
+    expect(twilioCreate).toHaveBeenCalledTimes(1);
+    expect(result.campaigns_stopped).toEqual(previous === 9 ? ['camp-1'] : []);
+    const stop = rpcs.find(r => r.name === 'fn_stop_voice_campaign');
+    if (previous === 9) expect(stop?.args).toMatchObject({ p_org: 7, p_campaign: 'camp-1', p_reason: 'Parada automática: 10 fallos consecutivos al marcar' });
+    else expect(stop).toBeUndefined();
   });
 
   test('B8 [NUEVO r5] fuera de la franja legal del cliente NO se marca: la fila vuelve a la cola', async () => {
@@ -620,7 +636,7 @@ describe('B. Concurrencia y topes del despachador de campañas', () => {
     // Ni una marcación, ni un crédito gastado: la barrera D9 es fail-closed.
     expect(r.calls_initiated).toBe(0);
     expect(twilioCreate).not.toHaveBeenCalled();
-    expect(r.errors).toContain('Llamada vac-1: fuera de la franja horaria del cliente');
+    expect(r.errors).toContain('Llamada 20000000-0000-4000-8000-000000000001: fuera de la franja horaria del cliente');
 
     // Y no es un descarte: la fila se devuelve a `pending`, se suelta el cerrojo
     // y se reprograma. Un «ahora no» no puede convertirse en una llamada perdida.
@@ -653,14 +669,12 @@ describe('C. Créditos y coste', () => {
     const { client, trace, rpcs } = makeSupabase(resolver, rpcResolver);
     await runCampaignQueue(7, client);
     expect(twilioCreate).toHaveBeenCalledTimes(1);
-    const debito = rpcs.find((r) => r.name === 'deduct_comm_credits');
-    expect(debito).toBeDefined();
-    expect(debito!.args).toMatchObject({ p_org_id: 7, p_channel: 'voice', p_amount: 1 });
-    // Orden: la reserva de crédito precede a la fila en `calls` y, por tanto, a Twilio.
-    expect(trace.indexOf('rpc:deduct_comm_credits')).toBeLessThan(trace.indexOf('insert:calls'));
-    const src = SRC('src/lib/services/crm/voiceAgentService.ts');
-    expect(src).toContain('deduct_comm_credits');
-    expect(src).toContain('refundVoiceCredits');
+    const reserva = rpcs.find((r) => r.name === 'crm_voice_dispatch_prepare');
+    expect(reserva!.args).toMatchObject({ p_org: 7, p_vac: '20000000-0000-4000-8000-000000000001', p_attempt: 1 });
+    expect(trace.indexOf('rpc:crm_voice_dispatch_prepare')).toBeLessThan(trace.indexOf('rpc:crm_voice_dispatch_begin'));
+    expect(trace.indexOf('rpc:crm_voice_dispatch_begin')).toBeLessThan(trace.indexOf('rpc:crm_voice_dispatch_accept'));
+    expect(rpcs.some(r => r.name === 'deduct_comm_credits')).toBe(false);
+
   });
 
   test('C2 [CORREGIDO r1] sin créditos la llamada NO se marca (fail-closed)', async () => {
@@ -677,41 +691,26 @@ describe('C. Créditos y coste', () => {
     expect(src).not.toContain('hasAICredits');
   });
 
-  test('C3 [CORREGIDO r1] el libro que se consulta es el mismo que se debita (comm_settings vía RPC atómico)', () => {
+  test('C3 el débito de voz y la evidencia se escriben juntos en la RPC privada', () => {
+    const sql = SRC('supabase/migrations/20261001165504_crm_voz_reservas_y_conciliacion_atomicas.sql');
+    expect(sql).toContain('public.deduct_comm_credits');
+    expect(sql).toContain('insert into public.crm_voice_credit_reservations');
     const src = SRC('src/lib/services/crm/voiceAgentService.ts');
-    expect(src).not.toContain("from('ai_settings')");
-    expect(src).toContain("supabase.rpc('deduct_comm_credits'");
-    // Y el error de la RPC bloquea, no permite.
-    expect(src).toMatch(/deduct_comm_credits[\s\S]{0,400}return false; \/\/ fail-closed/);
+    expect(src).not.toContain("supabase.rpc('deduct_comm_credits'");
+    expect(src).not.toContain('refundVoiceCredits');
   });
 
-  test('C4 [CORREGIDO r2] la reserva se CONCILIA al colgar: 30 s no cuestan 2 creditos', () => {
-    const svc = SRC('src/lib/services/crm/voiceAgentService.ts');
-    expect(svc).toContain('CREDITS_RESERVED_PER_CALL');           // reserva antes del proveedor
-    // La reserva queda anotada en la fila para poder restarla despues.
-    expect(svc).toContain('credits_reserved: CREDITS_RESERVED_PER_CALL');
-
+  test('C4 apertura, cierre y callbacks usan el mismo libro privado; el flag antiguo no permite devolución', () => {
     const src = SRC('src/lib/services/integrations/twilio/voiceAgent/conversationRelayHandler.ts');
-    expect(src).toContain('deduct_comm_credits');
-    // r2: al colgar se cobra SOLO la diferencia, no los minutos completos encima.
-    expect(src).toContain('const creditsToCharge = Math.max(0, duration - alreadyReserved);');
-    expect(src).toContain('p_amount: creditsToCharge');
-    expect(src).not.toMatch(/p_amount: duration,/);
-    // Y una sola vez: un cierre duplicado no vuelve a cobrar.
-    expect(src).toContain('credits_settled_at');
-    const endIdx = src.indexOf('async function endSession');
-    expect(src.indexOf('creditsToCharge')).toBeGreaterThan(endIdx);
-
-    // Si la llamada no llega a hablar (nadie contesta / falla), la reserva se devuelve.
-    // 2026-09-30: la devolución vive en `reservaCreditos.ts` (una sola
-    // implementación para el statusCallback y el TwiML con AMD) y cubre también
-    // el buzón de voz.
+    expect(src).toContain('abrirSesionCreditoVoz');
+    expect(src).toContain('conciliarSesionCreditoVoz');
+    expect(src).not.toContain('deduct_comm_credits');
+    expect(src).not.toContain("from('comm_usage_logs')");
     const status = SRC('src/app/api/voice/ai-agent/status/route.ts');
-    expect(status).toContain('devolverReservaSinConversacion');
+    expect(status).toContain('aplicarCallbackVoz');
     const reserva = SRC('src/lib/services/crm/voiceAgent/reservaCreditos.ts');
-    expect(reserva).toMatch(/ESTADOS_SIN_CONVERSACION = \['no_answer', 'failed', 'canceled', 'voicemail'\]/);
-    expect(reserva).toContain('p_amount: -reservado');
-    expect(reserva).toContain('credits_settled_at');
+    expect(reserva).toContain('throw new VoiceCreditPendingError');
+    expect(reserva).not.toContain('deduct_comm_credits');
   });
 
   test('C5 [CORREGIDO r1] el camino de la voz clonada existe: catálogo, ttsProvider y voice en el TwiML', () => {
@@ -738,66 +737,44 @@ describe('C. Créditos y coste', () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe('D. Fallos a mitad de llamada y estado', () => {
-  test('D1 [CORREGIDO r1] el insert en `calls` usa columnas reales y cubre los 8 NOT NULL', async () => {
+  test('D1 preparación transaccional recibe destino y grabación, sin insert independiente en calls', async () => {
     const { resolver, rpcResolver } = scenario();
-    const { client, ops } = makeSupabase(resolver, rpcResolver);
+    const { client, ops, rpcs } = makeSupabase(resolver, rpcResolver);
     await runCampaignQueue(7, client);
-    const ins = ops.find((o) => o.table === 'calls' && o.verb === 'insert');
-    expect(ins).toBeDefined();
-    const row = ins!.payload as Record<string, unknown>;
-    expect(Object.keys(row)).not.toContain('phone_number');
-    for (const col of Object.keys(row)) expect(DB.callsColumns).toContain(col);
-    expect(DB.callsNotNull.filter((c) => !(c in row))).toEqual([]);
-    expect(row.mode).toBe('ai_agent');
-    expect(row.provider).toBe('twilio');
-    expect(row.direction).toBe('outbound');
+    expect(rpcs.find(r => r.name === 'crm_voice_dispatch_prepare')!.args).toMatchObject({
+      p_org: 7, p_from: '+573001234567', p_to: '+573001112233', p_recording: true,
+      p_metadata: { expected_customer_phone: '3001112233', expected_customer_timezone: 'America/Bogota' },
+    });
+    expect(ops.some(o => o.table === 'calls' && o.verb === 'insert')).toBe(false);
   });
 
-  test('D2 [CORREGIDO r1] voice_agent_calls.call_id recibe el UUID de calls; el CallSid va en provider_call_sid', async () => {
+  test('D2 el SID se confirma con el token del intento; Node no sobrescribe la correlación', async () => {
     const { resolver, rpcResolver } = scenario();
-    const { client, ops } = makeSupabase(resolver, rpcResolver);
+    const { client, ops, rpcs } = makeSupabase(resolver, rpcResolver);
     await runCampaignQueue(7, client);
-    const updates = ops.filter((o) => o.table === 'voice_agent_calls' && o.verb === 'update');
-    const link = updates.find((o) => 'call_id' in (o.payload as Record<string, unknown>));
-    expect((link!.payload as Record<string, unknown>).call_id).toBe('call-uuid-0001');
-    const correlate = updates.find((o) => 'provider_call_sid' in (o.payload as Record<string, unknown>));
-    expect((correlate!.payload as Record<string, unknown>).provider_call_sid).toBe('CA00000000000000000000000000000001');
-    // Ningún UPDATE mete un CallSid en la columna uuid.
-    for (const u of updates) {
-      const p = u.payload as Record<string, unknown>;
-      if (p.call_id) expect(String(p.call_id)).not.toMatch(/^CA[0-9a-f]{32}$/);
-    }
+    expect(rpcs.find(r => r.name === 'crm_voice_dispatch_accept')!.args).toEqual({
+      p_org: 7, p_reservation: RESERVA_VOZ_DOBLE, p_sid: 'CA00000000000000000000000000000001',
+    });
+    expect(ops.filter(o => o.table === 'voice_agent_calls' && o.verb === 'update')
+      .some(o => 'call_id' in (o.payload as Record<string, unknown>) || 'provider_call_sid' in (o.payload as Record<string, unknown>))).toBe(false);
   });
 
-  test('D3 [CORREGIDO r1] fallo de Twilio a mitad: reembolso, retry_policy leída y reintento programado', async () => {
-    twilioCreate.mockRejectedValueOnce(new Error('21610 unsubscribed recipient'));
+  test('D3 rechazo demostrado del proveedor pide devolución y reintento privados, sin escrituras separadas', async () => {
+    twilioCreate.mockRejectedValueOnce(Object.assign(new Error('invalid To number'), { status: 400, code: 21211 }));
     const { resolver, rpcResolver } = scenario();
-    const withRetry: Resolver = (op) => {
-      if (op.table === 'voice_agents' && op.verb === 'select') {
-        return { data: { retry_policy: { max_attempts: 3, backoff_minutes: 30 }, is_active: true } };
-      }
-      return resolver(op);
-    };
-    const { client, ops, rpcs } = makeSupabase(withRetry, rpcResolver);
+    const rpc: RpcResolver = call => call.name === 'crm_voice_dispatch_failure'
+      ? { data: { refunded: true, uncertain: false, applied: true } }
+      : call.name === 'crm_voice_retry_rejected'
+        ? { data: { requeued: true, applied: true, job_id: '20000000-0000-4000-8000-000000000099', run_at: '2026-09-10T20:00:00Z' } }
+        : rpcResolver(call);
+    const { client, ops, rpcs } = makeSupabase(resolver, rpc);
     const r = await runCampaignQueue(7, client);
     expect(r.calls_initiated).toBe(0);
     expect(r.calls_skipped).toBe(1);
-
-    // Reembolso del crédito reservado.
-    const refunds = rpcs.filter((c) => c.name === 'deduct_comm_credits' && (c.args.p_amount as number) < 0);
-    expect(refunds).toHaveLength(1);
-
-    // El despachador SÍ lee retry_policy del agente y reprograma en vez de dar la fila por muerta.
-    const svc = SRC('src/lib/services/crm/voiceAgentService.ts');
-    const dispatcher = svc.slice(svc.indexOf('export async function runCampaignQueue'));
-    expect(dispatcher).toContain('getRetryPolicy');
-    expect(svc).toMatch(/getRetryPolicy[\s\S]{0,400}from\('voice_agents'\)[\s\S]{0,120}retry_policy/);
-    const upd = ops.filter((o) => o.table === 'voice_agent_calls' && o.verb === 'update').at(-1)!;
-    expect((upd.payload as Record<string, unknown>).status).toBe('pending');
-    expect((upd.payload as Record<string, unknown>).scheduled_at).toBeDefined();
-    // Y la fila en `calls` queda como fallida, no colgada en 'dialing'.
-    const callFail = ops.filter((o) => o.table === 'calls' && o.verb === 'update').at(-1)!;
-    expect((callFail.payload as Record<string, unknown>).status).toBe('failed');
+    expect(rpcs.find(c => c.name === 'crm_voice_dispatch_failure')!.args).toMatchObject({ p_http_status: 400, p_provider_code: '21211' });
+    expect(rpcs.filter(c => c.name === 'crm_voice_retry_rejected')).toHaveLength(1);
+    expect(rpcs.some(c => c.name === 'deduct_comm_credits')).toBe(false);
+    expect(ops.some(o => o.verb === 'update' && ['calls', 'voice_agent_calls'].includes(o.table))).toBe(false);
   });
 
   test('D4 [CORREGIDO r1] el status callback apunta a una ruta que SÍ escribe', async () => {
@@ -910,7 +887,8 @@ describe('E. Multi-tenant, firma y consentimiento', () => {
     expect(svc).not.toContain('do_not_call_list');
     expect(svc).not.toContain('return !!data;');
     // Si la RPC falla, NO se marca.
-    expect(svc).toMatch(/fn_can_contact[\s\S]{0,400}se bloquea la llamada[\s\S]{0,80}return false;/);
+    const canContact = SRC('src/lib/services/crm/voiceAgent/canContact.ts');
+    expect(canContact).toMatch(/fn_can_contact[\s\S]{0,400}se bloquea la llamada[\s\S]{0,80}return false;/);
 
     // Y con la RPC devolviendo false, la llamada se salta.
     const { resolver, rpcResolver } = scenario({ canContact: false });
@@ -1362,7 +1340,7 @@ describe('I. Defectos verificados contra la base real', () => {
     const svc = SRC('src/lib/services/crm/voiceAgentService.ts');
     // Un único punto de comprobación, usado al encolar y al marcar.
     expect((svc.match(/canCallCustomer\(/g) || []).length).toBeGreaterThanOrEqual(3);
-    expect(svc).toContain("p_channel: 'voice'");
+    expect(SRC('src/lib/services/crm/voiceAgent/canContact.ts')).toContain("p_channel: 'voice'");
   });
 });
 
@@ -1417,7 +1395,7 @@ function manualScenario(
     if (op.table === 'voice_agent_calls' && op.head) return { count: over.inProgress ?? 0 };
     if (op.table === 'voice_agent_calls' && op.verb === 'select') return { data: over.live ?? [] };
     if (op.table === 'voice_agent_calls' && op.verb === 'insert') {
-      return { data: { id: 'vac-new', organization_id: 7, voice_agent_id: 'agent-1', customer_id: 'cust-1', attempts: 0, status: 'pending' } };
+      return { data: { id: '20000000-0000-4000-8000-000000000002', organization_id: 7, voice_agent_id: 'agent-1', customer_id: 'cust-1', attempts: 0, status: 'pending' } };
     }
     if (op.table === 'calls' && op.verb === 'insert') return { data: { id: 'call-uuid-0002' } };
     if (op.table === 'customers') return { data: { id: 'cust-1', phone: '3001112233', timezone: 'America/Bogota' } };
@@ -1426,9 +1404,8 @@ function manualScenario(
   };
   const rpcResolver: RpcResolver = ({ name }) => {
     if (name === 'fn_can_contact') return { data: true };
-    if (name === 'deduct_comm_credits') return { data: true };
     if (name === 'fn_claim_voice_agent_call_one') {
-      return { data: [{ id: 'vac-new', organization_id: 7, voice_agent_id: 'agent-1', customer_id: 'cust-1', opportunity_id: null, attempts: 1, status: 'in_progress' }] };
+      return { data: [{ id: '20000000-0000-4000-8000-000000000002', organization_id: 7, voice_agent_id: 'agent-1', customer_id: 'cust-1', opportunity_id: null, attempts: 1, status: 'in_progress' }] };
     }
     return { data: null };
   };
@@ -1537,12 +1514,12 @@ describe('J. Despacho puntual, disparo por etapa y consentimiento (ronda 2)', ()
     expect(svc).toContain("supabase.rpc('fn_claim_voice_agent_call_one'");
     // Y la ruta exige rol de administrador (antes bastaba ser miembro).
     const route = SRC('src/app/api/crm/voice-agents/[id]/dispatch/route.ts');
-    expect(route).toContain('requireOrgAdmin(ctx)');
+    expect(route).toContain('requireOrgAdminOrPermission(ctx, CRM_PERMISOS.campanasGestionar)');
     expect(route).toContain('VoiceDispatchBlocked');
   });
 
   test('J6 [CORREGIDO r2] el consentimiento NO es desactivable: las tools obligatorias se inyectan siempre', () => {
-    const tools = SRC('src/lib/services/crm/voiceAgentTools.ts');
+    const tools = SRC('src/lib/services/crm/voiceAgentToolCatalog.ts');
     expect(tools).toContain("export const MANDATORY_TOOLS = ['log_consent_opt_out', 'end_call'] as const;");
 
     // El runtime las anade aunque la etapa o el agente no las incluyan.
@@ -1554,8 +1531,9 @@ describe('J. Despacho puntual, disparo por etapa y consentimiento (ronda 2)', ()
     // UXM-D (2026-09-21): el editor se partió en pestañas; la casilla vive en
     // `editor/AgentToolsTab.tsx` y la regla en `editor/useAgentForm.ts`.
     const editor = SRC('src/components/crm/agentes/editor/AgentToolsTab.tsx');
-    expect(editor).toContain('disabled={obligatoria}');
-    expect(editor).toContain('Obligatoria por ley');
+    expect(editor).toContain('disabled={isMandatoryTool(tool)}');
+    // Las etiquetas y bloqueo efectivo se prueban por render Intl en cuatro idiomas.
+    expect(editor).toContain("t('mandatory')");
     const formHook = SRC('src/components/crm/agentes/editor/useAgentForm.ts');
     expect(formHook).toContain('MANDATORY_TOOLS');
     expect(formHook).toMatch(/if \(isMandatoryTool\(tool\)\) return tools;/);
@@ -2427,7 +2405,7 @@ describe('M. Menores cerrados en la ronda 3', () => {
       if (op.table === 'voice_agent_calls' && op.head) return { count: 0 };
       if (op.table === 'voice_agent_calls' && op.verb === 'select') return { data: vivas };
       if (op.table === 'voice_agent_calls' && op.verb === 'insert') {
-        return { data: { id: 'vac-NUEVA', organization_id: 7, voice_agent_id: 'agent-1', customer_id: 'cust-1', status: 'pending', attempts: 0 } };
+        return { data: { id: '20000000-0000-4000-8000-000000000003', organization_id: 7, voice_agent_id: 'agent-1', customer_id: 'cust-1', status: 'pending', attempts: 0 } };
       }
       if (op.table === 'customers') return { data: { id: 'cust-1', phone: '3001112233', timezone: 'America/Bogota' } };
       if (op.table === 'calls' && op.verb === 'insert') return { data: { id: 'call-uuid-0001' } };
@@ -2442,8 +2420,7 @@ describe('M. Menores cerrados en la ronda 3', () => {
           campaign_id: null, customer_id: 'cust-1', status: 'in_progress', attempts: 1,
         }] };
       }
-      if (name === 'deduct_comm_credits') return { data: true };
-      return { data: null };
+        return { data: null };
     };
     return { resolver, rpc };
   }
@@ -2451,13 +2428,13 @@ describe('M. Menores cerrados en la ronda 3', () => {
   test('M1 [R3-9] una fila `pending` en espera se REUTILIZA y se marca, en vez de quedarse muerta', async () => {
     // `dial_now: false` dejaba una fila pending SIN campaña, y
     // `fn_claim_voice_agent_calls` filtra por campaign_id: nadie la reclamaba nunca.
-    const { resolver, rpc } = escenarioDespacho([{ id: 'vac-EN-ESPERA', status: 'pending' }]);
+    const { resolver, rpc } = escenarioDespacho([{ id: '20000000-0000-4000-8000-000000000004', status: 'pending' }]);
     const { client, ops, rpcs } = makeSupabase(resolver, rpc);
 
     const r = await dispatchAgentCall(7, client, { voiceAgentId: 'agent-1', customerId: 'cust-1' });
 
     // Se marca ESA fila, no una nueva.
-    expect(r.voice_agent_call_id).toBe('vac-EN-ESPERA');
+    expect(r.voice_agent_call_id).toBe('20000000-0000-4000-8000-000000000004');
     expect(r.dialed).toBe(true);
     expect(twilioCreate).toHaveBeenCalledTimes(1);
     // Y no se ha creado ninguna fila de más (que era el otro riesgo).
@@ -2465,7 +2442,7 @@ describe('M. Menores cerrados en la ronda 3', () => {
     // La reserva es la atómica, y sobre la fila que estaba esperando.
     const claim = rpcs.find((x) => x.name === 'fn_claim_voice_agent_call_one');
     expect(claim).toBeDefined();
-    expect(claim!.args.p_call).toBe('vac-EN-ESPERA');
+    expect(claim!.args.p_call).toBe('20000000-0000-4000-8000-000000000004');
   });
 
   test('M2 [R3-9] pero una llamada REALMENTE viva sigue deduplicando (no se marca dos veces)', async () => {
@@ -2490,7 +2467,7 @@ describe('M. Menores cerrados en la ronda 3', () => {
 
     const r = await dispatchAgentCall(7, client, { voiceAgentId: 'agent-1', customerId: 'cust-1' });
 
-    expect(r.voice_agent_call_id).toBe('vac-NUEVA');
+    expect(r.voice_agent_call_id).toBe('20000000-0000-4000-8000-000000000003');
     expect(ops.some((o) => o.table === 'voice_agent_calls' && o.verb === 'insert')).toBe(true);
     expect(twilioCreate).toHaveBeenCalledTimes(1);
   });
@@ -2502,7 +2479,7 @@ describe('M. Menores cerrados en la ronda 3', () => {
     const r = await dispatchAgentCall(7, client, { voiceAgentId: 'agent-1', customerId: 'cust-1', dialNow: false });
 
     expect(r.dialed).toBe(false);
-    expect(r.voice_agent_call_id).toBe('vac-NUEVA');
+    expect(r.voice_agent_call_id).toBe('20000000-0000-4000-8000-000000000003');
     expect(rpcs.some((x) => x.name === 'fn_claim_voice_agent_call_one')).toBe(false);
     expect(twilioCreate).not.toHaveBeenCalled();
   });
@@ -2526,13 +2503,9 @@ describe('M. Menores cerrados en la ronda 3', () => {
 
   test('M6 [R3-7] si el cobro de créditos falla, la llamada NO se da por conciliada', () => {
     const src = SRC('src/lib/services/integrations/twilio/voiceAgent/conversationRelayHandler.ts');
-    const bloque = src.slice(src.indexOf('const creditsToCharge'), src.indexOf('// Actualizar log'));
-    // El sello depende del resultado del cobro (antes se sellaba pasara lo que pasara).
-    expect(bloque).toContain('cobroOk');
-    expect(bloque).toMatch(/if \(settleRowId && !cobroOk\)[\s\S]{0,200}settleRowId = null/);
-    // El error sigue registrándose con su mensaje real.
-    expect(bloque).toContain('creditError.message');
-    // Y el sello solo ocurre dentro del `if (settleRowId)`, ya anulado si falló.
-    expect(bloque.indexOf('cobroOk = false')).toBeLessThan(bloque.indexOf('if (settleRowId && !cobroOk)'));
+    expect(src).toContain('conciliarSesionCreditoVoz');
+    expect(src).toContain('if (!resultado.settled)');
+    expect(src).not.toContain('credits_settled_at:');
+    expect(src).not.toContain('deduct_comm_credits');
   });
 });

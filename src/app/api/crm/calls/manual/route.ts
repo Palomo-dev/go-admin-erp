@@ -7,6 +7,8 @@ import { MANUAL_RECORDING_DECLARATION_TEXT } from '@/lib/services/crm/consentSer
 import { enqueueTranscribe, runTranscribePipeline } from '@/lib/services/crm/callIntelligenceService';
 import { TranscriptionError } from '@/lib/services/crm/transcriptionService';
 import { AnalysisError } from '@/lib/services/crm/callAnalysisService';
+import { exigirAlcanceReferenciasLlamada } from '@/lib/services/crm/callAccessService';
+import { clasificarErrorCrm } from '@/lib/services/crm/crmRouteSupport';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -21,18 +23,10 @@ export const maxDuration = 60;
  */
 export async function POST(request: NextRequest) {
   try {
-    const ctx = await getServerOrgContext();
+    const ctx = await getServerOrgContext(request);
     const form = readOrgBody(ctx, await request.formData(), { request });
     const file = (form.get('audio') ?? form.get('file')) as File | null;
     if (!file || typeof file === 'string') return NextResponse.json({ success: false, error: 'Archivo de audio requerido (campo audio)' }, { status: 400 });
-    // Tope real de la cadena STT de la org (tester r2 nº 7): la ruta ya no
-    // responde un número inventado ("supera 40 MB") con otro tope aplicado.
-    const limit = await resolveManualAudioMaxBytes(ctx.organizationId);
-    if (file.size > limit.maxBytes) {
-      return NextResponse.json({ success: false, error: audioTooLargeMessage(file.size, limit.maxBytes), max_bytes: limit.maxBytes, max_bytes_source: limit.source, ...(limit.reason ? { max_bytes_reason: limit.reason } : {}) }, { status: 413 });
-    }
-    const audio = Buffer.from(await file.arrayBuffer());
-
     const str = (k: string) => {
       const v = form.get(k);
       return typeof v === 'string' && v.trim() ? v.trim() : null;
@@ -47,6 +41,19 @@ export async function POST(request: NextRequest) {
     if (!recordingDeclaration) {
       return NextResponse.json({ success: false, error: MANUAL_DECLARATION_REQUIRED_ERROR, code: 'RECORDING_DECLARATION_REQUIRED', declaration_text: MANUAL_RECORDING_DECLARATION_TEXT }, { status: 400 });
     }
+    if (!str('opportunity_id') && !str('customer_id')) {
+      throw new ManualCallError('opportunity_id o customer_id requerido');
+    }
+    const references = await exigirAlcanceReferenciasLlamada(ctx, {
+      customer_id: str('customer_id'), opportunity_id: str('opportunity_id'),
+    }, { completarClienteDesdeOportunidad: true });
+    // El límite STT puede cargar configuración de servicio: resolverlo después
+    // de autorizar las fichas y antes de leer el contenido del archivo.
+    const limit = await resolveManualAudioMaxBytes(ctx.organizationId);
+    if (file.size > limit.maxBytes) {
+      return NextResponse.json({ success: false, error: audioTooLargeMessage(file.size, limit.maxBytes), max_bytes: limit.maxBytes, max_bytes_source: limit.source, ...(limit.reason ? { max_bytes_reason: limit.reason } : {}) }, { status: 413 });
+    }
+    const audio = Buffer.from(await file.arrayBuffer());
     const sync = request.nextUrl.searchParams.get('sync') === '1';
     const sb = getServiceClient();
 
@@ -55,8 +62,8 @@ export async function POST(request: NextRequest) {
       ctx.userId,
       {
         audio,
-        opportunityId: str('opportunity_id'),
-        customerId: str('customer_id'),
+        opportunityId: references.opportunity_id,
+        customerId: references.customer_id,
         occurredAt: str('occurred_at'),
         durationSeconds: durationRaw ? Number(durationRaw) : null,
         notes: str('notes'),
@@ -95,6 +102,8 @@ export async function POST(request: NextRequest) {
       { status: 201 },
     );
   } catch (error: unknown) {
+    const crmError = clasificarErrorCrm(error);
+    if (crmError) return NextResponse.json({ success: false, error: crmError.error, code: crmError.code }, { status: crmError.status });
     if (error instanceof OrgContextError) return NextResponse.json({ success: false, error: error.message }, { status: error.statusCode });
     if (error instanceof ManualCallError) return NextResponse.json({ success: false, error: error.message }, { status: error.status });
     if (error instanceof TranscriptionError || error instanceof AnalysisError) {

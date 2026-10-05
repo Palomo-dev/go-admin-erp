@@ -1,20 +1,23 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { useBranch } from '@/lib/context/BranchContext';
 import { RRule } from 'rrule';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { plainDateToInstant, toPlainDate, todayInTz, addPlainDays } from '@/lib/utils/dateDisplay';
+import { cursorDelDia, diaDelCursor, moverFechasEvento } from './fechasCalendario';
+import { cambiarReunionCalendario, esReunionCrm, estadoReunionCalendario, patchReunionCalendario } from './reunionesCalendario';
 import { 
   CalendarEvent, 
   CalendarFilters, 
   CalendarViewType,
-  EventSourceType,
   ALL_SOURCE_TYPES 
 } from './types';
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfDay, endOfDay, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays } from 'date-fns';
 
 // Función para expandir eventos recurrentes
-function expandRecurringEvents(
+export function expandRecurringEvents(
   events: CalendarEvent[],
   rangeStart: Date,
   rangeEnd: Date
@@ -25,7 +28,7 @@ function expandRecurringEvents(
     const recurrenceRule = event.recurrence_rule;
     
     // Si no tiene recurrencia, agregar como está
-    if (!recurrenceRule) {
+    if (!recurrenceRule || esReunionCrm(event)) {
       expandedEvents.push(event);
       continue;
     }
@@ -37,7 +40,7 @@ function expandRecurringEvents(
       const duration = eventEnd.getTime() - eventStart.getTime();
 
       // Siempre incluir el evento original si está dentro del rango
-      if (eventStart >= rangeStart && eventStart <= rangeEnd) {
+      if (eventStart >= rangeStart && eventStart < rangeEnd) {
         expandedEvents.push(event);
       }
 
@@ -48,6 +51,7 @@ function expandRecurringEvents(
       const occurrences = rrule.between(rangeStart, rangeEnd, true);
 
       for (const occurrence of occurrences) {
+        if (occurrence >= rangeEnd) continue;
         // Saltar si es la misma fecha/hora que el evento original
         if (Math.abs(occurrence.getTime() - eventStart.getTime()) < 60000) {
           continue;
@@ -143,10 +147,19 @@ export function useCalendar({
   initialView = 'month',
   initialDate = new Date()
 }: UseCalendarProps): UseCalendarReturn {
+  const { timezone } = useOrgTimezone();
+  const initialDateRef = useRef(initialDate);
+  const activeOrgRef = useRef(organizationId);
+  activeOrgRef.current = organizationId;
+  const requestRef = useRef(0);
+  useEffect(() => {
+    const dia = toPlainDate(initialDateRef.current, timezone);
+    setCurrentDate(previous => diaDelCursor(previous) === dia ? previous : cursorDelDia(dia));
+  }, [organizationId, timezone]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentDate, setCurrentDate] = useState(initialDate);
+  const [currentDate, setCurrentDate] = useState(() => cursorDelDia(toPlainDate(initialDate, timezone)));
   const [view, setView] = useState<CalendarViewType>(initialView);
   const [filters, setFiltersState] = useState<CalendarFilters>({
     dateRange: getDateRange(initialDate, initialView),
@@ -162,9 +175,15 @@ export function useCalendar({
     setFiltersState(prev => prev.branchId === branchFilter ? prev : { ...prev, branchId: branchFilter });
   }, [branchFilter]);
 
-  const dateRange = useMemo(() => getDateRange(currentDate, view), [currentDate, view]);
+  const dateRange = useMemo(() => {
+    const range = getDateRange(currentDate, view);
+    // Intervalo [from,to): conserva los microsegundos del último día en Postgres.
+    return { from: new Date(plainDateToInstant(diaDelCursor(range.from), timezone)), to: new Date(plainDateToInstant(addPlainDays(diaDelCursor(range.to), 1), timezone)) };
+  }, [currentDate, view, timezone]);
 
   const fetchEvents = useCallback(async () => {
+    if (organizationId !== activeOrgRef.current) return;
+    const request = ++requestRef.current;
     if (!organizationId) {
       setEvents([]);
       setIsLoading(false);
@@ -180,8 +199,8 @@ export function useCalendar({
         .from('calendar_unified')
         .select('*')
         .eq('organization_id', organizationId)
-        .gte('start_at', dateRange.from.toISOString())
-        .lte('start_at', dateRange.to.toISOString())
+        .or(`end_at.gte.${dateRange.from.toISOString()},and(end_at.is.null,start_at.gte.${dateRange.from.toISOString()})`)
+        .lt('start_at', dateRange.to.toISOString())
         .order('start_at', { ascending: true });
 
       if (filters.branchId) {
@@ -193,7 +212,7 @@ export function useCalendar({
       }
 
       if (filters.status !== 'all') {
-        query = query.eq('status', filters.status);
+        query = filters.status === 'completed' ? query.in('status', ['completed', 'confirmed']) : query.eq('status', filters.status);
       }
 
       if (filters.sourceTypes.length < ALL_SOURCE_TYPES.length) {
@@ -206,7 +225,7 @@ export function useCalendar({
         .select('*')
         .eq('organization_id', organizationId)
         .not('recurrence_rule', 'is', null)
-        .lte('start_at', dateRange.to.toISOString())
+        .lt('start_at', dateRange.to.toISOString())
         .order('start_at', { ascending: true });
 
       if (filters.branchId) {
@@ -218,8 +237,10 @@ export function useCalendar({
       }
 
       if (filters.status !== 'all') {
-        recurringQuery = recurringQuery.eq('status', filters.status);
+        recurringQuery = filters.status === 'completed' ? recurringQuery.in('status', ['completed', 'confirmed']) : recurringQuery.eq('status', filters.status);
       }
+
+      if (filters.sourceTypes.length < ALL_SOURCE_TYPES.length) recurringQuery = recurringQuery.in('source_type', filters.sourceTypes);
 
       const [{ data, error: queryError }, { data: recurringData, error: recurringError }] = await Promise.all([
         query,
@@ -228,6 +249,7 @@ export function useCalendar({
 
       if (queryError) throw queryError;
       if (recurringError) throw recurringError;
+      if (request !== requestRef.current || organizationId !== activeOrgRef.current) return;
 
       // Combinar eventos evitando duplicados
       const seenIds = new Set<string>();
@@ -270,18 +292,21 @@ export function useCalendar({
         dateRange.to
       );
 
-      setEvents(expandedEvents);
+      setEvents(expandedEvents.map(event => ({ ...event, status: estadoReunionCalendario(event) })).filter(event => filters.status === 'all' || event.status === filters.status));
     } catch (err) {
+      if (request !== requestRef.current || organizationId !== activeOrgRef.current) return;
       console.error('Error fetching calendar events:', err);
       setError('No se pudieron cargar los eventos del calendario');
       setEvents([]);
     } finally {
-      setIsLoading(false);
+      if (request === requestRef.current && organizationId === activeOrgRef.current) setIsLoading(false);
     }
   }, [organizationId, dateRange, filters]);
 
   useEffect(() => {
+    const requests = requestRef;
     fetchEvents();
+    return () => { requests.current++; };
   }, [fetchEvents]);
 
   const setFilters = useCallback((newFilters: Partial<CalendarFilters>) => {
@@ -289,8 +314,8 @@ export function useCalendar({
   }, []);
 
   const goToToday = useCallback(() => {
-    setCurrentDate(new Date());
-  }, []);
+    setCurrentDate(cursorDelDia(todayInTz(timezone)));
+  }, [timezone]);
 
   const goToNext = useCallback(() => {
     setCurrentDate(prev => {
@@ -319,6 +344,7 @@ export function useCalendar({
       return { data: null, error: 'No hay organización seleccionada' };
     }
 
+    if (esReunionCrm(eventData)) return { data: null, error: 'Las reuniones CRM se agendan desde su ficha' };
     try {
       // Extraer recurrence_rule del metadata si existe
       const metadata = eventData.metadata as Record<string, unknown> | null;
@@ -358,144 +384,54 @@ export function useCalendar({
   }, [organizationId, fetchEvents]);
 
   const updateEvent = useCallback(async (id: string, updates: Partial<CalendarEvent>) => {
+    const event = events.find(item => (item.id || item.source_id) === id);
+    if (!organizationId || !event || event.source_type !== 'calendar_event') return { success: false, error: 'Evento no encontrado' };
     try {
-      const { error: updateError } = await supabase
-        .from('calendar_events')
-        .update({
-          title: updates.title,
-          description: updates.description,
-          start_at: updates.start_at,
-          end_at: updates.end_at,
-          all_day: updates.all_day,
-          location: updates.location,
-          assigned_to: updates.assigned_to,
-          color: updates.color,
-          status: updates.status,
-        })
-        .eq('id', id);
-
-      if (updateError) throw updateError;
-
+      if (esReunionCrm(event)) {
+        await cambiarReunionCalendario(id, patchReunionCalendario(updates));
+      } else {
+        const { error: updateError } = await supabase.from('calendar_events').update({
+          title: updates.title, description: updates.description, start_at: updates.start_at,
+          end_at: updates.end_at, all_day: updates.all_day, location: updates.location,
+          assigned_to: updates.assigned_to, color: updates.color, status: updates.status,
+        }).eq('id', id).eq('organization_id', organizationId);
+        if (updateError) throw updateError;
+      }
       await fetchEvents();
       return { success: true, error: null };
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Error al actualizar evento';
-      console.error('Error updating event:', err);
-      return { success: false, error: errorMessage };
+      return { success: false, error: err instanceof Error ? err.message : 'Error al actualizar evento' };
     }
-  }, [fetchEvents]);
+  }, [organizationId, events, fetchEvents]);
 
   const deleteEvent = useCallback(async (id: string) => {
+    const event = events.find(item => (item.id || item.source_id) === id);
+    if (!organizationId || !event || event.source_type !== 'calendar_event') return { success: false, error: 'Evento no encontrado' };
+    if (esReunionCrm(event)) return updateEvent(id, { status: 'cancelled' });
     try {
-      const { error: deleteError } = await supabase
-        .from('calendar_events')
-        .delete()
-        .eq('id', id);
-
+      const { error: deleteError } = await supabase.from('calendar_events').delete()
+        .eq('id', id).eq('organization_id', organizationId);
       if (deleteError) throw deleteError;
-
       await fetchEvents();
       return { success: true, error: null };
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Error al eliminar evento';
-      console.error('Error deleting event:', err);
-      return { success: false, error: errorMessage };
+      return { success: false, error: err instanceof Error ? err.message : 'Error al eliminar evento' };
     }
-  }, [fetchEvents]);
+  }, [organizationId, events, fetchEvents, updateEvent]);
 
-  const moveEvent = useCallback(async (eventId: string, newDate: Date, newHour: number) => {
-    if (!eventId || eventId === 'undefined') {
-      console.error('moveEvent: eventId es inválido:', eventId);
-      return { success: false, error: 'ID de evento inválido' };
-    }
+  const moveEvent = useCallback(async (id: string, newDate: Date, hour: number) => {
+    const event = events.find(item => (item.id || item.source_id) === id);
+    if (!event || event.source_type !== 'calendar_event' || event.metadata?.is_recurrence_instance) return { success: false, error: 'Evento no editable' };
+    try { return await updateEvent(id, moverFechasEvento(event.start_at, event.end_at, newDate, hour, timezone)); }
+    catch (err: unknown) { return { success: false, error: err instanceof Error ? err.message : 'Fecha inválida' }; }
+  }, [events, timezone, updateEvent]);
 
-    const event = events.find(e => (e.id || e.source_id) === eventId);
-    if (!event || event.source_type !== 'calendar_event') {
-      console.warn('Solo se pueden mover eventos manuales');
-      return { success: false, error: 'Solo se pueden mover eventos manuales' };
-    }
-
-    const actualId = event.source_id || event.id || eventId;
-    const originalStart = new Date(event.start_at);
-    const originalEnd = event.end_at ? new Date(event.end_at) : new Date(originalStart.getTime() + 3600000);
-    const durationMs = originalEnd.getTime() - originalStart.getTime();
-
-    // Preservar la fecha original del evento, solo cambiar la hora
-    const newStartAt = new Date(originalStart);
-    newStartAt.setHours(newHour, 0, 0, 0);
-    const newEndAt = new Date(newStartAt.getTime() + durationMs);
-
-    // Optimistic update - actualizar estado local inmediatamente
-    const originalEvents = [...events];
-    setEvents(prev => prev.map(e => 
-      (e.id || e.source_id) === eventId
-        ? { ...e, start_at: newStartAt.toISOString(), end_at: newEndAt.toISOString() }
-        : e
-    ));
-
-    try {
-      const { error: updateError } = await supabase
-        .from('calendar_events')
-        .update({
-          start_at: newStartAt.toISOString(),
-          end_at: newEndAt.toISOString(),
-        })
-        .eq('id', actualId);
-
-      if (updateError) throw updateError;
-
-      return { success: true, error: null };
-    } catch (err: unknown) {
-      // Revertir cambio si hay error
-      setEvents(originalEvents);
-      const errorMessage = err instanceof Error ? err.message : 'Error al mover evento';
-      console.error('Error moving event:', err);
-      return { success: false, error: errorMessage };
-    }
-  }, [events]);
-
-  const resizeEvent = useCallback(async (eventId: string, newStartAt: Date, newEndAt: Date) => {
-    if (!eventId || eventId === 'undefined') {
-      console.error('resizeEvent: eventId es inválido:', eventId);
-      return { success: false, error: 'ID de evento inválido' };
-    }
-
-    const event = events.find(e => (e.id || e.source_id) === eventId);
-    if (!event || event.source_type !== 'calendar_event') {
-      console.warn('Solo se pueden redimensionar eventos manuales');
-      return { success: false, error: 'Solo se pueden redimensionar eventos manuales' };
-    }
-
-    const actualId = event.source_id || event.id || eventId;
-
-    // Optimistic update - actualizar estado local inmediatamente
-    const originalEvents = [...events];
-    setEvents(prev => prev.map(e => 
-      (e.id || e.source_id) === eventId
-        ? { ...e, start_at: newStartAt.toISOString(), end_at: newEndAt.toISOString() }
-        : e
-    ));
-
-    try {
-      const { error: updateError } = await supabase
-        .from('calendar_events')
-        .update({
-          start_at: newStartAt.toISOString(),
-          end_at: newEndAt.toISOString(),
-        })
-        .eq('id', actualId);
-
-      if (updateError) throw updateError;
-
-      return { success: true, error: null };
-    } catch (err: unknown) {
-      // Revertir cambio si hay error
-      setEvents(originalEvents);
-      const errorMessage = err instanceof Error ? err.message : 'Error al redimensionar evento';
-      console.error('Error resizing event:', err);
-      return { success: false, error: errorMessage };
-    }
-  }, [events]);
+  const resizeEvent = useCallback(async (id: string, start: Date, end: Date) => {
+    const event = events.find(item => (item.id || item.source_id) === id);
+    if (!event || event.source_type !== 'calendar_event' || event.metadata?.is_recurrence_instance) return { success: false, error: 'Evento no editable' };
+    if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end <= start) return { success: false, error: 'Rango inválido' };
+    return updateEvent(id, { start_at: start.toISOString(), end_at: end.toISOString() });
+  }, [events, updateEvent]);
 
   return {
     events,

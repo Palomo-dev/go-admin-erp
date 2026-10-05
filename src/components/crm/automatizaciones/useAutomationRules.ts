@@ -7,12 +7,14 @@
  * escribe `automation_rules` directamente: siempre las rutas de servidor.
  */
 
-import { useCallback, useEffect, useReducer } from 'react';
+import { useCallback, useEffect, useReducer, useRef } from 'react';
+import { useOrganization } from '@/lib/hooks/useOrganization';
 import {
   applyMutation,
   browserFetch,
   deleteRule,
   dryRunRule,
+  bulkDryRunRule,
   fetchRuns as fetchRunsWith,
   INITIAL_RULES_STATE,
   loadRules,
@@ -20,35 +22,41 @@ import {
   saveRule,
   toggleRule,
   type AutomationRuleView,
+  type RulesEvent,
 } from '@/lib/services/crm/automation/ruleMutations';
 
 export type { AutomationRuleView, AutomationRunView, DryRunResult, RuleAction } from '@/lib/services/crm/automation/ruleMutations';
 
 export function useAutomationRules() {
+  const { organization } = useOrganization(); const orgId = organization?.id ?? null;
+  const activeScope = useRef(orgId); activeScope.current = orgId;
   const [state, dispatch] = useReducer(applyMutation, INITIAL_RULES_STATE);
+  const scopedDispatch = useCallback((event: RulesEvent) => { if (activeScope.current === orgId) dispatch(event); }, [orgId]);
 
-  const load = useCallback(() => loadRules(browserFetch, dispatch), []);
+  const load = useCallback(() => loadRules(browserFetch, scopedDispatch), [scopedDispatch]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    dispatch({ type:'scope_changed', scope:orgId });
+    if (orgId) void load();
+  }, [load,orgId]);
 
   const save = useCallback(
-    async (input: Partial<AutomationRuleView> & { id?: string }) => (await runMutation(browserFetch, dispatch, () => saveRule(browserFetch, input))).row,
-    [],
+    async (input: Partial<AutomationRuleView> & { id?: string }) => (await runMutation(browserFetch, scopedDispatch, () => saveRule(browserFetch, input))).row,
+    [scopedDispatch],
   );
 
   const toggle = useCallback(async (rule: AutomationRuleView) => {
-    await runMutation(browserFetch, dispatch, () => toggleRule(browserFetch, rule));
-  }, []);
+    await runMutation(browserFetch, scopedDispatch, () => toggleRule(browserFetch, rule));
+  }, [scopedDispatch]);
 
   const remove = useCallback(async (id: string) => {
-    await runMutation(browserFetch, dispatch, () => deleteRule(browserFetch, id));
-  }, []);
+    await runMutation(browserFetch, scopedDispatch, () => deleteRule(browserFetch, id));
+  }, [scopedDispatch]);
 
   const dryRun = useCallback((id: string, opportunityId: string | null) => dryRunRule(browserFetch, id, opportunityId), []);
+  const bulkDryRun = useCallback((id: string) => bulkDryRunRule(browserFetch, id), []);
 
-  return { ...state, reload: load, save, toggle, remove, dryRun };
+  return { ...(state.scope === orgId ? state : INITIAL_RULES_STATE), organizationId:orgId, reload: load, save, toggle, remove, dryRun, bulkDryRun };
 }
 
 export const fetchRuns = (ruleId?: string) => fetchRunsWith(browserFetch, ruleId);

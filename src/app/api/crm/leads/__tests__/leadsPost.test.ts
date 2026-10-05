@@ -44,11 +44,25 @@ let guion: Guion;
 /** Ficha creada por el alta (CRM ola 1: el lead ES el cliente; se relee y se actualiza). */
 let fichaCreada: Record<string, unknown> | null = null;
 
+interface LeadFakeQuery {
+  _payload?: unknown;
+  insert(payload: unknown): LeadFakeQuery;
+  update(payload: unknown): LeadFakeQuery;
+  in(): LeadFakeQuery;
+  select(columns?: string): LeadFakeQuery;
+  eq(): LeadFakeQuery;
+  order(): LeadFakeQuery;
+  limit(): LeadFakeQuery;
+  delete(): LeadFakeQuery;
+  maybeSingle(): Promise<{ data: Record<string, unknown> | null; error: null }>;
+  single(): Promise<{ data: unknown; error: unknown }>;
+}
+
 function fakeSupabase() {
   const make = (tabla: string) => {
     let esInsert = false;
     let esUpdate = false;
-    const chain: Record<string, unknown> = {
+    const chain: LeadFakeQuery = {
       insert(payload: unknown) {
         esInsert = true;
         (chain as { _payload?: unknown })._payload = payload;
@@ -90,7 +104,10 @@ function fakeSupabase() {
     };
     return chain;
   };
-  return { from: (tabla: string) => make(tabla) };
+  return { from: (tabla: string) => make(tabla), async rpc(name: string, args: { p_org: number; p_data: Record<string, unknown> }) {
+    if (name !== 'fn_crm_insertar_cliente_preparado') throw new Error(`RPC inesperada: ${name}`);
+    return make('customers').insert({ ...args.p_data, organization_id: args.p_org }).select('*').single();
+  } };
 }
 
 jest.mock('@/lib/utils/orgContext', () => ({

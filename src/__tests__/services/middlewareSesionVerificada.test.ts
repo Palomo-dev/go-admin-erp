@@ -22,6 +22,7 @@ import { NextRequest } from 'next/server';
 import type { NextFetchEvent } from 'next/server';
 import { SignJWT, generateKeyPair, exportJWK, type KeyLike } from 'jose';
 import { middleware } from '@/middleware';
+import { CRM_READ_TRACE_HEADER } from '@/lib/utils/crmReadTrace';
 import {
   verificarTokenAcceso,
   sesionHeredadaSoloEscritorio,
@@ -103,6 +104,45 @@ beforeEach(() => {
 afterEach(() => {
   global.fetch = originalFetch;
   jest.restoreAllMocks();
+});
+
+describe('middleware · trazas acotadas de lecturas CRM', () => {
+  it('correlaciona sesión y handler sin registrar cookie, token ni búsqueda', async () => {
+    const info = jest.spyOn(console, 'info').mockImplementation(() => undefined);
+    const token = await firmar({ sub: SUB });
+    const request = new NextRequest('https://app.goadmin.io/api/crm/voices/library?search=consulta-privada-fixture', {
+      headers: { cookie: cookieDe(token), [CRM_READ_TRACE_HEADER]: 'identificador-no-confiable' },
+    });
+    const res = await middleware(request, evento);
+    const id = res.headers.get(CRM_READ_TRACE_HEADER);
+    expect(pasa(res)).toBe(true);
+    expect(id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(res.headers.get(`x-middleware-request-${CRM_READ_TRACE_HEADER}`)).toBe(id);
+    const traces = info.mock.calls.filter(([name]) => name === '[crm/read]').map(([, value]) => value);
+    expect(traces.map(trace => trace.stage)).toEqual(['middleware-start', 'auth-start', 'auth-end', 'middleware-end', 'finish']);
+    expect(traces.every(trace => trace.requestId === id && trace.route === '/api/crm/voices/library')).toBe(true);
+    const printed = JSON.stringify(traces);
+    expect(printed).not.toContain(token);
+    expect(printed).not.toContain(SUB);
+    expect(printed).not.toContain('consulta-privada-fixture');
+    expect(printed).not.toContain('identificador-no-confiable');
+  });
+
+  it('mantiene 401 JSON sin sesión y sólo traza GET de las rutas previstas', async () => {
+    const info = jest.spyOn(console, 'info').mockImplementation(() => undefined);
+    const res = await middleware(peticion('/api/crm/voices/library'), evento);
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({ error: 'No autenticado', code: 'UNAUTHENTICATED' });
+    expect(res.headers.get(CRM_READ_TRACE_HEADER)).toBeTruthy();
+    expect(info.mock.calls.at(-1)?.[1]).toMatchObject({ stage: 'finish', status: 401 });
+    info.mockClear();
+    for (const request of [peticion('/api/crm/voices/library', { method: 'POST' }), peticion('/api/crm/calls')]) {
+      const response = await middleware(request, evento);
+      expect(response.status).toBe(401);
+      expect(response.headers.get(CRM_READ_TRACE_HEADER)).toBeNull();
+    }
+    expect(info).not.toHaveBeenCalled();
+  });
 });
 
 describe('middleware · la cookie de sesión se verifica de verdad', () => {

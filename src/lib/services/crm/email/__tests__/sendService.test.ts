@@ -14,9 +14,9 @@ jest.mock('../resendClient', () => ({
   getResendRateLimiter: () => ({ wait: async () => undefined }),
   getMasterResendKey: () => 're_master', getMasterResend: () => ({}),
 }));
-const resolveSenderMock = jest.fn(async (..._args: unknown[]) => ({
+const resolveSenderMock = jest.fn(async (...args: unknown[]) => { void args; return ({
   mode: 'org', domain: { id: 'dom-1', domain: 'crm.acme.co' }, from: 'ACME <ventas@crm.acme.co>', fromEmail: 'ventas@crm.acme.co', replyTo: null, apiKey: 're_dom', notice: null, receivingDomain: 'crm.acme.co', tracking: false,
-}));
+}); });
 jest.mock('../domainsService', () => ({ resolveSender: (...a: unknown[]) => resolveSenderMock(...a) }));
 
 import { enqueueJob } from '@/lib/jobs/enqueue';
@@ -83,12 +83,28 @@ function sendDb(opts: { canContact?: boolean } = {}) {
     if (c.table === 'templates') return { data: null, error: null };
     return { data: null, error: null };
   };
-  const { client, calls } = fakeSupabase(handler, async (fn) => ({ data: fn === 'fn_can_contact' ? opts.canContact !== false : null, error: null }));
+  const { client, calls } = fakeSupabase(handler, async (fn, args) => {
+    if (fn === 'crm_prepare_email_campaign_contact') {
+      const row = { ...(args.p_message as Record<string, unknown>), created_at: 'x', updated_at: 'x' };
+      rows.push(row); return { data: row, error: null };
+    }
+    return { data: fn === 'fn_can_contact' ? opts.canContact !== false : null, error: null };
+  });
   return { client, calls, rows, inserted, activities };
 }
 
 describe('sendEmail', () => {
   const actor = { userId: 'user-1', userEmail: 'ana@acme.co', orgName: 'ACME' };
+
+  it('preparación interna publica por RPC y no duplica activity ni envía al proveedor', async () => {
+    const d = sendDb();
+    const campaign = '11111111-0000-4000-8000-000000000001', contact = '22222222-0000-4000-8000-000000000001', token = '33333333-0000-4000-8000-000000000001';
+    const result = await sendEmail(5, actor, { to: ['c@x.co'], to_customer_id: 'cust-1', subject: 'Contenido', content: { html: '<p>Contenido</p>' }, campaign_id: campaign, client_request_id: `campaign:${campaign}:cust-1`, prepare_only: true, campaign_claim: { contact_id: contact, token } }, d.client);
+    expect(result.message.metadata).toMatchObject({ campaign_id: campaign, campaign_contact_id: contact });
+    expect(d.inserted).toHaveLength(0); expect(d.activities).toHaveLength(0);
+    expect(d.calls.some(c => c.table === 'activities')).toBe(false);
+    expect(sendMock).not.toHaveBeenCalled(); expect(enqueueJob).not.toHaveBeenCalled();
+  });
 
   it('inserta la fila (pending, idempotency email/{id}) y UNA activity antes de llamar a Resend con idempotencyKey', async () => {
     const { client, calls, rows, inserted, activities } = sendDb();

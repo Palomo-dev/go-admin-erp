@@ -21,6 +21,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { processStepRun } from '@/lib/services/crm/sequenceService';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -226,7 +228,7 @@ function makeDb(tables: Record<string, Record<string, any>[]>, opts: DbOpts = {}
     let limitN: number | null = null;
     let sortCol: string | null = null;
     let sortAsc = true;
-    let error: PgError | null = null;
+    const error: PgError | null = null;
 
     const matched = () => all(table).filter((r) => preds.every((p) => p(r)));
 
@@ -469,14 +471,65 @@ function makeDb(tables: Record<string, Record<string, any>[]>, opts: DbOpts = {}
     };
   };
 
+  /** Retira la inscripción y sus pasos pendientes en la misma operación. */
+  const exitRpc = (p: Record<string, any>): { data: any; error: PgError | null } => {
+    const enrollment = all('sequence_enrollments').find((e) => e.id === p.p_enrollment_id
+      && e.organization_id === p.p_org && ['active', 'paused'].includes(e.status));
+    if (!enrollment) return { data: null, error: null };
+    const enrollmentPatch = { status: 'exited', exited_at: new Date().toISOString(), exit_reason: p.p_reason ?? 'manual_unenroll' };
+    const runPatch = { status: 'skipped', result: { reason: `enrollment_${enrollmentPatch.exit_reason}` } };
+    const enrollmentUpdate = updateCounts.sequence_enrollments = (updateCounts.sequence_enrollments ?? 0) + 1;
+    const runUpdate = updateCounts.sequence_step_runs = (updateCounts.sequence_step_runs ?? 0) + 1;
+    const failure = opts.failUpdate?.('sequence_enrollments', enrollmentPatch, enrollmentUpdate)
+      ?? opts.failUpdate?.('sequence_step_runs', runPatch, runUpdate) ?? null;
+    if (failure) return { data: null, error: failure };
+    Object.assign(enrollment, enrollmentPatch);
+    for (const run of all('sequence_step_runs')) {
+      if (run.organization_id === p.p_org && run.enrollment_id === enrollment.id && run.status === 'pending') Object.assign(run, runPatch);
+    }
+    return { data: { ...enrollment }, error: null };
+  };
+
+  /** Transporte de configuración atómica; la autorización y los locks SQL tienen un gate aislado propio. */
+  const createSequenceRpc = (p: Record<string, any>): { data: any; error: PgError | null } => {
+    const { steps = [], ...input } = p.p_input;
+    const sequence = withDefaults('sequences', { ...input, id: nextId(), organization_id: p.p_org });
+    const rows = steps.map((step: Record<string, unknown>) => withDefaults('sequence_steps', {
+      ...step, id: nextId(), sequence_id: sequence.id, organization_id: p.p_org,
+    }));
+    const error = validateRow('sequences', sequence)
+      ?? rows.map((row: Record<string, unknown>) => validateRow('sequence_steps', row)).find(Boolean) ?? null;
+    if (error) return { data: null, error };
+    all('sequences').push(sequence);
+    all('sequence_steps').push(...rows);
+    return { data: { ...sequence, steps: rows.sort((a: Record<string, any>, b: Record<string, any>) => a.step_number - b.step_number) }, error: null };
+  };
+
+  const deleteSequenceRpc = (p: Record<string, any>): { data: any; error: PgError | null } => {
+    const sequence = all('sequences').find((row) => row.id === p.p_sequence_id && row.organization_id === p.p_org);
+    if (!sequence) return { data: false, error: null };
+    if (all('sequence_enrollments').some((row) => row.sequence_id === sequence.id)) {
+      return { data: null, error: raisedException('secuencia_con_historial') };
+    }
+    tables.sequence_steps = all('sequence_steps').filter((row) => row.sequence_id !== sequence.id);
+    tables.sequences = all('sequences').filter((row) => row.id !== sequence.id);
+    return { data: true, error: null };
+  };
+
   const rpc = (name: string, params: Record<string, any>) => {
-    const result = name === 'fn_enroll_in_sequence'
+    const result = name === 'fn_crm_create_sequence'
+      ? createSequenceRpc(params)
+      : name === 'fn_crm_delete_sequence'
+        ? deleteSequenceRpc(params)
+      : name === 'fn_enroll_in_sequence'
       ? enrollRpc(params)
       : name === 'fn_enqueue_job'
         ? enqueueRpc(params)
         : name === 'fn_resume_sequence_enrollment'
           ? resumeRpc(params)
-          : name === 'fn_create_org_notification'
+          : name === 'fn_exit_sequence_enrollment'
+            ? exitRpc(params)
+            : name === 'fn_create_org_notification'
             ? { data: nextId(), error: null }
             : name === 'fn_pause_sequences_on_reply'
               ? { data: 0, error: null }
@@ -491,7 +544,7 @@ const ORG = 125;
 const OTHER_ORG = 999;
 
 const readSrc = (file: string) =>
-  require('fs').readFileSync(require('path').join(process.cwd(), 'src/lib/services/crm', file), 'utf8') as string;
+  readFileSync(join(process.cwd(), 'src/lib/services/crm', file), 'utf8');
 
 function baseTables() {
   return {

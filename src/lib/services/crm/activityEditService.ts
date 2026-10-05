@@ -13,6 +13,7 @@
  */
 
 import { z } from 'zod';
+import { esActividadDeLlamada, esReunionDeCalendario } from './actividadAdministrada';
 import { CRM_PERMISOS, CrmHttpError, tienePermisoCrm, type CrmSesion } from './crmRouteSupport';
 
 export const actividadEdicionSchema = z
@@ -41,6 +42,8 @@ interface FilaAutoria {
   id: string;
   user_id: string | null;
   activity_type?: string | null;
+  call_id?: string | null;
+  metadata?: unknown;
 }
 
 /**
@@ -49,7 +52,7 @@ interface FilaAutoria {
  * falta `edit_any`.
  */
 export async function exigirAutoria(ctx: CrmSesion, tabla: TablaAutoria, id: string, etiqueta: string): Promise<FilaAutoria> {
-  const columnas = tabla === 'activities' ? 'id, user_id, activity_type' : 'id, user_id';
+  const columnas = tabla === 'activities' ? 'id, user_id, activity_type, call_id, metadata' : 'id, user_id';
   const { data, error } = await ctx.supabase.from(tabla).select(columnas).eq('id', id).eq('organization_id', ctx.organizationId).maybeSingle();
   if (error) throw error;
   if (!data) throw new CrmHttpError(404, 'no_encontrada', tabla === 'activities' ? 'Actividad no encontrada' : 'Nota no encontrada');
@@ -60,6 +63,12 @@ export async function exigirAutoria(ctx: CrmSesion, tabla: TablaAutoria, id: str
   if (fila.user_id !== ctx.userId && !(await tienePermisoCrm(ctx, CRM_PERMISOS.actividadesEditarCualquiera))) {
     console.warn('[crm] %s sobre registro ajeno sin crm.activities.edit_any (org %s)', etiqueta, ctx.organizationId);
     throw new CrmHttpError(403, 'no_es_propia', 'Solo puedes modificar lo que registraste tú');
+  }
+  if (tabla === 'activities' && esReunionDeCalendario(fila)) {
+    throw new CrmHttpError(409, 'reunion_administrada', 'Esta reunión se modifica desde su ficha para mantener el calendario y el historial sincronizados');
+  }
+  if (tabla === 'activities' && esActividadDeLlamada(fila)) {
+    throw new CrmHttpError(409, 'llamada_administrada', 'Esta llamada se modifica desde su ficha para mantener el resultado y el historial sincronizados');
   }
   return fila;
 }

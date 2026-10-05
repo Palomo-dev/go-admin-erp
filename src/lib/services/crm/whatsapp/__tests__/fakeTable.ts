@@ -5,7 +5,7 @@
  * esta evalúa DE VERDAD los filtros (`eq`, `neq`, `is`, `in`, `ilike`, `or`,
  * `filter(…, 'match'|'imatch', …)`, `gt`, `gte`, `lt`, `lte`, incluidos los
  * operadores JSON `metadata->>campo`), los `order` (varios, en cadena) y el
- * `limit`, y APLICA los `update` sobre las filas.
+ * `range`/`limit`, y APLICA los `update` sobre las filas.
  *
  * Sin esto no hay prueba que muerda: si el doble de `customers` devuelve el
  * mismo cliente para CUALQUIER consulta, el camino rápido de
@@ -205,6 +205,8 @@ export function fakeTable(initial: Row[] = [], options: FakeTableOptions = {}): 
         return 0;
       });
     }
+    const range = ops.find((o) => o.method === 'range');
+    if (range) out = out.slice(Number(range.args[0]), Number(range.args[1]) + 1);
     const lim = ops.find((o) => o.method === 'limit');
     if (lim) out = out.slice(0, Number(lim.args[0]));
     const count = ops.some((o) => o.method === 'select' && (o.args[1] as { count?: string } | undefined)?.count) ? out.length : undefined;

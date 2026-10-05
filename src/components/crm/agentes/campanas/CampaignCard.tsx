@@ -76,7 +76,7 @@ export function CampaignCard({ campaign: c, stages, pipelines, busy, onActivate,
             size="sm"
             variant="outline"
             className="w-full sm:w-auto"
-            disabled={busy}
+            disabled={busy || c.status === "completed"}
             onClick={() => onActivate(c)}
           >
             {busy ? (
@@ -91,7 +91,7 @@ export function CampaignCard({ campaign: c, stages, pipelines, busy, onActivate,
             size="sm"
             variant="destructive"
             className="w-full sm:w-auto"
-            disabled={busy}
+            disabled={busy || c.status === "completed"}
             onClick={() => onStop(c)}
           >
             {busy ? (

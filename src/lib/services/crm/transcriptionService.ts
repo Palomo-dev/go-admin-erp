@@ -1217,7 +1217,8 @@ export async function getTranscript(callId: string, orgId: number, supabase: Sup
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (error || !transcript) return null;
+  if (error) throw error;
+  if (!transcript) return null;
   const transcriptData = transcript as CallTranscript;
   if (!withSegments) return transcriptData;
 
@@ -1227,7 +1228,7 @@ export async function getTranscript(callId: string, orgId: number, supabase: Sup
     .eq('transcript_id', transcriptData.id)
     .eq('organization_id', orgId)
     .order('start_ms', { ascending: true });
-  if (segError) console.warn('[transcriptionService] Error obteniendo segmentos:', segError.message);
+  if (segError) throw segError;
   return { ...transcriptData, segments: (segments as CallTranscriptSegment[]) || [] };
 }
 

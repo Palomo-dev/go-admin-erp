@@ -1,4 +1,5 @@
 'use client';
+import { useSequenceText } from './useSequenceText';
 
 /**
  * Bifurcación de un paso `condition` en la línea de tiempo (brief UX 6.3):
@@ -20,21 +21,21 @@ interface Props {
 }
 
 export function StepBranch({ value, stepNumber, isLast, disabled, onChange }: Props) {
+ const tr=useSequenceText();
   return (
     <div className="mt-2">
-      <ConditionEditor value={value} stepLabel={`paso ${stepNumber}`} disabled={disabled} onChange={onChange} />
-      <ul className="mt-2 grid gap-2 sm:grid-cols-2" aria-label={`Ramas del paso ${stepNumber}`}>
+      <ConditionEditor value={value} stepLabel={tr("paso {p0}",{p0:stepNumber})} disabled={disabled} onChange={onChange} />
+      <ul className="mt-2 grid gap-2 sm:grid-cols-2" aria-label={tr("Ramas del paso {p0}",{p0:stepNumber})}>
         <li className="flex items-start gap-2 rounded-md border-l-4 border-emerald-600 bg-emerald-50 p-2 text-sm text-emerald-900 dark:border-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-100">
-          <ArrowDownRight className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <ArrowDownRight strokeWidth={1.5} className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>
-            <strong>Se cumple:</strong> {isLast ? 'la secuencia termina.' : `continúa al paso ${stepNumber + 1}.`}
+            <strong>{tr("Se cumple:")}</strong> {isLast ? tr("la secuencia termina.") : tr("continúa al paso {p0}.",{p0:stepNumber + 1})}
           </span>
         </li>
         <li className="flex items-start gap-2 rounded-md border-l-4 border-red-600 bg-red-50 p-2 text-sm text-red-900 dark:border-red-500 dark:bg-red-950/40 dark:text-red-100">
-          <Scissors className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <Scissors strokeWidth={1.5} className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>
-            <strong>No se cumple</strong> (o no se puede evaluar): se corta aquí y no sale nada más.
-          </span>
+            <strong>{tr("No se cumple")}</strong> {tr("(o no se puede evaluar): se corta aquí y no sale nada más.")}</span>
         </li>
       </ul>
     </div>

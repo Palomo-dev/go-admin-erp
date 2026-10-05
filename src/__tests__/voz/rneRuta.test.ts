@@ -13,6 +13,8 @@
  */
 
 import { NextRequest } from 'next/server';
+import { fakeSupabase, makeDb } from '@/app/api/crm/__tests__/ola1Fake';
+let userClient: ReturnType<typeof fakeSupabase>;
 
 const { OrgContextError } = jest.requireActual<typeof import('@/lib/utils/orgContextError')>('@/lib/utils/orgContextError');
 const { readOrgBody } = jest.requireActual<typeof import('@/lib/security/organizationBody')>('@/lib/security/organizationBody');
@@ -22,7 +24,7 @@ const sesion: { ctx: Record<string, unknown> | null; admin: boolean } = { ctx: n
 jest.mock('@/lib/utils/orgContext', () => ({
   OrgContextError,
   readOrgBody,
-  hasOrgAdminOrPermission: jest.fn(async () => sesion.admin),
+  hasOrgAdminOrPermission: jest.fn(async (_ctx: unknown, code: string) => code === 'crm.opportunities.view' || sesion.admin),
   withOrg:
     (handler: (ctx: unknown, req: Request, rp: unknown) => Promise<Response>, opts?: { admin?: boolean }) =>
     async (req: Request, rp: unknown) => {
@@ -69,13 +71,34 @@ const post = (body: unknown, id = CAMPANA) =>
   POST(new NextRequest(url(id), { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } }), rp(id));
 
 beforeEach(() => {
-  sesion.ctx = { organizationId: 7, userId: 'u-1', supabase: { user: true } };
+  userClient = fakeSupabase(makeDb({ voice_agent_campaigns: [{ id: CAMPANA, organization_id: 7 }] }));
+  sesion.ctx = { organizationId: 7, userId: 'u-1', supabase: userClient };
   sesion.admin = true;
   registrar.mockReset();
   ultima.mockReset();
 });
 
 describe('GET', () => {
+  test.each(['organization_id=999', 'organizationId=999', 'orgId=999', 'org_id=999', 'organization_id=7&organization_id=999'])('organización ajena en query se rechaza antes de consultar RNE: %s', async query => {
+    const res = await GET(new NextRequest(url() + '?' + query), rp());
+    expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe('FOREIGN_ORGANIZATION');
+    expect(ultima).not.toHaveBeenCalled();
+  });
+  test.each([
+    { evidence_available: false, audience_unchanged: false, changed_targets: 0 },
+    { evidence_available: true, audience_unchanged: false, changed_targets: 1 },
+  ])('una fecha futura no habilita una constancia sin evidencia válida: %j', async evidence => {
+    ultima.mockResolvedValue({ valid_until: '2999-01-01T00:00:00Z', numbers_in_file: 2, ...evidence });
+    const res = await GET(new NextRequest(url()), rp());
+    expect(res.status).toBe(200);
+    expect((await res.json()).data.vigente).toBe(false);
+  });
+  test('una constancia futura con cero números no habilita llamadas', async () => {
+    ultima.mockResolvedValue({ valid_until: '2999-01-01T00:00:00Z', numbers_in_file: 0 });
+    const res = await GET(new NextRequest(url()), rp());
+    expect((await res.json()).data.vigente).toBe(false);
+  });
   test('sin sesión → 401', async () => {
     sesion.ctx = null;
     const res = await GET(new NextRequest(url()), rp());
@@ -85,11 +108,11 @@ describe('GET', () => {
 
   test('miembro: devuelve la última verificación con la organización de la sesión y el permiso del servidor', async () => {
     sesion.admin = false;
-    ultima.mockResolvedValue({ id: 'c1', valid_until: '2999-01-01T00:00:00Z', checked_at: '2026-09-30T00:00:00Z' });
+    ultima.mockResolvedValue({ id: 'c1', valid_until: '2999-01-01T00:00:00Z', checked_at: '2026-09-30T00:00:00Z', numbers_in_file: 2 });
     const res = await GET(new NextRequest(url()), rp());
     const body = await res.json();
     expect(res.status).toBe(200);
-    expect(ultima).toHaveBeenCalledWith({ user: true }, 7, CAMPANA);
+    expect(ultima).toHaveBeenCalledWith(userClient, 7, CAMPANA);
     expect(body.data.vigente).toBe(true);
     expect(body.puede_verificar).toBe(false);
   });

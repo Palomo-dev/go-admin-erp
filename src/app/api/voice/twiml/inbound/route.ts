@@ -5,6 +5,9 @@ import { resolveInboundTargets } from '@/lib/services/crm/phoneNumberService';
 import { buildInboundTwiml, buildHangupTwiml, buildCallbackUrl, xmlResponse, CONSENT_LANGUAGE } from '@/lib/services/crm/twimlBuilders';
 import { isBridgeSigningConfigured, signConsentToken, verifyConsentToken } from '@/lib/services/crm/bridgeTokens';
 import { recordConsent } from '@/lib/services/crm/consentService';
+import { updateCall } from '@/lib/services/crm/callManagementService';
+import { phoneConferenceEnabled, readPhonePack, preparePhonePack } from '@/lib/services/crm/phoneConferenceRepository';
+import { startInboundPhoneConference } from '@/lib/services/crm/phoneConferenceStart';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -94,6 +97,7 @@ export async function POST(request: Request) {
       return new Response('Forbidden', { status: 403 });
     }
     const settings = await getTelephonySettings(orgId, sb);
+    if (phoneConferenceEnabled() && !isBridgeSigningConfigured()) return xmlResponse(buildHangupTwiml('La telefonía aún no está disponible. Por favor intente más tarde.'));
     // Sin secreto de firma no hay acta posible → no se graba (ver cabecera).
     // Sin `CallSid` el token no se puede ligar a nada: `verifyConsentToken`
     // devolvería `false` siempre y la segunda pasada volvería a emitir el
@@ -112,6 +116,7 @@ export async function POST(request: Request) {
     const { data: existing } = await sb.from('calls').select('id, recording_enabled').eq('organization_id', orgId).eq('provider_call_sid', callSid).maybeSingle();
     const existingRow = existing as { id: string; recording_enabled: boolean | null } | null;
     let callId = existingRow?.id ?? null;
+    const nativeConference = phoneConferenceEnabled() && (!existingRow || Boolean(await readPhonePack(sb, orgId, existingRow.id)));
     /**
      * Lo que de verdad va a llevar el TwiML: cae a `false` si el acta falla.
      * Con fila YA creada manda la fila (N-6, ronda 6): si una pasada anterior
@@ -157,6 +162,7 @@ export async function POST(request: Request) {
         .single();
       if (error) throw new Error(`calls insert: ${error.message}`);
       callId = (created as { id: string }).id;
+      if (nativeConference) await preparePhonePack(sb, orgId, callId);
     }
 
     // F-3 (ronda 7, gemelo de N-2): sin agentes conectados `buildInboundTwiml`
@@ -190,10 +196,15 @@ export async function POST(request: Request) {
       } catch (err) {
         console.error('[TwiML Inbound] sin acta no se graba:', err instanceof Error ? err.message : err, { orgId });
         recordNow = false;
-        await sb.from('calls').update({ recording_enabled: false }).eq('id', callId).eq('organization_id', orgId);
+        const saved = await updateCall(callId, orgId, { recording_enabled: false }, sb);
+        if (!saved) throw new Error('La llamada dejó de estar disponible al desactivar la grabación');
       }
     }
 
+    if (nativeConference && (announced || !recordNow)) {
+      const document = await startInboundPhoneConference(sb, orgId, callId!, targets.userIds);
+      return xmlResponse(document);
+    }
     return xmlResponse(
       buildInboundTwiml({
         origin,

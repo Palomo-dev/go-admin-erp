@@ -36,6 +36,7 @@ import {
   type VoiceAgentCampaign,
 } from './voiceAgentService';
 import { getMasterPhoneNumber } from '@/lib/services/integrations/twilio/twilioConfig';
+import { DEFAULT_VOICE_CAMPAIGN_LIMITS } from '@/lib/crm/voiceCampaignLimits';
 
 /** Código estable del motivo; la UI traduce por él, nunca por el texto. */
 export type MotivoCodigo =
@@ -76,6 +77,8 @@ export interface DiagnosticoCampana {
 }
 
 export interface DiagnosticoVoz {
+  /** Cupo configurado en la organización; nunca se cambia al crear una campaña. */
+  maxConcurrentCalls?: number;
   /** Motivos de la organización: bloquean TODAS las campañas. */
   organizacion: Motivo[];
   campanas: DiagnosticoCampana[];
@@ -172,6 +175,7 @@ export async function diagnosticarCampanasDeVoz(
     .from('voice_agent_campaigns')
     .select('*')
     .eq('organization_id', orgId)
+    .is('stats->>archived_at', null)
     .order('updated_at', { ascending: false })
     .limit(50);
   if (campRes.error) throw new Error(`voice_agent_campaigns: ${campRes.error.message}`);
@@ -194,7 +198,7 @@ export async function diagnosticarCampanasDeVoz(
   const puedeLlamar =
     !organizacion.some((m) => m.bloquea) && campanas.some((c) => c.motivos.every((m) => !m.bloquea));
 
-  return { organizacion, campanas, puedeLlamar };
+  return { organizacion, campanas, puedeLlamar, maxConcurrentCalls: settings.maxConcurrentCalls };
 }
 
 async function diagnosticarUna(
@@ -237,8 +241,8 @@ async function diagnosticarUna(
     countAttempts(supabase, campaign.id, diaIso),
     countAttempts(supabase, campaign.id, horaIso),
   ]);
-  const topeDia = campaign.max_calls_per_day || 50;
-  const topeHora = campaign.max_calls_per_hour || 20;
+  const topeDia = campaign.max_calls_per_day ?? DEFAULT_VOICE_CAMPAIGN_LIMITS.max_calls_per_day;
+  const topeHora = campaign.max_calls_per_hour ?? DEFAULT_VOICE_CAMPAIGN_LIMITS.max_calls_per_hour;
   if (hoy >= topeDia) motivos.push({ codigo: 'tope_diario', bloquea: true, datos: { hechos: hoy, tope: topeDia } });
   if (ultimaHora >= topeHora)
     motivos.push({ codigo: 'tope_hora', bloquea: true, datos: { hechos: ultimaHora, tope: topeHora } });

@@ -91,7 +91,12 @@ describe('contrato de fuente (r2)', () => {
     const page = read(`${UI}/RevenueOsPage.tsx`);
     expect(page).toMatch(/pipelineNames=\{data\.pipeline_names\}/);
     expect(page).toMatch(/SIN_MONEDA/);
-    expect((page.match(/currency=\{currency\}/g) ?? []).length).toBeGreaterThanOrEqual(5);
+    // El pronóstico ahora tiene su propio snapshot de moneda. Los cuatro
+    // paneles monetarios de Revenue OS conservan la moneda del dashboard.
+    for (const component of ['KpiTiles', 'RevenueTrendChart', 'FunnelPanel', 'RevenueMathPanel']) {
+      const element = page.match(new RegExp(`<${component}\\b[\\s\\S]*?/>`))?.[0];
+      expect(element).toMatch(/currency=\{currency\}/);
+    }
     const hook = read(`${UI}/useRevenueDashboard.ts`);
     expect(hook).toMatch(/data: null, loading: false, error: describeError\(err\)/);
   });

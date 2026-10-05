@@ -26,6 +26,8 @@ import { initCrashReporter } from './crashReporter';
 import { initConnectivity, stopConnectivity } from './connectivity';
 import { webServer } from './webServer';
 import { initTheme } from './theme';
+import { registerPhoneIpc, attachPhoneControllerLifecycle } from './phoneIpc';
+import { closePhoneWindow } from './windows/phoneWindow';
 
 let quitting = false;
 
@@ -88,6 +90,7 @@ if (!gotLock) {
     );
 
     registerIpcHandlers();
+    registerPhoneIpc();
     registerToolbarIpc();
     // Pantalla del cliente del POS: relé de mensajes + ventana secundaria.
     registerPosDisplayIpc();
@@ -125,6 +128,8 @@ if (!gotLock) {
     }
 
     const mainWindow = createMainWindow();
+    attachPhoneControllerLifecycle();
+    app.once('before-quit', closePhoneWindow);
     createTray(mainWindow);
     // Con la ventana ya creada: apertura automática si está habilitada,
     // seguimiento de monitores y atajo global Ctrl+Shift+D.

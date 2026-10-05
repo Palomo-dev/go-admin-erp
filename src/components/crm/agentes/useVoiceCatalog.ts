@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * useVoiceCatalog — estado compartido del catálogo de voces (FASE 06).
+ * useVoiceCatalog — lectura canónica del catálogo de voces (FASE 06).
  *
  * Lo usan la pestaña «Voces» (`VoicesPanel`) y la pestaña «Voz» del editor de
  * agente (`AgentEditorDialog`), para que ambas pinten la MISMA lista, el mismo
@@ -20,6 +20,10 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getOrganizationId, ORGANIZATION_CHANGED_EVENT } from "@/lib/hooks/useOrganization";
+import { fetchJson } from "@/lib/utils/fetchJson";
+import { tiempoLecturaCrm } from "@/lib/utils/crmReadTimeout";
+import { describeError } from "@/lib/utils/errorMessage";
 import { libraryLabel, type LibraryTagKey } from "@/lib/services/crm/voiceLibrary";
 
 export interface VoiceCatalogRow {
@@ -82,8 +86,10 @@ export interface VoiceCatalogState {
   /** Error real de la lectura del catálogo (nunca se traga). */
   error: string | null;
   tts: TtsCredentialStatus;
+  /** Comprobación pendiente; no implica un fallo del registry. */
+  ttsLoading: boolean;
   account: VoiceAccountInfo | null;
-  reload: () => Promise<void>;
+  reload: (options?: { force?: boolean }) => Promise<void>;
 }
 
 export function useVoiceCatalog(): VoiceCatalogState {
@@ -92,57 +98,94 @@ export function useVoiceCatalog(): VoiceCatalogState {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tts, setTts] = useState<TtsCredentialStatus>(TTS_UNKNOWN);
+  const [ttsLoading, setTtsLoading] = useState(true);
   const [account, setAccount] = useState<VoiceAccountInfo | null>(null);
   const loadedOnce = useRef(false);
+  const readFailed = useRef(false);
+  const revision = useRef(0);
+  const controllerRef = useRef<AbortController | null>(null);
+  const pending = useRef<{ scope: number; promise: Promise<void> } | null>(null);
 
-  const reload = useCallback(async () => {
+  const invalidate = useCallback(() => {
+    revision.current++;
+    controllerRef.current?.abort();
+    pending.current = null;
+  }, []);
+
+  const reload = useCallback((reloadOptions?: { force?: boolean }): Promise<void> => {
+    const scope = getOrganizationId();
+    // Dos clics o callbacks simultáneos comparten la lectura de esta instancia.
+    if (!reloadOptions?.force && !readFailed.current && pending.current?.scope === scope && !controllerRef.current?.signal.aborted) return pending.current.promise;
+    controllerRef.current?.abort();
+    const controller = new AbortController(), current = ++revision.current;
+    controllerRef.current = controller;
+    const active = () => current === revision.current && !controller.signal.aborted && scope === getOrganizationId();
     if (loadedOnce.current) setRefreshing(true);
     else setLoading(true);
+    readFailed.current = false;
     setError(null);
-    try {
-      const res = await fetch("/api/crm/voices", { cache: "no-store" });
-      const json = await res.json().catch(() => null);
-      if (!res.ok || !json?.success) throw new Error(json?.error || `Error ${res.status} al leer el catálogo de voces`);
-      setVoices((json.data ?? []) as VoiceCatalogRow[]);
-      setAccount((json.account as VoiceAccountInfo | null | undefined) ?? null);
-      loadedOnce.current = true;
-    } catch (err) {
-      setVoices([]);
-      loadedOnce.current = false;
-      setError(err instanceof Error ? err.message : "Error desconocido");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-
-    // El estado de la credencial es informativo: si falla, se declara "no se pudo
-    // comprobar" en vez de afirmar que no hay clave.
-    try {
-      const res = await fetch("/api/crm/config/providers?category=tts", { cache: "no-store", credentials: "include" });
-      const json = await res.json().catch(() => null);
-      if (!res.ok || !json?.success) throw new Error(json?.error || `Error ${res.status}`);
-      const items = (json.items ?? []) as ProviderItem[];
-      const own = items.filter((i) => i.configured).map((i) => i.provider);
-      const platform = items.filter((i) => !i.configured && i.platform_available).map((i) => i.provider);
-      setTts({ ready: own.length > 0 || platform.length > 0, ownProviders: own, platformProviders: platform, unknown: false });
-    } catch {
-      setTts(TTS_UNKNOWN);
-    }
+    setTtsLoading(true);
+    const options = { cache: "no-store" as const, credentials: "include" as const, signal: controller.signal, timeoutMs: tiempoLecturaCrm() };
+    const catalog = async () => {
+      try {
+        const json = await fetchJson<{ success?: boolean; error?: string; data?: VoiceCatalogRow[]; account?: VoiceAccountInfo | null }>("/api/crm/voices", options);
+        if (!active()) return;
+        if (!json?.success || !Array.isArray(json.data)) throw new Error(json?.error || "La respuesta del catálogo de voces no indicó éxito");
+        setVoices(json.data);
+        setAccount(json.account ?? null);
+        loadedOnce.current = true;
+      } catch (err) {
+        if (!active()) return;
+        readFailed.current = true;
+        setVoices([]);
+        setAccount(null);
+        loadedOnce.current = false;
+        setError(describeError(err));
+      } finally {
+        if (active()) { setLoading(false); setRefreshing(false); }
+      }
+    };
+    const providers = async () => {
+      try {
+        const json = await fetchJson<{ success?: boolean; error?: string; items?: ProviderItem[] }>("/api/crm/config/providers?category=tts", options);
+        if (!active()) return;
+        if (!json?.success || !Array.isArray(json.items)) throw new Error(json?.error || "La respuesta de proveedores no indicó éxito");
+        const own = json.items.filter((i) => i.configured).map((i) => i.provider);
+        const platform = json.items.filter((i) => !i.configured && i.platform_available).map((i) => i.provider);
+        setTts({ ready: own.length > 0 || platform.length > 0, ownProviders: own, platformProviders: platform, unknown: false });
+      } catch {
+        if (active()) { readFailed.current = true; setTts(TTS_UNKNOWN); }
+      } finally {
+        if (active()) setTtsLoading(false);
+      }
+    };
+    // Una lectura lenta del proveedor no bloquea la comprobación de credenciales.
+    const promise = Promise.all([catalog(), providers()]).then(() => undefined).finally(() => {
+      if (current === revision.current) pending.current = null;
+    });
+    pending.current = { scope, promise };
+    return promise;
   }, []);
 
   useEffect(() => {
+    const reset = () => {
+      invalidate();
+      loadedOnce.current = false;
+      setVoices([]); setAccount(null); setTts(TTS_UNKNOWN); setError(null);
+      void reload();
+    };
     void reload();
-  }, [reload]);
+    window.addEventListener(ORGANIZATION_CHANGED_EVENT, reset);
+    return () => {
+      invalidate();
+      window.removeEventListener(ORGANIZATION_CHANGED_EVENT, reset);
+    };
+  }, [reload, invalidate]);
 
   return {
     voices,
     defaultVoice: voices.find((v) => v.is_default && v.is_active) ?? null,
-    loading,
-    refreshing,
-    error,
-    tts,
-    account,
-    reload,
+    loading, refreshing, error, tts, ttsLoading, account, reload,
   };
 }
 

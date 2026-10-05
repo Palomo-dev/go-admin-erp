@@ -1,33 +1,19 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { shouldWriteSnapshot, type HealthBand, type HealthRpcRow } from '@/lib/services/crm/healthBands';
+import { shouldWriteSnapshot, type HealthRpcRow } from '@/lib/services/crm/healthBands';
 import {
-  applyHealthScores,
   indicatorsOf,
   scoreOf,
   settingsFromRow,
   type HealthConfigRowLite,
   type OrgHealthSettings,
 } from '@/lib/services/crm/healthScoreServer';
+import { guardarMedicionesSalud, leerBaseMedicionesSalud } from '@/lib/services/crm/healthMutationService';
 import { listCrmActiveOrgIds } from '../scheduledOrgs';
 import type { JobLogger } from '../types';
 
-/**
- * F11 — tarea programada EN PROCESO `health_recalculate` (no es un
- * `outbound_jobs.kind`; el CHECK real no lo admite y no hay migraciones).
- *
- * r2 (tester r1: ~23 s para 49 orgs frente a 10 s; sin rotación):
- *  - las configs de TODAS las orgs se leen en una consulta;
- *  - por org, en paralelo: `fn_customer_health(org, NULL)`, los snapshots de
- *    la ventana del intervalo y `customers.health_score` actual (1 ida y
- *    vuelta de reloj, ~70 ms iad1↔us-west-1, en vez de 3);
- *  - snapshots en lotes de 200 SOLO si cambió el score o venció el intervalo;
- *  - `customers.health_score` por lotes y SOLO si cambió (`applyHealthScores`);
- *  - orden «menos recientemente procesada» (último snapshot por org) para que
- *    las que no cupieron ayer vayan primero hoy;
- *  - presupuesto propio (`budgetMs`, reloj inyectable) además del `AbortSignal`;
- *    al abortar, `pending_org_ids` lista lo que quedó sin procesar.
- * Una organización que falla queda en `by_org[].error` y no detiene al resto.
- */
+/** Salud comparte cálculo con «Medir ahora». Cada lote guarda score y snapshot
+ * en una única RPC; la última medición se lee por cliente sin truncar historial.
+ * La rotación y el presupuesto permiten retomar las organizaciones pendientes. */
 
 export interface HealthRecalcOrgResult {
   org_id: number;
@@ -63,12 +49,6 @@ export interface HealthRecalcOptions {
   clock?: () => number;
 }
 
-interface SnapshotLiteRow {
-  customer_id: string;
-  score: number;
-  created_at: string;
-}
-
 const INSERT_CHUNK = 200;
 const ROTATION_WINDOW_DAYS = 7;
 const ROTATION_SCAN_LIMIT = 5000;
@@ -77,21 +57,11 @@ function errorMessage(err: unknown): string {
   return (err instanceof Error ? err.message : String(err)).slice(0, 500);
 }
 
-/** Último snapshot por cliente dentro de la ventana (las filas llegan descendentes). */
-function latestInWindow(rows: SnapshotLiteRow[]): Map<string, SnapshotLiteRow> {
-  const out = new Map<string, SnapshotLiteRow>();
-  for (const r of rows) {
-    const cur = out.get(r.customer_id);
-    if (!cur || Date.parse(r.created_at) > Date.parse(cur.created_at)) out.set(r.customer_id, r);
-  }
-  return out;
-}
-
 export async function recalculateOrgHealth(
   orgId: number,
   sb: SupabaseClient,
   now: Date,
-  opts: { settings?: OrgHealthSettings; clock?: () => number } = {},
+  opts: { settings?: OrgHealthSettings; clock?: () => number; signal?: AbortSignal } = {},
 ): Promise<HealthRecalcOrgResult> {
   const clock = opts.clock ?? Date.now;
   const started = clock();
@@ -102,57 +72,35 @@ export async function recalculateOrgHealth(
   if (!settings) {
     const { data: cfgRow, error: cfgErr } = await sb
       .from('health_score_configs')
-      .select('organization_id, config, refresh_interval_hours, is_active')
+      .select('organization_id, config, refresh_interval_hours, is_active, updated_at')
       .eq('organization_id', orgId)
       .maybeSingle();
     if (cfgErr) throw new Error(`health_score_configs: ${cfgErr.message}`);
     settings = settingsFromRow((cfgRow as HealthConfigRowLite | null) ?? null);
   }
   if (!settings.active) return { ...done(), reason: 'config_inactive' };
-  const windowStart = new Date(now.getTime() - settings.refreshIntervalHours * 3600e3).toISOString();
-
-  // Lecturas en paralelo: una ida y vuelta de reloj en vez de tres.
-  const [rpc, snaps, customers] = await Promise.all([
-    sb.rpc('fn_customer_health', { p_org_id: orgId, p_customer_id: null }),
-    sb.from('health_score_snapshots').select('customer_id, score, created_at').eq('organization_id', orgId).gte('created_at', windowStart).order('created_at', { ascending: false }).limit(ROTATION_SCAN_LIMIT),
-    sb.from('customers').select('id, health_score').eq('organization_id', orgId).eq('lifecycle_stage', 'customer').limit(ROTATION_SCAN_LIMIT),
-  ]);
+  const rpc = await sb.rpc('fn_customer_health', { p_org_id: orgId, p_customer_id: null });
   if (rpc.error) throw new Error(`fn_customer_health: ${rpc.error.message}`);
-  if (snaps.error) throw new Error(`health_score_snapshots: ${snaps.error.message}`);
-  if (customers.error) throw new Error(`customers: ${customers.error.message}`);
   const rows = (Array.isArray(rpc.data) ? rpc.data : rpc.data ? [rpc.data] : []) as HealthRpcRow[];
   out.customers = rows.length;
-  if (rows.length === 0) return done();
-
-  // Fuera de la ventana el intervalo ya venció: `last=null` ⇒ se escribe (misma regla que `shouldWriteSnapshot`).
-  const latest = latestInWindow((snaps.data ?? []) as SnapshotLiteRow[]);
-  const current = new Map<string, number | null>();
-  for (const c of (customers.data ?? []) as Array<{ id: string; health_score: number | null }>) current.set(c.id, c.health_score);
-
-  const inserts: Array<{ organization_id: number; customer_id: string; score: number; band: HealthBand; indicators: Record<string, number | null>; created_at: string }> = [];
-  const createdAt = now.toISOString();
-  const changes: Array<{ customer_id: string; score: number }> = [];
-  for (const row of rows) {
-    if (!row.customer_id) continue;
-    const { score, band } = scoreOf(row, settings.config);
-    if (current.get(row.customer_id) !== score) changes.push({ customer_id: row.customer_id, score });
-    const last = latest.get(row.customer_id) ?? null;
-    if (!shouldWriteSnapshot({ last, score, now, refreshIntervalHours: settings.refreshIntervalHours })) {
-      out.skipped_unchanged += 1;
-      continue;
-    }
-    inserts.push({ organization_id: orgId, customer_id: row.customer_id, score, band, indicators: indicatorsOf(row), created_at: createdAt });
+  for (let i = 0; i < rows.length; i += INSERT_CHUNK) {
+    if (opts.signal?.aborted) throw new Error('Medición de salud interrumpida');
+    const chunk = rows.slice(i, i + INSERT_CHUNK);
+    const base = await leerBaseMedicionesSalud(sb, orgId, chunk.map(r => r.customer_id));
+    const measurements = chunk.map(row => {
+      const current = base.get(row.customer_id);
+      if (!current) throw new Error('Cliente no disponible para medir salud');
+      const { score, band } = scoreOf(row, settings.config);
+      return { customer_id: row.customer_id, score, band, indicators: indicatorsOf(row),
+        write_snapshot: shouldWriteSnapshot({ last: current.last_snapshot, score, now, refreshIntervalHours: settings.refreshIntervalHours }),
+        expected_snapshot_id: current.last_snapshot?.id ?? null };
+    });
+    const applied = await guardarMedicionesSalud(sb, orgId, measurements, settings.configStamp ?? null, now);
+    out.snapshots_written += applied.snapshots_written;
+    out.customers_updated += applied.customers_updated;
+    out.skipped_unchanged += applied.skipped_unchanged;
+    out.update_statements += 1;
   }
-
-  for (let i = 0; i < inserts.length; i += INSERT_CHUNK) {
-    const chunk = inserts.slice(i, i + INSERT_CHUNK);
-    const { error: insErr } = await sb.from('health_score_snapshots').insert(chunk);
-    if (insErr) throw new Error(`insertar snapshots: ${insErr.message}`);
-    out.snapshots_written += chunk.length;
-  }
-  const applied = await applyHealthScores(sb, orgId, changes, now);
-  out.customers_updated = applied.updated;
-  out.update_statements = applied.statements;
   return done();
 }
 
@@ -187,7 +135,7 @@ async function lastProcessedByOrg(sb: SupabaseClient, orgIds: number[], now: Dat
 async function settingsByOrg(sb: SupabaseClient, orgIds: number[]): Promise<Map<number, OrgHealthSettings>> {
   const { data, error } = await sb
     .from('health_score_configs')
-    .select('organization_id, config, refresh_interval_hours, is_active')
+    .select('organization_id, config, refresh_interval_hours, is_active, updated_at')
     .in('organization_id', orgIds)
     .limit(ROTATION_SCAN_LIMIT);
   if (error) throw new Error(`health_score_configs: ${error.message}`);
@@ -237,7 +185,7 @@ export async function runHealthRecalculate(
       break;
     }
     try {
-      const r = await recalculateOrgHealth(orgId, sb, now, { settings: settings.get(orgId) ?? settingsFromRow(null), clock });
+      const r = await recalculateOrgHealth(orgId, sb, now, { settings: settings.get(orgId) ?? settingsFromRow(null), clock, signal });
       out.by_org.push(r);
       out.processed += 1;
       out.snapshots_written += r.snapshots_written;

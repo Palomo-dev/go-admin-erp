@@ -7,6 +7,8 @@ import { makeJobLogger } from './runner';
 import { runHealthRecalculate, type HealthRecalcResult } from './scheduled/healthRecalculate';
 import { runRenewalsSync, type RenewalsSyncResult } from './scheduled/renewalsSync';
 import { runVoiceCampaigns, type VoiceCampaignsResult } from './scheduled/voiceCampaigns';
+import { runObjectionMining } from './scheduled/objectionMining';
+import { runSegmentCounts } from './scheduled/segmentCounts';
 import { isScheduledTask, type ScheduledKind } from './scheduledOrgs';
 import { loadOrgTimezones, orgDay } from './orgTimezone';
 import { DEFAULT_TIMEZONE } from '@/lib/utils/timezone';
@@ -59,7 +61,7 @@ import { DEFAULT_TIMEZONE } from '@/lib/utils/timezone';
  * (`?kind=`, body.kinds o `x-vercel-cron-schedule`); el drenaje sin kinds
  * (cada minuto) no lo dispara.
  */
-export const SCHEDULED_KINDS: readonly ScheduledKind[] = ['maintenance', 'recording_cleanup', 'health_recalculate', 'renewals_sync', 'voice_campaigns'];
+export const SCHEDULED_KINDS: readonly ScheduledKind[] = ['maintenance', 'recording_cleanup', 'health_recalculate', 'renewals_sync', 'voice_campaigns', 'segment_counts', 'objection_mining'];
 
 export interface RecordingCleanupEnqueueResult {
   enqueued: number;
@@ -86,6 +88,8 @@ export interface ScheduledRunResult {
   renewals_sync?: { ok: true; ms: number; result: RenewalsSyncResult } | TaskFailure;
   /** F6: cola de campañas del agente de voz (`ScheduledTask`, nunca un JobKind). */
   voice_campaigns?: { ok: true; ms: number; result: VoiceCampaignsResult } | TaskFailure;
+  objection_mining?: { ok: true; ms: number; result: Awaited<ReturnType<typeof runObjectionMining>> } | TaskFailure;
+  segment_counts?: { ok: true; ms: number; result: Awaited<ReturnType<typeof runSegmentCounts>> } | TaskFailure;
 }
 
 export interface RunScheduledOptions {
@@ -205,6 +209,16 @@ export async function runScheduledKinds(opts: RunScheduledOptions): Promise<Sche
     const budgetFor = () => Math.max(0, remainingFor(taskCap));
     const exhaustedTask = (): TaskFailure => ({ ok: false, ms: 0, error: 'budget_exhausted', reason: 'budget_exhausted' });
     const now = opts.now ?? new Date();
+    if (tasks.includes('objection_mining')) {
+      const perTask = budgetFor();
+      out.objection_mining = perTask <= 0 ? exhaustedTask() : await runTimed(perTask, signal => runObjectionMining(sb, log, signal, { budgetMs: perTask }));
+      if (!out.objection_mining.ok) log.error('objection_mining_failed', { error: out.objection_mining.error });
+    }
+    if (tasks.includes('segment_counts')) {
+      const perTask = budgetFor();
+      out.segment_counts = perTask <= 0 ? exhaustedTask() : await runTimed(perTask, signal => runSegmentCounts(sb, log, signal, { budgetMs: perTask }));
+      if (!out.segment_counts.ok) log.error('segment_counts_failed', { error: out.segment_counts.error });
+    }
     if (tasks.includes('health_recalculate')) {
       const perTask = budgetFor();
       if (perTask <= 0) {

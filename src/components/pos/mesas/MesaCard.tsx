@@ -10,14 +10,17 @@ import { StatusBadge, type TonoBadge } from '@/components/kit';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { cn } from '@/utils/Utils';
 import type { TableWithSession } from './types';
+import { estadoVisualMesa, horaDeReserva, type EstadoVisualMesa, type ReservaActivaMesa } from './reservasProximas';
 
 interface MesaCardProps {
   mesa: TableWithSession;
   onClick?: () => void;
   isSelected?: boolean;
+  /** Reserva confirmada que aparta la mesa ahora (ventana de 60 min). */
+  reserva?: ReservaActivaMesa;
 }
 
-type EstadoMesa = 'free' | 'occupied' | 'reserved' | 'bill_requested';
+type EstadoMesa = EstadoVisualMesa;
 
 /**
  * Tono por estado de mesa (POS-MESAS-VISTAS §3.4). Interino: `estadoTono` del
@@ -31,18 +34,13 @@ const APARIENCIA_ESTADO: Record<EstadoMesa, { tono: TonoBadge; icono: LucideIcon
   bill_requested: { tono: 'advertencia', icono: Receipt, tarjeta: 'border-line-warning bg-warning-subtle' },
 };
 
-export function MesaCard({ mesa, onClick, isSelected = false }: MesaCardProps) {
+export function MesaCard({ mesa, onClick, isSelected = false, reserva }: MesaCardProps) {
   const t = useTranslations('posMesas');
   const { formatear } = useMonedaOrganizacion();
 
-  // Estado visual: la cuenta solicitada manda sobre «ocupada».
-  const estado: EstadoMesa = mesa.session
-    ? mesa.session.status === 'bill_requested'
-      ? 'bill_requested'
-      : 'occupied'
-    : mesa.state === 'reserved'
-      ? 'reserved'
-      : 'free';
+  // Estado visual: cuenta solicitada > ocupada > reservada (reserva en ventana) > libre.
+  const estado: EstadoMesa = estadoVisualMesa(mesa, reserva);
+  const reservaVisible = estado === 'reserved' ? reserva : undefined;
   const apariencia = APARIENCIA_ESTADO[estado];
 
   // Minutos transcurridos desde que se abrió la sesión
@@ -95,11 +93,26 @@ export function MesaCard({ mesa, onClick, isSelected = false }: MesaCardProps) {
 
       {/* Información adicional */}
       <div className="space-y-1">
-        {/* Capacidad */}
-        <div className="flex items-center gap-1 text-xs text-fg-secondary">
-          <Users aria-hidden="true" className="h-3 w-3" />
-          <span>{t('tarjeta.personas', { n: mesa.session?.customers || 0, capacidad: mesa.capacity })}</span>
-        </div>
+        {reservaVisible ? (
+          <>
+            {/* Reserva: «20:30 · 6 pers.» y a nombre de quién (Figma 868:31742) */}
+            <div className="flex items-center gap-1 text-xs text-fg-secondary">
+              <CalendarClock aria-hidden="true" className="h-3 w-3" />
+              <span className="tabular-nums">
+                {t('tarjeta.reserva', { hora: horaDeReserva(reservaVisible), n: reservaVisible.reserva.party_size })}
+              </span>
+            </div>
+            <p className="truncate text-sm font-medium text-fg">
+              {t('tarjeta.reservaDe', { nombre: reservaVisible.reserva.customer_name })}
+            </p>
+          </>
+        ) : (
+          /* Capacidad */
+          <div className="flex items-center gap-1 text-xs text-fg-secondary">
+            <Users aria-hidden="true" className="h-3 w-3" />
+            <span>{t('tarjeta.personas', { n: mesa.session?.customers || 0, capacidad: mesa.capacity })}</span>
+          </div>
+        )}
 
         {/* Tiempo de sesión */}
         {mesa.session && (

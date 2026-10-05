@@ -17676,13 +17676,16 @@
     "tarjeta": {
       "personas": "{n} / {capacidad} pessoas",
       "enCocina": "{n} na cozinha",
-      "revisar": "Verificar"
+      "revisar": "Verificar",
+      "reserva": "{hora} · {n} pess.",
+      "reservaDe": "Reserva de {nombre}"
     },
     "zona": {
       "sinZona": "Sem área",
       "mesas": "{n, plural, one {# mesa} other {# mesas}}",
       "libres": "{n, plural, one {# livre} other {# livres}}",
-      "porCobrar": "{n} a cobrar"
+      "porCobrar": "{n} a cobrar",
+      "reservadas": "{n, plural, one {# reservada} other {# reservadas}}"
     },
     "acciones": {
       "actualizar": "Atualizar",
@@ -17850,6 +17853,52 @@
       "porItems": "Por itens",
       "equitativo": "Igual",
       "personalizado": "Personalizado"
+    },
+    "reserva": {
+      "detalle": "Dados da reserva",
+      "subtitulo": "Reserva confirmada · {fuente}",
+      "fuentes": {
+        "admin": "Admin",
+        "website": "Site",
+        "phone": "Telefone",
+        "whatsapp": "WhatsApp"
+      },
+      "cliente": "Cliente",
+      "personas": "Pessoas",
+      "personasValor": "{n, plural, one {# pessoa} other {# pessoas}}",
+      "hora": "Horário",
+      "horaValor": "{hora} ({min} min)",
+      "llegaEn": "Chega em {m} min",
+      "tarde": "{m} min atrasado",
+      "ahora": "É o horário da reserva",
+      "telefono": "Telefone",
+      "nota": "Nota",
+      "solicitudes": "Pedidos especiais",
+      "sentar": "Acomodar e abrir conta",
+      "cambiarMesa": "Trocar de mesa",
+      "noShow": "Não compareceu",
+      "cambiarTitulo": "Trocar mesa da reserva",
+      "cambiarDescripcion": "Mesas livres da mesma unidade com capacidade para {n} pessoas às {hora}.",
+      "cambiarConfirmar": "Trocar mesa",
+      "mesaDestino": "Nova mesa",
+      "elegirMesa": "Escolha uma mesa",
+      "cargandoMesas": "Buscando mesas…",
+      "sinMesas": "Não há outra mesa livre para esta reserva nesse horário.",
+      "opcionMesa": "{mesa} · {zona} · {n} pess.",
+      "noShowTitulo": "Marcar como não compareceu?",
+      "noShowDescripcion": "A reserva de {nombre} passa a «Não compareceu» e a mesa {mesa} fica livre.",
+      "noShowConfirmar": "Marcar não compareceu",
+      "avisos": {
+        "error": "Erro",
+        "errorSentar": "Não foi possível abrir a conta da mesa",
+        "sentadaTitulo": "Mesa ocupada",
+        "sentada": "{mesa}: a reserva de {nombre} foi acomodada",
+        "sentadaSinMarcar": "A conta foi aberta, mas a reserva não ficou como acomodada. Marque-a em Reservas.",
+        "mesaCambiada": "Reserva movida para {mesa}",
+        "errorCambiar": "Não foi possível trocar a mesa da reserva",
+        "noShow": "Reserva de {nombre} marcada como não compareceu",
+        "errorNoShow": "Não foi possível atualizar a reserva"
+      }
     }
   },
   "posReservasMesas": {

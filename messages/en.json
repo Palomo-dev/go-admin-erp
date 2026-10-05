@@ -19377,13 +19377,16 @@
     "tarjeta": {
       "personas": "{n} / {capacidad} guests",
       "enCocina": "{n} in the kitchen",
-      "revisar": "Check"
+      "revisar": "Check",
+      "reserva": "{hora} · {n} ppl",
+      "reservaDe": "Reserved for {nombre}"
     },
     "zona": {
       "sinZona": "No area",
       "mesas": "{n, plural, one {# table} other {# tables}}",
       "libres": "{n} free",
-      "porCobrar": "{n} to charge"
+      "porCobrar": "{n} to charge",
+      "reservadas": "{n} reserved"
     },
     "acciones": {
       "actualizar": "Refresh",
@@ -19551,6 +19554,52 @@
       "porItems": "By items",
       "equitativo": "Equal",
       "personalizado": "Custom"
+    },
+    "reserva": {
+      "detalle": "Reservation details",
+      "subtitulo": "Confirmed reservation · {fuente}",
+      "fuentes": {
+        "admin": "Admin",
+        "website": "Website",
+        "phone": "Phone",
+        "whatsapp": "WhatsApp"
+      },
+      "cliente": "Guest",
+      "personas": "Party size",
+      "personasValor": "{n, plural, one {# person} other {# people}}",
+      "hora": "Time",
+      "horaValor": "{hora} ({min} min)",
+      "llegaEn": "Arrives in {m} min",
+      "tarde": "{m} min late",
+      "ahora": "Reservation time is now",
+      "telefono": "Phone",
+      "nota": "Note",
+      "solicitudes": "Special requests",
+      "sentar": "Seat and open tab",
+      "cambiarMesa": "Change table",
+      "noShow": "No-show",
+      "cambiarTitulo": "Change reservation table",
+      "cambiarDescripcion": "Free tables at the same location that seat {n} people at {hora}.",
+      "cambiarConfirmar": "Change table",
+      "mesaDestino": "New table",
+      "elegirMesa": "Choose a table",
+      "cargandoMesas": "Looking for tables…",
+      "sinMesas": "No other free table fits this reservation at that time.",
+      "opcionMesa": "{mesa} · {zona} · {n} ppl",
+      "noShowTitulo": "Mark as no-show?",
+      "noShowDescripcion": "The reservation for {nombre} becomes «No-show» and table {mesa} is freed.",
+      "noShowConfirmar": "Mark no-show",
+      "avisos": {
+        "error": "Error",
+        "errorSentar": "Could not open the table tab",
+        "sentadaTitulo": "Table occupied",
+        "sentada": "{mesa}: reservation for {nombre} seated",
+        "sentadaSinMarcar": "The tab was opened, but the reservation was not marked as seated. Mark it in Reservations.",
+        "mesaCambiada": "Reservation moved to {mesa}",
+        "errorCambiar": "Could not change the reservation table",
+        "noShow": "Reservation for {nombre} marked as no-show",
+        "errorNoShow": "Could not update the reservation"
+      }
     }
   },
   "posReservasMesas": {

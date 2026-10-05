@@ -17676,13 +17676,16 @@
     "tarjeta": {
       "personas": "{n} / {capacidad} couverts",
       "enCocina": "{n} en cuisine",
-      "revisar": "À vérifier"
+      "revisar": "À vérifier",
+      "reserva": "{hora} · {n} pers.",
+      "reservaDe": "Réservée pour {nombre}"
     },
     "zona": {
       "sinZona": "Sans zone",
       "mesas": "{n, plural, one {# table} other {# tables}}",
       "libres": "{n, plural, one {# libre} other {# libres}}",
-      "porCobrar": "{n} à encaisser"
+      "porCobrar": "{n} à encaisser",
+      "reservadas": "{n, plural, one {# réservée} other {# réservées}}"
     },
     "acciones": {
       "actualizar": "Actualiser",
@@ -17850,6 +17853,52 @@
       "porItems": "Par articles",
       "equitativo": "Égal",
       "personalizado": "Personnalisé"
+    },
+    "reserva": {
+      "detalle": "Détails de la réservation",
+      "subtitulo": "Réservation confirmée · {fuente}",
+      "fuentes": {
+        "admin": "Admin",
+        "website": "Site web",
+        "phone": "Téléphone",
+        "whatsapp": "WhatsApp"
+      },
+      "cliente": "Client",
+      "personas": "Personnes",
+      "personasValor": "{n, plural, one {# personne} other {# personnes}}",
+      "hora": "Heure",
+      "horaValor": "{hora} ({min} min)",
+      "llegaEn": "Arrive dans {m} min",
+      "tarde": "{m} min de retard",
+      "ahora": "C’est l’heure de la réservation",
+      "telefono": "Téléphone",
+      "nota": "Note",
+      "solicitudes": "Demandes spéciales",
+      "sentar": "Installer et ouvrir l’addition",
+      "cambiarMesa": "Changer de table",
+      "noShow": "Ne s’est pas présenté",
+      "cambiarTitulo": "Changer la table de la réservation",
+      "cambiarDescripcion": "Tables libres du même site pouvant accueillir {n} personnes à {hora}.",
+      "cambiarConfirmar": "Changer de table",
+      "mesaDestino": "Nouvelle table",
+      "elegirMesa": "Choisissez une table",
+      "cargandoMesas": "Recherche de tables…",
+      "sinMesas": "Aucune autre table libre ne convient à cette réservation à cette heure.",
+      "opcionMesa": "{mesa} · {zona} · {n} pers.",
+      "noShowTitulo": "Marquer comme non présenté ?",
+      "noShowDescripcion": "La réservation de {nombre} passe à « Ne s’est pas présenté » et la table {mesa} est libérée.",
+      "noShowConfirmar": "Marquer non présenté",
+      "avisos": {
+        "error": "Erreur",
+        "errorSentar": "Impossible d’ouvrir l’addition de la table",
+        "sentadaTitulo": "Table occupée",
+        "sentada": "{mesa} : la réservation de {nombre} est installée",
+        "sentadaSinMarcar": "L’addition est ouverte, mais la réservation n’est pas marquée comme installée. Marquez-la dans Réservations.",
+        "mesaCambiada": "Réservation déplacée vers {mesa}",
+        "errorCambiar": "Impossible de changer la table de la réservation",
+        "noShow": "Réservation de {nombre} marquée comme non présentée",
+        "errorNoShow": "Impossible de mettre à jour la réservation"
+      }
     }
   },
   "posReservasMesas": {

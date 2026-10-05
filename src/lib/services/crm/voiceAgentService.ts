@@ -33,8 +33,11 @@
  *        domingos ni festivos de Colombia) y tope semanal de contactos
  *        efectivos; fuera de eso la fila se reprograma a la siguiente ventana.
  *      · La campaña no exige el Registro de Números Excluidos: cada
- *        organización decide qué números carga. Sigue haciendo falta la URL
- *        de la política de tratamiento de datos.
+ *        organización decide qué números carga y responde por ellos. Lo que
+ *        SÍ se respeta es su lista interna `crm_excluded_numbers` (la llena
+ *        la propia organización o la gestión «no llamar» de un asesor): un
+ *        número ahí no se encola ni se marca. Sin filas, no frena nada. Sigue
+ *        haciendo falta la URL de la política de tratamiento de datos.
  *      · Contestadora: AMD de Twilio (ver `voiceAgent/amd.ts`); si contesta una
  *        máquina, `twiml/ai-agent` cuelga y registra `buzon`.
  *
@@ -60,7 +63,7 @@ import { describirMotivoLey2300, ventanaLey2300Abierta, ZONA_COLOMBIA } from '@/
 import { parametrosAmd } from '@/lib/services/crm/voiceAgent/amd';
 import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 import { normalizarNumeroRne } from '@/lib/services/crm/voiceAgent/rne';
-import { evaluarLey2300Cliente, politicaDatosValida } from '@/lib/services/crm/voiceAgent/cumplimiento';
+import { evaluarLey2300Cliente, numeroExcluido, politicaDatosValida } from '@/lib/services/crm/voiceAgent/cumplimiento';
 
 // ─── Tipos: Voice Agents ─────────────────────────────────────────────────────
 
@@ -1194,12 +1197,15 @@ async function enqueueCampaignTargets(
   ) || []) as Array<{ customer_id: string }>;
   const alreadyQueued = new Set(existing.map((r) => r.customer_id));
   const yaAtendidos = await clientesYaAtendidosPorCampana(supabase, orgId, campaign, customerIds);
+  const excluidos = await customersInExclusionList(supabase, orgId, customerIds);
 
   const rows: Record<string, unknown>[] = [];
   for (const target of targets) {
     if (rows.length >= room) break;
     if (alreadyQueued.has(target.customer_id)) continue;
     if (yaAtendidos.has(target.customer_id)) continue;
+    // Lista interna de excluidos de la organización: no llega ni a la cola.
+    if (excluidos.has(target.customer_id)) continue;
     // C-F6-10: baja voluntaria antes incluso de encolar.
     if (!(await canCallCustomer(orgId, target.customer_id, supabase))) continue;
 
@@ -1280,6 +1286,41 @@ export function clientesNoReencolables(
   sinContacto.forEach(({ n, ultimo }, id) => {
     if (n >= retry.maxAttempts || ahora - ultimo < retry.backoffMinutes * 60_000) fuera.add(id);
   });
+  return fuera;
+}
+
+/**
+ * Clientes (de `customerIds`) cuyo teléfono está en la lista interna de
+ * excluidos de la organización (`crm_excluded_numbers`). Falla cerrado: si la
+ * lectura falla, se propaga y no se encola nada.
+ */
+async function customersInExclusionList(
+  supabase: SupabaseClient,
+  orgId: number,
+  customerIds: string[]
+): Promise<Set<string>> {
+  const fuera = new Set<string>();
+  if (customerIds.length === 0) return fuera;
+  const clientes = (unwrap(
+    'customersInExclusionList.customers',
+    await supabase.from('customers').select('id, phone').eq('organization_id', orgId).in('id', customerIds)
+  ) || []) as Array<{ id: string; phone: string | null }>;
+  const porNumero = new Map<string, string[]>();
+  for (const c of clientes) {
+    const n = normalizarNumeroRne(c.phone);
+    if (!n) continue;
+    porNumero.set(n, [...(porNumero.get(n) ?? []), c.id]);
+  }
+  if (porNumero.size === 0) return fuera;
+  const filas = (unwrap(
+    'customersInExclusionList.excluded',
+    await supabase
+      .from('crm_excluded_numbers')
+      .select('phone_e164')
+      .eq('organization_id', orgId)
+      .in('phone_e164', Array.from(porNumero.keys()))
+  ) || []) as Array<{ phone_e164: string }>;
+  for (const f of filas) for (const id of porNumero.get(f.phone_e164) ?? []) fuera.add(id);
   return fuera;
 }
 
@@ -1463,7 +1504,7 @@ interface DialOutcome {
 
 /**
  * Marca una fila ya reclamada. Orden: cliente → consentimiento → teléfono marcable →
- * Ley 2300 (horario + tope semanal) → crédito → fila en `calls` → proveedor →
+ * lista de excluidos de la organización → Ley 2300 (horario + tope semanal) → crédito → fila en `calls` → proveedor →
  * correlación. Es el punto ÚNICO por donde sale toda llamada del agente.
  * Un número de prueba interno salta solo el tope semanal (lo decide
  * `evaluarLey2300Cliente`) y la llamada queda marcada en `calls.metadata`.
@@ -1509,6 +1550,13 @@ async function dialClaimedCall(p: DialParams): Promise<DialOutcome> {
   if (!dialableTo) {
     await releaseCall(supabase, vac.id, 'skipped', `Teléfono no marcable: ${customer.phone}`, null);
     return { initiated: false, reason: 'teléfono no marcable' };
+  }
+
+  // Lista interna de excluidos de la organización: un número ahí no se marca,
+  // venga de campaña o de despacho puntual. Es definitivo: no se reprograma.
+  if (await numeroExcluido(supabase, orgId, dialableTo)) {
+    await releaseCall(supabase, vac.id, 'skipped', 'Número en la lista de excluidos de la organización', 'EXCLUIDO');
+    return { initiated: false, reason: 'número excluido por la organización' };
   }
 
   // Ley 2300 de 2023: horario del DESTINATARIO (+57 → Colombia), festivos y
@@ -1909,6 +1957,9 @@ export async function dispatchAgentCall(
   if (!cliente) throw new Error('Cliente no encontrado');
   const telefono = normalizarNumeroRne(cliente.phone) ?? normalizeDialableE164(cliente.phone);
   if (telefono) {
+    if (await numeroExcluido(supabase, orgId, telefono)) {
+      throw new VoiceDispatchBlocked('excluido', 'El número está en la lista de excluidos de la organización. No se llama.');
+    }
     const ley2300 = await evaluarLey2300Cliente(supabase, orgId, { id: cliente.id, phone: telefono, timezone: cliente.timezone });
     if (ley2300.accion === 'reprogramar') {
       throw new VoiceDispatchBlocked(

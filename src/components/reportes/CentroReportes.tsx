@@ -1,29 +1,41 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { FileBarChart, Plus, RefreshCw } from 'lucide-react';
+import { FileBarChart, MessageCircle, Plus, RefreshCw } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { PageHeader, RowActionsMenu, TabBar, clasesBoton, idPanel, idPestana, type AccionFila, type Miga } from '@/components/kit';
-import { useOrganization } from '@/lib/hooks/useOrganization';
-import { supabase } from '@/lib/supabase/config';
+import { Skeleton } from '@/components/ui/skeleton';
 import { clienteReportes } from '@/lib/services/reportes/clienteReportes';
-import { listarCierres, listarGuardados } from '@/lib/services/reportes/lecturasReportes';
-import { MessageCircle } from 'lucide-react';
+import { contarCierresVigentes, listarGuardados, usuarioDeSesion } from '@/lib/services/reportes/lecturasReportes';
 import { ProveedorAccionesReportes, type PedidoCierreUi, type PedidoEnvioUi } from './accionesReportes';
 import { BarraFiltros } from './BarraFiltros';
-import { CierresTab } from './CierresTab';
-import { FavoritosTab } from './FavoritosTab';
-import { GenerarCierreDialog } from './GenerarCierreDialog';
-import { HistorialTab } from './HistorialTab';
 import { InicioReportes } from './InicioReportes';
-import { ProgramadosTab } from './ProgramadosTab';
-import { ProgramarEnvioDialog } from './ProgramarEnvioDialog';
-import { ReportesChatSheet } from './chat/ReportesChatSheet';
 import { useEtiquetaPeriodo } from './SelectorPeriodo';
 import { rutaCentro } from './rutasReportes';
-import { useContextoReportes } from './useContextoReportes';
+import { useContextoReportes, type ContextoReportes } from './useContextoReportes';
 import { useFiltrosReportes } from './useFiltrosReportes';
+
+// Lo que no se ve en la primera pintura del inicio se descarga cuando hace
+// falta: las otras pestañas, los dos diálogos y el asistente (que arrastra
+// recharts por las gráficas de sus respuestas).
+function EsqueletoPestana() {
+  return (
+    <div role="status" aria-busy="true" className="flex flex-col gap-3">
+      <Skeleton className="h-10 w-full" />
+      <Skeleton className="h-10 w-full" />
+      <Skeleton className="h-10 w-2/3" />
+    </div>
+  );
+}
+const FavoritosTab = dynamic(() => import('./FavoritosTab').then((m) => m.FavoritosTab), { loading: EsqueletoPestana });
+const CierresTab = dynamic(() => import('./CierresTab').then((m) => m.CierresTab), { loading: EsqueletoPestana });
+const ProgramadosTab = dynamic(() => import('./ProgramadosTab').then((m) => m.ProgramadosTab), { loading: EsqueletoPestana });
+const HistorialTab = dynamic(() => import('./HistorialTab').then((m) => m.HistorialTab), { loading: EsqueletoPestana });
+const GenerarCierreDialog = dynamic(() => import('./GenerarCierreDialog').then((m) => m.GenerarCierreDialog));
+const ProgramarEnvioDialog = dynamic(() => import('./ProgramarEnvioDialog').then((m) => m.ProgramarEnvioDialog));
+const ReportesChatSheet = dynamic(() => import('./chat/ReportesChatSheet').then((m) => m.ReportesChatSheet));
 
 const PESTANAS = ['inicio', 'favoritos', 'cierres', 'programados', 'historial'] as const;
 export type PestanaReportes = (typeof PESTANAS)[number];
@@ -32,11 +44,29 @@ function pestanaDe(valor: string | null): PestanaReportes {
   return (PESTANAS as readonly string[]).includes(valor ?? '') ? (valor as PestanaReportes) : 'inicio';
 }
 
-export function CentroReportes({ titulo, subtitulo, migas, children }: { titulo?: string; subtitulo?: string; migas?: Miga[]; children?: React.ReactNode }) {
+interface PropsCentro {
+  titulo?: string;
+  subtitulo?: string;
+  migas?: Miga[];
+  children?: React.ReactNode;
+}
+
+/**
+ * @param ctx Contexto ya leído por la pantalla que envuelve (la del grupo): se
+ *   reutiliza en vez de leer dos veces la organización, el plan y los permisos.
+ */
+export function CentroReportes({ ctx, ...props }: PropsCentro & { ctx?: ContextoReportes }) {
+  return ctx ? <CuerpoCentro {...props} ctx={ctx} /> : <CentroConContexto {...props} />;
+}
+
+function CentroConContexto(props: PropsCentro) {
+  const ctx = useContextoReportes();
+  return <CuerpoCentro {...props} ctx={ctx} />;
+}
+
+function CuerpoCentro({ titulo, subtitulo, migas, children, ctx }: PropsCentro & { ctx: ContextoReportes }) {
   const t = useTranslations('reportes');
   const router = useRouter();
-  const ctx = useContextoReportes();
-  const { organization } = useOrganization();
   const { filtros, hoy, cambiar, cambiarParametro, queryFiltros, parametro } = useFiltrosReportes();
   const etiqueta = useEtiquetaPeriodo();
   const pestana = pestanaDe(parametro('pestana'));
@@ -44,33 +74,51 @@ export function CentroReportes({ titulo, subtitulo, migas, children }: { titulo?
   const [cierre, setCierre] = useState<PedidoCierreUi | null>(null);
   const [envio, setEnvio] = useState<PedidoEnvioUi | null>(null);
   const [chat, setChat] = useState(false);
+  // Los diálogos y el asistente se montan la primera vez que se abren y se
+  // quedan montados (conservan su estado y su animación de cierre).
+  const [montados, setMontados] = useState({ cierre: false, envio: false, chat: false });
+  const abrirCierre = useCallback((pedido?: PedidoCierreUi) => {
+    setMontados((m) => (m.cierre ? m : { ...m, cierre: true }));
+    setCierre(pedido ?? {});
+  }, []);
+  const abrirEnvio = useCallback((pedido?: PedidoEnvioUi) => {
+    setMontados((m) => (m.envio ? m : { ...m, envio: true }));
+    setEnvio(pedido ?? {});
+  }, []);
+  const abrirChat = useCallback(() => {
+    setMontados((m) => (m.chat ? m : { ...m, chat: true }));
+    setChat(true);
+  }, []);
   const [usuario, setUsuario] = useState('');
   const [contadores, setContadores] = useState({ favoritos: 0, cierres: 0, programados: 0 });
 
   const recargar = () => setRecarga((n) => n + 1);
   const acciones = useMemo(
     () => ({
-      abrirCierre: (pedido?: PedidoCierreUi) => setCierre(pedido ?? {}),
-      abrirEnvio: (pedido?: PedidoEnvioUi) => setEnvio(pedido ?? {}),
-      abrirChat: () => setChat(true),
+      abrirCierre,
+      abrirEnvio,
+      abrirChat,
       recarga,
       recargar,
     }),
-    [recarga],
+    [recarga, abrirCierre, abrirEnvio, abrirChat],
   );
 
   useEffect(() => {
-    void supabase.auth.getUser().then(({ data }) => {
-      const u = data.user;
-      setUsuario((u?.user_metadata?.full_name as string | undefined) || u?.email || '');
-    });
+    let vivo = true;
+    void usuarioDeSesion()
+      .then((u) => vivo && setUsuario((u?.user_metadata?.full_name as string | undefined) || u?.email || ''))
+      .catch(() => undefined);
+    return () => {
+      vivo = false;
+    };
   }, []);
 
   useEffect(() => {
     if (!ctx.orgId) return;
     let vivo = true;
     void listarGuardados(ctx.orgId).then((l) => vivo && setContadores((c) => ({ ...c, favoritos: l.filter((f) => f.favorito).length }))).catch(() => undefined);
-    void listarCierres(ctx.orgId).then((l) => vivo && setContadores((c) => ({ ...c, cierres: l.filter((f) => f.estado !== 'reemplazado').length }))).catch(() => undefined);
+    void contarCierresVigentes(ctx.orgId).then((n) => vivo && setContadores((c) => ({ ...c, cierres: n }))).catch(() => undefined);
     void clienteReportes.programados().then((l) => vivo && setContadores((c) => ({ ...c, programados: l.length }))).catch(() => undefined);
     return () => {
       vivo = false;
@@ -82,7 +130,7 @@ export function CentroReportes({ titulo, subtitulo, migas, children }: { titulo?
     else cambiarParametro('pestana', p === 'inicio' ? null : p);
   };
 
-  const mas: AccionFila[] = [{ id: 'chat', etiqueta: t('preguntar'), icono: MessageCircle, onSelect: () => setChat(true) }];
+  const mas: AccionFila[] = [{ id: 'chat', etiqueta: t('preguntar'), icono: MessageCircle, onSelect: abrirChat }];
   const query = queryFiltros();
 
   return (
@@ -100,11 +148,11 @@ export function CentroReportes({ titulo, subtitulo, migas, children }: { titulo?
                 <RefreshCw aria-hidden className="size-4" strokeWidth={1.5} />
               </button>
               {!children && (
-                <button type="button" className={clasesBoton({ variante: 'secundario' })} onClick={() => setEnvio({})}>
+                <button type="button" className={clasesBoton({ variante: 'secundario' })} onClick={() => abrirEnvio()}>
                   {t('programarEnvios')}
                 </button>
               )}
-              <button type="button" className={clasesBoton({ variante: 'primario' })} onClick={() => setCierre({})}>
+              <button type="button" className={clasesBoton({ variante: 'primario' })} onClick={() => abrirCierre()}>
                 {t('generarCierre')}
               </button>
               <RowActionsMenu acciones={mas} orientacion="horizontal" tamano="md" titulo={t('masAcciones')} />
@@ -113,7 +161,7 @@ export function CentroReportes({ titulo, subtitulo, migas, children }: { titulo?
           movil={{
             subtitulo: etiqueta.periodo(filtros.periodo),
             accion: (
-              <button type="button" aria-label={t('generarCierre')} className="flex size-10 items-center justify-center rounded-lg text-fg" onClick={() => setCierre({})}>
+              <button type="button" aria-label={t('generarCierre')} className="flex size-10 items-center justify-center rounded-lg text-fg" onClick={() => abrirCierre()}>
                 <Plus aria-hidden className="size-5" strokeWidth={1.5} />
               </button>
             ),
@@ -147,14 +195,16 @@ export function CentroReportes({ titulo, subtitulo, migas, children }: { titulo?
           )}
         </div>
       </div>
-      <GenerarCierreDialog pedido={cierre} onCerrar={() => setCierre(null)} ctx={ctx} periodoInicial={filtros.periodo} hoy={hoy} onListo={recargar} />
-      <ProgramarEnvioDialog pedido={envio} onCerrar={() => setEnvio(null)} ctx={ctx} onListo={recargar} />
-      {ctx.orgId && (
+      {montados.cierre && (
+        <GenerarCierreDialog pedido={cierre} onCerrar={() => setCierre(null)} ctx={ctx} periodoInicial={filtros.periodo} hoy={hoy} onListo={recargar} />
+      )}
+      {montados.envio && <ProgramarEnvioDialog pedido={envio} onCerrar={() => setEnvio(null)} ctx={ctx} onListo={recargar} />}
+      {ctx.orgId && montados.chat && (
         <ReportesChatSheet
           open={chat}
           onOpenChange={setChat}
           organizationId={ctx.orgId}
-          organizationName={organization?.name}
+          organizationName={ctx.nombreOrganizacion}
           userName={usuario || t('historial.usuario')}
           userRole="usuario"
           periodoActual={filtros.periodo}

@@ -505,8 +505,8 @@ export const finanzasReports: DefinicionModulo[] = [
   {
     id: 'impuestos',
     modulo: 'finance',
-    titulo: 'Impuestos (IVA y retenciones)',
-    descripcion: 'IVA generado, IVA descontable y retenciones del periodo',
+    titulo: 'Impuestos (IVA, INC y retenciones)',
+    descripcion: 'Impuestos generados en ventas (IVA + INC), impuestos de compras y saldo del periodo, sin separar IVA de INC',
     categoria: 'financiero',
     alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
@@ -524,18 +524,18 @@ export const finanzasReports: DefinicionModulo[] = [
       const d = data ?? {};
 
       return buildReportData(
-        'impuestos', 'Impuestos (IVA y retenciones)', 'finance', periodo,
+        'impuestos', 'Impuestos (IVA, INC y retenciones)', 'finance', periodo,
         [
-          { titulo: 'IVA Generado', valor: d.iva_generado ?? 0, formato: 'moneda' },
-          { titulo: 'IVA Descontable', valor: d.iva_descontable ?? 0, formato: 'moneda' },
-          { titulo: 'IVA Neto', valor: d.iva_neto ?? 0, formato: 'moneda' },
+          { titulo: 'Impuestos generados (IVA + INC)', valor: d.iva_generado ?? 0, formato: 'moneda' },
+          { titulo: 'Impuestos en compras', valor: d.iva_descontable ?? 0, formato: 'moneda' },
+          { titulo: 'Saldo de impuestos', valor: d.iva_neto ?? 0, formato: 'moneda' },
           { titulo: 'Total Facturado', valor: d.total_facturado ?? 0, formato: 'moneda' },
         ],
         [
           { key: 'codigo', titulo: 'Código', tipo: 'texto' },
           { key: 'tasa', titulo: 'Tasa %', tipo: 'porcentaje', alinear: 'right' },
           { key: 'base', titulo: 'Base Gravable', tipo: 'moneda', alinear: 'right' },
-          { key: 'monto', titulo: 'Monto IVA', tipo: 'moneda', alinear: 'right' },
+          { key: 'monto', titulo: 'Monto', tipo: 'moneda', alinear: 'right' },
         ],
         d.por_codigo ?? [],
       );
@@ -846,7 +846,7 @@ export const finanzasReports: DefinicionModulo[] = [
           { titulo: 'Total Facturado', valor: totalFacturado, formato: 'moneda' },
           { titulo: 'Base Gravable', valor: baseGravable, formato: 'moneda' },
           { titulo: 'Exento/No Gravado', valor: exento, formato: 'moneda' },
-          { titulo: 'Total IVA', valor: totalIVA, formato: 'moneda' },
+          { titulo: 'Total impuestos', valor: totalIVA, formato: 'moneda' },
           { titulo: 'DIAN Aceptadas', valor: dianAceptadas, formato: 'numero' },
           { titulo: 'DIAN Pendientes', valor: dianPendientes, formato: 'numero' },
           { titulo: 'DIAN Fallidas', valor: dianFallidas, formato: 'numero' },
@@ -858,7 +858,7 @@ export const finanzasReports: DefinicionModulo[] = [
           { key: 'tipo', titulo: 'Tipo Documento', tipo: 'texto' },
           { key: 'cantidad', titulo: 'N°', tipo: 'numero', alinear: 'right' },
           { key: 'base_gravable', titulo: 'Base Gravable', tipo: 'moneda', alinear: 'right' },
-          { key: 'iva', titulo: 'IVA', tipo: 'moneda', alinear: 'right' },
+          { key: 'iva', titulo: 'Impuestos', tipo: 'moneda', alinear: 'right' },
           { key: 'exento', titulo: 'Exento', tipo: 'moneda', alinear: 'right' },
           { key: 'total', titulo: 'Total', tipo: 'moneda', alinear: 'right' },
           { key: 'dian_aceptadas', titulo: 'DIAN Aceptadas', tipo: 'numero', alinear: 'right' },

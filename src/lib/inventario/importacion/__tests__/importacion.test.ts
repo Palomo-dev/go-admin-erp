@@ -17,6 +17,7 @@ import { OPCIONES_POR_DEFECTO, type FilaImport, type OpcionesImportacion } from 
 import { impuestoConocido, resumirValidacion, validarFilas, type ContextoValidacion } from '../validacion';
 import { combinacionesVariantes, combinarDetalle, incompleto, nombresCorresponden, normalizarPrecios, productosWebAFilas } from '../web';
 import { costoMaximoDetalles, CREDITOS_DETALLE_WEB, MAX_DETALLES_WEB } from '../costosWeb';
+import { esExportAlegra } from '../alegra';
 
 const ctx = (parcial: Partial<ContextoValidacion> = {}, opciones: Partial<OpcionesImportacion> = {}): ContextoValidacion => ({
   existentes: new Map(),
@@ -159,6 +160,37 @@ describe('lector', () => {
     const r = leerSegunFormato([['SKU', 'Nombre'], ['A', 'Uno']]);
     expect(r.formato).toBe('generico');
     expect(r.filas).toEqual([{ fila: 2, sku: 'A', name: 'Uno' }]);
+  });
+});
+
+describe('export de ítems de Alegra', () => {
+  // Cabecera real del export «Items» de Alegra (datos sintéticos).
+  const CABECERA = ['Tipo', 'Ítem inventariable', 'Ítem con variantes', 'Venta en negativo', 'Nombre', 'Código del producto o servicio', 'Referencia', 'Unidad de medida', 'Categoría', 'Descripción', 'Costo inicial', 'Precio base', 'Impuesto', 'Impuesto', 'Impuesto', 'Precio total', 'Precio: General', 'Código cuenta contable', 'Cuenta contable'];
+  const m = [
+    CABECERA,
+    ['Producto', 'Si', 'No', 'No', 'Gaseosa 400 ml x12', '', '', 'Paquete', '', '', '30000,000000', '33333,000000', '8', '', '', '36000', '33333,000000', '', 'Ventas'],
+    ['Producto', 'No', 'No', 'Si', 'Combo de la casa', '', '', 'Unidad', '', '', '0,000000', '15000,000000', '8', '', '', '16200', '15000,000000', '', 'Ventas'],
+    // Una fila de datos con «compra» y «Ventas» no debe pasar por cabecera del formato «Sistema».
+    ['Servicio', 'No', 'No', 'No', 'Refrigerios: Orden de compra 123', '', 'REF', 'Servicio', '', '', '0,000000', '400000,000000', '', '', '', '400000', '400000,000000', '', 'Ventas'],
+  ];
+
+  test('se lee como genérico con la cabecera en la primera fila', () => {
+    expect(detectarFormato(m)).toEqual({ formato: 'generico', filaCabecera: -1 });
+    expect(encontrarFilaCabecera(m)).toBe(0);
+  });
+
+  test('reconoce nombre, precio base, costo inicial, inventariable e impuesto', () => {
+    const mapeo = autoMapear(CABECERA);
+    expect(camposObligatoriosFaltantes(mapeo)).toEqual([]);
+    expect(mapeo[CABECERA.indexOf('Precio base')]).toBe('price');
+    expect(mapeo[CABECERA.indexOf('Precio total')]).toBeNull();
+    expect(mapeo[CABECERA.indexOf('Costo inicial')]).toBe('cost');
+    expect(mapeo[CABECERA.indexOf('Ítem inventariable')]).toBe('trackStock');
+    expect(mapeo[CABECERA.indexOf('Código del producto o servicio')]).toBe('sku');
+    expect(mapeo.filter((c) => c === 'tax')).toHaveLength(1);
+    const filas = leerFilas(m, 0, mapeo);
+    expect(filas[0]).toMatchObject({ name: 'Gaseosa 400 ml x12', price: 33333, cost: 30000, trackStock: true, tax: '8', unit: 'Paquete' });
+    expect(filas[2]).toMatchObject({ type: 'Servicio', reference: 'REF' });
   });
 });
 
@@ -349,5 +381,57 @@ describe('reporte y plantilla', () => {
   it('reporte con cabeceras traducidas', () => {
     const r = reporteCsv([{ fila: 3, sku: 'A', nombre: 'Uno', resultado: 'Error', mensajes: ['m1', 'm2'] }], ['Fila', 'SKU', 'Nombre', 'Resultado', 'Mensajes']);
     expect(r.split('\n')[1]).toBe('3,A,Uno,Error,m1 | m2');
+  });
+});
+
+describe('ajustes del export de Alegra', () => {
+  const CAB = ['Tipo', 'Ítem inventariable', 'Ítem con variantes', 'Venta en negativo', 'Nombre', 'Código del producto o servicio', 'Referencia', 'Unidad de medida', 'Categoría', 'Descripción', 'Costo inicial', 'Precio base', 'Impuesto', 'Precio total'];
+  const m = [
+    CAB,
+    ['Producto', 'Si', 'No', 'No', 'Coca Cola 400 ml X12', '', '', 'Paquete', '', '', '36000', '33333', '8', '36000'],
+    ['Producto', 'Si', 'No', 'No', 'Sandwich de pollo tipo cubano', '', '', 'Unidad', 'COMBOS', '', '21000', '21000', '8', '22680'],
+    ['Combo', 'No', 'No', 'Si', 'Palitos de queso + jugo', '', '', 'Unidad', '', '', '0', '9259', '8', '10000'],
+    ['Producto', 'Si', 'No', 'No', 'Servicio logistico', '', '', 'Servicio', '', '', '250000', '231481', '8', '250000'],
+    ['Servicio', 'No', 'No', 'No', 'Datos iniciales DIAN', '', 'IMPORT-DTS-DIAN', '', '', '', '0', '1', '', '1'],
+    ['Producto', 'Si', 'No', 'No', 'Barra de granola', '', '', 'Unidad', '', '', '1800', '2500', '8', '2700'],
+  ];
+  const leer = () => leerSegunFormato(m).filas as Array<FilaImport & { excluirPorDefecto?: boolean }>;
+  const codigos = (f: FilaImport) => (f.avisosLectura ?? []).map((a) => a.codigo);
+
+  test('reconoce el export', () => {
+    expect(esExportAlegra(CAB)).toBe(true);
+    expect(esExportAlegra(['Nombre', 'Precio'])).toBe(false);
+  });
+
+  test('un costo igual o mayor que el precio sin impuesto se descarta; uno real se conserva', () => {
+    const [coca, , , , , granola] = leer();
+    expect(coca.cost).toBeUndefined();
+    expect(codigos(coca)).toContain('costoAlegraDescartado');
+    expect(granola.cost).toBe(1800);
+  });
+
+  test('bebidas y snacks conservan inventario y reciben categoría sugerida', () => {
+    const [coca, , , , , granola] = leer();
+    expect(coca).toMatchObject({ category: 'Bebidas', trackStock: true, price: 33333 });
+    expect(granola).toMatchObject({ category: 'Snacks', trackStock: true });
+  });
+
+  test('plato preparado: conserva su categoría de Alegra y sin inventario propio', () => {
+    const plato = leer()[1];
+    expect(plato).toMatchObject({ category: 'COMBOS', trackStock: false });
+    expect(codigos(plato)).toContain('preparadoSinInventario');
+  });
+
+  test('combo: producto con etiqueta «Combo», sin inventario y aviso de componentes', () => {
+    const combo = leer()[2];
+    expect(combo).toMatchObject({ type: 'Producto', trackStock: false, tags: 'Combo' });
+    expect(codigos(combo)).toContain('comboSinComponentes');
+  });
+
+  test('unidad «Servicio» lo vuelve servicio; la fila interna DIAN arranca excluida', () => {
+    const [, , , servicio, dian] = leer();
+    expect(servicio).toMatchObject({ type: 'Servicio', trackStock: false });
+    expect(dian.excluirPorDefecto).toBe(true);
+    expect(codigos(dian)).toContain('filaInternaAlegra');
   });
 });

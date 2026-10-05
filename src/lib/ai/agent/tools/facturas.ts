@@ -146,7 +146,7 @@ export const registrarFacturaCompra: ToolDefinition<FacturaCompraArgs> = {
       issue_date: { type: 'string', description: 'Fecha de emisión YYYY-MM-DD.' },
       due_date: { type: 'string', description: 'Fecha de vencimiento YYYY-MM-DD. Si no viene, 30 días.' },
       payment_method: { type: 'string', enum: ['credit', 'cash', 'transfer', 'card'], description: 'credit si queda a crédito (lo habitual).' },
-      tax_included: { type: 'boolean', description: 'true si los precios unitarios ya incluyen el IVA.' },
+      tax_included: { type: 'boolean', description: 'true si los precios unitarios ya incluyen el impuesto (IVA o INC).' },
       receive_stock: { type: 'boolean', description: 'true (por defecto) si la mercancía ya llegó y debe entrar al inventario.' },
       items: {
         type: 'array',
@@ -157,7 +157,7 @@ export const registrarFacturaCompra: ToolDefinition<FacturaCompraArgs> = {
             description: { type: 'string' },
             qty: { type: 'number' },
             unit_price: { type: 'number' },
-            tax_rate: { type: 'number', description: 'IVA en porcentaje (19, 5, 0).' },
+            tax_rate: { type: 'number', description: 'IVA de la línea en porcentaje (19, 5, 0). El impuesto al consumo (INC) no es descontable: va sumado al precio unitario, no aquí.' },
             discount_amount: { type: 'number' },
           },
           required: ['description', 'qty', 'unit_price'],
@@ -263,7 +263,7 @@ export const registrarFacturaCompra: ToolDefinition<FacturaCompraArgs> = {
       { label: 'Pago', value: args.payment_method === 'credit' || !args.payment_method ? 'A crédito (queda en cuentas por pagar)' : args.payment_method },
       ...args.items.map((l) => ({
         label: l.product_id && nombres.has(l.product_id) ? nombres.get(l.product_id)! : `${l.description} (sin producto)`,
-        value: `${l.qty} × ${formatMoney(l.unit_price, ctx.currency)}${l.tax_rate ? ` +IVA ${l.tax_rate}%` : ''}`,
+        value: `${l.qty} × ${formatMoney(l.unit_price, ctx.currency)}${l.tax_rate ? ` + imp. ${l.tax_rate}%` : ''}`,
       })),
     ];
 
@@ -288,7 +288,7 @@ export const registrarFacturaCompra: ToolDefinition<FacturaCompraArgs> = {
       }${args.receive_stock && conStock > 0 ? ` y entrada de ${conStock} al inventario` : ''}.`,
       lines,
       warnings,
-      totals: { Subtotal: formatMoney(subtotal, ctx.currency), IVA: formatMoney(tax, ctx.currency), Total: formatMoney(total, ctx.currency) },
+      totals: { Subtotal: formatMoney(subtotal, ctx.currency), Impuestos: formatMoney(tax, ctx.currency), Total: formatMoney(total, ctx.currency) },
       estimatedCredits: 2,
       reversible: true,
     };
@@ -447,7 +447,7 @@ export const registrarFacturaVenta: ToolDefinition<FacturaVentaArgs> = {
       due_date: { type: 'string', description: 'YYYY-MM-DD. Si se omite, payment_terms días.' },
       payment_terms: { type: 'integer', description: 'Días de plazo. 30 por defecto.' },
       payment_method: { type: 'string', enum: ['credit', 'cash', 'transfer', 'card'] },
-      tax_included: { type: 'boolean', description: 'true si los precios ya incluyen IVA.' },
+      tax_included: { type: 'boolean', description: 'true si los precios ya incluyen el impuesto (IVA o INC).' },
       items: {
         type: 'array',
         items: {
@@ -457,7 +457,7 @@ export const registrarFacturaVenta: ToolDefinition<FacturaVentaArgs> = {
             description: { type: 'string', description: 'Obligatoria si no hay product_id.' },
             qty: { type: 'number' },
             unit_price: { type: 'number', description: 'Omítelo para usar el precio del catálogo.' },
-            tax_rate: { type: 'number', description: 'IVA en porcentaje (19, 5, 0).' },
+            tax_rate: { type: 'number', description: 'Tarifa del impuesto de la línea en porcentaje: IVA 19, 5 o 0; impuesto al consumo (INC) 8.' },
             discount_amount: { type: 'number' },
           },
           required: ['qty'],
@@ -545,13 +545,13 @@ export const registrarFacturaVenta: ToolDefinition<FacturaVentaArgs> = {
       total += lineTotal;
       return {
         label: info?.name ?? l.description ?? `Producto ${l.product_id}`,
-        value: precio !== null ? `${l.qty} × ${formatMoney(precio, ctx.currency)}${l.tax_rate ? ` +IVA ${l.tax_rate}%` : ''}` : `${l.qty} × (sin precio)`,
+        value: precio !== null ? `${l.qty} × ${formatMoney(precio, ctx.currency)}${l.tax_rate ? ` + imp. ${l.tax_rate}%` : ''}` : `${l.qty} × (sin precio)`,
       };
     });
 
     lines.unshift({ label: 'Cliente', value: cliente ?? 'Sin cliente' });
     lines.push({ label: 'Estado', value: args.issue ? 'Emitida (genera cuenta por cobrar y asiento)' : 'Borrador (se emite después desde Finanzas)' });
-    if (!args.items.some((l) => l.tax_rate)) warnings.push('Ninguna línea lleva IVA. Si aplica, dímelo antes de confirmar.');
+    if (!args.items.some((l) => l.tax_rate)) warnings.push('Ninguna línea lleva impuesto. Si aplica, dímelo antes de confirmar.');
     warnings.push('No descuenta inventario: la factura de venta en este ERP no mueve stock.');
 
     return {
@@ -561,7 +561,7 @@ export const registrarFacturaVenta: ToolDefinition<FacturaVentaArgs> = {
       }.`,
       lines,
       warnings,
-      totals: { Subtotal: formatMoney(subtotal, ctx.currency), IVA: formatMoney(tax, ctx.currency), Total: formatMoney(total, ctx.currency) },
+      totals: { Subtotal: formatMoney(subtotal, ctx.currency), Impuestos: formatMoney(tax, ctx.currency), Total: formatMoney(total, ctx.currency) },
       estimatedCredits: 2,
       reversible: true,
     };

@@ -77,7 +77,13 @@ export type CodigoMensaje =
   | 'comparacionMenorPrecio'
   | 'coincidePorNombre'
   | 'estadoDesconocido'
-  | 'modificadoresSinFormato';
+  | 'modificadoresSinFormato'
+  // export de Alegra (`alegra.ts`)
+  | 'costoAlegraDescartado'
+  | 'comboSinComponentes'
+  | 'categoriaSugerida'
+  | 'preparadoSinInventario'
+  | 'filaInternaAlegra';
 
 export interface Mensaje {
   codigo: CodigoMensaje;

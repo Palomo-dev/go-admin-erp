@@ -15,14 +15,15 @@ import { useOrgDefaultCountry } from '@/components/crm/shared/useOrgDefaultCount
 import { aTarjeta, permisosFila, totalDeEtapa, type EtapaApi, type OportunidadApi, type PermisosPantalla, type ResumenApi, type Tablero } from '@/components/crm/oportunidad/oportunidadLogica';
 import type { useAccionesOportunidad } from '@/components/crm/oportunidad/useAccionesOportunidad';
 import { POR_COLUMNA } from './useTableroPipeline';
-import { PASO_AVANCE, esBarraHorizontal, esControlDeTarjeta, esZonaDeTarjeta, scrollTrasArrastre, sentidoAvance } from './kanbanDesplazamiento';
+import { PASO_AVANCE, bordesOcultos, esBarraHorizontal, esControlDeTarjeta, esZonaDeTarjeta, scrollTrasArrastre, sentidoAvance } from './kanbanDesplazamiento';
 
 /**
  * Kanban del Pipeline (Figma 768:454428 listo, 768:456094 arrastrando,
  * 768:457615 menú, 812:53241 acciones de la tarjeta). Arrastrar y soltar con
  * @dnd-kit (puntero); la alternativa de teclado es «Mover de etapa» del menú
  * «⋯» de cada tarjeta (`MoveStageDialog`). El lienzo se agarra en el vacío
- * para ver las etapas que no caben. Al arrastrar una tarjeta contra el borde,
+ * para ver las etapas que no caben (solo si hay etapas fuera de la vista: si
+ * no, no muestra la mano); una sombra en el borde avisa que hay más. Al arrastrar una tarjeta contra el borde,
  * el mismo lienzo avanza: el auto-scroll de dnd-kit también correría la
  * página. Soltar en una columna abierta
  * mueve YA (optimista) y revierte si el servidor rechaza; soltar en Ganada o
@@ -53,7 +54,7 @@ function Arrastrable({ id, children }: { id: string; children: (arrastrando: boo
     <div
       ref={setNodeRef}
       data-kanban-tarjeta=""
-      className="cursor-grab"
+      className="cursor-pointer"
       style={{ transform: CSS.Translate.toString(transform), opacity: isDragging ? 0.4 : undefined }}
       onPointerDown={(e) => {
         if (esControlDeTarjeta(e.target as Element)) return;
@@ -76,6 +77,8 @@ export function KanbanTablero(p: KanbanTableroProps) {
   const sensores = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const [activa, setActiva] = useState<OportunidadApi | null>(null);
   const [agarrado, setAgarrado] = useState(false);
+  const [ocultos, setOcultos] = useState({ izquierda: false, derecha: false });
+  const desborda = ocultos.izquierda || ocultos.derecha;
   const lienzo = useRef<HTMLDivElement>(null);
   const pan = useRef<{ x: number; left: number } | null>(null);
   const movio = useRef(false);
@@ -114,6 +117,24 @@ export function KanbanTablero(p: KanbanTableroProps) {
     }
   };
 
+  // Sombra en el borde con etapas fuera de la vista; sin desborde no hay mano.
+  const medir = () => {
+    const el = lienzo.current;
+    if (!el) return;
+    const b = bordesOcultos(el.scrollLeft, el.scrollWidth, el.clientWidth);
+    setOcultos((a) => (a.izquierda === b.izquierda && a.derecha === b.derecha ? a : b));
+  };
+  useEffect(() => {
+    const el = lienzo.current;
+    if (!el) return;
+    medir();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(medir);
+    ro.observe(el);
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    return () => ro.disconnect();
+  }, [p.etapas.length]);
+
   useEffect(() => () => {
     borde.current = 0;
     if (marco.current != null) cancelAnimationFrame(marco.current);
@@ -136,7 +157,7 @@ export function KanbanTablero(p: KanbanTableroProps) {
   };
 
   const alPunteroAbajo = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0 || esZonaDeTarjeta(e.target as Element)) return;
+    if (e.button !== 0 || !desborda || esZonaDeTarjeta(e.target as Element)) return;
     const el = lienzo.current;
     if (!el || (e.target === el && esBarraHorizontal(el, e.clientY))) return;
     pan.current = { x: e.clientX, left: el.scrollLeft };
@@ -173,8 +194,10 @@ export function KanbanTablero(p: KanbanTableroProps) {
 
   return (
     <DndContext sensors={sensores} autoScroll={false} onDragStart={alEmpezar} onDragMove={alArrastrar} onDragEnd={alSoltar} onDragCancel={() => { pararAvance(); setActiva(null); }}>
+      <div className="relative min-w-0">
       <div
         ref={lienzo}
+        onScroll={medir}
         role="region"
         aria-label={t('aria')}
         tabIndex={0}
@@ -188,7 +211,7 @@ export function KanbanTablero(p: KanbanTableroProps) {
           e.preventDefault();
           e.stopPropagation();
         }}
-        className={`flex w-full min-w-0 cursor-grab gap-4 overflow-x-auto overscroll-x-contain pb-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand [&_button]:cursor-pointer ${agarrado ? 'cursor-grabbing select-none' : ''}`}
+        className={`flex w-full min-w-0 gap-4 overflow-x-auto overscroll-x-contain pb-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand [&_button]:cursor-pointer ${agarrado ? 'cursor-grabbing select-none' : desborda ? 'cursor-grab' : ''}`}
       >
         {p.etapas.map((etapa) => {
           const col = p.tablero[etapa.id];
@@ -229,6 +252,9 @@ export function KanbanTablero(p: KanbanTableroProps) {
             </Soltable>
           );
         })}
+      </div>
+      {ocultos.izquierda && <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-canvas to-transparent" />}
+      {ocultos.derecha && <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-canvas to-transparent" />}
       </div>
       <DragOverlay>{activa ? <div className="w-[280px]">{tarjeta(activa, true)}</div> : null}</DragOverlay>
     </DndContext>

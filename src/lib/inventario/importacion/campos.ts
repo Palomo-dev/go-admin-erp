@@ -4,7 +4,9 @@
  * Las cabeceras de la plantilla son las mismas que usaba el importador
  * anterior (26 columnas), así que un archivo exportado desde GO Admin o
  * descargado como plantilla antes del rediseño se sigue leyendo igual. Los
- * alias cubren Siigo, listados caseros y cabeceras en inglés.
+ * alias cubren Siigo, Alegra («Precio base» = precio sin impuesto, como lo
+ * guarda GoAdmin; «Costo inicial»; «Ítem inventariable»), listados caseros y
+ * cabeceras en inglés.
  *
  * La exportación y la plantilla salen con las cabeceras en el idioma de la
  * interfaz (`productosImportar.cabeceras` de messages/*.json): los alias
@@ -55,7 +57,7 @@ export interface DefinicionCampo {
 }
 
 export const CAMPOS: DefinicionCampo[] = [
-  { campo: 'sku', cabecera: 'SKU', tipo: 'texto', alias: ['sku', 'codigo', 'code', 'cod', 'codigoproducto', 'codigointerno', 'plu', 'clave', 'productcode'] },
+  { campo: 'sku', cabecera: 'SKU', tipo: 'texto', alias: ['sku', 'codigo', 'code', 'cod', 'codigoproducto', 'codigointerno', 'plu', 'clave', 'productcode', 'codigodelproductooservicio'] },
   { campo: 'name', cabecera: 'Nombre', tipo: 'texto', obligatorio: true, alias: ['nombre', 'name', 'producto', 'articulo', 'item', 'nombreproducto', 'nombredelproducto', 'title', 'titulo', 'productname', 'nom', 'nome'] },
   { campo: 'type', cabecera: 'Tipo', tipo: 'texto', alias: ['tipo', 'type', 'tipodeproducto', 'producttype'] },
   { campo: 'description', cabecera: 'Descripción', tipo: 'texto', alias: ['descripcion', 'description', 'descripcionlarga', 'detalle', 'detalles', 'descricao'] },
@@ -65,11 +67,11 @@ export const CAMPOS: DefinicionCampo[] = [
   { campo: 'brand', cabecera: 'Marca', tipo: 'texto', alias: ['marca', 'brand', 'fabricante', 'marque'] },
   { campo: 'reference', cabecera: 'Referencia', tipo: 'texto', alias: ['referencia', 'reference', 'ref', 'referencie'] },
   { campo: 'supplier', cabecera: 'Proveedor', tipo: 'texto', alias: ['proveedor', 'supplier', 'proveedorprincipal', 'proveedores', 'vendor', 'fornecedor', 'fournisseur'] },
-  { campo: 'price', cabecera: 'Precio de Venta', tipo: 'numero', alias: ['preciodeventa', 'precio', 'precios', 'price', 'precioventa', 'pventa', 'pvp', 'valorventa', 'preciounitario', 'precioalpublico', 'saleprice', 'prix', 'preco', 'prixdevente', 'precodevenda'] },
+  { campo: 'price', cabecera: 'Precio de Venta', tipo: 'numero', alias: ['preciodeventa', 'precio', 'precios', 'price', 'precioventa', 'pventa', 'pvp', 'valorventa', 'preciounitario', 'precioalpublico', 'saleprice', 'prix', 'preco', 'prixdevente', 'precodevenda', 'preciobase'] },
   { campo: 'comparePrice', cabecera: 'Precio de Comparación', tipo: 'numero', alias: ['preciodecomparacion', 'preciocomparacion', 'compareprice', 'compareatprice', 'precioanterior', 'precioantes', 'precioregular', 'regularprice', 'prixbarre', 'precodecomparacao'] },
-  { campo: 'cost', cabecera: 'Costo', tipo: 'numero', alias: ['costo', 'cost', 'costodeadquisicion', 'preciocosto', 'preciocompra', 'costounitario', 'valorcompra', 'custo', 'cout'] },
+  { campo: 'cost', cabecera: 'Costo', tipo: 'numero', alias: ['costo', 'cost', 'costodeadquisicion', 'preciocosto', 'preciocompra', 'costounitario', 'valorcompra', 'custo', 'cout', 'costoinicial'] },
   { campo: 'tax', cabecera: 'Impuesto', tipo: 'texto', alias: ['impuesto', 'impuestos', 'tax', 'iva', 'taxes', 'imposto', 'taxe'] },
-  { campo: 'trackStock', cabecera: 'Rastrear Inventario', tipo: 'booleano', alias: ['rastrearinventario', 'trackstock', 'rastrearstock', 'controlainventario', 'inventariable', 'trackinventory', 'suivrelestock', 'controlarestoque'] },
+  { campo: 'trackStock', cabecera: 'Rastrear Inventario', tipo: 'booleano', alias: ['rastrearinventario', 'trackstock', 'rastrearstock', 'controlainventario', 'inventariable', 'trackinventory', 'suivrelestock', 'controlarestoque', 'iteminventariable'] },
   { campo: 'stock', cabecera: 'Stock Total', tipo: 'numero', alias: ['stocktotal', 'stock', 'cantidad', 'existencias', 'inventario', 'qty', 'quantity', 'unidades', 'saldo', 'quantidade', 'quantite', 'totalstock', 'estoquetotal'] },
   { campo: 'minLevel', cabecera: 'Stock Mínimo', tipo: 'numero', alias: ['stockminimo', 'minlevel', 'minimo', 'nivelminimo', 'minstock', 'estoqueminimo', 'minimumstock', 'stockminimum'] },
   { campo: 'tags', cabecera: 'Etiquetas', tipo: 'texto', alias: ['etiquetas', 'etiqueta', 'tags', 'tag', 'etiquettes'] },

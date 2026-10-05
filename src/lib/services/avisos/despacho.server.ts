@@ -2,11 +2,14 @@
  * Despacho de avisos al miembro. Solo servidor, con la clave de servicio:
  * el trigger ya validó la organización y el destinatario es un miembro activo.
  * El cron revisa vencimientos; el resto solo manda los correos pendientes.
+ * Una cuenta suspendida, congelada o con la prueba vencida no recibe el correo
+ * ni entra en el resumen diario.
  */
 import { createHash } from 'crypto';
 import { after } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getServiceClient } from '@/lib/supabase/server-service';
+import { decisionCorreoOperativo, veredictoCorreoOperativo, type DecisionCorreoOperativo } from '@/lib/services/cuentaCorreo';
 import { sendEmail } from '@/lib/services/crm/email/sendService';
 import { EmailError, type EmailMessageStatus } from '@/lib/services/crm/email/types';
 import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
@@ -382,16 +385,33 @@ async function crearVencimientos(db: SupabaseClient, organizationId?: number): P
 
   filas.push(...(await seguimientosDeHoy(db, organizationId, activos, zonas)));
   filas.push(...(await resumenesDeLaManana(db, organizationId, zonas)));
+  const vigentes = await sinCuentasCerradas(db, filas);
 
-  for (let i = 0; i < filas.length; i += 100) {
-    const lote = filas.slice(i, i + 100);
+  for (let i = 0; i < vigentes.length; i += 100) {
+    const lote = vigentes.slice(i, i + 100);
     const { error } = await db.from('member_notices').upsert(lote, {
       onConflict: 'idempotency_key',
       ignoreDuplicates: true,
     });
     if (error) console.error('[avisos] alta', error.message);
   }
-  return filas.length;
+  return vigentes.length;
+}
+
+/** No arma el aviso diario de una cuenta que ya no puede usar el sistema. */
+async function sinCuentasCerradas(db: SupabaseClient, filas: FilaAviso[]): Promise<FilaAviso[]> {
+  const decisiones = new Map<number, DecisionCorreoOperativo>();
+  const vigentes: FilaAviso[] = [];
+  for (const fila of filas) {
+    const org = Number(fila.organization_id);
+    let decision = decisiones.get(org);
+    if (!decision) {
+      decision = decisionCorreoOperativo(await veredictoCorreoOperativo(db, org));
+      decisiones.set(org, decision);
+    }
+    if (decision !== 'omitir') vigentes.push(fila);
+  }
+  return vigentes;
 }
 
 async function marcar(db: SupabaseClient, id: string, estado: 'pendiente' | 'enviado' | 'omitido' | 'fallido'): Promise<void> {
@@ -520,7 +540,16 @@ export async function despacharAvisosPendientes(organizationId?: number, db: Sup
   const zonas = new Map<number, string>();
   const preferencias = new Map<string, PreferenciaCorreo | null>();
   const nombres = new Map<number, string | undefined>();
+  const cuentas = new Map<number, DecisionCorreoOperativo>();
   const atendidos = new Set<string>();
+
+  async function decisionDe(org: number): Promise<DecisionCorreoOperativo> {
+    const guardada = cuentas.get(org);
+    if (guardada) return guardada;
+    const decision = decisionCorreoOperativo(await veredictoCorreoOperativo(db, org));
+    cuentas.set(org, decision);
+    return decision;
+  }
 
   async function correoDe(userId: string): Promise<string | null> {
     const { data: perfil, error: errorPerfil } = await db.from('profiles').select('email').eq('id', userId).maybeSingle();
@@ -574,6 +603,17 @@ export async function despacharAvisosPendientes(organizationId?: number, db: Sup
     atendidos.add(fila.id);
 
     if (!(await reclamar(db, fila.id))) continue;
+    const decision = await decisionDe(org);
+    if (decision !== 'enviar') {
+      const estado = decision === 'omitir' ? 'omitido' : 'pendiente';
+      await marcar(db, fila.id, estado);
+      if (estado === 'omitido') resumen.omitidos += 1;
+      if (hermano && (await reclamar(db, hermano.id))) {
+        await marcar(db, hermano.id, estado);
+        if (estado === 'omitido') resumen.omitidos += 1;
+      }
+      continue;
+    }
     if (!(await miembroActivo(db, org, fila.recipient_user_id))) {
       await marcar(db, fila.id, 'omitido');
       resumen.omitidos += 1;

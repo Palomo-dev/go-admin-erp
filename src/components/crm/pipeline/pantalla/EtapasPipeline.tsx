@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, GripVertical, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { colorEtapa } from '@/components/crm/kit/stageColumnLogica';
+import { ListaOrdenable } from '@/components/crm/kit/ListaOrdenable';
 import { emitirCambioCrm, pedirCrm } from '@/components/crm/acciones/apiCrm';
 import type { EtapaApi } from '@/components/crm/oportunidad/oportunidadLogica';
 import { StageDialog, type StageDialogValues } from '../StageDialog';
@@ -15,7 +16,7 @@ import { etapasOrdenadas, moverEtapa, ordenAlInsertar } from './etapasPipelineLo
 
 /**
  * «Etapas» del Pipeline y «⋯» de cada columna (Figma 768:454806, 812:54821
- * «Editar etapas de este pipeline»): lista de etapas con subir, bajar,
+ * «Editar etapas de este pipeline»): lista de etapas con arrastrar (asa), subir, bajar,
  * editar, eliminar y «Nueva etapa». Reutiliza `StageDialog` y
  * `DeleteStageDialog` y escribe por `/api/crm/stages/**`
  * (`crm.stages.manage`, resuelto en el servidor).
@@ -56,11 +57,10 @@ export function EtapasPipeline(p: EtapasPipelineProps) {
     await pedirCrm('/api/crm/stages', { method: 'PUT', cuerpo: { pipeline_id: p.pipelineId, order: orden } });
   };
 
-  const mover = async (indice: number, delta: -1 | 1) => {
-    const destino = indice + delta;
-    if (destino < 0 || destino >= lista.length || guardando) return;
+  const moverA = async (desde: number, hasta: number) => {
+    if (hasta < 0 || hasta >= lista.length || desde === hasta || guardando) return;
     const previa = lista;
-    const siguiente = moverEtapa(lista, indice, destino);
+    const siguiente = moverEtapa(lista, desde, hasta);
     setLista(siguiente);
     setGuardando(true);
     try {
@@ -121,26 +121,30 @@ export function EtapasPipeline(p: EtapasPipelineProps) {
             <SheetTitle className="text-lg font-semibold">{t('titulo')}</SheetTitle>
             <SheetDescription className="text-sm text-fg-secondary">{t('descripcion')}</SheetDescription>
           </div>
-          <ol className="flex flex-col gap-2">
-            {lista.map((e, i) => {
+          {/* La lista se desplaza sola; «Nueva etapa» queda siempre a la vista. */}
+          <ListaOrdenable items={lista} clave={(e) => e.id} onOrdenar={(desde, hasta) => void moverA(desde, hasta)} deshabilitada={guardando} className="-mx-1 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-1">
+            {(e, i, asa) => {
               const color = colorEtapa(e.color);
               return (
-                <li key={e.id} className="flex items-center gap-2 rounded-lg border border-line px-3 py-2">
+                <div className={`flex items-center gap-2 rounded-lg border bg-surface px-2 py-2 ${asa.arrastrando ? 'border-brand shadow-lg' : 'border-line'}`}>
+                  <button type="button" {...asa.propsAsa} aria-label={t('arrastrar', { etapa: e.name })} disabled={guardando} className="flex size-8 shrink-0 items-center justify-center rounded-lg text-fg-muted hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-30">
+                    <GripVertical aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                  </button>
                   <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full bg-brand" style={color ? { backgroundColor: color } : undefined} />
                   <span className="min-w-0 flex-1 truncate text-sm text-fg">{e.name}</span>
                   <span className="shrink-0 text-xs text-fg-muted">{e.is_won ? t('ganada') : e.is_lost ? t('perdida') : `${e.probability ?? 0} %`}</span>
-                  <button type="button" aria-label={t('subir', { etapa: e.name })} disabled={i === 0 || guardando} onClick={() => void mover(i, -1)} className="flex size-8 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover disabled:opacity-30">
+                  <button type="button" aria-label={t('subir', { etapa: e.name })} disabled={i === 0 || guardando} onClick={() => void moverA(i, i - 1)} className="flex size-8 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover disabled:opacity-30">
                     <ChevronUp aria-hidden="true" className="size-4" />
                   </button>
-                  <button type="button" aria-label={t('bajar', { etapa: e.name })} disabled={i === lista.length - 1 || guardando} onClick={() => void mover(i, 1)} className="flex size-8 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover disabled:opacity-30">
+                  <button type="button" aria-label={t('bajar', { etapa: e.name })} disabled={i === lista.length - 1 || guardando} onClick={() => void moverA(i, i + 1)} className="flex size-8 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover disabled:opacity-30">
                     <ChevronDown aria-hidden="true" className="size-4" />
                   </button>
                   <button type="button" aria-label={t('editar', { etapa: e.name })} onClick={() => p.onEditarId?.(e.id)} className="flex size-8 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover"><Pencil aria-hidden="true" className="size-4" /></button>
                   <button type="button" aria-label={t('eliminar', { etapa: e.name })} onClick={() => setBorrar(e)} className="flex size-8 items-center justify-center rounded-lg text-danger-text hover:bg-danger-subtle"><Trash2 aria-hidden="true" className="size-4" /></button>
-                </li>
+                </div>
               );
-            })}
-          </ol>
+            }}
+          </ListaOrdenable>
           <button type="button" onClick={() => setCrear(true)} className={clasesBoton({ variante: 'secundario', className: 'self-start' })}>
             <Plus aria-hidden="true" className="size-4" />
             {t('nueva')}

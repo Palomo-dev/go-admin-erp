@@ -7,7 +7,9 @@
  * Una tarjeta solo se pinta si su reporte está en el plan y la persona puede
  * abrirlo (`reportePermitido`); si no, se omite, no se inventa un cero.
  */
-import type { ReportData, ReporteKPI } from './types';
+import { filtrosEfectivos, type FiltrosReportes } from './filtrosUrl';
+import { periodoAnterior } from './periodosService';
+import type { PeriodoCierre, ReportData, ReportDefinition, ReporteKPI } from './types';
 
 export type IdKpiInicio = 'ventas' | 'utilidad' | 'caja' | 'cobrar' | 'pagar' | 'inventario';
 
@@ -52,4 +54,67 @@ export function valorNumerico(k: ReporteKPI | null): number | null {
   if (typeof k.valor === 'number') return Number.isFinite(k.valor) ? k.valor : null;
   const n = Number(k.valor);
   return k.valor.trim() !== '' && Number.isFinite(n) ? n : null;
+}
+
+/** Clave del resultado de «Ventas del periodo» sobre el periodo anterior (la tendencia de la tarjeta). */
+export const CLAVE_VENTAS_ANTERIOR = 'ventas-periodo-anterior';
+
+/** Una corrida de reporte para las tarjetas: con qué periodo y sucursal. */
+export interface PeticionKpi {
+  /** Clave del resultado: el id del reporte, o `CLAVE_VENTAS_ANTERIOR`. */
+  clave: string;
+  reportId: string;
+  periodo: PeriodoCierre;
+  sucursal: number | null;
+}
+
+/**
+ * Corridas que piden las tarjetas, todas independientes entre sí. La de
+ * ventas del periodo anterior va en el mismo lote: antes esperaba a que
+ * terminaran las demás y sumaba tres viajes en serie al inicio.
+ *
+ * @param permitido El reporte está en el plan y la persona puede abrirlo.
+ * @param sucursal Sucursal de la pantalla ya resuelta (`ctx.resolverSucursal`).
+ */
+export function planDeKpis(
+  ids: readonly string[],
+  filtros: FiltrosReportes,
+  sucursal: number | null,
+  definicion: (id: string) => ReportDefinition | undefined,
+  permitido: (def: ReportDefinition) => boolean,
+): PeticionKpi[] {
+  const plan: PeticionKpi[] = [];
+  for (const id of ids) {
+    const def = definicion(id);
+    if (!def || !permitido(def)) continue;
+    const s = def.alcance === 'organizacion' ? null : sucursal;
+    plan.push({ clave: id, reportId: id, periodo: filtrosEfectivos(def, filtros, s).periodo, sucursal: s });
+  }
+  const ventas = definicion('ventas-periodo');
+  if (ventas && plan.some((p) => p.reportId === 'ventas-periodo')) {
+    plan.push({
+      clave: CLAVE_VENTAS_ANTERIOR,
+      reportId: 'ventas-periodo',
+      periodo: periodoAnterior(filtrosEfectivos(ventas, filtros, sucursal).periodo),
+      sucursal,
+    });
+  }
+  return plan;
+}
+
+/** Corre el plan en paralelo; una corrida que falla queda en `null` (la tarjeta muestra «—»). */
+export async function correrKpis(
+  plan: readonly PeticionKpi[],
+  ejecutar: (p: PeticionKpi) => Promise<ReportData>,
+): Promise<Map<string, ReportData | null>> {
+  const resultados = await Promise.all(
+    plan.map(async (p) => {
+      try {
+        return [p.clave, await ejecutar(p)] as const;
+      } catch {
+        return [p.clave, null] as const;
+      }
+    }),
+  );
+  return new Map(resultados);
 }

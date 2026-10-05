@@ -5,18 +5,22 @@
  *   1. Se RECLAMA moviendo `next_run_at` al siguiente con un UPDATE
  *      condicionado al valor leído: dos ejecuciones del cron a la vez no
  *      mandan dos veces (la que pierde no toca nada).
- *   2. Si quien lo programó ya no es miembro activo, el envío se pausa.
- *   3. Cada miembro activo recibe el reporte generado con SU sesión
+ *   2. Si la cuenta está suspendida, congelada o con la prueba vencida, este
+ *      pase no manda nada. La programación sigue: el próximo ciclo sale
+ *      cuando la cuenta vuelva a estar al día.
+ *   3. Si quien lo programó ya no es miembro activo, el envío se pausa.
+ *   4. Cada miembro activo recibe el reporte generado con SU sesión
  *      (`sesionDeMiembro`): su plan, su permiso y su alcance de sucursal. Si
  *      el envío es de todas las sucursales y la persona solo ve algunas,
  *      recibe un archivo por cada una. Si ya no alcanza, se pausa para esa
  *      persona y se avisa a quien lo programó. Nada sale sin permiso vigente.
- *   4. Los externos reciben lo que ve quien programó, y solo si quien los
+ *   5. Los externos reciben lo que ve quien programó, y solo si quien los
  *      aprobó sigue siendo administrador.
- *   5. Se guardan el resultado (`last_*`) y el estado por destinatario.
+ *   6. Se guardan el resultado (`last_*`) y el estado por destinatario.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getServiceClient } from '@/lib/supabase/server-service';
+import { veredictoCorreoOperativo } from '@/lib/services/cuentaCorreo';
 import { hasOrgAdminOrPermission } from '@/lib/utils/orgContext';
 import { OrgContextError } from '@/lib/utils/orgContextError';
 import { todayInTz } from '@/lib/utils/dateCore';
@@ -128,6 +132,15 @@ export async function procesarEnvio(service: SupabaseClient, fila: FilaProgramad
   if (!reclamado) return { id: fila.id, estado: 'reclamado_por_otro', enviados: 0, pausados: 0, fallidos: 0 };
 
   const base = { last_run_at: ahora.toISOString(), updated_at: ahora.toISOString() };
+  const veredicto = await veredictoCorreoOperativo(service, fila.organization_id, ahora);
+  if (!veredicto.enviar && veredicto.motivo === 'consulta') {
+    await cerrar(service, fila, { ...base, next_run_at: fila.next_run_at, last_status: 'fallido', last_error: 'cuenta_no_consultada' });
+    return { id: fila.id, estado: 'fallido', enviados: 0, pausados: 0, fallidos: 1 };
+  }
+  if (!veredicto.enviar) {
+    await cerrar(service, fila, { ...base, last_status: 'omitido', last_error: veredicto.motivo });
+    return { id: fila.id, estado: 'omitido', enviados: 0, pausados: 0, fallidos: 0 };
+  }
   let dueno: SesionEnvio | null;
   try {
     dueno = await sesionDeMiembro(fila.organization_id, fila.user_id);

@@ -16,8 +16,13 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 /** Valor de «ninguna tarifa por defecto» en formularios. */
 export const SIN_TARIFA_POR_DEFECTO = 'NINGUNA' as const;
 
-/** Códigos de `tax_templates` (COL) que se ofrecen al crear la organización. */
-export type CodigoTarifaPorDefecto = 'IVA_19' | 'IVA_5' | typeof SIN_TARIFA_POR_DEFECTO;
+/**
+ * Códigos de `tax_templates` (COL) que se ofrecen al crear la organización.
+ * `INC_8` es el impuesto nacional al consumo de restaurantes, bares y
+ * cafeterías (no es IVA: tributo DIAN 04). Lo elige quien da de alta la
+ * organización; nunca se deduce del tipo de negocio.
+ */
+export type CodigoTarifaPorDefecto = 'IVA_19' | 'IVA_5' | 'INC_8' | typeof SIN_TARIFA_POR_DEFECTO;
 
 /** Preselección al crear una organización: IVA general. */
 export const TARIFA_POR_DEFECTO_INICIAL: CodigoTarifaPorDefecto = 'IVA_19';
@@ -25,6 +30,7 @@ export const TARIFA_POR_DEFECTO_INICIAL: CodigoTarifaPorDefecto = 'IVA_19';
 export const OPCIONES_TARIFA_POR_DEFECTO: ReadonlyArray<{ value: CodigoTarifaPorDefecto; label: string }> = [
   { value: 'IVA_19', label: 'IVA 19% (tarifa general)' },
   { value: 'IVA_5', label: 'IVA 5%' },
+  { value: 'INC_8', label: 'Impuesto al consumo 8% (INC): restaurantes, bares y cafeterías' },
   { value: SIN_TARIFA_POR_DEFECTO, label: 'Ninguna — vendo productos excluidos/exentos' },
 ];
 

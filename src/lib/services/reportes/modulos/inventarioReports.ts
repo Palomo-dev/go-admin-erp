@@ -1,6 +1,6 @@
 // ============================================================
 // Reportes de Inventario
-// Llama a las RPCs: fn_reporte_stock_critico, fn_reporte_movimientos_inventario, fn_reporte_rotacion_inventario,
+// Llama a las RPCs: fn_reporte_stock_critico_detalle, fn_reporte_movimientos_inventario, fn_reporte_rotacion_inventario,
 // fn_reporte_rentabilidad_producto, fn_reporte_movimiento_valorizado
 // ============================================================
 
@@ -11,7 +11,7 @@ import type { ReportesClient } from '../types';
 // del usuario; en el servidor (asistente de reportes) el route handler pasa el
 // cliente de sesión de `getServerOrgContext()`, así que las RPC `fn_reporte_*`
 // corren como `authenticated` miembro y nunca como `anon`.
-import { applyBranchFilter, normalizeBranchParam } from '@/lib/services/branchFilterHelper';
+import { normalizeBranchParam } from '@/lib/services/branchFilterHelper';
 import type { DefinicionModulo, ReportData, PeriodoCierre } from '../types';
 import { rangoDelPeriodo } from '../rangoPeriodo';
 import { vistaRentabilidadProducto } from './rentabilidadProducto';
@@ -29,29 +29,108 @@ function buildReportData(
   return { id, titulo, modulo, kpis, columnas, filas, totales, generadoEn: new Date().toISOString(), periodo };
 }
 
-interface ProductCostRef {
-  cost?: string | number | null;
-  effective_from?: string | null;
-  effective_to?: string | null;
+/** Fila crítica tal como la devuelve `fn_reporte_stock_critico_detalle`. */
+export interface FilaStockCritico {
+  producto_id: number;
+  padre_id: number | null;
+  sku: string | null;
+  nombre: string | null;
+  categoria: string | null;
+  sucursal: string | null;
+  stock: number | string | null;
+  minimo: number | string | null;
+  /** Costo efectivo: avg_cost si es > 0; si no, el costo vigente más reciente de product_costs. */
+  costo: number | string | null;
+  padre_sku: string | null;
+  padre_nombre: string | null;
+}
+
+export interface FilaStockCriticoAgrupada extends Record<string, unknown> {
+  sku: string;
+  nombre: string;
+  categoria: string;
+  sucursales: string;
+  stock_actual: number;
+  stock_minimo: number;
+  faltante: number;
+  valor_faltante: number;
+  estado: 'Agotado' | 'Bajo mínimo' | 'Sin stock en sucursal';
 }
 
 /**
- * Devuelve el costo unitario efectivo de un producto.
- * Prioriza stock_levels.avg_cost; si es 0/NULL, usa el costo vigente
- * de product_costs (effective_to IS NULL, más reciente por effective_from).
+ * Agrupa las filas críticas por producto (o por su padre, si es variante) y
+ * calcula faltante, valor y estado. La base ya filtró las críticas
+ * (existencia <= 0, o mínimo > 0 y existencia <= mínimo) y resolvió el costo.
  */
-function getEffectiveCost(
-  avgCost: number,
-  productCosts?: ProductCostRef[] | ProductCostRef | null,
-): number {
-  if (avgCost > 0) return avgCost;
-  if (!productCosts) return 0;
-  const costs = Array.isArray(productCosts) ? productCosts : [productCosts];
-  if (costs.length === 0) return 0;
-  const vigentes = costs
-    .filter((c) => c.effective_to === null || c.effective_to === undefined)
-    .sort((a, b) => (String(b.effective_from ?? '').localeCompare(String(a.effective_from ?? ''))));
-  return Number(vigentes[0]?.cost) || 0;
+export function agruparStockCritico(filas: readonly FilaStockCritico[]): FilaStockCriticoAgrupada[] {
+  const porProducto = new Map<number, {
+    sku: string;
+    nombre: string;
+    categoria: string;
+    sucursalesStock: string[];
+    sucursalesAgotadas: string[];
+    stockTotal: number;
+    minLevel: number;
+    costo: number;
+  }>();
+
+  for (const f of filas) {
+    const pid = Number(f.producto_id);
+    const parentId = f.padre_id ?? null;
+    // Si es variante, agrupar bajo el padre; si no, usar el propio id
+    const grupoId = parentId ?? pid;
+    const stockActual = Number(f.stock ?? 0);
+    const minimo = Number(f.minimo ?? 0);
+    const costo = Number(f.costo ?? 0) || 0;
+    const sucursalName = f.sucursal ? String(f.sucursal) : '—';
+    const tienePadre = parentId !== null && f.padre_nombre !== null && f.padre_nombre !== undefined;
+    const nombreProducto = tienePadre ? `${f.padre_nombre} > ${String(f.nombre ?? '—')}` : String(f.nombre ?? '—');
+    const skuProducto = tienePadre ? String(f.padre_sku ?? '—') : String(f.sku ?? '—');
+    const existente = porProducto.get(grupoId);
+    if (existente) {
+      existente.stockTotal += stockActual;
+      existente.minLevel = Math.max(existente.minLevel, minimo);
+      if (stockActual > 0) {
+        if (!existente.sucursalesStock.includes(sucursalName)) existente.sucursalesStock.push(sucursalName);
+      } else if (!existente.sucursalesAgotadas.includes(sucursalName)) {
+        existente.sucursalesAgotadas.push(sucursalName);
+      }
+    } else {
+      porProducto.set(grupoId, {
+        sku: skuProducto,
+        nombre: nombreProducto,
+        categoria: String(f.categoria ?? 'Sin categoría'),
+        sucursalesStock: stockActual > 0 ? [sucursalName] : [],
+        sucursalesAgotadas: stockActual <= 0 ? [sucursalName] : [],
+        stockTotal: stockActual,
+        minLevel: minimo,
+        costo,
+      });
+    }
+  }
+
+  return Array.from(porProducto.values())
+    .filter((p) => p.sucursalesAgotadas.length > 0 || (p.minLevel > 0 && p.stockTotal <= p.minLevel))
+    .map((p): FilaStockCriticoAgrupada => {
+      const faltante = Math.max(0, p.minLevel - p.stockTotal);
+      const estado = p.stockTotal === 0 ? 'Agotado' : (p.minLevel > 0 && p.stockTotal <= p.minLevel ? 'Bajo mínimo' : 'Sin stock en sucursal');
+      const sucursalesDetalle = [
+        ...p.sucursalesStock.map((s) => `${s} (✓)`),
+        ...p.sucursalesAgotadas.map((s) => `${s} (0)`),
+      ].join(', ') || '—';
+      return {
+        sku: p.sku,
+        nombre: p.nombre,
+        categoria: p.categoria,
+        sucursales: sucursalesDetalle,
+        stock_actual: p.stockTotal,
+        stock_minimo: p.minLevel,
+        faltante,
+        valor_faltante: faltante * p.costo,
+        estado,
+      };
+    })
+    .sort((a, b) => b.faltante - a.faltante || a.nombre.localeCompare(b.nombre));
 }
 
 export const inventarioReports: DefinicionModulo[] = [
@@ -65,148 +144,17 @@ export const inventarioReports: DefinicionModulo[] = [
     periodosSugeridos: ['diario'],
     async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
       const db = client ?? browserSupabase;
-      let query = db
-        .from('stock_levels')
-        .select(`
-          product_id,
-          branch_id,
-          qty_on_hand,
-          qty_reserved,
-          min_level,
-          avg_cost,
-          products!inner(
-            id, sku, name, category_id, track_stock, status, is_parent, parent_product_id, organization_id,
-            categories(name),
-            product_costs(cost, effective_from, effective_to)
-          ),
-          branches(id, name)
-        `)
-        .eq('products.organization_id', orgId)
-        .eq('products.status', 'active')
-        .eq('products.track_stock', true);
-
-      // Filtrar por branchId del parámetro (no usar getBranchFilter global)
-      query = applyBranchFilter(query, branchId);
-
-      const { data, error } = await query;
-
+      // Las críticas, su costo efectivo y el total se calculan en la base
+      // (20261005121435 y 20261005122924): antes se bajaban todas las existencias de la
+      // organización con sus costos incrustados para descartarlas aquí.
+      const { data, error } = await db.rpc('fn_reporte_stock_critico_detalle', {
+        p_organization_id: orgId,
+        p_branch_id: normalizeBranchParam(branchId),
+      });
       if (error) throw error;
 
-      // Filtrar solo productos con stock agotado en al menos una sucursal o bajo el mínimo
-      const allRows = ((data ?? []) as Record<string, unknown>[]).filter((sl) => {
-        const stockActual = Number(sl.qty_on_hand ?? 0);
-        const minimo = Number(sl.min_level ?? 0);
-        return stockActual <= 0 || (minimo > 0 && stockActual <= minimo);
-      });
-
-      // Obtener productos padre para agrupar variantes
-      const parentIds = new Set<number>();
-      for (const sl of allRows) {
-        const producto = sl.products as Record<string, unknown> | null;
-        if (!producto) continue;
-        const parentId = producto.parent_product_id as number | null;
-        if (parentId && !parentIds.has(parentId)) {
-          parentIds.add(parentId);
-        }
-      }
-
-      const padresMap = new Map<number, { sku: string; name: string }>();
-      if (parentIds.size > 0) {
-        const { data: padresData } = await db
-          .from('products')
-          .select('id, sku, name')
-          .in('id', Array.from(parentIds));
-        for (const p of padresData ?? []) {
-          padresMap.set(p.id, { sku: p.sku, name: p.name });
-        }
-      }
-
-      // Agrupar por producto (o por padre si es variante)
-      const porProducto = new Map<number, {
-        sku: string;
-        nombre: string;
-        categoria: string;
-        sucursalesStock: string[];
-        sucursalesAgotadas: string[];
-        stockTotal: number;
-        minLevel: number;
-        costo: number;
-      }>();
-
-      for (const sl of allRows) {
-        const producto = sl.products as Record<string, unknown> | null;
-        if (!producto) continue;
-        const pid = Number(producto.id);
-        const parentId = producto.parent_product_id as number | null;
-        // Si es variante, agrupar bajo el padre; si no, usar el propio id
-        const grupoId = parentId ?? pid;
-        const stockActual = Number(sl.qty_on_hand ?? 0);
-        const minimo = Number(sl.min_level ?? 0);
-        const avgCost = Number(sl.avg_cost ?? 0);
-        // product_costs cuelga de products (FK product_costs.product_id), no de
-        // stock_levels: no hay relación entre esas dos tablas y PostgREST
-        // respondía 400 al intentar incrustarla desde stock_levels.
-        const costo = getEffectiveCost(avgCost, producto.product_costs as ProductCostRef[] | null);
-        const sucursal = sl.branches as Record<string, unknown> | null;
-        const categoria = producto.categories as Record<string, unknown> | null;
-        const sucursalName = sucursal?.name ? String(sucursal.name) : '—';
-        const padre = parentId ? padresMap.get(parentId) : null;
-        const nombreProducto = padre
-          ? `${padre.name} > ${String(producto.name ?? '—')}`
-          : String(producto.name ?? '—');
-        const skuProducto = padre
-          ? String(padre.sku ?? '—')
-          : String(producto.sku ?? '—');
-        const existente = porProducto.get(grupoId);
-        if (existente) {
-          existente.stockTotal += stockActual;
-          existente.minLevel = Math.max(existente.minLevel, minimo);
-          if (stockActual > 0) {
-            if (!existente.sucursalesStock.includes(sucursalName)) {
-              existente.sucursalesStock.push(sucursalName);
-            }
-          } else {
-            if (!existente.sucursalesAgotadas.includes(sucursalName)) {
-              existente.sucursalesAgotadas.push(sucursalName);
-            }
-          }
-        } else {
-          porProducto.set(grupoId, {
-            sku: skuProducto,
-            nombre: nombreProducto,
-            categoria: String(categoria?.name ?? 'Sin categoría'),
-            sucursalesStock: stockActual > 0 ? [sucursalName] : [],
-            sucursalesAgotadas: stockActual <= 0 ? [sucursalName] : [],
-            stockTotal: stockActual,
-            minLevel: minimo,
-            costo,
-          });
-        }
-      }
-
-      const filas = Array.from(porProducto.values())
-        .filter((p) => p.sucursalesAgotadas.length > 0 || (p.minLevel > 0 && p.stockTotal <= p.minLevel))
-        .map((p) => {
-          const faltante = Math.max(0, p.minLevel - p.stockTotal);
-          const valorFaltante = faltante * p.costo;
-          const estado = p.stockTotal === 0 ? 'Agotado' : (p.minLevel > 0 && p.stockTotal <= p.minLevel ? 'Bajo mínimo' : 'Sin stock en sucursal');
-          const sucursalesDetalle = [
-            ...p.sucursalesStock.map((s) => `${s} (✓)`),
-            ...p.sucursalesAgotadas.map((s) => `${s} (0)`),
-          ].join(', ') || '—';
-          return {
-            sku: p.sku,
-            nombre: p.nombre,
-            categoria: p.categoria,
-            sucursales: sucursalesDetalle,
-            stock_actual: p.stockTotal,
-            stock_minimo: p.minLevel,
-            faltante,
-            valor_faltante: valorFaltante,
-            estado,
-          };
-        })
-        .sort((a, b) => b.faltante - a.faltante || a.nombre.localeCompare(b.nombre));
+      const d = (data ?? {}) as { total?: number | string | null; filas?: FilaStockCritico[] | null };
+      const filas = agruparStockCritico(Array.isArray(d.filas) ? d.filas : []);
 
       const totalCriticos = filas.length;
       const agotados = filas.filter((f) => f.estado === 'Agotado').length;
@@ -214,8 +162,8 @@ export const inventarioReports: DefinicionModulo[] = [
       const bajoMinimo = filas.filter((f) => f.estado === 'Bajo mínimo').length;
       const valorFaltanteTotal = filas.reduce((s, f) => s + Number(f.valor_faltante ?? 0), 0);
 
-      // Total de productos con stock trackeado (para contexto global)
-      const totalProductosTrackeado = (data ?? []).length;
+      // Total de existencias con stock trackeado (para contexto global)
+      const totalProductosTrackeado = Number(d.total ?? 0) || 0;
 
       return buildReportData(
         'stock-critico', 'Stock crítico', 'inventory', periodo,

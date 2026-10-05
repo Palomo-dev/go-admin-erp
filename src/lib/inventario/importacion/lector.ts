@@ -16,6 +16,7 @@ import { filaVacia, leerLibro, type Matriz } from '@/lib/importacion/libro';
 import { autoMapear, encontrarFilaCabecera, type CampoProducto, type Mapeo } from './campos';
 import { normalizarCabecera, parseBooleano, parseNumero, slugificar, textoCelda } from './texto';
 import type { FilaImport, Mensaje } from './tipos';
+import { ajustarFilasAlegra, esExportAlegra } from './alegra';
 
 // La lectura del libro vive en `@/lib/importacion/libro` (compartida con el
 // importador de leads); se reexporta para no mover los imports de productos.
@@ -59,10 +60,15 @@ export function detectarFormatoSistema(matriz: Matriz): number {
 }
 
 export function detectarFormato(matriz: Matriz): { formato: FormatoArchivo; filaCabecera: number } {
+  // Una cabecera genérica que aparece ANTES manda: en el export de ítems de
+  // Alegra, una fila de datos con «Orden de compra» y «Ventas» pasaba por la
+  // cabecera del formato «Sistema» y todas las filas salían «sin nombre».
+  const generica = encontrarFilaCabecera(matriz);
+  const antes = (i: number) => i !== -1 && (generica === -1 || i <= generica);
   const sistema = detectarFormatoSistema(matriz);
-  if (sistema !== -1) return { formato: 'sistema', filaCabecera: sistema };
+  if (antes(sistema)) return { formato: 'sistema', filaCabecera: sistema };
   const space = detectarFormatoSpace(matriz);
-  if (space !== -1) return { formato: 'space', filaCabecera: space };
+  if (antes(space)) return { formato: 'space', filaCabecera: space };
   return { formato: 'generico', filaCabecera: -1 };
 }
 
@@ -368,7 +374,9 @@ export function leerSegunFormato(
   const filaCabecera = mapeoManual?.filaCabecera ?? encontrarFilaCabecera(matriz);
   if (filaCabecera === -1) return { formato: 'generico', filaCabecera, mapeo: [], filas: [] };
   const mapeo = mapeoManual?.mapeo ?? autoMapear(matriz[filaCabecera] ?? []);
-  const filas = leerFilas(matriz, filaCabecera, mapeo);
+  const leidas = leerFilas(matriz, filaCabecera, mapeo);
+  // El export de ítems de Alegra se lee con el mapeo genérico y luego se corrige (`alegra.ts`).
+  const filas = esExportAlegra(matriz[filaCabecera]) ? ajustarFilasAlegra(matriz, filaCabecera, leidas) : leidas;
   return { formato: 'generico', filaCabecera, mapeo, filas };
 }
 

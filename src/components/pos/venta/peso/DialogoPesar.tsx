@@ -350,10 +350,18 @@ export function DialogoPesar({
                   {tb('acciones.usarBascula')}
                 </button>
               ) : porPeso ? (
-                <span className="inline-flex items-center gap-1 text-fg-muted">
+                // Sin báscula registrada para este equipo, conectarla no basta:
+                // se registra en Configuración › POS › Básculas. Pestaña nueva
+                // para no perder la venta en curso.
+                <a
+                  href="/app/configuracion?modulo=pos#pos-basculas"
+                  target="_blank"
+                  rel="noopener"
+                  className="inline-flex items-center gap-1 rounded text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
                   <Scale aria-hidden="true" className="size-3.5" strokeWidth={1.5} />
-                  {t('ingresoManual')}
-                </span>
+                  {t('configurarBascula')}
+                </a>
               ) : null}
             </div>
             <label htmlFor={idCampo} className="sr-only">

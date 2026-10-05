@@ -6,7 +6,7 @@
  * `reordenar` (el mismo del asistente de pipeline) y la creación se inserta
  * antes de la primera etapa de cierre.
  */
-import { reordenar } from '@/components/crm/kit/stageEditorRowLogica';
+import { indiceAntesDelCierre, reordenar } from '@/components/crm/kit/stageEditorRowLogica';
 import type { EtapaApi } from '@/components/crm/oportunidad/oportunidadLogica';
 
 export function etapasOrdenadas(etapas: readonly EtapaApi[]): EtapaApi[] {
@@ -15,9 +15,7 @@ export function etapasOrdenadas(etapas: readonly EtapaApi[]): EtapaApi[] {
 
 /** Índice de una etapa nueva: antes de la primera de cierre, o al final si no hay. */
 export function indiceNuevaEtapa(etapas: readonly Pick<EtapaApi, 'position' | 'is_won' | 'is_lost'>[]): number {
-  const orden = [...etapas].sort((a, b) => a.position - b.position);
-  const cierre = orden.findIndex((e) => e.is_won || e.is_lost);
-  return cierre === -1 ? orden.length : cierre;
+  return indiceAntesDelCierre([...etapas].sort((a, b) => a.position - b.position));
 }
 
 /** Mueve la etapa `desde` hacia `hasta` y renumera `position` 1..N. */

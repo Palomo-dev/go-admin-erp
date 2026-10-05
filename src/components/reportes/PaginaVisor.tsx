@@ -20,6 +20,7 @@ export function PaginaVisor() {
 
   return (
     <CentroReportes
+      ctx={ctx}
       titulo={def?.titulo ?? t('visor.bloqueado')}
       subtitulo={def ? t(`grupos.${def.grupo}`) : undefined}
       migas={

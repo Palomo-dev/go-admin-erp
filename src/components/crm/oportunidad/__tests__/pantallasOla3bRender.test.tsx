@@ -177,6 +177,17 @@ test('mantener el clic en el vacío corre el tablero hacia las etapas de la dere
   expect(lienzo.className).toContain('min-w-0');
   expect(lienzo.className).toContain('overflow-x-auto');
   const puntero = (tipo: string, clientX: number) => new MouseEvent(tipo, { bubbles: true, button: 0, clientX });
+  // Sin etapas fuera de la vista no hay nada que agarrar: ni mano ni arrastre.
+  expect(lienzo.className).not.toContain('cursor-grab');
+  lienzo.dispatchEvent(puntero('pointerdown', 400));
+  lienzo.dispatchEvent(puntero('pointermove', 280));
+  expect(lienzo.scrollLeft).toBe(0);
+  lienzo.dispatchEvent(puntero('pointerup', 280));
+  // jsdom no mide: se simula un tablero más ancho que la pantalla.
+  Object.defineProperty(lienzo, 'scrollWidth', { configurable: true, value: 2400 });
+  Object.defineProperty(lienzo, 'clientWidth', { configurable: true, value: 800 });
+  fireEvent.scroll(lienzo);
+  await waitFor(() => expect(lienzo.className).toContain('cursor-grab'));
   lienzo.dispatchEvent(puntero('pointerdown', 400));
   lienzo.dispatchEvent(puntero('pointermove', 280));
   expect(lienzo.scrollLeft).toBe(120);

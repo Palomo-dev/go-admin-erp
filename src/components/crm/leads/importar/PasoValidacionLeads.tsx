@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { AlertTriangle, CheckCircle2, CircleSlash, Link2, ListChecks, Loader2, PhoneOff, Settings2, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, CircleSlash, Link2, ListChecks, Loader2, Info, Settings2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -111,8 +111,8 @@ export function PasoValidacionLeads({ a }: { a: ImportarLeads }) {
               <StatCard etiqueta={t('validacion.kpi.error')} valor={String(v.resumen.error)} icono={XCircle} tono="peligro" />
             </KpiStrip>
             {v.resumen.rnePendiente > 0 && (
-              <p className="flex items-start gap-2 rounded-lg bg-warning-subtle p-3 text-sm text-warning-text" role="status">
-                <PhoneOff className="mt-0.5 size-4 shrink-0" aria-hidden="true" /> {t('validacion.rne', { n: v.resumen.rnePendiente })}
+              <p className="flex items-start gap-2 rounded-lg bg-info-subtle p-3 text-sm text-info-text" role="note">
+                <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" /> {t('validacion.rne', { n: v.resumen.rnePendiente })}
               </p>
             )}
             {v.resumen.rneExcluido > 0 && <p className="text-xs text-fg-secondary">{t('validacion.rneExcluidos', { n: v.resumen.rneExcluido })}</p>}

@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import { esBarraHorizontal, esControlDeTarjeta, esZonaDeTarjeta, scrollTrasArrastre, sentidoAvance } from '../kanbanDesplazamiento';
+import { bordesOcultos, esBarraHorizontal, esControlDeTarjeta, esZonaDeTarjeta, scrollTrasArrastre, sentidoAvance } from '../kanbanDesplazamiento';
 import { recargaDeTablero } from '../tableroPipelineLogica';
 
 describe('desplazamiento horizontal del kanban', () => {
@@ -47,5 +47,24 @@ describe('recarga del tablero al cambiar de etapa', () => {
     expect(recargaDeTablero('eliminar')).toBe('completa');
     expect(recargaDeTablero('etapas')).toBe('completa');
     expect(recargaDeTablero(undefined)).toBe('completa');
+  });
+});
+
+describe('bordesOcultos', () => {
+  test('sin desborde no hay nada oculto: el lienzo no muestra la mano', () => {
+    expect(bordesOcultos(0, 800, 800)).toEqual({ izquierda: false, derecha: false });
+  });
+
+  test('al inicio solo queda oculto lo de la derecha', () => {
+    expect(bordesOcultos(0, 2400, 800)).toEqual({ izquierda: false, derecha: true });
+  });
+
+  test('en medio, ambos lados; al final, solo la izquierda', () => {
+    expect(bordesOcultos(600, 2400, 800)).toEqual({ izquierda: true, derecha: true });
+    expect(bordesOcultos(1600, 2400, 800)).toEqual({ izquierda: true, derecha: false });
+  });
+
+  test('tolera el redondeo de medio píxel del navegador', () => {
+    expect(bordesOcultos(1599.5, 2400, 800)).toEqual({ izquierda: true, derecha: false });
   });
 });

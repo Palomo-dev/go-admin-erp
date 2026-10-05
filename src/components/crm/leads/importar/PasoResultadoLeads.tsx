@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { CheckCircle2, CircleSlash, Clock, FileDown, Link2, Loader2, PhoneOff, XCircle } from 'lucide-react';
+import { CheckCircle2, CircleSlash, Clock, FileDown, Link2, Loader2, Info, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FormSection, KpiStrip, StatCard } from '@/components/kit';
 import { descargarTexto } from '@/components/inventario/productos/importar/exportarCatalogoCsv';
@@ -73,8 +73,8 @@ export function PasoResultadoLeads({ a }: { a: ImportarLeads }) {
       </KpiStrip>
 
       {cuenta('crear') + cuenta('ligar') > 0 && (
-        <p className="flex items-start gap-2 rounded-lg bg-warning-subtle p-3 text-sm text-warning-text" role="status">
-          <PhoneOff className="mt-0.5 size-4 shrink-0" aria-hidden="true" /> {t('resultado.rne')}
+        <p className="flex items-start gap-2 rounded-lg bg-info-subtle p-3 text-sm text-info-text" role="note">
+          <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" /> {t('resultado.rne')}
         </p>
       )}
 

@@ -1,5 +1,6 @@
 import type { EtapaApi } from '@/components/crm/oportunidad/oportunidadLogica';
 import { indiceNuevaEtapa, moverEtapa, ordenAlInsertar } from '../etapasPipelineLogica';
+import { indiceAntesDelCierre, insertarAntesDelCierre } from '@/components/crm/kit/stageEditorRowLogica';
 
 function etapa(parcial: Partial<EtapaApi> & Pick<EtapaApi, 'id' | 'name' | 'position'>): EtapaApi {
   return { probability: 10, color: '#3b82f6', is_won: false, is_lost: false, ...parcial };
@@ -48,5 +49,22 @@ describe('hoja de etapas: mover y crear antes del cierre', () => {
   test('sin etapas de cierre, la nueva queda al final', () => {
     expect(indiceNuevaEtapa(ABIERTAS)).toBe(3);
     expect(ordenAlInsertar(ABIERTAS, 'nueva').at(-1)).toEqual({ id: 'nueva', position: 4 });
+  });
+});
+
+describe('insertarAntesDelCierre (asistente «Nuevo pipeline»)', () => {
+  const fila = (clave: string, is_won = false, is_lost = false) => ({ clave, is_won, is_lost });
+
+  test('la etapa nueva entra antes de Ganada y Perdida, no al final', () => {
+    const lista = [fila('a'), fila('b'), fila('g', true), fila('p', false, true)];
+    expect(insertarAntesDelCierre(lista, fila('n')).map((e) => e.clave)).toEqual(['a', 'b', 'n', 'g', 'p']);
+  });
+
+  test('sin etapas de cierre, va al final', () => {
+    expect(insertarAntesDelCierre([fila('a')], fila('n')).map((e) => e.clave)).toEqual(['a', 'n']);
+  });
+
+  test('indiceAntesDelCierre usa el orden recibido', () => {
+    expect(indiceAntesDelCierre([fila('g', true), fila('a')])).toBe(0);
   });
 });

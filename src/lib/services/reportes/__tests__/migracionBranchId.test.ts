@@ -87,7 +87,20 @@ const RPC_NUEVAS: Record<string, string> = {
   fn_reporte_movimiento_valorizado: '20260930233000_reportes_v2_consultas_nuevas',
   fn_reporte_compras_proveedor: '20260930233000_reportes_v2_consultas_nuevas',
   fn_reporte_ordenes_compra: '20260930233000_reportes_v2_consultas_nuevas',
+  // «Stock crítico» calculado en la base (antes: todas las existencias al navegador).
+  fn_reporte_stock_critico_detalle: '20261005121435_reportes_stock_critico_detalle',
 };
+
+/**
+ * Firma con la que la reversión borra cada RPC nueva. Casi todas son de
+ * periodo (`bigint, timestamptz, timestamptz, bigint`); las que no reciben
+ * periodo declaran aquí la suya, que también termina en el `bigint` de
+ * `p_branch_id`.
+ */
+const FIRMA_ROLLBACK: Record<string, string> = {
+  fn_reporte_stock_critico_detalle: 'bigint, bigint',
+};
+const FIRMA_PERIODO = 'bigint, timestamptz, timestamptz, bigint';
 
 const SQL_MIGRACION = readFileSync(MIGRACION, 'utf8');
 const SQL_ROLLBACK = readFileSync(ROLLBACK, 'utf8');
@@ -95,7 +108,7 @@ const RPCS_FRONTEND = rpcsConBranchId();
 const RPCS = RPCS_FRONTEND.filter((rpc) => !(rpc in RPC_NUEVAS));
 
 describe('reportes — el frontend y la migración de p_branch_id cuadran', () => {
-  it('el frontend sigue llamando con p_branch_id a las 17 RPC conocidas', () => {
+  it('el frontend sigue llamando con p_branch_id a las 18 RPC conocidas', () => {
     // Si este test falla porque la lista creció, NO lo relajes: añade la función
     // nueva a la migración (o a una nueva, registrada en RPC_NUEVAS) antes de
     // tocar el frontend. La décima, fn_reporte_retenciones_practicadas, es la
@@ -119,6 +132,7 @@ describe('reportes — el frontend y la migración de p_branch_id cuadran', () =
       'fn_reporte_rentabilidad_producto',
       'fn_reporte_retenciones_practicadas',
       'fn_reporte_rotacion_inventario',
+      'fn_reporte_stock_critico_detalle',
       'fn_reporte_ventas_por_hora',
       'fn_reporte_ventas_resumen',
     ]);
@@ -263,8 +277,8 @@ describe('reportes — las RPC nuevas nacen con p_branch_id bien declarado', () 
   });
 
   it.each(CASOS_NUEVAS)('la reversión de $rpc borra la firma con p_branch_id', ({ rpc, rollback }) => {
-    expect(rollback).toMatch(
-      new RegExp(`drop function if exists public\\.${rpc}\\(bigint, timestamptz, timestamptz, bigint\\)`, 'i'),
-    );
+    const firma = FIRMA_ROLLBACK[rpc] ?? FIRMA_PERIODO;
+    expect(firma.endsWith('bigint')).toBe(true);
+    expect(rollback.toLowerCase()).toContain(`drop function if exists public.${rpc}(${firma});`);
   });
 });

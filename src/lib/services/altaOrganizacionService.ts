@@ -183,13 +183,9 @@ export async function crearOrganizacionInicial(
       customerId?: string;
       trialEnd?: string | null;
     };
-    if (res.ok && cuerpo.success) {
-      const cambios: Record<string, unknown> = {};
-      if (cuerpo.subscriptionId) cambios.stripe_subscription_id = cuerpo.subscriptionId;
-      if (cuerpo.customerId) cambios.stripe_customer_id = cuerpo.customerId;
-      if (cuerpo.trialEnd && !datos.sinPrueba) cambios.trial_end = new Date(cuerpo.trialEnd).toISOString();
-      if (Object.keys(cambios).length) await supabase.from('subscriptions').update(cambios).eq('organization_id', orgId);
-    } else {
+    // Los datos de Stripe los guarda la propia ruta en el servidor: `subscriptions` no
+    // admite escritura desde el navegador.
+    if (!(res.ok && cuerpo.success)) {
       console.warn('[alta] Stripe no creó la suscripción (la organización queda en prueba):', res.status);
     }
   } catch (e) {

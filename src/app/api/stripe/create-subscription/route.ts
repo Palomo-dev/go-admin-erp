@@ -42,6 +42,7 @@ import { NextResponse } from 'next/server'
 import { createSubscription, type CreateSubscriptionData } from '@/lib/stripe/subscriptionService'
 import { stripe } from '@/lib/stripe/server'
 import { contextoDeFacturacion } from '@/lib/stripe/contextoFacturacion'
+import { getServiceClient } from '@/lib/supabase/server-service'
 import { clienteDeAltaReclamable } from '@/lib/stripe/clienteDeAlta'
 import { routeErrorResponse } from '@/lib/security/orgGuards'
 import { OrgContextError } from '@/lib/utils/orgContext'
@@ -119,6 +120,26 @@ export async function POST(request: Request) {
     if (!result.success) {
       console.error('[stripe/create-subscription] createSubscription falló:', result.error)
       return NextResponse.json({ error: result.error }, { status: 400 })
+    }
+
+    // Guardar los datos de Stripe en la suscripción de la organización. Antes lo hacía el
+    // navegador (altaOrganizacionService); `subscriptions` ya no admite escritura con la
+    // sesión: la escribe el servidor, con la organización ya validada en `ctx`.
+    const cambios: Record<string, unknown> = {}
+    if (result.subscriptionId) cambios.stripe_subscription_id = result.subscriptionId
+    if (result.customerId) cambios.stripe_customer_id = result.customerId
+    if (result.trialEnd && useTrial) cambios.trial_end = new Date(result.trialEnd).toISOString()
+    if (Object.keys(cambios).length) {
+      const { error: errSub } = await getServiceClient()
+        .from('subscriptions')
+        .update(cambios)
+        .eq('organization_id', ctx.organizationId)
+      if (errSub) {
+        console.error('[stripe/create-subscription] no se pudo guardar la suscripción', {
+          organizationId: ctx.organizationId,
+          error: errSub.message,
+        })
+      }
     }
 
     console.log('[stripe/create-subscription] suscripción creada', {

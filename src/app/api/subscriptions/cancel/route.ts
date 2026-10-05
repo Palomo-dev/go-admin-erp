@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cancelSubscription, reactivateSubscription } from '@/lib/stripe/subscriptionService';
 import { contextoDeFacturacion } from '@/lib/stripe/contextoFacturacion';
 import { routeErrorResponse } from '@/lib/security/orgGuards';
+import { getServiceClient } from '@/lib/supabase/server-service';
 
 /**
  * GO-sec (2026-09-24): sesión verificada (`auth.getUser`, no `getSession`),
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
       .from('subscriptions')
       .select('*')
       .eq('organization_id', organizationId)
-      .in('status', ['active', 'past_due'])
+      .in('status', ['active', 'past_due', 'trialing'])
       .order('created_at', { ascending: false })
       .limit(1)
       .single();
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
       result = await reactivateSubscription(subscription.stripe_subscription_id);
       
       if (result.success) {
-        await supabase
+        await getServiceClient()
           .from('subscriptions')
           .update({
             cancel_at_period_end: false,
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
         result = await cancelSubscription(subscription.stripe_subscription_id, immediate);
         
         if (result.success) {
-          await supabase
+          await getServiceClient()
             .from('subscriptions')
             .update({
               status: immediate ? 'canceled' : 'active',
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
         }
       } else {
         // Sin Stripe, solo actualizar Supabase
-        await supabase
+        await getServiceClient()
           .from('subscriptions')
           .update({
             status: immediate ? 'canceled' : 'active',

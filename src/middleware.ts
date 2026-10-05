@@ -466,9 +466,11 @@ function updateUserActivityOptimized(userId: string): Promise<unknown> {
  * Mapeo de rutas a módulos
  */
 const routeToModuleMap: Record<string, string> = {
+  // Sucursales y branding viven bajo «Organizaciones» (módulo base). Antes
+  // tenían entradas propias con los códigos 'branches' y 'branding', que no
+  // existen en `modules`: la ruta exacta /app/organizacion/sucursales siempre
+  // respondía «Módulo no activado», incluso en organizaciones con todo activo.
   '/app/organizacion': 'organizations',
-  '/app/branding': 'branding',
-  '/app/organizacion/sucursales': 'branches',
   '/app/clientes': 'clientes',
   '/app/roles': 'roles',
   '/app/pos': 'pos',

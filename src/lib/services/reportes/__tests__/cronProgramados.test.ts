@@ -99,6 +99,7 @@ function montar(f: FilaProgramado, miembros: Array<{ user_id: string; role_id: n
       { id: LUIS, email: 'luis@example.com', first_name: 'Luis', last_name: null, preferred_language: null },
     ],
     organization_members: miembros.map((m) => ({ organization_id: ORG, is_active: true, is_super_admin: false, ...m })),
+    organizations: [{ id: ORG, status: 'active' }],
   });
 }
 
@@ -121,6 +122,52 @@ describe('procesarEnvio', () => {
     expect(r.estado).toBe('reclamado_por_otro');
     expect(correos).toHaveLength(0);
     expect(db.escrituras.filter((e) => e.afectadas > 0)).toHaveLength(0);
+  });
+
+  it('una cuenta suspendida no recibe el reporte y la programación sigue', async () => {
+    const f = fila([miembro(ANA, 'ana@example.com')]);
+    const db = montar(f);
+    db.tablas.organizations[0].status = 'suspended';
+    const r = await procesarEnvio(db as never, f, AHORA);
+    expect(r).toMatchObject({ estado: 'omitido', enviados: 0, fallidos: 0 });
+    expect(correos).toHaveLength(0);
+    expect(archivosPedidos).toHaveLength(0);
+    expect(db.tablas.scheduled_reports[0]).toMatchObject({
+      is_active: true,
+      last_status: 'omitido',
+      last_error: 'organizacion_suspendida',
+      next_run_at: '2026-10-07T12:00:00.000Z',
+    });
+  });
+
+  it('la prueba vencida no recibe; una prueba vigente sí', async () => {
+    const vencida = fila([miembro(ANA, 'ana@example.com')]);
+    const dbVencida = montar(vencida);
+    dbVencida.tablas.subscriptions = [{
+      organization_id: ORG,
+      status: 'trialing',
+      trial_end: '2026-09-01T00:00:00.000Z',
+      current_period_end: null,
+      created_at: '2026-08-01T00:00:00.000Z',
+    }];
+    const r = await procesarEnvio(dbVencida as never, vencida, AHORA);
+    expect(r.estado).toBe('omitido');
+    expect(correos).toHaveLength(0);
+    expect(dbVencida.tablas.scheduled_reports[0]).toMatchObject({ last_error: 'prueba_vencida' });
+
+    correos.length = 0;
+    const vigente = fila([miembro(ANA, 'ana@example.com')]);
+    const dbVigente = montar(vigente);
+    dbVigente.tablas.subscriptions = [{
+      organization_id: ORG,
+      status: 'trialing',
+      trial_end: '2026-10-15T00:00:00.000Z',
+      current_period_end: null,
+      created_at: '2026-09-01T00:00:00.000Z',
+    }];
+    const r2 = await procesarEnvio(dbVigente as never, vigente, AHORA);
+    expect(r2).toMatchObject({ estado: 'enviado', enviados: 1 });
+    expect(correos).toHaveLength(1);
   });
 
   it('reclama moviendo next_run_at al siguiente, condicionado al valor leído', async () => {

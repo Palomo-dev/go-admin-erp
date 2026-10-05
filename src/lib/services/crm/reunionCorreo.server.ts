@@ -5,6 +5,7 @@
  * asignado al evento.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { decisionCorreoOperativo, veredictoCorreoOperativo } from '@/lib/services/cuentaCorreo';
 import { sendEmail, type SendEmailActor } from '@/lib/services/crm/email/sendService';
 import { EmailError } from '@/lib/services/crm/email/types';
 import { buildIcs } from '@/lib/services/crm/meetingsIcs';
@@ -67,6 +68,9 @@ export async function notificarReunion(
 ): Promise<AvisoReunion> {
   const aviso: AvisoReunion = { cliente: false, responsable: false };
   try {
+    // Si la lectura falla, el aviso sale: quien agenda ya pasó el control de acceso.
+    const decision = decisionCorreoOperativo(await veredictoCorreoOperativo(supabase, orgId));
+    if (decision === 'omitir') return aviso;
     let correoCliente: string | null = null;
     let nombreCliente: string | null = null;
     if (evento.customer_id) {

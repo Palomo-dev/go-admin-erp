@@ -59,10 +59,15 @@ export function detectarFormatoSistema(matriz: Matriz): number {
 }
 
 export function detectarFormato(matriz: Matriz): { formato: FormatoArchivo; filaCabecera: number } {
+  // Una cabecera genérica que aparece ANTES manda: en el export de ítems de
+  // Alegra, una fila de datos con «Orden de compra» y «Ventas» pasaba por la
+  // cabecera del formato «Sistema» y todas las filas salían «sin nombre».
+  const generica = encontrarFilaCabecera(matriz);
+  const antes = (i: number) => i !== -1 && (generica === -1 || i <= generica);
   const sistema = detectarFormatoSistema(matriz);
-  if (sistema !== -1) return { formato: 'sistema', filaCabecera: sistema };
+  if (antes(sistema)) return { formato: 'sistema', filaCabecera: sistema };
   const space = detectarFormatoSpace(matriz);
-  if (space !== -1) return { formato: 'space', filaCabecera: space };
+  if (antes(space)) return { formato: 'space', filaCabecera: space };
   return { formato: 'generico', filaCabecera: -1 };
 }
 

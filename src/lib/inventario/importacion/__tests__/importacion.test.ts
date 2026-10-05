@@ -162,6 +162,37 @@ describe('lector', () => {
   });
 });
 
+describe('export de ítems de Alegra', () => {
+  // Cabecera real del export «Items» de Alegra (datos sintéticos).
+  const CABECERA = ['Tipo', 'Ítem inventariable', 'Ítem con variantes', 'Venta en negativo', 'Nombre', 'Código del producto o servicio', 'Referencia', 'Unidad de medida', 'Categoría', 'Descripción', 'Costo inicial', 'Precio base', 'Impuesto', 'Impuesto', 'Impuesto', 'Precio total', 'Precio: General', 'Código cuenta contable', 'Cuenta contable'];
+  const m = [
+    CABECERA,
+    ['Producto', 'Si', 'No', 'No', 'Gaseosa 400 ml x12', '', '', 'Paquete', '', '', '30000,000000', '33333,000000', '8', '', '', '36000', '33333,000000', '', 'Ventas'],
+    ['Producto', 'No', 'No', 'Si', 'Combo de la casa', '', '', 'Unidad', '', '', '0,000000', '15000,000000', '8', '', '', '16200', '15000,000000', '', 'Ventas'],
+    // Una fila de datos con «compra» y «Ventas» no debe pasar por cabecera del formato «Sistema».
+    ['Servicio', 'No', 'No', 'No', 'Refrigerios: Orden de compra 123', '', 'REF', 'Servicio', '', '', '0,000000', '400000,000000', '', '', '', '400000', '400000,000000', '', 'Ventas'],
+  ];
+
+  test('se lee como genérico con la cabecera en la primera fila', () => {
+    expect(detectarFormato(m)).toEqual({ formato: 'generico', filaCabecera: -1 });
+    expect(encontrarFilaCabecera(m)).toBe(0);
+  });
+
+  test('reconoce nombre, precio base, costo inicial, inventariable e impuesto', () => {
+    const mapeo = autoMapear(CABECERA);
+    expect(camposObligatoriosFaltantes(mapeo)).toEqual([]);
+    expect(mapeo[CABECERA.indexOf('Precio base')]).toBe('price');
+    expect(mapeo[CABECERA.indexOf('Precio total')]).toBeNull();
+    expect(mapeo[CABECERA.indexOf('Costo inicial')]).toBe('cost');
+    expect(mapeo[CABECERA.indexOf('Ítem inventariable')]).toBe('trackStock');
+    expect(mapeo[CABECERA.indexOf('Código del producto o servicio')]).toBe('sku');
+    expect(mapeo.filter((c) => c === 'tax')).toHaveLength(1);
+    const filas = leerFilas(m, 0, mapeo);
+    expect(filas[0]).toMatchObject({ name: 'Gaseosa 400 ml x12', price: 33333, cost: 30000, trackStock: true, tax: '8', unit: 'Paquete' });
+    expect(filas[2]).toMatchObject({ type: 'Servicio', reference: 'REF' });
+  });
+});
+
 describe('normalización a valores de la base', () => {
   it('unidades (FK a units.code)', () => {
     expect(unidadDesdeTexto('Kilogramo').codigo).toBe('KG');

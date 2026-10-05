@@ -63,6 +63,7 @@ export const SECTIONS_BY_BRANCH_TYPE: Record<string, string[]> = {
   restaurant: [
     ...UNIVERSAL_SECTIONS,
     'menu_preview',
+    'menu_full',
     'specialties',
     'reservation_cta',
     'delivery_cta',

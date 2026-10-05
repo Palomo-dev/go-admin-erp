@@ -1219,6 +1219,93 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
     ],
   },
   {
+    // Carta completa (Figma MenuFull 136:2340). Lee productos, categorías y
+    // precio vigente de la organización (y de la sede si la página tiene
+    // branch_id). Las claves de contenido coinciden 1:1 con `CONTENT_KEYS` de
+    // goadmin-websites/components/sections/restaurant/MenuFull.tsx.
+    type: 'menu_full',
+    label: 'Carta completa',
+    icon: 'UtensilsCrossed',
+    description: 'Todos los platos de la carta, por categoría, con precio y botón de pedido',
+    variants: [
+      { id: 'anchors', label: 'Anclas por sección' },
+      { id: 'tabs', label: 'Pestañas por horario' },
+      { id: 'per_category', label: 'Una página por categoría' },
+    ],
+    contentFields: [
+      { key: 'eyebrow', label: 'Antetítulo', type: 'text', placeholder: 'Carta' },
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Nuestra carta' },
+      { key: 'subtitle', label: 'Texto de introducción', type: 'textarea', placeholder: 'Pregunta por alérgenos al equipo de sala.' },
+      {
+        key: 'selected_category_ids',
+        label: 'Categorías de la carta',
+        type: 'entity',
+        entity: 'category',
+        multiple: true,
+        group: 'data',
+        helpText: 'Sin selección: todas las categorías con platos activos y precio vigente',
+      },
+      {
+        key: 'show_photos',
+        label: 'Mostrar fotos',
+        type: 'boolean',
+        helpText: 'Miniatura de cada plato. Sin definir: sin fotos en «Anclas», con fotos en las demás.',
+      },
+      {
+        key: 'size',
+        label: 'Tamaño de los platos',
+        type: 'select',
+        defaultValue: 'auto',
+        options: [
+          { value: 'auto', label: 'Automático (compacto en móvil)' },
+          { value: 'regular', label: 'Regular (botón a la derecha)' },
+          { value: 'compact', label: 'Compacto (botón debajo)' },
+        ],
+      },
+      {
+        key: 'columns',
+        label: 'Columnas',
+        type: 'select',
+        options: [
+          { value: '1', label: 'Una columna' },
+          { value: '2', label: 'Dos columnas' },
+        ],
+        helpText: 'Sin definir: dos columnas, salvo «Una página por categoría».',
+      },
+      { key: 'show_description', label: 'Mostrar descripción', type: 'boolean', defaultValue: true },
+      {
+        key: 'pdf_url',
+        label: 'Enlace a la carta en PDF',
+        type: 'url',
+        placeholder: 'https://…/carta.pdf',
+        showIf: { variantIn: ['anchors'] },
+      },
+      {
+        key: 'menus',
+        label: 'Cartas y horarios',
+        type: 'repeater',
+        group: 'data',
+        itemLabelKey: 'name',
+        helpText:
+          'Pestañas por horario (Desayuno, Almuerzo, Bar). Hora local de la organización, formato HH:MM. Fuera de horario, los platos se muestran como no disponibles.',
+        showIf: { variantIn: ['tabs'] },
+        itemFields: [
+          { key: 'name', label: 'Nombre', type: 'text', placeholder: 'Almuerzo' },
+          { key: 'start_time', label: 'Desde (HH:MM)', type: 'text', placeholder: '12:00' },
+          { key: 'end_time', label: 'Hasta (HH:MM)', type: 'text', placeholder: '16:00', helpText: 'Vacío: hasta medianoche' },
+          {
+            key: 'category_ids',
+            label: 'Categorías de esta carta',
+            type: 'entity',
+            entity: 'category',
+            multiple: true,
+            helpText: 'Sin selección: todas',
+          },
+        ],
+      },
+    ],
+  },
+  {
     type: 'offers',
     label: 'Ofertas / Descuentos',
     icon: 'Flame',

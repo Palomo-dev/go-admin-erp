@@ -25095,6 +25095,7 @@
       "fueraPlan": "{n, plural, one {# módulo no está en tu plan} other {# módulos no están en tu plan}}",
       "fueraDesc": "{nombres} suman {reportes} reportes. Se activan desde el plan.",
       "verPlanes": "Ver planes",
+      "cargandoModulos": "Cargando los reportes de tu plan…",
       "vs": "{signo}{valor} vs. {periodo}",
       "detalleMargen": "Margen {valor}",
       "detalleVencido": "{valor} vencido",

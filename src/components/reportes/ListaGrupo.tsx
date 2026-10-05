@@ -66,6 +66,7 @@ export function ListaGrupo({ grupoId, ctx, query }: { grupoId: string; ctx: Cont
       <DataTable<FilaLista>
         etiqueta={t('lista.colReporte')}
         filas={ordenadas}
+        estado={ctx.cargando ? 'cargando' : 'listo'}
         obtenerId={(f) => f.id}
         orden={orden}
         onOrdenar={(campo) => setOrden((prev) => ({ campo, direccion: prev?.campo === campo && prev.direccion === 'asc' ? 'desc' : 'asc' }))}

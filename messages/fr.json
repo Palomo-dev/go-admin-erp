@@ -24992,6 +24992,7 @@
       "fueraPlan": "{n, plural, one {# module n'est pas dans votre plan} other {# modules ne sont pas dans votre plan}}",
       "fueraDesc": "{nombres} totalisent {reportes} rapports. Ils s'activent depuis le plan.",
       "verPlanes": "Voir les plans",
+      "cargandoModulos": "Chargement des rapports de votre formule…",
       "vs": "{signo}{valor} vs {periodo}",
       "detalleMargen": "Marge {valor}",
       "detalleVencido": "{valor} échu",

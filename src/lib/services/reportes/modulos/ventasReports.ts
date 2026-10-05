@@ -188,23 +188,19 @@ export const ventasReports: DefinicionModulo[] = [
       const porVendedor: Record<string, unknown>[] = d.por_vendedor ?? [];
 
       const branchIds = [...new Set(porSucursal.map((s) => Number(s.sucursal_id)).filter(Boolean))];
-      const { data: sucursales } = await db
-        .from('branches')
-        .select('id, name')
-        .in('id', branchIds);
+      const vendedorIds = porVendedor
+        .map((v) => String(v.vendedor_id ?? ''))
+        .filter(Boolean);
+      // Nombres de sucursales y vendedores: independientes, en paralelo.
+      const [{ data: sucursales }, { data: perfiles }] = await Promise.all([
+        db.from('branches').select('id, name').in('id', branchIds),
+        db.from('profiles').select('id, first_name, last_name, email').in('id', vendedorIds),
+      ]);
 
       const sucursalesMap: Record<number, string> = {};
       (sucursales ?? []).forEach((b: Record<string, unknown>) => {
         sucursalesMap[Number(b.id)] = String(b.name ?? '—');
       });
-
-      const vendedorIds = porVendedor
-        .map((v) => String(v.vendedor_id ?? ''))
-        .filter(Boolean);
-      const { data: perfiles } = await db
-        .from('profiles')
-        .select('id, first_name, last_name, email')
-        .in('id', vendedorIds);
 
       const perfilesMap: Record<string, string> = {};
       (perfiles ?? []).forEach((p: Record<string, unknown>) => {

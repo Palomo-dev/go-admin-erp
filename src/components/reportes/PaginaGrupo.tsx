@@ -22,6 +22,7 @@ export function PaginaGrupo() {
 
   return (
     <CentroReportes
+      ctx={ctx}
       titulo={adicionales ? t('lista.adicionales') : conocido ? t('lista.titulo', { grupo: nombre }) : t('visor.bloqueado')}
       subtitulo={adicionales ? t('lista.subtituloAdicionales') : undefined}
       migas={[{ etiqueta: adicionales ? t('lista.adicionales') : nombre, href: adicionales ? undefined : rutaCentro(queryFiltros()) }]}

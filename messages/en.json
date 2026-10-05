@@ -25095,6 +25095,7 @@
       "fueraPlan": "{n, plural, one {# module is not in your plan} other {# modules are not in your plan}}",
       "fueraDesc": "{nombres} add up to {reportes} reports. They turn on from the plan.",
       "verPlanes": "View plans",
+      "cargandoModulos": "Loading the reports in your plan…",
       "vs": "{signo}{valor} vs. {periodo}",
       "detalleMargen": "Margin {valor}",
       "detalleVencido": "{valor} overdue",

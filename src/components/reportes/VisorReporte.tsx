@@ -10,7 +10,6 @@ import { supabase } from '@/lib/supabase/config';
 import { descargarDocumento, guardarArchivo, imprimirDocumento } from '@/lib/documents/cliente';
 import { reportePermitido } from '@/lib/services/reportes/alcanceSucursal';
 import { compararKpis, tablaComparada, type VariacionKpi } from '@/lib/services/reportes/comparativo';
-import { reporteACsv, reporteAExcel } from '@/lib/services/reportes/exportarTabla';
 import { escribirFiltrosReportes, filtrosEfectivos, parametrosDocumento, periodoComparado } from '@/lib/services/reportes/filtrosUrl';
 import { registrarEventoReporte } from '@/lib/services/reportes/historialService';
 import { listarGuardados, marcarFavorito, recordarUso } from '@/lib/services/reportes/lecturasReportes';
@@ -156,6 +155,8 @@ export function VisorReporte({
     const congelado = congelarReporte({ ...data, lectura: data.lectura }, def, efectivos.periodo);
     const textos = { resumen: t('visor.lectura'), indicador: t('visor.lectura'), valor: t('visor.variacion'), truncado: (a: number, b: number) => `${a}/${b}` };
     const nombre = def.id;
+    // xlsx y papaparse solo se descargan al exportar, no con el visor.
+    const { reporteACsv, reporteAExcel } = await import('@/lib/services/reportes/exportarTabla');
     if (tipo === 'excel') {
       const bytes = reporteAExcel(congelado, { lineas: [etiqueta.completa(efectivos.periodo)], textos }, vistaId);
       guardarArchivo(new Blob([bytes]), `${nombre}.xlsx`);

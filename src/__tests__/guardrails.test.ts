@@ -3391,14 +3391,18 @@ describe('39. Variantes de un padre eliminado: baja en cascada y lecturas sin hu
       'La misma exclusión, con alias padre, en 20261001211941. El detector solo reconoce pp_elim.',
   };
 
-  function funcionesSinPredicado(sql: string): string[] {
+  function definicionesDeStock(sql: string): Array<{ nombre: string; conPredicado: boolean }> {
     const limpio = sql.replace(/--.*$/gm, '');
     const re = /create\s+or\s+replace\s+function\s+public\.(\w+)\s*\(/gi;
     const inicios = [...limpio.matchAll(re)].map((m) => ({ nombre: m[1], i: m.index ?? 0 }));
     return inicios
       .map((f, k) => ({ nombre: f.nombre, cuerpo: limpio.slice(f.i, inicios[k + 1]?.i ?? undefined) }))
-      .filter((f) => /\bstock_levels\b/.test(f.cuerpo) && /\bproducts\b/.test(f.cuerpo) && !/\bpp_elim\b/.test(f.cuerpo))
-      .map((f) => f.nombre);
+      .filter((f) => /\bstock_levels\b/.test(f.cuerpo) && /\bproducts\b/.test(f.cuerpo))
+      .map((f) => ({ nombre: f.nombre, conPredicado: /\bpp_elim\b/.test(f.cuerpo) }));
+  }
+
+  function funcionesSinPredicado(sql: string): string[] {
+    return definicionesDeStock(sql).filter((f) => !f.conPredicado).map((f) => f.nombre);
   }
 
   test('las tres migraciones existen con su rollback', () => {
@@ -3420,12 +3424,18 @@ describe('39. Variantes de un padre eliminado: baja en cascada y lecturas sin hu
   });
 
   test('ninguna función nueva que lea stock y productos olvida excluir variantes de un padre eliminado', () => {
-    const ofensores: string[] = [];
+    // Cuenta la ÚLTIMA definición de cada función (la vigente en la base): un
+    // `.sql` ya aplicado no se puede reescribir (debe coincidir con
+    // schema_migrations), así que una función que nació sin el predicado se
+    // corrige con una migración posterior que la reemplaza. Caso real:
+    // fn_reporte_stock_critico_detalle, 20261005121435 → 20261005122924.
+    const vigente = new Map<string, { archivo: string; conPredicado: boolean }>();
     for (const f of fs.readdirSync(DIR).filter((n) => n.endsWith('.sql') && n.slice(0, 14) > DESDE).sort()) {
-      for (const nombre of funcionesSinPredicado(readFile(path.join(DIR, f)))) {
-        if (!PERMITIDAS[nombre]) ofensores.push(`${f}: ${nombre}`);
-      }
+      for (const d of definicionesDeStock(readFile(path.join(DIR, f)))) vigente.set(d.nombre, { archivo: f, conPredicado: d.conPredicado });
     }
+    const ofensores = [...vigente]
+      .filter(([nombre, d]) => !d.conPredicado && !PERMITIDAS[nombre])
+      .map(([nombre, d]) => `${d.archivo}: ${nombre}`);
     expect(ofensores).toEqual([]);
   });
 

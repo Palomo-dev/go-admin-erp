@@ -6,11 +6,11 @@ import { useRouter } from 'next/navigation';
 import { AlertTriangle, Star } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { ListCard, SearchInput, StatCard, Tarjeta, normalizarBusqueda, type TonoStat } from '@/components/kit';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { reportePermitido } from '@/lib/services/reportes/alcanceSucursal';
 import { compararKpis } from '@/lib/services/reportes/comparativo';
-import { filtrosEfectivos } from '@/lib/services/reportes/filtrosUrl';
-import { KPIS_INICIO, kpiDe, reportesDeKpis, valorNumerico, type IdKpiInicio } from '@/lib/services/reportes/inicioKpis';
+import { CLAVE_VENTAS_ANTERIOR, KPIS_INICIO, correrKpis, kpiDe, planDeKpis, reportesDeKpis, valorNumerico, type IdKpiInicio } from '@/lib/services/reportes/inicioKpis';
 import { listarGuardados, marcarFavorito, type ReporteGuardado } from '@/lib/services/reportes/lecturasReportes';
 import { periodoAnterior } from '@/lib/services/reportes/periodosService';
 import { getReporteById } from '@/lib/services/reportes/reportesCatalogo';
@@ -66,6 +66,7 @@ export function InicioReportes({
         <h2 className="text-base font-semibold text-fg">{t('inicio.porModulo')}</h2>
         <p className="text-sm text-fg-secondary">{t('inicio.hint')}</p>
       </div>
+      {ctx.cargando && grupos.length === 0 && <EsqueletoGrupos />}
       <div className="hidden gap-4 lg:grid lg:grid-cols-2 xl:grid-cols-3">
         {grupos.map((g) => (
           <Tarjeta
@@ -126,6 +127,23 @@ export function InicioReportes({
   );
 }
 
+/** Mientras llega el plan: el lugar de las tarjetas por módulo, sin bloquear el resto de la página. */
+function EsqueletoGrupos() {
+  const t = useTranslations('reportes');
+  return (
+    <div role="status" aria-busy="true" className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+      <span className="sr-only">{t('inicio.cargandoModulos')}</span>
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4">
+          <Skeleton className="h-5 w-1/2" />
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-4 w-2/3" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Etiqueta({ children }: { children: React.ReactNode }) {
   return <span className="rounded-full bg-subtle px-2 py-0.5 text-[11px] font-medium text-fg-secondary">{children}</span>;
 }
@@ -155,35 +173,14 @@ function KpisInicio({ ctx, filtros, enPlan, query }: { ctx: ContextoReportes; fi
     if (!orgId || !contextoListo) return;
     let vivo = true;
     setCargando(true);
-    const ids = reportesDeKpis(fuentes);
-    void (async () => {
-      const mapa = new Map<string, ReportData | null>();
-      await Promise.all(
-        ids.map(async (id) => {
-          const def = getReporteById(id);
-          if (!def || !enPlan.has(id) || !reportePermitido(def, accesoTotal)) return;
-          const sucursal = def.alcance === 'organizacion' ? null : resolverSucursal(filtros);
-          try {
-            mapa.set(id, await ejecutarReporte(id, orgId, filtrosEfectivos(def, filtros, sucursal).periodo, sucursal));
-          } catch {
-            mapa.set(id, null);
-          }
-        }),
-      );
-      const ventas = getReporteById('ventas-periodo');
-      if (ventas && mapa.get('ventas-periodo')) {
-        const sucursal = resolverSucursal(filtros);
-        try {
-          mapa.set('ventas-periodo-anterior', await ejecutarReporte('ventas-periodo', orgId, periodoAnterior(filtrosEfectivos(ventas, filtros, sucursal).periodo), sucursal));
-        } catch {
-          mapa.set('ventas-periodo-anterior', null);
-        }
-      }
+    // Un solo lote en paralelo, incluida la venta del periodo anterior.
+    const plan = planDeKpis(reportesDeKpis(fuentes), filtros, resolverSucursal(filtros), getReporteById, (def) => enPlan.has(def.id) && reportePermitido(def, accesoTotal));
+    void correrKpis(plan, (p) => ejecutarReporte(p.reportId, orgId, p.periodo, p.sucursal)).then((mapa) => {
       if (vivo) {
         setDatos(mapa);
         setCargando(false);
       }
-    })();
+    });
     return () => {
       vivo = false;
     };
@@ -199,7 +196,7 @@ function KpisInicio({ ctx, filtros, enPlan, query }: { ctx: ContextoReportes; fi
         let tono: TonoStat = 'neutro';
         let tendencia: 'sube' | 'baja' | undefined;
         if (f.id === 'ventas') {
-          const variacion = compararKpis(datos.get('ventas-periodo') ?? vacio(), datos.get('ventas-periodo-anterior') ?? null).find((v) => v.titulo === f.kpi);
+          const variacion = compararKpis(datos.get('ventas-periodo') ?? vacio(), datos.get(CLAVE_VENTAS_ANTERIOR) ?? null).find((v) => v.titulo === f.kpi);
           if (variacion?.porcentaje != null) {
             tendencia = variacion.porcentaje >= 0 ? 'sube' : 'baja';
             detalle = t('inicio.vs', { signo: '', valor: formato.porcentaje(Math.abs(variacion.porcentaje)), periodo: etiqueta.periodo(periodoAnterior(filtros.periodo)) });

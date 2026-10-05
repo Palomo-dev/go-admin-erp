@@ -24992,6 +24992,7 @@
       "fueraPlan": "{n, plural, one {# módulo não está no seu plano} other {# módulos não estão no seu plano}}",
       "fueraDesc": "{nombres} somam {reportes} relatórios. Ativam-se pelo plano.",
       "verPlanes": "Ver planos",
+      "cargandoModulos": "Carregando os relatórios do seu plano…",
       "vs": "{signo}{valor} vs. {periodo}",
       "detalleMargen": "Margem {valor}",
       "detalleVencido": "{valor} vencido",

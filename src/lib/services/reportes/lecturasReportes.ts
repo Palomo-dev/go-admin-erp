@@ -41,17 +41,43 @@ function filtrosDe(valor: unknown): FiltrosRecordados {
   return Object.fromEntries(Object.entries(valor as Record<string, unknown>).filter(([, v]) => typeof v === 'string')) as FiltrosRecordados;
 }
 
+/**
+ * Comparte una promesa mientras está en vuelo: varias pantallas que piden lo
+ * mismo en el mismo montaje (el contador de la pestaña y «Recientes», por
+ * ejemplo) hacen una sola petición. No es caché: al resolverse se olvida.
+ */
+export function compartirEnVuelo<K, T>(enVuelo: Map<K, Promise<T>>, clave: K, crear: () => Promise<T>): Promise<T> {
+  const existente = enVuelo.get(clave);
+  if (existente) return existente;
+  const p = crear().finally(() => enVuelo.delete(clave));
+  enVuelo.set(clave, p);
+  return p;
+}
+
+type UsuarioSesion = { id: string; email?: string | null; user_metadata?: Record<string, unknown> | null } | null;
+const usuarioEnVuelo = new Map<'yo', Promise<UsuarioSesion>>();
+
+/** Usuario de la sesión (`auth.getUser`, validado por el servidor de Auth), una petición por montaje. */
+export function usuarioDeSesion(): Promise<UsuarioSesion> {
+  return compartirEnVuelo(usuarioEnVuelo, 'yo', async () => (await supabase.auth.getUser()).data.user ?? null);
+}
+
 async function usuarioActual(): Promise<string> {
-  const { data } = await supabase.auth.getUser();
-  const id = data.user?.id;
+  const id = (await usuarioDeSesion())?.id;
   if (!id) throw new Error('Sin sesión');
   return id;
 }
 
 export const MAX_GUARDADOS = 200;
 
+const guardadosEnVuelo = new Map<number, Promise<ReporteGuardado[]>>();
+
 /** Favoritos y recientes de la persona, el más reciente primero. */
-export async function listarGuardados(orgId: number): Promise<ReporteGuardado[]> {
+export function listarGuardados(orgId: number): Promise<ReporteGuardado[]> {
+  return compartirEnVuelo(guardadosEnVuelo, orgId, () => leerGuardados(orgId));
+}
+
+async function leerGuardados(orgId: number): Promise<ReporteGuardado[]> {
   const userId = await usuarioActual();
   const { data, error } = await supabase
     .from('saved_reports')
@@ -167,6 +193,20 @@ const COLUMNAS_CIERRE =
   'id, numero, version, tipo, plantilla, fecha_inicio, fecha_fin, hora_inicio, hora_fin, branch_id, branches(name), reportes, estado, reemplaza_a, reemplazado_por, emitido_por, emitido_en, firmado_por, firmado_en, fiscal_period_id, reabierto_por, reabierto_en, motivo_reapertura, created_at';
 
 export const MAX_CIERRES = 300;
+
+/**
+ * Cierres vigentes (todo lo que no está `reemplazado`), para el contador de
+ * la pestaña. Solo cuenta: no baja las filas ni los perfiles de quien firmó.
+ */
+export async function contarCierresVigentes(orgId: number): Promise<number> {
+  const { count, error } = await supabase
+    .from('report_closings')
+    .select('id', { count: 'exact', head: true })
+    .eq('organization_id', orgId)
+    .neq('estado', 'reemplazado');
+  if (error) throw new Error(`No se pudieron contar los cierres: ${error.message}`);
+  return count ?? 0;
+}
 
 /** `HH:mm:ss` de la columna `time` → `HH:mm`. */
 const hora = (v: string | null) => (v ? v.slice(0, 5) : null);

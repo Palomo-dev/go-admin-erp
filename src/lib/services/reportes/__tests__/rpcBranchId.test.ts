@@ -108,6 +108,8 @@ const CASOS: Array<{ reporte: DefinicionModulo; rpc: string; claves: string[] }>
     .filter((d) => d.fetch.toString().includes("'fn_reporte_rentabilidad_producto'"))
     .map((reporte) => ({ reporte, rpc: 'fn_reporte_rentabilidad_producto', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] })),
   { reporte: buscar(inventarioReports, 'fn_reporte_movimiento_valorizado'), rpc: 'fn_reporte_movimiento_valorizado', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },
+  // Existencias al momento: sin periodo, solo organización y sucursal.
+  { reporte: buscar(inventarioReports, 'fn_reporte_stock_critico_detalle'), rpc: 'fn_reporte_stock_critico_detalle', claves: ['p_organization_id', 'p_branch_id'] },
   { reporte: buscar(comprasFinanzasReports, 'fn_reporte_compras_proveedor'), rpc: 'fn_reporte_compras_proveedor', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },
   { reporte: buscar(comprasInventarioReports, 'fn_reporte_ordenes_compra'), rpc: 'fn_reporte_ordenes_compra', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },
 ];

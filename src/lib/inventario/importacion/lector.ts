@@ -16,6 +16,7 @@ import { filaVacia, leerLibro, type Matriz } from '@/lib/importacion/libro';
 import { autoMapear, encontrarFilaCabecera, type CampoProducto, type Mapeo } from './campos';
 import { normalizarCabecera, parseBooleano, parseNumero, slugificar, textoCelda } from './texto';
 import type { FilaImport, Mensaje } from './tipos';
+import { ajustarFilasAlegra, esExportAlegra } from './alegra';
 
 // La lectura del libro vive en `@/lib/importacion/libro` (compartida con el
 // importador de leads); se reexporta para no mover los imports de productos.
@@ -373,7 +374,9 @@ export function leerSegunFormato(
   const filaCabecera = mapeoManual?.filaCabecera ?? encontrarFilaCabecera(matriz);
   if (filaCabecera === -1) return { formato: 'generico', filaCabecera, mapeo: [], filas: [] };
   const mapeo = mapeoManual?.mapeo ?? autoMapear(matriz[filaCabecera] ?? []);
-  const filas = leerFilas(matriz, filaCabecera, mapeo);
+  const leidas = leerFilas(matriz, filaCabecera, mapeo);
+  // El export de ítems de Alegra se lee con el mapeo genérico y luego se corrige (`alegra.ts`).
+  const filas = esExportAlegra(matriz[filaCabecera]) ? ajustarFilasAlegra(matriz, filaCabecera, leidas) : leidas;
   return { formato: 'generico', filaCabecera, mapeo, filas };
 }
 

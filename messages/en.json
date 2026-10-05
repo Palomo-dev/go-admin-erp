@@ -9547,7 +9547,12 @@
       "comparacionMenorPrecio": "compare-at price not higher than sale price (ignored)",
       "coincidePorNombre": "match an existing product by name",
       "estadoDesconocido": "status not recognized (stays active)",
-      "modificadoresSinFormato": "modifiers that can't be understood"
+      "modificadoresSinFormato": "modifiers that can't be understood",
+      "costoAlegraDescartado": "Alegra cost equal to the price (not imported)",
+      "comboSinComponentes": "combos without components (set up their recipe)",
+      "categoriaSugerida": "category suggested from the name",
+      "preparadoSinInventario": "prepared dishes without their own stock",
+      "filaInternaAlegra": "internal Alegra rows (excluded)"
     },
     "vista": {
       "titulo": "Preview ({n} rows)",
@@ -9671,6 +9676,11 @@
       "coincidePorNombre": "Matches product {sku} by name",
       "estadoDesconocido": "Status “{estado}” not recognized: stays active",
       "modificadoresSinFormato": "Modifiers can't be understood: ignored",
+      "costoAlegraDescartado": "Alegra's «Costo inicial» ({costo}) is the sale price, not a cost: it is not imported. The real cost will come from purchases or the recipe",
+      "comboSinComponentes": "Alegra combo: the file has no components. It comes in tagged «Combo» with no stock of its own; set up its recipe on the product",
+      "categoriaSugerida": "No category in Alegra: «{categoria}» is suggested from the name (you can change it)",
+      "preparadoSinInventario": "Prepared dish: no stock of its own (deducted through its recipe)",
+      "filaInternaAlegra": "Internal Alegra row («Datos iniciales DIAN»): not a product, excluded",
       "CATEGORIA_CREADA": "Category “{detalle}” created",
       "PROVEEDOR_CREADO": "Supplier “{detalle}” created",
       "IMPUESTO_NO_ENCONTRADO": "Tax “{detalle}” not found",

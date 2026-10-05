@@ -9547,7 +9547,12 @@
       "comparacionMenorPrecio": "precio de comparación no mayor que el de venta (se ignora)",
       "coincidePorNombre": "coinciden por nombre con un producto existente",
       "estadoDesconocido": "estado no reconocido (queda activo)",
-      "modificadoresSinFormato": "modificadores que no se entienden"
+      "modificadoresSinFormato": "modificadores que no se entienden",
+      "costoAlegraDescartado": "costo de Alegra igual al precio (no se importa)",
+      "comboSinComponentes": "combos sin componentes (definir su receta)",
+      "categoriaSugerida": "categoría sugerida por el nombre",
+      "preparadoSinInventario": "platos preparados sin inventario propio",
+      "filaInternaAlegra": "filas internas de Alegra (excluidas)"
     },
     "vista": {
       "titulo": "Previsualización ({n} filas)",
@@ -9671,6 +9676,11 @@
       "coincidePorNombre": "Coincide por nombre con el producto {sku}",
       "estadoDesconocido": "Estado «{estado}» no reconocido: queda activo",
       "modificadoresSinFormato": "Los modificadores no se entienden: se ignoran",
+      "costoAlegraDescartado": "El «Costo inicial» de Alegra ({costo}) es el precio de venta, no un costo: no se importa. El costo real saldrá de compras o de la receta",
+      "comboSinComponentes": "Combo de Alegra: el archivo no trae sus componentes. Entra con la etiqueta «Combo» y sin inventario propio; arma su receta en el producto",
+      "categoriaSugerida": "Sin categoría en Alegra: se sugiere «{categoria}» por el nombre (puedes cambiarla)",
+      "preparadoSinInventario": "Plato preparado: no lleva inventario propio (se descuenta por receta)",
+      "filaInternaAlegra": "Fila interna de Alegra («Datos iniciales DIAN»): no es un producto, queda excluida",
       "CATEGORIA_CREADA": "Categoría «{detalle}» creada",
       "PROVEEDOR_CREADO": "Proveedor «{detalle}» creado",
       "IMPUESTO_NO_ENCONTRADO": "Impuesto «{detalle}» no encontrado",

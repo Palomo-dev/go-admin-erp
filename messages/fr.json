@@ -7846,7 +7846,12 @@
       "comparacionMenorPrecio": "prix barré non supérieur au prix de vente (ignoré)",
       "coincidePorNombre": "correspondent par nom à un produit existant",
       "estadoDesconocido": "statut non reconnu (reste actif)",
-      "modificadoresSinFormato": "modificateurs incompréhensibles"
+      "modificadoresSinFormato": "modificateurs incompréhensibles",
+      "costoAlegraDescartado": "coût Alegra égal au prix (non importé)",
+      "comboSinComponentes": "combos sans composants (définir leur recette)",
+      "categoriaSugerida": "catégorie suggérée d'après le nom",
+      "preparadoSinInventario": "plats préparés sans stock propre",
+      "filaInternaAlegra": "lignes internes Alegra (exclues)"
     },
     "vista": {
       "titulo": "Aperçu ({n} lignes)",
@@ -7970,6 +7975,11 @@
       "coincidePorNombre": "Correspond par nom au produit {sku}",
       "estadoDesconocido": "Statut « {estado} » non reconnu : reste actif",
       "modificadoresSinFormato": "Modificateurs incompréhensibles : ignorés",
+      "costoAlegraDescartado": "Le « Costo inicial » d'Alegra ({costo}) est le prix de vente, pas un coût : il n'est pas importé. Le coût réel viendra des achats ou de la recette",
+      "comboSinComponentes": "Combo Alegra : le fichier ne contient pas ses composants. Il entre avec l'étiquette « Combo » et sans stock propre ; définissez sa recette dans le produit",
+      "categoriaSugerida": "Sans catégorie dans Alegra : « {categoria} » est suggérée d'après le nom (modifiable)",
+      "preparadoSinInventario": "Plat préparé : pas de stock propre (déduit par la recette)",
+      "filaInternaAlegra": "Ligne interne d'Alegra (« Datos iniciales DIAN ») : ce n'est pas un produit, elle est exclue",
       "CATEGORIA_CREADA": "Catégorie « {detalle} » créée",
       "PROVEEDOR_CREADO": "Fournisseur « {detalle} » créé",
       "IMPUESTO_NO_ENCONTRADO": "Taxe « {detalle} » introuvable",

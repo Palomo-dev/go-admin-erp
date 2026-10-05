@@ -15,6 +15,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { autoMapear, camposObligatoriosFaltantes, type Mapeo } from '@/lib/inventario/importacion/campos';
 import { aplicarSaldos, detectarFormato, detectarVariantesPorSku, leerFilas, leerSaldos, parsearFormatoSistema, parsearFormatoSpace, type FormatoArchivo, type Matriz, type Saldo } from '@/lib/inventario/importacion/lector';
 import { encontrarFilaCabecera } from '@/lib/inventario/importacion/campos';
+import { ajustarFilasAlegra, esExportAlegra } from '@/lib/inventario/importacion/alegra';
 import { validarFilas, resumirValidacion } from '@/lib/inventario/importacion/validacion';
 import { dividirEnLotes, filasAImportar, TAMANO_LOTE } from '@/lib/inventario/importacion/payload';
 import { productosWebAFilas, type ProductoWeb } from '@/lib/inventario/importacion/web';
@@ -90,6 +91,7 @@ export function useAsistenteImportacion(orgId: number | undefined) {
     else if (archivo.filaCabecera < 0) filas = [];
     else {
       filas = leerFilas(archivo.matriz, archivo.filaCabecera, archivo.mapeo);
+      if (esExportAlegra(archivo.matriz[archivo.filaCabecera])) filas = ajustarFilasAlegra(archivo.matriz, archivo.filaCabecera, filas);
       detectarVariantesPorSku(filas);
     }
     aplicarSaldos(filas, saldos?.datos);
@@ -120,7 +122,11 @@ export function useAsistenteImportacion(orgId: number | undefined) {
     const mapeo = det.formato === 'generico' && filaCabecera >= 0 ? autoMapear(matriz[filaCabecera] ?? []) : [];
     setArchivo({ nombre, matriz, formato: det.formato, filaCabecera, mapeo });
     setEdiciones(new Map());
-    setExcluidas(new Set());
+    // Filas internas de Alegra («Datos iniciales DIAN») arrancan excluidas; se pueden volver a incluir.
+    const internas = det.formato === 'generico' && filaCabecera >= 0 && esExportAlegra(matriz[filaCabecera])
+      ? ajustarFilasAlegra(matriz, filaCabecera, leerFilas(matriz, filaCabecera, mapeo)).filter((f) => f.excluirPorDefecto).map((f) => String(f.fila))
+      : [];
+    setExcluidas(new Set(internas));
     invalidarContexto();
   }, [invalidarContexto]);
 

@@ -1923,6 +1923,7 @@
       "taxOptions": {
         "IVA_19": "VAT 19% (standard rate)",
         "IVA_5": "VAT 5%",
+        "INC_8": "National consumption tax 8% (INC): restaurants, bars and cafés",
         "NINGUNA": "None: I sell excluded or exempt products"
       },
       "trialIncluded": "Includes a {days}-day trial",
@@ -23605,6 +23606,7 @@
       "tarifas": {
         "IVA_19": "VAT 19% (standard rate)",
         "IVA_5": "VAT 5%",
+        "INC_8": "National consumption tax 8% (INC): restaurants, bars and cafés",
         "NINGUNA": "None: I sell excluded or exempt products"
       },
       "logo": "Logo",

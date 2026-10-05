@@ -1923,6 +1923,7 @@
       "taxOptions": {
         "IVA_19": "IVA 19 % (tarifa general)",
         "IVA_5": "IVA 5 %",
+        "INC_8": "Impuesto al consumo 8 % (INC): restaurantes, bares y cafeterías",
         "NINGUNA": "Ninguna: vendo productos excluidos o exentos"
       },
       "trialIncluded": "{days, plural, one {Incluye # día de prueba} other {Incluye # días de prueba}}",
@@ -4479,7 +4480,7 @@
       "ratingHint": "Tras la venta, 1 a 5 con una sola pulsación. Solo actúa en pantallas táctiles.",
       "unlinkedTerminal": "Esta caja no está vinculada a ninguna terminal: las calificaciones no se guardarán y el reposo no podrá mostrar promociones. Vincúlela en «Esta caja», aquí mismo.",
       "taxBreakdown": "Desglose de impuestos",
-      "taxBreakdownHint": "Apagado muestra «IVA incluido»; encendido, desglosado como en el recibo.",
+      "taxBreakdownHint": "Apagado muestra «Impuestos incluidos»; encendido, desglosado como en el recibo.",
       "customerName": "Mostrar nombre del cliente",
       "customerNameHint": "Apagado por defecto: privacidad primero.",
       "idle": "Modo reposo",
@@ -4547,12 +4548,12 @@
     "unsupported": "Este navegador no puede mostrar la pantalla del cliente",
     "qty": "{qty} ×",
     "andMore": "y {count} más",
-    "taxExcludedLine": "sin IVA",
+    "taxExcludedLine": "sin impuesto",
     "lineDiscount": "Descuento",
     "subtotal": "Subtotal",
     "discount": "Descuento",
     "discountWithLabel": "Descuento ({label})",
-    "taxIncluded": "IVA incluido",
+    "taxIncluded": "Impuestos incluidos",
     "taxes": "Impuestos",
     "taxMixed": "Impuestos (parte incluida)",
     "total": "Total",
@@ -23605,6 +23606,7 @@
       "tarifas": {
         "IVA_19": "IVA 19 % (tarifa general)",
         "IVA_5": "IVA 5 %",
+        "INC_8": "Impuesto al consumo 8 % (INC): restaurantes, bares y cafeterías",
         "NINGUNA": "Ninguno: vendo productos excluidos o exentos"
       },
       "logo": "Logo",

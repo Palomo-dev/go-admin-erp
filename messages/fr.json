@@ -1922,6 +1922,7 @@
       "taxOptions": {
         "IVA_19": "TVA 19 % (taux normal)",
         "IVA_5": "TVA 5 %",
+        "INC_8": "Impôt national à la consommation 8 % (INC) : restaurants, bars et cafés",
         "NINGUNA": "Aucun : je vends des produits exclus ou exonérés"
       },
       "trialIncluded": "{days, plural, one {Inclut # jour d'essai} other {Inclut # jours d'essai}}",
@@ -2778,7 +2779,7 @@
       "ratingHint": "Après la vente, 1 à 5 d'une seule pression. N'agit que sur les écrans tactiles.",
       "unlinkedTerminal": "Cette caisse n'est liée à aucun terminal : les évaluations ne seront pas enregistrées et le mode veille ne pourra pas afficher de promotions. Liez-la dans « Cette caisse », ici même.",
       "taxBreakdown": "Détail des taxes",
-      "taxBreakdownHint": "Désactivé : « TVA incluse » ; activé : détaillé comme sur le reçu.",
+      "taxBreakdownHint": "Désactivé : « Taxes incluses » ; activé : détaillé comme sur le reçu.",
       "customerName": "Afficher le nom du client",
       "customerNameHint": "Désactivé par défaut : confidentialité d'abord.",
       "idle": "Mode veille",
@@ -2851,7 +2852,7 @@
     "subtotal": "Sous-total",
     "discount": "Remise",
     "discountWithLabel": "Remise ({label})",
-    "taxIncluded": "TVA incluse",
+    "taxIncluded": "Taxes incluses",
     "taxes": "Taxes",
     "taxMixed": "Taxes (en partie incluses)",
     "total": "Total",
@@ -21904,6 +21905,7 @@
       "tarifas": {
         "IVA_19": "TVA 19 % (taux normal)",
         "IVA_5": "TVA 5 %",
+        "INC_8": "Impôt national à la consommation 8 % (INC) : restaurants, bars et cafés",
         "NINGUNA": "Aucune : je vends des produits exclus ou exonérés"
       },
       "logo": "Logo",

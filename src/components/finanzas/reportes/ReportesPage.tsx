@@ -326,24 +326,24 @@ export function ReportesPage() {
               Impuestos
             </CardTitle>
             <CardDescription className="text-gray-500 dark:text-gray-400">
-              IVA y retenciones
+              IVA + INC de ventas y compras (sin retenciones)
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500 dark:text-gray-400">IVA Recaudado</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">Impuestos recaudados (IVA + INC)</span>
               <span className="font-semibold text-purple-600 dark:text-purple-400">
                 {formatear(reports?.taxes.ivaRecaudado || 0)}
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500 dark:text-gray-400">IVA Pagado</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">Impuestos pagados en compras</span>
               <span className="font-semibold text-gray-600 dark:text-gray-300">
                 {formatear(reports?.taxes.ivaPagado || 0)}
               </span>
             </div>
             <div className="border-t dark:border-gray-700 pt-2 flex justify-between items-center">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Saldo IVA</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Saldo de impuestos</span>
               <span className={`font-bold ${(reports?.taxes.totalImpuestos || 0) >= 0 ? 'text-purple-600' : 'text-green-600'}`}>
                 {formatear(reports?.taxes.totalImpuestos || 0)}
               </span>

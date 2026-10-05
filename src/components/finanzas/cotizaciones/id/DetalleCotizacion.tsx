@@ -310,7 +310,7 @@ export function DetalleCotizacion({ cotizacion }: DetalleCotizacionProps) {
                 <TableHead className="w-[80px] text-right">Cant.</TableHead>
                 <TableHead className="w-[120px] text-right">Precio Unit.</TableHead>
                 <TableHead className="w-[100px] text-right">Descuento</TableHead>
-                <TableHead className="w-[80px] text-right">IVA</TableHead>
+                <TableHead className="w-[80px] text-right">Impuesto</TableHead>
                 <TableHead className="w-[120px] text-right">Total</TableHead>
               </TableRow>
             </TableHeader>

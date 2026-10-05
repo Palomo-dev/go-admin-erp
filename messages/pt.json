@@ -1922,6 +1922,7 @@
       "taxOptions": {
         "IVA_19": "IVA 19% (alíquota geral)",
         "IVA_5": "IVA 5%",
+        "INC_8": "Imposto nacional ao consumo 8% (INC): restaurantes, bares e cafeterias",
         "NINGUNA": "Nenhuma: vendo produtos excluídos ou isentos"
       },
       "trialIncluded": "{days, plural, one {Inclui # dia de teste} other {Inclui # dias de teste}}",
@@ -21904,6 +21905,7 @@
       "tarifas": {
         "IVA_19": "IVA 19% (alíquota geral)",
         "IVA_5": "IVA 5%",
+        "INC_8": "Imposto nacional ao consumo 8% (INC): restaurantes, bares e cafeterias",
         "NINGUNA": "Nenhum: vendo produtos excluídos ou isentos"
       },
       "logo": "Logo",

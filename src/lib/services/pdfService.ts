@@ -270,7 +270,7 @@ export class PDFService {
                 <th style="width: 8%">Cant.</th>
                 <th style="width: 13%">Precio Unit.</th>
                 <th style="width: 10%">Descuento</th>
-                <th style="width: 9%">IVA</th>
+                <th style="width: 9%">Impuesto</th>
                 <th style="width: 15%">Total</th>
               </tr>
             </thead>
@@ -300,7 +300,7 @@ export class PDFService {
             </div>
             ` : ''}
             <div>
-              <span>IVA</span>
+              <span>Impuestos</span>
               <span>${formatCurrency(data.tax_total)}</span>
             </div>
             <div class="total">
@@ -496,7 +496,7 @@ export class PDFService {
                 <th style="width: 8%">Cant.</th>
                 <th style="width: 13%">Precio Unit.</th>
                 <th style="width: 10%">Descuento</th>
-                <th style="width: 9%">IVA</th>
+                <th style="width: 9%">Impuesto</th>
                 <th style="width: 15%">Total</th>
               </tr>
             </thead>
@@ -526,7 +526,7 @@ export class PDFService {
             </div>
             ` : ''}
             <div>
-              <span>IVA</span>
+              <span>Impuestos</span>
               <span>${formatCurrency(data.tax_total)}</span>
             </div>
             <div class="total">

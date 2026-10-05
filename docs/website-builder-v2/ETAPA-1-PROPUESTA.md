@@ -8,8 +8,8 @@ Estado: **nada aplicado**. Fecha: 2026-10-05. Gobiernan: [ADR-001](ADR-001-ADICI
 |---|---|---|
 | D12: destino de las 146 columnas de `website_settings` | [D12-CLASIFICACION-COLUMNAS.md](D12-CLASIFICACION-COLUMNAS.md) | Propuesta |
 | Contrato del documento (tipos, zod, `resolverCampo`) | `src/lib/website/contrato/documentoSitio.ts` + `__tests__/` | Código puro, 24 pruebas |
-| Migración D1 | `docs/website-builder-v2/borradores/BORRADOR_v2_sitios_borradores_revisiones.sql` (al aplicarse pasa a `supabase/migrations/<versión>_…`) | **Borrador sin aplicar** |
-| Reversión D1 | `docs/website-builder-v2/borradores/BORRADOR_v2_sitios_borradores_revisiones_rollback.sql` | **Borrador sin aplicar** |
+| Migración D1 | `supabase/migrations/20261005214150_v2_sitios_borradores_revisiones.sql` | **Aplicada el 2026-10-05** (permisos a roles 1 y 2, RESTRICT en sucursal) |
+| Reversión D1 | `supabase/rollbacks/20261005214150_v2_sitios_borradores_revisiones_rollback.sql` | Lista |
 
 ## Qué hace el borrador de migración
 

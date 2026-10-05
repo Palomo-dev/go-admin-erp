@@ -1,5 +1,5 @@
 -- ============================================================================================
--- BORRADOR — NO APLICADO. Reversión de BORRADOR_v2_sitios_borradores_revisiones.sql.
+-- Reversión de 20261005214150_v2_sitios_borradores_revisiones.
 --
 -- ADVERTENCIA: esta reversión BORRA los datos V2 (estados de sitio, borradores, revisiones
 -- publicadas y outbox) y no los restaura. Las tablas legacy (website_settings, website_pages,

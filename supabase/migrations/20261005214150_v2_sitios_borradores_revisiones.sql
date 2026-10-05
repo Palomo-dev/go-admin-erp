@@ -1,11 +1,9 @@
 -- ============================================================================================
--- BORRADOR — NO APLICADO. Website builder V2, etapa 1: estado del sitio, borrador y revisiones
--- (ADR-002 D1, D3, D4, D6 · FASE-02 · FASE-03).
---
--- Antes de aplicar (ver docs/website-builder-v2/ETAPA-1-PROPUESTA.md):
---   1. Renombrar a <timestamp>_v2_sitios_borradores_revisiones.sql y su rollback igual.
---   2. Probar el bloque completo dentro de begin / rollback y correr las verificaciones del final.
---   3. Aplicar SOLO con apply_migration del MCP de Supabase, y commitear .sql + rollback juntos.
+-- Website builder V2, etapa 1: estado del sitio, borrador y revisiones
+-- (ADR-002 D1, D3, D4, D6 · FASE-02 · FASE-03). Decisiones aprobadas el 2026-10-05:
+--   - Los permisos website.sites.* se asignan a Super Admin (1) y Admin de organización (2).
+--   - Borrar una sucursal con sitio propio queda bloqueado (ON DELETE RESTRICT).
+--   - Las 15 columnas legacy sin efecto no se importan al documento (ver D12-CLASIFICACION-COLUMNAS.md).
 --
 -- Qué hace (todo aditivo, ninguna tabla existente cambia):
 --   - website_site_states: una fila por sitio (organización + sucursal, NULL = sitio principal).
@@ -39,6 +37,12 @@ insert into public.permissions (code, module, name, description, category)
 select 'website.sites.publish', 'website', 'Publicar sitios web',
        'Publicar revisiones y activar o desactivar V2 en un sitio', 'website'
 where not exists (select 1 from public.permissions where code = 'website.sites.publish');
+
+insert into public.role_permissions (role_id, permission_id, allowed)
+select r.id, p.id, true
+from (values (1), (2)) r(id)
+join public.permissions p on p.code in ('website.sites.edit', 'website.sites.publish')
+where not exists (select 1 from public.role_permissions rp where rp.role_id = r.id and rp.permission_id = p.id);
 
 -- Comprueba organización y permiso. Mismo patrón que fn_crm_exigir_permiso: el service role
 -- (auth.uid() nulo y rol distinto de anon o authenticated) pasa, porque el servidor ya validó

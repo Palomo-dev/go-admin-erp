@@ -189,14 +189,19 @@ describe('Compuertas legales del despachador de voz', () => {
     expect(twilioCreate).toHaveBeenCalled();
   });
 
-  test('un número que estaba en la lista de excluidos se marca igual', async () => {
+  test('un número de la lista interna de excluidos de la organización se omite para siempre, sin gastar crédito', async () => {
     const { client, ops, rpcs } = escenario({ excluido: true });
     const r = await runCampaignQueue(7, client);
-    expect(r.calls_initiated).toBe(1);
-    const cierre = ops.find((o) => o.table === 'voice_agent_calls' && o.verb === 'update' && (o.payload as Record<string, unknown>).last_error_code === 'RNE');
-    expect(cierre).toBeUndefined();
-    expect(rpcs.some((c) => c.name === 'deduct_comm_credits')).toBe(true);
-    expect(twilioCreate).toHaveBeenCalled();
+    expect(r.calls_initiated).toBe(0);
+    const cierre = ops.find((o) => o.table === 'voice_agent_calls' && o.verb === 'update' && (o.payload as Record<string, unknown>).status === 'skipped');
+    expect(cierre?.payload).toMatchObject({ last_error_code: 'EXCLUIDO' });
+    expect(rpcs.some((c) => c.name === 'deduct_comm_credits')).toBe(false);
+    expect(twilioCreate).not.toHaveBeenCalled();
+  });
+
+  test('sin verificación RNE y fuera de la lista interna, la campaña marca: el RNE es de cada organización', async () => {
+    const { client } = escenario({ rne: [] });
+    expect((await runCampaignQueue(7, client)).calls_initiated).toBe(1);
   });
 
   test('fuera del horario de la Ley 2300 (sábado 15:30) se reprograma al martes 07:00: el lunes 12 de octubre es festivo', async () => {
@@ -278,11 +283,11 @@ describe('Número de prueba interno: exime solo del tope semanal', () => {
     expect(reprogramacion(ops)).toMatchObject({ last_error_code: 'LEY2300', scheduled_at: '2026-10-13T12:00:00.000Z' });
   });
 
-  test('un número de prueba que estaba en la lista de excluidos se marca: el RNE ya no frena', async () => {
+  test('NO exime de la lista interna de excluidos de la organización', async () => {
     const { client, ops } = escenario({ numeroPrueba: true, excluido: true });
-    expect((await runCampaignQueue(7, client)).calls_initiated).toBe(1);
-    expect(cierre(ops)).toBeUndefined();
-    expect(twilioCreate).toHaveBeenCalled();
+    expect((await runCampaignQueue(7, client)).calls_initiated).toBe(0);
+    expect(cierre(ops)).toMatchObject({ last_error_code: 'EXCLUIDO' });
+    expect(twilioCreate).not.toHaveBeenCalled();
   });
 
   test('NO exime de la baja voluntaria (fn_can_contact)', async () => {

@@ -184,29 +184,20 @@ export async function checkAICredits(organizationId: number): Promise<AICheckRes
     };
   }
 
-  const lastReset = new Date(settings.credits_reset_at || 0);
-  const now = new Date();
-  const shouldReset = lastReset.getMonth() !== now.getMonth() ||
-                     lastReset.getFullYear() !== now.getFullYear();
-
-  if (shouldReset) {
-    const purchasedCredits = settings.purchased_credits || 0;
-    const totalRemaining = settings.credits_remaining || 0;
-    const unusedMonthly = Math.max(0, totalRemaining - purchasedCredits);
-    const rolloverCredits = Math.min(unusedMonthly, aiFeatures.aiCreditsMaxRollover);
-    const newCredits = aiFeatures.aiCreditsMonthly + rolloverCredits + purchasedCredits;
-
-    await supabase.from('ai_settings').update({
-      credits_remaining: newCredits,
-      credits_reset_at: now.toISOString(),
-      last_rollover_amount: rolloverCredits,
-      model: aiFeatures.aiModel,
-      max_tokens: aiFeatures.aiMaxTokens,
-    }).eq('organization_id', organizationId);
-
+  // Renovación mensual: una sola regla, en SQL (`fn_renovar_creditos_ia`, la
+  // misma del cron). Idempotente por mes en la zona de la organización y con
+  // la fila bloqueada. Antes había aquí un segundo reseteo por el mes del
+  // servidor, sin bloqueo, que además arrastraba saldo de un mes a otro.
+  const { data: renovacion, error: renovacionError } = await supabase.rpc('fn_renovar_creditos_ia', {
+    p_org: organizationId,
+  });
+  if (renovacionError) {
+    console.error('[aiCredits] fn_renovar_creditos_ia falló:', renovacionError.message);
+  } else if ((renovacion as { renovado?: boolean } | null)?.renovado) {
+    const saldo = Math.max(0, toInt((renovacion as { saldo?: unknown }).saldo, 0));
     return {
-      allowed: newCredits > 0,
-      creditsRemaining: newCredits,
+      allowed: saldo > 0,
+      creditsRemaining: saldo,
       aiModel: aiFeatures.aiModel,
       aiMaxTokens: aiFeatures.aiMaxTokens,
     };

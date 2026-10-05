@@ -57,7 +57,7 @@ export const GET = withOrg(async (ctx) => {
   const org = ctx.organizationId;
   const servicio = getServiceClient();
 
-  const [suscripcion, miembros, sucursales, complementos, ia, cupoIa] = await Promise.all([
+  const [suscripcion, miembros, sucursales, complementos, ia, cupoIa, renovacionIa] = await Promise.all([
     servicio
       .from('subscriptions')
       .select(
@@ -88,6 +88,7 @@ export const GET = withOrg(async (ctx) => {
       .eq('organization_id', org)
       .maybeSingle(),
     servicio.rpc('fn_ai_plan_quota', { p_org: org }),
+    servicio.rpc('fn_ai_credits_proxima_renovacion', { p_org: org }),
   ]);
 
   if (suscripcion.error) {
@@ -110,8 +111,14 @@ export const GET = withOrg(async (ctx) => {
   const anual = sub?.billing_period === 'yearly';
   const precio = anual ? plan?.price_cop_year ?? null : plan?.price_cop_month ?? null;
 
-  const cupo = typeof cupoIa.data === 'number' ? cupoIa.data : plan?.ai_credits_monthly ?? null;
+  // `fn_ai_plan_quota` devuelve una tabla (una fila con `monthly`), no un número:
+  // antes se comparaba con 'number' y siempre caía al plan, ignorando los cupos a medida.
+  const filaCupo = (Array.isArray(cupoIa.data) ? cupoIa.data[0] : cupoIa.data) as { monthly?: unknown } | null | undefined;
+  const cupo = Number.isFinite(Number(filaCupo?.monthly)) ? Number(filaCupo!.monthly) : plan?.ai_credits_monthly ?? null;
   if (cupoIa.error) console.warn('[api/me/plan] fn_ai_plan_quota', cupoIa.error.message);
+  if (renovacionIa.error) console.warn('[api/me/plan] fn_ai_credits_proxima_renovacion', renovacionIa.error.message);
+  const saldoIa = Math.max(0, ia.data?.credits_remaining ?? 0);
+  const compradosIa = Math.min(Math.max(0, ia.data?.purchased_credits ?? 0), saldoIa);
 
   return NextResponse.json(
     {
@@ -140,17 +147,16 @@ export const GET = withOrg(async (ctx) => {
           maximo: plan?.max_branches == null ? null : plan.max_branches + extra('extra_branches'),
         },
         creditosIa: {
-          // Los del cupo del plan y los comprados van aparte: sumarlos contra el
-          // cupo daba «1.000 de 500».
-          restantesPlan: ia.data?.credits_remaining ?? 0,
-          comprados: ia.data?.purchased_credits ?? 0,
+          // `credits_remaining` es el saldo TOTAL (cupo del plan + comprados):
+          // el cupo que queda es el saldo menos los comprados. Antes se mostraba
+          // el total como «del plan» y los comprados se contaban dos veces.
+          restantesPlan: saldoIa - compradosIa,
+          comprados: compradosIa,
           cupoMensual: cupo,
-          // Una fecha de renovación ya pasada (el ciclo aún no se ha renovado)
-          // no se muestra: diría «se renuevan» en el pasado.
-          seRenuevan:
-            ia.data?.credits_reset_at && new Date(ia.data.credits_reset_at).getTime() > Date.now()
-              ? ia.data.credits_reset_at
-              : null,
+          // El cupo se renueva al empezar el mes en la zona de la organización
+          // (`fn_renovar_creditos_ia`). Antes se mostraba la fecha del último
+          // reinicio, que siempre estaba en el pasado y no salía nunca.
+          seRenuevan: typeof renovacionIa.data === 'string' ? renovacionIa.data : null,
         },
       },
     },

@@ -299,6 +299,8 @@ export async function buildRuntimeConfig(
   if (orgRes.error) throw new AgentRuntimeError('db_error', `organizations: ${orgRes.error.message}`);
   const organizationName = (orgRes.data as { name?: string } | null)?.name || 'nuestra empresa';
 
+  const conocimiento = await cargarConocimientoVoz(supabase, orgId);
+
   const commRes = await supabase
     .from('comm_settings')
     .select('voice_recording_enabled, voice_consent_message, data_policy_url')
@@ -356,6 +358,7 @@ export async function buildRuntimeConfig(
     recordingEnabled,
     consentMessage,
     contexto: { ahora: new Date(), zonaHoraria, politicaDatosUrl },
+    conocimiento,
   });
 
   const greeting = buildGreeting({
@@ -420,6 +423,8 @@ export function buildSystemPrompt(p: {
   consentMessage: string;
   /** Fecha/hora actuales, zona de la organización y política de datos. */
   contexto?: { ahora: Date; zonaHoraria: string; politicaDatosUrl: string | null };
+  /** Base de conocimiento de la organización (la misma del chat con IA). */
+  conocimiento?: FragmentoConocimiento[];
 }): string {
   const parts: string[] = [];
 
@@ -490,6 +495,16 @@ export function buildSystemPrompt(p: {
   // Prompt de la organización: va DESPUÉS de los guardarraíles, nunca los sustituye.
   if (p.agent.system_prompt?.trim()) {
     parts.push(`INSTRUCCIONES DE LA ORGANIZACIÓN:\n${p.agent.system_prompt.trim()}`);
+  }
+
+  if (p.conocimiento?.length) {
+    parts.push(
+      `INFORMACIÓN DE ${p.organizationName} (base de conocimiento de la organización). Úsala para explicar ` +
+        'qué ofrece la empresa y en qué se diferencia, conectándolo con lo que te cuente la persona. Dila con tus ' +
+        'palabras, en frases cortas y solo lo pertinente: nunca la leas de corrido. No afirmes nada que no esté ' +
+        'aquí ni en las instrucciones.\n' +
+        p.conocimiento.map((f) => `- ${f.title}: ${f.content}`).join('\n')
+    );
   }
 
   const guardrails = describeGuardrails(p.agent.guardrails);
@@ -582,4 +597,49 @@ export async function persistConversation(
     .eq('id', voiceAgentCallId)
     .eq('organization_id', orgId);
   if (error) console.error('[agentRuntime] no se pudo guardar la conversación:', error.message);
+}
+
+// ─── Base de conocimiento ────────────────────────────────────────────────────
+
+export interface FragmentoConocimiento {
+  title: string;
+  content: string;
+}
+
+/** Tope del bloque de conocimiento en el prompt (caracteres): la llamada no debe volverse un monólogo. */
+export const MAX_CONOCIMIENTO_VOZ = 6000;
+
+/**
+ * Fragmentos activos de la base de conocimiento de la organización (Chat ›
+ * Base de conocimiento), los mismos que usa el chat con IA, por prioridad.
+ * Los etiquetados `solo-chat` no van a las llamadas. Si la lectura falla, la
+ * llamada sigue sin ellos (el guion basta); nunca se cae la llamada por esto.
+ */
+export async function cargarConocimientoVoz(
+  supabase: SupabaseClient,
+  orgId: number,
+): Promise<FragmentoConocimiento[]> {
+  const { data, error } = await supabase
+    .from('knowledge_fragments')
+    .select('title, content, tags, priority')
+    .eq('organization_id', orgId)
+    .eq('is_active', true)
+    .order('priority', { ascending: false, nullsFirst: false })
+    .order('updated_at', { ascending: false })
+    .limit(30);
+  if (error) {
+    console.warn('[agentRuntime] knowledge_fragments:', error.message);
+    return [];
+  }
+  const fragmentos: FragmentoConocimiento[] = [];
+  let total = 0;
+  for (const f of (data ?? []) as { title: string; content: string; tags: string[] | null }[]) {
+    if ((f.tags ?? []).some((t) => t.toLowerCase() === 'solo-chat')) continue;
+    const content = (f.content ?? '').trim();
+    if (!content) continue;
+    if (total + content.length > MAX_CONOCIMIENTO_VOZ) break;
+    total += content.length;
+    fragmentos.push({ title: (f.title ?? '').trim(), content });
+  }
+  return fragmentos;
 }

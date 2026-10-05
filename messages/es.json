@@ -20776,6 +20776,7 @@
       "estadoManual": "Sin báscula · peso a mano",
       "estadoMedida": "Cantidad escrita",
       "ingresoManual": "Ingreso manual",
+      "configurarBascula": "Configurar báscula",
       "campo": "Peso en {unidad}",
       "campoMedida": "Cantidad en {unidad}",
       "ayudaManual": "Queda registrado como peso manual con tu usuario.",

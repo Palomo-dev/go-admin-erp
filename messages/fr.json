@@ -19076,6 +19076,7 @@
       "estadoManual": "Sans balance · poids saisi",
       "estadoMedida": "Quantité saisie",
       "ingresoManual": "Saisie manuelle",
+      "configurarBascula": "Configurer la balance",
       "campo": "Poids en {unidad}",
       "campoMedida": "Quantité en {unidad}",
       "ayudaManual": "Enregistré comme poids saisi à la main avec votre utilisateur.",

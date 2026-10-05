@@ -20776,6 +20776,7 @@
       "estadoManual": "No scale · manual weight",
       "estadoMedida": "Typed quantity",
       "ingresoManual": "Manual entry",
+      "configurarBascula": "Set up scale",
       "campo": "Weight in {unidad}",
       "campoMedida": "Quantity in {unidad}",
       "ayudaManual": "It is recorded as a manual weight under your user.",

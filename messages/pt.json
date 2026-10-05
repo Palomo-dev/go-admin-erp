@@ -19076,6 +19076,7 @@
       "estadoManual": "Sem balança · peso manual",
       "estadoMedida": "Quantidade digitada",
       "ingresoManual": "Entrada manual",
+      "configurarBascula": "Configurar balança",
       "campo": "Peso em {unidad}",
       "campoMedida": "Quantidade em {unidad}",
       "ayudaManual": "Fica registrado como peso manual com o seu usuário.",

@@ -38,6 +38,13 @@ export function BasculasSection({ branches }: { branches: { id: number; name: st
   const [basculas, setBasculas] = useState<BasculaConfigurada[]>([]);
   const [editando, setEditando] = useState<BasculaConfigurada | null>(null);
   const [formAbierto, setFormAbierto] = useState(false);
+
+  // «Configurar báscula» del diálogo de pesar llega con #pos-basculas; la tarjeta
+  // existe solo después de cargar, así que el navegador no alcanza a desplazarse.
+  useEffect(() => {
+    if (estado === 'cargando' || window.location.hash !== '#pos-basculas') return;
+    document.getElementById('pos-basculas')?.scrollIntoView({ block: 'start' });
+  }, [estado]);
   const [guardando, setGuardando] = useState(false);
   const [errorServidor, setErrorServidor] = useState<string | null>(null);
   const [archivando, setArchivando] = useState<BasculaConfigurada | null>(null);

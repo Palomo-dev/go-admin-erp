@@ -42,3 +42,12 @@ export function esBarraHorizontal(el: HTMLElement, clientY: number): boolean {
   if (barra <= 0) return false;
   return clientY >= el.getBoundingClientRect().bottom - barra - 1;
 }
+
+/**
+ * Hacia dónde quedan etapas fuera de la vista. Sin desborde no hay nada que
+ * agarrar: el lienzo no muestra la mano ni se deja arrastrar.
+ */
+export function bordesOcultos(scrollLeft: number, scrollWidth: number, clientWidth: number): { izquierda: boolean; derecha: boolean } {
+  const holgura = 1;
+  return { izquierda: scrollLeft > holgura, derecha: scrollLeft + clientWidth < scrollWidth - holgura };
+}

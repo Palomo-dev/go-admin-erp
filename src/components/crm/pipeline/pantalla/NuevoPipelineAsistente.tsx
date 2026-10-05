@@ -11,7 +11,8 @@ import { cn } from '@/utils/Utils';
 import { PipelineTemplateCard } from '@/components/crm/kit/PipelineTemplateCard';
 import { StageEditorRow } from '@/components/crm/kit/StageEditorRow';
 import { clavePlantilla } from '@/components/crm/kit/pipelineTemplateCardLogica';
-import { reordenar } from '@/components/crm/kit/stageEditorRowLogica';
+import { insertarAntesDelCierre, reordenar } from '@/components/crm/kit/stageEditorRowLogica';
+import { ListaOrdenable } from '@/components/crm/kit/ListaOrdenable';
 import { CLASE_CAMPO } from '@/components/crm/kit/camposCrm';
 import { SelectCrm } from '@/components/crm/kit/SelectCrm';
 import { claveError, emitirCambioCrm, ErrorApiCrm, pedirCrm } from '@/components/crm/acciones/apiCrm';
@@ -178,19 +179,22 @@ export function NuevoPipelineAsistente(p: NuevoPipelineAsistenteProps) {
       )}
       {paso === 'etapas' && (
         <div className="flex flex-col gap-2">
-          {etapas.map((e, i) => (
-            <StageEditorRow
-              key={e.clave}
-              etapa={e}
-              colores={colores}
-              error={intentado ? revision.errores[e.clave] ?? null : null}
-              onCambiar={(n) => setEtapas(etapas.map((x) => (x.clave === e.clave ? n : x)))}
-              onMover={(d) => setEtapas(reordenar(etapas, i, i + d))}
-              onEliminar={etapas.length > 1 ? () => setEtapas(etapas.filter((x) => x.clave !== e.clave)) : undefined}
-            />
-          ))}
+          <ListaOrdenable items={etapas} clave={(e) => e.clave} onOrdenar={(desde, hasta) => setEtapas(reordenar(etapas, desde, hasta))} className="flex flex-col gap-2">
+            {(e, i, asa) => (
+              <StageEditorRow
+                etapa={e}
+                colores={colores}
+                error={intentado ? revision.errores[e.clave] ?? null : null}
+                propsAsa={asa.propsAsa}
+                arrastrando={asa.arrastrando}
+                onCambiar={(n) => setEtapas(etapas.map((x) => (x.clave === e.clave ? n : x)))}
+                onMover={(d) => setEtapas(reordenar(etapas, i, i + d))}
+                onEliminar={etapas.length > 1 ? () => setEtapas(etapas.filter((x) => x.clave !== e.clave)) : undefined}
+              />
+            )}
+          </ListaOrdenable>
           <div className="flex items-center gap-3">
-            <button type="button" onClick={() => setEtapas([...etapas, etapaNueva(colores[0] ?? '')])} disabled={etapas.length >= MAX_ETAPAS} className={clasesBoton({ variante: 'secundario' })}>
+            <button type="button" onClick={() => setEtapas(insertarAntesDelCierre(etapas, etapaNueva(colores[0] ?? '')))} disabled={etapas.length >= MAX_ETAPAS} className={clasesBoton({ variante: 'secundario' })}>
               <Plus aria-hidden="true" className="size-4" />
               {t('agregarEtapa')}
             </button>

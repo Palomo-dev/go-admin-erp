@@ -80,6 +80,18 @@ export function enteroDeCampo(texto: string): number | null {
 }
 
 /** Mueve la etapa `desde` → `hasta` (arrastre o teclado) y renumera `position` 1..N. */
+/** Índice donde entra una etapa nueva (lista ya en orden): antes de la primera de cierre, o al final si no hay. */
+export function indiceAntesDelCierre(etapas: readonly { is_won?: boolean | null; is_lost?: boolean | null }[]): number {
+  const cierre = etapas.findIndex((e) => e.is_won || e.is_lost);
+  return cierre === -1 ? etapas.length : cierre;
+}
+
+/** Inserta `nueva` antes de Ganada/Perdida: una etapa abierta nunca queda después del cierre. */
+export function insertarAntesDelCierre<T extends Pick<EtapaEditable, 'is_won' | 'is_lost'>>(etapas: readonly T[], nueva: T): T[] {
+  const i = indiceAntesDelCierre(etapas);
+  return [...etapas.slice(0, i), nueva, ...etapas.slice(i)];
+}
+
 export function reordenar<T extends object>(etapas: readonly T[], desde: number, hasta: number): (T & { position: number })[] {
   const copia = [...etapas];
   if (desde >= 0 && desde < copia.length && hasta >= 0 && hasta < copia.length) {

@@ -33660,5 +33660,135 @@
       "sustantivo": "bon",
       "sustantivoPlural": "bons"
     }
+  },
+  "posAvisosCliente": {
+    "titulo": "Notifications client",
+    "subtitulo": "Ce que reçoit le client à chaque étape de la commande en ligne",
+    "migaConfiguracion": "Paramètres",
+    "guardar": "Enregistrer",
+    "guardado": "Notifications enregistrées",
+    "errorGuardar": "Impossible d'enregistrer les notifications",
+    "pendienteMigracion": "Les notifications configurables seront disponibles une fois la mise à jour des commandes en ligne activée. En attendant, le client reçoit l'e-mail de chaque état.",
+    "sinPermiso": "Seule l'administration peut modifier les notifications.",
+    "datosInvalidos": "Vérifiez l'adresse de réponse et le numéro WhatsApp.",
+    "errorCargar": "Impossible de charger les notifications",
+    "soloLectura": "Seule l'administration peut modifier ces notifications. Voici comment elles partent aujourd'hui.",
+    "comoSalen": "Les notifications partent du serveur, jamais du navigateur : l'e-mail via le fournisseur de la plateforme et WhatsApp via le canal connecté dans le CRM. Si un envoi échoue, il reste dans l'historique de la commande avec « Renvoyer ».",
+    "col": {
+      "momento": "Étape",
+      "cuando": "Quand c'est envoyé",
+      "correo": "E-mail",
+      "whatsapp": "WhatsApp",
+      "plantilla": "Modèle"
+    },
+    "vistaPrevia": "Aperçu",
+    "alternar": "{canal} pour « {momento} »",
+    "momentos": {
+      "recibido": {
+        "nombre": "Commande reçue",
+        "cuando": "Dès l'arrivée de la commande, avant de la confirmer",
+        "plantilla": "« Nous avons reçu votre commande WO-000412 »",
+        "titulo": "Nous avons reçu votre commande"
+      },
+      "confirmado": {
+        "nombre": "Commande confirmée",
+        "cuando": "À la confirmation, avec « prête vers » et « livrée vers »",
+        "plantilla": "« Votre commande est confirmée »",
+        "titulo": "Votre commande est confirmée"
+      },
+      "listo": {
+        "nombre": "Commande prête",
+        "cuando": "Quand elle est marquée prête",
+        "plantilla": "« Vous pouvez la récupérer » / « Elle part chez vous »",
+        "titulo": "Votre commande est prête"
+      },
+      "en_camino": {
+        "nombre": "Commande en route",
+        "cuando": "À l'envoi, avec le livreur assigné",
+        "plantilla": "« Luis Castaño apporte votre commande »",
+        "titulo": "Votre commande est en route"
+      },
+      "entregado": {
+        "nombre": "Commande livrée",
+        "cuando": "Quand elle est marquée livrée",
+        "plantilla": "« Merci pour votre achat »",
+        "titulo": "Merci pour votre achat"
+      },
+      "rechazado": {
+        "nombre": "Commande refusée ou annulée",
+        "cuando": "Avec le motif, tel que l'écrit l'opérateur",
+        "plantilla": "« Nous n'avons pas pu traiter votre commande »",
+        "titulo": "Nous n'avons pas pu traiter votre commande"
+      }
+    },
+    "responderA": "Expéditeur de l'e-mail",
+    "responderAAyuda": "Les réponses du client arrivent à cette adresse.",
+    "nombreVisible": "Nom affiché",
+    "nombreVisibleAyuda": "Vide : le nom de l'organisation.",
+    "numeroWhatsapp": "Numéro WhatsApp",
+    "numeroWhatsappAyuda": "Celui que connaît le client ; l'envoi passe par le canal WhatsApp du CRM.",
+    "sinDatos": "Quand une commande arrive sans e-mail ni téléphone, la boîte de confirmation le signale avant de confirmer et permet de les ajouter. On ne confirme jamais pour échouer ensuite en silence.",
+    "vistaPreviaTitulo": "Aperçu · « {plantilla} »",
+    "vistaPreviaDescripcion": "Avec les données de {pedido}. Les variables sont remplacées à l'envoi.",
+    "canal": "Canal",
+    "vistaPreviaError": "Impossible de créer l'aperçu.",
+    "cargando": "Chargement",
+    "de": "De",
+    "para": "À",
+    "asunto": "Objet",
+    "variables": "Variables disponibles :",
+    "vistaPreviaNota": "Le serveur crée le texte avec la même fonction que l'envoi. Les heures suivent le fuseau de l'organisation, pas celui du navigateur.",
+    "enviarPrueba": "M'envoyer un test",
+    "cerrar": "Fermer",
+    "pruebaEnviada": "Test envoyé à {correo}",
+    "pruebaError": "Impossible d'envoyer le test",
+    "sinProveedor": "L'e-mail de la plateforme n'est pas configuré.",
+    "sinCorreoUsuario": "Votre utilisateur n'a pas d'e-mail.",
+    "historial": {
+      "titulo": "Notifications client",
+      "cargando": "Chargement",
+      "vacio": "Aucune notification n'a encore été envoyée pour cette commande.",
+      "nota": "« Renvoyer » redemande la même notification au serveur ; le navigateur ne l'envoie pas. Utilisez-le quand la donnée a changé (e-mail ou téléphone corrigé).",
+      "reenviar": "Renvoyer",
+      "reenviado": "Notification renvoyée",
+      "errorReenviar": "Impossible de renvoyer la notification",
+      "linea": "{canal} · {hora} · {estado}",
+      "canal": {
+        "email": "E-mail",
+        "whatsapp": "WhatsApp"
+      },
+      "estado": {
+        "queued": "En file",
+        "sent": "Envoyé",
+        "delivered": "Remis",
+        "failed": "Échec",
+        "no_data": "Sans données"
+      },
+      "momento": {
+        "recibido": "Reçue",
+        "confirmado": "Confirmée",
+        "listo": "Prête",
+        "en_camino": "En route",
+        "entregado": "Livrée",
+        "rechazado": "Refusée"
+      },
+      "detalle": {
+        "sin_correo": "la commande n'a pas d'e-mail",
+        "sin_telefono": "la commande n'a pas de téléphone",
+        "proveedor": "le fournisseur ne l'a pas accepté",
+        "sin_proveedor": "l'e-mail de la plateforme n'est pas configuré",
+        "WINDOW_CLOSED": "le client n'a pas écrit dans les dernières 24 h",
+        "NO_CHANNEL": "aucun canal WhatsApp connecté",
+        "OPTED_OUT": "le client a refusé les messages",
+        "NOT_FOUND": "le numéro n'a pas WhatsApp"
+      },
+      "ayuda": {
+        "queued": "en attente dans la file",
+        "sent": "accepté par le fournisseur",
+        "delivered": "confirmé par le fournisseur",
+        "failed": "refusé par le fournisseur",
+        "no_data": "coordonnées manquantes"
+      }
+    }
   }
 }

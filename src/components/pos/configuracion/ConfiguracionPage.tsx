@@ -54,6 +54,7 @@ import { PrintersSection } from './printers/PrintersSection';
 import { BasculasSection } from './basculas/BasculasSection';
 import { EtiquetasPesoSection } from './etiquetas-peso/EtiquetasPesoSection';
 import { NotasRapidasSection } from './NotasRapidasSection';
+import { AvisosClienteEnlace } from '@/components/pos/pedidos-online/avisos/AvisosClienteEnlace';
 import { PrintAgentStatusCard } from './printers/PrintAgentStatusCard';
 import { RecentPrintJobsTable } from './printers/RecentPrintJobsTable';
 import { useOrganization } from '@/lib/hooks/useOrganization';
@@ -963,6 +964,9 @@ export function ConfiguracionPage({ embedded = false }: { embedded?: boolean }) 
           )}
         </CardContent>
       </Card>
+
+      {/* Avisos al cliente de los pedidos online (Figma 464:241318) */}
+      <AvisosClienteEnlace />
 
       {/* Notas rápidas del editor de nota de la línea (por organización o sucursal) */}
       <NotasRapidasSection branches={branches} />

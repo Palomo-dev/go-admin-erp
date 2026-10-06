@@ -136,7 +136,7 @@ function PaginaComandas() {
       onEstacion={setEstacionTablero}
       onPantallaCocina={() => irA({ modo: 'cocina', estacion: estacionTablero !== 'todas' ? estacionTablero : estacionKds })}
       onHistorial={() => irA({ vista: 'historial' })}
-      onConfigurar={() => router.push('/app/pos/configuracion')}
+      onConfigurar={() => router.push('/app/configuracion?modulo=pos')}
     />
   );
 }

@@ -33660,5 +33660,135 @@
       "sustantivo": "comanda",
       "sustantivoPlural": "comandas"
     }
+  },
+  "posAvisosCliente": {
+    "titulo": "Avisos ao cliente",
+    "subtitulo": "O que o cliente recebe em cada momento do pedido online",
+    "migaConfiguracion": "Configurações",
+    "guardar": "Salvar alterações",
+    "guardado": "Avisos salvos",
+    "errorGuardar": "Não foi possível salvar os avisos",
+    "pendienteMigracion": "Os avisos configuráveis estarão disponíveis quando a atualização de pedidos online for ativada. Enquanto isso, o cliente recebe o e-mail de cada estado.",
+    "sinPermiso": "Só a administração pode alterar os avisos.",
+    "datosInvalidos": "Confira o e-mail de resposta e o número de WhatsApp.",
+    "errorCargar": "Não conseguimos carregar os avisos",
+    "soloLectura": "Só a administração pode alterar estes avisos. É assim que saem hoje.",
+    "comoSalen": "Os avisos saem do servidor, nunca do navegador: o e-mail pelo provedor da plataforma e o WhatsApp pelo canal conectado no CRM. Se um envio falhar, fica no histórico do pedido com «Reenviar».",
+    "col": {
+      "momento": "Momento",
+      "cuando": "Quando é enviado",
+      "correo": "E-mail",
+      "whatsapp": "WhatsApp",
+      "plantilla": "Modelo"
+    },
+    "vistaPrevia": "Pré-visualização",
+    "alternar": "{canal} em «{momento}»",
+    "momentos": {
+      "recibido": {
+        "nombre": "Pedido recebido",
+        "cuando": "Assim que o pedido entra, antes de confirmá-lo",
+        "plantilla": "«Recebemos seu pedido WO-000412»",
+        "titulo": "Recebemos seu pedido"
+      },
+      "confirmado": {
+        "nombre": "Pedido confirmado",
+        "cuando": "Ao confirmar, com «pronto aprox.» e «entrega aprox.»",
+        "plantilla": "«Seu pedido está confirmado»",
+        "titulo": "Seu pedido está confirmado"
+      },
+      "listo": {
+        "nombre": "Pedido pronto",
+        "cuando": "Ao marcá-lo como pronto",
+        "plantilla": "«Já pode retirar» / «Saiu para o seu endereço»",
+        "titulo": "Seu pedido está pronto"
+      },
+      "en_camino": {
+        "nombre": "Pedido a caminho",
+        "cuando": "Ao enviá-lo, com o entregador atribuído",
+        "plantilla": "«Luis Castaño leva seu pedido»",
+        "titulo": "Seu pedido está a caminho"
+      },
+      "entregado": {
+        "nombre": "Pedido entregue",
+        "cuando": "Ao marcá-lo como entregue",
+        "plantilla": "«Obrigado pela compra»",
+        "titulo": "Obrigado pela compra"
+      },
+      "rechazado": {
+        "nombre": "Pedido recusado ou cancelado",
+        "cuando": "Com o motivo, como o operador escreve",
+        "plantilla": "«Não conseguimos atender seu pedido»",
+        "titulo": "Não conseguimos atender seu pedido"
+      }
+    },
+    "responderA": "Remetente do e-mail",
+    "responderAAyuda": "As respostas do cliente chegam a este endereço.",
+    "nombreVisible": "Nome exibido",
+    "nombreVisibleAyuda": "Se ficar vazio, o nome da organização.",
+    "numeroWhatsapp": "Número de WhatsApp",
+    "numeroWhatsappAyuda": "O que o cliente conhece; o envio sai pelo canal de WhatsApp do CRM.",
+    "sinDatos": "Quando um pedido chega sem e-mail nem telefone, o diálogo de confirmação avisa antes de confirmar e permite adicioná-los na hora. Nunca se confirma para depois falhar o envio em silêncio.",
+    "vistaPreviaTitulo": "Pré-visualização · «{plantilla}»",
+    "vistaPreviaDescripcion": "Com os dados de {pedido}. As variáveis são substituídas no envio.",
+    "canal": "Canal",
+    "vistaPreviaError": "Não conseguimos montar a pré-visualização.",
+    "cargando": "Carregando",
+    "de": "De",
+    "para": "Para",
+    "asunto": "Assunto",
+    "variables": "Variáveis disponíveis:",
+    "vistaPreviaNota": "O servidor monta o texto com a mesma função do envio. Os horários seguem o fuso da organização, não o do navegador.",
+    "enviarPrueba": "Enviar um teste para mim",
+    "cerrar": "Fechar",
+    "pruebaEnviada": "Teste enviado para {correo}",
+    "pruebaError": "Não foi possível enviar o teste",
+    "sinProveedor": "O e-mail da plataforma não está configurado.",
+    "sinCorreoUsuario": "Seu usuário não tem e-mail.",
+    "historial": {
+      "titulo": "Avisos ao cliente",
+      "cargando": "Carregando",
+      "vacio": "Ainda não foi enviado nenhum aviso deste pedido.",
+      "nota": "«Reenviar» pede de novo o mesmo aviso ao servidor; o navegador não o envia. Use quando o dado mudou (e-mail ou telefone corrigido).",
+      "reenviar": "Reenviar",
+      "reenviado": "Aviso reenviado",
+      "errorReenviar": "Não foi possível reenviar o aviso",
+      "linea": "{canal} · {hora} · {estado}",
+      "canal": {
+        "email": "E-mail",
+        "whatsapp": "WhatsApp"
+      },
+      "estado": {
+        "queued": "Na fila",
+        "sent": "Enviado",
+        "delivered": "Entregue",
+        "failed": "Falhou",
+        "no_data": "Sem dados"
+      },
+      "momento": {
+        "recibido": "Recebido",
+        "confirmado": "Confirmado",
+        "listo": "Pronto",
+        "en_camino": "A caminho",
+        "entregado": "Entregue",
+        "rechazado": "Recusado"
+      },
+      "detalle": {
+        "sin_correo": "o pedido não tem e-mail",
+        "sin_telefono": "o pedido não tem telefone",
+        "proveedor": "o provedor não aceitou",
+        "sin_proveedor": "o e-mail da plataforma não está configurado",
+        "WINDOW_CLOSED": "o cliente não escreveu nas últimas 24 h",
+        "NO_CHANNEL": "não há canal de WhatsApp conectado",
+        "OPTED_OUT": "o cliente pediu para não receber mensagens",
+        "NOT_FOUND": "o número não tem WhatsApp"
+      },
+      "ayuda": {
+        "queued": "esperando na fila",
+        "sent": "aceito pelo provedor",
+        "delivered": "confirmado pelo provedor",
+        "failed": "recusado pelo provedor",
+        "no_data": "falta o dado de contato"
+      }
+    }
   }
 }

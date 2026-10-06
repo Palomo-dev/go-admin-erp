@@ -1,5 +1,7 @@
 'use client';
 
+import { AvisosPedidoPanel } from '@/components/pos/pedidos-online/avisos/AvisosPedidoPanel';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -28,6 +30,7 @@ import { AssignDeliveryDialog, cobroDelPedido } from '@/components/pos/pedidos-o
 export default function WebOrderDetailPage() {
   const params = useParams();
   const orderId = params?.id as string;
+  const { timezone } = useOrgTimezone();
 
   const {
     order,
@@ -111,6 +114,7 @@ export default function WebOrderDetailPage() {
           <OrderProductsCard order={order} />
           <OrderNotesCard order={order} comandaId={trazabilidad.comandaId} />
           <OrderTimelineCard order={order} />
+          <AvisosPedidoPanel orderId={order.id} timezone={timezone} version={`${order.status}-${order.updated_at ?? ''}`} />
           <OrderDocumentsCard
             order={order}
             factura={trazabilidad.factura}

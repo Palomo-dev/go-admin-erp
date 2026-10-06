@@ -10,6 +10,9 @@ import { enviarCorreoEstadoPedido } from '@/lib/services/orderStatusEmailService
  * Pedidos online (cambio de estado, confirmación, cobro) y Comandas (marcar
  * lista: el trigger trg_comanda_web_avanza_pedido ya movió el pedido).
  *
+ * `canal` (opcional, «Reenviar» del historial): repite solo ese canal. Qué
+ * canales salen lo deciden los ajustes de Avisos al cliente.
+ *
  * Sesión + membresía (`withOrg`): la organización sale de la sesión y el
  * pedido se lee filtrado por ella (un id de otra organización → 404). El
  * correo se arma con el estado guardado, nunca con uno que mande el cliente.
@@ -20,8 +23,10 @@ import { enviarCorreoEstadoPedido } from '@/lib/services/orderStatusEmailService
  * tener lectura de organizations.
  */
 export const POST = withOrg(async (ctx, request, routeParams) => {
-  const body = await readOrgBody<{ estado?: unknown }>(ctx, request, { route: 'web-orders/aviso-estado' });
+  const body = await readOrgBody<{ estado?: unknown; canal?: unknown }>(ctx, request, { route: 'web-orders/aviso-estado' });
   const esperado = typeof body?.estado === 'string' ? body.estado : null;
+  // «Reenviar» del historial del pedido: solo el canal de esa línea.
+  const canal = body?.canal === 'email' || body?.canal === 'whatsapp' ? body.canal : null;
   const params = (await routeParams?.params) ?? {};
   const orderId = typeof params.id === 'string' ? params.id : '';
   if (!/^[0-9a-f-]{36}$/i.test(orderId)) {
@@ -40,6 +45,6 @@ export const POST = withOrg(async (ctx, request, routeParams) => {
     return NextResponse.json({ success: true, enviado: false, motivo: 'estado_distinto' });
   }
 
-  const enviado = await enviarCorreoEstadoPedido(db, ctx.organizationId, orderId);
+  const enviado = await enviarCorreoEstadoPedido(db, ctx.organizationId, orderId, { actor: ctx.userId, soloCanal: canal });
   return NextResponse.json({ success: true, enviado });
 });

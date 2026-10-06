@@ -33763,5 +33763,135 @@
       "sustantivo": "ticket",
       "sustantivoPlural": "tickets"
     }
+  },
+  "posAvisosCliente": {
+    "titulo": "Customer notifications",
+    "subtitulo": "What the customer receives at each step of the online order",
+    "migaConfiguracion": "Settings",
+    "guardar": "Save changes",
+    "guardado": "Notifications saved",
+    "errorGuardar": "The notifications couldn't be saved",
+    "pendienteMigracion": "Configurable notifications will be available once the online orders update is enabled. Meanwhile, the customer gets the email for each status.",
+    "sinPermiso": "Only administrators can change notifications.",
+    "datosInvalidos": "Check the reply-to email and the WhatsApp number.",
+    "errorCargar": "We couldn't load the notifications",
+    "soloLectura": "Only administrators can change these notifications. This is how they go out today.",
+    "comoSalen": "Notifications are sent from the server, never from the browser: email through the platform provider and WhatsApp through the channel connected in CRM. If a send fails it stays in the order history with «Resend».",
+    "col": {
+      "momento": "Step",
+      "cuando": "When it's sent",
+      "correo": "Email",
+      "whatsapp": "WhatsApp",
+      "plantilla": "Template"
+    },
+    "vistaPrevia": "Preview",
+    "alternar": "{canal} on «{momento}»",
+    "momentos": {
+      "recibido": {
+        "nombre": "Order received",
+        "cuando": "As soon as the order comes in, before confirming it",
+        "plantilla": "«We received your order WO-000412»",
+        "titulo": "We received your order"
+      },
+      "confirmado": {
+        "nombre": "Order confirmed",
+        "cuando": "On confirmation, with «ready approx.» and «delivery approx.»",
+        "plantilla": "«Your order is confirmed»",
+        "titulo": "Your order is confirmed"
+      },
+      "listo": {
+        "nombre": "Order ready",
+        "cuando": "When marked as ready",
+        "plantilla": "«You can pick it up» / «It's on its way to you»",
+        "titulo": "Your order is ready"
+      },
+      "en_camino": {
+        "nombre": "Order on its way",
+        "cuando": "When dispatched, with the assigned driver",
+        "plantilla": "«Luis Castaño is bringing your order»",
+        "titulo": "Your order is on its way"
+      },
+      "entregado": {
+        "nombre": "Order delivered",
+        "cuando": "When marked as delivered",
+        "plantilla": "«Thanks for your purchase»",
+        "titulo": "Thanks for your purchase"
+      },
+      "rechazado": {
+        "nombre": "Order rejected or cancelled",
+        "cuando": "With the reason, exactly as the operator writes it",
+        "plantilla": "«We couldn't fulfill your order»",
+        "titulo": "We couldn't fulfill your order"
+      }
+    },
+    "responderA": "Email sender",
+    "responderAAyuda": "Customer replies arrive at this address.",
+    "nombreVisible": "Display name",
+    "nombreVisibleAyuda": "If empty, the organization name.",
+    "numeroWhatsapp": "WhatsApp number",
+    "numeroWhatsappAyuda": "The one the customer knows; messages go out through the CRM WhatsApp channel.",
+    "sinDatos": "When an order arrives without email or phone, the confirmation dialog warns before confirming and lets you add them right then. It never confirms and then silently fails to send.",
+    "vistaPreviaTitulo": "Preview · «{plantilla}»",
+    "vistaPreviaDescripcion": "With the data of {pedido}. Variables are replaced when sending.",
+    "canal": "Channel",
+    "vistaPreviaError": "We couldn't build the preview.",
+    "cargando": "Loading",
+    "de": "From",
+    "para": "To",
+    "asunto": "Subject",
+    "variables": "Available variables:",
+    "vistaPreviaNota": "The server builds the text with the same function used to send. Times use the organization's time zone, not the browser's.",
+    "enviarPrueba": "Send me a test",
+    "cerrar": "Close",
+    "pruebaEnviada": "Test sent to {correo}",
+    "pruebaError": "The test couldn't be sent",
+    "sinProveedor": "The platform email isn't configured.",
+    "sinCorreoUsuario": "Your user has no email.",
+    "historial": {
+      "titulo": "Customer notifications",
+      "cargando": "Loading",
+      "vacio": "No notifications have been sent for this order yet.",
+      "nota": "«Resend» asks the server for the same notification again; the browser doesn't send it. Use it when the data changed (the email or phone was corrected).",
+      "reenviar": "Resend",
+      "reenviado": "Notification resent",
+      "errorReenviar": "The notification couldn't be resent",
+      "linea": "{canal} · {hora} · {estado}",
+      "canal": {
+        "email": "Email",
+        "whatsapp": "WhatsApp"
+      },
+      "estado": {
+        "queued": "Queued",
+        "sent": "Sent",
+        "delivered": "Delivered",
+        "failed": "Failed",
+        "no_data": "No data"
+      },
+      "momento": {
+        "recibido": "Received",
+        "confirmado": "Confirmed",
+        "listo": "Ready",
+        "en_camino": "On its way",
+        "entregado": "Delivered",
+        "rechazado": "Rejected"
+      },
+      "detalle": {
+        "sin_correo": "the order has no email",
+        "sin_telefono": "the order has no phone",
+        "proveedor": "the provider didn't accept it",
+        "sin_proveedor": "the platform email isn't configured",
+        "WINDOW_CLOSED": "the customer hasn't written in the last 24 h",
+        "NO_CHANNEL": "no WhatsApp channel connected",
+        "OPTED_OUT": "the customer opted out of messages",
+        "NOT_FOUND": "the number has no WhatsApp"
+      },
+      "ayuda": {
+        "queued": "waiting in the queue",
+        "sent": "accepted by the provider",
+        "delivered": "confirmed by the provider",
+        "failed": "rejected by the provider",
+        "no_data": "contact data missing"
+      }
+    }
   }
 }

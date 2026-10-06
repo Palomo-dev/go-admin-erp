@@ -20,6 +20,8 @@ import { createHash, createHmac } from 'crypto';
 import { getMasterResend, getMasterResendKey } from '@/lib/services/crm/email/resendClient';
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 import { formatTimeInTz } from '@/lib/utils/dateDisplay';
+import { avisarClientePedido, type PedidoParaAviso } from '@/lib/services/avisosClienteService';
+import type { CanalAviso } from '@/lib/pos/pedidosWeb/avisosCliente';
 
 /** Estados que avisan al cliente. `pending` no: ese correo lo manda el sitio al crear el pedido. */
 export const ESTADOS_CON_AVISO = ['confirmed', 'preparing', 'ready', 'in_delivery', 'delivered', 'cancelled', 'rejected'] as const;
@@ -128,23 +130,26 @@ ${boton}
 }
 
 /**
- * Envía el aviso del estado ACTUAL del pedido. Devuelve si salió (para logs).
- * `organizationId` sale de la sesión o del propio pedido, nunca de un body.
+ * Envía los avisos del estado ACTUAL del pedido. Devuelve si salió el correo
+ * (para logs). `organizationId` sale de la sesión o del propio pedido, nunca
+ * de un body. Qué canales salen lo deciden los ajustes de la organización
+ * (`avisosClienteService`); sin esos ajustes (migración pendiente), el correo
+ * de siempre en cada estado con aviso.
  */
 export async function enviarCorreoEstadoPedido(
   db: SupabaseClient,
   organizationId: number,
   orderId: string,
+  opciones: { actor?: string | null; soloCanal?: CanalAviso | null } = {},
 ): Promise<boolean> {
   try {
-    if (!getMasterResendKey()) return false;
     const { data: pedido, error } = await db
       .from('web_orders')
-      .select('id, organization_id, order_number, status, customer_email, customer_name, estimated_ready_at, estimated_delivery_at, cancellation_reason')
+      .select('id, organization_id, branch_id, order_number, status, customer_id, customer_email, customer_name, customer_phone, estimated_ready_at, estimated_delivery_at, cancellation_reason, total, payment_status')
       .eq('id', orderId)
       .eq('organization_id', organizationId)
       .maybeSingle();
-    if (error || !pedido || !pedido.customer_email || !esEstadoConAviso(pedido.status)) return false;
+    if (error || !pedido) return false;
 
     const { data: org } = await db
       .from('organizations')
@@ -152,33 +157,49 @@ export async function enviarCorreoEstadoPedido(
       .eq('id', organizationId)
       .maybeSingle();
     if (!org) return false;
+    const url = urlSeguimiento(org, pedido);
 
-    const zona = await getOrganizationTimezone(organizationId, db);
-    const estimada = pedido.status === 'in_delivery' ? pedido.estimated_delivery_at : pedido.estimated_ready_at;
-    const correo = armarCorreoEstado({
-      estado: pedido.status,
-      numeroPedido: pedido.order_number,
-      nombreCliente: pedido.customer_name ?? '',
-      nombreNegocio: org.name ?? '',
-      urlSeguimiento: urlSeguimiento(org, pedido),
-      horaEstimada: ['confirmed', 'preparing', 'in_delivery'].includes(pedido.status) && estimada
-        ? formatTimeInTz(estimada, zona)
-        : null,
-      motivo: ['cancelled', 'rejected'].includes(pedido.status) ? pedido.cancellation_reason : null,
+    const r = await avisarClientePedido(db, organizationId, pedido as PedidoParaAviso, {
+      negocio: org.name ?? '',
+      url,
+      actor: opciones.actor ?? null,
+      soloCanal: opciones.soloCanal ?? null,
+      estadoConAvisoLegado: (e) => esEstadoConAviso(e),
+      enviarCorreo: async (extra) => {
+        if (!getMasterResendKey()) return { ok: false, error: 'sin_proveedor' };
+        const estado = esEstadoConAviso(pedido.status) ? pedido.status : null;
+        if (!estado) return { ok: false, error: 'estado_sin_aviso' };
+        const zona = await getOrganizationTimezone(organizationId, db);
+        const estimada = pedido.status === 'in_delivery' ? pedido.estimated_delivery_at : pedido.estimated_ready_at;
+        const negocio = extra.nombreVisible || org.name || '';
+        const correo = armarCorreoEstado({
+          estado,
+          numeroPedido: pedido.order_number,
+          nombreCliente: pedido.customer_name ?? '',
+          nombreNegocio: negocio,
+          urlSeguimiento: url,
+          horaEstimada: ['confirmed', 'preparing', 'in_delivery'].includes(pedido.status) && estimada
+            ? formatTimeInTz(estimada, zona)
+            : null,
+          motivo: ['cancelled', 'rejected'].includes(pedido.status) ? pedido.cancellation_reason : null,
+        });
+        const remitente = `${(negocio || process.env.EMAIL_FROM_NAME || 'GO Admin').replace(/[<>"]/g, '')} <${process.env.EMAIL_FROM_ADDRESS || 'notificaciones@goadmin.io'}>`;
+        const { data: enviado, error: envioError } = await getMasterResend().emails.send({
+          from: remitente,
+          to: pedido.customer_email as string,
+          subject: extra.asunto || correo.asunto,
+          html: correo.html,
+          text: extra.texto || correo.text,
+          ...(extra.responderA ? { replyTo: extra.responderA } : {}),
+        });
+        if (envioError) {
+          console.warn('[orderStatusEmail] Resend no envió el aviso de estado', { orderId, estado: pedido.status, error: envioError.name });
+          return { ok: false, error: envioError.name };
+        }
+        return { ok: true, id: enviado?.id ?? null };
+      },
     });
-    const remitente = `${(org.name || process.env.EMAIL_FROM_NAME || 'GO Admin').replace(/[<>"]/g, '')} <${process.env.EMAIL_FROM_ADDRESS || 'notificaciones@goadmin.io'}>`;
-    const { error: envioError } = await getMasterResend().emails.send({
-      from: remitente,
-      to: pedido.customer_email,
-      subject: correo.asunto,
-      html: correo.html,
-      text: correo.text,
-    });
-    if (envioError) {
-      console.warn('[orderStatusEmail] Resend no envió el aviso de estado', { orderId, estado: pedido.status, error: envioError.name });
-      return false;
-    }
-    return true;
+    return r.email === 'sent';
   } catch (err) {
     console.warn('[orderStatusEmail] Error enviando el aviso de estado', { orderId, err: err instanceof Error ? err.message : err });
     return false;

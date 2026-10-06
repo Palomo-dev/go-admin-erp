@@ -27,7 +27,7 @@ import {
   resolverBasePrincipal,
 } from '@/lib/services/website/siteDocumentService';
 import { contarPaginas, filasPaginas } from '@/components/sitio-web/paginas/vistaPaginas';
-import { giroDeTipoOrganizacion, paginasBasePorGiro } from '@/components/sitio-web/paginas/plantillasPagina';
+import { giroDeSede, giroDeTipoOrganizacion, paginasBasePorGiro } from '@/components/sitio-web/paginas/plantillasPagina';
 import type {
   CategoriaInventarioMenu,
   RespuestaMenusSitio,
@@ -75,10 +75,21 @@ export async function permisosSitio(ctx: ContextoPaginas): Promise<PermisosSitio
   return { editar, publicar };
 }
 
-async function giroDeOrganizacion(ctx: ContextoPaginas): Promise<Giro> {
-  const { data, error } = await ctx.supabase.from('organizations').select('type_id').eq('id', ctx.organizationId).maybeSingle();
-  if (error) throw errorDesdePostgrest(error, 'paginas.giro');
-  return giroDeTipoOrganizacion((data as { type_id: number | null } | null)?.type_id ?? null);
+/**
+ * Giro del sitio: el de la organización en el principal; en una sede, el de su `branch_type`
+ * si lo tiene (`giroDeSede`). Decide las plantillas de «Nueva página» y las páginas base.
+ */
+async function giroDelSitio(ctx: ContextoPaginas, branchId: number | null): Promise<Giro> {
+  const [org, sede] = await Promise.all([
+    ctx.supabase.from('organizations').select('type_id').eq('id', ctx.organizationId).maybeSingle(),
+    branchId === null
+      ? Promise.resolve({ data: null, error: null })
+      : ctx.supabase.from('branches').select('branch_type').eq('id', branchId).eq('organization_id', ctx.organizationId).maybeSingle(),
+  ]);
+  if (org.error) throw errorDesdePostgrest(org.error, 'paginas.giro');
+  if (sede.error) throw errorDesdePostgrest(sede.error, 'paginas.giroSede');
+  const giroOrganizacion = giroDeTipoOrganizacion((org.data as { type_id: number | null } | null)?.type_id ?? null);
+  return giroDeSede((sede.data as { branch_type: string | null } | null)?.branch_type ?? null, giroOrganizacion);
 }
 
 async function sucursalesWeb(ctx: ContextoPaginas): Promise<{ id: number; name: string }[]> {
@@ -123,7 +134,7 @@ export async function leerVistaPaginas(ctx: ContextoPaginas, branchId: number | 
   const [sitios, permisos, giro, sucursales] = await Promise.all([
     listarSitios(ctx.supabase, ctx.organizationId),
     permisosSitio(ctx),
-    giroDeOrganizacion(ctx),
+    giroDelSitio(ctx, branchId),
     sucursalesWeb(ctx),
   ]);
   if (branchId !== null && !sucursales.some((s) => s.id === branchId)) {
@@ -212,7 +223,7 @@ export async function aplicarAlBorrador(
 ): Promise<RespuestaEscrituraPaginas> {
   const permisos = await permisosSitio(ctx);
   if (!permisos.editar) throw new ErrorSitio('sin_permiso', 'Necesitas el permiso «Editar sitio web» (website.sites.edit).');
-  const giro = await giroDeOrganizacion(ctx);
+  const giro = await giroDelSitio(ctx, branchId);
 
   let sitio = (await listarSitios(ctx.supabase, ctx.organizationId)).find((s) => s.branchId === branchId);
   let version = versionEsperada;
@@ -252,7 +263,7 @@ export async function leerMenusSitio(ctx: ContextoPaginas, branchId: number | nu
   const [sitios, permisos, giro, sucursales] = await Promise.all([
     listarSitios(ctx.supabase, ctx.organizationId),
     permisosSitio(ctx),
-    giroDeOrganizacion(ctx),
+    giroDelSitio(ctx, branchId),
     sucursalesWeb(ctx),
   ]);
   if (branchId !== null && !sucursales.some((s) => s.id === branchId)) {

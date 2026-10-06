@@ -30,6 +30,26 @@ export function giroDeTipoOrganizacion(typeId: number | null | undefined): Giro 
   return (typeId && GIRO_POR_TIPO_ORGANIZACION[typeId]) || 'tienda';
 }
 
+/** Giro según `branches.branch_type` (valores de `BranchType`). */
+const GIRO_POR_TIPO_SEDE: Record<string, Giro> = {
+  restaurant: 'restaurante',
+  hotel: 'hotel',
+  retail: 'tienda',
+  services: 'servicios',
+  gym: 'gimnasio',
+  transport: 'transporte',
+  parking: 'parqueadero',
+};
+
+/**
+ * Giro del sitio de una sede: el de su `branch_type` si lo tiene, si no el de la organización.
+ * Un hotel con una sede restaurante ofrece en esa sede las páginas de restaurante (Carta,
+ * Carta QR…), igual que «Añadir sección» recomienda por el tipo de la sede.
+ */
+export function giroDeSede(branchType: string | null | undefined, giroOrganizacion: Giro): Giro {
+  return (branchType && GIRO_POR_TIPO_SEDE[branchType]) || giroOrganizacion;
+}
+
 export type IdPlantillaPagina =
   | 'inicio'
   | 'carta'

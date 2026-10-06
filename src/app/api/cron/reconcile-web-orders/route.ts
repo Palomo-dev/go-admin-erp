@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyCronSecret, webhookErrorResponse } from '@/lib/security/webhookSignatures';
 import { createClient } from '@supabase/supabase-js';
 import { webOrderServerConfirmation } from '@/lib/services/webOrderServerConfirmation';
+import { confirmacionCompletaActiva } from '@/lib/services/webOrderConfirmacionCompleta';
+import { filtrarAMedias, MAX_CANDIDATOS_A_MEDIAS } from '@/lib/pos/pedidosWeb/pedidosAMedias';
 
 /**
  * GET /api/cron/reconcile-web-orders
@@ -81,6 +83,39 @@ export async function GET(request: NextRequest) {
         { success: false, error: queryError.message },
         { status: 500 }
       );
+    }
+
+    // 4b. Con la confirmación completa (E2): también los pedidos pagados que
+    //     quedaron a medias (venta sin líneas, o restaurante sin comanda,
+    //     porque un paso falló). El sitio marca 'confirmed' en la misma
+    //     escritura que payment_status='paid' (todos los webhooks y
+    //     /checkout/resultado), así que el huérfano real de pasarela está en
+    //     'confirmed', no en 'pending': se buscan los dos. La RPC completa lo
+    //     que falte. Solo los de las últimas 48 h: nunca se rellenan comandas de
+    //     pedidos históricos, y la RPC no crea comanda en pedidos ya avanzados.
+    let pendientes: typeof orphanOrders = [];
+    if (confirmacionCompletaActiva()) {
+      const desde = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+      const { data: candidatos, error: aMediasError } = await supabase
+        .from('web_orders')
+        .select('id, order_number, organization_id, created_at, sale_id')
+        .eq('payment_status', 'paid')
+        .in('status', ['pending', 'confirmed'])
+        .not('sale_id', 'is', null)
+        .gte('created_at', desde)
+        .order('created_at', { ascending: true })
+        .limit(MAX_CANDIDATOS_A_MEDIAS);
+      if (aMediasError) {
+        console.error('[Reconcile Web Orders] Error consultando pedidos a medias:', aMediasError);
+      } else {
+        pendientes = (await filtrarAMedias(supabase, candidatos ?? [])).slice(0, limit);
+      }
+    } else {
+      // Interruptor apagado: solo los pagados sin venta, como siempre.
+    }
+    const vistos = new Set((orphanOrders ?? []).map((o) => o.id));
+    for (const p of pendientes ?? []) {
+      if (!vistos.has(p.id)) (orphanOrders ?? []).push(p);
     }
 
     if (!orphanOrders || orphanOrders.length === 0) {

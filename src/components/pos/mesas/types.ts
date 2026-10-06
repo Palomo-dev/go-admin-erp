@@ -35,6 +35,8 @@ export interface TableSession {
   // Datos enriquecidos calculados en MesasService.obtenerMesasConSesiones
   serverName?: string;
   pendingKitchenItems?: number;
+  /** Marcadores de ítems de la venta (solo el conteo: `obtenerMesasConSesiones`). */
+  sale_items?: Array<{ id: string }>;
 }
 
 export interface TableWithSession extends RestaurantTable {

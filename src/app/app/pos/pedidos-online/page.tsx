@@ -47,7 +47,8 @@ import {
   Download,
   Printer,
   Package,
-  X
+  X,
+  UtensilsCrossed,
 } from 'lucide-react';
 import { WebOrderCard } from '@/components/pos/pedidos-online/WebOrderCard';
 import { WebOrderFilters } from '@/components/pos/pedidos-online/WebOrderFilters';
@@ -63,7 +64,9 @@ import {
   type PaymentStatus,
   type OrderSource
 } from '@/lib/services/webOrdersService';
-import { webOrderConfirmationService } from '@/lib/services/webOrderConfirmationService';
+import { claveAvisoCobro, webOrderConfirmationService, type ErrorCobroEnCaja } from '@/lib/services/webOrderConfirmationService';
+import { useTranslations } from 'next-intl';
+import { esDomicilio, mesaDelPedido, tipoEntregaEfectivo } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import {
   Select,
   SelectContent,
@@ -97,6 +100,16 @@ export default function PedidosOnlinePage() {
   const moneda = useMonedaOrganizacion();
   const router = useRouter();
   const { toast } = useToast();
+  const tPedido = useTranslations('pedidoWeb');
+  /** Etiqueta corta del tipo de entrega; «Comer aquí · Mesa N» para el QR de mesa. */
+  const etiquetaTipoCorta = (o: WebOrder): string => {
+    const tipo = tipoEntregaEfectivo(o);
+    if (tipo === 'dine_in') {
+      const mesa = mesaDelPedido(o);
+      return mesa ? tPedido('comerAquiMesa', { mesa }) : tPedido('comerAqui');
+    }
+    return tPedido(`tipoCorto.${tipo}`);
+  };
   const { getToday } = useFormatDate();
   const { organization } = useOrganization();
   const { branchFilter } = useBranch();
@@ -326,34 +339,53 @@ export default function PedidosOnlinePage() {
 
       const result = await webOrderConfirmationService.confirmOrder(order, {
         prepMs: timeToMs(prepTime),
-        transitMs: order.delivery_type !== 'pickup' ? timeToMs(transitTime) : 0,
+        transitMs: esDomicilio(order.delivery_type) ? timeToMs(transitTime) : 0,
         markAsPaid,
       });
       if (result.yaConfirmado) {
         toast({
-          title: 'El pedido ya estaba confirmado',
-          description: 'La venta se creó cuando llegó el pago; no se creó otra.',
+          title: tPedido('confirmacion.yaConfirmado'),
+          description: tPedido('confirmacion.yaConfirmadoDetalle'),
         });
         setConfirmDialog({ open: false, orderId: null });
         setMarkAsPaid(false);
         loadOrders();
         return;
       }
-      const parts = ['Venta creada', 'Comanda enviada a cocina', `Listo: ${formatEstimatedTime(prepTime)}`];
-      if (order.delivery_type !== 'pickup' && transitTime.value > 0) parts.push(`Entrega: ${formatEstimatedTime(transitTime)}`);
-      if (markAsPaid) parts.push('Marcado como pagado');
-      if (result.couponRedemptionId) parts.push('Cupón redimido');
+      const listo = tPedido('confirmacion.listo', { tiempo: formatEstimatedTime(prepTime) });
+      const parts = result.tableSessionId
+        ? [tPedido('confirmacion.enLaMesa'), listo]
+        : [tPedido('confirmacion.ventaCreada'), tPedido('confirmacion.comandaEnviada'), listo];
+      if (esDomicilio(order.delivery_type) && transitTime.value > 0) parts.push(tPedido('confirmacion.entrega', { tiempo: formatEstimatedTime(transitTime) }));
+      if (result.cobro) parts.push(tPedido('cobro.hecho'));
+      else if (markAsPaid && !result.cobroPendiente) parts.push(tPedido('confirmacion.marcadoPagado'));
+      if (result.couponRedemptionId) parts.push(tPedido('confirmacion.cuponRedimido'));
       toast({
-        title: 'Pedido confirmado',
+        title: result.completadoAhora ? tPedido('confirmacion.completada') : tPedido('confirmacion.confirmado'),
         description: parts.join(' · '),
       });
+      if (result.cobroPendiente) {
+        toast({
+          title: tPedido('cobro.pendienteTrasConfirmar'),
+          description: tPedido(`cobro.${claveAvisoCobro(result.cobroPendiente)}`),
+          variant: 'destructive',
+        });
+      }
+      if ((result.stockErrors ?? []).length > 0) {
+        toast({
+          title: tPedido('confirmacion.stockFallido', { n: result.stockErrors!.length }),
+          description: result.stockErrors!.slice(0, 3).join(' · '),
+          variant: 'destructive',
+        });
+      }
+      void webOrdersService.avisarCambioEstado(order.id, 'confirmed');
       setConfirmDialog({ open: false, orderId: null });
       setMarkAsPaid(false);
       loadOrders();
     } catch (error: unknown) {
       console.error('Error confirmando pedido:', error);
       toast({
-        title: 'Error al confirmar pedido',
+        title: tPedido('confirmacion.error'),
         description: (error as { message?: string } | null)?.message || 'No se pudo confirmar el pedido',
         variant: 'destructive',
       });
@@ -458,19 +490,26 @@ export default function PedidosOnlinePage() {
     if (selected.length === 0) return;
     setBulkActionLoading(true);
     try {
-      await Promise.all(selected.map(o => webOrdersService.updatePaymentStatus(o.id, 'paid')));
-      toast({
-        title: 'Acción masiva completada',
-        description: `${selected.length} pedido(s) marcado(s) como pagado(s)`,
-      });
+      // Cada pedido se cobra en la caja de su sede (fn_cobrar_pedido_web_en_caja):
+      // factura, pago y arqueo. Sin la migración E4, el comportamiento anterior.
+      // Un pedido que no se puede cobrar no corta el lote: se resume al final.
+      const r = await webOrderConfirmationService.cobrarVariosEnCaja(selected, (id) => webOrdersService.getOrderById(id));
+      const hechos = r.cobrados.length + r.respaldo.length;
+      if (hechos > 0) {
+        toast({ title: tPedido('cobro.lote.titulo'), description: tPedido('cobro.lote.cobrados', { n: hechos }) });
+      }
+      for (const [codigo, numeros] of Object.entries(r.pendientes)) {
+        if (!numeros || numeros.length === 0) continue;
+        toast({
+          title: tPedido(`cobro.${claveAvisoCobro(codigo as ErrorCobroEnCaja)}`),
+          description: tPedido('cobro.lote.pendientes', { n: numeros.length, pedidos: numeros.join(', ') }),
+          variant: 'destructive',
+        });
+      }
       clearSelection();
       loadOrders();
     } catch {
-      toast({
-        title: 'Error',
-        description: 'No se pudieron actualizar todos los pagos',
-        variant: 'destructive',
-      });
+      toast({ title: tPedido('cobro.error'), description: tPedido('cobro.lote.error'), variant: 'destructive' });
     } finally {
       setBulkActionLoading(false);
     }
@@ -488,8 +527,8 @@ export default function PedidosOnlinePage() {
         <hr style="margin:8px 0;"/>
         <p style="margin:0 0 4px;"><strong>Cliente:</strong> ${order.customer_name || order.customer?.full_name || 'N/A'}</p>
         <p style="margin:0 0 4px;"><strong>Teléfono:</strong> ${order.customer_phone || order.customer?.phone || 'N/A'}</p>
-        <p style="margin:0 0 4px;"><strong>Entrega:</strong> ${order.delivery_type === 'pickup' ? 'Retiro en tienda' : order.delivery_type === 'delivery_own' ? 'Delivery propio' : 'Delivery tercero'}</p>
-        ${order.delivery_type !== 'pickup' && order.delivery_address?.address ? `<p style="margin:0 0 4px;"><strong>Dirección:</strong> ${order.delivery_address.address}</p>` : ''}
+        <p style="margin:0 0 4px;"><strong>Entrega:</strong> ${tipoEntregaEfectivo(order) === 'dine_in' ? etiquetaTipoCorta(order) : order.delivery_type === 'pickup' ? 'Retiro en tienda' : order.delivery_type === 'delivery_own' ? 'Delivery propio' : 'Delivery tercero'}</p>
+        ${esDomicilio(order.delivery_type) && order.delivery_address?.address ? `<p style="margin:0 0 4px;"><strong>Dirección:</strong> ${order.delivery_address.address}</p>` : ''}
         ${order.delivery_address?.city ? `<p style="margin:0 0 4px;"><strong>Ciudad:</strong> ${order.delivery_address.city}</p>` : ''}
         <hr style="margin:8px 0;"/>
         <table style="width:100%;border-collapse:collapse;">
@@ -540,7 +579,7 @@ export default function PedidosOnlinePage() {
       o.customer_email || o.customer?.email || '',
       o.customer_phone || o.customer?.phone || '',
       getStatusLabel(o.status),
-      o.delivery_type === 'pickup' ? 'Retiro' : o.delivery_type === 'delivery_own' ? 'Propio' : 'Tercero',
+      etiquetaTipoCorta(o),
       o.total.toString(),
       getPaymentLabel(o.payment_method),
       new Date(o.created_at).toLocaleString('es-CO'),
@@ -1030,18 +1069,19 @@ export default function PedidosOnlinePage() {
                       <td className="p-3 min-w-[200px]">
                         <div className="flex flex-col gap-0.5">
                           <span className="flex items-center gap-1 text-xs dark:text-gray-300">
-                            {order.delivery_type === 'pickup' && <Store className="h-3 w-3 dark:text-gray-400" />}
+                            {tipoEntregaEfectivo(order) === 'pickup' && <Store className="h-3 w-3 dark:text-gray-400" />}
+                            {tipoEntregaEfectivo(order) === 'dine_in' && <UtensilsCrossed className="h-3 w-3 dark:text-gray-400" />}
                             {order.delivery_type === 'delivery_own' && <Bike className="h-3 w-3 dark:text-gray-400" />}
                             {order.delivery_type === 'delivery_third_party' && <Truck className="h-3 w-3 dark:text-gray-400" />}
-                            {order.delivery_type === 'pickup' ? 'Retiro' : order.delivery_type === 'delivery_own' ? 'Propio' : 'Tercero'}
+                            {etiquetaTipoCorta(order)}
                           </span>
-                          {order.delivery_type !== 'pickup' && order.delivery_address?.address && (
+                          {esDomicilio(order.delivery_type) && order.delivery_address?.address && (
                             <span className="text-xs text-muted-foreground dark:text-gray-400 flex items-center gap-1 break-words whitespace-normal" title={order.delivery_address.address}>
                               <MapPin className="h-3 w-3 flex-shrink-0" />
                               <span className="break-words whitespace-normal">{order.delivery_address.address}</span>
                             </span>
                           )}
-                          {order.delivery_type !== 'pickup' && order.delivery_address?.city && (
+                          {esDomicilio(order.delivery_type) && order.delivery_address?.city && (
                             <span className="text-xs text-muted-foreground dark:text-gray-400">
                               {order.delivery_address.city}
                               {(order.delivery_address.state || order.delivery_address.department) && `, ${order.delivery_address.state || order.delivery_address.department}`}
@@ -1130,7 +1170,7 @@ export default function PedidosOnlinePage() {
                               Listo
                             </Button>
                           )}
-                          {order.status === 'ready' && order.delivery_type === 'pickup' && (
+                          {order.status === 'ready' && !esDomicilio(order.delivery_type) && (
                             <Button
                               size="sm"
                               variant="default"
@@ -1140,7 +1180,7 @@ export default function PedidosOnlinePage() {
                               Entregado
                             </Button>
                           )}
-                          {order.status === 'ready' && order.delivery_type !== 'pickup' && (
+                          {order.status === 'ready' && esDomicilio(order.delivery_type) && (
                             <Button
                               size="sm"
                               variant="default"

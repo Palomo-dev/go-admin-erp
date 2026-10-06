@@ -262,7 +262,15 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
             <TablaArqueos arqueos={resumen.arqueos} formatear={formatear} visible={resumen.verImportes} />
           </div>
         )}
-        {pestana === 'ventas' && <TablaVentasTurno ventas={resumen.ventas.filas} formatear={formatear} truncadas={resumen.ventas.truncadas} />}
+        {pestana === 'ventas' && (
+          <TablaVentasTurno
+            ventas={resumen.ventas.filas}
+            formatear={formatear}
+            truncadas={resumen.ventas.truncadas}
+            web={resumen.ventas.web}
+            efectivoEsperado={resumen.verImportes ? resumen.esperado.efectivo_esperado : null}
+          />
+        )}
       </div>
 
       {abierta && sesionParaCierre && resumen.permisos.puedeCerrar && (

@@ -9,8 +9,20 @@ import {
   avisarSiNoCuadra,
   facturaWebConImpuestoIncluido,
   lineasFacturaWebConImpuesto,
+  lineasVentaPedidoWeb,
   repartirTotalesPedidoWeb,
 } from './webOrderTotals';
+import {
+  agregarPedidoALaMesa,
+  confirmacionCompletaActiva,
+  confirmarPedidoWebCompleto,
+  erroresDeStock,
+  esFuncionAusente,
+  vaALaCuentaDeLaMesa,
+  type ResultadoConfirmacionCompleta,
+} from './webOrderConfirmacionCompleta';
+import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
+import { metodoDeCobroEnCaja } from '@/lib/pos/pedidosWeb/metodosCaja';
 import { resolveLineTax } from './taxResolver';
 import { resolveOrgCurrency } from './monedaOrganizacion';
 import { normalizarCodigoMoneda } from '@/lib/utils/moneda';
@@ -43,6 +55,84 @@ export interface ConfirmOrderResult {
   invoiceNumber?: string;
   accountReceivableId?: string;
   paymentId?: string;
+  /**
+   * Líneas cuyo stock (o insumos de la receta) no se pudo descontar. La
+   * confirmación sigue; la UI las muestra para decidir (rechazar con motivo o
+   * ajustar inventario). Antes solo quedaban en `console.warn`.
+   */
+  stockErrors?: string[];
+  /** «Comer aquí» agregado a la cuenta de su mesa (POS › Mesas). */
+  tableSessionId?: string;
+  /** La confirmación completó pasos que faltaban de un intento anterior (pedido huérfano). */
+  completadoAhora?: boolean;
+  /** «Marcar como pagado» al confirmar, con E4: el cobro quedó en la caja de la sede. */
+  cobro?: CobroEnCajaResult;
+  /**
+   * «Marcar como pagado» al confirmar, con E4, pero el cobro no se pudo hacer
+   * (p. ej. NO_OPEN_CASH_SESSION → «Abre la caja de la sede»). El pedido queda
+   * confirmado SIN cobrar; se cobra después con «Cobrar».
+   */
+  cobroPendiente?: ErrorCobroEnCaja;
+}
+
+export interface CobroEnCajaResult {
+  invoiceId: string;
+  invoiceNumber: string | null;
+  paymentId: string;
+  cashSessionId: number;
+  /** El pedido ya estaba cobrado: no se creó otro pago. */
+  yaCobrado: boolean;
+}
+
+/** Errores de `fn_cobrar_pedido_web_en_caja` que la UI traduce. */
+export type ErrorCobroEnCaja =
+  | 'NO_OPEN_CASH_SESSION'
+  | 'PEDIDO_SIN_CONFIRMAR'
+  | 'COBRAR_EN_LA_MESA'
+  | 'METODO_INVALIDO'
+  | 'FUNCION_AUSENTE'
+  | 'OTRO';
+
+export class CobroEnCajaError extends Error {
+  constructor(public readonly codigo: ErrorCobroEnCaja, mensaje: string) {
+    super(mensaje);
+    this.name = 'CobroEnCajaError';
+  }
+}
+
+/** Código estable del error de la RPC de cobro, a partir de su mensaje. */
+export function codigoErrorCobro(error: unknown): ErrorCobroEnCaja {
+  if (esFuncionAusente(error)) return 'FUNCION_AUSENTE';
+  const m = String((error as { message?: string } | null)?.message ?? '');
+  for (const c of ['NO_OPEN_CASH_SESSION', 'PEDIDO_SIN_CONFIRMAR', 'COBRAR_EN_LA_MESA', 'METODO_INVALIDO'] as const) {
+    if (m.includes(c)) return c;
+  }
+  return 'OTRO';
+}
+
+/** Clave i18n (`pedidoWeb.cobro.*`) del aviso para un cobro que no se pudo hacer. */
+export function claveAvisoCobro(codigo: ErrorCobroEnCaja): 'sinCaja' | 'sinConfirmar' | 'deMesa' | 'metodoInvalido' | 'error' {
+  switch (codigo) {
+    case 'NO_OPEN_CASH_SESSION':
+      return 'sinCaja';
+    case 'PEDIDO_SIN_CONFIRMAR':
+      return 'sinConfirmar';
+    case 'COBRAR_EN_LA_MESA':
+      return 'deMesa';
+    case 'METODO_INVALIDO':
+      return 'metodoInvalido';
+    default:
+      return 'error';
+  }
+}
+
+/** Resultado del cobro en lote: qué pedidos se cobraron y por qué no los demás. */
+export interface ResumenCobroLote {
+  cobrados: string[];
+  /** Marcados como pagados con el respaldo sin caja (E4 sin aplicar). */
+  respaldo: string[];
+  /** Pedidos sin cobrar, por motivo. */
+  pendientes: Partial<Record<ErrorCobroEnCaja, string[]>>;
 }
 
 /**
@@ -75,11 +165,29 @@ class WebOrderConfirmationService {
     const userId = await getCurrentUserId();
     if (!userId) throw new Error('No se pudo obtener el usuario actual');
 
+    // Confirmación en una sola transacción (E2/E3) detrás del interruptor de
+    // despliegue. Si la base aún no tiene la función, sigue el camino de siempre.
+    if (confirmacionCompletaActiva()) {
+      const completo = await this.confirmarCompleto(order, options, userId);
+      if (completo) return completo;
+    } else {
+      // Interruptor apagado: camino de siempre (abajo), sin cambios.
+    }
+
     const now = new Date().toISOString();
     const estimatedReadyAt = new Date(Date.now() + options.prepMs).toISOString();
 
-    // Si se marca como pagado, sobrescribir payment_status del pedido
-    const markAsPaid = options.markAsPaid ?? false;
+    // Si se marca como pagado, sobrescribir payment_status del pedido. Con E4
+    // en la base (que exige E2 antes), el cobro va a la caja de la sede después
+    // de confirmar sin pagar; sin E4, el comportamiento de siempre.
+    const cobrarEnCajaTrasConfirmar =
+      (options.markAsPaid ?? false) && order.payment_status !== 'paid' && (await this.cobroEnCajaDisponible());
+    let markAsPaid: boolean;
+    if (cobrarEnCajaTrasConfirmar) {
+      markAsPaid = false;
+    } else {
+      markAsPaid = options.markAsPaid ?? false;
+    }
     const effectivePaymentStatus = markAsPaid ? 'paid' : order.payment_status;
     const orderForSale = markAsPaid ? { ...order, payment_status: 'paid' as const } : order;
 
@@ -98,6 +206,8 @@ class WebOrderConfirmationService {
     //     si falla (p. ej. pedido sin cliente) queda en el log y se puede reintentar (idempotente).
     await this.activarMembresias(order.id);
 
+    const stockErrors: string[] = [];
+
     // 2b. Stock: descuento con receta, liberar la reserva y vender seriales en una sola RPC
     //     (inventario B9, fn_pedido_web_confirmar_stock), la misma que usa la confirmación del
     //     servidor. Antes esta copia no vendía los seriales reservados. No bloquea la confirmación.
@@ -110,8 +220,10 @@ class WebOrderConfirmationService {
       if (stockRpcError) throw stockRpcError;
       const errores = ((stockRes ?? {}) as { errores?: string[] }).errores ?? [];
       if (errores.length > 0) console.warn('⚠️ Algunos items no descontaron stock:', errores);
+      stockErrors.push(...errores.map(String));
     } catch (stockError) {
       console.warn('⚠️ Error descontando stock (no bloquea la confirmación):', stockError);
+      stockErrors.push(`Stock del pedido: ${(stockError as { message?: string })?.message ?? 'error'}`);
     }
 
     // 3. Crear kitchen_ticket + kitchen_ticket_items
@@ -189,7 +301,375 @@ class WebOrderConfirmationService {
       throw new Error(`Error vinculando pedido con venta: ${updateError.message}`);
     }
 
-    return { saleId, kitchenTicketId, tipId, shipmentId, couponRedemptionId, invoiceId, invoiceNumber, accountReceivableId, paymentId };
+    if (cobrarEnCajaTrasConfirmar) {
+      try {
+        const cobro = await this.cobrarEnCaja(
+          { ...order, sale_id: saleId },
+          { metodo: metodoDeCobroEnCaja(order.payment_method), referencia: order.payment_reference ?? null },
+        );
+        return {
+          saleId, kitchenTicketId, tipId, shipmentId, couponRedemptionId, accountReceivableId, stockErrors,
+          cobro, paymentId: cobro.paymentId, invoiceId: cobro.invoiceId, invoiceNumber: cobro.invoiceNumber ?? undefined,
+        };
+      } catch (err) {
+        console.warn('[webOrderConfirmation] Pedido confirmado sin cobrar:', err);
+        return {
+          saleId, kitchenTicketId, tipId, shipmentId, couponRedemptionId, stockErrors,
+          cobroPendiente: err instanceof CobroEnCajaError ? err.codigo : 'OTRO',
+        };
+      }
+    } else {
+      // Camino de siempre.
+    }
+
+    return { saleId, kitchenTicketId, tipId, shipmentId, couponRedemptionId, invoiceId, invoiceNumber, accountReceivableId, paymentId, stockErrors };
+  }
+
+  /**
+   * Camino E2/E3: venta, líneas, stock, comanda y estado en una transacción
+   * (`fn_confirmar_pedido_web_completo`), o el pedido «Comer aquí» a la cuenta
+   * de su mesa (`pos_mesa_agregar_pedido_web`). Reintentar completa lo que
+   * falte. Después, los pasos tolerantes a fallos (y ahora idempotentes):
+   * membresías, propina, cupón, envío y, si está pagado, factura y pago.
+   * `null` = la base aún no tiene la función: quien llama sigue el camino viejo.
+   */
+  private async confirmarCompleto(
+    order: WebOrder,
+    options: { prepMs: number; transitMs?: number; markAsPaid?: boolean },
+    userId: string,
+  ): Promise<ConfirmOrderResult | null> {
+    // «Marcar como pagado» sobre un pedido sin pagar: con E4 en la base, el
+    // cobro va a la caja de la sede (fn_cobrar_pedido_web_en_caja) DESPUÉS de
+    // confirmar sin pagar. Antes se creaban factura y pago desde el navegador,
+    // con la venta fuera de caja y sin exigir caja abierta.
+    const cobrarEnCajaTrasConfirmar =
+      (options.markAsPaid ?? false) && order.payment_status !== 'paid' && (await this.cobroEnCajaDisponible());
+    let markAsPaid: boolean;
+    if (cobrarEnCajaTrasConfirmar) {
+      markAsPaid = false;
+    } else {
+      // Sin E4 (o pedido ya pagado): el comportamiento de siempre.
+      markAsPaid = options.markAsPaid ?? false;
+    }
+    const effectivePaymentStatus = markAsPaid ? 'paid' : order.payment_status;
+    const pagado = effectivePaymentStatus === 'paid';
+    const orderForSale = markAsPaid ? { ...order, payment_status: 'paid' as const } : order;
+    const prepMin = Math.round(options.prepMs / 60000);
+    const transitMin = esDomicilio(order.delivery_type) && options.transitMs && options.transitMs > 0
+      ? Math.round(options.transitMs / 60000)
+      : null;
+    const reparto = repartirTotalesPedidoWeb(order);
+    avisarSiNoCuadra(reparto, order);
+
+    // «Comer aquí» sin pagar en línea: a la cuenta de la mesa (E3).
+    if (vaALaCuentaDeLaMesa(orderForSale)) {
+      const mesa = await agregarPedidoALaMesa(supabase, order, { prepMin, userId, reparto });
+      if (mesa) {
+        return {
+          saleId: mesa.sale_id ?? '',
+          kitchenTicketId: mesa.kitchen_ticket_id ?? undefined,
+          tableSessionId: mesa.table_session_id ?? undefined,
+          yaConfirmado: mesa.ya_completo,
+          stockErrors: [],
+          // Lo de la mesa se cobra al cerrar la cuenta de la mesa, no aquí.
+          ...(cobrarEnCajaTrasConfirmar ? { cobroPendiente: 'COBRAR_EN_LA_MESA' as const } : {}),
+        };
+      } else {
+        // E3 sin aplicar: el pedido se confirma con venta propia (abajo).
+      }
+    }
+
+    const r: ResultadoConfirmacionCompleta | null = await confirmarPedidoWebCompleto(supabase, order, {
+      prepMin,
+      transitMin,
+      pagado,
+      customerId: order.customer_id ?? null,
+      userId,
+      // Pagado: la factura va antes del estado (así trg_auto_journal_web_order no crea otra).
+      marcarConfirmado: !pagado,
+      reparto,
+    });
+    if (!r) return null;
+
+    const stockErrors = erroresDeStock(r.stock);
+    if (r.table_session_id) {
+      return { saleId: r.sale_id ?? '', yaConfirmado: true, tableSessionId: r.table_session_id, stockErrors };
+    }
+    if (!r.sale_id) throw new Error(`El pedido ${order.order_number} no devolvió venta`);
+    const saleId = r.sale_id;
+    if (r.ya_completo) return { saleId, yaConfirmado: true, stockErrors };
+
+    if (r.items_creados > 0) await this.activarMembresias(order.id);
+
+    let tipId: string | undefined;
+    if (order.tip_amount && order.tip_amount > 0) tipId = await this.createTip(order, saleId, userId);
+
+    let couponRedemptionId: string | undefined;
+    if (order.coupon_code) couponRedemptionId = await this.redeemCoupon(order, saleId);
+
+    let shipmentId: string | undefined;
+    if (esDomicilio(order.delivery_type)) shipmentId = await this.createShipment(order);
+
+    let invoiceId: string | undefined;
+    let invoiceNumber: string | undefined;
+    let accountReceivableId: string | undefined;
+    let paymentId: string | undefined;
+
+    if (pagado) {
+      const existente = await this.facturaDeLaVenta(order.organization_id, saleId);
+      const factura = existente ?? (await this.createInvoice(order, saleId, userId));
+      invoiceId = factura.invoiceId || undefined;
+      invoiceNumber = factura.invoiceNumber || undefined;
+      if (invoiceId) paymentId = await this.createPayment(order, invoiceId, userId, factura.invoiceCurrency);
+      if (order.customer_id && invoiceId) accountReceivableId = await this.createAccountReceivable(order, saleId);
+
+      // El estado va después de la factura. Solo si sigue pendiente: un
+      // reintento nunca retrocede un pedido que ya avanzó.
+      const now = new Date().toISOString();
+      const { error: updateError } = await supabase
+        .from('web_orders')
+        .update({
+          status: 'confirmed',
+          payment_status: 'paid',
+          confirmed_at: now,
+          confirmed_by: userId,
+          estimated_ready_at: new Date(Date.now() + options.prepMs).toISOString(),
+          ...(transitMin
+            ? { estimated_delivery_at: new Date(Date.now() + options.prepMs + (options.transitMs ?? 0)).toISOString() }
+            : {}),
+        })
+        .eq('id', order.id)
+        .eq('status', 'pending');
+      if (updateError) throw new Error(`Error confirmando el pedido: ${updateError.message}`);
+    } else {
+      // Sin pagar: la RPC ya dejó el pedido confirmado. El cobro va por «Cobrar y entregar».
+    }
+
+    // «Marcar como pagado» con E4: el cobro, en la caja abierta de la sede. Si
+    // no se puede (sin caja, método inválido…), el pedido queda confirmado sin
+    // cobrar y la UI avisa; nunca se marca pagado fuera de la caja.
+    let cobro: CobroEnCajaResult | undefined;
+    let cobroPendiente: ErrorCobroEnCaja | undefined;
+    if (cobrarEnCajaTrasConfirmar) {
+      try {
+        cobro = await this.cobrarEnCaja(
+          { ...order, sale_id: saleId },
+          { metodo: metodoDeCobroEnCaja(order.payment_method), referencia: order.payment_reference ?? null },
+        );
+      } catch (err) {
+        cobroPendiente = err instanceof CobroEnCajaError ? err.codigo : 'OTRO';
+        console.warn('[webOrderConfirmation] Pedido confirmado sin cobrar:', err);
+      }
+    } else {
+      // Sin «Marcar como pagado», o sin E4: nada más que hacer aquí.
+    }
+
+    return {
+      saleId,
+
+      kitchenTicketId: r.kitchen_ticket_id ?? undefined,
+      tipId,
+      shipmentId,
+      couponRedemptionId,
+      invoiceId,
+      invoiceNumber,
+      accountReceivableId,
+      paymentId,
+      stockErrors,
+      completadoAhora: !r.venta_creada,
+      ...(cobro ? { cobro, paymentId: cobro.paymentId, invoiceId: cobro.invoiceId, invoiceNumber: cobro.invoiceNumber ?? undefined } : {}),
+      ...(cobroPendiente ? { cobroPendiente } : {}),
+    };
+  }
+
+  /**
+   * ¿La base ya tiene `fn_cobrar_pedido_web_en_caja` (E4)? Sonda sin efectos:
+   * la llamada con un pedido inexistente responde WEB_ORDER_NOT_FOUND si la
+   * función existe y PGRST202/42883 si no. Se recuerda por sesión de página.
+   */
+  private cobroEnCajaExiste: boolean | null = null;
+
+  async cobroEnCajaDisponible(): Promise<boolean> {
+    if (this.cobroEnCajaExiste !== null) return this.cobroEnCajaExiste;
+    const { error } = await supabase.rpc('fn_cobrar_pedido_web_en_caja', {
+      p_order_id: '00000000-0000-0000-0000-000000000000',
+      p_metodo: 'cash',
+      p_factura: null,
+      p_referencia: null,
+      p_monto: null,
+    });
+    this.cobroEnCajaExiste = !(error && esFuncionAusente(error));
+    return this.cobroEnCajaExiste;
+  }
+
+  /** Factura vigente de la venta (reintento: no se crea otra ni se consume otro consecutivo). */
+  private async facturaDeLaVenta(
+    organizationId: number,
+    saleId: string,
+  ): Promise<{ invoiceId: string; invoiceNumber: string; invoiceCurrency: string | null } | null> {
+    const { data } = await supabase
+      .from('invoice_sales')
+      .select('id, number, currency')
+      .eq('organization_id', organizationId)
+      .eq('sale_id', saleId)
+      .neq('status', 'void')
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    return data ? { invoiceId: data.id, invoiceNumber: data.number ?? '', invoiceCurrency: data.currency ?? null } : null;
+  }
+
+  /**
+   * «Cobrar y entregar» (E4): cobra en la caja abierta de la sede un pedido
+   * pagado en el local. Factura (la de la venta o una nueva con las líneas de
+   * webOrderTotals), pago del cajero y venta dentro de caja, en una sola RPC
+   * idempotente. Lanza `CobroEnCajaError` con el código para la UI
+   * (NO_OPEN_CASH_SESSION → «Abre la caja de la sede»).
+   */
+  async cobrarEnCaja(
+    order: WebOrder,
+    opciones: { metodo: string; referencia?: string | null },
+  ): Promise<CobroEnCajaResult> {
+    const { data: existente } = order.sale_id
+      ? await supabase
+          .from('invoice_sales')
+          .select('id')
+          .eq('organization_id', order.organization_id)
+          .eq('sale_id', order.sale_id)
+          .neq('status', 'void')
+          .limit(1)
+          .maybeSingle()
+      : { data: null };
+
+    // Factura nueva solo si la venta no tiene: número y líneas de la regla única.
+    let factura: Record<string, unknown> | null = null;
+    if (!existente) {
+      const reparto = repartirTotalesPedidoWeb(order);
+      const numero = await generateInvoiceNumber(order.organization_id, 'FACT');
+      const lineas = await lineasFacturaWebConImpuesto(order, '', resolveLineTax, reparto);
+      factura = {
+        number: numero,
+        subtotal: Number(order.subtotal) || 0,
+        tax_total: Number(order.tax_total) || 0,
+        total: Number(order.total) || 0,
+        tax_included: facturaWebConImpuestoIncluido(reparto),
+        lineas: lineas.map((l) =>
+          Object.fromEntries(Object.entries(l).filter(([k]) => k !== 'invoice_id' && k !== 'invoice_sales_id')),
+        ),
+      };
+    }
+
+    const { data, error } = await supabase.rpc('fn_cobrar_pedido_web_en_caja', {
+      p_order_id: order.id,
+      p_metodo: opciones.metodo,
+      p_factura: factura,
+      p_referencia: opciones.referencia ?? null,
+      p_monto: null,
+    });
+    if (error) {
+      throw new CobroEnCajaError(codigoErrorCobro(error), error.message || 'No se pudo cobrar el pedido');
+    }
+    const r = (data ?? {}) as Record<string, unknown>;
+    return {
+      invoiceId: String(r.invoice_id ?? ''),
+      invoiceNumber: (r.invoice_number as string) ?? null,
+      paymentId: String(r.payment_id ?? ''),
+      cashSessionId: Number(r.cash_session_id ?? 0),
+      yaCobrado: r.ya_cobrado === true,
+    };
+  }
+
+  /**
+   * Cobro en lote («Marcar como pagados» de la lista): cada pedido se cobra en
+   * la caja de su sede. Un pedido que no se puede cobrar (sin caja, sin
+   * confirmar, de mesa, método inválido…) NO corta el lote: se anota con su
+   * motivo y se sigue con el resto. Antes el primer error dejaba la mitad del
+   * lote cobrada y la otra mitad sin cobrar, con un error genérico.
+   */
+  async cobrarVariosEnCaja(
+    pedidos: readonly WebOrder[],
+    cargar: (id: string) => Promise<WebOrder | null>,
+  ): Promise<ResumenCobroLote> {
+    const resumen: ResumenCobroLote = { cobrados: [], respaldo: [], pendientes: {} };
+    const anotar = (codigo: ErrorCobroEnCaja, numero: string) => {
+      (resumen.pendientes[codigo] ??= []).push(numero);
+    };
+    for (const o of pedidos) {
+      let completo: WebOrder = o;
+      try {
+        completo = (await cargar(o.id)) ?? o;
+        await this.cobrarEnCaja(completo, {
+          metodo: metodoDeCobroEnCaja(completo.payment_method),
+          referencia: completo.payment_reference ?? null,
+        });
+        resumen.cobrados.push(completo.order_number);
+      } catch (err) {
+        const codigo: ErrorCobroEnCaja = err instanceof CobroEnCajaError ? err.codigo : 'OTRO';
+        if (codigo === 'FUNCION_AUSENTE') {
+          // Migración E4 pendiente: el comportamiento anterior.
+          try {
+            await this.marcarPagadoSinCaja(completo);
+            resumen.respaldo.push(completo.order_number);
+          } catch (respaldoErr) {
+            console.error('[cobro en lote] Respaldo sin caja falló:', respaldoErr);
+            anotar('OTRO', completo.order_number);
+          }
+        } else {
+          anotar(codigo, completo.order_number);
+        }
+      }
+    }
+    return resumen;
+  }
+
+  /**
+   * Respaldo SOLO mientras `fn_cobrar_pedido_web_en_caja` no exista en la base
+   * (migración E4 pendiente): el comportamiento anterior de «Marcar como
+   * pagado» desde la lista y el detalle. Con la casilla «Marcar como pagado»
+   * del diálogo de confirmación hay un segundo respaldo, en `confirmOrder` y
+   * `confirmarCompleto`, que solo se usa sin E4 (`cobroEnCajaDisponible`).
+   * guardrails.test.ts vigila que ningún otro archivo del navegador escriba
+   * `payment_status: 'paid'` en web_orders.
+   */
+  async marcarPagadoSinCaja(order: WebOrder): Promise<{ sinFactura: boolean }> {
+    const organizationId = order.organization_id;
+    const { error } = await supabase
+      .from('web_orders')
+      .update({ payment_status: 'paid', updated_at: new Date().toISOString() })
+      .eq('id', order.id)
+      .eq('organization_id', organizationId);
+    if (error) throw error;
+
+    // Con venta vinculada el cobro se registra como PAGO (los disparadores
+    // recalculan factura y cartera), nunca escribiendo el saldo a mano.
+    if (!order.sale_id) return { sinFactura: false };
+    const { data: invoice } = await supabase
+      .from('invoice_sales')
+      .select('id, balance, currency, branch_id')
+      .eq('sale_id', order.sale_id)
+      .eq('organization_id', organizationId)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (!invoice) return { sinFactura: true };
+    if (Number(invoice.balance) > 0) {
+      const userId = await getCurrentUserId();
+      const { error: paymentError } = await supabase.from('payments').insert({
+        organization_id: organizationId,
+        branch_id: invoice.branch_id ?? order.branch_id,
+        amount: Number(invoice.balance),
+        method: order.payment_method || 'cash',
+        currency:
+          normalizarCodigoMoneda(invoice.currency) ?? (await resolveOrgCurrency(supabase, organizationId)).code,
+        status: 'completed',
+        reference: order.payment_reference || null,
+        source: 'invoice_sales',
+        source_id: String(invoice.id),
+        created_by: userId ?? null,
+      });
+      if (paymentError) throw paymentError;
+    }
+    return { sinFactura: false };
   }
 
   /**
@@ -253,21 +733,7 @@ class WebOrderConfirmationService {
     const reparto = repartirTotalesPedidoWeb(order);
     avisarSiNoCuadra(reparto, order);
 
-    const saleItems = reparto.items.map(({ item, descuento, total }) => ({
-      sale_id: saleId,
-      product_id: item.product_id,
-      quantity: item.quantity,
-      unit_price: item.unit_price,
-      total,
-      tax_amount: item.tax_amount || 0,
-      discount_amount: descuento,
-      notes: {
-        product_name: item.product_name,
-        from_web_order: order.order_number,
-        ...(item.modifiers && item.modifiers.length > 0 ? { modifiers: item.modifiers } : {}),
-        ...(item.notes ? { customer_notes: item.notes } : {}),
-      },
-    }));
+    const saleItems = lineasVentaPedidoWeb(order, reparto).map((l) => ({ sale_id: saleId, ...l }));
 
     const { data: insertedItems, error } = await supabase
       .from('sale_items')
@@ -306,6 +772,9 @@ class WebOrderConfirmationService {
         status: 'new',
         priority: order.is_scheduled ? 0 : 1,
         estimated_time: estimatedMinutes,
+        // Origen visible en Comandas («Web W-xxxx»): kitchen_tickets.source es
+        // text sin CHECK (default 'mesas').
+        source: 'web',
       })
       .select('id')
       .single();
@@ -332,15 +801,22 @@ class WebOrderConfirmationService {
       }
     }
 
-    // Crear items del ticket
-    const ticketItems = saleItems.map(item => ({
-      organization_id: order.organization_id,
-      kitchen_ticket_id: ticket.id,
-      sale_item_id: item.id,
-      station: item.product_id !== null ? estacionPorProducto.get(item.product_id) ?? null : null,
-      notes: null,
-      status: 'pending',
-    }));
+    // Crear items del ticket, con la nota del cliente, el nombre y la cantidad
+    // de cada línea (las líneas se insertaron en el orden de order.items).
+    const lineas = order.items ?? [];
+    const ticketItems = saleItems.map((item, i) => {
+      const linea = lineas[i];
+      const mismaLinea = linea && linea.product_id === item.product_id;
+      return {
+        organization_id: order.organization_id,
+        kitchen_ticket_id: ticket.id,
+        sale_item_id: item.id,
+        station: item.product_id !== null ? estacionPorProducto.get(item.product_id) ?? null : null,
+        notes: mismaLinea && linea.notes ? linea.notes : null,
+        status: 'pending',
+        ...(mismaLinea ? { product_name: linea.product_name, quantity: linea.quantity } : {}),
+      };
+    });
 
     const { error: itemsError } = await supabase
       .from('kitchen_ticket_items')
@@ -362,6 +838,15 @@ class WebOrderConfirmationService {
    */
   private async redeemCoupon(order: WebOrder, saleId: string): Promise<string> {
     try {
+      // Reintento de la confirmación: la redención ya apunta a la venta.
+      const { data: yaVinculada } = await supabase
+        .from('coupon_redemptions')
+        .select('id')
+        .eq('sale_id', saleId)
+        .limit(1)
+        .maybeSingle();
+      if (yaVinculada) return yaVinculada.id;
+
       // Buscar redemption existente creada por el website (sale_id = web_order.id)
       const { data: existingRedemption } = await supabase
         .from('coupon_redemptions')

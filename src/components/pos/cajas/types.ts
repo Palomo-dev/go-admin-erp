@@ -168,6 +168,8 @@ export interface SessionPaymentDetail {
   method: string;
   amount: number;
   created_at: string;
+  /** Pago de un pedido web cobrado en esta caja (E4): número, tipo de entrega y mesa. La UI lo traduce. */
+  pedidoWeb?: { numero: string; entrega: 'pickup' | 'delivery_own' | 'delivery_third_party' | 'dine_in'; mesa: string | null };
 }
 
 export interface OpenCashSessionData {

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { mesaDelPedido, tipoEntregaEfectivo } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { getOrganizationId, getCurrentBranchId, getBranchFilter, getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { isRealtimePublished } from '@/components/crm/shared/realtimeTables';
 import { isDesktop } from '@/lib/utils/desktop';
@@ -1242,6 +1243,42 @@ export class CajasService {
   }
 
   /**
+   * Origen web por factura: las facturas de ventas `source='web'` (pedido web
+   * cobrado en la caja, E4) devuelven número de pedido, tipo de entrega y mesa;
+   * la UI los traduce. Si la consulta falla, las facturas quedan sin origen web.
+   */
+  private static async origenWebDeFacturas(facturas: InvoiceSaleRef[]): Promise<Map<string, NonNullable<SessionPaymentDetail['pedidoWeb']>>> {
+    const salida = new Map<string, NonNullable<SessionPaymentDetail['pedidoWeb']>>();
+    const ventaIds = Array.from(new Set(facturas.map((f) => f.sale_id).filter((x): x is string => !!x)));
+    if (ventaIds.length === 0) return salida;
+    try {
+      const { data: ventas } = await supabase
+        .from('sales')
+        .select('id, source, web_order_id')
+        .eq('organization_id', this.organizationId)
+        .in('id', ventaIds)
+        .eq('source', 'web');
+      const pedidoIds = Array.from(new Set(((ventas ?? []) as Array<{ web_order_id: string | null }>).map((v) => v.web_order_id).filter((x): x is string => !!x)));
+      if (pedidoIds.length === 0) return salida;
+      const { data: pedidos } = await supabase
+        .from('web_orders')
+        .select('id, order_number, delivery_type, internal_notes')
+        .eq('organization_id', this.organizationId)
+        .in('id', pedidoIds);
+      const porPedido = new Map(((pedidos ?? []) as Array<{ id: string; order_number: string; delivery_type: string | null; internal_notes: string | null }>).map((p) => [p.id, p]));
+      const porVenta = new Map(((ventas ?? []) as Array<{ id: string; web_order_id: string | null }>).map((v) => [v.id, v.web_order_id ? porPedido.get(v.web_order_id) : undefined]));
+      for (const f of facturas) {
+        const pedido = f.sale_id ? porVenta.get(f.sale_id) : undefined;
+        if (!pedido) continue;
+        salida.set(f.id, { numero: pedido.order_number, entrega: tipoEntregaEfectivo(pedido), mesa: mesaDelPedido(pedido) });
+      }
+    } catch (err) {
+      console.warn('No se pudo leer el origen web de las facturas de la caja:', err);
+    }
+    return salida;
+  }
+
+  /**
    * Obtiene el detalle de cada pago (movimiento) realizado durante la sesion:
    * ventas POS, ventas de mesa, facturas de venta y facturas de compra pagadas.
    */
@@ -1330,6 +1367,10 @@ export class CajasService {
         return true;
       });
 
+      // Origen web de las facturas cobradas (pedido web cobrado en caja, E4):
+      // número, tipo de entrega y mesa; la UI lo traduce.
+      const origenWebPorFactura = await this.origenWebDeFacturas(invoiceSalesRows);
+
       const customerIds = new Set<string>();
       invoiceSalesRows.forEach((i) => i.customer_id && customerIds.add(i.customer_id));
       salesRows.forEach((s) => s.customer_id && customerIds.add(s.customer_id));
@@ -1394,11 +1435,13 @@ export class CajasService {
           counterparty = ap?.supplier_id ? suppliersMap.get(ap.supplier_id) : undefined;
         }
 
+        const pedidoWeb = p.source === 'invoice_sales' ? origenWebPorFactura.get(p.source_id) : undefined;
         return {
           id: p.id,
           type,
           direction,
           label,
+          ...(pedidoWeb ? { pedidoWeb } : {}),
           reference,
           counterparty,
           method: p.method || 'other',

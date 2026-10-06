@@ -5,7 +5,8 @@ import { serialTrackingService } from '@/lib/services/serialTrackingService';
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 
 export type WebOrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'in_delivery' | 'delivered' | 'cancelled' | 'rejected' | 'expired';
-export type DeliveryType = 'pickup' | 'delivery_own' | 'delivery_third_party';
+// 'dine_in' = «Comer aquí» (QR de mesa), migración E1 (20261007130000_web_orders_dine_in).
+export type DeliveryType = 'pickup' | 'delivery_own' | 'delivery_third_party' | 'dine_in';
 export type PaymentStatus = 'pending' | 'paid' | 'partial' | 'refunded' | 'failed';
 export type OrderSource = 'website' | 'mobile_app' | 'whatsapp' | 'phone';
 
@@ -76,6 +77,10 @@ export interface WebOrder {
   cancelled_by?: string;
   cancellation_reason?: string;
   coupon_code?: string;
+  /** Mesa del «Comer aquí» (E1). La resuelve el servidor del sitio. */
+  restaurant_table_id?: string | null;
+  /** Sesión de mesa del POS a la que se agregó el pedido (E3). */
+  table_session_id?: string | null;
   created_at: string;
   updated_at: string;
   // Relaciones
@@ -90,6 +95,8 @@ export interface WebOrder {
     id: number;
     name: string;
   };
+  /** Mesa enlazada (solo si la consulta la pide: `restaurant_table:restaurant_tables(name, zone)`). */
+  restaurant_table?: { name: string; zone?: string | null } | null;
 }
 
 export interface CreateWebOrderInput {
@@ -163,7 +170,11 @@ class WebOrdersService {
         }
       }
 
-      if (filters?.delivery_type) {
+      if (filters?.delivery_type === 'dine_in') {
+        // «Comer aquí»: dine_in real (E1) o el mapeo temporal del sitio (pickup
+        // con la marca «[Comer aquí]» en internal_notes; ver tipoEntrega.ts).
+        query = query.or('delivery_type.eq.dine_in,and(delivery_type.eq.pickup,internal_notes.ilike.*Comer aquí*)');
+      } else if (filters?.delivery_type) {
         query = query.eq('delivery_type', filters.delivery_type);
       }
 
@@ -424,10 +435,31 @@ class WebOrdersService {
 
       if (error) throw error;
 
+      void this.avisarCambioEstado(orderId, status);
       return this.getOrderById(orderId) as Promise<WebOrder>;
     } catch (error) {
       console.error('Error updating order status:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Avisa al cliente por correo del estado actual del pedido
+   * (`POST /api/web-orders/[id]/aviso-estado`, organización de la sesión).
+   * Best-effort: nunca lanza ni bloquea el cambio de estado.
+   */
+  async avisarCambioEstado(orderId: string, estadoEsperado?: WebOrderStatus): Promise<void> {
+    try {
+      const org = this.organizationId;
+      const r = await fetch(`/api/web-orders/${encodeURIComponent(orderId)}/aviso-estado`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', ...(org > 0 ? { 'x-organization-id': String(org) } : {}) },
+        body: JSON.stringify(estadoEsperado ? { estado: estadoEsperado } : {}),
+      });
+      if (!r.ok) console.warn('[webOrders] aviso de estado sin enviar', { orderId, estado: r.status });
+    } catch (err) {
+      console.warn('[webOrders] aviso de estado sin enviar', { orderId, err });
     }
   }
 

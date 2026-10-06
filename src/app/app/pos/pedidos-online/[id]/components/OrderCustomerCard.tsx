@@ -1,5 +1,6 @@
 'use client';
 
+import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { User, Phone, Mail, MapPin } from 'lucide-react';
 import { cn } from '@/utils/Utils';
@@ -56,7 +57,7 @@ export function OrderCustomerCard({ order }: OrderCustomerCardProps) {
         )}
 
         {/* Dirección completa del cliente (desde delivery_address) */}
-        {order.delivery_type !== 'pickup' && order.delivery_address && (() => {
+        {esDomicilio(order.delivery_type) && order.delivery_address && (() => {
           const addr = order.delivery_address;
           const parts: string[] = [];
           if (addr.address) parts.push(addr.address);

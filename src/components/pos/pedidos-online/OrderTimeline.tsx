@@ -1,5 +1,6 @@
 'use client';
 
+import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { 
   Clock, 
   CheckCircle, 
@@ -47,7 +48,7 @@ export function OrderTimeline({ order, variant = 'vertical' }: OrderTimelineProp
   };
 
   const isCancelled = ['cancelled', 'rejected', 'expired'].includes(order.status);
-  const isPickup = order.delivery_type === 'pickup';
+  const isPickup = !esDomicilio(order.delivery_type);
 
   const getSteps = (): TimelineStep[] => {
     const baseSteps: TimelineStep[] = [

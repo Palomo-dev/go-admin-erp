@@ -2,15 +2,18 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId, useOrganization } from '@/lib/hooks/useOrganization';
 import { deliveryIntegrationService } from '@/lib/services/deliveryIntegrationService';
-import { webOrderConfirmationService } from '@/lib/services/webOrderConfirmationService';
+import { claveAvisoCobro, CobroEnCajaError, webOrderConfirmationService } from '@/lib/services/webOrderConfirmationService';
+import { metodoDeCobroEnCaja } from '@/lib/pos/pedidosWeb/metodosCaja';
 import { webOrdersService, type WebOrder, type WebOrderStatus } from '@/lib/services/webOrdersService';
+import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { type EstimatedTime, timeToMs, formatEstimatedTime } from '../components';
-import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
-import { normalizarCodigoMoneda } from '@/lib/utils/moneda';
+
+/** Métodos que se cobran en la caja del local; cualquier otro se cobra como efectivo. */
 
 /** Mensaje de un error de Supabase o de JS, sin suponer su forma. */
 function mensajeDeError(error: unknown): string | undefined {
@@ -47,13 +50,17 @@ interface UseWebOrderDetailReturn {
   handleCancelOrder: () => Promise<void>;
   handleConvertToSale: () => Promise<void>;
   handleCreateShipment: () => Promise<void>;
-  handleMarkAsPaid: () => Promise<void>;
+  /** Cobra en la caja de la sede (E4); con `entregar`, además marca el pedido entregado. */
+  handleCobrar: (entregar: boolean) => Promise<void>;
+  /** Último cobro rechazado porque la sede no tiene caja abierta. */
+  sinCajaAbierta: boolean;
   loadOrder: () => Promise<void>;
 }
 
 export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
   const router = useRouter();
   const { toast } = useToast();
+  const t = useTranslations('pedidoWeb');
   const organizationId = getOrganizationId();
   const { organization } = useOrganization();
   const orgTypeId = organization?.type_id ?? 3;
@@ -75,6 +82,7 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     isRetail ? { value: 5, unit: 'days' } : { value: 30, unit: 'minutes' }
   );
   const [markAsPaid, setMarkAsPaid] = useState(false);
+  const [sinCajaAbierta, setSinCajaAbierta] = useState(false);
 
   const loadOrder = useCallback(async () => {
     try {
@@ -138,45 +146,70 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
       .eq('organization_id', organizationId);
 
     if (error) throw error;
+    // Correo al cliente con el nuevo estado (best-effort, en el servidor).
+    void webOrdersService.avisarCambioEstado(orderId, status);
   };
 
   const handleConfirmOrder = async () => {
     if (!order) return;
     setActionLoading(true);
     try {
-      const isDelivery = order.delivery_type !== 'pickup';
+      const isDelivery = esDomicilio(order.delivery_type);
       const transitMs = isDelivery ? timeToMs(transitTime) : 0;
       const result = await webOrderConfirmationService.confirmOrder(order, {
         prepMs: timeToMs(prepTime),
         transitMs,
         markAsPaid,
       });
+      const erroresStock = result.stockErrors ?? [];
       if (result.yaConfirmado) {
         toast({
-          title: 'El pedido ya estaba confirmado',
-          description: 'La venta se creó cuando llegó el pago; no se creó otra.',
+          title: t('confirmacion.yaConfirmado'),
+          description: t('confirmacion.yaConfirmadoDetalle'),
         });
         setConfirmDialogOpen(false);
         setMarkAsPaid(false);
         loadOrder();
         return;
       }
-      const parts = [`Venta creada · Comanda enviada a cocina · Listo: ${formatEstimatedTime(prepTime)}`];
-      if (isDelivery && transitMs > 0) parts.push(`· Entrega: ${formatEstimatedTime(transitTime)}`);
-      if (markAsPaid) parts.push('· Marcado como pagado');
-      if (result.shipmentId) parts.push('· Envío creado');
+      const listo = t('confirmacion.listo', { tiempo: formatEstimatedTime(prepTime) });
+      const parts = result.tableSessionId
+        ? [t('confirmacion.enLaMesa'), listo]
+        : [t('confirmacion.ventaCreada'), t('confirmacion.comandaEnviada'), listo];
+      if (isDelivery && transitMs > 0) parts.push(t('confirmacion.entrega', { tiempo: formatEstimatedTime(transitTime) }));
+      if (result.cobro) parts.push(t('cobro.hecho'));
+      else if (markAsPaid && !result.cobroPendiente) parts.push(t('confirmacion.marcadoPagado'));
+      if (result.shipmentId) parts.push(t('confirmacion.envioCreado'));
       toast({
-        title: 'Pedido confirmado',
-        description: parts.join(' '),
+        title: result.completadoAhora ? t('confirmacion.completada') : t('confirmacion.confirmado'),
+        description: parts.join(' · '),
       });
+      if (result.cobroPendiente) {
+        if (result.cobroPendiente === 'NO_OPEN_CASH_SESSION') setSinCajaAbierta(true);
+        toast({
+          title: t('cobro.pendienteTrasConfirmar'),
+          description: t(`cobro.${claveAvisoCobro(result.cobroPendiente)}`),
+          variant: 'destructive',
+        });
+      }
+      // Receta o insumos sin stock: la confirmación sigue, pero el equipo lo ve
+      // para decidir (rechazar con motivo o ajustar el inventario).
+      if (erroresStock.length > 0) {
+        toast({
+          title: t('confirmacion.stockFallido', { n: erroresStock.length }),
+          description: erroresStock.slice(0, 3).join(' · '),
+          variant: 'destructive',
+        });
+      }
+      void webOrdersService.avisarCambioEstado(order.id, 'confirmed');
       setConfirmDialogOpen(false);
       setMarkAsPaid(false);
       loadOrder();
     } catch (error: unknown) {
       console.error('Error confirmando pedido:', error);
       toast({
-        title: 'Error al confirmar pedido',
-        description: mensajeDeError(error) || 'No se pudo confirmar el pedido',
+        title: t('confirmacion.error'),
+        description: mensajeDeError(error) || t('confirmacion.error'),
         variant: 'destructive',
       });
     } finally {
@@ -289,7 +322,7 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     try {
       const result = await webOrderConfirmationService.confirmOrder(order, {
         prepMs: timeToMs(prepTime),
-        transitMs: order.delivery_type !== 'pickup' ? timeToMs(transitTime) : 0,
+        transitMs: esDomicilio(order.delivery_type) ? timeToMs(transitTime) : 0,
         markAsPaid: false,
       });
       toast({ title: 'Venta creada exitosamente' });
@@ -317,76 +350,45 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     }
   };
 
-  const handleMarkAsPaid = async () => {
+  const handleCobrar = async (entregar: boolean) => {
     if (!order) return;
     setActionLoading(true);
+    setSinCajaAbierta(false);
     try {
-      const { error } = await supabase
-        .from('web_orders')
-        .update({
-          payment_status: 'paid',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', orderId)
-        .eq('organization_id', organizationId);
-
-      if (error) throw error;
-
-      // Si hay una venta vinculada, el cobro se registra como PAGO, nunca
-      // escribiendo el saldo a mano: insertar en `payments` dispara los
-      // disparadores que recalculan la factura y la cartera. Antes se ponía
-      // `sales.balance = 0` y `status = 'paid'` sin crear ningún pago, así que
-      // la venta quedaba cobrada sin nada que la respaldara y el dinero no
-      // aparecía por ninguna parte (auditoría de pedidos online, 2026-09-22).
-      if (order.sale_id) {
-        const { data: invoice } = await supabase
-          .from('invoice_sales')
-          .select('id, balance, currency, branch_id')
-          .eq('sale_id', order.sale_id)
-          .eq('organization_id', organizationId)
-          .order('created_at', { ascending: true })
-          .limit(1)
-          .maybeSingle();
-
-        if (invoice && Number(invoice.balance) > 0) {
-          const { data: userData } = await supabase.auth.getUser();
-          const { error: paymentError } = await supabase.from('payments').insert({
-            organization_id: organizationId,
-            branch_id: invoice.branch_id ?? order.branch_id,
-            amount: Number(invoice.balance),
-            method: order.payment_method || 'cash',
-            // payments.currency es NOT NULL y sin trigger: la de la factura
-            // y, si no la trae, la base de la organización.
-            currency:
-              normalizarCodigoMoneda(invoice.currency) ??
-              (await resolveOrgCurrency(supabase, organizationId)).code,
-            status: 'completed',
-            reference: order.payment_reference || null,
-            source: 'invoice_sales',
-            source_id: String(invoice.id),
-            created_by: userData?.user?.id ?? null,
-          });
-          if (paymentError) throw paymentError;
-        } else if (!invoice) {
-          // Sin factura no hay contra qué registrar el pago: se deja constancia
-          // en el pedido y se avisa, en vez de fingir que la venta está cobrada.
-          toast({
-            title: 'Pedido marcado como pagado',
-            description:
-              'La venta vinculada no tiene factura, así que no se registró el pago en caja. Regístralo desde la factura cuando exista.',
-          });
-        }
-      }
-
-      toast({ title: 'Pedido marcado como pagado' });
+      const cobro = await webOrderConfirmationService.cobrarEnCaja(order, {
+        metodo: metodoDeCobroEnCaja(order.payment_method),
+        referencia: order.payment_reference ?? null,
+      });
+      if (entregar && order.status !== 'delivered') await updateOrderStatus('delivered');
+      toast({
+        title: cobro.yaCobrado ? t('cobro.yaCobrado') : t('cobro.hecho'),
+        description: cobro.invoiceNumber ? t('cobro.factura', { numero: cobro.invoiceNumber }) : undefined,
+      });
       loadOrder();
     } catch (error: unknown) {
-      console.error('Error marking as paid:', error);
-      toast({
-        title: 'Error',
-        description: mensajeDeError(error) || 'No se pudo marcar como pagado',
-        variant: 'destructive',
-      });
+      if (error instanceof CobroEnCajaError && error.codigo === 'NO_OPEN_CASH_SESSION') {
+        setSinCajaAbierta(true);
+        toast({ title: t('cobro.sinCaja'), description: t('cobro.sinCajaDetalle'), variant: 'destructive' });
+      } else if (error instanceof CobroEnCajaError && error.codigo === 'FUNCION_AUSENTE') {
+        // Migración E4 pendiente: el comportamiento anterior de «Marcar como pagado».
+        try {
+          const { sinFactura } = await webOrderConfirmationService.marcarPagadoSinCaja(order);
+          if (entregar && order.status !== 'delivered') await updateOrderStatus('delivered');
+          toast({
+            title: t('cobro.marcadoPagado'),
+            description: sinFactura ? t('cobro.sinFacturaDetalle') : undefined,
+          });
+          loadOrder();
+        } catch (fallbackError: unknown) {
+          console.error('Error marking as paid:', fallbackError);
+          toast({ title: 'Error', description: mensajeDeError(fallbackError) || 'No se pudo marcar como pagado', variant: 'destructive' });
+        }
+      } else if (error instanceof CobroEnCajaError && error.codigo !== 'OTRO') {
+        toast({ title: t('cobro.error'), description: t(`cobro.${claveAvisoCobro(error.codigo)}`), variant: 'destructive' });
+      } else {
+        console.error('Error cobrando el pedido:', error);
+        toast({ title: t('cobro.error'), description: mensajeDeError(error), variant: 'destructive' });
+      }
     } finally {
       setActionLoading(false);
     }
@@ -420,7 +422,8 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     handleCancelOrder,
     handleConvertToSale,
     handleCreateShipment,
-    handleMarkAsPaid,
+    handleCobrar,
+    sinCajaAbierta,
     loadOrder,
   };
 }

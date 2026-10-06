@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import { useTranslations } from 'next-intl';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,13 +21,17 @@ import {
   XCircle,
   AlertTriangle,
   CalendarRange,
+  Receipt,
+  BellRing,
 } from 'lucide-react';
 import {
   RESERVATION_STATUS_LABELS,
   RESERVATION_SOURCE_LABELS,
   type RestaurantReservation,
   type ReservationStatus,
+  type VentaDeReserva,
 } from './reservasMesasService';
+import { debeAvisarRetraso, enlaceTelefono, minutosDeRetraso, MINUTOS_TOLERANCIA_LLEGADA } from './retrasoReserva';
 
 interface ReservasListProps {
   reservations: RestaurantReservation[];
@@ -34,6 +39,22 @@ interface ReservasListProps {
   onEdit: (reservation: RestaurantReservation) => void;
   onChangeStatus: (id: string, status: ReservationStatus, reason?: string) => void;
   onDelete: (id: string) => void;
+  /** Sentar con mesa: abre la cuenta y vincula la reserva (pos_reserva_sentar). */
+  onSentar?: (reservation: RestaurantReservation) => void;
+  /** Venta de la mesa de cada reserva sentada o completada. */
+  ventas?: ReadonlyMap<string, VentaDeReserva>;
+  /** Inasistencias previas de cada cliente (por customer_id). */
+  inasistencias?: ReadonlyMap<string, number>;
+  /** «Ahora» de la pantalla (avanza cada minuto) y zona de cada sucursal. */
+  ahora?: Date;
+  zonaDe?: (branchId: number) => string;
+  /** Reserva a resaltar (enlace de la notificación: ?reserva=<id>). */
+  resaltada?: string | null;
+  /** Pendiente: «Confirmar y asignar mesa» y «Rechazar» (Figma 1801:169066, paso 4). */
+  onConfirmarPendiente?: (reservation: RestaurantReservation) => void;
+  onRechazar?: (reservation: RestaurantReservation) => void;
+  /** «Esperar 15 min»: persiste `arrival_wait_until` (D5); devuelve null si aún no hay columna. */
+  onEsperar?: (reservation: RestaurantReservation, minutos: number) => Promise<string | null>;
 }
 
 function getStatusBadgeClasses(status: ReservationStatus): string {
@@ -74,9 +95,38 @@ export function ReservasList({
   onEdit,
   onChangeStatus,
   onDelete,
+  onSentar,
+  ventas,
+  inasistencias,
+  ahora,
+  zonaDe,
+  resaltada,
+  onConfirmarPendiente,
+  onRechazar,
+  onEsperar,
 }: ReservasListProps) {
   const t = useTranslations('posReservasMesas');
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  // «Esperar 15 min»: se guarda en la reserva (`arrival_wait_until`, D5) y lo ven
+  // todos los puestos; antes de D5 solo queda en esta pantalla.
+  const [pospuestasLocales, setPospuestasLocales] = useState<Record<string, number>>({});
+  const pospuestaDe = (r: RestaurantReservation): number | null => {
+    const guardada = r.arrival_wait_until ? Date.parse(r.arrival_wait_until) : NaN;
+    const local = pospuestasLocales[r.id];
+    if (Number.isFinite(guardada)) return Math.max(guardada, local ?? 0);
+    return local ?? null;
+  };
+  const esperar = async (r: RestaurantReservation) => {
+    const local = Date.now() + MINUTOS_TOLERANCIA_LLEGADA * 60_000;
+    setPospuestasLocales((p) => ({ ...p, [r.id]: local }));
+    if (onEsperar) {
+      try {
+        await onEsperar(r, MINUTOS_TOLERANCIA_LLEGADA);
+      } catch {
+        /* el aviso ya quedó pospuesto en esta pantalla; la página muestra el error */
+      }
+    }
+  };
 
   if (isLoading) {
     return (
@@ -108,14 +158,15 @@ export function ReservasList({
         id: 'confirmar',
         etiqueta: t('acciones.confirmar'),
         icono: CheckCircle,
-        onSelect: () => onChangeStatus(r.id, 'confirmed'),
+        onSelect: () => (onConfirmarPendiente ? onConfirmarPendiente(r) : onChangeStatus(r.id, 'confirmed')),
         oculta: r.status !== 'pending',
       },
       {
         id: 'sentar',
         etiqueta: t('acciones.sentar'),
         icono: UserCheck,
-        onSelect: () => onChangeStatus(r.id, 'seated'),
+        // Con mesa: abre la cuenta y deja la reserva unida a ella hasta «Completada».
+        onSelect: () => (onSentar && r.restaurant_table_id ? onSentar(r) : onChangeStatus(r.id, 'seated')),
         oculta: !['pending', 'confirmed'].includes(r.status),
       },
       {
@@ -158,10 +209,19 @@ export function ReservasList({
   return (
     <>
       <div className="space-y-3">
-        {reservations.map((r) => (
+        {reservations.map((r) => {
+          const zona = zonaDe ? zonaDe(r.branch_id) : null;
+          const tarde = !!(ahora && zona && debeAvisarRetraso(r, ahora, zona, pospuestaDe(r)));
+          const venta = ventas?.get(r.id);
+          const faltas = r.customer_id ? inasistencias?.get(r.customer_id) ?? 0 : 0;
+          const tel = enlaceTelefono(r.customer_phone);
+          return (
           <Card
             key={r.id}
-            className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 transition-colors"
+            id={`reserva-${r.id}`}
+            className={`bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 transition-colors ${
+              resaltada === r.id ? 'ring-2 ring-brand' : ''
+            }`}
           >
             <div className="p-4">
               <div className="flex items-start justify-between gap-4">
@@ -177,6 +237,17 @@ export function ReservasList({
                     <Badge variant="outline" className="text-xs border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400">
                       {RESERVATION_SOURCE_LABELS[r.source]}
                     </Badge>
+                    {venta && (
+                      <Badge variant="outline" className="text-xs">
+                        <Receipt className="mr-1 h-3 w-3" aria-hidden="true" />
+                        {venta.numero ? t('venta', { numero: venta.numero }) : t('ventaSinNumero')}
+                      </Badge>
+                    )}
+                    {faltas > 0 && (
+                      <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 text-xs">
+                        {t('inasistencias', { n: faltas })}
+                      </Badge>
+                    )}
                   </div>
 
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600 dark:text-gray-400">
@@ -214,6 +285,56 @@ export function ReservasList({
                       {r.special_requests || r.notes}
                     </p>
                   )}
+
+                  {r.status === 'pending' && (onConfirmarPendiente || onRechazar) && (
+                    <div className="flex flex-col gap-2 rounded-lg border border-line-warning bg-warning-subtle p-3 text-sm text-warning-text sm:flex-row sm:items-center sm:justify-between">
+                      <span className="font-medium">
+                        {r.restaurant_table ? t('pendiente.avisoConMesa', { mesa: r.restaurant_table.name }) : t('pendiente.avisoSinMesa')}
+                      </span>
+                      <span className="flex flex-wrap gap-2">
+                        {onConfirmarPendiente && (
+                          <Button size="sm" onClick={() => onConfirmarPendiente(r)}>
+                            <CheckCircle className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+                            {t('pendiente.confirmarYAsignar')}
+                          </Button>
+                        )}
+                        {onRechazar && (
+                          <Button size="sm" variant="outline" onClick={() => onRechazar(r)}>
+                            {t('pendiente.rechazar')}
+                          </Button>
+                        )}
+                      </span>
+                    </div>
+                  )}
+
+                  {tarde && ahora && zona && (
+                    <div role="alert" className="flex flex-col gap-2 rounded-lg border border-line-warning bg-warning-subtle p-3 text-sm text-warning-text sm:flex-row sm:items-center sm:justify-between">
+                      <span className="flex items-center gap-2 font-medium">
+                        <BellRing className="h-4 w-4" aria-hidden="true" />
+                        {t('retraso.titulo', { minutos: minutosDeRetraso(r, ahora, zona) })}
+                      </span>
+                      <span className="flex flex-wrap gap-2">
+                        {tel && (
+                          <Button asChild size="sm" variant="outline">
+                            <a href={tel}>
+                              <Phone className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+                              {t('retraso.llamar')}
+                            </a>
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => void esperar(r)}
+                        >
+                          {t('retraso.esperar', { minutos: MINUTOS_TOLERANCIA_LLEGADA })}
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => onChangeStatus(r.id, 'no_show')}>
+                          {t('retraso.noSePresento')}
+                        </Button>
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Acciones */}
@@ -221,7 +342,8 @@ export function ReservasList({
               </div>
             </div>
           </Card>
-        ))}
+          );
+        })}
       </div>
 
       {/* Confirmación de eliminación */}

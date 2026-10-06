@@ -24,6 +24,7 @@ import {
 } from './cierreCiego';
 import { organizacionUsaCierreCiego, resolverPermisosCaja, type PermisosCaja } from './permisosCaja';
 import { puedeCerrarCaja } from './reglasCierre';
+import { mesaDelPedido, tipoEntregaEfectivo, type TipoEntregaWeb } from '@/lib/pos/pedidosWeb/tipoEntrega';
 
 type Ctx = Pick<ServerOrgContext, 'userId' | 'organizationId' | 'roleId' | 'isSuperAdmin' | 'supabase'>;
 
@@ -84,6 +85,27 @@ export interface VentaTurno {
   created_at: string;
   numero: string | null;
   cliente: string | null;
+  /** Número del pedido web (W-xxxx) si la venta viene de un pedido web cobrado en esta caja. */
+  pedido_web?: string | null;
+  /** De dónde viene la venta (columna «Origen»): POS, mesa (con su zona) o pedido web. */
+  origen?: OrigenVentaTurno;
+  /** Método del cobro (código de payment_methods), o `mixed` si hubo varios. */
+  metodo?: string | null;
+  /** Pedido web pagado en línea: se lista, pero NO entra al arqueo ni al total del turno. */
+  en_linea?: boolean;
+}
+
+export type OrigenVentaTurno =
+  | { tipo: 'pos' }
+  | { tipo: 'mesa'; mesa: string; zona: string | null }
+  | { tipo: 'web'; pedido: string; entrega: TipoEntregaWeb; mesa: string | null };
+
+/** Cifras de pedidos web del turno (tarjetas de la pestaña Ventas, Figma 3b). */
+export interface VentasWebTurno {
+  /** Pedidos web cobrados en esta caja (pago en el local, E4): están en el total y en el arqueo. */
+  enCaja: { cantidad: number; total: number };
+  /** Pedidos web pagados en línea en la sede durante el turno: fuera del arqueo de efectivo. */
+  enLinea: { cantidad: number; total: number; metodos: string[] };
 }
 
 export interface ResumenCaja {
@@ -92,7 +114,7 @@ export interface ResumenCaja {
   esperado: EsperadoCaja;
   movimientos: MovimientoResumen[];
   arqueos: ArqueoResumen[];
-  ventas: { cantidad: number; total: number; filas: VentaTurno[]; truncadas: boolean };
+  ventas: { cantidad: number; total: number; filas: VentaTurno[]; truncadas: boolean; web?: VentasWebTurno };
   permisos: PermisosCaja & { puedeCerrar: boolean; esPropia: boolean };
   cierreCiego: boolean;
   /** false = las cifras de esperado, desglose y diferencias vienen ocultas. */
@@ -175,50 +197,205 @@ async function leerSesion(ctx: Ctx, idOUuid: string) {
 }
 
 /** Ventas del turno: misma regla que `CajasService.getSessionSales` (las que entran en caja y no están pendientes). */
+type FilaVenta = {
+  id: string;
+  total: number | string | null;
+  status: string;
+  payment_status: string | null;
+  created_at: string;
+  customer_id: string | null;
+  source: string | null;
+  web_order_id: string | null;
+  table_session_id: string | null;
+};
+const COLUMNAS_VENTA = 'id, total, status, payment_status, created_at, customer_id, source, web_order_id, table_session_id';
+
+/**
+ * Ventas del turno (pestaña Ventas del detalle de caja).
+ *
+ * - Ventas de caja (POS y mesas): `include_in_cash_register`, creadas en la
+ *   ventana del turno y, en modo cajero, por quien abrió la caja. Igual que
+ *   antes, salvo que las de origen web van aparte (abajo): hoy no hay ninguna
+ *   venta web dentro de caja (verificado por MCP, 2026-10-06: 721 ventas web,
+ *   todas con include_in_cash_register=false).
+ * - Pedidos web cobrados en esta caja (E4): el turno lo decide el PAGO, no la
+ *   venta. La venta nace al confirmar (quizá antes de abrir la caja, o la
+ *   confirmó otra persona); el pago lo registra el cajero al cobrar, y es lo
+ *   que `pos_caja__esperado_calculo` suma al arqueo (misma ventana, sede y, en
+ *   modo cajero, `payments.created_by`).
+ * - Pedidos web pagados en línea en la sede durante el turno (solo en modo
+ *   sede): se listan como «No · pagado en línea» y van en su propia tarjeta,
+ *   sin sumar al total ni al arqueo de efectivo.
+ */
 async function ventasDelTurno(
   ctx: Ctx,
   s: { branch_id: number | null; opened_at: string; closed_at: string | null; opened_by: string },
   modo: 'branch' | 'user',
 ): Promise<ResumenCaja['ventas']> {
+  const hasta = s.closed_at ?? new Date().toISOString();
   let q = ctx.supabase
     .from('sales')
-    .select('id, total, status, payment_status, created_at, customer_id', { count: 'exact' })
+    .select(COLUMNAS_VENTA, { count: 'exact' })
     .eq('organization_id', ctx.organizationId)
     .eq('include_in_cash_register', true)
     .neq('payment_status', 'pending')
+    .neq('source', 'web')
     .gte('created_at', s.opened_at)
-    .lte('created_at', s.closed_at ?? new Date().toISOString())
+    .lte('created_at', hasta)
     .order('created_at', { ascending: false })
     .limit(LIMITE_VENTAS);
   if (s.branch_id) q = q.eq('branch_id', s.branch_id);
   if (modo === 'user') q = q.eq('user_id', s.opened_by);
-  const { data, error, count } = await q;
-  if (error) throw new ErrorResumenCaja('lectura_fallida', 500, error.message);
-  const filas = (data ?? []) as Array<{ id: string; total: number | string | null; status: string; payment_status: string | null; created_at: string; customer_id: string | null }>;
 
-  const ids = filas.map((f) => f.id);
-  const clientesIds = [...new Set(filas.map((f) => f.customer_id).filter((x): x is string => !!x))];
-  const [facturas, clientes] = await Promise.all([
+  // Pagos de facturas en la ventana del turno: dan los pedidos web cobrados aquí.
+  let pagosQ = ctx.supabase
+    .from('payments')
+    .select('source_id, method, created_at')
+    .eq('organization_id', ctx.organizationId)
+    .eq('source', 'invoice_sales')
+    .eq('status', 'completed')
+    .gte('created_at', s.opened_at)
+    .lte('created_at', hasta)
+    .limit(LIMITE_VENTAS * 2);
+  if (s.branch_id) pagosQ = pagosQ.eq('branch_id', s.branch_id);
+  if (modo === 'user') pagosQ = pagosQ.eq('created_by', s.opened_by);
+
+  // Pagados en línea en la sede durante el turno (solo modo sede: en modo
+  // cajero no son de nadie y saldrían repetidos en cada caja).
+  let enLineaQ =
+    modo === 'branch'
+      ? ctx.supabase
+          .from('sales')
+          .select(COLUMNAS_VENTA)
+          .eq('organization_id', ctx.organizationId)
+          .eq('source', 'web')
+          .eq('include_in_cash_register', false)
+          .eq('payment_status', 'paid')
+          .gte('created_at', s.opened_at)
+          .lte('created_at', hasta)
+          .order('created_at', { ascending: false })
+          .limit(LIMITE_VENTAS)
+      : null;
+  if (enLineaQ && s.branch_id) enLineaQ = enLineaQ.eq('branch_id', s.branch_id);
+
+  const [principal, pagos, enLineaRes] = await Promise.all([q, pagosQ, enLineaQ ?? Promise.resolve({ data: [], error: null })]);
+  if (principal.error) throw new ErrorResumenCaja('lectura_fallida', 500, principal.error.message);
+  const filasCaja = (principal.data ?? []) as FilaVenta[];
+  const count = principal.count;
+
+  // Pedidos web cobrados en esta caja, por el pago. Si una lectura auxiliar
+  // falla, la pestaña sale como antes (solo ventas de caja).
+  const pagosFact = pagos.error ? [] : ((pagos.data ?? []) as Array<{ source_id: string; method: string | null; created_at: string }>);
+  const facturasPagadas = [...new Set(pagosFact.map((p) => p.source_id))];
+  const factWeb = facturasPagadas.length
+    ? await ctx.supabase.from('invoice_sales').select('id, sale_id').eq('organization_id', ctx.organizationId).in('id', facturasPagadas)
+    : { data: [] as unknown[], error: null };
+  const ventaDeFactura = new Map(((factWeb.data ?? []) as Array<{ id: string; sale_id: string | null }>).map((f) => [f.id, f.sale_id]));
+  const pagoPorVenta = new Map<string, { metodos: Set<string>; created_at: string }>();
+  for (const p of pagosFact) {
+    const venta = ventaDeFactura.get(p.source_id);
+    if (!venta) continue;
+    const previo = pagoPorVenta.get(venta) ?? { metodos: new Set<string>(), created_at: p.created_at };
+    if (p.method) previo.metodos.add(p.method);
+    if (p.created_at > previo.created_at) previo.created_at = p.created_at;
+    pagoPorVenta.set(venta, previo);
+  }
+  const ventasPagadasAqui = [...pagoPorVenta.keys()];
+  const webEnCajaRes = ventasPagadasAqui.length
+    ? await ctx.supabase
+        .from('sales')
+        .select(COLUMNAS_VENTA)
+        .eq('organization_id', ctx.organizationId)
+        .eq('source', 'web')
+        .eq('include_in_cash_register', true)
+        .in('id', ventasPagadasAqui)
+    : { data: [] as unknown[], error: null };
+  const filasWebCaja = (webEnCajaRes.error ? [] : (webEnCajaRes.data ?? []) as FilaVenta[]).map((f) => ({
+    ...f,
+    // El turno y la hora son los del cobro.
+    created_at: pagoPorVenta.get(f.id)?.created_at ?? f.created_at,
+  }));
+  const filasEnLinea = enLineaRes.error ? [] : ((enLineaRes.data ?? []) as FilaVenta[]);
+
+  const todas = [...filasCaja, ...filasWebCaja, ...filasEnLinea];
+  const ids = todas.map((f) => f.id);
+  const clientesIds = [...new Set(todas.map((f) => f.customer_id).filter((x): x is string => !!x))];
+  const pedidosIds = [...new Set(todas.filter((f) => f.source === 'web' && f.web_order_id).map((f) => f.web_order_id as string))];
+  const sesionesIds = [...new Set(todas.map((f) => f.table_session_id).filter((x): x is string => !!x))];
+  const [facturas, clientes, pedidosWeb, sesiones] = await Promise.all([
     ids.length
-      ? ctx.supabase.from('invoice_sales').select('sale_id, number, document_type, status').in('sale_id', ids)
+      ? ctx.supabase.from('invoice_sales').select('id, sale_id, number, document_type, status').in('sale_id', ids)
       : Promise.resolve({ data: [] as unknown[] }),
     clientesIds.length
       ? ctx.supabase.from('customers').select('id, full_name').in('id', clientesIds)
       : Promise.resolve({ data: [] as unknown[] }),
+    pedidosIds.length
+      ? ctx.supabase
+          .from('web_orders')
+          .select('id, order_number, delivery_type, internal_notes, payment_method')
+          .eq('organization_id', ctx.organizationId)
+          .in('id', pedidosIds)
+      : Promise.resolve({ data: [] as unknown[] }),
+    sesionesIds.length
+      ? ctx.supabase
+          .from('table_sessions')
+          .select('id, restaurant_tables(name, zone)')
+          .eq('organization_id', ctx.organizationId)
+          .in('id', sesionesIds)
+      : Promise.resolve({ data: [] as unknown[] }),
   ]);
+  type Pedido = { id: string; order_number: string; delivery_type: string | null; internal_notes: string | null; payment_method: string | null };
+  const pedidoPorId = new Map(((pedidosWeb.data ?? []) as Pedido[]).map((p) => [p.id, p]));
+  const mesaPorSesion = new Map(
+    ((sesiones.data ?? []) as Array<{ id: string; restaurant_tables: { name: string | null; zone: string | null } | Array<{ name: string | null; zone: string | null }> | null }>).map((x) => {
+      const t = Array.isArray(x.restaurant_tables) ? x.restaurant_tables[0] : x.restaurant_tables;
+      return [x.id, { mesa: t?.name ?? '', zona: t?.zone ?? null }];
+    }),
+  );
   const numeros = new Map<string, string>();
-  for (const f of (facturas.data ?? []) as Array<{ sale_id: string; number: string; document_type: string | null; status: string }>) {
+  const facturaPorVenta = new Map<string, string>();
+  for (const f of (facturas.data ?? []) as Array<{ id: string; sale_id: string; number: string; document_type: string | null; status: string }>) {
     if (f.document_type === 'credit_note') continue;
-    if (!numeros.has(f.sale_id) || f.status !== 'void') numeros.set(f.sale_id, f.number);
+    if (!numeros.has(f.sale_id) || f.status !== 'void') {
+      numeros.set(f.sale_id, f.number);
+      facturaPorVenta.set(f.sale_id, f.id);
+    }
   }
   const nombresClientes = new Map(((clientes.data ?? []) as Array<{ id: string; full_name: string | null }>).map((c) => [c.id, c.full_name]));
 
-  // El total del turno cuenta solo las filas leídas; si hay más de LIMITE_VENTAS se avisa.
-  return {
-    cantidad: count ?? filas.length,
-    total: Math.round(filas.reduce((acc, f) => acc + n(f.total), 0) * 100) / 100,
-    truncadas: (count ?? 0) > filas.length,
-    filas: filas.map((f) => ({
+  // Método de las ventas de caja: los pagos de su factura (o de la venta).
+  const facturasCaja = filasCaja.map((f) => facturaPorVenta.get(f.id)).filter((x): x is string => !!x);
+  const metodosCaja = new Map<string, Set<string>>();
+  if (filasCaja.length) {
+    const [pf, pv] = await Promise.all([
+      facturasCaja.length
+        ? ctx.supabase.from('payments').select('source_id, method').eq('organization_id', ctx.organizationId).eq('source', 'invoice_sales').eq('status', 'completed').in('source_id', facturasCaja)
+        : Promise.resolve({ data: [] as unknown[] }),
+      ctx.supabase.from('payments').select('source_id, method').eq('organization_id', ctx.organizationId).eq('source', 'sale').eq('status', 'completed').in('source_id', filasCaja.map((f) => f.id)),
+    ]);
+    const ventaPorFactura = new Map([...facturaPorVenta.entries()].map(([venta, fact]) => [fact, venta]));
+    for (const p of (pf.data ?? []) as Array<{ source_id: string; method: string | null }>) {
+      const venta = ventaPorFactura.get(p.source_id);
+      if (venta && p.method) metodosCaja.set(venta, (metodosCaja.get(venta) ?? new Set()).add(p.method));
+    }
+    for (const p of (pv.data ?? []) as Array<{ source_id: string; method: string | null }>) {
+      if (p.method) metodosCaja.set(p.source_id, (metodosCaja.get(p.source_id) ?? new Set()).add(p.method));
+    }
+  }
+  const unMetodo = (m: Set<string> | undefined): string | null => (!m || m.size === 0 ? null : m.size > 1 ? 'mixed' : [...m][0]);
+
+  const origenDe = (f: FilaVenta): OrigenVentaTurno => {
+    const pedido = f.source === 'web' && f.web_order_id ? pedidoPorId.get(f.web_order_id) : undefined;
+    if (pedido) {
+      return { tipo: 'web', pedido: pedido.order_number, entrega: tipoEntregaEfectivo(pedido), mesa: mesaDelPedido(pedido) };
+    }
+    const mesa = f.table_session_id ? mesaPorSesion.get(f.table_session_id) : undefined;
+    if (mesa && mesa.mesa) return { tipo: 'mesa', mesa: mesa.mesa, zona: mesa.zona };
+    return { tipo: 'pos' };
+  };
+  const fila = (f: FilaVenta, extra: Partial<VentaTurno>): VentaTurno => {
+    const origen = origenDe(f);
+    return {
       id: f.id,
       total: n(f.total),
       status: f.status,
@@ -226,7 +403,36 @@ async function ventasDelTurno(
       created_at: f.created_at,
       numero: numeros.get(f.id) ?? null,
       cliente: f.customer_id ? nombresClientes.get(f.customer_id) ?? null : null,
-    })),
+      pedido_web: origen.tipo === 'web' ? origen.pedido : null,
+      origen,
+      ...extra,
+    };
+  };
+
+  const filas = [
+    ...filasCaja.map((f) => fila(f, { metodo: unMetodo(metodosCaja.get(f.id)), en_linea: false })),
+    ...filasWebCaja.map((f) => fila(f, { metodo: unMetodo(pagoPorVenta.get(f.id)?.metodos), en_linea: false })),
+    ...filasEnLinea.map((f) => fila(f, { metodo: (f.web_order_id ? pedidoPorId.get(f.web_order_id)?.payment_method : null) ?? null, en_linea: true })),
+  ].sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0));
+
+  const suma = (xs: FilaVenta[]) => Math.round(xs.reduce((acc, f) => acc + n(f.total), 0) * 100) / 100;
+  const web: VentasWebTurno = {
+    enCaja: { cantidad: filasWebCaja.length, total: suma(filasWebCaja) },
+    enLinea: {
+      cantidad: filasEnLinea.length,
+      total: suma(filasEnLinea),
+      metodos: [...new Set(filas.filter((f) => f.en_linea).map((f) => f.metodo).filter((x): x is string => !!x))],
+    },
+  };
+
+  // El total del turno cuenta lo cobrado en esta caja (no lo pagado en línea).
+  // Si hay más de LIMITE_VENTAS ventas de caja se avisa.
+  return {
+    cantidad: (count ?? filasCaja.length) + filasWebCaja.length,
+    total: Math.round((suma(filasCaja) + suma(filasWebCaja)) * 100) / 100,
+    truncadas: (count ?? 0) > filasCaja.length,
+    filas,
+    web,
   };
 }
 

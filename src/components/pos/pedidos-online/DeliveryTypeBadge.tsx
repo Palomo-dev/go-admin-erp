@@ -1,11 +1,14 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
-import { Store, Bike, Truck } from 'lucide-react';
+import { Store, Bike, Truck, UtensilsCrossed } from 'lucide-react';
 import type { DeliveryType } from '@/lib/services/webOrdersService';
 
 interface DeliveryTypeBadgeProps {
   type: DeliveryType;
+  /** «Comer aquí»: nombre de la mesa (`mesaDelPedido`), si se conoce. */
+  mesa?: string | null;
   partner?: string;
   showLabel?: boolean;
   variant?: 'default' | 'outline' | 'filled';
@@ -35,15 +38,26 @@ const DELIVERY_TYPE_CONFIG: Record<DeliveryType, {
     icon: <Truck className="h-4 w-4" />,
     color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
   },
+  // Texto en pantalla: `pedidoWeb.comerAqui` (i18n) desde el componente.
+  dine_in: {
+    label: 'Comer aquí',
+    shortLabel: 'Comer aquí',
+    icon: <UtensilsCrossed className="h-4 w-4" />,
+    color: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
+  },
 };
 
 export function DeliveryTypeBadge({ 
   type, 
+  mesa,
   partner, 
   showLabel = true,
   variant = 'filled' 
 }: DeliveryTypeBadgeProps) {
-  const config = DELIVERY_TYPE_CONFIG[type];
+  const t = useTranslations('pedidoWeb');
+  const base = DELIVERY_TYPE_CONFIG[type] ?? DELIVERY_TYPE_CONFIG.pickup;
+  const etiquetaMesa = type === 'dine_in' ? (mesa ? t('comerAquiMesa', { mesa }) : t('comerAqui')) : null;
+  const config = etiquetaMesa ? { ...base, label: etiquetaMesa, shortLabel: etiquetaMesa } : base;
 
   if (variant === 'outline') {
     return (
@@ -75,11 +89,11 @@ export function DeliveryTypeBadge({
 }
 
 export function DeliveryTypeIcon({ type }: { type: DeliveryType }) {
-  return DELIVERY_TYPE_CONFIG[type].icon;
+  return (DELIVERY_TYPE_CONFIG[type] ?? DELIVERY_TYPE_CONFIG.pickup).icon;
 }
 
 export function getDeliveryTypeLabel(type: DeliveryType): string {
-  return DELIVERY_TYPE_CONFIG[type].label;
+  return (DELIVERY_TYPE_CONFIG[type] ?? DELIVERY_TYPE_CONFIG.pickup).label;
 }
 
 export { DELIVERY_TYPE_CONFIG };

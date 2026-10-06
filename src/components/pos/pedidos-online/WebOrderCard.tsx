@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,9 +18,13 @@ import {
   Package,
   Eye,
   CalendarClock,
-  Coins
+  Coins,
+  UtensilsCrossed
 } from 'lucide-react';
 import type { WebOrder, WebOrderStatus, DeliveryType } from '@/lib/services/webOrdersService';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateTimeInTz, formatTimeInTz, toPlainDate, todayInTz } from '@/lib/utils/dateDisplay';
+import { esDomicilio, mesaDelPedido, tipoEntregaEfectivo } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { PaymentStatusBadge } from './PaymentStatusBadge';
 
 interface WebOrderCardProps {
@@ -46,6 +51,8 @@ const DELIVERY_TYPE_CONFIG: Record<DeliveryType, { label: string; icon: React.Re
   pickup: { label: 'Retiro en tienda', icon: <Store className="h-4 w-4 dark:text-gray-300" /> },
   delivery_own: { label: 'Delivery propio', icon: <Bike className="h-4 w-4 dark:text-gray-300" /> },
   delivery_third_party: { label: 'Delivery tercero', icon: <Truck className="h-4 w-4 dark:text-gray-300" /> },
+  // Texto en pantalla: `pedidoWeb.comerAqui` / `comerAquiMesa` (i18n) desde el componente.
+  dine_in: { label: 'Comer aquí', icon: <UtensilsCrossed className="h-4 w-4 dark:text-gray-300" /> },
 };
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
@@ -88,30 +95,25 @@ export function WebOrderCard({
   onViewDetails,
   onUpdateStatus 
 }: WebOrderCardProps) {
+  const t = useTranslations('pedidoWeb');
+  const { timezone } = useOrgTimezone();
   const statusConfig = STATUS_CONFIG[order.status];
-  const deliveryConfig = DELIVERY_TYPE_CONFIG[order.delivery_type];
-  
-  const formatTime = (date: string) => {
-    return new Date(date).toLocaleTimeString('es-CO', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
-  };
+  // «Comer aquí» llega como dine_in (E1) o como pickup con la marca del sitio.
+  const tipo = tipoEntregaEfectivo(order);
+  const mesa = mesaDelPedido(order);
+  const deliveryConfig = tipo === 'dine_in'
+    ? { ...DELIVERY_TYPE_CONFIG.dine_in, label: mesa ? t('comerAquiMesa', { mesa }) : t('comerAqui') }
+    : DELIVERY_TYPE_CONFIG[tipo];
+  const domicilio = esDomicilio(order.delivery_type);
+
+  // Fechas en la zona de la organización (regla de fechas: nunca la del navegador).
+  const formatTime = (date: string) => formatTimeInTz(date, timezone);
 
   const formatDate = (date: string) => {
-    const d = new Date(date);
-    const today = new Date();
-    const isToday = d.toDateString() === today.toDateString();
-    
-    if (isToday) {
+    if (toPlainDate(new Date(date), timezone) === todayInTz(timezone)) {
       return `Hoy ${formatTime(date)}`;
     }
-    return d.toLocaleDateString('es-CO', { 
-      day: '2-digit', 
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatDateTimeInTz(date, timezone, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
   };
 
   const getTimeSinceOrder = () => {
@@ -202,7 +204,7 @@ export function WebOrderCard({
         </div>
 
         {/* Dirección (si es delivery) */}
-        {order.delivery_type !== 'pickup' && order.delivery_address?.address && (
+        {domicilio && order.delivery_address?.address && (
           <div className="flex items-start gap-2 mb-3 text-sm text-muted-foreground dark:text-gray-400">
             <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 dark:text-gray-400" />
             <span className="break-words whitespace-normal dark:text-gray-300">{order.delivery_address.address}</span>
@@ -289,7 +291,7 @@ export function WebOrderCard({
             </Button>
           )}
 
-          {order.status === 'ready' && order.delivery_type !== 'pickup' && (
+          {order.status === 'ready' && domicilio && (
             <Button 
               size="sm" 
               className="flex-1"
@@ -301,7 +303,7 @@ export function WebOrderCard({
             </Button>
           )}
 
-          {(order.status === 'ready' && order.delivery_type === 'pickup') || order.status === 'in_delivery' ? (
+          {(order.status === 'ready' && !domicilio) || order.status === 'in_delivery' ? (
             <Button 
               size="sm" 
               className="flex-1"

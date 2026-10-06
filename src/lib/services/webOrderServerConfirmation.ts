@@ -5,8 +5,16 @@ import {
   avisarSiNoCuadra,
   facturaWebConImpuestoIncluido,
   lineasFacturaWebConImpuesto,
+  lineasVentaPedidoWeb,
   repartirTotalesPedidoWeb,
 } from './webOrderTotals';
+import {
+  confirmacionCompletaActiva,
+  confirmarPedidoWebCompleto,
+  erroresDeStock,
+  type ResultadoConfirmacionCompleta,
+} from './webOrderConfirmacionCompleta';
+import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { resolveLineTaxWith } from './taxResolverCore';
 import { resolveOrgCurrency } from './monedaOrganizacion';
 import { normalizarCodigoMoneda } from '@/lib/utils/moneda';
@@ -348,12 +356,16 @@ export const webOrderServerConfirmation = {
       throw new Error(`Pedido no encontrado: ${orderId}`);
     }
 
-    // 2. Idempotencia: si ya tiene sale_id, no duplicar
-    if (order.sale_id) {
+    // 2. Idempotencia: si ya tiene sale_id, no duplicar. Con la confirmación
+    //    completa (E2) se sigue: la RPC termina lo que falte (pedido huérfano
+    //    con venta sin líneas ni comanda) o responde que ya estaba completo.
+    if (order.sale_id && !confirmacionCompletaActiva()) {
       return {
         saleId: order.sale_id,
         stockErrors: [],
       };
+    } else {
+      // Sin venta, o confirmación completa activa: se confirma (idempotente).
     }
 
     // 3. Verificar que esté pagado
@@ -396,6 +408,23 @@ export const webOrderServerConfirmation = {
     if (error) {
       console.error('[webOrderServerConfirmation] No se pudo conservar la referencia de la pasarela:', error.message);
     }
+  },
+
+  /**
+   * Minutos de preparación para la comanda del pedido pagado en línea: los
+   * mismos defaults del paso 9 (restaurante 30 min; las demás verticales,
+   * 1 día de empacado).
+   */
+  async minutosPreparacion(
+    supabase: SupabaseClient,
+    order: Pick<WebOrder, 'organization_id'>,
+  ): Promise<number> {
+    const { data } = await supabase
+      .from('organizations')
+      .select('type_id')
+      .eq('id', order.organization_id)
+      .maybeSingle();
+    return (data?.type_id ?? 3) === 1 ? 30 : 24 * 60;
   },
 
   /**
@@ -473,81 +502,101 @@ export const webOrderServerConfirmation = {
     // usar organizations.created_by como fallback.
     const userId = await this.resolveUserId(supabase, order);
 
-    // ── 1. Crear la venta (una sola vez por pedido) ──
-    // fn_confirmar_pedido_web toma el pedido con FOR UPDATE: si otro camino
-    // (el botón «Confirmar pedido» de Pedidos online) ya creó la venta, la
-    // devuelve con creada=false y aquí no se crea nada más. Ver ADR-CC-011.
-    // La venta es source='web', fuera de caja POS, con la fecha del pedido.
+    // ── 1-3. Venta, líneas, stock (y, con E2, comanda) ──
     const saleDate = order.created_at || now;
-    const { data: confirmacion, error: saleError } = await supabase.rpc('fn_confirmar_pedido_web', {
-      p_order_id: order.id,
-      p_customer_id: customerId,
-      p_user_id: userId,
-      p_pagado: true,
-    });
-
-    if (saleError) throw new Error(`Error creando sale: ${saleError.message}`);
-    const { sale_id: saleId, creada } = (confirmacion ?? {}) as { sale_id?: string; creada?: boolean };
-    if (!saleId) throw new Error(`El pedido ${order.order_number} no devolvió venta`);
-
-    if (!creada) {
-      await this.conservarReferenciaPasarela(supabase, order, saleId);
-      return { saleId, stockErrors };
-    }
-
-    // ── 2. Crear sale_items ──
-    // El descuento de pedido (cupón/promoción del sitio web) se prorratea en
-    // las líneas: es la única forma de que factura y cartera lo vean. Ver
-    // `webOrderTotals.ts`.
+    let saleId: string;
+    let membresias: { membresias: MembresiaVendida[]; error: string | null };
+    let completo: ResultadoConfirmacionCompleta | null = null;
+    // El descuento de pedido (cupón/promoción del sitio) se prorratea en las
+    // líneas de venta y de factura: una sola regla (webOrderTotals.ts).
     const reparto = repartirTotalesPedidoWeb(order);
     avisarSiNoCuadra(reparto, order);
 
-    const saleItems = reparto.items.map(({ item, descuento, total }) => ({
-      sale_id: saleId,
-      product_id: item.product_id,
-      quantity: item.quantity,
-      unit_price: Number(item.unit_price) || 0,
-      total,
-      tax_amount: Number(item.tax_amount) || 0,
-      discount_amount: descuento,
-      notes: {
-        product_name: item.product_name,
-        from_web_order: order.order_number,
-        ...((item.modifiers?.length ?? 0) > 0 ? { modifiers: item.modifiers } : {}),
-        ...(item.notes ? { customer_notes: item.notes } : {}),
-      },
-    }));
-
-    if (saleItems.length > 0) {
-      const { error: itemsError } = await supabase
-        .from('sale_items')
-        .insert(saleItems);
-      if (itemsError) throw new Error(`Error creando sale_items: ${itemsError.message}`);
+    if (confirmacionCompletaActiva()) {
+      // Una sola transacción idempotente (fn_confirmar_pedido_web_completo):
+      // venta, líneas ya calculadas, stock y comanda de cocina. Sin marcar el
+      // estado: la factura va antes (trg_auto_journal_web_order).
+      completo = await confirmarPedidoWebCompleto(supabase, order, {
+        prepMin: await this.minutosPreparacion(supabase, order),
+        pagado: true,
+        customerId,
+        userId,
+        marcarConfirmado: false,
+        reparto,
+      });
+    } else {
+      // Interruptor apagado: camino de siempre (abajo).
     }
 
-    // ── 2.1. Membresías (docs/design/MEMBRESIAS-FASE-1-2.md §4, «Tienda web») ──
-    // El pago ya lo aprobó la pasarela: la base crea/activa las membresías de
-    // las líneas del pedido. Nunca lanza: la venta ya quedó ligada al pedido
-    // (`fn_confirmar_pedido_web`), y un error aquí dejaría el pedido a medias
-    // para siempre (un reintento devuelve creada=false). Ver la función.
-    const membresias = await activarMembresiasVentaWeb(supabase, saleId, order.order_number);
-
-    // ── 3. Stock: descuento con receta, liberar la reserva y vender seriales ──
-    // Una sola RPC (inventario B9, fn_pedido_web_confirmar_stock), la misma del botón «Confirmar
-    // pedido». Antes aquí se liberaba la reserva restando qty_reserved a mano (sin receta ni lote) y
-    // el evento de los seriales se insertaba con una columna inexistente. No bloquea la confirmación:
-    // los errores por línea vuelven en `errores`.
-    const { data: stockRes, error: stockRpcError } = await supabase.rpc('fn_pedido_web_confirmar_stock', {
-      p_order_id: order.id,
-      p_sale_id: saleId,
-      p_user_id: userId,
-    });
-    if (stockRpcError) {
-      stockErrors.push(`Stock del pedido: ${stockRpcError.message}`);
+    if (completo) {
+      if (!completo.sale_id) throw new Error(`El pedido ${order.order_number} no devolvió venta`);
+      saleId = completo.sale_id;
+      stockErrors.push(...erroresDeStock(completo.stock));
+      if (completo.ya_completo || completo.table_session_id) {
+        await this.conservarReferenciaPasarela(supabase, order, saleId);
+        return { saleId, stockErrors };
+      }
+      membresias = await activarMembresiasVentaWeb(supabase, saleId, order.order_number);
     } else {
-      const r = (stockRes ?? {}) as { errores?: string[]; seriales?: number };
-      stockErrors.push(...(r.errores ?? []));
-      if (r.seriales) console.log(`✅ ${r.seriales} seriales vendidos desde pedido web ${order.order_number}`);
+      // ── 1. Crear la venta (una sola vez por pedido) ──
+      // fn_confirmar_pedido_web toma el pedido con FOR UPDATE: si otro camino
+      // (el botón «Confirmar pedido» de Pedidos online) ya creó la venta, la
+      // devuelve con creada=false y aquí no se crea nada más. Ver ADR-CC-011.
+      // La venta es source='web', fuera de caja POS, con la fecha del pedido.
+      const { data: confirmacion, error: saleError } = await supabase.rpc('fn_confirmar_pedido_web', {
+        p_order_id: order.id,
+        p_customer_id: customerId,
+        p_user_id: userId,
+        p_pagado: true,
+      });
+
+      if (saleError) throw new Error(`Error creando sale: ${saleError.message}`);
+      const { sale_id: saleIdCreada, creada } = (confirmacion ?? {}) as { sale_id?: string; creada?: boolean };
+      if (!saleIdCreada) throw new Error(`El pedido ${order.order_number} no devolvió venta`);
+
+      if (!creada) {
+        await this.conservarReferenciaPasarela(supabase, order, saleIdCreada);
+        return { saleId: saleIdCreada, stockErrors };
+      }
+      saleId = saleIdCreada;
+
+      // ── 2. Crear sale_items ──
+      // El descuento de pedido (cupón/promoción del sitio web) se prorratea en
+      // las líneas: es la única forma de que factura y cartera lo vean. Ver
+      // `webOrderTotals.ts`.
+      const saleItems = lineasVentaPedidoWeb(order, reparto).map((l) => ({ sale_id: saleId, ...l }));
+
+      if (saleItems.length > 0) {
+        const { error: itemsError } = await supabase
+          .from('sale_items')
+          .insert(saleItems);
+        if (itemsError) throw new Error(`Error creando sale_items: ${itemsError.message}`);
+      }
+
+      // ── 2.1. Membresías (docs/design/MEMBRESIAS-FASE-1-2.md §4, «Tienda web») ──
+      // El pago ya lo aprobó la pasarela: la base crea/activa las membresías de
+      // las líneas del pedido. Nunca lanza: la venta ya quedó ligada al pedido
+      // (`fn_confirmar_pedido_web`), y un error aquí dejaría el pedido a medias
+      // para siempre (un reintento devuelve creada=false). Ver la función.
+      membresias = await activarMembresiasVentaWeb(supabase, saleId, order.order_number);
+
+      // ── 3. Stock: descuento con receta, liberar la reserva y vender seriales ──
+      // Una sola RPC (inventario B9, fn_pedido_web_confirmar_stock), la misma del botón «Confirmar
+      // pedido». Antes aquí se liberaba la reserva restando qty_reserved a mano (sin receta ni lote) y
+      // el evento de los seriales se insertaba con una columna inexistente. No bloquea la confirmación:
+      // los errores por línea vuelven en `errores`.
+      const { data: stockRes, error: stockRpcError } = await supabase.rpc('fn_pedido_web_confirmar_stock', {
+        p_order_id: order.id,
+        p_sale_id: saleId,
+        p_user_id: userId,
+      });
+      if (stockRpcError) {
+        stockErrors.push(`Stock del pedido: ${stockRpcError.message}`);
+      } else {
+        const r = (stockRes ?? {}) as { errores?: string[]; seriales?: number };
+        stockErrors.push(...(r.errores ?? []));
+        if (r.seriales) console.log(`✅ ${r.seriales} seriales vendidos desde pedido web ${order.order_number}`);
+      }
     }
 
     // ── 5. Crear factura de venta (invoice_sales + invoice_items) ──
@@ -555,7 +604,28 @@ export const webOrderServerConfirmation = {
     let invoiceNumber: string | undefined;
     let invoiceCurrency: string | null = null;
 
-    try {
+    // Reintento de la confirmación completa: si la venta ya tiene factura, se
+    // reutiliza (no se crea otra ni se consume otro consecutivo).
+    if (completo) {
+      const { data: facturaPrevia } = await supabase
+        .from('invoice_sales')
+        .select('id, number, currency')
+        .eq('organization_id', order.organization_id)
+        .eq('sale_id', saleId)
+        .neq('status', 'void')
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (facturaPrevia) {
+        invoiceId = facturaPrevia.id;
+        invoiceNumber = facturaPrevia.number ?? undefined;
+        invoiceCurrency = facturaPrevia.currency ?? null;
+      }
+    } else {
+      // Camino de siempre: la venta se acaba de crear y no tiene factura.
+    }
+
+    if (!invoiceId) try {
       invoiceNumber = await generateInvoiceNumberWithClient(supabase, order.organization_id, 'FACT');
 
       const { data: invoice, error: invoiceError } = await supabase
@@ -653,7 +723,24 @@ export const webOrderServerConfirmation = {
     // ── 6. Crear registro de pago (payments) ──
     let paymentId: string | undefined;
 
-    if (invoiceId) {
+    // Reintento de la confirmación completa con la factura reutilizada: si ya
+    // tiene su pago, no se crea otro (el del sitio ya se movió a la factura en
+    // la primera pasada y el paso de abajo no lo encontraría).
+    if (completo && invoiceId) {
+      const { data: pagoPrevio } = await supabase
+        .from('payments')
+        .select('id')
+        .eq('source', 'invoice_sales')
+        .eq('source_id', invoiceId)
+        .eq('status', 'completed')
+        .limit(1)
+        .maybeSingle();
+      if (pagoPrevio) paymentId = pagoPrevio.id;
+    } else {
+      // Camino de siempre: la factura es nueva y no tiene pago.
+    }
+
+    if (invoiceId && !paymentId) {
       try {
         // Verificar si ya existe un pago del webhook/website de la pasarela.
         // El website inserta el payment con status='paid', mientras que el ERP
@@ -813,7 +900,7 @@ export const webOrderServerConfirmation = {
     if (orgTypeId === 1) {
       // Restaurante: minutos
       estimatedReadyAt = new Date(Date.now() + 30 * 60000).toISOString();
-      if (order.delivery_type !== 'pickup') {
+      if (esDomicilio(order.delivery_type)) {
         estimatedDeliveryAt = new Date(Date.now() + 60 * 60000).toISOString();
       }
     } else {
@@ -821,7 +908,7 @@ export const webOrderServerConfirmation = {
       // Empacado: 1 día por defecto
       estimatedReadyAt = new Date(Date.now() + 24 * 60 * 60000).toISOString();
 
-      if (order.delivery_type !== 'pickup') {
+      if (esDomicilio(order.delivery_type)) {
         // Buscar tarifa de envío con estimated_transit_days
         let transitDays = 5; // default Colombia nacional
         try {
@@ -866,19 +953,51 @@ export const webOrderServerConfirmation = {
       }
     }
 
-    const { error: updateError } = await supabase
-      .from('web_orders')
-      .update({
-        sale_id: saleId,
-        status: 'confirmed',
-        confirmed_at: now,
-        estimated_ready_at: estimatedReadyAt,
-        ...(estimatedDeliveryAt ? { estimated_delivery_at: estimatedDeliveryAt } : {}),
-      })
-      .eq('id', order.id);
+    if (completo) {
+      // Confirmación completa (E2): el estado y los tiempos van por separado.
+      // El sitio ya marca 'confirmed' junto con payment_status='paid' antes de
+      // llamar a /auto-confirm, así que exigir 'pending' para todo dejaba el
+      // pedido pagado en línea sin hora estimada.
+      // a) Estado: solo avanza desde 'pending'; un reintento nunca retrocede
+      //    un pedido que ya está en preparing, ready o delivered.
+      const { error: estadoError } = await supabase
+        .from('web_orders')
+        .update({ sale_id: saleId, status: 'confirmed', confirmed_at: now })
+        .eq('id', order.id)
+        .eq('status', 'pending');
+      if (estadoError) {
+        console.error('Error actualizando el estado del web_order:', estadoError);
+      }
+      // b) Tiempos estimados: se escriben si faltan y el pedido sigue en
+      //    pending o confirmed (no se pisan los de un pedido ya avanzado).
+      const { error: tiemposError } = await supabase
+        .from('web_orders')
+        .update({
+          estimated_ready_at: estimatedReadyAt,
+          ...(estimatedDeliveryAt ? { estimated_delivery_at: estimatedDeliveryAt } : {}),
+        })
+        .eq('id', order.id)
+        .in('status', ['pending', 'confirmed'])
+        .is('estimated_ready_at', null);
+      if (tiemposError) {
+        console.error('Error guardando los tiempos estimados del web_order:', tiemposError);
+      }
+    } else {
+      // Camino de siempre: actualización incondicional, como antes.
+      const { error: updateError } = await supabase
+        .from('web_orders')
+        .update({
+          sale_id: saleId,
+          status: 'confirmed',
+          confirmed_at: now,
+          estimated_ready_at: estimatedReadyAt,
+          ...(estimatedDeliveryAt ? { estimated_delivery_at: estimatedDeliveryAt } : {}),
+        })
+        .eq('id', order.id);
 
-    if (updateError) {
-      console.error('Error actualizando web_order:', updateError);
+      if (updateError) {
+        console.error('Error actualizando web_order:', updateError);
+      }
     }
 
     return {

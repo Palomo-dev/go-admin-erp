@@ -10,10 +10,15 @@
 // Debajo del selector se dice siempre cuál se está aplicando y de dónde
 // viene («heredada de la organización» / «propia de la sucursal»), porque el
 // valor NULL por sí solo no le dice nada a quien configura.
+//
+// No está en el Figma del formulario de sucursal: va en el bloque Ubicación
+// con el mismo `FormField` + `Select` del kit que País, Departamento y Ciudad.
 // ============================================================
 
 import React, { useMemo } from 'react';
-import { GlobeAltIcon } from '@heroicons/react/24/outline';
+import { useTranslations } from 'next-intl';
+import { FormField } from '@/components/kit/FormField';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { TIMEZONE_OPTIONS } from '@/lib/utils/timezoneCatalog';
 import {
@@ -32,9 +37,14 @@ interface BranchTimezoneFieldProps {
   idPrefix?: string;
 }
 
-const SELECT_CLASS =
-  'select select-bordered w-full bg-gray-50 dark:bg-gray-700 dark:text-gray-100 ' +
-  'focus:ring-2 focus:ring-blue-500 transition-all duration-200';
+/**
+ * El `Select` de Radix no admite un ítem con valor `''`, que es lo que vale
+ * «heredar» (`INHERIT_TIMEZONE_VALUE`). En el control se representa con esta
+ * marca y se traduce de vuelta antes de llamar a `onChange`.
+ */
+const MARCA_HEREDAR = '__heredar__';
+const aControl = (v: string) => (v === INHERIT_TIMEZONE_VALUE ? MARCA_HEREDAR : v);
+const desdeControl = (v: string) => (v === MARCA_HEREDAR ? INHERIT_TIMEZONE_VALUE : v);
 
 export function BranchTimezoneField({
   value,
@@ -42,9 +52,9 @@ export function BranchTimezoneField({
   disabled = false,
   idPrefix = 'branch',
 }: BranchTimezoneFieldProps) {
+  const t = useTranslations('org.acceso.sucursales.formulario.zonaHoraria');
   const { timezone: orgTimezone } = useOrgTimezone();
   const selectId = `${idPrefix}-timezone`;
-  const helpId = `${idPrefix}-timezone-help`;
 
   const options = useMemo(
     () => buildBranchTimezoneOptions(orgTimezone, TIMEZONE_OPTIONS),
@@ -60,47 +70,39 @@ export function BranchTimezoneField({
     branchTimezone: current,
     organizationTimezone: orgTimezone,
   });
-  const origen =
-    effective.source === 'branch'
-      ? 'propia de la sucursal'
-      : effective.source === 'organization'
-        ? 'heredada de la organización'
-        : 'por defecto del sistema';
+  // Claves: «propia de la sucursal» / «heredada de la organización» / «por defecto del sistema».
+  const origen = t(`origen.${effective.source === 'branch' ? 'branch' : effective.source === 'organization' ? 'organization' : 'default'}`);
 
   return (
-    <div>
-      <label
-        htmlFor={selectId}
-        className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
-      >
-        <span className="inline-flex items-center gap-1.5">
-          <GlobeAltIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" aria-hidden="true" />
-          Zona horaria
-        </span>
-      </label>
-      <select
-        id={selectId}
-        name="timezone"
-        value={current}
-        disabled={disabled}
-        aria-describedby={helpId}
-        onChange={(e) =>
-          onChange(e.target.value === INHERIT_TIMEZONE_VALUE ? null : e.target.value)
-        }
-        className={SELECT_CLASS}
-      >
-        {options.map((option) => (
-          <option key={option.value || 'inherit'} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-        {hasCurrent && <option value={current}>{current}</option>}
-      </select>
-      <p id={helpId} className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-        Se aplica <strong>{effective.timezone}</strong> ({origen}). Las fechas de esta sucursal
-        se muestran e imprimen en esa zona, aunque quien las mire esté en otra.
-      </p>
-    </div>
+    <FormField
+      id={selectId}
+      etiqueta={t('etiqueta')}
+      ayuda={t('ayuda', { zona: effective.timezone, origen })}
+    >
+      {(campo) => (
+        <Select
+          name="timezone"
+          value={aControl(current)}
+          disabled={disabled}
+          onValueChange={(v) => {
+            const elegido = desdeControl(v);
+            onChange(elegido === INHERIT_TIMEZONE_VALUE ? null : elegido);
+          }}
+        >
+          <SelectTrigger id={campo.id} aria-describedby={campo['aria-describedby']} className="h-10 text-left">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="max-h-72">
+            {options.map((option) => (
+              <SelectItem key={option.value || 'inherit'} value={aControl(option.value)}>
+                {option.value === INHERIT_TIMEZONE_VALUE ? t('heredar', { zona: orgTimezone }) : option.label}
+              </SelectItem>
+            ))}
+            {hasCurrent && <SelectItem value={current}>{current}</SelectItem>}
+          </SelectContent>
+        </Select>
+      )}
+    </FormField>
   );
 }
 

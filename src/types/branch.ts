@@ -22,7 +22,8 @@ export interface Branch {
   tax_identification?: string;
   opening_hours?: OpeningHours;
   features?: BranchFeatures;
-  capacity?: number;
+  // Columna nullable: el formulario manda null cuando se vacía (undefined no la tocaría al editar).
+  capacity?: number | null;
   // Corrección QA Ronda 2: usar BranchType en vez de string para consistencia.
   // Admite null porque la columna es nullable y el código envía null al
   // normalizar el valor vacío del select.

@@ -15,6 +15,8 @@ import { EVENTO_CAMBIO_CRM, pedirCrm } from '@/components/crm/acciones/apiCrm';
 import { EntradaActividad } from '@/components/crm/actividades/pantalla/EntradaActividad';
 import type { EntradaFeed } from '@/components/crm/actividades/pantalla/actividadesPantallaLogica';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { DatosImportadosLead } from '@/components/crm/leads/DatosImportadosLead';
+import { tieneDatosImportados } from '@/lib/crm/importacionLeads/datosFicha';
 import type { LeadApi } from './leadsPantallaLogica';
 
 /**
@@ -111,10 +113,21 @@ export function LeadDetalleHoja({ lead, api, onCerrar, onCalificar, onAsignar, o
           {api.email && <li className="flex items-center gap-2"><Mail aria-hidden="true" className="size-4 text-fg-muted" strokeWidth={1.5} />{api.email}</li>}
           {api.phone && <li className="flex items-center gap-2"><Phone aria-hidden="true" className="size-4 text-fg-muted" strokeWidth={1.5} />{api.phone}</li>}
           {lead.documento && <li className="flex items-center gap-2"><Hash aria-hidden="true" className="size-4 text-fg-muted" strokeWidth={1.5} />{lead.documento}</li>}
-          {api.city && <li className="flex items-center gap-2"><MapPin aria-hidden="true" className="size-4 text-fg-muted" strokeWidth={1.5} />{api.city}</li>}
+          {(api.address || api.city) && (
+            <li className="flex items-start gap-2">
+              <MapPin aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-fg-muted" strokeWidth={1.5} />
+              <span>{[api.address, api.city].filter(Boolean).join(' · ')}</span>
+            </li>
+          )}
           {!api.email && !api.phone && !lead.documento && <li className="text-fg-muted">{tl('sinContacto')}</li>}
         </ul>
       </section>
+      {tieneDatosImportados(api.metadata_importacion, api.metadata_lead) && (
+        <section className="flex flex-col gap-2">
+          <h3 className={seccion}>{t('datosArchivo')}</h3>
+          <DatosImportadosLead importacion={api.metadata_importacion} lead={api.metadata_lead} compacto />
+        </section>
+      )}
       <section className="flex flex-col gap-2">
         <h3 className={seccion}>{t('calificacion')}</h3>
         <dl className="flex flex-col gap-1.5">

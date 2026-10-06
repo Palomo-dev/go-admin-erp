@@ -22819,7 +22819,8 @@
       "campoDe": "Champ pour la colonne {columna}",
       "multiple": "accepte plusieurs colonnes",
       "faltaNombre": "Affectez une colonne de nom : nom commercial, raison sociale ou contact.",
-      "faltaContacto": "Affectez une colonne de téléphone ou d'e-mail : sans eux, le lead ne peut pas être contacté."
+      "faltaContacto": "Affectez une colonne de téléphone ou d'e-mail : sans eux, le lead ne peut pas être contacté.",
+      "adicionales": "Colonnes sans champ correspondant : {n}. Elles sont enregistrées comme « Donnée supplémentaire » et visibles sur la fiche client. Choisissez « Ne pas importer » pour en écarter une."
     },
     "campos": {
       "idExterno": "ID externe",
@@ -22848,7 +22849,14 @@
       "horario": "Horaires de contact",
       "notas": "Notes",
       "etiquetas": "Étiquettes",
-      "rne": "Registre d'opposition (info)"
+      "rne": "Registre d'opposition (info)",
+      "pais": "Pays",
+      "cargo": "Fonction du contact",
+      "etapa": "Étape",
+      "fecha": "Date",
+      "telefonoAdicional": "Téléphone supplémentaire",
+      "correoAdicional": "E-mail supplémentaire",
+      "adicional": "Donnée supplémentaire (conservée telle quelle)"
     },
     "cabeceras": {
       "idExterno": "ID externe",
@@ -24388,7 +24396,8 @@
         "etiquetas": "Étiquettes",
         "sinEtiquetas": "Sans étiquettes",
         "actividad": "Activité récente",
-        "sinActividad": "Pas encore d'activité avec ce lead."
+        "sinActividad": "Pas encore d'activité avec ce lead.",
+        "datosArchivo": "Données du fichier"
       },
       "lote": {
         "titulo": "{n, plural, one {Qualifier # lead} other {Qualifier # leads}}",
@@ -25105,6 +25114,55 @@
         "sinResponsable": "Non attribué",
         "comision": "commission {pct} %",
         "proximo": "Prochain contact"
+      }
+    },
+    "datosImportados": {
+      "titulo": "Données d'import",
+      "descripcion": "Ce que le fichier contenait et qui n'a pas de champ propre sur la fiche.",
+      "adicionales": "Colonnes supplémentaires du fichier",
+      "descartados": "Valeurs non interprétées",
+      "descartadosAyuda": "Elles figuraient dans le fichier mais n'ont pas un format valide ; elles sont conservées telles quelles pour que vous puissiez les corriger.",
+      "origen": {
+        "lote": "Lot {lote}",
+        "archivo": "Fichier {archivo}",
+        "fila": "Ligne {fila}",
+        "idExterno": "ID externe {id}",
+        "importadoEn": "Importé le {fecha}"
+      },
+      "campos": {
+        "nombre": "Nom commercial",
+        "razonSocial": "Raison sociale",
+        "contacto": "Contact",
+        "cargo": "Fonction",
+        "nit": "Numéro fiscal",
+        "telefono": "Téléphone",
+        "telefonosAdicionales": "Autres téléphones",
+        "tipoTelefono": "Type de téléphone",
+        "correo": "E-mail",
+        "correosAdicionales": "Autres e-mails",
+        "direccion": "Adresse",
+        "barrio": "Quartier",
+        "ciudad": "Ville",
+        "departamento": "Département / région",
+        "pais": "Pays",
+        "zona": "Zone",
+        "sector": "Secteur",
+        "subsector": "Sous-secteur",
+        "prioridad": "Priorité",
+        "etapa": "Étape",
+        "plan": "Formule probable",
+        "valor": "Valeur estimée",
+        "valorOriginal": "Valeur dans le fichier",
+        "web": "Site web",
+        "fuentes": "Sources",
+        "fuentesTexto": "Source",
+        "horario": "Horaires de contact",
+        "verificacion": "Vérification",
+        "fechaVerificacion": "Date de vérification",
+        "fecha": "Date (fichier)",
+        "rneArchivo": "Registre anti-démarchage selon le fichier",
+        "notas": "Notes",
+        "etiquetas": "Étiquettes"
       }
     }
   },

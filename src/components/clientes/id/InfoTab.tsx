@@ -8,6 +8,8 @@ import { supabase } from '@/lib/supabase/config';
 import { Building2 } from 'lucide-react';
 import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { mensajeError, useFechasFicha } from './useFechasFicha';
+import { DatosImportadosLead } from '@/components/crm/leads/DatosImportadosLead';
+import { cargoImportado, departamentoImportado, tieneDatosImportados } from '@/lib/crm/importacionLeads/datosFicha';
 
 interface InfoTabProps {
   clienteId: string;
@@ -29,6 +31,9 @@ interface ClienteInfo {
   identification_type?: string | null;
   identification_number?: string | null;
   address?: string | null;
+  city?: string | null;
+  /** `importacion` y `lead` vienen del importador de leads (ver `datosImportadosDe`). */
+  metadata?: { importacion?: unknown; lead?: unknown } | null;
   fiscal_municipality_id?: string | number | null;
   fiscal_responsibilities?: string[] | null;
   dv?: number | null;
@@ -59,6 +64,7 @@ const uno = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ?
 
 export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
   const t = useTranslations('clientes.ficha');
+  const tImp = useTranslations('crm.datosImportados');
   const { instante } = useFechasFicha();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<{ mensaje: string | null; sinDatos?: boolean } | null>(null);
@@ -216,6 +222,12 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
   const fiscalResp = clienteInfo.fiscal_responsibilities || [];
 
   const isCompany = clienteInfo?.customer_type === 'company';
+  const importacion = clienteInfo.metadata?.importacion;
+  const leadMeta = clienteInfo.metadata?.lead;
+  // Empresa sin persona vinculada: el contacto del alta (p. ej. importado) vive en first/last_name.
+  const contactoPropio = isCompany && !primaryContact ? `${clienteInfo.first_name || ''} ${clienteInfo.last_name || ''}`.trim() : '';
+  const cargoPropio = contactoPropio ? cargoImportado(importacion, leadMeta) : null;
+  const departamento = municipalityState || departamentoImportado(importacion, leadMeta);
 
   return (
     <div className="space-y-6">
@@ -249,6 +261,13 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
                   {primaryContact.phone && (
                     <p className="text-sm text-gray-500 dark:text-gray-400">{primaryContact.phone}</p>
                   )}
+                </div>
+              )}
+
+              {contactoPropio && (
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.personaContacto')}</p>
+                  <p>{cargoPropio ? t('info.contactoConCargo', { nombre: contactoPropio, cargo: cargoPropio }) : contactoPropio}</p>
                 </div>
               )}
 
@@ -298,13 +317,18 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
               </div>
 
               <div>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{tImp('campos.ciudad')}</p>
+                <p>{clienteInfo.city || noEspecificado}</p>
+              </div>
+
+              <div>
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.municipio')}</p>
                 <p>{municipalityName || noEspecificado}</p>
               </div>
 
               <div>
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.estadoProvincia')}</p>
-                <p>{municipalityState || noEspecificado}</p>
+                <p>{departamento || noEspecificado}</p>
               </div>
 
               <div>
@@ -466,6 +490,19 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Datos del archivo de importación sin columna propia en la ficha */}
+      {tieneDatosImportados(importacion, leadMeta) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{tImp('titulo')}</CardTitle>
+            <CardDescription>{tImp('descripcion')}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DatosImportadosLead importacion={importacion} lead={leadMeta} />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Notas */}
       <Card>

@@ -35,6 +35,11 @@ export interface LeadApi {
   do_not_call?: boolean | null;
   avatar_url?: string | null;
   city?: string | null;
+  address?: string | null;
+  /** `metadata->importacion` (datos del archivo sin columna propia). */
+  metadata_importacion?: unknown;
+  /** `metadata->lead` (valor estimado; en un cliente ya existente, la fila importada). */
+  metadata_lead?: unknown;
 }
 
 export interface FiltrosLeads {

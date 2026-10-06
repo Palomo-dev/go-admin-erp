@@ -3703,7 +3703,8 @@
         "etiquetas": "Etiquetas",
         "sinEtiquetas": "Sin etiquetas",
         "actividad": "Actividad reciente",
-        "sinActividad": "Todavía no hay actividad con este lead."
+        "sinActividad": "Todavía no hay actividad con este lead.",
+        "datosArchivo": "Datos del archivo"
       },
       "lote": {
         "titulo": "{n, plural, one {Calificar # lead} other {Calificar # leads}}",
@@ -4420,6 +4421,55 @@
         "sinResponsable": "Sin asignar",
         "comision": "comisión {pct} %",
         "proximo": "Próximo contacto"
+      }
+    },
+    "datosImportados": {
+      "titulo": "Datos de la importación",
+      "descripcion": "Lo que trajo el archivo y no tiene un campo propio en la ficha.",
+      "adicionales": "Columnas adicionales del archivo",
+      "descartados": "Valores sin interpretar",
+      "descartadosAyuda": "Vinieron en el archivo pero no tienen un formato válido; se guardan tal cual para que puedas corregirlos.",
+      "origen": {
+        "lote": "Lote {lote}",
+        "archivo": "Archivo {archivo}",
+        "fila": "Fila {fila}",
+        "idExterno": "ID externo {id}",
+        "importadoEn": "Importado el {fecha}"
+      },
+      "campos": {
+        "nombre": "Nombre comercial",
+        "razonSocial": "Razón social",
+        "contacto": "Contacto",
+        "cargo": "Cargo",
+        "nit": "NIT",
+        "telefono": "Teléfono",
+        "telefonosAdicionales": "Otros teléfonos",
+        "tipoTelefono": "Tipo de teléfono",
+        "correo": "Correo",
+        "correosAdicionales": "Otros correos",
+        "direccion": "Dirección",
+        "barrio": "Barrio",
+        "ciudad": "Ciudad",
+        "departamento": "Departamento",
+        "pais": "País",
+        "zona": "Zona",
+        "sector": "Sector",
+        "subsector": "Subsector",
+        "prioridad": "Prioridad",
+        "etapa": "Etapa",
+        "plan": "Plan probable",
+        "valor": "Valor estimado",
+        "valorOriginal": "Valor en el archivo",
+        "web": "Sitio web",
+        "fuentes": "Fuentes",
+        "fuentesTexto": "Fuente",
+        "horario": "Horario de contacto",
+        "verificacion": "Verificación",
+        "fechaVerificacion": "Fecha de verificación",
+        "fecha": "Fecha (archivo)",
+        "rneArchivo": "RNE según el archivo",
+        "notas": "Notas",
+        "etiquetas": "Etiquetas"
       }
     }
   },
@@ -24520,7 +24570,8 @@
       "campoDe": "Campo para la columna {columna}",
       "multiple": "admite varias columnas",
       "faltaNombre": "Asigna una columna de nombre: comercial, razón social o contacto.",
-      "faltaContacto": "Asigna una columna de teléfono o de correo: sin ellos el lead no se puede contactar."
+      "faltaContacto": "Asigna una columna de teléfono o de correo: sin ellos el lead no se puede contactar.",
+      "adicionales": "Columnas sin campo propio: {n}. Se guardan como «Dato adicional» y se ven en la ficha del cliente. Elige «No importar» para descartar alguna."
     },
     "campos": {
       "idExterno": "ID externo",
@@ -24549,7 +24600,14 @@
       "horario": "Horario de contacto",
       "notas": "Notas",
       "etiquetas": "Etiquetas",
-      "rne": "RNE (informativo)"
+      "rne": "RNE (informativo)",
+      "pais": "País",
+      "cargo": "Cargo del contacto",
+      "etapa": "Etapa",
+      "fecha": "Fecha",
+      "telefonoAdicional": "Teléfono adicional",
+      "correoAdicional": "Correo adicional",
+      "adicional": "Dato adicional (se guarda tal cual)"
     },
     "cabeceras": {
       "idExterno": "ID externo",

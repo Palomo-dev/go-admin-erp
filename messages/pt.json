@@ -22819,7 +22819,8 @@
       "campoDe": "Campo para a coluna {columna}",
       "multiple": "aceita várias colunas",
       "faltaNombre": "Atribua uma coluna de nome: nome comercial, razão social ou contato.",
-      "faltaContacto": "Atribua uma coluna de telefone ou e-mail: sem eles o lead não pode ser contatado."
+      "faltaContacto": "Atribua uma coluna de telefone ou e-mail: sem eles o lead não pode ser contatado.",
+      "adicionales": "Colunas sem campo correspondente: {n}. São salvas como “Dado adicional” e aparecem na ficha do cliente. Escolha “Não importar” para descartar alguma."
     },
     "campos": {
       "idExterno": "ID externo",
@@ -22848,7 +22849,14 @@
       "horario": "Horário de contato",
       "notas": "Notas",
       "etiquetas": "Etiquetas",
-      "rne": "Registro de exclusão (info)"
+      "rne": "Registro de exclusão (info)",
+      "pais": "País",
+      "cargo": "Cargo do contato",
+      "etapa": "Etapa",
+      "fecha": "Data",
+      "telefonoAdicional": "Telefone adicional",
+      "correoAdicional": "E-mail adicional",
+      "adicional": "Dado adicional (salvo como está)"
     },
     "cabeceras": {
       "idExterno": "ID externo",
@@ -24388,7 +24396,8 @@
         "etiquetas": "Etiquetas",
         "sinEtiquetas": "Sem etiquetas",
         "actividad": "Atividade recente",
-        "sinActividad": "Ainda não há atividade com este lead."
+        "sinActividad": "Ainda não há atividade com este lead.",
+        "datosArchivo": "Dados do arquivo"
       },
       "lote": {
         "titulo": "{n, plural, one {Qualificar # lead} other {Qualificar # leads}}",
@@ -25105,6 +25114,55 @@
         "sinResponsable": "Sem responsável",
         "comision": "comissão {pct} %",
         "proximo": "Próximo contato"
+      }
+    },
+    "datosImportados": {
+      "titulo": "Dados da importação",
+      "descripcion": "O que o arquivo trouxe e não tem campo próprio na ficha.",
+      "adicionales": "Colunas adicionais do arquivo",
+      "descartados": "Valores não interpretados",
+      "descartadosAyuda": "Vieram no arquivo, mas não têm formato válido; são mantidos como estão para que você possa corrigi-los.",
+      "origen": {
+        "lote": "Lote {lote}",
+        "archivo": "Arquivo {archivo}",
+        "fila": "Linha {fila}",
+        "idExterno": "ID externo {id}",
+        "importadoEn": "Importado em {fecha}"
+      },
+      "campos": {
+        "nombre": "Nome fantasia",
+        "razonSocial": "Razão social",
+        "contacto": "Contato",
+        "cargo": "Cargo",
+        "nit": "Número fiscal",
+        "telefono": "Telefone",
+        "telefonosAdicionales": "Outros telefones",
+        "tipoTelefono": "Tipo de telefone",
+        "correo": "E-mail",
+        "correosAdicionales": "Outros e-mails",
+        "direccion": "Endereço",
+        "barrio": "Bairro",
+        "ciudad": "Cidade",
+        "departamento": "Estado / departamento",
+        "pais": "País",
+        "zona": "Zona",
+        "sector": "Setor",
+        "subsector": "Subsetor",
+        "prioridad": "Prioridade",
+        "etapa": "Etapa",
+        "plan": "Plano provável",
+        "valor": "Valor estimado",
+        "valorOriginal": "Valor no arquivo",
+        "web": "Site",
+        "fuentes": "Fontes",
+        "fuentesTexto": "Fonte",
+        "horario": "Horário de contato",
+        "verificacion": "Verificação",
+        "fechaVerificacion": "Data de verificação",
+        "fecha": "Data (arquivo)",
+        "rneArchivo": "Registro de não ligar segundo o arquivo",
+        "notas": "Notas",
+        "etiquetas": "Etiquetas"
       }
     }
   },

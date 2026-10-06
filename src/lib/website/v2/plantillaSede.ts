@@ -5,24 +5,25 @@
  * el template de ese tipo de negocio» («Aplicar una plantilla a una sede», «que la sede nazca con
  * estructura de restaurante»).
  *
- * No hay una segunda plantilla: se reutiliza el MISMO juego con que nace el sitio de una
- * organización —`PAGINAS_BASE_GIRO`, copia verificada de `public.create_default_pages` (la prueba
- * `plantillaSede.test.ts` lo compara bloque a bloque con la última migración)— y la misma
- * operación que «Restaurar páginas base» (`restaurarPaginasBase`), que arma las páginas, el menú
- * del encabezado y el grupo «Legales» del pie. Restaurante suma «Carta QR» (`PLANTILLAS_PAGINA`),
- * la página que se abre desde el código QR de la mesa.
+ * No hay una segunda plantilla: la sede usa la «Plantilla completa» de su giro
+ * (`construirSitioDePlantilla` de `plantillaCompleta.ts`, la fuente única): el juego de páginas
+ * `PAGINAS_BASE_GIRO` (copia verificada de `public.create_default_pages`; la prueba
+ * `plantillaSede.test.ts` lo compara con la última migración), Inicio con la estructura de la
+ * plantilla por defecto del giro, el encabezado y el pie del giro (`SHELL_POR_GIRO`) y sus menús.
+ * Restaurante suma «Carta QR» (`PLANTILLAS_PAGINA`), la página que se abre desde el QR de la mesa.
  *
- * Lo demás sale del sitio principal como en cualquier sede (`documentoSedeDesdeBase`): identidad,
- * tema, SEO y contenido quedan HEREDADOS campo a campo, y la composición del encabezado y el pie se
- * conserva. Los menús del principal no se copian: apuntarían a páginas que la sede no tiene.
+ * Identidad, tema, SEO y contenido salen del sitio principal como en cualquier sede
+ * (`documentoSedeDesdeBase`) y quedan HEREDADOS campo a campo: la plantilla se arma sin su estilo
+ * (`conEstilo: false`). Los menús del principal no se copian: apuntarían a páginas que la sede no tiene.
  *
  * Puro: sin React ni Supabase. Lo usan `siteDocumentService.crearSitio` (la sede nace con la
  * plantilla) y `plantillaSedeService` («Aplicar plantilla de <tipo>»).
  */
 import type { DocumentoSitio } from '@/lib/website/contrato/documentoSitio';
 import { documentoSedeDesdeBase } from './importadorLegacy';
-import { crearPaginaDesdePlantilla, restaurarPaginasBase } from '@/components/sitio-web/paginas/operacionesPagina';
+import { crearPaginaDesdePlantilla } from '@/components/sitio-web/paginas/operacionesPagina';
 import { giroDeTipoSede, plantillaPorId, type GenerarId, type Giro } from '@/components/sitio-web/paginas/plantillasPagina';
+import { construirSitioDePlantilla } from './plantillaCompleta';
 
 /** Tipos de sede que tienen plantilla (`BranchType`, los mismos que admite la RPC). */
 export const TIPOS_SEDE_CON_PLANTILLA = ['restaurant', 'hotel', 'retail', 'gym', 'transport', 'parking', 'services'] as const;
@@ -62,9 +63,7 @@ export function documentoPlantillaSede(
 ): DocumentoSitio | null {
   const giro = giroDeTipoSede(tipoSede);
   if (!giro) return null;
-  const r = restaurarPaginasBase(sedeSinPaginas(base), giro, generarId);
-  if (!r.ok) return null;
-  let documento = r.documento;
+  let documento = construirSitioDePlantilla(giro, sedeSinPaginas(base), generarId, { conEstilo: false });
   for (const extra of EXTRAS_POR_GIRO[giro] ?? []) {
     const plantilla = plantillaPorId(extra.plantilla);
     if (!plantilla || documento.paginas.some((p) => p.slug === plantilla.slug)) continue;

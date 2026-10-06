@@ -119,10 +119,10 @@ describe('documentoPlantillaSede', () => {
     // Encabezado con las páginas del menú; legales en el pie; Carta QR fuera del menú.
     const enc = d.menus.find((m) => m.id === d.shell.header.menuPrincipalId)!;
     expect(enc.items.map((i) => i.etiqueta)).toEqual(['Inicio', 'Menú', 'Pedir Online', 'Reservar Mesa', 'Nosotros', 'Contacto']);
-    expect(d.shell.footer.menuIds).toHaveLength(1);
-    expect(d.menus.find((m) => m.id === d.shell.footer.menuIds[0])!.nombre).toBe('Legales');
-    // Composición del encabezado del principal conservada; identidad y tema heredados.
-    expect(d.shell.header.opciones).toEqual({ cta: 'Reservar' });
+    // Pie y encabezado de la «Plantilla completa» del giro (SHELL_POR_GIRO de plantillaCompleta.ts).
+    expect(d.shell.footer.menuIds.map((id) => d.menus.find((m) => m.id === id)!.nombre)).toEqual(['Explora', 'Legales']);
+    expect(d.shell.header.opciones).toMatchObject({ header_cta_text: 'Reservar mesa', header_cta_url: '/reservas-mesa' });
+    // Identidad y tema heredados: la plantilla se arma sin su estilo.
     expect(d.identidad.nombre).toBeUndefined();
     expect(d.tema.colores.primario).toEqual({ mode: 'inherit' });
   });

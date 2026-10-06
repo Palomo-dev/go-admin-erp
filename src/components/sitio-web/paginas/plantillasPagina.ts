@@ -12,6 +12,7 @@
  */
 import type { PaginaSitio, SeccionSitio } from '@/lib/website/contrato/documentoSitio';
 import type { TipoMiniaturaSeccion } from '@/components/sitio-web/ui/SectionThumbnail';
+import { SECCIONES_PAGINA_CARTA_QR } from '@/lib/website/contrato/seccionesMesa';
 
 /** Giro del negocio según `organization_types` (ids verificados por MCP el 2026-10-06). */
 export type Giro = 'restaurante' | 'hotel' | 'tienda' | 'servicios' | 'gimnasio' | 'transporte' | 'parqueadero';
@@ -127,7 +128,9 @@ export const PLANTILLAS_PAGINA: readonly PlantillaPagina[] = [
     slug: 'carta-qr',
     miniatura: 'carta_destacada',
     giros: ['restaurante'],
-    secciones: [{ tipo: 'menu_full', variante: 'anchors', contenido: {} }],
+    // La Carta QR en la mesa (Figma 2032:75742, lámina 17): bienvenida de la mesa, servicio,
+    // carta QR, pedido, cuenta, valoración y horario. Encabezado y pie son globales.
+    secciones: SECCIONES_PAGINA_CARTA_QR.map((s) => ({ tipo: s.tipo, variante: s.variante, contenido: { ...s.contenido } })),
   },
   {
     id: 'reservas',

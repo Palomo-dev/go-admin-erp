@@ -37,7 +37,8 @@
  */
 import type { DocumentoSitio, ItemMenu, MenuSitio, PaginaSitio, SeccionSitio } from '@/lib/website/contrato/documentoSitio';
 import { construirCatalogo, plantillasDelGiro, type CatalogoPlantillas, type GiroCatalogo, type PlantillaCatalogo, type SeccionPlantilla } from '@/lib/website/contrato/catalogoPlantillas';
-import { construirPaginaBase, paginasBasePorGiro, type GenerarId, type Giro, type PaginaBase } from '@/components/sitio-web/paginas/plantillasPagina';
+import { construirPaginaBase, paginasBasePorGiro, plantillaPorId, type GenerarId, type Giro, type PaginaBase } from '@/components/sitio-web/paginas/plantillasPagina';
+import { VARIANTE_CARTA_QR, VARIANTE_PORTADA_MESA } from '@/lib/website/contrato/seccionesMesa';
 import { esInicio, esPaginaLegal, esPlantillaTienda } from '@/components/sitio-web/paginas/tipoPagina';
 import { TEMPLATE_PRESETS } from '@/lib/website/contrato/presetsPlantillas';
 import { aplicarEstiloPlantilla } from './usarPlantilla';
@@ -383,6 +384,8 @@ export function contenidoInicial(tipo: string, variante: string, c: ContextoSecc
 
   switch (tipo) {
     case 'restaurant_hero': {
+      // Bienvenida de la mesa (Carta QR): los textos por defecto del contrato, con {mesa}.
+      if (variante === VARIANTE_PORTADA_MESA) return { contenido: {}, visible: true };
       const bento = variante === 'split_bento';
       const tarjetas = [
         carta && { label: 'Carta', url: carta, image_url: fotos[1]?.url },
@@ -434,6 +437,8 @@ export function contenidoInicial(tipo: string, variante: string, c: ContextoSecc
     case 'menu_preview':
       return { contenido: { title: 'Nuestra carta', subtitle: 'Lo que más piden nuestros clientes' }, visible: true };
     case 'menu_full':
+      // La carta QR va sin título grande: arriba están la bienvenida y la barra de la mesa.
+      if (variante === VARIANTE_CARTA_QR) return { contenido: {}, visible: true };
       return { contenido: { title: 'Nuestra carta' }, visible: true };
     case 'reservation':
       return {
@@ -694,6 +699,18 @@ const PAGINAS_DEL_SHELL: Readonly<Record<string, PaginaBase>> = {
   },
 };
 
+/**
+ * Páginas que el giro suma al juego base aunque no estén en el menú. Restaurante: «Carta QR», la
+ * página que abre el QR de la mesa (Figma 2032:75742), con sus secciones de la lámina 17 (la
+ * plantilla de página `carta_qr`, que las toma del contrato `seccionesMesa.ts`).
+ */
+export function paginasExtraDelGiro(giro: Giro, yaEnElJuego: readonly PaginaBase[]): PaginaBase[] {
+  if (giro !== 'restaurante') return [];
+  const plantilla = plantillaPorId('carta_qr');
+  if (!plantilla || yaEnElJuego.some((b) => b.slug === plantilla.slug)) return [];
+  return [{ titulo: 'Carta QR', slug: plantilla.slug, tipo: plantilla.tipo, enMenu: false, secciones: plantilla.secciones }];
+}
+
 /** Páginas extra (por dirección) que piden los menús del pie y los botones de la lámina. */
 export function paginasQuePideElShell(shell: ShellPlantilla): string[] {
   const porMenu: Partial<Record<ClaveMenuPie, readonly string[]>> = {
@@ -875,7 +892,9 @@ export function armarPlantillaCompleta(
   const extras = paginasQuePideElShell(shell)
     .filter((slug) => !delGiro.some((b) => b.slug === slug))
     .map((slug) => PAGINAS_DEL_SHELL[slug]);
-  const juego: PaginaBase[] = [...delGiro, ...extras].filter((b) => !slugsConservados.has(b.slug));
+  const juego: PaginaBase[] = [...delGiro, ...extras, ...paginasExtraDelGiro(giro, [...delGiro, ...extras])].filter(
+    (b) => !slugsConservados.has(b.slug),
+  );
   const slugs = new Set([...slugsConservados, ...juego.map((b) => b.slug)]);
   const ruta = (slug: string): string | null => (slugs.has(slug) ? (slug === 'home' ? '/' : `/${slug}`) : null);
   const cta = botonResuelto(shell.encabezado.boton, ruta);

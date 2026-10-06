@@ -7,6 +7,7 @@ import { cn } from '@/utils/Utils';
 import { Badge } from '@/components/ui/badge';
 import { AvatarIniciales } from '@/components/kit/AvatarIniciales';
 import { FormField } from '@/components/kit/FormField';
+import { PhoneInput } from '@/components/kit/PhoneInput';
 import { PanelAdaptable } from '@/components/kit/PanelAdaptable';
 import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { clasesBoton } from '@/components/kit/botonClases';
@@ -257,7 +258,7 @@ export function CustomerLinkPicker(props: CustomerLinkPickerProps) {
             <FormField etiqueta={t('numero')}><input value={crear.identification_number} onChange={(e) => setCrear((c) => ({ ...c, identification_number: e.target.value }))} className={CLASE_CAMPO} /></FormField>
           </div>
           <FormField etiqueta={t('correo')} error={errCrear('email')}><input type="email" value={crear.email} onChange={(e) => setCrear((c) => ({ ...c, email: e.target.value }))} className={CLASE_CAMPO} /></FormField>
-          <FormField etiqueta={t('telefono')}><input type="tel" value={crear.phone} onChange={(e) => setCrear((c) => ({ ...c, phone: e.target.value }))} className={CLASE_CAMPO} /></FormField>
+          <FormField etiqueta={t('telefono')}>{(c) => <PhoneInput id={c.id} tamano="md" value={crear.phone} onChange={(v) => setCrear((x) => ({ ...x, phone: v }))} aria-describedby={c['aria-describedby']} />}</FormField>
           {props.onMasDatos && (
             <button type="button" onClick={props.onMasDatos} className="inline-flex items-center gap-1 self-start text-[13px] font-medium text-brand-deep hover:underline">
               {t('masDatos')}

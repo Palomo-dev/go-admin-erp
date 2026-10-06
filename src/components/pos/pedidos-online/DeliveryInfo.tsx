@@ -38,7 +38,7 @@ const DELIVERY_TYPE_CONFIG = {
   delivery_own: { label: 'Delivery propio', icon: Bike, color: 'text-green-600 dark:text-green-400' },
   delivery_third_party: { label: 'Delivery terceros', icon: Truck, color: 'text-purple-600 dark:text-purple-400' },
   // Texto en pantalla: `pedidoWeb.comerAqui` / `comerAquiMesa` (i18n).
-  dine_in: { label: 'Comer aquí', icon: UtensilsCrossed, color: 'text-amber-600 dark:text-amber-400' },
+  dine_in: { label: 'Comer aquí', icon: UtensilsCrossed, color: 'text-fg-secondary' },
 };
 
 export function DeliveryInfo({

@@ -12,9 +12,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { constructWebhookEvent } from '@/lib/stripe/server'
 import { processSuccessfulPayment } from '@/lib/stripe/paymentService'
 import { StripeEventType } from '@/lib/stripe/types'
-import { createClient } from '@supabase/supabase-js'
 import { getServiceClient } from '@/lib/supabase/server-service'
 import { aplicarCheckoutDePlan } from '@/lib/stripe/aplicarCheckoutDePlan'
+import { periodoSuscripcionISO } from '@/lib/stripe/periodoSuscripcion'
 import type Stripe from 'stripe'
 
 /** Campos de la factura de Stripe que se leen (en las versiones nuevas de la API ya no están todos tipados). */
@@ -26,8 +26,6 @@ type FacturaStripe = {
   total?: number
 }
 
-/** Periodo de la suscripción (en «basil» y posteriores vive en los ítems; aquí se lee donde esté). */
-type PeriodoSuscripcion = { current_period_start: number; current_period_end: number }
 
 /**
  * POST /api/stripe/webhook
@@ -245,15 +243,9 @@ async function updateSubscriptionInDatabase(
   action: 'created' | 'updated' | 'deleted'
 ) {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    })
+    // Service role estricto: desde 20261006041343 la escritura de subscriptions está cerrada
+    // para anon/authenticated, así que degradar a la anon key fallaría en silencio.
+    const supabase = getServiceClient()
 
     // Obtener organization_id del metadata
     const organizationId = parseInt(subscription.metadata?.organizationId || '0')
@@ -276,6 +268,7 @@ async function updateSubscriptionInDatabase(
 
       if (error) {
         console.error('❌ Error actualizando suscripción cancelada:', error)
+        throw new Error(`No se pudo marcar como cancelada la suscripción ${subscription.id}: ${error.message}`)
       } else {
         console.log('✅ Suscripción marcada como cancelada en BD')
         // Desactivar módulos no-core al cancelar suscripción
@@ -311,8 +304,8 @@ async function updateSubscriptionInDatabase(
         plan_id: planId,
         status: subscription.status,
         trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
-        current_period_start: new Date((subscription as unknown as PeriodoSuscripcion).current_period_start * 1000).toISOString(),
-        current_period_end: new Date((subscription as unknown as PeriodoSuscripcion).current_period_end * 1000).toISOString(),
+        current_period_start: periodoSuscripcionISO(subscription).inicio,
+        current_period_end: periodoSuscripcionISO(subscription).fin,
         cancel_at_period_end: subscription.cancel_at_period_end,
         cancel_at: subscription.cancel_at ? new Date(subscription.cancel_at * 1000).toISOString() : null,
         updated_at: new Date().toISOString(),
@@ -339,6 +332,7 @@ async function updateSubscriptionInDatabase(
 
       if (error) {
         console.error('❌ Error actualizando suscripción en BD:', error)
+        throw new Error(`No se pudo guardar la suscripción ${subscription.id}: ${error.message}`)
       } else {
         console.log('✅ Suscripción actualizada en BD')
       }
@@ -358,7 +352,9 @@ async function updateSubscriptionInDatabase(
       }
     }
   } catch (error: unknown) {
+    // No se traga: el webhook responde 500 y Stripe reintenta el evento.
     console.error('❌ Error en updateSubscriptionInDatabase:', error)
+    throw error
   }
 }
 
@@ -367,12 +363,7 @@ async function updateSubscriptionInDatabase(
  */
 async function notifyPaymentFailed(stripeSubscriptionId: string, invoiceId: string) {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    })
+    const supabase = getServiceClient()
 
     // Obtener organization_id desde la suscripción
     const { data: sub } = await supabase
@@ -434,12 +425,7 @@ async function notifyPaymentFailed(stripeSubscriptionId: string, invoiceId: stri
  */
 async function deactivateNonCoreModules(organizationId: number) {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    })
+    const supabase = getServiceClient()
 
     // Obtener módulos core para excluirlos
     const { data: coreModules } = await supabase
@@ -483,12 +469,7 @@ async function deactivateNonCoreModules(organizationId: number) {
  */
 async function processSellerCommission(invoice: FacturaStripe, eventId: string) {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    })
+    const supabase = getServiceClient()
 
     // 1. Idempotencia: verificar si ya existe una comisión para este invoice
     const { data: existing } = await supabase
@@ -582,15 +563,7 @@ async function processSellerCommission(invoice: FacturaStripe, eventId: string) 
  */
 async function handleAiCreditPurchaseCompleted(checkoutSession: Stripe.Checkout.Session) {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
+    const supabase = getServiceClient()
 
     const organizationId = parseInt(checkoutSession.metadata?.organizationId || '0', 10);
     const creditsAmount = parseInt(checkoutSession.metadata?.creditsAmount || '0', 10);
@@ -670,15 +643,7 @@ async function handleAiCreditPurchaseCompleted(checkoutSession: Stripe.Checkout.
  */
 async function handleAddonSubscriptionCompleted(checkoutSession: Stripe.Checkout.Session) {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
+    const supabase = getServiceClient()
 
     const organizationId = parseInt(checkoutSession.metadata?.organizationId || '0', 10);
     const addonType = checkoutSession.metadata?.addonType;
@@ -700,9 +665,8 @@ async function handleAddonSubscriptionCompleted(checkoutSession: Stripe.Checkout
     const { stripe } = await import('@/lib/stripe/server');
     if (subscriptionId && stripe) {
       try {
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId) as unknown as PeriodoSuscripcion;
-        currentPeriodStart = new Date(subscription.current_period_start * 1000).toISOString();
-        currentPeriodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        ({ inicio: currentPeriodStart, fin: currentPeriodEnd } = periodoSuscripcionISO(subscription));
       } catch (retrieveErr: unknown) {
         console.warn('⚠️ No se pudo obtener la suscripción de Stripe:', retrieveErr instanceof Error ? retrieveErr.message : String(retrieveErr));
       }

@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { cn } from '@/utils/Utils';
 import { FormField } from '@/components/kit';
 import { Input } from '@/components/ui/input';
+import { PhoneInput } from '@/components/kit/PhoneInput';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 /**
@@ -155,7 +156,7 @@ export function EntregaCobro(p: EntregaCobroProps) {
               <Input id={`${id}-ciudad`} value={p.ciudad} onChange={(e) => p.onCiudad(e.target.value)} />
             </FormField>
             <FormField etiqueta={t('telefono')}>
-              <Input id={`${id}-telefono`} type="tel" inputMode="tel" value={p.telefono} onChange={(e) => p.onTelefono(e.target.value)} />
+              <PhoneInput id={`${id}-telefono`} value={p.telefono} onChange={p.onTelefono} />
             </FormField>
           </div>
           <FormField etiqueta={t('contacto')}>

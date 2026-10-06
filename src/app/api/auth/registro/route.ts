@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { checkRateLimits, getClientIp } from '@/lib/security/rateLimit';
 import { getRateLimitStore } from '@/lib/security/rateLimitStore';
@@ -71,7 +71,8 @@ export async function POST(request: Request) {
     if (errExiste) throw errExiste;
 
     if (existe) {
-      await enviarAvisoCuentaExistente(correo, origin, idioma);
+      // El correo sale después de responder: el formulario no espera al SMTP.
+      after(() => enviarAvisoCuentaExistente(correo, origin, idioma).then(() => undefined));
       return NextResponse.json({ ok: true });
     }
 
@@ -92,7 +93,7 @@ export async function POST(request: Request) {
     if (errCrear || !creado.user) {
       // Carrera con otro registro del mismo correo: se responde igual.
       if (/already|registered|exists/i.test(errCrear?.message ?? '')) {
-        await enviarAvisoCuentaExistente(correo, origin, idioma);
+        after(() => enviarAvisoCuentaExistente(correo, origin, idioma).then(() => undefined));
         return NextResponse.json({ ok: true });
       }
       throw errCrear ?? new Error('sin usuario');
@@ -114,12 +115,18 @@ export async function POST(request: Request) {
     );
     if (errPerfil) console.warn('[registro] No se pudo crear el perfil (se crea al confirmar):', errPerfil.message);
 
-    const { error: errCorreo } = await clienteAnonimoServidor().auth.resend({
-      type: 'signup',
-      email: correo,
-      options: origin ? { emailRedirectTo: `${origin}/auth/signup/organizacion` } : undefined,
+    // La cuenta ya existe: se responde ya y el correo de confirmación sale después.
+    // Esperar al SMTP dejaba el botón girando más de un minuto aunque todo saliera bien.
+    after(async () => {
+      const inicio = Date.now();
+      const { error: errCorreo } = await clienteAnonimoServidor().auth.resend({
+        type: 'signup',
+        email: correo,
+        options: origin ? { emailRedirectTo: `${origin}/auth/signup/organizacion` } : undefined,
+      });
+      if (errCorreo) console.error('[registro] No se pudo enviar el correo de confirmación:', errCorreo.status ?? '', errCorreo.message);
+      else console.info(`[registro] Correo de confirmación enviado en ${Date.now() - inicio} ms`);
     });
-    if (errCorreo) console.error('[registro] No se pudo enviar el correo de confirmación:', errCorreo.status ?? '', errCorreo.message);
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('[registro] Error inesperado:', err instanceof Error ? err.message : err);

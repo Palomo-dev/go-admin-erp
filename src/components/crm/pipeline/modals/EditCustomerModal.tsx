@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PhoneInput } from "@/components/ui/phone-input";
+import { PhoneInput } from "@/components/kit/PhoneInput";
 import { telefonoOpcionalValido } from "@/lib/utils/telefono";
 import { FileText } from "lucide-react";
 

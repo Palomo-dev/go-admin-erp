@@ -21,6 +21,7 @@
  */
 
 import type Stripe from 'stripe';
+import { periodoSuscripcionISO } from '@/lib/stripe/periodoSuscripcion';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type ResultadoCheckoutDePlan =
@@ -91,8 +92,7 @@ export async function aplicarCheckoutDePlan(
     trial_end?: number | null;
     items?: { data?: Periodo[] };
   };
-  // Desde las versiones «basil» de la API el periodo vive en los ítems.
-  const periodo: Periodo = suscripcion.current_period_start ? suscripcion : suscripcion.items?.data?.[0] ?? {};
+  const periodo = periodoSuscripcionISO(suscripcion);
 
   const ahora = new Date().toISOString();
   const datos = {
@@ -102,8 +102,8 @@ export async function aplicarCheckoutDePlan(
     stripe_customer_id: customerId,
     status: suscripcion.status,
     billing_period: billingPeriod,
-    current_period_start: fecha(periodo.current_period_start) ?? ahora,
-    current_period_end: fecha(periodo.current_period_end),
+    current_period_start: periodo.inicio ?? ahora,
+    current_period_end: periodo.fin,
     trial_start: fecha(suscripcion.trial_start),
     trial_end: fecha(suscripcion.trial_end),
     cancel_at_period_end: false,

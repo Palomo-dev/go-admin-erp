@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { nitCheckDigit } from '@/lib/services/customers/customerPayload';
 import { CampoNumero } from '../CampoNumero';
 import { FormField } from '../FormField';
+import { PhoneInput } from '../PhoneInput';
 import { SegmentedControl } from '../SegmentedControl';
 import { useKitT } from '../useIdiomaKit';
 import {
@@ -175,7 +176,9 @@ export function FormularioRapidoTercero<T>({ variante, texto, onCrear, onCreado,
           <Input type="email" value={datos.correo} maxLength={150} onChange={(e) => cambiar({ correo: e.target.value })} className="h-10" />
         </FormField>
         <FormField etiqueta={t('documentoEdicion.tercero.telefono')}>
-          <Input type="tel" value={datos.telefono} maxLength={30} onChange={(e) => cambiar({ telefono: e.target.value })} className="h-10" />
+          {(c) => (
+            <PhoneInput id={c.id} tamano="md" value={datos.telefono} onChange={(v) => cambiar({ telefono: v })} aria-describedby={c['aria-describedby']} />
+          )}
         </FormField>
       </div>
       {variante === 'proveedor' && (

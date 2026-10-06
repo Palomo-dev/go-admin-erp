@@ -21,6 +21,12 @@ jest.mock('@/lib/supabase/admin', () => ({
 const resend = jest.fn(async () => ({ error: null }));
 jest.mock('@supabase/supabase-js', () => ({ createClient: () => ({ auth: { resend } }) }));
 const avisoExistente = jest.fn(async () => true);
+// `after()` solo corre dentro de una petición real; aquí se ejecuta en el acto para poder
+// comprobar que el correo sale (la ruta ya no lo espera antes de responder).
+jest.mock('next/server', () => {
+  const real = jest.requireActual('next/server');
+  return { ...real, after: (tarea: () => unknown) => { void tarea(); } };
+});
 jest.mock('@/lib/auth/avisoCuentaExistente', () => ({ enviarAvisoCuentaExistente: (...a: unknown[]) => avisoExistente(...(a as [])) }));
 
 import { paisDesdeNavegador, alfa2DeAlfa3 } from '@/lib/utils/paisNavegador';

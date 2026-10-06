@@ -4983,7 +4983,10 @@
         "recibidoInsuficiente": "Les espèces reçues ne couvrent pas le montant."
       },
       "retenciones": "Retenues",
-      "netoPagado": "Net {neto} · Payé {pagado}"
+      "netoPagado": "Net {neto} · Payé {pagado}",
+      "importe": "Montant",
+      "recibidoCorto": "Reçu",
+      "cambioValor": "Monnaie : {monto}"
     },
     "vista": {
       "etiqueta": "Affichage",
@@ -29367,7 +29370,7 @@
         "pais": "Pays",
         "obligatorio": "Ce champ est obligatoire.",
         "correoInvalido": "Saisissez un e-mail valide.",
-        "telefonoInvalido": "Saisissez le téléphone avec l'indicatif du pays.",
+        "telefonoInvalido": "Vérifiez le numéro : il est incomplet ou ne correspond pas au pays choisi.",
         "datosRealesTitulo": "Le registraire exige des données réelles",
         "datosRealesTexto": "Vous pourriez recevoir un e-mail pour les confirmer. Le domaine vous appartient : vous pouvez le transférer vers un autre fournisseur quand vous le souhaitez.",
         "atras": "Retour",
@@ -31984,6 +31987,31 @@
         "cobrados": "{n, plural, one {# commande encaissée} other {# commandes encaissées}}",
         "pendientes": "{n, plural, one {# commande non encaissée} other {# commandes non encaissées}} : {pedidos}",
         "error": "Impossible d’encaisser les commandes sélectionnées."
+      },
+      "entraACaja": "Entre dans la caisse {caja} · {sede} · ouverte",
+      "sinCajaAcciones": "Le site n'a pas de caisse ouverte. La commande reste prête et non encaissée.",
+      "registrarPago": "Enregistrer un paiement",
+      "marcarEntregado": "Marquer comme livrée",
+      "dialogo": {
+        "tituloEntregar": "Encaisser et livrer {numero}",
+        "titulo": "Encaisser {numero}",
+        "descripcionEntregar": "Entre dans la caisse {caja} · {sede} · ouverte. L'encaissement crée la vente et la facture, et la commande passe à Livrée.",
+        "descripcion": "Entre dans la caisse {caja} · {sede} · ouverte. L'encaissement enregistre le paiement et la facture.",
+        "descripcionSinCaja": "Une fois encaissée, la commande est marquée comme payée."
+      },
+      "exitoEntregar": "{numero} encaissée et livrée · {monto} {metodo} · Caisse {caja} de {sede}",
+      "exito": "{numero} encaissée · {monto} {metodo} · Caisse {caja} de {sede}",
+      "metodos": {
+        "cash": "Espèces",
+        "card": "Carte",
+        "transfer": "Virement",
+        "qr": "QR"
+      },
+      "metodoEn": {
+        "cash": "en espèces",
+        "card": "par carte",
+        "transfer": "par virement",
+        "qr": "par QR"
       }
     },
     "tipoCorto": {
@@ -31998,6 +32026,55 @@
       "titulo": "Nouvelle commande web {numero} · {entrega}",
       "contenido": "Total {total}",
       "contenidoSede": "Total {total} · {sede}"
+    },
+    "detalle": {
+      "recibido": "Reçue {fecha}",
+      "origen": "Origine : {canal} · {numero}",
+      "porCobrar": "À encaisser en caisse",
+      "reservaActiva": "Réservation de stock active",
+      "volver": "Retour",
+      "verVenta": "Voir la vente POS",
+      "canales": {
+        "website": "Web",
+        "mobile_app": "App",
+        "whatsapp": "WhatsApp",
+        "phone": "Téléphone"
+      },
+      "avisoStock": "Commande confirmée, mais le stock de la recette n'a pas suffi : {detalle}. Le ticket cuisine est parti ; ajustez l'inventaire ou prévenez le client."
+    },
+    "notas": {
+      "notaCocina": "Note pour la cuisine : {nota}",
+      "paraCocina": "Pour la cuisine",
+      "paraCocinaComanda": "Pour la cuisine · imprimé sur le ticket cuisine #{comanda}"
+    },
+    "pagos": {
+      "titulo": "Paiements",
+      "estado": "Statut",
+      "porCobrar": "À encaisser",
+      "pagado": "Payée",
+      "parcial": "Paiement partiel",
+      "reembolsado": "Remboursée",
+      "fallido": "Paiement échoué",
+      "alEntregar": "à la livraison",
+      "sinCobrar": "non encaissé",
+      "cajaAbierta": "Caisse {caja} · {sede} · ouverte",
+      "sinCaja": "Aucune caisse ouverte sur le site",
+      "sinPagos": "Aucun paiement enregistré"
+    },
+    "documentos": {
+      "titulo": "Documents et traçabilité",
+      "venta": "Vente POS",
+      "factura": "Facture de vente",
+      "comanda": "Ticket cuisine",
+      "origen": "Origine",
+      "caja": "Caisse",
+      "seCreaAlConfirmar": "créée à la confirmation",
+      "seEmiteAlCobrar": "émise à l'encaissement",
+      "sinComanda": "sans ticket cuisine",
+      "origenValor": "{canal} · {numero}",
+      "comandaValor": "#{id}",
+      "cajaValor": "Caisse {caja} · {sede} · ouverte",
+      "sinCaja": "aucune caisse ouverte"
     }
   }
 }

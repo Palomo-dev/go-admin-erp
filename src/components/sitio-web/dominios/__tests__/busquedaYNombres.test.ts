@@ -83,6 +83,14 @@ describe('titular y contacto del registrador', () => {
       telefono: 'telefonoInvalido',
       ciudad: 'obligatorio',
     });
+    // Con indicativo pero incompleto para el país: libphonenumber lo rechaza.
+    expect(validarTitular({ ...titular, telefono: '+57 300 12' })).toEqual({ telefono: 'telefonoInvalido' });
+    // Lo que entrega el PhoneInput en formato E.164 también vale.
+    expect(validarTitular({ ...titular, telefono: '+573000000000' })).toEqual({});
+  });
+
+  test('el teléfono llega al registrador en E.164, sin espacios', () => {
+    expect(contactoRegistrador(titular).phone).toBe('+573000000000');
   });
 
   test('arma nombre y apellido para el registrador', () => {

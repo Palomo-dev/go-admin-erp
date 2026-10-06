@@ -91,6 +91,13 @@ export interface RegistrarPagoDialogProps {
   /** Campos propios del dominio (cuota, cuenta bancaria de destino). */
   camposExtra?: ReactNode;
   textoConfirmar?: string;
+  /**
+   * Cobro del total en caja (Figma `1982:946157`, «Cobrar y entregar» de
+   * Pedidos online): método primero, importe fijo (el saldo), «Recibido» con
+   * el cambio debajo; sin montos rápidos, fecha (es hoy) ni notas. La
+   * referencia solo aparece si el método la exige.
+   */
+  cobroTotal?: boolean;
   className?: string;
 }
 
@@ -125,6 +132,7 @@ export function RegistrarPagoDialog({
   reparto,
   camposExtra,
   textoConfirmar,
+  cobroTotal = false,
   className,
 }: RegistrarPagoDialogProps) {
   const t = useKitT();
@@ -168,6 +176,31 @@ export function RegistrarPagoDialog({
   };
 
   const tituloFinal = titulo ?? t(`pago.titulo.${destino}`);
+
+  const campoMetodo = (
+    <FormField etiqueta={t('pago.metodo')} obligatorio error={textoError('metodo')}>
+      {(campo) => (
+        <SelectorMetodoPago
+          etiqueta={t('pago.metodo')}
+          metodos={metodos}
+          valor={valor.metodo}
+          onValorChange={(codigo) => cambiar({ metodo: codigo })}
+          className={campo['aria-invalid'] ? 'rounded-lg ring-1 ring-danger' : undefined}
+        />
+      )}
+    </FormField>
+  );
+
+  const campoReferencia = (
+    <input
+      type="text"
+      value={valor.referencia}
+      maxLength={120}
+      onChange={(e) => cambiar({ referencia: e.target.value })}
+      placeholder={t('pago.referenciaPlaceholder')}
+      className={cn(FECHA_CLASES, 'placeholder:text-fg-muted')}
+    />
+  );
 
   return (
     <PanelAdaptable
@@ -231,16 +264,19 @@ export function RegistrarPagoDialog({
 
       {reparto}
 
-      <FormField etiqueta={t('pago.monto')} obligatorio error={textoError('monto')}>
+      {cobroTotal && campoMetodo}
+
+      <FormField etiqueta={cobroTotal ? t('pago.importe') : t('pago.monto')} obligatorio error={textoError('monto')}>
         <CampoNumero
           prefijo={simbolo}
           valor={valor.monto}
           decimales={decimales}
           minimo={0}
+          readOnly={cobroTotal}
           onValorChange={(v) => cambiar({ monto: v })}
         />
       </FormField>
-      {montosRapidos(saldo, decimales).length > 0 && (
+      {!cobroTotal && montosRapidos(saldo, decimales).length > 0 && (
         <div role="group" aria-label={t('pago.montosRapidos')} className="-mt-2 flex flex-wrap gap-2">
           {montosRapidos(saldo, decimales).map((m) => (
             <button
@@ -259,17 +295,7 @@ export function RegistrarPagoDialog({
         </div>
       )}
 
-      <FormField etiqueta={t('pago.metodo')} obligatorio error={textoError('metodo')}>
-        {(campo) => (
-          <SelectorMetodoPago
-            etiqueta={t('pago.metodo')}
-            metodos={metodos}
-            valor={valor.metodo}
-            onValorChange={(codigo) => cambiar({ metodo: codigo })}
-            className={campo['aria-invalid'] ? 'rounded-lg ring-1 ring-danger' : undefined}
-          />
-        )}
-      </FormField>
+      {!cobroTotal && campoMetodo}
 
       {bloqueadoPorCaja && avisoCaja && (
         <div role="note" className="flex flex-col gap-2 rounded-lg border border-line-warning bg-warning-subtle px-3 py-2.5 text-sm text-warning-text sm:flex-row sm:items-center">
@@ -285,7 +311,17 @@ export function RegistrarPagoDialog({
         </div>
       )}
 
-      {esEfectivo && !bloqueadoPorCaja && (
+      {cobroTotal && esEfectivo && !bloqueadoPorCaja && (
+        <FormField
+          etiqueta={t('pago.recibidoCorto')}
+          error={textoError('recibido')}
+          ayuda={cambio === null ? undefined : t('pago.cambioValor', { monto: formatear(cambio) })}
+        >
+          <CampoNumero prefijo={simbolo} valor={valor.recibido ?? null} decimales={decimales} minimo={0} alinear="izquierda" onValorChange={(v) => cambiar({ recibido: v })} />
+        </FormField>
+      )}
+
+      {!cobroTotal && esEfectivo && !bloqueadoPorCaja && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <FormField etiqueta={t('pago.recibido')} error={textoError('recibido')}>
             <CampoNumero prefijo={simbolo} valor={valor.recibido ?? null} decimales={decimales} minimo={0} onValorChange={(v) => cambiar({ recibido: v })} />
@@ -296,33 +332,36 @@ export function RegistrarPagoDialog({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <FormField etiqueta={t('pago.fecha')} obligatorio error={textoError('fecha')}>
-          <CampoFecha valor={valor.fecha} max={hoy} hoy={hoy} limpiable={false} onValorChange={(fecha) => cambiar({ fecha })} />
+      {cobroTotal && exigeReferencia && (
+        <FormField etiqueta={t('pago.referencia')} obligatorio error={textoError('referencia')}>
+          {campoReferencia}
         </FormField>
-        <FormField etiqueta={t('pago.referencia')} obligatorio={exigeReferencia} error={textoError('referencia')}>
-          <input
-            type="text"
-            value={valor.referencia}
-            maxLength={120}
-            onChange={(e) => cambiar({ referencia: e.target.value })}
-            placeholder={t('pago.referenciaPlaceholder')}
-            className={cn(FECHA_CLASES, 'placeholder:text-fg-muted')}
-          />
-        </FormField>
-      </div>
+      )}
+
+      {!cobroTotal && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <FormField etiqueta={t('pago.fecha')} obligatorio error={textoError('fecha')}>
+            <CampoFecha valor={valor.fecha} max={hoy} hoy={hoy} limpiable={false} onValorChange={(fecha) => cambiar({ fecha })} />
+          </FormField>
+          <FormField etiqueta={t('pago.referencia')} obligatorio={exigeReferencia} error={textoError('referencia')}>
+            {campoReferencia}
+          </FormField>
+        </div>
+      )}
 
       {camposExtra}
 
-      <FormField etiqueta={t('pago.notas')}>
-        <textarea
-          rows={2}
-          value={valor.notas}
-          maxLength={500}
-          onChange={(e) => cambiar({ notas: e.target.value })}
-          className="w-full resize-y rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-muted focus-visible:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20"
-        />
-      </FormField>
+      {!cobroTotal && (
+        <FormField etiqueta={t('pago.notas')}>
+          <textarea
+            rows={2}
+            value={valor.notas}
+            maxLength={500}
+            onChange={(e) => cambiar({ notas: e.target.value })}
+            className="w-full resize-y rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-muted focus-visible:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20"
+          />
+        </FormField>
+      )}
 
       {error && (
         <p role="alert" className="flex items-start gap-2 text-sm text-danger-text">

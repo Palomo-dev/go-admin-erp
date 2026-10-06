@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import type { WebOrderItem } from '@/lib/services/webOrdersService';
 
@@ -23,6 +24,7 @@ export function OrderItemsList({
   maxItems,
   showStatus = false 
 }: OrderItemsListProps) {
+  const t = useTranslations('pedidoWeb');
   const displayItems = maxItems ? items.slice(0, maxItems) : items;
   const remainingCount = maxItems && items.length > maxItems ? items.length - maxItems : 0;
 
@@ -87,17 +89,18 @@ export function OrderItemsList({
             {item.product_sku && (
               <p className="text-sm text-muted-foreground dark:text-gray-400">SKU: {item.product_sku}</p>
             )}
-            {item.notes && (
-              <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-1">📝 {item.notes}</p>
-            )}
             {item.modifiers && item.modifiers.length > 0 && (
               <div className="mt-1 space-y-0.5">
-                {item.modifiers.map((mod: any, idx: number) => (
+                {(item.modifiers as Array<{ name?: string; price?: number }>).map((mod, idx: number) => (
                   <p key={idx} className="text-sm text-muted-foreground dark:text-gray-400">
-                    + {mod.name} {mod.price > 0 && `(+$${mod.price.toLocaleString()})`}
+                    + {mod.name} {(mod.price ?? 0) > 0 && `(+$${(mod.price ?? 0).toLocaleString()})`}
                   </p>
                 ))}
               </div>
+            )}
+            {/* Nota de cocina bajo la línea, en texto normal (Figma 1981:175699) */}
+            {item.notes && (
+              <p className="mt-1 text-sm text-fg">{t('notas.notaCocina', { nota: item.notes })}</p>
             )}
           </div>
           <div className="text-right ml-4">

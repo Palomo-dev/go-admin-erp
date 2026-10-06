@@ -7838,7 +7838,10 @@
         "recibidoInsuficiente": "The cash received doesn't cover the amount."
       },
       "retenciones": "Withholdings",
-      "netoPagado": "Net {neto} · Paid {pagado}"
+      "netoPagado": "Net {neto} · Paid {pagado}",
+      "importe": "Amount",
+      "recibidoCorto": "Received",
+      "cambioValor": "Change: {monto}"
     },
     "vista": {
       "etiqueta": "View",
@@ -29470,7 +29473,7 @@
         "pais": "Country",
         "obligatorio": "This field is required.",
         "correoInvalido": "Type a valid email.",
-        "telefonoInvalido": "Type the phone number with the country code.",
+        "telefonoInvalido": "Check the number: it is incomplete or does not match the selected country.",
         "datosRealesTitulo": "The registrar requires real details",
         "datosRealesTexto": "You may get an email asking you to confirm them. The domain is yours: you can move it to another provider whenever you want.",
         "atras": "Back",
@@ -32087,6 +32090,31 @@
         "cobrados": "{n, plural, one {# order charged} other {# orders charged}}",
         "pendientes": "{n, plural, one {# order not charged} other {# orders not charged}}: {pedidos}",
         "error": "The selected orders could not be charged."
+      },
+      "entraACaja": "Goes to Register {caja} · {sede} · open",
+      "sinCajaAcciones": "The branch has no open register. The order stays ready and unpaid.",
+      "registrarPago": "Record payment",
+      "marcarEntregado": "Mark as delivered",
+      "dialogo": {
+        "tituloEntregar": "Charge and deliver {numero}",
+        "titulo": "Charge {numero}",
+        "descripcionEntregar": "Goes to Register {caja} · {sede} · open. Charging creates the sale and the invoice, and the order moves to Delivered.",
+        "descripcion": "Goes to Register {caja} · {sede} · open. Charging records the payment and the invoice.",
+        "descripcionSinCaja": "Once charged, the order is marked as paid."
+      },
+      "exitoEntregar": "{numero} charged and delivered · {monto} {metodo} · Register {caja} at {sede}",
+      "exito": "{numero} charged · {monto} {metodo} · Register {caja} at {sede}",
+      "metodos": {
+        "cash": "Cash",
+        "card": "Card",
+        "transfer": "Transfer",
+        "qr": "QR"
+      },
+      "metodoEn": {
+        "cash": "in cash",
+        "card": "by card",
+        "transfer": "by transfer",
+        "qr": "by QR"
       }
     },
     "tipoCorto": {
@@ -32101,6 +32129,55 @@
       "titulo": "New web order {numero} · {entrega}",
       "contenido": "Total {total}",
       "contenidoSede": "Total {total} · {sede}"
+    },
+    "detalle": {
+      "recibido": "Received {fecha}",
+      "origen": "Source: {canal} · {numero}",
+      "porCobrar": "To be charged at the register",
+      "reservaActiva": "Stock reservation active",
+      "volver": "Back",
+      "verVenta": "View POS sale",
+      "canales": {
+        "website": "Web",
+        "mobile_app": "App",
+        "whatsapp": "WhatsApp",
+        "phone": "Phone"
+      },
+      "avisoStock": "Order confirmed, but the recipe stock fell short: {detalle}. The kitchen ticket was sent; adjust inventory or let the customer know."
+    },
+    "notas": {
+      "notaCocina": "Kitchen note: {nota}",
+      "paraCocina": "For the kitchen",
+      "paraCocinaComanda": "For the kitchen · printed on kitchen ticket #{comanda}"
+    },
+    "pagos": {
+      "titulo": "Payments",
+      "estado": "Status",
+      "porCobrar": "To be charged",
+      "pagado": "Paid",
+      "parcial": "Partially paid",
+      "reembolsado": "Refunded",
+      "fallido": "Payment failed",
+      "alEntregar": "on delivery",
+      "sinCobrar": "not charged",
+      "cajaAbierta": "Register {caja} · {sede} · open",
+      "sinCaja": "No open register at the branch",
+      "sinPagos": "No payments recorded"
+    },
+    "documentos": {
+      "titulo": "Documents and traceability",
+      "venta": "POS sale",
+      "factura": "Sales invoice",
+      "comanda": "Kitchen ticket",
+      "origen": "Source",
+      "caja": "Register",
+      "seCreaAlConfirmar": "created on confirmation",
+      "seEmiteAlCobrar": "issued when charged",
+      "sinComanda": "no kitchen ticket",
+      "origenValor": "{canal} · {numero}",
+      "comandaValor": "#{id}",
+      "cajaValor": "Register {caja} · {sede} · open",
+      "sinCaja": "no open register"
     }
   }
 }

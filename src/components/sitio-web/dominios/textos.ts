@@ -246,7 +246,7 @@ export const TEXTOS_DOMINIOS = {
     pais: 'País',
     obligatorio: 'Este dato es obligatorio.',
     correoInvalido: 'Escribe un correo válido.',
-    telefonoInvalido: 'Escribe el teléfono con indicativo de país.',
+    telefonoInvalido: 'Revisa el número: está incompleto o no corresponde al país elegido.',
     datosRealesTitulo: 'El registrador exige datos reales',
     datosRealesTexto: 'Te puede llegar un correo para confirmarlos. El dominio es tuyo: puedes llevártelo a otro proveedor cuando quieras.',
     atras: 'Atrás',

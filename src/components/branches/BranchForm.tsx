@@ -10,7 +10,7 @@ import {
 import { MapPinIcon, PhoneIcon, EnvelopeIcon, BuildingOfficeIcon, IdentificationIcon, UserIcon } from '@heroicons/react/24/outline';
 import { ManagerSelector } from './ManagerSelector';
 import LocationSelector from '../common/LocationSelector';
-import { PhoneInput, mensajeErrorTelefono } from '@/components/ui/phone-input';
+import { PhoneInput, mensajeErrorTelefono } from '@/components/kit/PhoneInput';
 import { paisIsoDeOrganizacion } from '@/lib/utils/telefono';
 import { supabase } from '@/lib/supabase/config';
 import { BuyDomainDialog, AddCustomDomainDialog } from '@/components/organization/dominios';
@@ -486,6 +486,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
               <label htmlFor="branch-phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Teléfono</label>
               <PhoneInput
                 id="branch-phone"
+                tamano="md"
                 name="phone"
                 value={form.phone}
                 onChange={(v) => setForm((prev) => ({ ...prev, phone: v }))}

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PhoneInput } from '@/components/kit/PhoneInput';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
@@ -207,13 +208,7 @@ export function ReservaFormDialog({
               <Label htmlFor="customerPhone" className="dark:text-gray-300">
                 Teléfono
               </Label>
-              <Input
-                id="customerPhone"
-                value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-                placeholder="+57 300 123 4567"
-                className="dark:bg-gray-900 dark:border-gray-600"
-              />
+              <PhoneInput id="customerPhone" value={customerPhone} onChange={setCustomerPhone} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="customerEmail" className="dark:text-gray-300">

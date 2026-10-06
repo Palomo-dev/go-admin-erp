@@ -8,7 +8,8 @@
  *   por dispositivo) y `goadmin:settings` (encabezado, pie y tema en edición), con espera de
  *   150 ms y sin reenviar lo mismo.
  * - `goadmin:select` / `goadmin:scroll` para resaltar la sección elegida.
- * - Escucha `goadmin:select` (clic en una sección o zona del lienzo) y `goadmin:accion`.
+ * - Escucha `goadmin:select` (clic en una sección o zona del lienzo), `goadmin:accion` y
+ *   `goadmin:ready` (el puente del sitio acaba de montar: se le reenvía todo).
  *
  * Seguridad: los mensajes se envían SOLO al origen del sitio del lienzo (nunca `*`) y solo se
  * aceptan de ese origen o de los orígenes de desarrollo conocidos.
@@ -122,12 +123,32 @@ export function usePuenteLienzo({ iframe, url, secciones, ajustes, seleccion, av
     if (seleccion) enviar({ type: 'goadmin:scroll', sectionId: seleccion });
   }, [seleccion, enviar]);
 
+  /** Reenvía todo al lienzo (secciones, ajustes y selección con su scroll). */
+  const reenviarTodo = useCallback(() => {
+    ultimoSecciones.current = '';
+    ultimoAjustes.current = '';
+    enviarSecciones();
+    enviarAjustes();
+    const actual = seleccionRef.current;
+    enviar({ type: 'goadmin:select', sectionId: actual ?? null });
+    if (actual) enviar({ type: 'goadmin:scroll', sectionId: actual });
+  }, [enviarSecciones, enviarAjustes, enviar]);
+  const reenviarRef = useRef(reenviarTodo);
+  reenviarRef.current = reenviarTodo;
+
   useEffect(() => {
-    if (!onClic && !onQuitar) return;
     const alRecibir = (e: MessageEvent) => {
       if (!e.data || typeof e.data !== 'object') return;
       if (e.origin && e.origin !== destino && !ORIGENES_DESARROLLO.includes(e.origin)) return;
+      // Solo se escucha al iframe del lienzo, no a cualquier ventana del mismo origen.
+      if (iframe.current?.contentWindow && e.source && e.source !== iframe.current.contentWindow) return;
       const d = e.data as Record<string, unknown>;
+      // El puente del sitio monta después de hidratar: puede estar listo después de `onLoad`.
+      // Al avisar `goadmin:ready` se le manda el borrador y la selección.
+      if (d.type === 'goadmin:ready') {
+        reenviarRef.current();
+        return;
+      }
       if (d.type === 'goadmin:select' && typeof d.sectionId === 'string') {
         const enlace = d.enlace === true;
         onClic?.(d.sectionId, {
@@ -141,18 +162,12 @@ export function usePuenteLienzo({ iframe, url, secciones, ajustes, seleccion, av
     };
     window.addEventListener('message', alRecibir);
     return () => window.removeEventListener('message', alRecibir);
-  }, [onClic, onQuitar, destino]);
+  }, [onClic, onQuitar, destino, iframe]);
 
-  /** Tras recargar el iframe: reenviar todo y volver a resaltar la selección. */
+  /** Tras recargar el iframe: reenviar todo y volver a resaltar (y mostrar) la selección. */
   const alCargar = useCallback(() => {
-    ultimoSecciones.current = '';
-    ultimoAjustes.current = '';
-    setTimeout(() => {
-      enviarSecciones();
-      enviarAjustes();
-      if (seleccionRef.current) enviar({ type: 'goadmin:select', sectionId: seleccionRef.current });
-    }, 200);
-  }, [enviarSecciones, enviarAjustes, enviar]);
+    setTimeout(() => reenviarRef.current(), 200);
+  }, []);
 
   return { alCargar, destino };
 }

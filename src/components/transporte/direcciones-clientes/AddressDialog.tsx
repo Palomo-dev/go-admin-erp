@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
-import { PhoneInput, telefonoOpcionalValido } from '@/components/ui/phone-input';
+import { PhoneInput, telefonoOpcionalValido } from '@/components/kit/PhoneInput';
 import { Switch } from '@/components/ui/switch';
 import {
   Dialog,

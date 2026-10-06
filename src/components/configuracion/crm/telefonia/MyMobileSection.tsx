@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react';
 import { CheckCircle2, Loader2, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PhoneInput } from '@/components/ui/phone-input';
+import { PhoneInput } from '@/components/kit/PhoneInput';
 import { aE164 } from '@/lib/utils/telefono';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
@@ -96,7 +96,7 @@ export function MyMobileSection({ numbers }: { numbers: PhoneNumber[] }) {
       <h3 id="tel-mobile-title" className="text-base font-semibold text-gray-900 dark:text-gray-100">
         Mi celular
       </h3>
-      <p className="text-xs text-gray-500 dark:text-gray-400">Para "Llamar desde mi celular": Twilio te llama primero y luego marca al cliente con el caller id de la organización.</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400">Para «Llamar desde mi celular»: Twilio te llama primero y luego marca al cliente con el caller id de la organización.</p>
 
       <div className="flex flex-wrap items-end gap-2">
         <div className="space-y-1">

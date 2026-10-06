@@ -10,6 +10,7 @@
  */
 
 import { requireStripe } from './server'
+import { periodoSuscripcion } from './periodoSuscripcion'
 import { createClient } from '@supabase/supabase-js'
 import { getEnterprisePricing } from '@/lib/services/pricingService'
 
@@ -273,8 +274,8 @@ export async function createSubscription(
         planCode: data.planCode,
         status: 'trialing',
         trialEnd: new Date(subscription.trial_end! * 1000),
-        currentPeriodStart: new Date(subscription.current_period_start * 1000),
-        currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+        currentPeriodStart: periodoSuscripcion(subscription).inicio,
+        currentPeriodEnd: periodoSuscripcion(subscription).fin,
         metadata: data.enterpriseConfig ? {
           custom_config: {
             modules_count: data.enterpriseConfig.modulesCount,
@@ -353,8 +354,8 @@ export async function createSubscription(
         stripeCustomerId: customerId,
         planCode: data.planCode,
         status: subscription.status,
-        currentPeriodStart: new Date(subscription.current_period_start * 1000),
-        currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+        currentPeriodStart: periodoSuscripcion(subscription).inicio,
+        currentPeriodEnd: periodoSuscripcion(subscription).fin,
         metadata: data.enterpriseConfig ? {
           custom_config: {
             modules_count: data.enterpriseConfig.modulesCount,
@@ -398,8 +399,8 @@ async function saveSubscriptionToDatabase(
     planCode: string
     status: string
     trialEnd?: Date
-    currentPeriodStart: Date
-    currentPeriodEnd: Date
+    currentPeriodStart: Date | null
+    currentPeriodEnd: Date | null
     metadata?: any // <-- Agregar metadata opcional
   }
 ) {
@@ -464,8 +465,8 @@ async function saveSubscriptionToDatabase(
         plan_id: planId,
         status: data.status,
         trial_end: data.trialEnd?.toISOString(),
-        current_period_start: data.currentPeriodStart.toISOString(),
-        current_period_end: data.currentPeriodEnd.toISOString(),
+        current_period_start: (data.currentPeriodStart ?? new Date()).toISOString(),
+        current_period_end: data.currentPeriodEnd?.toISOString() ?? null,
         cancel_at_period_end: false,
         metadata: data.metadata || {}, // <-- Guardar metadata
         updated_at: new Date().toISOString(),
@@ -491,8 +492,8 @@ async function saveSubscriptionToDatabase(
         plan_id: planId,
         status: data.status,
         trial_end: data.trialEnd?.toISOString(),
-        current_period_start: data.currentPeriodStart.toISOString(),
-        current_period_end: data.currentPeriodEnd.toISOString(),
+        current_period_start: (data.currentPeriodStart ?? new Date()).toISOString(),
+        current_period_end: data.currentPeriodEnd?.toISOString() ?? null,
         cancel_at_period_end: false,
         metadata: data.metadata || {}, // <-- Guardar metadata
         created_at: new Date().toISOString(),
@@ -529,7 +530,7 @@ export async function cancelSubscription(subscriptionId: string, immediate: bool
     return {
       success: true,
       subscriptionId: subscription.id,
-      canceledAt: immediate ? new Date() : new Date((subscription as any).current_period_end * 1000),
+      canceledAt: immediate ? new Date() : (periodoSuscripcion(subscription).fin ?? new Date()),
     }
   } catch (error: any) {
     console.error('❌ Error cancelando suscripción:', error)

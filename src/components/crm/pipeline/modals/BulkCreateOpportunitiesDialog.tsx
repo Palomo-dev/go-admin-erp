@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PhoneInput } from '@/components/kit/PhoneInput';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -335,18 +336,12 @@ export default function BulkCreateOpportunitiesDialog({
                   {(() => {
                     const errorTelefono = mensajeErrorTelefono(row.customerPhone);
                     return (
-                      <Input
-                        type="tel"
-                        inputMode="tel"
+                      <PhoneInput
                         value={row.customerPhone}
-                        onChange={(e) => updateRow(index, 'customerPhone', e.target.value)}
-                        placeholder="Teléfono"
+                        onChange={(v) => updateRow(index, 'customerPhone', v)}
                         aria-label={`Teléfono del cliente, fila ${index + 1}`}
-                        aria-invalid={errorTelefono ? true : undefined}
-                        title={errorTelefono ?? undefined}
-                        className={`h-8 text-sm bg-white dark:bg-gray-800 dark:text-gray-200 ${
-                          errorTelefono ? 'border-red-500 focus-visible:ring-red-500' : 'border-gray-200 dark:border-gray-700'
-                        }`}
+                        error={errorTelefono ? true : undefined}
+                        showValidation={false}
                       />
                     );
                   })()}

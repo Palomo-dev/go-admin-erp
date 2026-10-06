@@ -22,3 +22,7 @@ export { OrderActions } from './OrderActions';
 export { AssignDeliveryDialog } from './AssignDeliveryDialog';
 export { DeliveryTrackingCard } from './DeliveryTrackingCard';
 export { ProofOfDeliveryView } from './ProofOfDeliveryView';
+
+// Reglas sin React del detalle
+export { cobroDelPedido } from './cobroPedido';
+export { notasInternasVisibles } from './notasPedido';

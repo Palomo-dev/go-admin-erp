@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PhoneInput, mensajeErrorTelefono } from '@/components/ui/phone-input';
+import { PhoneInput, mensajeErrorTelefono } from '@/components/kit/PhoneInput';
 import { toast } from 'sonner';
 import {
   User,

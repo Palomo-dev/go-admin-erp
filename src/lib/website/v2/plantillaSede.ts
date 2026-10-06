@@ -9,7 +9,7 @@
  * (`construirSitioDePlantilla` de `plantillaCompleta.ts`, la fuente única): el juego de páginas
  * `PAGINAS_BASE_GIRO` (copia verificada de `public.create_default_pages`; la prueba
  * `plantillaSede.test.ts` lo compara con la última migración), Inicio con la estructura de la
- * plantilla por defecto del giro, el encabezado y el pie del giro (`SHELL_POR_GIRO`) y sus menús.
+ * plantilla por defecto del giro, el encabezado y el pie de esa plantilla (`shellPorPlantilla.ts`) y sus menús.
  * Restaurante suma «Carta QR» (`PLANTILLAS_PAGINA`), la página que se abre desde el QR de la mesa.
  *
  * Identidad, tema, SEO y contenido salen del sitio principal como en cualquier sede

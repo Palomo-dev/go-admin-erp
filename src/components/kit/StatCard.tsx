@@ -46,6 +46,8 @@ export interface StatCardProps {
   resaltada?: boolean;
   icono?: LucideIcon;
   cargando?: boolean;
+  /** `sm`: cifra de 20 px (franjas de 5–6 KPI, Figma `StatCard Size=sm`). Por defecto `md` (28 px). */
+  tamano?: 'md' | 'sm';
   /** La tarjeta entera navega (p. ej. al listado filtrado). */
   href?: string;
   onClick?: () => void;
@@ -62,6 +64,7 @@ export function StatCard({
   resaltada,
   icono: Icono,
   cargando,
+  tamano = 'md',
   href,
   onClick,
   className,
@@ -88,11 +91,18 @@ export function StatCard({
       </div>
       {cargando ? (
         <>
-          <Skeleton className="h-9 w-24" />
+          <Skeleton className={tamano === 'sm' ? 'h-7 w-16' : 'h-9 w-24'} />
           <span className="sr-only">{t('cargandoDe', { etiqueta })}</span>
         </>
       ) : (
-        <span className="truncate text-[28px] font-semibold leading-9 tracking-[-0.4px] text-fg tabular-nums">{valor}</span>
+        <span
+          className={cn(
+            'truncate font-semibold text-fg tabular-nums',
+            tamano === 'sm' ? 'text-xl leading-7' : 'text-[28px] leading-9 tracking-[-0.4px]',
+          )}
+        >
+          {valor}
+        </span>
       )}
       {detalle !== undefined &&
         (cargando ? (

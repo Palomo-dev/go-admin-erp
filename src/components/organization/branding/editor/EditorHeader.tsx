@@ -18,12 +18,14 @@ import {
   Smartphone,
   Eye,
   Globe,
+  ExternalLink,
 } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/Utils';
 import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { WebsitePage } from '@/lib/services/websitePageBuilderService';
 import { OutletSelector, type OutletOption } from './OutletSelector';
 import type { Branch } from '@/types/branch';
@@ -66,6 +68,12 @@ interface EditorHeaderProps {
   banda?: ReactNode;
   etiquetaGuardar?: string;
   ocultarIndicadorOutlet?: boolean;
+  /**
+   * «Vista previa» (Figma 1896:920550). Con borrador (V2) abre en otra pestaña el
+   * borrador con un enlace privado que caduca; sin borrador abre lo guardado, que es lo
+   * mismo que ven los clientes. Sin la prop no se muestra.
+   */
+  vistaPrevia?: { borrador: boolean; cargando?: boolean; onAbrir: () => void };
 }
 
 export default function EditorHeader({
@@ -91,6 +99,7 @@ export default function EditorHeader({
   banda,
   etiquetaGuardar,
   ocultarIndicadorOutlet,
+  vistaPrevia,
 }: EditorHeaderProps) {
   const t = useTranslations('branding.editor.header');
 
@@ -234,11 +243,42 @@ export default function EditorHeader({
             href={previewUrl}
             target="_blank"
             rel="noopener noreferrer"
+            title="Abre la web tal como la ven tus clientes"
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded hover:bg-white/10 transition-colors text-gray-300 hover:text-white dark:hover:bg-gray-800/10 dark:text-gray-600"
           >
-            <Eye className="h-3.5 w-3.5" />
-            {t('viewSite')}
+            <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+            Ver sitio publicado
           </a>
+        )}
+
+        {vistaPrevia && (
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={vistaPrevia.onAbrir}
+                  disabled={vistaPrevia.cargando}
+                  className="h-8 text-sm bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white"
+                >
+                  {vistaPrevia.cargando ? (
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" aria-hidden />
+                  ) : (
+                    <Eye className="h-3.5 w-3.5 mr-1.5" aria-hidden />
+                  )}
+                  Vista previa
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-[260px]">
+                <p className="font-medium">{vistaPrevia.borrador ? 'Vista previa del borrador' : 'Vista previa de lo guardado'}</p>
+                <p className="text-xs opacity-80">
+                  {vistaPrevia.borrador ? 'Abre una pestaña con lo que aún no publicas' : 'Este sitio aún no usa borrador'}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
 
         <Button

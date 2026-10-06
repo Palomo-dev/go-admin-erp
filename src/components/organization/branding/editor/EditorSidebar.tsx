@@ -68,6 +68,31 @@ import { getDefaultSectionsForPageType } from '@/lib/services/website/defaultPro
 import FieldRenderer from './fields/FieldRenderer';
 import type { ThemePalette, Viewport } from './fields/types';
 import { ETIQUETA_FILA_ZONA, type ZonaGlobal } from './inspector/zonaGlobal';
+import { AvisoConAccion } from './AvisoConAccion';
+import type { AvisoFaltanDatos } from '@/lib/services/website/fuentesDatosSecciones';
+
+/**
+ * Ámbito de una sección cuando se edita una sede (Figma «SortableRowSede» 1886:919531):
+ * «Heredada del principal» (candado hasta «Personalizar en esta sede»), «Personalizada»
+ * o «Solo esta sede» (añadida en la sede).
+ */
+export type AmbitoSeccionSede = 'heredada' | 'personalizada' | 'solo-esta-sede';
+
+const CHIP_AMBITO: Record<AmbitoSeccionSede, { texto: string; clase: string }> = {
+  heredada: { texto: 'Heredada del principal', clase: 'border-line bg-subtle text-fg-secondary' },
+  personalizada: { texto: 'Personalizada', clase: 'border-line-success bg-success-subtle text-success-text' },
+  'solo-esta-sede': { texto: 'Solo esta sede', clase: 'border-line-brand bg-brand-tint text-brand-deep' },
+};
+
+/** Sede V2 que se edita: chips por sección y acciones de herencia. */
+export interface EdicionSede {
+  nombre: string;
+  ambito: (section: WebsitePageSection) => AmbitoSeccionSede | undefined;
+  /** Heredada y aún sin «Personalizar en esta sede»: no se edita ni se arrastra. */
+  bloqueada: (section: WebsitePageSection) => boolean;
+  onPersonalizar: (sectionId: string) => void;
+  onRestablecer: (sectionId: string) => void;
+}
 
 // Mapa de iconos por nombre (para SectionListItem)
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -183,6 +208,12 @@ interface EditorSidebarProps {
    * «Hereda / Propia» y «Restablecer». Sin la prop la lista es la de siempre.
    */
   renderExtraSeccion?: (section: WebsitePageSection, activa: boolean) => React.ReactNode;
+  /** Sitio V2 de una sede: chips Heredada / Personalizada / Solo esta sede (Figma 1897:917594). */
+  edicionSede?: EdicionSede | null;
+  /** Aviso «Faltan datos» de una sección (datos reales del ERP), o `null`. */
+  avisoSeccion?: (section: WebsitePageSection) => AvisoFaltanDatos | null;
+  /** Abre el constructor de la carta (campos `type: 'carta'` de `menu_full`). */
+  onEditarCarta?: (sectionId: string) => void;
 }
 
 export default function EditorSidebar({
@@ -224,6 +255,9 @@ export default function EditorSidebar({
   pageType,
   onMaterializeDefaultSections,
   renderExtraSeccion,
+  edicionSede = null,
+  avisoSeccion,
+  onEditarCarta,
 }: EditorSidebarProps) {
   const t = useTranslations('branding.editor.sidebar');
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -320,6 +354,11 @@ export default function EditorSidebar({
             </button>
           </div>
         </div>
+        {edicionSede && (
+          <p className="text-xs text-fg-secondary">
+            Candado = «Heredada del principal». «Añadir sección» aquí añade solo a esta sede.
+          </p>
+        )}
         {/* F12.4 — Búsqueda de secciones */}
         {onSectionSearchChange && (
           <div className="relative">
@@ -440,6 +479,13 @@ export default function EditorSidebar({
               onDragStart={(e) => handleDragStart(e, index)}
               onDragOver={(e) => handleDragOver(e, index)}
               onDragEnd={handleDragEnd}
+              ambitoSede={edicionSede?.ambito(section)}
+              bloqueada={edicionSede?.bloqueada(section) ?? false}
+              nombreSede={edicionSede?.nombre}
+              onPersonalizar={edicionSede ? () => edicionSede.onPersonalizar(section.id) : undefined}
+              onRestablecer={edicionSede ? () => edicionSede.onRestablecer(section.id) : undefined}
+              aviso={avisoSeccion?.(section) ?? null}
+              onEditarCarta={onEditarCarta ? () => onEditarCarta(section.id) : undefined}
             />
           );
           if (!renderExtraSeccion) return item;
@@ -469,7 +515,7 @@ export default function EditorSidebar({
           className="w-full border-dashed border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-white hover:border-blue-400 dark:hover:border-gray-400 bg-transparent hover:bg-blue-50 dark:hover:bg-white/5"
         >
           <Plus className="h-4 w-4 mr-2" />
-          {t('addSection')}
+          {edicionSede ? `Añadir sección a ${edicionSede.nombre}` : t('addSection')}
         </Button>
       </div>
     </div>
@@ -551,6 +597,13 @@ interface SectionListItemProps {
   onDragStart: (e: React.DragEvent) => void;
   onDragOver: (e: React.DragEvent) => void;
   onDragEnd: () => void;
+  ambitoSede?: AmbitoSeccionSede;
+  bloqueada?: boolean;
+  nombreSede?: string;
+  onPersonalizar?: () => void;
+  onRestablecer?: () => void;
+  aviso?: AvisoFaltanDatos | null;
+  onEditarCarta?: () => void;
 }
 
 function SectionListItem({
@@ -575,6 +628,13 @@ function SectionListItem({
   onDragStart,
   onDragOver,
   onDragEnd,
+  ambitoSede,
+  bloqueada = false,
+  nombreSede,
+  onPersonalizar,
+  onRestablecer,
+  aviso = null,
+  onEditarCarta,
 }: SectionListItemProps) {
   const t = useTranslations('branding.editor.sidebar');
   const label = definition?.label || section.section_type;
@@ -627,10 +687,11 @@ function SectionListItem({
   return (
     <div
       className="border-b border-gray-200 dark:border-gray-700/50"
-      draggable
-      onDragStart={onDragStart}
+      draggable={!bloqueada}
+      onDragStart={bloqueada ? undefined : onDragStart}
       onDragOver={onDragOver}
       onDragEnd={onDragEnd}
+      data-ambito-sede={ambitoSede}
     >
       {/* Section Header */}
       <div
@@ -638,7 +699,7 @@ function SectionListItem({
         role="button"
         tabIndex={0}
         aria-expanded={isActive}
-        aria-label={`Sección ${label}, variante ${variantLabel}${isActive ? ', seleccionada' : ', click para editar'}`}
+        aria-label={`Sección ${label}, variante ${variantLabel}${ambitoSede ? `, ${CHIP_AMBITO[ambitoSede].texto}` : ''}${isActive ? ', seleccionada' : ', click para editar'}`}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(); } }}
         className={cn(
           'flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-gray-100 dark:hover:bg-white/5 transition-colors group',
@@ -646,7 +707,11 @@ function SectionListItem({
           !section.is_visible && 'opacity-50',
         )}
       >
-        <GripVertical className="h-3.5 w-3.5 text-gray-300 dark:text-gray-600 cursor-grab shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+        {bloqueada ? (
+          <Lock aria-hidden className="h-3.5 w-3.5 text-fg-muted shrink-0" />
+        ) : (
+          <GripVertical className="h-3.5 w-3.5 text-gray-300 dark:text-gray-600 cursor-grab shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+        )}
         <IconComponent className="h-4 w-4 text-blue-600 dark:text-gray-400 shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
@@ -660,7 +725,23 @@ function SectionListItem({
               </span>
             )}
           </div>
-          <p className="text-xs text-gray-400 dark:text-gray-500 min-w-0 break-words">{variantLabel}</p>
+          {ambitoSede ? (
+            <span
+              className={cn(
+                'mt-1 inline-flex items-center rounded-full border px-1.5 py-0.5 text-xs font-semibold',
+                CHIP_AMBITO[ambitoSede].clase,
+              )}
+            >
+              {CHIP_AMBITO[ambitoSede].texto}
+            </span>
+          ) : (
+            <p className="text-xs text-gray-400 dark:text-gray-500 min-w-0 break-words">{variantLabel}</p>
+          )}
+          {aviso ? (
+            <span className="mt-1 ml-1 inline-flex items-center rounded-full border border-line-warning bg-warning-subtle px-1.5 py-0.5 text-xs font-semibold text-warning-text">
+              Faltan datos
+            </span>
+          ) : null}
         </div>
         {isActive ? (
           <ChevronDown className="h-4 w-4 text-gray-400 dark:text-gray-500 shrink-0" />
@@ -670,8 +751,36 @@ function SectionListItem({
       </div>
 
       {/* Section Content Editor */}
-      {isActive && (
+      {isActive && bloqueada && (
+        <div className="px-3 pb-3 bg-gray-50 dark:bg-white/5">
+          <div className="space-y-2 rounded-lg bg-subtle p-3">
+            <p className="flex items-start gap-2 text-sm text-fg">
+              <Lock aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-fg-secondary" />
+              Esta sección viene del sitio principal: si la cambian allá, cambia aquí.
+            </p>
+            <Button type="button" size="sm" className="h-9 w-full" onClick={(e) => { e.stopPropagation(); onPersonalizar?.(); }}>
+              Personalizar en esta sede
+            </Button>
+            <p className="text-xs text-fg-muted">
+              La sección pasa a ser de {nombreSede ?? 'esta sede'}. Desde ahí deja de heredar; «Restablecer» la vuelve a enlazar.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {isActive && !bloqueada && (
         <div className="px-3 pb-3 space-y-3 bg-gray-50 dark:bg-white/5">
+          {aviso ? (
+            <AvisoConAccion titulo={aviso.titulo} detalle={aviso.detalleLienzo} accion={aviso.accion} />
+          ) : null}
+          {ambitoSede === 'personalizada' && onRestablecer ? (
+            <div className="flex items-center gap-2 rounded-lg border border-line-success bg-success-subtle px-3 py-2">
+              <p className="flex-1 text-xs text-success-text">Personalizada en {nombreSede ?? 'esta sede'}: el principal no la cambia.</p>
+              <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); onRestablecer(); }}>
+                Restablecer
+              </Button>
+            </div>
+          ) : null}
           {/* Variant Selector */}
           {definition && definition.variants.length > 1 && (
             <div className="space-y-1.5">
@@ -703,6 +812,24 @@ function SectionListItem({
                   {grouped[g.id].map((field) => {
                     if (!isFieldVisible(field, section.content, section.section_variant)) {
                       return null;
+                    }
+                    // El contenido de la carta se edita en su constructor, no con un control suelto.
+                    if (field.type === 'carta') {
+                      return (
+                        <div key={field.key} className="space-y-1">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="w-full"
+                            disabled={!onEditarCarta}
+                            onClick={(e) => { e.stopPropagation(); onEditarCarta?.(); }}
+                          >
+                            Editar la carta
+                          </Button>
+                          {field.helpText && <p className="text-[10px] text-gray-400 dark:text-gray-500">{field.helpText}</p>}
+                        </div>
+                      );
                     }
                     // `spacing` recibe el content completo como valor.
                     const fieldValue = field.type === 'spacing' ? section.content : section.content?.[field.key];

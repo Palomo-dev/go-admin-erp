@@ -36,7 +36,14 @@ import { extractStyle, applyStyle } from '@/components/organization/branding/edi
 import { websiteMenuGroupService, type MenuGroup } from '@/lib/services/websiteMenuGroupService';
 import type { SectionManifest } from '@/lib/services/website/sectionContract';
 import { getDefaultSectionsForPageType } from '@/lib/services/website/defaultProductDetailSections';
-import { getAllowedSectionTypes } from '@/lib/services/website/sectionsByBranchType';
+import { getSectionDefinition } from '@/lib/services/websitePageBuilderService';
+import { avisoFaltanDatos } from '@/lib/services/website/fuentesDatosSecciones';
+import { useConteoFuentes } from '@/lib/website/useConteoFuentes';
+import { CLAVES_ENCABEZADO, CLAVES_PIE, ajustesParaLienzo } from '@/lib/website/ajustesVivos';
+import type { AmbitoSeccionSede } from '@/components/organization/branding/editor/EditorSidebar';
+import type { AjustesVivosLienzo, DetalleClicLienzo, ItemMenuVivo } from '@/components/organization/branding/editor/EditorPreview';
+import ConstructorCarta from '@/components/organization/branding/editor/carta/ConstructorCarta';
+import type { CambioProducto } from '@/lib/services/website/cartaSede';
 
 /**
  * Activar V2 bloquea el guardado legacy del sitio. Hasta que goadmin-websites lea la
@@ -55,7 +62,6 @@ import {
   AccionesSitioV2,
   BandaSitioV2,
   PanelHerencia,
-  AvisoSeccionSede,
   type EstadoGuardadoV2,
   type SucursalSelector,
 } from '@/components/organization/branding/editor/v2';
@@ -196,9 +202,30 @@ export default function PageEditorPage() {
   const [cambiandoAdopcion, setCambiandoAdopcion] = useState(false);
   /** El usuario eligió «Editar el sitio actual (sin V2)» en un sitio principal no adoptado. */
   const forzarLegacy = useRef(false);
+  /** Secciones heredadas que el usuario desbloqueó con «Personalizar en esta sede». */
+  const [seccionesPersonalizadas, setSeccionesPersonalizadas] = useState<Set<string>>(new Set());
+  const [generandoVistaPrevia, setGenerandoVistaPrevia] = useState(false);
   const inicializarV2Ref = useRef<(paginaId: string, branchDePagina: number | null) => Promise<void>>(async () => {});
   const enV2 = editorV2 !== null && docV2 !== null;
   const esSedeV2 = enV2 && editorV2.sitio.branchId !== null;
+
+  // «Faltan datos»: registros reales del ERP por fuente (solo conteos). Se recargan al abrir
+  // «Añadir sección» por si el usuario creó los datos en otra pestaña.
+  const sedeConteo = enV2 ? editorV2.sitio.branchId : selectedBranchId;
+  const { conteos: conteoFuentes, recargar: recargarConteoFuentes } = useConteoFuentes(Boolean(organizationId), sedeConteo);
+
+  // Encabezado, pie, tema y menú en edición: el lienzo los aplica sin guardar (`goadmin:settings`).
+  const [menuVivo] = useState<ItemMenuVivo[] | null>(null);
+  // Constructor de la carta (`menu_full`): sección abierta y plato que llega del lienzo.
+  const [cartaAbierta, setCartaAbierta] = useState<{ sectionId: string; plato: number | null } | null>(null);
+  const [cambiosCartaSede, setCambiosCartaSede] = useState<{ branchId: number; cambios: CambioProducto[] } | null>(null);
+  const ajustesVivos = useMemo<AjustesVivosLienzo | null>(
+    () =>
+      settings
+        ? { ajustes: ajustesParaLienzo(settings as unknown as Record<string, unknown>), menuEncabezado: menuVivo }
+        : null,
+    [settings, menuVivo],
+  );
 
   // ---- LOAD DATA ----
   const loadData = useCallback(async () => {
@@ -305,6 +332,23 @@ export default function PageEditorPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // «Publicar» desde la barra de la vista previa del borrador llega con `?accion=publicar`:
+  // se abre el diálogo de publicar (con su confirmación) en cuanto el borrador está cargado.
+  const accionPendiente = useRef<string | null>(null);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    accionPendiente.current = params.get('accion');
+  }, []);
+  useEffect(() => {
+    if (!enV2 || accionPendiente.current !== 'publicar') return;
+    accionPendiente.current = null;
+    setMostrarPublicar(true);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('accion');
+    window.history.replaceState(null, '', url.pathname + url.search);
+  }, [enV2]);
 
   // F9.4 — Cargar entidades para el selector de contexto de plantillas de detalle
   const currentPageType = currentPage?.page_type;
@@ -449,13 +493,19 @@ export default function PageEditorPage() {
 
   // Clic en el lienzo. En una zona global ya seleccionada, el clic en un
   // enlace abre su menú (chip «clic en un enlace para editar el menú»).
-  const handleSelectFromCanvas = (id: string, detalle: { enlace: boolean }) => {
+  const handleSelectFromCanvas = (id: string, detalle: DetalleClicLienzo) => {
     if (esZonaGlobal(id)) {
       if (detalle.enlace && zonaGlobal === id) abrirHojaMenu(id);
       seleccionarZonaGlobal(id);
       return;
     }
     seleccionarSeccion(id);
+    // Un plato de la carta tocado en el lienzo abre el constructor con ese plato elegido.
+    const seccion = currentPage?.sections.find((s) => s.id === id);
+    // En una sede, una carta heredada se abre solo tras «Personalizar en esta sede».
+    if (seccion?.section_type === 'menu_full' && detalle.productoId && !(esSedeV2 && ambitoSeccionSede(id) === 'heredada')) {
+      setCartaAbierta({ sectionId: id, plato: detalle.productoId });
+    }
   };
 
   // Al cerrar la hoja: los menús nombrados se guardan al momento, así que se
@@ -523,6 +573,7 @@ export default function PageEditorPage() {
         null;
 
       limpiarPendientes();
+      setSeccionesPersonalizadas(new Set());
       setDocV2(borrador.documento);
       setEditorV2({
         sitio: borrador.sitio,
@@ -848,8 +899,26 @@ export default function PageEditorPage() {
     setDocV2(doc);
     setCurrentPage(vista);
     setSectionsState(vista.sections);
+    setSeccionesPersonalizadas((prev) => {
+      const sig = new Set(prev);
+      sig.delete(sectionId);
+      return sig;
+    });
     setHasChanges(true);
     setEstadoGuardadoV2('cambios');
+  };
+
+  /** «Personalizar en esta sede»: la sección heredada se puede editar; al cambiarla pasa a «Personalizada». */
+  const personalizarSeccionV2 = (sectionId: string) => {
+    setSeccionesPersonalizadas((prev) => new Set(prev).add(sectionId));
+  };
+
+  const ambitoSeccionSede = (sectionId: string): AmbitoSeccionSede | undefined => {
+    const estado = estadosSeccionV2[sectionId];
+    if (estado === 'nueva') return 'solo-esta-sede';
+    if (estado === 'propia') return 'personalizada';
+    if (estado === 'hereda') return seccionesPersonalizadas.has(sectionId) ? 'personalizada' : 'heredada';
+    return undefined;
   };
 
   /**
@@ -1086,8 +1155,21 @@ export default function PageEditorPage() {
   };
 
   // ---- ADD SECTION ----
+  /**
+   * Posición de la sección nueva: después de la sección activa («Se añade después de
+   * «X»») o al final si no hay ninguna activa.
+   */
+  const indiceInsercion = (): number => {
+    if (!currentPage) return 0;
+    const i = activeSectionId ? currentPage.sections.findIndex((s) => s.id === activeSectionId) : -1;
+    return i >= 0 ? i + 1 : currentPage.sections.length;
+  };
+
   const handleAddSection = async (sectionType: string, sectionVariant: string) => {
     if (!currentPage || !organizationId) return;
+    const posicion = indiceInsercion();
+    const alFinal = posicion === currentPage.sections.length;
+    const etiqueta = getSectionDefinition(sectionType)?.label ?? sectionType;
 
     if (enV2) {
       const nueva: WebsitePageSection = {
@@ -1098,19 +1180,24 @@ export default function PageEditorPage() {
         section_variant: sectionVariant,
         content: {},
         settings: {},
-        sort_order: currentPage.sections.length,
+        sort_order: posicion,
         is_visible: true,
         created_at: '',
         updated_at: '',
         branch_id: editorV2?.sitio.branchId ?? null,
       };
-      const conNueva = [...currentPage.sections, nueva];
-      setCurrentPage((prev) => (prev ? { ...prev, sections: conNueva } : prev));
-      setSectionsState(conNueva);
+      const conNueva = [...currentPage.sections];
+      conNueva.splice(posicion, 0, nueva);
+      const ordenadas = conNueva.map((s, i) => ({ ...s, sort_order: i }));
+      setCurrentPage((prev) => (prev ? { ...prev, sections: ordenadas } : prev));
+      setSectionsState(ordenadas);
       setActiveSectionId(nueva.id);
       setHasChanges(true);
       setEstadoGuardadoV2('cambios');
-      toast({ title: 'Sección agregada al borrador', description: `${sectionType}/${sectionVariant}` });
+      toast({
+        title: esSedeV2 ? `Sección agregada solo a ${nombreSitioV2}` : 'Sección agregada al borrador',
+        description: etiqueta,
+      });
       return;
     }
 
@@ -1120,18 +1207,22 @@ export default function PageEditorPage() {
         organization_id: organizationId,
         section_type: sectionType,
         section_variant: sectionVariant,
-        sort_order: currentPage.sections.length,
+        sort_order: posicion,
       });
 
       setCurrentPage((prev) => {
         if (!prev) return prev;
-        const newSections = [...prev.sections, newSection];
+        const newSections = [...prev.sections];
+        newSections.splice(Math.min(posicion, newSections.length), 0, newSection);
+        newSections.forEach((sec, i) => { sec.sort_order = i; });
         setSectionsState(newSections);
         return { ...prev, sections: newSections };
       });
 
       setActiveSectionId(newSection.id);
-      toast({ title: 'Sección agregada', description: `${sectionType}/${sectionVariant}` });
+      // Insertada en medio: el nuevo orden se guarda con «Guardar» (como al duplicar).
+      if (!alFinal) setHasChanges(true);
+      toast({ title: 'Sección agregada', description: etiqueta });
     } catch (error) {
       console.error('Error adding section:', error);
       toast({
@@ -1446,29 +1537,7 @@ export default function PageEditorPage() {
           setOutletSettingsExists(true);
         } else {
         // Separar campos de tema (colores, fuentes, etc.) de campos del header
-        const headerConfigKeys = [
-          'header_style', 'footer_style', 'logo_position', 'header_cta_text', 'header_cta_url',
-          'show_header_cart', 'show_header_auth', 'show_topbar', 'menu_position', 'search_style',
-          'show_categories_in_header', 'categories_menu_style', 'mega_menu_columns',
-          'mobile_menu_style', 'mobile_search_style', 'mobile_show_topbar', 'mobile_sticky_header',
-          'mobile_breakpoint', 'header_opacity',
-          'header_bg_color', 'topbar_bg_color', 'nav_bg_color', 'accent_color',
-          'topbar_show_email', 'topbar_show_phone', 'topbar_announcement', 'topbar_contact_position',
-          // Fase 12: iconos personalizables y orden de acciones
-          'cart_icon', 'search_icon', 'auth_icon', 'currency_icon',
-          'minimal_menu_style', 'actions_order',
-          // Fase 12C: CTA personalizable
-          'cta_padding_x', 'cta_padding_y', 'cta_border_radius', 'cta_border_width',
-          'cta_border_color', 'cta_full_width', 'cta_shadow', 'cta_bg_color',
-          'cta_text_color', 'cta_margin_top', 'cta_margin_bottom',
-          // Footer config (Fase 2)
-          'footer_style', 'footer_columns', 'footer_background', 'footer_custom_bg_color',
-          'footer_show_contact', 'footer_show_hours', 'footer_show_social', 'footer_show_categories',
-          'footer_show_newsletter', 'footer_newsletter_title', 'footer_newsletter_placeholder',
-          'footer_newsletter_button_text', 'footer_text', 'show_powered_by',
-          'mobile_footer_style', 'mobile_footer_show_social', 'mobile_footer_show_hours',
-          'header_menu_id', 'header_mega_menu_id',
-        ];
+        const headerConfigKeys: readonly string[] = CLAVES_ENCABEZADO;
         const themeUpdates: Record<string, unknown> = {};
         const headerUpdates: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(pendingSettingsUpdates.current)) {
@@ -1489,14 +1558,7 @@ export default function PageEditorPage() {
         }
         if (Object.keys(headerUpdates).length > 0) {
           // Separar campos de footer para usar updateFooterConfig
-          const footerKeys = [
-            'footer_style', 'footer_columns', 'footer_background', 'footer_custom_bg_color',
-            'footer_show_contact', 'footer_show_hours', 'footer_show_social', 'footer_show_categories',
-            'footer_show_newsletter', 'footer_newsletter_title', 'footer_newsletter_placeholder',
-            'footer_newsletter_button_text', 'footer_text', 'show_powered_by',
-            'mobile_footer_style', 'mobile_footer_show_social', 'mobile_footer_show_hours',
-            'header_menu_id', 'header_mega_menu_id',
-          ];
+          const footerKeys: readonly string[] = CLAVES_PIE;
           const footerUpdates: Record<string, unknown> = {};
           const pureHeaderUpdates: Record<string, unknown> = {};
           for (const [key, value] of Object.entries(headerUpdates)) {
@@ -1611,8 +1673,65 @@ export default function PageEditorPage() {
         : `${previewUrl}/${currentPage?.slug || ''}`
     : null;
 
-  // Fase 4 §3.3 — Secciones permitidas según branch_type del outlet seleccionado
-  const allowedSectionTypes = getAllowedSectionTypes(selectedBranch?.branch_type);
+  // «Faltan datos» de una sección con los conteos reales del ERP (null mientras cargan).
+  const sujetoDatos = esSedeV2
+    ? sucursalesV2.find((sc) => sc.id === editorV2?.sitio.branchId)?.nombre ?? 'Esta sede'
+    : 'Tu organización';
+  const avisoDeSeccion = (section: WebsitePageSection) =>
+    avisoFaltanDatos(
+      section.section_type,
+      getSectionDefinition(section.section_type)?.label ?? section.section_type,
+      conteoFuentes,
+      sujetoDatos,
+    );
+
+  // ---- VISTA PREVIA (Figma 1896:920550) ----
+  // Con borrador: guarda lo pendiente, pide un enlace privado firmado y lo abre en otra pestaña.
+  // Sin borrador: abre lo guardado (?preview=1), que es lo mismo que ven los clientes.
+  const abrirVistaPrevia = async () => {
+    if (!enV2 || !editorV2) {
+      if (!currentPreviewUrl) return;
+      try {
+        const url = new URL(currentPreviewUrl);
+        url.searchParams.set('preview', '1');
+        window.open(url.toString(), '_blank', 'noopener,noreferrer');
+      } catch {
+        window.open(currentPreviewUrl, '_blank', 'noopener,noreferrer');
+      }
+      return;
+    }
+    if (!previewUrl) {
+      toast({ title: 'El sitio aún no tiene dirección', description: 'Configura el subdominio del sitio para ver la vista previa.' });
+      return;
+    }
+    // La pestaña se abre ya (en el clic) para que el navegador no la bloquee; luego se le da la URL.
+    const pestana = window.open('', '_blank');
+    if (pestana) pestana.opener = null;
+    setGenerandoVistaPrevia(true);
+    try {
+      if (hasChanges) {
+        const version = await guardarV2();
+        if (version === null) {
+          pestana?.close();
+          return;
+        }
+      }
+      const { token } = await clienteSitiosV2.vistaPrevia(editorV2.sitio.id, currentPage?.id ?? null);
+      const ruta = currentPage && currentPage.slug !== 'home' && !isDetailOrFlowPage ? `/${currentPage.slug}` : '';
+      const destino = `${previewUrl.replace(/\/$/, '')}/vista-previa/${token}${ruta}`;
+      if (pestana) pestana.location.href = destino;
+      else window.open(destino, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      pestana?.close();
+      toast({
+        title: 'No se pudo abrir la vista previa',
+        description: error instanceof ErrorApiSitio ? error.message : 'Inténtalo de nuevo.',
+        variant: 'destructive',
+      });
+    } finally {
+      setGenerandoVistaPrevia(false);
+    }
+  };
 
   // ---- Sitios V2: datos derivados para el encabezado ----
   const nombreSitioV2 =
@@ -1708,6 +1827,11 @@ export default function PageEditorPage() {
         currentPageIsGlobal={enV2 ? false : currentPage.branch_id === null || currentPage.branch_id === undefined}
         ocultarIndicadorOutlet={enV2}
         etiquetaGuardar={enV2 ? 'Guardar borrador' : undefined}
+        vistaPrevia={
+          currentPreviewUrl
+            ? { borrador: enV2, cargando: generandoVistaPrevia, onAbrir: () => void abrirVistaPrevia() }
+            : undefined
+        }
         controlSitio={
           apiV2Disponible ? (
             <SelectorSitio
@@ -1759,7 +1883,10 @@ export default function PageEditorPage() {
           onUpdateSectionVariant={handleUpdateSectionVariant}
           onToggleVisibility={handleToggleVisibility}
           onDeleteSection={handleDeleteSection}
-          onAddSection={() => setShowAddDialog(true)}
+          onAddSection={() => {
+            recargarConteoFuentes();
+            setShowAddDialog(true);
+          }}
           onReorder={handleReorder}
           onDuplicateSection={handleDuplicateSection}
           onCopyStyle={handleCopyStyle}
@@ -1801,17 +1928,19 @@ export default function PageEditorPage() {
           // V2: `page_settings` no tiene destino en el contrato del documento (se reporta).
           showPageLayout={enV2 ? undefined : showPageLayout}
           onTogglePageLayout={enV2 ? undefined : () => setShowPageLayout(!showPageLayout)}
-          renderExtraSeccion={
+          edicionSede={
             esSedeV2
-              ? (section, activa) => (
-                  <AvisoSeccionSede
-                    estado={estadosSeccionV2[section.id]}
-                    activa={activa}
-                    onRestablecer={() => restablecerSeccionV2(section.id)}
-                  />
-                )
-              : undefined
+              ? {
+                  nombre: nombreSitioV2,
+                  ambito: (section) => ambitoSeccionSede(section.id),
+                  bloqueada: (section) => ambitoSeccionSede(section.id) === 'heredada',
+                  onPersonalizar: personalizarSeccionV2,
+                  onRestablecer: restablecerSeccionV2,
+                }
+              : null
           }
+          avisoSeccion={avisoDeSeccion}
+          onEditarCarta={(sectionId) => setCartaAbierta({ sectionId, plato: null })}
           pageLayoutContent={
             <PageLayoutPanel
               pageType={currentPage.page_type}
@@ -1843,6 +1972,12 @@ export default function PageEditorPage() {
           liveSections={currentPage.sections}
           activeSectionId={activeSectionId ?? zonaGlobal}
           onSelectSectionFromCanvas={handleSelectFromCanvas}
+          avisoSeccion={avisoDeSeccion}
+          ajustesVivos={ajustesVivos}
+          cartaSede={cambiosCartaSede}
+          onAccionSeccion={(sectionId, accion) => {
+            if (accion === 'quitar') handleDeleteSection(sectionId);
+          }}
         />
 
         {/* Inspector derecho del encabezado / pie (Figma «05 Editor») */}
@@ -1891,13 +2026,57 @@ export default function PageEditorPage() {
         />
       )}
 
+      {/* Constructor de la carta (menu_full) */}
+      {organizationId && cartaAbierta && (() => {
+        const seccionCarta = currentPage.sections.find((s) => s.id === cartaAbierta.sectionId);
+        if (!seccionCarta) return null;
+        const branchCarta = enV2 ? editorV2.sitio.branchId : selectedBranchId;
+        return (
+          <ConstructorCarta
+            abierto
+            onAbiertoChange={(abierto) => {
+              if (!abierto) {
+                setCartaAbierta(null);
+                setCambiosCartaSede(null);
+              }
+            }}
+            organizationId={organizationId}
+            section={seccionCarta}
+            onCambiarContenido={(content) => handleUpdateSectionContent(seccionCarta.id, content)}
+            onCambiarVariante={(variante) => handleUpdateSectionVariant(seccionCarta.id, variante)}
+            sede={
+              branchCarta !== null && branchCarta !== undefined
+                ? {
+                    branchId: branchCarta,
+                    nombre: enV2 ? nombreSitioV2 : selectedBranch?.name ?? `Sede ${branchCarta}`,
+                  }
+                : null
+            }
+            platoInicial={cartaAbierta.plato}
+            onCambiosSede={(branchId, cambios) => setCambiosCartaSede(cambios.length > 0 ? { branchId, cambios } : null)}
+          />
+        );
+      })()}
+
       {/* Add Section Dialog */}
       <AddSectionDialog
         open={showAddDialog}
         onOpenChange={setShowAddDialog}
         onAdd={handleAddSection}
-        existingSectionTypes={currentPage.sections.map((s) => s.section_type)}
-        allowedSectionTypes={allowedSectionTypes}
+        branchType={selectedBranch?.branch_type ?? null}
+        pageType={currentPage.page_type}
+        conteos={conteoFuentes}
+        contexto={{
+          pagina: currentPage.title,
+          despuesDe: (() => {
+            const i = indiceInsercion() - 1;
+            const previa = i >= 0 ? currentPage.sections[i] : null;
+            return previa ? getSectionDefinition(previa.section_type)?.label ?? previa.section_type : null;
+          })(),
+          sede: esSedeV2 ? nombreSitioV2 : null,
+          nombreSitio: enV2 ? nombreSitioV2 : selectedBranch?.name ?? 'Principal',
+          enBorrador: enV2,
+        }}
       />
 
       {/* Confirmar descartar cambios al cambiar de página */}

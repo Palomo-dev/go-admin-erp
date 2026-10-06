@@ -87,6 +87,9 @@ export const clienteSitiosV2 = {
     pedir<ResultadoGuardado>(`/${sitioId}/restorations`, { method: 'POST', body: { revisionId, version } }),
   adopcion: async (sitioId: string, adoptado: boolean) =>
     (await pedir<{ sitio: SitioResumen }>(`/${sitioId}/adoption`, { method: 'POST', body: { adoptado } })).sitio,
+  /** Token del enlace privado de la vista previa del borrador (caduca en 24 h). */
+  vistaPrevia: (sitioId: string, paginaId: string | null) =>
+    pedir<{ token: string; caducaEn: string }>(`/${sitioId}/vista-previa`, { method: 'POST', body: { paginaId } }),
   llevarMenu: (sitioId: string, menuId: string, version: number) =>
     pedir<ResultadoGuardado & { menuId: string; copiado: boolean }>(`/${sitioId}/menus`, {
       method: 'POST',

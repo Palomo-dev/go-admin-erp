@@ -7,6 +7,32 @@ import { useTranslations } from 'next-intl';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { DevicePreview } from './EditorHeader';
 import type { WebsitePageSection } from '@/lib/services/websitePageBuilderService';
+import type { AvisoFaltanDatos } from '@/lib/services/website/fuentesDatosSecciones';
+
+/** Detalle del clic en el lienzo. En un enlace de una zona global llegan su `href` y su texto. */
+export interface DetalleClicLienzo {
+  enlace: boolean;
+  href?: string;
+  texto?: string;
+  /** Plato tocado dentro de la carta (`menu_full`): su `product_id`. */
+  productoId?: number;
+}
+
+/** Ajustes en edición que el lienzo aplica sin guardar (`goadmin:settings`). */
+export interface AjustesVivosLienzo {
+  /** Columnas de `website_settings` del encabezado, el pie y el tema, con su valor en edición. */
+  ajustes: Record<string, unknown>;
+  /** Menú del encabezado en edición (árbol de ítems), o `null` si no se está editando. */
+  menuEncabezado?: ItemMenuVivo[] | null;
+}
+
+export interface ItemMenuVivo {
+  id: string;
+  texto: string;
+  /** Ruta relativa al sitio («productos», «categorias/zapatos») o URL completa. */
+  ruta: string;
+  hijos: ItemMenuVivo[];
+}
 
 interface EditorPreviewProps {
   previewUrl: string | null;
@@ -23,7 +49,21 @@ interface EditorPreviewProps {
    * Callback cuando el usuario clickea una sección dentro del iframe. En las
    * zonas globales llega `enlace: true` si el clic cayó en un enlace.
    */
-  onSelectSectionFromCanvas?: (sectionId: string, detalle: { enlace: boolean }) => void;
+  onSelectSectionFromCanvas?: (sectionId: string, detalle: DetalleClicLienzo) => void;
+  /**
+   * Aviso «Faltan datos» por sección. El sitio, en modo preview, pinta en su lugar el
+   * estado vacío del lienzo (Figma «SeccionVaciaLienzo» 1886:919306); fuera del editor nada cambia.
+   */
+  avisoSeccion?: (section: WebsitePageSection) => AvisoFaltanDatos | null;
+  /** «Quitar sección» pulsado en el estado vacío del lienzo. */
+  onAccionSeccion?: (sectionId: string, accion: 'quitar') => void;
+  /** Encabezado, pie y tema en edición: el lienzo los aplica sin guardar. */
+  ajustesVivos?: AjustesVivosLienzo | null;
+  /**
+   * Cambios de la carta de una sede sin guardar (precio web, agotado, oculto): el lienzo los
+   * pinta encima de lo guardado (`goadmin:carta-sede`).
+   */
+  cartaSede?: { branchId: number; cambios: unknown[] } | null;
 }
 
 const DEVICE_WIDTHS: Record<DevicePreview, string> = {
@@ -62,6 +102,10 @@ export default function EditorPreview({
   liveSections,
   activeSectionId,
   onSelectSectionFromCanvas,
+  avisoSeccion,
+  onAccionSeccion,
+  ajustesVivos,
+  cartaSede,
 }: EditorPreviewProps) {
   const t = useTranslations('branding.editor.preview');
   const [isLoading, setIsLoading] = useState(true);
@@ -84,17 +128,30 @@ export default function EditorPreview({
     const iframe = iframeRef.current;
     if (!iframe || !iframe.contentWindow || !liveSections) return;
 
-    // Construir URL con ?preview=1 si no la tiene ya
+    // El enlace del aviso va absoluto: el lienzo vive en otro origen.
+    const origenEditor = typeof window !== 'undefined' ? window.location.origin : '';
     const payload = {
       type: 'goadmin:preview',
-      sections: liveSections.map((s) => ({
-        id: s.id,
-        section_type: s.section_type,
-        section_variant: s.section_variant,
-        content: s.content,
-        settings: s.settings,
-        is_visible: s.is_visible,
-      })),
+      sections: liveSections.map((s) => {
+        const aviso = avisoSeccion?.(s) ?? null;
+        return {
+          id: s.id,
+          section_type: s.section_type,
+          section_variant: s.section_variant,
+          content: s.content,
+          settings: s.settings,
+          is_visible: s.is_visible,
+          ...(aviso
+            ? {
+                aviso: {
+                  titulo: aviso.titulo.split(' necesita ')[0],
+                  descripcion: aviso.detalleLienzo,
+                  accion: { texto: aviso.accion.texto, href: `${origenEditor}${aviso.accion.href}` },
+                },
+              }
+            : {}),
+        };
+      }),
     };
 
     // Evitar envíos redundantes (mismo payload)
@@ -112,7 +169,7 @@ export default function EditorPreview({
         iframe.contentWindow.postMessage(payload, '*');
       } catch { /* noop */ }
     }
-  }, [liveSections, previewUrl]);
+  }, [liveSections, previewUrl, avisoSeccion]);
 
   // Debounce 150ms sobre cambios de secciones
   useEffect(() => {
@@ -125,6 +182,52 @@ export default function EditorPreview({
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
   }, [liveSections, sendPreviewMessage]);
+
+  // ---- Encabezado, pie y tema en vivo (`goadmin:settings`), con el mismo debounce ----
+  const ultimoAjustes = useRef<string>('');
+  const temporizadorAjustes = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const enviarAjustes = useCallback(() => {
+    const iframe = iframeRef.current;
+    if (!iframe || !iframe.contentWindow || !ajustesVivos) return;
+    const payload = {
+      type: 'goadmin:settings',
+      ajustes: ajustesVivos.ajustes,
+      menuEncabezado: ajustesVivos.menuEncabezado ?? null,
+    };
+    const serializado = JSON.stringify(payload);
+    if (serializado === ultimoAjustes.current) return;
+    ultimoAjustes.current = serializado;
+    const destino = origenLienzo(previewUrl);
+    if (!destino) return; // sin origen conocido no se envía nada con '*'
+    try {
+      iframe.contentWindow.postMessage(payload, destino);
+    } catch { /* noop */ }
+  }, [ajustesVivos, previewUrl]);
+
+  useEffect(() => {
+    if (!ajustesVivos) return;
+    if (temporizadorAjustes.current) clearTimeout(temporizadorAjustes.current);
+    temporizadorAjustes.current = setTimeout(enviarAjustes, 150);
+    return () => {
+      if (temporizadorAjustes.current) clearTimeout(temporizadorAjustes.current);
+    };
+  }, [ajustesVivos, enviarAjustes]);
+
+  // ---- Carta de la sede sin guardar (`goadmin:carta-sede`) ----
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    const destino = origenLienzo(previewUrl);
+    if (!iframe?.contentWindow || !destino || cartaSede === undefined) return;
+    const t = setTimeout(() => {
+      try {
+        iframe.contentWindow?.postMessage(
+          { type: 'goadmin:carta-sede', branchId: cartaSede?.branchId ?? null, cambios: cartaSede?.cambios ?? [] },
+          destino,
+        );
+      } catch { /* noop */ }
+    }, 150);
+    return () => clearTimeout(t);
+  }, [cartaSede, previewUrl]);
 
   // Scroll a la sección activa y aviso de la selección (el sitio resalta la
   // zona global seleccionada; con `null` quita el resaltado).
@@ -154,12 +257,22 @@ export default function EditorPreview({
       // Validar origen si es posible: el del sitio del lienzo o uno de desarrollo
       if (e.origin && e.origin !== origenLienzo(previewUrl) && !ALLOWED_SITE_ORIGINS.includes(e.origin)) return;
       if (e.data.type === 'goadmin:select' && typeof e.data.sectionId === 'string') {
-        onSelectSectionFromCanvas(e.data.sectionId, { enlace: e.data.enlace === true });
+        const enlace = e.data.enlace === true;
+        onSelectSectionFromCanvas(e.data.sectionId, {
+          enlace,
+          ...(enlace && typeof e.data.href === 'string' ? { href: e.data.href.slice(0, 512) } : {}),
+          ...(enlace && typeof e.data.texto === 'string' ? { texto: e.data.texto.slice(0, 120) } : {}),
+          ...(Number.isInteger(e.data.productoId) && e.data.productoId > 0 ? { productoId: e.data.productoId as number } : {}),
+        });
+      }
+      // Estado vacío del lienzo: «Quitar sección». «Ir a …» es un enlace normal del sitio.
+      if (e.data.type === 'goadmin:accion' && typeof e.data.sectionId === 'string' && e.data.accion === 'quitar') {
+        onAccionSeccion?.(e.data.sectionId, 'quitar');
       }
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
-  }, [onSelectSectionFromCanvas, previewUrl]);
+  }, [onSelectSectionFromCanvas, onAccionSeccion, previewUrl]);
 
   // Construir URL con ?preview=1 para activar el PreviewBridge del sitio
   const previewUrlWithFlag = previewUrl
@@ -258,8 +371,10 @@ export default function EditorPreview({
               setHasError(false);
               // Reenviar secciones tras recarga del iframe
               lastSentSections.current = '';
+              ultimoAjustes.current = '';
               setTimeout(() => {
                 sendPreviewMessage();
+                enviarAjustes();
                 const seleccion = seleccionActual.current;
                 if (seleccion && iframeRef.current?.contentWindow) {
                   try {

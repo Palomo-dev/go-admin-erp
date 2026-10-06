@@ -19534,7 +19534,517 @@
       "sinReservas": "Aucune réservation pour ce service.",
       "cliente": "{nombre} · {n, plural, one {# personne} other {# personnes}}",
       "mesa": "{mesa} · {zona}",
-      "sinMesa": "Sans table"
+      "sinMesa": "Sans table",
+      "sede": "Établissement",
+      "elegirSede": "Choisissez l'établissement",
+      "dia": "Jour",
+      "enVivo": "En direct",
+      "resumen": "Résumé du jour",
+      "kpi": {
+        "porConfirmar": "À confirmer",
+        "alDia": "rien en attente",
+        "llegoHace": "arrivée il y a {min} min par le web",
+        "esperanConfirmacion": "en attente de confirmation",
+        "confirmadas": "Confirmées",
+        "sentadas": "Installées",
+        "personas": "{n, plural, one {# personne} other {# personnes}}",
+        "noShow": "Absents",
+        "delDia": "du jour"
+      },
+      "turnoTitulo": "{nombre} · {desde} – {hasta}",
+      "turnos": {
+        "desayuno": "Petit-déjeuner",
+        "almuerzo": "Déjeuner",
+        "cena": "Dîner"
+      },
+      "clientePersonas": "{nombre} · {n, plural, one {# personne} other {# personnes}}",
+      "minutos": "{n} min",
+      "web": "web",
+      "vacioTitulo": "Aucune réservation ce jour",
+      "vacioDescripcion": "Créez-en une avec «Nouvelle réservation» ou choisissez un autre jour. Celles du web arrivent ici en temps réel."
+    },
+    "estados": {
+      "pending": "En attente",
+      "confirmed": "Confirmée",
+      "seated": "Installée",
+      "completed": "Terminée",
+      "cancelled": "Annulée",
+      "no_show": "Absent"
+    },
+    "origenes": {
+      "web": "Web",
+      "telefono": "Téléphone",
+      "equipo": "Équipe",
+      "whatsapp": "WhatsApp"
+    },
+    "estadoFila": {
+      "solicitud": "Demande · à confirmer",
+      "pendiente": "En attente · à confirmer",
+      "confirmada": "Confirmée",
+      "confirmadaTarde": "Confirmée · {minutos} min de retard",
+      "sentada": "Installée",
+      "completada": "Terminée",
+      "completadaVenta": "Terminée · {venta}",
+      "noShow": "Absent",
+      "noShowReincidente": "Absent ({vez}e fois)",
+      "cancelada": "Annulée"
+    },
+    "lista": {
+      "resumen": "Résumé de la période",
+      "kpi": {
+        "enElRango": "Sur la période",
+        "comensales": "{n, plural, one {# couvert} other {# couverts}}",
+        "solicitudesWeb": "Demandes web",
+        "esperanConfirmacion": "en attente de confirmation",
+        "confirmadas": "Confirmées",
+        "sentadas": "Installées",
+        "enSala": "en salle maintenant",
+        "noShow": "Absents",
+        "pctRango": "{pct} % de la période",
+        "canceladas": "Annulées"
+      },
+      "buscar": "Rechercher par nom, téléphone ou e-mail…",
+      "filtros": {
+        "titulo": "Filtres",
+        "estado": "Statut",
+        "origen": "Origine",
+        "desde": "Du",
+        "hasta": "Au",
+        "todos": "Tous"
+      },
+      "tarde": {
+        "texto": "{nombre} n'est pas arrivé · {hora} · {n, plural, one {# personne} other {# personnes}} · {mesa}. {min} min de retard ; la table reste bloquée jusqu'à votre décision.",
+        "llamar": "Appeler",
+        "esperar": "Attendre {min} min",
+        "noShow": "Absent"
+      },
+      "columnas": {
+        "hora": "Heure",
+        "cliente": "Client",
+        "personas": "Personnes",
+        "mesa": "Table",
+        "origen": "Origine",
+        "estado": "Statut"
+      },
+      "sinMesa": "Sans table attribuée",
+      "etiquetaTabla": "Réservations",
+      "menu": {
+        "editar": "Modifier",
+        "confirmar": "Confirmer",
+        "revisarSolicitud": "Examiner la demande",
+        "asignarMesa": "Attribuer une table",
+        "sentar": "Installer et ouvrir l'addition",
+        "sentarSinMesa": "Attribuez une table avant d'installer",
+        "completar": "Terminer",
+        "reembolsarDeposito": "Enregistrer le remboursement de l'acompte",
+        "noShow": "Absent",
+        "cancelar": "Annuler la réservation",
+        "eliminar": "Supprimer"
+      },
+      "vacio": {
+        "titulo": "Aucune réservation sur cette période",
+        "descripcion": "Créez-en une avec «Nouvelle réservation» ou élargissez les dates dans Filtres."
+      },
+      "sinResultados": {
+        "titulo": "Aucune réservation ne correspond",
+        "descripcion": "Essayez un autre nom, téléphone ou e-mail, ou effacez les filtres."
+      },
+      "error": {
+        "titulo": "Impossible de charger les réservations",
+        "descripcion": "Vérifiez votre connexion et réessayez. Nous n'affichons pas de données obsolètes."
+      },
+      "movil": {
+        "detalle": "{n, plural, one {# personne} other {# personnes}} · {mesa} · {origen}"
+      },
+      "sustantivo": {
+        "uno": "réservation",
+        "varios": "réservations"
+      }
+    },
+    "solicitud": {
+      "titulo": "Demande de réservation",
+      "porConfirmar": "À confirmer",
+      "llego": "Arrivée par {origen} il y a {min} min · {sede}",
+      "cerrar": "Fermer",
+      "cliente": "Client",
+      "contacto": "Contact",
+      "fechaHora": "Date et heure",
+      "fechaHoraValor": "{dia}, {hora} · {min} min",
+      "hoy": "Aujourd'hui",
+      "personas": "Personnes",
+      "nota": "Note",
+      "deposito": "Acompte",
+      "depositoPagado": "payé avec {pasarela}",
+      "llegoComoSolicitud": "Arrivée comme demande : {motivo}",
+      "motivo": {
+        "grupoGrande": "ils sont {n}",
+        "sinMesas": "aucune table libre pour le groupe à cette heure"
+      },
+      "puedes": "Vous pouvez attribuer une table ou proposer une autre heure au client.",
+      "asignarMesa": "Attribuer une table",
+      "buscandoMesas": "Recherche de tables…",
+      "sinMesasLibres": "Aucune table libre à cette heure",
+      "elegirMesa": "Choisissez une table",
+      "opcionMesa": "{mesa} · {zona} · {n} places",
+      "rechazar": "Refuser",
+      "proponerHora": "Proposer une autre heure",
+      "confirmar": "Confirmer et prévenir le client"
+    },
+    "rechazo": {
+      "titulo": "Refuser la demande de {nombre}",
+      "motivo": "Motif (enregistré et communiqué au client)",
+      "motivos": {
+        "sinMesas": "Pas de table à cette heure",
+        "grupoGrande": "Groupe trop grand",
+        "eventoPrivado": "Événement privé",
+        "otro": "Autre"
+      },
+      "otroMotivo": "Écrivez le motif",
+      "escribeMotivo": "Écrivez le motif (3 lettres minimum)",
+      "otraHora": "Proposer une autre heure (facultatif)",
+      "sinHoras": "Aucune autre heure avec table ce jour-là.",
+      "asiLeLlega": "Voici ce qu'il reçoit",
+      "vista": {
+        "base": "Bonjour {nombre}, {cuando} à {hora} nous n'avons pas de table pour {n} à {sede}.",
+        "hoy": "aujourd'hui",
+        "eseDia": "ce jour-là",
+        "otraHora": "{hora} vous convient ? Réservez à nouveau et nous la gardons.",
+        "motivo": "Motif : {motivo}."
+      },
+      "confirmar": "Refuser et prévenir"
+    },
+    "form": {
+      "tituloNueva": "Nouvelle réservation",
+      "tituloEditar": "Modifier la réservation · {nombre}",
+      "descripcionNueva": "{sede} · {fecha}. La réservation est liée à la fiche client : sans client, ni historique ni rappel.",
+      "confirmadaEl": "Confirmée le {dia} à {hora}",
+      "creadaPor": "Créée par {origen} · non confirmée",
+      "estado": "Statut",
+      "cliente": "Client",
+      "llamaSinRegistro": "Quelqu'un appelle sans être enregistré ?",
+      "crearCliente": "Créer un client",
+      "clienteAyuda": "Obligatoire. Si le client n'est pas enregistré, créez-le ici avec prénom, nom et téléphone.",
+      "verFicha": "Voir la fiche",
+      "visitas": "{n, plural, one {# visite} other {# visites}}",
+      "fecha": "Date",
+      "hora": "Heure",
+      "personas": "Personnes",
+      "mesa": "Table",
+      "mesaAyuda": "En changeant de table, l'ancienne redevient libre.",
+      "sinMesa": "Sans table",
+      "buscandoMesas": "Recherche de tables libres…",
+      "elegirMesa": "Choisissez une table",
+      "opcionMesa": "{mesa} · {zona} · {n} places",
+      "duracion": "Durée",
+      "minutos": "{n} min",
+      "solape": "{mesa} a déjà une réservation qui chevauche {hora}. Choisissez une autre table ou une autre heure.",
+      "notas": "Notes",
+      "notasInternas": "Notes internes",
+      "notasPlaceholder": "Anniversaire, chaise bébé, allergies…",
+      "origen": "Origine",
+      "recordar": "Rappeler au client {n, plural, one {# heure} other {# heures}} avant",
+      "recordarPor": "Par e-mail à {destino}",
+      "recordarSinCorreo": "Le client n'a pas d'e-mail : impossible d'envoyer un rappel.",
+      "errores": {
+        "cliente": "Choisissez ou créez le client de la réservation.",
+        "mesa": "Choisissez la table."
+      },
+      "cancelar": "Annuler",
+      "crear": "Créer la réservation",
+      "guardarCambios": "Enregistrer"
+    },
+    "crearCliente": {
+      "titulo": "Créer un client",
+      "descripcion": "Le minimum pour réserver par téléphone. Le reste de la fiche se complète à son arrivée.",
+      "nombre": "Prénom",
+      "apellido": "Nom",
+      "telefono": "Téléphone",
+      "telefonoAyuda": "Le rappel de la réservation passe par ici.",
+      "correo": "E-mail",
+      "existe": "Un client a déjà ce téléphone : {nombre}, {n, plural, one {# visite} other {# visites}}. Est-ce le même ?",
+      "existeSinVisitas": "Un client a déjà ce téléphone : {nombre}. Est-ce le même ?",
+      "usarExistente": "Utiliser l'existant",
+      "cancelar": "Annuler",
+      "crearYUsar": "Créer et utiliser",
+      "duplicado": "Un client avec ces données existe déjà.",
+      "error": "Impossible de créer le client."
+    },
+    "configuracion": {
+      "sede": "Établissement",
+      "elegirSede": "Choisissez un établissement",
+      "todaLaOrganizacion": "Toute l'organisation",
+      "recibiendo": "Reçoit des réservations web",
+      "noRecibe": "Ne reçoit pas de réservations web",
+      "copiarA": "Copier vers un autre établissement",
+      "verEnSitio": "Voir sur le site",
+      "guardar": "Enregistrer",
+      "guardado": "Paramètres de réservation enregistrés",
+      "revisa": "Vérifiez les champs signalés",
+      "errorGuardar": "Impossible d'enregistrer les paramètres",
+      "copiada": "Paramètres copiés depuis {sede}",
+      "copiadaA": "Paramètres copiés vers {sede}",
+      "copiarTitulo": "Copier vers un autre établissement",
+      "copiarDescripcion": "L'établissement choisi reçoit ces mêmes règles. Les siennes sont remplacées.",
+      "copiarConfirmar": "Copier",
+      "sedeDestino": "Établissement de destination",
+      "errores": {
+        "HORA_INVALIDA": "Utilisez le format HH:MM.",
+        "TURNO_INVERTIDO": "L'heure de fin doit être après l'heure de début.",
+        "MIN_MAYOR_QUE_MAX": "Le minimum ne peut pas dépasser le maximum.",
+        "GRUPO_GRANDE_BAJO": "Le grand groupe ne peut pas être inférieur au minimum.",
+        "DEPOSITO_REQUERIDO": "Indiquez le montant de l'acompte.",
+        "DEPOSITO_SIN_PASARELA": "Connectez une passerelle avant de demander un acompte.",
+        "ZONAS_REQUERIDAS": "Choisissez au moins une zone.",
+        "CORREO_INVALIDO": "Vérifiez les e-mails.",
+        "VALOR_INVALIDO": "Valeur hors limites.",
+        "INTERVALO_INVALIDO": "Choisissez un intervalle de la liste (multiples de 15 minutes)."
+      },
+      "web": {
+        "titulo": "Réservations web",
+        "descripcion": "Ce que voit le client sur votre site et sur le lien de réservation.",
+        "recibir": "Recevoir des réservations web",
+        "recibirAyuda": "Affiche le bouton «Réserver une table» sur le site et sur le lien de réservation de {sede}.",
+        "comoSeConfirman": "Comment sont-elles confirmées ?",
+        "automatica": "Automatique s'il y a une table",
+        "manual": "Manuelle : elles arrivent comme demandes",
+        "comoAyuda": "Automatique : le client reçoit la confirmation tout de suite. Manuelle : la réservation arrive comme «Demande» et l'équipe l'accepte ou la refuse depuis la Liste."
+      },
+      "horario": {
+        "titulo": "Horaires de service",
+        "descripcion": "Créneaux où les réservations sont acceptées. Ils partent des horaires d'ouverture de l'établissement.",
+        "deSucursal": "Repris de l'établissement",
+        "desde": "De",
+        "hasta": "À",
+        "quitar": "Retirer le créneau",
+        "franja": "Créneau",
+        "cerrado": "Fermé · pas de réservations",
+        "restablecer": "Revenir aux horaires de l'établissement",
+        "restablecerAyuda": "Copie les horaires d'ouverture ; vous pourrez les ajuster ensuite."
+      },
+      "turnos": {
+        "titulo": "Créneaux et capacité",
+        "descripcion": "Tous les combien une heure est proposée, combien dure une table et combien de personnes par créneau.",
+        "intervalo": "Intervalle entre horaires",
+        "intervaloAyuda": "12:00, 12:30, 13:00…",
+        "min": "{n} min",
+        "duracion": "Durée de la table",
+        "duracionAyuda": "Temps d'occupation de la table.",
+        "margen": "Marge entre réservations",
+        "margenAyuda": "Pour nettoyer et dresser.",
+        "minimo": "Personnes minimum",
+        "maximo": "Personnes maximum",
+        "cubiertos": "Couverts par créneau",
+        "cubiertosAyuda": "Vide = selon les tables libres.",
+        "pers": "pers.",
+        "grupoGrande": "Grand groupe à partir de",
+        "grupoTitulo": "Les grands groupes arrivent toujours comme demandes",
+        "grupoTexto": "Même avec la confirmation automatique, {n} personnes ou plus doivent être confirmées par l'équipe."
+      },
+      "anticipacion": {
+        "titulo": "Délai et annulation",
+        "minima": "Délai minimum",
+        "minimaAyuda": "Pas de réservation à moins de {n} h.",
+        "horas": "heures",
+        "maxDias": "Jusqu'à combien de jours avant",
+        "dias": "jours",
+        "cancelacion": "Annulation gratuite jusqu'à",
+        "cancelacionAyuda": "Passé ce délai, l'acompte n'est pas remboursé.",
+        "horasAntes": "heures avant"
+      },
+      "mesas": {
+        "titulo": "Tables et zones",
+        "asignar": "Attribuer la table automatiquement",
+        "asignarAyuda": "Choisit la plus petite table libre où tient le groupe. Vous pourrez la changer dans l'Agenda.",
+        "zona": "Laisser choisir la zone",
+        "zonaAyuda": "Le client choisit parmi les zones autorisées ; s'il n'y a pas de place, une autre heure est proposée.",
+        "zonasWeb": "Zones proposées sur le web",
+        "zonasAyuda": "Les zones viennent des tables configurées dans POS › Tables.",
+        "sinZonas": "Les tables de cet établissement n'ont pas de zone."
+      },
+      "deposito": {
+        "titulo": "Acompte",
+        "pedir": "Demander un acompte pour réserver",
+        "pedirAyuda": "La réservation reste une demande jusqu'à l'approbation du paiement. S'il n'est pas payé en 30 minutes, la table est libérée.",
+        "sinPasarela": "Connectez une passerelle dans Intégrations pour encaisser des acomptes.",
+        "irIntegraciones": "Aller aux Intégrations",
+        "monto": "Montant de l'acompte",
+        "seCobra": "Facturé",
+        "porReserva": "Par réservation",
+        "porPersona": "Par personne",
+        "reembolsable": "Remboursé en cas d'annulation à temps",
+        "reembolsableAyuda": "Jusqu'à {n} h avant la réservation (le délai d'«Annulation gratuite»). L'équipe enregistre le remboursement depuis la Liste.",
+        "conPasarela": "Encaissé avec la passerelle du site ({pasarela})",
+        "ejemploPersona": "Exemple : 4 personnes × {base} = {total}. Enregistré dans Finances comme paiement de la réservation.",
+        "ejemploFijo": "Chaque réservation paie {base}. Enregistré dans Finances comme paiement de la réservation.",
+        "verPasarela": "Voir la passerelle"
+      },
+      "datos": {
+        "titulo": "Données demandées au client",
+        "telefono": "Téléphone (obligatoire)",
+        "correo": "E-mail (obligatoire)"
+      },
+      "avisos": {
+        "titulo": "Notifications",
+        "equipo": "Prévenir l'équipe à",
+        "anadir": "Ajouter un e-mail",
+        "quitar": "Retirer {correo}",
+        "correoCliente": "Confirmation par e-mail au client",
+        "correoClienteAyuda": "Avec date, heure, personnes, adresse de l'établissement et lien d'annulation.",
+        "whatsapp": "Confirmation par WhatsApp au client",
+        "whatsappAyuda": "Utilise le modèle approuvé «reserva_confirmada». Nécessite WhatsApp connecté dans Chat : pas encore envoyé.",
+        "recordatorio": "Rappel avant la réservation",
+        "recordatorioAyuda": "Par le même canal que la confirmation.",
+        "sinRecordatorio": "Sans rappel",
+        "horasAntes": "{n, plural, one {# heure avant} other {# heures avant}}"
+      },
+      "politica": {
+        "titulo": "Politique pour le client",
+        "descripcion": "Affichée à la dernière étape et dans l'e-mail de confirmation.",
+        "contador": "{n} / 600 caractères"
+      },
+      "vista": {
+        "titulo": "Ce que voit le client",
+        "descripcion": "Aperçu du widget web «Réserver une table».",
+        "reservaTuMesa": "Réservez votre table · {sede}",
+        "fecha": "Ven 9 oct",
+        "personas": "4 personnes",
+        "deposito": "Acompte : {monto}",
+        "cancelacion": "Annulation gratuite jusqu'à {n} h avant",
+        "reservar": "Réserver"
+      },
+      "resumen": {
+        "titulo": "Résumé des règles",
+        "horarios": "Horaires proposés par jour",
+        "hasta": "jusqu'à {n}",
+        "cupo": "Couverts par créneau",
+        "personas": "{n} personnes",
+        "segunMesas": "selon les tables",
+        "mesas": "Tables actives sur le web",
+        "deTotal": "{n} sur {total}",
+        "zonas": "Zones sur le web",
+        "todas": "Toutes",
+        "confirmacion": "Confirmation",
+        "manual": "Manuelle",
+        "automatica": "Automatique",
+        "automaticaGrupos": "Automatique · groupes ≥ {n} manuelle",
+        "deposito": "Acompte",
+        "porPersona": "par personne",
+        "porReserva": "par réservation",
+        "sinDeposito": "Sans acompte"
+      },
+      "donde": {
+        "titulo": "Où c'est utilisé",
+        "sitio": "Site web › Ventes en ligne",
+        "activas": "Réservations : actives",
+        "apagadas": "Réservations : désactivées",
+        "enlace": "Lien direct",
+        "pos": "Nouvelle réservation au POS",
+        "mismas": "Mêmes règles"
+      },
+      "vacio": {
+        "titulo": "{sede} ne reçoit pas encore de réservations web",
+        "descripcion": "On commence avec les horaires de l'établissement, des créneaux de 30 min, des tables de 90 min et la confirmation automatique. Vous pourrez tout changer avant d'activer.",
+        "recomendados": "Configurer avec les valeurs recommandées",
+        "copiaDe": "Copier depuis {sede}"
+      },
+      "error": {
+        "titulo": "Impossible de charger les paramètres",
+        "descripcion": "Vérifiez votre connexion et réessayez. Nous n'affichons pas de données obsolètes."
+      },
+      "sinPermiso": {
+        "titulo": "Vous n'avez pas l'autorisation de modifier les règles de réservation",
+        "descripcion": "Vous pouvez créer et gérer des réservations depuis Agenda et Liste. Demandez à un administrateur l'autorisation de modifier le site web.",
+        "irAgenda": "Aller à l'Agenda"
+      },
+      "movil": {
+        "volver": "Paramètres",
+        "horario": "{dias, plural, one {# jour} other {# jours}} · {desde} – {hasta}",
+        "horarioCerrado": "Aucun jour ouvert",
+        "turnos": "Toutes les {intervalo} min · table {duracion} min · {cupo}",
+        "cupo": "{n} par service",
+        "anticipacion": "Min. {min} h · jusqu’à {dias} jours · annuler {cancelar} h avant",
+        "todasZonas": "Toutes les zones",
+        "datos": "{n, plural, =0 {Rien d’obligatoire} one {# donnée obligatoire} other {# données obligatoires}}",
+        "correo": "E-mail",
+        "sinCorreo": "Pas d’e-mail au client",
+        "recordatorio": "rappel {n} h avant",
+        "sinRecordatorio": "sans rappel",
+        "politica": "{n, plural, one {# caractère} other {# caractères}}"
+      }
+    },
+    "pagina": {
+      "titulo": "Réservations de tables",
+      "migaPos": "PDV",
+      "irConfiguracion": "Paramètres des réservations",
+      "pestanas": {
+        "agenda": "Agenda",
+        "lista": "Liste",
+        "configuracion": "Paramètres"
+      },
+      "todas": "Tous les établissements",
+      "hoy": "aujourd'hui",
+      "hoyEtiqueta": "Aujourd'hui · {fecha}",
+      "mananaEtiqueta": "Demain · {fecha}",
+      "subtituloAgenda": "{sede} · {dia} {fecha} · {n, plural, one {# réservation} other {# réservations}} · {personas, plural, one {# personne} other {# personnes}}",
+      "subtituloLista": "Du {desde} au {hasta} · {n, plural, one {# réservation} other {# réservations}}",
+      "subtituloConfig": "{sede} · règles des réservations du POS et du web",
+      "sinSucursal": {
+        "titulo": "Choisissez un établissement pour voir ses réservations",
+        "descripcion": "Les réservations, l'agenda et leurs règles sont par établissement. Changez-le dans l'en-tête ; la Liste les montre toutes."
+      },
+      "cancelar": {
+        "titulo": "Annuler la réservation de {nombre} ?",
+        "descripcion": "{dia} à {hora} · {n, plural, one {# personne} other {# personnes}} · {mesa}. Indiquez le motif : il est enregistré avec la réservation.",
+        "confirmar": "Annuler la réservation",
+        "motivos": {
+          "cliente": "Le client a annulé",
+          "noConfirmo": "N'a pas confirmé",
+          "cierre": "Fermeture du restaurant"
+        }
+      },
+      "eliminar": {
+        "titulo": "Supprimer la réservation de {nombre} ?",
+        "descripcion": "Elle disparaît de l'historique et c'est irréversible. Si le client ne vient pas, mieux vaut l'annuler ou la marquer «Absent».",
+        "confirmar": "Supprimer"
+      },
+      "reembolso": {
+        "titulo": "Enregistrer le remboursement de l'acompte",
+        "descripcion": "Le paiement de l'acompte est annulé dans Finances. L'argent ne bouge pas tout seul : remboursez le client depuis le tableau de bord de la passerelle.",
+        "confirmar": "Enregistrer le remboursement",
+        "motivo": "Remboursement de l'acompte de réservation enregistré depuis Réservations"
+      },
+      "toasts": {
+        "nuevaWeb": "Nouvelle réservation web · {sede}",
+        "nuevaWebDetalle": "{nombre} · {n, plural, one {# personne} other {# personnes}} · {hora} · {estado}",
+        "porConfirmar": "à confirmer",
+        "confirmada": "Réservation de {nombre} confirmée",
+        "revisar": "Examiner",
+        "creada": "Réservation créée",
+        "creadaDetalle": "{nombre} · {fecha}, {hora} · {mesa}",
+        "sinMesa": "sans table",
+        "verAgenda": "Voir dans l'agenda",
+        "actualizada": "Réservation mise à jour",
+        "noCreada": "Impossible de créer la réservation",
+        "sinSucursal": "Sélectionnez un établissement précis : avec «Tous», impossible de créer.",
+        "sentada": "Réservation installée",
+        "sentadaDetalle": "{mesa} est maintenant occupée",
+        "abrirCuenta": "Ouvrir l'addition",
+        "avisado": "Nous avons prévenu le client par e-mail.",
+        "sinAviso": "Le client n'a pas d'e-mail ou l'envoi n'est pas configuré : prévenez-le par téléphone.",
+        "rechazada": "Demande de {nombre} refusée",
+        "eliminada": "Réservation supprimée",
+        "reembolso": "Remboursement enregistré",
+        "reembolsoDetalle": "Remboursez le client depuis le tableau de bord de la passerelle.",
+        "estado": {
+          "pending": "Réservation de {nombre} en attente",
+          "confirmed": "Réservation de {nombre} confirmée",
+          "seated": "Réservation de {nombre} installée",
+          "completed": "Réservation de {nombre} terminée",
+          "cancelled": "Réservation de {nombre} annulée",
+          "no_show": "{nombre} ne s'est pas présenté"
+        }
+      },
+      "miga": "Réservations"
     }
   },
   "inventario": {

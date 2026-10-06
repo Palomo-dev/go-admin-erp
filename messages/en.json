@@ -22389,7 +22389,517 @@
       "sinReservas": "No reservations in this service.",
       "cliente": "{nombre} · {n, plural, one {# guest} other {# guests}}",
       "mesa": "{mesa} · {zona}",
-      "sinMesa": "No table"
+      "sinMesa": "No table",
+      "sede": "Location",
+      "elegirSede": "Choose the location",
+      "dia": "Day",
+      "enVivo": "Live",
+      "resumen": "Day summary",
+      "kpi": {
+        "porConfirmar": "To confirm",
+        "alDia": "nothing pending",
+        "llegoHace": "arrived {min} min ago from the web",
+        "esperanConfirmacion": "awaiting confirmation",
+        "confirmadas": "Confirmed",
+        "sentadas": "Seated",
+        "personas": "{n, plural, one {# guest} other {# guests}}",
+        "noShow": "No-show",
+        "delDia": "today"
+      },
+      "turnoTitulo": "{nombre} · {desde} – {hasta}",
+      "turnos": {
+        "desayuno": "Breakfast",
+        "almuerzo": "Lunch",
+        "cena": "Dinner"
+      },
+      "clientePersonas": "{nombre} · {n, plural, one {# guest} other {# guests}}",
+      "minutos": "{n} min",
+      "web": "web",
+      "vacioTitulo": "No bookings this day",
+      "vacioDescripcion": "Create one with «New booking» or pick another day. Web bookings show up here in real time."
+    },
+    "estados": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "seated": "Seated",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "no_show": "No-show"
+    },
+    "origenes": {
+      "web": "Web",
+      "telefono": "Phone",
+      "equipo": "Staff",
+      "whatsapp": "WhatsApp"
+    },
+    "estadoFila": {
+      "solicitud": "Request · to confirm",
+      "pendiente": "Pending · to confirm",
+      "confirmada": "Confirmed",
+      "confirmadaTarde": "Confirmed · {minutos} min late",
+      "sentada": "Seated",
+      "completada": "Completed",
+      "completadaVenta": "Completed · {venta}",
+      "noShow": "No-show",
+      "noShowReincidente": "No-show (time #{vez})",
+      "cancelada": "Cancelled"
+    },
+    "lista": {
+      "resumen": "Range summary",
+      "kpi": {
+        "enElRango": "In range",
+        "comensales": "{n, plural, one {# guest} other {# guests}}",
+        "solicitudesWeb": "Web requests",
+        "esperanConfirmacion": "awaiting confirmation",
+        "confirmadas": "Confirmed",
+        "sentadas": "Seated",
+        "enSala": "in the room now",
+        "noShow": "No-show",
+        "pctRango": "{pct} % of the range",
+        "canceladas": "Cancelled"
+      },
+      "buscar": "Search by name, phone or email…",
+      "filtros": {
+        "titulo": "Filters",
+        "estado": "Status",
+        "origen": "Source",
+        "desde": "From",
+        "hasta": "To",
+        "todos": "All"
+      },
+      "tarde": {
+        "texto": "{nombre} hasn't arrived · {hora} · {n, plural, one {# guest} other {# guests}} · {mesa}. {min} min late; the table stays held until you decide.",
+        "llamar": "Call",
+        "esperar": "Wait {min} min",
+        "noShow": "No-show"
+      },
+      "columnas": {
+        "hora": "Time",
+        "cliente": "Customer",
+        "personas": "Guests",
+        "mesa": "Table",
+        "origen": "Source",
+        "estado": "Status"
+      },
+      "sinMesa": "No table assigned",
+      "etiquetaTabla": "Bookings",
+      "menu": {
+        "editar": "Edit",
+        "confirmar": "Confirm",
+        "revisarSolicitud": "Review request",
+        "asignarMesa": "Assign table",
+        "sentar": "Seat and open tab",
+        "sentarSinMesa": "Assign a table before seating",
+        "completar": "Complete",
+        "reembolsarDeposito": "Record deposit refund",
+        "noShow": "No-show",
+        "cancelar": "Cancel booking",
+        "eliminar": "Delete"
+      },
+      "vacio": {
+        "titulo": "No bookings in this range",
+        "descripcion": "Create one with «New booking» or widen the dates in Filters."
+      },
+      "sinResultados": {
+        "titulo": "No booking matches",
+        "descripcion": "Try another name, phone or email, or clear the filters."
+      },
+      "error": {
+        "titulo": "Bookings could not be loaded",
+        "descripcion": "Check your connection and try again. We don't show stale data."
+      },
+      "movil": {
+        "detalle": "{n, plural, one {# guest} other {# guests}} · {mesa} · {origen}"
+      },
+      "sustantivo": {
+        "uno": "booking",
+        "varios": "bookings"
+      }
+    },
+    "solicitud": {
+      "titulo": "Booking request",
+      "porConfirmar": "To confirm",
+      "llego": "Arrived via {origen} {min} min ago · {sede}",
+      "cerrar": "Close",
+      "cliente": "Customer",
+      "contacto": "Contact",
+      "fechaHora": "Date and time",
+      "fechaHoraValor": "{dia}, {hora} · {min} min",
+      "hoy": "Today",
+      "personas": "Guests",
+      "nota": "Note",
+      "deposito": "Deposit",
+      "depositoPagado": "paid with {pasarela}",
+      "llegoComoSolicitud": "Arrived as a request: {motivo}",
+      "motivo": {
+        "grupoGrande": "it is {n} guests",
+        "sinMesas": "there is no free table for the group at that time"
+      },
+      "puedes": "You can assign a table or offer the customer another time.",
+      "asignarMesa": "Assign table",
+      "buscandoMesas": "Looking for tables…",
+      "sinMesasLibres": "No free tables at that time",
+      "elegirMesa": "Choose a table",
+      "opcionMesa": "{mesa} · {zona} · {n} seats",
+      "rechazar": "Reject",
+      "proponerHora": "Offer another time",
+      "confirmar": "Confirm and notify the customer"
+    },
+    "rechazo": {
+      "titulo": "Reject {nombre}'s request",
+      "motivo": "Reason (saved and told to the customer)",
+      "motivos": {
+        "sinMesas": "No tables at that time",
+        "grupoGrande": "Group too large",
+        "eventoPrivado": "Private event",
+        "otro": "Other"
+      },
+      "otroMotivo": "Write the reason",
+      "escribeMotivo": "Write the reason (at least 3 letters)",
+      "otraHora": "Offer another time (optional)",
+      "sinHoras": "No other times with a table that day.",
+      "asiLeLlega": "This is what they get",
+      "vista": {
+        "base": "Hi {nombre}, {cuando} at {hora} we have no table for {n} at {sede}.",
+        "hoy": "today",
+        "eseDia": "that day",
+        "otraHora": "Does {hora} work for you? Book again and we'll hold it.",
+        "motivo": "Reason: {motivo}."
+      },
+      "confirmar": "Reject and notify"
+    },
+    "form": {
+      "tituloNueva": "New booking",
+      "tituloEditar": "Edit booking · {nombre}",
+      "descripcionNueva": "{sede} · {fecha}. The booking is linked to the customer record: without a customer there is no history or reminder.",
+      "confirmadaEl": "Confirmed on {dia} at {hora}",
+      "creadaPor": "Created via {origen} · not confirmed",
+      "estado": "Status",
+      "cliente": "Customer",
+      "llamaSinRegistro": "Someone calling who isn't registered?",
+      "crearCliente": "Create customer",
+      "clienteAyuda": "Required. If the customer isn't registered, create them here with first name, last name and phone.",
+      "verFicha": "View record",
+      "visitas": "{n, plural, one {# visit} other {# visits}}",
+      "fecha": "Date",
+      "hora": "Time",
+      "personas": "Guests",
+      "mesa": "Table",
+      "mesaAyuda": "When you change tables, the previous one becomes free again.",
+      "sinMesa": "No table",
+      "buscandoMesas": "Looking for free tables…",
+      "elegirMesa": "Choose a table",
+      "opcionMesa": "{mesa} · {zona} · {n} seats",
+      "duracion": "Duration",
+      "minutos": "{n} min",
+      "solape": "{mesa} already has a booking that overlaps {hora}. Choose another table or time.",
+      "notas": "Notes",
+      "notasInternas": "Internal notes",
+      "notasPlaceholder": "Birthday, high chair, allergies…",
+      "origen": "Source",
+      "recordar": "Remind the customer {n, plural, one {# hour} other {# hours}} before",
+      "recordarPor": "By email to {destino}",
+      "recordarSinCorreo": "The customer has no email: no reminder can be sent.",
+      "errores": {
+        "cliente": "Choose or create the booking's customer.",
+        "mesa": "Choose the table."
+      },
+      "cancelar": "Cancel",
+      "crear": "Create booking",
+      "guardarCambios": "Save changes"
+    },
+    "crearCliente": {
+      "titulo": "Create customer",
+      "descripcion": "The minimum to book by phone. The rest of the record is completed when they arrive.",
+      "nombre": "First name",
+      "apellido": "Last name",
+      "telefono": "Phone",
+      "telefonoAyuda": "The booking reminder goes here.",
+      "correo": "Email",
+      "existe": "There is already a customer with that phone: {nombre}, {n, plural, one {# visit} other {# visits}}. Same person?",
+      "existeSinVisitas": "There is already a customer with that phone: {nombre}. Same person?",
+      "usarExistente": "Use existing",
+      "cancelar": "Cancel",
+      "crearYUsar": "Create and use",
+      "duplicado": "A customer with that data already exists.",
+      "error": "The customer could not be created."
+    },
+    "configuracion": {
+      "sede": "Location",
+      "elegirSede": "Choose a location",
+      "todaLaOrganizacion": "Whole organization",
+      "recibiendo": "Taking web bookings",
+      "noRecibe": "Not taking web bookings",
+      "copiarA": "Copy to another location",
+      "verEnSitio": "View on the site",
+      "guardar": "Save changes",
+      "guardado": "Booking settings saved",
+      "revisa": "Check the highlighted fields",
+      "errorGuardar": "Settings could not be saved",
+      "copiada": "Settings copied from {sede}",
+      "copiadaA": "Settings copied to {sede}",
+      "copiarTitulo": "Copy to another location",
+      "copiarDescripcion": "The chosen location gets these same rules. What it had is replaced.",
+      "copiarConfirmar": "Copy",
+      "sedeDestino": "Destination location",
+      "errores": {
+        "HORA_INVALIDA": "Use the HH:MM format.",
+        "TURNO_INVERTIDO": "The end time must be after the start time.",
+        "MIN_MAYOR_QUE_MAX": "The minimum can't be greater than the maximum.",
+        "GRUPO_GRANDE_BAJO": "The large group can't be smaller than the minimum guests.",
+        "DEPOSITO_REQUERIDO": "Enter the deposit amount.",
+        "DEPOSITO_SIN_PASARELA": "Connect a payment gateway before asking for a deposit.",
+        "ZONAS_REQUERIDAS": "Choose at least one area.",
+        "CORREO_INVALIDO": "Check the emails.",
+        "VALOR_INVALIDO": "Value out of range.",
+        "INTERVALO_INVALIDO": "Choose an interval from the list (multiples of 15 minutes)."
+      },
+      "web": {
+        "titulo": "Web bookings",
+        "descripcion": "What the customer sees on your site and on the booking link.",
+        "recibir": "Take web bookings",
+        "recibirAyuda": "Shows the «Book a table» button on the site and on {sede}'s booking link.",
+        "comoSeConfirman": "How are they confirmed?",
+        "automatica": "Automatic if a table is free",
+        "manual": "Manual: they arrive as requests",
+        "comoAyuda": "Automatic: the customer gets the confirmation instantly. Manual: the booking arrives as a «Request» and the team accepts or rejects it from the List."
+      },
+      "horario": {
+        "titulo": "Service hours",
+        "descripcion": "Time slots in which bookings are accepted. They start from the location's opening hours.",
+        "deSucursal": "Taken from the location",
+        "desde": "From",
+        "hasta": "To",
+        "quitar": "Remove slot",
+        "franja": "Slot",
+        "cerrado": "Closed · no bookings",
+        "restablecer": "Reset to the location's hours",
+        "restablecerAyuda": "Copies the location's opening hours; you can adjust them afterwards."
+      },
+      "turnos": {
+        "titulo": "Slots and capacity",
+        "descripcion": "How often a time is offered, how long a table lasts and how many guests fit per slot.",
+        "intervalo": "Interval between times",
+        "intervaloAyuda": "12:00, 12:30, 13:00…",
+        "min": "{n} min",
+        "duracion": "Table duration",
+        "duracionAyuda": "Time the table stays occupied.",
+        "margen": "Buffer between bookings",
+        "margenAyuda": "To clean and set up.",
+        "minimo": "Minimum guests",
+        "maximo": "Maximum guests",
+        "cubiertos": "Covers per slot",
+        "cubiertosAyuda": "Empty = based on free tables.",
+        "pers": "guests",
+        "grupoGrande": "Large group from",
+        "grupoTitulo": "Large groups always arrive as requests",
+        "grupoTexto": "Even with automatic confirmation, {n} or more guests need the team to confirm."
+      },
+      "anticipacion": {
+        "titulo": "Lead time and cancellation",
+        "minima": "Minimum lead time",
+        "minimaAyuda": "No bookings for less than {n} h ahead.",
+        "horas": "hours",
+        "maxDias": "Up to how many days ahead",
+        "dias": "days",
+        "cancelacion": "Free cancellation up to",
+        "cancelacionAyuda": "After that, the deposit is not refunded.",
+        "horasAntes": "hours before"
+      },
+      "mesas": {
+        "titulo": "Tables and areas",
+        "asignar": "Assign table automatically",
+        "asignarAyuda": "Picks the smallest free table that fits the group. You can change it later in the Agenda.",
+        "zona": "Let customers choose the area",
+        "zonaAyuda": "The customer chooses among the allowed areas; if there's no room, another time is offered.",
+        "zonasWeb": "Areas offered on the web",
+        "zonasAyuda": "Areas come from the tables set up in POS › Tables.",
+        "sinZonas": "This location's tables have no area."
+      },
+      "deposito": {
+        "titulo": "Deposit",
+        "pedir": "Ask for a deposit to book",
+        "pedirAyuda": "The booking stays as a request until the payment is approved. If it isn't paid within 30 minutes, the table is released.",
+        "sinPasarela": "Connect a payment gateway in Integrations to charge deposits.",
+        "irIntegraciones": "Go to Integrations",
+        "monto": "Deposit amount",
+        "seCobra": "Charged",
+        "porReserva": "Per booking",
+        "porPersona": "Per guest",
+        "reembolsable": "Refunded if cancelled in time",
+        "reembolsableAyuda": "Up to {n} h before the booking (the «Free cancellation» window). The team records the refund from the List.",
+        "conPasarela": "Charged with the site's gateway ({pasarela})",
+        "ejemploPersona": "Example: 4 guests × {base} = {total}. It is recorded in Finance as the booking's payment.",
+        "ejemploFijo": "Each booking pays {base}. It is recorded in Finance as the booking's payment.",
+        "verPasarela": "View gateway"
+      },
+      "datos": {
+        "titulo": "Data we ask the customer for",
+        "telefono": "Phone (required)",
+        "correo": "Email (required)"
+      },
+      "avisos": {
+        "titulo": "Notifications",
+        "equipo": "Notify the team at",
+        "anadir": "Add email",
+        "quitar": "Remove {correo}",
+        "correoCliente": "Email confirmation to the customer",
+        "correoClienteAyuda": "With date, time, guests, the location's address and a cancel link.",
+        "whatsapp": "WhatsApp confirmation to the customer",
+        "whatsappAyuda": "Uses the approved «reserva_confirmada» template. Requires WhatsApp connected in Chat: not sent yet.",
+        "recordatorio": "Reminder before the booking",
+        "recordatorioAyuda": "Through the same channel as the confirmation.",
+        "sinRecordatorio": "No reminder",
+        "horasAntes": "{n, plural, one {# hour before} other {# hours before}}"
+      },
+      "politica": {
+        "titulo": "Customer policy",
+        "descripcion": "Shown in the last booking step and in the confirmation email.",
+        "contador": "{n} / 600 characters"
+      },
+      "vista": {
+        "titulo": "What the customer sees",
+        "descripcion": "Preview of the web «Book a table» widget.",
+        "reservaTuMesa": "Book your table · {sede}",
+        "fecha": "Fri Oct 9",
+        "personas": "4 guests",
+        "deposito": "Deposit: {monto}",
+        "cancelacion": "Free cancellation up to {n} h before",
+        "reservar": "Book"
+      },
+      "resumen": {
+        "titulo": "Rules summary",
+        "horarios": "Times offered per day",
+        "hasta": "up to {n}",
+        "cupo": "Covers per slot",
+        "personas": "{n} guests",
+        "segunMesas": "based on tables",
+        "mesas": "Tables active on web",
+        "deTotal": "{n} of {total}",
+        "zonas": "Areas on web",
+        "todas": "All",
+        "confirmacion": "Confirmation",
+        "manual": "Manual",
+        "automatica": "Automatic",
+        "automaticaGrupos": "Automatic · groups ≥ {n} manual",
+        "deposito": "Deposit",
+        "porPersona": "per guest",
+        "porReserva": "per booking",
+        "sinDeposito": "No deposit"
+      },
+      "donde": {
+        "titulo": "Where it's used",
+        "sitio": "Website › Online sales",
+        "activas": "Bookings: on",
+        "apagadas": "Bookings: off",
+        "enlace": "Direct link",
+        "pos": "New booking in the POS",
+        "mismas": "Same rules"
+      },
+      "vacio": {
+        "titulo": "{sede} doesn't take web bookings yet",
+        "descripcion": "We start with the location's hours, 30-min slots, 90-min tables and automatic confirmation. You can change everything before turning it on.",
+        "recomendados": "Set up with recommended values",
+        "copiaDe": "Copy from {sede}"
+      },
+      "error": {
+        "titulo": "Settings could not be loaded",
+        "descripcion": "Check your connection and try again. We don't show stale data."
+      },
+      "sinPermiso": {
+        "titulo": "You don't have permission to change booking rules",
+        "descripcion": "You can create and manage bookings from Agenda and List. Ask an administrator for the website editing permission.",
+        "irAgenda": "Go to the Agenda"
+      },
+      "movil": {
+        "volver": "Settings",
+        "horario": "{dias, plural, one {# day} other {# days}} · {desde} – {hasta}",
+        "horarioCerrado": "No open days",
+        "turnos": "Every {intervalo} min · table {duracion} min · {cupo}",
+        "cupo": "{n} per slot",
+        "anticipacion": "Min. {min} h · up to {dias} days · cancel {cancelar} h before",
+        "todasZonas": "All areas",
+        "datos": "{n, plural, =0 {Nothing required} one {# required field} other {# required fields}}",
+        "correo": "Email",
+        "sinCorreo": "No email to the guest",
+        "recordatorio": "reminder {n} h before",
+        "sinRecordatorio": "no reminder",
+        "politica": "{n, plural, one {# character} other {# characters}}"
+      }
+    },
+    "pagina": {
+      "titulo": "Table bookings",
+      "migaPos": "POS",
+      "irConfiguracion": "Booking settings",
+      "pestanas": {
+        "agenda": "Agenda",
+        "lista": "List",
+        "configuracion": "Settings"
+      },
+      "todas": "All locations",
+      "hoy": "today",
+      "hoyEtiqueta": "Today · {fecha}",
+      "mananaEtiqueta": "Tomorrow · {fecha}",
+      "subtituloAgenda": "{sede} · {dia} {fecha} · {n, plural, one {# booking} other {# bookings}} · {personas, plural, one {# guest} other {# guests}}",
+      "subtituloLista": "From {desde} to {hasta} · {n, plural, one {# booking} other {# bookings}}",
+      "subtituloConfig": "{sede} · rules for POS and web bookings",
+      "sinSucursal": {
+        "titulo": "Choose a location to see its bookings",
+        "descripcion": "Bookings, the agenda and their rules are per location. Change it in the header; the List does show all."
+      },
+      "cancelar": {
+        "titulo": "Cancel {nombre}'s booking?",
+        "descripcion": "{dia} at {hora} · {n, plural, one {# guest} other {# guests}} · {mesa}. Give the reason: it is saved with the booking.",
+        "confirmar": "Cancel the booking",
+        "motivos": {
+          "cliente": "The customer cancelled",
+          "noConfirmo": "Didn't confirm",
+          "cierre": "Restaurant closed"
+        }
+      },
+      "eliminar": {
+        "titulo": "Delete {nombre}'s booking?",
+        "descripcion": "It is removed from the history and can't be undone. If the customer doesn't show up, better cancel it or mark it as «No-show».",
+        "confirmar": "Delete"
+      },
+      "reembolso": {
+        "titulo": "Record the deposit refund",
+        "descripcion": "The deposit payment is voided in Finance. The money doesn't move by itself: refund the customer from the gateway's dashboard.",
+        "confirmar": "Record refund",
+        "motivo": "Booking deposit refund recorded from Bookings"
+      },
+      "toasts": {
+        "nuevaWeb": "New web booking · {sede}",
+        "nuevaWebDetalle": "{nombre} · {n, plural, one {# guest} other {# guests}} · {hora} · {estado}",
+        "porConfirmar": "to confirm",
+        "confirmada": "{nombre}'s booking confirmed",
+        "revisar": "Review",
+        "creada": "Booking created",
+        "creadaDetalle": "{nombre} · {fecha}, {hora} · {mesa}",
+        "sinMesa": "no table",
+        "verAgenda": "View in the agenda",
+        "actualizada": "Booking updated",
+        "noCreada": "The booking could not be created",
+        "sinSucursal": "Select a specific location: with «All» it can't be created.",
+        "sentada": "Booking seated",
+        "sentadaDetalle": "{mesa} is now occupied",
+        "abrirCuenta": "Open the tab",
+        "avisado": "We notified the customer by email.",
+        "sinAviso": "The customer has no email or sending isn't set up: let them know by phone.",
+        "rechazada": "{nombre}'s request rejected",
+        "eliminada": "Booking deleted",
+        "reembolso": "Refund recorded",
+        "reembolsoDetalle": "Refund the customer from the gateway's dashboard.",
+        "estado": {
+          "pending": "{nombre}'s booking pending",
+          "confirmed": "{nombre}'s booking confirmed",
+          "seated": "{nombre}'s booking seated",
+          "completed": "{nombre}'s booking completed",
+          "cancelled": "{nombre}'s booking cancelled",
+          "no_show": "{nombre} didn't show up"
+        }
+      },
+      "miga": "Reservations"
     }
   },
   "inventario": {

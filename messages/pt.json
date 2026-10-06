@@ -19534,7 +19534,517 @@
       "sinReservas": "Sem reservas neste turno.",
       "cliente": "{nombre} · {n, plural, one {# pessoa} other {# pessoas}}",
       "mesa": "{mesa} · {zona}",
-      "sinMesa": "Sem mesa"
+      "sinMesa": "Sem mesa",
+      "sede": "Unidade",
+      "elegirSede": "Escolha a unidade",
+      "dia": "Dia",
+      "enVivo": "Ao vivo",
+      "resumen": "Resumo do dia",
+      "kpi": {
+        "porConfirmar": "A confirmar",
+        "alDia": "nada pendente",
+        "llegoHace": "chegou há {min} min pela web",
+        "esperanConfirmacion": "aguardam confirmação",
+        "confirmadas": "Confirmadas",
+        "sentadas": "Sentadas",
+        "personas": "{n, plural, one {# pessoa} other {# pessoas}}",
+        "noShow": "Não compareceu",
+        "delDia": "do dia"
+      },
+      "turnoTitulo": "{nombre} · {desde} – {hasta}",
+      "turnos": {
+        "desayuno": "Café da manhã",
+        "almuerzo": "Almoço",
+        "cena": "Jantar"
+      },
+      "clientePersonas": "{nombre} · {n, plural, one {# pessoa} other {# pessoas}}",
+      "minutos": "{n} min",
+      "web": "web",
+      "vacioTitulo": "Não há reservas neste dia",
+      "vacioDescripcion": "Crie uma com «Nova reserva» ou escolha outro dia. As da web chegam aqui em tempo real."
+    },
+    "estados": {
+      "pending": "Pendente",
+      "confirmed": "Confirmada",
+      "seated": "Sentada",
+      "completed": "Concluída",
+      "cancelled": "Cancelada",
+      "no_show": "Não compareceu"
+    },
+    "origenes": {
+      "web": "Web",
+      "telefono": "Telefone",
+      "equipo": "Equipe",
+      "whatsapp": "WhatsApp"
+    },
+    "estadoFila": {
+      "solicitud": "Solicitação · a confirmar",
+      "pendiente": "Pendente · a confirmar",
+      "confirmada": "Confirmada",
+      "confirmadaTarde": "Confirmada · {minutos} min atrasada",
+      "sentada": "Sentada",
+      "completada": "Concluída",
+      "completadaVenta": "Concluída · {venta}",
+      "noShow": "Não compareceu",
+      "noShowReincidente": "Não compareceu ({vez}ª vez)",
+      "cancelada": "Cancelada"
+    },
+    "lista": {
+      "resumen": "Resumo do período",
+      "kpi": {
+        "enElRango": "No período",
+        "comensales": "{n, plural, one {# cliente} other {# clientes}}",
+        "solicitudesWeb": "Solicitações web",
+        "esperanConfirmacion": "aguardam confirmação",
+        "confirmadas": "Confirmadas",
+        "sentadas": "Sentadas",
+        "enSala": "no salão agora",
+        "noShow": "Não compareceu",
+        "pctRango": "{pct} % do período",
+        "canceladas": "Canceladas"
+      },
+      "buscar": "Buscar por nome, telefone ou e-mail…",
+      "filtros": {
+        "titulo": "Filtros",
+        "estado": "Status",
+        "origen": "Origem",
+        "desde": "De",
+        "hasta": "Até",
+        "todos": "Todos"
+      },
+      "tarde": {
+        "texto": "{nombre} não chegou · {hora} · {n, plural, one {# pessoa} other {# pessoas}} · {mesa}. Está {min} min atrasado; a mesa continua reservada até você decidir.",
+        "llamar": "Ligar",
+        "esperar": "Esperar {min} min",
+        "noShow": "Não compareceu"
+      },
+      "columnas": {
+        "hora": "Hora",
+        "cliente": "Cliente",
+        "personas": "Pessoas",
+        "mesa": "Mesa",
+        "origen": "Origem",
+        "estado": "Status"
+      },
+      "sinMesa": "Sem mesa atribuída",
+      "etiquetaTabla": "Reservas",
+      "menu": {
+        "editar": "Editar",
+        "confirmar": "Confirmar",
+        "revisarSolicitud": "Revisar solicitação",
+        "asignarMesa": "Atribuir mesa",
+        "sentar": "Sentar e abrir conta",
+        "sentarSinMesa": "Atribua uma mesa antes de sentar",
+        "completar": "Concluir",
+        "reembolsarDeposito": "Registrar reembolso do depósito",
+        "noShow": "Não compareceu",
+        "cancelar": "Cancelar reserva",
+        "eliminar": "Excluir"
+      },
+      "vacio": {
+        "titulo": "Não há reservas neste período",
+        "descripcion": "Crie uma com «Nova reserva» ou amplie as datas em Filtros."
+      },
+      "sinResultados": {
+        "titulo": "Nenhuma reserva corresponde",
+        "descripcion": "Tente outro nome, telefone ou e-mail, ou limpe os filtros."
+      },
+      "error": {
+        "titulo": "Não foi possível carregar as reservas",
+        "descripcion": "Verifique sua conexão e tente novamente. Não mostramos dados antigos."
+      },
+      "movil": {
+        "detalle": "{n, plural, one {# pessoa} other {# pessoas}} · {mesa} · {origen}"
+      },
+      "sustantivo": {
+        "uno": "reserva",
+        "varios": "reservas"
+      }
+    },
+    "solicitud": {
+      "titulo": "Solicitação de reserva",
+      "porConfirmar": "A confirmar",
+      "llego": "Chegou por {origen} há {min} min · {sede}",
+      "cerrar": "Fechar",
+      "cliente": "Cliente",
+      "contacto": "Contato",
+      "fechaHora": "Data e hora",
+      "fechaHoraValor": "{dia}, {hora} · {min} min",
+      "hoy": "Hoje",
+      "personas": "Pessoas",
+      "nota": "Observação",
+      "deposito": "Depósito",
+      "depositoPagado": "pago com {pasarela}",
+      "llegoComoSolicitud": "Chegou como solicitação: {motivo}",
+      "motivo": {
+        "grupoGrande": "são {n} pessoas",
+        "sinMesas": "não há mesa livre para o grupo nesse horário"
+      },
+      "puedes": "Você pode atribuir uma mesa ou propor outro horário ao cliente.",
+      "asignarMesa": "Atribuir mesa",
+      "buscandoMesas": "Buscando mesas…",
+      "sinMesasLibres": "Não há mesas livres nesse horário",
+      "elegirMesa": "Escolha uma mesa",
+      "opcionMesa": "{mesa} · {zona} · {n} lugares",
+      "rechazar": "Recusar",
+      "proponerHora": "Propor outro horário",
+      "confirmar": "Confirmar e avisar o cliente"
+    },
+    "rechazo": {
+      "titulo": "Recusar a solicitação de {nombre}",
+      "motivo": "Motivo (é salvo e informado ao cliente)",
+      "motivos": {
+        "sinMesas": "Sem mesas nesse horário",
+        "grupoGrande": "Grupo muito grande",
+        "eventoPrivado": "Evento privado",
+        "otro": "Outro"
+      },
+      "otroMotivo": "Escreva o motivo",
+      "escribeMotivo": "Escreva o motivo (mínimo 3 letras)",
+      "otraHora": "Oferecer outro horário (opcional)",
+      "sinHoras": "Não há outros horários com mesa nesse dia.",
+      "asiLeLlega": "Assim ele recebe",
+      "vista": {
+        "base": "Olá {nombre}, {cuando} às {hora} não temos mesa para {n} em {sede}.",
+        "hoy": "hoje",
+        "eseDia": "nesse dia",
+        "otraHora": "Que tal às {hora}? Reserve de novo e guardamos para você.",
+        "motivo": "Motivo: {motivo}."
+      },
+      "confirmar": "Recusar e avisar"
+    },
+    "form": {
+      "tituloNueva": "Nova reserva",
+      "tituloEditar": "Editar reserva · {nombre}",
+      "descripcionNueva": "{sede} · {fecha}. A reserva fica ligada à ficha do cliente: sem cliente não há histórico nem lembrete.",
+      "confirmadaEl": "Confirmada em {dia} às {hora}",
+      "creadaPor": "Criada por {origen} · sem confirmar",
+      "estado": "Status",
+      "cliente": "Cliente",
+      "llamaSinRegistro": "Ligou alguém que não está cadastrado?",
+      "crearCliente": "Criar cliente",
+      "clienteAyuda": "Obrigatório. Se o cliente não estiver cadastrado, crie-o aqui com nome, sobrenome e telefone.",
+      "verFicha": "Ver ficha",
+      "visitas": "{n, plural, one {# visita} other {# visitas}}",
+      "fecha": "Data",
+      "hora": "Hora",
+      "personas": "Pessoas",
+      "mesa": "Mesa",
+      "mesaAyuda": "Ao trocar de mesa, a anterior volta a ficar livre.",
+      "sinMesa": "Sem mesa",
+      "buscandoMesas": "Buscando mesas livres…",
+      "elegirMesa": "Escolha uma mesa",
+      "opcionMesa": "{mesa} · {zona} · {n} lugares",
+      "duracion": "Duração",
+      "minutos": "{n} min",
+      "solape": "A {mesa} já tem uma reserva que coincide com as {hora}. Escolha outra mesa ou outro horário.",
+      "notas": "Observações",
+      "notasInternas": "Observações internas",
+      "notasPlaceholder": "Aniversário, cadeirinha para bebê, alergias…",
+      "origen": "Origem",
+      "recordar": "Lembrar o cliente {n, plural, one {# hora} other {# horas}} antes",
+      "recordarPor": "Por e-mail para {destino}",
+      "recordarSinCorreo": "O cliente não tem e-mail: não é possível lembrar.",
+      "errores": {
+        "cliente": "Escolha ou crie o cliente da reserva.",
+        "mesa": "Escolha a mesa."
+      },
+      "cancelar": "Cancelar",
+      "crear": "Criar reserva",
+      "guardarCambios": "Salvar alterações"
+    },
+    "crearCliente": {
+      "titulo": "Criar cliente",
+      "descripcion": "O mínimo para reservar por telefone. O resto da ficha é completado quando ele chegar.",
+      "nombre": "Nome",
+      "apellido": "Sobrenome",
+      "telefono": "Telefone",
+      "telefonoAyuda": "O lembrete da reserva vai por aqui.",
+      "correo": "E-mail",
+      "existe": "Já existe um cliente com esse telefone: {nombre}, {n, plural, one {# visita} other {# visitas}}. É o mesmo?",
+      "existeSinVisitas": "Já existe um cliente com esse telefone: {nombre}. É o mesmo?",
+      "usarExistente": "Usar o existente",
+      "cancelar": "Cancelar",
+      "crearYUsar": "Criar e usar",
+      "duplicado": "Já existe um cliente com esses dados.",
+      "error": "Não foi possível criar o cliente."
+    },
+    "configuracion": {
+      "sede": "Unidade",
+      "elegirSede": "Escolha uma unidade",
+      "todaLaOrganizacion": "Toda a organização",
+      "recibiendo": "Recebendo reservas na web",
+      "noRecibe": "Não recebe reservas na web",
+      "copiarA": "Copiar para outra unidade",
+      "verEnSitio": "Ver no site",
+      "guardar": "Salvar alterações",
+      "guardado": "Configuração de reservas salva",
+      "revisa": "Revise os campos marcados",
+      "errorGuardar": "Não foi possível salvar a configuração",
+      "copiada": "Configuração copiada de {sede}",
+      "copiadaA": "Configuração copiada para {sede}",
+      "copiarTitulo": "Copiar para outra unidade",
+      "copiarDescripcion": "A unidade escolhida fica com estas mesmas regras. O que ela tinha é substituído.",
+      "copiarConfirmar": "Copiar",
+      "sedeDestino": "Unidade de destino",
+      "errores": {
+        "HORA_INVALIDA": "Use o formato HH:MM.",
+        "TURNO_INVERTIDO": "O horário final deve ser posterior ao inicial.",
+        "MIN_MAYOR_QUE_MAX": "O mínimo não pode ser maior que o máximo.",
+        "GRUPO_GRANDE_BAJO": "O grupo grande não pode ser menor que o mínimo de pessoas.",
+        "DEPOSITO_REQUERIDO": "Informe o valor do depósito.",
+        "DEPOSITO_SIN_PASARELA": "Conecte um gateway antes de pedir depósito.",
+        "ZONAS_REQUERIDAS": "Escolha pelo menos uma área.",
+        "CORREO_INVALIDO": "Revise os e-mails.",
+        "VALOR_INVALIDO": "Valor fora do intervalo.",
+        "INTERVALO_INVALIDO": "Escolha um intervalo da lista (múltiplos de 15 minutos)."
+      },
+      "web": {
+        "titulo": "Reservas na web",
+        "descripcion": "O que o cliente vê no seu site e no link de reservas.",
+        "recibir": "Receber reservas na web",
+        "recibirAyuda": "Mostra o botão «Reservar mesa» no site e no link de reservas de {sede}.",
+        "comoSeConfirman": "Como são confirmadas?",
+        "automatica": "Automática se houver mesa",
+        "manual": "Manual: chegam como solicitação",
+        "comoAyuda": "Automática: o cliente recebe a confirmação na hora. Manual: a reserva entra como «Solicitação» e a equipe aceita ou recusa pela Lista."
+      },
+      "horario": {
+        "titulo": "Horário de atendimento",
+        "descripcion": "Faixas em que se aceitam reservas. Partem do horário de funcionamento da unidade.",
+        "deSucursal": "Tirado da unidade",
+        "desde": "De",
+        "hasta": "Até",
+        "quitar": "Remover faixa",
+        "franja": "Faixa",
+        "cerrado": "Fechado · não se aceitam reservas",
+        "restablecer": "Restaurar o horário da unidade",
+        "restablecerAyuda": "Copia o horário de funcionamento da unidade; depois você pode ajustá-lo."
+      },
+      "turnos": {
+        "titulo": "Turnos e capacidade",
+        "descripcion": "De quanto em quanto se oferece um horário, quanto dura uma mesa e quantas pessoas cabem por turno.",
+        "intervalo": "Intervalo entre horários",
+        "intervaloAyuda": "12:00, 12:30, 13:00…",
+        "min": "{n} min",
+        "duracion": "Duração da mesa",
+        "duracionAyuda": "Tempo em que a mesa fica ocupada.",
+        "margen": "Margem entre reservas",
+        "margenAyuda": "Para limpar e montar.",
+        "minimo": "Pessoas mínimo",
+        "maximo": "Pessoas máximo",
+        "cubiertos": "Lugares por turno",
+        "cubiertosAyuda": "Vazio = conforme as mesas livres.",
+        "pers": "pess.",
+        "grupoGrande": "Grupo grande a partir de",
+        "grupoTitulo": "Grupos grandes sempre chegam como solicitação",
+        "grupoTexto": "Mesmo com confirmação automática, {n} ou mais pessoas exigem que a equipe confirme."
+      },
+      "anticipacion": {
+        "titulo": "Antecedência e cancelamento",
+        "minima": "Antecedência mínima",
+        "minimaAyuda": "Não se reserva para daqui a menos de {n} h.",
+        "horas": "horas",
+        "maxDias": "Até quantos dias antes",
+        "dias": "dias",
+        "cancelacion": "Cancelamento sem custo até",
+        "cancelacionAyuda": "Passado esse prazo, o depósito não é devolvido.",
+        "horasAntes": "horas antes"
+      },
+      "mesas": {
+        "titulo": "Mesas e áreas",
+        "asignar": "Atribuir mesa automaticamente",
+        "asignarAyuda": "Escolhe a menor mesa livre onde o grupo caiba. Você pode trocá-la depois na Agenda.",
+        "zona": "Deixar escolher a área",
+        "zonaAyuda": "O cliente escolhe entre as áreas permitidas; se não houver vaga, oferecemos outro horário.",
+        "zonasWeb": "Áreas oferecidas na web",
+        "zonasAyuda": "As áreas vêm das mesas configuradas em PDV › Mesas.",
+        "sinZonas": "As mesas desta unidade não têm área."
+      },
+      "deposito": {
+        "titulo": "Depósito",
+        "pedir": "Pedir depósito para reservar",
+        "pedirAyuda": "A reserva fica como solicitação até o pagamento ser aprovado. Se não for paga em 30 minutos, a mesa é liberada.",
+        "sinPasarela": "Conecte um gateway em Integrações para cobrar depósitos.",
+        "irIntegraciones": "Ir para Integrações",
+        "monto": "Valor do depósito",
+        "seCobra": "Cobrança",
+        "porReserva": "Por reserva",
+        "porPersona": "Por pessoa",
+        "reembolsable": "É devolvido se cancelar a tempo",
+        "reembolsableAyuda": "Até {n} h antes da reserva (o prazo de «Cancelamento sem custo»). A equipe registra o reembolso pela Lista.",
+        "conPasarela": "Cobrado com o gateway do site ({pasarela})",
+        "ejemploPersona": "Exemplo: 4 pessoas × {base} = {total}. Fica registrado em Finanças como pagamento da reserva.",
+        "ejemploFijo": "Cada reserva paga {base}. Fica registrado em Finanças como pagamento da reserva.",
+        "verPasarela": "Ver gateway"
+      },
+      "datos": {
+        "titulo": "Dados que pedimos ao cliente",
+        "telefono": "Telefone (obrigatório)",
+        "correo": "E-mail (obrigatório)"
+      },
+      "avisos": {
+        "titulo": "Avisos",
+        "equipo": "Avisar a equipe em",
+        "anadir": "Adicionar e-mail",
+        "quitar": "Remover {correo}",
+        "correoCliente": "Confirmação por e-mail ao cliente",
+        "correoClienteAyuda": "Com data, hora, pessoas, endereço da unidade e link para cancelar.",
+        "whatsapp": "Confirmação por WhatsApp ao cliente",
+        "whatsappAyuda": "Usa o modelo aprovado «reserva_confirmada». Requer WhatsApp conectado no Chat: ainda não é enviado.",
+        "recordatorio": "Lembrete antes da reserva",
+        "recordatorioAyuda": "Pelo mesmo canal da confirmação.",
+        "sinRecordatorio": "Sem lembrete",
+        "horasAntes": "{n, plural, one {# hora antes} other {# horas antes}}"
+      },
+      "politica": {
+        "titulo": "Política para o cliente",
+        "descripcion": "Aparece na etapa final da reserva e no e-mail de confirmação.",
+        "contador": "{n} / 600 caracteres"
+      },
+      "vista": {
+        "titulo": "Assim o cliente vê",
+        "descripcion": "Prévia do widget «Reservar mesa» da web.",
+        "reservaTuMesa": "Reserve sua mesa · {sede}",
+        "fecha": "Sex 9 out",
+        "personas": "4 pessoas",
+        "deposito": "Depósito: {monto}",
+        "cancelacion": "Cancelamento sem custo até {n} h antes",
+        "reservar": "Reservar"
+      },
+      "resumen": {
+        "titulo": "Resumo das regras",
+        "horarios": "Horários oferecidos por dia",
+        "hasta": "até {n}",
+        "cupo": "Vagas por turno",
+        "personas": "{n} pessoas",
+        "segunMesas": "conforme as mesas",
+        "mesas": "Mesas ativas na web",
+        "deTotal": "{n} de {total}",
+        "zonas": "Áreas na web",
+        "todas": "Todas",
+        "confirmacion": "Confirmação",
+        "manual": "Manual",
+        "automatica": "Automática",
+        "automaticaGrupos": "Automática · grupos ≥ {n} manual",
+        "deposito": "Depósito",
+        "porPersona": "por pessoa",
+        "porReserva": "por reserva",
+        "sinDeposito": "Sem depósito"
+      },
+      "donde": {
+        "titulo": "Onde é usado",
+        "sitio": "Site › Vendas on-line",
+        "activas": "Reservas: ativas",
+        "apagadas": "Reservas: desativadas",
+        "enlace": "Link direto",
+        "pos": "Nova reserva no PDV",
+        "mismas": "Mesmas regras"
+      },
+      "vacio": {
+        "titulo": "{sede} ainda não recebe reservas na web",
+        "descripcion": "Começamos com o horário da unidade, turnos de 30 min, mesas de 90 min e confirmação automática. Você poderá mudar tudo antes de ativar.",
+        "recomendados": "Configurar com valores recomendados",
+        "copiaDe": "Copiar de {sede}"
+      },
+      "error": {
+        "titulo": "Não foi possível carregar a configuração",
+        "descripcion": "Verifique sua conexão e tente novamente. Não mostramos dados antigos."
+      },
+      "sinPermiso": {
+        "titulo": "Você não tem permissão para alterar as regras de reservas",
+        "descripcion": "Você pode criar e gerenciar reservas pela Agenda e pela Lista. Peça a um administrador a permissão de editar o site.",
+        "irAgenda": "Ir para a Agenda"
+      },
+      "movil": {
+        "volver": "Configuração",
+        "horario": "{dias, plural, one {# dia} other {# dias}} · {desde} – {hasta}",
+        "horarioCerrado": "Sem dias abertos",
+        "turnos": "A cada {intervalo} min · mesa {duracion} min · {cupo}",
+        "cupo": "{n} por turno",
+        "anticipacion": "Mín. {min} h · até {dias} dias · cancelar {cancelar} h antes",
+        "todasZonas": "Todas as áreas",
+        "datos": "{n, plural, =0 {Nada obrigatório} one {# dado obrigatório} other {# dados obrigatórios}}",
+        "correo": "E-mail",
+        "sinCorreo": "Sem e-mail ao cliente",
+        "recordatorio": "lembrete {n} h antes",
+        "sinRecordatorio": "sem lembrete",
+        "politica": "{n, plural, one {# caractere} other {# caracteres}}"
+      }
+    },
+    "pagina": {
+      "titulo": "Reservas de mesas",
+      "migaPos": "PDV",
+      "irConfiguracion": "Configuração de reservas",
+      "pestanas": {
+        "agenda": "Agenda",
+        "lista": "Lista",
+        "configuracion": "Configuração"
+      },
+      "todas": "Todas as unidades",
+      "hoy": "hoje",
+      "hoyEtiqueta": "Hoje · {fecha}",
+      "mananaEtiqueta": "Amanhã · {fecha}",
+      "subtituloAgenda": "{sede} · {dia} {fecha} · {n, plural, one {# reserva} other {# reservas}} · {personas, plural, one {# pessoa} other {# pessoas}}",
+      "subtituloLista": "De {desde} a {hasta} · {n, plural, one {# reserva} other {# reservas}}",
+      "subtituloConfig": "{sede} · regras para reservas do PDV e da web",
+      "sinSucursal": {
+        "titulo": "Escolha uma unidade para ver suas reservas",
+        "descripcion": "As reservas, a agenda e suas regras são por unidade. Troque no cabeçalho; a Lista mostra todas."
+      },
+      "cancelar": {
+        "titulo": "Cancelar a reserva de {nombre}?",
+        "descripcion": "{dia} às {hora} · {n, plural, one {# pessoa} other {# pessoas}} · {mesa}. Informe o motivo: ele é salvo com a reserva.",
+        "confirmar": "Cancelar a reserva",
+        "motivos": {
+          "cliente": "O cliente cancelou",
+          "noConfirmo": "Não confirmou",
+          "cierre": "Fechamento do restaurante"
+        }
+      },
+      "eliminar": {
+        "titulo": "Excluir a reserva de {nombre}?",
+        "descripcion": "É apagada do histórico e não pode ser desfeita. Se o cliente não vier, é melhor cancelá-la ou marcá-la como «Não compareceu».",
+        "confirmar": "Excluir"
+      },
+      "reembolso": {
+        "titulo": "Registrar o reembolso do depósito",
+        "descripcion": "O pagamento do depósito fica anulado em Finanças. O dinheiro não se move sozinho: devolva ao cliente pelo painel do gateway.",
+        "confirmar": "Registrar reembolso",
+        "motivo": "Reembolso do depósito da reserva registrado em Reservas"
+      },
+      "toasts": {
+        "nuevaWeb": "Nova reserva web · {sede}",
+        "nuevaWebDetalle": "{nombre} · {n, plural, one {# pessoa} other {# pessoas}} · {hora} · {estado}",
+        "porConfirmar": "a confirmar",
+        "confirmada": "Reserva de {nombre} confirmada",
+        "revisar": "Revisar",
+        "creada": "Reserva criada",
+        "creadaDetalle": "{nombre} · {fecha}, {hora} · {mesa}",
+        "sinMesa": "sem mesa",
+        "verAgenda": "Ver na agenda",
+        "actualizada": "Reserva atualizada",
+        "noCreada": "Não foi possível criar a reserva",
+        "sinSucursal": "Selecione uma unidade específica: com «Todas» não é possível criar.",
+        "sentada": "Reserva sentada",
+        "sentadaDetalle": "A {mesa} passou a ocupada",
+        "abrirCuenta": "Abrir a conta",
+        "avisado": "Avisamos o cliente por e-mail.",
+        "sinAviso": "O cliente não tem e-mail ou o envio não está configurado: avise por telefone.",
+        "rechazada": "Solicitação de {nombre} recusada",
+        "eliminada": "Reserva excluída",
+        "reembolso": "Reembolso registrado",
+        "reembolsoDetalle": "Devolva o dinheiro ao cliente pelo painel do gateway.",
+        "estado": {
+          "pending": "Reserva de {nombre} pendente",
+          "confirmed": "Reserva de {nombre} confirmada",
+          "seated": "Reserva de {nombre} sentada",
+          "completed": "Reserva de {nombre} concluída",
+          "cancelled": "Reserva de {nombre} cancelada",
+          "no_show": "{nombre} não compareceu"
+        }
+      },
+      "miga": "Reservas"
     }
   },
   "inventario": {

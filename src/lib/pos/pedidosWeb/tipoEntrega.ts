@@ -49,6 +49,27 @@ export function mesaDelPedido(pedido: PedidoConTipoEntrega): string | null {
   if (!esComerAqui(pedido)) return null;
   const notas = pedido.internal_notes ?? '';
   const m = /Mesa:\s*([^\n|]+)/i.exec(notas);
+  return m ? conPalabraMesa(m[1].trim()) : null;
+}
+
+/** «4 (Terraza)» → «Mesa 4 (Terraza)»; un nombre propio («Barra 2») queda igual. */
+function conPalabraMesa(valor: string): string {
+  return /^\d/.test(valor) ? `Mesa ${valor}` : valor;
+}
+
+/** Mesa sin la zona («Mesa 4»), para chips y títulos cortos. */
+export function mesaCortaDelPedido(pedido: PedidoConTipoEntrega): string | null {
+  const enlazada = pedido.restaurant_table?.name?.trim();
+  if (enlazada) return enlazada;
+  const completa = mesaDelPedido(pedido);
+  return completa ? completa.replace(/\s*\([^)]*\)\s*$/, '') : null;
+}
+
+/** Zona de la mesa («Terraza»), de la mesa enlazada o de la marca del sitio. */
+export function zonaDelPedido(pedido: PedidoConTipoEntrega): string | null {
+  const zona = pedido.restaurant_table?.zone?.trim();
+  if (zona) return zona;
+  const m = /\(([^)]+)\)\s*$/.exec(mesaDelPedido(pedido) ?? '');
   return m ? m[1].trim() : null;
 }
 

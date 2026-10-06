@@ -40,45 +40,45 @@ export function OrderTotals({
   }
 
   return (
-    <div className="space-y-2">
-      <div className="flex justify-between text-sm">
-        <span className="text-muted-foreground dark:text-gray-400">Subtotal</span>
-        <span className="dark:text-gray-100">{formatear(subtotal)}</span>
+    <div className="space-y-1.5 text-[13px]">
+      <div className="flex justify-between">
+        <span className="text-fg-secondary">Subtotal</span>
+        <span className="text-fg tabular-nums">{formatear(subtotal)}</span>
       </div>
       
       {taxTotal > 0 && (
-        <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground dark:text-gray-400">Impuestos</span>
-          <span className="dark:text-gray-100">{formatear(taxTotal)}</span>
+        <div className="flex justify-between">
+          <span className="text-fg-secondary">Impuestos</span>
+          <span className="text-fg tabular-nums">{formatear(taxTotal)}</span>
         </div>
       )}
       
       {discountTotal > 0 && (
-        <div className="flex justify-between text-sm text-green-600 dark:text-green-400">
+        <div className="flex justify-between text-success-text">
           <span>Descuento</span>
           <span>-{formatear(discountTotal)}</span>
         </div>
       )}
       
       {deliveryFee > 0 && (
-        <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground dark:text-gray-400">Envío</span>
-          <span className="dark:text-gray-100">{formatear(deliveryFee)}</span>
+        <div className="flex justify-between">
+          <span className="text-fg-secondary">Envío</span>
+          <span className="text-fg tabular-nums">{formatear(deliveryFee)}</span>
         </div>
       )}
       
       {tipAmount > 0 && (
-        <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground dark:text-gray-400">Propina</span>
-          <span className="dark:text-gray-100">{formatear(tipAmount)}</span>
+        <div className="flex justify-between">
+          <span className="text-fg-secondary">Propina</span>
+          <span className="text-fg tabular-nums">{formatear(tipAmount)}</span>
         </div>
       )}
       
       <Separator />
       
-      <div className="flex justify-between text-lg font-bold">
-        <span className="dark:text-gray-100">Total</span>
-        <span className="text-primary dark:text-blue-400">{formatear(total)}</span>
+      <div className="flex justify-between pt-1 text-[15px] font-semibold text-fg">
+        <span>Total</span>
+        <span className="tabular-nums">{formatear(total)}</span>
       </div>
     </div>
   );

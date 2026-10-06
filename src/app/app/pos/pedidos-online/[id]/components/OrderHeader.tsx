@@ -1,18 +1,18 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import { ArrowLeft, ExternalLink, CalendarClock, Coins, Tag, Building2, DollarSign, Loader2, UtensilsCrossed, Globe, PackageCheck } from 'lucide-react';
+import { ExternalLink, CalendarClock, CheckCircle2, Coins, Tag, Building2, DollarSign, Loader2, Mail, Printer, ShoppingBag, UtensilsCrossed, Globe, PackageCheck, XCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
-import { AvisoTonal, clasesBoton } from '@/components/kit';
+import { AvisoTonal, PageHeader, RowActionsMenu, clasesBoton } from '@/components/kit';
+import type { AccionFila } from '@/components/kit/acciones';
 import { useLocaleIntl } from '@/components/kit/useIdiomaKit';
 import { StatusBadge, PaymentStatusBadge } from '@/components/pos/pedidos-online';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
-import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
-import { mesaDelPedido, tipoEntregaEfectivo } from '@/lib/pos/pedidosWeb/tipoEntrega';
+import { formatDateTimeInTz, formatTimeInTz } from '@/lib/utils/dateDisplay';
+import { todayInTz, toPlainDate } from '@/lib/utils/dateCore';
+import { mesaCortaDelPedido, tipoEntregaEfectivo, zonaDelPedido } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import type { WebOrder } from '@/lib/services/webOrdersService';
 
 interface OrderHeaderProps {
@@ -27,6 +27,12 @@ interface OrderHeaderProps {
   isLoading?: boolean;
   /** Líneas sin stock de receta de la última confirmación (Figma 1982:903). */
   avisoStock?: string[];
+  /** «Caja N · {sede} · abierta», ya traducido (resumen bajo los chips). */
+  cajaEtiqueta?: string | null;
+  onImprimirComanda?: () => void;
+  onMarcarEntregado?: () => void;
+  onReenviarAviso?: () => void;
+  onCancelar?: () => void;
 }
 
 export function OrderHeader({
@@ -37,6 +43,11 @@ export function OrderHeader({
   cobrarDeshabilitado = false,
   isLoading = false,
   avisoStock = [],
+  cajaEtiqueta = null,
+  onImprimirComanda,
+  onMarcarEntregado,
+  onReenviarAviso,
+  onCancelar,
 }: OrderHeaderProps) {
   const router = useRouter();
   const t = useTranslations('pedidoWeb');
@@ -56,62 +67,83 @@ export function OrderHeader({
     });
 
   const esComerAqui = tipoEntregaEfectivo(order) === 'dine_in';
-  const mesa = mesaDelPedido(order);
+  const mesaCorta = mesaCortaDelPedido(order);
+  const zona = zonaDelPedido(order);
+  const esHoy = toPlainDate(new Date(order.created_at), timezone) === todayInTz(timezone);
   const canal = t.has(`detalle.canales.${order.source}`) ? t(`detalle.canales.${order.source}`) : order.source;
   const chip = 'gap-1';
 
+  const listoHora = order.ready_at ? formatTimeInTz(order.ready_at, timezone) : null;
+  const resumen = order.status === 'ready' && listoHora
+    ? [
+        esComerAqui && mesaCorta
+          ? t('ficha.resumenListoMesa', { hora: listoHora, mesa: zona ? `${mesaCorta} (${zona})` : mesaCorta })
+          : t('ficha.resumenListo', { hora: listoHora }),
+        porCobrarEnCaja && cajaEtiqueta ? t('ficha.seCobraEnCaja', { caja: cajaEtiqueta }) : null,
+      ].filter(Boolean).join(' ')
+    : null;
+  const menu: AccionFila[] = [
+    ...(onMarcarEntregado ? [{ id: 'entregado', etiqueta: t('cobro.marcarEntregado'), icono: CheckCircle2, onSelect: onMarcarEntregado }] : []),
+    ...(onReenviarAviso ? [{ id: 'aviso', etiqueta: t('ficha.reenviarAviso'), icono: Mail, onSelect: onReenviarAviso }] : []),
+    ...(order.sale_id ? [{ id: 'venta', etiqueta: t('detalle.verVenta'), icono: ExternalLink, onSelect: () => router.push(`/app/pos/ventas/${order.sale_id}`) }] : []),
+    ...(onCancelar ? [{ id: 'cancelar', etiqueta: t('ficha.cancelarPedido'), icono: XCircle, destructiva: true, onSelect: onCancelar }] : []),
+  ];
+  const fecha = formatDateTime(order.created_at);
+
   return (
     <div className="space-y-3">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-        <div className="flex items-start gap-2 sm:gap-4">
-          <Button variant="ghost" size="sm" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">{t('detalle.volver')}</span>
-          </Button>
-          <div>
-            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-semibold text-fg">{order.order_number}</h1>
-              <StatusBadge status={order.status} size="lg" />
-            </div>
-            <div className="flex items-center gap-x-2 gap-y-1 text-sm text-fg-secondary flex-wrap">
-              <span>
-                {t('detalle.recibido', { fecha: formatDateTime(order.created_at) })}
-                {order.branch?.name ? ` · ${order.branch.name}` : ''}
-                {` · ${timezone}`}
+      <PageHeader
+        titulo={order.order_number}
+        badge={<StatusBadge status={order.status} size="lg" />}
+        icono={ShoppingBag}
+        migas={[
+          { etiqueta: 'POS', href: '/app/pos' },
+          { etiqueta: t('ficha.pedidosOnline'), href: '/app/pos/pedidos-online' },
+          { etiqueta: order.order_number },
+        ]}
+        subtitulo={
+          <span className="flex flex-wrap items-center gap-x-2">
+            <span>
+              {t('detalle.recibido', { fecha: esHoy ? t('ficha.hoyFecha', { fecha }) : fecha })}
+              {order.branch?.name ? ` · ${order.branch.name}` : ''}
+              {` · ${timezone}`}
+            </span>
+            {order.is_scheduled && order.scheduled_at && (
+              <span className="flex items-center gap-1">
+                <CalendarClock className="h-3 w-3" aria-hidden="true" />
+                {t('ficha.programadoPara', { fecha: formatDateTime(order.scheduled_at) })}
               </span>
-              {order.is_scheduled && order.scheduled_at && (
-                <span className="flex items-center gap-1">
-                  <CalendarClock className="h-3 w-3" aria-hidden="true" />
-                  Para: {formatDateTime(order.scheduled_at)}
-                </span>
-              )}
-              {order.sale_id && (
-                <Link
-                  href={`/app/pos/ventas/${order.sale_id}`}
-                  className="inline-flex items-center gap-1 text-brand hover:underline"
-                >
-                  <ExternalLink className="h-3 w-3" aria-hidden="true" />
-                  {t('detalle.verVenta')}
-                </Link>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 sm:shrink-0">
-          {!porCobrarEnCaja && <PaymentStatusBadge status={order.payment_status} />}
-          {onCobrarYEntregar && (
-            <button
-              type="button"
-              className={clasesBoton({ variante: 'primario', className: 'hidden sm:inline-flex' })}
-              onClick={onCobrarYEntregar}
-              disabled={isLoading || cobrarDeshabilitado}
-            >
-              {isLoading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <DollarSign className="size-4" aria-hidden="true" />}
-              {t('cobro.cobrarYEntregar')}
-            </button>
-          )}
-        </div>
-      </div>
+            )}
+          </span>
+        }
+        acciones={
+          <>
+            {!porCobrarEnCaja && order.payment_status === 'paid' && <PaymentStatusBadge status={order.payment_status} />}
+            {onImprimirComanda && (
+              <button type="button" className={clasesBoton({ variante: 'secundario' })} onClick={onImprimirComanda}>
+                <Printer className="size-4" aria-hidden="true" strokeWidth={1.5} />
+                {t('ficha.imprimirComanda')}
+              </button>
+            )}
+            {onCobrarYEntregar && (
+              <button
+                type="button"
+                className={clasesBoton({ variante: 'primario' })}
+                onClick={onCobrarYEntregar}
+                disabled={isLoading || cobrarDeshabilitado}
+              >
+                {isLoading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <DollarSign className="size-4" aria-hidden="true" />}
+                {t('cobro.cobrarYEntregar')}
+              </button>
+            )}
+            {menu.length > 0 && <RowActionsMenu orientacion="horizontal" tamano="md" titulo={order.order_number} acciones={menu} />}
+          </>
+        }
+        movil={{
+          subtitulo: [t.has(`ficha.estados.${order.status}`) ? t(`ficha.estados.${order.status}`) : order.status, formatear(order.total)].join(' · '),
+          accion: menu.length > 0 ? <RowActionsMenu orientacion="vertical" tamano="md" titulo={order.order_number} acciones={menu} /> : undefined,
+        }}
+      />
 
       {/* Chips neutros (Figma 1981:175699): sede, cobro, origen, mesa y reserva */}
       <div className="flex flex-wrap items-center gap-2">
@@ -126,7 +158,7 @@ export function OrderHeader({
         </Badge>
         {esComerAqui && (
           <Badge tono="neutro" apariencia="contorno" icono={UtensilsCrossed} className={chip}>
-            {mesa ? t('comerAquiMesa', { mesa }) : t('comerAqui')}
+            {mesaCorta ? t('comerAquiMesa', { mesa: mesaCorta }) : t('comerAqui')}
           </Badge>
         )}
         {reservaActiva && (
@@ -142,6 +174,9 @@ export function OrderHeader({
           <Badge tono="neutro" apariencia="contorno" icono={Coins} className={chip}>Propina: {formatear(order.tip_amount)}</Badge>
         )}
       </div>
+
+      {/* Resumen del estado (Figma 1981:175699): cuándo quedó listo y dónde se cobra */}
+      {resumen && <p className="rounded-lg bg-subtle px-3 py-2.5 text-[13px] text-fg">{resumen}</p>}
 
       {/* Stock de receta insuficiente: aviso persistente bajo los chips (Figma 1982:903) */}
       {avisoStock.length > 0 && (

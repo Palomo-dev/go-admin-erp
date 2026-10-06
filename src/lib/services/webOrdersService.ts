@@ -90,6 +90,8 @@ export interface WebOrder {
     full_name: string;
     email: string;
     phone: string;
+    doc_type?: string | null;
+    doc_number?: string | null;
   };
   branch?: {
     id: number;
@@ -441,6 +443,28 @@ class WebOrdersService {
       console.error('Error updating order status:', error);
       throw error;
     }
+  }
+
+  /**
+   * Nota del equipo (`internal_notes`): conserva la marca que deja el sitio
+   * («[Comer aquí] Mesa: …») y reemplaza el resto. Filtra por la organización
+   * activa; la RLS del usuario hace el resto.
+   */
+  async actualizarNotaInterna(orderId: string, texto: string): Promise<boolean> {
+    const { notasInternasConMarca } = await import('@/components/pos/pedidos-online/notasPedido');
+    const { data: actual, error: errLeer } = await supabase
+      .from('web_orders')
+      .select('internal_notes')
+      .eq('id', orderId)
+      .eq('organization_id', this.organizationId)
+      .maybeSingle();
+    if (errLeer || !actual) return false;
+    const { error } = await supabase
+      .from('web_orders')
+      .update({ internal_notes: notasInternasConMarca(actual.internal_notes, texto.slice(0, 1000)) })
+      .eq('id', orderId)
+      .eq('organization_id', this.organizationId);
+    return !error;
   }
 
   /**

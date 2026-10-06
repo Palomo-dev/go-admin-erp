@@ -11283,7 +11283,7 @@
         "pickup": "pickup",
         "domicilio": "delivery",
         "dine_in": "dine in",
-        "mesa": "table {mesa}"
+        "mesa": "{mesa}"
       },
       "metodoMixto": "Mixed",
       "enLinea": "No · paid online",
@@ -32751,7 +32751,7 @@
   },
   "pedidoWeb": {
     "comerAqui": "Dine in",
-    "comerAquiMesa": "Dine in · Table {mesa}",
+    "comerAquiMesa": "Dine in · {mesa}",
     "verMesa": "View the table in POS › Tables",
     "confirmacion": {
       "enLaMesa": "Added to the table bill · Ticket sent to the kitchen",
@@ -32878,6 +32878,60 @@
       "comandaValor": "#{id}",
       "cajaValor": "Register {caja} · {sede} · open",
       "sinCaja": "no open register"
+    },
+    "ficha": {
+      "resumenListoMesa": "Ready at {hora} for {mesa}.",
+      "resumenListo": "Ready at {hora}.",
+      "seCobraEnCaja": "It's charged at the branch register on delivery: {caja}.",
+      "reenviarAviso": "Resend customer notification",
+      "cancelarPedido": "Cancel order…",
+      "pedidosOnline": "Online orders",
+      "hoyFecha": "today, {fecha}",
+      "programadoPara": "For: {fecha}",
+      "imprimirComanda": "Print kitchen ticket",
+      "imprimirError": "The kitchen ticket couldn't be printed",
+      "imprimirEnviado": "Kitchen ticket #{id} sent to print",
+      "imprimirSinImpresora": "No printer for the ticket's station",
+      "avisoReenviado": "Customer notification resent",
+      "notas": "Notes",
+      "notaCliente": "Customer note",
+      "notaInterna": "Team note",
+      "editar": "Edit",
+      "cancelar": "Cancel",
+      "guardar": "Save",
+      "sinNotaInterna": "No team note.",
+      "notaGuardada": "Note saved",
+      "notaError": "The note couldn't be saved",
+      "clienteAnonimo": "Anonymous customer",
+      "cliente": "Customer",
+      "nombre": "Name",
+      "telefono": "Phone",
+      "correo": "Email",
+      "documento": "ID",
+      "pedidosAnteriores": "Previous orders",
+      "anterioresValor": "{n} · last {fecha}",
+      "primerPedido": "First order",
+      "verFicha": "View customer profile",
+      "conversacion": "Open the conversation with the customer",
+      "entrega": "Delivery",
+      "entregaMesa": "Ordered from the table QR. It's taken to {mesa}; no address or driver.",
+      "entregaComerAqui": "Dine-in order; no address or driver.",
+      "listo": "Ready",
+      "listoAprox": "Ready approx.",
+      "aTiempo": "on time",
+      "tarde": "late",
+      "mesa": "Table",
+      "estados": {
+        "pending": "Pending",
+        "confirmed": "Confirmed",
+        "preparing": "In progress",
+        "ready": "Ready",
+        "in_delivery": "On its way",
+        "delivered": "Delivered",
+        "cancelled": "Cancelled",
+        "rejected": "Rejected",
+        "expired": "Expired"
+      }
     }
   },
   "posMesasFlujo": {
@@ -33569,7 +33623,7 @@
     },
     "tarjeta": {
       "web": "Web {numero}",
-      "webMesa": "Table {mesa}",
+      "webMesa": "{mesa}",
       "webComerAqui": "Dine in",
       "webRecoger": "Pickup",
       "webDomicilio": "Delivery",
@@ -33891,7 +33945,8 @@
         "delivered": "confirmed by the provider",
         "failed": "rejected by the provider",
         "no_data": "contact data missing"
-      }
+      },
+      "historialPedido": "Order history"
     }
   }
 }

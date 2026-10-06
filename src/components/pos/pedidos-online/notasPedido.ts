@@ -13,3 +13,15 @@ export function notasInternasVisibles(notas: string | null | undefined): string 
     .join('\n')
     .trim();
 }
+
+/**
+ * Nuevo valor de `internal_notes` al editar la nota del equipo: conserva las
+ * líneas de la marca del sitio (contrato con goadmin-websites) y reemplaza el
+ * resto por el texto escrito.
+ */
+export function notasInternasConMarca(original: string | null | undefined, texto: string): string | null {
+  const marcas = (original ?? '').split('\n').filter((linea) => linea.trim().startsWith(MARCA_COMER_AQUI));
+  const limpio = texto.trim();
+  const todo = [...marcas, ...(limpio ? [limpio] : [])].join('\n');
+  return todo || null;
+}

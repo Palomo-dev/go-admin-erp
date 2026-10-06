@@ -44,8 +44,8 @@ export function OrderActionsCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 dark:text-gray-100">
-          <Zap className="h-5 w-5 dark:text-gray-300" />
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Zap className="size-4" aria-hidden="true" strokeWidth={1.5} />
           Acciones
         </CardTitle>
       </CardHeader>

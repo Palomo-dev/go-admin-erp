@@ -14,14 +14,14 @@ export function OrderProductsCard({ order }: OrderProductsCardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 dark:text-gray-100">
-          <Receipt className="h-5 w-5 dark:text-gray-300" />
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Receipt className="size-4" aria-hidden="true" strokeWidth={1.5} />
           Productos ({order.items?.length || 0})
         </CardTitle>
       </CardHeader>
       <CardContent>
         <OrderItemsList items={order.items || []} showStatus />
-        <Separator className="my-4" />
+        <Separator className="my-3" />
         <OrderTotals
           subtotal={order.subtotal}
           taxTotal={order.tax_total}

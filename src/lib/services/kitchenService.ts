@@ -302,6 +302,20 @@ class KitchenService {
     return { tickets, total: count ?? tickets.length };
   }
 
+  /** Una comanda con su mesa, mesero e ítems (imprimir la comanda de un pedido web). */
+  async getTicket(organizationId: number, ticketId: number): Promise<KitchenTicket | null> {
+    const { data, error } = await supabase
+      .from('kitchen_tickets')
+      .select(SELECT_COMANDA)
+      .eq('organization_id', organizationId)
+      .eq('id', ticketId)
+      .maybeSingle();
+    if (error || !data) return null;
+    const [conMesero] = await this.adjuntarMeseros([data as RegistroTicket]);
+    const [conWeb] = await this.adjuntarPedidosWeb([conMesero as unknown as KitchenTicket], organizationId);
+    return conWeb ?? null;
+  }
+
   /** Nombre del mesero de la mesa (server_id → profiles), en una consulta. */
   private async adjuntarMeseros(tickets: RegistroTicket[]): Promise<RegistroTicket[]> {
     const ids = Array.from(new Set(tickets.map((t) => t.table_sessions?.server_id).filter((x): x is string => !!x)));

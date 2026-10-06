@@ -8428,7 +8428,7 @@
         "pickup": "retirada",
         "domicilio": "entrega",
         "dine_in": "comer aqui",
-        "mesa": "mesa {mesa}"
+        "mesa": "{mesa}"
       },
       "metodoMixto": "Misto",
       "enLinea": "Não · pago online",
@@ -32648,7 +32648,7 @@
   },
   "pedidoWeb": {
     "comerAqui": "Comer aqui",
-    "comerAquiMesa": "Comer aqui · Mesa {mesa}",
+    "comerAquiMesa": "Comer aqui · {mesa}",
     "verMesa": "Ver a mesa em POS › Mesas",
     "confirmacion": {
       "enLaMesa": "Adicionado à conta da mesa · Comanda enviada à cozinha",
@@ -32775,6 +32775,60 @@
       "comandaValor": "#{id}",
       "cajaValor": "Caixa {caja} · {sede} · aberto",
       "sinCaja": "sem caixa aberto"
+    },
+    "ficha": {
+      "resumenListoMesa": "Pronto às {hora} para a {mesa}.",
+      "resumenListo": "Pronto às {hora}.",
+      "seCobraEnCaja": "É cobrado no caixa da unidade ao entregar: {caja}.",
+      "reenviarAviso": "Reenviar aviso ao cliente",
+      "cancelarPedido": "Cancelar pedido…",
+      "pedidosOnline": "Pedidos online",
+      "hoyFecha": "hoje, {fecha}",
+      "programadoPara": "Para: {fecha}",
+      "imprimirComanda": "Imprimir comanda",
+      "imprimirError": "Não foi possível imprimir a comanda",
+      "imprimirEnviado": "Comanda #{id} enviada para impressão",
+      "imprimirSinImpresora": "Não há impressora para a estação da comanda",
+      "avisoReenviado": "Aviso ao cliente reenviado",
+      "notas": "Notas",
+      "notaCliente": "Nota do cliente",
+      "notaInterna": "Nota da equipe",
+      "editar": "Editar",
+      "cancelar": "Cancelar",
+      "guardar": "Salvar",
+      "sinNotaInterna": "Sem nota da equipe.",
+      "notaGuardada": "Nota salva",
+      "notaError": "Não foi possível salvar a nota",
+      "clienteAnonimo": "Cliente anônimo",
+      "cliente": "Cliente",
+      "nombre": "Nome",
+      "telefono": "Telefone",
+      "correo": "E-mail",
+      "documento": "Documento",
+      "pedidosAnteriores": "Pedidos anteriores",
+      "anterioresValor": "{n} · último {fecha}",
+      "primerPedido": "Primeiro pedido",
+      "verFicha": "Ver ficha do cliente",
+      "conversacion": "Abrir a conversa com o cliente",
+      "entrega": "Entrega",
+      "entregaMesa": "Pedido pelo QR da mesa. Vai para a {mesa}; sem endereço nem entregador.",
+      "entregaComerAqui": "Pedido para comer no local; sem endereço nem entregador.",
+      "listo": "Pronto",
+      "listoAprox": "Pronto aprox.",
+      "aTiempo": "no prazo",
+      "tarde": "atrasado",
+      "mesa": "Mesa",
+      "estados": {
+        "pending": "Pendente",
+        "confirmed": "Confirmado",
+        "preparing": "Em preparo",
+        "ready": "Pronto",
+        "in_delivery": "A caminho",
+        "delivered": "Entregue",
+        "cancelled": "Cancelado",
+        "rejected": "Recusado",
+        "expired": "Expirado"
+      }
     }
   },
   "posMesasFlujo": {
@@ -33466,7 +33520,7 @@
     },
     "tarjeta": {
       "web": "Web {numero}",
-      "webMesa": "Mesa {mesa}",
+      "webMesa": "{mesa}",
       "webComerAqui": "Comer no local",
       "webRecoger": "Retirar",
       "webDomicilio": "Entrega",
@@ -33788,7 +33842,8 @@
         "delivered": "confirmado pelo provedor",
         "failed": "recusado pelo provedor",
         "no_data": "falta o dado de contato"
-      }
+      },
+      "historialPedido": "Histórico do pedido"
     }
   }
 }

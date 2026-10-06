@@ -3,10 +3,9 @@
 import * as React from 'react';
 import { useTranslations } from 'next-intl';
 import KitchenService, { type KitchenTicket, type KitchenTicketItem } from '@/lib/services/kitchenService';
-import { PrintJobsService } from '@/lib/services/printJobsService';
 import { playNotificationBeep } from '@/lib/utils/sound';
 import { startOfDayInstant, todayInTz } from '@/lib/utils/dateCore';
-import { itemsParaImprimir, ticketRondaDesdeRegistro, type RegistroComanda } from '@/lib/pos/cocina/lineasCarrito';
+import { imprimirComanda, textosImpresionDe } from '@/lib/pos/cocina/imprimirComanda';
 import {
   aplicarEstadoLocal,
   aplicarItemLocal,
@@ -309,26 +308,8 @@ export function useComandasTurno({
     }
   };
 
-  const imprimir = async (c: KitchenTicket, anulada = false) => {
-    const ronda = ticketRondaDesdeRegistro(c as unknown as RegistroComanda);
-    const nombreMesa = c.table_sessions?.restaurant_tables?.name || (c.pedido_web ? `Web ${c.pedido_web.order_number}` : 'POS');
-    const encabezado = ronda.ticket_type === 'adjustment' ? `${nombreMesa} · ${tCocina('impreso.ajuste', { id: ronda.adjusts_ticket_id ?? '' })}` : nombreMesa;
-    return PrintJobsService.enqueueKitchenTicket(c.branch_id, {
-      ticketId: c.id,
-      tableName: anulada ? `${t('anulada')} · ${encabezado}` : encabezado,
-      serverName: c.table_sessions?.serverName || c.server_name || undefined,
-      createdAt: c.created_at,
-      items: itemsParaImprimir(ronda, {
-        mesa: nombreMesa,
-        ajuste: (original) => tCocina('impreso.ajuste', { id: original ?? '' }),
-        mas: (n) => tCocina('impreso.mas', { cantidad: n }),
-        menos: (n) => tCocina('impreso.menos', { cantidad: n }),
-        anular: tCocina('impreso.anular'),
-        notaCambiada: tCocina('impreso.nota'),
-        alergia: tCocina('impreso.alergia'),
-      }),
-    });
-  };
+  const imprimir = async (c: KitchenTicket, anulada = false) =>
+    imprimirComanda(c, textosImpresionDe((k, v) => tCocina(k, v), t('anulada')), { anulada });
 
   const reimprimir = async (c: KitchenTicket) => {
     try {

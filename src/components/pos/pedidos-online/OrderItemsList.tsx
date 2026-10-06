@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { Badge } from '@/components/ui/badge';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { WebOrderItem } from '@/lib/services/webOrdersService';
 
 interface OrderItemsListProps {
@@ -25,6 +25,7 @@ export function OrderItemsList({
   showStatus = false 
 }: OrderItemsListProps) {
   const t = useTranslations('pedidoWeb');
+  const { formatear } = useMonedaOrganizacion();
   const displayItems = maxItems ? items.slice(0, maxItems) : items;
   const remainingCount = maxItems && items.length > maxItems ? items.length - maxItems : 0;
 
@@ -70,51 +71,38 @@ export function OrderItemsList({
     );
   }
 
+  // Detalle (Figma 1981:175699): nombre y estado, SKU, modificadores y nota en
+  // una línea cada uno; a la derecha «1 × $ 56.000» y el total de la línea.
   return (
-    <div className="space-y-3">
+    <div>
       {displayItems.map((item) => (
-        <div 
-          key={item.id} 
-          className="flex items-start justify-between py-3 border-b dark:border-gray-700 last:border-0"
-        >
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <p className="font-medium dark:text-gray-100">{item.product_name}</p>
+        <div key={item.id} className="flex items-start justify-between gap-4 border-b border-line py-3 first:pt-0 last:border-0">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-[13px] font-semibold text-fg">{item.product_name}</p>
               {showStatus && (
-                <Badge className={`${ITEM_STATUS_CONFIG[item.status].color} text-xs`}>
+                <span className="rounded-full bg-subtle px-2 text-[11px] font-medium leading-5 text-fg-secondary">
                   {ITEM_STATUS_CONFIG[item.status].label}
-                </Badge>
+                </span>
               )}
             </div>
-            {item.product_sku && (
-              <p className="text-sm text-muted-foreground dark:text-gray-400">SKU: {item.product_sku}</p>
-            )}
+            {item.product_sku && <p className="text-[11px] text-fg-muted">SKU {item.product_sku}</p>}
             {item.modifiers && item.modifiers.length > 0 && (
-              <div className="mt-1 space-y-0.5">
-                {(item.modifiers as Array<{ name?: string; price?: number }>).map((mod, idx: number) => (
-                  <p key={idx} className="text-sm text-muted-foreground dark:text-gray-400">
-                    + {mod.name} {(mod.price ?? 0) > 0 && `(+$${(mod.price ?? 0).toLocaleString()})`}
-                  </p>
-                ))}
-              </div>
+              <p className="mt-0.5 text-[11px] text-fg-secondary">
+                {(item.modifiers as Array<{ name?: string }>).map((mod) => `+ ${mod.name ?? ''}`).join(' · ')}
+              </p>
             )}
             {/* Nota de cocina bajo la línea, en texto normal (Figma 1981:175699) */}
-            {item.notes && (
-              <p className="mt-1 text-sm text-fg">{t('notas.notaCocina', { nota: item.notes })}</p>
-            )}
+            {item.notes && <p className="mt-0.5 text-[11px] text-fg">{t('notas.notaCocina', { nota: item.notes })}</p>}
           </div>
-          <div className="text-right ml-4">
-            <p className="text-sm text-muted-foreground dark:text-gray-400">
-              {item.quantity} x ${item.unit_price.toLocaleString()}
-            </p>
-            <p className="font-medium dark:text-gray-100">${item.total.toLocaleString()}</p>
+          <div className="shrink-0 text-right">
+            <p className="text-[11px] text-fg-muted tabular-nums">{item.quantity} × {formatear(item.unit_price)}</p>
+            <p className="text-[13px] font-semibold text-fg tabular-nums">{formatear(item.total)}</p>
           </div>
         </div>
       ))}
       {remainingCount > 0 && (
-        <p className="text-sm text-muted-foreground dark:text-gray-400 text-center py-2">
-          +{remainingCount} producto(s) más
-        </p>
+        <p className="py-2 text-center text-sm text-fg-secondary">+{remainingCount} producto(s) más</p>
       )}
     </div>
   );

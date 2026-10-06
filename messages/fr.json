@@ -8428,7 +8428,7 @@
         "pickup": "retrait",
         "domicilio": "livraison",
         "dine_in": "sur place",
-        "mesa": "table {mesa}"
+        "mesa": "{mesa}"
       },
       "metodoMixto": "Mixte",
       "enLinea": "Non · payé en ligne",
@@ -32648,7 +32648,7 @@
   },
   "pedidoWeb": {
     "comerAqui": "Sur place",
-    "comerAquiMesa": "Sur place · Table {mesa}",
+    "comerAquiMesa": "Sur place · {mesa}",
     "verMesa": "Voir la table dans POS › Tables",
     "confirmacion": {
       "enLaMesa": "Ajouté à l’addition de la table · Bon envoyé en cuisine",
@@ -32775,6 +32775,60 @@
       "comandaValor": "#{id}",
       "cajaValor": "Caisse {caja} · {sede} · ouverte",
       "sinCaja": "aucune caisse ouverte"
+    },
+    "ficha": {
+      "resumenListoMesa": "Prête à {hora} pour {mesa}.",
+      "resumenListo": "Prête à {hora}.",
+      "seCobraEnCaja": "Encaissée à la caisse de l'établissement à la remise : {caja}.",
+      "reenviarAviso": "Renvoyer la notification au client",
+      "cancelarPedido": "Annuler la commande…",
+      "pedidosOnline": "Commandes en ligne",
+      "hoyFecha": "aujourd'hui, {fecha}",
+      "programadoPara": "Pour : {fecha}",
+      "imprimirComanda": "Imprimer le bon",
+      "imprimirError": "Impossible d'imprimer le bon",
+      "imprimirEnviado": "Bon #{id} envoyé à l'impression",
+      "imprimirSinImpresora": "Aucune imprimante pour le poste du bon",
+      "avisoReenviado": "Notification client renvoyée",
+      "notas": "Notes",
+      "notaCliente": "Note du client",
+      "notaInterna": "Note de l'équipe",
+      "editar": "Modifier",
+      "cancelar": "Annuler",
+      "guardar": "Enregistrer",
+      "sinNotaInterna": "Aucune note de l'équipe.",
+      "notaGuardada": "Note enregistrée",
+      "notaError": "Impossible d'enregistrer la note",
+      "clienteAnonimo": "Client anonyme",
+      "cliente": "Client",
+      "nombre": "Nom",
+      "telefono": "Téléphone",
+      "correo": "E-mail",
+      "documento": "Document",
+      "pedidosAnteriores": "Commandes précédentes",
+      "anterioresValor": "{n} · dernière {fecha}",
+      "primerPedido": "Première commande",
+      "verFicha": "Voir la fiche client",
+      "conversacion": "Ouvrir la conversation avec le client",
+      "entrega": "Remise",
+      "entregaMesa": "Commande depuis le QR de la table. Elle est apportée à {mesa} ; pas d'adresse ni de livreur.",
+      "entregaComerAqui": "Commande sur place ; pas d'adresse ni de livreur.",
+      "listo": "Prête",
+      "listoAprox": "Prête vers",
+      "aTiempo": "à l'heure",
+      "tarde": "en retard",
+      "mesa": "Table",
+      "estados": {
+        "pending": "En attente",
+        "confirmed": "Confirmée",
+        "preparing": "En préparation",
+        "ready": "Prête",
+        "in_delivery": "En route",
+        "delivered": "Livrée",
+        "cancelled": "Annulée",
+        "rejected": "Refusée",
+        "expired": "Expirée"
+      }
     }
   },
   "posMesasFlujo": {
@@ -33466,7 +33520,7 @@
     },
     "tarjeta": {
       "web": "Web {numero}",
-      "webMesa": "Table {mesa}",
+      "webMesa": "{mesa}",
       "webComerAqui": "Sur place",
       "webRecoger": "À emporter",
       "webDomicilio": "Livraison",
@@ -33788,7 +33842,8 @@
         "delivered": "confirmé par le fournisseur",
         "failed": "refusé par le fournisseur",
         "no_data": "coordonnées manquantes"
-      }
+      },
+      "historialPedido": "Historique de la commande"
     }
   }
 }

@@ -2,9 +2,8 @@
 
 import * as React from 'react';
 import { useTranslations } from 'next-intl';
-import { Bell, Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { cn } from '@/utils/Utils';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { formatTimeInTz } from '@/lib/utils/dateDisplay';
 import type { CanalAviso, EstadoRegistroAviso } from '@/lib/pos/pedidosWeb/avisosCliente';
@@ -24,66 +23,16 @@ const TONO: Record<EstadoRegistroAviso, string> = {
   no_data: 'border-line-warning text-warning-text',
 };
 
-export function ListaAvisos({
-  avisos,
-  timezone,
-  reenviando,
-  onReenviar,
-}: {
-  avisos: AvisoDePedido[];
-  timezone: string;
-  reenviando: CanalAviso | null;
-  onReenviar: (canal: CanalAviso) => void;
-}) {
-  const t = useTranslations('posAvisosCliente.historial');
-  return (
-    <ul className="space-y-3">
-      {avisos.map((a) => (
-        <li key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span className={cn('rounded-full border px-2 text-[13px] font-semibold leading-6', TONO[a.status])}>
-            {t('linea', {
-              canal: t(`canal.${a.channel}`),
-              hora: a.status === 'no_data' ? '—' : formatTimeInTz(a.created_at, timezone),
-              estado: t(`estado.${a.status}`),
-            })}
-          </span>
-          <span className="text-xs text-fg-muted">
-            {t(`momento.${a.moment}`)} · {a.detail ? t.has(`detalle.${a.detail}`) ? t(`detalle.${a.detail}`) : a.detail : t(`ayuda.${a.status}`)}
-          </span>
-          {(a.status === 'failed' || a.status === 'no_data') && (
-            <button
-              type="button"
-              disabled={reenviando !== null}
-              onClick={() => onReenviar(a.channel)}
-              className="ml-auto inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[13px] font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-60"
-            >
-              {reenviando === a.channel ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : <RefreshCw aria-hidden="true" className="size-4" strokeWidth={1.5} />}
-              {t('reenviar')}
-            </button>
-          )}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-export function AvisosPedidoPanel({ orderId, timezone, version }: { orderId: string; timezone: string; version?: string | null }) {
+/** Avisos del pedido y «Reenviar» (el servidor decide y registra). */
+export function useAvisosPedido(orderId: string, version?: string | null) {
   const t = useTranslations('posAvisosCliente.historial');
   const { toast } = useToast();
-  const [avisos, setAvisos] = React.useState<AvisoDePedido[] | null>(null);
-  const [disponible, setDisponible] = React.useState(true);
+  const [avisos, setAvisos] = React.useState<AvisoDePedido[]>([]);
   const [reenviando, setReenviando] = React.useState<CanalAviso | null>(null);
-
   const cargar = React.useCallback(() => {
-    leerAvisosPedido(orderId)
-      .then((r) => {
-        setAvisos(r.avisos);
-        setDisponible(r.disponible);
-      })
-      .catch(() => setAvisos([]));
+    leerAvisosPedido(orderId).then((r) => setAvisos(r.avisos)).catch(() => setAvisos([]));
   }, [orderId]);
   React.useEffect(cargar, [cargar, version]);
-
   const reenviar = async (canal: CanalAviso) => {
     setReenviando(canal);
     try {
@@ -96,26 +45,51 @@ export function AvisosPedidoPanel({ orderId, timezone, version }: { orderId: str
       setReenviando(null);
     }
   };
+  return { avisos, reenviando, reenviar };
+}
 
-  if (!disponible) return null;
+/** Línea compacta bajo un paso del historial: «Correo · 12:05 · Entregado «Recibimos tu pedido»». */
+export function ChipsAvisos({
+  avisos,
+  timezone,
+  reenviando,
+  onReenviar,
+}: {
+  avisos: AvisoDePedido[];
+  timezone: string;
+  reenviando: CanalAviso | null;
+  onReenviar: (canal: CanalAviso) => void;
+}) {
+  const t = useTranslations('posAvisosCliente');
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Bell aria-hidden="true" className="size-5" strokeWidth={1.5} />
-          {t('titulo')}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {avisos === null ? (
-          <Loader2 aria-label={t('cargando')} className="size-5 animate-spin text-fg-muted" />
-        ) : avisos.length === 0 ? (
-          <p className="text-sm text-fg-secondary">{t('vacio')}</p>
-        ) : (
-          <ListaAvisos avisos={avisos} timezone={timezone} reenviando={reenviando} onReenviar={(c) => void reenviar(c)} />
-        )}
-        <p className="mt-4 rounded-lg bg-subtle px-3 py-2.5 text-xs text-fg-secondary">{t('nota')}</p>
-      </CardContent>
-    </Card>
+    <ul className="space-y-1">
+      {avisos.map((a) => (
+        <li key={a.id} className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className={cn('rounded-full border px-1.5 text-[11px] font-medium leading-5', TONO[a.status])}>
+            {t('historial.linea', {
+              canal: t(`historial.canal.${a.channel}`),
+              hora: a.status === 'no_data' ? '—' : formatTimeInTz(a.created_at, timezone),
+              estado: t(`historial.estado.${a.status}`),
+            })}
+          </span>
+          <span className="text-[11px] text-fg-muted">
+            {a.status === 'failed' || a.status === 'no_data'
+              ? a.detail && t.has(`historial.detalle.${a.detail}`) ? t(`historial.detalle.${a.detail}`) : t(`historial.ayuda.${a.status}`)
+              : t(`momentos.${a.moment}.plantilla`)}
+          </span>
+          {(a.status === 'failed' || a.status === 'no_data') && (
+            <button
+              type="button"
+              disabled={reenviando !== null}
+              onClick={() => onReenviar(a.channel)}
+              className="ml-auto inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-60"
+            >
+              {reenviando === a.channel ? <Loader2 aria-hidden="true" className="size-3.5 animate-spin" /> : <RefreshCw aria-hidden="true" className="size-3.5" strokeWidth={1.5} />}
+              {t('historial.reenviar')}
+            </button>
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }

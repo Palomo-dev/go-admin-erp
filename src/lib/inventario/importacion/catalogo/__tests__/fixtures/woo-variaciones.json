@@ -1,0 +1,4 @@
+[
+  { "id": 211, "parent": 21, "name": "Taza Cerámica", "sku": "TAZA-AZ", "prices": { "price": "1500000", "regular_price": "1700000", "currency_minor_unit": 2 }, "images": [{ "src": "https://tienda.ejemplo.test/wp-content/uploads/taza-azul.jpg" }], "is_in_stock": true },
+  { "id": 212, "parent": 21, "name": "Taza Cerámica", "sku": "TAZA-BL", "prices": { "price": "1800000", "regular_price": "1800000", "currency_minor_unit": 2 }, "images": [], "is_in_stock": false }
+]

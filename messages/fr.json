@@ -7947,7 +7947,8 @@
       "comboSinComponentes": "combos sans composants (définir leur recette)",
       "categoriaSugerida": "catégorie suggérée d'après le nom",
       "preparadoSinInventario": "plats préparés sans stock propre",
-      "filaInternaAlegra": "lignes internes Alegra (exclues)"
+      "filaInternaAlegra": "lignes internes Alegra (exclues)",
+      "skuRepetidoTienda": "SKU de la boutique répété"
     },
     "vista": {
       "titulo": "Aperçu ({n} lignes)",
@@ -8096,7 +8097,8 @@
       "DUPLICADO": "Entre en conflit avec un enregistrement existant (SKU ou autre valeur unique)",
       "DATO_NO_VALIDO": "Une valeur n’est pas valide pour la base",
       "LOTE": "Le lot entier a échoué",
-      "ERROR": "Erreur lors de l’enregistrement de la ligne"
+      "ERROR": "Erreur lors de l’enregistrement de la ligne",
+      "skuRepetidoTienda": "Le SKU « {sku} » de la boutique est déjà utilisé par un autre produit du catalogue : un nouveau a été généré (conservé en référence)."
     },
     "cabeceras": {
       "sku": "SKU",
@@ -8129,6 +8131,75 @@
     "valores": {
       "producto": "Produit",
       "servicio": "Service"
+    },
+    "catalogo": {
+      "descripcion": "Collez l’URL de la boutique : nous détectons la plateforme et lisons TOUT son catalogue public (produits, variantes, prix, images et catégories) sans IA et sans frais.",
+      "urlAyuda": "Shopify, WooCommerce, VTEX et Magento sont lus via leur API publique ; PrestaShop avec la clé de son webservice ; Tiendanube, Wix, Squarespace, BigCommerce, Jumpseller et les autres via leur sitemap et les données de chaque fiche.",
+      "iaTitulo": "Une seule page ou une boutique sans catalogue public ? Analysez-la avec l’IA",
+      "detectar": "Détecter la boutique",
+      "detectando": "Détection de la plateforme…",
+      "urlInvalida": "Saisissez une URL complète commençant par http:// ou https://.",
+      "errorDeteccion": "Impossible d’analyser la boutique : {mensaje}",
+      "claveRechazada": "La boutique n’a pas accepté la clé du webservice (ou ce n’est pas PrestaShop). Vérifiez la clé et ses permissions.",
+      "detectada": "{plataforma} : catalogue public disponible",
+      "noDisponible": "{plataforma} : aucun catalogue public trouvé",
+      "sinCosto": "Gratuit",
+      "modoSitemap": "Par sitemap",
+      "resumen": "Résumé du catalogue",
+      "cifras": {
+        "fichas": "Fiches",
+        "productos": "Produits",
+        "alLeer": "À la lecture",
+        "colecciones": "Collections",
+        "categorias": "Catégories",
+        "leidos": "Lus",
+        "variantes": "Variantes",
+        "sinPrecio": "Sans prix",
+        "conImagen": "Avec image"
+      },
+      "avisos": {
+        "shopifySinExistencias": "Shopify ne publie ni le stock ni le coût : chargez-les ensuite.",
+        "wooSinExistencias": "WooCommerce ne publie ni le stock exact ni le coût : chargez-les ensuite.",
+        "magentoSinExistencias": "Magento ne publie ni le stock exact ni le coût : chargez-les ensuite.",
+        "prestashopSinImpuestos": "PrestaShop renvoie les prix HORS taxes : vérifiez-les avant d’importer.",
+        "catalogoTruncado": "Le catalogue dépasse le maximum d’une importation (20 000 produits) : il a été lu jusqu’à cette limite.",
+        "genericaFichas": "Cette boutique n’a pas d’API publique : chaque fiche produit est lue ; celles qui ne publient pas leurs données sont ignorées."
+      },
+      "usarIa": "Vous pouvez analyser cette page avec l’IA (ci-dessous) ou essayer une autre URL.",
+      "clave": {
+        "etiqueta": "Clé du webservice PrestaShop",
+        "ayuda": "Facultatif. Créez-la dans Paramètres avancés › Webservice avec le droit de lecture (GET) sur produits, déclinaisons, catégories et options. Elle ne sert qu’à cette lecture et n’est pas enregistrée.",
+        "usar": "Utiliser la clé"
+      },
+      "leyendo": "Lecture du catalogue",
+      "progreso": "{leidos, plural, one {# produit lu} other {# produits lus}} {total, plural, =0 {(total à confirmer)} other {sur #}} · {tandas, plural, one {# lot} other {# lots}}",
+      "progresoFichas": "{recorridas} sur {total} fiches · {leidos, plural, one {# produit} other {# produits}} · {sinDatos} sans données",
+      "detener": "Arrêter et garder ce qui a été lu",
+      "leer": "Lire tout le catalogue",
+      "otraUrl": "Autre URL",
+      "sinProductos": "Aucun produit trouvé dans le catalogue de cette boutique.",
+      "leidoCompleto": "{n, plural, one {Catalogue lu : # produit} other {Catalogue lu : # produits}}",
+      "leidoParcial": "{n, plural, one {Lecture partielle : # produit} other {Lecture partielle : # produits}}. Vous pouvez les importer ou relire.",
+      "plataformas": {
+        "shopify": "Shopify",
+        "woocommerce": "WooCommerce (WordPress)",
+        "vtex": "VTEX",
+        "magento": "Magento / Adobe Commerce",
+        "prestashop": "PrestaShop",
+        "generica": "Boutique en ligne",
+        "tiendanube": "Tiendanube / Nuvemshop",
+        "jumpseller": "Jumpseller",
+        "wix": "Wix",
+        "squarespace": "Squarespace",
+        "bigcommerce": "BigCommerce"
+      },
+      "sinCategoria": "Sans catégorie ({n})",
+      "origenCatalogo": "Catalogue lu depuis {plataforma} sans IA. Lors d’une réimportation, les produits sont reconnus par leur SKU et mis à jour au lieu d’être dupliqués.",
+      "categoriasTitulo": "Catégories à importer",
+      "categoriasAyuda": "Touchez une catégorie pour inclure ou retirer tous ses produits. Les nouvelles sont créées à l’importation.",
+      "categoriasMas": "{n, plural, one {Et # catégorie de plus (choisissez-la dans la liste)} other {Et # catégories de plus (choisissez-les dans la liste)}}",
+      "existencias": "{n, plural, one {Utiliser le stock publié par la boutique (# produit)} other {Utiliser le stock publié par la boutique (# produits)}}",
+      "existenciasAyuda": "Il entre comme stock initial dans l’agence choisie. Un coût est requis : sans coût la ligne est en erreur."
     }
   },
   "productosFacebook": {

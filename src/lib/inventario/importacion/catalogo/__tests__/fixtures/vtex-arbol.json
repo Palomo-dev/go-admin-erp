@@ -1,0 +1,7 @@
+[
+  { "id": 1, "name": "Calzado", "hasChildren": true, "children": [
+    { "id": 10, "name": "Deportivo", "hasChildren": false, "children": [] },
+    { "id": 11, "name": "Accesorios", "hasChildren": false, "children": [] }
+  ] },
+  { "id": 2, "name": "Ropa", "hasChildren": false, "children": [] }
+]

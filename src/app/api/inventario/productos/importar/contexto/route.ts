@@ -16,7 +16,7 @@ export const POST = withOrg(async (ctx, request) => {
   if (!(await puedeImportarProductos(ctx))) return jsonError(403, 'FORBIDDEN', 'No tienes permiso para importar productos');
   const lista = (v: unknown, max: number) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string').slice(0, max) : []);
   try {
-    const contexto = await contextoImportacion(ctx.supabase, ctx.organizationId, { skus: lista(body.skus, 20000), nombres: lista(body.nombres, 5000) });
+    const contexto = await contextoImportacion(ctx.supabase, ctx.organizationId, { skus: lista(body.skus, 60000), nombres: lista(body.nombres, 20000) });
     return Response.json(contexto);
   } catch (err) {
     console.error('[importar/contexto]', err);

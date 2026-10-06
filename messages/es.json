@@ -9698,7 +9698,8 @@
       "comboSinComponentes": "combos sin componentes (definir su receta)",
       "categoriaSugerida": "categoría sugerida por el nombre",
       "preparadoSinInventario": "platos preparados sin inventario propio",
-      "filaInternaAlegra": "filas internas de Alegra (excluidas)"
+      "filaInternaAlegra": "filas internas de Alegra (excluidas)",
+      "skuRepetidoTienda": "SKU de la tienda repetido"
     },
     "vista": {
       "titulo": "Previsualización ({n} filas)",
@@ -9847,7 +9848,8 @@
       "DUPLICADO": "Choca con un registro existente (SKU u otro dato único)",
       "DATO_NO_VALIDO": "Algún dato no es válido para la base",
       "LOTE": "El lote completo falló",
-      "ERROR": "Error al guardar la fila"
+      "ERROR": "Error al guardar la fila",
+      "skuRepetidoTienda": "El SKU «{sku}» de la tienda ya lo usa otro producto del catálogo: se generó uno nuevo (queda como referencia)."
     },
     "cabeceras": {
       "sku": "SKU",
@@ -9880,6 +9882,75 @@
     "valores": {
       "producto": "Producto",
       "servicio": "Servicio"
+    },
+    "catalogo": {
+      "descripcion": "Pega la URL de la tienda: detectamos la plataforma y leemos TODO su catálogo público (productos, variantes, precios, imágenes y categorías) sin IA y sin costo.",
+      "urlAyuda": "Shopify, WooCommerce, VTEX y Magento se leen por su API pública; PrestaShop con la clave de su webservice; Tiendanube, Wix, Squarespace, BigCommerce, Jumpseller y las demás, por su sitemap y los datos de cada ficha.",
+      "iaTitulo": "¿Solo una página o una tienda sin catálogo público? Analízala con IA",
+      "detectar": "Detectar tienda",
+      "detectando": "Detectando la plataforma…",
+      "urlInvalida": "Escribe una URL completa que empiece por http:// o https://.",
+      "errorDeteccion": "No se pudo analizar la tienda: {mensaje}",
+      "claveRechazada": "La tienda no aceptó la clave del webservice (o no es PrestaShop). Revisa la clave y sus permisos.",
+      "detectada": "{plataforma}: catálogo público disponible",
+      "noDisponible": "{plataforma}: no encontramos un catálogo público",
+      "sinCosto": "Sin costo",
+      "modoSitemap": "Por sitemap",
+      "resumen": "Resumen del catálogo",
+      "cifras": {
+        "fichas": "Fichas",
+        "productos": "Productos",
+        "alLeer": "Al leer",
+        "colecciones": "Colecciones",
+        "categorias": "Categorías",
+        "leidos": "Leídos",
+        "variantes": "Variantes",
+        "sinPrecio": "Sin precio",
+        "conImagen": "Con imagen"
+      },
+      "avisos": {
+        "shopifySinExistencias": "Shopify no publica las existencias ni el costo: el stock y el costo se cargan después.",
+        "wooSinExistencias": "WooCommerce no publica las existencias exactas ni el costo: el stock y el costo se cargan después.",
+        "magentoSinExistencias": "Magento no publica las existencias exactas ni el costo: el stock y el costo se cargan después.",
+        "prestashopSinImpuestos": "PrestaShop entrega los precios SIN impuestos: revísalos antes de importar.",
+        "catalogoTruncado": "El catálogo supera el máximo de una importación (20 000 productos): se leyó hasta ese tope.",
+        "genericaFichas": "Esta tienda no tiene API pública: se lee cada ficha de producto; las que no publican sus datos se omiten."
+      },
+      "usarIa": "Puedes analizar esta página con IA (abajo) o probar con otra URL.",
+      "clave": {
+        "etiqueta": "Clave del webservice de PrestaShop",
+        "ayuda": "Opcional. Créala en Parámetros avanzados › Webservice con permiso de lectura (GET) sobre productos, combinaciones, categorías y opciones. Solo se usa para esta lectura y no se guarda.",
+        "usar": "Usar la clave"
+      },
+      "leyendo": "Leyendo el catálogo",
+      "progreso": "{leidos, plural, one {# producto leído} other {# productos leídos}} {total, plural, =0 {(total por confirmar)} other {de #}} · {tandas, plural, one {# tanda} other {# tandas}}",
+      "progresoFichas": "{recorridas} de {total} fichas · {leidos, plural, one {# producto} other {# productos}} · {sinDatos} sin datos",
+      "detener": "Detener y conservar lo leído",
+      "leer": "Leer el catálogo completo",
+      "otraUrl": "Otra URL",
+      "sinProductos": "No se encontraron productos en el catálogo de esa tienda.",
+      "leidoCompleto": "{n, plural, one {Catálogo leído: # producto} other {Catálogo leído: # productos}}",
+      "leidoParcial": "{n, plural, one {Lectura parcial: # producto} other {Lectura parcial: # productos}}. Puedes importarlos o volver a leer.",
+      "plataformas": {
+        "shopify": "Shopify",
+        "woocommerce": "WooCommerce (WordPress)",
+        "vtex": "VTEX",
+        "magento": "Magento / Adobe Commerce",
+        "prestashop": "PrestaShop",
+        "generica": "Tienda en línea",
+        "tiendanube": "Tiendanube / Nuvemshop",
+        "jumpseller": "Jumpseller",
+        "wix": "Wix",
+        "squarespace": "Squarespace",
+        "bigcommerce": "BigCommerce"
+      },
+      "sinCategoria": "Sin categoría ({n})",
+      "origenCatalogo": "Catálogo leído de {plataforma} sin IA. Al reimportar, los productos se reconocen por su SKU y se actualizan en vez de duplicarse.",
+      "categoriasTitulo": "Categorías a importar",
+      "categoriasAyuda": "Toca una categoría para incluir o quitar todos sus productos. Las nuevas se crean al importar.",
+      "categoriasMas": "{n, plural, one {Y # categoría más (elígela en la lista)} other {Y # categorías más (elígelas en la lista)}}",
+      "existencias": "{n, plural, one {Usar las existencias que publica la tienda (# producto)} other {Usar las existencias que publica la tienda (# productos)}}",
+      "existenciasAyuda": "Entran como stock inicial en la sucursal elegida. Exigen costo: sin costo la fila queda con error."
     }
   },
   "productosFacebook": {

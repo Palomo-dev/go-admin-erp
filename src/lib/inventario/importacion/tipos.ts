@@ -61,6 +61,7 @@ export type CodigoMensaje =
   | 'nombreMuyLargo'
   // avisos
   | 'skuGenerado'
+  | 'skuRepetidoTienda'
   | 'costoMayorPrecio'
   | 'costoPrecioIntercambiados'
   | 'promoEnNotas'

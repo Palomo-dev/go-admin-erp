@@ -7,6 +7,7 @@
 import type { CuerpoLote } from '@/lib/inventario/importacion/payload';
 import type { ResultadoFila } from '@/lib/inventario/importacion/tipos';
 import type { ProductoWeb } from '@/lib/inventario/importacion/web';
+import type { CursorCatalogo, DeteccionCatalogo, PaginaCatalogo, Plataforma } from '@/lib/inventario/importacion/catalogo/tipos';
 
 export class ErrorApi extends Error {
   constructor(message: string, public readonly status: number, public readonly code: string) {
@@ -63,4 +64,22 @@ export function analizarWeb(orgId: number | undefined, url: string, signal?: Abo
 
 export function detallarWeb(orgId: number | undefined, url: string): Promise<{ producto: ProductoWeb | null; ia: boolean; creditos: number }> {
   return llamar('/api/inventario/productos/importar-web', orgId, { method: 'POST', body: JSON.stringify({ accion: 'detallar', url }) });
+}
+
+// ── Catálogo completo por la API pública de la tienda (sin IA, sin costo) ──
+
+export function detectarCatalogoWeb(orgId: number | undefined, url: string, clave?: string, signal?: AbortSignal): Promise<DeteccionCatalogo> {
+  return llamar('/api/inventario/productos/importar-web', orgId, { method: 'POST', body: JSON.stringify({ accion: 'detectar', url, clave: clave || undefined }), signal });
+}
+
+export function leerTandaCatalogoWeb(
+  orgId: number | undefined,
+  datos: { origen: string; plataforma: Plataforma; cursor: CursorCatalogo; clave?: string },
+  signal?: AbortSignal,
+): Promise<PaginaCatalogo> {
+  return llamar('/api/inventario/productos/importar-web', orgId, { method: 'POST', body: JSON.stringify({ accion: 'catalogo', ...datos, clave: datos.clave || undefined }), signal });
+}
+
+export function leerFichasWeb(orgId: number | undefined, origen: string, urls: string[], signal?: AbortSignal): Promise<{ productos: ProductoWeb[]; sinDatos: string[] }> {
+  return llamar('/api/inventario/productos/importar-web', orgId, { method: 'POST', body: JSON.stringify({ accion: 'fichas', origen, urls }), signal });
 }

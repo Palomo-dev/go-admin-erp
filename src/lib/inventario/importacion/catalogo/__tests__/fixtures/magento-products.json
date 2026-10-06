@@ -1,0 +1,29 @@
+{
+  "data": {
+    "products": {
+      "total_count": 2,
+      "page_info": { "current_page": 1, "total_pages": 1 },
+      "items": [
+        {
+          "__typename": "ConfigurableProduct", "id": 41, "sku": "CHQ-01", "name": "Chaqueta Impermeable", "url_key": "chaqueta-impermeable", "url_suffix": ".html", "stock_status": "IN_STOCK",
+          "description": { "html": "<p>Chaqueta para lluvia</p>" },
+          "categories": [{ "name": "Ropa", "level": 2 }, { "name": "Chaquetas", "level": 3 }],
+          "price_range": { "minimum_price": { "regular_price": { "value": 300000 }, "final_price": { "value": 250000 } } },
+          "media_gallery": [{ "url": "https://magento.ejemplo.test/media/chq.jpg", "disabled": false }, { "url": "https://magento.ejemplo.test/media/oculta.jpg", "disabled": true }],
+          "configurable_options": [{ "attribute_code": "size", "label": "Talla" }],
+          "variants": [
+            { "attributes": [{ "code": "size", "label": "M" }], "product": { "sku": "CHQ-01-M", "stock_status": "IN_STOCK", "price_range": { "minimum_price": { "regular_price": { "value": 300000 }, "final_price": { "value": 250000 } } }, "media_gallery": [] } },
+            { "attributes": [{ "code": "size", "label": "L" }], "product": { "sku": "CHQ-01-L", "stock_status": "OUT_OF_STOCK", "price_range": { "minimum_price": { "regular_price": { "value": 320000 }, "final_price": { "value": 320000 } } }, "media_gallery": [] } }
+          ]
+        },
+        {
+          "__typename": "SimpleProduct", "id": 42, "sku": "PAR-01", "name": "Paraguas", "url_key": "paraguas", "url_suffix": ".html", "stock_status": "IN_STOCK",
+          "description": { "html": "" },
+          "categories": [],
+          "price_range": { "minimum_price": { "regular_price": { "value": 60000 }, "final_price": { "value": 60000 } } },
+          "media_gallery": []
+        }
+      ]
+    }
+  }
+}

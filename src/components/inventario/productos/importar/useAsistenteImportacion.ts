@@ -19,6 +19,8 @@ import { ajustarFilasAlegra, esExportAlegra } from '@/lib/inventario/importacion
 import { validarFilas, resumirValidacion } from '@/lib/inventario/importacion/validacion';
 import { dividirEnLotes, filasAImportar, TAMANO_LOTE } from '@/lib/inventario/importacion/payload';
 import { productosWebAFilas, type ProductoWeb } from '@/lib/inventario/importacion/web';
+import { claveCategoria } from '@/lib/inventario/importacion/catalogo/deduplicacion';
+import type { PlataformaDetectada } from '@/lib/inventario/importacion/catalogo/tipos';
 import { OPCIONES_POR_DEFECTO, type FilaImport, type FilaValidada, type OpcionesImportacion, type ResultadoFila } from '@/lib/inventario/importacion/tipos';
 import { enviarLote, pedirContexto, type ContextoServidor } from './apiImportacion';
 
@@ -37,6 +39,18 @@ export interface ArchivoLeido {
   formato: FormatoArchivo;
   filaCabecera: number;
   mapeo: Mapeo;
+}
+
+export interface EstadoWeb {
+  url: string;
+  productos: ProductoWeb[];
+  seleccion: Set<number>;
+  creditos: number;
+  ia: boolean;
+  /** Plataforma de la tienda cuando se leyó su catálogo completo (sin IA). */
+  plataforma?: PlataformaDetectada | null;
+  /** Las existencias que publica la tienda entran como stock inicial (exige costo). */
+  existenciasComoStock: boolean;
 }
 
 export interface EstadoEjecucion {
@@ -58,7 +72,7 @@ export function useAsistenteImportacion(orgId: number | undefined) {
   const [paso, setPaso] = useState<Paso>('origen');
   const [archivo, setArchivo] = useState<ArchivoLeido | null>(null);
   const [saldos, setSaldos] = useState<{ nombre: string; datos: Map<string, Saldo> } | null>(null);
-  const [web, setWeb] = useState<{ url: string; productos: ProductoWeb[]; seleccion: Set<number>; creditos: number; ia: boolean } | null>(null);
+  const [web, setWeb] = useState<EstadoWeb | null>(null);
   const [ediciones, setEdiciones] = useState<Map<number, Partial<FilaImport>>>(new Map());
   const [opciones, setOpciones] = useState<OpcionesImportacion>(OPCIONES_POR_DEFECTO);
   const [branchId, setBranchId] = useState<number | null>(null);
@@ -82,7 +96,7 @@ export function useAsistenteImportacion(orgId: number | undefined) {
     if (origen === 'web') {
       if (!web) return [];
       const elegidos = web.productos.filter((_, i) => web.seleccion.has(i));
-      return productosWebAFilas(elegidos);
+      return productosWebAFilas(elegidos, { existenciasComoStock: web.existenciasComoStock });
     }
     if (!archivo) return [];
     let filas: FilaImport[];
@@ -151,8 +165,8 @@ export function useAsistenteImportacion(orgId: number | undefined) {
   const faltantes = useMemo(() => (archivo && archivo.formato === 'generico' ? camposObligatoriosFaltantes(archivo.mapeo) : []), [archivo]);
 
   // ── Web ─────────────────────────────────────────────────────────────────
-  const cargarWeb = useCallback((url: string, productos: ProductoWeb[], creditos: number, ia: boolean) => {
-    setWeb({ url, productos, seleccion: new Set(productos.map((_, i) => i)), creditos, ia });
+  const cargarWeb = useCallback((url: string, productos: ProductoWeb[], creditos: number, ia: boolean, plataforma?: PlataformaDetectada | null) => {
+    setWeb({ url, productos, seleccion: new Set(productos.map((_, i) => i)), creditos, ia, plataforma, existenciasComoStock: false });
     setEdiciones(new Map());
     setExcluidas(new Set());
     invalidarContexto();
@@ -174,6 +188,32 @@ export function useAsistenteImportacion(orgId: number | undefined) {
     });
     invalidarContexto();
   }, [invalidarContexto]);
+
+  /** Incluye o quita de la selección todos los productos de una categoría (clave normalizada; '' = sin categoría). */
+  const seleccionarCategoriaWeb = useCallback(
+    (clave: string, incluir: boolean) => {
+      setWeb((w) => {
+        if (!w) return w;
+        const s = new Set(w.seleccion);
+        w.productos.forEach((p, i) => {
+          if (claveCategoria(p.category) !== clave) return;
+          if (incluir) s.add(i);
+          else s.delete(i);
+        });
+        return { ...w, seleccion: s };
+      });
+      invalidarContexto();
+    },
+    [invalidarContexto],
+  );
+
+  const cambiarExistenciasWeb = useCallback(
+    (activo: boolean) => {
+      setWeb((w) => (w ? { ...w, existenciasComoStock: activo } : w));
+      invalidarContexto();
+    },
+    [invalidarContexto],
+  );
 
   const sumarCreditosWeb = useCallback((n: number) => setWeb((w) => (w ? { ...w, creditos: w.creditos + n } : w)), []);
 
@@ -307,6 +347,8 @@ export function useAsistenteImportacion(orgId: number | undefined) {
     cargarWeb,
     actualizarProductoWeb,
     alternarSeleccionWeb,
+    seleccionarCategoriaWeb,
+    cambiarExistenciasWeb,
     sumarCreditosWeb,
     filasLeidas,
     variantesDetectadas,

@@ -5,15 +5,19 @@
  * organización del body) y pasa por la misma RPC transaccional que el archivo.
  *
  * Se conserva lo que hacía la importación anterior del scraping:
- *   - variantes (Color × Talla…) como productos hijos `SKU-V1…` con el mismo precio;
+ *   - variantes (Color × Talla…) como productos hijos `SKU-V1…` con el mismo precio
+ *     cuando solo se conocen las opciones (scraping con IA);
+ *   - cuando la tienda da sus variantes reales (catálogo de Shopify, WooCommerce,
+ *     VTEX, Magento, PrestaShop: `variantes_detalle`), cada hija lleva SU SKU,
+ *     precio, precio anterior, código de barras e imagen;
  *   - la marca también como proveedor; el SKU de la tienda como referencia;
  *   - todas las etiquetas; hasta 10 imágenes por producto; las variantes heredan las del padre;
  *   - precio de comparación siempre el mayor.
  */
 
 import { crearGeneradorSku } from './lector';
-import { normalizarNombre } from './texto';
-import type { FilaImport } from './tipos';
+import { normalizarNombre, slugificar } from './texto';
+import type { FilaImport, Mensaje } from './tipos';
 
 export interface ProductoWeb {
   name: string;
@@ -30,6 +34,37 @@ export interface ProductoWeb {
   stock?: number;
   url?: string;
   variants?: { name: string; values: string[] }[];
+  /** Id estable del producto en la plataforma (deduplicación al releer y reimportar). */
+  origen_id?: string;
+  /** Variantes reales de la tienda (cada una con su SKU y precio). Mandan sobre `variants`. */
+  variantes_detalle?: VarianteWeb[];
+  /** La tienda lo muestra disponible. */
+  disponible?: boolean;
+  /**
+   * Existencias que publica la tienda (VTEX, PrestaShop con clave). NO son el
+   * stock inicial salvo que el usuario lo pida: entrar stock exige costo.
+   */
+  existencias?: number;
+  /** El SKU de la tienda lo usaba otro producto del mismo catálogo: se generó uno. */
+  sku_repetido?: string;
+}
+
+export interface VarianteWeb {
+  /** Opción → valor (`{ Talla: 'M', Color: 'Rojo' }`). */
+  opciones: Record<string, string>;
+  origen_id?: string;
+  sku?: string;
+  barcode?: string;
+  price?: number;
+  compare_price?: number;
+  disponible?: boolean;
+  existencias?: number;
+  imagen?: string;
+}
+
+export interface OpcionesFilasWeb {
+  /** Usar las existencias de la tienda como stock inicial (exige costo para entrar). */
+  existenciasComoStock?: boolean;
 }
 
 export const MAX_VARIANTES_POR_PRODUCTO = 50;
@@ -98,23 +133,74 @@ export function combinacionesVariantes(variantes: { name: string; values: string
   return combos.length === 1 && Object.keys(combos[0]).length === 0 ? [] : combos;
 }
 
-export function productosWebAFilas(productos: ProductoWeb[]): FilaImport[] {
-  const generarSku = crearGeneradorSku('WEB', productos.map((p) => p.sku ?? '').filter(Boolean));
+/** Valores de la variante en orden («Rojo / M»). */
+function valoresVariante(v: VarianteWeb): string[] {
+  return Object.values(v.opciones ?? {}).map((x) => String(x ?? '').trim()).filter(Boolean);
+}
+
+/** Variantes reales utilizables: con al menos una opción y sin combinaciones repetidas. */
+export function variantesReales(p: ProductoWeb): VarianteWeb[] {
+  const vistas = new Set<string>();
+  const out: VarianteWeb[] = [];
+  for (const v of p.variantes_detalle ?? []) {
+    const valores = valoresVariante(v);
+    if (valores.length === 0) continue;
+    const clave = normalizarNombre(valores.join(' '));
+    if (vistas.has(clave)) continue;
+    vistas.add(clave);
+    out.push(v);
+  }
+  return out.slice(0, MAX_VARIANTES_POR_PRODUCTO);
+}
+
+/** Cuántas hijas generará el producto (reales o cartesianas). */
+export function cantidadVariantes(p: ProductoWeb): number {
+  const reales = variantesReales(p).length;
+  return reales > 0 ? reales : Math.min(combinacionesVariantes(p.variants).length, MAX_VARIANTES_POR_PRODUCTO);
+}
+
+const positivo = (n?: number) => (typeof n === 'number' && n > 0 ? n : undefined);
+
+export function productosWebAFilas(productos: ProductoWeb[], opciones: OpcionesFilasWeb = {}): FilaImport[] {
+  // SKU que ya traen los productos o sus variantes: el generador no los reutiliza.
+  const ocupados = new Set<string>();
+  for (const p of productos) {
+    if (p.sku?.trim()) ocupados.add(p.sku.trim().toUpperCase());
+    for (const v of p.variantes_detalle ?? []) if (v.sku?.trim()) ocupados.add(v.sku.trim().toUpperCase());
+  }
+  const generarSku = crearGeneradorSku('WEB', ocupados);
+  const usados = new Set<string>();
+  /** SKU único dentro de la importación: si ya salió, `-2`, `-3`… (determinista por orden). */
+  const reservar = (base: string): string => {
+    let sku = base;
+    let n = 1;
+    while (usados.has(sku.toUpperCase())) sku = `${base}-${++n}`;
+    usados.add(sku.toUpperCase());
+    return sku;
+  };
+  const stockDe = (existencias?: number, stock?: number) => (positivo(stock) ?? (opciones.existenciasComoStock ? positivo(existencias) : undefined));
+
   const filas: FilaImport[] = [];
   productos.forEach((bruto, i) => {
     const p = normalizarPrecios(bruto);
     const skuTienda = p.sku?.trim();
-    const sku = skuTienda || generarSku(p.name, i + 1);
-    const combos = combinacionesVariantes(p.variants).slice(0, MAX_VARIANTES_POR_PRODUCTO);
+    const sku = reservar(skuTienda || generarSku(p.name, i + 1));
+    const reales = variantesReales(p);
+    const combos = reales.length > 0 ? [] : combinacionesVariantes(p.variants).slice(0, MAX_VARIANTES_POR_PRODUCTO);
     const comun: Partial<FilaImport> = {
       category: p.category?.trim() || undefined,
       brand: p.brand?.trim() || undefined,
       supplier: p.brand?.trim() || undefined,
-      price: p.price && p.price > 0 ? p.price : undefined,
+      price: positivo(p.price),
       comparePrice: p.compare_price && p.price && p.compare_price > p.price ? p.compare_price : undefined,
-      cost: p.cost && p.cost > 0 ? p.cost : undefined,
+      cost: positivo(p.cost),
       unit: 'UN',
     };
+    const avisos: Mensaje[] = skuTienda ? [] : [{ codigo: 'skuGenerado' }];
+    // Repetido en la tienda: `resolverSkusRepetidos` ya lo quitó, o `reservar` lo renombró aquí.
+    const repetido = p.sku_repetido ?? (skuTienda && sku !== skuTienda ? skuTienda : undefined);
+    if (repetido) avisos.push({ codigo: 'skuRepetidoTienda', params: { sku: repetido } });
+    const tieneHijas = reales.length > 0 || combos.length > 0;
     filas.push({
       ...comun,
       fila: filas.length + 1,
@@ -123,18 +209,43 @@ export function productosWebAFilas(productos: ProductoWeb[]): FilaImport[] {
       name: p.name.trim().slice(0, 200),
       description: p.description?.trim() || undefined,
       barcode: p.barcode?.trim() || undefined,
-      reference: skuTienda,
+      reference: skuTienda || p.sku_repetido,
       tags: (p.tags ?? []).map((t) => t.trim()).filter(Boolean).join(';') || undefined,
       imageUrls: (p.images ?? []).slice(0, MAX_IMAGENES_WEB).join(';') || undefined,
-      stock: typeof p.stock === 'number' && p.stock > 0 ? p.stock : undefined,
-      isParent: combos.length > 0 ? true : undefined,
-      avisosLectura: skuTienda ? [] : [{ codigo: 'skuGenerado' }],
+      // Un padre con hijas no lleva stock propio: lo llevan sus variantes.
+      stock: tieneHijas ? undefined : stockDe(p.existencias, p.stock),
+      isParent: tieneHijas ? true : undefined,
+      avisosLectura: avisos,
+    });
+    reales.forEach((v) => {
+      const valores = valoresVariante(v);
+      const skuVariante = v.sku?.trim();
+      const base = skuVariante || `${sku}-${slugificar(valores.join(' ')).toUpperCase().slice(0, 40) || v.origen_id || 'V'}`;
+      const precio = positivo(v.price) ?? comun.price;
+      const comparacion = v.compare_price && precio && v.compare_price > precio ? v.compare_price : undefined;
+      filas.push({
+        ...comun,
+        fila: filas.length + 1,
+        sku: reservar(base),
+        skuGenerado: !skuVariante,
+        name: `${p.name.trim()} - ${valores.join(' / ')}`.slice(0, 200),
+        barcode: v.barcode?.trim() || undefined,
+        reference: skuVariante,
+        price: precio,
+        comparePrice: comparacion,
+        stock: stockDe(v.existencias),
+        parentSku: sku,
+        isParent: false,
+        variantData: JSON.stringify(v.opciones),
+        imageUrls: v.imagen || undefined,
+        imagenesDelPadre: v.imagen ? undefined : true,
+      });
     });
     combos.forEach((combo, j) => {
       filas.push({
         ...comun,
         fila: filas.length + 1,
-        sku: `${sku}-V${j + 1}`,
+        sku: reservar(`${sku}-V${j + 1}`),
         skuGenerado: true,
         name: `${p.name.trim()} - ${Object.values(combo).join(' / ')}`.slice(0, 200),
         parentSku: sku,

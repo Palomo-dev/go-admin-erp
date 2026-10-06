@@ -1,4 +1,4 @@
--- Reversión de 20261007130000_aviso_pedido_web_metodo_nativo.sql
+-- Reversión de 20261006142958_aviso_pedido_web_metodo_nativo.sql
 -- Restaura el aviso solo para cash/transfer, el WHEN del disparador y el plazo
 -- de expiración anterior. No toca datos: los avisos ya creados se quedan.
 set lock_timeout = '5s';

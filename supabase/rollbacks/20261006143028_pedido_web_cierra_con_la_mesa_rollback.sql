@@ -1,4 +1,4 @@
--- Reversión de 20261007130100_pedido_web_cierra_con_la_mesa.sql
+-- Reversión de 20261006143028_pedido_web_cierra_con_la_mesa.sql
 -- Quita los dos disparadores y sus funciones. No revierte datos: los pedidos
 -- que ya pasaron a delivered/paid/cancelled al cerrar su mesa se quedan así.
 set lock_timeout = '5s';

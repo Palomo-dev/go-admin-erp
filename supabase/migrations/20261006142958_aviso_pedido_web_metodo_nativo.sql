@@ -77,7 +77,7 @@ begin
              and coalesce(new.payment_method, '') not in ('cash', 'transfer')) then
     return new;
   elsif new.table_session_id is not null then
-    -- Pagado al cobrar la cuenta de la mesa (20261007130100): el pedido ya
+    -- Pagado al cobrar la cuenta de la mesa (20261006143028): el pedido ya
     -- está en el POS; un «Nuevo pedido web» a esas alturas solo hace ruido.
     return new;
   end if;

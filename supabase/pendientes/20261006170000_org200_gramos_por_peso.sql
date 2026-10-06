@@ -3,7 +3,7 @@
 --
 -- PENDIENTE. Se aplica SOLO cuando el código de la venta en gramos esté en
 -- producción (el dueño pasa main a master) y DESPUÉS de la migración
--- supabase/migrations/20261006160000_venta_por_peso_en_gramos.sql.
+-- supabase/migrations/20261006143255_venta_por_peso_en_gramos.sql.
 --
 -- Hoy: unit_code 'GR', stock en gramos (57.300 = 57,3 kg) pero precio y costo POR
 -- KILO (precio 12000, costo 7000), así que la valoración del inventario está ×1000.
@@ -29,7 +29,7 @@ declare
   v_n integer := 0;
 begin
   if to_regprocedure('public.fn_peso_convertir(numeric,text,text)') is null then
-    raise exception 'Falta la migración 20261006160000_venta_por_peso_en_gramos'
+    raise exception 'Falta la migración 20261006143255_venta_por_peso_en_gramos'
       using errcode = 'P0001';
   end if;
 

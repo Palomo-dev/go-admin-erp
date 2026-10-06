@@ -1,81 +1,13 @@
--- Venta por peso en gramos, kilos o libras (docs/design/PRODUCTOS-POR-PESO-BASCULA.md).
+-- Rollback de 20261006143255_venta_por_peso_en_gramos.sql
 --
--- Estándar de los POS de pesaje: un producto por peso guarda su cantidad en su
--- unidad de inventario. GR = gramos enteros (0 decimales), KG y LB = 3
--- decimales. El precio se guarda por esa unidad (por gramo en GR) y se escribe
--- y se muestra por kg. La báscula lee en kg o lb y se convierte a la unidad del
--- producto con UNA conversión: fn_peso_convertir, espejo exacto de
--- print-agent/src/printing/peso.ts (1 kg = 1000 g, 1 lb = 453,59237 g).
+-- Restaura las definiciones exactas anteriores de fn_producto_int_modo_venta,
+-- fn_pos_validar_pesaje y fn_produccion_int_decimales, y quita las funciones
+-- nuevas (conversión de peso y decimales de 3 argumentos).
 --
--- Compatible con el código desplegado: solo cambia algo para un producto con
--- sale_mode = 'weight' y unidad GR, y hoy no hay ninguno. KG y LB quedan igual.
---
--- La versión de 2 argumentos de fn_producto_decimales_cantidad no cambia (la
--- usan procesar_devolucion y fn_ajuste_productos, que con GR admiten hasta 3
--- decimales: más permisivo, nunca rechaza una cantidad válida).
--- Rollback: supabase/rollbacks/20261006160000_venta_por_peso_en_gramos_rollback.sql
+-- ORDEN: antes de revertir, ningún producto puede quedar en sale_mode = 'weight'
+-- con unidad GR (si se aplicó supabase/pendientes/20261006170000_org200_gramos_por_peso.sql,
+-- revierta primero su rollback). No restaura datos: esta migración no los toca.
 
--- ── 1. Conversión única ────────────────────────────────────────────────────
-create or replace function public.fn_peso_gramos(p_unidad text)
-returns numeric
-language sql
-immutable
-set search_path to 'public', 'pg_temp'
-as $$
-  select case upper(btrim(coalesce(p_unidad, '')))
-           when 'GR' then 1::numeric
-           when 'G'  then 1::numeric
-           when 'KG' then 1000::numeric
-           when 'LB' then 453.59237::numeric
-           when 'OZ' then 28.349523125::numeric
-           else null end
-$$;
-
-comment on function public.fn_peso_gramos(text) is
-  'Gramos que contiene una unidad de peso (GR, KG, LB, OZ) o NULL. Espejo de GRAMOS_POR_UNIDAD en print-agent/src/printing/peso.ts.';
-
-create or replace function public.fn_peso_convertir(p_valor numeric, p_de text, p_a text)
-returns numeric
-language sql
-immutable
-set search_path to 'public', 'pg_temp'
-as $$
-  select case
-           when public.fn_peso_gramos(p_de) is null or public.fn_peso_gramos(p_a) is null then null
-           else p_valor * public.fn_peso_gramos(p_de) / public.fn_peso_gramos(p_a)
-         end
-$$;
-
-comment on function public.fn_peso_convertir(numeric, text, text) is
-  'Convierte un peso entre GR, KG, LB y OZ, sin redondear. NULL si alguna unidad no es de peso. Espejo de convertirPeso (print-agent/src/printing/peso.ts).';
-
-revoke all on function public.fn_peso_gramos(text) from public, anon;
-revoke all on function public.fn_peso_convertir(numeric, text, text) from public, anon;
-grant execute on function public.fn_peso_gramos(text) to authenticated, service_role;
-grant execute on function public.fn_peso_convertir(numeric, text, text) to authenticated, service_role;
-
--- ── 2. Decimales según la unidad ──────────────────────────────────────────
-create or replace function public.fn_producto_decimales_cantidad(p_sale_mode text, p_qty_decimals smallint, p_unit_code text)
-returns integer
-language sql
-immutable
-set search_path to 'public', 'pg_temp'
-as $$
-  select case
-           when coalesce(p_sale_mode, 'unit') = 'weight' and upper(btrim(coalesce(p_unit_code, ''))) = 'GR' then 0
-           else public.fn_producto_decimales_cantidad(p_sale_mode, p_qty_decimals)
-         end
-$$;
-
-comment on function public.fn_producto_decimales_cantidad(text, smallint, text) is
-  'Decimales de la cantidad según cómo se vende y la unidad: por peso en gramos 0 (gramos enteros), en kg o lb 3. Espejo de decimalesCantidad (src/lib/pos/peso/modoVenta.ts).';
-
-revoke all on function public.fn_producto_decimales_cantidad(text, smallint, text) from public, anon;
-grant execute on function public.fn_producto_decimales_cantidad(text, smallint, text) to authenticated, service_role;
-
--- ── 3. «Cómo se vende» admite GR ──────────────────────────────────────────
--- GR: 0 decimales, precio por gramo, referencia «por kg» (1000 GR, la de
--- defecto) o cada 500, 250 o 100 g. KG y LB: igual que antes.
 create or replace function public.fn_producto_int_modo_venta(p_org integer, p_product_id integer, p_pr jsonb, p_tiene_variantes boolean)
  returns void
  language plpgsql
@@ -123,27 +55,20 @@ begin
   end if;
 
   if v_modo = 'weight' then
-    if v_unidad not in ('GR', 'KG', 'LB') then
+    if v_unidad not in ('KG', 'LB') then
       raise exception 'unidad_peso_invalida' using errcode = '22023', detail = v_unidad;
     end if;
-    -- Gramos enteros en GR, 3 decimales en KG y LB (fn_producto_decimales_cantidad de 3 argumentos).
-    v_dec := case when v_unidad = 'GR' then 0 else 3 end;
-    -- En gramos el precio se escribe por kg aunque no venga referencia.
-    if v_unidad = 'GR' and v_ref_q is null and v_ref_u is null then
-      v_ref_q := 1000;
-      v_ref_u := 'GR';
-    end if;
+    v_dec := 3;
     if v_ref_q is not null or v_ref_u is not null then
       if not (
         (v_unidad = 'KG' and ((v_ref_u = 'KG' and v_ref_q = 1) or (v_ref_u = 'GR' and v_ref_q in (500, 250, 100, 50))))
-        or (v_unidad = 'GR' and v_ref_u = 'GR' and v_ref_q in (1000, 500, 250, 100))
         or (v_unidad = 'LB' and v_ref_u = 'LB' and v_ref_q = 1)
       ) then
         raise exception 'referencia_precio_invalida' using errcode = '22023',
           detail = format('%s %s', v_ref_q, v_ref_u);
       end if;
-      -- «Por kg» / «por lb» (1 unidad de venta) es la referencia por defecto: no se guarda.
-      if v_ref_u = v_unidad and v_ref_q = 1 then
+      -- «Por kg» / «por lb» es la referencia por defecto: no se guarda.
+      if v_ref_u = v_unidad then
         v_ref_q := null;
         v_ref_u := null;
       end if;
@@ -188,9 +113,6 @@ begin
 end;
 $function$;
 
--- ── 4. Validación del pesaje con la unidad del producto ───────────────────
--- Decimales por unidad (gramos enteros en GR) y el neto leído se compara en la
--- unidad del producto aunque la pesada diga otra (báscula en kg, producto en g).
 create or replace function public.fn_pos_validar_pesaje(p_org integer, p_actor uuid, p_item jsonb)
  returns void
  language plpgsql
@@ -204,9 +126,8 @@ declare
   v_dec     integer;
   v_pesaje  jsonb;
   v_origen  text;
-  v_neto    numeric;
 begin
-  select p.name, p.sale_mode, p.qty_decimals, p.min_sale_qty, p.require_scale, btrim(p.unit_code) as unit_code
+  select p.name, p.sale_mode, p.qty_decimals, p.min_sale_qty, p.require_scale
     into v_p
     from public.products p
    where p.id = v_product and p.organization_id = p_org;
@@ -214,7 +135,7 @@ begin
     return;  -- por unidad: sin cambios
   end if;
 
-  v_dec := public.fn_producto_decimales_cantidad(v_p.sale_mode, v_p.qty_decimals, v_p.unit_code);
+  v_dec := public.fn_producto_decimales_cantidad(v_p.sale_mode, v_p.qty_decimals);
   if v_qty is null or v_qty <= 0 or v_qty <> round(v_qty, v_dec) then
     raise exception 'cantidad_decimales' using errcode = '22023',
       detail = format('«%s» (producto %s): la cantidad %s admite hasta %s decimales.', v_p.name, v_product, v_qty, v_dec);
@@ -252,18 +173,10 @@ begin
       raise exception 'peso_inestable' using errcode = '22023',
         detail = format('«%s» (producto %s): la lectura de la báscula no estaba estable.', v_p.name, v_product);
     end if;
-    if jsonb_typeof(v_pesaje->'neto') = 'number' then
-      -- El neto en la unidad del producto (si la pesada trae otra unidad de peso, se convierte).
-      v_neto := (v_pesaje->>'neto')::numeric;
-      if nullif(btrim(coalesce(v_pesaje->>'unidad', '')), '') is not null
-         and public.fn_peso_convertir(v_neto, v_pesaje->>'unidad', v_p.unit_code) is not null then
-        v_neto := round(public.fn_peso_convertir(v_neto, v_pesaje->>'unidad', v_p.unit_code), v_dec);
-      end if;
-      if abs(v_neto - v_qty) > 0.0005 then
-        raise exception 'pesaje_no_coincide' using errcode = '22023',
-          detail = format('«%s» (producto %s): la cantidad %s no coincide con el neto leído %s.',
-                          v_p.name, v_product, v_qty, v_pesaje->>'neto');
-      end if;
+    if jsonb_typeof(v_pesaje->'neto') = 'number' and abs((v_pesaje->>'neto')::numeric - v_qty) > 0.0005 then
+      raise exception 'pesaje_no_coincide' using errcode = '22023',
+        detail = format('«%s» (producto %s): la cantidad %s no coincide con el neto leído %s.',
+                        v_p.name, v_product, v_qty, v_pesaje->>'neto');
     end if;
     return;
   end if;
@@ -286,18 +199,16 @@ begin
 end;
 $function$;
 
--- ── 5. Producción: los mismos decimales por unidad ────────────────────────
 create or replace function public.fn_produccion_int_decimales(p_product integer)
  returns integer
  language sql
  stable security definer
  set search_path to 'public', 'pg_temp'
 as $function$
-  select least(public.fn_producto_decimales_cantidad(p.sale_mode, p.qty_decimals, btrim(p.unit_code)), 3)
+  select least(public.fn_producto_decimales_cantidad(p.sale_mode, p.qty_decimals), 3)
     from public.products p where p.id = p_product;
 $function$;
 
--- Funciones internas (SECURITY DEFINER): sin ejecución directa desde el cliente.
-revoke all on function public.fn_producto_int_modo_venta(integer, integer, jsonb, boolean) from public, anon, authenticated;
-revoke all on function public.fn_pos_validar_pesaje(integer, uuid, jsonb) from public, anon, authenticated;
-revoke all on function public.fn_produccion_int_decimales(integer) from public, anon, authenticated;
+drop function if exists public.fn_producto_decimales_cantidad(text, smallint, text);
+drop function if exists public.fn_peso_convertir(numeric, text, text);
+drop function if exists public.fn_peso_gramos(text);

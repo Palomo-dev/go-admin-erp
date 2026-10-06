@@ -1,4 +1,4 @@
--- Rollback de 20261006160000_plantilla_sitio_sede.
+-- Rollback de 20261006142414_plantilla_sitio_sede.
 -- Quita la RPC y la marca de plantilla de website_site_states. NO borra los sitios de sede que la
 -- RPC haya creado ni sus borradores e instantáneas (son contenido del usuario): solo se pierde
 -- qué plantilla los armó. El ERP sigue funcionando sin la RPC (la sede nace con la plantilla por

@@ -435,6 +435,78 @@ class ReservasMesasService {
   }
 
   /**
+   * Horas con mesa para el mismo grupo ese día, las más cercanas a la de la
+   * reserva («Ofrecer otra hora» al rechazar). `get_restaurant_availability`
+   * con la sede: la misma disponibilidad que ve el sitio.
+   */
+  async horasLibresCercanas(reserva: RestaurantReservation, maximo = 4): Promise<string[]> {
+    const { data, error } = await supabase.rpc('get_restaurant_availability', {
+      p_organization_id: this.organizationId,
+      p_branch_id: reserva.branch_id,
+      p_date: reserva.reservation_date,
+      p_party_size: reserva.party_size,
+      p_zone: null,
+      p_slot_interval: 30,
+    });
+    if (error) {
+      console.error('Error leyendo horas libres:', { code: error.code });
+      return [];
+    }
+    const slots = Array.isArray((data as { slots?: unknown })?.slots) ? ((data as { slots: Array<{ time?: string; available?: boolean }> }).slots) : [];
+    const propia = reserva.reservation_time.slice(0, 5);
+    const aMin = (h: string) => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5));
+    return slots
+      .filter((s) => s.available && typeof s.time === 'string' && s.time.slice(0, 5) !== propia)
+      .map((s) => (s.time as string).slice(0, 5))
+      .sort((a, b) => Math.abs(aMin(a) - aMin(propia)) - Math.abs(aMin(b) - aMin(propia)))
+      .slice(0, maximo)
+      .sort();
+  }
+
+  /**
+   * «Recordar al cliente» apagado al crear: marca el recordatorio como ya
+   * reclamado (`reminder_sent_at`, D5) para que el cron no lo envíe.
+   */
+  async omitirRecordatorio(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('restaurant_reservations')
+      .update({ reminder_sent_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('organization_id', this.organizationId);
+    if (error && !esColumnaInexistente(error)) throw error;
+  }
+
+  /** Visitas del cliente: reservas suyas que se sentaron o completaron. */
+  async contarVisitas(customerId: string): Promise<number> {
+    const { count, error } = await supabase
+      .from('restaurant_reservations')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', this.organizationId)
+      .eq('customer_id', customerId)
+      .in('status', ['seated', 'completed']);
+    if (error) throw error;
+    return count ?? 0;
+  }
+
+  /**
+   * Avisa al cliente por correo de la decisión (confirmada o rechazada con su
+   * motivo y otra hora opcional). El estado sale de la base, no de aquí.
+   */
+  async avisarCliente(id: string, otraHora?: string | null): Promise<boolean> {
+    try {
+      const res = await fetch(`/api/pos/reservas-mesas/${id}/aviso`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(otraHora ? { otraHora } : {}),
+      });
+      const json = (await res.json().catch(() => ({}))) as { enviado?: boolean };
+      return !!json.enviado;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Registra en finanzas el reembolso del depósito de una reserva web (D7):
    * `fn_reserva_mesa_deposito_reembolsar` deja el pago `void` con su rastro en
    * `finance_audit_log` y el depósito `refunded`. El permiso (`finance.void` o

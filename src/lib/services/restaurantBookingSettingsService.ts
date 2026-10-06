@@ -388,3 +388,50 @@ export function turnosDeFecha(
   const propios = serviceHours?.[dia];
   return propios ?? TURNOS_POR_DEFECTO;
 }
+
+// ── Horario de la sucursal → horario de reservas (Figma 1699:864097) ────────
+
+const DIA_EN_INGLES: Record<DiaServicio, string> = {
+  mon: 'monday',
+  tue: 'tuesday',
+  wed: 'wednesday',
+  thu: 'thursday',
+  fri: 'friday',
+  sat: 'saturday',
+  sun: 'sunday',
+};
+
+/**
+ * «Restablecer al horario de la sucursal»: `branches.opening_hours`
+ * (`{ monday: { open, close, closed } }`) → `service_hours` de reservas con un
+ * turno por día; día cerrado → sin reservas (`[]`). Un día sin datos se deja
+ * fuera (la base usa entonces los turnos por defecto).
+ */
+export function horarioDesdeSucursal(opening: unknown): AjustesReservaDto['service_hours'] {
+  const salida: Partial<Record<DiaServicio, Array<{ from: string; to: string }>>> = {};
+  if (!opening || typeof opening !== 'object') return salida;
+  const o = opening as Record<string, { open?: string; close?: string; closed?: boolean } | undefined>;
+  for (const dia of DIAS_SERVICIO) {
+    const d = o[DIA_EN_INGLES[dia]];
+    if (!d) continue;
+    if (d.closed) {
+      salida[dia] = [];
+      continue;
+    }
+    const desde = (d.open ?? '').slice(0, 5);
+    const hasta = (d.close ?? '').slice(0, 5);
+    if (/^\d{2}:\d{2}$/.test(desde) && /^\d{2}:\d{2}$/.test(hasta) && minutosDeHora(desde) < minutosDeHora(hasta)) {
+      salida[dia] = [{ from: desde, to: hasta }];
+    }
+  }
+  return salida;
+}
+
+/** Campos distintos entre dos ajustes («3 cambios» de la barra de guardar). */
+export function contarCambiosAjustes(a: AjustesReservaDto, b: AjustesReservaDto): number {
+  let n = 0;
+  for (const clave of Object.keys(AJUSTES_RESERVA_POR_DEFECTO) as Array<keyof AjustesReservaDto>) {
+    if (JSON.stringify(a[clave] ?? null) !== JSON.stringify(b[clave] ?? null)) n++;
+  }
+  return n;
+}

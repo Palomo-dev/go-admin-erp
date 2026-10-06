@@ -141,10 +141,12 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
     let bloque: string | undefined;
     return lista.flatMap((c) => {
       const nodos = [];
-      if (c.section && c.section !== bloque) {
+      // Tras los bloques propios de la sección, los campos comunes (ancho, espaciado) van aparte.
+      const titulo = c.section ?? (bloque ? t('inspector.masOpciones') : undefined);
+      if (titulo && c.section !== bloque) {
         nodos.push(
-          <h3 key={`bloque-${c.section}`} className="-mb-1 pt-1 text-xs font-semibold uppercase leading-4 tracking-wide text-fg-secondary">
-            {c.section}
+          <h3 key={`bloque-${titulo}`} className="-mb-1 pt-1 text-xs font-semibold uppercase leading-4 tracking-wide text-fg-secondary">
+            {titulo}
           </h3>,
         );
       }

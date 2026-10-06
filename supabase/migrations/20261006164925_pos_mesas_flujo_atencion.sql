@@ -34,8 +34,8 @@
 --
 -- Orden: independiente de las demás pendientes. Requiere fn_lineas_a_cocina,
 -- web_orders.table_session_id y restaurant_reservations.table_session_id (ya aplicadas).
--- Si 20261006190000_cocina_comandas_v2 se aplica antes o después, no choca: no toca sus
--- columnas ni sus funciones.
+-- Si cocina_comandas_v2 (20261006171048/171155/171208) se aplica antes o después, no choca:
+-- no toca sus columnas ni sus funciones.
 --
 -- ENSAYO (2026-10-06, vía execute_sql: el cuerpo de esta migración + un bloque `do` como
 -- `authenticated` miembro de la org 140, sede 115, que termina en raise exception, de modo

@@ -9,9 +9,9 @@
  * Cada aviso queda en `web_order_notices` con su estado, que es lo que el
  * detalle del pedido muestra como historial y lo que «Reenviar» repite.
  *
- * Si la migración 20261006191000 aún no está aplicada (no hay tablas), se
- * comporta exactamente como antes: correo en cada estado con aviso, sin
- * WhatsApp y sin registro.
+ * Si las migraciones 20261006170220/170233/170832 aún no están aplicadas
+ * (no hay tablas), se comporta exactamente como antes: correo en cada estado
+ * con aviso, sin WhatsApp y sin registro.
  *
  * Nunca lanza: un aviso que no sale no puede tumbar un cambio de estado. La
  * organización la pone quien llama (sesión o el propio pedido), nunca un body.

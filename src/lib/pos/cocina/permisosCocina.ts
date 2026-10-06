@@ -8,7 +8,7 @@
  *   cerrar en bloque las comandas de días anteriores.
  *
  * Los códigos nuevos (`pos.cocina.*`) los crea la migración
- * 20261006190000_cocina_comandas_v2. Mientras nadie los asigne, se aceptan los
+ * 20261006171048_cocina_comandas_v2_esquema. Mientras nadie los asigne, se aceptan los
  * que hoy dan acceso al POS (`pos.view`, `pos_access`) y a anular (`pos.void`),
  * igual que `fn_pos_cocina_puede` en la base: quien hoy usa la cocina sigue
  * pudiendo.

@@ -39,7 +39,7 @@ export interface KitchenTicket {
   allergy_ack_by?: string | null;
   cancelled_at?: string | null;
   cancellation_reason?: string | null;
-  /** Comandas v2 (migración 20261006190000): primera vez que una estación la empezó. */
+  /** Comandas v2 (migración 20261006171048): primera vez que una estación la empezó. */
   started_at?: string | null;
   /** Comandas v2: último «Avisar al mesero». */
   waiter_notified_at?: string | null;

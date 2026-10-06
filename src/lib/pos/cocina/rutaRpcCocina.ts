@@ -7,7 +7,7 @@
  * - El permiso (operar / gestionar la cocina) se resuelve aquí, en el servidor,
  *   y la RPC lo vuelve a comprobar (`fn_pos_cocina_puede`).
  * - Las RPC solo las ejecuta `service_role`.
- * - Si la RPC todavía no existe (migración 20261006190000 sin aplicar), la ruta
+ * - Si la RPC todavía no existe (migración 20261006171155 sin aplicar), la ruta
  *   responde 501 `rpc_no_disponible` y el cliente sigue con el camino anterior.
  */
 import { NextResponse } from 'next/server';

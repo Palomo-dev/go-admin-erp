@@ -1,16 +1,12 @@
 'use client';
 
 /**
- * /app/sitio-web/carta — «Carta» (Figma 01b): qué productos salen en la web por
- * sede, con precio web y agotados. Viene de Branding › Carta por sede.
+ * /app/sitio-web/carta — «Carta» (Figma B/13-01, 13-04, 13-06): la lista de
+ * cartas por horario y sede. La disponibilidad, el precio web y los agotados
+ * por sede (antes la página entera) pasan a la pestaña «Por sede» del detalle.
  */
-import CartaPorSedePanel from '@/components/organization/branding/carta-sede/CartaPorSedePanel';
-import { MarcoSitioWeb } from '@/components/sitio-web/MarcoSitioWeb';
+import { PantallaCartas } from '@/components/sitio-web/configuracion/carta/PantallaCartas';
 
 export default function CartaSitioWebPage() {
-  return (
-    <MarcoSitioWeb href="/app/sitio-web/carta">
-      <CartaPorSedePanel />
-    </MarcoSitioWeb>
-  );
+  return <PantallaCartas />;
 }

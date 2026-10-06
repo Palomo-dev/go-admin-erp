@@ -104,6 +104,39 @@ describe('contarFuentesDatos', () => {
     expect(llamadas[0].filtros).toContainEqual(['eq', 'branch_id', 7]);
   });
 
+  test('clases, rutas, flota y planes: los mismos filtros con los que el sitio los carga', async () => {
+    const { cliente, llamadas } = clienteFalso({
+      gym_classes: { count: 3 },
+      transport_routes: { count: 0 },
+      vehicles: { count: 2 },
+      membership_plans: { count: 4 },
+    });
+    const r = await contarFuentesDatos(cliente, 120, 7, ['clases', 'rutas', 'flota', 'planes_membresia']);
+    expect(r).toEqual({ clases: 3, rutas: 0, flota: 2, planes_membresia: 4 });
+    const por = Object.fromEntries(llamadas.map((l) => [l.tabla, l.filtros]));
+    for (const tabla of ['gym_classes', 'transport_routes', 'vehicles', 'membership_plans']) {
+      expect(por[tabla]).toContainEqual(['eq', 'organization_id', 120]);
+    }
+    expect(por.gym_classes).toContainEqual(['eq', 'status', 'active']);
+    expect(por.gym_classes).toContainEqual(['or', expect.stringMatching(/^end_at\.gte\."[^"]+",recurrence\.not\.is\.null$/)]);
+    expect(por.gym_classes).toContainEqual(['or', 'branch_id.is.null,branch_id.eq.7']);
+    expect(por.vehicles).toContainEqual(['eq', 'is_active', true]);
+    expect(por.vehicles).toContainEqual(['or', 'branch_id.is.null,branch_id.eq.7']);
+    expect(por.transport_routes).toContainEqual(['eq', 'is_active', true]);
+    expect(por.membership_plans).toContainEqual(['eq', 'is_active', true]);
+  });
+
+  test('las secciones de gym y transporte avisan «Faltan datos» con su módulo', () => {
+    expect(avisoFaltanDatos('class_schedule', 'Horario de clases', { clases: 0 })?.accion).toEqual({
+      texto: 'Ir a Clases',
+      href: '/app/membresias/clases',
+    });
+    expect(avisoFaltanDatos('routes', 'Rutas', { rutas: 0 })?.accion.href).toBe('/app/transporte/rutas');
+    expect(avisoFaltanDatos('fleet_showcase', 'Flota', { flota: 0 })?.accion.href).toBe('/app/transporte/vehiculos');
+    expect(avisoFaltanDatos('membership_plans', 'Planes', { planes_membresia: 0 })?.accion.href).toBe('/app/membresias/planes');
+    expect(avisoFaltanDatos('membership_plans', 'Planes', { planes_membresia: 2 })).toBeNull();
+  });
+
   test('una fuente que falla no aparece (no se avisa de lo que no se pudo contar)', async () => {
     const { cliente } = clienteFalso({ space_types: { count: null, error: { message: 'x' } }, products: { count: 5 } });
     expect(await contarFuentesDatos(cliente, 1, null, ['tipos_habitacion', 'productos'])).toEqual({ productos: 5 });

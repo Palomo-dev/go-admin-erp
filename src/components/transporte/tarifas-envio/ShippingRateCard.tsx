@@ -1,38 +1,24 @@
 'use client';
 
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-} from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+/**
+ * Tarjeta de una tarifa de envío. La comparten Transporte › Tarifas de envío y
+ * Sitio web › Ventas en línea (a través de `TarifasEnvio`): cambiarla aquí la
+ * cambia en las dos pantallas.
+ *
+ * Solo tokens semánticos (sin gray-*, hex ni `dark:` sueltos). `valid_from` y
+ * `valid_until` son columnas `date`: se pintan con `formatPlainDate` y se
+ * comparan con el día de hoy en la zona de la organización (`todayInTz`),
+ * nunca con `new Date(...)`, que corría el día.
+ */
+import { Copy, Edit, Globe, MapPin, Package, Percent, Scale, Trash2, Truck, CalendarDays } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Truck,
-  MoreVertical,
-  Edit,
-  Copy,
-  Trash2,
-  MapPin,
-  Scale,
-  Calendar,
-  Percent,
-  Package,
-  Globe,
-} from 'lucide-react';
+import { RowActionsMenu, StatusBadge } from '@/components/kit';
 import type { ShippingRateWithCarrier } from '@/lib/services/shippingRatesService';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { crearFormateadorMoneda } from '@/lib/utils/moneda';
+import { formatPlainDate, todayInTz } from '@/lib/utils/dateDisplay';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { cn } from '@/utils/Utils';
 
 interface ShippingRateCardProps {
   rate: ShippingRateWithCarrier;
@@ -40,6 +26,8 @@ interface ShippingRateCardProps {
   onDuplicate: (rate: ShippingRateWithCarrier) => void;
   onDelete: (rate: ShippingRateWithCarrier) => void;
   onToggleActive: (rate: ShippingRateWithCarrier, isActive: boolean) => void;
+  /** Solo lectura: sin interruptor ni menú (persona sin permiso de edición). */
+  soloLectura?: boolean;
 }
 
 const SERVICE_LEVEL_LABELS: Record<string, string> = {
@@ -57,183 +45,143 @@ const CALCULATION_METHOD_LABELS: Record<string, string> = {
   flat: 'Tarifa fija',
 };
 
-export function ShippingRateCard({
-  rate,
-  onEdit,
-  onDuplicate,
-  onDelete,
-  onToggleActive,
-}: ShippingRateCardProps) {
+const FECHA_CORTA: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric' };
+
+/** Día `YYYY-MM-DD` de una columna `date` (sin convertir zona). */
+function diaPlano(valor: string | null | undefined): string | null {
+  if (!valor) return null;
+  const m = /^(\d{4}-\d{2}-\d{2})/.exec(valor);
+  return m ? m[1] : null;
+}
+
+export function ShippingRateCard({ rate, onEdit, onDuplicate, onDelete, onToggleActive, soloLectura }: ShippingRateCardProps) {
   // En la moneda del documento; sin ella, la base de la organización.
   const { paraDocumento } = useMonedaOrganizacion();
   const formatCurrency = crearFormateadorMoneda(paraDocumento(rate.currency));
+  const { timezone } = useOrgTimezone();
+  const hoy = todayInTz(timezone);
+  const desde = diaPlano(rate.valid_from);
+  const hasta = diaPlano(rate.valid_until);
+  const isExpired = !!hasta && hasta < hoy;
+  const isUpcoming = !!desde && desde > hoy;
 
-  const isExpired = rate.valid_until && new Date(rate.valid_until) < new Date();
-  const isUpcoming = rate.valid_from && new Date(rate.valid_from) > new Date();
+  const precios = [
+    { etiqueta: 'Base', valor: rate.base_rate || 0, siempre: true },
+    { etiqueta: 'Por kg', valor: rate.rate_per_kg, siempre: false },
+    { etiqueta: 'Por m³', valor: rate.rate_per_m3, siempre: false },
+    { etiqueta: 'Mínimo', valor: rate.min_charge, siempre: false },
+  ].filter((p) => p.siempre || p.valor > 0);
 
   return (
-    <Card className={`relative transition-all hover:shadow-md ${!rate.is_active ? 'opacity-60' : ''}`}>
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${rate.is_active ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-gray-100 dark:bg-gray-800'}`}>
-              <Truck className={`h-5 w-5 ${rate.is_active ? 'text-blue-600 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}`} />
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white">
-                {rate.rate_name}
-              </h3>
-              {rate.rate_code && (
-                <p className="text-xs text-gray-500 dark:text-gray-400">Código: {rate.rate_code}</p>
-              )}
-            </div>
+    <article
+      className={cn('flex flex-col gap-3 rounded-xl border border-line bg-surface p-4 transition-opacity', !rate.is_active && 'opacity-60')}
+      aria-label={rate.rate_name}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <span
+            aria-hidden="true"
+            className={cn('flex size-10 shrink-0 items-center justify-center rounded-lg', rate.is_active ? 'bg-brand-tint text-brand' : 'bg-subtle text-fg-muted')}
+          >
+            <Truck className="size-5" strokeWidth={1.5} />
+          </span>
+          <div className="min-w-0">
+            <h3 className="truncate text-sm font-semibold text-fg">{rate.rate_name}</h3>
+            {rate.rate_code && <p className="text-xs text-fg-secondary">Código: {rate.rate_code}</p>}
           </div>
-
-          <div className="flex items-center gap-2">
+        </div>
+        {!soloLectura && (
+          <div className="flex shrink-0 items-center gap-1">
             <Switch
               checked={rate.is_active}
               onCheckedChange={(checked) => onToggleActive(rate, checked)}
+              aria-label={rate.is_active ? `Desactivar ${rate.rate_name}` : `Activar ${rate.rate_name}`}
             />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onEdit(rate)}>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Editar
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onDuplicate(rate)}>
-                  <Copy className="h-4 w-4 mr-2" />
-                  Duplicar
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => onDelete(rate)}
-                  className="text-red-600 dark:text-red-400"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Eliminar
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-3 sm:space-y-4">
-        {/* Badges de estado */}
-        <div className="flex flex-wrap gap-2">
-          {rate.transport_carriers && (
-            <Badge variant="outline" className="text-xs">
-              <Truck className="h-3 w-3 mr-1" />
-              {rate.transport_carriers.name}
-            </Badge>
-          )}
-          {rate.service_level && (
-            <Badge variant="secondary" className="text-xs">
-              {SERVICE_LEVEL_LABELS[rate.service_level] || rate.service_level}
-            </Badge>
-          )}
-          <Badge variant="outline" className="text-xs">
-            <Scale className="h-3 w-3 mr-1" />
-            {CALCULATION_METHOD_LABELS[rate.calculation_method] || rate.calculation_method}
-          </Badge>
-          {rate.show_on_website && (
-            <Badge variant="outline" className="text-xs text-green-600 border-green-300 dark:text-green-300 dark:border-green-600">
-              <Globe className="h-3 w-3 mr-1" />
-              Web
-            </Badge>
-          )}
-          {isExpired && (
-            <Badge variant="destructive" className="text-xs">Expirada</Badge>
-          )}
-          {isUpcoming && (
-            <Badge className="text-xs bg-amber-500">Próximamente</Badge>
-          )}
-        </div>
-
-        {/* Origen/Destino */}
-        {(rate.origin_city || rate.destination_city || rate.origin_zone || rate.destination_zone) && (
-          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <MapPin className="h-4 w-4 text-blue-500 dark:text-blue-400" />
-            <span>
-              {rate.origin_city || rate.origin_zone || 'Cualquier origen'}
-              {' → '}
-              {rate.destination_city || rate.destination_zone || 'Cualquier destino'}
-            </span>
+            <RowActionsMenu
+              titulo={rate.rate_name}
+              acciones={[
+                { id: 'editar', etiqueta: 'Editar', icono: Edit, onSelect: () => onEdit(rate) },
+                { id: 'duplicar', etiqueta: 'Duplicar', icono: Copy, onSelect: () => onDuplicate(rate) },
+                { id: 'eliminar', etiqueta: 'Eliminar', icono: Trash2, onSelect: () => onDelete(rate), destructiva: true },
+              ]}
+            />
           </div>
         )}
+      </div>
 
-        {/* Precios */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2">
-            <p className="text-xs text-gray-500 dark:text-gray-400">Base</p>
-            <p className="font-semibold text-blue-600 dark:text-blue-300">{formatCurrency(rate.base_rate || 0)}</p>
+      <div className="flex flex-wrap gap-2">
+        {rate.transport_carriers && <StatusBadge estado="transportador" etiqueta={rate.transport_carriers.name} icono={Truck} tono="neutro" apariencia="contorno" tamano="sm" />}
+        {rate.service_level && (
+          <StatusBadge estado="nivel" etiqueta={SERVICE_LEVEL_LABELS[rate.service_level] || rate.service_level} tono="neutro" tamano="sm" />
+        )}
+        <StatusBadge
+          estado="metodo"
+          etiqueta={CALCULATION_METHOD_LABELS[rate.calculation_method] || rate.calculation_method}
+          icono={Scale}
+          tono="neutro"
+          apariencia="contorno"
+          tamano="sm"
+        />
+        {rate.show_on_website && <StatusBadge estado="web" etiqueta="Web" icono={Globe} tono="exito" apariencia="contorno" tamano="sm" />}
+        {isExpired && <StatusBadge estado="expirada" etiqueta="Expirada" tono="peligro" tamano="sm" />}
+        {isUpcoming && <StatusBadge estado="proximamente" etiqueta="Próximamente" tono="advertencia" tamano="sm" />}
+      </div>
+
+      {(rate.origin_city || rate.destination_city || rate.origin_zone || rate.destination_zone) && (
+        <p className="flex items-center gap-2 text-[13px] text-fg-secondary">
+          <MapPin aria-hidden="true" className="size-4 shrink-0 text-fg-muted" strokeWidth={1.5} />
+          <span className="truncate">
+            {rate.origin_city || rate.origin_zone || 'Cualquier origen'}
+            {' → '}
+            {rate.destination_city || rate.destination_zone || 'Cualquier destino'}
+          </span>
+        </p>
+      )}
+
+      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {precios.map((p) => (
+          <div key={p.etiqueta} className="rounded-lg bg-canvas p-2">
+            <dt className="text-xs text-fg-secondary">{p.etiqueta}</dt>
+            <dd className="text-sm font-semibold tabular-nums text-fg">{formatCurrency(p.valor)}</dd>
           </div>
-          {rate.rate_per_kg > 0 && (
-            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2">
-              <p className="text-xs text-gray-500 dark:text-gray-400">Por kg</p>
-              <p className="font-semibold">{formatCurrency(rate.rate_per_kg)}</p>
-            </div>
+        ))}
+      </dl>
+
+      {(rate.fuel_surcharge_percent > 0 || rate.insurance_percent > 0) && (
+        <div className="flex flex-wrap items-center gap-4 text-[13px] text-fg-secondary">
+          {rate.fuel_surcharge_percent > 0 && (
+            <span className="flex items-center gap-1">
+              <Percent aria-hidden="true" className="size-3.5" strokeWidth={1.5} />
+              Combustible: {rate.fuel_surcharge_percent}%
+            </span>
           )}
-          {rate.rate_per_m3 > 0 && (
-            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2">
-              <p className="text-xs text-gray-500 dark:text-gray-400">Por m³</p>
-              <p className="font-semibold">{formatCurrency(rate.rate_per_m3)}</p>
-            </div>
-          )}
-          {rate.min_charge > 0 && (
-            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2">
-              <p className="text-xs text-gray-500 dark:text-gray-400">Mínimo</p>
-              <p className="font-semibold">{formatCurrency(rate.min_charge)}</p>
-            </div>
+          {rate.insurance_percent > 0 && (
+            <span className="flex items-center gap-1">
+              <Package aria-hidden="true" className="size-3.5" strokeWidth={1.5} />
+              Seguro: {rate.insurance_percent}%
+            </span>
           )}
         </div>
+      )}
 
-        {/* Recargos */}
-        {(rate.fuel_surcharge_percent > 0 || rate.insurance_percent > 0) && (
-          <div className="flex items-center gap-2 sm:gap-4 text-sm">
-            {rate.fuel_surcharge_percent > 0 && (
-              <span className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
-                <Percent className="h-3 w-3" />
-                Combustible: {rate.fuel_surcharge_percent}%
-              </span>
-            )}
-            {rate.insurance_percent > 0 && (
-              <span className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
-                <Package className="h-3 w-3" />
-                Seguro: {rate.insurance_percent}%
-              </span>
-            )}
-          </div>
-        )}
+      {(rate.min_weight_kg || rate.max_weight_kg) && (
+        <p className="flex items-center gap-2 text-[13px] text-fg-secondary">
+          <Scale aria-hidden="true" className="size-4" strokeWidth={1.5} />
+          Peso: {rate.min_weight_kg || 0} – {rate.max_weight_kg || '∞'} kg
+        </p>
+      )}
 
-        {/* Rango de peso */}
-        {(rate.min_weight_kg || rate.max_weight_kg) && (
-          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <Scale className="h-4 w-4" />
-            <span>
-              Peso: {rate.min_weight_kg || 0} - {rate.max_weight_kg || '∞'} kg
-            </span>
-          </div>
-        )}
-
-        {/* Vigencia */}
-        {(rate.valid_from || rate.valid_until) && (
-          <div className="flex items-center gap-2 text-xs text-gray-500 pt-2 border-t dark:border-gray-700 dark:text-gray-400">
-            <Calendar className="h-3 w-3" />
-            <span>
-              {rate.valid_from && `Desde: ${format(new Date(rate.valid_from), 'dd MMM yyyy', { locale: es })}`}
-              {rate.valid_from && rate.valid_until && ' | '}
-              {rate.valid_until && `Hasta: ${format(new Date(rate.valid_until), 'dd MMM yyyy', { locale: es })}`}
-            </span>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      {(desde || hasta) && (
+        <p className="flex items-center gap-2 border-t border-line pt-2 text-xs text-fg-secondary">
+          <CalendarDays aria-hidden="true" className="size-3.5" strokeWidth={1.5} />
+          <span>
+            {desde && `Desde: ${formatPlainDate(desde, FECHA_CORTA)}`}
+            {desde && hasta && ' · '}
+            {hasta && `Hasta: ${formatPlainDate(hasta, FECHA_CORTA)}`}
+          </span>
+        </p>
+      )}
+    </article>
   );
 }
 

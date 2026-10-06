@@ -17,6 +17,12 @@
  * - parking_pass_types: organization_id, is_active
  * - restaurant_tables: organization_id, branch_id (mesas por sede para reservar)
  * - branches: organization_id, is_active
+ * Y el 2026-10-06 (mismos filtros que lib/website/datosSecciones.ts del sitio):
+ * - gym_classes: organization_id, branch_id, status ('active' | 'cancelled' |
+ *   'completed'), end_at, recurrence (próximas o recurrentes)
+ * - transport_routes: organization_id, is_active
+ * - vehicles: organization_id, branch_id, is_active
+ * - membership_plans: organization_id, is_active
  * Mismo criterio que el sitio público: productos `status = 'active'` y sin padre;
  * tipos de habitación activos (`getOrganizationSpaceTypes`).
  */
@@ -35,7 +41,12 @@ type ConsultaConteo = PromiseLike<ResultadoConteo>;
  * acota las tablas que tienen `branch_id`: lo de esa sede y lo de toda la
  * organización (`branch_id` nulo).
  */
-function consultas(cliente: SupabaseClient, org: number, sede: number | null): Record<FuenteDatos, () => ConsultaConteo> {
+function consultas(
+  cliente: SupabaseClient,
+  org: number,
+  sede: number | null,
+  ahora: Date = new Date(),
+): Record<FuenteDatos, () => ConsultaConteo> {
   const conteo = { count: 'exact' as const, head: true };
   return {
     tipos_habitacion: () =>
@@ -86,6 +97,25 @@ function consultas(cliente: SupabaseClient, org: number, sede: number | null): R
       if (sede !== null) q = q.eq('id', sede);
       return q;
     },
+    clases: () => {
+      let q = cliente
+        .from('gym_classes')
+        .select('id', conteo)
+        .eq('organization_id', org)
+        .eq('status', 'active')
+        .or(`end_at.gte."${ahora.toISOString()}",recurrence.not.is.null`);
+      if (sede !== null) q = q.or(`branch_id.is.null,branch_id.eq.${sede}`);
+      return q;
+    },
+    rutas: () =>
+      cliente.from('transport_routes').select('id', conteo).eq('organization_id', org).eq('is_active', true),
+    flota: () => {
+      let q = cliente.from('vehicles').select('id', conteo).eq('organization_id', org).eq('is_active', true);
+      if (sede !== null) q = q.or(`branch_id.is.null,branch_id.eq.${sede}`);
+      return q;
+    },
+    planes_membresia: () =>
+      cliente.from('membership_plans').select('id', conteo).eq('organization_id', org).eq('is_active', true),
   };
 }
 

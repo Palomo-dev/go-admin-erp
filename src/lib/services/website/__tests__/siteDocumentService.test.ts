@@ -202,7 +202,7 @@ describe('publicar', () => {
     }));
     const r = await publicar(cliente, 120, SITIO, 3, 'Carta de temporada');
     expect(rpcs).toEqual([{ fn: 'publish_site_revision', args: { p_site: SITIO, p_expected_version: 3, p_note: 'Carta de temporada' } }]);
-    expect(r).toEqual({ revisionId: REV, numero: 2, publicadaEn: '2026-10-05T12:00:00Z', idempotente: false });
+    expect(r).toEqual({ revisionId: REV, numero: 2, publicadaEn: '2026-10-05T12:00:00Z', idempotente: false, sedesActualizadas: 0 });
   });
 
   test('versión distinta a la del borrador → conflicto antes de llamar a la RPC', async () => {

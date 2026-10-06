@@ -10,6 +10,8 @@
 import type { ComponentType } from 'react';
 
 // next/dynamic → el componente real, síncrono: la carga diferida no es lo que se prueba aquí.
+// La pantalla de escritorio (B/09-01); el móvil tiene su propia prueba.
+jest.mock('@/components/kit/useEsEscritorio', () => ({ useEsEscritorio: () => true, MEDIA_ESCRITORIO: '(min-width: 1024px)' }));
 jest.mock('next/dynamic', () => (cargar: () => Promise<ComponentType<Record<string, unknown>>>) => {
   const Mapa = (props: Record<string, unknown>) => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports

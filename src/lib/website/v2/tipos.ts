@@ -16,6 +16,8 @@ export type CodigoErrorSitio =
   | 'sin_revision_publicada'
   | 'menu_no_encontrado'
   | 'peticion_invalida'
+  /** La función aún no está disponible (su migración no se ha aplicado). */
+  | 'no_disponible'
   | 'error_interno';
 
 export const ESTADO_HTTP_ERROR: Record<CodigoErrorSitio, number> = {
@@ -29,6 +31,7 @@ export const ESTADO_HTTP_ERROR: Record<CodigoErrorSitio, number> = {
   importacion_invalida: 422,
   sin_revision_publicada: 422,
   peticion_invalida: 400,
+  no_disponible: 503,
   error_interno: 500,
 };
 
@@ -89,6 +92,8 @@ export interface ResultadoPublicacion {
   numero: number;
   publicadaEn: string;
   idempotente: boolean;
+  /** Solo al publicar el principal: sedes cuyo borrador recibió las secciones que heredaban. */
+  sedesActualizadas?: number;
 }
 
 export interface ResultadoCreacion {

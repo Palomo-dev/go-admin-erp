@@ -1,4 +1,4 @@
-import type { DevicePreview } from '../EditorHeader';
+import type { DispositivoInspector as DevicePreview } from '@/components/sitio-web/ui/dispositivos';
 
 /**
  * Zonas globales del editor de páginas (Figma «16 Sitio web › 05 Editor»):

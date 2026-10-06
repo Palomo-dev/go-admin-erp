@@ -34,6 +34,7 @@ import {
   type FilaPaginaLegacy,
   type FilaSeccionLegacy,
 } from '@/lib/website/v2/importadorLegacy';
+import { propagarSeccionesHeredadas } from '@/lib/website/v2/vistaEditor';
 import { COLUMNAS_IMPORTADAS } from '@/lib/website/v2/mapeoAjustes';
 import type {
   BasePrincipal,
@@ -406,6 +407,10 @@ export async function publicar(
   const validacion = validarDocumentoSitio(borrador.document);
   if (!validacion.ok) throw new ErrorSitio('documento_invalido', 'El borrador no cumple el contrato.', validacion.errores);
 
+  // Principal: la base que heredaban las sedes ANTES de publicar (para propagar después).
+  const estado = await estadoDeOrg(cliente, org, sitioId);
+  const baseAnterior = estado.branch_id === null ? await resolverBasePrincipal(cliente, org).catch(() => null) : null;
+
   const { data, error } = await cliente.rpc('publish_site_revision', {
     p_site: sitioId,
     p_expected_version: versionEsperada,
@@ -413,7 +418,54 @@ export async function publicar(
   });
   if (error) throw errorDesdePostgrest(error, 'publicar');
   const r = data as { revision_id: string; revision_number: number; published_at: string; idempotente: boolean };
-  return { revisionId: r.revision_id, numero: r.revision_number, publicadaEn: r.published_at, idempotente: r.idempotente };
+  const sedesActualizadas =
+    baseAnterior && !r.idempotente ? await propagarHerenciaASedes(cliente, org, baseAnterior.documento, validacion.documento) : 0;
+  return {
+    revisionId: r.revision_id,
+    numero: r.revision_number,
+    publicadaEn: r.published_at,
+    idempotente: r.idempotente,
+    sedesActualizadas,
+  };
+}
+
+/**
+ * Tras publicar el principal, cada sede recibe en su BORRADOR las secciones que seguía
+ * heredando (iguales a la base anterior); lo personalizado no se toca. Cada borrador se guarda
+ * con compare-and-swap: si una sede se está editando y choca, esa sede se salta (conserva su
+ * trabajo y se registra) y la publicación del principal no falla. Idempotente: repetirlo no
+ * cambia nada. La web de cada sede cambia cuando esa sede publica.
+ */
+export async function propagarHerenciaASedes(
+  cliente: SupabaseClient,
+  org: number,
+  baseAnterior: DocumentoSitio,
+  baseNueva: DocumentoSitio,
+): Promise<number> {
+  const { data, error } = await cliente
+    .from('website_site_states')
+    .select('id, branch_id')
+    .eq('organization_id', org);
+  if (error) {
+    console.error('[siteDocumentService] propagarHerenciaASedes', { code: error.code });
+    return 0;
+  }
+  let actualizadas = 0;
+  const sedes = ((data ?? []) as { id: string; branch_id: number | null }[]).filter((f) => f.branch_id !== null);
+  for (const fila of sedes) {
+    try {
+      const b = await borradorDe(cliente, org, fila.id);
+      const v = validarDocumentoSitio(b.document);
+      if (!v.ok) continue;
+      const propagado = propagarSeccionesHeredadas(v.documento, baseAnterior, baseNueva);
+      if (!propagado) continue;
+      await guardarBorrador(cliente, org, fila.id, propagado.documento, b.version);
+      actualizadas += 1;
+    } catch (e) {
+      console.error('[siteDocumentService] propagarHerenciaASedes.sede', { sitio: fila.id, codigo: e instanceof ErrorSitio ? e.code : 'error' });
+    }
+  }
+  return actualizadas;
 }
 
 export async function listarRevisiones(

@@ -1,7 +1,7 @@
 'use client';
 
 import type { WebsiteSettings } from '@/lib/services/websiteSettingsService';
-import type { DevicePreview } from '../EditorHeader';
+import type { DispositivoInspector as DevicePreview } from '@/components/sitio-web/ui/dispositivos';
 import HeaderLayoutSelector from '../HeaderLayoutSelector';
 import HeaderPreviewMockup from '../HeaderPreviewMockup';
 import HeaderOptionsPanel from '../HeaderOptionsPanel';
@@ -24,8 +24,9 @@ export interface HeaderInspectorProps {
   onCerrar: () => void;
 }
 
-export function HeaderInspector({ settings, onUpdate, availableMenus, devicePreview, onEditarMenu, onCerrar }: HeaderInspectorProps) {
-  const opciones = {
+/** Ajustes del encabezado con sus valores por defecto (los usan el inspector y el editor en el celular). */
+export function opcionesEncabezado(settings: WebsiteSettings) {
+  return {
     header_style: settings.header_style || 'default',
     logo_position: settings.logo_position || 'left',
     menu_position: settings.menu_position || 'inline',
@@ -67,8 +68,23 @@ export function HeaderInspector({ settings, onUpdate, availableMenus, devicePrev
     cta_margin_top: settings.cta_margin_top ?? 0,
     cta_margin_bottom: settings.cta_margin_bottom ?? 0,
   };
+}
 
-  const mockup = (isMobile: boolean) => (
+/** Ajustes del encabezado en el celular con sus valores por defecto. */
+export function opcionesEncabezadoMovil(settings: WebsiteSettings) {
+  return {
+    mobile_menu_style: settings.mobile_menu_style || 'drawer',
+    mobile_search_style: settings.mobile_search_style || 'icon',
+    mobile_show_topbar: settings.mobile_show_topbar ?? false,
+    mobile_sticky_header: settings.mobile_sticky_header ?? true,
+    mobile_breakpoint: settings.mobile_breakpoint ?? 768,
+  };
+}
+
+/** Boceto del encabezado con los ajustes sin guardar (inspector y editor en el celular). */
+export function BocetoEncabezado({ settings, isMobile }: { settings: WebsiteSettings; isMobile: boolean }) {
+  const opciones = opcionesEncabezado(settings);
+  return (
     <HeaderPreviewMockup
       layout={opciones.header_style}
       logoPosition={opciones.logo_position}
@@ -83,6 +99,12 @@ export function HeaderInspector({ settings, onUpdate, availableMenus, devicePrev
       headerOpacity={opciones.header_opacity}
     />
   );
+}
+
+export function HeaderInspector({ settings, onUpdate, availableMenus, devicePreview, onEditarMenu, onCerrar }: HeaderInspectorProps) {
+  const opciones = opcionesEncabezado(settings);
+
+  const mockup = (isMobile: boolean) => <BocetoEncabezado settings={settings} isMobile={isMobile} />;
 
   return (
     <InspectorZonaGlobal
@@ -106,13 +128,7 @@ export function HeaderInspector({ settings, onUpdate, availableMenus, devicePrev
           <>
             {mockup(true)}
             <MobileHeaderPanel
-              settings={{
-                mobile_menu_style: settings.mobile_menu_style || 'drawer',
-                mobile_search_style: settings.mobile_search_style || 'icon',
-                mobile_show_topbar: settings.mobile_show_topbar ?? false,
-                mobile_sticky_header: settings.mobile_sticky_header ?? true,
-                mobile_breakpoint: settings.mobile_breakpoint ?? 768,
-              }}
+              settings={opcionesEncabezadoMovil(settings)}
               onUpdate={onUpdate}
             />
           </>

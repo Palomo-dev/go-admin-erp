@@ -1,30 +1,13 @@
 'use client';
 
 /**
- * /app/sitio-web/diseno — «Diseño» (Figma 01b): estilo del sitio, colores,
- * tipografía, cabecera. Viene de Branding › Tema (BrandingThemeTab).
+ * /app/sitio-web/diseno — «Diseño» (Figma A/06a, A/06f, A/06g): estilo global
+ * del sitio con vista previa en vivo, acceso al editor para el encabezado y el
+ * pie, y logo y favicon. Todo sobre el borrador V2 (`PaginaDiseno`). Ya no usa
+ * la pestaña vieja de Branding (BrandingThemeTab).
  */
-import { BrandingThemeTab } from '@/components/organization/branding';
-import { MarcoSitioWeb, EstadoAjustes } from '@/components/sitio-web/MarcoSitioWeb';
-import { useAjustesSitio } from '@/components/sitio-web/useAjustesSitio';
+import { PaginaDiseno } from '@/components/sitio-web/diseno/PaginaDiseno';
 
 export default function DisenoSitioWebPage() {
-  const a = useAjustesSitio();
-
-  return (
-    <MarcoSitioWeb href="/app/sitio-web/diseno">
-      <EstadoAjustes cargando={a.cargando} hayAjustes={!!a.settings} onReintentar={() => void a.recargar()}>
-        {a.settings && (
-          <BrandingThemeTab
-            settings={a.settings}
-            onSave={a.guardar}
-            isSaving={a.guardando}
-            organizationTypeId={a.organizationTypeId}
-            organizationId={a.organizationId ?? null}
-            subdomain={a.subdominio}
-          />
-        )}
-      </EstadoAjustes>
-    </MarcoSitioWeb>
-  );
+  return <PaginaDiseno />;
 }

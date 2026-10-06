@@ -65,6 +65,8 @@ describe('Sitio web en el menú lateral', () => {
       '/app/sitio-web/dominios',
       '/app/sitio-web/seo',
       '/app/sitio-web/analitica',
+      // Figma 01a/01c: «Sedes en la web» (solo con más de una sede).
+      '/app/sitio-web/sedes',
       '/app/sitio-web/configuracion',
     ]);
     expect(Array.from(new Set(modulo!.paginas.map((p) => p.grupo)))).toEqual([
@@ -80,7 +82,14 @@ describe('Sitio web en el menú lateral', () => {
   });
 
   test('ninguna página del módulo se oculta por catálogo: todas salen en el menú', () => {
-    expect(modulo!.paginas.filter((p) => p.enMenu === false || p.requiere)).toEqual([]);
+    expect(modulo!.paginas.filter((p) => p.enMenu === false)).toEqual([]);
+    // Las únicas condiciones son capacidades calculadas en el servidor
+    // (capacidadesNav.server.ts), nunca una lista cableada: Analítica exige la
+    // misma regla que su API y Sedes en la web, más de una sucursal.
+    expect(modulo!.paginas.filter((p) => p.requiere).map((p) => [p.href, p.requiere])).toEqual([
+      ['/app/sitio-web/analitica', 'verAnaliticaWeb'],
+      ['/app/sitio-web/sedes', 'variasSedes'],
+    ]);
   });
 
   test('Organización ya no lleva «Sitio web» ni «Dominios», y la analítica salió del inicio', () => {
@@ -114,12 +123,16 @@ describe('redirecciones permanentes y editor (next.config.js)', () => {
 
   test.each([
     ['/app/organizacion/branding', '/app/sitio-web'],
-    ['/app/organizacion/branding/reviews', '/app/sitio-web/tienda'],
+    ['/app/organizacion/branding/reviews', '/app/sitio-web/tienda?tab=resenas'],
     ['/app/organizacion/branding/editor/:pageId', '/app/sitio-web/editor/:pageId'],
     ['/app/organizacion/branding/:path*', '/app/sitio-web'],
     ['/organizacion/branding/editor/:pageId', '/app/sitio-web/editor/:pageId'],
     ['/app/organizacion/dominios', '/app/sitio-web/dominios'],
     ['/app/inicio/analitica-web', '/app/sitio-web/analitica'],
+    // Vistas sin entrada propia: Menú es de Páginas (A/04c) y Reservas web es
+    // la configuración de POS › Reservas de mesas (B/P12 nota 1).
+    ['/app/sitio-web/menu', '/app/sitio-web/paginas/menu'],
+    ['/app/sitio-web/reservas', '/app/pos/reservas-mesas?tab=configuracion'],
   ])('%s → %s (308)', (source, destination) => {
     expect(redirecciones).toContainEqual({ source, destination, permanent: true });
   });
@@ -133,7 +146,7 @@ describe('redirecciones permanentes y editor (next.config.js)', () => {
   test('los destinos del sitio existen como página', () => {
     const destinos = redirecciones
       .filter((r) => r.destination.startsWith('/app/sitio-web') && !r.destination.includes(':'))
-      .map((r) => r.destination);
+      .map((r) => r.destination.split('?')[0]);
     expect(destinos.length).toBeGreaterThan(0);
     expect(destinos.filter((d) => !existePagina(d))).toEqual([]);
   });
@@ -185,11 +198,16 @@ describe('núcleo: no se puede desactivar', () => {
   });
 
   test('la pantalla de Módulos no deja conmutar un núcleo', () => {
+    // Rediseño de Organización › Módulos (Figma 08, 2026-10-06): el estado de
+    // cada módulo lo decide `estadoModulo` (src/lib/organizacion/modulos.ts) y
+    // un núcleo es «basico»: candado «Incluido siempre», sin interruptor.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { estadoModulo } = require('@/lib/organizacion/modulos') as typeof import('@/lib/organizacion/modulos');
+    const ctx = { modulos: [], activos: new Set<string>(), plan: null, planes: [] };
+    expect(estadoModulo({ code: 'website', name: 'Sitio web', is_core: true }, ctx)).toEqual({ tipo: 'basico' });
     const fuente = readFileSync(join(RAIZ, 'src/app/app/organizacion/modulos/page.tsx'), 'utf8');
-    expect(fuente).toMatch(/const canToggleModule = useCallback\(\(module: Module\) => \{\s*if \(module\.is_core\) return false;/);
-    // La tarjeta de los núcleo dice «siempre activo» y no pinta Switch.
-    const tarjetasNucleo = fuente.slice(fuente.indexOf('{coreModules.map('), fuente.indexOf('{paidModules.map('));
-    expect(tarjetasNucleo).toContain("t('modules.alwaysActive')");
-    expect(tarjetasNucleo).not.toContain('<Switch');
+    const bloqueBasico = fuente.slice(fuente.indexOf("case 'basico':"), fuente.indexOf("case 'otroPlan':"));
+    expect(bloqueBasico).toContain("t('incluidoSiempre')");
+    expect(bloqueBasico).not.toContain('<Switch');
   });
 });

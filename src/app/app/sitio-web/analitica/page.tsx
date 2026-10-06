@@ -1,14 +1,14 @@
 'use client';
 
 /**
- * /app/sitio-web/analitica — «Analítica» del módulo Sitio web (Figma 01b; diseño
- * de la pantalla: Figma 03 › 464:237482). Antes /app/inicio/analitica-web, que
- * redirige aquí (next.config.js).
- * Página delgada: todo vive en `components/analiticaWeb` y el acceso lo decide
- * `GET /api/analitica-web` en el servidor.
+ * /app/sitio-web/analitica — «Analítica» del módulo Sitio web (Figma B/09-01…09-05,
+ * E-analitica). Antes /app/inicio/analitica-web, que redirige aquí
+ * (next.config.js). La pantalla de siempre (`components/analiticaWeb`) dentro
+ * del marco del módulo, con «Píxeles y medición». El acceso lo decide el
+ * servidor (`GET /api/analitica-web`, misma regla que el menú).
  */
-import { AnaliticaWeb } from '@/components/analiticaWeb/AnaliticaWeb';
+import { AnaliticaSitioWeb } from '@/components/sitio-web/seoanalitica/AnaliticaSitioWeb';
 
 export default function PaginaAnaliticaWeb() {
-  return <AnaliticaWeb />;
+  return <AnaliticaSitioWeb />;
 }

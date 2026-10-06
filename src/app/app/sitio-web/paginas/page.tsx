@@ -1,20 +1,12 @@
 'use client';
 
 /**
- * /app/sitio-web/paginas — «Páginas» (Figma 01b): páginas del sitio y menús del
- * encabezado y el pie. Viene de Branding › Páginas (BrandingPagesTab); su
- * botón «Editar» abre /app/sitio-web/editor/[pageId].
+ * /app/sitio-web/paginas — «Páginas» (Figma A/04a-04h): páginas del sitio con su estado, si
+ * salen en el menú, su salud SEO y las acciones sobre el borrador. «Menú y navegación» vive en
+ * /app/sitio-web/paginas/menu. Ya no usa la pestaña vieja de Branding (BrandingPagesTab).
  */
-import { useOrganization } from '@/lib/hooks/useOrganization';
-import { BrandingPagesTab } from '@/components/organization/branding';
-import { MarcoSitioWeb } from '@/components/sitio-web/MarcoSitioWeb';
+import { PaginasLista } from '@/components/sitio-web/paginas/PaginasLista';
 
 export default function PaginasSitioWebPage() {
-  const { organization } = useOrganization();
-
-  return (
-    <MarcoSitioWeb href="/app/sitio-web/paginas">
-      {organization?.id && <BrandingPagesTab organizationId={organization.id} typeId={organization.type_id} />}
-    </MarcoSitioWeb>
-  );
+  return <PaginasLista />;
 }

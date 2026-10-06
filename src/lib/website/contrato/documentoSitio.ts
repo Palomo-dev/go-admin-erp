@@ -188,6 +188,17 @@ export const esquemaTema = z
       })
       .strict()
       .default({}),
+    /*
+     * Tokens de estilo de Diseño (Figma A/06a, A/06i; 2026-10-06). Opcionales y aditivos:
+     * `preset` (id del estilo del catálogo), `radio` (px), `estiloBoton` y `movimiento`.
+     * La copia del contrato en goadmin-websites debe aceptarlos ANTES de que el ERP los
+     * escriba (su lector valida en modo estricto): el ERP solo los escribe con
+     * NEXT_PUBLIC_WEBSITE_TOKENS_ESTILO=1 (`src/lib/website/v2/tokensEstilo.ts`).
+     */
+    preset: esquemaCampo(z.string().min(1).max(64).regex(/^[a-z0-9_]+$/, 'preset_invalido')).optional(),
+    radio: esquemaCampo(z.union([z.literal(0), z.literal(4), z.literal(12), z.literal(24)])).optional(),
+    estiloBoton: esquemaCampo(z.enum(['solido', 'contorno', 'pastilla', 'sombra_dura'])).optional(),
+    movimiento: esquemaCampo(z.enum(['ninguno', 'bajo', 'medio', 'alto'])).optional(),
   })
   .strict();
 
@@ -304,8 +315,13 @@ export const esquemaSeccion = z
     version: z.number().int().min(1),
     contenido: z.record(z.string(), z.unknown()),
     diseno: z.record(z.string(), z.unknown()).default({}),
+    /*
+     * `tableta` (opcional, 2026-10-06, estilo por sección «Mostrar en»): solo se escribe cuando
+     * difiere de `escritorio`; ausente = sigue a `escritorio`. La copia del contrato en
+     * goadmin-websites debe aceptarla antes de que un borrador la lleve.
+     */
     visibilidad: z
-      .object({ movil: z.boolean(), escritorio: z.boolean() })
+      .object({ movil: z.boolean(), escritorio: z.boolean(), tableta: z.boolean().optional() })
       .strict()
       .default({ movil: true, escritorio: true }),
     fuente: esquemaFuenteDatos.optional(),

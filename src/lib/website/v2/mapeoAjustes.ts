@@ -12,6 +12,15 @@
  * integraciones, metadatos ni obsoletas: siguen en la fila legacy (operación, D12).
  *
  * Defaults verificados por MCP (`information_schema.columns`) el 2026-10-05.
+ *
+ * Horario único (plan de restaurante, paquete F; 2026-10-06): `business_hours` YA NO se mapea al
+ * documento. El horario que pinta la web es el de la sede (`branches.opening_hours`, Sucursales);
+ * `website_settings.business_hours` queda en la fila legacy solo como respaldo de sitios sin sede
+ * revisada. `contenido.horarios` sigue en el contrato (documentos viejos lo traen) pero nadie lo
+ * escribe ni lo lee.
+ *
+ * goadmin-websites guarda una copia IDÉNTICA en `lib/website/v2/mapeoAjustes.ts`
+ * (`npm run verify:copias` allá compara las dos): si cambias este archivo, cópialo tal cual.
  */
 
 /** Ruta de un campo heredable (`{mode}`) dentro del documento. */
@@ -20,7 +29,7 @@ export type RutaHeredable =
   | ['tema', 'plantillaBase' | 'modo']
   | ['tema', 'colores', 'primario' | 'secundario' | 'acento']
   | ['seo', 'titulo' | 'descripcion' | 'palabrasClave' | 'imagenOgUrl']
-  | ['contenido', 'redesSociales' | 'horarios' | 'textoPie'];
+  | ['contenido', 'redesSociales' | 'textoPie'];
 
 export interface CampoHeredableMapeado {
   columna: string;
@@ -45,7 +54,6 @@ export const CAMPOS_HEREDABLES: readonly CampoHeredableMapeado[] = [
   { columna: 'meta_keywords', ruta: ['seo', 'palabrasClave'], etiqueta: 'Palabras clave', grupo: 'SEO' },
   { columna: 'og_image_url', ruta: ['seo', 'imagenOgUrl'], etiqueta: 'Imagen para redes', grupo: 'SEO' },
   { columna: 'social_links', ruta: ['contenido', 'redesSociales'], etiqueta: 'Redes sociales', grupo: 'Contenido' },
-  { columna: 'business_hours', ruta: ['contenido', 'horarios'], etiqueta: 'Horarios', grupo: 'Contenido' },
   { columna: 'footer_text', ruta: ['contenido', 'textoPie'], etiqueta: 'Texto del pie', grupo: 'Contenido' },
 ];
 

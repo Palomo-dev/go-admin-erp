@@ -181,6 +181,24 @@ async function productosDeCategoria(ctx: ContextoCartaSede, categoryId: number):
  * neutro), así un «restablecer» seguido de «ocultar» deja el producto oculto.
  */
 export async function guardarCartaSede(ctx: ContextoCartaSede, entrada: EscrituraCartaSede): Promise<ResultadoEscrituraCartaSede> {
+  const filas = await prepararFilasCartaSede(ctx, entrada);
+  if (filas.length === 0) return { guardados: 0 };
+  const { error } = await ctx.supabase
+    .from('website_branch_products')
+    .upsert(filas, { onConflict: 'branch_id,product_id' });
+  if (error) falla('upsert', error);
+  return { guardados: filas.length };
+}
+
+/** Fila final de `website_branch_products` (lo que se escribe, ya fusionado con lo guardado). */
+export type FilaCartaSede = { organization_id: number; branch_id: number; product_id: number } & AjusteSede;
+
+/**
+ * Valida un lote (permiso, sede y productos de la organización) y calcula las filas finales
+ * fusionando con lo guardado. NO escribe: lo usan `guardarCartaSede` (un upsert) y el guardado
+ * del detalle de una carta, que escribe la carta y todas sus sedes en UNA transacción.
+ */
+export async function prepararFilasCartaSede(ctx: ContextoCartaSede, entrada: EscrituraCartaSede): Promise<FilaCartaSede[]> {
   if (!(await puedeEditarCartaSede(ctx))) {
     console.warn('[cartaSede] escritura sin permiso', { organizationId: ctx.organizationId, userId: ctx.userId ?? null });
     throw new OrgContextError('No tienes permiso para editar el sitio', 403, 'sin_permiso');
@@ -191,7 +209,7 @@ export async function guardarCartaSede(ctx: ContextoCartaSede, entrada: Escritur
   if (entrada.tipo === 'categoria') {
     // La consulta ya filtra por la organización: no hace falta una segunda comprobación.
     const ids = await productosDeCategoria(ctx, entrada.category_id);
-    if (ids.length === 0) return { guardados: 0 };
+    if (ids.length === 0) return [];
     cambios = ids.map((id) => cambioDeAccion(id, entrada.accion, entrada.agotado_hasta));
   } else {
     cambios = entrada.cambios;
@@ -205,18 +223,12 @@ export async function guardarCartaSede(ctx: ContextoCartaSede, entrada: Escritur
     actuales.set(c.product_id, fusionarAjuste(actuales.get(c.product_id) ?? null, c, ctx.timezone));
   }
 
-  const filas = ids.map((product_id) => ({
+  return ids.map((product_id) => ({
     organization_id: ctx.organizationId,
     branch_id: entrada.branch_id,
     product_id,
     ...(actuales.get(product_id) as AjusteSede),
   }));
-
-  const { error } = await ctx.supabase
-    .from('website_branch_products')
-    .upsert(filas, { onConflict: 'branch_id,product_id' });
-  if (error) falla('upsert', error);
-  return { guardados: filas.length };
 }
 
 const SELECT_PRODUCTO = 'id, name, sku, category_id';

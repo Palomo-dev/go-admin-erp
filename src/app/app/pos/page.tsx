@@ -387,7 +387,9 @@ export default function POSPage() {
       },
       mostrar: (existingCarts) => {
         setCarts(existingCarts);
-        setActiveCartId(existingCarts[0].id);
+        // Desde la cuenta de una mesa (pestañas del carrito, Figma D2): «?carrito=<id>» abre ese carrito.
+        const pedido = searchParams?.get('carrito');
+        setActiveCartId(existingCarts.find((c) => c.id === pedido)?.id ?? existingCarts[0].id);
       },
       crearCarrito: createNewCart,
     });

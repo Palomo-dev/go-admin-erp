@@ -106,6 +106,19 @@ interface CheckoutDialogProps {
    * cierra el cobro y abre el selector del titular. Sin él solo se avisa.
    */
   onPedirCliente?: () => void;
+  /**
+   * Cobro de una mesa (Figma D10/T7 y D11): título «Cobrar Mesa 4 · Terraza»,
+   * propina con el mesero de la mesa ya elegido (y la sugerida en la
+   * pre-cuenta) y el post-venta «¡Mesa 4 cobrada!» con «Volver al plano». Sin
+   * él, el cobro del mostrador no cambia.
+   */
+  contextoMesa?: {
+    titulo: string;
+    meseroId?: string | null;
+    propinaPorcentaje?: number | null;
+    propinaValor?: number | null;
+    postVenta?: { titulo: string; descripcion: string; primaria: string };
+  };
 }
 
 interface PaymentEntry {
@@ -114,7 +127,7 @@ interface PaymentEntry {
   amount: number;
 }
 
-export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, onProcessPayment, organization, currentUser, branch, onPedirCliente }: CheckoutDialogProps) {
+export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, onProcessPayment, organization, currentUser, branch, onPedirCliente, contextoMesa }: CheckoutDialogProps) {
   const tMembresias = useTranslations('membresias');
   const { timezone } = useOrgTimezone();
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
@@ -317,6 +330,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const intentoCobroRef = useRef<{ id: string; creadoEn: string } | null>(null);
   // «Completar venta» en vuelo (corte síncrono de la doble pulsación).
   const cobroEnVueloRef = useRef(false);
+  // Mesa: la propina sugerida en la pre-cuenta se aplica una vez por apertura.
+  const propinaMesaAplicadaRef = useRef(false);
   const tCobro = useTranslations('posCobroServidor');
   const tPos = useTranslations('posCobro');
   const tAtajos = useTranslations('posVenta.atajos');
@@ -468,6 +483,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       // Reset propina
       setTipAmount(0);
       setTipPercentage(null);
+      // Mesa: la propina va al mesero de la mesa (T7); el cajero puede cambiarlo.
+      if (contextoMesa?.meseroId) setServerId(contextoMesa.meseroId);
+      propinaMesaAplicadaRef.current = false;
       setSalespersonId('');
       setCommissionRate(0);
       setCommissionType('salesperson');
@@ -748,6 +766,20 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const followTipOnPrefilledPayment = (nextTipAmount: number) => {
     setPayments((prev) => applyTipToPrefilledPayment(prev, touchedIds, baseTotal + nextTipAmount + shippingFee));
   };
+
+  // Mesa (D9 → D10): la propina elegida en la pre-cuenta llega puesta al cobro,
+  // con la misma aritmética que los botones (computeTipAmount) y sobre la misma base.
+  useEffect(() => {
+    if (!open || !contextoMesa || propinaMesaAplicadaRef.current || payments.length === 0 || baseTip <= 0) return;
+    const pct = contextoMesa.propinaPorcentaje ?? null;
+    const valor = pct ? computeTipAmount(baseTip, pct) : Math.max(0, Number(contextoMesa.propinaValor) || 0);
+    propinaMesaAplicadaRef.current = true;
+    if (valor <= 0) return;
+    setTipPercentage(pct);
+    setTipAmount(valor);
+    followTipOnPrefilledPayment(valor);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- una vez por apertura, cuando ya hay base y pago
+  }, [open, baseTip, payments.length]);
 
   const handleTipPercentage = (percentage: number) => {
     if (tipPercentage === percentage) {
@@ -1914,7 +1946,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     <CobroPanel
       abierto={open}
       onAbiertoChange={alCerrarPanel}
-      titulo={conRecibo ? tPos('postVenta.panel') : tPos('titulo')}
+      titulo={conRecibo ? tPos('postVenta.panel') : contextoMesa?.titulo ?? tPos('titulo')}
       descripcion={conRecibo ? undefined : tPos('descripcion', { productos: cart.items.length, monto: formatearCobro(cart.total) })}
       ocupado={isProcessing}
       onFocoAlAbrir={enfocarMonto}
@@ -1981,6 +2013,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
             activo={open && !showQrDialog && !showSerialSelector && !stockConfirm}
             membresias={completedSale.membresias}
             titular={cart.customer?.full_name ?? null}
+            textos={contextoMesa?.postVenta}
           />
         ) : (
           <>

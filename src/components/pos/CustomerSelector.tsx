@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { BedDouble, UserPlus } from 'lucide-react';
 import { CustomerPicker, lineaSecundaria, type ClientePicker } from '@/components/kit';
@@ -60,6 +60,8 @@ interface CustomerSelectorProps {
    * venta en curso. Solo lo activa el POS de venta; PMS y mesas no cambian.
    */
   accionesFichaEnPestanaNueva?: boolean;
+  /** Disparador propio de la lista (la fila «CF Consumidor final ›» de la cuenta de mesa). */
+  disparador?: ReactNode;
 }
 
 type ClienteBusqueda = Customer & {
@@ -214,6 +216,7 @@ export function CustomerSelector({
   onOpenChange,
   atajo,
   accionesFichaEnPestanaNueva,
+  disparador,
 }: CustomerSelectorProps) {
   const t = useTranslations('posVenta.cliente');
   const { organization } = useOrganization();
@@ -333,6 +336,7 @@ export function CustomerSelector({
         atajo={atajo}
         grupoExtra={grupoExtra}
         debounceMs={300}
+        disparador={disparador}
       />
 
       {/* Fase 4D: Desktop sin red → registro rápido local */}

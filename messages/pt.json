@@ -5547,6 +5547,13 @@
     },
     "confirmar": {
       "escribe": "Digite “{texto}” para confirmar"
+    },
+    "telefono": {
+      "cambiarPais": "País do telefone: {pais} ({indicativo}). Alterar país",
+      "buscarPlaceholder": "País, código ISO ou DDI",
+      "buscar": "Buscar país",
+      "paises": "Países",
+      "sinResultados": "Nenhum país encontrado"
     }
   },
   "inventarioEtiquetas": {

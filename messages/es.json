@@ -8401,6 +8401,13 @@
     },
     "confirmar": {
       "escribe": "Escribe «{texto}» para confirmar"
+    },
+    "telefono": {
+      "cambiarPais": "País del teléfono: {pais} ({indicativo}). Cambiar país",
+      "buscarPlaceholder": "País, código ISO o indicativo",
+      "buscar": "Buscar país",
+      "paises": "Países",
+      "sinResultados": "No se encontraron países"
     }
   },
   "inventarioEtiquetas": {

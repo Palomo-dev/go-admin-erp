@@ -8401,6 +8401,13 @@
     },
     "confirmar": {
       "escribe": "Type “{texto}” to confirm"
+    },
+    "telefono": {
+      "cambiarPais": "Phone country: {pais} ({indicativo}). Change country",
+      "buscarPlaceholder": "Country, ISO code or dialing code",
+      "buscar": "Search country",
+      "paises": "Countries",
+      "sinResultados": "No countries found"
     }
   },
   "inventarioEtiquetas": {

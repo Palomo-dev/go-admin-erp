@@ -113,6 +113,7 @@ export function SortableRow({
         />
         <span className="flex min-w-0 flex-col">
           <span
+            title={etiqueta}
             className={cn(
               'truncate text-sm leading-5',
               seleccionada ? 'font-medium text-brand-deep' : oculta ? 'text-fg-muted' : 'text-fg',
@@ -138,12 +139,22 @@ export function SortableRow({
               onClick={onAlternarVisible}
               aria-label={oculta ? tx('fila.mostrar', { nombre: etiqueta }) : tx('fila.ocultar', { nombre: etiqueta })}
               aria-pressed={!oculta}
-              className="flex size-8 shrink-0 items-center justify-center rounded-md text-fg-secondary hover:bg-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              className={cn(
+                'size-8 shrink-0 items-center justify-center rounded-md text-fg-secondary hover:bg-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                // Oculta: el ojo siempre a la vista (dice el estado); si no, al pasar o enfocar la fila.
+                oculta ? 'flex' : 'hidden group-hover:flex group-focus-within:flex',
+              )}
             >
               <OjoIcono aria-hidden="true" className="size-4" strokeWidth={1.5} />
             </button>
           )}
-          {acciones && acciones.length > 0 && <RowActionsMenu acciones={acciones} titulo={etiqueta} orientacion="horizontal" />}
+          {acciones && acciones.length > 0 && (
+            // El menú ocupa sitio solo al pasar o enfocar la fila: así el nombre de la sección se ve
+            // entero en el panel de 280 px (Figma), con el texto completo en `title`.
+            <span className="hidden shrink-0 group-hover:flex group-focus-within:flex">
+              <RowActionsMenu acciones={acciones} titulo={etiqueta} orientacion="horizontal" />
+            </span>
+          )}
         </>
       )}
     </div>

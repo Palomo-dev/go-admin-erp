@@ -138,7 +138,8 @@ describe('lista de secciones en una sede', () => {
     );
     expect(screen.getAllByText('Solo en esta sede')).toHaveLength(2);
     expect(screen.queryByText('Hereda')).toBeNull();
-    expect(screen.queryByText('Global')).toBeNull();
+    // Encabezado y Pie de página llevan la etiqueta «Global», como en Figma.
+    expect(screen.getAllByText('Global')).toHaveLength(2);
     expect(screen.getByText('Encabezado')).toBeTruthy();
   });
 });

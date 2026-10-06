@@ -2627,8 +2627,6 @@
       "organizacion_invitaciones": "Invitations",
       "organizacion_modulos": "Modules",
       "organizacion_plan": "My plan",
-      "organizacion_branding": "Website",
-      "organizacion_dominios": "Domains",
       "organizacion_mis-organizaciones": "My organizations",
       "roles": "Roles and permissions",
       "configuracion": "Settings",
@@ -2676,7 +2674,17 @@
       "membresias_instructores": "Instructors",
       "membresias_control-de-acceso": "Access control",
       "membresias_pagos": "Payments",
-      "inicio_analitica-web": "Web analytics"
+      "sitio-web": "Overview",
+      "sitio-web_paginas": "Pages",
+      "sitio-web_diseno": "Design",
+      "sitio-web_plantillas": "Templates",
+      "sitio-web_carta": "Menu",
+      "sitio-web_tienda": "Store",
+      "sitio-web_ventas": "Online sales",
+      "sitio-web_dominios": "Domains",
+      "sitio-web_seo": "SEO and social",
+      "sitio-web_analitica": "Analytics",
+      "sitio-web_configuracion": "Settings"
     },
     "grupos": {
       "venta": "Sales",
@@ -2705,10 +2713,15 @@
       "comercial": "Sales",
       "actividad": "Activity",
       "marketing": "Marketing",
-      "automatizacion": "Automation"
+      "automatizacion": "Automation",
+      "tu-sitio": "Your site",
+      "segun-tu-negocio": "For your business",
+      "vender-y-crecer": "Sell and grow",
+      "ajustes-del-sitio": "Site settings"
     },
     "backToMenu": "Menu",
-    "membresias": "Memberships"
+    "membresias": "Memberships",
+    "sitioWeb": "Website"
   },
   "crm": {
     "title": "CRM",
@@ -24726,7 +24739,10 @@
       "zonaOrigenSucursal": "From the {sucursal} branch",
       "zonaOrigenSucursalSinNombre": "From the active branch",
       "zonaOrigenOrganizacion": "From the organization",
-      "zonaOrigenSistema": "System default"
+      "zonaOrigenSistema": "System default",
+      "notificaciones": "Notifications",
+      "notificacionesAyuda": "Email, push, WhatsApp and do-not-disturb hours.",
+      "configurarNotificaciones": "Set up notifications"
     },
     "vendedor": {
       "titulo": "Seller panel",
@@ -24780,6 +24796,178 @@
         "transport": "Transport",
         "users": "Users"
       }
+    },
+    "titulo": "My profile",
+    "cargando": "Loading your profile…",
+    "errorTitulo": "We couldn't load your profile",
+    "errorDesc": "Check your connection and try again. Your data is safe.",
+    "cerrarSesion": "Sign out",
+    "cancelar": "Cancel",
+    "guardar": "Save",
+    "guardando": "Saving…",
+    "reintentar": "Retry",
+    "toasts": {
+      "errorTitulo": "Couldn't save",
+      "errorRed": "Check your connection and try again.",
+      "errorReenviar": "We couldn't resend the email. Try again in a few minutes.",
+      "errorCorreo": "We couldn't request the email change. Try again in a few minutes.",
+      "correoEnviadoTitulo": "Confirmation email sent",
+      "correoEnviadoDesc": "Check {correo} and open the link.",
+      "datosTitulo": "Information updated",
+      "datosDesc": "Your personal details were saved."
+    },
+    "datos": {
+      "titulo": "Personal details",
+      "descripcion": "Your name, email and phone. Changing the email requires confirmation.",
+      "nombre": "First name",
+      "apellidos": "Last name",
+      "correo": "Email",
+      "telefono": "Phone",
+      "cargo": "Job title",
+      "cargoAyuda": "Assigned by your organization.",
+      "sinCargo": "No job title assigned",
+      "guardar": "Save changes"
+    },
+    "correo": {
+      "cambiar": "Change",
+      "reenviar": "Resend",
+      "reenviarConfirmacion": "Resend confirmation",
+      "pendienteA": "Change pending to {correo}",
+      "estado": {
+        "confirmado": "Confirmed",
+        "sin_confirmar": "Email not confirmed",
+        "cambio_pendiente": "Change pending"
+      },
+      "dialogoTitulo": "Change email",
+      "dialogoDescripcion": "We'll send a confirmation link to the new address. The current one stays active until you confirm.",
+      "actual": "Current email",
+      "nuevo": "New email",
+      "confirmar": "Confirm the new email",
+      "enviar": "Send confirmation",
+      "placeholderNuevo": "new@email.com",
+      "placeholderConfirmar": "Repeat the new email",
+      "errores": {
+        "invalido": "Enter a valid email address.",
+        "igual": "The new email must be different from the current one.",
+        "no_coinciden": "The emails don't match."
+      }
+    },
+    "foto": {
+      "titulo": "Change profile photo",
+      "descripcion": "PNG, JPG or WEBP. 2 MB max. Cropped to a circle.",
+      "guardar": "Save photo",
+      "quitar": "Remove photo",
+      "vistaPrevia": "Preview of the new photo",
+      "soltar": "Drag an image or choose one",
+      "formatos": "One image · 2 MB max · JPG, PNG or WEBP",
+      "subir": "Upload",
+      "tomar": "Take photo",
+      "guardada": "Profile photo updated",
+      "quitada": "Profile photo removed",
+      "quitarPendiente": "It will be removed when you save. Your initials will show again.",
+      "confirmarTitulo": "Remove your profile photo?",
+      "confirmarDescripcion": "Your initials will show again. When you save, the image is deleted from storage and can't be recovered.",
+      "confirmarAccion": "Remove",
+      "errores": {
+        "formato": "Format not allowed. Use JPG, PNG or WEBP.",
+        "tamano": "The image is larger than 2 MB."
+      }
+    },
+    "seguridad": {
+      "titulo": "Security",
+      "descripcion": "Your password and sign-in email.",
+      "descripcionConDosPasos": "Password, two-step authentication and sign-in email.",
+      "contrasenaDesc": "Asks for your current password and the new one twice.",
+      "cambiarContrasena": "Change password",
+      "dialogoDescripcion": "We ask for your current password to confirm it's you.",
+      "otrasCerradas": "You were signed out on your other devices.",
+      "sesionSigue": "This device stays signed in.",
+      "correoSinConfirmar": "{correo} · not confirmed. A change requires confirmation at the new address.",
+      "correoConfirmado": "{correo}. A change requires confirmation at the new address."
+    },
+    "dosPasos": {
+      "titulo": "Two-step authentication",
+      "activa": "On",
+      "inactiva": "Off",
+      "descActiva": "6-digit code from your authenticator app. Turning it off asks for a code.",
+      "descInactiva": "Add a 6-digit code from Google Authenticator, Authy or 1Password.",
+      "activar": "Turn on",
+      "desactivar": "Turn off",
+      "codigo": "6-digit code",
+      "codigoAyuda": "The one your authenticator app shows now.",
+      "errorIniciar": "We couldn't set up two-step authentication. Try again.",
+      "errorFormato": "Enter the 6 digits.",
+      "errorCodigo": "The code is wrong or expired. Enter the one the app shows now.",
+      "activadaTitulo": "Two-step authentication on",
+      "activadaDesc": "Your authenticator app is now linked to your account.",
+      "claveCopiada": "Key copied",
+      "claveNoCopiada": "Couldn't copy the key",
+      "activarTitulo": "Turn on two-step authentication",
+      "activarDescripcion": "Scan the code with Google Authenticator, Authy or 1Password and enter the 6-digit code.",
+      "verificar": "Verify and turn on",
+      "preparando": "Preparing the code…",
+      "qrAlt": "QR code for your authenticator app",
+      "sinEscanear": "Can't scan? Type this key in the app:",
+      "copiar": "Copy",
+      "desactivadaTitulo": "Two-step authentication off",
+      "desactivarTitulo": "Turn off two-step authentication?",
+      "desactivarDescripcion": "Your account will be protected by your password only. To confirm, enter a code from your app."
+    },
+    "sesiones": {
+      "titulo": "Sessions and devices",
+      "descripcion": "Where you've signed in from.",
+      "sinNombre": "Device",
+      "resumen": "{n, plural, one {You've signed in from # device} other {You've signed in from # devices}}",
+      "resumenSinDatos": "Your devices",
+      "resumenAyuda": "“Sign out others” signs you out on every device except this one.",
+      "cerrarDemas": "Sign out others",
+      "cargando": "Loading devices…",
+      "error": "We couldn't load your devices",
+      "vacioTitulo": "No registered devices",
+      "vacioDesc": "They'll show up here the next time you sign in.",
+      "lista": "Devices",
+      "ultimaActividad": "Last active: {fecha}",
+      "esteDispositivo": "This device",
+      "confiable": "Trusted",
+      "renombrar": "Rename",
+      "quitarConfianza": "Untrust",
+      "confiar": "Trust",
+      "quitar": "Remove",
+      "nota": "“Remove” takes the device off this list; to end its session use “Sign out others”.",
+      "sustantivo": {
+        "singular": "device",
+        "plural": "devices"
+      },
+      "confirmarCerrarTitulo": "Sign out on other devices?",
+      "confirmarCerrarDesc": "{n, plural, one {You'll be signed out on # device} other {You'll be signed out on # devices}} and any other browser. This device stays signed in.",
+      "confirmarCerrarDescSinLista": "You'll be signed out on any other browser or device. This one stays signed in.",
+      "confirmarQuitarTitulo": "Remove “{nombre}” from the list?",
+      "confirmarQuitarDesc": "It stops showing here, but its session isn't ended. To end it use “Sign out others”.",
+      "renombrarTitulo": "Rename device",
+      "renombrarDesc": "A name to recognize it in the list.",
+      "nombreDispositivo": "Device name",
+      "nombrePlaceholder": "E.g.: Register 1 — Main branch",
+      "confianzaQuitada": "No longer a trusted device",
+      "confiado": "Trusted device",
+      "renombrado": "Device renamed",
+      "quitadoTitulo": "Device removed",
+      "quitadoDesc": "“{nombre}” no longer shows in your list.",
+      "deshacer": "Undo",
+      "demasCerradasTitulo": "Sessions ended",
+      "demasCerradasDesc": "Other devices will have to sign in again."
+    },
+    "organizacion": {
+      "titulo": "Organization and roles",
+      "descripcion": "Your default organization, your roles and the branches where you work.",
+      "predeterminadaGuardada": "You'll sign in to {organizacion} by default.",
+      "vacioTitulo": "You don't belong to any organization yet",
+      "vacioDesc": "Ask an administrator to invite you. Meanwhile you can edit your details and preferences.",
+      "cambiarOrganizacion": "Switch organization",
+      "editarDatos": "Edit my details",
+      "gestionarSucursales": "Manage branches",
+      "conLaQueEntras": "Organization you sign in to",
+      "predeterminada": "Default",
+      "usarPorDefecto": "Use as default"
     }
   },
   "asistente": {
@@ -25559,5 +25747,10 @@
         "7": "Sunday"
       }
     }
+  },
+  "sitioWeb": {
+    "verSitio": "View site",
+    "abrirEditor": "Open editor",
+    "tuSitio": "Your site"
   }
 }

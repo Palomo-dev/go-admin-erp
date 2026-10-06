@@ -46,5 +46,5 @@ export const RUTAS_CATEGORIAS = {
   productos: (id: number) => `/app/inventario/productos?categoria=${id}`,
   catalogo: '/app/inventario/productos',
   promociones: '/app/pos/promociones',
-  tiendaWeb: '/app/organizacion/branding',
+  tiendaWeb: '/app/sitio-web',
 } as const;

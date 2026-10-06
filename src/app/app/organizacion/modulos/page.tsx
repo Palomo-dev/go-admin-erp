@@ -44,6 +44,7 @@ import { useModuleContext } from '@/lib/context/ModuleContext';
 import { moduleManagementService, type Module, type OrganizationModuleStatus } from '@/lib/services/moduleManagementService';
 import { MODULE_PAGES, getModulePages, type ModulePage } from '@/lib/config/modulePages';
 import { paginaActiva } from '@/lib/navigation/paginaActiva';
+import { moduloPorCodigo } from '@/lib/navigation/catalog';
 import { ModulesSkeleton } from '@/components/organization/OrganizationSkeletons';
 import { useTranslations } from 'next-intl';
 import { ChevronDown, ChevronRight } from 'lucide-react';
@@ -77,6 +78,11 @@ const moduleIcons: Record<string, React.ComponentType<{ className?: string }>> =
   'memberships': UserCheck,
   'pm': FolderKanban
 };
+
+/** Icono del módulo: el del mapa local o, si no está, el del catálogo de navegación (p. ej. «Sitio web»). */
+function iconoModulo(code: string): React.ComponentType<{ className?: string }> {
+  return moduleIcons[code] || moduloPorCodigo(code)?.icono || Package;
+}
 
 export default function ModulesMarketplacePage() {
   const [organizationId, setOrganizationId] = useState<number | null>(null);
@@ -467,7 +473,7 @@ export default function ModulesMarketplacePage() {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 items-start">
           {coreModules.map((module) => {
-            const Icon = moduleIcons[module.code] || Package;
+            const Icon = iconoModulo(module.code);
 
             return (
               <Card key={module.code} className="relative dark:bg-gray-900 dark:border-gray-800">
@@ -516,7 +522,7 @@ export default function ModulesMarketplacePage() {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 items-start">
           {paidModules.map((module) => {
-            const Icon = moduleIcons[module.code] || Package;
+            const Icon = iconoModulo(module.code);
             const isActive = getModuleStatus(module.code);
             const canToggle = canToggleModule(module);
             

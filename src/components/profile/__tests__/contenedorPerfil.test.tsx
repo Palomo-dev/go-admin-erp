@@ -23,8 +23,9 @@ describe('CabeceraPerfil', () => {
     nombre: 'María Gómez',
     correo: 'maria@ejemplo.co',
     creadoEn: '2024-03-14T15:00:00Z',
-    organizacion: 'Mi empresa S.A.S.',
+    organizacion: { id: 7, nombre: 'Mi empresa S.A.S.', logoUrl: null },
     sucursales: ['Sucursal Principal', 'Sucursal Norte'],
+    onCambiarFoto: () => undefined,
   };
 
   test('nombre, cargo, correo · alta, organización y una píldora por sucursal', () => {
@@ -34,10 +35,22 @@ describe('CabeceraPerfil', () => {
     expect(container.innerHTML).toContain('Cajera principal');
     expect(container.textContent).toContain('maria@ejemplo.co · Se unió el 14 de marzo de 2024');
     expect(container.textContent).toContain('Mi empresa S.A.S.');
-    const pildoras = Array.from(container.querySelectorAll('span.rounded-full')).map((s) => s.textContent);
-    expect(pildoras).toEqual(expect.arrayContaining(['Sucursal Principal', 'Sucursal Norte']));
-    fireEvent.click(container.querySelector('button')!);
+    expect(container.textContent).toContain('Sucursal Principal');
+    expect(container.textContent).toContain('Sucursal Norte');
+    const botonEditar = Array.from(container.querySelectorAll('button')).find((b) => b.textContent === 'Editar');
+    fireEvent.click(botonEditar!);
     expect(editar).toHaveBeenCalled();
+    // «Cerrar sesión» va a la ruta única de cierre, no duplica `signOut`.
+    expect(container.querySelector('a[href="/auth/logout"]')).not.toBeNull();
+  });
+
+  test('el avatar abre «Cambiar foto de perfil»', () => {
+    const foto = jest.fn();
+    const { container } = renderConIdioma(<CabeceraPerfil {...base} onCambiarFoto={foto} onEditar={() => undefined} />);
+    const avatar = container.querySelector('button[aria-label="Cambiar foto de perfil"]');
+    expect(avatar).not.toBeNull();
+    fireEvent.click(avatar!);
+    expect(foto).toHaveBeenCalled();
   });
 
   test('sin cargo no pinta el badge (no se inventa)', () => {

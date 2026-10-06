@@ -13,13 +13,19 @@
  *   propia y, si no, la de la organización (`useTimezoneFor`, regla única).
  *   Debajo se dice de dónde viene. Se edita en Organización › Sucursales.
  *
- * Las notificaciones siguen en su propia sección («Notificaciones»).
+ * Las notificaciones siguen en su propia sección («Notificaciones»): el
+ * diseño las pinta aquí, pero duplicar sus interruptores dejaría dos sitios
+ * que guardan lo mismo con dos botones «Guardar». Aquí va el acceso directo.
  */
 import { useEffect, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
 import { Monitor, Moon, Sun } from 'lucide-react';
 import { SegmentedControl } from '@/components/kit/SegmentedControl';
+import { FormSection } from '@/components/kit/FormSection';
+import { FormField } from '@/components/kit/FormField';
+import { clasesBoton } from '@/components/kit/botonClases';
+import { CLASE_CAMPO } from './piezasPerfil';
 import { themeService } from '@/lib/services/themeService';
 import { guardarIdiomaPreferido } from '@/lib/i18n/idiomaPreferido';
 import { isValidLocale, localeNames, locales, type Locale } from '@/i18n/config';
@@ -28,7 +34,7 @@ import { useBranchOpcional } from '@/lib/context/BranchContext';
 
 type Tema = 'light' | 'dark' | 'system';
 
-export default function PreferenciasSection() {
+export default function PreferenciasSection({ onIrANotificaciones }: { onIrANotificaciones?: () => void } = {}) {
   const t = useTranslations('perfil.preferencias');
   const locale = useLocale();
   const { theme, setTheme } = useTheme();
@@ -56,14 +62,7 @@ export default function PreferenciasSection() {
   };
 
   return (
-    <section aria-labelledby="perfil-preferencias" className="flex flex-col gap-5">
-      <header>
-        <h2 id="perfil-preferencias" className="text-lg font-semibold leading-6 text-fg">
-          {t('titulo')}
-        </h2>
-        <p className="text-[13px] leading-[18px] text-fg-secondary">{t('descripcion')}</p>
-      </header>
-
+    <FormSection titulo={t('titulo')} descripcion={t('descripcion')} id="perfil-preferencias">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-medium text-fg">{t('tema')}</p>
@@ -84,14 +83,13 @@ export default function PreferenciasSection() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-fg">{t('idioma')}</span>
+        <FormField etiqueta={t('idioma')}>
           <select
             value={locale}
             onChange={(e) => {
               if (isValidLocale(e.target.value) && e.target.value !== locale) void guardarIdiomaPreferido(e.target.value as Locale);
             }}
-            className="h-10 rounded-lg border border-line-strong bg-surface px-3 text-sm text-fg outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            className={CLASE_CAMPO}
           >
             {locales.map((l) => (
               <option key={l} value={l} lang={l}>
@@ -99,7 +97,7 @@ export default function PreferenciasSection() {
               </option>
             ))}
           </select>
-        </label>
+        </FormField>
         <div className="flex flex-col gap-1.5">
           <span className="text-sm font-medium text-fg">{t('zonaHoraria')}</span>
           <p className="flex h-10 items-center justify-between gap-2 rounded-lg border border-line bg-subtle px-3 text-sm text-fg-secondary">
@@ -109,6 +107,18 @@ export default function PreferenciasSection() {
           <p className="text-xs text-fg-secondary">{t('zonaHorariaAyuda')}</p>
         </div>
       </div>
-    </section>
+
+      {onIrANotificaciones && (
+        <div className="flex flex-col gap-3 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-fg">{t('notificaciones')}</p>
+            <p className="text-xs text-fg-secondary">{t('notificacionesAyuda')}</p>
+          </div>
+          <button type="button" onClick={onIrANotificaciones} className={clasesBoton({ variante: 'secundario', tamano: 'md', className: 'h-12 w-full sm:h-10 sm:w-auto' })}>
+            {t('configurarNotificaciones')}
+          </button>
+        </div>
+      )}
+    </FormSection>
   );
 }

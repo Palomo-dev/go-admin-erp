@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Loader2, Save, RotateCcw, Sun, Moon, Palette, ExternalLink, Edit, Globe, Filter, RefreshCw } from 'lucide-react';
-import { WebsiteSettings, TEMPLATE_PRESETS, getPresetsForType, FONTS, DEFAULT_COLORS, TemplatePresetInfo, TYPE_ID_TO_BUSINESS } from '@/lib/services/websiteSettingsService';
+import { WebsiteSettings, TEMPLATE_PRESETS, FONTS, DEFAULT_COLORS, TYPE_ID_TO_BUSINESS } from '@/lib/services/websiteSettingsService';
+import { rutaEditorSitio } from '@/components/sitio-web/rutasSitioWeb';
 import { websitePageBuilderService } from '@/lib/services/websitePageBuilderService';
 import { supabase } from '@/lib/supabase/config';
 import { cn } from '@/utils/Utils';
@@ -155,7 +156,7 @@ export default function BrandingThemeTab({ settings, onSave, isSaving, organizat
                   </Button>
                 )}
                 {homePageId && (
-                  <Button size="sm" onClick={() => router.push(`/app/organizacion/branding/editor/${homePageId}`)} className="h-7 text-xs bg-blue-600 hover:bg-blue-700">
+                  <Button size="sm" onClick={() => router.push(rutaEditorSitio(homePageId))} className="h-7 text-xs bg-blue-600 hover:bg-blue-700">
                     <Edit className="h-3.5 w-3.5 mr-1" />
                     {t('edit')}
                   </Button>

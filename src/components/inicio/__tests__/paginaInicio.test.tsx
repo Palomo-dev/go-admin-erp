@@ -95,7 +95,7 @@ function base(): Record<string, { status: number; json: unknown }> {
     '/api/inicio/actividad': { status: 200, json: { tipos: ['venta'], conteos: { venta: 0 }, total: 0, filas: [] } },
     '/api/inicio/tienda-web': {
       status: 200,
-      json: { activa: true, actual: { visitantes: 10, sesiones: 8, sesiones_nuevas: 4, pedidos: 1, pedidos_pagados: 1 }, anterior: { visitantes: 9, sesiones: 8, pedidos: 1, pedidos_pagados: 1 }, pendientes: 0, serie: [], hrefPedidos: null, hrefAnalitica: '/app/inicio/analitica-web' },
+      json: { activa: true, actual: { visitantes: 10, sesiones: 8, sesiones_nuevas: 4, pedidos: 1, pedidos_pagados: 1 }, anterior: { visitantes: 9, sesiones: 8, pedidos: 1, pedidos_pagados: 1 }, pendientes: 0, serie: [], hrefPedidos: null, hrefAnalitica: '/app/sitio-web/analitica' },
     },
     '/api/inicio/modulos': { status: 200, json: { modulos: [], badgeSolido: null, moneda: 'COP', zona: 'America/Bogota', calculadoEn: '2026-09-30T13:05:00Z' } },
   };

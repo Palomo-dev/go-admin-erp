@@ -93,14 +93,14 @@ describe('TarjetaVentas', () => {
 });
 
 describe('TarjetaTiendaWeb', () => {
-  const TIENDA = { activa: true, actual: { visitantes: 4812, sesiones: 3104, sesiones_nuevas: 1924, pedidos: 164, pedidos_pagados: 150 }, anterior: { visitantes: 4070, sesiones: 2900, pedidos: 150, pedidos_pagados: 140 }, pendientes: 12, hrefPedidos: '/app/pos/pedidos-online', hrefAnalitica: '/app/inicio/analitica-web' };
+  const TIENDA = { activa: true, actual: { visitantes: 4812, sesiones: 3104, sesiones_nuevas: 1924, pedidos: 164, pedidos_pagados: 150 }, anterior: { visitantes: 4070, sesiones: 2900, pedidos: 150, pedidos_pagados: 140 }, pendientes: 12, hrefPedidos: '/app/pos/pedidos-online', hrefAnalitica: '/app/sitio-web/analitica' };
 
   test.each(IDIOMAS)('%s: tres casillas, enlace del menú y sin claves crudas', async (idioma) => {
     respuestas['/api/inicio/tienda-web'] = { status: 200, json: TIENDA };
     const { container } = renderConIdioma(<TarjetaTiendaWeb organizationId={120} periodo="30d" sucursal={null} />, { idioma });
     await waitFor(() => expect(container.querySelectorAll('h3')).toHaveLength(3));
     // Figma 463:15514: solo «Ver analítica web» (los pedidos se atienden desde «Hoy»).
-    expect(Array.from(container.querySelectorAll('a')).map((a) => a.getAttribute('href'))).toEqual(['/app/inicio/analitica-web']);
+    expect(Array.from(container.querySelectorAll('a')).map((a) => a.getAttribute('href'))).toEqual(['/app/sitio-web/analitica']);
     sinClavesCrudas(container.textContent);
   });
 

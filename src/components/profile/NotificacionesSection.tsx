@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 import { Bell, Moon, Clock, Save } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { PreferenciasService } from '@/components/notificaciones/preferencias/PreferenciasService';
 import { fusionarTiposAviso, gruposActivos, type GrupoAviso } from '@/lib/services/avisos/reglas';
 

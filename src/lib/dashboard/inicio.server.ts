@@ -22,7 +22,7 @@ import { moduleManagementService } from '@/lib/services/moduleManagementService'
 import { getOperatingToday } from '@/lib/utils/dateRanges';
 import { addPlainDays, plainDateToInstant, todayInTz } from '@/lib/utils/dateCore';
 import { seccionesVisiblesServidor } from '@/lib/navigation/navegacionServidor';
-import { CATALOGO_NAV } from '@/lib/navigation/catalog';
+import { RUTA_ANALITICA_SITIO_WEB } from '@/components/sitio-web/rutasSitioWeb';
 import { calcularRangoPeriodo, type PeriodoPedido, type RangoPeriodo } from './periodo';
 import { badgeSolido, resumirModulo, type CrudoResumen, type ResumenModulo } from './resumenModulos';
 import { desdeFila, ordenarModulos, type PreferenciasInicio } from './preferenciasInicio';
@@ -151,16 +151,16 @@ export interface TiendaWeb {
   /** Enlace a los pedidos online, solo si la persona ve esa página en el menú. */
   hrefPedidos: string | null;
   /**
-   * «Ver analítica web» (`/app/inicio/analitica-web`, fuera del menú: su acceso
-   * lo decide `GET /api/analitica-web`, que admite el panel completo, el mismo
-   * requisito de esta tarjeta). Sale del catálogo, no de un literal suelto.
+   * «Ver analítica web»: la página «Analítica» del módulo Sitio web
+   * (`/app/sitio-web/analitica`), solo si la persona la ve en su menú. El dato
+   * lo sigue protegiendo `GET /api/analitica-web` (panel completo).
    */
   hrefAnalitica: string | null;
 }
 
 /** Página del menú donde viven los pedidos de la tienda (se busca en el catálogo visible). */
 const PAGINA_PEDIDOS_ONLINE = '/app/pos/pedidos-online';
-const PAGINA_ANALITICA_WEB = '/app/inicio/analitica-web';
+const PAGINA_ANALITICA_WEB = RUTA_ANALITICA_SITIO_WEB;
 
 export async function tiendaWeb(ctx: Ctx, rango: RangoPeriodo, sucursal: number | null): Promise<TiendaWeb> {
   const [res, secciones] = await Promise.all([
@@ -169,7 +169,7 @@ export async function tiendaWeb(ctx: Ctx, rango: RangoPeriodo, sucursal: number 
   ]);
   if (res.error) throw errorRpc('fn_inicio_tienda_web', res.error);
   const visible = paginaVisible(secciones, PAGINA_PEDIDOS_ONLINE);
-  const analitica = CATALOGO_NAV.some((m) => m.paginas.some((p) => p.href === PAGINA_ANALITICA_WEB));
+  const analitica = paginaVisible(secciones, PAGINA_ANALITICA_WEB);
   return {
     ...(res.data as Omit<TiendaWeb, 'hrefPedidos' | 'hrefAnalitica'>),
     hrefPedidos: visible ? PAGINA_PEDIDOS_ONLINE : null,

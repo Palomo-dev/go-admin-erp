@@ -13,6 +13,7 @@ import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import { RUTA_DOMINIOS_SITIO_WEB } from '@/components/sitio-web/rutasSitioWeb';
 
 interface BrandingSEOTabProps {
   settings: WebsiteSettings;
@@ -21,7 +22,9 @@ interface BrandingSEOTabProps {
   isSaving: boolean;
 }
 
-export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSaving }: BrandingSEOTabProps) {
+// `onUploadImage` sigue en las props por compatibilidad; las imágenes se
+// eligen con ImagePickerDialog.
+export default function BrandingSEOTab({ settings, onSave, isSaving }: BrandingSEOTabProps) {
   const t = useTranslations('branding.seo');
   const tc = useTranslations('branding.common');
   const { organization } = useOrganization();
@@ -108,8 +111,8 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
           organizationId: organization.id,
           organizationName: organization.name,
           description: settings.meta_description || '',
-          city: (organization as any).city || '',
-          country: (organization as any).country || '',
+          city: (organization as { city?: string }).city || '',
+          country: (organization as { country?: string }).country || '',
           services: enabledServices.join(', '),
           businessType: '',
           currentKeywords: formData.meta_keywords,
@@ -366,7 +369,7 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
                 {t('domainDesc')}
               </CardDescription>
             </div>
-            <Link href="/app/organizacion/dominios">
+            <Link href={RUTA_DOMINIOS_SITIO_WEB}>
               <Button variant="outline" size="sm" className="dark:border-gray-600 dark:text-gray-300">
                 <Globe className="h-4 w-4 mr-1.5" />
                 {t('manageDomains')}
@@ -425,7 +428,7 @@ export default function BrandingSEOTab({ settings, onSave, onUploadImage, isSavi
                   <p className="text-sm text-gray-500 dark:text-gray-400">{t('noCustomDomain')}</p>
                   <p className="text-xs text-gray-400 dark:text-gray-500">{t('noCustomDomainHint')}</p>
                 </div>
-                <Link href="/app/organizacion/dominios">
+                <Link href={RUTA_DOMINIOS_SITIO_WEB}>
                   <Button variant="ghost" size="sm" className="text-xs text-blue-600 dark:text-blue-400">
                     {t('configure')}
                   </Button>

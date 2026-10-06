@@ -43,6 +43,8 @@ export const TEXTOS_CARTA_QR = {
     comensal: '{nombre}',
     propina: 'propina {importe}',
     total: 'Pagos en línea',
+    enCurso: 'Pago en línea en curso',
+    sinAplicar: 'Pagado en línea, sin aplicar a la cuenta: revísalo',
   },
   valoracion: {
     titulo: 'Valoración de la visita',

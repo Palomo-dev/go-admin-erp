@@ -9,7 +9,7 @@
  */
 
 export type TipoSolicitudMesa = 'waiter' | 'bill' | 'help';
-export type EstadoSolicitudMesa = 'open' | 'ack' | 'done';
+export type EstadoSolicitudMesa = 'open' | 'ack' | 'done' | 'cancelled';
 
 /** Fila de `table_service_requests` tal como la lee el POS. */
 export interface FilaSolicitudMesa {
@@ -39,7 +39,7 @@ export interface SolicitudMesa {
 }
 
 const TIPOS: readonly TipoSolicitudMesa[] = ['waiter', 'bill', 'help'];
-const ESTADOS: readonly EstadoSolicitudMesa[] = ['open', 'ack', 'done'];
+const ESTADOS: readonly EstadoSolicitudMesa[] = ['open', 'ack', 'done', 'cancelled'];
 
 /** Fila → solicitud. Un tipo o estado desconocido no rompe la pantalla: cae a «mesero» / «abierta». */
 export function aSolicitudMesa(f: FilaSolicitudMesa): SolicitudMesa {
@@ -59,9 +59,9 @@ export function aSolicitudMesa(f: FilaSolicitudMesa): SolicitudMesa {
   };
 }
 
-/** Pendiente = abierta o «voy en camino»; las atendidas salen de la pantalla. */
+/** Pendiente = abierta o «voy en camino»; las atendidas y las que el comensal retiró salen de la pantalla. */
 export function estaPendiente(s: SolicitudMesa): boolean {
-  return s.estado !== 'done';
+  return s.estado === 'open' || s.estado === 'ack';
 }
 
 /**

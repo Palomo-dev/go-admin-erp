@@ -42,6 +42,10 @@ describe('solicitudes de la Carta QR en POS › Mesas', () => {
     expect(lista.map((s) => s.id)).toEqual(['a']);
     lista = aplicarEvento(lista, { tipo: 'DELETE', solicitud: a });
     expect(lista).toEqual([]);
+    // El comensal retira el llamado (lámina 07b): sale de la pantalla.
+    lista = aplicarEvento([a], { tipo: 'UPDATE', solicitud: { ...a, estado: 'cancelled' } });
+    expect(lista).toEqual([]);
+    expect(aSolicitudMesa(fila({ status: 'cancelled' })).estado).toBe('cancelled');
   });
 
   it('un evento repetido no duplica la solicitud', () => {

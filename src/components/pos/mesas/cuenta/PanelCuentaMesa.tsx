@@ -56,6 +56,8 @@ export interface PanelCuentaMesaProps {
   estadoCobro: EstadoCobroMesa;
   onAbrirCaja: () => void;
   deshabilitada?: boolean;
+  /** Lo de la Carta QR en esta cuenta (solicitudes, pagos en línea, valoración). */
+  cartaQr?: ReactNode;
   className?: string;
 }
 
@@ -78,6 +80,7 @@ export function PanelCuentaMesa({
   estadoCobro,
   onAbrirCaja,
   deshabilitada,
+  cartaQr,
   className,
 }: PanelCuentaMesaProps) {
   const t = useTranslations('posMesasFlujo.cuenta');
@@ -155,6 +158,7 @@ export function PanelCuentaMesa({
         {menu}
       </header>
 
+      {cartaQr && <div className="shrink-0">{cartaQr}</div>}
       <div className="shrink-0">{cliente}</div>
       {!vacia && <div className="shrink-0">{nota}</div>}
 

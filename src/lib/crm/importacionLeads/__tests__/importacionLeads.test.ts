@@ -20,6 +20,7 @@ import {
   CAMPOS_LEAD,
   encontrarFilaCabeceraLeads,
   faltantesMapeoLead,
+  mapeoInicialLeads,
   reasignarColumnaLead,
   type CampoLead,
 } from '../campos';
@@ -49,18 +50,23 @@ describe('autodetección de columnas', () => {
     expect(de('nombre_comercial')).toBe('nombre');
     expect(de('razon_social_rues')).toBe('razonSocial');
     expect(de('nit_rues')).toBe('nit');
-    // Dos columnas de teléfono: gana la primera (la E.164) y la otra queda sin importar.
+    // Dos columnas de teléfono: gana la primera (la E.164) y la otra pasa a
+    // «Teléfono adicional» (antes quedaba sin importar y se perdía).
     expect(de('telefono_e164')).toBe('telefono');
-    expect(de('telefono')).toBeNull();
+    expect(de('telefono')).toBe('telefonoAdicional');
     expect(de('correo_publicado')).toBe('correo');
     expect(de('valor_anual_usd')).toBe('valor');
     expect(de('rne_crc')).toBe('rne');
     expect(de('ley_2300_horario')).toBe('horario');
     // Campo múltiple: las tres URL de fuente se juntan.
     expect(['fuente_telefono_url', 'fuente_negocio_url', 'fuente_nit_url'].map(de)).toEqual(['fuente', 'fuente', 'fuente']);
-    // Columnas sin campo: no se importan.
+    // Columnas sin campo: el alias no las reconoce…
     expect(['nivel_ciudad', 'osm_ultima_edicion', 'sedes_mismo_nombre_zona', 'estado_dedupe'].map(de)).toEqual([null, null, null, null]);
     expect(faltantesMapeoLead(mapeo)).toEqual([]);
+    // …pero el asistente las abre como «Dato adicional»: nada se pierde por omisión.
+    const inicial = mapeoInicialLeads([CABECERAS_TANDA, CABECERAS_TANDA.map(() => 'x')], 0);
+    expect(['nivel_ciudad', 'osm_ultima_edicion', 'sedes_mismo_nombre_zona', 'estado_dedupe'].map((h) => inicial[CABECERAS_TANDA.indexOf(h)])).toEqual(['adicional', 'adicional', 'adicional', 'adicional']);
+    expect(inicial.filter((c) => c === null)).toEqual([]);
   });
 
   it.each([

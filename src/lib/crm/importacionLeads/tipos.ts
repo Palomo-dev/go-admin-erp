@@ -13,7 +13,22 @@ export interface FilaLeadEntrada {
   fuente?: string[];
   /** Columnas mapeadas a «Etiquetas» (se separan además por `;` y `,`). */
   etiquetas?: string[];
+  /** Columnas mapeadas a «Teléfono adicional». */
+  telefonosAdicionales?: string[];
+  /** Columnas mapeadas a «Correo adicional». */
+  correosAdicionales?: string[];
+  /** Columnas sin campo propio («Dato adicional»): encabezado del archivo + valor, tal cual. */
+  adicionales?: DatoAdicional[];
 }
+
+export interface DatoAdicional {
+  /** Encabezado de la columna en el archivo («Columna 7» si no tenía). */
+  columna: string;
+  valor: string;
+}
+
+/** Valores que vinieron en el archivo pero no pasaron la normalización: se guardan crudos, no se tiran. */
+export type CampoDescartable = 'telefono' | 'correo' | 'nit' | 'web' | 'valor' | 'telefonoAdicional' | 'correoAdicional';
 
 export type TipoClienteImportacion = 'company' | 'person';
 
@@ -70,6 +85,20 @@ export interface FilaLeadNormalizada {
   etiquetas: string[];
   /** Lo que el archivo decía del RNE (solo informativo: nunca da por verificado un número). */
   rneArchivo: string | null;
+  pais: string | null;
+  /** Cargo de la persona de contacto. */
+  cargo: string | null;
+  /** Etapa o estado del lead según el archivo (informativo: el ciclo de vida lo pone el alta). */
+  etapa: string | null;
+  /** Fecha del archivo (captura/registro) como texto; un serial de Excel se pasa a AAAA-MM-DD. */
+  fecha: string | null;
+  /** E.164 cuando el número es válido; si no, el texto tal cual (no se tira). */
+  telefonosAdicionales: string[];
+  correosAdicionales: string[];
+  /** Valores de «Fuente» que no son URL (p. ej. «Feria», «Instagram»). */
+  fuentesTexto: string[];
+  adicionales: DatoAdicional[];
+  descartados: Partial<Record<CampoDescartable, string>>;
 }
 
 export interface FilaLeadValidada {

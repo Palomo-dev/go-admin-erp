@@ -93,7 +93,70 @@ describe('Contrato editor ↔ sitio (F0.6)', () => {
       expect(issues).toEqual([])
 
       const entry = SECTION_CATALOG.find((s) => s.type === 'menu_full')
-      expect(entry?.variants.map((v) => v.id).sort()).toEqual(['anchors', 'per_category', 'tabs'])
+      expect(entry?.variants.map((v) => v.id).sort()).toEqual(['anchors', 'editorial', 'per_category', 'tabs'])
+    })
+  })
+
+  // ---- Secciones nuevas de restaurante (Figma «Secciones nuevas» 167:5358) ----
+  describe('secciones nuevas de restaurante', () => {
+    it.each([
+      ['restaurant_hero', ['split_bento', 'typographic']],
+      ['marquee', ['photos', 'text']],
+      ['signature_dishes', ['carousel', 'scrollytelling']],
+      ['events', ['detail', 'list']],
+      ['private_events', ['default']],
+      ['chef_team', ['chef', 'team']],
+      ['gallery_bento', ['default']],
+    ])('%s: catálogo y sitio coinciden en variantes y claves de contenido', (type, variants) => {
+      const issues = [...result.errors, ...result.warnings].filter((i) => i.type === type)
+      expect(issues).toEqual([])
+
+      const entry = SECTION_CATALOG.find((s) => s.type === type)
+      expect(entry?.variants.map((v) => v.id).sort()).toEqual(variants)
+    })
+
+    it('los platos estrella se eligen de la carta con el selector de productos', () => {
+      const dishes = SECTION_CATALOG.find((s) => s.type === 'signature_dishes')?.contentFields.find((f) => f.key === 'dishes')
+      expect(dishes).toMatchObject({ type: 'repeater', group: 'data' })
+      expect(dishes?.itemFields?.find((f) => f.key === 'product_id')).toMatchObject({ type: 'entity', entity: 'product' })
+    })
+
+    it('las secciones nuevas reciben los campos de estilo comunes', () => {
+      for (const type of ['restaurant_hero', 'marquee', 'signature_dishes', 'events', 'private_events', 'chef_team', 'gallery_bento']) {
+        const keys = SECTION_CATALOG.find((s) => s.type === type)?.contentFields.map((f) => f.key) ?? []
+        expect(keys).toEqual(expect.arrayContaining(['bg_type', 'card_radius']))
+      }
+    })
+
+    it('chef_team no reutiliza el tipo de `team` ni de `chef_section`', () => {
+      expect(SECTION_CATALOG.find((s) => s.type === 'team')?.variants.map((v) => v.id)).not.toContain('chef')
+      expect(SECTION_CATALOG.find((s) => s.type === 'chef_section')?.variants.map((v) => v.id)).toEqual(['profile'])
+    })
+  })
+
+  // ---- Reserva de mesa y Horario y sedes (Figma 141:5796 y 144:6644) ----
+  describe('reservation y hours_location', () => {
+    it.each([
+      ['reservation', ['band', 'external', 'form_image', 'hero_widget', 'stepper']],
+      ['hours_location', ['cards', 'hours_map', 'list']],
+    ])('%s: catálogo y sitio coinciden en variantes y claves de contenido', (type, variants) => {
+      const issues = [...result.errors, ...result.warnings].filter((i) => i.type === type)
+      expect(issues).toEqual([])
+
+      const entry = SECTION_CATALOG.find((s) => s.type === type)
+      expect(entry?.variants.map((v) => v.id).sort()).toEqual(variants)
+    })
+
+    it('las sedes se eligen con el selector de sedes del editor', () => {
+      for (const type of ['reservation', 'hours_location']) {
+        const field = SECTION_CATALOG.find((s) => s.type === type)?.contentFields.find((f) => f.key === 'branch_ids')
+        expect(field).toMatchObject({ type: 'entity', entity: 'branch', multiple: true, group: 'data' })
+      }
+    })
+
+    it('reservation_cta sigue en el catálogo con sus variantes', () => {
+      const entry = SECTION_CATALOG.find((s) => s.type === 'reservation_cta')
+      expect(entry?.variants.map((v) => v.id).sort()).toEqual(['simple', 'with_form'])
     })
   })
 

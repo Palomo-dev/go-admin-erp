@@ -8,7 +8,7 @@
 
 import { CAMPOS_LEAD, CAMPOS_MULTIPLES, type CampoSimple } from './campos';
 import { MAX_FILAS_POR_ARCHIVO, MAX_FILAS_POR_BLOQUE } from './validacion';
-import type { FilaLeadEntrada, OpcionesImportacionLeads } from './tipos';
+import type { DatoAdicional, FilaLeadEntrada, OpcionesImportacionLeads } from './tipos';
 
 export type AccionImportacion = 'validar' | 'importar';
 
@@ -38,9 +38,24 @@ function lista(v: unknown): string[] | undefined {
   return out.length ? out : undefined;
 }
 
+/** Columnas «Dato adicional» de una fila: hasta 60, encabezado ≤ 120 y valor ≤ 2.000 caracteres. */
+const MAX_ADICIONALES = 60;
+function adicionales(v: unknown): DatoAdicional[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const out: DatoAdicional[] = [];
+  for (const x of v.slice(0, MAX_ADICIONALES)) {
+    if (!x || typeof x !== 'object') continue;
+    const o = x as { columna?: unknown; valor?: unknown };
+    const columna = texto(o.columna, 120);
+    const valor = texto(o.valor, LARGO_CELDA);
+    if (columna && valor) out.push({ columna, valor });
+  }
+  return out.length ? out : undefined;
+}
+
 function fila(v: unknown): FilaLeadEntrada | null {
   if (!v || typeof v !== 'object') return null;
-  const o = v as { fila?: unknown; campos?: unknown; fuente?: unknown; etiquetas?: unknown };
+  const o = v as { fila?: unknown; campos?: unknown; fuente?: unknown; etiquetas?: unknown; telefonosAdicionales?: unknown; correosAdicionales?: unknown; adicionales?: unknown };
   const n = Number(o.fila);
   if (!Number.isInteger(n) || n < 1) return null;
   const campos: Partial<Record<CampoSimple, string>> = {};
@@ -56,6 +71,12 @@ function fila(v: unknown): FilaLeadEntrada | null {
   const etiquetas = lista(o.etiquetas);
   if (fuente) f.fuente = fuente;
   if (etiquetas) f.etiquetas = etiquetas;
+  const telefonos = lista(o.telefonosAdicionales);
+  const correos = lista(o.correosAdicionales);
+  const extra = adicionales(o.adicionales);
+  if (telefonos) f.telefonosAdicionales = telefonos;
+  if (correos) f.correosAdicionales = correos;
+  if (extra) f.adicionales = extra;
   return f;
 }
 

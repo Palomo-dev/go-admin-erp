@@ -3703,7 +3703,8 @@
         "etiquetas": "Tags",
         "sinEtiquetas": "No tags",
         "actividad": "Recent activity",
-        "sinActividad": "No activity with this lead yet."
+        "sinActividad": "No activity with this lead yet.",
+        "datosArchivo": "File data"
       },
       "lote": {
         "titulo": "{n, plural, one {Qualify # lead} other {Qualify # leads}}",
@@ -4420,6 +4421,55 @@
         "sinResponsable": "Unassigned",
         "comision": "commission {pct} %",
         "proximo": "Next contact"
+      }
+    },
+    "datosImportados": {
+      "titulo": "Import data",
+      "descripcion": "What the file brought that has no field of its own on the record.",
+      "adicionales": "Additional file columns",
+      "descartados": "Values not recognized",
+      "descartadosAyuda": "They came in the file but are not in a valid format; they are kept as is so you can fix them.",
+      "origen": {
+        "lote": "Batch {lote}",
+        "archivo": "File {archivo}",
+        "fila": "Row {fila}",
+        "idExterno": "External ID {id}",
+        "importadoEn": "Imported on {fecha}"
+      },
+      "campos": {
+        "nombre": "Trade name",
+        "razonSocial": "Legal name",
+        "contacto": "Contact",
+        "cargo": "Job title",
+        "nit": "Tax ID",
+        "telefono": "Phone",
+        "telefonosAdicionales": "Other phones",
+        "tipoTelefono": "Phone type",
+        "correo": "Email",
+        "correosAdicionales": "Other emails",
+        "direccion": "Address",
+        "barrio": "Neighborhood",
+        "ciudad": "City",
+        "departamento": "State / department",
+        "pais": "Country",
+        "zona": "Zone",
+        "sector": "Sector",
+        "subsector": "Subsector",
+        "prioridad": "Priority",
+        "etapa": "Stage",
+        "plan": "Likely plan",
+        "valor": "Estimated value",
+        "valorOriginal": "Value in the file",
+        "web": "Website",
+        "fuentes": "Sources",
+        "fuentesTexto": "Source",
+        "horario": "Contact hours",
+        "verificacion": "Verification",
+        "fechaVerificacion": "Verification date",
+        "fecha": "Date (file)",
+        "rneArchivo": "Do-not-call status per file",
+        "notas": "Notes",
+        "etiquetas": "Tags"
       }
     }
   },
@@ -9648,7 +9698,8 @@
       "comboSinComponentes": "combos without components (set up their recipe)",
       "categoriaSugerida": "category suggested from the name",
       "preparadoSinInventario": "prepared dishes without their own stock",
-      "filaInternaAlegra": "internal Alegra rows (excluded)"
+      "filaInternaAlegra": "internal Alegra rows (excluded)",
+      "skuRepetidoTienda": "store SKU repeated"
     },
     "vista": {
       "titulo": "Preview ({n} rows)",
@@ -9797,7 +9848,8 @@
       "DUPLICADO": "Conflicts with an existing record (SKU or another unique value)",
       "DATO_NO_VALIDO": "Some value is not valid for the database",
       "LOTE": "The whole batch failed",
-      "ERROR": "Error saving the row"
+      "ERROR": "Error saving the row",
+      "skuRepetidoTienda": "The store SKU “{sku}” is already used by another product in the catalog: a new one was generated (kept as reference)."
     },
     "cabeceras": {
       "sku": "SKU",
@@ -9830,6 +9882,75 @@
     "valores": {
       "producto": "Product",
       "servicio": "Service"
+    },
+    "catalogo": {
+      "descripcion": "Paste the store URL: we detect the platform and read its ENTIRE public catalog (products, variants, prices, images and categories) without AI and at no cost.",
+      "urlAyuda": "Shopify, WooCommerce, VTEX and Magento are read through their public API; PrestaShop with its webservice key; Tiendanube, Wix, Squarespace, BigCommerce, Jumpseller and others through their sitemap and each product page data.",
+      "iaTitulo": "Just one page or a store without a public catalog? Analyze it with AI",
+      "detectar": "Detect store",
+      "detectando": "Detecting the platform…",
+      "urlInvalida": "Enter a full URL starting with http:// or https://.",
+      "errorDeteccion": "The store could not be analyzed: {mensaje}",
+      "claveRechazada": "The store did not accept the webservice key (or it is not PrestaShop). Check the key and its permissions.",
+      "detectada": "{plataforma}: public catalog available",
+      "noDisponible": "{plataforma}: no public catalog found",
+      "sinCosto": "Free",
+      "modoSitemap": "Via sitemap",
+      "resumen": "Catalog summary",
+      "cifras": {
+        "fichas": "Pages",
+        "productos": "Products",
+        "alLeer": "On read",
+        "colecciones": "Collections",
+        "categorias": "Categories",
+        "leidos": "Read",
+        "variantes": "Variants",
+        "sinPrecio": "No price",
+        "conImagen": "With image"
+      },
+      "avisos": {
+        "shopifySinExistencias": "Shopify does not publish stock or cost: load stock and cost afterwards.",
+        "wooSinExistencias": "WooCommerce does not publish exact stock or cost: load stock and cost afterwards.",
+        "magentoSinExistencias": "Magento does not publish exact stock or cost: load stock and cost afterwards.",
+        "prestashopSinImpuestos": "PrestaShop returns prices WITHOUT taxes: review them before importing.",
+        "catalogoTruncado": "The catalog exceeds the import maximum (20,000 products): it was read up to that limit.",
+        "genericaFichas": "This store has no public API: each product page is read; pages that do not publish their data are skipped."
+      },
+      "usarIa": "You can analyze this page with AI (below) or try another URL.",
+      "clave": {
+        "etiqueta": "PrestaShop webservice key",
+        "ayuda": "Optional. Create it in Advanced parameters › Webservice with read (GET) permission on products, combinations, categories and options. It is only used for this read and is not stored.",
+        "usar": "Use the key"
+      },
+      "leyendo": "Reading the catalog",
+      "progreso": "{leidos, plural, one {# product read} other {# products read}} {total, plural, =0 {(total to be confirmed)} other {of #}} · {tandas, plural, one {# batch} other {# batches}}",
+      "progresoFichas": "{recorridas} of {total} pages · {leidos, plural, one {# product} other {# products}} · {sinDatos} without data",
+      "detener": "Stop and keep what was read",
+      "leer": "Read the full catalog",
+      "otraUrl": "Another URL",
+      "sinProductos": "No products were found in that store catalog.",
+      "leidoCompleto": "{n, plural, one {Catalog read: # product} other {Catalog read: # products}}",
+      "leidoParcial": "{n, plural, one {Partial read: # product} other {Partial read: # products}}. You can import them or read again.",
+      "plataformas": {
+        "shopify": "Shopify",
+        "woocommerce": "WooCommerce (WordPress)",
+        "vtex": "VTEX",
+        "magento": "Magento / Adobe Commerce",
+        "prestashop": "PrestaShop",
+        "generica": "Online store",
+        "tiendanube": "Tiendanube / Nuvemshop",
+        "jumpseller": "Jumpseller",
+        "wix": "Wix",
+        "squarespace": "Squarespace",
+        "bigcommerce": "BigCommerce"
+      },
+      "sinCategoria": "No category ({n})",
+      "origenCatalogo": "Catalog read from {plataforma} without AI. When re-importing, products are matched by SKU and updated instead of duplicated.",
+      "categoriasTitulo": "Categories to import",
+      "categoriasAyuda": "Tap a category to include or remove all its products. New ones are created on import.",
+      "categoriasMas": "{n, plural, one {And # more category (pick it in the list)} other {And # more categories (pick them in the list)}}",
+      "existencias": "{n, plural, one {Use the stock published by the store (# product)} other {Use the stock published by the store (# products)}}",
+      "existenciasAyuda": "It is loaded as initial stock in the selected branch. It requires cost: without cost the row has an error."
     }
   },
   "productosFacebook": {
@@ -24520,7 +24641,8 @@
       "campoDe": "Field for column {columna}",
       "multiple": "accepts several columns",
       "faltaNombre": "Assign a name column: trade name, legal name or contact.",
-      "faltaContacto": "Assign a phone or email column: without them the lead cannot be contacted."
+      "faltaContacto": "Assign a phone or email column: without them the lead cannot be contacted.",
+      "adicionales": "Columns without a matching field: {n}. They are saved as “Additional data” and shown on the customer record. Choose “Do not import” to discard one."
     },
     "campos": {
       "idExterno": "External ID",
@@ -24549,7 +24671,14 @@
       "horario": "Contact hours",
       "notas": "Notes",
       "etiquetas": "Tags",
-      "rne": "Do-not-call registry (info)"
+      "rne": "Do-not-call registry (info)",
+      "pais": "Country",
+      "cargo": "Contact job title",
+      "etapa": "Stage",
+      "fecha": "Date",
+      "telefonoAdicional": "Additional phone",
+      "correoAdicional": "Additional email",
+      "adicional": "Additional data (kept as is)"
     },
     "cabeceras": {
       "idExterno": "External ID",

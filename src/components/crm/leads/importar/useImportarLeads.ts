@@ -13,7 +13,7 @@
 
 import { useCallback, useMemo, useRef, useState } from 'react';
 import type { LibroLeido, Matriz } from '@/lib/importacion/libro';
-import { autoMapearLeads, cabeceraEnDolares, encontrarFilaCabeceraLeads, faltantesMapeoLead, type MapeoLead } from '@/lib/crm/importacionLeads/campos';
+import { cabeceraEnDolares, encontrarFilaCabeceraLeads, faltantesMapeoLead, mapeoInicialLeads, type MapeoLead } from '@/lib/crm/importacionLeads/campos';
 import { leerFilasLeads, TAMANO_BLOQUE_IMPORTAR } from '@/lib/crm/importacionLeads/validacion';
 import type { OpcionesImportacionLeads, ResultadoFilaLead } from '@/lib/crm/importacionLeads/tipos';
 import { importarBloqueLeads, validarLeads, type RespuestaValidacion } from './apiImportarLeads';
@@ -75,7 +75,8 @@ export function useImportarLeads(orgId: number | undefined) {
   const prepararHoja = useCallback((nombre: string, libro: LibroLeido, hoja: string) => {
     const matriz = libro.matriz(hoja);
     const filaCabecera = encontrarFilaCabeceraLeads(matriz);
-    const mapeo = filaCabecera >= 0 ? autoMapearLeads(matriz[filaCabecera] ?? []) : [];
+    // Toda columna no reconocida abre como «Dato adicional»: nada se pierde por omisión.
+    const mapeo = mapeoInicialLeads(matriz, filaCabecera);
     setArchivo({ nombre, libro, hoja, matriz, filaCabecera, mapeo });
     setOpcionesState((o) => ({ ...o, archivo: nombre, lote: o.lote || loteDesdeArchivo(nombre), monedaValor: monedaDeCabecera(matriz, filaCabecera, mapeo) }));
   }, []);
@@ -108,7 +109,7 @@ export function useImportarLeads(orgId: number | undefined) {
 
   const cambiarFilaCabecera = useCallback(
     (fila: number) => {
-      setArchivo((a) => (a ? { ...a, filaCabecera: fila, mapeo: autoMapearLeads(a.matriz[fila] ?? []) } : a));
+      setArchivo((a) => (a ? { ...a, filaCabecera: fila, mapeo: mapeoInicialLeads(a.matriz, fila) } : a));
       invalidar();
     },
     [invalidar],

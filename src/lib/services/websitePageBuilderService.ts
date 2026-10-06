@@ -155,7 +155,12 @@ export interface ContentFieldDef {
     | 'repeater'
     | 'entity'
     | 'spacing'
-    | 'alignment';
+    | 'alignment'
+    /**
+     * Contenido que se edita en el constructor de la carta (orden, ocultos, destacados,
+     * textos propios). No tiene control en la lista de campos: abre el constructor.
+     */
+    | 'carta';
   placeholder?: string;
   /** Texto de ayuda que explica para qué sirve el campo. */
   helpText?: string;
@@ -201,7 +206,7 @@ export interface ContentFieldDef {
 const RAW_CATALOG: SectionTypeDefinition[] = [
   {
     type: 'hero',
-    label: 'Hero / Banner',
+    label: 'Portada',
     icon: 'Image',
     description: 'Sección principal con imagen o video de fondo',
     variants: [
@@ -341,7 +346,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
   },
   {
     type: 'room_types',
-    label: 'Habitaciones / Espacios',
+    label: 'Habitaciones',
     icon: 'BedDouble',
     description: 'Muestra los tipos de espacios disponibles',
     variants: [
@@ -367,7 +372,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
   },
   {
     type: 'amenities',
-    label: 'Amenidades / Servicios',
+    label: 'Servicios del hotel',
     icon: 'Sparkles',
     description: 'Lista de amenidades o servicios',
     variants: [
@@ -1191,7 +1196,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
   },
   {
     type: 'menu_preview',
-    label: 'Vista Previa del Menú',
+    label: 'Carta destacada',
     icon: 'UtensilsCrossed',
     description: 'Preview del menú del restaurante',
     variants: [
@@ -1231,6 +1236,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       { id: 'anchors', label: 'Anclas por sección' },
       { id: 'tabs', label: 'Pestañas por horario' },
       { id: 'per_category', label: 'Una página por categoría' },
+      { id: 'editorial', label: 'Editorial (nombres grandes)' },
     ],
     contentFields: [
       { key: 'eyebrow', label: 'Antetítulo', type: 'text', placeholder: 'Carta' },
@@ -1303,11 +1309,19 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
           },
         ],
       },
+      {
+        key: 'carta_platos',
+        label: 'Platos de la carta',
+        type: 'carta',
+        group: 'data',
+        helpText:
+          'Orden, platos ocultos, destacados y descripción o foto solo para la carta. Se editan en «Editar la carta». El precio, el agotado y lo oculto por sede se editan ahí mismo, en la sede.',
+      },
     ],
   },
   {
     type: 'offers',
-    label: 'Ofertas / Descuentos',
+    label: 'Ofertas',
     icon: 'Flame',
     description: 'Grid de productos en oferta con descuentos automáticos',
     variants: [
@@ -1515,7 +1529,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
   },
   {
     type: 'membership_plans',
-    label: 'Planes / Membresías',
+    label: 'Planes de membresía',
     icon: 'CreditCard',
     description: 'Tabla de precios o membresías',
     variants: [
@@ -1589,7 +1603,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
   // ============================================================
   {
     type: 'reservation_cta',
-    label: 'Reserva de Mesa',
+    label: 'Reservas',
     icon: 'CalendarCheck',
     description: 'Llamada a la acción para reservar mesa (con o sin formulario)',
     variants: [
@@ -1652,6 +1666,237 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
     ],
   },
   {
+    // Reserva de mesa (Figma TableReservation 141:5796). Usa el mismo flujo que
+    // `reservation_cta` (/api/restaurant-reservations → RPC del ERP): la reserva
+    // aparece en Restaurante › Reservas y en el plano de Mesas. Sedes que aceptan
+    // reservas = con mesas y sin `restaurant_booking_settings.is_enabled = false`.
+    // Las claves de contenido coinciden 1:1 con `CONTENT_KEYS` de
+    // goadmin-websites/components/sections/restaurant/Reservation.tsx.
+    type: 'reservation',
+    label: 'Reserva de mesa',
+    icon: 'CalendarCheck',
+    description: 'Reserva en línea por sede: personas, día, hora con mesa disponible y datos',
+    variants: [
+      { id: 'stepper', label: 'Pasos (personas → día → hora → datos)' },
+      { id: 'form_image', label: 'Formulario con imagen' },
+      { id: 'band', label: 'Banda con botón' },
+      { id: 'hero_widget', label: 'Hero con buscador de mesa' },
+      { id: 'external', label: 'Proveedor externo (enlace)' },
+    ],
+    contentFields: [
+      { key: 'eyebrow', label: 'Antetítulo', type: 'text', placeholder: 'Reservas' },
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Reserva tu mesa' },
+      { key: 'subtitle', label: 'Texto de introducción', type: 'textarea', placeholder: 'Confirmación inmediata en la mayoría de sedes.' },
+      { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Solicitar reserva' },
+      {
+        key: 'image_url',
+        label: 'Imagen',
+        type: 'image',
+        helpText: 'Foto del salón (formulario) o fondo del hero.',
+        showIf: { variantIn: ['form_image', 'hero_widget', 'external'] },
+      },
+      {
+        key: 'cta_url',
+        label: 'Enlace del botón',
+        type: 'url',
+        placeholder: '/reservas-mesa',
+        helpText: 'Vacío: el botón abre el formulario de reserva aquí mismo.',
+        showIf: { variantIn: ['band'] },
+      },
+      {
+        key: 'external_url',
+        label: 'Enlace del proveedor de reservas',
+        type: 'url',
+        group: 'data',
+        placeholder: 'https://…',
+        helpText: 'Solo https://. Se abre en una pestaña nueva.',
+        showIf: { variantIn: ['external'] },
+      },
+      {
+        key: 'external_button_text',
+        label: 'Texto del botón del proveedor',
+        type: 'text',
+        placeholder: 'Reservar en el sitio del proveedor',
+        showIf: { variantIn: ['external'] },
+      },
+      {
+        key: 'branch_ids',
+        label: 'Sedes que reciben reservas',
+        type: 'entity',
+        entity: 'branch',
+        multiple: true,
+        group: 'data',
+        helpText:
+          'Sin selección: todas las sedes con mesas y reservas habilitadas. Con más de una, el cliente elige la sede. En la página de una sede, solo esa.',
+        showIf: { variantIn: ['stepper', 'form_image', 'band', 'hero_widget'] },
+      },
+      {
+        key: 'min_guests',
+        label: 'Mínimo de personas',
+        type: 'number',
+        group: 'data',
+        min: 1,
+        max: 50,
+        helpText: 'Nunca por debajo del mínimo de la configuración de reservas de la sede.',
+        showIf: { variantIn: ['stepper', 'form_image', 'band', 'hero_widget'] },
+      },
+      {
+        key: 'max_guests',
+        label: 'Máximo de personas',
+        type: 'number',
+        group: 'data',
+        min: 1,
+        max: 100,
+        helpText: 'Nunca por encima del máximo de la sede. Grupos grandes: por teléfono.',
+        showIf: { variantIn: ['stepper', 'form_image', 'band', 'hero_widget'] },
+      },
+      {
+        key: 'max_days',
+        label: 'Días de anticipación',
+        type: 'number',
+        group: 'data',
+        min: 0,
+        max: 365,
+        placeholder: '30',
+        helpText: 'Hasta cuántos días adelante se puede reservar (tope: el de la sede).',
+        showIf: { variantIn: ['stepper', 'form_image', 'band', 'hero_widget'] },
+      },
+      {
+        key: 'require_email',
+        label: 'Correo obligatorio',
+        type: 'boolean',
+        group: 'data',
+        defaultValue: false,
+        helpText: 'El celular sigue la configuración de reservas de la sede.',
+        showIf: { variantIn: ['stepper', 'form_image', 'band', 'hero_widget'] },
+      },
+      {
+        key: 'show_notes',
+        label: 'Pedir notas (ocasión, alergias)',
+        type: 'boolean',
+        group: 'data',
+        defaultValue: true,
+        showIf: { variantIn: ['stepper', 'form_image', 'band', 'hero_widget'] },
+      },
+      {
+        key: 'policy_text',
+        label: 'Política de reservas',
+        type: 'textarea',
+        helpText: 'Se pide aceptarla antes de reservar. Si la sede tiene política en su configuración, manda la de la sede.',
+        showIf: { variantIn: ['stepper', 'form_image', 'band', 'hero_widget'] },
+      },
+      {
+        key: 'success_message',
+        label: 'Mensaje de reserva confirmada',
+        type: 'textarea',
+        placeholder: 'Te esperamos. Si dejaste tu correo, te enviamos la confirmación.',
+        showIf: { variantIn: ['stepper', 'form_image', 'band', 'hero_widget'] },
+      },
+      {
+        key: 'pending_message',
+        label: 'Mensaje de solicitud por confirmar',
+        type: 'textarea',
+        placeholder: 'El equipo revisará tu solicitud y te avisará cuando la confirme.',
+        helpText: 'Para sedes que exigen confirmación del equipo.',
+        showIf: { variantIn: ['stepper', 'form_image', 'band', 'hero_widget'] },
+      },
+      {
+        key: 'anchor_id',
+        label: 'Ancla de la sección',
+        type: 'text',
+        placeholder: 'reservar',
+        helpText: 'Los botones «Reservar» de «Horario y sedes» enlazan a #reservar con la sede elegida.',
+      },
+    ],
+  },
+  {
+    // Horario y sedes (Figma Locations 144:6644). Datos reales de `branches`
+    // (dirección, teléfono, opening_hours, coordenadas, portada). «Abierto
+    // ahora» se calcula con el horario de la sede en su zona horaria. Las claves
+    // de contenido coinciden 1:1 con `CONTENT_KEYS` de
+    // goadmin-websites/components/sections/restaurant/HoursLocation.tsx.
+    type: 'hours_location',
+    label: 'Horario y sedes',
+    icon: 'MapPin',
+    description: 'Horario, estado «Abierto ahora», mapa y acciones por sede',
+    variants: [
+      { id: 'hours_map', label: 'Horario y mapa' },
+      { id: 'cards', label: 'Tarjetas por sede' },
+      { id: 'list', label: 'Lista con buscador (4+ sedes)' },
+    ],
+    contentFields: [
+      { key: 'eyebrow', label: 'Antetítulo', type: 'text', placeholder: 'Visítanos' },
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Horario y ubicación' },
+      { key: 'subtitle', label: 'Texto de introducción', type: 'textarea' },
+      {
+        key: 'branch_ids',
+        label: 'Sedes a mostrar',
+        type: 'entity',
+        entity: 'branch',
+        multiple: true,
+        group: 'data',
+        helpText: 'Sin selección: todas las sedes activas. La dirección, el teléfono y el horario se editan en Organización › Sedes.',
+      },
+      { key: 'show_map', label: 'Mostrar mapa', type: 'boolean', group: 'data', defaultValue: true, showIf: { variantIn: ['hours_map'] } },
+      {
+        key: 'show_photos',
+        label: 'Mostrar portada de la sede',
+        type: 'boolean',
+        group: 'data',
+        defaultValue: true,
+        showIf: { variantIn: ['cards'] },
+      },
+      { key: 'show_directions', label: 'Botón «Cómo llegar»', type: 'boolean', group: 'data', defaultValue: true },
+      { key: 'show_call', label: 'Botón «Llamar»', type: 'boolean', group: 'data', defaultValue: true },
+      {
+        key: 'show_reserve',
+        label: 'Botón «Reservar»',
+        type: 'boolean',
+        group: 'data',
+        defaultValue: true,
+        helpText: 'Solo en sedes que aceptan reservas (con mesas y reservas habilitadas).',
+      },
+      {
+        key: 'reserve_url',
+        label: 'Enlace de «Reservar»',
+        type: 'url',
+        placeholder: '#reservar',
+        helpText: 'Vacío: la sección «Reserva de mesa» de esta página, con la sede ya elegida.',
+        showIf: { field: 'show_reserve', in: [true, undefined] },
+      },
+      {
+        key: 'show_order',
+        label: 'Botón «Pedir»',
+        type: 'boolean',
+        group: 'data',
+        defaultValue: true,
+        helpText: 'Aparece si el pedido en línea está activo o si configuras un enlace.',
+      },
+      {
+        key: 'order_url',
+        label: 'Enlace de «Pedir»',
+        type: 'url',
+        placeholder: '/menu',
+        helpText: 'Vacío: la carta del sitio. También WhatsApp o una plataforma de domicilios.',
+        showIf: { field: 'show_order', in: [true, undefined] },
+      },
+      ...CARD_FIELDS.filter((f) =>
+        [
+          'card_radius',
+          'card_shadow',
+          'card_border_width',
+          'card_border_color',
+          'card_bg',
+          'card_padding',
+          'card_hover',
+          'image_fit',
+          'image_ratio',
+          'text_align',
+        ].includes(f.key),
+      ).map((f) => ({ ...f, showIf: f.showIf ?? { variantIn: ['cards'] } })),
+    ],
+  },
+  {
     type: 'specialties',
     label: 'Especialidades',
     icon: 'UtensilsCrossed',
@@ -1679,7 +1924,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
   },
   {
     type: 'chef_section',
-    label: 'Sección del Chef',
+    label: 'Chef y equipo',
     icon: 'ChefHat',
     description: 'Perfil del chef del restaurante',
     variants: [
@@ -1694,9 +1939,354 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       { key: 'quote', label: 'Cita destacada', type: 'textarea', placeholder: 'La cocina es pasión...' },
     ],
   },
+  // ============================================================
+  // Secciones nuevas de restaurante (Figma «Secciones nuevas» 167:5358).
+  // Las claves de contenido coinciden 1:1 con `CONTENT_KEYS` de cada
+  // componente en goadmin-websites/components/sections/restaurant/.
+  // De CARD_FIELDS solo se ofrecen los que el sitio aplica en estas
+  // secciones (radio, sombra, borde y fondo; ver `cardVisual` del sitio).
+  // ============================================================
+  {
+    type: 'restaurant_hero',
+    label: 'Portada de restaurante',
+    icon: 'Image',
+    description: 'Titular gigante con acciones, o imagen a sangre con accesos a Carta, Reservas y Nosotros',
+    variants: [
+      { id: 'typographic', label: 'Tipográfica (titular gigante)' },
+      { id: 'split_bento', label: 'Imagen y accesos (bento)' },
+    ],
+    contentFields: [
+      { key: 'eyebrow', label: 'Antetítulo', type: 'text', placeholder: 'Cocina de leña · Sede Centro' },
+      {
+        key: 'title',
+        label: 'Titular',
+        type: 'textarea',
+        placeholder: 'Fuego, maíz y mar.',
+        helpText: 'Cada salto de línea es una línea del titular. Vacío: el nombre de la organización.',
+      },
+      { key: 'subtitle', label: 'Texto de apoyo', type: 'textarea' },
+      { key: 'primary_cta_text', label: 'Botón principal', type: 'text', placeholder: 'Reservar mesa' },
+      { key: 'primary_cta_url', label: 'Enlace del botón principal', type: 'url', placeholder: '/reservas-mesa' },
+      { key: 'secondary_cta_text', label: 'Botón secundario', type: 'text', placeholder: 'Ver la carta' },
+      { key: 'secondary_cta_url', label: 'Enlace del botón secundario', type: 'url', placeholder: '/menu' },
+      { key: 'image_url', label: 'Imagen del panel', type: 'image', showIf: { variantIn: ['split_bento'] } },
+      {
+        key: 'image_alt',
+        label: 'Texto alternativo de la imagen',
+        type: 'text',
+        showIf: { variantIn: ['split_bento'] },
+        helpText: 'Describe la foto para lectores de pantalla.',
+      },
+      {
+        key: 'cards',
+        label: 'Accesos',
+        type: 'repeater',
+        itemLabelKey: 'label',
+        maxItems: 4,
+        showIf: { variantIn: ['split_bento'] },
+        helpText: 'Tarjetas de navegación junto a la imagen (Carta, Reservas, Nosotros…).',
+        itemFields: [
+          { key: 'label', label: 'Texto', type: 'text', placeholder: 'Carta' },
+          { key: 'url', label: 'Enlace', type: 'url', placeholder: '/menu' },
+          { key: 'image_url', label: 'Imagen de fondo (opcional)', type: 'image' },
+        ],
+      },
+      ...CARD_FIELDS.filter((f) => ['card_radius', 'card_shadow', 'card_border_width', 'card_border_color', 'card_bg'].includes(f.key)),
+    ],
+  },
+  {
+    type: 'marquee',
+    label: 'Franja en movimiento',
+    icon: 'MoveHorizontal',
+    description: 'Frases o fotos que se desplazan en bucle; se detiene al pasar el cursor',
+    variants: [
+      { id: 'text', label: 'Frases' },
+      { id: 'photos', label: 'Fotos' },
+    ],
+    contentFields: [
+      {
+        key: 'phrases',
+        label: 'Frases',
+        type: 'textarea',
+        placeholder: 'Pesca del día\nLeña\nMaíz criollo',
+        helpText: 'Una frase por línea.',
+        showIf: { variantIn: ['text'] },
+      },
+      { key: 'separator', label: 'Separador', type: 'text', placeholder: '✦', showIf: { variantIn: ['text'] } },
+      {
+        key: 'images',
+        label: 'Imágenes',
+        type: 'repeater',
+        itemLabelKey: 'alt',
+        showIf: { variantIn: ['photos'] },
+        itemFields: [
+          { key: 'url', label: 'Imagen', type: 'image' },
+          { key: 'alt', label: 'Texto alternativo', type: 'text' },
+        ],
+      },
+      {
+        key: 'speed',
+        label: 'Velocidad',
+        type: 'select',
+        defaultValue: 'normal',
+        options: [
+          { value: 'slow', label: 'Lenta' },
+          { value: 'normal', label: 'Normal' },
+          { value: 'fast', label: 'Rápida' },
+        ],
+        helpText: 'Con «reducir movimiento» del visitante, la franja queda quieta.',
+      },
+      {
+        key: 'label',
+        label: 'Nombre para lectores de pantalla',
+        type: 'text',
+        placeholder: 'Lo que nos define',
+      },
+      ...CARD_FIELDS.filter((f) => f.key === 'card_radius'),
+    ],
+  },
+  {
+    type: 'signature_dishes',
+    label: 'Platos estrella',
+    icon: 'Star',
+    description: 'Platos elegidos de la carta, con foto, precio vigente y su historia',
+    variants: [
+      { id: 'carousel', label: 'Carrusel' },
+      { id: 'scrollytelling', label: 'Historia con imagen fija' },
+    ],
+    contentFields: [
+      { key: 'eyebrow', label: 'Antetítulo', type: 'text', placeholder: 'De la casa' },
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Platos estrella' },
+      { key: 'subtitle', label: 'Texto de introducción', type: 'textarea' },
+      {
+        key: 'dishes',
+        label: 'Platos',
+        type: 'repeater',
+        group: 'data',
+        itemLabelKey: 'product_id',
+        maxItems: 12,
+        helpText:
+          'Elige los platos de la carta. Se muestran con foto, precio vigente y estado de la sede de la página; los inactivos o sin precio no aparecen.',
+        itemFields: [
+          { key: 'product_id', label: 'Plato', type: 'entity', entity: 'product' },
+          {
+            key: 'story',
+            label: 'Historia del plato (opcional)',
+            type: 'textarea',
+            helpText: 'Vacío: la descripción del producto.',
+          },
+        ],
+      },
+      { key: 'show_price', label: 'Mostrar precio', type: 'boolean', defaultValue: true },
+      { key: 'link_to_product', label: 'Enlazar al detalle del plato', type: 'boolean', defaultValue: true },
+      ...CARD_FIELDS.filter((f) => f.key === 'card_radius'),
+    ],
+  },
+  {
+    // No hay tabla de eventos públicos (verificado por MCP el 2026-10-05:
+    // `calendar_events` es la agenda interna del CRM). Los eventos son
+    // contenido de la sección; el sitio oculta solos los que ya terminaron.
+    type: 'events',
+    label: 'Eventos',
+    icon: 'CalendarDays',
+    description: 'Agenda de eventos con fecha, hora, lugar, precio y cupo; los pasados se ocultan solos',
+    variants: [
+      { id: 'list', label: 'Lista' },
+      { id: 'detail', label: 'Detalle de un evento' },
+    ],
+    contentFields: [
+      { key: 'eyebrow', label: 'Antetítulo', type: 'text', placeholder: 'Agenda' },
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Próximos eventos' },
+      { key: 'subtitle', label: 'Texto de introducción', type: 'textarea' },
+      {
+        key: 'events',
+        label: 'Eventos',
+        type: 'repeater',
+        group: 'data',
+        itemLabelKey: 'title',
+        helpText: 'Fecha y hora en la zona horaria de la organización. Al terminar, el evento deja de mostrarse.',
+        itemFields: [
+          { key: 'title', label: 'Nombre', type: 'text', placeholder: 'Noche de maridaje' },
+          { key: 'date', label: 'Fecha (AAAA-MM-DD)', type: 'text', placeholder: '2026-10-24' },
+          { key: 'start_time', label: 'Hora de inicio (HH:MM)', type: 'text', placeholder: '19:30' },
+          { key: 'end_time', label: 'Hora de fin (HH:MM)', type: 'text', placeholder: '22:30', helpText: 'Vacío: visible hasta el final del día.' },
+          { key: 'location', label: 'Lugar o sede', type: 'text', placeholder: 'Sede Centro · Calle 00 # 00-00' },
+          { key: 'price', label: 'Precio', type: 'number', min: 0, helpText: 'Vacío: sin precio.' },
+          { key: 'price_note', label: 'Nota del precio', type: 'text', placeholder: 'por persona' },
+          { key: 'capacity', label: 'Cupo', type: 'number', min: 1 },
+          {
+            key: 'status',
+            label: 'Estado',
+            type: 'select',
+            defaultValue: 'available',
+            options: [
+              { value: 'available', label: 'Disponible' },
+              { value: 'new', label: 'Nuevo' },
+              { value: 'few_left', label: 'Últimos cupos' },
+              { value: 'sold_out', label: 'Agotado (lista de espera)' },
+            ],
+          },
+          { key: 'image_url', label: 'Imagen', type: 'image' },
+          { key: 'image_alt', label: 'Texto alternativo', type: 'text' },
+          { key: 'description', label: 'Descripción', type: 'textarea' },
+          { key: 'includes', label: 'Incluye', type: 'textarea', helpText: 'Un elemento por línea.' },
+          { key: 'cta_url', label: 'Enlace para reservar', type: 'url', helpText: 'Vacío: el enlace general de la sección.' },
+          { key: 'slug', label: 'Identificador en la URL (opcional)', type: 'text', helpText: 'Vacío: se genera del nombre.' },
+        ],
+      },
+      {
+        key: 'reserve_url',
+        label: 'Enlace para reservar cupo',
+        type: 'url',
+        placeholder: '/reservas-mesa',
+        helpText: 'Página de reservas, WhatsApp u otro enlace. Se usa si el evento no tiene uno propio.',
+      },
+      { key: 'reserve_text', label: 'Texto del botón de reserva', type: 'text', placeholder: 'Reservar cupo' },
+      {
+        key: 'detail_url',
+        label: 'Página de detalle',
+        type: 'url',
+        placeholder: '/eventos',
+        showIf: { variantIn: ['list'] },
+        helpText: 'Página con una sección «Eventos · Detalle». Vacío: el detalle se despliega en la misma lista.',
+      },
+      {
+        key: 'list_url',
+        label: 'Página de la agenda',
+        type: 'url',
+        showIf: { variantIn: ['detail'] },
+        helpText: 'Enlace de la ruta «Eventos /» del detalle.',
+      },
+      {
+        key: 'empty_text',
+        label: 'Texto sin eventos próximos',
+        type: 'text',
+        helpText: 'Vacío: la sección se oculta cuando no hay eventos próximos.',
+      },
+      ...CARD_FIELDS.filter((f) => f.key === 'card_radius'),
+    ],
+  },
+  {
+    type: 'private_events',
+    label: 'Eventos privados',
+    icon: 'PartyPopper',
+    description: 'Paquetes para celebraciones y catering con formulario de cotización que llega al CRM como lead',
+    variants: [{ id: 'default', label: 'Paquetes y formulario' }],
+    contentFields: [
+      { key: 'eyebrow', label: 'Antetítulo', type: 'text', placeholder: 'Eventos privados y catering' },
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Celebra con nosotros' },
+      { key: 'subtitle', label: 'Texto de introducción', type: 'textarea' },
+      {
+        key: 'packages',
+        label: 'Paquetes',
+        type: 'repeater',
+        itemLabelKey: 'name',
+        helpText: 'Cada paquete también aparece como opción de «Lugar» en el formulario.',
+        itemFields: [
+          { key: 'name', label: 'Nombre', type: 'text', placeholder: 'Salón privado' },
+          { key: 'detail', label: 'Detalle', type: 'text', placeholder: 'Hasta 24 personas · Sede Centro' },
+          { key: 'price_text', label: 'Precio', type: 'text', placeholder: 'desde $ 95.000 por persona' },
+        ],
+      },
+      {
+        key: 'steps',
+        label: 'Pasos del proceso',
+        type: 'repeater',
+        itemLabelKey: 'text',
+        maxItems: 4,
+        itemFields: [{ key: 'text', label: 'Paso', type: 'text', placeholder: 'Nos cuentas' }],
+      },
+      { key: 'form_title', label: 'Título del formulario', type: 'text', placeholder: 'Pide tu cotización' },
+      {
+        key: 'event_types',
+        label: 'Tipos de evento',
+        type: 'textarea',
+        placeholder: 'Cumpleaños\nCena de empresa\nMatrimonio',
+        helpText: 'Uno por línea. Vacío: Cumpleaños, Cena de empresa, Matrimonio, Aniversario y Otro.',
+      },
+      {
+        key: 'budget_options',
+        label: 'Rangos de presupuesto por persona',
+        type: 'textarea',
+        placeholder: '$ 60.000 – $ 100.000\n$ 100.000 – $ 150.000',
+        helpText: 'Uno por línea. Vacío: el formulario no pregunta presupuesto.',
+      },
+      { key: 'submit_text', label: 'Texto del botón', type: 'text', placeholder: 'Solicitar cotización' },
+      {
+        key: 'form_note',
+        label: 'Nota bajo el botón',
+        type: 'text',
+        placeholder: 'Te respondemos en máximo 48 horas hábiles.',
+        helpText: 'Las solicitudes llegan al CRM como lead con origen «Formulario web».',
+      },
+      ...CARD_FIELDS.filter((f) => ['card_radius', 'card_shadow', 'card_border_width', 'card_border_color', 'card_bg'].includes(f.key)),
+    ],
+  },
+  {
+    // Sección nueva: no comparte contenido con `team` ni con `chef_section`.
+    type: 'chef_team',
+    label: 'Retrato del chef y equipo',
+    icon: 'ChefHat',
+    description: 'Retrato del chef con su cita, o rejilla con quienes cocinan y atienden',
+    variants: [
+      { id: 'chef', label: 'Chef (retrato y cita)' },
+      { id: 'team', label: 'Equipo (rejilla)' },
+    ],
+    contentFields: [
+      { key: 'eyebrow', label: 'Antetítulo', type: 'text', placeholder: 'Cocina' },
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Quienes cocinan y atienden', showIf: { variantIn: ['team'] } },
+      { key: 'subtitle', label: 'Texto de introducción', type: 'textarea', showIf: { variantIn: ['team'] } },
+      { key: 'quote', label: 'Cita', type: 'textarea', showIf: { variantIn: ['chef'] } },
+      { key: 'name', label: 'Nombre', type: 'text', showIf: { variantIn: ['chef'] } },
+      { key: 'role', label: 'Cargo', type: 'text', placeholder: 'Chef ejecutiva', showIf: { variantIn: ['chef'] } },
+      { key: 'bio', label: 'Biografía', type: 'textarea', showIf: { variantIn: ['chef'] } },
+      { key: 'image_url', label: 'Retrato', type: 'image', showIf: { variantIn: ['chef'] } },
+      { key: 'image_alt', label: 'Texto alternativo del retrato', type: 'text', showIf: { variantIn: ['chef'] } },
+      {
+        key: 'members',
+        label: 'Integrantes',
+        type: 'repeater',
+        itemLabelKey: 'name',
+        showIf: { variantIn: ['team'] },
+        itemFields: [
+          { key: 'name', label: 'Nombre', type: 'text' },
+          { key: 'role', label: 'Cargo', type: 'text' },
+          { key: 'image_url', label: 'Foto', type: 'image' },
+        ],
+      },
+      ...CARD_FIELDS.filter((f) => f.key === 'card_radius'),
+    ],
+  },
+  {
+    type: 'gallery_bento',
+    label: 'Galería bento',
+    icon: 'LayoutGrid',
+    description: 'Fotos en rejilla de tamaños mixtos con pie de foto y vista ampliada',
+    variants: [{ id: 'default', label: 'Bento' }],
+    contentFields: [
+      { key: 'eyebrow', label: 'Antetítulo', type: 'text', placeholder: 'El lugar' },
+      { key: 'title', label: 'Título', type: 'text', placeholder: 'Galería' },
+      { key: 'subtitle', label: 'Texto de introducción', type: 'textarea' },
+      {
+        key: 'images',
+        label: 'Imágenes',
+        type: 'repeater',
+        itemLabelKey: 'alt',
+        helpText: 'Se acomodan en bloques de cuatro: una grande, una alta y dos pequeñas.',
+        itemFields: [
+          { key: 'url', label: 'Imagen', type: 'image' },
+          { key: 'alt', label: 'Texto alternativo', type: 'text' },
+          { key: 'caption', label: 'Pie de foto', type: 'text' },
+        ],
+      },
+      { key: 'instagram_handle', label: 'Usuario de Instagram', type: 'text', placeholder: '@turestaurante' },
+      { key: 'instagram_url', label: 'Enlace de Instagram', type: 'url', helpText: 'Vacío: se arma con el usuario.' },
+      ...CARD_FIELDS.filter((f) => f.key === 'card_radius'),
+    ],
+  },
   {
     type: 'delivery_cta',
-    label: 'Delivery (CTA)',
+    label: 'Domicilios',
     icon: 'Bike',
     description: 'Banner de llamada a la acción para pedidos a domicilio',
     variants: [

@@ -1,0 +1,43 @@
+[
+  {
+    "productId": "301",
+    "productName": "Zapatilla Running",
+    "brand": "Deportes Demo",
+    "productReference": "ZR-01",
+    "link": "https://www.tienda-vtex.test/zapatilla-running/p",
+    "description": "<p>Zapatilla liviana</p>",
+    "categories": ["/Calzado/Deportivo/Running/", "/Calzado/Deportivo/", "/Calzado/"],
+    "items": [
+      {
+        "itemId": "3011", "ean": "7700000000011", "variations": ["Talla"], "Talla": ["40"],
+        "referenceId": [{ "Key": "RefId", "Value": "ZR-01-40" }],
+        "images": [{ "imageUrl": "https://tiendavtex.vteximg.com.br/arquivos/ids/1/zr-40.jpg" }],
+        "sellers": [{ "sellerId": "1", "sellerDefault": true, "commertialOffer": { "Price": 199900, "ListPrice": 249900, "AvailableQuantity": 7, "IsAvailable": true } }]
+      },
+      {
+        "itemId": "3012", "ean": "7700000000012", "variations": ["Talla"], "Talla": ["41"],
+        "referenceId": [{ "Key": "RefId", "Value": "ZR-01-41" }],
+        "images": [{ "imageUrl": "https://tiendavtex.vteximg.com.br/arquivos/ids/2/zr-41.jpg" }],
+        "sellers": [{ "sellerId": "1", "sellerDefault": true, "commertialOffer": { "Price": 209900, "ListPrice": 209900, "AvailableQuantity": 0, "IsAvailable": false } }]
+      }
+    ]
+  },
+  {
+    "productId": "302",
+    "productName": "Medias Pack x3",
+    "brand": "Deportes Demo",
+    "productReference": "MP-3",
+    "link": "https://www.tienda-vtex.test/medias-pack/p",
+    "description": "",
+    "metaTagDescription": "Pack de medias",
+    "categories": ["/Calzado/Accesorios/"],
+    "items": [
+      {
+        "itemId": "3021", "ean": "7700000000021", "variations": [],
+        "referenceId": [{ "Key": "RefId", "Value": "MP-3-U" }],
+        "images": [],
+        "sellers": [{ "sellerId": "1", "sellerDefault": true, "commertialOffer": { "Price": 29900, "ListPrice": 29900, "AvailableQuantity": 15, "IsAvailable": true } }]
+      }
+    ]
+  }
+]

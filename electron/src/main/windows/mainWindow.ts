@@ -9,6 +9,7 @@ import { webServer } from '../webServer';
 import { TOOLBAR_HEIGHT, applyTheme, getThemeColors, watchTheme } from '../theme';
 import { broadcast } from '../broadcast';
 import { ALLOWED_EXTERNAL_SCHEMES } from '../permissions';
+import { appendLog } from '../crashReporter';
 
 /**
  * Ventana principal = barra de aplicación propia + vista de la web.
@@ -247,7 +248,7 @@ function layoutWebView(): void {
   webView.setBounds({ x: 0, y: TOOLBAR_HEIGHT, width, height: Math.max(0, height - TOOLBAR_HEIGHT) });
 }
 
-export function createMainWindow(_webUrl?: string): BrowserWindow {
+export function createMainWindow(): BrowserWindow {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.show();
     mainWindow.focus();
@@ -374,6 +375,7 @@ export function createMainWindow(_webUrl?: string): BrowserWindow {
     // -3 = ERR_ABORTED: ocurre en navegaciones canceladas, no es un fallo real.
     if (errorCode === -3) return;
     console.error(`[mainWindow] Error cargando (${errorCode} ${errorDesc}), mostrando pantalla offline`);
+    appendLog(`[mainWindow] La web no cargó (${errorCode} ${errorDesc}): pantalla «Sin conexión»`);
     showOfflineScreen();
     showWhenReady();
   });

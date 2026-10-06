@@ -1,0 +1,36 @@
+{
+  "products": [
+    {
+      "id": 1001,
+      "title": "Camiseta Básica",
+      "handle": "camiseta-basica",
+      "body_html": "<p>Algodón <strong>100 %</strong></p><ul><li>Suave</li><li>Fresca</li></ul>",
+      "vendor": "Marca Demo",
+      "product_type": "Camisetas",
+      "tags": ["verano", "algodon"],
+      "options": [
+        { "name": "Talla", "position": 1, "values": ["S", "M"] },
+        { "name": "Color", "position": 2, "values": ["Rojo"] }
+      ],
+      "variants": [
+        { "id": 5001, "title": "S / Rojo", "option1": "S", "option2": "Rojo", "option3": null, "sku": "CAM-S-R", "price": "45000.00", "compare_at_price": "60000.00", "available": true, "featured_image": { "src": "https://cdn.ejemplo.test/cam-s.jpg" } },
+        { "id": 5002, "title": "M / Rojo", "option1": "M", "option2": "Rojo", "option3": null, "sku": "CAM-M-R", "price": "48000.00", "compare_at_price": null, "available": false, "featured_image": null }
+      ],
+      "images": [{ "id": 1, "src": "https://cdn.ejemplo.test/cam-1.jpg" }, { "id": 2, "src": "//cdn.ejemplo.test/cam-2.jpg" }]
+    },
+    {
+      "id": 1002,
+      "title": "Gorra Única",
+      "handle": "gorra-unica",
+      "body_html": "",
+      "vendor": "Marca Demo",
+      "product_type": "",
+      "tags": "accesorios, gorras",
+      "options": [{ "name": "Title", "position": 1, "values": ["Default Title"] }],
+      "variants": [
+        { "id": 5003, "title": "Default Title", "option1": "Default Title", "option2": null, "option3": null, "sku": "GOR-01", "price": "25000.00", "compare_at_price": "20000.00", "available": true }
+      ],
+      "images": []
+    }
+  ]
+}

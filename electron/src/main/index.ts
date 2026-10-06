@@ -12,7 +12,7 @@ import {
 import { installPermissionHandlers, resolveAllowedOrigins } from './permissions';
 import { WEB_APP_URL } from './constants';
 import { createTray, destroyTray } from './tray';
-import { initUpdater, stopUpdater } from './updater';
+import { getUpdateState, initUpdater, stopUpdater } from './updater';
 import { registerIpcHandlers } from './ipc';
 import { registerToolbarIpc } from './toolbarIpc';
 import { registerPosDisplayIpc } from './posDisplayIpc';
@@ -22,12 +22,20 @@ import { installAppMenu } from './menu';
 import { initDevCapture } from './devCapture';
 import { tryAutoStart, stopAgent, markOffline } from './agentRunner';
 import { wasOpenedHidden } from './autostart';
-import { initCrashReporter } from './crashReporter';
+import { appendLog, flushLog, initCrashReporter } from './crashReporter';
 import { initConnectivity, stopConnectivity } from './connectivity';
 import { webServer } from './webServer';
 import { initTheme } from './theme';
+import { decidirSegundaInstancia, ejecutarCierre, lineaArranque, registrarCicloDeVida } from './lifecycle';
 
 let quitting = false;
+/** Una segunda instancia llegó antes de que existiera la ventana: mostrarla al crearla. */
+let mostrarAlCrear = false;
+/** Una segunda instancia llegó mientras la app salía: relanzar al terminar. */
+let relanzarProgramado = false;
+
+/** Tope de toda la limpieza de `before-quit` (ver lifecycle.ts, punto 1). */
+const LIMITE_CIERRE_MS = 10_000;
 
 // Setear icono de la app antes de que se cree cualquier ventana
 app.on('ready', () => {
@@ -50,14 +58,48 @@ app.on('open-url', (_event, url) => {
 });
 
 const gotLock = app.requestSingleInstanceLock();
+// Primera línea de cada arranque en agent.log (también en la instancia que
+// sale por no obtener el bloqueo: es la pista de «se abre y se cierra»).
+appendLog(
+  lineaArranque({ version: app.getVersion(), pid: process.pid, argv: process.argv, empaquetada: app.isPackaged, bloqueo: gotLock }),
+);
 if (!gotLock) {
+  flushLog();
   app.quit();
 } else {
+  registrarCicloDeVida(app, appendLog);
+
   app.on('second-instance', () => {
     const win = getMainWindow();
-    if (win) {
-      win.show();
-      win.focus();
+    const accion = decidirSegundaInstancia({
+      hayVentana: !!win && !win.isDestroyed(),
+      saliendo: quitting,
+      actualizacionPendiente: getUpdateState().status === 'downloaded',
+    });
+    appendLog(`[app] second-instance: se abrió otra vez la app → ${accion}`);
+    switch (accion) {
+      case 'mostrar':
+        if (win!.isMinimized()) win!.restore();
+        win!.show();
+        win!.focus();
+        break;
+      case 'mostrarAlCrear':
+        mostrarAlCrear = true;
+        break;
+      case 'relanzarTrasSalir':
+        // No se resucita una ventana que está a punto de cerrarse: la app
+        // vuelve a abrirse sola en cuanto este proceso suelte el bloqueo.
+        if (!relanzarProgramado) {
+          relanzarProgramado = true;
+          // Sin `--hidden`: si esta instancia fue la de autoarranque, la
+          // relanzada debe verse (la pidió alguien con doble clic).
+          app.relaunch({ args: process.argv.slice(1).filter((a) => a !== '--hidden') });
+        }
+        break;
+      case 'esperarInstalacion':
+        // El instalador de la actualización cierra cualquier instancia; la
+        // nueva versión se abre desde el acceso directo cuando termine.
+        break;
     }
   });
 
@@ -125,12 +167,19 @@ if (!gotLock) {
     }
 
     const mainWindow = createMainWindow();
+    appendLog(`[app] Ventana principal creada (${webServer.getUrl() ? 'web embebida' : 'web remota'})`);
+    if (mostrarAlCrear) {
+      // Alguien abrió la app mientras esta instancia (p. ej. la de
+      // autoarranque, oculta) aún arrancaba: se muestra ya, sin esperar.
+      mostrarAlCrear = false;
+      mainWindow.show();
+    }
     createTray(mainWindow);
     // Con la ventana ya creada: apertura automática si está habilitada,
     // seguimiento de monitores y atajo global Ctrl+Shift+D.
     initPosDisplay();
 
-    initUpdater(mainWindow);
+    initUpdater();
 
     const started = await tryAutoStart();
     if (started) {
@@ -147,25 +196,38 @@ if (!gotLock) {
     }
   });
 
-  app.on('before-quit', async (e) => {
-    if (!quitting) {
-      e.preventDefault();
-      quitting = true;
-      // CRÍTICO: sin esto, mainWindow.on('close') hace preventDefault() y
-      // Electron cancela la secuencia de quit: la app nunca se cierra.
-      prepareQuit();
-      shutdownPosDisplay();
-      await shutdownScale();
-      stopUpdater();
-      stopConnectivity();
-      await markOffline();
-      stopAgent();
-      // Parar el servidor Next embebido: si quedara vivo, el puerto seguiría
-      // ocupado y el proceso hijo sobreviviría al cierre de la app.
-      await webServer.stop();
-      destroyTray();
+  app.on('before-quit', (e) => {
+    if (quitting) return;
+    e.preventDefault();
+    quitting = true;
+    // CRÍTICO: sin esto, mainWindow.on('close') hace preventDefault() y
+    // Electron cancela la secuencia de quit: la app nunca se cierra.
+    prepareQuit();
+    // La ventana desaparece YA: una app que está saliendo no debe seguir en
+    // pantalla mientras limpia (y una segunda instancia no la resucita, ver
+    // second-instance → relanzarTrasSalir).
+    getMainWindow()?.hide();
+    // Limpieza con tope por paso y total (lifecycle.ts, punto 1): antes
+    // `markOffline()` esperaba a la red sin límite y el proceso viejo
+    // retenía el bloqueo de instancia única.
+    void ejecutarCierre(
+      [
+        { nombre: 'pantalla del cliente', limiteMs: 1_000, ejecutar: () => shutdownPosDisplay() },
+        { nombre: 'báscula', limiteMs: 2_000, ejecutar: () => shutdownScale() },
+        { nombre: 'actualizador', limiteMs: 500, ejecutar: () => stopUpdater() },
+        { nombre: 'conectividad', limiteMs: 500, ejecutar: () => stopConnectivity() },
+        { nombre: 'agente offline en Supabase', limiteMs: 3_000, ejecutar: () => markOffline() },
+        { nombre: 'agente', limiteMs: 1_000, ejecutar: () => stopAgent() },
+        // Parar el servidor Next embebido: si quedara vivo, el puerto seguiría
+        // ocupado y el proceso hijo sobreviviría al cierre de la app.
+        { nombre: 'servidor Next embebido', limiteMs: 6_000, ejecutar: () => webServer.stop() },
+        { nombre: 'bandeja', limiteMs: 500, ejecutar: () => destroyTray() },
+      ],
+      { limiteTotalMs: LIMITE_CIERRE_MS, log: appendLog },
+    ).finally(() => {
+      flushLog();
       app.quit();
-    }
+    });
   });
 
   // globalShortcut debe soltarse antes de salir; shutdownPosDisplay ya lo

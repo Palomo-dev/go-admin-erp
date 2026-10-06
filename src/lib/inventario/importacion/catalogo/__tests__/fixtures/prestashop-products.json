@@ -1,0 +1,16 @@
+{
+  "products": [
+    {
+      "id": 7, "active": "1", "reference": "BOL-7", "ean13": "", "price": "100000.000000", "quantity": "0",
+      "id_category_default": "12", "manufacturer_name": "Cuero Demo",
+      "name": [{ "id": "1", "value": "Bolso de Cuero" }, { "id": "2", "value": "Leather Bag" }],
+      "link_rewrite": [{ "id": "1", "value": "bolso-de-cuero" }],
+      "description": [{ "id": "1", "value": "<p>Bolso artesanal</p>" }],
+      "associations": { "images": [{ "id": "70" }], "combinations": [{ "id": "71" }, { "id": "72" }] }
+    },
+    {
+      "id": 8, "active": "0", "reference": "OCULTO", "price": "1.000000",
+      "name": "Producto oculto", "associations": {}
+    }
+  ]
+}

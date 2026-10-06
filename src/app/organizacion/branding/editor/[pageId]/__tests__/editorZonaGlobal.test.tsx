@@ -19,6 +19,8 @@ jest.mock('next/navigation', () => ({
 }));
 jest.mock('@/lib/hooks/useOrganization', () => ({
   useOrganization: () => ({ organization: { id: 120 } }),
+  // Lo usan los clientes del navegador del editor (sitios V2, fuentes de datos de «Añadir sección»).
+  getOrganizationId: () => 120,
 }));
 jest.mock('@/components/ui/use-toast', () => ({ useToast: () => ({ toast }) }));
 

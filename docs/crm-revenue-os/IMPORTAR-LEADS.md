@@ -54,8 +54,22 @@ Alias normalizados (sin tildes ni signos) en es/en/fr/pt, en
 `departamento`, `zona`, `sector`, `subsector`, `prioridad`, `valor`,
 `valor_anual_usd`, `plan_probable`, `web`, `fuente_*_url` (varias columnas),
 `verificacion`, `fecha_verificacion`, `ley_2300_horario`, `notas`,
-`etiquetas` (varias), `rne_crc`, `id`. Si dos columnas nombran el mismo campo
-gana la primera (con `telefono_e164` y `telefono`, la E.164).
+`etiquetas` (varias), `rne_crc`, `id`, `pais`, `cargo`, `etapa`, `fecha`,
+`telefono_2`/`fijo` y `correo_2` (varias). Si dos columnas nombran el mismo
+campo gana la primera (con `telefono_e164` y `telefono`, la E.164) y la
+segunda columna de teléfono o de correo pasa a «Teléfono/Correo adicional».
+
+**Ninguna columna se pierde por omisión (2026-10-06).** Toda columna con datos
+que ningún alias reconoce abre en el asistente como «Dato adicional» y se
+guarda tal cual, con su encabezado, en `metadata.importacion.adicionales`;
+descartarla es una decisión explícita («No importar»). Antes quedaban en «No
+importar» y se perdían aunque el mapeo las mostrara (en una tanda real:
+`nivel_ciudad`, `osm_ultima_edicion`, `sedes_mismo_nombre_zona`,
+`estado_dedupe` y la segunda columna de teléfono). Un valor que no se puede
+interpretar (teléfono, correo, NIT, web o valor con formato inválido) se
+guarda crudo en `metadata.importacion.valores_descartados`. La ficha del
+cliente (pestaña «Información», tarjeta «Datos de la importación») y el
+detalle del lead muestran todo esto (`src/lib/crm/importacionLeads/datosFicha.ts`).
 
 ## Mapeo aplicado
 
@@ -76,7 +90,15 @@ gana la primera (con `telefono_e164` y `telefono`, la E.164).
 | `tags` | sector, subsector, `prioridad:X`, `zona:X`, `lote:X`, `rne:pendiente` + etiquetas del archivo |
 | `vertical_id` | vertical ACTIVA de la organización cuyo nombre o slug casa con el sector (o subsector); «Otros» nunca casa |
 | `timezone` | `+57…` → `America/Bogota`; otro país → zona de la organización |
-| `metadata.importacion` | `lote, id_externo, fila, archivo, importado_en, importado_por, fuentes[], verificacion, fecha_verificacion, tipo_telefono, web, plan_probable, departamento, zona, barrio, horario_contacto, rne, rne_archivo, valor_original` |
+| `trade_name` (persona) | nombre comercial cuando viene además un contacto (antes se perdía) |
+| `metadata.importacion` | `lote, id_externo, fila, archivo, importado_en, importado_por, fuentes[], fuentes_texto[], verificacion, fecha_verificacion, tipo_telefono, telefonos_adicionales[], correos_adicionales[], web, plan_probable, departamento, pais, zona, barrio, cargo, etapa, fecha_archivo, horario_contacto, rne, rne_archivo, valor_original, adicionales{encabezado: valor}, valores_descartados{campo: texto}` |
+
+`customers` no tiene columnas de departamento, país, web ni cargo (verificado
+por MCP el 2026-10-06), por eso van a `metadata.importacion`. Las fechas que
+llegan como serial de Excel se guardan como AAAA-MM-DD. **Cliente existente**
+(«ligar»): la ficha no se pisa; la fila completa (ciudad, dirección, NIT,
+notas… y todo lo anterior) queda en `metadata.lead.importacion` y la ficha la
+muestra como datos del archivo.
 
 **Lead** (`opportunities`): `name` = «nombre comercial · ciudad»,
 `source='importacion'` (no hay CHECK sobre `source`), `amount`/`currency`

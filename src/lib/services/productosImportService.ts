@@ -40,7 +40,8 @@ export async function contextoImportacion(
   organizationId: number,
   entrada: { skus: string[]; nombres: string[] },
 ): Promise<ContextoRespuesta> {
-  const skus = Array.from(new Set(entrada.skus.map((s) => s.trim()).filter(Boolean))).slice(0, 20000);
+  // Un catálogo web de 20 000 productos con variantes pasa de 20 000 SKU.
+  const skus = Array.from(new Set(entrada.skus.map((s) => s.trim()).filter(Boolean))).slice(0, 60000);
   const existentes: Record<string, number> = {};
   // El SKU es único por organización y la RPC lo compara EXACTO: se busca tal
   // cual (la clave del mapa va en mayúsculas porque así compara el asistente).

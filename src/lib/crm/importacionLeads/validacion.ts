@@ -21,7 +21,9 @@ import { filaVacia } from '@/lib/importacion/libro';
 import {
   bandaDesdePrioridad,
   correoNormalizado,
+  fechaDeCelda,
   listaEtiquetas,
+  listaUnica,
   nitNormalizado,
   telefonoE164,
   textoLimpio,
@@ -37,23 +39,41 @@ export const TAMANO_BLOQUE_IMPORTAR = 25;
 /** Máximo que acepta el servidor por petición de `importar`. */
 export const MAX_FILAS_POR_BLOQUE = 50;
 
+/** Encabezado con el que se guarda un «Dato adicional» (único por fila: un repetido lleva « (2)»). */
+export function nombresColumnas(cabeceras: readonly unknown[], ancho: number): string[] {
+  const usados = new Map<string, number>();
+  return Array.from({ length: ancho }, (_, col) => {
+    const base = textoLimpio(cabeceras[col], 120) ?? `Columna ${col + 1}`;
+    const n = (usados.get(base.toLowerCase()) ?? 0) + 1;
+    usados.set(base.toLowerCase(), n);
+    return n === 1 ? base : `${base} (${n})`;
+  });
+}
+
 /** Filas del archivo (tras la cabecera) con el mapeo aplicado. Las filas vacías se saltan. */
 export function leerFilasLeads(matriz: unknown[][], filaCabecera: number, mapeo: MapeoLead): FilaLeadEntrada[] {
   const filas: FilaLeadEntrada[] = [];
+  const columnas = nombresColumnas(matriz[filaCabecera] ?? [], mapeo.length);
   for (let i = filaCabecera + 1; i < matriz.length; i++) {
     const celdas = matriz[i];
     if (filaVacia(celdas)) continue;
     const f: FilaLeadEntrada = { fila: i + 1, campos: {} };
     mapeo.forEach((campo, col) => {
       if (!campo) return;
-      const v = textoLimpio(celdas[col]);
+      const v = textoLimpio(celdas[col], campo === 'notas' || campo === 'adicional' ? 2000 : undefined);
       if (!v) return;
       if (CAMPOS_MULTIPLES.has(campo)) {
-        const lista = campo === 'fuente' ? (f.fuente ??= []) : (f.etiquetas ??= []);
-        lista.push(v);
+        if (campo === 'adicional') (f.adicionales ??= []).push({ columna: columnas[col], valor: v });
+        else if (campo === 'fuente') (f.fuente ??= []).push(v);
+        else if (campo === 'etiquetas') (f.etiquetas ??= []).push(v);
+        else if (campo === 'telefonoAdicional') (f.telefonosAdicionales ??= []).push(v);
+        else (f.correosAdicionales ??= []).push(v);
+      } else if (!f.campos[campo as CampoSimple]) {
+        f.campos[campo as CampoSimple] = v;
       } else {
-        const simple = campo as CampoSimple;
-        if (!f.campos[simple]) f.campos[simple] = v;
+        // Dos columnas para el mismo campo simple (no pasa con el autodetector,
+        // pero sí con un mapeo heredado): la segunda se guarda como adicional.
+        (f.adicionales ??= []).push({ columna: columnas[col], valor: v });
       }
     });
     filas.push(f);
@@ -111,7 +131,25 @@ export function validarFilaLead(entrada: FilaLeadEntrada, opciones: Pick<Opcione
 
   if (errores.length > 0 || !nombre) return { fila: entrada.fila, datos: null, errores, avisos };
 
-  const fuentes = (entrada.fuente ?? []).map(urlNormalizada).filter((u): u is string => !!u);
+  // Nada de lo que trae la fila se tira: lo que no se normaliza se guarda crudo.
+  const descartados: FilaLeadNormalizada['descartados'] = {};
+  if (telefonoCrudo && !telefono) descartados.telefono = telefonoCrudo;
+  if (correoCrudo && !correo) descartados.correo = correoCrudo;
+  if (nitCrudo && !nit) descartados.nit = nitCrudo;
+  if (webCruda && !web) descartados.web = webCruda;
+  if (valorCrudo && valor === null) descartados.valor = valorCrudo;
+
+  const fuentes: string[] = [];
+  const fuentesTexto: string[] = [];
+  for (const crudo of entrada.fuente ?? []) {
+    const u = urlNormalizada(crudo);
+    if (u) fuentes.push(u);
+    else if (textoLimpio(crudo)) fuentesTexto.push(textoLimpio(crudo) as string);
+  }
+  // Teléfonos/correos adicionales: normalizados si se puede; si no, tal cual.
+  const telefonosAdicionales = listaUnica((entrada.telefonosAdicionales ?? []).map((x) => telefonoE164(x, opciones.pais || 'CO') ?? x)).filter((x) => x !== telefono);
+  const correosAdicionales = listaUnica((entrada.correosAdicionales ?? []).map((x) => correoNormalizado(x) ?? x)).filter((x) => x !== correo);
+
   const datos: FilaLeadNormalizada = {
     fila: entrada.fila,
     idExterno: textoLimpio(c.idExterno, 120),
@@ -136,12 +174,23 @@ export function validarFilaLead(entrada: FilaLeadEntrada, opciones: Pick<Opcione
     plan: t('plan'),
     valor,
     verificacion: t('verificacion'),
-    fechaVerificacion: t('fechaVerificacion'),
+    fechaVerificacion: fechaDeCelda(c.fechaVerificacion),
     fuentes: Array.from(new Set(fuentes)),
     horario: t('horario'),
     notas: textoLimpio(c.notas, 2000),
     etiquetas: listaEtiquetas(entrada.etiquetas ?? []),
     rneArchivo: t('rne'),
+    pais: t('pais'),
+    cargo: t('cargo'),
+    etapa: t('etapa'),
+    fecha: fechaDeCelda(c.fecha),
+    telefonosAdicionales,
+    correosAdicionales,
+    fuentesTexto: listaUnica(fuentesTexto),
+    adicionales: (entrada.adicionales ?? [])
+      .map((a) => ({ columna: textoLimpio(a.columna, 120) ?? '', valor: textoLimpio(a.valor, 2000) ?? '' }))
+      .filter((a) => a.columna && a.valor),
+    descartados,
   };
   return { fila: entrada.fila, datos, errores, avisos };
 }

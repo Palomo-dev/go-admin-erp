@@ -123,6 +123,37 @@ export function urlNormalizada(v: unknown): string | null {
   }
 }
 
+/**
+ * Fecha de una celda como texto. El lector de XLSX entrega las fechas como
+ * serial de Excel (`45930` = 2025-09-30): ese número se pasa al día
+ * calendario AAAA-MM-DD (aritmética de días, sin zona horaria: el serial ya
+ * ES un día calendario). Cualquier otro texto se guarda tal cual.
+ */
+export function fechaDeCelda(v: unknown): string | null {
+  const s = textoLimpio(v, 40);
+  if (!s) return null;
+  if (!/^\d{5}(\.\d+)?$/.test(s)) return s;
+  const serial = Math.floor(Number(s));
+  // 1955-01-01 … 2119-01-01: fuera de ahí es un número, no una fecha.
+  if (serial < 20090 || serial > 80000) return s;
+  const d = new Date(Date.UTC(1899, 11, 30) + serial * 86_400_000);
+  const dos = (n: number) => String(n).padStart(2, '0');
+  return `${d.getUTCFullYear()}-${dos(d.getUTCMonth() + 1)}-${dos(d.getUTCDate())}`;
+}
+
+/** Lista de valores distintos (sin distinguir mayúsculas), limpios y sin vacíos. */
+export function listaUnica(valores: readonly unknown[], largo: number = LARGO_MAXIMO_TEXTO): string[] {
+  const vistas = new Set<string>();
+  const salida: string[] = [];
+  for (const v of valores) {
+    const t = textoLimpio(v, largo);
+    if (!t || vistas.has(t.toLowerCase())) continue;
+    vistas.add(t.toLowerCase());
+    salida.push(t);
+  }
+  return salida;
+}
+
 /** Lista de etiquetas: separa por `;` `,` `|`, limpia y quita repetidas (sin distinguir mayúsculas). */
 export function listaEtiquetas(valores: readonly unknown[]): string[] {
   const vistas = new Set<string>();

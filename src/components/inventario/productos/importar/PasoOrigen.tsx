@@ -12,6 +12,7 @@ import { extensionAdmitida, leerMatriz, TAMANO_MAXIMO_ARCHIVO } from '@/lib/inve
 import { CREDITOS_ANALISIS_WEB, CREDITOS_DETALLE_WEB } from '@/lib/inventario/importacion/costosWeb';
 import { analizarWeb, ErrorApi, pedirSaldoWeb, type SaldoWeb } from './apiImportacion';
 import type { AsistenteImportacion } from './useAsistenteImportacion';
+import { LecturaCatalogo } from './LecturaCatalogo';
 
 interface Props {
   a: AsistenteImportacion;
@@ -76,6 +77,8 @@ export function PasoOrigen({ a, orgId, onError, onInfo }: Props) {
   const [url, setUrl] = useState(a.web?.url ?? '');
   const [saldo, setSaldo] = useState<SaldoWeb | null>(null);
   const [analizando, setAnalizando] = useState(false);
+  /** Detectando o leyendo el catálogo completo. */
+  const [leyendoCatalogo, setLeyendoCatalogo] = useState(false);
   const cancelar = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -189,8 +192,8 @@ export function PasoOrigen({ a, orgId, onError, onInfo }: Props) {
           </FormSection>
         </>
       ) : (
-        <FormSection titulo={t('web.titulo')} descripcion={t('web.descripcion')} icono={Sparkles}>
-          <FormField etiqueta={t('web.url')} ayuda={t('web.urlAyuda')}>
+        <FormSection titulo={t('web.titulo')} descripcion={t('catalogo.descripcion')} icono={Globe}>
+          <FormField etiqueta={t('web.url')} ayuda={t('catalogo.urlAyuda')}>
             <div className="relative">
               <Globe aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-fg-muted" />
               <Input
@@ -200,43 +203,53 @@ export function PasoOrigen({ a, orgId, onError, onInfo }: Props) {
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder={t('web.urlPlaceholder')}
                 className="pl-9"
-                disabled={analizando}
-                onKeyDown={(e) => e.key === 'Enter' && !analizando && analizar()}
+                disabled={analizando || leyendoCatalogo}
               />
             </div>
           </FormField>
 
-          <div className="rounded-lg border border-line bg-subtle p-3 text-sm">
-            <p className="flex items-center gap-2 font-medium text-fg">
-              <Coins className="size-4 text-brand" aria-hidden="true" /> {t('web.costoTitulo')}
-            </p>
-            <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-xs text-fg-secondary">
-              <li>{t('web.costoAnalisis', { n: CREDITOS_ANALISIS_WEB })}</li>
-              <li>{t('web.costoDetalle', { n: CREDITOS_DETALLE_WEB })}</li>
-              <li>{t('web.costoFallo')}</li>
-            </ul>
-            {saldo && <p className="mt-2 text-xs font-medium text-fg">{t('web.saldo', { n: saldo.saldo })}</p>}
-            {sinSaldo && (
-              <p className="mt-2 flex items-center gap-1.5 text-xs text-warning-text" role="alert">
-                <AlertTriangle className="size-3.5" aria-hidden="true" /> {t('web.sinSaldo')}
-              </p>
-            )}
-          </div>
+          <LecturaCatalogo a={a} orgId={orgId} url={url} ocupado={analizando || leyendoCatalogo} onOcupado={setLeyendoCatalogo} onError={onError} onInfo={onInfo} />
 
-          {analizando ? (
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" role="status">
-              <p className="flex items-center gap-2 text-sm text-fg-secondary">
-                <Loader2 className="size-4 animate-spin" aria-hidden="true" /> {t('web.analizando')}
-              </p>
-              <Button variant="outline" onClick={() => cancelar.current?.abort()}>
-                {t('acciones.cancelar')}
-              </Button>
+          {/* Una sola página (o una tienda sin catálogo legible): la IA, con su costo en créditos. */}
+          <details className="rounded-lg border border-line" open={analizando || undefined}>
+            <summary className="flex cursor-pointer items-center gap-2 p-3 text-sm font-medium text-fg">
+              <Sparkles className="size-4 text-brand" aria-hidden="true" /> {t('catalogo.iaTitulo')}
+            </summary>
+            <div className="flex flex-col gap-3 px-3 pb-3">
+              <p className="text-xs text-fg-secondary">{t('web.descripcion')}</p>
+              <div className="rounded-lg border border-line bg-subtle p-3 text-sm">
+                <p className="flex items-center gap-2 font-medium text-fg">
+                  <Coins className="size-4 text-brand" aria-hidden="true" /> {t('web.costoTitulo')}
+                </p>
+                <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-xs text-fg-secondary">
+                  <li>{t('web.costoAnalisis', { n: CREDITOS_ANALISIS_WEB })}</li>
+                  <li>{t('web.costoDetalle', { n: CREDITOS_DETALLE_WEB })}</li>
+                  <li>{t('web.costoFallo')}</li>
+                </ul>
+                {saldo && <p className="mt-2 text-xs font-medium text-fg">{t('web.saldo', { n: saldo.saldo })}</p>}
+                {sinSaldo && (
+                  <p className="mt-2 flex items-center gap-1.5 text-xs text-warning-text" role="alert">
+                    <AlertTriangle className="size-3.5" aria-hidden="true" /> {t('web.sinSaldo')}
+                  </p>
+                )}
+              </div>
+
+              {analizando ? (
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" role="status">
+                  <p className="flex items-center gap-2 text-sm text-fg-secondary">
+                    <Loader2 className="size-4 animate-spin" aria-hidden="true" /> {t('web.analizando')}
+                  </p>
+                  <Button variant="outline" onClick={() => cancelar.current?.abort()}>
+                    {t('acciones.cancelar')}
+                  </Button>
+                </div>
+              ) : (
+                <Button variant="outline" onClick={analizar} disabled={!url.trim() || sinSaldo || leyendoCatalogo} className="w-full sm:w-auto sm:self-start">
+                  <Sparkles className="size-4" aria-hidden="true" /> {t('web.analizar')}
+                </Button>
+              )}
             </div>
-          ) : (
-            <Button onClick={analizar} disabled={!url.trim() || sinSaldo} className="w-full sm:w-auto sm:self-start">
-              <Sparkles className="size-4" aria-hidden="true" /> {t('web.analizar')}
-            </Button>
-          )}
+          </details>
           {a.web && !analizando && (
             <p className="text-xs text-fg-secondary">{t('web.yaAnalizada', { n: a.web.productos.length, host: safeHost(a.web.url) })}</p>
           )}

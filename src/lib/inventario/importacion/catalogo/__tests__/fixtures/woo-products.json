@@ -1,0 +1,40 @@
+[
+  {
+    "id": 21,
+    "name": "Taza Cerámica",
+    "type": "variable",
+    "permalink": "https://tienda.ejemplo.test/producto/taza-ceramica/",
+    "sku": "TAZA",
+    "short_description": "<p>Taza corta</p>",
+    "description": "<p>Taza de cerámica esmaltada, apta para microondas.</p>",
+    "prices": { "price": "1500000", "regular_price": "1500000", "sale_price": "1500000", "currency_minor_unit": 2, "price_range": { "min_amount": "1500000", "max_amount": "1800000" } },
+    "images": [{ "id": 9, "src": "https://tienda.ejemplo.test/wp-content/uploads/taza.jpg" }],
+    "categories": [{ "id": 3, "name": "Hogar" }, { "id": 4, "name": "Tazas" }],
+    "tags": [{ "id": 1, "name": "regalo" }],
+    "brands": [{ "id": 7, "name": "Alfarería Demo" }],
+    "attributes": [
+      { "id": 1, "name": "Color", "taxonomy": "pa_color", "has_variations": true, "terms": [{ "id": 11, "name": "Azul Cielo", "slug": "azul-cielo" }, { "id": 12, "name": "Blanco", "slug": "blanco" }] }
+    ],
+    "variations": [
+      { "id": 211, "attributes": [{ "name": "Color", "value": "azul-cielo" }] },
+      { "id": 212, "attributes": [{ "name": "Color", "value": "blanco" }] }
+    ],
+    "is_in_stock": true
+  },
+  {
+    "id": 22,
+    "name": "Libreta",
+    "type": "simple",
+    "permalink": "https://tienda.ejemplo.test/producto/libreta/",
+    "sku": "LIB-1",
+    "short_description": "",
+    "description": "<p>Libreta de 80 hojas</p>",
+    "prices": { "price": "800000", "regular_price": "1000000", "sale_price": "800000", "currency_minor_unit": 2 },
+    "images": [],
+    "categories": [{ "id": 5, "name": "Papelería" }],
+    "tags": [],
+    "attributes": [],
+    "variations": [],
+    "is_in_stock": false
+  }
+]

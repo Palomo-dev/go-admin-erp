@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, Columns3 } from 'lucide-react';
+import { AlertTriangle, Columns3, Info } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FormSection } from '@/components/kit';
 import { CAMPOS_LEAD, reasignarColumnaLead, type CampoLead } from '@/lib/crm/importacionLeads/campos';
@@ -20,7 +20,8 @@ export function PasoMapeoLeads({ a }: { a: ImportarLeads }) {
   const muestras = archivo.matriz.slice(fc + 1).filter((f) => f && f.some((c) => c !== null && String(c).trim() !== '')).slice(0, MUESTRAS);
   const columnas = Math.max(cabeceras.length, ...muestras.map((f) => f?.length ?? 0));
   const mapeo = archivo.mapeo.length >= columnas ? archivo.mapeo : [...archivo.mapeo, ...Array<CampoLead | null>(columnas - archivo.mapeo.length).fill(null)];
-  const reconocidas = mapeo.filter(Boolean).length;
+  const reconocidas = mapeo.filter((c) => c && c !== 'adicional').length;
+  const adicionales = mapeo.filter((c) => c === 'adicional').length;
   const opciones = CAMPOS_LEAD.map((c) => ({ valor: c.campo, etiqueta: c.multiple ? `${t(`campos.${c.campo}`)} (${t('mapeo.multiple')})` : t(`campos.${c.campo}`) }));
 
   return (
@@ -42,6 +43,12 @@ export function PasoMapeoLeads({ a }: { a: ImportarLeads }) {
           </SelectContent>
         </Select>
       </div>
+
+      {adicionales > 0 && (
+        <p className="flex items-center gap-2 rounded-lg bg-subtle p-3 text-sm text-fg-secondary">
+          <Info className="size-4 shrink-0" aria-hidden="true" /> {t('mapeo.adicionales', { n: adicionales })}
+        </p>
+      )}
 
       {a.faltantes.map((f) => (
         <p key={f} className="flex items-center gap-2 rounded-lg bg-danger-subtle p-3 text-sm text-danger-text" role="alert">

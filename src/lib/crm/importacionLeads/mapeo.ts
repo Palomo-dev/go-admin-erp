@@ -15,8 +15,13 @@
  *    timezone        +57 → America/Bogota (Colombia tiene una sola zona); si no, la de la organización
  *    lifecycle_stage 'lead' (lo pone `resolveLeadCustomer`)
  *    metadata.importacion { lote, id_externo, fila, archivo, importado_en, importado_por, fuentes,
- *                           verificacion, fecha_verificacion, tipo_telefono, web, plan_probable,
- *                           departamento, zona, barrio, horario_contacto, rne, rne_archivo, valor_original }
+ *                           fuentes_texto, verificacion, fecha_verificacion, tipo_telefono,
+ *                           telefonos_adicionales, correos_adicionales, web, plan_probable,
+ *                           departamento, pais, zona, barrio, cargo, etapa, fecha_archivo,
+ *                           horario_contacto, rne, rne_archivo, valor_original,
+ *                           adicionales { <encabezado>: valor } (columnas sin campo),
+ *                           valores_descartados { telefono|correo|nit|web|valor: texto crudo } }
+ *    (customers no tiene departamento, país, web ni cargo: verificado por MCP 2026-10-06)
  *    lead_source     'import' (CRM ola 1, D2: el lead ES el cliente; no se crea oportunidad)
  *    owner_id        asignación automática (la del alta de leads)
  *    lead_score      calculado por el servidor desde el ICP (D3); icp_band de
@@ -27,7 +32,8 @@
  *                      fila, plan_probable, rne, valor_original } }
  *  Cliente EXISTENTE («ligar»): solo se completan origen y responsable si faltan
  *  y se fusiona `metadata.lead`; etiquetas, `do_not_call` y el resto de la
- *  ficha no se tocan.
+ *  ficha no se tocan. La fila completa (ciudad, dirección, NIT, notas… y todo
+ *  lo de arriba) queda en `metadata.lead.importacion` y la ficha la muestra.
  */
 
 import type { CreateLeadBody, LeadCreateExtras } from '@/lib/services/crm/leadCreateService';
@@ -92,6 +98,67 @@ export function etiquetasDelCliente(d: FilaLeadNormalizada, lote: string, rne: E
 const sinVacios = (o: Record<string, unknown>) =>
   Object.fromEntries(Object.entries(o).filter(([, v]) => v !== null && v !== undefined && !(Array.isArray(v) && v.length === 0)));
 
+/** Columnas «Dato adicional» → objeto `{ encabezado: valor }` (encabezados ya únicos por fila). */
+export function adicionalesComoObjeto(d: Pick<FilaLeadNormalizada, 'adicionales'>): Record<string, string> | null {
+  if (d.adicionales.length === 0) return null;
+  return Object.fromEntries(d.adicionales.map((a) => [a.columna, a.valor]));
+}
+
+/**
+ * Lo que la fila trae y NO tiene columna propia en `customers` (no existen
+ * `department`, `country`, `website`, `position`…): va a
+ * `metadata.importacion`, que la ficha y el detalle del lead muestran
+ * (`datosImportadosDe`). Ver la tabla completa en IMPORTAR-LEADS.md.
+ */
+function datosSinColumna(d: FilaLeadNormalizada): Record<string, unknown> {
+  return {
+    fuentes: d.fuentes,
+    fuentes_texto: d.fuentesTexto,
+    verificacion: d.verificacion,
+    fecha_verificacion: d.fechaVerificacion,
+    tipo_telefono: d.tipoTelefono,
+    telefonos_adicionales: d.telefonosAdicionales,
+    correos_adicionales: d.correosAdicionales,
+    web: d.web,
+    plan_probable: d.plan,
+    departamento: d.departamento,
+    pais: d.pais,
+    zona: d.zona,
+    barrio: d.barrio,
+    cargo: d.cargo,
+    etapa: d.etapa,
+    fecha_archivo: d.fecha,
+    horario_contacto: d.horario,
+    rne_archivo: d.rneArchivo,
+    adicionales: adicionalesComoObjeto(d),
+    valores_descartados: Object.keys(d.descartados).length ? d.descartados : null,
+  };
+}
+
+/**
+ * Para un cliente que YA existe la ficha no se pisa (decisión de IMPORTAR-LEADS):
+ * los datos de columna que trae el archivo se conservan aquí, dentro de
+ * `metadata.lead.importacion`, y la ficha los muestra como «del archivo».
+ */
+function datosDeColumnaDelArchivo(d: FilaLeadNormalizada): Record<string, unknown> {
+  return {
+    nombre: d.nombre,
+    razon_social: d.razonSocial,
+    contacto: d.contacto,
+    nit: d.nit,
+    dv: d.dv,
+    telefono: d.telefono,
+    correo: d.correo,
+    direccion: direccionCompleta(d),
+    ciudad: d.ciudad,
+    sector: d.sector,
+    subsector: d.subsector,
+    prioridad: d.prioridad,
+    notas: d.notas,
+    etiquetas: d.etiquetas,
+  };
+}
+
 export function metadataImportacionCliente(d: FilaLeadNormalizada, ctx: ContextoAltaLead): Record<string, unknown> {
   return sinVacios({
     lote: ctx.lote,
@@ -100,24 +167,26 @@ export function metadataImportacionCliente(d: FilaLeadNormalizada, ctx: Contexto
     archivo: ctx.archivo,
     importado_en: ctx.importadoEn,
     importado_por: ctx.userId,
-    fuentes: d.fuentes,
-    verificacion: d.verificacion,
-    fecha_verificacion: d.fechaVerificacion,
-    tipo_telefono: d.tipoTelefono,
-    web: d.web,
-    plan_probable: d.plan,
-    departamento: d.departamento,
-    zona: d.zona,
-    barrio: d.barrio,
-    horario_contacto: d.horario,
+    ...datosSinColumna(d),
     rne: ctx.rne,
-    rne_archivo: d.rneArchivo,
     valor_original: ctx.valorOriginal,
   });
 }
 
 export function metadataImportacionLead(d: FilaLeadNormalizada, ctx: ContextoAltaLead): Record<string, unknown> {
   return sinVacios({ lote: ctx.lote, id_externo: d.idExterno, fila: d.fila, plan_probable: d.plan, rne: ctx.rne, valor_original: ctx.valorOriginal });
+}
+
+/** `metadata.lead.importacion` de un cliente existente: todo lo de la fila, sin tocar la ficha. */
+export function metadataImportacionLeadExistente(d: FilaLeadNormalizada, ctx: ContextoAltaLead): Record<string, unknown> {
+  return sinVacios({
+    ...metadataImportacionLead(d, ctx),
+    archivo: ctx.archivo,
+    importado_en: ctx.importadoEn,
+    importado_por: ctx.userId,
+    ...datosDeColumnaDelArchivo(d),
+    ...datosSinColumna(d),
+  });
 }
 
 function cuerpoLead(d: FilaLeadNormalizada, ctx: ContextoAltaLead): CreateLeadBody {
@@ -127,8 +196,18 @@ function cuerpoLead(d: FilaLeadNormalizada, ctx: ContextoAltaLead): CreateLeadBo
   return body;
 }
 
-function extrasLead(d: FilaLeadNormalizada, ctx: ContextoAltaLead): LeadCreateExtras['lead'] {
-  return { metadata: { importacion: metadataImportacionLead(d, ctx) }, icp_band: d.icpBand };
+function extrasLead(d: FilaLeadNormalizada, ctx: ContextoAltaLead, existente = false): LeadCreateExtras['lead'] {
+  return { metadata: { importacion: existente ? metadataImportacionLeadExistente(d, ctx) : metadataImportacionLead(d, ctx) }, icp_band: d.icpBand };
+}
+
+/**
+ * Nombre comercial de la ficha. En una empresa siempre; en una persona solo si
+ * el nombre del lead NO es ya el de la persona ni la razón social (antes, con
+ * tipo «persona», el nombre comercial se perdía cuando venía un contacto).
+ */
+export function nombreComercialDeFicha(d: Pick<FilaLeadNormalizada, 'nombre' | 'razonSocial' | 'contacto'>, empresa: boolean): string | null {
+  if (empresa) return d.nombre;
+  return d.contacto && d.nombre !== d.contacto && d.nombre !== d.razonSocial ? d.nombre : null;
 }
 
 /** Alta de cliente NUEVO + lead. */
@@ -152,7 +231,7 @@ export function altaConClienteNuevo(d: FilaLeadNormalizada, ctx: ContextoAltaLea
       };
   const extras: LeadCreateExtras = {
     customer: {
-      trade_name: empresa ? d.nombre : null,
+      trade_name: nombreComercialDeFicha(d, empresa),
       identification_type: d.nit ? 'NIT' : null,
       identification_number: d.nit,
       dv: d.nit ? d.dv : null,
@@ -169,11 +248,15 @@ export function altaConClienteNuevo(d: FilaLeadNormalizada, ctx: ContextoAltaLea
   return { body, extras };
 }
 
-/** Lead sobre un cliente que ya existe: solo origen/responsable si faltan y `metadata.lead` (ver cabecera). */
+/**
+ * Lead sobre un cliente que ya existe: solo origen/responsable si faltan y
+ * `metadata.lead` (ver cabecera). La fila completa del archivo queda en
+ * `metadata.lead.importacion` para que no se pierda sin pisar la ficha.
+ */
 export function altaConClienteExistente(d: FilaLeadNormalizada, customerId: string, ctx: ContextoAltaLead): { body: CreateLeadBody; extras: LeadCreateExtras } {
   const body = cuerpoLead(d, ctx);
   body.customer_id = customerId;
-  return { body, extras: { lead: extrasLead(d, ctx) } };
+  return { body, extras: { lead: extrasLead(d, ctx, true) } };
 }
 
 export interface VerticalRef {

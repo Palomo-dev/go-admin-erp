@@ -196,3 +196,47 @@ export function fusionarAjuste(actual: AjusteSede | null, cambio: CambioProducto
 export function esComoPrincipal(a: AjusteSede | null | undefined): boolean {
   return !a || (a.is_listed && a.web_price === null && !a.is_sold_out);
 }
+
+// ─── Borrador en pantalla (pantalla «Carta por sede» y constructor de la carta) ───────────
+
+/** Lo que se ve en pantalla: ajuste guardado + borrador sin guardar. */
+export interface VistaAjusteSede {
+  is_listed: boolean;
+  web_price: number | null;
+  is_sold_out: boolean;
+  agotado_hasta: string | null;
+}
+
+export function vistaDe(p: ProductoCartaSede, cambio: CambioProducto | undefined): VistaAjusteSede {
+  const base: VistaAjusteSede = p.ajuste
+    ? { is_listed: p.ajuste.is_listed, web_price: p.ajuste.web_price, is_sold_out: p.ajuste.agotado_ahora, agotado_hasta: p.ajuste.agotado_hasta }
+    : { is_listed: true, web_price: null, is_sold_out: false, agotado_hasta: null };
+  if (!cambio) return base;
+  if (cambio.restablecer) return { is_listed: true, web_price: null, is_sold_out: false, agotado_hasta: null };
+  return {
+    is_listed: cambio.is_listed ?? base.is_listed,
+    web_price: cambio.web_price !== undefined ? cambio.web_price : base.web_price,
+    is_sold_out: cambio.is_sold_out ?? base.is_sold_out,
+    agotado_hasta: cambio.is_sold_out === false ? null : cambio.agotado_hasta !== undefined ? cambio.agotado_hasta : base.agotado_hasta,
+  };
+}
+
+export function esVistaPrincipal(v: VistaAjusteSede): boolean {
+  return v.is_listed && v.web_price === null && !v.is_sold_out;
+}
+
+/** Suma un cambio parcial al borrador. Tras «restablecer», los campos se escriben explícitos. */
+export function sumarCambio(previo: CambioProducto | undefined, productId: number, parche: Omit<CambioProducto, 'product_id'>): CambioProducto {
+  if (parche.restablecer) return { product_id: productId, restablecer: true };
+  if (previo?.restablecer) {
+    return {
+      product_id: productId,
+      is_listed: AJUSTE_PRINCIPAL.is_listed,
+      web_price: AJUSTE_PRINCIPAL.web_price,
+      is_sold_out: AJUSTE_PRINCIPAL.is_sold_out,
+      agotado_hasta: null,
+      ...parche,
+    };
+  }
+  return { ...(previo ?? {}), ...parche, product_id: productId };
+}

@@ -36,8 +36,11 @@ import {
 import { branchService } from '@/lib/services/branchService';
 import categoryService, { type Category } from '@/lib/services/categoryService';
 import {
-  AJUSTE_PRINCIPAL,
   FILTROS_CARTA_SEDE,
+  esVistaPrincipal as esPrincipal,
+  sumarCambio,
+  vistaDe,
+  type VistaAjusteSede,
   type AccionCategoria,
   type CambioProducto,
   type FiltroCartaSede,
@@ -48,48 +51,6 @@ import type { Branch } from '@/types/branch';
 import { cn } from '@/utils/Utils';
 
 const SIN_CATEGORIA = 'todas';
-
-/** Lo que se ve en pantalla: ajuste guardado + borrador. */
-interface Vista {
-  is_listed: boolean;
-  web_price: number | null;
-  is_sold_out: boolean;
-  agotado_hasta: string | null;
-}
-
-function vistaDe(p: ProductoCartaSede, cambio: CambioProducto | undefined): Vista {
-  const base: Vista = p.ajuste
-    ? { is_listed: p.ajuste.is_listed, web_price: p.ajuste.web_price, is_sold_out: p.ajuste.agotado_ahora, agotado_hasta: p.ajuste.agotado_hasta }
-    : { is_listed: true, web_price: null, is_sold_out: false, agotado_hasta: null };
-  if (!cambio) return base;
-  if (cambio.restablecer) return { is_listed: true, web_price: null, is_sold_out: false, agotado_hasta: null };
-  return {
-    is_listed: cambio.is_listed ?? base.is_listed,
-    web_price: cambio.web_price !== undefined ? cambio.web_price : base.web_price,
-    is_sold_out: cambio.is_sold_out ?? base.is_sold_out,
-    agotado_hasta: cambio.is_sold_out === false ? null : cambio.agotado_hasta !== undefined ? cambio.agotado_hasta : base.agotado_hasta,
-  };
-}
-
-function esPrincipal(v: Vista): boolean {
-  return v.is_listed && v.web_price === null && !v.is_sold_out;
-}
-
-/** Suma un cambio parcial al borrador. Tras «restablecer», los campos se escriben explícitos. */
-function sumarCambio(previo: CambioProducto | undefined, productId: number, parche: Omit<CambioProducto, 'product_id'>): CambioProducto {
-  if (parche.restablecer) return { product_id: productId, restablecer: true };
-  if (previo?.restablecer) {
-    return {
-      product_id: productId,
-      is_listed: AJUSTE_PRINCIPAL.is_listed,
-      web_price: AJUSTE_PRINCIPAL.web_price,
-      is_sold_out: AJUSTE_PRINCIPAL.is_sold_out,
-      agotado_hasta: null,
-      ...parche,
-    };
-  }
-  return { ...(previo ?? {}), ...parche, product_id: productId };
-}
 
 interface Grupo {
   categoriaId: number | null;
@@ -490,7 +451,7 @@ export default function CartaPorSedePanel() {
 
 interface FilaProductoProps {
   producto: ProductoCartaSede;
-  vista: Vista;
+  vista: VistaAjusteSede;
   editado: boolean;
   puedeEditar: boolean;
   hoy?: string;

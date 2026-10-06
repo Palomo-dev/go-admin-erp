@@ -1,0 +1,6 @@
+{
+  "combinations": [
+    { "id": 71, "id_product": "7", "reference": "BOL-7-NEG", "ean13": "7700000000071", "price": "0.000000", "quantity": "4", "associations": { "product_option_values": [{ "id": "25" }], "images": [{ "id": "71" }] } },
+    { "id": 72, "id_product": "7", "reference": "BOL-7-MAR", "ean13": "", "price": "15000.000000", "quantity": "2", "associations": { "product_option_values": [{ "id": "26" }] } }
+  ]
+}

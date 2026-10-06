@@ -29,8 +29,37 @@ permissions:
   contents: write
 
 jobs:
+  # Compuerta de tipos ANTES de empaquetar. El paso «Construir la web
+  # embebida» compila con NEXT_SKIP_TYPECHECK=1 (OOM en el runner de Windows),
+  # así que un import de algo que no existe compila igual y llega al
+  # instalador como `undefined`. Pasó con 0.2.7: el tag v0.2.7 (3c471b24)
+  # tenía rojo «TypeScript (tsc --noEmit)» por `addPlainDays` (exportado 24
+  # minutos después, en 728c81d0) y aun así se publicó; «Nuevo producto»,
+  # kardex, filtros de fecha y otras pantallas lanzan «… is not a function»
+  # en el escritorio. Mismo comando y memoria que el job de ci-web.yml.
+  typecheck:
+    name: TypeScript (tsc --noEmit) del commit a publicar
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            electron/package-lock.json
+      - run: npm ci
+      # `electron/src/**` entra en el tsconfig raíz: sin sus dependencias salen
+      # «Cannot find module 'electron'».
+      - run: npm ci --prefix electron
+      - run: npx tsc --noEmit -p tsconfig.json
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+
   release:
     name: Build, sign & publish (Windows)
+    needs: typecheck
     runs-on: windows-latest
     defaults:
       run:

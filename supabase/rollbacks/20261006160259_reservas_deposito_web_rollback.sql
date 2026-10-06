@@ -1,4 +1,4 @@
--- Rollback de 20261006170000_reservas_deposito_web (D7, depósito de reservas web).
+-- Rollback de 20261006160259_reservas_deposito_web (D7, depósito de reservas web).
 --
 -- Orden: primero el cron y las funciones (el sitio y el webhook caen a la vía
 -- de siempre: `fn_reserva_mesa_crear_web` responde PGRST202 y el sitio llama a

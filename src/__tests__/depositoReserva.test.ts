@@ -131,7 +131,7 @@ describe('ajustes: campos del depósito (D7)', () => {
 });
 
 describe('migración D7 (contrato del archivo)', () => {
-  const sql = readFileSync(join(process.cwd(), 'supabase/migrations/20261006170000_reservas_deposito_web.sql'), 'utf8');
+  const sql = readFileSync(join(process.cwd(), 'supabase/migrations/20261006160259_reservas_deposito_web.sql'), 'utf8');
   const sinComentarios = sql.replace(/^--.*$/gm, '');
   it('es aditiva: sin DROP ni DELETE, y sin «;» dentro de literales', () => {
     expect(sinComentarios).not.toMatch(/\bdrop\b/i);
@@ -146,7 +146,7 @@ describe('migración D7 (contrato del archivo)', () => {
   });
   it('trae su rollback y el resultado del ensayo arriba', () => {
     expect(sql).toMatch(/ENSAYO_OK/);
-    expect(readFileSync(join(process.cwd(), 'supabase/rollbacks/20261006170000_reservas_deposito_web_rollback.sql'), 'utf8')).toMatch(
+    expect(readFileSync(join(process.cwd(), 'supabase/rollbacks/20261006160259_reservas_deposito_web_rollback.sql'), 'utf8')).toMatch(
       /drop function if exists public\.fn_reserva_mesa_crear_web/,
     );
   });

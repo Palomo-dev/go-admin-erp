@@ -9,7 +9,7 @@
  * - Aquí solo se describe lo guardado para mostrarlo y se valida el formulario.
  *
  * Estados de `restaurant_reservations.deposit_status` (migración
- * `20261006170000_reservas_deposito_web`): pending (por pagar), paid, failed
+ * `20261006160259_reservas_deposito_web`): pending (por pagar), paid, failed
  * (rechazado), expired (vencido), refunded y paid_late (pagado con la reserva
  * ya liberada: hay que reembolsar o reactivar a mano). NULL = sin depósito.
  */

@@ -169,7 +169,7 @@ export const AJUSTES_RESERVA_RECOMENDADOS: AjustesReservaDto = {
 export const COLUMNAS_AJUSTES = Object.keys(AJUSTES_RESERVA_POR_DEFECTO).join(', ');
 
 /**
- * Columnas de la migración D7 (`20261006170000_reservas_deposito_web`). Mientras
+ * Columnas de la migración D7 (`20261006160259_reservas_deposito_web`). Mientras
  * no esté aplicada, leer o escribir con ellas da 42703: se repite sin ellas y la
  * pantalla sigue funcionando como antes (el depósito no se puede activar sin
  * pasarela y sin la migración no hay pasarela que ofrecer).

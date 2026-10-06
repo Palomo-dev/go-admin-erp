@@ -1,3 +1,4 @@
+-- Aplicada el 2026-10-06 con apply_migration (versión 20261006160259).
 -- Paquete D · D7 — depósito de las reservas de mesa cobrado en el sitio web.
 -- NO APLICADA. Ensayo y orden de aplicación al pie de este encabezado.
 --

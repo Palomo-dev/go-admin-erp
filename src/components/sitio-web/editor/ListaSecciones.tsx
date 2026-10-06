@@ -18,7 +18,7 @@ import type { WebsitePageSection } from '@/lib/services/websitePageBuilderServic
 import { SortableRow } from '@/components/sitio-web/ui/SortableRow';
 import { DeviceVisibilityChip } from '@/components/sitio-web/ui/DeviceVisibilityChip';
 import { visibilidadDeSeccion } from '@/lib/website/v2/estiloSeccion';
-import { iconoDeSeccion, nombreDeSeccion } from './iconosSeccion';
+import { iconoDeSeccion, nombreEnLista } from './iconosSeccion';
 import type { AmbitoSede, ZonaGlobal } from './useEditorSitio';
 import { useTextosEditor } from './textos';
 
@@ -73,7 +73,7 @@ export function ListaSecciones(p: ListaSeccionesProps) {
           onSeleccionar={() => p.onSeleccionarZona('header')}
         />
         {p.secciones.map((s, i) => {
-          const nombre = nombreDeSeccion(s.section_type);
+          const nombre = nombreEnLista(s.section_type, s.section_variant);
           const ambito = p.ambito?.(s.id);
           const soloSede = ambito === 'personalizada' || ambito === 'solo-esta-sede';
           const vis = visibilidadDeSeccion(s);

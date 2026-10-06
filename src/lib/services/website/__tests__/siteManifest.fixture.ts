@@ -11,6 +11,16 @@
  */
 
 import type { SectionManifest } from '../sectionContract'
+import {
+  CLAVES_CARTA_QR,
+  CLAVES_PORTADA_MESA,
+  CLAVES_SECCION_MESA,
+  TIPOS_SECCION_MESA,
+  VARIANTES_SECCION_MESA,
+} from '@/lib/website/contrato/seccionesMesa'
+
+/** Claves sin repetir y ordenadas (el manifiesto vivo las publica así). */
+const unir = (...listas: ReadonlyArray<readonly string[]>): string[] => [...new Set(listas.flat())].sort()
 
 export const siteManifestFixture: SectionManifest = {
   version: '1',
@@ -129,21 +139,25 @@ export const siteManifestFixture: SectionManifest = {
     { type: 'menu_preview', variants: ['tabs'], contentKeys: [] },
     {
       type: 'menu_full',
-      variants: ['anchors', 'editorial', 'per_category', 'tabs'],
+      variants: ['anchors', 'editorial', 'per_category', 'qr', 'tabs'],
       // MenuFull expone CONTENT_KEYS como estática: el manifiesto vivo las publica.
-      contentKeys: [
-        'carta_platos',
-        'columns',
-        'eyebrow',
-        'menus',
-        'pdf_url',
-        'selected_category_ids',
-        'show_description',
-        'show_photos',
-        'size',
-        'subtitle',
-        'title',
-      ],
+      // La variante «qr» suma las claves de la Carta QR (contrato seccionesMesa.ts).
+      contentKeys: unir(
+        [
+          'carta_platos',
+          'columns',
+          'eyebrow',
+          'menus',
+          'pdf_url',
+          'selected_category_ids',
+          'show_description',
+          'show_photos',
+          'size',
+          'subtitle',
+          'title',
+        ],
+        CLAVES_CARTA_QR,
+      ),
     },
     { type: 'newsletter', variants: ['banner', 'simple', 'with_image'], contentKeys: [] },
     { type: 'offers', variants: ['grid'], contentKeys: [] },
@@ -210,21 +224,31 @@ export const siteManifestFixture: SectionManifest = {
     { type: 'reservation_cta', variants: ['simple', 'with_form'], contentKeys: [] },
     {
       type: 'restaurant_hero',
-      variants: ['split_bento', 'typographic'],
-      // Expone CONTENT_KEYS (Figma «Secciones nuevas» 167:5358).
-      contentKeys: [
-        'cards',
-        'eyebrow',
-        'image_alt',
-        'image_url',
-        'primary_cta_text',
-        'primary_cta_url',
-        'secondary_cta_text',
-        'secondary_cta_url',
-        'subtitle',
-        'title',
-      ],
+      variants: ['mesa', 'split_bento', 'typographic'],
+      // Expone CONTENT_KEYS (Figma «Secciones nuevas» 167:5358); la variante «mesa» (Carta QR)
+      // suma las suyas del contrato seccionesMesa.ts.
+      contentKeys: unir(
+        [
+          'cards',
+          'eyebrow',
+          'image_alt',
+          'image_url',
+          'primary_cta_text',
+          'primary_cta_url',
+          'secondary_cta_text',
+          'secondary_cta_url',
+          'subtitle',
+          'title',
+        ],
+        CLAVES_PORTADA_MESA,
+      ),
     },
+    // Carta QR en la mesa: los cuatro tipos nuevos (contrato seccionesMesa.ts).
+    ...TIPOS_SECCION_MESA.map((type) => ({
+      type,
+      variants: [...VARIANTES_SECCION_MESA[type]].sort(),
+      contentKeys: unir(CLAVES_SECCION_MESA[type]),
+    })),
     { type: 'related_products', variants: ['default'], contentKeys: [] },
     { type: 'room_types', variants: ['cards', 'detailed'], contentKeys: [] },
     { type: 'routes', variants: ['cards'], contentKeys: [] },

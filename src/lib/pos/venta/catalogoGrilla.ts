@@ -15,7 +15,8 @@ import type { CategoriaBarra, ValorCategoria } from '@/components/kit/categoryBa
 import type { ProductoTarjeta } from '@/components/kit/productCardLogica';
 import type { PosCategoryDisplayMode, PosCategoryOrderBy } from '@/components/pos/configuracion/configuracionService';
 import { insigniasDe, type PosGridProduct } from './catalogo';
-import { decimalesCantidad, esMedido, unidadVisible } from '@/lib/pos/peso/modoVenta';
+import { decimalesCantidad, esMedido, esPorPeso, precioPorUnidadVisible, unidadVisible } from '@/lib/pos/peso/modoVenta';
+import { convertirPeso, unidadPeso } from '@printing/peso';
 import { colorDeCategoria, esCategoriaTop, ordenarCategorias, type CategoriaOrdenable } from './categorias';
 
 // ---------------------------------------------------------------------------
@@ -202,10 +203,18 @@ export function aProductoTarjeta(p: PosGridProduct): ProductoTarjeta {
   else if (p.track_stock === true && p.stock_quantity !== undefined && p.stock_quantity !== null) {
     stock = { cantidad: Number(p.stock_quantity) };
   }
+  // Por peso, la tarjeta habla en la unidad del precio visible: «$ 12.000 / kg» y
+  // «57,300 kg» aunque el producto se guarde en gramos (precio $ 12/g, stock 57.300 g).
+  const visible = esPorPeso(p) && !ins.sinPrecio ? precioPorUnidadVisible(p, Number(p.price)) : null;
+  const unidadVisibleTarjeta = visible?.unidad ?? unidadVisible(p);
+  if (visible && stock && typeof stock === 'object' && unidadPeso(p.unit_code) !== unidadPeso(visible.unidad)) {
+    const enUnidad = Number(stock.cantidad);
+    stock = { cantidad: convertirPeso(enUnidad, p.unit_code, visible.unidad) ?? enUnidad };
+  }
   return {
     id: p.id,
     nombre: p.name,
-    precio: ins.sinPrecio ? null : Number(p.price),
+    precio: ins.sinPrecio ? null : visible ? visible.precio : Number(p.price),
     precioComparacion: p.compare_price ?? null,
     sku: p.sku,
     stock,
@@ -216,8 +225,8 @@ export function aProductoTarjeta(p: PosGridProduct): ProductoTarjeta {
     favorito: !!p.is_favorite,
     receta: ins.receta,
     // Por peso o medida: «Por kg», «/ kg» y el stock en kg (PRODUCTOS-POR-PESO-BASCULA.md).
-    unidadVenta: unidadVisible(p),
-    decimalesCantidad: esMedido(p) ? decimalesCantidad(p) : null,
+    unidadVenta: unidadVisibleTarjeta,
+    decimalesCantidad: esMedido(p) ? (visible ? 3 : decimalesCantidad(p)) : null,
   };
 }
 

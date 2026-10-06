@@ -34,6 +34,7 @@
  */
 
 import type { Cart, CartItem, CartItemModifier } from '@/components/pos/types';
+import { unidadVisible } from '@/lib/pos/peso/modoVenta';
 import type { DisplayCart, DisplayLine, DisplayModifier, DisplayVariantAttribute } from './protocol';
 
 /**
@@ -177,11 +178,14 @@ function projectLine(item: CartItem, index: number): DisplayLine {
   // dueño, 2026-09-23; POS-CARRITO-LINEAS-NOTAS.md).
   const note = typeof item.customer_note === 'string' && item.customer_note.trim().length > 0 ? item.customer_note.trim() : null;
 
+  // Por peso o medida, la unidad (solo entonces: una línea por unidad no cambia).
+  const unit = unidadVisible(item.product);
   return {
     id: lineId(item, index),
     name: typeof item.product?.name === 'string' ? item.product.name : '',
     variant: projectVariant(item.product),
     qty,
+    ...(unit ? { unit } : {}),
     unitPrice,
     total,
     modifiers: Array.isArray(item.modifiers) ? item.modifiers.filter(isEntry).map(projectModifier) : [],

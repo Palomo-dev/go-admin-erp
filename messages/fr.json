@@ -11125,7 +11125,7 @@
       "modo_venta_invalido": "Choisissez le mode de vente du produit.",
       "modo_venta_servicio": "Un service se vend à l’unité.",
       "modo_venta_con_variantes": "Un produit vendu au poids ou à la mesure n’a pas de variantes : créez chaque présentation comme un autre produit.",
-      "unidad_peso_invalida": "Au poids, l’unité doit être le kilogramme ou la livre.",
+      "unidad_peso_invalida": "Au poids, l’unité doit être le gramme, le kilogramme ou la livre.",
       "unidad_medida_invalida": "À la mesure, l’unité doit être le mètre ou le litre.",
       "referencia_precio_invalida": "Le prix se saisit au kg ou pour 500, 250, 100 ou 50 g.",
       "decimales_invalidos": "La quantité admet de 1 à 3 décimales.",
@@ -11615,12 +11615,13 @@
       "porMedida": "À la mesure",
       "unidadPeso": "Unité de poids",
       "unidadMedida": "Unité de mesure",
+      "gramo": "Gramme (g)",
       "kilogramo": "Kilogramme (kg)",
       "libra": "Livre (lb)",
       "metro": "Mètre (m)",
       "litro": "Litre (L)",
       "precioEscrito": "Saisir le prix",
-      "precioEscritoAyuda": "Change seulement la saisie et l’affichage : il est toujours enregistré au kg.",
+      "precioEscritoAyuda": "Change seulement la saisie et l’affichage : il est enregistré dans l’unité du produit (au gramme s’il est vendu en grammes).",
       "porUnidadVenta": "le {unidad}",
       "cadaCantidad": "les {cantidad} {unidad}",
       "precioVentaCada": "Prix de vente {referencia}",
@@ -20788,7 +20789,8 @@
       },
       "sinPrecio": "« {producto} » n’a pas de prix en vigueur. Configurez-le dans Inventaire.",
       "precioNoConsultado": "Impossible de vérifier le prix de « {producto} ». Vérifiez la connexion et réessayez.",
-      "errorAgregar": "Impossible d’ajouter « {producto} » au panier."
+      "errorAgregar": "Impossible d’ajouter « {producto} » au panier.",
+      "unidadEscrita": "Unité du poids saisi"
     },
     "etiqueta": {
       "invalida": "Étiquette de poids illisible",

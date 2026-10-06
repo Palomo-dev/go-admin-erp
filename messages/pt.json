@@ -11125,7 +11125,7 @@
       "modo_venta_invalido": "Escolha como o produto é vendido.",
       "modo_venta_servicio": "Um serviço é vendido por unidade.",
       "modo_venta_con_variantes": "Um produto vendido por peso ou medida não tem variantes: crie cada apresentação como outro produto.",
-      "unidad_peso_invalida": "Por peso, a unidade deve ser quilograma ou libra.",
+      "unidad_peso_invalida": "Por peso, a unidade deve ser grama, quilograma ou libra.",
       "unidad_medida_invalida": "Por medida, a unidade deve ser metro ou litro.",
       "referencia_precio_invalida": "O preço é digitado por kg ou a cada 500, 250, 100 ou 50 g.",
       "decimales_invalidos": "A quantidade admite de 1 a 3 casas decimais.",
@@ -11615,12 +11615,13 @@
       "porMedida": "Por medida",
       "unidadPeso": "Unidade de peso",
       "unidadMedida": "Unidade de medida",
+      "gramo": "Grama (g)",
       "kilogramo": "Quilograma (kg)",
       "libra": "Libra (lb)",
       "metro": "Metro (m)",
       "litro": "Litro (L)",
       "precioEscrito": "Digitar o preço",
-      "precioEscritoAyuda": "Só muda como é digitado e exibido: é sempre salvo por kg.",
+      "precioEscritoAyuda": "Só muda como é digitado e exibido: é salvo na unidade do produto (por grama se vendido em gramas).",
       "porUnidadVenta": "por {unidad}",
       "cadaCantidad": "a cada {cantidad} {unidad}",
       "precioVentaCada": "Preço de venda {referencia}",
@@ -20788,7 +20789,8 @@
       },
       "sinPrecio": "“{producto}” não tem preço vigente. Configure-o em Estoque.",
       "precioNoConsultado": "Não foi possível consultar o preço de “{producto}”. Verifique a conexão e tente de novo.",
-      "errorAgregar": "Não foi possível adicionar “{producto}” ao carrinho."
+      "errorAgregar": "Não foi possível adicionar “{producto}” ao carrinho.",
+      "unidadEscrita": "Unidade do peso digitado"
     },
     "etiqueta": {
       "invalida": "Etiqueta de peso ilegível",

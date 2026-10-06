@@ -55,6 +55,8 @@ export { buildRasterImageCommand, isValidRaster, writeRasterImage } from './escp
 
 export type { QuantityLine } from './quantity';
 export { formatQuantity, isMeasuredLine, itemsSummary, lineNamePrefix, linePriceDetail } from './quantity';
+export type { UnidadPeso } from './peso';
+export { convertirPeso, decimalesPeso, pesoEnUnidad, pesoLegible, precioVisiblePeso, unidadPeso } from './peso';
 
 export type { MoneyFormat } from './money';
 export { moneyFormatter } from './money';

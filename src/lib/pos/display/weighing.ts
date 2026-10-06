@@ -7,6 +7,7 @@
  * pantalla (al sanear lo que recibe) y los tests. Nunca lanza.
  */
 
+import { pesoLegible, precioVisiblePeso } from '@printing/peso';
 import type { DisplayWeighing } from './protocol';
 
 function finito(v: unknown): number | null {
@@ -95,6 +96,9 @@ export function formatWeighingMoney(value: number, currency: string, locale: str
 /** Cantidad con los decimales del producto y su unidad: «0,735 kg». */
 export function formatWeighingQty(w: Pick<DisplayWeighing, 'qty' | 'unit' | 'decimals'>, locale: string): string {
   if (w.qty === null) return w.unit ? `— ${w.unit}` : '—';
+  // Por peso, legible sea cual sea la unidad: «735 g», «1,250 kg» (conversión única).
+  const peso = pesoLegible(w.qty, w.unit, locale);
+  if (peso !== null) return peso;
   let texto: string;
   try {
     texto = new Intl.NumberFormat(locale, { minimumFractionDigits: w.decimals, maximumFractionDigits: w.decimals }).format(w.qty);
@@ -102,4 +106,10 @@ export function formatWeighingQty(w: Pick<DisplayWeighing, 'qty' | 'unit' | 'dec
     texto = w.qty.toFixed(w.decimals);
   }
   return (w.unit ? `${texto} ${w.unit}` : texto).replace(/[  ]/g, ' ');
+}
+
+/** Precio que ve el cliente: por kg aunque la pesada vaya en gramos («$ 12.000/kg»), por lb en libras. */
+export function weighingVisiblePrice(w: Pick<DisplayWeighing, 'unitPrice' | 'unit'>): { price: number; unit: string } {
+  const v = precioVisiblePeso(w.unitPrice, w.unit);
+  return v ? { price: v.precio, unit: v.unidad } : { price: w.unitPrice, unit: w.unit };
 }

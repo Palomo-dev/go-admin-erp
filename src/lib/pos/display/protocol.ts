@@ -49,6 +49,12 @@ export interface DisplayLine {
    */
   variant: DisplayVariantAttribute[] | null;
   qty: number;
+  /**
+   * Símbolo de la unidad («g», «kg», «lb», «m») solo en líneas por peso o
+   * medida; la pantalla muestra «735 g Pechuga» en vez de «735 × Pechuga».
+   * Opcional: una caja anterior no lo manda.
+   */
+  unit?: string;
   /** Precio unitario que ve el cliente: ya incluye el extra de los modificadores. */
   unitPrice: number;
   /**

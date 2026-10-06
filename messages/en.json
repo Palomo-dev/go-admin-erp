@@ -13980,7 +13980,7 @@
       "modo_venta_invalido": "Choose how the product is sold.",
       "modo_venta_servicio": "A service is sold by unit.",
       "modo_venta_con_variantes": "A product sold by weight or measure has no variants: create each presentation as another product.",
-      "unidad_peso_invalida": "By weight, the unit must be kilogram or pound.",
+      "unidad_peso_invalida": "By weight, the unit must be gram, kilogram or pound.",
       "unidad_medida_invalida": "By measure, the unit must be meter or liter.",
       "referencia_precio_invalida": "The price is entered per kg or per 500, 250, 100 or 50 g.",
       "decimales_invalidos": "The quantity allows 1 to 3 decimals.",
@@ -14470,12 +14470,13 @@
       "porMedida": "By measure",
       "unidadPeso": "Weight unit",
       "unidadMedida": "Measure unit",
+      "gramo": "Gram (g)",
       "kilogramo": "Kilogram (kg)",
       "libra": "Pound (lb)",
       "metro": "Meter (m)",
       "litro": "Liter (L)",
       "precioEscrito": "Enter the price",
-      "precioEscritoAyuda": "Only changes how it is typed and shown: it is always stored per kg.",
+      "precioEscritoAyuda": "Only changes how it is typed and shown: it is stored per the product unit (per gram if sold in grams).",
       "porUnidadVenta": "per {unidad}",
       "cadaCantidad": "per {cantidad} {unidad}",
       "precioVentaCada": "Sale price {referencia}",
@@ -23643,7 +23644,8 @@
       },
       "sinPrecio": "“{producto}” has no current price. Set it in Inventory.",
       "precioNoConsultado": "The price of “{producto}” could not be checked. Check your connection and try again.",
-      "errorAgregar": "“{producto}” could not be added to the cart."
+      "errorAgregar": "“{producto}” could not be added to the cart.",
+      "unidadEscrita": "Unit of the typed weight"
     },
     "etiqueta": {
       "invalida": "Unreadable weight label",

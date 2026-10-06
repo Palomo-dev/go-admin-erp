@@ -18,18 +18,9 @@ import { codigoUnidad, decimalesCantidad, redondearCantidadProducto, type Produc
 import type { EstadoLector, ErrorLector } from './lector';
 import type { ConfigBascula } from './tipos';
 
-const A_KG: Record<string, number> = { KG: 1, G: 0.001, GR: 0.001, LB: 0.45359237, OZ: 0.028349523125 };
-
-/** Convierte entre unidades de peso; null si alguna no es de peso. */
-export function convertirPeso(valor: number, de: string | null | undefined, a: string | null | undefined): number | null {
-  const d = (de ?? '').trim().toUpperCase();
-  const h = (a ?? '').trim().toUpperCase();
-  if (d === h) return valor;
-  const fd = A_KG[d];
-  const fh = A_KG[h];
-  if (!fd || !fh) return null;
-  return (valor * fd) / fh;
-}
+// La conversión es la única de la caja y del ticket (`@printing/peso`).
+import { convertirPeso } from '@printing/peso';
+export { convertirPeso };
 
 export type EstadoVistaLectura = 'conectando' | 'estable' | 'inestable' | 'fuera_de_rango' | 'error';
 

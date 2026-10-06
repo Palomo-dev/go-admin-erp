@@ -11,7 +11,7 @@
 import { Scale } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { DisplayWeighing } from '@/lib/pos/display/protocol';
-import { formatWeighingMoney, formatWeighingQty } from '@/lib/pos/display/weighing';
+import { formatWeighingMoney, formatWeighingQty, weighingVisiblePrice } from '@/lib/pos/display/weighing';
 
 export interface WeighingBannerProps {
   weighing: DisplayWeighing;
@@ -24,7 +24,8 @@ export interface WeighingBannerProps {
 export function WeighingBanner({ weighing, currency, locale = 'es-CO', completa = false }: WeighingBannerProps) {
   const t = useTranslations('posDisplay');
   const money = (value: number) => formatWeighingMoney(value, currency, locale, weighing.moneyDecimals);
-  const precio = t('weighing.price', { price: money(weighing.unitPrice), unit: weighing.unit });
+  const visible = weighingVisiblePrice(weighing);
+  const precio = t('weighing.price', { price: money(visible.price), unit: visible.unit });
   const texto =
     weighing.qty === null
       ? t('weighing.waiting', { price: precio })

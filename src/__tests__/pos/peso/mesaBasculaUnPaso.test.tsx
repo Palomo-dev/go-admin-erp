@@ -145,10 +145,10 @@ describe('mesa: venta por peso en un paso con báscula', () => {
     renderConIdioma(<AddProductDialog open onOpenChange={jest.fn()} onAddProducts={onAdd} />);
     fireEvent.click(await screen.findByText('Queso campesino'));
     await waitFor(() => expect(lineasQueso()).toHaveLength(1));
-    expect(txt(lineasQueso()[0].textContent)).toContain('0,735 kg');
+    expect(txt(lineasQueso()[0].textContent)).toContain('735 g');
     expect(screen.queryByRole('textbox', { name: /Peso en kg/i })).toBeNull();
     const [texto, opciones] = toastSonner.success.mock.calls[0];
-    expect(txt(texto)).toBe('Agregado: 0,735 kg · Queso campesino · $ 13.892');
+    expect(txt(texto)).toBe('Agregado: 735 g · Queso campesino · $ 13.892');
 
     fireEvent.click(screen.getByRole('button', { name: /Agregar al Pedido/ }));
     await waitFor(() => expect(onAdd).toHaveBeenCalledTimes(1));
@@ -172,7 +172,7 @@ describe('mesa: venta por peso en un paso con báscula', () => {
     expect(lineasQueso()).toHaveLength(0);
     act(() => mockPonerLectura(leyendo(0.74, true)));
     await waitFor(() => expect(lineasQueso()).toHaveLength(1));
-    expect(txt(lineasQueso()[0].textContent)).toContain('0,740 kg');
+    expect(txt(lineasQueso()[0].textContent)).toContain('740 g');
     expect(toastSonner.success).toHaveBeenCalledTimes(1);
   });
 

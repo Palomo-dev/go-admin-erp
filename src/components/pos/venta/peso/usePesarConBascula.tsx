@@ -169,7 +169,10 @@ export function usePesarConBascula<M = unknown>(
     }
     let precio = op.precio;
     if (precio === undefined) {
-      let base = Number(producto.price);
+      // Sin precio en la lista (`price: null`) se consulta el vigente: Number(null) daba
+      // 0 y «Pesar» mostraba $ 0 (el carrito sí cobraba el vigente).
+      const lista = producto.price as number | string | null | undefined;
+      let base = lista === null || lista === undefined || lista === '' ? NaN : Number(lista);
       if (!Number.isFinite(base)) {
         try {
           base = await POSService.precioVigenteProducto(producto.id, producto.name);

@@ -298,11 +298,11 @@ export interface EstadoFormularioProducto {
   unit_code: string;
   /**
    * Cómo se vende (PRODUCTOS-POR-PESO-BASCULA.md §2.1): por unidad, por peso
-   * (kg o lb) o por medida (metro o litro). `price` y `cost` son SIEMPRE por
+   * (g, kg o lb) o por medida (metro o litro). `price` y `cost` son SIEMPRE por
    * `unit_code` (por kg); «cada 100 g» es solo cómo se escribe el precio.
    */
   sale_mode: ModoVenta;
-  /** Referencia del precio escrito: '' (por la unidad de venta) o «500GR», «250GR», «100GR», «50GR». */
+  /** Referencia del precio escrito: '' (por la unidad de venta) o «500GR», «250GR», «100GR», «50GR»; en gramos «1000GR» (por kg). */
   precio_referencia: string;
   /** Venta mínima de una línea, en `unit_code`. */
   min_sale_qty: number | null;
@@ -574,7 +574,10 @@ export function estadoDesdeDatos(
     reference: s(p.reference),
     unit_code: s(p.unit_code).trim() || 'UN',
     sale_mode: modoVenta(p as { sale_mode?: string | null }),
-    precio_referencia: referenciaComoTexto(p as { price_ref_qty?: unknown; price_ref_unit_code?: unknown }),
+    precio_referencia:
+      referenciaComoTexto(p as { price_ref_qty?: unknown; price_ref_unit_code?: unknown }) ||
+      // En gramos el precio se escribe por kg aunque no tenga referencia guardada.
+      (modoVenta(p as { sale_mode?: string | null }) === 'weight' && s(p.unit_code).trim().toUpperCase() === 'GR' ? '1000GR' : ''),
     min_sale_qty: n((p as { min_sale_qty?: unknown }).min_sale_qty),
     require_scale: (p as { require_scale?: unknown }).require_scale === true,
     // Único por organización: una copia no lo hereda.
@@ -770,7 +773,7 @@ export function validarModoVenta(e: EstadoFormularioProducto): CodigoValidacion 
   const ref = referenciaDesdeTexto(e.precio_referencia);
   if (e.sale_mode === 'weight' && ref && !referenciaValida(ref, u)) return 'referencia_precio_invalida';
   if (e.min_sale_qty !== null) {
-    const dec = decimalesCantidad({ sale_mode: e.sale_mode });
+    const dec = decimalesCantidad({ sale_mode: e.sale_mode, unit_code: u });
     if (!(e.min_sale_qty > 0) || redondearCantidadProducto(e.min_sale_qty, dec) !== e.min_sale_qty) return 'minimo_invalido';
   }
   return null;

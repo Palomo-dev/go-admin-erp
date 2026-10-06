@@ -1,6 +1,7 @@
 // Tipos para el sistema de mesas de restaurante
 
-export type TableState = 'free' | 'occupied' | 'reserved';
+/** 'cleaning' = «Por limpiar» (migración 20261006164925; antes no existía). */
+export type TableState = 'free' | 'occupied' | 'reserved' | 'cleaning';
 export type SessionStatus = 'active' | 'bill_requested' | 'completed';
 export type KitchenTicketStatus = 'new' | 'preparing' | 'ready' | 'delivered';
 
@@ -15,6 +16,9 @@ export interface RestaurantTable {
   position_x: number | null;
   position_y: number | null;
   rotation?: number | null;
+  /** Forma y tamaño en el plano (NULL: la decide la capacidad). */
+  shape?: 'square' | 'round' | 'long' | 'bar' | null;
+  size?: 's' | 'm' | 'l' | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -43,6 +47,10 @@ export interface TableWithSession extends RestaurantTable {
   session?: TableSession;
   totalAmount?: number;
   customerName?: string;
+  /** Platos listos sin servir (campana del plano). */
+  readyKitchenItems?: number;
+  /** Último movimiento de la cuenta o de su cocina (mesa abierta sin movimiento). */
+  lastActivityAt?: string | null;
 }
 
 export interface Zone {

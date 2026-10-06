@@ -103,7 +103,7 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
         .select(`
           *,
           items:web_order_items(*),
-          customer:customers(id, full_name, email, phone, address, city),
+          customer:customers(id, full_name, email, phone, address, city, doc_type, doc_number),
           branch:branches(id, name, address, phone)
         `)
         .eq('id', orderId)

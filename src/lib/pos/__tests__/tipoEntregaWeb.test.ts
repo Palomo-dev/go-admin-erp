@@ -1,5 +1,5 @@
 /// <reference types="jest" />
-import { esComerAqui, esDomicilio, mesaDelPedido, tipoEntregaEfectivo } from '../pedidosWeb/tipoEntrega';
+import { esComerAqui, esDomicilio, mesaCortaDelPedido, mesaDelPedido, tipoEntregaEfectivo, zonaDelPedido } from '../pedidosWeb/tipoEntrega';
 
 describe('tipo de entrega del pedido web', () => {
   it('solo propio y tercero son domicilio (dine_in no pide dirección)', () => {
@@ -20,7 +20,10 @@ describe('tipo de entrega del pedido web', () => {
 
   it('la mesa sale de la enlazada o de la nota del sitio', () => {
     expect(mesaDelPedido({ delivery_type: 'dine_in', restaurant_table: { name: 'Mesa 4', zone: 'Terraza' } })).toBe('Mesa 4 (Terraza)');
-    expect(mesaDelPedido({ delivery_type: 'pickup', internal_notes: '[Comer aquí] Mesa: 4 (Terraza)' })).toBe('4 (Terraza)');
+    expect(mesaDelPedido({ delivery_type: 'pickup', internal_notes: '[Comer aquí] Mesa: 4 (Terraza)' })).toBe('Mesa 4 (Terraza)');
     expect(mesaDelPedido({ delivery_type: 'pickup', internal_notes: 'Mesa: 4' })).toBeNull();
+    expect(mesaDelPedido({ delivery_type: 'pickup', internal_notes: '[Comer aquí] Mesa: Barra 2' })).toBe('Barra 2');
+    expect(mesaCortaDelPedido({ delivery_type: 'pickup', internal_notes: '[Comer aquí] Mesa: 4 (Terraza)' })).toBe('Mesa 4');
+    expect(zonaDelPedido({ delivery_type: 'pickup', internal_notes: '[Comer aquí] Mesa: 4 (Terraza)' })).toBe('Terraza');
   });
 });

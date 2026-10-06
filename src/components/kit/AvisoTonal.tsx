@@ -19,7 +19,8 @@ import { clasesBoton } from './botonClases';
  * texto si no cabe. Sustituye a los avisos sueltos de cada pantalla
  * (`AvisoConAccion` del editor sigue para su caso: abre otra pestaña).
  */
-export type TonoAviso = 'advertencia' | 'peligro' | 'informacion' | 'exito';
+/** `neutro`: un estado sin urgencia (sin conexión con la cola guardada, Figma `AvisoMesa Tono=neutro`). */
+export type TonoAviso = 'advertencia' | 'peligro' | 'informacion' | 'exito' | 'neutro';
 
 export interface AccionAviso {
   etiqueta: string;
@@ -48,6 +49,7 @@ const TONO: Record<TonoAviso, { caja: string; texto: string; icono: LucideIcon }
   peligro: { caja: 'border-line-danger bg-danger-subtle', texto: 'text-danger-text', icono: CircleAlert },
   informacion: { caja: 'border-line-info bg-info-subtle', texto: 'text-info-text', icono: Info },
   exito: { caja: 'border-line-success bg-success-subtle', texto: 'text-success-text', icono: CircleCheck },
+  neutro: { caja: 'border-line bg-subtle', texto: 'text-fg-secondary', icono: Info },
 };
 
 export function AvisoTonal({

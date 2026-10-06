@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { Clock, Plus, ShoppingCart, X } from 'lucide-react';
 import { Dialogo, EmptyState, KbdButton, useAtajos } from '@/components/kit';
@@ -28,9 +28,14 @@ interface CartTabsProps {
   className?: string;
   /** false apaga Ctrl+N y Ctrl+Tab (la página lo hace con el cobro abierto). */
   atajosActivos?: boolean;
+  /**
+   * Pestaña que va primero y no es un carrito: la cuenta de la mesa que se
+   * atiende (Figma D2–D9, «Mesa 4 · $ · ×»). El POS de mostrador no la usa.
+   */
+  pestanaFija?: ReactNode;
 }
 
-export function CartTabs({ carts, activeCartId, onCartSelect, onNewCart, onRemoveCart, className, atajosActivos = true }: CartTabsProps) {
+export function CartTabs({ carts, activeCartId, onCartSelect, onNewCart, onRemoveCart, className, atajosActivos = true, pestanaFija }: CartTabsProps) {
   const t = useTranslations('posVenta.pestanas');
   const tAtajos = useTranslations('posVenta.atajos');
   const { formatear } = useMonedaOrganizacion();
@@ -72,7 +77,7 @@ export function CartTabs({ carts, activeCartId, onCartSelect, onNewCart, onRemov
     return e.cliente ?? t('carritoN', { n: e.numero });
   };
 
-  if (carts.length === 0) {
+  if (carts.length === 0 && !pestanaFija) {
     return (
       <div className={className}>
         <EmptyState
@@ -91,6 +96,7 @@ export function CartTabs({ carts, activeCartId, onCartSelect, onNewCart, onRemov
     <div className={cn('flex items-center gap-2', className)}>
       <div ref={arrastre.ref} className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:thin]">
         <div role="tablist" aria-label={t('etiqueta')} className="flex w-max items-center gap-1 rounded-lg bg-subtle p-1">
+          {pestanaFija}
           {carts.map((cart, index) => {
             const e = etiquetaPestana(cart, index);
             const activa = cart.id === activeCartId;

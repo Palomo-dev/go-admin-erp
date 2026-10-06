@@ -218,10 +218,14 @@ describe('la pantalla ya no reparte platos por turnos', () => {
     expect(dialogo).toMatch(/filter\(\(l\) => !l\.paid_at\)/);
   });
 
-  it('la página: sin «productos sin asignar» en partes por monto y cobro del saldo tras un abono', () => {
-    expect(pagina).toContain('esDivisionPorMonto(billSplits) ? []');
-    expect(pagina).toContain('abonadoPendiente(session.sale_items || []) > 0');
-    expect(pagina).toContain('saldoDeLineas(session.sale_items || [])');
+  // La página de la mesa se rehízo (Figma «flujo completo de atención», D8/D8b): las
+  // partes se cobran por MONTO con una línea virtual y el resto de líneas viaja en
+  // `lineas_sin_cobrar`; tras un abono se cobra el saldo y el servidor lo confirma.
+  it('la página: partes por monto (línea virtual + lineas_sin_cobrar) y cobro del saldo tras un abono', () => {
+    expect(pagina).toContain('const porMonto = !!cobro?.parte || totales.abonado > 0;');
+    expect(pagina).toContain('lineas_sin_cobrar: lineasSinPagarComoCarrito()');
+    expect(pagina).toContain("if (totales.abonado > 0) return virtual(totales.saldo");
+    expect(pagina).toContain("supabase.rpc('fn_pos_mesa_saldo'");
   });
 });
 

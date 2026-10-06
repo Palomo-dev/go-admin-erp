@@ -21,7 +21,7 @@ interface BulkActionsBarProps {
   onDelete: () => void;
 }
 
-const stateOptions: { value: SpaceState; label: string; icon: React.ReactNode }[] = [
+export const stateOptions: { value: SpaceState; label: string; icon: React.ReactNode }[] = [
   { value: 'free', label: 'Libre', icon: <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" /> },
   { value: 'occupied', label: 'Ocupado', icon: <Car className="h-4 w-4 text-red-600 dark:text-red-400" /> },
   { value: 'reserved', label: 'Reservado', icon: <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-400" /> },

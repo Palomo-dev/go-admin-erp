@@ -1,10 +1,8 @@
 'use client';
 
-import { useRef, useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import CreateOrganizationWizard from './CreateOrganizationWizard';
-import { X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 /** Lo que devuelve el asistente al crear la organización. */
 export interface OrganizacionCreada {
@@ -21,99 +19,31 @@ interface CreateOrganizationDialogProps {
   onSuccess?: (data: OrganizacionCreada) => void;
 }
 
-export default function CreateOrganizationDialog({
-  isOpen,
-  onClose,
-  onSuccess
-}: CreateOrganizationDialogProps) {
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const [mounted, setMounted] = useState(false);
+/**
+ * «Crear nueva organización» con el Dialog del kit. Antes era un modal propio a z-[9999] con
+ * su propio «clic fuera»: los desplegables del asistente (ciudad, país…) se abren en un portal a
+ * z-50, quedaban detrás del modal, y un clic en ellos contaba como «fuera» y lo cerraba.
+ * El Dialog del kit maneja el foco, Escape y los desplegables anidados.
+ */
+export default function CreateOrganizationDialog({ isOpen, onClose, onSuccess }: CreateOrganizationDialogProps) {
   const t = useTranslations('org.createOrgDialog');
-  const tHeader = useTranslations('header');
-  
-  // Cerrar el diálogo al hacer clic fuera del contenido
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dialogRef.current && !dialogRef.current.contains(event.target as Node)) {
-        onClose();
-      }
-    }
-    
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isOpen, onClose]);
-  
-  // Efecto para manejar la tecla Escape
-  useEffect(() => {
-    function handleEscapeKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    }
-    
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscapeKey);
-    }
-    
-    return () => {
-      document.removeEventListener('keydown', handleEscapeKey);
-    };
-  }, [isOpen, onClose]);
-  
-  // Efectos de montaje y manejo del scroll
-  useEffect(() => {
-    setMounted(true);
-    
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    }
-    
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
-  
-  if (!isOpen || !mounted) return null;
-  
-  // Usar portal para renderizar el diálogo en el nivel del documento
-  return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
-      <div 
-        ref={dialogRef}
-        className="relative m-4 max-h-[90vh] w-[calc(100%-2rem)] max-w-3xl overflow-y-auto overflow-x-hidden rounded-lg bg-white shadow-xl dark:bg-gray-800"
-      >
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
-            {t('title')}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={tHeader('close')}
-            className="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400 focus:outline-none"
-          >
-            <X size={20} />
-          </button>
-        </div>
-        
-        <div className="p-4">
-          <CreateOrganizationWizard
-            onSuccess={(data) => {
-              if (onSuccess) {
-                onSuccess(data);
-              }
-              onClose();
-            }}
-            onCancel={onClose}
-          />
-        </div>
-      </div>
-    </div>,
-    document.body
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(abierto) => { if (!abierto) onClose(); }}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>{t('title')}</DialogTitle>
+        </DialogHeader>
+        <CreateOrganizationWizard
+          onSuccess={(data) => {
+            if (onSuccess) {
+              onSuccess(data);
+            }
+            onClose();
+          }}
+          onCancel={onClose}
+        />
+      </DialogContent>
+    </Dialog>
   );
 }

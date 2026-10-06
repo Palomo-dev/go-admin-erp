@@ -1,6 +1,8 @@
 import { supabase } from '@/lib/supabase/config';
+import type { UnidadTarifaBD } from '@/lib/services/parkingValores';
 
-export type RateUnit = 'minute' | 'hour' | 'day' | 'fraction';
+/** Enum `parking_rate_unit`: minute, hour, day. No existe la unidad «fracción». */
+export type RateUnit = UnidadTarifaBD;
 
 export interface ParkingRate {
   id: string;
@@ -119,11 +121,6 @@ class ParkingRateService {
         breakdown = `${days} día(s) × $${rate.price.toLocaleString()}/día`;
         break;
 
-      case 'fraction':
-        const fractions = Math.ceil(billableMinutes / 15); // fracción de 15 min
-        amount = fractions * rate.price;
-        breakdown = `${fractions} fracción(es) × $${rate.price.toLocaleString()}/fracción`;
-        break;
     }
 
     if (gracePeriod > 0 && durationMinutes <= gracePeriod) {

@@ -5,13 +5,14 @@ import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Badge } from '@/components/ui/badge';
 import { DollarSign, Car, Bike, Truck } from 'lucide-react';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import type { UnidadTarifaBD } from '@/lib/services/parkingValores';
 
 export interface ParkingRate {
   id: string;
   organization_id?: number;
   vehicle_type: string;
   rate_name: string;
-  unit: 'minute' | 'hour' | 'day' | 'fraction';
+  unit: UnidadTarifaBD;
   price: number;
   grace_period_min: number;
   is_active?: boolean;
@@ -58,12 +59,12 @@ function getVehicleLabel(vehicleType: string): string {
 
 function getUnitLabel(unit: string): string {
   switch (unit) {
+    case 'minute':
+      return '/min';
     case 'hour':
       return '/hora';
     case 'day':
       return '/día';
-    case 'fraction':
-      return '/fracción';
     default:
       return '';
   }

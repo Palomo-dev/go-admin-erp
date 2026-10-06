@@ -8,6 +8,11 @@ export interface PedidoWebDeComanda {
   tipo: TipoEntregaWeb;
   mesa: string | null;
   customer_notes: string | null;
+  /** Hora prometida (listo aprox), pago y cliente: línea de contexto de la tarjeta (extensión 2026-10-06). */
+  estimated_ready_at?: string | null;
+  payment_status?: string | null;
+  payment_method?: string | null;
+  customer_name?: string | null;
 }
 
 export interface KitchenTicket {
@@ -33,6 +38,11 @@ export interface KitchenTicket {
   allergy_ack_at?: string | null;
   allergy_ack_by?: string | null;
   cancelled_at?: string | null;
+  cancellation_reason?: string | null;
+  /** Comandas v2 (migración 20261006171048): primera vez que una estación la empezó. */
+  started_at?: string | null;
+  /** Comandas v2: último «Avisar al mesero». */
+  waiter_notified_at?: string | null;
   /** Pedido web de la comanda (columna de la migración E2; null en las del POS). */
   web_order_id?: string | null;
   /** Origen «Web W-xxxx · Recoger / Mesa N» y nota del cliente (solo comandas web). */
@@ -41,6 +51,8 @@ export interface KitchenTicket {
     id: string;
     restaurant_table_id: string | null;
     server_id: string | null;
+    /** Comensales de la mesa («4 comensales» en el tablero agrupado). */
+    customers?: number | null;
     serverName?: string;
     restaurant_tables?: {
       name: string;
@@ -72,6 +84,9 @@ export interface KitchenTicketItem {
   adjustment_reason?: string | null;
   cancelled_at?: string | null;
   cancel_reason?: string | null;
+  /** Comandas v2: tiempos por ítem (cada estación marca lo suyo). */
+  started_at?: string | null;
+  ready_at?: string | null;
   sale_items?: {
     quantity: number;
     product_id: number;
@@ -103,25 +118,14 @@ interface RegistroTicket {
   [clave: string]: unknown;
 }
 
-class KitchenService {
-  /**
-   * Obtener todos los tickets de cocina con filtros
-   */
-  async getKitchenTickets(filters?: {
-    status?: StatusFilter;
-    zone?: ZoneFilter;
-    organizationId?: number;
-    branchId?: number | null;
-  }) {
-    try {
-      let query = supabase
-        .from('kitchen_tickets')
-        .select(`
+/** Columnas de la comanda con su mesa, mesero e ítems (tablero y monitor). */
+const SELECT_COMANDA = `
           *,
           table_sessions (
             id,
             restaurant_table_id,
             server_id,
+            customers,
             restaurant_tables (
               name,
               zone
@@ -149,7 +153,22 @@ class KitchenService {
               )
             )
           )
-        `)
+        `;
+
+class KitchenService {
+  /**
+   * Obtener todos los tickets de cocina con filtros
+   */
+  async getKitchenTickets(filters?: {
+    status?: StatusFilter;
+    zone?: ZoneFilter;
+    organizationId?: number;
+    branchId?: number | null;
+  }) {
+    try {
+      let query = supabase
+        .from('kitchen_tickets')
+        .select(SELECT_COMANDA)
         .order('created_at', { ascending: false });
 
       if (filters?.organizationId) {
@@ -219,6 +238,120 @@ class KitchenService {
   }
 
   /**
+   * Comandas v2 — tablero del TURNO ACTUAL (docs/design/POS-ESTACIONES-Y-COMANDAS.md §3.1):
+   * las vivas (nuevas, en preparación, listas) creadas desde `desde` (inicio del
+   * día de la organización), las entregadas de los últimos 30 min y el conteo
+   * de las vivas de días anteriores (van a un aviso, no al tablero). Sin
+   * paginación, con tope de 300 vivas.
+   */
+  async getTableroTurno(params: {
+    organizationId: number;
+    branchId?: number | null;
+    desde: string;
+    entregadasDesde: string;
+  }): Promise<{ tickets: KitchenTicket[]; vivasAnteriores: number }> {
+    const base = () => {
+      let q = supabase.from('kitchen_tickets').select(SELECT_COMANDA).eq('organization_id', params.organizationId);
+      if (params.branchId != null) q = q.eq('branch_id', params.branchId);
+      return q;
+    };
+    let anteriores = supabase
+      .from('kitchen_tickets')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', params.organizationId)
+      .in('status', ['new', 'preparing', 'ready'])
+      .lt('created_at', params.desde);
+    if (params.branchId != null) anteriores = anteriores.eq('branch_id', params.branchId);
+
+    const [vivas, entregadas, conteo] = await Promise.all([
+      base().in('status', ['new', 'preparing', 'ready']).gte('created_at', params.desde).order('created_at', { ascending: true }).limit(300),
+      base().eq('status', 'delivered').gte('updated_at', params.entregadasDesde).order('updated_at', { ascending: false }).limit(60),
+      anteriores,
+    ]);
+    if (vivas.error) throw vivas.error;
+    if (entregadas.error) throw entregadas.error;
+    const filas = [...(vivas.data ?? []), ...(entregadas.data ?? [])] as RegistroTicket[];
+    const conMesero = await this.adjuntarMeseros(filas);
+    const tickets = await this.adjuntarPedidosWeb(conMesero as unknown as KitchenTicket[], params.organizationId);
+    return { tickets, vivasAnteriores: conteo.error ? 0 : conteo.count ?? 0 };
+  }
+
+  /**
+   * Historial de comandas (entregadas y canceladas), paginado: el enlace
+   * «Ver historial de comandas» del tablero. Lectura con la RLS del usuario.
+   */
+  async getHistorial(params: {
+    organizationId: number;
+    branchId?: number | null;
+    pagina: number;
+    tamano: number;
+  }): Promise<{ tickets: KitchenTicket[]; total: number }> {
+    const desde = (params.pagina - 1) * params.tamano;
+    let q = supabase
+      .from('kitchen_tickets')
+      .select(SELECT_COMANDA, { count: 'exact' })
+      .eq('organization_id', params.organizationId)
+      .in('status', ['delivered', 'cancelled'])
+      .order('updated_at', { ascending: false })
+      .range(desde, desde + params.tamano - 1);
+    if (params.branchId != null) q = q.eq('branch_id', params.branchId);
+    const { data, error, count } = await q;
+    if (error) throw error;
+    const conMesero = await this.adjuntarMeseros((data ?? []) as RegistroTicket[]);
+    const tickets = await this.adjuntarPedidosWeb(conMesero as unknown as KitchenTicket[], params.organizationId);
+    return { tickets, total: count ?? tickets.length };
+  }
+
+  /** Una comanda con su mesa, mesero e ítems (imprimir la comanda de un pedido web). */
+  async getTicket(organizationId: number, ticketId: number): Promise<KitchenTicket | null> {
+    const { data, error } = await supabase
+      .from('kitchen_tickets')
+      .select(SELECT_COMANDA)
+      .eq('organization_id', organizationId)
+      .eq('id', ticketId)
+      .maybeSingle();
+    if (error || !data) return null;
+    const [conMesero] = await this.adjuntarMeseros([data as RegistroTicket]);
+    const [conWeb] = await this.adjuntarPedidosWeb([conMesero as unknown as KitchenTicket], organizationId);
+    return conWeb ?? null;
+  }
+
+  /** Nombre del mesero de la mesa (server_id → profiles), en una consulta. */
+  private async adjuntarMeseros(tickets: RegistroTicket[]): Promise<RegistroTicket[]> {
+    const ids = Array.from(new Set(tickets.map((t) => t.table_sessions?.server_id).filter((x): x is string => !!x)));
+    if (ids.length === 0) return tickets;
+    const { data: profiles } = await supabase.from('profiles').select('id, first_name, last_name').in('id', ids);
+    const nombres: Record<string, string> = {};
+    profiles?.forEach((p) => {
+      nombres[p.id] = `${p.first_name || ''} ${p.last_name || ''}`.trim();
+    });
+    return tickets.map((t) =>
+      t.table_sessions?.server_id && nombres[t.table_sessions.server_id]
+        ? { ...t, table_sessions: { ...t.table_sessions, serverName: nombres[t.table_sessions.server_id] } }
+        : t,
+    );
+  }
+
+  /**
+   * Cancelar sin la RPC de Comandas v2 (migración pendiente): mismo efecto que
+   * `pos_cocina_cancelar` con las columnas que ya existen, bajo la RLS del
+   * usuario. Lo usa el tablero solo si la ruta responde `rpc_no_disponible`.
+   */
+  async cancelTicketLegacy(ticketId: number, motivo: string) {
+    const now = new Date().toISOString();
+    const { error } = await supabase
+      .from('kitchen_tickets')
+      .update({ status: 'cancelled', cancelled_at: now, cancellation_reason: motivo, updated_at: now })
+      .eq('id', ticketId);
+    if (error) throw error;
+    await supabase
+      .from('kitchen_ticket_items')
+      .update({ status: 'cancelled', cancelled_at: now, cancel_reason: motivo, updated_at: now })
+      .eq('kitchen_ticket_id', ticketId)
+      .not('status', 'in', '(cancelled,delivered)');
+  }
+
+  /**
    * Adjunta a las comandas web su pedido (número, tipo de entrega, mesa y nota
    * del cliente). Una sola consulta por carga. Se busca por
    * `kitchen_tickets.web_order_id` (E2) y, para las comandas anteriores, por
@@ -239,12 +372,12 @@ class KitchenService {
     try {
       let q = supabase
         .from('web_orders')
-        .select('id, sale_id, order_number, delivery_type, customer_notes, internal_notes')
+        .select('id, sale_id, order_number, delivery_type, customer_notes, internal_notes, estimated_ready_at, payment_status, payment_method, customer_name')
         .or(filtros.join(','));
       if (organizationId) q = q.eq('organization_id', organizationId);
       const { data, error } = await q;
       if (error) throw error;
-      const filas = (data ?? []) as Array<{ id: string; sale_id: string | null; order_number: string; delivery_type: string | null; customer_notes: string | null; internal_notes: string | null }>;
+      const filas = (data ?? []) as Array<{ id: string; sale_id: string | null; order_number: string; delivery_type: string | null; customer_notes: string | null; internal_notes: string | null; estimated_ready_at: string | null; payment_status: string | null; payment_method: string | null; customer_name: string | null }>;
       const porId = new Map(filas.map((f) => [f.id, f]));
       const porVenta = new Map(filas.filter((f) => f.sale_id).map((f) => [f.sale_id as string, f]));
       return tickets.map((t) => {
@@ -259,6 +392,10 @@ class KitchenService {
             tipo: tipoEntregaEfectivo(f),
             mesa: t.table_sessions?.restaurant_tables?.name ?? mesaDelPedido(f),
             customer_notes: f.customer_notes?.trim() || null,
+            estimated_ready_at: f.estimated_ready_at,
+            payment_status: f.payment_status,
+            payment_method: f.payment_method,
+            customer_name: f.customer_name,
           },
         };
       });

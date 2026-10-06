@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { clasesBoton } from '@/components/kit';
 import { cobroDelPedido } from './cobroPedido';
-import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
+import { esComerAqui, esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { 
   CheckCircle, 
   XCircle, 
@@ -70,7 +70,11 @@ export function OrderActions({
   const isDelivered = order.status === 'delivered';
   // Recoger y «Comer aquí» no salen a domicilio: de «Listo» pasan a «Entregado».
   const isPickup = !esDomicilio(order.delivery_type);
-  const canCancel = ['pending', 'confirmed'].includes(order.status);
+  // Cancelar también a partir de «Preparando» (Figma 449:208178 y 1981:175699).
+  // Ya pagado y en cocina, cancelar exige reembolso: eso va por «Reembolsar pedido».
+  const canCancel = ['pending', 'confirmed'].includes(order.status)
+    || (['preparing', 'ready'].includes(order.status) && order.payment_status !== 'paid');
+  const mesaEnPos = esComerAqui(order) && order.restaurant_table_id ? `/app/pos/mesas/${order.restaurant_table_id}` : null;
   // Un «Comer aquí» agregado a la mesa no tiene venta propia: su venta es la de la mesa.
   const canConvertToSale = isDelivered && !order.sale_id && !order.table_session_id;
   // Cobro en la caja de la sede (pago en el local o contraentrega). Listo para
@@ -192,6 +196,12 @@ export function OrderActions({
           ) : (
             cajaEtiqueta && <p className="text-sm text-fg-secondary">{cajaEtiqueta}</p>
           )}
+          {mesaEnPos && (
+            <Link href={mesaEnPos} className={clasesBoton({ variante: 'secundario', anchoCompleto: true })}>
+              <ExternalLink className="size-4" aria-hidden="true" />
+              {t('verMesa')}
+            </Link>
+          )}
           <button
             type="button"
             className={clasesBoton({ variante: 'fantasma', anchoCompleto: true })}
@@ -201,18 +211,6 @@ export function OrderActions({
             <DollarSign className="size-4" aria-hidden="true" />
             {t('cobro.registrarPago')}
           </button>
-          {/* Entregar sin cobrar (crédito, pago ya conciliado): se conserva como secundaria */}
-          {onMarkDelivered && (
-            <button
-              type="button"
-              className={clasesBoton({ variante: 'fantasma', anchoCompleto: true })}
-              onClick={onMarkDelivered}
-              disabled={isLoading}
-            >
-              <CheckCircle className="size-4" aria-hidden="true" />
-              {t('cobro.marcarEntregado')}
-            </button>
-          )}
         </div>
       )}
 
@@ -287,21 +285,19 @@ export function OrderActions({
         </Button>
       )}
 
-      {/* Acciones secundarias */}
-      <div className="flex gap-2">
-        {onPrint && (
-          <Button variant="outline" className="flex-1 dark:border-gray-600" onClick={onPrint}>
-            <Printer className="h-4 w-4 mr-2 dark:text-gray-300" />
-            Imprimir
-          </Button>
-        )}
-        {canCancel && onCancel && (
-          <Button variant="outline" className="flex-1 text-red-600 dark:text-red-400 dark:border-gray-600" onClick={onCancel}>
-            <XCircle className="h-4 w-4 mr-2 dark:text-red-400" />
-            Cancelar
-          </Button>
-        )}
-      </div>
+      {/* Acciones secundarias (Figma 1981:175699): imprimir la comanda y cancelar */}
+      {onPrint && (
+        <button type="button" className={clasesBoton({ variante: 'fantasma', anchoCompleto: true })} onClick={onPrint}>
+          <Printer className="size-4" aria-hidden="true" />
+          {t('ficha.imprimirComanda')}
+        </button>
+      )}
+      {canCancel && onCancel && (
+        <button type="button" className={clasesBoton({ variante: 'destructivo', anchoCompleto: true })} onClick={onCancel} disabled={isLoading}>
+          <XCircle className="size-4" aria-hidden="true" />
+          {t('ficha.cancelarPedido')}
+        </button>
+      )}
     </div>
   );
 }

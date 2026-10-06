@@ -136,8 +136,8 @@ class ParkingService {
         throw new Error(`Error obteniendo sesiones: ${error.message}`);
       }
       return (data || []) as ParkingSession[];
-    } catch (error: any) {
-      console.error('Error obteniendo sesiones:', error.message || error);
+    } catch (error) {
+      console.error('Error obteniendo sesiones:', (error as Error)?.message || error);
       throw error;
     }
   }
@@ -178,32 +178,22 @@ class ParkingService {
   }
 
   /**
-   * Registrar salida
+   * Registrar salida: el ÚNICO cierre de sesión del módulo (operación, mapa,
+   * pagos, factura y crédito pasan por aquí).
+   *
+   * `amount` es lo que se cobró en caja (ticket perdido, excepción o abonado
+   * incluidos). Si llega `null`, el disparador `calculate_parking_session_amount`
+   * lo calcula con la tarifa de la sesión. La duración también la pone el
+   * disparador, a partir de `exit_at`.
    */
-  async registerExit(sessionId: string, amount: number): Promise<ParkingSession> {
+  async registerExit(sessionId: string, amount: number | null): Promise<ParkingSession> {
     try {
-      const exitTime = new Date().toISOString();
-      
-      // Obtener sesión
-      const { data: session } = await supabase
-        .from('parking_sessions')
-        .select('entry_at')
-        .eq('id', sessionId)
-        .single();
-
-      // Calcular duración
-      const duration = session 
-        ? Math.floor((new Date(exitTime).getTime() - new Date(session.entry_at).getTime()) / 60000)
-        : 0;
-
       const { data, error } = await supabase
         .from('parking_sessions')
         .update({
-          exit_at: exitTime,
-          duration_min: duration,
+          exit_at: new Date().toISOString(),
           amount,
           status: 'closed',
-          updated_at: exitTime,
         })
         .eq('id', sessionId)
         .select()
@@ -214,6 +204,42 @@ class ParkingService {
     } catch (error) {
       console.error('Error registrando salida:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Placas (en mayúsculas) que tienen un pase activo y vigente hoy.
+   *
+   * `parking_passes` NO tiene `vehicle_plate`: la placa vive en
+   * `parking_vehicles` y se une al pase por `parking_pass_vehicles`. Una sola
+   * consulta para toda la lista de sesiones, no una por sesión.
+   */
+  async getActivePassPlates(organizationId: number, plates: string[]): Promise<Set<string>> {
+    const limpias = Array.from(new Set(plates.filter(Boolean).map((p) => p.toUpperCase().trim())));
+    if (limpias.length === 0) return new Set();
+    try {
+      const hoy = todayInTz(await resolveTimezone(organizationId));
+      const { data, error } = await supabase
+        .from('parking_pass_vehicles')
+        .select('pass:parking_passes!inner(id), vehicle:parking_vehicles!inner(plate)')
+        .eq('pass.organization_id', organizationId)
+        .eq('pass.status', 'active')
+        .gte('pass.end_date', hoy)
+        .lte('pass.start_date', hoy)
+        .in('vehicle.plate', limpias);
+
+      if (error) {
+        console.error('Error consultando placas con pase:', error);
+        return new Set();
+      }
+      return new Set(
+        (data || [])
+          .map((fila) => (fila.vehicle as unknown as { plate?: string } | null)?.plate?.toUpperCase())
+          .filter((p): p is string => !!p)
+      );
+    } catch (error) {
+      console.error('Error consultando placas con pase:', error);
+      return new Set();
     }
   }
 
@@ -267,8 +293,8 @@ class ParkingService {
         revenue_today: data?.filter(s => s.status === 'closed' && salioHoy(s))
           .reduce((sum, s) => sum + Number(s.amount || 0), 0) || 0,
       };
-    } catch (error: any) {
-      console.error('Error obteniendo estadísticas:', error.message || error);
+    } catch (error) {
+      console.error('Error obteniendo estadísticas:', (error as Error)?.message || error);
       throw error;
     }
   }
@@ -583,15 +609,17 @@ class ParkingService {
           brand: vehicleData.brand,
           model: vehicleData.model,
           color: vehicleData.color,
-          vehicle_type: (vehicleData.vehicle_type as any) || 'car',
+          vehicle_type: vehicleData.vehicle_type || 'car',
         });
 
-        // Asociar vehículo al pase
-        await supabase.from('parking_pass_vehicles').insert({
+        // Asociar vehículo al pase (sin mirar el error, el pase quedaba sin
+        // placa y la talanquera no lo reconocía).
+        const { error: vinculoError } = await supabase.from('parking_pass_vehicles').insert({
           pass_id: pass.id,
           vehicle_id: vehicle.id,
           is_primary: vehicleData.is_primary || false,
         });
+        if (vinculoError) throw vinculoError;
       }
 
       // 3. Retornar pase con relaciones
@@ -646,7 +674,7 @@ class ParkingService {
       .select('*')
       .eq('organization_id', data.organization_id)
       .eq('plate', data.plate.toUpperCase())
-      .single();
+      .maybeSingle();
 
     if (existing) {
       return existing as ParkingVehicle;
@@ -759,11 +787,12 @@ class ParkingService {
               vehicle_type: vehicleData.vehicle_type || 'car',
             });
 
-            await supabase.from('parking_pass_vehicles').insert({
+            const { error: vinculoError } = await supabase.from('parking_pass_vehicles').insert({
               pass_id: id,
               vehicle_id: vehicle.id,
               is_primary: vehicleData.is_primary || false,
             });
+            if (vinculoError) throw vinculoError;
           }
         }
       }

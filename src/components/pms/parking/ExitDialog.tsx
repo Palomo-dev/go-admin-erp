@@ -23,6 +23,7 @@ import { Loader2, Clock, DollarSign, Receipt, AlertCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import type { ParkingSession } from '@/lib/services/parkingService';
 import organizationService from '@/lib/services/organizationService';
+import parkingPaymentService from '@/lib/services/parkingPaymentService';
 
 interface ExitDialogProps {
   open: boolean;
@@ -93,6 +94,7 @@ export function ExitDialog({
           .select('*')
           .eq('organization_id', organizationId)
           .eq('vehicle_type', session.vehicle_type)
+          .eq('is_active', true)
           .order('price', { ascending: true });
 
         const ratesData: ParkingRate[] = !error && data ? data : [];
@@ -217,14 +219,24 @@ export function ExitDialog({
 
       if (sessionError) throw sessionError;
 
-      // Registrar pago (opcional, depende de tu estructura)
-      // Aquí podrías crear un registro en parking_payments si lo necesitas
+      // Registrar el cobro en caja (payments + parking_payments). Antes la
+      // salida cerraba la sesión sin dejar ningún pago.
+      if (organizationId && calculatedAmount > 0) {
+        await parkingPaymentService.registrarPago({
+          organization_id: organizationId,
+          branch_id: session.branch_id,
+          source: 'parking_session',
+          source_id: session.id,
+          method: paymentMethod,
+          amount: calculatedAmount,
+        });
+      }
 
       onConfirm();
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error registrando salida:', error);
-      alert(`Error: ${error.message}`);
+      alert(`Error: ${(error as Error)?.message ?? 'no se pudo registrar la salida'}`);
     } finally {
       setIsSubmitting(false);
     }

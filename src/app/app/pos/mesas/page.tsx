@@ -1,105 +1,184 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Plus, Settings, GitMerge, MoveRight, RefreshCw, Layers, LogOut, Users, UtensilsCrossed, LayoutGrid, Map as MapIcon, Receipt, History, QrCode } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
+  ArrowLeft,
+  Check,
+  Copy,
+  Edit3,
+  GitMerge,
+  History,
+  LayoutGrid,
+  Layers,
+  LogOut,
+  MapPin,
+  MoveRight,
+  Plus,
+  QrCode,
+  RefreshCw,
+  Grid3x3,
+  Ellipsis,
+  Settings,
+  Users,
+} from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
-  PageHeader,
-  BranchBadgeActiva,
-  KpiCompacto,
-  ListToolbar,
-  SearchInput,
-  FilterPanel,
-  FilterChips,
-  SegmentedControl,
-  RowActionsMenu,
-  EmptyState,
-  Dialogo,
-  FormField,
+  ActionSheet,
   CampoNumero,
-  Tarjeta,
+  Dialogo,
+  EmptyState,
+  FilterChips,
+  FormField,
+  KbdButton,
+  PageHeader,
+  RowActionsMenu,
+  SearchInput,
+  SegmentedControl,
   type AccionFila,
   type ChipFiltro,
 } from '@/components/kit';
-import { MesaCard } from '@/components/pos/mesas/MesaCard';
-import { ZonaHeader } from '@/components/pos/mesas/ZonaHeader';
+import { useBranch } from '@/lib/context/BranchContext';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { MesaFormDialog } from '@/components/pos/mesas/MesaFormDialog';
 import { ZonasManager } from '@/components/pos/mesas/ZonasManager';
 import { CombinarMesasDialog } from '@/components/pos/mesas/CombinarMesasDialog';
 import { MoverPedidoDialog } from '@/components/pos/mesas/MoverPedidoDialog';
-import { MesasService } from '@/components/pos/mesas/mesasService';
-import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
-import { MesasFloorMap } from '@/components/pos/mesas/MesasFloorMap';
 import { HistorialMesasDialog } from '@/components/pos/mesas/HistorialMesasDialog';
-import { useBranch } from '@/lib/context/BranchContext';
-import type { TableWithSession, MesaFormData, RestaurantTable } from '@/components/pos/mesas/types';
+import { MesasService } from '@/components/pos/mesas/mesasService';
+import type { MesaFormData, RestaurantTable, TableWithSession } from '@/components/pos/mesas/types';
 import { LiberarMesaDialog, useAvisoLiberacion } from '@/components/pos/mesas/LiberarMesaDialog';
 import type { ResultadoLiberacion } from '@/components/pos/mesas/liberacionMesaCliente';
 import { useReservasMesas } from '@/components/pos/mesas/useReservasMesas';
-import { estadoVisualMesa, mesaOcupada, type ReservaActivaMesa } from '@/components/pos/mesas/reservasProximas';
+import { estadoVisualMesa, type ReservaActivaMesa } from '@/components/pos/mesas/reservasProximas';
 import { ReservaMesaPanel } from '@/components/pos/mesas/ReservaMesaPanel';
 import { CambiarMesaReservaDialog } from '@/components/pos/mesas/CambiarMesaReservaDialog';
 import { reservasMesasService } from '@/components/pos/reservas-mesas/reservasMesasService';
 import { useMensajeErrorReserva } from '@/components/pos/reservas-mesas/useMensajeErrorReserva';
 import { MesaQrDialog, type MesaParaQr } from '@/components/pos/mesas/MesaQrDialog';
+import { AbrirMesaFlujo } from '@/components/pos/mesas/cuenta/AbrirMesaFlujo';
+import { MesaTile } from '@/components/pos/mesas/plano/MesaTile';
+import { LeyendaEstadosMesa } from '@/components/pos/mesas/plano/LeyendaEstadosMesa';
+import { SeccionZonaMesas } from '@/components/pos/mesas/plano/SeccionZonaMesas';
+import { PlanoMesas, TODAS } from '@/components/pos/mesas/plano/PlanoMesas';
+import { ResumenMesaPlano } from '@/components/pos/mesas/plano/ResumenMesaPlano';
+import { MesasVacio } from '@/components/pos/mesas/plano/MesasVacio';
+import { LoteMesasDialog } from '@/components/pos/mesas/plano/LoteMesasDialog';
+import { conteoEstados, resumenZona, vistaMesaPlano, type EstadoMesaPlano, type VistaMesaPlano } from '@/components/pos/mesas/plano/estadoMesaPlano';
+import { colorDeZona, type ZonaEnPlano } from '@/components/pos/mesas/plano/planoMesasLogica';
+import { crearMesasEnLote, guardarPlano, marcarMesaLista, obtenerZonasPlano, type ZonaGuardada } from '@/components/pos/mesas/plano/planoService';
+import { cn } from '@/utils/Utils';
+
+/**
+ * Mesas de la sede (Figma «POS — Mesas: cuadrícula y plano», 870:98618):
+ * cabecera con la sede y la hora de la última carga, leyenda de estados que
+ * filtra, buscador («/»), zona, vista (cuadrícula o plano) y densidad
+ * (compacta o cómoda); secciones por zona; el plano con su editor; y los
+ * estados vacío, cargando, error y sin permiso. En el celular: chips de zona y
+ * la hoja de la mesa.
+ */
+type Vista = 'cuadricula' | 'plano';
+type Densidad = 'compacta' | 'comoda';
+type EstadoPagina = 'cargando' | 'lista' | 'error' | 'sinPermiso';
+
+const CLAVE_PREFERENCIAS = 'pos-mesas-vista';
+
+function leerPreferencias(): { vista: Vista; densidad: Densidad } {
+  try {
+    const v = JSON.parse(localStorage.getItem(CLAVE_PREFERENCIAS) ?? '{}') as { vista?: Vista; densidad?: Densidad };
+    return { vista: v.vista === 'plano' ? 'plano' : 'cuadricula', densidad: v.densidad === 'comoda' ? 'comoda' : 'compacta' };
+  } catch {
+    return { vista: 'cuadricula', densidad: 'compacta' };
+  }
+}
+
+function esSinPermiso(error: unknown): boolean {
+  const e = error as { code?: string; message?: string } | null;
+  return e?.code === '42501' || /permission denied|sin_acceso/i.test(e?.message ?? '');
+}
 
 export default function MesasPage() {
   const avisoLiberacion = useAvisoLiberacion();
   const t = useTranslations('posMesas');
+  const tp = useTranslations('posMesasPlano');
   const router = useRouter();
-  const { toast } = useToast();
-  const { branchFilter, isLoading: branchLoading } = useBranch();
-  const [mesas, setMesas] = useState<TableWithSession[]>([]);
-  const [zonas, setZonas] = useState<string[]>([]);
-  const [zonaFiltro, setZonaFiltro] = useState<string>('todas');
-  const [estadoFiltro, setEstadoFiltro] = useState<'todos' | 'free' | 'occupied' | 'bill_requested' | 'reserved'>('todos');
-  const [busqueda, setBusqueda] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const isFirstLoadRef = useRef(true);
-  const [zoneLayouts, setZoneLayouts] = useState<Record<string, { x: number; y: number; w: number; h: number }>>({});
+  const { branchFilter, branches, selectedBranchId, isLoading: branchLoading } = useBranch();
+  const { formatear } = useMonedaOrganizacion();
+  const movil = !useMediaQuery('(min-width: 640px)');
+  const tableta = !useMediaQuery('(min-width: 1280px)');
 
-  // Estados de modales
+  const [mesas, setMesas] = useState<TableWithSession[]>([]);
+  const [zonasMesas, setZonasMesas] = useState<string[]>([]);
+  const [zonasGuardadas, setZonasGuardadas] = useState<ZonaGuardada[]>([]);
+  const [estado, setEstado] = useState<EstadoPagina>('cargando');
+  const [refrescando, setRefrescando] = useState(false);
+  const [actualizadoEn, setActualizadoEn] = useState<number | null>(null);
+  const [ahora, setAhora] = useState(() => new Date());
+
+  // Filtros y vista
+  const [busqueda, setBusqueda] = useState('');
+  const [zonaFiltro, setZonaFiltro] = useState<string>('todas');
+  const [estadosFiltro, setEstadosFiltro] = useState<EstadoMesaPlano[]>([]);
+  const [vista, setVista] = useState<Vista>('cuadricula');
+  const [densidad, setDensidad] = useState<Densidad>('compacta');
+  // Pestaña del plano: la primera zona hasta que la persona elija otra (Figma: «Salón principal»).
+  const [zonaPlanoElegida, setZonaPlano] = useState<string | null>(null);
+  const [seleccionId, setSeleccionId] = useState<string | null>(null);
+  const [editando, setEditando] = useState(false);
+
+  useEffect(() => {
+    const p = leerPreferencias();
+    setVista(p.vista);
+    setDensidad(p.densidad);
+  }, []);
+  // La vista y la densidad se recuerdan por persona (solo cuando las cambia).
+  const recordar = (cambio: { vista?: Vista; densidad?: Densidad }) => {
+    try {
+      localStorage.setItem(CLAVE_PREFERENCIAS, JSON.stringify({ ...leerPreferencias(), ...cambio }));
+    } catch {
+      /* sin almacenamiento: la vista no se recuerda */
+    }
+  };
+  const cambiarVista = (v: Vista) => {
+    setVista(v);
+    recordar({ vista: v });
+  };
+  const cambiarDensidad = (d: Densidad) => {
+    setDensidad(d);
+    recordar({ densidad: d });
+  };
+
+  // Diálogos
   const [showMesaForm, setShowMesaForm] = useState(false);
+  const [mesaEditar, setMesaEditar] = useState<RestaurantTable | null>(null);
+  const [mesaEliminar, setMesaEliminar] = useState<RestaurantTable | null>(null);
   const [showZonasManager, setShowZonasManager] = useState(false);
   const [showCombinar, setShowCombinar] = useState(false);
   const [showMover, setShowMover] = useState(false);
-  const [mesaEditar, setMesaEditar] = useState<RestaurantTable | null>(null);
-  const [mesaEliminar, setMesaEliminar] = useState<RestaurantTable | null>(null);
-  const [mesaParaComensales, setMesaParaComensales] = useState<TableWithSession | null>(null);
-  const [mesaParaLiberar, setMesaParaLiberar] = useState<TableWithSession | null>(null);
   const [showHistorial, setShowHistorial] = useState(false);
-  // `null` mientras el campo está vacío: el diálogo no deja guardar.
+  const [showLote, setShowLote] = useState(false);
+  const [zonaLote, setZonaLote] = useState<string | null>(null);
+  const [crearZona, setCrearZona] = useState(false);
+  const [nombreZonaNueva, setNombreZonaNueva] = useState('');
+  const [mesaParaComensales, setMesaParaComensales] = useState<TableWithSession | null>(null);
   const [comensales, setComensales] = useState<number | null>(2);
+  const [mesaParaLiberar, setMesaParaLiberar] = useState<TableWithSession | null>(null);
+  const [mesaParaAbrir, setMesaParaAbrir] = useState<TableWithSession | null>(null);
+  const [hojaId, setHojaId] = useState<string | null>(null);
+  const [accionesHoja, setAccionesHoja] = useState<TableWithSession | null>(null);
+  const [qr, setQr] = useState<{ mesas: MesaParaQr[]; titulo: string } | null>(null);
 
-  // Estados para abrir sesión
-  const [mesaParaAbrirSesion, setMesaParaAbrirSesion] = useState<TableWithSession | null>(null);
-  const [comensalesNuevaSesion, setComensalesNuevaSesion] = useState<number | null>(2);
-  
-  // Modo de combinación rápida
-  const [modoCombinar, setModoCombinar] = useState(false);
-  const [mesasParaCombinar, setMesasParaCombinar] = useState<string[]>([]);
-  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
-
-  // Reservas confirmadas que apartan una mesa ahora (ventana de 60 min, zona de la sede)
+  // Reservas confirmadas que apartan una mesa ahora (ventana de 60 min).
   const tReservas = useTranslations('posReservasMesas');
   const mensajeErrorReserva = useMensajeErrorReserva();
-  // Reserva web nueva en tiempo real: el mismo toast que la pantalla de Reservas.
   const { activas: reservasActivas, recargar: recargarReservas } = useReservasMesas(mesas, branchFilter, (reserva) =>
-    toast({
-      title: tReservas('tiempoReal.nueva'),
+    toast(tReservas('tiempoReal.nueva'), {
       description: tReservas('tiempoReal.detalle', {
         nombre: reserva.customer_name ?? '',
         personas: reserva.party_size ?? 0,
@@ -111,576 +190,449 @@ export default function MesasPage() {
   const [showCambiarMesaReserva, setShowCambiarMesaReserva] = useState(false);
   const [confirmarNoShow, setConfirmarNoShow] = useState(false);
   const [accionReservaEnCurso, setAccionReservaEnCurso] = useState(false);
-  // «QR de la mesa»: una mesa (menú de la tarjeta) o todas las visibles (menú ⋯).
-  const [qr, setQr] = useState<{ mesas: MesaParaQr[]; titulo: string } | null>(null);
   const reservaDelPanel: ReservaActivaMesa | undefined = mesaReservada ? reservasActivas.get(mesaReservada.id) : undefined;
-  const estadoDe = (m: TableWithSession) => estadoVisualMesa(m, reservasActivas.get(m.id));
-  // Mesas que no pueden recibir una reserva movida ahora mismo (ocupadas o ya apartadas)
   const mesasNoDisponibles = useMemo(
     () => new Set(mesas.filter((m) => estadoVisualMesa(m, reservasActivas.get(m.id)) !== 'free').map((m) => m.id)),
     [mesas, reservasActivas],
   );
 
-  // Cargar datos iniciales y al cambiar de sucursal
-  useEffect(() => {
-    if (!branchLoading) {
-      cargarDatos();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [branchFilter, branchLoading]);
-
-  const cargarDatos = async () => {
-    if (isFirstLoadRef.current) {
-      setIsLoading(true);
-    }
-    setIsRefreshing(true);
+  const primeraCarga = useRef(true);
+  const cargarDatos = useCallback(async () => {
+    if (primeraCarga.current) setEstado('cargando');
+    setRefrescando(true);
     try {
-      const [mesasData, zonasData, zoneLayoutsData] = await Promise.all([
-        MesasService.obtenerMesasConSesiones(),
-        MesasService.obtenerZonas(),
-        MesasService.obtenerZoneLayouts(),
-      ]);
-
+      const [mesasData, zonasData, zonasPlano] = await Promise.all([MesasService.obtenerMesasConSesiones(), MesasService.obtenerZonas(), obtenerZonasPlano()]);
       setMesas(mesasData);
-      setZonas(zonasData);
-      setZoneLayouts(zoneLayoutsData);
+      setZonasMesas(zonasData);
+      setZonasGuardadas(zonasPlano);
+      setActualizadoEn(Date.now());
+      setEstado('lista');
       recargarReservas();
     } catch (error) {
-      console.error('Error cargando datos:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar las mesas',
-        variant: 'destructive',
-      });
+      console.error('Error cargando mesas:', error);
+      if (esSinPermiso(error)) setEstado('sinPermiso');
+      else if (primeraCarga.current) setEstado('error');
+      else toast.error(tp('errores.cargar'));
     } finally {
-      isFirstLoadRef.current = false;
-      setIsLoading(false);
-      setIsRefreshing(false);
+      primeraCarga.current = false;
+      setRefrescando(false);
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tp]);
 
-  // Filtrar mesas por zona, estado y búsqueda por nombre
-  const mesasFiltradas = mesas
-    .filter((m) =>
-      zonaFiltro === 'todas'
-        ? true
-        : zonaFiltro === 'sin-zona'
-        ? !m.zone
-        : m.zone === zonaFiltro
-    )
-    .filter((m) => {
-      if (estadoFiltro === 'todos') return true;
-      if (estadoFiltro === 'bill_requested') return m.session?.status === 'bill_requested';
-      if (estadoFiltro === 'occupied') return mesaOcupada(m);
-      // «Libre» y «Reservada» salen del estado derivado: la reserva de la ventana manda.
-      return estadoDe(m) === estadoFiltro;
-    })
-    .filter((m) =>
-      busqueda.trim() === '' ? true : m.name.toLowerCase().includes(busqueda.trim().toLowerCase())
-    );
+  useEffect(() => {
+    if (!branchLoading) void cargarDatos();
+  }, [branchFilter, branchLoading, cargarDatos]);
 
-  // Sin paginación (POS-MESAS-VISTAS §3.2): el salón se ve entero, por zonas.
+  useEffect(() => {
+    const id = setInterval(() => setAhora(new Date()), 10_000);
+    return () => clearInterval(id);
+  }, []);
 
-  // Handlers
-  const handleCrearMesa = async (data: MesaFormData) => {
+  // ── Datos derivados ──────────────────────────────────────────────────────
+  const vistas = useMemo(() => mesas.map((m) => vistaMesaPlano(m, reservasActivas.get(m.id), ahora)), [mesas, reservasActivas, ahora]);
+  const mesaPorId = useMemo(() => new Map(mesas.map((m) => [m.id, m])), [mesas]);
+
+  const zonas: ZonaEnPlano[] = useMemo(() => {
+    const nombres = [...new Set([...zonasMesas, ...zonasGuardadas.map((z) => z.nombre)])];
+    const guardada = new Map(zonasGuardadas.map((z) => [z.nombre, z]));
+    return nombres
+      .map((nombre, i) => ({ nombre, color: colorDeZona(nombre, guardada.get(nombre)?.color), orden: guardada.get(nombre)?.orden ?? 100 + i, original: nombre }))
+      .sort((a, b) => a.orden - b.orden || a.nombre.localeCompare(b.nombre))
+      .map((z, i) => ({ ...z, orden: i }));
+  }, [zonasMesas, zonasGuardadas]);
+
+  const zonaPlano = zonaPlanoElegida ?? zonas[0]?.nombre ?? TODAS;
+  const q = busqueda.trim().toLowerCase();
+  const pasaBusqueda = (v: VistaMesaPlano) => !q || v.nombre.toLowerCase().includes(q) || v.numero.toLowerCase() === q;
+  const pasaZona = (v: VistaMesaPlano) => zonaFiltro === 'todas' || (zonaFiltro === 'sin-zona' ? !v.zona : v.zona === zonaFiltro);
+  const pasaEstado = (v: VistaMesaPlano) => estadosFiltro.length === 0 || estadosFiltro.includes(v.estado);
+  const filtradas = vistas.filter((v) => pasaBusqueda(v) && pasaZona(v) && pasaEstado(v));
+  const conteos = useMemo(() => conteoEstados(vistas), [vistas]);
+
+  const sede = branches.find((b) => b.id === (selectedBranchId ?? branchFilter))?.name ?? null;
+  const hace = actualizadoEn ? Math.max(0, Math.round((ahora.getTime() - actualizadoEn) / 1000)) : null;
+  const subtitulo =
+    estado === 'cargando'
+      ? [sede, tp('cabecera.cargando')].filter(Boolean).join(' · ')
+      : estado === 'sinPermiso'
+        ? sede ?? ''
+      : editando
+        ? [sede, tp('cabecera.editando', { zona: zonaPlano === TODAS ? tp('plano.todas') : zonaPlano })].filter(Boolean).join(' · ')
+        : [
+            sede,
+            t('subtitulo', { n: mesas.length }),
+            !movil && hace != null ? (hace < 60 ? tp('cabecera.haceSeg', { n: Math.max(hace, 1) }) : tp('cabecera.haceMin', { n: Math.round(hace / 60) })) : null,
+          ]
+            .filter(Boolean)
+            .join(' · ');
+
+  // ── Acciones ─────────────────────────────────────────────────────────────
+  const irACuenta = (id: string) => router.push(`/app/pos/mesas/${id}`);
+
+  const alMarcarLista = async (m: TableWithSession) => {
     try {
-      await MesasService.crearMesa(data);
+      await marcarMesaLista(m.id);
+      toast.success(tp('toast.lista', { mesa: m.name }));
+      setHojaId(null);
+      setSeleccionId(null);
       await cargarDatos();
-      toast({
-        title: 'Mesa creada',
-        description: `Mesa ${data.name} creada exitosamente`,
-      });
-    } catch (error) {
-      console.error('Error creando mesa:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo crear la mesa',
-        variant: 'destructive',
-      });
-      throw error;
+    } catch {
+      toast.error(tp('errores.lista'));
     }
   };
 
+  const alPedirCuenta = async (m: TableWithSession) => {
+    if (!m.session) return;
+    try {
+      await MesasService.solicitarCuenta(m.session.id);
+      toast.success(tp('toast.cuentaPedida', { mesa: m.name }));
+      await cargarDatos();
+    } catch {
+      toast.error(tp('errores.cuenta'));
+    }
+  };
+
+  /** Acción principal de una mesa (tocarla en la cuadrícula o «Ver cuenta»/«Abrir» en su resumen). */
+  const abrirMesaDe = (v: VistaMesaPlano) => {
+    const m = mesaPorId.get(v.id);
+    if (!m) return;
+    setHojaId(null);
+    setSeleccionId(null);
+    // Libre o reservada: «Abrir mesa» (D1); con reserva, el diálogo la ofrece para sentarla y «Ver reserva» abre su panel.
+    if (v.estado === 'libre' || v.estado === 'reservada') setMesaParaAbrir(m);
+    else if (v.estado === 'por_limpiar') void alMarcarLista(m);
+    else irACuenta(m.id);
+  };
+
+  const alTocarMesa = (v: VistaMesaPlano) => {
+    if (movil) setHojaId(v.id);
+    else abrirMesaDe(v);
+  };
+
+  const accionesMesa = (m: TableWithSession): AccionFila[] => [
+    { id: 'editar', etiqueta: t('acciones.editarMesa'), icono: Settings, onSelect: () => { setMesaEditar(m); setShowMesaForm(true); } },
+    { id: 'qr', etiqueta: t('qr.accion'), icono: QrCode, onSelect: () => setQr({ mesas: [{ id: m.id, name: m.name, zone: m.zone ?? null }], titulo: m.name }) },
+    ...(m.session
+      ? [
+          { id: 'comensales', etiqueta: t('acciones.editarComensales'), icono: Users, onSelect: () => { setMesaParaComensales(m); setComensales(m.session?.customers || 2); } },
+          { id: 'liberar', etiqueta: t('acciones.liberarMesa'), icono: LogOut, onSelect: () => setMesaParaLiberar(m), destructiva: true, separadorAntes: true },
+        ]
+      : [{ id: 'eliminar', etiqueta: t('eliminar.confirmar'), icono: LogOut, onSelect: () => setMesaEliminar(m), destructiva: true, separadorAntes: true }]),
+  ];
+
+  const accionesMas: AccionFila[] = [
+    { id: 'zonas', etiqueta: t('acciones.gestionarZonas'), icono: Layers, onSelect: () => setShowZonasManager(true) },
+    { id: 'lote', etiqueta: tp('acciones.lote'), icono: Copy, onSelect: () => { setZonaLote(null); setShowLote(true); } },
+    { id: 'editarPlano', etiqueta: tp('acciones.editarPlano'), icono: Edit3, onSelect: () => { cambiarVista('plano'); setEditando(true); }, deshabilitada: movil },
+    { id: 'mover', etiqueta: t('acciones.moverPedido'), icono: MoveRight, onSelect: () => setShowMover(true), separadorAntes: true },
+    { id: 'combinar', etiqueta: t('acciones.combinar'), icono: GitMerge, onSelect: () => setShowCombinar(true) },
+    { id: 'historial', etiqueta: t('acciones.historial'), icono: History, onSelect: () => setShowHistorial(true), separadorAntes: true },
+    {
+      id: 'qr',
+      etiqueta: t('qr.todas'),
+      icono: QrCode,
+      onSelect: () => setQr({ mesas: filtradas.map((v) => ({ id: v.id, name: v.nombre, zone: v.zona })), titulo: zonaFiltro !== 'todas' ? zonaFiltro : t('qr.tituloTodas') }),
+    },
+  ];
+
+  const accionesZona = (zona: string | null): AccionFila[] => [
+    { id: 'plano', etiqueta: tp('zona.verPlano'), icono: MapPin, onSelect: () => { cambiarVista('plano'); setZonaPlano(zona ?? ''); } },
+    { id: 'lote', etiqueta: tp('acciones.loteZona'), icono: Plus, onSelect: () => { setZonaLote(zona); setShowLote(true); } },
+    {
+      id: 'qr',
+      etiqueta: tp('zona.qr'),
+      icono: QrCode,
+      onSelect: () => setQr({ mesas: vistas.filter((v) => v.zona === zona).map((v) => ({ id: v.id, name: v.nombre, zone: v.zona })), titulo: zona ?? t('zona.sinZona') }),
+    },
+    { id: 'gestionar', etiqueta: t('acciones.gestionarZonas'), icono: Layers, onSelect: () => setShowZonasManager(true), separadorAntes: true },
+  ];
+
+  // CRUD de siempre (formulario de mesa, zonas, combinar, mover)
+  const conRecarga = async (fn: () => Promise<unknown>, ok: string, error: string) => {
+    try {
+      await fn();
+      toast.success(ok);
+      await cargarDatos();
+    } catch (e) {
+      toast.error((e as { message?: string } | null)?.message || error);
+      throw e;
+    }
+  };
+  const handleCrearMesa = (data: MesaFormData) => conRecarga(() => MesasService.crearMesa(data), tp('toast.mesaCreada', { mesa: data.name }), tp('errores.guardar'));
   const handleEditarMesa = async (data: MesaFormData) => {
     if (!mesaEditar) return;
-
-    try {
-      await MesasService.actualizarMesa(mesaEditar.id, data);
-      await cargarDatos();
-      toast({
-        title: 'Mesa actualizada',
-        description: `Mesa ${data.name} actualizada exitosamente`,
-      });
-      setMesaEditar(null);
-    } catch (error) {
-      console.error('Error actualizando mesa:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo actualizar la mesa',
-        variant: 'destructive',
-      });
-      throw error;
-    }
+    await conRecarga(() => MesasService.actualizarMesa(mesaEditar.id, data), tp('toast.mesaGuardada', { mesa: data.name }), tp('errores.guardar'));
+    setMesaEditar(null);
   };
-
   const handleEliminarMesa = async () => {
     if (!mesaEliminar) return;
-
-    try {
-      await MesasService.eliminarMesa(mesaEliminar.id);
-      await cargarDatos();
-      toast({
-        title: 'Mesa eliminada',
-        description: `Mesa ${mesaEliminar.name} eliminada exitosamente`,
-      });
-      setMesaEliminar(null);
-    } catch (error) {
-      console.error('Error eliminando mesa:', error);
-      toast({
-        title: 'Error',
-        description:
-          (error as { message?: string } | null)?.message || 'No se pudo eliminar la mesa',
-        variant: 'destructive',
-      });
-    }
+    await conRecarga(() => MesasService.eliminarMesa(mesaEliminar.id), tp('toast.mesaEliminada', { mesa: mesaEliminar.name }), tp('errores.eliminar')).catch(() => undefined);
+    setMesaEliminar(null);
   };
-
-  const handleEditarZona = async (zonaAntigua: string, zonaNueva: string) => {
-    try {
-      await MesasService.actualizarZona(zonaAntigua, zonaNueva);
-      await cargarDatos();
-      toast({
-        title: 'Zona actualizada',
-        description: `Zona renombrada a ${zonaNueva}`,
-      });
-    } catch (error) {
-      console.error('Error actualizando zona:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo actualizar la zona',
-        variant: 'destructive',
-      });
-      throw error;
-    }
-  };
-
-  const handleEliminarZona = async (zona: string) => {
-    try {
-      await MesasService.eliminarZona(zona);
-      await cargarDatos();
-      toast({
-        title: 'Zona eliminada',
-        description: 'Las mesas ahora están sin zona asignada',
-      });
-    } catch (error) {
-      console.error('Error eliminando zona:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo eliminar la zona',
-        variant: 'destructive',
-      });
-      throw error;
-    }
-  };
-
-  const handleCombinarMesas = async (
-    mesaPrincipalId: string,
-    mesasACombinar: string[]
-  ) => {
-    try {
-      await MesasService.combinarMesas(mesaPrincipalId, mesasACombinar);
-      await cargarDatos();
-      toast({
-        title: 'Mesas combinadas',
-        description: 'Las mesas han sido combinadas exitosamente',
-      });
-    } catch (error) {
-      console.error('Error combinando mesas:', error);
-      toast({
-        title: 'Error',
-        description: (error as { message?: string } | null)?.message || 'No se pudieron combinar las mesas',
-        variant: 'destructive',
-      });
-      throw error;
-    }
-  };
-
-  const handleMoverPedido = async (sesionId: string, mesaDestinoId: string) => {
-    try {
-      await MesasService.moverPedido(sesionId, mesaDestinoId);
-      await cargarDatos();
-      toast({
-        title: 'Pedido movido',
-        description: 'El pedido ha sido movido exitosamente',
-      });
-    } catch (error) {
-      console.error('Error moviendo pedido:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo mover el pedido',
-        variant: 'destructive',
-      });
-      throw error;
-    }
-  };
-
-  const handleSolicitarCuenta = async (mesa: TableWithSession) => {
-    if (!mesa.session) return;
-    try {
-      await MesasService.solicitarCuenta(mesa.session.id);
-      await cargarDatos();
-      toast({
-        title: 'Cuenta solicitada',
-        description: `Se marcó ${mesa.name} para cierre de cuenta`,
-      });
-    } catch (error) {
-      console.error('Error solicitando cuenta:', error);
-      toast({
-        title: 'Error',
-        description: (error as { message?: string } | null)?.message || 'No se pudo solicitar la cuenta',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleLiberarMesa = (mesa: TableWithSession) => {
-    setMesaParaLiberar(mesa);
-  };
-
-  // La mesa quedó libre desde el diálogo «Liberar mesa» (con o sin saldo).
   const handleMesaLiberada = async (resultado: ResultadoLiberacion) => {
-    toast(avisoLiberacion(resultado, mesaParaLiberar?.name ?? ''));
+    const aviso = avisoLiberacion(resultado, mesaParaLiberar?.name ?? '');
+    toast.success(aviso.title, { description: aviso.description });
     setMesaParaLiberar(null);
     await cargarDatos();
   };
-
   const handleActualizarComensales = async () => {
     if (!mesaParaComensales?.session?.id || comensales === null) return;
-
-    try {
-      await MesasService.actualizarComensales(mesaParaComensales.session.id, comensales);
-      await cargarDatos();
-      toast({
-        title: 'Comensales actualizados',
-        description: `Ahora hay ${comensales} comensales en ${mesaParaComensales.name}`,
-      });
-      setMesaParaComensales(null);
-    } catch (error) {
-      console.error('Error actualizando comensales:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudieron actualizar los comensales',
-        variant: 'destructive',
-      });
-    }
+    await conRecarga(() => MesasService.actualizarComensales(mesaParaComensales.session!.id, comensales), tp('toast.comensales', { mesa: mesaParaComensales.name, n: comensales }), tp('errores.guardar')).catch(() => undefined);
+    setMesaParaComensales(null);
   };
 
-  const handleAbrirSesion = async () => {
-    if (!mesaParaAbrirSesion || comensalesNuevaSesion === null) return;
-
-    const mesaId = mesaParaAbrirSesion.id;
-    const mesaName = mesaParaAbrirSesion.name;
-
-    try {
-      await MesasService.abrirSesion(mesaId, {
-        customers: comensalesNuevaSesion
-      });
-      // Cerrar diálogo inmediatamente antes de navegar
-      setMesaParaAbrirSesion(null);
-      toast({
-        title: 'Sesión abierta',
-        description: `Mesa ${mesaName} ahora está ocupada`,
-      });
-      // Navegar a la mesa inmediatamente, sin esperar cargarDatos()
-      // (la página de detalle carga su propia sesión desde la BD)
-      router.push(`/app/pos/mesas/${mesaId}`);
-      // Recargar datos en background para que al volver todo esté actualizado
-      cargarDatos();
-    } catch (error) {
-      console.error('Error abriendo sesión:', error);
-      toast({
-        title: 'Error',
-        description: (error as { message?: string } | null)?.message || 'No se pudo abrir la sesión',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleMesaClick = (mesa: TableWithSession) => {
-    if (modoCombinar) {
-      handleToggleMesaCombinar(mesa.id);
-      return;
-    }
-
-    const estado = estadoDe(mesa);
-    if (estado === 'reserved') {
-      // Mesa reservada: panel resumen con «Sentar y abrir cuenta» (paso 6 del storyboard)
-      setMesaReservada(mesa);
-      return;
-    }
-
-    if (estado === 'free') {
-      // Mesa libre - preguntar si desea abrir sesión
-      setMesaParaAbrirSesion(mesa);
-      setComensalesNuevaSesion(2);
-    } else {
-      // Mesa ocupada - ir a detalle
-      router.push(`/app/pos/mesas/${mesa.id}`);
-    }
-  };
-
-  // «Sentar y abrir cuenta»: `reservasMesasService.sentarReserva` (RPC
-  // `pos_reserva_sentar`) abre la cuenta y marca la reserva en una sola
-  // transacción; antes eran dos llamadas y la segunda podía fallar sola.
+  // Reservas (panel de la mesa reservada)
   const handleSentarReserva = async () => {
     const mesa = mesaReservada;
     const activa = reservaDelPanel;
     if (!mesa || !activa) return;
     setAccionReservaEnCurso(true);
     try {
-      // Una transacción (pos_reserva_sentar): abre la cuenta y deja la reserva
-      // «Sentada» unida a ella; al cerrar la mesa, la base la pasa a «Completada».
       await reservasMesasService.sentarReserva(activa.reserva.id, mesa.id, activa.reserva.party_size);
-      toast({
-        title: t('reserva.avisos.sentadaTitulo'),
-        description: t('reserva.avisos.sentada', { mesa: mesa.name, nombre: activa.reserva.customer_name }),
-      });
+      toast.success(t('reserva.avisos.sentadaTitulo'), { description: t('reserva.avisos.sentada', { mesa: mesa.name, nombre: activa.reserva.customer_name }) });
+      setMesaReservada(null);
+      irACuenta(mesa.id);
+      void cargarDatos();
     } catch (error) {
-      console.error('Error sentando la reserva:', error);
-      toast({
-        title: t('reserva.avisos.error'),
-        description: mensajeErrorReserva(error, t('reserva.avisos.errorSentar')),
-        variant: 'destructive',
-      });
+      toast.error(t('reserva.avisos.error'), { description: mensajeErrorReserva(error, t('reserva.avisos.errorSentar')) });
+    } finally {
       setAccionReservaEnCurso(false);
-      return;
     }
-    setAccionReservaEnCurso(false);
-    setMesaReservada(null);
-    router.push(`/app/pos/mesas/${mesa.id}`);
-    cargarDatos();
   };
-
   const handleCambiarMesaReserva = async (mesaDestinoId: string, mesaDestinoNombre: string) => {
     const activa = reservaDelPanel;
     if (!activa) return;
     try {
       await reservasMesasService.updateReservation(activa.reserva.id, { restaurant_table_id: mesaDestinoId });
-      toast({ title: t('reserva.avisos.mesaCambiada', { mesa: mesaDestinoNombre }) });
+      toast.success(t('reserva.avisos.mesaCambiada', { mesa: mesaDestinoNombre }));
       setShowCambiarMesaReserva(false);
       setMesaReservada(null);
       recargarReservas();
-    } catch (error) {
-      console.error('Error cambiando la mesa de la reserva:', error);
-      toast({ title: t('reserva.avisos.error'), description: t('reserva.avisos.errorCambiar'), variant: 'destructive' });
+    } catch {
+      toast.error(t('reserva.avisos.errorCambiar'));
     }
   };
-
   const handleNoSePresento = async () => {
-    const mesa = mesaReservada;
     const activa = reservaDelPanel;
-    if (!mesa || !activa) return;
+    if (!mesaReservada || !activa) return;
     setAccionReservaEnCurso(true);
     try {
       await reservasMesasService.changeStatus(activa.reserva.id, 'no_show');
-      toast({ title: t('reserva.avisos.noShow', { nombre: activa.reserva.customer_name }) });
+      toast.success(t('reserva.avisos.noShow', { nombre: activa.reserva.customer_name }));
       setConfirmarNoShow(false);
       setMesaReservada(null);
       await cargarDatos();
-    } catch (error) {
-      console.error('Error marcando la reserva como no presentada:', error);
-      toast({ title: t('reserva.avisos.error'), description: t('reserva.avisos.errorNoShow'), variant: 'destructive' });
+    } catch {
+      toast.error(t('reserva.avisos.errorNoShow'));
     } finally {
       setAccionReservaEnCurso(false);
     }
   };
 
-  const handleToggleModoCombinar = () => {
-    setModoCombinar(!modoCombinar);
-    setMesasParaCombinar([]);
-  };
-
-  const handleToggleMesaCombinar = (mesaId: string) => {
-    setMesasParaCombinar(prev => 
-      prev.includes(mesaId) 
-        ? prev.filter(id => id !== mesaId)
-        : [...prev, mesaId]
+  // ── Piezas ───────────────────────────────────────────────────────────────
+  const resumenDe = (v: VistaMesaPlano, apilado = false) => {
+    const m = mesaPorId.get(v.id);
+    if (!m) return null;
+    return (
+      <ResumenMesaPlano
+        vista={v}
+        formatear={formatear}
+        conZona={apilado}
+        apilado={apilado}
+        acciones={accionesMesa(m)}
+        onPrincipal={() => abrirMesaDe(v)}
+        onPedirCuenta={() => void alPedirCuenta(m)}
+        onAgregar={() => irACuenta(m.id)}
+        onMarcarLista={() => void alMarcarLista(m)}
+        onMasAcciones={() => {
+          setHojaId(null);
+          setAccionesHoja(m);
+        }}
+      />
     );
   };
 
-  const handleCombinarRapido = async () => {
-    if (mesasParaCombinar.length < 2) {
-      toast({
-        title: 'Selección insuficiente',
-        description: 'Debes seleccionar al menos 2 mesas para combinar',
-        variant: 'destructive',
-      });
-      return;
-    }
+  const densidadVista: Densidad = movil ? 'compacta' : densidad;
+  const tiles = (lista: VistaMesaPlano[]) =>
+    lista.map((v) => <MesaTile key={v.id} vista={v} densidad={densidadVista} formatear={formatear} onClick={() => alTocarMesa(v)} />);
 
-    // La primera mesa seleccionada será la principal
-    const [mesaPrincipal, ...mesasACombinar] = mesasParaCombinar;
-    
-    try {
-      await handleCombinarMesas(mesaPrincipal, mesasACombinar);
-      setModoCombinar(false);
-      setMesasParaCombinar([]);
-    } catch {
-      // El error ya se maneja en handleCombinarMesas
+  const secciones = () => {
+    const grupos: Array<{ nombre: string | null; color: string; vistas: VistaMesaPlano[] }> = [
+      ...zonas.map((z) => ({ nombre: z.nombre as string | null, color: z.color, vistas: filtradas.filter((v) => v.zona === z.nombre) })),
+      { nombre: null, color: '#64748B', vistas: filtradas.filter((v) => !v.zona) },
+    ].filter((g) => g.vistas.length > 0);
+    if (grupos.length === 0) {
+      return <EmptyState variante="search" termino={q || undefined} onLimpiarFiltros={limpiarFiltros} />;
     }
-  };
-
-  const handleSavePositions = async (batch: { id: string; position_x: number; position_y: number; rotation?: number }[]) => {
-    try {
-      await MesasService.actualizarPosiciones(batch);
-      // Actualizar estado local sin recarga completa
-      setMesas((prev) => prev.map((m) => {
-        const updated = batch.find((b) => b.id === m.id);
-        if (updated) {
-          return {
-            ...m,
-            position_x: updated.position_x,
-            position_y: updated.position_y,
-            rotation: updated.rotation ?? m.rotation,
-          };
-        }
-        return m;
-      }));
-      toast({ title: 'Posiciones guardadas', description: 'El plano se actualizó correctamente' });
-    } catch {
-      toast({ title: 'Error', description: 'No se pudieron guardar las posiciones', variant: 'destructive' });
-    }
-  };
-
-  const handleSaveZoneLayouts = async (layouts: { zone_name: string; position_x: number; position_y: number; width: number; height: number }[]) => {
-    try {
-      await MesasService.guardarZoneLayouts(layouts);
-      // Actualizar estado local
-      const newLayouts: Record<string, { x: number; y: number; w: number; h: number }> = {};
-      layouts.forEach((l) => {
-        newLayouts[l.zone_name] = { x: l.position_x, y: l.position_y, w: l.width, h: l.height };
-      });
-      setZoneLayouts((prev) => ({ ...prev, ...newLayouts }));
-    } catch {
-      toast({ title: 'Error', description: 'No se pudieron guardar las zonas', variant: 'destructive' });
-    }
-  };
-
-  if (branchLoading || (isLoading && mesas.length === 0)) {
     return (
-      <div className="min-h-screen space-y-4 bg-canvas p-4 sm:space-y-6 sm:p-6 lg:p-8">
-        <PageHeaderSkeleton />
-        <CardListSkeleton cards={6} columns="1" />
+      <div className="flex flex-col gap-6">
+        {grupos.map((g) => (
+          <SeccionZonaMesas
+            key={g.nombre ?? 'sin-zona'}
+            nombre={g.nombre ?? t('zona.sinZona')}
+            color={g.color}
+            resumen={resumenZona(g.vistas)}
+            totalZona={vistas.filter((v) => (v.zona ?? null) === g.nombre).length}
+            filtrada={q !== '' || estadosFiltro.length > 0}
+            densidad={densidadVista}
+            corto={movil}
+            acciones={accionesZona(g.nombre)}
+          >
+            {tiles(g.vistas)}
+          </SeccionZonaMesas>
+        ))}
       </div>
     );
-  }
+  };
 
-  // Conteos de la leyenda-filtro (interina hasta `LeyendaEstadosMesa`).
-  const nLibres = mesas.filter((m) => estadoDe(m) === 'free').length;
-  const nOcupadas = mesas.filter((m) => mesaOcupada(m)).length;
-  const nCuenta = mesas.filter((m) => m.session?.status === 'bill_requested').length;
-  const nReservadas = mesas.filter((m) => estadoDe(m) === 'reserved').length;
-
-  const hayFiltros = busqueda.trim() !== '' || zonaFiltro !== 'todas' || estadoFiltro !== 'todos';
   const limpiarFiltros = () => {
     setBusqueda('');
     setZonaFiltro('todas');
-    setEstadoFiltro('todos');
+    setEstadosFiltro([]);
   };
   const chips: ChipFiltro[] = [];
-  if (zonaFiltro !== 'todas') {
-    chips.push({ clave: 'zona', etiqueta: t('filtros.chipZona', { zona: zonaFiltro === 'sin-zona' ? t('zona.sinZona') : zonaFiltro }) });
-  }
-  if (estadoFiltro !== 'todos') {
-    chips.push({ clave: 'estado', etiqueta: t('filtros.chipEstado', { estado: t(`estados.${estadoFiltro}`) }) });
-  }
+  if (estadosFiltro.length > 0) chips.push({ clave: 'estado', etiqueta: tp('filtros.chipEstado', { estados: estadosFiltro.map((e) => tp(`mesa.estados.${e}`)).join(', ') }) });
+  if (zonaFiltro !== 'todas' && !movil) chips.push({ clave: 'zona', etiqueta: t('filtros.chipZona', { zona: zonaFiltro === 'sin-zona' ? t('zona.sinZona') : zonaFiltro }) });
 
-  const accionesMas: AccionFila[] = [
-    { id: 'zonas', etiqueta: t('acciones.gestionarZonas'), icono: Layers, onSelect: () => setShowZonasManager(true) },
-    { id: 'mover', etiqueta: t('acciones.moverPedido'), icono: MoveRight, onSelect: () => setShowMover(true) },
-    {
-      id: 'combinar',
-      etiqueta: modoCombinar ? t('acciones.cancelarCombinacion') : t('acciones.combinar'),
-      icono: GitMerge,
-      onSelect: handleToggleModoCombinar,
-    },
-    { id: 'historial', etiqueta: t('acciones.historial'), icono: History, onSelect: () => setShowHistorial(true), separadorAntes: true },
-    {
-      id: 'qr',
-      etiqueta: t('qr.todas'),
-      icono: QrCode,
-      onSelect: () =>
-        setQr({
-          mesas: mesasFiltradas.map((m) => ({ id: m.id, name: m.name, zone: m.zone ?? null })),
-          titulo: zonaFiltro !== 'todas' ? zonaFiltro : t('qr.tituloTodas'),
-        }),
-    },
-  ];
+  const vistaHoja = hojaId ? vistas.find((v) => v.id === hojaId) ?? null : null;
+  const siguienteNumero = useMemo(() => vistas.reduce((max, v) => Math.max(max, Number(v.numero) || 0), 0) + 1, [vistas]);
 
-  const tarjetasDe = (lista: TableWithSession[]) =>
-    lista.map((mesa) => (
-      <MesaCardWithMenu
-        key={mesa.id}
-        mesa={mesa}
-        reserva={reservasActivas.get(mesa.id)}
-        onEdit={() => {
-          setMesaEditar(mesa);
-          setShowMesaForm(true);
-        }}
-        onLiberar={() => handleLiberarMesa(mesa)}
-        onSolicitarCuenta={() => handleSolicitarCuenta(mesa)}
-        onEditarComensales={() => {
-          setMesaParaComensales(mesa);
-          setComensales(mesa.session?.customers || 2);
-        }}
-        onClick={() => handleMesaClick(mesa)}
-        onQr={() => setQr({ mesas: [{ id: mesa.id, name: mesa.name, zone: mesa.zone ?? null }], titulo: mesa.name })}
-        modoCombinar={modoCombinar}
-        isSelected={mesasParaCombinar.includes(mesa.id)}
-        selectionIndex={mesasParaCombinar.indexOf(mesa.id)}
-        onToggleSelect={() => handleToggleMesaCombinar(mesa.id)}
-      />
-    ));
+  const botonRefrescar = (
+    <button
+      type="button"
+      onClick={() => void cargarDatos()}
+      disabled={refrescando}
+      aria-label={t('acciones.actualizar')}
+      title={t('acciones.actualizar')}
+      className="flex size-10 items-center justify-center rounded-lg border border-line-strong bg-surface text-fg hover:bg-hover disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+    >
+      <RefreshCw aria-hidden="true" className={cn('size-4', refrescando && 'animate-spin')} strokeWidth={1.5} />
+    </button>
+  );
 
-  const CLASES_GRILLA = 'grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5';
+  const selectorVista = (
+    <SegmentedControl<Vista>
+      etiqueta={t('vista.etiqueta')}
+      tamano="md"
+      valor={vista}
+      onValorChange={(v) => {
+        cambiarVista(v);
+        setSeleccionId(null);
+        if (v === 'cuadricula') setEditando(false);
+      }}
+      className="shrink-0"
+      opciones={[
+        { valor: 'cuadricula', etiqueta: t('vista.cuadricula'), icono: LayoutGrid, soloIcono: movil },
+        { valor: 'plano', etiqueta: t('vista.plano'), icono: MapPin, soloIcono: movil },
+      ]}
+    />
+  );
+
+  const cuerpo = () => {
+    if (estado === 'cargando') {
+      return (
+        <div className="flex flex-col gap-6" aria-busy="true" aria-label={tp('cabecera.cargando')}>
+          {[2, 1].map((filas, i) => (
+            <div key={i} className="flex flex-col gap-3">
+              <Skeleton className="h-3 w-24 rounded" />
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-2">
+                {Array.from({ length: filas * 10 }, (_, k) => (
+                  <Skeleton key={k} className="h-[72px] rounded-lg" />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    if (estado === 'error') {
+      return (
+        <div className="rounded-xl border border-line bg-surface py-12">
+          <EmptyState variante="error" titulo={tp('estados.errorTitulo')} descripcion={tp('estados.errorDescripcion')} onReintentar={() => void cargarDatos()} />
+        </div>
+      );
+    }
+    if (estado === 'sinPermiso') {
+      return (
+        <div className="rounded-xl border border-line bg-surface py-12">
+          <EmptyState
+            variante="forbidden"
+            titulo={tp('estados.sinPermisoTitulo')}
+            descripcion={tp('estados.sinPermisoDescripcion')}
+            accion={{ etiqueta: tp('estados.volverPos'), icono: ArrowLeft, onClick: () => router.push('/app/pos') }}
+          />
+        </div>
+      );
+    }
+    if (mesas.length === 0 && zonas.length === 0) {
+      return <MesasVacio onCrearZona={() => { setNombreZonaNueva(''); setCrearZona(true); }} onLote={() => { setZonaLote(null); setShowLote(true); }} />;
+    }
+    if (vista === 'plano') {
+      return (
+        <PlanoMesas
+          vistas={filtradas}
+          todas={vistas}
+          zonas={zonas}
+          zonaActiva={movil ? (zonaFiltro === 'todas' ? TODAS : zonaFiltro) : zonaPlano}
+          onZonaActivaChange={setZonaPlano}
+          reflujo={movil ? 3 : undefined}
+          formatear={formatear}
+          seleccionId={seleccionId}
+          onSeleccionar={(id) => {
+            if (movil && id) setHojaId(id);
+            else setSeleccionId(id);
+          }}
+          resumen={(v) => resumenDe(v)}
+          movil={movil}
+          puedeEditar={!movil}
+          editando={editando}
+          onEditandoChange={setEditando}
+          prefijoMesa={tp('editor.prefijoMesa')}
+          onGuardar={async (cambios, estadoEditor) => {
+            try {
+              const r = await guardarPlano(cambios, estadoEditor);
+              if (r.noBorradas.length > 0) toast.warning(tp('toast.noBorradas', { n: r.noBorradas.length }));
+              if (r.sinColumnasNuevas) toast.info(tp('toast.sinColumnas'));
+              else toast.success(tp('toast.planoGuardado'));
+              await cargarDatos();
+              return true;
+            } catch {
+              toast.error(tp('errores.plano'));
+              return false;
+            }
+          }}
+        />
+      );
+    }
+    return secciones();
+  };
+
+  const listo = estado === 'lista' && (mesas.length > 0 || zonas.length > 0);
 
   return (
-    <div className="min-h-screen space-y-6 bg-canvas p-4 sm:p-6">
+    <div className="min-h-screen space-y-4 bg-canvas p-4 sm:space-y-5 sm:p-6">
       <PageHeader
         titulo={t('titulo')}
-        subtitulo={t('subtitulo', { n: mesas.length })}
-        icono={UtensilsCrossed}
-        cargando={isRefreshing}
-        debajo={<BranchBadgeActiva />}
+        subtitulo={subtitulo}
         acciones={
           <>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-10 w-10"
-              onClick={cargarDatos}
-              disabled={isRefreshing}
-              aria-label={t('acciones.actualizar')}
-              title={t('acciones.actualizar')}
-            >
-              <RefreshCw aria-hidden="true" className={isRefreshing ? 'size-4 animate-spin' : 'size-4'} strokeWidth={1.5} />
-            </Button>
-            <RowActionsMenu orientacion="horizontal" tamano="md" acciones={accionesMas} />
-            <Button className="h-10 gap-2" onClick={() => setShowMesaForm(true)}>
-              <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+            {botonRefrescar}
+            <RowActionsMenu orientacion="horizontal" tamano="md" acciones={accionesMas} etiquetaBoton={tableta ? undefined : tp('acciones.mas')} iconoBoton={Ellipsis} />
+            <KbdButton variante="primario" tamano="md" icono={Plus} onClick={() => setShowMesaForm(true)}>
               {t('acciones.nuevaMesa')}
-            </Button>
+            </KbdButton>
           </>
         }
         movil={{
           accion: (
             <RowActionsMenu
-              orientacion="horizontal"
+              orientacion="vertical"
               tamano="md"
               titulo={t('titulo')}
               acciones={[
                 { id: 'nueva', etiqueta: t('acciones.nuevaMesa'), icono: Plus, onSelect: () => setShowMesaForm(true) },
-                { id: 'actualizar', etiqueta: t('acciones.actualizar'), icono: RefreshCw, onSelect: cargarDatos },
+                { id: 'actualizar', etiqueta: t('acciones.actualizar'), icono: RefreshCw, onSelect: () => void cargarDatos() },
                 ...accionesMas.map((a, i) => (i === 0 ? { ...a, separadorAntes: true } : a)),
               ]}
             />
@@ -688,181 +640,159 @@ export default function MesasPage() {
         }}
       />
 
-      {/* Leyenda-filtro por estado (interina: `LeyendaEstadosMesa` es GRANDE) */}
-      <KpiCompacto
-        etiqueta={t('leyenda.etiqueta')}
-        cifras={[
-          { id: 'todos', etiqueta: t('leyenda.todas'), valor: mesas.length, onClick: () => setEstadoFiltro('todos') },
-          { id: 'free', etiqueta: t('leyenda.libres'), valor: nLibres, tono: 'exito', onClick: () => setEstadoFiltro('free') },
-          { id: 'occupied', etiqueta: t('leyenda.ocupadas'), valor: nOcupadas, tono: 'peligro', onClick: () => setEstadoFiltro('occupied') },
-          { id: 'bill', etiqueta: t('leyenda.porCobrar'), valor: nCuenta, tono: 'advertencia', onClick: () => setEstadoFiltro('bill_requested') },
-          { id: 'reserved', etiqueta: t('leyenda.reservadas'), valor: nReservadas, tono: 'informacion', onClick: () => setEstadoFiltro('reserved') },
-        ]}
-      />
+      {listo && !editando && !movil && <LeyendaEstadosMesa conteos={conteos} seleccion={estadosFiltro} onSeleccionChange={setEstadosFiltro} />}
 
-      {/* Barra: buscador, filtros y vista (común a cuadrícula y plano: el plano también filtra) */}
-      <ListToolbar
-        busqueda={
-          <SearchInput
-            value={busqueda}
-            onChange={setBusqueda}
-            onValueChange={setBusqueda}
-            placeholder={t('filtros.buscar')}
-          />
-        }
-        filtros={
-          <>
-            <FilterPanel conteo={chips.length} onLimpiar={() => { setZonaFiltro('todas'); setEstadoFiltro('todos'); }}>
-              <FormField etiqueta={t('filtros.zona')}>
-                {(c) => (
-                  <Select value={zonaFiltro} onValueChange={setZonaFiltro}>
-                    <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} className="h-10 border-line-strong bg-surface">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todas">{t('filtros.todasZonas')}</SelectItem>
-                      <SelectItem value="sin-zona">{t('zona.sinZona')}</SelectItem>
-                      {zonas.map((zona) => (
-                        <SelectItem key={zona} value={zona}>
-                          {zona}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </FormField>
-              <FormField etiqueta={t('filtros.estado')}>
-                {(c) => (
-                  <Select value={estadoFiltro} onValueChange={(v) => setEstadoFiltro(v as typeof estadoFiltro)}>
-                    <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} className="h-10 border-line-strong bg-surface">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todos">{t('filtros.todosEstados')}</SelectItem>
-                      <SelectItem value="free">{t('estados.free')}</SelectItem>
-                      <SelectItem value="occupied">{t('estados.occupied')}</SelectItem>
-                      <SelectItem value="bill_requested">{t('estados.bill_requested')}</SelectItem>
-                      <SelectItem value="reserved">{t('estados.reserved')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              </FormField>
-            </FilterPanel>
-            {/* SelectorVista (Figma `868:31799`): con texto en escritorio, solo icono en móvil */}
-            <SegmentedControl
-              etiqueta={t('vista.etiqueta')}
-              tamano="md"
-              valor={viewMode}
-              onValorChange={setViewMode}
-              className="hidden shrink-0 sm:inline-flex"
-              opciones={[
-                { valor: 'list', etiqueta: t('vista.cuadricula'), icono: LayoutGrid },
-                { valor: 'map', etiqueta: t('vista.plano'), icono: MapIcon },
-              ]}
-            />
-            <SegmentedControl
-              etiqueta={t('vista.etiqueta')}
-              tamano="md"
-              valor={viewMode}
-              onValorChange={setViewMode}
-              className="shrink-0 sm:hidden"
-              opciones={[
-                { valor: 'list', etiqueta: t('vista.cuadricula'), icono: LayoutGrid, soloIcono: true },
-                { valor: 'map', etiqueta: t('vista.plano'), icono: MapIcon, soloIcono: true },
-              ]}
-            />
-          </>
-        }
-        chips={
-          <FilterChips
-            chips={chips}
-            onQuitar={(c) => (c === 'zona' ? setZonaFiltro('todas') : setEstadoFiltro('todos'))}
-            onLimpiarTodo={limpiarFiltros}
-          />
-        }
-      />
-
-      {/* Modo combinar: instrucciones y confirmación (antes dentro de «Acciones rápidas») */}
-      {modoCombinar && (
-        <Tarjeta
-          tono="informacion"
-          icono={GitMerge}
-          titulo={t('combinar.titulo')}
-          descripcion={t('combinar.instrucciones')}
-          accion={
-            <>
-              {mesasParaCombinar.length > 0 && (
-                <span className="text-sm font-medium text-fg">{t('combinar.seleccionadas', { n: mesasParaCombinar.length })}</span>
-              )}
-              <Button variant="outline" size="sm" onClick={handleToggleModoCombinar}>
-                {t('acciones.cancelarCombinacion')}
-              </Button>
-              <Button size="sm" onClick={handleCombinarRapido} disabled={mesasParaCombinar.length < 2}>
-                {t('combinar.combinarAhora')}
-              </Button>
-            </>
-          }
-        />
-      )}
-
-      {/* === VISTA MAPA === */}
-      {viewMode === 'map' && (
-        <MesasFloorMap
-          mesas={mesasFiltradas}
-          onSavePositions={handleSavePositions}
-          onSaveZoneLayouts={handleSaveZoneLayouts}
-          onMesaClick={(mesa) => handleMesaClick(mesa)}
-          initialZoneLayouts={zoneLayouts}
-          reservas={reservasActivas}
-        />
-      )}
-
-      {/* === VISTA CUADRÍCULA === */}
-      {viewMode === 'list' &&
-        (mesasFiltradas.length === 0 ? (
-          hayFiltros ? (
-            <EmptyState variante="search" termino={busqueda.trim() || undefined} onLimpiarFiltros={limpiarFiltros} />
-          ) : (
-            <EmptyState
-              variante="empty"
-              titulo={t('vacio.titulo')}
-              descripcion={t('vacio.descripcion')}
-              icono={UtensilsCrossed}
-              accion={{ etiqueta: t('acciones.nuevaMesa'), icono: Plus, onClick: () => setShowMesaForm(true) }}
-            />
-          )
-        ) : (
-          <div className="space-y-6">
-            {zonaFiltro === 'todas' ? (
-              <>
-                {/* Mesas sin zona */}
-                {mesasFiltradas.some((m) => !m.zone) && (
-                  <section>
-                    <ZonaHeader zona={null} mesas={mesasFiltradas.filter((m) => !m.zone)} reservas={reservasActivas} />
-                    <div className={CLASES_GRILLA}>{tarjetasDe(mesasFiltradas.filter((m) => !m.zone))}</div>
-                  </section>
-                )}
-
-                {/* Mesas agrupadas por zona */}
-                {zonas.map((zona) => {
-                  const mesasZona = mesasFiltradas.filter((m) => m.zone === zona);
-                  if (mesasZona.length === 0) return null;
-                  return (
-                    <section key={zona}>
-                      <ZonaHeader zona={zona} mesas={mesasZona} reservas={reservasActivas} />
-                      <div className={CLASES_GRILLA}>{tarjetasDe(mesasZona)}</div>
-                    </section>
-                  );
-                })}
-              </>
-            ) : (
-              // Zona específica
-              <div className={CLASES_GRILLA}>{tarjetasDe(mesasFiltradas)}</div>
+      {(estado === 'cargando' || estado === 'error' || listo) && !editando && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <SearchInput value={busqueda} onChange={setBusqueda} onValueChange={setBusqueda} placeholder={movil ? tp('filtros.buscarCorto') : tp('filtros.buscar')} className={cn('min-w-0 flex-1', !tableta && 'sm:w-[320px] sm:flex-none')} />
+            {!tableta && vista === 'cuadricula' && (
+              <Select value={zonaFiltro} onValueChange={setZonaFiltro}>
+                <SelectTrigger aria-label={t('filtros.zona')} className="h-10 w-[220px] border-line-strong bg-surface">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">{t('filtros.todasZonas')}</SelectItem>
+                  {zonas.map((z) => (
+                    <SelectItem key={z.nombre} value={z.nombre}>
+                      {z.nombre}
+                    </SelectItem>
+                  ))}
+                  {vistas.some((v) => !v.zona) && <SelectItem value="sin-zona">{t('zona.sinZona')}</SelectItem>}
+                </SelectContent>
+              </Select>
+            )}
+            <span className="hidden flex-1 sm:block" />
+            {selectorVista}
+            {!movil && vista === 'cuadricula' && (
+              <SegmentedControl<Densidad>
+                etiqueta={tp('densidad.etiqueta')}
+                tamano="md"
+                valor={densidad}
+                onValorChange={cambiarDensidad}
+                className="shrink-0"
+                opciones={[
+                  { valor: 'comoda', etiqueta: tp('densidad.comoda'), icono: LayoutGrid, soloIcono: true },
+                  { valor: 'compacta', etiqueta: tp('densidad.compacta'), icono: Grid3x3, soloIcono: true },
+                ]}
+              />
             )}
           </div>
-        ))}
 
-      {/* Modales */}
+          {movil && listo && (
+            <>
+              <div role="group" aria-label={t('filtros.zona')} className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none]">
+                {[{ valor: 'todas', etiqueta: tp('plano.todas'), n: vistas.length }, ...zonas.map((z) => ({ valor: z.nombre, etiqueta: z.nombre, n: vistas.filter((v) => v.zona === z.nombre).length }))].map((c) => {
+                  const activo = zonaFiltro === c.valor;
+                  return (
+                    <button
+                      key={c.valor}
+                      type="button"
+                      aria-pressed={activo}
+                      onClick={() => {
+                        setZonaFiltro(c.valor);
+                        setZonaPlano(c.valor === 'todas' ? TODAS : c.valor);
+                      }}
+                      className={cn(
+                        'inline-flex h-8 shrink-0 items-center gap-1 rounded-full border px-3 text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                        activo ? 'border-line-brand bg-brand-tint font-medium text-brand' : 'border-line-strong bg-surface text-fg',
+                      )}
+                    >
+                      {activo && <Check aria-hidden="true" className="size-3.5" strokeWidth={2} />}
+                      {c.etiqueta} {c.n}
+                    </button>
+                  );
+                })}
+              </div>
+              <LeyendaEstadosMesa conteos={conteos} seleccion={estadosFiltro} onSeleccionChange={setEstadosFiltro} className="-mx-4 rounded-none border-x-0 px-4" />
+            </>
+          )}
+
+          {chips.length > 0 && (
+            <FilterChips chips={chips} onQuitar={(c) => (c === 'zona' ? setZonaFiltro('todas') : setEstadosFiltro([]))} onLimpiarTodo={limpiarFiltros} />
+          )}
+        </div>
+      )}
+
+      {cuerpo()}
+
+      {/* Celular: hoja de la mesa (870:582569) */}
+      <Sheet open={!!vistaHoja} onOpenChange={(o) => !o && setHojaId(null)}>
+        <SheetContent side="bottom" hideCloseButton className="rounded-t-2xl border-line bg-surface px-4 pb-6 pt-3" aria-describedby={undefined}>
+          <span aria-hidden="true" className="mx-auto mb-3 block h-1 w-10 rounded-full bg-line-strong" />
+          <SheetTitle className="sr-only">{vistaHoja?.nombre ?? ''}</SheetTitle>
+          {vistaHoja && resumenDe(vistaHoja, true)}
+        </SheetContent>
+      </Sheet>
+      <ActionSheet abierto={!!accionesHoja} onAbiertoChange={(o) => !o && setAccionesHoja(null)} titulo={accionesHoja?.name ?? ''} acciones={accionesHoja ? accionesMesa(accionesHoja) : []} />
+
+      {/* Abrir mesa (D1 / T1) */}
+      <AbrirMesaFlujo
+        abierto={!!mesaParaAbrir}
+        onAbiertoChange={(o) => !o && setMesaParaAbrir(null)}
+        mesa={mesaParaAbrir ? { id: mesaParaAbrir.id, nombre: mesaParaAbrir.name, zona: mesaParaAbrir.zone ?? null, capacidad: mesaParaAbrir.capacity } : null}
+        reserva={mesaParaAbrir ? reservasActivas.get(mesaParaAbrir.id) : undefined}
+        onVerReserva={() => {
+          const m = mesaParaAbrir;
+          setMesaParaAbrir(null);
+          if (m) setMesaReservada(m);
+        }}
+        tableta={tableta}
+        onAbierta={() => {
+          const id = mesaParaAbrir?.id;
+          setMesaParaAbrir(null);
+          if (id) irACuenta(id);
+          void cargarDatos();
+        }}
+      />
+
+      <LoteMesasDialog
+        abierto={showLote}
+        onAbiertoChange={setShowLote}
+        zonas={zonaLote ? [zonaLote, ...zonas.map((z) => z.nombre).filter((z) => z !== zonaLote)] : zonas.map((z) => z.nombre)}
+        desdeSugerido={siguienteNumero}
+        onCrear={async (d) => {
+          try {
+            await crearMesasEnLote({ ...d, prefijo: tp('editor.prefijoMesa') });
+            toast.success(tp('toast.lote', { n: d.cantidad }));
+            await cargarDatos();
+          } catch (e) {
+            toast.error(tp('errores.lote'));
+            throw e;
+          }
+        }}
+      />
+
+      <Dialogo
+        abierto={crearZona}
+        onAbiertoChange={setCrearZona}
+        titulo={tp('vacio.crearZona')}
+        icono={Layers}
+        ancho={440}
+        primario={{
+          etiqueta: tp('vacio.crearYAgregar'),
+          deshabilitada: nombreZonaNueva.trim() === '',
+          onClick: () => {
+            setCrearZona(false);
+            setZonaLote(nombreZonaNueva.trim());
+            setShowLote(true);
+          },
+        }}
+      >
+        <FormField etiqueta={tp('editor.zona.nombre')} ayuda={tp('vacio.zonaAyuda')}>
+          {(c) => (
+            <input
+              id={c.id}
+              autoFocus
+              value={nombreZonaNueva}
+              maxLength={40}
+              onChange={(e) => setNombreZonaNueva(e.target.value)}
+              className="h-10 w-full rounded-lg border border-line-strong bg-surface px-3 text-sm text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            />
+          )}
+        </FormField>
+      </Dialogo>
+
       <MesaFormDialog
         open={showMesaForm && !mesaEditar}
         onOpenChange={(open) => {
@@ -870,40 +800,25 @@ export default function MesasPage() {
           if (!open) setMesaEditar(null);
         }}
         onSubmit={handleCrearMesa}
-        zonas={zonas}
+        zonas={zonas.map((z) => z.nombre)}
       />
-
-      <MesaFormDialog
-        open={!!mesaEditar}
-        onOpenChange={(open) => {
-          if (!open) setMesaEditar(null);
-        }}
-        onSubmit={handleEditarMesa}
-        mesa={mesaEditar}
-        zonas={zonas}
-      />
+      <MesaFormDialog open={!!mesaEditar} onOpenChange={(open) => !open && setMesaEditar(null)} onSubmit={handleEditarMesa} mesa={mesaEditar} zonas={zonas.map((z) => z.nombre)} />
 
       <ZonasManager
         open={showZonasManager}
         onOpenChange={setShowZonasManager}
-        zonas={zonas}
-        onEditarZona={handleEditarZona}
-        onEliminarZona={handleEliminarZona}
+        zonas={zonasMesas}
+        onEditarZona={(a, b) => conRecarga(() => MesasService.actualizarZona(a, b), tp('toast.zonaRenombrada', { zona: b }), tp('errores.guardar'))}
+        onEliminarZona={(z) => conRecarga(() => MesasService.eliminarZona(z), tp('toast.zonaEliminada'), tp('errores.guardar'))}
       />
-
       <CombinarMesasDialog
         open={showCombinar}
         onOpenChange={setShowCombinar}
         mesas={mesas}
-        onCombinar={handleCombinarMesas}
+        onCombinar={(principal, otras) => conRecarga(() => MesasService.combinarMesas(principal, otras), tp('toast.combinadas'), tp('errores.guardar'))}
       />
-
-      <MoverPedidoDialog
-        open={showMover}
-        onOpenChange={setShowMover}
-        mesas={mesas}
-        onMover={handleMoverPedido}
-      />
+      <MoverPedidoDialog open={showMover} onOpenChange={setShowMover} mesas={mesas} onMover={(s, d) => conRecarga(() => MesasService.moverPedido(s, d), tp('toast.movida'), tp('errores.guardar'))} />
+      <HistorialMesasDialog open={showHistorial} onOpenChange={setShowHistorial} />
 
       <ConfirmDialog
         open={!!mesaEliminar}
@@ -916,12 +831,6 @@ export default function MesasPage() {
         onConfirm={handleEliminarMesa}
       />
 
-      <HistorialMesasDialog
-        open={showHistorial}
-        onOpenChange={setShowHistorial}
-      />
-
-      {/* Liberar mesa: con saldo pide resolverlo; «Cobrar ahora» abre el cobro en el detalle */}
       <LiberarMesaDialog
         abierto={!!mesaParaLiberar}
         onAbiertoChange={(open) => !open && setMesaParaLiberar(null)}
@@ -936,7 +845,6 @@ export default function MesasPage() {
         onLiberada={handleMesaLiberada}
       />
 
-      {/* Mesa reservada: panel resumen (paso 6 del storyboard de reserva) */}
       <ReservaMesaPanel
         mesa={mesaReservada}
         activa={reservaDelPanel}
@@ -946,14 +854,6 @@ export default function MesasPage() {
         onNoSePresento={() => setConfirmarNoShow(true)}
         ocupado={accionReservaEnCurso}
       />
-
-      <MesaQrDialog
-        abierto={!!qr}
-        onAbiertoChange={(abierto) => !abierto && setQr(null)}
-        mesas={qr?.mesas ?? []}
-        titulo={qr?.titulo ?? ''}
-      />
-
       <CambiarMesaReservaDialog
         activa={reservaDelPanel}
         abierto={showCambiarMesaReserva && !!reservaDelPanel}
@@ -961,15 +861,11 @@ export default function MesasPage() {
         mesasNoDisponibles={mesasNoDisponibles}
         onConfirmar={handleCambiarMesaReserva}
       />
-
       <ConfirmDialog
         open={confirmarNoShow && !!reservaDelPanel}
         onOpenChange={(open) => !open && setConfirmarNoShow(false)}
         title={t('reserva.noShowTitulo')}
-        description={t('reserva.noShowDescripcion', {
-          nombre: reservaDelPanel?.reserva.customer_name ?? '',
-          mesa: mesaReservada?.name ?? '',
-        })}
+        description={t('reserva.noShowDescripcion', { nombre: reservaDelPanel?.reserva.customer_name ?? '', mesa: mesaReservada?.name ?? '' })}
         confirmLabel={t('reserva.noShowConfirmar')}
         cancelLabel={t('comun.cancelar')}
         variant="destructive"
@@ -977,171 +873,20 @@ export default function MesasPage() {
         onConfirm={handleNoSePresento}
       />
 
-      {/* Editar comensales */}
+      <MesaQrDialog abierto={!!qr} onAbiertoChange={(abierto) => !abierto && setQr(null)} mesas={qr?.mesas ?? []} titulo={qr?.titulo ?? ''} />
+
       <Dialogo
         abierto={!!mesaParaComensales}
         onAbiertoChange={(open) => !open && setMesaParaComensales(null)}
         titulo={t('comensales.tituloEditar', { mesa: mesaParaComensales?.name ?? '' })}
         icono={Users}
         ancho={440}
-        primario={{ etiqueta: t('comun.guardar'), onClick: handleActualizarComensales, deshabilitada: comensales === null }}
+        primario={{ etiqueta: t('comun.guardar'), onClick: () => void handleActualizarComensales(), deshabilitada: comensales === null }}
       >
-        <FormField
-          etiqueta={t('comensales.numero')}
-          ayuda={t('comensales.capacidad', { n: mesaParaComensales?.capacity ?? 0 })}
-        >
-          <CampoNumero
-            valor={comensales}
-            onValorChange={setComensales}
-            minimo={1}
-            maximo={mesaParaComensales?.capacity || 20}
-            decimales={0}
-            alinear="izquierda"
-          />
+        <FormField etiqueta={t('comensales.numero')} ayuda={t('comensales.capacidad', { n: mesaParaComensales?.capacity ?? 0 })}>
+          {() => <CampoNumero valor={comensales} onValorChange={setComensales} minimo={1} maximo={mesaParaComensales?.capacity || 20} decimales={0} alinear="izquierda" />}
         </FormField>
       </Dialogo>
-
-      {/* Abrir sesión de mesa */}
-      <Dialogo
-        abierto={!!mesaParaAbrirSesion}
-        onAbiertoChange={(open) => !open && setMesaParaAbrirSesion(null)}
-        titulo={t('abrir.titulo', { mesa: mesaParaAbrirSesion?.name ?? '' })}
-        descripcion={t('abrir.descripcion')}
-        icono={UtensilsCrossed}
-        ancho={440}
-        primario={{ etiqueta: t('abrir.confirmar'), onClick: handleAbrirSesion, deshabilitada: comensalesNuevaSesion === null }}
-      >
-        <FormField
-          etiqueta={t('comensales.numero')}
-          ayuda={t('comensales.capacidad', { n: mesaParaAbrirSesion?.capacity ?? 0 })}
-        >
-          <CampoNumero
-            valor={comensalesNuevaSesion}
-            onValorChange={setComensalesNuevaSesion}
-            minimo={1}
-            maximo={mesaParaAbrirSesion?.capacity || 20}
-            decimales={0}
-            alinear="izquierda"
-            autoFocus
-          />
-        </FormField>
-      </Dialogo>
-    </div>
-  );
-}
-
-// Componente para Mesa con menú contextual
-interface MesaCardWithMenuProps {
-  mesa: TableWithSession;
-  reserva?: ReservaActivaMesa;
-  onClick: () => void;
-  onEdit: () => void;
-  onLiberar: () => void;
-  onSolicitarCuenta?: () => void;
-  onEditarComensales: () => void;
-  onQr: () => void;
-  modoCombinar?: boolean;
-  isSelected?: boolean;
-  selectionIndex?: number;
-  onToggleSelect?: () => void;
-}
-
-function MesaCardWithMenu({
-  mesa,
-  reserva,
-  onClick,
-  onEdit,
-  onLiberar,
-  onSolicitarCuenta,
-  onEditarComensales,
-  onQr,
-  modoCombinar = false,
-  isSelected = false,
-  selectionIndex,
-  onToggleSelect
-}: MesaCardWithMenuProps) {
-  const t = useTranslations('posMesas');
-  const handleClick = (e: React.MouseEvent) => {
-    if (modoCombinar && mesa.session) {
-      e.stopPropagation();
-      onToggleSelect?.();
-    } else {
-      onClick();
-    }
-  };
-
-  // Menú ⋯ siempre visible (antes solo con hover: inalcanzable en táctil).
-  const acciones: AccionFila[] = [
-    { id: 'editar', etiqueta: t('acciones.editarMesa'), icono: Settings, onSelect: onEdit },
-    { id: 'qr', etiqueta: t('qr.accion'), icono: QrCode, onSelect: onQr },
-    ...(mesa.session
-      ? [
-          ...(onSolicitarCuenta
-            ? [
-                {
-                  id: 'cuenta',
-                  etiqueta: t('acciones.solicitarCuenta'),
-                  icono: Receipt,
-                  onSelect: onSolicitarCuenta,
-                  deshabilitada: mesa.session.status !== 'active',
-                },
-              ]
-            : []),
-          { id: 'comensales', etiqueta: t('acciones.editarComensales'), icono: Users, onSelect: onEditarComensales },
-          { id: 'liberar', etiqueta: t('acciones.liberarMesa'), icono: LogOut, onSelect: onLiberar, destructiva: true, separadorAntes: true },
-        ]
-      : []),
-  ];
-
-  return (
-    <div
-      className={`relative ${modoCombinar && mesa.session ? 'cursor-pointer' : ''} ${isSelected ? 'rounded-lg ring-2 ring-brand ring-offset-2' : ''}`}
-      onClick={handleClick}
-    >
-      <MesaCard mesa={mesa} reserva={reserva} onClick={!modoCombinar ? onClick : undefined} />
-
-      {/* Casilla en modo combinar */}
-      {modoCombinar && mesa.session && (
-        <div className="absolute left-2 top-2 z-20 flex flex-col items-center gap-1">
-          <button
-            type="button"
-            role="checkbox"
-            aria-checked={isSelected}
-            aria-label={t('combinar.seleccionar', { mesa: mesa.name })}
-            className={`flex h-8 w-8 items-center justify-center rounded-md border-2 shadow-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
-              isSelected
-                ? selectionIndex === 0
-                  ? 'border-transparent bg-solid-success text-on-solid'
-                  : 'border-transparent bg-brand-action text-fg-on-brand'
-                : 'border-line-strong bg-surface hover:border-line-brand'
-            }`}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleSelect?.();
-            }}
-          >
-            {isSelected ? (
-              <span className="text-sm font-bold">
-                {selectionIndex !== undefined ? selectionIndex + 1 : '✓'}
-              </span>
-            ) : (
-              <span aria-hidden="true" className="h-3 w-3 rounded border border-line-strong" />
-            )}
-          </button>
-          {isSelected && selectionIndex === 0 && (
-            <Badge tono="exito" apariencia="solido" tamano="sm">
-              {t('combinar.principal')}
-            </Badge>
-          )}
-        </div>
-      )}
-
-      {/* Menú ⋯ de la tarjeta (fuera del modo combinar); abajo a la derecha para no tapar el estado */}
-      {!modoCombinar && (
-        <div className="absolute bottom-2 right-2 z-10" onClick={(e) => e.stopPropagation()}>
-          <RowActionsMenu orientacion="vertical" tamano="sm" titulo={mesa.name} acciones={acciones} />
-        </div>
-      )}
     </div>
   );
 }

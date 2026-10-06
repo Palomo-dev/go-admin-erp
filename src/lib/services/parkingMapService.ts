@@ -1,8 +1,13 @@
 import { supabase } from '@/lib/supabase/config';
 import { isRealtimePublished } from '@/components/crm/shared/realtimeTables';
+import parkingRateService from '@/lib/services/parkingRateService';
+import parkingService from '@/lib/services/parkingService';
+import type { EstadoEspacioBD, TipoEspacioBD } from '@/lib/services/parkingValores';
 
-export type SpaceState = 'free' | 'occupied' | 'reserved' | 'maintenance';
-export type SpaceType = 'car' | 'motorcycle' | 'bicycle' | 'disabled' | 'vip';
+/** Enum `parking_space_state` (ver parkingValores.ts). */
+export type SpaceState = EstadoEspacioBD;
+/** Enum `parking_space_type`. No existe 'vip': lo VIP es la zona (`parking_zones.is_vip`). */
+export type SpaceType = TipoEspacioBD;
 
 export interface ParkingSpace {
   id: string;
@@ -55,6 +60,8 @@ export interface AssignSpaceData {
   vehicle_plate: string;
   vehicle_type: string;
   branch_id: number;
+  /** La organización de la sesión; si falta, la base la toma de la sede. */
+  organization_id?: number;
 }
 
 class ParkingMapService {
@@ -134,7 +141,7 @@ class ParkingMapService {
       const free = spacesList.filter((s) => s.state === 'free').length;
       const occupied = spacesList.filter((s) => s.state === 'occupied').length;
       const reserved = spacesList.filter((s) => s.state === 'reserved').length;
-      const maintenance = spacesList.filter((s) => s.state === 'maintenance').length;
+      const maintenance = spacesList.filter((s) => s.state === 'maintenance' || s.state === 'disabled').length;
 
       return {
         total,
@@ -171,29 +178,31 @@ class ParkingMapService {
   }
 
   /**
-   * Asignar espacio a una sesión (crear sesión con espacio asignado)
+   * Asignar espacio a una sesión (crear sesión con espacio asignado).
+   *
+   * Guarda la tarifa activa del tipo de vehículo en `rate_id`: sin ella, al
+   * liberar el espacio el disparador no tenía con qué calcular el monto y la
+   * sesión quedaba cerrada sin importe (fuera de reportes y de contabilidad).
+   * El espacio lo marca ocupado el disparador `update_parking_space_state`.
    */
   async assignSpaceToSession(data: AssignSpaceData): Promise<void> {
     try {
-      // Crear sesión con el espacio asignado
+      const tarifa = data.organization_id
+        ? await parkingRateService.getRateByVehicleType(data.organization_id, data.vehicle_type)
+        : null;
+
       const { error: sessionError } = await supabase.from('parking_sessions').insert({
+        ...(data.organization_id ? { organization_id: data.organization_id } : {}),
         branch_id: data.branch_id,
         parking_space_id: data.space_id,
-        vehicle_plate: data.vehicle_plate.toUpperCase(),
+        vehicle_plate: data.vehicle_plate.toUpperCase().trim(),
         vehicle_type: data.vehicle_type,
+        rate_id: tarifa?.id ?? null,
         entry_at: new Date().toISOString(),
         status: 'open',
       });
 
       if (sessionError) throw sessionError;
-
-      // Actualizar estado del espacio a ocupado
-      const { error: spaceError } = await supabase
-        .from('parking_spaces')
-        .update({ state: 'occupied', updated_at: new Date().toISOString() })
-        .eq('id', data.space_id);
-
-      if (spaceError) throw spaceError;
     } catch (error) {
       console.error('Error asignando espacio:', error);
       throw error;
@@ -201,26 +210,18 @@ class ParkingMapService {
   }
 
   /**
-   * Liberar espacio (cerrar sesión y liberar espacio)
+   * Liberar espacio: cierra la sesión con el monto cobrado (o `null` para que
+   * lo calcule la tarifa de la sesión). El espacio lo libera el disparador
+   * `update_parking_space_state`; se repite aquí por si la sesión ya estaba
+   * cerrada.
    */
-  async releaseSpace(spaceId: string, sessionId: string): Promise<void> {
+  async releaseSpace(spaceId: string, sessionId: string, amount: number | null = null): Promise<void> {
     try {
-      // Cerrar sesión
-      const { error: sessionError } = await supabase
-        .from('parking_sessions')
-        .update({
-          exit_at: new Date().toISOString(),
-          status: 'closed',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', sessionId);
+      await parkingService.registerExit(sessionId, amount);
 
-      if (sessionError) throw sessionError;
-
-      // Liberar espacio
       const { error: spaceError } = await supabase
         .from('parking_spaces')
-        .update({ state: 'free', updated_at: new Date().toISOString() })
+        .update({ state: 'free' })
         .eq('id', spaceId);
 
       if (spaceError) throw spaceError;

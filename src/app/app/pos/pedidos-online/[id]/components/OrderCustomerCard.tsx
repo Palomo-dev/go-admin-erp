@@ -1,86 +1,104 @@
 'use client';
 
-import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useTranslations } from 'next-intl';
+import { ExternalLink, MapPin, MessageSquare, User } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Phone, Mail, MapPin } from 'lucide-react';
-import { cn } from '@/utils/Utils';
+import { clasesBoton } from '@/components/kit';
+import { supabase } from '@/lib/supabase/config';
+import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz } from '@/lib/utils/dateDisplay';
 import type { WebOrder } from '@/lib/services/webOrdersService';
 
 interface OrderCustomerCardProps {
   order: WebOrder;
 }
 
+/**
+ * Cliente del pedido (Figma 1981:175699): nombre, teléfono, correo,
+ * documento y pedidos anteriores, con la ficha del cliente y su conversación.
+ */
 export function OrderCustomerCard({ order }: OrderCustomerCardProps) {
-  const displayName = order.customer_name || order.customer?.full_name || 'Cliente anónimo';
-  const displayPhone = order.customer_phone || order.customer?.phone;
-  const displayEmail = order.customer_email || order.customer?.email;
+  const t = useTranslations('pedidoWeb.ficha');
+  const { timezone } = useOrgTimezone();
+  const nombre = order.customer_name || order.customer?.full_name || t('clienteAnonimo');
+  const telefono = order.customer_phone || order.customer?.phone;
+  const correo = order.customer_email || order.customer?.email;
+  const documento = [order.customer?.doc_type, order.customer?.doc_number].filter(Boolean).join(' ');
+  const [anteriores, setAnteriores] = useState<{ n: number; ultimo: string | null } | null>(null);
+
+  useEffect(() => {
+    if (!order.customer_id) return;
+    let vivo = true;
+    supabase
+      .from('web_orders')
+      .select('created_at', { count: 'exact' })
+      .eq('organization_id', order.organization_id)
+      .eq('customer_id', order.customer_id)
+      .neq('id', order.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .then(({ data, count }) => {
+        if (vivo) setAnteriores({ n: count ?? 0, ultimo: data?.[0]?.created_at ?? null });
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [order.customer_id, order.organization_id, order.id]);
+
+  const fila = (etiqueta: string, valor: React.ReactNode) => (
+    <div className="flex items-baseline justify-between gap-3 text-[13px]">
+      <span className="text-fg-secondary">{etiqueta}</span>
+      <span className="min-w-0 break-words text-right text-fg">{valor}</span>
+    </div>
+  );
+  const direccion = esDomicilio(order.delivery_type) && order.delivery_address
+    ? [order.delivery_address.address, order.delivery_address.neighborhood, order.delivery_address.city].filter(Boolean).join(', ')
+    : '';
 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2 dark:text-gray-100">
-          <User className="h-4 w-4 dark:text-gray-300" />
-          Cliente
+        <CardTitle className="flex items-center gap-2 text-base">
+          <User className="size-4" aria-hidden="true" strokeWidth={1.5} />
+          {t('cliente')}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-2">
-        <p className="font-medium dark:text-gray-100">{displayName}</p>
-        
-        {displayPhone && (
-          <p className="flex items-center gap-2 text-sm text-muted-foreground dark:text-gray-400">
-            <Phone className="h-4 w-4 dark:text-gray-400" />
-            <a 
-              href={`tel:${displayPhone}`} 
-              className={cn(
-                "hover:underline",
-                "hover:text-primary transition-colors dark:text-gray-300 dark:hover:text-blue-400"
-              )}
-            >
-              {displayPhone}
-            </a>
+      <CardContent className="space-y-2.5">
+        {fila(t('nombre'), <span className="font-semibold">{nombre}</span>)}
+        {telefono && fila(t('telefono'), <a href={`tel:${telefono}`} className="text-link hover:underline">{telefono}</a>)}
+        {correo && fila(t('correo'), <a href={`mailto:${correo}`} className="text-link hover:underline">{correo}</a>)}
+        {documento && fila(t('documento'), documento)}
+        {anteriores && fila(
+          t('pedidosAnteriores'),
+          anteriores.n > 0 && anteriores.ultimo
+            ? t('anterioresValor', { n: anteriores.n, fecha: formatDateInTz(anteriores.ultimo, timezone) })
+            : t('primerPedido'),
+        )}
+        {direccion && (
+          <p className="flex items-start gap-2 border-t border-line pt-2 text-[13px] text-fg">
+            <MapPin className="mt-0.5 size-4 shrink-0 text-fg-muted" aria-hidden="true" />
+            <span>{direccion}</span>
           </p>
         )}
-        
-        {displayEmail && (
-          <p className="flex items-center gap-2 text-sm text-muted-foreground dark:text-gray-400">
-            <Mail className="h-4 w-4 dark:text-gray-400" />
-            <a
-              href={`mailto:${displayEmail}`}
-              className={cn(
-                "hover:underline break-words whitespace-normal",
-                "hover:text-primary transition-colors dark:text-gray-300 dark:hover:text-blue-400"
-              )}
+        {order.customer_id && (
+          <div className="flex gap-2 pt-1">
+            <Link href={`/app/clientes/${order.customer_id}`} className={clasesBoton({ variante: 'secundario', tamano: 'sm', className: 'flex-1' })}>
+              <ExternalLink className="size-4" aria-hidden="true" />
+              {t('verFicha')}
+            </Link>
+            <Link
+              href={`/app/crm/clientes/${order.customer_id}`}
+              aria-label={t('conversacion')}
+              title={t('conversacion')}
+              className={clasesBoton({ variante: 'secundario', tamano: 'sm', className: 'w-8 px-0' })}
             >
-              {displayEmail}
-            </a>
-          </p>
+              <MessageSquare className="size-4" aria-hidden="true" />
+            </Link>
+          </div>
         )}
-
-        {/* Dirección completa del cliente (desde delivery_address) */}
-        {esDomicilio(order.delivery_type) && order.delivery_address && (() => {
-          const addr = order.delivery_address;
-          const parts: string[] = [];
-          if (addr.address) parts.push(addr.address);
-          if (addr.neighborhood) parts.push(addr.neighborhood);
-          if (addr.city) parts.push(addr.city);
-          const stateName = addr.state || addr.department;
-          if (stateName) parts.push(stateName);
-          if (addr.country) parts.push(addr.country);
-          if (parts.length === 0) return null;
-          return (
-            <div className="space-y-1 pt-1 border-t dark:border-gray-700">
-              <p className="flex items-start gap-2 text-sm text-muted-foreground dark:text-gray-400">
-                <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 dark:text-gray-400" />
-                <span className="dark:text-gray-200 break-words whitespace-normal">{parts.join(', ')}</span>
-              </p>
-              {addr.instructions && (
-                <p className="text-xs text-yellow-600 dark:text-yellow-400 ml-6">
-                  📝 {addr.instructions}
-                </p>
-              )}
-            </div>
-          );
-        })()}
       </CardContent>
     </Card>
   );

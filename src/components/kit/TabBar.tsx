@@ -25,6 +25,11 @@ export interface PestanaTab<V extends string> {
   deshabilitada?: boolean;
   /** Icono de 16 px (trazo 1,5) delante de la etiqueta; decorativo. */
   icono?: LucideIcon;
+  /**
+   * Punto de color de 8 px delante de la etiqueta (clase de fondo, p. ej.
+   * `bg-danger`): el color de la estación en `PestanaEstacion` (952:31944).
+   */
+  punto?: string;
 }
 
 export interface TabBarProps<V extends string> {
@@ -90,6 +95,7 @@ export function TabBar<V extends string>({ id, pestanas, valor, onValorChange, e
             )}
           >
             {Icono && <Icono aria-hidden="true" className={cn('shrink-0', tamano === 'sm' ? 'size-3.5' : 'size-4')} strokeWidth={1.5} />}
+            {p.punto && <span aria-hidden="true" className={cn('size-2 shrink-0 rounded-full', p.punto)} />}
             {p.etiqueta}
             {p.contador !== undefined && (
               <span

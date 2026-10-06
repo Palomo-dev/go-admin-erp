@@ -17,13 +17,12 @@ export {
   ReservaMesaError,
 } from './reservasMesasService';
 
-export { ReservasHeader } from './ReservasHeader';
-export { ReservasStats } from './ReservasStats';
-export { ReservasList } from './ReservasList';
 export { ReservaFormDialog } from './ReservaFormDialog';
 export { ReservasConfiguracion } from './ReservasConfiguracion';
 export { mensajeErrorReserva, codigoErrorReserva } from './erroresReserva';
 export { ReservasAgenda } from './ReservasAgenda';
-export { ConfirmarReservaDialog } from './ConfirmarReservaDialog';
+export { ReservasTabla } from './ReservasTabla';
+export { SolicitudReservaDialog } from './SolicitudReservaDialog';
+export { RechazarSolicitudDialog } from './RechazarSolicitudDialog';
 export { useMensajeErrorReserva } from './useMensajeErrorReserva';
 export { interpretarErrorReserva } from './erroresReserva';

@@ -1,7 +1,12 @@
 'use client';
 
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { useParams } from 'next/navigation';
+import { useToast } from '@/components/ui/use-toast';
+import KitchenService from '@/lib/services/kitchenService';
+import { webOrdersService } from '@/lib/services/webOrdersService';
+import { imprimirComanda, textosImpresionDe } from '@/lib/pos/cocina/imprimirComanda';
 import { useTranslations } from 'next-intl';
 import { DollarSign, Loader2 } from 'lucide-react';
 import { clasesBoton } from '@/components/kit';
@@ -28,6 +33,7 @@ import { AssignDeliveryDialog, cobroDelPedido } from '@/components/pos/pedidos-o
 export default function WebOrderDetailPage() {
   const params = useParams();
   const orderId = params?.id as string;
+  const { timezone } = useOrgTimezone();
 
   const {
     order,
@@ -66,6 +72,8 @@ export default function WebOrderDetailPage() {
     loadOrder,
   } = useWebOrderDetail(orderId);
   const t = useTranslations('pedidoWeb');
+  const tCocina = useTranslations('posCocina');
+  const { toast } = useToast();
   const trazabilidad = useTrazabilidadPedido(order);
 
   // Estado de carga
@@ -87,6 +95,26 @@ export default function WebOrderDetailPage() {
   const cajaEtiqueta = cajaConocida ? t('cobro.entraACaja', { caja: trazabilidad.cajaId ?? '', sede }) : null;
   const cajaDeLaSede = cajaConocida ? t('pagos.cajaAbierta', { caja: trazabilidad.cajaId ?? '', sede }) : null;
 
+  // «Imprimir comanda»: la comanda del pedido, por el mismo camino que Comandas.
+  const imprimir = async () => {
+    if (!trazabilidad.comandaId || !organizationId) return;
+    const c = await KitchenService.getTicket(organizationId, trazabilidad.comandaId);
+    if (!c) {
+      toast({ title: t('ficha.imprimirError'), variant: 'destructive' });
+      return;
+    }
+    try {
+      const r = await imprimirComanda(c, textosImpresionDe((k, v) => tCocina(k, v)));
+      toast(r.enqueued > 0 ? { title: t('ficha.imprimirEnviado', { id: c.id }) } : { title: t('ficha.imprimirSinImpresora'), variant: 'destructive' });
+    } catch {
+      toast({ title: t('ficha.imprimirError'), variant: 'destructive' });
+    }
+  };
+  const reenviarAviso = async () => {
+    await webOrdersService.avisarCambioEstado(order.id);
+    toast({ title: t('ficha.avisoReenviado') });
+  };
+
   const confirmarCobro = async (valor: { metodo: string; referencia: string | null }) => {
     const hecho = await handleCobrar(cobroDialogo.entregar, valor);
     if (!hecho) void trazabilidad.recargar();
@@ -103,14 +131,28 @@ export default function WebOrderDetailPage() {
         cobrarDeshabilitado={sinCaja}
         isLoading={actionLoading}
         avisoStock={avisoStock}
+        cajaEtiqueta={cajaDeLaSede}
+        onImprimirComanda={trazabilidad.comandaId ? () => void imprimir() : undefined}
+        onMarcarEntregado={['ready', 'in_delivery'].includes(order.status) ? handleMarkDelivered : undefined}
+        onReenviarAviso={() => void reenviarAviso()}
+        onCancelar={['pending', 'confirmed'].includes(order.status) || (['preparing', 'ready'].includes(order.status) && order.payment_status !== 'paid') ? () => setCancelDialogOpen(true) : undefined}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Columna principal */}
         <div className="lg:col-span-2 space-y-6">
           <OrderProductsCard order={order} />
-          <OrderNotesCard order={order} comandaId={trazabilidad.comandaId} />
-          <OrderTimelineCard order={order} />
+          <OrderNotesCard
+            order={order}
+            comandaId={trazabilidad.comandaId}
+            onGuardarNotaInterna={async (texto) => {
+              const ok = await webOrdersService.actualizarNotaInterna(order.id, texto);
+              toast(ok ? { title: t('ficha.notaGuardada') } : { title: t('ficha.notaError'), variant: 'destructive' });
+              if (ok) void loadOrder();
+              return ok;
+            }}
+          />
+          <OrderTimelineCard order={order} timezone={timezone} />
           <OrderDocumentsCard
             order={order}
             factura={trazabilidad.factura}
@@ -132,6 +174,7 @@ export default function WebOrderDetailPage() {
             onCancel={() => setCancelDialogOpen(true)}
             onConvertToSale={handleConvertToSale}
             onCobrar={abrirCobro}
+            onPrint={trazabilidad.comandaId ? () => void imprimir() : undefined}
             sinCajaAbierta={sinCaja}
             cajaEtiqueta={cajaEtiqueta}
             isLoading={actionLoading}

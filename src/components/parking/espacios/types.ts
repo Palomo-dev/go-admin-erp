@@ -1,5 +1,9 @@
-export type SpaceType = 'car' | 'motorcycle' | 'truck' | 'bicycle';
-export type SpaceState = 'free' | 'occupied' | 'reserved' | 'maintenance' | 'disabled';
+import type { EstadoEspacioBD, TipoEspacioBD } from '@/lib/services/parkingValores';
+
+/** Enum `parking_space_type` (ver parkingValores.ts). */
+export type SpaceType = TipoEspacioBD;
+/** Enum `parking_space_state` (ver parkingValores.ts). */
+export type SpaceState = EstadoEspacioBD;
 
 export interface ParkingZone {
   id: string;
@@ -41,6 +45,6 @@ export interface SpaceStats {
   occupied: number;
   reserved: number;
   maintenance: number;
-  byType: Record<SpaceType, number>;
+  byType: Partial<Record<SpaceType, number>>;
   byZone: Record<string, { total: number; occupied: number }>;
 }

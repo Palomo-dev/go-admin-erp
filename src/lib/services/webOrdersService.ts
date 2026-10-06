@@ -3,6 +3,7 @@ import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { stockMovementService } from '@/lib/services/stockMovementService';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
+import { porcentajeATiempo } from '@/lib/pos/pedidosWeb/listadoPedidos';
 
 export type WebOrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'in_delivery' | 'delivered' | 'cancelled' | 'rejected' | 'expired';
 // 'dine_in' = «Comer aquí» (QR de mesa), migración E1 (20261006124644_web_orders_dine_in).
@@ -90,6 +91,8 @@ export interface WebOrder {
     full_name: string;
     email: string;
     phone: string;
+    doc_type?: string | null;
+    doc_number?: string | null;
   };
   branch?: {
     id: number;
@@ -157,7 +160,8 @@ class WebOrdersService {
           *,
           items:web_order_items(*),
           customer:customers(id, full_name, email, phone),
-          branch:branches(id, name)
+          branch:branches(id, name),
+          restaurant_table:restaurant_tables(name, zone)
         `)
         .eq('organization_id', this.organizationId)
         .order('created_at', { ascending: false });
@@ -444,6 +448,28 @@ class WebOrdersService {
   }
 
   /**
+   * Nota del equipo (`internal_notes`): conserva la marca que deja el sitio
+   * («[Comer aquí] Mesa: …») y reemplaza el resto. Filtra por la organización
+   * activa; la RLS del usuario hace el resto.
+   */
+  async actualizarNotaInterna(orderId: string, texto: string): Promise<boolean> {
+    const { notasInternasConMarca } = await import('@/components/pos/pedidos-online/notasPedido');
+    const { data: actual, error: errLeer } = await supabase
+      .from('web_orders')
+      .select('internal_notes')
+      .eq('id', orderId)
+      .eq('organization_id', this.organizationId)
+      .maybeSingle();
+    if (errLeer || !actual) return false;
+    const { error } = await supabase
+      .from('web_orders')
+      .update({ internal_notes: notasInternasConMarca(actual.internal_notes, texto.slice(0, 1000)) })
+      .eq('id', orderId)
+      .eq('organization_id', this.organizationId);
+    return !error;
+  }
+
+  /**
    * Avisa al cliente por correo del estado actual del pedido
    * (`POST /api/web-orders/[id]/aviso-estado`, organización de la sesión).
    * Best-effort: nunca lanza ni bloquea el cambio de estado.
@@ -612,11 +638,15 @@ class WebOrdersService {
     avg_order_value: number;
     by_delivery_type: { type: string; count: number; revenue: number }[];
     by_source: { source: string; count: number }[];
+    /** Sin confirmar (status `pending`): el «Pendientes» del Figma 447:195914. */
+    unconfirmed_orders: number;
+    /** % de pedidos que cumplieron la hora prometida, sobre los medidos (null sin medidos). */
+    on_time_pct: number | null;
   }> {
     try {
       let query = supabase
         .from('web_orders')
-        .select('id, status, total, delivery_type, source, payment_status')
+        .select('id, status, total, delivery_type, source, payment_status, internal_notes, created_at, estimated_ready_at, estimated_delivery_at, ready_at, delivered_at')
         .eq('organization_id', this.organizationId);
 
       if (dateFrom) query = query.gte('created_at', dateFrom);
@@ -636,6 +666,8 @@ class WebOrdersService {
         avg_order_value: 0,
         by_delivery_type: [] as { type: string; count: number; revenue: number }[],
         by_source: [] as { source: string; count: number }[],
+        unconfirmed_orders: (orders ?? []).filter((o) => o.status === 'pending').length,
+        on_time_pct: porcentajeATiempo(orders ?? []).pct,
       };
 
       const deliveryTypeMap = new Map<string, { count: number; revenue: number }>();

@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
+import parkingPaymentService from '@/lib/services/parkingPaymentService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -48,7 +49,6 @@ export default function SessionDetailPage() {
   const moneda = useMonedaOrganizacion();
   const formatearMoneda = moneda.formatear;
   const params = useParams();
-  const router = useRouter();
   const sessionId = params?.id as string;
   const { organization } = useOrganization();
   const { toast } = useToast();
@@ -262,36 +262,19 @@ export default function SessionDetailPage() {
     if (!session || !organization?.id) return;
 
     try {
-      // Crear payment
-      const { data: payment, error: paymentError } = await supabase
-        .from('payments')
-        .insert({
-          organization_id: organization.id,
-          branch_id: session.branch_id,
-          source: 'parking',
-          source_id: session.id,
-          method: data.method,
-          amount: data.amount,
-          // Moneda base de la organización, no pesos fijos.
-          currency: moneda.code,
-          reference: data.reference,
-          status: 'completed',
-        })
-        .select()
-        .single();
-
-      if (paymentError) throw paymentError;
-
-      // Vincular con parking_payments
-      const { error: linkError } = await supabase
-        .from('parking_payments')
-        .insert({
-          parking_session_id: session.id,
-          payment_id: payment.id,
-          branch_id: session.branch_id,
-        });
-
-      if (linkError) throw linkError;
+      // Pago + vínculo en parking_payments con el servicio único. Antes se
+      // insertaba con source 'parking': ni la pantalla de Pagos ni los reportes
+      // ni el disparador contable lo reconocían.
+      await parkingPaymentService.registrarPago({
+        organization_id: organization.id,
+        branch_id: session.branch_id,
+        source: 'parking_session',
+        source_id: session.id,
+        method: data.method,
+        amount: data.amount,
+        currency: moneda.code,
+        reference: data.reference,
+      });
 
       toast({
         title: 'Pago registrado',

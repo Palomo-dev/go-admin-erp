@@ -86,6 +86,9 @@ export const ajustesReservaSchema = z
     require_deposit: z.boolean(),
     deposit_amount: z.number().min(0).max(100_000_000).nullable(),
     deposit_per_person: z.boolean(),
+    // D7 (20261006170000): con default para quien aún envía el DTO anterior.
+    deposit_refundable: z.boolean().default(true),
+    deposit_refund_hours: z.number().int().min(0).max(720).nullable().default(null),
     policy_text: z.string().trim().max(2000).nullable(),
     notify_emails: z.array(correo).max(10).nullable(),
     send_customer_email: z.boolean(),
@@ -133,6 +136,8 @@ export const AJUSTES_RESERVA_POR_DEFECTO: AjustesReservaDto = {
   require_deposit: false,
   deposit_amount: null,
   deposit_per_person: false,
+  deposit_refundable: true,
+  deposit_refund_hours: null,
   policy_text: null,
   notify_emails: null,
   send_customer_email: true,
@@ -163,6 +168,27 @@ export const AJUSTES_RESERVA_RECOMENDADOS: AjustesReservaDto = {
 
 export const COLUMNAS_AJUSTES = Object.keys(AJUSTES_RESERVA_POR_DEFECTO).join(', ');
 
+/**
+ * Columnas de la migración D7 (`20261006160259_reservas_deposito_web`). Mientras
+ * no esté aplicada, leer o escribir con ellas da 42703: se repite sin ellas y la
+ * pantalla sigue funcionando como antes (el depósito no se puede activar sin
+ * pasarela y sin la migración no hay pasarela que ofrecer).
+ */
+export const COLUMNAS_DEPOSITO_D7 = ['deposit_refundable', 'deposit_refund_hours'] as const;
+const COLUMNAS_AJUSTES_SIN_D7 = Object.keys(AJUSTES_RESERVA_POR_DEFECTO)
+  .filter((c) => !(COLUMNAS_DEPOSITO_D7 as readonly string[]).includes(c))
+  .join(', ');
+
+function esColumnaInexistente(error: { code?: string } | null | undefined): boolean {
+  return error?.code === '42703';
+}
+
+function sinColumnasD7<T extends Record<string, unknown>>(fila: T): T {
+  const copia: Record<string, unknown> = { ...fila };
+  for (const c of COLUMNAS_DEPOSITO_D7) delete copia[c];
+  return copia as T;
+}
+
 export type OrigenAjustes = 'sede' | 'organizacion' | 'defecto';
 
 export interface AjustesSede {
@@ -187,6 +213,8 @@ export function validarAjustesReserva(
         ...a,
         allowed_zones: a.allow_zone_choice ? Array.from(new Set(a.allowed_zones ?? [])) : null,
         deposit_amount: a.require_deposit ? a.deposit_amount : null,
+        // Sin reembolso no hay plazo; con reembolso y sin horas, valen las de cancelación.
+        deposit_refund_hours: a.deposit_refundable ? a.deposit_refund_hours : null,
         notify_emails: a.notify_emails && a.notify_emails.length > 0 ? Array.from(new Set(a.notify_emails)) : null,
         policy_text: a.policy_text ? a.policy_text : null,
       },
@@ -254,12 +282,18 @@ export async function getAjustesReserva(
   if (branchId != null && !(await sedeDeLaOrganizacion(supabase, orgId, branchId))) {
     throw new AjustesReservaError('SEDE_AJENA');
   }
-  let consulta = supabase
-    .from('restaurant_booking_settings')
-    .select(`branch_id, ${COLUMNAS_AJUSTES}`)
-    .eq('organization_id', orgId);
-  consulta = branchId == null ? consulta.is('branch_id', null) : consulta.or(`branch_id.eq.${branchId},branch_id.is.null`);
-  const { data, error } = await consulta;
+  const leer = (columnas: string) => {
+    const consulta = supabase
+      .from('restaurant_booking_settings')
+      .select(`branch_id, ${columnas}`)
+      .eq('organization_id', orgId);
+    return branchId == null ? consulta.is('branch_id', null) : consulta.or(`branch_id.eq.${branchId},branch_id.is.null`);
+  };
+  let { data, error } = await leer(COLUMNAS_AJUSTES);
+  if (esColumnaInexistente(error)) {
+    // D7 sin aplicar: las mismas columnas de antes.
+    ({ data, error } = await leer(COLUMNAS_AJUSTES_SIN_D7));
+  }
   if (error) throw new AjustesReservaError('ERROR_BD', error.message);
   return resolverAjustesSede((data ?? []) as unknown as Record<string, unknown>[], branchId);
 }
@@ -280,14 +314,30 @@ export async function guardarAjustesReserva(
     throw new AjustesReservaError('SEDE_AJENA');
   }
   const fila = { ...ajustes, organization_id: orgId, branch_id: branchId };
+  const r = await escribirAjustes(supabase, orgId, branchId, fila, COLUMNAS_AJUSTES);
+  if (esColumnaInexistente(r.error)) {
+    // D7 sin aplicar: se guarda lo de siempre (las columnas nuevas no existen).
+    const r2 = await escribirAjustes(supabase, orgId, branchId, sinColumnasD7(fila), COLUMNAS_AJUSTES_SIN_D7);
+    if (r2.error) throw new AjustesReservaError('ERROR_BD', r2.error.message);
+    return filaADto(r2.data as unknown as Record<string, unknown>) as AjustesReservaDto;
+  }
+  if (r.error) throw new AjustesReservaError('ERROR_BD', r.error.message);
+  return filaADto(r.data as unknown as Record<string, unknown>) as AjustesReservaDto;
+}
+
+async function escribirAjustes(
+  supabase: SupabaseClient,
+  orgId: number,
+  branchId: number | null,
+  fila: Record<string, unknown>,
+  columnas: string,
+): Promise<{ data: unknown; error: { code?: string; message: string } | null }> {
   if (branchId != null) {
-    const { data, error } = await supabase
+    return supabase
       .from('restaurant_booking_settings')
       .upsert(fila, { onConflict: 'organization_id,branch_id' })
-      .select(`branch_id, ${COLUMNAS_AJUSTES}`)
+      .select(`branch_id, ${columnas}`)
       .single();
-    if (error) throw new AjustesReservaError('ERROR_BD', error.message);
-    return filaADto(data as unknown as Record<string, unknown>) as AjustesReservaDto;
   }
   const { data: existente, error: errLectura } = await supabase
     .from('restaurant_booking_settings')
@@ -299,9 +349,24 @@ export async function guardarAjustesReserva(
   const escritura = existente
     ? supabase.from('restaurant_booking_settings').update(fila).eq('id', (existente as { id: string }).id)
     : supabase.from('restaurant_booking_settings').insert(fila);
-  const { data, error } = await escritura.select(`branch_id, ${COLUMNAS_AJUSTES}`).single();
-  if (error) throw new AjustesReservaError('ERROR_BD', error.message);
-  return filaADto(data as unknown as Record<string, unknown>) as AjustesReservaDto;
+  return escritura.select(`branch_id, ${columnas}`).single();
+}
+
+// ── Pasarela para cobrar el depósito en el sitio (D7) ───────────────────────
+
+/**
+ * Código de la pasarela integrada activa con la que el sitio cobra el depósito
+ * (`fn_reserva_mesa_pasarela`: método de pago con `integration_connection_id`
+ * y conexión activa; hoy solo Wompi), o `null`. Sin la migración D7 la RPC no
+ * existe y se responde `null`: el interruptor sigue deshabilitado como antes.
+ */
+export async function pasarelaParaDeposito(supabase: SupabaseClient, orgId: number): Promise<string | null> {
+  const { data, error } = await supabase.rpc('fn_reserva_mesa_pasarela', { p_organization_id: orgId });
+  if (error) {
+    if (error.code !== 'PGRST202') console.error('[reservas] pasarela del depósito', { orgId, code: error.code });
+    return null;
+  }
+  return typeof data === 'string' && data ? data : null;
 }
 
 // ── Turnos de un día (Agenda del POS) ───────────────────────────────────────
@@ -322,4 +387,51 @@ export function turnosDeFecha(
   const dia = DIA_DE_SEMANA[new Date(Date.UTC(a, (m || 1) - 1, d || 1)).getUTCDay()];
   const propios = serviceHours?.[dia];
   return propios ?? TURNOS_POR_DEFECTO;
+}
+
+// ── Horario de la sucursal → horario de reservas (Figma 1699:864097) ────────
+
+const DIA_EN_INGLES: Record<DiaServicio, string> = {
+  mon: 'monday',
+  tue: 'tuesday',
+  wed: 'wednesday',
+  thu: 'thursday',
+  fri: 'friday',
+  sat: 'saturday',
+  sun: 'sunday',
+};
+
+/**
+ * «Restablecer al horario de la sucursal»: `branches.opening_hours`
+ * (`{ monday: { open, close, closed } }`) → `service_hours` de reservas con un
+ * turno por día; día cerrado → sin reservas (`[]`). Un día sin datos se deja
+ * fuera (la base usa entonces los turnos por defecto).
+ */
+export function horarioDesdeSucursal(opening: unknown): AjustesReservaDto['service_hours'] {
+  const salida: Partial<Record<DiaServicio, Array<{ from: string; to: string }>>> = {};
+  if (!opening || typeof opening !== 'object') return salida;
+  const o = opening as Record<string, { open?: string; close?: string; closed?: boolean } | undefined>;
+  for (const dia of DIAS_SERVICIO) {
+    const d = o[DIA_EN_INGLES[dia]];
+    if (!d) continue;
+    if (d.closed) {
+      salida[dia] = [];
+      continue;
+    }
+    const desde = (d.open ?? '').slice(0, 5);
+    const hasta = (d.close ?? '').slice(0, 5);
+    if (/^\d{2}:\d{2}$/.test(desde) && /^\d{2}:\d{2}$/.test(hasta) && minutosDeHora(desde) < minutosDeHora(hasta)) {
+      salida[dia] = [{ from: desde, to: hasta }];
+    }
+  }
+  return salida;
+}
+
+/** Campos distintos entre dos ajustes («3 cambios» de la barra de guardar). */
+export function contarCambiosAjustes(a: AjustesReservaDto, b: AjustesReservaDto): number {
+  let n = 0;
+  for (const clave of Object.keys(AJUSTES_RESERVA_POR_DEFECTO) as Array<keyof AjustesReservaDto>) {
+    if (JSON.stringify(a[clave] ?? null) !== JSON.stringify(b[clave] ?? null)) n++;
+  }
+  return n;
 }

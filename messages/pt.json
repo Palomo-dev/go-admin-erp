@@ -8428,7 +8428,7 @@
         "pickup": "retirada",
         "domicilio": "entrega",
         "dine_in": "comer aqui",
-        "mesa": "mesa {mesa}"
+        "mesa": "{mesa}"
       },
       "metodoMixto": "Misto",
       "enLinea": "Não · pago online",
@@ -11792,10 +11792,10 @@
     "iniciarSesionDeNuevo": "Entrar novamente"
   },
   "posMesaLiberar": {
-    "titulo": "Liberar a mesa {mesa}?",
+    "titulo": "Liberar {mesa}",
     "tituloConSaldo": "A mesa {mesa} tem saldo pendente",
     "descripcion": "A conta da mesa será fechada e a mesa ficará livre.",
-    "descripcionConSaldo": "Antes de liberá-la, decida o que fazer com o valor que falta cobrar.",
+    "descripcionConSaldo": "Resolva antes de liberar a mesa.",
     "cargando": "Carregando a conta da mesa…",
     "sinDato": "—",
     "sinCliente": "Sem cliente",
@@ -11809,7 +11809,8 @@
       "cliente": "Cliente",
       "total": "Total",
       "pagado": "Pago",
-      "saldo": "Saldo"
+      "saldo": "Saldo",
+      "abiertaHace": "Aberta há"
     },
     "tiempo": {
       "minutos": "{m} min",
@@ -11828,16 +11829,18 @@
     "opciones": {
       "cobrar": {
         "titulo": "Cobrar agora",
-        "descripcion": "Abre o pagamento do PDV com a conta desta mesa."
+        "descripcion": "Abre o pagamento do PDV com a conta desta mesa.",
+        "descripcionImporte": "Abre a cobrança de {importe}."
       },
       "cartera": {
-        "titulo": "Deixar como conta a receber do cliente",
+        "titulo": "Passar para contas a receber",
         "descripcion": "É faturada a crédito ao cliente, o estoque é baixado e o saldo vai para as contas a receber dele.",
-        "existente": "A fatura já está nas contas a receber do cliente: apenas a mesa é liberada."
+        "existente": "A fatura já está nas contas a receber do cliente: apenas a mesa é liberada.",
+        "descripcionCliente": "Fica como dívida de {cliente} com sua fatura."
       },
       "anular": {
         "titulo": "Anular a venda",
-        "descripcion": "A venda fica anulada com o motivo e os pedidos pendentes da cozinha são cancelados. Requer permissão."
+        "descripcion": "Requer permissão de anular e motivo. Estorna pagamentos se o caixa ainda estiver aberto."
       }
     },
     "motivo": {
@@ -11849,9 +11852,10 @@
     "acciones": {
       "liberar": "Liberar mesa",
       "cobrar": "Ir para o pagamento",
-      "cartera": "Deixar a receber e liberar",
+      "cartera": "Passar para contas a receber",
       "anular": "Anular venda e liberar",
-      "elegir": "Escolha uma opção"
+      "elegir": "Escolha uma opção",
+      "cobrarImporte": "Cobrar {importe}"
     },
     "motivos": {
       "sin_caja": "Abra um caixa para poder cobrar.",
@@ -11890,7 +11894,13 @@
       "anulada": "Venda anulada. Itens da cozinha cancelados: {n}.",
       "sinCocinar": "Ainda na cozinha sem preparar: {n}.",
       "errorTitulo": "Não foi possível liberar a mesa"
-    }
+    },
+    "cerrar": "Fechar",
+    "cancelar": "Cancelar",
+    "resumen": "Resumo da conta",
+    "avisoSaldo": "A conta tem saldo: {saldo}",
+    "avisoSaldoCocina": "Resolva antes de liberar a mesa. {n, plural, one {Um prato continua} other {# pratos continuam}} em preparo.",
+    "sinSaldoTitulo": "A conta está zerada"
   },
   "posNotasLinea": {
     "errorExcluirImpuesto": "Não foi possível salvar «Excluir imposto»",
@@ -19534,7 +19544,517 @@
       "sinReservas": "Sem reservas neste turno.",
       "cliente": "{nombre} · {n, plural, one {# pessoa} other {# pessoas}}",
       "mesa": "{mesa} · {zona}",
-      "sinMesa": "Sem mesa"
+      "sinMesa": "Sem mesa",
+      "sede": "Unidade",
+      "elegirSede": "Escolha a unidade",
+      "dia": "Dia",
+      "enVivo": "Ao vivo",
+      "resumen": "Resumo do dia",
+      "kpi": {
+        "porConfirmar": "A confirmar",
+        "alDia": "nada pendente",
+        "llegoHace": "chegou há {min} min pela web",
+        "esperanConfirmacion": "aguardam confirmação",
+        "confirmadas": "Confirmadas",
+        "sentadas": "Sentadas",
+        "personas": "{n, plural, one {# pessoa} other {# pessoas}}",
+        "noShow": "Não compareceu",
+        "delDia": "do dia"
+      },
+      "turnoTitulo": "{nombre} · {desde} – {hasta}",
+      "turnos": {
+        "desayuno": "Café da manhã",
+        "almuerzo": "Almoço",
+        "cena": "Jantar"
+      },
+      "clientePersonas": "{nombre} · {n, plural, one {# pessoa} other {# pessoas}}",
+      "minutos": "{n} min",
+      "web": "web",
+      "vacioTitulo": "Não há reservas neste dia",
+      "vacioDescripcion": "Crie uma com «Nova reserva» ou escolha outro dia. As da web chegam aqui em tempo real."
+    },
+    "estados": {
+      "pending": "Pendente",
+      "confirmed": "Confirmada",
+      "seated": "Sentada",
+      "completed": "Concluída",
+      "cancelled": "Cancelada",
+      "no_show": "Não compareceu"
+    },
+    "origenes": {
+      "web": "Web",
+      "telefono": "Telefone",
+      "equipo": "Equipe",
+      "whatsapp": "WhatsApp"
+    },
+    "estadoFila": {
+      "solicitud": "Solicitação · a confirmar",
+      "pendiente": "Pendente · a confirmar",
+      "confirmada": "Confirmada",
+      "confirmadaTarde": "Confirmada · {minutos} min atrasada",
+      "sentada": "Sentada",
+      "completada": "Concluída",
+      "completadaVenta": "Concluída · {venta}",
+      "noShow": "Não compareceu",
+      "noShowReincidente": "Não compareceu ({vez}ª vez)",
+      "cancelada": "Cancelada"
+    },
+    "lista": {
+      "resumen": "Resumo do período",
+      "kpi": {
+        "enElRango": "No período",
+        "comensales": "{n, plural, one {# cliente} other {# clientes}}",
+        "solicitudesWeb": "Solicitações web",
+        "esperanConfirmacion": "aguardam confirmação",
+        "confirmadas": "Confirmadas",
+        "sentadas": "Sentadas",
+        "enSala": "no salão agora",
+        "noShow": "Não compareceu",
+        "pctRango": "{pct} % do período",
+        "canceladas": "Canceladas"
+      },
+      "buscar": "Buscar por nome, telefone ou e-mail…",
+      "filtros": {
+        "titulo": "Filtros",
+        "estado": "Status",
+        "origen": "Origem",
+        "desde": "De",
+        "hasta": "Até",
+        "todos": "Todos"
+      },
+      "tarde": {
+        "texto": "{nombre} não chegou · {hora} · {n, plural, one {# pessoa} other {# pessoas}} · {mesa}. Está {min} min atrasado; a mesa continua reservada até você decidir.",
+        "llamar": "Ligar",
+        "esperar": "Esperar {min} min",
+        "noShow": "Não compareceu"
+      },
+      "columnas": {
+        "hora": "Hora",
+        "cliente": "Cliente",
+        "personas": "Pessoas",
+        "mesa": "Mesa",
+        "origen": "Origem",
+        "estado": "Status"
+      },
+      "sinMesa": "Sem mesa atribuída",
+      "etiquetaTabla": "Reservas",
+      "menu": {
+        "editar": "Editar",
+        "confirmar": "Confirmar",
+        "revisarSolicitud": "Revisar solicitação",
+        "asignarMesa": "Atribuir mesa",
+        "sentar": "Sentar e abrir conta",
+        "sentarSinMesa": "Atribua uma mesa antes de sentar",
+        "completar": "Concluir",
+        "reembolsarDeposito": "Registrar reembolso do depósito",
+        "noShow": "Não compareceu",
+        "cancelar": "Cancelar reserva",
+        "eliminar": "Excluir"
+      },
+      "vacio": {
+        "titulo": "Não há reservas neste período",
+        "descripcion": "Crie uma com «Nova reserva» ou amplie as datas em Filtros."
+      },
+      "sinResultados": {
+        "titulo": "Nenhuma reserva corresponde",
+        "descripcion": "Tente outro nome, telefone ou e-mail, ou limpe os filtros."
+      },
+      "error": {
+        "titulo": "Não foi possível carregar as reservas",
+        "descripcion": "Verifique sua conexão e tente novamente. Não mostramos dados antigos."
+      },
+      "movil": {
+        "detalle": "{n, plural, one {# pessoa} other {# pessoas}} · {mesa} · {origen}"
+      },
+      "sustantivo": {
+        "uno": "reserva",
+        "varios": "reservas"
+      }
+    },
+    "solicitud": {
+      "titulo": "Solicitação de reserva",
+      "porConfirmar": "A confirmar",
+      "llego": "Chegou por {origen} há {min} min · {sede}",
+      "cerrar": "Fechar",
+      "cliente": "Cliente",
+      "contacto": "Contato",
+      "fechaHora": "Data e hora",
+      "fechaHoraValor": "{dia}, {hora} · {min} min",
+      "hoy": "Hoje",
+      "personas": "Pessoas",
+      "nota": "Observação",
+      "deposito": "Depósito",
+      "depositoPagado": "pago com {pasarela}",
+      "llegoComoSolicitud": "Chegou como solicitação: {motivo}",
+      "motivo": {
+        "grupoGrande": "são {n} pessoas",
+        "sinMesas": "não há mesa livre para o grupo nesse horário"
+      },
+      "puedes": "Você pode atribuir uma mesa ou propor outro horário ao cliente.",
+      "asignarMesa": "Atribuir mesa",
+      "buscandoMesas": "Buscando mesas…",
+      "sinMesasLibres": "Não há mesas livres nesse horário",
+      "elegirMesa": "Escolha uma mesa",
+      "opcionMesa": "{mesa} · {zona} · {n} lugares",
+      "rechazar": "Recusar",
+      "proponerHora": "Propor outro horário",
+      "confirmar": "Confirmar e avisar o cliente"
+    },
+    "rechazo": {
+      "titulo": "Recusar a solicitação de {nombre}",
+      "motivo": "Motivo (é salvo e informado ao cliente)",
+      "motivos": {
+        "sinMesas": "Sem mesas nesse horário",
+        "grupoGrande": "Grupo muito grande",
+        "eventoPrivado": "Evento privado",
+        "otro": "Outro"
+      },
+      "otroMotivo": "Escreva o motivo",
+      "escribeMotivo": "Escreva o motivo (mínimo 3 letras)",
+      "otraHora": "Oferecer outro horário (opcional)",
+      "sinHoras": "Não há outros horários com mesa nesse dia.",
+      "asiLeLlega": "Assim ele recebe",
+      "vista": {
+        "base": "Olá {nombre}, {cuando} às {hora} não temos mesa para {n} em {sede}.",
+        "hoy": "hoje",
+        "eseDia": "nesse dia",
+        "otraHora": "Que tal às {hora}? Reserve de novo e guardamos para você.",
+        "motivo": "Motivo: {motivo}."
+      },
+      "confirmar": "Recusar e avisar"
+    },
+    "form": {
+      "tituloNueva": "Nova reserva",
+      "tituloEditar": "Editar reserva · {nombre}",
+      "descripcionNueva": "{sede} · {fecha}. A reserva fica ligada à ficha do cliente: sem cliente não há histórico nem lembrete.",
+      "confirmadaEl": "Confirmada em {dia} às {hora}",
+      "creadaPor": "Criada por {origen} · sem confirmar",
+      "estado": "Status",
+      "cliente": "Cliente",
+      "llamaSinRegistro": "Ligou alguém que não está cadastrado?",
+      "crearCliente": "Criar cliente",
+      "clienteAyuda": "Obrigatório. Se o cliente não estiver cadastrado, crie-o aqui com nome, sobrenome e telefone.",
+      "verFicha": "Ver ficha",
+      "visitas": "{n, plural, one {# visita} other {# visitas}}",
+      "fecha": "Data",
+      "hora": "Hora",
+      "personas": "Pessoas",
+      "mesa": "Mesa",
+      "mesaAyuda": "Ao trocar de mesa, a anterior volta a ficar livre.",
+      "sinMesa": "Sem mesa",
+      "buscandoMesas": "Buscando mesas livres…",
+      "elegirMesa": "Escolha uma mesa",
+      "opcionMesa": "{mesa} · {zona} · {n} lugares",
+      "duracion": "Duração",
+      "minutos": "{n} min",
+      "solape": "A {mesa} já tem uma reserva que coincide com as {hora}. Escolha outra mesa ou outro horário.",
+      "notas": "Observações",
+      "notasInternas": "Observações internas",
+      "notasPlaceholder": "Aniversário, cadeirinha para bebê, alergias…",
+      "origen": "Origem",
+      "recordar": "Lembrar o cliente {n, plural, one {# hora} other {# horas}} antes",
+      "recordarPor": "Por e-mail para {destino}",
+      "recordarSinCorreo": "O cliente não tem e-mail: não é possível lembrar.",
+      "errores": {
+        "cliente": "Escolha ou crie o cliente da reserva.",
+        "mesa": "Escolha a mesa."
+      },
+      "cancelar": "Cancelar",
+      "crear": "Criar reserva",
+      "guardarCambios": "Salvar alterações"
+    },
+    "crearCliente": {
+      "titulo": "Criar cliente",
+      "descripcion": "O mínimo para reservar por telefone. O resto da ficha é completado quando ele chegar.",
+      "nombre": "Nome",
+      "apellido": "Sobrenome",
+      "telefono": "Telefone",
+      "telefonoAyuda": "O lembrete da reserva vai por aqui.",
+      "correo": "E-mail",
+      "existe": "Já existe um cliente com esse telefone: {nombre}, {n, plural, one {# visita} other {# visitas}}. É o mesmo?",
+      "existeSinVisitas": "Já existe um cliente com esse telefone: {nombre}. É o mesmo?",
+      "usarExistente": "Usar o existente",
+      "cancelar": "Cancelar",
+      "crearYUsar": "Criar e usar",
+      "duplicado": "Já existe um cliente com esses dados.",
+      "error": "Não foi possível criar o cliente."
+    },
+    "configuracion": {
+      "sede": "Unidade",
+      "elegirSede": "Escolha uma unidade",
+      "todaLaOrganizacion": "Toda a organização",
+      "recibiendo": "Recebendo reservas na web",
+      "noRecibe": "Não recebe reservas na web",
+      "copiarA": "Copiar para outra unidade",
+      "verEnSitio": "Ver no site",
+      "guardar": "Salvar alterações",
+      "guardado": "Configuração de reservas salva",
+      "revisa": "Revise os campos marcados",
+      "errorGuardar": "Não foi possível salvar a configuração",
+      "copiada": "Configuração copiada de {sede}",
+      "copiadaA": "Configuração copiada para {sede}",
+      "copiarTitulo": "Copiar para outra unidade",
+      "copiarDescripcion": "A unidade escolhida fica com estas mesmas regras. O que ela tinha é substituído.",
+      "copiarConfirmar": "Copiar",
+      "sedeDestino": "Unidade de destino",
+      "errores": {
+        "HORA_INVALIDA": "Use o formato HH:MM.",
+        "TURNO_INVERTIDO": "O horário final deve ser posterior ao inicial.",
+        "MIN_MAYOR_QUE_MAX": "O mínimo não pode ser maior que o máximo.",
+        "GRUPO_GRANDE_BAJO": "O grupo grande não pode ser menor que o mínimo de pessoas.",
+        "DEPOSITO_REQUERIDO": "Informe o valor do depósito.",
+        "DEPOSITO_SIN_PASARELA": "Conecte um gateway antes de pedir depósito.",
+        "ZONAS_REQUERIDAS": "Escolha pelo menos uma área.",
+        "CORREO_INVALIDO": "Revise os e-mails.",
+        "VALOR_INVALIDO": "Valor fora do intervalo.",
+        "INTERVALO_INVALIDO": "Escolha um intervalo da lista (múltiplos de 15 minutos)."
+      },
+      "web": {
+        "titulo": "Reservas na web",
+        "descripcion": "O que o cliente vê no seu site e no link de reservas.",
+        "recibir": "Receber reservas na web",
+        "recibirAyuda": "Mostra o botão «Reservar mesa» no site e no link de reservas de {sede}.",
+        "comoSeConfirman": "Como são confirmadas?",
+        "automatica": "Automática se houver mesa",
+        "manual": "Manual: chegam como solicitação",
+        "comoAyuda": "Automática: o cliente recebe a confirmação na hora. Manual: a reserva entra como «Solicitação» e a equipe aceita ou recusa pela Lista."
+      },
+      "horario": {
+        "titulo": "Horário de atendimento",
+        "descripcion": "Faixas em que se aceitam reservas. Partem do horário de funcionamento da unidade.",
+        "deSucursal": "Tirado da unidade",
+        "desde": "De",
+        "hasta": "Até",
+        "quitar": "Remover faixa",
+        "franja": "Faixa",
+        "cerrado": "Fechado · não se aceitam reservas",
+        "restablecer": "Restaurar o horário da unidade",
+        "restablecerAyuda": "Copia o horário de funcionamento da unidade; depois você pode ajustá-lo."
+      },
+      "turnos": {
+        "titulo": "Turnos e capacidade",
+        "descripcion": "De quanto em quanto se oferece um horário, quanto dura uma mesa e quantas pessoas cabem por turno.",
+        "intervalo": "Intervalo entre horários",
+        "intervaloAyuda": "12:00, 12:30, 13:00…",
+        "min": "{n} min",
+        "duracion": "Duração da mesa",
+        "duracionAyuda": "Tempo em que a mesa fica ocupada.",
+        "margen": "Margem entre reservas",
+        "margenAyuda": "Para limpar e montar.",
+        "minimo": "Pessoas mínimo",
+        "maximo": "Pessoas máximo",
+        "cubiertos": "Lugares por turno",
+        "cubiertosAyuda": "Vazio = conforme as mesas livres.",
+        "pers": "pess.",
+        "grupoGrande": "Grupo grande a partir de",
+        "grupoTitulo": "Grupos grandes sempre chegam como solicitação",
+        "grupoTexto": "Mesmo com confirmação automática, {n} ou mais pessoas exigem que a equipe confirme."
+      },
+      "anticipacion": {
+        "titulo": "Antecedência e cancelamento",
+        "minima": "Antecedência mínima",
+        "minimaAyuda": "Não se reserva para daqui a menos de {n} h.",
+        "horas": "horas",
+        "maxDias": "Até quantos dias antes",
+        "dias": "dias",
+        "cancelacion": "Cancelamento sem custo até",
+        "cancelacionAyuda": "Passado esse prazo, o depósito não é devolvido.",
+        "horasAntes": "horas antes"
+      },
+      "mesas": {
+        "titulo": "Mesas e áreas",
+        "asignar": "Atribuir mesa automaticamente",
+        "asignarAyuda": "Escolhe a menor mesa livre onde o grupo caiba. Você pode trocá-la depois na Agenda.",
+        "zona": "Deixar escolher a área",
+        "zonaAyuda": "O cliente escolhe entre as áreas permitidas; se não houver vaga, oferecemos outro horário.",
+        "zonasWeb": "Áreas oferecidas na web",
+        "zonasAyuda": "As áreas vêm das mesas configuradas em PDV › Mesas.",
+        "sinZonas": "As mesas desta unidade não têm área."
+      },
+      "deposito": {
+        "titulo": "Depósito",
+        "pedir": "Pedir depósito para reservar",
+        "pedirAyuda": "A reserva fica como solicitação até o pagamento ser aprovado. Se não for paga em 30 minutos, a mesa é liberada.",
+        "sinPasarela": "Conecte um gateway em Integrações para cobrar depósitos.",
+        "irIntegraciones": "Ir para Integrações",
+        "monto": "Valor do depósito",
+        "seCobra": "Cobrança",
+        "porReserva": "Por reserva",
+        "porPersona": "Por pessoa",
+        "reembolsable": "É devolvido se cancelar a tempo",
+        "reembolsableAyuda": "Até {n} h antes da reserva (o prazo de «Cancelamento sem custo»). A equipe registra o reembolso pela Lista.",
+        "conPasarela": "Cobrado com o gateway do site ({pasarela})",
+        "ejemploPersona": "Exemplo: 4 pessoas × {base} = {total}. Fica registrado em Finanças como pagamento da reserva.",
+        "ejemploFijo": "Cada reserva paga {base}. Fica registrado em Finanças como pagamento da reserva.",
+        "verPasarela": "Ver gateway"
+      },
+      "datos": {
+        "titulo": "Dados que pedimos ao cliente",
+        "telefono": "Telefone (obrigatório)",
+        "correo": "E-mail (obrigatório)"
+      },
+      "avisos": {
+        "titulo": "Avisos",
+        "equipo": "Avisar a equipe em",
+        "anadir": "Adicionar e-mail",
+        "quitar": "Remover {correo}",
+        "correoCliente": "Confirmação por e-mail ao cliente",
+        "correoClienteAyuda": "Com data, hora, pessoas, endereço da unidade e link para cancelar.",
+        "whatsapp": "Confirmação por WhatsApp ao cliente",
+        "whatsappAyuda": "Usa o modelo aprovado «reserva_confirmada». Requer WhatsApp conectado no Chat: ainda não é enviado.",
+        "recordatorio": "Lembrete antes da reserva",
+        "recordatorioAyuda": "Pelo mesmo canal da confirmação.",
+        "sinRecordatorio": "Sem lembrete",
+        "horasAntes": "{n, plural, one {# hora antes} other {# horas antes}}"
+      },
+      "politica": {
+        "titulo": "Política para o cliente",
+        "descripcion": "Aparece na etapa final da reserva e no e-mail de confirmação.",
+        "contador": "{n} / 600 caracteres"
+      },
+      "vista": {
+        "titulo": "Assim o cliente vê",
+        "descripcion": "Prévia do widget «Reservar mesa» da web.",
+        "reservaTuMesa": "Reserve sua mesa · {sede}",
+        "fecha": "Sex 9 out",
+        "personas": "4 pessoas",
+        "deposito": "Depósito: {monto}",
+        "cancelacion": "Cancelamento sem custo até {n} h antes",
+        "reservar": "Reservar"
+      },
+      "resumen": {
+        "titulo": "Resumo das regras",
+        "horarios": "Horários oferecidos por dia",
+        "hasta": "até {n}",
+        "cupo": "Vagas por turno",
+        "personas": "{n} pessoas",
+        "segunMesas": "conforme as mesas",
+        "mesas": "Mesas ativas na web",
+        "deTotal": "{n} de {total}",
+        "zonas": "Áreas na web",
+        "todas": "Todas",
+        "confirmacion": "Confirmação",
+        "manual": "Manual",
+        "automatica": "Automática",
+        "automaticaGrupos": "Automática · grupos ≥ {n} manual",
+        "deposito": "Depósito",
+        "porPersona": "por pessoa",
+        "porReserva": "por reserva",
+        "sinDeposito": "Sem depósito"
+      },
+      "donde": {
+        "titulo": "Onde é usado",
+        "sitio": "Site › Vendas on-line",
+        "activas": "Reservas: ativas",
+        "apagadas": "Reservas: desativadas",
+        "enlace": "Link direto",
+        "pos": "Nova reserva no PDV",
+        "mismas": "Mesmas regras"
+      },
+      "vacio": {
+        "titulo": "{sede} ainda não recebe reservas na web",
+        "descripcion": "Começamos com o horário da unidade, turnos de 30 min, mesas de 90 min e confirmação automática. Você poderá mudar tudo antes de ativar.",
+        "recomendados": "Configurar com valores recomendados",
+        "copiaDe": "Copiar de {sede}"
+      },
+      "error": {
+        "titulo": "Não foi possível carregar a configuração",
+        "descripcion": "Verifique sua conexão e tente novamente. Não mostramos dados antigos."
+      },
+      "sinPermiso": {
+        "titulo": "Você não tem permissão para alterar as regras de reservas",
+        "descripcion": "Você pode criar e gerenciar reservas pela Agenda e pela Lista. Peça a um administrador a permissão de editar o site.",
+        "irAgenda": "Ir para a Agenda"
+      },
+      "movil": {
+        "volver": "Configuração",
+        "horario": "{dias, plural, one {# dia} other {# dias}} · {desde} – {hasta}",
+        "horarioCerrado": "Sem dias abertos",
+        "turnos": "A cada {intervalo} min · mesa {duracion} min · {cupo}",
+        "cupo": "{n} por turno",
+        "anticipacion": "Mín. {min} h · até {dias} dias · cancelar {cancelar} h antes",
+        "todasZonas": "Todas as áreas",
+        "datos": "{n, plural, =0 {Nada obrigatório} one {# dado obrigatório} other {# dados obrigatórios}}",
+        "correo": "E-mail",
+        "sinCorreo": "Sem e-mail ao cliente",
+        "recordatorio": "lembrete {n} h antes",
+        "sinRecordatorio": "sem lembrete",
+        "politica": "{n, plural, one {# caractere} other {# caracteres}}"
+      }
+    },
+    "pagina": {
+      "titulo": "Reservas de mesas",
+      "migaPos": "PDV",
+      "irConfiguracion": "Configuração de reservas",
+      "pestanas": {
+        "agenda": "Agenda",
+        "lista": "Lista",
+        "configuracion": "Configuração"
+      },
+      "todas": "Todas as unidades",
+      "hoy": "hoje",
+      "hoyEtiqueta": "Hoje · {fecha}",
+      "mananaEtiqueta": "Amanhã · {fecha}",
+      "subtituloAgenda": "{sede} · {dia} {fecha} · {n, plural, one {# reserva} other {# reservas}} · {personas, plural, one {# pessoa} other {# pessoas}}",
+      "subtituloLista": "De {desde} a {hasta} · {n, plural, one {# reserva} other {# reservas}}",
+      "subtituloConfig": "{sede} · regras para reservas do PDV e da web",
+      "sinSucursal": {
+        "titulo": "Escolha uma unidade para ver suas reservas",
+        "descripcion": "As reservas, a agenda e suas regras são por unidade. Troque no cabeçalho; a Lista mostra todas."
+      },
+      "cancelar": {
+        "titulo": "Cancelar a reserva de {nombre}?",
+        "descripcion": "{dia} às {hora} · {n, plural, one {# pessoa} other {# pessoas}} · {mesa}. Informe o motivo: ele é salvo com a reserva.",
+        "confirmar": "Cancelar a reserva",
+        "motivos": {
+          "cliente": "O cliente cancelou",
+          "noConfirmo": "Não confirmou",
+          "cierre": "Fechamento do restaurante"
+        }
+      },
+      "eliminar": {
+        "titulo": "Excluir a reserva de {nombre}?",
+        "descripcion": "É apagada do histórico e não pode ser desfeita. Se o cliente não vier, é melhor cancelá-la ou marcá-la como «Não compareceu».",
+        "confirmar": "Excluir"
+      },
+      "reembolso": {
+        "titulo": "Registrar o reembolso do depósito",
+        "descripcion": "O pagamento do depósito fica anulado em Finanças. O dinheiro não se move sozinho: devolva ao cliente pelo painel do gateway.",
+        "confirmar": "Registrar reembolso",
+        "motivo": "Reembolso do depósito da reserva registrado em Reservas"
+      },
+      "toasts": {
+        "nuevaWeb": "Nova reserva web · {sede}",
+        "nuevaWebDetalle": "{nombre} · {n, plural, one {# pessoa} other {# pessoas}} · {hora} · {estado}",
+        "porConfirmar": "a confirmar",
+        "confirmada": "Reserva de {nombre} confirmada",
+        "revisar": "Revisar",
+        "creada": "Reserva criada",
+        "creadaDetalle": "{nombre} · {fecha}, {hora} · {mesa}",
+        "sinMesa": "sem mesa",
+        "verAgenda": "Ver na agenda",
+        "actualizada": "Reserva atualizada",
+        "noCreada": "Não foi possível criar a reserva",
+        "sinSucursal": "Selecione uma unidade específica: com «Todas» não é possível criar.",
+        "sentada": "Reserva sentada",
+        "sentadaDetalle": "A {mesa} passou a ocupada",
+        "abrirCuenta": "Abrir a conta",
+        "avisado": "Avisamos o cliente por e-mail.",
+        "sinAviso": "O cliente não tem e-mail ou o envio não está configurado: avise por telefone.",
+        "rechazada": "Solicitação de {nombre} recusada",
+        "eliminada": "Reserva excluída",
+        "reembolso": "Reembolso registrado",
+        "reembolsoDetalle": "Devolva o dinheiro ao cliente pelo painel do gateway.",
+        "estado": {
+          "pending": "Reserva de {nombre} pendente",
+          "confirmed": "Reserva de {nombre} confirmada",
+          "seated": "Reserva de {nombre} sentada",
+          "completed": "Reserva de {nombre} concluída",
+          "cancelled": "Reserva de {nombre} cancelada",
+          "no_show": "{nombre} não compareceu"
+        }
+      },
+      "miga": "Reservas"
     }
   },
   "inventario": {
@@ -32128,7 +32648,7 @@
   },
   "pedidoWeb": {
     "comerAqui": "Comer aqui",
-    "comerAquiMesa": "Comer aqui · Mesa {mesa}",
+    "comerAquiMesa": "Comer aqui · {mesa}",
     "verMesa": "Ver a mesa em POS › Mesas",
     "confirmacion": {
       "enLaMesa": "Adicionado à conta da mesa · Comanda enviada à cozinha",
@@ -32255,6 +32775,1304 @@
       "comandaValor": "#{id}",
       "cajaValor": "Caixa {caja} · {sede} · aberto",
       "sinCaja": "sem caixa aberto"
+    },
+    "ficha": {
+      "resumenListoMesa": "Pronto às {hora} para a {mesa}.",
+      "resumenListo": "Pronto às {hora}.",
+      "seCobraEnCaja": "É cobrado no caixa da unidade ao entregar: {caja}.",
+      "reenviarAviso": "Reenviar aviso ao cliente",
+      "cancelarPedido": "Cancelar pedido…",
+      "pedidosOnline": "Pedidos online",
+      "hoyFecha": "hoje, {fecha}",
+      "programadoPara": "Para: {fecha}",
+      "imprimirComanda": "Imprimir comanda",
+      "imprimirError": "Não foi possível imprimir a comanda",
+      "imprimirEnviado": "Comanda #{id} enviada para impressão",
+      "imprimirSinImpresora": "Não há impressora para a estação da comanda",
+      "avisoReenviado": "Aviso ao cliente reenviado",
+      "notas": "Notas",
+      "notaCliente": "Nota do cliente",
+      "notaInterna": "Nota da equipe",
+      "editar": "Editar",
+      "cancelar": "Cancelar",
+      "guardar": "Salvar",
+      "sinNotaInterna": "Sem nota da equipe.",
+      "notaGuardada": "Nota salva",
+      "notaError": "Não foi possível salvar a nota",
+      "clienteAnonimo": "Cliente anônimo",
+      "cliente": "Cliente",
+      "nombre": "Nome",
+      "telefono": "Telefone",
+      "correo": "E-mail",
+      "documento": "Documento",
+      "pedidosAnteriores": "Pedidos anteriores",
+      "anterioresValor": "{n} · último {fecha}",
+      "primerPedido": "Primeiro pedido",
+      "verFicha": "Ver ficha do cliente",
+      "conversacion": "Abrir a conversa com o cliente",
+      "entrega": "Entrega",
+      "entregaMesa": "Pedido pelo QR da mesa. Vai para a {mesa}; sem endereço nem entregador.",
+      "entregaComerAqui": "Pedido para comer no local; sem endereço nem entregador.",
+      "listo": "Pronto",
+      "listoAprox": "Pronto aprox.",
+      "aTiempo": "no prazo",
+      "tarde": "atrasado",
+      "mesa": "Mesa",
+      "estados": {
+        "pending": "Pendente",
+        "confirmed": "Confirmado",
+        "preparing": "Em preparo",
+        "ready": "Pronto",
+        "in_delivery": "A caminho",
+        "delivered": "Entregue",
+        "cancelled": "Cancelado",
+        "rejected": "Recusado",
+        "expired": "Expirado"
+      }
+    }
+  },
+  "posMesasFlujo": {
+    "mesa": "Mesa",
+    "volverPlano": "Voltar ao mapa",
+    "verCuenta": "Ver conta · {total}",
+    "estados": {
+      "libre": "Livre",
+      "ocupada": "Ocupada",
+      "porCobrar": "A cobrar"
+    },
+    "estaciones": {
+      "hot_kitchen": "Cozinha quente",
+      "cold_kitchen": "Cozinha fria",
+      "bar": "Bar",
+      "cashier": "Caixa",
+      "all": "Cozinha",
+      "general": "Cozinha"
+    },
+    "metodos": {
+      "cash": "Dinheiro",
+      "card": "Cartão",
+      "transfer": "Transferência",
+      "qr": "QR",
+      "nequi": "Nequi",
+      "daviplata": "Daviplata",
+      "credit_card": "Cartão",
+      "debit_card": "Cartão"
+    },
+    "pantalla": {
+      "cargando": "Carregando a mesa",
+      "errorTitulo": "Não foi possível carregar {mesa}",
+      "errorDescripcion": "Verifique a conexão e tente novamente. A conta e as rodadas enviadas não se perderam.",
+      "sinPermisoTitulo": "Você não tem acesso a esta filial",
+      "sinPermisoDescripcion": "Esta mesa é de uma filial da qual você não é membro. Peça acesso ao administrador da organização.",
+      "volverPlano": "Voltar ao mapa",
+      "noActualizada": "Não foi possível atualizar a mesa. Mostrando o último carregamento."
+    },
+    "cabecera": {
+      "volver": "Voltar ao mapa",
+      "mesaZona": "{mesa} · {zona}",
+      "abierta": "Tempo com a conta aberta",
+      "meseroComensales": "{mesero} · {n, plural, one {# cliente} other {# clientes}}",
+      "comensales": "{n, plural, one {# cliente} other {# clientes}}",
+      "precuenta": "Pré-conta"
+    },
+    "cuenta": {
+      "etiqueta": "Conta da {mesa}",
+      "titulo": "{mesa} · Conta",
+      "tituloVacio": "Carrinho",
+      "enCocina": "{n} na cozinha",
+      "consumidorFinal": "Consumidor final",
+      "consumidorFinalIniciales": "CF",
+      "cambiarCliente": "Cliente: {nombre}. Trocar (F2)",
+      "comensales": "{n, plural, one {# cliente} other {# clientes}}",
+      "editarNotaMesa": "Nota da mesa: clientes, alergias e instruções",
+      "porEnviar": "A enviar",
+      "porEnviarDetalle": "{n, plural, one {# linha} other {# linhas}} · enviadas juntas",
+      "ronda": "Rodada {n}",
+      "rondaEstado": "Rodada {n} · {estado}",
+      "estadoRonda": {
+        "en_cocina": "na cozinha",
+        "preparando": "preparando",
+        "lista": "pronta para servir",
+        "servida": "servida"
+      },
+      "enviada": "enviada",
+      "servida": "servida",
+      "lineasContraida": "{n, plural, one {# linha} other {# linhas}} (recolhida)",
+      "directas": "Sem cozinha",
+      "directasDetalle": "servidas diretamente",
+      "impuestoIncluido": "incl. {impuesto}",
+      "impuesto": "Imposto {tasa}",
+      "subtotal": "Subtotal",
+      "abonado": "Pago em partes",
+      "total": "Total",
+      "precuenta": "Pré-conta",
+      "dividir": "Dividir",
+      "enviar": "Enviar à cozinha ({n})",
+      "cobrarMesa": "Cobrar mesa",
+      "cobrar": "Cobrar",
+      "abrirCaja": "Abrir caixa para cobrar",
+      "vacioTitulo": "Adicione produtos para começar",
+      "vacioDescripcion": "Busque por nome ou código (F2) ou escaneie. As notas e os modificadores são adicionados em cada linha."
+    },
+    "linea": {
+      "precioUnidad": "{cantidad} × {precio}",
+      "enviada": "enviada",
+      "lista": "pronta",
+      "cantidadDe": "Quantidade de {nombre}",
+      "menos": "Tirar uma unidade de {nombre}",
+      "mas": "Somar uma unidade de {nombre}",
+      "enCocinaBloqueada": "A cozinha já tem: para reduzir ou tirar, pede-se o motivo",
+      "unidades": "{n} un",
+      "comensalN": "Cliente {n}",
+      "alergia": "Alergia",
+      "notaCocina": "Cozinha: {nota}",
+      "moverA": "Mover para outra mesa",
+      "restarUna": "Tirar uma unidade",
+      "estado": {
+        "por_enviar": "A enviar",
+        "en_cocinaMin": "Na cozinha · {min} min",
+        "preparandoMin": "Preparando · {min} min",
+        "lista": "Pronta para servir",
+        "servida": "Servida",
+        "cancelada": "Anulada",
+        "sin_cocina": "Sem cozinha"
+      },
+      "acciones": {
+        "nota": "Nota da linha",
+        "modificadores": "Variantes e modificadores",
+        "comensal": "Cliente da linha",
+        "servido": "Marcar servido",
+        "quitar": "Tirar",
+        "anular": "Anular com motivo"
+      }
+    },
+    "nota": {
+      "titulo": "Nota da mesa · {mesa}",
+      "comensales": "Clientes",
+      "menosComensales": "Um cliente a menos",
+      "masComensales": "Um cliente a mais",
+      "alergias": "Alergias e intolerâncias",
+      "alergiasAyuda": "de toda a mesa",
+      "alergiasComunes": {
+        "mani": "Amendoim",
+        "lacteos": "Laticínios",
+        "gluten": "Glúten",
+        "mariscos": "Frutos do mar",
+        "huevo": "Ovo"
+      },
+      "otra": "Outra…",
+      "otraPlaceholder": "Escreva a alergia",
+      "avisoAlergiaMesa": "Alergia na mesa: {alergias}. Cada comanda desta mesa leva o aviso em vermelho.",
+      "avisoAlergiaLineas": "{alergias}. Cada comanda desta mesa leva o aviso em vermelho.",
+      "instrucciones": "Instruções para a cozinha",
+      "instruccionesAyuda": "vão em cada comanda",
+      "ritmo": "Ritmo de saída",
+      "ritmos": {
+        "junto": "Tudo junto",
+        "tiempos": "Por tempos",
+        "aviso": "Esperar aviso"
+      },
+      "notaCliente": "Nota para o recibo do cliente",
+      "notaClienteAyuda": "sai impressa no cupom",
+      "pie": "Fica salva na mesa e vai com a próxima comanda.",
+      "guardar": "Salvar"
+    },
+    "editorLinea": {
+      "titulo": "{producto} · nota e cliente",
+      "paraQuien": "Para quem",
+      "general": "Geral",
+      "comensalCorto": "C{n}",
+      "notasRapidas": "Notas rápidas",
+      "notaLibre": "Nota livre para a cozinha",
+      "asiQueda": "Assim fica na linha e na comanda",
+      "cocina": "Cozinha: {nota}",
+      "sinNota": "Sem nota para a cozinha",
+      "alergiaLinea": "Alergia: {nota}{comensal}",
+      "esAlergia": "É alergia: a cozinha confirma antes de começar",
+      "cancelar": "Cancelar",
+      "guardar": "Salvar"
+    },
+    "menu": {
+      "etiqueta": "Mais ações da mesa",
+      "precuenta": "Pré-conta",
+      "pedirCuenta": "Pedir a conta",
+      "dividir": "Dividir a conta",
+      "mover": "Mover ou juntar mesas",
+      "cambiarMesero": "Trocar garçom",
+      "comensales": "Clientes · {n}",
+      "nota": "Nota da mesa",
+      "historial": "Histórico da mesa",
+      "liberar": "Liberar mesa"
+    },
+    "mesero": {
+      "titulo": "Trocar garçom",
+      "guardar": "Salvar",
+      "placeholder": "Escolha o garçom",
+      "tu": "{nombre} (você)"
+    },
+    "abrir": {
+      "titulo": "Abrir {mesa}",
+      "tituloZona": "Abrir {mesa} · {zona}",
+      "cerrar": "Fechar",
+      "cancelar": "Cancelar",
+      "abrir": "Abrir mesa",
+      "abrirYTomar": "Abrir mesa e anotar pedido",
+      "reserva": "Reserva de {nombre} · {hora} · {n, plural, one {# pessoa} other {# pessoas}}",
+      "reservaLigada": "{llegada}. Ao acomodá-la, a conta fica ligada à reserva.",
+      "reservaLigadaCorta": "Ao acomodá-la, a conta fica ligada à reserva.",
+      "verReserva": "Ver reserva",
+      "sentar": "Acomodar esta reserva na {mesa}",
+      "sentarCorto": "Acomodar esta reserva",
+      "aLaHora": "Chegou na hora",
+      "llega": "Chega em {min} min",
+      "tarde": "{min} min atrasada",
+      "comensales": "Clientes",
+      "comensalesOtro": "Número de clientes",
+      "otro": "Outro",
+      "masQueCapacidad": "A mesa é para {n}: você pode abri-la mesmo assim.",
+      "mesero": "Garçom",
+      "meseroPlaceholder": "Escolha o garçom",
+      "tu": "{nombre} (você)",
+      "cliente": "Cliente (opcional)",
+      "clienteBuscar": "Buscar por nome, documento, e-mail ou telefone",
+      "clienteAyuda": "Ao focar, os recentes abrem abaixo do campo · Alt+N cria um cliente"
+    },
+    "mover": {
+      "titulo": "Mover da {mesa}",
+      "tituloZona": "Mover da {mesa} · {zona}",
+      "cerrar": "Fechar",
+      "cancelar": "Cancelar",
+      "modo": "O que mover",
+      "modos": {
+        "cuenta": "Toda a conta",
+        "productos": "Alguns produtos",
+        "unir": "Juntar mesas"
+      },
+      "productosAMover": "Produtos a mover (só os pendentes de pagamento)",
+      "sinProductos": "Não há produtos pendentes de pagamento para mover.",
+      "lineaCantidad": "{n} × {nombre}",
+      "comensal": "Cliente {n}",
+      "enCocina": "na cozinha",
+      "mesaDestino": "Mesa de destino",
+      "sinDestinos": "Não há mesas disponíveis para esta movimentação.",
+      "ayudaCuenta": "A conta completa, com suas rodadas, seu cliente e sua reserva, passa para uma mesa livre.",
+      "ayudaUnir": "A conta desta mesa entra na da mesa escolhida e esta mesa fica livre.",
+      "elegidaProductos": "{mesa} escolhida. Os pratos na cozinha se movem com sua comanda e a cozinha recebe a troca de mesa. Uma mesa livre abre sua conta ao receber produtos.",
+      "elegidaCuenta": "{mesa} escolhida. A cozinha vê a mesa nova nas comandas.",
+      "elegidaUnir": "{mesa} escolhida. Os clientes se somam e as comandas passam para essa mesa.",
+      "eligeMesa": "Escolha a mesa de destino",
+      "moverCuenta": "Mover a conta para a {mesa}",
+      "moverProductos": "Mover {n, plural, one {# produto} other {# produtos}} para a {mesa}",
+      "unirCon": "Juntar com a {mesa}"
+    },
+    "dividir": {
+      "titulo": "Dividir conta · {mesa}",
+      "tituloTableta": "Dividir a conta · {mesa}",
+      "cerrar": "Fechar",
+      "cancelar": "Cancelar",
+      "modo": "Como dividir",
+      "modos": {
+        "comensal": "Por cliente",
+        "iguales": "Partes iguais",
+        "items": "Por itens",
+        "productos": "Por produtos"
+      },
+      "ayudaComensalTableta": "Vem preenchido com o cliente de cada linha. O «Geral» (entradas, bebidas para compartilhar) é dividido em partes iguais entre os {n}.",
+      "ayuda": "As linhas são divididas pelo cliente que já têm; o geral é dividido em partes iguais. As notas de cozinha não vão para os recibos; a nota para o cliente sai em cada recibo.",
+      "partes": "Partes",
+      "menosPartes": "Uma parte a menos",
+      "masPartes": "Uma parte a mais",
+      "producto": "Produto",
+      "unidadesDe": "Unidades de {producto} na parte {parte}",
+      "sinAsignar": "Faltam {n, plural, one {# unidade} other {# unidades}} por atribuir.",
+      "lineaParte": "{nombre} ×{n}",
+      "totalImpuestos": "Total + impostos",
+      "cobrarPrimera": "Cobrar {parte} · {importe}",
+      "cobrar": "Cobrar",
+      "dividirEn": "Dividir em {n} partes"
+    },
+    "partes": {
+      "titulo": "Cobrar por partes · {mesa} · {n, plural, one {# cliente} other {# clientes}}",
+      "cerrar": "Fechar",
+      "comensal": "Cliente {n}",
+      "parte": "Parte {n}",
+      "estado": {
+        "pendiente": "Pendente",
+        "cobrando": "Cobrando",
+        "pagada": "Paga"
+      },
+      "cobrarParte": "Cobrar esta parte",
+      "cobrando": "Cobrando…",
+      "detalleProductos": "{n, plural, one {# produto} other {# produtos}} · {nombres}",
+      "detalleMonto": "Parte do total, por valor",
+      "detalleIgual": "1 de {n} partes iguais do total",
+      "masGeneral": "+ 1/{n} do geral",
+      "soloGeneral": "1/{n} do geral",
+      "pagadoCon": "Pago com {metodo} · {hora}",
+      "resumen": "Resumo das partes",
+      "total": "Total da mesa",
+      "pagado": "Pago",
+      "falta": "Falta",
+      "volver": "Voltar à conta",
+      "unir": "Juntar partes pendentes",
+      "unidas": "Partes pendentes",
+      "cobrarSiguiente": "Cobrar {parte} · {importe}",
+      "todoPagado": "Tudo pago",
+      "lineaCobro": "{parte} · {mesa}",
+      "saldo": "Saldo da {mesa}"
+    },
+    "precuenta": {
+      "titulo": "Pré-conta · {mesa} · {n, plural, one {# cliente} other {# clientes}}",
+      "noFactura": "Não é uma fatura. A cobrança é feita ao fechar a conta.",
+      "cerrar": "Fechar",
+      "imprimir": "Imprimir pré-conta",
+      "cobrar": "Cobrar",
+      "abrirCaja": "Abrir caixa para cobrar",
+      "linea": "{n} × {nombre}",
+      "subtotal": "Subtotal",
+      "descuentos": "Descontos",
+      "baseGravable": "Base tributável",
+      "abonado": "Pago em partes",
+      "total": "Total",
+      "propinaTitulo": "Gorjeta voluntária sugerida",
+      "propinaTexto": "A gorjeta é voluntária e é dos trabalhadores. O cliente pode aceitá-la, alterá-la ou não dar.",
+      "sinPropina": "Sem gorjeta",
+      "porcentaje": "{pct} % · {valor}",
+      "otroValor": "Outro valor",
+      "propinaBase": "Calculada sobre {base}: subtotal após descontos, antes de impostos. Não faz parte da fatura."
+    },
+    "cobro": {
+      "titulo": "Cobrar {mesa}",
+      "tituloZona": "Cobrar {mesa} · {zona}",
+      "cobrada": "{mesa} cobrada!",
+      "cobradaDetalle": "Venda {numero} · a mesa passa para «A limpar»",
+      "volverPlano": "Voltar ao mapa",
+      "parteCobrada": "Parte cobrada!",
+      "parteCobradaDetalle": "Venda {numero} · faltam as outras partes",
+      "volverPartes": "Voltar às partes"
+    },
+    "anular": {
+      "titulo": "Tirar {producto} da conta",
+      "tituloRestar": "Tirar uma unidade de {producto}",
+      "descripcion": "A cozinha já tem: recebe uma comanda de ajuste com o motivo.",
+      "confirmar": "Tirar e avisar a cozinha",
+      "confirmarRestar": "Reduzir e avisar a cozinha"
+    },
+    "avisos": {
+      "sinCaja": "Não há caixa aberto nesta filial",
+      "sinCajaDetalle": "Você pode anotar pedidos e enviar rodadas. Para cobrar, abra o caixa ou peça no caixa.",
+      "abrirCaja": "Abrir caixa · F9",
+      "sinConexion": "Sem conexão · {n, plural, =0 {nada na fila} one {# alteração na fila} other {# alterações na fila}}",
+      "sinConexionDetalle": "A rodada é enviada à cozinha e impressa quando o sinal voltar. Cobrar precisa de conexão.",
+      "abandonada": "Mesa aberta há {tiempo} sem movimento",
+      "abandonadaDetalle": "Tem {saldo} sem cobrar e {n, plural, =0 {nada na cozinha} one {# prato sem entregar} other {# pratos sem entregar}}. Cobre, passe para contas a receber ou anule com motivo.",
+      "resolver": "Resolver"
+    },
+    "toast": {
+      "abierta": "{mesa} aberta",
+      "agregado": "{producto} adicionado",
+      "agregadoDetalle": "Fica «A enviar» na {mesa}",
+      "sinPrecio": "{producto} não tem preço vigente",
+      "errorAgregar": "Não foi possível adicionar o produto",
+      "cliente": "Cliente: {nombre}",
+      "consumidorFinal": "A conta fica para consumidor final",
+      "notaGuardada": "Nota da mesa salva",
+      "rondaEnviada": "Rodada {n} enviada à cozinha",
+      "estacion": "{estacion}: {n}",
+      "impresa": "impressa em cada estação",
+      "sinImpresora": "uma estação não tem impressora: saiu pelo navegador",
+      "rondaEnCola": "Rodada {n} na fila",
+      "rondaEnColaDetalle": "Será enviada à cozinha quando a conexão voltar",
+      "colaEnviada": "As rodadas na fila foram enviadas à cozinha",
+      "ajusteEnviado": "Ajuste enviado à cozinha",
+      "cuentaPedida": "{mesa} pediu a conta",
+      "precuentaImpresa": "Pré-conta enviada à impressora do caixa",
+      "precuentaNavegador": "Pré-conta pronta para imprimir",
+      "cobrada": "{mesa} cobrada",
+      "cobradaDetalle": "A mesa passa para «A limpar»",
+      "cobradoSinLiberar": "Cobrado; falta liberar a {mesa}",
+      "reintentarLiberar": "Tentar liberar de novo",
+      "liberada": "{mesa} liberada · passa para «A limpar»",
+      "movido": {
+        "cuenta": "Conta movida para a {mesa}",
+        "productos": "{n, plural, one {# produto movido} other {# produtos movidos}} para a {mesa}",
+        "unir": "Mesas juntadas na {mesa}"
+      }
+    },
+    "errores": {
+      "error": "Não foi possível concluir a ação. Tente novamente.",
+      "cliente": "Não foi possível atribuir o cliente",
+      "nota": "Não foi possível salvar a nota da mesa",
+      "linea": "Não foi possível salvar a linha",
+      "ronda": "Não foi possível enviar a rodada",
+      "servido": "Não foi possível marcar como servido",
+      "cantidad": "Não foi possível mudar a quantidade",
+      "anular": "Não foi possível anular o prato",
+      "modificadores": "Não foi possível mudar os modificadores",
+      "mover": "Não foi possível mover",
+      "mesero": "Não foi possível trocar o garçom",
+      "sinProductos": "Adicione produtos antes de cobrar",
+      "mesa_ocupada": "A mesa já tem uma conta aberta.",
+      "mesa_sin_cuenta": "A mesa de destino não tem conta aberta: use «Toda a conta».",
+      "cuenta_con_pagos": "A conta já tem pagamentos: não é possível juntar. Cobre o restante ou mova os produtos.",
+      "linea_invalida": "Algum produto já foi pago ou não é desta conta.",
+      "sin_acceso_sucursal": "Você não tem acesso à filial dessa mesa.",
+      "sin_acceso": "Você não tem acesso a esta organização.",
+      "mesero_invalido": "O garçom não é membro ativo da organização.",
+      "cliente_invalido": "O cliente não é desta organização.",
+      "comensales_invalidos": "Informe entre 1 e 99 clientes.",
+      "reserva_no_sentable": "A reserva já não pode ser acomodada.",
+      "mesa_de_otra_sede": "A mesa é de outra filial.",
+      "sesion_cerrada": "A conta da mesa já foi fechada."
+    }
+  },
+  "posMesasPlano": {
+    "mesa": {
+      "etiqueta": "{mesa}, {estado}",
+      "personas": "{n} pess.",
+      "reservada": "Reservada",
+      "limpiar": "Limpar",
+      "porLimpiar": "A limpar",
+      "comensalesTiempo": "{n}/{cap} · {tiempo}",
+      "comensalesTiempoCorto": "{n}/{cap} · {tiempo}",
+      "platoListo": "{n, plural, one {Prato pronto} other {# pratos prontos}}",
+      "abandonada": "Aberta sem movimento",
+      "estados": {
+        "libre": "Livre",
+        "ocupada": "Ocupada",
+        "por_cobrar": "A cobrar",
+        "reservada": "Reservada",
+        "por_limpiar": "A limpar"
+      }
+    },
+    "leyenda": {
+      "etiqueta": "Filtrar por estado",
+      "libre": "Livres · {n}",
+      "ocupada": "Ocupadas · {n}",
+      "por_cobrar": "A cobrar · {n}",
+      "reservada": "Reservadas · {n}",
+      "por_limpiar": "A limpar · {n}"
+    },
+    "zona": {
+      "mesas": "{n, plural, one {# mesa} other {# mesas}}",
+      "libres": "{n, plural, one {# livre} other {# livres}}",
+      "ocupadas": "{n, plural, one {# ocupada} other {# ocupadas}}",
+      "porCobrar": "{n} a cobrar",
+      "coinciden": "{n} de {total} mesas atendem aos filtros",
+      "verPlano": "Ver no mapa",
+      "qr": "QR das mesas da zona"
+    },
+    "resumen": {
+      "tituloZona": "{mesa} · {zona}",
+      "abrir": "Abrir mesa",
+      "verReserva": "Ver reserva",
+      "marcarLista": "Marcar pronta",
+      "verCuenta": "Ver conta",
+      "comensales": "{n}/{cap} clientes · {tiempo}",
+      "importe": "{importe} · {n, plural, one {# produto} other {# produtos}}",
+      "capacidad": "{n, plural, one {Para # pessoa} other {Para # pessoas}}",
+      "reserva": "Reserva de {nombre} · {hora}",
+      "porLimpiar": "Cobrada: falta deixá-la pronta",
+      "mesero": "{nombre} · garçom",
+      "agregar": "Adicionar produtos",
+      "pedirCuenta": "Pedir conta",
+      "masAcciones": "Mais ações"
+    },
+    "plano": {
+      "sinZona": "Sem zona",
+      "todas": "Todas",
+      "zonas": "Zonas do mapa",
+      "editarEnPantallaGrande": "Para editar o mapa use um computador ou um tablet.",
+      "editar": "Editar mapa",
+      "alejar": "Afastar",
+      "acercar": "Aproximar",
+      "ajustar": "Ajustar",
+      "rejilla": "Grade",
+      "pantallaCompleta": "Tela cheia"
+    },
+    "editor": {
+      "barra": "Edição do mapa",
+      "editando": "Editando mapa",
+      "deshacer": "Desfazer",
+      "rehacer": "Refazer",
+      "alinear": "Alinhar",
+      "duplicar": "Duplicar",
+      "eliminar": "Excluir",
+      "botonMesa": "Mesa",
+      "botonZona": "Zona",
+      "cancelar": "Cancelar",
+      "guardar": "Salvar alterações",
+      "guardarN": "Salvar alterações ({n})",
+      "zonaNueva": "Zona {n}",
+      "zonaVacia": "Zona vazia: adicione mesas com «+ Mesa».",
+      "prefijoMesa": "Mesa",
+      "mesa": {
+        "sinZona": "Sem zona",
+        "conCuenta": "com conta aberta",
+        "nueva": "nova",
+        "cerrar": "Fechar",
+        "nombre": "Nome ou número",
+        "zona": "Zona",
+        "forma": "Forma",
+        "formas": {
+          "cuadrada": "Quadrada",
+          "redonda": "Redonda",
+          "larga": "Comprida",
+          "barra": "Balcão"
+        },
+        "capacidad": "Capacidade",
+        "menos": "Uma pessoa a menos",
+        "mas": "Uma pessoa a mais",
+        "personas": "{n, plural, one {pessoa · # cadeira} other {pessoas · # cadeiras}}",
+        "tamano": "Tamanho",
+        "rotacion": "Rotação",
+        "posicion": "Posição (muda arrastando ou com as setas)",
+        "avisoCuenta": "Tem uma conta aberta: você pode movê-la, mas não excluí-la nem baixar sua capacidade abaixo de {n} clientes.",
+        "duplicar": "Duplicar",
+        "eliminar": "Excluir"
+      },
+      "zona": {
+        "titulo": "Zona · {zona}",
+        "mesas": "{n, plural, one {# mesa nesta zona} other {# mesas nesta zona}}",
+        "cerrar": "Fechar",
+        "nombre": "Nome da zona",
+        "color": "Cor (6 tons do manual)",
+        "tono": "Tom {n}",
+        "orden": "Ordem",
+        "pestana": "Aba {n} de {total}",
+        "subir": "Subir a aba",
+        "bajar": "Descer a aba",
+        "avisoEliminar": "Para excluir a zona, primeiro mova suas {n} mesas para outra zona.",
+        "eliminar": "Excluir zona"
+      }
+    },
+    "lote": {
+      "titulo": "Adicionar mesas em lote",
+      "descripcion": "Crie várias mesas iguais de uma vez; depois posicione-as no mapa.",
+      "crear": "{n, plural, one {Criar # mesa} other {Criar # mesas}}",
+      "crearSinN": "Criar mesas",
+      "zona": "Zona",
+      "zonaAyuda": "Escreva uma zona nova ou escolha uma existente.",
+      "desde": "A partir do número",
+      "cantidad": "Quantas",
+      "capacidad": "Pessoas por mesa",
+      "forma": "Forma",
+      "resumen": "Mesa {desde} a Mesa {hasta}: {n} mesas de {cap} pessoas."
+    },
+    "vacio": {
+      "titulo": "Monte seu salão",
+      "descripcion": "Crie uma zona, adicione suas mesas e posicione-as no mapa. Você pode criar várias mesas de uma vez.",
+      "crearZona": "Criar zona",
+      "lote": "Adicionar mesas em lote",
+      "crearYAgregar": "Criar e adicionar mesas",
+      "zonaAyuda": "Salão, Terraço, Bar…",
+      "paso1": {
+        "titulo": "Crie uma zona",
+        "detalle": "Salão, Terraço, Bar…"
+      },
+      "paso2": {
+        "titulo": "Adicione mesas",
+        "detalle": "Número, capacidade e forma; em lote: 10 mesas de 4"
+      },
+      "paso3": {
+        "titulo": "Posicione-as no mapa",
+        "detalle": "Arraste, gire e alinhe à grade"
+      }
+    },
+    "cabecera": {
+      "cargando": "carregando…",
+      "editando": "editando o mapa de {zona}",
+      "haceSeg": "atualizado há {n} s",
+      "haceMin": "atualizado há {n} min"
+    },
+    "errores": {
+      "cargar": "Não foi possível atualizar as mesas",
+      "lista": "Não foi possível marcar a mesa como pronta",
+      "cuenta": "Não foi possível pedir a conta",
+      "guardar": "Não foi possível salvar",
+      "eliminar": "Não foi possível excluir a mesa",
+      "plano": "Não foi possível salvar o mapa. Verifique a conexão e tente novamente.",
+      "lote": "Não foi possível criar as mesas"
+    },
+    "toast": {
+      "lista": "{mesa} ficou pronta",
+      "cuentaPedida": "{mesa}: conta pedida",
+      "mesaCreada": "{mesa} criada",
+      "mesaGuardada": "{mesa} salva",
+      "mesaEliminada": "{mesa} excluída",
+      "comensales": "{mesa}: {n} clientes",
+      "noBorradas": "{n, plural, one {Uma mesa tem conta aberta e não foi excluída} other {# mesas têm conta aberta e não foram excluídas}}",
+      "sinColumnas": "Mapa salvo. A forma, o tamanho e a cor das zonas serão salvos quando a atualização do mapa for ativada.",
+      "planoGuardado": "Mapa salvo",
+      "lote": "{n, plural, one {# mesa criada} other {# mesas criadas}}",
+      "zonaRenombrada": "Zona renomeada para {zona}",
+      "zonaEliminada": "Zona excluída: suas mesas ficaram sem zona",
+      "combinadas": "Mesas combinadas",
+      "movida": "Conta movida"
+    },
+    "acciones": {
+      "lote": "Adicionar mesas em lote",
+      "loteZona": "Adicionar mesas a esta zona",
+      "editarPlano": "Editar mapa",
+      "mas": "Mais"
+    },
+    "filtros": {
+      "buscar": "Buscar mesa (número ou nome)",
+      "buscarCorto": "Buscar mesa",
+      "chipEstado": "Estado: {estados}"
+    },
+    "densidad": {
+      "etiqueta": "Densidade",
+      "comoda": "Confortável",
+      "compacta": "Compacta"
+    },
+    "estados": {
+      "errorTitulo": "Não foi possível carregar as mesas",
+      "errorDescripcion": "Verifique a conexão e tente novamente. As contas abertas não se perdem.",
+      "sinPermisoTitulo": "Você não tem acesso a esta filial",
+      "sinPermisoDescripcion": "As mesas pertencem a uma filial da qual você não é membro. Peça acesso ao administrador da organização.",
+      "volverPos": "Voltar ao PDV"
+    }
+  },
+  "posComandasV2": {
+    "estaciones": {
+      "hot_kitchen": "Cozinha quente",
+      "cold_kitchen": "Cozinha fria",
+      "bar": "Bar",
+      "cashier": "Caixa",
+      "all": "Geral"
+    },
+    "cabecera": {
+      "titulo": "Comandas",
+      "activas": "{n} ativas",
+      "demoradas": "{n} atrasadas",
+      "tiempoMedio": "tempo médio {n} min",
+      "objetivo": "meta {n} min",
+      "sonidoActivado": "som ativado",
+      "sonidoApagado": "som desligado",
+      "turnoActual": "turno atual",
+      "historialComandas": "Histórico de comandas",
+      "configurarEstaciones": "Configurar estações",
+      "impresoras": "Impressoras",
+      "silenciar": "Silenciar o aviso de comandas novas",
+      "activarSonido": "Ativar o aviso de comandas novas",
+      "actualizar": "Atualizar",
+      "historial": "Histórico",
+      "pantallaCocina": "Tela da cozinha",
+      "todasSedes": "Todas as unidades"
+    },
+    "filtros": {
+      "estaciones": "Estações",
+      "todas": "Todas",
+      "zona": "Zona",
+      "zonaTodas": "Zona: Todas",
+      "zonaValor": "Zona: {zona}",
+      "agrupar": "Agrupar",
+      "comandas": "Comandas",
+      "mesas": "Mesas",
+      "columna": "Estado"
+    },
+    "columnas": {
+      "tablero": {
+        "new": "Novas",
+        "preparing": "Em preparo",
+        "ready": "Prontas para servir",
+        "delivered": "Entregues"
+      },
+      "kds": {
+        "new": "Novas",
+        "preparing": "Em preparo",
+        "ready": "Prontas"
+      },
+      "movil": {
+        "new": "Novas {n}",
+        "preparing": "Preparo {n}",
+        "ready": "Prontas {n}"
+      },
+      "demoradasPrimero": "atrasadas primeiro",
+      "ultimos30": "últimos 30 min",
+      "objetivo": "Meta {n} min",
+      "verHistorial": "Ver histórico de comandas"
+    },
+    "estados": {
+      "new": "Nova",
+      "preparing": "Em preparo",
+      "ready": "Pronta",
+      "delivered": "Entregue",
+      "cancelled": "Cancelada",
+      "vacioTitulo": "Sem comandas neste turno",
+      "vacioDescripcion": "As comandas aparecem aqui sozinhas quando o garçom ou o caixa enviam uma rodada para a cozinha.",
+      "errorTitulo": "Não conseguimos carregar as comandas",
+      "errorDescripcion": "Verifique a conexão e tente novamente. As comandas não foram perdidas.",
+      "sinPermisoTitulo": "Você não tem permissão para ver as comandas",
+      "sinPermisoDescripcion": "Peça a um administrador a permissão «Operar cozinha» para esta unidade.",
+      "volverPos": "Voltar ao PDV",
+      "reintentar": "Tentar novamente"
+    },
+    "anteriores": {
+      "aviso": "{n, plural, one {# comanda de dias anteriores continua aberta e não conta neste turno.} other {# comandas de dias anteriores continuam abertas e não contam neste turno.}}",
+      "revisar": "Revisar e fechar",
+      "titulo": "{n, plural, one {Fechar # comanda de dias anteriores} other {Fechar # comandas de dias anteriores}}",
+      "descripcion": "Elas são marcadas como entregues com o motivo que você escrever, e fica registrado quem as fechou. A venda não muda.",
+      "confirmar": "{n, plural, one {Fechar # comanda} other {Fechar # comandas}}",
+      "motivoRapido": "Fechamento de comandas de dias anteriores",
+      "motivo": "Motivo"
+    },
+    "tarjeta": {
+      "web": "Web {numero}",
+      "webMesa": "{mesa}",
+      "webComerAqui": "Comer no local",
+      "webRecoger": "Retirar",
+      "webDomicilio": "Entrega",
+      "webSinPedido": "Pedido web",
+      "mostrador": "Balcão #{id}",
+      "ajusteDeComanda": "Ajuste da comanda #{id}",
+      "ajuste": "Ajuste",
+      "pagadoEnLinea": "pago online",
+      "pagoAlRecibir": "paga ao receber",
+      "comerAqui": "Comer no local",
+      "para": "Para {hora}",
+      "promesa": "prometido {hora}",
+      "domicilio": "Entrega",
+      "ronda": "Rodada {n}",
+      "producto": "Produto",
+      "anular": "ANULAR",
+      "ahoraEnTotal": "Agora {n} no total",
+      "motivo": "Motivo: {motivo}",
+      "alergiaNota": "Alergia: {nota}",
+      "deshacerItem": "Desfazer {producto}",
+      "marcarItemHecho": "Marcar {producto} como feito",
+      "lista": "Pronta {hora}",
+      "ahora": "agora",
+      "minutos": "{n} min",
+      "menu": {
+        "ver": "Ver comanda",
+        "reimprimir": "Reimprimir",
+        "mover": "Enviar item para outra estação…",
+        "devolver": "Voltar para «Novas»…",
+        "cancelar": "Cancelar comanda…"
+      },
+      "empezar": "Começar",
+      "marcarLista": "Marcar pronta",
+      "entregar": "Entregar",
+      "recibido": "Recebido",
+      "pendienteEnviar": "Pendente de envio",
+      "alergiaBanda": "ALERGIA · {alergeno} · a confirmar",
+      "alergiaSinDetalle": "sem detalhe",
+      "ajusteBanda": "Ajuste da #{id} · o que foi enviado mudou",
+      "otraEstacion": "Outra estação: {n, plural, one {# produto} other {# produtos}} ({estaciones})",
+      "confirmarAlergia": "Confirmar alergia",
+      "entregada": "Entregue {hora}",
+      "preparadaEn": "preparada em {n} min"
+    },
+    "agrupado": {
+      "comensales": "{n, plural, one {# pessoa} other {# pessoas}}",
+      "marcarRondaLista": "Marcar rodada {n} pronta",
+      "ajusteDe": "Ajuste da #{id}",
+      "ronda": "Rodada {n}",
+      "pedido": "Pedido",
+      "alergiaPorConfirmar": "Alergia a confirmar",
+      "servida": "Servida {hora}",
+      "lista": "Pronta {hora}",
+      "enPreparacion": "Em preparo · {n} min",
+      "nuevaAumento": "Nova · +{n} {producto}",
+      "nueva": "Nova · {n} min"
+    },
+    "detalle": {
+      "tl": {
+        "enviadaPorRonda": "Enviada por {quien} (rodada {n})",
+        "enviadaPor": "Enviada por {quien}",
+        "enviada": "Enviada para a cozinha",
+        "impresa": "Impressa na cozinha",
+        "alergiaConfirmada": "Alergia confirmada",
+        "todas": "Todas as estações",
+        "empezada": "{estacion} começou",
+        "lista": "{estacion} marcou pronta",
+        "entregada": "Entregue",
+        "devuelta": "Voltou para «Novas» ({estacion})",
+        "cancelada": "Cancelada: {motivo}",
+        "item_hecho": "{estacion} marcou um prato feito",
+        "item_deshecho": "{estacion} desfez um prato",
+        "item_movido": "Prato enviado para {hacia}",
+        "cerrada_en_bloque": "Fechada com as de dias anteriores: {motivo}",
+        "mesero_avisado": "Garçom avisado",
+        "pendienteLista": "{estacion}: falta marcar pronta"
+      },
+      "desdeWeb": "pelo site",
+      "desdeMesa": "da mesa",
+      "desdeCaja": "do caixa",
+      "comanda": "Comanda #{id}",
+      "enviada": "enviada {hora}",
+      "empezarEstacion": "Começar ({estacion})",
+      "listaEstacion": "Marcar pronta ({estacion})",
+      "ronda": "Rodada {n}",
+      "cerrar": "Fechar",
+      "alergiaConfirmada": "Alergia confirmada às {hora}",
+      "alergiaPendiente": "Alergia não confirmada: a comanda não pode começar",
+      "listaHora": "Pronta {hora}",
+      "empezadaHora": "Começada {hora} · {n} de {objetivo} min",
+      "lineaTiempo": "Linha do tempo",
+      "cancelarComanda": "Cancelar comanda…",
+      "reimprimir": "Reimprimir"
+    },
+    "cancelar": {
+      "ronda": "Rodada {n}",
+      "titulo": "Cancelar a comanda de {comanda}",
+      "descripcion": "{estaciones} será avisada, e «ANULADA» é impresso nas impressoras. A venda não muda.",
+      "y": " e ",
+      "cocina": "a cozinha",
+      "confirmar": "Cancelar comanda",
+      "motivo": "Motivo",
+      "placeholder": "O cliente foi embora antes de ser servido",
+      "aviso": "Para tirar produtos da conta, faça pela mesa: isso gera uma comanda de ajuste.",
+      "volver": "Voltar",
+      "motivoRequerido": "Escreva o motivo (mínimo 3 caracteres)."
+    },
+    "devolver": {
+      "ronda": "Rodada {n}",
+      "titulo": "Voltar a comanda para «Novas»?",
+      "descripcion": "{comanda} volta para Novas. Os horários de início e de pronta ficam no histórico.",
+      "confirmar": "Voltar"
+    },
+    "alergia": {
+      "titulo": "Confirmar alergia · {comanda}",
+      "ayuda": "Fica registrado quem confirmou e a que horas. Até confirmar, a comanda não pode começar.",
+      "sinDetalle": "Alergia sem detalhe",
+      "anotadoPor": "Anotado por {quien} às {hora}",
+      "casilla": "Confirmo que o preparo evita o alérgeno",
+      "volver": "Voltar",
+      "confirmar": "Confirmar e começar"
+    },
+    "mover": {
+      "titulo": "Enviar item para outra estação",
+      "descripcion": "O item passa para a outra estação e fica registrado. Reimprima a comanda se a estação usa papel.",
+      "confirmar": "Enviar",
+      "item": "Item",
+      "destino": "Estação de destino"
+    },
+    "avisos": {
+      "nuevaComanda": "{n, plural, one {Nova comanda} other {# comandas novas}}",
+      "alergiaPendiente": "Confirme a alergia antes de começar.",
+      "errorEstado": "Não foi possível atualizar o estado.",
+      "comandaLista": "Comanda pronta",
+      "comandaListaMesa": "A comanda {id} de {mesa} está pronta para servir",
+      "comandaListaSin": "A comanda {id} está pronta para servir",
+      "avisarMesero": "Avisar o garçom",
+      "errorTitulo": "Não foi possível concluir",
+      "alergiaConfirmada": "Alergia da comanda #{id} confirmada",
+      "errorAlergia": "Não foi possível confirmar a alergia.",
+      "anulada": "ANULADA",
+      "reimpresionEnviada": "Reimpressão enviada",
+      "reimpresionDesc": "{n, plural, one {# impressora} other {# impressoras}}",
+      "sinImpresora": "Sem impressora atribuída",
+      "sinImpresoraDesc": "Não há impressora para: {estaciones}. A comanda continua na tela da cozinha.",
+      "errorReimprimir": "Não foi possível reimprimir a comanda.",
+      "cancelada": "Comanda #{id} cancelada",
+      "sinPermiso": "Você não tem permissão para esta ação.",
+      "errorCancelar": "Não foi possível cancelar a comanda.",
+      "devuelta": "Comanda #{id} voltou para Novas",
+      "movido": "Item enviado para a outra estação",
+      "pendienteMigracion": "Esta ação estará disponível quando a atualização da cozinha for ativada.",
+      "errorMover": "Não foi possível mover o item.",
+      "meseroAvisado": "Garçom avisado",
+      "sinMesero": "A mesa não tem garçom atribuído",
+      "errorAvisar": "Não foi possível avisar o garçom.",
+      "anterioresCerradas": "{n, plural, one {# comanda fechada} other {# comandas fechadas}}",
+      "errorCerrar": "Não foi possível fechar as comandas."
+    },
+    "kds": {
+      "titulo": "Tela da cozinha",
+      "enLinea": "Online",
+      "sinConexion": "Sem conexão",
+      "silenciar": "Silenciar",
+      "activarSonido": "Ativar som",
+      "salir": "Sair da tela da cozinha",
+      "cambiarEstacion": "Trocar de estação",
+      "resumen": "Turno atual · {n} ativas · meta {objetivo} min",
+      "bandaSinConexion": "Sem conexão desde {hora} · {n, plural, =0 {sem alterações pendentes} one {# alteração pendente de envio} other {# alterações pendentes de envio}}. Você pode continuar marcando; a tela pode não mostrar comandas novas até voltar.",
+      "sinPermisoTitulo": "Você não tem permissão para a tela da cozinha",
+      "sinPermisoDescripcion": "Peça a um administrador a permissão «Operar cozinha». Ela é verificada no servidor, não pelo nome do perfil.",
+      "volverTablero": "Voltar ao quadro",
+      "vacioTitulo": "Sem comandas em {estacion}",
+      "vacioDescripcion": "As novas aparecem aqui sozinhas, com som. Turno de hoje desde as {hora}.",
+      "entregadasSeOcultan": "As entregues somem após 60 s (com «Desfazer»).",
+      "deshacer": "Desfazer",
+      "entregadaPendiente": "Entregue · some em {s} s"
+    },
+    "historial": {
+      "titulo": "Histórico de comandas",
+      "subtitulo": "Entregues e canceladas, da mais recente para a mais antiga",
+      "comandas": "Comandas",
+      "error": "Não conseguimos carregar o histórico",
+      "vacio": "Ainda não há comandas entregues",
+      "comanda": "Comanda",
+      "enviada": "Enviada",
+      "productos": "Produtos",
+      "estado": "Estado",
+      "cancelada": "Cancelada · {motivo}",
+      "entregada": "Entregue",
+      "sustantivo": "comanda",
+      "sustantivoPlural": "comandas"
+    }
+  },
+  "posAvisosCliente": {
+    "titulo": "Avisos ao cliente",
+    "subtitulo": "O que o cliente recebe em cada momento do pedido online",
+    "migaConfiguracion": "Configurações",
+    "guardar": "Salvar alterações",
+    "guardado": "Avisos salvos",
+    "errorGuardar": "Não foi possível salvar os avisos",
+    "pendienteMigracion": "Os avisos configuráveis estarão disponíveis quando a atualização de pedidos online for ativada. Enquanto isso, o cliente recebe o e-mail de cada estado.",
+    "sinPermiso": "Só a administração pode alterar os avisos.",
+    "datosInvalidos": "Confira o e-mail de resposta e o número de WhatsApp.",
+    "errorCargar": "Não conseguimos carregar os avisos",
+    "soloLectura": "Só a administração pode alterar estes avisos. É assim que saem hoje.",
+    "comoSalen": "Os avisos saem do servidor, nunca do navegador: o e-mail pelo provedor da plataforma e o WhatsApp pelo canal conectado no CRM. Se um envio falhar, fica no histórico do pedido com «Reenviar».",
+    "col": {
+      "momento": "Momento",
+      "cuando": "Quando é enviado",
+      "correo": "E-mail",
+      "whatsapp": "WhatsApp",
+      "plantilla": "Modelo"
+    },
+    "vistaPrevia": "Pré-visualização",
+    "alternar": "{canal} em «{momento}»",
+    "momentos": {
+      "recibido": {
+        "nombre": "Pedido recebido",
+        "cuando": "Assim que o pedido entra, antes de confirmá-lo",
+        "plantilla": "«Recebemos seu pedido WO-000412»",
+        "titulo": "Recebemos seu pedido"
+      },
+      "confirmado": {
+        "nombre": "Pedido confirmado",
+        "cuando": "Ao confirmar, com «pronto aprox.» e «entrega aprox.»",
+        "plantilla": "«Seu pedido está confirmado»",
+        "titulo": "Seu pedido está confirmado"
+      },
+      "listo": {
+        "nombre": "Pedido pronto",
+        "cuando": "Ao marcá-lo como pronto",
+        "plantilla": "«Já pode retirar» / «Saiu para o seu endereço»",
+        "titulo": "Seu pedido está pronto"
+      },
+      "en_camino": {
+        "nombre": "Pedido a caminho",
+        "cuando": "Ao enviá-lo, com o entregador atribuído",
+        "plantilla": "«Luis Castaño leva seu pedido»",
+        "titulo": "Seu pedido está a caminho"
+      },
+      "entregado": {
+        "nombre": "Pedido entregue",
+        "cuando": "Ao marcá-lo como entregue",
+        "plantilla": "«Obrigado pela compra»",
+        "titulo": "Obrigado pela compra"
+      },
+      "rechazado": {
+        "nombre": "Pedido recusado ou cancelado",
+        "cuando": "Com o motivo, como o operador escreve",
+        "plantilla": "«Não conseguimos atender seu pedido»",
+        "titulo": "Não conseguimos atender seu pedido"
+      }
+    },
+    "responderA": "Remetente do e-mail",
+    "responderAAyuda": "As respostas do cliente chegam a este endereço.",
+    "nombreVisible": "Nome exibido",
+    "nombreVisibleAyuda": "Se ficar vazio, o nome da organização.",
+    "numeroWhatsapp": "Número de WhatsApp",
+    "numeroWhatsappAyuda": "O que o cliente conhece; o envio sai pelo canal de WhatsApp do CRM.",
+    "sinDatos": "Quando um pedido chega sem e-mail nem telefone, o diálogo de confirmação avisa antes de confirmar e permite adicioná-los na hora. Nunca se confirma para depois falhar o envio em silêncio.",
+    "vistaPreviaTitulo": "Pré-visualização · «{plantilla}»",
+    "vistaPreviaDescripcion": "Com os dados de {pedido}. As variáveis são substituídas no envio.",
+    "canal": "Canal",
+    "vistaPreviaError": "Não conseguimos montar a pré-visualização.",
+    "cargando": "Carregando",
+    "de": "De",
+    "para": "Para",
+    "asunto": "Assunto",
+    "variables": "Variáveis disponíveis:",
+    "vistaPreviaNota": "O servidor monta o texto com a mesma função do envio. Os horários seguem o fuso da organização, não o do navegador.",
+    "enviarPrueba": "Enviar um teste para mim",
+    "cerrar": "Fechar",
+    "pruebaEnviada": "Teste enviado para {correo}",
+    "pruebaError": "Não foi possível enviar o teste",
+    "sinProveedor": "O e-mail da plataforma não está configurado.",
+    "sinCorreoUsuario": "Seu usuário não tem e-mail.",
+    "historial": {
+      "titulo": "Avisos ao cliente",
+      "cargando": "Carregando",
+      "vacio": "Ainda não foi enviado nenhum aviso deste pedido.",
+      "nota": "«Reenviar» pede de novo o mesmo aviso ao servidor; o navegador não o envia. Use quando o dado mudou (e-mail ou telefone corrigido).",
+      "reenviar": "Reenviar",
+      "reenviado": "Aviso reenviado",
+      "errorReenviar": "Não foi possível reenviar o aviso",
+      "linea": "{canal} · {hora} · {estado}",
+      "canal": {
+        "email": "E-mail",
+        "whatsapp": "WhatsApp"
+      },
+      "estado": {
+        "queued": "Na fila",
+        "sent": "Enviado",
+        "delivered": "Entregue",
+        "failed": "Falhou",
+        "no_data": "Sem dados"
+      },
+      "momento": {
+        "recibido": "Recebido",
+        "confirmado": "Confirmado",
+        "listo": "Pronto",
+        "en_camino": "A caminho",
+        "entregado": "Entregue",
+        "rechazado": "Recusado"
+      },
+      "detalle": {
+        "sin_correo": "o pedido não tem e-mail",
+        "sin_telefono": "o pedido não tem telefone",
+        "proveedor": "o provedor não aceitou",
+        "sin_proveedor": "o e-mail da plataforma não está configurado",
+        "WINDOW_CLOSED": "o cliente não escreveu nas últimas 24 h",
+        "NO_CHANNEL": "não há canal de WhatsApp conectado",
+        "OPTED_OUT": "o cliente pediu para não receber mensagens",
+        "NOT_FOUND": "o número não tem WhatsApp"
+      },
+      "ayuda": {
+        "queued": "esperando na fila",
+        "sent": "aceito pelo provedor",
+        "delivered": "confirmado pelo provedor",
+        "failed": "recusado pelo provedor",
+        "no_data": "falta o dado de contato"
+      },
+      "historialPedido": "Histórico do pedido"
+    }
+  },
+  "pedidosOnlineListado": {
+    "titulo": "Pedidos online",
+    "subtitulo": "{total, plural, one {# pedido} other {# pedidos}} no período · {pendientes} aguardando confirmação",
+    "subtituloMovil": "{total} pedidos · {pendientes} sem confirmar",
+    "cargando": "Carregando pedidos…",
+    "nuevoPedido": "Novo pedido",
+    "nuevoPedidoDetalle": "Chegou o pedido {numero}",
+    "estadoActualizado": "Pedido marcado como {estado}",
+    "estadoError": "Não foi possível atualizar o status",
+    "exportado": "{n, plural, one {# pedido exportado} other {# pedidos exportados}} para CSV",
+    "tableroListos": "Prontos / A caminho",
+    "tableroVacio": "Sem pedidos",
+    "tableroVerMas": "Ver mais {n}",
+    "acciones": {
+      "actualizar": "Atualizar",
+      "exportar": "Exportar",
+      "confirmarPendientes": "Confirmar pendentes · {n}",
+      "sonidoOn": "Silenciar o alerta sonoro",
+      "sonidoOff": "Ativar o alerta sonoro",
+      "autoOn": "Pausar a atualização automática",
+      "autoOff": "Ativar a atualização automática",
+      "avisosCliente": "Avisos ao cliente"
+    },
+    "vista": {
+      "etiqueta": "Visualização",
+      "lista": "Lista",
+      "tablero": "Quadro"
+    },
+    "kpis": {
+      "etiqueta": "Resumo do período",
+      "pedidosHoy": "Pedidos hoje",
+      "pedidos": "Pedidos",
+      "pendientes": "Pendentes",
+      "filtrarPendientes": "Filtrar pendentes",
+      "sinPendientes": "Nada para confirmar",
+      "entregados": "Entregues",
+      "cancelados": "Cancelados",
+      "aTiempo": "No prazo",
+      "contraPrometido": "Contra o prometido",
+      "sinMedir": "Sem entregas medidas",
+      "ingresos": "Receita",
+      "ticket": "Ticket médio {valor}",
+      "vs": "{pct} % vs {comparacion}"
+    },
+    "comparacion": {
+      "today": "ontem",
+      "yesterday": "anteontem",
+      "last7": "os 7 dias anteriores",
+      "last30": "os 30 dias anteriores",
+      "custom": "o período anterior",
+      "all": "o período anterior"
+    },
+    "buscar": {
+      "placeholder": "Buscar por n.º do pedido, cliente, telefone, e-mail, endereço ou produto…",
+      "etiqueta": "Buscar pedidos"
+    },
+    "filtros": {
+      "titulo": "Filtros",
+      "periodo": "Período",
+      "estado": "Status",
+      "entrega": "Entrega",
+      "origen": "Origem",
+      "pago": "Pagamento",
+      "todos": "Todos",
+      "desde": "De",
+      "hasta": "Até",
+      "verN": "{count, plural, one {Ver # pedido} other {Ver # pedidos}}"
+    },
+    "periodos": {
+      "today": "Hoje",
+      "yesterday": "Ontem",
+      "last7": "Últimos 7 dias",
+      "last30": "Últimos 30 dias",
+      "custom": "Personalizado",
+      "all": "Tudo"
+    },
+    "chips": {
+      "periodo": "Período: {valor}",
+      "estado": "Status: {valor}",
+      "entrega": "Entrega: {valor}",
+      "origen": "Origem: {valor}",
+      "pago": "Pagamento: {valor}"
+    },
+    "estados": {
+      "pending": "Pendente",
+      "confirmed": "Confirmado",
+      "preparing": "Em preparo",
+      "ready": "Pronto",
+      "in_delivery": "A caminho",
+      "delivered": "Entregue",
+      "cancelled": "Cancelado",
+      "rejected": "Recusado",
+      "expired": "Expirado"
+    },
+    "estadosFiltro": {
+      "pending": "Pendentes",
+      "confirmed": "Confirmados",
+      "preparing": "Em preparo",
+      "ready": "Prontos",
+      "in_delivery": "A caminho",
+      "delivered": "Entregues",
+      "cancelled": "Cancelados"
+    },
+    "pagos": {
+      "pending": "Pagamento pendente",
+      "paid": "Pago",
+      "partial": "Pagamento parcial",
+      "refunded": "Reembolsado",
+      "failed": "Pagamento recusado"
+    },
+    "entregas": {
+      "pickup": "Retirada na loja",
+      "delivery_own": "Entrega própria",
+      "delivery_third_party": "Entrega terceirizada",
+      "dine_in": "Comer no local",
+      "dineInMesa": "Comer no local · {mesa}"
+    },
+    "origenes": {
+      "website": "Loja online",
+      "mobile_app": "App",
+      "whatsapp": "WhatsApp",
+      "phone": "Telefone",
+      "otro": "Outro canal",
+      "qrMesa": "{origen} (QR da mesa)"
+    },
+    "columnas": {
+      "etiqueta": "Pedidos online",
+      "pedido": "Pedido",
+      "cliente": "Cliente",
+      "estado": "Status",
+      "entrega": "Entrega",
+      "aTiempo": "No prazo",
+      "pago": "Pagamento",
+      "total": "Total"
+    },
+    "promesa": {
+      "sinConfirmar": "Sem confirmar",
+      "listo": "Pronto {hora}",
+      "listoSinHora": "Sem hora de pronto",
+      "entrega": "Entrega {hora}",
+      "entregaSinHora": "Sem hora de entrega",
+      "entregado": "Entregue {hora}",
+      "entregadoSinHora": "Entregue",
+      "cancelado": "Cancelado {hora}",
+      "canceladoSinHora": "Cancelado",
+      "haceSinPromesa": "há {n} min · sem promessa",
+      "faltan": "faltam {n} min",
+      "retraso": "+{n} min de atraso",
+      "aTiempo": "no prazo",
+      "antes": "{n} min antes"
+    },
+    "filaAcciones": {
+      "ver": "Ver detalhe",
+      "confirmar": "Confirmar",
+      "preparar": "Iniciar preparo",
+      "listo": "Marcar pronto",
+      "enviar": "Enviar para entrega",
+      "entregado": "Marcar entregue",
+      "imprimir": "Imprimir",
+      "rechazar": "Recusar…"
+    },
+    "masivo": {
+      "confirmar": "Confirmar",
+      "soloPendientes": "Só pedidos pendentes são confirmados",
+      "cobrar": "Cobrar no caixa",
+      "imprimir": "Imprimir",
+      "preparar": "Passar para preparo",
+      "listos": "Marcar prontos",
+      "entregados": "Marcar entregues",
+      "exportar": "Exportar CSV",
+      "hecho": "{n, plural, one {# pedido marcado} other {# pedidos marcados}} como {estado}"
+    },
+    "sustantivo": {
+      "singular": "pedido",
+      "plural": "pedidos",
+      "genero": "masculino"
+    },
+    "vacio": {
+      "titulo": "Ainda não há pedidos neste período",
+      "descripcion": "Os pedidos da loja online, do app e do QR da mesa aparecem aqui na hora."
+    },
+    "sinResultados": {
+      "descripcion": "Tente outro período ou remova algum filtro."
+    },
+    "error": {
+      "titulo": "Não foi possível carregar os pedidos"
+    },
+    "confirmar": {
+      "titulo": "Confirmar pedido",
+      "descripcion": "Informe quanto tempo leva para ficar pronto. A venda é criada e a comanda vai para a cozinha.",
+      "preparacion": "Tempo de preparo (pronto aprox.)",
+      "traslado": "Tempo de deslocamento (entrega aprox.)",
+      "trasladoAyuda": "De pronto até chegar ao cliente. Use 0 para retirada ou consumo no local.",
+      "minutos": "Minutos",
+      "horas": "Horas",
+      "dias": "Dias",
+      "marcarPagado": "Marcar como pago",
+      "volver": "Voltar",
+      "accion": "Confirmar pedido"
+    },
+    "confirmarLote": {
+      "titulo": "Confirmar {n} pedidos pendentes",
+      "descripcion": "Os mesmos tempos valem para todos. Cada pedido cria sua venda e sua comanda.",
+      "accion": "Confirmar {n} pedidos",
+      "resultado": "{ok, plural, one {# pedido confirmado} other {# pedidos confirmados}}",
+      "fallidos": "{n, plural, one {# pedido não pôde ser confirmado} other {# pedidos não puderam ser confirmados}}: {pedidos}",
+      "errorUno": "Não foi possível confirmar o pedido"
+    },
+    "rechazo": {
+      "titulo": "Recusar pedido",
+      "descripcion": "Informe o motivo. O cliente é avisado.",
+      "motivo": "Motivo da recusa",
+      "placeholder": "Ex.: produto esgotado, fora do horário de entrega…",
+      "accion": "Recusar pedido",
+      "hecho": "Pedido recusado",
+      "hechoDetalle": "O cliente é avisado",
+      "error": "Não foi possível recusar o pedido"
+    },
+    "impresion": {
+      "telefono": "Telefone",
+      "correo": "E-mail",
+      "direccion": "Endereço",
+      "producto": "Produto",
+      "cantidad": "Qtd.",
+      "precio": "Preço",
+      "notas": "Observações",
+      "fecha": "Data"
     }
   }
 }

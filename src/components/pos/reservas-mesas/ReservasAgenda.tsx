@@ -1,168 +1,296 @@
 'use client';
 
 /**
- * POS › Reservas de mesa › Agenda (Figma 1801:169066, paso 3): las reservas del
- * rango agrupadas por día y por turno de la sede («Almuerzo · 12:00 – 15:00»),
- * con la pendiente resaltada y sus acciones «Confirmar y asignar mesa» y
- * «Rechazar». Los turnos salen de la configuración efectiva de la sede con la
- * misma regla que la base (`turnosDeFecha` ≙ `fn_restaurant_franjas`).
+ * POS › Reservas de mesas › Agenda (Figma 1801:169066, paso 3 «Llega al POS
+ * en tiempo real»; celular 1811:146558):
+ * - fila de filtros: sede (la del encabezado), día («Hoy · sáb 18 oct») e
+ *   insignia «En vivo» mientras la suscripción en tiempo real está activa;
+ * - 4 KPI: Por confirmar («llegó hace N min por la web»), Confirmadas,
+ *   Sentadas y No se presentó;
+ * - un bloque por turno de la sede («Almuerzo · 12:00 m. – 3:30 p. m.») con
+ *   una tarjeta por reserva. Tocar una solicitud abre «Solicitud de reserva»;
+ *   cualquier otra, su ficha.
+ *
+ * Los turnos salen de la configuración efectiva de la sede con la regla de la
+ * base (`turnosDeFecha` ≙ `fn_restaurant_franjas`).
  */
 import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { CalendarRange, CheckCircle, Receipt } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { AlertTriangle, ArrowUp, CalendarRange } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { EmptyState } from '@/components/kit';
-import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
-import { minutosDeHora, turnosDeFecha, type AjustesReservaDto } from '@/lib/services/restaurantBookingSettingsService';
-import {
-  RESERVATION_STATUS_LABELS,
-  type RestaurantReservation,
-  type ReservationStatus,
-  type VentaDeReserva,
-} from './reservasMesasService';
+import { EmptyState, KpiStrip, StatCard, StatusBadge } from '@/components/kit';
+import { cn } from '@/utils/Utils';
+import { turnosDeFecha, type AjustesReservaDto } from '@/lib/services/restaurantBookingSettingsService';
+import type { RestaurantReservation, ReservationStatus } from './reservasMesasService';
+import { esSolicitudWeb, horaCorta, kpisAgenda, minutos, nombreCorto, nombreTurno, ordenarPorHora } from './reservasVista';
+
+export interface OpcionSede {
+  id: number;
+  nombre: string;
+}
+
+export interface OpcionDia {
+  /** `YYYY-MM-DD` (día calendario de la sede). */
+  valor: string;
+  /** «Hoy · sáb 18 oct». */
+  etiqueta: string;
+}
 
 interface Props {
   reservations: readonly RestaurantReservation[];
   isLoading: boolean;
   /** `service_hours` efectivo de la sede (null: turnos por defecto). */
   serviceHours: AjustesReservaDto['service_hours'] | null;
-  ventas?: ReadonlyMap<string, VentaDeReserva>;
+  /** Día que se muestra (`YYYY-MM-DD`). */
+  fecha: string;
+  dias: readonly OpcionDia[];
+  onFechaChange: (fecha: string) => void;
+  sedes: readonly OpcionSede[];
+  sedeId: number | null;
+  onSedeChange: (id: number) => void;
+  /** La suscripción en tiempo real está activa. */
+  enVivo: boolean;
+  ahora: Date;
+  /** Reserva recién llegada (resaltada). */
+  resaltada?: string | null;
   onAbrir: (reservation: RestaurantReservation) => void;
-  onConfirmarPendiente: (reservation: RestaurantReservation) => void;
-  onRechazar: (reservation: RestaurantReservation) => void;
+  onSolicitud: (reservation: RestaurantReservation) => void;
 }
 
-const CLASE_ESTADO: Record<ReservationStatus, string> = {
-  pending: 'border-line-warning bg-warning-subtle',
-  confirmed: 'border-line bg-surface',
-  seated: 'border-line-success bg-success-subtle',
-  completed: 'border-line bg-canvas',
-  cancelled: 'border-line bg-canvas opacity-60',
-  no_show: 'border-line bg-canvas opacity-60',
+const BORDE: Record<ReservationStatus, string> = {
+  pending: 'border-line-warning',
+  confirmed: 'border-line-info',
+  seated: 'border-line-success',
+  completed: 'border-line',
+  cancelled: 'border-line opacity-60',
+  no_show: 'border-line-danger',
 };
 
-interface Grupo {
-  clave: string;
-  desde: string | null;
-  hasta: string | null;
-  reservas: RestaurantReservation[];
-}
-
-/** Agrupa las reservas de un día en sus turnos; las que no caen en ninguno, al final. */
-export function agruparPorTurno(
-  reservas: readonly RestaurantReservation[],
-  serviceHours: AjustesReservaDto['service_hours'] | null,
-  fecha: string,
-): Grupo[] {
-  const turnos = turnosDeFecha(serviceHours, fecha);
-  const grupos: Grupo[] = turnos.map((t) => ({ clave: `${t.from}-${t.to}`, desde: t.from, hasta: t.to, reservas: [] }));
-  const fuera: Grupo = { clave: 'fuera', desde: null, hasta: null, reservas: [] };
-  const ordenadas = [...reservas].sort((a, b) => a.reservation_time.localeCompare(b.reservation_time));
-  for (const r of ordenadas) {
-    const min = minutosDeHora(r.reservation_time.slice(0, 5));
-    const g = grupos.find((x) => min >= minutosDeHora(x.desde as string) && min < minutosDeHora(x.hasta as string));
-    (g ?? fuera).reservas.push(r);
-  }
-  return [...grupos, ...(fuera.reservas.length ? [fuera] : [])];
-}
-
-export function ReservasAgenda({ reservations, isLoading, serviceHours, ventas, onAbrir, onConfirmarPendiente, onRechazar }: Props) {
+export function ReservasAgenda({
+  reservations,
+  isLoading,
+  serviceHours,
+  fecha,
+  dias,
+  onFechaChange,
+  sedes,
+  sedeId,
+  onSedeChange,
+  enVivo,
+  ahora,
+  resaltada,
+  onAbrir,
+  onSolicitud,
+}: Props) {
   const t = useTranslations('posReservasMesas.agenda');
-  const tr = useTranslations('posReservasMesas');
-  const { formatPlain: formatPlainDate } = useFormatDate();
+  const te = useTranslations('posReservasMesas.estados');
 
-  const dias = useMemo(() => {
-    const porDia = new Map<string, RestaurantReservation[]>();
-    for (const r of reservations) {
-      const lista = porDia.get(r.reservation_date) ?? [];
-      lista.push(r);
-      porDia.set(r.reservation_date, lista);
+  const delDia = useMemo(() => ordenarPorHora(reservations.filter((r) => r.reservation_date === fecha)), [reservations, fecha]);
+  const k = useMemo(() => kpisAgenda(delDia, ahora), [delDia, ahora]);
+
+  const grupos = useMemo(() => {
+    const turnos = turnosDeFecha(serviceHours, fecha).map((x) => ({ desde: x.from, hasta: x.to, filas: [] as RestaurantReservation[] }));
+    const fuera: RestaurantReservation[] = [];
+    for (const r of delDia.filter((x) => x.status !== 'cancelled')) {
+      const m = minutos(r.reservation_time);
+      const g = turnos.find((x) => m >= minutos(x.desde) && m < minutos(x.hasta));
+      if (g) g.filas.push(r);
+      else fuera.push(r);
     }
-    return Array.from(porDia.entries()).sort(([a], [b]) => a.localeCompare(b));
-  }, [reservations]);
-
-  if (isLoading) {
-    return (
-      <div className="space-y-3" aria-hidden="true">
-        {[1, 2].map((i) => (
-          <Skeleton key={i} className="h-32 w-full rounded-xl" />
-        ))}
-      </div>
-    );
-  }
-
-  if (dias.length === 0) {
-    return (
-      <div className="rounded-xl border border-line bg-surface">
-        <EmptyState variante="empty" icono={CalendarRange} titulo={tr('vacio.titulo')} descripcion={tr('vacio.descripcion')} />
-      </div>
-    );
-  }
+    return { turnos, fuera };
+  }, [delDia, serviceHours, fecha]);
 
   return (
-    <div className="space-y-6">
-      {dias.map(([fecha, delDia]) => (
-        <section key={fecha} aria-label={formatPlainDate(fecha)} className="space-y-3">
-          {dias.length > 1 && <h3 className="text-sm font-semibold text-fg">{formatPlainDate(fecha)}</h3>}
-          {agruparPorTurno(delDia, serviceHours, fecha).map((g) => (
-            <div key={g.clave} className="rounded-xl border border-line bg-surface p-4">
-              <p className="mb-3 text-sm font-medium text-fg-secondary">
-                {g.desde ? t('turno', { desde: g.desde, hasta: g.hasta as string }) : t('fueraDeTurno')}
-                {' · '}
-                {t('nReservas', { n: g.reservas.length })}
-              </p>
-              {g.reservas.length === 0 ? (
-                <p className="text-sm text-fg-muted">{t('sinReservas')}</p>
-              ) : (
-                <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {g.reservas.map((r) => {
-                    const venta = ventas?.get(r.id);
-                    return (
-                      <li key={r.id} className={`rounded-lg border p-3 ${CLASE_ESTADO[r.status]}`}>
-                        <button type="button" className="w-full text-left" onClick={() => onAbrir(r)}>
-                          <span className="flex items-center justify-between gap-2">
-                            <span className="font-semibold text-fg">{r.reservation_time.slice(0, 5)}</span>
-                            <Badge variant="outline" className="text-xs">
-                              {RESERVATION_STATUS_LABELS[r.status]}
-                            </Badge>
-                          </span>
-                          <span className="mt-1 block break-words text-sm text-fg">
-                            {t('cliente', { nombre: r.customer_name, n: r.party_size })}
-                          </span>
-                          <span className="block text-xs text-fg-secondary">
-                            {r.restaurant_table
-                              ? t('mesa', { mesa: r.restaurant_table.name, zona: r.restaurant_table.zone ?? '—' })
-                              : t('sinMesa')}
-                          </span>
-                          {venta && (
-                            <span className="mt-1 flex items-center gap-1 text-xs text-fg-secondary">
-                              <Receipt className="h-3 w-3" aria-hidden="true" />
-                              {venta.numero ? tr('venta', { numero: venta.numero }) : tr('ventaSinNumero')}
-                            </span>
-                          )}
-                        </button>
-                        {r.status === 'pending' && (
-                          <span className="mt-2 flex flex-wrap gap-2">
-                            <Button size="sm" onClick={() => onConfirmarPendiente(r)}>
-                              <CheckCircle className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-                              {tr('pendiente.confirmarYAsignar')}
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => onRechazar(r)}>
-                              {tr('pendiente.rechazar')}
-                            </Button>
-                          </span>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
+    <div className="space-y-4">
+      {/* Filtros: sede · día · en vivo (en el celular, en una sola fila: Figma 1811:146442) */}
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:flex-wrap sm:gap-3">
+        {sedes.length > 0 && (
+          <Select value={sedeId != null ? String(sedeId) : undefined} onValueChange={(v) => onSedeChange(Number(v))}>
+            <SelectTrigger aria-label={t('sede')} className="h-10 w-full border-line-strong bg-surface sm:w-[200px]">
+              <SelectValue placeholder={t('elegirSede')} />
+            </SelectTrigger>
+            <SelectContent>
+              {sedes.map((s) => (
+                <SelectItem key={s.id} value={String(s.id)}>
+                  {s.nombre}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        <Select value={fecha} onValueChange={onFechaChange}>
+          <SelectTrigger aria-label={t('dia')} className="h-10 w-full border-line-strong bg-surface sm:w-[200px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {dias.map((d) => (
+              <SelectItem key={d.valor} value={d.valor}>
+                {d.etiqueta}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {enVivo && <StatusBadge estado="activo" tono="exito" etiqueta={t('enVivo')} />}
+      </div>
+
+      {/* KPI (el celular no los muestra: el contador de la pestaña ya dice cuántas faltan por confirmar) */}
+      <div className="max-sm:hidden">
+        <KpiStrip columnas={4} etiqueta={t('resumen')}>
+          <StatCard
+            tamano="sm"
+            etiqueta={t('kpi.porConfirmar')}
+            valor={k.porConfirmar}
+            cargando={isLoading}
+            tono={k.porConfirmar > 0 ? 'advertencia' : 'neutro'}
+            iconoDetalle={k.porConfirmar > 0 ? AlertTriangle : undefined}
+            detalle={
+              k.porConfirmar === 0
+                ? t('kpi.alDia')
+                : k.ultimaWebHaceMin != null
+                  ? t('kpi.llegoHace', { min: k.ultimaWebHaceMin })
+                  : t('kpi.esperanConfirmacion')
+            }
+          />
+          <StatCard
+            tamano="sm"
+            etiqueta={t('kpi.confirmadas')}
+            valor={k.confirmadas}
+            cargando={isLoading}
+            detalle={t('kpi.personas', { n: k.personasConfirmadas })}
+          />
+          <StatCard
+            tamano="sm"
+            etiqueta={t('kpi.sentadas')}
+            valor={k.sentadas}
+            cargando={isLoading}
+            tono={k.sentadas > 0 ? 'exito' : 'neutro'}
+            iconoDetalle={k.sentadas > 0 ? ArrowUp : undefined}
+            detalle={t('kpi.personas', { n: k.personasSentadas })}
+          />
+          <StatCard tamano="sm" etiqueta={t('kpi.noShow')} valor={k.noShow} cargando={isLoading} detalle={t('kpi.delDia')} />
+        </KpiStrip>
+      </div>
+
+      {/* Turnos */}
+      {isLoading ? (
+        <div className="space-y-4" aria-busy="true">
+          {[1, 2].map((i) => (
+            <div key={i} className="space-y-3 rounded-xl border border-line bg-surface p-4">
+              <Skeleton className="h-4 w-56" />
+              <div className="grid gap-3 sm:grid-cols-[repeat(auto-fill,minmax(220px,236px))]">
+                {[1, 2, 3].map((j) => (
+                  <Skeleton key={j} className="h-[86px] rounded-lg" />
+                ))}
+              </div>
             </div>
           ))}
-        </section>
-      ))}
+        </div>
+      ) : delDia.length === 0 ? (
+        <div className="rounded-xl border border-line bg-surface">
+          <EmptyState variante="empty" icono={CalendarRange} titulo={t('vacioTitulo')} descripcion={t('vacioDescripcion')} />
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {grupos.turnos.map((g) => (
+            <section
+              key={`${g.desde}-${g.hasta}`}
+              className="rounded-xl border border-line bg-surface p-4 max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:p-0"
+              aria-label={t(`turnos.${nombreTurno(g.desde)}`)}
+            >
+              <h3 className="mb-3 text-[13px] font-medium leading-[18px] text-fg">
+                {t('turnoTitulo', { nombre: t(`turnos.${nombreTurno(g.desde)}`), desde: horaCorta(g.desde), hasta: horaCorta(g.hasta) })}
+              </h3>
+              {g.filas.length === 0 ? (
+                <p className="text-sm text-fg-muted">{t('sinReservas')}</p>
+              ) : (
+                <Tarjetas filas={g.filas} resaltada={resaltada} onAbrir={onAbrir} onSolicitud={onSolicitud} te={te} t={t} />
+              )}
+            </section>
+          ))}
+          {grupos.fuera.length > 0 && (
+            <section
+              className="rounded-xl border border-line bg-surface p-4 max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:p-0"
+              aria-label={t('fueraDeTurno')}
+            >
+              <h3 className="mb-3 text-[13px] font-medium leading-[18px] text-fg">{t('fueraDeTurno')}</h3>
+              <Tarjetas filas={grupos.fuera} resaltada={resaltada} onAbrir={onAbrir} onSolicitud={onSolicitud} te={te} t={t} />
+            </section>
+          )}
+        </div>
+      )}
     </div>
   );
 }
+
+type T = ReturnType<typeof useTranslations>;
+
+function Tarjetas({
+  filas,
+  resaltada,
+  onAbrir,
+  onSolicitud,
+  te,
+  t,
+}: {
+  filas: readonly RestaurantReservation[];
+  resaltada?: string | null;
+  onAbrir: (r: RestaurantReservation) => void;
+  onSolicitud: (r: RestaurantReservation) => void;
+  te: T;
+  t: T;
+}) {
+  return (
+    <ul className="grid gap-3 sm:grid-cols-[repeat(auto-fill,minmax(220px,236px))]">
+      {filas.map((r) => (
+        <li key={r.id}>
+          <ReservaTarjeta
+            r={r}
+            resaltada={resaltada === r.id || esSolicitudWeb(r)}
+            onClick={() => (r.status === 'pending' ? onSolicitud(r) : onAbrir(r))}
+            te={te}
+            t={t}
+          />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Tarjeta de la agenda (escritorio y celular): hora, estado, «Laura M. · 4 personas» y mesa. */
+export function ReservaTarjeta({ r, resaltada, onClick, te, t }: { r: RestaurantReservation; resaltada?: boolean; onClick: () => void; te: T; t: T }) {
+  const mesa = r.restaurant_table
+    ? [r.restaurant_table.name, r.restaurant_table.zone, r.status === 'completed' ? null : t('minutos', { n: r.duration_minutes || 90 })]
+        .filter(Boolean)
+        .join(' · ')
+    : [t('sinMesa'), r.source === 'website' ? t('web') : null].filter(Boolean).join(' · ');
+  return (
+    <button
+      type="button"
+      id={`reserva-${r.id}`}
+      onClick={onClick}
+      className={cn(
+        'flex w-full flex-col gap-1 rounded-lg border bg-surface p-3 text-left transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+        resaltada ? 'border-2 border-brand' : BORDE[r.status],
+      )}
+    >
+      <span className="flex items-center justify-between gap-2">
+        <span className="text-[15px] font-medium leading-5 text-fg">{horaCorta(r.reservation_time)}</span>
+        <StatusBadge estado={r.status} etiqueta={te(r.status)} tono={TONO_INSIGNIA[r.status]} />
+      </span>
+      <span className="truncate text-[13px] leading-[18px] text-fg-secondary">
+        {t('clientePersonas', { nombre: nombreCorto(r.customer_name), n: r.party_size })}
+      </span>
+      <span className="truncate text-xs leading-4 text-fg-muted">{mesa}</span>
+    </button>
+  );
+}
+
+const TONO_INSIGNIA = {
+  pending: 'advertencia',
+  confirmed: 'informacion',
+  seated: 'exito',
+  completed: 'neutro',
+  cancelled: 'neutro',
+  no_show: 'peligro',
+} as const;

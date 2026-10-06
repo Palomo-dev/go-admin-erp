@@ -20,15 +20,16 @@ interface EspaciosFiltersProps {
   onClear: () => void;
 }
 
-const spaceTypes = [
+export const spaceTypes = [
   { value: '__all__', label: 'Todos los tipos' },
   { value: 'car', label: 'Automóvil' },
   { value: 'motorcycle', label: 'Motocicleta' },
   { value: 'truck', label: 'Camión' },
   { value: 'bicycle', label: 'Bicicleta' },
+  { value: 'disabled', label: 'Discapacidad' },
 ];
 
-const spaceStates = [
+export const spaceStates = [
   { value: '__all__', label: 'Todos los estados' },
   { value: 'free', label: 'Libre' },
   { value: 'occupied', label: 'Ocupado' },

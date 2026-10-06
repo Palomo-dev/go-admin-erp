@@ -113,6 +113,11 @@ export interface SelectorEntidadProps<T> {
   formularioCrear?: (ctx: ContextoCrearEntidad<T>) => ReactNode;
   /** Texto del botón fijo «+ Crear cliente» al pie de la lista (con `formularioCrear`). */
   textoCrearNuevo?: string;
+  /**
+   * Disparador propio (un `button`): la fila del cliente de la cuenta de mesa
+   * (Figma `CartPanel Variant=mesa`, «CF Consumidor final ›»). Abre la misma capa.
+   */
+  disparador?: ReactNode;
   className?: string;
 }
 
@@ -436,6 +441,7 @@ export function SelectorEntidad<T>({
   filtros,
   formularioCrear,
   textoCrearNuevo,
+  disparador: disparadorPropio,
   className,
 }: SelectorEntidadProps<T>) {
   const t = useKitT();
@@ -524,7 +530,7 @@ export function SelectorEntidad<T>({
     </button>
   );
 
-  const disparador =
+  const disparador = disparadorPropio ?? (
     layout === 'fila' && opcion ? (
       <button
         type="button"
@@ -578,7 +584,7 @@ export function SelectorEntidad<T>({
         {insigniaValor && opcion && <span className="shrink-0">{insigniaValor}</span>}
         <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-fg-muted" strokeWidth={1.5} />
       </button>
-    );
+    ));
 
   const capa = escritorio ? (
     <PopoverPrimitive.Root open={abierto} onOpenChange={cambiarAbierto}>
@@ -614,7 +620,7 @@ export function SelectorEntidad<T>({
     </>
   );
 
-  if (layout === 'fila' && opcion) {
+  if (layout === 'fila' && opcion && !disparadorPropio) {
     return (
       <div className={cn('flex min-w-0 items-center gap-2.5 rounded-lg border border-line bg-surface px-3 py-2', className)}>
         <span aria-hidden="true" className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-tint text-brand">

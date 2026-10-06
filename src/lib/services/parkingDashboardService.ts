@@ -121,8 +121,11 @@ class ParkingDashboardService {
               .select('id, state')
               .eq('branch_id', branchId)
           : supabase
+              // Sin sucursal: solo los espacios de la organización (RLS deja ver
+              // los de TODAS las organizaciones del usuario).
               .from('parking_spaces')
-              .select('id, state'),
+              .select('id, state, branch:branches!inner(organization_id)')
+              .eq('branch.organization_id', organizationId),
 
         // Sesiones de hoy
         branchId !== null
@@ -135,6 +138,7 @@ class ParkingDashboardService {
           : supabase
               .from('parking_sessions')
               .select('id, status, entry_at, exit_at, amount')
+              .eq('organization_id', organizationId)
               .gte('created_at', jornada.start)
               .lte('created_at', jornada.end),
 
@@ -149,18 +153,18 @@ class ParkingDashboardService {
       // Procesar espacios (manejar errores silenciosamente)
       const spaces = spacesResult.data || [];
       const totalSpaces = spaces.length;
-      const occupiedSpaces = spaces.filter((s: any) => s.state === 'occupied').length;
-      const freeSpaces = spaces.filter((s: any) => s.state === 'free').length;
-      const reservedSpaces = spaces.filter((s: any) => s.state === 'reserved').length;
+      const occupiedSpaces = spaces.filter((s) => s.state === 'occupied').length;
+      const freeSpaces = spaces.filter((s) => s.state === 'free').length;
+      const reservedSpaces = spaces.filter((s) => s.state === 'reserved').length;
 
       // Procesar sesiones
       const sessions = sessionsResult.data || [];
-      const activeSessions = sessions.filter((s: any) => s.status === 'open').length;
-      const completedToday = sessions.filter((s: any) => s.status === 'closed').length;
+      const activeSessions = sessions.filter((s) => s.status === 'open').length;
+      const completedToday = sessions.filter((s) => s.status === 'closed').length;
       
       // Sesiones "en riesgo" (más de X horas)
       const atRiskThreshold = this.AT_RISK_THRESHOLD_HOURS * 60 * 60 * 1000;
-      const atRiskSessions = sessions.filter((s: any) => {
+      const atRiskSessions = sessions.filter((s) => {
         if (s.status !== 'open') return false;
         const entryTime = new Date(s.entry_at).getTime();
         return (now.getTime() - entryTime) > atRiskThreshold;
@@ -168,31 +172,31 @@ class ParkingDashboardService {
 
       // Ingresos de sesiones de hoy
       const revenueSessions = sessions
-        .filter((s: any) => s.status === 'closed' && s.amount)
-        .reduce((sum: number, s: any) => sum + Number(s.amount || 0), 0);
+        .filter((s) => s.status === 'closed' && s.amount)
+        .reduce((sum: number, s) => sum + Number(s.amount || 0), 0);
 
       // Procesar pases
       const passes = passesResult.data || [];
       const totalActivePasses = passes.length;
       
       // Calcular vencimientos
-      const expiringIn7Days = passes.filter((p: any) => {
+      const expiringIn7Days = passes.filter((p) => {
         const daysRemaining = this.getDaysRemaining(p.end_date, today);
         return daysRemaining >= 0 && daysRemaining <= 7;
       }).length;
 
-      const expiringIn15Days = passes.filter((p: any) => {
+      const expiringIn15Days = passes.filter((p) => {
         const daysRemaining = this.getDaysRemaining(p.end_date, today);
         return daysRemaining > 7 && daysRemaining <= 15;
       }).length;
 
-      const expiringIn30Days = passes.filter((p: any) => {
+      const expiringIn30Days = passes.filter((p) => {
         const daysRemaining = this.getDaysRemaining(p.end_date, today);
         return daysRemaining > 15 && daysRemaining <= 30;
       }).length;
 
       // Ingresos de pases activos (mensual)
-      const revenuePasses = passes.reduce((sum: number, p: any) => sum + Number(p.price || 0), 0);
+      const revenuePasses = passes.reduce((sum: number, p) => sum + Number(p.price || 0), 0);
 
       return {
         totalSpaces,
@@ -220,7 +224,7 @@ class ParkingDashboardService {
   /**
    * Obtener sesiones activas con información detallada
    */
-  async getActiveSessions(branchId: number | null, limit = 20): Promise<ActiveSession[]> {
+  async getActiveSessions(branchId: number | null, limit = 20, organizationId?: number): Promise<ActiveSession[]> {
     try {
       // Cuando branchId es null, no se filtra por sucursal (datos consolidados)
       let query = supabase
@@ -237,6 +241,10 @@ class ParkingDashboardService {
 
       if (branchId !== null) {
         query = query.eq('branch_id', branchId);
+      } else if (organizationId) {
+        // Consolidado: solo la organización activa (RLS deja ver las de todas
+        // las organizaciones del usuario).
+        query = query.eq('organization_id', organizationId);
       }
 
       const { data, error } = await query
@@ -251,7 +259,7 @@ class ParkingDashboardService {
       return (data || []).map(session => {
         const entryTime = new Date(session.entry_at);
         const durationMinutes = Math.floor((now.getTime() - entryTime.getTime()) / 60000);
-        const space = session.parking_spaces as any;
+        const space = session.parking_spaces as unknown as { label?: string; zone?: string } | null;
 
         return {
           id: session.id,
@@ -305,11 +313,11 @@ class ParkingDashboardService {
 
       return (data || []).map(pass => ({
         id: pass.id,
-        vehicles: ((pass as any).vehicles || []).map((v: any) => ({
+        vehicles: (((pass as unknown as { vehicles?: Array<{ is_primary: boolean; vehicle?: { plate?: string } | null }> }).vehicles) || []).map((v) => ({
           plate: v.vehicle?.plate || '',
           is_primary: v.is_primary,
         })),
-        customer_name: (pass.customers as any)?.full_name || 'Sin nombre',
+        customer_name: (pass.customers as unknown as { full_name?: string } | null)?.full_name || 'Sin nombre',
         plan_name: pass.plan_name,
         end_date: pass.end_date,
         days_remaining: this.getDaysRemaining(pass.end_date, today),
@@ -439,7 +447,7 @@ class ParkingDashboardService {
       const zoneMap = new Map<string, { total: number; occupied: number; free: number }>();
 
       (data || []).forEach(space => {
-        const zoneName = (space.parking_zones as any)?.name || space.zone || 'Sin zona';
+        const zoneName = (space.parking_zones as unknown as { name?: string } | null)?.name || space.zone || 'Sin zona';
         const existing = zoneMap.get(zoneName) || { total: 0, occupied: 0, free: 0 };
         
         existing.total++;

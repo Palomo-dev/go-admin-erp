@@ -22,6 +22,7 @@ import {
   ImportedSpace,
 } from '@/components/parking/espacios';
 import { Building2 } from 'lucide-react';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
 const defaultFilters: SpaceFilters = {
   search: '',
@@ -41,6 +42,8 @@ const defaultStats: SpaceStats = {
 };
 
 export default function ParkingEspaciosPage() {
+  // Día de la organización para el nombre del CSV (no el día UTC).
+  const { getToday: hoyDeLaOrganizacion } = useFormatDate();
   const { organization } = useOrganization();
   const { branchFilter } = useBranch();
   const { toast } = useToast();
@@ -157,9 +160,10 @@ export default function ParkingEspaciosPage() {
         maintenance: allSpaces.filter((s) => s.state === 'maintenance' || s.state === 'disabled').length,
         byType: {
           car: allSpaces.filter((s) => s.type === 'car').length,
-          motorcycle: allSpaces.filter((s) => s.type === 'motorcycle').length,
+          motorcycle: allSpaces.filter((s) => s.type === 'motorcycle' || s.type === 'motor').length,
           truck: allSpaces.filter((s) => s.type === 'truck').length,
           bicycle: allSpaces.filter((s) => s.type === 'bicycle').length,
+          disabled: allSpaces.filter((s) => s.type === 'disabled').length,
         },
         byZone: {},
       };
@@ -234,7 +238,9 @@ export default function ParkingEspaciosPage() {
       console.error('Error duplicating space:', err);
       toast({
         title: 'Error',
-        description: 'No se pudo duplicar el espacio',
+        description: (err as { code?: string })?.code === '23505'
+          ? 'Ya existe un espacio con esa etiqueta en la sede.'
+          : 'No se pudo duplicar el espacio',
         variant: 'destructive',
       });
     }
@@ -247,6 +253,21 @@ export default function ParkingEspaciosPage() {
         .delete()
         .eq('id', space.id);
 
+      // 23503: el espacio tiene sesiones (parking_sessions.parking_space_id).
+      // Borrarlo perdería el historial: se deja fuera de servicio.
+      if (error?.code === '23503') {
+        const { error: deshabilitarError } = await supabase
+          .from('parking_spaces')
+          .update({ state: 'disabled' })
+          .eq('id', space.id);
+        if (deshabilitarError) throw deshabilitarError;
+        toast({
+          title: 'Espacio deshabilitado',
+          description: 'Tiene sesiones registradas: se deshabilitó en lugar de eliminarlo.',
+        });
+        loadSpaces();
+        return;
+      }
       if (error) throw error;
 
       toast({ title: 'Espacio eliminado' });
@@ -299,7 +320,9 @@ export default function ParkingEspaciosPage() {
       console.error('Error saving space:', err);
       toast({
         title: 'Error',
-        description: 'No se pudo guardar el espacio',
+        description: (err as { code?: string })?.code === '23505'
+          ? 'Ya existe un espacio con esa etiqueta en la sede.'
+          : 'No se pudo guardar el espacio',
         variant: 'destructive',
       });
       throw err;
@@ -372,6 +395,16 @@ export default function ParkingEspaciosPage() {
         .delete()
         .in('id', selectedSpaces);
 
+      // 23503: alguno tiene sesiones; la eliminación es atómica, así que no se
+      // borró ninguno. Se avisa en vez de un error genérico.
+      if (error?.code === '23503') {
+        toast({
+          title: 'No se eliminaron',
+          description: 'Algunos espacios tienen sesiones registradas. Deshabilítelos en lugar de eliminarlos.',
+          variant: 'destructive',
+        });
+        return;
+      }
       if (error) throw error;
 
       toast({ title: `${selectedSpaces.length} espacios eliminados` });
@@ -440,7 +473,7 @@ export default function ParkingEspaciosPage() {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `espacios-parking-${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `espacios-parking-${hoyDeLaOrganizacion()}.csv`;
     link.click();
   };
 

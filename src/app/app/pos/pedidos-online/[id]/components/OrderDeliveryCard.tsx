@@ -11,7 +11,8 @@ import { DeliveryTrackingCard } from '@/components/pos/pedidos-online';
 import type { WebOrder, DeliveryType } from '@/lib/services/webOrdersService';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { formatDateTimeInTz, formatTimeInTz } from '@/lib/utils/dateDisplay';
-import { esDomicilio, mesaDelPedido, tipoEntregaEfectivo } from '@/lib/pos/pedidosWeb/tipoEntrega';
+import { esDomicilio, mesaCortaDelPedido, mesaDelPedido, tipoEntregaEfectivo, zonaDelPedido } from '@/lib/pos/pedidosWeb/tipoEntrega';
+import { clasesBoton } from '@/components/kit';
 
 interface OrderDeliveryCardProps {
   order: WebOrder;
@@ -69,6 +70,51 @@ export function OrderDeliveryCard({ order, onAssignDelivery, showTracking = true
   const formatDateTime = (date: string) =>
     formatDateTimeInTz(date, timezone, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 
+  // «Comer aquí» (Figma 1981:175699): sin dirección ni conductor; la mesa, su
+  // zona, cuándo quedó listo y el enlace a la mesa en el POS.
+  if (tipo === 'dine_in') {
+    const mesaCorta = mesaCortaDelPedido(order);
+    const zona = zonaDelPedido(order);
+    const aTiempo = order.ready_at && order.estimated_ready_at
+      ? new Date(order.ready_at).getTime() <= new Date(order.estimated_ready_at).getTime()
+      : null;
+    const fila = (etiqueta: string, valor: string) => (
+      <div className="flex items-baseline justify-between gap-3 text-[13px]">
+        <span className="text-fg-secondary">{etiqueta}</span>
+        <span className="text-right text-fg">{valor}</span>
+      </div>
+    );
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Truck className="size-4" aria-hidden="true" strokeWidth={1.5} />
+            {t('ficha.entrega')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <span className="rounded-md bg-subtle px-2 py-0.5 text-xs font-medium text-fg-secondary">
+              {mesaCorta ? t('comerAquiMesa', { mesa: mesaCorta }) : t('comerAqui')}
+            </span>
+            {zona && <span className="text-[13px] text-fg">{zona}</span>}
+          </div>
+          <p className="text-[13px] text-fg">{mesaCorta ? t('ficha.entregaMesa', { mesa: mesaCorta }) : t('ficha.entregaComerAqui')}</p>
+          {order.ready_at
+            ? fila(t('ficha.listo'), `${formatTime(order.ready_at)}${aTiempo === null ? '' : ` · ${aTiempo ? t('ficha.aTiempo') : t('ficha.tarde')}`}`)
+            : order.estimated_ready_at && fila(t('ficha.listoAprox'), formatTime(order.estimated_ready_at))}
+          {mesaCorta && fila(t('ficha.mesa'), [mesaCorta.replace(/^Mesa\s+/i, ''), zona].filter(Boolean).join(' · '))}
+          {order.restaurant_table_id && (
+            <Link href={`/app/pos/mesas/${order.restaurant_table_id}`} className={clasesBoton({ variante: 'secundario', tamano: 'sm', anchoCompleto: true })}>
+              <Navigation className="size-4" aria-hidden="true" />
+              {t('verMesa')}
+            </Link>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
   const baseCard = (
     <Card>
       <CardHeader className="pb-2">
@@ -88,17 +134,6 @@ export function OrderDeliveryCard({ order, onAssignDelivery, showTracking = true
             </Badge>
           )}
         </div>
-
-        {/* «Comer aquí» agregado a la cuenta de la mesa (E3): ir a POS › Mesas */}
-        {tipo === 'dine_in' && order.restaurant_table_id && order.table_session_id && (
-          <Link
-            href={`/app/pos/mesas/${order.restaurant_table_id}`}
-            className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline"
-          >
-            <UtensilsCrossed className="h-3 w-3" />
-            {t('verMesa')}
-          </Link>
-        )}
 
         {/* Dirección de entrega */}
         {domicilio && address?.address && (

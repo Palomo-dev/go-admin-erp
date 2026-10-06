@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { FileCheck2, Printer, ShoppingCart } from 'lucide-react';
+import { FileCheck2, Plus, Printer, ShoppingCart } from 'lucide-react';
 import { ResultadoOperacion, useAtajos, type AccionResultado, type FilaDatoProps } from '@/components/kit';
 import { crearFormateadorMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 import { teclaAtajo } from '@/lib/pos/venta/atajos';
@@ -52,6 +52,8 @@ export interface PostVentaProps {
   membresias?: readonly MembresiaVendida[];
   /** Nombre del cliente titular de esas membresías. */
   titular?: string | null;
+  /** Mesa (Figma D11): «¡Mesa 4 cobrada!», «Venta #… · la mesa pasa a «Por limpiar»» y «Volver al plano». */
+  textos?: { titulo: string; descripcion: string; primaria: string };
 }
 
 export function PostVenta({
@@ -72,6 +74,7 @@ export function PostVenta({
   activo,
   membresias,
   titular,
+  textos,
 }: PostVentaProps) {
   const t = useTranslations('posCobro.postVenta');
   const tAtajos = useTranslations('posVenta.atajos');
@@ -115,12 +118,12 @@ export function PostVenta({
   return (
     <ResultadoOperacion
       tono={pendienteSincronizar ? 'advertencia' : 'exito'}
-      titulo={pendienteSincronizar ? t('tituloPendiente') : t('titulo')}
-      descripcion={pendienteSincronizar ? t('descripcionPendiente') : t('descripcion', { numero: numeroVenta })}
+      titulo={pendienteSincronizar ? t('tituloPendiente') : textos?.titulo ?? t('titulo')}
+      descripcion={pendienteSincronizar ? t('descripcionPendiente') : textos ? textos.descripcion.replace('{numero}', numeroVenta) : t('descripcion', { numero: numeroVenta })}
       referencia={pendienteSincronizar && numeroLocal ? t('referenciaPendiente', { numero: numeroLocal }) : null}
       cifras={cifras}
       aviso={aviso}
-      primaria={{ etiqueta: t('nuevaVenta'), onClick: onNuevaVenta, atajo: teclaAtajo('nuevaVenta'), icono: ShoppingCart }}
+      primaria={{ etiqueta: textos?.primaria ?? t('nuevaVenta'), onClick: onNuevaVenta, atajo: teclaAtajo('nuevaVenta'), icono: textos ? Plus : ShoppingCart }}
       secundarias={secundarias}
       onCerrar={onCerrar}
       textoCerrar={t('cerrar')}

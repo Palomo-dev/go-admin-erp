@@ -329,6 +329,12 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
           onCambiar={(v) => cambiar({ show_header_auth: v })}
         />
         <FilaInterruptor
+          titulo={t('zonaGlobal.acciones.moneda')}
+          ayuda={t('zonaGlobal.acciones.monedaAyuda')}
+          valor={opcionBooleana(a, 'header_show_currency')}
+          onCambiar={(v) => cambiar({ header_show_currency: v })}
+        />
+        <FilaInterruptor
           titulo={t('zonaGlobal.acciones.sede')}
           ayuda={t('zonaGlobal.acciones.sedeAyuda')}
           nuevo
@@ -505,6 +511,13 @@ function Estilo(p: Interno) {
         <p className="text-xs leading-4 text-fg-secondary">{t('zonaGlobal.estilo.avisoTexto')}</p>
       </div>
       <ColorTema etiqueta={t('zonaGlobal.estilo.fondo')} valor={color('header_bg_color')} colorTema={p.coloresTema.fondo} onCambiar={(v) => cambiar({ header_bg_color: v })} />
+      <ColorTema
+        etiqueta={t('zonaGlobal.estilo.textoEnlaces')}
+        valor={color('header_text_color')}
+        colorTema={p.coloresTema.texto}
+        fondo={color('header_bg_color') ?? p.coloresTema.fondo}
+        onCambiar={(v) => cambiar({ header_text_color: v })}
+      />
       <ColorTema etiqueta={t('zonaGlobal.estilo.barra')} valor={color('topbar_bg_color')} colorTema={p.coloresTema.texto} onCambiar={(v) => cambiar({ topbar_bg_color: v })} />
       <ColorTema
         etiqueta={t('zonaGlobal.estilo.boton')}
@@ -529,6 +542,12 @@ function Estilo(p: Interno) {
           nuevo
           valor={transparente}
           onCambiar={(v) => cambiar({ header_style: v ? 'transparent' : p.porDefecto.header.composicion === 'transparent' ? 'default' : p.porDefecto.header.composicion })}
+        />
+        <FilaInterruptor
+          titulo={t('zonaGlobal.estilo.fijo')}
+          ayuda={t('zonaGlobal.estilo.fijoAyuda')}
+          valor={opcionBooleana(a, 'header_sticky')}
+          onCambiar={(v) => cambiar({ header_sticky: v })}
         />
       </section>
       <button

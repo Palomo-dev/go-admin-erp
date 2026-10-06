@@ -152,6 +152,8 @@ describe('InspectorEncabezado', () => {
     expect(onCambiar).toHaveBeenCalledWith({ header_show_branch_selector: true });
     fireEvent.click(screen.getByRole('switch', { name: /Barra de reserva con fechas/ }));
     expect(onCambiar).toHaveBeenCalledWith({ header_booking_bar: true });
+    fireEvent.click(screen.getByRole('switch', { name: /Moneda/ }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_show_currency: false });
     fireEvent.click(screen.getByRole('switch', { name: 'Buscador' }));
     expect(onCambiar).toHaveBeenCalledWith({ search_style: 'hidden' });
     fireEvent.click(screen.getByRole('radio', { name: 'Categorías de la carta' }));
@@ -162,6 +164,11 @@ describe('InspectorEncabezado', () => {
     const onCambiar = encabezado({}, { pestanaInicial: 'estilo' });
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Fondo' })).getByRole('radio', { name: 'Fijar color' }));
     expect(onCambiar).toHaveBeenCalledWith({ header_bg_color: '#0E0E0E' });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Texto y enlaces' })).getByRole('radio', { name: 'Fijar color' }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_text_color: '#F5F1EA' });
+    expect(screen.getByRole('switch', { name: /Fijo al bajar/ }).getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(screen.getByRole('switch', { name: /Fijo al bajar/ }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_sticky: false });
     fireEvent.click(screen.getByRole('switch', { name: /Sobre la portada, sólido al bajar/ }));
     expect(onCambiar).toHaveBeenCalledWith({ header_style: 'transparent' });
     fireEvent.click(screen.getAllByRole('button', { name: 'Restablecer a la plantilla' })[0]);
@@ -228,5 +235,9 @@ describe('InspectorPie', () => {
     expect(onCambiar).toHaveBeenCalledWith({ footer_background: 'tema' });
     fireEvent.click(screen.getByRole('radio', { name: 'Personalizado' }));
     expect(onCambiar).toHaveBeenCalledWith({ footer_background: 'custom', footer_custom_bg_color: '#F5F1EA' });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Texto' })).getByRole('radio', { name: 'Fijar color' }));
+    expect(onCambiar).toHaveBeenCalledWith({ footer_text_color: '#F5F1EA' });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Separadores' })).getByRole('radio', { name: 'Ninguno' }));
+    expect(onCambiar).toHaveBeenCalledWith({ footer_show_dividers: false });
   });
 });

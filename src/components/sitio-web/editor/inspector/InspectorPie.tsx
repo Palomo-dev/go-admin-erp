@@ -14,7 +14,7 @@ import { ColorField } from '@/components/sitio-web/ui/ColorField';
 import { ACCIONES_BARRA_MOVIL } from '@/lib/website/v2/mapeoAjustes';
 import type { ShellPorDefecto } from '@/lib/website/v2/plantillaCompleta';
 import { useTextosEditor } from '../textos';
-import { BandaGlobal, CabeceraZona, CampoTexto, EtiquetaGrupo, FilaInterruptor, InsigniaNuevo, MiniaturaPie, TarjetaComposicion, TarjetaPlantilla, TituloBloque } from './PartesZonaGlobal';
+import { BandaGlobal, CabeceraZona, CampoTexto, ColorTema, EtiquetaGrupo, FilaInterruptor, InsigniaNuevo, MiniaturaPie, TarjetaComposicion, TarjetaPlantilla, TituloBloque } from './PartesZonaGlobal';
 import type { PestanaZona } from './InspectorEncabezado';
 import { cambiosRestablecer, leerBarraMovil, opcionBooleana, valorBarraMovil, valorOpcion, type AccionBarraMovil, type ModoBarraMovil } from './zonaGlobalLogica';
 
@@ -265,6 +265,7 @@ function Estilo(p: InspectorPieProps) {
   const a = p.ajustes;
   const cambiar = p.onCambiar;
   const id = useId();
+  const idSep = useId();
   const fondo = valorOpcion<string>(a, 'footer_background') ?? 'dark';
   const propio = typeof a.footer_custom_bg_color === 'string' && a.footer_custom_bg_color ? (a.footer_custom_bg_color as string) : p.coloresTema.texto;
   return (
@@ -288,6 +289,25 @@ function Estilo(p: InspectorPieProps) {
           {t('zonaGlobal.pie.fondoTemaAyuda')}
         </p>
         {fondo === 'custom' && <ColorField etiqueta={t('zonaGlobal.pie.colorFondo')} valor={propio} onCambiar={(v) => cambiar({ footer_custom_bg_color: v })} />}
+      </div>
+      <ColorTema
+        etiqueta={t('zonaGlobal.pie.colorTexto')}
+        valor={typeof a.footer_text_color === 'string' && a.footer_text_color ? (a.footer_text_color as string) : null}
+        colorTema={p.coloresTema.texto}
+        fondo={fondo === 'custom' ? propio : undefined}
+        onCambiar={(v) => cambiar({ footer_text_color: v })}
+      />
+      <div className="flex flex-col gap-2">
+        <EtiquetaGrupo id={idSep}>{t('zonaGlobal.pie.separadores')}</EtiquetaGrupo>
+        <ChipsOpcion
+          aria-labelledby={idSep}
+          opciones={[
+            { valor: 'si', etiqueta: t('zonaGlobal.estilo.sigueTema') },
+            { valor: 'no', etiqueta: t('zonaGlobal.pie.sinSeparadores') },
+          ]}
+          valor={opcionBooleana(a, 'footer_show_dividers') ? 'si' : 'no'}
+          onValorChange={(v) => cambiar({ footer_show_dividers: v === 'si' })}
+        />
       </div>
       <button
         type="button"

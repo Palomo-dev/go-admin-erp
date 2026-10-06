@@ -19,9 +19,10 @@
  * revisada. `contenido.horarios` sigue en el contrato (documentos viejos lo traen) pero nadie lo
  * escribe ni lo lee.
  *
- * Encabezado y pie por plantilla (2026-10-06): 14 opciones nuevas (`nueva: true`) con su regla,
+ * Encabezado y pie por plantilla (2026-10-06): 19 opciones nuevas (`nueva: true`) con su regla,
  * `header_style` 'transparent' y `footer_background` 'tema'. En V2 viven en `shell.*.opciones`;
- * en legacy, columnas aditivas de la migración `sitio_encabezado_pie_v2` (go-admin-erp). Quien
+ * en legacy, columnas aditivas de las migraciones `sitio_encabezado_pie_v2` (14) y
+ * `sitio_encabezado_pie_v2_panel` (moneda, colores de texto, fijo al bajar, separadores). Quien
  * las lee usa `normalizarOpcionShell`: ausente o inválida = default = el sitio de hoy.
  *
  * goadmin-websites guarda una copia IDÉNTICA en `lib/website/v2/mapeoAjustes.ts`
@@ -74,6 +75,8 @@ export type ReglaOpcionShell =
   | { tipo: 'opcion'; valores: readonly string[] }
   /** Lista sin repetidos de valores permitidos, `min`–`max` elementos. */
   | { tipo: 'lista'; valores: readonly string[]; min: number; max: number }
+  /** Color fijo «#RGB» o «#RRGGBB». */
+  | { tipo: 'color' }
   /** Uno de `valores` o una lista de `acciones` (texto «a,b» en la columna legacy). */
   | { tipo: 'opcionOLista'; valores: readonly string[]; acciones: readonly string[]; max: number };
 
@@ -83,7 +86,7 @@ export interface OpcionShell {
   /** Regla de validación. Las opciones anteriores a 2026-10-06 no la declaran (se aceptan tal cual). */
   regla?: ReglaOpcionShell;
   /**
-   * Columna legacy que llega con la migración `sitio_encabezado_pie_v2`. Mientras no esté
+   * Columna legacy que llega con las migraciones `sitio_encabezado_pie_v2*`. Mientras no esté
    * aplicada, un `select` que la nombre falla: por eso NO entra en {@link COLUMNAS_IMPORTADAS}.
    * En V2 vive en `opciones` y no necesita migración.
    */
@@ -181,6 +184,13 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
     regla: { tipo: 'opcionOLista', valores: MODOS_BARRA_MOVIL, acciones: ACCIONES_BARRA_MOVIL, max: 4 },
     nueva: true,
   },
+  // Panel del editor «Encabezado» (2026-10-06, segunda tanda): moneda, color de texto y fijo al bajar.
+  /** Selector de moneda en el encabezado (solo sale con 2 o más monedas, como hoy). */
+  header_show_currency: { zona: 'header', porDefecto: true, regla: BOOL, nueva: true },
+  /** Texto y enlaces del encabezado: `null` = siguen el tema (lo de hoy); un color = fijo. */
+  header_text_color: { zona: 'header', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
+  /** Fijo al bajar (sticky). `true` = lo de hoy. */
+  header_sticky: { zona: 'header', porDefecto: true, regla: BOOL, nueva: true },
   // Pie
   show_powered_by: { zona: 'footer', porDefecto: true },
   mobile_footer_style: { zona: 'footer', porDefecto: 'accordion' },
@@ -203,6 +213,10 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
   footer_show_map: { zona: 'footer', porDefecto: false, regla: BOOL, nueva: true },
   /** Medios de pago (`organization_payment_methods.show_on_website`). */
   footer_show_payment_methods: { zona: 'footer', porDefecto: false, regla: BOOL, nueva: true },
+  /** Texto del pie: `null` = sigue el tema / el fondo elegido (lo de hoy); un color = fijo. */
+  footer_text_color: { zona: 'footer', porDefecto: null, regla: { tipo: 'color' }, nueva: true },
+  /** Líneas separadoras del pie (bordes entre bloques y sobre el copyright). `true` = lo de hoy. */
+  footer_show_dividers: { zona: 'footer', porDefecto: true, regla: BOOL, nueva: true },
 };
 
 /** Reglas de opciones que ya existían y ganan valores nuevos (`transparent`, `tema`). */
@@ -232,6 +246,8 @@ export function cumpleRegla(regla: ReglaOpcionShell, valor: unknown): boolean {
       return regla.especiales.includes(valor) || (valor.length <= 500 && (ENLACE_PROPIO.test(valor) || ENLACE_EXTERNO.test(valor)));
     case 'opcion':
       return typeof valor === 'string' && regla.valores.includes(valor);
+    case 'color':
+      return typeof valor === 'string' && /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(valor);
     case 'lista':
       return (
         Array.isArray(valor) &&

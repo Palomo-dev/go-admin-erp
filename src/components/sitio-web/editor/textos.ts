@@ -609,6 +609,8 @@ export const TEXTOS_EDITOR = {
       carrito: 'Carrito',
       cuenta: 'Cuenta',
       cuentaAyuda: 'Ingresar y Mi cuenta',
+      moneda: 'Moneda',
+      monedaAyuda: 'Solo si el sitio vende en más de una',
       sede: 'Selector de sede en el encabezado',
       sedeAyuda: 'Con 2 o más sedes. Apagado: va en una franja bajo el encabezado',
       reserva: 'Barra de reserva con fechas',
@@ -656,6 +658,9 @@ export const TEXTOS_EDITOR = {
       transparente: 'Sobre la portada, sólido al bajar',
       transparenteAyuda: 'Texto claro sobre la foto de la portada; al bajar toma el fondo del tema',
       opacidad: 'Opacidad del fondo',
+      textoEnlaces: 'Texto y enlaces',
+      fijo: 'Fijo al bajar',
+      fijoAyuda: 'El encabezado se queda arriba al recorrer la página',
     },
     pie: {
       menus: 'Menús del pie',
@@ -727,6 +732,9 @@ export const TEXTOS_EDITOR = {
       fondoPropio: 'Personalizado',
       fondoTemaAyuda: '«Tema»: el fondo de la plantilla, un tono más oscuro o más claro',
       colorFondo: 'Color del fondo',
+      colorTexto: 'Texto',
+      separadores: 'Separadores',
+      sinSeparadores: 'Ninguno',
     },
   },
   movil: {

@@ -47,7 +47,12 @@ const GIRO_POR_TIPO_SEDE: Record<string, Giro> = {
  * Carta QR…), igual que «Añadir sección» recomienda por el tipo de la sede.
  */
 export function giroDeSede(branchType: string | null | undefined, giroOrganizacion: Giro): Giro {
-  return (branchType && GIRO_POR_TIPO_SEDE[branchType]) || giroOrganizacion;
+  return giroDeTipoSede(branchType) ?? giroOrganizacion;
+}
+
+/** Giro de un `branch_type`, sin respaldo: `null` si la sede no tiene tipo con plantilla. */
+export function giroDeTipoSede(branchType: string | null | undefined): Giro | null {
+  return (branchType && Object.prototype.hasOwnProperty.call(GIRO_POR_TIPO_SEDE, branchType) && GIRO_POR_TIPO_SEDE[branchType]) || null;
 }
 
 export type IdPlantillaPagina =
@@ -342,18 +347,20 @@ const pagina = (titulo: string, slug: string, enMenu: boolean, secciones: string
  * (`public.create_default_pages`, disparada por `trg_org_create_default_pages`; páginas, orden,
  * «en el encabezado» y secciones `tipo:variante` leídos por MCP el 2026-10-06). Es la fuente
  * real de lo que tienen hoy los sitios: `seedDefaultPages` del servicio ya no se usa para
- * sembrar. Si una migración cambia un bloque de la función (p. ej. la pendiente
- * `20261006220000_paginas_por_defecto_restaurante.sql`), este juego debe seguirla; la prueba
- * `__tests__/plantillasPagina.test.ts` fija lo verificado. Inicio se incluye aquí porque la
- * función también la siembra con secciones propias del giro.
+ * sembrar. Si una migración cambia un bloque de la función, este juego debe seguirla: la prueba
+ * `src/lib/website/v2/__tests__/plantillaSede.test.ts` compara cada giro con el bloque `WHEN` de
+ * la última migración que define la función (restaurante: `20261006125630_paginas_por_defecto_
+ * restaurante`, aplicada). Inicio se incluye aquí porque la función también la siembra con
+ * secciones propias del giro. Es también la plantilla con que nace el sitio de una SEDE de ese
+ * tipo (`src/lib/website/v2/plantillaSede.ts`).
  */
 export const PAGINAS_BASE_GIRO: Record<Giro, readonly PaginaBase[]> = {
   restaurante: [
-    pagina('Inicio', 'home', true, 'hero:fullscreen,specialties:featured,menu_preview:tabs,delivery_cta:banner,gallery:grid,testimonials:carousel,reservation_cta:with_form,map:embedded'),
-    pagina('Menú', 'menu', true, 'hero:minimal,menu_preview:tabs,cta:centered'),
+    pagina('Inicio', 'home', true, 'restaurant_hero:split_bento,signature_dishes:carousel,menu_preview:tabs,delivery_cta:banner,gallery_bento:default,testimonials:carousel,reservation:band,hours_location:hours_map'),
+    pagina('Menú', 'menu', true, 'hero:minimal,menu_full:anchors,cta:centered'),
     pagina('Pedir Online', 'domicilios', true, 'hero:minimal,products_grid:grid'),
-    pagina('Reservar Mesa', 'reservas-mesa', true, 'hero:minimal,reservation_cta:with_form,faq:accordion'),
-    pagina('Nosotros', 'nosotros', true, 'hero:split,text_block:two_columns,stats:counters,team:grid'),
+    pagina('Reservar Mesa', 'reservas-mesa', true, 'hero:minimal,reservation:stepper,private_events:default,faq:accordion'),
+    pagina('Nosotros', 'nosotros', true, 'hero:split,text_block:two_columns,stats:counters,team:grid,chef_team:chef'),
     pagina('Contacto', 'contacto', true, 'hero:minimal,contact_form:split,map:embedded'),
     pagina('Galería', 'galeria', false, 'gallery:masonry'),
   ],

@@ -390,7 +390,11 @@ export const TEXTOS_EDITOR = {
     crearSitioTitulo: 'Crear el sitio de {sede}',
     crearSitioDescripcion:
       'La sede tendrá su propio borrador y su propia publicación. Hereda del sitio principal todo lo que no personalices. Nada se publica hasta que lo decidas.',
+    crearSitioDescripcionPlantilla:
+      'La sede nace con la plantilla de {tipo}: páginas, secciones y menús de ese tipo de negocio, en borrador. Hereda del sitio principal el logo, los colores y lo que no personalices. Nada se publica hasta que lo decidas.',
     crearSitio: 'Crear sitio de la sede',
+    sinSitioTitulo: '{sede} aún no tiene su sitio',
+    crearConPlantilla: 'Crear con la plantilla de {tipo}',
     borradorCreado: 'Borrador creado',
     sitioCreado: 'Sitio de {sede} creado',
     nadaCambia: 'Nada cambió en la web.',

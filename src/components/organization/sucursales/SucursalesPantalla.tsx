@@ -91,6 +91,7 @@ import { useCupoPlan } from '../acceso/useCupoPlan';
 import { DetalleSucursal } from './DetalleSucursal';
 import { DialogoImportarSucursales } from './DialogoImportarSucursales';
 import { nombreGerente, type SucursalFila } from './tipos';
+import { EscuchaPlantillaSede } from '@/components/sitio-web/plantillaSede/EscuchaPlantillaSede';
 
 const MapaSucursales = dynamic(() => import('@/components/maps/BranchesMap'), {
   ssr: false,
@@ -170,6 +171,9 @@ function ListadoSucursales({ organizationId, puedeComprar, pedido }: { organizat
       setCargando(false);
     }
   }, [organizationId]);
+
+  const nombreDeSede = useCallback((id: number) => sedes.find((s) => s.id === id)?.name ?? `#${id}`, [sedes]);
+  const recargarSitios = useCallback(() => void cargar(), [cargar]);
 
   useEffect(() => {
     void cargar();
@@ -600,6 +604,9 @@ function ListadoSucursales({ organizationId, puedeComprar, pedido }: { organizat
           avisarCambio();
         }}
       />
+      {/* El sitio de la sede nace con la plantilla de su tipo de negocio (branchService la
+          prepara al guardar); aquí se avisa y, si ya tenía contenido propio, se pregunta. */}
+      <EscuchaPlantillaSede nombreSede={nombreDeSede} onCambio={recargarSitios} />
       <DialogoCompra
         abierto={comprar}
         onAbiertoChange={setComprar}

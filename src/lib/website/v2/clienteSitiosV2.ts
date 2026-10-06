@@ -18,6 +18,7 @@ import type {
   RevisionResumen,
   SitioResumen,
 } from './tipos';
+import type { EstadoPlantillaSede, ResultadoPlantillaSede } from './plantillaSede';
 import type {
   InstantaneaBorrador,
   MotivoInstantanea,
@@ -134,6 +135,17 @@ export const clienteSitiosV2 = {
     pedir<ResultadoGuardado & { menuId: string; copiado: boolean }>(`/${sitioId}/menus`, {
       method: 'POST',
       body: { menuId, version },
+    }),
+  /** Plantilla del sitio de una sede según su tipo de negocio (estado para el diálogo). */
+  plantillaSede: (branchId: number) => pedirUrl<EstadoPlantillaSede>(`/api/sitio-web/sedes/${branchId}/plantilla`),
+  /**
+   * `auto`: tras crear la sucursal o cambiarle el tipo (nunca pisa contenido propio).
+   * `confirmado`: «Aplicar plantilla de <tipo>» sobre la versión `version` del borrador.
+   */
+  aplicarPlantillaSede: (branchId: number, modo: 'auto' | 'confirmado', version?: number) =>
+    pedirUrl<ResultadoPlantillaSede>(`/api/sitio-web/sedes/${branchId}/plantilla`, {
+      method: 'POST',
+      body: modo === 'confirmado' ? { modo, version } : { modo },
     }),
   /** Despublicar o volver a mostrar el sitio en la web (Configuración › Zona de peligro). */
   visibilidad: (sitioId: string, publicado: boolean) =>

@@ -997,6 +997,8 @@ export function useEditorSitio() {
   }, [v2.sitio]);
 
   // ── Publicar (V2) ───────────────────────────────────────────────────────────
+  /** `cambiarAdopcion` se declara más abajo; el aviso de «Publicado» la llama por aquí. */
+  const cambiarAdopcionRef = useRef<((adoptado: boolean) => Promise<boolean>) | null>(null);
   const publicar = useCallback(
     async (opciones: { nota: string | null; tambienPrincipal?: boolean }): Promise<boolean> => {
       if (!enV2) return guardarLegacy();
@@ -1017,8 +1019,17 @@ export function useEditorSitio() {
         }
         setProgramacion(null);
         void clienteSitiosV2.listar().then(setSitios).catch(() => undefined);
+        // Sin activar, publicar no cambia la web: el aviso lleva el botón para activarla ahí mismo
+        // (antes solo estaba en «Más acciones» y el flujo se quedaba a medias).
+        const ofrecerActivar = !v2.sitio?.v2Adoptado && LECTOR_PUBLICO_V2_LISTO && permisos.publicar;
         toast.success(r.idempotente ? t('publicar.yaPublicada') : t('publicar.listo', { n: r.numero }), {
           description: v2.sitio?.v2Adoptado ? t('publicar.listoAdoptado') : t('publicar.listoSinAdoptar'),
+          ...(ofrecerActivar
+            ? {
+                duration: 20_000,
+                action: { label: t('adopcion.activar'), onClick: () => void cambiarAdopcionRef.current?.(true) },
+              }
+            : {}),
         });
         return true;
       } catch (error) {
@@ -1028,7 +1039,7 @@ export function useEditorSitio() {
         setPublicando(false);
       }
     },
-    [enV2, guardarLegacy, guardarAhora, esSedeV2, sitios, v2, t],
+    [enV2, guardarLegacy, guardarAhora, esSedeV2, sitios, v2, t, permisos.publicar],
   );
 
   /** Programar (A/05g). `ejecutarEn` en ISO ya convertido desde la zona de la organización. */
@@ -1174,6 +1185,16 @@ export function useEditorSitio() {
     [todasSucursales, t],
   );
   const nombreSitio = enV2 ? nombreSede(sitioBranch) : nombreSede(selectedBranchId);
+  /** `branch_type` de una sede (decide su plantilla: «Aplicar plantilla de <tipo>»). */
+  const tipoDeSede = useCallback(
+    (branchId: number | null) => (branchId === null ? null : todasSucursales.find((b) => b.id === branchId)?.branch_type ?? null),
+    [todasSucursales],
+  );
+  /** Tras «Aplicar plantilla»: el borrador cambió en el servidor; se recarga (cae en Inicio). */
+  const trasAplicarPlantilla = useCallback(async () => {
+    await v2.recargar();
+    setSitios(await clienteSitiosV2.listar());
+  }, [v2]);
 
   /** Cambiar de sitio en V2 (el principal o una sede con sitio). Antes se guarda lo pendiente. */
   const elegirSitioV2 = useCallback(
@@ -1268,6 +1289,7 @@ export function useEditorSitio() {
     },
     [v2, t],
   );
+  cambiarAdopcionRef.current = cambiarAdopcion;
 
   const llevarMenu = useCallback(
     async (menuId: string) => {
@@ -1613,6 +1635,8 @@ export function useEditorSitio() {
     publishedBranches,
     nombreSitio,
     nombreSede,
+    tipoDeSede,
+    trasAplicarPlantilla,
     elegirSitioV2,
     crearSitioSede,
     cambiarSedeLegacy,

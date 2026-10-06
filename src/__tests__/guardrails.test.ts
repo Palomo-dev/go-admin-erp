@@ -3537,14 +3537,37 @@ describe('40. Ventas: ninguna función nueva inserta líneas sin comprobar que e
     expect(funcionesSinComprobar(con)).toEqual([]);
   });
 
+  /** Funciones (de cualquier tipo) que una migración define o redefine. */
+  function funcionesDefinidas(sql: string): string[] {
+    const limpio = sql.replace(/--.*$/gm, '');
+    return [...limpio.matchAll(/create\s+or\s+replace\s+function\s+public\.(\w+)\s*\(/gi)].map((m) => m[1]);
+  }
+
+  // Cuenta la ÚLTIMA definición de cada función, que es la que queda en la base: una
+  // migración aplicada no se reescribe (POLITICA-MIGRACIONES), se corrige con otra que la
+  // redefina. Así ocurrió con fn_confirmar_pedido_web_completo (20261006124814) y
+  // pos_mesa_agregar_pedido_web (20261006125104), corregidas en 20261006130415. Una
+  // redefinición posterior SIN la comprobación vuelve a fallar aquí.
   test('ninguna migración nueva inserta sale_items sin fn_producto_exigir_vendible', () => {
-    const ofensores: string[] = [];
+    const ultima = new Map<string, { archivo: string; sinComprobar: boolean }>();
     for (const f of fs.readdirSync(DIR).filter((n) => n.endsWith('.sql') && n.slice(0, 14) >= DESDE).sort()) {
-      for (const nombre of funcionesSinComprobar(readFile(path.join(DIR, f)))) {
-        if (!PERMITIDAS[nombre]) ofensores.push(`${f}: ${nombre}`);
-      }
+      const sql = readFile(path.join(DIR, f));
+      const sin = new Set(funcionesSinComprobar(sql));
+      for (const nombre of funcionesDefinidas(sql)) ultima.set(nombre, { archivo: f, sinComprobar: sin.has(nombre) });
     }
+    const ofensores = [...ultima.entries()]
+      .filter(([nombre, u]) => u.sinComprobar && !PERMITIDAS[nombre])
+      .map(([nombre, u]) => `${u.archivo}: ${nombre}`)
+      .sort();
     expect(ofensores).toEqual([]);
+  });
+
+  test('una redefinición posterior sin la comprobación vuelve a contar como ofensora', () => {
+    const con = 'create or replace function public.x(p integer) returns void as $$ begin perform public.fn_producto_exigir_vendible(1, 2, now()); insert into public.sale_items (sale_id) values (null); end $$;';
+    const sin = 'create or replace function public.x(p integer) returns void as $$ begin insert into public.sale_items (sale_id) values (null); end $$;';
+    expect(funcionesDefinidas(sin)).toEqual(['x']);
+    expect(funcionesSinComprobar(con)).toEqual([]);
+    expect(funcionesSinComprobar(sin)).toEqual(['x']);
   });
 
   test('el código de error llega traducido al POS', () => {

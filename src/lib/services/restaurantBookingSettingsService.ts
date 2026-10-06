@@ -89,6 +89,9 @@ export const ajustesReservaSchema = z
     // D7 (20261006170000): con default para quien aún envía el DTO anterior.
     deposit_refundable: z.boolean().default(true),
     deposit_refund_hours: z.number().int().min(0).max(720).nullable().default(null),
+    // Carta QR: las rondas que el comensal envía desde el QR entran solas a la
+    // cuenta de la mesa (si el equipo ya la abrió). Apagado por defecto.
+    qr_rounds_auto_confirm: z.boolean().default(false),
     policy_text: z.string().trim().max(2000).nullable(),
     notify_emails: z.array(correo).max(10).nullable(),
     send_customer_email: z.boolean(),
@@ -138,6 +141,7 @@ export const AJUSTES_RESERVA_POR_DEFECTO: AjustesReservaDto = {
   deposit_per_person: false,
   deposit_refundable: true,
   deposit_refund_hours: null,
+  qr_rounds_auto_confirm: false,
   policy_text: null,
   notify_emails: null,
   send_customer_email: true,
@@ -175,18 +179,57 @@ export const COLUMNAS_AJUSTES = Object.keys(AJUSTES_RESERVA_POR_DEFECTO).join(',
  * pasarela y sin la migración no hay pasarela que ofrecer).
  */
 export const COLUMNAS_DEPOSITO_D7 = ['deposit_refundable', 'deposit_refund_hours'] as const;
-const COLUMNAS_AJUSTES_SIN_D7 = Object.keys(AJUSTES_RESERVA_POR_DEFECTO)
-  .filter((c) => !(COLUMNAS_DEPOSITO_D7 as readonly string[]).includes(c))
-  .join(', ');
+
+/**
+ * Columna de la Carta QR (`qr_rounds_auto_confirm`, migración de la Carta QR).
+ * Igual que D7: sin la migración, se lee y se guarda sin ella.
+ */
+export const COLUMNAS_CARTA_QR = ['qr_rounds_auto_confirm'] as const;
+
+/** Grupos de columnas que pueden faltar en la base (migraciones sin aplicar). */
+const GRUPOS_OPCIONALES: ReadonlyArray<readonly string[]> = [COLUMNAS_DEPOSITO_D7, COLUMNAS_CARTA_QR];
 
 function esColumnaInexistente(error: { code?: string } | null | undefined): boolean {
   return error?.code === '42703';
 }
 
-function sinColumnasD7<T extends Record<string, unknown>>(fila: T): T {
+/**
+ * Qué grupos quitar tras un 42703: los que el mensaje nombra; si no nombra
+ * ninguno conocido, todos los que aún quedan.
+ */
+export function gruposAQuitar(mensaje: string | undefined, quedan: ReadonlyArray<readonly string[]>): ReadonlyArray<readonly string[]> {
+  const nombrados = quedan.filter((g) => g.some((c) => (mensaje ?? '').includes(c)));
+  return nombrados.length > 0 ? nombrados : quedan;
+}
+
+function columnasSin(quitados: ReadonlyArray<readonly string[]>): string {
+  const fuera = new Set(quitados.flat());
+  return Object.keys(AJUSTES_RESERVA_POR_DEFECTO)
+    .filter((c) => !fuera.has(c))
+    .join(', ');
+}
+
+function filaSin<T extends Record<string, unknown>>(fila: T, quitados: ReadonlyArray<readonly string[]>): T {
   const copia: Record<string, unknown> = { ...fila };
-  for (const c of COLUMNAS_DEPOSITO_D7) delete copia[c];
+  for (const c of quitados.flat()) delete copia[c];
   return copia as T;
+}
+
+/**
+ * Repite la operación quitando las columnas opcionales que la base no tiene
+ * (un intento por grupo como mucho).
+ */
+async function conColumnasOpcionales<R extends { error: { code?: string; message?: string } | null }>(
+  operar: (quitados: ReadonlyArray<readonly string[]>) => PromiseLike<R>,
+): Promise<R> {
+  let quitados: ReadonlyArray<readonly string[]> = [];
+  let r = await operar(quitados);
+  while (esColumnaInexistente(r.error) && quitados.length < GRUPOS_OPCIONALES.length) {
+    const quedan = GRUPOS_OPCIONALES.filter((g) => !quitados.includes(g));
+    quitados = [...quitados, ...gruposAQuitar(r.error?.message, quedan)];
+    r = await operar(quitados);
+  }
+  return r;
 }
 
 export type OrigenAjustes = 'sede' | 'organizacion' | 'defecto';
@@ -289,11 +332,8 @@ export async function getAjustesReserva(
       .eq('organization_id', orgId);
     return branchId == null ? consulta.is('branch_id', null) : consulta.or(`branch_id.eq.${branchId},branch_id.is.null`);
   };
-  let { data, error } = await leer(COLUMNAS_AJUSTES);
-  if (esColumnaInexistente(error)) {
-    // D7 sin aplicar: las mismas columnas de antes.
-    ({ data, error } = await leer(COLUMNAS_AJUSTES_SIN_D7));
-  }
+  // D7 o la Carta QR sin aplicar: se lee sin sus columnas (valen su default).
+  const { data, error } = await conColumnasOpcionales((quitados) => leer(columnasSin(quitados)));
   if (error) throw new AjustesReservaError('ERROR_BD', error.message);
   return resolverAjustesSede((data ?? []) as unknown as Record<string, unknown>[], branchId);
 }
@@ -314,13 +354,8 @@ export async function guardarAjustesReserva(
     throw new AjustesReservaError('SEDE_AJENA');
   }
   const fila = { ...ajustes, organization_id: orgId, branch_id: branchId };
-  const r = await escribirAjustes(supabase, orgId, branchId, fila, COLUMNAS_AJUSTES);
-  if (esColumnaInexistente(r.error)) {
-    // D7 sin aplicar: se guarda lo de siempre (las columnas nuevas no existen).
-    const r2 = await escribirAjustes(supabase, orgId, branchId, sinColumnasD7(fila), COLUMNAS_AJUSTES_SIN_D7);
-    if (r2.error) throw new AjustesReservaError('ERROR_BD', r2.error.message);
-    return filaADto(r2.data as unknown as Record<string, unknown>) as AjustesReservaDto;
-  }
+  // D7 o la Carta QR sin aplicar: se guarda lo de siempre (sin las columnas nuevas).
+  const r = await conColumnasOpcionales((quitados) => escribirAjustes(supabase, orgId, branchId, filaSin(fila, quitados), columnasSin(quitados)));
   if (r.error) throw new AjustesReservaError('ERROR_BD', r.error.message);
   return filaADto(r.data as unknown as Record<string, unknown>) as AjustesReservaDto;
 }

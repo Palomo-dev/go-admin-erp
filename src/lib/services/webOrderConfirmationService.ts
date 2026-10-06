@@ -25,6 +25,7 @@ import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { metodoDeCobroEnCaja } from '@/lib/pos/pedidosWeb/metodosCaja';
 import { resolveLineTax } from './taxResolver';
 import { resolveOrgCurrency } from './monedaOrganizacion';
+import { redimirCuponPedidoWeb } from './cuponPedidoWeb';
 import { normalizarCodigoMoneda } from '@/lib/utils/moneda';
 
 /**
@@ -831,78 +832,13 @@ class WebOrderConfirmationService {
   }
 
   /**
-   * Redimir cupón: buscar redemption existente (creada por website) y actualizar sale_id,
-   * o crear nueva si no existe (fallback).
-   * Website inserta coupon_redemption con sale_id = web_order.id (no es un sale real).
-   * ERP corrige ese sale_id con el ID de la venta POS creada.
+   * Redimir cupón: la regla compartida con la confirmación por pasarela
+   * (`redimirCuponPedidoWeb`, idempotente por venta). El sitio ya no inserta
+   * la redención al crear el pedido: `coupon_redemptions.sale_id` es FK a
+   * `sales` y el uuid del pedido web la violaba.
    */
   private async redeemCoupon(order: WebOrder, saleId: string): Promise<string> {
-    try {
-      // Reintento de la confirmación: la redención ya apunta a la venta.
-      const { data: yaVinculada } = await supabase
-        .from('coupon_redemptions')
-        .select('id')
-        .eq('sale_id', saleId)
-        .limit(1)
-        .maybeSingle();
-      if (yaVinculada) return yaVinculada.id;
-
-      // Buscar redemption existente creada por el website (sale_id = web_order.id)
-      const { data: existingRedemption } = await supabase
-        .from('coupon_redemptions')
-        .select('id')
-        .eq('sale_id', order.id)
-        .single();
-
-      if (existingRedemption) {
-        // UPDATE: corregir sale_id con la venta POS real
-        await supabase
-          .from('coupon_redemptions')
-          .update({ sale_id: saleId })
-          .eq('id', existingRedemption.id);
-
-        console.log(`✅ Coupon redemption actualizada con sale_id POS: ${saleId}`);
-        return existingRedemption.id;
-      }
-
-      // FALLBACK: no encontró redemption del website → crear nueva
-      const { data: coupon, error: couponError } = await supabase
-        .from('coupons')
-        .select('id')
-        .eq('organization_id', order.organization_id)
-        .eq('code', order.coupon_code!)
-        .eq('is_active', true)
-        .single();
-
-      if (couponError || !coupon) {
-        console.warn(`Cupón "${order.coupon_code}" no encontrado o inactivo`);
-        return '';
-      }
-
-      const { data: redemption, error: redemptionError } = await supabase
-        .from('coupon_redemptions')
-        .insert({
-          coupon_id: coupon.id,
-          sale_id: saleId,
-          customer_id: order.customer_id || null,
-          discount_applied: order.discount_total || 0,
-        })
-        .select('id')
-        .single();
-
-      if (redemptionError) {
-        console.error('Error creando coupon_redemption:', redemptionError);
-        return '';
-      }
-
-      // No se incrementa usage_count a mano: el trigger
-      // trg_coupon_redemption_increment de coupon_redemptions ya lo hace al
-      // insertar la redención. Hacerlo aquí contaba el cupón dos veces.
-      return redemption?.id || '';
-    } catch (error) {
-      console.error('Error redimiendo cupón:', error);
-      return '';
-    }
+    return redimirCuponPedidoWeb(supabase, order, saleId);
   }
 
   /**

@@ -17,6 +17,7 @@ import {
 import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { resolveLineTaxWith } from './taxResolverCore';
 import { resolveOrgCurrency } from './monedaOrganizacion';
+import { redimirCuponPedidoWeb } from './cuponPedidoWeb';
 import { normalizarCodigoMoneda } from '@/lib/utils/moneda';
 import {
   ERROR_MEMBRESIA_SIN_CLIENTE,
@@ -597,6 +598,14 @@ export const webOrderServerConfirmation = {
         stockErrors.push(...(r.errores ?? []));
         if (r.seriales) console.log(`✅ ${r.seriales} seriales vendidos desde pedido web ${order.order_number}`);
       }
+    }
+
+    // ── 4. Cupón: la redención se registra contra la venta, la misma regla del
+    // botón «Confirmar pedido» (`redimirCuponPedidoWeb`, idempotente por venta).
+    // Antes este camino no redimía nunca: el pedido pagado por pasarela no
+    // contaba el uso del cupón ni dejaba rastro en coupon_redemptions.
+    if (order.coupon_code) {
+      await redimirCuponPedidoWeb(supabase, order, saleId);
     }
 
     // ── 5. Crear factura de venta (invoice_sales + invoice_items) ──

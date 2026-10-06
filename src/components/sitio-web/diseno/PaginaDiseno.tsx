@@ -40,7 +40,7 @@ import { DialogoRevisarCambios } from '../resumen/DialogoRevisarCambios';
 import { DialogoConflicto } from '../paginas/DialogoConflicto';
 import { esInicio } from '../paginas/tipoPagina';
 import { estiloEnUso, estilosDelGiro, plantillaEnUso } from '@/lib/website/contrato/catalogoPlantillas';
-import { tokensExtendidosDisponibles } from '@/lib/website/v2/tokensEstilo';
+import { escribirEstilo, temaParaLienzo, tokensExtendidosDisponibles } from '@/lib/website/v2/tokensEstilo';
 import { valorCampo } from '@/lib/website/v2/valorCampo';
 import { CATALOGO_SITIO } from './catalogo';
 import { EstiloDelSitioPanel } from './EstiloDelSitioPanel';
@@ -116,6 +116,15 @@ export function PaginaDiseno() {
     }),
   );
   const seleccionado = estilo.estilo ? estiloEnUso(presets, estilo.estilo, enUso) : null;
+  // Tema en edición para la vista previa: el borrador con el estilo escrito igual que al guardar.
+  const estiloActual = estilo.estilo;
+  const temaVivo = useMemo(
+    () =>
+      documento && estiloActual
+        ? temaParaLienzo(escribirEstilo(documento, estiloActual, extendidos), (sitio.sitio?.branchId ?? null) !== null, sitio.borrador?.basePrincipal)
+        : null,
+    [documento, estiloActual, extendidos, sitio.sitio, sitio.borrador],
+  );
   const coloresLogo = useColoresLogo(valorCampo(documento?.identidad.logoUrl));
   const paginaInicioId = documento?.paginas.find(esInicio)?.id ?? ctx.paginaInicioId;
   const vista = useVistaPreviaBorrador(sitio.sitio?.id ?? null, ctx.host, paginaInicioId);
@@ -287,6 +296,7 @@ export function PaginaDiseno() {
                   url={vista.url}
                   host={ctx.host}
                   estilo={estilo.estilo}
+                  tema={temaVivo}
                   esPublicado={vista.esPublicado}
                 />
               </div>
@@ -324,6 +334,7 @@ export function PaginaDiseno() {
           url={vista.url}
           host={ctx.host}
           estilo={estilo.estilo}
+          tema={temaVivo}
           esPublicado={vista.esPublicado}
           dispositivoInicial="celular"
           sinCabecera

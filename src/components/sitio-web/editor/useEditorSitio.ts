@@ -44,6 +44,7 @@ import { getDefaultSectionsForPageType } from '@/lib/services/website/defaultPro
 import { avisoFaltanDatos } from '@/lib/services/website/fuentesDatosSecciones';
 import { useConteoFuentes } from '@/lib/website/useConteoFuentes';
 import { ajustesParaLienzo } from '@/lib/website/ajustesVivos';
+import { temaParaLienzo } from '@/lib/website/v2/tokensEstilo';
 import { useHistory } from '@/components/organization/branding/editor/useHistory';
 import type { DocumentoSitio, ItemMenu } from '@/lib/website/contrato/documentoSitio';
 import { clienteSitiosV2, ErrorApiSitio } from '@/lib/website/v2/clienteSitiosV2';
@@ -1444,9 +1445,17 @@ export function useEditorSitio() {
     return `${base}/${currentPage.slug}`;
   }, [previewUrlBase, currentPage, esDetalle, previewEntityId]);
 
+  // V2: además el tema del borrador (fuentes, redondeo, botón, movimiento), que el sitio pinta en vivo.
+  const temaLienzo = useMemo(
+    () => (enV2 ? temaParaLienzo(docLocal, esSedeV2, v2.borrador?.basePrincipal) : null),
+    [enV2, docLocal, esSedeV2, v2.borrador],
+  );
   const ajustesLienzo = useMemo(
-    () => (settingsVista ? { ajustes: ajustesParaLienzo(settingsVista as unknown as Record<string, unknown>), menuEncabezado: null } : null),
-    [settingsVista],
+    () =>
+      settingsVista
+        ? { ajustes: ajustesParaLienzo(settingsVista as unknown as Record<string, unknown>), menuEncabezado: null, tema: temaLienzo }
+        : null,
+    [settingsVista, temaLienzo],
   );
 
   /** Secciones que pinta el lienzo: las de la versión que se está viendo o las del borrador. */

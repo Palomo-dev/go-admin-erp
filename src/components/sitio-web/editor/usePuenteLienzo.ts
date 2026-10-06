@@ -6,7 +6,9 @@
  *
  * - `goadmin:preview` (secciones en edición, con `settings` → estilo por sección y visibilidad
  *   por dispositivo) y `goadmin:settings` (encabezado, pie y tema en edición), con espera de
- *   150 ms y sin reenviar lo mismo.
+ *   150 ms y sin reenviar lo mismo. En V2, `goadmin:settings` lleva además `tema`
+ *   (`temaParaLienzo`): fuentes, redondeo, botón y movimiento del estilo general, que el sitio
+ *   aplica con el mismo código que al publicar.
  * - `goadmin:select` / `goadmin:scroll` para resaltar la sección elegida.
  * - Escucha `goadmin:select` (clic en una sección o zona del lienzo), `goadmin:accion` y
  *   `goadmin:ready` (el puente del sitio acaba de montar: se le reenvía todo).
@@ -18,6 +20,7 @@ import { useCallback, useEffect, useRef, type RefObject } from 'react';
 import type { WebsitePageSection } from '@/lib/services/websitePageBuilderService';
 import type { AvisoFaltanDatos } from '@/lib/services/website/fuentesDatosSecciones';
 import { origenDe } from '@/components/sitio-web/ui/dispositivos';
+import type { TemaLienzo } from '@/lib/website/v2/tokensEstilo';
 
 export interface DetalleClic {
   enlace: boolean;
@@ -33,7 +36,7 @@ export interface OpcionesPuente {
   iframe: RefObject<HTMLIFrameElement | null>;
   url: string | null;
   secciones: readonly WebsitePageSection[];
-  ajustes: { ajustes: Record<string, unknown>; menuEncabezado: unknown } | null;
+  ajustes: { ajustes: Record<string, unknown>; menuEncabezado: unknown; tema?: TemaLienzo | null } | null;
   seleccion: string | null;
   avisoSeccion?: (s: WebsitePageSection) => AvisoFaltanDatos | null;
   onClic?: (id: string, detalle: DetalleClic) => void;
@@ -92,7 +95,12 @@ export function usePuenteLienzo({ iframe, url, secciones, ajustes, seleccion, av
 
   const enviarAjustes = useCallback(() => {
     if (!ajustes) return;
-    const mensaje = { type: 'goadmin:settings', ajustes: ajustes.ajustes, menuEncabezado: ajustes.menuEncabezado ?? null };
+    const mensaje = {
+      type: 'goadmin:settings',
+      ajustes: ajustes.ajustes,
+      menuEncabezado: ajustes.menuEncabezado ?? null,
+      ...(ajustes.tema ? { tema: ajustes.tema } : {}),
+    };
     const serie = JSON.stringify(mensaje);
     if (serie === ultimoAjustes.current) return;
     ultimoAjustes.current = serie;

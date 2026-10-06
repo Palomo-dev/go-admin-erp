@@ -38,6 +38,7 @@ import {
   mismoEstilo,
   radioBoton,
   secundarioDe,
+  temaParaLienzo,
   textoSobreAcento,
   tokensExtendidosDisponibles,
 } from '../tokensEstilo';
@@ -207,6 +208,20 @@ describe('estilo del sitio en el borrador (A/06a)', () => {
     });
     expect(radioBoton({ radio: 4, estiloBoton: 'pastilla' })).toBe(9999);
     expect(tokensExtendidosDisponibles()).toBe(false);
+  });
+
+  test('tema en edición para el lienzo: el grupo `tema` tal cual, con el principal solo en sedes con revisión', () => {
+    const d = escribirEstilo(documento(), { ...marfil, preset: null }, true);
+    expect(temaParaLienzo(null, false, null)).toBeNull();
+    const principal = temaParaLienzo(d, false, { documento: documento(), origen: 'revision' });
+    expect(principal).toEqual({ tema: d.tema, esSede: false, principal: null });
+    expect(principal?.tema.tipografia.titulos).toEqual({ mode: 'value', value: marfil.fuenteTitulos });
+    expect(principal?.tema.estiloBoton).toEqual({ mode: 'value', value: marfil.estiloBoton });
+    expect(temaParaLienzo(d, true, { documento: documento(), origen: 'revision' })?.principal).toEqual(documento().tema);
+    // Principal legacy: no aporta tokens (D12), igual que el sitio publicado.
+    expect(temaParaLienzo(d, true, { documento: documento(), origen: 'legacy' })?.principal).toBeNull();
+    // Lo que se manda es válido para el contrato que el sitio aplica (esquema estricto).
+    expect(validarDocumentoSitio({ ...d, tema: principal?.tema }).ok).toBe(true);
   });
 });
 

@@ -51,6 +51,23 @@ export function escalaVista(anchoDisponible: number, anchoViewport: number): num
 }
 
 /** Origen de una URL para `postMessage` (nunca `*`); `null` si la URL no es válida o no es http(s). */
+/**
+ * Dirección que aplica en vivo lo que se edita (`goadmin:settings`): el sitio solo escucha con
+ * `?preview=1`. La vista previa del borrador (`/vista-previa/<token>`) es una barra con el sitio
+ * en un iframe interior (`?marco=1`), donde ningún mensaje llega: se pide directamente el marco.
+ */
+export function urlVistaEnVivo(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    if (u.pathname.startsWith('/vista-previa/')) u.searchParams.set('marco', '1');
+    u.searchParams.set('preview', '1');
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
 export function origenDe(url: string | null | undefined): string | null {
   if (!url) return null;
   try {

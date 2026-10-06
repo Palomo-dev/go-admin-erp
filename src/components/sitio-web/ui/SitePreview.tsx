@@ -5,7 +5,7 @@ import { RefreshCw, TriangleAlert } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { clasesBoton } from '@/components/kit';
-import { escalaVista, origenDe } from './dispositivos';
+import { escalaVista, origenDe, urlVistaEnVivo } from './dispositivos';
 import { useTextosComun } from './textos';
 
 /**
@@ -14,9 +14,11 @@ import { useTextosComun } from './textos';
  * da la API V2), escalado al ancho disponible. Los colores, fuentes y botones
  * del CLIENTE solo existen aquí dentro: nunca tiñen el cromo del ERP.
  *
- * - `ajustes`: estilo en edición sin guardar; se envía como
- *   `{ type: 'goadmin:settings', ajustes, menuEncabezado }` (el mismo mensaje
- *   que el lienzo del editor) al ORIGEN de `url`, nunca a `*`.
+ * - `ajustes` y `tema`: estilo en edición sin guardar; se envían como
+ *   `{ type: 'goadmin:settings', ajustes, menuEncabezado, tema }` (el mismo
+ *   mensaje que el lienzo del editor) al ORIGEN de `url`, nunca a `*`; cuando
+ *   el sitio avisa `goadmin:ready`, se le reenvían. Para que el sitio los
+ *   aplique, `enVivo` abre la dirección en vivo (`urlVistaEnVivo`).
  * - `interactivo=false` (por defecto): miniatura sin foco ni clics (Resumen,
  *   tarjetas). `true` en Diseño y el asistente.
  * - Estados: cargando (esqueleto), error con «Reintentar», vacía (sin url).
@@ -31,6 +33,14 @@ export interface SitePreviewProps {
   /** Estilo en edición que el sitio aplica sin guardar. */
   ajustes?: unknown;
   menuEncabezado?: unknown;
+  /** Estilo general V2 en edición (`temaParaLienzo`): fuentes, redondeo, botón y movimiento. */
+  tema?: unknown;
+  /**
+   * Abre la dirección en vivo (`urlVistaEnVivo`: `?preview=1`, y el marco interior de la vista
+   * previa del borrador) para que el sitio aplique `ajustes` y `tema`. Fijo por pantalla: si
+   * dependiera de que llegue el estilo, el iframe se recargaría al llegar.
+   */
+  enVivo?: boolean;
   interactivo?: boolean;
   /** Título accesible del iframe. */
   titulo?: string;
@@ -49,6 +59,8 @@ export function SitePreview({
   altoViewport = 900,
   ajustes,
   menuEncabezado,
+  tema,
+  enVivo = false,
   interactivo = false,
   titulo,
   textoVacio,
@@ -83,18 +95,36 @@ export function SitePreview({
     setError(false);
   }, [url, claveRecarga, intento]);
 
-  const origen = origenDe(url);
+  const src = enVivo ? urlVistaEnVivo(url) : url;
+  const origen = origenDe(src);
   const enviarAjustes = useCallback(() => {
     const ventana = iframe.current?.contentWindow;
-    if (!ventana || !origen || ajustes === undefined) return;
-    ventana.postMessage({ type: 'goadmin:settings', ajustes, menuEncabezado: menuEncabezado ?? null }, origen);
-  }, [ajustes, menuEncabezado, origen]);
+    if (!ventana || !origen || (ajustes === undefined && tema === undefined)) return;
+    ventana.postMessage(
+      { type: 'goadmin:settings', ajustes: ajustes ?? {}, menuEncabezado: menuEncabezado ?? null, ...(tema ? { tema } : {}) },
+      origen,
+    );
+  }, [ajustes, menuEncabezado, tema, origen]);
 
   useEffect(() => {
     if (cargando) return;
     const temporizador = setTimeout(enviarAjustes, ESPERA_ENVIO_MS);
     return () => clearTimeout(temporizador);
   }, [cargando, enviarAjustes]);
+
+  // El sitio escucha después de hidratar (puede ser después de `onLoad`): al avisar
+  // `goadmin:ready` se le reenvía el estilo. Solo de este iframe y de su origen.
+  const enviarRef = useRef(enviarAjustes);
+  enviarRef.current = enviarAjustes;
+  useEffect(() => {
+    if (!origen) return;
+    const alRecibir = (e: MessageEvent) => {
+      if (e.origin !== origen || e.source !== iframe.current?.contentWindow) return;
+      if ((e.data as { type?: unknown } | null)?.type === 'goadmin:ready') enviarRef.current();
+    };
+    window.addEventListener('message', alRecibir);
+    return () => window.removeEventListener('message', alRecibir);
+  }, [origen]);
 
   const escala = escalaVista(anchoDisponible, anchoViewport);
   const altoIframe = altoViewport === 'contenedor' ? (escala > 0 ? altoDisponible / escala : altoDisponible) : altoViewport;
@@ -122,9 +152,9 @@ export function SitePreview({
       ) : (
         <>
           <iframe
-            key={`${url}|${claveRecarga ?? ''}|${intento}`}
+            key={`${src}|${claveRecarga ?? ''}|${intento}`}
             ref={iframe}
-            src={url}
+            src={src ?? undefined}
             title={etiqueta}
             loading="lazy"
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups"

@@ -165,3 +165,30 @@ export function ajustesVivosDeEstilo(t: TokensEstilo): Record<string, unknown> {
     theme_mode: t.modo,
   };
 }
+
+/**
+ * Estilo general en edición que el lienzo del editor y la «Vista previa en vivo» de Diseño mandan
+ * al sitio dentro de `goadmin:settings` (`tema`). Va el grupo `tema` del documento tal cual: el
+ * sitio lo valida con su copia del contrato y lo resuelve con la MISMA regla que el sitio
+ * publicado (`temaPublicoDesdeMensaje` de goadmin-websites/lib/website/v2/temaPublico.ts), así
+ * que fuentes (con su hoja de Google Fonts), colores, redondeo, botón y movimiento se ven como al
+ * publicar. Aquí no se traduce nada a CSS: un solo punto de verdad, el del sitio.
+ *
+ * En una sede, `principal` es el tema del principal publicado (herencia D6). Si el principal es
+ * legacy no aporta tokens (D12), igual que en el sitio publicado.
+ */
+export interface TemaLienzo {
+  tema: DocumentoSitio['tema'];
+  esSede: boolean;
+  principal: DocumentoSitio['tema'] | null;
+}
+
+export function temaParaLienzo(
+  documento: DocumentoSitio | null | undefined,
+  esSede: boolean,
+  basePrincipal: { documento: DocumentoSitio; origen: 'revision' | 'legacy' } | null | undefined,
+): TemaLienzo | null {
+  if (!documento) return null;
+  const principal = esSede && basePrincipal?.origen === 'revision' ? basePrincipal.documento.tema : null;
+  return { tema: documento.tema, esSede, principal };
+}

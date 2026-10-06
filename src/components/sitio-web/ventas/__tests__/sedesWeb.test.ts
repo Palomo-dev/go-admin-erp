@@ -51,6 +51,14 @@ describe('dirección de la sede', () => {
     expect(slugValido('')).toBe(false);
   });
 
+  test('rechaza también los reservados del sitio público (RESERVED_SLUGS)', () => {
+    // Antes «Sedes en la web» los aceptaba y el resolvedor del sitio nunca servía esa sede.
+    for (const slug of ['nosotros', 'servicios', 'home', 'vista-previa', 'mi-cuenta', 'espacios']) {
+      expect(slugValido(slug)).toBe(false);
+    }
+    expect(slugValido('restaurante')).toBe(true);
+  });
+
   test('tumarca.com/centro, nunca centro.tumarca.goadmin.io', () => {
     expect(direccionSede('tumarca.com', 'centro')).toBe('tumarca.com/centro');
     expect(direccionSede('tu-marca.goadmin.io', 'norte')).toBe('tu-marca.goadmin.io/norte');

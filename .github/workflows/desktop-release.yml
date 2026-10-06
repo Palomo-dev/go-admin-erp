@@ -24,6 +24,11 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      publicar:
+        description: 'Publicar la release v<versión de electron/package.json> (para cuando no se puede empujar el tag)'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -162,7 +167,7 @@ jobs:
           AZURE_TRUSTED_SIGNING_ACCOUNT: ${{ secrets.AZURE_TRUSTED_SIGNING_ACCOUNT }}
           AZURE_TRUSTED_SIGNING_PROFILE: ${{ secrets.AZURE_TRUSTED_SIGNING_PROFILE }}
         run: |
-          $publish = if ("${{ github.ref }}".StartsWith('refs/tags/v')) { 'always' } else { 'never' }
+          $publish = if ("${{ github.ref }}".StartsWith('refs/tags/v') -or '${{ inputs.publicar }}' -eq 'true') { 'always' } else { 'never' }
           npm run build
           npx electron-builder --win --publish $publish
 
@@ -184,12 +189,12 @@ jobs:
       # electron-builder ya creó la release con los assets versionados; aquí se
       # añade la copia estable (y se reintenta cualquier asset que faltara).
       - name: Subir la copia estable GoAdminERP-Setup.exe a la release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.publicar
         working-directory: electron/release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "${{ github.ref_name }}"
+          $tag = if ("${{ github.ref }}".StartsWith('refs/tags/v')) { "${{ github.ref_name }}" } else { 'v' + (Get-Content ../package.json | ConvertFrom-Json).version }
           $assets = Get-ChildItem | Where-Object { $_.Name -match '^GoAdminERP-Setup(-.*)?\.(exe|exe\.blockmap)$' -or $_.Name -eq 'latest.yml' } | ForEach-Object { $_.FullName }
           gh release view $tag --repo ${{ github.repository }} 2>$null
           if ($LASTEXITCODE -ne 0) {

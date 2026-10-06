@@ -36,6 +36,7 @@ import {
 import {
   PAGINAS_BASE_GIRO,
   PLANTILLAS_PAGINA,
+  giroDeSede,
   giroDeTipoOrganizacion,
   paginasBasePorGiro,
   plantillaPorId,
@@ -251,6 +252,16 @@ describe('vista de la tabla (A/04a)', () => {
 });
 
 describe('tipos, plantillas y páginas base', () => {
+  test('una sede restaurante de un hotel ofrece las páginas de restaurante (giroDeSede)', () => {
+    const giro = giroDeSede('restaurant', giroDeTipoOrganizacion(2));
+    expect(giro).toBe('restaurante');
+    expect(plantillasParaGiro(giro).map((p) => p.id)).toEqual(expect.arrayContaining(['carta', 'carta_qr']));
+    // Sin tipo de sede (o uno desconocido): el giro de la organización.
+    expect(giroDeSede(null, 'hotel')).toBe('hotel');
+    expect(giroDeSede('', 'hotel')).toBe('hotel');
+    expect(giroDeSede('main', 'hotel')).toBe('hotel');
+  });
+
   test('tipo de página', () => {
     expect(esInicio({ tipo: 'builtin', slug: 'home' })).toBe(true);
     expect(claveTipoPagina({ tipo: 'builtin', slug: 'menu' })).toBe('carta');

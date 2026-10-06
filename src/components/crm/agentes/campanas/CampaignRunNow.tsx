@@ -57,6 +57,7 @@ function textoMotivo(t: ReturnType<typeof useTranslations>, m: Motivo): string {
 }
 
 export function CampaignRunNow({ estado, onRan }: Props) {
+  const tx = useTranslations("crm.agentesIa");
   const t = useTranslations("vozCampanasDisparo");
   const { diag, puedeEjecutar, cargando, error, recargar: cargar } = estado;
   const [ejecutando, setEjecutando] = useState(false);
@@ -66,7 +67,7 @@ export function CampaignRunNow({ estado, onRan }: Props) {
     try {
       const res = await fetch("/api/crm/voice-agents/campaigns/run-now", { method: "POST" });
       const json = (await res.json()) as EjecucionRespuesta;
-      if (!res.ok || !json?.success) throw new Error(json?.error || `Error ${res.status}`);
+      if (!res.ok || !json?.success) throw new Error(json?.error || tx("agentCampaignsPanel.error", { status: res.status }));
       const iniciadas = json.data?.total_calls_initiated ?? 0;
       const motivos = json.data?.total_errors ?? [];
       toast({

@@ -27,6 +27,7 @@ import { PROVIDERS_SETTINGS_HREF, type VoiceCatalogState } from "../useVoiceCata
 import { useAudioPreview } from "../voces/useAudioPreview";
 import { VoicePickCard } from "../voces/VoicePickCard";
 import { resolveEffectiveVoice, type AgentFormState } from "./useAgentForm";
+import { useTranslations } from "next-intl";
 
 interface Props {
   form: AgentFormState;
@@ -39,28 +40,29 @@ interface Props {
 const GROUP = "ag-voice";
 const INHERIT = "__inherit__";
 
-function effectiveSummary(form: AgentFormState, catalog: VoiceCatalogState): string {
+function effectiveSummary(form: AgentFormState, catalog: VoiceCatalogState, t: (clave: string, valores?: Record<string, string>) => string): string {
   const r = resolveEffectiveVoice(form, catalog.voices);
   switch (r.source) {
     case "agent":
-      return `Este agente hablará con «${r.voice.name}».`;
+      return t("agentVoiceTab.resumen.agente", { voz: r.voice.name });
     case "default":
-      return `Sin voz propia: hablará con la voz por defecto de la organización, «${r.voice.name}».`;
+      return t("agentVoiceTab.resumen.defecto", { voz: r.voice.name });
     case "loose":
-      return `Hablará con el identificador suelto ${r.voiceId} (no está en el catálogo).`;
+      return t("agentVoiceTab.resumen.suelto", { id: r.voiceId });
     default:
-      return "No hay ninguna voz elegida ni por defecto: hablará con la voz estándar de Google.";
+      return t("agentVoiceTab.resumen.ninguna");
   }
 }
 
 export function AgentVoiceTab({ form, patch, catalog, onGoToVoices }: Props) {
+  const t = useTranslations("crm.agentesIa");
   const { voices, defaultVoice, loading, error, tts, reload } = catalog;
   const player = useAudioPreview();
   const [advancedOpen, setAdvancedOpen] = useState(Boolean(form.voice_id));
 
   useEffect(() => {
     if (player.status === "error" && player.error) {
-      toast({ title: "No se pudo reproducir", description: player.error, variant: "destructive" });
+      toast({ title: t("agentVoiceTab.noPudoReproducir"), description: player.error, variant: "destructive" });
     }
   }, [player.status, player.error]);
 
@@ -74,15 +76,15 @@ export function AgentVoiceTab({ form, patch, catalog, onGoToVoices }: Props) {
       >
         <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
         {/* Tester UXM-D: un nombre de voz sin espacios (o un id suelto largo) medía 617 px a 375 px. */}
-        <span className="min-w-0 break-words">{effectiveSummary(form, catalog)}</span>
+        <span className="min-w-0 break-words">{effectiveSummary(form, catalog, t)}</span>
       </p>
 
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium text-gray-900 dark:text-gray-100">
-          Voz de este agente
+          {t("agentVoiceTab.vozEsteAgente")}
         </legend>
         {loading ? (
-          <div className="space-y-2" aria-busy="true" aria-label="Cargando el catálogo de voces">
+          <div className="space-y-2" aria-busy="true" aria-label={t("agentVoiceTab.cargandoCatalogoVoces")}>
             {[0, 1].map((i) => (
               <Skeleton key={i} className="h-20 w-full rounded-xl" />
             ))}
@@ -92,15 +94,15 @@ export function AgentVoiceTab({ form, patch, catalog, onGoToVoices }: Props) {
             role="alert"
             className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
           >
-            <span className="min-w-0 flex-1">No se pudo cargar el catálogo de voces: {error}</span>
+            <span className="min-w-0 flex-1">{t("agentVoiceTab.noPudoCargarCatalogo", { error })}</span>
             <Button type="button" size="sm" variant="outline" onClick={() => void reload()}>
-              Reintentar
+              {t("conocimiento.error.reintentar")}
             </Button>
           </div>
         ) : (
           <div
             role="radiogroup"
-            aria-label="Voz de este agente"
+            aria-label={t("agentVoiceTab.vozEsteAgente")}
             className="grid grid-cols-1 gap-2 sm:grid-cols-2"
           >
             <VoicePickCard
@@ -109,11 +111,11 @@ export function AgentVoiceTab({ form, patch, catalog, onGoToVoices }: Props) {
               checked={form.voice_ref_id === null}
               onSelect={() => select(null)}
               voice={null}
-              title="Voz por defecto de la organización"
+              title={t("agentVoiceTab.vozDefectoOrganizacion")}
               subtitle={
                 defaultVoice
-                  ? `Ahora es «${defaultVoice.name}»`
-                  : "Ninguna marcada: voz estándar de Google"
+                  ? t("agentVoiceTab.ahora", { name: defaultVoice.name })
+                  : t("agentVoiceTab.ningunaMarcadaVozEstandar")
               }
               previewStatus="idle"
             />
@@ -125,7 +127,7 @@ export function AgentVoiceTab({ form, patch, catalog, onGoToVoices }: Props) {
                 checked={form.voice_ref_id === v.id}
                 onSelect={() => select(v.id)}
                 voice={v}
-                subtitle={v.is_active ? undefined : "Inactiva: el agente no la usará"}
+                subtitle={v.is_active ? undefined : t("agentVoiceTab.inactivaAgenteNoUsara")}
                 previewStatus={player.statusFor(v.id)}
                 onPreview={() =>
                   player.toggle(v.id, v.preview_url || `/api/crm/voices/${v.id}/preview`)
@@ -139,12 +141,12 @@ export function AgentVoiceTab({ form, patch, catalog, onGoToVoices }: Props) {
           <div className="rounded-xl border border-dashed border-gray-300 p-5 text-center dark:border-gray-700">
             <Mic className="mx-auto h-7 w-7 text-blue-500" aria-hidden="true" />
             <p className="mt-2 text-sm font-medium text-gray-800 dark:text-gray-200">
-              Todavía no hay voces en el catálogo.
+              {t("agentVoiceTab.todaviaNoHayVoces")}
             </p>
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
               {tts.ready
-                ? "Añade una de la biblioteca o clona la tuya. Mientras tanto, este agente llamará con la voz estándar de Google."
-                : "Falta la clave de voz sintética (TTS): sin ella no se puede añadir ni clonar ninguna voz."}
+                ? t("agentVoiceTab.anadeBibliotecaClonaTuya")
+                : t("agentVoiceTab.faltaClaveVozSintetica")}
             </p>
             <div className="mt-3 flex flex-wrap justify-center gap-2">
               {onGoToVoices && (
@@ -154,12 +156,12 @@ export function AgentVoiceTab({ form, patch, catalog, onGoToVoices }: Props) {
                   className="bg-blue-600 text-white hover:bg-blue-700"
                   onClick={onGoToVoices}
                 >
-                  Añade una voz del catálogo
+                  {t("agentVoiceTab.anadeVozCatalogo")}
                 </Button>
               )}
               {!tts.ready && (
                 <Button asChild type="button" size="sm" variant="outline">
-                  <Link href={PROVIDERS_SETTINGS_HREF}>Guardar la clave de voz</Link>
+                  <Link href={PROVIDERS_SETTINGS_HREF}>{t("agentVoiceTab.guardarClaveVoz")}</Link>
                 </Button>
               )}
             </div>
@@ -167,37 +169,37 @@ export function AgentVoiceTab({ form, patch, catalog, onGoToVoices }: Props) {
         )}
         {catalog.refreshing && (
           <p className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> Actualizando…
+            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> {t("agentVoiceTab.actualizando")}
           </p>
         )}
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          Una voz clonada exige consentimiento registrado de su propietario (Ley 1581 de 2012).
+          {t("agentVoiceTab.vozClonadaExigeConsentimiento")}
         </p>
       </fieldset>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label htmlFor="ag-lang">Idioma</Label>
+          <Label htmlFor="ag-lang">{t("agentVoiceTab.idioma")}</Label>
           <Input
             id="ag-lang"
             value={form.language}
             onChange={(e) => patch({ language: e.target.value })}
           />
-          <p className="text-xs text-gray-500 dark:text-gray-400">Código, p. ej. es-CO</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{t("agentVoiceTab.codigoPEjCo")}</p>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="ag-stt">Transcripción</Label>
+          <Label htmlFor="ag-stt">{t("agentVoiceTab.transcripcion")}</Label>
           <Select value={form.stt_provider} onValueChange={(v) => patch({ stt_provider: v })}>
             <SelectTrigger id="ag-stt">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="deepgram">Deepgram nova-3</SelectItem>
-              <SelectItem value="twilio">Por defecto de Twilio</SelectItem>
+              <SelectItem value="twilio">{t("agentVoiceTab.defectoTwilio")}</SelectItem>
             </SelectContent>
           </Select>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Quién convierte la voz en texto
+            {t("agentVoiceTab.quienConvierteVozTexto")}
           </p>
         </div>
       </div>
@@ -212,11 +214,11 @@ export function AgentVoiceTab({ form, patch, catalog, onGoToVoices }: Props) {
               className={`h-3.5 w-3.5 transition-transform motion-reduce:transition-none ${advancedOpen ? "rotate-180" : ""}`}
               aria-hidden="true"
             />
-            Avanzado: identificador de voz suelto
+            {t("agentVoiceTab.avanzadoIdentificadorVozSuelto")}
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent className="space-y-1.5 pt-2">
-          <Label htmlFor="ag-voiceid">Identificador de voz suelto (opcional)</Label>
+          <Label htmlFor="ag-voiceid">{t("agentVoiceTab.identificadorVozSueltoOpcional")}</Label>
           <Input
             id="ag-voiceid"
             value={form.voice_id}
@@ -229,8 +231,7 @@ export function AgentVoiceTab({ form, patch, catalog, onGoToVoices }: Props) {
             className="flex items-start gap-1 text-xs text-gray-500 dark:text-gray-400"
           >
             <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
-            Salida de emergencia: solo entra en juego cuando la selección de arriba no resuelve a
-            ninguna voz activa.
+            {t("agentVoiceTab.salidaEmergenciaSoloEntra")}
           </p>
         </CollapsibleContent>
       </Collapsible>

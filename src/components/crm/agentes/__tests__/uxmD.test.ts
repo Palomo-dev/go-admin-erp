@@ -158,7 +158,8 @@ describe("UXM-D · guardas estáticas (375 px)", () => {
     const tab = read("editor/AgentVoiceTab.tsx");
     expect(tab).toContain("useAudioPreview");
     expect(tab).toContain("VoicePickCard");
-    expect(tab).toContain("Añade una voz del catálogo");
+    expect(tab).toContain('t("agentVoiceTab.anadeVozCatalogo")');
+    expect(JSON.parse(fs.readFileSync(path.join(process.cwd(), "messages/es.json"), "utf8")).crm.agentesIa.agentVoiceTab.anadeVozCatalogo).toBe("Añade una voz del catálogo");
     expect(tab).toContain("Avanzado");
     const card = read("voces/VoicePickCard.tsx");
     expect(card).toContain("VoiceAvatar");

@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { LibraryVoice } from "@/lib/services/crm/voiceLibrary";
 import { fetchJson } from "@/lib/utils/fetchJson";
 import { describeError } from "@/lib/utils/errorMessage";
+import { useTranslations } from "next-intl";
 
 export interface LibraryUiFilters {
   search: string;
@@ -44,6 +45,7 @@ export interface VoiceLibraryState {
 }
 
 export function useVoiceLibrary(): VoiceLibraryState {
+  const tx = useTranslations("crm.agentesIa");
   const [filters, setFilters] = useState<LibraryUiFilters>(DEFAULT_LIBRARY_FILTERS);
   const [debounced, setDebounced] = useState<LibraryUiFilters>(DEFAULT_LIBRARY_FILTERS);
   const [voices, setVoices] = useState<LibraryVoice[]>([]);
@@ -79,7 +81,7 @@ export function useVoiceLibrary(): VoiceLibraryState {
         cache: "no-store",
         signal: controller.signal,
       });
-      if (!json?.success || !json.data) throw new Error(json?.error || "La respuesta no indicó éxito");
+      if (!json?.success || !json.data) throw new Error(json?.error || tx("agentCampaignsPanel.respuestaNoIndicoExito"));
       const incoming = json.data.voices;
       setVoices((prev) => {
         if (!append) return incoming;

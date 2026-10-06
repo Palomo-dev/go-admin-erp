@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Play, Square } from "lucide-react";
 import { SoundWave } from "@/components/shared/motion";
 import type { PreviewStatus } from "./useAudioPreview";
+import { useTranslations } from "next-intl";
 
 interface Props {
   voiceName: string;
@@ -24,6 +25,7 @@ export const VoicePreviewButton = forwardRef<HTMLButtonElement, Props>(function 
   { voiceName, status, onToggle, disabled = false, className = "" },
   ref,
 ) {
+  const t = useTranslations("crm.agentesIa");
   const playing = status === "playing";
   const loading = status === "loading";
   return (
@@ -36,7 +38,7 @@ export const VoicePreviewButton = forwardRef<HTMLButtonElement, Props>(function 
       disabled={disabled || loading}
       aria-pressed={playing}
       aria-label={
-        playing ? `Detener la muestra de ${voiceName}` : `Escuchar una muestra de ${voiceName}`
+        playing ? t("voicePreviewButton.detenerMuestra", { voiceName }) : t("voicePreviewButton.escucharMuestra", { voiceName })
       }
       className={`min-w-0 gap-1.5 ${className}`}
     >
@@ -47,7 +49,7 @@ export const VoicePreviewButton = forwardRef<HTMLButtonElement, Props>(function 
       ) : (
         <Play className="h-4 w-4 shrink-0" aria-hidden="true" />
       )}
-      <span className="truncate">{playing ? "Detener" : "Escuchar"}</span>
+      <span className="truncate">{playing ? t("voicePreviewButton.detener") : t("voicePreviewButton.escuchar")}</span>
       {playing && <SoundWave active className="text-blue-600 dark:text-blue-400" />}
     </Button>
   );

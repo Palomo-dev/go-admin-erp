@@ -13,15 +13,19 @@
 
 import { useEffect, useState } from "react";
 import type { CatalogoModelos, ModeloIA } from "@/lib/services/aiSettingsService";
+import { useTranslations } from "next-intl";
 
 /**
  * Misma ruta que `fetchCatalogoModelos` de `aiSettingsService`. Se llama aquí
  * directamente porque ese módulo instancia el cliente de Supabase del navegador
  * al importarse, y esta lógica se prueba sin navegador.
  */
+/** Mensaje canónico (registros); `useAgentModels` lo muestra traducido. */
+const ERROR_CATALOGO = "No se pudo cargar el catálogo de modelos";
+
 async function fetchCatalogoModelos(): Promise<CatalogoModelos> {
   const res = await fetch("/api/chat/ai/modelos", { cache: "no-store" });
-  if (!res.ok) throw new Error("No se pudo cargar el catálogo de modelos");
+  if (!res.ok) throw new Error(ERROR_CATALOGO);
   return res.json();
 }
 
@@ -51,6 +55,8 @@ const GAMA_LABELS: Record<ModeloIA["gama"], string> = {
 export function resolveModelOptions(
   catalog: CatalogoModelos | null,
   current: string,
+  /** Traductor de `crm.agentesIa` (gamas y aviso); sin él, español. */
+  tr?: (clave: string) => string,
 ): ModelOption[] {
   if (!catalog) return [];
   const usable = new Set(catalog.proveedores.filter((p) => p.usable).map((p) => p.value));
@@ -61,7 +67,7 @@ export function resolveModelOptions(
       label: m.label,
       provider: m.provider,
       recomendado: m.recomendado,
-      hint: [GAMA_LABELS[m.gama] ?? m.gama, m.nota].filter(Boolean).join(" · ") || null,
+      hint: [(tr && m.gama in GAMA_LABELS ? tr(`agentModels.gamas.${m.gama}`) : GAMA_LABELS[m.gama]) ?? m.gama, m.nota].filter(Boolean).join(" · ") || null,
       fueraDeCatalogo: false,
     }));
   const trimmed = current.trim();
@@ -71,7 +77,7 @@ export function resolveModelOptions(
       label: trimmed,
       provider: "",
       recomendado: false,
-      hint: "Guardado en el agente, pero ya no está en el catálogo",
+      hint: tr ? tr("agentModels.fueraDeCatalogo") : "Guardado en el agente, pero ya no está en el catálogo",
       fueraDeCatalogo: true,
     });
   }
@@ -93,6 +99,7 @@ export interface AgentModelsState {
 }
 
 export function useAgentModels(current: string): AgentModelsState {
+  const t = useTranslations("crm.agentesIa");
   const [catalog, setCatalog] = useState<CatalogoModelos | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -104,7 +111,7 @@ export function useAgentModels(current: string): AgentModelsState {
         if (alive) setCatalog(c);
       })
       .catch((err: unknown) => {
-        if (alive) setError(err instanceof Error ? err.message : "Error desconocido");
+        if (alive) setError(err instanceof Error ? (err.message === ERROR_CATALOGO ? t("agentModels.noPudoCargarCatalogo") : err.message) : t("voiceAddForms.errorDesconocido"));
       })
       .finally(() => {
         if (alive) setLoading(false);
@@ -115,7 +122,7 @@ export function useAgentModels(current: string): AgentModelsState {
   }, []);
 
   return {
-    options: resolveModelOptions(catalog, current),
+    options: resolveModelOptions(catalog, current, t),
     loading,
     error,
     defaultValue: defaultModel(catalog),

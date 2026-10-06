@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Clock3, FileAudio, ShieldCheck, Sparkles } from "lucide-react";
 import { HABEAS_DATA_TEXT, estimateReadingSeconds, CLONE_SCRIPT_ES } from "@/lib/services/crm/voiceCloneScript";
+import { useTranslations } from "next-intl";
 
 interface Props {
   consent: boolean;
@@ -22,22 +23,25 @@ interface Props {
   checkboxRef?: React.Ref<HTMLButtonElement>;
 }
 
+/** `clave`: subclave de `crm.agentesIa.cloneStepConsent.pasos`. */
 const STEPS = [
-  { icon: FileAudio, text: "Lees en voz alta un guion corto que verás en pantalla; se graba aquí mismo." },
-  { icon: Sparkles, text: "La grabación viaja a ElevenLabs, que crea una réplica de tu voz en unos segundos." },
-  { icon: Clock3, text: `Tarda menos de ${Math.ceil(estimateReadingSeconds(CLONE_SCRIPT_ES) / 60) + 1} minutos. El audio no se guarda en esta plataforma.` },
-];
+  { icon: FileAudio, clave: "leer" },
+  { icon: Sparkles, clave: "elevenlabs" },
+  { icon: Clock3, clave: "duracion" },
+] as const;
+const MINUTOS_CLON = Math.ceil(estimateReadingSeconds(CLONE_SCRIPT_ES) / 60) + 1;
 
 export function CloneStepConsent({ consent, onConsentChange, errorId = "clone-consent-error", error, checkboxRef }: Props) {
+  const t = useTranslations("crm.agentesIa");
   return (
     <div className="space-y-5">
       <ol className="grid gap-3 sm:grid-cols-3">
-        {STEPS.map(({ icon: Icon, text }, i) => (
+        {STEPS.map(({ icon: Icon, clave }, i) => (
           <li key={i} className="flex gap-3 rounded-lg border border-gray-200 p-3 text-sm dark:border-gray-700">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-200">
               <Icon className="h-4 w-4" aria-hidden="true" />
             </span>
-            <span className="text-gray-700 dark:text-gray-200">{text}</span>
+            <span className="text-gray-700 dark:text-gray-200">{t(`cloneStepConsent.pasos.${clave}`, { minutos: MINUTOS_CLON })}</span>
           </li>
         ))}
       </ol>
@@ -48,7 +52,7 @@ export function CloneStepConsent({ consent, onConsentChange, errorId = "clone-co
       >
         <h3 id="habeas-title" className="flex items-center gap-2 text-sm font-semibold text-amber-900 dark:text-amber-100">
           <ShieldCheck className="h-4 w-4" aria-hidden="true" />
-          Consentimiento para clonar una voz (Habeas Data)
+          {t("cloneStepConsent.consentimientoClonarVozHabeas")}
         </h3>
         <p className="mt-2 text-xs leading-relaxed text-amber-900 dark:text-amber-100">{HABEAS_DATA_TEXT}</p>
 
@@ -63,8 +67,7 @@ export function CloneStepConsent({ consent, onConsentChange, errorId = "clone-co
             className="mt-0.5"
           />
           <Label htmlFor="clone-consent" className="cursor-pointer text-sm font-medium leading-snug text-amber-900 dark:text-amber-100">
-            He leído el texto anterior y confirmo que la voz que voy a grabar es la mía o cuento con el
-            consentimiento por escrito de su propietario.
+            {t("cloneStepConsent.heLeidoTextoAnterior")}
           </Label>
         </div>
         {error && (

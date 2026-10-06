@@ -40,6 +40,7 @@ import { CloneVoiceWizard } from "./voces/CloneVoiceWizard";
 const VISTAS = ["biblioteca", "mias"] as const;
 
 export function VoicesPanel() {
+  const tx = useTranslations("crm.agentesIa");
   const t = useTranslations("crm.agentesIa.voces");
   const catalog = useVoiceCatalog();
   const [view, setViewUrl] = useOpcionUrl("vista", VISTAS, "biblioteca");
@@ -64,10 +65,9 @@ export function VoicesPanel() {
         >
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <p>
-            Falta la clave de ElevenLabs: puedes explorar la biblioteca, pero no añadir, clonar ni reproducir voces
-            en llamadas hasta guardarla en{" "}
+            {tx("voicesPanel.faltaClaveElevenlabsPuedes")}{" "}
             <Link href={PROVIDERS_SETTINGS_HREF} className="font-medium underline">
-              Configuración › CRM › Proveedores e IA
+              {tx("voicesPanel.configuracionCrmProveedoresE")}
             </Link>
             .
           </p>
@@ -80,8 +80,7 @@ export function VoicesPanel() {
         >
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>
-            No se pudo comprobar si hay clave de ElevenLabs configurada (falló la lectura de Proveedores e IA).
-            Añadir, clonar o escuchar pueden fallar con el error del proveedor.
+            {tx("voicesPanel.noPudoComprobarSi")}
           </span>
         </div>
       )}

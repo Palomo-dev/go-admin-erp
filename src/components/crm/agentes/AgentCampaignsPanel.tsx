@@ -64,6 +64,7 @@ function CampaignsPanelInner({
   agents: VoiceAgentListItem[];
   lookups: CrmLookupsState;
 }) {
+  const t = useTranslations("crm.agentesIa");
   const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -87,7 +88,7 @@ function CampaignsPanelInner({
         "/api/crm/voice-agents/campaigns",
         { cache: "no-store" },
       );
-      if (!json?.success) throw new Error(json?.error || "La respuesta no indicó éxito");
+      if (!json?.success) throw new Error(json?.error || t("agentCampaignsPanel.respuestaNoIndicoExito"));
       setCampaigns(json.data ?? []);
     } catch (err) {
       logError("[AgentCampaignsPanel] cargar campañas", err);
@@ -103,13 +104,13 @@ function CampaignsPanelInner({
 
   const create = async () => {
     if (!name.trim()) {
-      toast({ title: "La campaña necesita un nombre", variant: "destructive" });
+      toast({ title: t("agentCampaignsPanel.campanaNecesitaNombre"), variant: "destructive" });
       return;
     }
     if (!effectiveAgentId) {
       toast({
-        title: "Primero crea un agente",
-        description: "La campaña necesita un agente que llame.",
+        title: t("agentCampaignsPanel.primeroCreaAgente"),
+        description: t("agentCampaignsPanel.campanaNecesitaAgenteLlame"),
         variant: "destructive",
       });
       return;
@@ -122,17 +123,17 @@ function CampaignsPanelInner({
         body: JSON.stringify(buildCampaignBody({ name, voiceAgentId: effectiveAgentId, stageId })),
       });
       const json = await res.json();
-      if (!res.ok || !json?.success) throw new Error(json?.error || `Error ${res.status}`);
+      if (!res.ok || !json?.success) throw new Error(json?.error || t("agentCampaignsPanel.error", { status: res.status }));
       setName("");
       setStageId(null);
       toast({
-        title: "Campaña creada en borrador",
-        description: "Actívala cuando quieras que empiece a llamar.",
+        title: t("agentCampaignsPanel.campanaCreadaBorrador"),
+        description: t("agentCampaignsPanel.activalaCuandoQuierasEmpiece"),
       });
       void load();
     } catch (err) {
       toast({
-        title: "No se pudo crear la campaña",
+        title: t("agentCampaignsPanel.noPudoCrearCampana"),
         description: describeError(err),
         variant: "destructive",
       });
@@ -150,14 +151,14 @@ function CampaignsPanelInner({
         body: JSON.stringify(body),
       });
       const json = await res.json();
-      if (!res.ok || !json?.success) throw new Error(json?.error || `Error ${res.status}`);
+      if (!res.ok || !json?.success) throw new Error(json?.error || t("agentCampaignsPanel.error", { status: res.status }));
       toast({ title: ok });
       void load();
       // Activar o detener cambia lo que la compuerta dice de la campaña.
       void diagnostico.recargar();
     } catch (err) {
       toast({
-        title: "No se pudo actualizar",
+        title: t("agentCampaignsPanel.noPudoActualizar"),
         description: describeError(err),
         variant: "destructive",
       });
@@ -185,21 +186,21 @@ function CampaignsPanelInner({
           className="mb-3 flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-gray-100"
         >
           <Megaphone className="h-4 w-4" aria-hidden="true" />
-          Nueva campaña
+          {t("agentCampaignsPanel.nuevaCampana")}
         </h2>
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <Label htmlFor="c-name">Nombre</Label>
+            <Label htmlFor="c-name">{t("agentCampaignsPanel.nombre")}</Label>
             <Input
               id="c-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Ej. Seguimiento de propuestas"
+              placeholder={t("agentCampaignsPanel.ejSeguimientoPropuestas")}
             />
           </div>
           {selectableAgents.length > 1 && (
             <div className="space-y-1.5">
-              <Label htmlFor="c-agent">Agente que llama</Label>
+              <Label htmlFor="c-agent">{t("agentCampaignsPanel.agenteLlama")}</Label>
               <Select value={effectiveAgentId} onValueChange={setAgentId}>
                 {/* Tester UXM-D: un nombre largo desbordaba 23 px a 375 px y tapaba el chevron. */}
                 <SelectTrigger id="c-agent" className="[&>span]:line-clamp-1">
@@ -209,7 +210,7 @@ function CampaignsPanelInner({
                   {selectableAgents.map((a) => (
                     <SelectItem key={a.id} value={a.id}>
                       {a.name}
-                      {a.is_active ? "" : " (inactivo)"}
+                      {a.is_active ? "" : t("agentCampaignsPanel.inactivo")}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -218,7 +219,7 @@ function CampaignsPanelInner({
           )}
           {selectableAgents.length === 0 && (
             <p role="status" className="text-xs text-amber-800 dark:text-amber-200">
-              No hay agentes: crea uno en la pestaña «Agentes» antes de lanzar una campaña.
+              {t("agentCampaignsPanel.noHayAgentesCrea")}
             </p>
           )}
           <CampaignTargetPicker
@@ -237,26 +238,26 @@ function CampaignsPanelInner({
           disabled={busy || selectableAgents.length === 0}
         >
           {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : null}
-          Crear campaña
+          {t("agentCampaignsPanel.crearCampana")}
         </Button>
       </section>
 
       {loading ? (
         <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-          Cargando campañas…
+          {t("agentCampaignsPanel.cargandoCampanas")}
         </div>
       ) : loadError ? (
         <LoadErrorState
-          title="No se pudieron cargar las campañas"
+          title={t("agentCampaignsPanel.noPudieronCargarCampanas")}
           message={loadError}
           onRetry={() => void load()}
           isRetrying={loading}
         />
       ) : campaigns.length === 0 ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400">Todavía no hay campañas.</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">{t("agentCampaignsPanel.todaviaNoHayCampanas")}</p>
       ) : (
-        <ul className="grid grid-cols-1 gap-3 md:grid-cols-2" aria-label="Campañas">
+        <ul className="grid grid-cols-1 gap-3 md:grid-cols-2" aria-label={t("pestanas.campanas")}>
           {campaigns.map((c) => (
             <CampaignCard
               key={c.id}
@@ -267,10 +268,10 @@ function CampaignsPanelInner({
               diagnostico={diagnostico.diag?.campanas.find((d) => d.id === c.id)}
               motivosOrganizacion={diagnostico.diag?.organizacion ?? []}
               onActivate={(row) =>
-                void patch(row.id, { status: "running", emergency_stop: false }, "Campaña activada")
+                void patch(row.id, { status: "running", emergency_stop: false }, t("agentCampaignsPanel.campanaActivada"))
               }
               onStop={(row) =>
-                void patch(row.id, { emergency_stop: true, status: "paused" }, "Campaña detenida")
+                void patch(row.id, { emergency_stop: true, status: "paused" }, t("agentCampaignsPanel.campanaDetenida"))
               }
             />
           ))}

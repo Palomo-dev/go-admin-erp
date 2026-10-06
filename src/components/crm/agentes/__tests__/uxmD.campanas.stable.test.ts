@@ -175,7 +175,10 @@ describe("UXM-D (de tester r1) · useAudioPreview (comportamiento)", () => {
   test("las pestañas comparten el mismo botón «Escuchar» con aria-pressed y aria-label", () => {
     const btn = SRC("src/components/crm/agentes/voces/VoicePreviewButton.tsx");
     expect(btn).toContain("aria-pressed={playing}");
-    expect(btn).toMatch(/aria-label=\{\s*playing \? `Detener la muestra de \$\{voiceName\}` : `Escuchar una muestra de \$\{voiceName\}`/);
+    expect(btn).toMatch(/aria-label=\{\s*playing \? t\("voicePreviewButton\.detenerMuestra", \{ voiceName \}\) : t\("voicePreviewButton\.escucharMuestra", \{ voiceName \}\)/);
+    // El texto vive en messages (crm.agentesIa.voicePreviewButton), en español y en los demás idiomas.
+    const es = JSON.parse(fs.readFileSync(path.join(process.cwd(), "messages/es.json"), "utf8")).crm.agentesIa.voicePreviewButton;
+    expect(es).toMatchObject({ detenerMuestra: "Detener la muestra de {voiceName}", escucharMuestra: "Escuchar una muestra de {voiceName}" });
     for (const f of ["voces/VoiceCard.tsx", "voces/MyVoiceCard.tsx", "voces/VoicePickCard.tsx"]) {
       expect(fs.readFileSync(path.join(ZONE, f), "utf8")).toContain("<VoicePreviewButton");
     }

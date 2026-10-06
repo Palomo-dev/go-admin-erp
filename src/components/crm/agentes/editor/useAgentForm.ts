@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { MANDATORY_TOOLS } from "@/lib/services/crm/voiceAgentTools";
 import type { VoiceCatalogRow } from "../useVoiceCatalog";
+import { useTranslations } from "next-intl";
 
 export type AgentDraft = { mode: "create" } | { mode: "edit"; id: string };
 
@@ -143,6 +144,7 @@ export interface AgentFormApi {
 }
 
 export function useAgentForm(draft: AgentDraft): AgentFormApi {
+  const tx = useTranslations("crm.agentesIa");
   const [form, setForm] = useState<AgentFormState>(EMPTY_AGENT_FORM);
   const [loading, setLoading] = useState(draft.mode === "edit");
   const [saving, setSaving] = useState(false);
@@ -159,12 +161,12 @@ export function useAgentForm(draft: AgentDraft): AgentFormApi {
       try {
         const res = await fetch(`/api/crm/voice-agents/${draft.id}`, { cache: "no-store" });
         const json = await res.json();
-        if (!res.ok || !json?.success) throw new Error(json?.error || `Error ${res.status}`);
+        if (!res.ok || !json?.success) throw new Error(json?.error || tx("agentCampaignsPanel.error", { status: res.status }));
         if (alive) setForm(agentFormFromApi(json.data ?? {}));
       } catch (err) {
         toast({
-          title: "No se pudo cargar el agente",
-          description: err instanceof Error ? err.message : "Error desconocido",
+          title: tx("useAgentForm.noPudoCargarAgente"),
+          description: err instanceof Error ? err.message : tx("useAgentForm.errorDesconocido"),
           variant: "destructive",
         });
       } finally {
@@ -178,14 +180,14 @@ export function useAgentForm(draft: AgentDraft): AgentFormApi {
 
   const save = useCallback(async () => {
     if (!form.name.trim()) {
-      toast({ title: "El agente necesita un nombre", variant: "destructive" });
+      toast({ title: tx("useAgentForm.agenteNecesitaNombre"), variant: "destructive" });
       return false;
     }
     if (!form.llm_model.trim()) {
       // Sin modelo la fila quedaría con `""` y el runtime la taparía con uno cableado.
       toast({
-        title: "Elige el modelo de lenguaje",
-        description: "Está en el paso Propósito. Si el catálogo no cargó, escribe el nombre a mano.",
+        title: tx("useAgentForm.eligeModeloLenguaje"),
+        description: tx("useAgentForm.estaPasoPropositoSi"),
         variant: "destructive",
       });
       return false;
@@ -200,13 +202,13 @@ export function useAgentForm(draft: AgentDraft): AgentFormApi {
         body: JSON.stringify(agentFormToBody(form)),
       });
       const json = await res.json();
-      if (!res.ok || !json?.success) throw new Error(json?.error || `Error ${res.status}`);
-      toast({ title: draft.mode === "edit" ? "Agente actualizado" : "Agente creado" });
+      if (!res.ok || !json?.success) throw new Error(json?.error || tx("agentCampaignsPanel.error", { status: res.status }));
+      toast({ title: draft.mode === "edit" ? tx("useAgentForm.agenteActualizado") : tx("useAgentForm.agenteCreado") });
       return true;
     } catch (err) {
       toast({
-        title: "No se pudo guardar",
-        description: err instanceof Error ? err.message : "Error desconocido",
+        title: tx("useAgentForm.noPudoGuardar"),
+        description: err instanceof Error ? err.message : tx("useAgentForm.errorDesconocido"),
         variant: "destructive",
       });
       return false;

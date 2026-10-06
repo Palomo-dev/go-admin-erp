@@ -35,8 +35,9 @@ interface Props {
 }
 
 export function CampaignCard({ campaign: c, stages, pipelines, busy, onActivate, onStop, diagnostico, motivosOrganizacion = [] }: Props) {
+  const tx = useTranslations("crm.agentesIa");
   const t = useTranslations("crm.campanaVoz");
-  const status = campaignStatusView(c);
+  const status = campaignStatusView(c, (clave, valores) => tx(`campaignModel.${clave}`, valores));
   const canActivate = campaignCanActivate(c);
   return (
     <li className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
@@ -58,19 +59,19 @@ export function CampaignCard({ campaign: c, stages, pipelines, busy, onActivate,
       </div>
       <dl className="mt-2 space-y-1 text-xs text-gray-600 dark:text-gray-300">
         <div className="flex gap-1.5">
-          <dt className="shrink-0 text-gray-500 dark:text-gray-400">Destino</dt>
-          <dd className="min-w-0 break-words">{describeCampaignTarget(c, stages, pipelines)}</dd>
+          <dt className="shrink-0 text-gray-500 dark:text-gray-400">{tx("campaignCard.destino")}</dt>
+          <dd className="min-w-0 break-words">{describeCampaignTarget(c, stages, pipelines, (clave, valores) => tx(`campaignModel.${clave}`, valores))}</dd>
         </div>
         {c.voice_agents?.name && (
           <div className="flex gap-1.5">
-            <dt className="shrink-0 text-gray-500 dark:text-gray-400">Agente</dt>
+            <dt className="shrink-0 text-gray-500 dark:text-gray-400">{tx("editor.prueba.agenteSinNombre")}</dt>
             <dd className="min-w-0 truncate">{c.voice_agents.name}</dd>
           </div>
         )}
         <div className="flex gap-1.5">
-          <dt className="shrink-0 text-gray-500 dark:text-gray-400">Topes</dt>
+          <dt className="shrink-0 text-gray-500 dark:text-gray-400">{tx("campaignCard.topes")}</dt>
           <dd>
-            {c.max_calls_per_day}/día · {c.max_calls_per_hour}/hora · {c.max_concurrent} a la vez
+            {tx("campaignCard.diaHoraVez", { max_calls_per_day: c.max_calls_per_day, max_calls_per_hour: c.max_calls_per_hour, max_concurrent: c.max_concurrent })}
           </dd>
         </div>
       </dl>
@@ -98,7 +99,7 @@ export function CampaignCard({ campaign: c, stages, pipelines, busy, onActivate,
             ) : (
               <Play className="mr-1 h-4 w-4" aria-hidden="true" />
             )}
-            Activar
+            {tx("activar")}
           </Button>
         ) : (
           <Button
@@ -113,7 +114,7 @@ export function CampaignCard({ campaign: c, stages, pipelines, busy, onActivate,
             ) : (
               <OctagonX className="mr-1 h-4 w-4" aria-hidden="true" />
             )}
-            Parada de emergencia
+            {tx("campaignCard.paradaEmergencia")}
           </Button>
         )}
       </div>

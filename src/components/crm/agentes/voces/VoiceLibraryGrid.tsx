@@ -21,6 +21,7 @@ import { useVoiceLibrary } from "./useVoiceLibrary";
 import { useAudioPreview } from "./useAudioPreview";
 import { VoiceLibraryFilters } from "./VoiceLibraryFilters";
 import { VoiceCard } from "./VoiceCard";
+import { useTranslations } from "next-intl";
 
 interface Props {
   /** `provider_voice_id` de las voces que ya están en «Mis voces». */
@@ -33,6 +34,7 @@ interface Props {
 const SKELETONS = Array.from({ length: 8 }, (_, i) => i);
 
 export function VoiceLibraryGrid({ ownedVoiceIds, onAdded, account }: Props) {
+  const t = useTranslations("crm.agentesIa");
   const lib = useVoiceLibrary();
   const player = useAudioPreview();
   const [adding, setAdding] = useState<string | null>(null);
@@ -41,7 +43,7 @@ export function VoiceLibraryGrid({ ownedVoiceIds, onAdded, account }: Props) {
 
   useEffect(() => {
     if (player.status === "error" && player.error) {
-      toast({ title: "No se pudo reproducir", description: player.error, variant: "destructive" });
+      toast({ title: t("voiceLibraryGrid.noPudoReproducir"), description: player.error, variant: "destructive" });
     }
   }, [player.status, player.error]);
 
@@ -75,15 +77,15 @@ export function VoiceLibraryGrid({ ownedVoiceIds, onAdded, account }: Props) {
             }),
           }
         );
-        if (!json?.success) throw new Error(json?.error || "La respuesta no indicó éxito");
+        if (!json?.success) throw new Error(json?.error || t("agentCampaignsPanel.respuestaNoIndicoExito"));
         setJustAdded((prev) => new Set(prev).add(voice.voice_id));
         toast({
-          title: json.data?.already_in_catalog ? `«${voice.name}» ya estaba en tus voces` : `«${voice.name}» añadida a tus voces`,
-          description: "Puedes marcarla por defecto o asignársela a un agente en la pestaña Mis voces.",
+          title: json.data?.already_in_catalog ? t("voiceLibraryGrid.yaEstabaTusVoces", { name: voice.name }) : t("voiceLibraryGrid.anadidaTusVoces", { name: voice.name }),
+          description: t("voiceLibraryGrid.puedesMarcarlaDefectoAsignarsela"),
         });
         onAdded();
       } catch (err) {
-        toast({ title: "No se pudo añadir la voz", description: describeError(err), variant: "destructive" });
+        toast({ title: t("voiceLibraryGrid.noPudoAnadirVoz"), description: describeError(err), variant: "destructive" });
       } finally {
         setAdding(null);
       }
@@ -102,7 +104,7 @@ export function VoiceLibraryGrid({ ownedVoiceIds, onAdded, account }: Props) {
       />
 
       {lib.loading && (
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-busy="true" aria-label="Cargando voces">
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-busy="true" aria-label={t("voiceLibraryGrid.cargandoVoces")}>
           {SKELETONS.map((i) => (
             <li key={i} className="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
               <div className="flex items-center gap-3">
@@ -127,20 +129,20 @@ export function VoiceLibraryGrid({ ownedVoiceIds, onAdded, account }: Props) {
       )}
 
       {!lib.loading && lib.error && (
-        <LoadErrorState title="No se pudo cargar la biblioteca de ElevenLabs" message={lib.error} onRetry={lib.retry} />
+        <LoadErrorState title={t("voiceLibraryGrid.noPudoCargarBiblioteca")} message={lib.error} onRetry={lib.retry} />
       )}
 
       {!lib.loading && !lib.error && lib.voices.length === 0 && (
         <FadeIn className="rounded-xl border border-dashed border-gray-300 p-10 text-center dark:border-gray-700">
           <Music4 className="mx-auto h-8 w-8 text-blue-500" aria-hidden="true" />
-          <p className="mt-3 text-sm font-medium text-gray-800 dark:text-gray-200">Ninguna voz coincide con esos filtros.</p>
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Prueba con otra palabra o quita algún filtro.</p>
-          <Button className="mt-4" variant="outline" onClick={lib.clearFilters}>Limpiar filtros</Button>
+          <p className="mt-3 text-sm font-medium text-gray-800 dark:text-gray-200">{t("voiceLibraryGrid.ningunaVozCoincideEsos")}</p>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t("voiceLibraryGrid.pruebaOtraPalabraQuita")}</p>
+          <Button className="mt-4" variant="outline" onClick={lib.clearFilters}>{t("voiceLibraryGrid.limpiarFiltros")}</Button>
         </FadeIn>
       )}
 
       {!lib.loading && !lib.error && lib.voices.length > 0 && (
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-label="Voces de la biblioteca">
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-label={t("voiceLibraryGrid.vocesBiblioteca")}>
           {lib.voices.map((v, i) => (
             <li key={v.voice_id} className="h-full min-w-0">
               <FadeIn transition={{ duration: 0.2, delay: Math.min(i % 24, 12) * 0.02 }} className="h-full">
@@ -164,7 +166,7 @@ export function VoiceLibraryGrid({ ownedVoiceIds, onAdded, account }: Props) {
         <div className="flex justify-center">
           <Button variant="outline" onClick={lib.loadMore} disabled={lib.loadingMore}>
             {lib.loadingMore && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
-            {lib.loadingMore ? "Cargando más voces…" : "Cargar más voces"}
+            {lib.loadingMore ? t("voiceLibraryGrid.cargandoMasVoces") : t("voiceLibraryGrid.cargarMasVoces")}
           </Button>
         </div>
       )}

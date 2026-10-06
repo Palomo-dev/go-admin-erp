@@ -76,7 +76,7 @@ export function AgentesIaPage() {
         "/api/crm/voice-agents",
         { cache: "no-store" }
       );
-      if (!json?.success) throw new Error(json?.error || "La respuesta no indicó éxito");
+      if (!json?.success) throw new Error(json?.error || t("agentCampaignsPanel.respuestaNoIndicoExito"));
       setAgents(json.data ?? []);
     } catch (err) {
       logError("[AgentesIaPage] cargar agentes", err);
@@ -100,7 +100,7 @@ export function AgentesIaPage() {
           body: JSON.stringify({ is_active: !agent.is_active }),
         }
       );
-      if (!json?.success) throw new Error(json?.error || "La respuesta no indicó éxito");
+      if (!json?.success) throw new Error(json?.error || t("agentCampaignsPanel.respuestaNoIndicoExito"));
       toast({ title: agent.is_active ? t("desactivado") : t("activado") });
       void load();
     } catch (err) {

@@ -23,6 +23,7 @@ import {
 } from "@/lib/services/crm/voiceLibrary";
 import { DEFAULT_LIBRARY_FILTERS, type LibraryUiFilters } from "./useVoiceLibrary";
 import { SearchInput } from "@/components/kit/SearchInput";
+import { useTranslations } from "next-intl";
 
 const ALL = "__all__";
 
@@ -39,11 +40,11 @@ interface Chip {
   label: string;
 }
 
-function activeChips(f: LibraryUiFilters): Chip[] {
+function activeChips(f: LibraryUiFilters, todosIdiomas: string): Chip[] {
   const chips: Chip[] = [];
   if (f.search.trim()) chips.push({ key: "search", label: `«${f.search.trim()}»` });
   if (f.language !== DEFAULT_LIBRARY_FILTERS.language) {
-    chips.push({ key: "language", label: f.language === "all" ? "Todos los idiomas" : LANGUAGE_LABELS[f.language] ?? f.language });
+    chips.push({ key: "language", label: f.language === "all" ? todosIdiomas : LANGUAGE_LABELS[f.language] ?? f.language });
   }
   if (f.gender) chips.push({ key: "gender", label: GENDER_LABELS[f.gender] ?? f.gender });
   if (f.use_case) chips.push({ key: "use_case", label: USE_CASE_LABELS[f.use_case] ?? f.use_case });
@@ -53,7 +54,8 @@ function activeChips(f: LibraryUiFilters): Chip[] {
 const chipId = (key: keyof LibraryUiFilters) => `lib-chip-${key}`;
 
 export function VoiceLibraryFilters({ filters, onChange, onClear, resultCount, totalCount }: Props) {
-  const chips = activeChips(filters);
+  const t = useTranslations("crm.agentesIa");
+  const chips = activeChips(filters, t("voiceLibraryFilters.todosIdiomas"));
 
   // R2: al quitar un chip su botón desaparece; el foco pasa al chip siguiente (o
   // anterior) y, si era el último, al campo de búsqueda. Nunca al `body`.
@@ -73,7 +75,7 @@ export function VoiceLibraryFilters({ filters, onChange, onClear, resultCount, t
 
   const selectCount = chips.filter((c) => c.key !== "search").length;
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const countText = totalCount > 0 ? `${resultCount} de ${totalCount.toLocaleString("es-CO")} voces` : "";
+  const countText = totalCount > 0 ? t("voiceLibraryFilters.conteo", { n: resultCount, total: totalCount }) : "";
 
   return (
     <div className="space-y-3">
@@ -84,8 +86,8 @@ export function VoiceLibraryFilters({ filters, onChange, onClear, resultCount, t
           value={filters.search}
           onChange={(v) => onChange("search", v)}
           onValueChange={(v) => onChange("search", v)}
-          placeholder="Buscar por nombre, acento o estilo…"
-          etiqueta="Buscar voz por nombre o descripción"
+          placeholder={t("voiceLibraryFilters.buscarNombreAcentoEstilo")}
+          etiqueta={t("voiceLibraryFilters.buscarVozNombreDescripcion")}
           className="min-w-0 flex-1"
         />
         <Button
@@ -97,9 +99,9 @@ export function VoiceLibraryFilters({ filters, onChange, onClear, resultCount, t
           onClick={() => setFiltersOpen((v) => !v)}
         >
           <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
-          Filtros
+          {t("voiceLibraryFilters.filtros")}
           {selectCount > 0 && (
-            <span className="rounded-full bg-blue-600 px-1.5 text-xs font-semibold text-white" aria-label={selectCount === 1 ? "1 activo" : `${selectCount} activos`}>
+            <span className="rounded-full bg-blue-600 px-1.5 text-xs font-semibold text-white" aria-label={selectCount === 1 ? t("voiceLibraryFilters.n1Activo") : t("voiceLibraryFilters.activos", { selectCount })}>
               {selectCount}
             </span>
           )}
@@ -114,28 +116,28 @@ export function VoiceLibraryFilters({ filters, onChange, onClear, resultCount, t
         className={`${filtersOpen ? "grid" : "hidden"} grid-cols-1 gap-2 md:grid md:grid-cols-3`}
       >
         <div>
-          <Label htmlFor="lib-language" className="sr-only">Idioma</Label>
+          <Label htmlFor="lib-language" className="sr-only">{t("voiceLibraryFilters.idioma")}</Label>
           <Select value={filters.language || ALL} onValueChange={(v) => onChange("language", v === ALL ? "all" : v)}>
-            <SelectTrigger id="lib-language" className="w-full" aria-label="Idioma">
-              <SelectValue placeholder="Idioma" />
+            <SelectTrigger id="lib-language" className="w-full" aria-label={t("voiceLibraryFilters.idioma")}>
+              <SelectValue placeholder={t("voiceLibraryFilters.idioma")} />
             </SelectTrigger>
             <SelectContent>
               {LANGUAGE_OPTIONS.map((code) => (
                 <SelectItem key={code} value={code}>{LANGUAGE_LABELS[code] ?? code}</SelectItem>
               ))}
-              <SelectItem value="all">Todos los idiomas</SelectItem>
+              <SelectItem value="all">{t("voiceLibraryFilters.todosIdiomas")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         <div>
-          <Label htmlFor="lib-gender" className="sr-only">Género de la voz</Label>
+          <Label htmlFor="lib-gender" className="sr-only">{t("voiceLibraryFilters.generoVoz")}</Label>
           <Select value={filters.gender || ALL} onValueChange={(v) => onChange("gender", v === ALL ? "" : v)}>
-            <SelectTrigger id="lib-gender" className="w-full" aria-label="Género de la voz">
-              <SelectValue placeholder="Género" />
+            <SelectTrigger id="lib-gender" className="w-full" aria-label={t("voiceLibraryFilters.generoVoz")}>
+              <SelectValue placeholder={t("voiceLibraryFilters.genero")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>Cualquier género</SelectItem>
+              <SelectItem value={ALL}>{t("voiceLibraryFilters.cualquierGenero")}</SelectItem>
               {Object.entries(GENDER_LABELS).map(([v, label]) => (
                 <SelectItem key={v} value={v}>{label}</SelectItem>
               ))}
@@ -144,13 +146,13 @@ export function VoiceLibraryFilters({ filters, onChange, onClear, resultCount, t
         </div>
 
         <div>
-          <Label htmlFor="lib-usecase" className="sr-only">Caso de uso</Label>
+          <Label htmlFor="lib-usecase" className="sr-only">{t("voiceLibraryFilters.casoUso")}</Label>
           <Select value={filters.use_case || ALL} onValueChange={(v) => onChange("use_case", v === ALL ? "" : v)}>
-            <SelectTrigger id="lib-usecase" className="w-full" aria-label="Caso de uso">
-              <SelectValue placeholder="Caso de uso" />
+            <SelectTrigger id="lib-usecase" className="w-full" aria-label={t("voiceLibraryFilters.casoUso")}>
+              <SelectValue placeholder={t("voiceLibraryFilters.casoUso")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>Cualquier uso</SelectItem>
+              <SelectItem value={ALL}>{t("voiceLibraryFilters.cualquierUso")}</SelectItem>
               {Object.entries(USE_CASE_LABELS).map(([v, label]) => (
                 <SelectItem key={v} value={v}>{label}</SelectItem>
               ))}
@@ -161,14 +163,14 @@ export function VoiceLibraryFilters({ filters, onChange, onClear, resultCount, t
 
       <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
         {chips.length > 0 ? (
-          <ul className="flex flex-wrap items-center gap-1.5" aria-label="Filtros activos">
+          <ul className="flex flex-wrap items-center gap-1.5" aria-label={t("voiceLibraryFilters.filtrosActivos")}>
             {chips.map((chip) => (
               <li key={chip.key}>
                 <button
                   type="button"
                   id={chipId(chip.key)}
                   onClick={() => removeChip(chip.key)}
-                  aria-label={`Quitar filtro ${chip.label}`}
+                  aria-label={t("voiceLibraryFilters.quitarFiltro", { label: chip.label })}
                   className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 font-medium text-blue-800 transition-colors hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-100 dark:hover:bg-blue-900"
                 >
                   {chip.label}
@@ -184,12 +186,12 @@ export function VoiceLibraryFilters({ filters, onChange, onClear, resultCount, t
                 className="h-7 px-2 text-xs"
                 onClick={clearAll}
               >
-                Limpiar filtros
+                {t("voiceLibraryFilters.limpiarFiltros")}
               </Button>
             </li>
           </ul>
         ) : (
-          <span>Español primero. Cambia el idioma, el género o el uso para afinar.</span>
+          <span>{t("voiceLibraryFilters.espanolPrimeroCambiaIdioma")}</span>
         )}
         <span className="ml-auto tabular-nums md:hidden" role="status" aria-live="polite">
           {countText}

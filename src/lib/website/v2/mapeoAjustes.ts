@@ -266,7 +266,8 @@ export function normalizarOpcionShell(columna: string, valor: unknown): unknown 
   if (valor === null || valor === undefined) return porDefecto;
   if (!regla) return valor;
   let candidato = valor;
-  if (regla.tipo === 'opcionOLista' && typeof valor === 'string' && valor.includes(',')) {
+  // Columna legacy (texto): «a,b» o una sola acción «reservar» son una lista; `auto`/`ninguna`, no.
+  if (regla.tipo === 'opcionOLista' && typeof valor === 'string' && !regla.valores.includes(valor)) {
     candidato = valor.split(',').map((v) => v.trim()).filter(Boolean);
   }
   if (regla.tipo === 'texto' && typeof candidato === 'string') candidato = candidato.trim();

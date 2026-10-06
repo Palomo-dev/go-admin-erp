@@ -61,6 +61,8 @@ export function SeccionLegales({ t, legales, error, creando, crear, organizacion
       {legales && (
         <ul className="divide-y divide-line rounded-lg border border-line">
           {legales.map((doc) => {
+            // Un solo botón primario: el del primer legal que falta; los demás, secundarios.
+            const esPrimerFaltante = doc.clave === legales.find((d) => d.estado === 'falta')?.clave;
             const IconoDoc = ICONOS_SECCION_CONFIGURACION.legales;
             const IconoAccion = ICONO_ACCION_LEGAL[doc.estado];
             return (
@@ -86,7 +88,7 @@ export function SeccionLegales({ t, legales, error, creando, crear, organizacion
               {doc.estado === 'falta' ? (
                 <button
                   type="button"
-                  className={clasesBoton({ variante: 'primario', tamano: 'sm' })}
+                  className={clasesBoton({ variante: esPrimerFaltante ? 'primario' : 'secundario', tamano: 'sm' })}
                   disabled={deshabilitado || creando !== null}
                   onClick={() => setAsistente(doc)}
                 >

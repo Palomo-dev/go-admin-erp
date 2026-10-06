@@ -213,7 +213,7 @@ export function ConfiguracionSitio() {
     return (
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[12rem_minmax(0,1fr)]">
         <IndiceConfiguracion t={t} />
-        <div className="flex min-w-0 max-w-4xl flex-col gap-4 lg:gap-6">
+        <div className="flex min-w-0 flex-col gap-4 lg:gap-6">
           {aviso}
           {(['datos', 'legales', 'codigo', 'chat', 'idioma', 'mantenimiento', 'peligro'] as const).map(seccion)}
           {barra}

@@ -13,11 +13,16 @@ import { avisarCambioCatalogo } from '@/lib/services/website/avisarCambioCatalog
 import { useProductoDetalle } from '../ContextoProducto';
 import { DialogoNuevaEtiqueta, type EtiquetaCreada } from './DialogoNuevaEtiqueta';
 import { hexEtiqueta } from './colorEtiqueta';
+import { EtiquetasCartaQr } from './EtiquetasCartaQr';
+import { COLOR_KIND, type ChipKind, type KindCarta } from './etiquetasDieta';
+import { useTextosCartaQr } from '@/components/pos/mesas/solicitudes/textosCartaQr';
 
 interface Etiqueta {
   id: number;
   name: string;
   color: string | null;
+  /** 'dieta' | 'alergeno' | 'picante' | 'general' | null (Carta QR). */
+  kind?: string | null;
 }
 
 /**
@@ -30,6 +35,7 @@ export function EtiquetasProducto() {
   const t = useTranslations('productoDetalle.etiquetas');
   const tt = useTranslations('productoDetalle.acciones');
   const { toast } = useToast();
+  const tq = useTextosCartaQr();
   const { producto, organizacionId, resumen, permisos, recargarResumen, mensajeError } = useProductoDetalle();
 
   const [todas, setTodas] = useState<Etiqueta[]>([]);
@@ -47,7 +53,7 @@ export function EtiquetasProducto() {
   const cargar = useCallback(async () => {
     setError(null);
     const [et, rel] = await Promise.all([
-      supabase.from('product_tags').select('id, name, color').eq('organization_id', organizacionId).order('name'),
+      supabase.from('product_tags').select('id, name, color, kind').eq('organization_id', organizacionId).order('name'),
       supabase.from('product_tag_relations').select('tag_id').eq('product_id', producto.id),
     ]);
     const e = et.error ?? rel.error;
@@ -108,6 +114,44 @@ export function EtiquetasProducto() {
     } finally {
       setGuardando(false);
     }
+  };
+
+  /**
+   * Chip de la Carta QR: marcar crea la etiqueta con su kind (o le pone el kind a la que ya
+   * existe) y la asigna; desmarcar solo la quita del producto (la etiqueta sigue en la organización).
+   */
+  const alAlternarCarta = async (kind: KindCarta, chip: ChipKind) => {
+    if (chip.marcada && chip.id != null) {
+      await aplicar(asignadas.filter((id) => id !== chip.id));
+      return;
+    }
+    setGuardando(true);
+    let id = chip.id;
+    try {
+      if (id == null) {
+        const { data, error: e } = await supabase
+          .from('product_tags')
+          .insert({ organization_id: organizacionId, name: chip.nombre, color: COLOR_KIND[kind], kind })
+          .select('id, name, color, kind')
+          .single();
+        if (e) throw e;
+        const creada = data as Etiqueta;
+        id = creada.id;
+        setTodas((ts) => [...ts, creada].sort((a, b) => a.name.localeCompare(b.name)));
+      } else if (chip.cambiaKind) {
+        const { error: e } = await supabase.from('product_tags').update({ kind }).eq('id', id).eq('organization_id', organizacionId);
+        if (e) throw e;
+        setTodas((ts) => ts.map((x) => (x.id === id ? { ...x, kind } : x)));
+      }
+    } catch (e) {
+      toast({ variant: 'destructive', title: tq('etiquetas.error'), description: mensajeError(e) });
+      return;
+    } finally {
+      setGuardando(false);
+    }
+    if (id == null) return;
+    if (!asignadas.includes(id)) await aplicar([...asignadas, id]);
+    else avisarCambioCatalogo();
   };
 
   const alCrear = async (et: EtiquetaCreada) => {
@@ -197,6 +241,8 @@ export function EtiquetasProducto() {
           </ul>
         )}
       </div>
+
+      <EtiquetasCartaQr etiquetas={todas} asignadas={asignadas} deshabilitado={bloqueado || guardando} onAlternar={(k, c) => void alAlternarCarta(k, c)} />
 
       <div className="rounded-lg border border-line-info bg-info-subtle p-4 text-info-text">
         <h3 className="mb-2 flex items-center gap-2 text-sm font-medium">

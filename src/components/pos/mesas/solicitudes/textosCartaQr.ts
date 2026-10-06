@@ -52,6 +52,16 @@ export const TEXTOS_CARTA_QR = {
     aspectos: 'Destacó: {lista}',
     sinComentario: 'Sin comentario',
   },
+  etiquetas: {
+    titulo: 'Dieta y alérgenos (Carta QR)',
+    descripcion: 'La Carta QR filtra por dieta y picante, y avisa los alérgenos en la ficha del plato.',
+    kind: {
+      dieta: 'Dieta',
+      alergeno: 'Alérgenos',
+      picante: 'Picante',
+    },
+    error: 'No se pudo actualizar la etiqueta.',
+  },
   pedido: {
     comensal: 'Pidió {nombre}',
   },

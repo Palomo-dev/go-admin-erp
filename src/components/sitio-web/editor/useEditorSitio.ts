@@ -253,14 +253,21 @@ export function useEditorSitio() {
   // ── Carga inicial ───────────────────────────────────────────────────────────
   const cargar = useCallback(async () => {
     if (!organizationId) return;
-    setEstadoCarga('cargando');
+    // El borrador V2 puede llegar antes que esta carga: si ya entró (docLocal), la página, la
+    // lista de páginas y el estado son suyos y esta carga no los pisa. Sin esta guarda, una
+    // página que solo existe en el borrador (p. ej. una recién creada) volvía a «cargando» y el
+    // editor se quedaba en el esqueleto para siempre.
+    const yaEnV2 = () => docLocalRef.current !== null;
+    if (!yaEnV2()) setEstadoCarga('cargando');
     try {
       const pageData = await websitePageBuilderService.getPageWithSections(pageIdInicial).catch(() => null);
       const branchDePagina = (pageData as WebsitePage | null)?.branch_id ?? null;
       setSelectedBranchId(branchDePagina);
       setPaginaEsDeSede(branchDePagina !== null);
-      setCurrentPage(pageData);
-      if (pageData) resetSections(pageData.sections);
+      if (!yaEnV2()) {
+        setCurrentPage(pageData);
+        if (pageData) resetSections(pageData.sections);
+      }
 
       const [pagesData, settingsRaw, preview] = await Promise.all([
         websitePageBuilderService.getPages(organizationId, branchDePagina),
@@ -274,7 +281,7 @@ export function useEditorSitio() {
         propios = false;
       }
       setOutletSettingsExists(propios);
-      setPages(pagesData);
+      if (!yaEnV2()) setPages(pagesData);
       settingsRef.current = settingsData;
       setSettings(settingsData);
       setPreviewUrlBase(preview);
@@ -298,7 +305,7 @@ export function useEditorSitio() {
         setApiV2(false);
       }
       // Sin página legacy puede ser una página creada en el borrador V2: se decide al llegar el borrador.
-      setEstadoCarga(pageData ? 'listo' : 'cargando');
+      if (!yaEnV2()) setEstadoCarga(pageData ? 'listo' : 'cargando');
     } catch (error) {
       console.error('[editor] carga', mensaje(error, ''));
       setEstadoCarga('error');

@@ -4573,7 +4573,7 @@
       "retry": "Réessayer",
       "actionError": "Impossible d'enregistrer la modification. Réessayez.",
       "priority": {
-        "critical": "Urgente",
+        "critical": "Urgent",
         "high": "Priorité haute",
         "med": "Priorité moyenne",
         "low": "Priorité basse"

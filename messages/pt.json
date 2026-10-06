@@ -14795,11 +14795,11 @@
       "cuotasDe": "{pendientes} de {total}",
       "acciones": {
         "ver": "Ver conta",
-        "registrarAbono": "Registrar abono",
+        "registrarAbono": "Registrar pagamento",
         "recordatorio": "Enviar lembrete",
         "carteraCliente": "Carteira do cliente"
       },
-      "cobrarA": "Registrar abono de {cliente}",
+      "cobrarA": "Registrar pagamento de {cliente}",
       "recordarA": "Enviar lembrete a {cliente}",
       "venceEl": "Vence {fecha}",
       "vacio": {

@@ -20,8 +20,10 @@ import Link from 'next/link';
 import { loadStripe } from '@stripe/stripe-js';
 import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js';
 import type { LucideIcon } from 'lucide-react';
-import { AvisoTonal, BarraProgreso, EmptyState, FilaDato, FormField, FormSection, ListaDatos, PanelAdaptable, SettingRow, StatusBadge, clasesBoton } from '@/components/kit';
+import { AvisoTonal, BarraProgreso, EmptyState, FilaDato, FormField, FormSection, ListaDatos, PanelAdaptable, SearchInput, SettingRow, StatusBadge, clasesBoton } from '@/components/kit';
+import { PhoneField } from '@/components/kit/PhoneField';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useLocaleIntl } from '@/components/kit/useIdiomaKit';
@@ -48,6 +50,7 @@ import { CajaResumen, PasosEnCurso, type EstadoPasoFlujo } from './piezasFlujo';
 import type { DominioSitio, RespuestaVerificacion, TitularDominio } from './tiposDominios';
 import { useTextosDominios } from './textos';
 import { useFormatoDominio } from './useFormatoDominio';
+import { aE164, normalizarTelefono } from '@/lib/utils/telefono';
 
 const stripePromise = typeof window !== 'undefined' && process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) : null;
 
@@ -67,6 +70,22 @@ export interface DialogoComprarDominioProps {
 type Fase = 'buscar' | 'titular' | 'pago' | 'comprando' | 'listo' | 'fallo';
 
 const TITULAR_VACIO: TitularDominio = { nombre: '', correo: '', telefono: '', direccion: '', ciudad: '', departamento: '', codigoPostal: '', pais: 'CO' };
+
+/** Campos de texto y selects a 40 px, como el `PhoneField` y el resto de formularios del kit. */
+const CLASE_CAMPO_TITULAR = 'h-10 rounded-lg border-line-strong bg-surface text-fg';
+const CLASE_SELECT_TITULAR = 'h-10 rounded-lg border-line-strong bg-surface text-sm text-fg focus:ring-brand focus:ring-offset-0';
+
+/**
+ * Titular precargado con el teléfono ya en E.164: el de la organización puede
+ * venir como «3001234567» o «+57 300 1234567», y el `PhoneField` lo muestra
+ * bien pero la validación exige el indicativo.
+ */
+function titularInicialNormalizado(t: TitularDominio | null): TitularDominio {
+  if (!t) return TITULAR_VACIO;
+  const pais = /^[A-Z]{2}$/.test(t.pais) ? t.pais : 'CO';
+  const telefono = t.telefono ? (aE164(t.telefono, pais) ?? normalizarTelefono(t.telefono, pais).replace(/\s+/g, '')) : '';
+  return { ...t, telefono };
+}
 
 /** Colores del campo de tarjeta: el iframe de Stripe no lee clases, así que se toman de los tokens. */
 function estiloTarjeta() {
@@ -108,7 +127,7 @@ function FlujoCompra({ abierto, onAbiertoChange, titular: titularInicial, hayPri
   const [errorBusqueda, setErrorBusqueda] = useState<string | null>(null);
   const [sinServicio, setSinServicio] = useState(false);
   const [elegida, setElegida] = useState<OpcionDominio | null>(null);
-  const [titular, setTitular] = useState<TitularDominio>(titularInicial ?? TITULAR_VACIO);
+  const [titular, setTitular] = useState<TitularDominio>(() => titularInicialNormalizado(titularInicial));
   const [erroresTitular, setErroresTitular] = useState<ErroresTitular>({});
   const [setup, setSetup] = useState<{ clientSecret: string; setupIntentId: string } | null>(null);
   const [preparando, setPreparando] = useState(false);
@@ -131,7 +150,7 @@ function FlujoCompra({ abierto, onAbiertoChange, titular: titularInicial, hayPri
     setSinServicio(false);
     setTerminos(false);
     setSetup(null);
-    setTitular(titularInicial ?? TITULAR_VACIO);
+    setTitular(titularInicialNormalizado(titularInicial));
     setErroresTitular({});
     // Se reinicia solo al abrir; el titular precargado no cambia con el diálogo abierto.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -245,18 +264,20 @@ function FlujoCompra({ abierto, onAbiertoChange, titular: titularInicial, hayPri
 
   const precioTexto = elegida?.precio !== null && elegida?.precio !== undefined ? f.precio(elegida.precio, elegida.moneda) : '';
   const recomendado = recomendada(opciones);
-  const campo = (c: keyof TitularDominio, etiqueta: string, extra?: { tipo?: string; ayuda?: string; autoComplete?: string }) => {
+  const cambiarTitular = (c: keyof TitularDominio, v: string) => {
+    setTitular((p) => ({ ...p, [c]: v }));
+    if (erroresTitular[c]) setErroresTitular((p) => ({ ...p, [c]: undefined }));
+  };
+  const campo = (c: keyof TitularDominio, etiqueta: string, extra?: { tipo?: string; autoComplete?: string }) => {
     const e = erroresTitular[c];
     return (
-      <FormField etiqueta={etiqueta} obligatorio ayuda={extra?.ayuda} error={e ? t(`comprar.${e}`) : null}>
+      <FormField etiqueta={etiqueta} obligatorio error={e ? t(`comprar.${e}`) : null}>
         <Input
           type={extra?.tipo ?? 'text'}
           autoComplete={extra?.autoComplete}
           value={titular[c]}
-          onChange={(ev) => {
-            setTitular((p) => ({ ...p, [c]: ev.target.value }));
-            if (erroresTitular[c]) setErroresTitular((p) => ({ ...p, [c]: undefined }));
-          }}
+          onChange={(ev) => cambiarTitular(c, ev.target.value)}
+          className={CLASE_CAMPO_TITULAR}
         />
       </FormField>
     );
@@ -299,7 +320,23 @@ function FlujoCompra({ abierto, onAbiertoChange, titular: titularInicial, hayPri
           }}
         >
           <FormField etiqueta={t('comprar.campo')} className="min-w-0 flex-1">
-            <Input value={busqueda} autoFocus autoComplete="off" spellCheck={false} placeholder="tumarca" onChange={(e) => setBusqueda(e.target.value)} />
+            {(c) => (
+              <SearchInput
+                id={c.id}
+                value={busqueda}
+                onChange={() => undefined}
+                onValueChange={setBusqueda}
+                onEnter={(texto) => {
+                  void buscar(texto);
+                  return true;
+                }}
+                etiqueta={t('comprar.campo')}
+                placeholder="tumarca"
+                atajo={false}
+                cargando={buscando}
+                autoFocus
+              />
+            )}
           </FormField>
           <button type="submit" disabled={buscando || candidatosBusqueda(busqueda).length === 0} className={clasesBoton({ variante: 'primario', tamano: 'md' })}>
             <IconoBoton icono={ICONO.buscar} ocupado={buscando} />
@@ -315,9 +352,10 @@ function FlujoCompra({ abierto, onAbiertoChange, titular: titularInicial, hayPri
                 <li key={o.dominio} className={cn('flex flex-wrap items-center gap-3 border-b border-line px-4 py-3 last:border-b-0', esRec && 'bg-brand-tint')}>
                   <span className={cn('min-w-0 flex-1 truncate text-sm', o.disponible ? 'font-medium text-fg' : 'text-fg-muted')}>
                     {o.dominio}
-                    {!o.disponible && <StatusBadge estado="no disponible" etiqueta={t('comprar.noDisponible')} tono="neutro" className="ml-2" />}
-                    {esRec && <StatusBadge estado="recomendado" etiqueta={t('comprar.recomendado')} tono="marca" className="ml-2" />}
-                    {esOferta(o) && <StatusBadge estado="oferta" etiqueta={t('comprar.oferta')} tono="advertencia" className="ml-2" />}
+                    {/* Chips del kit con poco color (B/07-13): «No disponible» gris suave; «Recomendado» y «Oferta primer año» solo con contorno. */}
+                    {!o.disponible && <StatusBadge estado="no disponible" etiqueta={t('comprar.noDisponible')} tono="neutro" apariencia="suave" className="ml-2" />}
+                    {esRec && <StatusBadge estado="recomendado" etiqueta={t('comprar.recomendado')} tono="marca" apariencia="contorno" className="ml-2" />}
+                    {esOferta(o) && <StatusBadge estado="oferta" etiqueta={t('comprar.oferta')} tono="advertencia" apariencia="contorno" className="ml-2" />}
                   </span>
                   {o.disponible && o.precio !== null ? (
                     <>
@@ -354,9 +392,17 @@ function FlujoCompra({ abierto, onAbiertoChange, titular: titularInicial, hayPri
       <>
         <div className="flex flex-wrap items-end gap-4">
           <FormField etiqueta={t('comprar.tiempo')} className="w-40">
-            <select disabled value="1" className="h-10 w-full rounded-lg border border-line-strong bg-surface px-3 text-sm text-fg">
-              <option value="1">{t('comprar.unAnio')}</option>
-            </select>
+            {(c) => (
+              // Un solo plazo: `/api/domains/purchase` registra a 1 año.
+              <Select value="1" disabled>
+                <SelectTrigger id={c.id} aria-describedby={c['aria-describedby']} className={CLASE_SELECT_TITULAR}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">{t('comprar.unAnio')}</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
           </FormField>
           {elegida.precio !== null && (
             <span className="inline-flex items-baseline gap-1">
@@ -375,23 +421,40 @@ function FlujoCompra({ abierto, onAbiertoChange, titular: titularInicial, hayPri
         <FormSection titulo={t('comprar.titular')} columnas={2}>
           <div className="sm:col-span-2">{campo('nombre', t('comprar.nombre'), { autoComplete: 'organization' })}</div>
           {campo('correo', t('comprar.correo'), { tipo: 'email', autoComplete: 'email' })}
-          {campo('telefono', t('comprar.telefono'), { tipo: 'tel', ayuda: t('comprar.telefonoAyuda'), autoComplete: 'tel' })}
+          <PhoneField
+            etiqueta={t('comprar.telefono')}
+            obligatorio
+            valor={titular.telefono}
+            onValor={(v) => cambiarTitular('telefono', v)}
+            defaultIso={titular.pais || 'CO'}
+            formato="e164"
+            error={erroresTitular.telefono ? t(`comprar.${erroresTitular.telefono}`) : null}
+          />
           <div className="sm:col-span-2">{campo('direccion', t('comprar.direccion'), { autoComplete: 'street-address' })}</div>
           {campo('ciudad', t('comprar.ciudad'), { autoComplete: 'address-level2' })}
           {campo('departamento', t('comprar.departamento'), { autoComplete: 'address-level1' })}
           {campo('codigoPostal', t('comprar.codigoPostal'), { autoComplete: 'postal-code' })}
           <FormField etiqueta={t('comprar.pais')} obligatorio error={erroresTitular.pais ? t('comprar.obligatorio') : null}>
-            <select
-              value={titular.pais}
-              onChange={(e) => setTitular((p) => ({ ...p, pais: e.target.value }))}
-              className="h-10 w-full rounded-lg border border-line-strong bg-surface px-3 text-sm text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            >
-              {(PAISES_TITULAR.includes(titular.pais) ? PAISES_TITULAR : [titular.pais, ...PAISES_TITULAR]).filter(Boolean).map((c) => (
-                <option key={c} value={c}>
-                  {nombresPais(c)}
-                </option>
-              ))}
-            </select>
+            {(c) => (
+              <Select value={titular.pais} onValueChange={(v) => cambiarTitular('pais', v)}>
+                <SelectTrigger
+                  id={c.id}
+                  aria-describedby={c['aria-describedby']}
+                  aria-invalid={c['aria-invalid']}
+                  aria-required={c['aria-required']}
+                  className={CLASE_SELECT_TITULAR}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(PAISES_TITULAR.includes(titular.pais) ? PAISES_TITULAR : [titular.pais, ...PAISES_TITULAR]).filter(Boolean).map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {nombresPais(p)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </FormField>
         </FormSection>
         <AvisoTonal tono="informacion" titulo={t('comprar.datosRealesTitulo')} descripcion={t('comprar.datosRealesTexto')} />

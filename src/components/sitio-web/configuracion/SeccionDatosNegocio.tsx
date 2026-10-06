@@ -13,6 +13,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Dialogo, FormField, FormSection } from '@/components/kit';
 import { Input } from '@/components/ui/input';
+import { PhoneInput } from '@/components/kit/PhoneInput';
 import { CampoLogoFavicon } from '../ui/CampoLogoFavicon';
 import type { ErroresFormulario, FormularioConfiguracion } from '@/lib/website/configuracionSitio';
 import { enlacesConfiguracion } from './enlaces';
@@ -101,25 +102,15 @@ export function SeccionDatosNegocio({
         />
       </FormField>
       <FormField etiqueta={t('datos.telefono')} extra={contactoPendiente ? <span className="text-xs text-fg-muted">{t('datos.deOrganizacion')}</span> : undefined}>
-        <Input
-          type="tel"
-          inputMode="tel"
+        <PhoneInput
           autoComplete="tel"
           value={contactoPendiente ? organizacion.telefono ?? '' : f.telefono}
           disabled={contactoBloqueado}
-          onChange={(e) => editar('telefono', e.target.value)}
-          placeholder="+57 604 555 0100"
+          onChange={(v) => editar('telefono', v)}
         />
       </FormField>
       <FormField etiqueta={t('datos.whatsapp')} error={error('whatsapp')} ayuda={ayudaWhatsapp}>
-        <Input
-          type="tel"
-          inputMode="tel"
-          value={f.whatsapp}
-          disabled={contactoBloqueado}
-          onChange={(e) => editar('whatsapp', e.target.value)}
-          placeholder="+57 300 555 0100"
-        />
+        <PhoneInput value={f.whatsapp} disabled={contactoBloqueado} onChange={(v) => editar('whatsapp', v)} />
       </FormField>
       <p className="text-xs leading-4 text-fg-muted md:col-span-2">
         {t('datos.notaSucursal')}{' '}

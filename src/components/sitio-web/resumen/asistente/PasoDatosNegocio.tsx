@@ -16,6 +16,7 @@ import dynamic from 'next/dynamic';
 import { Clock, ExternalLink } from 'lucide-react';
 import { FormField, clasesBoton } from '@/components/kit';
 import { Input } from '@/components/ui/input';
+import { PhoneInput } from '@/components/kit/PhoneInput';
 import { useLocaleIntl } from '@/components/kit/useIdiomaKit';
 import { filasHorario, hora12 } from './logicaAsistente';
 import { EncabezadoPaso } from './EncabezadoPaso';
@@ -92,14 +93,7 @@ export function PasoDatosNegocio({ organizationId, datos, onCambiar, errores, se
             <Input value={datos.nombre} maxLength={200} onChange={(e) => onCambiar({ ...datos, nombre: e.target.value })} />
           </FormField>
           <FormField etiqueta={t('asistente.datos.whatsapp')} ayuda={t('asistente.datos.whatsappAyuda')} error={errores.whatsapp}>
-            <Input
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              placeholder="+57 300 000 0000"
-              value={datos.whatsapp}
-              onChange={(e) => onCambiar({ ...datos, whatsapp: e.target.value })}
-            />
+            <PhoneInput autoComplete="tel" value={datos.whatsapp} onChange={(v) => onCambiar({ ...datos, whatsapp: v })} />
           </FormField>
           <FormField etiqueta={t('asistente.datos.direccion')} ayuda={t('asistente.datos.direccionAyuda')}>
             <Input value={sede?.direccion ?? ''} readOnly className="bg-subtle" />

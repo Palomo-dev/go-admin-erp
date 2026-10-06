@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { ListMinus } from 'lucide-react';
 import { AvisoTonal, ChipsOpcion, FormField, SettingRow, clasesBoton } from '@/components/kit';
 import { Input } from '@/components/ui/input';
+import { PhoneInput } from '@/components/kit/PhoneInput';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { ItemMenu, PaginaSitio } from '@/lib/website/contrato/documentoSitio';
@@ -150,12 +151,11 @@ export function InspectorEnlace({
       )}
       {(valor === 'whatsapp' || valor === 'telefono') && (
         <FormField etiqueta={t('inspector.numero')} obligatorio ayuda={t('inspector.numeroAyuda')}>
-          <Input
-            type="tel"
+          <PhoneInput
+            formato="e164"
             value={numeroDe(item)}
-            maxLength={20}
             disabled={soloLectura}
-            onChange={(e) => onDestino({ tipo: 'custom', url: urlContacto(valor, e.target.value) })}
+            onChange={(v) => onDestino({ tipo: 'custom', url: urlContacto(valor, v) })}
           />
         </FormField>
       )}

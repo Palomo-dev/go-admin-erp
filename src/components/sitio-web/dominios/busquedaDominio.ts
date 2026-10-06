@@ -6,6 +6,7 @@
  */
 import { esHostValido, nombreBaseBusqueda, normalizarHost } from './nombreDns';
 import type { TitularDominio } from './tiposDominios';
+import { aE164, esTelefonoValido } from '@/lib/utils/telefono';
 
 /** Extensiones que se sugieren, en orden (B/07-13: .com, .co, .com.co, .shop…). */
 export const EXTENSIONES_SUGERIDAS: readonly string[] = ['com', 'co', 'com.co', 'shop', 'store'];
@@ -60,8 +61,9 @@ export function validarTitular(t: TitularDominio): ErroresTitular {
   const obligatorios: CampoTitular[] = ['nombre', 'correo', 'telefono', 'direccion', 'ciudad', 'departamento', 'codigoPostal', 'pais'];
   for (const c of obligatorios) if (!t[c]?.trim()) e[c] = 'obligatorio';
   if (!e.correo && !/^\S+@\S+\.\S+$/.test(t.correo.trim())) e.correo = 'correoInvalido';
-  const digitos = t.telefono.replace(/\D/g, '');
-  if (!e.telefono && (!t.telefono.trim().startsWith('+') || digitos.length < 8 || digitos.length > 15)) e.telefono = 'telefonoInvalido';
+  // Con indicativo explícito y válido para su país (libphonenumber): el
+  // registrador rechaza un número incompleto con INVALID_PHONE.
+  if (!e.telefono && (!t.telefono.trim().startsWith('+') || !esTelefonoValido(t.telefono))) e.telefono = 'telefonoInvalido';
   if (!e.pais && !/^[A-Z]{2}$/.test(t.pais)) e.pais = 'obligatorio';
   return e;
 }
@@ -79,7 +81,8 @@ export function contactoRegistrador(t: TitularDominio) {
     firstName,
     lastName,
     email: t.correo.trim(),
-    phone: t.telefono.trim(),
+    // E.164 («+573005550100»): el registrador no acepta espacios.
+    phone: aE164(t.telefono) ?? t.telefono.trim(),
     address1: t.direccion.trim(),
     city: t.ciudad.trim(),
     state: t.departamento.trim(),

@@ -54,6 +54,52 @@ export const lineaMesaSchema = z
 
 export const alergiaSchema = z.object({ ticket_id: z.number().int().positive() }).strict();
 
+// --- Comandas v2 (Figma 959:583911): tablero, KDS y detalle ---
+
+/** Clave de estación tal como la guardan las comandas (`[a-z0-9_]`, ≤ 60). */
+const ESTACION = z.string().regex(/^[a-z0-9_]{1,60}$/);
+
+export const ESTADOS_COMANDA = ['new', 'preparing', 'ready', 'delivered'] as const;
+
+/** Cambiar el estado de una comanda, de una estación o de todas (`station` null). */
+export const estadoComandaSchema = z
+  .object({
+    ticket_id: z.number().int().positive(),
+    estado: z.enum(ESTADOS_COMANDA),
+    station: ESTACION.nullable().optional(),
+    motivo: z.string().max(MOTIVO_MAX).nullable().optional(),
+  })
+  .strict();
+
+/** Tocar un ítem en el KDS: hecho o deshacer. */
+export const itemComandaSchema = z
+  .object({ item_id: z.number().int().positive(), hecho: z.boolean() })
+  .strict();
+
+export const cancelarComandaSchema = z
+  .object({ ticket_id: z.number().int().positive(), motivo: z.string().trim().min(1).max(MOTIVO_MAX) })
+  .strict();
+
+export const moverItemSchema = z
+  .object({ item_id: z.number().int().positive(), station: ESTACION })
+  .strict();
+
+export const cerrarAnterioresSchema = z
+  .object({
+    branch_id: z.number().int().positive().nullable(),
+    antes: z.string().datetime({ offset: true }),
+    motivo: z.string().trim().min(1).max(MOTIVO_MAX),
+  })
+  .strict();
+
+export const avisarMeseroSchema = z.object({ ticket_id: z.number().int().positive() }).strict();
+
+/** La RPC aún no existe en la base (migración pendiente): PostgREST la reporta así. */
+export function rpcNoDisponible(error: { code?: string | null; message?: string | null } | null | undefined): boolean {
+  if (!error) return false;
+  return error.code === 'PGRST202' || error.code === '42883' || /could not find the function/i.test(error.message ?? '');
+}
+
 export const TIPOS_NOTA_RAPIDA = ['kitchen', 'customer', 'allergy'] as const;
 export type TipoNotaRapida = (typeof TIPOS_NOTA_RAPIDA)[number];
 
@@ -97,6 +143,7 @@ const CODIGOS = new Set([
   'motivo_requerido',
   'comanda_no_encontrada',
   'alergia_sin_confirmar',
+  'comanda_cancelada',
 ]);
 
 /** Error de la RPC → { status, codigo }. Un mensaje desconocido nunca sale al cliente. */

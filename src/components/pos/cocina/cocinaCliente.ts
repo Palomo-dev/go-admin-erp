@@ -149,3 +149,110 @@ export async function borrarNotaRapida(id: number): Promise<void> {
   });
   await leer<{ ok: true }>(respuesta);
 }
+
+// --- Comandas v2 (tablero, pantalla de cocina y detalle) ---
+
+/** La ruta respondió que la RPC aún no existe (migración pendiente): usar el camino anterior. */
+export function esRpcNoDisponible(err: unknown): boolean {
+  return err instanceof CocinaError && err.codigo === 'rpc_no_disponible';
+}
+
+export type EstadoComandaV2 = 'new' | 'preparing' | 'ready' | 'delivered';
+
+export interface ResultadoEstadoComanda {
+  ticket_id: number;
+  status: EstadoComandaV2 | 'cancelled';
+  started_at?: string | null;
+  ready_at: string | null;
+  items_cambiados?: number;
+}
+
+/** Empezar / Marcar lista / Entregar / Devolver, de una estación (`station`) o de todas. */
+export async function cambiarEstadoComanda(
+  ticketId: number,
+  estado: EstadoComandaV2,
+  opciones: { station?: string | null; motivo?: string | null } = {},
+): Promise<ResultadoEstadoComanda> {
+  const { resultado } = await enviar<{ resultado: ResultadoEstadoComanda }>('/api/pos/cocina/estado', 'POST', {
+    ticket_id: ticketId,
+    estado,
+    station: opciones.station ?? null,
+    motivo: opciones.motivo ?? null,
+  });
+  return resultado;
+}
+
+export async function marcarItemComanda(itemId: number, hecho: boolean): Promise<ResultadoEstadoComanda> {
+  const { resultado } = await enviar<{ resultado: ResultadoEstadoComanda }>('/api/pos/cocina/item', 'POST', { item_id: itemId, hecho });
+  return resultado;
+}
+
+export async function cancelarComanda(ticketId: number, motivo: string): Promise<{ ticket_id: number; status: string }> {
+  const { resultado } = await enviar<{ resultado: { ticket_id: number; status: string } }>('/api/pos/cocina/cancelar', 'POST', {
+    ticket_id: ticketId,
+    motivo,
+  });
+  return resultado;
+}
+
+export async function moverItemDeEstacion(itemId: number, station: string): Promise<{ item_id: number; station: string }> {
+  const { resultado } = await enviar<{ resultado: { item_id: number; station: string } }>('/api/pos/cocina/mover-item', 'POST', {
+    item_id: itemId,
+    station,
+  });
+  return resultado;
+}
+
+export async function cerrarComandasAnteriores(branchId: number | null, antes: string, motivo: string): Promise<{ cerradas: number }> {
+  const { resultado } = await enviar<{ resultado: { cerradas: number } }>('/api/pos/cocina/cerrar-anteriores', 'POST', {
+    branch_id: branchId,
+    antes,
+    motivo,
+  });
+  return resultado;
+}
+
+export async function avisarMesero(ticketId: number): Promise<{ avisado: boolean; motivo?: string; repetido?: boolean }> {
+  const { resultado } = await enviar<{ resultado: { avisado: boolean; motivo?: string; repetido?: boolean } }>(
+    '/api/pos/cocina/avisar-mesero',
+    'POST',
+    { ticket_id: ticketId },
+  );
+  return resultado;
+}
+
+export interface PermisosCocina {
+  operar: boolean;
+  gestionar: boolean;
+}
+
+export async function leerPermisosCocina(): Promise<PermisosCocina> {
+  const respuesta = await fetch('/api/pos/cocina/permisos', {
+    method: 'GET',
+    credentials: 'same-origin',
+    cache: 'no-store',
+    headers: cabeceras(false),
+  });
+  return leer<PermisosCocina>(respuesta);
+}
+
+export interface EventoComanda {
+  id: number;
+  event: string;
+  station: string | null;
+  actor_id: string | null;
+  actor_nombre: string | null;
+  detail: Record<string, unknown> | null;
+  created_at: string;
+  kitchen_ticket_item_id: number | null;
+}
+
+export async function leerEventosComanda(ticketId: number): Promise<{ eventos: EventoComanda[]; disponible: boolean }> {
+  const respuesta = await fetch(`/api/pos/cocina/eventos?ticket_id=${encodeURIComponent(String(ticketId))}`, {
+    method: 'GET',
+    credentials: 'same-origin',
+    cache: 'no-store',
+    headers: cabeceras(false),
+  });
+  return leer<{ eventos: EventoComanda[]; disponible: boolean }>(respuesta);
+}

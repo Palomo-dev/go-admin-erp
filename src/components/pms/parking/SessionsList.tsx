@@ -8,6 +8,7 @@ import { LogOut, Car } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { ParkingSession } from '@/lib/services/parkingService';
+import { useTranslations } from 'next-intl';
 
 interface SessionsListProps {
   sessions: ParkingSession[];
@@ -36,15 +37,16 @@ const getStatusInfo = (status: string) => {
 };
 
 export function SessionsList({ sessions, onExit, onSessionClick }: SessionsListProps) {
+  const t = useTranslations('pmsParking');
   if (sessions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
         <Car className="h-16 w-16 text-gray-400 dark:text-gray-600 mb-4" />
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-          No hay sesiones
+          {t('sessionsList.noHaySesiones')}
         </h3>
         <p className="text-gray-600 dark:text-gray-400">
-          No se encontraron sesiones de parqueo.
+          {t('sessionsList.noEncontraronSesionesParqueo')}
         </p>
       </div>
     );
@@ -70,12 +72,12 @@ export function SessionsList({ sessions, onExit, onSessionClick }: SessionsListP
                   {session.vehicle_type}
                 </p>
               </div>
-              <Badge className={statusInfo.color}>{statusInfo.label}</Badge>
+              <Badge className={statusInfo.color}>{statusInfo.label === session.status ? session.status : t(`sessionsList.estados.${session.status}`)}</Badge>
             </div>
 
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-600 dark:text-gray-400">Entrada:</span>
+                <span className="text-gray-600 dark:text-gray-400">{t('exitDialog.entrada')}</span>
                 <span className="font-medium">
                   {format(new Date(session.entry_at), 'HH:mm - dd MMM', { locale: es })}
                 </span>
@@ -83,7 +85,7 @@ export function SessionsList({ sessions, onExit, onSessionClick }: SessionsListP
 
               {session.exit_at && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Salida:</span>
+                  <span className="text-gray-600 dark:text-gray-400">{t('parkingSessionDrawer.salida')}</span>
                   <span className="font-medium">
                     {format(new Date(session.exit_at), 'HH:mm - dd MMM', { locale: es })}
                   </span>
@@ -92,7 +94,7 @@ export function SessionsList({ sessions, onExit, onSessionClick }: SessionsListP
 
               {session.duration_min && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Duración:</span>
+                  <span className="text-gray-600 dark:text-gray-400">{t('exitDialog.duracion')}</span>
                   <span className="font-medium">{session.duration_min} min</span>
                 </div>
               )}
@@ -116,7 +118,7 @@ export function SessionsList({ sessions, onExit, onSessionClick }: SessionsListP
                 className="w-full mt-4 bg-blue-600 hover:bg-blue-700"
               >
                 <LogOut className="h-4 w-4 mr-2" />
-                Registrar Salida
+                {t('exitDialog.registrarSalida')}
               </Button>
             )}
           </Card>

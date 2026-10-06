@@ -37,6 +37,7 @@ import parkingService, {
   type ParkingPassType,
 } from '@/lib/services/parkingService';
 import { PlanFormDialog } from '@/components/parking/planes/PlanFormDialog';
+import { useTranslations } from 'next-intl';
 
 interface PassFormDialogProps {
   open: boolean;
@@ -73,6 +74,7 @@ export function PassFormDialog({
   onSuccess,
   onPlanCreated,
 }: PassFormDialogProps) {
+  const tx = useTranslations('pmsParking');
   const { formatear: formatCurrency, code: monedaBase } = useMonedaOrganizacion();
   const { toast } = useToast();
   const { timezone } = useOrgTimezone();
@@ -222,18 +224,18 @@ export function PassFormDialog({
     e.preventDefault();
 
     if (!customerId) {
-      toast({ title: 'Error', description: 'Selecciona un cliente', variant: 'destructive' });
+      toast({ title: tx('passVehiclesDialog.error'), description: tx('passFormDialog.seleccionaCliente'), variant: 'destructive' });
       return;
     }
 
     if (!passTypeId) {
-      toast({ title: 'Error', description: 'Selecciona un tipo de plan', variant: 'destructive' });
+      toast({ title: tx('passVehiclesDialog.error'), description: tx('passFormDialog.seleccionaTipoPlan'), variant: 'destructive' });
       return;
     }
 
     const validVehicles = vehicles.filter(v => v.plate.trim());
     if (validVehicles.length === 0) {
-      toast({ title: 'Error', description: 'Agrega al menos una placa', variant: 'destructive' });
+      toast({ title: tx('passVehiclesDialog.error'), description: tx('passFormDialog.agregaMenosPlaca'), variant: 'destructive' });
       return;
     }
 
@@ -250,7 +252,7 @@ export function PassFormDialog({
           plan_name: planName,
           vehicles: validVehicles,
         });
-        toast({ title: 'Pase actualizado', description: 'El pase se ha actualizado correctamente' });
+        toast({ title: tx('passFormDialog.paseActualizado'), description: tx('passFormDialog.paseHaActualizadoCorrectamente') });
       } else {
         await parkingService.createPass({
           organization_id: organizationId,
@@ -262,14 +264,14 @@ export function PassFormDialog({
           plan_name: planName,
           vehicles: validVehicles,
         });
-        toast({ title: 'Pase creado', description: 'El pase se ha creado correctamente' });
+        toast({ title: tx('passFormDialog.paseCreado'), description: tx('passFormDialog.paseHaCreadoCorrectamente') });
       }
 
       onSuccess();
       onOpenChange(false);
     } catch (error) {
       console.error('Error saving pass:', error);
-      toast({ title: 'Error', description: 'No se pudo guardar el pase', variant: 'destructive' });
+      toast({ title: tx('passVehiclesDialog.error'), description: tx('passFormDialog.noPudoGuardarPase'), variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -280,14 +282,14 @@ export function PassFormDialog({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto dark:bg-gray-800 dark:border-gray-700">
         <DialogHeader>
           <DialogTitle className="dark:text-white">
-            {isEditing ? 'Editar Pase' : 'Nuevo Pase de Abonado'}
+            {isEditing ? tx('passFormDialog.editarPase') : tx('passFormDialog.nuevoPaseAbonado')}
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Cliente - Estilo POS */}
           <div className="space-y-2">
-            <Label className="dark:text-gray-200">Cliente *</Label>
+            <Label className="dark:text-gray-200">{tx('passFormDialog.cliente')}</Label>
             {selectedCustomer ? (
               <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/10 border border-blue-200 dark:border-blue-800">
                 <div className="flex flex-wrap items-center gap-3">
@@ -341,10 +343,10 @@ export function PassFormDialog({
                       </div>
                       <div className="flex-1">
                         <p className="font-medium text-gray-900 dark:text-white text-sm">
-                          Seleccionar cliente
+                          {tx('passFormDialog.seleccionarCliente')}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">
-                          Buscar por nombre, email o teléfono
+                          {tx('passFormDialog.buscarNombreEmailTelefono')}
                         </p>
                       </div>
                       <Search className="h-4 w-4 text-gray-400 dark:text-gray-500" />
@@ -359,7 +361,7 @@ export function PassFormDialog({
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                       <Input
-                        placeholder="Nombre, email o teléfono..."
+                        placeholder={tx('passFormDialog.nombreEmailTelefono')}
                         value={customerSearch}
                         onChange={(e) => setCustomerSearch(e.target.value)}
                         className="pl-10 dark:bg-gray-800 dark:border-gray-700"
@@ -383,14 +385,14 @@ export function PassFormDialog({
                         <div className="flex flex-col items-center justify-center py-8 text-center">
                           <User className="h-10 w-10 text-gray-300 dark:text-gray-600 mb-2" />
                           <p className="text-sm text-gray-500 dark:text-gray-400">
-                            No se encontraron clientes
+                            {tx('passFormDialog.noEncontraronClientes')}
                           </p>
                         </div>
                       ) : customers.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-8 text-center">
                           <Search className="h-10 w-10 text-gray-300 dark:text-gray-600 mb-2" />
                           <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Escribe para buscar clientes
+                            {tx('passFormDialog.escribeBuscarClientes')}
                           </p>
                         </div>
                       ) : (
@@ -441,7 +443,7 @@ export function PassFormDialog({
           {/* Tipo de Plan */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="dark:text-gray-200">Tipo de Plan *</Label>
+              <Label className="dark:text-gray-200">{tx('passFormDialog.tipoPlan')}</Label>
               <Button
                 type="button"
                 variant="outline"
@@ -450,19 +452,19 @@ export function PassFormDialog({
                 onClick={() => setPlanDialogOpen(true)}
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
-                Crear Plan
+                {tx('passFormDialog.crearPlan')}
               </Button>
             </div>
             {passTypes.length === 0 ? (
               <div className="flex items-center gap-2 p-3 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50">
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  No hay planes disponibles
+                  {tx('passFormDialog.noHayPlanesDisponibles')}
                 </p>
               </div>
             ) : (
               <Select value={passTypeId} onValueChange={setPassTypeId}>
                 <SelectTrigger className="dark:bg-gray-700 dark:border-gray-600">
-                  <SelectValue placeholder="Selecciona un plan" />
+                  <SelectValue placeholder={tx('passFormDialog.seleccionaPlan')} />
                 </SelectTrigger>
                 <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
                   {passTypes.map((type) => (
@@ -470,7 +472,7 @@ export function PassFormDialog({
                       <div className="flex items-center justify-between w-full">
                         <span>{type.name}</span>
                         <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
-                          {formatCurrency(type.price)} / {type.duration_days} días
+                          {tx('passFormDialog.dias', { currency: formatCurrency(type.price), duration_days: type.duration_days })}
                         </span>
                       </div>
                     </SelectItem>
@@ -483,7 +485,7 @@ export function PassFormDialog({
           {/* Fechas y Precio */}
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label className="dark:text-gray-200">Fecha Inicio *</Label>
+              <Label className="dark:text-gray-200">{tx('passFormDialog.fechaInicio')}</Label>
               <Input
                 type="date"
                 value={startDate}
@@ -492,7 +494,7 @@ export function PassFormDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label className="dark:text-gray-200">Fecha Fin *</Label>
+              <Label className="dark:text-gray-200">{tx('passFormDialog.fechaFin')}</Label>
               <Input
                 type="date"
                 value={endDate}
@@ -501,7 +503,7 @@ export function PassFormDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label className="dark:text-gray-200">Precio ({monedaBase}) *</Label>
+              <Label className="dark:text-gray-200">{tx('passFormDialog.precio', { monedaBase })}</Label>
               <Input
                 type="number"
                 value={price}
@@ -514,10 +516,10 @@ export function PassFormDialog({
           {/* Vehículos */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label className="dark:text-gray-200">Vehículos / Placas *</Label>
+              <Label className="dark:text-gray-200">{tx('passFormDialog.vehiculosPlacas')}</Label>
               <Button type="button" variant="outline" size="sm" onClick={handleAddVehicle}>
                 <Plus className="h-4 w-4 mr-1" />
-                Agregar
+                {tx('passFormDialog.agregar')}
               </Button>
             </div>
 
@@ -529,11 +531,11 @@ export function PassFormDialog({
                 <div className="flex flex-wrap items-center gap-2 mb-3">
                   <Car className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                   <span className="text-sm font-medium dark:text-gray-300">
-                    Vehículo {index + 1}
+                    {tx('passFormDialog.vehiculo', { index: index + 1 })}
                   </span>
                   {vehicle.is_primary && (
                     <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-xs">
-                      Principal
+                      {tx('passVehiclesDialog.principal')}
                     </Badge>
                   )}
                   {vehicles.length > 1 && (
@@ -551,19 +553,19 @@ export function PassFormDialog({
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <Input
-                    placeholder="Placa *"
+                    placeholder={tx('passVehiclesDialog.placa')}
                     value={vehicle.plate}
                     onChange={(e) => handleVehicleChange(index, 'plate', e.target.value.toUpperCase())}
                     className="dark:bg-gray-700 dark:border-gray-600"
                   />
                   <Input
-                    placeholder="Marca"
+                    placeholder={tx('passVehiclesDialog.marca')}
                     value={vehicle.brand}
                     onChange={(e) => handleVehicleChange(index, 'brand', e.target.value)}
                     className="dark:bg-gray-700 dark:border-gray-600"
                   />
                   <Input
-                    placeholder="Modelo"
+                    placeholder={tx('passVehiclesDialog.modelo')}
                     value={vehicle.model}
                     onChange={(e) => handleVehicleChange(index, 'model', e.target.value)}
                     className="dark:bg-gray-700 dark:border-gray-600"
@@ -576,9 +578,9 @@ export function PassFormDialog({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="dark:bg-gray-800">
-                      <SelectItem value="car">Carro</SelectItem>
-                      <SelectItem value="motorcycle">Moto</SelectItem>
-                      <SelectItem value="truck">Camión</SelectItem>
+                      <SelectItem value="car">{tx('passVehiclesDialog.carro')}</SelectItem>
+                      <SelectItem value="motorcycle">{tx('passVehiclesDialog.moto')}</SelectItem>
+                      <SelectItem value="truck">{tx('passVehiclesDialog.camion')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -591,7 +593,7 @@ export function PassFormDialog({
                     className="mt-2 text-blue-600 dark:text-blue-400 p-0 h-auto"
                     onClick={() => handleVehicleChange(index, 'is_primary', true)}
                   >
-                    Marcar como principal
+                    {tx('passVehiclesDialog.marcarComoPrincipal')}
                   </Button>
                 )}
               </div>
@@ -606,7 +608,7 @@ export function PassFormDialog({
               disabled={isLoading}
               className="dark:border-gray-600"
             >
-              Cancelar
+              {tx('passVehiclesDialog.cancelar')}
             </Button>
             <Button
               type="submit"
@@ -616,7 +618,7 @@ export function PassFormDialog({
               {isLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Guardando...
+                  {tx('passFormDialog.guardando')}
                 </>
               ) : isEditing ? (
                 'Actualizar Pase'

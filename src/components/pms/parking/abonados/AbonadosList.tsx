@@ -21,6 +21,7 @@ import {
 import type { ParkingPass } from '@/lib/services/parkingService';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { useTranslations } from 'next-intl';
 
 interface AbonadosListProps {
   passes: ParkingPass[];
@@ -28,14 +29,15 @@ interface AbonadosListProps {
   onCancel: (pass: ParkingPass) => void;
 }
 
-const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  active: { label: 'Activo', className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
-  expired: { label: 'Vencido', className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
-  cancelled: { label: 'Cancelado', className: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' },
-  suspended: { label: 'Suspendido', className: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' },
+const STATUS_CONFIG: Record<string, { className: string }> = {
+  active: { className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
+  expired: { className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
+  cancelled: { className: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' },
+  suspended: { className: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' },
 };
 
 export function AbonadosList({ passes, onEdit, onCancel }: AbonadosListProps) {
+  const t = useTranslations('pmsParking');
   const formatDate = (dateStr: string) => {
     return formatPlainDate(dateStr, { day: '2-digit', month: 'short', year: 'numeric' });
   };
@@ -55,10 +57,10 @@ export function AbonadosList({ passes, onEdit, onCancel }: AbonadosListProps) {
       <div className="flex flex-col items-center justify-center py-12">
         <Car className="h-16 w-16 text-gray-400 dark:text-gray-500 mb-4" />
         <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-          No hay abonados registrados
+          {t('abonadosList.noHayAbonadosRegistrados')}
         </h3>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Crea un nuevo pase de estacionamiento para comenzar
+          {t('abonadosList.creaNuevoPaseEstacionamiento')}
         </p>
       </div>
     );
@@ -74,7 +76,7 @@ export function AbonadosList({ passes, onEdit, onCancel }: AbonadosListProps) {
         // Obtener placas de vehículos
         const vehiclePlates = pass.vehicles?.map(v => v.vehicle?.plate).filter(Boolean) || [];
         const primaryPlate = pass.vehicles?.find(v => v.is_primary)?.vehicle?.plate;
-        const displayPlate = primaryPlate || vehiclePlates[0] || 'Sin vehículo';
+        const displayPlate = primaryPlate || vehiclePlates[0] || t('sinVehiculo');
 
         return (
           <Card key={pass.id} className="p-4 hover:shadow-md transition-shadow">
@@ -109,7 +111,7 @@ export function AbonadosList({ passes, onEdit, onCancel }: AbonadosListProps) {
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => onEdit(pass)}>
                     <Edit className="h-4 w-4 mr-2" />
-                    Editar
+                    {t('passesTable.editar')}
                   </DropdownMenuItem>
                   {(pass.status === 'active' || pass.status === 'suspended') && (
                     <DropdownMenuItem 
@@ -117,7 +119,7 @@ export function AbonadosList({ passes, onEdit, onCancel }: AbonadosListProps) {
                       className="text-red-600 dark:text-red-400"
                     >
                       <XCircle className="h-4 w-4 mr-2" />
-                      Cancelar Pase
+                      {t('abonadosList.cancelarPase')}
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
@@ -127,7 +129,7 @@ export function AbonadosList({ passes, onEdit, onCancel }: AbonadosListProps) {
             <div className="space-y-2 mb-3">
               <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <User className="h-4 w-4" />
-                <span>{pass.customer?.full_name || 'Sin cliente'}</span>
+                <span>{pass.customer?.full_name || t('passesTable.sinCliente')}</span>
               </div>
               <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <Calendar className="h-4 w-4" />
@@ -138,11 +140,11 @@ export function AbonadosList({ passes, onEdit, onCancel }: AbonadosListProps) {
             <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge className={statusConfig.className}>
-                  {statusConfig.label}
+                  {t(`estadosPase.${pass.status in STATUS_CONFIG ? pass.status : 'active'}`)}
                 </Badge>
                 {isExpiringSoon && (
                   <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
-                    {daysRemaining} días
+                    {t('passCard.dias', { daysRemaining })}
                   </Badge>
                 )}
               </div>

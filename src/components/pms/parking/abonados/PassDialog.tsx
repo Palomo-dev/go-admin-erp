@@ -22,6 +22,7 @@ import {
 import { Loader2, Search, Plus, X, Car } from 'lucide-react';
 import ParkingService, { type ParkingPass, type ParkingPassType } from '@/lib/services/parkingService';
 import { addDays, format } from 'date-fns';
+import { useTranslations } from 'next-intl';
 
 interface VehicleInput {
   plate: string;
@@ -65,6 +66,7 @@ export function PassDialog({
   organizationId,
   onSave 
 }: PassDialogProps) {
+  const t = useTranslations('pmsParking');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [vehicles, setVehicles] = useState<VehicleInput[]>([{ ...emptyVehicle, is_primary: true }]);
   const [selectedPassTypeId, setSelectedPassTypeId] = useState('');
@@ -220,12 +222,12 @@ export function PassDialog({
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
-            {isEditMode ? 'Editar Pase' : 'Nuevo Pase de Abonado'}
+            {isEditMode ? t('passFormDialog.editarPase') : t('passFormDialog.nuevoPaseAbonado')}
           </DialogTitle>
           <DialogDescription>
             {isEditMode 
-              ? 'Modifica los datos del pase de estacionamiento'
-              : 'Crea un nuevo pase de estacionamiento para un cliente'
+              ? t('passDialog.modificaDatosPaseEstacionamiento')
+              : t('passDialog.creaNuevoPaseEstacionamiento')
             }
           </DialogDescription>
         </DialogHeader>
@@ -233,7 +235,7 @@ export function PassDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Cliente */}
           <div className="space-y-2">
-            <Label>Cliente *</Label>
+            <Label>{t('passFormDialog.cliente')}</Label>
             {selectedCustomer ? (
               <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                 <p className="font-medium text-gray-900 dark:text-gray-100">
@@ -252,7 +254,7 @@ export function PassDialog({
                     onClick={() => setSelectedCustomer(null)}
                     className="p-0 h-auto text-blue-600 dark:text-blue-400"
                   >
-                    Cambiar cliente
+                    {t('passDialog.cambiarCliente')}
                   </Button>
                 )}
               </div>
@@ -260,7 +262,7 @@ export function PassDialog({
               <div className="space-y-2">
                 <div className="flex gap-2">
                   <Input
-                    placeholder="Buscar por nombre, email o teléfono"
+                    placeholder={t('passFormDialog.buscarNombreEmailTelefono')}
                     value={customerSearch}
                     onChange={(e) => setCustomerSearch(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleSearchCustomers())}
@@ -303,7 +305,7 @@ export function PassDialog({
           {/* Vehículos */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label>Vehículos *</Label>
+              <Label>{t('passDialog.vehiculos')}</Label>
               <Button
                 type="button"
                 variant="outline"
@@ -312,7 +314,7 @@ export function PassDialog({
                 className="h-7 text-xs"
               >
                 <Plus className="h-3 w-3 mr-1" />
-                Agregar
+                {t('passFormDialog.agregar')}
               </Button>
             </div>
             
@@ -325,10 +327,10 @@ export function PassDialog({
                   <div className="flex items-center justify-between">
                     <div className="flex flex-wrap items-center gap-2">
                       <Car className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                      <span className="text-sm font-medium">Vehículo {index + 1}</span>
+                      <span className="text-sm font-medium">{t('passFormDialog.vehiculo', { index: index + 1 })}</span>
                       {vehicle.is_primary && (
                         <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded">
-                          Principal
+                          {t('passVehiclesDialog.principal')}
                         </span>
                       )}
                     </div>
@@ -347,7 +349,7 @@ export function PassDialog({
                   
                   <div className="grid grid-cols-2 gap-2">
                     <Input
-                      placeholder="Placa *"
+                      placeholder={t('passVehiclesDialog.placa')}
                       value={vehicle.plate}
                       onChange={(e) => updateVehicle(index, 'plate', e.target.value.toUpperCase())}
                       className="uppercase text-sm"
@@ -357,32 +359,32 @@ export function PassDialog({
                       onValueChange={(val) => updateVehicle(index, 'vehicle_type', val)}
                     >
                       <SelectTrigger className="text-sm">
-                        <SelectValue placeholder="Tipo" />
+                        <SelectValue placeholder={t('passDialog.tipo')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="car">Carro</SelectItem>
-                        <SelectItem value="motorcycle">Moto</SelectItem>
-                        <SelectItem value="truck">Camioneta</SelectItem>
-                        <SelectItem value="other">Otro</SelectItem>
+                        <SelectItem value="car">{t('passVehiclesDialog.carro')}</SelectItem>
+                        <SelectItem value="motorcycle">{t('passVehiclesDialog.moto')}</SelectItem>
+                        <SelectItem value="truck">{t('passDialog.camioneta')}</SelectItem>
+                        <SelectItem value="other">{t('passDialog.otro')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   
                   <div className="grid grid-cols-3 gap-2">
                     <Input
-                      placeholder="Marca"
+                      placeholder={t('passVehiclesDialog.marca')}
                       value={vehicle.brand}
                       onChange={(e) => updateVehicle(index, 'brand', e.target.value)}
                       className="text-sm"
                     />
                     <Input
-                      placeholder="Modelo"
+                      placeholder={t('passVehiclesDialog.modelo')}
                       value={vehicle.model}
                       onChange={(e) => updateVehicle(index, 'model', e.target.value)}
                       className="text-sm"
                     />
                     <Input
-                      placeholder="Color"
+                      placeholder={t('passDialog.color')}
                       value={vehicle.color}
                       onChange={(e) => updateVehicle(index, 'color', e.target.value)}
                       className="text-sm"
@@ -397,7 +399,7 @@ export function PassDialog({
                       onClick={() => updateVehicle(index, 'is_primary', true)}
                       className="h-6 p-0 text-xs text-blue-600 dark:text-blue-400"
                     >
-                      Marcar como principal
+                      {t('passVehiclesDialog.marcarComoPrincipal')}
                     </Button>
                   )}
                 </div>
@@ -407,15 +409,15 @@ export function PassDialog({
 
           {/* Tipo de Plan */}
           <div className="space-y-2">
-            <Label>Tipo de Plan *</Label>
+            <Label>{t('passFormDialog.tipoPlan')}</Label>
             <Select value={selectedPassTypeId} onValueChange={setSelectedPassTypeId} required>
               <SelectTrigger>
-                <SelectValue placeholder="Seleccionar plan" />
+                <SelectValue placeholder={t('passDialog.seleccionarPlan')} />
               </SelectTrigger>
               <SelectContent>
                 {passTypes.map((type) => (
                   <SelectItem key={type.id} value={type.id}>
-                    {type.name} - ${type.price.toLocaleString()} ({type.duration_days} días)
+                    {t('passDialog.dias', { name: type.name, price: type.price.toLocaleString(), duration_days: type.duration_days })}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -425,7 +427,7 @@ export function PassDialog({
           {/* Fechas */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="start_date">Fecha Inicio</Label>
+              <Label htmlFor="start_date">{t('passDialog.fechaInicio')}</Label>
               <Input
                 id="start_date"
                 type="date"
@@ -435,7 +437,7 @@ export function PassDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="end_date">Fecha Fin</Label>
+              <Label htmlFor="end_date">{t('passDialog.fechaFin')}</Label>
               <Input
                 id="end_date"
                 type="date"
@@ -448,7 +450,7 @@ export function PassDialog({
 
           {/* Precio */}
           <div className="space-y-2">
-            <Label htmlFor="price">Precio</Label>
+            <Label htmlFor="price">{t('passDialog.precio')}</Label>
             <Input
               id="price"
               type="number"
@@ -467,7 +469,7 @@ export function PassDialog({
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
             >
-              Cancelar
+              {t('passVehiclesDialog.cancelar')}
             </Button>
             <Button 
               type="submit" 
@@ -476,10 +478,10 @@ export function PassDialog({
               {isSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Guardando...
+                  {t('passFormDialog.guardando')}
                 </>
               ) : (
-                isEditMode ? 'Guardar Cambios' : 'Crear Pase'
+                isEditMode ? t('passDialog.guardarCambios') : t('passDialog.crearPase')
               )}
             </Button>
           </DialogFooter>

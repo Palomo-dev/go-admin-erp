@@ -4,6 +4,7 @@ import React from 'react';
 import { Card } from '@/components/ui/card';
 import { StatsSkeleton } from '@/components/common/PageSkeletons';
 import { CreditCard, CheckCircle, XCircle, PauseCircle, AlertTriangle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface PassesStatsProps {
   stats: {
@@ -17,33 +18,34 @@ interface PassesStatsProps {
 }
 
 export function PassesStats({ stats, isLoading }: PassesStatsProps) {
+  const t = useTranslations('pmsParking');
   const statItems = [
     {
-      label: 'Total Pases',
+      label: t('passesStats.total'),
       value: stats.total,
       icon: CreditCard,
       color: 'blue',
     },
     {
-      label: 'Activos',
+      label: t('passesStats.activos'),
       value: stats.active,
       icon: CheckCircle,
       color: 'green',
     },
     {
-      label: 'Vencidos',
+      label: t('passesStats.vencidos'),
       value: stats.expired,
       icon: XCircle,
       color: 'red',
     },
     {
-      label: 'Suspendidos',
+      label: t('passesStats.suspendidos'),
       value: stats.suspended,
       icon: PauseCircle,
       color: 'orange',
     },
     {
-      label: 'Por Vencer (7d)',
+      label: t('passesStats.porVencer'),
       value: stats.expiringSoon,
       icon: AlertTriangle,
       color: 'yellow',

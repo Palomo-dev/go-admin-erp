@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import type { ParkingSession } from '@/lib/services/parkingService';
+import { useTranslations } from 'next-intl';
 
 interface ParkingRate {
   id: string;
@@ -45,11 +46,8 @@ interface ParkingSessionDrawerProps {
   onPrintTicket?: (session: ParkingSession) => void;
 }
 
-const statusLabels: Record<string, string> = {
-  open: 'Activa',
-  closed: 'Completada',
-  cancelled: 'Cancelada',
-};
+/** Estados con etiqueta en `pmsParking.sesionEstados`. */
+const ESTADOS_SESION = new Set(['open', 'closed', 'cancelled']);
 
 const statusColors: Record<string, string> = {
   open: 'bg-green-500',
@@ -65,6 +63,7 @@ export function ParkingSessionDrawer({
   onRegisterExit,
   onPrintTicket,
 }: ParkingSessionDrawerProps) {
+  const t = useTranslations('pmsParking');
   const { toast } = useToast();
   const [rateInfo, setRateInfo] = useState<ParkingRate | null>(null);
   const [duration, setDuration] = useState({ hours: 0, minutes: 0, total: 0 });
@@ -183,16 +182,9 @@ export function ParkingSessionDrawer({
   };
 
   const formatRate = () => {
-    if (!rateInfo) return 'Sin tarifa';
-    const unitLabels: Record<string, string> = {
-      minute: 'min',
-      hour: 'hora',
-      day: 'día',
-      week: 'semana',
-      month: 'mes',
-      year: 'año'
-    };
-    return `$${rateInfo.price.toLocaleString()}/${unitLabels[rateInfo.unit] || rateInfo.unit}`;
+    if (!rateInfo) return t('parkingSessionDrawer.sinTarifa');
+    const unidad = ['minute', 'hour', 'day', 'week', 'month', 'year'].includes(rateInfo.unit) ? t(`unidades.${rateInfo.unit}`) : rateInfo.unit;
+    return `$${rateInfo.price.toLocaleString()}/${unidad}`;
   };
 
   return (
@@ -205,7 +197,7 @@ export function ParkingSessionDrawer({
               {session.vehicle_plate}
             </SheetTitle>
             <Badge className={`${statusColors[session.status]} text-white`}>
-              {statusLabels[session.status]}
+              {ESTADOS_SESION.has(session.status) ? t(`sesionEstados.${session.status}`) : null}
             </Badge>
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">{session.vehicle_type}</p>
@@ -217,11 +209,11 @@ export function ParkingSessionDrawer({
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400">
               <Calendar className="h-4 w-4" />
-              Tiempo de Estadía
+              {t('parkingSessionDrawer.tiempoEstadia')}
             </div>
             <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Entrada:</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">{t('exitDialog.entrada')}</span>
                 <span className="font-medium">
                   {format(new Date(session.entry_at), "dd MMM yyyy 'a las' HH:mm", { locale: es })}
                 </span>
@@ -229,16 +221,16 @@ export function ParkingSessionDrawer({
               
               {session.exit_at ? (
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Salida:</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">{t('parkingSessionDrawer.salida')}</span>
                   <span className="font-medium">
                     {format(new Date(session.exit_at), "dd MMM yyyy 'a las' HH:mm", { locale: es })}
                   </span>
                 </div>
               ) : (
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Salida:</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">{t('parkingSessionDrawer.salida')}</span>
                   <span className="text-amber-600 dark:text-amber-400 font-medium">
-                    Pendiente
+                    {t('parkingSessionDrawer.pendiente')}
                   </span>
                 </div>
               )}
@@ -248,7 +240,7 @@ export function ParkingSessionDrawer({
               <div className="flex justify-between items-center">
                 <div className="flex flex-wrap items-center gap-2 text-blue-600 dark:text-blue-400">
                   <Timer className="h-4 w-4" />
-                  <span className="font-medium">Duración:</span>
+                  <span className="font-medium">{t('exitDialog.duracion')}</span>
                 </div>
                 <span className="text-xl font-bold">
                   {formatDuration()}
@@ -263,24 +255,24 @@ export function ParkingSessionDrawer({
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400">
               <DollarSign className="h-4 w-4" />
-              Información de Cobro
+              {t('parkingSessionDrawer.informacionCobro')}
             </div>
             <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Tarifa:</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">{t('parkingSessionDrawer.tarifa')}</span>
                 <span className="font-medium">
-                  {rateInfo ? rateInfo.rate_name : 'No asignada'}
+                  {rateInfo ? rateInfo.rate_name : t('parkingSessionDrawer.noAsignada')}
                 </span>
               </div>
               
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Precio:</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">{t('parkingSessionDrawer.precio')}</span>
                 <span className="font-medium">{formatRate()}</span>
               </div>
 
               {rateInfo?.grace_period_min && rateInfo.grace_period_min > 0 && (
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Tiempo de gracia:</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">{t('parkingSessionDrawer.tiempoGracia')}</span>
                   <span className="font-medium">{rateInfo.grace_period_min} min</span>
                 </div>
               )}
@@ -300,7 +292,7 @@ export function ParkingSessionDrawer({
 
           {/* Acciones */}
           <div className="space-y-3">
-            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Acciones</p>
+            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('parkingSessionDrawer.acciones')}</p>
             
             <div className="grid grid-cols-2 gap-3">
               {session.status === 'open' && (
@@ -312,7 +304,7 @@ export function ParkingSessionDrawer({
                   className="bg-blue-600 hover:bg-blue-700"
                 >
                   <LogOut className="h-4 w-4 mr-2" />
-                  Registrar Salida
+                  {t('exitDialog.registrarSalida')}
                 </Button>
               )}
 
@@ -322,7 +314,7 @@ export function ParkingSessionDrawer({
                   onClick={() => onPrintTicket(session)}
                 >
                   <Printer className="h-4 w-4 mr-2" />
-                  Imprimir Ticket
+                  {t('parkingSessionDrawer.imprimirTicket')}
                 </Button>
               )}
 
@@ -333,7 +325,7 @@ export function ParkingSessionDrawer({
                   className="col-span-2"
                 >
                   <Receipt className="h-4 w-4 mr-2" />
-                  Ver Recibo
+                  {t('parkingSessionDrawer.verRecibo')}
                 </Button>
               )}
             </div>

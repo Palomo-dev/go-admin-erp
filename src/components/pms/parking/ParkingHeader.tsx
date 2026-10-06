@@ -3,12 +3,14 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, Car } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface ParkingHeaderProps {
   onNewEntry: () => void;
 }
 
 export function ParkingHeader({ onNewEntry }: ParkingHeaderProps) {
+  const t = useTranslations('pmsParking');
   return (
     <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 sm:py-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
@@ -18,16 +20,16 @@ export function ParkingHeader({ onNewEntry }: ParkingHeaderProps) {
           </div>
           <div>
             <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
-              Gestión de Estacionamientos
+              {t('parkingHeader.gestionEstacionamientos')}
             </h1>
             <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Control de sesiones de parqueo y cobros
+              {t('parkingHeader.controlSesionesParqueoCobros')}
             </p>
           </div>
         </div>
         <Button size="sm" onClick={onNewEntry} className="bg-blue-600 hover:bg-blue-700 self-start sm:self-auto">
           <Plus className="h-4 w-4 mr-2" />
-          Nueva Entrada
+          {t('parkingHeader.nuevaEntrada')}
         </Button>
       </div>
     </div>

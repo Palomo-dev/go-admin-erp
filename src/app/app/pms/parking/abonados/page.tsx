@@ -21,8 +21,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useTranslations } from 'next-intl';
 
 export default function AbonadosPage() {
+  const t = useTranslations('pmsParking');
   const { toast } = useToast();
   const { organization } = useOrganization();
 
@@ -50,8 +52,8 @@ export default function AbonadosPage() {
     } catch (error) {
       console.error('Error cargando datos:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudieron cargar los datos de abonados.',
+        title: t('passVehiclesDialog.error'),
+        description: t('page.noPudieronCargarDatos'),
         variant: 'destructive',
       });
     } finally {
@@ -68,8 +70,8 @@ export default function AbonadosPage() {
   const handleNewPass = () => {
     if (passTypes.length === 0) {
       toast({
-        title: 'Sin tipos de plan',
-        description: 'Primero debes crear al menos un tipo de plan de abonado.',
+        title: t('page.sinTiposPlan'),
+        description: t('page.primeroDebesCrearMenos'),
         variant: 'destructive',
       });
       setShowTypesDialog(true);
@@ -95,15 +97,15 @@ export default function AbonadosPage() {
     try {
       await ParkingService.cancelPass(selectedPass.id);
       toast({
-        title: 'Pase cancelado',
-        description: `El pase de ${selectedPass.vehicle_plate} ha sido cancelado.`,
+        title: t('page.paseCancelado'),
+        description: t('page.paseHaSidoCancelado', { vehicle_plate: selectedPass.vehicle_plate ?? '' }),
       });
       loadData();
     } catch (error) {
       console.error('Error cancelando pase:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudo cancelar el pase.',
+        title: t('passVehiclesDialog.error'),
+        description: t('page.noPudoCancelarPase'),
         variant: 'destructive',
       });
     } finally {
@@ -114,16 +116,16 @@ export default function AbonadosPage() {
 
   const handlePassSaved = () => {
     toast({
-      title: selectedPass ? 'Pase actualizado' : 'Pase creado',
-      description: 'Los cambios se han guardado correctamente.',
+      title: selectedPass ? t('passFormDialog.paseActualizado') : t('passFormDialog.paseCreado'),
+      description: t('page.cambiosHanGuardadoCorrectamente'),
     });
     loadData();
   };
 
   const handleTypesUpdated = () => {
     toast({
-      title: 'Tipo de plan actualizado',
-      description: 'Los cambios se han guardado correctamente.',
+      title: t('page.tipoPlanActualizado'),
+      description: t('page.cambiosHanGuardadoCorrectamente'),
     });
     loadData();
   };
@@ -162,7 +164,7 @@ export default function AbonadosPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
             <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-              Total Abonados
+              {t('page.totalAbonados')}
             </p>
             <p className="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-2">
               {stats.total}
@@ -171,7 +173,7 @@ export default function AbonadosPage() {
 
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
             <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-              Activos
+              {t('page.activos')}
             </p>
             <p className="text-3xl font-bold text-green-600 dark:text-green-400 mt-2">
               {stats.active}
@@ -180,7 +182,7 @@ export default function AbonadosPage() {
 
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
             <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-              Vencidos
+              {t('page.vencidos')}
             </p>
             <p className="text-3xl font-bold text-red-600 dark:text-red-400 mt-2">
               {stats.expired}
@@ -189,7 +191,7 @@ export default function AbonadosPage() {
 
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
             <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-              Ingresos Activos
+              {t('page.ingresosActivos')}
             </p>
             <p className="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-2">
               ${stats.revenue.toLocaleString()}
@@ -231,19 +233,18 @@ export default function AbonadosPage() {
       <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Cancelar este pase?</AlertDialogTitle>
+            <AlertDialogTitle>{t('page.cancelarEstePase')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción cancelará el pase de {selectedPass?.vehicle_plate}. 
-              El cliente ya no podrá usar este pase para acceder al estacionamiento.
+              {t('page.estaAccionCancelaraPase', { vehicle_plate: selectedPass?.vehicle_plate ?? '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>No, mantener</AlertDialogCancel>
+            <AlertDialogCancel>{t('page.noMantener')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmCancelPass}
               className="bg-red-600 hover:bg-red-700"
             >
-              Sí, cancelar pase
+              {t('page.siCancelarPase')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

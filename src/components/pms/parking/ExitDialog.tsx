@@ -24,6 +24,10 @@ import { supabase } from '@/lib/supabase/config';
 import type { ParkingSession } from '@/lib/services/parkingService';
 import organizationService from '@/lib/services/organizationService';
 import parkingPaymentService from '@/lib/services/parkingPaymentService';
+import { useTranslations } from 'next-intl';
+
+/** Unidades de tarifa con etiqueta en `pmsParking.unidades`. */
+const UNIDADES_TARIFA = new Set(['minute', 'hour', 'day', 'week', 'month', 'year']);
 
 interface ExitDialogProps {
   open: boolean;
@@ -50,6 +54,7 @@ export function ExitDialog({
   organizationId,
   onConfirm,
 }: ExitDialogProps) {
+  const t = useTranslations('pmsParking');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [rates, setRates] = useState<ParkingRate[]>([]);
   const [selectedRateId, setSelectedRateId] = useState<string>('');
@@ -236,7 +241,7 @@ export function ExitDialog({
       onOpenChange(false);
     } catch (error) {
       console.error('Error registrando salida:', error);
-      alert(`Error: ${(error as Error)?.message ?? 'no se pudo registrar la salida'}`);
+      alert(t('exitDialog.errorSalida', { error: (error as Error)?.message ?? t('exitDialog.noPudoRegistrarSalida') }));
     } finally {
       setIsSubmitting(false);
     }
@@ -251,9 +256,9 @@ export function ExitDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[550px]">
         <DialogHeader>
-          <DialogTitle>Registrar Salida</DialogTitle>
+          <DialogTitle>{t('exitDialog.registrarSalida')}</DialogTitle>
           <DialogDescription>
-            Completa los datos para registrar la salida del vehículo
+            {t('exitDialog.completaDatosRegistrarSalida')}
           </DialogDescription>
         </DialogHeader>
 
@@ -261,15 +266,15 @@ export function ExitDialog({
           {/* Información de la sesión */}
           <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-2">
             <div className="flex justify-between">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Placa:</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">{t('exitDialog.placa')}</span>
               <span className="font-semibold">{session.vehicle_plate}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Tipo:</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">{t('exitDialog.tipo')}</span>
               <span className="font-medium capitalize">{session.vehicle_type}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Entrada:</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">{t('exitDialog.entrada')}</span>
               <span className="font-medium">
                 {new Date(session.entry_at).toLocaleString('es-CO', {
                   dateStyle: 'short',
@@ -280,7 +285,7 @@ export function ExitDialog({
             <div className="flex items-center justify-between pt-2 border-t">
               <div className="flex flex-wrap items-center gap-2 text-blue-600 dark:text-blue-400">
                 <Clock className="h-4 w-4" />
-                <span className="text-sm font-medium">Duración:</span>
+                <span className="text-sm font-medium">{t('exitDialog.duracion')}</span>
               </div>
               <span className="text-lg font-bold">
                 {duration.hours}h {duration.minutes}m
@@ -290,27 +295,20 @@ export function ExitDialog({
 
           {/* Selección de tarifa */}
           <div className="space-y-2">
-            <Label htmlFor="rate">Tarifa *</Label>
+            <Label htmlFor="rate">{t('exitDialog.tarifa')}</Label>
             {rates.length > 0 ? (
               <>
                 <Select value={selectedRateId} onValueChange={setSelectedRateId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar tarifa" />
+                    <SelectValue placeholder={t('exitDialog.seleccionarTarifa')} />
                   </SelectTrigger>
                   <SelectContent>
                     {rates.map((rate) => {
-                      const unitLabels: Record<string, string> = {
-                        minute: 'min',
-                        hour: 'hora',
-                        day: 'día',
-                        week: 'semana',
-                        month: 'mes',
-                        year: 'año'
-                      };
+                      const unidad = UNIDADES_TARIFA.has(rate.unit) ? t(`unidades.${rate.unit}`) : rate.unit;
                       return (
                         <SelectItem key={rate.id} value={rate.id}>
-                          {rate.rate_name} - ${rate.price.toLocaleString()}/{unitLabels[rate.unit] || rate.unit}
-                          {rate.grace_period_min && ` (${rate.grace_period_min}min gratis)`}
+                          {rate.rate_name} - ${rate.price.toLocaleString()}/{unidad}
+                          {rate.grace_period_min && t('exitDialog.minGratis', { n: rate.grace_period_min })}
                         </SelectItem>
                       );
                     })}
@@ -319,7 +317,7 @@ export function ExitDialog({
                 {selectedRate && (
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     {selectedRate.grace_period_min && 
-                      `Tiempo de gracia: ${selectedRate.grace_period_min} minutos`
+                      t('exitDialog.tiempoGracia', { n: selectedRate.grace_period_min })
                     }
                   </p>
                 )}
@@ -328,8 +326,8 @@ export function ExitDialog({
               <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg flex flex-wrap items-start gap-2">
                 <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="font-medium">No hay tarifas configuradas</p>
-                  <p className="text-xs mt-1">Ve a Configuración → Tarifas de Parqueo para crear una</p>
+                  <p className="font-medium">{t('exitDialog.noHayTarifasConfiguradas')}</p>
+                  <p className="text-xs mt-1">{t('exitDialog.veConfiguracionTarifasParqueo')}</p>
                 </div>
               </div>
             )}
@@ -340,7 +338,7 @@ export function ExitDialog({
             <div className="flex items-center justify-between">
               <div className="flex flex-wrap items-center gap-2">
                 <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
-                <span className="font-medium">Total a Pagar:</span>
+                <span className="font-medium">{t('exitDialog.totalPagar')}</span>
               </div>
               <span className="text-2xl font-bold text-green-600 dark:text-green-400">
                 ${calculatedAmount.toLocaleString()}
@@ -350,7 +348,7 @@ export function ExitDialog({
 
           {/* Método de pago */}
           <div className="space-y-2">
-            <Label htmlFor="payment_method">Método de Pago *</Label>
+            <Label htmlFor="payment_method">{t('exitDialog.metodoPago')}</Label>
             <Select value={paymentMethod} onValueChange={setPaymentMethod}>
               <SelectTrigger>
                 <SelectValue />
@@ -368,10 +366,10 @@ export function ExitDialog({
           {/* Referencia de pago (si es requerida) */}
           {selectedPaymentMethod?.requires_reference && (
             <div className="space-y-2">
-              <Label htmlFor="payment_reference">Referencia de Pago *</Label>
+              <Label htmlFor="payment_reference">{t('exitDialog.referenciaPago')}</Label>
               <Input
                 id="payment_reference"
-                placeholder="Ej: Número de transacción, voucher..."
+                placeholder={t('exitDialog.ejNumeroTransaccionVoucher')}
                 value={paymentReference}
                 onChange={(e) => setPaymentReference(e.target.value)}
                 required
@@ -386,7 +384,7 @@ export function ExitDialog({
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
             >
-              Cancelar
+              {t('passVehiclesDialog.cancelar')}
             </Button>
             <Button 
               type="submit" 
@@ -395,12 +393,12 @@ export function ExitDialog({
               {isSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Procesando...
+                  {t('exitDialog.procesando')}
                 </>
               ) : (
                 <>
                   <Receipt className="h-4 w-4 mr-2" />
-                  Registrar Salida
+                  {t('exitDialog.registrarSalida')}
                 </>
               )}
             </Button>

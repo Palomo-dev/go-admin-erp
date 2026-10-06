@@ -37,12 +37,14 @@ import { SegmentosService, type ClienteSegmento } from '../SegmentosService';
 import { Segment, FilterRule, FILTER_FIELDS, FILTER_OPERATORS } from '../types';
 import { filtroParaGuardar, normalizarFiltroSegmento, type FiltroSegmento } from '@/lib/services/crm/segmentosFiltroLogica';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { useTranslations } from 'next-intl';
 
 interface SegmentoDetallePageProps {
   segmentId: string;
 }
 
 export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
+  const t = useTranslations('crm.segmentos');
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -72,7 +74,7 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
       ]);
 
       if (!segmentData) {
-        toast({ title: 'Error', description: 'Segmento no encontrado', variant: 'destructive' });
+        toast({ title: t('segmentoDetallePage.error'), description: t('segmentoDetallePage.segmentoNoEncontrado'), variant: 'destructive' });
         router.push('/app/crm/segmentos');
         return;
       }
@@ -88,7 +90,7 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
       setFilters((filtro?.grupos[0] ?? []) as FilterRule[]);
       setOtrosGrupos((filtro?.grupos.slice(1) ?? []) as FilterRule[][]);
     } catch {
-      toast({ title: 'Error', description: 'No se pudo cargar el segmento', variant: 'destructive' });
+      toast({ title: t('segmentoDetallePage.error'), description: t('segmentoDetallePage.noPudoCargarSegmento'), variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -100,7 +102,7 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      toast({ title: 'Error', description: 'El nombre es requerido', variant: 'destructive' });
+      toast({ title: t('segmentoDetallePage.error'), description: t('segmentoDetallePage.nombreRequerido'), variant: 'destructive' });
       return;
     }
 
@@ -114,12 +116,12 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
       });
 
       if (updated) {
-        toast({ title: 'Segmento actualizado' });
+        toast({ title: t('segmentoDetallePage.segmentoActualizado') });
         setIsEditing(false);
         loadData();
       }
     } catch {
-      toast({ title: 'Error', description: 'No se pudo actualizar', variant: 'destructive' });
+      toast({ title: t('segmentoDetallePage.error'), description: t('segmentoDetallePage.noPudoActualizar'), variant: 'destructive' });
     } finally {
       setIsSaving(false);
     }
@@ -129,10 +131,10 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
     setIsRecalculating(true);
     try {
       const count = await SegmentosService.recalculateSegment(segmentId);
-      toast({ title: 'Recálculo completado', description: `${count} clientes en el segmento` });
+      toast({ title: t('segmentoDetallePage.recalculoCompletado'), description: t('segmentoDetallePage.clientesSegmento', { count }) });
       loadData();
     } catch {
-      toast({ title: 'Error', description: 'No se pudo recalcular', variant: 'destructive' });
+      toast({ title: t('segmentoDetallePage.error'), description: t('segmentoDetallePage.noPudoRecalcular'), variant: 'destructive' });
     } finally {
       setIsRecalculating(false);
     }
@@ -187,7 +189,7 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
               {segment.name}
             </h1>
             <p className="text-gray-500 dark:text-gray-400">
-              CRM / Segmentos / Detalle
+              {t('segmentoDetallePage.crmSegmentosDetalle')}
             </p>
           </div>
         </div>
@@ -196,7 +198,7 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
             <>
               <Button variant="outline" onClick={() => { setIsEditing(false); loadData(); }}>
                 <X className="h-4 w-4 mr-2" />
-                Cancelar
+                {t('constructor.cancelar')}
               </Button>
               <Button
                 onClick={handleSave}
@@ -204,7 +206,7 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
                 {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                Guardar
+                {t('segmentoDetallePage.guardar')}
               </Button>
             </>
           ) : (
@@ -212,17 +214,17 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
               {segment.is_dynamic && (
                 <Button variant="outline" onClick={handleRecalculate} disabled={isRecalculating}>
                   {isRecalculating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
-                  Recalcular
+                  {t('segmentoDetallePage.recalcular')}
                 </Button>
               )}
               <Button variant="outline" onClick={() => setIsEditing(true)}>
                 <Edit className="h-4 w-4 mr-2" />
-                Editar
+                {t('segmentoDetallePage.editar')}
               </Button>
               <Link href={`/app/crm/campanas/nuevo?segment=${segmentId}`}>
                 <Button className="bg-blue-600 hover:bg-blue-700 text-white">
                   <Megaphone className="h-4 w-4 mr-2" />
-                  Crear Campaña
+                  {t('segmentoDetallePage.crearCampana')}
                 </Button>
               </Link>
             </>
@@ -236,23 +238,23 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
           {/* Información */}
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardHeader>
-              <CardTitle className="text-gray-900 dark:text-gray-100">Información</CardTitle>
+              <CardTitle className="text-gray-900 dark:text-gray-100">{t('segmentoDetallePage.informacion')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {isEditing ? (
                 <>
                   <div className="space-y-2">
-                    <Label>Nombre</Label>
+                    <Label>{t('constructor.datos.nombre')}</Label>
                     <Input value={name} onChange={(e) => setName(e.target.value)} className="bg-gray-50 dark:bg-gray-900 dark:text-gray-200" />
                   </div>
                   <div className="space-y-2">
-                    <Label>Descripción</Label>
+                    <Label>{t('constructor.datos.descripcion')}</Label>
                     <RichTextEditor value={description} onChange={setDescription} className="dark:bg-gray-900 dark:border-gray-700" />
                   </div>
                   <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
                     <div>
-                      <p className="font-medium text-gray-900 dark:text-gray-100">Segmento dinámico</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Se recalcula automáticamente</p>
+                      <p className="font-medium text-gray-900 dark:text-gray-100">{t('segmentoDetallePage.segmentoDinamico')}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{t('segmentoDetallePage.recalculaAutomaticamente')}</p>
                     </div>
                     <Switch checked={isDynamic} onCheckedChange={setIsDynamic} />
                   </div>
@@ -261,7 +263,7 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
                 <>
                   <div className="flex items-center gap-4">
                     <Badge className={segment.is_dynamic ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}>
-                      {segment.is_dynamic ? 'Dinámico' : 'Estático'}
+                      {segment.is_dynamic ? t('constructor.datos.dinamico') : t('constructor.datos.estatico')}
                     </Badge>
                     <span className="text-gray-500 dark:text-gray-400">
                       {segment.customer_count} clientes
@@ -271,7 +273,7 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
                     <HtmlContentRenderer html={segment.description} className="text-gray-700 dark:text-gray-300" />
                   )}
                   <div className="text-sm text-gray-500 dark:text-gray-400">
-                    Última ejecución: {segment.last_run_at ? formatDate(segment.last_run_at) : 'Nunca'}
+                    {t('segmentoDetallePage.ultimaEjecucion', { date: segment.last_run_at ? formatDate(segment.last_run_at) : t('segmentoDetallePage.nunca') })}
                   </div>
                 </>
               )}
@@ -281,29 +283,29 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
           {/* Filtros */}
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-gray-900 dark:text-gray-100">Reglas de filtro</CardTitle>
+              <CardTitle className="text-gray-900 dark:text-gray-100">{t('segmentoDetallePage.reglasFiltro')}</CardTitle>
               {isEditing && (
                 <Button variant="outline" size="sm" onClick={addFilter}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Agregar
+                  {t('segmentoDetallePage.agregar')}
                 </Button>
               )}
             </CardHeader>
             <CardContent>
               {otrosGrupos.length > 0 && (
                 <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-                  Se edita el primer grupo. {otrosGrupos.length === 1 ? 'Hay 1 grupo «O todos estos» más' : `Hay ${otrosGrupos.length} grupos «O todos estos» más`}: se conserva al guardar.
+                  {t('segmentoDetallePage.editaPrimerGrupo')} {otrosGrupos.length === 1 ? t('segmentoDetallePage.hay1GrupoTodos') : t('segmentoDetallePage.hayGruposTodosEstos', { n: otrosGrupos.length })}{t('segmentoDetallePage.conservaGuardar')}
                 </p>
               )}
               {filters.length === 0 ? (
-                <p className="text-center text-gray-500 dark:text-gray-400 py-8">Sin reglas definidas</p>
+                <p className="text-center text-gray-500 dark:text-gray-400 py-8">{t('segmentoDetallePage.sinReglasDefinidas')}</p>
               ) : (
                 <div className="space-y-3">
                   {filters.map((filter, index) => {
                     const fieldType = getFieldType(filter.field);
                     const operators = FILTER_OPERATORS[fieldType] || FILTER_OPERATORS.text;
-                    const fieldLabel = FILTER_FIELDS.find(f => f.value === filter.field)?.label || filter.field;
-                    const opLabel = operators.find(o => o.value === filter.operator)?.label || filter.operator;
+                    const fieldLabel = FILTER_FIELDS.some(f => f.value === filter.field) ? t(`segmentoDetallePage.campos.${filter.field}`) : filter.field;
+                    const opLabel = operators.some(o => o.value === filter.operator) ? t(`segmentoDetallePage.operadores.${fieldType in FILTER_OPERATORS ? fieldType : 'text'}.${filter.operator}`) : filter.operator;
 
                     if (isEditing) {
                       return (
@@ -311,13 +313,13 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
                           <Select value={filter.field} onValueChange={(v) => updateFilter(index, { field: v })}>
                             <SelectTrigger className="w-36 bg-white dark:bg-gray-800 dark:text-gray-200"><SelectValue /></SelectTrigger>
                             <SelectContent className="border-gray-200 dark:border-gray-700">
-                              {FILTER_FIELDS.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
+                              {FILTER_FIELDS.map((f) => <SelectItem key={f.value} value={f.value}>{t(`segmentoDetallePage.campos.${f.value}`)}</SelectItem>)}
                             </SelectContent>
                           </Select>
                           <Select value={filter.operator} onValueChange={(v) => updateFilter(index, { operator: v as FilterRule['operator'] })}>
                             <SelectTrigger className="w-32 bg-white dark:bg-gray-800 dark:text-gray-200"><SelectValue /></SelectTrigger>
                             <SelectContent className="border-gray-200 dark:border-gray-700">
-                              {operators.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                              {operators.map((o) => <SelectItem key={o.value} value={o.value}>{t(`segmentoDetallePage.operadores.${fieldType in FILTER_OPERATORS ? fieldType : 'text'}.${o.value}`)}</SelectItem>)}
                             </SelectContent>
                           </Select>
                           {!['is_empty', 'is_not_empty'].includes(filter.operator) && (
@@ -349,19 +351,19 @@ export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
           <CardHeader>
             <CardTitle className="text-gray-900 dark:text-gray-100 flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Clientes ({customers.length})
+              {t('segmentoDetallePage.clientes', { n: customers.length })}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {customers.length === 0 ? (
-              <p className="text-center text-gray-500 dark:text-gray-400 py-8">No hay clientes en este segmento</p>
+              <p className="text-center text-gray-500 dark:text-gray-400 py-8">{t('segmentoDetallePage.noHayClientesEste')}</p>
             ) : (
               <div className="space-y-2 max-h-96 overflow-y-auto">
                 {customers.map((customer) => (
                   <Link key={customer.id} href={`/app/crm/clientes/${customer.id}`}>
                     <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
-                      <p className="font-medium text-gray-900 dark:text-gray-100">{customer.full_name || 'Sin nombre'}</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{customer.email || customer.phone || 'Sin contacto'}</p>
+                      <p className="font-medium text-gray-900 dark:text-gray-100">{customer.full_name || t('segmentoDetallePage.sinNombre')}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{customer.email || customer.phone || t('segmentoDetallePage.sinContacto')}</p>
                     </div>
                   </Link>
                 ))}

@@ -10,9 +10,10 @@
 
 import { motion, useReducedMotion } from 'motion/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { fmtMoney, plural } from '@/components/crm/revenueos/formatters';
+import { fmtMoney } from '@/components/crm/revenueos/formatters';
 import { computeForecastScenarios } from '@/lib/services/crm/revenueOs/forecastScenarios';
 import type { Opportunity, Stage } from '@/components/crm/oportunidades/types';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   stages: Stage[];
@@ -23,24 +24,25 @@ interface Props {
 }
 
 export function ForecastScenarios({ stages, opportunities, isLoading, currency }: Props) {
+  const t = useTranslations('crm.pronosticoTrimestre');
   const reduced = useReducedMotion();
   const s = computeForecastScenarios(opportunities, stages);
   const max = Math.max(s.best, s.expected, s.worst, 1);
 
   const rows = [
-    { key: 'best', label: 'Mejor caso', value: s.best, rule: `Abiertas en etapas con probabilidad ≥ ${s.bestMinProbability} %`, bar: 'bg-[#2a78d6] dark:bg-[#3987e5]' },
-    { key: 'expected', label: 'Esperado', value: s.expected, rule: 'Suma de abiertas × probabilidad de su etapa', bar: 'bg-[#eb6834] dark:bg-[#d95926]' },
-    { key: 'worst', label: 'Peor caso', value: s.worst, rule: `Solo abiertas en etapas con probabilidad ≥ ${s.worstMinProbability} %`, bar: 'bg-[#1baf7a] dark:bg-[#199e70]' },
+    { key: 'best', label: t('forecastScenarios.escenarios.best'), value: s.best, rule: t('forecastScenarios.reglas.best', { n: s.bestMinProbability }), bar: 'bg-[#2a78d6] dark:bg-[#3987e5]' },
+    { key: 'expected', label: t('forecastScenarios.escenarios.expected'), value: s.expected, rule: t('forecastScenarios.reglas.expected'), bar: 'bg-[#eb6834] dark:bg-[#d95926]' },
+    { key: 'worst', label: t('forecastScenarios.escenarios.worst'), value: s.worst, rule: t('forecastScenarios.reglas.worst', { n: s.worstMinProbability }), bar: 'bg-[#1baf7a] dark:bg-[#199e70]' },
   ];
 
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader className="p-3 sm:p-6 pb-2 sm:pb-2">
-        <CardTitle className="text-sm sm:text-base text-gray-900 dark:text-white">Escenarios de forecast</CardTitle>
+        <CardTitle className="text-sm sm:text-base text-gray-900 dark:text-white">{t('forecastScenarios.escenariosForecast')}</CardTitle>
         <p className="text-xs text-gray-500 dark:text-gray-400">
           {s.openCount > 0
-            ? `${plural(s.openCount, 'oportunidad abierta', 'oportunidades abiertas')} por ${fmtMoney(s.openTotal, currency)}`
-            : 'Sin oportunidades abiertas en este pipeline'}
+            ? t('forecastScenarios.abiertasPor', { n: s.openCount, monto: fmtMoney(s.openTotal, currency) })
+            : t('forecastScenarios.sinOportunidadesAbiertasEste')}
         </p>
       </CardHeader>
       <CardContent className="p-3 sm:p-6 pt-0">
@@ -52,7 +54,7 @@ export function ForecastScenarios({ stages, opportunities, isLoading, currency }
           </div>
         ) : s.openCount === 0 ? (
           <p className="py-4 text-center text-sm text-gray-600 dark:text-gray-300">
-            Crea oportunidades y asígnales etapa para proyectar los tres escenarios.
+            {t('forecastScenarios.creaOportunidadesAsignalesEtapa')}
           </p>
         ) : (
           <dl className="space-y-3">

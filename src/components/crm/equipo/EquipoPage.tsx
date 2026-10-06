@@ -26,21 +26,21 @@ export function EquipoPage() {
             <div className="min-w-0">
               <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-                  Equipo Comercial
+                  {t('equipoPage.equipoComercial')}
                 </h1>
                 <div className="inline-flex items-center rounded-full border border-transparent bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 px-2.5 py-0.5 text-xs font-semibold">
-                  RevOps
+                  {t('equipoPage.revops')}
                 </div>
               </div>
               <div className="flex items-center gap-3 mt-2 text-sm text-gray-500 dark:text-gray-400 flex-wrap">
                 <span className="flex items-center gap-1">
                   <Users className="h-3.5 w-3.5" />
-                  Gestión comercial
+                  {t('equipoPage.gestionComercial')}
                 </span>
                 <span className="text-gray-300 dark:text-gray-600">|</span>
                 <span className="flex items-center gap-1">
                   <Target className="h-3.5 w-3.5" />
-                  Equipos, oportunidades y territorios
+                  {t('equipoPage.equiposOportunidadesTerritorios')}
                 </span>
               </div>
             </div>

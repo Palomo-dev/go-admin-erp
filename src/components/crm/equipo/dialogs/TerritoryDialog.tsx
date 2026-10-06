@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog';
+import { useTranslations } from 'next-intl';
 
 interface TerritoryDialogProps {
   open: boolean;
@@ -23,26 +24,27 @@ interface TerritoryDialogProps {
 export function TerritoryDialog({
   open, onOpenChange, editing, form, onFormChange, onSave, saving, criteriaError,
 }: TerritoryDialogProps) {
+  const t = useTranslations('crm.equipo');
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{editing ? 'Editar territorio' : 'Nuevo territorio'}</DialogTitle>
+          <DialogTitle>{editing ? t('territoryDialog.editarTerritorio') : t('territoryDialog.nuevoTerritorio')}</DialogTitle>
           <DialogDescription>
-            {editing ? 'Modifica los datos del territorio' : 'Crea un nuevo territorio comercial'}
+            {editing ? t('territoryDialog.modificaDatosTerritorio') : t('territoryDialog.creaNuevoTerritorioComercial')}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label>Nombre *</Label>
+            <Label>{t('teamDialog.nombre')}</Label>
             <Input
               value={form.name}
               onChange={(e) => onFormChange({ ...form, name: e.target.value })}
-              placeholder="Ej: Zona Norte"
+              placeholder={t('territoryDialog.ejZonaNorte')}
             />
           </div>
           <div className="space-y-2">
-            <Label>Criterios (JSON)</Label>
+            <Label>{t('territoryDialog.criteriosJson')}</Label>
             <Textarea
               value={form.criteria}
               onChange={(e) => onFormChange({ ...form, criteria: e.target.value })}
@@ -53,7 +55,7 @@ export function TerritoryDialog({
             {criteriaError && <p className="text-xs text-red-500">{criteriaError}</p>}
           </div>
           <div className="flex items-center justify-between">
-            <Label>Activo</Label>
+            <Label>{t('teamDialog.activo')}</Label>
             <Switch
               checked={form.is_active}
               onCheckedChange={(c) => onFormChange({ ...form, is_active: c })}
@@ -61,8 +63,8 @@ export function TerritoryDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={onSave} disabled={saving}>{saving ? 'Guardando...' : 'Guardar'}</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t('memberDialog.cancelar')}</Button>
+          <Button onClick={onSave} disabled={saving}>{saving ? t('teamDialog.guardando') : t('teamDialog.guardar')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

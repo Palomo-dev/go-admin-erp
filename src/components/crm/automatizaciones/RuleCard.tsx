@@ -21,6 +21,7 @@ import {
 } from '@/lib/services/crm/automation/ruleHumanizer';
 import { StaggerItem } from '@/components/shared/motion';
 import type { AutomationRuleView } from './useAutomationRules';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   rule: AutomationRuleView;
@@ -49,6 +50,7 @@ function IconAction({ label, onClick, children }: { label: string; onClick: () =
 }
 
 export function RuleCard({ rule, lookups, lastRunAbsolute, toggling, onToggle, onDryRun, onHistory, onEdit, onDelete }: Props) {
+  const t = useTranslations('crm.automatizaciones');
   const conditions = describeConditions(rule.conditions, lookups);
   const actions = describeActions(rule.actions, lookups);
   const switchId = `rule-active-${rule.id}`;
@@ -82,7 +84,7 @@ export function RuleCard({ rule, lookups, lastRunAbsolute, toggling, onToggle, o
             id={switchId}
             checked={rule.is_active}
             disabled={toggling}
-            aria-label={`${rule.is_active ? 'Desactivar' : 'Activar'} la regla ${rule.name}`}
+            aria-label={t(rule.is_active ? 'ruleCard.desactivarRegla' : 'ruleCard.activarRegla', { name: rule.name })}
             onCheckedChange={() => onToggle(rule)}
           />
           <span
@@ -94,7 +96,7 @@ export function RuleCard({ rule, lookups, lastRunAbsolute, toggling, onToggle, o
             {rule.is_active
               ? <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
               : <PauseCircle className="h-3.5 w-3.5" aria-hidden="true" />}
-            {rule.is_active ? 'Activa' : 'Inactiva'}
+            {rule.is_active ? t('ruleCard.activa') : t('ruleCard.inactiva')}
           </span>
         </div>
       </div>
@@ -109,29 +111,29 @@ export function RuleCard({ rule, lookups, lastRunAbsolute, toggling, onToggle, o
         <div className="flex gap-2">
           <dt className="w-16 shrink-0 font-medium text-blue-700 dark:text-blue-300">entonces</dt>
           <dd className="line-clamp-2 min-w-0 break-words text-gray-700 dark:text-gray-300">
-            {actions || <span className="italic text-gray-500 dark:text-gray-400">no hará nada (sin acciones)</span>}
+            {actions || <span className="italic text-gray-500 dark:text-gray-400">{t('ruleCard.noHaraNadaSin')}</span>}
           </dd>
         </div>
       </dl>
 
       <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3 dark:border-gray-800">
         <p className="text-xs text-gray-600 dark:text-gray-400">
-          <span title={lastRunAbsolute || undefined}>Última ejecución: {formatRelativeTime(rule.last_run_at)}</span>
+          <span title={lastRunAbsolute || undefined}>{t('ruleCard.ultimaEjecucion', { relativeTime: formatRelativeTime(rule.last_run_at) })}</span>
           {' · '}
-          {runs === 1 ? '1 ejecución' : `${runs} ejecuciones`}
+          {runs === 1 ? t('ruleCard.n1Ejecucion') : t('ruleCard.ejecuciones', { runs })}
         </p>
         <div className="flex items-center gap-0.5">
           {/* H3: N botones «Probar en seco» idénticos; el nombre accesible lleva la regla (y empieza por el texto visible). */}
-          <Button type="button" size="sm" variant="outline" className="h-8" aria-label={`Probar en seco ${rule.name}`} onClick={() => onDryRun(rule)}>
-            <FlaskConical className="mr-1.5 h-4 w-4" aria-hidden="true" /> Probar en seco
+          <Button type="button" size="sm" variant="outline" className="h-8" aria-label={t('ruleCard.probarSeco', { name: rule.name })} onClick={() => onDryRun(rule)}>
+            <FlaskConical className="mr-1.5 h-4 w-4" aria-hidden="true" /> {t('ruleCard.probarSeco2')}
           </Button>
-          <IconAction label={`Historial de ${rule.name}`} onClick={() => onHistory(rule)}>
+          <IconAction label={t('ruleCard.historial', { name: rule.name })} onClick={() => onHistory(rule)}>
             <History className="h-4 w-4" aria-hidden="true" />
           </IconAction>
-          <IconAction label={`Editar ${rule.name}`} onClick={() => onEdit(rule)}>
+          <IconAction label={t('ruleCard.editar', { name: rule.name })} onClick={() => onEdit(rule)}>
             <Pencil className="h-4 w-4" aria-hidden="true" />
           </IconAction>
-          <IconAction label={`Eliminar ${rule.name}`} onClick={() => onDelete(rule)}>
+          <IconAction label={t('ruleCard.eliminar', { name: rule.name })} onClick={() => onDelete(rule)}>
             <Trash2 className="h-4 w-4 text-red-600 dark:text-red-400" aria-hidden="true" />
           </IconAction>
         </div>

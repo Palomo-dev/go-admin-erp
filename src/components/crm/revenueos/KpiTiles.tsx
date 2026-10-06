@@ -12,6 +12,7 @@ import { StaggerItem, StaggerList } from '@/components/shared/motion';
 import type { PipelineFunnelRow, RevenueSummary } from '@/lib/services/crm/revenueOsService';
 import { fmtDays, fmtMoney, fmtPct, SIN_DATOS } from './formatters';
 import { arpaHint, collectedHint, winRateHint, wonHint } from './kpiHints';
+import { useTranslations } from 'next-intl';
 
 interface Tile {
   key: string;
@@ -85,9 +86,10 @@ interface Props {
 }
 
 export function KpiTiles({ summary, funnel, currency }: Props) {
+  const tx = useTranslations('crm.pronosticoTrimestre');
   const tiles = buildTiles(summary, funnel, currency);
   return (
-    <StaggerList as="ul" className="grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="Indicadores del periodo">
+    <StaggerList as="ul" className="grid grid-cols-2 gap-3 md:grid-cols-4" aria-label={tx('kpiTiles.indicadoresPeriodo')}>
       {tiles.map((t) => (
         <StaggerItem
           as="li"
@@ -95,7 +97,7 @@ export function KpiTiles({ summary, funnel, currency }: Props) {
           className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800"
         >
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{t.label}</span>
+            <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{tx(`kpiTiles.etiquetas.${t.key}`)}</span>
             {t.icon}
           </div>
           <p

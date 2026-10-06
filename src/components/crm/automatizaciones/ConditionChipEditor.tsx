@@ -15,6 +15,7 @@ import { fieldLabel, groupLabel, operatorLabel } from '@/lib/services/crm/automa
 import { conditionValueToText, type ConditionPatch } from '@/lib/services/crm/automation/ruleEditorModel';
 import { SELECT_CLASS } from './TriggerBlock';
 import type { RuleLookups } from './useRuleLookups';
+import { useTranslations } from 'next-intl';
 
 const NO_VALUE = new Set<string>(['is_null', 'is_not_null']);
 const LIST_VALUE = new Set<string>(['in', 'not_in']);
@@ -30,14 +31,16 @@ interface Props {
   onRemove: () => void;
 }
 
+/** Subclave de `crm.automatizaciones.conditionChipEditor.ayudas` según el operador. */
 function valueHint(operator: string): string {
-  if (LIST_VALUE.has(operator)) return 'Varios valores separados por coma.';
-  if (operator === 'within_days') return 'Número de días hacia atrás desde hoy.';
-  if (operator === 'before' || operator === 'after') return 'Fecha en formato AAAA-MM-DD.';
-  return 'Texto, número, true o false. Los IDs de etapa se eligen por nombre.';
+  if (LIST_VALUE.has(operator)) return 'lista';
+  if (operator === 'within_days') return 'dias';
+  if (operator === 'before' || operator === 'after') return 'fecha';
+  return 'texto';
 }
 
 export function ConditionChipEditor({ index, rule, lookups, onChange, onRemove }: Props) {
+  const t = useTranslations('crm.automatizaciones');
   const operator = String(rule.operator);
   const fieldId = `cond-${index}-field`;
   const opId = `cond-${index}-op`;
@@ -48,7 +51,7 @@ export function ConditionChipEditor({ index, rule, lookups, onChange, onRemove }
 
   const renderValue = () => {
     if (NO_VALUE.has(operator)) {
-      return <p className="text-xs text-gray-600 dark:text-gray-400">Este operador no necesita valor.</p>;
+      return <p className="text-xs text-gray-600 dark:text-gray-400">{t('conditionChipEditor.esteOperadorNoNecesita')}</p>;
     }
     if (operator === 'eq' || operator === 'ne') {
       if (STAGE_FIELDS.has(rule.field)) {
@@ -57,9 +60,9 @@ export function ConditionChipEditor({ index, rule, lookups, onChange, onRemove }
             value={typeof rule.value === 'string' ? rule.value : null}
             onChange={(id) => onChange({ value: id ?? '' })}
             options={lookups.stages}
-            placeholder="Elige una etapa"
-            emptyMessage="No hay etapas creadas."
-            ariaLabel={`Valor de la condición ${index + 1}`}
+            placeholder={t('actionChipEditor.eligeEtapa')}
+            emptyMessage={t('actionChipEditor.noHayEtapasCreadas')}
+            ariaLabel={t('conditionChipEditor.valorCondicion', { n: index + 1 })}
           />
         );
       }
@@ -69,9 +72,9 @@ export function ConditionChipEditor({ index, rule, lookups, onChange, onRemove }
             value={typeof rule.value === 'string' ? rule.value : null}
             onChange={(id) => onChange({ value: id ?? '' })}
             options={lookups.pipelines}
-            placeholder="Elige un pipeline"
-            emptyMessage="No hay pipelines creados."
-            ariaLabel={`Valor de la condición ${index + 1}`}
+            placeholder={t('conditionChipEditor.eligePipeline')}
+            emptyMessage={t('triggerBlock.noHayPipelinesCreados')}
+            ariaLabel={t('conditionChipEditor.valorCondicion', { n: index + 1 })}
           />
         );
       }
@@ -80,7 +83,7 @@ export function ConditionChipEditor({ index, rule, lookups, onChange, onRemove }
       <Input
         id={valueId}
         value={conditionValueToText(rule.value)}
-        placeholder={LIST_VALUE.has(operator) ? 'a, b, c' : 'Valor'}
+        placeholder={LIST_VALUE.has(operator) ? 'a, b, c' : t('conditionChipEditor.valor')}
         aria-describedby={`${valueId}-hint`}
         onChange={(e) => onChange({ value: e.target.value })}
       />
@@ -91,7 +94,7 @@ export function ConditionChipEditor({ index, rule, lookups, onChange, onRemove }
     <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 dark:border-amber-900/60 dark:bg-amber-950/20">
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
-          <Label htmlFor={fieldId} className="text-xs text-gray-700 dark:text-gray-300">Campo</Label>
+          <Label htmlFor={fieldId} className="text-xs text-gray-700 dark:text-gray-300">{t('conditionChipEditor.campo')}</Label>
           <select
             id={fieldId}
             className={SELECT_CLASS}
@@ -110,7 +113,7 @@ export function ConditionChipEditor({ index, rule, lookups, onChange, onRemove }
           </select>
         </div>
         <div>
-          <Label htmlFor={opId} className="text-xs text-gray-700 dark:text-gray-300">Operador</Label>
+          <Label htmlFor={opId} className="text-xs text-gray-700 dark:text-gray-300">{t('conditionChipEditor.operador')}</Label>
           <select
             id={opId}
             className={SELECT_CLASS}
@@ -122,17 +125,17 @@ export function ConditionChipEditor({ index, rule, lookups, onChange, onRemove }
         </div>
         <div>
           {usesEntitySelect
-            ? <span className="block text-xs font-medium text-gray-700 dark:text-gray-300">Valor</span>
-            : <Label htmlFor={valueId} className="text-xs text-gray-700 dark:text-gray-300">Valor</Label>}
+            ? <span className="block text-xs font-medium text-gray-700 dark:text-gray-300">{t('conditionChipEditor.valor')}</span>
+            : <Label htmlFor={valueId} className="text-xs text-gray-700 dark:text-gray-300">{t('conditionChipEditor.valor')}</Label>}
           {renderValue()}
           {!NO_VALUE.has(operator) && (
-            <p id={`${valueId}-hint`} className="mt-1 text-xs text-gray-600 dark:text-gray-400">{valueHint(operator)}</p>
+            <p id={`${valueId}-hint`} className="mt-1 text-xs text-gray-600 dark:text-gray-400">{t(`conditionChipEditor.ayudas.${valueHint(operator)}`)}</p>
           )}
         </div>
       </div>
       <div className="mt-2 flex justify-end">
         <Button type="button" size="sm" variant="ghost" className="h-8 text-red-700 hover:text-red-800 dark:text-red-300" onClick={onRemove}>
-          <Trash2 className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> Quitar condición
+          <Trash2 className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> {t('conditionChipEditor.quitarCondicion')}
         </Button>
       </div>
     </div>

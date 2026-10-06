@@ -1555,7 +1555,9 @@ describe('J. Despacho puntual, disparo por etapa y consentimiento (ronda 2)', ()
     // `editor/AgentToolsTab.tsx` y la regla en `editor/useAgentForm.ts`.
     const editor = SRC('src/components/crm/agentes/editor/AgentToolsTab.tsx');
     expect(editor).toContain('disabled={obligatoria}');
-    expect(editor).toContain('Obligatoria por ley');
+    // El texto vive en messages (crm.agentesIa.agentToolsTab.obligatoriaLey).
+    expect(editor).toContain('t("agentToolsTab.obligatoriaLey")');
+    expect(JSON.parse(SRC('messages/es.json')).crm.agentesIa.agentToolsTab.obligatoriaLey).toBe('Obligatoria por ley');
     const formHook = SRC('src/components/crm/agentes/editor/useAgentForm.ts');
     expect(formHook).toContain('MANDATORY_TOOLS');
     expect(formHook).toMatch(/if \(isMandatoryTool\(tool\)\) return tools;/);

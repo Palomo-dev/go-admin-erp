@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { fmtMoney } from '@/components/crm/revenueos/formatters';
 import { ForecastData } from '@/components/crm/oportunidades/types';
+import { useTranslations } from 'next-intl';
 
 interface ForecastChartProps {
   data: ForecastData[];
@@ -12,6 +13,7 @@ interface ForecastChartProps {
 }
 
 export function ForecastChart({ data, isLoading, currency }: ForecastChartProps) {
+  const t = useTranslations('crm.pronosticoTrimestre');
   if (isLoading) {
     return (
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
@@ -29,7 +31,7 @@ export function ForecastChart({ data, isLoading, currency }: ForecastChartProps)
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardContent className="p-6 text-center">
           <p className="text-gray-500 dark:text-gray-400">
-            No hay datos de pronóstico disponibles
+            {t('forecastChart.noHayDatosPronostico')}
           </p>
         </CardContent>
       </Card>
@@ -57,26 +59,26 @@ export function ForecastChart({ data, isLoading, currency }: ForecastChartProps)
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader>
-        <CardTitle className="text-gray-900 dark:text-white">Tendencia de Pronóstico</CardTitle>
+        <CardTitle className="text-gray-900 dark:text-white">{t('forecastChart.tendenciaPronostico')}</CardTitle>
       </CardHeader>
       <CardContent>
         {/* Leyenda */}
         <div className="flex flex-wrap gap-4 mb-6">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-green-500" />
-            <span className="text-sm text-gray-600 dark:text-gray-400">Ganado</span>
+            <span className="text-sm text-gray-600 dark:text-gray-400">{t('cifras.ganado.titulo')}</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-blue-500" />
-            <span className="text-sm text-gray-600 dark:text-gray-400">Ponderado</span>
+            <span className="text-sm text-gray-600 dark:text-gray-400">{t('cifras.ponderado.titulo')}</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-gray-300 dark:bg-gray-600" />
-            <span className="text-sm text-gray-600 dark:text-gray-400">En proceso</span>
+            <span className="text-sm text-gray-600 dark:text-gray-400">{t('forecastChart.proceso')}</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 border-2 border-red-500 rounded-full" />
-            <span className="text-sm text-gray-600 dark:text-gray-400">Meta</span>
+            <span className="text-sm text-gray-600 dark:text-gray-400">{t('forecastChart.meta')}</span>
           </div>
         </div>
 
@@ -89,7 +91,7 @@ export function ForecastChart({ data, isLoading, currency }: ForecastChartProps)
                   {formatPeriod(item.period)}
                 </span>
                 <span className="text-sm text-gray-500 dark:text-gray-400">
-                  {item.goalCompletion.toFixed(0)}% meta
+                  {t('forecastChart.meta2', { goalCompletion: item.goalCompletion.toFixed(0) })}
                 </span>
               </div>
 
@@ -130,9 +132,9 @@ export function ForecastChart({ data, isLoading, currency }: ForecastChartProps)
 
               {/* Detalle */}
               <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-                <span>Ganado: {fmtMoney(item.wonAmount, currency)}</span>
-                <span>Pond.: {fmtMoney(item.weightedAmount, currency)}</span>
-                <span>Abierto: {fmtMoney(item.openAmount, currency)}</span>
+                <span>{t('forecastChart.ganado', { money: fmtMoney(item.wonAmount, currency) })}</span>
+                <span>{t('forecastChart.pond', { money: fmtMoney(item.weightedAmount, currency) })}</span>
+                <span>{t('forecastChart.abierto', { money: fmtMoney(item.openAmount, currency) })}</span>
               </div>
             </div>
           ))}
@@ -144,19 +146,19 @@ export function ForecastChart({ data, isLoading, currency }: ForecastChartProps)
             <p className="text-lg font-bold text-green-600 dark:text-green-400">
               {fmtMoney(data.reduce((sum, d) => sum + d.wonAmount, 0), currency)}
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Total Ganado</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{t('forecastChart.totalGanado')}</p>
           </div>
           <div>
             <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
               {fmtMoney(data.reduce((sum, d) => sum + d.weightedAmount, 0), currency)}
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Total Ponderado</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{t('forecastChart.totalPonderado')}</p>
           </div>
           <div>
             <p className="text-lg font-bold text-gray-600 dark:text-gray-400">
               {fmtMoney(data.reduce((sum, d) => sum + d.openAmount, 0), currency)}
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Total Abierto</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{t('forecastChart.totalAbierto')}</p>
           </div>
         </div>
       </CardContent>

@@ -22,8 +22,10 @@ import { pickEmbedded, profileDisplayName, type EmbeddedProfile } from '@/lib/ut
 import { describeError, logError } from '@/lib/utils/errorMessage';
 import { editarOportunidad } from '@/components/crm/oportunidad/apiOportunidades';
 import { SimulacionAsignacion } from '../SimulacionAsignacion';
+import { useTranslations } from 'next-intl';
 
 export function AsignarTab() {
+  const tx = useTranslations('crm.equipo');
   const { toast } = useToast();
   const { paraDocumento } = useMonedaOrganizacion();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
@@ -60,7 +62,7 @@ export function AsignarTab() {
       setOrgMembers(orgMemberList);
     } catch (err) {
       logError('[AsignarTab] cargar oportunidades y equipos', err);
-      toast({ title: 'Error', description: `No se pudieron cargar las oportunidades: ${describeError(err)}`, variant: 'destructive' });
+      toast({ title: tx('equiposTab.error'), description: tx('asignarTab.noPudieronCargarOportunidades', { describeError: describeError(err) }), variant: 'destructive' });
     } finally {
       setLoading(false);
       setIsRefreshing(false);
@@ -74,9 +76,9 @@ export function AsignarTab() {
       // CRM ola 3B (guardarraíl 36): PATCH por el servidor (`crm_update_opportunity`).
       await editarOportunidad(oppId, { sales_team_id: teamId });
       setOpportunities((prev) => prev.map((o) => o.id === oppId ? { ...o, sales_team_id: teamId } : o));
-      toast({ title: 'Equipo asignado' });
+      toast({ title: tx('asignarTab.equipoAsignado') });
     } catch {
-      toast({ title: 'Error', description: 'No se pudo asignar', variant: 'destructive' });
+      toast({ title: tx('equiposTab.error'), description: tx('asignarTab.noPudoAsignar'), variant: 'destructive' });
     }
   };
 
@@ -84,9 +86,9 @@ export function AsignarTab() {
     try {
       await editarOportunidad(oppId, { salesperson_id: userId });
       setOpportunities((prev) => prev.map((o) => o.id === oppId ? { ...o, salesperson_id: userId } : o));
-      toast({ title: 'Vendedor asignado' });
+      toast({ title: tx('asignarTab.vendedorAsignado') });
     } catch {
-      toast({ title: 'Error', description: 'No se pudo asignar', variant: 'destructive' });
+      toast({ title: tx('equiposTab.error'), description: tx('asignarTab.noPudoAsignar'), variant: 'destructive' });
     }
   };
 
@@ -116,13 +118,13 @@ export function AsignarTab() {
             <Select value={filterTeam} onValueChange={setFilterTeam}>
               <SelectTrigger className="w-48 h-9"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos los equipos</SelectItem>
+                <SelectItem value="all">{tx('asignarTab.todosEquipos')}</SelectItem>
                 {teams.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
               </SelectContent>
             </Select>
             <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
               <Switch checked={filterUnassigned} onCheckedChange={setFilterUnassigned} />
-              Solo sin asignar
+              {tx('asignarTab.soloSinAsignar')}
             </label>
             <Button variant="outline" size="sm" onClick={load} disabled={isRefreshing}>
               <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -137,7 +139,7 @@ export function AsignarTab() {
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardContent className="pt-12 pb-12 text-center">
             <Target className="h-12 w-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-            <p className="text-sm text-gray-500">No hay oportunidades para asignar</p>
+            <p className="text-sm text-gray-500">{tx('asignarTab.noHayOportunidadesAsignar')}</p>
           </CardContent>
         </Card>
       ) : (
@@ -146,12 +148,12 @@ export function AsignarTab() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-xs">Oportunidad</TableHead>
-                  <TableHead className="text-xs">Cliente</TableHead>
-                  <TableHead className="text-xs">Monto</TableHead>
-                  <TableHead className="text-xs">Etapa</TableHead>
-                  <TableHead className="text-xs">Equipo</TableHead>
-                  <TableHead className="text-xs">Vendedor</TableHead>
+                  <TableHead className="text-xs">{tx('asignarTab.oportunidad')}</TableHead>
+                  <TableHead className="text-xs">{tx('asignarTab.cliente')}</TableHead>
+                  <TableHead className="text-xs">{tx('asignarTab.monto')}</TableHead>
+                  <TableHead className="text-xs">{tx('asignarTab.etapa')}</TableHead>
+                  <TableHead className="text-xs">{tx('asignarTab.equipo')}</TableHead>
+                  <TableHead className="text-xs">{tx('asignarTab.vendedor')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -169,7 +171,7 @@ export function AsignarTab() {
                       <Select value={o.sales_team_id || 'none'} onValueChange={(v) => assignTeam(o.id, v === 'none' ? null : v)}>
                         <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">Sin equipo</SelectItem>
+                          <SelectItem value="none">{tx('asignarTab.sinEquipo')}</SelectItem>
                           {teams.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
                         </SelectContent>
                       </Select>
@@ -178,7 +180,7 @@ export function AsignarTab() {
                       <Select value={o.salesperson_id || 'none'} onValueChange={(v) => assignSeller(o.id, v === 'none' ? null : v)}>
                         <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">Sin asignar</SelectItem>
+                          <SelectItem value="none">{tx('asignarTab.sinAsignar')}</SelectItem>
                           {orgMembers.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
                         </SelectContent>
                       </Select>

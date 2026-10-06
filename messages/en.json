@@ -6777,7 +6777,8 @@
         "creandoVoz": "Creating the voice…",
         "crearMiVoz": "Create my voice",
         "planActualElevenlabsNo2": "The current ElevenLabs plan ({tier}) doesn't allow cloning voices.",
-        "maximoMuestras": "At most {max} samples: the first {n} were taken."
+        "maximoMuestras": "At most {max} samples: the first {n} were taken.",
+        "faltaMuestraAudio": "The audio sample is missing."
       },
       "agentPurposeTab": {
         "nombre": "Name",
@@ -7006,6 +7007,126 @@
         "asignar": "Assign opportunities",
         "performance": "Performance",
         "territorios": "Territories"
+      },
+      "equiposTab": {
+        "error": "Error",
+        "noPudieronCargarEquipos": "The teams could not be loaded",
+        "validacion": "Validation",
+        "nombreObligatorio": "The name is required",
+        "equipoActualizado": "Team updated",
+        "equipoCreado": "Team created",
+        "noPudoGuardar": "Could not save",
+        "seleccionaMiembro": "Select a member",
+        "miembroAnadido": "Member added",
+        "noPudoAnadir": "Could not add",
+        "miembroRemovido": "Member removed",
+        "noPudoRemover": "Could not remove",
+        "equipoEliminado": "Team deleted",
+        "noPudoEliminar": "Could not delete",
+        "nuevoEquipo": "New team",
+        "noHayEquipos": "There are no teams",
+        "creaPrimerEquipoComercial": "Create your first sales team",
+        "cuotaTotal": "Total quota: {moneda}",
+        "sinMiembrosAnadePrimero": "No members. Add the first one.",
+        "cuota": "Quota: {moneda}",
+        "anadirMiembro": "Add member",
+        "eliminarEquipo": "Delete team?",
+        "eliminaraTodosSusMiembros": "\"{name}\" and all its members will be deleted."
+      },
+      "territoriosTab": {
+        "noPudieronCargarTerritorios": "Territories could not be loaded",
+        "territorioActualizado": "Territory updated",
+        "territorioCreado": "Territory created",
+        "territorioEliminado": "Territory deleted",
+        "nuevoTerritorio": "New territory",
+        "noHayTerritoriosConfigurados": "No territories configured",
+        "oport": "Opp.",
+        "valor": "Value",
+        "equipos": "Teams:",
+        "eliminarTerritorio": "Delete territory?",
+        "eliminara": "\"{name}\" will be deleted.",
+        "jsonInvalido": "Invalid JSON"
+      },
+      "asignarTab": {
+        "noPudieronCargarOportunidades": "The opportunities could not be loaded: {describeError}",
+        "equipoAsignado": "Team assigned",
+        "noPudoAsignar": "Could not assign",
+        "vendedorAsignado": "Salesperson assigned",
+        "todosEquipos": "All teams",
+        "soloSinAsignar": "Unassigned only",
+        "noHayOportunidadesAsignar": "There are no opportunities to assign",
+        "oportunidad": "Opportunity",
+        "cliente": "Customer",
+        "monto": "Amount",
+        "etapa": "Stage",
+        "equipo": "Team",
+        "vendedor": "Salesperson",
+        "sinEquipo": "No team",
+        "sinAsignar": "Unassigned"
+      },
+      "performanceTab": {
+        "noPudoCargarPerformance": "Performance could not be loaded",
+        "noHayMiembrosEquipos": "There are no team members to show performance",
+        "asignaMiembrosDesdeTab": "Assign members from the Teams tab",
+        "activas": "Active",
+        "ganadas": "Won",
+        "ganado": "Won amount",
+        "rol": "Role",
+        "perdidas": "Lost",
+        "cuota": "Quota"
+      },
+      "memberDialog": {
+        "seleccionaMiembroOrganizacion": "Select a member of the organization",
+        "miembro": "Member *",
+        "selecciona": "Select...",
+        "sinRol": "No role",
+        "territorioOpcional": "Territory (optional)",
+        "heredaEquipo": "Inherits from the team",
+        "moneda": "Currency",
+        "cancelar": "Cancel",
+        "anadiendo": "Adding...",
+        "anadir": "Add"
+      },
+      "teamDialog": {
+        "editarEquipo": "Edit team",
+        "nuevoEquipo": "New team",
+        "modificaDatosEquipoComercial": "Edit the sales team's details",
+        "creaNuevoEquipoComercial": "Create a new sales team",
+        "nombre": "Name *",
+        "ejEquipoNorte": "E.g.: North team",
+        "descripcion": "Description",
+        "sinTerritorio": "No territory",
+        "activo": "Active",
+        "guardando": "Saving...",
+        "guardar": "Save"
+      },
+      "territoryDialog": {
+        "editarTerritorio": "Edit territory",
+        "nuevoTerritorio": "New territory",
+        "modificaDatosTerritorio": "Edit the territory's details",
+        "creaNuevoTerritorioComercial": "Create a new sales territory",
+        "ejZonaNorte": "E.g.: North zone",
+        "criteriosJson": "Criteria (JSON)"
+      },
+      "equipoSidebar": {
+        "pipelineActivo": "Active pipeline",
+        "oportunidadesAbiertas": "{openOpps} open opportunities",
+        "equiposActivos": "Active teams",
+        "miembros": "Members",
+        "oportunidadesAbiertas2": "Open opportunities",
+        "accesoRapido": "Quick access",
+        "irPipeline": "Go to the Pipeline",
+        "verOportunidades": "View opportunities",
+        "configurarEstructura": "Set up structure"
+      },
+      "equipoPage": {
+        "equipoComercial": "Sales team",
+        "revops": "RevOps",
+        "gestionComercial": "Sales management",
+        "equiposOportunidadesTerritorios": "Teams, opportunities and territories"
+      },
+      "deleteConfirmDialog": {
+        "eliminar": "Delete"
       }
     },
     "automatizaciones": {
@@ -7036,6 +7157,242 @@
         "sinNombre": "Unnamed record",
         "noDisponible": "The record no longer exists or is not visible",
         "yMas": "And {n} more…"
+      },
+      "dryRunDialog": {
+        "probarSeco": "Dry run «{name}»",
+        "eligeOportunidadVerasHaria": "Choose an opportunity and you'll see what the rule would do with it. Nothing is sent, nothing changes and it isn't recorded in the history.",
+        "noPudoProbar": "Could not test",
+        "oportunidad": "Opportunity",
+        "buscarNombre": "Search by name…",
+        "elegida": "Chosen: {selectedName}",
+        "sinElegirEvaluaSin": "None chosen: it's evaluated without an opportunity (only the trigger and the conditions that don't need one).",
+        "resultadosBusqueda": "Search results",
+        "sinOportunidad": "No opportunity",
+        "ningunaOportunidadCoincide": "No opportunity matches.",
+        "reglaDispararia": "The rule would fire",
+        "reglaNoDispararia": "The rule wouldn't fire",
+        "condiciones": "Conditions",
+        "cumple": "Met",
+        "noCumple": "Not met",
+        "valorReal": "— actual value: {actualText}",
+        "hariaEsteOrden": "It would do, in this order",
+        "hariaSiDisparara": "It would do if it fired",
+        "nadaReglaNoTiene": "Nothing: the rule has no actions.",
+        "noDisponibleFallaria": "(not available: it would fail)",
+        "cerrar": "Close",
+        "probando": "Testing…",
+        "probarNuevo": "Test again",
+        "probar": "Test",
+        "vacio": "empty",
+        "si": "yes",
+        "no": "no"
+      },
+      "automatizacionesPage": {
+        "desactivada": "«{name}» deactivated",
+        "activada": "«{name}» activated",
+        "noPudoCambiarEstado": "Could not change the status",
+        "errorDesconocido": "Unknown error",
+        "eliminada": "«{name}» deleted",
+        "noPudoEliminar": "Could not delete",
+        "automatizaciones": "Automations",
+        "reglasActuanSolasCuando": "Rules that act on their own when something happens in the pipeline. The server runs them, not the browser.",
+        "actualizarLista": "Refresh list",
+        "historial": "History",
+        "nuevaRegla": "New rule",
+        "noPudoActualizarLista": "Could not refresh the list",
+        "noPudieronCargarReglas": "The rules could not be loaded",
+        "muestraUltimaListaConocida": "The last known list is shown; press",
+        "pulsa": "Press",
+        "actualizarReintentar": "{error}. {valor} «Refresh» to retry.",
+        "cargandoReglas": "Loading rules",
+        "reglasAutomatizacion": "Automation rules",
+        "eliminarRegla": "Delete rule",
+        "eliminaraDejaraEjecutarseTambien": "«{n}» will be deleted and will stop running. Its run history is also erased. This action can't be undone.",
+        "eliminar": "Delete"
+      },
+      "actionChipEditor": {
+        "sinPlantillaContenidoLibre": "No template (free content)",
+        "noHayPlantillasCreadas": "No templates created.",
+        "eligeSecuencia": "Choose a sequence",
+        "noHaySecuenciasCreadas": "No sequences created.",
+        "eligeEtapa": "Choose a stage",
+        "noHayEtapasCreadas": "No stages created.",
+        "eligeCampo": "Choose a field",
+        "cargando": "Loading…",
+        "accion": "Action {index}",
+        "noDisponible": "{label} (not available)",
+        "subirAccion": "Move action {n} up",
+        "bajarAccion": "Move action {n} down",
+        "quitar": "Remove",
+        "estaAccionTodaviaNo": "This action isn't available yet: if you keep it, the run will be marked as failed.",
+        "entidades": {
+          "opportunities": "Opportunity",
+          "customers": "Customer",
+          "tasks": "Task"
+        }
+      },
+      "runsSheet": {
+        "historial": "History of «{ruleName}»",
+        "historialTodasReglas": "History of all rules",
+        "ultimas50EjecucionesReales": "The server's last 50 real runs. Dry runs aren't recorded here.",
+        "actualizar": "Refresh",
+        "noPudoCargarHistorial": "The history could not be loaded",
+        "pulsaActualizarReintentar": "{error} — press «Refresh» to retry.",
+        "cargandoHistorial": "Loading history",
+        "todaviaNoHayEjecuciones": "No runs yet. When the rule fires, they will show up here.",
+        "estado": "Status",
+        "fecha": "Date",
+        "detalle": "Details",
+        "ok": "— ok",
+        "sinDetalle": "no details",
+        "errorDetalle": " — error: {error}"
+      },
+      "triggerBlock": {
+        "disparador": "Trigger",
+        "evento": "Event",
+        "eligeUnoConocidoEscribe": "Pick a known one or type another in the form entity.action. Empty = any event.",
+        "vaPropioDisparadorCambia": "«{muted}» has its own trigger («changes stage» or «changes a field»): with «{label}» this rule would never fire. Choose another event or change the trigger.",
+        "pipeline": "In the pipeline",
+        "cargandoPipelines": "Loading pipelines…",
+        "cualquierPipeline": "Any pipeline",
+        "noHayPipelinesCreados": "No pipelines created.",
+        "entrarEtapa": "When entering the stage",
+        "cargandoEtapas": "Loading stages…",
+        "cualquierEtapa": "Any stage",
+        "pipelineElegidoNoTiene": "The chosen pipeline has no stages.",
+        "pipelineRegla": "Rule's pipeline",
+        "etapaRegla": "Rule's stage",
+        "ignorado": {
+          "pipeline": "the pipeline «{nombre}»",
+          "etapa": "the stage «{nombre}»",
+          "uno": "This trigger doesn't look at {a}: it's kept in case you go back to a trigger that uses it.",
+          "ambos": "This trigger doesn't look at {a} or {b}: they're kept in case you go back to a trigger that uses them."
+        }
+      },
+      "ruleCard": {
+        "activa": "Active",
+        "inactiva": "Inactive",
+        "noHaraNadaSin": "won't do anything (no actions)",
+        "ultimaEjecucion": "Last run: {relativeTime}",
+        "n1Ejecucion": "1 run",
+        "ejecuciones": "{runs} runs",
+        "probarSeco": "Dry run {name}",
+        "probarSeco2": "Dry run",
+        "historial": "History of {name}",
+        "editar": "Edit {name}",
+        "eliminar": "Delete {name}",
+        "desactivarRegla": "Deactivate the rule {name}",
+        "activarRegla": "Activate the rule {name}"
+      },
+      "ruleEditorSheet": {
+        "reglaActualizada": "Rule updated",
+        "reglaCreada": "Rule created",
+        "yaEstaActiva": "It's already active.",
+        "estaDesactivadaActivalaCuando": "It's deactivated: activate it whenever you want.",
+        "editarRegla": "Edit rule",
+        "armaFraseCuandoDispara": "Build the sentence: when it fires, with which conditions and what it does. Below you'll see how it reads before saving.",
+        "nombreRegla": "Rule name",
+        "seguimientoPropuesta": "Proposal follow-up",
+        "noPudoGuardar": "Could not save",
+        "corrigeLoIndicadoVuelve": "{serverError}. Fix what is indicated and try again.",
+        "guardar": "Save",
+        "desactivada": "Deactivated",
+        "cancelar": "Cancel",
+        "guardando": "Saving…",
+        "palabras": {
+          "cuando": "When",
+          "si": "if",
+          "opcional": "optional",
+          "entonces": "then"
+        }
+      },
+      "conditionChipEditor": {
+        "esteOperadorNoNecesita": "This operator doesn't need a value.",
+        "eligePipeline": "Choose a pipeline",
+        "valor": "Value",
+        "campo": "Field",
+        "operador": "Operator",
+        "quitarCondicion": "Remove condition",
+        "valorCondicion": "Value of condition {n}",
+        "ayudas": {
+          "lista": "Several values separated by commas.",
+          "dias": "Number of days back from today.",
+          "fecha": "Date in YYYY-MM-DD format.",
+          "texto": "Text, number, true or false. Stage IDs are chosen by name."
+        }
+      },
+      "conditionsBlock": {
+        "comoCombinanCondiciones": "How the conditions combine",
+        "cumpleSi": "It's met if",
+        "sinCondicionesDisparaSiempre": "No conditions: it fires whenever the trigger happens. Add one only if you need to filter.",
+        "grupoEditaComoJson": "· group, it's edited as JSON",
+        "anadirCondicion": "Add condition",
+        "editarComoJson": "Edit as JSON",
+        "condicionesJson": "Conditions in JSON",
+        "gruposAnidadosCasosAvanzados": "For nested groups and advanced cases. Allowed fields: opportunity.*, customer.*, stage.*, pipeline.*, consent.*, event.*.",
+        "jsonCondiciones": "JSON of the conditions",
+        "aplicar": "Apply"
+      },
+      "rulesToolbar": {
+        "buscarNombreDescripcion": "Search by name or description…",
+        "buscarReglasNombre": "Search rules by name",
+        "filtrarEstado": "Filter by status",
+        "disparador": "Trigger:",
+        "filtrarDisparador": "Filter by trigger",
+        "quitarFiltros": "Remove filters ({active})",
+        "reglas": "{shown} of {total} rules",
+        "estados": {
+          "all": "All",
+          "active": "Active",
+          "inactive": "Inactive"
+        }
+      },
+      "eventPicker": {
+        "buscarEscribirEntidadAccion": "Search or type entity.action…",
+        "eseEventoVaPropio": "That event has its own trigger («changes stage» or «changes a field»): an event rule with that name would not fire.",
+        "ningunEventoCoincideNombre": "No event matches. A free name has the form entity.action (lowercase).",
+        "ningunEventoCoincide": "No event matches.",
+        "eventosConocidos": "Known events",
+        "cualquierEvento": "Any event",
+        "reglaEvaluaCualquierEvento": "The rule is evaluated with any event of this type.",
+        "nombreLibre": "Free name",
+        "usar": "Use «{trimmedQuery}»"
+      },
+      "actionsBlock": {
+        "sinAccionesReglaNo": "Without actions the rule won't do anything even if it fires. Add at least one.",
+        "accion": "Action {n}",
+        "revisar": "Review",
+        "anadirAccion": "Add action",
+        "buscarAccion": "Search action…",
+        "ningunaAccionCoincide": "No action matches.",
+        "disponibles": "Available",
+        "todaviaNoDisponibles": "Not available yet"
+      },
+      "ruleSettings": {
+        "ajustes": "Settings",
+        "descripcionOpcional": "Description (optional)",
+        "sirveEstaReglaFrase": "What this rule is for, in one sentence.",
+        "prioridad": "Priority",
+        "menorNumeroEvaluaAntes": "Lower number, evaluated first. 100 by default.",
+        "enfriamientoHoras": "Cooldown (hours)",
+        "tiempoMinimoEntreDos": "Minimum time between two runs on the same opportunity. 0 = no limit.",
+        "soloVezOportunidad": "Only once per opportunity"
+      },
+      "rulesEmptyState": {
+        "ningunaReglaCoincideFiltros": "No rule matches the filters",
+        "quitarFiltros": "Remove filters",
+        "dejaCrmTrabajeSolo": "Let the CRM work on its own",
+        "reglaVigilaPipelineActua": "A rule watches the pipeline and acts for you: it writes, creates tasks, moves stages. This is one of the most used:",
+        "ejemplo": "Example: {name}",
+        "editorEligesEtapaDispara": "In the editor you choose the stage that triggers it (for example, «Proposal sent»).",
+        "usarEsteEjemplo": "Use this example",
+        "empezarDesdeCero": "Start from scratch"
+      },
+      "rulePreview": {
+        "asiFuncionara": "This is how it'll work"
+      },
+      "useOpportunitySearch": {
+        "noHayOrganizacionActiva": "There is no active organization."
       }
     },
     "campanaVoz": {
@@ -7256,6 +7613,155 @@
       "sustantivo": {
         "uno": "campaign",
         "otros": "campaigns"
+      },
+      "campanaNuevaPage": {
+        "noPudoCalcularAudiencia": "The audience could not be calculated",
+        "error": "Error",
+        "borradorGuardado": "Draft saved",
+        "campanaProgramada": "Campaign scheduled",
+        "campanaLanzada": "Campaign launched",
+        "contactosCola": "{n} contacts queued",
+        "superaLimiteWaba": "Exceeds the WABA limit",
+        "noPudoLanzar": "Could not launch",
+        "volver": "Back",
+        "nuevaCampanaWhatsapp": "New WhatsApp campaign",
+        "crmCampanasNueva": "CRM / Campaigns / New",
+        "pasos": "Steps",
+        "nombreCampana": "Campaign name",
+        "ejNovedadesSeptiembre": "E.g.: September news",
+        "tipoMensaje": "Message type",
+        "variablesSinValorDefecto": "Variables without a default value ({missing}): type them above; they will apply to all contacts.",
+        "nombre": "Name",
+        "mensaje": "Message",
+        "plantilla": "Template {name} ({category})",
+        "textoLibreChars": "Free text ({n} chars)",
+        "audiencia": "Audience",
+        "etapas": "{n} stages",
+        "programacion": "Scheduling",
+        "inmediata": "Immediate",
+        "respetaHorario": "respects hours",
+        "sinHorario": "no hours",
+        "msgS": "{valor} · {throttle} msg/s · {valor2}",
+        "audienciaCalculada": "Audience calculated",
+        "recalcular": "Recalculate",
+        "calcularAudiencia": "Calculate audience",
+        "excluidos": "excluded of",
+        "costoEstimadoUsd": "· estimated cost ≈ ${estimated_cost} USD",
+        "nadieCumpleCriteriosRevisa": "No one meets the criteria: review the audience or the template.",
+        "calculaAudienciaVerPendientes": "Calculate the audience to see pending contacts, exclusions and cost before launching.",
+        "heVerificadoAudienciaDio": "I have verified that the audience gave consent (opt-in) for marketing (Habeas Data)",
+        "cancelar": "Cancel",
+        "atras": "Back",
+        "guardarBorrador": "Save draft",
+        "continuar": "Continue",
+        "programar": "Schedule",
+        "lanzarAhora": "Launch now",
+        "pasosAsistente": {
+          "canal": "Channel and message",
+          "audiencia": "Audience",
+          "programacion": "Scheduling",
+          "revision": "Review"
+        }
+      },
+      "campanaDetallePage": {
+        "campanaNoEncontrada": "Campaign not found",
+        "noPudoCargar": "Could not load",
+        "noPudoCompletar": "Could not complete",
+        "plantillaHsm": "HSM template",
+        "textoLibre": "free text",
+        "lanzar": "Launch",
+        "pendientesOmitenCreditosReservados": "Pending ones are skipped and reserved credits are returned. Cancel the campaign?",
+        "exportarCsv": "Export CSV",
+        "lanzarPausarCancelarRequiere": "Launching, pausing or cancelling requires the organization's administrator role.",
+        "pausadaAutomaticamente": "Paused automatically:",
+        "sinCreditosWhatsapp": "no WhatsApp credits",
+        "metaPausoRechazoPlantilla": "Meta paused/rejected the template",
+        "progreso": "Progress {pct}%",
+        "terminaMin": "· ends ≈ {etaMin} min",
+        "costo": "Cost",
+        "estimado": "Estimated:",
+        "realUsd": "Actual: ${cost} USD",
+        "costoRealLlegaEventos": "The actual cost arrives with the delivery events (Meta pricing).",
+        "errores": "Errors",
+        "sinErroresProveedor": "No provider errors.",
+        "exclusiones": "Exclusions",
+        "sinExclusiones": "No exclusions.",
+        "campana_lanzada": "Campaign launched",
+        "campana_pausada": "Campaign paused",
+        "campana_reanudada": "Campaign resumed",
+        "campana_cancelada": "Campaign cancelled",
+        "stats": {
+          "enviados": "Sent",
+          "entregados": "Delivered",
+          "leidos": "Read",
+          "respondieron": "Replied",
+          "fallidos": "Failed",
+          "omitidos": "Skipped",
+          "pendientes": "Pending"
+        },
+        "progresoDetalle": "{hechos} / {total} processed · {enviados} sent"
+      },
+      "campaignContactsTable": {
+        "contactos": "Contacts ({total})",
+        "buscarNombreTelefono": "Search name, phone…",
+        "buscarContacto": "Search contact",
+        "filtrarEstado": "Filter by status",
+        "todos": "All",
+        "cliente": "Customer",
+        "enviado": "Sent",
+        "entregado": "Delivered",
+        "leido": "Read",
+        "respondio": "Replied",
+        "detalle": "Details",
+        "cargando": "Loading…",
+        "sinContactosCalculaAudiencia": "No contacts. Calculate the audience to materialize the campaign.",
+        "sinNombre": "No name",
+        "oportunidad": "→ opportunity",
+        "pagina": "Page {page} of {n}",
+        "anterior": "Previous",
+        "siguiente": "Next"
+      },
+      "audienceStep": {
+        "origenAudiencia": "Audience source",
+        "seleccionarSegmento": "Select segment",
+        "clientesAntesExclusionesOpt": "≈ {customer_count} customers before exclusions (opt-out, no phone, duplicates).",
+        "noHaySegmentosCrealos": "There are no segments. Create them in CRM › Segments.",
+        "incluyenOportunidadesAbiertasEtapas": "The <b>open</b> opportunities of the checked stages are included (one per customer).",
+        "sinEtapas": "No stages.",
+        "origen": {
+          "stage": "Pipeline stages",
+          "segment": "Customer segment"
+        }
+      },
+      "scheduleStep": {
+        "enviar": "Send",
+        "ahora": "Now",
+        "fechaHoraEnvio": "Send date and time",
+        "velocidadMensajesSegundoMin": "Speed: {throttle} messages/second (≈ {throttle2}/min · 1,000 contacts in ≈ {minutes} min)",
+        "metaPermiteHasta80": "Meta allows up to 80 msg/s per number; the real limit is the WABA's unique users/24 h tier (checked at launch).",
+        "respetarHorarioPermitidoContacto": "Respect the allowed contact hours (Settings › WhatsApp)"
+      },
+      "estadosCampana": {
+        "draft": "Draft",
+        "materializing": "Calculating",
+        "scheduled": "Scheduled",
+        "sending": "Sending",
+        "paused": "Paused",
+        "sent": "Sent",
+        "canceled": "Cancelled"
+      },
+      "estadosContacto": {
+        "pending": "Pending",
+        "queued": "Queued",
+        "sent": "Sent",
+        "delivered": "Delivered",
+        "read": "Read",
+        "opened": "Opened",
+        "clicked": "Clicked",
+        "replied": "Replied",
+        "bounced": "Bounced",
+        "failed": "Failed",
+        "skipped": "Skipped"
       }
     },
     "duplicados": {
@@ -7539,6 +8045,95 @@
           "proveedor": "Meta returned an error while syncing",
           "error": "Could not sync"
         }
+      },
+      "templateList": {
+        "noPudieronCargarPlantillas": "The templates could not be loaded",
+        "error": "Error",
+        "noPudoActualizar": "Could not update",
+        "plantillaDuplicada": "Template duplicated",
+        "noPudoDuplicar": "Could not duplicate",
+        "plantillaEliminada": "Template deleted",
+        "plantillaDesactivada": "Template deactivated",
+        "tieneEnviosAsociadosDesactivo": "It has associated sends; it was deactivated instead of deleted.",
+        "noPudoEliminar": "Could not delete",
+        "buscarNombreAsunto": "Search by name or subject",
+        "buscarPlantillas": "Search templates",
+        "filtrarTipo": "Filter by type",
+        "nuevaPlantilla": "New template",
+        "aunNoHayPlantillas": "There are no email templates yet.",
+        "ningunaPlantillaCoincideFiltro": "No template matches the filter.",
+        "crearPrimera": "Create the first one",
+        "nombre": "Name",
+        "tipo": "Type",
+        "asunto": "Subject",
+        "motor": "Engine",
+        "usos": "Uses",
+        "activa": "Active",
+        "actualizada": "Updated",
+        "acciones": "Actions",
+        "base": "Base",
+        "bloques": "Blocks",
+        "acciones2": "Actions for {name}",
+        "editar": "Edit",
+        "duplicar": "Duplicate",
+        "eliminar": "Delete",
+        "eliminarPlantilla": "Delete template",
+        "eliminarSiYaUso": "Delete “{n}”? If it was already used in sends it will be deactivated instead of deleted.",
+        "todosTipos": "All types"
+      },
+      "templateEditorHeader": {
+        "sinGuardar": "Unsaved",
+        "enviadosAbiertosClicsRebotes": "Sent {sent} · Opened {opened} · Clicks {clicked} · Bounces {bounced}",
+        "estadisticasPlantilla": "Template statistics",
+        "guardaPlantillaEnviarPrueba": "Save the template to send a test",
+        "enviarPrueba": "Send test",
+        "guardar": "Save",
+        "nombre": "Name *",
+        "ejSeguimientoTrasLlamada": "E.g. Follow-up after call",
+        "tipoPlantilla": "Template type",
+        "asunto": "Subject *",
+        "variable": "+ variable",
+        "preheaderTextoVistaPrevia": "Preheader (preview text)",
+        "resumenBreveVeJunto": "Short summary shown next to the subject",
+        "descripcionInterna": "Internal description",
+        "cuandoUsarEstaPlantilla": "When to use this template",
+        "plantilla": "Template",
+        "asuntoEjemplo": "Thanks for your time, '{{'contact.first_name|hi'}}'"
+      },
+      "testSendDialog": {
+        "pruebaEnviada": "Test sent",
+        "noPudoEnviarPrueba": "The test could not be sent",
+        "enviaDatosEjemploDeja": "“{templateName}” is sent with sample data. Leave the field empty to use your own email.",
+        "correoDestino": "Destination email",
+        "correoInvalido": "Invalid email",
+        "cancelar": "Cancel",
+        "enviar": "Send",
+        "destino": "To {correo}",
+        "destinoConVacias": "To {correo} · empty variables: {variables}"
+      },
+      "useTemplateEditor": {
+        "revisaPlantilla": "Check the template",
+        "plantillaGuardada": "Template saved",
+        "plantillaCreada": "Template created",
+        "noPudoGuardar": "Could not save",
+        "noPudoGenerarVista": "The preview could not be generated",
+        "validacion": {
+          "nombre": "The name is required",
+          "asunto": "The subject is required",
+          "bloques": "Add at least one block",
+          "html": "The HTML is empty"
+        }
+      },
+      "plantillasPage": {
+        "noPudieronCargarPlantillas": "The WhatsApp templates could not be loaded",
+        "vuelveIntentarloRecargandoPagina": "Try again by reloading the page. If the problem continues, check the WhatsApp channel setup in Settings → CRM → WhatsApp.",
+        "canalPlantillas": "Template channel"
+      },
+      "templateEditorPage": {
+        "cargandoPlantilla": "Loading template",
+        "noPudoCargarPlantilla": "The template could not be loaded",
+        "modoEdicion": "Editing mode",
+        "bloques": "Blocks"
       }
     },
     "pronosticoTrimestre": {
@@ -7679,6 +8274,188 @@
           "sin_tasa": "Some amounts have no exchange rate: record it before adjusting.",
           "ajuste_no_vigente": "Only the last adjustment can be reverted.",
           "generico": "The adjustment could not be saved."
+        }
+      },
+      "forecastChart": {
+        "noHayDatosPronostico": "No forecast data available",
+        "tendenciaPronostico": "Forecast trend",
+        "proceso": "In progress",
+        "meta": "Goal",
+        "meta2": "{goalCompletion}% of goal",
+        "ganado": "Won: {money}",
+        "pond": "Weighted: {money}",
+        "abierto": "Open: {money}",
+        "totalGanado": "Total won",
+        "totalPonderado": "Total weighted",
+        "totalAbierto": "Total open"
+      },
+      "goalProgress": {
+        "meta": "{periodLabel} goal",
+        "sinPipeline": "No pipeline",
+        "completadoGanado": "{goalProgress}% completed (won)",
+        "proyeccionGanadoPonderado": "Projection (won + weighted)",
+        "noHayMetaConfigurada": "There is no goal set for this pipeline",
+        "configuraMetaOpcionesPipeline": "Set a goal in the pipeline's options",
+        "periodos": {
+          "weekly": "Weekly",
+          "monthly": "Monthly",
+          "quarterly": "Quarterly",
+          "yearly": "Yearly"
+        }
+      },
+      "forecastScenarios": {
+        "escenariosForecast": "Forecast scenarios",
+        "sinOportunidadesAbiertasEste": "No open opportunities in this pipeline",
+        "creaOportunidadesAsignalesEtapa": "Create opportunities and assign them a stage to project the three scenarios.",
+        "escenarios": {
+          "best": "Best case",
+          "expected": "Expected",
+          "worst": "Worst case"
+        },
+        "reglas": {
+          "best": "Open in stages with probability ≥ {n} %",
+          "expected": "Sum of open ones × their stage's probability",
+          "worst": "Only open ones in stages with probability ≥ {n} %"
+        },
+        "abiertasPor": "{n, plural, one {# open opportunity} other {# open opportunities}} for {monto}"
+      },
+      "forecastFilters": {
+        "seleccionarPipeline": "Select pipeline",
+        "semanal": "Weekly",
+        "mensual": "Monthly",
+        "trimestral": "Quarterly",
+        "exportar": "Export"
+      },
+      "forecastByStage": {
+        "pronosticoEtapa": "Forecast by stage",
+        "valorBrutoPipeline": "Gross value in pipeline"
+      },
+      "revenueMathPanel": {
+        "gasto0MargenEntre": "Spend ≥ 0 and margin between 0 and 100.",
+        "error": "Error {status}",
+        "insumosGuardados": "Inputs saved",
+        "cacLtvPaybackRecalculan": "CAC, LTV and payback are recalculated with the new values.",
+        "metricasMatematicaComercial": "Sales math metrics",
+        "insumosPeriodo": "Period inputs",
+        "noExistenBaseGuardan": "They don't exist in the database: they're saved in the organization's settings and feed CAC, LTV and payback. Opportunities won in the period (CAC denominator): {number}.",
+        "gastoAdquisicionMarketingVentas": "Acquisition spend (marketing + sales)",
+        "margenBruto": "Gross margin (%)",
+        "guardando": "Saving…",
+        "guardarInsumos": "Save inputs",
+        "soloAdministradorOrganizacionPuede": "Only an organization administrator can change these inputs.",
+        "ultimaActualizacion": "Last updated: {dateTime}",
+        "noPudoGuardar": "Could not save",
+        "metricas": {
+          "arpa": {
+            "etiqueta": "ARPA",
+            "formula": "Average ticket per paid invoice in the period (weighted by invoices)"
+          },
+          "cac": {
+            "etiqueta": "CAC",
+            "formula": "Acquisition spend in the period ÷ opportunities won in the period"
+          },
+          "churnRatePct": {
+            "etiqueta": "Monthly churn",
+            "formula": "100 − M1 retention weighted by cohort"
+          },
+          "ltv": {
+            "etiqueta": "LTV",
+            "formula": "ARPA × gross margin × (1 ÷ churn)"
+          },
+          "ltvCacRatio": {
+            "etiqueta": "LTV / CAC",
+            "formula": "LTV ÷ CAC (healthy ≥ 3)"
+          },
+          "paybackMonths": {
+            "etiqueta": "Payback",
+            "formula": "CAC ÷ (ARPA × gross margin), in months"
+          },
+          "netRevenueRetentionPct": {
+            "etiqueta": "Net revenue retention",
+            "formula": "(Starting MRR + expansion − contraction − churn) ÷ starting MRR"
+          }
+        },
+        "saludable": "Healthy",
+        "porDebajo3": "Below 3"
+      },
+      "funnelPanel": {
+        "sinEtapasConfiguradasCrea": "No stages configured. Create a pipeline with stages in Settings to see the funnel.",
+        "fueraCadenaVaDespues": "Out of sequence: {map} comes after the won stage. Conversion ends at the won stage; check the order of the stages in Settings.",
+        "sinOportunidadesEstePipeline": "No opportunities in this pipeline yet. Create the first one from Opportunities and the funnel will fill up on its own.",
+        "embudoEtapa": "Funnel by stage",
+        "conversionEtapaEtapaAcumulado": "Stage-to-stage conversion (cumulative: in the stage or further on; lost ones are shown separately)",
+        "etapa": "In the stage",
+        "llegaron": "Reached",
+        "montoEtapa": "Amount in stage",
+        "pasaSiguiente": "Moves to the next",
+        "ganada": "(won)",
+        "conversionGlobal": "Overall conversion",
+        "hastaUltimaEtapaNo": "(up to the last stage: there is no won stage)",
+        "sinDatos": "No data",
+        "perdidas": "Lost: {number} ({money})"
+      },
+      "revenueOsPage": {
+        "cargandoPanel": "Loading dashboard",
+        "revenueOs": "Revenue OS",
+        "pronosticoEmbudoCohortesMatematica": "The organization's forecast, funnel, cohorts and sales math.",
+        "periodo": "Period:",
+        "moneda": "· currency {currency}",
+        "actualizar": "Refresh",
+        "noPudoCargarPanel": "The Revenue OS dashboard could not be loaded",
+        "seccionesRevenueOs": "Revenue OS sections",
+        "pestanas": {
+          "resumen": "Summary",
+          "embudo": "Funnel",
+          "forecast": "Forecast",
+          "trimestre": "By category",
+          "cohortes": "Cohorts",
+          "matematica": "Sales math"
+        }
+      },
+      "cohortTable": {
+        "sinCohortesNingunCliente": "No cohorts: no customer with stage «customer» signed up in the last 24 months. Cohorts appear when contacts are converted into customers.",
+        "clientesVolvieronFacturar1": "Customers who were invoiced again 1, 3, 6 and 12 months after signing up, by sign-up month. «—» = the month hasn't closed yet. {number} customers in total.",
+        "cohorte": "Cohort",
+        "clientes": "Customers",
+        "clientes2": "{n} of {cohort_size} customers",
+        "mesAunNoCerrado": "Month not closed yet",
+        "sinObservar": "not observed",
+        "escalaColor": "Color scale"
+      },
+      "kpiTiles": {
+        "indicadoresPeriodo": "Period indicators",
+        "etiquetas": {
+          "collected": "Revenue collected",
+          "won": "Won in pipeline",
+          "open": "Open pipeline",
+          "winrate": "Win rate",
+          "cycle": "Average sales cycle",
+          "arpa": "ARPA",
+          "commissions": "Commissions paid"
+        }
+      },
+      "revenueTrendChart": {
+        "tendenciaMensualCobradoFrente": "Monthly trend: collected vs won",
+        "verGrafico": "View chart",
+        "verTabla": "View table",
+        "sinCobrosNiOportunidades": "No collections or won opportunities in the period. Change the range or record sales to see the trend.",
+        "revenueCobradoGanadoPipeline": "Revenue collected and won in pipeline by month",
+        "mes": "Month",
+        "graficoBarrasMensualCobrado": "Monthly bar chart: collected vs won in pipeline. The table view has the exact values.",
+        "series": {
+          "revenue_collected": "Collected",
+          "revenue_won_pipeline": "Won in pipeline"
+        }
+      },
+      "revenueRangeControl": {
+        "periodoPanel": "Dashboard period",
+        "desdeMes": "From (month)",
+        "hastaMes": "To (month)",
+        "aplicar": "Apply",
+        "errores": {
+          "ambos": "Choose month and year in both fields",
+          "orden": "The end month must be the same as or after the start month",
+          "maximo": "Maximum {max} months"
         }
       }
     },
@@ -7825,6 +8602,108 @@
           "sinMuestra": "No customer matches yet.",
           "sinNombre": "Unnamed customer"
         }
+      },
+      "segmentoDetallePage": {
+        "error": "Error",
+        "segmentoNoEncontrado": "Segment not found",
+        "noPudoCargarSegmento": "The segment could not be loaded",
+        "nombreRequerido": "The name is required",
+        "segmentoActualizado": "Segment updated",
+        "noPudoActualizar": "Could not update",
+        "recalculoCompletado": "Recalculation completed",
+        "clientesSegmento": "{count} customers in the segment",
+        "noPudoRecalcular": "Could not recalculate",
+        "crmSegmentosDetalle": "CRM / Segments / Detail",
+        "guardar": "Save",
+        "recalcular": "Recalculate",
+        "editar": "Edit",
+        "crearCampana": "Create campaign",
+        "informacion": "Information",
+        "segmentoDinamico": "Dynamic segment",
+        "recalculaAutomaticamente": "It's recalculated automatically",
+        "nunca": "Never",
+        "ultimaEjecucion": "Last run: {date}",
+        "reglasFiltro": "Filter rules",
+        "agregar": "Add",
+        "editaPrimerGrupo": "The first group is edited.",
+        "hay1GrupoTodos": "There is 1 more «Or all of these» group",
+        "hayGruposTodosEstos": "There are {n} more «Or all of these» groups",
+        "conservaGuardar": ": kept when saving.",
+        "sinReglasDefinidas": "No rules defined",
+        "clientes": "Customers ({n})",
+        "noHayClientesEste": "There are no customers in this segment",
+        "sinNombre": "No name",
+        "sinContacto": "No contact",
+        "campos": {
+          "full_name": "Full name",
+          "company_name": "Company",
+          "email": "Email",
+          "phone": "Phone",
+          "city": "City",
+          "lifecycle_stage": "Lifecycle stage",
+          "lead_source": "Source",
+          "tags": "Tags",
+          "created_at": "Sign-up date",
+          "last_contact_at": "Last contact",
+          "health_score": "Health"
+        },
+        "operadores": {
+          "text": {
+            "equals": "Equals",
+            "not_equals": "Does not equal",
+            "contains": "Contains",
+            "not_contains": "Does not contain",
+            "starts_with": "Starts with",
+            "ends_with": "Ends with",
+            "is_empty": "Is empty",
+            "is_not_empty": "Is not empty"
+          },
+          "date": {
+            "equals": "Equals",
+            "greater_than": "After",
+            "less_than": "Before",
+            "between": "Between",
+            "is_empty": "Is empty",
+            "is_not_empty": "Is not empty"
+          },
+          "array": {
+            "contains": "Contains",
+            "not_contains": "Does not contain",
+            "is_empty": "Is empty",
+            "is_not_empty": "Is not empty"
+          },
+          "boolean": {
+            "equals": "Is"
+          },
+          "number": {
+            "equals": "Equals",
+            "greater_than": "Greater than",
+            "less_than": "Less than",
+            "is_empty": "Is empty",
+            "is_not_empty": "Is not empty"
+          }
+        }
+      },
+      "segmentosPage": {
+        "noPudieronCargarSegmentos": "The segments could not be loaded",
+        "segmentoDuplicado": "Segment duplicated",
+        "segmentoEliminado": "Segment deleted",
+        "recalculando": "Recalculating...",
+        "estoPuedeTomarUnos": "This may take a few seconds",
+        "crmSegmentos": "CRM / Segments",
+        "nuevoSegmento": "New segment",
+        "dinamicos": "Dynamic",
+        "estaticos": "Static",
+        "clientes": "Customers",
+        "ultimaEjecucion": "Last run",
+        "noHaySegmentos": "There are no segments",
+        "creaPrimerSegmentoAgrupar": "Create your first segment to group customers",
+        "crearSegmento": "Create segment",
+        "verDetalle": "View details",
+        "duplicar": "Duplicate",
+        "eliminar": "Delete",
+        "eliminarSegmento": "Delete segment?",
+        "estaAccionNoPuede": "This action cannot be undone. The segment \"{name}\" will be permanently deleted."
       }
     }
   },

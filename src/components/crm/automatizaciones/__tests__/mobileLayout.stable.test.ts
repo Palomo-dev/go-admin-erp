@@ -56,7 +56,8 @@ describe('2. ficha de grupo anidado: la nota baja a su línea en móvil', () => 
   });
 
   it('la nota ocupa toda la línea en móvil y vuelve en línea (basis-auto, shrink-0) desde sm', () => {
-    const m = src.match(/<span className="([^"]+)">· grupo, se edita como JSON<\/span>/);
+    const m = src.match(/<span className="([^"]+)">\{t\('conditionsBlock\.grupoEditaComoJson'\)\}<\/span>/);
+    expect(JSON.parse(require('fs').readFileSync(require('path').join(process.cwd(), 'messages/es.json'), 'utf8')).crm.automatizaciones.conditionsBlock.grupoEditaComoJson).toBe('· grupo, se edita como JSON');
     expect(m).not.toBeNull();
     const cls = classes(m![1]);
     expect(cls).toEqual(expect.arrayContaining(['min-w-0', 'basis-full', 'sm:basis-auto', 'sm:shrink-0']));
@@ -67,7 +68,8 @@ describe('2. ficha de grupo anidado: la nota baja a su línea en móvil', () => 
 describe('3. DryRunDialog: el nombre largo no ensancha el diálogo', () => {
   it('el título flex lleva el texto en un span min-w-0 break-words y el icono shrink-0', () => {
     const src = read('DryRunDialog.tsx');
-    expect(src).toMatch(/<span className="min-w-0 break-words">Probar en seco «\{rule\?\.name\}»<\/span>/);
+    expect(src).toMatch(/<span className="min-w-0 break-words">\{tx\('dryRunDialog\.probarSeco', \{ name: rule\?\.name \?\? '' \}\)\}<\/span>/);
+    expect(JSON.parse(require('fs').readFileSync(require('path').join(process.cwd(), 'messages/es.json'), 'utf8')).crm.automatizaciones.dryRunDialog.probarSeco).toBe('Probar en seco «{name}»');
     expect(src).toMatch(/<FlaskConical className="h-5 w-5 shrink-0/);
   });
 });
@@ -87,7 +89,7 @@ describe('4. RunsSheet: la celda Detalle rompe en cualquier punto', () => {
   });
 
   it('la columna Fecha sigue oculta bajo sm y la fecha se repite bajo el estado', () => {
-    expect(src).toMatch(/<TableHead scope="col" className="hidden sm:table-cell">Fecha<\/TableHead>/);
+    expect(src).toMatch(/<TableHead scope="col" className="hidden sm:table-cell">\{tx\('runsSheet\.fecha'\)\}<\/TableHead>/);
     expect(src).toMatch(/className="mt-0\.5 block text-xs font-normal [^"]*sm:hidden"/);
   });
 });
@@ -101,7 +103,8 @@ describe('5. foco tras reordenar una acción por teclado', () => {
 
   it('los botones Subir/Bajar llevan id action-N-move-up / action-N-move-down', () => {
     const src = read('ActionChipEditor.tsx');
-    expect(src).toMatch(/<Button id=\{id\('move-up'\)\}[^>]*aria-label=\{`Subir la acción/);
-    expect(src).toMatch(/<Button id=\{id\('move-down'\)\}[^>]*aria-label=\{`Bajar la acción/);
+    expect(src).toMatch(/<Button id=\{id\('move-up'\)\}[^>]*aria-label=\{t\('actionChipEditor\.subirAccion'/);
+    expect(src).toMatch(/<Button id=\{id\('move-down'\)\}[^>]*aria-label=\{t\('actionChipEditor\.bajarAccion'/);
+    expect(JSON.parse(require('fs').readFileSync(require('path').join(process.cwd(), 'messages/es.json'), 'utf8')).crm.automatizaciones.actionChipEditor).toMatchObject({ subirAccion: 'Subir la acción {n}', bajarAccion: 'Bajar la acción {n}' });
   });
 });

@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/select';
 import { Download } from 'lucide-react';
 import { Pipeline } from '@/components/crm/oportunidades/types';
+import { useTranslations } from 'next-intl';
 
 interface ForecastFiltersProps {
   pipelines: Pipeline[];
@@ -28,13 +29,14 @@ export function ForecastFilters({
   onPeriodChange,
   onExport,
 }: ForecastFiltersProps) {
+  const t = useTranslations('crm.pronosticoTrimestre');
   return (
     <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-start sm:items-center justify-between">
       <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
         {/* Pipeline */}
         <Select value={selectedPipelineId} onValueChange={onPipelineChange}>
           <SelectTrigger className="w-full sm:w-48 h-9 text-xs sm:text-sm bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
-            <SelectValue placeholder="Seleccionar pipeline" />
+            <SelectValue placeholder={t('forecastFilters.seleccionarPipeline')} />
           </SelectTrigger>
           <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             {pipelines.map((pipeline) => (
@@ -51,9 +53,9 @@ export function ForecastFilters({
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <SelectItem value="weekly" className="text-gray-900 dark:text-gray-100 text-xs sm:text-sm">Semanal</SelectItem>
-            <SelectItem value="monthly" className="text-gray-900 dark:text-gray-100 text-xs sm:text-sm">Mensual</SelectItem>
-            <SelectItem value="quarterly" className="text-gray-900 dark:text-gray-100 text-xs sm:text-sm">Trimestral</SelectItem>
+            <SelectItem value="weekly" className="text-gray-900 dark:text-gray-100 text-xs sm:text-sm">{t('forecastFilters.semanal')}</SelectItem>
+            <SelectItem value="monthly" className="text-gray-900 dark:text-gray-100 text-xs sm:text-sm">{t('forecastFilters.mensual')}</SelectItem>
+            <SelectItem value="quarterly" className="text-gray-900 dark:text-gray-100 text-xs sm:text-sm">{t('forecastFilters.trimestral')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -66,7 +68,7 @@ export function ForecastFilters({
           className="h-9 text-xs sm:text-sm border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
         >
           <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-          Exportar
+          {t('forecastFilters.exportar')}
         </Button>
       )}
     </div>

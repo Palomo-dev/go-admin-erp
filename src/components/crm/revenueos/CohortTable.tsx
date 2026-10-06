@@ -11,6 +11,7 @@ import { useId } from 'react';
 import { buildCohortTable, type CohortCell } from '@/lib/services/crm/revenueOs/cohortModel';
 import type { CohortRetentionRow } from '@/lib/services/crm/revenueOsService';
 import { fmtMonth, fmtNumber } from './formatters';
+import { useTranslations } from 'next-intl';
 
 /** Intensidad 0–4 → fondo + tinta, claro y oscuro (medido con la herramienta de contraste del arnés). */
 const INTENSITY_CLASS: Record<CohortCell['intensity'], string> = {
@@ -28,14 +29,14 @@ interface Props {
 }
 
 export function CohortTable({ rows, today }: Props) {
+  const t = useTranslations('crm.pronosticoTrimestre');
   const captionId = useId();
   const table = buildCohortTable(rows, today);
 
   if (table.rows.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-600 dark:border-gray-600 dark:text-gray-300">
-        Sin cohortes: ningún cliente con etapa «cliente» dado de alta en los últimos 24 meses. Las cohortes aparecen al
-        convertir contactos en clientes.
+        {t('cohortTable.sinCohortesNingunCliente')}
       </p>
     );
   }
@@ -45,13 +46,12 @@ export function CohortTable({ rows, today }: Props) {
       <div className="overflow-x-auto">
         <table className="w-full text-sm" aria-describedby={captionId}>
           <caption id={captionId} className="pb-2 text-left text-xs text-gray-600 dark:text-gray-300">
-            Clientes que volvieron a facturar 1, 3, 6 y 12 meses después de su alta, por mes de alta. «—» = el mes aún no ha
-            cerrado. {fmtNumber(table.totalCustomers)} clientes en total.
+            {t('cohortTable.clientesVolvieronFacturar1', { number: fmtNumber(table.totalCustomers) })}
           </caption>
           <thead>
             <tr className="border-b border-gray-200 text-left text-xs text-gray-600 dark:border-gray-700 dark:text-gray-300">
-              <th scope="col" className="py-1.5 pr-3 font-medium">Cohorte</th>
-              <th scope="col" className="py-1.5 pr-3 text-right font-medium">Clientes</th>
+              <th scope="col" className="py-1.5 pr-3 font-medium">{t('cohortTable.cohorte')}</th>
+              <th scope="col" className="py-1.5 pr-3 text-right font-medium">{t('cohortTable.clientes')}</th>
               {table.horizons.map((h) => (
                 <th key={h} scope="col" className="py-1.5 px-2 text-center font-medium">
                   M{h}
@@ -70,7 +70,7 @@ export function CohortTable({ rows, today }: Props) {
                   <td key={cell.horizon} className="p-1 text-center">
                     <span
                       className={`inline-block w-full min-w-[3.25rem] rounded px-1.5 py-1 tabular-nums ${INTENSITY_CLASS[cell.intensity]}`}
-                      title={cell.observed ? `${cell.retained ?? 0} de ${r.cohort_size} clientes` : 'Mes aún no cerrado'}
+                      title={cell.observed ? t('cohortTable.clientes2', { n: cell.retained ?? 0, cohort_size: r.cohort_size }) : t('cohortTable.mesAunNoCerrado')}
                     >
                       {cell.label}
                       {cell.observed ? (
@@ -79,7 +79,7 @@ export function CohortTable({ rows, today }: Props) {
                           ({cell.retained ?? 0} de {r.cohort_size})
                         </span>
                       ) : (
-                        <span className="sr-only"> sin observar</span>
+                        <span className="sr-only"> {t('cohortTable.sinObservar')}</span>
                       )}
                     </span>
                   </td>
@@ -89,7 +89,7 @@ export function CohortTable({ rows, today }: Props) {
           </tbody>
         </table>
       </div>
-      <ul className="flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300" aria-label="Escala de color">
+      <ul className="flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300" aria-label={t('cohortTable.escalaColor')}>
         {(
           [
             [1, '0–24 %'],

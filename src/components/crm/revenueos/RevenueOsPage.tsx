@@ -35,6 +35,7 @@ import { CohortTable } from './CohortTable';
 import { RevenueMathPanel } from './RevenueMathPanel';
 import { fmtMonth, SIN_MONEDA } from './formatters';
 import { addMonthsPlain } from '@/lib/services/crm/revenueOs/dateRange';
+import { useTranslations } from 'next-intl';
 
 /** Secciones del panel → `TabBar` con `?pestana=` (regla de pestañas 2026-10-06). */
 const TABS = [
@@ -48,8 +49,9 @@ const TABS = [
 ] as const;
 
 function PanelSkeleton() {
+  const tx = useTranslations('crm.pronosticoTrimestre');
   return (
-    <div className="space-y-4" aria-busy="true" aria-label="Cargando panel">
+    <div className="space-y-4" aria-busy="true" aria-label={tx('revenueOsPage.cargandoPanel')}>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {Array.from({ length: 8 }).map((_, i) => (
           <Skeleton key={i} className="h-20 w-full" />
@@ -63,6 +65,7 @@ function PanelSkeleton() {
 const PANEL = 'mt-4 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800';
 
 export function RevenueOsPage() {
+  const tx = useTranslations('crm.pronosticoTrimestre');
   const [range, setRange] = useState<DashboardRange>({ start: null, end: null });
   const { data, lastPeriod, canEditInputs, loading, error, reload } = useRevenueDashboard(range);
   const [tab, setTab] = useOpcionUrl('pestana', TABS.map((t) => t.value), 'resumen');
@@ -77,13 +80,13 @@ export function RevenueOsPage() {
     <div className="min-h-screen space-y-4 bg-gray-50 p-3 dark:bg-gray-900 sm:p-4 md:p-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white sm:text-2xl">Revenue OS</h1>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white sm:text-2xl">{tx('revenueOsPage.revenueOs')}</h1>
           <p className="text-sm text-gray-600 dark:text-gray-300">
-            Pronóstico, embudo, cohortes y matemática comercial de la organización.
+            {tx('revenueOsPage.pronosticoEmbudoCohortesMatematica')}
             {periodLabel && (
               <span className="block text-xs text-gray-500 dark:text-gray-400">
-                Periodo: {periodLabel}
-                {currency ? ` · moneda ${currency}` : ''}
+                {tx('revenueOsPage.periodo')} {periodLabel}
+                {currency ? tx('revenueOsPage.moneda', { currency }) : ''}
               </span>
             )}
           </p>
@@ -102,16 +105,16 @@ export function RevenueOsPage() {
           />
           <Button type="button" variant="outline" size="sm" className="h-9" onClick={() => void reload()} disabled={loading}>
             <RefreshCw className={`mr-1.5 h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
-            Actualizar
+            {tx('revenueOsPage.actualizar')}
           </Button>
         </div>
       </header>
 
       {error && (
-        <LoadErrorState title="No se pudo cargar el panel Revenue OS" message={error} onRetry={() => void reload()} isRetrying={loading} />
+        <LoadErrorState title={tx('revenueOsPage.noPudoCargarPanel')} message={error} onRetry={() => void reload()} isRetrying={loading} />
       )}
 
-      <TabBar id="revenue-os" etiqueta="Secciones de Revenue OS" valor={tab} onValorChange={setTab} pestanas={TABS.map((t) => ({ valor: t.value, etiqueta: t.label }))} />
+      <TabBar id="revenue-os" etiqueta={tx('revenueOsPage.seccionesRevenueOs')} valor={tab} onValorChange={setTab} pestanas={TABS.map((t) => ({ valor: t.value, etiqueta: tx(`revenueOsPage.pestanas.${t.value}`) }))} />
       <div role="tabpanel" id={idPanel('revenue-os', tab)} aria-labelledby={idPestana('revenue-os', tab)}>
 
         {tab === 'resumen' && (

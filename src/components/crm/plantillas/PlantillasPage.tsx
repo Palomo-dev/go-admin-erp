@@ -25,15 +25,15 @@ import { SincronizarMeta } from './SincronizarMeta';
  * carga, la pestaña degrada con un aviso en vez de tumbar toda la página.
  */
 function WhatsAppTabUnavailable() {
+  const tx = useTranslations('crm.plantillas');
   return (
     <div
       role="alert"
       className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200"
     >
-      <p className="font-medium">No se pudieron cargar las plantillas de WhatsApp</p>
+      <p className="font-medium">{tx('plantillasPage.noPudieronCargarPlantillas')}</p>
       <p className="mt-1">
-        Vuelve a intentarlo recargando la página. Si el problema continúa, revisa la configuración del canal de WhatsApp
-        en Configuración → CRM → WhatsApp.
+        {tx('plantillasPage.vuelveIntentarloRecargandoPagina')}
       </p>
     </div>
   );
@@ -77,7 +77,7 @@ export function PlantillasPage() {
         icono={FileText}
         acciones={active === 'whatsapp' ? <SincronizarMeta /> : undefined}
       />
-      <TabBar id="plantillas" etiqueta="Canal de plantillas" valor={active} onValorChange={setTab} pestanas={TABS.map((t) => ({ valor: t.id, etiqueta: t.label }))} />
+      <TabBar id="plantillas" etiqueta={t('plantillasPage.canalPlantillas')} valor={active} onValorChange={setTab} pestanas={TABS.map((t) => ({ valor: t.id, etiqueta: t.label }))} />
       {active === 'whatsapp' && (
         <div className="flex justify-end lg:hidden">
           <SincronizarMeta />

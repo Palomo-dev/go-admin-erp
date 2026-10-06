@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/select';
 import type { SalesRole, Territory, OrgMember } from '../types';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { useTranslations } from 'next-intl';
 
 interface MemberForm {
   user_id: string;
@@ -41,6 +42,7 @@ const MONEDAS_CATALOGO = ['USD'];
 export function MemberDialog({
   open, onOpenChange, roles, territories, orgMembers, form, onFormChange, onAdd, saving,
 }: MemberDialogProps) {
+  const tx = useTranslations('crm.equipo');
   const { code: monedaBase, resuelta: monedaResuelta } = useMonedaOrganizacion();
   const opcionesMoneda = Array.from(
     new Set([monedaResuelta ? monedaBase : '', form.quota_currency, ...MONEDAS_CATALOGO].filter(Boolean)),
@@ -49,17 +51,17 @@ export function MemberDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Añadir miembro</DialogTitle>
-          <DialogDescription>Selecciona un miembro de la organización</DialogDescription>
+          <DialogTitle>{tx('equiposTab.anadirMiembro')}</DialogTitle>
+          <DialogDescription>{tx('memberDialog.seleccionaMiembroOrganizacion')}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label>Miembro *</Label>
+            <Label>{tx('memberDialog.miembro')}</Label>
             <Select
               value={form.user_id}
               onValueChange={(v) => onFormChange({ ...form, user_id: v })}
             >
-              <SelectTrigger><SelectValue placeholder="Selecciona..." /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={tx('memberDialog.selecciona')} /></SelectTrigger>
               <SelectContent>
                 {orgMembers.map((m) => (
                   <SelectItem key={m.id} value={m.id}>
@@ -70,14 +72,14 @@ export function MemberDialog({
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Rol</Label>
+            <Label>{tx('performanceTab.rol')}</Label>
             <Select
               value={form.sales_role_id || 'none'}
               onValueChange={(v) => onFormChange({ ...form, sales_role_id: v === 'none' ? '' : v })}
             >
-              <SelectTrigger><SelectValue placeholder="Sin rol" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={tx('memberDialog.sinRol')} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">Sin rol</SelectItem>
+                <SelectItem value="none">{tx('memberDialog.sinRol')}</SelectItem>
                 {roles.map((r) => (
                   <SelectItem key={r.id} value={r.id}>{r.name} ({r.code})</SelectItem>
                 ))}
@@ -86,14 +88,14 @@ export function MemberDialog({
           </div>
           {territories.length > 0 && (
             <div className="space-y-2">
-              <Label>Territorio (opcional)</Label>
+              <Label>{tx('memberDialog.territorioOpcional')}</Label>
               <Select
                 value={form.territory_id || 'none'}
                 onValueChange={(v) => onFormChange({ ...form, territory_id: v === 'none' ? '' : v })}
               >
-                <SelectTrigger><SelectValue placeholder="Hereda del equipo" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={tx('memberDialog.heredaEquipo')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Hereda del equipo</SelectItem>
+                  <SelectItem value="none">{tx('memberDialog.heredaEquipo')}</SelectItem>
                   {territories.map((t) => (
                     <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                   ))}
@@ -103,7 +105,7 @@ export function MemberDialog({
           )}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>Cuota</Label>
+              <Label>{tx('performanceTab.cuota')}</Label>
               <Input
                 type="number"
                 value={form.quota_amount}
@@ -112,7 +114,7 @@ export function MemberDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label>Moneda</Label>
+              <Label>{tx('memberDialog.moneda')}</Label>
               <Select
                 value={form.quota_currency}
                 onValueChange={(v) => onFormChange({ ...form, quota_currency: v })}
@@ -128,8 +130,8 @@ export function MemberDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={onAdd} disabled={saving}>{saving ? 'Añadiendo...' : 'Añadir'}</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{tx('memberDialog.cancelar')}</Button>
+          <Button onClick={onAdd} disabled={saving}>{saving ? tx('memberDialog.anadiendo') : tx('memberDialog.anadir')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

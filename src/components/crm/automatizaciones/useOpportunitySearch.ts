@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { likePattern } from '@/lib/utils/postgrestFilters';
+import { useTranslations } from 'next-intl';
 
 export interface OpportunityHit {
   id: string;
@@ -37,6 +38,7 @@ function first<T>(value: T | T[] | null): T | null {
 }
 
 export function useOpportunitySearch(query: string, enabled: boolean) {
+  const t = useTranslations('crm.automatizaciones');
   const [hits, setHits] = useState<OpportunityHit[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +47,7 @@ export function useOpportunitySearch(query: string, enabled: boolean) {
     if (!enabled) return;
     const orgId = getOrganizationId();
     if (!orgId || orgId <= 0) {
-      setError('No hay organización activa.');
+      setError(t('useOpportunitySearch.noHayOrganizacionActiva'));
       return;
     }
     let cancelled = false;

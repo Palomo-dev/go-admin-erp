@@ -176,7 +176,7 @@ export function CloneVoiceWizard({ onCreated, account }: Props) {
     if (cloneBlocked) return;
     const errors = validateCloneStep(4, flowState);
     if (errors.length > 0 || samples.length === 0) {
-      setStepError(errors[0] ?? "Falta la muestra de audio.");
+      setStepError(errors[0] ?? t("cloneVoiceWizard.faltaMuestraAudio"));
       nameRef.current?.focus();
       return;
     }

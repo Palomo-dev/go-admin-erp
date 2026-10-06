@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { fmtMoney } from '@/components/crm/revenueos/formatters';
 import { Stage, Opportunity } from '@/components/crm/oportunidades/types';
+import { useTranslations } from 'next-intl';
 
 interface ForecastByStageProps {
   stages: Stage[];
@@ -20,6 +21,7 @@ interface StageData {
 }
 
 export function ForecastByStage({ stages, opportunities, isLoading, currency }: ForecastByStageProps) {
+  const t = useTranslations('crm.pronosticoTrimestre');
   const stageData: StageData[] = stages
     .sort((a, b) => a.position - b.position)
     .map((stage) => {
@@ -56,7 +58,7 @@ export function ForecastByStage({ stages, opportunities, isLoading, currency }: 
   return (
     <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <CardHeader className="p-3 sm:p-6">
-        <CardTitle className="text-sm sm:text-base text-gray-900 dark:text-white">Pronóstico por Etapa</CardTitle>
+        <CardTitle className="text-sm sm:text-base text-gray-900 dark:text-white">{t('forecastByStage.pronosticoEtapa')}</CardTitle>
       </CardHeader>
       <CardContent className="p-3 sm:p-6 pt-0">
         <div className="space-y-3 sm:space-y-4">
@@ -114,13 +116,13 @@ export function ForecastByStage({ stages, opportunities, isLoading, currency }: 
           {/* Totales */}
           <div className="pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between text-sm sm:text-lg font-bold gap-2">
-              <span className="text-gray-900 dark:text-white">Total Ponderado</span>
+              <span className="text-gray-900 dark:text-white">{t('forecastChart.totalPonderado')}</span>
               <span className="text-blue-600 dark:text-blue-400">
                 {fmtMoney(stageData.reduce((sum, d) => sum + d.weightedAmount, 0), currency)}
               </span>
             </div>
             <div className="flex items-center justify-between text-[10px] sm:text-sm text-gray-500 dark:text-gray-400 mt-1 gap-2">
-              <span>Valor bruto en pipeline</span>
+              <span>{t('forecastByStage.valorBrutoPipeline')}</span>
               <span>{fmtMoney(stageData.reduce((sum, d) => sum + d.totalAmount, 0), currency)}</span>
             </div>
           </div>

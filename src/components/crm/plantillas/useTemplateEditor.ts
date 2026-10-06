@@ -14,6 +14,7 @@ import type { Template, TemplateEngine, TemplateKind } from '@/lib/services/crm/
 import { sampleContext, type RenderContext } from '@/lib/services/crm/email/variables';
 import { createTemplate, duplicateTemplate, getTemplate, getVariables, previewEmail, updateTemplate } from '@/components/crm/email/emailApi';
 import type { EmailPreviewData } from '@/components/crm/email/EmailPreview';
+import { useTranslations } from 'next-intl';
 
 export interface TemplateForm {
   name: string;
@@ -47,6 +48,7 @@ function fromTemplate(t: Template): TemplateForm {
 }
 
 export function useTemplateEditor(templateId?: string) {
+  const t = useTranslations('crm.plantillas');
   const router = useRouter();
   const [template, setTemplate] = useState<Template | null>(null);
   const [form, setForm] = useState<TemplateForm>(EMPTY);
@@ -103,7 +105,7 @@ export function useTemplateEditor(templateId?: string) {
         setPreviewError(null);
       } catch (err) {
         if (seq !== previewSeq.current) return;
-        setPreviewError(err instanceof Error ? err.message : 'No se pudo generar la vista previa');
+        setPreviewError(err instanceof Error ? err.message : t('useTemplateEditor.noPudoGenerarVista'));
       } finally {
         if (seq === previewSeq.current) setPreviewLoading(false);
       }
@@ -112,16 +114,16 @@ export function useTemplateEditor(templateId?: string) {
   }, [form.engine, form.doc, form.html, form.subject, form.preheader, loading]);
 
   const validate = (): string | null => {
-    if (!form.name.trim()) return 'El nombre es obligatorio';
-    if (!form.subject.trim()) return 'El asunto es obligatorio';
-    if (form.engine === 'blocks' && form.doc.blocks.length === 0) return 'Añade al menos un bloque';
-    if (form.engine === 'html' && !form.html.trim()) return 'El HTML está vacío';
+    if (!form.name.trim()) return t('useTemplateEditor.validacion.nombre');
+    if (!form.subject.trim()) return t('useTemplateEditor.validacion.asunto');
+    if (form.engine === 'blocks' && form.doc.blocks.length === 0) return t('useTemplateEditor.validacion.bloques');
+    if (form.engine === 'html' && !form.html.trim()) return t('useTemplateEditor.validacion.html');
     return null;
   };
 
   const save = useCallback(async (): Promise<Template | null> => {
     const err = validate();
-    if (err) { toast({ title: 'Revisa la plantilla', description: err, variant: 'destructive' }); return null; }
+    if (err) { toast({ title: t('useTemplateEditor.revisaPlantilla'), description: err, variant: 'destructive' }); return null; }
     setSaving(true);
     try {
       const body: Record<string, unknown> = {
@@ -132,11 +134,11 @@ export function useTemplateEditor(templateId?: string) {
       setTemplate(r.data);
       setForm(fromTemplate(r.data));
       setDirty(false);
-      toast({ title: templateId ? 'Plantilla guardada' : 'Plantilla creada', description: `${r.data.name} · v${r.data.version}` });
+      toast({ title: templateId ? t('useTemplateEditor.plantillaGuardada') : t('useTemplateEditor.plantillaCreada'), description: `${r.data.name} · v${r.data.version}` });
       if (!templateId) router.replace(`/app/crm/plantillas/${r.data.id}`);
       return r.data;
     } catch (e) {
-      toast({ title: 'No se pudo guardar', description: e instanceof Error ? e.message : 'Error', variant: 'destructive' });
+      toast({ title: t('useTemplateEditor.noPudoGuardar'), description: e instanceof Error ? e.message : t('templateList.error'), variant: 'destructive' });
       return null;
     } finally {
       setSaving(false);
@@ -148,10 +150,10 @@ export function useTemplateEditor(templateId?: string) {
     if (!templateId) return;
     try {
       const r = await duplicateTemplate(templateId);
-      toast({ title: 'Plantilla duplicada', description: r.data.name });
+      toast({ title: t('templateList.plantillaDuplicada'), description: r.data.name });
       router.push(`/app/crm/plantillas/${r.data.id}`);
     } catch (e) {
-      toast({ title: 'No se pudo duplicar', description: e instanceof Error ? e.message : 'Error', variant: 'destructive' });
+      toast({ title: t('templateList.noPudoDuplicar'), description: e instanceof Error ? e.message : t('templateList.error'), variant: 'destructive' });
     }
   }, [templateId, router]);
 

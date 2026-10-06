@@ -5,6 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { fmtMoney } from '@/components/crm/revenueos/formatters';
 import { Target, TrendingUp, CheckCircle, XCircle } from 'lucide-react';
 import { Pipeline } from '@/components/crm/oportunidades/types';
+import { useTranslations } from 'next-intl';
 
 interface GoalProgressProps {
   pipeline: Pipeline | null;
@@ -24,6 +25,7 @@ export function GoalProgress({
   isLoading,
   currency,
 }: GoalProgressProps) {
+  const t = useTranslations('crm.pronosticoTrimestre');
   const goal = pipeline?.goal_amount || 0;
   const goalPeriod = pipeline?.goal_period || 'monthly';
   const totalPotential = wonAmount + weightedAmount;
@@ -31,13 +33,7 @@ export function GoalProgress({
   const potentialProgress = goal > 0 ? Math.min((totalPotential / goal) * 100, 100) : 0;
 
   const getPeriodLabel = (period: string) => {
-    const labels: Record<string, string> = {
-      weekly: 'Semanal',
-      monthly: 'Mensual',
-      quarterly: 'Trimestral',
-      yearly: 'Anual',
-    };
-    return labels[period] || period;
+    return t.has(`goalProgress.periodos.${period}`) ? t(`goalProgress.periodos.${period}`) : period;
   };
 
   if (isLoading) {
@@ -60,10 +56,10 @@ export function GoalProgress({
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-sm sm:text-lg text-gray-900 dark:text-white flex items-center gap-1.5 sm:gap-2">
             <Target className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400 shrink-0" />
-            <span className="truncate">Meta {getPeriodLabel(goalPeriod)}</span>
+            <span className="truncate">{t('goalProgress.meta', { periodLabel: getPeriodLabel(goalPeriod) })}</span>
           </CardTitle>
           <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">
-            {pipeline?.name || 'Sin pipeline'}
+            {pipeline?.name || t('goalProgress.sinPipeline')}
           </span>
         </div>
       </CardHeader>
@@ -82,7 +78,7 @@ export function GoalProgress({
               </div>
               <Progress value={goalProgress} className="h-2 sm:h-3" />
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
-                {goalProgress.toFixed(1)}% completado (ganado)
+                {t('goalProgress.completadoGanado', { goalProgress: goalProgress.toFixed(1) })}
               </p>
             </div>
 
@@ -91,7 +87,7 @@ export function GoalProgress({
               <div className="flex items-center gap-1.5 sm:gap-2 mb-2">
                 <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600 dark:text-blue-400" />
                 <span className="text-xs sm:text-sm font-medium text-blue-800 dark:text-blue-300">
-                  Proyección (ganado + ponderado)
+                  {t('goalProgress.proyeccionGanadoPonderado')}
                 </span>
               </div>
               <div className="flex items-baseline justify-between mb-2 gap-2">
@@ -114,7 +110,7 @@ export function GoalProgress({
                 <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white truncate">
                   {fmtMoney(wonAmount, currency)}
                 </p>
-                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Ganado</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">{t('cifras.ganado.titulo')}</p>
               </div>
               <div>
                 <div className="flex items-center justify-center gap-1 text-blue-600 dark:text-blue-400">
@@ -123,7 +119,7 @@ export function GoalProgress({
                 <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white truncate">
                   {fmtMoney(weightedAmount, currency)}
                 </p>
-                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Ponderado</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">{t('cifras.ponderado.titulo')}</p>
               </div>
               <div>
                 <div className="flex items-center justify-center gap-1 text-orange-600 dark:text-orange-400">
@@ -132,7 +128,7 @@ export function GoalProgress({
                 <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white truncate">
                   {fmtMoney(openAmount, currency)}
                 </p>
-                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">En proceso</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">{t('forecastChart.proceso')}</p>
               </div>
             </div>
           </>
@@ -140,10 +136,10 @@ export function GoalProgress({
           <div className="text-center py-4 sm:py-6">
             <XCircle className="h-10 w-10 sm:h-12 sm:w-12 text-gray-300 dark:text-gray-600 mx-auto mb-2 sm:mb-3" />
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              No hay meta configurada para este pipeline
+              {t('goalProgress.noHayMetaConfigurada')}
             </p>
             <p className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 mt-1">
-              Configura una meta en las opciones del pipeline
+              {t('goalProgress.configuraMetaOpcionesPipeline')}
             </p>
           </div>
         )}

@@ -16,6 +16,7 @@ import Link from 'next/link';
 import { requireOrgId } from '../useEquipoData';
 import { memberName } from '../types';
 import type { SalesTeamMember, Opportunity } from '../types';
+import { useTranslations } from 'next-intl';
 
 interface PerfRow {
   member: SalesTeamMember;
@@ -29,6 +30,7 @@ interface PerfRow {
 }
 
 export function PerformanceTab() {
+  const t = useTranslations('crm.equipo');
   const { toast } = useToast();
   const { code: monedaBase, formatear, paraDocumento } = useMonedaOrganizacion();
   const [members, setMembers] = useState<SalesTeamMember[]>([]);
@@ -57,7 +59,7 @@ export function PerformanceTab() {
       setOpportunities((oppRes.data || []) as unknown as Opportunity[]);
     } catch (err) {
       console.error('Error:', err);
-      toast({ title: 'Error', description: 'No se pudo cargar performance', variant: 'destructive' });
+      toast({ title: t('equiposTab.error'), description: t('performanceTab.noPudoCargarPerformance'), variant: 'destructive' });
     } finally {
       setLoading(false);
       setIsRefreshing(false);
@@ -95,8 +97,8 @@ export function PerformanceTab() {
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardContent className="pt-12 pb-12 text-center">
           <Gauge className="h-12 w-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-          <p className="text-sm text-gray-500">No hay miembros en equipos para mostrar performance</p>
-          <Link href="/app/crm/equipo" className="text-sm text-blue-600 hover:underline mt-2 inline-block">Asigna miembros desde la tab Equipos</Link>
+          <p className="text-sm text-gray-500">{t('performanceTab.noHayMiembrosEquipos')}</p>
+          <Link href="/app/crm/equipo" className="text-sm text-blue-600 hover:underline mt-2 inline-block">{t('performanceTab.asignaMiembrosDesdeTab')}</Link>
         </CardContent>
       </Card>
     );
@@ -114,7 +116,7 @@ export function PerformanceTab() {
               </div>
               <div className="min-w-0">
                 <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">{totalActive}</div>
-                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Activas</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">{t('performanceTab.activas')}</p>
               </div>
             </div>
           </CardContent>
@@ -127,7 +129,7 @@ export function PerformanceTab() {
               </div>
               <div className="min-w-0">
                 <div className="text-lg sm:text-2xl font-bold text-green-600 dark:text-green-400">{totalWon}</div>
-                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Ganadas</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">{t('performanceTab.ganadas')}</p>
               </div>
             </div>
           </CardContent>
@@ -157,7 +159,7 @@ export function PerformanceTab() {
                 <div className="text-xs sm:text-sm font-bold text-green-600 dark:text-green-400 truncate">
                   {formatear(totalWonAmount)}
                 </div>
-                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Ganado</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">{t('performanceTab.ganado')}</p>
               </div>
             </div>
           </CardContent>
@@ -178,14 +180,14 @@ export function PerformanceTab() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-xs">Vendedor</TableHead>
-                <TableHead className="text-xs">Rol</TableHead>
-                <TableHead className="text-xs">Activas</TableHead>
-                <TableHead className="text-xs">Ganadas</TableHead>
-                <TableHead className="text-xs">Perdidas</TableHead>
+                <TableHead className="text-xs">{t('asignarTab.vendedor')}</TableHead>
+                <TableHead className="text-xs">{t('performanceTab.rol')}</TableHead>
+                <TableHead className="text-xs">{t('performanceTab.activas')}</TableHead>
+                <TableHead className="text-xs">{t('performanceTab.ganadas')}</TableHead>
+                <TableHead className="text-xs">{t('performanceTab.perdidas')}</TableHead>
                 <TableHead className="text-xs">Pipeline</TableHead>
-                <TableHead className="text-xs">Ganado</TableHead>
-                <TableHead className="text-xs">Cuota</TableHead>
+                <TableHead className="text-xs">{t('performanceTab.ganado')}</TableHead>
+                <TableHead className="text-xs">{t('performanceTab.cuota')}</TableHead>
                 <TableHead className="text-xs">%</TableHead>
               </TableRow>
             </TableHeader>

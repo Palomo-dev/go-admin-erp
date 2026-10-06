@@ -18,6 +18,7 @@ import { toast } from '@/components/ui/use-toast';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import type { RevenueInputs, RevenueMathResult } from '@/lib/services/crm/revenueOsService';
 import { fmtMoney, fmtNumber, fmtPct, fmtRatio, SIN_DATOS } from './formatters';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   math: RevenueMathResult;
@@ -48,6 +49,7 @@ const METRICS: Array<{ key: MetricKey; label: string; formula: string; format: (
 ];
 
 export function RevenueMathPanel({ math, inputs, canEdit, onSaved, currency }: Props) {
+  const t = useTranslations('crm.pronosticoTrimestre');
   const spendId = useId();
   const marginId = useId();
   const errId = useId();
@@ -61,7 +63,7 @@ export function RevenueMathPanel({ math, inputs, canEdit, onSaved, currency }: P
     const spendValue = spend.trim() === '' ? null : Number(spend);
     const marginValue = margin.trim() === '' ? null : Number(margin);
     if ((spendValue !== null && (!Number.isFinite(spendValue) || spendValue < 0)) || (marginValue !== null && (!Number.isFinite(marginValue) || marginValue < 0 || marginValue > 100))) {
-      setError('Gasto ≥ 0 y margen entre 0 y 100.');
+      setError(t('revenueMathPanel.gasto0MargenEntre'));
       document.getElementById(spendId)?.focus();
       return;
     }
@@ -75,11 +77,11 @@ export function RevenueMathPanel({ math, inputs, canEdit, onSaved, currency }: P
         body: JSON.stringify({ acquisition_spend: spendValue, gross_margin_pct: marginValue }),
       });
       const body = (await res.json().catch(() => null)) as { success?: boolean; error?: string } | null;
-      if (!res.ok || !body?.success) throw new Error(body?.error || `Error ${res.status}`);
-      toast({ title: 'Insumos guardados', description: 'CAC, LTV y payback se recalculan con los nuevos valores.' });
+      if (!res.ok || !body?.success) throw new Error(body?.error || t('revenueMathPanel.error', { status: res.status }));
+      toast({ title: t('revenueMathPanel.insumosGuardados'), description: t('revenueMathPanel.cacLtvPaybackRecalculan') });
       onSaved();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo guardar');
+      setError(err instanceof Error ? err.message : t('revenueMathPanel.noPudoGuardar'));
     } finally {
       setSaving(false);
     }
@@ -87,22 +89,22 @@ export function RevenueMathPanel({ math, inputs, canEdit, onSaved, currency }: P
 
   return (
     <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-      <ul className="grid gap-3 sm:grid-cols-2" aria-label="Métricas de matemática comercial">
+      <ul className="grid gap-3 sm:grid-cols-2" aria-label={t('revenueMathPanel.metricasMatematicaComercial')}>
         {METRICS.map((m) => {
           const value = m.format(math, currency);
           const reason = math.missing[m.key];
           const health = m.health?.(math) ?? null;
           return (
             <li key={m.key} className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-300">{m.label}</p>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-300">{t(`revenueMathPanel.metricas.${m.key}.etiqueta`)}</p>
               <p className={`mt-1 text-xl font-semibold ${value === SIN_DATOS ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-gray-50'}`}>{value}</p>
               {health && (
                 <p className="mt-0.5 text-xs text-gray-700 dark:text-gray-200">
                   {health === 'Saludable' ? '✓ ' : '⚠ '}
-                  {health}
+                  {t(health === 'Saludable' ? 'revenueMathPanel.saludable' : 'revenueMathPanel.porDebajo3')}
                 </p>
               )}
-              <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">{m.formula}</p>
+              <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">{t(`revenueMathPanel.metricas.${m.key}.formula`)}</p>
               {reason && <p className="mt-1 text-[11px] text-amber-800 dark:text-amber-200">{reason}</p>}
             </li>
           );
@@ -111,11 +113,10 @@ export function RevenueMathPanel({ math, inputs, canEdit, onSaved, currency }: P
 
       <section aria-labelledby={`${spendId}-title`} className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
         <h3 id={`${spendId}-title`} className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-          Insumos del periodo
+          {t('revenueMathPanel.insumosPeriodo')}
         </h3>
         <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
-          No existen en la base: se guardan en la configuración de la organización y alimentan CAC, LTV y payback.
-          Oportunidades ganadas en el periodo (denominador del CAC): {fmtNumber(math.newCustomers)}.
+          {t('revenueMathPanel.noExistenBaseGuardan', { number: fmtNumber(math.newCustomers) })}
         </p>
         <form
           className="mt-3 space-y-3"
@@ -126,13 +127,13 @@ export function RevenueMathPanel({ math, inputs, canEdit, onSaved, currency }: P
         >
           <div className="space-y-1">
             <Label htmlFor={spendId} className="text-xs text-gray-700 dark:text-gray-200">
-              Gasto de adquisición (marketing + ventas)
+              {t('revenueMathPanel.gastoAdquisicionMarketingVentas')}
             </Label>
             <Input id={spendId} type="number" inputMode="decimal" min={0} step="any" value={spend} onChange={(e) => setSpend(e.target.value)} disabled={!canEdit || saving} aria-describedby={error ? errId : undefined} aria-invalid={error ? true : undefined} className="h-9 bg-white dark:bg-gray-900 dark:text-gray-100" />
           </div>
           <div className="space-y-1">
             <Label htmlFor={marginId} className="text-xs text-gray-700 dark:text-gray-200">
-              Margen bruto (%)
+              {t('revenueMathPanel.margenBruto')}
             </Label>
             <Input id={marginId} type="number" inputMode="decimal" min={0} max={100} step="any" value={margin} onChange={(e) => setMargin(e.target.value)} disabled={!canEdit || saving} aria-describedby={error ? errId : undefined} aria-invalid={error ? true : undefined} className="h-9 bg-white dark:bg-gray-900 dark:text-gray-100" />
           </div>
@@ -143,12 +144,12 @@ export function RevenueMathPanel({ math, inputs, canEdit, onSaved, currency }: P
           )}
           {canEdit ? (
             <Button type="submit" size="sm" className="bg-blue-600 text-white hover:bg-blue-700" disabled={saving}>
-              {saving ? 'Guardando…' : 'Guardar insumos'}
+              {saving ? t('revenueMathPanel.guardando') : t('revenueMathPanel.guardarInsumos')}
             </Button>
           ) : (
-            <p className="text-xs text-gray-600 dark:text-gray-300">Solo un administrador de la organización puede cambiar estos insumos.</p>
+            <p className="text-xs text-gray-600 dark:text-gray-300">{t('revenueMathPanel.soloAdministradorOrganizacionPuede')}</p>
           )}
-          {inputs.updated_at && <p className="text-[11px] text-gray-500 dark:text-gray-400">Última actualización: {formatDateTime(inputs.updated_at)}</p>}
+          {inputs.updated_at && <p className="text-[11px] text-gray-500 dark:text-gray-400">{t('revenueMathPanel.ultimaActualizacion', { dateTime: formatDateTime(inputs.updated_at) })}</p>}
         </form>
       </section>
     </div>

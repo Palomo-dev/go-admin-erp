@@ -6777,7 +6777,8 @@
         "creandoVoz": "Creando la voz…",
         "crearMiVoz": "Crear mi voz",
         "planActualElevenlabsNo2": "El plan actual de ElevenLabs ({tier}) no permite clonar voces.",
-        "maximoMuestras": "Como máximo {max} muestras: se tomaron las {n} primeras."
+        "maximoMuestras": "Como máximo {max} muestras: se tomaron las {n} primeras.",
+        "faltaMuestraAudio": "Falta la muestra de audio."
       },
       "agentPurposeTab": {
         "nombre": "Nombre",
@@ -7006,6 +7007,126 @@
         "asignar": "Asignar oportunidades",
         "performance": "Desempeño",
         "territorios": "Territorios"
+      },
+      "equiposTab": {
+        "error": "Error",
+        "noPudieronCargarEquipos": "No se pudieron cargar los equipos",
+        "validacion": "Validación",
+        "nombreObligatorio": "El nombre es obligatorio",
+        "equipoActualizado": "Equipo actualizado",
+        "equipoCreado": "Equipo creado",
+        "noPudoGuardar": "No se pudo guardar",
+        "seleccionaMiembro": "Selecciona un miembro",
+        "miembroAnadido": "Miembro añadido",
+        "noPudoAnadir": "No se pudo añadir",
+        "miembroRemovido": "Miembro removido",
+        "noPudoRemover": "No se pudo remover",
+        "equipoEliminado": "Equipo eliminado",
+        "noPudoEliminar": "No se pudo eliminar",
+        "nuevoEquipo": "Nuevo Equipo",
+        "noHayEquipos": "No hay equipos",
+        "creaPrimerEquipoComercial": "Crea tu primer equipo comercial",
+        "cuotaTotal": "Cuota total: {moneda}",
+        "sinMiembrosAnadePrimero": "Sin miembros. Añade el primero.",
+        "cuota": "Cuota: {moneda}",
+        "anadirMiembro": "Añadir miembro",
+        "eliminarEquipo": "¿Eliminar equipo?",
+        "eliminaraTodosSusMiembros": "Se eliminará \"{name}\" y todos sus miembros."
+      },
+      "territoriosTab": {
+        "noPudieronCargarTerritorios": "No se pudieron cargar territorios",
+        "territorioActualizado": "Territorio actualizado",
+        "territorioCreado": "Territorio creado",
+        "territorioEliminado": "Territorio eliminado",
+        "nuevoTerritorio": "Nuevo Territorio",
+        "noHayTerritoriosConfigurados": "No hay territorios configurados",
+        "oport": "Oport.",
+        "valor": "Valor",
+        "equipos": "Equipos:",
+        "eliminarTerritorio": "¿Eliminar territorio?",
+        "eliminara": "Se eliminará \"{name}\".",
+        "jsonInvalido": "JSON inválido"
+      },
+      "asignarTab": {
+        "noPudieronCargarOportunidades": "No se pudieron cargar las oportunidades: {describeError}",
+        "equipoAsignado": "Equipo asignado",
+        "noPudoAsignar": "No se pudo asignar",
+        "vendedorAsignado": "Vendedor asignado",
+        "todosEquipos": "Todos los equipos",
+        "soloSinAsignar": "Solo sin asignar",
+        "noHayOportunidadesAsignar": "No hay oportunidades para asignar",
+        "oportunidad": "Oportunidad",
+        "cliente": "Cliente",
+        "monto": "Monto",
+        "etapa": "Etapa",
+        "equipo": "Equipo",
+        "vendedor": "Vendedor",
+        "sinEquipo": "Sin equipo",
+        "sinAsignar": "Sin asignar"
+      },
+      "performanceTab": {
+        "noPudoCargarPerformance": "No se pudo cargar performance",
+        "noHayMiembrosEquipos": "No hay miembros en equipos para mostrar performance",
+        "asignaMiembrosDesdeTab": "Asigna miembros desde la tab Equipos",
+        "activas": "Activas",
+        "ganadas": "Ganadas",
+        "ganado": "Ganado",
+        "rol": "Rol",
+        "perdidas": "Perdidas",
+        "cuota": "Cuota"
+      },
+      "memberDialog": {
+        "seleccionaMiembroOrganizacion": "Selecciona un miembro de la organización",
+        "miembro": "Miembro *",
+        "selecciona": "Selecciona...",
+        "sinRol": "Sin rol",
+        "territorioOpcional": "Territorio (opcional)",
+        "heredaEquipo": "Hereda del equipo",
+        "moneda": "Moneda",
+        "cancelar": "Cancelar",
+        "anadiendo": "Añadiendo...",
+        "anadir": "Añadir"
+      },
+      "teamDialog": {
+        "editarEquipo": "Editar equipo",
+        "nuevoEquipo": "Nuevo equipo",
+        "modificaDatosEquipoComercial": "Modifica los datos del equipo comercial",
+        "creaNuevoEquipoComercial": "Crea un nuevo equipo comercial",
+        "nombre": "Nombre *",
+        "ejEquipoNorte": "Ej: Equipo Norte",
+        "descripcion": "Descripción",
+        "sinTerritorio": "Sin territorio",
+        "activo": "Activo",
+        "guardando": "Guardando...",
+        "guardar": "Guardar"
+      },
+      "territoryDialog": {
+        "editarTerritorio": "Editar territorio",
+        "nuevoTerritorio": "Nuevo territorio",
+        "modificaDatosTerritorio": "Modifica los datos del territorio",
+        "creaNuevoTerritorioComercial": "Crea un nuevo territorio comercial",
+        "ejZonaNorte": "Ej: Zona Norte",
+        "criteriosJson": "Criterios (JSON)"
+      },
+      "equipoSidebar": {
+        "pipelineActivo": "Pipeline activo",
+        "oportunidadesAbiertas": "{openOpps} oportunidades abiertas",
+        "equiposActivos": "Equipos activos",
+        "miembros": "Miembros",
+        "oportunidadesAbiertas2": "Oportunidades abiertas",
+        "accesoRapido": "Acceso rápido",
+        "irPipeline": "Ir al Pipeline",
+        "verOportunidades": "Ver Oportunidades",
+        "configurarEstructura": "Configurar estructura"
+      },
+      "equipoPage": {
+        "equipoComercial": "Equipo Comercial",
+        "revops": "RevOps",
+        "gestionComercial": "Gestión comercial",
+        "equiposOportunidadesTerritorios": "Equipos, oportunidades y territorios"
+      },
+      "deleteConfirmDialog": {
+        "eliminar": "Eliminar"
       }
     },
     "automatizaciones": {
@@ -7036,6 +7157,242 @@
         "sinNombre": "Registro sin nombre",
         "noDisponible": "El registro ya no existe o no es visible",
         "yMas": "Y {n} más…"
+      },
+      "dryRunDialog": {
+        "probarSeco": "Probar en seco «{name}»",
+        "eligeOportunidadVerasHaria": "Elige una oportunidad y verás qué haría la regla con ella. No se envía nada, no se cambia nada y no queda en el historial.",
+        "noPudoProbar": "No se pudo probar",
+        "oportunidad": "Oportunidad",
+        "buscarNombre": "Buscar por nombre…",
+        "elegida": "Elegida: {selectedName}",
+        "sinElegirEvaluaSin": "Sin elegir: se evalúa sin oportunidad (solo el disparador y las condiciones que no la necesitan).",
+        "resultadosBusqueda": "Resultados de la búsqueda",
+        "sinOportunidad": "Sin oportunidad",
+        "ningunaOportunidadCoincide": "Ninguna oportunidad coincide.",
+        "reglaDispararia": "La regla se dispararía",
+        "reglaNoDispararia": "La regla no se dispararía",
+        "condiciones": "Condiciones",
+        "cumple": "Se cumple",
+        "noCumple": "No se cumple",
+        "valorReal": "— valor real: {actualText}",
+        "hariaEsteOrden": "Haría, en este orden",
+        "hariaSiDisparara": "Haría si se disparara",
+        "nadaReglaNoTiene": "Nada: la regla no tiene acciones.",
+        "noDisponibleFallaria": "(no disponible: fallaría)",
+        "cerrar": "Cerrar",
+        "probando": "Probando…",
+        "probarNuevo": "Probar de nuevo",
+        "probar": "Probar",
+        "vacio": "vacío",
+        "si": "sí",
+        "no": "no"
+      },
+      "automatizacionesPage": {
+        "desactivada": "«{name}» desactivada",
+        "activada": "«{name}» activada",
+        "noPudoCambiarEstado": "No se pudo cambiar el estado",
+        "errorDesconocido": "Error desconocido",
+        "eliminada": "«{name}» eliminada",
+        "noPudoEliminar": "No se pudo eliminar",
+        "automatizaciones": "Automatizaciones",
+        "reglasActuanSolasCuando": "Reglas que actúan solas cuando pasa algo en el pipeline. Las ejecuta el servidor, no el navegador.",
+        "actualizarLista": "Actualizar lista",
+        "historial": "Historial",
+        "nuevaRegla": "Nueva regla",
+        "noPudoActualizarLista": "No se pudo actualizar la lista",
+        "noPudieronCargarReglas": "No se pudieron cargar las reglas",
+        "muestraUltimaListaConocida": "Se muestra la última lista conocida; pulsa",
+        "pulsa": "Pulsa",
+        "actualizarReintentar": "{error}. {valor} «Actualizar» para reintentar.",
+        "cargandoReglas": "Cargando reglas",
+        "reglasAutomatizacion": "Reglas de automatización",
+        "eliminarRegla": "Eliminar regla",
+        "eliminaraDejaraEjecutarseTambien": "Se eliminará «{n}» y dejará de ejecutarse. También se borra su historial de ejecuciones. Esta acción no se puede deshacer.",
+        "eliminar": "Eliminar"
+      },
+      "actionChipEditor": {
+        "sinPlantillaContenidoLibre": "Sin plantilla (contenido libre)",
+        "noHayPlantillasCreadas": "No hay plantillas creadas.",
+        "eligeSecuencia": "Elige una secuencia",
+        "noHaySecuenciasCreadas": "No hay secuencias creadas.",
+        "eligeEtapa": "Elige una etapa",
+        "noHayEtapasCreadas": "No hay etapas creadas.",
+        "eligeCampo": "Elige un campo",
+        "cargando": "Cargando…",
+        "accion": "Acción {index}",
+        "noDisponible": "{label} (no disponible)",
+        "subirAccion": "Subir la acción {n}",
+        "bajarAccion": "Bajar la acción {n}",
+        "quitar": "Quitar",
+        "estaAccionTodaviaNo": "Esta acción todavía no está disponible: si la dejas, la ejecución quedará marcada como fallida.",
+        "entidades": {
+          "opportunities": "Oportunidad",
+          "customers": "Cliente",
+          "tasks": "Tarea"
+        }
+      },
+      "runsSheet": {
+        "historial": "Historial de «{ruleName}»",
+        "historialTodasReglas": "Historial de todas las reglas",
+        "ultimas50EjecucionesReales": "Últimas 50 ejecuciones reales del servidor. Las pruebas en seco no se registran aquí.",
+        "actualizar": "Actualizar",
+        "noPudoCargarHistorial": "No se pudo cargar el historial",
+        "pulsaActualizarReintentar": "{error} — pulsa «Actualizar» para reintentar.",
+        "cargandoHistorial": "Cargando historial",
+        "todaviaNoHayEjecuciones": "Todavía no hay ejecuciones. Cuando la regla se dispare, aparecerán aquí.",
+        "estado": "Estado",
+        "fecha": "Fecha",
+        "detalle": "Detalle",
+        "ok": "— ok",
+        "sinDetalle": "sin detalle",
+        "errorDetalle": " — error: {error}"
+      },
+      "triggerBlock": {
+        "disparador": "Disparador",
+        "evento": "Evento",
+        "eligeUnoConocidoEscribe": "Elige uno conocido o escribe otro con la forma entidad.accion. Vacío = cualquier evento.",
+        "vaPropioDisparadorCambia": "«{muted}» va por su propio disparador («cambia de etapa» o «cambia un dato»): con «{label}» esta regla no se dispararía nunca. Elige otro evento o cambia el disparador.",
+        "pipeline": "En el pipeline",
+        "cargandoPipelines": "Cargando pipelines…",
+        "cualquierPipeline": "Cualquier pipeline",
+        "noHayPipelinesCreados": "No hay pipelines creados.",
+        "entrarEtapa": "Al entrar en la etapa",
+        "cargandoEtapas": "Cargando etapas…",
+        "cualquierEtapa": "Cualquier etapa",
+        "pipelineElegidoNoTiene": "El pipeline elegido no tiene etapas.",
+        "pipelineRegla": "Pipeline de la regla",
+        "etapaRegla": "Etapa de la regla",
+        "ignorado": {
+          "pipeline": "el pipeline «{nombre}»",
+          "etapa": "la etapa «{nombre}»",
+          "uno": "Este disparador no mira {a}: se conserva por si vuelves a un disparador que sí lo use.",
+          "ambos": "Este disparador no mira {a} ni {b}: se conservan por si vuelves a un disparador que sí los use."
+        }
+      },
+      "ruleCard": {
+        "activa": "Activa",
+        "inactiva": "Inactiva",
+        "noHaraNadaSin": "no hará nada (sin acciones)",
+        "ultimaEjecucion": "Última ejecución: {relativeTime}",
+        "n1Ejecucion": "1 ejecución",
+        "ejecuciones": "{runs} ejecuciones",
+        "probarSeco": "Probar en seco {name}",
+        "probarSeco2": "Probar en seco",
+        "historial": "Historial de {name}",
+        "editar": "Editar {name}",
+        "eliminar": "Eliminar {name}",
+        "desactivarRegla": "Desactivar la regla {name}",
+        "activarRegla": "Activar la regla {name}"
+      },
+      "ruleEditorSheet": {
+        "reglaActualizada": "Regla actualizada",
+        "reglaCreada": "Regla creada",
+        "yaEstaActiva": "Ya está activa.",
+        "estaDesactivadaActivalaCuando": "Está desactivada: actívala cuando quieras.",
+        "editarRegla": "Editar regla",
+        "armaFraseCuandoDispara": "Arma la frase: cuándo se dispara, con qué condiciones y qué hace. Abajo verás cómo queda antes de guardar.",
+        "nombreRegla": "Nombre de la regla",
+        "seguimientoPropuesta": "Seguimiento de propuesta",
+        "noPudoGuardar": "No se pudo guardar",
+        "corrigeLoIndicadoVuelve": "{serverError}. Corrige lo indicado y vuelve a intentarlo.",
+        "guardar": "Guardar",
+        "desactivada": "Desactivada",
+        "cancelar": "Cancelar",
+        "guardando": "Guardando…",
+        "palabras": {
+          "cuando": "Cuando",
+          "si": "si",
+          "opcional": "opcional",
+          "entonces": "entonces"
+        }
+      },
+      "conditionChipEditor": {
+        "esteOperadorNoNecesita": "Este operador no necesita valor.",
+        "eligePipeline": "Elige un pipeline",
+        "valor": "Valor",
+        "campo": "Campo",
+        "operador": "Operador",
+        "quitarCondicion": "Quitar condición",
+        "valorCondicion": "Valor de la condición {n}",
+        "ayudas": {
+          "lista": "Varios valores separados por coma.",
+          "dias": "Número de días hacia atrás desde hoy.",
+          "fecha": "Fecha en formato AAAA-MM-DD.",
+          "texto": "Texto, número, true o false. Los IDs de etapa se eligen por nombre."
+        }
+      },
+      "conditionsBlock": {
+        "comoCombinanCondiciones": "Cómo se combinan las condiciones",
+        "cumpleSi": "Se cumple si",
+        "sinCondicionesDisparaSiempre": "Sin condiciones: se dispara siempre que ocurra el disparador. Añade una solo si necesitas filtrar.",
+        "grupoEditaComoJson": "· grupo, se edita como JSON",
+        "anadirCondicion": "Añadir condición",
+        "editarComoJson": "Editar como JSON",
+        "condicionesJson": "Condiciones en JSON",
+        "gruposAnidadosCasosAvanzados": "Para grupos anidados y casos avanzados. Campos permitidos: opportunity.*, customer.*, stage.*, pipeline.*, consent.*, event.*.",
+        "jsonCondiciones": "JSON de las condiciones",
+        "aplicar": "Aplicar"
+      },
+      "rulesToolbar": {
+        "buscarNombreDescripcion": "Buscar por nombre o descripción…",
+        "buscarReglasNombre": "Buscar reglas por nombre",
+        "filtrarEstado": "Filtrar por estado",
+        "disparador": "Disparador:",
+        "filtrarDisparador": "Filtrar por disparador",
+        "quitarFiltros": "Quitar filtros ({active})",
+        "reglas": "{shown} de {total} reglas",
+        "estados": {
+          "all": "Todas",
+          "active": "Activas",
+          "inactive": "Inactivas"
+        }
+      },
+      "eventPicker": {
+        "buscarEscribirEntidadAccion": "Buscar o escribir entidad.accion…",
+        "eseEventoVaPropio": "Ese evento va por su propio disparador («cambia de etapa» o «cambia un dato»): una regla de evento con ese nombre no se dispararía.",
+        "ningunEventoCoincideNombre": "Ningún evento coincide. Un nombre libre tiene la forma entidad.accion (minúsculas).",
+        "ningunEventoCoincide": "Ningún evento coincide.",
+        "eventosConocidos": "Eventos conocidos",
+        "cualquierEvento": "Cualquier evento",
+        "reglaEvaluaCualquierEvento": "La regla se evalúa con cualquier evento de este tipo.",
+        "nombreLibre": "Nombre libre",
+        "usar": "Usar «{trimmedQuery}»"
+      },
+      "actionsBlock": {
+        "sinAccionesReglaNo": "Sin acciones la regla no hará nada aunque se dispare. Añade al menos una.",
+        "accion": "Acción {n}",
+        "revisar": "Revisar",
+        "anadirAccion": "Añadir acción",
+        "buscarAccion": "Buscar acción…",
+        "ningunaAccionCoincide": "Ninguna acción coincide.",
+        "disponibles": "Disponibles",
+        "todaviaNoDisponibles": "Todavía no disponibles"
+      },
+      "ruleSettings": {
+        "ajustes": "Ajustes",
+        "descripcionOpcional": "Descripción (opcional)",
+        "sirveEstaReglaFrase": "Para qué sirve esta regla, en una frase.",
+        "prioridad": "Prioridad",
+        "menorNumeroEvaluaAntes": "Menor número, se evalúa antes. 100 por defecto.",
+        "enfriamientoHoras": "Enfriamiento (horas)",
+        "tiempoMinimoEntreDos": "Tiempo mínimo entre dos ejecuciones sobre la misma oportunidad. 0 = sin límite.",
+        "soloVezOportunidad": "Solo una vez por oportunidad"
+      },
+      "rulesEmptyState": {
+        "ningunaReglaCoincideFiltros": "Ninguna regla coincide con los filtros",
+        "quitarFiltros": "Quitar filtros",
+        "dejaCrmTrabajeSolo": "Deja que el CRM trabaje solo",
+        "reglaVigilaPipelineActua": "Una regla vigila el pipeline y actúa por ti: escribe, crea tareas, mueve etapas. Esta es una de las más usadas:",
+        "ejemplo": "Ejemplo: {name}",
+        "editorEligesEtapaDispara": "En el editor eliges la etapa que la dispara (por ejemplo, «Propuesta enviada»).",
+        "usarEsteEjemplo": "Usar este ejemplo",
+        "empezarDesdeCero": "Empezar desde cero"
+      },
+      "rulePreview": {
+        "asiFuncionara": "Así funcionará"
+      },
+      "useOpportunitySearch": {
+        "noHayOrganizacionActiva": "No hay organización activa."
       }
     },
     "campanaVoz": {
@@ -7256,6 +7613,155 @@
       "sustantivo": {
         "uno": "campaña",
         "otros": "campañas"
+      },
+      "campanaNuevaPage": {
+        "noPudoCalcularAudiencia": "No se pudo calcular la audiencia",
+        "error": "Error",
+        "borradorGuardado": "Borrador guardado",
+        "campanaProgramada": "Campaña programada",
+        "campanaLanzada": "Campaña lanzada",
+        "contactosCola": "{n} contactos en cola",
+        "superaLimiteWaba": "Supera el límite del WABA",
+        "noPudoLanzar": "No se pudo lanzar",
+        "volver": "Volver",
+        "nuevaCampanaWhatsapp": "Nueva campaña de WhatsApp",
+        "crmCampanasNueva": "CRM / Campañas / Nueva",
+        "pasos": "Pasos",
+        "nombreCampana": "Nombre de la campaña",
+        "ejNovedadesSeptiembre": "Ej: Novedades septiembre",
+        "tipoMensaje": "Tipo de mensaje",
+        "variablesSinValorDefecto": "Variables sin valor por defecto ({missing}): escríbelas arriba; se aplicarán a todos los contactos.",
+        "nombre": "Nombre",
+        "mensaje": "Mensaje",
+        "plantilla": "Plantilla {name} ({category})",
+        "textoLibreChars": "Texto libre ({n} chars)",
+        "audiencia": "Audiencia",
+        "etapas": "{n} etapas",
+        "programacion": "Programación",
+        "inmediata": "Inmediata",
+        "respetaHorario": "respeta horario",
+        "sinHorario": "sin horario",
+        "msgS": "{valor} · {throttle} msg/s · {valor2}",
+        "audienciaCalculada": "Audiencia calculada",
+        "recalcular": "Recalcular",
+        "calcularAudiencia": "Calcular audiencia",
+        "excluidos": "excluidos de",
+        "costoEstimadoUsd": "· costo estimado ≈ ${estimated_cost} USD",
+        "nadieCumpleCriteriosRevisa": "Nadie cumple los criterios: revisa la audiencia o la plantilla.",
+        "calculaAudienciaVerPendientes": "Calcula la audiencia para ver pendientes, exclusiones y costo antes de lanzar.",
+        "heVerificadoAudienciaDio": "He verificado que la audiencia dio su consentimiento (opt-in) para marketing (Habeas Data)",
+        "cancelar": "Cancelar",
+        "atras": "Atrás",
+        "guardarBorrador": "Guardar borrador",
+        "continuar": "Continuar",
+        "programar": "Programar",
+        "lanzarAhora": "Lanzar ahora",
+        "pasosAsistente": {
+          "canal": "Canal y mensaje",
+          "audiencia": "Audiencia",
+          "programacion": "Programación",
+          "revision": "Revisión"
+        }
+      },
+      "campanaDetallePage": {
+        "campanaNoEncontrada": "Campaña no encontrada",
+        "noPudoCargar": "No se pudo cargar",
+        "noPudoCompletar": "No se pudo completar",
+        "plantillaHsm": "plantilla HSM",
+        "textoLibre": "texto libre",
+        "lanzar": "Lanzar",
+        "pendientesOmitenCreditosReservados": "Los pendientes se omiten y los créditos reservados se devuelven. ¿Cancelar la campaña?",
+        "exportarCsv": "Exportar CSV",
+        "lanzarPausarCancelarRequiere": "Lanzar, pausar o cancelar requiere rol de administrador de la organización.",
+        "pausadaAutomaticamente": "Pausada automáticamente:",
+        "sinCreditosWhatsapp": "sin créditos de WhatsApp",
+        "metaPausoRechazoPlantilla": "Meta pausó/rechazó la plantilla",
+        "progreso": "Progreso {pct}%",
+        "terminaMin": "· termina ≈ {etaMin} min",
+        "costo": "Costo",
+        "estimado": "Estimado:",
+        "realUsd": "Real: ${cost} USD",
+        "costoRealLlegaEventos": "El costo real llega con los eventos de entrega (pricing de Meta).",
+        "errores": "Errores",
+        "sinErroresProveedor": "Sin errores del proveedor.",
+        "exclusiones": "Exclusiones",
+        "sinExclusiones": "Sin exclusiones.",
+        "campana_lanzada": "Campaña lanzada",
+        "campana_pausada": "Campaña pausada",
+        "campana_reanudada": "Campaña reanudada",
+        "campana_cancelada": "Campaña cancelada",
+        "stats": {
+          "enviados": "Enviados",
+          "entregados": "Entregados",
+          "leidos": "Leídos",
+          "respondieron": "Respondieron",
+          "fallidos": "Fallidos",
+          "omitidos": "Omitidos",
+          "pendientes": "Pendientes"
+        },
+        "progresoDetalle": "{hechos} / {total} procesados · {enviados} enviados"
+      },
+      "campaignContactsTable": {
+        "contactos": "Contactos ({total})",
+        "buscarNombreTelefono": "Buscar nombre, teléfono…",
+        "buscarContacto": "Buscar contacto",
+        "filtrarEstado": "Filtrar por estado",
+        "todos": "Todos",
+        "cliente": "Cliente",
+        "enviado": "Enviado",
+        "entregado": "Entregado",
+        "leido": "Leído",
+        "respondio": "Respondió",
+        "detalle": "Detalle",
+        "cargando": "Cargando…",
+        "sinContactosCalculaAudiencia": "Sin contactos. Calcula la audiencia para materializar la campaña.",
+        "sinNombre": "Sin nombre",
+        "oportunidad": "→ oportunidad",
+        "pagina": "Página {page} de {n}",
+        "anterior": "Anterior",
+        "siguiente": "Siguiente"
+      },
+      "audienceStep": {
+        "origenAudiencia": "Origen de la audiencia",
+        "seleccionarSegmento": "Seleccionar segmento",
+        "clientesAntesExclusionesOpt": "≈ {customer_count} clientes antes de exclusiones (opt-out, sin teléfono, duplicados).",
+        "noHaySegmentosCrealos": "No hay segmentos. Créalos en CRM › Segmentos.",
+        "incluyenOportunidadesAbiertasEtapas": "Se incluyen las oportunidades <b>abiertas</b> de las etapas marcadas (una por cliente).",
+        "sinEtapas": "Sin etapas.",
+        "origen": {
+          "stage": "Etapas del pipeline",
+          "segment": "Segmento de clientes"
+        }
+      },
+      "scheduleStep": {
+        "enviar": "Enviar",
+        "ahora": "Ahora",
+        "fechaHoraEnvio": "Fecha y hora de envío",
+        "velocidadMensajesSegundoMin": "Velocidad: {throttle} mensajes/segundo (≈ {throttle2}/min · 1.000 contactos en ≈ {minutes} min)",
+        "metaPermiteHasta80": "Meta permite hasta 80 msg/s por número; el límite real es el tier de usuarios únicos/24 h del WABA (se verifica al lanzar).",
+        "respetarHorarioPermitidoContacto": "Respetar el horario permitido de contacto (Configuración › WhatsApp)"
+      },
+      "estadosCampana": {
+        "draft": "Borrador",
+        "materializing": "Calculando",
+        "scheduled": "Programada",
+        "sending": "Enviando",
+        "paused": "Pausada",
+        "sent": "Enviada",
+        "canceled": "Cancelada"
+      },
+      "estadosContacto": {
+        "pending": "Pendiente",
+        "queued": "En cola",
+        "sent": "Enviado",
+        "delivered": "Entregado",
+        "read": "Leído",
+        "opened": "Abierto",
+        "clicked": "Clic",
+        "replied": "Respondió",
+        "bounced": "Rebotado",
+        "failed": "Fallido",
+        "skipped": "Omitido"
       }
     },
     "duplicados": {
@@ -7539,6 +8045,95 @@
           "proveedor": "Meta no respondió bien a la sincronización",
           "error": "No se pudo sincronizar"
         }
+      },
+      "templateList": {
+        "noPudieronCargarPlantillas": "No se pudieron cargar las plantillas",
+        "error": "Error",
+        "noPudoActualizar": "No se pudo actualizar",
+        "plantillaDuplicada": "Plantilla duplicada",
+        "noPudoDuplicar": "No se pudo duplicar",
+        "plantillaEliminada": "Plantilla eliminada",
+        "plantillaDesactivada": "Plantilla desactivada",
+        "tieneEnviosAsociadosDesactivo": "Tiene envíos asociados; se desactivó en lugar de borrarla.",
+        "noPudoEliminar": "No se pudo eliminar",
+        "buscarNombreAsunto": "Buscar por nombre o asunto",
+        "buscarPlantillas": "Buscar plantillas",
+        "filtrarTipo": "Filtrar por tipo",
+        "nuevaPlantilla": "Nueva plantilla",
+        "aunNoHayPlantillas": "Aún no hay plantillas de email.",
+        "ningunaPlantillaCoincideFiltro": "Ninguna plantilla coincide con el filtro.",
+        "crearPrimera": "Crear la primera",
+        "nombre": "Nombre",
+        "tipo": "Tipo",
+        "asunto": "Asunto",
+        "motor": "Motor",
+        "usos": "Usos",
+        "activa": "Activa",
+        "actualizada": "Actualizada",
+        "acciones": "Acciones",
+        "base": "Base",
+        "bloques": "Bloques",
+        "acciones2": "Acciones de {name}",
+        "editar": "Editar",
+        "duplicar": "Duplicar",
+        "eliminar": "Eliminar",
+        "eliminarPlantilla": "Eliminar plantilla",
+        "eliminarSiYaUso": "¿Eliminar “{n}”? Si ya se usó en envíos se desactivará en lugar de borrarse.",
+        "todosTipos": "Todos los tipos"
+      },
+      "templateEditorHeader": {
+        "sinGuardar": "Sin guardar",
+        "enviadosAbiertosClicsRebotes": "Enviados {sent} · Abiertos {opened} · Clics {clicked} · Rebotes {bounced}",
+        "estadisticasPlantilla": "Estadísticas de la plantilla",
+        "guardaPlantillaEnviarPrueba": "Guarda la plantilla para enviar una prueba",
+        "enviarPrueba": "Enviar prueba",
+        "guardar": "Guardar",
+        "nombre": "Nombre *",
+        "ejSeguimientoTrasLlamada": "Ej. Seguimiento tras llamada",
+        "tipoPlantilla": "Tipo de plantilla",
+        "asunto": "Asunto *",
+        "variable": "+ variable",
+        "preheaderTextoVistaPrevia": "Preheader (texto de vista previa)",
+        "resumenBreveVeJunto": "Resumen breve que se ve junto al asunto",
+        "descripcionInterna": "Descripción interna",
+        "cuandoUsarEstaPlantilla": "Cuándo usar esta plantilla",
+        "plantilla": "Plantilla",
+        "asuntoEjemplo": "Gracias por tu tiempo, '{{'contact.first_name|hola'}}'"
+      },
+      "testSendDialog": {
+        "pruebaEnviada": "Prueba enviada",
+        "noPudoEnviarPrueba": "No se pudo enviar la prueba",
+        "enviaDatosEjemploDeja": "Se envía “{templateName}” con datos de ejemplo. Deja el campo vacío para usar tu propio correo.",
+        "correoDestino": "Correo de destino",
+        "correoInvalido": "Correo inválido",
+        "cancelar": "Cancelar",
+        "enviar": "Enviar",
+        "destino": "A {correo}",
+        "destinoConVacias": "A {correo} · variables vacías: {variables}"
+      },
+      "useTemplateEditor": {
+        "revisaPlantilla": "Revisa la plantilla",
+        "plantillaGuardada": "Plantilla guardada",
+        "plantillaCreada": "Plantilla creada",
+        "noPudoGuardar": "No se pudo guardar",
+        "noPudoGenerarVista": "No se pudo generar la vista previa",
+        "validacion": {
+          "nombre": "El nombre es obligatorio",
+          "asunto": "El asunto es obligatorio",
+          "bloques": "Añade al menos un bloque",
+          "html": "El HTML está vacío"
+        }
+      },
+      "plantillasPage": {
+        "noPudieronCargarPlantillas": "No se pudieron cargar las plantillas de WhatsApp",
+        "vuelveIntentarloRecargandoPagina": "Vuelve a intentarlo recargando la página. Si el problema continúa, revisa la configuración del canal de WhatsApp en Configuración → CRM → WhatsApp.",
+        "canalPlantillas": "Canal de plantillas"
+      },
+      "templateEditorPage": {
+        "cargandoPlantilla": "Cargando plantilla",
+        "noPudoCargarPlantilla": "No se pudo cargar la plantilla",
+        "modoEdicion": "Modo de edición",
+        "bloques": "Bloques"
       }
     },
     "pronosticoTrimestre": {
@@ -7679,6 +8274,188 @@
           "sin_tasa": "Hay montos sin tasa de cambio: regístrala antes de ajustar.",
           "ajuste_no_vigente": "Solo se puede revertir el último ajuste.",
           "generico": "No se pudo guardar el ajuste."
+        }
+      },
+      "forecastChart": {
+        "noHayDatosPronostico": "No hay datos de pronóstico disponibles",
+        "tendenciaPronostico": "Tendencia de Pronóstico",
+        "proceso": "En proceso",
+        "meta": "Meta",
+        "meta2": "{goalCompletion}% meta",
+        "ganado": "Ganado: {money}",
+        "pond": "Pond.: {money}",
+        "abierto": "Abierto: {money}",
+        "totalGanado": "Total Ganado",
+        "totalPonderado": "Total Ponderado",
+        "totalAbierto": "Total Abierto"
+      },
+      "goalProgress": {
+        "meta": "Meta {periodLabel}",
+        "sinPipeline": "Sin pipeline",
+        "completadoGanado": "{goalProgress}% completado (ganado)",
+        "proyeccionGanadoPonderado": "Proyección (ganado + ponderado)",
+        "noHayMetaConfigurada": "No hay meta configurada para este pipeline",
+        "configuraMetaOpcionesPipeline": "Configura una meta en las opciones del pipeline",
+        "periodos": {
+          "weekly": "Semanal",
+          "monthly": "Mensual",
+          "quarterly": "Trimestral",
+          "yearly": "Anual"
+        }
+      },
+      "forecastScenarios": {
+        "escenariosForecast": "Escenarios de forecast",
+        "sinOportunidadesAbiertasEste": "Sin oportunidades abiertas en este pipeline",
+        "creaOportunidadesAsignalesEtapa": "Crea oportunidades y asígnales etapa para proyectar los tres escenarios.",
+        "escenarios": {
+          "best": "Mejor caso",
+          "expected": "Esperado",
+          "worst": "Peor caso"
+        },
+        "reglas": {
+          "best": "Abiertas en etapas con probabilidad ≥ {n} %",
+          "expected": "Suma de abiertas × probabilidad de su etapa",
+          "worst": "Solo abiertas en etapas con probabilidad ≥ {n} %"
+        },
+        "abiertasPor": "{n, plural, one {# oportunidad abierta} other {# oportunidades abiertas}} por {monto}"
+      },
+      "forecastFilters": {
+        "seleccionarPipeline": "Seleccionar pipeline",
+        "semanal": "Semanal",
+        "mensual": "Mensual",
+        "trimestral": "Trimestral",
+        "exportar": "Exportar"
+      },
+      "forecastByStage": {
+        "pronosticoEtapa": "Pronóstico por Etapa",
+        "valorBrutoPipeline": "Valor bruto en pipeline"
+      },
+      "revenueMathPanel": {
+        "gasto0MargenEntre": "Gasto ≥ 0 y margen entre 0 y 100.",
+        "error": "Error {status}",
+        "insumosGuardados": "Insumos guardados",
+        "cacLtvPaybackRecalculan": "CAC, LTV y payback se recalculan con los nuevos valores.",
+        "metricasMatematicaComercial": "Métricas de matemática comercial",
+        "insumosPeriodo": "Insumos del periodo",
+        "noExistenBaseGuardan": "No existen en la base: se guardan en la configuración de la organización y alimentan CAC, LTV y payback. Oportunidades ganadas en el periodo (denominador del CAC): {number}.",
+        "gastoAdquisicionMarketingVentas": "Gasto de adquisición (marketing + ventas)",
+        "margenBruto": "Margen bruto (%)",
+        "guardando": "Guardando…",
+        "guardarInsumos": "Guardar insumos",
+        "soloAdministradorOrganizacionPuede": "Solo un administrador de la organización puede cambiar estos insumos.",
+        "ultimaActualizacion": "Última actualización: {dateTime}",
+        "noPudoGuardar": "No se pudo guardar",
+        "metricas": {
+          "arpa": {
+            "etiqueta": "ARPA",
+            "formula": "Ticket medio por factura pagada del periodo (ponderado por facturas)"
+          },
+          "cac": {
+            "etiqueta": "CAC",
+            "formula": "Gasto de adquisición del periodo ÷ oportunidades ganadas en el periodo"
+          },
+          "churnRatePct": {
+            "etiqueta": "Churn mensual",
+            "formula": "100 − retención M1 ponderada por cohorte"
+          },
+          "ltv": {
+            "etiqueta": "LTV",
+            "formula": "ARPA × margen bruto × (1 ÷ churn)"
+          },
+          "ltvCacRatio": {
+            "etiqueta": "LTV / CAC",
+            "formula": "LTV ÷ CAC (saludable ≥ 3)"
+          },
+          "paybackMonths": {
+            "etiqueta": "Payback",
+            "formula": "CAC ÷ (ARPA × margen bruto), en meses"
+          },
+          "netRevenueRetentionPct": {
+            "etiqueta": "Retención neta de ingresos",
+            "formula": "(MRR inicial + expansión − contracción − churn) ÷ MRR inicial"
+          }
+        },
+        "saludable": "Saludable",
+        "porDebajo3": "Por debajo de 3"
+      },
+      "funnelPanel": {
+        "sinEtapasConfiguradasCrea": "Sin etapas configuradas. Crea un pipeline con etapas en Configuración para ver el embudo.",
+        "fueraCadenaVaDespues": "Fuera de la cadena: {map} va después de la etapa ganada. La conversión termina en la ganada; revisa el orden de las etapas en Configuración.",
+        "sinOportunidadesEstePipeline": "Sin oportunidades en este pipeline todavía. Crea la primera desde Oportunidades y el embudo se llenará solo.",
+        "embudoEtapa": "Embudo por etapa",
+        "conversionEtapaEtapaAcumulado": "Conversión etapa a etapa (acumulado: en la etapa o más adelante; las perdidas se muestran aparte)",
+        "etapa": "En la etapa",
+        "llegaron": "Llegaron",
+        "montoEtapa": "Monto en etapa",
+        "pasaSiguiente": "Pasa a la siguiente",
+        "ganada": "(ganada)",
+        "conversionGlobal": "Conversión global",
+        "hastaUltimaEtapaNo": "(hasta la última etapa: no hay etapa ganada)",
+        "sinDatos": "Sin datos",
+        "perdidas": "Perdidas: {number} ({money})"
+      },
+      "revenueOsPage": {
+        "cargandoPanel": "Cargando panel",
+        "revenueOs": "Revenue OS",
+        "pronosticoEmbudoCohortesMatematica": "Pronóstico, embudo, cohortes y matemática comercial de la organización.",
+        "periodo": "Periodo:",
+        "moneda": "· moneda {currency}",
+        "actualizar": "Actualizar",
+        "noPudoCargarPanel": "No se pudo cargar el panel Revenue OS",
+        "seccionesRevenueOs": "Secciones de Revenue OS",
+        "pestanas": {
+          "resumen": "Resumen",
+          "embudo": "Embudo",
+          "forecast": "Forecast",
+          "trimestre": "Por categoría",
+          "cohortes": "Cohortes",
+          "matematica": "Matemática comercial"
+        }
+      },
+      "cohortTable": {
+        "sinCohortesNingunCliente": "Sin cohortes: ningún cliente con etapa «cliente» dado de alta en los últimos 24 meses. Las cohortes aparecen al convertir contactos en clientes.",
+        "clientesVolvieronFacturar1": "Clientes que volvieron a facturar 1, 3, 6 y 12 meses después de su alta, por mes de alta. «—» = el mes aún no ha cerrado. {number} clientes en total.",
+        "cohorte": "Cohorte",
+        "clientes": "Clientes",
+        "clientes2": "{n} de {cohort_size} clientes",
+        "mesAunNoCerrado": "Mes aún no cerrado",
+        "sinObservar": "sin observar",
+        "escalaColor": "Escala de color"
+      },
+      "kpiTiles": {
+        "indicadoresPeriodo": "Indicadores del periodo",
+        "etiquetas": {
+          "collected": "Revenue cobrado",
+          "won": "Ganado en pipeline",
+          "open": "Pipeline abierto",
+          "winrate": "Win rate",
+          "cycle": "Ciclo medio de venta",
+          "arpa": "ARPA",
+          "commissions": "Comisiones pagadas"
+        }
+      },
+      "revenueTrendChart": {
+        "tendenciaMensualCobradoFrente": "Tendencia mensual: cobrado frente a ganado",
+        "verGrafico": "Ver gráfico",
+        "verTabla": "Ver tabla",
+        "sinCobrosNiOportunidades": "Sin cobros ni oportunidades ganadas en el periodo. Cambia el rango o registra ventas para ver la tendencia.",
+        "revenueCobradoGanadoPipeline": "Revenue cobrado y ganado en pipeline por mes",
+        "mes": "Mes",
+        "graficoBarrasMensualCobrado": "Gráfico de barras mensual: cobrado frente a ganado en pipeline. La vista de tabla tiene los valores exactos.",
+        "series": {
+          "revenue_collected": "Cobrado",
+          "revenue_won_pipeline": "Ganado en pipeline"
+        }
+      },
+      "revenueRangeControl": {
+        "periodoPanel": "Periodo del panel",
+        "desdeMes": "Desde (mes)",
+        "hastaMes": "Hasta (mes)",
+        "aplicar": "Aplicar",
+        "errores": {
+          "ambos": "Elige mes y año en ambos campos",
+          "orden": "El mes final debe ser igual o posterior al inicial",
+          "maximo": "Máximo {max} meses"
         }
       }
     },
@@ -7825,6 +8602,108 @@
           "sinMuestra": "Ningún cliente coincide todavía.",
           "sinNombre": "Cliente sin nombre"
         }
+      },
+      "segmentoDetallePage": {
+        "error": "Error",
+        "segmentoNoEncontrado": "Segmento no encontrado",
+        "noPudoCargarSegmento": "No se pudo cargar el segmento",
+        "nombreRequerido": "El nombre es requerido",
+        "segmentoActualizado": "Segmento actualizado",
+        "noPudoActualizar": "No se pudo actualizar",
+        "recalculoCompletado": "Recálculo completado",
+        "clientesSegmento": "{count} clientes en el segmento",
+        "noPudoRecalcular": "No se pudo recalcular",
+        "crmSegmentosDetalle": "CRM / Segmentos / Detalle",
+        "guardar": "Guardar",
+        "recalcular": "Recalcular",
+        "editar": "Editar",
+        "crearCampana": "Crear Campaña",
+        "informacion": "Información",
+        "segmentoDinamico": "Segmento dinámico",
+        "recalculaAutomaticamente": "Se recalcula automáticamente",
+        "nunca": "Nunca",
+        "ultimaEjecucion": "Última ejecución: {date}",
+        "reglasFiltro": "Reglas de filtro",
+        "agregar": "Agregar",
+        "editaPrimerGrupo": "Se edita el primer grupo.",
+        "hay1GrupoTodos": "Hay 1 grupo «O todos estos» más",
+        "hayGruposTodosEstos": "Hay {n} grupos «O todos estos» más",
+        "conservaGuardar": ": se conserva al guardar.",
+        "sinReglasDefinidas": "Sin reglas definidas",
+        "clientes": "Clientes ({n})",
+        "noHayClientesEste": "No hay clientes en este segmento",
+        "sinNombre": "Sin nombre",
+        "sinContacto": "Sin contacto",
+        "campos": {
+          "full_name": "Nombre completo",
+          "company_name": "Empresa",
+          "email": "Email",
+          "phone": "Teléfono",
+          "city": "Ciudad",
+          "lifecycle_stage": "Etapa del ciclo",
+          "lead_source": "Origen",
+          "tags": "Etiquetas",
+          "created_at": "Fecha de registro",
+          "last_contact_at": "Último contacto",
+          "health_score": "Salud"
+        },
+        "operadores": {
+          "text": {
+            "equals": "Es igual a",
+            "not_equals": "No es igual a",
+            "contains": "Contiene",
+            "not_contains": "No contiene",
+            "starts_with": "Empieza con",
+            "ends_with": "Termina con",
+            "is_empty": "Está vacío",
+            "is_not_empty": "No está vacío"
+          },
+          "date": {
+            "equals": "Es igual a",
+            "greater_than": "Después de",
+            "less_than": "Antes de",
+            "between": "Entre",
+            "is_empty": "Está vacío",
+            "is_not_empty": "No está vacío"
+          },
+          "array": {
+            "contains": "Contiene",
+            "not_contains": "No contiene",
+            "is_empty": "Está vacío",
+            "is_not_empty": "No está vacío"
+          },
+          "boolean": {
+            "equals": "Es"
+          },
+          "number": {
+            "equals": "Es igual a",
+            "greater_than": "Mayor que",
+            "less_than": "Menor que",
+            "is_empty": "Está vacío",
+            "is_not_empty": "No está vacío"
+          }
+        }
+      },
+      "segmentosPage": {
+        "noPudieronCargarSegmentos": "No se pudieron cargar los segmentos",
+        "segmentoDuplicado": "Segmento duplicado",
+        "segmentoEliminado": "Segmento eliminado",
+        "recalculando": "Recalculando...",
+        "estoPuedeTomarUnos": "Esto puede tomar unos segundos",
+        "crmSegmentos": "CRM / Segmentos",
+        "nuevoSegmento": "Nuevo Segmento",
+        "dinamicos": "Dinámicos",
+        "estaticos": "Estáticos",
+        "clientes": "Clientes",
+        "ultimaEjecucion": "Última ejecución",
+        "noHaySegmentos": "No hay segmentos",
+        "creaPrimerSegmentoAgrupar": "Crea tu primer segmento para agrupar clientes",
+        "crearSegmento": "Crear Segmento",
+        "verDetalle": "Ver detalle",
+        "duplicar": "Duplicar",
+        "eliminar": "Eliminar",
+        "eliminarSegmento": "¿Eliminar segmento?",
+        "estaAccionNoPuede": "Esta acción no se puede deshacer. El segmento \"{name}\" será eliminado permanentemente."
       }
     }
   },

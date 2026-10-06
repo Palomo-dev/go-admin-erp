@@ -18,6 +18,7 @@ import { useTranslations } from 'next-intl';
 type TerritoryWithStats = Territory & { _teamCount?: number; _oppCount?: number; _oppAmount?: number };
 
 export function TerritoriosTab() {
+  const tx = useTranslations('crm.equipo');
   const { toast } = useToast();
   const { formatear } = useMonedaOrganizacion();
   const [territories, setTerritories] = useState<TerritoryWithStats[]>([]);
@@ -63,7 +64,7 @@ export function TerritoriosTab() {
       setTeams(teamsRes.data as SalesTeam[]);
     } catch (err) {
       console.error('Error:', err);
-      toast({ title: 'Error', description: 'No se pudieron cargar territorios', variant: 'destructive' });
+      toast({ title: tx('equiposTab.error'), description: tx('territoriosTab.noPudieronCargarTerritorios'), variant: 'destructive' });
     } finally {
       setLoading(false);
       setIsRefreshing(false);
@@ -75,7 +76,7 @@ export function TerritoriosTab() {
 
   const handleSave = async () => {
     if (!form.name.trim()) {
-      toast({ title: 'Validación', description: 'El nombre es obligatorio', variant: 'destructive' });
+      toast({ title: tx('equiposTab.validacion'), description: tx('equiposTab.nombreObligatorio'), variant: 'destructive' });
       return;
     }
     let parsedCriteria: Record<string, unknown> = {};
@@ -83,7 +84,7 @@ export function TerritoriosTab() {
       parsedCriteria = JSON.parse(form.criteria || '{}');
       setCriteriaError(null);
     } catch {
-      setCriteriaError('JSON inválido');
+      setCriteriaError(tx('territoriosTab.jsonInvalido'));
       return;
     }
     setSaving(true);
@@ -93,16 +94,16 @@ export function TerritoriosTab() {
       if (editing) {
         const { error } = await supabase.from('territories').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editing.id);
         if (error) throw error;
-        toast({ title: 'Territorio actualizado' });
+        toast({ title: tx('territoriosTab.territorioActualizado') });
       } else {
         const { error } = await supabase.from('territories').insert({ ...payload, organization_id: orgId });
         if (error) throw error;
-        toast({ title: 'Territorio creado' });
+        toast({ title: tx('territoriosTab.territorioCreado') });
       }
       setDialogOpen(false);
       recargar();
     } catch {
-      toast({ title: 'Error', description: 'No se pudo guardar', variant: 'destructive' });
+      toast({ title: tx('equiposTab.error'), description: tx('equiposTab.noPudoGuardar'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -113,10 +114,10 @@ export function TerritoriosTab() {
     try {
       const { error } = await supabase.from('territories').delete().eq('id', toDelete.id);
       if (error) throw error;
-      toast({ title: 'Territorio eliminado' });
+      toast({ title: tx('territoriosTab.territorioEliminado') });
       recargar();
     } catch {
-      toast({ title: 'Error', description: 'No se pudo eliminar', variant: 'destructive' });
+      toast({ title: tx('equiposTab.error'), description: tx('equiposTab.noPudoEliminar'), variant: 'destructive' });
     } finally {
       setDeleteOpen(false);
       setToDelete(null);
@@ -148,7 +149,7 @@ export function TerritoriosTab() {
             setCriteriaError(null);
             setDialogOpen(true);
           }}>
-            <Plus className="h-4 w-4 mr-1" /> Nuevo Territorio
+            <Plus className="h-4 w-4 mr-1" /> {tx('territoriosTab.nuevoTerritorio')}
           </Button>
         </div>
       </div>
@@ -168,7 +169,7 @@ export function TerritoriosTab() {
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardContent className="pt-12 pb-12 text-center">
             <MapPin className="h-12 w-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-            <p className="text-sm text-gray-500">No hay territorios configurados</p>
+            <p className="text-sm text-gray-500">{tx('territoriosTab.noHayTerritoriosConfigurados')}</p>
           </CardContent>
         </Card>
       ) : (
@@ -208,26 +209,26 @@ export function TerritoriosTab() {
                         <Users className="h-3 w-3 text-blue-500" />
                       </div>
                       <p className="text-lg font-bold text-gray-900 dark:text-white">{t._teamCount || 0}</p>
-                      <p className="text-[10px] text-gray-500">Equipos</p>
+                      <p className="text-[10px] text-gray-500">{tx('pestanas.equipos')}</p>
                     </div>
                     <div className="rounded-lg bg-gray-50 dark:bg-gray-900 p-2">
                       <div className="flex items-center justify-center mb-1">
                         <Target className="h-3 w-3 text-purple-500" />
                       </div>
                       <p className="text-lg font-bold text-gray-900 dark:text-white">{t._oppCount || 0}</p>
-                      <p className="text-[10px] text-gray-500">Oport.</p>
+                      <p className="text-[10px] text-gray-500">{tx('territoriosTab.oport')}</p>
                     </div>
                     <div className="rounded-lg bg-gray-50 dark:bg-gray-900 p-2">
                       <p className="text-xs font-bold text-gray-900 dark:text-white truncate">
                         {t._oppAmount ? formatear(t._oppAmount) : '—'}
                       </p>
-                      <p className="text-[10px] text-gray-500 mt-1">Valor</p>
+                      <p className="text-[10px] text-gray-500 mt-1">{tx('territoriosTab.valor')}</p>
                     </div>
                   </div>
 
                   {teamsInTerr.length > 0 && (
                     <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
-                      <p className="text-[10px] text-gray-400 mb-1">Equipos:</p>
+                      <p className="text-[10px] text-gray-400 mb-1">{tx('territoriosTab.equipos')}</p>
                       <div className="flex flex-wrap gap-1">
                         {teamsInTerr.map((tm) => (
                           <span key={tm.id} className="text-[10px] px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
@@ -258,8 +259,8 @@ export function TerritoriosTab() {
       <DeleteConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title="¿Eliminar territorio?"
-        description={`Se eliminará "${toDelete?.name}".`}
+        title={tx('territoriosTab.eliminarTerritorio')}
+        description={tx('territoriosTab.eliminara', { name: toDelete?.name ?? '' })}
         onConfirm={handleDelete}
       />
     </div>

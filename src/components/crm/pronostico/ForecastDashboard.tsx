@@ -17,6 +17,7 @@ import { ForecastScenarios } from './ForecastScenarios';
 import { weightedOpenAmount } from '@/lib/services/crm/revenueOs/forecastScenarios';
 import { LoadErrorState } from '@/components/common/LoadErrorState';
 import { describeError, logError } from '@/lib/utils/errorMessage';
+import { useTranslations } from 'next-intl';
 
 interface ForecastDashboardProps {
   /** Moneda base de la organización (`dashboard.currency` de Revenue OS); null → cifras sin símbolo. */
@@ -24,6 +25,7 @@ interface ForecastDashboardProps {
 }
 
 export function ForecastDashboard({ currency }: ForecastDashboardProps) {
+  const t = useTranslations('crm.pronosticoTrimestre');
   const [isLoading, setIsLoading] = useState(true);
   // Con la base intermitente esta pantalla se quedaba en el esqueleto de carga
   // (isLoading && pipelines.length === 0) para siempre.
@@ -130,7 +132,7 @@ export function ForecastDashboard({ currency }: ForecastDashboardProps) {
     return (
       <div className="p-4">
         <LoadErrorState
-          title="No se pudo cargar el pronóstico"
+          title={t('error')}
           message={loadError}
           onRetry={() => {
             if (selectedPipelineId) void loadPipelineData();

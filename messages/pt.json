@@ -30272,7 +30272,9 @@
           "sede": "Seletor de unidade no cabeçalho",
           "sedeAyuda": "Com 2 ou mais unidades. Desligado: vai numa faixa abaixo do cabeçalho",
           "reserva": "Barra de reserva com datas",
-          "reservaAyuda": "Hotel: entrada, saída e hóspedes abaixo do cabeçalho"
+          "reservaAyuda": "Hotel: entrada, saída e hóspedes abaixo do cabeçalho",
+          "moneda": "Moeda",
+          "monedaAyuda": "Só se o site vende em mais de uma"
         },
         "diseno": {
           "titulo": "Layout do cabeçalho",
@@ -30315,7 +30317,10 @@
           "transparencia": "Transparência",
           "transparente": "Sobre a capa, sólido ao rolar",
           "transparenteAyuda": "Texto claro sobre a foto da capa; ao rolar assume o fundo do tema",
-          "opacidad": "Opacidade do fundo"
+          "opacidad": "Opacidade do fundo",
+          "textoEnlaces": "Texto e links",
+          "fijo": "Fixo ao rolar",
+          "fijoAyuda": "O cabeçalho fica no topo ao rolar a página"
         },
         "pie": {
           "menus": "Menus do rodapé",
@@ -30386,7 +30391,10 @@
           "fondoMarca": "Cor da marca",
           "fondoPropio": "Personalizado",
           "fondoTemaAyuda": "«Tema»: o fundo do modelo, um tom mais escuro ou mais claro",
-          "colorFondo": "Cor do fundo"
+          "colorFondo": "Cor do fundo",
+          "colorTexto": "Texto",
+          "separadores": "Separadores",
+          "sinSeparadores": "Nenhum"
         }
       },
       "barra": {

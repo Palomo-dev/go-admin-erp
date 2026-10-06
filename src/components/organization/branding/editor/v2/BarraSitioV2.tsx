@@ -11,17 +11,18 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/utils/Utils';
+import { useTranslations } from 'next-intl';
 
 /** Estados del guardado del borrador (FASE-03 UX, Figma 05h/05i). */
 export type EstadoGuardadoV2 = 'guardado' | 'cambios' | 'guardando' | 'conflicto' | 'error' | 'publicado';
 
-const ESTADO: Record<EstadoGuardadoV2, { texto: string; clase: string; Icono: typeof CircleDot }> = {
-  guardado: { texto: 'Guardado en borrador', clase: 'bg-white/15 text-white', Icono: CircleDot },
-  cambios: { texto: 'Cambios sin guardar', clase: 'bg-amber-300/30 text-white', Icono: CircleDot },
-  guardando: { texto: 'Guardando…', clase: 'bg-white/15 text-white', Icono: Loader2 },
-  conflicto: { texto: 'Conflicto', clase: 'bg-red-500/80 text-white', Icono: AlertTriangle },
-  error: { texto: 'No se guardó', clase: 'bg-red-500/80 text-white', Icono: XCircle },
-  publicado: { texto: 'Publicado', clase: 'bg-emerald-500/80 text-white', Icono: CheckCircle2 },
+const ESTADO: Record<EstadoGuardadoV2, { clase: string; Icono: typeof CircleDot }> = {
+  guardado: { clase: 'bg-white/15 text-white', Icono: CircleDot },
+  cambios: { clase: 'bg-amber-300/30 text-white', Icono: CircleDot },
+  guardando: { clase: 'bg-white/15 text-white', Icono: Loader2 },
+  conflicto: { clase: 'bg-red-500/80 text-white', Icono: AlertTriangle },
+  error: { clase: 'bg-red-500/80 text-white', Icono: XCircle },
+  publicado: { clase: 'bg-emerald-500/80 text-white', Icono: CheckCircle2 },
 };
 
 interface AccionesSitioV2Props {
@@ -37,7 +38,9 @@ interface AccionesSitioV2Props {
 
 /** Estado del borrador + Historial + Publicar + menú «…», a la derecha del encabezado del editor. */
 export function AccionesSitioV2({ estado, nombrePublicar, publicando, puedePublicar, onHistorial, onPublicar, acciones }: AccionesSitioV2Props) {
-  const { texto, clase, Icono } = ESTADO[estado];
+  const t = useTranslations('branding.editor');
+  const { clase, Icono } = ESTADO[estado];
+  const texto = t(`barraSitioV2.estado.${estado}`);
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span role="status" aria-live="polite" className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs', clase)}>
@@ -46,7 +49,7 @@ export function AccionesSitioV2({ estado, nombrePublicar, publicando, puedePubli
       </span>
       <Button type="button" size="sm" variant="ghost" className="h-8 text-white hover:bg-white/10 hover:text-white" onClick={onHistorial}>
         <History className="h-3.5 w-3.5 mr-1.5" />
-        Historial
+        {t('barraSitioV2.historial')}
       </Button>
       <Button
         type="button"
@@ -61,12 +64,12 @@ export function AccionesSitioV2({ estado, nombrePublicar, publicando, puedePubli
       {acciones.length > 0 ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button type="button" size="icon" variant="ghost" className="h-8 w-8 text-white hover:bg-white/10 hover:text-white" aria-label="Más acciones del sitio">
+            <Button type="button" size="icon" variant="ghost" className="h-8 w-8 text-white hover:bg-white/10 hover:text-white" aria-label={t('barraSitioV2.masAccionesSitio')}>
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-72">
-            <DropdownMenuLabel className="text-xs text-gray-500">Sitio V2</DropdownMenuLabel>
+            <DropdownMenuLabel className="text-xs text-gray-500">{t('barraSitioV2.sitioV2')}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             {acciones.map((a) => (
               <DropdownMenuItem
@@ -111,6 +114,7 @@ export function BandaSitioV2({
   onVerPersonalizado,
   onIrPrincipal,
 }: BandaSitioV2Props) {
+  const t = useTranslations('branding.editor');
   return (
     <div
       className={cn(
@@ -123,27 +127,30 @@ export function BandaSitioV2({
       <p className="flex-1 min-w-[240px]">
         {esSede ? (
           <>
-            <strong>Editando {nombreSitio}</strong> — lo que no personalices se hereda del sitio principal
-            {baseDesdeLegacy ? ' (su versión actual, porque aún no tiene versión V2 publicada)' : ' (su última versión publicada)'}.
+            {t.rich('barraSitioV2.editandoSede', {
+              nombreSitio,
+              base: baseDesdeLegacy ? t('barraSitioV2.versionActualPorqueAun') : t('barraSitioV2.ultimaVersionPublicada'),
+              b: (chunks) => <strong>{chunks}</strong>,
+            })}
           </>
         ) : (
           <>
-            <strong>Editando el borrador V2 del sitio principal.</strong>{' '}
+            <strong>{t('barraSitioV2.editandoBorradorV2Sitio')}</strong>{' '}
             {v2Adoptado
-              ? 'V2 está activo: lo que publiques es lo que ven tus clientes.'
-              : 'La web sigue mostrando el sitio actual hasta que actives V2. Guardar y publicar no la cambian.'}
+              ? t('barraSitioV2.v2EstaActivoLo')
+              : t('barraSitioV2.webSigueMostrandoSitio')}
           </>
         )}
-        {erroresContrato > 0 ? ` · El borrador tiene ${erroresContrato} problema(s) de formato: corrígelos antes de publicar.` : ''}
+        {erroresContrato > 0 ? t('barraSitioV2.borradorTieneProblemaS', { erroresContrato }) : ''}
       </p>
       {esSede && onVerPersonalizado ? (
         <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={onVerPersonalizado}>
-          Ver lo personalizado ({personalizados})
+          {t('barraSitioV2.verLoPersonalizado', { personalizados })}
         </Button>
       ) : null}
       {esSede && onIrPrincipal ? (
         <Button type="button" size="sm" variant="outline" className="h-7 text-xs bg-white dark:bg-transparent" onClick={onIrPrincipal}>
-          Ir al sitio principal
+          {t('barraSitioV2.irSitioPrincipal')}
         </Button>
       ) : null}
     </div>

@@ -30,6 +30,7 @@ import {
   WebsitePageWithChildren,
 } from '@/lib/services/websitePageBuilderService';
 import { cn } from '@/utils/Utils';
+import { useTranslations } from 'next-intl';
 
 // ============================================================
 // PROPS
@@ -248,6 +249,7 @@ function MenuItemRow({
   onDragEnd,
   onDrop,
 }: MenuItemRowProps) {
+  const t = useTranslations('branding.editor');
   const isExpanded = expandedIds.has(item.id);
   const isEditing = editingId === item.id;
   const hasChildren = item.children.length > 0;
@@ -298,7 +300,7 @@ function MenuItemRow({
             type="button"
             onClick={() => onToggle(item.id)}
             className="flex-shrink-0 text-gray-500 hover:text-gray-700"
-            aria-label={isExpanded ? 'Colapsar' : 'Expandir'}
+            aria-label={isExpanded ? t('menuTreeEditor.colapsar') : t('menuTreeEditor.expandir')}
           >
             {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </button>
@@ -320,7 +322,7 @@ function MenuItemRow({
 
         {item.linked_category_id && (
           <Badge variant="secondary" className="text-xs">
-            {availableCategories.find(c => c.id === item.linked_category_id)?.name || 'Categoría'}
+            {availableCategories.find(c => c.id === item.linked_category_id)?.name || t('menuTreeEditor.categoria')}
           </Badge>
         )}
         {item.menu_badge && (
@@ -332,7 +334,7 @@ function MenuItemRow({
           variant="ghost"
           onClick={() => onMoveUp(item.id)}
           className="h-7 w-7 p-0"
-          title="Mover arriba"
+          title={t('menuTreeEditor.moverArriba')}
         >
           ↑
         </Button>
@@ -341,7 +343,7 @@ function MenuItemRow({
           variant="ghost"
           onClick={() => onMoveDown(item.id)}
           className="h-7 w-7 p-0"
-          title="Mover abajo"
+          title={t('menuTreeEditor.moverAbajo')}
         >
           ↓
         </Button>
@@ -351,14 +353,14 @@ function MenuItemRow({
           onClick={() => onEdit(isEditing ? null : item.id)}
           className="h-7 px-2"
         >
-          {isEditing ? 'Cerrar' : 'Editar'}
+          {isEditing ? t('menuTreeEditor.cerrar') : t('menuTreeEditor.editar')}
         </Button>
         <Button
           size="sm"
           variant="ghost"
           onClick={() => onRemove(item.id)}
           className="h-7 w-7 p-0 text-red-500 hover:text-red-600"
-          title="Quitar del menú"
+          title={t('menuTreeEditor.quitarMenu')}
         >
           <Trash2 className="h-4 w-4" />
         </Button>
@@ -371,7 +373,7 @@ function MenuItemRow({
         >
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs text-gray-600">Icono (emoji)</Label>
+              <Label className="text-xs text-gray-600">{t('menuTreeEditor.iconoEmoji')}</Label>
               <Input
                 value={item.menu_icon ?? ''}
                 onChange={(e) => onUpdateIcon(item.id, e.target.value || null)}
@@ -380,18 +382,18 @@ function MenuItemRow({
               />
             </div>
             <div>
-              <Label className="text-xs text-gray-600">Badge</Label>
+              <Label className="text-xs text-gray-600">{t('menuTreeEditor.badge')}</Label>
               <Input
                 value={item.menu_badge ?? ''}
                 onChange={(e) => onUpdateBadge(item.id, e.target.value || null)}
-                placeholder="Nuevo"
+                placeholder={t('menuTreeEditor.nuevo')}
                 className="h-8"
               />
             </div>
           </div>
 
           <div>
-            <Label className="text-xs text-gray-600">Vincular a categoría</Label>
+            <Label className="text-xs text-gray-600">{t('menuTreeEditor.vincularCategoria')}</Label>
             <Select
               value={item.linked_category_id ? String(item.linked_category_id) : 'none'}
               onValueChange={(value) => {
@@ -400,10 +402,10 @@ function MenuItemRow({
               }}
             >
               <SelectTrigger className="h-8">
-                <SelectValue placeholder="Sin categoría" />
+                <SelectValue placeholder={t('menuTreeEditor.sinCategoria')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">Sin categoría</SelectItem>
+                <SelectItem value="none">{t('menuTreeEditor.sinCategoria')}</SelectItem>
                 {flatCategories.map(cat => (
                   <SelectItem key={cat.id} value={String(cat.id)}>
                     {cat.name}
@@ -419,7 +421,7 @@ function MenuItemRow({
               variant="outline"
               onClick={() => onUpdateBadge(item.id, null)}
             >
-              Limpiar badge
+              {t('menuTreeEditor.limpiarBadge')}
             </Button>
           </div>
         </div>
@@ -463,6 +465,7 @@ function MenuItemRow({
 // ============================================================
 
 export default function MenuTreeEditor({ organizationId, pendingUpdatesRef, onPendingChanges }: MenuTreeEditorProps) {
+  const t = useTranslations('branding.editor');
   const [menuTree, setMenuTree] = useState<WebsitePageWithChildren[]>([]);
   const [availableCategories, setAvailableCategories] = useState<AvailableCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -838,7 +841,7 @@ export default function MenuTreeEditor({ organizationId, pendingUpdatesRef, onPe
     return (
       <div className="flex items-center justify-center py-12 text-gray-500">
         <Loader2 className="h-6 w-6 animate-spin mr-2" />
-        Cargando menú...
+        {t('menuTreeEditor.cargandoMenu')}
       </div>
     );
   }
@@ -847,7 +850,7 @@ export default function MenuTreeEditor({ organizationId, pendingUpdatesRef, onPe
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h3 className="text-sm font-semibold text-gray-700">
-          Árbol del Menú del Header
+          {t('menuTreeEditor.arbolMenuHeader')}
         </h3>
         <div className="flex gap-2">
           <Button
@@ -856,7 +859,7 @@ export default function MenuTreeEditor({ organizationId, pendingUpdatesRef, onPe
             onClick={() => { setShowPagePicker(!showPagePicker); setShowCategoryPicker(false); setShowLinkPicker(false); }}
           >
             <Plus className="h-4 w-4 mr-1" />
-            Agregar Página
+            {t('menuTreeEditor.agregarPagina')}
           </Button>
           <Button
             size="sm"
@@ -864,7 +867,7 @@ export default function MenuTreeEditor({ organizationId, pendingUpdatesRef, onPe
             onClick={() => { setShowCategoryPicker(!showCategoryPicker); setShowPagePicker(false); setShowLinkPicker(false); }}
           >
             <Plus className="h-4 w-4 mr-1" />
-            Agregar Categoría
+            {t('menuTreeEditor.agregarCategoria')}
           </Button>
           <Button
             size="sm"
@@ -872,24 +875,24 @@ export default function MenuTreeEditor({ organizationId, pendingUpdatesRef, onPe
             onClick={() => { setShowLinkPicker(!showLinkPicker); setShowPagePicker(false); setShowCategoryPicker(false); }}
           >
             <LinkIcon className="h-4 w-4 mr-1" />
-            Agregar Enlace
+            {t('menuTreeEditor.agregarEnlace')}
           </Button>
         </div>
       </div>
 
       <p className="text-xs text-gray-400">
-        💡 Arrastra los items para reordenar. Usa ↑ ↓ como alternativa.
+        {t('menuTreeEditor.arrastraItemsReordenarUsa')}
       </p>
 
       {showPagePicker && (
         <div className="border border-gray-200 rounded-md p-3 bg-gray-50 space-y-2">
           <p className="text-xs text-gray-600">
-            Selecciona las páginas que quieres agregar al menú del header:
+            {t('menuTreeEditor.seleccionaPaginasQuieresAgregar')}
           </p>
           <div className="max-h-60 overflow-y-auto space-y-1">
             {availablePages.length === 0 ? (
               <p className="text-xs text-gray-400 py-2">
-                No hay páginas disponibles. Todas las páginas ya están en el menú o no existen páginas creadas.
+                {t('menuTreeEditor.noHayPaginasDisponibles')}
               </p>
             ) : (
               availablePages.map(page => (
@@ -911,14 +914,14 @@ export default function MenuTreeEditor({ organizationId, pendingUpdatesRef, onPe
           </div>
           <div className="flex gap-2 justify-end">
             <Button size="sm" variant="ghost" onClick={() => setShowPagePicker(false)}>
-              Cancelar
+              {t('menuTreeEditor.cancelar')}
             </Button>
             <Button
               size="sm"
               disabled={selectedPageIds.size === 0 || isSaving}
               onClick={handleAddPagesToMenu}
             >
-              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : `Agregar ${selectedPageIds.size || ''}`}
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : t('menuTreeEditor.agregar', { n: selectedPageIds.size || '' })}
             </Button>
           </div>
         </div>
@@ -927,7 +930,7 @@ export default function MenuTreeEditor({ organizationId, pendingUpdatesRef, onPe
       {showLinkPicker && (
         <div className="border border-gray-200 rounded-md p-3 bg-gray-50 space-y-2">
           <p className="text-xs text-gray-600">
-            Selecciona una página del sistema para agregar al menú:
+            {t('menuTreeEditor.seleccionaPaginaSistemaAgregar')}
           </p>
           <div className="max-h-60 overflow-y-auto space-y-1">
             {SYSTEM_PAGES.filter(
@@ -948,13 +951,13 @@ export default function MenuTreeEditor({ organizationId, pendingUpdatesRef, onPe
               sys => !menuTreeRef.current.some(p => p.slug === sys.slug)
             ).length === 0 && (
               <p className="text-xs text-gray-400 py-2">
-                Todas las páginas del sistema ya están en el menú.
+                {t('menuTreeEditor.todasPaginasSistemaYa')}
               </p>
             )}
           </div>
           <div className="flex gap-2 justify-end">
             <Button size="sm" variant="ghost" onClick={() => setShowLinkPicker(false)}>
-              Cancelar
+              {t('menuTreeEditor.cancelar')}
             </Button>
           </div>
         </div>
@@ -963,11 +966,11 @@ export default function MenuTreeEditor({ organizationId, pendingUpdatesRef, onPe
       {showCategoryPicker && (
         <div className="border border-gray-200 rounded-md p-3 bg-gray-50 space-y-2">
           <p className="text-xs text-gray-600">
-            Selecciona las categorías que quieres agregar como items del menú:
+            {t('menuTreeEditor.seleccionaCategoriasQuieresAgregar')}
           </p>
           <div className="max-h-60 overflow-y-auto space-y-1">
             {availableCategories.length === 0 ? (
-              <p className="text-xs text-gray-400 py-2">No hay categorías disponibles.</p>
+              <p className="text-xs text-gray-400 py-2">{t('menuTreeEditor.noHayCategoriasDisponibles')}</p>
             ) : (
               availableCategories.map(cat => (
                 <label
@@ -987,14 +990,14 @@ export default function MenuTreeEditor({ organizationId, pendingUpdatesRef, onPe
                   />
                   {cat.icon && <span>{cat.icon}</span>}
                   <span className="flex-1">{cat.name}</span>
-                  {cat.is_linked && <Badge variant="secondary" className="text-xs">Vinculada</Badge>}
+                  {cat.is_linked && <Badge variant="secondary" className="text-xs">{t('menuTreeEditor.vinculada')}</Badge>}
                 </label>
               ))
             )}
           </div>
           <div className="flex gap-2 justify-end">
             <Button size="sm" variant="ghost" onClick={() => setShowCategoryPicker(false)}>
-              Cancelar
+              {t('menuTreeEditor.cancelar')}
             </Button>
             <Button
               size="sm"
@@ -1010,7 +1013,7 @@ export default function MenuTreeEditor({ organizationId, pendingUpdatesRef, onPe
                 }
               }}
             >
-              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Agregar'}
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : t('sidebar.add')}
             </Button>
           </div>
         </div>
@@ -1018,7 +1021,7 @@ export default function MenuTreeEditor({ organizationId, pendingUpdatesRef, onPe
 
       {menuTree.length === 0 ? (
         <div className="text-center py-12 text-gray-500 text-sm border border-dashed border-gray-200 rounded-md">
-          No hay items en el menú. Agrega páginas con el botón &quot;Agregar Página&quot; o categorías con &quot;Agregar Categoría&quot;.
+          {t('menuTreeEditor.noHayItemsMenu')}
         </div>
       ) : (
         <div className="relative">
@@ -1057,7 +1060,7 @@ export default function MenuTreeEditor({ organizationId, pendingUpdatesRef, onPe
             ref={resizeRef}
             onMouseDown={startResize}
             className="absolute bottom-0 left-0 right-0 h-1.5 cursor-ns-resize bg-gray-200 hover:bg-blue-400 transition-colors rounded-b-md"
-            title="Arrastra para redimensionar"
+            title={t('menuTreeEditor.arrastraRedimensionar')}
           >
             <div className="flex items-center justify-center h-full">
               <div className="w-8 h-0.5 bg-gray-400 rounded-full" />

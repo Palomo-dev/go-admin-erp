@@ -77,6 +77,7 @@ function BuyDomainForm({
   userName,
   onPurchaseComplete,
 }: BuyDomainDialogProps) {
+  const tx = useTranslations('org.domains');
   const stripe = useStripe();
   const elements = useElements();
   const t = useTranslations('org.domains.buyDialog');
@@ -216,7 +217,7 @@ function BuyDomainForm({
       );
 
       if (confirmError) throw new Error(confirmError.message);
-      if (setupIntent?.status !== 'succeeded') throw new Error('La verificación de tarjeta falló');
+      if (setupIntent?.status !== 'succeeded') throw new Error(t('errorVerificacionTarjeta'));
 
       // 2. Procesar compra
       const purchaseResponse = await fetch('/api/domains/purchase', {
@@ -409,8 +410,8 @@ function BuyDomainForm({
                   phoneIsInvalid ? 'text-destructive' : 'text-muted-foreground'
                 )}>
                   {phoneIsInvalid
-                    ? mensajeErrorTelefono(contactInfo.phone) ?? 'El teléfono debe incluir un código de país válido.'
-                    : 'Elige el país en el selector y escribe el número.'}
+                    ? mensajeErrorTelefono(contactInfo.phone) ?? tx('telefonoCodigoPais')
+                    : tx('eligePaisSelectorEscribe')}
                 </p>
               </div>
               <div className="sm:col-span-2">

@@ -67,7 +67,7 @@ import { getSectionSyncStatus, type SectionManifest } from '@/lib/services/websi
 import { getDefaultSectionsForPageType } from '@/lib/services/website/defaultProductDetailSections';
 import FieldRenderer from './fields/FieldRenderer';
 import type { ThemePalette, Viewport } from './fields/types';
-import { ETIQUETA_FILA_ZONA, type ZonaGlobal } from './inspector/zonaGlobal';
+import type { ZonaGlobal } from './inspector/zonaGlobal';
 import { AvisoConAccion } from './AvisoConAccion';
 import type { AvisoFaltanDatos } from '@/lib/services/website/fuentesDatosSecciones';
 
@@ -78,10 +78,10 @@ import type { AvisoFaltanDatos } from '@/lib/services/website/fuentesDatosSeccio
  */
 export type AmbitoSeccionSede = 'heredada' | 'personalizada' | 'solo-esta-sede';
 
-const CHIP_AMBITO: Record<AmbitoSeccionSede, { texto: string; clase: string }> = {
-  heredada: { texto: 'Heredada del principal', clase: 'border-line bg-subtle text-fg-secondary' },
-  personalizada: { texto: 'Personalizada', clase: 'border-line-success bg-success-subtle text-success-text' },
-  'solo-esta-sede': { texto: 'Solo esta sede', clase: 'border-line-brand bg-brand-tint text-brand-deep' },
+const CHIP_AMBITO: Record<AmbitoSeccionSede, { clase: string }> = {
+  heredada: { clase: 'border-line bg-subtle text-fg-secondary' },
+  personalizada: { clase: 'border-line-success bg-success-subtle text-success-text' },
+  'solo-esta-sede': { clase: 'border-line-brand bg-brand-tint text-brand-deep' },
 };
 
 /** Sede V2 que se edita: chips por sección y acciones de herencia. */
@@ -126,14 +126,14 @@ const ICON_MAP: Record<string, LucideIcon> = {
 };
 
 // Orden y etiquetas de los grupos del editor (F0.4)
-const GROUP_ORDER: { id: FieldGroup; label: string; icon: LucideIcon }[] = [
-  { id: 'content', label: 'Contenido', icon: Type },
-  { id: 'data', label: 'Datos', icon: Database },
-  { id: 'layout', label: 'Diseño', icon: Layout },
-  { id: 'style', label: 'Estilo', icon: Palette },
-  { id: 'carousel', label: 'Carrusel', icon: GalleryHorizontalEnd },
-  { id: 'behavior', label: 'Comportamiento', icon: MousePointerClick },
-  { id: 'advanced', label: 'Avanzado', icon: Wrench },
+const GROUP_ORDER: { id: FieldGroup; icon: LucideIcon }[] = [
+  { id: 'content', icon: Type },
+  { id: 'data', icon: Database },
+  { id: 'layout', icon: Layout },
+  { id: 'style', icon: Palette },
+  { id: 'carousel', icon: GalleryHorizontalEnd },
+  { id: 'behavior', icon: MousePointerClick },
+  { id: 'advanced', icon: Wrench },
 ];
 
 /**
@@ -259,6 +259,7 @@ export default function EditorSidebar({
   avisoSeccion,
   onEditarCarta,
 }: EditorSidebarProps) {
+  const tx = useTranslations('branding.editor');
   const t = useTranslations('branding.editor.sidebar');
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
@@ -327,8 +328,8 @@ export default function EditorSidebar({
             <button
               onClick={() => onUndo?.()}
               disabled={!canUndo}
-              aria-label="Deshacer (Ctrl+Z)"
-              title="Deshacer (Ctrl+Z)"
+              aria-label={tx('editorSidebar.deshacerCtrlZ')}
+              title={tx('editorSidebar.deshacerCtrlZ')}
               className={cn(
                 'p-1 rounded transition-colors',
                 canUndo
@@ -341,8 +342,8 @@ export default function EditorSidebar({
             <button
               onClick={() => onRedo?.()}
               disabled={!canRedo}
-              aria-label="Rehacer (Ctrl+Shift+Z)"
-              title="Rehacer (Ctrl+Shift+Z)"
+              aria-label={tx('editorSidebar.rehacerCtrlShiftZ')}
+              title={tx('editorSidebar.rehacerCtrlShiftZ')}
               className={cn(
                 'p-1 rounded transition-colors',
                 canRedo
@@ -356,7 +357,7 @@ export default function EditorSidebar({
         </div>
         {edicionSede && (
           <p className="text-xs text-fg-secondary">
-            Candado = «Heredada del principal». «Añadir sección» aquí añade solo a esta sede.
+            {tx('editorSidebar.candadoHeredadaPrincipalAnadir')}
           </p>
         )}
         {/* F12.4 — Búsqueda de secciones */}
@@ -367,8 +368,8 @@ export default function EditorSidebar({
               type="text"
               value={sectionSearch || ''}
               onChange={(e) => onSectionSearchChange(e.target.value)}
-              placeholder="Buscar sección..."
-              aria-label="Buscar sección"
+              placeholder={tx('editorSidebar.buscarSeccion')}
+              aria-label={tx('editorSidebar.buscarSeccion2')}
               className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-white/5 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400"
             />
           </div>
@@ -395,7 +396,7 @@ export default function EditorSidebar({
             showPageLayout,
             onTogglePageLayout,
             <Layout className="h-4 w-4 text-gray-500 dark:text-gray-400" />,
-            'Layout de página',
+            t('layoutPagina'),
             pageLayoutContent,
           )}
 
@@ -409,10 +410,10 @@ export default function EditorSidebar({
                 <Layers className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-blue-900 dark:text-blue-200">
-                    Secciones por defecto
+                    {tx('editorSidebar.seccionesDefecto')}
                   </p>
                   <p className="text-[11px] text-blue-700/80 dark:text-blue-300/70 mt-0.5">
-                    Esta página usa el layout por defecto. Materializa las secciones para editarlas individualmente.
+                    {tx('editorSidebar.estaPaginaUsaLayout')}
                   </p>
                 </div>
               </div>
@@ -435,7 +436,7 @@ export default function EditorSidebar({
                 className="w-full h-7 text-[11px] border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/30"
               >
                 <Plus className="h-3 w-3 mr-1" />
-                Materializar secciones
+                {tx('editorSidebar.materializarSecciones')}
               </Button>
             </div>
           );
@@ -515,7 +516,7 @@ export default function EditorSidebar({
           className="w-full border-dashed border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-white hover:border-blue-400 dark:hover:border-gray-400 bg-transparent hover:bg-blue-50 dark:hover:bg-white/5"
         >
           <Plus className="h-4 w-4 mr-2" />
-          {edicionSede ? `Añadir sección a ${edicionSede.nombre}` : t('addSection')}
+          {edicionSede ? tx('editorSidebar.anadirSeccion', { nombre: edicionSede.nombre }) : t('addSection')}
         </Button>
       </div>
     </div>
@@ -535,14 +536,15 @@ function FilaZonaGlobal({
   activa: boolean;
   onSelect: () => void;
 }) {
-  const etiqueta = ETIQUETA_FILA_ZONA[zona];
+  const tx = useTranslations('branding.editor');
+  const etiqueta = tx(`zonaGlobal.fila.${zona}`);
   return (
     <div className="border-b border-gray-200 dark:border-gray-700/50" data-zona-global={zona}>
       <button
         type="button"
         onClick={onSelect}
         aria-pressed={activa}
-        aria-label={`${etiqueta}: aparece en todas las páginas${activa ? ', seleccionado' : ''}`}
+        aria-label={tx('editorSidebar.apareceTodasPaginas', { etiqueta, valor: activa ? tx('editorSidebar.seleccionadoSufijo') : '' })}
         className={cn(
           'w-full flex items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-gray-100 dark:hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-400',
           activa && 'bg-blue-50 dark:bg-white/10',
@@ -563,7 +565,7 @@ function FilaZonaGlobal({
           {etiqueta}
         </span>
         <span className="shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-white/10 dark:text-gray-400">
-          Global
+          {tx('editorSidebar.global')}
         </span>
       </button>
     </div>
@@ -636,6 +638,7 @@ function SectionListItem({
   aviso = null,
   onEditarCarta,
 }: SectionListItemProps) {
+  const tx = useTranslations('branding.editor');
   const t = useTranslations('branding.editor.sidebar');
   const label = definition?.label || section.section_type;
   const variantLabel = definition?.variants.find(
@@ -699,7 +702,7 @@ function SectionListItem({
         role="button"
         tabIndex={0}
         aria-expanded={isActive}
-        aria-label={`Sección ${label}, variante ${variantLabel}${ambitoSede ? `, ${CHIP_AMBITO[ambitoSede].texto}` : ''}${isActive ? ', seleccionada' : ', click para editar'}`}
+        aria-label={tx('editorSidebar.seccionVariante', { label, variantLabel, ambito: ambitoSede ? `, ${tx(`editorSidebar.ambito.${ambitoSede}`)}` : '', estado: tx(isActive ? 'editorSidebar.seleccionada' : 'editorSidebar.clickEditar') })}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(); } }}
         className={cn(
           'flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-gray-100 dark:hover:bg-white/5 transition-colors group',
@@ -718,7 +721,7 @@ function SectionListItem({
             <p className="text-sm font-medium min-w-0 break-words text-gray-800 dark:text-white">{label}</p>
             {syncStatus.isOrphan && (
               <span
-                title={syncStatus.reason || 'Sección desincronizada con el sitio'}
+                title={syncStatus.reason || tx('editorSidebar.seccionDesincronizadaSitio')}
                 className="shrink-0 inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 text-[10px] font-bold"
               >
                 !
@@ -732,14 +735,14 @@ function SectionListItem({
                 CHIP_AMBITO[ambitoSede].clase,
               )}
             >
-              {CHIP_AMBITO[ambitoSede].texto}
+              {tx(`editorSidebar.ambito.${ambitoSede}`)}
             </span>
           ) : (
             <p className="text-xs text-gray-400 dark:text-gray-500 min-w-0 break-words">{variantLabel}</p>
           )}
           {aviso ? (
             <span className="mt-1 ml-1 inline-flex items-center rounded-full border border-line-warning bg-warning-subtle px-1.5 py-0.5 text-xs font-semibold text-warning-text">
-              Faltan datos
+              {tx('editorSidebar.faltanDatos')}
             </span>
           ) : null}
         </div>
@@ -756,13 +759,13 @@ function SectionListItem({
           <div className="space-y-2 rounded-lg bg-subtle p-3">
             <p className="flex items-start gap-2 text-sm text-fg">
               <Lock aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-fg-secondary" />
-              Esta sección viene del sitio principal: si la cambian allá, cambia aquí.
+              {tx('editorSidebar.estaSeccionVieneSitio')}
             </p>
             <Button type="button" size="sm" className="h-9 w-full" onClick={(e) => { e.stopPropagation(); onPersonalizar?.(); }}>
-              Personalizar en esta sede
+              {tx('editorSidebar.personalizarEstaSede')}
             </Button>
             <p className="text-xs text-fg-muted">
-              La sección pasa a ser de {nombreSede ?? 'esta sede'}. Desde ahí deja de heredar; «Restablecer» la vuelve a enlazar.
+              {tx('editorSidebar.seccionPasaSer', { sede: nombreSede ?? tx('editorSidebar.estaSede') })}
             </p>
           </div>
         </div>
@@ -775,9 +778,9 @@ function SectionListItem({
           ) : null}
           {ambitoSede === 'personalizada' && onRestablecer ? (
             <div className="flex items-center gap-2 rounded-lg border border-line-success bg-success-subtle px-3 py-2">
-              <p className="flex-1 text-xs text-success-text">Personalizada en {nombreSede ?? 'esta sede'}: el principal no la cambia.</p>
+              <p className="flex-1 text-xs text-success-text">{tx('editorSidebar.personalizadaEn', { sede: nombreSede ?? tx('editorSidebar.estaSede') })}</p>
               <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); onRestablecer(); }}>
-                Restablecer
+                {tx('editorSidebar.restablecer')}
               </Button>
             </div>
           ) : null}
@@ -805,7 +808,7 @@ function SectionListItem({
                 <AccordionTrigger className="text-xs text-gray-600 dark:text-gray-300 hover:no-underline">
                   <span className="flex items-center gap-2">
                     <g.icon className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
-                    {g.label}
+                    {tx(`editorSidebar.grupos.${g.id}`)}
                   </span>
                 </AccordionTrigger>
                 <AccordionContent className="space-y-3">
@@ -825,7 +828,7 @@ function SectionListItem({
                             disabled={!onEditarCarta}
                             onClick={(e) => { e.stopPropagation(); onEditarCarta?.(); }}
                           >
-                            Editar la carta
+                            {tx('editorSidebar.editarCarta')}
                           </Button>
                           {field.helpText && <p className="text-[10px] text-gray-400 dark:text-gray-500">{field.helpText}</p>}
                         </div>
@@ -874,7 +877,7 @@ function SectionListItem({
               onClick={(e) => { e.stopPropagation(); onToggleVisibility(!section.is_visible); }}
               className="p-1 rounded hover:bg-white/10 transition-colors dark:hover:bg-gray-800/10"
               title={section.is_visible ? t('hideSection') : t('showSection')}
-              aria-label={section.is_visible ? 'Ocultar sección' : 'Mostrar sección'}
+              aria-label={section.is_visible ? tx('sidebar.hideSection') : tx('sidebar.showSection')}
             >
               {section.is_visible ? (
                 <Eye className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
@@ -886,8 +889,8 @@ function SectionListItem({
               <button
                 onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
                 className="p-1 rounded hover:bg-white/10 transition-colors dark:hover:bg-gray-800/10"
-                title="Duplicar sección (Ctrl+D)"
-                aria-label="Duplicar sección"
+                title={tx('editorSidebar.duplicarSeccionCtrlD')}
+                aria-label={tx('editorSidebar.duplicarSeccion')}
               >
                 <Layers className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
               </button>
@@ -896,8 +899,8 @@ function SectionListItem({
               <button
                 onClick={(e) => { e.stopPropagation(); onCopyStyle(); }}
                 className="p-1 rounded hover:bg-white/10 transition-colors dark:hover:bg-gray-800/10"
-                title="Copiar estilo"
-                aria-label="Copiar estilo"
+                title={tx('editorSidebar.copiarEstilo')}
+                aria-label={tx('editorSidebar.copiarEstilo')}
               >
                 <Copy className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
               </button>
@@ -906,8 +909,8 @@ function SectionListItem({
               <button
                 onClick={(e) => { e.stopPropagation(); onPasteStyle(); }}
                 className="p-1 rounded hover:bg-white/10 transition-colors dark:hover:bg-gray-800/10"
-                title="Pegar estilo"
-                aria-label="Pegar estilo"
+                title={tx('editorSidebar.pegarEstilo')}
+                aria-label={tx('editorSidebar.pegarEstilo')}
               >
                 <ClipboardPaste className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
               </button>
@@ -919,8 +922,8 @@ function SectionListItem({
                   setShowApplyAllConfirm(true);
                 }}
                 className="p-1 rounded hover:bg-white/10 transition-colors dark:hover:bg-gray-800/10"
-                title="Aplicar estilo a todas las secciones"
-                aria-label="Aplicar estilo a todas"
+                title={tx('editorSidebar.aplicarEstiloTodasSecciones')}
+                aria-label={tx('editorSidebar.aplicarEstiloTodas')}
               >
                 <PaintRoller className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
               </button>
@@ -933,8 +936,8 @@ function SectionListItem({
                   setShowPresetDialog(true);
                 }}
                 className="p-1 rounded hover:bg-white/10 transition-colors dark:hover:bg-gray-800/10"
-                title="Guardar como plantilla"
-                aria-label="Guardar como plantilla"
+                title={tx('editorSidebar.guardarComoPlantilla')}
+                aria-label={tx('editorSidebar.guardarComoPlantilla')}
               >
                 <Bookmark className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
               </button>
@@ -943,7 +946,7 @@ function SectionListItem({
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
               className="p-1 rounded hover:bg-red-900/30 transition-colors ml-auto"
               title={t('deleteSection')}
-              aria-label="Eliminar sección"
+              aria-label={tx('sidebar.deleteSection')}
             >
               <Trash2 className="h-3.5 w-3.5 text-red-400 dark:text-red-500" />
             </button>
@@ -955,9 +958,9 @@ function SectionListItem({
       <ConfirmDialog
         open={showApplyAllConfirm}
         onOpenChange={setShowApplyAllConfirm}
-        title="Aplicar estilo a todas"
-        description="¿Aplicar el estilo de esta sección a todas las secciones de la página?"
-        confirmLabel="Aplicar a todas"
+        title={tx('editorSidebar.aplicarEstiloTodas')}
+        description={tx('editorSidebar.aplicarEstiloEstaSeccion')}
+        confirmLabel={tx('editorSidebar.aplicarTodas')}
         onConfirm={() => { onApplyStyleToAll?.(); }}
       />
 
@@ -965,14 +968,14 @@ function SectionListItem({
       <Dialog open={showPresetDialog} onOpenChange={setShowPresetDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Guardar como plantilla</DialogTitle>
-            <DialogDescription>Ingresa un nombre para esta plantilla de sección.</DialogDescription>
+            <DialogTitle>{tx('editorSidebar.guardarComoPlantilla')}</DialogTitle>
+            <DialogDescription>{tx('editorSidebar.ingresaNombreEstaPlantilla')}</DialogDescription>
           </DialogHeader>
           <div className="py-2">
             <Input
               value={presetName}
               onChange={(e) => setPresetName(e.target.value)}
-              placeholder="Nombre de la plantilla"
+              placeholder={tx('editorSidebar.nombrePlantilla')}
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && presetName.trim()) {
@@ -984,7 +987,7 @@ function SectionListItem({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowPresetDialog(false)}>
-              Cancelar
+              {tx('editorSidebar.cancelar')}
             </Button>
             <Button
               onClick={() => {
@@ -995,7 +998,7 @@ function SectionListItem({
               }}
               disabled={!presetName.trim()}
             >
-              Guardar
+              {tx('header.save')}
             </Button>
           </DialogFooter>
         </DialogContent>

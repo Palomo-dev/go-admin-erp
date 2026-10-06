@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/utils/Utils';
 import type { BaseFieldProps, ThemePalette } from './types';
+import { useTranslations } from 'next-intl';
 
 interface ColorFieldProps extends BaseFieldProps {
   themePalette?: ThemePalette;
@@ -23,17 +24,18 @@ const SWATCHES = [
 
 /** Selector de color con swatch, hex, paleta del tema y transparente. */
 export default function ColorField({ value, onChange, themePalette }: ColorFieldProps) {
+  const t = useTranslations('branding.editor');
   const [open, setOpen] = useState(false);
   const current = (value as string) || '';
   const isTransparent = current === 'transparent';
 
   const themeSwatches = themePalette
     ? [
-        { label: 'Primario', color: themePalette.primary },
-        { label: 'Secundario', color: themePalette.secondary },
-        { label: 'Acento', color: themePalette.accent },
-        { label: 'Fondo', color: themePalette.background },
-        { label: 'Texto', color: themePalette.text },
+        { label: t('colorField.primario'), color: themePalette.primary },
+        { label: t('colorField.secundario'), color: themePalette.secondary },
+        { label: t('colorField.acento'), color: themePalette.accent },
+        { label: t('colorField.fondo'), color: themePalette.background },
+        { label: t('colorField.texto'), color: themePalette.text },
       ].filter((s) => s.color)
     : [];
 
@@ -49,7 +51,7 @@ export default function ColorField({ value, onChange, themePalette }: ColorField
               isTransparent && 'bg-[linear-gradient(45deg,#ccc_25%,transparent_25%,transparent_75%,#ccc_75%)] bg-[length:8px_8px]',
             )}
             style={!isTransparent && current ? { backgroundColor: current } : undefined}
-            title={current || 'Sin color'}
+            title={current || t('colorField.sinColor')}
           >
             {!current && <Plus className="h-3 w-3 text-gray-400" />}
           </button>
@@ -58,7 +60,7 @@ export default function ColorField({ value, onChange, themePalette }: ColorField
           {/* Heredar del tema */}
           {themeSwatches.length > 0 && (
             <div>
-              <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-1">Tema</p>
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-1">{t('colorField.tema')}</p>
               <div className="flex flex-wrap gap-1">
                 {themeSwatches.map((s) => (
                   <button
@@ -79,7 +81,7 @@ export default function ColorField({ value, onChange, themePalette }: ColorField
 
           {/* Paleta fija */}
           <div>
-            <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-1">Paleta</p>
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-1">{t('colorField.paleta')}</p>
             <div className="grid grid-cols-8 gap-1">
               {SWATCHES.map((c) => (
                 <button
@@ -109,7 +111,7 @@ export default function ColorField({ value, onChange, themePalette }: ColorField
             }}
             className="flex items-center gap-1.5 w-full text-[11px] text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 rounded px-1 py-1"
           >
-            <Eye className="h-3 w-3" /> Transparente
+            <Eye className="h-3 w-3" /> {t('globalSettings.headerStyleTransparent')}
           </button>
         </PopoverContent>
       </Popover>

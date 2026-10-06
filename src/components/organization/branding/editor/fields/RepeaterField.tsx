@@ -15,6 +15,7 @@ import { cn } from '@/utils/Utils';
 import type { ContentFieldDef } from '@/lib/services/websitePageBuilderService';
 import type { ThemePalette } from './types';
 import FieldRenderer from './FieldRenderer';
+import { useTranslations } from 'next-intl';
 
 interface RepeaterFieldProps {
   field: ContentFieldDef;
@@ -59,6 +60,7 @@ export default function RepeaterField({
   themePalette,
   organizationId,
 }: RepeaterFieldProps) {
+  const t = useTranslations('branding.editor');
   const items = (Array.isArray(value) ? value : []) as RepeaterItem[];
   const itemFields = field.itemFields || [];
   const labelKey = field.itemLabelKey || itemFields[0]?.key;
@@ -157,7 +159,7 @@ export default function RepeaterField({
           onClick={handleAdd}
           className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
         >
-          <Plus className="h-3 w-3" /> Agregar
+          <Plus className="h-3 w-3" /> {t('sidebar.add')}
         </button>
       </div>
 
@@ -191,7 +193,7 @@ export default function RepeaterField({
                     type="button"
                     onClick={(e) => { e.stopPropagation(); handleDuplicate(idx); }}
                     className="p-0.5 hover:text-blue-500 text-gray-400 dark:hover:text-blue-400 dark:text-gray-500"
-                    title="Duplicar"
+                    title={t('repeaterField.duplicar')}
                   >
                     <Copy className="h-3 w-3" />
                   </button>
@@ -199,7 +201,7 @@ export default function RepeaterField({
                     type="button"
                     onClick={(e) => { e.stopPropagation(); handleRemove(idx); }}
                     className="p-0.5 hover:text-red-500 text-gray-400 dark:hover:text-red-400 dark:text-gray-500"
-                    title="Eliminar"
+                    title={t('repeaterField.eliminar')}
                   >
                     <Trash2 className="h-3 w-3" />
                   </button>
@@ -235,7 +237,7 @@ export default function RepeaterField({
         </div>
       ) : (
         <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center py-2">
-          Sin elementos. Agrega al menos uno.
+          {t('repeaterField.sinElementosAgregaMenos')}
         </p>
       )}
     </div>

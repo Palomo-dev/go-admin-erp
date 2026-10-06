@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { useTranslations } from 'next-intl';
 
 const LIMITE_NOTA = 500;
 
@@ -45,6 +46,7 @@ export function DialogoPublicar({
   publicando,
   onPublicar,
 }: DialogoPublicarProps) {
+  const t = useTranslations('branding.editor');
   const [nota, setNota] = useState('');
   useEffect(() => {
     if (abierto) setNota('');
@@ -54,27 +56,27 @@ export function DialogoPublicar({
     <Dialog open={abierto} onOpenChange={(v) => !publicando && onAbiertoChange(v)}>
       <DialogContent className="sm:max-w-[560px]">
         <DialogHeader>
-          <DialogTitle>{esSede ? `Publicar ${nombreSitio}` : 'Publicar cambios'}</DialogTitle>
+          <DialogTitle>{esSede ? t('dialogoPublicar.publicar', { nombreSitio }) : t('dialogoPublicar.publicarCambios')}</DialogTitle>
           <DialogDescription>
             {esSede
-              ? `Solo se publica ${nombreSitio}. El sitio principal y las demás sedes no cambian.`
-              : 'Se publica el sitio completo: páginas, secciones, estilo, encabezado, pie y menús del borrador.'}
+              ? t('dialogoPublicar.soloPublicaSitioPrincipal', { nombreSitio })
+              : t('dialogoPublicar.publicaSitioCompletoPaginas')}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="nota-version">Nota de la versión (opcional)</Label>
+            <Label htmlFor="nota-version">{t('dialogoPublicar.notaVersionOpcional')}</Label>
             <Textarea
               id="nota-version"
               value={nota}
               maxLength={LIMITE_NOTA}
               onChange={(e) => setNota(e.target.value)}
-              placeholder="Ej.: Carta de temporada"
+              placeholder={t('dialogoPublicar.ejCartaTemporada')}
               rows={2}
             />
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Aparece en el historial de versiones · {nota.length}/{LIMITE_NOTA}
+              {t('dialogoPublicar.apareceHistorialVersiones', { n: nota.length, LIMITE_NOTA })}
             </p>
           </div>
 
@@ -82,7 +84,7 @@ export function DialogoPublicar({
             <div className="flex gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
               <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" aria-hidden />
               <p>
-                El sitio principal tiene cambios sin publicar. No llegan a {nombreSitio} hasta que publiques el principal.
+                {t('dialogoPublicar.sitioPrincipalTieneCambios', { nombreSitio })}
               </p>
             </div>
           ) : null}
@@ -90,12 +92,12 @@ export function DialogoPublicar({
           <div className="flex gap-2 rounded-md border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-100">
             <Info className="h-4 w-4 mt-0.5 shrink-0" aria-hidden />
             <div>
-              <p className="font-medium">Se guarda una versión</p>
+              <p className="font-medium">{t('dialogoPublicar.guardaVersion')}</p>
               <p>
-                Si algo no queda bien, la restauras desde el historial.
+                {t('dialogoPublicar.siAlgoNoQueda')}
                 {v2Adoptado
-                  ? ' Tus clientes ven esta versión en cuanto termine la publicación.'
-                  : ' La web sigue mostrando el sitio actual hasta que actives V2 en este sitio.'}
+                  ? t('dialogoPublicar.tusClientesVenEsta')
+                  : t('dialogoPublicar.webSigueMostrandoSitio')}
               </p>
             </div>
           </div>
@@ -103,11 +105,11 @@ export function DialogoPublicar({
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onAbiertoChange(false)} disabled={publicando}>
-            Cancelar
+            {t('dialogoPublicar.cancelar')}
           </Button>
           <Button type="button" onClick={() => onPublicar(nota.trim() || null)} disabled={publicando}>
             {publicando ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Send className="h-4 w-4 mr-1.5" />}
-            {esSede ? `Publicar ${nombreSitio}` : 'Publicar ahora'}
+            {esSede ? t('dialogoPublicar.publicar', { nombreSitio }) : t('dialogoPublicar.publicarAhora')}
           </Button>
         </DialogFooter>
       </DialogContent>

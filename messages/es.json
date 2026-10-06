@@ -1360,7 +1360,8 @@
         "errorVerifying": "Error verificando dominio",
         "errorConnection": "Error de conexión",
         "errorPurchase": "Error al comprar el dominio",
-        "errorProcessing": "Error procesando la compra"
+        "errorProcessing": "Error procesando la compra",
+        "errorVerificacionTarjeta": "La verificación de tarjeta falló"
       },
       "dns": {
         "title": "Instrucciones de Verificación DNS",
@@ -1517,7 +1518,10 @@
         "errorNotAvailable": "El subdominio no está disponible",
         "errorMinChars": "El subdominio debe tener al menos 3 caracteres",
         "errorSaving": "Error al guardar el subdominio"
-      }
+      },
+      "eligePaisSelectorEscribe": "Elige el país en el selector y escribe el número.",
+      "actividad": "Actividad",
+      "telefonoCodigoPais": "El teléfono debe incluir un código de país válido."
     },
     "createOrgDialog": {
       "title": "Crear Nueva Organización"
@@ -1913,7 +1917,13 @@
       "errorChanging": "Ha ocurrido un error al cambiar el plan.",
       "cancel": "Cancelar",
       "processing": "Procesando...",
-      "changePlan": "Cambiar Plan"
+      "changePlan": "Cambiar Plan",
+      "couponInput": {
+        "tienesCodigoDescuento": "¿Tienes un código de descuento?",
+        "ingresaCodigo": "Ingresa tu código"
+      },
+      "cuponNoValido": "Cupón no válido",
+      "errorValidarCupon": "Error al validar el cupón"
     },
     "paymentMethod": {
       "title": "Método de Pago",
@@ -2190,6 +2200,82 @@
         "error": {
           "titulo": "No pudimos cargar los miembros",
           "descripcion": "Revisa tu conexión e inténtalo de nuevo."
+        },
+        "memberQuotasSheet": {
+          "cuotas": "Cuotas de",
+          "metasPeriodoCumplimientoReal": "Metas por periodo y cumplimiento real calculado con sus ventas, actividades y llamadas.",
+          "noPudieronCargarCuotas": "No se pudieron cargar las cuotas",
+          "reintentar": "Reintentar",
+          "cuotaGuardada": "Cuota guardada",
+          "cuotaEliminada": "Cuota eliminada",
+          "noPudoEliminar": "No se pudo eliminar"
+        },
+        "quotaEditor": {
+          "nuevaCuota": "Nueva cuota",
+          "periodo": "Periodo",
+          "tipoMeta": "Tipo de meta",
+          "diaPeriodo": "Un día del periodo",
+          "periodoCalculaPartirEsta": "El periodo se calcula a partir de esta fecha.",
+          "meta": "Meta",
+          "cantidad": "(cantidad)",
+          "noGuardoCuota": "No se guardó la cuota",
+          "guardando": "Guardando…",
+          "guardarCuota": "Guardar cuota"
+        },
+        "quotaHistory": {
+          "cargandoCuotas": "Cargando cuotas",
+          "esteMiembroAunNo": "Este miembro aún no tiene cuotas. Crea la primera arriba: el cumplimiento se calcula solo con sus ventas, actividades o llamadas.",
+          "historialCuotas": "Historial de cuotas",
+          "eliminarCuota": "Eliminar cuota de {period}",
+          "superada": "Superada en {valor}",
+          "eliminarCuota2": "¿Eliminar la cuota de {period}?",
+          "borraMetaVentasActividades": "Se borra la meta; las ventas, actividades y llamadas del miembro no se tocan.",
+          "siEliminar": "Sí, eliminar"
+        },
+        "cuotas": {
+          "tipos": {
+            "revenue": "Ingresos",
+            "deals": "Negocios ganados",
+            "activities": "Actividades",
+            "calls": "Llamadas"
+          },
+          "periodos": {
+            "monthly": "Mensual",
+            "quarterly": "Trimestral",
+            "yearly": "Anual"
+          },
+          "estados": {
+            "cumplida": "Cuota cumplida",
+            "vencida": "Periodo cerrado sin cumplir",
+            "atrasado": "Por debajo del ritmo",
+            "en_ritmo": "En ritmo"
+          },
+          "periodoMes": "{mes} {anio}",
+          "periodoTrimestre": "{q}.{q, select, 1 {er} 3 {er} other {º}} trimestre {anio}",
+          "periodoAnio": "Año {anio}",
+          "errores": {
+            "fechaFueraPeriodo": "Elige una fecha dentro del periodo.",
+            "metaInvalida": "Escribe la meta: un número mayor que cero.",
+            "metaEntera": "Para conteos la meta debe ser un entero."
+          },
+          "etiquetaBarra": "{pct} % de la cuota de {tipo}, {estado}",
+          "logrado": "<b>{logrado}</b> de {meta} · {pct} %",
+          "faltan": "Faltan {faltante} · {dias, plural, one {# día} other {# días}} · ritmo {ritmo}/día",
+          "faltaron": "Faltaron {faltante}",
+          "meses": {
+            "m1": "Enero",
+            "m2": "Febrero",
+            "m3": "Marzo",
+            "m4": "Abril",
+            "m5": "Mayo",
+            "m6": "Junio",
+            "m7": "Julio",
+            "m8": "Agosto",
+            "m9": "Septiembre",
+            "m10": "Octubre",
+            "m11": "Noviembre",
+            "m12": "Diciembre"
+          }
         }
       },
       "invitaciones": {
@@ -2670,6 +2756,29 @@
             "creadas": "{n, plural, =0 {No se creó ninguna sucursal} one {Se creó # sucursal} other {Se crearon # sucursales}}",
             "fallos": "{n, plural, one {# fila no se pudo crear} other {# filas no se pudieron crear}}"
           }
+        },
+        "assignManagerModal": {
+          "asignarGerente": "Asignar Gerente",
+          "seleccionarGerente": "Seleccionar Gerente",
+          "soloEmpleadosRolesAdmin": "Solo empleados con roles de Admin, Manager o Empleado pueden ser asignados como gerentes.",
+          "resumenCambio": "Resumen del cambio:",
+          "gerenteActual": "Gerente actual:",
+          "asignado": "Asignado",
+          "sinAsignar": "Sin asignar",
+          "nuevoGerente": "Nuevo gerente:",
+          "asignara": "Se asignará",
+          "asignando": "Asignando..."
+        },
+        "assignMembersModal": {
+          "asignarMiembros": "Asignar Miembros",
+          "noHayMiembrosDisponibles": "No hay miembros disponibles en la organización",
+          "seleccionaMiembrosTendranAcceso": "Selecciona los miembros que tendrán acceso a esta sucursal",
+          "guardando": "Guardando..."
+        },
+        "managerSelector": {
+          "cargandoEmpleados": "Cargando empleados...",
+          "seleccionarGerente": "Seleccionar gerente...",
+          "noHayEmpleadosDisponibles": "No hay empleados disponibles para asignar como gerentes"
         }
       },
       "plan": {
@@ -3106,6 +3215,14 @@
           "titulo": "No tienes acceso a esta configuración",
           "descripcion": "Pídele a un administrador de la organización que te dé el permiso.",
           "inicio": "Volver al inicio"
+        },
+        "organizationTimezoneCard": {
+          "zonaHoraria": "Zona horaria",
+          "zonaCalculanEImprimen": "Es la zona con la que se calculan e imprimen las fechas de toda la organización. Cada sucursal puede tener la suya propia desde su ficha; las que no, heredan esta.",
+          "zonaOrganizacion": "Zona de la organización",
+          "guardando": "Guardando…",
+          "guardar": "Guardar",
+          "ahoraMismo": "Con <b>{zona}</b> ahora mismo son las {hora}."
         }
       }
     }
@@ -3490,7 +3607,661 @@
         "questionPlaceholder": "Pregunta",
         "answerPlaceholder": "Respuesta",
         "noQuestions": "Sin preguntas. Haz clic en Agregar.",
-        "imageAlt": "Imagen"
+        "imageAlt": "Imagen",
+        "layoutPagina": "Layout de página"
+      },
+      "headerOptionsPanel": {
+        "editarMenu": "Editar menú",
+        "posicionLogo": "Posición del Logo",
+        "izquierda": "Izquierda",
+        "centro": "Centro",
+        "derecha": "Derecha",
+        "menuEncabezado": "Menú del encabezado",
+        "paginasSitio": "Páginas del sitio",
+        "estiloBuscador": "Estilo del Buscador",
+        "iconoAbreDropdown": "Icono que abre dropdown",
+        "barraVisible": "Barra visible",
+        "oculto": "Oculto",
+        "mostrarCategoriasHeader": "Mostrar categorías en header",
+        "escritorioCategoriasVenComo": "En escritorio, las categorías se ven como mega menú solo con el diseño «Mega». En móvil se ven con cualquier diseño.",
+        "columnasMegaMenu": "Columnas del mega menú",
+        "botonCtaHeader": "Botón CTA del header",
+        "mostrarCarrito": "Mostrar carrito",
+        "mostrarLoginRegistro": "Mostrar login/registro",
+        "mostrarTopbar": "Mostrar topbar",
+        "contenidoTopbar": "Contenido del Topbar",
+        "mostrarCorreo": "Mostrar correo",
+        "mostrarCelularTelefono": "Mostrar celular/teléfono",
+        "posicionCorreoTelefono": "Posición del correo/teléfono",
+        "mensajesPromocionales": "Mensajes promocionales ({n})",
+        "mensaje": "Mensaje {n}",
+        "mensajesRotanAutomaticamenteCada": "Los mensajes rotan automáticamente cada 6 segundos con flechas de navegación.",
+        "menusNombrados": "Menús Nombrados",
+        "menuHeader": "Menú del Header",
+        "seleccionarMenu": "Seleccionar menú...",
+        "sinMenuNombrado": "— Sin menú nombrado —",
+        "menuMegaMenu": "Menú del Mega Menu",
+        "sinMegaMenu": "— Sin mega menú —",
+        "coloresHeader": "Colores del Header",
+        "textoAjustaAutomaticamenteBlanco": "El texto se ajusta automáticamente (blanco/negro) según el fondo.",
+        "fondoHeader": "Fondo del Header",
+        "vacioBlancoOpacidadAuto": "Vacío = blanco con opacidad (auto)",
+        "quitarColorAuto": "Quitar color (auto)",
+        "fondoTopbar": "Fondo del Topbar",
+        "vacioOscuroDefectoHereda": "Vacío = oscuro por defecto (hereda header si hay)",
+        "quitarColorHereda": "Quitar color (hereda)",
+        "fondoBarraMenu": "Fondo de la barra de menú",
+        "vacioHeredaHeader": "Vacío = hereda del header",
+        "colorAcentoLinksHover": "Color de acento (links, hover, badges)",
+        "vacioUsaColorPrimario": "Vacío = usa color primario",
+        "quitarColorUsaPrimario": "Quitar color (usa primario)",
+        "personalizacionAvanzada": "Personalización Avanzada",
+        "iconosOrdenAcciones": "Iconos y Orden de Acciones",
+        "iconosAcciones": "Iconos de las acciones",
+        "iconoCarrito": "Icono del carrito",
+        "iconoBuscador": "Icono del buscador",
+        "iconoUsuarioAuth": "Icono de usuario/auth",
+        "iconoMoneda": "Icono de moneda",
+        "personalizacionBotonCta": "Personalización del Botón CTA",
+        "anchoCompletoHeader": "Ancho completo del header",
+        "paddingHorizontal": "Padding horizontal:",
+        "paddingVertical": "Padding vertical:",
+        "radioBorde": "Radio del borde:",
+        "anchoBorde": "Ancho del borde:",
+        "margenSuperior": "Margen superior:",
+        "margenInferior": "Margen inferior:",
+        "sombra": "Sombra",
+        "sinSombra": "Sin sombra",
+        "sutil": "Sutil",
+        "media": "Media",
+        "fuerte": "Fuerte",
+        "colorFondoVacioColor": "Color de fondo (vacío = color primario)",
+        "vacioColorPrimario": "Vacío = color primario",
+        "colorTextoVacioAuto": "Color de texto (vacío = auto)",
+        "vacioAutoBlancoNegro": "Vacío = auto (blanco/negro)",
+        "colorBordeVacioSin": "Color del borde (vacío = sin color)",
+        "vacioSinColorBorde": "Vacío = sin color de borde",
+        "quitarColor": "Quitar color",
+        "preview": "Preview",
+        "aperturaMenuHeaderMinimal": "Apertura del menú (Header Minimal)",
+        "drawerLateralDefault": "Drawer lateral (default)",
+        "dropdownCompacto": "Dropdown compacto",
+        "soloAplicaCuandoEstilo": "Solo aplica cuando el estilo del header es «Minimal».",
+        "ordenAcciones": "Orden de las acciones",
+        "arrastraReordenarOrdenAfecta": "Arrastra para reordenar. El orden afecta todos los headers.",
+        "subir": "Subir",
+        "bajar": "Bajar"
+      },
+      "editorSidebar": {
+        "deshacerCtrlZ": "Deshacer (Ctrl+Z)",
+        "rehacerCtrlShiftZ": "Rehacer (Ctrl+Shift+Z)",
+        "candadoHeredadaPrincipalAnadir": "Candado = «Heredada del principal». «Añadir sección» aquí añade solo a esta sede.",
+        "buscarSeccion": "Buscar sección...",
+        "buscarSeccion2": "Buscar sección",
+        "seccionesDefecto": "Secciones por defecto",
+        "estaPaginaUsaLayout": "Esta página usa el layout por defecto. Materializa las secciones para editarlas individualmente.",
+        "materializarSecciones": "Materializar secciones",
+        "anadirSeccion": "Añadir sección a {nombre}",
+        "apareceTodasPaginas": "{etiqueta}: aparece en todas las páginas{valor}",
+        "global": "Global",
+        "seccionVariante": "Sección {label}, variante {variantLabel}{ambito}, {estado}",
+        "seccionDesincronizadaSitio": "Sección desincronizada con el sitio",
+        "faltanDatos": "Faltan datos",
+        "estaSeccionVieneSitio": "Esta sección viene del sitio principal: si la cambian allá, cambia aquí.",
+        "personalizarEstaSede": "Personalizar en esta sede",
+        "estaSede": "esta sede",
+        "restablecer": "Restablecer",
+        "editarCarta": "Editar la carta",
+        "duplicarSeccionCtrlD": "Duplicar sección (Ctrl+D)",
+        "duplicarSeccion": "Duplicar sección",
+        "copiarEstilo": "Copiar estilo",
+        "pegarEstilo": "Pegar estilo",
+        "aplicarEstiloTodasSecciones": "Aplicar estilo a todas las secciones",
+        "aplicarEstiloTodas": "Aplicar estilo a todas",
+        "guardarComoPlantilla": "Guardar como plantilla",
+        "aplicarEstiloEstaSeccion": "¿Aplicar el estilo de esta sección a todas las secciones de la página?",
+        "aplicarTodas": "Aplicar a todas",
+        "ingresaNombreEstaPlantilla": "Ingresa un nombre para esta plantilla de sección.",
+        "nombrePlantilla": "Nombre de la plantilla",
+        "cancelar": "Cancelar",
+        "seleccionada": "seleccionada",
+        "clickEditar": "clic para editar",
+        "ambito": {
+          "heredada": "Heredada del principal",
+          "personalizada": "Personalizada",
+          "solo-esta-sede": "Solo esta sede"
+        },
+        "grupos": {
+          "content": "Contenido",
+          "data": "Datos",
+          "layout": "Diseño",
+          "style": "Estilo",
+          "carousel": "Carrusel",
+          "behavior": "Comportamiento",
+          "advanced": "Avanzado"
+        },
+        "seccionPasaSer": "La sección pasa a ser de {sede}. Desde ahí deja de heredar; «Restablecer» la vuelve a enlazar.",
+        "personalizadaEn": "Personalizada en {sede}: el principal no la cambia.",
+        "seleccionadoSufijo": ", seleccionado"
+      },
+      "footerOptionsPanel": {
+        "numeroColumnas": "Número de columnas",
+        "fondoFooter": "Fondo del footer",
+        "colorPrimario": "Color primario",
+        "personalizado": "Personalizado",
+        "colorPersonalizado": "Color personalizado",
+        "quitarColor": "Quitar color",
+        "seccionesFooter": "Secciones del footer",
+        "mostrarContacto": "Mostrar contacto",
+        "mostrarHorarios": "Mostrar horarios",
+        "mostrarRedesSociales": "Mostrar redes sociales",
+        "mostrarCategorias": "Mostrar categorías",
+        "mostrarNewsletter": "Mostrar newsletter",
+        "newsletter": "Newsletter",
+        "tituloNewsletter": "Título del newsletter",
+        "suscribeteNuestroBoletin": "Suscríbete a nuestro boletín",
+        "placeholderInput": "Placeholder del input",
+        "suscribirme": "Suscribirme",
+        "mostrarPoweredByGo": "Mostrar «Powered by GO Admin»",
+        "textoFooter": "Texto del footer",
+        "n2024EmpresaTodosDerechos": "© 2024 Tu Empresa. Todos los derechos reservados."
+      },
+      "footerPreviewMockup": {
+        "newsletter": "Newsletter",
+        "suscribir": "Suscribir",
+        "link1": "Link 1",
+        "link2": "Link 2",
+        "link3": "Link 3",
+        "inicio": "Inicio",
+        "nosotros": "Nosotros",
+        "servicios": "Servicios",
+        "contacto": "Contacto",
+        "poweredByGoAdmin": "Powered by GO Admin",
+        "link4": "Link 4",
+        "cat1": "Cat 1",
+        "cat2": "Cat 2",
+        "cat3": "Cat 3",
+        "footerOcultoMovil": "Footer oculto en móvil"
+      },
+      "globalSettingsPanel": {
+        "opacidadHeader": "Opacidad del header",
+        "controlaTanTransparenteHeader": "Controla qué tan transparente es el header (100 = sólido, 50 = semi-transparente)",
+        "botonQuotComprarAhora": "🛒 Botón \"Comprar ahora\"",
+        "mostrarTarjetasProductos": "Mostrar en tarjetas de productos",
+        "monedaJuntoPrecio": "💱 Moneda junto al precio",
+        "mostrarCodigoMonedaEj": "Mostrar código de moneda (ej: COP, USD)",
+        "ladoPrecio": "Lado del precio",
+        "izquierdaCop14248": "Izquierda (COP $14.248)",
+        "derecha14248Cop": "Derecha ($14.248 COP)",
+        "textoBotonCarrito": "🛒 Texto botón del carrito",
+        "modo": "Modo",
+        "dinamicoRotaTextos": "Dinámico (rota textos)",
+        "textoFijo": "Texto fijo",
+        "textosRotan": "Textos que rotan",
+        "nuevoTexto": "Nuevo texto...",
+        "cadaVezAbreCarrito": "Cada vez que se abre el carrito, se muestra un texto aleatorio",
+        "mostraraSiemprePrimerTexto": "Se mostrará siempre el primer texto",
+        "countdownTimer": "⏰ Countdown Timer",
+        "activarCountdown": "Activar countdown",
+        "texto": "Texto",
+        "ofertaTiempoLimitado": "¡Oferta por tiempo limitado!",
+        "reiniciaCada24h": "Se reinicia cada 24h",
+        "fechaPersonalizada": "Fecha personalizada",
+        "fechaFin": "Fecha fin",
+        "zonaHoraria": "Zona horaria",
+        "colombiaGmt5": "Colombia (GMT-5)",
+        "mexicoGmt6": "México (GMT-6)",
+        "argentinaGmt3": "Argentina (GMT-3)",
+        "chileGmt4": "Chile (GMT-4)",
+        "peruGmt5": "Perú (GMT-5)",
+        "espanaGmt1": "España (GMT+1)",
+        "eeuuEsteGmt5": "EEUU Este (GMT-5)",
+        "eeuuOesteGmt8": "EEUU Oeste (GMT-8)",
+        "horaReinicio023": "Hora de reinicio (0-23)",
+        "mostrar": "Mostrar en",
+        "header": "Header",
+        "carrito": "Carrito",
+        "detalleProducto": "Detalle producto",
+        "heroInicio": "Hero / Inicio",
+        "checkout": "Checkout",
+        "urgenciaCompra": "� Urgencia de compra",
+        "mostrarCheckout": "Mostrar en checkout",
+        "muestraMensajesComoQuot": "Muestra mensajes como \"¡Solo quedan 3!\" para incentivar la compra rápida"
+      },
+      "headerPreviewMockup": {
+        "envioGratisSobre100k": "Envío gratis sobre $100k",
+        "menu": "Menú",
+        "iniciarSesion": "Iniciar sesión",
+        "vistaMovil": "Vista Móvil — {mobileMenuStyle}",
+        "vistaDesktop": "Vista Desktop — {layout}",
+        "tabs": {
+          "inicio": "Inicio",
+          "categorias": "Categorías",
+          "buscar": "Buscar",
+          "carrito": "Carrito",
+          "cuenta": "Cuenta"
+        },
+        "menuEjemplo": {
+          "inicio": "Inicio",
+          "productos": "Productos",
+          "categorias": "Categorías",
+          "nosotros": "Nosotros",
+          "contacto": "Contacto",
+          "ofertas": "Ofertas"
+        }
+      },
+      "menuGroupEditor": {
+        "subir": "Subir",
+        "subir2": "Subir {label}",
+        "bajar": "Bajar",
+        "bajar2": "Bajar {label}",
+        "anidarBajoAnterior": "Anidar bajo el anterior",
+        "anidarBajoItemAnterior": "Anidar {label} bajo el ítem anterior",
+        "subirNivel": "Subir un nivel",
+        "subirNivel2": "Subir {label} un nivel",
+        "eliminar": "Eliminar",
+        "eliminar2": "Eliminar {label}",
+        "pagina": "Página",
+        "categoria": "Categoría",
+        "enlace": "Enlace",
+        "noHayItemsEste": "No hay items en este menú. Agrega páginas, categorías o enlaces para comenzar.",
+        "agregarPagina": "Agregar Página",
+        "cargandoPaginas": "Cargando páginas...",
+        "cargandoCategorias": "Cargando categorías...",
+        "noHayCategoriasActivas": "No hay categorías activas en el inventario.",
+        "llevaPaginaCategoriaSus": "Lleva a la página de la categoría; sus subcategorías se muestran debajo en el sitio.",
+        "etiqueta": "Etiqueta",
+        "textoEnlace": "Texto del enlace",
+        "agregarEnlace": "Agregar Enlace",
+        "tipos": {
+          "page": "Página",
+          "category": "Categoría",
+          "policy": "Política",
+          "custom_link": "Enlace"
+        },
+        "sinTitulo": "Sin título",
+        "agregarCategoria": "Agregar Categoría"
+      },
+      "menuGroupManager": {
+        "eliminarEsteMenuTodos": "¿Eliminar este menú y todos sus items?",
+        "menusNombrados": "Menús Nombrados",
+        "nuevo": "Nuevo",
+        "nombreMenu": "Nombre del menú",
+        "ejMenuPrincipalMenu": "Ej: Menú Principal, Menú Footer...",
+        "ubicacion": "Ubicación",
+        "header": "Header",
+        "footer": "Footer",
+        "ambos": "Ambos",
+        "sinAsignar": "Sin asignar",
+        "crear": "Crear",
+        "noHayMenusCreados": "No hay menús creados. Crea uno nuevo para comenzar.",
+        "renombrar": "Renombrar",
+        "cancelar": "Cancelar",
+        "eliminar": "Eliminar"
+      },
+      "menuTreeEditor": {
+        "colapsar": "Colapsar",
+        "expandir": "Expandir",
+        "categoria": "Categoría",
+        "moverArriba": "Mover arriba",
+        "moverAbajo": "Mover abajo",
+        "cerrar": "Cerrar",
+        "editar": "Editar",
+        "quitarMenu": "Quitar del menú",
+        "iconoEmoji": "Icono (emoji)",
+        "badge": "Badge",
+        "nuevo": "Nuevo",
+        "vincularCategoria": "Vincular a categoría",
+        "sinCategoria": "Sin categoría",
+        "limpiarBadge": "Limpiar badge",
+        "cargandoMenu": "Cargando menú...",
+        "arbolMenuHeader": "Árbol del Menú del Header",
+        "agregarPagina": "Agregar Página",
+        "agregarCategoria": "Agregar Categoría",
+        "agregarEnlace": "Agregar Enlace",
+        "arrastraItemsReordenarUsa": "💡 Arrastra los items para reordenar. Usa ↑ ↓ como alternativa.",
+        "seleccionaPaginasQuieresAgregar": "Selecciona las páginas que quieres agregar al menú del header:",
+        "noHayPaginasDisponibles": "No hay páginas disponibles. Todas las páginas ya están en el menú o no existen páginas creadas.",
+        "cancelar": "Cancelar",
+        "agregar": "Agregar {n}",
+        "seleccionaPaginaSistemaAgregar": "Selecciona una página del sistema para agregar al menú:",
+        "todasPaginasSistemaYa": "Todas las páginas del sistema ya están en el menú.",
+        "seleccionaCategoriasQuieresAgregar": "Selecciona las categorías que quieres agregar como items del menú:",
+        "noHayCategoriasDisponibles": "No hay categorías disponibles.",
+        "vinculada": "Vinculada",
+        "noHayItemsMenu": "No hay items en el menú. Agrega páginas con el botón \"Agregar Página\" o categorías con \"Agregar Categoría\".",
+        "arrastraRedimensionar": "Arrastra para redimensionar"
+      },
+      "mobileFooterPanel": {
+        "estiloFooterMovil": "Estilo del footer móvil",
+        "acordeonExpandible": "Acordeón (expandible)",
+        "apiladoColumna": "Apilado (una columna)",
+        "ocultoMovil": "Oculto en móvil",
+        "mostrarRedesMovil": "Mostrar redes en móvil",
+        "mostrarHorariosMovil": "Mostrar horarios en móvil",
+        "vistaPreviaMovil": "Vista previa móvil",
+        "footerOculto": "Footer oculto",
+        "col1": "Col 1",
+        "col2": "Col 2",
+        "col3": "Col 3"
+      },
+      "mobileHeaderPanel": {
+        "estiloMenuMovil": "Estilo del menú móvil",
+        "hamburguesaLateral": "Hamburguesa lateral",
+        "hojaInferior": "Hoja inferior",
+        "pantallaCompleta": "Pantalla completa",
+        "barraInferiorTipoApp": "Barra inferior tipo app",
+        "buscadorMovil": "Buscador móvil",
+        "iconoAbreModal": "Icono que abre modal",
+        "barraVisibleBajoLogo": "Barra visible bajo logo",
+        "oculto": "Oculto",
+        "mostrarTopbarMovil": "Mostrar topbar en móvil",
+        "vistaPrevia": "Vista previa",
+        "buscar": "🔍 Buscar...",
+        "sticky": "Sticky"
+      },
+      "pageLayoutPanel": {
+        "esteTipoPaginaNo": "Este tipo de página no tiene configuración de layout.",
+        "columnas": "Columnas",
+        "columnaAnchoCompleto": "Una columna (ancho completo)",
+        "dosColumnasGaleriaInfo": "Dos columnas (galería + info)",
+        "dosColumnasSidebar": "Dos columnas + sidebar",
+        "controlaDisposicionPrincipalPagina": "Controla la disposición principal de la página.",
+        "anchoGaleria": "Ancho de galería: {galleryWidth}%",
+        "porcentajeAnchoOcupaGaleria": "Porcentaje del ancho que ocupa la galería de imágenes.",
+        "columnaPegajosa": "Columna pegajosa",
+        "columnaInformacionFijaHacer": "La columna de información se fija al hacer scroll.",
+        "galeriaImagenes": "Galería de imágenes",
+        "modoGaleria": "Modo de galería",
+        "carruselFlechasDots": "Carrusel (flechas + dots)",
+        "scrollVertical": "Scroll vertical",
+        "grillaImagenes": "Grilla de imágenes",
+        "todasVisiblesColumna": "Todas visibles (columna)",
+        "posicionThumbnails": "Posición de thumbnails",
+        "abajoHorizontal": "Abajo (horizontal)",
+        "izquierdaVertical": "Izquierda (vertical)",
+        "derechaVertical": "Derecha (vertical)",
+        "sinThumbnails": "Sin thumbnails",
+        "mostrarFlechas": "Mostrar flechas",
+        "mostrarIndicadoresDots": "Mostrar indicadores (dots)",
+        "columnasGrilla": "Columnas de grilla",
+        "n2Columnas": "2 columnas",
+        "n3Columnas": "3 columnas",
+        "n4Columnas": "4 columnas",
+        "alturaMaximaScrollPx": "Altura máxima de scroll: {scrollHeight}px",
+        "descripcion": "Descripción",
+        "ubicacionDescripcion": "Ubicación de la descripción",
+        "debajoTitulo": "Debajo del título",
+        "debajoPrecio": "Debajo del precio",
+        "debajoBotones": "Debajo de los botones",
+        "arribaGaleria": "Arriba de la galería",
+        "botonesAccion": "Botones de acción",
+        "disposicionBotones": "Disposición de botones",
+        "apiladosVertical": "Apilados (vertical)",
+        "lineaHorizontal": "En línea (horizontal)",
+        "separadosUnoArribaUno": "Separados (uno arriba, uno abajo)",
+        "elementosOpcionales": "Elementos opcionales",
+        "mostrarBeneficios": "Mostrar beneficios",
+        "mostrarBreadcrumb": "Mostrar breadcrumb",
+        "productosRelacionados": "Productos relacionados",
+        "disposicionRelacionados": "Disposición de relacionados",
+        "carruselHorizontal": "Carrusel horizontal",
+        "grillaResponsiva": "Grilla responsiva"
+      },
+      "pageSEOPanel": {
+        "ogPreview": "OG Preview"
+      },
+      "colorField": {
+        "sinColor": "Sin color",
+        "tema": "Tema",
+        "paleta": "Paleta",
+        "primario": "Primario",
+        "secundario": "Secundario",
+        "acento": "Acento",
+        "fondo": "Fondo",
+        "texto": "Texto"
+      },
+      "entityField": {
+        "entidadNoSoportada": "Entidad \"{entity}\" no soportada",
+        "categoriasSeleccionadas": "Categorías seleccionadas ({n})",
+        "buscar": "Buscar...",
+        "noHayCategoriasCreadas": "No hay categorías creadas",
+        "sinSeleccionMuestranTodas": "Sin selección: se muestran todas las categorías",
+        "arrastraReordenarSoloMostraran": "Arrastra para reordenar. Solo se mostrarán las seleccionadas.",
+        "buscarNombreSku": "Buscar por nombre o SKU...",
+        "buscando": "Buscando...",
+        "sinResultados": "Sin resultados",
+        "buscarPagina": "Buscar página...",
+        "noHayPaginasPublicadas": "No hay páginas publicadas",
+        "buscarSucursal": "Buscar sucursal...",
+        "noHaySucursalesCreadas": "No hay sucursales creadas",
+        "buscarZona": "Buscar zona...",
+        "noHayZonasConfiguradas": "No hay zonas configuradas"
+      },
+      "iconField": {
+        "sinIcono": "Sin icono",
+        "seleccionar": "Seleccionar...",
+        "buscarIcono": "Buscar icono...",
+        "todos": "Todos",
+        "sinResultados": "Sin resultados"
+      },
+      "repeaterField": {
+        "duplicar": "Duplicar",
+        "eliminar": "Eliminar",
+        "sinElementosAgregaMenos": "Sin elementos. Agrega al menos uno."
+      },
+      "responsiveField": {
+        "esc": "Esc",
+        "tab": "Tab",
+        "mov": "Móv"
+      },
+      "richTextField": {
+        "negrita": "Negrita",
+        "cursiva": "Cursiva",
+        "enlace": "Enlace",
+        "escribeContenido": "Escribe el contenido...",
+        "insertarEnlace": "Insertar enlace",
+        "ingresaUrlEnlace": "Ingresa la URL del enlace.",
+        "cancelar": "Cancelar",
+        "insertar": "Insertar"
+      },
+      "spacingField": {
+        "espaciado": "Espaciado",
+        "paddingVerticalEnlazado": "Padding vertical enlazado",
+        "enlazarPaddingVertical": "Enlazar padding vertical",
+        "opciones": {
+          "none": "Ninguno",
+          "xs": "Muy poco",
+          "sm": "Pequeño",
+          "md": "Mediano",
+          "lg": "Grande",
+          "xl": "Muy grande"
+        },
+        "campos": {
+          "padding_top": "Padding arriba",
+          "padding_bottom": "Padding abajo",
+          "padding_x": "Padding horizontal",
+          "margin_top": "Margen arriba",
+          "margin_bottom": "Margen abajo"
+        }
+      },
+      "footerInspector": {
+        "menusPie": "Menús del pie",
+        "creaRenombraOrdenaMenus": "Crea, renombra y ordena los menús nombrados que se muestran en el pie.",
+        "editarMenusPie": "Editar menús del pie"
+      },
+      "hojaMenu": {
+        "listo": "Listo",
+        "menusPie": "Menús del pie",
+        "menuEncabezado": "Menú del encabezado · {menu}",
+        "paginasSitio": "Páginas del sitio",
+        "subtituloAlMomento": "Arrastra para ordenar o anidar. Los cambios del menú se guardan al momento.",
+        "subtituloConGuardar": "Arrastra para ordenar o anidar. Se guarda con «Guardar» del editor."
+      },
+      "inspectorZonaGlobal": {
+        "inspector": "Inspector: {titulo}",
+        "globalApareceTodasPaginas": "Global · aparece en todas las páginas",
+        "cerrar": "Cerrar {titulo}",
+        "ajustes": "Ajustes de {titulo}",
+        "cambiaTodasPaginas": "Cambia en todas las páginas"
+      },
+      "barraSitioV2": {
+        "historial": "Historial",
+        "masAccionesSitio": "Más acciones del sitio",
+        "sitioV2": "Sitio V2",
+        "versionActualPorqueAun": "(su versión actual, porque aún no tiene versión V2 publicada)",
+        "ultimaVersionPublicada": "(su última versión publicada)",
+        "editandoBorradorV2Sitio": "Editando el borrador V2 del sitio principal.",
+        "v2EstaActivoLo": "V2 está activo: lo que publiques es lo que ven tus clientes.",
+        "webSigueMostrandoSitio": "La web sigue mostrando el sitio actual hasta que actives V2. Guardar y publicar no la cambian.",
+        "borradorTieneProblemaS": "· El borrador tiene {erroresContrato} problema(s) de formato: corrígelos antes de publicar.",
+        "verLoPersonalizado": "Ver lo personalizado ({personalizados})",
+        "irSitioPrincipal": "Ir al sitio principal",
+        "estado": {
+          "guardado": "Guardado en borrador",
+          "cambios": "Cambios sin guardar",
+          "guardando": "Guardando…",
+          "conflicto": "Conflicto",
+          "error": "No se guardó",
+          "publicado": "Publicado"
+        },
+        "editandoSede": "<b>Editando {nombreSitio}</b> — lo que no personalices se hereda del sitio principal {base}."
+      },
+      "dialogoConflicto": {
+        "hayVersionMasNueva": "Hay una versión más nueva",
+        "versionPartias": " (versión {versionServidor}; tú partías de la {versionLocal})",
+        "hacerConflicto": "Qué hacer con el conflicto",
+        "decidirDespues": "Decidir después",
+        "cargarVersionNueva": "Cargar la versión nueva",
+        "guardarMios": "Guardar los míos",
+        "descripcion": "Otra persona (u otra pestaña) guardó el borrador después de que empezaste{version}. Tus cambios siguen en el editor."
+      },
+      "dialogoPublicar": {
+        "publicar": "Publicar {nombreSitio}",
+        "publicarCambios": "Publicar cambios",
+        "soloPublicaSitioPrincipal": "Solo se publica {nombreSitio}. El sitio principal y las demás sedes no cambian.",
+        "publicaSitioCompletoPaginas": "Se publica el sitio completo: páginas, secciones, estilo, encabezado, pie y menús del borrador.",
+        "notaVersionOpcional": "Nota de la versión (opcional)",
+        "ejCartaTemporada": "Ej.: Carta de temporada",
+        "apareceHistorialVersiones": "Aparece en el historial de versiones · {n}/{LIMITE_NOTA}",
+        "sitioPrincipalTieneCambios": "El sitio principal tiene cambios sin publicar. No llegan a {nombreSitio} hasta que publiques el principal.",
+        "guardaVersion": "Se guarda una versión",
+        "siAlgoNoQueda": "Si algo no queda bien, la restauras desde el historial.",
+        "tusClientesVenEsta": "Tus clientes ven esta versión en cuanto termine la publicación.",
+        "webSigueMostrandoSitio": "La web sigue mostrando el sitio actual hasta que actives V2 en este sitio.",
+        "cancelar": "Cancelar",
+        "publicarAhora": "Publicar ahora"
+      },
+      "panelHerencia": {
+        "herencia": "Herencia · {nombreSede}",
+        "loNoPersonalicesHereda": "Lo que no personalices se hereda del sitio principal.",
+        "restablecer": "Restablecer",
+        "vaciarEstaSede": "Vaciar en esta sede",
+        "estaSeccionIgualSitio": "Esta sección es igual a la del sitio principal. Si la editas aquí pasa a ser propia de esta sede; el principal no cambia.",
+        "personalizadaEstaSede": "Personalizada en esta sede."
+      },
+      "panelHistorial": {
+        "historialVersiones": "Historial de versiones",
+        "versionesPublicadasEsteSitio": "Las versiones publicadas de este sitio",
+        "borradorActual": "Borrador actual",
+        "guardado": "Guardado {borradorActualizadoEn}",
+        "sinGuardarTodavia": "Sin guardar todavía",
+        "hayCambiosSinGuardar": "· hay cambios sin guardar en el editor",
+        "reintentar": "Reintentar",
+        "todaviaNoHasPublicado": "Todavía no has publicado este sitio.",
+        "version": "Versión {numero}",
+        "version2": "· versión {numero}",
+        "publicada": "Publicada",
+        "restaurarBorrador": "Restaurar en borrador",
+        "restaurando": "Restaurando",
+        "restaurarVersion": "¿Restaurar la versión {numero}?",
+        "restaurarVersion2": "Restaurar versión",
+        "restaurarDescripcion": "Se copia a tu borrador y reemplaza los cambios sin publicar. Lo que está en línea no cambia hasta que publiques.",
+        "restaurarDescripcionConLocales": "Se copia a tu borrador y reemplaza los cambios sin publicar (incluidos los que aún no guardaste). Lo que está en línea no cambia hasta que publiques."
+      },
+      "selectorSitio": {
+        "cambiosSinPublicar": "Cambios sin publicar",
+        "sucursalInactiva": "Sucursal inactiva",
+        "sitioEdita": "Sitio que se edita: {nombreActivo}",
+        "editarSitio": "Editar el sitio de",
+        "cadaSedePropioSitio": "Cada sede es su propio sitio, con borrador y publicación aparte. «Hereda» usa todo del principal hasta que personalices algo. Nada cambia en la web hasta publicar y activar V2.",
+        "estado": {
+          "sitioActual": "Sitio actual",
+          "hereda": "Hereda",
+          "v2EnLaWeb": "V2 en la web",
+          "publicado": "Publicado",
+          "borradorV2": "Borrador V2",
+          "sitioPropio": "Sitio propio"
+        },
+        "sitioPrincipal": "Sitio principal"
+      },
+      "footerLayout": {
+        "default": {
+          "nombre": "Clásico",
+          "descripcion": "4 columnas con logo, links, contacto y redes"
+        },
+        "three_columns": {
+          "nombre": "3 Columnas",
+          "descripcion": "3 columnas equilibradas con logo y enlaces"
+        },
+        "centered": {
+          "nombre": "Centrado",
+          "descripcion": "Logo y links centrados, estilo minimalista"
+        },
+        "minimal": {
+          "nombre": "Minimal",
+          "descripcion": "Una sola fila con links esenciales"
+        },
+        "split": {
+          "nombre": "Split",
+          "descripcion": "2 columnas grandes: branding y navegación"
+        }
+      },
+      "headerLayout": {
+        "default": {
+          "nombre": "Clásico",
+          "descripcion": "Logo izquierda, menú centro, acciones derecha"
+        },
+        "centered": {
+          "nombre": "Logo Centrado",
+          "descripcion": "Logo centro arriba, menú abajo en barra"
+        },
+        "split": {
+          "nombre": "Split",
+          "descripcion": "Logo izq, menú dividido izq/der, CTA derecha"
+        },
+        "minimal": {
+          "nombre": "Minimal",
+          "descripcion": "Solo logo + hamburguesa, nav en drawer"
+        },
+        "mega": {
+          "nombre": "Mega Menu",
+          "descripcion": "Logo izq, barra menú abajo con mega-dropdown"
+        }
+      },
+      "chipHerencia": {
+        "heredado": "Heredado de la principal",
+        "personalizado": "Personalizado",
+        "vacio": "Vacío en esta sede",
+        "nuevo": "Solo en esta sede",
+        "compactoHereda": "Hereda",
+        "compactoPropia": "Propia"
+      },
+      "zonaGlobal": {
+        "titulo": {
+          "header": "Encabezado",
+          "footer": "Pie de página"
+        },
+        "fila": {
+          "header": "Encabezado (global)",
+          "footer": "Pie de página (global)"
+        },
+        "pestanas": {
+          "diseno": "Diseño",
+          "contenido": "Contenido",
+          "estilo": "Estilo",
+          "celular": "Celular"
+        }
       }
     }
   },

@@ -10,6 +10,7 @@ import {
   LayoutGrid,
   Check,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 export type HeaderLayout = 'default' | 'centered' | 'split' | 'minimal' | 'mega';
 
@@ -20,8 +21,6 @@ interface HeaderLayoutSelectorProps {
 
 interface LayoutOption {
   id: HeaderLayout;
-  name: string;
-  description: string;
   icon: typeof Layout;
   renderMockup: () => ReactNode;
 }
@@ -29,8 +28,6 @@ interface LayoutOption {
 const layouts: LayoutOption[] = [
   {
     id: 'default',
-    name: 'Clásico',
-    description: 'Logo izquierda, menú centro, acciones derecha',
     icon: Layout,
     renderMockup: () => (
       <div className="flex h-10 items-center justify-between gap-1 rounded border border-gray-200 bg-white px-1.5 dark:border-gray-700 dark:bg-gray-900">
@@ -49,8 +46,6 @@ const layouts: LayoutOption[] = [
   },
   {
     id: 'centered',
-    name: 'Logo Centrado',
-    description: 'Logo centro arriba, menú abajo en barra',
     icon: AlignCenter,
     renderMockup: () => (
       <div className="flex flex-col gap-1">
@@ -67,8 +62,6 @@ const layouts: LayoutOption[] = [
   },
   {
     id: 'split',
-    name: 'Split',
-    description: 'Logo izq, menú dividido izq/der, CTA derecha',
     icon: SplitSquareHorizontal,
     renderMockup: () => (
       <div className="flex h-10 items-center gap-1 rounded border border-gray-200 bg-white px-1.5 dark:border-gray-700 dark:bg-gray-900">
@@ -87,8 +80,6 @@ const layouts: LayoutOption[] = [
   },
   {
     id: 'minimal',
-    name: 'Minimal',
-    description: 'Solo logo + hamburguesa, nav en drawer',
     icon: Minimize2,
     renderMockup: () => (
       <div className="flex h-10 items-center justify-between rounded border border-gray-200 bg-white px-1.5 dark:border-gray-700 dark:bg-gray-900">
@@ -103,8 +94,6 @@ const layouts: LayoutOption[] = [
   },
   {
     id: 'mega',
-    name: 'Mega Menu',
-    description: 'Logo izq, barra menú abajo con mega-dropdown',
     icon: LayoutGrid,
     renderMockup: () => (
       <div className="flex flex-col gap-1">
@@ -126,6 +115,7 @@ export default function HeaderLayoutSelector({
   currentLayout,
   onSelect,
 }: HeaderLayoutSelectorProps) {
+  const t = useTranslations('branding.editor');
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {layouts.map((layout) => {
@@ -165,12 +155,12 @@ export default function HeaderLayoutSelector({
                     : 'text-gray-900 dark:text-gray-100'
                 )}
               >
-                {layout.name}
+                {t(`headerLayout.${layout.id}.nombre`)}
               </span>
             </div>
             {layout.renderMockup()}
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              {layout.description}
+              {t(`headerLayout.${layout.id}.descripcion`)}
             </p>
           </button>
         );

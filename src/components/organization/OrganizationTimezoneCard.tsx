@@ -22,6 +22,7 @@ import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { TIMEZONE_OPTIONS } from '@/lib/utils/timezoneCatalog';
 import { guardarZonaOrganizacion } from '@/lib/services/timezoneSettingsService';
 import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
+import { useTranslations } from 'next-intl';
 
 const SELECT_CLASS =
   'w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm ' +
@@ -29,6 +30,7 @@ const SELECT_CLASS =
   'dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100';
 
 export default function OrganizationTimezoneCard() {
+  const t = useTranslations('org.acceso.configuracionGeneral');
   const { timezone, isLoading } = useOrgTimezone();
   const [seleccion, setSeleccion] = useState<string>(timezone);
   const [guardando, setGuardando] = useState(false);
@@ -78,11 +80,10 @@ export default function OrganizationTimezoneCard() {
           dark:text-gray-100"
       >
         <GlobeAltIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" aria-hidden="true" />
-        Zona horaria
+        {t('organizationTimezoneCard.zonaHoraria')}
       </h2>
       <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-        Es la zona con la que se calculan e imprimen las fechas de toda la organización. Cada
-        sucursal puede tener la suya propia desde su ficha; las que no, heredan esta.
+        {t('organizationTimezoneCard.zonaCalculanEImprimen')}
       </p>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
@@ -91,7 +92,7 @@ export default function OrganizationTimezoneCard() {
             htmlFor="org-timezone"
             className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300"
           >
-            Zona de la organización
+            {t('organizationTimezoneCard.zonaOrganizacion')}
           </label>
           <select
             id="org-timezone"
@@ -116,12 +117,12 @@ export default function OrganizationTimezoneCard() {
             transition-colors hover:bg-blue-700 disabled:cursor-not-allowed
             disabled:opacity-50"
         >
-          {guardando ? 'Guardando…' : 'Guardar'}
+          {guardando ? t('organizationTimezoneCard.guardando') : t('organizationTimezoneCard.guardar')}
         </button>
       </div>
 
       <p id="org-timezone-help" className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-        Con <strong>{seleccion}</strong> ahora mismo son las {ahora}.
+        {t.rich('organizationTimezoneCard.ahoraMismo', { zona: seleccion, hora: ahora, b: (chunks) => <strong>{chunks}</strong> })}
       </p>
 
       <div aria-live="polite" className="mt-2 min-h-[1.25rem]">

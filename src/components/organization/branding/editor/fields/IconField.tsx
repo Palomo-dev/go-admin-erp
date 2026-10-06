@@ -11,6 +11,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { cn } from '@/utils/Utils';
 import type { BaseFieldProps } from './types';
+import { useTranslations } from 'next-intl';
 
 /**
  * Subconjunto curado de iconos Lucide organizados por categoría.
@@ -41,6 +42,7 @@ function getIcon(name: string): LucideIcons.LucideIcon | null {
 
 /** Buscador de iconos Lucide con preview en grid, categorías y "sin icono". */
 export default function IconField({ value, onChange }: BaseFieldProps) {
+  const t = useTranslations('branding.editor');
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [activeCat, setActiveCat] = useState<string>('General');
@@ -63,10 +65,10 @@ export default function IconField({ value, onChange }: BaseFieldProps) {
           {CurrentIcon ? (
             <CurrentIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
           ) : (
-            <span className="text-gray-400 text-[11px]">Sin icono</span>
+            <span className="text-gray-400 text-[11px]">{t('iconField.sinIcono')}</span>
           )}
           <span className="flex-1 text-left truncate text-[11px] text-gray-500 dark:text-gray-400">
-            {current || 'Seleccionar...'}
+            {current || t('iconField.seleccionar')}
           </span>
         </button>
       </PopoverTrigger>
@@ -74,7 +76,7 @@ export default function IconField({ value, onChange }: BaseFieldProps) {
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar icono..."
+          placeholder={t('iconField.buscarIcono')}
           className="h-7 text-xs mb-2"
         />
         <div className="flex flex-wrap gap-1 mb-2">
@@ -88,7 +90,7 @@ export default function IconField({ value, onChange }: BaseFieldProps) {
                 : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300',
             )}
           >
-            Todos
+            {t('iconField.todos')}
           </button>
           {Object.keys(ICON_CATEGORIES).map((cat) => (
             <button
@@ -116,7 +118,7 @@ export default function IconField({ value, onChange }: BaseFieldProps) {
           }}
           className="flex items-center gap-1.5 w-full text-[11px] text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 rounded px-1 py-1 mb-1"
         >
-          <X className="h-3 w-3" /> Sin icono
+          <X className="h-3 w-3" /> {t('iconField.sinIcono')}
         </button>
 
         <div className="grid grid-cols-6 gap-1 max-h-40 overflow-y-auto">
@@ -148,7 +150,7 @@ export default function IconField({ value, onChange }: BaseFieldProps) {
           })}
         </div>
         {filtered.length === 0 && (
-          <p className="text-[10px] text-gray-400 text-center py-2">Sin resultados</p>
+          <p className="text-[10px] text-gray-400 text-center py-2">{t('iconField.sinResultados')}</p>
         )}
       </PopoverContent>
     </Popover>

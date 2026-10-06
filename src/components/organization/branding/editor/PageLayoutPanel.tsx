@@ -32,6 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useTranslations } from 'next-intl';
 
 interface PageLayoutPanelProps {
   pageType: string;
@@ -42,10 +43,11 @@ interface PageLayoutPanelProps {
 const LAYOUT_TYPES = new Set(['product_detail', 'category_detail']);
 
 export function PageLayoutPanel({ pageType, pageSettings, onUpdate }: PageLayoutPanelProps) {
+  const t = useTranslations('branding.editor');
   if (!LAYOUT_TYPES.has(pageType)) {
     return (
       <p className="text-xs text-gray-400 dark:text-gray-500 py-2">
-        Este tipo de página no tiene configuración de layout.
+        {t('pageLayoutPanel.esteTipoPaginaNo')}
       </p>
     );
   }
@@ -84,7 +86,7 @@ export function PageLayoutPanel({ pageType, pageSettings, onUpdate }: PageLayout
     <div className="space-y-4">
       {/* ===== Layout general ===== */}
       <div className="space-y-1.5">
-        <Label className="text-xs text-gray-500 dark:text-gray-400">Columnas</Label>
+        <Label className="text-xs text-gray-500 dark:text-gray-400">{t('pageLayoutPanel.columnas')}</Label>
         <Select
           value={columns}
           onValueChange={(v) => update('columns', v)}
@@ -93,13 +95,13 @@ export function PageLayoutPanel({ pageType, pageSettings, onUpdate }: PageLayout
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="1">Una columna (ancho completo)</SelectItem>
-            <SelectItem value="2">Dos columnas (galería + info)</SelectItem>
-            <SelectItem value="2+sidebar">Dos columnas + sidebar</SelectItem>
+            <SelectItem value="1">{t('pageLayoutPanel.columnaAnchoCompleto')}</SelectItem>
+            <SelectItem value="2">{t('pageLayoutPanel.dosColumnasGaleriaInfo')}</SelectItem>
+            <SelectItem value="2+sidebar">{t('pageLayoutPanel.dosColumnasSidebar')}</SelectItem>
           </SelectContent>
         </Select>
         <p className="text-[10px] text-gray-400 dark:text-gray-500">
-          Controla la disposición principal de la página.
+          {t('pageLayoutPanel.controlaDisposicionPrincipalPagina')}
         </p>
       </div>
 
@@ -107,7 +109,7 @@ export function PageLayoutPanel({ pageType, pageSettings, onUpdate }: PageLayout
       {isProductDetail && (
         <div className="space-y-1.5">
           <Label className="text-xs text-gray-500 dark:text-gray-400">
-            Ancho de galería: {galleryWidth}%
+            {t('pageLayoutPanel.anchoGaleria', { galleryWidth })}
           </Label>
           <input
             type="range"
@@ -119,7 +121,7 @@ export function PageLayoutPanel({ pageType, pageSettings, onUpdate }: PageLayout
             className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
           />
           <p className="text-[10px] text-gray-400 dark:text-gray-500">
-            Porcentaje del ancho que ocupa la galería de imágenes.
+            {t('pageLayoutPanel.porcentajeAnchoOcupaGaleria')}
           </p>
         </div>
       )}
@@ -127,9 +129,9 @@ export function PageLayoutPanel({ pageType, pageSettings, onUpdate }: PageLayout
       {/* Columna sticky */}
       <div className="flex items-center justify-between">
         <div>
-          <Label className="text-xs text-gray-600 dark:text-gray-300">Columna pegajosa</Label>
+          <Label className="text-xs text-gray-600 dark:text-gray-300">{t('pageLayoutPanel.columnaPegajosa')}</Label>
           <p className="text-[10px] text-gray-400 dark:text-gray-500">
-            La columna de información se fija al hacer scroll.
+            {t('pageLayoutPanel.columnaInformacionFijaHacer')}
           </p>
         </div>
         <Switch checked={stickyColumn} onCheckedChange={(v) => update('sticky_column', v)} />
@@ -139,35 +141,35 @@ export function PageLayoutPanel({ pageType, pageSettings, onUpdate }: PageLayout
       {isProductDetail && (
         <>
           <div className="pt-2 border-t border-gray-100 dark:border-gray-700/50">
-            <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-2">Galería de imágenes</p>
+            <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-2">{t('pageLayoutPanel.galeriaImagenes')}</p>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs text-gray-500 dark:text-gray-400">Modo de galería</Label>
+            <Label className="text-xs text-gray-500 dark:text-gray-400">{t('pageLayoutPanel.modoGaleria')}</Label>
             <Select value={galleryLayout} onValueChange={(v) => update('gallery_layout', v)}>
               <SelectTrigger className="h-8 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="carousel">Carrusel (flechas + dots)</SelectItem>
-                <SelectItem value="scroll">Scroll vertical</SelectItem>
-                <SelectItem value="grid">Grilla de imágenes</SelectItem>
-                <SelectItem value="show_all">Todas visibles (columna)</SelectItem>
+                <SelectItem value="carousel">{t('pageLayoutPanel.carruselFlechasDots')}</SelectItem>
+                <SelectItem value="scroll">{t('pageLayoutPanel.scrollVertical')}</SelectItem>
+                <SelectItem value="grid">{t('pageLayoutPanel.grillaImagenes')}</SelectItem>
+                <SelectItem value="show_all">{t('pageLayoutPanel.todasVisiblesColumna')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs text-gray-500 dark:text-gray-400">Posición de thumbnails</Label>
+            <Label className="text-xs text-gray-500 dark:text-gray-400">{t('pageLayoutPanel.posicionThumbnails')}</Label>
             <Select value={thumbsPos} onValueChange={(v) => update('thumbnails_position', v)}>
               <SelectTrigger className="h-8 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="bottom">Abajo (horizontal)</SelectItem>
-                <SelectItem value="left">Izquierda (vertical)</SelectItem>
-                <SelectItem value="right">Derecha (vertical)</SelectItem>
-                <SelectItem value="none">Sin thumbnails</SelectItem>
+                <SelectItem value="bottom">{t('pageLayoutPanel.abajoHorizontal')}</SelectItem>
+                <SelectItem value="left">{t('pageLayoutPanel.izquierdaVertical')}</SelectItem>
+                <SelectItem value="right">{t('pageLayoutPanel.derechaVertical')}</SelectItem>
+                <SelectItem value="none">{t('pageLayoutPanel.sinThumbnails')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -175,11 +177,11 @@ export function PageLayoutPanel({ pageType, pageSettings, onUpdate }: PageLayout
           {galleryLayout === 'carousel' && (
             <>
               <div className="flex items-center justify-between">
-                <Label className="text-xs text-gray-600 dark:text-gray-300">Mostrar flechas</Label>
+                <Label className="text-xs text-gray-600 dark:text-gray-300">{t('pageLayoutPanel.mostrarFlechas')}</Label>
                 <Switch checked={showArrows} onCheckedChange={(v) => update('gallery_arrows', v)} />
               </div>
               <div className="flex items-center justify-between">
-                <Label className="text-xs text-gray-600 dark:text-gray-300">Mostrar indicadores (dots)</Label>
+                <Label className="text-xs text-gray-600 dark:text-gray-300">{t('pageLayoutPanel.mostrarIndicadoresDots')}</Label>
                 <Switch checked={showDots} onCheckedChange={(v) => update('gallery_dots', v)} />
               </div>
             </>
@@ -187,15 +189,15 @@ export function PageLayoutPanel({ pageType, pageSettings, onUpdate }: PageLayout
 
           {galleryLayout === 'grid' && (
             <div className="space-y-1.5">
-              <Label className="text-xs text-gray-500 dark:text-gray-400">Columnas de grilla</Label>
+              <Label className="text-xs text-gray-500 dark:text-gray-400">{t('pageLayoutPanel.columnasGrilla')}</Label>
               <Select value={String(gridCols)} onValueChange={(v) => update('gallery_grid_columns', Number(v))}>
                 <SelectTrigger className="h-8 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="2">2 columnas</SelectItem>
-                  <SelectItem value="3">3 columnas</SelectItem>
-                  <SelectItem value="4">4 columnas</SelectItem>
+                  <SelectItem value="2">{t('pageLayoutPanel.n2Columnas')}</SelectItem>
+                  <SelectItem value="3">{t('pageLayoutPanel.n3Columnas')}</SelectItem>
+                  <SelectItem value="4">{t('pageLayoutPanel.n4Columnas')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -204,7 +206,7 @@ export function PageLayoutPanel({ pageType, pageSettings, onUpdate }: PageLayout
           {galleryLayout === 'scroll' && (
             <div className="space-y-1.5">
               <Label className="text-xs text-gray-500 dark:text-gray-400">
-                Altura máxima de scroll: {scrollHeight}px
+                {t('pageLayoutPanel.alturaMaximaScrollPx', { scrollHeight })}
               </Label>
               <input
                 type="range"
@@ -224,20 +226,20 @@ export function PageLayoutPanel({ pageType, pageSettings, onUpdate }: PageLayout
       {isProductDetail && (
         <>
           <div className="pt-2 border-t border-gray-100 dark:border-gray-700/50">
-            <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-2">Descripción</p>
+            <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-2">{t('pageLayoutPanel.descripcion')}</p>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs text-gray-500 dark:text-gray-400">Ubicación de la descripción</Label>
+            <Label className="text-xs text-gray-500 dark:text-gray-400">{t('pageLayoutPanel.ubicacionDescripcion')}</Label>
             <Select value={descPos} onValueChange={(v) => update('description_position', v)}>
               <SelectTrigger className="h-8 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="below_title">Debajo del título</SelectItem>
-                <SelectItem value="below_price">Debajo del precio</SelectItem>
-                <SelectItem value="below_buttons">Debajo de los botones</SelectItem>
-                <SelectItem value="above_gallery">Arriba de la galería</SelectItem>
+                <SelectItem value="below_title">{t('pageLayoutPanel.debajoTitulo')}</SelectItem>
+                <SelectItem value="below_price">{t('pageLayoutPanel.debajoPrecio')}</SelectItem>
+                <SelectItem value="below_buttons">{t('pageLayoutPanel.debajoBotones')}</SelectItem>
+                <SelectItem value="above_gallery">{t('pageLayoutPanel.arribaGaleria')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -248,19 +250,19 @@ export function PageLayoutPanel({ pageType, pageSettings, onUpdate }: PageLayout
       {isProductDetail && (
         <>
           <div className="pt-2 border-t border-gray-100 dark:border-gray-700/50">
-            <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-2">Botones de acción</p>
+            <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-2">{t('pageLayoutPanel.botonesAccion')}</p>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs text-gray-500 dark:text-gray-400">Disposición de botones</Label>
+            <Label className="text-xs text-gray-500 dark:text-gray-400">{t('pageLayoutPanel.disposicionBotones')}</Label>
             <Select value={buttonsLayout} onValueChange={(v) => update('buttons_layout', v)}>
               <SelectTrigger className="h-8 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="stacked">Apilados (vertical)</SelectItem>
-                <SelectItem value="inline">En línea (horizontal)</SelectItem>
-                <SelectItem value="split">Separados (uno arriba, uno abajo)</SelectItem>
+                <SelectItem value="stacked">{t('pageLayoutPanel.apiladosVertical')}</SelectItem>
+                <SelectItem value="inline">{t('pageLayoutPanel.lineaHorizontal')}</SelectItem>
+                <SelectItem value="split">{t('pageLayoutPanel.separadosUnoArribaUno')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -271,16 +273,16 @@ export function PageLayoutPanel({ pageType, pageSettings, onUpdate }: PageLayout
       {isProductDetail && (
         <>
           <div className="pt-2 border-t border-gray-100 dark:border-gray-700/50">
-            <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-2">Elementos opcionales</p>
+            <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-2">{t('pageLayoutPanel.elementosOpcionales')}</p>
           </div>
 
           <div className="flex items-center justify-between">
-            <Label className="text-xs text-gray-600 dark:text-gray-300">Mostrar beneficios</Label>
+            <Label className="text-xs text-gray-600 dark:text-gray-300">{t('pageLayoutPanel.mostrarBeneficios')}</Label>
             <Switch checked={showBenefits} onCheckedChange={(v) => update('show_benefits', v)} />
           </div>
 
           <div className="flex items-center justify-between">
-            <Label className="text-xs text-gray-600 dark:text-gray-300">Mostrar breadcrumb</Label>
+            <Label className="text-xs text-gray-600 dark:text-gray-300">{t('pageLayoutPanel.mostrarBreadcrumb')}</Label>
             <Switch checked={showBreadcrumb} onCheckedChange={(v) => update('show_breadcrumb', v)} />
           </div>
         </>
@@ -290,18 +292,18 @@ export function PageLayoutPanel({ pageType, pageSettings, onUpdate }: PageLayout
       {isProductDetail && (
         <>
           <div className="pt-2 border-t border-gray-100 dark:border-gray-700/50">
-            <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-2">Productos relacionados</p>
+            <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-2">{t('pageLayoutPanel.productosRelacionados')}</p>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs text-gray-500 dark:text-gray-400">Disposición de relacionados</Label>
+            <Label className="text-xs text-gray-500 dark:text-gray-400">{t('pageLayoutPanel.disposicionRelacionados')}</Label>
             <Select value={relatedLayout} onValueChange={(v) => update('related_products_layout', v)}>
               <SelectTrigger className="h-8 text-xs bg-white dark:bg-white/5 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-white">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="carousel">Carrusel horizontal</SelectItem>
-                <SelectItem value="grid">Grilla responsiva</SelectItem>
+                <SelectItem value="carousel">{t('pageLayoutPanel.carruselHorizontal')}</SelectItem>
+                <SelectItem value="grid">{t('pageLayoutPanel.grillaResponsiva')}</SelectItem>
               </SelectContent>
             </Select>
           </div>

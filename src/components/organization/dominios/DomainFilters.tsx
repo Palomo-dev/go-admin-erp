@@ -39,6 +39,7 @@ export function DomainFilters({
   totalDomains,
   filteredCount,
 }: DomainFiltersProps) {
+  const tx = useTranslations('org.domains');
   const t = useTranslations('org.domains.filters');
   const hasFilters = searchTerm || statusFilter !== 'all' || typeFilter !== 'all' || activeFilter !== 'all';
 
@@ -68,7 +69,7 @@ export function DomainFilters({
           {/* Estado */}
           <Select value={statusFilter} onValueChange={(v) => onStatusChange(v as DomainStatus | 'all')}>
             <SelectTrigger className="w-[140px] dark:bg-gray-800 dark:border-gray-700 dark:text-white">
-              <SelectValue placeholder="Estado" />
+              <SelectValue placeholder={tx('importDialog.statusCol')} />
             </SelectTrigger>
             <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
               <SelectItem value="all" className="dark:text-white dark:focus:bg-gray-700">{t('allStatuses')}</SelectItem>
@@ -81,7 +82,7 @@ export function DomainFilters({
           {/* Tipo */}
           <Select value={typeFilter} onValueChange={(v) => onTypeChange(v as DomainType | 'all')}>
             <SelectTrigger className="w-[160px] dark:bg-gray-800 dark:border-gray-700 dark:text-white">
-              <SelectValue placeholder="Tipo" />
+              <SelectValue placeholder={tx('dns.type')} />
             </SelectTrigger>
             <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
               <SelectItem value="all" className="dark:text-white dark:focus:bg-gray-700">{t('allTypes')}</SelectItem>
@@ -93,7 +94,7 @@ export function DomainFilters({
           {/* Activo/Inactivo */}
           <Select value={activeFilter} onValueChange={(v) => onActiveChange(v as 'all' | 'active' | 'inactive')}>
             <SelectTrigger className="w-[130px] dark:bg-gray-800 dark:border-gray-700 dark:text-white">
-              <SelectValue placeholder="Actividad" />
+              <SelectValue placeholder={tx('actividad')} />
             </SelectTrigger>
             <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
               <SelectItem value="all" className="dark:text-white dark:focus:bg-gray-700">{t('all')}</SelectItem>

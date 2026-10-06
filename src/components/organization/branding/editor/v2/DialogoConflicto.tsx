@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/utils/Utils';
+import { useTranslations } from 'next-intl';
 
 type Opcion = 'cargar' | 'sobrescribir';
 
@@ -37,6 +38,7 @@ export function DialogoConflicto({
   onCargarNueva,
   onSobrescribir,
 }: DialogoConflictoProps) {
+  const t = useTranslations('branding.editor');
   const [opcion, setOpcion] = useState<Opcion>('cargar');
   const [ocupado, setOcupado] = useState(false);
 
@@ -74,14 +76,14 @@ export function DialogoConflicto({
     <Dialog open={abierto} onOpenChange={(v) => !ocupado && onAbiertoChange(v)}>
       <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
-          <DialogTitle>Hay una versión más nueva</DialogTitle>
+          <DialogTitle>{t('dialogoConflicto.hayVersionMasNueva')}</DialogTitle>
           <DialogDescription>
-            Otra persona (u otra pestaña) guardó el borrador después de que empezaste
-            {versionServidor ? ` (versión ${versionServidor}; tú partías de la ${versionLocal})` : ''}. Tus cambios siguen
-            en el editor.
+            {t('dialogoConflicto.descripcion', {
+              version: versionServidor ? t('dialogoConflicto.versionPartias', { versionServidor, versionLocal }) : '',
+            })}
           </DialogDescription>
         </DialogHeader>
-        <div role="radiogroup" aria-label="Qué hacer con el conflicto" className="space-y-2">
+        <div role="radiogroup" aria-label={t('dialogoConflicto.hacerConflicto')} className="space-y-2">
           {tarjeta('cargar', 'Descartar mis cambios y cargar la versión nueva', 'Recargas el borrador guardado. Lo que cambiaste aquí se pierde.')}
           {tarjeta(
             'sobrescribir',
@@ -92,11 +94,11 @@ export function DialogoConflicto({
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onAbiertoChange(false)} disabled={ocupado}>
-            Decidir después
+            {t('dialogoConflicto.decidirDespues')}
           </Button>
           <Button type="button" onClick={() => void ejecutar()} disabled={ocupado} variant={opcion === 'sobrescribir' ? 'destructive' : 'default'}>
             {ocupado ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : null}
-            {opcion === 'cargar' ? 'Cargar la versión nueva' : 'Guardar los míos'}
+            {opcion === 'cargar' ? t('dialogoConflicto.cargarVersionNueva') : t('dialogoConflicto.guardarMios')}
           </Button>
         </DialogFooter>
       </DialogContent>

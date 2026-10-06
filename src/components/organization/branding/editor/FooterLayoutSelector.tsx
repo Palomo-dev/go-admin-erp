@@ -10,6 +10,7 @@ import {
   PanelLeft,
   Check,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 export type FooterLayout = 'default' | 'three_columns' | 'centered' | 'minimal' | 'split';
 
@@ -20,8 +21,6 @@ interface FooterLayoutSelectorProps {
 
 interface LayoutOption {
   id: FooterLayout;
-  name: string;
-  description: string;
   icon: typeof Layout;
   renderMockup: () => ReactNode;
 }
@@ -29,8 +28,6 @@ interface LayoutOption {
 const layouts: LayoutOption[] = [
   {
     id: 'default',
-    name: 'Clásico',
-    description: '4 columnas con logo, links, contacto y redes',
     icon: Layout,
     renderMockup: () => (
       <div className="rounded border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-900">
@@ -62,8 +59,6 @@ const layouts: LayoutOption[] = [
   },
   {
     id: 'three_columns',
-    name: '3 Columnas',
-    description: '3 columnas equilibradas con logo y enlaces',
     icon: PanelLeft,
     renderMockup: () => (
       <div className="rounded border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-900">
@@ -89,8 +84,6 @@ const layouts: LayoutOption[] = [
   },
   {
     id: 'centered',
-    name: 'Centrado',
-    description: 'Logo y links centrados, estilo minimalista',
     icon: AlignCenter,
     renderMockup: () => (
       <div className="rounded border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-900">
@@ -113,8 +106,6 @@ const layouts: LayoutOption[] = [
   },
   {
     id: 'minimal',
-    name: 'Minimal',
-    description: 'Una sola fila con links esenciales',
     icon: Minimize2,
     renderMockup: () => (
       <div className="rounded border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-900">
@@ -136,8 +127,6 @@ const layouts: LayoutOption[] = [
   },
   {
     id: 'split',
-    name: 'Split',
-    description: '2 columnas grandes: branding y navegación',
     icon: SplitSquareHorizontal,
     renderMockup: () => (
       <div className="rounded border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-900">
@@ -169,6 +158,7 @@ export default function FooterLayoutSelector({
   currentLayout,
   onSelect,
 }: FooterLayoutSelectorProps) {
+  const t = useTranslations('branding.editor');
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {/* «Split» se pinta en el sitio, pero el CHECK website_settings_footer_style_check
@@ -212,12 +202,12 @@ export default function FooterLayoutSelector({
                     : 'text-gray-900 dark:text-gray-100'
                 )}
               >
-                {layout.name}
+                {t(`footerLayout.${layout.id}.nombre`)}
               </span>
             </div>
             {layout.renderMockup()}
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              {layout.description}
+              {t(`footerLayout.${layout.id}.descripcion`)}
             </p>
           </button>
         );

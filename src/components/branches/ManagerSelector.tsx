@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Member, memberService } from '@/lib/services/memberService';
 import { UserIcon } from '@heroicons/react/24/outline';
 import { getAvatarUrl } from '@/lib/supabase/imageUtils';
+import { useTranslations } from 'next-intl';
 
 interface ManagerSelectorProps {
   organizationId: number;
@@ -16,6 +17,7 @@ export const ManagerSelector: React.FC<ManagerSelectorProps> = ({
   onManagerSelect,
   disabled = false
 }) => {
+  const t = useTranslations('org.acceso.sucursales');
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +65,7 @@ export const ManagerSelector: React.FC<ManagerSelectorProps> = ({
     return (
       <div className="flex items-center space-x-2">
         <span className="loading loading-spinner loading-sm"></span>
-        <span className="text-sm text-gray-500">Cargando empleados...</span>
+        <span className="text-sm text-gray-500">{t('managerSelector.cargandoEmpleados')}</span>
       </div>
     );
   }
@@ -116,7 +118,7 @@ export const ManagerSelector: React.FC<ManagerSelectorProps> = ({
                 <UserIcon className="h-4 w-4 text-gray-500" />
               </div>
               <span className="ml-3 block truncate text-gray-500">
-                Seleccionar gerente...
+                {t('managerSelector.seleccionarGerente')}
               </span>
             </>
           )}
@@ -140,7 +142,7 @@ export const ManagerSelector: React.FC<ManagerSelectorProps> = ({
                 <UserIcon className="h-4 w-4 text-gray-500" />
               </div>
               <span className="ml-3 block truncate text-gray-500">
-                Sin gerente asignado
+                {t('formulario.campos.gerenteNinguno')}
               </span>
             </div>
             {!currentManagerId && (
@@ -190,7 +192,7 @@ export const ManagerSelector: React.FC<ManagerSelectorProps> = ({
 
           {members.length === 0 && (
             <div className="relative py-2 pl-3 pr-9 text-gray-500 text-sm">
-              No hay empleados disponibles para asignar como gerentes
+              {t('managerSelector.noHayEmpleadosDisponibles')}
             </div>
           )}
         </div>

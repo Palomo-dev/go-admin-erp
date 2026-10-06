@@ -1360,7 +1360,8 @@
         "errorVerifying": "Erreur lors de la vérification du domaine",
         "errorConnection": "Erreur de connexion",
         "errorPurchase": "Erreur lors de l'achat du domaine",
-        "errorProcessing": "Erreur lors du traitement de l'achat"
+        "errorProcessing": "Erreur lors du traitement de l'achat",
+        "errorVerificacionTarjeta": "La vérification de la carte a échoué"
       },
       "dns": {
         "title": "Instructions de vérification DNS",
@@ -1517,7 +1518,10 @@
         "errorNotAvailable": "Le sous-domaine n'est pas disponible",
         "errorMinChars": "Le sous-domaine doit avoir au moins 3 caractères",
         "errorSaving": "Erreur lors de l'enregistrement du sous-domaine"
-      }
+      },
+      "eligePaisSelectorEscribe": "Choisissez le pays dans le sélecteur et saisissez le numéro.",
+      "actividad": "Activité",
+      "telefonoCodigoPais": "Le numéro doit inclure un indicatif pays valide."
     },
     "createOrgDialog": {
       "title": "Créer une nouvelle organisation"
@@ -1913,7 +1917,13 @@
       "errorChanging": "Une erreur est survenue lors du changement de plan.",
       "cancel": "Annuler",
       "processing": "Traitement...",
-      "changePlan": "Changer de plan"
+      "changePlan": "Changer de plan",
+      "couponInput": {
+        "tienesCodigoDescuento": "Vous avez un code de réduction ?",
+        "ingresaCodigo": "Saisissez votre code"
+      },
+      "cuponNoValido": "Coupon non valide",
+      "errorValidarCupon": "Erreur lors de la validation du coupon"
     },
     "paymentMethod": {
       "title": "Moyen de paiement",
@@ -2190,6 +2200,82 @@
         "error": {
           "titulo": "Impossible de charger les membres",
           "descripcion": "Vérifiez votre connexion et réessayez."
+        },
+        "memberQuotasSheet": {
+          "cuotas": "Quotas de",
+          "metasPeriodoCumplimientoReal": "Objectifs par période et réalisation réelle calculée à partir de ses ventes, activités et appels.",
+          "noPudieronCargarCuotas": "Impossible de charger les quotas",
+          "reintentar": "Réessayer",
+          "cuotaGuardada": "Quota enregistré",
+          "cuotaEliminada": "Quota supprimé",
+          "noPudoEliminar": "Suppression impossible"
+        },
+        "quotaEditor": {
+          "nuevaCuota": "Nouveau quota",
+          "periodo": "Période",
+          "tipoMeta": "Type d'objectif",
+          "diaPeriodo": "Un jour de la période",
+          "periodoCalculaPartirEsta": "La période est calculée à partir de cette date.",
+          "meta": "Objectif",
+          "cantidad": "(quantité)",
+          "noGuardoCuota": "Le quota n'a pas été enregistré",
+          "guardando": "Enregistrement…",
+          "guardarCuota": "Enregistrer le quota"
+        },
+        "quotaHistory": {
+          "cargandoCuotas": "Chargement des quotas",
+          "esteMiembroAunNo": "Ce membre n'a pas encore de quota. Créez le premier ci-dessus : la réalisation est calculée automatiquement à partir de ses ventes, activités ou appels.",
+          "historialCuotas": "Historique des quotas",
+          "eliminarCuota": "Supprimer le quota de {period}",
+          "superada": "Dépassé de {valor}",
+          "eliminarCuota2": "Supprimer le quota de {period} ?",
+          "borraMetaVentasActividades": "L'objectif est supprimé ; les ventes, activités et appels du membre ne sont pas modifiés.",
+          "siEliminar": "Oui, supprimer"
+        },
+        "cuotas": {
+          "tipos": {
+            "revenue": "Chiffre d'affaires",
+            "deals": "Affaires gagnées",
+            "activities": "Activités",
+            "calls": "Appels"
+          },
+          "periodos": {
+            "monthly": "Mensuel",
+            "quarterly": "Trimestriel",
+            "yearly": "Annuel"
+          },
+          "estados": {
+            "cumplida": "Quota atteint",
+            "vencida": "Période close sans atteinte",
+            "atrasado": "En dessous du rythme",
+            "en_ritmo": "Dans le rythme"
+          },
+          "periodoMes": "{mes} {anio}",
+          "periodoTrimestre": "{q, select, 1 {1er} other {{q}e}} trimestre {anio}",
+          "periodoAnio": "Année {anio}",
+          "errores": {
+            "fechaFueraPeriodo": "Choisissez une date dans la période.",
+            "metaInvalida": "Saisissez l'objectif : un nombre supérieur à zéro.",
+            "metaEntera": "Pour les comptages, l'objectif doit être un nombre entier."
+          },
+          "etiquetaBarra": "{pct} % du quota de {tipo}, {estado}",
+          "logrado": "<b>{logrado}</b> sur {meta} · {pct} %",
+          "faltan": "Reste {faltante} · {dias, plural, one {# jour} other {# jours}} · rythme {ritmo}/jour",
+          "faltaron": "Il a manqué {faltante}",
+          "meses": {
+            "m1": "Janvier",
+            "m2": "Février",
+            "m3": "Mars",
+            "m4": "Avril",
+            "m5": "Mai",
+            "m6": "Juin",
+            "m7": "Juillet",
+            "m8": "Août",
+            "m9": "Septembre",
+            "m10": "Octobre",
+            "m11": "Novembre",
+            "m12": "Décembre"
+          }
         }
       },
       "invitaciones": {
@@ -2670,6 +2756,29 @@
             "creadas": "{n, plural, =0 {Aucune succursale créée} one {# succursale créée} other {# succursales créées}}",
             "fallos": "{n, plural, one {# ligne n'a pas pu être créée} other {# lignes n'ont pas pu être créées}}"
           }
+        },
+        "assignManagerModal": {
+          "asignarGerente": "Attribuer un responsable",
+          "seleccionarGerente": "Sélectionner un responsable",
+          "soloEmpleadosRolesAdmin": "Seuls les employés ayant les rôles Admin, Manager ou Employé peuvent être nommés responsables.",
+          "resumenCambio": "Résumé du changement :",
+          "gerenteActual": "Responsable actuel :",
+          "asignado": "Attribué",
+          "sinAsignar": "Non attribué",
+          "nuevoGerente": "Nouveau responsable :",
+          "asignara": "Sera attribué",
+          "asignando": "Attribution..."
+        },
+        "assignMembersModal": {
+          "asignarMiembros": "Attribuer des membres",
+          "noHayMiembrosDisponibles": "Aucun membre disponible dans l'organisation",
+          "seleccionaMiembrosTendranAcceso": "Sélectionnez les membres qui auront accès à cet établissement",
+          "guardando": "Enregistrement..."
+        },
+        "managerSelector": {
+          "cargandoEmpleados": "Chargement des employés...",
+          "seleccionarGerente": "Sélectionner un responsable...",
+          "noHayEmpleadosDisponibles": "Aucun employé disponible à nommer responsable"
         }
       },
       "plan": {
@@ -3106,6 +3215,14 @@
           "titulo": "Vous n'avez pas accès à ce paramètre",
           "descripcion": "Demandez à un administrateur de l'organisation de vous donner l'autorisation.",
           "inicio": "Retour à l'accueil"
+        },
+        "organizationTimezoneCard": {
+          "zonaHoraria": "Fuseau horaire",
+          "zonaCalculanEImprimen": "C'est le fuseau utilisé pour calculer et imprimer les dates de toute l'organisation. Chaque établissement peut avoir le sien depuis sa fiche ; ceux qui n'en ont pas héritent de celui-ci.",
+          "zonaOrganizacion": "Fuseau de l'organisation",
+          "guardando": "Enregistrement…",
+          "guardar": "Enregistrer",
+          "ahoraMismo": "Avec <b>{zona}</b>, il est actuellement {hora}."
         }
       }
     }
@@ -3490,7 +3607,661 @@
         "questionPlaceholder": "Question",
         "answerPlaceholder": "Réponse",
         "noQuestions": "Aucune question. Cliquez sur Ajouter.",
-        "imageAlt": "Image"
+        "imageAlt": "Image",
+        "layoutPagina": "Mise en page"
+      },
+      "headerOptionsPanel": {
+        "editarMenu": "Modifier le menu",
+        "posicionLogo": "Position du logo",
+        "izquierda": "Gauche",
+        "centro": "Centre",
+        "derecha": "Droite",
+        "menuEncabezado": "Menu de l'en-tête",
+        "paginasSitio": "Pages du site",
+        "estiloBuscador": "Style de la recherche",
+        "iconoAbreDropdown": "Icône qui ouvre un menu déroulant",
+        "barraVisible": "Barre visible",
+        "oculto": "Masqué",
+        "mostrarCategoriasHeader": "Afficher les catégories dans l'en-tête",
+        "escritorioCategoriasVenComo": "Sur ordinateur, les catégories s'affichent en méga-menu uniquement avec la mise en page « Mega ». Sur mobile, elles s'affichent avec n'importe quelle mise en page.",
+        "columnasMegaMenu": "Colonnes du méga-menu",
+        "botonCtaHeader": "Bouton CTA de l'en-tête",
+        "mostrarCarrito": "Afficher le panier",
+        "mostrarLoginRegistro": "Afficher connexion/inscription",
+        "mostrarTopbar": "Afficher la barre supérieure",
+        "contenidoTopbar": "Contenu de la barre supérieure",
+        "mostrarCorreo": "Afficher l'e-mail",
+        "mostrarCelularTelefono": "Afficher mobile/téléphone",
+        "posicionCorreoTelefono": "Position de l'e-mail/téléphone",
+        "mensajesPromocionales": "Messages promotionnels ({n})",
+        "mensaje": "Message {n}",
+        "mensajesRotanAutomaticamenteCada": "Les messages défilent automatiquement toutes les 6 secondes avec des flèches de navigation.",
+        "menusNombrados": "Menus nommés",
+        "menuHeader": "Menu de l'en-tête",
+        "seleccionarMenu": "Sélectionner un menu...",
+        "sinMenuNombrado": "— Aucun menu nommé —",
+        "menuMegaMenu": "Menu du méga-menu",
+        "sinMegaMenu": "— Aucun méga-menu —",
+        "coloresHeader": "Couleurs de l'en-tête",
+        "textoAjustaAutomaticamenteBlanco": "Le texte s'ajuste automatiquement (blanc/noir) selon le fond.",
+        "fondoHeader": "Fond de l'en-tête",
+        "vacioBlancoOpacidadAuto": "Vide = blanc avec opacité (auto)",
+        "quitarColorAuto": "Retirer la couleur (auto)",
+        "fondoTopbar": "Fond de la barre supérieure",
+        "vacioOscuroDefectoHereda": "Vide = sombre par défaut (hérite de l'en-tête s'il y en a)",
+        "quitarColorHereda": "Retirer la couleur (hérite)",
+        "fondoBarraMenu": "Fond de la barre de menu",
+        "vacioHeredaHeader": "Vide = hérite de l'en-tête",
+        "colorAcentoLinksHover": "Couleur d'accent (liens, survol, badges)",
+        "vacioUsaColorPrimario": "Vide = utilise la couleur principale",
+        "quitarColorUsaPrimario": "Retirer la couleur (utilise la principale)",
+        "personalizacionAvanzada": "Personnalisation avancée",
+        "iconosOrdenAcciones": "Icônes et ordre des actions",
+        "iconosAcciones": "Icônes des actions",
+        "iconoCarrito": "Icône du panier",
+        "iconoBuscador": "Icône de recherche",
+        "iconoUsuarioAuth": "Icône utilisateur/connexion",
+        "iconoMoneda": "Icône de devise",
+        "personalizacionBotonCta": "Personnalisation du bouton CTA",
+        "anchoCompletoHeader": "Pleine largeur de l'en-tête",
+        "paddingHorizontal": "Marge intérieure horizontale :",
+        "paddingVertical": "Marge intérieure verticale :",
+        "radioBorde": "Rayon de bordure :",
+        "anchoBorde": "Épaisseur de bordure :",
+        "margenSuperior": "Marge supérieure :",
+        "margenInferior": "Marge inférieure :",
+        "sombra": "Ombre",
+        "sinSombra": "Pas d'ombre",
+        "sutil": "Subtile",
+        "media": "Moyenne",
+        "fuerte": "Forte",
+        "colorFondoVacioColor": "Couleur de fond (vide = couleur principale)",
+        "vacioColorPrimario": "Vide = couleur principale",
+        "colorTextoVacioAuto": "Couleur du texte (vide = auto)",
+        "vacioAutoBlancoNegro": "Vide = auto (blanc/noir)",
+        "colorBordeVacioSin": "Couleur de bordure (vide = sans couleur)",
+        "vacioSinColorBorde": "Vide = pas de couleur de bordure",
+        "quitarColor": "Retirer la couleur",
+        "preview": "Aperçu",
+        "aperturaMenuHeaderMinimal": "Ouverture du menu (en-tête Minimal)",
+        "drawerLateralDefault": "Panneau latéral (par défaut)",
+        "dropdownCompacto": "Menu déroulant compact",
+        "soloAplicaCuandoEstilo": "S'applique uniquement lorsque le style de l'en-tête est « Minimal ».",
+        "ordenAcciones": "Ordre des actions",
+        "arrastraReordenarOrdenAfecta": "Faites glisser pour réordonner. L'ordre s'applique à tous les en-têtes.",
+        "subir": "Monter",
+        "bajar": "Descendre"
+      },
+      "editorSidebar": {
+        "deshacerCtrlZ": "Annuler (Ctrl+Z)",
+        "rehacerCtrlShiftZ": "Rétablir (Ctrl+Maj+Z)",
+        "candadoHeredadaPrincipalAnadir": "Cadenas = « Hérité du site principal ». « Ajouter une section » ici ajoute uniquement à cet établissement.",
+        "buscarSeccion": "Rechercher une section...",
+        "buscarSeccion2": "Rechercher une section",
+        "seccionesDefecto": "Sections par défaut",
+        "estaPaginaUsaLayout": "Cette page utilise la mise en page par défaut. Matérialisez les sections pour les modifier une par une.",
+        "materializarSecciones": "Matérialiser les sections",
+        "anadirSeccion": "Ajouter une section à {nombre}",
+        "apareceTodasPaginas": "{etiqueta} : apparaît sur toutes les pages{valor}",
+        "global": "Global",
+        "seccionVariante": "Section {label}, variante {variantLabel}{ambito}, {estado}",
+        "seccionDesincronizadaSitio": "Section désynchronisée avec le site",
+        "faltanDatos": "Données manquantes",
+        "estaSeccionVieneSitio": "Cette section vient du site principal : si elle change là-bas, elle change ici.",
+        "personalizarEstaSede": "Personnaliser pour cet établissement",
+        "estaSede": "cet établissement",
+        "restablecer": "Réinitialiser",
+        "editarCarta": "Modifier la carte",
+        "duplicarSeccionCtrlD": "Dupliquer la section (Ctrl+D)",
+        "duplicarSeccion": "Dupliquer la section",
+        "copiarEstilo": "Copier le style",
+        "pegarEstilo": "Coller le style",
+        "aplicarEstiloTodasSecciones": "Appliquer le style à toutes les sections",
+        "aplicarEstiloTodas": "Appliquer le style à toutes",
+        "guardarComoPlantilla": "Enregistrer comme modèle",
+        "aplicarEstiloEstaSeccion": "Appliquer le style de cette section à toutes les sections de la page ?",
+        "aplicarTodas": "Appliquer à toutes",
+        "ingresaNombreEstaPlantilla": "Saisissez un nom pour ce modèle de section.",
+        "nombrePlantilla": "Nom du modèle",
+        "cancelar": "Annuler",
+        "seleccionada": "sélectionnée",
+        "clickEditar": "cliquez pour modifier",
+        "ambito": {
+          "heredada": "Héritée du principal",
+          "personalizada": "Personnalisée",
+          "solo-esta-sede": "Cet établissement uniquement"
+        },
+        "grupos": {
+          "content": "Contenu",
+          "data": "Données",
+          "layout": "Mise en page",
+          "style": "Style",
+          "carousel": "Carrousel",
+          "behavior": "Comportement",
+          "advanced": "Avancé"
+        },
+        "seccionPasaSer": "La section devient propre à {sede}. Elle cesse alors d'hériter ; « Réinitialiser » la relie à nouveau.",
+        "personalizadaEn": "Personnalisée pour {sede} : le site principal ne la modifie pas.",
+        "seleccionadoSufijo": ", sélectionné"
+      },
+      "footerOptionsPanel": {
+        "numeroColumnas": "Nombre de colonnes",
+        "fondoFooter": "Fond du pied de page",
+        "colorPrimario": "Couleur principale",
+        "personalizado": "Personnalisé",
+        "colorPersonalizado": "Couleur personnalisée",
+        "quitarColor": "Retirer la couleur",
+        "seccionesFooter": "Sections du pied de page",
+        "mostrarContacto": "Afficher le contact",
+        "mostrarHorarios": "Afficher les horaires",
+        "mostrarRedesSociales": "Afficher les réseaux sociaux",
+        "mostrarCategorias": "Afficher les catégories",
+        "mostrarNewsletter": "Afficher la newsletter",
+        "newsletter": "Newsletter",
+        "tituloNewsletter": "Titre de la newsletter",
+        "suscribeteNuestroBoletin": "Abonnez-vous à notre newsletter",
+        "placeholderInput": "Texte indicatif du champ",
+        "suscribirme": "M'abonner",
+        "mostrarPoweredByGo": "Afficher « Powered by GO Admin »",
+        "textoFooter": "Texte du pied de page",
+        "n2024EmpresaTodosDerechos": "© 2024 Votre entreprise. Tous droits réservés."
+      },
+      "footerPreviewMockup": {
+        "newsletter": "Newsletter",
+        "suscribir": "S'abonner",
+        "link1": "Lien 1",
+        "link2": "Lien 2",
+        "link3": "Lien 3",
+        "inicio": "Accueil",
+        "nosotros": "À propos",
+        "servicios": "Services",
+        "contacto": "Contact",
+        "poweredByGoAdmin": "Powered by GO Admin",
+        "link4": "Lien 4",
+        "cat1": "Cat 1",
+        "cat2": "Cat 2",
+        "cat3": "Cat 3",
+        "footerOcultoMovil": "Pied de page masqué sur mobile"
+      },
+      "globalSettingsPanel": {
+        "opacidadHeader": "Opacité de l'en-tête",
+        "controlaTanTransparenteHeader": "Contrôle la transparence de l'en-tête (100 = opaque, 50 = semi-transparent)",
+        "botonQuotComprarAhora": "🛒 Bouton « Acheter maintenant »",
+        "mostrarTarjetasProductos": "Afficher sur les fiches produit",
+        "monedaJuntoPrecio": "💱 Devise à côté du prix",
+        "mostrarCodigoMonedaEj": "Afficher le code de devise (ex. : COP, USD)",
+        "ladoPrecio": "Côté du prix",
+        "izquierdaCop14248": "Gauche (COP $14.248)",
+        "derecha14248Cop": "Droite ($14.248 COP)",
+        "textoBotonCarrito": "🛒 Texte du bouton panier",
+        "modo": "Mode",
+        "dinamicoRotaTextos": "Dynamique (textes en rotation)",
+        "textoFijo": "Texte fixe",
+        "textosRotan": "Textes en rotation",
+        "nuevoTexto": "Nouveau texte...",
+        "cadaVezAbreCarrito": "À chaque ouverture du panier, un texte aléatoire s'affiche",
+        "mostraraSiemprePrimerTexto": "Le premier texte sera toujours affiché",
+        "countdownTimer": "⏰ Compte à rebours",
+        "activarCountdown": "Activer le compte à rebours",
+        "texto": "Texte",
+        "ofertaTiempoLimitado": "Offre à durée limitée !",
+        "reiniciaCada24h": "Redémarre toutes les 24 h",
+        "fechaPersonalizada": "Date personnalisée",
+        "fechaFin": "Date de fin",
+        "zonaHoraria": "Fuseau horaire",
+        "colombiaGmt5": "Colombie (GMT-5)",
+        "mexicoGmt6": "Mexique (GMT-6)",
+        "argentinaGmt3": "Argentine (GMT-3)",
+        "chileGmt4": "Chili (GMT-4)",
+        "peruGmt5": "Pérou (GMT-5)",
+        "espanaGmt1": "Espagne (GMT+1)",
+        "eeuuEsteGmt5": "États-Unis Est (GMT-5)",
+        "eeuuOesteGmt8": "États-Unis Ouest (GMT-8)",
+        "horaReinicio023": "Heure de redémarrage (0-23)",
+        "mostrar": "Afficher sur",
+        "header": "En-tête",
+        "carrito": "Panier",
+        "detalleProducto": "Fiche produit",
+        "heroInicio": "Hero / Accueil",
+        "checkout": "Paiement",
+        "urgenciaCompra": "� Urgence d'achat",
+        "mostrarCheckout": "Afficher au paiement",
+        "muestraMensajesComoQuot": "Affiche des messages comme « Plus que 3 ! » pour encourager un achat rapide"
+      },
+      "headerPreviewMockup": {
+        "envioGratisSobre100k": "Livraison gratuite dès 100k $",
+        "menu": "Menu",
+        "iniciarSesion": "Se connecter",
+        "vistaMovil": "Vue mobile — {mobileMenuStyle}",
+        "vistaDesktop": "Vue ordinateur — {layout}",
+        "tabs": {
+          "inicio": "Accueil",
+          "categorias": "Catégories",
+          "buscar": "Rechercher",
+          "carrito": "Panier",
+          "cuenta": "Compte"
+        },
+        "menuEjemplo": {
+          "inicio": "Accueil",
+          "productos": "Produits",
+          "categorias": "Catégories",
+          "nosotros": "À propos",
+          "contacto": "Contact",
+          "ofertas": "Offres"
+        }
+      },
+      "menuGroupEditor": {
+        "subir": "Monter",
+        "subir2": "Monter {label}",
+        "bajar": "Descendre",
+        "bajar2": "Descendre {label}",
+        "anidarBajoAnterior": "Imbriquer sous le précédent",
+        "anidarBajoItemAnterior": "Imbriquer {label} sous l'élément précédent",
+        "subirNivel": "Remonter d'un niveau",
+        "subirNivel2": "Remonter {label} d'un niveau",
+        "eliminar": "Supprimer",
+        "eliminar2": "Supprimer {label}",
+        "pagina": "Page",
+        "categoria": "Catégorie",
+        "enlace": "Lien",
+        "noHayItemsEste": "Ce menu n'a aucun élément. Ajoutez des pages, des catégories ou des liens pour commencer.",
+        "agregarPagina": "Ajouter une page",
+        "cargandoPaginas": "Chargement des pages...",
+        "cargandoCategorias": "Chargement des catégories...",
+        "noHayCategoriasActivas": "Aucune catégorie active dans l'inventaire.",
+        "llevaPaginaCategoriaSus": "Mène à la page de la catégorie ; ses sous-catégories apparaissent en dessous sur le site.",
+        "etiqueta": "Libellé",
+        "textoEnlace": "Texte du lien",
+        "agregarEnlace": "Ajouter un lien",
+        "tipos": {
+          "page": "Page",
+          "category": "Catégorie",
+          "policy": "Politique",
+          "custom_link": "Lien"
+        },
+        "sinTitulo": "Sans titre",
+        "agregarCategoria": "Ajouter une catégorie"
+      },
+      "menuGroupManager": {
+        "eliminarEsteMenuTodos": "Supprimer ce menu et tous ses éléments ?",
+        "menusNombrados": "Menus nommés",
+        "nuevo": "Nouveau",
+        "nombreMenu": "Nom du menu",
+        "ejMenuPrincipalMenu": "Ex. : Menu principal, Menu pied de page...",
+        "ubicacion": "Emplacement",
+        "header": "En-tête",
+        "footer": "Pied de page",
+        "ambos": "Les deux",
+        "sinAsignar": "Non attribué",
+        "crear": "Créer",
+        "noHayMenusCreados": "Aucun menu créé. Créez-en un pour commencer.",
+        "renombrar": "Renommer",
+        "cancelar": "Annuler",
+        "eliminar": "Supprimer"
+      },
+      "menuTreeEditor": {
+        "colapsar": "Réduire",
+        "expandir": "Développer",
+        "categoria": "Catégorie",
+        "moverArriba": "Monter",
+        "moverAbajo": "Descendre",
+        "cerrar": "Fermer",
+        "editar": "Modifier",
+        "quitarMenu": "Retirer du menu",
+        "iconoEmoji": "Icône (emoji)",
+        "badge": "Badge",
+        "nuevo": "Nouveau",
+        "vincularCategoria": "Lier à une catégorie",
+        "sinCategoria": "Sans catégorie",
+        "limpiarBadge": "Effacer le badge",
+        "cargandoMenu": "Chargement du menu...",
+        "arbolMenuHeader": "Arborescence du menu de l'en-tête",
+        "agregarPagina": "Ajouter une page",
+        "agregarCategoria": "Ajouter une catégorie",
+        "agregarEnlace": "Ajouter un lien",
+        "arrastraItemsReordenarUsa": "💡 Faites glisser les éléments pour les réordonner. Utilisez ↑ ↓ en alternative.",
+        "seleccionaPaginasQuieresAgregar": "Sélectionnez les pages à ajouter au menu de l'en-tête :",
+        "noHayPaginasDisponibles": "Aucune page disponible. Toutes les pages sont déjà dans le menu ou aucune page n'a été créée.",
+        "cancelar": "Annuler",
+        "agregar": "Ajouter {n}",
+        "seleccionaPaginaSistemaAgregar": "Sélectionnez une page système à ajouter au menu :",
+        "todasPaginasSistemaYa": "Toutes les pages système sont déjà dans le menu.",
+        "seleccionaCategoriasQuieresAgregar": "Sélectionnez les catégories à ajouter comme éléments du menu :",
+        "noHayCategoriasDisponibles": "Aucune catégorie disponible.",
+        "vinculada": "Liée",
+        "noHayItemsMenu": "Le menu ne contient aucun élément. Ajoutez des pages avec le bouton « Ajouter une page » ou des catégories avec « Ajouter une catégorie ».",
+        "arrastraRedimensionar": "Faites glisser pour redimensionner"
+      },
+      "mobileFooterPanel": {
+        "estiloFooterMovil": "Style du pied de page mobile",
+        "acordeonExpandible": "Accordéon (dépliable)",
+        "apiladoColumna": "Empilé (une colonne)",
+        "ocultoMovil": "Masqué sur mobile",
+        "mostrarRedesMovil": "Afficher les réseaux sur mobile",
+        "mostrarHorariosMovil": "Afficher les horaires sur mobile",
+        "vistaPreviaMovil": "Aperçu mobile",
+        "footerOculto": "Pied de page masqué",
+        "col1": "Col 1",
+        "col2": "Col 2",
+        "col3": "Col 3"
+      },
+      "mobileHeaderPanel": {
+        "estiloMenuMovil": "Style du menu mobile",
+        "hamburguesaLateral": "Menu hamburger latéral",
+        "hojaInferior": "Panneau inférieur",
+        "pantallaCompleta": "Plein écran",
+        "barraInferiorTipoApp": "Barre inférieure style appli",
+        "buscadorMovil": "Recherche mobile",
+        "iconoAbreModal": "Icône qui ouvre une fenêtre",
+        "barraVisibleBajoLogo": "Barre visible sous le logo",
+        "oculto": "Masqué",
+        "mostrarTopbarMovil": "Afficher la barre supérieure sur mobile",
+        "vistaPrevia": "Aperçu",
+        "buscar": "🔍 Rechercher...",
+        "sticky": "Fixe"
+      },
+      "pageLayoutPanel": {
+        "esteTipoPaginaNo": "Ce type de page n'a pas de réglages de mise en page.",
+        "columnas": "Colonnes",
+        "columnaAnchoCompleto": "Une colonne (pleine largeur)",
+        "dosColumnasGaleriaInfo": "Deux colonnes (galerie + infos)",
+        "dosColumnasSidebar": "Deux colonnes + barre latérale",
+        "controlaDisposicionPrincipalPagina": "Contrôle la disposition principale de la page.",
+        "anchoGaleria": "Largeur de la galerie : {galleryWidth} %",
+        "porcentajeAnchoOcupaGaleria": "Pourcentage de la largeur occupée par la galerie d'images.",
+        "columnaPegajosa": "Colonne fixe",
+        "columnaInformacionFijaHacer": "La colonne d'informations reste fixe au défilement.",
+        "galeriaImagenes": "Galerie d'images",
+        "modoGaleria": "Mode de la galerie",
+        "carruselFlechasDots": "Carrousel (flèches + points)",
+        "scrollVertical": "Défilement vertical",
+        "grillaImagenes": "Grille d'images",
+        "todasVisiblesColumna": "Toutes visibles (colonne)",
+        "posicionThumbnails": "Position des miniatures",
+        "abajoHorizontal": "En bas (horizontal)",
+        "izquierdaVertical": "À gauche (vertical)",
+        "derechaVertical": "À droite (vertical)",
+        "sinThumbnails": "Sans miniatures",
+        "mostrarFlechas": "Afficher les flèches",
+        "mostrarIndicadoresDots": "Afficher les indicateurs (points)",
+        "columnasGrilla": "Colonnes de la grille",
+        "n2Columnas": "2 colonnes",
+        "n3Columnas": "3 colonnes",
+        "n4Columnas": "4 colonnes",
+        "alturaMaximaScrollPx": "Hauteur de défilement maximale : {scrollHeight} px",
+        "descripcion": "Description",
+        "ubicacionDescripcion": "Emplacement de la description",
+        "debajoTitulo": "Sous le titre",
+        "debajoPrecio": "Sous le prix",
+        "debajoBotones": "Sous les boutons",
+        "arribaGaleria": "Au-dessus de la galerie",
+        "botonesAccion": "Boutons d'action",
+        "disposicionBotones": "Disposition des boutons",
+        "apiladosVertical": "Empilés (vertical)",
+        "lineaHorizontal": "En ligne (horizontal)",
+        "separadosUnoArribaUno": "Séparés (l'un en haut, l'autre en bas)",
+        "elementosOpcionales": "Éléments facultatifs",
+        "mostrarBeneficios": "Afficher les avantages",
+        "mostrarBreadcrumb": "Afficher le fil d'Ariane",
+        "productosRelacionados": "Produits associés",
+        "disposicionRelacionados": "Disposition des produits associés",
+        "carruselHorizontal": "Carrousel horizontal",
+        "grillaResponsiva": "Grille responsive"
+      },
+      "pageSEOPanel": {
+        "ogPreview": "Aperçu OG"
+      },
+      "colorField": {
+        "sinColor": "Sans couleur",
+        "tema": "Thème",
+        "paleta": "Palette",
+        "primario": "Principale",
+        "secundario": "Secondaire",
+        "acento": "Accent",
+        "fondo": "Fond",
+        "texto": "Texte"
+      },
+      "entityField": {
+        "entidadNoSoportada": "Entité « {entity} » non prise en charge",
+        "categoriasSeleccionadas": "Catégories sélectionnées ({n})",
+        "buscar": "Rechercher...",
+        "noHayCategoriasCreadas": "Aucune catégorie créée",
+        "sinSeleccionMuestranTodas": "Sans sélection : toutes les catégories sont affichées",
+        "arrastraReordenarSoloMostraran": "Faites glisser pour réordonner. Seules celles sélectionnées seront affichées.",
+        "buscarNombreSku": "Rechercher par nom ou SKU...",
+        "buscando": "Recherche...",
+        "sinResultados": "Aucun résultat",
+        "buscarPagina": "Rechercher une page...",
+        "noHayPaginasPublicadas": "Aucune page publiée",
+        "buscarSucursal": "Rechercher un établissement...",
+        "noHaySucursalesCreadas": "Aucun établissement créé",
+        "buscarZona": "Rechercher une zone...",
+        "noHayZonasConfiguradas": "Aucune zone configurée"
+      },
+      "iconField": {
+        "sinIcono": "Sans icône",
+        "seleccionar": "Sélectionner...",
+        "buscarIcono": "Rechercher une icône...",
+        "todos": "Tous",
+        "sinResultados": "Aucun résultat"
+      },
+      "repeaterField": {
+        "duplicar": "Dupliquer",
+        "eliminar": "Supprimer",
+        "sinElementosAgregaMenos": "Aucun élément. Ajoutez-en au moins un."
+      },
+      "responsiveField": {
+        "esc": "Ord.",
+        "tab": "Tab.",
+        "mov": "Mob."
+      },
+      "richTextField": {
+        "negrita": "Gras",
+        "cursiva": "Italique",
+        "enlace": "Lien",
+        "escribeContenido": "Écrivez le contenu...",
+        "insertarEnlace": "Insérer un lien",
+        "ingresaUrlEnlace": "Saisissez l'URL du lien.",
+        "cancelar": "Annuler",
+        "insertar": "Insérer"
+      },
+      "spacingField": {
+        "espaciado": "Espacement",
+        "paddingVerticalEnlazado": "Marge intérieure verticale liée",
+        "enlazarPaddingVertical": "Lier la marge intérieure verticale",
+        "opciones": {
+          "none": "Aucun",
+          "xs": "Très peu",
+          "sm": "Petit",
+          "md": "Moyen",
+          "lg": "Grand",
+          "xl": "Très grand"
+        },
+        "campos": {
+          "padding_top": "Marge intérieure haute",
+          "padding_bottom": "Marge intérieure basse",
+          "padding_x": "Marge intérieure horizontale",
+          "margin_top": "Marge haute",
+          "margin_bottom": "Marge basse"
+        }
+      },
+      "footerInspector": {
+        "menusPie": "Menus du pied de page",
+        "creaRenombraOrdenaMenus": "Créez, renommez et ordonnez les menus nommés affichés dans le pied de page.",
+        "editarMenusPie": "Modifier les menus du pied de page"
+      },
+      "hojaMenu": {
+        "listo": "Terminé",
+        "menusPie": "Menus du pied de page",
+        "menuEncabezado": "Menu de l'en-tête · {menu}",
+        "paginasSitio": "Pages du site",
+        "subtituloAlMomento": "Faites glisser pour ordonner ou imbriquer. Les modifications du menu sont enregistrées immédiatement.",
+        "subtituloConGuardar": "Faites glisser pour ordonner ou imbriquer. C'est enregistré avec « Enregistrer » de l'éditeur."
+      },
+      "inspectorZonaGlobal": {
+        "inspector": "Inspecteur : {titulo}",
+        "globalApareceTodasPaginas": "Global · apparaît sur toutes les pages",
+        "cerrar": "Fermer {titulo}",
+        "ajustes": "Réglages de {titulo}",
+        "cambiaTodasPaginas": "Change sur toutes les pages"
+      },
+      "barraSitioV2": {
+        "historial": "Historique",
+        "masAccionesSitio": "Plus d'actions du site",
+        "sitioV2": "Site V2",
+        "versionActualPorqueAun": "(sa version actuelle, car il n'a pas encore de version V2 publiée)",
+        "ultimaVersionPublicada": "(sa dernière version publiée)",
+        "editandoBorradorV2Sitio": "Modification du brouillon V2 du site principal.",
+        "v2EstaActivoLo": "La V2 est active : ce que vous publiez est ce que voient vos clients.",
+        "webSigueMostrandoSitio": "Le site web continue d'afficher le site actuel jusqu'à ce que vous activiez la V2. Enregistrer et publier ne le changent pas.",
+        "borradorTieneProblemaS": "· Le brouillon a {erroresContrato} problème(s) de format : corrigez-les avant de publier.",
+        "verLoPersonalizado": "Voir ce qui est personnalisé ({personalizados})",
+        "irSitioPrincipal": "Aller au site principal",
+        "estado": {
+          "guardado": "Enregistré dans le brouillon",
+          "cambios": "Modifications non enregistrées",
+          "guardando": "Enregistrement…",
+          "conflicto": "Conflit",
+          "error": "Non enregistré",
+          "publicado": "Publié"
+        },
+        "editandoSede": "<b>Modification de {nombreSitio}</b> — ce que vous ne personnalisez pas est hérité du site principal {base}."
+      },
+      "dialogoConflicto": {
+        "hayVersionMasNueva": "Il existe une version plus récente",
+        "versionPartias": " (version {versionServidor} ; vous êtes parti de la {versionLocal})",
+        "hacerConflicto": "Que faire du conflit",
+        "decidirDespues": "Décider plus tard",
+        "cargarVersionNueva": "Charger la nouvelle version",
+        "guardarMios": "Enregistrer les miens",
+        "descripcion": "Une autre personne (ou un autre onglet) a enregistré le brouillon après que vous avez commencé{version}. Vos modifications sont toujours dans l'éditeur."
+      },
+      "dialogoPublicar": {
+        "publicar": "Publier {nombreSitio}",
+        "publicarCambios": "Publier les modifications",
+        "soloPublicaSitioPrincipal": "Seul {nombreSitio} est publié. Le site principal et les autres établissements ne changent pas.",
+        "publicaSitioCompletoPaginas": "Le site complet est publié : pages, sections, style, en-tête, pied de page et menus du brouillon.",
+        "notaVersionOpcional": "Note de version (facultatif)",
+        "ejCartaTemporada": "Ex. : Carte de saison",
+        "apareceHistorialVersiones": "Apparaît dans l'historique des versions · {n}/{LIMITE_NOTA}",
+        "sitioPrincipalTieneCambios": "Le site principal a des modifications non publiées. Elles n'atteignent pas {nombreSitio} tant que vous ne publiez pas le site principal.",
+        "guardaVersion": "Une version est enregistrée",
+        "siAlgoNoQueda": "Si quelque chose ne va pas, restaurez-la depuis l'historique.",
+        "tusClientesVenEsta": "Vos clients voient cette version dès la fin de la publication.",
+        "webSigueMostrandoSitio": "Le site web continue d'afficher le site actuel jusqu'à ce que vous activiez la V2 sur ce site.",
+        "cancelar": "Annuler",
+        "publicarAhora": "Publier maintenant"
+      },
+      "panelHerencia": {
+        "herencia": "Héritage · {nombreSede}",
+        "loNoPersonalicesHereda": "Ce que vous ne personnalisez pas est hérité du site principal.",
+        "restablecer": "Réinitialiser",
+        "vaciarEstaSede": "Vider pour cet établissement",
+        "estaSeccionIgualSitio": "Cette section est identique à celle du site principal. Si vous la modifiez ici, elle devient propre à cet établissement ; le site principal ne change pas.",
+        "personalizadaEstaSede": "Personnalisée pour cet établissement."
+      },
+      "panelHistorial": {
+        "historialVersiones": "Historique des versions",
+        "versionesPublicadasEsteSitio": "Les versions publiées de ce site",
+        "borradorActual": "Brouillon actuel",
+        "guardado": "Enregistré {borradorActualizadoEn}",
+        "sinGuardarTodavia": "Pas encore enregistré",
+        "hayCambiosSinGuardar": "· il y a des modifications non enregistrées dans l'éditeur",
+        "reintentar": "Réessayer",
+        "todaviaNoHasPublicado": "Vous n'avez pas encore publié ce site.",
+        "version": "Version {numero}",
+        "version2": "· version {numero}",
+        "publicada": "Publiée",
+        "restaurarBorrador": "Restaurer dans le brouillon",
+        "restaurando": "Restauration",
+        "restaurarVersion": "Restaurer la version {numero} ?",
+        "restaurarVersion2": "Restaurer la version",
+        "restaurarDescripcion": "Elle est copiée dans votre brouillon et remplace les modifications non publiées. Ce qui est en ligne ne change pas tant que vous ne publiez pas.",
+        "restaurarDescripcionConLocales": "Elle est copiée dans votre brouillon et remplace les modifications non publiées (y compris celles que vous n'avez pas encore enregistrées). Ce qui est en ligne ne change pas tant que vous ne publiez pas."
+      },
+      "selectorSitio": {
+        "cambiosSinPublicar": "Modifications non publiées",
+        "sucursalInactiva": "Établissement inactif",
+        "sitioEdita": "Site en cours de modification : {nombreActivo}",
+        "editarSitio": "Modifier le site de",
+        "cadaSedePropioSitio": "Chaque établissement est son propre site, avec brouillon et publication séparés. « Hérite » utilise tout du site principal jusqu'à ce que vous personnalisiez quelque chose. Rien ne change sur le web avant de publier et d'activer la V2.",
+        "estado": {
+          "sitioActual": "Site actuel",
+          "hereda": "Hérite",
+          "v2EnLaWeb": "V2 en ligne",
+          "publicado": "Publié",
+          "borradorV2": "Brouillon V2",
+          "sitioPropio": "Site propre"
+        },
+        "sitioPrincipal": "Site principal"
+      },
+      "footerLayout": {
+        "default": {
+          "nombre": "Classique",
+          "descripcion": "4 colonnes avec logo, liens, contact et réseaux"
+        },
+        "three_columns": {
+          "nombre": "3 colonnes",
+          "descripcion": "3 colonnes équilibrées avec logo et liens"
+        },
+        "centered": {
+          "nombre": "Centré",
+          "descripcion": "Logo et liens centrés, style minimaliste"
+        },
+        "minimal": {
+          "nombre": "Minimal",
+          "descripcion": "Une seule ligne avec les liens essentiels"
+        },
+        "split": {
+          "nombre": "Divisé",
+          "descripcion": "2 grandes colonnes : marque et navigation"
+        }
+      },
+      "headerLayout": {
+        "default": {
+          "nombre": "Classique",
+          "descripcion": "Logo à gauche, menu au centre, actions à droite"
+        },
+        "centered": {
+          "nombre": "Logo centré",
+          "descripcion": "Logo centré en haut, menu en dessous dans une barre"
+        },
+        "split": {
+          "nombre": "Divisé",
+          "descripcion": "Logo à gauche, menu divisé gauche/droite, CTA à droite"
+        },
+        "minimal": {
+          "nombre": "Minimal",
+          "descripcion": "Logo + hamburger seulement, navigation dans un panneau"
+        },
+        "mega": {
+          "nombre": "Méga-menu",
+          "descripcion": "Logo à gauche, barre de menu en dessous avec méga-menu déroulant"
+        }
+      },
+      "chipHerencia": {
+        "heredado": "Hérité du site principal",
+        "personalizado": "Personnalisé",
+        "vacio": "Vide pour cet établissement",
+        "nuevo": "Cet établissement uniquement",
+        "compactoHereda": "Hérite",
+        "compactoPropia": "Propre"
+      },
+      "zonaGlobal": {
+        "titulo": {
+          "header": "En-tête",
+          "footer": "Pied de page"
+        },
+        "fila": {
+          "header": "En-tête (global)",
+          "footer": "Pied de page (global)"
+        },
+        "pestanas": {
+          "diseno": "Mise en page",
+          "contenido": "Contenu",
+          "estilo": "Style",
+          "celular": "Mobile"
+        }
       }
     }
   },

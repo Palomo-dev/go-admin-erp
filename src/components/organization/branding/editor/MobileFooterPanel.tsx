@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useTranslations } from 'next-intl';
 
 interface MobileFooterPanelProps {
   settings: {
@@ -23,11 +24,12 @@ export default function MobileFooterPanel({
   settings,
   onUpdate,
 }: MobileFooterPanelProps) {
+  const t = useTranslations('branding.editor');
   return (
     <div className="space-y-4">
       {/* Estilo del footer móvil */}
       <div className="space-y-1.5">
-        <Label className="text-xs">Estilo del footer móvil</Label>
+        <Label className="text-xs">{t('mobileFooterPanel.estiloFooterMovil')}</Label>
         <Select
           value={settings.mobile_footer_style}
           onValueChange={(v) => onUpdate({ mobile_footer_style: v })}
@@ -36,16 +38,16 @@ export default function MobileFooterPanel({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="accordion">Acordeón (expandible)</SelectItem>
-            <SelectItem value="stacked">Apilado (una columna)</SelectItem>
-            <SelectItem value="hidden">Oculto en móvil</SelectItem>
+            <SelectItem value="accordion">{t('mobileFooterPanel.acordeonExpandible')}</SelectItem>
+            <SelectItem value="stacked">{t('mobileFooterPanel.apiladoColumna')}</SelectItem>
+            <SelectItem value="hidden">{t('mobileFooterPanel.ocultoMovil')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {/* Mostrar redes en móvil */}
       <div className="flex items-center justify-between">
-        <Label className="text-xs">Mostrar redes en móvil</Label>
+        <Label className="text-xs">{t('mobileFooterPanel.mostrarRedesMovil')}</Label>
         <Switch
           checked={settings.mobile_footer_show_social}
           onCheckedChange={(v) => onUpdate({ mobile_footer_show_social: v })}
@@ -54,7 +56,7 @@ export default function MobileFooterPanel({
 
       {/* Mostrar horarios en móvil */}
       <div className="flex items-center justify-between">
-        <Label className="text-xs">Mostrar horarios en móvil</Label>
+        <Label className="text-xs">{t('mobileFooterPanel.mostrarHorariosMovil')}</Label>
         <Switch
           checked={settings.mobile_footer_show_hours}
           onCheckedChange={(v) => onUpdate({ mobile_footer_show_hours: v })}
@@ -63,11 +65,11 @@ export default function MobileFooterPanel({
 
       {/* Mockup móvil visual */}
       <div className="pt-2">
-        <p className="mb-2 text-xs font-medium text-muted-foreground">Vista previa móvil</p>
+        <p className="mb-2 text-xs font-medium text-muted-foreground">{t('mobileFooterPanel.vistaPreviaMovil')}</p>
         <div className="w-[200px] mx-auto bg-gray-100 dark:bg-gray-800 rounded-[20px] border-4 border-gray-300 dark:border-gray-600 p-2">
           {settings.mobile_footer_style === 'hidden' ? (
             <div className="h-20 flex items-center justify-center text-[8px] text-gray-400">
-              Footer oculto
+              {t('mobileFooterPanel.footerOculto')}
             </div>
           ) : settings.mobile_footer_style === 'accordion' ? (
             <div className="space-y-1">
@@ -108,9 +110,9 @@ export default function MobileFooterPanel({
           ) : (
             <div className="space-y-1">
               <div className="flex gap-1">
-                <div className="flex-1 bg-white dark:bg-gray-900 rounded p-1 text-center text-[7px] font-medium text-blue-500">Col 1</div>
-                <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded p-1 text-center text-[7px] text-gray-400">Col 2</div>
-                <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded p-1 text-center text-[7px] text-gray-400">Col 3</div>
+                <div className="flex-1 bg-white dark:bg-gray-900 rounded p-1 text-center text-[7px] font-medium text-blue-500">{t('mobileFooterPanel.col1')}</div>
+                <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded p-1 text-center text-[7px] text-gray-400">{t('mobileFooterPanel.col2')}</div>
+                <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded p-1 text-center text-[7px] text-gray-400">{t('mobileFooterPanel.col3')}</div>
               </div>
               <div className="bg-white dark:bg-gray-900 rounded p-1.5 space-y-1">
                 <div className="h-1 w-6 rounded-full bg-gray-300 dark:bg-gray-600" />

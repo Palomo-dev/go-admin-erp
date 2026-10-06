@@ -121,7 +121,7 @@ describe('venta por peso en un paso', () => {
     expect(abierto().abierto).toBe(false);
     expect(actualizar).toHaveBeenCalled();
     const [texto, opciones] = toastMock.success.mock.calls[0];
-    expect(texto).toMatch(/^Agregado: 0,735\skg · Queso campesino · \$\s13\.892$/);
+    expect(texto).toMatch(/^Agregado: 735\sg · Queso campesino · \$\s13\.892$/);
     expect(opciones.action.label).toBe('Deshacer');
     await act(async () => {
       opciones.action.onClick();
@@ -164,6 +164,30 @@ describe('venta por peso en un paso', () => {
     expect(toastMock.info).toHaveBeenCalledWith('Se canceló la pesada de «Queso campesino»: no estaba confirmada.');
     expect(abierto()).toMatchObject({ abierto: true, producto: JAMON });
     expect(POS.addItemToCart).not.toHaveBeenCalled();
+  });
+
+  it('producto en gramos: 0,735 kg en la báscula agrega 735 g a $ 12/g («735 g · $ 8.820»)', async () => {
+    lectura = leyendo(0.735);
+    const PECHUGA = { id: 41, name: 'Pechuga por kilo', price: 12, sale_mode: 'weight', qty_decimals: 0, unit_code: 'GR  ', track_stock: false } as unknown as Product;
+    const { hook } = montar();
+    await act(async () => {
+      await hook.result.current.abrirAgregar(PECHUGA);
+    });
+    expect(POS.addItemToCart).toHaveBeenCalledWith('c1', PECHUGA, 735, undefined, {
+      pesaje: expect.objectContaining({ origen: 'bascula', neto: 735, unidad: 'GR' }),
+    });
+    expect(toastMock.success.mock.calls[0][0]).toMatch(/^Agregado: 735\sg · Pechuga por kilo · \$\s8\.820$/);
+  });
+
+  it('sin precio en la lista (price null) consulta el vigente: «Pesar» no muestra $ 0', async () => {
+    configEquipo = null;
+    const SIN_PRECIO = { ...QUESO, id: 33, price: null } as unknown as Product;
+    const { hook } = montar();
+    await act(async () => {
+      await hook.result.current.abrirAgregar(SIN_PRECIO);
+    });
+    expect(POS.precioVigenteProducto).toHaveBeenCalledWith(33, 'Queso campesino');
+    expect((hook.result.current.dialogo as { props: { precioPorUnidad: number } }).props.precioPorUnidad).toBe(18900);
   });
 
   it('sin báscula: «Pesar» con el peso a mano, sin auto-agregar ni toast', async () => {

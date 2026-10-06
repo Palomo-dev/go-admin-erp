@@ -18,6 +18,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { DisplayCart, DisplayLine } from '@/lib/pos/display/protocol';
+import { formatWeighingQty } from '@/lib/pos/display/weighing';
 import {
   HIGHLIGHT_MS,
   counterReservePx,
@@ -193,7 +194,9 @@ export function OrderView({ cart, highlightUntil, brand, locale, showTaxBreakdow
               >
                 <div className="flex items-baseline justify-between gap-6">
                   <p className="min-w-0 truncate text-neutral-900">
-                    <span className="tabular-nums text-neutral-500">{t('qty', { qty: line.qty })}</span>{' '}
+                    <span className="tabular-nums text-neutral-500">
+                      {line.unit ? formatWeighingQty({ qty: line.qty, unit: line.unit, decimals: 2 }, locale ?? 'es-CO') : t('qty', { qty: line.qty })}
+                    </span>{' '}
                     <span className="font-medium">{line.name}</span>
                     {line.taxExcluded ? (
                       <span className="ml-2 text-[length:var(--pd-small)] text-neutral-400">{t('taxExcludedLine')}</span>

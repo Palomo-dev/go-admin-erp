@@ -263,6 +263,10 @@ export const TEXTOS_EDITOR = {
     yaPublicada: 'Esta versión ya estaba publicada',
     listoAdoptado: 'Tus clientes la verán en cuanto se actualice la caché.',
     listoSinAdoptar: 'Queda en el historial. La web sigue mostrando el sitio actual hasta activar el borrador.',
+    activaraWeb: 'Tu web pasará a mostrar este diseño. Antes mostraba el sitio anterior; puedes volver desde ⋯ › Desactivar.',
+    webActualizada: 'Publicado. Tu web se actualiza en 1 minuto',
+    activarFalloTitulo: 'Versión {n} publicada, pero tu web aún muestra el sitio anterior',
+    activarFalloDescripcion: 'No se pudo activar en la web. Inténtalo de nuevo con «Activar en la web».',
     error: 'No se pudo publicar',
     programada: 'Publicación programada',
     errorProgramar: 'No se pudo programar la publicación',
@@ -390,7 +394,11 @@ export const TEXTOS_EDITOR = {
     crearSitioTitulo: 'Crear el sitio de {sede}',
     crearSitioDescripcion:
       'La sede tendrá su propio borrador y su propia publicación. Hereda del sitio principal todo lo que no personalices. Nada se publica hasta que lo decidas.',
+    crearSitioDescripcionPlantilla:
+      'La sede nace con la plantilla de {tipo}: páginas, secciones y menús de ese tipo de negocio, en borrador. Hereda del sitio principal el logo, los colores y lo que no personalices. Nada se publica hasta que lo decidas.',
     crearSitio: 'Crear sitio de la sede',
+    sinSitioTitulo: '{sede} aún no tiene su sitio',
+    crearConPlantilla: 'Crear con la plantilla de {tipo}',
     borradorCreado: 'Borrador creado',
     sitioCreado: 'Sitio de {sede} creado',
     nadaCambia: 'Nada cambió en la web.',

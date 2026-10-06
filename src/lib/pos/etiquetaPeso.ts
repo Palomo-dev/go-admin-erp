@@ -18,6 +18,7 @@
 import { digitoControlGs1, esEan13Valido } from '@/lib/utils/codigoBarras';
 import { codigoUnidad, decimalesCantidad, esMedido, type ProductoModoVenta } from '@/lib/pos/peso/modoVenta';
 import { validarPesada, type Pesaje } from '@/lib/pos/peso/pesada';
+import { convertirPeso, unidadPeso } from '@printing/peso';
 
 export type ContenidoEtiqueta = 'weight' | 'price';
 
@@ -170,7 +171,8 @@ export type LineaEtiqueta =
 
 /**
  * Cantidad de la línea a partir de la etiqueta y del producto hallado por PLU.
- *   Peso embebido: neto = valor ÷ 1000 (gramos → kg, o milésimas de libra → lb).
+ *   Peso embebido: gramos → la unidad del producto (kg ÷ 1000, g tal cual), o
+ *   milésimas de libra → lb.
  *   Precio embebido: cantidad = importe ÷ precio vigente, redondeada a los
  *   decimales del producto; el precio de la línea sigue siendo el vigente (el
  *   impreso no manda) y se avisa si el importe recalculado difiere.
@@ -194,7 +196,10 @@ export function lineaDesdeEtiqueta(params: {
   let importeEtiqueta: number | null = null;
   const precio = Number(params.precioPorUnidad);
   if (etiqueta.contenido === 'weight') {
-    cantidadBruta = etiqueta.valor / 1000;
+    // Gramos (o milésimas de libra) a la unidad del producto, con la conversión
+    // única: 735 → 0,735 kg, o 735 g en un producto que se guarda en gramos.
+    const u = unidadPeso(producto.unit_code);
+    cantidadBruta = u === 'LB' || !u ? etiqueta.valor / 1000 : (convertirPeso(etiqueta.valor, 'GR', u) ?? etiqueta.valor / 1000);
   } else {
     if (!Number.isFinite(precio) || precio <= 0) return { ok: false, error: 'sin_precio', plu: etiqueta.plu };
     importeEtiqueta = etiqueta.valor / 10 ** decMoneda;

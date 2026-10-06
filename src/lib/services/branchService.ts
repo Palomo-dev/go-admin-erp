@@ -11,6 +11,7 @@ import {
 import { guardarZonaSucursal } from '@/lib/services/timezoneSettingsService';
 import { errorDeCupo } from '@/lib/services/cupoPlanService';
 import { normalizarHorario } from '@/lib/organizacion/horarioSede';
+import { sincronizarPlantillaSede } from '@/lib/website/v2/sincronizarPlantillaSede';
 
 /** Código de Postgres para «la columna no existe» (branches.timezone, fase A1). */
 const UNDEFINED_COLUMN = '42703';
@@ -276,6 +277,10 @@ export const branchService = {
       invalidateBranchTimezoneCache(branch.organization_id);
       notifyTimezonesUpdated();
 
+      // Con tipo de negocio, el sitio de la sede nace con la plantilla de ese tipo (en borrador).
+      // No bloquea ni hace fallar el alta: ver `sincronizarPlantillaSede`.
+      if (data?.branch_type) void sincronizarPlantillaSede(data.id);
+
       return data;
     } catch (err) {
       console.error('Error in createBranch:', err);
@@ -428,6 +433,17 @@ export const branchService = {
       await guardarZonaSucursal(branchId, zonaPedida);
     }
 
+    // Tipo anterior: si cambia, el sitio de la sede pasa a la plantilla del tipo nuevo (o se
+    // ofrece aplicarla si ya tiene contenido propio). Solo se lee cuando el tipo viaja.
+    let tipoAnterior: string | null | undefined;
+    if (formattedBranch.branch_type !== undefined) {
+      tipoAnterior =
+        existingForPublish?.branch_type ??
+        ((await supabase.from('branches').select('branch_type').eq('id', branchId).maybeSingle()).data as { branch_type: string | null } | null)
+          ?.branch_type ??
+        null;
+    }
+
     const { data, error } = await supabase
       .from('branches')
       .update(formattedBranch)
@@ -438,6 +454,10 @@ export const branchService = {
     if (error) {
       console.error('Error updating branch:', error);
       throw new Error(error.message);
+    }
+
+    if (tipoAnterior !== undefined && data?.branch_type && data.branch_type !== tipoAnterior) {
+      void sincronizarPlantillaSede(branchId);
     }
 
     // Invalidar el caché de zonas: si no, la UI sigue formateando con la vieja.

@@ -4,7 +4,7 @@
  *
  * «Comer aquí» (QR de mesa) llega de dos formas:
  * - `delivery_type = 'dine_in'` con `restaurant_table_id` (migración E1,
- *   20261007130000_web_orders_dine_in);
+ *   20261006124644_web_orders_dine_in);
  * - mientras E1 no esté aplicada, el sitio lo guarda como `pickup` con la
  *   mesa en `internal_notes` empezando por «[Comer aquí]» (contrato del
  *   paquete A: `MARCA_COMER_AQUI` en goadmin-websites/lib/orders/estados-pedido.ts).

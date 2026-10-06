@@ -11,7 +11,8 @@
  *   secciones.
  * - Una PLANTILLA es estructura + estilo: el orden y las variantes de las
  *   secciones de Inicio y su estilo. Usarla crea un borrador y conserva el
- *   contenido (`usarPlantilla.ts`).
+ *   contenido («Solo estilo», `usarPlantilla.ts`) o arma el sitio completo
+ *   («Plantilla completa», `v2/plantillaCompleta.ts`).
  *
  * De dónde sale:
  * - Restaurante: las 8 plantillas aprobadas en Figma (A/06b, A/07h), con sus

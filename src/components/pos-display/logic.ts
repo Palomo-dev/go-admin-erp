@@ -574,11 +574,13 @@ export function sanitizeDisplayLine(value: unknown): DisplayLine | null {
   const total = finiteOrNull(value.total);
   if (id === null || name === null || qty === null || unitPrice === null || total === null) return null;
   const discount = finiteOrNull(value.discount);
+  const unit = nonEmptyString(value.unit);
   return {
     id,
     name,
     variant: sanitizeVariant(value.variant),
     qty,
+    ...(unit ? { unit } : {}),
     unitPrice,
     total,
     modifiers: sanitizeModifiers(value.modifiers),

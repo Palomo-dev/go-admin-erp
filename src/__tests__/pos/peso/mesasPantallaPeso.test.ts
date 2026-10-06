@@ -1,6 +1,6 @@
 /**
  * Productos por peso fuera del mostrador (PRODUCTOS-POR-PESO-BASCULA.md §10):
- * mesas (carrito, traslado, cuenta dividida), comandas «0,500 kg», pantalla
+ * mesas (carrito, traslado, cuenta dividida), comandas «500 g», pantalla
  * del cliente («Pesando…» y el NaN de «1,5»), «Lleve X pague Y» y las
  * cantidades de Stock, Movimientos, Kardex y Lotes.
  *
@@ -88,7 +88,7 @@ describe('mesas: carrito de «Agregar productos»', () => {
     expect(resumenProductoEnCarrito(c, 1)).toBe('1,235 kg');
     expect(resumenProductoEnCarrito(c, 5)).toBe('2');
     expect(resumenProductoEnCarrito(c, 99)).toBeNull();
-    expect(formatoCantidadCarrito(c.get(clavePesada(1, 2))!)).toBe('0,500 kg');
+    expect(formatoCantidadCarrito(c.get(clavePesada(1, 2))!)).toBe('500 g');
   });
 
   it('agregar no muta el carrito anterior', () => {
@@ -112,10 +112,10 @@ describe('mesas: cantidades con decimales (antes parseInt)', () => {
     expect(leerCantidadLinea('0', 3)).toBeNull();
   });
 
-  it('muestra «0,500 kg» en la línea por peso y «3» en la de platos', () => {
-    expect(formatoCantidadLinea(0.5, pesada)).toBe('0,500 kg');
+  it('muestra «500 g» en la línea por peso y «3» en la de platos', () => {
+    expect(formatoCantidadLinea(0.5, pesada)).toBe('500 g');
     expect(formatoCantidadLinea(3, plato)).toBe('3');
-    expect(formatoCantidadLinea('0.735', pesada, 'en-US')).toBe('0.735 kg');
+    expect(formatoCantidadLinea('0.735', pesada, 'en-US')).toBe('735 g');
   });
 
   it('traslado: mayor que 0, con los decimales de la línea y no más de lo que hay', () => {
@@ -136,7 +136,7 @@ describe('mesas: cantidades con decimales (antes parseInt)', () => {
   });
 });
 
-describe('comandas y cocina: «0,500 kg Carne»', () => {
+describe('comandas y cocina: «500 g Carne»', () => {
   const registro: RegistroComanda = {
     id: 9,
     created_at: '2026-09-29T17:00:00Z',
@@ -156,13 +156,13 @@ describe('comandas y cocina: «0,500 kg Carne»', () => {
     expect(items[1]).not.toHaveProperty('unit');
   });
 
-  it('la comanda impresa dice «0,500 kg Carne» y «2x Limonada»', () => {
+  it('la comanda impresa dice «500 g Carne» y «2x Limonada»', () => {
     const items = itemsParaImprimir(ticketRondaDesdeRegistro(registro), textos);
     const html = buildKitchenTicketsHTML(
       [{ ticketId: 9, station: 'all', createdAt: '2026-09-29T17:00:00Z', items: items.map((i) => ({ ...i, notes: i.notes })) }],
       getPaperSpec('80mm'),
     );
-    expect(html).toContain('0,500 kg Carne');
+    expect(html).toContain('500 g Carne');
     expect(html).toContain('2x Limonada');
   });
 });
@@ -187,7 +187,7 @@ describe('pantalla del cliente', () => {
   it('la pesada se arma con el importe exacto y se formatea con los decimales de la moneda', () => {
     const w = buildDisplayWeighing({ name: 'Queso', qty: 0.735, unit: 'kg', decimals: 3, unitPrice: 18900, moneyDecimals: 0 });
     expect(w).toEqual({ name: 'Queso', qty: 0.735, unit: 'kg', decimals: 3, unitPrice: 18900, total: 0.735 * 18900, moneyDecimals: 0 });
-    expect(formatWeighingQty(w!, 'es-CO')).toBe('0,735 kg');
+    expect(formatWeighingQty(w!, 'es-CO')).toBe('735 g');
     expect(formatWeighingMoney(w!.total, 'COP', 'es-CO', 0).replace(/\s/g, ' ')).toBe('$ 13.892');
     expect(buildDisplayWeighing({ name: '', qty: 1, unit: 'kg', decimals: 3, unitPrice: 1 })).toBeNull();
     expect(buildDisplayWeighing({ name: 'Queso', qty: 0, unit: 'kg', decimals: 3, unitPrice: 18900 })?.qty).toBeNull();

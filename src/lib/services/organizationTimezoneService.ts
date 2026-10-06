@@ -11,7 +11,6 @@
 // ============================================================
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase/config';
 import { DEFAULT_TIMEZONE } from '@/lib/utils/timezone';
 import { avisarFallbackZonaHoraria } from '@/lib/utils/timezoneFallback';
 
@@ -20,6 +19,20 @@ const timezoneCache = new Map<number, string>();
 
 // Promesas en vuelo para evitar consultas duplicadas concurrentes
 const inflight = new Map<number, Promise<string>>();
+
+/**
+ * Cliente browser, cargado solo cuando el llamador no pasa `db`.
+ *
+ * No se importa en el nivel del módulo: `@/lib/supabase/config` crea el
+ * cliente al importarse, y este servicio lo importan también módulos de
+ * servidor (avisos, CRM, facturación) que siempre pasan su propio cliente.
+ * Con la importación estática, cargar una ruta sin variables de entorno
+ * (tests, build) fallaba con «supabaseUrl is required».
+ */
+async function clienteNavegador(): Promise<SupabaseClient> {
+  const { supabase } = await import('@/lib/supabase/config');
+  return supabase;
+}
 
 /**
  * Valida que un string sea un timezone IANA soportado por el navegador.
@@ -56,7 +69,7 @@ function isValidTimezone(tz: string | null | undefined): boolean {
  */
 export async function getOrganizationTimezone(
   organizationId: number,
-  db: SupabaseClient = supabase
+  db?: SupabaseClient
 ): Promise<string> {
   // 1. Cache
   const cached = timezoneCache.get(organizationId);
@@ -68,11 +81,15 @@ export async function getOrganizationTimezone(
 
   const promise = (async (): Promise<string> => {
     try {
+      // Dentro del try: si el cliente browser no se puede crear, cae al
+      // fallback con aviso, como cualquier otro error de lectura.
+      const cliente = db ?? (await clienteNavegador());
+
       // 2a. Leer organizations.timezone (fuente canonica).
       // maybeSingle, no single: con una organizacion que la sesion no puede
       // leer (RLS, id inexistente) single hace que PostgREST responda 406 y
       // ensucie la consola en cada intento; data null cae al siguiente respaldo.
-      const { data: orgData, error: orgError } = await db
+      const { data: orgData, error: orgError } = await cliente
         .from('organizations')
         .select('timezone')
         .eq('id', organizationId)
@@ -88,7 +105,7 @@ export async function getOrganizationTimezone(
       }
 
       // 3. Fallback legacy: organization_settings clave 'calendar'
-      const { data: settingsData, error: settingsError } = await db
+      const { data: settingsData, error: settingsError } = await cliente
         .from('organization_settings')
         .select('settings')
         .eq('organization_id', organizationId)

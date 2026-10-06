@@ -1,27 +1,64 @@
-import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { useTranslations } from 'next-intl';
-import { Branch, BranchFormData, BRANCH_TYPES, OpeningHours, BranchFeatures } from '@/types/branch';
+'use client';
+
+/**
+ * Formulario de sucursal (Figma 08, «Escritorio / Sucursales — nueva sucursal»
+ * 426:189181 y «— editar» 426:190009; auditoría C.5 #129-#175).
+ *
+ * Bloques en tarjetas, campos del kit (`FormField`, `Input`, `Select`,
+ * `SearchSelect`, `PhoneInput`, `Switch`, `Checkbox`, `CampoHora`) en rejillas
+ * de 2 y 3 columnas que en móvil pasan a una. Lo que no está en el Figma y sí
+ * en el producto se conserva con el mismo lenguaje visual:
+ * - Zona horaria de la sede (heredar o propia): en Ubicación, bajo Código
+ *   postal y Coordenadas.
+ * - Aviso de subdominio heredado: la sede ya no publica por subdominio
+ *   (`<sub>.goadmin.io` el sitio lo resuelve como OTRA organización), así que
+ *   el campo no se ofrece; si la sede tiene uno guardado se avisa.
+ *
+ * La cabecera («Nueva Sucursal», chip de cupo y «×») y el pie (Cancelar +
+ * Guardar) los pone quien lo contiene (`SucursalesPantalla`, `PanelAdaptable`);
+ * aquí `submitForm()` valida y entrega los datos al mismo `onSubmit` de antes.
+ */
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import {
-  RESERVED_SLUGS,
-  validateSlug,
-  validateSubdomain,
-  validateDomain,
-} from '@/lib/utils/webIdentityValidation';
-import { MapPinIcon, PhoneIcon, EnvelopeIcon, BuildingOfficeIcon, IdentificationIcon, UserIcon } from '@heroicons/react/24/outline';
-import { ManagerSelector } from './ManagerSelector';
-import LocationSelector from '../common/LocationSelector';
+  Building2,
+  Check,
+  Clock,
+  Globe,
+  Link as LinkIcono,
+  MapPin,
+  Phone,
+  Plus,
+  ShoppingCart,
+  Trash2,
+  UserCircle,
+  type LucideIcon,
+} from 'lucide-react';
+import { Branch, BranchFormData, BRANCH_TYPES, OpeningHours, BranchFeatures } from '@/types/branch';
+import type { TurnoHorario } from '@/types/branch';
+import { RESERVED_SLUGS, validateSlug, validateSubdomain, validateDomain } from '@/lib/utils/webIdentityValidation';
 import { PhoneInput, mensajeErrorTelefono } from '@/components/kit/PhoneInput';
-import { paisIsoDeOrganizacion } from '@/lib/utils/telefono';
+import { FormField } from '@/components/kit/FormField';
+import { AvisoTonal } from '@/components/kit/AvisoTonal';
+import { CampoHora } from '@/components/kit/CampoHora';
+import { clasesBoton } from '@/components/kit/botonClases';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchSelect } from '@/components/ui/search-select';
+import { formatearTelefono, paisIsoDeOrganizacion } from '@/lib/utils/telefono';
 import { supabase } from '@/lib/supabase/config';
+import { memberService, type Member } from '@/lib/services/memberService';
 import { BuyDomainDialog, AddCustomDomainDialog } from '@/components/organization/dominios';
 import { useSession } from '@/lib/hooks/useSession';
-import { ShoppingCart, LinkIcon } from 'lucide-react';
 import ImageUploader from '@/components/common/ImageUploader';
 import { BranchTimezoneField } from './BranchTimezoneField';
+import { UbicacionSucursal, type UbicacionSede } from './UbicacionSucursal';
 import { errorTurnos, esHorarioPorDefecto, normalizarDia, turnosDelDia } from '@/lib/organizacion/horarioSede';
 import { urlPublicaSede } from '@/lib/organizacion/sucursales';
 import { slugChocaConPagina } from '@/lib/organizacion/slugSede';
-import type { TurnoHorario } from '@/types/branch';
+import { cn } from '@/utils/Utils';
 
 type BranchFormProps = {
   initialData?: Partial<Branch>;
@@ -30,7 +67,7 @@ type BranchFormProps = {
   submitLabel?: string;
   hideSubmitButton?: boolean;
   noFormWrapper?: boolean;
-  hideStatusSection?: boolean; // Hide Estado section (for signup flow)
+  hideStatusSection?: boolean; // Oculta Gerente, Identidad web y Estado (flujo de registro)
   /**
    * Sin la barra superior («Nueva Sucursal» + Guardar): la pone quien lo
    * contiene. Organización › Sucursales lo abre en un panel del kit que ya
@@ -43,31 +80,128 @@ export interface BranchFormRef {
   submitForm: () => Promise<void>;
 }
 
-const defaultOpeningHours = JSON.stringify({
+const DIAS_SEMANA = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
+const MAX_TURNOS = 4;
+
+// Sin horario guardado se propone este (domingo cerrado, sin horas: igual que antes).
+const HORARIO_POR_DEFECTO = {
   monday: { open: '09:00', close: '18:00', closed: false },
   tuesday: { open: '09:00', close: '18:00', closed: false },
   wednesday: { open: '09:00', close: '18:00', closed: false },
   thursday: { open: '09:00', close: '18:00', closed: false },
   friday: { open: '09:00', close: '18:00', closed: false },
   saturday: { open: '10:00', close: '15:00', closed: false },
-  sunday: { closed: true }
-}, null, 2);
+  sunday: { closed: true },
+} as unknown as OpeningHours;
 
-const defaultFeatures = JSON.stringify({
-  has_wifi: false,
-  has_parking: false,
-  has_delivery: false,
-  has_outdoor_seating: false,
-  is_wheelchair_accessible: false,
-  has_air_conditioning: false,
-}, null, 2);
+const CARACTERISTICAS = [
+  'has_wifi',
+  'has_parking',
+  'has_delivery',
+  'has_outdoor_seating',
+  'is_wheelchair_accessible',
+  'has_air_conditioning',
+] as const;
+
+const CARACTERISTICAS_POR_DEFECTO: BranchFeatures = Object.fromEntries(CARACTERISTICAS.map((c) => [c, false]));
+
+/** Marca del `Select` de tipo de negocio para «Sin especificar» (Radix no admite `''`). */
+const SIN_TIPO = '__sin_tipo__';
+
+/** Tarjeta de bloque del Figma: borde suave, título de 14 con icono de 16. */
+function Bloque({ icono: Icono, titulo, extra, children }: { icono: LucideIcon; titulo: string; extra?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <section className="rounded-xl border border-line bg-surface p-4" aria-label={titulo}>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <Icono aria-hidden="true" className="size-4 shrink-0 text-fg-secondary" strokeWidth={1.75} />
+        <h3 className="text-sm font-semibold text-fg">{titulo}</h3>
+        {extra}
+      </div>
+      <div className="flex flex-col gap-3">{children}</div>
+    </section>
+  );
+}
+
+/** Interruptor con texto y ayuda (Sitio publicado, bloque Estado). */
+function FilaSwitch({ id, etiqueta, ayuda, marcado, onCambio, caja }: { id: string; etiqueta: string; ayuda?: string; marcado: boolean; onCambio: (v: boolean) => void; caja?: boolean }) {
+  return (
+    <div className={cn('flex min-w-0 flex-col gap-1.5', caja && 'rounded-lg border border-line p-3')}>
+      <div className="flex items-center gap-2">
+        <Switch id={id} checked={marcado} onCheckedChange={onCambio} aria-describedby={ayuda ? `${id}-ayuda` : undefined} />
+        <label htmlFor={id} className="cursor-pointer text-sm font-medium text-fg">
+          {etiqueta}
+        </label>
+        {!caja && ayuda && (
+          <span id={`${id}-ayuda`} className="hidden text-xs text-fg-muted sm:inline">
+            {ayuda}
+          </span>
+        )}
+      </div>
+      {ayuda && (caja ? (
+        <p id={`${id}-ayuda`} className="text-xs text-fg-muted">{ayuda}</p>
+      ) : (
+        <p className="text-xs text-fg-muted sm:hidden" aria-hidden="true">{ayuda}</p>
+      ))}
+    </div>
+  );
+}
+
+/** Gerente con el `SearchSelect` del kit (Figma «Asignar Gerente»). */
+function SelectorGerente({ organizationId, valor, onCambio, disabled }: { organizationId: number; valor: string; onCambio: (id: string) => void; disabled?: boolean }) {
+  const t = useTranslations('org.acceso.sucursales.formulario.campos');
+  const [miembros, setMiembros] = useState<Member[] | null>(null);
+  const [fallo, setFallo] = useState(false);
+
+  useEffect(() => {
+    if (!organizationId) return;
+    let vivo = true;
+    memberService
+      .getAvailableManagers(organizationId)
+      .then((m) => vivo && setMiembros(m))
+      .catch(() => vivo && setFallo(true));
+    return () => {
+      vivo = false;
+    };
+  }, [organizationId]);
+
+  const opciones = useMemo(
+    () =>
+      (miembros ?? []).map((m) => {
+        const perfil = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+        const rol = Array.isArray(m.roles) ? m.roles[0] : m.roles;
+        const nombre = [perfil?.first_name, perfil?.last_name].filter(Boolean).join(' ') || perfil?.email || m.user_id;
+        return { value: m.user_id, label: rol?.name ? `${nombre} (${rol.name})` : nombre, sublabel: perfil?.email };
+      }),
+    [miembros],
+  );
+
+  return (
+    <FormField etiqueta={t('gerente')} ayuda={t('gerenteAyuda')} error={fallo ? t('gerenteError') : null}>
+      {(campo) => (
+        <SearchSelect
+          id={campo.id}
+          aria-describedby={campo['aria-describedby']}
+          options={opciones}
+          value={valor || 'none'}
+          onValueChange={(v) => onCambio(v === 'none' ? '' : v)}
+          noneLabel={t('gerenteNinguno')}
+          placeholder={miembros === null && !fallo ? t('gerenteCargando') : t('gerenteElegir')}
+          searchPlaceholder={t('gerenteBuscar')}
+          emptyText={t('gerenteVacio')}
+          disabled={disabled || miembros === null}
+          className="h-10 w-full"
+        />
+      )}
+    </FormField>
+  );
+}
 
 export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
   {
     initialData = {},
     onSubmit,
     isLoading = false,
-    submitLabel = 'Guardar Sucursal',
+    submitLabel,
     hideSubmitButton = false,
     noFormWrapper = false,
     hideStatusSection = false,
@@ -75,39 +209,25 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
   },
   ref
 ) => {
-  // Parse JSON strings to objects for UI manipulation
-  const parseOpeningHours = (json: string | undefined): OpeningHours => {
-    try {
-      return json ? JSON.parse(json) : JSON.parse(defaultOpeningHours);
-    } catch {
-      return JSON.parse(defaultOpeningHours);
-    }
-  };
+  const t = useTranslations('org.acceso.sucursales.formulario');
+  const tC = useTranslations('org.acceso.sucursales.formulario.campos');
+  const tW = useTranslations('org.acceso.sucursales.formulario.web');
+  const tE = useTranslations('org.acceso.sucursales.formulario.estado');
+  const tH = useTranslations('org.acceso.sucursales.formulario.horario');
+  const locale = useLocale();
+  const nombreDia = (dia: string) => ((DIAS_SEMANA as readonly string[]).includes(dia) ? tH(`dias.${dia}`) : dia);
 
-  const parseFeatures = (json: string | undefined): BranchFeatures => {
-    try {
-      return json ? JSON.parse(json) : JSON.parse(defaultFeatures);
-    } catch {
-      return JSON.parse(defaultFeatures);
-    }
-  };
+  const [openingHoursObj, setOpeningHoursObj] = useState<OpeningHours>(() => initialData.opening_hours ?? structuredClone(HORARIO_POR_DEFECTO));
 
-  // UI state for opening hours and features
-  const [openingHoursObj, setOpeningHoursObj] = useState<OpeningHours>(
-    parseOpeningHours(initialData.opening_hours ? JSON.stringify(initialData.opening_hours) : undefined)
-  );
-  
   // ¿El usuario tocó el horario? Una sede sin horario guardado (nueva, o existente con
   // opening_hours en null) que no lo toca se guarda SIN horario en vez del valor por defecto:
   // con él, el sitio web decía «Cerrado» a restaurantes abiertos.
   const [horarioTocado, setHorarioTocado] = useState(false);
-  const tH = useTranslations('org.acceso.sucursales.formulario.horario');
-  const DIAS_SEMANA = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
-  const nombreDia = (dia: string) => ((DIAS_SEMANA as readonly string[]).includes(dia) ? tH(`dias.${dia}`) : dia);
 
-  const [featuresObj, setFeaturesObj] = useState<BranchFeatures>(
-    parseFeatures(initialData.features ? JSON.stringify(initialData.features) : undefined)
-  );
+  const [featuresObj, setFeaturesObj] = useState<BranchFeatures>(() => initialData.features ?? { ...CARACTERISTICAS_POR_DEFECTO });
+
+  // La capacidad se edita como texto: vacía = NULL en la base (y 0 es un valor válido).
+  const [capacidad, setCapacidad] = useState<string>(initialData.capacity != null ? String(initialData.capacity) : '');
 
   const [form, setForm] = useState<BranchFormData>({
     name: initialData.name || '',
@@ -115,7 +235,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
     city: initialData.city || '',
     state: initialData.state || '',
     country: initialData.country || 'Colombia',
-    country_code: initialData.country_code || 'COL',
+    country_code: initialData.country_code || (initialData.country ? '' : 'COL'),
     state_code: initialData.state_code || '',
     municipality_id: initialData.municipality_id || '',
     postal_code: initialData.postal_code || '',
@@ -127,9 +247,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
     status: initialData.status || 'active',
     is_main: hideStatusSection ? true : (initialData.is_main || false), // Force true during signup
     tax_identification: initialData.tax_identification || '',
-    opening_hours: initialData.opening_hours ? JSON.stringify(initialData.opening_hours, null, 2) : defaultOpeningHours,
-    features: initialData.features ? JSON.stringify(initialData.features, null, 2) : defaultFeatures,
-    capacity: initialData.capacity || undefined,
+    capacity: initialData.capacity ?? undefined,
     branch_type: initialData.branch_type || '',
     zone: initialData.zone || '',
     timezone: initialData.timezone ?? null,
@@ -145,6 +263,8 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
     is_web_published: initialData.is_web_published ?? false,
     organization_id: initialData.organization_id!,
   });
+
+  const fijar = <K extends keyof BranchFormData>(campo: K, valor: BranchFormData[K]) => setForm((prev) => ({ ...prev, [campo]: valor }));
 
   // Subdominio y dominio propio de la organización, para el preview de URL
   // pública por path (https://{org-subdomain}.goadmin.io/{slug}).
@@ -171,34 +291,48 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
   }, [initialData.organization_id]);
 
   const [error, setError] = useState<string | null>(null);
+  const [errorNombre, setErrorNombre] = useState<string | null>(null);
+  const [errorCapacidad, setErrorCapacidad] = useState<string | null>(null);
+  const refError = useRef<HTMLDivElement>(null);
+  const refNombre = useRef<HTMLInputElement>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    const checked = (e.target as HTMLInputElement).checked;
-    const type = (e.target as HTMLInputElement).type;
-    
+  useEffect(() => {
+    if (error) refError.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [error]);
+
+  const ubicacion: UbicacionSede = {
+    country: form.country || '',
+    countryCode: form.country_code || '',
+    state: form.state || '',
+    stateCode: form.state_code || '',
+    city: form.city || '',
+    municipalityId: form.municipality_id || '',
+  };
+  const cambiarUbicacion = useCallback((u: UbicacionSede) => {
     setForm((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value,
+      country: u.country,
+      country_code: u.countryCode,
+      state: u.state,
+      state_code: u.stateCode,
+      city: u.city,
+      municipality_id: u.municipalityId,
     }));
-  };
-  
-  // Handle opening hours changes
-  const handleHoursChange = (day: string, field: string, value: string | boolean) => {
+  }, []);
+
+  // Abrir o cerrar un día.
+  const cambiarAbierto = (day: string, abierto: boolean) => {
     setHorarioTocado(true);
-    setOpeningHoursObj(prev => ({
-      ...prev,
-      [day]: {
-        ...prev[day as keyof OpeningHours],
-        [field]: value
-      }
-    }));
+    setOpeningHoursObj((prev) => {
+      const actual = prev[day as keyof OpeningHours] ?? { open: '09:00', close: '18:00', closed: false };
+      return { ...prev, [day]: { ...actual, closed: !abierto } };
+    });
   };
 
   // Turnos partidos: open/close quedan como apertura del primero y cierre del último.
   const setTurnos = (day: string, turnos: TurnoHorario[]) => {
     setHorarioTocado(true);
-    setOpeningHoursObj(prev => {
+    setOpeningHoursObj((prev) => {
       const actual = prev[day as keyof OpeningHours];
       const base = { closed: actual?.closed ?? false, open: turnos[0]?.open ?? '09:00', close: turnos[turnos.length - 1]?.close ?? '18:00' };
       return { ...prev, [day]: turnos.length >= 2 ? { ...base, tramos: turnos } : base };
@@ -206,37 +340,22 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
   };
   const turnosParaEditar = (day: string): TurnoHorario[] => {
     const d = openingHoursObj[day as keyof OpeningHours];
-    const turnos = turnosDelDia({ ...d, closed: false });
+    const turnos = turnosDelDia({ ...d, closed: false } as NonNullable<typeof d>);
     return turnos.length > 0 ? turnos : [{ open: d?.open || '09:00', close: d?.close || '18:00' }];
   };
   const horarioSinRevisar = !horarioTocado && esHorarioPorDefecto(openingHoursObj);
-  
-  // Handle features changes
-  const handleFeatureChange = (feature: string, checked: boolean) => {
-    setFeaturesObj(prev => ({
-      ...prev,
-      [feature]: checked
-    }));
-  };
 
-  // Normaliza subdomain y custom_domain al ingresar: minúsculas, trim y sin
-  // espacios internos (recomendación QA R3 — no opcional).
-  const handleDomainChange = (field: 'subdomain' | 'custom_domain', value: string) => {
-    const normalized = value.toLowerCase().trim().replace(/\s+/g, '');
-    setForm(prev => ({ ...prev, [field]: normalized }));
-  };
+  // Normaliza el dominio propio al ingresar: minúsculas, trim y sin espacios
+  // internos (recomendación QA R3 — no opcional).
+  const cambiarDominio = (value: string) => fijar('custom_domain', value.toLowerCase().trim().replace(/\s+/g, ''));
 
   // Valida que una URL sea http(s):// válida (no fiarse solo del type="url").
-  const validateUrl = (url: string, field: string): string | null => {
-    if (!url) return null;
+  const urlValida = (url: string): boolean => {
+    if (!url) return true;
     try {
-      const parsed = new URL(url);
-      if (!['http:', 'https:'].includes(parsed.protocol)) {
-        return `${field} debe ser una URL http(s):// válida`;
-      }
-      return null;
+      return ['http:', 'https:'].includes(new URL(url).protocol);
     } catch {
-      return `${field} no es una URL válida`;
+      return false;
     }
   };
 
@@ -245,32 +364,50 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     setError(null);
+    setErrorNombre(null);
+    setErrorCapacidad(null);
 
-    // Construir formWithPublished PRIMERO: si el usuario ingresa subdomain o
-    // custom_domain sin marcar el toggle, se auto-publica. Usar variable local
-    // (no setForm + leer form) para evitar closure stale.
+    // Nombre obligatorio de verdad (antes `required` inoperante: no hay <form>).
+    if (!form.name.trim()) {
+      setErrorNombre(tC('nombreObligatorio'));
+      refNombre.current?.focus();
+      return;
+    }
+
+    const capacidadTexto = capacidad.trim();
+    const capacidadNumero = capacidadTexto === '' ? null : Number(capacidadTexto);
+    if (capacidadNumero !== null && (!Number.isInteger(capacidadNumero) || capacidadNumero < 0)) {
+      setErrorCapacidad(tC('capacidadInvalida'));
+      return;
+    }
+
+    // Construir formWithPublished PRIMERO: si el usuario ingresa custom_domain sin
+    // marcar el toggle, se auto-publica. Usar variable local (no setForm + leer
+    // form) para evitar closure stale.
     // El subdominio propio de la sede ya no publica: `<sub>.goadmin.io` el sitio lo resuelve
     // como OTRA organización. Publicar es explícito o por dominio propio.
     const formWithPublished = {
       ...form,
+      name: form.name.trim(),
+      capacity: capacidadNumero,
       is_web_published: form.is_web_published || !!form.custom_domain,
     };
 
     // Validar branch_type obligatorio al publicar
     if (formWithPublished.is_web_published && !formWithPublished.branch_type) {
-      setError('El tipo de negocio (branch_type) es obligatorio para publicar el outlet en la web');
+      setError(t('errores.tipoObligatorio'));
       return;
     }
 
     // Validar slug obligatorio al publicar
     if (formWithPublished.is_web_published && !formWithPublished.slug) {
-      setError('El slug es obligatorio para publicar el outlet en la web');
+      setError(t('errores.slugObligatorio'));
       return;
     }
 
     const errorTelefono = mensajeErrorTelefono(form.phone);
     if (errorTelefono) {
-      setError(`Teléfono: ${errorTelefono}`);
+      setError(t('errores.telefono', { detalle: errorTelefono }));
       return;
     }
 
@@ -285,11 +422,8 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
     if (customDomainError && formWithPublished.custom_domain) { setError(customDomainError); return; }
 
     // Validar URLs de logo y cover
-    const logoUrlError = validateUrl(formWithPublished.website_logo_url || '', 'La URL del logo');
-    if (logoUrlError) { setError(logoUrlError); return; }
-
-    const coverUrlError = validateUrl(formWithPublished.website_cover_url || '', 'La URL de portada');
-    if (coverUrlError) { setError(coverUrlError); return; }
+    if (!urlValida(formWithPublished.website_logo_url || '')) { setError(t('errores.urlLogo')); return; }
+    if (!urlValida(formWithPublished.website_cover_url || '')) { setError(t('errores.urlPortada')); return; }
 
     // Turnos del horario: sin solapes y solo el último puede pasar la medianoche.
     for (const [dia, valor] of Object.entries(openingHoursObj)) {
@@ -330,10 +464,10 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
       };
       await onSubmit(formWithJson);
     } catch (err) {
-      setError((err instanceof Error && err.message) || 'Error al guardar la sucursal');
+      setError((err instanceof Error && err.message) || t('errores.generico'));
     }
   };
-  
+
   // Expose methods to parent component.
   // submitForm llama handleSubmit internamente (no onSubmit directo) para que
   // el flujo signup (BranchStep invoca formRef.current.submitForm()) no se salte
@@ -342,422 +476,279 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
     submitForm: () => handleSubmit()
   }));
 
-  // Form content to be rendered inside or outside a form element
+  const numero = useMemo(() => new Intl.NumberFormat(locale, { maximumFractionDigits: 4, minimumFractionDigits: 4 }), [locale]);
+  const coordenadas =
+    form.latitude != null && form.longitude != null
+      ? `${numero.format(Number(form.latitude))} · ${numero.format(Number(form.longitude))}`
+      : '';
+
+  const tipoNegocio = form.branch_type || '';
+  const urlPublica = urlPublicaSede(
+    { custom_domain: form.custom_domain, slug: form.slug },
+    { dominio: orgCustomDomain, subdominio: orgSubdomain },
+  );
+  // Línea de ayuda bajo «Tipo de negocio». Si existe la clave de la plantilla del
+  // sitio (`web.plantillaDelTipo`, con {tipo}), manda; si no, la ayuda de siempre.
+  const ayudaTipo =
+    tipoNegocio && tW.has('plantillaDelTipo')
+      ? tW('plantillaDelTipo', { tipo: tW(`tipos.${tipoNegocio}`) })
+      : tW('tipoAyuda');
+
   const formContent = (
-    <>
-      {/* Toolbar */}
+    <div className="flex flex-col gap-3">
+      {/* Barra propia solo cuando nadie más pone cabecera (hoy no hay otro llamador). */}
       {!ocultarCabecera && (
-      <div className="sticky top-0 z-10 flex justify-between items-center p-4 sm:p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700 border-b dark:border-gray-700">
-        <div className="flex items-center gap-3">
-          <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg">
-            <BuildingOfficeIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-          </div>
-          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">
-            {initialData.id ? 'Editar Sucursal' : 'Nueva Sucursal'}
-          </h2>
-        </div>
-        {!hideSubmitButton && (
-          <div className="flex space-x-2">
-            <button
-              type="submit"
-              className="btn btn-primary btn-sm md:btn-md flex items-center gap-2 shadow-sm hover:shadow transition-all duration-200"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <span className="loading loading-spinner loading-xs"></span>
-                  <span>Guardando...</span>
-                </>
-              ) : (
-                <>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span>{submitLabel}</span>
-                </>
-              )}
+        <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
+          <h2 className="text-lg font-semibold text-fg">{initialData.id ? t('editar') : t('nueva')}</h2>
+          {!hideSubmitButton && (
+            <button type="submit" className={clasesBoton()} disabled={isLoading} aria-busy={isLoading || undefined}>
+              {isLoading ? t('guardando') : submitLabel ?? t('guardar')}
             </button>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
       )}
-      {/* Contenido del formulario */}
-      <div className="p-4 sm:p-6 space-y-8 bg-white dark:bg-gray-900">
-        {/* Información básica */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-5 border border-gray-100 dark:border-gray-700 shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <IdentificationIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Información básica</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Nombre *</label>
-              <input
-                type="text"
-                name="name"
-                value={form.name}
-                onChange={handleChange}
-                required
-                placeholder="Nombre de la sucursal"
-                className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-300"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Código de sucursal</label>
-              <input
-                type="text"
-                name="branch_code"
-                value={form.branch_code}
-                readOnly
-                className="input input-bordered w-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed border-gray-200 dark:border-gray-600"
-              />
-              <p className="text-xs text-gray-400 mt-1">Asignado automáticamente</p>
-            </div>
-          </div>
-        </div>
 
-        {/* Ubicación */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-5 border border-gray-100 dark:border-gray-700 shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <MapPinIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Ubicación</h3>
-          </div>
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Dirección</label>
-              <input
-                type="text"
-                name="address"
-                value={form.address}
-                onChange={handleChange}
-                placeholder="Dirección completa"
-                className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-300"
-              />
-            </div>
-            <LocationSelector
-              value={{
-                country: form.country || '',
-                countryCode: form.country_code || '',
-                state: form.state || '',
-                stateCode: form.state_code || '',
-                city: form.city || '',
-                municipalityId: form.municipality_id || '',
+      {/* Información básica */}
+      <Bloque icono={Building2} titulo={t('secciones.basica')}>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <FormField etiqueta={tC('nombre')} obligatorio error={errorNombre}>
+            <Input
+              ref={refNombre}
+              className="h-10"
+              name="name"
+              value={form.name}
+              onChange={(e) => {
+                fijar('name', e.target.value);
+                if (errorNombre) setErrorNombre(null);
               }}
-              onChange={(locData) => setForm({
-                ...form,
-                country: locData.country,
-                country_code: locData.countryCode,
-                state: locData.state,
-                state_code: locData.stateCode,
-                city: locData.city,
-                municipality_id: locData.municipalityId,
-              })}
-              layout="stacked"
+              placeholder={tC('nombrePlaceholder')}
             />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Código Postal</label>
-                <input
-                  type="text"
-                  name="postal_code"
-                  value={form.postal_code}
-                  onChange={handleChange}
-                  placeholder="Código postal"
-                  className="input input-bordered w-full focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-300"
-                />
-              </div>
-              {/* Fase A3: zona propia de la sucursal (por defecto hereda). */}
-              <BranchTimezoneField
-                value={form.timezone}
-                onChange={(timezone) => setForm((prev) => ({ ...prev, timezone }))}
-              />
-            </div>
-          </div>
+          </FormField>
+          <FormField etiqueta={tC('codigo')} ayuda={tC('codigoAyuda')}>
+            <Input className="h-10 bg-subtle text-fg-secondary" name="branch_code" value={form.branch_code} readOnly />
+          </FormField>
         </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <FormField etiqueta={tC('nit')}>
+            <Input className="h-10" name="tax_identification" value={form.tax_identification || ''} onChange={(e) => fijar('tax_identification', e.target.value)} placeholder={tC('nitPlaceholder')} />
+          </FormField>
+          <FormField etiqueta={tC('zona')}>
+            <Input className="h-10" name="zone" value={form.zone || ''} onChange={(e) => fijar('zone', e.target.value)} placeholder={tC('zonaPlaceholder')} />
+          </FormField>
+          <FormField etiqueta={tC('capacidad')} error={errorCapacidad}>
+            <Input
+              className="h-10"
+              name="capacity"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              step={1}
+              value={capacidad}
+              onChange={(e) => {
+                setCapacidad(e.target.value);
+                if (errorCapacidad) setErrorCapacidad(null);
+              }}
+              placeholder={tC('capacidadPlaceholder')}
+            />
+          </FormField>
+        </div>
+      </Bloque>
 
-        {/* Contacto */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-5 border border-gray-100 dark:border-gray-700 shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <PhoneIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Información de contacto</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="relative">
-              <label htmlFor="branch-phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Teléfono</label>
+      {/* Ubicación */}
+      <Bloque icono={MapPin} titulo={t('secciones.ubicacion')}>
+        <FormField etiqueta={tC('direccion')}>
+          <Input className="h-10" name="address" value={form.address || ''} onChange={(e) => fijar('address', e.target.value)} placeholder={tC('direccionPlaceholder')} />
+        </FormField>
+        <UbicacionSucursal valor={ubicacion} onCambio={cambiarUbicacion} />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <FormField etiqueta={tC('postal')}>
+            <Input className="h-10" name="postal_code" value={form.postal_code || ''} onChange={(e) => fijar('postal_code', e.target.value)} placeholder={tC('postalPlaceholder')} />
+          </FormField>
+          <FormField etiqueta={tC('coordenadas')} ayuda={tC('coordenadasAyuda')}>
+            <Input className="h-10 bg-subtle text-fg-secondary" value={coordenadas} placeholder={tC('sinCoordenadas')} readOnly />
+          </FormField>
+        </div>
+        {/* No está en el Figma: zona horaria de la sede (heredar de la organización o propia). */}
+        <BranchTimezoneField value={form.timezone} onChange={(timezone) => fijar('timezone', timezone)} />
+      </Bloque>
+
+      {/* Contacto */}
+      <Bloque icono={Phone} titulo={t('secciones.contacto')}>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <FormField
+            etiqueta={tC('telefono')}
+            id="branch-phone"
+            ayuda={form.phone ? tC('telefonoAyuda', { numero: formatearTelefono(form.phone) }) : tC('telefonoAyudaVacio')}
+          >
+            {(campo) => (
               <PhoneInput
-                id="branch-phone"
+                id={campo.id}
+                aria-describedby={campo['aria-describedby']}
                 tamano="md"
                 name="phone"
-                value={form.phone}
-                onChange={(v) => setForm((prev) => ({ ...prev, phone: v }))}
+                value={form.phone || ''}
+                onChange={(v) => fijar('phone', v)}
                 defaultIso={paisIsoDeOrganizacion(form.country_code, form.country) ?? undefined}
               />
-            </div>
-            <div className="relative">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Email</label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 dark:text-gray-400">
-                  <EnvelopeIcon className="h-4 w-4" />
-                </span>
-                <input
-                  type="email"
-                  name="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  placeholder="sucursal@empresa.com"
-                  className="input input-bordered w-full pl-10 focus:ring-2 focus:ring-blue-500 transition-all duration-200 bg-gray-50 hover:bg-white dark:bg-gray-700 dark:text-gray-100 dark:border-gray-300"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Gerente - oculto durante signup (hideStatusSection) porque la org aún no existe */}
-        {!hideStatusSection && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-5 border border-gray-100 dark:border-gray-700 shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <UserIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Gerente de sucursal</h3>
-          </div>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Asignar Gerente
-              </label>
-              <ManagerSelector
-                organizationId={form.organization_id}
-                currentManagerId={form.manager_id || null}
-                onManagerSelect={(managerId) => {
-                  setForm(prev => ({ ...prev, manager_id: managerId || '' }));
-                }}
-                disabled={isLoading}
-              />
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                El gerente tendrá permisos administrativos sobre esta sucursal.
-              </p>
-            </div>
-          </div>
-        </div>
-        )}
-
-        {/* Horarios */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-5 border border-gray-100 dark:border-gray-700 shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Horarios de apertura</h3>
-            {horarioSinRevisar && (
-              <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
-                {tH('sinRevisar')}
-              </span>
             )}
+          </FormField>
+          <FormField etiqueta={tC('email')}>
+            <Input className="h-10" type="email" name="email" value={form.email || ''} onChange={(e) => fijar('email', e.target.value)} placeholder={tC('emailPlaceholder')} />
+          </FormField>
+        </div>
+      </Bloque>
+
+      {/* Gerente — oculto durante signup (hideStatusSection) porque la org aún no existe */}
+      {!hideStatusSection && (
+        <Bloque icono={UserCircle} titulo={t('secciones.gerente')}>
+          <SelectorGerente organizationId={form.organization_id} valor={form.manager_id || ''} onCambio={(id) => fijar('manager_id', id)} disabled={isLoading} />
+        </Bloque>
+      )}
+
+      {/* Horarios */}
+      <Bloque
+        icono={Clock}
+        titulo={t('secciones.horario')}
+        extra={
+          horarioSinRevisar && (
+            <span className="inline-flex h-[22px] items-center rounded-full border border-line-warning bg-warning-subtle px-2 text-xs font-medium text-warning-text">
+              {tH('sinRevisar')}
+            </span>
+          )
+        }
+      >
+        <div className="overflow-hidden rounded-lg border border-line">
+          <div className="hidden grid-cols-[160px_120px_180px_180px_1fr] bg-subtle px-3 py-2 text-xs font-medium text-fg-secondary sm:grid" aria-hidden="true">
+            <span>{tH('dia')}</span>
+            <span>{tH('abierto')}</span>
+            <span>{tH('aperturaCol')}</span>
+            <span>{tH('cierreCol')}</span>
+            <span />
           </div>
-          {horarioSinRevisar && (
-            <p className="mb-3 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-200">
-              {tH('avisoSinRevisar')}
-            </p>
-          )}
-          <div className="overflow-x-auto">
-            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-1">
-              <table className="w-full min-w-[600px] border-collapse">
-                <thead>
-                  <tr className="bg-blue-50 dark:bg-blue-900/20 rounded-t-lg">
-                    <th className="p-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300 rounded-tl-lg">{tH('dia')}</th>
-                    <th className="p-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">{tH('abierto')}</th>
-                    <th className="p-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300 rounded-tr-lg" colSpan={2}>{tH('turnos')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {DIAS_SEMANA.map((day, index) => {
-                    const dayLabel = nombreDia(day);
-                    
-                    const dayHours = openingHoursObj[day as keyof OpeningHours] || { open: '09:00', close: '18:00', closed: false };
-                    const isLast = index === 6;
-                    
-                    return (
-                      <tr key={day} className={`${isLast ? '' : 'border-b border-gray-200 dark:border-gray-700'} hover:bg-gray-50 dark:hover:bg-gray-700/50`}>
-                        <td className={`p-3 text-sm font-medium text-gray-800 dark:text-gray-200 ${isLast ? 'rounded-bl-lg' : ''}`}>{dayLabel}</td>
-                        <td className="p-3">
-                          <label className="flex items-center space-x-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={!dayHours.closed}
-                              onChange={(e) => handleHoursChange(day, 'closed', !e.target.checked)}
-                              className="checkbox checkbox-sm checkbox-primary"
-                            />
-                            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{!dayHours.closed ? tH('si') : tH('no')}</span>
-                          </label>
-                        </td>
-                        <td className={`p-3 ${isLast ? 'rounded-br-lg' : ''}`} colSpan={2}>
-                          {/* Turnos del día: uno o varios (turno partido: 12:00–15:00 y 19:00–23:00). */}
-                          <div className="flex flex-col gap-2">
-                            {turnosParaEditar(day).map((turno, i, turnos) => (
-                              <div key={i} className="flex flex-wrap items-center gap-2">
-                                <input
-                                  type="time"
-                                  aria-label={tH('aperturaTurno', { dia: dayLabel, n: i + 1 })}
-                                  value={turno.open}
-                                  onChange={(e) => setTurnos(day, turnos.map((t, j) => (j === i ? { ...t, open: e.target.value } : t)))}
-                                  disabled={dayHours.closed}
-                                  className="input input-bordered input-sm w-full max-w-[120px] bg-white dark:bg-gray-700 dark:text-gray-100 disabled:bg-gray-100 dark:disabled:bg-gray-100 disabled:text-gray-400"
-                                />
-                                <span className="text-xs text-gray-500" aria-hidden="true">{tH('a')}</span>
-                                <input
-                                  type="time"
-                                  aria-label={tH('cierreTurno', { dia: dayLabel, n: i + 1 })}
-                                  value={turno.close}
-                                  onChange={(e) => setTurnos(day, turnos.map((t, j) => (j === i ? { ...t, close: e.target.value } : t)))}
-                                  disabled={dayHours.closed}
-                                  className="input input-bordered input-sm w-full max-w-[120px] bg-white dark:bg-gray-700 dark:text-gray-100 disabled:bg-gray-100 dark:disabled:bg-gray-100 disabled:text-gray-400"
-                                />
-                                {turnos.length > 1 && !dayHours.closed && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setTurnos(day, turnos.filter((_, j) => j !== i))}
-                                    className="text-xs font-medium text-red-600 hover:underline dark:text-red-400"
-                                  >
-                                    {tH('quitarTurno')}
-                                  </button>
-                                )}
-                              </div>
-                            ))}
-                            {!dayHours.closed && turnosParaEditar(day).length < 4 && (
+          <ul className="divide-y divide-line">
+            {DIAS_SEMANA.map((day) => {
+              const dayLabel = nombreDia(day);
+              const dayHours = openingHoursObj[day] || { open: '09:00', close: '18:00', closed: false };
+              const abierto = !dayHours.closed;
+              const turnos = turnosParaEditar(day);
+              const idSwitch = `horario-${day}`;
+              return (
+                <li key={day} className="px-3 py-2">
+                  {turnos.map((turno, i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        'grid grid-cols-2 items-center gap-x-3 gap-y-2 sm:grid-cols-[160px_120px_180px_180px_1fr] sm:gap-x-0 sm:gap-y-0',
+                        i > 0 && 'mt-2',
+                        !abierto && i > 0 && 'hidden',
+                      )}
+                    >
+                      {i === 0 ? (
+                        <label htmlFor={idSwitch} className="text-sm font-medium text-fg">{dayLabel}</label>
+                      ) : (
+                        <span className="hidden sm:block" />
+                      )}
+                      {i === 0 ? (
+                        <div className="flex items-center justify-end gap-2 sm:justify-start">
+                          <Switch id={idSwitch} checked={abierto} onCheckedChange={(v) => cambiarAbierto(day, v)} />
+                          <span className="w-6 text-xs text-fg-secondary">{abierto ? tH('si') : tH('no')}</span>
+                        </div>
+                      ) : (
+                        <span className="col-span-2 text-xs text-fg-secondary sm:col-span-1">{tH('turnoN', { n: i + 1 })}</span>
+                      )}
+                      {abierto ? (
+                        <>
+                          <CampoHora
+                            className="w-full sm:w-40"
+                            valor={turno.open}
+                            onValorChange={(v) => setTurnos(day, turnos.map((x, j) => (j === i ? { ...x, open: v } : x)))}
+                            aria-label={tH('aperturaTurno', { dia: dayLabel, n: i + 1 })}
+                          />
+                          <CampoHora
+                            className="w-full sm:w-40"
+                            valor={turno.close}
+                            onValorChange={(v) => setTurnos(day, turnos.map((x, j) => (j === i ? { ...x, close: v } : x)))}
+                            aria-label={tH('cierreTurno', { dia: dayLabel, n: i + 1 })}
+                          />
+                          <div className="col-span-2 flex sm:col-span-1">
+                            {i === 0 ? (
+                              turnos.length < MAX_TURNOS && (
+                                <button
+                                  type="button"
+                                  className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}
+                                  onClick={() => setTurnos(day, [...turnos, { open: '19:00', close: '23:00' }])}
+                                >
+                                  <Plus aria-hidden="true" className="size-4" strokeWidth={1.75} />
+                                  {tH('anadirTurno')}
+                                </button>
+                              )
+                            ) : (
                               <button
                                 type="button"
-                                onClick={() => setTurnos(day, [...turnosParaEditar(day), { open: '19:00', close: '23:00' }])}
-                                className="self-start text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+                                className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}
+                                onClick={() => setTurnos(day, turnos.filter((_, j) => j !== i))}
                               >
-                                {tH('anadirTurno')}
+                                <Trash2 aria-hidden="true" className="size-4" strokeWidth={1.75} />
+                                {tH('quitarTurno')}
                               </button>
                             )}
                           </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                        </>
+                      ) : (
+                        <>
+                          <span className="hidden text-xs text-fg-muted sm:block">{tH('cerrado')}</span>
+                          <span className="hidden text-xs text-fg-muted sm:block">{tH('cerrado')}</span>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </li>
+              );
+            })}
+          </ul>
         </div>
-        {/* Características */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-5 border border-gray-100 dark:border-gray-700 shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Características</h3>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            <div className="bg-gray-50 hover:bg-blue-50 dark:bg-gray-700/50 dark:hover:bg-blue-900/20 p-3 rounded-lg transition-all duration-200">
-              <label className="flex items-center space-x-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={featuresObj.has_wifi || false}
-                  onChange={(e) => handleFeatureChange('has_wifi', e.target.checked)}
-                  className="checkbox checkbox-sm checkbox-primary"
-                />
-                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">WiFi</span>
-              </label>
-            </div>
-            <div className="bg-gray-50 hover:bg-blue-50 dark:bg-gray-700/50 dark:hover:bg-blue-900/20 p-3 rounded-lg transition-all duration-200">
-              <label className="flex items-center space-x-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={featuresObj.has_parking || false}
-                  onChange={(e) => handleFeatureChange('has_parking', e.target.checked)}
-                  className="checkbox checkbox-sm checkbox-primary"
-                />
-                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Estacionamiento</span>
-              </label>
-            </div>
-            <div className="bg-gray-50 hover:bg-blue-50 dark:bg-gray-700/50 dark:hover:bg-blue-900/20 p-3 rounded-lg transition-all duration-200">
-              <label className="flex items-center space-x-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={featuresObj.has_delivery || false}
-                  onChange={(e) => handleFeatureChange('has_delivery', e.target.checked)}
-                  className="checkbox checkbox-sm checkbox-primary"
-                />
-                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Delivery</span>
-              </label>
-            </div>
-            <div className="bg-gray-50 hover:bg-blue-50 dark:bg-gray-700/50 dark:hover:bg-blue-900/20 p-3 rounded-lg transition-all duration-200">
-              <label className="flex items-center space-x-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={featuresObj.has_outdoor_seating || false}
-                  onChange={(e) => handleFeatureChange('has_outdoor_seating', e.target.checked)}
-                  className="checkbox checkbox-sm checkbox-primary"
-                />
-                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Área exterior</span>
-              </label>
-            </div>
-            <div className="bg-gray-50 hover:bg-blue-50 dark:bg-gray-700/50 dark:hover:bg-blue-900/20 p-3 rounded-lg transition-all duration-200">
-              <label className="flex items-center space-x-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={featuresObj.is_wheelchair_accessible || false}
-                  onChange={(e) => handleFeatureChange('is_wheelchair_accessible', e.target.checked)}
-                  className="checkbox checkbox-sm checkbox-primary"
-                />
-                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Accesible para sillas de ruedas</span>
-              </label>
-            </div>
-            <div className="bg-gray-50 hover:bg-blue-50 dark:bg-gray-700/50 dark:hover:bg-blue-900/20 p-3 rounded-lg transition-all duration-200">
-              <label className="flex items-center space-x-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={featuresObj.has_air_conditioning || false}
-                  onChange={(e) => handleFeatureChange('has_air_conditioning', e.target.checked)}
-                  className="checkbox checkbox-sm checkbox-primary"
-                />
-                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Aire acondicionado</span>
-              </label>
-            </div>
-          </div>
+        <div className="flex flex-col gap-1 text-xs text-fg-muted">
+          {horarioSinRevisar && <p>«{tH('sinRevisar')}»: {tH('avisoSinRevisar')}</p>}
+          <p>{tH('ayudaTurnos')}</p>
         </div>
+      </Bloque>
 
-        {/* Identidad Web — oculta durante signup (hideStatusSection) */}
-        {!hideStatusSection && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-5 border border-gray-100 dark:border-gray-700 shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-            </svg>
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Identidad Web</h3>
-          </div>
+      {/* Características */}
+      <Bloque icono={Check} titulo={t('secciones.caracteristicas')}>
+        <div className="flex flex-wrap gap-x-5 gap-y-2.5">
+          {CARACTERISTICAS.map((c) => (
+            <label key={c} htmlFor={`caracteristica-${c}`} className="flex cursor-pointer items-center gap-2 text-sm text-fg">
+              <Checkbox id={`caracteristica-${c}`} checked={!!featuresObj[c]} onCheckedChange={(v) => setFeaturesObj((prev) => ({ ...prev, [c]: v === true }))} />
+              {t(`caracteristicas.${c}`)}
+            </label>
+          ))}
+        </div>
+      </Bloque>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* branch_type — select */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                Tipo de negocio
-              </label>
-              <select
-                name="branch_type"
-                value={form.branch_type || ''}
-                onChange={handleChange}
-                className="select select-bordered w-full bg-gray-50 dark:bg-gray-700 dark:text-gray-100"
-              >
-                <option value="">Sin especificar</option>
-                {BRANCH_TYPES.map(bt => (
-                  <option key={bt.value} value={bt.value}>{bt.label}</option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-400 mt-1">
-                Determina las secciones disponibles en el editor de branding.
-              </p>
-            </div>
-
-            {/* slug */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                Slug (URL path)
-              </label>
-              <input
-                type="text"
+      {/* Identidad web — oculta durante signup (hideStatusSection) */}
+      {!hideStatusSection && (
+        <Bloque icono={Globe} titulo={t('secciones.web')}>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <FormField etiqueta={tW('tipo')} ayuda={ayudaTipo}>
+              {(campo) => (
+                <Select value={tipoNegocio || SIN_TIPO} onValueChange={(v) => fijar('branch_type', v === SIN_TIPO ? '' : (v as BranchFormData['branch_type']))}>
+                  <SelectTrigger id={campo.id} aria-describedby={campo['aria-describedby']} className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={SIN_TIPO}>{tW('tipoNinguno')}</SelectItem>
+                    {BRANCH_TYPES.map((bt) => (
+                      <SelectItem key={bt.value} value={bt.value}>
+                        {tW(`tipos.${bt.value}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </FormField>
+            <FormField etiqueta={tW('slug')} ayuda={tW('slugAyuda')}>
+              <Input
+                className="h-10"
                 name="slug"
                 value={form.slug || ''}
                 onChange={(e) => {
@@ -770,232 +761,108 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
                     .replace(/[^a-z0-9-]/g, '')
                     .replace(/-+/g, '-')
                     .replace(/^-|-$/g, '');
-                  setForm(prev => ({ ...prev, slug: normalized }));
+                  fijar('slug', normalized);
                 }}
-                placeholder="hotel, restaurante-1"
-                className="input input-bordered w-full bg-gray-50 dark:bg-gray-700 dark:text-gray-100"
+                placeholder={tW('slugPlaceholder')}
               />
-              <p className="text-xs text-gray-400 mt-1">
-                Solo minúsculas, números y guiones. Único por organización.
-              </p>
-              {/* Warning: slug reservado del router público */}
-              {form.slug && RESERVED_SLUGS.includes(form.slug) && (
-                <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800 dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-200">
-                  ⚠️ El slug &quot;{form.slug}&quot; está reservado para el router público
-                  (menu, categorias, productos, checkout, etc.). Si lo usas, el
-                  outlet no será accesible por path.
-                </div>
-              )}
-              {/* Advertencia al editar slug de un outlet ya publicado */}
-              {initialData.id && initialData.slug && initialData.slug !== form.slug && (
-                <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800 dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-200">
-                  ⚠️ Cambiar el slug romperá las URLs existentes
-                  ({initialData.slug} → {form.slug}). Los bookmarks y enlaces
-                  indexados dejarán de funcionar.
-                </div>
-              )}
+            </FormField>
+          </div>
+
+          {/* subdomain: ya no se ofrece. `<sub>.goadmin.io` el sitio lo resuelve como OTRA
+              organización; la sede se publica por ruta (/<slug>) o por dominio propio. */}
+          {initialData.subdomain && (
+            <AvisoTonal tono="advertencia" compacto titulo={tW('subdominioLegado', { subdominio: initialData.subdomain })} />
+          )}
+
+          <FormField etiqueta={tW('dominio')} ayuda={tW('dominioAyuda')}>
+            <Input className="h-10" name="custom_domain" value={form.custom_domain || ''} onChange={(e) => cambiarDominio(e.target.value)} placeholder={tW('dominioPlaceholder')} />
+          </FormField>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })} onClick={() => setConnectDomainOpen(true)}>
+              <LinkIcono aria-hidden="true" className="size-4" strokeWidth={1.75} />
+              {tW('conectar')}
+            </button>
+            <button type="button" className={clasesBoton({ tamano: 'sm' })} onClick={() => setBuyDomainOpen(true)}>
+              <ShoppingCart aria-hidden="true" className="size-4" strokeWidth={1.75} />
+              {tW('comprar')}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <ImageUploader
+                currentImageUrl={form.website_logo_url}
+                onImageUploaded={(url) => fijar('website_logo_url', url)}
+                onImageRemoved={() => fijar('website_logo_url', '')}
+                bucket="logos"
+                folder="branches"
+                label={tW('logo')}
+                maxSizeMB={2}
+                acceptedFormats={['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']}
+              />
+              <p className="text-xs text-fg-muted">{tW('logoAyuda')}</p>
             </div>
-
-            {/* subdomain: ya no se ofrece. `<sub>.goadmin.io` el sitio lo resuelve como OTRA
-                organización; la sede se publica por ruta (/<slug>) o por dominio propio. */}
-            {initialData.subdomain && (
-              <div className="md:col-span-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-200">
-                Esta sede tiene el subdominio «{initialData.subdomain}», que el sitio web no usa para la
-                sede. Su dirección pública es la de abajo.
-              </div>
-            )}
-
-            {/* custom_domain */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                Dominio personalizado
-              </label>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  type="text"
-                  name="custom_domain"
-                  value={form.custom_domain || ''}
-                  onChange={(e) => handleDomainChange('custom_domain', e.target.value)}
-                  placeholder="miempresa.com"
-                  className="input input-bordered flex-1 bg-gray-50 dark:bg-gray-700 dark:text-gray-100 min-w-0"
-                />
-                <div className="flex gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setConnectDomainOpen(true)}
-                    className="flex items-center justify-center gap-1 px-3 py-2 text-xs font-medium border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors dark:border-gray-600 dark:text-gray-200 dark:bg-gray-800 dark:hover:bg-gray-900 whitespace-nowrap flex-1 sm:flex-none"
-                    title="Conectar un dominio que ya compraste"
-                  >
-                    <LinkIcon className="h-4 w-4 shrink-0" />
-                    Conectar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setBuyDomainOpen(true)}
-                    className="flex items-center justify-center gap-1 px-3 py-2 text-xs font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors whitespace-nowrap flex-1 sm:flex-none"
-                    title="Comprar un dominio nuevo"
-                  >
-                    <ShoppingCart className="h-4 w-4 shrink-0" />
-                    Comprar
-                  </button>
-                </div>
-              </div>
-              <p className="text-xs text-gray-400 mt-1">
-                Único global. Requiere configurar DNS (registro A/CNAME).
-              </p>
-            </div>
-
-            {/* Logo + Cover en dos columnas */}
-            <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <ImageUploader
-                  currentImageUrl={form.website_logo_url}
-                  onImageUploaded={(url) => setForm(prev => ({ ...prev, website_logo_url: url }))}
-                  onImageRemoved={() => setForm(prev => ({ ...prev, website_logo_url: '' }))}
-                  bucket="logos"
-                  folder="branches"
-                  label="Logo del sitio web"
-                  maxSizeMB={2}
-                  acceptedFormats={['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']}
-                />
-                <p className="text-xs text-gray-400 mt-1">
-                  Reemplaza el logo de la organización para este outlet.
-                </p>
-              </div>
-              <div>
-                <ImageUploader
-                  currentImageUrl={form.website_cover_url}
-                  onImageUploaded={(url) => setForm(prev => ({ ...prev, website_cover_url: url }))}
-                  onImageRemoved={() => setForm(prev => ({ ...prev, website_cover_url: '' }))}
-                  bucket="organization_images"
-                  folder="branches/covers"
-                  label="Imagen de portada"
-                  maxSizeMB={5}
-                  acceptedFormats={['image/jpeg', 'image/png', 'image/webp']}
-                />
-              </div>
-            </div>
-
-            {/* is_web_published — toggle */}
-            <div className="md:col-span-2">
-              <div className="bg-gray-50 hover:bg-blue-50 dark:bg-gray-700/50 dark:hover:bg-blue-900/20 p-3 rounded-lg transition-all duration-200">
-                <label className="flex items-start space-x-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    name="is_web_published"
-                    checked={!!form.is_web_published}
-                    onChange={handleChange}
-                    className="checkbox checkbox-sm checkbox-primary mt-0.5"
-                  />
-                  <span>
-                    <span className="block text-sm font-medium text-gray-800 dark:text-gray-200">
-                      Sitio web publicado
-                    </span>
-                    <span className="block text-xs text-gray-500 dark:text-gray-400">
-                      Si está activo, el outlet tiene sitio público accesible por
-                      su ruta (/slug) o por su dominio propio.
-                    </span>
-                  </span>
-                </label>
-              </div>
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <ImageUploader
+                currentImageUrl={form.website_cover_url}
+                onImageUploaded={(url) => fijar('website_cover_url', url)}
+                onImageRemoved={() => fijar('website_cover_url', '')}
+                bucket="organization_images"
+                folder="branches/covers"
+                label={tW('portada')}
+                maxSizeMB={5}
+                acceptedFormats={['image/jpeg', 'image/png', 'image/webp']}
+              />
+              <p className="text-xs text-fg-muted">{tW('portadaAyuda')}</p>
             </div>
           </div>
+
+          <FilaSwitch id="branch-publicado" etiqueta={tW('publicado')} ayuda={tW('publicadoAyuda')} marcado={!!form.is_web_published} onCambio={(v) => fijar('is_web_published', v)} />
 
           {/* Preview de URL pública */}
           {form.is_web_published && (
-            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
-              <p className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-1">
-                URL pública del outlet:
-              </p>
-              <code className="text-sm text-blue-800 dark:text-blue-200 break-all">
-                {urlPublicaSede(
-                  { custom_domain: form.custom_domain, slug: form.slug },
-                  { dominio: orgCustomDomain, subdominio: orgSubdomain },
-                ) ?? (form.slug
-                  ? 'Configura un dominio o subdominio de organización para tener URL pública'
-                  : '— configura el slug o un dominio propio para ver la URL')}
-              </code>
+            <div className="rounded-lg border border-line-info bg-info-subtle px-3 py-2.5">
+              <p className="text-xs font-medium text-info-text">{tW('urlPublica')}</p>
+              <p className="break-all text-sm text-link">{urlPublica ?? (form.slug ? tW('urlSinDominio') : tW('urlSinSlug'))}</p>
             </div>
           )}
-        </div>
-        )}
 
-        {/* Estado - Hidden during signup */}
-        {!hideStatusSection && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-5 border border-gray-100 dark:border-gray-700 shadow-sm mb-8">
-            <div className="flex items-center gap-2 mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Estado</h3>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-4 sm:gap-8">
-            <div className="bg-gray-50 hover:bg-blue-50 dark:bg-gray-700/50 dark:hover:bg-blue-900/20 p-3 rounded-lg transition-all duration-200">
-              <label className="flex items-center space-x-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  name="is_main"
-                  checked={!!form.is_main}
-                  onChange={handleChange}
-                  className="checkbox checkbox-sm checkbox-primary"
-                />
-                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Sucursal principal</span>
-              </label>
-            </div>
-            <div className="bg-gray-50 hover:bg-blue-50 dark:bg-gray-700/50 dark:hover:bg-blue-900/20 p-3 rounded-lg transition-all duration-200">
-              <label className="flex items-center space-x-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  name="is_active"
-                  checked={!!form.is_active}
-                  onChange={handleChange}
-                  className="checkbox checkbox-sm checkbox-primary"
-                />
-                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Sucursal activa</span>
-              </label>
-            </div>
-            <div className="bg-gray-50 hover:bg-blue-50 dark:bg-gray-700/50 dark:hover:bg-blue-900/20 p-3 rounded-lg transition-all duration-200">
-              <label className="flex items-start space-x-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  name="is_web_stock_source"
-                  checked={!!form.is_web_stock_source}
-                  onChange={handleChange}
-                  className="checkbox checkbox-sm checkbox-primary mt-0.5"
-                />
-                <span>
-                  <span className="block text-sm font-medium text-gray-800 dark:text-gray-200">Surte la tienda web</span>
-                  <span className="block text-xs text-gray-500 dark:text-gray-400">El sitio web usa el inventario de esta sucursal</span>
-                </span>
-              </label>
-            </div>
-          </div>
-        </div>
-        )}
+          {/* Slug reservado del router público */}
+          {form.slug && RESERVED_SLUGS.includes(form.slug) && (
+            <AvisoTonal tono="advertencia" compacto titulo={tW('slugReservado', { slug: form.slug })} />
+          )}
+          {/* Cambiar el slug de una sede ya existente */}
+          {initialData.id && initialData.slug && initialData.slug !== form.slug && (
+            <AvisoTonal tono="advertencia" compacto titulo={tW('slugCambio', { antes: initialData.slug, despues: form.slug || '—' })} />
+          )}
+        </Bloque>
+      )}
 
-      {/* Error */}
-      <div className="mt-6">
-        {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded-md shadow-sm mb-4">
-            <div className="flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
-            </div>
+      {/* Estado — oculto durante signup */}
+      {!hideStatusSection && (
+        <Bloque icono={Check} titulo={t('secciones.estado')}>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <FilaSwitch caja id="branch-principal" etiqueta={tE('principal')} ayuda={tE('principalAyuda')} marcado={!!form.is_main} onCambio={(v) => fijar('is_main', v)} />
+            <FilaSwitch caja id="branch-activa" etiqueta={tE('activa')} ayuda={tE('activaAyuda')} marcado={!!form.is_active} onCambio={(v) => fijar('is_active', v)} />
+            <FilaSwitch caja id="branch-surte" etiqueta={tE('surte')} ayuda={tE('surteAyuda')} marcado={!!form.is_web_stock_source} onCambio={(v) => fijar('is_web_stock_source', v)} />
           </div>
-        )}
-      </div>
-      </div>
-    </>
+        </Bloque>
+      )}
+
+      {error && (
+        <div ref={refError}>
+          <AvisoTonal tono="peligro" rol="alert" titulo={t('errores.titulo')} descripcion={error} />
+        </div>
+      )}
+    </div>
   );
-  
+
   return (
     <>
       {noFormWrapper ? (
         <div id="branch-form" className="branch-form">{formContent}</div>
       ) : (
-        <form id="branch-form" onSubmit={handleSubmit} className="branch-form">{formContent}</form>
+        <form id="branch-form" onSubmit={handleSubmit} className="branch-form" noValidate>{formContent}</form>
       )}
 
       {/* Diálogos de dominio para el outlet */}
@@ -1007,7 +874,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
         userName={session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0] || ''}
         onPurchaseComplete={(domain) => {
           // Auto-llenar el campo custom_domain con el dominio comprado
-          setForm(prev => ({ ...prev, custom_domain: domain.toLowerCase().trim() }));
+          fijar('custom_domain', domain.toLowerCase().trim());
         }}
       />
       <AddCustomDomainDialog
@@ -1016,9 +883,7 @@ export const BranchForm = forwardRef<BranchFormRef, BranchFormProps>((
         organizationId={form.organization_id}
         onDomainAdded={(domain) => {
           // Auto-llenar el campo custom_domain con el dominio conectado
-          if (domain) {
-            setForm(prev => ({ ...prev, custom_domain: domain.toLowerCase().trim() }));
-          }
+          if (domain) fijar('custom_domain', domain.toLowerCase().trim());
         }}
       />
     </>

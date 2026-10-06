@@ -3,6 +3,7 @@
  * route handlers, el servicio del servidor y los hooks del navegador. Sin dependencias de
  * ejecución.
  */
+import type { ResumenPlantillaCompleta } from '@/lib/website/v2/plantillaCompleta';
 import type { ContadoresPaginas, FilaPagina } from './vistaPaginas';
 import type { Giro } from './plantillasPagina';
 import type { DocumentoSitio } from '@/lib/website/contrato/documentoSitio';
@@ -53,6 +54,13 @@ export interface RespuestaEscrituraPaginas {
   actualizadoEn: string;
   paginaId?: string;
   creadas?: number;
+}
+
+/** POST `/api/sitio-web/paginas/plantilla` («Usar esta plantilla › Plantilla completa»). */
+export interface RespuestaPlantillaCompleta extends RespuestaEscrituraPaginas {
+  /** Copia del borrador anterior en el historial («Deshacer»). */
+  instantaneaId: string;
+  resumen: ResumenPlantillaCompleta;
 }
 
 /** GET de Menú y navegación (`/api/sitio-web/paginas/menu`). */

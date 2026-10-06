@@ -9,6 +9,8 @@
  * - «Se guarda una versión · Si algo no queda bien, la restauras desde el historial en un clic.»;
  * - en una sede: aviso de los cambios del principal que la sede hereda y la casilla «Publicar
  *   también el sitio principal».
+ * - si la web aún no muestra este sitio y el lector está listo, una línea avisa que publicar
+ *   también la activa (y cómo volver: ⋯ › Desactivar).
  *
  * Programar se apaga con su motivo mientras su migración no esté aplicada (503 de la API).
  */
@@ -43,6 +45,8 @@ export interface DialogoPublicarProps {
   ultimaPublicacion: { en: string; autor: string | null } | null;
   principalConCambios?: boolean;
   v2Adoptado: boolean;
+  /** Publicar ahora también activará la web (primera vez con el lector listo): se avisa en una línea. */
+  activaraWeb?: boolean;
   programarDisponible: boolean | null;
   publicando: boolean;
   onVer: (destino: { paginaId: string; seccionId?: string }) => void;
@@ -206,7 +210,11 @@ export function DialogoPublicar(p: DialogoPublicarProps) {
         )}
 
         <AvisoTonal tono="informacion" icono={Info} titulo={t('publicar.versionTitulo')} descripcion={t('publicar.versionDescripcion')} />
-        {!p.v2Adoptado && <AvisoTonal tono="advertencia" compacto titulo={t('publicar.sinAdoptarTitulo')} descripcion={t('publicar.sinAdoptarDescripcion')} />}
+        {cuando === 'ahora' && p.activaraWeb ? (
+          <AvisoTonal tono="informacion" compacto titulo={t('publicar.activaraWeb')} />
+        ) : (
+          !p.v2Adoptado && <AvisoTonal tono="advertencia" compacto titulo={t('publicar.sinAdoptarTitulo')} descripcion={t('publicar.sinAdoptarDescripcion')} />
+        )}
       </div>
     </Dialogo>
   );

@@ -11,7 +11,13 @@ import { addPlainDays } from '@/lib/utils/dateDisplay';
 import { calcularMargen, costoDesdeMargen, descuentoComparacion, tonoMargen } from '../../logica/margen';
 import { referenciaDesdeTexto, unidadParaModo } from '../../logica/formularioProducto';
 import { decimalesCantidad, simboloUnidad, type ModoVenta } from '@/lib/pos/peso/modoVenta';
-import { precioEnReferencia, precioPorUnidadDesdeReferencia, referenciasPermitidas } from '@/lib/pos/peso/precioReferencia';
+import {
+  esReferenciaKilo,
+  precioEnReferencia,
+  precioPorUnidadDesdeReferencia,
+  referenciasPermitidas,
+  type ReferenciaPrecio,
+} from '@/lib/pos/peso/precioReferencia';
 import type { PropsSeccionFormulario } from '../tipos';
 
 /**
@@ -23,9 +29,11 @@ import type { PropsSeccionFormulario } from '../tipos';
  * «costos» (paso 2: comparación, costo, margen, vigencia).
  *
  * «Cómo se vende» (PRODUCTOS-POR-PESO-BASCULA.md, Figma P1/P3/P6): por unidad,
- * por peso (kg o lb) o por medida (metro o litro). Por peso, el precio se
- * puede escribir «cada 500/250/100/50 g», pero se guarda siempre por kg
- * (`estado.price`), así que el margen y el costo siguen siendo por kg.
+ * por peso (g, kg o lb) o por medida (metro o litro). Por peso, el precio se
+ * puede escribir «cada 500/250/100/50 g», pero se guarda siempre por la unidad
+ * de inventario (`estado.price`), así que el margen y el costo van en la misma.
+ * En gramos, precio, comparación y costo se escriben «por kg» y se guardan por
+ * gramo ($ 12.000/kg → $ 12/g).
  */
 export interface SeccionPreciosProps extends PropsSeccionFormulario {
   partes?: 'todo' | 'venta' | 'costos';
@@ -69,13 +77,29 @@ export function SeccionPrecios({ estado, cambiar, actualizar, errores, modo, mon
   const referencia = modoVenta === 'weight' ? referenciaDesdeTexto(estado.precio_referencia) : null;
   const precioMostrado = referencia && estado.price !== null ? precioEnReferencia(estado.price, referencia, unidadVenta, moneda.decimales) : estado.price;
   const etiquetaReferencia = (cantidad: number, unidad: string) =>
-    unidad === unidadVenta && cantidad === 1 ? t('porUnidadVenta', { unidad: simbolo }) : t('cadaCantidad', { cantidad, unidad: simboloUnidad(unidad) });
-  const decimalesMinimo = decimalesCantidad({ sale_mode: modoVenta });
+    unidad === unidadVenta && cantidad === 1
+      ? t('porUnidadVenta', { unidad: simbolo })
+      : esReferenciaKilo({ cantidad, unidad })
+        ? t('porUnidadVenta', { unidad: 'kg' })
+        : t('cadaCantidad', { cantidad, unidad: simboloUnidad(unidad) });
+  const decimalesMinimo = decimalesCantidad({ sale_mode: modoVenta, unit_code: unidadVenta });
+  // En gramos, comparación y costo también se escriben por kg (se guardan por gramo).
+  const porKiloEnGramos: ReferenciaPrecio | null = medido && modoVenta === 'weight' && unidadVenta === 'GR' ? { cantidad: 1000, unidad: 'GR' } : null;
+  const simboloCosto = porKiloEnGramos ? 'kg' : simbolo;
+  const mostrarPorKilo = (v: number | null) =>
+    v !== null && porKiloEnGramos ? precioEnReferencia(v, porKiloEnGramos, unidadVenta, moneda.decimales) : v;
+  const guardarPorKilo = (v: number | null) =>
+    v !== null && porKiloEnGramos ? precioPorUnidadDesdeReferencia(v, porKiloEnGramos, unidadVenta, moneda.decimales) : v;
+  // Por gramo el precio guardado lleva centavos aunque la moneda no los use ($ 12,50/g).
+  const precioGuardadoTexto = (v: number) =>
+    unidadVenta === 'GR' ? `${moneda.simbolo} ${new Intl.NumberFormat(localeIntl, { maximumFractionDigits: 2 }).format(v)}` : moneda.formatear(v);
+  /** Referencia por defecto al elegir la unidad: en gramos, «por kg». */
+  const referenciaPorDefecto = (unidad: string) => (unidad === 'GR' ? '1000GR' : '');
   const cambiarModo = (valor: ModoVenta) =>
     actualizar({
       sale_mode: valor,
       unit_code: unidadParaModo(valor, estado.unit_code),
-      precio_referencia: '',
+      precio_referencia: valor === 'weight' ? referenciaPorDefecto(unidadParaModo(valor, estado.unit_code)) : '',
       require_scale: valor === 'weight' ? estado.require_scale : false,
       min_sale_qty: valor === modoVenta ? estado.min_sale_qty : null,
     });
@@ -113,6 +137,7 @@ export function SeccionPrecios({ estado, cambiar, actualizar, errores, modo, mon
               opciones={
                 modoVenta === 'weight'
                   ? [
+                      { valor: 'GR', etiqueta: t('gramo') },
                       { valor: 'KG', etiqueta: t('kilogramo') },
                       { valor: 'LB', etiqueta: t('libra') },
                     ]
@@ -122,7 +147,7 @@ export function SeccionPrecios({ estado, cambiar, actualizar, errores, modo, mon
                     ]
               }
               valor={unidadVenta}
-              onValorChange={(v) => actualizar({ unit_code: v, precio_referencia: '' })}
+              onValorChange={(v) => actualizar({ unit_code: v, precio_referencia: modoVenta === 'weight' ? referenciaPorDefecto(v) : '' })}
             />
           )}
         </FormField>
@@ -158,7 +183,7 @@ export function SeccionPrecios({ estado, cambiar, actualizar, errores, modo, mon
           error={error(errores.price)}
           ayuda={
             medido && referencia && estado.price !== null && estado.price > 0
-              ? t('seGuardaComo', { precio: moneda.formatear(estado.price), unidad: simbolo })
+              ? t('seGuardaComo', { precio: precioGuardadoTexto(estado.price), unidad: simbolo })
               : estado.price !== null && estado.price > 0
                 ? moneda.formatear(estado.price)
                 : t('precioVentaAyuda')
@@ -220,19 +245,19 @@ export function SeccionPrecios({ estado, cambiar, actualizar, errores, modo, mon
           >
             <CampoNumero
               id="producto-comparacion"
-              valor={estado.compare_price}
-              onValorChange={(v) => cambiar('compare_price', v)}
+              valor={mostrarPorKilo(estado.compare_price)}
+              onValorChange={(v) => cambiar('compare_price', guardarPorKilo(v))}
               prefijo={moneda.simbolo}
               decimales={moneda.decimales}
               minimo={0}
             />
           </FormField>
 
-          <FormField etiqueta={medido ? t('costoPor', { unidad: simbolo }) : t('costo')} error={error(errores.cost)} ayuda={t('costoAyuda')}>
+          <FormField etiqueta={medido ? t('costoPor', { unidad: simboloCosto }) : t('costo')} error={error(errores.cost)} ayuda={t('costoAyuda')}>
             <CampoNumero
               id="producto-costo"
-              valor={estado.cost}
-              onValorChange={(v) => cambiar('cost', v)}
+              valor={mostrarPorKilo(estado.cost)}
+              onValorChange={(v) => cambiar('cost', guardarPorKilo(v))}
               prefijo={moneda.simbolo}
               decimales={moneda.decimales}
               minimo={0}
@@ -244,7 +269,7 @@ export function SeccionPrecios({ estado, cambiar, actualizar, errores, modo, mon
             ayuda={
               margen !== null && estado.price !== null && estado.cost !== null ? (
                 <span className={TONO_MARGEN[tonoMargen(margen)]}>
-                  {t('utilidad', { valor: moneda.formatear(estado.price - estado.cost) })}
+                  {t('utilidad', { valor: moneda.formatear(mostrarPorKilo(estado.price - estado.cost) ?? 0) })}
                 </span>
               ) : (
                 t('margenAyuda')

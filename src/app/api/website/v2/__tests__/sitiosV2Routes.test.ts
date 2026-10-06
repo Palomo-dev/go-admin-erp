@@ -53,6 +53,7 @@ const servicio = {
   obtenerBorrador: jest.fn(async () => ({ version: 1 })),
   guardarBorrador: jest.fn(async () => ({ version: 2, actualizadoEn: 'x' })),
   publicar: jest.fn(async () => ({ revisionId: 'r', numero: 1, publicadaEn: 'x', idempotente: false })),
+  publicarYActivar: jest.fn(async () => ({ revisionId: 'r', numero: 1, publicadaEn: 'x', idempotente: false, activacion: 'activada' })),
   listarRevisiones: jest.fn(async () => []),
   restaurar: jest.fn(async () => ({ version: 3, actualizadoEn: 'x' })),
   cambiarAdopcion: jest.fn(async () => ({ id: 's' })),
@@ -149,6 +150,31 @@ describe('caminos válidos', () => {
   test('publicar recorta la nota y la vacía pasa a null', async () => {
     await rutaPublicaciones.POST(peticion(`/api/website/v2/sites/${SITIO}/publications`, 'POST', { version: 2, nota: '  ' }), params());
     expect(servicio.publicar).toHaveBeenCalledWith(clienteDeSesion, 120, SITIO, 2, null);
+  });
+
+  test('publicar con activar: una sola llamada que publica y activa; el lector lo decide el servidor', async () => {
+    const antes = process.env.NEXT_PUBLIC_WEBSITE_V2_LECTOR;
+    try {
+      process.env.NEXT_PUBLIC_WEBSITE_V2_LECTOR = '1';
+      const res = await rutaPublicaciones.POST(peticion(`/api/website/v2/sites/${SITIO}/publications`, 'POST', { version: 3, activar: true }), params());
+      expect(res.status).toBe(201);
+      expect((await res.json()).activacion).toBe('activada');
+      expect(servicio.publicarYActivar).toHaveBeenCalledWith(clienteDeSesion, 120, SITIO, 3, null, true);
+      expect(servicio.publicar).not.toHaveBeenCalled();
+      delete process.env.NEXT_PUBLIC_WEBSITE_V2_LECTOR;
+      await rutaPublicaciones.POST(peticion(`/api/website/v2/sites/${SITIO}/publications`, 'POST', { version: 3, activar: true }), params());
+      expect(servicio.publicarYActivar).toHaveBeenLastCalledWith(clienteDeSesion, 120, SITIO, 3, null, false);
+    } finally {
+      if (antes === undefined) delete process.env.NEXT_PUBLIC_WEBSITE_V2_LECTOR;
+      else process.env.NEXT_PUBLIC_WEBSITE_V2_LECTOR = antes;
+    }
+  });
+
+  test('publicar con activar no booleano → 400 sin publicar', async () => {
+    const res = await rutaPublicaciones.POST(peticion(`/api/website/v2/sites/${SITIO}/publications`, 'POST', { version: 3, activar: 'si' }), params());
+    expect(res.status).toBe(400);
+    expect(servicio.publicar).not.toHaveBeenCalled();
+    expect(servicio.publicarYActivar).not.toHaveBeenCalled();
   });
 
   test('GET sites y GET revisions', async () => {

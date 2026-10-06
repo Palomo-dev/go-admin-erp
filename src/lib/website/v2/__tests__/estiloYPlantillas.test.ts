@@ -42,7 +42,7 @@ import {
   textoSobreAcento,
   tokensExtendidosDisponibles,
 } from '../tokensEstilo';
-import { fusionarInicio, usarPlantilla } from '../usarPlantilla';
+import { aplicarEstiloPlantilla } from '../usarPlantilla';
 import { TEMPLATE_PRESETS } from '@/lib/services/websiteSettingsService';
 import { getSectionDefinition } from '@/lib/services/websitePageBuilderService';
 
@@ -225,41 +225,24 @@ describe('estilo del sitio en el borrador (A/06a)', () => {
   });
 });
 
-describe('usar plantilla (A/06c, A/06h): estilo y estructura, el contenido se conserva', () => {
-  test('fusión de Inicio: orden y variante de la plantilla; lo que sobra va al final; nada se crea ni se borra', () => {
-    const d = documento();
-    const r = fusionarInicio(d.paginas[0].secciones, [
-      ['hero', 'video'],
-      ['menu_preview', 'tabs'],
-      ['events', 'list'],
-    ]);
-    expect(r.secciones.map((s) => s.id)).toEqual(['s-hero', 's-menu', 's-faq', 's-propia']);
-    expect(r.secciones[0].variante).toBe('video');
-    expect(r.secciones[0].contenido).toEqual({ title: 'Hola' });
-    expect(r.secciones[0].visibilidad).toEqual({ movil: false, escritorio: true });
-    expect(r.faltantes).toBe(1);
-  });
-
-  test('aplica estilo, base y estructura; solo toca Inicio y el documento sigue siendo válido', () => {
+describe('usar plantilla › solo estilo (A/06c): cambia colores y fuentes, el contenido se conserva', () => {
+  test('aplica estilo y base; páginas, secciones (en su orden), menús, identidad y contenido no cambian', () => {
     const velvet = plantillaPorId(CATALOGO, 'velvet_lounge')!;
     const antes = documento();
-    const r = usarPlantilla(antes, velvet, false);
-    const d = valido(r.documento);
+    const d = valido(aplicarEstiloPlantilla(antes, velvet, false));
     expect(d.tema.plantillaBase).toEqual({ mode: 'value', value: 'restaurant_elegant' });
     expect(d.tema.colores.primario).toEqual({ mode: 'value', value: '#D4AF37' });
     expect(d.tema.modo).toEqual({ mode: 'value', value: 'dark' });
-    expect(d.paginas[0].secciones.map((s) => s.id)).toEqual(['s-hero', 's-menu', 's-faq', 's-propia']);
-    expect(d.paginas[1]).toEqual(antes.paginas[1]);
+    expect(d.paginas).toEqual(antes.paginas);
     expect(d.identidad).toEqual(antes.identidad);
     expect(d.contenido).toEqual(antes.contenido);
     expect(d.menus).toEqual(antes.menus);
-    expect(r.seccionesSinContenido).toBe(velvet.inicio.length - 2);
-    expect(r.seccionesAjustadas).toBeGreaterThan(0);
+    expect(d.shell).toEqual(antes.shell);
   });
 
   test('con tokens extendidos guarda el id del preset, y «En uso» lo reconoce', () => {
     const pop = plantillaPorId(CATALOGO, 'pop_callejero')!;
-    const d = valido(usarPlantilla(documento(), pop, true).documento);
+    const d = valido(aplicarEstiloPlantilla(documento(), pop, true));
     expect(d.tema.preset).toEqual({ mode: 'value', value: 'pop_callejero' });
     expect(plantillaEnUso(CATALOGO, { preset: 'pop_callejero', plantillaBase: 'restaurant_casual' })?.id).toBe('pop_callejero');
   });

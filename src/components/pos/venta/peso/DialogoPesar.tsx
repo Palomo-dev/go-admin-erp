@@ -3,7 +3,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { AlertTriangle, Lock, Ruler, Scale } from 'lucide-react';
-import { Dialogo, useAtajos } from '@/components/kit';
+import { Dialogo, SegmentedControl, useAtajos } from '@/components/kit';
 import { textoCantidadParcialValido } from '@/components/kit/cartLineLogica';
 import type { Product } from '@/components/pos/types';
 import {
@@ -14,7 +14,10 @@ import {
   importePesada,
   minimoDeVenta,
   pesajeManual,
+  pesoEnUnidad,
+  precioPorUnidadVisible,
   simboloUnidad,
+  unidadPeso,
   validarPesada,
   type Pesaje,
 } from '@/lib/pos/peso';
@@ -45,6 +48,11 @@ import { usePesadaBascula } from './usePesadaBascula';
  * «Peso a mano» (M) si la regla y el permiso lo dejan. Agregar solo con
  * lectura estable; la línea lleva `notes.pesaje` con origen «bascula». Sin
  * báscula todo sigue igual que en la fase 2.
+ *
+ * El peso a mano se escribe en g o en kg (o lb si el producto va en libras),
+ * con un selector; se convierte a la unidad del producto con la conversión
+ * única (`pesoEnUnidad`): «735» g en un producto por kg es 0,735 kg, y
+ * «1,25» kg en uno por gramo son 1250 g. El precio se muestra por kg.
  */
 export interface DialogoPesarProps {
   abierto: boolean;
@@ -103,12 +111,27 @@ export function DialogoPesar({
   const campo = useRef<HTMLInputElement>(null);
   const [texto, setTexto] = useState('');
   const [intentado, setIntentado] = useState(false);
+  // Unidad en que se escribe el peso a mano (g, kg o lb); por defecto, la del producto.
+  const unidadProducto = unidadPeso(producto?.unit_code);
+  const [unidadEscrita, setUnidadEscrita] = useState<'GR' | 'KG' | 'LB'>('KG');
 
   const porPeso = esPorPeso(producto);
   const decimales = decimalesCantidad(producto);
   const unidad = simboloUnidad(producto?.unit_code) || (producto?.unit_code ?? '').trim();
   const formatear = useMemo(() => crearFormateadorMoneda(moneda), [moneda]);
   const formatoDecimal = (n: number) => formatoCantidad(n, producto);
+  // Precio que se muestra: por kg aunque se guarde por gramo («$ 12.000/kg»).
+  const precioVisible = precioPorUnidadVisible(producto, precioPorUnidad) ?? { precio: precioPorUnidad, unidad };
+  // Peso a mano con selector g/kg: decimales de lo escrito y conversión a la unidad del producto.
+  const conSelector = porPeso && !!unidadProducto && unidadProducto !== 'OZ';
+  const decimalesEscritos = conSelector ? (unidadEscrita === 'GR' ? 0 : 3) : decimales;
+  const unidadesEscritas: ('GR' | 'KG' | 'LB')[] = unidadProducto === 'LB' ? ['GR', 'KG', 'LB'] : ['GR', 'KG'];
+  const cantidadEscrita = (escrito: string): number | null => {
+    const n = cantidadDesdeTexto(escrito, decimalesEscritos);
+    if (n === null || !conSelector) return n;
+    const v = pesoEnUnidad(n, unidadEscrita, unidadProducto);
+    return v !== null && v > 0 ? v : null;
+  };
 
   // Báscula (fase 3): solo productos por peso; «Peso a mano» cambia a 'manual'.
   const [modoLectura, setModoLectura] = useState<'bascula' | 'manual'>('bascula');
@@ -159,10 +182,12 @@ export function DialogoPesar({
     if (!abierto) return;
     setModoLectura('bascula');
     setIntentado(false);
+    // Se escribe en la unidad del producto (en «cambiar peso», el peso actual).
+    setUnidadEscrita(unidadProducto === 'GR' || unidadProducto === 'LB' ? unidadProducto : 'KG');
     setTexto(cantidadInicial && cantidadInicial > 0 ? String(cantidadInicial).replace('.', ',') : '');
     const id = setTimeout(() => campo.current?.focus(), 30);
     return () => clearTimeout(id);
-  }, [abierto, cantidadInicial]);
+  }, [abierto, cantidadInicial, unidadProducto]);
 
   // Con báscula el foco va a la lectura: Enter agrega (sin él, la «×» del diálogo lo tomaba).
   useEffect(() => {
@@ -183,7 +208,7 @@ export function DialogoPesar({
   const cantidadEnVivo = (() => {
     if (!producto) return null;
     if (usaBascula) return pb.vista.neto !== null && pb.vista.neto > 0 && pb.vista.estado !== 'error' ? pb.vista.neto : null;
-    const r = validarPesada({ producto, cantidad: cantidadDesdeTexto(texto, decimales), origen: 'manual', permisoPesoManual: puedePesarAMano });
+    const r = validarPesada({ producto, cantidad: cantidadEscrita(texto), origen: 'manual', permisoPesoManual: puedePesarAMano });
     return r.ok ? r.cantidad : null;
   })();
   useEffect(() => {
@@ -200,7 +225,7 @@ export function DialogoPesar({
         : null
     : null;
 
-  const cantidad = cantidadDesdeTexto(texto, decimales);
+  const cantidad = cantidadEscrita(texto);
   const resultado = validarPesada({ producto, cantidad, origen: 'manual', permisoPesoManual: puedePesarAMano });
   const netoBascula = usaBascula && pb.vista.neto !== null && pb.vista.neto > 0 ? pb.vista.neto : null;
   const cantidadCalculo = usaBascula ? netoBascula : resultado.ok ? resultado.cantidad : null;
@@ -235,7 +260,7 @@ export function DialogoPesar({
     ? t('existencias', { cantidad: formatoDecimal(producto.stock_quantity) })
     : null;
   const subtitulo = [
-    t('precioPor', { precio: formatear(precioPorUnidad), unidad }),
+    t('precioPor', { precio: formatear(precioVisible.precio), unidad: precioVisible.unidad }),
     existencias,
     porPeso ? (usaBascula && bascula ? tb('basculaDe', { nombre: bascula.nombre }) : t('sinBascula')) : null,
   ]
@@ -255,8 +280,8 @@ export function DialogoPesar({
         <span className="text-sm font-medium tabular-nums text-fg">
           {t('calculo', {
             cantidad: cantidadCalculo !== null ? formatoDecimal(cantidadCalculo) : `— ${unidad}`,
-            precio: formatear(precioPorUnidad),
-            unidad,
+            precio: formatear(precioVisible.precio),
+            unidad: precioVisible.unidad,
           })}
         </span>
         <span className="text-xs text-fg-secondary">
@@ -383,7 +408,7 @@ export function DialogoPesar({
                 aria-invalid={mensajeError ? true : undefined}
                 aria-describedby={idAyuda}
                 onChange={(e) => {
-                  if (textoCantidadParcialValido(e.target.value, decimales)) setTexto(e.target.value);
+                  if (textoCantidadParcialValido(e.target.value, decimalesEscritos)) setTexto(e.target.value);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
@@ -393,9 +418,27 @@ export function DialogoPesar({
                 }}
                 className="h-full w-full min-w-0 bg-transparent px-3 text-right text-2xl font-semibold tabular-nums outline-none"
               />
-              <span aria-hidden="true" className="shrink-0 border-l border-line px-3 text-sm text-fg-secondary">
-                {unidad}
-              </span>
+              {conSelector ? (
+                <SegmentedControl
+                  etiqueta={t('unidadEscrita')}
+                  tamano="sm"
+                  className="mr-1.5 shrink-0"
+                  opciones={unidadesEscritas.map((u) => ({ valor: u, etiqueta: simboloUnidad(u) }))}
+                  valor={unidadEscrita}
+                  onValorChange={(u) => {
+                    // El número escrito se convierte: «735» g pasa a «0,735» kg.
+                    const n = cantidadDesdeTexto(texto, decimalesEscritos);
+                    const v = n !== null ? pesoEnUnidad(n, unidadEscrita, u) : null;
+                    setUnidadEscrita(u);
+                    setTexto(v !== null && v > 0 ? String(v).replace('.', ',') : '');
+                    campo.current?.focus();
+                  }}
+                />
+              ) : (
+                <span aria-hidden="true" className="shrink-0 border-l border-line px-3 text-sm text-fg-secondary">
+                  {unidad}
+                </span>
+              )}
             </div>
             <p id={idAyuda} className={cn('text-xs', mensajeError ? 'text-danger-text' : 'text-fg-secondary')} aria-live="polite">
               {mensajeError ?? (porPeso ? t('ayudaManual') : t('ayudaMedida', { decimales }))}

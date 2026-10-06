@@ -65,6 +65,7 @@ import {
   type EstadoSeccion,
 } from '@/lib/website/v2/vistaEditor';
 import { combinarDocumentos, type Choque, type Eleccion } from '@/lib/website/v2/combinarDocumentos';
+import { avisoTrasPublicar, debeActivarAlPublicar } from '@/lib/website/v2/activarAlPublicar';
 import { listarCambios, type CambioPublicacion } from '@/lib/website/v2/cambiosPublicacion';
 import { reemplazarItemsMenu } from '@/components/sitio-web/paginas/operacionesMenu';
 import { armarLoteLegacy } from './loteLegacy';
@@ -159,6 +160,7 @@ export function useEditorSitio() {
   const organizationId = organization?.id;
   const resumen = useResumenSitio();
   const permisos = resumen.datos?.permisos ?? { editar: false, publicar: false };
+  const urlPublica = resumen.datos?.sitio.url ?? null;
 
   // ── Carga y página ──────────────────────────────────────────────────────────
   const [estadoCarga, setEstadoCarga] = useState<EstadoCargaEditor>('cargando');
@@ -997,6 +999,8 @@ export function useEditorSitio() {
   }, [v2.sitio]);
 
   // ── Publicar (V2) ───────────────────────────────────────────────────────────
+  /** `cambiarAdopcion` se declara más abajo; el aviso de «Publicado» la llama por aquí. */
+  const cambiarAdopcionRef = useRef<((adoptado: boolean) => Promise<boolean>) | null>(null);
   const publicar = useCallback(
     async (opciones: { nota: string | null; tambienPrincipal?: boolean }): Promise<boolean> => {
       if (!enV2) return guardarLegacy();
@@ -1010,16 +1014,38 @@ export function useEditorSitio() {
             await clienteSitiosV2.publicar(principal.id, b.version, null);
           }
         }
-        const r = await v2.publicar(opciones.nota);
+        // Primera publicación con el lector listo: la misma llamada activa la web (principal o
+        // sede). Si ya está activa o el lector no está desplegado, publicar es como siempre.
+        const v2AdoptadoAntes = !!v2.sitio?.v2Adoptado;
+        const activar = debeActivarAlPublicar({ v2Adoptado: v2AdoptadoAntes, lectorListo: LECTOR_PUBLICO_V2_LISTO });
+        const r = await v2.publicar(opciones.nota, { activar });
         if (!r) {
           if (!v2.conflicto) toast.error(t('publicar.error'), { description: v2.error?.message });
           return false;
         }
         setProgramacion(null);
         void clienteSitiosV2.listar().then(setSitios).catch(() => undefined);
-        toast.success(r.idempotente ? t('publicar.yaPublicada') : t('publicar.listo', { n: r.numero }), {
-          description: v2.sitio?.v2Adoptado ? t('publicar.listoAdoptado') : t('publicar.listoSinAdoptar'),
-        });
+        const aviso = avisoTrasPublicar({ v2AdoptadoAntes, activacion: r.activacion });
+        if (aviso.tipo === 'web_actualizada') {
+          toast.success(r.idempotente && !aviso.activadaAhora ? t('publicar.yaPublicada') : t('publicar.webActualizada'), {
+            ...(urlPublica
+              ? { action: { label: t('barra.verPublicado'), onClick: () => window.open(urlPublica, '_blank', 'noopener,noreferrer') } }
+              : {}),
+          });
+        } else if (aviso.tipo === 'fallo_activar') {
+          // La revisión quedó publicada; solo falta activarla: el aviso ofrece el reintento.
+          toast.warning(t('publicar.activarFalloTitulo', { n: r.numero }), {
+            description: t('publicar.activarFalloDescripcion'),
+            duration: 20_000,
+            ...(permisos.publicar
+              ? { action: { label: t('adopcion.activar'), onClick: () => void cambiarAdopcionRef.current?.(true) } }
+              : {}),
+          });
+        } else {
+          toast.success(r.idempotente ? t('publicar.yaPublicada') : t('publicar.listo', { n: r.numero }), {
+            description: t('publicar.listoSinAdoptar'),
+          });
+        }
         return true;
       } catch (error) {
         toast.error(t('publicar.error'), { description: mensaje(error, '') });
@@ -1028,7 +1054,7 @@ export function useEditorSitio() {
         setPublicando(false);
       }
     },
-    [enV2, guardarLegacy, guardarAhora, esSedeV2, sitios, v2, t],
+    [enV2, guardarLegacy, guardarAhora, esSedeV2, sitios, v2, t, permisos.publicar, urlPublica],
   );
 
   /** Programar (A/05g). `ejecutarEn` en ISO ya convertido desde la zona de la organización. */
@@ -1174,6 +1200,16 @@ export function useEditorSitio() {
     [todasSucursales, t],
   );
   const nombreSitio = enV2 ? nombreSede(sitioBranch) : nombreSede(selectedBranchId);
+  /** `branch_type` de una sede (decide su plantilla: «Aplicar plantilla de <tipo>»). */
+  const tipoDeSede = useCallback(
+    (branchId: number | null) => (branchId === null ? null : todasSucursales.find((b) => b.id === branchId)?.branch_type ?? null),
+    [todasSucursales],
+  );
+  /** Tras «Aplicar plantilla»: el borrador cambió en el servidor; se recarga (cae en Inicio). */
+  const trasAplicarPlantilla = useCallback(async () => {
+    await v2.recargar();
+    setSitios(await clienteSitiosV2.listar());
+  }, [v2]);
 
   /** Cambiar de sitio en V2 (el principal o una sede con sitio). Antes se guarda lo pendiente. */
   const elegirSitioV2 = useCallback(
@@ -1268,6 +1304,7 @@ export function useEditorSitio() {
     },
     [v2, t],
   );
+  cambiarAdopcionRef.current = cambiarAdopcion;
 
   const llevarMenu = useCallback(
     async (menuId: string) => {
@@ -1513,7 +1550,7 @@ export function useEditorSitio() {
     organizationId,
     permisos,
     host: resumen.datos?.sitio.host ?? null,
-    urlPublica: resumen.datos?.sitio.url ?? null,
+    urlPublica,
     giroTypeId: resumen.datos?.typeId ?? null,
     /** Giro del sitio (asistente u `organizations.type_id`): recomienda secciones sin tipo de sede. */
     giro: resumen.datos?.giro ?? null,
@@ -1613,6 +1650,8 @@ export function useEditorSitio() {
     publishedBranches,
     nombreSitio,
     nombreSede,
+    tipoDeSede,
+    trasAplicarPlantilla,
     elegirSitioV2,
     crearSitioSede,
     cambiarSedeLegacy,

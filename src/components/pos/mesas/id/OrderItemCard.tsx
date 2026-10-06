@@ -15,7 +15,7 @@ import { getPublicUrl } from '@/lib/supabase/imageUtils';
 import { MOTIVO_MAX } from '@/lib/pos/cocina/rutasCocina';
 import type { SaleItem } from './types';
 import { textoCantidadParcialValido } from '@/components/kit/cartLineLogica';
-import { esMedido, simboloUnidad } from '@/lib/pos/peso';
+import { esMedido, precioPorUnidadVisible, simboloUnidad } from '@/lib/pos/peso';
 import { decimalesLinea, formatoCantidadLinea, leerCantidadLinea, modoVentaLinea } from './cantidadMesa';
 
 /** Mínimo de caracteres del motivo al restar o anular un plato ya enviado. */
@@ -45,6 +45,9 @@ export function OrderItemCard({
   const medido = esMedido(modoVentaLinea(item));
   const unidad = simboloUnidad(modoVentaLinea(item).unit_code);
   const cantidadTexto = (n: number) => formatoCantidadLinea(n, item, locale);
+  // Por peso: «$ 12.000/kg» aunque la línea se guarde por gramo.
+  const visible = precioPorUnidadVisible(modoVentaLinea(item), Number(item.unit_price));
+  const precioMostrado = { precio: formatear(visible?.precio ?? Number(item.unit_price)), unidad: visible?.unidad ?? unidad };
   const [isEditing, setIsEditing] = useState(false);
   // Texto del campo (coma o punto); la cantidad sale con los decimales de la línea.
   const [editTexto, setEditTexto] = useState(String(item.quantity).replace('.', ','));
@@ -239,7 +242,7 @@ export function OrderItemCard({
           {/* Precio unitario */}
           <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
             {medido && unidad
-              ? tPeso('precioPor', { precio: formatear(Number(item.unit_price)), unidad })
+              ? tPeso('precioPor', precioMostrado)
               : `${formatear(Number(item.unit_price))} c/u`}
           </p>
         </div>

@@ -4,9 +4,10 @@
  * /app/sitio-web/plantillas — «Plantillas» (Figma A/06b galería, A/06c diálogo,
  * A/06d cargando, A/06e error). Galería por giro con contador (la pestaña
  * inicial es el giro de la organización), TemplateCard con «En uso» y el diálogo
- * de vista previa con «Usar esta plantilla» (crea un borrador y conserva el
- * contenido). Sin permiso de edición, la galería se ve y el botón queda
- * deshabilitado con su motivo.
+ * de vista previa con sus dos modos: «Plantilla completa» (el sitio entero con
+ * los datos del negocio; lo anterior queda en el historial, con «Deshacer») y
+ * «Solo estilo» (colores y fuentes, conserva el contenido). Sin permiso de
+ * edición, la galería se ve y el botón queda deshabilitado con su motivo.
  */
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -17,6 +18,7 @@ import { RAIZ_SITIO_WEB } from '../rutasSitioWeb';
 import { TemplateCard } from '../ui/TemplateCard';
 import { DialogoConflicto } from '../paginas/DialogoConflicto';
 import type { PlantillaCatalogo } from '@/lib/website/contrato/catalogoPlantillas';
+import { modoPorDefecto, type ModoPlantilla } from '@/lib/website/v2/plantillaCompleta';
 import { MiniaturaPlantilla } from './MiniaturaPlantilla';
 import { DialogoVistaPreviaPlantilla } from './DialogoVistaPreviaPlantilla';
 import { useContextoDiseno } from './useContextoDiseno';
@@ -56,6 +58,11 @@ export function GaleriaPlantillas() {
   const pestanas = pestanasGiro(ctx.giro);
   const [giro, setGiro] = useOpcionUrl<PestanaGiro>('giro', pestanas, ctx.giro ?? 'todas', 'replace');
   const [abierta, setAbierta] = useState<PlantillaCatalogo | null>(null);
+  const [modo, setModo] = useState<ModoPlantilla>('completa');
+  const abrir = (p: PlantillaCatalogo) => {
+    setModo(modoPorDefecto(ctx.sitio.sitio));
+    setAbierta(p);
+  };
   const lista = plantillas.delGiro(giro);
   useFuentesSitio(lista.map((p) => p.estilo.fuenteTitulos));
 
@@ -64,16 +71,37 @@ export function GaleriaPlantillas() {
     if (errorSitio && ctx.sitio.borrador) toast.error(t('dialogo.error', { mensaje: errorSitio }));
   }, [errorSitio, ctx.sitio.borrador, t]);
 
-  const usar = async (plantilla: PlantillaCatalogo) => {
+  const verDiseno = { label: t('dialogo.verDiseno'), onClick: () => router.push(`${RAIZ_SITIO_WEB}/diseno`) };
+
+  const usarEstilo = async (plantilla: PlantillaCatalogo) => {
     const r = await plantillas.usar(plantilla);
     if (!r.ok) return;
     setAbierta(null);
-    const faltan = r.resultado.seccionesSinContenido;
-    toast.success(t('dialogo.listo', { nombre: plantilla.nombre }), {
-      description: faltan === 0 ? undefined : faltan === 1 ? t('dialogo.faltanUna') : t('dialogo.faltan', { n: faltan }),
-      action: { label: t('dialogo.verDiseno'), onClick: () => router.push(`${RAIZ_SITIO_WEB}/diseno`) },
+    toast.success(t('dialogo.listo', { nombre: plantilla.nombre }), { action: verDiseno });
+  };
+
+  const usarCompleta = async (plantilla: PlantillaCatalogo) => {
+    const r = await plantillas.usarCompleta(plantilla);
+    if (!r.ok) {
+      toast.error(r.conflicto ? t('dialogo.conflicto') : t('dialogo.error', { mensaje: r.mensaje }));
+      return;
+    }
+    setAbierta(null);
+    const ocultas = r.resumen.ocultas.length;
+    toast.success(t('dialogo.listoCompleta', { nombre: plantilla.nombre }), {
+      description: ocultas === 0 ? undefined : ocultas === 1 ? t('dialogo.ocultasUna') : t('dialogo.ocultas', { n: ocultas }),
+      duration: 10000,
+      action: {
+        label: t('dialogo.deshacer'),
+        onClick: () =>
+          void plantillas
+            .deshacer({ sitioId: r.sitioId, instantaneaId: r.instantaneaId, version: r.version })
+            .then((ok) => (ok ? toast.success(t('dialogo.deshecho')) : toast.error(t('dialogo.noDeshecho')))),
+      },
     });
   };
+
+  const usar = (plantilla: PlantillaCatalogo, m: ModoPlantilla) => void (m === 'completa' ? usarCompleta(plantilla) : usarEstilo(plantilla));
 
   // A/06e: el error de esta página tiene su propio texto («Tu sitio no cambió…»).
   if (ctx.estado === 'error') {
@@ -134,7 +162,7 @@ export function GaleriaPlantillas() {
                       iconoGiro={ICONO_GIRO_PLANTILLA[p.giro]}
                       secciones={p.inicio.length}
                       enUso={plantillas.enUso?.id === p.id}
-                      onSeleccionar={() => setAbierta(p)}
+                      onSeleccionar={() => abrir(p)}
                       // A/06b: la plantilla en uso lleva el borde de marca además de la insignia.
                       className={plantillas.enUso?.id === p.id ? 'h-full border-brand ring-1 ring-brand' : 'h-full'}
                     />
@@ -152,7 +180,9 @@ export function GaleriaPlantillas() {
         documento={ctx.sitio.documento}
         puedeUsar={ctx.permisos.editar}
         usando={plantillas.usando !== null}
-        onUsar={(p) => void usar(p)}
+        modo={modo}
+        onModoChange={setModo}
+        onUsar={usar}
       />
       <DialogoConflicto abierto={ctx.sitio.conflicto} onCerrar={() => void ctx.sitio.recargar()} onRecargar={() => ctx.sitio.recargar()} />
     </MarcoSitioWeb>

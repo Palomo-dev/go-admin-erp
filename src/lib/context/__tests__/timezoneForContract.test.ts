@@ -79,19 +79,29 @@ describe('el selector de la sucursal ofrece «heredar» por defecto', () => {
   });
 
   it('elegir «heredar» guarda NULL, no la cadena vacía', () => {
-    expect(CAMPO).toContain('onChange(e.target.value === INHERIT_TIMEZONE_VALUE ? null : e.target.value)');
+    // 2026-10-06: el campo pasó al `Select` del kit (Radix), que no admite un
+    // ítem con valor ''. «Heredar» viaja con una marca y se traduce de vuelta
+    // a INHERIT_TIMEZONE_VALUE antes de llamar a onChange, que manda null.
+    expect(CAMPO).toContain('onChange(elegido === INHERIT_TIMEZONE_VALUE ? null : elegido)');
+    expect(CAMPO).toContain("const desdeControl = (v: string) => (v === MARCA_HEREDAR ? INHERIT_TIMEZONE_VALUE : v);");
   });
 
   it('es accesible: label asociada y aria-describedby con la zona efectiva', () => {
-    expect(CAMPO).toContain('htmlFor={selectId}');
+    // FormField del kit asocia etiqueta, control y ayuda por id.
+    expect(CAMPO).toContain('<FormField');
     expect(CAMPO).toContain('id={selectId}');
-    expect(CAMPO).toContain('aria-describedby={helpId}');
-    expect(CAMPO).toContain('id={helpId}');
+    expect(CAMPO).toContain("aria-describedby={campo['aria-describedby']}");
+    expect(CAMPO).toContain("ayuda={t('ayuda', { zona: effective.timezone, origen })}");
   });
 
   it('dice cuál se aplica y de dónde viene', () => {
+    // Los textos viven en i18n (formulario.zonaHoraria.origen.*).
     expect(CAMPO).toContain('propia de la sucursal');
     expect(CAMPO).toContain('heredada de la organización');
+    const es = JSON.parse(leer('messages/es.json'));
+    const origen = es.org.acceso.sucursales.formulario.zonaHoraria.origen;
+    expect(origen.branch).toBe('propia de la sucursal');
+    expect(origen.organization).toBe('heredada de la organización');
   });
 
   it('está montado en la ficha de sucursal', () => {

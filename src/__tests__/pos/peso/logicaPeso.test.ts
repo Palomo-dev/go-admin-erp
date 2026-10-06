@@ -87,10 +87,10 @@ describe('cantidadDesdeTexto', () => {
 
 describe('formatoCantidad', () => {
   test('peso con 3 decimales y unidad; unidad sin decimales', () => {
-    expect(formatoCantidad(0.735, QUESO)).toBe('0,735 kg');
+    expect(formatoCantidad(0.735, QUESO)).toBe('735 g');
     expect(formatoCantidad(2.5, TELA)).toBe('2,50 m');
     expect(formatoCantidad(3, GASEOSA)).toBe('3');
-    expect(formatoCantidad(0.735, QUESO, 'en-US')).toBe('0.735 kg');
+    expect(formatoCantidad(0.735, QUESO, 'en-US')).toBe('735 g');
   });
 });
 
@@ -145,7 +145,7 @@ describe('validarPesada', () => {
 });
 
 describe('importe exacto de la línea (regla única del servidor)', () => {
-  test('0,735 kg × $ 18.900 = $ 13.891,50 sin redondear', () => {
+  test('735 g × $ 18.900 = $ 13.891,50 sin redondear', () => {
     expect(importePesada(0.735, 18900)).toBeCloseTo(13891.5, 6);
     const l = calcularLineaVenta({ quantity: 0.735, unit_price: 18900, tax_rate: 0, tax_included: false });
     expect(l.total).toBeCloseTo(13891.5, 6);

@@ -708,13 +708,22 @@ export async function despacharAvisosPendientes(organizationId?: number, db: Sup
   return resumen;
 }
 
-/** No bloquea la respuesta del guardado. Si el correo falla, el cron lo reintenta. */
+/**
+ * No bloquea la respuesta del guardado. Si el correo falla, el cron lo reintenta.
+ * Tampoco la tumba: `after()` lanza fuera de un request scope (tests, scripts)
+ * y un guardado ya hecho no puede responder 500 por no poder programar el
+ * correo. Los avisos siguen pendientes en la tabla y el cron los recoge.
+ */
 export function programarDespachoAvisos(organizationId: number): void {
-  after(() => {
-    void despacharAvisosPendientes(organizationId).catch((err) => {
-      console.error('[avisos] despacho', err instanceof Error ? err.name : 'error');
+  try {
+    after(() => {
+      void despacharAvisosPendientes(organizationId).catch((err) => {
+        console.error('[avisos] despacho', err instanceof Error ? err.name : 'error');
+      });
     });
-  });
+  } catch (err) {
+    console.warn('[avisos] despacho no programado; queda para el cron', err instanceof Error ? err.name : 'error');
+  }
 }
 
 export async function correrAvisos(opts: { organizationId?: number; soloCorreo?: boolean } = {}): Promise<ResumenAvisos> {

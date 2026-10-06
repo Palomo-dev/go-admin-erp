@@ -36,6 +36,7 @@ import { OrganizationTimezoneProvider, useFormatDate } from '@/lib/context/Organ
 import { FONTS } from '@/lib/services/websiteSettingsService';
 import type { WebsiteSettings } from '@/lib/services/websiteSettingsService';
 import { leerEstiloSeccion } from '@/lib/website/v2/estiloSeccion';
+import { debeActivarAlPublicar } from '@/lib/website/v2/activarAlPublicar';
 import { tipoSedeDesdeGiro } from '@/lib/services/website/sectionsByBranchType';
 import { resolverEstadoPublicacion, type EstadoPublicacion } from '@/components/sitio-web/ui/estadoPublicacion';
 import { useCategoriasMenu } from '@/components/sitio-web/paginas/ColumnaCategoriasInventario';
@@ -64,6 +65,9 @@ import { EditorMovil } from './movil/EditorMovil';
 import { nombreDeSeccion } from './iconosSeccion';
 import { LECTOR_PUBLICO_V2_LISTO, useEditorSitio, type ZonaGlobal } from './useEditorSitio';
 import { useTextosEditor } from './textos';
+import { DialogoAplicarPlantillaSede } from '@/components/sitio-web/plantillaSede/DialogoAplicarPlantillaSede';
+import { useTextosPlantillaSede } from '@/components/sitio-web/plantillaSede/textos';
+import { esTipoSedePlantilla } from '@/lib/website/v2/plantillaSede';
 
 function EsqueletoEditor() {
   return (
@@ -150,6 +154,8 @@ function Editor() {
   /** Hoja «Carta» de la sección `menu_full`: solo elige la carta y lleva a Carta (B/13-07). */
   const [carta, setCarta] = useState<{ seccionId: string } | null>(null);
   const [vistaPrevia, setVistaPrevia] = useState(false);
+  const [plantillaSede, setPlantillaSede] = useState(false);
+  const tp = useTextosPlantillaSede();
   const categoriasSitio = useCategoriasMenu(ed.enV2 ? ed.sitioBranch : ed.selectedBranchId, ed.estadoCarga !== 'listo');
   const categorias = useMemo(() => ({ lista: categoriasSitio.categorias, cargando: categoriasSitio.cargando }), [categoriasSitio]);
 
@@ -285,6 +291,12 @@ function Editor() {
   const elegirSitio = async (id: string | null) => {
     const branchId = id === null ? null : Number(id);
     if (!ed.enV2) {
+      // Una sede sin sitio propio NO se edita sobre las páginas del principal (el editor legacy
+      // caía a ellas sin avisar): se ofrece crear su sitio, con la plantilla de su tipo de negocio.
+      if (branchId !== null && ed.apiV2 && ed.permisos.editar && !ed.sitios.some((s) => s.branchId === branchId)) {
+        setCrearSitio(branchId);
+        return;
+      }
       await ed.cambiarSedeLegacy(branchId);
       return;
     }
@@ -311,6 +323,16 @@ function Editor() {
     }
     if (ed.esSedeV2) {
       acciones.push({ id: 'herencia', etiqueta: t('acciones.verHerencia'), icono: Store, onSelect: () => setHerencia(true) });
+      // «Aplicar plantilla de <tipo> a esta sede»: reemplaza el borrador (queda en el historial).
+      const tipoSede = ed.tipoDeSede(ed.sitioBranch);
+      if (esTipoSedePlantilla(tipoSede) && ed.permisos.editar) {
+        acciones.push({
+          id: 'plantilla-sede',
+          etiqueta: tp('accion', { tipo: tp(`tipos.${tipoSede}`) }),
+          icono: LayoutTemplate,
+          onSelect: () => setPlantillaSede(true),
+        });
+      }
       const propios = new Set(ed.documento.menus.map((m) => m.id));
       for (const m of ed.basePrincipal?.documento.menus ?? []) {
         if (!propios.has(m.id)) continue;
@@ -405,6 +427,7 @@ function Editor() {
         ultimaPublicacion={ed.ultimaPublicacion}
         principalConCambios={ed.basePrincipal?.principalConCambiosSinPublicar}
         v2Adoptado={!!ed.sitioV2.sitio?.v2Adoptado}
+        activaraWeb={debeActivarAlPublicar({ v2Adoptado: !!ed.sitioV2.sitio?.v2Adoptado, lectorListo: LECTOR_PUBLICO_V2_LISTO })}
         programarDisponible={ed.programarDisponible}
         publicando={ed.publicando}
         onVer={(destino) => {
@@ -439,9 +462,21 @@ function Editor() {
       <ConfirmDialog
         abierto={crearSitio !== undefined}
         onAbiertoChange={(a) => !a && !creandoSitio && setCrearSitio(undefined)}
-        titulo={crearSitio === null ? t('sede.crearBorradorTitulo') : t('sede.crearSitioTitulo', { sede: ed.nombreSede(crearSitio ?? null) })}
-        descripcion={crearSitio === null ? t('sede.crearBorradorDescripcion') : t('sede.crearSitioDescripcion')}
-        textoConfirmar={crearSitio === null ? t('sede.crearBorrador') : t('sede.crearSitio')}
+        titulo={crearSitio === null ? t('sede.crearBorradorTitulo') : t('sede.sinSitioTitulo', { sede: ed.nombreSede(crearSitio ?? null) })}
+        descripcion={
+          crearSitio === null
+            ? t('sede.crearBorradorDescripcion')
+            : esTipoSedePlantilla(ed.tipoDeSede(crearSitio ?? null))
+              ? t('sede.crearSitioDescripcionPlantilla', { tipo: tp(`tipos.${ed.tipoDeSede(crearSitio ?? null)}`) })
+              : t('sede.crearSitioDescripcion')
+        }
+        textoConfirmar={
+          crearSitio === null
+            ? t('sede.crearBorrador')
+            : esTipoSedePlantilla(ed.tipoDeSede(crearSitio ?? null))
+              ? t('sede.crearConPlantilla', { tipo: tp(`tipos.${ed.tipoDeSede(crearSitio ?? null)}`) })
+              : t('sede.crearSitio')
+        }
         tono="marca"
         cargando={creandoSitio}
         onConfirmar={async () => {
@@ -475,6 +510,16 @@ function Editor() {
           setCambioPagina(null);
         }}
       />
+      {ed.esSedeV2 && ed.sitioBranch !== null && (
+        <DialogoAplicarPlantillaSede
+          abierto={plantillaSede}
+          onAbiertoChange={setPlantillaSede}
+          branchId={ed.sitioBranch}
+          nombreSede={ed.nombreSitio}
+          antesDeAplicar={ed.guardarAhora}
+          onAplicada={ed.trasAplicarPlantilla}
+        />
+      )}
       <DialogoSeoPagina
         abierto={seoAbierto}
         onAbiertoChange={setSeoAbierto}

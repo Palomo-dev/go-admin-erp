@@ -65,7 +65,10 @@ jobs:
   release:
     name: Build, sign & publish (Windows)
     needs: typecheck
-    runs-on: windows-latest
+    # windows-2022 fijo: «windows-latest» pasó a Windows Server 2025 y su Visual Studio no lo
+    # encuentra el node-gyp 9 de @electron/rebuild, que recompila serialport y node-bluetooth.
+    # La 0.2.8 falló ahí con «Could not find any Visual Studio installation to use».
+    runs-on: windows-2022
     defaults:
       run:
         shell: pwsh
@@ -84,6 +87,11 @@ jobs:
             package-lock.json
             print-agent/package-lock.json
             electron/package-lock.json
+      # node-gyp 9 (de @electron/rebuild) importa distutils, que Python 3.12 ya no trae: la 0.2.8
+      # falló así en windows-2022 («No module named 'distutils'») al recompilar serialport.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
       - name: Verificar que el tag coincide con electron/package.json
         if: startsWith(github.ref, 'refs/tags/v')

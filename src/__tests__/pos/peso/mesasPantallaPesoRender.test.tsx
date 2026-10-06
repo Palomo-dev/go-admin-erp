@@ -4,7 +4,7 @@
  * Render de lo nuevo de productos por peso fuera del mostrador
  * (PRODUCTOS-POR-PESO-BASCULA.md §10), con los textos reales en 4 idiomas:
  * «Pesar» en «Agregar productos» de la mesa (cada pesada es su propia línea),
- * el traslado con decimales, la tarjeta del plato «0,500 kg», la franja
+ * el traslado con decimales, la tarjeta del plato «500 g», la franja
  * «Pesando…» de la pantalla del cliente, la comanda del KDS y el reporte
  * «Pesos manuales».
  *
@@ -90,7 +90,7 @@ const IDIOMAS: IdiomaPrueba[] = ['es', 'en', 'fr', 'pt'];
 const txt = (s: string | null | undefined) => (s ?? '').replace(/[  ]/g, ' ');
 
 describe('mesas: «Pesar» en «Agregar productos»', () => {
-  it('abre «Pesar», cada pesada es su propia línea y el chip muestra «0,735 kg»', async () => {
+  it('abre «Pesar», cada pesada es su propia línea y el chip muestra «735 g»', async () => {
     const onAdd = jest.fn(async () => undefined);
     renderConIdioma(<AddProductDialog open onOpenChange={jest.fn()} onAddProducts={onAdd} />);
     fireEvent.click(await screen.findByText('Queso campesino'));
@@ -98,7 +98,7 @@ describe('mesas: «Pesar» en «Agregar productos»', () => {
     fireEvent.change(campo, { target: { value: '0,735' } });
     fireEvent.keyDown(campo, { key: 'Enter' });
     await screen.findByRole('button', { name: 'Cambiar el peso de Queso campesino' });
-    expect(txt(screen.getByRole('button', { name: 'Cambiar el peso de Queso campesino' }).textContent)).toContain('0,735 kg');
+    expect(txt(screen.getByRole('button', { name: 'Cambiar el peso de Queso campesino' }).textContent)).toContain('735 g');
 
     // Segunda pesada del mismo producto: otra línea, no se suma a la primera.
     fireEvent.click(screen.getAllByText('Queso campesino')[0]);
@@ -171,21 +171,21 @@ const PESADA = {
 } as unknown as SaleItem;
 
 describe('mesas: traslado y tarjeta del plato con decimales', () => {
-  it('traslada 0,25 kg de 0,735 kg (antes parseInt lo volvía 1)', async () => {
+  it('traslada 0,25 kg de 735 g (antes parseInt lo volvía 1)', async () => {
     const onTransfer = jest.fn(async () => undefined);
     renderConIdioma(<TransferItemDialog open onOpenChange={jest.fn()} item={PESADA} currentTableId="mesa-1" onTransfer={onTransfer} />);
     await act(async () => undefined); // carga de mesas
-    expect(txt(screen.getByText(/Cantidad disponible/).textContent)).toContain('0,735 kg');
+    expect(txt(screen.getByText(/Cantidad disponible/).textContent)).toContain('735 g');
     const campo = screen.getByLabelText('Cantidad a Transferir');
     fireEvent.change(campo, { target: { value: '0,9' } });
     expect(screen.getByText(/no puede ser mayor/)).toBeTruthy();
     fireEvent.change(campo, { target: { value: '0,25' } });
-    expect(txt(screen.getByText(/Se transferirán/).textContent)).toBe('Se transferirán 0,250 kg de 0,735 kg');
+    expect(txt(screen.getByText(/Se transferirán/).textContent)).toBe('Se transferirán 250 g de 735 g');
   });
 
-  it('la tarjeta del plato dice «0,735 kg» y el precio por kg', () => {
+  it('la tarjeta del plato dice «735 g» y el precio por kg', () => {
     renderConIdioma(<OrderItemCard item={PESADA} onUpdateQuantity={jest.fn()} onDelete={jest.fn()} />);
-    expect(txt(screen.getByText(/Cant:/).textContent)).toBe('Cant: 0,735 kg');
+    expect(txt(screen.getByText(/Cant:/).textContent)).toBe('Cant: 735 g');
     expect(txt(screen.getByText(/\/ kg/).textContent)).toBe('$ 18.900 / kg');
   });
 });
@@ -193,10 +193,10 @@ describe('mesas: traslado y tarjeta del plato con decimales', () => {
 describe('pantalla del cliente: «Pesando…»', () => {
   const w = buildDisplayWeighing({ name: 'Queso campesino', qty: 0.735, unit: 'kg', decimals: 3, unitPrice: 18900, moneyDecimals: 0 })!;
   const esperado: Record<IdiomaPrueba, string> = {
-    es: 'Pesando: 0,735 kg × $ 18.900 / kg = $ 13.892',
-    en: 'Weighing: 0.735 kg × COP 18,900 / kg = COP 13,892',
-    fr: 'Pesée : 0,735 kg × 18 900 $CO / kg = 13 892 $CO',
-    pt: 'Pesando: 0,735 kg × COP 18.900 / kg = COP 13.892',
+    es: 'Pesando: 735 g × $ 18.900 / kg = $ 13.892',
+    en: 'Weighing: 735 g × COP 18,900 / kg = COP 13,892',
+    fr: 'Pesée : 735 g × 18 900 $CO / kg = 13 892 $CO',
+    pt: 'Pesando: 735 g × COP 18.900 / kg = COP 13.892',
   };
   const LOCALES: Record<IdiomaPrueba, string> = { es: 'es-CO', en: 'en-US', fr: 'fr-FR', pt: 'pt-BR' };
   it.each(IDIOMAS)('franja en %s', (idioma: IdiomaPrueba) => {
@@ -212,8 +212,8 @@ describe('pantalla del cliente: «Pesando…»', () => {
 });
 
 describe('comanda del KDS', () => {
-  it('«0,500 kg» en un producto por peso y «2x» en los demás', () => {
-    expect(textoCantidadComanda(0.5, { sale_mode: 'weight', qty_decimals: 3, unit_code: 'KG' }, 'es')).toBe('0,500 kg');
+  it('«500 g» en un producto por peso y «2x» en los demás', () => {
+    expect(textoCantidadComanda(0.5, { sale_mode: 'weight', qty_decimals: 3, unit_code: 'KG' }, 'es')).toBe('500 g');
     expect(textoCantidadComanda(2, { sale_mode: 'unit' }, 'es')).toBe('2x');
     expect(textoCantidadComanda(0.5, null, 'es')).toBe('0,5x');
   });

@@ -2,7 +2,7 @@
  * «Cómo se vende» un producto (docs/design/PRODUCTOS-POR-PESO-BASCULA.md §2.1).
  *
  *   unit    → cantidad entera (hoy)
- *   weight  → kg o lb, 3 decimales (gramos), con «Pesar»
+ *   weight  → g (gramos enteros), kg o lb (3 decimales), con «Pesar»
  *   measure → metro o litro, 2 decimales, cantidad escrita
  *
  * Espejo de `fn_producto_decimales_cantidad` en la base: el servidor rechaza
@@ -12,6 +12,7 @@
  */
 
 import { redondearCantidad } from '@/lib/inventario/nucleo/costo';
+import { pesoLegible, precioVisiblePeso, unidadPeso } from '@printing/peso';
 
 export type ModoVenta = 'unit' | 'weight' | 'measure';
 
@@ -30,8 +31,12 @@ export interface ProductoModoVenta {
   require_scale?: boolean | null;
 }
 
-/** Unidades de venta por peso y por medida (códigos de `units`, sin relleno). */
-export const UNIDADES_PESO = ['KG', 'LB'] as const;
+/**
+ * Unidades de venta por peso y por medida (códigos de `units`, sin relleno).
+ * Por peso, la unidad es la del inventario: gramos, kilos o libras
+ * (conversión única en `@printing/peso`).
+ */
+export const UNIDADES_PESO = ['GR', 'KG', 'LB'] as const;
 export const UNIDADES_MEDIDA = ['MT', 'LT'] as const;
 
 export function modoVenta(p: Pick<ProductoModoVenta, 'sale_mode'> | null | undefined): ModoVenta {
@@ -49,10 +54,17 @@ export function esMedido(p: Pick<ProductoModoVenta, 'sale_mode'> | null | undefi
   return modoVenta(p) !== 'unit';
 }
 
-/** Decimales de la cantidad: unit 0; weight `qty_decimals` o 3; measure `qty_decimals` o 2. */
-export function decimalesCantidad(p: Pick<ProductoModoVenta, 'sale_mode' | 'qty_decimals'> | null | undefined): number {
+/**
+ * Decimales de la cantidad: unit 0; weight en gramos 0 (gramos enteros), en
+ * kg o lb `qty_decimals` o 3; measure `qty_decimals` o 2. Espejo de
+ * `fn_producto_decimales_cantidad(modo, decimales, unidad)`.
+ */
+export function decimalesCantidad(
+  p: (Pick<ProductoModoVenta, 'sale_mode' | 'qty_decimals'> & { unit_code?: string | null }) | null | undefined,
+): number {
   const modo = modoVenta(p);
   if (modo === 'unit') return 0;
+  if (modo === 'weight' && unidadPeso(p?.unit_code) === 'GR') return 0;
   const d = Math.trunc(Number(p?.qty_decimals ?? 0));
   if (Number.isFinite(d) && d > 0) return Math.min(3, d);
   return modo === 'weight' ? 3 : 2;
@@ -114,9 +126,10 @@ export function cantidadDesdeTexto(texto: string, decimales = 0): number | null 
 }
 
 /**
- * Cantidad con su unidad, en el formato del idioma: «0,735 kg», «2,50 m»,
- * «3». Para imprimir se usa el formateador del agente (`@printing/quantity`),
- * que aplica la misma regla.
+ * Cantidad con su unidad, en el formato del idioma. Por peso, legible sea cual
+ * sea la unidad de inventario: «735 g», «1,250 kg», «1,500 lb» (`pesoLegible`).
+ * Por medida «2,50 m»; por unidad «3». Para imprimir se usa el formateador del
+ * agente (`@printing/quantity`), que aplica la misma regla.
  */
 export function formatoCantidad(
   cantidad: number,
@@ -127,10 +140,28 @@ export function formatoCantidad(
   if (!esMedido(p)) {
     return new Intl.NumberFormat(locale, { maximumFractionDigits: 3, useGrouping: false }).format(n);
   }
+  const peso = esPorPeso(p) ? pesoLegible(n, p?.unit_code, locale) : null;
+  if (peso !== null) return peso;
   const d = decimalesCantidad(p);
   const texto = new Intl.NumberFormat(locale, { minimumFractionDigits: d, maximumFractionDigits: d }).format(n);
   const u = simboloUnidad(p?.unit_code);
   return (u ? `${texto} ${u}` : texto).replace(/[  ]/g, ' ');
+}
+
+/**
+ * Precio por la unidad que se muestra (línea del carrito, «Pesar», ticket):
+ * por peso, por kg aunque se guarde por gramo («$ 12.000/kg»), o por lb; por
+ * medida, por su unidad («/m»). `null` por unidad.
+ */
+export function precioPorUnidadVisible(
+  p: ProductoModoVenta | null | undefined,
+  precioPorUnidad: number,
+): { precio: number; unidad: string } | null {
+  if (!esMedido(p)) return null;
+  const peso = esPorPeso(p) ? precioVisiblePeso(precioPorUnidad, p?.unit_code) : null;
+  if (peso) return peso;
+  const u = simboloUnidad(p?.unit_code);
+  return u ? { precio: Number(precioPorUnidad) || 0, unidad: u } : null;
 }
 
 /** Paso del campo numérico (`step`) según los decimales: 1, 0.1, 0.01, 0.001. */

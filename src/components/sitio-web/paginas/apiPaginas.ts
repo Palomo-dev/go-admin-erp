@@ -12,7 +12,9 @@ import type {
   RespuestaMenusSitio,
   RespuestaEscrituraPaginas,
   RespuestaPaginas,
+  RespuestaPlantillaCompleta,
 } from './tiposPaginas';
+
 
 export class ErrorApiPaginas extends Error {
   constructor(
@@ -85,6 +87,9 @@ export const apiPaginas = {
     pedir<RespuestaEscrituraPaginas>(RUTA_API_PAGINAS, { method: 'POST', body: { ...cuerpoBase(c), ...datos } }),
   restaurarBase: (c: ContextoEscritura) =>
     pedir<RespuestaEscrituraPaginas>(`${RUTA_API_PAGINAS}/base`, { method: 'POST', body: cuerpoBase(c) }),
+  /** «Usar esta plantilla › Plantilla completa» (el borrador anterior queda en el historial). */
+  plantillaCompleta: (c: ContextoEscritura, plantilla: string) =>
+    pedir<RespuestaPlantillaCompleta>(`${RUTA_API_PAGINAS}/plantilla`, { method: 'POST', body: { ...cuerpoBase(c), plantilla } }),
   modificar: (c: ContextoEscritura, paginaId: string, accion: Record<string, unknown>) =>
     pedir<RespuestaEscrituraPaginas>(`${RUTA_API_PAGINAS}/${encodeURIComponent(paginaId)}`, {
       method: 'PATCH',

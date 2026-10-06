@@ -17,6 +17,7 @@
  * web pública: crear, guardar y publicar no cambian lo que ven los clientes; solo
  * `set_site_v2_adoption` lo hace, y es una acción explícita (ADR-002 D4).
  */
+import { randomUUID } from 'crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   validarDocumentoSitio,
@@ -35,6 +36,14 @@ import {
   type FilaSeccionLegacy,
 } from '@/lib/website/v2/importadorLegacy';
 import { propagarSeccionesHeredadas } from '@/lib/website/v2/vistaEditor';
+import { publicarConActivacion, type ActivacionAlPublicar } from '@/lib/website/v2/activarAlPublicar';
+import {
+  documentoPlantillaSede,
+  esTipoSedePlantilla,
+  resultadoDesdeRpc,
+  type ResultadoPlantillaSede,
+  type TipoSedePlantilla,
+} from '@/lib/website/v2/plantillaSede';
 import { COLUMNAS_IMPORTADAS } from '@/lib/website/v2/mapeoAjustes';
 import type {
   BasePrincipal,
@@ -289,15 +298,80 @@ async function resumenDe(cliente: SupabaseClient, org: number, sitioId: string):
   return sitio;
 }
 
+/** La RPC de la plantilla de sede aún no existe (migración sin aplicar). */
+function funcionPendiente(error: ErrorPostgrest): boolean {
+  return error.code === 'PGRST202' || error.code === '42883' || /Could not find the function|function .* does not exist/i.test(error.message ?? '');
+}
+
+/**
+ * `fn_website_plantilla_sede`: crea el sitio de la sede con la plantilla, o reemplaza su borrador
+ * (con la copia anterior en el historial), en UNA transacción e idempotente. La RPC vuelve a
+ * comprobar el permiso `website.sites.edit`, que la sucursal es de la organización y que su
+ * `branch_type` sigue siendo `tipo`. Devuelve `null` si la migración aún no está aplicada (quien
+ * llama degrada al comportamiento anterior).
+ *
+ * - `auto`: crea si no existe; reemplaza solo si el borrador no tiene cambios del usuario y la
+ *   plantilla es de otro tipo; si los tiene responde `pendiente_confirmacion` y no toca nada.
+ * - `confirmado`: «Aplicar plantilla de <tipo>» con compare-and-swap de la versión del borrador.
+ */
+export async function rpcPlantillaSede(
+  cliente: SupabaseClient,
+  org: number,
+  branchId: number,
+  tipo: TipoSedePlantilla,
+  documento: DocumentoSitio,
+  modo: 'auto' | 'confirmado',
+  versionEsperada: number | null,
+): Promise<ResultadoPlantillaSede | null> {
+  const { data, error } = await cliente.rpc('fn_website_plantilla_sede', {
+    p_org: org,
+    p_branch: branchId,
+    p_tipo: tipo,
+    p_document: documento,
+    p_schema_version: VERSION_ESQUEMA_DOCUMENTO,
+    p_modo: modo,
+    p_version_esperada: versionEsperada,
+  });
+  if (error) {
+    if (funcionPendiente(error)) return null;
+    throw errorDesdePostgrest(error, 'rpcPlantillaSede');
+  }
+  return resultadoDesdeRpc(branchId, tipo, data);
+}
+
+/**
+ * Documento de la plantilla del tipo de la sede sobre la base del principal, ya validado.
+ * `null` si el tipo no tiene plantilla.
+ */
+export async function documentoPlantillaDeSede(
+  cliente: SupabaseClient,
+  org: number,
+  tipoSede: string | null | undefined,
+): Promise<DocumentoSitio | null> {
+  if (!esTipoSedePlantilla(tipoSede)) return null;
+  const base = await resolverBasePrincipal(cliente, org);
+  const documento = documentoPlantillaSede(base.documento, tipoSede, randomUUID);
+  if (!documento) return null;
+  const validacion = validarDocumentoSitio(documento);
+  if (!validacion.ok) throw new ErrorSitio('importacion_invalida', 'La plantilla de la sede no cumple el contrato.', validacion.errores);
+  return validacion.documento;
+}
+
 /**
  * Crea el sitio (principal o de sede) y su borrador inicial. Idempotente: si ya existe lo
  * devuelve sin tocar su borrador (`ensure_site_draft`).
+ *
+ * Una sede con tipo de negocio (`branches.branch_type`) nace con la plantilla de ese tipo
+ * (`plantillaSede.ts`) por `fn_website_plantilla_sede`, que deja la marca para saber después si
+ * el borrador sigue intacto. Sin tipo, o sin la migración, como antes: hereda todo del principal.
  */
 export async function crearSitio(cliente: SupabaseClient, org: number, branchId: number | null): Promise<ResultadoCreacion> {
+  let tipoSede: string | null = null;
   if (branchId !== null) {
-    const { data, error } = await cliente.from('branches').select('id').eq('id', branchId).eq('organization_id', org).maybeSingle();
+    const { data, error } = await cliente.from('branches').select('id, branch_type').eq('id', branchId).eq('organization_id', org).maybeSingle();
     if (error) throw errorDesdePostgrest(error, 'crearSitio.sucursal');
     if (!data) throw new ErrorSitio('sucursal_no_encontrada', 'La sucursal no existe en esta organización.');
+    tipoSede = (data as { branch_type?: string | null }).branch_type ?? null;
   }
 
   const existentes = await listarSitios(cliente, org);
@@ -309,8 +383,12 @@ export async function crearSitio(cliente: SupabaseClient, org: number, branchId:
   if (branchId === null) {
     ({ documento, avisos } = await importarPrincipalLegacy(cliente, org));
   } else {
-    const base = await resolverBasePrincipal(cliente, org);
-    documento = documentoSedeDesdeBase(base.documento);
+    const plantilla = await documentoPlantillaDeSede(cliente, org, tipoSede);
+    if (plantilla && esTipoSedePlantilla(tipoSede)) {
+      const r = await rpcPlantillaSede(cliente, org, branchId, tipoSede, plantilla, 'auto', null);
+      if (r?.sitioId) return { sitio: await resumenDe(cliente, org, r.sitioId), creado: r.accion === 'creado', avisos };
+    }
+    documento = plantilla ?? documentoSedeDesdeBase((await resolverBasePrincipal(cliente, org)).documento);
   }
   const validacion = validarDocumentoSitio(documento);
   if (!validacion.ok) throw new ErrorSitio('importacion_invalida', 'El documento inicial no cumple el contrato.', validacion.errores);
@@ -547,6 +625,31 @@ export async function cambiarAdopcion(
   const { error } = await cliente.rpc('set_site_v2_adoption', { p_site: sitioId, p_adopted: adoptado });
   if (error) throw errorDesdePostgrest(error, 'cambiarAdopcion');
   return resumenDe(cliente, org, sitioId);
+}
+
+/**
+ * «Publicar» que además activa la web la primera vez (principal o sede): `publicar` y, si el
+ * sitio aún no está activo y `lectorListo`, `cambiarAdopcion(true)`. La decisión y el manejo
+ * del fallo viven en `activarAlPublicar.ts`: si activar falla, la revisión queda publicada y se
+ * devuelve `activacion: 'fallo'` (el editor ofrece «Activar en la web» como reintento).
+ */
+export async function publicarYActivar(
+  cliente: SupabaseClient,
+  org: number,
+  sitioId: string,
+  versionEsperada: number,
+  nota: string | null,
+  lectorListo: boolean,
+): Promise<ResultadoPublicacion & { activacion: ActivacionAlPublicar; errorActivacion?: string }> {
+  const estado = await estadoDeOrg(cliente, org, sitioId);
+  return publicarConActivacion({
+    pedida: true,
+    estado: { v2Adoptado: estado.v2_adopted, lectorListo },
+    publicar: () => publicar(cliente, org, sitioId, versionEsperada, nota),
+    activar: () => cambiarAdopcion(cliente, org, sitioId, true),
+    alFallarActivacion: (e) =>
+      console.error('[siteDocumentService] publicarYActivar.activar', { sitio: sitioId, codigo: e instanceof ErrorSitio ? e.code : 'error' }),
+  });
 }
 
 /**

@@ -2414,10 +2414,10 @@
           "cancelar": "Cancelar"
         },
         "formulario": {
-          "nueva": "Nueva sucursal",
-          "nuevaDescripcion": "Datos de la sede, horario y presencia web.",
-          "editar": "Editar {nombre}",
-          "editarDescripcion": "Los cambios se ven en todas las pantallas al guardar.",
+          "nueva": "Nueva Sucursal",
+          "nuevaDescripcion": "Completa la información para crear una nueva sucursal",
+          "editar": "Editar Sucursal",
+          "editarDescripcion": "Modifica la información de la sucursal",
           "cancelar": "Cancelar",
           "guardar": "Guardar",
           "guardando": "Guardando…",
@@ -2433,7 +2433,7 @@
             "aperturaTurno": "{dia}: apertura del turno {n}",
             "cierreTurno": "{dia}: cierre del turno {n}",
             "quitarTurno": "Quitar turno",
-            "anadirTurno": "+ Añadir turno",
+            "anadirTurno": "Añadir turno",
             "errorDia": "{dia}: {problema}",
             "errores": {
               "vacio": "falta la hora de apertura o de cierre",
@@ -2450,7 +2450,135 @@
               "saturday": "Sábado",
               "sunday": "Domingo"
             },
-            "slugChocaPagina": "Ya existe una página /{slug} en el sitio web. Usa otro slug para la sede."
+            "slugChocaPagina": "Ya existe una página /{slug} en el sitio web. Usa otro slug para la sede.",
+            "aperturaCol": "Hora apertura",
+            "cierreCol": "Hora cierre",
+            "turnoN": "Turno {n}",
+            "cerrado": "Cerrado",
+            "ayudaTurnos": "Cada día admite turnos partidos (hasta 4, sin cruzarse); un turno que pasa la medianoche se cierra al día siguiente."
+          },
+          "crear": "Crear sucursal",
+          "cupo": "Sucursales {usados}/{maximo}",
+          "secciones": {
+            "basica": "Información básica",
+            "ubicacion": "Ubicación",
+            "contacto": "Información de contacto",
+            "gerente": "Gerente de sucursal",
+            "horario": "Horarios de apertura",
+            "caracteristicas": "Características",
+            "web": "Identidad web",
+            "estado": "Estado"
+          },
+          "campos": {
+            "nombre": "Nombre",
+            "nombrePlaceholder": "Nombre de la sucursal",
+            "nombreObligatorio": "Escribe el nombre de la sucursal.",
+            "codigo": "Código de sucursal",
+            "codigoAyuda": "Asignado automáticamente",
+            "nit": "NIT / Identificación fiscal",
+            "nitPlaceholder": "900.123.456-7",
+            "zona": "Zona",
+            "zonaPlaceholder": "Zona Norte",
+            "capacidad": "Capacidad",
+            "capacidadPlaceholder": "Personas",
+            "capacidadInvalida": "La capacidad debe ser un número entero, 0 o más.",
+            "direccion": "Dirección",
+            "direccionPlaceholder": "Calle 45 # 12-30",
+            "pais": "País",
+            "paisElegir": "Elige un país",
+            "departamento": "Departamento",
+            "departamentoElegir": "Elige un departamento",
+            "departamentoEscribir": "Estado o provincia",
+            "ciudad": "Ciudad",
+            "ciudadElegir": "Elige una ciudad",
+            "ciudadEscribir": "Ciudad",
+            "postal": "Código postal",
+            "postalPlaceholder": "050001",
+            "coordenadas": "Coordenadas",
+            "coordenadasAyuda": "Se editan en el mapa de sucursales",
+            "sinCoordenadas": "Sin ubicar en el mapa",
+            "telefono": "Teléfono",
+            "email": "Email",
+            "emailPlaceholder": "sucursal@empresa.com",
+            "gerente": "Asignar gerente",
+            "gerenteElegir": "Seleccionar gerente…",
+            "gerenteNinguno": "Sin gerente asignado",
+            "gerenteBuscar": "Buscar persona…",
+            "gerenteVacio": "No hay personas disponibles",
+            "gerenteAyuda": "El gerente tendrá permisos administrativos sobre esta sucursal.",
+            "gerenteError": "No se pudo cargar la lista de personas.",
+            "gerenteCargando": "Cargando personas…",
+            "telefonoAyuda": "Se guarda en formato internacional: {numero}",
+            "telefonoAyudaVacio": "Se guarda en formato internacional."
+          },
+          "zonaHoraria": {
+            "etiqueta": "Zona horaria",
+            "heredar": "Heredar de la organización ({zona})",
+            "ayuda": "Se aplica {zona} ({origen}). Las fechas de esta sucursal se muestran e imprimen en esa zona, aunque quien las mire esté en otra.",
+            "origen": {
+              "branch": "propia de la sucursal",
+              "organization": "heredada de la organización",
+              "default": "por defecto del sistema"
+            }
+          },
+          "caracteristicas": {
+            "has_wifi": "WiFi",
+            "has_parking": "Estacionamiento",
+            "has_delivery": "Delivery",
+            "has_outdoor_seating": "Área exterior",
+            "is_wheelchair_accessible": "Accesible para sillas de ruedas",
+            "has_air_conditioning": "Aire acondicionado"
+          },
+          "web": {
+            "tipo": "Tipo de negocio",
+            "tipoNinguno": "Sin especificar",
+            "tipoAyuda": "Determina las secciones disponibles en el editor de branding.",
+            "tipos": {
+              "hotel": "Hotel",
+              "restaurant": "Restaurante",
+              "retail": "Tienda / Retail",
+              "gym": "Gimnasio",
+              "transport": "Transporte",
+              "parking": "Parqueadero",
+              "services": "Servicios"
+            },
+            "slug": "Slug (URL path)",
+            "slugPlaceholder": "hotel, restaurante-1",
+            "slugAyuda": "Solo minúsculas, números y guiones. Único por organización.",
+            "slugReservado": "El slug «{slug}» está reservado para el router público (menu, categorias, productos, checkout…). Si lo usas, la sede no será accesible por ruta.",
+            "slugCambio": "Cambiar el slug cambia la URL pública ({antes} → {despues}): los enlaces y los QR de mesa ya impresos dejarán de abrir esta sede.",
+            "subdominioLegado": "Esta sede tiene el subdominio «{subdominio}», que el sitio web no usa para la sede. Su dirección pública es la de abajo.",
+            "dominio": "Dominio personalizado",
+            "dominioPlaceholder": "miempresa.com",
+            "dominioAyuda": "Único global. Requiere configurar DNS (registro A/CNAME).",
+            "conectar": "Conectar un dominio que ya compraste",
+            "comprar": "Comprar un dominio nuevo",
+            "logo": "Logo del sitio web",
+            "logoAyuda": "Reemplaza el logo de la organización para esta sede. PNG, JPG, WEBP o SVG, hasta 2 MB.",
+            "portada": "Imagen de portada",
+            "portadaAyuda": "JPG, PNG o WEBP, hasta 5 MB.",
+            "publicado": "Sitio web publicado",
+            "publicadoAyuda": "La sede tiene sitio público, accesible por su ruta (/slug) o por su dominio propio.",
+            "urlPublica": "URL pública de la sede:",
+            "urlSinDominio": "Configura un dominio o subdominio de la organización para tener URL pública",
+            "urlSinSlug": "Configura el slug o un dominio propio para ver la URL"
+          },
+          "estado": {
+            "principal": "Sucursal principal",
+            "principalAyuda": "Solo una sucursal puede ser la principal.",
+            "activa": "Sucursal activa",
+            "activaAyuda": "Las inactivas no aparecen en el POS ni en los selectores.",
+            "surte": "Surte la tienda web",
+            "surteAyuda": "El sitio web usa el inventario de esta sucursal."
+          },
+          "errores": {
+            "tipoObligatorio": "Elige el tipo de negocio para publicar la sede en la web.",
+            "slugObligatorio": "Escribe el slug para publicar la sede en la web.",
+            "telefono": "Teléfono: {detalle}",
+            "urlLogo": "La URL del logo no es una dirección http(s) válida.",
+            "urlPortada": "La URL de la portada no es una dirección http(s) válida.",
+            "generico": "No se pudo guardar la sucursal.",
+            "titulo": "Revisa el formulario"
           }
         },
         "toasts": {
@@ -13852,7 +13980,7 @@
       "modo_venta_invalido": "Elige cómo se vende el producto.",
       "modo_venta_servicio": "Un servicio se vende por unidad.",
       "modo_venta_con_variantes": "Un producto por peso o por medida no lleva variantes: crea cada presentación como otro producto.",
-      "unidad_peso_invalida": "Por peso, la unidad debe ser kilogramo o libra.",
+      "unidad_peso_invalida": "Por peso, la unidad debe ser gramo, kilogramo o libra.",
       "unidad_medida_invalida": "Por medida, la unidad debe ser metro o litro.",
       "referencia_precio_invalida": "El precio se escribe por kg o cada 500, 250, 100 o 50 g.",
       "decimales_invalidos": "La cantidad admite de 1 a 3 decimales.",
@@ -14342,12 +14470,13 @@
       "porMedida": "Por medida",
       "unidadPeso": "Unidad de peso",
       "unidadMedida": "Unidad de medida",
+      "gramo": "Gramo (g)",
       "kilogramo": "Kilogramo (kg)",
       "libra": "Libra (lb)",
       "metro": "Metro (m)",
       "litro": "Litro (L)",
       "precioEscrito": "Escribir el precio",
-      "precioEscritoAyuda": "Solo cambia cómo se escribe y se muestra: se guarda siempre por kg.",
+      "precioEscritoAyuda": "Solo cambia cómo se escribe y se muestra: se guarda por la unidad del producto (por gramo si se vende en gramos).",
       "porUnidadVenta": "por {unidad}",
       "cadaCantidad": "cada {cantidad} {unidad}",
       "precioVentaCada": "Precio de venta {referencia}",
@@ -23515,7 +23644,8 @@
       },
       "sinPrecio": "«{producto}» no tiene un precio vigente. Configúralo en Inventario.",
       "precioNoConsultado": "No se pudo consultar el precio de «{producto}». Revisa la conexión e intenta de nuevo.",
-      "errorAgregar": "No se pudo agregar «{producto}» al carrito."
+      "errorAgregar": "No se pudo agregar «{producto}» al carrito.",
+      "unidadEscrita": "Unidad del peso escrito"
     },
     "etiqueta": {
       "invalida": "Etiqueta de peso ilegible",
@@ -29239,7 +29369,25 @@
         "conflicto": "Otra persona guardó una versión más nueva. Recargamos tu borrador: vuelve a intentarlo.",
         "seccionDesconocida": "Sección",
         "tuMarca": "Tu marca",
-        "inicio": "Inicio"
+        "inicio": "Inicio",
+        "modo": "Cómo aplicarla",
+        "completaTitulo": "Plantilla completa",
+        "completaDescripcion": "Encabezado, pie, páginas, secciones y menús nuevos, con los datos de tu negocio.",
+        "estiloTitulo": "Solo estilo",
+        "estiloDescripcion": "Cambian los colores y las fuentes. Tu contenido se conserva.",
+        "paginas": "Páginas: {lista}",
+        "avisoCompletaTitulo": "Tu sitio actual queda en el historial",
+        "avisoCompletaDescripcion": "Se reemplazan el encabezado, el pie, las páginas, las secciones y los menús. Tus páginas legales y de tienda se conservan, y lo demás queda en el historial: puedes deshacerlo. Se crea un borrador: nada cambia en línea hasta que publiques.",
+        "avisoEstiloTitulo": "Cambia el estilo, conserva tu contenido",
+        "avisoEstiloDescripcion": "Cambian los colores y las fuentes. Tus páginas, secciones, textos, fotos, carta y menús se conservan tal cual. Se crea un borrador: nada cambia en línea hasta que publiques.",
+        "usarCompleta": "Usar plantilla completa",
+        "usarEstilo": "Aplicar solo el estilo",
+        "listoCompleta": "Tu borrador ya tiene «{nombre}» completa.",
+        "ocultasUna": "1 sección queda oculta hasta que pongas tus datos.",
+        "ocultas": "{n} secciones quedan ocultas hasta que pongas tus datos (equipo, opiniones, cifras…).",
+        "deshacer": "Deshacer",
+        "deshecho": "Volvimos a tu sitio anterior.",
+        "noDeshecho": "No pudimos deshacer. Lo encuentras en el historial del editor."
       }
     },
     "dominios": {
@@ -29916,6 +30064,10 @@
         "yaPublicada": "Esta versión ya estaba publicada",
         "listoAdoptado": "Tus clientes la verán en cuanto se actualice la caché.",
         "listoSinAdoptar": "Queda en el historial. La web sigue mostrando el sitio actual hasta activar el borrador.",
+        "activaraWeb": "Tu web pasará a mostrar este diseño. Antes mostraba el sitio anterior; puedes volver desde ⋯ › Desactivar.",
+        "webActualizada": "Publicado. Tu web se actualiza en 1 minuto",
+        "activarFalloTitulo": "Versión {n} publicada, pero tu web aún muestra el sitio anterior",
+        "activarFalloDescripcion": "No se pudo activar en la web. Inténtalo de nuevo con «Activar en la web».",
         "error": "No se pudo publicar",
         "programada": "Publicación programada",
         "errorProgramar": "No se pudo programar la publicación",
@@ -30059,7 +30211,10 @@
         "enTodas": "En todas",
         "enTodasAyuda": "«En todas» cambia el sitio principal. Al publicarlo, el cambio pasa al borrador de cada sede que usa esta sección y llega a su web cuando esa sede se publica.",
         "ahoraPrincipal": "Ahora editas el sitio principal",
-        "ahoraPrincipalDescripcion": "Aplicamos tu cambio aquí. Al publicar, pasa al borrador de cada sede que usa esta sección."
+        "ahoraPrincipalDescripcion": "Aplicamos tu cambio aquí. Al publicar, pasa al borrador de cada sede que usa esta sección.",
+        "crearSitioDescripcionPlantilla": "La sede nace con la plantilla de {tipo}: páginas, secciones y menús de ese tipo de negocio, en borrador. Hereda del sitio principal el logo, los colores y lo que no personalices. Nada se publica hasta que lo decidas.",
+        "sinSitioTitulo": "{sede} aún no tiene su sitio",
+        "crearConPlantilla": "Crear con la plantilla de {tipo}"
       },
       "adopcion": {
         "activarTitulo": "Activar el borrador en la web de {sitio}",
@@ -31694,6 +31849,31 @@
           "cancelar": "Seguir editando"
         }
       }
+    },
+    "plantillaSede": {
+      "tipos": {
+        "restaurant": "Restaurante",
+        "hotel": "Hotel",
+        "retail": "Tienda",
+        "gym": "Gimnasio",
+        "transport": "Transporte",
+        "parking": "Parqueadero",
+        "services": "Servicios"
+      },
+      "accion": "Aplicar plantilla de {tipo} a esta sede",
+      "titulo": "Aplicar la plantilla de {tipo} a {sede}",
+      "descripcion": "Reemplaza el borrador de la sede por la estructura de {tipo}: páginas, secciones y menús. El borrador actual queda en el historial como guardado automático y lo puedes restaurar. Nada cambia en línea hasta que publiques.",
+      "descripcionPendiente": "El sitio de {sede} tiene cambios propios, por eso no se reemplazó al cambiar el tipo de negocio. Si aplicas la plantilla de {tipo}, el borrador actual queda en el historial y lo puedes restaurar. Nada cambia en línea hasta que publiques.",
+      "confirmar": "Aplicar plantilla",
+      "ahoraNo": "Ahora no",
+      "aplicada": "Plantilla de {tipo} aplicada a {sede}",
+      "creada": "El sitio de {sede} se creó con la plantilla de {tipo}",
+      "enBorrador": "Quedó en borrador. Publica la sede desde el editor cuando esté lista.",
+      "sinCambios": "{sede} ya tiene la plantilla de {tipo}",
+      "error": "No se pudo aplicar la plantilla",
+      "noDisponible": "Aplicar una plantilla a la sede se activa cuando se aplique su migración.",
+      "avisoFormulario": "Tu sitio de sede se crea con la plantilla de {tipo}. Queda en borrador hasta que lo publiques.",
+      "avisoCambioTipo": "Al guardar, el sitio de la sede pasa a la plantilla de {tipo}. Si ya tiene cambios propios no se pisan: te preguntaremos antes de aplicarla."
     }
   },
   "roles": {

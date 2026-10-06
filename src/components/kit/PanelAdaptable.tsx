@@ -50,8 +50,8 @@ export interface PanelAdaptableProps {
   accionesCabecera?: ReactNode;
   children: ReactNode;
   pie?: ReactNode;
-  /** 1120: cobro del POS (resumen a la izquierda, pagos a la derecha). */
-  ancho?: 520 | 560 | 672 | 800 | 1120;
+  /** 880: formulario de sucursal (Figma 08). 1120: cobro del POS (resumen a la izquierda, pagos a la derecha). */
+  ancho?: 520 | 560 | 672 | 800 | 880 | 1120;
   /** Bloquea el cierre (operación en curso). */
   ocupado?: boolean;
   /**
@@ -73,6 +73,7 @@ const ANCHO: Record<NonNullable<PanelAdaptableProps['ancho']>, string> = {
   560: 'sm:max-w-[560px]',
   672: 'sm:max-w-[672px]',
   800: 'sm:max-w-[800px]',
+  880: 'sm:max-w-[880px]',
   1120: 'sm:max-w-[1120px]',
 };
 

@@ -44,6 +44,8 @@ interface ReturnItemData {
   selected_serial_ids: number[];
   /** Decimales de la cantidad (0 por unidad; 3 en kg) y unidad visible («kg»). */
   decimales: number;
+  /** Por peso o medida: se devuelve todo lo vendido de una vez (en gramos los decimales son 0). */
+  medido: boolean;
   unidad: string | null;
   /** Producto por peso: «Reingresa» al inventario (por defecto no). */
   por_peso: boolean;
@@ -106,6 +108,7 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
       available_serials: item.serials || [],
       selected_serial_ids: [] as number[],
       decimales: esMedido(item.product) ? decimalesCantidad(item.product) : 0,
+      medido: esMedido(item.product),
       unidad: unidadVisible(item.product),
       por_peso: esPorPeso(item.product),
       restock: false,
@@ -129,8 +132,8 @@ export function ReturnForm({ sale, onBack, onSuccess }: ReturnFormProps) {
           ...item,
           selected,
           // Por peso o medida se propone devolver todo lo disponible (0,735 kg), no «1».
-          return_quantity: selected ? (item.decimales > 0 ? item.max_returnable : Math.min(1, item.max_returnable)) : 0,
-          refund_amount: selected ? item.unit_price * (item.decimales > 0 ? item.max_returnable : Math.min(1, item.max_returnable)) : 0
+          return_quantity: selected ? (item.medido ? item.max_returnable : Math.min(1, item.max_returnable)) : 0,
+          refund_amount: selected ? item.unit_price * (item.medido ? item.max_returnable : Math.min(1, item.max_returnable)) : 0
         };
       }
       return item;

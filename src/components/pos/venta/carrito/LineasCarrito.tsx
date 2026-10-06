@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { AlertTriangle, Check, CheckCircle, ChefHat, Package, Plus, Send, StickyNote, UserRound, type LucideIcon } from 'lucide-react';
 import { CartLine, CartTag, Dialogo, useAtajos, type Atajo } from '@/components/kit';
+import { useLocaleIntl } from '@/components/kit/useIdiomaKit';
 import { CachedProductImage } from '@/components/pos/CachedProductImage';
 import type { DestinoNota } from '@/components/pos/cocina/ChipsNotasRapidas';
 import type { CartItem } from '@/components/pos/types';
@@ -11,7 +12,7 @@ import { hayRafagaDelLector } from '@/hooks/useHardwareBarcodeScanner';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { estadoCocinaLinea } from '@/lib/pos/cocina/lineasCarrito';
 import { teclaAtajo } from '@/lib/pos/venta/atajos';
-import { decimalesCantidad, esMedido, simboloUnidad } from '@/lib/pos/peso/modoVenta';
+import { decimalesCantidad, esMedido, formatoCantidad, precioPorUnidadVisible, simboloUnidad } from '@/lib/pos/peso/modoVenta';
 import {
   accionCantidad,
   impuestoDeLinea,
@@ -129,6 +130,7 @@ export function LineasCarrito({
   onDescuentoCancelar,
 }: LineasCarritoProps) {
   const t = useTranslations('posVenta.carrito');
+  const locale = useLocaleIntl();
   const tNotas = useTranslations('posNotasLinea');
   const tAtajos = useTranslations('posVenta.atajos');
   const escritorio = useMediaQuery('(min-width: 1024px)');
@@ -356,6 +358,9 @@ export function LineasCarrito({
                   unidad: esMedido(item.product) ? simboloUnidad(item.product.unit_code) || item.product.unit_code : item.product.unit_code,
                   medida: esMedido(item.product),
                   decimales: esMedido(item.product) ? decimalesCantidad(item.product) : 0,
+                  // Por peso: «735 g» y «$ 12.000/kg» aunque se guarde en gramos.
+                  cantidadTexto: esMedido(item.product) ? formatoCantidad(item.quantity, item.product, locale) : null,
+                  precioVisible: precioPorUnidadVisible(item.product, item.unit_price),
                   precioUnitario: item.unit_price,
                   total: item.total,
                   impuesto: impuestoDeLinea(item, indicesSinImpuesto.has(itemIndex)),

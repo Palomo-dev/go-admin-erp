@@ -2414,10 +2414,10 @@
           "cancelar": "Cancel"
         },
         "formulario": {
-          "nueva": "New branch",
-          "nuevaDescripcion": "Location details, opening hours and web presence.",
-          "editar": "Edit {nombre}",
-          "editarDescripcion": "Changes show up on every screen once saved.",
+          "nueva": "New Branch",
+          "nuevaDescripcion": "Fill in the details to create a new branch",
+          "editar": "Edit Branch",
+          "editarDescripcion": "Update the branch details",
           "cancelar": "Cancel",
           "guardar": "Save",
           "guardando": "Saving…",
@@ -2433,7 +2433,7 @@
             "aperturaTurno": "{dia}: opening of shift {n}",
             "cierreTurno": "{dia}: closing of shift {n}",
             "quitarTurno": "Remove shift",
-            "anadirTurno": "+ Add shift",
+            "anadirTurno": "Add shift",
             "errorDia": "{dia}: {problema}",
             "errores": {
               "vacio": "the opening or closing time is missing",
@@ -2450,7 +2450,135 @@
               "saturday": "Saturday",
               "sunday": "Sunday"
             },
-            "slugChocaPagina": "There is already a /{slug} page on the website. Use another slug for the location."
+            "slugChocaPagina": "There is already a /{slug} page on the website. Use another slug for the location.",
+            "aperturaCol": "Opening time",
+            "cierreCol": "Closing time",
+            "turnoN": "Shift {n}",
+            "cerrado": "Closed",
+            "ayudaTurnos": "Each day allows split shifts (up to 4, without overlapping); a shift past midnight closes the next day."
+          },
+          "crear": "Create branch",
+          "cupo": "Branches {usados}/{maximo}",
+          "secciones": {
+            "basica": "Basic information",
+            "ubicacion": "Location",
+            "contacto": "Contact information",
+            "gerente": "Branch manager",
+            "horario": "Opening hours",
+            "caracteristicas": "Amenities",
+            "web": "Web identity",
+            "estado": "Status"
+          },
+          "campos": {
+            "nombre": "Name",
+            "nombrePlaceholder": "Branch name",
+            "nombreObligatorio": "Enter the branch name.",
+            "codigo": "Branch code",
+            "codigoAyuda": "Assigned automatically",
+            "nit": "Tax ID",
+            "nitPlaceholder": "900.123.456-7",
+            "zona": "Zone",
+            "zonaPlaceholder": "North zone",
+            "capacidad": "Capacity",
+            "capacidadPlaceholder": "People",
+            "capacidadInvalida": "Capacity must be a whole number, 0 or more.",
+            "direccion": "Address",
+            "direccionPlaceholder": "123 Main St",
+            "pais": "Country",
+            "paisElegir": "Choose a country",
+            "departamento": "State / Department",
+            "departamentoElegir": "Choose a state",
+            "departamentoEscribir": "State or province",
+            "ciudad": "City",
+            "ciudadElegir": "Choose a city",
+            "ciudadEscribir": "City",
+            "postal": "Postal code",
+            "postalPlaceholder": "050001",
+            "coordenadas": "Coordinates",
+            "coordenadasAyuda": "Edited on the branches map",
+            "sinCoordenadas": "Not placed on the map",
+            "telefono": "Phone",
+            "email": "Email",
+            "emailPlaceholder": "branch@company.com",
+            "gerente": "Assign manager",
+            "gerenteElegir": "Select manager…",
+            "gerenteNinguno": "No manager assigned",
+            "gerenteBuscar": "Search person…",
+            "gerenteVacio": "No people available",
+            "gerenteAyuda": "The manager will have administrative permissions over this branch.",
+            "gerenteError": "The list of people could not be loaded.",
+            "gerenteCargando": "Loading people…",
+            "telefonoAyuda": "Saved in international format: {numero}",
+            "telefonoAyudaVacio": "Saved in international format."
+          },
+          "zonaHoraria": {
+            "etiqueta": "Time zone",
+            "heredar": "Inherit from the organization ({zona})",
+            "ayuda": "{zona} applies ({origen}). This branch’s dates are shown and printed in that zone, even if the viewer is elsewhere.",
+            "origen": {
+              "branch": "set for this branch",
+              "organization": "inherited from the organization",
+              "default": "system default"
+            }
+          },
+          "caracteristicas": {
+            "has_wifi": "WiFi",
+            "has_parking": "Parking",
+            "has_delivery": "Delivery",
+            "has_outdoor_seating": "Outdoor seating",
+            "is_wheelchair_accessible": "Wheelchair accessible",
+            "has_air_conditioning": "Air conditioning"
+          },
+          "web": {
+            "tipo": "Business type",
+            "tipoNinguno": "Not specified",
+            "tipoAyuda": "Sets which sections are available in the branding editor.",
+            "tipos": {
+              "hotel": "Hotel",
+              "restaurant": "Restaurant",
+              "retail": "Store / Retail",
+              "gym": "Gym",
+              "transport": "Transport",
+              "parking": "Parking",
+              "services": "Services"
+            },
+            "slug": "Slug (URL path)",
+            "slugPlaceholder": "hotel, restaurant-1",
+            "slugAyuda": "Lowercase letters, numbers and hyphens only. Unique per organization.",
+            "slugReservado": "The slug «{slug}» is reserved for the public router (menu, categorias, productos, checkout…). If you use it, the branch will not be reachable by path.",
+            "slugCambio": "Changing the slug changes the public URL ({antes} → {despues}): links and table QR codes already printed will stop opening this branch.",
+            "subdominioLegado": "This branch has the subdomain «{subdominio}», which the website does not use for the branch. Its public address is the one below.",
+            "dominio": "Custom domain",
+            "dominioPlaceholder": "mycompany.com",
+            "dominioAyuda": "Globally unique. Requires DNS setup (A/CNAME record).",
+            "conectar": "Connect a domain you already own",
+            "comprar": "Buy a new domain",
+            "logo": "Website logo",
+            "logoAyuda": "Replaces the organization logo for this branch. PNG, JPG, WEBP or SVG, up to 2 MB.",
+            "portada": "Cover image",
+            "portadaAyuda": "JPG, PNG or WEBP, up to 5 MB.",
+            "publicado": "Website published",
+            "publicadoAyuda": "The branch has a public site, reachable by its path (/slug) or its own domain.",
+            "urlPublica": "Branch public URL:",
+            "urlSinDominio": "Set up an organization domain or subdomain to get a public URL",
+            "urlSinSlug": "Set the slug or a custom domain to see the URL"
+          },
+          "estado": {
+            "principal": "Main branch",
+            "principalAyuda": "Only one branch can be the main one.",
+            "activa": "Active branch",
+            "activaAyuda": "Inactive branches do not appear in the POS or in selectors.",
+            "surte": "Supplies the web store",
+            "surteAyuda": "The website uses this branch’s inventory."
+          },
+          "errores": {
+            "tipoObligatorio": "Choose the business type to publish the branch on the web.",
+            "slugObligatorio": "Enter the slug to publish the branch on the web.",
+            "telefono": "Phone: {detalle}",
+            "urlLogo": "The logo URL is not a valid http(s) address.",
+            "urlPortada": "The cover URL is not a valid http(s) address.",
+            "generico": "The branch could not be saved.",
+            "titulo": "Check the form"
           }
         },
         "toasts": {
@@ -13852,7 +13980,7 @@
       "modo_venta_invalido": "Choose how the product is sold.",
       "modo_venta_servicio": "A service is sold by unit.",
       "modo_venta_con_variantes": "A product sold by weight or measure has no variants: create each presentation as another product.",
-      "unidad_peso_invalida": "By weight, the unit must be kilogram or pound.",
+      "unidad_peso_invalida": "By weight, the unit must be gram, kilogram or pound.",
       "unidad_medida_invalida": "By measure, the unit must be meter or liter.",
       "referencia_precio_invalida": "The price is entered per kg or per 500, 250, 100 or 50 g.",
       "decimales_invalidos": "The quantity allows 1 to 3 decimals.",
@@ -14342,12 +14470,13 @@
       "porMedida": "By measure",
       "unidadPeso": "Weight unit",
       "unidadMedida": "Measure unit",
+      "gramo": "Gram (g)",
       "kilogramo": "Kilogram (kg)",
       "libra": "Pound (lb)",
       "metro": "Meter (m)",
       "litro": "Liter (L)",
       "precioEscrito": "Enter the price",
-      "precioEscritoAyuda": "Only changes how it is typed and shown: it is always stored per kg.",
+      "precioEscritoAyuda": "Only changes how it is typed and shown: it is stored per the product unit (per gram if sold in grams).",
       "porUnidadVenta": "per {unidad}",
       "cadaCantidad": "per {cantidad} {unidad}",
       "precioVentaCada": "Sale price {referencia}",
@@ -23515,7 +23644,8 @@
       },
       "sinPrecio": "“{producto}” has no current price. Set it in Inventory.",
       "precioNoConsultado": "The price of “{producto}” could not be checked. Check your connection and try again.",
-      "errorAgregar": "“{producto}” could not be added to the cart."
+      "errorAgregar": "“{producto}” could not be added to the cart.",
+      "unidadEscrita": "Unit of the typed weight"
     },
     "etiqueta": {
       "invalida": "Unreadable weight label",
@@ -29239,7 +29369,25 @@
         "conflicto": "Someone else saved a newer version. We reloaded your draft: try again.",
         "seccionDesconocida": "Section",
         "tuMarca": "Your brand",
-        "inicio": "Home"
+        "inicio": "Home",
+        "modo": "How to apply it",
+        "completaTitulo": "Full template",
+        "completaDescripcion": "New header, footer, pages, sections and menus, filled with your business data.",
+        "estiloTitulo": "Style only",
+        "estiloDescripcion": "Colors and fonts change. Your content is kept.",
+        "paginas": "Pages: {lista}",
+        "avisoCompletaTitulo": "Your current site stays in the history",
+        "avisoCompletaDescripcion": "The header, footer, pages, sections and menus are replaced. Your legal and store pages are kept, and everything else stays in the history: you can undo it. A draft is created: nothing changes online until you publish.",
+        "avisoEstiloTitulo": "Change the style, keep your content",
+        "avisoEstiloDescripcion": "Colors and fonts change. Your pages, sections, texts, photos, menu and navigation stay exactly as they are. A draft is created: nothing changes online until you publish.",
+        "usarCompleta": "Use full template",
+        "usarEstilo": "Apply style only",
+        "listoCompleta": "Your draft now has the full «{nombre}» template.",
+        "ocultasUna": "1 section stays hidden until you add your data.",
+        "ocultas": "{n} sections stay hidden until you add your data (team, reviews, figures…).",
+        "deshacer": "Undo",
+        "deshecho": "We restored your previous site.",
+        "noDeshecho": "We couldn’t undo it. You’ll find it in the editor history."
       }
     },
     "dominios": {
@@ -29916,6 +30064,10 @@
         "yaPublicada": "This version was already published",
         "listoAdoptado": "Your customers will see it as soon as the cache refreshes.",
         "listoSinAdoptar": "It stays in the history. The website keeps showing the current site until the draft is activated.",
+        "activaraWeb": "Your website will start showing this design. It used to show the previous site; you can switch back from ⋯ › Deactivate.",
+        "webActualizada": "Published. Your website updates within 1 minute",
+        "activarFalloTitulo": "Version {n} published, but your website still shows the previous site",
+        "activarFalloDescripcion": "It couldn't be activated on the website. Try again with “Activate on the web”.",
         "error": "Could not publish",
         "programada": "Publication scheduled",
         "errorProgramar": "Could not schedule the publication",
@@ -30059,7 +30211,10 @@
         "enTodas": "At all locations",
         "enTodasAyuda": "\"At all locations\" changes the main site. When you publish it, the change goes to the draft of each location that uses this section and reaches its website when that location is published.",
         "ahoraPrincipal": "You are now editing the main site",
-        "ahoraPrincipalDescripcion": "We applied your change here. When you publish, it goes to the draft of each location that uses this section."
+        "ahoraPrincipalDescripcion": "We applied your change here. When you publish, it goes to the draft of each location that uses this section.",
+        "crearSitioDescripcionPlantilla": "The location starts with the {tipo} template: pages, sections and menus for that business type, as a draft. It inherits the logo, colors and anything you do not customize from the main site. Nothing is published until you decide.",
+        "sinSitioTitulo": "{sede} does not have its site yet",
+        "crearConPlantilla": "Create with the {tipo} template"
       },
       "adopcion": {
         "activarTitulo": "Activate the draft on {sitio}'s website",
@@ -31694,6 +31849,31 @@
           "cancelar": "Keep editing"
         }
       }
+    },
+    "plantillaSede": {
+      "tipos": {
+        "restaurant": "Restaurant",
+        "hotel": "Hotel",
+        "retail": "Store",
+        "gym": "Gym",
+        "transport": "Transport",
+        "parking": "Parking",
+        "services": "Services"
+      },
+      "accion": "Apply the {tipo} template to this location",
+      "titulo": "Apply the {tipo} template to {sede}",
+      "descripcion": "Replaces the location draft with the {tipo} structure: pages, sections and menus. The current draft stays in the history as an autosave and you can restore it. Nothing changes online until you publish.",
+      "descripcionPendiente": "The {sede} site has its own changes, so it was not replaced when the business type changed. If you apply the {tipo} template, the current draft stays in the history and you can restore it. Nothing changes online until you publish.",
+      "confirmar": "Apply template",
+      "ahoraNo": "Not now",
+      "aplicada": "{tipo} template applied to {sede}",
+      "creada": "The {sede} site was created with the {tipo} template",
+      "enBorrador": "It is a draft. Publish the location from the editor when it is ready.",
+      "sinCambios": "{sede} already has the {tipo} template",
+      "error": "The template could not be applied",
+      "noDisponible": "Applying a template to a location turns on once its migration is applied.",
+      "avisoFormulario": "Your location site is created with the {tipo} template. It stays as a draft until you publish it.",
+      "avisoCambioTipo": "When you save, the location site switches to the {tipo} template. If it already has its own changes they are kept: we will ask before applying it."
     }
   },
   "roles": {

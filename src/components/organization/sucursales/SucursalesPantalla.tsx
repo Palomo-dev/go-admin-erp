@@ -91,6 +91,7 @@ import { useCupoPlan } from '../acceso/useCupoPlan';
 import { DetalleSucursal } from './DetalleSucursal';
 import { DialogoImportarSucursales } from './DialogoImportarSucursales';
 import { nombreGerente, type SucursalFila } from './tipos';
+import { EscuchaPlantillaSede } from '@/components/sitio-web/plantillaSede/EscuchaPlantillaSede';
 
 const MapaSucursales = dynamic(() => import('@/components/maps/BranchesMap'), {
   ssr: false,
@@ -170,6 +171,9 @@ function ListadoSucursales({ organizationId, puedeComprar, pedido }: { organizat
       setCargando(false);
     }
   }, [organizationId]);
+
+  const nombreDeSede = useCallback((id: number) => sedes.find((s) => s.id === id)?.name ?? `#${id}`, [sedes]);
+  const recargarSitios = useCallback(() => void cargar(), [cargar]);
 
   useEffect(() => {
     void cargar();
@@ -504,10 +508,18 @@ function ListadoSucursales({ organizationId, puedeComprar, pedido }: { organizat
       <PanelAdaptable
         abierto={formulario !== null}
         onAbiertoChange={(a) => !a && !guardando && setFormulario(null)}
-        titulo={formulario?.sede ? t('formulario.editar', { nombre: formulario.sede.name }) : t('formulario.nueva')}
+        titulo={formulario?.sede ? t('formulario.editar') : t('formulario.nueva')}
         descripcion={formulario?.sede ? t('formulario.editarDescripcion') : t('formulario.nuevaDescripcion')}
-        icono={Building2}
-        ancho={1120}
+        accionesCabecera={
+          // Figma «Nueva Sucursal»: chip «Sucursales 3/5» con el cupo del plan junto a la «×».
+          cupo.sucursales && cupo.sucursales.maximo !== null ? (
+            <span className="inline-flex h-[22px] items-center whitespace-nowrap rounded-full border border-line-brand bg-brand-tint px-2 text-xs font-medium tabular-nums text-brand-deep">
+              {t('formulario.cupo', { usados: entero(cupo.sucursales.usados), maximo: entero(cupo.sucursales.maximo) })}
+            </span>
+          ) : null
+        }
+        ancho={880}
+        pantallaCompletaMovil
         ocupado={guardando}
         pie={
           <>
@@ -515,7 +527,7 @@ function ListadoSucursales({ organizationId, puedeComprar, pedido }: { organizat
               {t('formulario.cancelar')}
             </button>
             <button type="button" className={clasesBoton()} onClick={() => void formRef.current?.submitForm()} disabled={guardando} aria-busy={guardando || undefined}>
-              {guardando ? t('formulario.guardando') : t('formulario.guardar')}
+              {guardando ? t('formulario.guardando') : formulario?.sede ? t('formulario.guardar') : t('formulario.crear')}
             </button>
           </>
         }
@@ -592,6 +604,9 @@ function ListadoSucursales({ organizationId, puedeComprar, pedido }: { organizat
           avisarCambio();
         }}
       />
+      {/* El sitio de la sede nace con la plantilla de su tipo de negocio (branchService la
+          prepara al guardar); aquí se avisa y, si ya tenía contenido propio, se pregunta. */}
+      <EscuchaPlantillaSede nombreSede={nombreDeSede} onCambio={recargarSitios} />
       <DialogoCompra
         abierto={comprar}
         onAbiertoChange={setComprar}

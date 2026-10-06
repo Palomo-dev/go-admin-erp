@@ -56,8 +56,15 @@ export interface LineaCarrito {
    * `decimales` y, con `onCambiarPeso`, el chip «⚖ 0,735 kg» reemplaza a − n +.
    */
   medida?: boolean;
-  /** Decimales de la cantidad (0 por unidad; 3 en kg). */
+  /** Decimales de la cantidad (0 por unidad y en gramos; 3 en kg). */
   decimales?: number | null;
+  /**
+   * Por peso: la cantidad legible ya formateada («735 g», «1,250 kg»), sea
+   * cual sea la unidad en que se guarda. Sin ella, cantidad + `unidad`.
+   */
+  cantidadTexto?: string | null;
+  /** Por peso: el precio que se muestra y su unidad («$ 12.000/kg» aunque se guarde por gramo). */
+  precioVisible?: { precio: number; unidad: string } | null;
   precioUnitario: number;
   total: number;
   impuesto: ImpuestoLinea;
@@ -185,7 +192,7 @@ export const CartLine = React.forwardRef<HTMLDivElement, CartLineProps>(function
     </span>
   );
 
-  const textoPeso = `${formatoCantidad.format(linea.cantidad)}${linea.unidad ? ` ${linea.unidad}` : ''}`;
+  const textoPeso = linea.cantidadTexto || `${formatoCantidad.format(linea.cantidad)}${linea.unidad ? ` ${linea.unidad}` : ''}`;
   const chipPeso =
     linea.medida && onCambiarPeso ? (
       <button
@@ -260,7 +267,10 @@ export const CartLine = React.forwardRef<HTMLDivElement, CartLineProps>(function
       <span className="text-sm font-semibold leading-5 tabular-nums text-fg">{formatear(linea.total)}</span>
       <span className="text-[11px] font-medium leading-[14px] tabular-nums text-fg-muted">
         {chipPeso && linea.unidad
-          ? t('carrito.precioPorUnidadMedida', { precio: formatear(linea.precioUnitario), unidad: linea.unidad })
+          ? t('carrito.precioPorUnidadMedida', {
+              precio: formatear(linea.precioVisible?.precio ?? linea.precioUnitario),
+              unidad: linea.precioVisible?.unidad ?? linea.unidad,
+            })
           : linea.unidad
           ? t('carrito.precioUnidad', {
               cantidad: formatoCantidad.format(linea.cantidad),

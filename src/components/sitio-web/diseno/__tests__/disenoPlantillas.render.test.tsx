@@ -3,8 +3,9 @@
  *
  * Diseño y Plantillas (Figma A/06a-06g): estados de las dos pantallas (cargando,
  * error con «Reintentar», sin permiso, listo), elegir un preset guarda el
- * estilo en el borrador, y la galería por giro con «En uso», el diálogo y
- * «Usar esta plantilla». Organización ficticia («Mi empresa S.A.S.», org 120).
+ * estilo en el borrador, y la galería por giro con «En uso», el diálogo y sus
+ * dos modos («Plantilla completa» y «Solo estilo»). Organización ficticia
+ * («Mi empresa S.A.S.», org 120).
  */
 import { TextEncoder } from 'util';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
@@ -33,9 +34,21 @@ jest.mock('@/lib/hooks/useOrganization', () => ({ useOrganization: () => ({ orga
 const cabeceraMovil = jest.fn();
 jest.mock('@/components/shell/header/cabeceraMovil', () => ({ useCabeceraMovil: (a: unknown) => cabeceraMovil(a) }));
 jest.mock('@/lib/context/OrganizationTimezoneContext', () => ({ useFormatDate: () => ({ timezone: 'America/Bogota' }) }));
+const restaurarInstantanea = jest.fn(async () => ({ version: 6, actualizadoEn: '2026-10-06T00:00:00Z' }));
 jest.mock('@/lib/website/v2/clienteSitiosV2', () => ({
-  clienteSitiosV2: { vistaPrevia: jest.fn(async () => ({ token: 'tok' })) },
+  clienteSitiosV2: { vistaPrevia: jest.fn(async () => ({ token: 'tok' })), restaurarInstantanea: (...a: unknown[]) => restaurarInstantanea(...(a as [])) },
   ErrorApiSitio: class extends Error {},
+}));
+const plantillaCompleta = jest.fn(async () => ({
+  sitioId: 's-1',
+  version: 5,
+  actualizadoEn: '2026-10-06T00:00:00Z',
+  instantaneaId: 'inst-1',
+  resumen: { paginas: 9, secciones: 30, ocultas: [{ pagina: 'Inicio', tipo: 'chef_team' }, { pagina: 'Inicio', tipo: 'testimonials' }], conservadas: 2 },
+}));
+jest.mock('../../paginas/apiPaginas', () => ({
+  apiPaginas: { plantillaCompleta: (...a: unknown[]) => plantillaCompleta(...(a as [])) },
+  ErrorApiPaginas: class extends Error {},
 }));
 jest.mock('next/dynamic', () => () => () => null);
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
@@ -206,26 +219,62 @@ describe('Plantillas (A/06b-06e)', () => {
     expect(within(tarjeta).getByText('En uso')).toBeTruthy();
   });
 
-  test('diálogo: incluye, aviso y «Usar esta plantilla» guarda estilo y estructura', async () => {
+  test('diálogo, sitio ya publicado: «Solo estilo» por defecto; guarda colores y fuentes y conserva el contenido', async () => {
     renderConIdioma(<GaleriaPlantillas />);
     fireEvent.click(screen.getByText('Velvet Lounge').closest('button')!);
     expect(screen.getByText('Bar de coctelería')).toBeTruthy();
-    expect(screen.getByText('Reemplaza el diseño, conserva tu contenido')).toBeTruthy();
+    const grupo = screen.getByRole('radiogroup', { name: 'Cómo aplicarla' });
+    expect(within(grupo).getByRole('radio', { name: /Solo estilo/ }).getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByText('Cambia el estilo, conserva tu contenido')).toBeTruthy();
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Usar esta plantilla' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Aplicar solo el estilo' }));
     });
     await waitFor(() => expect(guardar).toHaveBeenCalledTimes(1));
     const cambiar = (guardar.mock.calls[0] as unknown as [(d: DocumentoSitio) => DocumentoSitio])[0];
     const nuevo = cambiar(documento());
     expect(nuevo.tema.plantillaBase).toEqual({ mode: 'value', value: 'restaurant_elegant' });
-    expect(nuevo.paginas).toHaveLength(1);
+    expect(nuevo.paginas).toEqual(documento().paginas);
+    expect(plantillaCompleta).not.toHaveBeenCalled();
+  });
+
+  test('diálogo, sitio importado sin publicar: «Plantilla completa» por defecto, con aviso, páginas y «Deshacer»', async () => {
+    const base = contexto();
+    const sitio = base.sitio as Record<string, unknown> & { sitio: Record<string, unknown> };
+    ctx = { ...base, sitio: { ...sitio, sitio: { ...sitio.sitio, revisionPublicadaId: null } } };
+    renderConIdioma(<GaleriaPlantillas />);
+    fireEvent.click(screen.getByText('Noir Omakase').closest('button')!);
+    const grupo = screen.getByRole('radiogroup', { name: 'Cómo aplicarla' });
+    expect(within(grupo).getByRole('radio', { name: /Plantilla completa/ }).getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByText('Tu sitio actual queda en el historial')).toBeTruthy();
+    expect(screen.getByText(/Páginas: Inicio · Menú · Pedir Online · Reservar Mesa/)).toBeTruthy();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Usar plantilla completa' }));
+    });
+    await waitFor(() => expect(plantillaCompleta).toHaveBeenCalledWith({ branchId: null, version: 3 }, 'noir_omakase'));
+    expect(guardar).not.toHaveBeenCalled();
+    const [titulo, opciones] = toast.success.mock.calls[toast.success.mock.calls.length - 1] as [string, { description: string; action: { label: string; onClick: () => void } }];
+    expect(titulo).toBe('Tu borrador ya tiene «Noir Omakase» completa.');
+    expect(opciones.description).toMatch(/^2 secciones quedan ocultas/);
+    expect(opciones.action.label).toBe('Deshacer');
+    await act(async () => {
+      opciones.action.onClick();
+    });
+    await waitFor(() => expect(restaurarInstantanea).toHaveBeenCalledWith('s-1', 'inst-1', 5));
+  });
+
+  test('cambiar de opción cambia el aviso y el botón', () => {
+    renderConIdioma(<GaleriaPlantillas />);
+    fireEvent.click(screen.getByText('Velvet Lounge').closest('button')!);
+    fireEvent.click(screen.getByRole('radio', { name: /Plantilla completa/ }));
+    expect(screen.getByRole('button', { name: 'Usar plantilla completa' })).toBeTruthy();
+    expect(screen.getByText('Tu sitio actual queda en el historial')).toBeTruthy();
   });
 
   test('sin permiso de edición: se ve la galería y el botón queda deshabilitado con motivo', () => {
     ctx = contexto({ permisos: { editar: false, publicar: false } });
     renderConIdioma(<GaleriaPlantillas />);
     fireEvent.click(screen.getByText('Velvet Lounge').closest('button')!);
-    const usar = screen.getByRole('button', { name: 'Usar esta plantilla' }) as HTMLButtonElement;
+    const usar = screen.getByRole('button', { name: 'Aplicar solo el estilo' }) as HTMLButtonElement;
     expect(usar.disabled).toBe(true);
     expect(usar.title).toMatch(/website\.sites\.edit/);
   });

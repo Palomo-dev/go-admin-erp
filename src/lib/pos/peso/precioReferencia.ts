@@ -9,8 +9,13 @@
  * Solo se admiten referencias que dan un precio por kg exacto (×1, ×2, ×4,
  * ×10, ×20): 1 kg, 500 g, 250 g, 100 g y 50 g. En libras y por medida, solo
  * «por lb», «por m» y «por L».
+ *
+ * En gramos (inventario en g, `unit_code = 'GR'`) el precio se guarda por
+ * gramo y se escribe «por kg» (1000 g, la referencia por defecto), cada 500,
+ * 250 o 100 g: $ 12.000 por kg se guarda como $ 12 / g.
  */
 
+import { convertirPeso, unidadPeso } from '@printing/peso';
 import { codigoUnidad } from './modoVenta';
 
 export interface ReferenciaPrecio {
@@ -21,6 +26,7 @@ export interface ReferenciaPrecio {
 }
 
 const GRAMOS_KG = [1000, 500, 250, 100, 50] as const;
+const GRAMOS_GR = [1000, 500, 250, 100] as const;
 
 /** Referencias que el formulario ofrece para la unidad de venta. */
 export function referenciasPermitidas(unitCode: string | null | undefined): ReferenciaPrecio[] {
@@ -28,10 +34,11 @@ export function referenciasPermitidas(unitCode: string | null | undefined): Refe
   if (u === 'KG') {
     return GRAMOS_KG.map((g) => (g === 1000 ? { cantidad: 1, unidad: 'KG' } : { cantidad: g, unidad: 'GR' }));
   }
+  if (u === 'GR') return GRAMOS_GR.map((g) => ({ cantidad: g, unidad: 'GR' }));
   return u ? [{ cantidad: 1, unidad: u }] : [];
 }
 
-/** Referencia del producto (sin datos: 1 unidad de venta). */
+/** Referencia del producto (sin datos: 1 unidad de venta; en gramos, por kg = 1000 g). */
 export function referenciaDelProducto(p: {
   unit_code?: string | null;
   price_ref_qty?: number | string | null;
@@ -40,6 +47,7 @@ export function referenciaDelProducto(p: {
   const cantidad = Number(p.price_ref_qty);
   const unidad = codigoUnidad(p.price_ref_unit_code);
   if (Number.isFinite(cantidad) && cantidad > 0 && unidad) return { cantidad, unidad };
+  if (codigoUnidad(p.unit_code) === 'GR') return { cantidad: 1000, unidad: 'GR' };
   return { cantidad: 1, unidad: codigoUnidad(p.unit_code) };
 }
 
@@ -54,7 +62,8 @@ export function factorReferencia(ref: ReferenciaPrecio, unitCode: string | null 
   const r = codigoUnidad(ref.unidad);
   if (!(ref.cantidad > 0) || !venta) return null;
   if (r === venta) return ref.cantidad;
-  if (r === 'GR' && venta === 'KG') return ref.cantidad / 1000;
+  // Entre unidades de peso, la conversión única (100 g en kg → 0,1).
+  if (unidadPeso(r) && unidadPeso(venta)) return convertirPeso(ref.cantidad, r, venta);
   return null;
 }
 
@@ -76,7 +85,10 @@ export function precioPorUnidadDesdeReferencia(
 ): number | null {
   const f = factorReferencia(ref, unitCode);
   if (f === null || !referenciaValida(ref, unitCode)) return null;
-  return redondearMoneda((Number(precioEscrito) || 0) / f, decimalesMoneda);
+  // Por gramo hacen falta centavos aunque la moneda no los use ($ 12.500/kg →
+  // $ 12,50/g): `product_prices.price` guarda 2 decimales.
+  const dec = codigoUnidad(unitCode) === 'GR' ? Math.max(2, decimalesMoneda) : decimalesMoneda;
+  return redondearMoneda((Number(precioEscrito) || 0) / f, dec);
 }
 
 /** Precio para mostrar en la referencia desde el precio guardado: $ 18.900 / kg → $ 1.890 cada 100 g. */
@@ -93,4 +105,9 @@ export function precioEnReferencia(
 /** ¿La referencia es la propia unidad de venta (por kg, por lb)? */
 export function esReferenciaUnidad(ref: ReferenciaPrecio, unitCode: string | null | undefined): boolean {
   return ref.cantidad === 1 && codigoUnidad(ref.unidad) === codigoUnidad(unitCode);
+}
+
+/** ¿La referencia es «por kg» (1 kg o 1000 g)? Se rotula «por kg», no «cada 1000 g». */
+export function esReferenciaKilo(ref: ReferenciaPrecio): boolean {
+  return convertirPeso(ref.cantidad, ref.unidad, 'KG') === 1;
 }

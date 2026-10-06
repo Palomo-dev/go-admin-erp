@@ -7,3 +7,5 @@ export * from './modoVenta';
 export * from './precioReferencia';
 export * from './pesada';
 export * from './cobroRedondeo';
+// La conversión de peso es una sola, compartida con el ticket del agente.
+export { GRAMOS_POR_UNIDAD, convertirPeso, pesoEnUnidad, pesoLegible, precioVisiblePeso, unidadPeso, type UnidadPeso } from '@printing/peso';

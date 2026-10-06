@@ -5,7 +5,7 @@ import { serialTrackingService } from '@/lib/services/serialTrackingService';
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 
 export type WebOrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'in_delivery' | 'delivered' | 'cancelled' | 'rejected' | 'expired';
-// 'dine_in' = «Comer aquí» (QR de mesa), migración E1 (20261007130000_web_orders_dine_in).
+// 'dine_in' = «Comer aquí» (QR de mesa), migración E1 (20261006124644_web_orders_dine_in).
 export type DeliveryType = 'pickup' | 'delivery_own' | 'delivery_third_party' | 'dine_in';
 export type PaymentStatus = 'pending' | 'paid' | 'partial' | 'refunded' | 'failed';
 export type OrderSource = 'website' | 'mobile_app' | 'whatsapp' | 'phone';

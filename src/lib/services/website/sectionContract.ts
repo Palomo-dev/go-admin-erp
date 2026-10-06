@@ -30,7 +30,7 @@
 export interface CatalogEntry {
   type: string
   variants: { id: string; label: string }[]
-  contentFields: { key: string; group?: string }[]
+  contentFields: { key: string; group?: string; type?: string; section?: string }[]
 }
 
 /** Entrada del manifiesto del sitio. */
@@ -38,6 +38,16 @@ export interface ManifestEntry {
   type: string
   variants: string[]
   contentKeys: string[]
+}
+
+/**
+ * Campos que lee el propio componente: los de contenido y datos, y los que el inspector agrupa en
+ * un bloque con título (`section`, p. ej. «Pago» de la Cuenta de la mesa) aunque vivan en la
+ * pestaña Diseño. Los avisos (`notice`) no guardan nada y no cuentan.
+ */
+function esCampoDelComponente(f: CatalogEntry['contentFields'][number]): boolean {
+  if (f.type === 'notice') return false
+  return !f.group || f.group === 'content' || f.group === 'data' || !!f.section
 }
 
 /** Manifiesto completo del sitio. */
@@ -142,9 +152,7 @@ export function verifySectionContract(
     // Se filtran los campos de estilo/layout/spacing (group !== 'content'|'data')
     // porque los lee SectionWrapper, no el componente directamente.
     if (mani.contentKeys.length > 0) {
-      const contentOnlyFields = cat.contentFields.filter(
-        (f) => !f.group || f.group === 'content' || f.group === 'data',
-      )
+      const contentOnlyFields = cat.contentFields.filter(esCampoDelComponente)
       for (const field of contentOnlyFields) {
         if (!mani.contentKeys.includes(field.key)) {
           errors.push({
@@ -158,9 +166,7 @@ export function verifySectionContract(
       }
 
       // contentKey del componente no declarada en el catálogo (warning)
-      const contentFieldKeys = cat.contentFields
-        .filter((f) => !f.group || f.group === 'content' || f.group === 'data')
-        .map((f) => f.key)
+      const contentFieldKeys = cat.contentFields.filter(esCampoDelComponente).map((f) => f.key)
       for (const ck of mani.contentKeys) {
         if (!contentFieldKeys.includes(ck)) {
           warnings.push({

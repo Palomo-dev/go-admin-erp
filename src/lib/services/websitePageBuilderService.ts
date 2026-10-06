@@ -11,6 +11,13 @@ import {
   BUTTON_ITEM_FIELDS,
   PRODUCT_CARD_INTERACTION_FIELDS,
 } from '@/lib/services/website/sectionFieldGroups';
+import {
+  CAMPOS_CARTA_QR,
+  CAMPOS_PORTADA_MESA,
+  SECCIONES_MESA_CATALOGO,
+  VARIANTE_CARTA_QR_CATALOGO,
+  VARIANTE_PORTADA_MESA_CATALOGO,
+} from '@/lib/services/website/seccionesMesaCatalogo';
 
 // ============================================================
 // INTERFACES
@@ -160,12 +167,24 @@ export interface ContentFieldDef {
      * Contenido que se edita en el constructor de la carta (orden, ocultos, destacados,
      * textos propios). No tiene control en la lista de campos: abre el constructor.
      */
-    | 'carta';
+    | 'carta'
+    /** Varias opciones a la vez (casillas): guarda la lista de `value` marcados. */
+    | 'checklist'
+    /** Lista corta de valores en chips (número con `suffix` o texto, según `itemType`). */
+    | 'chips'
+    /** Aviso informativo del inspector: no guarda nada (la clave empieza por `_`). */
+    | 'notice';
   placeholder?: string;
   /** Texto de ayuda que explica para qué sirve el campo. */
   helpText?: string;
   /** Grupo lógico del editor (default: 'content'). */
   group?: FieldGroup;
+  /** Bloque con título dentro de la pestaña («Textos», «Pago»…). */
+  section?: string;
+  /** `type='chips'`: cada chip es un número o un texto. */
+  itemType?: 'number' | 'text';
+  /** `type='notice'`: enlace del aviso. */
+  link?: { label: string; href: string };
   /** Condición para mostrar el campo. */
   showIf?: FieldCondition;
   options?: { value: string; label: string }[];
@@ -1237,6 +1256,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       { id: 'tabs', label: 'Pestañas por horario' },
       { id: 'per_category', label: 'Una página por categoría' },
       { id: 'editorial', label: 'Editorial (nombres grandes)' },
+      VARIANTE_CARTA_QR_CATALOGO,
     ],
     contentFields: [
       { key: 'eyebrow', label: 'Antetítulo', type: 'text', placeholder: 'Carta' },
@@ -1279,6 +1299,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         helpText: 'Sin definir: dos columnas, salvo «Una página por categoría».',
       },
       { key: 'show_description', label: 'Mostrar descripción', type: 'boolean', defaultValue: true },
+      ...CAMPOS_CARTA_QR,
       {
         key: 'pdf_url',
         label: 'Enlace a la carta en PDF',
@@ -1954,6 +1975,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
     variants: [
       { id: 'typographic', label: 'Tipográfica (titular gigante)' },
       { id: 'split_bento', label: 'Imagen y accesos (bento)' },
+      VARIANTE_PORTADA_MESA_CATALOGO,
     ],
     contentFields: [
       { key: 'eyebrow', label: 'Antetítulo', type: 'text', placeholder: 'Cocina de leña · Sede Centro' },
@@ -1962,19 +1984,19 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         label: 'Titular',
         type: 'textarea',
         placeholder: 'Fuego, maíz y mar.',
-        helpText: 'Cada salto de línea es una línea del titular. Vacío: el nombre de la organización.',
+        helpText: 'Cada salto de línea es una línea del titular. Vacío: el nombre de la organización. En «Mesa», {mesa} y {zona} se cambian por los de la mesa del QR.',
       },
       { key: 'subtitle', label: 'Texto de apoyo', type: 'textarea' },
       { key: 'primary_cta_text', label: 'Botón principal', type: 'text', placeholder: 'Reservar mesa' },
-      { key: 'primary_cta_url', label: 'Enlace del botón principal', type: 'url', placeholder: '/reservas-mesa' },
-      { key: 'secondary_cta_text', label: 'Botón secundario', type: 'text', placeholder: 'Ver la carta' },
-      { key: 'secondary_cta_url', label: 'Enlace del botón secundario', type: 'url', placeholder: '/menu' },
-      { key: 'image_url', label: 'Imagen del panel', type: 'image', showIf: { variantIn: ['split_bento'] } },
+      { key: 'primary_cta_url', label: 'Enlace del botón principal', type: 'url', placeholder: '/reservas-mesa', showIf: { variantIn: ['typographic', 'split_bento'] } },
+      { key: 'secondary_cta_text', label: 'Botón secundario', type: 'text', placeholder: 'Ver la carta', showIf: { variantIn: ['typographic', 'split_bento'] } },
+      { key: 'secondary_cta_url', label: 'Enlace del botón secundario', type: 'url', placeholder: '/menu', showIf: { variantIn: ['typographic', 'split_bento'] } },
+      { key: 'image_url', label: 'Imagen del panel', type: 'image', showIf: { variantIn: ['split_bento', VARIANTE_PORTADA_MESA_CATALOGO.id] } },
       {
         key: 'image_alt',
         label: 'Texto alternativo de la imagen',
         type: 'text',
-        showIf: { variantIn: ['split_bento'] },
+        showIf: { variantIn: ['split_bento', VARIANTE_PORTADA_MESA_CATALOGO.id] },
         helpText: 'Describe la foto para lectores de pantalla.',
       },
       {
@@ -1991,9 +2013,13 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
           { key: 'image_url', label: 'Imagen de fondo (opcional)', type: 'image' },
         ],
       },
+      ...CAMPOS_PORTADA_MESA,
       ...CARD_FIELDS.filter((f) => ['card_radius', 'card_shadow', 'card_border_width', 'card_border_color', 'card_bg'].includes(f.key)),
     ],
   },
+  // Carta QR en la mesa (lámina 18): cuatro tipos nuevos. Claves y defaults del contrato
+  // compartido con el sitio (src/lib/website/contrato/seccionesMesa.ts).
+  ...SECCIONES_MESA_CATALOGO,
   {
     type: 'marquee',
     label: 'Franja en movimiento',

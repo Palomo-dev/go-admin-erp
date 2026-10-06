@@ -30375,7 +30375,9 @@
           "sede": "Location picker in the header",
           "sedeAyuda": "With 2 or more locations. Off: it goes in a strip below the header",
           "reserva": "Booking bar with dates",
-          "reservaAyuda": "Hotel: check-in, check-out and guests below the header"
+          "reservaAyuda": "Hotel: check-in, check-out and guests below the header",
+          "moneda": "Currency",
+          "monedaAyuda": "Only if the site sells in more than one"
         },
         "diseno": {
           "titulo": "Header layout",
@@ -30418,7 +30420,10 @@
           "transparencia": "Transparency",
           "transparente": "Over the cover, solid on scroll",
           "transparenteAyuda": "Light text over the cover photo; on scroll it takes the theme background",
-          "opacidad": "Background opacity"
+          "opacidad": "Background opacity",
+          "textoEnlaces": "Text and links",
+          "fijo": "Sticky on scroll",
+          "fijoAyuda": "The header stays at the top while scrolling"
         },
         "pie": {
           "menus": "Footer menus",
@@ -30489,7 +30494,10 @@
           "fondoMarca": "Brand color",
           "fondoPropio": "Custom",
           "fondoTemaAyuda": "«Theme»: the template background, one shade darker or lighter",
-          "colorFondo": "Background color"
+          "colorFondo": "Background color",
+          "colorTexto": "Text",
+          "separadores": "Dividers",
+          "sinSeparadores": "None"
         }
       },
       "barra": {

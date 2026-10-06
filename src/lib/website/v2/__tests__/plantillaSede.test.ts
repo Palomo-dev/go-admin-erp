@@ -111,7 +111,9 @@ describe('documentoPlantillaSede', () => {
     ]);
     const inicio = d.paginas.find((p) => p.slug === 'home')!;
     expect(inicio.secciones.map((s) => s.tipo)).toEqual(expect.arrayContaining(['restaurant_hero', 'menu_preview', 'reservation']));
-    expect(d.paginas.find((p) => p.slug === 'carta-qr')!.secciones.map((s) => s.tipo)).toEqual(['menu_full']);
+    expect(d.paginas.find((p) => p.slug === 'carta-qr')!.secciones.map((s) => s.tipo)).toEqual([
+      'restaurant_hero', 'table_service', 'menu_full', 'table_order', 'table_bill', 'visit_feedback', 'hours_location',
+    ]);
     expect(d.paginas.find((p) => p.slug === 'menu')!.secciones.map((s) => s.tipo)).toContain('menu_full');
     // Nada del hotel: ni sus páginas ni su menú.
     expect(d.paginas.some((p) => p.slug === 'espacios')).toBe(false);

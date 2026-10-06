@@ -2,10 +2,12 @@
 
 import { forwardRef, type ButtonHTMLAttributes, type CSSProperties } from 'react';
 import { useTranslations } from 'next-intl';
-import { Bell, CalendarClock, Check, CircleCheck, Receipt, Sparkles, TriangleAlert, Users, type LucideIcon } from 'lucide-react';
+import { Bell, CalendarClock, Check, CircleCheck, ConciergeBell, Receipt, Sparkles, TriangleAlert, Users, type LucideIcon } from 'lucide-react';
 import { AvatarIniciales } from '@/components/kit';
 import { cn } from '@/utils/Utils';
 import { textoDuracion } from '../cuenta/cuentaMesaLogica';
+import type { ResumenSolicitudesMesa } from '../solicitudes/solicitudesMesaLogica';
+import { useTextosCartaQr } from '../solicitudes/textosCartaQr';
 import { CLASES_ESTADO, nombreCorto, tamanoEnPlanoBase, type EstadoMesaPlano, type VistaMesaPlano } from './estadoMesaPlano';
 
 /**
@@ -15,7 +17,9 @@ import { CLASES_ESTADO, nombreCorto, tamanoEnPlanoBase, type EstadoMesaPlano, ty
  *   reserva o «Limpiar»). Cuadrícula compacta, móvil y destino de «Mover».
  * - `comoda`: «Mesa 19» con su estado, comensales y tiempo, importe y mesero.
  * - `plano`: la forma de la mesa en el plano (cuadrada, redonda, larga, barra).
- * Encima: campana (plato listo) y triángulo (abierta sin movimiento).
+ * Encima: campana (plato listo) y triángulo (abierta sin movimiento). Una
+ * solicitud de la Carta QR («Llamar al mesero», «Pedir la cuenta») gana a los
+ * dos: insignia de marca (sólida mientras nadie dijo «Voy», tinte en camino).
  */
 export type DensidadMesa = 'compacta' | 'comoda' | 'plano';
 
@@ -34,6 +38,8 @@ export interface MesaTileProps extends Omit<ButtonHTMLAttributes<HTMLButtonEleme
   seleccionada?: boolean;
   /** Plano: tamaño en px ya escalado (lo calcula el plano). */
   estiloPlano?: CSSProperties;
+  /** Solicitudes pendientes de la Carta QR sobre esta mesa. */
+  solicitud?: ResumenSolicitudesMesa | null;
 }
 
 /** Línea corta del estado («8 min», «2 pers.», «$ 161.100», «20:30», «Limpiar»). */
@@ -55,8 +61,29 @@ export function useLineaEstado() {
   };
 }
 
-function Aviso({ vista, plano }: { vista: VistaMesaPlano; plano?: boolean }) {
+function AvisoSolicitud({ vista, solicitud, plano }: { vista: VistaMesaPlano; solicitud: ResumenSolicitudesMesa; plano?: boolean }) {
+  const t = useTextosCartaQr();
+  const Icono = solicitud.cuenta ? Receipt : ConciergeBell;
+  const n = solicitud.mesero + (solicitud.cuenta ? 1 : 0);
+  return (
+    <span
+      role="img"
+      aria-label={t('solicitudes.etiquetaAviso', { mesa: vista.nombre, n })}
+      className={cn(
+        // Figma «21 · POS › Mesas con Carta QR» (InsigniaSolicitudMesa): marca sólido sin ver; tinte en camino.
+        'flex size-5 items-center justify-center rounded-full ring-2 ring-surface',
+        solicitud.sinVer ? 'bg-brand text-white' : 'bg-brand-tint text-brand',
+        plano && 'absolute -left-2 -top-2',
+      )}
+    >
+      <Icono aria-hidden="true" className="size-3" strokeWidth={2} />
+    </span>
+  );
+}
+
+function Aviso({ vista, plano, solicitud }: { vista: VistaMesaPlano; plano?: boolean; solicitud?: ResumenSolicitudesMesa | null }) {
   const t = useTranslations('posMesasPlano.mesa');
+  if (solicitud) return <AvisoSolicitud vista={vista} solicitud={solicitud} plano={plano} />;
   if (vista.abandonada && vista.estado !== 'libre' && vista.estado !== 'reservada') {
     return plano ? null : <TriangleAlert aria-label={t('abandonada')} className="size-4 text-danger-text" strokeWidth={1.5} />;
   }
@@ -73,7 +100,7 @@ function Aviso({ vista, plano }: { vista: VistaMesaPlano; plano?: boolean }) {
 }
 
 export const MesaTile = forwardRef<HTMLButtonElement, MesaTileProps>(function MesaTile(
-  { vista, densidad, formatear, seleccionada, estiloPlano, className, ...props },
+  { vista, densidad, formatear, seleccionada, estiloPlano, solicitud, className, ...props },
   ref,
 ) {
   const t = useTranslations('posMesasPlano.mesa');
@@ -99,7 +126,7 @@ export const MesaTile = forwardRef<HTMLButtonElement, MesaTileProps>(function Me
       >
         <span className="flex items-start justify-between gap-1">
           <span className="truncate text-lg font-semibold leading-6 text-fg">{vista.numero}</span>
-          <Aviso vista={vista} />
+          <Aviso vista={vista} solicitud={solicitud} />
         </span>
         <span className={cn('flex min-w-0 items-center gap-1 text-[13px] leading-4 tabular-nums', clases.texto)}>
           <Icono aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={1.5} />
@@ -146,7 +173,7 @@ export const MesaTile = forwardRef<HTMLButtonElement, MesaTileProps>(function Me
             </>
           )}
           <span className="ml-auto">
-            <Aviso vista={vista} />
+            <Aviso vista={vista} solicitud={solicitud} />
           </span>
         </span>
       </button>
@@ -185,7 +212,7 @@ export const MesaTile = forwardRef<HTMLButtonElement, MesaTileProps>(function Me
       {(vista.estado === 'ocupada' || vista.estado === 'por_cobrar') && (
         <span className="text-xs font-semibold tabular-nums text-fg">{formatear(vista.importe)}</span>
       )}
-      <Aviso vista={vista} plano />
+      <Aviso vista={vista} plano solicitud={solicitud} />
     </button>
   );
 });

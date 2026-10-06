@@ -55,7 +55,11 @@ export const GRUPOS_SECCIONES: readonly DefinicionGrupo[] = [
     id: 'carta',
     etiqueta: 'Carta',
     proposito: 'platos y especialidades',
-    tipos: ['menu_full', 'signature_dishes', 'menu_preview', 'specialties', 'chef_section', 'chef_team'],
+    tipos: [
+      'menu_full', 'signature_dishes', 'menu_preview', 'specialties', 'chef_section', 'chef_team',
+      // Carta QR en la mesa (Figma 2032:75742).
+      'table_service', 'table_order', 'table_bill', 'visit_feedback',
+    ],
   },
   {
     id: 'reservar',
@@ -199,7 +203,11 @@ const PALABRAS_CLAVE: Readonly<Record<string, string>> = {
   specialties: 'carta platos especialidades',
   chef_section: 'chef cocina equipo',
   chef_team: 'chef cocina equipo cocineros',
-  restaurant_hero: 'portada inicio restaurante',
+  restaurant_hero: 'portada inicio restaurante mesa qr bienvenida',
+  table_service: 'mesero llamar mesa qr servicio cuenta',
+  table_order: 'pedido mesa rondas qr cocina comanda',
+  table_bill: 'cuenta mesa pagar propina dividir qr',
+  visit_feedback: 'valorar valoracion opinion estrellas encuesta visita',
   signature_dishes: 'platos estrella especialidades carta destacados',
   events: 'eventos agenda calendario',
   private_events: 'eventos privados celebraciones reservas grupos',

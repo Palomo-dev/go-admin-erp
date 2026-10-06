@@ -82,6 +82,11 @@ import { ProductoSinPrecioError } from '@/lib/pos/precioVigente';
 import { formatTimeInTz } from '@/lib/utils/dateDisplay';
 import type { Cart, CartItem, CartItemModifier, CheckoutData, CobroVentaExistente, Customer, Product, Sale } from '@/components/pos/types';
 import type { SaleItem } from '@/components/pos/mesas/id/types';
+import { CartaQrEnLaCuenta } from '@/components/pos/mesas/solicitudes/CartaQrEnLaCuenta';
+import { totalPagadoEnLinea } from '@/components/pos/mesas/solicitudes/cartaQrMesaLogica';
+import { CARTA_QR_VACIA, cargarCartaQrDeLaMesa, suscribirPagosEnLinea, type CartaQrDeLaMesa } from '@/components/pos/mesas/solicitudes/cartaQrMesaService';
+import { useSolicitudesMesa } from '@/components/pos/mesas/solicitudes/useSolicitudesMesa';
+import { useTextosCartaQr } from '@/components/pos/mesas/solicitudes/textosCartaQr';
 import { cn } from '@/utils/Utils';
 
 /** Pequeña cola de rondas sin conexión (S5): se envían solas al volver la red. */
@@ -160,7 +165,46 @@ export default function MesaCuentaPage() {
 
   const sesion = cuenta?.sesion ?? null;
   const mesaNombre = cuenta?.mesa.nombre ?? t('mesa');
-  const agrupada = useMemo(() => agruparCuenta(cuenta?.lineas ?? [], cuenta?.comandas ?? []), [cuenta]);
+
+  // Carta QR: solicitudes de esta mesa, pagos en línea, valoración y quién pidió cada ronda.
+  const tq = useTextosCartaQr();
+  const [cartaQr, setCartaQr] = useState<CartaQrDeLaMesa>(CARTA_QR_VACIA);
+  const [versionCartaQr, setVersionCartaQr] = useState(0);
+  const sesionId = sesion?.id ?? null;
+  const ventaId = (sesion as { sale_id?: string | null } | null)?.sale_id ?? null;
+  useEffect(() => {
+    let vigente = true;
+    cargarCartaQrDeLaMesa(sesionId, ventaId).then((c) => vigente && setCartaQr(c));
+    return () => {
+      vigente = false;
+    };
+  }, [sesionId, ventaId, versionCartaQr]);
+  useEffect(() => {
+    if (!sesionId) return;
+    return suscribirPagosEnLinea(sesionId, () => {
+      void cargarRef.current(true);
+      setVersionCartaQr((v) => v + 1);
+    });
+  }, [sesionId]);
+  const cargarRef = useRef<(silencioso?: boolean) => Promise<void>>(async () => undefined);
+  const solicitudesQr = useSolicitudesMesa(cuenta?.mesa.branchId ?? null, (s) => {
+    if (s.mesaId !== tableId) return;
+    toast.warning(tq('solicitudes.nuevaTitulo', { mesa: mesaNombre, tipo: tq(`solicitudes.tipo.${s.tipo}`) }), {
+      description: s.motivo ? `«${s.motivo}»` : tq('solicitudes.nuevaDetalle'),
+    });
+    // «Pedir la cuenta» cambia el estado de la mesa; un pago en línea, el saldo.
+    void cargarRef.current(true);
+    setVersionCartaQr((v) => v + 1);
+  });
+  const solicitudesDeLaMesa = solicitudesQr.solicitudes.filter((s) => s.mesaId === tableId);
+  const lineasConComensal = useMemo(
+    () =>
+      (cuenta?.lineas ?? []).map((l) =>
+        l.quienPidio || !l.pedidoWeb ? l : { ...l, quienPidio: cartaQr.comensales.get(l.pedidoWeb) ?? null },
+      ),
+    [cuenta, cartaQr.comensales],
+  );
+  const agrupada = useMemo(() => agruparCuenta(lineasConComensal, cuenta?.comandas ?? []), [lineasConComensal, cuenta]);
   const totales = useMemo(() => totalesCuenta(cuenta?.lineas ?? []), [cuenta]);
   const notasRapidasDatos = useNotasRapidas(cuenta?.mesa.branchId ?? branch_id ?? null, !!cuenta);
   const notasRapidas = useMemo(
@@ -201,6 +245,8 @@ export default function MesaCuentaPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [tableId, t],
   );
+
+  cargarRef.current = cargar;
 
   useEffect(() => {
     void cargar();
@@ -860,6 +906,22 @@ export default function MesaCuentaPage() {
         onGuardar={(c) => void alGuardarLinea(c)}
       />
       <PanelCuentaMesa
+        pagadoEnLinea={totalPagadoEnLinea(cartaQr.pagos)}
+        cartaQr={
+          solicitudesDeLaMesa.length > 0 || cartaQr.pagos.length > 0 || cartaQr.intentos.length > 0 || cartaQr.valoraciones.length > 0 ? (
+            <CartaQrEnLaCuenta
+              mesaNombre={mesaNombre}
+              solicitudes={solicitudesDeLaMesa}
+              pagos={cartaQr.pagos}
+              intentos={cartaQr.intentos}
+              valoraciones={cartaQr.valoraciones}
+              formatear={formatear}
+              ahora={ahora}
+              enCurso={solicitudesQr.enCurso}
+              onAtender={(s, e) => void solicitudesQr.atender(s, e).catch(() => toast.error(tq('solicitudes.errorAtender')))}
+            />
+          ) : undefined
+        }
         mesaNombre={mesaNombre}
         cuenta={agrupada}
         totales={totales}

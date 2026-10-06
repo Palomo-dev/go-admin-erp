@@ -12,6 +12,7 @@ import {
   CalendarDays,
   ChefHat,
   ClipboardList,
+  ConciergeBell,
   CreditCard,
   Dumbbell,
   FileText,
@@ -39,6 +40,7 @@ import {
   Newspaper,
   PartyPopper,
   Plug,
+  Receipt,
   Route,
   Search,
   Shield,
@@ -68,6 +70,7 @@ const ICONOS: Readonly<Record<string, LucideIcon>> = {
   CalendarDays,
   ChefHat,
   ClipboardList,
+  ConciergeBell,
   CreditCard,
   Dumbbell,
   FileText,
@@ -96,6 +99,7 @@ const ICONOS: Readonly<Record<string, LucideIcon>> = {
   Newspaper,
   PartyPopper,
   Plug,
+  Receipt,
   Route,
   Search,
   Shield,
@@ -123,7 +127,7 @@ export function miniaturaDeSeccion(tipo: string): TipoMiniaturaSeccion {
   if (t.startsWith('menu') || t.includes('dish') || t === 'specialties') return 'carta_destacada';
   if (t.includes('gallery') || t.includes('bento')) return 'galeria';
   if (t.includes('reserv') || t.includes('booking') || t.includes('trip')) return 'reservas';
-  if (t.includes('testimon') || t.includes('review')) return 'opiniones';
+  if (t.includes('testimon') || t.includes('review') || t.includes('feedback')) return 'opiniones';
   if (t.includes('map') || t.includes('location') || t.includes('hours') || t.includes('coverage')) return 'ubicacion_horario';
   if (t.includes('product') || t.includes('categor') || t.includes('offer') || t.includes('room') || t.includes('plan') || t.includes('pricing')) {
     return 'productos';
@@ -135,6 +139,19 @@ export function miniaturaDeSeccion(tipo: string): TipoMiniaturaSeccion {
 
 export function nombreDeSeccion(tipo: string): string {
   return getSectionDefinition(tipo)?.label ?? tipo;
+}
+
+/**
+ * Nombre en la lista de secciones: el del tipo y, cuando la variante cambia el propósito de la
+ * sección (Carta QR, lámina 17), la variante: «Portada de mesa», «Carta completa · QR».
+ */
+const NOMBRE_EN_LISTA: Readonly<Record<string, string>> = {
+  'restaurant_hero:mesa': 'Portada de mesa',
+  'menu_full:qr': 'Carta completa · QR',
+};
+
+export function nombreEnLista(tipo: string, variante: string): string {
+  return NOMBRE_EN_LISTA[`${tipo}:${variante}`] ?? nombreDeSeccion(tipo);
 }
 
 export function nombreDeVariante(tipo: string, variante: string): string {

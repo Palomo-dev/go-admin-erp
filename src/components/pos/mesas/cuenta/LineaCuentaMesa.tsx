@@ -21,6 +21,7 @@ import { CartTag, RowActionsMenu, type AccionFila } from '@/components/kit';
 import { cn } from '@/utils/Utils';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { minutosDesde, type EstadoCocinaMesa, type LineaMesa } from './cuentaMesaLogica';
+import { useTextosCartaQr } from '../solicitudes/textosCartaQr';
 
 /**
  * Línea de la cuenta de la mesa (Figma `CartLine v3` dentro de `CartPanel
@@ -99,6 +100,7 @@ export function LineaCuentaMesa({
   className,
 }: LineaCuentaMesaProps) {
   const t = useTranslations('posMesasFlujo.linea');
+  const tq = useTextosCartaQr();
   const minutos = minutosDesde(linea.estadoDesde, ahora);
   const editable = linea.porEnviar && !linea.pagada;
   const etiquetaEstado =
@@ -186,6 +188,11 @@ export function LineaCuentaMesa({
         {linea.comensal && (
           <CartTag icono={null} className="h-[22px] px-2 text-xs">
             {t('comensalN', { n: linea.comensal })}
+          </CartTag>
+        )}
+        {linea.quienPidio && (
+          <CartTag icono={null} className="h-[22px] px-2 text-xs">
+            {tq('pedido.comensal', { nombre: linea.quienPidio })}
           </CartTag>
         )}
         {linea.alergia && (

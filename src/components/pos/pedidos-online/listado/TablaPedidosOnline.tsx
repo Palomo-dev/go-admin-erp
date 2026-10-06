@@ -59,6 +59,8 @@ const METODOS: Record<string, string> = {
   paypal_checkout: 'PayPal',
   bancolombia_transfer: 'Bancolombia',
   bancolombia_collect: 'Bancolombia Collect',
+  // Ronda de la Carta QR: se cobra con la cuenta de la mesa.
+  mesa: 'En la cuenta de la mesa',
 };
 
 /** «Wompi · Nequi»: método y, si lo hay, el medio dentro de la pasarela. */

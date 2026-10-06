@@ -262,8 +262,17 @@ describe('restaurante: «Noir Omakase» sobre el sitio importado (caso de la org
   it('páginas: Inicio, Menú, Pedir online, Reservar mesa, Nosotros, Contacto, Galería, legales y sistema', () => {
     expect(documento.paginas.map((p) => p.slug)).toEqual([
       'home', 'menu', 'domicilios', 'reservas-mesa', 'nosotros', 'contacto', 'galeria', 'privacidad',
+      // La Carta QR de la mesa (Figma 2032:75742): fuera del menú, con las secciones de la lámina 17.
+      'carta-qr',
       'plantillas/cart', 'plantillas/checkout', 'terminos',
     ]);
+    const cartaQr = documento.paginas.find((p) => p.slug === 'carta-qr')!;
+    expect(cartaQr.secciones.map((s) => `${s.tipo}:${s.variante}`)).toEqual([
+      'restaurant_hero:mesa', 'table_service:barra', 'menu_full:qr', 'table_order:rondas',
+      'table_bill:hoja', 'visit_feedback:tarjeta', 'hours_location:list',
+    ]);
+    // Nacen con los textos del contrato (contenido vacío) y visibles.
+    expect(cartaQr.secciones.filter((s) => s.tipo !== 'hours_location').every((s) => Object.keys(s.contenido).length === 0)).toBe(true);
   });
 
   it('Inicio arranca con la portada CON FOTO (el banner del sitio viejo) y no con la carta', () => {

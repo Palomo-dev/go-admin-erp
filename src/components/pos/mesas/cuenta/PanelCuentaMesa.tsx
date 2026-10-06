@@ -6,6 +6,7 @@ import { ChevronDown, ChevronRight, CreditCard, ShoppingCart, UtensilsCrossed } 
 import { BotonImporte, KbdButton, type AccionFila } from '@/components/kit';
 import { cn } from '@/utils/Utils';
 import { HoraZona, LineaCuentaMesa } from './LineaCuentaMesa';
+import { useTextosCartaQr } from '../solicitudes/textosCartaQr';
 import type { CuentaAgrupada, LineaMesa, RondaMesa, TotalesCuenta } from './cuentaMesaLogica';
 
 /**
@@ -56,6 +57,10 @@ export interface PanelCuentaMesaProps {
   estadoCobro: EstadoCobroMesa;
   onAbrirCaja: () => void;
   deshabilitada?: boolean;
+  /** Lo de la Carta QR en esta cuenta (solicitudes, pagos en línea, valoración). */
+  cartaQr?: ReactNode;
+  /** Lo abonado en línea desde la Carta QR (va aparte en los totales, dentro de lo abonado). */
+  pagadoEnLinea?: number;
   className?: string;
 }
 
@@ -78,8 +83,13 @@ export function PanelCuentaMesa({
   estadoCobro,
   onAbrirCaja,
   deshabilitada,
+  cartaQr,
+  pagadoEnLinea = 0,
   className,
 }: PanelCuentaMesaProps) {
+  const tq = useTextosCartaQr();
+  const enLinea = Math.min(Math.max(0, pagadoEnLinea), totales.abonado);
+  const porPartes = Math.max(0, Math.round((totales.abonado - enLinea) * 100) / 100);
   const t = useTranslations('posMesasFlujo.cuenta');
   const vacia = cuenta.porEnviar.length === 0 && cuenta.rondas.length === 0 && cuenta.directas.length === 0;
   const [abiertas, setAbiertas] = useState<Record<number, boolean>>({});
@@ -155,6 +165,7 @@ export function PanelCuentaMesa({
         {menu}
       </header>
 
+      {vacia && cartaQr && <div className="shrink-0">{cartaQr}</div>}
       <div className="shrink-0">{cliente}</div>
       {!vacia && <div className="shrink-0">{nota}</div>}
 
@@ -168,6 +179,7 @@ export function PanelCuentaMesa({
         </div>
       ) : (
         <div className="-mx-1 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-1">
+          {cartaQr}
           {cuenta.porEnviar.length > 0 && (
             <>
               <p className="text-[13px]">
@@ -208,10 +220,16 @@ export function PanelCuentaMesa({
                 <dd className="tabular-nums text-fg">{formatear(i.importe)}</dd>
               </div>
             ))}
-            {totales.abonado > 0 && (
+            {porPartes > 0 && (
               <div className="flex justify-between text-fg-secondary">
                 <dt>{t('abonado')}</dt>
-                <dd className="tabular-nums text-success-text">−{formatear(totales.abonado)}</dd>
+                <dd className="tabular-nums text-success-text">−{formatear(porPartes)}</dd>
+              </div>
+            )}
+            {enLinea > 0 && (
+              <div className="flex justify-between text-fg-secondary">
+                <dt>{tq('pagosEnLinea.enTotales')}</dt>
+                <dd className="tabular-nums text-success-text">−{formatear(enLinea)}</dd>
               </div>
             )}
             <div className="mt-1 flex items-baseline justify-between">

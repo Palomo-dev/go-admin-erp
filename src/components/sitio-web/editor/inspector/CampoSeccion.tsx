@@ -11,7 +11,7 @@
 import { useMemo } from 'react';
 import Link from 'next/link';
 import { ExternalLink } from 'lucide-react';
-import { CampoNumero, ChipsOpcion, FormField, SettingRow, Skeleton } from '@/components/kit';
+import { AvisoTonal, CampoNumero, ChipsOpcion, FormField, SettingRow, Skeleton } from '@/components/kit';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -22,6 +22,7 @@ import type { ThemePalette } from '@/components/organization/branding/editor/fie
 import { ColorField } from '@/components/sitio-web/ui/ColorField';
 import type { CategoriaInventarioMenu } from '@/components/sitio-web/paginas/tiposPaginas';
 import { useTextosEditor } from '../textos';
+import { CampoChecklist, CampoChips } from './CamposListas';
 
 export const RUTA_PRODUCTOS_INVENTARIO = '/app/inventario/productos';
 
@@ -181,6 +182,20 @@ export function CampoSeccion({
         );
       }
       break;
+    case 'checklist':
+      return <CampoChecklist campo={campo} valor={valor} onCambiar={onCambiar} deshabilitado={deshabilitado} />;
+    case 'chips':
+      return <CampoChips campo={campo} valor={valor} onCambiar={onCambiar} deshabilitado={deshabilitado} />;
+    case 'notice':
+      // Aviso del catálogo (no guarda nada): «Pagar en línea necesita una pasarela activa».
+      return (
+        <AvisoTonal
+          tono="neutro"
+          titulo={campo.label}
+          descripcion={campo.helpText}
+          accion={campo.link ? { etiqueta: campo.link.label, href: campo.link.href, externo: true } : undefined}
+        />
+      );
     default:
       break;
   }

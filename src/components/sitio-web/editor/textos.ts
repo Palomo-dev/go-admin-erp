@@ -99,6 +99,7 @@ export const TEXTOS_EDITOR = {
     etiqueta: 'Inspector: {nombre}',
     tituloSede: '{nombre} · {sede}',
     tipoVariante: '{tipo} · variante «{variante}»',
+    masOpciones: 'Ancho y espaciado',
     vieneDelPrincipal: 'Viene del sitio principal',
     duplicar: 'Duplicar sección',
     duplicarAtajo: 'Duplicar (Ctrl + D)',

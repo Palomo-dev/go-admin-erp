@@ -93,14 +93,41 @@ describe('Contrato editor ↔ sitio (F0.6)', () => {
       expect(issues).toEqual([])
 
       const entry = SECTION_CATALOG.find((s) => s.type === 'menu_full')
-      expect(entry?.variants.map((v) => v.id).sort()).toEqual(['anchors', 'editorial', 'per_category', 'tabs'])
+      expect(entry?.variants.map((v) => v.id).sort()).toEqual(['anchors', 'editorial', 'per_category', 'qr', 'tabs'])
+    })
+  })
+
+  // ---- Carta QR en la mesa (Figma 2032:75742, láminas 17 y 18) ----
+  describe('Carta QR en la mesa', () => {
+    it.each([
+      ['table_service', ['barra', 'botones']],
+      ['table_order', ['rondas']],
+      ['table_bill', ['hoja']],
+      ['visit_feedback', ['tarjeta']],
+    ])('%s: catálogo y sitio coinciden en variantes y claves de contenido', (type, variants) => {
+      const issues = [...result.errors, ...result.warnings].filter((i) => i.type === type)
+      expect(issues).toEqual([])
+      const entry = SECTION_CATALOG.find((s) => s.type === type)
+      expect(entry?.variants.map((v) => v.id).sort()).toEqual(variants)
+    })
+
+    it('«Cuenta de la mesa» se edita como en la lámina 17: bloques de Diseño y el aviso de la pasarela', () => {
+      const campos = SECTION_CATALOG.find((s) => s.type === 'table_bill')?.contentFields ?? []
+      const bloque = (k: string) => campos.find((f) => f.key === k)?.section
+      expect(['title', 'tip_text'].map(bloque)).toEqual(['Textos', 'Textos'])
+      expect(['allow_split', 'split_modes'].map(bloque)).toEqual(['División de la cuenta', 'División de la cuenta'])
+      expect(['tip_options', 'allow_custom_tip'].map(bloque)).toEqual(['Propina sugerida', 'Propina sugerida'])
+      expect(['pay_online', 'pay_at_table'].map(bloque)).toEqual(['Pago', 'Pago'])
+      expect(campos.find((f) => f.key === 'split_modes')).toMatchObject({ type: 'checklist', defaultValue: ['todo', 'iguales', 'comensal'] })
+      expect(campos.find((f) => f.key === 'tip_options')).toMatchObject({ type: 'chips', itemType: 'number', defaultValue: [0, 10, 15] })
+      expect(campos.find((f) => f.key === '_aviso_pasarela')).toMatchObject({ type: 'notice', label: 'Pagar en línea necesita una pasarela activa' })
     })
   })
 
   // ---- Secciones nuevas de restaurante (Figma «Secciones nuevas» 167:5358) ----
   describe('secciones nuevas de restaurante', () => {
     it.each([
-      ['restaurant_hero', ['split_bento', 'typographic']],
+      ['restaurant_hero', ['mesa', 'split_bento', 'typographic']],
       ['marquee', ['photos', 'text']],
       ['signature_dishes', ['carousel', 'scrollytelling']],
       ['events', ['detail', 'list']],

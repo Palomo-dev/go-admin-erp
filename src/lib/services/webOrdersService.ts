@@ -24,6 +24,8 @@ export interface WebOrderItem {
   total: number;
   modifiers?: any[];
   notes?: string;
+  /** Carta QR: quién pidió el plato (web_order_items.diner_label, ≤40). */
+  diner_label?: string | null;
   status: 'pending' | 'preparing' | 'ready' | 'cancelled';
   created_at: string;
 }

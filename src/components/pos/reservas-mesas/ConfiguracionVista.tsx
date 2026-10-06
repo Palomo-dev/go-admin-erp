@@ -54,6 +54,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CampoNumero, EmptyState, FormField, RowActionsMenu, SegmentedControl, SettingsSaveBar, StatusBadge } from '@/components/kit';
+import { useTextosCartaQr } from '@/components/pos/mesas/solicitudes/textosCartaQr';
 import { cn } from '@/utils/Utils';
 import { formatMoneda } from '@/lib/utils/moneda';
 import {
@@ -229,6 +230,7 @@ function Unidad({ children }: { children: React.ReactNode }) {
 
 export function ConfiguracionVista(p: ConfiguracionVistaProps) {
   const t = useTranslations('posReservasMesas.configuracion');
+  const tq = useTextosCartaQr();
   const tDias = useTranslations('posReservasMesas.config.dias');
   const [abierta, setAbierta] = useState<string | null>(null);
   const a = p.ajustes;
@@ -723,6 +725,14 @@ export function ConfiguracionVista(p: ConfiguracionVistaProps) {
                 descripcion={t('mesas.zonaAyuda')}
                 marcado={a.allow_zone_choice}
                 onCambio={(v) => p.cambiar('allow_zone_choice', v)}
+                deshabilitado={soloLectura}
+              />
+              {/* Carta QR: las rondas del QR entran solas a la mesa abierta (apagado = las confirma el equipo). */}
+              <FilaInterruptor
+                titulo={tq('sede.rondasSolas')}
+                descripcion={tq('sede.rondasSolasAyuda')}
+                marcado={a.qr_rounds_auto_confirm ?? false}
+                onCambio={(v) => p.cambiar('qr_rounds_auto_confirm', v)}
                 deshabilitado={soloLectura}
               />
               {a.allow_zone_choice && (

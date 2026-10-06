@@ -177,11 +177,14 @@ describe('Editor · encabezado y pie globales', () => {
     expect(screen.queryByRole('complementary', { name: 'Inspector: Encabezado' })).toBeNull();
   });
 
-  test('con el lienzo a 390, seleccionar el encabezado abre en «Celular»', async () => {
+  // El panel aprobado en Figma ya no separa Escritorio/Celular en pestañas: las
+  // opciones del celular viven en «Diseño», que es la pestaña con que abre.
+  test('con el lienzo a 390, seleccionar el encabezado abre en «Diseño» con las opciones del celular', async () => {
     await renderEditor();
     fireEvent.click(screen.getByRole('radio', { name: 'Celular · 390 px' }));
     fireEvent.click(screen.getByRole('button', { name: /^Encabezado$/ }));
-    expect(screen.getByRole('tab', { name: 'Celular' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('tab', { name: 'Diseño' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('radiogroup', { name: 'Buscador · celular' })).toBeTruthy();
   });
 });
 

@@ -30272,7 +30272,9 @@
           "sede": "Sélecteur de site dans l'en-tête",
           "sedeAyuda": "Avec 2 sites ou plus. Désactivé : dans une bande sous l'en-tête",
           "reserva": "Barre de réservation avec dates",
-          "reservaAyuda": "Hôtel : arrivée, départ et voyageurs sous l'en-tête"
+          "reservaAyuda": "Hôtel : arrivée, départ et voyageurs sous l'en-tête",
+          "moneda": "Devise",
+          "monedaAyuda": "Seulement si le site vend dans plus d'une"
         },
         "diseno": {
           "titulo": "Mise en page de l'en-tête",
@@ -30315,7 +30317,10 @@
           "transparencia": "Transparence",
           "transparente": "Sur la couverture, opaque au défilement",
           "transparenteAyuda": "Texte clair sur la photo de couverture ; au défilement il prend le fond du thème",
-          "opacidad": "Opacité du fond"
+          "opacidad": "Opacité du fond",
+          "textoEnlaces": "Texte et liens",
+          "fijo": "Fixe au défilement",
+          "fijoAyuda": "L'en-tête reste en haut pendant le défilement"
         },
         "pie": {
           "menus": "Menus du pied de page",
@@ -30386,7 +30391,10 @@
           "fondoMarca": "Couleur de marque",
           "fondoPropio": "Personnalisé",
           "fondoTemaAyuda": "«Thème» : le fond du modèle, une nuance plus sombre ou plus claire",
-          "colorFondo": "Couleur du fond"
+          "colorFondo": "Couleur du fond",
+          "colorTexto": "Texte",
+          "separadores": "Séparateurs",
+          "sinSeparadores": "Aucun"
         }
       },
       "barra": {

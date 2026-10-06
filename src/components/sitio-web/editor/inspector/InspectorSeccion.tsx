@@ -136,6 +136,26 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
     );
   };
 
+  /** Campos con el título de su bloque («TEXTOS», «PAGO»…) cuando el bloque cambia (lámina 17). */
+  const pintarConBloques = (lista: readonly ContentFieldDef[]) => {
+    let bloque: string | undefined;
+    return lista.flatMap((c) => {
+      const nodos = [];
+      // Tras los bloques propios de la sección, los campos comunes (ancho, espaciado) van aparte.
+      const titulo = c.section ?? (bloque ? t('inspector.masOpciones') : undefined);
+      if (titulo && c.section !== bloque) {
+        nodos.push(
+          <h3 key={`bloque-${titulo}`} className="-mb-1 pt-1 text-xs font-semibold uppercase leading-4 tracking-wide text-fg-secondary">
+            {titulo}
+          </h3>,
+        );
+      }
+      bloque = c.section;
+      nodos.push(pintarCampo(c));
+      return nodos;
+    });
+  };
+
   const avisoBorrador = (
     <AvisoTonal
       tono="informacion"
@@ -212,7 +232,7 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
                 </div>
               </div>
             )}
-            {campos('diseno').map(pintarCampo)}
+            {pintarConBloques(campos('diseno'))}
             {avisoBorrador}
           </>
         )}
@@ -221,7 +241,7 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
           (campos('contenido').length === 0 ? (
             <p className="text-[13px] leading-[18px] text-fg-secondary">{t('inspector.sinContenido')}</p>
           ) : (
-            campos('contenido').map(pintarCampo)
+            pintarConBloques(campos('contenido'))
           ))}
 
         {pestana === 'estilo' && (
@@ -239,7 +259,7 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
         {pestana === 'avanzado' && (
           <>
             <AvisoTonal tono="advertencia" icono={TriangleAlert} titulo={t('avanzado.titulo')} descripcion={t('avanzado.descripcion')} />
-            {campos('avanzado').map(pintarCampo)}
+            {pintarConBloques(campos('avanzado'))}
             <p className="flex items-start gap-1.5 text-xs leading-4 text-fg-secondary">
               <Info aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" strokeWidth={1.5} />
               {t('avanzado.precedencia')}

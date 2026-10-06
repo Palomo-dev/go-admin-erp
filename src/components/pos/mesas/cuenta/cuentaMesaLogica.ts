@@ -93,6 +93,10 @@ export interface LineaMesa {
   productoId: number | null;
   /** Comanda (pedido) en la que salió la línea. */
   comandaId: number | null;
+  /** Pedido web (Carta QR) del que vino la línea (`notes.from_web_order`). */
+  pedidoWeb?: string | null;
+  /** Quién la pidió desde la Carta QR («Ana»). */
+  quienPidio?: string | null;
 }
 
 export type EstadoRonda = 'en_cocina' | 'preparando' | 'lista' | 'servida';
@@ -221,6 +225,8 @@ export function aLineaMesa(
     creadaAt: l.created_at ?? null,
     productoId: l.product_id,
     comandaId: ticketDe,
+    pedidoWeb: n.from_web_order != null && String(n.from_web_order).trim() ? String(n.from_web_order) : null,
+    quienPidio: texto(n.diner_label),
   };
 }
 

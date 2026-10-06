@@ -29,6 +29,7 @@ import {
   CobrarPedidoDialog,
 } from './components';
 import { AssignDeliveryDialog, cobroDelPedido } from '@/components/pos/pedidos-online';
+import { ValoracionVisitaCard } from '@/components/pos/mesas/solicitudes/ValoracionVisitaCard';
 
 export default function WebOrderDetailPage() {
   const params = useParams();
@@ -180,6 +181,8 @@ export default function WebOrderDetailPage() {
             isLoading={actionLoading}
           />
           <OrderCustomerCard order={order} />
+          {/* Carta QR: lo que la mesa valoró al terminar la visita. */}
+          {order.table_session_id && <ValoracionVisitaCard tableSessionId={order.table_session_id} />}
           <OrderDeliveryCard
             order={order}
             onAssignDelivery={() => {

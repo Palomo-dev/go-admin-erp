@@ -14,7 +14,7 @@ import { interpolar } from '@/components/sitio-web/ui/textos';
 export const TEXTOS_CARTA_QR = {
   solicitudes: {
     titulo: 'Solicitudes de las mesas',
-    descripcion: 'Desde la Carta QR. Llegan en tiempo real.',
+    descripcion: 'Desde la Carta QR · llegan en tiempo real',
     vacio: 'Ninguna mesa está esperando.',
     tipo: {
       waiter: 'Llama al mesero',
@@ -40,6 +40,8 @@ export const TEXTOS_CARTA_QR = {
   pagosEnLinea: {
     titulo: 'Pagado en línea',
     detalle: 'Carta QR · {metodo}',
+    enTotales: 'Pagado en línea (Carta QR)',
+    abonado: 'Pagado por partes',
     comensal: '{nombre}',
     propina: 'propina {importe}',
     total: 'Pagos en línea',

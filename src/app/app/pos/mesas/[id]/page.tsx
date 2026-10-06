@@ -83,6 +83,7 @@ import { formatTimeInTz } from '@/lib/utils/dateDisplay';
 import type { Cart, CartItem, CartItemModifier, CheckoutData, CobroVentaExistente, Customer, Product, Sale } from '@/components/pos/types';
 import type { SaleItem } from '@/components/pos/mesas/id/types';
 import { CartaQrEnLaCuenta } from '@/components/pos/mesas/solicitudes/CartaQrEnLaCuenta';
+import { totalPagadoEnLinea } from '@/components/pos/mesas/solicitudes/cartaQrMesaLogica';
 import { CARTA_QR_VACIA, cargarCartaQrDeLaMesa, suscribirPagosEnLinea, type CartaQrDeLaMesa } from '@/components/pos/mesas/solicitudes/cartaQrMesaService';
 import { useSolicitudesMesa } from '@/components/pos/mesas/solicitudes/useSolicitudesMesa';
 import { useTextosCartaQr } from '@/components/pos/mesas/solicitudes/textosCartaQr';
@@ -905,9 +906,11 @@ export default function MesaCuentaPage() {
         onGuardar={(c) => void alGuardarLinea(c)}
       />
       <PanelCuentaMesa
+        pagadoEnLinea={totalPagadoEnLinea(cartaQr.pagos)}
         cartaQr={
           solicitudesDeLaMesa.length > 0 || cartaQr.pagos.length > 0 || cartaQr.intentos.length > 0 || cartaQr.valoraciones.length > 0 ? (
             <CartaQrEnLaCuenta
+              mesaNombre={mesaNombre}
               solicitudes={solicitudesDeLaMesa}
               pagos={cartaQr.pagos}
               intentos={cartaQr.intentos}

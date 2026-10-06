@@ -19,7 +19,7 @@ import { CLASES_ESTADO, nombreCorto, tamanoEnPlanoBase, type EstadoMesaPlano, ty
  * - `plano`: la forma de la mesa en el plano (cuadrada, redonda, larga, barra).
  * Encima: campana (plato listo) y triángulo (abierta sin movimiento). Una
  * solicitud de la Carta QR («Llamar al mesero», «Pedir la cuenta») gana a los
- * dos: insignia ámbar que late mientras nadie dijo «Voy».
+ * dos: insignia de marca (sólida mientras nadie dijo «Voy», tinte en camino).
  */
 export type DensidadMesa = 'compacta' | 'comoda' | 'plano';
 
@@ -70,9 +70,10 @@ function AvisoSolicitud({ vista, solicitud, plano }: { vista: VistaMesaPlano; so
       role="img"
       aria-label={t('solicitudes.etiquetaAviso', { mesa: vista.nombre, n })}
       className={cn(
-        'flex size-5 items-center justify-center rounded-full bg-warning text-white ring-2 ring-surface',
+        // Figma «21 · POS › Mesas con Carta QR» (InsigniaSolicitudMesa): marca sólido sin ver; tinte en camino.
+        'flex size-5 items-center justify-center rounded-full ring-2 ring-surface',
+        solicitud.sinVer ? 'bg-brand text-white' : 'bg-brand-tint text-brand',
         plano && 'absolute -left-2 -top-2',
-        solicitud.sinVer && 'motion-safe:animate-pulse',
       )}
     >
       <Icono aria-hidden="true" className="size-3" strokeWidth={2} />

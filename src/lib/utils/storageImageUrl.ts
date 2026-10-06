@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { bucketDeRutaImagen } from './bucketImagen';
 
 /**
  * URL pública de una imagen de producto guardada en Supabase Storage a
@@ -11,7 +12,7 @@ import { supabase } from '@/lib/supabase/config';
  */
 export function getStorageImageUrl(storagePath: string): string {
   if (!storagePath) return '';
-  const bucket = storagePath.startsWith('products/') || storagePath.startsWith('productos/') ? 'product-images' : 'organization_images';
+  const bucket = bucketDeRutaImagen(storagePath);
   const { data } = supabase.storage.from(bucket).getPublicUrl(storagePath);
   return data?.publicUrl || '';
 }

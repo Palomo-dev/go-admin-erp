@@ -73,6 +73,9 @@ import { LoteMesasDialog } from '@/components/pos/mesas/plano/LoteMesasDialog';
 import { conteoEstados, resumenZona, vistaMesaPlano, type EstadoMesaPlano, type VistaMesaPlano } from '@/components/pos/mesas/plano/estadoMesaPlano';
 import { colorDeZona, type ZonaEnPlano } from '@/components/pos/mesas/plano/planoMesasLogica';
 import { crearMesasEnLote, guardarPlano, marcarMesaLista, obtenerZonasPlano, type ZonaGuardada } from '@/components/pos/mesas/plano/planoService';
+import { SolicitudesMesaBanda } from '@/components/pos/mesas/solicitudes/SolicitudesMesaBanda';
+import { useSolicitudesMesa } from '@/components/pos/mesas/solicitudes/useSolicitudesMesa';
+import { useTextosCartaQr } from '@/components/pos/mesas/solicitudes/textosCartaQr';
 import { cn } from '@/utils/Utils';
 
 /**
@@ -186,6 +189,17 @@ export default function MesasPage() {
       }),
     }),
   );
+  // Solicitudes de la Carta QR («Llamar al mesero», «Pedir la cuenta») en tiempo real.
+  const tq = useTextosCartaQr();
+  const nombreMesaRef = useRef<(id: string) => string>(() => '');
+  const solicitudes = useSolicitudesMesa(branchFilter ?? null, (s) => {
+    toast.warning(tq('solicitudes.nuevaTitulo', { mesa: nombreMesaRef.current(s.mesaId), tipo: tq(`solicitudes.tipo.${s.tipo}`) }), {
+      description: s.motivo ? `«${s.motivo}»` : tq('solicitudes.nuevaDetalle'),
+    });
+    // «Pedir la cuenta» cambia el estado de la mesa a «Por cobrar».
+    if (s.tipo === 'bill') void cargarDatosRef.current();
+  });
+  const cargarDatosRef = useRef<() => Promise<void>>(async () => undefined);
   const [mesaReservada, setMesaReservada] = useState<TableWithSession | null>(null);
   const [showCambiarMesaReserva, setShowCambiarMesaReserva] = useState(false);
   const [confirmarNoShow, setConfirmarNoShow] = useState(false);
@@ -220,6 +234,8 @@ export default function MesasPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tp]);
 
+  cargarDatosRef.current = cargarDatos;
+
   useEffect(() => {
     if (!branchLoading) void cargarDatos();
   }, [branchFilter, branchLoading, cargarDatos]);
@@ -232,6 +248,10 @@ export default function MesasPage() {
   // ── Datos derivados ──────────────────────────────────────────────────────
   const vistas = useMemo(() => mesas.map((m) => vistaMesaPlano(m, reservasActivas.get(m.id), ahora)), [mesas, reservasActivas, ahora]);
   const mesaPorId = useMemo(() => new Map(mesas.map((m) => [m.id, m])), [mesas]);
+  nombreMesaRef.current = (id: string) => mesaPorId.get(id)?.name ?? '';
+  const atenderSolicitud = (s: Parameters<typeof solicitudes.atender>[0], estado: 'ack' | 'done') => {
+    solicitudes.atender(s, estado).catch(() => toast.error(tq('solicitudes.errorAtender')));
+  };
 
   const zonas: ZonaEnPlano[] = useMemo(() => {
     const nombres = [...new Set([...zonasMesas, ...zonasGuardadas.map((z) => z.nombre)])];
@@ -455,7 +475,9 @@ export default function MesasPage() {
 
   const densidadVista: Densidad = movil ? 'compacta' : densidad;
   const tiles = (lista: VistaMesaPlano[]) =>
-    lista.map((v) => <MesaTile key={v.id} vista={v} densidad={densidadVista} formatear={formatear} onClick={() => alTocarMesa(v)} />);
+    lista.map((v) => (
+      <MesaTile key={v.id} vista={v} densidad={densidadVista} formatear={formatear} solicitud={solicitudes.porMesa.get(v.id) ?? null} onClick={() => alTocarMesa(v)} />
+    ));
 
   const secciones = () => {
     const grupos: Array<{ nombre: string | null; color: string; vistas: VistaMesaPlano[] }> = [
@@ -585,6 +607,7 @@ export default function MesasPage() {
           }}
           resumen={(v) => resumenDe(v)}
           movil={movil}
+          solicitudes={solicitudes.porMesa}
           puedeEditar={!movil}
           editando={editando}
           onEditandoChange={setEditando}
@@ -712,6 +735,17 @@ export default function MesasPage() {
             <FilterChips chips={chips} onQuitar={(c) => (c === 'zona' ? setZonaFiltro('todas') : setEstadosFiltro([]))} onLimpiarTodo={limpiarFiltros} />
           )}
         </div>
+      )}
+
+      {listo && !editando && (
+        <SolicitudesMesaBanda
+          solicitudes={solicitudes.solicitudes}
+          nombreMesa={(id) => mesaPorId.get(id)?.name ?? ''}
+          ahora={ahora}
+          enCurso={solicitudes.enCurso}
+          onAtender={atenderSolicitud}
+          onVerMesa={irACuenta}
+        />
       )}
 
       {cuerpo()}

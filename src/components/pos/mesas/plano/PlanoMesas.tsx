@@ -8,6 +8,7 @@ import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { cn } from '@/utils/Utils';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import type { VistaMesaPlano } from './estadoMesaPlano';
+import type { ResumenSolicitudesMesa } from '../solicitudes/solicitudesMesaLogica';
 import { MesaTile } from './MesaTile';
 import { PanelMesaPlano } from './PanelMesaPlano';
 import { PanelZonaPlano } from './PanelZonaPlano';
@@ -75,6 +76,8 @@ export interface PlanoMesasProps {
   prefijoMesa: string;
   /** Celular: las mesas se acomodan en filas de N (no caben en sus posiciones del plano). */
   reflujo?: number;
+  /** Solicitudes pendientes de la Carta QR por mesa (insignia sobre la mesa). */
+  solicitudes?: ReadonlyMap<string, ResumenSolicitudesMesa>;
   className?: string;
 }
 
@@ -91,6 +94,7 @@ export function PlanoMesas({
   onSeleccionar,
   resumen,
   movil,
+  solicitudes,
   puedeEditar,
   editando,
   onEditandoChange,
@@ -477,6 +481,7 @@ export function PlanoMesas({
                             vista={{ ...vista, nombre: m.nombre, forma: m.forma, capacidad: m.capacidad }}
                             densidad="plano"
                             formatear={formatear}
+                            solicitud={editando ? null : solicitudes?.get(m.id) ?? null}
                             seleccionada={sel}
                             onPointerDown={(e) => alPresionar(e, m)}
                             onPointerMove={alMover}

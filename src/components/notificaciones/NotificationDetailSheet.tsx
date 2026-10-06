@@ -9,7 +9,7 @@ import {
   Bell, ExternalLink, User, DollarSign, Hotel, Package,
   ClipboardList, CreditCard, UserPlus, Calendar, AlertTriangle,
   Hash, Clock, TrendingDown, Building2, Mail, Info, AlertCircle, RefreshCw, Trash2, X,
-  ShoppingBag, UtensilsCrossed,
+  ShoppingBag, UtensilsCrossed, ConciergeBell,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -65,6 +65,9 @@ export function getTypeIcon(type: string) {
   // Pedido web nuevo (E6) y reserva de mesa web (D3): antes caían en Bell/Hotel.
   if (type === 'web_order_created') return ShoppingBag;
   if (type.startsWith('restaurant_reservation')) return UtensilsCrossed;
+  // Carta QR: «Llamar al mesero» / «Pedir la cuenta» y el abono en línea de una mesa.
+  if (type === 'table_service_request') return ConciergeBell;
+  if (type === 'table_online_payment') return DollarSign;
   if (type.includes('invoice') || type.includes('payment') || type.includes('ar_') || type.includes('ap_')) return DollarSign;
   if (type.includes('reservation') || type.includes('checkin') || type.includes('checkout') || type.includes('housekeeping') || type.includes('no_show')) return Hotel;
   if (type.includes('opportunity') || type.includes('task_')) return ClipboardList;
@@ -112,6 +115,8 @@ function getRedirect(notif: NotificationForSheet): { url: string; accion: string
       return { url: p.href || (p.order_id ? `/app/pos/pedidos-online/${p.order_id}` : '/app/pos/pedidos-online'), accion: 'viewWebOrder' };
     case 'restaurant_reservation_created': case 'restaurant_reservation_cancelled':
       return { url: p.href || '/app/pos/reservas-mesas', accion: 'viewTableReservations' };
+    case 'table_service_request': case 'table_online_payment':
+      return { url: p.href || (p.restaurant_table_id ? `/app/pos/mesas/${p.restaurant_table_id}` : '/app/pos/mesas'), accion: 'viewPos' };
     case 'reservation_created': case 'checkin': case 'checkout': case 'reservation_cancelled': case 'no_show':
       return p.reservation_id ? { url: `/app/pms/reservas/${p.reservation_id}`, accion: 'viewReservation' } : { url: '/app/pms/reservas', accion: 'viewReservations' };
     case 'housekeeping_assigned':

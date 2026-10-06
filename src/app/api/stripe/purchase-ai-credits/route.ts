@@ -12,6 +12,7 @@ import { createClient } from '@supabase/supabase-js';
 import { stripe } from '@/lib/stripe/server';
 import { contextoDeFacturacion } from '@/lib/stripe/contextoFacturacion';
 import { routeErrorResponse } from '@/lib/security/orgGuards';
+import { precioCreditosIa } from '@/lib/stripe/preciosCompras';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -25,7 +26,6 @@ function createSupabaseClient() {
   });
 }
 
-const DEFAULT_UNIT_PRICE_CENTS = 4;
 
 export async function POST(request: NextRequest) {
   try {
@@ -61,16 +61,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Obtener precio unitario desde pricing_config
-    const { data: pricingConfig } = await supabase
-      .from('pricing_config')
-      .select('ai_credit_unit_price, currency')
-      .eq('config_key', 'enterprise_default')
-      .eq('is_active', true)
-      .single();
-
-    const unitPriceCents = pricingConfig?.ai_credit_unit_price || DEFAULT_UNIT_PRICE_CENTS;
-    const currency = pricingConfig?.currency || 'usd';
+    // Precio: la misma función que muestra el desglose del diálogo de compra.
+    const { unitarioCentavos: unitPriceCents, moneda: currency } = await precioCreditosIa(supabase);
     const totalPriceCents = creditsAmount * unitPriceCents;
 
     // Validar monto mínimo de Stripe (50 centavos para USD)

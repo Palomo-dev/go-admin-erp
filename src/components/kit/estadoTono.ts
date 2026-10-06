@@ -203,6 +203,51 @@ const TABLA: Record<string, Fila> = {
   transferencia: C('neutro'),
   tarjeta: C('neutro'),
   cheque: C('neutro'),
+  // ── Sitio web (Figma A/07a, B/02 y áreas del módulo, 2026-10-06; SISTEMA-BADGES.md §4)
+  // Publicación del sitio: siempre con punto (PublishStatusBadge).
+  publicado: S('exito', true),
+  publicada: S('exito', true),
+  published: S('exito', true),
+  'cambios sin publicar': S('advertencia', true),
+  'guardado en borrador': S('neutro', true),
+  guardando: S('informacion', true),
+  programado: S('informacion', true),
+  programada: S('informacion', true),
+  scheduled: S('informacion', true),
+  'sin publicar': S('neutro', true),
+  'no se pudo publicar': S('peligro', true),
+  // Dominios (DomainStatusBadge): «Pendiente» de un dominio es neutro (aún no hay nada que hacer),
+  // por eso su clave es `dns pendiente` y no choca con el «Pendiente» ámbar de cartera.
+  'verificando dns': S('informacion'),
+  'activo ssl': S('exito'),
+  'mal configurado': S('peligro'),
+  'vence pronto': S('advertencia'),
+  'dns pendiente': S('neutro'),
+  // Registros DNS (DnsRecordRow)
+  correcto: S('exito'),
+  'otro valor': S('peligro'),
+  'aun no aparece': S('advertencia'),
+  'solo si lo pide': C('neutro'),
+  // Tableros del módulo (Ventas en línea, Legales, SEO, Carta, Sedes)
+  configurado: S('exito'),
+  configurada: S('exito'),
+  falta: S('peligro'),
+  opcional: C('neutro'),
+  verificado: S('exito'),
+  verificada: S('exito'),
+  bien: S('exito'),
+  mejorable: S('advertencia'),
+  'no conectado': S('neutro'),
+  heredado: C('neutro'),
+  personalizado: S('marca'),
+  visible: S('exito'),
+  oculto: S('neutro'),
+  oculta: S('neutro'),
+  'visible ahora': S('exito', true),
+  'fuera de horario': S('neutro', true),
+  disponible: S('exito'),
+  'agotado hoy': S('advertencia'),
+  'en uso': S('marca'),
   // Documento sin factura electrónica: atributo, no estado (Figma 421:167503, «Sin FE»)
   'sin fe': C('neutro'),
 };
@@ -255,6 +300,8 @@ const ETIQUETA_DB: Record<string, string> = {
   returned: 'Devuelta',
   'partially returned': 'Devuelta parcial',
   'written off': 'Castigada',
+  published: 'Publicado',
+  scheduled: 'Programado',
 };
 
 /**

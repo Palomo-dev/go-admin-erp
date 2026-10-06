@@ -31,6 +31,13 @@ export interface SegmentedControlProps<V extends string> {
   tamano?: 'sm' | 'md';
   anchoCompleto?: boolean;
   deshabilitado?: boolean;
+  /**
+   * Cómo se marca la opción elegida. `neutro` (por defecto): blanco sobre el gris del
+   * control. `marca`: tinte de marca con texto azul profundo y anillo (#2A3EA8 sobre
+   * #EEF1FE ≈ 7,6:1, AA), para controles que deben leerse de un vistazo sobre una barra
+   * clara, como el dispositivo del editor del sitio.
+   */
+  tonoActivo?: 'neutro' | 'marca';
   id?: string;
   'aria-labelledby'?: string;
   'aria-describedby'?: string;
@@ -45,6 +52,7 @@ export function SegmentedControl<V extends string>({
   tamano = 'md',
   anchoCompleto,
   deshabilitado,
+  tonoActivo = 'neutro',
   id,
   'aria-labelledby': labelledBy,
   'aria-describedby': describedBy,
@@ -103,7 +111,11 @@ export function SegmentedControl<V extends string>({
               tamano === 'md' ? 'h-8 px-3 text-sm' : 'h-7 px-2.5 text-[13px]',
               o.soloIcono && (tamano === 'md' ? 'w-8 px-0' : 'w-7 px-0'),
               anchoCompleto && 'flex-1',
-              activa ? 'bg-surface text-fg shadow-sm' : 'text-fg-secondary hover:text-fg',
+              activa
+                ? tonoActivo === 'marca'
+                  ? 'bg-brand-tint text-brand-deep ring-1 ring-inset ring-line-brand'
+                  : 'bg-surface text-fg shadow-sm'
+                : 'text-fg-secondary hover:text-fg',
             )}
           >
             {Icono && <Icono aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.5} />}

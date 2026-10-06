@@ -3,6 +3,7 @@
 import { useId, useState, type ReactNode } from 'react';
 import { ChevronDown, type LucideIcon } from 'lucide-react';
 import { cn } from '@/utils/Utils';
+import { clasesTonoTarjeta, type TonoTarjeta } from './tonosKit';
 
 /**
  * Sección de formulario (Figma `SectionCard`/`FormSection`): tarjeta con
@@ -22,6 +23,8 @@ export interface FormSectionProps {
   accion?: ReactNode;
   /** Icono del título (caja tintada de marca de 32 px). */
   icono?: LucideIcon;
+  /** Tono de la caja del icono (los de `Tarjeta`); por defecto, marca. P. ej. `peligro` en «Zona de peligro». */
+  tonoIcono?: TonoTarjeta;
   /** La cabecera pliega y despliega los campos. */
   colapsable?: boolean;
   /** Estado inicial si es `colapsable` (por defecto, abierta). */
@@ -39,6 +42,7 @@ export function FormSection({
   descripcion,
   accion,
   icono: Icono,
+  tonoIcono = 'neutro',
   colapsable,
   abiertaPorDefecto = true,
   columnas = 1,
@@ -55,7 +59,11 @@ export function FormSection({
   const encabezado = (
     <div className="flex min-w-0 items-start gap-3">
       {Icono && (
-        <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-tint text-brand">
+        <span
+          aria-hidden="true"
+          data-tono={tonoIcono}
+          className={cn('flex size-8 shrink-0 items-center justify-center rounded-lg', clasesTonoTarjeta(tonoIcono).icono)}
+        >
           <Icono className="size-4" strokeWidth={1.5} />
         </span>
       )}

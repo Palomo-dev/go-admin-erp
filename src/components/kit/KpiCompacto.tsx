@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import Link from 'next/link';
+import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { TonoStat } from './StatCard';
@@ -22,12 +23,20 @@ export interface CifraCompacta {
   /** La cifra filtra el listado. */
   href?: string;
   onClick?: () => void;
+  /** Icono de 14 px delante de la etiqueta (decorativo; el texto dice lo mismo). */
+  icono?: LucideIcon;
 }
 
 export interface KpiCompactoProps {
   cifras: readonly CifraCompacta[];
   etiqueta?: string;
   cargando?: boolean;
+  /**
+   * Etiquetas con mayúscula inicial, en pizarra y a 13/18 (Resumen del sitio,
+   * A/02f), en vez de la versalita de 11 px. Por defecto `false`: no cambia
+   * las demás pantallas que usan el componente.
+   */
+  etiquetaNatural?: boolean;
   className?: string;
 }
 
@@ -40,7 +49,7 @@ const COLOR_VALOR: Record<TonoStat, string> = {
   marca: 'text-brand-deep',
 };
 
-export function KpiCompacto({ cifras, etiqueta, cargando, className }: KpiCompactoProps) {
+export function KpiCompacto({ cifras, etiqueta, cargando, etiquetaNatural, className }: KpiCompactoProps) {
   const t = useKitT();
   return (
     <section
@@ -50,7 +59,17 @@ export function KpiCompacto({ cifras, etiqueta, cargando, className }: KpiCompac
       {cifras.map((c, i) => {
         const interior = (
           <>
-            <span className="truncate text-[11px] font-medium uppercase leading-4 tracking-wide text-fg-muted">{c.etiqueta}</span>
+            <span
+              className={cn(
+                'flex min-w-0 items-center gap-1',
+                etiquetaNatural
+                  ? 'text-[13px] leading-[18px] text-fg-secondary'
+                  : 'text-[11px] font-medium uppercase leading-4 tracking-wide text-fg-muted',
+              )}
+            >
+              {c.icono && <c.icono aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={1.5} />}
+              <span className="truncate">{c.etiqueta}</span>
+            </span>
             {cargando ? (
               <Skeleton className="h-5 w-16" />
             ) : (

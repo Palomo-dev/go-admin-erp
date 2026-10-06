@@ -22,11 +22,11 @@ export interface OrganizationDomain {
   last_verification_at: string | null;
   vercel_project_id: string | null;
   vercel_domain_id: string | null;
-  vercel_state: Record<string, any>;
+  vercel_state: Record<string, unknown>;
   last_vercel_sync_at: string | null;
   redirect_to_domain_id: string | null;
   redirect_status_code: number | null;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -40,7 +40,7 @@ export interface CreateDomainInput {
   domain_type: DomainType;
   is_primary?: boolean;
   is_active?: boolean;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   created_by?: string;
 }
 
@@ -51,7 +51,7 @@ export interface UpdateDomainInput {
   is_active?: boolean;
   redirect_to_domain_id?: string | null;
   redirect_status_code?: number | null;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // Función para generar token de verificación
@@ -106,9 +106,11 @@ export const domainService = {
     const verificationRecord = `_go-admin-challenge.${input.host}`;
     const verificationValue = verificationToken;
 
-    // Si es subdominio, marcarlo como verificado automáticamente
     const isSubdomain = input.domain_type === 'subdomain';
 
+    // El estado NO lo decide el navegador (auditoría 2026-10, P0-8): todo
+    // dominio nace `pending` y solo el servidor lo pasa a `verified` tras
+    // consultar el DNS. Los subdominios del sistema los verifica la base.
     const { data, error } = await supabase
       .from('organization_domains')
       .insert({
@@ -117,9 +119,6 @@ export const domainService = {
         verification_token: isSubdomain ? null : verificationToken,
         verification_record: isSubdomain ? null : verificationRecord,
         verification_value: isSubdomain ? null : verificationValue,
-        status: isSubdomain ? 'verified' : 'pending',
-        verified_at: isSubdomain ? new Date().toISOString() : null,
-        verification_attempts: 0,
       })
       .select()
       .single();
@@ -209,45 +208,25 @@ export const domainService = {
     return true;
   },
 
-  // Verificar dominio (simular verificación DNS)
+  /**
+   * Verificar dominio: lo hace el servidor consultando el DNS real
+   * (`POST /api/organizacion/dominios/[id]/verificar`, auditoría 2026-10,
+   * P0-8). Antes se simulaba aquí y al tercer intento quedaba «verificado».
+   */
   async verifyDomain(id: string): Promise<{ success: boolean; message: string }> {
-    // Obtener el dominio actual
-    const domain = await this.getDomainById(id);
-    if (!domain) {
-      return { success: false, message: 'Dominio no encontrado' };
-    }
-
-    // Incrementar intentos de verificación
-    const newAttempts = (domain.verification_attempts || 0) + 1;
-
-    // Simular verificación DNS (en producción, esto consultaría DNS real)
-    // Por ahora, marcamos como verificado después de 3 intentos o si es subdominio
-    const isVerified = domain.domain_type === 'subdomain' || newAttempts >= 3;
-
-    const { error } = await supabase
-      .from('organization_domains')
-      .update({
-        status: isVerified ? 'verified' : 'pending',
-        verified_at: isVerified ? new Date().toISOString() : null,
-        verification_attempts: newAttempts,
-        last_verification_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error verifying domain:', error);
+    try {
+      const res = await fetch(`/api/organizacion/dominios/${encodeURIComponent(id)}/verificar`, {
+        method: 'POST',
+        credentials: 'same-origin',
+      });
+      const json = (await res.json().catch(() => ({}))) as { success?: boolean; message?: string; error?: string };
+      if (res.ok) {
+        return { success: json.success === true, message: json.message ?? json.error ?? '' };
+      }
+      return { success: false, message: json.error ?? json.message ?? 'Error al verificar dominio' };
+    } catch {
       return { success: false, message: 'Error al verificar dominio' };
     }
-
-    if (isVerified) {
-      return { success: true, message: 'Dominio verificado exitosamente' };
-    }
-
-    return { 
-      success: false, 
-      message: `Verificación pendiente. Intento ${newAttempts} de 3. Asegúrate de haber configurado el registro DNS correctamente.` 
-    };
   },
 
   // Configurar redirección
@@ -273,33 +252,17 @@ export const domainService = {
     return true;
   },
 
-  // Sincronizar con Vercel (simulado)
+  /**
+   * Sincronizar con Vercel: era una simulación que escribía `vercel_state`
+   * desde el navegador (auditoría 2026-10, P0-8). Hasta que exista la
+   * integración real en el servidor, no escribe nada y lo dice.
+   */
   async syncWithVercel(id: string): Promise<{ success: boolean; message: string }> {
-    const domain = await this.getDomainById(id);
-    if (!domain) {
-      return { success: false, message: 'Dominio no encontrado' };
-    }
-
-    // Simular sincronización con Vercel
-    const { error } = await supabase
-      .from('organization_domains')
-      .update({
-        vercel_state: {
-          synced: true,
-          last_check: new Date().toISOString(),
-          status: 'active',
-        },
-        last_vercel_sync_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error syncing with Vercel:', error);
-      return { success: false, message: 'Error al sincronizar con Vercel' };
-    }
-
-    return { success: true, message: 'Dominio sincronizado con Vercel exitosamente' };
+    void id; // misma firma que la pantalla; no hay nada que sincronizar todavía
+    return {
+      success: false,
+      message: 'La sincronización con Vercel todavía no está disponible.',
+    };
   },
 
   // Duplicar dominio
@@ -342,9 +305,10 @@ export const domainService = {
           is_active: true,
         });
         success++;
-      } catch (error: any) {
+      } catch (error: unknown) {
         failed++;
-        errors.push(`Error al importar ${domainData.host}: ${error.message}`);
+        const mensaje = error instanceof Error ? error.message : String((error as { message?: unknown })?.message ?? error);
+        errors.push(`Error al importar ${domainData.host}: ${mensaje}`);
       }
     }
 

@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
-import { Branch, OpeningHours, DayHours } from '@/types/branch';
+import { Branch, OpeningHours } from '@/types/branch';
 import { GeocodingService, type GeocodingError } from './geocodingService';
 import { validateWebIdentityFormat } from '@/lib/utils/webIdentityValidation';
 import { ORG_ADMIN_ROLE_IDS } from '@/lib/utils/orgAdmin';
@@ -9,6 +9,8 @@ import {
   notifyTimezonesUpdated,
 } from '@/lib/services/branchTimezoneService';
 import { guardarZonaSucursal } from '@/lib/services/timezoneSettingsService';
+import { errorDeCupo } from '@/lib/services/cupoPlanService';
+import { normalizarHorario } from '@/lib/organizacion/horarioSede';
 
 /** Código de Postgres para «la columna no existe» (branches.timezone, fase A1). */
 const UNDEFINED_COLUMN = '42703';
@@ -29,27 +31,9 @@ function normalizarZonaSucursal(timezone: string | null | undefined): string | n
 }
 
 // Helper function to normalize opening hours format
-const normalizeOpeningHours = (entrada: unknown): OpeningHours | null => {
-  if (!entrada || typeof entrada !== 'object') return null;
-  const openingHours = entrada as Record<string, Partial<DayHours> | undefined>;
-  
-  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-  const normalized: OpeningHours = {};
-  
-  days.forEach(day => {
-    const dayHours = openingHours[day];
-    if (dayHours) {
-      // Ensure the day hours have the correct format
-      normalized[day as keyof OpeningHours] = {
-        open: dayHours.open || '09:00',
-        close: dayHours.close || '18:00',
-        closed: typeof dayHours.closed === 'boolean' ? dayHours.closed : (!dayHours.open || !dayHours.close)
-      };
-    }
-  });
-  
-  return normalized;
-};
+// Conserva los turnos partidos (`tramos`) y deja open/close como envolvente:
+// misma regla que el formulario (lib/organizacion/horarioSede.ts).
+const normalizeOpeningHours = (entrada: unknown): OpeningHours | null => normalizarHorario(entrada);
 
 /** Perfil del gerente que trae `getBranchesWithManagers`. */
 export interface GerenteSucursal {
@@ -280,6 +264,10 @@ export const branchService = {
           .single());
       }
 
+      // Sin cupo en el plan (disparador de la base, auditoría 2026-10 P0-4):
+      // el mensaje de la base ya dice cuántas permite el plan y qué hacer.
+      const cupo = errorDeCupo(error);
+      if (cupo) throw new Error(cupo.mensaje);
       if (error) {
         console.error('Error creating branch:', error, error.details, error.hint);
         throw new Error(`Error al crear sucursal: ${error.message}`);

@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { indiceSiguiente } from './navegacionTeclado';
 
@@ -22,6 +23,8 @@ export interface PestanaTab<V extends string> {
   etiqueta: string;
   contador?: number;
   deshabilitada?: boolean;
+  /** Icono de 16 px (trazo 1,5) delante de la etiqueta; decorativo. */
+  icono?: LucideIcon;
 }
 
 export interface TabBarProps<V extends string> {
@@ -63,6 +66,7 @@ export function TabBar<V extends string>({ id, pestanas, valor, onValorChange, e
     >
       {pestanas.map((p, i) => {
         const activa = p.valor === valor;
+        const Icono = p.icono;
         return (
           <button
             key={p.valor}
@@ -85,6 +89,7 @@ export function TabBar<V extends string>({ id, pestanas, valor, onValorChange, e
               activa ? 'border-brand text-brand-deep' : 'border-transparent text-fg-secondary hover:text-fg',
             )}
           >
+            {Icono && <Icono aria-hidden="true" className={cn('shrink-0', tamano === 'sm' ? 'size-3.5' : 'size-4')} strokeWidth={1.5} />}
             {p.etiqueta}
             {p.contador !== undefined && (
               <span

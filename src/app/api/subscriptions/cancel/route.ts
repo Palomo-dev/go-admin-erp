@@ -69,7 +69,15 @@ export async function POST(request: NextRequest) {
         message = 'Suscripción reactivada exitosamente';
       }
     } else {
-      // Cancelar suscripción
+      // Cancelar suscripción. Al programarla para el final del periodo el
+      // estado NO cambia (auditoría 2026-10, P1-1): antes se escribía 'active'
+      // fijo, así que cancelar una PRUEBA la convertía en suscripción activa
+      // sin pago. En prueba, el final es el de la prueba.
+      const estadoAlProgramar: string = subscription.status;
+      const finProgramado: string | null =
+        subscription.status === 'trialing'
+          ? subscription.trial_end ?? subscription.current_period_end ?? null
+          : subscription.current_period_end ?? null;
       if (subscription.stripe_subscription_id) {
         result = await cancelSubscription(subscription.stripe_subscription_id, immediate);
         
@@ -77,9 +85,9 @@ export async function POST(request: NextRequest) {
           await getServiceClient()
             .from('subscriptions')
             .update({
-              status: immediate ? 'canceled' : 'active',
+              status: immediate ? 'canceled' : estadoAlProgramar,
               cancel_at_period_end: !immediate,
-              cancel_at: immediate ? new Date().toISOString() : null,
+              cancel_at: immediate ? new Date().toISOString() : finProgramado,
               canceled_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             })
@@ -90,8 +98,9 @@ export async function POST(request: NextRequest) {
         await getServiceClient()
           .from('subscriptions')
           .update({
-            status: immediate ? 'canceled' : 'active',
+            status: immediate ? 'canceled' : estadoAlProgramar,
             cancel_at_period_end: !immediate,
+            cancel_at: immediate ? new Date().toISOString() : finProgramado,
             canceled_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
@@ -100,9 +109,11 @@ export async function POST(request: NextRequest) {
         result = { success: true };
       }
 
-      message = immediate 
-        ? 'Suscripción cancelada inmediatamente' 
-        : 'Suscripción se cancelará al final del período actual';
+      message = immediate
+        ? 'Suscripción cancelada inmediatamente'
+        : subscription.status === 'trialing'
+          ? 'La prueba se cancelará al terminar'
+          : 'Suscripción se cancelará al final del período actual';
     }
 
     if (!result?.success) {

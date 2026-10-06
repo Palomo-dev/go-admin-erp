@@ -20,10 +20,16 @@ export interface PlanSesion {
     periodo: 'mensual' | 'anual';
     proximoCobro: string | null;
     cancelaAlFinal: boolean;
+    /** `trialing` con la prueba ya terminada (el estado sigue siendo «prueba»). */
+    pruebaVencida?: boolean;
+    finPrueba?: string | null;
+    finPeriodo?: string | null;
+    conStripe?: boolean;
+    clienteStripe?: boolean;
   } | null;
   uso: {
-    usuarios: { actual: number; maximo: number | null };
-    sucursales: { actual: number; maximo: number | null };
+    usuarios: { actual: number; maximo: number | null; comprados?: number; invitacionesVigentes?: number };
+    sucursales: { actual: number; maximo: number | null; comprados?: number };
     creditosIa: { restantesPlan: number; comprados: number; cupoMensual: number | null; seRenuevan: string | null };
   };
 }

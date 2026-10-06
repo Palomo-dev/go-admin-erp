@@ -176,15 +176,26 @@ describe('no se acepta una zona inválida al escribir', () => {
 });
 
 describe('permisos (regla dura 6): se resuelven fuera del formulario', () => {
-  it('la pantalla de sucursales exige admin de organización por id de rol', () => {
-    expect(PAGINA_SUCURSALES).toContain('useOrgAdmin');
-    expect(PAGINA_SUCURSALES).toContain('if (!isOrgAdmin)');
-    expect(PAGINA_SUCURSALES).toContain("t('common.noPermissions')");
+  // Auditoría de Organización 2026-10 (P1-2): el «¿es admin?» ya no se decide
+  // en el navegador por `role_id` (ignoraba `is_super_admin` y los permisos
+  // `admin.full_access`), sino en el servidor (`GET /api/me/capacidades`,
+  // `gestionarOrganizacion`). La pantalla pasa por `PantallaOrganizacion`.
+  const PANTALLA = leer('src/components/organization/sucursales/SucursalesPantalla.tsx');
+
+  it('la pantalla de sucursales exige el permiso de organización resuelto en el servidor', () => {
+    expect(PAGINA_SUCURSALES).toContain('SucursalesPantalla');
+    expect(PANTALLA).toContain('permiso="organizacion"');
+    const marco = leer('src/components/organization/acceso/PantallaOrganizacion.tsx');
+    expect(marco).toContain('cumplePermiso(acceso, permiso)');
+    expect(marco).toContain('variante="forbidden"');
   });
 
-  it('el criterio de admin no se deduce del nombre del rol', () => {
-    const criterio = leer('src/components/organization/useOrgAdmin.ts');
-    expect(criterio).toContain('const isOrgAdmin = userRole === 2 || userRole === 1;');
-    expect(criterio).not.toMatch(/role_name|roleName|'Admin de organización'/);
+  it('el criterio no se deduce del nombre ni del id del rol en el cliente', () => {
+    for (const ruta of ['src/components/organization/useOrgAdmin.ts', 'src/components/organization/acceso/useAccesoOrganizacion.ts']) {
+      const criterio = leer(ruta);
+      expect(criterio).toContain('useCapacidades');
+      expect(criterio).not.toMatch(/role_name|roleName|'Admin de organización'/);
+      expect(criterio).not.toMatch(/role_?[Ii]d\s*===|userRole\s*===/);
+    }
   });
 });

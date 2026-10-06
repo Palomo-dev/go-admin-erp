@@ -235,3 +235,13 @@ export {
   totalSelector,
 } from './selectorVariantesLogica';
 export { RelatedLinkCard, type RelatedLinkCardProps, type TonoRelatedLink } from './RelatedLinkCard';
+
+// ── Ajustes, avisos y selección (módulo Sitio web, Figma A/02-A/03 y B/12; 2026-10-06)
+export { SettingsSaveBar, type SettingsSaveBarProps } from './SettingsSaveBar';
+export { SettingRow, SettingGroup, type SettingRowProps, type SettingGroupProps } from './SettingRow';
+export { ConfirmDialog, type ConfirmDialogProps } from './ConfirmDialog';
+export { AvisoTonal, type AvisoTonalProps, type AccionAviso, type TonoAviso } from './AvisoTonal';
+export { BarraProgreso, porcentajeProgreso, type BarraProgresoProps, type TonoProgreso } from './BarraProgreso';
+export { TarjetaSeleccionable, type TarjetaSeleccionableProps } from './TarjetaSeleccionable';
+export { useKitTextos } from './useIdiomaKit';
+export { Skeleton } from '@/components/ui/skeleton';

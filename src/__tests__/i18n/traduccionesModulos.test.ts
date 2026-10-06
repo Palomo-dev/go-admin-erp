@@ -102,6 +102,12 @@ const MODULOS: Record<string, string[]> = {
   // CRM ola 3B (Figma «CRM — Pipeline y oportunidades» 768:454425, aprobada D7): Pipeline,
   // «Nuevo pipeline», Oportunidades, drawer, detalle, formulario en página y diálogos.
   'crm.oportunidad': ['src/components/crm/oportunidad', 'src/components/crm/pipeline/pantalla', 'src/components/crm/oportunidades/pantalla'],
+  // CRM · IA y automatización (Figma 1295:767945 y «Voz — qué sabe el agente» 1804:905009):
+  // Agentes IA de voz con sus secciones, «Qué sabe el agente», voces y chips de campaña.
+  'crm.agentesIa': ['src/components/crm/agentes'],
+  vozCampanasDisparo: ['src/components/crm/agentes/campanas', 'src/components/configuracion/crm/telefonia'],
+  // CRM · Red y gestión (Figma 1295:767955): secciones de Equipo.
+  'crm.equipo': ['src/components/crm/equipo'],
   // Analítica web (Figma 03 › 464:237482, 2026-09-30), con los mapas de «De dónde entran».
   // Desde el 2026-10-05 es la página «Analítica» del módulo Sitio web.
   analiticaWeb: ['src/components/analiticaWeb', 'src/app/app/sitio-web/analitica'],

@@ -8,12 +8,19 @@
  * mínimo (fail-closed) y se completa cuando llega la respuesta.
  */
 import { useCallback, useEffect, useState } from 'react';
-import type { CapacidadNav } from './catalog';
+import { CAPACIDADES_NAV, type CapacidadNav } from './catalog';
 
 export interface Capacidades {
   organizationId: number | null;
   esAdmin: boolean;
-  capacidades: Record<'gestionarNotificaciones' | 'crearSucursal', boolean>;
+  capacidades: Record<
+    | CapacidadNav
+    | 'crearSucursal'
+    | 'gestionarOrganizacion'
+    | 'gestionarMiembros'
+    | 'gestionarFacturacion',
+    boolean
+  >;
   /** `accesoTotal`: tiene todas las sucursales activas (puede ver el consolidado). */
   sucursales: { permitidas: number[]; verTodas: boolean; accesoTotal: boolean };
 }
@@ -21,7 +28,15 @@ export interface Capacidades {
 const VACIAS: Capacidades = {
   organizationId: null,
   esAdmin: false,
-  capacidades: { gestionarNotificaciones: false, crearSucursal: false },
+  capacidades: {
+    gestionarNotificaciones: false,
+    verAnaliticaWeb: false,
+    variasSedes: false,
+    crearSucursal: false,
+    gestionarOrganizacion: false,
+    gestionarMiembros: false,
+    gestionarFacturacion: false,
+  },
   sucursales: { permitidas: [], verTodas: false, accesoTotal: false },
 };
 
@@ -45,17 +60,29 @@ async function pedir(): Promise<Capacidades> {
   return enVuelo;
 }
 
-export function useCapacidades(): { datos: Capacidades; cargando: boolean; navegacion: ReadonlySet<CapacidadNav> } {
+export function useCapacidades(): {
+  datos: Capacidades;
+  cargando: boolean;
+  /** La petición falló: `datos` son los vacíos (todo `false`), no un «no» del servidor. */
+  error: boolean;
+  recargar: () => void;
+  navegacion: ReadonlySet<CapacidadNav>;
+} {
   const [datos, setDatos] = useState<Capacidades>(ultima ?? VACIAS);
   const [cargando, setCargando] = useState(ultima === null);
+  const [error, setError] = useState(false);
 
   const recargar = useCallback(() => {
     setCargando(true);
     pedir()
-      .then(setDatos)
+      .then((d) => {
+        setDatos(d);
+        setError(false);
+      })
       .catch((e) => {
         console.warn('[useCapacidades] no se pudieron cargar; se muestra el menú mínimo', e);
         setDatos(VACIAS);
+        setError(true);
       })
       .finally(() => setCargando(false));
   }, []);
@@ -74,6 +101,8 @@ export function useCapacidades(): { datos: Capacidades; cargando: boolean; naveg
     };
   }, [recargar]);
 
-  const navegacion = new Set<CapacidadNav>(datos.capacidades.gestionarNotificaciones ? ['gestionarNotificaciones'] : []);
-  return { datos, cargando, navegacion };
+  // Las capacidades del menú (`PaginaNav.requiere`): las que el servidor marcó.
+  // Un servidor viejo que no las mande cuenta como «no» (fail-closed).
+  const navegacion = new Set<CapacidadNav>(CAPACIDADES_NAV.filter((c) => datos.capacidades[c] === true));
+  return { datos, cargando, error, recargar, navegacion };
 }

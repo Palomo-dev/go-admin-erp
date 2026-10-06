@@ -75,6 +75,11 @@ export interface DataTableProps<T> {
   /** Como mucho 2 IconButton frecuentes y no destructivos, antes del «⋯». */
   accionesRapidas?: (fila: T) => React.ReactNode;
   tonoFila?: (fila: T) => 'peligro' | 'advertencia' | undefined;
+  /**
+   * Atributos `data-*` de la fila (y de su tarjeta móvil). Los usa, p. ej., el
+   * atajo Ctrl+Shift+C del softphone, que llama al `data-phone` de la fila enfocada.
+   */
+  atributosFila?: (fila: T) => Record<`data-${string}`, string | undefined>;
   tarjetaMovil?: (fila: T, ctx: ContextoTarjeta) => React.ReactNode;
   /** Textos y acción de cada estado vacío (se combinan con los del kit). */
   vacio?: Partial<EmptyStateProps>;
@@ -132,6 +137,7 @@ export function DataTable<T>({
   acciones,
   accionesRapidas,
   tonoFila,
+  atributosFila,
   tarjetaMovil,
   vacio,
   sinResultados,
@@ -298,6 +304,7 @@ export function DataTable<T>({
           return (
             <tr
               key={id}
+              {...atributosFila?.(fila)}
               aria-rowindex={usarVirtual ? indice + 2 : undefined}
               aria-selected={seleccionable ? marcada : undefined}
               tabIndex={onFilaClick ? 0 : undefined}
@@ -397,7 +404,7 @@ export function DataTable<T>({
           {filas.map((fila, i) => {
             const id = idsPagina[i];
             return (
-              <li key={id}>
+              <li key={id} {...atributosFila?.(fila)}>
                 {tarjetaMovil(fila, {
                   seleccionado: sel.has(id),
                   modoSeleccion: seleccionable && modoSeleccion,

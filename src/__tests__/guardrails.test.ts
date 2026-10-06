@@ -3219,7 +3219,14 @@ describe('35. Miembros: rol, cargo, estado y retiro solo por las RPC fn_miembro_
       .filter((f) => !esPrueba(f))
       .filter((f) => /rpc\(\s*fn\b|rpc\(\s*['"]fn_miembro_/.test(readFile(f)) && /fn_miembro_/.test(readFile(f)))
       .map(rel);
-    expect(llaman).toEqual(['lib/services/miembrosService.ts']);
+    // Excepción documentada: Roles y permisos › «¿Qué puede hacer?» guarda el alcance por
+    // sucursal en el SERVIDOR (withOrg, cliente de la sesión) con la misma RPC que Miembros,
+    // `fn_miembro_asignar_sucursales`, en vez de una segunda función con otra semántica
+    // (fn_alcance_sucursal_guardar trataba la lista vacía como «todas»). miembrosService usa el
+    // cliente del navegador y no sirve en un route handler. Solo esa RPC.
+    expect(llaman).toEqual(['lib/services/miembrosService.ts', 'lib/services/roles/rolesServidor.server.ts']);
+    const rpcsRoles = readFile(path.join(SRC_ROOT, 'lib/services/roles/rolesServidor.server.ts')).match(/fn_miembro_\w+/g) ?? [];
+    expect([...new Set(rpcsRoles)]).toEqual(['fn_miembro_asignar_sucursales']);
   });
 });
 
@@ -3252,8 +3259,8 @@ describe('36. CRM ola 1: escrituras de oportunidades/actividades por el servidor
     //  - `oportunidades/ScoringSection.tsx` → PUT /api/crm/opportunities/[id]/score (cálculo en el servidor);
     //  - `pipeline/services/pipelineService.ts` → POST /api/crm/opportunities;
     //  - `oportunidades/ImportLeadsCsv.tsx` era código muerto (sin importadores): se borró.
-    // Queda UNA entrada, fuera de la 3B: la fusión de identidades no es una pantalla del plan.
-    ['components/crm/identidades/IdentidadesService.ts', 'fusión de identidades (re-apunta related_id): pendiente de RPC propia'],
+    // La última entrada (fusión de identidades) se cerró el 2026-10-06: la fusión
+    // es la RPC transaccional `crm_merge_customers` vía POST /api/crm/customer-merges.
   ]);
 
   const ofensoresNavegador = (): string[] =>
@@ -3330,6 +3337,19 @@ describe('36. CRM ola 1: escrituras de oportunidades/actividades por el servidor
  * y esta prueba avisa antes.
  */
 describe('38. get_user_permission_codes: solo los permisos propios', () => {
+  /**
+   * Única excepción (2026-10-06, Roles y permisos › «¿Qué puede hacer esta
+   * persona?», Figma «13. Equipo › Roles y permisos»): la hoja calcula los
+   * permisos efectivos de OTRA persona con la misma función de la base, en vez
+   * de reimplementar la precedencia rol/cargo (regla 7). Es justo el caso que
+   * la migración 20260930220000 admite —admin o `users.view`— y el servicio lo
+   * exige antes (`capacidades.verPersonas`, comprobado abajo); la base lo
+   * vuelve a exigir y responde 42501 si no.
+   */
+  const EXCEPCIONES_OTRA_PERSONA: Record<string, string> = {
+    'lib/services/roles/rolesServidor.server.ts': 'objetivo.user_id',
+  };
+
   test('todo llamador de src/ pasa el usuario de la sesión como p_user_id', () => {
     const permitidos = new Set(['ctx.userId', 'userId']);
     const ofensores: string[] = [];
@@ -3341,12 +3361,22 @@ describe('38. get_user_permission_codes: solo los permisos propios', () => {
       for (const l of llamadas) {
         total += 1;
         const m = l.match(/p_user_id\s*:\s*([\w.]+)/);
+        const excepcion = EXCEPCIONES_OTRA_PERSONA[rel(f)];
+        if (m && excepcion === m[1]) continue;
         if (!m || !permitidos.has(m[1])) ofensores.push(`${rel(f)}: ${l.replace(/\s+/g, ' ')}`);
       }
     }
     expect(ofensores).toEqual([]);
     // Si el regex dejara de encontrar llamadas, la prueba no protegería nada.
     expect(total).toBeGreaterThanOrEqual(7);
+  });
+
+  test('la excepción de «¿Qué puede hacer?» exige users.view (o admin) antes de pedir los permisos de otra persona', () => {
+    const src = readFile(path.join(SRC_ROOT, 'lib', 'services', 'roles', 'rolesServidor.server.ts'));
+    const cuerpo = src.slice(src.indexOf('export async function quePuedeHacer'), src.indexOf('export async function guardarAlcance'));
+    expect(cuerpo).toMatch(/if \(!capacidades\.verPersonas && !esPropio\) throw new ErrorRoles\(403/);
+    expect(cuerpo.indexOf('capacidades.verPersonas')).toBeLessThan(cuerpo.indexOf("'get_user_permission_codes'"));
+    expect(src).toMatch(/verPersonas: 'users\.view'/);
   });
 
   test('la migración restringe a los propios, fija search_path y revoca a anon', () => {
@@ -3704,5 +3734,147 @@ describe('42. Voz: la exención por número de prueba vive en un solo punto y no
     const ruta = stripAllComments(readFile(path.join(SRC_ROOT, 'app/api/crm/settings/telephony/test-numbers/route.ts')));
     expect(ruta).not.toMatch(/getServiceClient|createServiceClient|service_role/);
     expect((ruta.match(/\{\s*admin:\s*true\s*\}/g) ?? []).length).toBe(3);
+  });
+});
+
+// Auditoría de Organización 2026-10 (docs/acceso/AUDITORIA-ORGANIZACION-2026-10.md):
+// P0-8 — un dominio solo queda `verified` en el servidor, tras consultar el DNS
+// (`dominioVerificacionService`); el navegador lo simulaba al tercer clic.
+// P0-10 — las sucursales de un miembro se asignan con UNA RPC transaccional
+// (`fn_miembro_asignar_sucursales` vía `miembrosService`); el DELETE + INSERT
+// desde el navegador dejaba al miembro con acceso a todas si fallaba el INSERT.
+describe('Organización P0-8 y P0-10: verificación de dominio en el servidor y sucursales del miembro por RPC', () => {
+  const esPrueba = (f: string) => /[\/]__tests__[\/]|\.test\.tsx?$/.test(f);
+  const DE_NAVEGADOR = /from\s+['"]@\/lib\/supabase\/config['"]/;
+
+  // Excepción: los subdominios del sistema (`*.goadmin.io`). Los verifica la
+  // propia base (trg_organization_domains_before_insert) y el disparador de la
+  // migración 20261006150200 solo admite esa forma de host.
+  test('ningún archivo con el cliente del navegador marca un dominio propio como verificado', () => {
+    const MARCA = /from\(\s*['"]organization_domains['"]\s*\)[\s\S]{0,400}?\.(?:update|insert|upsert)\(\s*(\{[^}]*\bstatus\s*:\s*(?:['"]verified['"]|\w+\s*\?\s*['"]verified['"])[^}]*\})/g;
+    const ofensores = walkDir(SRC_ROOT)
+      .filter((f) => !esPrueba(f))
+      .filter((f) => {
+        const s = stripAllComments(readFile(f));
+        if (!DE_NAVEGADOR.test(s)) return false;
+        return [...s.matchAll(MARCA)].some((m) => !/domain_type\s*:\s*['"]system_subdomain['"]/.test(m[1]));
+      })
+      .map(rel);
+    expect(ofensores).toEqual([]);
+  });
+
+  test('la verificación de dominios llama a la ruta del servidor', () => {
+    const s = stripAllComments(readFile(path.join(SRC_ROOT, 'lib/services/domainService.ts')));
+    expect(s).toMatch(/\/api\/organizacion\/dominios\/\$\{[^}]+\}\/verificar/);
+    expect(s).not.toMatch(/newAttempts\s*>=\s*3/);
+  });
+
+  test('BranchAssignmentModal no borra ni inserta member_branches: usa la RPC', () => {
+    const s = stripAllComments(readFile(path.join(SRC_ROOT, 'components/organization/BranchAssignmentModal.tsx')));
+    expect(s).not.toMatch(/from\(\s*['"]member_branches['"]\s*\)\s*\.(?:delete|insert|upsert)\(/);
+    expect(s).toMatch(/asignarSucursalesMiembro\(/);
+  });
+});
+
+// Paquete E (pedido web de restaurante, 2026-10-07): el navegador no marca un
+// pedido web como pagado. El cobro en el local va por la RPC
+// `fn_cobrar_pedido_web_en_caja` (factura, pago del cajero, venta dentro de la
+// caja de la sede). El único respaldo es
+// `webOrderConfirmationService.marcarPagadoSinCaja`, y solo se usa cuando la
+// base aún no tiene esa función (código FUNCION_AUSENTE: migración E4 pendiente).
+// Antes, «Marcar como pagado» escribía `payment_status='paid'` sin factura ni
+// caja y el dinero no aparecía en el arqueo.
+describe('Paquete E: la UI de Pedidos online no escribe web_orders.payment_status = paid', () => {
+  const RAICES = ['app/app/pos/pedidos-online', 'components/pos/pedidos-online'];
+  const archivosUi = () =>
+    RAICES.flatMap((r) => walkDir(path.join(SRC_ROOT, r))).filter((f) => !/[\/]__tests__[\/]/.test(f));
+
+  test('ninguna pantalla de Pedidos online escribe payment_status paid ni llama updatePaymentStatus(…, paid)', () => {
+    const ofensores = archivosUi()
+      .filter((f) => {
+        const src = readFile(f);
+        return /payment_status\s*:\s*['"]paid['"]/.test(src) || /updatePaymentStatus\([^)]*['"]paid['"]/.test(src);
+      })
+      .map(rel);
+    expect(ofensores).toEqual([]);
+  });
+
+  test('el respaldo sin caja solo se llama en la rama FUNCION_AUSENTE', () => {
+    const ofensores: string[] = [];
+    for (const f of archivosUi()) {
+      const src = readFile(f);
+      let i = src.indexOf('marcarPagadoSinCaja(');
+      while (i >= 0) {
+        if (!src.slice(Math.max(0, i - 300), i).includes("'FUNCION_AUSENTE'")) ofensores.push(rel(f));
+        i = src.indexOf('marcarPagadoSinCaja(', i + 1);
+      }
+    }
+    expect(ofensores).toEqual([]);
+  });
+
+  // Revisión del paquete E (2026-10-06): la regla anterior solo veía
+  // `.update({ payment_status: 'paid'` al INICIO del objeto, así que
+  // `.update({ status: 'confirmed', payment_status: 'paid', … })` pasaba. Ahora
+  // se lee el objeto completo de cada `.update({…})` sobre web_orders.
+  const updatesWebOrdersPagado = (src: string): number[] => {
+    const indices: number[] = [];
+    const re = /\.update\(\s*\{/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(src))) {
+      const inicio = m.index + m[0].length - 1;
+      let nivel = 0;
+      let fin = inicio;
+      for (let j = inicio; j < src.length; j++) {
+        if (src[j] === '{') nivel++;
+        else if (src[j] === '}') {
+          nivel--;
+          if (nivel === 0) {
+            fin = j;
+            break;
+          }
+        }
+      }
+      const cuerpo = src.slice(inicio, fin + 1);
+      const antes = src.slice(Math.max(0, m.index - 400), m.index);
+      const esWebOrders = /from\(\s*['"]web_orders['"]\s*\)[^;]*$/.test(antes);
+      if (esWebOrders && /payment_status\s*:\s*['"]paid['"]/.test(cuerpo)) indices.push(m.index);
+    }
+    return indices;
+  };
+  const funcionQueContiene = (src: string, indice: number): string | null => {
+    const re = /\n {2}(?:private )?async (\w+)\(/g;
+    let nombre: string | null = null;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(src)) && m.index < indice) nombre = m[1];
+    return nombre;
+  };
+
+  test('el detector ve payment_status paid en cualquier posición del objeto', () => {
+    const src = "await supabase\n  .from('web_orders')\n  .update({\n    status: 'confirmed',\n    payment_status: 'paid',\n  })";
+    expect(updatesWebOrdersPagado(src)).toHaveLength(1);
+    expect(updatesWebOrdersPagado("supabase.from('web_orders').update({ status: 'confirmed' })")).toHaveLength(0);
+  });
+
+  test('ninguna pantalla de Pedidos online escribe payment_status paid en ninguna posición del update', () => {
+    const ofensores = archivosUi().filter((f) => updatesWebOrdersPagado(stripAllComments(readFile(f))).length > 0).map(rel);
+    expect(ofensores).toEqual([]);
+  });
+
+  test('el servicio cobra por la RPC de caja; los únicos updates a paid son los respaldos sin E4', () => {
+    const src = stripAllComments(readFile(path.join(SRC_ROOT, 'lib', 'services', 'webOrderConfirmationService.ts')));
+    expect(src).toMatch(/rpc\('fn_cobrar_pedido_web_en_caja'/);
+    const funciones = updatesWebOrdersPagado(src).map((i) => funcionQueContiene(src, i));
+    // marcarPagadoSinCaja: respaldo de «Marcar como pagado» sin E4.
+    // confirmarCompleto: pedido ya pagado en línea, o la casilla del diálogo sin E4.
+    expect([...new Set(funciones)].sort()).toEqual(['confirmarCompleto', 'marcarPagadoSinCaja']);
+    expect(funciones.filter((f) => f === 'marcarPagadoSinCaja')).toHaveLength(1);
+    // La casilla «Marcar como pagado» del diálogo pasa por la caja cuando E4 existe,
+    // en los dos caminos de confirmación.
+    for (const nombre of ['confirmOrder', 'confirmarCompleto']) {
+      const desde = src.indexOf(`async ${nombre}(`);
+      const cuerpo = src.slice(desde, src.indexOf('\n  }\n', desde));
+      expect(cuerpo).toMatch(/cobroEnCajaDisponible\(\)/);
+      expect(cuerpo).toMatch(/this\.cobrarEnCaja\(/);
+    }
   });
 });

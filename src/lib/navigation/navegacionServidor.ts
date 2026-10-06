@@ -11,12 +11,20 @@
  * Falla CERRADO: si no se pueden leer los módulos, lanza; quien llama decide
  * (el buscador y el inicio no ofrecen nada que no sepan que se puede ver).
  */
-import type { ServerOrgContext } from '@/lib/utils/orgContext';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
 import { jobPositionModuleAccessService } from '@/lib/services/jobPositionModuleAccessService';
+import { CATALOGO_NAV, type CapacidadNav } from './catalog';
+import { capacidadesNavServidor, type ContextoCapacidades } from './capacidadesNav.server';
 import { filtrarNavegacion, type SeccionVisible } from './filtrar';
 
-type Contexto = Pick<ServerOrgContext, 'userId' | 'organizationId' | 'supabase'>;
+type Contexto = ContextoCapacidades;
+
+/** Capacidades que exigen las páginas de los módulos activos (las demás no se consultan). */
+function capacidadesPedidas(modulosActivos: readonly string[]): CapacidadNav[] {
+  return CATALOGO_NAV.filter((m) => m.codigo === null || modulosActivos.includes(m.codigo)).flatMap((m) =>
+    m.paginas.flatMap((p) => (p.requiere ? [p.requiere] : []))
+  );
+}
 
 export async function seccionesVisiblesServidor(ctx: Contexto): Promise<SeccionVisible[]> {
   const db = ctx.supabase;
@@ -25,13 +33,16 @@ export async function seccionesVisiblesServidor(ctx: Contexto): Promise<SeccionV
     moduleManagementService.getHiddenModulePages(ctx.organizationId, db),
     jobPositionModuleAccessService.getUserAccess(ctx.userId, ctx.organizationId, db),
   ]);
+  const modulosActivos = modulos.map((m) => m.code);
+  // Las mismas capacidades que el menú del navegador (`/api/me/capacidades`):
+  // una página con `requiere` («Analítica», «Sedes en la web») se ve igual
+  // aquí, en el buscador y en el inicio.
+  const capacidades = await capacidadesNavServidor(ctx, capacidadesPedidas(modulosActivos));
   return filtrarNavegacion({
-    modulosActivos: modulos.map((m) => m.code),
+    modulosActivos,
     paginasOcultas,
     modulosCargo: cargo.visibleModules,
     paginasCargo: cargo.visiblePages,
-    // Las páginas que piden capacidades (bandeja de notificaciones) no
-    // respaldan ningún módulo del inicio ni grupo del buscador.
-    capacidades: new Set(),
+    capacidades,
   });
 }

@@ -51,3 +51,20 @@ export function useSustantivoKit(clave: 'registro' | 'elemento'): Sustantivo {
   const t = useTranslations('kit.sustantivos');
   return { singular: t(`${clave}.singular`), plural: t(`${clave}.plural`) };
 }
+
+/**
+ * Texto del kit con respaldo en español: si `kit.<clave>` aún no está en
+ * messages/*.json (componente recién añadido, claves pendientes de fusionar),
+ * se muestra el respaldo en vez de la clave cruda. `{n}` y demás marcadores se
+ * sustituyen igual en los dos casos.
+ */
+export function useKitTextos(): (clave: string, respaldo: string, valores?: Record<string, string | number>) => string {
+  const t = useTranslations('kit');
+  return useCallback(
+    (clave: string, respaldo: string, valores?: Record<string, string | number>) => {
+      if (t.has(clave)) return t(clave, valores);
+      return respaldo.replace(/\{(\w+)\}/g, (m, k: string) => (valores && k in valores ? String(valores[k]) : m));
+    },
+    [t],
+  );
+}

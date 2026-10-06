@@ -18,14 +18,16 @@
 import { NextResponse } from 'next/server';
 import { withOrg, hasOrgAdminOrPermission, jsonError } from '@/lib/utils/orgContext';
 import { veePanelCompleto } from '@/lib/dashboard/accesoPanel';
+import { puedeVerAnaliticaWeb } from '@/lib/navigation/capacidadesNav.server';
 import { leerPeticion, mapearRespuestaRpc } from '@/lib/analiticaWeb/analiticaWeb';
 
 export const dynamic = 'force-dynamic';
 
 export const GET = withOrg(async (ctx, req) => {
   const panel = veePanelCompleto(ctx);
-  const puedeVer = panel || (await hasOrgAdminOrPermission(ctx, 'reports.sales'));
-  if (!puedeVer) return jsonError(403, 'SIN_PERMISO', 'No tienes acceso a la analítica web');
+  // Misma regla que la capacidad `verAnaliticaWeb` del menú: si el menú ofrece
+  // «Analítica», aquí no hay 403.
+  if (!(await puedeVerAnaliticaWeb(ctx))) return jsonError(403, 'SIN_PERMISO', 'No tienes acceso a la analítica web');
 
   const peticion = leerPeticion(new URL(req.url).searchParams);
   if (!peticion.ok) return jsonError(400, peticion.codigo);

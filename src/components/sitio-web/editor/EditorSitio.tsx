@@ -40,16 +40,18 @@ import { debeActivarAlPublicar } from '@/lib/website/v2/activarAlPublicar';
 import { tipoSedeDesdeGiro } from '@/lib/services/website/sectionsByBranchType';
 import { resolverEstadoPublicacion, type EstadoPublicacion } from '@/components/sitio-web/ui/estadoPublicacion';
 import { useCategoriasMenu } from '@/components/sitio-web/paginas/ColumnaCategoriasInventario';
-import { HeaderInspector } from '@/components/organization/branding/editor/inspector/HeaderInspector';
-import { FooterInspector } from '@/components/organization/branding/editor/inspector/FooterInspector';
 import { HojaMenu } from '@/components/organization/branding/editor/inspector/HojaMenu';
 import { PageLayoutPanel } from '@/components/organization/branding/editor/PageLayoutPanel';
 import { PanelHerencia } from '@/components/organization/branding/editor/v2/PanelHerencia';
-import { DISPOSITIVO_INSPECTOR } from '@/components/sitio-web/ui/dispositivos';
+import { giroDeTipoOrganizacion } from '@/components/sitio-web/paginas/plantillasPagina';
+import { shellPorDefecto, shellPorDefectoDelDocumento } from '@/lib/website/v2/plantillaCompleta';
+import { nuevoIdSeccion } from '@/lib/website/v2/vistaEditor';
 import { BarraEditor, RUTA_PAGINAS_EDITOR } from './BarraEditor';
 import { ListaSecciones } from './ListaSecciones';
 import { LienzoEditor } from './LienzoEditor';
 import { InspectorSeccion, type PestanaSeccion } from './inspector/InspectorSeccion';
+import { InspectorEncabezado } from './inspector/InspectorEncabezado';
+import { InspectorPie } from './inspector/InspectorPie';
 import type { TemaEstiloSeccion } from './inspector/InspectorEstilo';
 import { PanelEstiloSitio } from './PanelEstiloSitio';
 import { PanelHistorial } from './PanelHistorial';
@@ -226,6 +228,46 @@ function Editor() {
 
   const settings = ed.settings;
   const tema = useMemo(() => temaDeAjustes(settings), [settings]);
+
+  // Paneles «Encabezado» y «Pie de página»: valores de la plantilla, menús y destinos de botón.
+  const giroShell = useMemo(() => giroDeTipoOrganizacion(ed.giroTypeId), [ed.giroTypeId]);
+  const porDefectoShell = useMemo(() => {
+    if (ed.enV2) return ed.documento ? shellPorDefectoDelDocumento(ed.documento, giroShell) : null;
+    const plantilla = (settings as unknown as Record<string, unknown> | null)?.template_id;
+    return shellPorDefecto(typeof plantilla === 'string' ? plantilla : null, giroShell, ed.pages.map((p) => p.slug));
+  }, [ed.enV2, ed.documento, ed.pages, settings, giroShell]);
+  const paginasDestino = useMemo(
+    () => (ed.enV2 && ed.documento ? ed.documento.paginas.map((p) => ({ slug: p.slug, titulo: p.titulo })) : ed.pages.map((p) => ({ slug: p.slug, titulo: p.title }))),
+    [ed.enV2, ed.documento, ed.pages],
+  );
+  const menusEncabezado = useMemo(
+    () =>
+      ed.enV2 && ed.documento
+        ? ed.documento.menus.map((m) => ({ id: m.id, name: m.nombre, enlaces: m.items.length }))
+        : ed.availableMenus.map((m) => ({ id: m.id, name: m.name })),
+    [ed.enV2, ed.documento, ed.availableMenus],
+  );
+  const menusPie = useMemo(() => {
+    if (!ed.enV2 || !ed.documento) return null;
+    const doc = ed.documento;
+    return doc.shell.footer.menuIds.map((id) => doc.menus.find((m) => m.id === id)).filter((m): m is NonNullable<typeof m> => !!m).map((m) => ({ id: m.id, nombre: m.nombre }));
+  }, [ed.enV2, ed.documento]);
+  const coloresTema = useMemo(
+    () => ({ fondo: tema.colores.fondo ?? '#FFFFFF', texto: tema.colores.texto ?? '#111827', acento: tema.colores.acento ?? tema.colores.primario ?? '#3651D4' }),
+    [tema],
+  );
+  const { cambiarDocumento } = ed;
+  const anadirMenuPie = useCallback(() => {
+    cambiarDocumento((d) => {
+      const id = nuevoIdSeccion();
+      return { ...d, menus: [...d.menus, { id, nombre: t('zonaGlobal.pie.nuevoMenu'), items: [] }], shell: { ...d.shell, footer: { ...d.shell.footer, menuIds: [...d.shell.footer.menuIds, id] } } };
+    });
+    setHojaMenu(true);
+  }, [cambiarDocumento, t]);
+  const quitarMenuPie = useCallback(
+    (id: string) => cambiarDocumento((d) => ({ ...d, shell: { ...d.shell, footer: { ...d.shell.footer, menuIds: d.shell.footer.menuIds.filter((x) => x !== id) } } })),
+    [cambiarDocumento],
+  );
   const paleta = useMemo(() => {
     const c = tema.colores;
     return c.primario && c.secundario && c.acento && c.fondo && c.texto
@@ -693,24 +735,34 @@ function Editor() {
               onVer={(r) => void ed.verVersion(r)}
               onRestaurar={ed.restaurar}
             />
-          ) : ed.zonaGlobal && settings ? (
+          ) : ed.zonaGlobal && settings && porDefectoShell ? (
             ed.zonaGlobal === 'header' ? (
-              <HeaderInspector
+              <InspectorEncabezado
                 key="header"
-                settings={settings}
-                onUpdate={ed.cambiarAjustes}
-                availableMenus={ed.availableMenus}
-                devicePreview={DISPOSITIVO_INSPECTOR[ed.dispositivo]}
+                ajustes={settings as unknown as Record<string, unknown>}
+                onCambiar={(c) => ed.cambiarAjustes(c as Partial<WebsiteSettings>)}
+                menus={menusEncabezado}
+                paginas={paginasDestino}
+                porDefecto={porDefectoShell}
+                enBorrador={ed.enV2}
+                dispositivo={ed.dispositivo}
+                coloresTema={coloresTema}
                 onEditarMenu={() => setHojaMenu(true)}
                 onCerrar={() => ed.seleccionarZona(null)}
               />
             ) : (
-              <FooterInspector
+              <InspectorPie
                 key="footer"
-                settings={settings}
-                onUpdate={ed.cambiarAjustes}
-                devicePreview={DISPOSITIVO_INSPECTOR[ed.dispositivo]}
+                ajustes={settings as unknown as Record<string, unknown>}
+                onCambiar={(c) => ed.cambiarAjustes(c as Partial<WebsiteSettings>)}
+                menusPie={menusPie}
+                porDefecto={porDefectoShell}
+                enBorrador={ed.enV2}
+                giro={giroShell}
+                coloresTema={coloresTema}
                 onEditarMenus={() => setHojaMenu(true)}
+                onAnadirMenu={ed.enV2 && ed.documento ? anadirMenuPie : undefined}
+                onQuitarMenu={ed.enV2 && ed.documento ? quitarMenuPie : undefined}
                 onCerrar={() => ed.seleccionarZona(null)}
               />
             )

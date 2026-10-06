@@ -930,27 +930,42 @@ export function armarPlantillaCompleta(
   };
 }
 
+export interface ShellPorDefecto {
+  plantillaId: string | null;
+  nombre: string | null;
+  header: { composicion: string; opciones: Record<string, unknown> };
+  footer: { composicion: string; opciones: Record<string, unknown> };
+}
+
 /**
- * Valores de la plantilla para «Restablecer a la plantilla» del editor: composición y opciones
- * de la lámina, con los botones resueltos contra las páginas que el documento tiene HOY. Los
- * menús no se tocan (son del dueño). `null` si el documento no dice de qué plantilla viene.
+ * Valores de la plantilla para el editor («Valores por defecto de la plantilla» y «Restablecer
+ * a la plantilla»): composición y opciones de la lámina, con los botones resueltos contra las
+ * páginas que el sitio tiene HOY (`slugs`). Los menús no se tocan: son del dueño. Sin plantilla
+ * conocida, la del giro.
  */
-export function shellPorDefectoDelDocumento(
-  documento: DocumentoSitio,
+export function shellPorDefecto(
+  plantillaId: string | null | undefined,
   giro: Giro,
-): { plantillaId: string | null; nombre: string | null; header: { composicion: string; opciones: Record<string, unknown> }; footer: { composicion: string; opciones: Record<string, unknown> } } {
-  const preset = documento.tema.preset;
-  const plantillaId = preset && preset.mode === 'value' && typeof preset.value === 'string' ? preset.value : null;
+  slugs: Iterable<string>,
+  opcionesPieActuales: Record<string, unknown> = {},
+): ShellPorDefecto {
   const plantilla = plantillaId ? CATALOGO_PLANTILLAS.plantillas.find((p) => p.id === plantillaId) ?? null : null;
   const shell = shellDePlantilla(plantilla?.id ?? null, (plantilla?.giro as Giro | undefined) ?? giro);
-  const slugs = new Set(documento.paginas.map((p) => p.slug));
-  const ruta = (slug: string): string | null => (slugs.has(slug) ? (slug === 'home' ? '/' : `/${slug}`) : null);
+  const existentes = new Set(slugs);
+  const ruta = (slug: string): string | null => (existentes.has(slug) ? (slug === 'home' ? '/' : `/${slug}`) : null);
   return {
     plantillaId: plantilla?.id ?? null,
     nombre: plantilla?.nombre ?? null,
     header: { composicion: shell.encabezado.composicion, opciones: opcionesEncabezadoPlantilla(shell, ruta) },
-    footer: { composicion: shell.pie.composicion, opciones: opcionesPiePlantilla(shell, documento.shell.footer.opciones ?? {}) },
+    footer: { composicion: shell.pie.composicion, opciones: opcionesPiePlantilla(shell, opcionesPieActuales) },
   };
+}
+
+/** {@link shellPorDefecto} de un documento V2: la plantilla sale de `tema.preset`. */
+export function shellPorDefectoDelDocumento(documento: DocumentoSitio, giro: Giro): ShellPorDefecto {
+  const preset = documento.tema.preset;
+  const plantillaId = preset && preset.mode === 'value' && typeof preset.value === 'string' ? preset.value : null;
+  return shellPorDefecto(plantillaId, giro, documento.paginas.map((p) => p.slug), documento.shell.footer.opciones ?? {});
 }
 
 /**

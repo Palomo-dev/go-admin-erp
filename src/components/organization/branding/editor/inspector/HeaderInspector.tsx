@@ -8,6 +8,8 @@ import HeaderOptionsPanel from '../HeaderOptionsPanel';
 import MobileHeaderPanel from '../MobileHeaderPanel';
 import { InspectorZonaGlobal } from './InspectorZonaGlobal';
 import { pestanaInicialZona } from './zonaGlobal';
+import { OPCIONES_SHELL } from '@/lib/website/v2/mapeoAjustes';
+import { BREAKPOINT_MOVIL_SITIO } from '@/components/sitio-web/editor/inspector/zonaGlobalLogica';
 
 /**
  * Inspector del encabezado: los paneles de siempre (antes en el acordeón
@@ -36,8 +38,9 @@ export function opcionesEncabezado(settings: WebsiteSettings) {
     mega_menu_columns: settings.mega_menu_columns ?? 4,
     header_cta_text: settings.header_cta_text,
     header_cta_url: settings.header_cta_url,
-    show_header_cart: settings.show_header_cart ?? false,
-    show_header_auth: settings.show_header_auth ?? false,
+    // Mismo default que el sitio y la columna (contrato `OPCIONES_SHELL`): encendidos.
+    show_header_cart: settings.show_header_cart ?? (OPCIONES_SHELL.show_header_cart.porDefecto as boolean),
+    show_header_auth: settings.show_header_auth ?? (OPCIONES_SHELL.show_header_auth.porDefecto as boolean),
     show_topbar: settings.show_topbar ?? false,
     header_opacity: settings.header_opacity ?? 95,
     header_bg_color: settings.header_bg_color ?? null,
@@ -77,7 +80,8 @@ export function opcionesEncabezadoMovil(settings: WebsiteSettings) {
     mobile_search_style: settings.mobile_search_style || 'icon',
     mobile_show_topbar: settings.mobile_show_topbar ?? false,
     mobile_sticky_header: settings.mobile_sticky_header ?? true,
-    mobile_breakpoint: settings.mobile_breakpoint ?? 768,
+    // El del sitio (`SiteHeader`: `mobile_breakpoint || 1024`).
+    mobile_breakpoint: settings.mobile_breakpoint || BREAKPOINT_MOVIL_SITIO,
   };
 }
 
@@ -116,7 +120,7 @@ export function HeaderInspector({ settings, onUpdate, availableMenus, devicePrev
           <>
             <HeaderLayoutSelector currentLayout={opciones.header_style} onSelect={(layout) => onUpdate({ header_style: layout })} />
             {/* El lienzo pinta lo guardado; el boceto refleja lo que aún no se guarda. */}
-            {mockup(devicePreview === 'mobile')}
+            {mockup(devicePreview === 'mobile' || devicePreview === 'tablet')}
             <HeaderOptionsPanel grupo="diseno" settings={opciones} onUpdate={onUpdate} availableMenus={availableMenus} />
           </>
         ),

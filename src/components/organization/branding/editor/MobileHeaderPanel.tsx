@@ -80,7 +80,7 @@ export default function MobileHeaderPanel({ settings, onUpdate }: MobileHeaderPa
       </div>
 
       {/* «Header fijo al scroll» y el breakpoint se quitaron: el sitio deja el
-          header siempre fijo y cambia a móvil en 768 px (con otro valor quedaba
+          header siempre fijo y cambia a móvil bajo 1024 px (con otro valor quedaba
           una franja sin header). */}
 
       {/* Mockup móvil visual */}

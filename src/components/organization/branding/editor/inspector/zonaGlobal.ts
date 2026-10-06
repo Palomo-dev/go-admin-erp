@@ -34,9 +34,9 @@ export function esZonaGlobal(id: unknown): id is ZonaGlobal {
 }
 
 /**
- * Pestaña con la que abre el inspector: con el lienzo en celular, «Celular»
- * (lo que se está mirando es el menú móvil); si no, «Diseño».
+ * Pestaña con la que abre el inspector: con el lienzo bajo el ancho en que el sitio pasa al menú
+ * del celular (1024, `SiteHeader`: tableta y celular), «Celular»; si no, «Diseño».
  */
 export function pestanaInicialZona(dispositivo: DevicePreview): PestanaInspector {
-  return dispositivo === 'mobile' ? 'celular' : 'diseno';
+  return dispositivo === 'mobile' || dispositivo === 'tablet' ? 'celular' : 'diseno';
 }

@@ -92,7 +92,7 @@ export function FooterInspector({ settings, onUpdate, devicePreview, onEditarMen
           <>
             <FooterLayoutSelector currentLayout={opciones.footer_style} onSelect={(layout) => onUpdate({ footer_style: layout })} />
             {/* El lienzo pinta lo guardado; el boceto refleja lo que aún no se guarda. */}
-            {mockup(devicePreview === 'mobile')}
+            {mockup(devicePreview === 'mobile' || devicePreview === 'tablet')}
             <FooterOptionsPanel grupo="diseno" settings={opciones} onUpdate={onUpdate} />
             <div className="space-y-1.5">
               <p className="text-xs font-medium text-fg">Menús del pie</p>

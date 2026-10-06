@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/select';
 import { Loader2, LogOut, Clock, DollarSign, AlertTriangle, CreditCard, Banknote, Receipt, FileText, Calendar, Plus } from 'lucide-react';
 import CustomerSearchInput, { type Customer } from '../shared/CustomerSearchInput';
-import { formatDate } from '@/utils/Utils';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import type { ActiveSession } from './ActiveSessionsPanel';
 import type { ParkingRate } from './RatesPanel';
@@ -81,6 +81,8 @@ export function ExitDialog({
   onRateCreated,
 }: ExitDialogProps) {
   const { formatear: formatCurrency } = useMonedaOrganizacion();
+  // `entry_at` es timestamptz: hora de la organización, no la del navegador.
+  const { formatDateTime } = useFormatDate();
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [isLostTicket, setIsLostTicket] = useState(false);
   const [isException, setIsException] = useState(false);
@@ -107,12 +109,15 @@ export function ExitDialog({
 
   if (!session) return null;
 
-  // Filtrar tarifa aplicable: tipo de vehículo + activa
-  const applicableRate = rates.find(
-    (r) =>
-      r.vehicle_type.toLowerCase() === session.vehicle_type.toLowerCase() &&
-      r.is_active !== false
-  );
+  // Tarifa aplicable: la que quedó en la sesión al entrar; si no tiene (o ya
+  // no está activa), la primera activa de su tipo de vehículo.
+  const applicableRate =
+    rates.find((r) => r.id === session.rate_id && r.is_active !== false) ??
+    rates.find(
+      (r) =>
+        r.vehicle_type.toLowerCase() === session.vehicle_type.toLowerCase() &&
+        r.is_active !== false
+    );
 
   // Calcular monto usando parkingRateService (DRY: maneja minute, hour, day, fraction)
   const entryTime = new Date(session.entry_at);
@@ -126,8 +131,10 @@ export function ExitDialog({
   const lostTicketFee = applicableRate?.lost_ticket_fee || DEFAULT_LOST_TICKET_FEE;
   const amount = isLostTicket ? lostTicketFee : calculatedFee.amount;
 
-  const finalAmount = isException ? 0 : amount;
   const isPassHolder = session.is_pass_holder;
+  // El abonado no paga: la pantalla mostraba «Incluido» pero mandaba el monto
+  // de la tarifa, que quedaba como ingreso de la sesión y en contabilidad.
+  const finalAmount = isException || isPassHolder ? 0 : amount;
 
   const handleSubmit = async () => {
     if (!session) return;
@@ -180,7 +187,7 @@ export function ExitDialog({
             <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
               <span>{session.vehicle_type}</span>
               <span>•</span>
-              <span>Entrada: {formatDate(session.entry_at)}</span>
+              <span>Entrada: {formatDateTime(session.entry_at)}</span>
             </div>
           </div>
 

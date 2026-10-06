@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { PageHeaderSkeleton, FilterBarSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { Wallet, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import parkingPaymentService, {
   type ParkingPayment,
   type PaymentStats,
@@ -41,6 +42,8 @@ const initialStats: PaymentStats = {
 };
 
 export default function PagosPage() {
+  // Día de la organización para el nombre del CSV (no el día UTC).
+  const { getToday: hoyDeLaOrganizacion } = useFormatDate();
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
   const { branchFilter, selectedBranchId } = useBranch();
@@ -149,7 +152,7 @@ export default function PagosPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `pagos_parking_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `pagos_parking_${hoyDeLaOrganizacion()}.csv`;
     link.click();
     URL.revokeObjectURL(url);
 

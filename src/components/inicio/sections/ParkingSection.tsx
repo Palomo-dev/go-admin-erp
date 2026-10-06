@@ -105,7 +105,7 @@ export default function ParkingSection() {
       try {
         const [statsData, sessionsData, passesData, orgData] = await Promise.all([
           parkingDashboardService.getDashboardStats(branchFilter, organizationId),
-          parkingDashboardService.getActiveSessions(branchFilter, 20),
+          parkingDashboardService.getActiveSessions(branchFilter, 20, organizationId),
           parkingDashboardService.getExpiringPasses(organizationId, 30),
           supabase
             .from('organizations')

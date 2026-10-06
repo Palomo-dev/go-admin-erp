@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select';
 import { Loader2, Car, Bike, Truck, LogIn, Plus } from 'lucide-react';
 import { cn } from '@/utils/Utils';
+import { normalizarTipoEspacio } from '@/lib/services/parkingValores';
 import { EspacioFormDialog } from '@/components/shared/form-dialogs/EspacioFormDialog';
 import { ParkingZone, SpaceType } from '@/components/parking/espacios/types';
 
@@ -53,6 +54,7 @@ const vehicleTypes = [
   { value: 'car', label: 'Carro', icon: Car },
   { value: 'motorcycle', label: 'Moto', icon: Bike },
   { value: 'truck', label: 'Camión', icon: Truck },
+  { value: 'bicycle', label: 'Bicicleta', icon: Bike },
 ];
 
 export function EntryDialog({
@@ -103,7 +105,11 @@ export function EntryDialog({
 
   // Filtrar espacios por tipo de vehículo compatible
   const filteredSpaces = availableSpaces.filter(
-    (space) => space.state === 'free' && (space.type === vehicleType || space.type === 'any')
+    // 'motor' es el valor antiguo de moto; un espacio de discapacidad sirve a
+    // cualquier vehículo (antes no aparecía nunca).
+    (space) =>
+      space.state === 'free' &&
+      (normalizarTipoEspacio(space.type) === vehicleType || space.type === 'disabled')
   );
 
   return (
@@ -137,7 +143,7 @@ export function EntryDialog({
             <Label className="text-gray-700 dark:text-gray-300">
               Tipo de Vehículo
             </Label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {vehicleTypes.map((type) => {
                 const Icon = type.icon;
                 return (

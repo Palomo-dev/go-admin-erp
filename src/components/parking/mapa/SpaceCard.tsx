@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Car, Bike, Accessibility, Crown, Clock, Wrench } from 'lucide-react';
+import { Car, Bike, Accessibility, Truck, Clock, Wrench, Ban, Crown } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import type { ParkingSpace, SpaceState, SpaceType } from '@/lib/services/parkingMapService';
 
@@ -16,6 +16,7 @@ const STATE_COLORS: Record<SpaceState, string> = {
   occupied: 'bg-red-100 dark:bg-red-900/40 border-red-400 dark:border-red-600 hover:bg-red-200 dark:hover:bg-red-900/60',
   reserved: 'bg-amber-100 dark:bg-amber-900/40 border-amber-400 dark:border-amber-600 hover:bg-amber-200 dark:hover:bg-amber-900/60',
   maintenance: 'bg-purple-100 dark:bg-purple-900/40 border-purple-400 dark:border-purple-600 hover:bg-purple-200 dark:hover:bg-purple-900/60',
+  disabled: 'bg-gray-100 dark:bg-gray-800/60 border-gray-400 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-800',
 };
 
 const STATE_TEXT_COLORS: Record<SpaceState, string> = {
@@ -23,14 +24,16 @@ const STATE_TEXT_COLORS: Record<SpaceState, string> = {
   occupied: 'text-red-700 dark:text-red-400',
   reserved: 'text-amber-700 dark:text-amber-400',
   maintenance: 'text-purple-700 dark:text-purple-400',
+  disabled: 'text-gray-600 dark:text-gray-400',
 };
 
 const TYPE_ICONS: Record<SpaceType, React.ReactNode> = {
   car: <Car className="h-6 w-6" />,
   motorcycle: <Bike className="h-6 w-6" />,
+  motor: <Bike className="h-6 w-6" />,
+  truck: <Truck className="h-6 w-6" />,
   bicycle: <Bike className="h-5 w-5" />,
   disabled: <Accessibility className="h-6 w-6" />,
-  vip: <Crown className="h-6 w-6" />,
 };
 
 const STATE_ICONS: Record<SpaceState, React.ReactNode> = {
@@ -38,6 +41,7 @@ const STATE_ICONS: Record<SpaceState, React.ReactNode> = {
   occupied: <Car className="h-4 w-4" />,
   reserved: <Clock className="h-4 w-4" />,
   maintenance: <Wrench className="h-4 w-4" />,
+  disabled: <Ban className="h-4 w-4" />,
 };
 
 export function SpaceCard({ space, onClick, isSelected }: SpaceCardProps) {

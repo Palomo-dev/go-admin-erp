@@ -33,14 +33,17 @@ interface EspacioDialogProps {
   onZoneCreated?: (zone: ParkingZone) => void;
 }
 
-const spaceTypes: { value: SpaceType; label: string }[] = [
+// Valores del enum `parking_space_type` (parkingValores.ts). 'motor' es el
+// valor antiguo de moto: no se ofrece, pero un espacio que lo tenga se ve.
+export const spaceTypes: { value: SpaceType; label: string }[] = [
   { value: 'car', label: 'Automóvil' },
   { value: 'motorcycle', label: 'Motocicleta' },
   { value: 'truck', label: 'Camión' },
   { value: 'bicycle', label: 'Bicicleta' },
+  { value: 'disabled', label: 'Discapacidad' },
 ];
 
-const spaceStates: { value: SpaceState; label: string }[] = [
+export const spaceStates: { value: SpaceState; label: string }[] = [
   { value: 'free', label: 'Libre' },
   { value: 'occupied', label: 'Ocupado' },
   { value: 'reserved', label: 'Reservado' },

@@ -1,4 +1,7 @@
-export type RateUnit = 'minute' | 'hour' | 'day';
+import type { UnidadTarifaBD } from '@/lib/services/parkingValores';
+
+/** Enum `parking_rate_unit` (ver parkingValores.ts). */
+export type RateUnit = UnidadTarifaBD;
 export type VehicleType = 'car' | 'motorcycle' | 'truck' | 'bicycle';
 
 export interface ParkingRate {

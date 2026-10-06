@@ -18,6 +18,7 @@ import {
 } from '@/components/parking/tarifas';
 import { Building2 } from 'lucide-react';
 import { useBranch } from '@/lib/context/BranchContext';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
 const defaultFilters: RateFilters = {
   search: '',
@@ -35,6 +36,8 @@ const defaultStats: RateStats = {
 };
 
 export default function ParkingTarifasPage() {
+  // Día de la organización para el nombre del CSV (no el día UTC).
+  const { getToday: hoyDeLaOrganizacion } = useFormatDate();
   const { organization } = useOrganization();
   const { toast } = useToast();
   const { branchFilter } = useBranch();
@@ -145,16 +148,35 @@ export default function ParkingTarifasPage() {
   };
 
   const handleDelete = async (rate: ParkingRate) => {
+    if (!organization?.id) return;
     if (!confirm(`¿Eliminar la tarifa "${rate.rate_name}"?`)) return;
 
     try {
-      let deleteQuery = supabase
+      const deleteQuery = supabase
         .from('parking_rates')
         .delete()
-        .eq('id', rate.id);
-      if (branchFilter != null) deleteQuery = deleteQuery.eq('branch_id', branchFilter);
+        .eq('id', rate.id)
+        // Por id y organización: una tarifa de toda la organización (branch_id
+        // NULL) con el filtro de sede puesto no se tocaba y la pantalla decía que sí.
+        .eq('organization_id', organization.id);
       const { error } = await deleteQuery;
 
+      // 23503: la tarifa ya la usan sesiones (parking_sessions.rate_id). No se
+      // puede borrar sin perder el historial: se desactiva.
+      if (error?.code === '23503') {
+        const { error: desactivarError } = await supabase
+          .from('parking_rates')
+          .update({ is_active: false })
+          .eq('id', rate.id)
+          .eq('organization_id', organization.id);
+        if (desactivarError) throw desactivarError;
+        toast({
+          title: 'Tarifa desactivada',
+          description: 'Tiene sesiones registradas: se desactivó en lugar de eliminarla.',
+        });
+        loadRates();
+        return;
+      }
       if (error) throw error;
 
       toast({ title: 'Tarifa eliminada' });
@@ -170,6 +192,7 @@ export default function ParkingTarifasPage() {
   };
 
   const handleToggleActive = async (rate: ParkingRate) => {
+    if (!organization?.id) return;
     try {
       const newActiveState = rate.is_active === false;
       let toggleQuery = supabase
@@ -179,7 +202,9 @@ export default function ParkingTarifasPage() {
           updated_at: new Date().toISOString(),
         })
         .eq('id', rate.id);
-      if (branchFilter != null) toggleQuery = toggleQuery.eq('branch_id', branchFilter);
+      // Por id y organización: una tarifa de toda la organización (branch_id
+      // NULL) con el filtro de sede puesto no se tocaba y la pantalla decía que sí.
+      toggleQuery = toggleQuery.eq('organization_id', organization.id);
       const { error } = await toggleQuery;
 
       if (error) throw error;
@@ -217,7 +242,9 @@ export default function ParkingTarifasPage() {
             updated_at: new Date().toISOString(),
           })
           .eq('id', data.id);
-        if (branchFilter != null) updateQuery = updateQuery.eq('branch_id', branchFilter);
+        // Por id y organización: una tarifa de toda la organización (branch_id
+        // NULL) con el filtro de sede puesto no se tocaba y la pantalla decía que sí.
+        updateQuery = updateQuery.eq('organization_id', organization.id);
         const { error } = await updateQuery;
 
         if (error) throw error;
@@ -316,7 +343,7 @@ export default function ParkingTarifasPage() {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `tarifas-parking-${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `tarifas-parking-${hoyDeLaOrganizacion()}.csv`;
     link.click();
   };
 

@@ -49,7 +49,7 @@ import parkingPaymentService, {
 } from '@/lib/services/parkingPaymentService';
 import { supabase } from '@/lib/supabase/config';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
-import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
+import { etiquetaEstadoEspacio, etiquetaTipoEspacio } from '@/lib/services/parkingValores';
 
 interface SpaceDetailDialogProps {
   open: boolean;
@@ -72,18 +72,12 @@ const METHOD_ICONS: Record<string, React.ReactNode> = {
   daviplata: <CreditCard className="h-4 w-4" />,
 };
 
-const STATE_LABELS: Record<SpaceState, string> = {
-  free: 'Libre',
-  occupied: 'Ocupado',
-  reserved: 'Reservado',
-  maintenance: 'Mantenimiento',
-};
-
 const STATE_COLORS: Record<SpaceState, string> = {
   free: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
   occupied: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
   reserved: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
   maintenance: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+  disabled: 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400',
 };
 
 export function SpaceDetailDialog({
@@ -183,7 +177,7 @@ export function SpaceDetailDialog({
       await parkingMapService.updateSpaceState(space.id, newState);
       toast({
         title: 'Estado actualizado',
-        description: `El espacio ${space.label} ahora está ${STATE_LABELS[newState].toLowerCase()}`,
+        description: `El espacio ${space.label} ahora está ${etiquetaEstadoEspacio(newState).toLowerCase()}`,
       });
       onSuccess();
       onOpenChange(false);
@@ -216,6 +210,7 @@ export function SpaceDetailDialog({
         vehicle_plate: vehiclePlate,
         vehicle_type: vehicleType,
         branch_id: branchId,
+        organization_id: organization?.id,
       });
       toast({
         title: 'Espacio asignado',
@@ -279,8 +274,8 @@ export function SpaceDetailDialog({
           generate_invoice: generateInvoice,
         });
 
-        // Liberar espacio
-        await parkingMapService.releaseSpace(space.id, space.active_session.id);
+        // El servicio de finanzas ya cerró la sesión con el monto a crédito y
+        // el disparador liberó el espacio: volver a cerrarla aquí borraba el monto.
 
         toast({
           title: 'Salida registrada a crédito',
@@ -299,30 +294,24 @@ export function SpaceDetailDialog({
           generate_invoice: true,
         });
 
-        // Liberar espacio
-        await parkingMapService.releaseSpace(space.id, space.active_session.id);
+        // El servicio de finanzas ya cerró la sesión con el monto cobrado.
 
         toast({
           title: 'Pago registrado con factura',
           description: `Vehículo ${space.active_session.vehicle_plate}. Cobro: ${formatear(calculatedFee.amount)}`,
         });
       } else {
-        // Pago normal sin factura. `payments.currency` es NOT NULL y no tiene
-        // trigger: moneda base de la organización.
-        const { code: currency } = await resolveOrgCurrency(supabase, organization.id);
-        await supabase.from('payments').insert({
+        // Pago normal sin factura: pago + vínculo y cierre con el monto cobrado,
+        // con los servicios únicos del módulo.
+        await parkingPaymentService.registrarPago({
           organization_id: organization.id,
           branch_id: branchId,
           source: 'parking_session',
           source_id: space.active_session.id,
           method: selectedPaymentMethod,
           amount: calculatedFee.amount,
-          currency,
-          status: 'completed',
         });
-
-        // Liberar espacio
-        await parkingMapService.releaseSpace(space.id, space.active_session.id);
+        await parkingMapService.releaseSpace(space.id, space.active_session.id, calculatedFee.amount);
 
         toast({
           title: 'Pago registrado',
@@ -380,14 +369,14 @@ export function SpaceDetailDialog({
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-500 dark:text-gray-400">Estado:</span>
             <Badge className={STATE_COLORS[space.state]}>
-              {STATE_LABELS[space.state]}
+              {etiquetaEstadoEspacio(space.state)}
             </Badge>
           </div>
 
           {/* Tipo */}
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-500 dark:text-gray-400">Tipo:</span>
-            <span className="text-gray-900 dark:text-white capitalize">{space.type}</span>
+            <span className="text-gray-900 dark:text-white">{etiquetaTipoEspacio(space.type)}</span>
           </div>
 
           {/* Zona */}
@@ -661,7 +650,7 @@ export function SpaceDetailDialog({
             </Button>
           )}
 
-          {space.state === 'maintenance' && (
+          {(space.state === 'maintenance' || space.state === 'disabled') && (
             <Button
               onClick={() => handleChangeState('free')}
               disabled={isLoading}

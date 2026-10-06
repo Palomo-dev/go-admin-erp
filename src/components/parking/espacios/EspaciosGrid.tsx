@@ -15,6 +15,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
+  Accessibility,
   Car,
   Bike,
   Truck,
@@ -30,6 +31,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ParkingSpace, SpaceState } from './types';
+import { etiquetaTipoEspacio } from '@/lib/services/parkingValores';
 
 interface EspaciosGridProps {
   spaces: ParkingSpace[];
@@ -73,15 +75,10 @@ const stateConfig: Record<SpaceState, { label: string; color: string; bg: string
 const typeIcons: Record<string, React.ReactNode> = {
   car: <Car className="h-6 w-6" />,
   motorcycle: <Bike className="h-6 w-6" />,
+  motor: <Bike className="h-6 w-6" />,
   truck: <Truck className="h-6 w-6" />,
   bicycle: <Bike className="h-5 w-5" />,
-};
-
-const typeLabels: Record<string, string> = {
-  car: 'Auto',
-  motorcycle: 'Moto',
-  truck: 'Camión',
-  bicycle: 'Bici',
+  disabled: <Accessibility className="h-6 w-6" />,
 };
 
 export function EspaciosGrid({
@@ -162,7 +159,7 @@ export function EspaciosGrid({
                       <span className="font-medium">{space.label}</span>
                     </div>
                   </TableCell>
-                  <TableCell>{typeLabels[space.type] || space.type}</TableCell>
+                  <TableCell>{etiquetaTipoEspacio(space.type)}</TableCell>
                   <TableCell>
                     {space.parking_zones?.name ? (
                       <Badge variant="outline" className="text-blue-600 dark:text-blue-400 border-blue-300">
@@ -263,7 +260,7 @@ export function EspaciosGrid({
                   {space.label}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {typeLabels[space.type] || space.type}
+                  {etiquetaTipoEspacio(space.type)}
                 </p>
                 {space.parking_zones?.name && (
                   <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">

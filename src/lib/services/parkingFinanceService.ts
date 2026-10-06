@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
-import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 import { HORA_DEL_SERVIDOR } from '@/lib/pos/reloj/horaOficial';
+import parkingPaymentService from '@/lib/services/parkingPaymentService';
+import parkingService from '@/lib/services/parkingService';
 
 export interface InvoiceData {
   id: string;
@@ -39,6 +40,7 @@ export interface CreateInvoiceFromParkingData {
 
 export interface CreateReceivableFromParkingData {
   organization_id: number;
+  branch_id?: number;
   customer_id: string;
   amount: number;
   due_date: string;
@@ -143,16 +145,22 @@ class ParkingFinanceService {
         throw error;
       }
 
-      // Crear item de factura
-      await supabase.from('invoice_items').insert({
+      // Línea de la factura. `invoice_items` no tiene quantity/subtotal/total:
+      // son `qty` y `total_line`, y el CHECK `chk_invoice_items_type_sales`
+      // exige `invoice_type='sale'` con `invoice_sales_id`. Antes el insert
+      // fallaba (42703) sin que nadie mirara el error: facturas sin líneas.
+      const { error: itemError } = await supabase.from('invoice_items').insert({
         invoice_id: invoice.id,
+        invoice_sales_id: invoice.id,
+        invoice_type: 'sale',
         description: data.description,
-        quantity: 1,
+        qty: 1,
         unit_price: data.amount,
-        subtotal: data.amount,
-        tax_amount: 0,
-        total: data.amount,
+        tax_rate: 0,
+        tax_included: true,
+        total_line: data.amount,
       });
+      if (itemError) throw itemError;
 
       // Vincular pago de parking con factura
       await this.linkParkingPaymentToInvoice(data.source_id, invoice.id);
@@ -173,6 +181,7 @@ class ParkingFinanceService {
     try {
       const receivableData = {
         organization_id: data.organization_id,
+        branch_id: data.branch_id ?? null,
         customer_id: data.customer_id,
         invoice_id: data.invoice_id || null,
         amount: data.amount,
@@ -230,26 +239,16 @@ class ParkingFinanceService {
       created_by,
     } = params;
 
-    // 1. Registrar el pago. `payments.currency` es NOT NULL y no tiene
-    // trigger: va la moneda base de la organización.
-    const { code: currency } = await resolveOrgCurrency(supabase, organization_id);
-    const { data: payment, error: paymentError } = await supabase
-      .from('payments')
-      .insert({
-        organization_id,
-        branch_id,
-        source: source_type,
-        source_id,
-        method: payment_method_code,
-        amount,
-        currency,
-        status: 'completed',
-        created_by,
-      })
-      .select()
-      .single();
-
-    if (paymentError) throw paymentError;
+    // 1. Registrar el pago (payments + parking_payments), con el servicio único.
+    const payment = await parkingPaymentService.registrarPago({
+      organization_id,
+      branch_id,
+      source: source_type,
+      source_id,
+      method: payment_method_code,
+      amount,
+      created_by,
+    });
 
     // 2. Generar factura si está habilitado
     let invoice_id: string | undefined;
@@ -268,17 +267,9 @@ class ParkingFinanceService {
       invoice_id = invoice?.id;
     }
 
-    // 3. Actualizar sesión/pase si aplica
+    // 3. Cerrar la sesión con el monto cobrado
     if (source_type === 'parking_session') {
-      await supabase
-        .from('parking_sessions')
-        .update({
-          status: 'closed',
-          amount,
-          exit_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', source_id);
+      await parkingService.registerExit(source_id, amount);
     }
 
     return { payment_id: payment.id, invoice_id };
@@ -332,11 +323,14 @@ class ParkingFinanceService {
       });
 
       if (invoice) {
-        // Actualizar factura como pendiente
-        await supabase
+        // Factura emitida con saldo pendiente. `invoice_sales.status` no admite
+        // 'pending' (CHECK: draft, issued, paid, partial, void): antes el update
+        // fallaba en silencio y la factura a crédito quedaba como pagada.
+        const { error: estadoError } = await supabase
           .from('invoice_sales')
-          .update({ status: 'pending', balance: amount })
+          .update({ status: 'issued', balance: amount })
           .eq('id', invoice.id);
+        if (estadoError) throw estadoError;
         invoice_id = invoice.id;
       }
     }
@@ -344,6 +338,7 @@ class ParkingFinanceService {
     // 2. Crear cuenta por cobrar
     const receivable = await this.createReceivableFromParking({
       organization_id,
+      branch_id,
       customer_id,
       amount,
       due_date: dueDate.toISOString(),
@@ -356,17 +351,9 @@ class ParkingFinanceService {
       throw new Error('No se pudo crear la cuenta por cobrar');
     }
 
-    // 3. Actualizar sesión si aplica
+    // 3. Cerrar la sesión con el monto a crédito
     if (source_type === 'parking_session') {
-      await supabase
-        .from('parking_sessions')
-        .update({
-          status: 'closed',
-          amount,
-          exit_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', source_id);
+      await parkingService.registerExit(source_id, amount);
     }
 
     return { receivable_id: receivable.id, invoice_id };
@@ -377,22 +364,13 @@ class ParkingFinanceService {
    */
   private async linkParkingPaymentToInvoice(sourceId: string, invoiceId: string): Promise<void> {
     try {
-      // Buscar si existe registro en parking_payments
-      const { data: existingLink } = await supabase
-        .from('parking_payments')
-        .select('id')
-        .or(`parking_session_id.eq.${sourceId},parking_pass_id.eq.${sourceId}`)
-        .single();
-
-      if (existingLink) {
-        // Actualizar con el invoice_id (si la tabla lo soporta)
-        // Por ahora solo registramos el vínculo en payments
-      }
-
       // Actualizar el pago con referencia a la factura
+      // `INV:` hace que trg_auto_journal_parking_payment no asiente el pago
+      // (el ingreso ya lo asienta la factura).
       await supabase
         .from('payments')
         .update({ reference: `INV:${invoiceId}` })
+        .in('source', ['parking_session', 'parking_pass'])
         .eq('source_id', sourceId);
     } catch (error) {
       console.error('Error vinculando pago con factura:', error);

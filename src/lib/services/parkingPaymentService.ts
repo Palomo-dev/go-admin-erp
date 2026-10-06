@@ -1,5 +1,8 @@
 import { supabase } from '@/lib/supabase/config';
 import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
+import { resolveTimezone } from '@/lib/services/timezoneResolver';
+import { getDayRange } from '@/lib/utils/dateRanges';
+import parkingService from '@/lib/services/parkingService';
 
 export interface ParkingSession {
   id: string;
@@ -155,13 +158,9 @@ class ParkingPaymentService {
         query = query.eq('branch_id', branchId);
       }
 
-      if (filters?.startDate) {
-        query = query.gte('created_at', filters.startDate);
-      }
-
-      if (filters?.endDate) {
-        query = query.lte('created_at', filters.endDate);
-      }
+      const rango = await this.rangoDeDias(organizationId, branchId ?? null, filters?.startDate, filters?.endDate);
+      if (rango.desde) query = query.gte('created_at', rango.desde);
+      if (rango.hasta) query = query.lte('created_at', rango.hasta);
 
       if (filters?.source && filters.source !== 'all') {
         query = query.eq('source', filters.source);
@@ -244,13 +243,9 @@ class ParkingPaymentService {
         query = query.eq('branch_id', branchId);
       }
 
-      if (startDate) {
-        query = query.gte('created_at', startDate);
-      }
-
-      if (endDate) {
-        query = query.lte('created_at', endDate);
-      }
+      const rango = await this.rangoDeDias(organizationId, branchId ?? null, startDate, endDate);
+      if (rango.desde) query = query.gte('created_at', rango.desde);
+      if (rango.hasta) query = query.lte('created_at', rango.hasta);
 
       const { data, error } = await query;
       if (error) throw error;
@@ -275,38 +270,88 @@ class ParkingPaymentService {
   }
 
   /**
-   * Registrar un pago manual
+   * Registra un cobro de parqueadero: la fila en `payments` y su vínculo en
+   * `parking_payments` (el detalle de la sesión lee los pagos por ese vínculo).
+   * Es el ÚNICO lugar del módulo que inserta pagos: operación, mapa, detalle de
+   * sesión, pantalla de Pagos y factura pasan por aquí.
+   *
+   * `source` es 'parking_session' o 'parking_pass': con cualquier otro valor
+   * (p. ej. 'parking') el pago no aparece en Pagos ni lo asienta
+   * `trg_auto_journal_parking_payment`.
+   */
+  async registrarPago(data: CreatePaymentData): Promise<ParkingPayment> {
+    // `payments.currency` es NOT NULL y no tiene trigger: la que traiga el
+    // pago o, si no, la moneda base de la organización.
+    const currency = data.currency || (await resolveOrgCurrency(supabase, data.organization_id)).code;
+    const { data: payment, error } = await supabase
+      .from('payments')
+      .insert({
+        organization_id: data.organization_id,
+        branch_id: data.branch_id,
+        source: data.source,
+        source_id: data.source_id,
+        method: data.method,
+        amount: data.amount,
+        currency,
+        reference: data.reference ?? null,
+        created_by: data.created_by ?? null,
+        status: 'completed',
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    const { error: linkError } = await supabase.from('parking_payments').insert({
+      payment_id: payment.id,
+      branch_id: data.branch_id,
+      parking_session_id: data.source === 'parking_session' ? data.source_id : null,
+      parking_pass_id: data.source === 'parking_pass' ? data.source_id : null,
+    });
+    if (linkError) throw linkError;
+
+    return payment as ParkingPayment;
+  }
+
+  /**
+   * Registrar un pago manual (pantalla Pagos). Si es de una sesión abierta, la
+   * cierra con el monto cobrado.
    */
   async createPayment(data: CreatePaymentData): Promise<ParkingPayment> {
     try {
-      // `payments.currency` es NOT NULL y no tiene trigger: la que traiga el
-      // pago o, si no, la moneda base de la organización.
-      const currency = data.currency || (await resolveOrgCurrency(supabase, data.organization_id)).code;
-      const { data: payment, error } = await supabase
-        .from('payments')
-        .insert({
-          ...data,
-          currency,
-          status: 'completed',
-        })
-        .select()
-        .single();
+      const payment = await this.registrarPago(data);
 
-      if (error) throw error;
-
-      // Si es un pago de sesión, actualizar el estado de la sesión
       if (data.source === 'parking_session') {
-        await supabase
-          .from('parking_sessions')
-          .update({ status: 'closed', updated_at: new Date().toISOString() })
-          .eq('id', data.source_id);
+        // Antes se cerraba solo con `status`: sin `exit_at` ni `amount`, la
+        // sesión quedaba con 0 y sin hora de salida.
+        await parkingService.registerExit(data.source_id, data.amount);
       }
 
-      return payment as ParkingPayment;
+      return payment;
     } catch (error) {
       console.error('Error registrando pago:', error);
       throw error;
     }
+  }
+
+  /**
+   * Días calendario (YYYY-MM-DD) de los filtros → instantes en la zona de la
+   * organización. `payments.created_at` es timestamptz: comparar contra
+   * '2026-10-06' es comparar contra la medianoche UTC, y un rango de un solo
+   * día salía vacío.
+   */
+  private async rangoDeDias(
+    organizationId: number,
+    branchId: number | null,
+    desde?: string,
+    hasta?: string,
+  ): Promise<{ desde?: string; hasta?: string }> {
+    if (!desde && !hasta) return {};
+    const zona = await resolveTimezone(organizationId, branchId);
+    return {
+      desde: desde ? getDayRange(desde, zona).start : undefined,
+      hasta: hasta ? getDayRange(hasta, zona).end : undefined,
+    };
   }
 
   /**

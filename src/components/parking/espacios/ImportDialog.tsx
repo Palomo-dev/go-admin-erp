@@ -52,10 +52,10 @@ interface ParsedRow {
   rowNumber: number;
 }
 
-const validTypes: SpaceType[] = ['car', 'motorcycle', 'truck', 'bicycle'];
-const validStates: SpaceState[] = ['free', 'occupied', 'reserved', 'maintenance', 'disabled'];
+export const validTypes: SpaceType[] = ['car', 'motorcycle', 'truck', 'bicycle', 'disabled'];
+export const validStates: SpaceState[] = ['free', 'occupied', 'reserved', 'maintenance', 'disabled'];
 
-const typeMap: Record<string, SpaceType> = {
+export const typeMap: Record<string, SpaceType> = {
   'car': 'car',
   'auto': 'car',
   'automóvil': 'car',
@@ -71,9 +71,11 @@ const typeMap: Record<string, SpaceType> = {
   'bicycle': 'bicycle',
   'bici': 'bicycle',
   'bicicleta': 'bicycle',
+  'disabled': 'disabled',
+  'discapacidad': 'disabled',
 };
 
-const stateMap: Record<string, SpaceState> = {
+export const stateMap: Record<string, SpaceState> = {
   'free': 'free',
   'libre': 'free',
   'disponible': 'free',

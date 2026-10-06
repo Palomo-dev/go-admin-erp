@@ -16,6 +16,7 @@ import {
   ZoneStats,
 } from '@/components/parking/zonas';
 import { Building2 } from 'lucide-react';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 
 const defaultFilters: ZoneFilters = {
   search: '',
@@ -34,6 +35,8 @@ const defaultStats: ZoneStats = {
 };
 
 export default function ParkingZonasPage() {
+  // Día de la organización para el nombre del CSV (no el día UTC).
+  const { getToday: hoyDeLaOrganizacion } = useFormatDate();
   const { organization } = useOrganization();
   const { branchFilter } = useBranch();
   const { toast } = useToast();
@@ -196,7 +199,9 @@ export default function ParkingZonasPage() {
       console.error('Error duplicating zone:', err);
       toast({
         title: 'Error',
-        description: 'No se pudo duplicar la zona',
+        description: (err as { code?: string })?.code === '23505'
+          ? 'Ya existe una zona con ese nombre en la sede.'
+          : 'No se pudo duplicar la zona',
         variant: 'destructive',
       });
     }
@@ -309,7 +314,9 @@ export default function ParkingZonasPage() {
       console.error('Error saving zone:', err);
       toast({
         title: 'Error',
-        description: 'No se pudo guardar la zona',
+        description: (err as { code?: string })?.code === '23505'
+          ? 'Ya existe una zona con ese nombre en la sede.'
+          : 'No se pudo guardar la zona',
         variant: 'destructive',
       });
       throw err;
@@ -339,7 +346,7 @@ export default function ParkingZonasPage() {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `zonas-parking-${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `zonas-parking-${hoyDeLaOrganizacion()}.csv`;
     link.click();
   };
 

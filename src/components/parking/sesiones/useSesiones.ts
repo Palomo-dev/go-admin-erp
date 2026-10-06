@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { getDayRange } from '@/lib/utils/dateRanges';
 import { SessionFilters } from './SesionesFilters';
 import { ParkingSession } from './SesionesTable';
 
@@ -53,6 +55,9 @@ export function useSesiones() {
   const [pageSize, setPageSize] = useState(25);
   const [totalItems, setTotalItems] = useState(0);
   const [stats, setStats] = useState<SessionStats>(initialStats);
+  // `entry_at` es timestamptz: los días del filtro se convierten a instantes en
+  // la zona de la sucursal. `${dia}T00:00:00` sin offset era la medianoche UTC.
+  const { timezone, getToday } = useFormatDate(branchId);
 
   // Obtener branch_id
   useEffect(() => {
@@ -152,10 +157,10 @@ export function useSesiones() {
         query = query.eq('vehicle_type', filters.vehicleType);
       }
       if (filters.dateFrom) {
-        query = query.gte('entry_at', `${filters.dateFrom}T00:00:00`);
+        query = query.gte('entry_at', getDayRange(filters.dateFrom, timezone).start);
       }
       if (filters.dateTo) {
-        query = query.lte('entry_at', `${filters.dateTo}T23:59:59`);
+        query = query.lte('entry_at', getDayRange(filters.dateTo, timezone).end);
       }
 
       const from = (currentPage - 1) * pageSize;
@@ -179,7 +184,7 @@ export function useSesiones() {
     } finally {
       setIsLoading(false);
     }
-  }, [branchId, filters, currentPage, pageSize, toast, loadStats]);
+  }, [branchId, filters, currentPage, pageSize, toast, loadStats, timezone]);
 
   // Cargar espacios
   const loadSpaces = useCallback(async () => {
@@ -220,8 +225,8 @@ export function useSesiones() {
       if (filters.search) query = query.ilike('vehicle_plate', `%${filters.search}%`);
       if (filters.status !== 'all') query = query.eq('status', filters.status);
       if (filters.vehicleType !== 'all') query = query.eq('vehicle_type', filters.vehicleType);
-      if (filters.dateFrom) query = query.gte('entry_at', `${filters.dateFrom}T00:00:00`);
-      if (filters.dateTo) query = query.lte('entry_at', `${filters.dateTo}T23:59:59`);
+      if (filters.dateFrom) query = query.gte('entry_at', getDayRange(filters.dateFrom, timezone).start);
+      if (filters.dateTo) query = query.lte('entry_at', getDayRange(filters.dateTo, timezone).end);
 
       const { data, error } = await query;
       if (error) throw error;
@@ -246,7 +251,7 @@ export function useSesiones() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `sesiones_parking_${new Date().toISOString().split('T')[0]}.csv`;
+      link.download = `sesiones_parking_${getToday()}.csv`;
       link.click();
       URL.revokeObjectURL(url);
 

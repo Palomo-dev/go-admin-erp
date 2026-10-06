@@ -26,10 +26,9 @@ import parkingPaymentService, {
 } from '@/lib/services/parkingPaymentService';
 import parkingFinanceService from '@/lib/services/parkingFinanceService';
 import parkingTicketService, { type EntryTicketData } from '@/lib/services/parkingTicketService';
+import parkingService from '@/lib/services/parkingService';
 import type { ParkingZone } from '@/components/parking/espacios/types';
-import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
-import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 
 interface ParkingSpace {
   id: string;
@@ -50,11 +49,6 @@ export default function ParkingOperacionPage() {
   const { organization } = useOrganization();
   const { formatear } = useMonedaOrganizacion();
   const { branchFilter } = useBranch();
-  // `parking_passes.end_date` es `date` y la tabla no tiene `branch_id`: el
-  // abono vale hasta el final de su dia en la zona de la organizacion. Con el
-  // dia UTC, en Bogota el abonado dejaba de tener pase a las 19:00 de la
-  // vispera y la talanquera le cobraba como ocasional.
-  const { getToday } = useFormatDate();
 
   const [isLoading, setIsLoading] = useState(true);
   const [branchId, setBranchId] = useState<number | null>(null);
@@ -135,11 +129,14 @@ export default function ParkingOperacionPage() {
           .eq('status', 'open')
           .order('entry_at', { ascending: false }),
 
-        // Tarifas
+        // Tarifas activas: con una inactiva la entrada guardaba un rate_id que
+        // la salida ya no mostraba.
         supabase
           .from('parking_rates')
           .select('*')
-          .eq('organization_id', organization.id),
+          .eq('organization_id', organization.id)
+          .eq('is_active', true)
+          .order('created_at', { ascending: true }),
 
         // Espacios
         supabase
@@ -163,35 +160,25 @@ export default function ParkingOperacionPage() {
 
       setPaymentMethods(methodsResult || []);
 
-      // Procesar sesiones con información adicional
+      // Procesar sesiones con información adicional. `parking_passes` no tiene
+      // `vehicle_plate`: antes se consultaba por esa columna (una vez por
+      // sesión), PostgREST respondía 42703 y nadie salía como abonado.
       const sessions = sessionsResult.data || [];
-      const processedSessions: ActiveSession[] = await Promise.all(
-        sessions.map(async (session) => {
-          // Verificar si tiene pase activo
-          const hoy = getToday();
-          const { data: passData } = await supabase
-            .from('parking_passes')
-            .select('id, plan_name, end_date, status')
-            .eq('vehicle_plate', session.vehicle_plate)
-            .eq('organization_id', organization.id)
-            .eq('status', 'active')
-            .gte('end_date', hoy)
-            .limit(1);
-
-          const space = spacesResult.data?.find(
-            (s) => s.id === session.parking_space_id
-          );
-          const rate = ratesResult.data?.find((r) => r.id === session.rate_id);
-
-          return {
-            ...session,
-            space_label: space?.label,
-            rate_name: rate?.rate_name,
-            rate_price: rate?.price,
-            is_pass_holder: passData && passData.length > 0 ? true : undefined,
-          };
-        })
+      const placasConPase = await parkingService.getActivePassPlates(
+        organization.id,
+        sessions.map((s) => s.vehicle_plate)
       );
+      const processedSessions: ActiveSession[] = sessions.map((session) => {
+        const space = spacesResult.data?.find((s) => s.id === session.parking_space_id);
+        const rate = ratesResult.data?.find((r) => r.id === session.rate_id);
+        return {
+          ...session,
+          space_label: space?.label,
+          rate_name: rate?.rate_name,
+          rate_price: rate?.price,
+          is_pass_holder: placasConPase.has(session.vehicle_plate.toUpperCase()) || undefined,
+        };
+      });
 
       setActiveSessions(processedSessions);
       setRates(ratesResult.data || []);
@@ -471,37 +458,18 @@ export default function ParkingOperacionPage() {
       }
       // Flujo normal sin factura
       else {
-        const exitAt = new Date();
-        const entryAt = new Date(session.entry_at);
-        const durationMin = Math.floor(
-          (exitAt.getTime() - entryAt.getTime()) / (1000 * 60)
-        );
+        // Cierre y cobro con los servicios únicos del módulo: la sesión queda
+        // con el monto cobrado y el pago con su vínculo en parking_payments.
+        await parkingService.registerExit(data.session_id, data.amount);
 
-        const { error } = await supabase
-          .from('parking_sessions')
-          .update({
-            status: 'closed',
-            exit_at: exitAt.toISOString(),
-            duration_min: durationMin,
-            amount: data.amount,
-          })
-          .eq('id', data.session_id);
-
-        if (error) throw error;
-
-        // Registrar pago si hay monto
         if (data.amount > 0 && data.payment_method) {
-          // `payments.currency` es NOT NULL y no tiene trigger: moneda base.
-          const { code: currency } = await resolveOrgCurrency(supabase, organization.id);
-          await supabase.from('payments').insert({
+          await parkingPaymentService.registrarPago({
             organization_id: organization.id,
             branch_id: branchId,
             source: 'parking_session',
             source_id: data.session_id,
             method: data.payment_method,
             amount: data.amount,
-            currency,
-            status: 'completed',
           });
         }
 
@@ -513,13 +481,8 @@ export default function ParkingOperacionPage() {
         });
       }
 
-      // Liberar espacio si tenía uno asignado
-      if (session.parking_space_id) {
-        await supabase
-          .from('parking_spaces')
-          .update({ state: 'free' })
-          .eq('id', session.parking_space_id);
-      }
+      // El espacio lo libera el disparador `update_parking_space_state` al
+      // cerrar la sesión.
     } catch (error) {
       console.error('Error registrando salida:', error);
       toast({

@@ -5,16 +5,27 @@
  * con tu nombre y tu menú en un marco de 1440 / 1024 / 390 (el selector de
  * ancho va en la cabecera, junto a la «×»; la barra del marco dice «Vista
  * previa con tu contenido», no una dirección); a la derecha, su
- * descripción, lo que incluye y su estilo; debajo, el aviso «Reemplaza el
- * diseño, conserva tu contenido». En móvil es una hoja a pantalla completa
- * (`PanelAdaptable`). «Usar esta plantilla» exige `website.sites.edit`.
+ * descripción, lo que incluye y su estilo; debajo, CÓMO aplicarla y su aviso.
+ * En móvil es una hoja a pantalla completa (`PanelAdaptable`). Usarla exige
+ * `website.sites.edit`.
+ *
+ * Dos opciones (pedido del dueño, 2026-10-06; el Figma aprobado A/06c tenía una
+ * sola acción y aún no hay diseño de esta elección: se hizo con el lenguaje de
+ * los diálogos de Sitio web —`TarjetaSeleccionable` horizontal en un
+ * `radiogroup`, como «Descartar o conservar» y «Publicar»— y poco color):
+ * - «Plantilla completa»: encabezado, pie, páginas, secciones y menús nuevos con
+ *   los datos del negocio; lo anterior queda en el historial y se puede deshacer.
+ * - «Solo estilo»: colores y fuentes; el contenido se conserva.
+ * La opción por defecto la decide quien abre el diálogo (`modoPorDefecto`).
  */
 import { useState } from 'react';
-import { CircleCheck, Loader2 } from 'lucide-react';
-import { AvisoTonal, PanelAdaptable, clasesBoton, useEsEscritorio } from '@/components/kit';
+import { CircleCheck, LayoutTemplate, Loader2, Palette } from 'lucide-react';
+import { AvisoTonal, PanelAdaptable, TarjetaSeleccionable, clasesBoton, useEsEscritorio } from '@/components/kit';
 import { Badge } from '@/components/ui/badge';
 import type { DocumentoSitio } from '@/lib/website/contrato/documentoSitio';
 import type { PlantillaCatalogo } from '@/lib/website/contrato/catalogoPlantillas';
+import type { ModoPlantilla } from '@/lib/website/v2/plantillaCompleta';
+import { PAGINAS_BASE_GIRO } from '../paginas/plantillasPagina';
 import { DevicePreviewFrame } from '../ui/DevicePreviewFrame';
 import { StylePresetCard } from '../ui/StylePresetCard';
 import type { DispositivoVista } from '../ui/dispositivos';
@@ -31,7 +42,9 @@ export interface DialogoVistaPreviaPlantillaProps {
   documento: DocumentoSitio | null;
   puedeUsar: boolean;
   usando: boolean;
-  onUsar: (plantilla: PlantillaCatalogo) => void;
+  modo: ModoPlantilla;
+  onModoChange: (modo: ModoPlantilla) => void;
+  onUsar: (plantilla: PlantillaCatalogo, modo: ModoPlantilla) => void;
 }
 
 /** «Carta destacada · Pestañas» (o solo el nombre si la variante no tiene etiqueta). */
@@ -41,7 +54,16 @@ export function nombreSeccionPlantilla(tipo: string, variante: string, respaldo:
   return v ? `${nombre} · ${v.toLowerCase()}` : nombre;
 }
 
-export function DialogoVistaPreviaPlantilla({ plantilla, onCerrar, documento, puedeUsar, usando, onUsar }: DialogoVistaPreviaPlantillaProps) {
+export function DialogoVistaPreviaPlantilla({
+  plantilla,
+  onCerrar,
+  documento,
+  puedeUsar,
+  usando,
+  modo,
+  onModoChange,
+  onUsar,
+}: DialogoVistaPreviaPlantillaProps) {
   const t = useTextosDiseno();
   const esEscritorio = useEsEscritorio();
   const [dispositivo, setDispositivo] = useState<DispositivoVista>('escritorio');
@@ -49,6 +71,8 @@ export function DialogoVistaPreviaPlantilla({ plantilla, onCerrar, documento, pu
   if (!plantilla) return null;
   const celular = dispositivo === 'celular';
   const IconoGiro = ICONO_GIRO_PLANTILLA[plantilla.giro];
+  const completa = modo === 'completa';
+  const paginas = PAGINAS_BASE_GIRO[plantilla.giro].map((p) => p.titulo).join(' · ');
 
   return (
     <PanelAdaptable
@@ -87,14 +111,14 @@ export function DialogoVistaPreviaPlantilla({ plantilla, onCerrar, documento, pu
           </button>
           <button
             type="button"
-            onClick={() => onUsar(plantilla)}
+            onClick={() => onUsar(plantilla, modo)}
             disabled={!puedeUsar || usando}
             title={puedeUsar ? undefined : t('dialogo.sinPermiso')}
             aria-busy={usando || undefined}
             className={clasesBoton({ variante: 'primario', tamano: 'md' })}
           >
             {usando && <Loader2 aria-hidden="true" className={`${CLASE_TAMANO_ICONO.base} animate-spin motion-reduce:animate-none`} strokeWidth={TRAZO_ICONO} />}
-            {t('dialogo.usar')}
+            {completa ? t('dialogo.usarCompleta') : t('dialogo.usarEstilo')}
           </button>
         </div>
       }
@@ -121,6 +145,7 @@ export function DialogoVistaPreviaPlantilla({ plantilla, onCerrar, documento, pu
                   </li>
                 ))}
               </ul>
+              {completa && <p className="text-xs leading-4 text-fg-secondary">{t('dialogo.paginas', { lista: paginas })}</p>}
             </div>
             <div className="flex flex-col gap-2">
               <h3 className="text-[13px] font-semibold leading-[18px] text-fg">{t('dialogo.estilo')}</h3>
@@ -136,7 +161,36 @@ export function DialogoVistaPreviaPlantilla({ plantilla, onCerrar, documento, pu
             </div>
           </div>
         </div>
-        <AvisoTonal tono="advertencia" titulo={t('dialogo.avisoTitulo')} descripcion={t('dialogo.avisoDescripcion')} />
+        <div className="flex flex-col gap-2">
+          <h3 id="plantilla-modo" className="text-[13px] font-semibold leading-[18px] text-fg">
+            {t('dialogo.modo')}
+          </h3>
+          <div role="radiogroup" aria-labelledby="plantilla-modo" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <TarjetaSeleccionable
+              orientacion="horizontal"
+              icono={LayoutTemplate}
+              titulo={t('dialogo.completaTitulo')}
+              descripcion={t('dialogo.completaDescripcion')}
+              seleccionada={completa}
+              onSeleccionar={() => onModoChange('completa')}
+              deshabilitada={usando}
+            />
+            <TarjetaSeleccionable
+              orientacion="horizontal"
+              icono={Palette}
+              titulo={t('dialogo.estiloTitulo')}
+              descripcion={t('dialogo.estiloDescripcion')}
+              seleccionada={!completa}
+              onSeleccionar={() => onModoChange('estilo')}
+              deshabilitada={usando}
+            />
+          </div>
+        </div>
+        <AvisoTonal
+          tono={completa ? 'advertencia' : 'informacion'}
+          titulo={completa ? t('dialogo.avisoCompletaTitulo') : t('dialogo.avisoEstiloTitulo')}
+          descripcion={completa ? t('dialogo.avisoCompletaDescripcion') : t('dialogo.avisoEstiloDescripcion')}
+        />
       </div>
     </PanelAdaptable>
   );

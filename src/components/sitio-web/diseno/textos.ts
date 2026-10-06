@@ -187,6 +187,26 @@ export const TEXTOS_DISENO = {
     seccionDesconocida: 'Sección',
     tuMarca: 'Tu marca',
     inicio: 'Inicio',
+    modo: 'Cómo aplicarla',
+    completaTitulo: 'Plantilla completa',
+    completaDescripcion: 'Encabezado, pie, páginas, secciones y menús nuevos, con los datos de tu negocio.',
+    estiloTitulo: 'Solo estilo',
+    estiloDescripcion: 'Cambian los colores y las fuentes. Tu contenido se conserva.',
+    paginas: 'Páginas: {lista}',
+    avisoCompletaTitulo: 'Tu sitio actual queda en el historial',
+    avisoCompletaDescripcion:
+      'Se reemplazan el encabezado, el pie, las páginas, las secciones y los menús. Tus páginas legales y de tienda se conservan, y lo demás queda en el historial: puedes deshacerlo. Se crea un borrador: nada cambia en línea hasta que publiques.',
+    avisoEstiloTitulo: 'Cambia el estilo, conserva tu contenido',
+    avisoEstiloDescripcion:
+      'Cambian los colores y las fuentes. Tus páginas, secciones, textos, fotos, carta y menús se conservan tal cual. Se crea un borrador: nada cambia en línea hasta que publiques.',
+    usarCompleta: 'Usar plantilla completa',
+    usarEstilo: 'Aplicar solo el estilo',
+    listoCompleta: 'Tu borrador ya tiene «{nombre}» completa.',
+    ocultasUna: '1 sección queda oculta hasta que pongas tus datos.',
+    ocultas: '{n} secciones quedan ocultas hasta que pongas tus datos (equipo, opiniones, cifras…).',
+    deshacer: 'Deshacer',
+    deshecho: 'Volvimos a tu sitio anterior.',
+    noDeshecho: 'No pudimos deshacer. Lo encuentras en el historial del editor.',
   },
 } as const;
 

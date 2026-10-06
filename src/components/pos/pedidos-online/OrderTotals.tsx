@@ -3,6 +3,7 @@
 import { Separator } from '@/components/ui/separator';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatMoneda } from '@/lib/utils/moneda';
+import { useTranslations } from 'next-intl';
 
 interface OrderTotalsProps {
   subtotal: number;
@@ -26,6 +27,7 @@ export function OrderTotals({
   variant = 'full',
   currencyCode,
 }: OrderTotalsProps) {
+  const t = useTranslations('pedidoWeb');
   const { paraDocumento } = useMonedaOrganizacion();
   const moneda = paraDocumento(currencyCode);
   const formatear = (amount: number) => formatMoneda(amount, moneda);
@@ -48,28 +50,28 @@ export function OrderTotals({
       
       {taxTotal > 0 && (
         <div className="flex justify-between">
-          <span className="text-fg-secondary">Impuestos</span>
+          <span className="text-fg-secondary">{t('orderTotals.impuestos')}</span>
           <span className="text-fg tabular-nums">{formatear(taxTotal)}</span>
         </div>
       )}
       
       {discountTotal > 0 && (
         <div className="flex justify-between text-success-text">
-          <span>Descuento</span>
+          <span>{t('orderTotals.descuento')}</span>
           <span>-{formatear(discountTotal)}</span>
         </div>
       )}
       
       {deliveryFee > 0 && (
         <div className="flex justify-between">
-          <span className="text-fg-secondary">Envío</span>
+          <span className="text-fg-secondary">{t('orderTotals.envio')}</span>
           <span className="text-fg tabular-nums">{formatear(deliveryFee)}</span>
         </div>
       )}
       
       {tipAmount > 0 && (
         <div className="flex justify-between">
-          <span className="text-fg-secondary">Propina</span>
+          <span className="text-fg-secondary">{t('orderTotals.propina')}</span>
           <span className="text-fg tabular-nums">{formatear(tipAmount)}</span>
         </div>
       )}

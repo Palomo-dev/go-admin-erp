@@ -32,6 +32,7 @@ export function CombinarMesasDialog({
   mesas,
   onCombinar,
 }: CombinarMesasDialogProps) {
+  const t = useTranslations('posMesas');
   const tAvisos = useTranslations('posMesas.avisos');
   const [mesaPrincipal, setMesaPrincipal] = useState<string | null>(null);
   const [mesasSeleccionadas, setMesasSeleccionadas] = useState<string[]>([]);
@@ -79,11 +80,9 @@ export function CombinarMesasDialog({
     >
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle className="text-xl">Combinar Mesas</DialogTitle>
+          <DialogTitle className="text-xl">{t('combinarMesasDialog.combinarMesas')}</DialogTitle>
           <DialogDescription className="text-base">
-            Paso 1: Selecciona la <strong>mesa principal</strong> (donde quedarán todos los pedidos).
-            <br />
-            Paso 2: Selecciona las <strong>mesas a combinar</strong> (quedarán libres).
+            {t.rich('combinarMesasDialog.paso1SeleccionaMesa', { b: (chunks) => <strong>{chunks}</strong>, br: () => <br />, b2: (chunks) => <strong>{chunks}</strong> })}
           </DialogDescription>
         </DialogHeader>
 
@@ -95,9 +94,9 @@ export function CombinarMesasDialog({
           {/* Mesa Principal */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Label className="text-base font-semibold">1. Mesa Principal</Label>
+              <Label className="text-base font-semibold">{t('combinarMesasDialog.n1MesaPrincipal')}</Label>
               <Badge variant="secondary" className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
-                Recibirá todos los pedidos
+                {t('combinarMesasDialog.recibiraTodosPedidos')}
               </Badge>
             </div>
             <ScrollArea className="h-[150px] border-2 border-green-200 dark:border-green-800 rounded-lg p-3 bg-green-50/50 dark:bg-green-950/20">
@@ -154,7 +153,7 @@ export function CombinarMesasDialog({
               <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
                 <ArrowRight className="h-5 w-5" />
                 <span className="text-sm font-medium">
-                  {mesasSeleccionadas.length} {mesasSeleccionadas.length === 1 ? 'mesa' : 'mesas'} → Mesa Principal
+                  {t('combinarMesasDialog.mesaPrincipal', { n: mesasSeleccionadas.length })}
                 </span>
                 <ArrowRight className="h-5 w-5" />
               </div>
@@ -164,9 +163,9 @@ export function CombinarMesasDialog({
           {/* Mesas a Combinar */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Label className="text-base font-semibold">2. Mesas a Combinar</Label>
+              <Label className="text-base font-semibold">{t('combinarMesasDialog.n2MesasCombinar')}</Label>
               <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
-                Quedarán libres
+                {t('combinarMesasDialog.quedaranLibres')}
               </Badge>
             </div>
             <ScrollArea className="h-[150px] border-2 border-blue-200 dark:border-blue-800 rounded-lg p-3 bg-blue-50/50 dark:bg-blue-950/20">
@@ -219,7 +218,7 @@ export function CombinarMesasDialog({
                     ))
                 ) : (
                   <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
-                    Selecciona primero una mesa principal
+                    {t('combinarMesasDialog.seleccionaPrimeroMesaPrincipal')}
                   </p>
                 )}
               </div>
@@ -233,7 +232,7 @@ export function CombinarMesasDialog({
             onClick={() => onOpenChange(false)}
             disabled={isSubmitting}
           >
-            Cancelar
+            {t('comun.cancelar')}
           </Button>
           <Button
             onClick={handleSubmit}
@@ -241,7 +240,7 @@ export function CombinarMesasDialog({
               !mesaPrincipal || mesasSeleccionadas.length === 0 || isSubmitting
             }
           >
-            {isSubmitting ? 'Combinando...' : 'Combinar Mesas'}
+            {isSubmitting ? t('combinarMesasDialog.combinando') : t('combinarMesasDialog.combinarMesas')}
           </Button>
         </DialogFooter>
       </DialogContent>

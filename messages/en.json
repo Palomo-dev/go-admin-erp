@@ -22932,6 +22932,114 @@
       "escanea": "Scan to see the menu and order",
       "cerrar": "Close",
       "imprimir": "Print"
+    },
+    "mesaFormDialog": {
+      "editarMesa": "Edit table",
+      "nuevaMesa": "New table",
+      "nombreMesa": "Table name *",
+      "ejMesa1Mesa": "E.g.: Table 1, VIP table",
+      "seleccionarZona": "Select zone",
+      "nuevaZona": "+ New zone",
+      "nombreNuevaZona": "New zone name",
+      "capacidad": "Capacity *",
+      "guardando": "Saving...",
+      "actualizar": "Update",
+      "crear": "Create"
+    },
+    "combinarMesasDialog": {
+      "combinarMesas": "Combine tables",
+      "paso1SeleccionaMesa": "Step 1: Select the <b>main table</b> (where all the orders will end up).<br></br>Step 2: Select the <b2>tables to combine</b2> (they will be freed).",
+      "n1MesaPrincipal": "1. Main table",
+      "recibiraTodosPedidos": "Will receive all orders",
+      "mesaPrincipal": "{n, plural, one {# table} other {# tables}} → Main table",
+      "n2MesasCombinar": "2. Tables to combine",
+      "quedaranLibres": "Will be freed",
+      "seleccionaPrimeroMesaPrincipal": "Select a main table first",
+      "combinando": "Combining..."
+    },
+    "moverPedidoDialog": {
+      "moverPedido": "Move order",
+      "muevePedidoMesaOtra": "Moves the order from one table to another. The origin table will be freed.",
+      "mesaOrigen": "Origin table",
+      "seleccionarMesaPedido": "Select a table with an order",
+      "mesaDestino": "Destination table",
+      "seleccionarMesaLibre": "Select a free table",
+      "cap": "(Cap: {capacity})",
+      "pedidoSeraMovidoMesa": "The order will be moved and the origin table will be available.",
+      "moviendo": "Moving..."
+    },
+    "historialMesasDialog": {
+      "desde": "From",
+      "hasta": "To",
+      "todosMeseros": "All waiters",
+      "sesiones": "Sessions",
+      "facturado": "Billed",
+      "duracionProm": "Avg. duration",
+      "sesionEncontradaS": "{n, plural, one {# session found} other {# sessions found}}",
+      "mesa": "Table",
+      "apertura": "Opened",
+      "cierre": "Closed",
+      "duracion": "Duration",
+      "liberada": "Released by {userName} · {dateTime}",
+      "productosEliminadosCanceladosEsta": "Products deleted/cancelled in this session",
+      "eliminadoPor": "<b>{cantidad}x {producto}</b> — deleted by <b>{usuario}</b>",
+      "rangos": {
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "7d": "7 days",
+        "15d": "15 days",
+        "30d": "30 days"
+      },
+      "estados": {
+        "active": "Active",
+        "bill_requested": "Bill requested",
+        "completed": "Completed"
+      },
+      "noPudoCargarHistorial": "The table history could not be loaded."
+    },
+    "sessionTimelineDialog": {
+      "historialMesa": "Table history",
+      "sinEventosRegistradosEsta": "No events recorded for this table.",
+      "noPudoCargarHistorial": "The table's history could not be loaded."
+    },
+    "addProductDialog": {
+      "noPudoCargarReceta": "The product's recipe could not be loaded",
+      "agregadoFavoritos": "Added to favorites",
+      "quitadoFavoritos": "Removed from favorites",
+      "productoApareceraPrimeroPos": "The product will show first in the POS.",
+      "productoYaNoPriorizara": "The product will no longer be prioritized.",
+      "noPudoActualizarFavorito": "The favorite could not be updated.",
+      "productoSinPrecio": "Product without price",
+      "esteProductoNoTiene": "This product has no price set",
+      "noPudieronAgregarProductos": "The products could not be added. Please try again.",
+      "sinImagen": "No image",
+      "agotado": "Sold out",
+      "personalizable": "Customizable",
+      "incluido": "Included",
+      "unidadesVendidasUltimos90": "{number} units sold in the last 90 days",
+      "top": "Top",
+      "quitarFavoritos": "Remove from favorites",
+      "agregarFavoritos": "Add to favorites",
+      "desde": "From",
+      "verRecetaProduccion": "View production recipe",
+      "carrito": "Cart",
+      "carritoVacio": "Empty cart",
+      "seleccionaProductosAgregar": "Select products to add",
+      "comensal": "Diner:",
+      "general": "General",
+      "notas": "Notes...",
+      "habitacion": "Room: <b>{space_label}</b>",
+      "cargarHabitacion": "Charge to room",
+      "pagarAhora": "Pay now",
+      "agregando": "Adding...",
+      "recetaProduccion": "Production recipe",
+      "rendimiento": "Yield",
+      "inactiva": "Inactive",
+      "version": "Version",
+      "notas2": "Notes",
+      "ingredientes": "Ingredients ({n})",
+      "opcional": "Optional",
+      "estaRecetaNoTiene": "This recipe has no ingredients defined."
     }
   },
   "posReservasMesas": {
@@ -33925,6 +34033,231 @@
         "rejected": "Rejected",
         "expired": "Expired"
       }
+    },
+    "webOrderCard": {
+      "urgente": "Urgent!",
+      "programado": "Scheduled",
+      "propina": "Tip",
+      "texto": "For: {date}",
+      "productoS": "{n, plural, one {# product} other {# products}}",
+      "mas": "+{n} more...",
+      "nota": "Note:",
+      "confirmar": "Confirm",
+      "iniciarPreparacion": "Start preparation",
+      "preparar": "Prepare",
+      "marcarListo": "Mark ready",
+      "enviarDomicilio": "Send for delivery",
+      "enviar": "Send",
+      "marcarEntregado": "Mark delivered"
+    },
+    "webCommerceObservability": {
+      "observabilidadComercio": "Commerce observability",
+      "actualizar": "Refresh",
+      "contraer": "Collapse",
+      "expandir": "Expand",
+      "itemsReservados": "Reserved items",
+      "reservasHuerfanas": "Orphan reservations",
+      "pedidosPendientes": "Pending orders",
+      "proximosExpirar": "About to expire",
+      "stockReservadoVsDisponible": "Reserved vs available stock",
+      "noHayProductosStock": "There are no products with reserved stock right now.",
+      "producto": "Product",
+      "sucursal": "Branch",
+      "disp": "Avail.",
+      "reserv": "Reserv.",
+      "actualizado": "Updated",
+      "pedidosProximosExpirarMin": "Orders about to expire ({withinMinutes} min)",
+      "noHayPedidosProximos": "No orders will expire in the next {withinMinutes} minutes.",
+      "expiradoHaceM": "Expired {minutesUntilExpiry}m ago",
+      "paginaAnterior": "Previous page",
+      "paginaSiguiente": "Next page",
+      "errorCargar": "Error loading observability",
+      "errorDesconocido": "Unknown error"
+    },
+    "assignDeliveryDialog": {
+      "noHayVehiculosDisponibles": "No vehicles available for delivery",
+      "noHayConductoresDisponibles": "No drivers available",
+      "errorCargarDatosVehiculos": "Error loading vehicle and driver data",
+      "camposRequeridos": "Required fields",
+      "seleccionaVehiculoConductor": "Select a vehicle and a driver",
+      "error": "Error",
+      "noEncontroEnvioAsociado": "The associated shipment was not found. Try marking the order as ready first.",
+      "asignacionExitosa": "Assignment successful",
+      "haAsignadoConductorVehiculo": "The driver and vehicle have been assigned to the order",
+      "noPudoAsignarDelivery": "The delivery could not be assigned",
+      "asignarDelivery": "Assign delivery",
+      "seleccionaVehiculoConductorEntrega": "Select the vehicle and driver for the delivery",
+      "configuraVehiculosConductoresModulo": "Set up vehicles and drivers in the Transport module",
+      "vehiculo": "Vehicle",
+      "seleccionarVehiculo": "Select vehicle",
+      "noHayVehiculosDisponibles2": "No vehicles available",
+      "conductor": "Driver",
+      "seleccionarConductor": "Select driver",
+      "conductor2": "Driver {license_number}",
+      "lic": "Lic: {license_category}",
+      "tiempoEstimadoEntregaMinutos": "Estimated delivery time (minutes)",
+      "llegadaEstimada": "Estimated arrival: {localeTimeString}",
+      "vehiculos": {
+        "motorcycle": "Motorcycle",
+        "car": "Car",
+        "van": "Van",
+        "bicycle": "Bicycle",
+        "truck": "Truck"
+      }
+    },
+    "deliveryTrackingCard": {
+      "delivery": "Delivery",
+      "deliveryPropio": "Own delivery",
+      "noHayEnvioAsignado": "No shipment assigned to this order",
+      "asignarDelivery": "Assign delivery",
+      "tracking": "Tracking",
+      "tracking2": "Tracking:",
+      "vehiculoAsignado": "Assigned vehicle",
+      "conductor": "Driver",
+      "conductorAsignado": "Assigned driver",
+      "entregaEstimada": "Estimated delivery:",
+      "historial": "History",
+      "pruebaEntrega": "Proof of delivery",
+      "recibido": "Received by:",
+      "fecha": "Date:",
+      "calificacion": "Rating:",
+      "verFirma": "View signature",
+      "verRutaGoogleMaps": "View route in Google Maps",
+      "actualizarEstado": "Update status",
+      "estados": {
+        "pending": "Pending",
+        "assigned": "Assigned",
+        "picked_up": "Picked up",
+        "out_for_delivery": "On the way",
+        "delivered": "Delivered",
+        "returned": "Returned",
+        "cancelled": "Cancelled"
+      }
+    },
+    "orderActions": {
+      "confirmarPedido": "Confirm order",
+      "rechazar": "Reject",
+      "iniciarPreparacion": "Start preparation",
+      "marcarComoListo": "Mark as ready",
+      "enviarDomicilio": "Send for delivery",
+      "marcarComoPagado": "Mark as paid",
+      "crearVenta": "Create sale"
+    },
+    "orderItemsList": {
+      "productoS": "{n, plural, one {# product} other {# products}}",
+      "mas": "+{remainingCount} more...",
+      "productoSMas": "{remainingCount, plural, one {+# more product} other {+# more products}}",
+      "estados": {
+        "pending": "Pending",
+        "preparing": "Preparing",
+        "ready": "Ready",
+        "cancelled": "Cancelled"
+      }
+    },
+    "orderTimeline": {
+      "motivo": "Reason: {cancellation_reason}",
+      "pasos": {
+        "created": "Order received",
+        "scheduled": "Scheduled for",
+        "confirmed": "Confirmed",
+        "preparing": "In preparation",
+        "ready": "Ready",
+        "in_delivery": "On the way",
+        "delivered": "Delivered",
+        "rejected": "Rejected",
+        "expired": "Expired",
+        "cancelled": "Cancelled"
+      }
+    },
+    "orderTotals": {
+      "impuestos": "Taxes",
+      "descuento": "Discount",
+      "envio": "Shipping",
+      "propina": "Tip"
+    },
+    "cancelOrderDialog": {
+      "indicaMotivoClienteSera": "Enter the reason. The customer will be notified automatically.",
+      "motivo": "Reason",
+      "ejProductoAgotadoFuera": "E.g.: Product sold out, outside delivery hours...",
+      "esteMotivoMostraraCliente": "This reason will be shown to the customer in their notification.",
+      "rechazarPedido": "Reject order",
+      "cancelarPedido": "Cancel order",
+      "rechazar": "Reject"
+    },
+    "confirmOrderDialog": {
+      "confirmarPedido": "Confirm order",
+      "indicaTiemposEstimadosNotificar": "Enter the estimated times to notify the customer.",
+      "tiempoPreparacionListoAprox": "Preparation time (ready approx.)",
+      "minutos": "Minutes",
+      "horas": "Hours",
+      "dias": "Days",
+      "tiempoTrasladoEntregaAprox": "Transit time (delivery approx.)",
+      "tiempoDesdeEstaListo": "Time from when it is ready until it reaches the customer.",
+      "clienteRecibiraNotificacionEstos": "The customer will receive a notification with these estimated times.",
+      "marcarComoPagado": "Mark as paid"
+    },
+    "orderActionsCard": {
+      "acciones": "Actions"
+    },
+    "orderDeliveryCard": {
+      "verMapa": "View on map",
+      "programado": "Scheduled: {dateTime}",
+      "listoAprox": "Ready approx.: {time}",
+      "entregaAprox": "Delivery approx.: {time}",
+      "asignarConductor": "Assign driver"
+    },
+    "orderHeader": {
+      "programado": "Scheduled",
+      "cupon": "Coupon: {coupon_code}",
+      "propina": "Tip: {valor}"
+    },
+    "orderNotFoundState": {
+      "verTodosPedidos": "View all orders",
+      "pedidoNoEncontrado": "Order not found"
+    },
+    "orderProductsCard": {
+      "productos": "Products ({n})"
+    },
+    "useWebOrderDetail": {
+      "error": "Error",
+      "noPudoCargarPedido": "The order could not be loaded",
+      "pedidoRechazado": "Order rejected",
+      "pedidoPreparacion": "Order in preparation",
+      "pedidoListoEntrega": "Order ready for delivery",
+      "pedidoCamino": "Order on the way",
+      "pedidoEntregado": "Order delivered",
+      "pedidoCancelado": "Order cancelled",
+      "ventaCreadaExitosamente": "Sale created successfully",
+      "errorCrearVenta": "Error creating the sale",
+      "ahoraPuedesAsignarConductor": "You can now assign a driver",
+      "errorCrearEnvio": "Error creating the shipment"
+    },
+    "tipoEntrega": {
+      "pickup": "Store pickup",
+      "delivery_own": "Own delivery",
+      "delivery_third_party": "Third-party delivery"
+    },
+    "metodoPago": {
+      "cash": "Cash",
+      "transfer": "Transfer",
+      "card": "Card"
+    },
+    "pagoBadge": {
+      "pending": "Payment pending",
+      "paid": "Paid",
+      "partial": "Partial payment",
+      "refunded": "Refunded",
+      "failed": "Failed"
+    },
+    "unidadCorta": {
+      "minutes": "{n} min",
+      "hours": "{n} hrs",
+      "days": "{n} days"
+    },
+    "tipoEntregaFicha": {
+      "pickup": "Store pickup",
+      "delivery_own": "Own delivery",
+      "delivery_third_party": "Third-party delivery"
     }
   },
   "posMesasFlujo": {

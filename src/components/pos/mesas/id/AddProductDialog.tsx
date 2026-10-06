@@ -90,6 +90,7 @@ export function AddProductDialog({
   selectedRoom,
   includedProductIds,
 }: AddProductDialogProps) {
+  const t = useTranslations('posMesas');
   const tNotas = useTranslations('posNotasLinea');
   const tAgregar = useTranslations('posMesas.agregar');
   const { branchFilter, branches } = useBranch();
@@ -415,8 +416,8 @@ export function AddProductDialog({
     } catch (error) {
       console.error('Error cargando receta:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudo cargar la receta del producto',
+        title: t('reserva.avisos.error'),
+        description: t('addProductDialog.noPudoCargarReceta'),
         variant: 'destructive',
       });
     } finally {
@@ -445,10 +446,10 @@ export function AddProductDialog({
         p.id === productId ? { ...p, is_favorite: isNowFavorite } : p
       ));
       toast({
-        title: isNowFavorite ? 'Agregado a favoritos' : 'Quitado de favoritos',
+        title: isNowFavorite ? t('addProductDialog.agregadoFavoritos') : t('addProductDialog.quitadoFavoritos'),
         description: isNowFavorite
-          ? 'El producto aparecerá primero en el POS.'
-          : 'El producto ya no se priorizará.',
+          ? t('addProductDialog.productoApareceraPrimeroPos')
+          : t('addProductDialog.productoYaNoPriorizara'),
         duration: 1800,
       });
     } catch {
@@ -456,8 +457,8 @@ export function AddProductDialog({
         p.id === productId ? { ...p, is_favorite: wasFavorite } : p
       ));
       toast({
-        title: 'Error',
-        description: 'No se pudo actualizar el favorito.',
+        title: t('reserva.avisos.error'),
+        description: t('addProductDialog.noPudoActualizarFavorito'),
         variant: 'destructive',
       });
     } finally {
@@ -474,8 +475,8 @@ export function AddProductDialog({
     const basePrice = product.price || 0;
     if (basePrice === 0) {
       toast({
-        title: 'Producto sin precio',
-        description: 'Este producto no tiene precio configurado',
+        title: t('addProductDialog.productoSinPrecio'),
+        description: t('addProductDialog.esteProductoNoTiene'),
         variant: 'destructive',
       });
       return;
@@ -612,8 +613,8 @@ export function AddProductDialog({
     } catch (error) {
       console.error('Error agregando productos:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudieron agregar los productos. Por favor intente nuevamente.',
+        title: t('reserva.avisos.error'),
+        description: t('addProductDialog.noPudieronAgregarProductos'),
         variant: 'destructive',
       });
     } finally {
@@ -798,13 +799,13 @@ export function AddProductDialog({
                           ) : (
                             <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 dark:text-gray-600">
                               <ImageIcon className="h-10 w-10 mb-1" />
-                              <span className="text-[0.6rem]">Sin imagen</span>
+                              <span className="text-[0.6rem]">{t('addProductDialog.sinImagen')}</span>
                             </div>
                           )}
                           {/* Badge de agotado */}
                           {product.is_out_of_stock && (
                             <div className="absolute inset-0 m-auto w-fit h-fit bg-red-600 text-white rounded px-3 py-1 text-sm font-bold z-20 pointer-events-none">
-                              Agotado
+                              {t('addProductDialog.agotado')}
                             </div>
                           )}
                           {/* Badge de descuento */}
@@ -828,7 +829,7 @@ export function AddProductDialog({
                               'absolute left-2 bg-amber-600 text-white rounded-full px-2 py-0.5 text-[0.6rem] font-bold z-10',
                               comparePrice > price ? 'top-8' : 'top-2'
                             )}>
-                              Personalizable
+                              {t('addProductDialog.personalizable')}
                             </div>
                           )}
                           {inCart && (
@@ -838,17 +839,17 @@ export function AddProductDialog({
                           )}
                           {isIncluded && !inCart && (
                             <div className="absolute top-2 right-2 bg-green-600 text-white rounded-full px-2 py-0.5 text-[0.6rem] font-bold z-10 flex items-center gap-0.5">
-                              <Check className="h-2.5 w-2.5" /> Incluido
+                              <Check className="h-2.5 w-2.5" /> {t('addProductDialog.incluido')}
                             </div>
                           )}
                           {/* Badge Top: más vendidos en los últimos 90 días (bottom-left) */}
                           {Number(product.sales_count_90d) > 0 && (
                             <div
                               className="absolute bottom-2 left-2 bg-orange-500 text-white rounded-full px-1.5 py-0.5 text-[0.6rem] font-bold z-10 flex items-center gap-0.5"
-                              title={`${Math.round(Number(product.sales_count_90d))} unidades vendidas en los últimos 90 días`}
+                              title={t('addProductDialog.unidadesVendidasUltimos90', { number: Math.round(Number(product.sales_count_90d)) })}
                             >
                               <Flame className="h-2.5 w-2.5" />
-                              Top
+                              {t('addProductDialog.top')}
                             </div>
                           )}
                           {/* Botón estrella favorito (bottom-right) */}
@@ -856,8 +857,8 @@ export function AddProductDialog({
                             type="button"
                             onClick={(e) => handleToggleFavorite(product.id, e)}
                             disabled={togglingFavorites.has(product.id)}
-                            aria-label={product.is_favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
-                            title={product.is_favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                            aria-label={product.is_favorite ? t('addProductDialog.quitarFavoritos') : t('addProductDialog.agregarFavoritos')}
+                            title={product.is_favorite ? t('addProductDialog.quitarFavoritos') : t('addProductDialog.agregarFavoritos')}
                             className={cn(
                               'absolute bottom-2 right-2 z-20 rounded-full p-1 transition-all duration-150 shadow-md disabled:opacity-50 disabled:cursor-not-allowed',
                               product.is_favorite
@@ -891,7 +892,7 @@ export function AddProductDialog({
                                 ? 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30'
                                 : 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30'
                             )}>
-                              {hasVariants ? 'Desde ' : ''}{formatCurrency(price || 0)}
+                              {hasVariants ? t('addProductDialog.desde') : ''}{formatCurrency(price || 0)}
                               {porPeso && simboloUnidad(product.unit_code) ? ` / ${simboloUnidad(product.unit_code)}` : ''}
                             </span>
                             {porPeso && (
@@ -910,8 +911,8 @@ export function AddProductDialog({
                                 <button
                                   type="button"
                                   onClick={(e) => handleViewRecipe(product, e)}
-                                  aria-label="Ver receta de producción"
-                                  title="Ver receta de producción"
+                                  aria-label={t('addProductDialog.verRecetaProduccion')}
+                                  title={t('addProductDialog.verRecetaProduccion')}
                                   className="shrink-0 rounded-full p-1 text-orange-600 hover:bg-orange-100 dark:text-orange-400 dark:hover:bg-orange-900/40 transition-colors"
                                 >
                                   <ChefHat className="h-3.5 w-3.5" />
@@ -933,7 +934,7 @@ export function AddProductDialog({
             <div className="px-4 py-3 border-b bg-white dark:bg-gray-800 shrink-0">
               <div className="flex items-center gap-2">
                 <ShoppingCart className="h-6 w-6 text-blue-600" />
-                <h2 className="text-xl font-bold">Carrito</h2>
+                <h2 className="text-xl font-bold">{t('addProductDialog.carrito')}</h2>
                 <Badge variant="secondary" className="ml-auto">
                   {cart.size} {cart.size === 1 ? 'producto' : 'productos'}
                 </Badge>
@@ -944,9 +945,9 @@ export function AddProductDialog({
               {cart.size === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center px-6">
                   <ShoppingCart className="h-12 w-12 text-gray-300 mb-3" />
-                  <p className="text-gray-500 font-medium text-sm">Carrito vacío</p>
+                  <p className="text-gray-500 font-medium text-sm">{t('addProductDialog.carritoVacio')}</p>
                   <p className="text-xs text-gray-400 mt-1">
-                    Selecciona productos para agregar
+                    {t('addProductDialog.seleccionaProductosAgregar')}
                   </p>
                 </div>
               ) : (
@@ -1046,7 +1047,7 @@ export function AddProductDialog({
                       {comensales > 1 && (
                         <div className="flex items-center gap-1 mb-2 flex-wrap">
                           <span className="text-[0.65rem] text-gray-500 dark:text-gray-400 shrink-0">
-                            Comensal:
+                            {t('addProductDialog.comensal')}
                           </span>
                           {Array.from({ length: comensales }, (_, i) => i + 1).map((num) => (
                             <button
@@ -1073,13 +1074,13 @@ export function AddProductDialog({
                                 : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
                             )}
                           >
-                            General
+                            {t('addProductDialog.general')}
                           </button>
                         </div>
                       )}
 
                       <RichTextEditor
-                        placeholder="Notas..."
+                        placeholder={t('addProductDialog.notas')}
                         value={item.notes}
                         onChange={(html) =>
                           updateCartNotes(clave, html)
@@ -1108,7 +1109,7 @@ export function AddProductDialog({
               {selectedRoom?.folio_id && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                    <span>Habitación: <strong>{selectedRoom.space_label}</strong></span>
+                    <span>{t.rich('addProductDialog.habitacion', { space_label: selectedRoom.space_label, b: (chunks) => <strong>{chunks}</strong> })}</span>
                   </div>
                   <div className="flex gap-2">
                     <button
@@ -1123,7 +1124,7 @@ export function AddProductDialog({
                     >
                       <span className="flex items-center justify-center gap-1.5">
                         <span className={cn('h-2 w-2 rounded-full', chargeType === 'room_charge' ? 'bg-white' : 'bg-amber-400')} />
-                        Cargar a Habitación
+                        {t('addProductDialog.cargarHabitacion')}
                       </span>
                     </button>
                     <button
@@ -1138,7 +1139,7 @@ export function AddProductDialog({
                     >
                       <span className="flex items-center justify-center gap-1.5">
                         <span className={cn('h-2 w-2 rounded-full', chargeType === 'direct_payment' ? 'bg-white' : 'bg-green-400')} />
-                        Pagar Ahora
+                        {t('addProductDialog.pagarAhora')}
                       </span>
                     </button>
                   </div>
@@ -1159,7 +1160,7 @@ export function AddProductDialog({
                   disabled={isSubmitting}
                   className="flex-1"
                 >
-                  Cancelar
+                  {t('comun.cancelar')}
                 </Button>
                 <Button
                   onClick={handleSubmit}
@@ -1169,7 +1170,7 @@ export function AddProductDialog({
                   {isSubmitting ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Agregando...
+                      {t('addProductDialog.agregando')}
                     </>
                   ) : (
                     <>
@@ -1223,7 +1224,7 @@ export function AddProductDialog({
             <div>
               <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <ChefHat className="h-5 w-5 text-orange-600" />
-                Receta de producción
+                {t('addProductDialog.recetaProduccion')}
               </h2>
               <p className="text-sm text-gray-500 mt-1 dark:text-gray-400">
                 {recipeView?.product?.name ?? recipeView?.name ?? ''}
@@ -1247,7 +1248,7 @@ export function AddProductDialog({
             {/* Info general */}
             <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 dark:bg-gray-800/40 rounded-lg">
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Producto</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{t('pedido.producto')}</p>
                 <p className="font-medium dark:text-white">
                   {recipeView.product?.name ?? `#${recipeView.product_id}`}
                 </p>
@@ -1256,13 +1257,13 @@ export function AddProductDialog({
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Rendimiento</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{t('addProductDialog.rendimiento')}</p>
                 <p className="font-medium dark:text-white font-mono">
                   {recipeView.yield_qty} {recipeView.yield_unit_code ?? ''}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Estado</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{t('filtros.estado')}</p>
                 <Badge
                   className={
                     recipeView.is_active
@@ -1271,11 +1272,11 @@ export function AddProductDialog({
                   }
                   variant={recipeView.is_active ? 'default' : 'secondary'}
                 >
-                  {recipeView.is_active ? 'Activa' : 'Inactiva'}
+                  {recipeView.is_active ? t('detalle.activa') : t('addProductDialog.inactiva')}
                 </Badge>
               </div>
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Versión</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{t('addProductDialog.version')}</p>
                 <p className="font-medium dark:text-white font-mono">v{recipeView.version}</p>
               </div>
             </div>
@@ -1283,7 +1284,7 @@ export function AddProductDialog({
             {/* Notas */}
             {recipeView.notes && (
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Notas</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('addProductDialog.notas2')}</p>
                 <p className="text-sm dark:text-gray-300 p-3 bg-gray-50 dark:bg-gray-800/40 rounded-lg whitespace-pre-wrap">
                   {recipeView.notes}
                 </p>
@@ -1293,7 +1294,7 @@ export function AddProductDialog({
             {/* Ingredientes */}
             <div>
               <p className="text-sm font-medium dark:text-gray-300 mb-2">
-                Ingredientes ({recipeView.ingredients?.length ?? 0})
+                {t('addProductDialog.ingredientes', { n: recipeView.ingredients?.length ?? 0 })}
               </p>
               <div className="space-y-2">
                 {recipeView.ingredients?.length ? (
@@ -1318,14 +1319,14 @@ export function AddProductDialog({
                           {ing.quantity} {ing.unit_code}
                         </span>
                         {ing.is_optional && (
-                          <Badge variant="secondary" className="text-[0.6rem]">Opcional</Badge>
+                          <Badge variant="secondary" className="text-[0.6rem]">{t('addProductDialog.opcional')}</Badge>
                         )}
                       </div>
                     </div>
                   ))
                 ) : (
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Esta receta no tiene ingredientes definidos.
+                    {t('addProductDialog.estaRecetaNoTiene')}
                   </p>
                 )}
               </div>

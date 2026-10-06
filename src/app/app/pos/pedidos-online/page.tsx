@@ -262,7 +262,7 @@ export default function PedidosOnlinePage() {
   // ── Confirmar (uno o varios) ────────────────────────────────────────────
   const confirmarUno = async (orderId: string): Promise<{ ok: boolean; numero: string }> => {
     const order = await webOrdersService.getOrderById(orderId);
-    if (!order) throw new Error('Pedido no encontrado');
+    if (!order) throw new Error(tPedido('orderNotFoundState.pedidoNoEncontrado'));
     const result = await webOrderConfirmationService.confirmOrder(order, {
       prepMs: timeToMs(prepTime),
       transitMs: esDomicilio(order.delivery_type) ? timeToMs(transitTime) : 0,
@@ -274,11 +274,11 @@ export default function PedidosOnlinePage() {
         toast({ title: tPedido('confirmacion.yaConfirmado'), description: tPedido('confirmacion.yaConfirmadoDetalle') });
         return { ok: true, numero: order.order_number };
       }
-      const listo = tPedido('confirmacion.listo', { tiempo: formatEstimatedTime(prepTime) });
+      const listo = tPedido('confirmacion.listo', { tiempo: formatEstimatedTime(prepTime, tPedido) });
       const parts = result.tableSessionId
         ? [tPedido('confirmacion.enLaMesa'), listo]
         : [tPedido('confirmacion.ventaCreada'), tPedido('confirmacion.comandaEnviada'), listo];
-      if (esDomicilio(order.delivery_type) && transitTime.value > 0) parts.push(tPedido('confirmacion.entrega', { tiempo: formatEstimatedTime(transitTime) }));
+      if (esDomicilio(order.delivery_type) && transitTime.value > 0) parts.push(tPedido('confirmacion.entrega', { tiempo: formatEstimatedTime(transitTime, tPedido) }));
       if (result.cobro) parts.push(tPedido('cobro.hecho'));
       else if (markAsPaid && !result.cobroPendiente) parts.push(tPedido('confirmacion.marcadoPagado'));
       if (result.couponRedemptionId) parts.push(tPedido('confirmacion.cuponRedimido'));

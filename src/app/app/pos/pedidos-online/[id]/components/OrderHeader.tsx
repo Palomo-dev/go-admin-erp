@@ -165,13 +165,13 @@ export function OrderHeader({
           <Badge tono="neutro" apariencia="contorno" icono={PackageCheck} className={chip}>{t('detalle.reservaActiva')}</Badge>
         )}
         {order.is_scheduled && (
-          <Badge tono="neutro" apariencia="contorno" icono={CalendarClock} className={chip}>Programado</Badge>
+          <Badge tono="neutro" apariencia="contorno" icono={CalendarClock} className={chip}>{t('orderHeader.programado')}</Badge>
         )}
         {order.coupon_code && (
-          <Badge tono="neutro" apariencia="contorno" icono={Tag} className={chip}>Cupón: {order.coupon_code}</Badge>
+          <Badge tono="neutro" apariencia="contorno" icono={Tag} className={chip}>{t('orderHeader.cupon', { coupon_code: order.coupon_code })}</Badge>
         )}
         {order.tip_amount > 0 && (
-          <Badge tono="neutro" apariencia="contorno" icono={Coins} className={chip}>Propina: {formatear(order.tip_amount)}</Badge>
+          <Badge tono="neutro" apariencia="contorno" icono={Coins} className={chip}>{t('orderHeader.propina', { valor: formatear(order.tip_amount) })}</Badge>
         )}
       </div>
 

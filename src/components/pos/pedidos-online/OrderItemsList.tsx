@@ -12,10 +12,10 @@ interface OrderItemsListProps {
 }
 
 const ITEM_STATUS_CONFIG = {
-  pending: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' },
-  preparing: { label: 'Preparando', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' },
-  ready: { label: 'Listo', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
-  cancelled: { label: 'Cancelado', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' },
+  pending: { color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' },
+  preparing: { color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' },
+  ready: { color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
+  cancelled: { color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' },
 };
 
 export function OrderItemsList({ 
@@ -33,7 +33,7 @@ export function OrderItemsList({
     return (
       <div className="text-sm">
         <p className="text-muted-foreground dark:text-gray-400 mb-1">
-          {items.length} producto(s)
+          {t('orderItemsList.productoS', { n: items.length })}
         </p>
         <div className="space-y-1 max-h-20 overflow-y-auto">
           {displayItems.map((item, idx) => (
@@ -43,7 +43,7 @@ export function OrderItemsList({
             </div>
           ))}
           {remainingCount > 0 && (
-            <p className="text-xs text-muted-foreground dark:text-gray-400">+{remainingCount} más...</p>
+            <p className="text-xs text-muted-foreground dark:text-gray-400">{t('orderItemsList.mas', { remainingCount })}</p>
           )}
         </div>
       </div>
@@ -64,7 +64,7 @@ export function OrderItemsList({
         ))}
         {remainingCount > 0 && (
           <p className="text-xs text-muted-foreground dark:text-gray-400 text-center">
-            +{remainingCount} producto(s) más
+            {t('orderItemsList.productoSMas', { remainingCount })}
           </p>
         )}
       </div>
@@ -82,7 +82,7 @@ export function OrderItemsList({
               <p className="text-[13px] font-semibold text-fg">{item.product_name}</p>
               {showStatus && (
                 <span className="rounded-full bg-subtle px-2 text-[11px] font-medium leading-5 text-fg-secondary">
-                  {ITEM_STATUS_CONFIG[item.status].label}
+                  {t(`orderItemsList.estados.${item.status}`)}
                 </span>
               )}
             </div>
@@ -102,7 +102,7 @@ export function OrderItemsList({
         </div>
       ))}
       {remainingCount > 0 && (
-        <p className="py-2 text-center text-sm text-fg-secondary">+{remainingCount} producto(s) más</p>
+        <p className="py-2 text-center text-sm text-fg-secondary">{t('orderItemsList.productoSMas', { remainingCount })}</p>
       )}
     </div>
   );

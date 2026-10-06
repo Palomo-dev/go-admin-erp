@@ -131,11 +131,11 @@ export function OrderActions({
             ) : (
               <CheckCircle className="h-4 w-4 mr-2" />
             )}
-            Confirmar pedido
+            {t('orderActions.confirmarPedido')}
           </Button>
           <Button variant="destructive" onClick={onReject} disabled={isLoading}>
             <XCircle className="h-4 w-4 mr-2" />
-            Rechazar
+            {t('orderActions.rechazar')}
           </Button>
         </div>
       )}
@@ -147,7 +147,7 @@ export function OrderActions({
           ) : (
             <Timer className="h-4 w-4 mr-2" />
           )}
-          Iniciar preparación
+          {t('orderActions.iniciarPreparacion')}
         </Button>
       )}
 
@@ -158,7 +158,7 @@ export function OrderActions({
           ) : (
             <Package className="h-4 w-4 mr-2" />
           )}
-          Marcar como listo
+          {t('orderActions.marcarComoListo')}
         </Button>
       )}
 
@@ -169,7 +169,7 @@ export function OrderActions({
           ) : (
             <Truck className="h-4 w-4 mr-2" />
           )}
-          Enviar a domicilio
+          {t('orderActions.enviarDomicilio')}
         </Button>
       )}
 
@@ -221,7 +221,7 @@ export function OrderActions({
           ) : (
             <CheckCircle className="h-4 w-4 mr-2" />
           )}
-          Marcar como entregado
+          {t('cobro.marcarEntregado')}
         </Button>
       )}
 
@@ -264,7 +264,7 @@ export function OrderActions({
           ) : (
             <DollarSign className="h-4 w-4 mr-2" />
           )}
-          Marcar como pagado
+          {t('orderActions.marcarComoPagado')}
         </Button>
       )}
 
@@ -281,7 +281,7 @@ export function OrderActions({
           ) : (
             <Receipt className="h-4 w-4 mr-2" />
           )}
-          Crear venta
+          {t('orderActions.crearVenta')}
         </Button>
       )}
 

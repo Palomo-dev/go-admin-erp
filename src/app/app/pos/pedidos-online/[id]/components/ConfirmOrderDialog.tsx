@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 export type TimeUnit = 'minutes' | 'hours' | 'days';
 
@@ -45,17 +46,6 @@ interface ConfirmOrderDialogProps {
   isLoading?: boolean;
 }
 
-const UNIT_LABELS: Record<TimeUnit, string> = {
-  minutes: 'minutos',
-  hours: 'horas',
-  days: 'días',
-};
-
-const UNIT_SHORT: Record<TimeUnit, string> = {
-  minutes: 'min',
-  hours: 'hrs',
-  days: 'días',
-};
 
 /** Convierte EstimatedTime a milisegundos */
 export function timeToMs(time: EstimatedTime): number {
@@ -67,9 +57,12 @@ export function timeToMs(time: EstimatedTime): number {
   return time.value * multipliers[time.unit];
 }
 
-/** Formatea el tiempo para mostrar (ej: "30 min", "2 hrs", "3 días") */
-export function formatEstimatedTime(time: EstimatedTime): string {
-  return `${time.value} ${UNIT_SHORT[time.unit]}`;
+/**
+ * Formatea el tiempo para mostrar (ej: "30 min", "2 hrs", "3 días") con el traductor de
+ * `pedidoWeb` (`unidadCorta.*`).
+ */
+export function formatEstimatedTime(time: EstimatedTime, t: (clave: string, valores: { n: number }) => string): string {
+  return t(`unidadCorta.${time.unit}`, { n: time.value });
 }
 
 export function ConfirmOrderDialog({
@@ -85,20 +78,21 @@ export function ConfirmOrderDialog({
   onMarkAsPaidChange,
   isLoading = false,
 }: ConfirmOrderDialogProps) {
+  const t = useTranslations('pedidoWeb');
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="dark:text-gray-100">Confirmar pedido</DialogTitle>
+          <DialogTitle className="dark:text-gray-100">{t('confirmOrderDialog.confirmarPedido')}</DialogTitle>
           <DialogDescription className="dark:text-gray-400">
-            Indica los tiempos estimados para notificar al cliente.
+            {t('confirmOrderDialog.indicaTiemposEstimadosNotificar')}
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4">
           {/* Tiempo de preparación */}
           <div>
             <Label htmlFor="prep-time" className="dark:text-gray-200">
-              Tiempo de preparación (Listo aprox)
+              {t('confirmOrderDialog.tiempoPreparacionListoAprox')}
             </Label>
             <div className="flex gap-2 mt-2">
               <Input
@@ -117,9 +111,9 @@ export function ConfirmOrderDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="minutes">Minutos</SelectItem>
-                  <SelectItem value="hours">Horas</SelectItem>
-                  <SelectItem value="days">Días</SelectItem>
+                  <SelectItem value="minutes">{t('confirmOrderDialog.minutos')}</SelectItem>
+                  <SelectItem value="hours">{t('confirmOrderDialog.horas')}</SelectItem>
+                  <SelectItem value="days">{t('confirmOrderDialog.dias')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -129,7 +123,7 @@ export function ConfirmOrderDialog({
           {isDelivery && onTransitTimeChange && transitTime && (
             <div>
               <Label htmlFor="transit-time" className="dark:text-gray-200">
-                Tiempo de traslado (Entrega aprox)
+                {t('confirmOrderDialog.tiempoTrasladoEntregaAprox')}
               </Label>
               <div className="flex gap-2 mt-2">
                 <Input
@@ -148,20 +142,20 @@ export function ConfirmOrderDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="minutes">Minutos</SelectItem>
-                    <SelectItem value="hours">Horas</SelectItem>
-                    <SelectItem value="days">Días</SelectItem>
+                    <SelectItem value="minutes">{t('confirmOrderDialog.minutos')}</SelectItem>
+                    <SelectItem value="hours">{t('confirmOrderDialog.horas')}</SelectItem>
+                    <SelectItem value="days">{t('confirmOrderDialog.dias')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <p className="text-sm text-muted-foreground dark:text-gray-400 mt-2">
-                Tiempo desde que está listo hasta que llega al cliente.
+                {t('confirmOrderDialog.tiempoDesdeEstaListo')}
               </p>
             </div>
           )}
 
           <p className="text-sm text-muted-foreground dark:text-gray-400">
-            El cliente recibirá una notificación con estos tiempos estimados.
+            {t('confirmOrderDialog.clienteRecibiraNotificacionEstos')}
           </p>
 
           {onMarkAsPaidChange && (
@@ -172,18 +166,18 @@ export function ConfirmOrderDialog({
                 onCheckedChange={(checked) => onMarkAsPaidChange(checked === true)}
               />
               <Label htmlFor="mark-as-paid-detail" className="text-sm font-medium cursor-pointer dark:text-gray-200">
-                Marcar como pagado
+                {t('confirmOrderDialog.marcarComoPagado')}
               </Label>
             </div>
           )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} className="dark:border-gray-600">
-            Cancelar
+            {t('ficha.cancelar')}
           </Button>
           <Button onClick={onConfirm} disabled={isLoading}>
             {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Confirmar pedido
+            {t('confirmOrderDialog.confirmarPedido')}
           </Button>
         </DialogFooter>
       </DialogContent>

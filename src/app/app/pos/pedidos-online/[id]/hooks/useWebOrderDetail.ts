@@ -115,8 +115,8 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     } catch (error) {
       console.error('Error loading order:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudo cargar el pedido',
+        title: t('useWebOrderDetail.error'),
+        description: t('useWebOrderDetail.noPudoCargarPedido'),
         variant: 'destructive',
       });
     } finally {
@@ -184,11 +184,11 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
         loadOrder();
         return;
       }
-      const listo = t('confirmacion.listo', { tiempo: formatEstimatedTime(prepTime) });
+      const listo = t('confirmacion.listo', { tiempo: formatEstimatedTime(prepTime, t) });
       const parts = result.tableSessionId
         ? [t('confirmacion.enLaMesa'), listo]
         : [t('confirmacion.ventaCreada'), t('confirmacion.comandaEnviada'), listo];
-      if (isDelivery && transitMs > 0) parts.push(t('confirmacion.entrega', { tiempo: formatEstimatedTime(transitTime) }));
+      if (isDelivery && transitMs > 0) parts.push(t('confirmacion.entrega', { tiempo: formatEstimatedTime(transitTime, t) }));
       if (result.cobro) parts.push(t('cobro.hecho'));
       else if (markAsPaid && !result.cobroPendiente) parts.push(t('confirmacion.marcadoPagado'));
       if (result.shipmentId) parts.push(t('confirmacion.envioCreado'));
@@ -229,12 +229,12 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     setActionLoading(true);
     try {
       await updateOrderStatus('rejected', { cancellation_reason: cancelReason });
-      toast({ title: 'Pedido rechazado' });
+      toast({ title: t('useWebOrderDetail.pedidoRechazado') });
       setCancelDialogOpen(false);
       setCancelReason('');
       loadOrder();
     } catch {
-      toast({ title: 'Error', variant: 'destructive' });
+      toast({ title: t('useWebOrderDetail.error'), variant: 'destructive' });
     } finally {
       setActionLoading(false);
     }
@@ -244,10 +244,10 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     setActionLoading(true);
     try {
       await updateOrderStatus('preparing');
-      toast({ title: 'Pedido en preparación' });
+      toast({ title: t('useWebOrderDetail.pedidoPreparacion') });
       loadOrder();
     } catch {
-      toast({ title: 'Error', variant: 'destructive' });
+      toast({ title: t('useWebOrderDetail.error'), variant: 'destructive' });
     } finally {
       setActionLoading(false);
     }
@@ -257,10 +257,10 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     setActionLoading(true);
     try {
       await updateOrderStatus('ready');
-      toast({ title: 'Pedido listo para entrega' });
+      toast({ title: t('useWebOrderDetail.pedidoListoEntrega') });
       loadOrder();
     } catch {
-      toast({ title: 'Error', variant: 'destructive' });
+      toast({ title: t('useWebOrderDetail.error'), variant: 'destructive' });
     } finally {
       setActionLoading(false);
     }
@@ -277,10 +277,10 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
         extraData.estimated_delivery_at = order.estimated_delivery_at;
       }
       await updateOrderStatus('in_delivery', extraData);
-      toast({ title: 'Pedido en camino' });
+      toast({ title: t('useWebOrderDetail.pedidoCamino') });
       loadOrder();
     } catch {
-      toast({ title: 'Error', variant: 'destructive' });
+      toast({ title: t('useWebOrderDetail.error'), variant: 'destructive' });
     } finally {
       setActionLoading(false);
     }
@@ -290,10 +290,10 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     setActionLoading(true);
     try {
       await updateOrderStatus('delivered');
-      toast({ title: 'Pedido entregado' });
+      toast({ title: t('useWebOrderDetail.pedidoEntregado') });
       loadOrder();
     } catch {
-      toast({ title: 'Error', variant: 'destructive' });
+      toast({ title: t('useWebOrderDetail.error'), variant: 'destructive' });
     } finally {
       setActionLoading(false);
     }
@@ -304,12 +304,12 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     setActionLoading(true);
     try {
       await webOrdersService.cancelOrder(orderId, cancelReason);
-      toast({ title: 'Pedido cancelado' });
+      toast({ title: t('useWebOrderDetail.pedidoCancelado') });
       setCancelDialogOpen(false);
       setCancelReason('');
       loadOrder();
     } catch {
-      toast({ title: 'Error', variant: 'destructive' });
+      toast({ title: t('useWebOrderDetail.error'), variant: 'destructive' });
     } finally {
       setActionLoading(false);
     }
@@ -332,11 +332,11 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
         transitMs: esDomicilio(order.delivery_type) ? timeToMs(transitTime) : 0,
         markAsPaid: false,
       });
-      toast({ title: 'Venta creada exitosamente' });
+      toast({ title: t('useWebOrderDetail.ventaCreadaExitosamente') });
       router.push(`/app/pos/ventas/${result.saleId}`);
     } catch (error: unknown) {
       console.error('Error convirtiendo a venta:', error);
-      toast({ title: 'Error al crear venta', description: mensajeDeError(error), variant: 'destructive' });
+      toast({ title: t('useWebOrderDetail.errorCrearVenta'), description: mensajeDeError(error), variant: 'destructive' });
     } finally {
       setActionLoading(false);
     }
@@ -347,11 +347,11 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     setActionLoading(true);
     try {
       await deliveryIntegrationService.createShipmentFromWebOrder(order);
-      toast({ title: 'Envío creado', description: 'Ahora puedes asignar un conductor' });
+      toast({ title: t('confirmacion.envioCreado'), description: t('useWebOrderDetail.ahoraPuedesAsignarConductor') });
       setAssignDeliveryOpen(true);
     } catch (error) {
       console.error('Error creating shipment:', error);
-      toast({ title: 'Error al crear envío', variant: 'destructive' });
+      toast({ title: t('useWebOrderDetail.errorCrearEnvio'), variant: 'destructive' });
     } finally {
       setActionLoading(false);
     }
@@ -404,7 +404,7 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
           return true;
         } catch (fallbackError: unknown) {
           console.error('Error marking as paid:', fallbackError);
-          toast({ title: 'Error', description: mensajeDeError(fallbackError) || 'No se pudo marcar como pagado', variant: 'destructive' });
+          toast({ title: t('useWebOrderDetail.error'), description: mensajeDeError(fallbackError) || 'No se pudo marcar como pagado', variant: 'destructive' });
         }
       } else if (error instanceof CobroEnCajaError && error.codigo !== 'OTRO') {
         toast({ title: t('cobro.error'), description: t(`cobro.${claveAvisoCobro(error.codigo)}`), variant: 'destructive' });

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import { 
   Clock, 
@@ -48,12 +49,13 @@ const PAYMENT_STATUS_CONFIG: Record<PaymentStatus, {
 };
 
 export function PaymentStatusBadge({ status, showIcon = true }: PaymentStatusBadgeProps) {
+  const t = useTranslations('pedidoWeb.pagoBadge');
   const config = PAYMENT_STATUS_CONFIG[status];
 
   return (
     <Badge className={`${config.color} flex items-center gap-1`}>
       {showIcon && config.icon}
-      {config.label}
+      {t(status)}
     </Badge>
   );
 }

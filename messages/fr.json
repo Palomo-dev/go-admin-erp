@@ -20078,6 +20078,114 @@
       "escanea": "Scannez pour voir la carte et commander",
       "cerrar": "Fermer",
       "imprimir": "Imprimer"
+    },
+    "mesaFormDialog": {
+      "editarMesa": "Modifier la table",
+      "nuevaMesa": "Nouvelle table",
+      "nombreMesa": "Nom de la table *",
+      "ejMesa1Mesa": "Ex. : Table 1, Table VIP",
+      "seleccionarZona": "Sélectionner une zone",
+      "nuevaZona": "+ Nouvelle zone",
+      "nombreNuevaZona": "Nom de la nouvelle zone",
+      "capacidad": "Capacité *",
+      "guardando": "Enregistrement...",
+      "actualizar": "Mettre à jour",
+      "crear": "Créer"
+    },
+    "combinarMesasDialog": {
+      "combinarMesas": "Combiner des tables",
+      "paso1SeleccionaMesa": "Étape 1 : sélectionnez la <b>table principale</b> (où resteront toutes les commandes).<br></br>Étape 2 : sélectionnez les <b2>tables à combiner</b2> (elles seront libérées).",
+      "n1MesaPrincipal": "1. Table principale",
+      "recibiraTodosPedidos": "Recevra toutes les commandes",
+      "mesaPrincipal": "{n, plural, one {# table} other {# tables}} → Table principale",
+      "n2MesasCombinar": "2. Tables à combiner",
+      "quedaranLibres": "Seront libérées",
+      "seleccionaPrimeroMesaPrincipal": "Sélectionnez d'abord une table principale",
+      "combinando": "Combinaison..."
+    },
+    "moverPedidoDialog": {
+      "moverPedido": "Déplacer la commande",
+      "muevePedidoMesaOtra": "Déplace la commande d'une table à une autre. La table d'origine sera libérée.",
+      "mesaOrigen": "Table d'origine",
+      "seleccionarMesaPedido": "Sélectionner une table avec commande",
+      "mesaDestino": "Table de destination",
+      "seleccionarMesaLibre": "Sélectionner une table libre",
+      "cap": "(Cap. : {capacity})",
+      "pedidoSeraMovidoMesa": "La commande sera déplacée et la table d'origine sera disponible.",
+      "moviendo": "Déplacement..."
+    },
+    "historialMesasDialog": {
+      "desde": "Du",
+      "hasta": "Au",
+      "todosMeseros": "Tous les serveurs",
+      "sesiones": "Sessions",
+      "facturado": "Facturé",
+      "duracionProm": "Durée moy.",
+      "sesionEncontradaS": "{n, plural, one {# session trouvée} other {# sessions trouvées}}",
+      "mesa": "Table",
+      "apertura": "Ouverture",
+      "cierre": "Fermeture",
+      "duracion": "Durée",
+      "liberada": "Libérée par {userName} · {dateTime}",
+      "productosEliminadosCanceladosEsta": "Produits supprimés/annulés de cette session",
+      "eliminadoPor": "<b>{cantidad}x {producto}</b> — supprimé par <b>{usuario}</b>",
+      "rangos": {
+        "today": "Aujourd'hui",
+        "yesterday": "Hier",
+        "7d": "7 jours",
+        "15d": "15 jours",
+        "30d": "30 jours"
+      },
+      "estados": {
+        "active": "Active",
+        "bill_requested": "Addition demandée",
+        "completed": "Terminée"
+      },
+      "noPudoCargarHistorial": "Impossible de charger l'historique des tables."
+    },
+    "sessionTimelineDialog": {
+      "historialMesa": "Historique de la table",
+      "sinEventosRegistradosEsta": "Aucun événement enregistré pour cette table.",
+      "noPudoCargarHistorial": "Impossible de charger l'historique de la table."
+    },
+    "addProductDialog": {
+      "noPudoCargarReceta": "Impossible de charger la recette du produit",
+      "agregadoFavoritos": "Ajouté aux favoris",
+      "quitadoFavoritos": "Retiré des favoris",
+      "productoApareceraPrimeroPos": "Le produit apparaîtra en premier dans le POS.",
+      "productoYaNoPriorizara": "Le produit ne sera plus prioritaire.",
+      "noPudoActualizarFavorito": "Impossible de mettre à jour le favori.",
+      "productoSinPrecio": "Produit sans prix",
+      "esteProductoNoTiene": "Ce produit n'a pas de prix configuré",
+      "noPudieronAgregarProductos": "Impossible d'ajouter les produits. Veuillez réessayer.",
+      "sinImagen": "Pas d'image",
+      "agotado": "Épuisé",
+      "personalizable": "Personnalisable",
+      "incluido": "Inclus",
+      "unidadesVendidasUltimos90": "{number} unités vendues ces 90 derniers jours",
+      "top": "Top",
+      "quitarFavoritos": "Retirer des favoris",
+      "agregarFavoritos": "Ajouter aux favoris",
+      "desde": "À partir de",
+      "verRecetaProduccion": "Voir la recette de production",
+      "carrito": "Panier",
+      "carritoVacio": "Panier vide",
+      "seleccionaProductosAgregar": "Sélectionnez des produits à ajouter",
+      "comensal": "Convive :",
+      "general": "Général",
+      "notas": "Notes...",
+      "habitacion": "Chambre : <b>{space_label}</b>",
+      "cargarHabitacion": "Imputer à la chambre",
+      "pagarAhora": "Payer maintenant",
+      "agregando": "Ajout...",
+      "recetaProduccion": "Recette de production",
+      "rendimiento": "Rendement",
+      "inactiva": "Inactive",
+      "version": "Version",
+      "notas2": "Notes",
+      "ingredientes": "Ingrédients ({n})",
+      "opcional": "Facultatif",
+      "estaRecetaNoTiene": "Cette recette n'a pas d'ingrédients définis."
     }
   },
   "posReservasMesas": {
@@ -33925,6 +34033,231 @@
         "rejected": "Refusée",
         "expired": "Expirée"
       }
+    },
+    "webOrderCard": {
+      "urgente": "Urgent !",
+      "programado": "Programmé",
+      "propina": "Pourboire",
+      "texto": "Pour : {date}",
+      "productoS": "{n, plural, one {# produit} other {# produits}}",
+      "mas": "+{n} de plus...",
+      "nota": "Note :",
+      "confirmar": "Confirmer",
+      "iniciarPreparacion": "Lancer la préparation",
+      "preparar": "Préparer",
+      "marcarListo": "Marquer prête",
+      "enviarDomicilio": "Envoyer en livraison",
+      "enviar": "Envoyer",
+      "marcarEntregado": "Marquer livrée"
+    },
+    "webCommerceObservability": {
+      "observabilidadComercio": "Observabilité du commerce",
+      "actualizar": "Actualiser",
+      "contraer": "Réduire",
+      "expandir": "Développer",
+      "itemsReservados": "Articles réservés",
+      "reservasHuerfanas": "Réservations orphelines",
+      "pedidosPendientes": "Commandes en attente",
+      "proximosExpirar": "Sur le point d'expirer",
+      "stockReservadoVsDisponible": "Stock réservé vs disponible",
+      "noHayProductosStock": "Aucun produit n'a de stock réservé actuellement.",
+      "producto": "Produit",
+      "sucursal": "Établissement",
+      "disp": "Disp.",
+      "reserv": "Rés.",
+      "actualizado": "Mis à jour",
+      "pedidosProximosExpirarMin": "Commandes sur le point d'expirer ({withinMinutes} min)",
+      "noHayPedidosProximos": "Aucune commande n'expire dans les {withinMinutes} prochaines minutes.",
+      "expiradoHaceM": "Expirée depuis {minutesUntilExpiry} min",
+      "paginaAnterior": "Page précédente",
+      "paginaSiguiente": "Page suivante",
+      "errorCargar": "Erreur lors du chargement de l'observabilité",
+      "errorDesconocido": "Erreur inconnue"
+    },
+    "assignDeliveryDialog": {
+      "noHayVehiculosDisponibles": "Aucun véhicule disponible pour la livraison",
+      "noHayConductoresDisponibles": "Aucun chauffeur disponible",
+      "errorCargarDatosVehiculos": "Erreur lors du chargement des véhicules et chauffeurs",
+      "camposRequeridos": "Champs obligatoires",
+      "seleccionaVehiculoConductor": "Sélectionnez un véhicule et un chauffeur",
+      "error": "Erreur",
+      "noEncontroEnvioAsociado": "L'envoi associé est introuvable. Essayez d'abord de marquer la commande comme prête.",
+      "asignacionExitosa": "Attribution réussie",
+      "haAsignadoConductorVehiculo": "Le chauffeur et le véhicule ont été attribués à la commande",
+      "noPudoAsignarDelivery": "Impossible d'attribuer la livraison",
+      "asignarDelivery": "Attribuer la livraison",
+      "seleccionaVehiculoConductorEntrega": "Sélectionnez le véhicule et le chauffeur pour la livraison",
+      "configuraVehiculosConductoresModulo": "Configurez les véhicules et chauffeurs dans le module Transport",
+      "vehiculo": "Véhicule",
+      "seleccionarVehiculo": "Sélectionner un véhicule",
+      "noHayVehiculosDisponibles2": "Aucun véhicule disponible",
+      "conductor": "Chauffeur",
+      "seleccionarConductor": "Sélectionner un chauffeur",
+      "conductor2": "Chauffeur {license_number}",
+      "lic": "Permis : {license_category}",
+      "tiempoEstimadoEntregaMinutos": "Délai de livraison estimé (minutes)",
+      "llegadaEstimada": "Arrivée estimée : {localeTimeString}",
+      "vehiculos": {
+        "motorcycle": "Moto",
+        "car": "Voiture",
+        "van": "Fourgon",
+        "bicycle": "Vélo",
+        "truck": "Camion"
+      }
+    },
+    "deliveryTrackingCard": {
+      "delivery": "Livraison",
+      "deliveryPropio": "Livraison propre",
+      "noHayEnvioAsignado": "Aucun envoi n'est attribué à cette commande",
+      "asignarDelivery": "Attribuer la livraison",
+      "tracking": "Suivi",
+      "tracking2": "Suivi :",
+      "vehiculoAsignado": "Véhicule attribué",
+      "conductor": "Chauffeur",
+      "conductorAsignado": "Chauffeur attribué",
+      "entregaEstimada": "Livraison estimée :",
+      "historial": "Historique",
+      "pruebaEntrega": "Preuve de livraison",
+      "recibido": "Reçu par :",
+      "fecha": "Date :",
+      "calificacion": "Note :",
+      "verFirma": "Voir la signature",
+      "verRutaGoogleMaps": "Voir l'itinéraire dans Google Maps",
+      "actualizarEstado": "Mettre à jour le statut",
+      "estados": {
+        "pending": "En attente",
+        "assigned": "Attribué",
+        "picked_up": "Récupéré",
+        "out_for_delivery": "En route",
+        "delivered": "Livré",
+        "returned": "Retourné",
+        "cancelled": "Annulé"
+      }
+    },
+    "orderActions": {
+      "confirmarPedido": "Confirmer la commande",
+      "rechazar": "Refuser",
+      "iniciarPreparacion": "Lancer la préparation",
+      "marcarComoListo": "Marquer comme prête",
+      "enviarDomicilio": "Envoyer en livraison",
+      "marcarComoPagado": "Marquer comme payée",
+      "crearVenta": "Créer la vente"
+    },
+    "orderItemsList": {
+      "productoS": "{n, plural, one {# produit} other {# produits}}",
+      "mas": "+{remainingCount} de plus...",
+      "productoSMas": "{remainingCount, plural, one {+# produit de plus} other {+# produits de plus}}",
+      "estados": {
+        "pending": "En attente",
+        "preparing": "En préparation",
+        "ready": "Prêt",
+        "cancelled": "Annulé"
+      }
+    },
+    "orderTimeline": {
+      "motivo": "Motif : {cancellation_reason}",
+      "pasos": {
+        "created": "Commande reçue",
+        "scheduled": "Programmée pour",
+        "confirmed": "Confirmée",
+        "preparing": "En préparation",
+        "ready": "Prête",
+        "in_delivery": "En route",
+        "delivered": "Livrée",
+        "rejected": "Refusée",
+        "expired": "Expirée",
+        "cancelled": "Annulée"
+      }
+    },
+    "orderTotals": {
+      "impuestos": "Taxes",
+      "descuento": "Remise",
+      "envio": "Livraison",
+      "propina": "Pourboire"
+    },
+    "cancelOrderDialog": {
+      "indicaMotivoClienteSera": "Indiquez le motif. Le client sera notifié automatiquement.",
+      "motivo": "Motif",
+      "ejProductoAgotadoFuera": "Ex. : produit épuisé, hors des horaires de livraison...",
+      "esteMotivoMostraraCliente": "Ce motif sera affiché au client dans sa notification.",
+      "rechazarPedido": "Refuser la commande",
+      "cancelarPedido": "Annuler la commande",
+      "rechazar": "Refuser"
+    },
+    "confirmOrderDialog": {
+      "confirmarPedido": "Confirmer la commande",
+      "indicaTiemposEstimadosNotificar": "Indiquez les délais estimés pour prévenir le client.",
+      "tiempoPreparacionListoAprox": "Temps de préparation (prête env.)",
+      "minutos": "Minutes",
+      "horas": "Heures",
+      "dias": "Jours",
+      "tiempoTrasladoEntregaAprox": "Temps de trajet (livraison env.)",
+      "tiempoDesdeEstaListo": "Temps entre le moment où elle est prête et l'arrivée chez le client.",
+      "clienteRecibiraNotificacionEstos": "Le client recevra une notification avec ces délais estimés.",
+      "marcarComoPagado": "Marquer comme payée"
+    },
+    "orderActionsCard": {
+      "acciones": "Actions"
+    },
+    "orderDeliveryCard": {
+      "verMapa": "Voir sur la carte",
+      "programado": "Programmée : {dateTime}",
+      "listoAprox": "Prête env. : {time}",
+      "entregaAprox": "Livraison env. : {time}",
+      "asignarConductor": "Attribuer un chauffeur"
+    },
+    "orderHeader": {
+      "programado": "Programmée",
+      "cupon": "Coupon : {coupon_code}",
+      "propina": "Pourboire : {valor}"
+    },
+    "orderNotFoundState": {
+      "verTodosPedidos": "Voir toutes les commandes",
+      "pedidoNoEncontrado": "Commande introuvable"
+    },
+    "orderProductsCard": {
+      "productos": "Produits ({n})"
+    },
+    "useWebOrderDetail": {
+      "error": "Erreur",
+      "noPudoCargarPedido": "Impossible de charger la commande",
+      "pedidoRechazado": "Commande refusée",
+      "pedidoPreparacion": "Commande en préparation",
+      "pedidoListoEntrega": "Commande prête à livrer",
+      "pedidoCamino": "Commande en route",
+      "pedidoEntregado": "Commande livrée",
+      "pedidoCancelado": "Commande annulée",
+      "ventaCreadaExitosamente": "Vente créée avec succès",
+      "errorCrearVenta": "Erreur lors de la création de la vente",
+      "ahoraPuedesAsignarConductor": "Vous pouvez maintenant attribuer un chauffeur",
+      "errorCrearEnvio": "Erreur lors de la création de l'envoi"
+    },
+    "tipoEntrega": {
+      "pickup": "Retrait en magasin",
+      "delivery_own": "Livraison propre",
+      "delivery_third_party": "Livraison par un tiers"
+    },
+    "metodoPago": {
+      "cash": "Espèces",
+      "transfer": "Virement",
+      "card": "Carte"
+    },
+    "pagoBadge": {
+      "pending": "Paiement en attente",
+      "paid": "Payé",
+      "partial": "Paiement partiel",
+      "refunded": "Remboursé",
+      "failed": "Échoué"
+    },
+    "unidadCorta": {
+      "minutes": "{n} min",
+      "hours": "{n} h",
+      "days": "{n} jours"
+    },
+    "tipoEntregaFicha": {
+      "pickup": "Retrait en magasin",
+      "delivery_own": "Livraison propre",
+      "delivery_third_party": "Livraison par des tiers"
     }
   },
   "posMesasFlujo": {

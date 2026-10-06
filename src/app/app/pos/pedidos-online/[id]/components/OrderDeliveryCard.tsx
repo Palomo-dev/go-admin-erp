@@ -21,28 +21,23 @@ interface OrderDeliveryCardProps {
 }
 
 const DELIVERY_TYPE_CONFIG: Record<DeliveryType, { 
-  label: string; 
   icon: typeof Store;
   color: string;
 }> = {
   pickup: { 
-    label: 'Retiro en tienda', 
     icon: Store, 
     color: 'text-blue-600 dark:text-blue-400' 
   },
   delivery_own: { 
-    label: 'Delivery propio', 
     icon: Bike, 
     color: 'text-green-600 dark:text-green-400' 
   },
   delivery_third_party: { 
-    label: 'Delivery terceros', 
     icon: Truck, 
     color: 'text-purple-600 dark:text-purple-400' 
   },
   // Texto en pantalla: `pedidoWeb.comerAqui` / `comerAquiMesa` (i18n).
   dine_in: {
-    label: 'Comer aquí',
     icon: UtensilsCrossed,
     // Neutro (Figma 1981:175699): «Comer aquí» no es un aviso.
     color: 'text-fg-secondary'
@@ -56,7 +51,7 @@ export function OrderDeliveryCard({ order, onAssignDelivery, showTracking = true
   const mesa = mesaDelPedido(order);
   const config = tipo === 'dine_in'
     ? { ...DELIVERY_TYPE_CONFIG.dine_in, label: mesa ? t('comerAquiMesa', { mesa }) : t('comerAqui') }
-    : DELIVERY_TYPE_CONFIG[tipo];
+    : { ...DELIVERY_TYPE_CONFIG[tipo], label: t(`tipoEntregaFicha.${tipo}`) };
   const Icon = config.icon;
   const address = order.delivery_address;
   const domicilio = esDomicilio(order.delivery_type);
@@ -120,7 +115,7 @@ export function OrderDeliveryCard({ order, onAssignDelivery, showTracking = true
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2 dark:text-gray-100">
           <Truck className="h-4 w-4 dark:text-gray-300" />
-          Entrega
+          {t('ficha.entrega')}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -170,7 +165,7 @@ export function OrderDeliveryCard({ order, onAssignDelivery, showTracking = true
                 )}
               >
                 <Navigation className="h-3 w-3 dark:text-gray-300" />
-                Ver en mapa
+                {t('orderDeliveryCard.verMapa')}
               </a>
             )}
           </div>
@@ -180,21 +175,21 @@ export function OrderDeliveryCard({ order, onAssignDelivery, showTracking = true
         {order.scheduled_at && (
           <div className="flex items-center gap-2 text-sm">
             <Clock className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
-            <span className="dark:text-gray-200">Programado: {formatDateTime(order.scheduled_at)}</span>
+            <span className="dark:text-gray-200">{t('orderDeliveryCard.programado', { dateTime: formatDateTime(order.scheduled_at) })}</span>
           </div>
         )}
 
         {order.estimated_ready_at && (
           <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
             <Clock className="h-4 w-4 dark:text-green-400" />
-            <span className="dark:text-gray-200">Listo aprox: {formatTime(order.estimated_ready_at)}</span>
+            <span className="dark:text-gray-200">{t('orderDeliveryCard.listoAprox', { time: formatTime(order.estimated_ready_at) })}</span>
           </div>
         )}
 
         {order.estimated_delivery_at && domicilio && (
           <div className="flex items-center gap-2 text-sm text-purple-600 dark:text-purple-400">
             <Truck className="h-4 w-4 dark:text-purple-400" />
-            <span className="dark:text-gray-200">Entrega aprox: {formatTime(order.estimated_delivery_at)}</span>
+            <span className="dark:text-gray-200">{t('orderDeliveryCard.entregaAprox', { time: formatTime(order.estimated_delivery_at) })}</span>
           </div>
         )}
 
@@ -207,7 +202,7 @@ export function OrderDeliveryCard({ order, onAssignDelivery, showTracking = true
             onClick={onAssignDelivery}
           >
             <UserPlus className="h-4 w-4 mr-2 dark:text-gray-300" />
-            Asignar Conductor
+            {t('orderDeliveryCard.asignarConductor')}
           </Button>
         )}
       </CardContent>

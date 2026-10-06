@@ -14,6 +14,7 @@ import {
 import type { WebOrder } from '@/lib/services/webOrdersService';
 import { formatDateTimeInTz, formatTimeInTz } from '@/lib/utils/dateDisplay';
 import { todayInTz, toPlainDate } from '@/lib/utils/dateCore';
+import { useTranslations } from 'next-intl';
 
 interface AvisoDeLinea {
   moment: string;
@@ -40,6 +41,7 @@ interface TimelineStep {
 }
 
 export function OrderTimeline<A extends AvisoDeLinea = AvisoDeLinea>({ order, variant = 'vertical', timezone, avisos, renderAvisos }: OrderTimelineProps<A>) {
+  const t = useTranslations('pedidoWeb');
   const formatTime = (date?: string) => (date ? formatTimeInTz(date, timezone) : null);
   const formatDateTime = (date?: string) => (date ? formatDateTimeInTz(date, timezone) : null);
   const esHoy = (date: string) => toPlainDate(new Date(date), timezone) === todayInTz(timezone);
@@ -51,7 +53,7 @@ export function OrderTimeline<A extends AvisoDeLinea = AvisoDeLinea>({ order, va
     const baseSteps: TimelineStep[] = [
       {
         key: 'created',
-        label: 'Pedido recibido',
+        label: t('orderTimeline.pasos.created'),
         icon: <Clock className="h-4 w-4" />,
         timestamp: order.created_at,
         isCompleted: true,
@@ -59,7 +61,7 @@ export function OrderTimeline<A extends AvisoDeLinea = AvisoDeLinea>({ order, va
       },
       ...(order.is_scheduled && order.scheduled_at ? [{
         key: 'scheduled',
-        label: `Programado para`,
+        label: t('orderTimeline.pasos.scheduled'),
         icon: <CalendarClock className="h-4 w-4" />,
         timestamp: order.scheduled_at,
         isCompleted: true,
@@ -67,7 +69,7 @@ export function OrderTimeline<A extends AvisoDeLinea = AvisoDeLinea>({ order, va
       }] : []),
       {
         key: 'confirmed',
-        label: 'Confirmado',
+        label: t('orderTimeline.pasos.confirmed'),
         icon: <CheckCircle className="h-4 w-4" />,
         timestamp: order.confirmed_at,
         isCompleted: !!order.confirmed_at,
@@ -75,7 +77,7 @@ export function OrderTimeline<A extends AvisoDeLinea = AvisoDeLinea>({ order, va
       },
       {
         key: 'preparing',
-        label: 'En preparación',
+        label: t('orderTimeline.pasos.preparing'),
         icon: <ChefHat className="h-4 w-4" />,
         timestamp: order.status === 'preparing' ? undefined : undefined,
         isCompleted: ['preparing', 'ready', 'in_delivery', 'delivered'].includes(order.status),
@@ -83,7 +85,7 @@ export function OrderTimeline<A extends AvisoDeLinea = AvisoDeLinea>({ order, va
       },
       {
         key: 'ready',
-        label: 'Listo',
+        label: t('orderTimeline.pasos.ready'),
         icon: <Package className="h-4 w-4" />,
         timestamp: order.ready_at,
         isCompleted: !!order.ready_at || ['in_delivery', 'delivered'].includes(order.status),
@@ -94,7 +96,7 @@ export function OrderTimeline<A extends AvisoDeLinea = AvisoDeLinea>({ order, va
     if (!isPickup) {
       baseSteps.push({
         key: 'in_delivery',
-        label: 'En camino',
+        label: t('orderTimeline.pasos.in_delivery'),
         icon: <Truck className="h-4 w-4" />,
         timestamp: undefined,
         isCompleted: ['in_delivery', 'delivered'].includes(order.status),
@@ -104,7 +106,7 @@ export function OrderTimeline<A extends AvisoDeLinea = AvisoDeLinea>({ order, va
 
     baseSteps.push({
       key: 'delivered',
-      label: isPickup ? 'Entregado' : 'Entregado',
+      label: t('orderTimeline.pasos.delivered'),
       icon: <CheckCircle className="h-4 w-4" />,
       timestamp: order.delivered_at,
       isCompleted: order.status === 'delivered',
@@ -114,7 +116,7 @@ export function OrderTimeline<A extends AvisoDeLinea = AvisoDeLinea>({ order, va
     if (isCancelled) {
       baseSteps.push({
         key: 'cancelled',
-        label: order.status === 'rejected' ? 'Rechazado' : order.status === 'expired' ? 'Expirado' : 'Cancelado',
+        label: t(`orderTimeline.pasos.${order.status === 'rejected' ? 'rejected' : order.status === 'expired' ? 'expired' : 'cancelled'}`),
         icon: <XCircle className="h-4 w-4" />,
         timestamp: order.cancelled_at,
         isCompleted: true,
@@ -210,7 +212,7 @@ export function OrderTimeline<A extends AvisoDeLinea = AvisoDeLinea>({ order, va
               </div>
               {sub && <p className="text-xs text-fg-muted">{sub}</p>}
               {step.key === 'cancelled' && order.cancellation_reason && (
-                <p className="mt-0.5 text-xs text-danger-text">Motivo: {order.cancellation_reason}</p>
+                <p className="mt-0.5 text-xs text-danger-text">{t('orderTimeline.motivo', { cancellation_reason: order.cancellation_reason })}</p>
               )}
               {avisosPaso.length > 0 && renderAvisos && <div className="mt-1.5">{renderAvisos(avisosPaso)}</div>}
             </div>

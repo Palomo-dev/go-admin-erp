@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select';
 import { MoveRight } from 'lucide-react';
 import type { TableWithSession } from './types';
+import { useTranslations } from 'next-intl';
 
 interface MoverPedidoDialogProps {
   open: boolean;
@@ -34,6 +35,7 @@ export function MoverPedidoDialog({
   mesas,
   onMover,
 }: MoverPedidoDialogProps) {
+  const t = useTranslations('posMesas');
   const [mesaOrigen, setMesaOrigen] = useState<string | null>(null);
   const [mesaDestino, setMesaDestino] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -78,22 +80,22 @@ export function MoverPedidoDialog({
     >
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Mover Pedido</DialogTitle>
+          <DialogTitle>{t('moverPedidoDialog.moverPedido')}</DialogTitle>
           <DialogDescription>
-            Mueve el pedido de una mesa a otra. La mesa origen quedará libre.
+            {t('moverPedidoDialog.muevePedidoMesaOtra')}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
           {/* Mesa Origen */}
           <div className="space-y-2">
-            <Label htmlFor="mesa-origen">Mesa Origen</Label>
+            <Label htmlFor="mesa-origen">{t('moverPedidoDialog.mesaOrigen')}</Label>
             <Select
               value={mesaOrigen || ''}
               onValueChange={(value) => setMesaOrigen(value)}
             >
               <SelectTrigger id="mesa-origen">
-                <SelectValue placeholder="Seleccionar mesa con pedido" />
+                <SelectValue placeholder={t('moverPedidoDialog.seleccionarMesaPedido')} />
               </SelectTrigger>
               <SelectContent>
                 {mesasConSesion.map((mesa) => (
@@ -114,14 +116,14 @@ export function MoverPedidoDialog({
 
           {/* Mesa Destino */}
           <div className="space-y-2">
-            <Label htmlFor="mesa-destino">Mesa Destino</Label>
+            <Label htmlFor="mesa-destino">{t('moverPedidoDialog.mesaDestino')}</Label>
             <Select
               value={mesaDestino || ''}
               onValueChange={(value) => setMesaDestino(value)}
               disabled={!mesaOrigen}
             >
               <SelectTrigger id="mesa-destino">
-                <SelectValue placeholder="Seleccionar mesa libre" />
+                <SelectValue placeholder={t('moverPedidoDialog.seleccionarMesaLibre')} />
               </SelectTrigger>
               <SelectContent>
                 {mesasLibres
@@ -130,7 +132,7 @@ export function MoverPedidoDialog({
                     <SelectItem key={mesa.id} value={mesa.id}>
                       {mesa.name}
                       {mesa.zone && ` - ${mesa.zone}`}
-                      {` (Cap: ${mesa.capacity})`}
+                      {t('moverPedidoDialog.cap', { capacity: mesa.capacity })}
                     </SelectItem>
                   ))}
               </SelectContent>
@@ -141,7 +143,7 @@ export function MoverPedidoDialog({
           {mesaOrigen && mesaDestino && (
             <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-md text-sm">
               <p className="text-blue-900 dark:text-blue-100">
-                El pedido será movido y la mesa origen quedará disponible.
+                {t('moverPedidoDialog.pedidoSeraMovidoMesa')}
               </p>
             </div>
           )}
@@ -153,13 +155,13 @@ export function MoverPedidoDialog({
             onClick={() => onOpenChange(false)}
             disabled={isSubmitting}
           >
-            Cancelar
+            {t('comun.cancelar')}
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={!mesaOrigen || !mesaDestino || isSubmitting}
           >
-            {isSubmitting ? 'Moviendo...' : 'Mover Pedido'}
+            {isSubmitting ? t('moverPedidoDialog.moviendo') : t('moverPedidoDialog.moverPedido')}
           </Button>
         </DialogFooter>
       </DialogContent>

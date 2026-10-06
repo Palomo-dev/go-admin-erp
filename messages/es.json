@@ -22932,6 +22932,114 @@
       "escanea": "Escanea para ver la carta y pedir",
       "cerrar": "Cerrar",
       "imprimir": "Imprimir"
+    },
+    "mesaFormDialog": {
+      "editarMesa": "Editar Mesa",
+      "nuevaMesa": "Nueva Mesa",
+      "nombreMesa": "Nombre de Mesa *",
+      "ejMesa1Mesa": "Ej: Mesa 1, Mesa VIP",
+      "seleccionarZona": "Seleccionar zona",
+      "nuevaZona": "+ Nueva zona",
+      "nombreNuevaZona": "Nombre de nueva zona",
+      "capacidad": "Capacidad *",
+      "guardando": "Guardando...",
+      "actualizar": "Actualizar",
+      "crear": "Crear"
+    },
+    "combinarMesasDialog": {
+      "combinarMesas": "Combinar Mesas",
+      "paso1SeleccionaMesa": "Paso 1: Selecciona la <b>mesa principal</b> (donde quedarán todos los pedidos).<br></br>Paso 2: Selecciona las <b2>mesas a combinar</b2> (quedarán libres).",
+      "n1MesaPrincipal": "1. Mesa Principal",
+      "recibiraTodosPedidos": "Recibirá todos los pedidos",
+      "mesaPrincipal": "{n, plural, one {# mesa} other {# mesas}} → Mesa Principal",
+      "n2MesasCombinar": "2. Mesas a Combinar",
+      "quedaranLibres": "Quedarán libres",
+      "seleccionaPrimeroMesaPrincipal": "Selecciona primero una mesa principal",
+      "combinando": "Combinando..."
+    },
+    "moverPedidoDialog": {
+      "moverPedido": "Mover Pedido",
+      "muevePedidoMesaOtra": "Mueve el pedido de una mesa a otra. La mesa origen quedará libre.",
+      "mesaOrigen": "Mesa Origen",
+      "seleccionarMesaPedido": "Seleccionar mesa con pedido",
+      "mesaDestino": "Mesa Destino",
+      "seleccionarMesaLibre": "Seleccionar mesa libre",
+      "cap": "(Cap: {capacity})",
+      "pedidoSeraMovidoMesa": "El pedido será movido y la mesa origen quedará disponible.",
+      "moviendo": "Moviendo..."
+    },
+    "historialMesasDialog": {
+      "desde": "Desde",
+      "hasta": "Hasta",
+      "todosMeseros": "Todos los meseros",
+      "sesiones": "Sesiones",
+      "facturado": "Facturado",
+      "duracionProm": "Duración prom.",
+      "sesionEncontradaS": "{n, plural, one {# sesión encontrada} other {# sesiones encontradas}}",
+      "mesa": "Mesa",
+      "apertura": "Apertura",
+      "cierre": "Cierre",
+      "duracion": "Duración",
+      "liberada": "Liberada por {userName} · {dateTime}",
+      "productosEliminadosCanceladosEsta": "Productos eliminados/cancelados de esta sesión",
+      "eliminadoPor": "<b>{cantidad}x {producto}</b> — eliminado por <b>{usuario}</b>",
+      "rangos": {
+        "today": "Hoy",
+        "yesterday": "Ayer",
+        "7d": "7 días",
+        "15d": "15 días",
+        "30d": "30 días"
+      },
+      "estados": {
+        "active": "Activa",
+        "bill_requested": "Cuenta solicitada",
+        "completed": "Completada"
+      },
+      "noPudoCargarHistorial": "No se pudo cargar el historial de mesas."
+    },
+    "sessionTimelineDialog": {
+      "historialMesa": "Historial de la Mesa",
+      "sinEventosRegistradosEsta": "Sin eventos registrados para esta mesa.",
+      "noPudoCargarHistorial": "No se pudo cargar el historial de la mesa."
+    },
+    "addProductDialog": {
+      "noPudoCargarReceta": "No se pudo cargar la receta del producto",
+      "agregadoFavoritos": "Agregado a favoritos",
+      "quitadoFavoritos": "Quitado de favoritos",
+      "productoApareceraPrimeroPos": "El producto aparecerá primero en el POS.",
+      "productoYaNoPriorizara": "El producto ya no se priorizará.",
+      "noPudoActualizarFavorito": "No se pudo actualizar el favorito.",
+      "productoSinPrecio": "Producto sin precio",
+      "esteProductoNoTiene": "Este producto no tiene precio configurado",
+      "noPudieronAgregarProductos": "No se pudieron agregar los productos. Por favor intente nuevamente.",
+      "sinImagen": "Sin imagen",
+      "agotado": "Agotado",
+      "personalizable": "Personalizable",
+      "incluido": "Incluido",
+      "unidadesVendidasUltimos90": "{number} unidades vendidas en los últimos 90 días",
+      "top": "Top",
+      "quitarFavoritos": "Quitar de favoritos",
+      "agregarFavoritos": "Agregar a favoritos",
+      "desde": "Desde",
+      "verRecetaProduccion": "Ver receta de producción",
+      "carrito": "Carrito",
+      "carritoVacio": "Carrito vacío",
+      "seleccionaProductosAgregar": "Selecciona productos para agregar",
+      "comensal": "Comensal:",
+      "general": "General",
+      "notas": "Notas...",
+      "habitacion": "Habitación: <b>{space_label}</b>",
+      "cargarHabitacion": "Cargar a Habitación",
+      "pagarAhora": "Pagar Ahora",
+      "agregando": "Agregando...",
+      "recetaProduccion": "Receta de producción",
+      "rendimiento": "Rendimiento",
+      "inactiva": "Inactiva",
+      "version": "Versión",
+      "notas2": "Notas",
+      "ingredientes": "Ingredientes ({n})",
+      "opcional": "Opcional",
+      "estaRecetaNoTiene": "Esta receta no tiene ingredientes definidos."
     }
   },
   "posReservasMesas": {
@@ -33925,6 +34033,231 @@
         "rejected": "Rechazado",
         "expired": "Expirado"
       }
+    },
+    "webOrderCard": {
+      "urgente": "¡Urgente!",
+      "programado": "Programado",
+      "propina": "Propina",
+      "texto": "Para: {date}",
+      "productoS": "{n, plural, one {# producto} other {# productos}}",
+      "mas": "+{n} más...",
+      "nota": "Nota:",
+      "confirmar": "Confirmar",
+      "iniciarPreparacion": "Iniciar preparación",
+      "preparar": "Preparar",
+      "marcarListo": "Marcar listo",
+      "enviarDomicilio": "Enviar a domicilio",
+      "enviar": "Enviar",
+      "marcarEntregado": "Marcar entregado"
+    },
+    "webCommerceObservability": {
+      "observabilidadComercio": "Observabilidad de comercio",
+      "actualizar": "Actualizar",
+      "contraer": "Contraer",
+      "expandir": "Expandir",
+      "itemsReservados": "Items reservados",
+      "reservasHuerfanas": "Reservas huérfanas",
+      "pedidosPendientes": "Pedidos pendientes",
+      "proximosExpirar": "Próximos a expirar",
+      "stockReservadoVsDisponible": "Stock reservado vs disponible",
+      "noHayProductosStock": "No hay productos con stock reservado actualmente.",
+      "producto": "Producto",
+      "sucursal": "Sucursal",
+      "disp": "Disp.",
+      "reserv": "Reserv.",
+      "actualizado": "Actualizado",
+      "pedidosProximosExpirarMin": "Pedidos próximos a expirar ({withinMinutes} min)",
+      "noHayPedidosProximos": "No hay pedidos próximos a expirar en los próximos {withinMinutes} minutos.",
+      "expiradoHaceM": "Expirado hace {minutesUntilExpiry}m",
+      "paginaAnterior": "Página anterior",
+      "paginaSiguiente": "Página siguiente",
+      "errorCargar": "Error al cargar observabilidad",
+      "errorDesconocido": "Error desconocido"
+    },
+    "assignDeliveryDialog": {
+      "noHayVehiculosDisponibles": "No hay vehículos disponibles para delivery",
+      "noHayConductoresDisponibles": "No hay conductores disponibles",
+      "errorCargarDatosVehiculos": "Error al cargar datos de vehículos y conductores",
+      "camposRequeridos": "Campos requeridos",
+      "seleccionaVehiculoConductor": "Selecciona un vehículo y un conductor",
+      "error": "Error",
+      "noEncontroEnvioAsociado": "No se encontró el envío asociado. Intenta marcar el pedido como listo primero.",
+      "asignacionExitosa": "Asignación exitosa",
+      "haAsignadoConductorVehiculo": "Se ha asignado el conductor y vehículo al pedido",
+      "noPudoAsignarDelivery": "No se pudo asignar el delivery",
+      "asignarDelivery": "Asignar Delivery",
+      "seleccionaVehiculoConductorEntrega": "Selecciona el vehículo y conductor para la entrega",
+      "configuraVehiculosConductoresModulo": "Configura vehículos y conductores en el módulo de Transporte",
+      "vehiculo": "Vehículo",
+      "seleccionarVehiculo": "Seleccionar vehículo",
+      "noHayVehiculosDisponibles2": "No hay vehículos disponibles",
+      "conductor": "Conductor",
+      "seleccionarConductor": "Seleccionar conductor",
+      "conductor2": "Conductor {license_number}",
+      "lic": "Lic: {license_category}",
+      "tiempoEstimadoEntregaMinutos": "Tiempo estimado de entrega (minutos)",
+      "llegadaEstimada": "Llegada estimada: {localeTimeString}",
+      "vehiculos": {
+        "motorcycle": "Moto",
+        "car": "Carro",
+        "van": "Van",
+        "bicycle": "Bicicleta",
+        "truck": "Camión"
+      }
+    },
+    "deliveryTrackingCard": {
+      "delivery": "Delivery",
+      "deliveryPropio": "Delivery Propio",
+      "noHayEnvioAsignado": "No hay envío asignado para este pedido",
+      "asignarDelivery": "Asignar Delivery",
+      "tracking": "Tracking",
+      "tracking2": "Tracking:",
+      "vehiculoAsignado": "Vehículo asignado",
+      "conductor": "Conductor",
+      "conductorAsignado": "Conductor asignado",
+      "entregaEstimada": "Entrega estimada:",
+      "historial": "Historial",
+      "pruebaEntrega": "Prueba de entrega",
+      "recibido": "Recibido por:",
+      "fecha": "Fecha:",
+      "calificacion": "Calificación:",
+      "verFirma": "Ver firma",
+      "verRutaGoogleMaps": "Ver ruta en Google Maps",
+      "actualizarEstado": "Actualizar estado",
+      "estados": {
+        "pending": "Pendiente",
+        "assigned": "Asignado",
+        "picked_up": "Recogido",
+        "out_for_delivery": "En camino",
+        "delivered": "Entregado",
+        "returned": "Devuelto",
+        "cancelled": "Cancelado"
+      }
+    },
+    "orderActions": {
+      "confirmarPedido": "Confirmar pedido",
+      "rechazar": "Rechazar",
+      "iniciarPreparacion": "Iniciar preparación",
+      "marcarComoListo": "Marcar como listo",
+      "enviarDomicilio": "Enviar a domicilio",
+      "marcarComoPagado": "Marcar como pagado",
+      "crearVenta": "Crear venta"
+    },
+    "orderItemsList": {
+      "productoS": "{n, plural, one {# producto} other {# productos}}",
+      "mas": "+{remainingCount} más...",
+      "productoSMas": "{remainingCount, plural, one {+# producto más} other {+# productos más}}",
+      "estados": {
+        "pending": "Pendiente",
+        "preparing": "Preparando",
+        "ready": "Listo",
+        "cancelled": "Cancelado"
+      }
+    },
+    "orderTimeline": {
+      "motivo": "Motivo: {cancellation_reason}",
+      "pasos": {
+        "created": "Pedido recibido",
+        "scheduled": "Programado para",
+        "confirmed": "Confirmado",
+        "preparing": "En preparación",
+        "ready": "Listo",
+        "in_delivery": "En camino",
+        "delivered": "Entregado",
+        "rejected": "Rechazado",
+        "expired": "Expirado",
+        "cancelled": "Cancelado"
+      }
+    },
+    "orderTotals": {
+      "impuestos": "Impuestos",
+      "descuento": "Descuento",
+      "envio": "Envío",
+      "propina": "Propina"
+    },
+    "cancelOrderDialog": {
+      "indicaMotivoClienteSera": "Indica el motivo. El cliente será notificado automáticamente.",
+      "motivo": "Motivo",
+      "ejProductoAgotadoFuera": "Ej: Producto agotado, fuera de horario de entrega...",
+      "esteMotivoMostraraCliente": "Este motivo se mostrará al cliente en su notificación.",
+      "rechazarPedido": "Rechazar pedido",
+      "cancelarPedido": "Cancelar pedido",
+      "rechazar": "Rechazar"
+    },
+    "confirmOrderDialog": {
+      "confirmarPedido": "Confirmar pedido",
+      "indicaTiemposEstimadosNotificar": "Indica los tiempos estimados para notificar al cliente.",
+      "tiempoPreparacionListoAprox": "Tiempo de preparación (Listo aprox)",
+      "minutos": "Minutos",
+      "horas": "Horas",
+      "dias": "Días",
+      "tiempoTrasladoEntregaAprox": "Tiempo de traslado (Entrega aprox)",
+      "tiempoDesdeEstaListo": "Tiempo desde que está listo hasta que llega al cliente.",
+      "clienteRecibiraNotificacionEstos": "El cliente recibirá una notificación con estos tiempos estimados.",
+      "marcarComoPagado": "Marcar como pagado"
+    },
+    "orderActionsCard": {
+      "acciones": "Acciones"
+    },
+    "orderDeliveryCard": {
+      "verMapa": "Ver en mapa",
+      "programado": "Programado: {dateTime}",
+      "listoAprox": "Listo aprox: {time}",
+      "entregaAprox": "Entrega aprox: {time}",
+      "asignarConductor": "Asignar Conductor"
+    },
+    "orderHeader": {
+      "programado": "Programado",
+      "cupon": "Cupón: {coupon_code}",
+      "propina": "Propina: {valor}"
+    },
+    "orderNotFoundState": {
+      "verTodosPedidos": "Ver todos los pedidos",
+      "pedidoNoEncontrado": "Pedido no encontrado"
+    },
+    "orderProductsCard": {
+      "productos": "Productos ({n})"
+    },
+    "useWebOrderDetail": {
+      "error": "Error",
+      "noPudoCargarPedido": "No se pudo cargar el pedido",
+      "pedidoRechazado": "Pedido rechazado",
+      "pedidoPreparacion": "Pedido en preparación",
+      "pedidoListoEntrega": "Pedido listo para entrega",
+      "pedidoCamino": "Pedido en camino",
+      "pedidoEntregado": "Pedido entregado",
+      "pedidoCancelado": "Pedido cancelado",
+      "ventaCreadaExitosamente": "Venta creada exitosamente",
+      "errorCrearVenta": "Error al crear venta",
+      "ahoraPuedesAsignarConductor": "Ahora puedes asignar un conductor",
+      "errorCrearEnvio": "Error al crear envío"
+    },
+    "tipoEntrega": {
+      "pickup": "Retiro en tienda",
+      "delivery_own": "Delivery propio",
+      "delivery_third_party": "Delivery tercero"
+    },
+    "metodoPago": {
+      "cash": "Efectivo",
+      "transfer": "Transferencia",
+      "card": "Tarjeta"
+    },
+    "pagoBadge": {
+      "pending": "Pago pendiente",
+      "paid": "Pagado",
+      "partial": "Pago parcial",
+      "refunded": "Reembolsado",
+      "failed": "Fallido"
+    },
+    "unidadCorta": {
+      "minutes": "{n} min",
+      "hours": "{n} hrs",
+      "days": "{n} días"
+    },
+    "tipoEntregaFicha": {
+      "pickup": "Retiro en tienda",
+      "delivery_own": "Delivery propio",
+      "delivery_third_party": "Delivery terceros"
     }
   },
   "posMesasFlujo": {

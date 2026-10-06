@@ -5,18 +5,20 @@ import { Separator } from '@/components/ui/separator';
 import { Receipt } from 'lucide-react';
 import { OrderItemsList, OrderTotals } from '@/components/pos/pedidos-online';
 import type { WebOrder } from '@/lib/services/webOrdersService';
+import { useTranslations } from 'next-intl';
 
 interface OrderProductsCardProps {
   order: WebOrder;
 }
 
 export function OrderProductsCard({ order }: OrderProductsCardProps) {
+  const t = useTranslations('pedidoWeb');
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <Receipt className="size-4" aria-hidden="true" strokeWidth={1.5} />
-          Productos ({order.items?.length || 0})
+          {t('orderProductsCard.productos', { n: order.items?.length || 0 })}
         </CardTitle>
       </CardHeader>
       <CardContent>

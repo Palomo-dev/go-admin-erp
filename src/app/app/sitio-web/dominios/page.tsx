@@ -1,5 +1,10 @@
 'use client';
 
+/**
+ * /app/sitio-web/dominios — «Dominios» del módulo Sitio web (Figma 01b).
+ * Movida desde /app/organizacion/dominios (redirección 308 en next.config.js).
+ */
+
 import { useState, useEffect, useCallback } from 'react';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
@@ -20,6 +25,7 @@ import { supabase } from '@/lib/supabase/config';
 import Link from 'next/link';
 import { cn } from '@/utils/Utils';
 import { useTranslations } from 'next-intl';
+import { RAIZ_SITIO_WEB } from '@/components/sitio-web/rutasSitioWeb';
 import {
   domainService,
   OrganizationDomain,
@@ -109,7 +115,7 @@ export default function DominiosPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [organizationId, toast]);
+  }, [organizationId, toast, t]);
 
   useEffect(() => {
     loadOrganizationSubdomain();
@@ -325,7 +331,7 @@ export default function DominiosPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
             <div className="flex items-center gap-3">
               <Link
-                href="/app/organizacion"
+                href={RAIZ_SITIO_WEB}
                 className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               >
                 <ArrowLeft className="h-5 w-5 text-gray-500 dark:text-gray-400" />

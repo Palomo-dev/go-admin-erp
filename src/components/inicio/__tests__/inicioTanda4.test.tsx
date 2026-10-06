@@ -188,7 +188,7 @@ describe('TarjetaTiendaWeb (miniaturas)', () => {
       { b: '2026-09-29', visitantes: 170, pedidos: 6, pagados: 6 },
       { b: '2026-09-30', visitantes: 160, pedidos: 4, pagados: 3 },
     ],
-    hrefPedidos: '/app/pos/pedidos-online', hrefAnalitica: '/app/inicio/analitica-web',
+    hrefPedidos: '/app/pos/pedidos-online', hrefAnalitica: '/app/sitio-web/analitica',
   };
 
   test('tres miniaturas con la serie real y «12 pendientes · 3 expiran hoy»', async () => {

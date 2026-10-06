@@ -489,6 +489,12 @@ const routeToModuleMap: Record<string, string> = {
   '/app/chat': 'chat',
   // Membresías (antes gym): /app/gym/* redirige a /app/membresias/* en next.config.js.
   '/app/membresias': 'memberships',
+  // Sitio web: módulo base (is_core) desde el 2026-10-05. Antes colgaba de
+  // '/app/organizacion' (branding, dominios). Incluye el editor
+  // (/app/sitio-web/editor/:pageId, servido con un rewrite fuera del AppLayout).
+  // No va en `coreRoutes`: al ser núcleo siempre está activo, pero el acceso por
+  // cargo (job_position_module_access) se sigue respetando.
+  '/app/sitio-web': 'website',
 };
 
 /**

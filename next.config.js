@@ -1,3 +1,20 @@
+/**
+ * Sitio web pasó a ser un módulo base con entrada propia en el menú (Figma
+ * 01e, 2026-10-05). Redirecciones PERMANENTES (308) desde donde vivía: la
+ * página de 7 pestañas de Organización, Organización › Dominios, la analítica
+ * fuera del menú del inicio y el editor fuera de /app. Exportadas para el test
+ * `src/__tests__/sitioWeb/moduloSitioWeb.test.ts`.
+ */
+const REDIRECCIONES_SITIO_WEB = [
+  { source: '/app/organizacion/branding', destination: '/app/sitio-web', permanent: true },
+  { source: '/app/organizacion/branding/reviews', destination: '/app/sitio-web/tienda', permanent: true },
+  { source: '/app/organizacion/branding/editor/:pageId', destination: '/app/sitio-web/editor/:pageId', permanent: true },
+  { source: '/app/organizacion/branding/:path*', destination: '/app/sitio-web', permanent: true },
+  { source: '/organizacion/branding/editor/:pageId', destination: '/app/sitio-web/editor/:pageId', permanent: true },
+  { source: '/app/organizacion/dominios', destination: '/app/sitio-web/dominios', permanent: true },
+  { source: '/app/inicio/analitica-web', destination: '/app/sitio-web/analitica', permanent: true },
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -84,6 +101,17 @@ const nextConfig = {
       { source: '/app/gym/ajustes', destination: '/app/configuracion?modulo=gym', permanent: true },
       { source: '/app/gym/:path*', destination: '/app/membresias', permanent: true },
       { source: '/gym-display/:deviceId', destination: '/membresias-kiosco/:deviceId', permanent: true },
+      ...REDIRECCIONES_SITIO_WEB,
+    ];
+  },
+  // Sitio web: el editor visual vive en /app/sitio-web/editor/:pageId (bajo la
+  // puerta de módulos del middleware), pero se pinta a pantalla completa FUERA
+  // del AppLayout: se sirve con la página de /organizacion/branding/editor.
+  // Las redirecciones solo se evalúan sobre la URL que llega, no sobre el
+  // destino de un rewrite, así que no hay bucle con la 308 de esa ruta vieja.
+  async rewrites() {
+    return [
+      { source: '/app/sitio-web/editor/:pageId', destination: '/organizacion/branding/editor/:pageId' },
     ];
   },
   // Permitir que Evolution API (en Docker) envie webhooks al ERP local

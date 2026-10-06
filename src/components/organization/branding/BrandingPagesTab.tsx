@@ -43,6 +43,7 @@ import {
 } from '@/lib/services/websiteMenuGroupService';
 import { MenuGroupManager } from './editor';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { rutaEditorSitio } from '@/components/sitio-web/rutasSitioWeb';
 
 interface BrandingPagesTabProps {
   organizationId: number;
@@ -242,7 +243,7 @@ export default function BrandingPagesTab({ organizationId, typeId, branchId }: B
   };
 
   const openEditor = (pageId: string) => {
-    router.push(`/organizacion/branding/editor/${pageId}`);
+    router.push(rutaEditorSitio(pageId));
   };
 
   if (isLoading) {

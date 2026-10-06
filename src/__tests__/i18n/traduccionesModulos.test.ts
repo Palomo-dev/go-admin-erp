@@ -103,7 +103,8 @@ const MODULOS: Record<string, string[]> = {
   // «Nuevo pipeline», Oportunidades, drawer, detalle, formulario en página y diálogos.
   'crm.oportunidad': ['src/components/crm/oportunidad', 'src/components/crm/pipeline/pantalla', 'src/components/crm/oportunidades/pantalla'],
   // Analítica web (Figma 03 › 464:237482, 2026-09-30), con los mapas de «De dónde entran».
-  analiticaWeb: ['src/components/analiticaWeb', 'src/app/app/inicio/analitica-web'],
+  // Desde el 2026-10-05 es la página «Analítica» del módulo Sitio web.
+  analiticaWeb: ['src/components/analiticaWeb', 'src/app/app/sitio-web/analitica'],
 };
 
 type Arbol = { [clave: string]: string | Arbol };

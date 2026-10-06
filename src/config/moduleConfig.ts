@@ -1,7 +1,7 @@
-import React from 'react';
+import type { LucideIcon } from 'lucide-react';
 import {
   Building2,
-  Palette,
+  Globe,
   MapPin,
   ShoppingCart,
   Package,
@@ -30,9 +30,10 @@ import {
 } from 'lucide-react';
 import { CRM_MODULE_SUBROUTES } from './crmNav';
 
-export const moduleIcons: Record<string, React.ComponentType<any>> = {
+export const moduleIcons: Record<string, LucideIcon> = {
   'organizations': Building2,
-  'branding': Palette,
+  // Sitio web: módulo base desde el 2026-10-05 (antes el código fantasma 'branding').
+  'website': Globe,
   'branches': MapPin,
   'clientes': Users,
   'roles': Shield,
@@ -55,7 +56,7 @@ export const moduleIcons: Record<string, React.ComponentType<any>> = {
 
 export const moduleRoutes: Record<string, string> = {
   'organizations': '/app/organizacion',
-  'branding': '/app/branding',
+  'website': '/app/sitio-web',
   'branches': '/app/organizacion/sucursales',
   'clientes': '/app/clientes',
   'roles': '/app/roles',
@@ -80,7 +81,7 @@ export const moduleRoutes: Record<string, string> = {
 export interface ModuleSubroute {
   name: string;
   path: string;
-  icon: React.ComponentType<any>;
+  icon: LucideIcon;
 }
 
 export const moduleSubroutes: Record<string, ModuleSubroute[]> = {

@@ -2623,8 +2623,6 @@
       "organizacion_invitaciones": "Invitations",
       "organizacion_modulos": "Modules",
       "organizacion_plan": "Mon offre",
-      "organizacion_branding": "Site web",
-      "organizacion_dominios": "Domaines",
       "organizacion_mis-organizaciones": "Mes organisations",
       "roles": "Rôles et autorisations",
       "configuracion": "Paramètres",
@@ -2672,7 +2670,17 @@
       "membresias_instructores": "Instructeurs",
       "membresias_control-de-acceso": "Contrôle d'accès",
       "membresias_pagos": "Paiements",
-      "inicio_analitica-web": "Analytique web"
+      "sitio-web": "Résumé",
+      "sitio-web_paginas": "Pages",
+      "sitio-web_diseno": "Design",
+      "sitio-web_plantillas": "Modèles",
+      "sitio-web_carta": "Carte",
+      "sitio-web_tienda": "Boutique",
+      "sitio-web_ventas": "Ventes en ligne",
+      "sitio-web_dominios": "Domaines",
+      "sitio-web_seo": "SEO et réseaux",
+      "sitio-web_analitica": "Analytique",
+      "sitio-web_configuracion": "Configuration"
     },
     "grupos": {
       "venta": "Vente",
@@ -2701,13 +2709,18 @@
       "comercial": "Commercial",
       "actividad": "Activité",
       "marketing": "Marketing",
-      "automatizacion": "Automatisation"
+      "automatizacion": "Automatisation",
+      "tu-sitio": "Votre site",
+      "segun-tu-negocio": "Selon votre activité",
+      "vender-y-crecer": "Vendre et grandir",
+      "ajustes-del-sitio": "Réglages du site"
     },
     "emailNotConfirmed": "E-mail non confirmé",
     "sending": "Envoi...",
     "resend": "Renvoyer",
     "backToMenu": "Menu",
-    "membresias": "Adhésions"
+    "membresias": "Adhésions",
+    "sitioWeb": "Site web"
   },
   "posCustomerDisplay": {
     "indicator": {
@@ -25631,5 +25644,10 @@
         "7": "Dimanche"
       }
     }
+  },
+  "sitioWeb": {
+    "verSitio": "Voir le site",
+    "abrirEditor": "Ouvrir l'éditeur",
+    "tuSitio": "Votre site"
   }
 }

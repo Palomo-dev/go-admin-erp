@@ -20,6 +20,12 @@ interface BrandingPublishTabProps {
   onUnpublish: () => Promise<void>;
   onResetToTemplate: (templateId: string) => Promise<void>;
   isPublishing: boolean;
+  /**
+   * Qué parte se pinta. El módulo «Sitio web» la reparte en dos subpáginas:
+   * `resumen` (estado, lista de verificación e información) y `plantillas`
+   * (restablecer a una plantilla). `todo` = la pestaña completa de antes.
+   */
+  vista?: 'todo' | 'resumen' | 'plantillas';
 }
 
 export default function BrandingPublishTab({ 
@@ -29,8 +35,11 @@ export default function BrandingPublishTab({
   onPublish, 
   onUnpublish, 
   onResetToTemplate,
-  isPublishing 
+  isPublishing,
+  vista = 'todo',
 }: BrandingPublishTabProps) {
+  const verResumen = vista !== 'plantillas';
+  const verPlantillas = vista !== 'resumen';
   const t = useTranslations('branding.publish');
   const [copied, setCopied] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(settings.template_id);
@@ -69,6 +78,7 @@ export default function BrandingPublishTab({
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {verResumen && (<>
       {/* Estado de Publicación */}
       <Card className={`${settings.is_published ? 'border-green-200 dark:border-green-800' : 'border-gray-200 dark:border-gray-700'} dark:bg-gray-800`}>
         <CardHeader>
@@ -222,8 +232,10 @@ export default function BrandingPublishTab({
           )}
         </CardContent>
       </Card>
+      </>)}
 
       {/* Restablecer a plantilla */}
+      {verPlantillas && (
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 dark:text-white">
@@ -274,8 +286,10 @@ export default function BrandingPublishTab({
           </Button>
         </CardContent>
       </Card>
+      )}
 
       {/* Información */}
+      {verResumen && (
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
           <CardTitle className="dark:text-white">{t('infoTitle')}</CardTitle>
@@ -303,6 +317,7 @@ export default function BrandingPublishTab({
           </div>
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }

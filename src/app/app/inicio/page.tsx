@@ -42,6 +42,7 @@ import { bloqueVisible } from '@/lib/dashboard/preferenciasInicio';
 import { claveOcultarPasos, mostrarPrimerosPasos, type PrimerosPasos as DatosPasos } from '@/lib/dashboard/primerosPasos';
 import type { FechasPeriodo, HorasPeriodo, PeriodoInicio } from '@/lib/dashboard/periodo';
 import { CATALOGO_NAV } from '@/lib/navigation/catalog';
+import { RUTA_ANALITICA_SITIO_WEB } from '@/components/sitio-web/rutasSitioWeb';
 import { useDesktopCatalog } from '@/lib/offline/useDesktopCatalog';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { formatDateInTz } from '@/lib/utils/dateDisplay';
@@ -62,8 +63,11 @@ import { usePreferenciasInicio } from '@/components/inicio/usePreferenciasInicio
 import { useLecturaInicio, type LecturaInicio } from '@/components/inicio/useLecturaInicio';
 import { CLAVE_PERIODO } from '@/components/inicio/textosPeriodo';
 
-/** «Ver analítica web» sale del catálogo (su acceso lo decide `GET /api/analitica-web`). */
-const PAGINA_ANALITICA_WEB = '/app/inicio/analitica-web';
+/**
+ * «Ver analítica web»: la página «Analítica» del módulo Sitio web. Sale del
+ * catálogo (su acceso lo decide `GET /api/analitica-web`).
+ */
+const PAGINA_ANALITICA_WEB = RUTA_ANALITICA_SITIO_WEB;
 const HAY_ANALITICA = CATALOGO_NAV.some((m) => m.paginas.some((p) => p.href === PAGINA_ANALITICA_WEB));
 
 type Fase = LecturaInicio<unknown>['fase'];

@@ -79,7 +79,6 @@ import {
   MessageCircle,
   MessageSquare,
   Package,
-  Palette,
   ParkingCircle,
   Percent,
   PiggyBank,
@@ -111,6 +110,7 @@ import {
   Users,
   UtensilsCrossed,
   Wallet,
+  Wand2,
   Zap,
 } from 'lucide-react';
 import { CRM_NAV_ENABLED } from '@/config/crmNav';
@@ -183,10 +183,9 @@ export const CATALOGO_NAV: ModuloNav[] = [
     seccion: 'principal',
     rutas: ['/app/inicio'],
     paginas: [
+      // «Analítica web» vivía aquí fuera del menú (/app/inicio/analitica-web):
+      // ahora es la página «Analítica» del módulo Sitio web (redirección 308).
       { href: '/app/inicio', nombre: 'Inicio', icono: Home },
-      // Fuera del menú: se llega desde el inicio (enlace «Ver analítica web»
-      // de la tarjeta «Tienda web»). El acceso lo decide GET /api/analitica-web.
-      { href: '/app/inicio/analitica-web', nombre: 'Analítica web', icono: Globe, enMenu: false },
     ],
   },
 
@@ -235,6 +234,33 @@ export const CATALOGO_NAV: ModuloNav[] = [
     // Fuente de sus páginas y grupos: src/config/crmNav.ts (la usa también el
     // propio módulo). Con grupos, su panel de submenú va a dos columnas.
     paginas: CRM_NAV_ENABLED.map((p) => ({ href: p.href, nombre: p.name, icono: p.icon, grupo: p.grupo })),
+  },
+  {
+    // Sitio web: módulo BASE (modules.is_core) desde el 2026-10-05 (Figma 01a/01b).
+    // Antes vivía escondido en Organización › Sitio web (/app/organizacion/branding,
+    // 7 pestañas) y Organización › Dominios. Las rutas viejas redirigen con 308
+    // (next.config.js). El editor (/app/sitio-web/editor/[pageId]) no es una
+    // página del menú: se entra con «Abrir editor» desde Resumen, Páginas o
+    // Diseño, y se sirve a pantalla completa fuera del AppLayout (rewrite).
+    codigo: 'website',
+    id: 'sitio-web',
+    etiqueta: 'sitioWeb',
+    icono: Globe,
+    seccion: 'ventas',
+    rutas: ['/app/sitio-web'],
+    paginas: [
+      { href: '/app/sitio-web', nombre: 'Resumen', icono: Home, grupo: 'Tu sitio' },
+      { href: '/app/sitio-web/paginas', nombre: 'Páginas', icono: FileText, grupo: 'Tu sitio' },
+      { href: '/app/sitio-web/diseno', nombre: 'Diseño', icono: Wand2, grupo: 'Tu sitio' },
+      { href: '/app/sitio-web/plantillas', nombre: 'Plantillas', icono: LayoutGrid, grupo: 'Tu sitio' },
+      { href: '/app/sitio-web/carta', nombre: 'Carta', icono: UtensilsCrossed, grupo: 'Según tu negocio' },
+      { href: '/app/sitio-web/tienda', nombre: 'Tienda', icono: ShoppingBag, grupo: 'Según tu negocio' },
+      { href: '/app/sitio-web/ventas', nombre: 'Ventas en línea', icono: ShoppingCart, grupo: 'Vender y crecer' },
+      { href: '/app/sitio-web/dominios', nombre: 'Dominios', icono: Link2, grupo: 'Vender y crecer' },
+      { href: '/app/sitio-web/seo', nombre: 'SEO y redes', icono: Search, grupo: 'Vender y crecer' },
+      { href: '/app/sitio-web/analitica', nombre: 'Analítica', icono: BarChart3, grupo: 'Vender y crecer' },
+      { href: '/app/sitio-web/configuracion', nombre: 'Configuración', icono: Settings, grupo: 'Ajustes del sitio' },
+    ],
   },
   {
     codigo: 'chat',
@@ -495,8 +521,6 @@ export const CATALOGO_NAV: ModuloNav[] = [
       { href: '/app/organizacion/invitaciones', nombre: 'Invitaciones', icono: UserPlus },
       { href: '/app/organizacion/modulos', nombre: 'Módulos', icono: Grid3x3 },
       { href: '/app/organizacion/plan', nombre: 'Mi plan', icono: CreditCard },
-      { href: '/app/organizacion/branding', nombre: 'Sitio web', icono: Palette },
-      { href: '/app/organizacion/dominios', nombre: 'Dominios', icono: Globe },
       { href: '/app/organizacion/mis-organizaciones', nombre: 'Mis organizaciones', icono: Building2 },
     ],
   },

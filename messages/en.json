@@ -2627,8 +2627,6 @@
       "organizacion_invitaciones": "Invitations",
       "organizacion_modulos": "Modules",
       "organizacion_plan": "My plan",
-      "organizacion_branding": "Website",
-      "organizacion_dominios": "Domains",
       "organizacion_mis-organizaciones": "My organizations",
       "roles": "Roles and permissions",
       "configuracion": "Settings",
@@ -2676,7 +2674,17 @@
       "membresias_instructores": "Instructors",
       "membresias_control-de-acceso": "Access control",
       "membresias_pagos": "Payments",
-      "inicio_analitica-web": "Web analytics"
+      "sitio-web": "Overview",
+      "sitio-web_paginas": "Pages",
+      "sitio-web_diseno": "Design",
+      "sitio-web_plantillas": "Templates",
+      "sitio-web_carta": "Menu",
+      "sitio-web_tienda": "Store",
+      "sitio-web_ventas": "Online sales",
+      "sitio-web_dominios": "Domains",
+      "sitio-web_seo": "SEO and social",
+      "sitio-web_analitica": "Analytics",
+      "sitio-web_configuracion": "Settings"
     },
     "grupos": {
       "venta": "Sales",
@@ -2705,10 +2713,15 @@
       "comercial": "Sales",
       "actividad": "Activity",
       "marketing": "Marketing",
-      "automatizacion": "Automation"
+      "automatizacion": "Automation",
+      "tu-sitio": "Your site",
+      "segun-tu-negocio": "For your business",
+      "vender-y-crecer": "Sell and grow",
+      "ajustes-del-sitio": "Site settings"
     },
     "backToMenu": "Menu",
-    "membresias": "Memberships"
+    "membresias": "Memberships",
+    "sitioWeb": "Website"
   },
   "crm": {
     "title": "CRM",
@@ -25734,5 +25747,10 @@
         "7": "Sunday"
       }
     }
+  },
+  "sitioWeb": {
+    "verSitio": "View site",
+    "abrirEditor": "Open editor",
+    "tuSitio": "Your site"
   }
 }

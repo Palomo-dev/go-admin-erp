@@ -2627,8 +2627,6 @@
       "organizacion_invitaciones": "Invitaciones",
       "organizacion_modulos": "Módulos",
       "organizacion_plan": "Mi plan",
-      "organizacion_branding": "Sitio web",
-      "organizacion_dominios": "Dominios",
       "organizacion_mis-organizaciones": "Mis organizaciones",
       "roles": "Roles y permisos",
       "configuracion": "Configuración",
@@ -2676,7 +2674,17 @@
       "membresias_instructores": "Instructores",
       "membresias_control-de-acceso": "Control de acceso",
       "membresias_pagos": "Pagos",
-      "inicio_analitica-web": "Analítica web"
+      "sitio-web": "Resumen",
+      "sitio-web_paginas": "Páginas",
+      "sitio-web_diseno": "Diseño",
+      "sitio-web_plantillas": "Plantillas",
+      "sitio-web_carta": "Carta",
+      "sitio-web_tienda": "Tienda",
+      "sitio-web_ventas": "Ventas en línea",
+      "sitio-web_dominios": "Dominios",
+      "sitio-web_seo": "SEO y redes",
+      "sitio-web_analitica": "Analítica",
+      "sitio-web_configuracion": "Configuración"
     },
     "grupos": {
       "venta": "Venta",
@@ -2705,10 +2713,15 @@
       "comercial": "Comercial",
       "actividad": "Actividad",
       "marketing": "Marketing",
-      "automatizacion": "Automatización"
+      "automatizacion": "Automatización",
+      "tu-sitio": "Tu sitio",
+      "segun-tu-negocio": "Según tu negocio",
+      "vender-y-crecer": "Vender y crecer",
+      "ajustes-del-sitio": "Ajustes del sitio"
     },
     "backToMenu": "Menú",
-    "membresias": "Membresías"
+    "membresias": "Membresías",
+    "sitioWeb": "Sitio web"
   },
   "crm": {
     "title": "CRM",
@@ -25734,5 +25747,10 @@
         "7": "Domingo"
       }
     }
+  },
+  "sitioWeb": {
+    "verSitio": "Ver sitio",
+    "abrirEditor": "Abrir editor",
+    "tuSitio": "Tu sitio"
   }
 }

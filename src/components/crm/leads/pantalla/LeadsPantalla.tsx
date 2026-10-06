@@ -218,7 +218,7 @@ export function LeadsPantalla() {
                 titulo={t('vacio.titulo')}
                 descripcion={t('vacio.descripcion')}
                 accion={permisos.crear ? { etiqueta: t('nuevo'), onClick: () => setNuevo(true) } : undefined}
-                accionSecundaria={{ etiqueta: t('vacio.conectar'), href: '/app/organizacion/branding' }}
+                accionSecundaria={{ etiqueta: t('vacio.conectar'), href: '/app/sitio-web' }}
               />
             </div>
           ) : estado === 'sinResultados' ? (

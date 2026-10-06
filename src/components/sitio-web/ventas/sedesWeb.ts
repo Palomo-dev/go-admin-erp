@@ -11,6 +11,8 @@
  *   zona horaria de la sede.
  */
 
+import { RESERVED_SLUGS } from '@/lib/utils/webIdentityValidation';
+
 export const MODOS_SEDES = ['selector', 'per_branch'] as const;
 export type ModoSedes = (typeof MODOS_SEDES)[number];
 
@@ -80,9 +82,12 @@ export const MAX_SLUG = 60;
 
 /**
  * Rutas que el sitio público ya usa: una sede con esa dirección las taparía.
- * (El resolvedor de goadmin-websites debe respetar la misma lista.)
+ * Incluye `RESERVED_SLUGS` (la lista que Sucursales valida y que contiene la del
+ * resolvedor de goadmin-websites, `lib/outlet/rutaSitio.ts`): sin ella, «Sedes en la
+ * web» aceptaba «nosotros», «servicios» o «home», y el sitio nunca resolvía esa sede.
  */
 export const SLUGS_RESERVADOS: ReadonlySet<string> = new Set([
+  ...RESERVED_SLUGS,
   'api', 'admin', 'checkout', 'carrito', 'cart', 'producto', 'productos', 'categoria', 'categorias', 'tienda',
   'tracking', 'rastreo', 'cuenta', 'account', 'buscar', 'search', 'pedido', 'pedidos', 'reservar', 'reservas',
   'carta', 'menu', 'blog', 'contacto', 'legal', 'terminos', 'privacidad', 'sitemap.xml', 'robots.txt',

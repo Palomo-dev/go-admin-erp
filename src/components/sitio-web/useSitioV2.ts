@@ -45,7 +45,8 @@ export interface SitioV2 {
   estadoPublicacion: EstadoPublicacion;
   asegurar: () => Promise<SitioResumen | null>;
   guardar: (cambiar: (documento: DocumentoSitio) => DocumentoSitio) => Promise<boolean>;
-  publicar: (nota?: string | null) => Promise<ResultadoPublicacion | null>;
+  /** `activar`: si el sitio aún no está activo en la web, la misma llamada lo activa. */
+  publicar: (nota?: string | null, opciones?: { activar?: boolean }) => Promise<ResultadoPublicacion | null>;
   revisiones: () => Promise<RevisionResumen[]>;
   /**
    * Despublica el sitio principal (`false`) o lo vuelve a mostrar (`true`).
@@ -155,14 +156,19 @@ export function useSitioV2({ branchId = null, crearSiFalta = false, deshabilitad
     }
   }, []);
 
-  const publicar = useCallback(async (nota: string | null = null) => {
+  const publicar = useCallback(async (nota: string | null = null, opciones?: { activar?: boolean }) => {
     const actual = ref.current;
     if (!actual) return null;
     setPublicando(true);
     setFalloPublicacion(false);
     try {
-      const r = await clienteSitiosV2.publicar(actual.sitio.id, actual.version, nota);
-      const sitioPublicado: SitioResumen = { ...actual.sitio, revisionPublicadaId: r.revisionId, cambiosSinPublicar: false };
+      const r = await clienteSitiosV2.publicar(actual.sitio.id, actual.version, nota, !!opciones?.activar);
+      const sitioPublicado: SitioResumen = {
+        ...actual.sitio,
+        revisionPublicadaId: r.revisionId,
+        cambiosSinPublicar: false,
+        ...(r.activacion === 'activada' ? { v2Adoptado: true, v2AdoptadoEn: r.publicadaEn } : {}),
+      };
       const siguiente = { ...actual, sitio: sitioPublicado };
       ref.current = siguiente;
       setBorrador(siguiente);

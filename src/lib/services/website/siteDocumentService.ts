@@ -36,6 +36,7 @@ import {
   type FilaSeccionLegacy,
 } from '@/lib/website/v2/importadorLegacy';
 import { propagarSeccionesHeredadas } from '@/lib/website/v2/vistaEditor';
+import { publicarConActivacion, type ActivacionAlPublicar } from '@/lib/website/v2/activarAlPublicar';
 import {
   documentoPlantillaSede,
   esTipoSedePlantilla,
@@ -624,6 +625,31 @@ export async function cambiarAdopcion(
   const { error } = await cliente.rpc('set_site_v2_adoption', { p_site: sitioId, p_adopted: adoptado });
   if (error) throw errorDesdePostgrest(error, 'cambiarAdopcion');
   return resumenDe(cliente, org, sitioId);
+}
+
+/**
+ * «Publicar» que además activa la web la primera vez (principal o sede): `publicar` y, si el
+ * sitio aún no está activo y `lectorListo`, `cambiarAdopcion(true)`. La decisión y el manejo
+ * del fallo viven en `activarAlPublicar.ts`: si activar falla, la revisión queda publicada y se
+ * devuelve `activacion: 'fallo'` (el editor ofrece «Activar en la web» como reintento).
+ */
+export async function publicarYActivar(
+  cliente: SupabaseClient,
+  org: number,
+  sitioId: string,
+  versionEsperada: number,
+  nota: string | null,
+  lectorListo: boolean,
+): Promise<ResultadoPublicacion & { activacion: ActivacionAlPublicar; errorActivacion?: string }> {
+  const estado = await estadoDeOrg(cliente, org, sitioId);
+  return publicarConActivacion({
+    pedida: true,
+    estado: { v2Adoptado: estado.v2_adopted, lectorListo },
+    publicar: () => publicar(cliente, org, sitioId, versionEsperada, nota),
+    activar: () => cambiarAdopcion(cliente, org, sitioId, true),
+    alFallarActivacion: (e) =>
+      console.error('[siteDocumentService] publicarYActivar.activar', { sitio: sitioId, codigo: e instanceof ErrorSitio ? e.code : 'error' }),
+  });
 }
 
 /**

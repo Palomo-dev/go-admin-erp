@@ -94,6 +94,9 @@ export interface ResultadoPublicacion {
   idempotente: boolean;
   /** Solo al publicar el principal: sedes cuyo borrador recibió las secciones que heredaban. */
   sedesActualizadas?: number;
+  /** Solo si se pidió `activar` al publicar (ver activarAlPublicar.ts). */
+  activacion?: 'activada' | 'fallo' | 'no_aplica';
+  errorActivacion?: string;
 }
 
 export interface ResultadoCreacion {

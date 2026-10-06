@@ -36,6 +36,7 @@ import { OrganizationTimezoneProvider, useFormatDate } from '@/lib/context/Organ
 import { FONTS } from '@/lib/services/websiteSettingsService';
 import type { WebsiteSettings } from '@/lib/services/websiteSettingsService';
 import { leerEstiloSeccion } from '@/lib/website/v2/estiloSeccion';
+import { debeActivarAlPublicar } from '@/lib/website/v2/activarAlPublicar';
 import { tipoSedeDesdeGiro } from '@/lib/services/website/sectionsByBranchType';
 import { resolverEstadoPublicacion, type EstadoPublicacion } from '@/components/sitio-web/ui/estadoPublicacion';
 import { useCategoriasMenu } from '@/components/sitio-web/paginas/ColumnaCategoriasInventario';
@@ -426,6 +427,7 @@ function Editor() {
         ultimaPublicacion={ed.ultimaPublicacion}
         principalConCambios={ed.basePrincipal?.principalConCambiosSinPublicar}
         v2Adoptado={!!ed.sitioV2.sitio?.v2Adoptado}
+        activaraWeb={debeActivarAlPublicar({ v2Adoptado: !!ed.sitioV2.sitio?.v2Adoptado, lectorListo: LECTOR_PUBLICO_V2_LISTO })}
         programarDisponible={ed.programarDisponible}
         publicando={ed.publicando}
         onVer={(destino) => {

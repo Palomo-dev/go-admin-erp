@@ -98,8 +98,12 @@ export const clienteSitiosV2 = {
   borrador: (sitioId: string) => pedir<BorradorSitio>(`/${sitioId}/draft`),
   guardar: (sitioId: string, documento: DocumentoSitio, version: number) =>
     pedir<ResultadoGuardado>(`/${sitioId}/draft`, { method: 'PUT', body: { documento, version } }),
-  publicar: (sitioId: string, version: number, nota: string | null) =>
-    pedir<ResultadoPublicacion>(`/${sitioId}/publications`, { method: 'POST', body: { version, nota } }),
+  /** `activar`: si el sitio aún no está activo en la web, publicar también lo activa (un solo paso). */
+  publicar: (sitioId: string, version: number, nota: string | null, activar = false) =>
+    pedir<ResultadoPublicacion>(`/${sitioId}/publications`, {
+      method: 'POST',
+      body: activar ? { version, nota, activar } : { version, nota },
+    }),
   revisiones: async (sitioId: string) => (await pedir<{ revisiones: RevisionResumen[] }>(`/${sitioId}/revisions`)).revisiones,
   restaurar: (sitioId: string, revisionId: string, version: number) =>
     pedir<ResultadoGuardado>(`/${sitioId}/restorations`, { method: 'POST', body: { revisionId, version } }),

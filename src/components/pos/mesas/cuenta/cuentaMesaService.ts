@@ -1,7 +1,7 @@
 /**
  * Datos de la cuenta de una mesa (Figma «POS — Mesas: flujo completo de
  * atención»). Cada acción va por su RPC transaccional
- * (`supabase/migrations/20261006200000_pos_mesas_flujo_atencion.sql`): la
+ * (`supabase/migrations/20261006164925_pos_mesas_flujo_atencion.sql`): la
  * organización la saca la base de la fila y exige pertenencia y sede.
  *
  * Mientras la migración no esté aplicada, cada acción cae a su respaldo de

@@ -3,7 +3,7 @@
  * editadas y borradas, y las zonas (nombre, color, orden y su recuadro).
  *
  * Forma, tamaño, color y orden son columnas de la migración
- * 20261006200000_pos_mesas_flujo_atencion: mientras no esté aplicada se guarda
+ * 20261006164925_pos_mesas_flujo_atencion: mientras no esté aplicada se guarda
  * sin ellas (la forma vuelve a salir de la capacidad) y se avisa.
  */
 import { supabase } from '@/lib/supabase/config';

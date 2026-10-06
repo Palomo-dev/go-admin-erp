@@ -1,4 +1,4 @@
--- Rollback de 20261006200000_pos_mesas_flujo_atencion.
+-- Rollback de 20261006164925_pos_mesas_flujo_atencion (aplicada el 2026-10-06, versión 20261006164925).
 --
 -- ADVIERTE: no restaura datos. Las mesas que estén «Por limpiar» vuelven a «free» (el CHECK
 -- original no admite 'cleaning'). La nota de la mesa (table_sessions.service_notes), la nota

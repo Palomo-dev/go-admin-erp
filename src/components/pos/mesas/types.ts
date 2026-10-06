@@ -1,6 +1,6 @@
 // Tipos para el sistema de mesas de restaurante
 
-/** 'cleaning' = «Por limpiar» (migración 20261006200000; antes no existía). */
+/** 'cleaning' = «Por limpiar» (migración 20261006164925; antes no existía). */
 export type TableState = 'free' | 'occupied' | 'reserved' | 'cleaning';
 export type SessionStatus = 'active' | 'bill_requested' | 'completed';
 export type KitchenTicketStatus = 'new' | 'preparing' | 'ready' | 'delivered';

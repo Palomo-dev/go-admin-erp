@@ -1,7 +1,7 @@
 -- POS › Mesas — flujo completo de atención (Figma «POS — Mesas: flujo completo de atención
 -- (propuesta)», 1073:666953, y «POS — Mesas: cuadrícula y plano (propuesta)», 870:98618;
 -- docs/design/POS-MESAS-FLUJO-COMPLETO.md §8).
--- NO APLICADA. La aplica el coordinador por el MCP (apply_migration).
+-- Aplicada el 2026-10-06 con apply_migration (versión 20261006164925).
 --
 -- ENSAYO: ver el bloque al final de este comentario (resultado copiado tal cual).
 --
@@ -54,6 +54,8 @@
 --   | mesa2_limpiar=[mesa_ocupada] mesa2_abrir=[mesa_ocupada]
 --   | ajeno_ronda=[42501 Acceso denegado a la organización]
 --   ajeno_estado=[42501 Acceso denegado a la organización]
+
+set lock_timeout = '10s';
 
 -- 1. Estado «Por limpiar» ------------------------------------------------------------------
 alter table public.restaurant_tables drop constraint if exists restaurant_tables_state_check;

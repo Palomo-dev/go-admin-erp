@@ -32,7 +32,7 @@ import {
   DEFAULT_COUNTRY_ISO,
   getCountryByIso,
   type CountryPhoneCode,
-} from '@/lib/data/countryPhoneCodes';
+} from '../data/countryPhoneCodes';
 
 export { DEFAULT_COUNTRY_ISO };
 

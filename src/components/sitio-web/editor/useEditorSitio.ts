@@ -87,6 +87,7 @@ import { useSitioV2 } from '@/components/sitio-web/useSitioV2';
 import { rutaEditorSitio } from '@/components/sitio-web/rutasSitioWeb';
 import type { DispositivoVista } from '@/components/sitio-web/ui/dispositivos';
 import { useTextosEditor } from './textos';
+import { cambiosParaFilaLegacy } from './inspector/zonaGlobalLogica';
 import { programarAutoguardado, type Autoguardado } from './useAutoguardado';
 
 /**
@@ -167,6 +168,8 @@ export function useEditorSitio() {
   const [pages, setPages] = useState<WebsitePage[]>([]);
   const [currentPage, setCurrentPage] = useState<WebsitePageWithSections | null>(null);
   const [settings, setSettings] = useState<WebsiteSettings | null>(null);
+  /** Fila legacy tal como llegó de la base (qué columnas existen), para degradar al guardar. */
+  const settingsRef = useRef<WebsiteSettings | null>(null);
   const [previewUrlBase, setPreviewUrlBase] = useState<string | null>(null);
   const [sectionManifest, setSectionManifest] = useState<SectionManifest | null>(null);
   const [availableMenus, setAvailableMenus] = useState<MenuGroup[]>([]);
@@ -272,6 +275,7 @@ export function useEditorSitio() {
       }
       setOutletSettingsExists(propios);
       setPages(pagesData);
+      settingsRef.current = settingsData;
       setSettings(settingsData);
       setPreviewUrlBase(preview);
 
@@ -866,8 +870,11 @@ export function useEditorSitio() {
         marcarCambio();
         return;
       }
+      // Legacy: la fila de `website_settings`. Una columna nueva que aún no exista en la base no
+      // se envía (el lienzo la pinta igual); la barra móvil va como texto «a,b».
+      const { enviar } = cambiosParaFilaLegacy(cambios as Record<string, unknown>, settingsRef.current as unknown as Record<string, unknown> | null);
       setSettings((prev) => (prev ? { ...prev, ...cambios } : prev));
-      pendingSettingsUpdates.current = { ...pendingSettingsUpdates.current, ...cambios };
+      pendingSettingsUpdates.current = { ...pendingSettingsUpdates.current, ...(enviar as Partial<WebsiteSettings>) };
       marcarCambio();
     },
     [enV2, marcarCambio],
@@ -956,6 +963,7 @@ export function useEditorSitio() {
       });
       const r = await clienteSitiosV2.guardarLegacy(lote);
       if (r.ajustes) {
+        settingsRef.current = r.ajustes as unknown as WebsiteSettings;
         setSettings(r.ajustes as unknown as WebsiteSettings);
         if (selectedBranchId !== null) setOutletSettingsExists(true);
       }
@@ -1271,6 +1279,7 @@ export function useEditorSitio() {
         }
         setOutletSettingsExists(existe);
         setPages(paginas);
+        settingsRef.current = datos;
         setSettings(datos);
         const actual = currentPageRef.current;
         if (paginas.length > 0 && (!actual || !paginas.some((p) => p.id === actual.id))) await cambiarPagina(paginas[0].id);

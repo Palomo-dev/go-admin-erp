@@ -5,7 +5,15 @@
  * `updateHeaderConfig`, `updateFooterConfig` y `updateTheme`, y el lienzo para
  * aplicar en vivo (`goadmin:settings`) lo que se está editando sin guardar.
  * Una sola lista: si se añade una columna del encabezado, llega a los dos.
+ *
+ * Las opciones nuevas del contrato (`COLUMNAS_NUEVAS_SHELL` de `mapeoAjustes.ts`: segundo botón,
+ * barra superior, sede, barra de reserva, barra móvil, WhatsApp, mapa y medios de pago del pie)
+ * entran desde el contrato: sin ellas el lienzo no las pintaba en vivo.
  */
+import { COLUMNAS_NUEVAS_SHELL, OPCIONES_SHELL } from '@/lib/website/v2/mapeoAjustes';
+
+const NUEVAS_ENCABEZADO = COLUMNAS_NUEVAS_SHELL.filter((c) => OPCIONES_SHELL[c]?.zona === 'header');
+const NUEVAS_PIE = COLUMNAS_NUEVAS_SHELL.filter((c) => OPCIONES_SHELL[c]?.zona === 'footer');
 
 /** Columnas que guarda `updateHeaderConfig` / `updateFooterConfig` (incluye las del pie). */
 export const CLAVES_ENCABEZADO = [
@@ -30,6 +38,7 @@ export const CLAVES_ENCABEZADO = [
   'footer_newsletter_button_text', 'footer_text', 'show_powered_by',
   'mobile_footer_style', 'mobile_footer_show_social', 'mobile_footer_show_hours',
   'header_menu_id', 'header_mega_menu_id',
+  ...NUEVAS_ENCABEZADO, ...NUEVAS_PIE,
 ] as const;
 
 /** Del bloque anterior, las que guarda `updateFooterConfig`. */
@@ -40,6 +49,7 @@ export const CLAVES_PIE = [
   'footer_newsletter_button_text', 'footer_text', 'show_powered_by',
   'mobile_footer_style', 'mobile_footer_show_social', 'mobile_footer_show_hours',
   'header_menu_id', 'header_mega_menu_id',
+  ...NUEVAS_PIE,
 ] as const;
 
 /**

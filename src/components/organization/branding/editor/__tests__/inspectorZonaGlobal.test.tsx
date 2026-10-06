@@ -83,10 +83,11 @@ describe('zonaGlobal (lógica)', () => {
     expect(esZonaGlobal(null)).toBe(false);
   });
 
-  test('con el lienzo en celular abre en «Celular»; si no, en «Diseño»', () => {
+  test('bajo 1024 (el corte del sitio: celular y tableta) abre en «Celular»; si no, en «Diseño»', () => {
     expect(pestanaInicialZona('mobile')).toBe('celular');
+    expect(pestanaInicialZona('tablet')).toBe('celular');
     expect(pestanaInicialZona('desktop')).toBe('diseno');
-    expect(pestanaInicialZona('tablet')).toBe('diseno');
+    expect(pestanaInicialZona('laptop')).toBe('diseno');
   });
 });
 

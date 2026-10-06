@@ -22,6 +22,14 @@ describe('ajustes en vivo del lienzo', () => {
     for (const c of CLAVES_PIE) expect(CLAVES_ENCABEZADO).toContain(c);
   });
 
+  test('las opciones nuevas del contrato (segundo botón, barra móvil, pie) van en vivo', () => {
+    for (const c of ['header_cta2_text', 'header_cta2_url', 'topbar_show_branch_status', 'header_show_branch_selector', 'header_booking_bar', 'mobile_bottom_bar', 'footer_show_whatsapp', 'footer_show_map', 'footer_show_payment_methods', 'header_show_currency', 'header_text_color', 'header_sticky', 'footer_text_color', 'footer_show_dividers']) {
+      expect(CLAVES_AJUSTES_VIVOS).toContain(c);
+    }
+    expect(CLAVES_PIE).toContain('footer_show_map');
+    expect(ajustesParaLienzo({ mobile_bottom_bar: ['reservar', 'llamar'] })).toEqual({ mobile_bottom_bar: ['reservar', 'llamar'] });
+  });
+
   test('sin ajustes devuelve un objeto vacío', () => {
     expect(ajustesParaLienzo(null)).toEqual({});
   });

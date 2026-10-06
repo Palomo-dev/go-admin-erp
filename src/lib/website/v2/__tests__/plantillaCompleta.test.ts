@@ -16,15 +16,18 @@ jest.mock('@/lib/utils/offlineCache', () => ({
 
 import { validarDocumentoSitio, type DocumentoSitio, type PaginaSitio } from '@/lib/website/contrato/documentoSitio';
 import { construirCatalogo, contarPorGiro, plantillaPorId, type PlantillaCatalogo } from '@/lib/website/contrato/catalogoPlantillas';
+import type { Giro } from '@/components/sitio-web/paginas/plantillasPagina';
 import { TEMPLATE_PRESETS } from '@/lib/website/contrato/presetsPlantillas';
 import { getSectionDefinition } from '@/lib/services/websitePageBuilderService';
-import { OPCIONES_SHELL } from '@/lib/website/v2/mapeoAjustes';
+import { OPCIONES_SHELL, normalizarOpcionShell } from '@/lib/website/v2/mapeoAjustes';
+import { RUTAS_SITIO_PUBLICO, SHELL_POR_PLANTILLA } from '@/lib/website/v2/shellPorPlantilla';
 import { esInicio, esPaginaLegal, esPlantillaTienda } from '@/components/sitio-web/paginas/tipoPagina';
 import {
   COMPOSICIONES_ENCABEZADO,
   COMPOSICIONES_PIE,
   DATOS_VACIOS,
-  SHELL_POR_GIRO,
+  shellDePlantilla,
+  shellPorDefectoDelDocumento,
   TIPOS_QUE_NECESITAN_DATOS,
   armarPlantillaCompleta,
   CATALOGO_PLANTILLAS,
@@ -144,24 +147,78 @@ describe.each(CATALOGO.plantillas.map((p) => [p.id, p] as const))('plantilla com
     expect(r.documento.schemaVersion).toBe(1);
   });
 
-  it('trae encabezado y pie con composiciones que el sitio pinta y opciones del contrato', () => {
+  it('trae encabezado y pie con composiciones que el sitio pinta y opciones válidas del contrato', () => {
     const { header, footer } = documento.shell;
     expect(COMPOSICIONES_ENCABEZADO).toContain(header.composicion);
     expect(COMPOSICIONES_PIE).toContain(footer.composicion);
-    for (const clave of Object.keys(header.opciones)) expect(OPCIONES_SHELL[clave]?.zona).toBe('header');
-    for (const clave of Object.keys(footer.opciones)) expect(OPCIONES_SHELL[clave]?.zona).toBe('footer');
-    expect(header.opciones.header_cta_text).toBe(SHELL_POR_GIRO[plantilla.giro].encabezado.cta.texto);
-    // El botón del encabezado lleva a una página que existe.
-    const destino = String(header.opciones.header_cta_url).replace(/^\//, '');
-    expect(documento.paginas.some((p) => p.slug === destino)).toBe(true);
+    for (const [clave, valor] of Object.entries(header.opciones)) {
+      expect({ clave, zona: OPCIONES_SHELL[clave]?.zona }).toEqual({ clave, zona: 'header' });
+      expect({ clave, valor: normalizarOpcionShell(clave, valor) }).toEqual({ clave, valor });
+    }
+    for (const [clave, valor] of Object.entries(footer.opciones)) {
+      expect({ clave, zona: OPCIONES_SHELL[clave]?.zona }).toEqual({ clave, zona: 'footer' });
+      expect({ clave, valor: normalizarOpcionShell(clave, valor) }).toEqual({ clave, valor });
+    }
+    const lamina = shellDePlantilla(plantilla.id, plantilla.giro as never);
+    expect(header.composicion).toBe(lamina.encabezado.composicion);
+    expect(footer.composicion).toBe(lamina.pie.composicion);
+    if (lamina.encabezado.boton) expect(header.opciones.header_cta_text).toBe(lamina.encabezado.boton.texto);
   });
 
-  it('trae menús: encabezado con sus páginas y pie con «Explora» y «Legales»', () => {
+  it('los botones del encabezado llevan a una página que existe, a una ruta del sitio o a WhatsApp / mapa', () => {
+    const { opciones } = documento.shell.header;
+    for (const clave of ['header_cta_url', 'header_cta2_url']) {
+      const url = opciones[clave];
+      if (url === undefined) continue;
+      const u = String(url);
+      const valido =
+        u === 'whatsapp' || u === 'maps' || (RUTAS_SITIO_PUBLICO as readonly string[]).includes(u) || documento.paginas.some((p) => `/${p.slug}` === u);
+      expect({ clave, u, valido }).toEqual({ clave, u, valido: true });
+    }
+  });
+
+  it('trae menús: encabezado con sus páginas y los del pie de la plantilla, sin enlaces rotos', () => {
     const encabezado = documento.menus.find((m) => m.id === documento.shell.header.menuPrincipalId)!;
     expect(encabezado.items.length).toBeGreaterThanOrEqual(4);
     expect(encabezado.items[0].etiqueta).toBe('Inicio');
-    const pie = documento.shell.footer.menuIds.map((id) => documento.menus.find((m) => m.id === id)!.nombre);
-    expect(pie).toEqual(['Explora', 'Legales']);
+    const pie = documento.shell.footer.menuIds.map((id) => documento.menus.find((m) => m.id === id)!);
+    expect(pie.length).toBeGreaterThan(0);
+    for (const m of pie) {
+      expect(m.items.length).toBeGreaterThan(0);
+      for (const i of m.items) {
+        if (i.tipo === 'page') expect(documento.paginas.some((p) => p.id === i.paginaId)).toBe(true);
+        else if (i.tipo === 'custom') expect(RUTAS_SITIO_PUBLICO).toContain(i.url);
+      }
+    }
+    // Ninguna página se repite entre dos menús del pie («Tratamiento de datos» es a propósito un
+    // segundo enlace a la política de privacidad: va en la barra inferior del pie).
+    const enPie = pie.flatMap((m) =>
+      m.items.filter((i) => i.tipo === 'page' && i.etiqueta !== 'Tratamiento de datos').map((i) => (i as { paginaId: string }).paginaId),
+    );
+    expect(new Set(enPie).size).toBe(enPie.length);
+  });
+
+  it('pie según la lámina: «Hecho con…» solo si la lámina lo trae; la tienda sin columna Contacto; «Tratamiento de datos» a la privacidad', () => {
+    const shell = shellDePlantilla(plantilla.id, plantilla.giro as Giro);
+    const opciones = documento.shell.footer.opciones;
+    // El borrador de prueba ya lo había apagado: la decisión de la organización se conserva.
+    expect(opciones.show_powered_by).toBe(false);
+    // Sin decisión previa: solo las láminas que lo traen. true es el default del contrato (ausente = true).
+    const sinEleccion = borradorImportado();
+    sinEleccion.shell.footer.opciones = {};
+    const limpio = armar(plantilla, DATOS, sinEleccion).documento.shell.footer.opciones;
+    expect(limpio.show_powered_by ?? true).toBe(shell.pie.opciones.show_powered_by === true);
+    if (plantilla.giro === 'tienda') expect(opciones.footer_show_contact).toBe(false);
+    const legales = documento.menus.find((m) => m.nombre === 'Legales' && documento.shell.footer.menuIds.includes(m.id));
+    if (legales) {
+      const tratamiento = legales.items.find((i) => i.etiqueta === 'Tratamiento de datos');
+      const privacidad = documento.paginas.find((p) => p.slug === 'privacidad');
+      expect(tratamiento && tratamiento.tipo === 'page' ? tratamiento.paginaId : null).toBe(privacidad?.id ?? null);
+    }
+  });
+
+  it('no copia anuncios de ejemplo de las láminas (no inventa precios ni promociones)', () => {
+    expect(documento.shell.header.opciones.topbar_announcement).toBeUndefined();
   });
 
   it('Inicio sigue la estructura de la plantilla, en su orden (portada con foto si la hay)', () => {
@@ -237,9 +294,24 @@ describe('restaurante: «Noir Omakase» sobre el sitio importado (caso de la org
     expect(t.visibilidad).toEqual({ movil: true, escritorio: true });
   });
 
-  it('encabezado «Reservar mesa», carrito y teléfono; pie con horario; conserva «Hecho con…»', () => {
-    expect(documento.shell.header.opciones).toMatchObject({ header_cta_text: 'Reservar mesa', header_cta_url: '/reservas-mesa', show_header_cart: true, show_topbar: true });
-    expect(documento.shell.footer.opciones).toMatchObject({ footer_show_hours: true, footer_show_contact: true, show_powered_by: false });
+  it('encabezado y pie de la lámina «Noir Omakase»; conserva «Hecho con…»', () => {
+    expect(documento.shell.header.composicion).toBe('default');
+    expect(documento.shell.header.opciones).toMatchObject({
+      header_cta_text: 'Reservar mesa',
+      header_cta_url: '/reservas-mesa',
+      logo_position: 'center',
+      show_topbar: true,
+      topbar_show_branch_status: true,
+      header_show_language: true,
+      show_header_cart: false,
+      show_header_auth: false,
+      search_style: 'hidden',
+      mobile_menu_style: 'fullscreen',
+      mobile_bottom_bar: 'auto',
+    });
+    expect(documento.shell.footer.composicion).toBe('centered');
+    expect(documento.shell.footer.opciones).toMatchObject({ footer_background: 'tema', footer_show_hours: true, footer_show_whatsapp: true, show_powered_by: false });
+    expect(documento.shell.footer.menuIds.map((id) => documento.menus.find((m) => m.id === id)!.nombre)).toEqual(['Legales']);
   });
 
   it('la política nueva nace con su texto base vacío, nunca con textos de otra sección', () => {
@@ -251,7 +323,7 @@ describe('restaurante: «Noir Omakase» sobre el sitio importado (caso de la org
     const terminos = documento.paginas.find((p) => p.slug === 'terminos')!;
     expect(terminos.secciones[0].contenido.body).toBe('Texto real de la organización');
     const legales = documento.menus.find((m) => m.nombre === 'Legales')!;
-    expect(legales.items.map((i) => i.etiqueta).sort()).toEqual(['Política de privacidad', 'Términos y condiciones']);
+    expect(legales.items.map((i) => i.etiqueta).sort()).toEqual(['Política de privacidad', 'Tratamiento de datos', 'Términos y condiciones']);
   });
 
   it('aplica el estilo de la plantilla', () => {
@@ -280,7 +352,10 @@ describe('sin datos de la organización', () => {
     expect(validarDocumentoSitio(documento).ok).toBe(true);
     const hero = inicioDe(documento).secciones[0];
     expect(hero.contenido.title).toBe('Bienvenido a nuestra tienda');
-    expect(documento.shell.header.opciones.show_topbar).toBe(false);
+    expect(documento.shell.header.opciones).toMatchObject({ show_topbar: true, topbar_show_free_shipping: true });
+    // Sin categorías en el Inventario, el megamenú lleva las páginas del catálogo.
+    const mega = documento.menus.find((m) => m.id === documento.shell.header.menuMegaId)!;
+    expect(mega.items.map((i) => i.etiqueta)).toEqual(['Productos', 'Categorías', 'Ofertas']);
   });
 });
 
@@ -316,5 +391,94 @@ describe('opción por defecto del diálogo', () => {
     expect(modoPorDefecto(null)).toBe('completa');
     expect(modoPorDefecto({ revisionPublicadaId: null })).toBe('completa');
     expect(modoPorDefecto({ revisionPublicadaId: 'r1' })).toBe('estilo');
+  });
+});
+
+describe('encabezado y pie por plantilla (láminas aprobadas en Figma)', () => {
+  const de = (id: string) => armar(plantillaPorId(CATALOGO, id)!).documento;
+  const nombresPie = (d: DocumentoSitio) => d.shell.footer.menuIds.map((id) => d.menus.find((m) => m.id === id)!.nombre);
+
+  it('cada plantilla del catálogo tiene su lámina (salvo transporte y parqueadero, que usan la del giro)', () => {
+    for (const p of CATALOGO.plantillas) {
+      if (p.giro === 'transporte' || p.giro === 'parqueadero') continue;
+      expect({ id: p.id, lamina: p.id in SHELL_POR_PLANTILLA }).toEqual({ id: p.id, lamina: true });
+    }
+  });
+
+  it('«Velvet Lounge»: segundo botón «Eventos» a una página Eventos real y menú «Eventos» en el pie', () => {
+    const d = de('velvet_lounge');
+    expect(d.shell.header.opciones).toMatchObject({ header_cta2_text: 'Eventos', header_cta2_url: '/eventos', header_cta_url: '/reservas-mesa' });
+    expect(d.paginas.some((p) => p.slug === 'eventos')).toBe(true);
+    expect(nombresPie(d)).toEqual(['Eventos', 'Legales']);
+  });
+
+  it('«Carta QR»: menú desde las categorías de la carta, selector de sede, sin barra móvil y página de alérgenos', () => {
+    const d = de('carta_qr');
+    expect(d.shell.header.opciones).toMatchObject({ header_menu_source: 'categorias_carta', header_show_branch_selector: true, mobile_bottom_bar: 'ninguna' });
+    expect(d.shell.header.opciones.header_cta_text).toBeUndefined();
+    const alergenos = d.paginas.find((p) => p.slug === 'alergenos')!;
+    expect(alergenos.secciones[1].contenido.title).toBe('Alérgenos e ingredientes');
+    expect(nombresPie(d)).toEqual(['Alérgenos']);
+  });
+
+  it('«Retail Moderno»: megamenú con las categorías reales del Inventario', () => {
+    const d = de('retail_modern');
+    expect(d.shell.header.composicion).toBe('mega');
+    const mega = d.menus.find((m) => m.id === d.shell.header.menuMegaId)!;
+    expect(mega.items).toEqual([
+      expect.objectContaining({ etiqueta: 'Entradas', tipo: 'entity', entidad: 'category', entidadId: '1' }),
+      expect.objectContaining({ etiqueta: 'Platos fuertes', entidadId: '2' }),
+      expect.objectContaining({ etiqueta: 'Bebidas', entidadId: '3' }),
+    ]);
+    expect(nombresPie(d)).toEqual(['Ayuda', 'Envíos y devoluciones', 'Legales']);
+    expect(d.shell.header.opciones.mobile_bottom_bar).toEqual(['whatsapp', 'llamar', 'como_llegar']);
+  });
+
+  it('hotel: «Políticas» con su página y «Legales» sin repetirla; barra móvil del giro', () => {
+    const d = de('hotel_luxury');
+    expect(d.shell.header.opciones).toMatchObject({ header_cta_url: '/reservas', header_booking_bar: true, mobile_bottom_bar: ['reservar', 'llamar', 'como_llegar'] });
+    expect(nombresPie(d)).toEqual(['Políticas', 'Legales']);
+    const legales = d.menus.find((m) => m.nombre === 'Legales')!;
+    expect(legales.items.map((i) => i.etiqueta)).not.toContain('Políticas de la estadía');
+    // «Hotel Minimal» solo trae «Políticas»: ahí van también las legales.
+    const minimal = de('hotel_minimal');
+    const politicas = minimal.menus.find((m) => m.nombre === 'Políticas')!;
+    expect(politicas.items.map((i) => i.etiqueta)).toEqual(expect.arrayContaining(['Políticas de la estadía', 'Política de privacidad']));
+  });
+
+  it('servicios y gimnasio: segundo botón (WhatsApp / prueba gratis) y barra móvil del giro', () => {
+    expect(de('services_modern').shell.header.opciones).toMatchObject({
+      header_cta_url: '/agendar',
+      header_cta2_text: 'WhatsApp',
+      header_cta2_url: 'whatsapp',
+      mobile_bottom_bar: ['agendar', 'whatsapp', 'llamar'],
+    });
+    expect(de('gym_power').shell.header.opciones).toMatchObject({
+      header_cta_url: '/membresias',
+      header_cta2_text: 'Prueba gratis',
+      header_cta2_url: '/contacto',
+      mobile_bottom_bar: ['prueba', 'como_llegar', 'llamar'],
+    });
+  });
+
+  it('parqueadero: «parqueadero_A» por defecto; «Parking Tech» usa la lámina B', () => {
+    const porDefecto = armar(plantillaPorDefectoDelGiro(CATALOGO, 'parqueadero')!).documento;
+    expect(porDefecto.shell.header.opciones).toMatchObject({ topbar_show_availability: true, header_cta2_url: 'maps', header_cta_url: '/tarifas' });
+    expect(nombresPie(porDefecto)).toEqual(['Tarifas', 'Legales']);
+    const b = de('parking_tech');
+    expect(b.shell.header.composicion).toBe('minimal');
+    expect(b.shell.header.opciones).toMatchObject({ header_cta_text: 'Cómo llegar', header_cta_url: 'maps' });
+  });
+
+  it('«Restablecer a la plantilla»: lee la plantilla del tema y resuelve contra las páginas de hoy', () => {
+    const d = de('velvet_lounge');
+    const r = shellPorDefectoDelDocumento(d, 'restaurante');
+    expect(r.plantillaId).toBe('velvet_lounge');
+    expect(r.nombre).toBe('Velvet Lounge');
+    expect(r.header.opciones).toEqual(d.shell.header.opciones);
+    expect(r.footer.composicion).toBe('three_columns');
+    // Sin la página Eventos, el segundo botón no se pone (nunca un enlace roto).
+    const sinEventos = { ...d, paginas: d.paginas.filter((p) => p.slug !== 'eventos') };
+    expect(shellPorDefectoDelDocumento(sinEventos, 'restaurante').header.opciones.header_cta2_url).toBeUndefined();
   });
 });

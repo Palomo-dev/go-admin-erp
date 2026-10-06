@@ -18,8 +18,11 @@
  * - Páginas: el juego base del giro (`paginasBasePorGiro`, copia verificada de
  *   `create_default_pages`) más las legales. Inicio lleva la estructura de la plantilla
  *   (`plantilla.inicio`), en su orden.
- * - Encabezado y pie: `SHELL_POR_GIRO` (un solo lugar; ver su comentario).
- * - Menús: «Encabezado» con las páginas «en el menú», y en el pie «Explora» y «Legales».
+ * - Encabezado y pie: los de la PLANTILLA aprobados en Figma (`shellPorPlantilla.ts`; el giro como
+ *   respaldo). Sus botones y menús se resuelven contra las páginas reales: nunca un enlace roto.
+ * - Menús: «Encabezado» con las páginas «en el menú», el megamenú de categorías si la plantilla lo
+ *   pide y los menús del pie de la plantilla («Legales», «Ayuda», «Políticas»…), con las páginas
+ *   que necesitan (preguntas frecuentes, eventos, alérgenos, políticas de la estadía).
  * - Contenido inicial con los DATOS REALES de la organización: nombre, ciudad, dirección, teléfono,
  *   productos con foto, categorías, el banner del sitio viejo y los testimonios que de verdad existen.
  *   Donde no hay datos, textos de ejemplo en español que no inventan hechos.
@@ -38,68 +41,25 @@ import { construirPaginaBase, paginasBasePorGiro, type GenerarId, type Giro, typ
 import { esInicio, esPaginaLegal, esPlantillaTienda } from '@/components/sitio-web/paginas/tipoPagina';
 import { TEMPLATE_PRESETS } from '@/lib/website/contrato/presetsPlantillas';
 import { aplicarEstiloPlantilla } from './usarPlantilla';
+import { COMPOSICIONES_FOOTER, COMPOSICIONES_HEADER } from './mapeoAjustes';
+import { shellDePlantilla, type BotonPlantilla, type ClaveMenuPie, type DestinoBoton, type ShellPlantilla } from './shellPorPlantilla';
 
 /** Catálogo completo (las 8 de restaurante y las del sitio), el mismo de Diseño y Plantillas. */
 export const CATALOGO_PLANTILLAS: CatalogoPlantillas = construirCatalogo(TEMPLATE_PRESETS);
 
-// ─── Encabezado y pie por giro ─────────────────────────────────────────────────────────────────
+// ─── Encabezado y pie por plantilla ────────────────────────────────────────────────────────────
 
-/** Composiciones que el sitio público ya sabe pintar (`SiteHeader` / `SiteFooter` de goadmin-websites). */
-export const COMPOSICIONES_ENCABEZADO = ['default', 'centered', 'split', 'minimal', 'mega'] as const;
-export const COMPOSICIONES_PIE = ['default', 'minimal', 'centered', 'three_columns', 'split'] as const;
+/** Composiciones que el sitio público sabe pintar (las del contrato, `mapeoAjustes.ts`). */
+export const COMPOSICIONES_ENCABEZADO = COMPOSICIONES_HEADER;
+export const COMPOSICIONES_PIE = COMPOSICIONES_FOOTER;
 export type ComposicionEncabezado = (typeof COMPOSICIONES_ENCABEZADO)[number];
 export type ComposicionPie = (typeof COMPOSICIONES_PIE)[number];
 
-export interface ShellGiro {
-  encabezado: {
-    composicion: ComposicionEncabezado;
-    /** Botón del encabezado: texto y página destino (por dirección del juego base). */
-    cta: { texto: string; slug: string };
-    carrito: boolean;
-    cuenta: boolean;
-  };
-  pie: {
-    composicion: ComposicionPie;
-    horario: boolean;
-    boletin: boolean;
-  };
-}
-
 /**
- * Encabezado y pie de la «Plantilla completa» por giro: UN SOLO LUGAR. Mientras no haya diseño
- * aprobado en Figma de encabezados y pies por tipo de negocio (lo está proponiendo otro frente),
- * se usan composiciones que el sitio ya pinta; cuando se apruebe, se cambia aquí y nada más.
+ * Encabezado y pie: UN SOLO LUGAR, `shellPorPlantilla.ts` (por plantilla, el giro como respaldo).
+ * Aquí solo se resuelven sus destinos contra las páginas reales del documento.
  */
-export const SHELL_POR_GIRO: Readonly<Record<Giro, ShellGiro>> = {
-  restaurante: {
-    encabezado: { composicion: 'centered', cta: { texto: 'Reservar mesa', slug: 'reservas-mesa' }, carrito: true, cuenta: true },
-    pie: { composicion: 'three_columns', horario: true, boletin: false },
-  },
-  tienda: {
-    encabezado: { composicion: 'default', cta: { texto: 'Comprar', slug: 'productos' }, carrito: true, cuenta: true },
-    pie: { composicion: 'three_columns', horario: false, boletin: true },
-  },
-  hotel: {
-    encabezado: { composicion: 'split', cta: { texto: 'Reservar habitación', slug: 'espacios' }, carrito: false, cuenta: true },
-    pie: { composicion: 'centered', horario: false, boletin: false },
-  },
-  servicios: {
-    encabezado: { composicion: 'default', cta: { texto: 'Agenda una cita', slug: 'contacto' }, carrito: false, cuenta: false },
-    pie: { composicion: 'three_columns', horario: true, boletin: false },
-  },
-  gimnasio: {
-    encabezado: { composicion: 'default', cta: { texto: 'Ver membresías', slug: 'membresias' }, carrito: false, cuenta: true },
-    pie: { composicion: 'default', horario: true, boletin: false },
-  },
-  transporte: {
-    encabezado: { composicion: 'default', cta: { texto: 'Cotizar viaje', slug: 'contacto' }, carrito: false, cuenta: false },
-    pie: { composicion: 'three_columns', horario: true, boletin: false },
-  },
-  parqueadero: {
-    encabezado: { composicion: 'default', cta: { texto: 'Ver tarifas', slug: 'tarifas' }, carrito: false, cuenta: false },
-    pie: { composicion: 'default', horario: true, boletin: false },
-  },
-};
+export { SHELL_POR_PLANTILLA, SHELL_RESPALDO_GIRO, shellDePlantilla } from './shellPorPlantilla';
 
 // ─── Datos reales de la organización ───────────────────────────────────────────────────────────
 
@@ -330,6 +290,9 @@ const SUBTITULO_PAGINA: Readonly<Record<string, string>> = {
   flota: 'Conoce nuestros vehículos',
   zonas: 'Encuentra dónde parquear',
   tarifas: 'Consulta el valor antes de llegar',
+  eventos: 'Celebra con nosotros',
+  alergenos: 'Pregúntanos antes de pedir',
+  'preguntas-frecuentes': 'Resolvemos tus dudas',
 };
 
 // ─── Secciones: qué se oculta sin datos ────────────────────────────────────────────────────────
@@ -368,6 +331,8 @@ interface ContextoSeccion {
   fotos: readonly { url: string; alt: string }[];
   esInicio: boolean;
   pagina: { titulo: string; slug: string };
+  /** Botón principal de la plantilla con su destino ya resuelto (o `null`). */
+  cta: { texto: string; url: string } | null;
 }
 
 interface SeccionArmada {
@@ -399,8 +364,9 @@ export function contenidoInicial(tipo: string, variante: string, c: ContextoSecc
   const { datos, textos } = c;
   const nombre = limpio(datos.nombre);
   const lema = eslogan(datos);
-  const cta = SHELL_POR_GIRO[c.giro].encabezado.cta;
-  const rutaCta = c.ruta(cta.slug);
+  // Solo destinos internos (página o ruta del sitio): «whatsapp» / «maps» no van en una sección.
+  const cta = c.cta && c.cta.url.startsWith('/') ? c.cta : null;
+  const rutaCta = cta?.url ?? null;
   const carta = c.ruta('menu');
   const reservas = c.ruta('reservas-mesa');
   const pedir = c.ruta('domicilios');
@@ -428,7 +394,7 @@ export function contenidoInicial(tipo: string, variante: string, c: ContextoSecc
           eyebrow: limpio(datos.ciudad),
           title: nombre,
           subtitle: lema ?? textos.subtituloInicio,
-          primary_cta_text: rutaCta ? cta.texto : null,
+          primary_cta_text: cta?.texto ?? null,
           primary_cta_url: rutaCta,
           secondary_cta_text: carta ? 'Ver la carta' : null,
           secondary_cta_url: carta,
@@ -449,7 +415,7 @@ export function contenidoInicial(tipo: string, variante: string, c: ContextoSecc
           title: nombre ?? textos.bienvenida,
           subtitle: lema ?? textos.subtituloInicio,
           image_url: c.portada,
-          cta_text: rutaCta ? cta.texto : null,
+          cta_text: cta?.texto ?? null,
           cta_url: rutaCta,
           show_cta: Boolean(rutaCta),
           show_title: true,
@@ -564,13 +530,13 @@ export function contenidoInicial(tipo: string, variante: string, c: ContextoSecc
         contenido: conValor({
           title: textos.ctaFinal.titulo,
           subtitle: textos.ctaFinal.subtitulo,
-          cta_text: rutaCta ? cta.texto : contacto ? 'Contáctanos' : null,
+          cta_text: cta ? cta.texto : contacto ? 'Contáctanos' : null,
           ...(tipo === 'cta' ? { cta_url: rutaCta ?? contacto, image_url: variante === 'with_image' ? (fotos[0]?.url ?? c.portada) : null } : {}),
         }),
         visible: true,
       };
     case 'booking_cta':
-      return { contenido: { title: textos.ctaFinal.titulo, cta_text: cta.texto }, visible: true };
+      return { contenido: conValor({ title: textos.ctaFinal.titulo, cta_text: cta?.texto ?? 'Reservar' }), visible: true };
     case 'contact_form':
       return { contenido: { title: 'Escríbenos', subtitle: 'Te respondemos lo antes posible.' }, visible: true };
     case 'trip_search':
@@ -682,29 +648,209 @@ function itemPagina(pagina: PaginaSitio, generarId: GenerarId): ItemMenu {
   return { id: generarId(), etiqueta: pagina.titulo || 'Página', tipo: 'page', paginaId: pagina.id };
 }
 
-/** Opciones del shell (claves de `OPCIONES_SHELL` de `mapeoAjustes.ts`). */
-function opcionesEncabezado(shell: ShellGiro, rutaCta: string | null, datos: DatosNegocio): Record<string, unknown> {
-  return conValor({
-    header_cta_text: rutaCta ? shell.encabezado.cta.texto : null,
-    header_cta_url: rutaCta,
-    show_header_cart: shell.encabezado.carrito,
-    show_header_auth: shell.encabezado.cuenta,
-    show_topbar: Boolean(limpio(datos.telefono)),
-    topbar_show_phone: Boolean(limpio(datos.telefono)),
-    topbar_show_email: false,
-  });
+// ─── Páginas y menús que pide el encabezado y el pie de la plantilla ──────────────────────────
+
+const sec = (tipo: string, variante: string, contenido: Record<string, unknown> = {}) => ({ tipo, variante, contenido });
+
+/**
+ * Páginas que un menú o un botón de la plantilla necesita y el juego base del giro no trae.
+ * Contenido sin hechos inventados: las secciones que esperan datos quedan ocultas (regla general)
+ * y la política nace con el texto vacío, como las demás legales.
+ */
+const PAGINAS_DEL_SHELL: Readonly<Record<string, PaginaBase>> = {
+  'preguntas-frecuentes': {
+    titulo: 'Preguntas frecuentes',
+    slug: 'preguntas-frecuentes',
+    tipo: 'builtin',
+    enMenu: false,
+    secciones: [sec('hero', 'minimal'), sec('faq', 'accordion')],
+  },
+  eventos: {
+    titulo: 'Eventos',
+    slug: 'eventos',
+    tipo: 'builtin',
+    enMenu: false,
+    secciones: [sec('hero', 'minimal'), sec('events', 'list'), sec('private_events', 'default'), sec('contact_form', 'split')],
+  },
+  alergenos: {
+    titulo: 'Alérgenos',
+    slug: 'alergenos',
+    tipo: 'builtin',
+    enMenu: false,
+    secciones: [
+      sec('hero', 'minimal'),
+      sec('text_block', 'left', {
+        title: 'Alérgenos e ingredientes',
+        body: 'Si tienes una alergia o una restricción, cuéntale a nuestro equipo antes de pedir: te decimos qué lleva cada plato.',
+      }),
+    ],
+  },
+  'politica-estadia': {
+    titulo: 'Políticas de la estadía',
+    slug: 'politica-estadia',
+    tipo: 'legal',
+    enMenu: false,
+    secciones: [sec('text_block', 'left', { title: 'Políticas de la estadía', content: '' })],
+  },
+};
+
+/** Páginas extra (por dirección) que piden los menús del pie y los botones de la lámina. */
+export function paginasQuePideElShell(shell: ShellPlantilla): string[] {
+  const porMenu: Partial<Record<ClaveMenuPie, readonly string[]>> = {
+    ayuda: ['preguntas-frecuentes'],
+    atencion: ['preguntas-frecuentes'],
+    eventos: ['eventos'],
+    alergenos: ['alergenos'],
+    politicas: ['politica-estadia'],
+  };
+  const pedidas = new Set<string>();
+  for (const m of shell.pie.menus) for (const slug of porMenu[m] ?? []) pedidas.add(slug);
+  for (const b of [shell.encabezado.boton, shell.encabezado.boton2]) {
+    if (b && 'paginas' in b.destino) {
+      const primera = b.destino.paginas.find((slug) => slug in PAGINAS_DEL_SHELL);
+      if (primera) pedidas.add(primera);
+    }
+  }
+  return [...pedidas];
 }
 
-function opcionesPie(shell: ShellGiro, anteriores: Record<string, unknown>): Record<string, unknown> {
+/** URL de un destino, o `null` si no existe en el documento (entonces el botón no se pone). */
+export function resolverDestino(destino: DestinoBoton, ruta: (slug: string) => string | null): string | null {
+  if ('especial' in destino) return destino.especial;
+  if ('ruta' in destino) return destino.ruta;
+  for (const slug of destino.paginas) {
+    const r = ruta(slug);
+    if (r) return r;
+  }
+  return null;
+}
+
+function botonResuelto(b: BotonPlantilla | null, ruta: (slug: string) => string | null): { texto: string; url: string } | null {
+  if (!b) return null;
+  const url = resolverDestino(b.destino, ruta);
+  return url ? { texto: b.texto, url } : null;
+}
+
+/**
+ * Opciones del encabezado de la lámina con los botones resueltos (claves de `OPCIONES_SHELL`).
+ * La barra superior no muestra el correo salvo que la lámina lo pida (como antes).
+ */
+export function opcionesEncabezadoPlantilla(shell: ShellPlantilla, ruta: (slug: string) => string | null): Record<string, unknown> {
+  const boton = botonResuelto(shell.encabezado.boton, ruta);
+  const boton2 = botonResuelto(shell.encabezado.boton2, ruta);
+  return {
+    topbar_show_email: false,
+    ...shell.encabezado.opciones,
+    ...(boton ? { header_cta_text: boton.texto, header_cta_url: boton.url } : {}),
+    ...(boton2 ? { header_cta2_text: boton2.texto, header_cta2_url: boton2.url } : {}),
+  };
+}
+
+/**
+ * Opciones del pie de la lámina. «Hecho con…»: sale solo en las láminas que lo traen
+ * (`show_powered_by: true` en su shell); en las demás nace apagado. Si la organización ya lo había
+ * cambiado, su decisión se conserva. El default del contrato (true, lo de hoy) no cambia: los
+ * sitios que no aplican una plantilla siguen igual.
+ */
+export function opcionesPiePlantilla(shell: ShellPlantilla, anteriores: Record<string, unknown>): Record<string, unknown> {
   return {
     footer_show_contact: true,
-    footer_show_hours: shell.pie.horario,
     footer_show_social: true,
-    footer_show_newsletter: shell.pie.boletin,
     footer_columns: 3,
-    // «Hecho con…» es una decisión de la organización: se conserva la que tenía.
+    show_powered_by: false,
+    ...shell.pie.opciones,
     ...('show_powered_by' in anteriores ? { show_powered_by: anteriores.show_powered_by } : {}),
   };
+}
+
+type Item = ItemMenu;
+
+interface ContextoMenus {
+  paginas: readonly PaginaSitio[];
+  generarId: GenerarId;
+  giro: Giro;
+  menusPedidos: readonly ClaveMenuPie[];
+}
+
+/** Ítems de un menú del pie: páginas reales (por dirección) y rutas del sitio público. */
+function itemsMenuPie(clave: ClaveMenuPie, c: ContextoMenus): { nombre: string; items: Item[] } {
+  const porSlug = (...slugs: string[]): Item[] =>
+    slugs.flatMap((slug) => {
+      const p = c.paginas.find((x) => x.slug === slug);
+      return p ? [itemPagina(p, c.generarId)] : [];
+    });
+  const enlace = (etiqueta: string, url: string): Item => ({ id: c.generarId(), etiqueta, tipo: 'custom', url });
+  const legales = (excluir: readonly string[] = []) =>
+    c.paginas.filter((p) => esPaginaLegal(p) && !esPlantillaTienda(p) && !excluir.includes(p.slug)).map((p) => itemPagina(p, c.generarId));
+  switch (clave) {
+    case 'legal': {
+      // Con «Políticas» en el mismo pie, la de la estadía va allá y no se repite.
+      // «Tratamiento de datos» (Ley 1581 de 2012, Colombia) apunta a la política de privacidad;
+      // el sitio lo pinta en la barra inferior del pie, como en las láminas.
+      const privacidad = c.paginas.find((p) => ['privacidad', 'politica-de-privacidad', 'politica-privacidad'].includes(p.slug));
+      return {
+        nombre: 'Legales',
+        items: [
+          ...legales(c.menusPedidos.includes('politicas') ? ['politica-estadia'] : []),
+          ...(privacidad ? [{ ...itemPagina(privacidad, c.generarId), etiqueta: 'Tratamiento de datos' }] : []),
+        ],
+      };
+    }
+    case 'politicas':
+      return {
+        nombre: 'Políticas',
+        items: c.menusPedidos.includes('legal') ? [...porSlug('politica-estadia'), enlace('Reservar', '/reservas'), ...porSlug('contacto')] : legales(),
+      };
+    case 'la-casa':
+      return { nombre: 'La casa', items: porSlug('nosotros', 'galeria', 'contacto') };
+    case 'eventos':
+      return { nombre: 'Eventos', items: porSlug('eventos', 'reservas-mesa', 'contacto') };
+    case 'ayuda':
+      return {
+        nombre: 'Ayuda',
+        items: [
+          ...porSlug('preguntas-frecuentes', 'contacto'),
+          // En tienda, «Consultar mi pedido»; si el pie trae «Envíos», ya va allá.
+          ...(c.giro === 'tienda' && !c.menusPedidos.some((m) => m === 'envios' || m === 'envios-devoluciones')
+            ? [enlace('Consultar mi pedido', '/consultar-pedido')]
+            : []),
+        ],
+      };
+    case 'envios-devoluciones':
+    case 'envios':
+      return {
+        nombre: clave === 'envios' ? 'Envíos' : 'Envíos y devoluciones',
+        items: [
+          enlace('Rastrear mi envío', '/tracking'),
+          enlace('Consultar mi pedido', '/consultar-pedido'),
+          // Los términos ya van en «Legales» cuando el pie lo trae.
+          ...(c.menusPedidos.includes('legal') ? [] : porSlug('terminos')),
+        ],
+      };
+    case 'atencion':
+      return { nombre: 'Atención al cliente', items: [...porSlug('contacto', 'preguntas-frecuentes'), enlace('Mi cuenta', '/mi-cuenta')] };
+    case 'alergenos':
+      return { nombre: 'Alérgenos', items: porSlug('alergenos', 'menu') };
+    case 'servicios':
+      return { nombre: 'Servicios', items: [...porSlug('servicios', 'precios'), enlace('Agendar cita', '/agendar')] };
+    case 'empresa':
+      return { nombre: 'Empresa', items: porSlug('nosotros', 'contacto') };
+    case 'planes':
+      return { nombre: 'Planes', items: porSlug('membresias', 'clases', 'entrenadores') };
+    case 'el-club':
+      return { nombre: 'El club', items: porSlug('nosotros', 'entrenadores', 'clases', 'contacto') };
+    case 'tarifas':
+      return { nombre: 'Tarifas', items: porSlug('tarifas', 'zonas', 'servicios') };
+  }
+}
+
+/** Megamenú «Categorías»: las del Inventario; sin categorías, las páginas de catálogo. */
+function menuCategorias(datos: DatosNegocio, paginas: readonly PaginaSitio[], generarId: GenerarId): MenuSitio {
+  const items: Item[] =
+    datos.categorias.length > 0
+      ? datos.categorias.slice(0, 12).map((cat) => ({ id: generarId(), etiqueta: cat.nombre, tipo: 'entity', entidad: 'category', entidadId: String(cat.id) }))
+      : paginas.filter((p) => ['productos', 'categorias', 'ofertas'].includes(p.slug)).map((p) => itemPagina(p, generarId));
+  return { id: generarId(), nombre: 'Categorías', items };
 }
 
 /**
@@ -720,13 +866,19 @@ export function armarPlantillaCompleta(
   const { generarId } = opciones;
   const giro = plantilla.giro as Giro;
   const conEstilo = opciones.conEstilo === false ? base : aplicarEstiloPlantilla(base, plantilla, opciones.extendidos);
+  const shell = shellDePlantilla(plantilla.id, giro);
 
   // 1. Lo que se conserva: páginas de sistema (carrito, checkout…) y legales.
   const conservadas = base.paginas.filter((p) => esPlantillaTienda(p) || esPaginaLegal(p));
   const slugsConservados = new Set(conservadas.map((p) => p.slug));
-  const juego: PaginaBase[] = paginasBasePorGiro(giro).filter((b) => !slugsConservados.has(b.slug));
+  const delGiro = paginasBasePorGiro(giro);
+  const extras = paginasQuePideElShell(shell)
+    .filter((slug) => !delGiro.some((b) => b.slug === slug))
+    .map((slug) => PAGINAS_DEL_SHELL[slug]);
+  const juego: PaginaBase[] = [...delGiro, ...extras].filter((b) => !slugsConservados.has(b.slug));
   const slugs = new Set([...slugsConservados, ...juego.map((b) => b.slug)]);
   const ruta = (slug: string): string | null => (slugs.has(slug) ? (slug === 'home' ? '/' : `/${slug}`) : null);
+  const cta = botonResuelto(shell.encabezado.boton, ruta);
 
   // 2. Páginas del juego con su contenido inicial; Inicio con la estructura de la plantilla.
   const fotos = fotosDe(datos);
@@ -742,8 +894,13 @@ export function armarPlantillaCompleta(
     const estructura: readonly SeccionPlantilla[] = inicio
       ? plantilla.inicio.map(([tipo, variante]) => conFotoDePortada(tipo, variante, portada))
       : b.secciones.map((s) => [s.tipo, s.variante] as const);
-    const contexto: ContextoSeccion = { giro, datos, textos, ruta, portada, fotos, esInicio: inicio, pagina };
-    const armadas = estructura.map((s) => armarSeccion(s, contexto, generarId, ocultas));
+    const contexto: ContextoSeccion = { giro, datos, textos, ruta, portada, fotos, esInicio: inicio, pagina, cta };
+    const armadas = estructura.map((s, i) => {
+      const armada = armarSeccion(s, contexto, generarId, ocultas);
+      // Texto propio de la página del shell (p. ej. alérgenos), sobre el de ejemplo.
+      const propio = inicio ? null : b.secciones[i]?.contenido;
+      return propio && Object.keys(propio).length > 0 ? { ...armada, contenido: { ...propio } } : armada;
+    });
     secciones += armadas.length;
     const construida: PaginaSitio = { id: generarId(), slug: b.slug, tipo: b.tipo, titulo: b.titulo, publicada: true, secciones: armadas };
     return { pagina: construida, enMenu: b.enMenu };
@@ -751,38 +908,35 @@ export function armarPlantillaCompleta(
   // Inicio primero, como lo lista el editor; luego el juego y lo conservado.
   const paginas: PaginaSitio[] = [...nuevas.map((n) => n.pagina), ...conservadas];
 
-  // 3. Menús: encabezado (páginas «en el menú»), pie «Explora» y «Legales».
+  // 3. Menús: encabezado (páginas «en el menú»), megamenú y los menús del pie de la plantilla.
   const menuEncabezado: MenuSitio = {
     id: generarId(),
     nombre: 'Encabezado',
     items: nuevas.filter((n) => n.enMenu).map((n) => itemPagina(n.pagina, generarId)),
   };
-  const menuExplora: MenuSitio = {
-    id: generarId(),
-    nombre: 'Explora',
-    items: nuevas.filter((n) => !esInicio(n.pagina) && !esPaginaLegal(n.pagina)).map((n) => itemPagina(n.pagina, generarId)),
-  };
-  const legales = paginas.filter((p) => esPaginaLegal(p) && !esPlantillaTienda(p));
-  const menuLegales: MenuSitio = { id: generarId(), nombre: 'Legales', items: legales.map((p) => itemPagina(p, generarId)) };
-  const menusPie = [menuExplora, menuLegales].filter((m) => m.items.length > 0);
+  const mega = shell.encabezado.megaCategorias ? menuCategorias(datos, paginas, generarId) : null;
+  const contextoMenus: ContextoMenus = { paginas, generarId, giro, menusPedidos: shell.pie.menus };
+  const menusPie: MenuSitio[] = shell.pie.menus
+    .map((clave) => ({ id: generarId(), ...itemsMenuPie(clave, contextoMenus) }))
+    .filter((m) => m.items.length > 0);
+  const menuMega = mega && mega.items.length > 0 ? mega : null;
 
-  // 4. Encabezado y pie del giro.
-  const shell = SHELL_POR_GIRO[giro];
+  // 4. Encabezado y pie de la plantilla.
   const documento: DocumentoSitio = {
     ...conEstilo,
-    menus: [menuEncabezado, ...menusPie],
+    menus: [menuEncabezado, ...(menuMega ? [menuMega] : []), ...menusPie],
     paginas,
     shell: {
       header: {
         composicion: shell.encabezado.composicion,
         menuPrincipalId: menuEncabezado.id,
-        menuMegaId: null,
-        opciones: opcionesEncabezado(shell, ruta(shell.encabezado.cta.slug), datos),
+        menuMegaId: menuMega?.id ?? null,
+        opciones: opcionesEncabezadoPlantilla(shell, ruta),
       },
       footer: {
         composicion: shell.pie.composicion,
         menuIds: menusPie.map((m) => m.id),
-        opciones: opcionesPie(shell, base.shell.footer.opciones ?? {}),
+        opciones: opcionesPiePlantilla(shell, base.shell.footer.opciones ?? {}),
       },
     },
   };
@@ -790,6 +944,44 @@ export function armarPlantillaCompleta(
     documento,
     resumen: { paginas: nuevas.length, secciones, ocultas, conservadas: conservadas.length },
   };
+}
+
+export interface ShellPorDefecto {
+  plantillaId: string | null;
+  nombre: string | null;
+  header: { composicion: string; opciones: Record<string, unknown> };
+  footer: { composicion: string; opciones: Record<string, unknown> };
+}
+
+/**
+ * Valores de la plantilla para el editor («Valores por defecto de la plantilla» y «Restablecer
+ * a la plantilla»): composición y opciones de la lámina, con los botones resueltos contra las
+ * páginas que el sitio tiene HOY (`slugs`). Los menús no se tocan: son del dueño. Sin plantilla
+ * conocida, la del giro.
+ */
+export function shellPorDefecto(
+  plantillaId: string | null | undefined,
+  giro: Giro,
+  slugs: Iterable<string>,
+  opcionesPieActuales: Record<string, unknown> = {},
+): ShellPorDefecto {
+  const plantilla = plantillaId ? CATALOGO_PLANTILLAS.plantillas.find((p) => p.id === plantillaId) ?? null : null;
+  const shell = shellDePlantilla(plantilla?.id ?? null, (plantilla?.giro as Giro | undefined) ?? giro);
+  const existentes = new Set(slugs);
+  const ruta = (slug: string): string | null => (existentes.has(slug) ? (slug === 'home' ? '/' : `/${slug}`) : null);
+  return {
+    plantillaId: plantilla?.id ?? null,
+    nombre: plantilla?.nombre ?? null,
+    header: { composicion: shell.encabezado.composicion, opciones: opcionesEncabezadoPlantilla(shell, ruta) },
+    footer: { composicion: shell.pie.composicion, opciones: opcionesPiePlantilla(shell, opcionesPieActuales) },
+  };
+}
+
+/** {@link shellPorDefecto} de un documento V2: la plantilla sale de `tema.preset`. */
+export function shellPorDefectoDelDocumento(documento: DocumentoSitio, giro: Giro): ShellPorDefecto {
+  const preset = documento.tema.preset;
+  const plantillaId = preset && preset.mode === 'value' && typeof preset.value === 'string' ? preset.value : null;
+  return shellPorDefecto(plantillaId, giro, documento.paginas.map((p) => p.slug), documento.shell.footer.opciones ?? {});
 }
 
 /**

@@ -69,7 +69,6 @@ export function ListaSecciones(p: ListaSeccionesProps) {
           etiqueta={t('lista.encabezado')}
           icono={Layers}
           global
-          etiquetaGlobal=""
           seleccionada={p.zona === 'header'}
           onSeleccionar={() => p.onSeleccionarZona('header')}
         />
@@ -128,7 +127,6 @@ export function ListaSecciones(p: ListaSeccionesProps) {
           etiqueta={t('lista.pie')}
           icono={Layers}
           global
-          etiquetaGlobal=""
           seleccionada={p.zona === 'footer'}
           onSeleccionar={() => p.onSeleccionarZona('footer')}
         />
